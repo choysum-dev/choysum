@@ -27,7 +27,7 @@ export function setupRouter(app: ChoysumWebApp): void {
 }
 
 /**
- * Public entry used when the kit host boots (product web and/or choy_ui shell).
+ * Public entry used when the kit host boots (product web shell).
  */
 export function registerChoyGalleryRoute(app: ChoysumWebApp): void {
   setupRouter(app);

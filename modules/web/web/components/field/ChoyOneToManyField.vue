@@ -19,7 +19,7 @@ SPDX-License-Identifier: Apache-2.0
   >
     <template #edit>
       <ChoyViewScope :view-mode="binding.env.viewMode" :container="'List'" :field-prefix="String(prop)">
-        <div class="o-one-to-many__table" :style="{ height: tableHeightPxEdit }" tabindex="-1">
+        <div class="choy-one-to-many__table" :style="{ height: tableHeightPxEdit }" tabindex="-1">
           <ChoyTableHost
             ref="ovTableRef"
             :data="getItems()"
@@ -40,14 +40,14 @@ SPDX-License-Identifier: Apache-2.0
             </ChoyTableColumn>
           </ChoyTableHost>
         </div>
-        <div class="o-one-to-many-actions">
+        <div class="choy-one-to-many-actions">
           <ChoyButton size="sm" variant="link" @click="handleAddItem">{{ _t('Add row') }}</ChoyButton>
         </div>
       </ChoyViewScope>
     </template>
     <template #display>
       <ChoyViewScope view-mode="display" :container="'List'" :field-prefix="String(prop)">
-        <div class="o-one-to-many__table" :style="{ height: tableHeightPxDisplay }">
+        <div class="choy-one-to-many__table" :style="{ height: tableHeightPxDisplay }">
           <ChoyTableHost
             :data="getItems()"
             :row-key="'__rowKey'"
@@ -278,11 +278,11 @@ watch(
 </script>
 
 <style scoped>
-.o-one-to-many__table {
+.choy-one-to-many__table {
   width: 100%;
   min-width: 0;
 }
-.o-one-to-many-actions {
+.choy-one-to-many-actions {
   display: flex;
   align-items: center;
   padding-inline-start: 60px;

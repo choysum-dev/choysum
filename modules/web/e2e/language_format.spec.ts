@@ -186,7 +186,7 @@ test('base T2.6: Language thousand separator change updates exchange rate list d
   // Baseline: list shows US-style grouping from seeded zh_CN (',' thousands, '.' decimal).
   await page.goto(`${baseURL}/web/base/exchange-rates`, { waitUntil: 'domcontentloaded' });
   await expect(page.locator('body')).toBeVisible();
-  const rateCell = page.locator('.o-field-display-text', { hasText: /1[,.]234[,.]567/ }).first();
+  const rateCell = page.locator('.choy-field-display-text', { hasText: /1[,.]234[,.]567/ }).first();
   await expect(rateCell).toBeVisible({ timeout: 30_000 });
   const beforeText = ((await rateCell.textContent()) || '').trim();
   expect(beforeText).toMatch(/1,234,567/);
@@ -205,7 +205,7 @@ test('base T2.6: Language thousand separator change updates exchange rate list d
   await expect
     .poll(
       async () => {
-        const texts = await page.locator('.o-field-display-text').allTextContents();
+        const texts = await page.locator('.choy-field-display-text').allTextContents();
         return texts.map(t => String(t || '').trim()).find(t => /1[,.]234[,.]567/.test(t)) || '';
       },
       { timeout: 45_000 }

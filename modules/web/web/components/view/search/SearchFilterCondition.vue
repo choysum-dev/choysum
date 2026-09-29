@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div class="o-search-filter__row">
+  <div class="choy-search-filter__row">
     <select
       class="w-field"
       :placeholder="_t('Field')"
@@ -44,7 +44,7 @@ SPDX-License-Identifier: Apache-2.0
       :placeholder="valuePlaceholder"
       :formItemProps="{ labelWidth: 0, style: { margin: 0, padding: 0 } }"
     />
-    <span v-else-if="condition.field && isNullOperator(condition.operator)" class="w-value o-null-flag">NULL</span>
+    <span v-else-if="condition.field && isNullOperator(condition.operator)" class="w-value choy-null-flag">NULL</span>
     <input v-else class="w-value" :placeholder="_t('Select a field')" disabled />
 
     <ChoyButton class="rm" size="sm" variant="destructive" @click="onRemove">{{ _t('Remove') }}</ChoyButton>
@@ -278,19 +278,19 @@ function onRemove() {
 </script>
 
 <style scoped>
-.o-search-filter__row {
+.choy-search-filter__row {
   display: flex;gap: 8px;align-items: center;
 }
-.o-search-filter__row .w-field {
+.choy-search-filter__row .w-field {
   width: 180px;
 }
-.o-search-filter__row .w-operator {
+.choy-search-filter__row .w-operator {
   width: 140px;
 }
-.o-search-filter__row .w-value {
+.choy-search-filter__row .w-value {
   flex: 1;
 }
-.o-search-filter__row .o-null-flag {
+.choy-search-filter__row .choy-null-flag {
   color: var(--el-color-info);
 }
 </style>

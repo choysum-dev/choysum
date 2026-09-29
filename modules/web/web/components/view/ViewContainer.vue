@@ -4,14 +4,14 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div class="o-view-container">
-    <div v-if="$slots.header || showHeader" class="o-view-container__header">
+  <div class="choy-view-container">
+    <div v-if="$slots.header || showHeader" class="choy-view-container__header">
       <slot name="header" />
     </div>
-    <div class="o-view-container__body">
+    <div class="choy-view-container__body">
       <slot />
     </div>
-    <div v-if="$slots.footer" class="o-view-container__footer">
+    <div v-if="$slots.footer" class="choy-view-container__footer">
       <slot name="footer" />
     </div>
   </div>
@@ -28,32 +28,32 @@ withDefaults(
 
 <style scoped>
 /* Primary new class names */
-.o-view-container {
+.choy-view-container {
   display: flex;
   flex-direction: column;
   width: 100%;
   height: 100%;
   min-width: 0;
 }
-.o-view-container__header {
+.choy-view-container__header {
   flex: 0 0 auto;
 }
-.o-view-container__body {
+.choy-view-container__body {
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
 }
-.o-view-container__footer {
+.choy-view-container__footer {
   flex: 0 0 auto;
 }
 
-/* Backward compatibility: keep legacy .o-view-shell selectors temporarily */
-.o-view-shell {
+/* Alternate selectors kept for hosts that still target the old shell class names. */
+.choy-view-shell {
   display: contents; /* neutralize legacy wrapper if still referenced */
 }
-.o-view-shell__header,
-.o-view-shell__body,
-.o-view-shell__footer {
+.choy-view-shell__header,
+.choy-view-shell__body,
+.choy-view-shell__footer {
   display: contents;
 }
 </style>

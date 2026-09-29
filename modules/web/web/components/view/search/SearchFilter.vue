@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div class="o-search-filter">
+  <div class="choy-search-filter">
     <!-- Root group rendered recursively. -->
     <SearchFilterGroup
       :group="draft.root"
@@ -19,12 +19,12 @@ SPDX-License-Identifier: Apache-2.0
       :on-remove-group="onRemoveGroup"
     />
 
-    <div class="o-search-filter__footer">
-      <div class="o-search-filter__preview">
+    <div class="choy-search-filter__footer">
+      <div class="choy-search-filter__preview">
         <span class="label">{{ _t('Preview (%s):', leafCount) }}</span>
         <span class="expr">{{ preview }}</span>
       </div>
-      <div class="o-search-filter__actions">
+      <div class="choy-search-filter__actions">
         <ChoyButton class="btn" @click="$emit('cancel')">{{ _t('Cancel') }}</ChoyButton>
         <ChoyButton class="btn" @click="$emit('confirm')">{{ _t('Confirm') }}</ChoyButton>
       </div>
@@ -154,22 +154,22 @@ const { preview, leafCount } = (() => {
 </script>
 
 <style scoped>
-.o-search-filter {
+.choy-search-filter {
   display: flex;flex-direction: column;gap: 16px;
 }
-.o-search-filter__footer {
+.choy-search-filter__footer {
   display: flex;flex-direction: column;gap: 12px;border-top: 1px solid var(--el-border-color-light);padding-top: 12px;
 }
-.o-search-filter__preview {
+.choy-search-filter__preview {
   font-size: 12px;display: flex;gap: 6px;
 }
-.o-search-filter__preview .label {
+.choy-search-filter__preview .label {
   color: var(--el-text-color-secondary);
 }
-.o-search-filter__preview .expr {
+.choy-search-filter__preview .expr {
   word-break: break-all;
 }
-.o-search-filter__actions {
+.choy-search-filter__actions {
   display: flex;justify-content: flex-end;gap: 8px;
 }
 </style>

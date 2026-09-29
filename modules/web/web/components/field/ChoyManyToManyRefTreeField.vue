@@ -19,10 +19,10 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
   >
     <template #edit>
-      <div class="o-m2m-ref-tree" :style="treeBoxStyle">
+      <div class="choy-m2m-ref-tree" :style="treeBoxStyle">
         <el-tree
           ref="editTreeRef"
-          class="o-m2m-ref-tree__tree"
+          class="choy-m2m-ref-tree__tree"
           node-key="__id"
           :data="treeData"
           :props="treeProps"
@@ -50,10 +50,10 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display>
-      <div class="o-m2m-ref-tree o-m2m-ref-tree--readonly" :style="treeBoxStyle" @click.capture="onDisplayTreeClickCapture">
+      <div class="choy-m2m-ref-tree choy-m2m-ref-tree--readonly" :style="treeBoxStyle" @click.capture="onDisplayTreeClickCapture">
         <el-tree
           ref="displayTreeRef"
-          class="o-m2m-ref-tree__tree"
+          class="choy-m2m-ref-tree__tree"
           node-key="__id"
           :data="treeData"
           :props="treeProps"
@@ -610,17 +610,17 @@ watch(
 </script>
 
 <style scoped>
-.o-m2m-ref-tree {
+.choy-m2m-ref-tree {
   width: 100%;
   padding: 8px;
   overflow: auto;
 }
 
-.o-m2m-ref-tree__tree {
+.choy-m2m-ref-tree__tree {
   min-height: 120px;
 }
 
-.o-m2m-ref-tree--readonly :deep(.el-checkbox) {
+.choy-m2m-ref-tree--readonly :deep(.el-checkbox) {
   cursor: default;
 }
 </style>

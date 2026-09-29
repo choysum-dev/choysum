@@ -35,13 +35,13 @@ SPDX-License-Identifier: Apache-2.0
   <div v-else data-testid="inbox-engine" :class="props.class">
     <DropdownMenu v-if="isAuthenticated" @update:open="handleVisibleChange">
       <DropdownMenuTrigger as-child>
-        <button type="button" class="o-notification-bell__button" :aria-label="_t('Notifications')">
+        <button type="button" class="choy-notification-bell__button" :aria-label="_t('Notifications')">
           <Bell class="size-5" />
-          <span v-if="inboxUnreadCount > 0" class="o-notification-bell__badge">{{ inboxUnreadCount }}</span>
+          <span v-if="inboxUnreadCount > 0" class="choy-notification-bell__badge">{{ inboxUnreadCount }}</span>
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" class="o-notification-bell__menu">
-        <div class="o-notification-bell__toolbar">
+      <DropdownMenuContent align="end" class="choy-notification-bell__menu">
+        <div class="choy-notification-bell__toolbar">
           <span>{{ _t('Notifications') }}</span>
           <ChoyButton
             v-if="inboxUnreadCount > 0"
@@ -53,20 +53,20 @@ SPDX-License-Identifier: Apache-2.0
             {{ _t('Mark all read') }}
           </ChoyButton>
         </div>
-        <div v-if="loading" class="o-notification-bell__empty">{{ _t('Loading...') }}</div>
-        <div v-else-if="error" class="o-notification-bell__empty o-notification-bell__empty--error">{{ error }}</div>
-        <div v-else-if="rows.length === 0" class="o-notification-bell__empty">{{ _t('No notifications') }}</div>
+        <div v-if="loading" class="choy-notification-bell__empty">{{ _t('Loading...') }}</div>
+        <div v-else-if="error" class="choy-notification-bell__empty choy-notification-bell__empty--error">{{ error }}</div>
+        <div v-else-if="rows.length === 0" class="choy-notification-bell__empty">{{ _t('No notifications') }}</div>
         <template v-else>
           <DropdownMenuItem
             v-for="row in rows"
             :key="String(row.Id)"
             @select="() => handleItemClick(row)"
           >
-            <div class="o-notification-bell__item">
-              <div class="o-notification-bell__item-title">
+            <div class="choy-notification-bell__item">
+              <div class="choy-notification-bell__item-title">
                 {{ formatNotificationTitle(row) }}
               </div>
-              <div class="o-notification-bell__item-meta">
+              <div class="choy-notification-bell__item-meta">
                 {{ formatUtcIso(row.CreatedAt, 'YYYY-MM-DD HH:mm') || '' }}
               </div>
             </div>
@@ -194,31 +194,31 @@ async function handleItemClick(row: InboxNotificationRow) {
 </script>
 
 <style scoped>
-.o-notification-bell__button {
+.choy-notification-bell__button {
   position: relative;display: inline-flex;align-items: center;justify-content: center;padding: 0.375rem;border: 0;background: transparent;color: var(--choy-color-foreground, inherit);cursor: pointer;
 }
-.o-notification-bell__badge {
+.choy-notification-bell__badge {
   position: absolute;top: 0;right: 0;min-width: 1rem;padding: 0 0.25rem;border-radius: 999px;background: var(--choy-color-danger, #dc2626);color: #fff;font-size: 10px;line-height: 1rem;text-align: center;
 }
-.o-notification-bell__toolbar {
+.choy-notification-bell__toolbar {
   display: flex;align-items: center;justify-content: space-between;gap: 0.5rem;padding: 0.5rem 0.75rem;border-bottom: 1px solid var(--choy-color-border, #e5e7eb);color: var(--choy-color-muted-foreground, #6b7280);font-size: 0.875rem;
 }
-.o-notification-bell__empty {
+.choy-notification-bell__empty {
   padding: 0.75rem;color: var(--choy-color-muted-foreground, #6b7280);font-size: 0.875rem;
 }
-.o-notification-bell__empty--error {
+.choy-notification-bell__empty--error {
   color: var(--choy-color-danger, #dc2626);
 }
-.o-notification-bell__item {
+.choy-notification-bell__item {
   display: flex;flex-direction: column;gap: 0.25rem;min-width: 16rem;
 }
-.o-notification-bell__item-title {
+.choy-notification-bell__item-title {
   color: var(--choy-color-foreground, inherit);font-size: 0.875rem;
 }
-.o-notification-bell__item-meta {
+.choy-notification-bell__item-meta {
   color: var(--choy-color-muted-foreground, #6b7280);font-size: 0.75rem;
 }
-:global(.o-notification-bell__menu .is-unread) {
+:global(.choy-notification-bell__menu .is-unread) {
   background: color-mix(in oklab, var(--choy-color-primary, #2563eb) 12%, transparent);
 }
 </style>

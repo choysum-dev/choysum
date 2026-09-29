@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { columnsToColumnDefs } from './columnAdapter';
-import type { Column } from '@/web/web/composables/useVTable';
+import type { Column } from '@/web/web/composables/useTable';
 
 describe('columnsToColumnDefs', () => {
   test('maps width, sortable, and cell renderer', () => {

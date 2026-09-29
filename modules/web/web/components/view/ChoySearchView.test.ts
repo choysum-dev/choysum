@@ -21,7 +21,7 @@ const OSearchStub = defineComponent({
       emit('defaults-ready', stubState.mountDefaults.slice());
     });
     return () =>
-      h('div', { class: 'o-search-stub' }, [
+      h('div', { class: 'choy-search-stub' }, [
         h('pre', { class: 'code-defaults' }, JSON.stringify(props.defaultFilters || [])),
         h('pre', { class: 'applied' }, JSON.stringify(props.currentAppliedFilters || [])),
         h('pre', { class: 'keyword' }, String(props.currentKeyword ?? '')),
@@ -283,7 +283,7 @@ describe('SearchView favorites defaults (single child load)', () => {
       initialEmit: false,
     });
     await flushPromises();
-    const root = q('.o-search-view')!;
+    const root = q('.choy-search-view')!;
     expect(root.getAttribute('aria-disabled')).toBe('true');
     expect(root.hasAttribute('inert')).toBe(true);
     expect(root.classList.contains('pointer-events-none')).toBe(true);

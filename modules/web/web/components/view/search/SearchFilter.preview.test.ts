@@ -211,7 +211,7 @@ describe('SearchFilter preview labels', () => {
     click('.rm-g');
     click('.upd');
     click('.rm-c');
-    const actions = q('.o-search-filter__actions') as HTMLElement | null;
+    const actions = q('.choy-search-filter__actions') as HTMLElement | null;
     expect(actions).toBeTruthy();
     const buttons = Array.from(actions!.querySelectorAll('.btn'));
     expect(buttons.length).toBe(2);

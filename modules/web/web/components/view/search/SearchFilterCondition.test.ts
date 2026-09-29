@@ -251,7 +251,7 @@ describe('SearchFilterCondition', () => {
   test('renders NULL flag and selection / datetime field components', async () => {
     const nullCond = reactive<any>({ id: 'c1', field: 'Name', operator: 'is', value: null });
     const nullRow = mountRow(nullCond);
-    expect(nullRow.q('.o-null-flag')?.textContent).toBe('NULL');
+    expect(nullRow.q('.choy-null-flag')?.textContent).toBe('NULL');
     nullRow.unmount();
 
     const sel = reactive<any>({ id: 'c2', field: 'Status', operator: '=', value: 'a' });

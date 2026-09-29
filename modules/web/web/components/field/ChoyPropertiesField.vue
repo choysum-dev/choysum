@@ -21,24 +21,24 @@ SPDX-License-Identifier: Apache-2.0
     v-bind="$attrs"
   >
     <template #edit="{ fieldValue }">
-      <div v-if="isTableLike" class="o-properties-summary" data-testid="o-properties-summary">
+      <div v-if="isTableLike" class="choy-properties-summary" data-testid="choy-properties-summary">
         {{ summaryText(fieldValue().value) }}
       </div>
-      <div v-else class="o-properties-form" data-testid="o-properties-form">
-        <div v-if="!renderableItems.length" class="o-properties-empty" data-testid="o-properties-empty" />
+      <div v-else class="choy-properties-form" data-testid="choy-properties-form">
+        <div v-if="!renderableItems.length" class="choy-properties-empty" data-testid="choy-properties-empty" />
         <div
           v-for="item in renderableItems"
           :key="item.name"
-          class="o-properties-item"
+          class="choy-properties-item"
           :data-name="item.name"
           :data-type="item.type"
           :data-readonly="item.readonly ? '1' : '0'"
         >
-          <label class="o-properties-item__label" :for="controlId(item)">{{ itemLabel(item) }}</label>
+          <label class="choy-properties-item__label" :for="controlId(item)">{{ itemLabel(item) }}</label>
           <input
             type="checkbox"
             v-if="item.type === 'boolean'"
-            class="o-properties-control"
+            class="choy-properties-control"
             :id="controlId(item)"
             :checked="asBoolean(itemValue(fieldValue().value, item))"
             :disabled="!!item.readonly"
@@ -46,7 +46,7 @@ SPDX-License-Identifier: Apache-2.0
           />
           <input
             v-else-if="item.type === 'integer' || item.type === 'float'"
-            class="o-properties-control"
+            class="choy-properties-control"
             :id="controlId(item)"
             type="number"
             :value="asNumber(itemValue(fieldValue().value, item)) ?? ''"
@@ -56,7 +56,7 @@ SPDX-License-Identifier: Apache-2.0
           />
           <textarea
             v-else-if="item.type === 'text'"
-            class="o-properties-control"
+            class="choy-properties-control"
             :id="controlId(item)"
             rows="3"
             :value="asString(itemValue(fieldValue().value, item))"
@@ -65,7 +65,7 @@ SPDX-License-Identifier: Apache-2.0
           ></textarea>
           <input
             v-else-if="item.type === 'date'"
-            class="o-properties-control"
+            class="choy-properties-control"
             :id="controlId(item)"
             type="date"
             :value="asString(itemValue(fieldValue().value, item))"
@@ -74,7 +74,7 @@ SPDX-License-Identifier: Apache-2.0
           />
           <input
             v-else-if="item.type === 'datetime'"
-            class="o-properties-control"
+            class="choy-properties-control"
             :id="controlId(item)"
             type="datetime-local"
             :value="datetimePickerValue(itemValue(fieldValue().value, item))"
@@ -83,7 +83,7 @@ SPDX-License-Identifier: Apache-2.0
           />
           <select
             v-else-if="item.type === 'selection'"
-            class="o-properties-control"
+            class="choy-properties-control"
             :id="controlId(item)"
             :value="asString(itemValue(fieldValue().value, item))"
             :disabled="!!item.readonly"
@@ -99,7 +99,7 @@ SPDX-License-Identifier: Apache-2.0
           </select>
           <input
             v-else
-            class="o-properties-control"
+            class="choy-properties-control"
             :id="controlId(item)"
             :value="asString(itemValue(fieldValue().value, item))"
             :disabled="!!item.readonly"
@@ -110,19 +110,19 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display="{ fieldValue }">
-      <span v-if="isTableLike" class="o-properties-summary" data-testid="o-properties-summary">
+      <span v-if="isTableLike" class="choy-properties-summary" data-testid="choy-properties-summary">
         {{ summaryText(fieldValue().value) }}
       </span>
-      <div v-else class="o-properties-form o-properties-form--display" data-testid="o-properties-form">
-        <div v-if="!renderableItems.length" class="o-properties-empty" data-testid="o-properties-empty" />
+      <div v-else class="choy-properties-form choy-properties-form--display" data-testid="choy-properties-form">
+        <div v-if="!renderableItems.length" class="choy-properties-empty" data-testid="choy-properties-empty" />
         <div
           v-for="item in renderableItems"
           :key="item.name"
-          class="o-properties-item o-properties-item--display"
+          class="choy-properties-item choy-properties-item--display"
           :data-name="item.name"
         >
-          <span class="o-properties-item__label">{{ itemLabel(item) }}</span>
-          <span class="o-properties-item__value">{{ displayItemValue(fieldValue().value, item) }}</span>
+          <span class="choy-properties-item__label">{{ itemLabel(item) }}</span>
+          <span class="choy-properties-item__value">{{ displayItemValue(fieldValue().value, item) }}</span>
         </div>
       </div>
     </template>
@@ -228,7 +228,7 @@ function itemLabel(item: ResolvedPropertyItem): string {
 }
 
 function controlId(item: ResolvedPropertyItem): string {
-  return `o-properties-${propertiesFieldKey(binding.prop, props.prop)}-${item.name}`;
+  return `choy-properties-${propertiesFieldKey(binding.prop, props.prop)}-${item.name}`;
 }
 
 function selectionOptions(item: ResolvedPropertyItem) {
@@ -339,22 +339,22 @@ watch(
 </script>
 
 <style scoped>
-.o-properties-form {
+.choy-properties-form {
   display: flex;flex-direction: column;gap: 8px;width: 100%;
 }
-.o-properties-item {
+.choy-properties-item {
   display: grid;grid-template-columns: minmax(96px, 28%) 1fr;gap: 8px;align-items: center;
 }
-.o-properties-item__label {
+.choy-properties-item__label {
   color: var(--el-text-color-regular);font-size: 13px;
 }
-.o-properties-control {
+.choy-properties-control {
   width: 100%;
 }
-.o-properties-summary {
+.choy-properties-summary {
   font-size: 13px;color: var(--el-text-color-regular);white-space: nowrap;overflow: hidden;text-overflow: ellipsis;
 }
-.o-properties-empty {
+.choy-properties-empty {
   min-height: 4px;
 }
 </style>

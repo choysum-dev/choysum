@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyButton
       variant="ghost"
       size="sm"
-      class="o-switch-company__trigger o-header__action-item max-w-[12rem] truncate"
+      class="choy-switch-company__trigger choy-header__action-item max-w-[12rem] truncate"
       :aria-expanded="visible"
       :aria-label="_t('Switch company')"
       data-testid="company-switch-trigger"
@@ -23,12 +23,12 @@ SPDX-License-Identifier: Apache-2.0
       data-testid="company-switch-panel"
       @click.stop
     >
-      <div class="o-switch-company__panel flex flex-col gap-3">
+      <div class="choy-switch-company__panel flex flex-col gap-3">
         <label class="flex flex-col gap-1 text-sm">
           <span class="font-medium">{{ _t('Current Company') }}</span>
           <select
             v-model="draftActiveCompanyId"
-            class="o-switch-company__select rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+            class="choy-switch-company__select rounded-md border border-border bg-background px-2 py-1.5 text-sm"
             data-testid="company-active-select"
           >
             <option v-for="c in companies" :key="c.Id" :value="c.Id">{{ c.DisplayName || c.Id }}</option>
@@ -38,7 +38,7 @@ SPDX-License-Identifier: Apache-2.0
         <div class="flex flex-col gap-1 text-sm">
           <span class="font-medium">{{ _t('Available Companies') }}</span>
           <div
-            class="o-switch-company__select flex max-h-56 min-h-[5.5rem] flex-col gap-1 overflow-y-auto rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+            class="choy-switch-company__select flex max-h-56 min-h-[5.5rem] flex-col gap-1 overflow-y-auto rounded-md border border-border bg-background px-2 py-1.5 text-sm"
             data-testid="company-enabled-select"
           >
             <label v-for="c in companies" :key="'enabled-' + c.Id" class="flex items-center gap-2">
@@ -55,11 +55,11 @@ SPDX-License-Identifier: Apache-2.0
           </div>
         </div>
 
-        <div v-if="applyDisabledReason" class="o-switch-company__hint text-xs text-foreground/60" data-testid="company-switch-hint">
+        <div v-if="applyDisabledReason" class="choy-switch-company__hint text-xs text-foreground/60" data-testid="company-switch-hint">
           {{ applyDisabledReason }}
         </div>
 
-        <div class="o-switch-company__actions flex justify-end">
+        <div class="choy-switch-company__actions flex justify-end">
           <ChoyButton size="sm" :disabled="!canApply" data-testid="company-switch-apply" @click.stop="apply">
             {{ _t('Apply') }}
           </ChoyButton>
@@ -388,7 +388,7 @@ async function apply(): Promise<void> {
 </script>
 
 <style scoped>
-.o-switch-company__trigger {
+.choy-switch-company__trigger {
   height: 36px;padding: 0 10px;
 }
 </style>

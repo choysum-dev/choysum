@@ -4,35 +4,35 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div class="o-properties-definition-editor" data-testid="o-properties-definition-editor">
-    <div class="o-properties-definition-editor__toolbar">
+  <div class="choy-properties-definition-editor" data-testid="choy-properties-definition-editor">
+    <div class="choy-properties-definition-editor__toolbar">
       <ChoyButton
         size="sm"
         :disabled="readonly || saving || loading || !canSave"
-        data-testid="o-properties-definition-save"
+        data-testid="choy-properties-definition-save"
         @click="onSave"
       >
         {{ _t('Save') }}
       </ChoyButton>
-      <ChoyButton size="sm" :disabled="readonly || saving || loading" data-testid="o-properties-definition-add" @click="onAdd">
+      <ChoyButton size="sm" :disabled="readonly || saving || loading" data-testid="choy-properties-definition-add" @click="onAdd">
         {{ _t('Add property') }}
       </ChoyButton>
-      <span v-if="loadError" class="o-properties-definition-editor__error" data-testid="o-properties-definition-error">
+      <span v-if="loadError" class="choy-properties-definition-editor__error" data-testid="choy-properties-definition-error">
         {{ loadError }}
       </span>
-      <span v-else-if="saveError" class="o-properties-definition-editor__error" data-testid="o-properties-definition-save-error">
+      <span v-else-if="saveError" class="choy-properties-definition-editor__error" data-testid="choy-properties-definition-save-error">
         {{ saveError }}
       </span>
     </div>
 
-    <div v-if="!drafts.length" class="o-properties-definition-editor__empty" data-testid="o-properties-definition-empty">
+    <div v-if="!drafts.length" class="choy-properties-definition-editor__empty" data-testid="choy-properties-definition-empty">
       {{ _t('No properties defined') }}
     </div>
 
     <div
       v-for="(item, index) in drafts"
       :key="index"
-      class="o-properties-definition-editor__row"
+      class="choy-properties-definition-editor__row"
       :data-index="index"
     >
       <input
@@ -40,9 +40,9 @@ SPDX-License-Identifier: Apache-2.0
         size="small"
         :disabled="readonly"
         :placeholder="_t('Name')"
-        data-testid="o-properties-definition-name"
+        data-testid="choy-properties-definition-name"
       />
-      <select v-model="item.type" size="small" :disabled="readonly" data-testid="o-properties-definition-type">
+      <select v-model="item.type" size="small" :disabled="readonly" data-testid="choy-properties-definition-type">
         <option v-for="t in typeOptions" :key="t" :label="t" :value="t" />
       </select>
       <input
@@ -50,20 +50,20 @@ SPDX-License-Identifier: Apache-2.0
         size="small"
         :disabled="readonly"
         :placeholder="_t('Label')"
-        data-testid="o-properties-definition-string"
+        data-testid="choy-properties-definition-string"
       />
       <input
         v-model="item.default"
         size="small"
         :disabled="readonly"
         :placeholder="_t('Default')"
-        data-testid="o-properties-definition-default"
+        data-testid="choy-properties-definition-default"
       />
       <input type="checkbox"
         v-model="item.readonly"
         size="small"
         :disabled="readonly"
-        data-testid="o-properties-definition-readonly"
+        data-testid="choy-properties-definition-readonly"
       />
       <input
         v-if="item.type === 'selection'"
@@ -73,13 +73,13 @@ SPDX-License-Identifier: Apache-2.0
         :autosize="{ minRows: 1, maxRows: 4 }"
         :disabled="readonly"
         :placeholder="_t('Selection JSON')"
-        data-testid="o-properties-definition-selection"
+        data-testid="choy-properties-definition-selection"
       />
       <ChoyButton
         size="sm"
         variant="destructive"
         :disabled="readonly"
-        data-testid="o-properties-definition-remove"
+        data-testid="choy-properties-definition-remove"
         @click="onRemove(index)"
       >
         {{ _t('Remove') }}
@@ -280,19 +280,19 @@ defineExpose({ reload, drafts, definitionId });
 </script>
 
 <style scoped>
-.o-properties-definition-editor {
+.choy-properties-definition-editor {
   display: flex;flex-direction: column;gap: 8px;width: 100%;
 }
-.o-properties-definition-editor__toolbar {
+.choy-properties-definition-editor__toolbar {
   display: flex;flex-wrap: wrap;gap: 8px;align-items: center;
 }
-.o-properties-definition-editor__row {
+.choy-properties-definition-editor__row {
   display: grid;grid-template-columns: minmax(80px, 1fr) 110px minmax(80px, 1fr) minmax(80px, 1fr) auto minmax(120px, 1.4fr) auto;gap: 6px;align-items: start;
 }
-.o-properties-definition-editor__empty {
+.choy-properties-definition-editor__empty {
   color: var(--el-text-color-secondary);font-size: 13px;
 }
-.o-properties-definition-editor__error {
+.choy-properties-definition-editor__error {
   color: var(--el-color-danger);font-size: 13px;
 }
 </style>

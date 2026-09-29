@@ -108,7 +108,7 @@ describe('MonetaryField mount wiring', () => {
     await flushPromises();
     expect(binding.__registered).toContain('CurrencyId');
     expect(binding.__registered).toContain('CurrencyId.DecimalDigits');
-    expect((m.q('.o-field-display-text')?.textContent || '').length).toBeGreaterThan(0);
+    expect((m.q('.choy-field-display-text')?.textContent || '').length).toBeGreaterThan(0);
 
     const toView = lastBaseProps.current?.toView as (v: unknown) => unknown;
     const fromView = lastBaseProps.current?.fromView as (v: unknown) => unknown;
@@ -135,7 +135,7 @@ describe('MonetaryField mount wiring', () => {
     });
     const nullableMount = mountField(nullable, { nullable: true });
     await flushPromises();
-    setInput(nullableMount.q('input.o-monetary-input') as HTMLInputElement, '');
+    setInput(nullableMount.q('input.choy-monetary-input') as HTMLInputElement, '');
     await nextTick();
     expect(nullable.__value.value).toBeNull();
     nullableMount.unmount();
@@ -147,7 +147,7 @@ describe('MonetaryField mount wiring', () => {
     });
     const requiredMount = mountField(required, { nullable: false });
     await flushPromises();
-    setInput(requiredMount.q('input.o-monetary-input') as HTMLInputElement, '');
+    setInput(requiredMount.q('input.choy-monetary-input') as HTMLInputElement, '');
     await nextTick();
     expect(new Decimal(required.__value.value).toString()).toBe('1.25');
     requiredMount.unmount();
@@ -160,7 +160,7 @@ describe('MonetaryField mount wiring', () => {
     });
     const m = mountField(binding);
     await flushPromises();
-    const input = m.q('input.o-monetary-input') as HTMLInputElement;
+    const input = m.q('input.choy-monetary-input') as HTMLInputElement;
 
     setInput(input, 'abc');
     await nextTick();
@@ -183,7 +183,7 @@ describe('MonetaryField mount wiring', () => {
     });
     const m = mountField(binding, { max: '10', precision: 10 });
     await flushPromises();
-    const input = m.q('input.o-monetary-input') as HTMLInputElement;
+    const input = m.q('input.choy-monetary-input') as HTMLInputElement;
 
     setInput(input, '3.');
     blurInput(input);
@@ -204,7 +204,7 @@ describe('MonetaryField mount wiring', () => {
     );
     const m = mountField(binding, { scale: 1 });
     await flushPromises();
-    const input = m.q('input.o-monetary-input') as HTMLInputElement;
+    const input = m.q('input.choy-monetary-input') as HTMLInputElement;
     setInput(input, '1.23');
     await flushPromises();
     expect(new Decimal(binding.__value.value).toString()).toBe('1');
@@ -235,7 +235,7 @@ describe('MonetaryField mount wiring', () => {
     });
     const m = mountField(binding, { agg: 'sum', readonly: true });
     await flushPromises();
-    expect((m.q('.o-field-display-text')?.textContent || '').length).toBeGreaterThan(0);
+    expect((m.q('.choy-field-display-text')?.textContent || '').length).toBeGreaterThan(0);
     m.unmount();
   });
 
@@ -261,7 +261,7 @@ describe('MonetaryField mount wiring', () => {
     });
     const m = mountApp(Host);
     await flushPromises();
-    expect((m.q('.o-field-display-text')?.textContent || '').length).toBeGreaterThan(0);
+    expect((m.q('.choy-field-display-text')?.textContent || '').length).toBeGreaterThan(0);
     m.unmount();
   });
 });

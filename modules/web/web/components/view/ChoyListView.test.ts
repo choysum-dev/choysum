@@ -101,7 +101,7 @@ describe('ListView', () => {
     });
     await flushPromises();
     expect(root).toBeTruthy();
-    // Handle VColumn is gated by showHandleColumn; without editable it should not mount.
+    // Handle ChoyTableColumn is gated by showHandleColumn; without editable it should not mount.
     expect(qa('[data-stub="ChoyTableColumn"]').length).toBe(0);
     unmount();
   });

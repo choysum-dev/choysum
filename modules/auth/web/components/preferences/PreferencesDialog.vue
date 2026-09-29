@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
   <Teleport to="body">
     <div
       v-if="visible"
-      class="o-preferences-dialog fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
+      class="choy-preferences-dialog fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
       role="presentation"
       @click.self="visible = false"
     >
@@ -23,14 +23,14 @@ SPDX-License-Identifier: Apache-2.0
       >
         <h2 :id="titleId" class="text-lg font-semibold">{{ _t('Edit Profile') }}</h2>
 
-        <div v-if="currentUser" class="o-preferences-dialog__header mb-4 mt-3">
-          <div class="o-preferences-dialog__identity">
-            <div class="o-preferences-dialog__name font-semibold text-foreground">{{ displayName }}</div>
-            <div class="o-preferences-dialog__email text-sm text-foreground/70">{{ currentUser.Email || '' }}</div>
+        <div v-if="currentUser" class="choy-preferences-dialog__header mb-4 mt-3">
+          <div class="choy-preferences-dialog__identity">
+            <div class="choy-preferences-dialog__name font-semibold text-foreground">{{ displayName }}</div>
+            <div class="choy-preferences-dialog__email text-sm text-foreground/70">{{ currentUser.Email || '' }}</div>
           </div>
         </div>
 
-        <form class="o-preferences-dialog__form flex flex-col gap-4" @submit.prevent="handleSave">
+        <form class="choy-preferences-dialog__form flex flex-col gap-4" @submit.prevent="handleSave">
           <label class="flex flex-col gap-1 text-sm">
             <span class="font-medium">{{ _t('Language') }}</span>
             <select
@@ -40,7 +40,7 @@ SPDX-License-Identifier: Apache-2.0
             >
               <option v-for="opt in languageOptions" :key="opt.Code" :value="opt.Code">{{ opt.Name }}</option>
             </select>
-            <div v-if="languageFromSession" class="o-preferences-dialog__hint text-xs text-foreground/60">
+            <div v-if="languageFromSession" class="choy-preferences-dialog__hint text-xs text-foreground/60">
               {{ _t('Using current session language') }}
             </div>
           </label>
@@ -55,7 +55,7 @@ SPDX-License-Identifier: Apache-2.0
               <option value="">{{ _t('Select timezone') }}</option>
               <option v-for="tz in timezoneOptions" :key="tz.value" :value="tz.value">{{ tz.label }}</option>
             </select>
-            <div v-if="timezoneFromBrowser" class="o-preferences-dialog__hint text-xs text-foreground/60">
+            <div v-if="timezoneFromBrowser" class="choy-preferences-dialog__hint text-xs text-foreground/60">
               {{ _t('Suggested from your browser') }}
             </div>
           </label>

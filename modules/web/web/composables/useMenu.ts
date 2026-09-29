@@ -93,7 +93,7 @@ export function useMenu() {
   const renderIcon = (icon: any, useDefault = false, defaultIcon: any = CircleHelp): VNode | null => {
     const resolved = icon || (useDefault ? defaultIcon : null);
     if (!resolved) return null;
-    return h('span', { class: 'o-menu__icon inline-flex shrink-0' }, [h(resolved)]);
+    return h('span', { class: 'choy-menu__icon inline-flex shrink-0' }, [h(resolved)]);
   };
 
   /**
@@ -132,7 +132,7 @@ export function useMenu() {
             'li',
             {
               key: itemId,
-              class: ['o-menu__sub', { 'is-expanded': expanded }],
+              class: ['choy-menu__sub', { 'is-expanded': expanded }],
               role: 'none',
             },
             [
@@ -140,7 +140,7 @@ export function useMenu() {
                 'button',
                 {
                   type: 'button',
-                  class: 'o-menu__sub-title',
+                  class: 'choy-menu__sub-title',
                   'aria-expanded': expanded ? 'true' : 'false',
                   disabled: item.disabled || undefined,
                   onClick: () => {
@@ -156,7 +156,7 @@ export function useMenu() {
               expanded
                 ? h(
                     'ul',
-                    { class: 'o-menu__sub-list', role: 'group' },
+                    { class: 'choy-menu__sub-list', role: 'group' },
                     renderMenuItems(item.children || [], options)
                   )
                 : null,
@@ -171,7 +171,7 @@ export function useMenu() {
             'button',
             {
               type: 'button',
-              class: ['o-menu__item', { 'is-active': isActive }],
+              class: ['choy-menu__item', { 'is-active': isActive }],
               disabled: item.disabled || undefined,
               onClick: () => {
                 onItemClick(item);
@@ -233,13 +233,13 @@ export function useMenu() {
     });
 
     if (!displayItems.value.length) {
-      return h('p', { class: 'o-menu__empty' }, emptyText);
+      return h('p', { class: 'choy-menu__empty' }, emptyText);
     }
 
     return h(
       'ul',
       {
-        class: className ? `o-menu ${className}` : 'o-menu',
+        class: className ? `choy-menu ${className}` : 'choy-menu',
         role: 'menu',
       },
       renderMenuItems(displayItems.value, {
@@ -262,7 +262,7 @@ export function useMenu() {
       className?: string;
     } = {}
   ) => {
-    const { onItemClick, className = 'o-app-menu' } = options;
+    const { onItemClick, className = 'choy-app-menu' } = options;
     return renderMenu({
       items: menuStore.getMenus(),
       defaultActive: activeMenu.value?.id,

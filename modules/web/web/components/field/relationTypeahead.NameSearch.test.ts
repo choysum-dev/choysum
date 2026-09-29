@@ -322,7 +322,7 @@ describe('relation typeahead NameSearch / NameCreate', () => {
       nameField: 'Code',
     });
     await clickRemote(m2o);
-    const createM2O = findCreate(m2o, 'o-m2o-name-create');
+    const createM2O = findCreate(m2o, 'choy-m2o-name-create');
     expect(createM2O).toBeTruthy();
     expect((createM2O!.textContent || '').includes('alice')).toBe(true);
     createM2O!.click();
@@ -334,7 +334,7 @@ describe('relation typeahead NameSearch / NameCreate', () => {
       throw new Error('denied');
     });
     await clickRemote(m2o);
-    findCreate(m2o, 'o-m2o-name-create')!.click();
+    findCreate(m2o, 'choy-m2o-name-create')!.click();
     await flushPromises();
     expect(msgError.calls.some(c => c[0] === 'denied')).toBe(true);
     m2o.unmount();
@@ -354,7 +354,7 @@ describe('relation typeahead NameSearch / NameCreate', () => {
       allowCreate: true,
     });
     await clickRemote(m2oRef);
-    findCreate(m2oRef, 'o-m2o-name-create')!.click();
+    findCreate(m2oRef, 'choy-m2o-name-create')!.click();
     await flushPromises();
     expect(NameCreateRef.calls[0]).toEqual(['alice', undefined, undefined]);
     expect(bindingRef.fieldRef().value).toEqual({ Id: 'r1', DisplayName: 'alice', Name: 'alice' });
@@ -377,7 +377,7 @@ describe('relation typeahead NameSearch / NameCreate', () => {
       nameField: 'Title',
     });
     await clickRemote(refTags);
-    findCreate(refTags, 'o-m2m-name-create')!.click();
+    findCreate(refTags, 'choy-m2m-name-create')!.click();
     await flushPromises();
     expect(NameCreateRefTags.calls[0]).toEqual(['alice', undefined, { nameField: 'Title' }]);
     expect(bindingRefTags.fieldRef().value.map((r: any) => r.Id ?? r)).toEqual(['rt1']);
@@ -386,9 +386,9 @@ describe('relation typeahead NameSearch / NameCreate', () => {
 
   test('Create entry hidden when allowCreate is false or unset', async () => {
     for (const [Comp, testId, makeBinding] of [
-      [ChoyManyToOneField, 'o-m2o-name-create', makeM2OBinding],
-      [ChoyManyToOneRefField, 'o-m2o-name-create', makeM2OBinding],
-      [ChoyManyToManyRefTagsField, 'o-m2m-name-create', makeM2MBinding],
+      [ChoyManyToOneField, 'choy-m2o-name-create', makeM2OBinding],
+      [ChoyManyToOneRefField, 'choy-m2o-name-create', makeM2OBinding],
+      [ChoyManyToManyRefTagsField, 'choy-m2m-name-create', makeM2MBinding],
     ] as const) {
       for (const allowCreate of [undefined, false] as const) {
         const m = mountField(Comp, {

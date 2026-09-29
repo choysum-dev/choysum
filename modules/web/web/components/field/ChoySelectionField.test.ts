@@ -53,7 +53,7 @@ function installFieldBaseStub(slot: 'edit' | 'both' = 'edit') {
 
 function valuedOptions(root: Element): HTMLOptionElement[] {
   // Minimal DOM rejects descendant selectors; walk the select's children.
-  const sel = root.querySelector('select.o-selection-field') as HTMLSelectElement | null;
+  const sel = root.querySelector('select.choy-selection-field') as HTMLSelectElement | null;
   if (!sel) return [];
   return Array.from(sel.childNodes || []).filter(node => {
     const el = node as HTMLOptionElement;
@@ -136,12 +136,12 @@ describe('SelectionField FieldsGet wiring', () => {
     await nextTick();
     expect(ensureCalls.length).toBe(1);
     expect(ensureCalls[0]![0]).toEqual(['Status']);
-    expect(m.q('select.o-selection-field')?.getAttribute('data-loading')).toBe('true');
+    expect(m.q('select.choy-selection-field')?.getAttribute('data-loading')).toBe('true');
 
     resolveEnsure();
     await flushPromises();
     await nextTick();
-    expect(m.q('select.o-selection-field')?.getAttribute('data-loading')).toBe('false');
+    expect(m.q('select.choy-selection-field')?.getAttribute('data-loading')).toBe('false');
     expect(FieldsGet.calls.length).toBe(1);
     expect(helpers.getFieldMeta('Status')?.selection?.[0]?.label).toBe('启用');
     m.unmount();

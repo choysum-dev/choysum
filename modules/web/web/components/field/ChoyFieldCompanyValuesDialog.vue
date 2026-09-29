@@ -5,16 +5,16 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <Dialog v-model:open="visible">
-    <DialogContent class="o-field-company-values-dialog max-w-xl" @open-auto-focus.prevent>
+    <DialogContent class="choy-field-company-values-dialog max-w-xl" @open-auto-focus.prevent>
       <DialogTitle>{{ dialogTitle }}</DialogTitle>
-      <div class="o-field-company-values-dialog__body" :aria-busy="loading || undefined">
-        <form class="o-field-company-values-dialog__form" @submit.prevent>
-          <div v-for="row in rows" :key="row.companyId" class="o-field-company-values-dialog__row">
-            <label class="o-field-company-values-dialog__label">{{ row.label }}</label>
-            <div class="o-field-company-values-dialog__control">
+      <div class="choy-field-company-values-dialog__body" :aria-busy="loading || undefined">
+        <form class="choy-field-company-values-dialog__form" @submit.prevent>
+          <div v-for="row in rows" :key="row.companyId" class="choy-field-company-values-dialog__row">
+            <label class="choy-field-company-values-dialog__label">{{ row.label }}</label>
+            <div class="choy-field-company-values-dialog__control">
               <input
                 v-model="row.value"
-                class="o-field-company-values-dialog__input"
+                class="choy-field-company-values-dialog__input"
                 :maxlength="maxLength ?? undefined"
               />
               
@@ -305,21 +305,21 @@ async function handleSave() {
 </script>
 
 <style scoped>
-.o-field-company-values-dialog__body {
+.choy-field-company-values-dialog__body {
   min-height: 120px;
 }
-.o-field-company-values-dialog__body :deep(.el-form-item) {
+.choy-field-company-values-dialog__body :deep(.el-form-item) {
   margin-bottom: 14px;
   align-items: flex-start;
 }
-.o-field-company-values-dialog__body :deep(.el-form-item__label) {
+.choy-field-company-values-dialog__body :deep(.el-form-item__label) {
   line-height: 32px;
   color: var(--el-text-color-regular);
   justify-content: flex-start;
   text-align: left;
   padding-right: 12px;
 }
-.o-field-company-values-dialog__body :deep(.el-form-item__content) {
+.choy-field-company-values-dialog__body :deep(.el-form-item__content) {
   flex: 1 1 auto;
   min-width: 0;
 }

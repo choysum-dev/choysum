@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <DropdownMenu v-if="visibleItems.length">
     <DropdownMenuTrigger
-      class="o-page-io-menu__trigger"
+      class="choy-page-io-menu__trigger"
       :aria-label="menuAriaLabel"
       data-testid="page-io-menu-trigger"
     >
@@ -180,7 +180,7 @@ defineExpose({ onCommand });
 </script>
 
 <style scoped>
-.o-page-io-menu__trigger {
+.choy-page-io-menu__trigger {
   padding: 4px 8px;
   border: 0;
   background: transparent;

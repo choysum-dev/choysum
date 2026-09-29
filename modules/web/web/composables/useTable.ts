@@ -26,7 +26,7 @@ export type SelectionMode = 'multiple' | 'single';
 /**
  * Manages row selection state for ChoyTableHost (checkbox columns via ChoyTableColumn).
  */
-export function useVTableSelection(keyGetter: (row: any) => string | number | undefined | null, mode: SelectionMode = 'multiple') {
+export function useTableSelection(keyGetter: (row: any) => string | number | undefined | null, mode: SelectionMode = 'multiple') {
   const selected = ref<Set<string | number>>(new Set());
   const modeRef = ref<SelectionMode>(mode);
 
@@ -104,12 +104,12 @@ export type ColumnRegistry = {
   columns: Ref<Column[]>;
   register: (c: Column) => () => void;
 };
-const VTABLE_COLREG_KEY = Symbol('ovtable:col-reg');
+const TABLE_COLREG_KEY = Symbol('choy-table:col-reg');
 
 /**
  * Provides a column registry for nested table column components.
  */
-export function useVTableProvideColumnRegistry(): ColumnRegistry {
+export function useTableProvideColumnRegistry(): ColumnRegistry {
   const columns = ref<Column[]>([]);
   function register(col: Column) {
     columns.value.push(col);
@@ -118,74 +118,74 @@ export function useVTableProvideColumnRegistry(): ColumnRegistry {
       if (i >= 0) columns.value.splice(i, 1);
     };
   }
-  provide(VTABLE_COLREG_KEY, { columns, register });
+  provide(TABLE_COLREG_KEY, { columns, register });
   return { columns, register };
 }
 
 /**
  * Injects the current table column registry if available.
  */
-export function useVTableUseColumnRegistry(): ColumnRegistry | null {
-  return inject<ColumnRegistry | null>(VTABLE_COLREG_KEY, null);
+export function useTableUseColumnRegistry(): ColumnRegistry | null {
+  return inject<ColumnRegistry | null>(TABLE_COLREG_KEY, null);
 }
 
 /**
  * Build context shared by ChoyTableColumn (selection, index base, store).
  */
-export type VTableBuildContext = {
-  selectionApi?: ReturnType<typeof useVTableSelection>;
+export type TableBuildContext = {
+  selectionApi?: ReturnType<typeof useTableSelection>;
   getRows?: () => any[];
   baseIndex?: Ref<number>;
   store?: any;
 };
-type VTableBuildContextInput = {
-  selectionApi?: ReturnType<typeof useVTableSelection>;
+type TableBuildContextInput = {
+  selectionApi?: ReturnType<typeof useTableSelection>;
   getRows?: () => any[];
   baseIndex?: number | Ref<number>;
   store?: any;
 };
-const VTABLE_BUILDCTX_KEY = Symbol('ovtable:build-ctx');
+const TABLE_BUILDCTX_KEY = Symbol('choy-table:build-ctx');
 
 /**
  * Provides build context for nested ChoyTableColumn components.
  */
-export function useVTableProvideBuildContext(ctx: VTableBuildContextInput): VTableBuildContext {
-  const normalized: VTableBuildContext = {
+export function useTableProvideBuildContext(ctx: TableBuildContextInput): TableBuildContext {
+  const normalized: TableBuildContext = {
     selectionApi: ctx.selectionApi,
     getRows: ctx.getRows,
     baseIndex: isRef(ctx.baseIndex) ? ctx.baseIndex : ref(ctx.baseIndex ?? 1),
     store: ctx.store,
   };
-  provide(VTABLE_BUILDCTX_KEY, normalized);
+  provide(TABLE_BUILDCTX_KEY, normalized);
   return normalized;
 }
 
 /**
  * Injects the current table build context.
  */
-export function useVTableUseBuildContext(): VTableBuildContext {
-  return inject<VTableBuildContext>(VTABLE_BUILDCTX_KEY, {});
+export function useTableUseBuildContext(): TableBuildContext {
+  return inject<TableBuildContext>(TABLE_BUILDCTX_KEY, {});
 }
 
 /**
  * Internal metadata attached to columns for width semantics.
  */
-export type VColumnMeta = {
+export type TableColumnMeta = {
   widthSpec?: { type: 'percent'; ratio: number } | { type: 'flex'; weight: number } | { type: 'auto' };
 };
-const OV_META_KEY = Symbol('ov:col-meta');
+const TABLE_COL_META_KEY = Symbol('choy-table:col-meta');
 
 /**
  * Stores internal width metadata on a table column.
  */
-export function setVColumnMeta(col: Column, meta: VColumnMeta) {
+export function setTableColumnMeta(col: Column, meta: TableColumnMeta) {
   const anyCol = col as unknown as Record<PropertyKey, any>;
-  anyCol[OV_META_KEY] = { ...(anyCol[OV_META_KEY] || {}), ...meta };
+  anyCol[TABLE_COL_META_KEY] = { ...(anyCol[TABLE_COL_META_KEY] || {}), ...meta };
 }
 
 /**
  * Reads internal width metadata from a table column.
  */
-export function getVColumnMeta(col: Column): VColumnMeta | undefined {
-  return (col as unknown as Record<PropertyKey, any>)[OV_META_KEY];
+export function getTableColumnMeta(col: Column): TableColumnMeta | undefined {
+  return (col as unknown as Record<PropertyKey, any>)[TABLE_COL_META_KEY];
 }

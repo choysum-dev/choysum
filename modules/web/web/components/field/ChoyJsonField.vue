@@ -33,11 +33,11 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display="{ fieldValue }">
-      <pre v-if="isTableLike" class="o-json-display">{{ displayString(fieldValue().value) }}</pre>
-      <div v-else-if="normalizeIncoming(fieldValue().value) == null" class="o-json-display o-json-display--empty" />
+      <pre v-if="isTableLike" class="choy-json-display">{{ displayString(fieldValue().value) }}</pre>
+      <div v-else-if="normalizeIncoming(fieldValue().value) == null" class="choy-json-display choy-json-display--empty" />
       <VueJsonPretty
         v-else
-        class="o-json-pretty"
+        class="choy-json-pretty"
         :data="normalizeIncoming(fieldValue().value)!"
         :deep="prettyDeep"
         :show-length="true"
@@ -312,25 +312,25 @@ const OJsonCell = defineComponent({
     return () =>
       h('div', {}, [
         h('input', {
-          class: 'o-json-input',
+          class: 'choy-json-input',
           placeholder: p.placeholder,
           autosize: p.autosize,
           modelValue: editingText.value,
           'onUpdate:modelValue': (val: any) => onInput(val),
           onBlur,
         }),
-        parseError.value ? h('div', { class: 'o-json-err' }, parseError.value) : null,
+        parseError.value ? h('div', { class: 'choy-json-err' }, parseError.value) : null,
       ]);
   },
 });
 </script>
 
 <style scoped>
-.o-json-input {
+.choy-json-input {
   width: 100%;
   font-family: monospace;
 }
-.o-json-display {
+.choy-json-display {
   margin: 0;
   padding: 4px 8px;
   white-space: pre-wrap;
@@ -338,17 +338,17 @@ const OJsonCell = defineComponent({
   font-family: monospace;
   line-height: 1.4;
 }
-.o-json-display--empty {
+.choy-json-display--empty {
   min-height: 1.4em;
 }
-.o-json-pretty {
+.choy-json-pretty {
   width: 100%;
   padding: 4px 8px;
   font-size: 13px;
   line-height: 1.4;
   word-break: break-word;
 }
-.o-json-err {
+.choy-json-err {
   margin-top: 4px;
   font-size: 12px;
   color: var(--el-color-error);

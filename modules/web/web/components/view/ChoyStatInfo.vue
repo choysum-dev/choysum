@@ -7,18 +7,18 @@ SPDX-License-Identifier: Apache-2.0
   <button
     v-if="visible"
     type="button"
-    class="choy-stat-info o-stat-info"
+    class="choy-stat-info choy-stat-info"
     :class="{ 'is-disabled': disabled }"
     :disabled="disabled"
     v-bind="$attrs"
     @click="onClick"
   >
-    <span v-if="resolvedIcon" class="inline-flex o-stat-info__icon">
+    <span v-if="resolvedIcon" class="inline-flex choy-stat-info__icon">
       <component :is="resolvedIcon" />
     </span>
-    <span class="o-stat-info__body">
-      <span class="o-stat-info__value">{{ displayValue }}</span>
-      <span class="o-stat-info__label">{{ label }}</span>
+    <span class="choy-stat-info__body">
+      <span class="choy-stat-info__value">{{ displayValue }}</span>
+      <span class="choy-stat-info__label">{{ label }}</span>
     </span>
   </button>
 </template>
@@ -95,7 +95,7 @@ function onClick(event: MouseEvent) {
 </script>
 
 <style scoped>
-.o-stat-info {
+.choy-stat-info {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -115,36 +115,36 @@ function onClick(event: MouseEvent) {
     border-color 0.15s ease;
 }
 
-.o-stat-info:hover:not(.is-disabled):not(:disabled) {
+.choy-stat-info:hover:not(.is-disabled):not(:disabled) {
   background: var(--el-fill-color-light);
   border-color: var(--el-border-color);
 }
 
-.o-stat-info.is-disabled,
-.o-stat-info:disabled {
+.choy-stat-info.is-disabled,
+.choy-stat-info:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
-.o-stat-info__icon {
+.choy-stat-info__icon {
   font-size: 18px;
   color: var(--el-text-color-secondary);
 }
 
-.o-stat-info__body {
+.choy-stat-info__body {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
 }
 
-.o-stat-info__value {
+.choy-stat-info__value {
   font-size: 16px;
   font-weight: 600;
   color: var(--el-text-color-primary);
 }
 
-.o-stat-info__label {
+.choy-stat-info__label {
   font-size: 12px;
   color: var(--el-text-color-secondary);
   white-space: nowrap;

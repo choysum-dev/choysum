@@ -125,10 +125,10 @@ describe('Choy store-mode field hosts', () => {
 
   beforeEach(() => {
     stubStoreFieldBase();
-    stubHost(ChoyFormView as any, 'o-form');
-    stubHost(ListView as any, 'o-list');
-    stubHost(ChoyStatInfo as any, 'o-stat');
-    stubHost(ChoyTableColumn as any, 'o-vcolumn');
+    stubHost(ChoyFormView as any, 'choy-form');
+    stubHost(ListView as any, 'choy-list');
+    stubHost(ChoyStatInfo as any, 'choy-stat');
+    stubHost(ChoyTableColumn as any, 'choy-vcolumn');
   });
 
   afterEach(() => {
@@ -256,15 +256,15 @@ describe('Choy store-mode field hosts', () => {
 
   test('Form/List/Search store mode hosts store engines', async () => {
     const form = await mountField(ChoyFormView, { store: fakeStore });
-    expect(form.q('[data-test=o-form]')).not.toBeNull();
+    expect(form.q('[data-test=choy-form]')).not.toBeNull();
     form.unmount();
 
     const list = await mountField(ChoyListView, { store: fakeStore });
-    expect(list.q('[data-test=o-list]')).not.toBeNull();
+    expect(list.q('[data-test=choy-list]')).not.toBeNull();
     list.unmount();
 
     const search = await mountField(ChoySearchView, { store: fakeStore });
-    expect(search.q('[data-test=o-search]')).not.toBeNull();
+    expect(search.q('[data-test=choy-search]')).not.toBeNull();
     search.unmount();
   });
 
@@ -307,7 +307,7 @@ describe('Choy store-mode field hosts', () => {
       props: { store: null },
       setup: ((_p: any, { slots }: any) => {
         return () =>
-          h('div', { 'data-test': 'o-form-slots' }, [
+          h('div', { 'data-test': 'choy-form-slots' }, [
             slots.breadcrumb ? h('div', { 'data-test': 'slot-crumb' }, slots.breadcrumb()) : null,
             slots['button-box']
               ? h('div', { 'data-test': 'slot-bbox' }, slots['button-box']())
@@ -333,13 +333,13 @@ describe('Choy store-mode field hosts', () => {
       });
       const w = mountApp(Host);
       await flushPromises();
-      expect(w.q('[data-test=o-form-slots]')).not.toBeNull();
+      expect(w.q('[data-test=choy-form-slots]')).not.toBeNull();
       expect(w.q('[data-test=slot-crumb]')).not.toBeNull();
       expect(w.q('[data-test=slot-bbox]')).not.toBeNull();
       w.unmount();
     } finally {
       restoreSfc(ChoyFormView as any);
-      stubHost(ChoyFormView as any, 'o-form');
+      stubHost(ChoyFormView as any, 'choy-form');
     }
   });
 
@@ -445,19 +445,19 @@ describe('Choy store-mode field hosts', () => {
     expect(loadHits).toEqual([{ ok: true }]);
     formListen.unmount();
     restoreSfc(ChoyFormView as any);
-    stubHost(ChoyFormView as any, 'o-form');
+    stubHost(ChoyFormView as any, 'choy-form');
 
     const listListen = await mountField(ChoyListView, {
       store: fakeStore,
       onSelectionChange: () => undefined,
     });
-    expect(listListen.q('[data-test=o-list]')).not.toBeNull();
+    expect(listListen.q('[data-test=choy-list]')).not.toBeNull();
     listListen.unmount();
     const searchListen = await mountField(ChoySearchView, {
       store: fakeStore,
       onDefaultsReady: () => undefined,
     });
-    expect(searchListen.q('[data-test=o-search]')).not.toBeNull();
+    expect(searchListen.q('[data-test=choy-search]')).not.toBeNull();
     searchListen.unmount();
   });
 
@@ -507,7 +507,7 @@ describe('Choy store-mode field hosts', () => {
       store: fakeStore,
       onSelectionChange: () => undefined,
     });
-    expect(list.q('[data-test=o-list]')).not.toBeNull();
+    expect(list.q('[data-test=choy-list]')).not.toBeNull();
     list.unmount();
 
     const queries: Array<{ keyword: string }> = [];
@@ -555,7 +555,7 @@ describe('Choy store-mode field hosts', () => {
     restoreSfc(Search as any);
   });
 
-  test('ViewScope / ButtonBox / StatInfo / VColumn mount', async () => {
+  test('ViewScope / ButtonBox / StatInfo / ChoyTableColumn mount', async () => {
     let injectedMode: unknown = undefined;
     const Probe = defineComponent({
       setup() {
@@ -597,7 +597,7 @@ describe('Choy store-mode field hosts', () => {
     emptyBox.unmount();
 
     const stat = await mountField(ChoyStatInfo, { label: 'Roles', value: 3 });
-    expect(stat.q('[data-test=o-stat]')).not.toBeNull();
+    expect(stat.q('[data-test=choy-stat]')).not.toBeNull();
     stat.unmount();
 
     stubSfc(ChoyTableColumn as any, {
@@ -606,7 +606,7 @@ describe('Choy store-mode field hosts', () => {
           h(
             'div',
             {
-              'data-test': 'o-vcolumn',
+              'data-test': 'choy-vcolumn',
               'data-has-slot': slots.default ? '1' : '0',
             },
             slots.default?.({
@@ -629,18 +629,18 @@ describe('Choy store-mode field hosts', () => {
     });
     const col = mountApp(ColHost);
     await flushPromises();
-    expect(col.q('[data-test=o-vcolumn]')).not.toBeNull();
-    expect(col.q('[data-test=o-vcolumn]')?.getAttribute('data-has-slot')).toBe('1');
+    expect(col.q('[data-test=choy-vcolumn]')).not.toBeNull();
+    expect(col.q('[data-test=choy-vcolumn]')?.getAttribute('data-has-slot')).toBe('1');
     expect(col.q('[data-test=cell]')?.getAttribute('data-id')).toBe('1');
     col.unmount();
 
-    // No consumer default slot → do not forward an empty slot to VColumn.
+    // No consumer default slot → do not forward an empty slot to ChoyTableColumn.
     const bare = mountApp(ChoyTableColumn as any, { props: { label: 'Name' } });
     await flushPromises();
-    expect(bare.q('[data-test=o-vcolumn]')?.getAttribute('data-has-slot')).toBe('0');
+    expect(bare.q('[data-test=choy-vcolumn]')?.getAttribute('data-has-slot')).toBe('0');
     bare.unmount();
     restoreSfc(ChoyTableColumn as any);
-    stubHost(ChoyTableColumn as any, 'o-vcolumn');
+    stubHost(ChoyTableColumn as any, 'choy-vcolumn');
   });
 
 });

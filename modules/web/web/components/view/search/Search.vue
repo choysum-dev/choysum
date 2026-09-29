@@ -4,13 +4,13 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div class="o-search">
-    <div class="o-search__main" @click="focusInput">
+  <div class="choy-search">
+    <div class="choy-search__main" @click="focusInput">
       <span :content="_t('Search')" placement="top">
         <ChoyButton
           size="sm"
           variant="ghost"
-          class="o-search__leading-btn"
+          class="choy-search__leading-btn"
           :aria-label="_t('Run search')"
           @mousedown.prevent
           @click.stop="onSearchIconClick"
@@ -19,10 +19,10 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyButton>
       </span>
 
-      <div class="o-search__tags">
+      <div class="choy-search__tags">
         <span
           v-if="hasGrouping"
-          class="o-search__tag o-search__grouptag"
+          class="choy-search__tag choy-search__grouptag"
           type="success"
           effect="plain"
           closable
@@ -31,14 +31,14 @@ SPDX-License-Identifier: Apache-2.0
           :title="groupingTooltip"
         >
           {{ _t('Group: %s', groupingSummary) }}
-          <button type="button" class="tag-close" aria-label="Clear grouping" @click.stop="onGroupingClear" />
+          <button type="button" class="choy-search__tag-close" aria-label="Clear grouping" @click.stop="onGroupingClear" />
         </span>
 
         <span
           v-for="f in filters"
           :key="f.id"
-          class="o-search__tag"
-          :class="{ 'o-search__tag--pending-delete': f.id === pendingDeleteFilterId }"
+          class="choy-search__tag"
+          :class="{ 'choy-search__tag--pending-delete': f.id === pendingDeleteFilterId }"
           variant="default"
           effect="plain"
           closable
@@ -47,14 +47,14 @@ SPDX-License-Identifier: Apache-2.0
           :title="f.name || filterTooltip(f)"
         >
           {{ f.name || summarizeFilterFields(f, 2) }}
-          <button type="button" class="tag-close" aria-label="Remove filter" @click.stop="onTagClose(f.id!)" />
+          <button type="button" class="choy-search__tag-close" aria-label="Remove filter" @click.stop="onTagClose(f.id!)" />
         </span>
       </div>
 
       <input
         ref="inputRef"
         v-model="keyword"
-        class="o-search__input"
+        class="choy-search__input"
         :placeholder="placeholder"
         :name="inputName"
         :id="inputId"
@@ -63,43 +63,43 @@ SPDX-License-Identifier: Apache-2.0
         @blur="onInputBlur"
       />
 
-      <div class="o-search__suffix">
+      <div class="choy-search__suffix">
         <Popover v-model:open="menuVisible">
           <PopoverTrigger as-child>
-            <ChoyButton size="sm" variant="ghost" class="o-search__trailing-btn" :aria-label="_t('Open search menu')" @click.stop>
+            <ChoyButton size="sm" variant="ghost" class="choy-search__trailing-btn" :aria-label="_t('Open search menu')" @click.stop>
               <ChevronDown class="size-4" />
             </ChoyButton>
           </PopoverTrigger>
-          <PopoverContent class="o-search-popover" align="end">
+          <PopoverContent class="choy-search-popover" align="end">
 
-          <div class="o-search__menu-grid">
-            <section class="o-search__menu-col">
-              <div class="o-search__menu-title">{{ _t('Filters') }}</div>
-              <div class="o-search__menu-list">
-                <ChoyButton v-for="it in defaultFilterItems" :key="'df:' + it.name" class="o-search__menu-item" variant="ghost" @click="onToggleDefaultFilter(it)">
-                  <span v-if="it.name && appliedFilterNameSet.has(it.name)" class="inline-flex o-search__menu-icon o-search__menu-icon--applied">
+          <div class="choy-search__menu-grid">
+            <section class="choy-search__menu-col">
+              <div class="choy-search__menu-title">{{ _t('Filters') }}</div>
+              <div class="choy-search__menu-list">
+                <ChoyButton v-for="it in defaultFilterItems" :key="'df:' + it.name" class="choy-search__menu-item" variant="ghost" @click="onToggleDefaultFilter(it)">
+                  <span v-if="it.name && appliedFilterNameSet.has(it.name)" class="inline-flex choy-search__menu-icon choy-search__menu-icon--applied">
                     <Check />
                   </span>
-                  <span class="o-search__menu-item-label">
+                  <span class="choy-search__menu-item-label">
                     {{ it.name || summarizeFilter(it.filter, 2) }}
                   </span>
                 </ChoyButton>
               </div>
-              <hr class="o-search__menu-divider" />
-              <div class="o-search__menu-subtitle">{{ _t('Favorites') }}</div>
-              <div class="o-search__menu-list">
-                <div v-for="it in favoriteMenuItems" :key="'fav:' + it.id" class="o-search__menu-row">
-                  <ChoyButton class="o-search__menu-item" variant="ghost" @click="onApplyFavorite(it)">
-                    <span v-if="it.name && appliedFilterNameSet.has(it.name)" class="inline-flex o-search__menu-icon o-search__menu-icon--applied">
+              <hr class="choy-search__menu-divider" />
+              <div class="choy-search__menu-subtitle">{{ _t('Favorites') }}</div>
+              <div class="choy-search__menu-list">
+                <div v-for="it in favoriteMenuItems" :key="'fav:' + it.id" class="choy-search__menu-row">
+                  <ChoyButton class="choy-search__menu-item" variant="ghost" @click="onApplyFavorite(it)">
+                    <span v-if="it.name && appliedFilterNameSet.has(it.name)" class="inline-flex choy-search__menu-icon choy-search__menu-icon--applied">
                       <Check />
                     </span>
-                    <span class="o-search__menu-item-label">
+                    <span class="choy-search__menu-item-label">
                       {{ it.name }}{{ it.shared ? ` (${_t('Shared')})` : '' }}
                     </span>
                   </ChoyButton>
                   <ChoyButton
                     v-if="it.canDelete"
-                    class="o-search__menu-item-edit"
+                    class="choy-search__menu-item-edit"
                     variant="ghost"
                     size="sm"
                     :aria-label="_t('Edit favorite %s', it.name)"
@@ -109,7 +109,7 @@ SPDX-License-Identifier: Apache-2.0
                   </ChoyButton>
                   <ChoyButton
                     v-if="it.canDelete"
-                    class="o-search__menu-item-delete"
+                    class="choy-search__menu-item-delete"
                     variant="ghost"
                     size="sm"
                     :aria-label="_t('Delete favorite %s', it.name)"
@@ -118,44 +118,44 @@ SPDX-License-Identifier: Apache-2.0
                     ×
                   </ChoyButton>
                 </div>
-                <div v-if="favoritesLoadError" class="o-search__empty">
+                <div v-if="favoritesLoadError" class="choy-search__empty">
                   {{ _t('Failed to load favorites') }}
-                  <ChoyButton class="o-search__menu-action" variant="ghost" @click="onRetryFavorites">{{ _t('Retry') }}</ChoyButton>
+                  <ChoyButton class="choy-search__menu-action" variant="ghost" @click="onRetryFavorites">{{ _t('Retry') }}</ChoyButton>
                 </div>
-                <div v-else-if="!favoriteMenuItems.length && !favoritesLoading" class="o-search__empty">{{ _t('No favorites yet') }}</div>
+                <div v-else-if="!favoriteMenuItems.length && !favoritesLoading" class="choy-search__empty">{{ _t('No favorites yet') }}</div>
               </div>
-              <ChoyButton class="o-search__menu-action" variant="ghost" @click="onOpenSaveFavorite">{{ _t('Save current filters…') }}</ChoyButton>
-              <hr class="o-search__menu-divider" />
-              <ChoyButton class="o-search__menu-action" variant="ghost" @click="onAddFilterClickAndClose">{{ _t('Custom filter…') }}</ChoyButton>
+              <ChoyButton class="choy-search__menu-action" variant="ghost" @click="onOpenSaveFavorite">{{ _t('Save current filters…') }}</ChoyButton>
+              <hr class="choy-search__menu-divider" />
+              <ChoyButton class="choy-search__menu-action" variant="ghost" @click="onAddFilterClickAndClose">{{ _t('Custom filter…') }}</ChoyButton>
             </section>
 
-            <section class="o-search__menu-col o-search__menu-col--right">
-              <div class="o-search__menu-title">{{ _t('Group by') }}</div>
+            <section class="choy-search__menu-col choy-search__menu-col--right">
+              <div class="choy-search__menu-title">{{ _t('Group by') }}</div>
 
-              <div v-if="currentAppliedGroups.length > 0" class="o-search__menu-list">
+              <div v-if="currentAppliedGroups.length > 0" class="choy-search__menu-list">
                 <ChoyButton
                   v-for="it in appliedGroupItems"
                   :key="it.key"
-                  class="o-search__menu-item"
+                  class="choy-search__menu-item"
                   variant="ghost"
                   @click="it.type === 'plain' ? togglePlainGroupby(it.field) : toggleTemporalGroupby(it.field, it.granularity!)"
                 >
-                  <span class="inline-flex o-search__menu-icon o-search__menu-icon--applied">
+                  <span class="inline-flex choy-search__menu-icon choy-search__menu-icon--applied">
                     <Check />
                   </span>
-                  <span class="o-search__menu-item-label">{{ it.label }}</span>
+                  <span class="choy-search__menu-item-label">{{ it.label }}</span>
                 </ChoyButton>
               </div>
-              <div v-else class="o-search__empty">{{ _t('Not set') }}</div>
+              <div v-else class="choy-search__empty">{{ _t('Not set') }}</div>
 
-              <hr class="o-search__menu-divider" />
+              <hr class="choy-search__menu-divider" />
 
-              <div class="o-search__menu-subtitle">{{ _t('Custom group by') }}</div>
-              <div class="o-search__menu-list">
+              <div class="choy-search__menu-subtitle">{{ _t('Custom group by') }}</div>
+              <div class="choy-search__menu-list">
                 <ChoyButton
                   v-for="n in flatGroupOptions"
                   :key="n.id"
-                  class="o-search__tree-option el-btn"
+                  class="choy-search__tree-option el-btn"
                   variant="ghost"
                   @click="onTreeSelectChange(n.id)"
                 >
@@ -204,7 +204,7 @@ SPDX-License-Identifier: Apache-2.0
           <label class="fav-check"><input type="checkbox" v-model="saveFavoriteShared" /> {{ _t('Share with all users') }}</label>
         </div>
       </form>
-      <div class="o-search__fav-footer">
+      <div class="choy-search__fav-footer">
         <ChoyButton size="sm" variant="outline" @click="saveFavoriteOpen = false">{{ _t('Cancel') }}</ChoyButton>
         <ChoyButton size="sm" variant="default" :disabled="saveFavoriteSaving" @click="onConfirmSaveFavorite">{{ _t('Save') }}</ChoyButton>
       </div>
@@ -715,133 +715,158 @@ watch(
 </script>
 
 <style scoped>
-.o-search {
+.choy-search {
   width: 100%;
 }
-.o-search__main {
+.choy-search__main {
   display: flex;align-items: center;gap: 2px;border: 1px solid var(--el-border-color);padding: 2px 8px;border-radius: 4px;cursor: text;flex-wrap: wrap;
 }
-.o-search__main:focus-within,
-.o-search__main:hover {
+.choy-search__main:focus-within,
+.choy-search__main:hover {
   border-color: var(--el-color-primary-light-7);
 }
-.o-search__main :deep(button) {
+.choy-search__main :deep(button) {
   padding: 0 6px;margin: 0;
 }
-.o-search__leading-btn {
+.choy-search__leading-btn {
   margin-right: 2px;
 }
-:deep(.o-search-popover) {
+:deep(.choy-search-popover) {
   width: auto !important;min-width: fit-content;padding: 0;
 }
-.o-search__menu-grid {
+.choy-search__menu-grid {
   display: grid;grid-template-columns: 1fr 1fr;gap: 16px;padding: 12px 14px;max-width: 70vw;
 }
-.o-search__menu-col {
+.choy-search__menu-col {
   min-width: 260px;
 }
-.o-search__menu-col--right {
+.choy-search__menu-col--right {
   border-left: 1px solid var(--el-border-color-lighter);padding-left: 16px;
 }
-.o-search__menu-title {
+.choy-search__menu-title {
   font-weight: 600;margin-bottom: 8px;color: var(--el-text-color-primary);
 }
-.o-search__menu-subtitle {
+.choy-search__menu-subtitle {
   font-weight: 600;margin: 6px 0;color: var(--el-text-color-regular);
 }
-.o-search__menu-list {
+.choy-search__menu-list {
   display: flex;flex-direction: column;
 }
-.o-search__menu-row {
+.choy-search__menu-row {
   display: flex;align-items: center;gap: 2px;
 }
-.o-search__menu-row .o-search__menu-item {
+.choy-search__menu-row .choy-search__menu-item {
   flex: 1;min-width: 0;
 }
-.o-search__menu-item-delete {
+.choy-search__menu-item-delete {
   flex: 0 0 auto;opacity: 0.55;padding: 0 4px !important;
 }
-.o-search__menu-item-delete:hover {
+.choy-search__menu-item-delete:hover {
   opacity: 1;color: var(--el-color-danger);
 }
-.o-search__menu-item-edit {
+.choy-search__menu-item-edit {
   flex: 0 0 auto;opacity: 0.55;padding: 0 4px !important;
 }
-.o-search__menu-item-edit:hover {
+.choy-search__menu-item-edit:hover {
   opacity: 1;color: var(--el-color-primary);
 }
-.o-search__menu-item {
+.choy-search__menu-item {
   justify-content: flex-start;padding: 6px 4px;border-radius: 4px;margin: 0;
 }
-.o-search__menu-item:hover {
+.choy-search__menu-item:hover {
   background: var(--el-color-primary-light-9);
 }
-.o-search__menu-item-label {
+.choy-search__menu-item-label {
   white-space: nowrap;
 }
-.o-search__menu-divider {
+.choy-search__menu-divider {
   margin: 10px 0;
 }
-.o-search__menu-action {
+.choy-search__menu-action {
   justify-content: flex-start;padding: 6px 4px;
 }
-.o-search__tags {
+.choy-search__tags {
   display: flex;gap: 2px;flex-wrap: wrap;align-items: center;max-width: 100%;
 }
-.o-search__tag {
-  cursor: pointer;user-select: none;transition:
-  background-color 0.12s ease,
-  border-color 0.12s ease,
-  color 0.12s ease;
+.choy-search__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border: 1px solid var(--choy-color-border);
+  border-radius: var(--choy-radius-sm, 0.25rem);
+  font-size: var(--choy-font-size-sm, 0.875rem);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
 }
-.o-search__tag :deep(.el-tag__close) {
-  color: var(--el-color-primary);transition:
-  background-color 0.12s ease,
-  color 0.12s ease;
+.choy-search__tag-close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--choy-color-primary);
+  position: relative;
 }
-.o-search__tag :deep(.el-tag__close:hover) {
-  background-color: var(--el-color-primary-light-8);color: var(--el-color-primary);
+.choy-search__tag-close::before {
+  content: '×';
+  font-size: 12px;
+  line-height: 14px;
+  display: block;
+  text-align: center;
 }
-.o-search__grouptag :deep(.el-tag__close) {
-  color: var(--el-color-success);
+.choy-search__tag-close:hover {
+  background-color: var(--choy-color-muted);
+  color: var(--choy-color-primary);
 }
-.o-search__grouptag :deep(.el-tag__close:hover) {
-  background-color: var(--el-color-success-light-8);color: var(--el-color-success);
+.choy-search__grouptag .choy-search__tag-close {
+  color: var(--choy-color-success);
 }
-.o-search__tag:hover {
-  background-color: var(--el-color-primary-light-9);border-color: var(--el-color-primary);color: var(--el-color-primary);
+.choy-search__grouptag .choy-search__tag-close:hover {
+  color: var(--choy-color-success);
 }
-.o-search__tag:hover :deep(.el-tag__close) {
-  color: var(--el-color-primary);
+.choy-search__tag:hover {
+  background-color: var(--choy-color-muted);
+  border-color: var(--choy-color-primary);
+  color: var(--choy-color-primary);
 }
-.o-search__tag:active {
-  background-color: var(--el-color-primary-light-8);border-color: var(--el-color-primary);color: var(--el-color-primary);
+.choy-search__tag:active {
+  border-color: var(--choy-color-primary);
+  color: var(--choy-color-primary);
 }
-.o-search__tag--pending-delete {
-  border-color: var(--el-color-danger) !important;background-color: var(--el-color-danger-light-9) !important;color: var(--el-color-danger) !important;
+.choy-search__tag--pending-delete {
+  border-color: var(--choy-color-danger) !important;
+  background-color: color-mix(in oklab, var(--choy-color-danger) 12%, white) !important;
+  color: var(--choy-color-danger) !important;
 }
-.o-search__tag--pending-delete :deep(.el-tag__close) {
-  color: var(--el-color-danger) !important;
+.choy-search__tag--pending-delete .choy-search__tag-close {
+  color: var(--choy-color-danger) !important;
 }
-.o-search__tag--pending-delete :deep(.el-tag__close:hover) {
-  background-color: var(--el-color-danger-light-7) !important;color: var(--el-color-danger) !important;
+.choy-search__tag--pending-delete:hover {
+  border-color: var(--choy-color-danger) !important;
+  color: var(--choy-color-danger) !important;
 }
-.o-search__tag--pending-delete:hover {
-  background-color: var(--el-color-danger-light-8) !important;border-color: var(--el-color-danger) !important;color: var(--el-color-danger) !important;
-}
-.o-search__input {
+.choy-search__input {
   flex: 1;border: none;outline: none;min-width: 140px;padding: 4px;font-size: 13px;background: transparent;
 }
-.o-search__suffix {
+.choy-search__suffix {
   display: flex;align-items: center;gap: 2px;margin-left: 4px;padding-left: 6px;border-left: 1px solid var(--el-border-color);
 }
-.o-search__menu-icon {
+.choy-search__menu-icon {
   margin-right: 6px;color: var(--el-color-success);font-size: 16px;vertical-align: -1px;
 }
-.o-search__empty {
+.choy-search__empty {
   color: var(--el-text-color-secondary);
 }
-.o-search__tree {
+.choy-search__tree {
   width: 260px;
 }
 </style>

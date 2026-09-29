@@ -19,8 +19,8 @@ const DEFAULT_LANGS = [
   { Code: 'zh_CN', Name: 'Chinese (Simplified)' },
 ];
 
-const ROW_SEL = '.o-field-translations-dialog__row';
-const INPUT_SEL = 'input.o-field-translations-dialog__input';
+const ROW_SEL = '.choy-field-translations-dialog__row';
+const INPUT_SEL = 'input.choy-field-translations-dialog__input';
 
 const origSuccess = ChoyMessage.success;
 const origError = ChoyMessage.error;
@@ -32,7 +32,7 @@ function setInput(el: HTMLInputElement, value: string) {
 
 function inputByLabel(el: HTMLElement, label: string): HTMLInputElement {
   const row = Array.from(el.querySelectorAll(ROW_SEL)).find(n => {
-    const lab = n.querySelector('.o-field-translations-dialog__label');
+    const lab = n.querySelector('.choy-field-translations-dialog__label');
     return (lab?.textContent || '').trim() === label;
   });
   if (!row) throw new Error('missing ' + label);
@@ -41,7 +41,7 @@ function inputByLabel(el: HTMLElement, label: string): HTMLInputElement {
 
 function labelsOf(el: HTMLElement): string[] {
   return Array.from(el.querySelectorAll(ROW_SEL)).map(n => {
-    const lab = n.querySelector('.o-field-translations-dialog__label');
+    const lab = n.querySelector('.choy-field-translations-dialog__label');
     return (lab?.textContent || '').trim();
   });
 }

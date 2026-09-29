@@ -186,12 +186,12 @@ describe('ImageField mount wiring', () => {
     });
     const m = mountField(binding);
     await flushPromises();
-    expect(m.q('.o-image-current')).toBeTruthy();
+    expect(m.q('.choy-image-current')).toBeTruthy();
     m.unmount();
     restoreSfc(FieldBase as any);
 
     const aliasMount = mountField(makeBinding({ value: { objectId: '  alias-img  ', kind: 'set' } }));
-    expect(aliasMount.q('.o-image-current')).toBeTruthy();
+    expect(aliasMount.q('.choy-image-current')).toBeTruthy();
     aliasMount.unmount();
     restoreSfc(FieldBase as any);
 
@@ -201,7 +201,7 @@ describe('ImageField mount wiring', () => {
       })
     );
     await flushPromises();
-    expect(previewMount.q('.o-image-current__preview')?.getAttribute('src')).toBe('/preview/img.png');
+    expect(previewMount.q('.choy-image-current__preview')?.getAttribute('src')).toBe('/preview/img.png');
     previewMount.unmount();
   });
 
@@ -232,12 +232,12 @@ describe('ImageField mount wiring', () => {
 
   test('treats string attachment values and clear/noop kinds', async () => {
     const stringMount = mountField(makeBinding({ value: '  photo.png  ' }));
-    expect(stringMount.q('.o-image-current')).toBeTruthy();
+    expect(stringMount.q('.choy-image-current')).toBeTruthy();
     stringMount.unmount();
     restoreSfc(FieldBase as any);
 
     const clearMount = mountField(makeBinding({ value: { kind: 'CLEAR' } }));
-    expect(clearMount.q('.o-image-current')).toBeFalsy();
+    expect(clearMount.q('.choy-image-current')).toBeFalsy();
     clearMount.unmount();
     restoreSfc(FieldBase as any);
 

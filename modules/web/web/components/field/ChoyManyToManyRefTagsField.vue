@@ -18,9 +18,9 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
   >
     <template #edit>
-      <div class="o-m2m-tags">
+      <div class="choy-m2m-tags">
         <el-select-v2
-          class="o-m2m-tags__select"
+          class="choy-m2m-tags__select"
           multiple
           filterable
           remote
@@ -42,19 +42,19 @@ SPDX-License-Identifier: Apache-2.0
         >
           <template #default="{ item }">
             <slot name="suggestion" :item="item.record" :label="item.label">
-              <span class="o-m2m-tags__suggestion" v-html="highlightSuggestion(item.label)"></span>
+              <span class="choy-m2m-tags__suggestion" v-html="highlightSuggestion(item.label)"></span>
             </slot>
           </template>
 
           <template #footer>
-            <div class="o-m2m-tags__footer">
+            <div class="choy-m2m-tags__footer">
               <slot name="suffix" />
               <div
                 v-if="showNameCreateEntry"
-                class="o-m2m-tags__more o-m2m-tags__more--clickable"
+                class="choy-m2m-tags__more choy-m2m-tags__more--clickable"
                 role="button"
                 tabindex="0"
-                data-testid="o-m2m-name-create"
+                data-testid="choy-m2m-name-create"
                 @click.stop="onNameCreate"
                 @keydown.enter.stop="onNameCreate"
                 @keydown.space.prevent.stop="onNameCreate"
@@ -63,7 +63,7 @@ SPDX-License-Identifier: Apache-2.0
               </div>
               <div
                 v-if="searchList"
-                class="o-m2m-tags__more o-m2m-tags__more--clickable"
+                class="choy-m2m-tags__more choy-m2m-tags__more--clickable"
                 role="button"
                 tabindex="0"
                 @click.stop="openPicker"
@@ -79,33 +79,33 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display>
-      <div class="o-m2m-tags o-m2m-tags--display">
+      <div class="choy-m2m-tags choy-m2m-tags--display">
         <template v-if="displayItems.length">
           <template v-for="item in displayItems" :key="item.id">
             <span
-              class="o-m2m-tags__tag-hit"
-              :class="{ 'o-m2m-tags__tag-hit--clickable': isTagClickable }"
+              class="choy-m2m-tags__tag-hit"
+              :class="{ 'choy-m2m-tags__tag-hit--clickable': isTagClickable }"
               :role="isTagClickable ? 'button' : undefined"
               :tabindex="isTagClickable ? 0 : undefined"
               @click="onDisplayTagClick(item, $event)"
               @keydown="onDisplayTagKeydown(item, $event)"
             >
               <slot name="tag" :item="item.record" :label="item.label" :removable="false" :clickable="isTagClickable">
-                <span size="small" :type="isTagClickable ? 'primary' : 'info'" effect="plain">{{ item.label }}</span>
+                <span class="choy-m2m-tags__tag" :class="{ 'choy-m2m-tags__tag--primary': isTagClickable }">{{ item.label }}</span>
               </slot>
             </span>
           </template>
-          <span v-if="hiddenCount > 0" size="small" type="info" effect="plain">+{{ hiddenCount }}</span>
+          <span v-if="hiddenCount > 0" class="choy-m2m-tags__tag">+{{ hiddenCount }}</span>
         </template>
         <slot v-else name="empty">
-          <span class="o-m2m-tags__empty">{{ _t('None') }}</span>
+          <span class="choy-m2m-tags__empty">{{ _t('None') }}</span>
         </slot>
       </div>
     </template>
   </FieldBase>
 
   <Dialog v-model:open="dialogVisible">
-    <DialogContent class="o-relation-picker-dialog" :style="{ width: typeof searchViewWidth === 'number' ? searchViewWidth + 'px' : searchViewWidth }">
+    <DialogContent class="choy-relation-picker-dialog" :style="{ width: typeof searchViewWidth === 'number' ? searchViewWidth + 'px' : searchViewWidth }">
       <DialogTitle>{{ effectiveSearchViewTitle }}</DialogTitle>
       <ChoyViewScope view-mode="display">
       <component
@@ -474,7 +474,7 @@ function highlightSuggestion(label: string): string {
   let out = '';
   while (pos >= 0) {
     out += escapeHtml(raw.slice(cursor, pos));
-    out += `<span class="o-m2m-tags__suggestion-hit">${escapeHtml(raw.slice(pos, pos + needle.length))}</span>`;
+    out += `<span class="choy-m2m-tags__suggestion-hit">${escapeHtml(raw.slice(pos, pos + needle.length))}</span>`;
     cursor = pos + needle.length;
     pos = lower.indexOf(needle, cursor);
   }
@@ -676,15 +676,15 @@ defineSlots<{
 </script>
 
 <style scoped>
-.o-m2m-tags {
+.choy-m2m-tags {
   width: 100%;
 }
 
-.o-m2m-tags__select {
+.choy-m2m-tags__select {
   width: 100%;
 }
 
-.o-m2m-tags--display {
+.choy-m2m-tags--display {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -692,50 +692,64 @@ defineSlots<{
   align-items: center;
 }
 
-.o-m2m-tags__tag-hit {
+.choy-m2m-tags__tag-hit {
   display: inline-flex;
   align-items: center;
 }
 
-.o-m2m-tags__tag-hit--clickable {
-  cursor: pointer;
-}
-
-.o-m2m-tags__tag-hit--clickable :deep(.el-tag) {
+.choy-m2m-tags__tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border: 1px solid var(--choy-color-border);
+  border-radius: var(--choy-radius-sm, 0.25rem);
+  font-size: var(--choy-font-size-sm, 0.875rem);
+  background: var(--choy-color-muted);
+  color: var(--choy-color-foreground);
   transition:
     color 0.16s ease,
     border-color 0.16s ease,
     background-color 0.16s ease;
 }
 
-.o-m2m-tags__tag-hit--clickable:hover :deep(.el-tag) {
-  color: var(--el-color-primary-dark-2);
-  border-color: var(--el-color-primary);
-  background-color: var(--el-color-primary-light-8);
+.choy-m2m-tags__tag--primary {
+  border-color: var(--choy-color-primary);
+  color: var(--choy-color-primary);
+  background: color-mix(in oklab, var(--choy-color-primary) 12%, white);
 }
 
-.o-m2m-tags__empty {
-  color: var(--el-text-color-placeholder);
+.choy-m2m-tags__tag-hit--clickable {
+  cursor: pointer;
+}
+
+.choy-m2m-tags__tag-hit--clickable:hover .choy-m2m-tags__tag {
+  color: var(--choy-color-primary);
+  border-color: var(--choy-color-primary);
+  background-color: color-mix(in oklab, var(--choy-color-primary) 18%, white);
+}
+
+.choy-m2m-tags__empty {
+  color: var(--choy-color-info);
   font-size: 12px;
 }
 
-.o-m2m-tags__footer {
+.choy-m2m-tags__footer {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   padding: 6px 8px;
 }
 
-.o-m2m-tags__more {
+.choy-m2m-tags__more {
   font-size: 12px;
   color: var(--el-color-primary);
 }
 
-.o-m2m-tags__more--clickable {
+.choy-m2m-tags__more--clickable {
   cursor: pointer;
 }
 
-.o-m2m-tags__suggestion-hit {
+.choy-m2m-tags__suggestion-hit {
   color: var(--el-color-primary);
   font-weight: 600;
 }

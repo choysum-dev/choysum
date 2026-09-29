@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <FieldBase
     v-bind="$attrs"
-    class="o-statusbar-field"
+    class="choy-statusbar-field"
     :binding="binding"
     :label="label"
     :rules="mergedRules"
@@ -269,7 +269,7 @@ async function onSelect(getter: () => WritableComputedRef<string | null>, raw: s
 const mergedFormItemProps = computed(() => {
   const extra = props.formItemProps ?? {};
   const extraClass = (extra as { class?: unknown }).class;
-  const classes = ['o-statusbar-form-item'];
+  const classes = ['choy-statusbar-form-item'];
   if (extraClass != null && extraClass !== '') {
     if (Array.isArray(extraClass)) classes.push(...extraClass.map(String));
     else classes.push(String(extraClass));
@@ -295,11 +295,11 @@ const mergedRules = computed<RuleItem[]>(() => [...(props.rules ?? []), internal
 </script>
 
 <style scoped>
-.o-statusbar-field :deep(.o-statusbar-form-item),
+.choy-statusbar-field :deep(.choy-statusbar-form-item),
   :deep(.el-form-item) {
   margin-bottom: 0;
 }
-.o-statusbar-field :deep(.o-field-base__label) {
+.choy-statusbar-field :deep(.choy-field-base__label) {
   display: none;
 }
 </style>

@@ -27,7 +27,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <!-- Display: fixed scale pads; free decimals keep significant digits -->
     <template #display="{ fieldValue, record }">
-      <span class="o-field-display-text">{{
+      <span class="choy-field-display-text">{{
         toDisplayText(resolveDisplayValue(fieldValue().value, record().value), () => resolveFixedScaleFrom(record().value))
       }}</span>
     </template>
@@ -409,7 +409,7 @@ const ODecimalCell = defineComponent({
     return () =>
       h('input', {
         ...attrs,
-        class: 'o-input o-decimal-input',
+        class: 'choy-input choy-decimal-input',
         value: editingRaw.value ?? '',
         placeholder: p.placeholder,
         inputmode: 'decimal',
@@ -491,16 +491,16 @@ const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internal
 </script>
 
 <style scoped>
-.o-field-display-text {
+.choy-field-display-text {
   line-height: var(--el-component-size-base, 32px);color: var(--el-text-color-primary);white-space: nowrap;overflow: hidden;text-overflow: ellipsis;padding: 0 11px;text-align: right;
 }
-.o-decimal-input {
+.choy-decimal-input {
   width: 100%;/* Compatible with the new structure */
 }
-.o-decimal-input :deep(.el-input__inner) {
+.choy-decimal-input :deep(.el-input__inner) {
   text-align: right;
 }
-.o-decimal-input :deep(.el-input__wrapper input) {
+.choy-decimal-input :deep(.el-input__wrapper input) {
   text-align: right;
 }
 </style>

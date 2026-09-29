@@ -42,11 +42,11 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, watch, ref, isRef, type Ref } from 'vue';
 import {
-  useVTableSelection,
-  useVTableProvideColumnRegistry,
-  useVTableProvideBuildContext,
+  useTableSelection,
+  useTableProvideColumnRegistry,
+  useTableProvideBuildContext,
   type Column,
-} from '@/web/web/composables/useVTable';
+} from '@/web/web/composables/useTable';
 import { createTranslate } from '@/web/web/i18n';
 import DataTable from './DataTable.vue';
 import { columnsToColumnDefs } from './columnAdapter';
@@ -64,7 +64,7 @@ const props = withDefaults(
     headerHeight?: number;
     tableHeight?: number;
     footerHeight?: number;
-    selectionApi?: ReturnType<typeof useVTableSelection>;
+    selectionApi?: ReturnType<typeof useTableSelection>;
     baseIndex?: number | Ref<number>;
     store?: any;
   }>(),
@@ -108,14 +108,14 @@ const baseIndexRef = computed(() => {
   return typeof bi === 'number' ? bi : 1;
 });
 
-useVTableProvideBuildContext({
+useTableProvideBuildContext({
   selectionApi: props.selectionApi,
   getRows: () => rowsArray.value,
   baseIndex: baseIndexRef,
   store: props.store,
 });
 
-const { columns: regColumns } = useVTableProvideColumnRegistry();
+const { columns: regColumns } = useTableProvideColumnRegistry();
 
 const columnsToUse = computed<Column[]>(() => {
   return props.columns && props.columns.length > 0 ? props.columns : regColumns.value;

@@ -4,9 +4,9 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div class="o-pagination">
-    <span class="o-pagination__text">
-      <span class="o-pagination__editable-wrapper">
+  <div class="choy-pagination">
+    <span class="choy-pagination__text">
+      <span class="choy-pagination__editable-wrapper">
         <el-input-number
           v-if="editingStart"
           ref="startInputRef"
@@ -17,17 +17,17 @@ SPDX-License-Identifier: Apache-2.0
           :precision="0"
           size="sm"
           :controls="false"
-          class="o-pagination__input"
+          class="choy-pagination__input"
           @blur="finishEditStart"
           @keydown="handleStartKeydown"
           @change="handleStartChange"
         />
-        <span v-else class="o-pagination__editable" @click="startEditStart" @mouseenter="handleStartMouseEnter" @mouseleave="handleStartMouseLeave">
+        <span v-else class="choy-pagination__editable" @click="startEditStart" @mouseenter="handleStartMouseEnter" @mouseleave="handleStartMouseLeave">
           {{ paginationRange.start }}
         </span>
       </span>
       -
-      <span class="o-pagination__editable-wrapper">
+      <span class="choy-pagination__editable-wrapper">
         <el-input-number
           v-if="editingEnd"
           ref="endInputRef"
@@ -38,18 +38,18 @@ SPDX-License-Identifier: Apache-2.0
           :precision="0"
           size="sm"
           :controls="false"
-          class="o-pagination__input"
+          class="choy-pagination__input"
           @blur="finishEditEnd"
           @keydown="handleEndKeydown"
           @change="handleEndChange"
         />
-        <span v-else class="o-pagination__editable" @click="startEditEnd" @mouseenter="handleEndMouseEnter" @mouseleave="handleEndMouseLeave">
+        <span v-else class="choy-pagination__editable" @click="startEditEnd" @mouseenter="handleEndMouseEnter" @mouseleave="handleEndMouseLeave">
           {{ paginationRange.end }}
         </span>
       </span>
       {{ _t('of %s', paginationRange.total) }}
     </span>
-    <div class="o-pagination__controls">
+    <div class="choy-pagination__controls">
       <ChoyButton size="sm" :disabled="!paginationRange.canGoPrev" @click="goToPrevPage">
         <span class="inline-flex"><ArrowLeft /></span>
       </ChoyButton>
@@ -253,43 +253,43 @@ function handleEndMouseLeave(event: MouseEvent) {
 </script>
 
 <style scoped>
-.o-pagination {
+.choy-pagination {
   display: flex;align-items: center;justify-content: flex-end;gap: 12px;
 }
-.o-pagination__text {
+.choy-pagination__text {
   font-size: 14px;color: var(--el-text-color-regular);white-space: nowrap;display: flex;align-items: center;gap: 4px;
 }
-.o-pagination__editable-wrapper {
+.choy-pagination__editable-wrapper {
   display: inline-flex;align-items: center;position: relative;
 }
-.o-pagination__editable {
+.choy-pagination__editable {
   cursor: pointer;padding: 2px 4px;border-radius: 4px;transition: all 0.2s ease;border: 1px solid transparent;min-width: 20px;text-align: center;display: inline-block;
 }
-.o-pagination__editable:hover,
-.o-pagination__editable.hover {
+.choy-pagination__editable:hover,
+.choy-pagination__editable.hover {
   background-color: var(--el-fill-color-light);border-color: var(--el-border-color);color: var(--el-color-primary);
 }
-.o-pagination__input {
+.choy-pagination__input {
   width: 60px !important;
 }
-.o-pagination__input :deep(.el-input__inner) {
+.choy-pagination__input :deep(.el-input__inner) {
   padding: 2px 6px;height: auto;min-height: 24px;font-size: 14px;text-align: end;
 }
-.o-pagination__input :deep(.el-input__wrapper) {
+.choy-pagination__input :deep(.el-input__wrapper) {
   padding: 0 2px !important;
 }
-.o-pagination__controls {
+.choy-pagination__controls {
   display: flex;gap: 4px;
 }
 /* Responsive adjustments. */
 @media (max-width: 768px) {
-.o-pagination {
+.choy-pagination {
   flex-direction: column;align-items: center;gap: 8px;
 }
-.o-pagination__text {
+.choy-pagination__text {
   font-size: 12px;
 }
-.o-pagination__input {
+.choy-pagination__input {
   width: 50px !important;
 }
 }

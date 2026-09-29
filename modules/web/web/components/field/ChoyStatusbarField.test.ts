@@ -329,7 +329,7 @@ describe('ChoyStatusbarField mount wiring', () => {
     await flushPromises();
     expect(ensureCalls.length).toBe(1);
     expect(ensureCalls[0]![0]).toEqual(['State']);
-    expect(m.q('.ob')?.getAttribute('data-form-item-class') || '').toContain('o-statusbar-form-item');
+    expect(m.q('.ob')?.getAttribute('data-form-item-class') || '').toContain('choy-statusbar-form-item');
     expect(m.q('.ob')?.getAttribute('data-form-item-class') || '').toContain('extra-class');
     m.unmount();
   });

@@ -6,8 +6,8 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <div
     v-if="useStoreEngine"
-    class="o-search-view"
-    data-test="o-search"
+    class="choy-search-view"
+    data-test="choy-search"
     :class="{ 'pointer-events-none select-none': disabled }"
     :inert="disabled || undefined"
     :aria-disabled="disabled ? 'true' : undefined"

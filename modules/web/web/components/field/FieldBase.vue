@@ -9,15 +9,15 @@ SPDX-License-Identifier: Apache-2.0
   <div
     v-if="effectiveRenderMode === 'form'"
     v-show="visibleForm"
-    class="o-field-base"
+    class="choy-field-base"
     v-bind="formItemProps"
   >
-    <div class="o-field-base__label">
-      <span class="o-field-base__label-text">{{ resolvedLabel }}</span>
+    <div class="choy-field-base__label">
+      <span class="choy-field-base__label-text">{{ resolvedLabel }}</span>
       <button
         v-if="effectiveHelp"
         type="button"
-        class="o-field-base__help-btn"
+        class="choy-field-base__help-btn"
         :aria-label="helpAccessibleLabel"
         :title="effectiveHelp"
       >
@@ -25,8 +25,8 @@ SPDX-License-Identifier: Apache-2.0
       </button>
     </div>
     <template v-if="preserveModeSlotForm">
-      <div v-show="effectiveEditForm" class="o-field-base__edit-wrap">
-        <div class="o-field-base__edit-control">
+      <div v-show="effectiveEditForm" class="choy-field-base__edit-wrap">
+        <div class="choy-field-base__edit-control">
           <slot
             name="edit"
             :fieldValue="valueForm"
@@ -45,7 +45,7 @@ SPDX-License-Identifier: Apache-2.0
           v-if="showTranslateAction"
           size="sm"
           variant="ghost"
-          class="o-field-base__translate-btn"
+          class="choy-field-base__translate-btn"
           :aria-label="translateAriaLabel"
           :title="translateAriaLabel"
           @click="translationsOpen = true"
@@ -56,7 +56,7 @@ SPDX-License-Identifier: Apache-2.0
           v-if="showCompanyValuesAction"
           size="sm"
           variant="ghost"
-          class="o-field-base__company-values-btn"
+          class="choy-field-base__company-values-btn"
           :aria-label="companyValuesAriaLabel"
           :title="companyValuesAriaLabel"
           @click="companyValuesOpen = true"
@@ -82,8 +82,8 @@ SPDX-License-Identifier: Apache-2.0
     </template>
     <template v-else>
       <template v-if="effectiveEditForm">
-        <div class="o-field-base__edit-wrap">
-          <div class="o-field-base__edit-control">
+        <div class="choy-field-base__edit-wrap">
+          <div class="choy-field-base__edit-control">
             <slot
               name="edit"
               :fieldValue="valueForm"
@@ -102,7 +102,7 @@ SPDX-License-Identifier: Apache-2.0
             v-if="showTranslateAction"
             size="sm"
             variant="ghost"
-            class="o-field-base__translate-btn"
+            class="choy-field-base__translate-btn"
             :aria-label="translateAriaLabel"
             :title="translateAriaLabel"
             @click="translationsOpen = true"
@@ -113,7 +113,7 @@ SPDX-License-Identifier: Apache-2.0
             v-if="showCompanyValuesAction"
             size="sm"
             variant="ghost"
-            class="o-field-base__company-values-btn"
+            class="choy-field-base__company-values-btn"
             :aria-label="companyValuesAriaLabel"
             :title="companyValuesAriaLabel"
             @click="companyValuesOpen = true"
@@ -138,7 +138,7 @@ SPDX-License-Identifier: Apache-2.0
         />
       </template>
     </template>
-    <p v-if="serverError" class="o-field-base__error" role="alert">{{ serverError }}</p>
+    <p v-if="serverError" class="choy-field-base__error" role="alert">{{ serverError }}</p>
     <FieldTranslationsDialog
       v-if="showTranslateAction"
       v-model="translationsOpen"
@@ -173,14 +173,14 @@ SPDX-License-Identifier: Apache-2.0
     v-slot="{ row, $index }"
   >
     <div
-      class="o-field-base__cell"
+      class="choy-field-base__cell"
       v-show="cellVisibleForRow(row)"
       :data-field="inputName"
       :data-row-key="guessRowKey(row)"
       :id="`fld-${inputName}-${guessRowKey(row)}`"
     >
       <div
-        class="o-field-base__cell-item"
+        class="choy-field-base__cell-item"
         :prop="`__cell__:${inputName}:${guessRowKey(row)}`"
         :rules="[
           {
@@ -229,10 +229,10 @@ SPDX-License-Identifier: Apache-2.0
   </ChoyTableColumn>
 
   <!-- INLINE mode -->
-  <div v-else-if="effectiveRenderMode === 'inline'" class="o-field-base__inline" v-show="visibleInline">
+  <div v-else-if="effectiveRenderMode === 'inline'" class="choy-field-base__inline" v-show="visibleInline">
     <div
       v-if="showInlineError && serverError"
-      class="o-field-base__inline-wrap o-field-base__inline-wrap--has-error"
+      class="choy-field-base__inline-wrap choy-field-base__inline-wrap--has-error"
       :title="serverError"
     >
       <template v-if="effectiveEditInline">
@@ -265,13 +265,13 @@ SPDX-License-Identifier: Apache-2.0
           :onchangeRunning="onchangeHandlers.running?.value"
         />
       </template>
-      <CircleAlert class="o-inline-err-icon size-4" />
+      <CircleAlert class="choy-inline-err-icon size-4" />
     </div>
 
     <div
       v-else
-      class="o-field-base__inline-wrap"
-      :class="{ 'o-field-base__inline-wrap--has-help': !!effectiveHelp }"
+      class="choy-field-base__inline-wrap"
+      :class="{ 'choy-field-base__inline-wrap--has-help': !!effectiveHelp }"
     >
       <template v-if="effectiveEditInline">
         <slot
@@ -306,7 +306,7 @@ SPDX-License-Identifier: Apache-2.0
       <button
         v-if="effectiveHelp"
         type="button"
-        class="o-field-base__help-btn"
+        class="choy-field-base__help-btn"
         :aria-label="helpAccessibleLabel"
         :title="effectiveHelp"
       >
@@ -523,7 +523,7 @@ function onCompanyValuesSaved(nextValue: unknown) {
 
 /* ===================== Render Mode Dispatch ===================== */
 // Inject a render mode override (for example, Kanban cards provide inline)
-const injectedRenderOverride = inject<'inline' | 'form' | 'table' | 'auto' | null>('o-field-render-override', null);
+const injectedRenderOverride = inject<'inline' | 'form' | 'table' | 'auto' | null>('choy-field-render-override', null);
 const effectiveRenderMode = computed(() => {
   const rm = props.renderMode || 'auto';
   if (rm !== 'auto') return rm;
@@ -806,19 +806,19 @@ defineSlots<{
 </script>
 
 <style scoped>
-.o-field-base {
+.choy-field-base {
   padding: 0; /* keep wrapper neutral; satisfy linter */
 }
-.o-field-base__label {
+.choy-field-base__label {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   max-width: 100%;
 }
-.o-field-base__label-text {
+.choy-field-base__label-text {
   min-width: 0;
 }
-.o-field-base__help-btn {
+.choy-field-base__help-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -830,70 +830,70 @@ defineSlots<{
   cursor: help;
   line-height: 0;
 }
-.o-field-base__help-btn:focus-visible {
+.choy-field-base__help-btn:focus-visible {
   outline: 2px solid var(--el-color-primary);
   outline-offset: 2px;
   border-radius: 2px;
 }
-.o-field-base__help-icon {
+.choy-field-base__help-icon {
   flex-shrink: 0;
   color: var(--el-text-color-secondary);
   vertical-align: middle;
 }
-.o-field-base__cell {
+.choy-field-base__cell {
   display: block;
   width: 100%;
 }
 /* Compact error styling inside cells */
-.o-field-base__cell-item :deep(.el-form-item__error) {
+.choy-field-base__cell-item :deep(.el-form-item__error) {
   white-space: normal;
 }
 
 /* Inline-mode error styles */
-.o-field-base__inline {
+.choy-field-base__inline {
   display: inline-flex;
   align-items: center;
   gap: 4px;
 }
-.o-field-base__inline-wrap {
+.choy-field-base__inline-wrap {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
-.o-inline-err-icon {
+.choy-inline-err-icon {
   color: var(--el-color-error);
 }
 
-.o-field-base__edit-wrap {
+.choy-field-base__edit-wrap {
   display: flex;
   align-items: center;
   gap: 2px;
   width: 100%;
 }
-.o-field-base__edit-control {
+.choy-field-base__edit-control {
   flex: 1 1 auto;
   min-width: 0;
 }
-.o-field-base__translate-btn {
+.choy-field-base__translate-btn {
   flex: 0 0 auto;
   height: 24px;
   width: 24px;
   padding: 0;
   color: var(--el-text-color-secondary);
 }
-.o-field-base__translate-btn:hover,
-.o-field-base__translate-btn:focus {
+.choy-field-base__translate-btn:hover,
+.choy-field-base__translate-btn:focus {
   color: var(--el-color-primary);
 }
-.o-field-base__company-values-btn {
+.choy-field-base__company-values-btn {
   flex: 0 0 auto;
   height: 24px;
   width: 24px;
   padding: 0;
   color: var(--el-text-color-secondary);
 }
-.o-field-base__company-values-btn:hover,
-.o-field-base__company-values-btn:focus {
+.choy-field-base__company-values-btn:hover,
+.choy-field-base__company-values-btn:focus {
   color: var(--el-color-primary);
 }
 </style>

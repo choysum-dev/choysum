@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { type ColumnDef } from '@tanstack/vue-table';
-import type { Column } from '@/web/web/composables/useVTable';
+import type { Column } from '@/web/web/composables/useTable';
 
 const DEFAULT_COLUMN_SIZE = 150;
 

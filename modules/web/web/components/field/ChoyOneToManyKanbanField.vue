@@ -19,19 +19,19 @@ SPDX-License-Identifier: Apache-2.0
   >
     <template #edit>
       <ChoyViewScope :view-mode="binding.env.viewMode" :container="'Kanban'" :field-prefix="String(prop)">
-        <div class="o-otm-kanban">
-          <div v-if="showToolbar" class="o-otm-kanban__toolbar">
+        <div class="choy-otm-kanban">
+          <div v-if="showToolbar" class="choy-otm-kanban__toolbar">
             <slot name="toolbar" :items="getItems()" :add="handleAddItem" :editable="editable">
               <ChoyButton v-if="editable && showToolbarAdd" size="sm" variant="link" @click="handleAddItem">{{ effectiveAddButtonText }}</ChoyButton>
             </slot>
           </div>
 
-          <div class="o-otm-kanban__board" :style="boardStyle">
+          <div class="choy-otm-kanban__board" :style="boardStyle">
             <template v-if="getItems().length > 0">
               <div
                 v-for="(item, index) in getItems()"
                 :key="String(readRowKeySeed(item) ?? index)"
-                class="o-otm-kanban__card"
+                class="choy-otm-kanban__card"
                 @click="handleCardClick(index, false)"
               >
                 <slot
@@ -44,9 +44,9 @@ SPDX-License-Identifier: Apache-2.0
                   :editable="editable"
                   :removable="removable"
                 >
-                  <div class="o-otm-kanban__card-title">{{ resolveCardTitle(item) }}</div>
-                  <div class="o-otm-kanban__card-meta" v-if="resolveCardSubtitle(item)">{{ resolveCardSubtitle(item) }}</div>
-                  <div class="o-otm-kanban__card-actions" v-if="editable || removable" @click.stop>
+                  <div class="choy-otm-kanban__card-title">{{ resolveCardTitle(item) }}</div>
+                  <div class="choy-otm-kanban__card-meta" v-if="resolveCardSubtitle(item)">{{ resolveCardSubtitle(item) }}</div>
+                  <div class="choy-otm-kanban__card-actions" v-if="editable || removable" @click.stop>
                     <ChoyButton v-if="editable" size="sm" variant="link" @click="handleEditItem(index)">{{ _t('Edit') }}</ChoyButton>
                     <ChoyButton v-if="removable" size="sm" variant="destructive" @click="handleRemoveItem(index)">{{ _t('Delete') }}</ChoyButton>
                   </div>
@@ -54,11 +54,11 @@ SPDX-License-Identifier: Apache-2.0
               </div>
             </template>
 
-            <div v-else class="o-otm-kanban__empty">
+            <div v-else class="choy-otm-kanban__empty">
               <slot name="empty">{{ effectiveEmptyText }}</slot>
             </div>
 
-            <div v-if="editable" class="o-otm-kanban__add-card" @click="handleAddItem">
+            <div v-if="editable" class="choy-otm-kanban__add-card" @click="handleAddItem">
               <span>{{ effectiveAddButtonText }}</span>
             </div>
           </div>
@@ -68,13 +68,13 @@ SPDX-License-Identifier: Apache-2.0
 
     <template #display>
       <ChoyViewScope view-mode="display" :container="'Kanban'" :field-prefix="String(prop)">
-        <div class="o-otm-kanban">
-          <div class="o-otm-kanban__board" :style="boardStyle">
+        <div class="choy-otm-kanban">
+          <div class="choy-otm-kanban__board" :style="boardStyle">
             <template v-if="getItems().length > 0">
               <div
                 v-for="(item, index) in getItems()"
                 :key="String(readRowKeySeed(item) ?? index)"
-                class="o-otm-kanban__card"
+                class="choy-otm-kanban__card"
                 @click="handleCardClick(index, true)"
               >
                 <slot
@@ -87,13 +87,13 @@ SPDX-License-Identifier: Apache-2.0
                   :editable="false"
                   :removable="false"
                 >
-                  <div class="o-otm-kanban__card-title">{{ resolveCardTitle(item) }}</div>
-                  <div class="o-otm-kanban__card-meta" v-if="resolveCardSubtitle(item)">{{ resolveCardSubtitle(item) }}</div>
+                  <div class="choy-otm-kanban__card-title">{{ resolveCardTitle(item) }}</div>
+                  <div class="choy-otm-kanban__card-meta" v-if="resolveCardSubtitle(item)">{{ resolveCardSubtitle(item) }}</div>
                 </slot>
               </div>
             </template>
 
-            <div v-else class="o-otm-kanban__empty">
+            <div v-else class="choy-otm-kanban__empty">
               <slot name="empty">{{ effectiveEmptyText }}</slot>
             </div>
           </div>
@@ -103,7 +103,7 @@ SPDX-License-Identifier: Apache-2.0
   </FieldBase>
 
   <Dialog v-model:open="dialogVisible">
-    <DialogContent class="o-relation-picker-dialog" :style="{ width: typeof dialogWidth === 'number' ? dialogWidth + 'px' : dialogWidth }">
+    <DialogContent class="choy-relation-picker-dialog" :style="{ width: typeof dialogWidth === 'number' ? dialogWidth + 'px' : dialogWidth }">
       <DialogTitle>{{ dialogTitleText }}</DialogTitle>
       <component
       v-if="formView"
@@ -120,7 +120,7 @@ SPDX-License-Identifier: Apache-2.0
       :submit-handler="dialogFormSubmitHandler"
       v-bind="formViewProps"
     />
-    <div v-else class="o-otm-kanban__dialog-hint">{{ _t('Provide a child record editor via the formView prop.') }}</div>
+    <div v-else class="choy-otm-kanban__dialog-hint">{{ _t('Provide a child record editor via the formView prop.') }}</div>
       <div class="dialog-footer">
         <ChoyButton @click="handleDialogCancel">{{ _t('Cancel') }}</ChoyButton>
         <ChoyButton v-if="dialogMode !== 'display'" @click="handleDialogSubmit">{{ _t('Save') }}</ChoyButton>
@@ -517,7 +517,7 @@ watch(
 </script>
 
 <style scoped>
-.o-otm-kanban {
+.choy-otm-kanban {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -525,13 +525,13 @@ watch(
   min-width: 0;
 }
 
-.o-otm-kanban__toolbar {
+.choy-otm-kanban__toolbar {
   display: flex;
   align-items: center;
   justify-content: flex-start;
 }
 
-.o-otm-kanban__board {
+.choy-otm-kanban__board {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(var(--kanban-min-card-width), 1fr));
   gap: var(--kanban-gap);
@@ -541,7 +541,7 @@ watch(
   min-width: 0;
 }
 
-.o-otm-kanban__card {
+.choy-otm-kanban__card {
   border: 1px solid var(--el-border-color-light);
   border-radius: 8px;
   padding: 12px;
@@ -552,33 +552,33 @@ watch(
     box-shadow 0.16s ease;
 }
 
-.o-otm-kanban__card:hover {
+.choy-otm-kanban__card:hover {
   border-color: var(--el-color-primary-light-5);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
-.o-otm-kanban__card-title {
+.choy-otm-kanban__card-title {
   font-size: 14px;
   font-weight: 600;
   color: var(--el-text-color-primary);
   line-height: 1.4;
 }
 
-.o-otm-kanban__card-meta {
+.choy-otm-kanban__card-meta {
   margin-top: 6px;
   font-size: 12px;
   color: var(--el-text-color-secondary);
   word-break: break-word;
 }
 
-.o-otm-kanban__card-actions {
+.choy-otm-kanban__card-actions {
   margin-top: 10px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.o-otm-kanban__add-card {
+.choy-otm-kanban__add-card {
   border: 1px dashed var(--el-border-color);
   border-radius: 8px;
   min-height: 96px;
@@ -591,11 +591,11 @@ watch(
   user-select: none;
 }
 
-.o-otm-kanban__add-card:hover {
+.choy-otm-kanban__add-card:hover {
   border-color: var(--el-color-primary);
 }
 
-.o-otm-kanban__empty {
+.choy-otm-kanban__empty {
   grid-column: 1 / -1;
   min-height: 90px;
   display: flex;
@@ -607,7 +607,7 @@ watch(
   font-size: 13px;
 }
 
-.o-otm-kanban__dialog-hint {
+.choy-otm-kanban__dialog-hint {
   padding: 18px;
   border: 1px dashed var(--el-border-color);
   border-radius: 8px;
@@ -615,7 +615,7 @@ watch(
   font-size: 13px;
 }
 
-.o-otm-kanban__dialog-default-actions {
+.choy-otm-kanban__dialog-default-actions {
   margin-top: 10px;
   display: flex;
   justify-content: flex-end;

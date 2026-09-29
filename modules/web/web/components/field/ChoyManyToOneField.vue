@@ -22,7 +22,7 @@ SPDX-License-Identifier: Apache-2.0
   >
     <template #edit="{ fieldValue, record }">
       <el-select-v2
-        class="o-many-to-one-select"
+        class="choy-many-to-one-select"
         :model-value="fieldValue().value"
         @update:model-value="(v: any) => onUpdate(fieldValue, v)"
         value-key="Id"
@@ -41,10 +41,10 @@ SPDX-License-Identifier: Apache-2.0
         <template #footer>
           <div
             v-if="showNameCreateEntry"
-            class="o-m2o__more o-m2o__more--clickable"
+            class="choy-m2o__more choy-m2o__more--clickable"
             role="button"
             tabindex="0"
-            data-testid="o-m2o-name-create"
+            data-testid="choy-m2o-name-create"
             @click.stop="onNameCreate(fieldValue)"
             @keydown.enter.stop="onNameCreate(fieldValue)"
             @keydown.space.prevent.stop="onNameCreate(fieldValue)"
@@ -53,7 +53,7 @@ SPDX-License-Identifier: Apache-2.0
           </div>
           <div
             v-if="searchView"
-            class="o-m2o__more o-m2o__more--clickable"
+            class="choy-m2o__more choy-m2o__more--clickable"
             role="button"
             tabindex="0"
             @click.stop="openSearchDialog(fieldValue, record)"
@@ -67,8 +67,8 @@ SPDX-License-Identifier: Apache-2.0
     </template>
     <template #display="{ fieldValue }">
       <span
-        class="o-field-display-text"
-        :class="{ 'o-field-display-text--clickable': isValueClickable }"
+        class="choy-field-display-text"
+        :class="{ 'choy-field-display-text--clickable': isValueClickable }"
         :role="isValueClickable ? 'button' : undefined"
         :tabindex="isValueClickable ? 0 : undefined"
         @click="onDisplayValueClick(fieldValue().value as any, $event)"
@@ -80,7 +80,7 @@ SPDX-License-Identifier: Apache-2.0
   </FieldBase>
 
   <Dialog v-model:open="dialogVisible">
-    <DialogContent class="o-relation-picker-dialog" :style="{ width: typeof searchViewWidth === 'number' ? searchViewWidth + 'px' : searchViewWidth }">
+    <DialogContent class="choy-relation-picker-dialog" :style="{ width: typeof searchViewWidth === 'number' ? searchViewWidth + 'px' : searchViewWidth }">
       <DialogTitle>{{ effectiveSearchViewTitle }}</DialogTitle>
       <ChoyViewScope view-mode="display" :container="'List'">
       <component
@@ -556,33 +556,33 @@ async function confirmPick() {
 </script>
 
 <style scoped>
-.o-form-field {
-  margin-bottom: var(--o-form-field-margin-bottom, 18px);
+.choy-form-field {
+  margin-bottom: var(--choy-form-field-margin-bottom, 18px);
 }
-.o-many-to-one-select {
+.choy-many-to-one-select {
   width: 100%;
 }
-.o-field-display-text {
+.choy-field-display-text {
   color: var(--el-text-color-regular);
   word-break: break-all;
 }
-.o-field-display-text--clickable {
+.choy-field-display-text--clickable {
   cursor: pointer;
   color: var(--el-color-primary);
   transition: color 0.16s ease;
 }
-.o-field-display-text--clickable:hover {
+.choy-field-display-text--clickable:hover {
   color: var(--el-color-primary-dark-2);
 }
-.o-field-display-text--clickable:focus-visible {
+.choy-field-display-text--clickable:focus-visible {
   outline: 2px solid var(--el-color-primary-light-7);
   outline-offset: 2px;
   border-radius: 2px;
 }
-.o-m2o__more {
+.choy-m2o__more {
   text-align: center;
 }
-.o-m2o__more--clickable {
+.choy-m2o__more--clickable {
   display: block;
   width: 100%;
   padding: 5px 12px;
@@ -594,14 +594,14 @@ async function confirmPick() {
     background-color 0.15s ease,
     color 0.15s ease;
 }
-.o-m2o__more--clickable:hover {
+.choy-m2o__more--clickable:hover {
   background-color: var(--el-fill-color-light);
 }
-.o-m2o__more--clickable:active {
+.choy-m2o__more--clickable:active {
   background-color: var(--el-fill-color-lighter);
 }
-.o-m2o__more--clickable:focus,
-.o-m2o__more--clickable:focus-visible {
+.choy-m2o__more--clickable:focus,
+.choy-m2o__more--clickable:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--el-color-primary-light-7) inset;
   border-radius: 2px;

@@ -21,16 +21,16 @@ SPDX-License-Identifier: Apache-2.0
     v-bind="$attrs"
   >
     <template #edit="{ fieldValue, onFieldChange }">
-      <div class="o-binary-field">
-        <div v-if="hasAttachment(fieldValue().value)" class="o-binary-current">
-          <div class="o-binary-current__icon" aria-hidden="true">
+      <div class="choy-binary-field">
+        <div v-if="hasAttachment(fieldValue().value)" class="choy-binary-current">
+          <div class="choy-binary-current__icon" aria-hidden="true">
             <FileText class="size-4" />
           </div>
-          <div class="o-binary-current__body">
-            <span class="o-binary-current__title" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
-            <span v-if="toMetaText(fieldValue().value)" class="o-binary-current__meta">{{ toMetaText(fieldValue().value) }}</span>
-            <div class="o-binary-current__actions">
-              <label class="o-binary-action-upload">
+          <div class="choy-binary-current__body">
+            <span class="choy-binary-current__title" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
+            <span v-if="toMetaText(fieldValue().value)" class="choy-binary-current__meta">{{ toMetaText(fieldValue().value) }}</span>
+            <div class="choy-binary-current__actions">
+              <label class="choy-binary-action-upload">
                 <input
                   type="file"
                   class="sr-only"
@@ -39,15 +39,15 @@ SPDX-License-Identifier: Apache-2.0
                   :disabled="uploadDisabled"
                   @change="onNativeFileChange($event, fieldValue, onFieldChange)"
                 />
-                <ChoyButton size="sm" variant="link" class="o-upload-action-btn" :disabled="uploadDisabled" as="span">{{ replaceButtonText }}</ChoyButton>
+                <ChoyButton size="sm" variant="link" class="choy-upload-action-btn" :disabled="uploadDisabled" as="span">{{ replaceButtonText }}</ChoyButton>
               </label>
-              <ChoyButton size="sm" variant="destructive" class="o-upload-action-btn" :disabled="uploadDisabled" @click="removeBinary(fieldValue, onFieldChange)">
+              <ChoyButton size="sm" variant="destructive" class="choy-upload-action-btn" :disabled="uploadDisabled" @click="removeBinary(fieldValue, onFieldChange)">
                 {{ _t('Remove') }}
               </ChoyButton>
             </div>
           </div>
         </div>
-        <label v-else class="o-binary-upload" :class="{ 'o-binary-upload--drag': uploadDrag }">
+        <label v-else class="choy-binary-upload" :class="{ 'choy-binary-upload--drag': uploadDrag }">
           <input
             type="file"
             class="sr-only"
@@ -57,46 +57,46 @@ SPDX-License-Identifier: Apache-2.0
             @change="onNativeFileChange($event, fieldValue, onFieldChange)"
           />
           <template v-if="uploadDrag">
-            <Upload class="o-upload-drag-icon size-5" />
-            <div class="o-upload-drag-text">{{ uploadDropText }}</div>
+            <Upload class="choy-upload-drag-icon size-5" />
+            <div class="choy-upload-drag-text">{{ uploadDropText }}</div>
           </template>
-          <ChoyButton v-else size="sm" variant="link" class="o-upload-btn" as="span">{{ uploadButtonText }}</ChoyButton>
+          <ChoyButton v-else size="sm" variant="link" class="choy-upload-btn" as="span">{{ uploadButtonText }}</ChoyButton>
         </label>
       </div>
     </template>
     <template #display="{ fieldValue, renderMode: slotRenderMode }">
-      <div v-if="hasAttachment(fieldValue().value) && isTableRenderMode(slotRenderMode)" class="o-binary-display-row">
-        <span class="o-binary-display-row__icon" aria-hidden="true">
+      <div v-if="hasAttachment(fieldValue().value) && isTableRenderMode(slotRenderMode)" class="choy-binary-display-row">
+        <span class="choy-binary-display-row__icon" aria-hidden="true">
           <FileText class="size-4" />
         </span>
-        <span class="o-binary-display-row__text" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
+        <span class="choy-binary-display-row__text" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
       </div>
       <a
         v-else-if="hasAttachment(fieldValue().value) && resolveDownloadUrl(fieldValue().value)"
-        class="o-binary-display-card o-binary-display-card--interactive"
+        class="choy-binary-display-card choy-binary-display-card--interactive"
         :href="resolveDownloadUrl(fieldValue().value)"
         target="_blank"
         rel="noopener noreferrer"
         @click.stop
       >
-        <span class="o-binary-display-icon" aria-hidden="true">
+        <span class="choy-binary-display-icon" aria-hidden="true">
           <FileText class="size-4" />
         </span>
-        <span class="o-binary-display-copy">
-          <span class="o-binary-display-text" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
-          <span v-if="toMetaText(fieldValue().value)" class="o-binary-display-meta">{{ toMetaText(fieldValue().value) }}</span>
+        <span class="choy-binary-display-copy">
+          <span class="choy-binary-display-text" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
+          <span v-if="toMetaText(fieldValue().value)" class="choy-binary-display-meta">{{ toMetaText(fieldValue().value) }}</span>
         </span>
       </a>
-      <div v-else-if="hasAttachment(fieldValue().value)" class="o-binary-display-card">
-        <span class="o-binary-display-icon" aria-hidden="true">
+      <div v-else-if="hasAttachment(fieldValue().value)" class="choy-binary-display-card">
+        <span class="choy-binary-display-icon" aria-hidden="true">
           <FileText class="size-4" />
         </span>
-        <span class="o-binary-display-copy">
-          <span class="o-binary-display-text" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
-          <span v-if="toMetaText(fieldValue().value)" class="o-binary-display-meta">{{ toMetaText(fieldValue().value) }}</span>
+        <span class="choy-binary-display-copy">
+          <span class="choy-binary-display-text" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
+          <span v-if="toMetaText(fieldValue().value)" class="choy-binary-display-meta">{{ toMetaText(fieldValue().value) }}</span>
         </span>
       </div>
-      <span v-else class="o-binary-display-empty">-</span>
+      <span v-else class="choy-binary-display-empty">-</span>
     </template>
   </FieldBase>
 </template>
@@ -360,95 +360,95 @@ function toDisplayText(raw: any): string {
 </script>
 
 <style scoped>
-.o-binary-field {
+.choy-binary-field {
   display: flex;flex-direction: column;align-items: flex-start;gap: 12px;width: min(100%, 360px);max-width: 100%;
 }
-.o-binary-current,
-.o-binary-display-card {
+.choy-binary-current,
+.choy-binary-display-card {
   display: inline-flex;align-items: center;gap: 12px;min-width: 0;max-width: 100%;border: 1px solid var(--el-border-color-light);border-radius: 12px;background: var(--el-fill-color-lighter);
 }
-.o-binary-current {
+.choy-binary-current {
   width: 100%;padding: 10px 12px;
 }
-.o-binary-display-card {
+.choy-binary-display-card {
   padding: 6px 10px;color: inherit;text-decoration: none;
 }
-.o-binary-display-card--interactive {
+.choy-binary-display-card--interactive {
   cursor: pointer;transition:
   border-color 0.2s ease,
   background-color 0.2s ease;
 }
-.o-binary-display-card--interactive:hover {
+.choy-binary-display-card--interactive:hover {
   color: inherit;border-color: var(--el-color-primary-light-5);background: var(--el-color-primary-light-9);
 }
-.o-binary-display-row {
+.choy-binary-display-row {
   display: inline-flex;align-items: center;gap: 8px;min-width: 0;max-width: 140px;
 }
-.o-binary-display-row__icon {
+.choy-binary-display-row__icon {
   display: inline-flex;align-items: center;justify-content: center;width: 30px;height: 30px;border-radius: 8px;flex: 0 0 auto;color: var(--el-color-primary);background: var(--el-color-primary-light-9);border: 1px solid var(--el-color-primary-light-7);
 }
-.o-binary-display-row__text {
+.choy-binary-display-row__text {
   min-width: 0;color: var(--el-text-color-primary);font-size: 14px;line-height: 1.4;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;
 }
-.o-binary-current__icon,
-.o-binary-display-icon {
+.choy-binary-current__icon,
+.choy-binary-display-icon {
   display: inline-flex;align-items: center;justify-content: center;flex: 0 0 auto;color: var(--el-color-primary);background: var(--el-color-primary-light-9);border: 1px solid var(--el-color-primary-light-7);
 }
-.o-binary-current__icon {
+.choy-binary-current__icon {
   width: 44px;height: 44px;border-radius: 10px;font-size: 20px;
 }
-.o-binary-display-icon {
+.choy-binary-display-icon {
   width: 34px;height: 34px;border-radius: 8px;font-size: 18px;
 }
-.o-binary-current__body,
-.o-binary-display-copy {
+.choy-binary-current__body,
+.choy-binary-display-copy {
   min-width: 0;display: flex;flex: 1;flex-direction: column;gap: 4px;
 }
-.o-binary-current__title,
-.o-binary-display-text {
+.choy-binary-current__title,
+.choy-binary-display-text {
   color: var(--el-text-color-primary);font-size: 14px;line-height: 1.4;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;
 }
-.o-binary-current__meta,
-.o-binary-display-meta {
+.choy-binary-current__meta,
+.choy-binary-display-meta {
   color: var(--el-text-color-secondary);font-size: 12px;line-height: 1.4;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;
 }
-.o-binary-current__actions {
+.choy-binary-current__actions {
   display: flex;align-items: center;gap: 12px;flex-wrap: wrap;margin-top: 2px;
 }
-.o-binary-action-upload {
+.choy-binary-action-upload {
   display: inline-flex;
 }
-.o-binary-action-upload :deep(.el-upload) {
+.choy-binary-action-upload :deep(.el-upload) {
   display: inline-flex;
 }
-.o-binary-upload {
+.choy-binary-upload {
   display: block;width: 100%;
 }
-.o-binary-upload :deep(.el-upload) {
+.choy-binary-upload :deep(.el-upload) {
   width: 100%;display: block;
 }
-.o-binary-upload :deep(.el-upload-dragger) {
+.choy-binary-upload :deep(.el-upload-dragger) {
   width: 100%;min-height: 126px;padding: 20px 16px;border-radius: 12px;background: var(--el-fill-color-lighter);border-color: var(--el-border-color);transition:
   border-color 0.2s ease,
   background-color 0.2s ease;
 }
-.o-binary-upload :deep(.el-upload-dragger:hover) {
+.choy-binary-upload :deep(.el-upload-dragger:hover) {
   border-color: var(--el-color-primary);background: var(--el-color-primary-light-9);
 }
-.o-upload-drag-icon {
+.choy-upload-drag-icon {
   display: block;margin: 0 auto 10px;font-size: 28px;color: var(--el-color-primary);
 }
-.o-upload-drag-text {
+.choy-upload-drag-text {
   color: var(--el-text-color-secondary);font-size: 13px;line-height: 1.5;text-align: center;
 }
-.o-binary-upload :deep(.el-upload-list) {
+.choy-binary-upload :deep(.el-upload-list) {
   width: 100%;margin: 6px 0 0;
 }
-.o-upload-action-btn,
-.o-upload-btn {
+.choy-upload-action-btn,
+.choy-upload-btn {
   padding: 0;
 }
-.o-binary-display-empty {
+.choy-binary-display-empty {
   display: inline-flex;align-items: center;min-height: 34px;color: var(--el-text-color-placeholder);
 }
 </style>

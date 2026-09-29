@@ -12,7 +12,7 @@ import { loginAsE2EAdmin } from './utils/login.ts';
 const DATETIME_CELL = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/;
 
 async function firstDatetimeDisplayText(p: Page): Promise<string> {
-  const texts = await p.locator('.o-field-display-text').allTextContents();
+  const texts = await p.locator('.choy-field-display-text').allTextContents();
   return texts.map(t => String(t || '').trim()).find(t => DATETIME_CELL.test(t)) || '';
 }
 
@@ -27,7 +27,7 @@ async function setUserTimezoneViaPreferences(p: Page, iana: string) {
   await userMenu.click();
   await p.getByRole('menuitem', { name: /Settings|Profile|设置|个人资料/i }).first().click();
 
-  const dialog = p.locator('.o-preferences-dialog');
+  const dialog = p.locator('.choy-preferences-dialog');
   await expect(dialog).toBeVisible({ timeout: 15_000 });
 
   await expect
@@ -35,7 +35,7 @@ async function setUserTimezoneViaPreferences(p: Page, iana: string) {
       async () =>
         p.evaluate(async (want: string) => {
           const select = document.querySelector(
-            '.o-preferences-dialog [data-testid="preferences-timezone"]'
+            '.choy-preferences-dialog [data-testid="preferences-timezone"]'
           ) as HTMLSelectElement | null;
           if (!select) return false;
           const values = Array.from(select.options).map(opt => String(opt.value || ''));
@@ -59,9 +59,9 @@ async function setUserTimezoneViaPreferences(p: Page, iana: string) {
   const save = dialog.getByRole('button', { name: /Update preferences|更新偏好设置/i });
   // Prefer reload after save rather than waitForEvent('load').
   await save.click();
-  await p.waitForFunction(() => !document.querySelector('.o-preferences-dialog'), undefined, { timeout: 45_000 }).catch(() => undefined);
+  await p.waitForFunction(() => !document.querySelector('.choy-preferences-dialog'), undefined, { timeout: 45_000 }).catch(() => undefined);
   await expect(p).toHaveURL(/\/web\/auth\/users/, { timeout: 30_000 });
-  await expect(p.locator('.o-preferences-dialog')).toHaveCount(0, { timeout: 15_000 });
+  await expect(p.locator('.choy-preferences-dialog')).toHaveCount(0, { timeout: 15_000 });
 }
 
 test('auth e2e: User.Timezone change updates users list datetime wall-clock', async () => {

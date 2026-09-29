@@ -18,7 +18,7 @@ SPDX-License-Identifier: Apache-2.0
       <ONumberCell :field-value="fieldValue" :options="bufferOptions" :placeholder="placeholder" :nullable="nullable" :min="min" :max="max" v-bind="$attrs" />
     </template>
     <template #display="{ fieldValue }">
-      <span class="o-field-display-text">{{ toDisplayText(fieldValue().value) }}</span>
+      <span class="choy-field-display-text">{{ toDisplayText(fieldValue().value) }}</span>
     </template>
   </FieldBase>
 </template>
@@ -180,7 +180,7 @@ const ONumberCell = defineComponent({
     return () =>
       h('input', {
         ...attrs,
-        class: 'o-input o-number-input',
+        class: 'choy-input choy-number-input',
         value: editingRaw.value ?? '',
         placeholder: p.placeholder,
         inputmode: 'decimal',
@@ -206,16 +206,16 @@ const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internal
 </script>
 
 <style scoped>
-.o-field-display-text {
+.choy-field-display-text {
   line-height: 32px;padding: 0 11px;text-align: right;display: inline-block;max-width: 100%;overflow: hidden;text-overflow: ellipsis;
 }
-.o-number-input {
+.choy-number-input {
   /* Compatible with the newer Element Plus input structure. */
 }
-.o-number-input :deep(.el-input__inner) {
+.choy-number-input :deep(.el-input__inner) {
   text-align: right;
 }
-.o-number-input :deep(.el-input__wrapper input) {
+.choy-number-input :deep(.el-input__wrapper input) {
   text-align: right;
 }
 </style>

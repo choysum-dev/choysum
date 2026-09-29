@@ -6,9 +6,9 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <ViewContainer :showHeader="showHeader">
     <template #header>
-      <div class="o-list__action-bar">
-        <div class="o-list__actions">
-          <div class="o-list__system-actions" v-if="showActions">
+      <div class="choy-list__action-bar">
+        <div class="choy-list__actions">
+          <div class="choy-list__system-actions" v-if="showActions">
             <!-- Keep Save/Discard outside the overridable slot so custom toolbars cannot hide them. -->
             <ChoyButton
               v-if="editable && isEditing"
@@ -55,18 +55,18 @@ SPDX-License-Identifier: Apache-2.0
             </slot>
           </div>
 
-          <div class="o-list__user-actions" v-if="showActions">
+          <div class="choy-list__user-actions" v-if="showActions">
             <slot name="user-actions" :selected-items="selectedItems" />
           </div>
         </div>
 
         <!-- Centered search: render only when searchView is provided -->
-        <div class="o-list__search" v-if="resolvedSearchView">
+        <div class="choy-list__search" v-if="resolvedSearchView">
           <component :is="resolvedSearchView" :store="store" @query-update="onSearch" />
         </div>
 
-        <div class="o-list__header-right">
-          <div class="o-list__default-pagination" v-if="showPaginate">
+        <div class="choy-list__header-right">
+          <div class="choy-list__default-pagination" v-if="showPaginate">
             <ListPagination
               :store="store"
               :total="effectiveTotal"
@@ -80,7 +80,7 @@ SPDX-License-Identifier: Apache-2.0
       </div>
     </template>
 
-    <div class="o-list__table" ref="tableWrapRef" :style="{ height: tablePxHeight }">
+    <div class="choy-list__table" ref="tableWrapRef" :style="{ height: tablePxHeight }">
       <!-- form-root + edit view-mode only under the table so header search cannot touch the row draft -->
       <ListInlineEditScope :form-root="inlineFormRoot" :view-mode="inlineTableViewMode">
         <ChoyTableHost
@@ -100,12 +100,12 @@ SPDX-License-Identifier: Apache-2.0
           <!-- Automatically inject the leading group column in grouped mode -->
           <ChoyTableColumn v-if="isGroupMode" col-key="__group_label" :sortable="false">
             <template #default="{ row }">
-              <div v-if="row?.kind === 'group'" class="o-group-cell" :style="{ paddingLeft: `${row.depth * 16}px` }">
-                <span class="o-group-cell__caret" :class="{ expanded: isExpanded(row.key) }" @click.stop="onToggleGroup(row.key)" />
-                <span class="o-group-cell__label">{{ row.label }}</span>
-                <span class="o-group-cell__count">({{ row.count ?? 0 }})</span>
+              <div v-if="row?.kind === 'group'" class="choy-group-cell" :style="{ paddingLeft: `${row.depth * 16}px` }">
+                <span class="choy-group-cell__caret" :class="{ expanded: isExpanded(row.key) }" @click.stop="onToggleGroup(row.key)" />
+                <span class="choy-group-cell__label">{{ row.label }}</span>
+                <span class="choy-group-cell__count">({{ row.count ?? 0 }})</span>
               </div>
-              <div v-else-if="row?.kind === 'more'" class="o-more-cell">{{ _t('Click to load more (%s remaining)', Math.max(0, Number(row.remain ?? 0))) }}</div>
+              <div v-else-if="row?.kind === 'more'" class="choy-more-cell">{{ _t('Click to load more (%s remaining)', Math.max(0, Number(row.remain ?? 0))) }}</div>
               <span v-else></span>
             </template>
           </ChoyTableColumn>
@@ -133,7 +133,7 @@ import type { WebModelStore } from '@/web/web/stores/modelStore';
 import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
 import ListPagination from './ListPagination.vue';
 import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
-import { useVTableSelection } from '@/web/web/composables/useVTable';
+import { useTableSelection } from '@/web/web/composables/useTable';
 // Search view type: must accept store and emit query-update
 import type { Component } from 'vue';
 import type { SearchViewComponent } from '@/web/web/query/types';
@@ -433,7 +433,7 @@ async function handleInlineDiscard() {
 // Section 8: Selection management
 // =============================
 // Prefer the new wrapped key first, then __rowKey / Id.
-const selection = useVTableSelection(
+const selection = useTableSelection(
   (row: any) =>
     row?.key ?? row?.__rowKey ?? row?.Id ?? (typeof row === 'object' ? ((row as any)?.payload?.Id) : undefined),
   props.selectionMode
@@ -885,59 +885,59 @@ watch(
 </script>
 
 <style scoped>
-.o-list {
+.choy-list {
   display: flex;flex-direction: column;width: 100%;height: 100%;min-width: 0;
 }
-.o-list :deep(.o-field-base__cell-item) {
+.choy-list :deep(.choy-field-base__cell-item) {
   margin-bottom: 0 !important;
 }
-.o-list__table {
+.choy-list__table {
   flex: 1 1 auto;min-height: 0;min-width: 0;
 }
-.o-list__table :deep(.el-form-item--default) {
+.choy-list__table :deep(.el-form-item--default) {
   margin-bottom: 0 !important;
 }
 /* Header bar styles, kept as a placeholder to avoid empty rules */
-/* .o-list__header { padding-bottom: 0; } */
-.o-list__action-bar {
+/* .choy-list__header { padding-bottom: 0; } */
+.choy-list__action-bar {
   display: grid;grid-template-columns: auto 1fr auto;align-items: center;gap: 12px;padding-bottom: 4px;border-bottom: 1px solid var(--el-border-color-light);min-height: 40px;
 }
-.o-list__search {
+.choy-list__search {
   display: flex;justify-content: center;align-items: center;min-width: 240px;
 }
-.o-list__actions {
+.choy-list__actions {
   display: flex;align-items: center;gap: 16px;
 }
-.o-list__header-right {
+.choy-list__header-right {
   display: flex;align-items: center;justify-content: flex-end;gap: 8px;
 }
 @media (max-width: 768px) {
-.o-list__action-bar {
+.choy-list__action-bar {
   grid-template-columns: 1fr;grid-auto-rows: auto;
 }
-.o-list__search {
+.choy-list__search {
   order: 2;justify-content: center;
 }
 }
 .ovtable__empty {
   width: 100%;padding: 24px 0;text-align: center;color: var(--el-text-color-secondary);
 }
-.o-group-cell {
+.choy-group-cell {
   display: inline-flex;align-items: center;gap: 6px;min-width: 0;
 }
-.o-group-cell__caret {
+.choy-group-cell__caret {
   display: inline-block;width: 0;height: 0;border-top: 4px solid transparent;border-bottom: 4px solid transparent;border-left: 6px solid var(--el-text-color-regular);transition: transform 0.12s ease;cursor: pointer;
 }
-.o-group-cell__caret.expanded {
+.choy-group-cell__caret.expanded {
   transform: rotate(90deg);
 }
-.o-group-cell__label {
+.choy-group-cell__label {
   font-weight: 500;color: var(--el-text-color-primary);max-width: 100%;overflow: hidden;text-overflow: ellipsis;white-space: nowrap;
 }
-.o-group-cell__count {
+.choy-group-cell__count {
   color: var(--el-text-color-secondary);
 }
-.o-more-cell {
+.choy-more-cell {
   width: 100%;text-align: center;color: var(--el-text-color-primary);cursor: pointer;padding: 6px 0;
 }
 </style>

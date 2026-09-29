@@ -93,7 +93,7 @@ function installElInputStub() {
     setup(props: any, { emit }: any) {
       return () =>
         h('textarea', {
-          class: 'o-json-input',
+          class: 'choy-json-input',
           value: props.modelValue,
           placeholder: props.placeholder,
           onInput: (e: Event) => emit('update:modelValue', (e.target as HTMLTextAreaElement).value),
@@ -123,7 +123,7 @@ describe('JsonobjectField', () => {
     expect(pretty).toBeTruthy();
     expect(pretty?.textContent || '').toContain('"a":1');
     expect(pretty?.getAttribute('data-deep')).toBe('3');
-    expect(m.q('.o-json-display')).toBeFalsy();
+    expect(m.q('.choy-json-display')).toBeFalsy();
     m.unmount();
   });
 
@@ -138,7 +138,7 @@ describe('JsonobjectField', () => {
       });
       await nextTick();
       expect(m.q('.vue-json-pretty-stub')).toBeFalsy();
-      expect(m.q('.o-json-display')?.textContent || '').toContain('hello');
+      expect(m.q('.choy-json-display')?.textContent || '').toContain('hello');
       m.unmount();
     }
   });
@@ -154,7 +154,7 @@ describe('JsonobjectField', () => {
     });
     await nextTick();
     expect(listMount.q('.vue-json-pretty-stub')).toBeFalsy();
-    expect(listMount.q('.o-json-display')?.textContent || '').toContain('"k"');
+    expect(listMount.q('.choy-json-display')?.textContent || '').toContain('"k"');
     listMount.unmount();
 
     const formBinding = makeBinding({ Payload: { k: 1 } }, { isForm: true });
@@ -185,7 +185,7 @@ describe('JsonobjectField', () => {
     });
     await nextTick();
     expect(m.q('.vue-json-pretty-stub')).toBeFalsy();
-    expect(m.q('.o-json-display--empty')).toBeTruthy();
+    expect(m.q('.choy-json-display--empty')).toBeTruthy();
     m.unmount();
   });
 
@@ -202,7 +202,7 @@ describe('JsonobjectField', () => {
     });
     await nextTick();
     await flushPromises();
-    expect(m.q('.o-json-input')).toBeTruthy();
+    expect(m.q('.choy-json-input')).toBeTruthy();
     m.unmount();
   });
 });

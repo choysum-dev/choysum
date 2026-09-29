@@ -33,7 +33,7 @@ SPDX-License-Identifier: Apache-2.0
       />
     </template>
     <template #display="{ fieldValue }">
-      <span class="o-field-display-text">{{ toDisplayText(fieldValue().value) }}</span>
+      <span class="choy-field-display-text">{{ toDisplayText(fieldValue().value) }}</span>
     </template>
   </FieldBase>
 </template>
@@ -276,7 +276,7 @@ const OBigintCell = defineComponent({
     return () =>
       h('input', {
         ...attrs,
-        class: 'o-input o-bigint-input',
+        class: 'choy-input choy-bigint-input',
         modelValue: editingRaw.value,
         placeholder: props.placeholder,
         inputmode: 'numeric',
@@ -320,10 +320,10 @@ const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internal
 </script>
 
 <style scoped>
-.o-bigint-input {
+.choy-bigint-input {
   width: 100%;
 }
-.o-field-display-text {
+.choy-field-display-text {
   line-height: var(--el-component-size-base, 32px);color: var(--el-text-color-primary);white-space: nowrap;overflow: hidden;text-overflow: ellipsis;padding: 0 11px;
 }
 </style>

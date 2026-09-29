@@ -61,9 +61,9 @@ describe('StatInfo', () => {
       props: { value: 5, label: 'Users' },
       ...withRouter({ on: { onClick } }),
     });
-    expect(q('.o-stat-info__value')?.textContent).toBe('5');
-    expect(q('.o-stat-info__label')?.textContent).toBe('Users');
-    expect(q('.o-stat-info__icon')).toBeFalsy();
+    expect(q('.choy-stat-info__value')?.textContent).toBe('5');
+    expect(q('.choy-stat-info__label')?.textContent).toBe('Users');
+    expect(q('.choy-stat-info__icon')).toBeFalsy();
     setupState().onClick(new Event('click'));
     expect(onClick.calls.length).toBe(1);
     expect(push.calls.length).toBe(0);
@@ -89,7 +89,7 @@ describe('StatInfo', () => {
         },
       },
     });
-    expect(q('.o-stat-info__icon')).toBeTruthy();
+    expect(q('.choy-stat-info__icon')).toBeTruthy();
     expect(q('.icon-stub')).toBeTruthy();
     unmount();
   });
@@ -111,7 +111,7 @@ describe('StatInfo', () => {
     const { plugins } = buildPageMountGlobal({ router: { push } });
     const { unmount, q } = mountApp(Host, { plugins });
     await flushPromises();
-    expect(q('.o-stat-info__value')?.textContent).toBe('2');
+    expect(q('.choy-stat-info__value')?.textContent).toBe('2');
     unmount();
   });
 
@@ -120,14 +120,14 @@ describe('StatInfo', () => {
       props: { store: { storeId: 's' }, label: 'Users', value: 1 },
       ...withRouter(),
     });
-    expect(a.q('.o-stat-info__value')?.textContent).toBe('1');
+    expect(a.q('.choy-stat-info__value')?.textContent).toBe('1');
     a.unmount();
 
     const b = mountApp(ChoyStatInfo as any, {
       props: { prop: 'Users', label: 'Users', value: 1 },
       ...withRouter(),
     });
-    expect(b.q('.o-stat-info__value')?.textContent).toBe('1');
+    expect(b.q('.choy-stat-info__value')?.textContent).toBe('1');
     b.unmount();
   });
 
@@ -146,7 +146,7 @@ describe('StatInfo', () => {
     const { plugins } = buildPageMountGlobal({ router: { push } });
     const { unmount, q } = mountApp(Host, { plugins });
     await flushPromises();
-    expect(q('.o-stat-info__value')?.textContent).toBe('—');
+    expect(q('.choy-stat-info__value')?.textContent).toBe('—');
     unmount();
   });
 
@@ -167,7 +167,7 @@ describe('StatInfo', () => {
       props: { value: 1, label: 'X', visible: false },
       ...withRouter(),
     });
-    expect(hidden.q('.o-stat-info')).toBeFalsy();
+    expect(hidden.q('.choy-stat-info')).toBeFalsy();
     hidden.unmount();
 
     const onClick = fnRecorder();
@@ -196,7 +196,7 @@ describe('ButtonBox', () => {
     const { plugins } = buildPageMountGlobal();
     const { unmount, q, qa } = mountApp(Host, { plugins });
     expect(qa('.choy-button-box').length).toBe(1);
-    expect(q('.o-stat-info__value')?.textContent).toBe('1');
+    expect(q('.choy-stat-info__value')?.textContent).toBe('1');
     unmount();
   });
 
@@ -219,7 +219,7 @@ describe('ButtonBox', () => {
     await nextTick();
     await flushPromises();
     expect(q('.choy-button-box')).toBeTruthy();
-    expect(q('.o-stat-info__value')?.textContent).toBe('1');
+    expect(q('.choy-stat-info__value')?.textContent).toBe('1');
     unmount();
   });
 });

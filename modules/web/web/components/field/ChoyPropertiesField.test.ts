@@ -126,11 +126,11 @@ describe('PropertiesField', () => {
     const mounted = await mountField({ binding, renderMode: 'form' });
     try {
       expect(ResolveProperties.calls.length).toBeGreaterThan(0);
-      expect(mounted.q('[data-testid="o-properties-form"]')).toBeTruthy();
+      expect(mounted.q('[data-testid="choy-properties-form"]')).toBeTruthy();
       expect(mounted.q('[data-name="code"]')).toBeTruthy();
       expect(mounted.q('[data-name="html_x"]')).toBeFalsy();
 
-      setControlValue(mounted.el, '#o-properties-Properties-code', 'B9');
+      setControlValue(mounted.el, '#choy-properties-Properties-code', 'B9');
       await nextTick();
       expect(binding.__value.value).toEqual({
         active: true,
@@ -150,7 +150,7 @@ describe('PropertiesField', () => {
     const noRpc = makeBinding({ ResolveProperties: false, map: {} });
     const noRpcWrap = await mountField({ binding: noRpc, renderMode: 'form' });
     try {
-      expect(noRpcWrap.q('[data-testid="o-properties-empty"]')).toBeTruthy();
+      expect(noRpcWrap.q('[data-testid="choy-properties-empty"]')).toBeTruthy();
     } finally {
       noRpcWrap.unmount();
     }
@@ -161,7 +161,7 @@ describe('PropertiesField', () => {
     });
     const noPropWrap = await mountField({ binding: noProp, renderMode: 'form' });
     try {
-      expect(noPropWrap.q('[data-testid="o-properties-empty"]')).toBeTruthy();
+      expect(noPropWrap.q('[data-testid="choy-properties-empty"]')).toBeTruthy();
     } finally {
       noPropWrap.unmount();
     }
@@ -173,7 +173,7 @@ describe('PropertiesField', () => {
     });
     const failWrap = await mountField({ binding: failing, renderMode: 'form' });
     try {
-      expect(failWrap.q('[data-testid="o-properties-empty"]')).toBeTruthy();
+      expect(failWrap.q('[data-testid="choy-properties-empty"]')).toBeTruthy();
     } finally {
       failWrap.unmount();
     }
@@ -183,7 +183,7 @@ describe('PropertiesField', () => {
     });
     const nonArrayWrap = await mountField({ binding: nonArray, renderMode: 'form' });
     try {
-      expect(nonArrayWrap.q('[data-testid="o-properties-empty"]')).toBeTruthy();
+      expect(nonArrayWrap.q('[data-testid="choy-properties-empty"]')).toBeTruthy();
     } finally {
       nonArrayWrap.unmount();
     }
@@ -191,7 +191,7 @@ describe('PropertiesField', () => {
     const noStore = makeBinding({ store: undefined, map: {} });
     const noStoreWrap = await mountField({ binding: noStore, renderMode: 'form' });
     try {
-      expect(noStoreWrap.q('[data-testid="o-properties-empty"]')).toBeTruthy();
+      expect(noStoreWrap.q('[data-testid="choy-properties-empty"]')).toBeTruthy();
     } finally {
       noStoreWrap.unmount();
     }
@@ -207,7 +207,7 @@ describe('PropertiesField', () => {
     try {
       expect(mounted.q('[data-name="code"]')?.getAttribute('data-readonly')).toBe('1');
       expect(mounted.q('[data-name="qty"]')?.getAttribute('data-readonly')).toBe('0');
-      const code = mounted.q('#o-properties-Properties-code') as HTMLInputElement | null;
+      const code = mounted.q('#choy-properties-Properties-code') as HTMLInputElement | null;
       expect(code).toBeTruthy();
       expect(code!.getAttribute('disabled') != null).toBe(true);
     } finally {

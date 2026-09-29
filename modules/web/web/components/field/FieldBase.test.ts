@@ -179,7 +179,7 @@ describe('FieldBase label and help', () => {
       binding: makeBinding({ string: 'Access Token ID' }),
       renderMode: 'form',
     });
-    expect(m.q('.o-field-base__label-text')?.textContent).toContain('Access Token ID');
+    expect(m.q('.choy-field-base__label-text')?.textContent).toContain('Access Token ID');
     m.unmount();
   });
 
@@ -189,7 +189,7 @@ describe('FieldBase label and help', () => {
       label: 'Custom Name',
       renderMode: 'form',
     });
-    expect(m.q('.o-field-base__label-text')?.textContent).toContain('Custom Name');
+    expect(m.q('.choy-field-base__label-text')?.textContent).toContain('Custom Name');
     m.unmount();
   });
 
@@ -203,7 +203,7 @@ describe('FieldBase label and help', () => {
       getFieldsGetTranslatedString: (name: string) => (name === 'AccessTokenId' ? '访问令牌 ID' : undefined),
     } as any;
     const m = mountBase({ binding, renderMode: 'form' });
-    expect(m.q('.o-field-base__label-text')?.textContent).toContain('访问令牌 ID');
+    expect(m.q('.choy-field-base__label-text')?.textContent).toContain('访问令牌 ID');
     m.unmount();
   });
 
@@ -212,7 +212,7 @@ describe('FieldBase label and help', () => {
       binding: makeBinding({ string: 'Code', help: 'Short unique code used in references' }),
       renderMode: 'form',
     });
-    const help = m.q('.o-field-base__help-btn') as HTMLElement | null;
+    const help = m.q('.choy-field-base__help-btn') as HTMLElement | null;
     expect(help).toBeTruthy();
     expect(help!.getAttribute('title')).toBe('Short unique code used in references');
     m.unmount();
@@ -223,7 +223,7 @@ describe('FieldBase label and help', () => {
       binding: makeBinding({ string: 'Code', help: '   ' }),
       renderMode: 'form',
     });
-    expect(m.q('.o-field-base__help-btn')).toBeFalsy();
+    expect(m.q('.choy-field-base__help-btn')).toBeFalsy();
     m.unmount();
   });
 
@@ -232,8 +232,8 @@ describe('FieldBase label and help', () => {
       binding: makeBinding({ string: 'Code', help: 'Inline help text' }),
       renderMode: 'inline',
     });
-    expect(m.q('.o-field-base__inline-wrap')).toBeTruthy();
-    expect(m.q('.o-field-base__help-btn')?.getAttribute('title')).toBe('Inline help text');
+    expect(m.q('.choy-field-base__inline-wrap')).toBeTruthy();
+    expect(m.q('.choy-field-base__help-btn')?.getAttribute('title')).toBe('Inline help text');
     m.unmount();
   });
 });
@@ -275,10 +275,10 @@ describe('FieldBase translate and company values actions', () => {
   test('shows translate icon and applies saved value to the field binding', async () => {
     const binding = makeBinding({ string: 'Name', translate: true, type: 'char' });
     const m = mountBase({ binding, renderMode: 'form' });
-    expect(m.q('.o-field-base__translate-btn')).toBeTruthy();
+    expect(m.q('.choy-field-base__translate-btn')).toBeTruthy();
     expect(m.q('.translations-dialog')?.getAttribute('data-open')).toBe('false');
 
-    m.click('.o-field-base__translate-btn');
+    m.click('.choy-field-base__translate-btn');
     await nextTick();
     expect(m.q('.translations-dialog')?.getAttribute('data-open')).toBe('true');
 
@@ -293,7 +293,7 @@ describe('FieldBase translate and company values actions', () => {
       binding: makeBinding({ string: 'Name', translate: true }, { store: undefined }),
       renderMode: 'form',
     });
-    expect(m.q('.o-field-base__translate-btn')).toBeFalsy();
+    expect(m.q('.choy-field-base__translate-btn')).toBeFalsy();
     m.unmount();
   });
 
@@ -302,16 +302,16 @@ describe('FieldBase translate and company values actions', () => {
       binding: makeBinding({ string: 'Name', translate: true }, { recordId: null }),
       renderMode: 'form',
     });
-    expect(m.q('.o-field-base__translate-btn')).toBeFalsy();
+    expect(m.q('.choy-field-base__translate-btn')).toBeFalsy();
     m.unmount();
   });
 
   test('shows company-values icon and applies saved value', async () => {
     const binding = makeBinding({ string: 'Name', companyDependent: true, type: 'char' });
     const m = mountBase({ binding, renderMode: 'form' });
-    expect(m.q('.o-field-base__company-values-btn')).toBeTruthy();
+    expect(m.q('.choy-field-base__company-values-btn')).toBeTruthy();
 
-    m.click('.o-field-base__company-values-btn');
+    m.click('.choy-field-base__company-values-btn');
     await nextTick();
     expect(m.q('.company-values-dialog')?.getAttribute('data-open')).toBe('true');
 
@@ -326,7 +326,7 @@ describe('FieldBase translate and company values actions', () => {
       binding: makeBinding({ string: 'Name' }),
       renderMode: 'form',
     });
-    expect(m.q('.o-field-base__company-values-btn')).toBeFalsy();
+    expect(m.q('.choy-field-base__company-values-btn')).toBeFalsy();
     m.unmount();
   });
 });

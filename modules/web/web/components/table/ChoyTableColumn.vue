@@ -9,8 +9,8 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { h, onMounted, onBeforeUnmount, useSlots, watch, inject } from 'vue';
-import { useVTableUseColumnRegistry, useVTableUseBuildContext, setVColumnMeta, type Column } from '@/web/web/composables/useVTable';
-import type { VColumnMeta } from '@/web/web/composables/useVTable';
+import { useTableUseColumnRegistry, useTableUseBuildContext, setTableColumnMeta, type Column } from '@/web/web/composables/useTable';
+import type { TableColumnMeta } from '@/web/web/composables/useTable';
 import { LIST_HANDLE_API_KEY, type ListHandleReorderApi } from '@/web/web/composables/useListHandleReorder';
 
 defineOptions({ name: 'ChoyTableColumn' });
@@ -45,8 +45,8 @@ const props = withDefaults(
 );
 
 const slots = useSlots();
-const reg = useVTableUseColumnRegistry();
-const ctx = useVTableUseBuildContext();
+const reg = useTableUseColumnRegistry();
+const ctx = useTableUseBuildContext();
 const handleApi = inject<ListHandleReorderApi | null>(LIST_HANDLE_API_KEY, null);
 
 let currentCol: Column | null = null;
@@ -242,7 +242,7 @@ function buildColumn(): Column {
         return h(
           'span',
           {
-            class: ['o-list-handle', disabled ? 'o-list-handle--disabled' : ''],
+            class: ['choy-list-handle', disabled ? 'choy-list-handle--disabled' : ''],
             draggable: disabled ? 'false' : 'true',
             title: disabled ? '' : 'Drag to reorder',
             onDragstart: (e: DragEvent) => {
@@ -263,7 +263,7 @@ function buildColumn(): Column {
             },
             onClick: (e: Event) => e.stopPropagation(),
           },
-          [h('span', { class: 'o-list-handle__grip', 'aria-hidden': 'true' }, '⠿')]
+          [h('span', { class: 'choy-list-handle__grip', 'aria-hidden': 'true' }, '⠿')]
         );
       },
     };
@@ -308,23 +308,23 @@ function buildColumn(): Column {
         }
 
         const text = v == null ? '' : String(v);
-        return h('span', { class: 'o-vcell__text', title: text }, text);
+        return h('span', { class: 'choy-vcell__text', title: text }, text);
       },
     };
   }
 
   // Persist percentage, flex, and auto width semantics for the table host.
   if (widthSpec && widthSpec.type !== 'px') {
-    const meta: VColumnMeta =
+    const meta: TableColumnMeta =
       widthSpec.type === 'percent'
         ? { widthSpec: { type: 'percent' as const, ratio: widthSpec.ratio } }
         : widthSpec.type === 'flex'
           ? { widthSpec: { type: 'flex' as const, weight: widthSpec.weight } }
           : { widthSpec: { type: 'auto' as const } };
-    setVColumnMeta(col, meta);
+    setTableColumnMeta(col, meta);
   } else if (typeof (col as any).width !== 'number') {
     // Treat unspecified non-pixel widths as auto as well.
-    setVColumnMeta(col, { widthSpec: { type: 'auto' as const } });
+    setTableColumnMeta(col, { widthSpec: { type: 'auto' as const } });
   }
 
   return col;
@@ -332,13 +332,13 @@ function buildColumn(): Column {
 </script>
 
 <style scoped>
-:deep(.o-list-handle) {
+:deep(.choy-list-handle) {
   display: inline-flex;align-items: center;justify-content: center;color: var(--el-text-color-secondary);user-select: none;cursor: grab;
 }
-:deep(.o-list-handle__grip) {
+:deep(.choy-list-handle__grip) {
   font-size: 14px;line-height: 1;letter-spacing: -1px;
 }
-:deep(.o-list-handle--disabled) {
+:deep(.choy-list-handle--disabled) {
   opacity: 0.35;pointer-events: none;cursor: default;
 }
 </style>

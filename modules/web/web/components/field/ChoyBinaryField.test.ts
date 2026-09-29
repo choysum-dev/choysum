@@ -111,7 +111,7 @@ describe('BinaryField normalize helpers', () => {
     const m = mountField(binding);
     await flushPromises();
     expect(m.text()).toContain('report.pdf');
-    expect(m.q('.o-binary-current')).toBeTruthy();
+    expect(m.q('.choy-binary-current')).toBeTruthy();
     m.unmount();
   });
 
@@ -120,7 +120,7 @@ describe('BinaryField normalize helpers', () => {
       value: { attachmentObjectId: '  obj-only  ', kind: 'set' },
     });
     const objectMount = mountField(objectOnly);
-    expect(objectMount.q('.o-binary-current')).toBeTruthy();
+    expect(objectMount.q('.choy-binary-current')).toBeTruthy();
     objectMount.unmount();
     restoreSfc(FieldBase as any);
 
@@ -128,7 +128,7 @@ describe('BinaryField normalize helpers', () => {
       value: { objectId: '  alias-obj  ', kind: 'set' },
     });
     const aliasMount = mountField(objectIdAlias);
-    expect(aliasMount.q('.o-binary-current')).toBeTruthy();
+    expect(aliasMount.q('.choy-binary-current')).toBeTruthy();
     aliasMount.unmount();
     restoreSfc(FieldBase as any);
 
@@ -167,19 +167,19 @@ describe('BinaryField normalize helpers', () => {
   test('treats string values and clear/noop kinds via hasAttachment', async () => {
     const stringBinding = makeBinding({ value: '  plain-name.bin  ' });
     const stringMount = mountField(stringBinding);
-    expect(stringMount.q('.o-binary-current')).toBeTruthy();
+    expect(stringMount.q('.choy-binary-current')).toBeTruthy();
     stringMount.unmount();
     restoreSfc(FieldBase as any);
 
     const clearBinding = makeBinding({ value: { kind: 'clear' } });
     const clearMount = mountField(clearBinding);
-    expect(clearMount.q('.o-binary-current')).toBeFalsy();
+    expect(clearMount.q('.choy-binary-current')).toBeFalsy();
     clearMount.unmount();
     restoreSfc(FieldBase as any);
 
     const noopBinding = makeBinding({ value: { kind: 'noop' } });
     const noopMount = mountField(noopBinding);
-    expect(noopMount.q('.o-binary-current')).toBeFalsy();
+    expect(noopMount.q('.choy-binary-current')).toBeFalsy();
     noopMount.unmount();
   });
 

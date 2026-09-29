@@ -102,14 +102,14 @@ describe('DecimalField mount wiring', () => {
     const withMeta = makeBinding({ Amount: new Decimal('0.01') }, { type: 'decimal', scale: 4 });
     const metaMount = mountField(withMeta, { readonly: true });
     await flushPromises();
-    expect(metaMount.q('.o-field-display-text')?.textContent).toBe('0.0100');
+    expect(metaMount.q('.choy-field-display-text')?.textContent).toBe('0.0100');
     metaMount.unmount();
     restoreSfc(FieldBase as any);
 
     const withProps = makeBinding({ Amount: new Decimal('1.2') });
     const propsMount = mountField(withProps, { readonly: true, scale: 2 });
     await flushPromises();
-    expect(propsMount.q('.o-field-display-text')?.textContent).toBe('1.20');
+    expect(propsMount.q('.choy-field-display-text')?.textContent).toBe('1.20');
     propsMount.unmount();
   });
 
@@ -121,7 +121,7 @@ describe('DecimalField mount wiring', () => {
     const m = mountField(binding, { readonly: true });
     await flushPromises();
     expect(binding.__registered).toContain('AmountScale');
-    expect(m.q('.o-field-display-text')?.textContent).toBe('1.23');
+    expect(m.q('.choy-field-display-text')?.textContent).toBe('1.23');
 
     binding.__value.value = new Decimal('9.999');
     binding.__recordRef.value = {
@@ -130,7 +130,7 @@ describe('DecimalField mount wiring', () => {
     };
     await nextTick();
     await flushPromises();
-    expect(m.q('.o-field-display-text')?.textContent).toBe('10.0');
+    expect(m.q('.choy-field-display-text')?.textContent).toBe('10.0');
     m.unmount();
   });
 
@@ -138,7 +138,7 @@ describe('DecimalField mount wiring', () => {
     const binding = makeBinding({ Amount: new Decimal('1') });
     const m = mountField(binding);
     await flushPromises();
-    const input = m.q('input.o-decimal-input') as HTMLInputElement;
+    const input = m.q('input.choy-decimal-input') as HTMLInputElement;
     setInput(input, '1.234567890123456789');
     await flushPromises();
     expect(new Decimal(binding.__value.value).toString()).toBe('1.234567890123456789');
@@ -153,7 +153,7 @@ describe('DecimalField mount wiring', () => {
     const binding = makeBinding({ Amount: new Decimal('1') });
     const m = mountField(binding, { scale: 2 });
     await flushPromises();
-    const input = m.q('input.o-decimal-input') as HTMLInputElement;
+    const input = m.q('input.choy-decimal-input') as HTMLInputElement;
     setInput(input, '1.239');
     await flushPromises();
     expect(new Decimal(binding.__value.value).toString()).toBe('1');
@@ -195,7 +195,7 @@ describe('DecimalField mount wiring', () => {
     });
     const m = mountField(binding, { agg: 'sum', readonly: true });
     await flushPromises();
-    expect(m.q('.o-field-display-text')?.textContent || '').toContain('9.5');
+    expect(m.q('.choy-field-display-text')?.textContent || '').toContain('9.5');
 
     const toView = lastBaseProps.current?.toView as (v: unknown) => unknown;
     const fromView = lastBaseProps.current?.fromView as (v: unknown) => unknown;
@@ -225,7 +225,7 @@ describe('DecimalField mount wiring', () => {
     });
     const m = mountApp(Host);
     await flushPromises();
-    expect(m.q('.o-field-display-text')?.textContent).toBe('1');
+    expect(m.q('.choy-field-display-text')?.textContent).toBe('1');
     m.unmount();
   });
 
@@ -233,7 +233,7 @@ describe('DecimalField mount wiring', () => {
     const binding = makeBinding({ Amount: new Decimal('1') });
     const m = mountField(binding, { scale: 99 });
     await flushPromises();
-    const input = m.q('input.o-decimal-input') as HTMLInputElement;
+    const input = m.q('input.choy-decimal-input') as HTMLInputElement;
     setInput(input, '1.5');
     await flushPromises();
     expect(new Decimal(binding.__value.value).toString()).toBe('1.5');

@@ -40,10 +40,10 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display="{ fieldValue, inputName, inputId }">
-      <div class="o-bool-editor">
+      <div class="choy-bool-editor">
         <input type="checkbox"
           v-if="widget === 'switch'"
-          class="o-bool-input"
+          class="choy-bool-input"
           :name="inputName"
           :id="inputId"
           v-bind="switchProps"
@@ -56,7 +56,7 @@ SPDX-License-Identifier: Apache-2.0
         />
         <input type="checkbox"
           v-else
-          class="o-bool-input"
+          class="choy-bool-input"
           :name="inputName"
           :id="inputId"
           v-bind="checkboxProps"
@@ -234,14 +234,14 @@ const OBooleanCell = defineComponent({
     const setVal = (v: any) => buffer.setEditing(v === true);
     const clearable = p.nullable && p.clearable && !p.nullAsFalse;
     return () =>
-      h('div', { class: 'o-bool-editor' }, [
+      h('div', { class: 'choy-bool-editor' }, [
         p.widget === 'checkbox'
           ? h(
               'input',
               {
                 ...(p.checkboxProps as any),
                 ...attrs,
-                class: 'o-bool-input',
+                class: 'choy-bool-input',
                 name: p.inputName,
                 id: p.inputId,
                 modelValue: buffer.editingValue.value === true,
@@ -253,7 +253,7 @@ const OBooleanCell = defineComponent({
           : h('input', {
               ...(p.switchProps as any),
               ...attrs,
-              class: 'o-bool-input',
+              class: 'choy-bool-input',
               name: p.inputName,
               id: p.inputId,
               modelValue: buffer.editingValue.value === true,
@@ -268,7 +268,7 @@ const OBooleanCell = defineComponent({
               'button',
               {
                 link: true,
-                class: 'o-clear-btn',
+                class: 'choy-clear-btn',
                 onClick: () => {
                   if (buffer.editingValue.value !== null) {
                     buffer.setEditing(null);
@@ -285,16 +285,16 @@ const OBooleanCell = defineComponent({
 </script>
 
 <style scoped>
-.o-bool-editor {
+.choy-bool-editor {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 0 11px;
 }
-.o-bool-input {
+.choy-bool-input {
   vertical-align: middle;
 }
-.o-clear-btn {
+.choy-clear-btn {
   padding: 0;
 }
 </style>

@@ -121,7 +121,7 @@ async function waitForModuleList(page: Page) {
  * Clears any active module search tags before a new lookup is attempted.
  */
 async function clearSearchFilters(page: Page) {
-  const closeBtns = page.locator('.o-search__tag .el-tag__close');
+  const closeBtns = page.locator('.choy-search__tag .choy-search__tag-close');
   const maxClicks = 5;
   for (let i = 0; i < maxClicks; i += 1) {
     if ((await closeBtns.count()) === 0) break;
@@ -134,7 +134,7 @@ async function clearSearchFilters(page: Page) {
  * Applies a module-name search so the board can focus on a specific card.
  */
 async function searchModuleCard(page: Page, moduleName: string) {
-  const searchInput = page.locator('[data-anchor="choy.kanban-view"] .o-search__input');
+  const searchInput = page.locator('[data-anchor="choy.kanban-view"] .choy-search__input');
   if (!(await searchInput.count())) {
     return;
   }
@@ -951,7 +951,7 @@ test('meta module management: kanban lazy sync does not block page', async () =>
   // onMounted hook triggers a stale-aware RequestSync for registry then local.
   // The test asserts the page remains interactive: the search input is usable,
   // and module cards are visible.
-  const searchInput = page.locator('[data-anchor="choy.kanban-view"] .o-search__input');
+  const searchInput = page.locator('[data-anchor="choy.kanban-view"] .choy-search__input');
   await expect(searchInput).toBeVisible({ timeout: 15000 });
 
   const cards = page.locator('.module-card');
@@ -1030,7 +1030,7 @@ test('meta module management: kanban usable when registry sync fails', async () 
     }
 
     // The board remains interactive despite registry sync failures.
-    const searchInput = page.locator('[data-anchor="choy.kanban-view"] .o-search__input');
+    const searchInput = page.locator('[data-anchor="choy.kanban-view"] .choy-search__input');
     if (await searchInput.isVisible().catch(() => false)) {
       await searchInput.fill('e2e_fixture');
       await searchInput.press('Enter');

@@ -5,19 +5,19 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <Dialog v-model:open="visible">
-    <DialogContent class="o-field-translations-dialog max-w-xl" @open-auto-focus.prevent>
+    <DialogContent class="choy-field-translations-dialog max-w-xl" @open-auto-focus.prevent>
       <DialogTitle>{{ dialogTitle }}</DialogTitle>
-      <div class="o-field-translations-dialog__body" :aria-busy="loading || undefined">
-        <form class="o-field-translations-dialog__form" @submit.prevent>
-          <div v-for="row in rows" :key="row.code" class="o-field-translations-dialog__row">
-            <label class="o-field-translations-dialog__label">{{ row.label }}</label>
-            <div class="o-field-translations-dialog__control">
+      <div class="choy-field-translations-dialog__body" :aria-busy="loading || undefined">
+        <form class="choy-field-translations-dialog__form" @submit.prevent>
+          <div v-for="row in rows" :key="row.code" class="choy-field-translations-dialog__row">
+            <label class="choy-field-translations-dialog__label">{{ row.label }}</label>
+            <div class="choy-field-translations-dialog__control">
               <input
                 v-model="row.value"
-                class="o-field-translations-dialog__input"
+                class="choy-field-translations-dialog__input"
                 :maxlength="maxLength ?? undefined"
               />
-              <div v-if="row.code === 'en_US'" class="o-field-translations-dialog__hint">
+              <div v-if="row.code === 'en_US'" class="choy-field-translations-dialog__hint">
                 {{ _t('Base language (cannot be deleted)') }}
               </div>
             </div>
@@ -228,30 +228,30 @@ async function handleSave() {
 </script>
 
 <style scoped>
-.o-field-translations-dialog__body {
+.choy-field-translations-dialog__body {
   min-height: 120px;
 }
-.o-field-translations-dialog__form {
+.choy-field-translations-dialog__form {
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
-.o-field-translations-dialog__row {
+.choy-field-translations-dialog__row {
   display: grid;
   grid-template-columns: 168px 1fr;
   gap: 12px;
   align-items: start;
 }
-.o-field-translations-dialog__label {
+.choy-field-translations-dialog__label {
   line-height: 32px;
   color: var(--el-text-color-regular);
 }
-.o-field-translations-dialog__input {
+.choy-field-translations-dialog__input {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
 }
-.o-field-translations-dialog__hint {
+.choy-field-translations-dialog__hint {
   margin-top: 4px;
   font-size: 12px;
   line-height: 1.4;

@@ -5,7 +5,7 @@
  * Accessibility core support.
  */
 
-.o-visually-hidden {
+.choy-visually-hidden {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -17,17 +17,17 @@
   border-width: 0;
 }
 
-.o-skip-link {
+.choy-skip-link {
   position: absolute;
   top: -9999px;
   left: 0;
-  background-color: var(--o-color-primary);
+  background-color: var(--choy-color-primary);
   color: white;
   padding: 8px;
   z-index: 1000;
 }
 
-.o-skip-link:focus-visible {
+.choy-skip-link:focus-visible {
   top: 0;
 }
 
@@ -55,7 +55,7 @@
   }
 }
 
-[dir='rtl'] .o-skip-link {
+[dir='rtl'] .choy-skip-link {
   left: auto;
   right: 0;
 }

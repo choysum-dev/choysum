@@ -81,9 +81,9 @@ describe('ChoyPropertiesDefinitionEditor', () => {
         ['ContainerModel', '=', null],
         ['ContainerId', '=', null],
       ]);
-      expect(mounted.q('[data-testid="o-properties-definition-name"]')).toBeTruthy();
+      expect(mounted.q('[data-testid="choy-properties-definition-name"]')).toBeTruthy();
 
-      mounted.click('[data-testid="o-properties-definition-save"]');
+      mounted.click('[data-testid="choy-properties-definition-save"]');
       await flushPromises();
       expect(UpdateById.calls.length).toBe(1);
       expect(UpdateById.calls[0]![0]).toBe('def-1');
@@ -112,12 +112,12 @@ describe('ChoyPropertiesDefinitionEditor', () => {
     });
     try {
       await flushPromises();
-      expect(mounted.q('[data-testid="o-properties-definition-empty"]')).toBeTruthy();
+      expect(mounted.q('[data-testid="choy-properties-definition-empty"]')).toBeTruthy();
 
-      mounted.click('[data-testid="o-properties-definition-add"]');
+      mounted.click('[data-testid="choy-properties-definition-add"]');
       await nextTick();
-      setInputValue(mounted.el, '[data-testid="o-properties-definition-name"]', 'prio');
-      mounted.click('[data-testid="o-properties-definition-save"]');
+      setInputValue(mounted.el, '[data-testid="choy-properties-definition-name"]', 'prio');
+      mounted.click('[data-testid="choy-properties-definition-save"]');
       await flushPromises();
 
       expect(Create.calls.length).toBe(1);
@@ -152,8 +152,8 @@ describe('ChoyPropertiesDefinitionEditor', () => {
     });
     try {
       await flushPromises();
-      const save = mounted.q('[data-testid="o-properties-definition-save"]') as HTMLButtonElement | null;
-      const add = mounted.q('[data-testid="o-properties-definition-add"]') as HTMLButtonElement | null;
+      const save = mounted.q('[data-testid="choy-properties-definition-save"]') as HTMLButtonElement | null;
+      const add = mounted.q('[data-testid="choy-properties-definition-add"]') as HTMLButtonElement | null;
       expect(save).toBeTruthy();
       expect(add).toBeTruthy();
       expect(save!.getAttribute('data-disabled')).toBe('1');

@@ -33,12 +33,12 @@
 }
 
 .slide-enter-from {
-  transform: translateX(var(--o-slide-enter-translate, 20px));
+  transform: translateX(var(--choy-slide-enter-translate, 20px));
   opacity: 0;
 }
 
 .slide-leave-to {
-  transform: translateX(var(--o-slide-leave-translate, -20px));
+  transform: translateX(var(--choy-slide-leave-translate, -20px));
   opacity: 0;
 }
 

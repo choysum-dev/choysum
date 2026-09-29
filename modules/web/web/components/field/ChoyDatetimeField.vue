@@ -24,7 +24,7 @@ SPDX-License-Identifier: Apache-2.0
       <ODatetimeCell :field-value="fieldValue" :options="bufferOptions" :display-format="displayFormat" :picker-props="datePickerProps" v-bind="$attrs" />
     </template>
     <template #display="{ fieldValue }">
-      <span class="o-field-display-text">{{ toDisplayText(fieldValue().value) }}</span>
+      <span class="choy-field-display-text">{{ toDisplayText(fieldValue().value) }}</span>
     </template>
   </FieldBase>
 </template>
@@ -229,7 +229,7 @@ const ODatetimeCell = defineComponent({
       h('input', {
         ...attrs,
         ...(p.pickerProps || {}),
-        class: 'o-date-picker',
+        class: 'choy-date-picker',
         clearable: true,
         editable: false,
         format: p.displayFormat,
@@ -242,7 +242,7 @@ const ODatetimeCell = defineComponent({
 </script>
 
 <style scoped>
-.o-field-display-text {
+.choy-field-display-text {
   line-height: var(--el-component-size-base, 32px);
   color: var(--el-text-color-primary);
   white-space: nowrap;
@@ -250,7 +250,7 @@ const ODatetimeCell = defineComponent({
   text-overflow: ellipsis;
   padding: 0 11px;
 }
-.o-date-picker {
+.choy-date-picker {
   width: 100%;
 }
 </style>

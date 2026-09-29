@@ -34,7 +34,7 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display="{ fieldValue }">
-      <div class="o-textfield-display">{{ toDisplayText(fieldValue().value) }}</div>
+      <div class="choy-textfield-display">{{ toDisplayText(fieldValue().value) }}</div>
     </template>
   </FieldBase>
 </template>
@@ -184,7 +184,7 @@ const OTextCell = defineComponent({
     return () =>
       h('input', {
         ...attrs,
-        class: 'o-textarea',
+        class: 'choy-textarea',
         placeholder: p.placeholder,
         rows: p.rows,
         autosize: p.autosize,
@@ -215,10 +215,10 @@ const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internal
 </script>
 
 <style scoped>
-.o-textarea {
+.choy-textarea {
   width: 100%;
 }
-.o-textfield-display {
+.choy-textfield-display {
   white-space: pre-wrap;word-break: break-word;line-height: var(--el-component-size-base, 32px);color: var(--el-text-color-primary);padding: 0 11px;
 }
 </style>

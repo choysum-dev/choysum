@@ -5,5 +5,5 @@ export * from './useMenu';
 export * from './useBreadcrumb';
 export * from './useField';
 export * from './useArrayMutations';
-export * from './useVTable';
+export * from './useTable';
 export * from './useDebouncedFnCancelable';

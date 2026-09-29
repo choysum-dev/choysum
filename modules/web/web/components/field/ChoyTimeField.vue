@@ -24,7 +24,7 @@ SPDX-License-Identifier: Apache-2.0
       <OTimeCell :field-value="fieldValue" :options="bufferOptions" :display-format="displayFormat" :picker-props="timePickerProps" v-bind="$attrs" />
     </template>
     <template #display="{ fieldValue }">
-      <span class="o-field-display-text">{{ toDisplayText(fieldValue().value) }}</span>
+      <span class="choy-field-display-text">{{ toDisplayText(fieldValue().value) }}</span>
     </template>
   </FieldBase>
 </template>
@@ -204,7 +204,7 @@ const OTimeCell = defineComponent({
       h('input', {
         ...attrs,
         ...(p.pickerProps || {}),
-        class: 'o-time-picker',
+        class: 'choy-time-picker',
         clearable: true,
         editable: false,
         format: p.displayFormat,
@@ -217,7 +217,7 @@ const OTimeCell = defineComponent({
 </script>
 
 <style scoped>
-.o-field-display-text {
+.choy-field-display-text {
   line-height: var(--el-component-size-base, 32px);
   color: var(--el-text-color-primary);
   white-space: nowrap;
@@ -225,7 +225,7 @@ const OTimeCell = defineComponent({
   text-overflow: ellipsis;
   padding: 0 11px;
 }
-.o-time-picker {
+.choy-time-picker {
   width: 100%;
 }
 </style>

@@ -299,7 +299,7 @@ describe('OSearch behavior', () => {
   test('emits query-update on enter / search icon and syncs controlled keyword', async () => {
     const m = mountSearch({ currentKeyword: 'hello' });
     await flushPromises();
-    const input = m.q('input.o-search__input') as HTMLInputElement;
+    const input = m.q('input.choy-search__input') as HTMLInputElement;
     expect(input.value).toBe('hello');
 
     m.setupState().onEnter();
@@ -317,8 +317,8 @@ describe('OSearch behavior', () => {
       currentAppliedGroups: [{ field: 'Status' }, { field: 'CreatedAt', granularity: 'month' }],
     });
     await nextTick();
-    expect(m.q('.o-search__grouptag')).toBeTruthy();
-    (m.q('.tag-close') as HTMLElement).click();
+    expect(m.q('.choy-search__grouptag')).toBeTruthy();
+    (m.q('.choy-search__tag-close') as HTMLElement).click();
     await flushPromises();
     const queryUpdates = m.emitted['query-update']!;
     const payload = queryUpdates[queryUpdates.length - 1]![0] as any;
@@ -356,15 +356,15 @@ describe('OSearch behavior', () => {
     ];
     const m = mountSearch({ currentAppliedFilters: filters });
     await flushPromises();
-    expect(m.q('.o-search__tag')).toBeTruthy();
+    expect(m.q('.choy-search__tag')).toBeTruthy();
 
-    (m.q('.o-search__tag') as HTMLElement).click();
+    (m.q('.choy-search__tag') as HTMLElement).click();
     await nextTick();
     expect(m.q('.filter-editor')).toBeTruthy();
     (m.q('.cancel') as HTMLElement).click();
     await nextTick();
 
-    (m.q('.tag-close') as HTMLElement).click();
+    (m.q('.choy-search__tag-close') as HTMLElement).click();
     expect((m.emitted['query-update'] || []).length).toBeGreaterThan(0);
 
     m.props.currentAppliedFilters = [];
@@ -378,8 +378,8 @@ describe('OSearch behavior', () => {
       },
     ];
     await flushPromises();
-    expect(m.q('.o-search__tag')?.textContent || '').toContain('X');
-    (m.q('.o-search__tag') as HTMLElement).click();
+    expect(m.q('.choy-search__tag')?.textContent || '').toContain('X');
+    (m.q('.choy-search__tag') as HTMLElement).click();
     await nextTick();
     expect(m.q('.filter-editor')).toBeTruthy();
     (m.q('.cancel') as HTMLElement).click();
@@ -423,7 +423,7 @@ describe('OSearch behavior', () => {
       ],
     });
     await flushPromises();
-    (m.q('.o-search__tag') as HTMLElement).click();
+    (m.q('.choy-search__tag') as HTMLElement).click();
     await nextTick();
     expect(m.q('.filter-editor')).toBeTruthy();
     const before = (m.emitted['query-update'] || []).length;
@@ -446,7 +446,7 @@ describe('OSearch behavior', () => {
       ],
     });
     await flushPromises();
-    (m.q('.o-search__tag') as HTMLElement).click();
+    (m.q('.choy-search__tag') as HTMLElement).click();
     await nextTick();
     expect(m.q('.filter-editor')).toBeTruthy();
 
@@ -464,7 +464,7 @@ describe('OSearch behavior', () => {
       currentAppliedGroups: [{ field: 'Status' }, { field: 'CreatedAt', granularity: 'month' }],
     });
     await nextTick();
-    (m.q('.o-search__grouptag') as HTMLElement).click();
+    (m.q('.choy-search__grouptag') as HTMLElement).click();
     await nextTick();
     const statusItem = btnByText(m, 'Status');
     expect(statusItem).toBeTruthy();
@@ -493,11 +493,11 @@ describe('OSearch behavior', () => {
     };
     m.setupState().onInputKeydown(fakeEvt);
     await nextTick();
-    expect(m.q('.o-search__tag--pending-delete')).toBeTruthy();
+    expect(m.q('.choy-search__tag--pending-delete')).toBeTruthy();
 
     m.setupState().onInputKeydown(fakeEvt);
     await flushPromises();
-    expect(m.q('.o-search__tag')).toBeFalsy();
+    expect(m.q('.choy-search__tag')).toBeFalsy();
 
     m.props.currentAppliedFilters = [
       {
@@ -512,16 +512,16 @@ describe('OSearch behavior', () => {
     await nextTick();
     m.setupState().onInputKeydown({ key: 'a', target: { selectionStart: 0, selectionEnd: 0 }, preventDefault() {} });
     await nextTick();
-    expect(m.q('.o-search__tag--pending-delete')).toBeFalsy();
+    expect(m.q('.choy-search__tag--pending-delete')).toBeFalsy();
     m.unmount();
   });
 
   test('focuses the keyword input when the shell is clicked', async () => {
     const m = mountSearch();
-    const input = m.q('input.o-search__input') as HTMLInputElement;
+    const input = m.q('input.choy-search__input') as HTMLInputElement;
     const focus = fnRecorder();
     input.focus = focus as any;
-    (m.q('.o-search__main') as HTMLElement).click();
+    (m.q('.choy-search__main') as HTMLElement).click();
     expect(focus.calls.length).toBeGreaterThan(0);
     m.unmount();
   });
@@ -578,7 +578,7 @@ describe('OSearch behavior', () => {
       ],
     });
     await flushPromises();
-    expect(m.q('.o-search__menu-icon--applied')).toBeTruthy();
+    expect(m.q('.choy-search__menu-icon--applied')).toBeTruthy();
     expect(m.text()).toContain('Shared');
     m.unmount();
   });
@@ -608,7 +608,7 @@ describe('OSearch behavior', () => {
     });
     expect((m.emitted['query-update'] || []).length).toBeGreaterThan(beforeEmit);
 
-    (m.q('.o-search__menu-item-delete') as HTMLElement).click();
+    (m.q('.choy-search__menu-item-delete') as HTMLElement).click();
     await flushPromises();
     expect(confirmCallCount).toBeGreaterThan(0);
     expect(savedFiltersApi.remove.calls[0]).toEqual(['fav-1']);
@@ -656,7 +656,7 @@ describe('OSearch behavior', () => {
     ];
     const m = mountSearch();
     await flushPromises();
-    (m.q('.o-search__menu-item-delete') as HTMLElement).click();
+    (m.q('.choy-search__menu-item-delete') as HTMLElement).click();
     await flushPromises();
     expect(savedFiltersApi.remove.calls.length).toBe(0);
     expect(msgSuccess.calls.length).toBe(0);
@@ -681,7 +681,7 @@ describe('OSearch behavior', () => {
     ];
     const m = mountSearch();
     await flushPromises();
-    (m.q('.o-search__menu-item-delete') as HTMLElement).click();
+    (m.q('.choy-search__menu-item-delete') as HTMLElement).click();
     await flushPromises();
     expect(msgError.calls[0]).toEqual(['delete failed']);
 
@@ -719,7 +719,7 @@ describe('OSearch behavior', () => {
     ];
     const m = mountSearch();
     await flushPromises();
-    (m.q('.o-search__menu-item-delete') as HTMLElement).click();
+    (m.q('.choy-search__menu-item-delete') as HTMLElement).click();
     await flushPromises();
     expect(msgError.calls[0]).toEqual(['delete-string']);
 
@@ -856,10 +856,10 @@ describe('OSearch behavior', () => {
     ];
     const m = mountSearch();
     await flushPromises();
-    expect(m.qa('.o-search__menu-item-edit').length).toBe(1);
-    expect(m.qa('.o-search__menu-item-delete').length).toBe(1);
+    expect(m.qa('.choy-search__menu-item-edit').length).toBe(1);
+    expect(m.qa('.choy-search__menu-item-delete').length).toBe(1);
 
-    (m.q('.o-search__menu-item-edit') as HTMLElement).click();
+    (m.q('.choy-search__menu-item-edit') as HTMLElement).click();
     await nextTick();
     const dialog = m.q('.el-dialog');
     expect(dialog).toBeTruthy();

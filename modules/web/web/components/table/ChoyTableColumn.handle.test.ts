@@ -7,10 +7,10 @@ import { flushPromises, fnRecorder, mountApp } from '@/web/web/__tests__/mountAp
 import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 import { LIST_HANDLE_API_KEY, useListHandleReorder } from '@/web/web/composables/useListHandleReorder';
 import {
-  useVTableProvideBuildContext,
-  useVTableProvideColumnRegistry,
+  useTableProvideBuildContext,
+  useTableProvideColumnRegistry,
   type ColumnRegistry,
-} from '@/web/web/composables/useVTable';
+} from '@/web/web/composables/useTable';
 
 function mountHandleColumn(opts?: { enabled?: boolean; width?: number; colKey?: string; type?: string }) {
   const enabled = ref(opts?.enabled ?? true);
@@ -24,8 +24,8 @@ function mountHandleColumn(opts?: { enabled?: boolean; width?: number; colKey?: 
 
   const Host = defineComponent({
     setup() {
-      registry = useVTableProvideColumnRegistry();
-      useVTableProvideBuildContext({ getRows: () => rows, baseIndex: ref(1) });
+      registry = useTableProvideColumnRegistry();
+      useTableProvideBuildContext({ getRows: () => rows, baseIndex: ref(1) });
       handleApi = useListHandleReorder({
         rows: () => rows,
         enabled,
@@ -50,7 +50,7 @@ function mountHandleColumn(opts?: { enabled?: boolean; width?: number; colKey?: 
   return { handleApi: handleApi!, onReorder, columns: () => registry!.columns.value, unmount: mounted.unmount };
 }
 
-describe('VColumn handle type', () => {
+describe('ChoyTableColumn handle type', () => {
   test('registers handle column with drag handlers', async () => {
     const { handleApi, columns, unmount } = mountHandleColumn({ width: 36 });
     await nextTick();
@@ -63,7 +63,7 @@ describe('VColumn handle type', () => {
     const stopPropagation = fnRecorder();
     const setData = fnRecorder();
     const cell = col.cellRenderer({ rowData: { Id: '1' }, rowIndex: 0 });
-    expect(cell.props.class).toContain('o-list-handle');
+    expect(cell.props.class).toContain('choy-list-handle');
     expect(cell.props.draggable).toBe('true');
 
     cell.props.onDragstart({ preventDefault, stopPropagation, dataTransfer: { effectAllowed: '', setData } });
@@ -105,7 +105,7 @@ describe('VColumn handle type', () => {
     await flushPromises();
     const col = columns()[0] as any;
     const cell = col.cellRenderer({ rowData: { Id: '1' }, rowIndex: 0 });
-    expect(cell.props.class).toContain('o-list-handle--disabled');
+    expect(cell.props.class).toContain('choy-list-handle--disabled');
     expect(cell.props.draggable).toBe('false');
     expect(cell.props.title).toBe('');
 
