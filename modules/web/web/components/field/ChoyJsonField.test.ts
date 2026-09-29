@@ -346,4 +346,46 @@ describe('JsonobjectField', () => {
     expect(await run({ a: 1 })).toBeUndefined();
     rulesMount.unmount();
   });
+  test('setupState covers stableStringify, normalizeIncoming, and jsonEquals edges', async () => {
+    installFieldBaseStub();
+    installPrettyStub();
+    installElInputStub();
+    const binding = makeBinding(
+      { Payload: { a: 1 } },
+      { isForm: true, isEditMode: true, viewMode: 'edit', fieldPrefix: null }
+    );
+    const m = mountApp(JsonobjectField as any, {
+      props: { binding, renderMode: 'form', allowArray: true, nullable: true },
+    });
+    await nextTick();
+    await flushPromises();
+    const ss = m.setupState() as any;
+    expect(typeof ss.stableStringify).toBe('function');
+    expect(typeof ss.normalizeIncoming).toBe('function');
+    expect(typeof ss.jsonEquals).toBe('function');
+
+    expect(ss.stableStringify(null)).toBe('');
+    expect(ss.stableStringify([1, 2])).toContain('1');
+    expect(ss.stableStringify({ b: 2, a: 1 })).toContain('"a"');
+    const circular: any = {};
+    circular.self = circular;
+    expect(ss.stableStringify(circular)).toBe('');
+
+    expect(ss.normalizeIncoming(null)).toBeNull();
+    expect(ss.normalizeIncoming({ x: 1 })).toEqual({ x: 1 });
+    expect(ss.normalizeIncoming('null')).toBeNull();
+    expect(ss.normalizeIncoming('"hi"')).toBeNull();
+    expect(ss.normalizeIncoming('{bad')).toBeNull();
+    expect(ss.normalizeIncoming(12)).toBeNull();
+    expect(ss.normalizeIncoming('{"k":1}')).toEqual({ k: 1 });
+
+    expect(ss.jsonEquals(1, 1)).toBe(true);
+    expect(ss.jsonEquals({ a: 1 }, { a: 1 })).toBe(true);
+    expect(ss.jsonEquals(circular, circular)).toBe(true);
+    const circular2: any = {};
+    circular2.self = circular2;
+    expect(ss.jsonEquals(circular, circular2)).toBe(false);
+    m.unmount();
+  });
+
 });

@@ -252,6 +252,9 @@ var choyScanKitCandidates = ScanChoyKitTailwindCandidates
 // choyScanDomainCandidates is ScanTailwindCandidates; tests replace it to force domain-scan errors.
 var choyScanDomainCandidates = ScanTailwindCandidates
 
+// choyReadFile is os.ReadFile; tests replace it to force dialect read failures in TailwindInputDigest.
+var choyReadFile = os.ReadFile
+
 // isChoyKitTailwindInputPath reports whether path under webRoot is Choy kit input
 // (vendor/ui, internal engines, Choy* SFCs/helpers, gallery/dogfood pages, tokens CSS).
 func isChoyKitTailwindInputPath(webRoot, path string) bool {
@@ -960,7 +963,7 @@ func TailwindInputDigest(modulesPath string) (dialectHash, contentHash string, e
 	}
 	webRoot := filepath.Join(root, "web")
 	dialectPath := filepath.Join(webRoot, "styles", "theme.css")
-	dialectBytes, err := os.ReadFile(dialectPath)
+	dialectBytes, err := choyReadFile(dialectPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return "", "", nil

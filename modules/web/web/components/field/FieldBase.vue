@@ -181,18 +181,8 @@ SPDX-License-Identifier: Apache-2.0
     >
       <div
         class="choy-field-base__cell-item"
-        :prop="`__cell__:${inputName}:${guessRowKey(row)}`"
-        :rules="[
-          {
-            validator: (_r: any, _v: any, cb: any) => {
-              const msg = serverErrorForRow(row, $index);
-              msg ? cb(new Error(msg)) : cb();
-            },
-            trigger: 'blur',
-          } as any,
-        ]"
-        :error="serverErrorForRow(row, $index)"
-        :show-message="true"
+        :class="{ 'choy-field-base__cell-item--error': !!serverErrorForRow(row, $index) }"
+        :data-error="serverErrorForRow(row, $index) || undefined"
       >
         <template v-if="effectiveEditForRow(row)">
           <slot
@@ -600,39 +590,7 @@ function serverErrorForRow(row: any, rowIndex?: number): string | undefined {
   return undefined;
 }
 
-/* ===================== Merge server errors into rules (dual strategy) ===================== */
-const effectiveRules = computed<RuleItem[]>(() => {
-  const baseRules = props.rules || [];
-  const rulesWithServerError: RuleItem[] = [];
-
-  if (serverError.value && binding.env.isEditMode) {
-    rulesWithServerError.push({
-      validator: (_rule: unknown, _value: unknown, callback: (error?: Error) => void) => {
-        const currentError = fieldErrors?.value?.get(String(binding.prop));
-        if (currentError) {
-          callback(new Error(currentError));
-        } else {
-          callback();
-        }
-      },
-    } as RuleItem);
-  }
-
-  rulesWithServerError.push(...baseRules);
-
-  // Normalize consistently by defaulting to a blur trigger
-  return rulesWithServerError.map((r: any) => {
-    if (r && typeof r === 'object' && !Array.isArray(r)) {
-      const hasTrigger = Object.prototype.hasOwnProperty.call(r, 'trigger');
-      const trg = r.trigger;
-      if (!hasTrigger || (Array.isArray(trg) && trg.length === 0)) {
-        return { ...r, trigger: 'blur' } as RuleItem;
-      }
-    }
-    return r as RuleItem;
-  });
-});
-
+/* Server errors are shown via dedicated alert nodes; client rules are not run on a form item. */
 /* ===================== Unified onchange handling (automatic mode) ===================== */
 function createOnchangeHandlers() {
   const usedStore: any = binding.store || binding.relationStore;

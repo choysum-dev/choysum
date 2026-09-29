@@ -905,6 +905,167 @@ func TestScanChoyProductTailwindCandidatesDomainThemeCSSNotKitFiltered(t *testin
 	}
 }
 
+
+func TestIndexCSSOpenBracePartials(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		css  string
+		want int
+	}{
+		{name: "escaped quote stays inside string", css: `"ab\"c" {`, want: 8},
+		{name: "unterminated block comment", css: `/* no end {`, want: -1},
+		{name: "single-quoted then brace", css: `'x' {`, want: 4},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := indexCSSOpenBrace(tc.css, len(tc.css))
+			if got != tc.want {
+				t.Fatalf("indexCSSOpenBrace(%q)=%d want %d", tc.css, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestScanChoyProductTailwindCandidatesWebDirectoryDialectErrors(t *testing.T) {
+	modules := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(modules, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+	// web kit dialect must be a file; a directory aborts the product scan.
+	if err := os.MkdirAll(filepath.Join(modules, "web", "web", "styles", "theme.css"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil || !strings.Contains(err.Error(), "directory, not a file") {
+		t.Fatalf("expected web directory dialect error, got %v", err)
+	}
+}
+
+type twFakeFileInfo struct {
+	name  string
+	isDir bool
+}
+
+func (f twFakeFileInfo) Name() string       { return f.name }
+func (f twFakeFileInfo) Size() int64        { return 0 }
+func (f twFakeFileInfo) Mode() os.FileMode  { if f.isDir { return os.ModeDir }; return 0 }
+func (f twFakeFileInfo) ModTime() time.Time { return time.Time{} }
+func (f twFakeFileInfo) IsDir() bool        { return f.isDir }
+func (f twFakeFileInfo) Sys() any           { return nil }
+
+type twFakeDirEntry struct {
+	name  string
+	isDir bool
+}
+
+func (e twFakeDirEntry) Name() string               { return e.name }
+func (e twFakeDirEntry) IsDir() bool                { return e.isDir }
+func (e twFakeDirEntry) Type() os.FileMode          { if e.isDir { return os.ModeDir }; return 0 }
+func (e twFakeDirEntry) Info() (os.FileInfo, error) { return twFakeFileInfo{e.name, e.isDir}, nil }
+
+// resolveChoyKitModuleRoot uses os.Stat, so an empty modules dir yields no kit.
+// Hooks below invent a "web" module so the product-loop name=="web" branches run.
+func TestScanChoyProductTailwindCandidatesWebModuleLoopHooks(t *testing.T) {
+	modules := t.TempDir()
+	prevRead := choyProductReadDir
+	prevStat := choyProductStat
+	prevKit := choyScanKitCandidates
+	t.Cleanup(func() {
+		choyProductReadDir = prevRead
+		choyProductStat = prevStat
+		choyScanKitCandidates = prevKit
+	})
+
+	choyProductReadDir = func(string) ([]os.DirEntry, error) {
+		return []os.DirEntry{twFakeDirEntry{name: "web", isDir: true}}, nil
+	}
+
+	// Directory dialect on a module named "web" aborts the product scan.
+	choyProductStat = func(name string) (os.FileInfo, error) {
+		slash := filepath.ToSlash(name)
+		base := filepath.Base(name)
+		switch {
+		case strings.HasSuffix(slash, "/web/web/styles/theme.css"):
+			return twFakeFileInfo{name: "theme.css", isDir: true}, nil
+		case base == "web" || strings.HasSuffix(slash, "/web/web"):
+			return twFakeFileInfo{name: base, isDir: true}, nil
+		default:
+			return nil, os.ErrNotExist
+		}
+	}
+	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil || !strings.Contains(err.Error(), "directory, not a file") {
+		t.Fatalf("expected hooked web directory dialect error, got %v", err)
+	}
+
+	// Kit-host path: web + vendor/ui dir → scan kit candidates then continue.
+	choyProductStat = func(name string) (os.FileInfo, error) {
+		slash := filepath.ToSlash(name)
+		base := filepath.Base(name)
+		switch {
+		case strings.Contains(slash, "/components/vendor/ui"):
+			return twFakeFileInfo{name: "ui", isDir: true}, nil
+		case strings.HasSuffix(slash, "/web/web/styles/theme.css"):
+			return twFakeFileInfo{name: "theme.css", isDir: false}, nil
+		case base == "web" || strings.HasSuffix(slash, "/web/web"):
+			return twFakeFileInfo{name: base, isDir: true}, nil
+		default:
+			return nil, os.ErrNotExist
+		}
+	}
+	choyScanKitCandidates = func(string) ([]string, error) {
+		return nil, errors.New("hooked kit candidates boom")
+	}
+	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil || !strings.Contains(err.Error(), "hooked kit candidates boom") {
+		t.Fatalf("expected hooked kit scan error, got %v", err)
+	}
+	choyScanKitCandidates = func(string) ([]string, error) {
+		return []string{"hooked-kit-class"}, nil
+	}
+	got, err := ScanChoyProductTailwindCandidates(modules)
+	if err != nil {
+		t.Fatalf("kit-host success path: %v", err)
+	}
+	if len(got) != 1 || got[0] != "hooked-kit-class" {
+		t.Fatalf("expected hooked kit candidates, got %v", got)
+	}
+}
+
+func TestTailwindInputDigestDialectReadFileNotExist(t *testing.T) {
+	modules := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(modules, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("web/web/styles/theme.css", `@theme { --color-primary: red; }`)
+	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+
+	prev := choyReadFile
+	t.Cleanup(func() { choyReadFile = prev })
+	choyReadFile = func(string) ([]byte, error) {
+		return nil, os.ErrNotExist
+	}
+	d, c, err := TailwindInputDigest(modules)
+	if err != nil || d != "" || c != "" {
+		t.Fatalf("ReadFile NotExist => empty hashes, got %q %q %v", d, c, err)
+	}
+}
+
 func TestScanChoyProductTailwindCandidatesIgnoresNonKitDirectoryDialect(t *testing.T) {
 	modules := t.TempDir()
 	write := func(rel, body string) {

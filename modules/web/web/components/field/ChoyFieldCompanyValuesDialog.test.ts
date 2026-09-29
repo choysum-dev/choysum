@@ -327,4 +327,55 @@ describe('FieldCompanyValuesDialog', () => {
     expect(onUpdateModelValue.calls.some(args => args[0] === false)).toBeTruthy();
     m.unmount();
   });
+  test('formatCaughtError and coercePatchValue edges via setupState', async () => {
+    const store = fieldStore();
+    const m = mountDialog({ store, fieldType: 'boolean', draftCompanyId: '' });
+    await flushPromises();
+    const ss = m.setupState() as any;
+    expect(typeof ss.formatCaughtError).toBe('function');
+    expect(typeof ss.coercePatchValue).toBe('function');
+    expect(ss.formatCaughtError(null, 'fb')).toBe('fb');
+    expect(ss.formatCaughtError('  boom  ', 'fb')).toBe('boom');
+    expect(ss.formatCaughtError('   ', 'fb')).toBe('fb');
+    expect(ss.formatCaughtError({ message: '  m  ' }, 'fb')).toBe('m');
+    expect(ss.formatCaughtError({ message: '  ' }, 'fb')).toBe('fb');
+    expect(ss.formatCaughtError(12, 'fb')).toBe('fb');
+    expect(ss.coercePatchValue('')).toBe(true);
+    expect(ss.coercePatchValue('yes')).toBe(true);
+    expect(ss.coercePatchValue('no')).toBe(false);
+    expect(typeof ss.resolveDraftCompanyId).toBe('function');
+    expect(ss.resolveDraftCompanyId()).toBe('comp_main');
+    m.unmount();
+
+    const intMount = mountDialog({ store: fieldStore(), fieldType: 'integer' });
+    await flushPromises();
+    const iss = intMount.setupState() as any;
+    expect(iss.coercePatchValue('42')).toBe(42);
+    expect(iss.coercePatchValue('nope')).toBe('nope');
+    intMount.unmount();
+
+    seedAuth({
+      allowedCompanyIds: ['comp_main'],
+      enabledCompanyIds: ['comp_main'],
+      activeCompanyId: 'comp_main',
+    });
+    const draftMount = mountDialog({ store: fieldStore(), draftCompanyId: '  ' });
+    await flushPromises();
+    const dss = draftMount.setupState() as any;
+    expect(dss.resolveDraftCompanyId()).toBe('comp_main');
+    draftMount.unmount();
+
+    // readAuthCompanyMeta catch when Pinia/auth is unavailable.
+    const catchMount = mountDialog({ store: fieldStore() });
+    await flushPromises();
+    const css = catchMount.setupState() as any;
+    expect(typeof css.readAuthCompanyMeta).toBe('function');
+    setActivePinia(undefined as any);
+    const meta = css.readAuthCompanyMeta();
+    expect(meta.activeCompanyId).toBe('');
+    expect(meta.allowedCompanyIds).toEqual([]);
+    setActivePinia(pinia);
+    catchMount.unmount();
+  });
+
 });

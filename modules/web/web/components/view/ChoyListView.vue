@@ -618,23 +618,25 @@ function onSearch(payload: QueryUpdatePayload<T>) {
   // Store the latest search context for forcedCondition-driven refreshes
   lastSearchPayload.value = payload;
   if (payload) {
-    // debug log removed
     // Ensure registered fields participate in the first query
     // When Search fires onMounted on the first frame, table columns and fields may not have finished registering yet
     // Proactively wait for one registration cycle, up to a few nextTick turns
     if (!firstApplied.value) firstApplied.value = true;
-    awaitFieldSelection(store, { requireNonEmpty: true }).then(() => {
-      controller
-        .apply({
+    awaitFieldSelection(store, { requireNonEmpty: true })
+      .then(() =>
+        controller.apply({
           // The view layer passes only the external forced condition; the UI tag tree can use payload.appliedFilters directly
           forcedCondition: props.forcedCondition as any,
           appliedFilters: payload.appliedFilters as any,
           keyword: payload.keyword,
           keywordFields: props.keywordFields || undefined,
           appliedGroups: payload.appliedGroups as any,
-        })
-        .then(afterLayoutRecompute);
-    });
+        }),
+      )
+      .then(afterLayoutRecompute)
+      .catch((e: unknown) => {
+        emit('action-error', { action: 'search', error: e instanceof Error ? e : new Error(String(e)) });
+      });
   }
 }
 
@@ -648,7 +650,12 @@ function onPaginateState({ limit, offset }: { limit: number; offset: number }) {
   const pageSize = limit;
   emit('paginate', { page, pageSize });
   const p: PaginationState = { limit, offset };
-  controller.paginate(p).then(afterLayoutRecompute);
+  controller
+    .paginate(p)
+    .then(afterLayoutRecompute)
+    .catch((e: unknown) => {
+      emit('action-error', { action: 'paginate', error: e instanceof Error ? e : new Error(String(e)) });
+    });
 }
 
 // =============================
@@ -657,7 +664,12 @@ function onPaginateState({ limit, offset }: { limit: number; offset: number }) {
 function onTableSortChange(payload: { field: string; direction?: 'asc' | 'desc' }) {
   const orderBy: OrderByState[] = payload.direction ? [{ field: payload.field, direction: payload.direction }] : [];
   emit('sort-change', { orderBy: orderBy as any });
-  controller.sort(orderBy).then(afterLayoutRecompute);
+  controller
+    .sort(orderBy)
+    .then(afterLayoutRecompute)
+    .catch((e: unknown) => {
+      emit('action-error', { action: 'sort', error: e instanceof Error ? e : new Error(String(e)) });
+    });
 }
 
 // =============================

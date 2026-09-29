@@ -111,6 +111,48 @@ describe('Choy temporal field cells', () => {
     expect(fromView(new Date('2024-03-04T12:00:00Z'))).toMatch(/2024-03-04/);
     expect(fromView(new Date('invalid'))).toBeNull();
 
+    const ss = m.setupState() as any;
+    expect(typeof ss.normalizeToDate).toBe('function');
+    expect(typeof ss.sameDate).toBe('function');
+    expect(typeof ss.isValidValue).toBe('function');
+    expect(ss.normalizeToDate(null)).toBeNull();
+    expect(ss.normalizeToDate(new Date('invalid'))).toBeNull();
+    expect(ss.normalizeToDate('2024-07-01')).toBeInstanceOf(Date);
+    expect(ss.normalizeToDate(new Date(Date.UTC(2024, 0, 2)))).toBeInstanceOf(Date);
+    const a = new Date(Date.UTC(2024, 0, 1));
+    const a2 = new Date(Date.UTC(2024, 0, 1));
+    expect(ss.sameDate(a, a)).toBe(true);
+    expect(ss.sameDate(a, a2)).toBe(true);
+    expect(ss.sameDate(null, null)).toBe(true);
+    expect(ss.sameDate(a, null)).toBe(false);
+    expect(ss.sameDate(null, a)).toBe(false);
+    expect(ss.sameDate(a, new Date(Date.UTC(2024, 0, 2)))).toBe(false);
+    expect(ss.isValidValue(null)).toBe(true);
+    expect(ss.isValidValue('')).toBe(true);
+    expect(ss.isValidValue('2024-01-01')).toBe(true);
+    expect(ss.isValidValue(Date.parse('2024-01-01'))).toBe(true);
+    expect(ss.isValidValue(new Date('invalid'))).toBe(false);
+
+    restoreSfc(FieldBase as any);
+    installFieldBaseStub('both');
+    const editBinding = makeBinding(new Date(Date.UTC(2024, 5, 15)));
+    const editMount = mountApp(ChoyDateField as any, {
+      props: {
+        binding: editBinding,
+        bufferStrategy: 'live',
+        commitOnBlur: true,
+        renderMode: 'form',
+      },
+    });
+    await flushPromises();
+    const dateInput = editMount.q('input.choy-date-picker') as HTMLInputElement;
+    expect(dateInput).toBeTruthy();
+    setPicker(dateInput, '2024-08-01');
+    await flushPromises();
+    setPicker(dateInput, '');
+    await flushPromises();
+    editMount.unmount();
+
     restoreSfc(FieldBase as any);
     installFieldBaseStub('rules');
     const rulesMount = mountApp(ChoyDateField as any, {
@@ -122,8 +164,8 @@ describe('Choy temporal field cells', () => {
     expect(await runRule(rules, null)).toBeUndefined();
     expect(await runRule(rules, '2024-01-01')).toBeUndefined();
     expect(await runRule(rules, new Date('2024-01-01'))).toBeUndefined();
+    expect(await runRule(rules, Date.parse('2024-01-01'))).toBeUndefined();
     const bad = await runRule(rules, 'totally-not-a-date');
-    // Invalid strings should fail the internal date rule when parseFlexible rejects them.
     if (bad != null) expect(bad).toBeInstanceOf(Error);
     rulesMount.unmount();
     m.unmount();
@@ -172,6 +214,13 @@ describe('Choy temporal field cells', () => {
     expect(await runRule(rules, '08:00:00')).toBeUndefined();
     expect(await runRule(rules, 'bad')).toBeTruthy();
     expect(await runRule(rules, new Date(2024, 0, 1, 8, 0, 0))).toBeUndefined();
+    expect(await runRule(rules, Date.parse('1970-01-01T08:00:00Z'))).toBeUndefined();
+    const tss = m.setupState() as any;
+    if (typeof tss.sameTime === 'function') {
+      const t0 = new Date(2024, 0, 1, 8, 0, 0);
+      expect(tss.sameTime(t0, new Date(t0.getTime()))).toBe(true);
+      expect(tss.sameTime(t0, null)).toBe(false);
+    }
     rulesMount.unmount();
     m.unmount();
   });
@@ -220,6 +269,18 @@ describe('Choy temporal field cells', () => {
     expect(await runRule(rules, '2024-01-02T03:04:05.000Z')).toBeUndefined();
     expect(await runRule(rules, 'bad')).toBeTruthy();
     expect(await runRule(rules, new Date('2024-01-02T03:04:05.000Z'))).toBeUndefined();
+    expect(await runRule(rules, Date.parse('2024-01-02T03:04:05.000Z'))).toBeUndefined();
+    const dss = m.setupState() as any;
+    expect(typeof dss.isValidValue).toBe('function');
+    expect(dss.isValidValue(Date.parse('2024-01-02T03:04:05.000Z'))).toBe(true);
+    expect(dss.isValidValue({ not: 'a-date' })).toBe(false);
+    if (typeof dss.sameDate === 'function') {
+      const d0 = new Date('2024-01-02T03:04:05.000Z');
+      expect(dss.sameDate(d0, new Date(d0.getTime()))).toBe(true);
+    }
+    // Drive modelRef setter via live commit on the datetime-local input.
+    setPicker(m.q('input.choy-date-picker') as HTMLInputElement, '2024-08-02T11:00');
+    await flushPromises();
     rulesMount.unmount();
     m.unmount();
   });

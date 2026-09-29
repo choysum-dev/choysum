@@ -269,7 +269,7 @@ describe('ChoyOneToManyField handle column', () => {
     await ss.handleAddItem();
     await flushPromises();
     expect(insertItem.calls.length).toBe(1);
-    expect(insertItem.calls[0]?.[0]?.Name).toBe('new');
+    expect((insertItem.calls[0]?.[0] as { Name?: string } | undefined)?.Name).toBe('new');
     expect(Object.prototype.propertyIsEnumerable.call(insertItem.calls[0]?.[0], '__rowKey')).toBe(false);
     expect(scrollToRow.calls.length).toBe(1);
 

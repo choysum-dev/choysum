@@ -146,6 +146,32 @@ describe('Choy native scalar field cells', () => {
     expect(fromView(null)).toBe(false);
     expect(fromView(true)).toBe(true);
     m.unmount();
+
+    restoreSfc(FieldBase as any);
+    installFieldBaseStub('both');
+    const nullableBinding = makeBinding(null);
+    const nullableMount = mountApp(ChoyBooleanField as any, {
+      props: {
+        binding: nullableBinding,
+        nullAsFalse: false,
+        nullable: true,
+        bufferStrategy: 'live',
+        renderMode: 'form',
+      },
+    });
+    await flushPromises();
+    const fromViewNullable = lastBaseProps.current?.fromView as (v: unknown) => unknown;
+    expect(fromViewNullable(null)).toBeNull();
+    expect(fromViewNullable(true)).toBe(true);
+    expect(fromViewNullable(false)).toBe(false);
+    const bss = nullableMount.setupState() as any;
+    expect(typeof bss.toBool).toBe('function');
+    expect(bss.toBool(true)).toBe(true);
+    expect(bss.toBool('true')).toBe(true);
+    expect(bss.toBool(1)).toBe(true);
+    expect(bss.toBool(0)).toBe(false);
+    expect(bss.toBool('false')).toBe(false);
+    nullableMount.unmount();
   });
 
   test('VarcharField edit/display, normalize, and rules', async () => {
@@ -250,6 +276,9 @@ describe('Choy native scalar field cells', () => {
     setInputValue(input, '7');
     await flushPromises();
     expect(binding.__value.value).toBe(7);
+    input.dispatchEvent(new Event('blur', { bubbles: true }));
+    await flushPromises();
+    expect(binding.__value.value).toBe(7);
     setInputValue(input, '99');
     await flushPromises();
     expect(binding.__value.value).toBe(10);
@@ -300,6 +329,9 @@ describe('Choy native scalar field cells', () => {
     setInputValue(input, '42');
     await flushPromises();
     expect(binding.__value.value).toBe('42');
+    input.dispatchEvent(new Event('blur', { bubbles: true }));
+    await flushPromises();
+    expect(binding.__value.value).toBe('42');
     setInputValue(input, '999');
     await flushPromises();
     expect(binding.__value.value).toBe('100');
@@ -338,6 +370,15 @@ describe('Choy native scalar field cells', () => {
     expect(fromViewNum('9007199254740993')).toBeNull();
     const toViewNum = lastBaseProps.current?.toView as (v: unknown) => unknown;
     expect(toViewNum(3)).toBe('3');
+    const biSs = numMount.setupState() as any;
+    if (typeof biSs.toBigInt === 'function') {
+      expect(biSs.toBigInt(5)).toBe(5n);
+      expect(biSs.toBigInt(1.5)).toBeNull();
+      expect(biSs.toBigInt('not-int')).toBeNull();
+    }
+    // Drive wireFormat=number clamp via live input beyond JS safe integer bounds.
+    setInputValue(numMount.q('input.choy-bigint-input') as HTMLInputElement, '9007199254740993');
+    await flushPromises();
 
     restoreSfc(FieldBase as any);
     installFieldBaseStub('rules');
@@ -360,6 +401,7 @@ describe('Choy native scalar field cells', () => {
     expect(await runRule(rules, 5)).toBeUndefined();
     expect(await runRule(rules, 5n)).toBeUndefined();
     expect(await runRule(rules, '9007199254740993')).toBeTruthy();
+    expect(await runRule(rules, Number.NaN)).toBeTruthy();
     rulesMount.unmount();
     numMount.unmount();
     m.unmount();
@@ -383,6 +425,9 @@ describe('Choy native scalar field cells', () => {
     expect(m.q('.choy-field-display-text')?.textContent).toBe('1');
     const input = m.q('input.choy-number-input') as HTMLInputElement;
     setInputValue(input, '');
+    await flushPromises();
+    expect(binding.__value.value).toBeNull();
+    input.dispatchEvent(new Event('blur', { bubbles: true }));
     await flushPromises();
     expect(binding.__value.value).toBeNull();
     setInputValue(input, '3.');

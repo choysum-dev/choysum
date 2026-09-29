@@ -847,7 +847,7 @@ onMounted(() => {
     initMetricOptions();
     return;
   }
-  void bootstrap();
+  void bootstrap().catch((error) => props.onLoadError?.(error));
 });
 
 defineExpose({

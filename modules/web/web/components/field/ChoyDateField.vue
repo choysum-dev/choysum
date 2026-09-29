@@ -195,7 +195,7 @@ const ChoyDateCell = defineComponent({
     const buffer = useBufferedCommit<FieldType>(
       () => modelRef.value,
       v => {
-        (p.fieldValue as any)().value = v;
+        modelRef.value = v;
       },
       p.options
     );

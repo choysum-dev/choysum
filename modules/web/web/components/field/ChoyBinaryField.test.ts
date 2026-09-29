@@ -307,4 +307,84 @@ describe('BinaryField normalize helpers', () => {
     expect(binding.fieldRef().value).toBeNull();
     m.unmount();
   });
+
+  test('setupState covers hasAttachment, upload change, and removeBinary', async () => {
+    installFieldBaseEditStub();
+    installChoyButtonStub();
+    const binding = makeBinding({
+      value: { attachmentObjectId: 'obj-1', fileName: 'keep.bin', kind: 'set', sizeBytes: 100 },
+    });
+    const m = mountApp(BinaryField as any, {
+      props: {
+        binding,
+        renderMode: 'form',
+        uploadProps: { drag: true, showFileList: true, multiple: true },
+      },
+    });
+    await flushPromises();
+    const ss = m.setupState() as any;
+    expect(typeof ss.formatSize).toBe('function');
+    expect(typeof ss.shouldUseDragMode).toBe('function');
+    expect(typeof ss.shouldShowNativeFileList).toBe('function');
+    expect(typeof ss.onUploadChange).toBe('function');
+    expect(typeof ss.createOnChange).toBe('function');
+    expect(typeof ss.removeBinary).toBe('function');
+
+    expect(ss.formatSize(undefined)).toBeUndefined();
+    expect(ss.formatSize(100)).toBe('100 B');
+    expect(ss.formatSize(5 * 1024 * 1024)).toMatch(/MB/);
+    expect(ss.formatSize(2 * 1024 * 1024 * 1024)).toMatch(/GB/);
+    expect(ss.hasAttachment(null)).toBe(false);
+    expect(ss.hasAttachment({ kind: 'clear' })).toBe(false);
+    expect(ss.hasAttachment({ kind: 'set', fileName: 'a.bin' })).toBe(true);
+    expect(ss.hasAttachment(1)).toBe(true);
+    expect(ss.shouldShowUploadTrigger({ kind: 'set', fileName: 'x' })).toBe(true);
+    expect(ss.shouldUseDragMode(null)).toBe(true);
+    expect(ss.shouldShowNativeFileList(null)).toBe(true);
+    expect(ss.toDisplayText(null)).toBe('');
+    expect(ss.toDisplayText({ fileName: 'n.bin' })).toContain('n.bin');
+    expect(ss.toDisplayText({ kind: 'set' })).toBe('[binary]');
+    expect(ss.toDisplayText(7)).toBe('7');
+
+    await ss.onUploadChange({ raw: undefined }, () => binding.fieldRef());
+    await ss.onUploadChange(
+      { raw: new File([new Uint8Array([1])], 'u.bin', { type: 'application/octet-stream' }) },
+      () => binding.fieldRef(),
+      async () => {},
+    );
+    await flushPromises();
+    const handler = ss.createOnChange(() => binding.fieldRef(), async () => {});
+    await handler({ raw: new File([new Uint8Array([2])], 'v.bin') });
+    await flushPromises();
+
+    let changed = 0;
+    await ss.removeBinary(() => binding.fieldRef(), async () => {
+      changed += 1;
+    });
+    expect(binding.fieldRef().value).toBeNull();
+    expect(changed).toBe(1);
+    m.unmount();
+    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyButton as any);
+
+    const single = makeBinding({ value: { fileName: 'one.bin', kind: 'set' } });
+    installFieldBaseEditStub();
+    installChoyButtonStub();
+    const singleMount = mountApp(BinaryField as any, {
+      props: {
+        binding: single,
+        renderMode: 'form',
+        uploadProps: { drag: true, showFileList: true, multiple: false },
+      },
+    });
+    await flushPromises();
+    const singleSs = singleMount.setupState() as any;
+    expect(singleSs.shouldShowUploadTrigger({ fileName: 'one.bin', kind: 'set' })).toBe(false);
+    expect(singleSs.shouldShowUploadTrigger(null)).toBe(true);
+    expect(singleSs.shouldUseDragMode({ fileName: 'one.bin', kind: 'set' })).toBe(false);
+    expect(singleSs.shouldShowNativeFileList({ fileName: 'one.bin', kind: 'set' })).toBe(false);
+    expect(singleSs.shouldUseDragMode(null)).toBe(true);
+    expect(singleSs.shouldShowNativeFileList(null)).toBe(true);
+    singleMount.unmount();
+  });
 });

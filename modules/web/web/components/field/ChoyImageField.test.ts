@@ -365,4 +365,180 @@ describe('ImageField mount wiring', () => {
     expect(empty.fieldRef().value).toBeNull();
     emptyMount.unmount();
   });
+
+  test('setupState covers preview helpers and legacy upload change', async () => {
+    ChoyMessage.error = ((msg: string) => {
+      messageErrors.push(String(msg));
+      return 0;
+    }) as typeof ChoyMessage.error;
+    (globalThis as any).createImageBitmap = async () => ({ width: 20, height: 20, close() {} });
+
+    const binding = makeBinding({
+      meta: { maxUploadBytes: 10_000, maxWidth: 200, maxHeight: 200 },
+      value: { previewUrl: 'blob:http://local/img', fileName: 'x.png', kind: 'set' },
+    });
+    installFieldBaseEditStub();
+    installChoyButtonStub();
+    const m = mountApp(ImageField as any, {
+      props: {
+        binding,
+        renderMode: 'form',
+        uploadProps: { drag: true, showFileList: true, multiple: true },
+      },
+    });
+    await flushPromises();
+    const ss = m.setupState() as any;
+    expect(typeof ss.revokeBlobPreview).toBe('function');
+    expect(typeof ss.createLocalPreview).toBe('function');
+    expect(typeof ss.formatSize).toBe('function');
+    expect(typeof ss.shouldUseDragMode).toBe('function');
+    expect(typeof ss.shouldShowNativeFileList).toBe('function');
+    expect(typeof ss.shouldShowUploadTrigger).toBe('function');
+
+    expect(ss.formatSize(undefined)).toBeUndefined();
+    expect(ss.formatSize(100)).toBe('100 B');
+    expect(ss.formatSize(5 * 1024 * 1024 * 1024)).toMatch(/GB|TB/);
+    // multiple:true always shows the upload trigger (covers early return).
+    expect(ss.shouldShowUploadTrigger({ kind: 'set', fileName: 'a.png' })).toBe(true);
+    expect(ss.shouldUseDragMode(null)).toBe(true);
+    expect(ss.shouldShowNativeFileList(null)).toBe(true);
+
+    const revoke = URL.revokeObjectURL;
+    let revoked = 0;
+    (URL as any).revokeObjectURL = () => {
+      revoked += 1;
+    };
+    ss.revokeBlobPreview({ previewUrl: 'blob:http://local/x', kind: 'set' });
+    ss.revokeBlobPreview({ previewUrl: '/not-blob', kind: 'set' });
+    ss.revokeBlobPreview(null);
+    expect(revoked).toBeGreaterThanOrEqual(1);
+    (URL as any).revokeObjectURL = () => {
+      throw new Error('revoke boom');
+    };
+    ss.revokeBlobPreview({ previewUrl: 'blob:http://local/throw', kind: 'set' });
+    const savedURL = (globalThis as any).URL;
+    (globalThis as any).URL = undefined;
+    ss.revokeBlobPreview({ previewUrl: 'blob:http://local/nourl', kind: 'set' });
+    (globalThis as any).URL = savedURL;
+    (URL as any).revokeObjectURL = revoke;
+
+    const OriginalFR = (globalThis as any).FileReader;
+    (globalThis as any).FileReader = class {
+      result: string | ArrayBuffer | null = null;
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      onabort: (() => void) | null = null;
+      readAsDataURL(_file: Blob) {
+        this.result = 'data:image/png;base64,xxx';
+        this.onload?.();
+      }
+    };
+    expect(await ss.createLocalPreview(makeFile(8))).toBe('data:image/png;base64,xxx');
+
+    (globalThis as any).FileReader = class {
+      result: string | null = null;
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      onabort: (() => void) | null = null;
+      readAsDataURL() {
+        this.onerror?.();
+      }
+    };
+    expect(await ss.createLocalPreview(makeFile(4))).toBeUndefined();
+
+    (globalThis as any).FileReader = class {
+      result: string | null = null;
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      onabort: (() => void) | null = null;
+      readAsDataURL() {
+        this.onabort?.();
+      }
+    };
+    expect(await ss.createLocalPreview(makeFile(4))).toBeUndefined();
+
+    (globalThis as any).FileReader = class {
+      result: string | null = null;
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      onabort: (() => void) | null = null;
+      readAsDataURL() {
+        throw new Error('read boom');
+      }
+    };
+    expect(await ss.createLocalPreview(makeFile(4))).toBeUndefined();
+
+    (globalThis as any).FileReader = class {
+      result: string | ArrayBuffer | null = null;
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      onabort: (() => void) | null = null;
+      readAsDataURL() {
+        this.result = new ArrayBuffer(1);
+        this.onload?.();
+      }
+    };
+    expect(await ss.createLocalPreview(makeFile(4))).toBeUndefined();
+    (globalThis as any).FileReader = OriginalFR;
+
+    expect(ss.hasAttachment(null)).toBe(false);
+    expect(ss.hasAttachment('  ')).toBe(false);
+    expect(ss.hasAttachment({ kind: 'clear' })).toBe(false);
+    expect(ss.hasAttachment({ kind: 'noop' })).toBe(false);
+    expect(ss.hasAttachment({ kind: 'set', fileName: 'a.png' })).toBe(true);
+    expect(ss.hasAttachment(1)).toBe(true);
+
+    expect(ss.toDisplayText(null)).toBe('');
+    expect(ss.toDisplayText({ fileName: 'n.png' })).toContain('n.png');
+    expect(ss.toDisplayText({ attachmentObjectId: 'oid' }).length).toBeGreaterThan(0);
+    expect(ss.toDisplayText({ kind: 'set' })).toBe('[image]');
+    expect(ss.toDisplayText(42)).toBe('42');
+
+    await ss.onUploadChange({ raw: undefined }, () => binding.fieldRef());
+    await ss.onUploadChange({ raw: makeFile(16) }, () => binding.fieldRef(), async () => {});
+    await flushPromises();
+    const handler = ss.createOnChange(() => binding.fieldRef(), async () => {});
+    await handler({ raw: makeFile(8) });
+    await flushPromises();
+
+    binding.fieldRef().value = { previewUrl: 'blob:http://local/y', fileName: 'y.png', kind: 'set' };
+    let changed = 0;
+    await ss.removeImage(() => binding.fieldRef(), async () => {
+      changed += 1;
+    });
+    expect(binding.fieldRef().value).toBeNull();
+    expect(changed).toBe(1);
+
+    const removeBtn = Array.from(m.el.querySelectorAll('button')).find(b =>
+      (b.textContent || '').toLowerCase().includes('remove')
+    ) as HTMLButtonElement | undefined;
+    binding.fieldRef().value = { fileName: 'click-rm.png', kind: 'set' };
+    await flushPromises();
+    if (removeBtn) {
+      removeBtn.click();
+      await flushPromises();
+    }
+    m.unmount();
+    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyButton as any);
+
+    // multiple:false hits `return !hasAttachment(raw)` (patch line ~309).
+    const single = makeBinding({ value: { fileName: 'one.png', kind: 'set' } });
+    installFieldBaseEditStub();
+    installChoyButtonStub();
+    const singleMount = mountApp(ImageField as any, {
+      props: {
+        binding: single,
+        renderMode: 'form',
+        uploadProps: { drag: true, showFileList: true, multiple: false },
+      },
+    });
+    await flushPromises();
+    const singleSs = singleMount.setupState() as any;
+    expect(singleSs.shouldShowUploadTrigger({ fileName: 'one.png', kind: 'set' })).toBe(false);
+    expect(singleSs.shouldShowUploadTrigger(null)).toBe(true);
+    expect(singleSs.shouldUseDragMode({ fileName: 'one.png', kind: 'set' })).toBe(false);
+    expect(singleSs.shouldShowNativeFileList(null)).toBe(true);
+    singleMount.unmount();
+  });
 });

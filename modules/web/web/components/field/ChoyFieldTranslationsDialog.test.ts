@@ -289,4 +289,36 @@ describe('FieldTranslationsDialog', () => {
     expect(m.q(INPUT_SEL)?.getAttribute('maxlength')).toBe('40');
     m.unmount();
   });
+  test('resolveDraftLang catch and save error via setupState', async () => {
+    getActiveLanguages.mockImplementation(async () => [
+      { Code: 'fr_FR', Name: 'French' },
+      { Code: 'de_DE', Name: 'German' },
+    ]);
+    const store = fieldStore({
+      GetFieldTranslations: fnRecorder(async () => ({ fr_FR: 'Bonjour', de_DE: 'Hallo', en_US: 'Hello' })),
+      UpdateFieldTranslations: fnRecorder(async () => {
+        throw new Error('save boom');
+      }),
+    });
+    const m = mountDialog({ store, draftLang: '' });
+    await flushPromises();
+    // fr_FR vs de_DE ordering hits label.localeCompare (neither side is en_US).
+    const labels = labelsOf(m.el);
+    expect(labels.indexOf('French')).toBeGreaterThan(0);
+    expect(labels.indexOf('German')).toBeGreaterThan(0);
+    const ss = m.setupState() as any;
+    expect(typeof ss.resolveDraftLang).toBe('function');
+    // Happy path: empty draftLang reads terminologyLang from i18n store.
+    expect(typeof ss.resolveDraftLang()).toBe('string');
+    // Catch path: useI18nStore throws without an active pinia.
+    setActivePinia(undefined as any);
+    expect(ss.resolveDraftLang()).toBe('');
+    setActivePinia(pinia);
+    setInput(inputByLabel(m.el, 'French'), 'Salut');
+    m.click('[data-test="save"]');
+    await flushPromises();
+    expect(messageError.calls.length).toBeGreaterThanOrEqual(1);
+    m.unmount();
+  });
+
 });
