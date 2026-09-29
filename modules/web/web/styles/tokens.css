@@ -4,7 +4,7 @@
  *
  * Choysum Choy UI tokens (frozen names; values tunable).
  * Product SPA consumes --choy-* from :root / html (and html.dark /
- * [data-density=compact]).
+ * [data-density=compact] / [dir=rtl]).
  */
 
 :root,
@@ -47,6 +47,7 @@ html {
 
   --choy-motion-duration-fast: 120ms;
   --choy-motion-duration-normal: 200ms;
+  --choy-motion-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
 
   --choy-z-dropdown: 1000;
   --choy-z-modal: 1100;
@@ -70,8 +71,12 @@ html {
   --choy-font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --choy-line-height-base: 1.5;
   --choy-component-size-base: 32px;
-}
 
+  /* Direction defaults; updateDocumentDirection may override at runtime. */
+  --choy-direction: ltr;
+  --choy-transform-direction: -100%;
+  --choy-direction-flip: 1;
+}
 
 html.dark {
   --choy-color-primary: oklch(0.7 0.12 255);
@@ -94,9 +99,6 @@ html.dark {
   --choy-color-warning-subtle: color-mix(in oklab, var(--choy-color-warning) 18%, black);
   --choy-color-danger-subtle: color-mix(in oklab, var(--choy-color-danger) 18%, black);
   --choy-color-info-subtle: color-mix(in oklab, var(--choy-color-info) 18%, black);
-}
-
-html.dark {
   color-scheme: dark;
 }
 
@@ -112,6 +114,12 @@ html[data-density='compact'] {
   --choy-font-size-lg: 1.0625rem;
   --choy-layout-header-height: 2.75rem;
   --choy-layout-content-padding: 0.75rem;
+}
+
+html[dir='rtl'] {
+  --choy-direction: rtl;
+  --choy-transform-direction: 100%;
+  --choy-direction-flip: -1;
 }
 
 @media (prefers-reduced-motion: reduce) {
