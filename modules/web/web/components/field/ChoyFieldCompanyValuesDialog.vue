@@ -308,19 +308,34 @@ async function handleSave() {
 .choy-field-company-values-dialog__body {
   min-height: 120px;
 }
-.choy-field-company-values-dialog__body :deep(.el-form-item) {
-  margin-bottom: 14px;
+.choy-field-company-values-dialog__form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.choy-field-company-values-dialog__row {
+  display: flex;
   align-items: flex-start;
+  gap: 12px;
 }
-.choy-field-company-values-dialog__body :deep(.el-form-item__label) {
+.choy-field-company-values-dialog__label {
+  flex: 0 0 auto;
+  min-width: 7rem;
   line-height: 32px;
-  color: var(--el-text-color-regular);
-  justify-content: flex-start;
+  color: var(--choy-color-foreground);
   text-align: left;
-  padding-right: 12px;
 }
-.choy-field-company-values-dialog__body :deep(.el-form-item__content) {
+.choy-field-company-values-dialog__control {
   flex: 1 1 auto;
   min-width: 0;
+}
+.choy-field-company-values-dialog__input {
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid var(--choy-color-border);
+  border-radius: var(--choy-radius-md);
+  background: var(--choy-color-background);
+  color: var(--choy-color-foreground);
 }
 </style>

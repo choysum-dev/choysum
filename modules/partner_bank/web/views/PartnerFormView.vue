@@ -22,22 +22,22 @@ SPDX-License-Identifier: Apache-2.0
           data-region="partner-bank-section"
         >
           <template #card="{ item, editable, removable, edit, remove }">
-            <div class="pbfv-bank-card">
-              <div class="pbfv-bank-card__title-row">
-                <div class="pbfv-bank-card__title">{{ item?.AccountName || _t('Unnamed Account') }}</div>
-                <div class="pbfv-bank-card__flags">
-                  <span v-if="item?.IsDefaultInbound" class="pbfv-flag pbfv-flag--success">{{ _t('Default Inbound') }}</span>
-                  <span v-if="item?.IsDefaultOutbound" class="pbfv-flag pbfv-flag--warning">{{ _t('Default Outbound') }}</span>
-                  <span v-if="item?.IsActive === false" class="pbfv-flag pbfv-flag--muted">{{ _t('Inactive') }}</span>
+            <div class="flex h-full min-h-0 flex-col gap-1.5">
+              <div class="flex items-center justify-between gap-2">
+                <div class="text-sm font-semibold text-foreground">{{ item?.AccountName || _t('Unnamed Account') }}</div>
+                <div class="inline-flex gap-1.5">
+                  <span v-if="item?.IsDefaultInbound" class="inline-flex items-center rounded-md border border-transparent px-2 py-0.5 text-xs font-semibold bg-success/20 text-success">{{ _t('Default Inbound') }}</span>
+                  <span v-if="item?.IsDefaultOutbound" class="inline-flex items-center rounded-md border border-transparent px-2 py-0.5 text-xs font-semibold bg-warning/20 text-warning">{{ _t('Default Outbound') }}</span>
+                  <span v-if="item?.IsActive === false" class="inline-flex items-center rounded-md border border-transparent px-2 py-0.5 text-xs font-semibold bg-muted text-muted-foreground">{{ _t('Inactive') }}</span>
                 </div>
               </div>
-              <div class="pbfv-bank-card__meta">{{ _t('Bank') }}: {{ item?.BankNameSnapshot || '-' }}</div>
-              <div class="pbfv-bank-card__meta">{{ _t('Type') }}: {{ getAccountTypeLabel(item?.AccountType) }}</div>
-              <div class="pbfv-bank-card__line">{{ _t('Account Number') }}: {{ item?.AccountNoMasked || '-' }}</div>
-              <div class="pbfv-bank-card__meta">
+              <div class="text-xs text-muted-foreground">{{ _t('Bank') }}: {{ item?.BankNameSnapshot || '-' }}</div>
+              <div class="text-xs text-muted-foreground">{{ _t('Type') }}: {{ getAccountTypeLabel(item?.AccountType) }}</div>
+              <div class="text-xs text-muted-foreground">{{ _t('Account Number') }}: {{ item?.AccountNoMasked || '-' }}</div>
+              <div class="text-xs text-muted-foreground">
                 {{ _t('Inbound/Outbound') }}: {{ item?.AllowInbound ? _t('Yes') : _t('No') }}/{{ item?.AllowOutbound ? _t('Yes') : _t('No') }}
               </div>
-              <div v-if="editable || removable" class="pbfv-bank-card__actions">
+              <div v-if="editable || removable" class="mt-auto inline-flex gap-1 pt-1">
                 <ChoyButton v-if="editable" variant="ghost" size="sm" @click.stop="edit">{{ _t('Edit') }}</ChoyButton>
                 <ChoyButton v-if="removable" variant="ghost" size="sm" @click.stop="remove">{{ _t('Delete') }}</ChoyButton>
               </div>
@@ -141,68 +141,3 @@ export default defineComponent({
 });
 </script>
 
-<style scoped>
-.pbfv-bank-card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  height: 100%;
-  min-height: 0;
-}
-
-.pbfv-bank-card__title-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
-
-.pbfv-bank-card__title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--choy-foreground, inherit);
-}
-
-.pbfv-bank-card__flags {
-  display: inline-flex;
-  gap: 6px;
-}
-
-.pbfv-flag {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 0.375rem;
-  border: 1px solid transparent;
-  padding: 0.125rem 0.5rem;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.pbfv-flag--success {
-  background: color-mix(in oklab, var(--choy-success, #16a34a) 18%, transparent);
-  color: var(--choy-success, #16a34a);
-}
-
-.pbfv-flag--warning {
-  background: color-mix(in oklab, var(--choy-warning, #d97706) 18%, transparent);
-  color: var(--choy-warning, #d97706);
-}
-
-.pbfv-flag--muted {
-  background: color-mix(in oklab, var(--choy-muted, #64748b) 18%, transparent);
-  color: var(--choy-muted-foreground, #64748b);
-}
-
-.pbfv-bank-card__meta,
-.pbfv-bank-card__line {
-  font-size: 12px;
-  color: var(--choy-muted-foreground, #64748b);
-}
-
-.pbfv-bank-card__actions {
-  margin-top: auto;
-  padding-top: 4px;
-  display: inline-flex;
-  gap: 4px;
-}
-</style>

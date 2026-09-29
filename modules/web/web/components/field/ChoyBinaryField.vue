@@ -102,7 +102,7 @@ SPDX-License-Identifier: Apache-2.0
           <span v-if="toMetaText(fieldValue().value)" class="choy-binary-display-meta">{{ toMetaText(fieldValue().value) }}</span>
         </span>
       </div>
-      <span v-else class="choy-binary-display-empty">-</span>
+      <span v-else class="choy-field-display-empty">-</span>
     </template>
   </FieldBase>
 </template>
@@ -407,7 +407,7 @@ function toDisplayText(raw: any): string {
 }
 .choy-binary-current,
 .choy-binary-display-card {
-  display: inline-flex;align-items: center;gap: 12px;min-width: 0;max-width: 100%;border: 1px solid var(--el-border-color-light);border-radius: 12px;background: var(--el-fill-color-lighter);
+  display: inline-flex;align-items: center;gap: 12px;min-width: 0;max-width: 100%;border: 1px solid var(--choy-color-border);border-radius: 12px;background: var(--choy-color-muted);
 }
 .choy-binary-current {
   width: 100%;padding: 10px 12px;
@@ -421,20 +421,20 @@ function toDisplayText(raw: any): string {
   background-color 0.2s ease;
 }
 .choy-binary-display-card--interactive:hover {
-  color: inherit;border-color: var(--el-color-primary-light-5);background: var(--el-color-primary-light-9);
+  color: inherit;border-color: var(--choy-color-primary-soft);background: var(--choy-color-primary-subtle);
 }
 .choy-binary-display-row {
   display: inline-flex;align-items: center;gap: 8px;min-width: 0;max-width: 140px;
 }
 .choy-binary-display-row__icon {
-  display: inline-flex;align-items: center;justify-content: center;width: 30px;height: 30px;border-radius: 8px;flex: 0 0 auto;color: var(--el-color-primary);background: var(--el-color-primary-light-9);border: 1px solid var(--el-color-primary-light-7);
+  display: inline-flex;align-items: center;justify-content: center;width: 30px;height: 30px;border-radius: 8px;flex: 0 0 auto;color: var(--choy-color-primary);background: var(--choy-color-primary-subtle);border: 1px solid var(--choy-color-primary-muted);
 }
 .choy-binary-display-row__text {
-  min-width: 0;color: var(--el-text-color-primary);font-size: 14px;line-height: 1.4;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;
+  min-width: 0;color: var(--choy-color-foreground);font-size: 14px;line-height: 1.4;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;
 }
 .choy-binary-current__icon,
 .choy-binary-display-icon {
-  display: inline-flex;align-items: center;justify-content: center;flex: 0 0 auto;color: var(--el-color-primary);background: var(--el-color-primary-light-9);border: 1px solid var(--el-color-primary-light-7);
+  display: inline-flex;align-items: center;justify-content: center;flex: 0 0 auto;color: var(--choy-color-primary);background: var(--choy-color-primary-subtle);border: 1px solid var(--choy-color-primary-muted);
 }
 .choy-binary-current__icon {
   width: 44px;height: 44px;border-radius: 10px;font-size: 20px;
@@ -448,11 +448,11 @@ function toDisplayText(raw: any): string {
 }
 .choy-binary-current__title,
 .choy-binary-display-text {
-  color: var(--el-text-color-primary);font-size: 14px;line-height: 1.4;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;
+  color: var(--choy-color-foreground);font-size: 14px;line-height: 1.4;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;
 }
 .choy-binary-current__meta,
 .choy-binary-display-meta {
-  color: var(--el-text-color-secondary);font-size: 12px;line-height: 1.4;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;
+  color: var(--choy-color-muted-foreground);font-size: 12px;line-height: 1.4;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;
 }
 .choy-binary-current__actions {
   display: flex;align-items: center;gap: 12px;flex-wrap: wrap;margin-top: 2px;
@@ -460,37 +460,25 @@ function toDisplayText(raw: any): string {
 .choy-binary-action-upload {
   display: inline-flex;
 }
-.choy-binary-action-upload :deep(.el-upload) {
-  display: inline-flex;
-}
 .choy-binary-upload {
-  display: block;width: 100%;
+  display: block;width: 100%;box-sizing: border-box;
 }
-.choy-binary-upload :deep(.el-upload) {
-  width: 100%;display: block;
-}
-.choy-binary-upload :deep(.el-upload-dragger) {
-  width: 100%;min-height: 126px;padding: 20px 16px;border-radius: 12px;background: var(--el-fill-color-lighter);border-color: var(--el-border-color);transition:
+.choy-binary-upload--drag {
+  width: 100%;min-height: 126px;padding: 20px 16px;border-radius: 12px;border: 1px dashed var(--choy-color-border);background: var(--choy-color-muted);cursor: pointer;transition:
   border-color 0.2s ease,
   background-color 0.2s ease;
 }
-.choy-binary-upload :deep(.el-upload-dragger:hover) {
-  border-color: var(--el-color-primary);background: var(--el-color-primary-light-9);
+.choy-binary-upload--drag:hover {
+  border-color: var(--choy-color-primary);background: var(--choy-color-primary-subtle);
 }
 .choy-upload-drag-icon {
-  display: block;margin: 0 auto 10px;font-size: 28px;color: var(--el-color-primary);
+  display: block;margin: 0 auto 10px;font-size: 28px;color: var(--choy-color-primary);
 }
 .choy-upload-drag-text {
-  color: var(--el-text-color-secondary);font-size: 13px;line-height: 1.5;text-align: center;
-}
-.choy-binary-upload :deep(.el-upload-list) {
-  width: 100%;margin: 6px 0 0;
+  color: var(--choy-color-muted-foreground);font-size: 13px;line-height: 1.5;text-align: center;
 }
 .choy-upload-action-btn,
 .choy-upload-btn {
   padding: 0;
-}
-.choy-binary-display-empty {
-  display: inline-flex;align-items: center;min-height: 34px;color: var(--el-text-color-placeholder);
 }
 </style>

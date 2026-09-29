@@ -16,8 +16,14 @@
   --color-foreground: var(--choy-color-foreground);
   --color-background: var(--choy-color-background);
   --color-muted: var(--choy-color-muted);
+  --color-muted-foreground: var(--choy-color-muted-foreground);
   --color-border: var(--choy-color-border);
   --color-ring: var(--choy-color-ring);
+
+  --color-primary-subtle: var(--choy-color-primary-subtle);
+  --color-success-subtle: var(--choy-color-success-subtle);
+  --color-warning-subtle: var(--choy-color-warning-subtle);
+  --color-danger-subtle: var(--choy-color-danger-subtle);
 
   --radius-sm: var(--choy-radius-sm);
   --radius-md: var(--choy-radius-md);

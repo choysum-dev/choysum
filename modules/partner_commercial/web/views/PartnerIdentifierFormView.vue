@@ -14,7 +14,7 @@ SPDX-License-Identifier: Apache-2.0
     :show-messages="showMessages"
     v-on="$attrs"
   >
-    <div class="pcifv-grid">
+    <div class="flex flex-col gap-2">
       <ChoyGrid :cols="12">
         <ChoyCol :span="6">
           <ChoyVarcharField :store="store" prop="IdentifierType" />
@@ -111,10 +111,3 @@ function onCountryValueClick(payload: ManyToOneValueClickPayload<Country>) {
 }
 </script>
 
-<style scoped>
-.pcifv-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-</style>

@@ -226,6 +226,51 @@ class ForbidLegacyUiImportsTest(unittest.TestCase):
         hits = mod.scan_vue_el_tags(pathlib.Path("x.vue"), text)
         self.assertEqual([h[1] for h in hits], ["el-form"])
 
+    def test_scan_legacy_css_tokens_in_vue_and_css(self):
+        mod = load_mod()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            app = root / "web" / "web"
+            styles = app / "styles"
+            styles.mkdir(parents=True)
+            bad_vue = app / "Leak.vue"
+            bad_vue.write_text(
+                "<template><div class=\"ok\" /></template>\n"
+                "<style scoped>\n"
+                ".x { color: var(--el-color-primary); }\n"
+                ".y :deep(.el-form-item__label) { width: 120px; }\n"
+                "/* var(--el-color-danger) commented */\n"
+                "</style>\n",
+                encoding="utf-8",
+            )
+            bad_css = styles / "leak.css"
+            bad_css.write_text(
+                ".z { border-color: var(--el-border-color-light); }\n"
+                ".el-upload { display: block; }\n",
+                encoding="utf-8",
+            )
+            good = app / "Ok.vue"
+            good.write_text(
+                "<template><div class=\"choy-field\" /></template>\n"
+                "<style scoped>\n"
+                ".choy-field { color: var(--choy-color-primary); }\n"
+                "</style>\n",
+                encoding="utf-8",
+            )
+
+            vue_hits = mod.scan_file(bad_vue)
+            self.assertEqual({h[2] for h in vue_hits}, {"el-css-var", "el-css-sel"})
+            self.assertEqual({h[1] for h in vue_hits}, {"--el-color-primary", ".el-form-item__label"})
+
+            css_hits = mod.scan_file(bad_css)
+            self.assertEqual({h[2] for h in css_hits}, {"el-css-var", "el-css-sel"})
+            self.assertEqual({h[1] for h in css_hits}, {"--el-border-color-light", ".el-upload"})
+
+            self.assertEqual(mod.scan_file(good), [])
+
+            violations = mod.scan(root)
+            self.assertEqual(len(violations), 4)
+
 
 if __name__ == "__main__":
     unittest.main()

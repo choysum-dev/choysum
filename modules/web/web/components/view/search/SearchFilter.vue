@@ -158,13 +158,13 @@ const { preview, leafCount } = (() => {
   display: flex;flex-direction: column;gap: 16px;
 }
 .choy-search-filter__footer {
-  display: flex;flex-direction: column;gap: 12px;border-top: 1px solid var(--el-border-color-light);padding-top: 12px;
+  display: flex;flex-direction: column;gap: 12px;border-top: 1px solid var(--choy-color-border);padding-top: 12px;
 }
 .choy-search-filter__preview {
   font-size: 12px;display: flex;gap: 6px;
 }
 .choy-search-filter__preview .label {
-  color: var(--el-text-color-secondary);
+  color: var(--choy-color-muted-foreground);
 }
 .choy-search-filter__preview .expr {
   word-break: break-all;

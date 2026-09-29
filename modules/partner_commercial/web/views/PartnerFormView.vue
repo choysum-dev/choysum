@@ -26,19 +26,19 @@ SPDX-License-Identifier: Apache-2.0
             :display-dialog-title="_t('View Identifier')"
           >
             <template #card="{ item, editable, removable, edit, remove }">
-              <div class="pcmv-identifier-card">
-                <div class="pcmv-identifier-card__title-row">
-                  <div class="pcmv-identifier-card__title">{{ item?.IdentifierType || _t('Unnamed Type') }}</div>
-                  <div class="pcmv-identifier-card__flags">
-                    <span v-if="item?.IsPrimary" class="pcmv-flag pcmv-flag--success">{{ _t('Primary') }}</span>
-                    <span v-if="item?.IsActive === false" class="pcmv-flag pcmv-flag--muted">{{ _t('Inactive') }}</span>
+              <div class="flex h-full min-h-0 flex-col gap-1.5">
+                <div class="flex items-center justify-between gap-2">
+                  <div class="text-sm font-semibold text-foreground">{{ item?.IdentifierType || _t('Unnamed Type') }}</div>
+                  <div class="inline-flex gap-1.5">
+                    <span v-if="item?.IsPrimary" class="inline-flex items-center rounded-md border border-transparent px-2 py-0.5 text-xs font-semibold bg-success/20 text-success">{{ _t('Primary') }}</span>
+                    <span v-if="item?.IsActive === false" class="inline-flex items-center rounded-md border border-transparent px-2 py-0.5 text-xs font-semibold bg-muted text-muted-foreground">{{ _t('Inactive') }}</span>
                   </div>
                 </div>
-                <div class="pcmv-identifier-card__line">{{ _t('Value') }}: {{ item?.Value || '-' }}</div>
-                <div class="pcmv-identifier-card__meta">{{ _t('Country') }}: {{ resolveCountryLabel(item) }}</div>
-                <div class="pcmv-identifier-card__meta">{{ _t('Valid From') }}: {{ formatDateTime(item?.ValidFrom) || '-' }}</div>
-                <div class="pcmv-identifier-card__meta">{{ _t('Valid To') }}: {{ formatDateTime(item?.ValidTo) || '-' }}</div>
-                <div v-if="editable || removable" class="pcmv-identifier-card__actions">
+                <div class="text-xs text-muted-foreground">{{ _t('Value') }}: {{ item?.Value || '-' }}</div>
+                <div class="text-xs text-muted-foreground">{{ _t('Country') }}: {{ resolveCountryLabel(item) }}</div>
+                <div class="text-xs text-muted-foreground">{{ _t('Valid From') }}: {{ formatDateTime(item?.ValidFrom) || '-' }}</div>
+                <div class="text-xs text-muted-foreground">{{ _t('Valid To') }}: {{ formatDateTime(item?.ValidTo) || '-' }}</div>
+                <div v-if="editable || removable" class="mt-auto inline-flex gap-1 pt-1">
                   <ChoyButton v-if="editable" variant="ghost" size="sm" @click.stop="edit">{{ _t('Edit') }}</ChoyButton>
                   <ChoyButton v-if="removable" variant="ghost" size="sm" @click.stop="remove">{{ _t('Delete') }}</ChoyButton>
                 </div>
@@ -145,63 +145,3 @@ export default defineComponent({
 });
 </script>
 
-<style scoped>
-.pcmv-identifier-card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  height: 100%;
-  min-height: 0;
-}
-
-.pcmv-identifier-card__title-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
-
-.pcmv-identifier-card__title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--choy-foreground, inherit);
-}
-
-.pcmv-identifier-card__flags {
-  display: inline-flex;
-  gap: 6px;
-}
-
-.pcmv-flag {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 0.375rem;
-  border: 1px solid transparent;
-  padding: 0.125rem 0.5rem;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.pcmv-flag--success {
-  background: color-mix(in oklab, var(--choy-success, #16a34a) 18%, transparent);
-  color: var(--choy-success, #16a34a);
-}
-
-.pcmv-flag--muted {
-  background: color-mix(in oklab, var(--choy-muted, #64748b) 18%, transparent);
-  color: var(--choy-muted-foreground, #64748b);
-}
-
-.pcmv-identifier-card__meta,
-.pcmv-identifier-card__line {
-  font-size: 12px;
-  color: var(--choy-muted-foreground, #64748b);
-}
-
-.pcmv-identifier-card__actions {
-  margin-top: auto;
-  padding-top: 4px;
-  display: inline-flex;
-  gap: 4px;
-}
-</style>

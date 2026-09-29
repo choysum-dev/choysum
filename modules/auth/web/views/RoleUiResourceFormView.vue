@@ -15,9 +15,9 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     v-on="$attrs"
   >
-    <ChoyCard :title="_t('UI Resource Grant')" class="urgfv-card">
+    <ChoyCard :title="_t('UI Resource Grant')" class="mb-3.5">
       <div
-        class="urgfv-card__hint mb-3 rounded-md border border-info/40 bg-info/10 px-3 py-2 text-sm"
+        class=" mb-3 rounded-md border border-info/40 bg-info/10 px-3 py-2 text-sm"
         role="alert"
       >
         <p class="font-medium text-foreground">{{ _t('Cross-role UI resource grant editor') }}</p>
@@ -51,7 +51,7 @@ SPDX-License-Identifier: Apache-2.0
       </ChoyGrid>
     </ChoyCard>
 
-    <ChoyCard :title="_t('System Information')" class="urgfv-card">
+    <ChoyCard :title="_t('System Information')" class="mb-3.5">
       <ChoyGrid :cols="12">
         <ChoyCol :span="6">
           <ChoyDatetimeField :store="store" prop="CreatedAt" />
@@ -113,15 +113,3 @@ function onRoleValueClick(payload: ManyToOneValueClickPayload<Role>) {
 }
 </script>
 
-<style scoped>
-.urgfv-card {
-  margin-bottom: 14px;
-}
-.urgfv-card__header {
-  font-weight: 600;
-  color: var(--choy-foreground, inherit);
-}
-.urgfv-card__hint {
-  margin-bottom: 12px;
-}
-</style>

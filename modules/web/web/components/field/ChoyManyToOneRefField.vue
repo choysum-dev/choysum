@@ -50,7 +50,7 @@ SPDX-License-Identifier: Apache-2.0
     </template>
     <template #display="{ fieldValue }">
       <span
-        class="choy-field-display-text"
+        class="choy-field-display-text choy-field-display-text--wrap"
         :class="{ 'choy-field-display-text--clickable': isValueClickable }"
         :role="isValueClickable ? 'button' : undefined"
         :tabindex="isValueClickable ? 0 : undefined"
@@ -631,49 +631,5 @@ async function confirmPick() {
 }
 .choy-many-to-one-select {
   width: 100%;
-}
-.choy-field-display-text {
-  color: var(--el-text-color-regular);
-  word-break: break-all;
-}
-.choy-field-display-text--clickable {
-  cursor: pointer;
-  color: var(--el-color-primary);
-  transition: color 0.16s ease;
-}
-.choy-field-display-text--clickable:hover {
-  color: var(--el-color-primary-dark-2);
-}
-.choy-field-display-text--clickable:focus-visible {
-  outline: 2px solid var(--el-color-primary-light-7);
-  outline-offset: 2px;
-  border-radius: 2px;
-}
-.choy-m2o__more {
-  text-align: center;
-}
-.choy-m2o__more--clickable {
-  display: block;
-  width: 100%;
-  padding: 5px 12px;
-  cursor: pointer;
-  user-select: none;
-  color: var(--el-color-primary);
-  background: transparent;
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
-}
-.choy-m2o__more--clickable:hover {
-  background-color: var(--el-fill-color-light);
-}
-.choy-m2o__more--clickable:active {
-  background-color: var(--el-fill-color-lighter);
-}
-.choy-m2o__more--clickable:focus,
-.choy-m2o__more--clickable:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--el-color-primary-light-7) inset;
-  border-radius: 2px;
 }
 </style>

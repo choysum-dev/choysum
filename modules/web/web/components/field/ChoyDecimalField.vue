@@ -27,7 +27,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <!-- Display: fixed scale pads; free decimals keep significant digits -->
     <template #display="{ fieldValue, record }">
-      <span class="choy-field-display-text">{{
+      <span class="choy-field-display-text choy-field-display-text--end">{{
         toDisplayText(resolveDisplayValue(fieldValue().value, record().value), () => resolveFixedScaleFrom(record().value))
       }}</span>
     </template>
@@ -491,16 +491,8 @@ const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internal
 </script>
 
 <style scoped>
-.choy-field-display-text {
-  line-height: var(--el-component-size-base, 32px);color: var(--el-text-color-primary);white-space: nowrap;overflow: hidden;text-overflow: ellipsis;padding: 0 11px;text-align: right;
-}
 .choy-decimal-input {
-  width: 100%;/* Compatible with the new structure */
-}
-.choy-decimal-input :deep(.el-input__inner) {
-  text-align: right;
-}
-.choy-decimal-input :deep(.el-input__wrapper input) {
+  width: 100%;
   text-align: right;
 }
 </style>

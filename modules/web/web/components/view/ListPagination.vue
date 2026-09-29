@@ -239,7 +239,7 @@ function handleEndMouseLeave(event: MouseEvent) {
   display: flex;align-items: center;justify-content: flex-end;gap: 12px;
 }
 .choy-pagination__text {
-  font-size: 14px;color: var(--el-text-color-regular);white-space: nowrap;display: flex;align-items: center;gap: 4px;
+  font-size: 14px;color: var(--choy-color-foreground);white-space: nowrap;display: flex;align-items: center;gap: 4px;
 }
 .choy-pagination__editable-wrapper {
   display: inline-flex;align-items: center;position: relative;
@@ -249,16 +249,11 @@ function handleEndMouseLeave(event: MouseEvent) {
 }
 .choy-pagination__editable:hover,
 .choy-pagination__editable.hover {
-  background-color: var(--el-fill-color-light);border-color: var(--el-border-color);color: var(--el-color-primary);
+  background-color: var(--choy-color-muted);border-color: var(--choy-color-border);color: var(--choy-color-primary);
 }
 .choy-pagination__input {
-  width: 60px !important;
-}
-.choy-pagination__input :deep(.el-input__inner) {
-  padding: 2px 6px;height: auto;min-height: 24px;font-size: 14px;text-align: end;
-}
-.choy-pagination__input :deep(.el-input__wrapper) {
-  padding: 0 2px !important;
+  width: 60px;padding: 2px 6px;height: auto;min-height: 24px;font-size: 14px;text-align: end;
+  border: 1px solid var(--choy-color-border);border-radius: var(--choy-radius-sm);background: var(--choy-color-background);
 }
 .choy-pagination__controls {
   display: flex;gap: 4px;

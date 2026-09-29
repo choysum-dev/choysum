@@ -7,18 +7,18 @@ SPDX-License-Identifier: Apache-2.0
   <button
     v-if="visible"
     type="button"
-    class="choy-stat-info"
-    :class="{ 'is-disabled': disabled }"
+    class="choy-stat-info inline-flex items-center gap-2 min-w-[72px] px-2.5 py-1.5 m-0 border border-border rounded-md bg-background text-foreground leading-tight text-left cursor-pointer transition-[background-color,border-color] duration-150 ease-in-out hover:enabled:bg-muted disabled:opacity-55 disabled:cursor-not-allowed"
+    :class="{ 'is-disabled opacity-55 cursor-not-allowed': disabled }"
     :disabled="disabled"
     v-bind="$attrs"
     @click="onClick"
   >
-    <span v-if="resolvedIcon" class="inline-flex choy-stat-info__icon">
+    <span v-if="resolvedIcon" class="choy-stat-info__icon inline-flex text-lg text-muted-foreground">
       <component :is="resolvedIcon" />
     </span>
-    <span class="choy-stat-info__body">
-      <span class="choy-stat-info__value">{{ displayValue }}</span>
-      <span class="choy-stat-info__label">{{ label }}</span>
+    <span class="choy-stat-info__body flex min-w-0 flex-col gap-0.5">
+      <span class="choy-stat-info__value text-base font-semibold text-foreground">{{ displayValue }}</span>
+      <span class="choy-stat-info__label whitespace-nowrap text-xs text-muted-foreground">{{ label }}</span>
     </span>
   </button>
 </template>
@@ -93,60 +93,3 @@ function onClick(event: MouseEvent) {
   }
 }
 </script>
-
-<style scoped>
-.choy-stat-info {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 72px;
-  padding: 6px 10px;
-  margin: 0;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: var(--el-border-radius-base);
-  background: var(--el-fill-color-blank);
-  color: var(--el-text-color-primary);
-  font: inherit;
-  line-height: 1.25;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
-}
-
-.choy-stat-info:hover:not(.is-disabled):not(:disabled) {
-  background: var(--el-fill-color-light);
-  border-color: var(--el-border-color);
-}
-
-.choy-stat-info.is-disabled,
-.choy-stat-info:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.choy-stat-info__icon {
-  font-size: 18px;
-  color: var(--el-text-color-secondary);
-}
-
-.choy-stat-info__body {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.choy-stat-info__value {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-.choy-stat-info__label {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-  white-space: nowrap;
-}
-</style>

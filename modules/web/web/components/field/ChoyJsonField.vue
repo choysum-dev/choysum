@@ -351,6 +351,6 @@ const OJsonCell = defineComponent({
 .choy-json-err {
   margin-top: 4px;
   font-size: 12px;
-  color: var(--el-color-error);
+  color: var(--choy-color-danger);
 }
 </style>

@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     v-on="$attrs"
   >
-    <ChoyCard :title="_t('Address Information')" class="bfv-card"><ChoyGrid :cols="12">
+    <ChoyCard :title="_t('Address Information')" class="mb-3.5"><ChoyGrid :cols="12">
         <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="Label" /></ChoyCol>
         <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="Zip" /></ChoyCol>
         <ChoyCol :span="4">
@@ -105,8 +105,3 @@ function onCityValueClick(payload: ManyToOneValueClickPayload<City>) {
 }
 </script>
 
-<style scoped>
-.bfv-card {
-  margin-bottom: 14px;
-}
-</style>

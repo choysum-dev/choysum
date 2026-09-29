@@ -832,22 +832,24 @@ defineSlots<{
   line-height: 0;
 }
 .choy-field-base__help-btn:focus-visible {
-  outline: 2px solid var(--el-color-primary);
+  outline: 2px solid var(--choy-color-primary);
   outline-offset: 2px;
   border-radius: 2px;
 }
 .choy-field-base__help-icon {
   flex-shrink: 0;
-  color: var(--el-text-color-secondary);
+  color: var(--choy-color-muted-foreground);
   vertical-align: middle;
 }
 .choy-field-base__cell {
   display: block;
   width: 100%;
 }
-/* Compact error styling inside cells */
-.choy-field-base__cell-item :deep(.el-form-item__error) {
+.choy-field-base__error {
   white-space: normal;
+  color: var(--choy-color-danger);
+  font-size: var(--choy-font-size-sm);
+  margin: 4px 0 0;
 }
 
 /* Inline-mode error styles */
@@ -862,7 +864,7 @@ defineSlots<{
   gap: 6px;
 }
 .choy-inline-err-icon {
-  color: var(--el-color-error);
+  color: var(--choy-color-danger);
 }
 
 .choy-field-base__edit-wrap {
@@ -880,21 +882,21 @@ defineSlots<{
   height: 24px;
   width: 24px;
   padding: 0;
-  color: var(--el-text-color-secondary);
+  color: var(--choy-color-muted-foreground);
 }
 .choy-field-base__translate-btn:hover,
 .choy-field-base__translate-btn:focus {
-  color: var(--el-color-primary);
+  color: var(--choy-color-primary);
 }
 .choy-field-base__company-values-btn {
   flex: 0 0 auto;
   height: 24px;
   width: 24px;
   padding: 0;
-  color: var(--el-text-color-secondary);
+  color: var(--choy-color-muted-foreground);
 }
 .choy-field-base__company-values-btn:hover,
 .choy-field-base__company-values-btn:focus {
-  color: var(--el-color-primary);
+  color: var(--choy-color-primary);
 }
 </style>

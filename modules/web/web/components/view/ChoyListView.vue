@@ -6,8 +6,8 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <ViewContainer :showHeader="showHeader">
     <template #header>
-      <div class="choy-list__action-bar">
-        <div class="choy-list__actions">
+      <div class="choy-list__action-bar grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-border pb-1 min-h-10 max-md:grid-cols-1">
+        <div class="choy-list__actions flex items-center gap-4">
           <div class="choy-list__system-actions" v-if="showActions">
             <!-- Keep Save/Discard outside the overridable slot so custom toolbars cannot hide them. -->
             <ChoyButton
@@ -61,11 +61,11 @@ SPDX-License-Identifier: Apache-2.0
         </div>
 
         <!-- Centered search: render only when searchView is provided -->
-        <div class="choy-list__search" v-if="resolvedSearchView">
+        <div class="choy-list__search flex min-w-60 items-center justify-center max-md:order-2" v-if="resolvedSearchView">
           <component :is="resolvedSearchView" :store="store" @query-update="onSearch" />
         </div>
 
-        <div class="choy-list__header-right">
+        <div class="choy-list__header-right flex items-center justify-end gap-2">
           <div class="choy-list__default-pagination" v-if="showPaginate">
             <ListPagination
               :store="store"
@@ -909,50 +909,28 @@ watch(
 .choy-list__table {
   flex: 1 1 auto;min-height: 0;min-width: 0;
 }
-.choy-list__table :deep(.el-form-item--default) {
-  margin-bottom: 0 !important;
-}
-/* Header bar styles, kept as a placeholder to avoid empty rules */
-/* .choy-list__header { padding-bottom: 0; } */
-.choy-list__action-bar {
-  display: grid;grid-template-columns: auto 1fr auto;align-items: center;gap: 12px;padding-bottom: 4px;border-bottom: 1px solid var(--el-border-color-light);min-height: 40px;
-}
-.choy-list__search {
-  display: flex;justify-content: center;align-items: center;min-width: 240px;
-}
-.choy-list__actions {
-  display: flex;align-items: center;gap: 16px;
-}
-.choy-list__header-right {
-  display: flex;align-items: center;justify-content: flex-end;gap: 8px;
-}
-@media (max-width: 768px) {
-.choy-list__action-bar {
-  grid-template-columns: 1fr;grid-auto-rows: auto;
-}
-.choy-list__search {
-  order: 2;justify-content: center;
-}
+.choy-list__table :deep(.choy-field-base) {
+  margin-bottom: 0;
 }
 .ovtable__empty {
-  width: 100%;padding: 24px 0;text-align: center;color: var(--el-text-color-secondary);
+  width: 100%;padding: 24px 0;text-align: center;color: var(--choy-color-muted-foreground);
 }
 .choy-group-cell {
   display: inline-flex;align-items: center;gap: 6px;min-width: 0;
 }
 .choy-group-cell__caret {
-  display: inline-block;width: 0;height: 0;border-top: 4px solid transparent;border-bottom: 4px solid transparent;border-left: 6px solid var(--el-text-color-regular);transition: transform 0.12s ease;cursor: pointer;
+  display: inline-block;width: 0;height: 0;border-top: 4px solid transparent;border-bottom: 4px solid transparent;border-left: 6px solid var(--choy-color-foreground);transition: transform 0.12s ease;cursor: pointer;
 }
 .choy-group-cell__caret.expanded {
   transform: rotate(90deg);
 }
 .choy-group-cell__label {
-  font-weight: 500;color: var(--el-text-color-primary);max-width: 100%;overflow: hidden;text-overflow: ellipsis;white-space: nowrap;
+  font-weight: 500;color: var(--choy-color-foreground);max-width: 100%;overflow: hidden;text-overflow: ellipsis;white-space: nowrap;
 }
 .choy-group-cell__count {
-  color: var(--el-text-color-secondary);
+  color: var(--choy-color-muted-foreground);
 }
 .choy-more-cell {
-  width: 100%;text-align: center;color: var(--el-text-color-primary);cursor: pointer;padding: 6px 0;
+  width: 100%;text-align: center;color: var(--choy-color-foreground);cursor: pointer;padding: 6px 0;
 }
 </style>

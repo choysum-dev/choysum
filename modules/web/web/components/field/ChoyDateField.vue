@@ -223,14 +223,6 @@ const ChoyDateCell = defineComponent({
 </script>
 
 <style scoped>
-.choy-field-display-text {
-  line-height: var(--el-component-size-base, 32px);
-  color: var(--el-text-color-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding: 0 11px;
-}
 .choy-date-picker {
   width: 100%;
 }

@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     v-on="$attrs"
   >
-    <ChoyCard :title="_t('Sequence Configuration')" class="bfv-card"><ChoyGrid :cols="12">
+    <ChoyCard :title="_t('Sequence Configuration')" class="mb-3.5"><ChoyGrid :cols="12">
         <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="Name" :rules="requiredRules" /></ChoyCol>
         <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="Code" :rules="requiredRules" /></ChoyCol>
         <ChoyCol :span="4"><ChoyManyToOneField :store="store" prop="CompanyId" :search-view="CompanyListView" :search-view-title="_t('Select Company')"
@@ -55,8 +55,3 @@ const store = resolvePageStore(props.store, 'SequenceFormView');
 const { recordId, viewMode, showHeader, createAction } = props;
 </script>
 
-<style scoped>
-.bfv-card {
-  margin-bottom: 14px;
-}
-</style>

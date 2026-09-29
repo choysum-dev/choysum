@@ -542,10 +542,10 @@ watch(
 }
 
 .choy-otm-kanban__card {
-  border: 1px solid var(--el-border-color-light);
+  border: 1px solid var(--choy-color-border);
   border-radius: 8px;
   padding: 12px;
-  background: var(--el-fill-color-blank);
+  background: var(--choy-color-background);
   cursor: pointer;
   transition:
     border-color 0.16s ease,
@@ -553,21 +553,21 @@ watch(
 }
 
 .choy-otm-kanban__card:hover {
-  border-color: var(--el-color-primary-light-5);
+  border-color: var(--choy-color-primary-soft);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .choy-otm-kanban__card-title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--el-text-color-primary);
+  color: var(--choy-color-foreground);
   line-height: 1.4;
 }
 
 .choy-otm-kanban__card-meta {
   margin-top: 6px;
   font-size: 12px;
-  color: var(--el-text-color-secondary);
+  color: var(--choy-color-muted-foreground);
   word-break: break-word;
 }
 
@@ -579,20 +579,20 @@ watch(
 }
 
 .choy-otm-kanban__add-card {
-  border: 1px dashed var(--el-border-color);
+  border: 1px dashed var(--choy-color-border);
   border-radius: 8px;
   min-height: 96px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--el-color-primary);
-  background: color-mix(in oklab, var(--el-color-primary) 5%, transparent);
+  color: var(--choy-color-primary);
+  background: color-mix(in oklab, var(--choy-color-primary) 5%, transparent);
   cursor: pointer;
   user-select: none;
 }
 
 .choy-otm-kanban__add-card:hover {
-  border-color: var(--el-color-primary);
+  border-color: var(--choy-color-primary);
 }
 
 .choy-otm-kanban__empty {
@@ -601,17 +601,17 @@ watch(
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px dashed var(--el-border-color-light);
+  border: 1px dashed var(--choy-color-border);
   border-radius: 8px;
-  color: var(--el-text-color-secondary);
+  color: var(--choy-color-muted-foreground);
   font-size: 13px;
 }
 
 .choy-otm-kanban__dialog-hint {
   padding: 18px;
-  border: 1px dashed var(--el-border-color);
+  border: 1px dashed var(--choy-color-border);
   border-radius: 8px;
-  color: var(--el-text-color-secondary);
+  color: var(--choy-color-muted-foreground);
   font-size: 13px;
 }
 

@@ -24,7 +24,7 @@ SPDX-License-Identifier: Apache-2.0
       </ChoyButtonBox>
     </template>
 
-    <ChoyCard :title="_t('Basic Information')" class="rfv-card">
+    <ChoyCard :title="_t('Basic Information')" class="mb-3.5">
       <ChoyGrid :cols="12">
         <ChoyCol :span="6">
           <ChoyVarcharField :store="store" prop="Name" :rules="requiredRules" />
@@ -47,7 +47,7 @@ SPDX-License-Identifier: Apache-2.0
       </ChoyGrid>
     </ChoyCard>
 
-    <ChoyCard :title="_t('System Information')" class="rfv-card">
+    <ChoyCard :title="_t('System Information')" class="mb-3.5">
       <ChoyGrid :cols="12">
         <ChoyCol :span="6">
           <ChoyDatetimeField :store="store" prop="CreatedAt" />
@@ -58,7 +58,7 @@ SPDX-License-Identifier: Apache-2.0
       </ChoyGrid>
     </ChoyCard>
 
-    <ChoyCard :title="_t('Related Data')" class="rfv-card">
+    <ChoyCard :title="_t('Related Data')" class="mb-3.5">
       <ChoyTabs v-model="activeTab">
         <ChoyTab :label="_t('Users')" value="users">
           <ChoyManyToManyField :store="store" prop="Users" label="" :search-list="UserListView" :search-view-title="_t('Select User')">
@@ -104,8 +104,8 @@ SPDX-License-Identifier: Apache-2.0
             <template #node="{ row, label }">
               <button
                 type="button"
-                class="rfv-ui-resource-node"
-                :class="{ 'is-inspected': isInspectedUiResourceRow(inspectedUiResourceId, row) }"
+                class="rfv-ui-resource-node inline-flex items-center gap-1.5 cursor-pointer rounded px-1 m-0 border-0 bg-transparent font-[inherit] text-inherit leading-[inherit] text-left"
+                :class="{ 'is-inspected bg-primary/10 text-primary': isInspectedUiResourceRow(inspectedUiResourceId, row) }"
                 @click.stop="inspectUiResource(row)"
               >
                 <component :is="resolveUiResourceTypeIcon(row?.Type)" class="size-3.5 shrink-0 text-foreground/60" aria-hidden="true" />
@@ -113,10 +113,10 @@ SPDX-License-Identifier: Apache-2.0
               </button>
             </template>
           </ChoyManyToManyRefTreeField>
-          <div v-if="inspectedUiResource" class="rfv-ui-requires">
-            <div class="rfv-ui-requires__title">
+          <div v-if="inspectedUiResource" class="rfv-ui-requires mt-3 rounded-md border border-border bg-background px-3 py-2.5">
+            <div class="rfv-ui-requires__title mb-1.5 text-[13px] font-semibold">
               {{ _t('Requires → derived Method RPCs') }}
-              <span class="rfv-ui-requires__resource">{{ inspectedUiResourceLabel }}</span>
+              <span class="rfv-ui-requires__resource ml-2 font-medium text-foreground">{{ inspectedUiResourceLabel }}</span>
             </div>
             <p class="mb-2 text-sm leading-relaxed text-foreground/70">
               {{
@@ -125,12 +125,12 @@ SPDX-License-Identifier: Apache-2.0
                 )
               }}
             </p>
-            <ul v-if="inspectedRequires.length > 0" class="rfv-ui-requires__list">
+            <ul v-if="inspectedRequires.length > 0" class="rfv-ui-requires__list m-0 list-disc pl-[18px] text-[13px] leading-relaxed">
               <li v-for="req in inspectedRequires" :key="req">
                 <code>{{ req }}</code>
               </li>
             </ul>
-            <p v-else class="rfv-ui-requires__empty">
+            <p v-else class="rfv-ui-requires__empty m-0 text-[13px] text-foreground/70">
               {{ _t('No Requires on this resource — granting it does not derive Method access.') }}
             </p>
           </div>
@@ -365,62 +365,3 @@ defineExpose({
 });
 </script>
 
-<style scoped>
-.rfv-card {
-  margin-bottom: 14px;
-}
-
-.rfv-ui-resource-node {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  border-radius: 4px;
-  padding: 0 4px;
-  margin: 0;
-  border: none;
-  background: transparent;
-  font: inherit;
-  color: inherit;
-  line-height: inherit;
-  text-align: left;
-}
-
-.rfv-ui-resource-node.is-inspected {
-  background: color-mix(in oklch, var(--choy-color-primary) 12%, transparent);
-  color: var(--choy-color-primary);
-}
-
-.rfv-ui-requires {
-  margin-top: 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--choy-color-border);
-  border-radius: 6px;
-  background: var(--choy-color-background);
-}
-
-.rfv-ui-requires__title {
-  font-weight: 600;
-  font-size: 13px;
-  margin-bottom: 6px;
-}
-
-.rfv-ui-requires__resource {
-  margin-left: 8px;
-  font-weight: 500;
-  color: var(--choy-color-foreground);
-}
-
-.rfv-ui-requires__list {
-  margin: 0;
-  padding-left: 18px;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.rfv-ui-requires__empty {
-  margin: 0;
-  font-size: 13px;
-  color: color-mix(in oklch, var(--choy-color-foreground) 70%, transparent);
-}
-</style>

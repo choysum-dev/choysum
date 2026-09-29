@@ -15,9 +15,9 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     v-on="$attrs"
   >
-    <ChoyCard :title="_t('Field Rule')" class="frfv-card">
+    <ChoyCard :title="_t('Field Rule')" class="mb-3.5">
       <div
-        class="frfv-card__hint mb-3 rounded-md border border-info/40 bg-info/10 px-3 py-2 text-sm"
+        class=" mb-3 rounded-md border border-info/40 bg-info/10 px-3 py-2 text-sm"
         role="alert"
       >
         <p class="font-medium text-foreground">{{ _t('Cross-role field rule editor') }}</p>
@@ -60,7 +60,7 @@ SPDX-License-Identifier: Apache-2.0
       </ChoyGrid>
     </ChoyCard>
 
-    <ChoyCard :title="_t('System Information')" class="frfv-card">
+    <ChoyCard :title="_t('System Information')" class="mb-3.5">
       <ChoyGrid :cols="12">
         <ChoyCol :span="6">
           <ChoyDatetimeField :store="store" prop="CreatedAt" />
@@ -122,15 +122,3 @@ function onRoleValueClick(payload: ManyToOneValueClickPayload<Role>) {
 }
 </script>
 
-<style scoped>
-.frfv-card {
-  margin-bottom: 14px;
-}
-.frfv-card__header {
-  font-weight: 600;
-  color: var(--choy-foreground, inherit);
-}
-.frfv-card__hint {
-  margin-bottom: 12px;
-}
-</style>

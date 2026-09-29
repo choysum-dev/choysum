@@ -25,7 +25,7 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display="{ fieldValue, record }">
-      <span class="choy-field-display-text">{{
+      <span class="choy-field-display-text choy-field-display-text--end">{{
         toDisplayText(
           resolveDisplayValue(fieldValue().value, record().value),
           () => resolveScaleFrom(record().value),
@@ -343,16 +343,8 @@ const mergedRules = computed<RuleItem[]>(() => [...props.rules, internalRule]);
 </script>
 
 <style scoped>
-.choy-field-display-text {
-  line-height: var(--el-component-size-base, 32px);color: var(--el-text-color-primary);white-space: nowrap;overflow: hidden;text-overflow: ellipsis;padding: 0 11px;text-align: right;
-}
 .choy-monetary-input {
   width: 100%;
-}
-.choy-monetary-input :deep(.el-input__inner) {
-  text-align: right;
-}
-.choy-monetary-input :deep(.el-input__wrapper input) {
   text-align: right;
 }
 </style>

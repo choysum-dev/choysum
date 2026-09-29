@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     v-on="$attrs"
   >
-    <ChoyCard :title="_t('Unit of Measure Information')" class="bfv-card"><ChoyGrid :cols="12">
+    <ChoyCard :title="_t('Unit of Measure Information')" class="mb-3.5"><ChoyGrid :cols="12">
         <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="Name" :rules="requiredRules" /></ChoyCol>
         <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="Symbol" /></ChoyCol>
         <ChoyCol :span="4"><ChoyManyToOneField :store="store" prop="CategoryId" :search-view="UoMCategoryListView" :search-view-title="_t('Select Category')"
@@ -52,8 +52,3 @@ const store = resolvePageStore(props.store, 'UoMFormView');
 const { recordId, viewMode, showHeader, createAction } = props;
 </script>
 
-<style scoped>
-.bfv-card {
-  margin-bottom: 14px;
-}
-</style>

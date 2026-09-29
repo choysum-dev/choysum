@@ -7,7 +7,7 @@
 
 .page-enter-active,
 .page-leave-active {
-  transition: opacity var(--el-transition-duration) var(--el-transition-function);
+  transition: opacity var(--choy-transition-duration-base) var(--choy-transition-timing-ease-in-out);
 }
 
 .page-enter-from,
@@ -17,7 +17,7 @@
 
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity var(--el-transition-duration) var(--el-transition-function);
+  transition: opacity var(--choy-transition-duration-base) var(--choy-transition-timing-ease-in-out);
 }
 
 .fade-enter-from,
@@ -28,8 +28,8 @@
 .slide-enter-active,
 .slide-leave-active {
   transition:
-    transform var(--el-transition-duration) var(--el-transition-function),
-    opacity var(--el-transition-duration) var(--el-transition-function);
+    transform var(--choy-transition-duration-base) var(--choy-transition-timing-ease-in-out),
+    opacity var(--choy-transition-duration-base) var(--choy-transition-timing-ease-in-out);
 }
 
 .slide-enter-from {
@@ -45,8 +45,8 @@
 .zoom-enter-active,
 .zoom-leave-active {
   transition:
-    transform var(--el-transition-duration) var(--el-transition-function),
-    opacity var(--el-transition-duration) var(--el-transition-function);
+    transform var(--choy-transition-duration-base) var(--choy-transition-timing-ease-in-out),
+    opacity var(--choy-transition-duration-base) var(--choy-transition-timing-ease-in-out);
 }
 
 .zoom-enter-from,
@@ -58,8 +58,8 @@
 .slide-y-enter-active,
 .slide-y-leave-active {
   transition:
-    transform var(--el-transition-duration) var(--el-transition-function),
-    opacity var(--el-transition-duration) var(--el-transition-function);
+    transform var(--choy-transition-duration-base) var(--choy-transition-timing-ease-in-out),
+    opacity var(--choy-transition-duration-base) var(--choy-transition-timing-ease-in-out);
 }
 
 .slide-y-enter-from {
@@ -74,7 +74,7 @@
 
 .drawer-left-enter-active,
 .drawer-left-leave-active {
-  transition: transform var(--el-transition-duration) var(--el-transition-function);
+  transition: transform var(--choy-transition-duration-base) var(--choy-transition-timing-ease-in-out);
 }
 
 .drawer-left-enter-from,
@@ -84,7 +84,7 @@
 
 .drawer-right-enter-active,
 .drawer-right-leave-active {
-  transition: transform var(--el-transition-duration) var(--el-transition-function);
+  transition: transform var(--choy-transition-duration-base) var(--choy-transition-timing-ease-in-out);
 }
 
 .drawer-right-enter-from,
@@ -94,7 +94,7 @@
 
 .drawer-top-enter-active,
 .drawer-top-leave-active {
-  transition: transform var(--el-transition-duration) var(--el-transition-function);
+  transition: transform var(--choy-transition-duration-base) var(--choy-transition-timing-ease-in-out);
 }
 
 .drawer-top-enter-from,
@@ -104,7 +104,7 @@
 
 .drawer-bottom-enter-active,
 .drawer-bottom-leave-active {
-  transition: transform var(--el-transition-duration) var(--el-transition-function);
+  transition: transform var(--choy-transition-duration-base) var(--choy-transition-timing-ease-in-out);
 }
 
 .drawer-bottom-enter-from,
@@ -114,9 +114,9 @@
 
 .collapse-transition {
   transition:
-    var(--el-transition-duration) height var(--el-transition-function),
-    var(--el-transition-duration) padding-top var(--el-transition-function),
-    var(--el-transition-duration) padding-bottom var(--el-transition-function);
+    var(--choy-transition-duration-base) height var(--choy-transition-timing-ease-in-out),
+    var(--choy-transition-duration-base) padding-top var(--choy-transition-timing-ease-in-out),
+    var(--choy-transition-duration-base) padding-bottom var(--choy-transition-timing-ease-in-out);
 }
 
 @media (prefers-reduced-motion: reduce) {

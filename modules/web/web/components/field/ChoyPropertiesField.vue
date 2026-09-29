@@ -360,13 +360,13 @@ watch(
   display: grid;grid-template-columns: minmax(96px, 28%) 1fr;gap: 8px;align-items: center;
 }
 .choy-properties-item__label {
-  color: var(--el-text-color-regular);font-size: 13px;
+  color: var(--choy-color-foreground);font-size: 13px;
 }
 .choy-properties-control {
   width: 100%;
 }
 .choy-properties-summary {
-  font-size: 13px;color: var(--el-text-color-regular);white-space: nowrap;overflow: hidden;text-overflow: ellipsis;
+  font-size: 13px;color: var(--choy-color-foreground);white-space: nowrap;overflow: hidden;text-overflow: ellipsis;
 }
 .choy-properties-empty {
   min-height: 4px;

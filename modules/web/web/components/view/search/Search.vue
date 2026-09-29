@@ -70,7 +70,7 @@ SPDX-License-Identifier: Apache-2.0
               <ChevronDown class="size-4" />
             </ChoyButton>
           </PopoverTrigger>
-          <PopoverContent class="choy-search-popover" align="end">
+          <PopoverContent class="choy-search-popover w-auto min-w-fit p-0" align="end">
 
           <div class="choy-search__menu-grid">
             <section class="choy-search__menu-col">
@@ -719,20 +719,18 @@ watch(
   width: 100%;
 }
 .choy-search__main {
-  display: flex;align-items: center;gap: 2px;border: 1px solid var(--el-border-color);padding: 2px 8px;border-radius: 4px;cursor: text;flex-wrap: wrap;
+  display: flex;align-items: center;gap: 2px;border: 1px solid var(--choy-color-border);padding: 2px 8px;border-radius: 4px;cursor: text;flex-wrap: wrap;
 }
 .choy-search__main:focus-within,
 .choy-search__main:hover {
-  border-color: var(--el-color-primary-light-7);
+  border-color: var(--choy-color-primary-muted);
 }
-.choy-search__main :deep(button) {
+.choy-search__leading-btn,
+.choy-search__trailing-btn {
   padding: 0 6px;margin: 0;
 }
 .choy-search__leading-btn {
   margin-right: 2px;
-}
-:deep(.choy-search-popover) {
-  width: auto !important;min-width: fit-content;padding: 0;
 }
 .choy-search__menu-grid {
   display: grid;grid-template-columns: 1fr 1fr;gap: 16px;padding: 12px 14px;max-width: 70vw;
@@ -741,13 +739,13 @@ watch(
   min-width: 260px;
 }
 .choy-search__menu-col--right {
-  border-left: 1px solid var(--el-border-color-lighter);padding-left: 16px;
+  border-left: 1px solid var(--choy-color-border);padding-left: 16px;
 }
 .choy-search__menu-title {
-  font-weight: 600;margin-bottom: 8px;color: var(--el-text-color-primary);
+  font-weight: 600;margin-bottom: 8px;color: var(--choy-color-foreground);
 }
 .choy-search__menu-subtitle {
-  font-weight: 600;margin: 6px 0;color: var(--el-text-color-regular);
+  font-weight: 600;margin: 6px 0;color: var(--choy-color-foreground);
 }
 .choy-search__menu-list {
   display: flex;flex-direction: column;
@@ -762,19 +760,19 @@ watch(
   flex: 0 0 auto;opacity: 0.55;padding: 0 4px !important;
 }
 .choy-search__menu-item-delete:hover {
-  opacity: 1;color: var(--el-color-danger);
+  opacity: 1;color: var(--choy-color-danger);
 }
 .choy-search__menu-item-edit {
   flex: 0 0 auto;opacity: 0.55;padding: 0 4px !important;
 }
 .choy-search__menu-item-edit:hover {
-  opacity: 1;color: var(--el-color-primary);
+  opacity: 1;color: var(--choy-color-primary);
 }
 .choy-search__menu-item {
   justify-content: flex-start;padding: 6px 4px;border-radius: 4px;margin: 0;
 }
 .choy-search__menu-item:hover {
-  background: var(--el-color-primary-light-9);
+  background: var(--choy-color-primary-subtle);
 }
 .choy-search__menu-item-label {
   white-space: nowrap;
@@ -858,13 +856,13 @@ watch(
   flex: 1;border: none;outline: none;min-width: 140px;padding: 4px;font-size: 13px;background: transparent;
 }
 .choy-search__suffix {
-  display: flex;align-items: center;gap: 2px;margin-left: 4px;padding-left: 6px;border-left: 1px solid var(--el-border-color);
+  display: flex;align-items: center;gap: 2px;margin-left: 4px;padding-left: 6px;border-left: 1px solid var(--choy-color-border);
 }
 .choy-search__menu-icon {
-  margin-right: 6px;color: var(--el-color-success);font-size: 16px;vertical-align: -1px;
+  margin-right: 6px;color: var(--choy-color-success);font-size: 16px;vertical-align: -1px;
 }
 .choy-search__empty {
-  color: var(--el-text-color-secondary);
+  color: var(--choy-color-muted-foreground);
 }
 .choy-search__tree {
   width: 260px;

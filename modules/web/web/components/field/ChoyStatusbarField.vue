@@ -296,7 +296,7 @@ const mergedRules = computed<RuleItem[]>(() => [...(props.rules ?? []), internal
 
 <style scoped>
 .choy-statusbar-field :deep(.choy-statusbar-form-item),
-  :deep(.el-form-item) {
+.choy-statusbar-field :deep(.choy-field-base) {
   margin-bottom: 0;
 }
 .choy-statusbar-field :deep(.choy-field-base__label) {

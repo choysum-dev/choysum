@@ -333,7 +333,7 @@ function buildColumn(): Column {
 
 <style scoped>
 :deep(.choy-list-handle) {
-  display: inline-flex;align-items: center;justify-content: center;color: var(--el-text-color-secondary);user-select: none;cursor: grab;
+  display: inline-flex;align-items: center;justify-content: center;color: var(--choy-color-muted-foreground);user-select: none;cursor: grab;
 }
 :deep(.choy-list-handle__grip) {
   font-size: 14px;line-height: 1;letter-spacing: -1px;

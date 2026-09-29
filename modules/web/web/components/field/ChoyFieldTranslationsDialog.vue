@@ -244,7 +244,7 @@ async function handleSave() {
 }
 .choy-field-translations-dialog__label {
   line-height: 32px;
-  color: var(--el-text-color-regular);
+  color: var(--choy-color-foreground);
 }
 .choy-field-translations-dialog__input {
   width: 100%;
@@ -255,7 +255,7 @@ async function handleSave() {
   margin-top: 4px;
   font-size: 12px;
   line-height: 1.4;
-  color: var(--el-text-color-secondary);
+  color: var(--choy-color-muted-foreground);
 }
 .dialog-footer {
   display: flex;

@@ -115,21 +115,21 @@ function nodeKey(n: any) {
 
 <style scoped>
 .osf-group {
-  border: 1px solid var(--el-border-color-lighter);border-radius: 6px;padding: 12px;margin-bottom: 12px;border-left-width: 3px;border-left-style: solid;transition:
+  border: 1px solid var(--choy-color-border);border-radius: 6px;padding: 12px;margin-bottom: 12px;border-left-width: 3px;border-left-style: solid;transition:
   background-color 0.15s ease,
   border-color 0.15s ease;
 }
 .osf-group--and {
-  border-left-color: var(--el-color-success);
+  border-left-color: var(--choy-color-success);
 }
 .osf-group--and:hover {
-  background-color: var(--el-color-success-light-9);
+  background-color: var(--choy-color-success-subtle);
 }
 .osf-group--or {
-  border-left-color: var(--el-color-warning);
+  border-left-color: var(--choy-color-warning);
 }
 .osf-group--or:hover {
-  background-color: var(--el-color-warning-light-9);
+  background-color: var(--choy-color-warning-subtle);
 }
 .osf-group__header {
   display: flex;align-items: center;justify-content: space-between;
@@ -138,10 +138,10 @@ function nodeKey(n: any) {
   display: flex;align-items: center;gap: 8px;
 }
 .osf-group--and .osf-group__relation-label {
-  color: var(--el-color-success);
+  color: var(--choy-color-success);
 }
 .osf-group--or .osf-group__relation-label {
-  color: var(--el-color-warning);
+  color: var(--choy-color-warning);
 }
 .osf-group__ops {
   display: flex;gap: 8px;

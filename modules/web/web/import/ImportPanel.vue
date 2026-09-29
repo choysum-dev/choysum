@@ -460,7 +460,7 @@ watch(visible, value => {
 
 .import-panel-hint {
   margin: 0 0 12px;
-  color: var(--el-text-color-secondary);
+  color: var(--choy-color-muted-foreground);
 }
 
 .import-panel-table {

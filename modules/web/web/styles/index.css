@@ -8,6 +8,7 @@
 @import './variables.css';
 @import './transitions.css';
 @import './a11y.css';
+@import './field-display.css';
 
 html {
   box-sizing: border-box;
@@ -20,44 +21,44 @@ html {
 }
 
 body {
-  font-family: var(--choy-font-family, var(--el-font-family, system-ui, sans-serif));
-  font-size: var(--choy-font-size-base, var(--el-font-size-base, 1rem));
-  line-height: var(--choy-line-height-base, var(--el-line-height-base, 1.5));
-  color: var(--choy-color-foreground, var(--el-text-color-primary, inherit));
+  font-family: var(--choy-font-family, system-ui, sans-serif);
+  font-size: var(--choy-font-size-base, 1rem);
+  line-height: var(--choy-line-height-base, 1.5);
+  color: var(--choy-color-foreground, inherit);
   background-color: var(--choy-color-background, transparent);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 a {
-  color: var(--choy-color-primary, var(--el-color-primary, #2563eb));
+  color: var(--choy-color-primary, #2563eb);
   text-decoration: none;
   transition: color var(--choy-motion-duration-fast, 150ms);
 }
 
 /* Prefer explicit theme tokens; otherwise mix from base primary. */
 a:hover {
-  color: var(--choy-color-primary-light, var(--el-color-primary-light-3, #3b82f6));
+  color: var(--choy-color-primary-light, #3b82f6);
 }
 
 @supports (color: color-mix(in oklab, red, white)) {
   a:hover {
     color: var(
       --choy-color-primary-light,
-      color-mix(in oklab, var(--choy-color-primary, var(--el-color-primary, #2563eb)) 82%, white)
+      color-mix(in oklab, var(--choy-color-primary, #2563eb) 82%, white)
     );
   }
 }
 
 a:active {
-  color: var(--choy-color-primary-dark, var(--el-color-primary-dark-2, #1d4ed8));
+  color: var(--choy-color-primary-dark, #1d4ed8);
 }
 
 @supports (color: color-mix(in oklab, red, white)) {
   a:active {
     color: var(
       --choy-color-primary-dark,
-      color-mix(in oklab, var(--choy-color-primary, var(--el-color-primary, #2563eb)) 82%, black)
+      color-mix(in oklab, var(--choy-color-primary, #2563eb) 82%, black)
     );
   }
 }

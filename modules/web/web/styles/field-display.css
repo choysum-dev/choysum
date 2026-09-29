@@ -1,0 +1,83 @@
+/*
+ * SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Shared display-mode chrome for Choy*Field components.
+ */
+
+.choy-field-display-text {
+  line-height: var(--choy-component-size-base, 32px);
+  color: var(--choy-color-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 11px;
+}
+
+.choy-field-display-text--end {
+  text-align: right;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.choy-field-display-text--wrap {
+  white-space: normal;
+  word-break: break-all;
+  line-height: inherit;
+  padding: 0;
+  overflow: visible;
+  text-overflow: unset;
+}
+
+.choy-field-display-text--clickable {
+  cursor: pointer;
+  color: var(--choy-color-primary);
+  transition: color 0.16s ease;
+}
+
+.choy-field-display-text--clickable:hover {
+  color: var(--choy-color-primary-dark);
+}
+
+.choy-field-display-text--clickable:focus-visible {
+  outline: 2px solid var(--choy-color-primary-muted);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.choy-field-display-empty {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  color: var(--choy-color-muted-foreground);
+}
+
+/* Relation select "load more" row (ManyToOne / ManyToOneRef). */
+.choy-m2o__more {
+  text-align: center;
+}
+
+.choy-m2o__more--clickable {
+  display: block;
+  width: 100%;
+  padding: 5px 12px;
+  cursor: pointer;
+  user-select: none;
+  color: var(--choy-color-primary);
+  background: transparent;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.choy-m2o__more--clickable:hover,
+.choy-m2o__more--clickable:active {
+  background-color: var(--choy-color-muted);
+}
+
+.choy-m2o__more--clickable:focus,
+.choy-m2o__more--clickable:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--choy-color-primary-muted) inset;
+  border-radius: 2px;
+}

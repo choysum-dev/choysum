@@ -294,9 +294,9 @@ defineExpose({ reload, drafts, definitionId });
   font: inherit;
 }
 .choy-properties-definition-editor__empty {
-  color: var(--el-text-color-secondary);font-size: 13px;
+  color: var(--choy-color-muted-foreground);font-size: 13px;
 }
 .choy-properties-definition-editor__error {
-  color: var(--el-color-danger);font-size: 13px;
+  color: var(--choy-color-danger);font-size: 13px;
 }
 </style>

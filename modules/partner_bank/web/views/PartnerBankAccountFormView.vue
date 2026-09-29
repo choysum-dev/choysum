@@ -15,7 +15,7 @@ SPDX-License-Identifier: Apache-2.0
     v-slot="{ viewMode: formViewMode }"
     v-on="$attrs"
   >
-    <div class="pbafv-grid">
+    <div class="flex flex-col gap-2">
       <ChoyGrid :cols="12">
         <ChoyCol :span="6">
           <ChoyManyToOneRefField
@@ -133,10 +133,3 @@ function onBankValueClick(payload: ManyToOneValueClickPayload<Bank>) {
 }
 </script>
 
-<style scoped>
-.pbafv-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-</style>

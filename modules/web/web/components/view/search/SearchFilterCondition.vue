@@ -291,6 +291,6 @@ function onRemove() {
   flex: 1;
 }
 .choy-search-filter__row .choy-null-flag {
-  color: var(--el-color-info);
+  color: var(--choy-color-info);
 }
 </style>

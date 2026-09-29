@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     v-on="$attrs"
   >
-    <ChoyCard :title="_t('Account Information')" class="ufv-card">
+    <ChoyCard :title="_t('Account Information')" class="mb-3.5">
       <ChoyGrid :cols="12">
         <ChoyCol :span="6">
           <ChoyImageField :store="store" prop="Avatar" />
@@ -177,8 +177,3 @@ function onCompanyTagClick(payload: RefTagClickPayload<Company>) {
 }
 </script>
 
-<style scoped>
-.ufv-card {
-  margin-bottom: 14px;
-}
-</style>

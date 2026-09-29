@@ -464,12 +464,12 @@ watch(
 
 .export-panel-scope {
   margin: 0;
-  color: var(--el-text-color-regular);
+  color: var(--choy-color-foreground);
 }
 
 .export-panel-hint {
   margin: 0;
-  color: var(--el-text-color-secondary);
+  color: var(--choy-color-muted-foreground);
 }
 
 .export-panel-templates {
