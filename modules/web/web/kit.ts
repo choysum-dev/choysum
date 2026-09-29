@@ -58,6 +58,14 @@ export {
   type ChoyKanbanMove,
 } from './components/view/kanbanViewHelpers';
 export {
+  createLaneSyncGate,
+  finishInitialKanbanLoad,
+  shouldRecoverStaleKanbanSearch,
+  shouldRestoreKanbanMove,
+} from './components/view/kanbanStoreHelpers';
+export { useChoyKanbanStoreEngine } from './composables/useChoyKanbanStoreEngine';
+export type { ChoyKanbanStoreEngineOptions } from './composables/useChoyKanbanStoreEngine';
+export {
   availableChartTypes,
   resolveChartAdapter,
   chartTypeRegistry,

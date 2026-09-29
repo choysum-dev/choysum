@@ -19,10 +19,16 @@ SPDX-License-Identifier: Apache-2.0
     </div>
 
     <ChoyKanbanView
-      v-model:lanes="choyLanes"
+      :store="store"
       :show-header="showHeader"
       :show-actions="true"
       :readonly="true"
+      :keyword-fields="keywordFields"
+      :flat-lane-label="_t('All')"
+      :map-row-to-card="rowToCard"
+      :before-bootstrap="beforeBootstrap"
+      :on-load-error="onKanbanLoadError"
+      :on-search-error="onKanbanSearchError"
       @card-click="onCardClick"
     >
       <template #system-actions />
@@ -63,8 +69,8 @@ SPDX-License-Identifier: Apache-2.0
         </div>
       </template>
 
-      <template #search>
-        <ChoySearchView :store="store" @query-update="onSearch" />
+      <template #search="{ onQueryUpdate }">
+        <ChoySearchView :store="store" @query-update="onQueryUpdate" />
       </template>
 
       <template #card="{ card }">
@@ -298,7 +304,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { History, LayoutGrid, List, RefreshCw } from 'lucide-vue-next';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
@@ -317,13 +323,8 @@ import {
   ChoyMessage,
   ChoySearchView,
   ChoyVirtualField,
-  type ChoyKanbanCard,
-  type ChoyKanbanLane
+  type ChoyKanbanCard
 } from '@/web';
-import { createKanbanController } from '@/web/web/controllers/kanbanController';
-import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
-import type { ChoySearchQuery } from '@/web/web/components/view/searchViewHelpers';
-import type { Lane } from '@/web/web/query/types';
 import {
   createModuleOpProgressSession,
   type ModuleOpStatusSnapshot
@@ -331,7 +332,6 @@ import {
 import { createModuleKanbanOpProgressHooks } from '../composables/moduleKanbanOpProgress';
 import {
   captureDialogFocusTarget,
-  createLaneSyncGate,
   createPlanDialogSessionGate,
   formatModuleKanbanDate,
   formatModuleOpSummary,
@@ -339,8 +339,7 @@ import {
   manifestSummaryText,
   moduleStatusBadgeClass,
   resolveModuleKanbanCardId,
-  resolveModuleKanbanCardKey,
-  shouldRecoverStaleKanbanSearch
+  resolveModuleKanbanCardKey
 } from './module_kanban_chrome';
 
 defineOptions({ name: 'ModuleKanbanView' });
@@ -358,13 +357,6 @@ const moduleStore = props.moduleStore;
 const keywordFields = ['ModuleName', 'Version', 'OriginType', 'OriginRef'];
 
 const router = useRouter();
-const controller = createKanbanController(store as any);
-const choyLanes = ref<ChoyKanbanLane[]>([]);
-const laneSyncGate = createLaneSyncGate();
-let searchSeq = 0;
-let searchInFlight = 0;
-let lastSearchQuery: ChoySearchQuery | null = null;
-const searchPending = ref(false);
 
 const dialogTitleId = useId();
 const dialogRef = ref<HTMLElement | null>(null);
@@ -479,135 +471,22 @@ function resolveRowPayload(row: unknown): Record<string, unknown> {
   return bag;
 }
 
-async function syncLanesFromController(): Promise<void> {
-  if ((await laneSyncGate.enter()) === 'waited') return;
-  try {
-    do {
-      laneSyncGate.beginPass();
-      const laneList = controller.lanes.value;
-      if (!laneList.length) {
-        const rows =
-          controller.vm.result?.kind === 'search' ? ((controller.vm.result.rows as any[]) || []) : [];
-        choyLanes.value = [
-          {
-            key: 'all',
-            label: _t('All'),
-            cards: rows.map((row, index) => rowToCard(row, index, 'all')),
-          },
-        ];
-        continue;
-      }
-      await Promise.all(
-        laneList.map(l =>
-          controller.preloadLane(l.key).catch(error => {
-            // Keep the board usable, but leave a log trail for partial lane failures.
-            console.error(`Module kanban lane preload failed: ${l.key}`, error);
-            return undefined;
-          }),
-        ),
-      );
-      choyLanes.value = laneList.map(lane => ({
-        key: lane.key,
-        label: laneLabel(lane),
-        remain: controller.getLaneRemain(lane),
-        cards: (controller.laneRecords.value[lane.key] || []).map((row, index) => rowToCard(row, index, lane.key)),
-      }));
-    } while (laneSyncGate.shouldResync());
-  } finally {
-    laneSyncGate.leave();
-  }
-}
-
-watch(
-  () => controller.lanes.value,
-  () => {
-    void syncLanesFromController();
-  },
-  { deep: true },
-);
-
-onMounted(async () => {
+async function beforeBootstrap(): Promise<void> {
   try {
     await (store as any).RequestSync({ IfStale: true });
   } catch {
     // sync unavailable — silently skip, page remains usable
   }
-  try {
-    await awaitFieldSelection(store, { requireNonEmpty: true });
-    await controller.setKeywordFields(keywordFields);
-    await controller.apply({ keywordFields });
-    await syncLanesFromController();
-  } catch (e) {
-    ChoyMessage.error(_t('Failed to load kanban'));
-    console.error('Module kanban load failed:', e);
-  }
-});
+}
 
-async function onSearch(query: ChoySearchQuery) {
-  lastSearchQuery = query;
-  const seq = ++searchSeq;
-  searchInFlight++;
-  searchPending.value = true;
-  try {
-    await controller.apply({
-      keyword: query.keyword,
-      appliedFilters: (query.appliedFilters || []) as any,
-      appliedGroups: query.appliedGroups as any,
-      keywordFields,
-    });
-  } catch (e) {
-    if (seq === searchSeq) {
-      ChoyMessage.error(_t('Failed to load kanban'));
-      console.error('Module kanban search failed:', e);
-    }
-  } finally {
-    searchInFlight--;
-  }
+function onKanbanLoadError(e: unknown) {
+  ChoyMessage.error(_t('Failed to load kanban'));
+  console.error('Module kanban load failed:', e);
+}
 
-  if (
-    shouldRecoverStaleKanbanSearch({
-      completedSeq: seq,
-      latestSeq: searchSeq,
-      inFlight: searchInFlight,
-    }) &&
-    lastSearchQuery
-  ) {
-    const recoverSeq = searchSeq;
-    searchInFlight++;
-    try {
-      await controller.apply({
-        keyword: lastSearchQuery.keyword,
-        appliedFilters: (lastSearchQuery.appliedFilters || []) as any,
-        appliedGroups: lastSearchQuery.appliedGroups as any,
-        keywordFields,
-      });
-      if (recoverSeq === searchSeq) await syncLanesFromController();
-    } catch (e) {
-      if (recoverSeq === searchSeq) {
-        ChoyMessage.error(_t('Failed to load kanban'));
-        console.error('Module kanban search recover failed:', e);
-      }
-    } finally {
-      searchInFlight--;
-      if (searchInFlight === 0) searchPending.value = false;
-    }
-    return;
-  }
-
-  if (seq !== searchSeq) {
-    if (searchInFlight === 0) searchPending.value = false;
-    return;
-  }
-  try {
-    await syncLanesFromController();
-  } catch (e) {
-    if (seq === searchSeq) {
-      ChoyMessage.error(_t('Failed to load kanban'));
-      console.error('Module kanban lane sync failed:', e);
-    }
-  } finally {
-    if (seq === searchSeq) searchPending.value = false;
-  }
+function onKanbanSearchError(e: unknown) {
+  ChoyMessage.error(_t('Failed to load kanban'));
+  console.error('Module kanban search failed:', e);
 }
 
 function toKanban() {
@@ -778,10 +657,6 @@ async function onSyncIndex() {
   } finally {
     syncLoading.value = false;
   }
-}
-
-function laneLabel(lane: Lane | ChoyKanbanLane): string {
-  return String((lane as Lane).label ?? (lane as ChoyKanbanLane).label ?? (lane as Lane).key ?? '');
 }
 
 onBeforeUnmount(() => {

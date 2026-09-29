@@ -1,6 +1,11 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import {
+  finishInitialKanbanLoad,
+  shouldRestoreKanbanMove,
+} from '@/web/web/components/view/kanbanStoreHelpers';
+
 export type TokenKanbanRow =
   | { payload?: Record<string, unknown> | null; key?: string; kind?: string }
   | Record<string, unknown>;
@@ -72,11 +77,7 @@ export function resolveTokenUsernameLabel(payload: Record<string, unknown> | nul
   return String(user ?? '');
 }
 
-/**
- * True when an optimistic card move must be discarded (resync) instead of
- * persisted: overlapping writes/searches, synthetic card ids, or the flat
- * "all" lane that is not a controller group lane.
- */
+/** Token alias for kit shouldRestoreKanbanMove. */
 export function shouldRestoreTokenKanbanMove(opts: {
   movePending: boolean;
   searchPending?: boolean;
@@ -84,26 +85,15 @@ export function shouldRestoreTokenKanbanMove(opts: {
   fromLaneKey: string;
   controllerLaneKeys: ReadonlyArray<string>;
 }): boolean {
-  if (opts.movePending || opts.searchPending || !opts.recordId) return true;
-  return !opts.controllerLaneKeys.some((key) => key === opts.fromLaneKey);
+  return shouldRestoreKanbanMove(opts);
 }
 
-/**
- * Initial kanban load: prefer a first-frame search emit; otherwise apply an
- * empty query. If a search arrives mid-flight, re-apply it so last writer wins.
- */
+/** Token alias for kit finishInitialKanbanLoad. */
 export async function finishInitialTokenKanbanLoad(opts: {
   getLastSearchQuery: () => unknown;
   applyEmpty: () => Promise<void>;
   onSearch: (query: any) => Promise<void>;
   syncLanes: () => Promise<void>;
 }): Promise<void> {
-  if (opts.getLastSearchQuery()) return;
-  await opts.applyEmpty();
-  const late = opts.getLastSearchQuery();
-  if (late) {
-    await opts.onSearch(late);
-    return;
-  }
-  await opts.syncLanes();
+  return finishInitialKanbanLoad(opts);
 }

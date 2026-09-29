@@ -92,13 +92,7 @@ export function manifestSummaryText(raw: unknown): string {
 /**
  * After a superseded search apply finishes last, recover when nothing else is in flight.
  */
-export function shouldRecoverStaleKanbanSearch(args: {
-  completedSeq: number;
-  latestSeq: number;
-  inFlight: number;
-}): boolean {
-  return args.completedSeq !== args.latestSeq && args.inFlight === 0;
-}
+export { shouldRecoverStaleKanbanSearch } from '@/web/web/components/view/kanbanStoreHelpers';
 
 /** Capture the focused element before opening a modal (null when none). */
 export function captureDialogFocusTarget(
@@ -132,37 +126,7 @@ export function createPlanDialogSessionGate() {
  * Coalesce overlapping lane syncs: waiters resume after the in-flight pass (and any
  * follow-up resync) finishes, instead of resolving immediately.
  */
-export function createLaneSyncGate() {
-  let syncing = false;
-  let pending = false;
-  let waiters: Array<() => void> = [];
-  return {
-    /** @returns 'run' when this caller owns the sync loop; 'waited' after draining. */
-    async enter(): Promise<'run' | 'waited'> {
-      if (syncing) {
-        pending = true;
-        await new Promise<void>(resolve => {
-          waiters.push(resolve);
-        });
-        return 'waited';
-      }
-      syncing = true;
-      return 'run';
-    },
-    beginPass(): void {
-      pending = false;
-    },
-    shouldResync(): boolean {
-      return pending;
-    },
-    leave(): void {
-      syncing = false;
-      const queued = waiters;
-      waiters = [];
-      for (const resolve of queued) resolve();
-    },
-  };
-}
+export { createLaneSyncGate } from '@/web/web/components/view/kanbanStoreHelpers';
 
 /**
  * Navigable record id from a kanban card payload. Blank ids fail closed.

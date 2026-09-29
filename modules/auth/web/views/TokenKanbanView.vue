@@ -15,18 +15,23 @@ SPDX-License-Identifier: Apache-2.0
     </div>
 
     <ChoyKanbanView
-      v-model:lanes="choyLanes"
+      :store="store"
       :show-header="showHeader"
       :show-actions="true"
-      :readonly="movePending || loadMorePending || searchPending"
       :create-label="_t('New')"
+      :flat-lane-label="_t('All')"
+      :lane-label="laneLabel"
+      :map-row-to-card="rowToCard"
+      :resolve-move-record-id="resolveMoveRecordId"
+      :on-load-error="onLoadError"
+      :on-search-error="onSearchError"
+      :on-load-more-error="onLoadMoreError"
+      :on-move-error="onMoveError"
       @card-click="onCardClick"
-      @card-move="onCardMove"
-      @lane-load-more="onLaneLoadMore"
       @create="onCreate"
     >
-      <template #search>
-        <ChoySearchView :store="store" @query-update="onSearch" />
+      <template #search="{ onQueryUpdate }">
+        <ChoySearchView :store="store" @query-update="onQueryUpdate" />
       </template>
 
       <template #user-actions>
@@ -45,7 +50,7 @@ SPDX-License-Identifier: Apache-2.0
 
       <template #lane-header="{ lane }">
         <div class="token-lane-header flex items-center gap-1.5 text-sm font-semibold text-foreground">
-          <span class="title">{{ laneLabel(lane) }}</span>
+          <span class="title">{{ lane.label }}</span>
           <span class="count text-foreground/60">({{ lane.cards.length }})</span>
         </div>
       </template>
@@ -75,14 +80,14 @@ SPDX-License-Identifier: Apache-2.0
         <div class="empty-lane text-xs opacity-60">{{ _t('No tokens in this lane') }}</div>
       </template>
 
-      <template #lane-footer="{ remain, loadMore }">
+      <template #lane-footer="{ remain, loadMore, busy }">
         <ChoyButton
           v-if="remain > 0"
           type="button"
           variant="ghost"
           size="sm"
           class="w-full"
-          :disabled="loadMorePending || movePending || searchPending"
+          :disabled="busy"
           @click="loadMore()"
         >
           {{ _t('Load more (%s remaining)', remain) }}
@@ -93,7 +98,6 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { BarChart3, LayoutGrid, List } from 'lucide-vue-next';
 import type Token from '@/auth/service/models/token';
@@ -105,24 +109,17 @@ import {
   ChoySearchView,
   ChoyVirtualField,
   type ChoyKanbanCard,
-  type ChoyKanbanLane,
-  type ChoyKanbanLoadMore,
-  type ChoyKanbanMove
+  type ChoyKanbanLane
 } from '@/web';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
-import { createKanbanController } from '@/web/web/controllers/kanbanController';
-import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
-import type { ChoySearchQuery } from '@/web/web/components/view/searchViewHelpers';
 import type { Lane } from '@/web/web/query/types';
 import {
-  finishInitialTokenKanbanLoad,
   resolveTokenDetailId,
   resolveTokenKanbanCardId,
   resolveTokenKanbanRowPayload,
   resolveTokenMoveRecordId,
   resolveTokenUsernameLabel,
-  shouldRestoreTokenKanbanMove,
   type TokenKanbanRow
 } from './token_kanban_nav';
 
@@ -134,147 +131,58 @@ const store = resolvePageStore(props.store, 'TokenKanbanView');
 const { showHeader } = props;
 
 const router = useRouter();
-const controller = createKanbanController(store as any);
-const choyLanes = ref<ChoyKanbanLane[]>([]);
-const movePending = ref(false);
-const loadMorePending = ref(false);
-/** True while a search/group apply is in flight; blocks moves against stale lanes. */
-const searchPending = ref(false);
-let syncingLanes = false;
-let resyncPending = false;
-let searchSeq = 0;
-let lastSearchQuery: ChoySearchQuery | null = null;
 
-function rowToCard(row: TokenKanbanRow, index: number, laneKey: string): ChoyKanbanCard {
-  const payload = resolveTokenKanbanRowPayload(row);
+function rowToCard(row: unknown, index: number, laneKey: string): ChoyKanbanCard {
+  const payload = resolveTokenKanbanRowPayload(row as TokenKanbanRow);
   return {
-    id: resolveTokenKanbanCardId(row, index, laneKey),
+    id: resolveTokenKanbanCardId(row as TokenKanbanRow, index, laneKey),
     title: String(payload.TokenType ?? payload.Id ?? ''),
     laneKey,
     payload,
   };
 }
 
-/**
- * Map controller lane rows into ChoyKanbanView lane/card models.
- * When no group is applied, surface a single flat lane from search results.
- */
-async function syncLanesFromController(): Promise<void> {
-  if (syncingLanes) {
-    resyncPending = true;
-    return;
-  }
-  syncingLanes = true;
-  try {
-    do {
-      resyncPending = false;
-      const laneList = controller.lanes.value;
-      if (!laneList.length) {
-        const rows =
-          controller.vm.result?.kind === 'search' ? ((controller.vm.result.rows as any[]) || []) : [];
-        choyLanes.value = [
-          {
-            key: 'all',
-            label: _t('All'),
-            cards: rows.map((row, index) => rowToCard(row, index, 'all')),
-          },
-        ];
-        continue;
-      }
-      await Promise.all(laneList.map(l => controller.preloadLane(l.key).catch(() => undefined)));
-      choyLanes.value = laneList.map(lane => ({
-        key: lane.key,
-        label: laneLabel(lane),
-        remain: controller.getLaneRemain(lane),
-        cards: (controller.laneRecords.value[lane.key] || []).map((row, index) =>
-          rowToCard(row as any, index, lane.key)
-        ),
-      }));
-    } while (resyncPending);
-  } finally {
-    syncingLanes = false;
-  }
+function resolveMoveRecordId(
+  cards: ReadonlyArray<ChoyKanbanCard>,
+  moveCardId: string,
+): string {
+  return resolveTokenMoveRecordId(cards, moveCardId);
 }
 
-watch(
-  () => controller.lanes.value,
-  () => {
-    void syncLanesFromController();
-  },
-  { deep: true }
-);
-
-/**
- * Re-apply the last search payload (or current store query) after a failed move.
- */
-async function applyCurrentQuery(): Promise<void> {
-  if (lastSearchQuery) {
-    await controller.apply({
-      keyword: lastSearchQuery.keyword,
-      appliedFilters: (lastSearchQuery.appliedFilters || []) as any,
-      appliedGroups: lastSearchQuery.appliedGroups as any,
-    });
-    return;
-  }
-  const qs = ((store.state as any)?.queryState ?? {}) as Record<string, unknown>;
-  await controller.apply({
-    keyword: qs.keyword as string | undefined,
-    appliedFilters: (qs.appliedFilters || []) as any,
-    appliedGroups: qs.appliedGroups as any,
-  });
+function laneLabel(lane: Pick<ChoyKanbanLane, 'key' | 'label'> | Lane): string {
+  const key = String((lane as Lane).key ?? (lane as ChoyKanbanLane).key);
+  const label = String((lane as Lane).label ?? (lane as ChoyKanbanLane).label ?? '');
+  if (/Revoked=true/.test(key)) return _t('Revoked');
+  if (/Revoked=false/.test(key)) return _t('Not Revoked');
+  if (label === 'true') return _t('Revoked');
+  if (label === 'false') return _t('Not Revoked');
+  return label || key;
 }
 
-onMounted(async () => {
-  try {
-    await awaitFieldSelection(store, { requireNonEmpty: true });
-    // Prefer the search view's first-frame emit when it arrives; otherwise load once.
-    // Re-check after the empty apply so a mid-flight query-update wins.
-    await finishInitialTokenKanbanLoad({
-      getLastSearchQuery: () => lastSearchQuery,
-      applyEmpty: () => controller.apply({}),
-      onSearch,
-      syncLanes: syncLanesFromController,
-    });
-  } catch (e) {
-    ChoyMessage.error(_t('Failed to load kanban'));
-    console.error('Token kanban load failed:', e);
-  }
-});
-
-/**
- * Apply the emitted search query from ChoySearchView (store-bound payload).
- */
-async function onSearch(query: ChoySearchQuery) {
-  lastSearchQuery = query;
-  const seq = ++searchSeq;
-  searchPending.value = true;
-  try {
-    await controller.apply({
-      keyword: query.keyword,
-      appliedFilters: (query.appliedFilters || []) as any,
-      appliedGroups: query.appliedGroups as any,
-    });
-    if (seq !== searchSeq) return;
-    await syncLanesFromController();
-  } catch (e) {
-    if (seq !== searchSeq) return;
-    ChoyMessage.error(_t('Failed to load kanban'));
-    console.error('Token kanban search failed:', e);
-  } finally {
-    if (seq === searchSeq) searchPending.value = false;
-  }
+function onLoadError(e: unknown) {
+  ChoyMessage.error(_t('Failed to load kanban'));
+  console.error('Token kanban load failed:', e);
 }
 
-/**
- * Navigate from kanban view back to the token list.
- */
+function onSearchError(e: unknown) {
+  ChoyMessage.error(_t('Failed to load kanban'));
+  console.error('Token kanban search failed:', e);
+}
+
+function onLoadMoreError(e: unknown) {
+  ChoyMessage.error(_t('Failed to load more tokens'));
+  console.error('Token kanban load-more failed:', e);
+}
+
+function onMoveError(e: unknown) {
+  ChoyMessage.error(_t('Move failed; refreshed to recover'));
+  console.error('Token kanban move failed:', e);
+}
+
 function toList() {
   router.push('/auth/tokens');
 }
 
-/**
- * Keep navigation on the token kanban route.
- */
 function toKanban() {
   router.push('/auth/tokens/kanban');
 }
@@ -284,84 +192,12 @@ function onCreate() {
 }
 
 function openDetailFromCard(card: ChoyKanbanCard) {
-  // `rowToCard` may fall back to row key/index for Vue keys; only route on a real record Id.
   const id = resolveTokenDetailId(card.payload as Record<string, unknown> | undefined);
   if (id) router.push(`/auth/tokens/${id}`);
 }
 
-/**
- * Handle kanban card clicks by opening the record detail view.
- */
 function onCardClick(card: ChoyKanbanCard) {
   openDetailFromCard(card);
-}
-
-/**
- * Fetch the next batch for a lane, then remap cards / remain counts.
- */
-async function onLaneLoadMore(payload: ChoyKanbanLoadMore) {
-  if (loadMorePending.value || movePending.value || searchPending.value || !payload?.laneKey) return;
-  loadMorePending.value = true;
-  try {
-    await controller.loadMoreLane(payload.laneKey);
-    await syncLanesFromController();
-  } catch (e) {
-    ChoyMessage.error(_t('Failed to load more tokens'));
-    console.error('Token kanban load-more failed:', e);
-  } finally {
-    loadMorePending.value = false;
-  }
-}
-
-/**
- * Persist lane moves (Revoked field) via the kanban controller.
- * Blocks overlapping moves while a write is in flight.
- */
-async function onCardMove(move: ChoyKanbanMove) {
-  // Synthetic Vue keys / flat "all" lane / overlapping writes must not persist;
-  // ChoyKanbanView already mutated v-model:lanes, so restore when skipping.
-  const recordId = resolveTokenMoveRecordId(
-    choyLanes.value.flatMap(lane => lane.cards),
-    move.cardId,
-  );
-  if (
-    shouldRestoreTokenKanbanMove({
-      movePending: movePending.value,
-      searchPending: searchPending.value,
-      recordId,
-      fromLaneKey: move.fromLaneKey,
-      controllerLaneKeys: controller.lanes.value.map(lane => lane.key),
-    })
-  ) {
-    await syncLanesFromController();
-    return;
-  }
-  movePending.value = true;
-  try {
-    await controller.moveCard(recordId, move.fromLaneKey, move.toLaneKey, move.toIndex);
-    await syncLanesFromController();
-  } catch (e) {
-    ChoyMessage.error(_t('Move failed; refreshed to recover'));
-    console.error('Token kanban move failed:', e);
-    try {
-      await applyCurrentQuery();
-    } catch (reloadError) {
-      console.error('Token kanban reload failed:', reloadError);
-    }
-    await syncLanesFromController();
-  } finally {
-    movePending.value = false;
-  }
-}
-
-function laneLabel(lane: Lane | ChoyKanbanLane): string {
-  const key = String((lane as Lane).key ?? (lane as ChoyKanbanLane).key);
-  const label = String((lane as Lane).label ?? (lane as ChoyKanbanLane).label ?? '');
-  if (/Revoked=true/.test(key)) return _t('Revoked');
-  if (/Revoked=false/.test(key)) return _t('Not Revoked');
-  if (label === 'true') return _t('Revoked');
-  if (label === 'false') return _t('Not Revoked');
-  return label || key;
 }
 
 function payloadOf(card: ChoyKanbanCard): Record<string, unknown> {
@@ -392,9 +228,6 @@ function revokedAt(card: ChoyKanbanCard): unknown {
   return payloadOf(card).RevokedAt;
 }
 
-/**
- * Format token timestamps for kanban card display.
- */
 function formatDate(dt: unknown): string {
   if (!dt) return '';
   try {
