@@ -387,9 +387,8 @@ async function apply(): Promise<void> {
 }
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 .o-switch-company__trigger {
-  height: 36px;
-  padding: 0 10px;
+  height: 36px;padding: 0 10px;
 }
 </style>

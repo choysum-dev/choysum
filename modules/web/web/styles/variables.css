@@ -1,0 +1,49 @@
+/*
+ * SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Slim variables - layout/RTL/a11y tokens not covered by --choy-* yet.
+ */
+
+:root {
+  --o-color-primary: #409eff;
+  --o-color-success: #67c23a;
+  --o-color-warning: #e6a23c;
+  --o-color-danger: #f56c6c;
+  --o-color-info: #909399;
+
+  --o-direction: ltr;
+  --o-transform-direction: -100%;
+  --o-direction-flip: 1;
+
+  --o-slide-enter-translate: 20px;
+  --o-slide-leave-translate: -20px;
+
+  --o-header-height: 48px;
+  --o-header-height-mobile: 40px;
+  --o-sidebar-width: 220px;
+  --o-sidebar-collapsed-width: 55px;
+  --o-content-padding: 16px;
+  --o-content-padding-mobile: 8px;
+
+  --o-form-field-margin-bottom: 18px;
+
+  --o-aria-focus-outline-width: 2px;
+  --o-aria-focus-outline-color: var(--el-color-primary);
+  --o-aria-focus-outline-offset: 2px;
+
+  --o-transition-duration-fast: 0.15s;
+  --o-transition-duration-base: 0.3s;
+  --o-transition-duration-slow: 0.5s;
+  --o-transition-timing-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --o-transition-timing-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --o-transition-timing-ease-in: cubic-bezier(0.4, 0, 1, 1);
+}
+
+html[dir='rtl'] {
+  --o-direction: rtl;
+  --o-transform-direction: 100%;
+  --o-direction-flip: -1;
+  --o-slide-enter-translate: -20px;
+  --o-slide-leave-translate: 20px;
+}

@@ -1,12 +1,10 @@
-// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
-// SPDX-License-Identifier: Apache-2.0
+/*
+ * SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Transition animation styles.
+ */
 
-// ============================================
-// Transition animation styles - using Element Plus variables
-// ============================================
-
-// Page transition
-// Usage: <transition name="page">...</transition>
 .page-enter-active,
 .page-leave-active {
   transition: opacity var(--el-transition-duration) var(--el-transition-function);
@@ -16,9 +14,6 @@
 .page-leave-to {
   opacity: 0;
 }
-
-// Fade in/out
-// Usage: <transition name="fade">...</transition>
 
 .fade-enter-active,
 .fade-leave-active {
@@ -30,8 +25,6 @@
   opacity: 0;
 }
 
-// Slide from side - with RTL support
-// Usage: <transition name="slide">...</transition>
 .slide-enter-active,
 .slide-leave-active {
   transition:
@@ -49,8 +42,6 @@
   opacity: 0;
 }
 
-// Zoom transition
-// Usage: <transition name="zoom">...</transition>
 .zoom-enter-active,
 .zoom-leave-active {
   transition:
@@ -64,8 +55,6 @@
   opacity: 0;
 }
 
-// Vertical slide transition
-// Usage: <transition name="slide-y">...</transition>
 .slide-y-enter-active,
 .slide-y-leave-active {
   transition:
@@ -83,8 +72,6 @@
   opacity: 0;
 }
 
-// Drawer transition - from left
-// Usage: <transition name="drawer-left">...</transition>
 .drawer-left-enter-active,
 .drawer-left-leave-active {
   transition: transform var(--el-transition-duration) var(--el-transition-function);
@@ -95,8 +82,6 @@
   transform: translateX(-100%);
 }
 
-// Drawer transition - from right
-// Usage: <transition name="drawer-right">...</transition>
 .drawer-right-enter-active,
 .drawer-right-leave-active {
   transition: transform var(--el-transition-duration) var(--el-transition-function);
@@ -107,8 +92,6 @@
   transform: translateX(100%);
 }
 
-// Drawer transition - from top
-// Usage: <transition name="drawer-top">...</transition>
 .drawer-top-enter-active,
 .drawer-top-leave-active {
   transition: transform var(--el-transition-duration) var(--el-transition-function);
@@ -119,8 +102,6 @@
   transform: translateY(-100%);
 }
 
-// Drawer transition - from bottom
-// Usage: <transition name="drawer-bottom">...</transition>
 .drawer-bottom-enter-active,
 .drawer-bottom-leave-active {
   transition: transform var(--el-transition-duration) var(--el-transition-function);
@@ -131,9 +112,6 @@
   transform: translateY(100%);
 }
 
-// Collapse transition - vertical
-// Usage: <transition name="collapse">...</transition>
-// Same implementation as Element Plus el-collapse component
 .collapse-transition {
   transition:
     var(--el-transition-duration) height var(--el-transition-function),
@@ -141,9 +119,6 @@
     var(--el-transition-duration) padding-bottom var(--el-transition-function);
 }
 
-// ============================================
-// Reduced motion media query - centralized here
-// ============================================
 @media (prefers-reduced-motion: reduce) {
   *,
   ::before,

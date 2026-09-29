@@ -885,114 +885,60 @@ watch(
 // In views without a search bar, inject forcedCondition during the initial onMounted apply
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 .o-list {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  height: 100%;
-  min-width: 0;
-
-  :deep(.o-field-base__cell-item) {
-    margin-bottom: 0 !important;
-  }
+  display: flex;flex-direction: column;width: 100%;height: 100%;min-width: 0;
 }
-
+.o-list :deep(.o-field-base__cell-item) {
+  margin-bottom: 0 !important;
+}
 .o-list__table {
-  flex: 1 1 auto;
-  min-height: 0;
-  min-width: 0;
-
-  :deep(.el-form-item--default) {
-    margin-bottom: 0 !important;
-  }
+  flex: 1 1 auto;min-height: 0;min-width: 0;
 }
-
+.o-list__table :deep(.el-form-item--default) {
+  margin-bottom: 0 !important;
+}
 /* Header bar styles, kept as a placeholder to avoid empty rules */
 /* .o-list__header { padding-bottom: 0; } */
 .o-list__action-bar {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 12px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--el-border-color-light);
-  min-height: 40px;
+  display: grid;grid-template-columns: auto 1fr auto;align-items: center;gap: 12px;padding-bottom: 4px;border-bottom: 1px solid var(--el-border-color-light);min-height: 40px;
 }
-
 .o-list__search {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-width: 240px;
+  display: flex;justify-content: center;align-items: center;min-width: 240px;
 }
-
 .o-list__actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
+  display: flex;align-items: center;gap: 16px;
 }
 .o-list__header-right {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
+  display: flex;align-items: center;justify-content: flex-end;gap: 8px;
 }
-
 @media (max-width: 768px) {
-  .o-list__action-bar {
-    grid-template-columns: 1fr;
-    grid-auto-rows: auto;
-  }
-  .o-list__search {
-    order: 2;
-    justify-content: center;
-  }
+.o-list__action-bar {
+  grid-template-columns: 1fr;grid-auto-rows: auto;
 }
-
+.o-list__search {
+  order: 2;justify-content: center;
+}
+}
 .ovtable__empty {
-  width: 100%;
-  padding: 24px 0;
-  text-align: center;
-  color: var(--el-text-color-secondary);
+  width: 100%;padding: 24px 0;text-align: center;color: var(--el-text-color-secondary);
 }
-
 .o-group-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
+  display: inline-flex;align-items: center;gap: 6px;min-width: 0;
 }
 .o-group-cell__caret {
-  display: inline-block;
-  width: 0;
-  height: 0;
-  border-top: 4px solid transparent;
-  border-bottom: 4px solid transparent;
-  border-left: 6px solid var(--el-text-color-regular);
-  transition: transform 0.12s ease;
-  cursor: pointer;
+  display: inline-block;width: 0;height: 0;border-top: 4px solid transparent;border-bottom: 4px solid transparent;border-left: 6px solid var(--el-text-color-regular);transition: transform 0.12s ease;cursor: pointer;
 }
 .o-group-cell__caret.expanded {
   transform: rotate(90deg);
 }
 .o-group-cell__label {
-  font-weight: 500;
-  color: var(--el-text-color-primary);
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-weight: 500;color: var(--el-text-color-primary);max-width: 100%;overflow: hidden;text-overflow: ellipsis;white-space: nowrap;
 }
 .o-group-cell__count {
   color: var(--el-text-color-secondary);
 }
-
 .o-more-cell {
-  width: 100%;
-  text-align: center;
-  color: var(--el-text-color-primary);
-  cursor: pointer;
-  padding: 6px 0;
+  width: 100%;text-align: center;color: var(--el-text-color-primary);cursor: pointer;padding: 6px 0;
 }
 </style>

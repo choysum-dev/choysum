@@ -153,34 +153,23 @@ const { preview, leafCount } = (() => {
 })();
 </script>
 
-<style scoped lang="scss">
+<style scoped>
 .o-search-filter {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  display: flex;flex-direction: column;gap: 16px;
 }
-
 .o-search-filter__footer {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  border-top: 1px solid var(--el-border-color-light);
-  padding-top: 12px;
+  display: flex;flex-direction: column;gap: 12px;border-top: 1px solid var(--el-border-color-light);padding-top: 12px;
 }
 .o-search-filter__preview {
-  font-size: 12px;
-  display: flex;
-  gap: 6px;
-  .label {
-    color: var(--el-text-color-secondary);
-  }
-  .expr {
-    word-break: break-all;
-  }
+  font-size: 12px;display: flex;gap: 6px;
+}
+.o-search-filter__preview .label {
+  color: var(--el-text-color-secondary);
+}
+.o-search-filter__preview .expr {
+  word-break: break-all;
 }
 .o-search-filter__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
+  display: flex;justify-content: flex-end;gap: 8px;
 }
 </style>

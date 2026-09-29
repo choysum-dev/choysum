@@ -412,25 +412,19 @@ function formatDate(dt: unknown): string {
 }
 </script>
 
-<style scoped lang="scss">
+<style scoped>
 .token-card {
   cursor: grab;
 }
-
 .token-card.revoked {
   opacity: 0.9;
 }
-
 .token-type.access {
-  color: #2563eb;
-  background: rgba(37, 99, 235, 0.12);
+  color: #2563eb;background: rgba(37, 99, 235, 0.12);
 }
-
 .token-type.refresh {
-  color: #16a34a;
-  background: rgba(22, 163, 74, 0.12);
+  color: #16a34a;background: rgba(22, 163, 74, 0.12);
 }
-
 .token-type:not(.access):not(.refresh) {
   background: color-mix(in oklab, var(--foreground, currentColor) 8%, transparent);
 }

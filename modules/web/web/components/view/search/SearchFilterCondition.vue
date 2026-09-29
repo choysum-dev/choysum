@@ -277,22 +277,20 @@ function onRemove() {
 }
 </script>
 
-<style scoped lang="scss">
+<style scoped>
 .o-search-filter__row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  .w-field {
-    width: 180px;
-  }
-  .w-operator {
-    width: 140px;
-  }
-  .w-value {
-    flex: 1;
-  }
-  .o-null-flag {
-    color: var(--el-color-info);
-  }
+  display: flex;gap: 8px;align-items: center;
+}
+.o-search-filter__row .w-field {
+  width: 180px;
+}
+.o-search-filter__row .w-operator {
+  width: 140px;
+}
+.o-search-filter__row .w-value {
+  flex: 1;
+}
+.o-search-filter__row .o-null-flag {
+  color: var(--el-color-info);
 }
 </style>

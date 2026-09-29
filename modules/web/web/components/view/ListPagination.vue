@@ -252,80 +252,45 @@ function handleEndMouseLeave(event: MouseEvent) {
 }
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 .o-pagination {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
+  display: flex;align-items: center;justify-content: flex-end;gap: 12px;
 }
-
 .o-pagination__text {
-  font-size: 14px;
-  color: var(--el-text-color-regular);
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  font-size: 14px;color: var(--el-text-color-regular);white-space: nowrap;display: flex;align-items: center;gap: 4px;
 }
-
 .o-pagination__editable-wrapper {
-  display: inline-flex;
-  align-items: center;
-  position: relative;
+  display: inline-flex;align-items: center;position: relative;
 }
-
 .o-pagination__editable {
-  cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  border: 1px solid transparent;
-  min-width: 20px;
-  text-align: center;
-  display: inline-block;
+  cursor: pointer;padding: 2px 4px;border-radius: 4px;transition: all 0.2s ease;border: 1px solid transparent;min-width: 20px;text-align: center;display: inline-block;
 }
-
 .o-pagination__editable:hover,
 .o-pagination__editable.hover {
-  background-color: var(--el-fill-color-light);
-  border-color: var(--el-border-color);
-  color: var(--el-color-primary);
+  background-color: var(--el-fill-color-light);border-color: var(--el-border-color);color: var(--el-color-primary);
 }
-
 .o-pagination__input {
   width: 60px !important;
-  :deep(.el-input__inner) {
-    padding: 2px 6px;
-    height: auto;
-    min-height: 24px;
-    font-size: 14px;
-    text-align: end;
-  }
-  :deep(.el-input__wrapper) {
-    padding: 0 2px !important;
-  }
 }
-
+.o-pagination__input :deep(.el-input__inner) {
+  padding: 2px 6px;height: auto;min-height: 24px;font-size: 14px;text-align: end;
+}
+.o-pagination__input :deep(.el-input__wrapper) {
+  padding: 0 2px !important;
+}
 .o-pagination__controls {
-  display: flex;
-  gap: 4px;
+  display: flex;gap: 4px;
 }
-
 /* Responsive adjustments. */
 @media (max-width: 768px) {
-  .o-pagination {
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .o-pagination__text {
-    font-size: 12px;
-  }
-
-  .o-pagination__input {
-    width: 50px !important;
-  }
+.o-pagination {
+  flex-direction: column;align-items: center;gap: 8px;
+}
+.o-pagination__text {
+  font-size: 12px;
+}
+.o-pagination__input {
+  width: 50px !important;
+}
 }
 </style>

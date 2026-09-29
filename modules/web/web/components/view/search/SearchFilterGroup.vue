@@ -98,17 +98,11 @@ function nodeKey(n: any) {
 }
 </script>
 
-<style scoped lang="scss">
+<style scoped>
 .osf-group {
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 6px;
-  padding: 12px;
-  margin-bottom: 12px;
-  border-left-width: 3px;
-  border-left-style: solid;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+  border: 1px solid var(--el-border-color-lighter);border-radius: 6px;padding: 12px;margin-bottom: 12px;border-left-width: 3px;border-left-style: solid;transition:
+  background-color 0.15s ease,
+  border-color 0.15s ease;
 }
 .osf-group--and {
   border-left-color: var(--el-color-success);
@@ -122,16 +116,11 @@ function nodeKey(n: any) {
 .osf-group--or:hover {
   background-color: var(--el-color-warning-light-9);
 }
-
 .osf-group__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: flex;align-items: center;justify-content: space-between;
 }
 .osf-group__relation {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: flex;align-items: center;gap: 8px;
 }
 .osf-group--and .osf-group__relation-label {
   color: var(--el-color-success);
@@ -139,18 +128,13 @@ function nodeKey(n: any) {
 .osf-group--or .osf-group__relation-label {
   color: var(--el-color-warning);
 }
-
 .osf-group__ops {
-  display: flex;
-  gap: 8px;
+  display: flex;gap: 8px;
 }
 .osf-group__divider {
   margin: 8px 0;
 }
 .osf-group__children {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding-left: 6px;
+  display: flex;flex-direction: column;gap: 10px;padding-left: 6px;
 }
 </style>

@@ -279,31 +279,20 @@ watch(
 defineExpose({ reload, drafts, definitionId });
 </script>
 
-<style scoped lang="scss">
+<style scoped>
 .o-properties-definition-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
+  display: flex;flex-direction: column;gap: 8px;width: 100%;
 }
 .o-properties-definition-editor__toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
+  display: flex;flex-wrap: wrap;gap: 8px;align-items: center;
 }
 .o-properties-definition-editor__row {
-  display: grid;
-  grid-template-columns: minmax(80px, 1fr) 110px minmax(80px, 1fr) minmax(80px, 1fr) auto minmax(120px, 1.4fr) auto;
-  gap: 6px;
-  align-items: start;
+  display: grid;grid-template-columns: minmax(80px, 1fr) 110px minmax(80px, 1fr) minmax(80px, 1fr) auto minmax(120px, 1.4fr) auto;gap: 6px;align-items: start;
 }
 .o-properties-definition-editor__empty {
-  color: var(--el-text-color-secondary);
-  font-size: 13px;
+  color: var(--el-text-color-secondary);font-size: 13px;
 }
 .o-properties-definition-editor__error {
-  color: var(--el-color-danger);
-  font-size: 13px;
+  color: var(--el-color-danger);font-size: 13px;
 }
 </style>

@@ -331,23 +331,14 @@ function buildColumn(): Column {
 }
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 :deep(.o-list-handle) {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--el-text-color-secondary);
-  user-select: none;
-  cursor: grab;
+  display: inline-flex;align-items: center;justify-content: center;color: var(--el-text-color-secondary);user-select: none;cursor: grab;
 }
 :deep(.o-list-handle__grip) {
-  font-size: 14px;
-  line-height: 1;
-  letter-spacing: -1px;
+  font-size: 14px;line-height: 1;letter-spacing: -1px;
 }
 :deep(.o-list-handle--disabled) {
-  opacity: 0.35;
-  pointer-events: none;
-  cursor: default;
+  opacity: 0.35;pointer-events: none;cursor: default;
 }
 </style>

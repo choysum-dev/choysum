@@ -125,11 +125,8 @@ function retryLogout() {
 }
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 .logout-page-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100%;
+  display: flex;align-items: center;justify-content: center;min-height: 100%;
 }
 </style>

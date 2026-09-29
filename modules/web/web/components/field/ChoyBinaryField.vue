@@ -359,208 +359,96 @@ function toDisplayText(raw: any): string {
 }
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 .o-binary-field {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-  width: min(100%, 360px);
-  max-width: 100%;
+  display: flex;flex-direction: column;align-items: flex-start;gap: 12px;width: min(100%, 360px);max-width: 100%;
 }
-
 .o-binary-current,
 .o-binary-display-card {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-  max-width: 100%;
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 12px;
-  background: var(--el-fill-color-lighter);
+  display: inline-flex;align-items: center;gap: 12px;min-width: 0;max-width: 100%;border: 1px solid var(--el-border-color-light);border-radius: 12px;background: var(--el-fill-color-lighter);
 }
-
 .o-binary-current {
-  width: 100%;
-  padding: 10px 12px;
+  width: 100%;padding: 10px 12px;
 }
-
 .o-binary-display-card {
-  padding: 6px 10px;
-  color: inherit;
-  text-decoration: none;
+  padding: 6px 10px;color: inherit;text-decoration: none;
 }
-
 .o-binary-display-card--interactive {
-  cursor: pointer;
-  transition:
-    border-color 0.2s ease,
-    background-color 0.2s ease;
+  cursor: pointer;transition:
+  border-color 0.2s ease,
+  background-color 0.2s ease;
 }
-
 .o-binary-display-card--interactive:hover {
-  color: inherit;
-  border-color: var(--el-color-primary-light-5);
-  background: var(--el-color-primary-light-9);
+  color: inherit;border-color: var(--el-color-primary-light-5);background: var(--el-color-primary-light-9);
 }
-
 .o-binary-display-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  max-width: 140px;
+  display: inline-flex;align-items: center;gap: 8px;min-width: 0;max-width: 140px;
 }
-
 .o-binary-display-row__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  flex: 0 0 auto;
-  color: var(--el-color-primary);
-  background: var(--el-color-primary-light-9);
-  border: 1px solid var(--el-color-primary-light-7);
+  display: inline-flex;align-items: center;justify-content: center;width: 30px;height: 30px;border-radius: 8px;flex: 0 0 auto;color: var(--el-color-primary);background: var(--el-color-primary-light-9);border: 1px solid var(--el-color-primary-light-7);
 }
-
 .o-binary-display-row__text {
-  min-width: 0;
-  color: var(--el-text-color-primary);
-  font-size: 14px;
-  line-height: 1.4;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  min-width: 0;color: var(--el-text-color-primary);font-size: 14px;line-height: 1.4;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;
 }
-
 .o-binary-current__icon,
 .o-binary-display-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  color: var(--el-color-primary);
-  background: var(--el-color-primary-light-9);
-  border: 1px solid var(--el-color-primary-light-7);
+  display: inline-flex;align-items: center;justify-content: center;flex: 0 0 auto;color: var(--el-color-primary);background: var(--el-color-primary-light-9);border: 1px solid var(--el-color-primary-light-7);
 }
-
 .o-binary-current__icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  font-size: 20px;
+  width: 44px;height: 44px;border-radius: 10px;font-size: 20px;
 }
-
 .o-binary-display-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
-  font-size: 18px;
+  width: 34px;height: 34px;border-radius: 8px;font-size: 18px;
 }
-
 .o-binary-current__body,
 .o-binary-display-copy {
-  min-width: 0;
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 4px;
+  min-width: 0;display: flex;flex: 1;flex-direction: column;gap: 4px;
 }
-
 .o-binary-current__title,
 .o-binary-display-text {
-  color: var(--el-text-color-primary);
-  font-size: 14px;
-  line-height: 1.4;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: var(--el-text-color-primary);font-size: 14px;line-height: 1.4;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;
 }
-
 .o-binary-current__meta,
 .o-binary-display-meta {
-  color: var(--el-text-color-secondary);
-  font-size: 12px;
-  line-height: 1.4;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: var(--el-text-color-secondary);font-size: 12px;line-height: 1.4;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;
 }
-
 .o-binary-current__actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-top: 2px;
+  display: flex;align-items: center;gap: 12px;flex-wrap: wrap;margin-top: 2px;
 }
-
 .o-binary-action-upload {
   display: inline-flex;
 }
-
 .o-binary-action-upload :deep(.el-upload) {
   display: inline-flex;
 }
-
 .o-binary-upload {
-  display: block;
-  width: 100%;
+  display: block;width: 100%;
 }
-
 .o-binary-upload :deep(.el-upload) {
-  width: 100%;
-  display: block;
+  width: 100%;display: block;
 }
-
 .o-binary-upload :deep(.el-upload-dragger) {
-  width: 100%;
-  min-height: 126px;
-  padding: 20px 16px;
-  border-radius: 12px;
-  background: var(--el-fill-color-lighter);
-  border-color: var(--el-border-color);
-  transition:
-    border-color 0.2s ease,
-    background-color 0.2s ease;
+  width: 100%;min-height: 126px;padding: 20px 16px;border-radius: 12px;background: var(--el-fill-color-lighter);border-color: var(--el-border-color);transition:
+  border-color 0.2s ease,
+  background-color 0.2s ease;
 }
-
 .o-binary-upload :deep(.el-upload-dragger:hover) {
-  border-color: var(--el-color-primary);
-  background: var(--el-color-primary-light-9);
+  border-color: var(--el-color-primary);background: var(--el-color-primary-light-9);
 }
-
 .o-upload-drag-icon {
-  display: block;
-  margin: 0 auto 10px;
-  font-size: 28px;
-  color: var(--el-color-primary);
+  display: block;margin: 0 auto 10px;font-size: 28px;color: var(--el-color-primary);
 }
-
 .o-upload-drag-text {
-  color: var(--el-text-color-secondary);
-  font-size: 13px;
-  line-height: 1.5;
-  text-align: center;
+  color: var(--el-text-color-secondary);font-size: 13px;line-height: 1.5;text-align: center;
 }
-
 .o-binary-upload :deep(.el-upload-list) {
-  width: 100%;
-  margin: 6px 0 0;
+  width: 100%;margin: 6px 0 0;
 }
-
 .o-upload-action-btn,
 .o-upload-btn {
   padding: 0;
 }
-
 .o-binary-display-empty {
-  display: inline-flex;
-  align-items: center;
-  min-height: 34px;
-  color: var(--el-text-color-placeholder);
+  display: inline-flex;align-items: center;min-height: 34px;color: var(--el-text-color-placeholder);
 }
 </style>

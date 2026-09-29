@@ -193,62 +193,30 @@ async function handleItemClick(row: InboxNotificationRow) {
 }
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 .o-notification-bell__button {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.375rem;
-  border: 0;
-  background: transparent;
-  color: var(--choy-color-foreground, inherit);
-  cursor: pointer;
+  position: relative;display: inline-flex;align-items: center;justify-content: center;padding: 0.375rem;border: 0;background: transparent;color: var(--choy-color-foreground, inherit);cursor: pointer;
 }
 .o-notification-bell__badge {
-  position: absolute;
-  top: 0;
-  right: 0;
-  min-width: 1rem;
-  padding: 0 0.25rem;
-  border-radius: 999px;
-  background: var(--choy-color-danger, #dc2626);
-  color: #fff;
-  font-size: 10px;
-  line-height: 1rem;
-  text-align: center;
+  position: absolute;top: 0;right: 0;min-width: 1rem;padding: 0 0.25rem;border-radius: 999px;background: var(--choy-color-danger, #dc2626);color: #fff;font-size: 10px;line-height: 1rem;text-align: center;
 }
 .o-notification-bell__toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid var(--choy-color-border, #e5e7eb);
-  color: var(--choy-color-muted-foreground, #6b7280);
-  font-size: 0.875rem;
+  display: flex;align-items: center;justify-content: space-between;gap: 0.5rem;padding: 0.5rem 0.75rem;border-bottom: 1px solid var(--choy-color-border, #e5e7eb);color: var(--choy-color-muted-foreground, #6b7280);font-size: 0.875rem;
 }
 .o-notification-bell__empty {
-  padding: 0.75rem;
-  color: var(--choy-color-muted-foreground, #6b7280);
-  font-size: 0.875rem;
+  padding: 0.75rem;color: var(--choy-color-muted-foreground, #6b7280);font-size: 0.875rem;
 }
 .o-notification-bell__empty--error {
   color: var(--choy-color-danger, #dc2626);
 }
 .o-notification-bell__item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  min-width: 16rem;
+  display: flex;flex-direction: column;gap: 0.25rem;min-width: 16rem;
 }
 .o-notification-bell__item-title {
-  color: var(--choy-color-foreground, inherit);
-  font-size: 0.875rem;
+  color: var(--choy-color-foreground, inherit);font-size: 0.875rem;
 }
 .o-notification-bell__item-meta {
-  color: var(--choy-color-muted-foreground, #6b7280);
-  font-size: 0.75rem;
+  color: var(--choy-color-muted-foreground, #6b7280);font-size: 0.75rem;
 }
 :global(.o-notification-bell__menu .is-unread) {
   background: color-mix(in oklab, var(--choy-color-primary, #2563eb) 12%, transparent);

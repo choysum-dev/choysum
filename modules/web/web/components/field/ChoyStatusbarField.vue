@@ -294,15 +294,12 @@ const internalRule = {
 const mergedRules = computed<RuleItem[]>(() => [...(props.rules ?? []), internalRule]);
 </script>
 
-<style lang="scss" scoped>
-.o-statusbar-field {
-  :deep(.o-statusbar-form-item),
+<style scoped>
+.o-statusbar-field :deep(.o-statusbar-form-item),
   :deep(.el-form-item) {
-    margin-bottom: 0;
-  }
-
-  :deep(.o-field-base__label) {
-    display: none;
-  }
+  margin-bottom: 0;
+}
+.o-statusbar-field :deep(.o-field-base__label) {
+  display: none;
 }
 </style>

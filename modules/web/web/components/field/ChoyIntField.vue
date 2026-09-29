@@ -227,14 +227,9 @@ const internalRule = {
 const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internalRule]);
 </script>
 
-<style scoped lang="scss">
+<style scoped>
 .o-field-display-text {
-  line-height: var(--el-component-size-base, 32px);
-  padding: 0 11px;
-  color: var(--el-text-color-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: var(--el-component-size-base, 32px);padding: 0 11px;color: var(--el-text-color-primary);white-space: nowrap;overflow: hidden;text-overflow: ellipsis;
 }
 .o-input {
   width: 100%;

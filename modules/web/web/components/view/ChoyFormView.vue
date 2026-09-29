@@ -730,66 +730,40 @@ defineExpose({
 });
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 .form-view__action-bar {
-  display: flex;
-  justify-content: space-between;
-  padding-bottom: 4px;
-  align-items: center;
-  border-bottom: 1px solid var(--el-border-color-light);
-  min-height: 40px;
+  display: flex;justify-content: space-between;padding-bottom: 4px;align-items: center;border-bottom: 1px solid var(--el-border-color-light);min-height: 40px;
 }
 .form-view__actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex: 1;
+  display: flex;align-items: center;gap: 16px;flex: 1;
 }
 .form-view__system-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: flex;align-items: center;gap: 8px;
 }
 .form-view__user-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-left: 16px;
-  border-left: 1px solid var(--el-border-color-light);
+  display: flex;align-items: center;gap: 8px;padding-left: 16px;border-left: 1px solid var(--el-border-color-light);
 }
 .form-view__header-right {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
+  display: flex;align-items: center;justify-content: flex-end;gap: 12px;
 }
-
 .form-view__content {
   padding: 16px 0;
-  :deep(.el-form-item__label) {
-    width: 120px;
-  }
 }
-
+.form-view__content :deep(.el-form-item__label) {
+  width: 120px;
+}
 @media (max-width: 768px) {
-  .form-view__action-bar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-  }
-  .form-view__header-right {
-    justify-content: center;
-  }
-  .form-view__actions {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-  }
-  .form-view__user-actions {
-    padding-left: 0;
-    border-left: none;
-    border-top: 1px solid var(--el-border-color-light);
-    padding-top: 8px;
-  }
+.form-view__action-bar {
+  flex-direction: column;align-items: stretch;gap: 12px;
+}
+.form-view__header-right {
+  justify-content: center;
+}
+.form-view__actions {
+  flex-direction: column;align-items: stretch;gap: 8px;
+}
+.form-view__user-actions {
+  padding-left: 0;border-left: none;border-top: 1px solid var(--el-border-color-light);padding-top: 8px;
+}
 }
 </style>

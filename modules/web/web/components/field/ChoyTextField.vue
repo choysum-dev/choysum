@@ -214,15 +214,11 @@ const internalRule = {
 const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internalRule]);
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 .o-textarea {
   width: 100%;
 }
 .o-textfield-display {
-  white-space: pre-wrap;
-  word-break: break-word;
-  line-height: var(--el-component-size-base, 32px);
-  color: var(--el-text-color-primary);
-  padding: 0 11px;
+  white-space: pre-wrap;word-break: break-word;line-height: var(--el-component-size-base, 32px);color: var(--el-text-color-primary);padding: 0 11px;
 }
 </style>

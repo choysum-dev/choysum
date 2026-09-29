@@ -205,22 +205,17 @@ const internalRule = {
 const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internalRule]);
 </script>
 
-<style scoped lang="scss">
+<style scoped>
 .o-field-display-text {
-  line-height: 32px;
-  padding: 0 11px;
-  text-align: right;
-  display: inline-block;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 32px;padding: 0 11px;text-align: right;display: inline-block;max-width: 100%;overflow: hidden;text-overflow: ellipsis;
 }
 .o-number-input {
-  :deep(.el-input__inner) {
-    text-align: right;
-  }
-  :deep(.el-input__wrapper input) {
-    text-align: right;
-  } /* Compatible with the newer Element Plus input structure. */
+  /* Compatible with the newer Element Plus input structure. */
+}
+.o-number-input :deep(.el-input__inner) {
+  text-align: right;
+}
+.o-number-input :deep(.el-input__wrapper input) {
+  text-align: right;
 }
 </style>

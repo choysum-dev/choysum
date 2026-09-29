@@ -338,32 +338,21 @@ watch(
 );
 </script>
 
-<style scoped lang="scss">
+<style scoped>
 .o-properties-form {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
+  display: flex;flex-direction: column;gap: 8px;width: 100%;
 }
 .o-properties-item {
-  display: grid;
-  grid-template-columns: minmax(96px, 28%) 1fr;
-  gap: 8px;
-  align-items: center;
+  display: grid;grid-template-columns: minmax(96px, 28%) 1fr;gap: 8px;align-items: center;
 }
 .o-properties-item__label {
-  color: var(--el-text-color-regular);
-  font-size: 13px;
+  color: var(--el-text-color-regular);font-size: 13px;
 }
 .o-properties-control {
   width: 100%;
 }
 .o-properties-summary {
-  font-size: 13px;
-  color: var(--el-text-color-regular);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 13px;color: var(--el-text-color-regular);white-space: nowrap;overflow: hidden;text-overflow: ellipsis;
 }
 .o-properties-empty {
   min-height: 4px;
