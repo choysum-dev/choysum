@@ -20,7 +20,12 @@ export async function firstRuleError(rules: RuleItem[] | undefined | null, value
   for (const rule of list) {
     if (!rule || typeof rule !== 'object') continue;
     const required = (rule as { required?: boolean }).required === true;
-    if (required && (value === undefined || value === null || value === '')) {
+    const isEmpty =
+      value === undefined ||
+      value === null ||
+      value === '' ||
+      (Array.isArray(value) && value.length === 0);
+    if (required && isEmpty) {
       const msg = String((rule as { message?: string }).message || '').trim();
       return msg || 'Required';
     }

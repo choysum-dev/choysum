@@ -20,7 +20,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 SPEC_RE = re.compile(
-    r"""(?:from|import|export)\s+(?:type\s+)?(?:\{[^}]*\}\s+from\s+|)\s*['"]([^'"]+)['"]"""
+    r"""(?:from|import|export)\s+(?:type\s+)?(?:\{[^}]*\}\s+from\s+|\*\s*(?:as\s+\w+\s+)?from\s+|)\s*['"]([^'"]+)['"]"""
     r"""|import\s*\(\s*['"]([^'"]+)['"]"""
     r"""|require\s*\(\s*['"]([^'"]+)['"]"""
 )

@@ -7,6 +7,7 @@
  */
 
 import { computed, defineComponent, h, nextTick, ref } from 'vue';
+import { createPinia, setActivePinia } from 'pinia';
 import { ChoyMessage } from '../../composables/useChoyMessage';
 
 import type { UseField } from '@/web/web/composables/useField';
@@ -215,8 +216,11 @@ describe('ChoyManyToManyRefTagsField patch coverage', () => {
   let lastOnchangeResult: any;
   let restoreFactory: (() => void) | undefined;
   let consoleWarn: typeof console.warn;
+  let pinia: ReturnType<typeof createPinia>;
 
   beforeEach(() => {
+    pinia = createPinia();
+    setActivePinia(pinia);
     msgWarn = fnRecorder();
     ChoyMessage.warning = msgWarn as typeof ChoyMessage.warning;
     lastOnchangeResult = ref(null);
@@ -640,6 +644,53 @@ describe('ChoyManyToManyRefTagsField patch coverage', () => {
     await flushPromises();
     expect(onTagRemove.calls.length).toBeGreaterThanOrEqual(1);
     expect(NameSearch.calls.length).toBeGreaterThanOrEqual(1);
+    m2.unmount();
+  });
+
+  test('removeChip and onComboboxSelect cover chip/add paths', async () => {
+    const binding = makeBinding({
+      items: ['a'],
+      relationStore: relationStoreStub({
+        Search: fnRecorder(async () => [{ Id: 'a', DisplayName: 'A' }]),
+        NameSearch: fnRecorder(async () => [{ Id: 'b', DisplayName: 'B' }]),
+      }),
+    });
+    const m = mountField({ binding, searchList: SearchListStub, tagClosable: false });
+    await flushPromises();
+    const ss = m.setupState() as any;
+    // tagClosable=false → removeChip no-op
+    ss.removeChip('a');
+    expect(ss.selectedIds).toEqual(['a']);
+
+    m.unmount();
+    const m2 = mountField({
+      binding: makeBinding({
+        items: ['a'],
+        relationStore: relationStoreStub({
+          Search: fnRecorder(async () => [{ Id: 'a', DisplayName: 'A' }]),
+          storeId: 'chip-2',
+        }),
+      }),
+      searchList: SearchListStub,
+      tagClosable: true,
+    });
+    await flushPromises();
+    const ss2 = m2.setupState() as any;
+    ss2.removeChip('a');
+    await flushPromises();
+    expect(ss2.selectedIds).toEqual([]);
+
+    // onComboboxSelect: null ignored; raw object hydrated; duplicate id skipped; addModel cleared
+    ss2.onComboboxSelect(null);
+    ss2.onComboboxSelect({ id: 'b', label: 'B', raw: { Id: 'b', DisplayName: 'B' } });
+    await flushPromises();
+    expect(ss2.selectedIds).toContain('b');
+    expect(ss2.hydratedCache.b?.DisplayName).toBe('B');
+    const before = ss2.selectedIds.slice();
+    ss2.onComboboxSelect({ id: 'b', label: 'B' });
+    expect(ss2.selectedIds).toEqual(before);
+    await flushPromises();
+    expect(ss2.addModel).toBeNull();
     m2.unmount();
   });
 

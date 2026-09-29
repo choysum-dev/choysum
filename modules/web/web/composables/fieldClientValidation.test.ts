@@ -13,6 +13,8 @@ describe('fieldClientValidation', () => {
     expect(await firstRuleError([{ required: true, message: 'need it' }], '')).toBe('need it');
     expect(await firstRuleError([{ required: true }], null)).toBe('Required');
     expect(await firstRuleError([{ required: true, message: 'need it' }], 'ok')).toBe('');
+    expect(await firstRuleError([{ required: true, message: 'pick some' }], [])).toBe('pick some');
+    expect(await firstRuleError([{ required: true }], ['a'])).toBe('');
   });
 
   test('firstRuleError runs callback validators', async () => {

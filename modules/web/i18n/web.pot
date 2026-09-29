@@ -408,127 +408,117 @@ msgctxt "web/components/field/ManyToManyField"
 msgid "relationStore is unresolved; cannot open picker"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:53
+#: web/components/field/ChoyManyToManyRefTagsField.vue:56
 msgctxt "web/components/field/ManyToManyRefTagsField"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:149
+#: web/components/field/ChoyManyToManyRefTagsField.vue:152
 msgctxt "web/components/field/ManyToManyRefTagsField"
 msgid "Create \"%s\""
 msgstr ""
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:158
+#: web/components/field/ChoyManyToManyRefTagsField.vue:161
 msgctxt "web/components/field/ManyToManyRefTagsField"
 msgid "Create failed"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:40
+#: web/components/field/ChoyManyToManyRefTagsField.vue:43
 msgctxt "web/components/field/ManyToManyRefTagsField"
 msgid "None"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:54
+#: web/components/field/ChoyManyToManyRefTagsField.vue:57
 msgctxt "web/components/field/ManyToManyRefTagsField"
 msgid "OK"
+msgstr ""
+
+#: web/components/field/ChoyManyToManyRefTagsField.vue:109
+msgctxt "web/components/field/ManyToManyRefTagsField"
+msgid "Please select..."
+msgstr ""
+
+#: web/components/field/ChoyManyToManyRefTagsField.vue:11
+msgctxt "web/components/field/ManyToManyRefTagsField"
+msgid "Remove"
 msgstr ""
 
 #: web/components/field/ChoyManyToManyRefTagsField.vue:110
 msgctxt "web/components/field/ManyToManyRefTagsField"
-msgid "Please select..."
-msgstr ""
-
-#: web/components/field/ChoyManyToManyRefTagsField.vue:19
-msgctxt "web/components/field/ManyToManyRefTagsField"
-msgid "Search more"
-msgstr ""
-
-#: web/components/field/ChoyManyToManyRefTagsField.vue:111
-msgctxt "web/components/field/ManyToManyRefTagsField"
 msgid "Select related items"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:497
+#: web/components/field/ChoyManyToManyRefTagsField.vue:509
 msgctxt "web/components/field/ManyToManyRefTagsField"
 msgid "relationStore is unresolved; cannot open picker"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:493
+#: web/components/field/ChoyManyToManyRefTagsField.vue:505
 msgctxt "web/components/field/ManyToManyRefTagsField"
 msgid "searchList is not configured; cannot open picker"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyRefTreeField.vue:95
+#: web/components/field/ChoyManyToManyRefTreeField.vue:96
 msgctxt "web/components/field/ManyToManyRefTreeField"
 msgid "No data"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneField.vue:29
+#: web/components/field/ChoyManyToOneField.vue:25
 msgctxt "web/components/field/ManyToOneField"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneField.vue:140
+#: web/components/field/ChoyManyToOneField.vue:145
 msgctxt "web/components/field/ManyToOneField"
 msgid "Create \"%s\""
 msgstr ""
 
-#: web/components/field/ChoyManyToOneField.vue:149
+#: web/components/field/ChoyManyToOneField.vue:154
 msgctxt "web/components/field/ManyToOneField"
 msgid "Create failed"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneField.vue:30
+#: web/components/field/ChoyManyToOneField.vue:26
 msgctxt "web/components/field/ManyToOneField"
 msgid "OK"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneField.vue:108
+#: web/components/field/ChoyManyToOneField.vue:112
 msgctxt "web/components/field/ManyToOneField"
 msgid "Please select..."
 msgstr ""
 
-#: web/components/field/ChoyManyToOneField.vue:10
-msgctxt "web/components/field/ManyToOneField"
-msgid "Search more"
-msgstr ""
-
-#: web/components/field/ChoyManyToOneField.vue:109
+#: web/components/field/ChoyManyToOneField.vue:113
 msgctxt "web/components/field/ManyToOneField"
 msgid "Select record"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneRefField.vue:29
+#: web/components/field/ChoyManyToOneRefField.vue:25
 msgctxt "web/components/field/ManyToOneRefField"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneRefField.vue:152
+#: web/components/field/ChoyManyToOneRefField.vue:159
 msgctxt "web/components/field/ManyToOneRefField"
 msgid "Create \"%s\""
 msgstr ""
 
-#: web/components/field/ChoyManyToOneRefField.vue:161
+#: web/components/field/ChoyManyToOneRefField.vue:168
 msgctxt "web/components/field/ManyToOneRefField"
 msgid "Create failed"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneRefField.vue:30
+#: web/components/field/ChoyManyToOneRefField.vue:26
 msgctxt "web/components/field/ManyToOneRefField"
 msgid "OK"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneRefField.vue:108
+#: web/components/field/ChoyManyToOneRefField.vue:113
 msgctxt "web/components/field/ManyToOneRefField"
 msgid "Please select..."
 msgstr ""
 
-#: web/components/field/ChoyManyToOneRefField.vue:10
-msgctxt "web/components/field/ManyToOneRefField"
-msgid "Search more"
-msgstr ""
-
-#: web/components/field/ChoyManyToOneRefField.vue:109
+#: web/components/field/ChoyManyToOneRefField.vue:114
 msgctxt "web/components/field/ManyToOneRefField"
 msgid "Select record"
 msgstr ""

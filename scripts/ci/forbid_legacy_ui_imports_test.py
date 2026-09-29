@@ -116,6 +116,21 @@ class ForbidLegacyUiImportsTest(unittest.TestCase):
             rules = {h[2] for h in hits}
             self.assertEqual(rules, {"element-plus", "echarts"})
 
+    def test_scan_export_star_from_banned_modules(self):
+        mod = load_mod()
+        with tempfile.TemporaryDirectory() as tmp:
+            p = pathlib.Path(tmp) / "reexport.ts"
+            p.write_text(
+                "export * from 'element-plus';\n"
+                "export { ElButton } from 'element-plus';\n"
+                "export * as icons from '@element-plus/icons-vue';\n",
+                encoding="utf-8",
+            )
+            hits = mod.scan_file(p)
+            rules = {h[2] for h in hits}
+            self.assertEqual(rules, {"element-plus"})
+            self.assertGreaterEqual(len(hits), 3)
+
     def test_scan_vue_el_tags_in_template_only(self):
         mod = load_mod()
         with tempfile.TemporaryDirectory() as tmp:
