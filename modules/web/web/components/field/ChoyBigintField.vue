@@ -277,10 +277,11 @@ const OBigintCell = defineComponent({
       h('input', {
         ...attrs,
         class: 'choy-input choy-bigint-input',
-        modelValue: editingRaw.value,
+        type: 'text',
+        value: editingRaw.value ?? '',
         placeholder: props.placeholder,
         inputmode: 'numeric',
-        'onUpdate:modelValue': (val: any) => onInput(val),
+        onInput: (e: Event) => onInput((e.target as HTMLInputElement).value),
         onBlur,
       });
   },

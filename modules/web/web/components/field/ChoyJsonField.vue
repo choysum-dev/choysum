@@ -311,12 +311,12 @@ const OJsonCell = defineComponent({
 
     return () =>
       h('div', {}, [
-        h('input', {
+        h('textarea', {
           class: 'choy-json-input',
           placeholder: p.placeholder,
-          autosize: p.autosize,
-          modelValue: editingText.value,
-          'onUpdate:modelValue': (val: any) => onInput(val),
+          rows: 6,
+          value: editingText.value ?? '',
+          onInput: (e: Event) => onInput((e.target as HTMLTextAreaElement).value),
           onBlur,
         }),
         parseError.value ? h('div', { class: 'choy-json-err' }, parseError.value) : null,

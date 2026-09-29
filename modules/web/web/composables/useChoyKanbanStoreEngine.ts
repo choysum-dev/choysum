@@ -265,6 +265,8 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
         syncLanes: syncLanesFromController,
       });
     } catch (e) {
+      // Failure must clear the latch so bootstrap()/host retry can run again.
+      bootstrapped = false;
       opts.onLoadError?.(e);
       throw e;
     }

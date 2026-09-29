@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
     v-bind="$attrs"
   >
     <template #edit="{ fieldValue }">
-      <OTimeCell :field-value="fieldValue" :options="bufferOptions" :display-format="displayFormat" :picker-props="timePickerProps" v-bind="$attrs" />
+      <ChoyTimeCell :field-value="fieldValue" :options="bufferOptions" :display-format="displayFormat" :picker-props="timePickerProps" v-bind="$attrs" />
     </template>
     <template #display="{ fieldValue }">
       <span class="choy-field-display-text">{{ toDisplayText(fieldValue().value) }}</span>
@@ -176,8 +176,8 @@ const bufferOptions = computed(() => ({
   equals: (a: FieldType, b: FieldType) => sameTime(a, b),
 }));
 
-const OTimeCell = defineComponent({
-  name: 'OTimeCell',
+const ChoyTimeCell = defineComponent({
+  name: 'ChoyTimeCell',
   props: {
     fieldValue: { type: Function as PropType<() => { value: any }>, required: true },
     options: { type: Object as PropType<any>, required: true },
@@ -186,32 +186,40 @@ const OTimeCell = defineComponent({
   },
   setup(p, { attrs }) {
     const modelRef = computed<FieldType>({
-      get: () => (p.fieldValue as any)().value, // Already exposed as the view-layer Date|null value.
+      get: () => (p.fieldValue as any)().value,
       set: v => {
-        (p.fieldValue as any)().value = v; // Write the view value directly and let asView handle fromView.
+        (p.fieldValue as any)().value = v;
       },
     });
 
     const buffer = useBufferedCommit<FieldType>(
-      () => modelRef.value, // Avoid a redundant toView conversion.
+      () => modelRef.value,
       v => {
-        (p.fieldValue as any)().value = v; // Avoid invoking fromView a second time.
+        (p.fieldValue as any)().value = v;
       },
       p.options
     );
 
-    return () =>
-      h('input', {
+    return () => {
+      const current = buffer.editingValue.value;
+      const value =
+        current instanceof Date && !isNaN(current.getTime())
+          ? dayjs(current).format('HH:mm:ss')
+          : '';
+      return h('input', {
         ...attrs,
         ...(p.pickerProps || {}),
+        type: 'time',
+        step: 1,
         class: 'choy-time-picker',
-        clearable: true,
-        editable: false,
-        format: p.displayFormat,
-        modelValue: buffer.editingValue.value,
-        'onUpdate:modelValue': (val: any) => buffer.setEditing(normalizeToDate(val)),
+        value,
+        onInput: (e: Event) => {
+          const raw = (e.target as HTMLInputElement).value;
+          buffer.setEditing(raw ? normalizeToDate(raw) : null);
+        },
         onBlur: () => buffer.onBlur(),
       });
+    };
   },
 });
 </script>

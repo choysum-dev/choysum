@@ -205,4 +205,145 @@ describe('JsonobjectField', () => {
     expect(m.q('.choy-json-input')).toBeTruthy();
     m.unmount();
   });
+
+  test('edit textarea commits valid JSON, rejects invalid, and clears nullable', async () => {
+    installFieldBaseStub();
+    installPrettyStub();
+    installElInputStub();
+    const binding = makeBinding(
+      { Payload: { a: 1 } },
+      { isForm: true, isEditMode: true, viewMode: 'edit', fieldPrefix: null }
+    );
+    const m = mountApp(JsonobjectField as any, {
+      props: {
+        binding,
+        renderMode: 'form',
+        nullable: true,
+        allowArray: false,
+        bufferStrategy: 'blur',
+        commitOnBlur: true,
+      },
+    });
+    await nextTick();
+    await flushPromises();
+    const ta = m.q('.choy-json-input') as HTMLTextAreaElement;
+    expect(ta).toBeTruthy();
+
+    ta.value = '{"z":2,"a":1}';
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+    ta.dispatchEvent(new Event('blur', { bubbles: true }));
+    await flushPromises();
+    expect(binding.__value.value).toEqual({ a: 1, z: 2 });
+
+    ta.value = '{bad';
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+    ta.dispatchEvent(new Event('blur', { bubbles: true }));
+    await flushPromises();
+    expect(m.q('.choy-json-err')).toBeTruthy();
+
+    ta.value = '[1]';
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+    ta.dispatchEvent(new Event('blur', { bubbles: true }));
+    await flushPromises();
+    expect(m.q('.choy-json-err')?.textContent || '').toMatch(/array|Array/i);
+
+    ta.value = '   ';
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+    ta.dispatchEvent(new Event('blur', { bubbles: true }));
+    await flushPromises();
+    expect(binding.__value.value).toBeNull();
+    m.unmount();
+  });
+
+  test('edit non-nullable empty and toView/fromView/rules helpers', async () => {
+    installFieldBaseStub();
+    installPrettyStub();
+    installElInputStub();
+    const binding = makeBinding(
+      { Payload: { a: 1 } },
+      { isForm: true, isEditMode: true, viewMode: 'edit', fieldPrefix: null }
+    );
+    const m = mountApp(JsonobjectField as any, {
+      props: {
+        binding,
+        renderMode: 'form',
+        nullable: false,
+        allowArray: true,
+        bufferStrategy: 'blur',
+        commitOnBlur: true,
+      },
+    });
+    await nextTick();
+    await flushPromises();
+    const ta = m.q('.choy-json-input') as HTMLTextAreaElement;
+    ta.value = '';
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+    ta.dispatchEvent(new Event('blur', { bubbles: true }));
+    await flushPromises();
+    expect(m.q('.choy-json-err')).toBeTruthy();
+
+    ta.value = '[1,2]';
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+    ta.dispatchEvent(new Event('blur', { bubbles: true }));
+    await flushPromises();
+    expect(binding.__value.value).toEqual([1, 2]);
+    m.unmount();
+    restoreSfc(FieldBase as any);
+
+    const captured: { current: any } = { current: null };
+    stubSfc(FieldBase as any, {
+      name: 'FieldBase',
+      inheritAttrs: false,
+      props: {
+        binding: { type: Object, required: true },
+        toView: { type: Function, default: undefined },
+        fromView: { type: Function, default: undefined },
+        rules: { type: Array, default: undefined },
+        label: { type: String, default: undefined },
+        formItemProps: { type: Object, default: undefined },
+        vColumnProps: { type: Object, default: undefined },
+        required: { type: [Boolean, Function, Object], default: undefined },
+        readonly: { type: [Boolean, Function, Object], default: undefined },
+        visible: { type: [Boolean, Function, Object], default: undefined },
+        cellVisible: { type: [Boolean, Function, Object], default: undefined },
+        renderMode: { type: String, default: undefined },
+        showInlineError: { type: Boolean, default: undefined },
+      },
+      setup(p: any) {
+        captured.current = p;
+        return () => h('div', { class: 'rules-only' });
+      },
+    });
+    installPrettyStub();
+    const rulesMount = mountApp(JsonobjectField as any, {
+      props: {
+        binding: makeBinding({ Payload: null }),
+        renderMode: 'form',
+        nullable: false,
+        allowArray: false,
+      },
+    });
+    await flushPromises();
+    const toV = captured.current.toView as (v: unknown) => unknown;
+    const fromV = captured.current.fromView as (v: unknown) => unknown;
+    expect(toV(null)).toBeNull();
+    expect(toV({ a: 1 })).toEqual({ a: 1 });
+    expect(toV('{"b":2}')).toEqual({ b: 2 });
+    expect(toV('"x"')).toBeNull();
+    expect(toV('{bad')).toBeNull();
+    expect(fromV({ c: 3 })).toEqual({ c: 3 });
+
+    const rules = (captured.current.rules || []) as any[];
+    const rule = rules[rules.length - 1];
+    const run = (value: unknown) =>
+      new Promise<Error | undefined>(resolve => {
+        rule.validator({}, value, (e?: Error) => resolve(e));
+      });
+    expect(await run(null)).toBeTruthy();
+    expect(await run('{"a":1}')).toBeUndefined();
+    expect(await run(1)).toBeTruthy();
+    expect(await run([1])).toBeTruthy();
+    expect(await run({ a: 1 })).toBeUndefined();
+    rulesMount.unmount();
+  });
 });

@@ -41,31 +41,16 @@ SPDX-License-Identifier: Apache-2.0
 
     <template #display="{ fieldValue, inputName, inputId }">
       <div class="choy-bool-editor">
-        <input type="checkbox"
-          v-if="widget === 'switch'"
+        <input
+          type="checkbox"
           class="choy-bool-input"
           :name="inputName"
           :id="inputId"
-          v-bind="switchProps"
-          :model-value="fieldValue().value === true"
-          :disabled="true"
-          :active-value="true"
-          :inactive-value="false"
-          :active-text="switchActiveText"
-          :inactive-text="switchInactiveText"
-        />
-        <input type="checkbox"
-          v-else
-          class="choy-bool-input"
-          :name="inputName"
-          :id="inputId"
-          v-bind="checkboxProps"
-          :model-value="fieldValue().value === true"
+          :checked="fieldValue().value === true"
           :disabled="true"
           :indeterminate="fieldValue().value === null && !(nullAsFalse || !nullable)"
-        >
-          {{ checkboxLabel }}
-        
+        />
+        <span v-if="checkboxLabel" class="choy-bool-label">{{ checkboxLabel }}</span>
       </div>
     </template>
   </FieldBase>
@@ -233,53 +218,39 @@ const OBooleanCell = defineComponent({
     );
     const setVal = (v: any) => buffer.setEditing(v === true);
     const clearable = p.nullable && p.clearable && !p.nullAsFalse;
-    return () =>
-      h('div', { class: 'choy-bool-editor' }, [
-        p.widget === 'checkbox'
-          ? h(
-              'input',
-              {
-                ...(p.checkboxProps as any),
-                ...attrs,
-                class: 'choy-bool-input',
-                name: p.inputName,
-                id: p.inputId,
-                modelValue: buffer.editingValue.value === true,
-                indeterminate: buffer.editingValue.value === null && !(p.nullAsFalse || !p.nullable),
-                'onUpdate:modelValue': (val: any) => setVal(val),
-              },
-              () => p.checkboxLabel
-            )
-          : h('input', {
-              ...(p.switchProps as any),
-              ...attrs,
-              class: 'choy-bool-input',
-              name: p.inputName,
-              id: p.inputId,
-              modelValue: buffer.editingValue.value === true,
-              activeValue: true,
-              inactiveValue: false,
-              activeText: p.switchActiveText,
-              inactiveText: p.switchInactiveText,
-              'onUpdate:modelValue': (val: any) => setVal(val),
-            }),
+    return () => {
+      const checked = buffer.editingValue.value === true;
+      const indeterminate = buffer.editingValue.value === null && !(p.nullAsFalse || !p.nullable);
+      return h('div', { class: 'choy-bool-editor' }, [
+        h('input', {
+          ...(p.widget === 'checkbox' ? (p.checkboxProps as any) : (p.switchProps as any)),
+          ...attrs,
+          type: 'checkbox',
+          class: 'choy-bool-input',
+          name: p.inputName,
+          id: p.inputId,
+          checked,
+          indeterminate,
+          onChange: (e: Event) => setVal((e.target as HTMLInputElement).checked),
+        }),
         clearable
           ? h(
               'button',
               {
-                link: true,
+                type: 'button',
                 class: 'choy-clear-btn',
                 onClick: () => {
                   if (buffer.editingValue.value !== null) {
                     buffer.setEditing(null);
-                    buffer.onBlur(); // Commit immediately instead of waiting for focus loss.
+                    buffer.onBlur();
                   }
                 },
               },
-              () => _t('Clear')
+              p.checkboxLabel || _t('Clear')
             )
           : null,
       ]);
+    };
   },
 });
 </script>

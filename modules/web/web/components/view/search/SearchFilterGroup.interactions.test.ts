@@ -90,7 +90,7 @@ describe('SearchFilterGroup interactions', () => {
     expect(qa('.cond').length).toBeGreaterThan(0);
     expect(qa('.osf-group--or').length).toBeGreaterThan(0);
 
-    click('.to-or');
+    (radios[1] as HTMLElement).click();
     expect(onSetLogic.calls[0]).toEqual(['Or', 'g1']);
 
     const rootOps = qa('.osf-group__ops')[0] as HTMLElement;

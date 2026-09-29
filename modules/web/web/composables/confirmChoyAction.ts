@@ -48,6 +48,12 @@ export function resolveConfirmChoy(choice: ConfirmChoyChoice) {
   finish(choice);
 }
 
+/** Reject/settle any in-flight confirm before opening another (avoids leaked promises). */
+function supersedePending(choice: ConfirmChoyChoice = 'dismiss'): void {
+  if (!state.resolve) return;
+  finish(choice);
+}
+
 /**
  * Promise confirm dialog. Resolves on confirm; rejects with 'cancel' or 'dismiss'.
  * Host must mount `<ChoyConfirmHost />` (App root).
@@ -58,6 +64,7 @@ export function confirmChoyAction(
   options?: ConfirmChoyOptions
 ): Promise<void> {
   return new Promise((resolve, reject) => {
+    supersedePending('dismiss');
     state.title = title;
     state.message = message;
     state.confirmText = options?.confirmText || 'OK';
@@ -80,6 +87,7 @@ export function confirmChoyChoice(
   options?: ConfirmChoyOptions
 ): Promise<ConfirmChoyChoice> {
   return new Promise(resolve => {
+    supersedePending('dismiss');
     state.title = title;
     state.message = message;
     state.confirmText = options?.confirmText || 'OK';

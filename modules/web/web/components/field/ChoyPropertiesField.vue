@@ -68,9 +68,9 @@ SPDX-License-Identifier: Apache-2.0
             class="choy-properties-control"
             :id="controlId(item)"
             type="date"
-            :value="asString(itemValue(fieldValue().value, item))"
+            :value="dateInputValue(itemValue(fieldValue().value, item))"
             :disabled="!!item.readonly"
-            @change="onItemWrite(fieldValue, item.name, ($event.target as HTMLInputElement).value)"
+            @change="onDateWrite(fieldValue, item.name, ($event.target as HTMLInputElement).value)"
           />
           <input
             v-else-if="item.type === 'datetime'"
@@ -144,6 +144,8 @@ import {
   filterRenderablePropertyItems,
   normalizeSelectionOptions,
   propertiesFieldKey,
+  propertyDateFromInput,
+  propertyDateToInput,
   propertyDatetimeFromPicker,
   propertyDatetimeToPicker,
   writePropertyValue,
@@ -254,6 +256,10 @@ function asString(v: unknown): string {
   return String(v);
 }
 
+function dateInputValue(raw: unknown): string {
+  return propertyDateToInput(raw);
+}
+
 function datetimePickerValue(raw: unknown): Date | null {
   return propertyDatetimeToPicker(raw);
 }
@@ -281,6 +287,14 @@ function onItemWrite(
 ) {
   const cur = fieldValue().value;
   fieldValue().value = writePropertyValue(resolvedItems.value, cur, name, value);
+}
+
+function onDateWrite(
+  fieldValue: () => WritableComputedRef<any> | { value: any },
+  name: string,
+  value: unknown
+) {
+  onItemWrite(fieldValue, name, propertyDateFromInput(value));
 }
 
 function onDatetimeWrite(

@@ -7,20 +7,17 @@ SPDX-License-Identifier: Apache-2.0
   <div class="choy-pagination">
     <span class="choy-pagination__text">
       <span class="choy-pagination__editable-wrapper">
-        <el-input-number
+        <input
           v-if="editingStart"
           ref="startInputRef"
-          v-model="tempStart"
-          :min="1"
+          v-model.number="tempStart"
+          type="number"
+          min="1"
           :max="paginationRange.total"
-          :step="1"
-          :precision="0"
-          size="sm"
-          :controls="false"
+          step="1"
           class="choy-pagination__input"
           @blur="finishEditStart"
           @keydown="handleStartKeydown"
-          @change="handleStartChange"
         />
         <span v-else class="choy-pagination__editable" @click="startEditStart" @mouseenter="handleStartMouseEnter" @mouseleave="handleStartMouseLeave">
           {{ paginationRange.start }}
@@ -28,20 +25,17 @@ SPDX-License-Identifier: Apache-2.0
       </span>
       -
       <span class="choy-pagination__editable-wrapper">
-        <el-input-number
+        <input
           v-if="editingEnd"
           ref="endInputRef"
-          v-model="tempEnd"
-          :min="1"
+          v-model.number="tempEnd"
+          type="number"
+          min="1"
           :max="paginationRange.total"
-          :step="1"
-          :precision="0"
-          size="sm"
-          :controls="false"
+          step="1"
           class="choy-pagination__input"
           @blur="finishEditEnd"
           @keydown="handleEndKeydown"
-          @change="handleEndChange"
         />
         <span v-else class="choy-pagination__editable" @click="startEditEnd" @mouseenter="handleEndMouseEnter" @mouseleave="handleEndMouseLeave">
           {{ paginationRange.end }}
@@ -193,18 +187,6 @@ function cancelEditStart() {
 function cancelEditEnd() {
   editingEnd.value = false;
   tempEnd.value = 0;
-}
-
-function handleStartChange(value: number | undefined) {
-  if (value !== undefined && value !== null) {
-    tempStart.value = Math.floor(value);
-  }
-}
-
-function handleEndChange(value: number | undefined) {
-  if (value !== undefined && value !== null) {
-    tempEnd.value = Math.floor(value);
-  }
 }
 
 function handleStartKeydown(event: KeyboardEvent) {

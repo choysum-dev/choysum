@@ -147,8 +147,8 @@ const bufferOptions = computed(() => ({
   normalize: (v: string | null) => {
     if (v == null) return null;
     let s = String(v);
-    s = cutToLen(s, props.maxLength);
     if (props.trimOnBlur === 'both') s = s.trim();
+    s = cutToLen(s, props.maxLength);
     if (s === '' && props.nullable) return null;
     return s;
   },
@@ -182,16 +182,14 @@ const OTextCell = defineComponent({
     );
     const onBlur = () => buffer.onBlur();
     return () =>
-      h('input', {
+      h('textarea', {
         ...attrs,
         class: 'choy-textarea',
         placeholder: p.placeholder,
-        rows: p.rows,
-        autosize: p.autosize,
+        rows: p.rows ?? 3,
         maxlength: p.maxlength,
-        showWordLimit: p.showWordLimit,
-        modelValue: buffer.editingValue.value,
-        'onUpdate:modelValue': (val: any) => buffer.setEditing(val ?? ''),
+        value: buffer.editingValue.value ?? '',
+        onInput: (e: Event) => buffer.setEditing((e.target as HTMLTextAreaElement).value ?? ''),
         onBlur,
       });
   },

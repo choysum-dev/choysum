@@ -47,10 +47,11 @@ function onConfirm() {
 }
 
 function onCancel() {
-  resolveConfirmChoy(store.distinguishCancelAndClose ? 'cancel' : 'dismiss');
+  // Cancel button always means cancel; overlay/X uses onDismiss (may map to dismiss).
+  resolveConfirmChoy('cancel');
 }
 
 function onDismiss() {
-  resolveConfirmChoy('dismiss');
+  resolveConfirmChoy(store.distinguishCancelAndClose ? 'dismiss' : 'cancel');
 }
 </script>

@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
     v-bind="$attrs"
   >
     <template #edit="{ fieldValue }">
-      <ODatetimeCell :field-value="fieldValue" :options="bufferOptions" :display-format="displayFormat" :picker-props="datePickerProps" v-bind="$attrs" />
+      <ChoyDatetimeCell :field-value="fieldValue" :options="bufferOptions" :display-format="displayFormat" :picker-props="datePickerProps" v-bind="$attrs" />
     </template>
     <template #display="{ fieldValue }">
       <span class="choy-field-display-text">{{ toDisplayText(fieldValue().value) }}</span>
@@ -203,8 +203,8 @@ const bufferOptions = computed(() => ({
   equals: (a: FieldType, b: FieldType) => sameDate(a, b),
 }));
 
-const ODatetimeCell = defineComponent({
-  name: 'ODatetimeCell',
+const ChoyDatetimeCell = defineComponent({
+  name: 'ChoyDatetimeCell',
   props: {
     fieldValue: { type: Function as PropType<() => { value: any }>, required: true },
     options: { type: Object as PropType<any>, required: true },
@@ -225,18 +225,26 @@ const ODatetimeCell = defineComponent({
       },
       p.options
     );
-    return () =>
-      h('input', {
+    return () => {
+      const current = buffer.editingValue.value;
+      // datetime-local wants local wall clock without timezone suffix.
+      const value =
+        current instanceof Date && !isNaN(current.getTime())
+          ? dayjs(current).format('YYYY-MM-DDTHH:mm')
+          : '';
+      return h('input', {
         ...attrs,
         ...(p.pickerProps || {}),
+        type: 'datetime-local',
         class: 'choy-date-picker',
-        clearable: true,
-        editable: false,
-        format: p.displayFormat,
-        modelValue: buffer.editingValue.value,
-        'onUpdate:modelValue': (val: any) => buffer.setEditing(normalizeToDate(val)),
+        value,
+        onInput: (e: Event) => {
+          const raw = (e.target as HTMLInputElement).value;
+          buffer.setEditing(raw ? normalizeToDate(raw) : null);
+        },
         onBlur: () => buffer.onBlur(),
       });
+    };
   },
 });
 </script>

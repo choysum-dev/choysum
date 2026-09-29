@@ -47,7 +47,13 @@ SPDX-License-Identifier: Apache-2.0
             </div>
           </div>
         </div>
-        <label v-else class="choy-binary-upload" :class="{ 'choy-binary-upload--drag': uploadDrag }">
+        <label
+          v-else
+          class="choy-binary-upload"
+          :class="{ 'choy-binary-upload--drag': uploadDrag }"
+          @dragover.prevent="onUploadDragOver"
+          @drop.prevent="onNativeFileDrop($event, fieldValue, onFieldChange)"
+        >
           <input
             type="file"
             class="sr-only"
@@ -336,6 +342,22 @@ async function onNativeFileChange(ev: Event, fieldValue: ValueRefGetter, onField
   if (!file) return;
   await applySelectedBinary(file, fieldValue, onFieldChange);
   input.value = '';
+}
+
+function onUploadDragOver(ev: DragEvent): void {
+  if (uploadDisabled) return;
+  ev.dataTransfer && (ev.dataTransfer.dropEffect = 'copy');
+}
+
+async function onNativeFileDrop(
+  ev: DragEvent,
+  fieldValue: ValueRefGetter,
+  onFieldChange?: OnFieldChange,
+): Promise<void> {
+  if (uploadDisabled) return;
+  const file = ev.dataTransfer?.files?.[0];
+  if (!file) return;
+  await applySelectedBinary(file, fieldValue, onFieldChange);
 }
 
 async function removeBinary(fieldValue: ValueRefGetter, onFieldChange?: OnFieldChange): Promise<void> {

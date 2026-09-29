@@ -685,11 +685,10 @@ function handleDelete() {
       }
     })
     .catch((e: unknown) => {
-      if (e !== 'cancel') {
-        ChoyMessage.error(_t('Delete failed'));
-        const err = e instanceof Error ? e : new Error(String(e));
-        emit('action-error', { action: 'delete', error: err });
-      }
+      if (e === 'cancel' || e === 'dismiss') return;
+      ChoyMessage.error(_t('Delete failed'));
+      const err = e instanceof Error ? e : new Error(String(e));
+      emit('action-error', { action: 'delete', error: err });
     });
 }
 

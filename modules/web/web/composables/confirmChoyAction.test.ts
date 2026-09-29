@@ -27,4 +27,19 @@ describe('confirmChoyAction', () => {
     resolveConfirmChoy('cancel');
     expect(await pending).toBe('cancel');
   });
+
+  test('opening a second confirm settles the previous pending promise', async () => {
+    const first = confirmChoyAction('First?', 'One');
+    const second = confirmChoyAction('Second?', 'Two');
+    await first.then(
+      () => {
+        throw new Error('expected first to be superseded');
+      },
+      (e) => {
+        expect(e).toBe('dismiss');
+      },
+    );
+    resolveConfirmChoy('confirm');
+    await second;
+  });
 });

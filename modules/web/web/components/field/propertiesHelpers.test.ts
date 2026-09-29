@@ -8,6 +8,8 @@ import {
   filterRenderablePropertyItems,
   normalizeSelectionOptions,
   propertiesFieldKey,
+  propertyDateFromInput,
+  propertyDateToInput,
   propertyDatetimeFromPicker,
   propertyDatetimeToPicker,
   writePropertyValue,
@@ -145,5 +147,19 @@ describe('propertiesHelpers', () => {
     expect(propertyDatetimeFromPicker('')).toBeNull();
     expect(propertyDatetimeFromPicker('2024-06-30T12:00:00.000Z', 'UTC')).toMatch(/Z$/);
     expect(propertyDatetimeFromPicker(new Date('invalid'), 'UTC')).toBeNull();
+  });
+
+  test('propertyDateToInput / propertyDateFromInput round-trip ISO midnight', () => {
+    expect(propertyDateToInput(null)).toBe('');
+    expect(propertyDateToInput('')).toBe('');
+    expect(propertyDateToInput('2024-01-01T00:00:00Z')).toBe('2024-01-01');
+    expect(propertyDateToInput('2024-01-01')).toBe('2024-01-01');
+    expect(propertyDateToInput(new Date(Date.UTC(2024, 0, 15)))).toBe('2024-01-15');
+    expect(propertyDateToInput(new Date('invalid'))).toBe('');
+    expect(propertyDateToInput({ x: 1 })).toBe('');
+    expect(propertyDateFromInput('2024-01-01')).toBe('2024-01-01T00:00:00Z');
+    expect(propertyDateFromInput('')).toBeNull();
+    expect(propertyDateFromInput(null)).toBeNull();
+    expect(propertyDateFromInput('not-a-date')).toBeNull();
   });
 });

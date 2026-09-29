@@ -144,8 +144,8 @@ const bufferOptions = computed(() => ({
   normalize: (v: string | null) => {
     if (v == null) return null;
     let s = String(v);
-    s = cutToLen(s, effectiveMaxLength.value);
     if (props.trimOnBlur === 'both') s = s.trim();
+    s = cutToLen(s, effectiveMaxLength.value);
     if (s === '' && props.nullable) return null;
     return s;
   },
@@ -192,9 +192,8 @@ const OVarCharCell = defineComponent({
         class: 'choy-input',
         placeholder: p.placeholder,
         maxlength: p.maxlength,
-        showWordLimit: p.showWordLimit,
-        modelValue: buffer.editingValue.value,
-        'onUpdate:modelValue': (val: any) => buffer.setEditing(val ?? ''),
+        value: buffer.editingValue.value ?? '',
+        onInput: (e: Event) => buffer.setEditing((e.target as HTMLInputElement).value ?? ''),
         onBlur,
       });
   },

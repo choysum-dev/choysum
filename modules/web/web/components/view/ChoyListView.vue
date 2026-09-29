@@ -727,11 +727,10 @@ async function handleDelete() {
     await loadData();
     emit('delete-success', { ids });
   } catch (e) {
-    if (e !== 'cancel') {
-      const err = e instanceof Error ? e : new Error(String(e));
-      emit('action-error', { action: 'delete', error: err });
-      ChoyMessage.error(_t('Delete failed'));
-    }
+    if (e === 'cancel' || e === 'dismiss') return;
+    const err = e instanceof Error ? e : new Error(String(e));
+    emit('action-error', { action: 'delete', error: err });
+    ChoyMessage.error(_t('Delete failed'));
   } finally {
     deleteLoading.value = false;
   }

@@ -8,10 +8,25 @@ SPDX-License-Identifier: Apache-2.0
     <div class="osf-group__header">
         <div class="osf-group__relation">
         <span class="osf-group__relation-label">{{ _t('Group relation') }}</span>
-        <div class="rg">
-          <div class="radio" data-value="And">AND</div>
-          <div class="radio" data-value="Or">OR</div>
-          <button type="button" class="to-or" @click="onLogicChange('Or')">OR</button>
+        <div class="rg" role="group" :aria-label="_t('Group relation')">
+          <button
+            type="button"
+            class="radio"
+            data-value="And"
+            :aria-pressed="group.logic === 'And'"
+            @click="onLogicChange('And')"
+          >
+            AND
+          </button>
+          <button
+            type="button"
+            class="radio"
+            data-value="Or"
+            :aria-pressed="group.logic === 'Or'"
+            @click="onLogicChange('Or')"
+          >
+            OR
+          </button>
         </div>
       </div>
       <div class="osf-group__ops">

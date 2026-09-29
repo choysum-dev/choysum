@@ -29,6 +29,29 @@ export function propertiesFieldKey(
   return String(bindingProp || propsProp || fallback);
 }
 
+/** Convert stored date (ISO midnight or YYYY-MM-DD) to native date input value. */
+export function propertyDateToInput(raw: unknown): string {
+  if (raw == null || raw === '') return '';
+  if (raw instanceof Date) {
+    if (Number.isNaN(raw.getTime())) return '';
+    const y = raw.getUTCFullYear();
+    const m = String(raw.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(raw.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  const s = String(raw).trim();
+  const m = /^(\d{4}-\d{2}-\d{2})/.exec(s);
+  return m ? m[1]! : '';
+}
+
+/** Convert native date input (YYYY-MM-DD) to stored UTC midnight ISO. */
+export function propertyDateFromInput(value: unknown): string | null {
+  if (value == null || value === '') return null;
+  const s = String(value).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  return `${s}T00:00:00Z`;
+}
+
 /** Convert stored UTC datetime to a picker Date (user wall-clock carrier). */
 export function propertyDatetimeToPicker(
   raw: unknown,

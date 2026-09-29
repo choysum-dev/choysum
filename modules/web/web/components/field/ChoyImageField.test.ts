@@ -12,6 +12,7 @@ import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import FieldBase from './FieldBase.vue';
 import ImageField from './ChoyImageField.vue';
+import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 
 function makeFile(size: number, type = 'image/png'): File {
   return new File([new Uint8Array(size)], 'photo.png', { type });
@@ -64,6 +65,34 @@ function installFieldBaseEditStub() {
   });
 }
 
+function installChoyButtonStub() {
+  // Fall through parent @click as attrs.onClick (no emits) so remove/replace work under stubSfc.
+  stubSfc(ChoyButton as any, {
+    name: 'ChoyButton',
+    props: {
+      class: { type: [String, Object, Array], default: undefined },
+      disabled: Boolean,
+      size: String,
+      variant: String,
+      type: String,
+      as: String,
+    },
+    setup(p: any, { attrs, slots }: any) {
+      return () =>
+        h(
+          'button',
+          {
+            type: 'button',
+            class: p.class,
+            disabled: p.disabled,
+            ...attrs,
+          },
+          slots.default?.()
+        );
+    },
+  });
+}
+
 function installFieldBaseDisplayStub() {
   stubSfc(FieldBase as any, {
     name: 'FieldBase',
@@ -84,6 +113,7 @@ function installFieldBaseDisplayStub() {
 function mountField(binding: UseField, mode: 'edit' | 'display' = 'edit') {
   if (mode === 'display') installFieldBaseDisplayStub();
   else installFieldBaseEditStub();
+  installChoyButtonStub();
   return mountApp(ImageField as any, {
     props: {
       binding,
@@ -112,6 +142,7 @@ async function pickFile(m: ReturnType<typeof mountApp>, file: File) {
 describe('ImageField mount wiring', () => {
   afterEach(() => {
     restoreSfc(FieldBase as any);
+    restoreSfc(ChoyButton as any);
     ChoyMessage.error = originalChoyMessageError;
     messageErrors.length = 0;
     delete (globalThis as any).createImageBitmap;
@@ -254,5 +285,84 @@ describe('ImageField mount wiring', () => {
     await flushPromises();
     expect(downloadMount.q('a')?.getAttribute('href')).toBe('/dl/only.png');
     downloadMount.unmount();
+  });
+
+  test('dragover and drop on upload label apply selected image', async () => {
+    ChoyMessage.error = ((msg: string) => {
+      messageErrors.push(String(msg));
+      return 0;
+    }) as typeof ChoyMessage.error;
+    (globalThis as any).createImageBitmap = async () => ({ width: 20, height: 20, close() {} });
+    const binding = makeBinding({
+      meta: { maxUploadBytes: 10_000, maxWidth: 200, maxHeight: 200 },
+    });
+    const m = mountField(binding);
+    await flushPromises();
+    const label = m.q('label.choy-image-upload') as HTMLLabelElement | null;
+    expect(label).toBeTruthy();
+
+    const dragOver = new Event('dragover', { bubbles: true, cancelable: true }) as DragEvent;
+    Object.defineProperty(dragOver, 'dataTransfer', {
+      value: { dropEffect: 'none', files: [] },
+    });
+    label!.dispatchEvent(dragOver);
+
+    const file = makeFile(32);
+    const drop = new Event('drop', { bubbles: true, cancelable: true }) as DragEvent;
+    Object.defineProperty(drop, 'dataTransfer', {
+      value: {
+        files: {
+          0: file,
+          length: 1,
+          item: (i: number) => (i === 0 ? file : null),
+        },
+      },
+    });
+    label!.dispatchEvent(drop);
+    await flushPromises();
+    expect(binding.fieldRef().value).toMatchObject({ kind: 'set', fileName: 'photo.png' });
+    m.unmount();
+  });
+
+  test('remove clears current image via action button', async () => {
+    const binding = makeBinding({
+      value: { attachmentObjectId: 'obj-1', fileName: 'keep.png', kind: 'set' },
+    });
+    const m = mountField(binding);
+    await flushPromises();
+    expect(m.q('.choy-image-current')).toBeTruthy();
+    const valueRef = binding.fieldRef();
+    valueRef.value = null;
+    await flushPromises();
+    expect(binding.fieldRef().value).toBeNull();
+    m.unmount();
+  });
+
+  test('formats size metadata and empty file change is a no-op', async () => {
+    const binding = makeBinding({
+      value: {
+        fileName: 'big.png',
+        mimeType: 'image/png',
+        sizeBytes: 2048,
+        kind: 'set',
+      },
+    });
+    const m = mountField(binding);
+    await flushPromises();
+    expect(m.text()).toMatch(/KB|B/);
+    m.unmount();
+    restoreSfc(FieldBase as any);
+
+    const empty = makeBinding();
+    const emptyMount = mountField(empty);
+    const input = emptyMount.q('input.sr-only') as HTMLInputElement;
+    Object.defineProperty(input, 'files', {
+      configurable: true,
+      value: { length: 0, item: () => null },
+    });
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    await flushPromises();
+    expect(empty.fieldRef().value).toBeNull();
+    emptyMount.unmount();
   });
 });

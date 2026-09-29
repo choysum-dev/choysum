@@ -27,7 +27,7 @@ SPDX-License-Identifier: Apache-2.0
         <p class="import-panel-hint">{{ mappingHint }}</p>
         <div v-for="row in mappingRows" :key="row.header" class="import-panel-map-row">
           <span>{{ row.header }}</span>
-          <select v-model="row.fieldPath">
+          <select v-model="row.fieldPath" @change="onMappingChange">
             <option value="">{{ sameAsHeaderLabel }}</option>
             <option v-for="f in catalogOptions" :key="f.path" :value="f.path">{{ f.label }}</option>
           </select>

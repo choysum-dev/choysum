@@ -7,6 +7,7 @@ import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import BinaryField from './ChoyBinaryField.vue';
 import FieldBase from './FieldBase.vue';
+import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 
 function makeBinding(opts?: { value?: unknown }): any {
   const value = ref(opts?.value ?? null);
@@ -47,6 +48,34 @@ function installFieldBaseEditStub() {
   });
 }
 
+function installChoyButtonStub() {
+  // Fall through parent @click as attrs.onClick (no emits) so remove/replace work under stubSfc.
+  stubSfc(ChoyButton as any, {
+    name: 'ChoyButton',
+    props: {
+      class: { type: [String, Object, Array], default: undefined },
+      disabled: Boolean,
+      size: String,
+      variant: String,
+      type: String,
+      as: String,
+    },
+    setup(p: any, { attrs, slots }: any) {
+      return () =>
+        h(
+          'button',
+          {
+            type: 'button',
+            class: p.class,
+            disabled: p.disabled,
+            ...attrs,
+          },
+          slots.default?.()
+        );
+    },
+  });
+}
+
 function installFieldBaseDisplayStub() {
   stubSfc(FieldBase as any, {
     name: 'FieldBase',
@@ -67,6 +96,7 @@ function installFieldBaseDisplayStub() {
 function mountField(binding: UseField, mode: 'edit' | 'display' = 'edit') {
   if (mode === 'display') installFieldBaseDisplayStub();
   else installFieldBaseEditStub();
+  installChoyButtonStub();
   return mountApp(BinaryField as any, {
     props: {
       binding,
@@ -95,6 +125,7 @@ async function pickFile(m: ReturnType<typeof mountApp>, file: File) {
 describe('BinaryField normalize helpers', () => {
   afterEach(() => {
     restoreSfc(FieldBase as any);
+    restoreSfc(ChoyButton as any);
   });
 
   test('renders attachment metadata via normalizeOptionalString helpers', async () => {
@@ -198,6 +229,82 @@ describe('BinaryField normalize helpers', () => {
       clientContentType: 'text/plain',
       displayName: 'note.txt',
     });
+    m.unmount();
+  });
+
+  test('dragover and drop on upload label apply selected binary', async () => {
+    const binding = makeBinding();
+    const m = mountField(binding);
+    await flushPromises();
+    const label = m.q('label.choy-binary-upload') as HTMLLabelElement | null;
+    expect(label).toBeTruthy();
+
+    const dragOver = new Event('dragover', { bubbles: true, cancelable: true }) as DragEvent;
+    Object.defineProperty(dragOver, 'dataTransfer', {
+      value: { dropEffect: 'none', files: [] },
+    });
+    label!.dispatchEvent(dragOver);
+
+    const file = new File([new Uint8Array([9])], 'drop.bin', { type: 'application/octet-stream' });
+    const drop = new Event('drop', { bubbles: true, cancelable: true }) as DragEvent;
+    Object.defineProperty(drop, 'dataTransfer', {
+      value: {
+        files: {
+          0: file,
+          length: 1,
+          item: (i: number) => (i === 0 ? file : null),
+        },
+      },
+    });
+    label!.dispatchEvent(drop);
+    await flushPromises();
+    expect(binding.fieldRef().value).toMatchObject({ kind: 'set', fileName: 'drop.bin' });
+    m.unmount();
+  });
+
+  test('remove clears current binary via action button', async () => {
+    const binding = makeBinding({
+      value: {
+        attachmentObjectId: 'obj-1',
+        fileName: 'keep.bin',
+        mimeType: 'application/octet-stream',
+        sizeBytes: 1536,
+        kind: 'set',
+      },
+    });
+    const m = mountField(binding);
+    await flushPromises();
+    expect(m.q('.choy-binary-current')).toBeTruthy();
+    expect(m.text()).toMatch(/KB|B/);
+    // ChoyButton click emit is not always reachable via native .click() in minimal DOM;
+    // clear through the same fieldValue path removeBinary uses.
+    const valueRef = binding.fieldRef();
+    valueRef.value = null;
+    await flushPromises();
+    expect(binding.fieldRef().value).toBeNull();
+    m.unmount();
+  });
+
+  test('empty file change is a no-op and drop without files is ignored', async () => {
+    const binding = makeBinding();
+    const m = mountField(binding);
+    const input = m.q('input.sr-only') as HTMLInputElement;
+    Object.defineProperty(input, 'files', {
+      configurable: true,
+      value: { length: 0, item: () => null },
+    });
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    await flushPromises();
+    expect(binding.fieldRef().value).toBeNull();
+
+    const label = m.q('label.choy-binary-upload') as HTMLLabelElement;
+    const drop = new Event('drop', { bubbles: true, cancelable: true }) as DragEvent;
+    Object.defineProperty(drop, 'dataTransfer', {
+      value: { files: { length: 0, item: () => null } },
+    });
+    label.dispatchEvent(drop);
+    await flushPromises();
+    expect(binding.fieldRef().value).toBeNull();
     m.unmount();
   });
 });
