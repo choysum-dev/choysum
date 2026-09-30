@@ -19,6 +19,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/choysum-dev/choysum/pkg/jsengine/scripts/choysummount"
 )
 
 type packageJSON struct {
@@ -31,8 +33,7 @@ func main() {
 	if err != nil {
 		fail("getwd: %v", err)
 	}
-	// go generate runs with the package directory as cwd.
-	repoRoot := filepath.Clean(filepath.Join(cwd, "..", "..", "..", ".."))
+	repoRoot := findRepoRoot(cwd)
 	webPkg := filepath.Join(repoRoot, "modules", "web", "package.json")
 	ver, err := exactVueFromPackageJSON(webPkg)
 	if err != nil {
@@ -40,6 +41,11 @@ func main() {
 	}
 
 	out := filepath.Join(cwd, "vue_version.go")
+	// Prefer writing next to this generator when cwd is the package dir;
+	// fall back to repo-relative path if go run was invoked elsewhere.
+	if _, err := os.Stat(filepath.Join(cwd, "script.go")); err != nil {
+		out = filepath.Join(repoRoot, "pkg", "jsengine", "scripts", "choysummount", "vue_version.go")
+	}
 	content := fmt.Sprintf(`// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -64,6 +70,20 @@ const VuePackageVersion = %q
 	}
 }
 
+func findRepoRoot(start string) string {
+	dir := start
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			fail("go.mod not found above %s", start)
+		}
+		dir = parent
+	}
+}
+
 func exactVueFromPackageJSON(path string) (string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -85,22 +105,14 @@ func exactVueFromPackageJSON(path string) (string, error) {
 	if ver == "" {
 		return "", fmt.Errorf("%s missing exact vue pin", path)
 	}
-	if !isExactVue(ver) {
-		return "", fmt.Errorf("%s vue must be exact (got %q); ranges cannot be the host SSOT", path, ver)
+	if !choysummount.IsExactVuePin(ver) {
+		return "", fmt.Errorf("%s vue must be exact major.minor.patch (got %q)", path, ver)
 	}
 	return ver, nil
 }
 
 func normalizeVue(raw string) string {
 	return strings.TrimPrefix(strings.TrimSpace(raw), "v")
-}
-
-func isExactVue(ver string) bool {
-	lower := strings.ToLower(ver)
-	if lower == "" || lower == "*" || lower == "latest" || lower == "next" {
-		return false
-	}
-	return !strings.ContainsAny(ver, "^~*<>=| ")
 }
 
 func syncBootstrapVue(path, ver string) error {

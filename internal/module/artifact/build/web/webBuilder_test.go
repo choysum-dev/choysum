@@ -5373,7 +5373,7 @@ func TestAppendExactPinsFromPackageJSONKitVueIsSSOT(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(kit, "package.json"), []byte(`{"peerDependencies":{"vue":"3.9.9","reka-ui":"2.10.4","@vue/test-utils":"2.4.6"}}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(domain, "package.json"), []byte(`{"dependencies":{"vue":"1.0.0","local-only":"1.2.3","@vue/test-utils":"2.4.0"}}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(domain, "package.json"), []byte(`{"dependencies":{"vue":"1.0.0","local-only":"1.2.3","@vue/test-utils":"2.4.0","@vue/runtime-dom":"1.0.0"}}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	builder := &WebModuleBuilder{module: &meta.Module{Name: "partner", Path: domain}}
@@ -5383,7 +5383,7 @@ func TestAppendExactPinsFromPackageJSONKitVueIsSSOT(t *testing.T) {
 		t.Fatalf("kit modules/web exact vue is SSOT, got %q", got)
 	}
 	if got := r.BareImportPin("@vue/runtime-dom"); got != "3.9.9" {
-		t.Fatalf("@vue/* runtime must follow kit vue, got %q", got)
+		t.Fatalf("domain @vue/runtime-dom must not override host vue, got %q", got)
 	}
 	// Non-host @vue/* keeps nearest-module-wins (domain overrides kit).
 	if got := r.BareImportPin("@vue/test-utils"); got != "2.4.0" {
@@ -5431,6 +5431,9 @@ func TestAppendExactPinsFromPackageJSONVueSourceWarn(t *testing.T) {
 	// Cached read: unavailable must appear once for the kit path (not duplicated by mergePins).
 	if strings.Count(logBuf.String(), "exact peer pins from package.json unavailable") != 1 {
 		t.Fatalf("expected a single unavailable warn (pin cache), got %q", logBuf.String())
+	}
+	if strings.Contains(logBuf.String(), "no exact vue pin in package.json") {
+		t.Fatalf("unreadable package.json must not emit missing-pin warn, got %q", logBuf.String())
 	}
 }
 

@@ -2302,10 +2302,13 @@ func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Opt
 		vueSource = kitHost
 	}
 
-	pinCache := map[string]map[string]string{}
-	readPins := func(modPath, logName string) map[string]string {
-		if got, ok := pinCache[modPath]; ok {
-			return got
+	pinCache := map[string]struct {
+		pins map[string]string
+		err  error
+	}{}
+	readPins := func(modPath, logName string) (map[string]string, error) {
+		if e, ok := pinCache[modPath]; ok {
+			return e.pins, e.err
 		}
 		got, err := esmresolver.ExactPinsFromPackageJSON(modPath)
 		if err != nil {
@@ -2314,16 +2317,20 @@ func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Opt
 			}
 			got = nil
 		}
-		pinCache[modPath] = got
-		return got
+		pinCache[modPath] = struct {
+			pins map[string]string
+			err  error
+		}{got, err}
+		return got, err
 	}
 
 	vueVer := choysummount.VuePackageVersion
-	kitPins := readPins(vueSource, vueSource)
+	kitPins, kitErr := readPins(vueSource, vueSource)
 	if v := kitPins["vue"]; v != "" {
 		vueVer = v
-	} else if b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
-		// package.json present but vue missing/range → surface that SSOT was not used.
+	} else if kitErr == nil && b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
+		// Parsed successfully (or missing file → nil,nil) but no exact vue.
+		// Only warn when package.json is present so missing kit dirs stay quiet.
 		if _, statErr := os.Stat(filepath.Join(vueSource, "package.json")); statErr == nil {
 			b.runtimeScope.Logger().Warn("no exact vue pin in package.json; using fallback", "module", vueSource, "fallback", vueVer)
 		}
@@ -2331,7 +2338,8 @@ func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Opt
 	pins := choysummount.VueBareImportPinsFor(vueVer)
 
 	mergePins := func(modPath, logName string) {
-		for name, ver := range readPins(modPath, logName) {
+		got, _ := readPins(modPath, logName)
+		for name, ver := range got {
 			// Only host-owned Vue runtime packages come from the kit SSOT
 			// (see choysummount.VueBareImportPinsFor); never let a module
 			// override them. Other @vue/* names keep nearest-module-wins.

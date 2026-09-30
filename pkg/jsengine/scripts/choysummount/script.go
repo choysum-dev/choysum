@@ -99,6 +99,16 @@ func exactVuePin(version string) string {
 	return orig
 }
 
+// IsExactVuePin reports whether version is a full exact SemVer pin that
+// exactVuePin accepts (not a range, partial major/minor, or malformed value).
+func IsExactVuePin(version string) bool {
+	v := strings.TrimPrefix(strings.TrimSpace(version), "v")
+	if v == "" {
+		return false
+	}
+	return exactVuePin(version) == v
+}
+
 func semverDotIds(s string) bool {
 	for _, id := range strings.Split(s, ".") {
 		if id == "" {

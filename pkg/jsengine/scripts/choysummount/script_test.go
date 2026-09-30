@@ -100,6 +100,11 @@ func TestExactVuePin(t *testing.T) {
 		if got := VueBareImportPinsFor(tc.in)["vue"]; got != tc.want {
 			t.Fatalf("VueBareImportPinsFor(%q)[vue] = %q want %q", tc.in, got, tc.want)
 		}
+		trimmed := strings.TrimPrefix(strings.TrimSpace(tc.in), "v")
+		wantExact := trimmed != "" && exactVuePin(tc.in) == trimmed
+		if IsExactVuePin(tc.in) != wantExact {
+			t.Fatalf("IsExactVuePin(%q) = %v want %v", tc.in, IsExactVuePin(tc.in), wantExact)
+		}
 	}
 }
 
@@ -134,8 +139,8 @@ func TestVuePackageVersionMatchesWebKit(t *testing.T) {
 	if ver != VuePackageVersion {
 		t.Fatalf("VuePackageVersion=%q out of date vs modules/web vue=%q; run: go generate ./pkg/jsengine/scripts/choysummount/...", VuePackageVersion, ver)
 	}
-	if strings.ContainsAny(ver, "^~*<>=| ") {
-		t.Fatalf("modules/web vue must be an exact pin for host SSOT, got %q", ver)
+	if !IsExactVuePin(ver) {
+		t.Fatalf("modules/web vue must be an exact major.minor.patch pin for host SSOT, got %q", ver)
 	}
 
 	bootPath := filepath.Join(repoRoot, "internal", "bootstrap", "web", "package.json")
@@ -152,5 +157,8 @@ func TestVuePackageVersionMatchesWebKit(t *testing.T) {
 	bootVue := strings.TrimPrefix(strings.TrimSpace(boot.Dependencies["vue"]), "v")
 	if bootVue != VuePackageVersion {
 		t.Fatalf("bootstrap web vue=%q out of date; run: go generate ./pkg/jsengine/scripts/choysummount/...", bootVue)
+	}
+	if !IsExactVuePin(bootVue) {
+		t.Fatalf("bootstrap web vue must be an exact major.minor.patch pin, got %q", bootVue)
 	}
 }
