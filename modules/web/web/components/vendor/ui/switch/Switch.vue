@@ -44,6 +44,7 @@ const checked = defineModel<boolean>({ default: false });
         cn(
           'pointer-events-none block size-4 rounded-full bg-background shadow-lg ring-0 transition-transform',
           'data-[state=checked]:translate-x-4 data-[state=unchecked]:translate-x-0',
+          'rtl:data-[state=checked]:-translate-x-4',
         )
       "
     />

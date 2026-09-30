@@ -13,7 +13,7 @@ defineProps<{ class?: ClassValue }>();
 <template>
   <TabsList
     data-slot="tabs-list"
-    :class="cn('inline-flex h-9 items-center justify-center rounded-md bg-muted p-1 text-foreground/70', $props.class)"
+    :class="cn('inline-flex h-control items-center justify-center rounded-md bg-muted p-1 text-foreground/70', $props.class)"
   >
     <slot />
   </TabsList>

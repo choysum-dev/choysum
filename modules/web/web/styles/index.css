@@ -31,7 +31,7 @@ body {
   .choy-input {
     display: flex;
     width: 100%;
-    height: var(--choy-component-size-base, 2rem);
+    height: var(--choy-control-height, var(--choy-component-size-base, 2rem));
     border-radius: var(--choy-radius-md);
     border: 1px solid var(--choy-color-border);
     background-color: var(--choy-color-background);
