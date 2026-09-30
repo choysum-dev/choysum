@@ -18,7 +18,12 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
   >
     <template #edit>
-      <ChoyViewScope :view-mode="binding.env.viewMode" :container="'List'" :field-prefix="String(prop)">
+      <span
+        v-if="showCellSummary"
+        class="truncate text-sm text-foreground"
+        data-testid="choy-o2m-summary"
+      >{{ cellSummaryText }}</span>
+      <ChoyViewScope v-else :view-mode="binding.env.viewMode" :container="'List'" :field-prefix="String(prop)">
         <div class="w-full min-w-0" :style="{ height: tableHeightPxEdit }" tabindex="-1">
           <ChoyTableHost
             ref="ovTableRef"
@@ -46,7 +51,12 @@ SPDX-License-Identifier: Apache-2.0
       </ChoyViewScope>
     </template>
     <template #display>
-      <ChoyViewScope view-mode="display" :container="'List'" :field-prefix="String(prop)">
+      <span
+        v-if="showCellSummary"
+        class="truncate text-sm text-foreground"
+        data-testid="choy-o2m-summary"
+      >{{ cellSummaryText }}</span>
+      <ChoyViewScope v-else view-mode="display" :container="'List'" :field-prefix="String(prop)">
         <div class="w-full min-w-0" :style="{ height: tableHeightPxDisplay }">
           <ChoyTableHost
             :data="getItems()"
@@ -80,6 +90,7 @@ import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
 import { createTranslate } from '@/web/web/i18n';
 import { hasHandleField } from '@/web/web/composables/listRowEdit';
 import { LIST_HANDLE_API_KEY, useListHandleReorder } from '@/web/web/composables/useListHandleReorder';
+import { formatRelationCountSummary } from './relationCountSummary';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/OneToManyField' });
 
@@ -152,6 +163,10 @@ binding.registerFields(`${binding.prop}.DisplayName`);
 
 const { getItems, insertItem, removeItemAt } = binding.asMutableArray<any>();
 const store = props.store;
+
+// List/Kanban cells: count summary instead of embedding a full nested table.
+const showCellSummary = computed(() => binding.env?.isForm === false);
+const cellSummaryText = computed(() => formatRelationCountSummary(getItems()?.length ?? 0, _t));
 
 const showHandleColumn = computed(
   () => props.showHandle !== false && hasHandleField(binding.relationStore, props.handleField)

@@ -6,9 +6,12 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <ViewContainer :showHeader="showHeader">
     <template #header>
-      <div class="choy-list__action-bar grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-border pb-1 min-h-10 max-md:grid-cols-1">
+      <div
+        class="choy-list__action-bar grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-border pb-1 min-h-[var(--choy-control-height)] max-md:grid-cols-1"
+        data-anchor="choy.list.view-chrome"
+      >
         <div class="choy-list__actions flex items-center gap-4">
-          <div class="choy-list__system-actions" v-if="showActions">
+          <ChoyActionTray v-if="showActions" class="choy-list__system-actions">
             <!-- Keep Save/Discard outside the overridable slot so custom toolbars cannot hide them. -->
             <ChoyButton
               v-if="editable && isEditing"
@@ -54,11 +57,11 @@ SPDX-License-Identifier: Apache-2.0
                 {{ _t('Delete (%s)', selectedItems.length) }}
               </ChoyButton>
             </slot>
-          </div>
+          </ChoyActionTray>
 
-          <div class="choy-list__user-actions" v-if="showActions">
+          <ChoyActionTray v-if="showActions" class="choy-list__user-actions">
             <slot name="user-actions" :selected-items="selectedItems" />
-          </div>
+          </ChoyActionTray>
         </div>
 
         <!-- Centered search: render only when searchView is provided -->
@@ -166,6 +169,7 @@ import type { SelectionExpose, RowEventPayload, RowEventHandlerParams } from '@/
 import { resolvePageStore, useRegisterPageActionTarget } from '@/web/web/composables/usePageContext';
 import { useResolvedCreateAction } from '@/web/web/composables/resolveCreateRoute';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyActionTray from '@/web/web/components/layout/ChoyActionTray.vue';
 import { Plus, RefreshCw, Trash2 } from 'lucide-vue-next';
 
 defineOptions({ name: 'ChoyListView', inheritAttrs: false });

@@ -19,31 +19,38 @@ SPDX-License-Identifier: Apache-2.0
   >
     <!-- Edit mode. -->
     <template #edit>
-      <ChoyViewScope v-if="!allowRowEdit" view-mode="display" :container="'List'" :field-prefix="String(prop)">
-        <div class="w-full min-w-0" :style="{ height: tableHeightPxEdit }" tabindex="-1">
-          <ChoyTableHost
-            ref="ovTableRef"
-            :data="getItems()"
-            :row-key="'__rowKey'"
-            :row-height="rowHeightEditRes"
-            :header-height="headerHeight"
-            :table-height="tableHeightEdit"
-            :store="store"
-            :base-index="1"
-          >
-            <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'right', width: 50 }" />
-            <slot />
-            <ChoyTableColumn :label="_t('Actions')" :width="60">
-              <template #default="{ $index }">
-                <ChoyButton size="sm" variant="destructive" @click="onRemove($index)">{{ _t('Delete') }}</ChoyButton>
-              </template>
-            </ChoyTableColumn>
-          </ChoyTableHost>
-        </div>
-        <div class="flex items-center ps-[60px] py-1.5">
-          <ChoyButton v-if="searchList" size="sm" variant="link" @click="openPicker">{{ _t('Add row') }}</ChoyButton>
-        </div>
-      </ChoyViewScope>
+      <span
+        v-if="showCellSummary"
+        class="truncate text-sm text-foreground"
+        data-testid="choy-m2m-summary"
+      >{{ cellSummaryText }}</span>
+      <template v-else-if="!allowRowEdit">
+        <ChoyViewScope view-mode="display" :container="'List'" :field-prefix="String(prop)">
+          <div class="w-full min-w-0" :style="{ height: tableHeightPxEdit }" tabindex="-1">
+            <ChoyTableHost
+              ref="ovTableRef"
+              :data="getItems()"
+              :row-key="'__rowKey'"
+              :row-height="rowHeightEditRes"
+              :header-height="headerHeight"
+              :table-height="tableHeightEdit"
+              :store="store"
+              :base-index="1"
+            >
+              <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'right', width: 50 }" />
+              <slot />
+              <ChoyTableColumn :label="_t('Actions')" :width="60">
+                <template #default="{ $index }">
+                  <ChoyButton size="sm" variant="destructive" @click="onRemove($index)">{{ _t('Delete') }}</ChoyButton>
+                </template>
+              </ChoyTableColumn>
+            </ChoyTableHost>
+          </div>
+          <div class="flex items-center ps-[60px] py-1.5">
+            <ChoyButton v-if="searchList" size="sm" variant="link" @click="openPicker">{{ _t('Add row') }}</ChoyButton>
+          </div>
+        </ChoyViewScope>
+      </template>
 
       <template v-else>
         <ChoyViewScope :view-mode="binding.env.viewMode" :container="'List'" :field-prefix="String(prop)">
@@ -76,7 +83,12 @@ SPDX-License-Identifier: Apache-2.0
 
     <!-- Display mode. -->
     <template #display>
-      <ChoyViewScope view-mode="display" :container="'List'" :field-prefix="String(prop)">
+      <span
+        v-if="showCellSummary"
+        class="truncate text-sm text-foreground"
+        data-testid="choy-m2m-summary"
+      >{{ cellSummaryText }}</span>
+      <ChoyViewScope v-else view-mode="display" :container="'List'" :field-prefix="String(prop)">
         <div class="w-full min-w-0" :style="{ height: tableHeightPxDisplay }">
           <ChoyTableHost
             :data="getItems()"
@@ -139,6 +151,7 @@ import type { SelectionExpose } from '@/web/web/components/view/listViewTypes';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import { useProvidedOnchange } from '@/web/web/composables/useOnchange';
 import { createTranslate } from '@/web/web/i18n';
+import { formatRelationCountSummary } from './relationCountSummary';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/ManyToManyField' });
 
@@ -232,6 +245,10 @@ const relationStore = computed<WebModelStore<any> | undefined>(() => {
   }
 });
 const { getItems, insertItem, removeItemAt } = binding.asMutableArray();
+
+// List/Kanban cells: count summary instead of embedding a full nested table.
+const showCellSummary = computed(() => binding.env?.isForm === false);
+const cellSummaryText = computed(() => formatRelationCountSummary(getItems()?.length ?? 0, _t));
 
 // Row height for edit and display modes.
 const rowHeightEditRes = computed(() => props.rowHeightEdit!);

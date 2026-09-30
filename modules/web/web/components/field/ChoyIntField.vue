@@ -24,7 +24,7 @@ SPDX-License-Identifier: Apache-2.0
       <OIntCell :field-value="fieldValue" :options="bufferOptions" :placeholder="placeholder" :nullable="nullable" :min="min" :max="max" v-bind="$attrs" />
     </template>
     <template #display="{ fieldValue }">
-      <span class="choy-field-display-text inline-block max-w-full truncate whitespace-nowrap px-[11px] leading-8 text-foreground">{{ fieldValue().value == null ? '' : fieldValue().value }}</span>
+      <span class="choy-field-display-text inline-block max-w-full truncate whitespace-nowrap text-foreground">{{ fieldValue().value == null ? '' : fieldValue().value }}</span>
     </template>
   </FieldBase>
 </template>

@@ -25,7 +25,7 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display="{ fieldValue, record }">
-      <span class="choy-field-display-text truncate whitespace-nowrap px-[11px] leading-8 text-foreground inline-block max-w-full text-right">{{
+      <span class="choy-field-display-text truncate whitespace-nowrap text-foreground inline-block max-w-full text-right">{{
         toDisplayText(
           resolveDisplayValue(fieldValue().value, record().value),
           () => resolveScaleFrom(record().value),

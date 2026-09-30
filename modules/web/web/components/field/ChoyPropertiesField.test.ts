@@ -197,19 +197,28 @@ describe('PropertiesField', () => {
     }
   });
 
-  test('honors item.readonly disabled controls', async () => {
+  test('renders readonly items as plain text (no disabled inputs)', async () => {
     const ResolveProperties = fnRecorder(async () => [
       { name: 'code', type: 'char', string: 'Code', value: 'A', readonly: true },
+      { name: 'flag', type: 'boolean', value: true, readonly: true },
       { name: 'qty', type: 'integer', value: 3, readonly: false },
     ] as ResolvedPropertyItem[]);
-    const binding = makeBinding({ map: { code: 'A', qty: 3 }, ResolveProperties });
+    const binding = makeBinding({ map: { code: 'A', flag: true, qty: 3 }, ResolveProperties });
     const mounted = await mountField({ binding, renderMode: 'form' });
     try {
       expect(mounted.q('[data-name="code"]')?.getAttribute('data-readonly')).toBe('1');
       expect(mounted.q('[data-name="qty"]')?.getAttribute('data-readonly')).toBe('0');
-      const code = mounted.q('#choy-properties-Properties-code') as HTMLInputElement | null;
-      expect(code).toBeTruthy();
-      expect(code!.getAttribute('disabled') != null).toBe(true);
+      expect(mounted.q('#choy-properties-Properties-code')).toBeNull();
+      const readonlyVals = Array.from(
+        mounted.el.querySelectorAll('[data-testid="choy-properties-readonly-value"]')
+      );
+      expect(readonlyVals.length).toBe(2);
+      expect(readonlyVals[0]?.textContent).toBe('A');
+      expect(readonlyVals[1]?.textContent).toBe('Yes');
+      const qty = mounted.q('#choy-properties-Properties-qty') as HTMLInputElement | null;
+      expect(qty).toBeTruthy();
+      expect(qty!.getAttribute('disabled')).toBeNull();
+      expect(qty!.className).toContain('choy-input');
     } finally {
       mounted.unmount();
     }

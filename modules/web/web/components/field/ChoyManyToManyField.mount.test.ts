@@ -462,4 +462,29 @@ describe('ChoyManyToManyField mount coverage', () => {
       console.warn = warn;
     }
   });
+
+  test('list-cell display shows count summary instead of table', async () => {
+    restoreSfc(FieldBase as any);
+    installStubs('display');
+    const { binding } = makeBinding({
+      items: [{ Id: 'a' }, { Id: 'b' }],
+      isEditMode: false,
+    });
+    (binding.env as any).isForm = false;
+    const m = mountField({ binding });
+    await nextTick();
+    const summary = m.q('[data-testid="choy-m2m-summary"]');
+    expect(summary).toBeTruthy();
+    expect(summary?.textContent || '').toContain('2');
+    expect(m.q('.ov-table-stub')).toBeNull();
+    m.unmount();
+
+    const empty = makeBinding({ items: [], isEditMode: false });
+    (empty.binding.env as any).isForm = false;
+    const em = mountField({ binding: empty.binding });
+    await nextTick();
+    expect(em.q('[data-testid="choy-m2m-summary"]')?.textContent).toBe('—');
+    expect(em.q('.ov-table-stub')).toBeNull();
+    em.unmount();
+  });
 });

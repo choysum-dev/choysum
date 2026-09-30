@@ -360,4 +360,35 @@ describe('ChoyOneToManyField handle column', () => {
     expect(ensureInsert.calls.length).toBe(1);
     e.unmount();
   });
+
+  test('list-cell display shows count summary instead of table', async () => {
+    restoreSfc(FieldBase as any);
+    stubSfc(FieldBase as any, {
+      name: 'FieldBase',
+      props: { binding: { type: Object, required: true } },
+      setup(_: any, { slots }: any) {
+        return () => h('div', { class: 'field-base-stub' }, slots.display?.({}));
+      },
+    });
+    const { binding } = makeBinding({
+      items: [{ Id: '1' }, { Id: '2' }, { Id: '3' }],
+      isEditMode: false,
+    });
+    (binding.env as any).isForm = false;
+    const m = mountApp(ChoyOneToManyField as any, { props: { binding } });
+    await nextTick();
+    const summary = m.q('[data-testid="choy-o2m-summary"]');
+    expect(summary).toBeTruthy();
+    expect(summary?.textContent || '').toContain('3');
+    expect(m.q('.ov-table-stub')).toBeNull();
+    m.unmount();
+
+    const emptyBinding = makeBinding({ items: [], isEditMode: false });
+    (emptyBinding.binding.env as any).isForm = false;
+    const empty = mountApp(ChoyOneToManyField as any, { props: { binding: emptyBinding.binding } });
+    await nextTick();
+    expect(empty.q('[data-testid="choy-o2m-summary"]')?.textContent).toBe('—');
+    expect(empty.q('.ov-table-stub')).toBeNull();
+    empty.unmount();
+  });
 });

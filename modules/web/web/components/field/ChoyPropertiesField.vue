@@ -34,59 +34,58 @@ SPDX-License-Identifier: Apache-2.0
           :data-type="item.type"
           :data-readonly="item.readonly ? '1' : '0'"
         >
-          <label class="text-[13px] text-foreground" :for="controlId(item)">{{ itemLabel(item) }}</label>
+          <label class="text-[13px] text-foreground" :for="item.readonly ? undefined : controlId(item)">{{ itemLabel(item) }}</label>
+          <span
+            v-if="item.readonly"
+            class="truncate text-sm text-foreground"
+            data-testid="choy-properties-readonly-value"
+          >{{ displayItemValue(fieldValue().value, item) }}</span>
           <input
             type="checkbox"
-            v-if="item.type === 'boolean'"
-            class="w-full"
+            v-else-if="item.type === 'boolean'"
+            class="justify-self-start"
             :id="controlId(item)"
             :checked="asBoolean(itemValue(fieldValue().value, item))"
-            :disabled="!!item.readonly"
             @change="onItemWrite(fieldValue, item.name, ($event.target as HTMLInputElement).checked)"
           />
           <input
             v-else-if="item.type === 'integer' || item.type === 'float'"
-            class="w-full"
+            class="choy-input w-full"
             :id="controlId(item)"
             type="number"
             :value="asNumber(itemValue(fieldValue().value, item)) ?? ''"
-            :disabled="!!item.readonly"
             :step="item.type === 'integer' ? 1 : 'any'"
             @change="onItemWrite(fieldValue, item.name, ($event.target as HTMLInputElement).value === '' ? null : Number(($event.target as HTMLInputElement).value))"
           />
           <textarea
             v-else-if="item.type === 'text'"
-            class="w-full"
+            class="choy-input w-full min-h-[4.5em] h-auto"
             :id="controlId(item)"
             rows="3"
             :value="asString(itemValue(fieldValue().value, item))"
-            :disabled="!!item.readonly"
             @input="onItemWrite(fieldValue, item.name, ($event.target as HTMLTextAreaElement).value)"
           ></textarea>
           <input
             v-else-if="item.type === 'date'"
-            class="w-full"
+            class="choy-input w-full"
             :id="controlId(item)"
             type="date"
             :value="dateInputValue(itemValue(fieldValue().value, item))"
-            :disabled="!!item.readonly"
             @change="onDateWrite(fieldValue, item.name, ($event.target as HTMLInputElement).value)"
           />
           <input
             v-else-if="item.type === 'datetime'"
-            class="w-full"
+            class="choy-input w-full"
             :id="controlId(item)"
             type="datetime-local"
             :value="datetimePickerValue(itemValue(fieldValue().value, item))"
-            :disabled="!!item.readonly"
             @change="onDatetimeWrite(fieldValue, item.name, ($event.target as HTMLInputElement).value)"
           />
           <select
             v-else-if="item.type === 'selection'"
-            class="w-full"
+            class="choy-input w-full"
             :id="controlId(item)"
             :value="asString(itemValue(fieldValue().value, item))"
-            :disabled="!!item.readonly"
             @change="onItemWrite(fieldValue, item.name, ($event.target as HTMLSelectElement).value)"
           >
             <option
@@ -99,10 +98,9 @@ SPDX-License-Identifier: Apache-2.0
           </select>
           <input
             v-else
-            class="w-full"
+            class="choy-input w-full"
             :id="controlId(item)"
             :value="asString(itemValue(fieldValue().value, item))"
-            :disabled="!!item.readonly"
             @input="onItemWrite(fieldValue, item.name, ($event.target as HTMLInputElement).value)"
           />
         </div>

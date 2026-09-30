@@ -888,4 +888,33 @@ describe('OSearch behavior', () => {
     expect((m.emitted['defaults-ready'] || []).length).toBe(beforeReady + 1);
     m.unmount();
   });
+
+  test('Clear all resets keyword, filters, and grouping', async () => {
+    const m = mountSearch({
+      currentKeyword: 'alpha',
+      currentAppliedFilters: [
+        {
+          id: 'f1',
+          name: 'Active',
+          logic: 'AND',
+          conditions: [{ field: 'Active', operator: '=', value: true }],
+        },
+      ] as any,
+      currentAppliedGroups: [{ field: 'Name' }] as any,
+    });
+    await flushPromises();
+    const clearBtn = m.q('[data-testid=choy-search-clear-all]') as HTMLElement | null;
+    expect(clearBtn).not.toBeNull();
+    const before = (m.emitted['query-update'] || []).length;
+    clearBtn!.click();
+    await flushPromises();
+    expect((m.emitted['query-update'] || []).length).toBeGreaterThan(before);
+    const updates = m.emitted['query-update'] || [];
+    const last = updates[updates.length - 1]?.[0] as any;
+    expect(last?.keyword == null || last?.keyword === '').toBe(true);
+    expect((last?.conditionGroups || []).length).toBe(0);
+    const groups = last?.groupby || last?.groups || [];
+    expect(Array.isArray(groups) ? groups.length : 0).toBe(0);
+    m.unmount();
+  });
 });
