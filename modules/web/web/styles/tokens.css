@@ -72,7 +72,18 @@ html {
 
   --choy-font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --choy-line-height-base: 1.5;
-  --choy-component-size-base: 32px;
+
+  /*
+   * Control height ruler (comfortable): single default for Button / Input /
+   * Select / Combobox / TabsList and table row targets. L2 binds via theme
+   * utilities h-control / size-control (see theme.css).
+   */
+  --choy-control-height: 32px;
+  --choy-control-height-sm: 28px;
+  --choy-control-height-lg: 36px;
+  --choy-component-size-base: var(--choy-control-height);
+  --choy-component-size-sm: var(--choy-control-height-sm);
+  --choy-component-size-lg: var(--choy-control-height-lg);
 
   /* Direction defaults; updateDocumentDirection may override at runtime. */
   --choy-direction: ltr;
@@ -116,7 +127,9 @@ html[data-density='compact'] {
   --choy-font-size-lg: 1.0625rem;
   --choy-layout-header-height: 2.75rem;
   --choy-layout-content-padding: 0.75rem;
-  --choy-component-size-base: 28px;
+  --choy-control-height: 28px;
+  --choy-control-height-sm: 24px;
+  --choy-control-height-lg: 32px;
 }
 
 html[dir='rtl'] {

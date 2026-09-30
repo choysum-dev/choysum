@@ -33,13 +33,13 @@ onUnmounted(() => {
         </ToastDescription>
       </div>
       <ToastClose
-        class="rounded-md p-1 opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring"
+        class="rounded-md p-1 opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label="Close"
       />
     </ToastRoot>
     <ToastViewport
       data-slot="toast-viewport"
-      class="fixed bottom-0 right-0 z-[100] flex max-h-screen w-full flex-col-reverse gap-2 p-4 sm:max-w-[420px]"
+      class="fixed bottom-0 end-0 z-[100] flex max-h-screen w-full flex-col-reverse gap-2 p-4 sm:max-w-[420px]"
     />
   </ToastProvider>
 </template>

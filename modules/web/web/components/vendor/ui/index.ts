@@ -3,7 +3,8 @@
 
 /**
  * Internal barrel for vendored L2 primitives under components/vendor/ui
- * (not a public Choy* kit surface — domain code imports from `@/web`).
+ * (not a public Choy* kit surface — domain modules must import from `@/web`
+ * L1 wrappers only; direct vendor/ui imports are forbidden by module policy).
  * (not exported from the public web entry).
  */
 export { default as Badge } from './badge/Badge.vue';

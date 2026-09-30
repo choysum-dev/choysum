@@ -3,8 +3,17 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * Tailwind v4 dialect for Choy UI (Go interpreter LoadCSS input).
- * Maps utility color names onto --choy-* tokens. Product FullCSS
- * preflight stays off; box-sizing / body reset live in index.css.
+ * Maps utility names onto --choy-* tokens. Product FullCSS preflight
+ * stays off; box-sizing / body reset live in index.css.
+ *
+ * Control mapping (density follows html[data-density=compact] in tokens.css):
+ *   --height-control → h-control  (Choysum Go Tailwind dialect; locked by
+ *     TestControlHeightThemeUtilitiesEmit)
+ *   --size-control   → size-control (square icon controls)
+ *   --height-control-sm / -lg → Button size sm/lg only
+ * Do not rename to --spacing-control* solely for stock TW docs: spacing would
+ * also invent p-control / m-control / gap-control from the same scale.
+ * Colors, radius, and ring stay on --choy-color-* / --choy-radius-*.
  */
 
 @theme {
@@ -34,6 +43,11 @@
   --radius-sm: var(--choy-radius-sm);
   --radius-md: var(--choy-radius-md);
   --radius-lg: var(--choy-radius-lg);
+
+  --height-control: var(--choy-control-height);
+  --height-control-sm: var(--choy-control-height-sm);
+  --height-control-lg: var(--choy-control-height-lg);
+  --size-control: var(--choy-control-height);
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
