@@ -59,13 +59,47 @@ func TestVueBareImportPins(t *testing.T) {
 	if VueBareImportPinsFor("v3.9.9")["vue"] != "3.9.9" {
 		t.Fatal("leading v must be stripped")
 	}
-	for _, bad := range []string{"", " ", "^3.5.38", "latest", "next", "*", "  ^1.0.0  ", "3", "3.x", "3.5"} {
-		if VueBareImportPinsFor(bad)["vue"] != VuePackageVersion {
-			t.Fatalf("non-exact %q must fall back to VuePackageVersion", bad)
-		}
+}
+
+func TestExactVuePin(t *testing.T) {
+	fb := VuePackageVersion
+	cases := []struct {
+		in, want string
+	}{
+		{"3.9.9", "3.9.9"},
+		{"v3.9.9", "3.9.9"},
+		{" 3.9.9 ", "3.9.9"},
+		{"3.9.9-beta.1", "3.9.9-beta.1"},
+		{"3.9.9+build.1", "3.9.9+build.1"},
+		{"3.9.9-beta.1+exp.sha", "3.9.9-beta.1+exp.sha"},
+		{"", fb},
+		{" ", fb},
+		{"*", fb},
+		{"latest", fb},
+		{"next", fb},
+		{"^3.5.38", fb},
+		{"~3.5.38", fb},
+		{"3", fb},
+		{"3.5", fb},
+		{"3.x", fb},
+		{"3.5.38.4", fb},     // surplus core component
+		{"3.5.38-", fb},      // empty prerelease
+		{"3.5.38+", fb},      // empty build
+		{"3.5.38-.", fb},     // empty prerelease id
+		{"3.5.38+.", fb},     // empty build id
+		{"3.5.38-beta!", fb}, // invalid id char
+		{"3..38", fb},
+		{"3.5.", fb},
+		{".5.38", fb},
+		{"3.5.x", fb},
 	}
-	if VueBareImportPinsFor("3.9.9-beta.1")["vue"] != "3.9.9-beta.1" {
-		t.Fatal("prerelease exact pin must be kept")
+	for _, tc := range cases {
+		if got := exactVuePin(tc.in); got != tc.want {
+			t.Fatalf("exactVuePin(%q) = %q want %q", tc.in, got, tc.want)
+		}
+		if got := VueBareImportPinsFor(tc.in)["vue"]; got != tc.want {
+			t.Fatalf("VueBareImportPinsFor(%q)[vue] = %q want %q", tc.in, got, tc.want)
+		}
 	}
 }
 

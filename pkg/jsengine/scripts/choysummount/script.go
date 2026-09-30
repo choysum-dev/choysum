@@ -57,10 +57,10 @@ func VueBareImportPinsFor(version string) map[string]string {
 	return pins
 }
 
-// exactVuePin returns version when it is an exact major.minor.patch pin
-// (optional prerelease/build suffix allowed) and VuePackageVersion otherwise.
-// Floating forms such as "3" or "3.x" would let esm.sh resolve a second Vue
-// copy and reintroduce the multi-instance failure this prevents.
+// exactVuePin returns version when it is an exact SemVer major.minor.patch pin
+// (optional nonempty prerelease/build suffixes allowed) and VuePackageVersion
+// otherwise. Floating or malformed forms (e.g. "3", "3.5.38.4", "3.5.38-")
+// would let esm.sh resolve a second Vue copy.
 func exactVuePin(version string) string {
 	v := strings.TrimPrefix(strings.TrimSpace(version), "v")
 	lower := strings.ToLower(v)
@@ -68,23 +68,60 @@ func exactVuePin(version string) string {
 		strings.ContainsAny(v, "^~*<>=| ") {
 		return VuePackageVersion
 	}
-	core := v
-	if i := strings.IndexAny(core, "-+"); i >= 0 {
-		core = core[:i]
+
+	orig := v
+	build := ""
+	if i := strings.IndexByte(v, '+'); i >= 0 {
+		build = v[i+1:]
+		v = v[:i]
+		if build == "" || !semverDotIds(build) {
+			return VuePackageVersion
+		}
 	}
-	parts := strings.Split(core, ".")
-	if len(parts) < 3 {
+	pre := ""
+	if i := strings.IndexByte(v, '-'); i >= 0 {
+		pre = v[i+1:]
+		v = v[:i]
+		if pre == "" || !semverDotIds(pre) {
+			return VuePackageVersion
+		}
+	}
+
+	parts := strings.Split(v, ".")
+	if len(parts) != 3 {
 		return VuePackageVersion
 	}
 	for _, p := range parts {
-		if p == "" {
+		if p == "" || !allASCIIDigits(p) {
 			return VuePackageVersion
 		}
-		for _, c := range p {
-			if c < '0' || c > '9' {
-				return VuePackageVersion
+	}
+	return orig
+}
+
+func semverDotIds(s string) bool {
+	for _, id := range strings.Split(s, ".") {
+		if id == "" {
+			return false
+		}
+		for _, c := range id {
+			ok := (c >= '0' && c <= '9') ||
+				(c >= 'a' && c <= 'z') ||
+				(c >= 'A' && c <= 'Z') ||
+				c == '-'
+			if !ok {
+				return false
 			}
 		}
 	}
-	return v
+	return true
+}
+
+func allASCIIDigits(s string) bool {
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
 }
