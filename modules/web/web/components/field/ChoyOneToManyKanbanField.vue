@@ -431,6 +431,7 @@ async function handleRemoveItem(index: number) {
     {
       confirmText: _t('Delete'),
       cancelText: _t('Cancel'),
+      destructive: true,
     }
   )
     .then(doRemove)

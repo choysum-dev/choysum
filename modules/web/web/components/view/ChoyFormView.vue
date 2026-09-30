@@ -667,6 +667,7 @@ function handleDelete() {
   confirmChoyAction(_t('Are you sure you want to delete the current record? This action cannot be undone.'), _t('Confirm delete'), {
     confirmText: _t('Delete'),
     cancelText: _t('Cancel'),
+    destructive: true,
   })
     .then(async () => {
       const id = String(currId);

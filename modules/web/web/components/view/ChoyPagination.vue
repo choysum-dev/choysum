@@ -21,10 +21,12 @@ SPDX-License-Identifier: Apache-2.0
         class="h-control min-w-16 rounded-md border border-border bg-background px-2 text-sm text-foreground"
         :disabled="disabled"
         :aria-label="pageSizeLabel"
-        :value="pageSize"
+        :value="String(pageSize)"
         @change="onPageSizeChange"
       >
-        <option v-for="n in pageSizeOptions" :key="n" :value="n">{{ n }}</option>
+        <option v-for="n in effectivePageSizeOptions" :key="n" :value="String(n)">
+          {{ n }}
+        </option>
       </select>
     </label>
     <div class="ms-auto flex items-center gap-2">
@@ -87,6 +89,15 @@ const props = withDefaults(
 
 const page = defineModel<number>('page', { default: 1 });
 const pageSize = defineModel<number>('pageSize', { default: 20 });
+
+const effectivePageSizeOptions = computed(() => {
+  const opts = [...props.pageSizeOptions];
+  if (Number.isFinite(pageSize.value) && pageSize.value > 0 && !opts.includes(pageSize.value)) {
+    opts.push(pageSize.value);
+    opts.sort((a, b) => a - b);
+  }
+  return opts;
+});
 
 const totalPages = computed(() => choyTotalPages(props.total, pageSize.value));
 const currentPage = computed(() => clampChoyPage(page.value, totalPages.value));

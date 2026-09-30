@@ -318,3 +318,14 @@ export function mergeDataTableControlledSelection(
   }
   return out;
 }
+
+/** Virtual row estimate: positive finite sizes win; otherwise comfortable control height. */
+export function resolveDataTableEstimateSize(
+  estimateSize: number | undefined | null,
+  fallback = 32,
+): number {
+  return Number.isFinite(estimateSize as number) && (estimateSize as number) > 0
+    ? Number(estimateSize)
+    : fallback;
+}
+

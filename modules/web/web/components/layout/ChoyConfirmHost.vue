@@ -19,7 +19,6 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyButton
           variant="outline"
           size="sm"
-          :disabled="store.pending"
           data-testid="choy-confirm-cancel"
           @click="onCancel"
         >
@@ -28,7 +27,6 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyButton
           :variant="store.destructive ? 'destructive' : 'default'"
           size="sm"
-          :disabled="store.pending"
           data-testid="choy-confirm-ok"
           @click="onConfirm"
         >
@@ -60,17 +58,14 @@ const open = computed({
 });
 
 function onConfirm() {
-  if (store.pending) return;
   resolveConfirmChoy('confirm');
 }
 
 function onCancel() {
-  if (store.pending) return;
   resolveConfirmChoy('cancel');
 }
 
 function onDismiss() {
-  if (store.pending) return;
   resolveConfirmChoy(store.distinguishCancelAndClose ? 'dismiss' : 'cancel');
 }
 </script>

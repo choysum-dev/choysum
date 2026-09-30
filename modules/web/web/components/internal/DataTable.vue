@@ -155,6 +155,7 @@ import {
   nextServerDataTableSort,
   normalizeDataTableRowId,
   pruneDataTableSelection,
+  resolveDataTableEstimateSize,
   resolveDataTableRowId,
   type DataTableRowId
 } from './dataTableHelpers';
@@ -391,14 +392,7 @@ const virtualizer = useVirtualizer({
     return rows.value.length;
   },
   getScrollElement: () => parentRef.value as Element | null,
-  estimateSize: () => {
-    const fallback = 32;
-    const n =
-      Number.isFinite(props.estimateSize) && (props.estimateSize as number) > 0
-        ? (props.estimateSize as number)
-        : fallback;
-    return n;
-  },
+  estimateSize: () => resolveDataTableEstimateSize(props.estimateSize, 32),
   // Keep measurements attached to the logical row so sorting does not reuse stale heights.
   getItemKey: (index) => rows.value[index]?.id ?? index,
   overscan: 8,

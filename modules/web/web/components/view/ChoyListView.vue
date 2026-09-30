@@ -713,6 +713,7 @@ async function handleDelete() {
     await confirmChoyAction(_t('Are you sure you want to delete the selected %s record(s)? This action cannot be undone.', count), _t('Confirm delete'), {
       confirmText: _t('Delete'),
       cancelText: _t('Cancel'),
+      destructive: true,
     });
     // Prefer reading Id from record rows
     const ids = (selectedItems.value as any[])

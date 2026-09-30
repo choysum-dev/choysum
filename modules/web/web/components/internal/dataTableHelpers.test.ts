@@ -13,6 +13,7 @@ import {
   nextServerDataTableSort,
   normalizeDataTableRowId,
   pruneDataTableSelection,
+  resolveDataTableEstimateSize,
   resolveDataTableRowId,
   setDataTableSelectionAll,
   sortDataTableRows,
@@ -236,5 +237,13 @@ describe('dataTableHelpers', () => {
     expect(mergeDataTableControlledSelection([' 1 '], [2], present)).toEqual(['1', 2]);
     // Invalid visible ids are dropped the same way as controlled ghosts.
     expect(mergeDataTableControlledSelection([1], ['', Number.NaN, 2], present)).toEqual([1, 2]);
+  });
+
+  test('resolveDataTableEstimateSize prefers positive sizes', () => {
+    expect(resolveDataTableEstimateSize(40)).toBe(40);
+    expect(resolveDataTableEstimateSize(0)).toBe(32);
+    expect(resolveDataTableEstimateSize(Number.NaN)).toBe(32);
+    expect(resolveDataTableEstimateSize(undefined, 28)).toBe(28);
+    expect(resolveDataTableEstimateSize(-1, 28)).toBe(28);
   });
 });

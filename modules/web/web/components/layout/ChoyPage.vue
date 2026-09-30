@@ -27,6 +27,7 @@ SPDX-License-Identifier: Apache-2.0
         v-if="
           $slots.header ||
           title ||
+          description ||
           showBreadcrumb ||
           $slots.breadcrumb ||
           hasIoMenu ||
