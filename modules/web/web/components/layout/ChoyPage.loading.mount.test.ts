@@ -4,10 +4,19 @@
 import { h } from 'vue';
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import ChoyPage from './ChoyPage.vue';
-import { blurFocusedDescendant } from './choy_page_loading_focus';
+import {
+  blurFocusedDescendantCore,
+  setBlurFocusedDescendantImplForTest,
+} from './choy_page_loading_focus';
 
 describe('ChoyPage loading focus', () => {
-  test('uses inert without aria-hidden so focused submit is not under aria-hidden', async () => {
+  test('loading transition uses inert without aria-hidden and blurs via watcher', async () => {
+    let blurCalls = 0;
+    const restore = setBlurFocusedDescendantImplForTest((root, doc) => {
+      blurCalls++;
+      blurFocusedDescendantCore(root, doc);
+    });
+
     const wrapper = mountApp(ChoyPage, {
       reactiveProps: true,
       props: { loading: false, title: 'Login' },
@@ -16,25 +25,19 @@ describe('ChoyPage loading focus', () => {
       },
     });
 
-    const root = wrapper.q('[data-anchor="choy.page"]');
     const btn = wrapper.q('.submit-button') as HTMLButtonElement | null;
-    expect(root).not.toBeNull();
     expect(btn).not.toBeNull();
     btn!.focus();
     expect(document.activeElement).toBe(btn);
 
-    // Prove the page root is a valid blur target for the focused submit (the
-    // watcher path). Instrument blur because choysum's minimal DOM may leave
-    // activeElement unchanged after native blur().
-    let blurred = false;
-    btn!.blur = () => {
-      blurred = true;
-    };
-    blurFocusedDescendant(root, { activeElement: btn });
-    expect(blurred).toBe(true);
-
+    // immediate:true may call once while rootEl is still null during setup.
+    blurCalls = 0;
+    wrapper.props.loading = false;
+    await flushPromises();
+    // Ensure a rising edge: false → true must hit the watcher (not only mount).
     wrapper.props.loading = true;
     await flushPromises();
+    expect(blurCalls).toBeGreaterThan(0);
 
     const body = wrapper.q('.choy-page__body');
     expect(body?.hasAttribute('inert')).toBe(true);
@@ -49,9 +52,16 @@ describe('ChoyPage loading focus', () => {
     expect(body?.hasAttribute('inert')).toBe(false);
 
     wrapper.unmount();
+    restore();
   });
 
   test('mounts with loading true using inert and aria-busy', async () => {
+    let blurCalls = 0;
+    const restore = setBlurFocusedDescendantImplForTest((root, doc) => {
+      blurCalls++;
+      blurFocusedDescendantCore(root, doc);
+    });
+
     const wrapper = mountApp(ChoyPage, {
       props: { loading: true, title: 'Busy' },
       slots: {
@@ -60,11 +70,14 @@ describe('ChoyPage loading focus', () => {
     });
     await flushPromises();
 
+    // onMounted (+ immediate) should blur once root is available.
+    expect(blurCalls).toBeGreaterThan(0);
     const body = wrapper.q('.choy-page__body');
     expect(body?.hasAttribute('inert')).toBe(true);
     expect(body?.getAttribute('aria-hidden')).toBeNull();
     expect(wrapper.q('[aria-busy="true"]')).not.toBeNull();
 
     wrapper.unmount();
+    restore();
   });
 });

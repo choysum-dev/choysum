@@ -1,7 +1,11 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { blurFocusedDescendant } from './choy_page_loading_focus';
+import {
+  blurFocusedDescendant,
+  blurFocusedDescendantCore,
+  setBlurFocusedDescendantImplForTest,
+} from './choy_page_loading_focus';
 
 describe('blurFocusedDescendant', () => {
   test('blurs activeElement when it is inside root', () => {
@@ -61,7 +65,7 @@ describe('blurFocusedDescendant', () => {
     blurFocusedDescendant(document.createElement('div'), { activeElement: {} as any });
   });
 
-  test('swallows a rejecting blur implementation', () => {
+  test('swallows a synchronous throw from blur()', () => {
     const root = document.createElement('div');
     const btn = document.createElement('button');
     btn.blur = () => {
@@ -71,7 +75,20 @@ describe('blurFocusedDescendant', () => {
     document.body.appendChild(root);
 
     expect(() => blurFocusedDescendant(root, { activeElement: btn })).not.toThrow();
+    expect(() => blurFocusedDescendantCore(root, { activeElement: btn })).not.toThrow();
 
     root.remove();
+  });
+
+  test('setBlurFocusedDescendantImplForTest swaps and restores the impl', () => {
+    let calls = 0;
+    const restore = setBlurFocusedDescendantImplForTest(() => {
+      calls++;
+    });
+    blurFocusedDescendant(null);
+    expect(calls).toBe(1);
+    restore();
+    blurFocusedDescendant(null);
+    expect(calls).toBe(1);
   });
 });
