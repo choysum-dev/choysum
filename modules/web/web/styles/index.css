@@ -26,6 +26,98 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Shared field / auth inputs (align with vendor/ui Input). */
+.choy-input {
+  display: flex;
+  width: 100%;
+  height: var(--choy-component-size-base, 2rem);
+  border-radius: var(--choy-radius-md);
+  border: 1px solid var(--choy-color-border);
+  background-color: var(--choy-color-background);
+  padding: 0.25rem 0.75rem;
+  font-size: var(--choy-font-size-sm);
+  color: var(--choy-color-foreground);
+  box-shadow: 0 1px 2px color-mix(in oklab, var(--choy-color-foreground) 4%, transparent);
+}
+
+.choy-input::placeholder {
+  color: color-mix(in oklab, var(--choy-color-foreground) 45%, transparent);
+}
+
+.choy-input:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--choy-color-ring);
+}
+
+.choy-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Readonly form values: text, not fake inputs. */
+.choy-field-display-text,
+.choy-textfield-display {
+  padding-inline: 0 !important;
+  line-height: 1.5 !important;
+}
+
+/* Sidebar menu chrome (useMenu render helpers). */
+.choy-menu {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.choy-menu__item,
+.choy-menu__sub-title {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+  border: 0;
+  border-radius: var(--choy-radius-md);
+  background: transparent;
+  color: var(--choy-color-foreground);
+  padding: 0.5rem 0.625rem;
+  font-size: var(--choy-font-size-sm);
+  text-align: start;
+  cursor: pointer;
+}
+
+.choy-menu__item:hover,
+.choy-menu__sub-title:hover {
+  background: var(--choy-color-muted);
+}
+
+.choy-menu__item.is-active {
+  background: var(--choy-color-primary-subtle);
+  color: var(--choy-color-primary-dark);
+  font-weight: 600;
+}
+
+.choy-menu__sub-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.125rem 0 0.125rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.choy-menu__icon {
+  opacity: 0.75;
+}
+
+.choy-menu__empty {
+  margin: 0;
+  padding: 0.75rem;
+  font-size: var(--choy-font-size-sm);
+  color: var(--choy-color-muted-foreground);
+}
+
 a {
   color: var(--choy-color-primary, #2563eb);
   text-decoration: none;

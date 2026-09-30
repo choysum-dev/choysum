@@ -15,7 +15,7 @@ SPDX-License-Identifier: Apache-2.0
                   <Plus class="size-4" />
                   {{ _t('New') }}
                 </ChoyButton>
-                <ChoyButton v-if="canEdit" size="sm" variant="default" @click="handleEdit">
+                <ChoyButton v-if="canEdit" size="sm" variant="outline" @click="handleEdit">
                   <Pencil class="size-4" />
                   {{ _t('Edit') }}
                 </ChoyButton>
@@ -23,11 +23,17 @@ SPDX-License-Identifier: Apache-2.0
                   <RefreshCw class="size-4" />
                   {{ _t('Refresh') }}
                 </ChoyButton>
-                <ChoyButton v-if="canCopy" size="sm" variant="outline" @click="handleCopy">
+                <ChoyButton v-if="canCopy" size="sm" variant="ghost" @click="handleCopy">
                   <Copy class="size-4" />
                   {{ _t('Copy') }}
                 </ChoyButton>
-                <ChoyButton v-if="canDelete" size="sm" variant="destructive" @click="handleDelete">
+                <ChoyButton
+                  v-if="canDelete"
+                  size="sm"
+                  variant="outline"
+                  class="border-danger/40 text-danger hover:bg-danger-subtle"
+                  @click="handleDelete"
+                >
                   <Trash2 class="size-4" />
                   {{ _t('Delete') }}
                 </ChoyButton>
@@ -76,7 +82,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <!-- Always render the form; busy state is local (no Element Plus v-loading). -->
     <div
-      class="form-view__content relative py-4 [&_.choy-field-base__label]:min-w-[120px]"
+      class="form-view__content relative py-3"
       :class="{ 'form-view__content--busy pointer-events-none opacity-65': loading }"
       :aria-busy="loading || undefined"
     >      <form ref="formRef" @submit.prevent>

@@ -40,7 +40,7 @@ describe('ChoyWebShell', () => {
     restoreSfc(ChoyLayout);
   });
 
-  test('defaults to header only and renders router-view', async () => {
+  test('defaults to header and sidebar and renders router-view', async () => {
     const mounted = mountApp(ChoyWebShell as any, {
       stubs: {
         'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
@@ -49,10 +49,10 @@ describe('ChoyWebShell', () => {
     await flushPromises();
     const root = mounted.q('[data-test=choy-layout]');
     expect(root?.getAttribute('data-header')).toBe('true');
-    expect(root?.getAttribute('data-aside')).toBe('false');
+    expect(root?.getAttribute('data-aside')).toBe('true');
     expect(root?.getAttribute('data-footer')).toBe('false');
     expect(mounted.q('[data-test=slot-header]')?.textContent).toContain('Choysum');
-    expect(mounted.q('[data-test=slot-aside]')).toBeNull();
+    expect(mounted.q('[data-test=slot-aside]')).not.toBeNull();
     expect(mounted.q('[data-test=slot-footer]')).toBeNull();
     expect(mounted.q('[data-test=router-view]')).not.toBeNull();
     mounted.unmount();
@@ -80,7 +80,7 @@ describe('ChoyWebShell', () => {
     mounted.unmount();
   });
 
-  test('skips empty aside chrome when showSidebar lacks aside slot', async () => {
+  test('renders built-in aside chrome when showSidebar has no aside slot', async () => {
     const mounted = mountApp(ChoyWebShell as any, {
       props: { showHeader: true, showSidebar: true, showFooter: false },
       stubs: {
@@ -89,8 +89,8 @@ describe('ChoyWebShell', () => {
     });
     await flushPromises();
     const root = mounted.q('[data-test=choy-layout]');
-    expect(root?.getAttribute('data-aside')).toBe('false');
-    expect(mounted.q('[data-test=slot-aside]')).toBeNull();
+    expect(root?.getAttribute('data-aside')).toBe('true');
+    expect(mounted.q('[data-test=slot-aside]')).not.toBeNull();
     mounted.unmount();
   });
 

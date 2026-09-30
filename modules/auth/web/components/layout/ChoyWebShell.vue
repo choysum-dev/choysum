@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
   <Xpath expr="//*[@data-anchor='choy.shell.header-actions']" position="inside">
     <span class="mx-1 inline-block h-5 w-px bg-border" role="separator" />
     <ChoyButton
-      v-if="!isAuthenticated"
+      v-if="!isAuthenticated && !isAuthPage"
       variant="ghost"
       size="sm"
       :aria-label="_t('Log in')"
@@ -89,8 +89,10 @@ export default defineComponent({
     const baseSetup = reuseParentSetupState(baseSetupFn(props, ctx));
     const { _t } = createTranslate('auth', { scope: 'web/components/layout/ChoyWebShell' });
     const router = useRouter();
+    const route = router.currentRoute;
     const authStore = useAuthStore();
     const isAuthenticated = computed(() => authStore.isAuthenticated);
+    const isAuthPage = computed(() => !!route.value.meta?.isAuthPage);
     const preferencesVisible = ref(false);
     const userMenuOpen = ref(false);
     const userMenuRoot = ref<HTMLElement | null>(null);
@@ -165,6 +167,7 @@ export default defineComponent({
       ...baseSetup,
       _t,
       isAuthenticated,
+      isAuthPage,
       preferencesVisible,
       userMenuOpen,
       userMenuRoot,

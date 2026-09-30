@@ -45,7 +45,8 @@ SPDX-License-Identifier: Apache-2.0
               <ChoyButton
                 v-if="deleteAction && canDelete"
                 size="sm"
-                variant="destructive"
+                variant="outline"
+                class="border-danger/40 text-danger hover:bg-danger-subtle"
                 :disabled="selectedItems.length === 0 || deleteLoading"
                 @click="handleDelete"
               >
@@ -221,7 +222,7 @@ const props = withDefaults(
     showHeader: true,
     showActions: true,
     /* Removed: showHeaderRight: true, */
-    rowHeight: 40,
+    rowHeight: 36,
     rowKey: 'Id',
     showPagination: true,
     viewportGap: 78,
