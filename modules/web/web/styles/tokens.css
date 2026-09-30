@@ -45,6 +45,7 @@ html {
 
   --choy-layout-header-height: 3.5rem;
   --choy-layout-sidebar-width: 15rem;
+  --choy-layout-sidebar-collapsed-width: 3.5rem;
   --choy-layout-content-padding: 1.25rem;
 
   --choy-motion-duration-fast: 120ms;

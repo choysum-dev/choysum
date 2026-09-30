@@ -11,18 +11,41 @@ SPDX-License-Identifier: Apache-2.0
     <header
       v-if="showHeader ?? !!$slots.header"
       data-anchor="choy.layout.header"
-      class="choy-layout__header shrink-0 border-b border-border"
+      class="choy-layout__header shrink-0 border-b border-border bg-background"
     >
       <slot name="header" />
     </header>
-    <div class="choy-layout__body flex min-h-0 flex-1">
+    <div class="choy-layout__body relative flex min-h-0 flex-1">
+      <div
+        v-if="asideOverlay && (showAside ?? !!$slots.aside)"
+        data-anchor="choy.layout.aside-backdrop"
+        class="fixed inset-0 z-40 bg-foreground/40"
+        aria-hidden="true"
+        @click="emit('aside-dismiss')"
+      />
       <aside
         v-if="showAside ?? !!$slots.aside"
         data-anchor="choy.layout.aside"
-        class="choy-layout__aside shrink-0 border-r border-border"
-        :style="{ width: 'var(--choy-layout-sidebar-width, 15rem)' }"
+        :class="
+          cn(
+            'choy-layout__aside flex shrink-0 flex-col border-border bg-background',
+            asideOverlay
+              ? 'fixed inset-y-0 start-0 z-50 border-e shadow-lg'
+              : 'relative border-e',
+          )
+        "
+        :style="{ width: asideWidth }"
       >
-        <slot name="aside" />
+        <div class="choy-layout__aside-scroll min-h-0 flex-1 overflow-auto">
+          <slot name="aside" />
+        </div>
+        <div
+          v-if="$slots['aside-foot']"
+          data-anchor="choy.layout.aside-foot"
+          class="choy-layout__aside-foot shrink-0 border-t border-border"
+        >
+          <slot name="aside-foot" />
+        </div>
       </aside>
       <main data-anchor="choy.layout.main" class="choy-layout__main min-w-0 flex-1 overflow-auto">
         <slot />
@@ -39,11 +62,12 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { cn, type ClassValue } from '../../lib/utils';
 
 /**
- * Application shell (header / aside / main / footer). Product Header/Sidebar
- * wiring lands at cutover; isolation uses slots only.
+ * Application chrome: Top bar (header) + Nav rail (aside + optional aside-foot)
+ * + Canvas (main). Attribution belongs in aside-foot, not a Canvas-wide footer.
  * Slot visibility is read from `$slots` at render time (slots are not reactive).
  */
 const props = withDefaults(
@@ -52,11 +76,27 @@ const props = withDefaults(
     showHeader?: boolean;
     showAside?: boolean;
     showFooter?: boolean;
+    /** When true, aside is a start-side overlay drawer (mobile). */
+    asideOverlay?: boolean;
+    /** expanded | collapsed width tokens; ignored when aside hidden. */
+    asideCollapsed?: boolean;
   }>(),
   {
     showHeader: undefined,
     showAside: undefined,
     showFooter: undefined,
+    asideOverlay: false,
+    asideCollapsed: false,
   },
+);
+
+const emit = defineEmits<{
+  'aside-dismiss': [];
+}>();
+
+const asideWidth = computed(() =>
+  props.asideCollapsed
+    ? 'var(--choy-layout-sidebar-collapsed-width, 3.5rem)'
+    : 'var(--choy-layout-sidebar-width, 15rem)',
 );
 </script>

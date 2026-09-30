@@ -120,6 +120,30 @@ body {
   color: var(--choy-color-muted-foreground);
 }
 
+/* Icon rail: keep labels for a11y but hide visually. */
+.choy-menu--collapsed .choy-menu__item > span:not(.choy-menu__icon),
+.choy-menu--collapsed .choy-menu__sub-title > span:not(.choy-menu__icon) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.choy-menu--collapsed .choy-menu__item,
+.choy-menu--collapsed .choy-menu__sub-title {
+  justify-content: center;
+  padding-inline: 0.35rem;
+}
+
+.choy-menu--collapsed .choy-menu__sub-list {
+  padding-inline-start: 0;
+}
+
 a {
   color: var(--choy-color-primary, #2563eb);
   text-decoration: none;
