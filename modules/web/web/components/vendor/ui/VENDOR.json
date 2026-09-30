@@ -28,5 +28,5 @@
     "toast",
     "chart"
   ],
-  "notes": "path components/vendor/ui; kept L2 data-slot; tokens via --choy-* / Tailwind theme aliases (bg-primary etc.); chart shell for Unovis (ChartContainer/Legend); no Element Plus; no echarts; no shadcn CLI"
+  "notes": "path components/vendor/ui; kept L2 data-slot; tokens via --choy-* / Tailwind theme aliases (bg-primary etc.); chart shell for Unovis (ChartContainer/Legend); no Element Plus; no echarts; no shadcn CLI; product contract patches listed in HISTORY.md (replay on upstream refresh)"
 }
