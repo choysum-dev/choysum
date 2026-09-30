@@ -20,6 +20,24 @@ describe('blurFocusedDescendant', () => {
     root.remove();
   });
 
+  test('blurs a deeply nested descendant', () => {
+    const root = document.createElement('div');
+    const mid = document.createElement('div');
+    const btn = document.createElement('button');
+    let blurred = false;
+    btn.blur = () => {
+      blurred = true;
+    };
+    mid.appendChild(btn);
+    root.appendChild(mid);
+    document.body.appendChild(root);
+
+    blurFocusedDescendant(root, { activeElement: btn });
+
+    expect(blurred).toBe(true);
+    root.remove();
+  });
+
   test('no-ops when activeElement is outside root', () => {
     const root = document.createElement('div');
     const outside = document.createElement('button');
@@ -41,5 +59,19 @@ describe('blurFocusedDescendant', () => {
     blurFocusedDescendant(null);
     blurFocusedDescendant(document.createElement('div'), { activeElement: null });
     blurFocusedDescendant(document.createElement('div'), { activeElement: {} as any });
+  });
+
+  test('swallows a rejecting blur implementation', () => {
+    const root = document.createElement('div');
+    const btn = document.createElement('button');
+    btn.blur = () => {
+      throw new Error('host rejected blur');
+    };
+    root.appendChild(btn);
+    document.body.appendChild(root);
+
+    expect(() => blurFocusedDescendant(root, { activeElement: btn })).not.toThrow();
+
+    root.remove();
   });
 });

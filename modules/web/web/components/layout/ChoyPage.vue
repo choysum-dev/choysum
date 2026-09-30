@@ -134,7 +134,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, ref, useId, watch } from 'vue';
+import { computed, onMounted, ref, useId, watch } from 'vue';
 import { cn, type ClassValue } from '../../lib/utils';
 import {
   providePageContext,
@@ -200,8 +200,14 @@ watch(
   loading => {
     if (loading) blurFocusedDescendant(rootEl.value);
   },
-  { flush: 'pre' },
+  // flush:pre blurs before inert is applied; immediate covers an initial
+  // loading=true before rootEl is bound (paired with onMounted below).
+  { flush: 'pre', immediate: true },
 );
+// Cover mount-with-loading-true after rootEl is bound (immediate may run too early).
+onMounted(() => {
+  if (props.loading) blurFocusedDescendant(rootEl.value);
+});
 
 const hasIoMenu = computed(() => props.actionImport || props.actionExport);
 
