@@ -13,11 +13,11 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 
@@ -61,8 +61,21 @@ package choysummount
 // this const is for FE/unit hosts when that file is absent.
 const VuePackageVersion = %q
 `, ver)
-	if err := os.WriteFile(out, []byte(content), 0o644); err != nil {
-		fail("write %s: %v", out, err)
+	tmp, err := os.CreateTemp(filepath.Dir(out), "vue_version-*.go")
+	if err != nil {
+		fail("create temp for %s: %v", out, err)
+	}
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
+	if _, err := tmp.Write([]byte(content)); err != nil {
+		tmp.Close()
+		fail("write temp for %s: %v", out, err)
+	}
+	if err := tmp.Close(); err != nil {
+		fail("close temp for %s: %v", out, err)
+	}
+	if err := os.Rename(tmpName, out); err != nil {
+		fail("rename temp to %s: %v", out, err)
 	}
 	fmt.Printf("wrote %s (VuePackageVersion=%s)\n", out, ver)
 }
@@ -129,17 +142,16 @@ func syncBootstrapVue(path, ver string) error {
 		fmt.Printf("bootstrap web vue already %s\n", ver)
 		return nil
 	}
-	// Preserve key order / formatting by rewriting only the dependencies.vue
-	// string value when present as an exact JSON string.
-	old := []byte(`"vue": "` + cur + `"`)
-	neu := []byte(`"vue": "` + ver + `"`)
-	if cur == "" || !bytes.Contains(data, old) {
+	// Preserve key order / surrounding formatting by rewriting only the vue
+	// string value; tolerate compact or spaced JSON ("vue":"x" / "vue" : "x").
+	re := regexp.MustCompile(`("vue"\s*:\s*")[^"]*(")`)
+	if cur == "" || !re.Match(data) {
 		return fmt.Errorf("%s: cannot sync vue %q → %q (edit dependencies.vue manually)", path, cur, ver)
 	}
-	if n := bytes.Count(data, old); n != 1 {
-		return fmt.Errorf("%s: expected exactly one %s, found %d", path, old, n)
+	if n := len(re.FindAllIndex(data, -1)); n != 1 {
+		return fmt.Errorf("%s: expected exactly one dependencies.vue, found %d", path, n)
 	}
-	updated := bytes.ReplaceAll(data, old, neu)
+	updated := re.ReplaceAll(data, []byte(`${1}`+ver+`${2}`))
 	var check packageJSON
 	if err := json.Unmarshal(updated, &check); err != nil {
 		return fmt.Errorf("%s: refusing to write invalid JSON: %w", path, err)

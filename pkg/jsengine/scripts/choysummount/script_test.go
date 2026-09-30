@@ -70,6 +70,7 @@ func TestExactVuePin(t *testing.T) {
 		{"3.9.9", "3.9.9", true},
 		{"v3.9.9", "3.9.9", true},
 		{" 3.9.9 ", "3.9.9", true},
+		{"0.1.0", "0.1.0", true}, // leading zero digit alone is valid SemVer
 		{"3.9.9-beta.1", "3.9.9-beta.1", true},
 		{"3.9.9+build.1", "3.9.9+build.1", true},
 		{"3.9.9-beta.1+exp.sha", "3.9.9-beta.1+exp.sha", true},
@@ -84,6 +85,9 @@ func TestExactVuePin(t *testing.T) {
 		{"3.5", fb, false},
 		{"3.x", fb, false},
 		{"3.5.38.4", fb, false},     // surplus core component
+		{"3.05.38", fb, false},      // leading zero in minor
+		{"3.5.08", fb, false},       // leading zero in patch
+		{"03.5.38", fb, false},      // leading zero in major
 		{"3.5.38-", fb, false},      // empty prerelease
 		{"3.5.38+", fb, false},      // empty build
 		{"3.5.38-.", fb, false},     // empty prerelease id

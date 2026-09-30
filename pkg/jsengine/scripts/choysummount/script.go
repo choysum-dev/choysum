@@ -92,7 +92,8 @@ func exactVuePin(version string) string {
 		return VuePackageVersion
 	}
 	for _, p := range parts {
-		if p == "" || !allASCIIDigits(p) {
+		// SemVer forbids leading zeros in numeric core identifiers (e.g. 3.05.38).
+		if p == "" || !allASCIIDigits(p) || (len(p) > 1 && p[0] == '0') {
 			return VuePackageVersion
 		}
 	}

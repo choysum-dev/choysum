@@ -335,6 +335,8 @@ func vueHostBareImportPins(repoRoot string) (map[string]string, error) {
 			return nil, xfmt.Errorf("vue host bundle: modules/web exact vue %q is not a valid exact pin", v)
 		}
 		vueVer = v
+	} else if _, statErr := os.Stat(filepath.Join(repoRoot, "modules", "web", "package.json")); statErr == nil {
+		return nil, xfmt.Errorf("vue host bundle: modules/web/package.json has no exact vue pin")
 	}
 	pins := choysummount.VueBareImportPinsFor(vueVer)
 	for name, ver := range webPins {
