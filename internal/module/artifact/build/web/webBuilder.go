@@ -2336,6 +2336,12 @@ func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Opt
 		}
 	}
 	pins := choysummount.VueBareImportPinsFor(vueVer)
+	if pins["vue"] != vueVer && b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
+		b.runtimeScope.Logger().Warn(
+			"kit exact vue rejected by host pin validator; using fallback",
+			"module", vueSource, "declared", vueVer, "fallback", pins["vue"],
+		)
+	}
 
 	mergePins := func(modPath, logName string) {
 		got, _ := readPins(modPath, logName)

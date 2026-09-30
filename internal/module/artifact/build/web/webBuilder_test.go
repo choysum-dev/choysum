@@ -5492,6 +5492,42 @@ func TestAppendExactPinsFromPackageJSONNoExactVueWarn(t *testing.T) {
 	}
 }
 
+func TestAppendExactPinsFromPackageJSONRejectedKitVueWarn(t *testing.T) {
+	root := t.TempDir()
+	domain := filepath.Join(root, "partner")
+	kit := filepath.Join(root, "web")
+	for _, dir := range []string{domain, kit} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// "3.5.38.4" passes ExactPinsFromPackageJSON but fails exactVuePin.
+	if err := os.WriteFile(filepath.Join(kit, "package.json"), []byte(`{"peerDependencies":{"vue":"3.5.38.4","reka-ui":"2.10.4"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(domain, "package.json"), []byte(`{"dependencies":{"local-only":"1.2.3"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var logBuf bytes.Buffer
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	testRuntimeScope.log = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	builder := &WebModuleBuilder{
+		runtimeScope: testRuntimeScope,
+		module:       &meta.Module{Name: "partner", Path: domain},
+	}
+	opts := builder.appendExactPinsFromPackageJSON(nil)
+	r := esmresolver.New(opts...)
+	if got := r.BareImportPin("vue"); got != choysummount.VuePackageVersion {
+		t.Fatalf("rejected kit vue ⇒ fallback, got %q", got)
+	}
+	if !strings.Contains(logBuf.String(), "kit exact vue rejected by host pin validator; using fallback") {
+		t.Fatalf("expected rejection warn, got %q", logBuf.String())
+	}
+	if !strings.Contains(logBuf.String(), "3.5.38.4") {
+		t.Fatalf("warn should include declared version, got %q", logBuf.String())
+	}
+}
+
 func TestAppendExactPinsFromPackageJSONMergesKitHost(t *testing.T) {
 	root := t.TempDir()
 	domain := filepath.Join(root, "partner")

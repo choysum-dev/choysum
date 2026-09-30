@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/choysum-dev/choysum/pkg/jsengine/scripts/choysummount"
@@ -29,23 +30,19 @@ type packageJSON struct {
 }
 
 func main() {
-	cwd, err := os.Getwd()
-	if err != nil {
-		fail("getwd: %v", err)
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		fail("cannot locate generator source")
 	}
-	repoRoot := findRepoRoot(cwd)
+	pkgDir := filepath.Dir(thisFile)
+	repoRoot := findRepoRoot(pkgDir)
 	webPkg := filepath.Join(repoRoot, "modules", "web", "package.json")
 	ver, err := exactVueFromPackageJSON(webPkg)
 	if err != nil {
 		fail("modules/web: %v", err)
 	}
 
-	out := filepath.Join(cwd, "vue_version.go")
-	// Prefer writing next to this generator when cwd is the package dir;
-	// fall back to repo-relative path if go run was invoked elsewhere.
-	if _, err := os.Stat(filepath.Join(cwd, "script.go")); err != nil {
-		out = filepath.Join(repoRoot, "pkg", "jsengine", "scripts", "choysummount", "vue_version.go")
-	}
+	out := filepath.Join(pkgDir, "vue_version.go")
 	content := fmt.Sprintf(`// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
@@ -132,14 +129,24 @@ func syncBootstrapVue(path, ver string) error {
 		fmt.Printf("bootstrap web vue already %s\n", ver)
 		return nil
 	}
-	// Preserve key order / formatting by rewriting only the "vue" value when
-	// present as an exact JSON string dependency.
+	// Preserve key order / formatting by rewriting only the dependencies.vue
+	// string value when present as an exact JSON string.
 	old := []byte(`"vue": "` + cur + `"`)
 	neu := []byte(`"vue": "` + ver + `"`)
 	if cur == "" || !bytes.Contains(data, old) {
 		return fmt.Errorf("%s: cannot sync vue %q → %q (edit dependencies.vue manually)", path, cur, ver)
 	}
+	if n := bytes.Count(data, old); n != 1 {
+		return fmt.Errorf("%s: expected exactly one %s, found %d", path, old, n)
+	}
 	updated := bytes.ReplaceAll(data, old, neu)
+	var check packageJSON
+	if err := json.Unmarshal(updated, &check); err != nil {
+		return fmt.Errorf("%s: refusing to write invalid JSON: %w", path, err)
+	}
+	if normalizeVue(check.Dependencies["vue"]) != ver {
+		return fmt.Errorf("%s: sync did not set dependencies.vue to %q (got %q)", path, ver, check.Dependencies["vue"])
+	}
 	if err := os.WriteFile(path, updated, 0o644); err != nil {
 		return err
 	}
