@@ -28,6 +28,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/parser/vueparser"
 	"github.com/choysum-dev/choysum/internal/parser/vueparser/vuesfchtmlparser"
 	"github.com/choysum-dev/choysum/internal/vueplugin"
+	"github.com/choysum-dev/choysum/pkg/jsengine/scripts/choysummount"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -2290,19 +2291,68 @@ func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Opt
 	if b == nil || b.module == nil || strings.TrimSpace(b.module.Path) == "" {
 		return opts
 	}
-	pins := map[string]string{}
-	mergePins := func(modulePath, logName string) {
-		got, err := esmresolver.ExactPinsFromPackageJSON(modulePath)
+	modulePath := filepath.Clean(strings.TrimSpace(b.module.Path))
+	kitHost := filepath.Join(filepath.Dir(modulePath), "web")
+
+	// Vue SSOT: exact "vue" from modules/web/package.json (kit host). Domain
+	// modules cannot override. Fallback: generated VuePackageVersion
+	// (go generate ./pkg/jsengine/scripts/choysummount/...).
+	vueSource := modulePath
+	if kitHost != modulePath {
+		vueSource = kitHost
+	}
+
+	pinCache := map[string]struct {
+		pins map[string]string
+		err  error
+	}{}
+	readPins := func(modPath, logName string) (map[string]string, error) {
+		if e, ok := pinCache[modPath]; ok {
+			return e.pins, e.err
+		}
+		got, err := esmresolver.ExactPinsFromPackageJSON(modPath)
 		if err != nil {
 			if b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
 				b.runtimeScope.Logger().Warn("exact peer pins from package.json unavailable", "module", logName, "error", err)
 			}
-			return
+			got = nil
 		}
+		pinCache[modPath] = struct {
+			pins map[string]string
+			err  error
+		}{got, err}
+		return got, err
+	}
+
+	vueVer := choysummount.VuePackageVersion
+	kitPins, kitErr := readPins(vueSource, vueSource)
+	if v := kitPins["vue"]; v != "" {
+		vueVer = v
+	} else if kitErr == nil && b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
+		// Parsed successfully (or missing file → nil,nil) but no exact vue.
+		// Only warn when package.json is present so missing kit dirs stay quiet.
+		if _, statErr := os.Stat(filepath.Join(vueSource, "package.json")); statErr == nil {
+			b.runtimeScope.Logger().Warn("no exact vue pin in package.json; using fallback", "module", vueSource, "fallback", vueVer)
+		}
+	}
+	pins := choysummount.VueBareImportPinsFor(vueVer)
+	// Reuse the exported validator so this stays in sync with the rule the
+	// FE host path (vueHostBareImportPins) also relies on.
+	if !choysummount.IsExactVuePin(vueVer) &&
+		b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
+		b.runtimeScope.Logger().Warn(
+			"kit exact vue rejected by host pin validator; using fallback",
+			"module", vueSource, "declared", vueVer, "fallback", pins["vue"],
+		)
+	}
+
+	mergePins := func(modPath, logName string) {
+		got, _ := readPins(modPath, logName)
 		for name, ver := range got {
-			// The embedded host owns the Vue instance; never let a module-level
-			// exact pin override it (mirrors vueHostBareImportPins).
-			if name == "vue" {
+			// Only host-owned Vue runtime packages come from the kit SSOT
+			// (see choysummount.VueBareImportPinsFor); never let a module
+			// override them. Other @vue/* names keep nearest-module-wins.
+			if choysummount.IsHostVueRuntimePackage(name) {
 				continue
 			}
 			if prev, ok := pins[name]; ok && prev != ver &&
@@ -2316,15 +2366,11 @@ func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Opt
 		}
 	}
 	// Kit host peers first so the built module's own exact pins win on conflict.
-	modulePath := filepath.Clean(strings.TrimSpace(b.module.Path))
-	kitHost := filepath.Join(filepath.Dir(modulePath), "web")
 	if kitHost != modulePath {
 		mergePins(kitHost, kitHost)
 	}
 	mergePins(modulePath, b.module.Name)
-	if len(pins) > 0 {
-		opts = append(opts, esmresolver.WithBareImportPins(pins))
-	}
+	opts = append(opts, esmresolver.WithBareImportPins(pins))
 	return opts
 }
 
