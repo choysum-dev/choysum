@@ -103,16 +103,21 @@ let sidebarMenu: ComputedRef<() => ReturnType<typeof h>> = computed(
 
 try {
   const route = useRoute();
-  isAuthPage = computed(() => !!route.meta?.isAuthPage);
+  // useRoute() returns undefined (does not throw) when no router is installed.
+  if (route) {
+    isAuthPage = computed(() => !!route.meta?.isAuthPage);
+  }
 } catch {
   // Unit mounts may omit vue-router.
 }
 
 try {
   const router = useRouter();
-  onBrandClick = () => {
-    void router.push('/home');
-  };
+  if (router) {
+    onBrandClick = () => {
+      void router.push('/home');
+    };
+  }
 } catch {
   onBrandClick = () => {};
 }

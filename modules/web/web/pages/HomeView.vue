@@ -66,6 +66,7 @@ import { useMenuStore } from '@/web/web/stores/menuStore';
 import { createTranslate, translateTerm } from '@/web/web/i18n';
 import { useI18n } from 'vue-i18n';
 import type { MenuItem } from '@/core/web/menu';
+import { collectHomeShortcuts, type HomeShortcut } from './homeShortcuts';
 
 const { _t } = createTranslate('web', { scope: 'web/pages/HomeView' });
 
@@ -73,23 +74,6 @@ const prefs = ref(readChoyThemePreference());
 
 const themeLabel = computed(() => prefs.value.theme ?? 'light');
 const densityLabel = computed(() => prefs.value.density ?? 'comfortable');
-
-type Shortcut = { id: string; label: string; path?: string };
-
-function collectShortcuts(items: MenuItem[], out: Shortcut[], limit: number, labelOf: (item: MenuItem) => string): void {
-  for (const item of items) {
-    if (out.length >= limit) return;
-    if (item.hidden) continue;
-    if (item.path && !item.externalLink) {
-      out.push({
-        id: item.id || item.path,
-        label: labelOf(item),
-        path: item.path,
-      });
-    }
-    if (item.children?.length) collectShortcuts(item.children, out, limit, labelOf);
-  }
-}
 
 let listMenus: () => MenuItem[] = () => [];
 let labelOf: (item: MenuItem) => string = item => String(item.title || item.path || '');
@@ -111,20 +95,18 @@ try {
 
 try {
   const router = useRouter();
-  pushPath = path => {
-    void router.push(path);
-  };
+  if (router) {
+    pushPath = path => {
+      void router.push(path);
+    };
+  }
 } catch {
   // Unit mounts may omit vue-router.
 }
 
-const shortcuts = computed(() => {
-  const out: Shortcut[] = [];
-  collectShortcuts(listMenus(), out, 9, labelOf);
-  return out;
-});
+const shortcuts = computed(() => collectHomeShortcuts(listMenus(), 9, labelOf));
 
-function openShortcut(item: Shortcut) {
+function openShortcut(item: HomeShortcut) {
   if (item.path) pushPath(item.path);
 }
 

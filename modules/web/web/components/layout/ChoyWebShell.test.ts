@@ -368,4 +368,49 @@ describe('ChoyWebShell', () => {
     expect(activateCount).toBeGreaterThan(activatesAfterFirst);
     mounted.unmount();
   });
+
+  test('hides aside chrome when route.meta.isAuthPage is set', async () => {
+    const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
+    const { router } = createFeStubRouter({
+      route: { path: '/login', fullPath: '/login', meta: { isAuthPage: true } },
+    });
+    const mounted = mountApp(ChoyWebShell as any, {
+      plugins: [router],
+      stubs: {
+        'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
+      },
+    });
+    await flushPromises();
+    const root = mounted.q('[data-test=choy-layout]');
+    expect(root?.getAttribute('data-aside')).toBe('false');
+    expect(mounted.q('[data-test=slot-aside]')).toBeNull();
+    expect(mounted.q('[data-test=slot-header]')?.textContent).toContain('Choysum');
+    mounted.unmount();
+  });
+
+  test('brand link navigates home when a router is installed', async () => {
+    const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
+    const { router } = createFeStubRouter({
+      route: { path: '/other', fullPath: '/other', meta: {} },
+    });
+    const pushes: unknown[] = [];
+    const originalPush = router.push?.bind(router);
+    router.push = (to: unknown) => {
+      pushes.push(to);
+      return originalPush ? originalPush(to) : Promise.resolve();
+    };
+    const mounted = mountApp(ChoyWebShell as any, {
+      plugins: [router],
+      stubs: {
+        'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
+      },
+    });
+    await flushPromises();
+    const brand = mounted.q('.choy-shell__brand') as HTMLElement | null;
+    expect(brand).not.toBeNull();
+    brand!.click();
+    await flushPromises();
+    expect(pushes).toContain('/home');
+    mounted.unmount();
+  });
 });

@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyPage :loading="loading" width="narrow" :padding="false" class="mx-auto flex min-h-[calc(100vh-var(--choy-layout-header-height))] w-full max-w-md items-center justify-center px-4 py-6">
+  <ChoyPage :loading="loading" width="narrow" :padding="false" class="mx-auto flex min-h-[calc(100vh_-_var(--choy-layout-header-height,3rem))] w-full max-w-md items-center justify-center px-4 py-6">
     <ChoyCard :title="_t('Create Account')" class="register-card w-full shadow-sm">
       <transition name="fade">
         <div

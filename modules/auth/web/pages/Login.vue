@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     :loading="loading"
     width="narrow"
     :padding="false"
-    class="mx-auto flex min-h-[calc(100vh-var(--choy-layout-header-height))] w-full max-w-md items-center justify-center px-4"
+    class="mx-auto flex min-h-[calc(100vh_-_var(--choy-layout-header-height,3rem))] w-full max-w-md items-center justify-center px-4"
   >
     <ChoyCard :title="_t('User Login')" class="login-card w-full shadow-sm">
       <transition name="fade">
