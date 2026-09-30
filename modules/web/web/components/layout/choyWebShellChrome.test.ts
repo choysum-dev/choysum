@@ -38,11 +38,22 @@ describe('choyWebShellChrome', () => {
 });
 
 describe('setDrawerBodyOverflow', () => {
-  test('locks and clears document body overflow', () => {
+  afterEach(() => {
+    setDrawerBodyOverflow(false);
+    document.body.style.overflow = '';
+  });
+
+  test('locks and restores prior document body overflow', () => {
+    document.body.style.overflow = 'scroll';
     setDrawerBodyOverflow(true);
     expect(document.body.style.overflow).toBe('hidden');
     setDrawerBodyOverflow(false);
-    expect(document.body.style.overflow || '').toBe('');
+    expect(document.body.style.overflow).toBe('scroll');
+  });
+
+  test('unlock without a prior lock leaves overflow unchanged', () => {
+    document.body.style.overflow = 'auto';
+    setDrawerBodyOverflow(false);
+    expect(document.body.style.overflow).toBe('auto');
   });
 });
-

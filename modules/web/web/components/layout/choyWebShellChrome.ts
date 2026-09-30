@@ -27,7 +27,23 @@ export function shouldCloseDrawerOnEscape(event: {
   return event.key === 'Escape' && drawerOpen;
 }
 
-/** Lock or unlock document body scroll while the mobile drawer is open. */
+/** Prior body overflow captured while the drawer owns the scroll lock. */
+let savedBodyOverflow: string | null = null;
+
+/**
+ * Lock or unlock document body scroll while the mobile drawer is open.
+ * Restores any overflow value that was present before this helper locked.
+ */
 export function setDrawerBodyOverflow(locked: boolean): void {
-  document.body.style.overflow = locked ? 'hidden' : '';
+  if (locked) {
+    if (savedBodyOverflow === null) {
+      savedBodyOverflow = document.body.style.overflow;
+    }
+    document.body.style.overflow = 'hidden';
+    return;
+  }
+  if (savedBodyOverflow !== null) {
+    document.body.style.overflow = savedBodyOverflow;
+    savedBodyOverflow = null;
+  }
 }

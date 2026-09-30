@@ -6,7 +6,11 @@
  * Handles compound `(min-width) and (max-width)` queries.
  */
 export function pinViewportWidth(width: number): void {
-  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+  Object.defineProperty(window, 'innerWidth', {
+    configurable: true,
+    writable: true,
+    value: width,
+  });
   Object.defineProperty(window, 'matchMedia', {
     configurable: true,
     value: (query: string) => {

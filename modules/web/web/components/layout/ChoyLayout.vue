@@ -11,6 +11,8 @@ SPDX-License-Identifier: Apache-2.0
     <header
       v-if="showHeader ?? !!$slots.header"
       data-anchor="choy.layout.header"
+      data-testid="choy-layout-header"
+      :inert="asideOverlay || undefined"
       :class="
         cn(
           'choy-layout__header shrink-0 border-b border-border bg-background',

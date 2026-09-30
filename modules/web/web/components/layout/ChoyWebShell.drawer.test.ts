@@ -7,6 +7,10 @@ import ChoyWebShell from './ChoyWebShell.vue';
 import { pinViewportWidth } from '../../stores/layoutStore/pinViewport';
 
 describe('ChoyWebShell mobile drawer', () => {
+  afterEach(() => {
+    document.body.style.overflow = '';
+  });
+
   test('opens drawer, locks body scroll, closes on Escape and close control', async () => {
     pinViewportWidth(500);
     const { createPinia, setActivePinia } = await import('pinia');

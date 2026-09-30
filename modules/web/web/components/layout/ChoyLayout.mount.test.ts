@@ -34,6 +34,9 @@ describe('ChoyLayout mount', () => {
     expect(aside?.getAttribute('role')).toBe('dialog');
     expect(aside?.getAttribute('aria-modal')).toBe('true');
     expect(aside?.getAttribute('aria-label')).toBe('Main navigation');
+    const header = mounted.q('[data-testid=choy-layout-header]') as HTMLElement | null;
+    expect(header).not.toBeNull();
+    expect(header?.hasAttribute('inert')).toBe(true);
     const backdrop = mounted.q('[data-testid=choy-layout-aside-backdrop]') as HTMLElement | null;
     expect(backdrop).not.toBeNull();
     backdrop!.click();
