@@ -61,25 +61,8 @@ package choysummount
 // this const is for FE/unit hosts when that file is absent.
 const VuePackageVersion = %q
 `, ver)
-	tmp, err := os.CreateTemp(filepath.Dir(out), "vue_version-*.go")
-	if err != nil {
-		fail("create temp for %s: %v", out, err)
-	}
-	tmpName := tmp.Name()
-	defer os.Remove(tmpName)
-	if _, err := tmp.Write([]byte(content)); err != nil {
-		tmp.Close()
-		fail("write temp for %s: %v", out, err)
-	}
-	if err := tmp.Close(); err != nil {
-		fail("close temp for %s: %v", out, err)
-	}
-	// os.CreateTemp uses 0600; keep the generated, checked-in file at 0644.
-	if err := os.Chmod(tmpName, 0o644); err != nil {
-		fail("chmod temp for %s: %v", out, err)
-	}
-	if err := os.Rename(tmpName, out); err != nil {
-		fail("rename temp to %s: %v", out, err)
+	if err := writeFileAtomic(out, []byte(content), "vue_version-*.go"); err != nil {
+		fail("%v", err)
 	}
 	fmt.Printf("wrote %s (VuePackageVersion=%s)\n", out, ver)
 }
@@ -163,10 +146,35 @@ func syncBootstrapVue(path, ver string) error {
 	if normalizeVue(check.Dependencies["vue"]) != ver {
 		return fmt.Errorf("%s: sync did not set dependencies.vue to %q (got %q)", path, ver, check.Dependencies["vue"])
 	}
-	if err := os.WriteFile(path, updated, 0o644); err != nil {
+	if err := writeFileAtomic(path, updated, "package-*.json"); err != nil {
 		return err
 	}
 	fmt.Printf("synced %s vue %s → %s\n", path, cur, ver)
+	return nil
+}
+
+// writeFileAtomic writes data via a same-dir temp file + rename so a crash
+// cannot leave the destination truncated. Mode is 0644 (CreateTemp uses 0600).
+func writeFileAtomic(path string, data []byte, tmpPattern string) error {
+	tmp, err := os.CreateTemp(filepath.Dir(path), tmpPattern)
+	if err != nil {
+		return fmt.Errorf("create temp for %s: %w", path, err)
+	}
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return fmt.Errorf("write temp for %s: %w", path, err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("close temp for %s: %w", path, err)
+	}
+	if err := os.Chmod(tmpName, 0o644); err != nil {
+		return fmt.Errorf("chmod temp for %s: %w", path, err)
+	}
+	if err := os.Rename(tmpName, path); err != nil {
+		return fmt.Errorf("rename temp to %s: %w", path, err)
+	}
 	return nil
 }
 
