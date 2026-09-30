@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
     <Badge
       v-if="badgeText"
       aria-hidden="true"
-      class="pointer-events-none absolute -right-1 -top-1 min-w-5 justify-center px-1 text-[10px]"
+      class="pointer-events-none absolute -end-1 -top-1 min-w-5 justify-center px-1 text-[10px]"
     >
       {{ badgeText }}
     </Badge>
@@ -37,7 +37,7 @@ SPDX-License-Identifier: Apache-2.0
       <DropdownMenuTrigger as-child>
         <button type="button" class="relative inline-flex cursor-pointer items-center justify-center border-0 bg-transparent p-1.5 text-foreground" :aria-label="_t('Notifications')">
           <Bell class="size-5" />
-          <span v-if="inboxUnreadCount > 0" class="absolute right-0 top-0 min-w-4 rounded-full bg-danger px-1 text-center text-[10px] leading-4 text-white">{{ inboxUnreadCount }}</span>
+          <span v-if="inboxUnreadCount > 0" class="absolute end-0 top-0 min-w-4 rounded-full bg-danger px-1 text-center text-[10px] leading-4 text-white">{{ inboxUnreadCount }}</span>
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" class="choy-notification-bell__menu">

@@ -7,12 +7,18 @@ import ChoyWebShell from './ChoyWebShell.vue';
 import ChoyLayout from './ChoyLayout.vue';
 
 describe('ChoyWebShell', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    const { pinViewportWidth } = await import('../../stores/layoutStore/pinViewport');
+    const { createPinia, setActivePinia } = await import('pinia');
+    pinViewportWidth(1280);
+    setActivePinia(createPinia());
     stubSfc(ChoyLayout, {
       props: {
         showHeader: { type: Boolean, default: undefined },
         showAside: { type: Boolean, default: undefined },
         showFooter: { type: Boolean, default: undefined },
+        asideOverlay: { type: Boolean, default: false },
+        asideCollapsed: { type: Boolean, default: false },
         class: null,
       },
       setup: ((props: any, { slots }: any) => {
@@ -24,10 +30,15 @@ describe('ChoyWebShell', () => {
               'data-header': String(props.showHeader),
               'data-aside': String(props.showAside),
               'data-footer': String(props.showFooter),
+              'data-overlay': String(!!props.asideOverlay),
+              'data-collapsed': String(!!props.asideCollapsed),
             },
             [
               slots.header ? h('div', { 'data-test': 'slot-header' }, slots.header()) : null,
               slots.aside ? h('div', { 'data-test': 'slot-aside' }, slots.aside()) : null,
+              slots['aside-foot']
+                ? h('div', { 'data-test': 'slot-aside-foot' }, slots['aside-foot']())
+                : null,
               slots.default?.(),
               slots.footer ? h('div', { 'data-test': 'slot-footer' }, slots.footer()) : null,
             ],
@@ -53,6 +64,8 @@ describe('ChoyWebShell', () => {
     expect(root?.getAttribute('data-footer')).toBe('false');
     expect(mounted.q('[data-test=slot-header]')?.textContent).toContain('Choysum');
     expect(mounted.q('[data-test=slot-aside]')).not.toBeNull();
+    expect(mounted.q('[data-test=slot-aside-foot]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-attrib]')).not.toBeNull();
     expect(mounted.q('[data-test=slot-footer]')).toBeNull();
     expect(mounted.q('[data-test=router-view]')).not.toBeNull();
     mounted.unmount();
@@ -410,7 +423,7 @@ describe('ChoyWebShell', () => {
     expect(brand).not.toBeNull();
     brand!.click();
     await flushPromises();
-    expect(pushes).toContain('/home');
+    expect(pushes).toContain('/');
     mounted.unmount();
   });
 

@@ -307,6 +307,8 @@ export function useMenu() {
       useDefaultIcon?: boolean;
       uniqueOpened?: boolean;
       defaultIcon?: any;
+      /** Icon-rail mode: hide label text visually; keep accessible name via title. */
+      collapsed?: boolean;
     } = {}
   ) => {
     const {
@@ -315,11 +317,13 @@ export function useMenu() {
       onSubMenuClose,
       useDefaultIcon = true,
       defaultIcon = Bookmark,
+      collapsed = false,
     } = options;
 
     return renderMenu({
       defaultActive: activeMenu.value?.id,
       uniqueOpened: false,
+      className: collapsed ? 'choy-menu--collapsed' : undefined,
       onItemClick: onItemClick || (item => navigateTo(item)),
       onSubMenuOpen,
       onSubMenuClose,
