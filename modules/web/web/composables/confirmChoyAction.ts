@@ -10,6 +10,8 @@ export type ConfirmChoyOptions = {
   cancelText?: string;
   /** When true, Cancel resolves as 'cancel' and overlay/X as 'dismiss'. */
   distinguishCancelAndClose?: boolean;
+  /** Use destructive confirm button (Delete / irreversible). */
+  destructive?: boolean;
 };
 
 type ConfirmRequest = {
@@ -19,6 +21,8 @@ type ConfirmRequest = {
   confirmText: string;
   cancelText: string;
   distinguishCancelAndClose: boolean;
+  destructive: boolean;
+  pending: boolean;
   resolve: ((choice: ConfirmChoyChoice) => void) | null;
 };
 
@@ -29,6 +33,8 @@ const state: ConfirmRequest = reactive({
   confirmText: 'OK',
   cancelText: 'Cancel',
   distinguishCancelAndClose: false,
+  destructive: false,
+  pending: false,
   resolve: null,
 });
 
@@ -70,6 +76,8 @@ export function confirmChoyAction(
     state.confirmText = options?.confirmText || 'OK';
     state.cancelText = options?.cancelText || 'Cancel';
     state.distinguishCancelAndClose = Boolean(options?.distinguishCancelAndClose);
+    state.destructive = Boolean(options?.destructive);
+    state.pending = false;
     state.open = true;
     state.resolve = (choice: ConfirmChoyChoice) => {
       if (choice === 'confirm') resolve();
@@ -93,6 +101,8 @@ export function confirmChoyChoice(
     state.confirmText = options?.confirmText || 'OK';
     state.cancelText = options?.cancelText || 'Cancel';
     state.distinguishCancelAndClose = Boolean(options?.distinguishCancelAndClose);
+    state.destructive = Boolean(options?.destructive);
+    state.pending = false;
     state.open = true;
     state.resolve = resolve;
   });

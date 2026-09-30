@@ -68,7 +68,7 @@ const props = withDefaults(
     baseIndex?: number | Ref<number>;
     store?: any;
   }>(),
-  { rowKey: 'Id', rowHeight: 36, headerHeight: 36, footerHeight: 0 },
+  { rowKey: 'Id', rowHeight: 32, headerHeight: 32, footerHeight: 0 },
 );
 
 const emit = defineEmits<{

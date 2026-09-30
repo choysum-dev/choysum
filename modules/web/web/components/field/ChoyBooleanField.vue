@@ -39,19 +39,10 @@ SPDX-License-Identifier: Apache-2.0
       />
     </template>
 
-    <template #display="{ fieldValue, inputName, inputId }">
-      <div class="choy-bool-editor inline-flex items-center gap-2 px-[11px]">
-        <input
-          type="checkbox"
-          class="align-middle"
-          :name="inputName"
-          :id="inputId"
-          :checked="fieldValue().value === true"
-          :disabled="true"
-          :indeterminate="fieldValue().value === null && !(nullAsFalse || !nullable)"
-        />
-        <span v-if="checkboxLabel" class="choy-bool-label">{{ checkboxLabel }}</span>
-      </div>
+    <template #display="{ fieldValue }">
+      <span class="choy-bool-display text-sm text-foreground" data-testid="choy-bool-display">
+        {{ displayLabel(fieldValue().value) }}
+      </span>
     </template>
   </FieldBase>
 </template>
@@ -169,6 +160,13 @@ const fromView = (v: FieldType): V => {
   if (props.nullAsFalse) return !!v as unknown as V;
   return (v == null ? null : !!v) as unknown as V;
 };
+
+/** Display mode: plain text — never a disabled input wall. */
+function displayLabel(value: FieldType): string {
+  if (value === true) return props.switchActiveText || props.checkboxLabel || _t('Yes');
+  if (value === false) return props.switchInactiveText || _t('No');
+  return _t('—');
+}
 
 function toBool(v: boolean | string | number): boolean {
   return v === true || v === 'true' || v === 1;

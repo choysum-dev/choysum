@@ -32,7 +32,7 @@ SPDX-License-Identifier: Apache-2.0
           hasIoMenu ||
           $slots['title-actions']
         "
-        class="choy-page__header mb-4 flex flex-col gap-2"
+        class="choy-page__header mb-3 flex flex-col gap-1 border-b border-border pb-2"
         :inert="loading || undefined"
       >
         <template v-if="$slots.header">
@@ -69,12 +69,25 @@ SPDX-License-Identifier: Apache-2.0
             <slot name="breadcrumb" />
           </div>
           <div
-            v-if="title || hasIoMenu || $slots['title-actions']"
-            class="choy-page__title-row flex items-start justify-between gap-3"
+            v-if="title || description || hasIoMenu || $slots['title-actions']"
+            class="choy-page__title-row flex items-center justify-between gap-3"
+            :style="{ minHeight: 'var(--choy-control-height)' }"
           >
-            <h1 v-if="title" :id="pageTitleId" class="choy-page__title text-xl font-semibold tracking-tight">
-              {{ title }}
-            </h1>
+            <div class="min-w-0 flex-1">
+              <h1
+                v-if="title"
+                :id="pageTitleId"
+                class="choy-page__title m-0 min-w-0 truncate text-base font-semibold tracking-tight text-foreground"
+              >
+                {{ title }}
+              </h1>
+              <p
+                v-if="description"
+                class="choy-page__description m-0 text-xs text-muted-foreground"
+              >
+                {{ description }}
+              </p>
+            </div>
             <ChoyPageTitleActions
               :has-io-menu="hasIoMenu"
               :action-import="actionImport"
@@ -122,13 +135,13 @@ SPDX-License-Identifier: Apache-2.0
       class="choy-page__loading-mask absolute inset-0 z-10 flex items-center justify-center bg-background/60"
       aria-hidden="true"
     >
-      <span class="text-sm text-foreground/70">Loading…</span>
+      <ChoySkeleton class="h-control w-32" />
     </div>
     <div
       role="status"
       class="absolute h-px w-px overflow-hidden whitespace-nowrap opacity-0"
     >
-      {{ loading ? 'Loading…' : '' }}
+      {{ loading ? loadingLabel : '' }}
     </div>
   </div>
 </template>
@@ -143,21 +156,23 @@ import {
 import type { WebModelStore } from '../../stores/modelStore';
 import { blurFocusedDescendant } from './choy_page_loading_focus';
 import ChoyPageTitleActions from './ChoyPageTitleActions.vue';
+import ChoySkeleton from './ChoySkeleton.vue';
 import type { PageIoMenuListRef } from './ChoyPageIoMenu.vue';
+import { createTranslate } from '../../i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/layout/Page' });
 
 type PageWidth = '' | 'narrow' | 'medium' | 'wide' | 'full';
 
 /**
- * Page chrome inside the layout main area (title, toolbar, body, loading).
- * Optional `store` is provided to descendants via providePageContext (Form/List).
- * Slot visibility is read from `$slots` at render time (slots are not reactive).
- * Loading uses inert + aria-busy (not aria-hidden) so a focused control inside
- * the page cannot trip Chromium's aria-hidden focus warning.
+ * Dense Admin Page chrome: title (+ optional description) + page actions + body.
+ * View Save/New stay in View tray, not here. Loading uses inert (not aria-hidden).
  */
 const props = withDefaults(
   defineProps<{
     class?: ClassValue;
     title?: string;
+    description?: string;
     showBreadcrumb?: boolean;
     padding?: boolean;
     width?: PageWidth;
@@ -177,6 +192,7 @@ const props = withDefaults(
   }>(),
   {
     title: '',
+    description: '',
     showBreadcrumb: false,
     padding: true,
     width: '',
@@ -185,6 +201,8 @@ const props = withDefaults(
     actionExport: false,
   },
 );
+
+const loadingLabel = computed(() => _t('Loading...'));
 
 const parentPageStore = useOptionalPageStore();
 providePageContext({ store: () => props.store ?? parentPageStore.value });
