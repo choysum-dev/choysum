@@ -7,7 +7,11 @@ import ChoyWebShell from './ChoyWebShell.vue';
 import ChoyLayout from './ChoyLayout.vue';
 
 describe('ChoyWebShell', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    const { pinViewportWidth } = await import('../../stores/layoutStore/pinViewport');
+    const { createPinia, setActivePinia } = await import('pinia');
+    pinViewportWidth(1280);
+    setActivePinia(createPinia());
     stubSfc(ChoyLayout, {
       props: {
         showHeader: { type: Boolean, default: undefined },

@@ -323,7 +323,7 @@ export function useMenu() {
     return renderMenu({
       defaultActive: activeMenu.value?.id,
       uniqueOpened: false,
-      className: collapsed ? 'choy-menu--collapsed' : '',
+      className: collapsed ? 'choy-menu--collapsed' : undefined,
       onItemClick: onItemClick || (item => navigateTo(item)),
       onSubMenuOpen,
       onSubMenuClose,

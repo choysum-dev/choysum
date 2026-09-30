@@ -3,43 +3,46 @@
 
 import { createPinia, setActivePinia } from 'pinia';
 import { useLayoutStore } from './index';
+import { pinViewportWidth } from './pinViewport';
 
 describe('useLayoutStore', () => {
   beforeEach(() => {
+    pinViewportWidth(1280);
     setActivePinia(createPinia());
   });
 
   test('exposes device flags and default sidebar modes for each class', () => {
     const store = useLayoutStore();
-    expect(['mobile', 'tablet', 'desktop']).toContain(store.deviceType);
+    expect(store.deviceType).toBe('desktop');
+    expect(store.isDesktop).toBe(true);
+    expect(store.isMobile).toBe(false);
     expect(['expanded', 'collapsed', 'hidden', 'hover']).toContain(store.sidebarMode);
-    expect(typeof store.isMobile).toBe('boolean');
-    expect(typeof store.isTablet).toBe('boolean');
-    expect(typeof store.isDesktop).toBe('boolean');
   });
 
-  test('toggleSidebar cycles expanded → collapsed → expanded on non-mobile', () => {
+  test('toggleSidebar cycles expanded → collapsed → expanded on desktop', () => {
     const store = useLayoutStore();
     store.setSidebarMode('expanded', { isUserAction: true });
     store.toggleSidebar();
     expect(store.sidebarMode).toBe('collapsed');
     store.toggleSidebar();
-    // On mobile, collapsed toggles to hidden; otherwise expanded.
-    if (store.isMobile) {
-      expect(store.sidebarMode).toBe('hidden');
-    } else {
-      expect(store.sidebarMode).toBe('expanded');
-    }
+    expect(store.sidebarMode).toBe('expanded');
   });
 
-  test('closeSidebar hides only mobile expanded drawer', () => {
+  test('closeSidebar does not hide desktop expanded rail', () => {
     const store = useLayoutStore();
     store.setSidebarMode('expanded', { isUserAction: true });
     store.closeSidebar();
-    if (store.isMobile) {
-      expect(store.sidebarMode).toBe('hidden');
-    } else {
-      expect(store.sidebarMode).toBe('expanded');
-    }
+    expect(store.sidebarMode).toBe('expanded');
+  });
+
+  test('mobile defaults to hidden and closeSidebar hides expanded drawer', () => {
+    pinViewportWidth(500);
+    setActivePinia(createPinia());
+    const store = useLayoutStore();
+    expect(store.isMobile).toBe(true);
+    expect(store.sidebarMode).toBe('hidden');
+    store.setSidebarMode('expanded', { isUserAction: true });
+    store.closeSidebar();
+    expect(store.sidebarMode).toBe('hidden');
   });
 });

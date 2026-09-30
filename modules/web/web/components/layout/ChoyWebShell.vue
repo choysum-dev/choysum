@@ -10,6 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     :show-footer="showFooter && !!$slots.footer"
     :aside-overlay="railIsDrawer"
     :aside-collapsed="railCollapsed"
+    :aside-aria-label="tLayout('layout.sidebar.menu')"
     :class="isAuthPage ? 'min-h-screen choy-shell--auth' : 'min-h-screen'"
     @aside-dismiss="closeMobileRail"
   >
@@ -24,6 +25,7 @@ SPDX-License-Identifier: Apache-2.0
           size="icon"
           type="button"
           :aria-label="menuTriggerLabel"
+          :aria-expanded="railIsDrawer ? true : railVisible && !railCollapsed"
           data-testid="choy-shell-menu-trigger"
           @click="onMenuTriggerClick"
         >
@@ -44,16 +46,30 @@ SPDX-License-Identifier: Apache-2.0
       </div>
     </template>
     <template v-if="railVisible" #aside>
-      <nav
-        class="choy-shell__aside flex h-full flex-col p-2 text-sm text-foreground/80"
-        :class="{ 'choy-shell__aside--collapsed': railCollapsed }"
-        aria-label="Main"
-        data-testid="choy-shell-aside"
-      >
-        <slot name="aside">
-          <component :is="sidebarMenu" />
-        </slot>
-      </nav>
+      <div class="flex h-full flex-col">
+        <div v-if="railIsDrawer" class="flex shrink-0 justify-end p-1">
+          <ChoyButton
+            variant="ghost"
+            size="icon"
+            type="button"
+            :aria-label="tLayout('layout.sidebar.collapse')"
+            data-testid="choy-shell-drawer-close"
+            @click="closeMobileRail"
+          >
+            <X class="size-4" aria-hidden="true" />
+          </ChoyButton>
+        </div>
+        <nav
+          class="choy-shell__aside flex min-h-0 flex-1 flex-col p-2 text-sm text-foreground/80"
+          :class="{ 'choy-shell__aside--collapsed': railCollapsed }"
+          aria-label="Main"
+          data-testid="choy-shell-aside"
+        >
+          <slot name="aside">
+            <component :is="sidebarMenu" />
+          </slot>
+        </nav>
+      </div>
     </template>
     <template v-if="railVisible" #aside-foot>
       <div
@@ -117,10 +133,10 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { KeepAlive, computed, h, onMounted, onUnmounted, type ComputedRef } from 'vue';
+import { KeepAlive, computed, h, onMounted, onUnmounted, watch, type ComputedRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { Menu } from 'lucide-vue-next';
+import { Menu, X } from 'lucide-vue-next';
 import logoUrl from '../../assets/logo-32.png';
 import ChoyLayout from './ChoyLayout.vue';
 import ChoyButton from './ChoyButton.vue';
@@ -131,6 +147,12 @@ import TooltipTrigger from '../vendor/ui/tooltip/TooltipTrigger.vue';
 import { useMenu } from '../../composables/useMenu';
 import { useLayoutStore } from '../../stores/layoutStore';
 import { resolveDefaultLandPath } from '../../router/resolveDefaultLandPath';
+import {
+  shellMenuTriggerLabel,
+  shortAppVersion,
+  shouldCloseDrawerOnEscape,
+  setDrawerBodyOverflow,
+} from './choyWebShellChrome';
 
 /**
  * Dense Admin product shell: Top bar + Nav rail (drawer / collapsed / expanded)
@@ -221,14 +243,13 @@ try {
 }
 
 const showMenuTrigger = computed(() => sidebarAllowed.value && !!layoutStore);
-const menuTriggerLabel = computed(() => {
-  if (layoutStore?.isMobile) {
-    return tLayout('layout.header.menu');
-  }
-  return railCollapsed.value
-    ? tLayout('layout.sidebar.expand')
-    : tLayout('layout.sidebar.collapse');
-});
+const menuTriggerLabel = computed(() =>
+  shellMenuTriggerLabel({
+    isMobile: !!layoutStore?.isMobile,
+    railCollapsed: railCollapsed.value,
+    t: (key) => tLayout(key),
+  }),
+);
 
 function onMenuTriggerClick() {
   layoutStore?.toggleSidebar();
@@ -239,26 +260,34 @@ function closeMobileRail() {
 }
 
 function onDocumentKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape' && railIsDrawer.value) {
+  if (shouldCloseDrawerOnEscape(event, railIsDrawer.value)) {
     closeMobileRail();
   }
 }
+
+watch(
+  railIsDrawer,
+  (open, wasOpen) => {
+    setDrawerBodyOverflow(!!open);
+    if (!open && wasOpen) {
+      document.querySelector<HTMLElement>('[data-testid="choy-shell-menu-trigger"]')?.focus();
+    }
+  },
+  { immediate: true },
+);
 
 onMounted(() => {
   document.addEventListener('keydown', onDocumentKeydown);
 });
 onUnmounted(() => {
+  setDrawerBodyOverflow(false);
   document.removeEventListener('keydown', onDocumentKeydown);
 });
 
 const appVersion = computed(
   () => String((import.meta as ImportMeta).env?.CHOYSUM_APP_VERSION || '').trim() || 'dev',
 );
-const versionShort = computed(() => {
-  const v = appVersion.value;
-  if (v.length <= 6) return v;
-  return v.slice(0, 6);
-});
+const versionShort = computed(() => shortAppVersion(appVersion.value));
 const year = computed(() => new Date().getFullYear());
 const copyrightLine = computed(() =>
   tLayout('layout.footer.copyright', { year: year.value }),
