@@ -413,4 +413,35 @@ describe('ChoyWebShell', () => {
     expect(pushes).toContain('/home');
     mounted.unmount();
   });
+
+  test('wires built-in sidebar menu when pinia and menu plugin are installed', async () => {
+    const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
+    const { createPinia, setActivePinia } = await import('pinia');
+    const { createMenuPlugin } = await import('@/core/web/menu');
+    const { createI18n } = await import('vue-i18n');
+
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'shell-app',
+      title: 'Shell App',
+      path: '/shell-app',
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: { path: '/home', fullPath: '/home', meta: {} },
+    });
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+
+    const mounted = mountApp(ChoyWebShell as any, {
+      plugins: [menuPlugin, pinia, router, i18n],
+      stubs: {
+        'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-test=slot-aside]')).not.toBeNull();
+    expect(mounted.text()).toContain('Shell App');
+    mounted.unmount();
+  });
 });

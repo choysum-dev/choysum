@@ -62,4 +62,25 @@ describe('collectHomeShortcuts', () => {
       { id: '/bare', label: 'Bare', path: '/bare' },
     ]);
   });
+
+  test('skips absolute URLs without externalLink and guards against cycles', () => {
+    const cyclicChild = item({ id: 'c', title: 'C', path: '/c' });
+    const cyclicParent = item({
+      id: 'p',
+      title: 'P',
+      path: '/p',
+      children: [cyclicChild],
+    });
+    (cyclicChild as any).children = [cyclicParent];
+
+    const menus: MenuItem[] = [
+      item({ id: 'abs', title: 'Abs', path: 'https://example.com/x' }),
+      cyclicParent,
+    ];
+
+    expect(collectHomeShortcuts(menus, 9, labelOf)).toEqual([
+      { id: 'p', label: 'P', path: '/p' },
+      { id: 'c', label: 'C', path: '/c' },
+    ]);
+  });
 });
