@@ -417,6 +417,7 @@ async function onRemoveFavorite(it: { id: string; name: string }) {
       {
         confirmText: _t('Delete'),
         cancelText: _t('Cancel'),
+        destructive: true,
       }
     );
   } catch {

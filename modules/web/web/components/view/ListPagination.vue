@@ -3,6 +3,12 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<!--
+  List-store pagination adapter (editable range + prev/next).
+  Not kit-exported — product API is ChoyPagination only (Dense Admin W2).
+  Delete in W6 once ListView consumes ChoyPagination directly.
+-->
+
 <template>
   <div class="flex items-center justify-end gap-3 max-md:flex-col max-md:items-center max-md:gap-2">
     <span class="flex items-center gap-1 whitespace-nowrap text-sm text-foreground max-md:text-xs">

@@ -10,6 +10,10 @@
 export { default as ChoyLayout } from './components/layout/ChoyLayout.vue';
 export { default as ChoyPage } from './components/layout/ChoyPage.vue';
 export { default as ChoyPageIoMenu } from './components/layout/ChoyPageIoMenu.vue';
+export { default as ChoyActionTray } from './components/layout/ChoyActionTray.vue';
+export { default as ChoyConfirmHost } from './components/layout/ChoyConfirmHost.vue';
+export { default as ChoySkeleton } from './components/layout/ChoySkeleton.vue';
+export { default as ChoyBadge } from './components/layout/ChoyBadge.vue';
 export { default as ChoyCard } from './components/layout/ChoyCard.vue';
 export { default as ChoyGrid } from './components/layout/ChoyGrid.vue';
 export { default as ChoyCol } from './components/layout/ChoyCol.vue';
@@ -188,6 +192,14 @@ export {
 
 export { ChoyMessage, useChoyMessage } from './composables/useChoyMessage';
 export type { ChoyMessageLevel, ChoyMessageOptions } from './composables/useChoyMessage';
+export {
+  confirmChoyAction,
+  confirmChoyChoice,
+  resolveConfirmChoy,
+  useConfirmChoyStore,
+} from './composables/confirmChoyAction';
+export type { ConfirmChoyChoice, ConfirmChoyOptions } from './composables/confirmChoyAction';
+export { choyControlHeightPx } from './lib/choyControlHeight';
 export {
   applyChoyThemePreference,
   persistChoyThemePreference,

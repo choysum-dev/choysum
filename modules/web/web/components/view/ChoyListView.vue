@@ -222,7 +222,7 @@ const props = withDefaults(
     showHeader: true,
     showActions: true,
     /* Removed: showHeaderRight: true, */
-    rowHeight: 36,
+    rowHeight: 32,
     rowKey: 'Id',
     showPagination: true,
     viewportGap: 78,
@@ -524,7 +524,7 @@ const {
 // =============================
 // Future rowHeight and overscan tuning can be driven here by column config or density
 const virtualization = useVirtualizationAdapter({ rowHeight: props.rowHeight });
-const effectiveRowHeight = computed(() => virtualization.config.value.rowHeight || props.rowHeight || 40);
+const effectiveRowHeight = computed(() => virtualization.config.value.rowHeight || props.rowHeight || 32);
 watch(
   () => props.rowHeight,
   v => {
@@ -713,6 +713,7 @@ async function handleDelete() {
     await confirmChoyAction(_t('Are you sure you want to delete the selected %s record(s)? This action cannot be undone.', count), _t('Confirm delete'), {
       confirmText: _t('Delete'),
       cancelText: _t('Cancel'),
+      destructive: true,
     });
     // Prefer reading Id from record rows
     const ids = (selectedItems.value as any[])

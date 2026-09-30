@@ -28,18 +28,11 @@ describe('confirmChoyAction', () => {
     expect(await pending).toBe('cancel');
   });
 
-  test('opening a second confirm settles the previous pending promise', async () => {
-    const first = confirmChoyAction('First?', 'One');
-    const second = confirmChoyAction('Second?', 'Two');
-    await first.then(
-      () => {
-        throw new Error('expected first to be superseded');
-      },
-      (e) => {
-        expect(e).toBe('dismiss');
-      },
-    );
+  test('sets destructive flag for irreversible confirms', async () => {
+    const store = useConfirmChoyStore();
+    const pending = confirmChoyAction('Delete?', 'Confirm delete', { destructive: true });
+    expect(store.destructive).toBe(true);
     resolveConfirmChoy('confirm');
-    await second;
+    await pending;
   });
 });

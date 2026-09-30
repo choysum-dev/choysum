@@ -5,16 +5,31 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <Dialog v-model:open="open">
-    <DialogContent class="sm:max-w-md" @pointer-down-outside="onDismiss" @escape-key-down="onDismiss">
+    <DialogContent
+      class="sm:max-w-md"
+      data-testid="choy-confirm-dialog"
+      @pointer-down-outside="onDismiss"
+      @escape-key-down="onDismiss"
+    >
       <DialogTitle>{{ store.title }}</DialogTitle>
       <DialogDescription class="whitespace-pre-wrap text-sm text-foreground/80">
         {{ store.message }}
       </DialogDescription>
       <div class="mt-4 flex justify-end gap-2">
-        <ChoyButton variant="outline" size="sm" @click="onCancel">
+        <ChoyButton
+          variant="outline"
+          size="sm"
+          data-testid="choy-confirm-cancel"
+          @click="onCancel"
+        >
           {{ store.cancelText }}
         </ChoyButton>
-        <ChoyButton size="sm" @click="onConfirm">
+        <ChoyButton
+          :variant="store.destructive ? 'destructive' : 'default'"
+          size="sm"
+          data-testid="choy-confirm-ok"
+          @click="onConfirm"
+        >
           {{ store.confirmText }}
         </ChoyButton>
       </div>
@@ -32,7 +47,7 @@ import DialogTitle from '../vendor/ui/dialog/DialogTitle.vue';
 import { resolveConfirmChoy, useConfirmChoyStore } from '../../composables/confirmChoyAction';
 
 /**
- * App-root host for confirmChoyAction / confirmChoyChoice.
+ * App-root host for confirmChoyAction / confirmChoyChoice (Dense Admin §5.9).
  */
 const store = useConfirmChoyStore();
 const open = computed({
@@ -47,7 +62,6 @@ function onConfirm() {
 }
 
 function onCancel() {
-  // Cancel button always means cancel; overlay/X uses onDismiss (may map to dismiss).
   resolveConfirmChoy('cancel');
 }
 

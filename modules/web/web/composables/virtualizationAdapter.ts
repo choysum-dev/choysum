@@ -10,7 +10,7 @@ export type VirtualizationConfig = {
 };
 
 export function useVirtualizationAdapter(initial?: Partial<VirtualizationConfig>) {
-  const config = ref<VirtualizationConfig>({ enabled: true, rowHeight: 40, overscan: 5, ...(initial || {}) });
+  const config = ref<VirtualizationConfig>({ enabled: true, rowHeight: 32, overscan: 5, ...(initial || {}) });
   // Placeholder hooks for future integration
   function applyTo<T extends Record<string, any>>(opts: T): T {
     return opts;
