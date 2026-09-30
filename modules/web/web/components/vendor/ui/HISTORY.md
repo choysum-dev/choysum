@@ -56,12 +56,16 @@ new HISTORY entry describing what was re-copied vs re-patched.
   - `dropdown-menu/DropdownMenuItem.vue`: inset `pl-8` → `ps-8`.
   - `dialog/DialogContent.vue`: close control `right-4` → `end-4`; close focus →
     `focus-visible:ring-*` (centering stays physical `left-1/2` + translate).
-  - `toast/Toaster.vue`: viewport `right-0` → `end-0`.
-  - `switch/Switch.vue`: checked thumb `rtl:data-[state=checked]:-translate-x-4`.
+  - `toast/Toaster.vue`: viewport `right-0` → `end-0`; ToastClose ring →
+    `focus-visible:ring-*`.
+  - `switch/Switch.vue`: checked thumb uses mutually exclusive
+    `ltr:data-[state=checked]:translate-x-4` /
+    `rtl:data-[state=checked]:-translate-x-4`.
   - `index.ts`: note that domain modules must not import this tree directly.
-- **Do not regress:** `rg 'h-9|h-10|\\bh-8\\b' modules/web/web/components/vendor/ui`
+- **Do not regress:** `rg 'h-9|h-10|\bh-8\b' modules/web/web/components/vendor/ui`
   should stay empty for control-height classes (Switch track `w-9` is unrelated).
-
+  Go guard: `TestControlHeightThemeUtilitiesEmit` (theme must still emit
+  `h-control` / `size-control`).
 ### 2026-09-22 — initial hand-adapted import
 
 - **Recorded in:** `VENDOR.json` (`copiedAt`, `source: shadcn-vue (hand-adapted)`).

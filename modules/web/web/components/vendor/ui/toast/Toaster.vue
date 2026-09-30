@@ -33,7 +33,7 @@ onUnmounted(() => {
         </ToastDescription>
       </div>
       <ToastClose
-        class="rounded-md p-1 opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring"
+        class="rounded-md p-1 opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label="Close"
       />
     </ToastRoot>
