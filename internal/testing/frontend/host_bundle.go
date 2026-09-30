@@ -331,6 +331,9 @@ func vueHostBareImportPins(repoRoot string) (map[string]string, error) {
 	}
 	vueVer := choysummount.VuePackageVersion
 	if v := webPins["vue"]; v != "" {
+		if !choysummount.IsExactVuePin(v) {
+			return nil, xfmt.Errorf("vue host bundle: modules/web exact vue %q is not a valid exact pin", v)
+		}
 		vueVer = v
 	}
 	pins := choysummount.VueBareImportPinsFor(vueVer)

@@ -148,6 +148,14 @@ func TestVueHostBareImportPinsFallbackAndHostVueWins(t *testing.T) {
 	if _, err := vueHostBareImportPins(root); err == nil || !strings.Contains(err.Error(), "exact pins") {
 		t.Fatalf("expected exact pins error, got %v", err)
 	}
+
+	// Passes ExactPinsFromPackageJSON but fails IsExactVuePin (surplus core).
+	if err := os.WriteFile(filepath.Join(webRoot, "package.json"), []byte(`{"peerDependencies":{"vue":"3.5.38.4"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := vueHostBareImportPins(root); err == nil || !strings.Contains(err.Error(), "not a valid exact pin") {
+		t.Fatalf("expected invalid exact vue pin error, got %v", err)
+	}
 }
 
 func TestBuildFrontendVueHostBundleExactPinsError(t *testing.T) {

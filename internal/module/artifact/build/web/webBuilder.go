@@ -2336,7 +2336,10 @@ func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Opt
 		}
 	}
 	pins := choysummount.VueBareImportPinsFor(vueVer)
-	if pins["vue"] != vueVer && b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
+	// ExactPinsFromPackageJSON already strips a leading "v", but normalize
+	// before comparing so a preserved prefix cannot spuriously warn.
+	if declared := strings.TrimPrefix(strings.TrimSpace(vueVer), "v"); pins["vue"] != declared &&
+		b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
 		b.runtimeScope.Logger().Warn(
 			"kit exact vue rejected by host pin validator; using fallback",
 			"module", vueSource, "declared", vueVer, "fallback", pins["vue"],

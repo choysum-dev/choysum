@@ -65,33 +65,34 @@ func TestExactVuePin(t *testing.T) {
 	fb := VuePackageVersion
 	cases := []struct {
 		in, want string
+		exact    bool
 	}{
-		{"3.9.9", "3.9.9"},
-		{"v3.9.9", "3.9.9"},
-		{" 3.9.9 ", "3.9.9"},
-		{"3.9.9-beta.1", "3.9.9-beta.1"},
-		{"3.9.9+build.1", "3.9.9+build.1"},
-		{"3.9.9-beta.1+exp.sha", "3.9.9-beta.1+exp.sha"},
-		{"", fb},
-		{" ", fb},
-		{"*", fb},
-		{"latest", fb},
-		{"next", fb},
-		{"^3.5.38", fb},
-		{"~3.5.38", fb},
-		{"3", fb},
-		{"3.5", fb},
-		{"3.x", fb},
-		{"3.5.38.4", fb},     // surplus core component
-		{"3.5.38-", fb},      // empty prerelease
-		{"3.5.38+", fb},      // empty build
-		{"3.5.38-.", fb},     // empty prerelease id
-		{"3.5.38+.", fb},     // empty build id
-		{"3.5.38-beta!", fb}, // invalid id char
-		{"3..38", fb},
-		{"3.5.", fb},
-		{".5.38", fb},
-		{"3.5.x", fb},
+		{"3.9.9", "3.9.9", true},
+		{"v3.9.9", "3.9.9", true},
+		{" 3.9.9 ", "3.9.9", true},
+		{"3.9.9-beta.1", "3.9.9-beta.1", true},
+		{"3.9.9+build.1", "3.9.9+build.1", true},
+		{"3.9.9-beta.1+exp.sha", "3.9.9-beta.1+exp.sha", true},
+		{"", fb, false},
+		{" ", fb, false},
+		{"*", fb, false},
+		{"latest", fb, false},
+		{"next", fb, false},
+		{"^3.5.38", fb, false},
+		{"~3.5.38", fb, false},
+		{"3", fb, false},
+		{"3.5", fb, false},
+		{"3.x", fb, false},
+		{"3.5.38.4", fb, false},     // surplus core component
+		{"3.5.38-", fb, false},      // empty prerelease
+		{"3.5.38+", fb, false},      // empty build
+		{"3.5.38-.", fb, false},     // empty prerelease id
+		{"3.5.38+.", fb, false},     // empty build id
+		{"3.5.38-beta!", fb, false}, // invalid id char
+		{"3..38", fb, false},
+		{"3.5.", fb, false},
+		{".5.38", fb, false},
+		{"3.5.x", fb, false},
 	}
 	for _, tc := range cases {
 		if got := exactVuePin(tc.in); got != tc.want {
@@ -100,10 +101,8 @@ func TestExactVuePin(t *testing.T) {
 		if got := VueBareImportPinsFor(tc.in)["vue"]; got != tc.want {
 			t.Fatalf("VueBareImportPinsFor(%q)[vue] = %q want %q", tc.in, got, tc.want)
 		}
-		trimmed := strings.TrimPrefix(strings.TrimSpace(tc.in), "v")
-		wantExact := trimmed != "" && exactVuePin(tc.in) == trimmed
-		if IsExactVuePin(tc.in) != wantExact {
-			t.Fatalf("IsExactVuePin(%q) = %v want %v", tc.in, IsExactVuePin(tc.in), wantExact)
+		if got := IsExactVuePin(tc.in); got != tc.exact {
+			t.Fatalf("IsExactVuePin(%q) = %v want %v", tc.in, got, tc.exact)
 		}
 	}
 }

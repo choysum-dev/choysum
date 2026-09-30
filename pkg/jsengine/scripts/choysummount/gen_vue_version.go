@@ -42,6 +42,11 @@ func main() {
 		fail("modules/web: %v", err)
 	}
 
+	bootPkg := filepath.Join(repoRoot, "internal", "bootstrap", "web", "package.json")
+	if err := syncBootstrapVue(bootPkg, ver); err != nil {
+		fail("bootstrap web: %v", err)
+	}
+
 	out := filepath.Join(pkgDir, "vue_version.go")
 	content := fmt.Sprintf(`// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: LGPL-3.0-or-later
@@ -60,11 +65,6 @@ const VuePackageVersion = %q
 		fail("write %s: %v", out, err)
 	}
 	fmt.Printf("wrote %s (VuePackageVersion=%s)\n", out, ver)
-
-	bootPkg := filepath.Join(repoRoot, "internal", "bootstrap", "web", "package.json")
-	if err := syncBootstrapVue(bootPkg, ver); err != nil {
-		fail("bootstrap web: %v", err)
-	}
 }
 
 func findRepoRoot(start string) string {
