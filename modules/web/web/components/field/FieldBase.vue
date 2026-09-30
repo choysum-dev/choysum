@@ -12,7 +12,7 @@ SPDX-License-Identifier: Apache-2.0
     class="choy-field-base p-0"
     v-bind="formItemProps"
   >
-    <div class="choy-field-base__label inline-flex max-w-full items-center gap-1">
+    <div class="choy-field-base__label mb-1 inline-flex max-w-full items-center gap-1 text-xs font-medium text-muted-foreground">
       <span class="choy-field-base__label-text min-w-0">{{ resolvedLabel }}</span>
       <button
         v-if="effectiveHelp"

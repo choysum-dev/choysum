@@ -71,6 +71,50 @@ describe('HomeView', () => {
     mounted.unmount();
   });
 
+  test('lists menu shortcuts and navigates on click when router/pinia are installed', async () => {
+    const VueRouter = await import('vue-router');
+    const createFeStubRouter = (VueRouter as any).createFeStubRouter;
+    const { createPinia, setActivePinia } = await import('pinia');
+    const { createMenuPlugin } = await import('@/core/web/menu');
+    const { createI18n } = await import('vue-i18n');
+
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'partners',
+      title: 'Partners',
+      path: '/partners',
+    } as any);
+
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: { path: '/home', fullPath: '/home', meta: {} },
+    });
+    const pushes: unknown[] = [];
+    const originalPush = router.push?.bind(router);
+    router.push = (to: unknown) => {
+      pushes.push(to);
+      return originalPush ? originalPush(to) : Promise.resolve();
+    };
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+
+    const mounted = mountApp(HomeView as any, {
+      plugins: [menuPlugin, pinia, router, i18n],
+    });
+    await flushPromises();
+
+    expect(mounted.text()).toContain('Partners');
+    expect(mounted.text()).toContain('/partners');
+    const btn = Array.from(mounted.el.querySelectorAll('button')).find(b =>
+      (b.textContent || '').includes('Partners'),
+    ) as HTMLElement | undefined;
+    expect(btn).toBeTruthy();
+    btn!.click();
+    await flushPromises();
+    expect(pushes).toContain('/partners');
+    mounted.unmount();
+  });
+
   test('resyncs theme labels when a keepAlive view is re-activated', async () => {
     const visible = ref(true);
     const Parked = defineComponent({

@@ -15,7 +15,7 @@ SPDX-License-Identifier: Apache-2.0
     <div
       ref="headerRef"
       role="rowgroup"
-      class="choy-data-table__header overflow-x-auto overflow-y-hidden border-b border-border bg-muted/40 text-xs font-medium text-foreground/80"
+      class="choy-data-table__header overflow-x-auto overflow-y-hidden border-b border-border bg-muted/20 text-xs font-medium text-muted-foreground"
       @scroll.passive="onHeaderScroll"
     >
       <div
@@ -28,7 +28,7 @@ SPDX-License-Identifier: Apache-2.0
           v-for="header in (table.getHeaderGroups().slice(-1)[0]?.headers ?? [])"
           :key="header.id"
           role="columnheader"
-          class="flex items-center gap-1 px-2 py-2"
+          class="flex items-center gap-1 px-2 py-1.5"
           :aria-sort="
             header.column.id === '__select' || !header.column.getCanSort()
               ? undefined
@@ -48,8 +48,8 @@ SPDX-License-Identifier: Apache-2.0
           <button
             v-else
             type="button"
-            class="flex flex-1 items-center gap-1 text-left hover:text-foreground"
-            :class="{ 'cursor-default': !header.column.getCanSort() }"
+            class="flex flex-1 items-center gap-1 border-0 bg-transparent p-0 text-left font-medium text-muted-foreground hover:text-foreground"
+            :class="{ 'cursor-default': !header.column.getCanSort(), 'cursor-pointer': header.column.getCanSort() }"
             :disabled="!header.column.getCanSort()"
             @click="onHeaderClick(header.column.id, header.column.getCanSort())"
           >

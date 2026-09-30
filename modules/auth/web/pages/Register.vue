@@ -4,8 +4,8 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyPage :loading="loading" width="narrow" :padding="false" class="mx-auto flex min-h-full w-full max-w-md items-center justify-center py-6">
-    <ChoyCard :title="_t('Create Account')" class="register-card w-full">
+  <ChoyPage :loading="loading" width="narrow" :padding="false" class="mx-auto flex min-h-[calc(100vh_-_var(--choy-layout-header-height,3rem))] w-full max-w-md items-center justify-center px-4 py-6">
+    <ChoyCard :title="_t('Create Account')" class="register-card w-full shadow-sm">
       <transition name="fade">
         <div
           v-if="error"
@@ -28,7 +28,7 @@ SPDX-License-Identifier: Apache-2.0
             type="text"
             autocomplete="username"
             :placeholder="_t('Enter username')"
-            class="rounded-md border border-border bg-background px-3 py-2 text-sm"
+            class="choy-input"
             :class="{ 'border-destructive': fieldErrors.username }"
             @blur="validateUsernameField"
           />
@@ -43,7 +43,7 @@ SPDX-License-Identifier: Apache-2.0
             type="email"
             autocomplete="email"
             :placeholder="_t('Enter email address')"
-            class="rounded-md border border-border bg-background px-3 py-2 text-sm"
+            class="choy-input"
             :class="{ 'border-destructive': fieldErrors.email }"
             @blur="validateEmailField"
           />
@@ -58,7 +58,7 @@ SPDX-License-Identifier: Apache-2.0
             type="password"
             autocomplete="new-password"
             :placeholder="_t('Enter password')"
-            class="rounded-md border border-border bg-background px-3 py-2 text-sm"
+            class="choy-input"
             :class="{ 'border-destructive': fieldErrors.password }"
             @blur="validatePasswordField"
           />
@@ -73,7 +73,7 @@ SPDX-License-Identifier: Apache-2.0
             type="password"
             autocomplete="new-password"
             :placeholder="_t('Re-enter password')"
-            class="rounded-md border border-border bg-background px-3 py-2 text-sm"
+            class="choy-input"
             :class="{ 'border-destructive': fieldErrors.confirmPassword }"
             @blur="validateConfirmPasswordField"
           />

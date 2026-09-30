@@ -40,7 +40,7 @@ describe('ChoyWebShell', () => {
     restoreSfc(ChoyLayout);
   });
 
-  test('defaults to header only and renders router-view', async () => {
+  test('defaults to header and sidebar and renders router-view', async () => {
     const mounted = mountApp(ChoyWebShell as any, {
       stubs: {
         'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
@@ -49,10 +49,10 @@ describe('ChoyWebShell', () => {
     await flushPromises();
     const root = mounted.q('[data-test=choy-layout]');
     expect(root?.getAttribute('data-header')).toBe('true');
-    expect(root?.getAttribute('data-aside')).toBe('false');
+    expect(root?.getAttribute('data-aside')).toBe('true');
     expect(root?.getAttribute('data-footer')).toBe('false');
     expect(mounted.q('[data-test=slot-header]')?.textContent).toContain('Choysum');
-    expect(mounted.q('[data-test=slot-aside]')).toBeNull();
+    expect(mounted.q('[data-test=slot-aside]')).not.toBeNull();
     expect(mounted.q('[data-test=slot-footer]')).toBeNull();
     expect(mounted.q('[data-test=router-view]')).not.toBeNull();
     mounted.unmount();
@@ -80,7 +80,7 @@ describe('ChoyWebShell', () => {
     mounted.unmount();
   });
 
-  test('skips empty aside chrome when showSidebar lacks aside slot', async () => {
+  test('renders built-in aside chrome when showSidebar has no aside slot', async () => {
     const mounted = mountApp(ChoyWebShell as any, {
       props: { showHeader: true, showSidebar: true, showFooter: false },
       stubs: {
@@ -89,8 +89,8 @@ describe('ChoyWebShell', () => {
     });
     await flushPromises();
     const root = mounted.q('[data-test=choy-layout]');
-    expect(root?.getAttribute('data-aside')).toBe('false');
-    expect(mounted.q('[data-test=slot-aside]')).toBeNull();
+    expect(root?.getAttribute('data-aside')).toBe('true');
+    expect(mounted.q('[data-test=slot-aside]')).not.toBeNull();
     mounted.unmount();
   });
 
@@ -366,6 +366,82 @@ describe('ChoyWebShell', () => {
     expect(mounted.q('[data-test=cached]')?.textContent).toBe('m1');
     expect(mountCount).toBe(1);
     expect(activateCount).toBeGreaterThan(activatesAfterFirst);
+    mounted.unmount();
+  });
+
+  test('hides aside chrome when route.meta.isAuthPage is set', async () => {
+    const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
+    const { router } = createFeStubRouter({
+      route: { path: '/login', fullPath: '/login', meta: { isAuthPage: true } },
+    });
+    const mounted = mountApp(ChoyWebShell as any, {
+      plugins: [router],
+      stubs: {
+        'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
+      },
+    });
+    await flushPromises();
+    const root = mounted.q('[data-test=choy-layout]');
+    expect(root?.getAttribute('data-aside')).toBe('false');
+    expect(mounted.q('[data-test=slot-aside]')).toBeNull();
+    expect(mounted.q('[data-test=slot-header]')?.textContent).toContain('Choysum');
+    mounted.unmount();
+  });
+
+  test('brand link navigates home when a router is installed', async () => {
+    const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
+    const { router } = createFeStubRouter({
+      route: { path: '/other', fullPath: '/other', meta: {} },
+    });
+    const pushes: unknown[] = [];
+    const originalPush = router.push?.bind(router);
+    router.push = (to: unknown) => {
+      pushes.push(to);
+      return originalPush ? originalPush(to) : Promise.resolve();
+    };
+    const mounted = mountApp(ChoyWebShell as any, {
+      plugins: [router],
+      stubs: {
+        'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
+      },
+    });
+    await flushPromises();
+    const brand = mounted.q('.choy-shell__brand') as HTMLElement | null;
+    expect(brand).not.toBeNull();
+    brand!.click();
+    await flushPromises();
+    expect(pushes).toContain('/home');
+    mounted.unmount();
+  });
+
+  test('wires built-in sidebar menu when pinia and menu plugin are installed', async () => {
+    const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
+    const { createPinia, setActivePinia } = await import('pinia');
+    const { createMenuPlugin } = await import('@/core/web/menu');
+    const { createI18n } = await import('vue-i18n');
+
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'shell-app',
+      title: 'Shell App',
+      path: '/shell-app',
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: { path: '/home', fullPath: '/home', meta: {} },
+    });
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+
+    const mounted = mountApp(ChoyWebShell as any, {
+      plugins: [menuPlugin, pinia, router, i18n],
+      stubs: {
+        'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-test=slot-aside]')).not.toBeNull();
+    expect(mounted.text()).toContain('Shell App');
     mounted.unmount();
   });
 });

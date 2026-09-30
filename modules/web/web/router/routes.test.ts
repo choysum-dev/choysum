@@ -31,13 +31,14 @@ test('web home resource declarations: declares home as a menu resource', () => {
   expect(homeMenu.meta?.resourceId).toBe('web.menu.home');
 });
 
-test('AppLayout keeps sidebar and footer off until menu chrome is wired', () => {
+test('AppLayout enables sidebar menu chrome with header', () => {
   const appLayout = routes.find(route => route.name === 'AppLayout') as any;
-  expect(appLayout?.props?.showSidebar).toBe(false);
+  expect(appLayout?.props?.showSidebar).toBe(true);
   expect(appLayout?.props?.showFooter).toBe(false);
   expect(appLayout?.props?.showHeader).toBe(true);
 
   const layout = routes.find(route => route.name === 'Layout') as any;
+  expect(layout?.props?.showSidebar).toBe(true);
   expect(layout?.props?.showFooter).toBe(false);
 });
 

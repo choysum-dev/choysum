@@ -12,6 +12,7 @@
   --color-success: var(--choy-color-success);
   --color-warning: var(--choy-color-warning);
   --color-danger: var(--choy-color-danger);
+  --color-destructive: var(--choy-color-danger);
   --color-info: var(--choy-color-info);
   --color-foreground: var(--choy-color-foreground);
   --color-background: var(--choy-color-background);

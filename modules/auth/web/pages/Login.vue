@@ -4,8 +4,13 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyPage :loading="loading" width="narrow" :padding="false" class="mx-auto flex min-h-full w-full max-w-md items-center justify-center">
-    <ChoyCard :title="_t('User Login')" class="login-card w-full">
+  <ChoyPage
+    :loading="loading"
+    width="narrow"
+    :padding="false"
+    class="mx-auto flex min-h-[calc(100vh_-_var(--choy-layout-header-height,3rem))] w-full max-w-md items-center justify-center px-4"
+  >
+    <ChoyCard :title="_t('User Login')" class="login-card w-full shadow-sm">
       <transition name="fade">
         <div
           v-if="error"
@@ -21,34 +26,34 @@ SPDX-License-Identifier: Apache-2.0
 
       <form class="flex flex-col gap-3" @submit.prevent="handleLogin">
         <label class="flex flex-col gap-1 text-sm">
-          <span>{{ _t('Username') }}</span>
+          <span class="text-foreground/80">{{ _t('Username') }}</span>
           <input
             v-model="form.username"
             name="username"
             type="text"
             autocomplete="username"
             :placeholder="_t('Enter username')"
-            class="login-username rounded-md border border-border bg-background px-3 py-2 text-sm"
+            class="login-username choy-input"
             :class="{ 'border-destructive': fieldErrors.username }"
           />
           <span v-if="fieldErrors.username" class="text-xs text-destructive">{{ fieldErrors.username }}</span>
         </label>
 
         <label class="flex flex-col gap-1 text-sm">
-          <span>{{ _t('Password') }}</span>
+          <span class="text-foreground/80">{{ _t('Password') }}</span>
           <input
             v-model="form.password"
             name="password"
             type="password"
             autocomplete="current-password"
             :placeholder="_t('Enter password')"
-            class="login-password rounded-md border border-border bg-background px-3 py-2 text-sm"
+            class="login-password choy-input"
             :class="{ 'border-destructive': fieldErrors.password }"
           />
           <span v-if="fieldErrors.password" class="text-xs text-destructive">{{ fieldErrors.password }}</span>
         </label>
 
-        <label class="login-options flex items-center gap-2 text-sm">
+        <label class="login-options flex items-center gap-2 text-sm text-foreground/80">
           <input v-model="form.rememberMe" type="checkbox" class="size-4 rounded border-border" />
           <span>{{ _t('Remember me') }}</span>
         </label>
@@ -138,4 +143,3 @@ async function handleLogin() {
   if (ok) handleRedirect();
 }
 </script>
-

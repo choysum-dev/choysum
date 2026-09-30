@@ -19,7 +19,8 @@ SPDX-License-Identifier: Apache-2.0
       <aside
         v-if="showAside ?? !!$slots.aside"
         data-anchor="choy.layout.aside"
-        class="choy-layout__aside w-56 shrink-0 border-r border-border"
+        class="choy-layout__aside shrink-0 border-r border-border"
+        :style="{ width: 'var(--choy-layout-sidebar-width, 15rem)' }"
       >
         <slot name="aside" />
       </aside>

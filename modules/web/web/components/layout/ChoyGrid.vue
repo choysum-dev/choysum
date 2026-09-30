@@ -48,7 +48,7 @@ const gapClass = computed(() => {
     case 'lg':
       return 'gap-6';
     default:
-      return 'gap-4';
+      return 'gap-3';
   }
 });
 

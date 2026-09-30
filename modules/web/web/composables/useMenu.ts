@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { h, computed, type VNode } from 'vue';
+import { h, computed, ref, type VNode } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRouter } from 'vue-router';
 import { Bookmark, CircleHelp } from 'lucide-vue-next';
@@ -21,6 +21,8 @@ export function useMenu() {
 
   const menuStore = useMenuStore();
   const { activeMenu, activeApp } = storeToRefs(menuStore);
+  // Manual expand/collapse for groups without an active descendant.
+  const openedSubMenus = ref(new Set<string>());
 
   /**
    * Navigates to a menu item or menu id.
@@ -71,9 +73,11 @@ export function useMenu() {
   }
 
   /**
-   * Reports whether a submenu should be expanded for the active menu.
+   * Reports whether a submenu should be expanded (manual toggle or active ancestry).
    */
   function isExpanded(menuId: string): boolean {
+    if (openedSubMenus.value.has(menuId)) return true;
+
     const currentActiveMenu = activeMenu.value;
     if (!currentActiveMenu) return false;
 
@@ -85,6 +89,20 @@ export function useMenu() {
       current = current.__parent || null;
     }
     return false;
+  }
+
+  function openSubMenu(key: string) {
+    if (!key || openedSubMenus.value.has(key)) return;
+    const next = new Set(openedSubMenus.value);
+    next.add(key);
+    openedSubMenus.value = next;
+  }
+
+  function closeSubMenu(key: string) {
+    if (!key || !openedSubMenus.value.has(key)) return;
+    const next = new Set(openedSubMenus.value);
+    next.delete(key);
+    openedSubMenus.value = next;
   }
 
   /**
@@ -144,8 +162,14 @@ export function useMenu() {
                   'aria-expanded': expanded ? 'true' : 'false',
                   disabled: item.disabled || undefined,
                   onClick: () => {
-                    if (expanded) onSubMenuClose?.(item.id || '');
-                    else onSubMenuOpen?.(item.id || '');
+                    const key = item.id || '';
+                    if (expanded) {
+                      closeSubMenu(key);
+                      onSubMenuClose?.(key);
+                    } else {
+                      openSubMenu(key);
+                      onSubMenuOpen?.(key);
+                    }
                   },
                 },
                 [
