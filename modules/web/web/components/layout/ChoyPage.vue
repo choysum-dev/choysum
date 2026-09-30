@@ -5,6 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <div
+    ref="rootEl"
     data-anchor="choy.page"
     data-print="page"
     :class="
@@ -32,7 +33,6 @@ SPDX-License-Identifier: Apache-2.0
           $slots['title-actions']
         "
         class="choy-page__header mb-4 flex flex-col gap-2"
-        :aria-hidden="loading || undefined"
         :inert="loading || undefined"
       >
         <template v-if="$slots.header">
@@ -95,7 +95,6 @@ SPDX-License-Identifier: Apache-2.0
         v-if="$slots.toolbar"
         class="choy-page__toolbar mb-4"
         role="toolbar"
-        :aria-hidden="loading || undefined"
         :inert="loading || undefined"
       >
         <slot name="toolbar" />
@@ -104,7 +103,6 @@ SPDX-License-Identifier: Apache-2.0
       <div
         class="choy-page__body"
         :class="{ 'pb-4': !!$slots.footer }"
-        :aria-hidden="loading || undefined"
         :inert="loading || undefined"
       >
         <slot />
@@ -113,7 +111,6 @@ SPDX-License-Identifier: Apache-2.0
       <div
         v-if="$slots.footer"
         class="choy-page__footer mt-4 border-t border-border pt-4"
-        :aria-hidden="loading || undefined"
         :inert="loading || undefined"
       >
         <slot name="footer" />
@@ -137,13 +134,14 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, useId } from 'vue';
+import { computed, onMounted, ref, useId, watch } from 'vue';
 import { cn, type ClassValue } from '../../lib/utils';
 import {
   providePageContext,
   useOptionalPageStore
 } from '../../composables/usePageContext';
 import type { WebModelStore } from '../../stores/modelStore';
+import { blurFocusedDescendant } from './choy_page_loading_focus';
 import ChoyPageTitleActions from './ChoyPageTitleActions.vue';
 import type { PageIoMenuListRef } from './ChoyPageIoMenu.vue';
 
@@ -153,6 +151,8 @@ type PageWidth = '' | 'narrow' | 'medium' | 'wide' | 'full';
  * Page chrome inside the layout main area (title, toolbar, body, loading).
  * Optional `store` is provided to descendants via providePageContext (Form/List).
  * Slot visibility is read from `$slots` at render time (slots are not reactive).
+ * Loading uses inert + aria-busy (not aria-hidden) so a focused control inside
+ * the page cannot trip Chromium's aria-hidden focus warning.
  */
 const props = withDefaults(
   defineProps<{
@@ -190,6 +190,24 @@ const parentPageStore = useOptionalPageStore();
 providePageContext({ store: () => props.store ?? parentPageStore.value });
 
 const pageTitleId = useId();
+const rootEl = ref<HTMLElement | null>(null);
+
+// Blur focused descendants before loading applies inert (e.g. login submit
+// still focused while the page masks). Prefer inert over aria-hidden so a
+// retained focus cannot trip Chromium's aria-hidden focus warning.
+watch(
+  () => props.loading,
+  loading => {
+    if (loading) blurFocusedDescendant(rootEl.value);
+  },
+  // flush:pre blurs before inert is applied; immediate covers an initial
+  // loading=true before rootEl is bound (paired with onMounted below).
+  { flush: 'pre', immediate: true },
+);
+// Cover mount-with-loading-true after rootEl is bound (immediate may run too early).
+onMounted(() => {
+  if (props.loading) blurFocusedDescendant(rootEl.value);
+});
 
 const hasIoMenu = computed(() => props.actionImport || props.actionExport);
 
