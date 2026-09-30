@@ -2301,25 +2301,37 @@ func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Opt
 	if kitHost != modulePath {
 		vueSource = kitHost
 	}
-	vueVer := choysummount.VuePackageVersion
-	if kitPins, err := esmresolver.ExactPinsFromPackageJSON(vueSource); err != nil {
-		if b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
-			b.runtimeScope.Logger().Warn("exact peer pins from package.json unavailable", "module", vueSource, "error", err)
-		}
-	} else if v := kitPins["vue"]; v != "" {
-		vueVer = v
-	}
-	pins := choysummount.VueBareImportPinsFor(vueVer)
 
-	mergePins := func(modPath, logName string) {
+	pinCache := map[string]map[string]string{}
+	readPins := func(modPath, logName string) map[string]string {
+		if got, ok := pinCache[modPath]; ok {
+			return got
+		}
 		got, err := esmresolver.ExactPinsFromPackageJSON(modPath)
 		if err != nil {
 			if b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
 				b.runtimeScope.Logger().Warn("exact peer pins from package.json unavailable", "module", logName, "error", err)
 			}
-			return
+			got = nil
 		}
-		for name, ver := range got {
+		pinCache[modPath] = got
+		return got
+	}
+
+	vueVer := choysummount.VuePackageVersion
+	kitPins := readPins(vueSource, vueSource)
+	if v := kitPins["vue"]; v != "" {
+		vueVer = v
+	} else if b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
+		// package.json present but vue missing/range → surface that SSOT was not used.
+		if _, statErr := os.Stat(filepath.Join(vueSource, "package.json")); statErr == nil {
+			b.runtimeScope.Logger().Warn("no exact vue pin in package.json; using fallback", "module", vueSource, "fallback", vueVer)
+		}
+	}
+	pins := choysummount.VueBareImportPinsFor(vueVer)
+
+	mergePins := func(modPath, logName string) {
+		for name, ver := range readPins(modPath, logName) {
 			// Only host-owned Vue runtime packages come from the kit SSOT
 			// (see choysummount.VueBareImportPinsFor); never let a module
 			// override them. Other @vue/* names keep nearest-module-wins.

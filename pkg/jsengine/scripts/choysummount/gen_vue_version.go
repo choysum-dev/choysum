@@ -127,7 +127,7 @@ func syncBootstrapVue(path, ver string) error {
 	if cur == "" || !bytes.Contains(data, old) {
 		return fmt.Errorf("%s: cannot sync vue %q → %q (edit dependencies.vue manually)", path, cur, ver)
 	}
-	updated := bytes.Replace(data, old, neu, 1)
+	updated := bytes.ReplaceAll(data, old, neu)
 	if err := os.WriteFile(path, updated, 0o644); err != nil {
 		return err
 	}
