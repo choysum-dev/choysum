@@ -74,6 +74,10 @@ const VuePackageVersion = %q
 	if err := tmp.Close(); err != nil {
 		fail("close temp for %s: %v", out, err)
 	}
+	// os.CreateTemp uses 0600; keep the generated, checked-in file at 0644.
+	if err := os.Chmod(tmpName, 0o644); err != nil {
+		fail("chmod temp for %s: %v", out, err)
+	}
 	if err := os.Rename(tmpName, out); err != nil {
 		fail("rename temp to %s: %v", out, err)
 	}

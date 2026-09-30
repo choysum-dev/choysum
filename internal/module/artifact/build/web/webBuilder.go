@@ -2336,9 +2336,9 @@ func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Opt
 		}
 	}
 	pins := choysummount.VueBareImportPinsFor(vueVer)
-	// ExactPinsFromPackageJSON already strips a leading "v", but normalize
-	// before comparing so a preserved prefix cannot spuriously warn.
-	if declared := strings.TrimPrefix(strings.TrimSpace(vueVer), "v"); pins["vue"] != declared &&
+	// Reuse the exported validator so this stays in sync with the rule the
+	// FE host path (vueHostBareImportPins) also relies on.
+	if !choysummount.IsExactVuePin(vueVer) &&
 		b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
 		b.runtimeScope.Logger().Warn(
 			"kit exact vue rejected by host pin validator; using fallback",

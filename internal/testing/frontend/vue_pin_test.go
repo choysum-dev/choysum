@@ -106,8 +106,14 @@ func TestVueHostBareImportPinsFallbackAndHostVueWins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(empty) != len(choysummount.VueBareImportPins()) || empty["vue"] != choysummount.VuePackageVersion {
-		t.Fatalf("missing web package.json => fallback vue pins only, got %#v", empty)
+	wantFallback := choysummount.VueBareImportPins()
+	if len(empty) != len(wantFallback) {
+		t.Fatalf("missing web package.json => fallback vue pins only, got %#v want %#v", empty, wantFallback)
+	}
+	for name, ver := range wantFallback {
+		if empty[name] != ver {
+			t.Fatalf("fallback pin %q = %q want %q (got %#v)", name, empty[name], ver, empty)
+		}
 	}
 
 	root := t.TempDir()
