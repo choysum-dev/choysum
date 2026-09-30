@@ -3,7 +3,8 @@
 
 /**
  * Pin a desktop or mobile viewport for layoutStore / VueUse breakpoints.
- * Handles compound `(min-width) and (max-width)` queries.
+ * Handles compound `(min-width) and (max-width)` queries, including fractional
+ * px thresholds and non-width clauses (e.g. prefers-color-scheme).
  */
 export function pinViewportWidth(width: number): void {
   Object.defineProperty(window, 'innerWidth', {
@@ -23,11 +24,13 @@ export function pinViewportWidth(width: number): void {
         parts.length === 0
           ? false
           : parts.every((part) => {
-              const min = /min-width:\s*(\d+)px/i.exec(part);
-              const max = /max-width:\s*(\d+)px/i.exec(part);
+              const min = /min-width:\s*(\d+(?:\.\d+)?)px/i.exec(part);
+              const max = /max-width:\s*(\d+(?:\.\d+)?)px/i.exec(part);
+              // Non-width clauses do not affect the width pin.
+              if (!min && !max) return true;
               if (min && width < Number(min[1])) return false;
               if (max && width > Number(max[1])) return false;
-              return !!(min || max);
+              return true;
             });
       return {
         matches,

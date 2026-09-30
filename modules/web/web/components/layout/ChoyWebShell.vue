@@ -273,7 +273,7 @@ watch(
       document.querySelector<HTMLElement>('[data-testid="choy-shell-menu-trigger"]')?.focus();
     }
   },
-  { immediate: true },
+  { immediate: true, flush: 'post' },
 );
 
 onMounted(() => {
