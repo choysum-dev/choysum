@@ -45,15 +45,18 @@ function compareMenuOrder(a: MenuItem, b: MenuItem): number {
 
 /**
  * DFS the first navigable in-app leaf path under `menus`, or null.
+ * Visits each menu object at most once so cyclic trees cannot stack-overflow.
  */
 export function findFirstNavigableMenuPath(
   menus: readonly MenuItem[],
   canNavigate?: (path: string) => boolean,
 ): string | null {
-  const roots = [...menus].sort(compareMenuOrder);
+  const seen = new Set<MenuItem>();
   const walk = (items: readonly MenuItem[]): string | null => {
     const ordered = [...items].sort(compareMenuOrder);
     for (const item of ordered) {
+      if (!item || seen.has(item)) continue;
+      seen.add(item);
       if (item.hidden || item.disabled) continue;
       const kids = item.children;
       if (kids && kids.length > 0) {
@@ -68,7 +71,7 @@ export function findFirstNavigableMenuPath(
     }
     return null;
   };
-  return walk(roots);
+  return walk(menus);
 }
 
 function firstAllowedLeafPath(

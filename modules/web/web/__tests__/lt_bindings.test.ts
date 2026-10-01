@@ -20,6 +20,8 @@ test('web shell _lt bindings: web module ships empty menu baseline after Home re
   expect(routes.length).toBeGreaterThan(0);
   expect(routes.some((r) => r.name === 'Error')).toBe(true);
   expect(routes.some((r) => r.name === 'Home')).toBe(false);
+  const layout = routes.find((r) => r.name === 'Layout') as { children?: Array<{ name?: string }> } | undefined;
+  expect(layout?.children?.some((r) => r.name === 'Home')).toBe(false);
 });
 
 test('web shell _lt bindings: breadcrumbStore push preserves TermReference titles', async () => {

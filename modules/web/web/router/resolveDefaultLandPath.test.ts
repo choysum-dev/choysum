@@ -65,4 +65,34 @@ describe('resolveDefaultLandPath', () => {
       }),
     ).toBe(MODULE_BOARD_PATH);
   });
+
+  test('breaks order ties by id and continues past empty child subtrees', () => {
+    const menus: MenuItem[] = [
+      {
+        id: 'a-empty',
+        title: 'Empty parent',
+        order: 1,
+        children: [{ id: 'a-hidden', title: 'Hidden', path: '/hidden', hidden: true, order: 1 }],
+      },
+      { id: 'm-leaf', title: 'M', path: '/m', order: 1 },
+      { id: 'b-leaf', title: 'B', path: '/b', order: 1 },
+    ];
+    // Same order=1: id sort visits a-empty first (continue after empty kids), then b-leaf.
+    expect(resolveDefaultLandPath({ menus })).toBe('/b');
+  });
+
+  test('guards against cyclic menu trees', () => {
+    const cycleChild: MenuItem = { id: 'cycle', title: 'Cycle', path: '/cycle', order: 1 };
+    const parent: MenuItem = {
+      id: 'parent',
+      title: 'Parent',
+      order: 1,
+      children: [cycleChild],
+    };
+    // Mutual cycle: child lists parent again.
+    cycleChild.children = [parent];
+    expect(() => resolveDefaultLandPath({ menus: [parent] })).not.toThrow();
+    // Cycle nodes are parents-with-children, so no leaf; fall back to Module Board.
+    expect(resolveDefaultLandPath({ menus: [parent] })).toBe(MODULE_BOARD_PATH);
+  });
 });
