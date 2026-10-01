@@ -111,7 +111,7 @@ SPDX-License-Identifier: Apache-2.0
                 role="article"
                 :aria-label="card.title"
                 @click="onCardClick(card)"
-                @keydown.enter.prevent="onCardClick(card)"
+                @keydown.enter.self.prevent="onCardClick(card)"
               >
                 <div class="flex items-start gap-1">
                   <div class="min-w-0 flex-1">
