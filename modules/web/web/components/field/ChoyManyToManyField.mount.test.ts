@@ -475,7 +475,7 @@ describe('ChoyManyToManyField mount coverage', () => {
     await nextTick();
     const summary = m.q('[data-testid="choy-m2m-summary"]');
     expect(summary).toBeTruthy();
-    expect(summary?.textContent || '').toContain('2');
+    expect(summary?.textContent?.trim()).toBe('2 records');
     expect(m.q('.ov-table-stub')).toBeNull();
     m.unmount();
 

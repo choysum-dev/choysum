@@ -688,6 +688,7 @@ function onGroupingClear() {
 
 /** Clears keyword, filter chips, and grouping in one action (instant emit). */
 function onClearAll() {
+  if (!hasClearableSearch.value) return;
   debouncedTrigger.cancel();
   syncingKeyword.value = true;
   keyword.value = '' as any;

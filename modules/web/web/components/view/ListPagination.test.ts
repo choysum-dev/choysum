@@ -32,6 +32,13 @@ describe('ListPagination', () => {
     state.pageSizeModel = '50';
     await flushPromises();
     expect(events.some((e) => e.limit === 50 && e.offset === 0)).toBe(true);
+    const before = events.length;
+    // Same as current props pageSize, or invalid — must not emit.
+    state.pageSizeModel = 20;
+    state.pageSizeModel = '0';
+    state.pageSizeModel = Number.NaN;
+    await flushPromises();
+    expect(events.length).toBe(before);
     mounted.unmount();
   });
 

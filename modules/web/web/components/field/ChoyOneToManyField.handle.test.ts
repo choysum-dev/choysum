@@ -379,7 +379,7 @@ describe('ChoyOneToManyField handle column', () => {
     await nextTick();
     const summary = m.q('[data-testid="choy-o2m-summary"]');
     expect(summary).toBeTruthy();
-    expect(summary?.textContent || '').toContain('3');
+    expect(summary?.textContent?.trim()).toBe('3 records');
     expect(m.q('.ov-table-stub')).toBeNull();
     m.unmount();
 

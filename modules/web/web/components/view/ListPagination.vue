@@ -42,7 +42,8 @@ const emit = defineEmits<{
 }>();
 
 const effective = computed(() => {
-  const total = Math.max(0, Number(props.total ?? 0));
+  const totalRaw = Number(props.total);
+  const total = Number.isFinite(totalRaw) && totalRaw > 0 ? totalRaw : 0;
   const pageSizeControlled = Number(props.pageSize ?? 0) > 0 ? Number(props.pageSize) : undefined;
   const pageControlled = Number(props.page ?? 0) > 0 ? Number(props.page) : undefined;
   const limitRaw = pageSizeControlled ?? (Number(props.limit ?? 20) || 20);
@@ -75,8 +76,8 @@ const pageSizeModel = computed({
   get: () => effective.value.pageSize,
   set: (size: number) => {
     const parsed = Number(size);
-    const next =
-      Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : effective.value.pageSize;
+    const next = Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 0;
+    if (next <= 0 || next === effective.value.pageSize) return;
     emit('paginateState', { limit: next, offset: 0 });
   },
 });
