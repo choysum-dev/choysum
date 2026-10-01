@@ -39,6 +39,7 @@ export const LayoutGrid = icon('LayoutGrid');
 export const List = icon('List');
 export const Loader2 = icon('Loader2');
 export const Menu = icon('Menu');
+export const MoreHorizontal = icon('MoreHorizontal');
 export const Pencil = icon('Pencil');
 export const Plus = icon('Plus');
 export const RefreshCw = icon('RefreshCw');

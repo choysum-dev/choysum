@@ -11,29 +11,39 @@ SPDX-License-Identifier: Apache-2.0
   >
     <div
       v-if="showHeader"
-      class="flex flex-wrap items-center justify-between gap-2"
+      class="flex flex-wrap items-center justify-between gap-2 min-h-[var(--choy-control-height)]"
     >
       <div v-if="showActions" class="flex flex-wrap items-center gap-2">
-        <slot name="system-actions">
-          <ChoyButton
-            v-if="showCreate"
-            size="sm"
-            variant="outline"
-            @click="emit('create')"
-          >
-            {{ createLabel }}
-          </ChoyButton>
-          <ChoyButton
-            v-if="showRefresh"
-            size="sm"
-            variant="outline"
-            :disabled="boardBusy"
-            @click="onRefresh"
-          >
-            {{ refreshLabel }}
-          </ChoyButton>
-        </slot>
-        <slot name="user-actions" />
+        <ChoyActionTray
+          class="choy-chart__system-actions"
+          :aria-label="_t('System actions')"
+        >
+          <slot name="system-actions">
+            <ChoyButton
+              v-if="showCreate"
+              size="sm"
+              variant="outline"
+              @click="emit('create')"
+            >
+              {{ resolvedCreateLabel }}
+            </ChoyButton>
+            <ChoyButton
+              v-if="showRefresh"
+              size="sm"
+              variant="outline"
+              :disabled="boardBusy"
+              @click="onRefresh"
+            >
+              {{ resolvedRefreshLabel }}
+            </ChoyButton>
+          </slot>
+        </ChoyActionTray>
+        <ChoyActionTray
+          class="choy-chart__user-actions"
+          :aria-label="_t('User actions')"
+        >
+          <slot name="user-actions" />
+        </ChoyActionTray>
       </div>
       <div class="min-w-0 flex-1">
         <slot name="search" :on-query-update="onSearch" />
@@ -43,7 +53,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <div
       v-if="showChartControls"
-      class="flex flex-wrap items-center gap-2"
+      class="flex flex-wrap items-center gap-2 min-h-[var(--choy-control-height)]"
       data-region="chart-controls"
     >
       <slot
@@ -56,11 +66,11 @@ SPDX-License-Identifier: Apache-2.0
           v-if="resolvedMetrics.length"
           class="flex items-center gap-2 text-xs text-muted-foreground"
         >
-          Metric
+          {{ _t('Metric') }}
           <select
-            class="h-8 rounded-md border border-input bg-background px-2 text-sm text-foreground"
+            class="choy-input h-control"
             :value="localMetric"
-            aria-label="Metric selection"
+            :aria-label="_t('Metric selection')"
             @change="selectMetric(($event.target as HTMLSelectElement).value)"
           >
             <option
@@ -84,7 +94,7 @@ SPDX-License-Identifier: Apache-2.0
           v-if="availableTypes.length"
           class="inline-flex overflow-hidden rounded-md border border-border"
           role="group"
-          aria-label="Chart type"
+          :aria-label="_t('Chart type')"
         >
           <ChoyButton
             v-for="t in availableTypes"
@@ -113,7 +123,7 @@ SPDX-License-Identifier: Apache-2.0
           :aria-pressed="localStacked"
           @click="toggleStacked"
         >
-          Stack
+          {{ _t('Stack') }}
         </ChoyButton>
       </slot>
 
@@ -126,7 +136,7 @@ SPDX-License-Identifier: Apache-2.0
         <div
           class="inline-flex overflow-hidden rounded-md border border-border"
           role="group"
-          aria-label="Sort"
+          :aria-label="_t('Sort')"
         >
           <ChoyButton
             size="sm"
@@ -134,8 +144,8 @@ SPDX-License-Identifier: Apache-2.0
             :variant="localSort === 'none' ? 'default' : 'ghost'"
             :disabled="sortDisabled"
             :aria-pressed="localSort === 'none'"
-            aria-label="No sort"
-            title="No sort"
+            :aria-label="_t('No sort')"
+            :title="_t('No sort')"
             @click="selectSort('none')"
           >
             ∅
@@ -146,8 +156,8 @@ SPDX-License-Identifier: Apache-2.0
             :variant="localSort === 'asc' ? 'default' : 'ghost'"
             :disabled="sortDisabled"
             :aria-pressed="localSort === 'asc'"
-            aria-label="Sort ascending"
-            title="Sort ascending"
+            :aria-label="_t('Sort ascending')"
+            :title="_t('Sort ascending')"
             @click="selectSort('asc')"
           >
             ↑
@@ -158,8 +168,8 @@ SPDX-License-Identifier: Apache-2.0
             :variant="localSort === 'desc' ? 'default' : 'ghost'"
             :disabled="sortDisabled"
             :aria-pressed="localSort === 'desc'"
-            aria-label="Sort descending"
-            title="Sort descending"
+            :aria-label="_t('Sort descending')"
+            :title="_t('Sort descending')"
             @click="selectSort('desc')"
           >
             ↓
@@ -250,21 +260,27 @@ SPDX-License-Identifier: Apache-2.0
         v-else
         class="flex min-h-[280px] items-center justify-center text-sm text-muted-foreground"
       >
-        {{ emptyLabel }}
+        {{ resolvedEmptyLabel }}
       </div>
 
       <div
         v-if="boardBusy && !errorText"
-        class="absolute inset-0 flex items-center justify-center bg-background/60 text-sm text-muted-foreground"
+        class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/60"
+        role="status"
+        :aria-label="_t('Loading...')"
       >
-        Loading…
+        <ChoySkeleton class="h-40 w-full max-w-lg" />
+        <span class="text-sm text-muted-foreground">{{ _t('Loading...') }}</span>
       </div>
       <div
         v-else-if="errorText"
-        class="absolute inset-0 flex items-center justify-center bg-background/70 text-sm text-destructive"
+        class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/70 text-sm text-destructive"
         role="alert"
       >
-        {{ errorText }}
+        <span>{{ errorText }}</span>
+        <ChoyButton size="sm" variant="outline" @click="onRefresh">
+          {{ _t('Retry') }}
+        </ChoyButton>
       </div>
     </div>
   </div>
@@ -291,6 +307,9 @@ import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { OrderByState } from '@/web/web/query/state';
 import type { ChoySearchQuery } from './searchViewHelpers';
 import ChoyButton from '../layout/ChoyButton.vue';
+import ChoyActionTray from '@/web/web/components/layout/ChoyActionTray.vue';
+import ChoySkeleton from '@/web/web/components/layout/ChoySkeleton.vue';
+import { createTranslate } from '@/web/web/i18n';
 import {
   ChartContainer,
   ChartLegendContent
@@ -326,6 +345,8 @@ import { groupRowsToChartSeries } from './chartStoreHelpers';
  * Store-bound chart view. Requires :store or a page-provided store.
  * Owns createChartController and maps grouped snapshots into Unovis series.
  */
+const { _t } = createTranslate('web', { scope: 'web/components/view/ChartView' });
+
 const props = withDefaults(
   defineProps<{
     class?: ClassValue;
@@ -365,16 +386,19 @@ const props = withDefaults(
     stackMode: 'absolute',
     sort: 'none',
     groupDepth: 0,
-    emptyLabel: 'No data or grouping not configured',
     showHeader: true,
     showActions: true,
     showChartControls: true,
-    createLabel: 'New',
-    refreshLabel: 'Refresh',
     showCreate: false,
     showRefresh: true,
     autoBootstrap: true,
   },
+);
+
+const resolvedCreateLabel = computed(() => props.createLabel || _t('New'));
+const resolvedRefreshLabel = computed(() => props.refreshLabel || _t('Refresh'));
+const resolvedEmptyLabel = computed(
+  () => props.emptyLabel || _t('No data or grouping not configured'),
 );
 
 const emit = defineEmits<{
