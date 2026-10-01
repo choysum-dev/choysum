@@ -3,19 +3,17 @@
 
 import 'vue-router';
 import type { RouteRecordRaw } from 'vue-router';
-import { defineRoute } from '@/core/web/resource';
-import { createTranslate } from '@/web/web/i18n';
-
-const { _lt } = createTranslate('web', { scope: 'web/route/routes' });
+import { resolveRuntimeDefaultLandPath } from './resolveRuntimeDefaultLandPath';
 
 /**
  * Static route configuration for the web shell.
+ * Home/Welcome are retired; `/` and catch-all resolve via the default land path.
  */
 export const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    redirect: '/home',
     name: 'Root',
+    redirect: () => resolveRuntimeDefaultLandPath(),
   },
 
   {
@@ -28,20 +26,7 @@ export const routes: RouteRecordRaw[] = [
       // Footer slot cannot be filled via router-view; omit empty chrome.
       showFooter: false,
     },
-    children: [
-      defineRoute('web.route.home', {
-        sequence: 1,
-        title: _lt('Home'),
-        defaultRoles: ['base.user'],
-        path: 'home',
-        name: 'Home',
-        component: () => import('../pages/HomeView.vue'),
-        meta: {
-          requiresAuth: true,
-          keepAlive: true,
-        },
-      }),
-    ],
+    children: [],
   },
 
   {
@@ -59,9 +44,18 @@ export const routes: RouteRecordRaw[] = [
   },
 
   {
+    path: '/error/:code(\\d+)',
+    name: 'Error',
+    component: () => import('../pages/ErrorView.vue'),
+    meta: {
+      requiresAuth: false,
+    },
+  },
+
+  {
     path: '/:pathMatch(.*)*',
-    redirect: '/home',
     name: 'CatchAll',
+    redirect: () => resolveRuntimeDefaultLandPath(),
   },
 ];
 

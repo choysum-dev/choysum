@@ -3234,15 +3234,15 @@ func TestExtractUiResources_MenuAndRoutePreserveBaselineDefaultRoles(t *testing.
 
 	pr := &parser.ParserResult{UiResourceDecls: []*parser.UiResourceDecl{
 		{
-			ID:           "web.menu.home",
+			ID:           "web.menu.sample",
 			Type:         parser.UiResourceTypeMenu,
-			Path:         "/home",
+			Path:         "/sample",
 			DefaultRoles: []string{"base.user"},
 		},
 		{
-			ID:           "web.route.home",
+			ID:           "web.route.sample",
 			Type:         parser.UiResourceTypeRoute,
-			Path:         "home",
+			Path:         "sample",
 			DefaultRoles: []string{"base.user"},
 		},
 	}}
@@ -3266,11 +3266,11 @@ func TestExtractUiResources_MenuAndRoutePreserveBaselineDefaultRoles(t *testing.
 		defaultRolesByName[resource.Name] = parseJSONStrings(resource.DefaultRoles)
 	}
 
-	if !slices.Equal(defaultRolesByName["web.menu.home"], []string{"base.user"}) {
-		t.Fatalf("unexpected menu defaultRoles: %v", defaultRolesByName["web.menu.home"])
+	if !slices.Equal(defaultRolesByName["web.menu.sample"], []string{"base.user"}) {
+		t.Fatalf("unexpected menu defaultRoles: %v", defaultRolesByName["web.menu.sample"])
 	}
-	if !slices.Equal(defaultRolesByName["web.route.home"], []string{"base.user"}) {
-		t.Fatalf("unexpected route defaultRoles: %v", defaultRolesByName["web.route.home"])
+	if !slices.Equal(defaultRolesByName["web.route.sample"], []string{"base.user"}) {
+		t.Fatalf("unexpected route defaultRoles: %v", defaultRolesByName["web.route.sample"])
 	}
 
 	menuRoutes, routeActions, err := extractUiResourceRelations(resources, []*parser.ParserResult{pr})
@@ -3283,7 +3283,7 @@ func TestExtractUiResources_MenuAndRoutePreserveBaselineDefaultRoles(t *testing.
 	if len(menuRoutes) != 1 {
 		t.Fatalf("expected 1 menu_route relation, got %d", len(menuRoutes))
 	}
-	if menuRoutes[0].MenuName != "web.menu.home" || menuRoutes[0].RouteName != "web.route.home" {
+	if menuRoutes[0].MenuName != "web.menu.sample" || menuRoutes[0].RouteName != "web.route.sample" {
 		t.Fatalf("unexpected menu_route relation: %#v", menuRoutes[0])
 	}
 }

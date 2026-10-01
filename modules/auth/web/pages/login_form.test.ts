@@ -120,10 +120,10 @@ test('resolveLoginRedirect: fails closed when URL construction throws', () => {
 });
 
 test('resolveLoginRedirect: honors explicit origin override', () => {
-  expect(resolveLoginRedirect('/home', { origin: 'https://app.example' })).toBe('/home');
+  expect(resolveLoginRedirect('/meta/modules', { origin: 'https://app.example' })).toBe('/meta/modules');
   // Trailing slash / path on the override must not fail closed for same-origin paths.
-  expect(resolveLoginRedirect('/home', { origin: 'https://app.example/' })).toBe('/home');
-  expect(resolveLoginRedirect('/home', { origin: 'https://app.example/app' })).toBe('/home');
+  expect(resolveLoginRedirect('/meta/modules', { origin: 'https://app.example/' })).toBe('/meta/modules');
+  expect(resolveLoginRedirect('/meta/modules', { origin: 'https://app.example/app' })).toBe('/meta/modules');
 });
 
 test('normalizeLoginRedirectOrigin: strips path and trailing slash', () => {

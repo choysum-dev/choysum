@@ -1,34 +1,34 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { createTranslate } from '@/web/web/i18n';
 import { menus } from '../menu/menus';
 import routes from './routes';
+import { MODULE_BOARD_PATH } from './resolveDefaultLandPath';
+import { createPinia, setActivePinia } from 'pinia';
 
-const homeRouteTitle = createTranslate('web', { scope: 'web/route/routes' })._lt('Home');
-const homeMenuTitle = createTranslate('web', { scope: 'web/menu/menus' })._lt('Home');
+test('web routes: root and catch-all redirect via default land path', () => {
+  setActivePinia(createPinia());
+  const root = routes.find(route => route.name === 'Root') as any;
+  expect(root).toBeTruthy();
+  expect(typeof root.redirect).toBe('function');
+  // Without menu injection, runtime land falls back to Module Board.
+  expect(root.redirect()).toBe(MODULE_BOARD_PATH);
 
-test('web home resource declarations: declares home as a protected route resource', () => {
-  const layoutRoute = routes.find(route => route.name === 'Layout') as any;
-  const homeRoute = layoutRoute?.children?.find((route: any) => route.name === 'Home');
-
-  expect(homeRoute).toBeTruthy();
-  expect(homeRoute.meta?.resourceId).toBe('web.route.home');
-  expect(homeRoute.meta?.pageTitle).toBe('Home');
-  expect(homeRoute.meta?.pageTitleText).toEqual(homeRouteTitle);
-  expect(homeRoute.meta?.requiresAuth).toBe(true);
-  expect(homeRoute.meta?.routeSequence).toBe(1);
+  const catchAll = routes.find(route => route.name === 'CatchAll') as any;
+  expect(typeof catchAll.redirect).toBe('function');
+  expect(catchAll.redirect()).toBe(MODULE_BOARD_PATH);
 });
 
-test('web home resource declarations: declares home as a menu resource', () => {
-  const homeMenu = menus[0] as any;
+test('web routes: registers Error page and no Home route/menu', () => {
+  const error = routes.find(route => route.name === 'Error') as any;
+  expect(error).toBeTruthy();
+  expect(error.path).toBe('/error/:code(\\d+)');
+  expect(error.meta?.requiresAuth).toBe(false);
 
-  expect(homeMenu.id).toBe('web.menu.home');
-  expect(homeMenu.title).toBe('Home');
-  expect(homeMenu.titleText).toEqual(homeMenuTitle);
-  expect(homeMenu.path).toBe('/home');
-  expect(homeMenu.order).toBe(1);
-  expect(homeMenu.meta?.resourceId).toBe('web.menu.home');
+  const layout = routes.find(route => route.name === 'Layout') as any;
+  const home = layout?.children?.find((route: any) => route.name === 'Home');
+  expect(home).toBeUndefined();
+  expect(menus).toEqual([]);
 });
 
 test('AppLayout enables sidebar menu chrome with header', () => {
@@ -41,4 +41,3 @@ test('AppLayout enables sidebar menu chrome with header', () => {
   expect(layout?.props?.showSidebar).toBe(true);
   expect(layout?.props?.showFooter).toBe(false);
 });
-
