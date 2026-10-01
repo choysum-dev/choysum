@@ -6,9 +6,12 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <ViewContainer :showHeader="resolvedShowHeader">
     <template #header>
-      <div class="form-view__action-bar flex items-center justify-between gap-3 border-b border-border pb-1 min-h-10 max-md:flex-col max-md:items-stretch">
+      <div
+        class="form-view__action-bar flex items-center justify-between gap-3 border-b border-border pb-1 min-h-[var(--choy-control-height)] max-md:flex-col max-md:items-stretch"
+        data-anchor="choy.form.view-chrome"
+      >
         <div class="form-view__actions flex flex-1 items-center gap-4 max-md:flex-col max-md:items-stretch max-md:gap-2" v-if="resolvedShowActions">
-          <div class="form-view__system-actions flex items-center gap-2">
+          <ChoyActionTray class="form-view__system-actions" :aria-label="_t('System actions')">
             <slot name="system-actions">
               <template v-if="viewMode === 'display' && effectiveRecordId">
                 <ChoyButton v-if="resolvedCreateAction && canCreate" size="sm" variant="default" @click="handleCreate">
@@ -67,10 +70,10 @@ SPDX-License-Identifier: Apache-2.0
                 </ChoyButton>
               </template>
             </slot>
-          </div>
-          <div class="form-view__user-actions flex items-center gap-2 border-l border-border pl-4 max-md:border-l-0 max-md:border-t max-md:border-border max-md:pl-0 max-md:pt-2">
+          </ChoyActionTray>
+          <ChoyActionTray class="form-view__user-actions border-l border-border pl-4 max-md:border-l-0 max-md:border-t max-md:border-border max-md:pl-0 max-md:pt-2" :aria-label="_t('User actions')">
             <slot name="user-actions"> </slot>
-          </div>
+          </ChoyActionTray>
         </div>
         <div class="form-view__header-right flex items-center justify-end gap-3 max-md:justify-center">
           <slot name="statusbar" />
@@ -119,6 +122,7 @@ import ViewContainer from '@/web/web/components/view/ViewContainer.vue';
 import { nextLocalToken } from '@/web/web/components/view/localToken';
 import { createTranslate } from '@/web/web/i18n';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyActionTray from '@/web/web/components/layout/ChoyActionTray.vue';
 import { Plus, Pencil, RefreshCw, Trash2, Check, X, Copy, RotateCcw } from 'lucide-vue-next';
 import type {
   FormSubmitMode,

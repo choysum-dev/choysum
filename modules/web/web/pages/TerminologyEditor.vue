@@ -5,11 +5,11 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <ChoyPage>
-    <div class="terminology-toolbar mb-3 flex flex-wrap items-center gap-2">
+    <div class="terminology-toolbar mb-3 flex min-h-[var(--choy-control-height)] flex-wrap items-center gap-2">
       <select
+        class="choy-input h-control w-[220px]"
         :value="selectedApp"
         :aria-label="_t('Application')"
-        style="width: 220px"
         @change="onSelectChange"
       >
         <option value="">{{ _t('Application') }}</option>
@@ -17,10 +17,10 @@ SPDX-License-Identifier: Apache-2.0
       </select>
       <input
         v-model="moduleFilter"
+        class="choy-input h-control w-[220px]"
         :placeholder="_t('Module (required for PO)')"
-        style="width: 220px"
       />
-      <ChoyButton :disabled="!canDownloadPo || downloading" @click="onDownloadPo">
+      <ChoyButton size="sm" :disabled="!canDownloadPo || downloading" @click="onDownloadPo">
         {{ _t('Download PO') }}
       </ChoyButton>
     </div>

@@ -26,86 +26,93 @@ SPDX-License-Identifier: Apache-2.0
       </div>
       <div v-else class="flex w-full flex-col gap-2" data-testid="choy-properties-form">
         <div v-if="!renderableItems.length" class="min-h-1" data-testid="choy-properties-empty" />
-        <div
-          v-for="item in renderableItems"
-          :key="item.name"
-          class="grid grid-cols-[minmax(96px,28%)_1fr] items-center gap-2"
-          :data-name="item.name"
-          :data-type="item.type"
-          :data-readonly="item.readonly ? '1' : '0'"
-        >
-          <label class="text-[13px] text-foreground" :for="controlId(item)">{{ itemLabel(item) }}</label>
-          <input
-            type="checkbox"
-            v-if="item.type === 'boolean'"
-            class="w-full"
-            :id="controlId(item)"
-            :checked="asBoolean(itemValue(fieldValue().value, item))"
-            :disabled="!!item.readonly"
-            @change="onItemWrite(fieldValue, item.name, ($event.target as HTMLInputElement).checked)"
-          />
-          <input
-            v-else-if="item.type === 'integer' || item.type === 'float'"
-            class="w-full"
-            :id="controlId(item)"
-            type="number"
-            :value="asNumber(itemValue(fieldValue().value, item)) ?? ''"
-            :disabled="!!item.readonly"
-            :step="item.type === 'integer' ? 1 : 'any'"
-            @change="onItemWrite(fieldValue, item.name, ($event.target as HTMLInputElement).value === '' ? null : Number(($event.target as HTMLInputElement).value))"
-          />
-          <textarea
-            v-else-if="item.type === 'text'"
-            class="w-full"
-            :id="controlId(item)"
-            rows="3"
-            :value="asString(itemValue(fieldValue().value, item))"
-            :disabled="!!item.readonly"
-            @input="onItemWrite(fieldValue, item.name, ($event.target as HTMLTextAreaElement).value)"
-          ></textarea>
-          <input
-            v-else-if="item.type === 'date'"
-            class="w-full"
-            :id="controlId(item)"
-            type="date"
-            :value="dateInputValue(itemValue(fieldValue().value, item))"
-            :disabled="!!item.readonly"
-            @change="onDateWrite(fieldValue, item.name, ($event.target as HTMLInputElement).value)"
-          />
-          <input
-            v-else-if="item.type === 'datetime'"
-            class="w-full"
-            :id="controlId(item)"
-            type="datetime-local"
-            :value="datetimePickerValue(itemValue(fieldValue().value, item))"
-            :disabled="!!item.readonly"
-            @change="onDatetimeWrite(fieldValue, item.name, ($event.target as HTMLInputElement).value)"
-          />
-          <select
-            v-else-if="item.type === 'selection'"
-            class="w-full"
-            :id="controlId(item)"
-            :value="asString(itemValue(fieldValue().value, item))"
-            :disabled="!!item.readonly"
-            @change="onItemWrite(fieldValue, item.name, ($event.target as HTMLSelectElement).value)"
+        <template v-for="item in renderableItems" :key="item.name">
+          <dl
+            v-if="item.readonly"
+            class="m-0 grid grid-cols-[minmax(96px,28%)_1fr] items-center gap-2"
+            :data-name="item.name"
+            :data-type="item.type"
+            data-readonly="1"
           >
-            <option
-              v-for="opt in selectionOptions(item)"
-              :key="opt.value"
-              :value="opt.value"
-            >
-              {{ opt.label }}
-            </option>
-          </select>
-          <input
+            <dt class="text-[13px] font-normal text-foreground">{{ itemLabel(item) }}</dt>
+            <dd
+              class="m-0 truncate text-sm text-foreground"
+              data-testid="choy-properties-readonly-value"
+            >{{ displayItemValue(fieldValue().value, item) }}</dd>
+          </dl>
+          <div
             v-else
-            class="w-full"
-            :id="controlId(item)"
-            :value="asString(itemValue(fieldValue().value, item))"
-            :disabled="!!item.readonly"
-            @input="onItemWrite(fieldValue, item.name, ($event.target as HTMLInputElement).value)"
-          />
-        </div>
+            class="grid grid-cols-[minmax(96px,28%)_1fr] items-center gap-2"
+            :data-name="item.name"
+            :data-type="item.type"
+            data-readonly="0"
+          >
+            <label class="text-[13px] text-foreground" :for="controlId(item)">{{ itemLabel(item) }}</label>
+            <input
+              type="checkbox"
+              v-if="item.type === 'boolean'"
+              class="justify-self-start"
+              :id="controlId(item)"
+              :checked="asBoolean(itemValue(fieldValue().value, item))"
+              @change="onItemWrite(fieldValue, item.name, ($event.target as HTMLInputElement).checked)"
+            />
+            <input
+              v-else-if="item.type === 'integer' || item.type === 'float'"
+              class="choy-input w-full"
+              :id="controlId(item)"
+              type="number"
+              :value="asNumber(itemValue(fieldValue().value, item)) ?? ''"
+              :step="item.type === 'integer' ? 1 : 'any'"
+              @change="onItemWrite(fieldValue, item.name, ($event.target as HTMLInputElement).value === '' ? null : Number(($event.target as HTMLInputElement).value))"
+            />
+            <textarea
+              v-else-if="item.type === 'text'"
+              class="choy-input w-full min-h-[4.5em] h-auto"
+              :id="controlId(item)"
+              rows="3"
+              :value="asString(itemValue(fieldValue().value, item))"
+              @input="onItemWrite(fieldValue, item.name, ($event.target as HTMLTextAreaElement).value)"
+            ></textarea>
+            <input
+              v-else-if="item.type === 'date'"
+              class="choy-input w-full"
+              :id="controlId(item)"
+              type="date"
+              :value="dateInputValue(itemValue(fieldValue().value, item))"
+              @change="onDateWrite(fieldValue, item.name, ($event.target as HTMLInputElement).value)"
+            />
+            <input
+              v-else-if="item.type === 'datetime'"
+              class="choy-input w-full"
+              :id="controlId(item)"
+              type="datetime-local"
+              :value="datetimePickerValue(itemValue(fieldValue().value, item))"
+              @change="onDatetimeWrite(fieldValue, item.name, ($event.target as HTMLInputElement).value)"
+            />
+            <select
+              v-else-if="item.type === 'selection'"
+              class="choy-input w-full"
+              :id="controlId(item)"
+              :value="asString(itemValue(fieldValue().value, item))"
+              @change="onItemWrite(fieldValue, item.name, ($event.target as HTMLSelectElement).value)"
+            >
+              <option
+                v-for="opt in selectionOptions(item)"
+                :key="opt.value"
+                :value="opt.value"
+              >
+                {{ opt.label }}
+              </option>
+            </select>
+            <input
+              v-else
+              class="choy-input w-full"
+              :id="controlId(item)"
+              :value="asString(itemValue(fieldValue().value, item))"
+              @input="onItemWrite(fieldValue, item.name, ($event.target as HTMLInputElement).value)"
+            />
+          </div>
+        </template>
       </div>
     </template>
 

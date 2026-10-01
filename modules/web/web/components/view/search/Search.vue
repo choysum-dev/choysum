@@ -4,8 +4,11 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div class="choy-search w-full">
-    <div class="choy-search__main flex cursor-text flex-wrap items-center gap-0.5 rounded border border-border px-2 py-0.5 hover:border-primary-muted focus-within:border-primary-muted" @click="focusInput">
+  <div class="choy-search w-full" data-anchor="choy.search">
+    <div
+      class="choy-search__main flex min-h-[var(--choy-control-height)] cursor-text flex-wrap items-center gap-0.5 rounded-md border border-border bg-background px-2 py-0.5 hover:border-primary-muted focus-within:border-primary-muted"
+      @click="focusInput"
+    >
       <span>
         <ChoyButton
           size="sm"
@@ -22,39 +25,45 @@ SPDX-License-Identifier: Apache-2.0
       <div class="choy-search__tags flex max-w-full flex-wrap items-center gap-0.5">
         <span
           v-if="hasGrouping"
-          class="choy-search__tag choy-search__grouptag inline-flex cursor-pointer select-none items-center gap-1 rounded border border-border px-1.5 py-0.5 text-sm transition-colors hover:border-primary hover:bg-muted hover:text-primary active:border-primary active:text-primary [&_button]:text-success hover:[&_button]:text-success"
-          type="success"
-          effect="plain"
-          closable
-          round
+          class="choy-search__tag choy-search__grouptag inline-flex h-control cursor-pointer select-none items-center gap-1 rounded border border-border px-1.5 text-sm transition-colors hover:border-primary hover:bg-muted hover:text-primary active:border-primary active:text-primary [&_button]:text-success hover:[&_button]:text-success"
           @click.stop="onEditGroupClick()"
           :title="groupingTooltip"
         >
           {{ _t('Group: %s', groupingSummary) }}
-          <button type="button" class="choy-search__tag-close m-0 size-3.5 shrink-0 cursor-pointer appearance-none rounded-full border-0 bg-transparent p-0 text-center text-xs leading-[14px] text-primary hover:bg-muted" aria-label="Clear grouping" @click.stop="onGroupingClear">×</button>
+          <button
+            type="button"
+            class="choy-search__tag-close m-0 size-3.5 shrink-0 cursor-pointer appearance-none rounded-full border-0 bg-transparent p-0 text-center text-xs leading-[14px] text-primary hover:bg-muted"
+            :aria-label="_t('Clear grouping')"
+            @click.stop="onGroupingClear"
+          >
+            ×
+          </button>
         </span>
 
         <span
           v-for="f in filters"
           :key="f.id"
-          class="choy-search__tag inline-flex cursor-pointer select-none items-center gap-1 rounded border border-border px-1.5 py-0.5 text-sm transition-colors hover:border-primary hover:bg-muted hover:text-primary active:border-primary active:text-primary"
+          class="choy-search__tag inline-flex h-control cursor-pointer select-none items-center gap-1 rounded border border-border px-1.5 text-sm transition-colors hover:border-primary hover:bg-muted hover:text-primary active:border-primary active:text-primary"
           :class="{ 'choy-search__tag--pending-delete border-danger bg-danger/10 text-danger hover:border-danger hover:text-danger [&_button]:text-danger': f.id === pendingDeleteFilterId }"
-          variant="default"
-          effect="plain"
-          closable
-          round
           @click.stop="onTagClick(f.id!)"
           :title="f.name || filterTooltip(f)"
         >
           {{ f.name || summarizeFilterFields(f, 2) }}
-          <button type="button" class="choy-search__tag-close m-0 size-3.5 shrink-0 cursor-pointer appearance-none rounded-full border-0 bg-transparent p-0 text-center text-xs leading-[14px] text-primary hover:bg-muted" aria-label="Remove filter" @click.stop="onTagClose(f.id!)">×</button>
+          <button
+            type="button"
+            class="choy-search__tag-close m-0 size-3.5 shrink-0 cursor-pointer appearance-none rounded-full border-0 bg-transparent p-0 text-center text-xs leading-[14px] text-primary hover:bg-muted"
+            :aria-label="_t('Remove filter')"
+            @click.stop="onTagClose(f.id!)"
+          >
+            ×
+          </button>
         </span>
       </div>
 
       <input
         ref="inputRef"
         v-model="keyword"
-        class="choy-search__input min-w-[140px] flex-1 border-0 bg-transparent p-1 text-[13px] outline-none"
+        class="choy-search__input min-w-[140px] flex-1 border-0 bg-transparent p-1 text-sm text-foreground outline-none"
         :placeholder="placeholder"
         :name="inputName"
         :id="inputId"
@@ -64,6 +73,18 @@ SPDX-License-Identifier: Apache-2.0
       />
 
       <div class="choy-search__suffix ml-1 flex items-center gap-0.5 border-l border-border pl-1.5">
+        <ChoyButton
+          v-if="hasClearableSearch"
+          size="sm"
+          variant="ghost"
+          class="choy-search__clear-btn px-1.5 py-0"
+          data-testid="choy-search-clear-all"
+          :aria-label="_t('Clear all')"
+          @mousedown.prevent
+          @click.stop="onClearAll"
+        >
+          {{ _t('Clear') }}
+        </ChoyButton>
         <Popover v-model:open="menuVisible">
           <PopoverTrigger as-child>
             <ChoyButton size="sm" variant="ghost" class="choy-search__trailing-btn px-1.5 py-0" :aria-label="_t('Open search menu')" @click.stop>
@@ -664,6 +685,26 @@ function onGroupingClear() {
   // Pass an explicit empty array so buildPayload preserves [].
   emitQueryUpdate(buildPayload([]));
 }
+
+/** Clears keyword, filter chips, and grouping in one action (instant emit). */
+function onClearAll() {
+  if (!hasClearableSearch.value) return;
+  debouncedTrigger.cancel();
+  syncingKeyword.value = true;
+  keyword.value = '' as any;
+  nextTick(() => {
+    syncingKeyword.value = false;
+  });
+  filters.value = [];
+  pendingDeleteFilterId.value = null;
+  emitQueryUpdate(buildPayload([]));
+}
+
+const hasClearableSearch = computed(() => {
+  const hasKw = Boolean(String(keyword.value ?? '').trim());
+  const hasFilters = Array.isArray(filters.value) && filters.value.length > 0;
+  return hasKw || hasFilters || hasGrouping.value;
+});
 
 function onEditGroupClick() {
   menuVisible.value = true;

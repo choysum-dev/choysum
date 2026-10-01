@@ -24,7 +24,7 @@ SPDX-License-Identifier: Apache-2.0
     <!-- Same chrome in edit + display so clickable works outside edit mode. -->
     <template #edit="{ fieldValue, record }">
       <div
-        class="choy-statusbar-field flex flex-wrap gap-1"
+        class="choy-statusbar-field flex min-h-[var(--choy-control-height)] flex-wrap items-center gap-1"
         role="group"
         data-testid="choy-statusbar"
         :aria-disabled="!isInteractive || pending || undefined"
@@ -34,7 +34,7 @@ SPDX-License-Identifier: Apache-2.0
           :key="`${opt.value}-${index}`"
           type="button"
           size="sm"
-          class="choy-statusbar-opt"
+          class="choy-statusbar-opt h-control"
           :data-value="opt.value"
           :variant="normalizeSegmentedModelValue(fieldValue().value) === opt.value ? 'default' : 'outline'"
           :disabled="!isInteractive || pending || opt.disabled"
@@ -48,7 +48,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <template #display="{ fieldValue, record }">
       <div
-        class="choy-statusbar-field flex flex-wrap gap-1"
+        class="choy-statusbar-field flex min-h-[var(--choy-control-height)] flex-wrap items-center gap-1"
         role="group"
         data-testid="choy-statusbar"
         :aria-disabled="!isInteractive || pending || undefined"
@@ -58,7 +58,7 @@ SPDX-License-Identifier: Apache-2.0
           :key="`${opt.value}-${index}`"
           type="button"
           size="sm"
-          class="choy-statusbar-opt"
+          class="choy-statusbar-opt h-control"
           :data-value="opt.value"
           :variant="normalizeSegmentedModelValue(fieldValue().value) === opt.value ? 'default' : 'outline'"
           :disabled="!isInteractive || pending || opt.disabled"

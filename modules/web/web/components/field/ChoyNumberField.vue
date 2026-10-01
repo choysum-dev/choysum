@@ -18,7 +18,7 @@ SPDX-License-Identifier: Apache-2.0
       <ONumberCell :field-value="fieldValue" :options="bufferOptions" :placeholder="placeholder" :nullable="nullable" :min="min" :max="max" v-bind="$attrs" />
     </template>
     <template #display="{ fieldValue }">
-      <span class="choy-field-display-text truncate whitespace-nowrap px-[11px] leading-8 text-foreground inline-block max-w-full text-right">{{ toDisplayText(fieldValue().value) }}</span>
+      <span class="choy-field-display-text truncate whitespace-nowrap text-foreground inline-block max-w-full text-right">{{ toDisplayText(fieldValue().value) }}</span>
     </template>
   </FieldBase>
 </template>
