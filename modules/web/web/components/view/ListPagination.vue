@@ -10,7 +10,12 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
+  <!--
+    Defer mounting while total is still unknown (0) but offset is restored (>0).
+    Otherwise ChoyPagination clamps page→1 and write-backs offset 0 too early.
+  -->
   <ChoyPagination
+    v-if="canMountPagination"
     :total="effective.total"
     v-model:page="pageModel"
     v-model:page-size="pageSizeModel"
@@ -51,6 +56,11 @@ const effective = computed(() => {
   return { total, limit: limitRaw, offset: offsetRaw, currentPage, pageSize: limitRaw };
 });
 
+/** True when clamping to totalPages is safe (known total, or already on page 1). */
+const canMountPagination = computed(
+  () => effective.value.total > 0 || effective.value.offset === 0,
+);
+
 const pageModel = computed({
   get: () => effective.value.currentPage,
   set: (page: number) => {
@@ -64,7 +74,9 @@ const pageModel = computed({
 const pageSizeModel = computed({
   get: () => effective.value.pageSize,
   set: (size: number) => {
-    const next = Number.isFinite(size) && size > 0 ? Math.floor(size) : effective.value.pageSize;
+    const parsed = Number(size);
+    const next =
+      Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : effective.value.pageSize;
     emit('paginateState', { limit: next, offset: 0 });
   },
 });

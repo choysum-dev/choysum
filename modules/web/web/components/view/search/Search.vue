@@ -688,7 +688,12 @@ function onGroupingClear() {
 
 /** Clears keyword, filter chips, and grouping in one action (instant emit). */
 function onClearAll() {
+  debouncedTrigger.cancel();
+  syncingKeyword.value = true;
   keyword.value = '' as any;
+  nextTick(() => {
+    syncingKeyword.value = false;
+  });
   filters.value = [];
   pendingDeleteFilterId.value = null;
   emitQueryUpdate(buildPayload([]));

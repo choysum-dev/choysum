@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
         data-anchor="choy.list.view-chrome"
       >
         <div class="choy-list__actions flex items-center gap-4">
-          <ChoyActionTray v-if="showActions" class="choy-list__system-actions">
+          <ChoyActionTray v-if="showActions" class="choy-list__system-actions" :aria-label="_t('System actions')">
             <!-- Keep Save/Discard outside the overridable slot so custom toolbars cannot hide them. -->
             <ChoyButton
               v-if="editable && isEditing"
@@ -59,7 +59,7 @@ SPDX-License-Identifier: Apache-2.0
             </slot>
           </ChoyActionTray>
 
-          <ChoyActionTray v-if="showActions" class="choy-list__user-actions">
+          <ChoyActionTray v-if="showActions" class="choy-list__user-actions" :aria-label="_t('User actions')">
             <slot name="user-actions" :selected-items="selectedItems" />
           </ChoyActionTray>
         </div>

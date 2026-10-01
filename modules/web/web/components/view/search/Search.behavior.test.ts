@@ -912,9 +912,8 @@ describe('OSearch behavior', () => {
     const updates = m.emitted['query-update'] || [];
     const last = updates[updates.length - 1]?.[0] as any;
     expect(last?.keyword == null || last?.keyword === '').toBe(true);
-    expect((last?.conditionGroups || []).length).toBe(0);
-    const groups = last?.groupby || last?.groups || [];
-    expect(Array.isArray(groups) ? groups.length : 0).toBe(0);
+    expect(last?.appliedFilters).toEqual([]);
+    expect(last?.appliedGroups).toEqual([]);
     m.unmount();
   });
 });

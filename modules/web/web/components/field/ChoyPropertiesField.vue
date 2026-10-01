@@ -34,11 +34,16 @@ SPDX-License-Identifier: Apache-2.0
           :data-type="item.type"
           :data-readonly="item.readonly ? '1' : '0'"
         >
-          <label class="text-[13px] text-foreground" :for="item.readonly ? undefined : controlId(item)">{{ itemLabel(item) }}</label>
+          <label
+            class="text-[13px] text-foreground"
+            :id="`${controlId(item)}-label`"
+            :for="item.readonly ? undefined : controlId(item)"
+          >{{ itemLabel(item) }}</label>
           <span
             v-if="item.readonly"
             class="truncate text-sm text-foreground"
             data-testid="choy-properties-readonly-value"
+            :aria-labelledby="`${controlId(item)}-label`"
           >{{ displayItemValue(fieldValue().value, item) }}</span>
           <input
             type="checkbox"

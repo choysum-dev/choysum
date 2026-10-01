@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
         data-anchor="choy.form.view-chrome"
       >
         <div class="form-view__actions flex flex-1 items-center gap-4 max-md:flex-col max-md:items-stretch max-md:gap-2" v-if="resolvedShowActions">
-          <ChoyActionTray class="form-view__system-actions">
+          <ChoyActionTray class="form-view__system-actions" :aria-label="_t('System actions')">
             <slot name="system-actions">
               <template v-if="viewMode === 'display' && effectiveRecordId">
                 <ChoyButton v-if="resolvedCreateAction && canCreate" size="sm" variant="default" @click="handleCreate">
@@ -71,7 +71,7 @@ SPDX-License-Identifier: Apache-2.0
               </template>
             </slot>
           </ChoyActionTray>
-          <ChoyActionTray class="form-view__user-actions border-l border-border pl-4 max-md:border-l-0 max-md:border-t max-md:border-border max-md:pl-0 max-md:pt-2">
+          <ChoyActionTray class="form-view__user-actions border-l border-border pl-4 max-md:border-l-0 max-md:border-t max-md:border-border max-md:pl-0 max-md:pt-2" :aria-label="_t('User actions')">
             <slot name="user-actions"> </slot>
           </ChoyActionTray>
         </div>

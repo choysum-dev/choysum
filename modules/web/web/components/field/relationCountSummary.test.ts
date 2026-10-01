@@ -14,7 +14,7 @@ test('formatRelationCountSummary: empty uses em-dash', () => {
   expect(formatRelationCountSummary(Number.NaN, fakeT)).toBe('—');
 });
 
-test('formatRelationCountSummary: positive count', () => {
-  expect(formatRelationCountSummary(1, fakeT)).toBe('1 records');
+test('formatRelationCountSummary: singular and plural', () => {
+  expect(formatRelationCountSummary(1, fakeT)).toBe('1 record');
   expect(formatRelationCountSummary(3, fakeT)).toBe('3 records');
 });
