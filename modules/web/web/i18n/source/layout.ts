@@ -12,7 +12,6 @@ export default {
     collapse: 'Collapse Sidebar',
     expand: 'Expand Sidebar',
     toggle: 'Toggle Sidebar',
-    home: 'Home',
     dashboard: 'Dashboard',
     menu: 'Menu',
   },
@@ -34,11 +33,6 @@ export default {
     copyright: '© {year} Choysum. All rights reserved.',
     version: 'Version {version}',
     powered: 'Powered by Choysum',
-  },
-
-  // Breadcrumb.
-  breadcrumb: {
-    home: 'Home',
   },
 
   // Page states.

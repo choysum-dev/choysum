@@ -9,7 +9,7 @@ import ChoyListView from './ChoyListView.vue';
 import ChoySearchView from './ChoySearchView.vue';
 import ListInlineEditScope from '@/web/web/components/view/ListInlineEditScope.vue';
 import ViewContainer from '@/web/web/components/view/ViewContainer.vue';
-import ListPagination from './ListPagination.vue';
+import ChoyPagination from './ChoyPagination.vue';
 import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
 import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 
@@ -59,8 +59,8 @@ function stubListChrome() {
     name: 'ChoyTableColumn',
     setup: () => () => null,
   });
-  stubSfc(ListPagination, {
-    name: 'ListPagination',
+  stubSfc(ChoyPagination, {
+    name: 'ChoyPagination',
     setup: () => () => h('div', { 'data-stub': 'Pagination' }),
   });
   // Keep SearchView identity for shouldDeferViewFirstFrame; render a silent stub.
@@ -75,7 +75,7 @@ function restoreListChrome() {
   restoreSfc(ListInlineEditScope);
   restoreSfc(ChoyTableHost);
   restoreSfc(ChoyTableColumn);
-  restoreSfc(ListPagination);
+  restoreSfc(ChoyPagination);
   restoreSfc(ChoySearchView);
 }
 

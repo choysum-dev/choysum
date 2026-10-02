@@ -14,7 +14,7 @@ import { buildPageMountGlobal } from '@choysum/page-mount';
 
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import ChoyListView from './ChoyListView.vue';
-import ListPagination from './ListPagination.vue';
+import ChoyPagination from './ChoyPagination.vue';
 import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
 import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 import ListInlineEditScope from '@/web/web/components/view/ListInlineEditScope.vue';
@@ -73,8 +73,8 @@ function stubListChrome() {
     name: 'ChoyTableColumn',
     setup: () => () => null,
   });
-  stubSfc(ListPagination, {
-    name: 'ListPagination',
+  stubSfc(ChoyPagination, {
+    name: 'ChoyPagination',
     setup: () => () => h('div', { 'data-stub': 'Pagination' }),
   });
   stubSfc(ListInlineEditScope, {
@@ -88,7 +88,7 @@ function stubListChrome() {
 function restoreListChrome() {
   restoreSfc(ChoyTableHost);
   restoreSfc(ChoyTableColumn);
-  restoreSfc(ListPagination);
+  restoreSfc(ChoyPagination);
   restoreSfc(ListInlineEditScope);
 }
 
