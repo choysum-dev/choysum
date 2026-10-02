@@ -139,6 +139,7 @@ import {
   listPageSizeToPaginateState,
   listPageToPaginateState,
   resolveListPaginationEffective,
+  sameListPaginateState,
 } from './listPaginationAdapter';
 import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 import { useTableSelection } from '@/web/web/composables/useTable';
@@ -501,17 +502,29 @@ const listPaginationEffective = computed(() =>
   }),
 );
 const canMountPagination = computed(() => canMountListPagination(listPaginationEffective.value));
+// ChoyPagination resets page→1 after a pageSize change; suppress that follow-up so it
+// cannot emit a second paginate with the stale limit before the store catches up.
+let suppressListPageModel = false;
 const listPageModel = computed({
   get: () => listPaginationEffective.value.currentPage,
   set: (page: number) => {
-    onPaginateState(listPageToPaginateState(page, listPaginationEffective.value));
+    if (suppressListPageModel) return;
+    const current = listPaginationEffective.value;
+    const next = listPageToPaginateState(page, current);
+    if (sameListPaginateState(next, { limit: current.limit, offset: current.offset })) return;
+    onPaginateState(next);
   },
 });
 const listPageSizeModel = computed({
   get: () => listPaginationEffective.value.pageSize,
   set: (size: number) => {
     const next = listPageSizeToPaginateState(size, listPaginationEffective.value);
-    if (next) onPaginateState(next);
+    if (!next) return;
+    suppressListPageModel = true;
+    onPaginateState(next);
+    queueMicrotask(() => {
+      suppressListPageModel = false;
+    });
   },
 });
 
@@ -867,6 +880,9 @@ defineExpose<
     load: () => Promise<void>;
     inlineEdit: typeof inlineEdit;
     flatRows: typeof flatRows;
+    listPageModel: typeof listPageModel;
+    listPageSizeModel: typeof listPageSizeModel;
+    canMountPagination: typeof canMountPagination;
   }
 >({
   selectedItems: selectedItems as any,
@@ -874,6 +890,9 @@ defineExpose<
   load: loadData,
   inlineEdit,
   flatRows,
+  listPageModel,
+  listPageSizeModel,
+  canMountPagination,
 });
 
 useRegisterPageActionTarget({
