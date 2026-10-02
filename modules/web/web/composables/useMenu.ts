@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { h, computed, ref, type VNode } from 'vue';
-import { storeToRefs } from 'pinia';
 import { useRouter } from 'vue-router';
 import { Bookmark, CircleHelp } from 'lucide-vue-next';
 import { useI18n } from 'vue-i18n';
@@ -20,7 +19,10 @@ export function useMenu() {
   const composer = useI18n({ useScope: 'global' });
 
   const menuStore = useMenuStore();
-  const { activeMenu, activeApp } = storeToRefs(menuStore);
+  // Prefer store proxy reads over storeToRefs: setup-store computeds are not always
+  // present on the object returned by storeToRefs during early shell mount.
+  const activeMenu = computed(() => menuStore.activeMenu);
+  const activeApp = computed(() => menuStore.activeApp);
   // Manual expand/collapse for groups without an active descendant.
   const openedSubMenus = ref(new Set<string>());
 
