@@ -46,4 +46,4 @@ Language switch (D9 / S6): default `location.reload`. Soft remount is experiment
 
 Optional admin PO download: `GET /web/i18n/po?lang=&application=` (Terminology Editor).
 
-The handwritten packs under `web/web/i18n/source` and `web/web/i18n/translations/` are **legacy coexistence** only (English msgid baseline / historical zh-CN). New shell copy must use `_t` / `_lt` + this PO tree.
+The handwritten pack under `web/web/i18n/source` is the English msgid baseline for soft UI keys. Terminology authority is this PO tree via Gateway (`_t` / `_lt`).

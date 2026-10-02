@@ -1686,6 +1686,3 @@ msgctxt "web/views/ModuleLogListView"
 msgid "Started At"
 msgstr "开始时间"
 
-#~ msgctxt "service/models/module_index"
-#~ msgid "originType must be one of: local, registry, all"
-#~ msgstr "originType 必须是 local、registry 或 all"

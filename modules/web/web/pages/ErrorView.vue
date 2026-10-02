@@ -86,7 +86,7 @@ const errorConfig = computed<ErrorConfig>(() => {
       } else if (reason === 'permission') {
         subtitle = _t('You are missing the required permission');
       }
-      const actions: ActionItem[] = [{ text: _t('Back to start'), action: goHome, variant: 'default' }];
+      const actions: ActionItem[] = [{ text: _t('Back to start'), action: goDefaultLand, variant: 'default' }];
       if (fromPath) {
         actions.push({ text: _t('Go back'), action: () => goToPath(fromPath), variant: 'outline' });
       }
@@ -106,7 +106,7 @@ const errorConfig = computed<ErrorConfig>(() => {
           pickQueryString(route.query.message) ||
           _t('An internal error occurred. Try again later or contact support.'),
         actions: [
-          { text: _t('Back to start'), action: goHome, variant: 'default' },
+          { text: _t('Back to start'), action: goDefaultLand, variant: 'default' },
           { text: _t('Retry'), action: retry, variant: 'outline' },
           { text: _t('Report a problem'), action: reportIssue, variant: 'destructive' },
         ],
@@ -117,14 +117,14 @@ const errorConfig = computed<ErrorConfig>(() => {
         subtitle: _t('The page you requested does not exist'),
         message: _t('Check that the URL is correct, or the page may have been moved or deleted.'),
         actions: [
-          { text: _t('Back to start'), action: goHome, variant: 'default' },
+          { text: _t('Back to start'), action: goDefaultLand, variant: 'default' },
           { text: _t('Go back'), action: goBack, variant: 'outline' },
         ],
       };
   }
 });
 
-function goHome() {
+function goDefaultLand() {
   router.push(resolveRuntimeDefaultLandPath());
 }
 

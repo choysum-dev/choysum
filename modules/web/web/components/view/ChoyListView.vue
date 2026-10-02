@@ -70,13 +70,11 @@ SPDX-License-Identifier: Apache-2.0
         </div>
 
         <div class="choy-list__header-right flex items-center justify-end gap-2">
-          <div class="choy-list__default-pagination" v-if="showPaginate">
-            <ListPagination
-              :store="store"
-              :total="effectiveTotal"
-              :limit="effectivePagination.limit"
-              :offset="effectivePagination.offset"
-              @paginateState="onPaginateState"
+          <div class="choy-list__default-pagination" v-if="showPaginate && canMountPagination">
+            <ChoyPagination
+              :total="listPaginationEffective.total"
+              v-model:page="listPageModel"
+              v-model:page-size="listPageSizeModel"
             />
           </div>
           <slot name="header-right" />
@@ -135,7 +133,13 @@ import type { RouteLocationRaw } from 'vue-router';
 import type { ClientModel, BaseModel, QueryCondition, OrderBy } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
-import ListPagination from './ListPagination.vue';
+import ChoyPagination from './ChoyPagination.vue';
+import {
+  canMountListPagination,
+  listPageSizeToPaginateState,
+  listPageToPaginateState,
+  resolveListPaginationEffective,
+} from './listPaginationAdapter';
 import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 import { useTableSelection } from '@/web/web/composables/useTable';
 // Search view type: must accept store and emit query-update
@@ -487,6 +491,28 @@ const effectivePagination = computed<PaginationState>(() => {
 const effectiveTotal = computed<number>(() => {
   const t = Number(((store.state as any).result?.total ?? controller.vm.result?.total ?? 0) as any);
   return Number.isFinite(t) ? t : 0;
+});
+
+const listPaginationEffective = computed(() =>
+  resolveListPaginationEffective({
+    total: effectiveTotal.value,
+    limit: effectivePagination.value.limit,
+    offset: effectivePagination.value.offset,
+  }),
+);
+const canMountPagination = computed(() => canMountListPagination(listPaginationEffective.value));
+const listPageModel = computed({
+  get: () => listPaginationEffective.value.currentPage,
+  set: (page: number) => {
+    onPaginateState(listPageToPaginateState(page, listPaginationEffective.value));
+  },
+});
+const listPageSizeModel = computed({
+  get: () => listPaginationEffective.value.pageSize,
+  set: (size: number) => {
+    const next = listPageSizeToPaginateState(size, listPaginationEffective.value);
+    if (next) onPaginateState(next);
+  },
 });
 
 // ChoySearchView owns controlled search display and event forwarding; the view no longer passes controlled filters or groups

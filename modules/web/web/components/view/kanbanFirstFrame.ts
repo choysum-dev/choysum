@@ -8,6 +8,3 @@
 export function shouldDeferViewFirstFrame(searchView: unknown, oSearchView: unknown): boolean {
   return searchView === oSearchView;
 }
-
-/** @deprecated Prefer {@link shouldDeferViewFirstFrame}. */
-export const shouldDeferKanbanFirstFrame = shouldDeferViewFirstFrame;
