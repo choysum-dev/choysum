@@ -53,9 +53,10 @@ export function findFirstNavigableMenuPath(
 ): string | null {
   const seen = new Set<MenuItem>();
   const walk = (items: readonly MenuItem[]): string | null => {
-    const ordered = [...items].sort(compareMenuOrder);
+    // Filter falsy entries before sort: compareMenuOrder reads item.order.
+    const ordered = (items.filter(Boolean) as MenuItem[]).sort(compareMenuOrder);
     for (const item of ordered) {
-      if (!item || seen.has(item)) continue;
+      if (seen.has(item)) continue;
       seen.add(item);
       if (item.hidden || item.disabled) continue;
       const kids = item.children;

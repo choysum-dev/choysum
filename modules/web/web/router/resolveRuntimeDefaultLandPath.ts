@@ -31,7 +31,8 @@ function buildRuntimeCanNavigate(): ((path: string) => boolean) | undefined {
         if (!resourceId) return true;
         return canRoute(resourceId, auth.permissionState, ctx);
       } catch {
-        return true;
+        // Unverifiable path: skip so DFS can fall through to the next leaf / Module Board.
+        return false;
       }
     };
   } catch {

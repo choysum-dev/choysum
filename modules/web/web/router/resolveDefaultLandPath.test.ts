@@ -95,4 +95,13 @@ describe('resolveDefaultLandPath', () => {
     // Cycle nodes are parents-with-children, so no leaf; fall back to Module Board.
     expect(resolveDefaultLandPath({ menus: [parent] })).toBe(MODULE_BOARD_PATH);
   });
+
+  test('tolerates nullish menu entries during sort', () => {
+    const menus = [
+      null,
+      { id: 'ok', title: 'Ok', path: '/ok', order: 1 },
+      undefined,
+    ] as unknown as MenuItem[];
+    expect(resolveDefaultLandPath({ menus })).toBe('/ok');
+  });
 });

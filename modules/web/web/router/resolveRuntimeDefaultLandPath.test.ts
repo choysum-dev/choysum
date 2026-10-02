@@ -79,4 +79,92 @@ describe('resolveRuntimeDefaultLandPath', () => {
     expect(mounted.q('[data-path]')?.getAttribute('data-path')).toBe('/ok');
     mounted.unmount();
   });
+
+  test('skips leaves when router.resolve throws and continues to next leaf', async () => {
+    const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'boom.menu',
+      title: 'Boom',
+      path: '/boom',
+      order: 1,
+    } as any);
+    menuPlugin.manager.addMenu({
+      id: 'ok.menu',
+      title: 'Ok',
+      path: '/ok',
+      order: 2,
+    } as any);
+
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: { path: '/', fullPath: '/', meta: {} },
+    });
+    router.resolve = (to: unknown) => {
+      const path = typeof to === 'string' ? to : String((to as any)?.path || '/');
+      if (path === '/boom') throw new Error('resolve failed');
+      return {
+        path,
+        fullPath: path,
+        href: path,
+        name: undefined,
+        query: {},
+        params: {},
+        matched: [{ path }],
+        meta: { resourceId: 'route.ok' },
+      };
+    };
+
+    const { useAuthStore } = await import('@/auth/web/stores/auth');
+    const auth = useAuthStore(pinia);
+    (auth as any).isAuthenticated = true;
+    (auth as any).permissionState = {
+      permStateVersion: 1,
+      byCompany: { '*': { ui: { routes: ['*'], menus: ['*'], actions: [] } } },
+    };
+    (auth as any).identity = { metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] } };
+
+    const Host = defineComponent({
+      setup() {
+        const path = resolveRuntimeDefaultLandPath();
+        return () => h('div', { 'data-path': path });
+      },
+    });
+
+    const mounted = mountApp(Host as any, {
+      plugins: [menuPlugin, pinia, router],
+    });
+    await flushPromises();
+    expect(mounted.q('[data-path]')?.getAttribute('data-path')).toBe('/ok');
+    mounted.unmount();
+  });
+
+  test('falls back to Module Board when menu store cannot init without router', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'only.menu',
+      title: 'Only',
+      path: '/only',
+      order: 1,
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+
+    const Host = defineComponent({
+      setup() {
+        const path = resolveRuntimeDefaultLandPath();
+        return () => h('div', { 'data-path': path });
+      },
+    });
+
+    const mounted = mountApp(Host as any, {
+      plugins: [menuPlugin, pinia],
+    });
+    await flushPromises();
+    // useMenuStore setup calls useRoute(); without a router plugin it throws and
+    // resolveRuntimeDefaultLandPath fails closed to Module Board.
+    expect(mounted.q('[data-path]')?.getAttribute('data-path')).toBe(MODULE_BOARD_PATH);
+    mounted.unmount();
+  });
 });

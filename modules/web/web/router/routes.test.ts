@@ -16,7 +16,13 @@ test('web routes: root and catch-all redirect via default land path', () => {
 
   const catchAll = routes.find(route => route.name === 'CatchAll') as any;
   expect(typeof catchAll.redirect).toBe('function');
-  expect(catchAll.redirect()).toBe(MODULE_BOARD_PATH);
+  // Unknown path → Module Board.
+  expect(catchAll.redirect({ path: '/unknown-xyz' })).toBe(MODULE_BOARD_PATH);
+  // Land path that rematches catch-all → Error (loop guard).
+  expect(catchAll.redirect({ path: MODULE_BOARD_PATH })).toEqual({
+    name: 'Error',
+    params: { code: '404' },
+  });
 });
 
 test('web routes: registers Error page and no Home route/menu', () => {

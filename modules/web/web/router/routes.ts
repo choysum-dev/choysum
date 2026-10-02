@@ -55,7 +55,14 @@ export const routes: RouteRecordRaw[] = [
   {
     path: '/:pathMatch(.*)*',
     name: 'CatchAll',
-    redirect: () => resolveRuntimeDefaultLandPath(),
+    redirect: (to) => {
+      const target = resolveRuntimeDefaultLandPath();
+      // Unregistered land paths rematch this catch-all; bail to Error instead of looping.
+      if (!target || target === to.path) {
+        return { name: 'Error', params: { code: '404' } };
+      }
+      return target;
+    },
   },
 ];
 
