@@ -100,13 +100,18 @@ func ParseVueSfcToHtmlNode(r io.Reader) (scriptNodes []*html.Node, templateNode 
 		return nil, nil, nil, err
 	}
 	// x/net/html treats <textarea>/<title>/… as raw-text elements (case-insensitive).
+	// A Vue-style self-closing lowercase tag like <textarea /> is not a void element:
+	// the tokenizer treats '/' as ignored and keeps reading until </textarea>, so a
+	// following <script setup> is swallowed. Expand those to explicit open/close
+	// pairs before parse (PascalCase <Textarea /> stays for the masker below).
+	//
 	// Vue product SFCs often put PascalCase component tags (e.g. <Textarea>) before
 	// <script setup>; without masking, the tokenizer swallows the script block.
 	// Masking is limited to unquoted text inside <template> so script/style string
 	// literals and attribute values keep literal "<Textarea>" unchanged.
 	// Fast path: the multi-pass masker is a no-op unless a non-lowercase
 	// raw-text-named tag is present (real <script>/<textarea> stay unmasked).
-	masked := string(src)
+	masked := expandSelfClosingLowerRawTextHTMLTags(string(src))
 	if sourceNeedsPascalCaseRawTextMask(masked) {
 		masked = maskPascalCaseRawTextTags(masked)
 	}
@@ -125,6 +130,113 @@ func ParseVueSfcToHtmlNode(r io.Reader) (scriptNodes []*html.Node, templateNode 
 
 	return scriptNodes, templateNode, styleNodes, nil
 
+}
+
+// lowerSelfClosingRawTextTag matches Vue-style self-closing *lowercase* HTML
+// raw-text / RCDATA tags. PascalCase component tags (e.g. <Textarea />) are
+// intentionally excluded so the PascalCase masker can still rewrite them.
+// Unquoted attrs may contain '/' (e.g. src=/a/b); the trailing \s*/> still
+// anchors the self-closing marker via backtracking.
+var lowerSelfClosingRawTextTag = regexp.MustCompile(
+	`<(textarea|title|style|script|noscript|iframe|noembed|noframes|xmp|plaintext)((?:\s+(?:[^>"']|"[^"]*"|'[^']*')*)*)\s*/>`,
+)
+
+// expandSelfClosingLowerRawTextHTMLTags rewrites <textarea .../> (and siblings)
+// to <textarea ...></textarea> so x/net/html does not treat the rest of the SFC
+// as raw-text content. Matches inside script/style, HTML comments, mustaches,
+// and quoted attribute values are left untouched.
+func expandSelfClosingLowerRawTextHTMLTags(src string) string {
+	if !strings.Contains(src, "/>") || !lowerSelfClosingRawTextTag.MatchString(src) {
+		return src
+	}
+	scriptStyle := findScriptStyleRanges(src)
+	comments := findHTMLCommentRanges(src, scriptStyle)
+	seed := findMustacheAndQuotedAttrRanges(src, comments)
+	skipForComments := append(append([][]int{}, scriptStyle...), seed...)
+	comments = findHTMLCommentRanges(src, skipForComments)
+	skipForMustache := append(append([][]int{}, scriptStyle...), comments...)
+	mustacheAttr := findMustacheAndQuotedAttrRanges(src, skipForMustache)
+	protected := append(append(append([][]int{}, scriptStyle...), comments...), mustacheAttr...)
+	inProtected := func(pos int) bool {
+		for _, r := range protected {
+			if pos >= r[0] && pos < r[1] {
+				return true
+			}
+		}
+		return false
+	}
+	var out strings.Builder
+	out.Grow(len(src) + 32)
+	last := 0
+	for _, loc := range lowerSelfClosingRawTextTag.FindAllStringSubmatchIndex(src, -1) {
+		start, end := loc[0], loc[1]
+		if inProtected(start) || inProtected(end-1) {
+			continue
+		}
+		// Skip only when '/' is glued into an unquoted attribute value
+		// (<iframe src=/a/b/>). Boolean attrs (<textarea disabled/>) and
+		// quoted values (<textarea class="x"/>) still expand.
+		attrs := ""
+		if loc[4] >= 0 {
+			attrs = src[loc[4]:loc[5]]
+		}
+		if end >= 3 && src[end-2] == '/' && !isSelfClosingSolidus(attrs, src[end-3]) {
+			continue
+		}
+		name := src[loc[2]:loc[3]]
+		out.WriteString(src[last:start])
+		out.WriteByte('<')
+		out.WriteString(name)
+		out.WriteString(attrs)
+		out.WriteString("></")
+		out.WriteString(name)
+		out.WriteByte('>')
+		last = end
+	}
+	out.WriteString(src[last:])
+	return out.String()
+}
+
+// isSelfClosingSolidus reports whether '/' before '>' is a self-closing marker
+// given the attribute text captured before optional whitespace and "/>".
+func isSelfClosingSolidus(attrs string, before byte) bool {
+	switch before {
+	case ' ', '\t', '\n', '\r', '"', '\'':
+		return true
+	}
+	if attrs == "" {
+		return true
+	}
+	eq := strings.LastIndexByte(attrs, '=')
+	if eq < 0 {
+		// Boolean attribute(s) only: <textarea disabled/>
+		return true
+	}
+	i := eq + 1
+	if i >= len(attrs) {
+		return true
+	}
+	if q := attrs[i]; q == '"' || q == '\'' {
+		rest := attrs[i+1:]
+		close := strings.IndexByte(rest, q)
+		if close < 0 {
+			return false
+		}
+		after := strings.TrimLeft(rest[close+1:], " \t\n\r")
+		// Further attrs after a quoted value (e.g. id="x" disabled).
+		return after != ""
+	}
+	// Unquoted value ends at whitespace; more attrs after it → solidus is a marker.
+	j := i
+	for j < len(attrs) {
+		c := attrs[j]
+		if c == ' ' || c == '\t' || c == '\n' || c == '\r' {
+			break
+		}
+		j++
+	}
+	after := strings.TrimLeft(attrs[j:], " \t\n\r")
+	return after != ""
 }
 
 // pascalCaseRawTextTag matches tags whose local names collide with HTML raw-text
@@ -310,10 +422,46 @@ func findScriptStyleRanges(src string) [][]int {
 			searchFrom = start + 1
 			continue
 		}
+		// Self-closing openers (<script />) satisfy the opener half of the
+		// paired regex and can latch onto a later real </script>. Skip them.
+		if openEnd := htmlOpenTagEnd(src, start); openEnd >= 0 && isSelfClosingHTMLOpenTag(src[start:openEnd+1]) {
+			searchFrom = openEnd + 1
+			continue
+		}
 		ranges = append(ranges, []int{start, end})
 		searchFrom = end
 	}
 	return ranges
+}
+
+// htmlOpenTagEnd returns the index of the closing '>' for an HTML open tag that
+// starts at start, skipping quoted attribute values. Returns -1 if unterminated.
+func htmlOpenTagEnd(src string, start int) int {
+	if start < 0 || start >= len(src) || src[start] != '<' {
+		return -1
+	}
+	inQuote := byte(0)
+	for j := start + 1; j < len(src); j++ {
+		c := src[j]
+		if inQuote != 0 {
+			if c == '\\' {
+				j++
+				continue
+			}
+			if c == inQuote {
+				inQuote = 0
+			}
+			continue
+		}
+		if c == '\'' || c == '"' || c == '`' {
+			inQuote = c
+			continue
+		}
+		if c == '>' {
+			return j
+		}
+	}
+	return -1
 }
 
 // findMustacheAndQuotedAttrRanges returns [start,end) spans that cannot hold a

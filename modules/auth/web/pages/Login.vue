@@ -4,70 +4,67 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyPage
-    :loading="loading"
-    width="narrow"
-    :padding="false"
-    class="mx-auto flex min-h-[calc(100vh_-_var(--choy-layout-header-height,3rem))] w-full max-w-md items-center justify-center px-4"
-  >
-    <ChoyCard :title="_t('User Login')" class="login-card w-full shadow-sm">
-      <transition name="fade">
-        <div
-          v-if="error"
-          class="login-error mb-4 flex items-start justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-          role="alert"
-        >
-          <span>{{ error }}</span>
-          <button type="button" class="text-destructive/80 hover:text-destructive" :aria-label="_t('Close')" @click="error = ''">
-            ×
-          </button>
-        </div>
-      </transition>
+  <ChoyPage :loading="loading" width="narrow" :padding="false" class="w-full">
+    <AuthPanel>
+      <ChoyCard :title="_t('User Login')" class="login-card w-full shadow-sm">
+        <transition name="fade">
+          <div
+            v-if="error"
+            class="login-error mb-4 flex items-start justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            role="alert"
+          >
+            <span>{{ error }}</span>
+            <button type="button" class="text-destructive/80 hover:text-destructive" :aria-label="_t('Close')" @click="error = ''">
+              ×
+            </button>
+          </div>
+        </transition>
 
-      <form class="flex flex-col gap-3" @submit.prevent="handleLogin">
-        <label class="flex flex-col gap-1 text-sm">
-          <span class="text-foreground/80">{{ _t('Username') }}</span>
-          <input
-            v-model="form.username"
-            name="username"
-            type="text"
-            autocomplete="username"
-            :placeholder="_t('Enter username')"
-            class="login-username choy-input"
-            :class="{ 'border-destructive': fieldErrors.username }"
-          />
-          <span v-if="fieldErrors.username" class="text-xs text-destructive">{{ fieldErrors.username }}</span>
-        </label>
+        <form class="flex flex-col gap-3" @submit.prevent="handleLogin">
+          <label class="flex flex-col gap-1 text-sm">
+            <span class="text-foreground/80">{{ _t('Username') }}</span>
+            <input
+              v-model="form.username"
+              name="username"
+              type="text"
+              autocomplete="username"
+              :placeholder="_t('Enter username')"
+              class="login-username choy-input"
+              :class="{ 'border-destructive': fieldErrors.username }"
+            />
+            <span v-if="fieldErrors.username" class="text-xs text-destructive">{{ fieldErrors.username }}</span>
+          </label>
 
-        <label class="flex flex-col gap-1 text-sm">
-          <span class="text-foreground/80">{{ _t('Password') }}</span>
-          <input
-            v-model="form.password"
-            name="password"
-            type="password"
-            autocomplete="current-password"
-            :placeholder="_t('Enter password')"
-            class="login-password choy-input"
-            :class="{ 'border-destructive': fieldErrors.password }"
-          />
-          <span v-if="fieldErrors.password" class="text-xs text-destructive">{{ fieldErrors.password }}</span>
-        </label>
+          <label class="flex flex-col gap-1 text-sm">
+            <span class="text-foreground/80">{{ _t('Password') }}</span>
+            <input
+              v-model="form.password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              :placeholder="_t('Enter password')"
+              class="login-password choy-input"
+              :class="{ 'border-destructive': fieldErrors.password }"
+            />
+            <span v-if="fieldErrors.password" class="text-xs text-destructive">{{ fieldErrors.password }}</span>
+          </label>
 
-        <label class="login-options flex items-center gap-2 text-sm text-foreground/80">
-          <input v-model="form.rememberMe" type="checkbox" class="size-4 rounded border-border" />
-          <span>{{ _t('Remember me') }}</span>
-        </label>
+          <label class="login-options flex items-center gap-2 text-sm text-foreground/80">
+            <input v-model="form.rememberMe" type="checkbox" class="size-control shrink-0 rounded border-border" />
+            <span>{{ _t('Remember me') }}</span>
+          </label>
 
-        <ChoyButton type="submit" class="submit-button w-full" :disabled="loading">
-          {{ loading ? _t('Log In') + '…' : _t('Log In') }}
-        </ChoyButton>
+          <ChoyButton type="submit" class="submit-button w-full" :disabled="loading">
+            {{ loading ? _t('Log In') + '…' : _t('Log In') }}
+          </ChoyButton>
 
-        <div v-if="showRegisterLink" class="text-center text-sm text-foreground/70">
-          {{ _t("Don't have an account?") }}
-          <router-link to="/register" class="ms-1 text-primary hover:underline">{{ _t('Register now') }}</router-link>
-        </div>
-      </form>
-    </ChoyCard>
+          <div v-if="showRegisterLink" class="text-center text-sm text-foreground/70">
+            {{ _t("Don't have an account?") }}
+            <router-link to="/register" class="ms-1 text-primary hover:underline">{{ _t('Register now') }}</router-link>
+          </div>
+        </form>
+      </ChoyCard>
+    </AuthPanel>
   </ChoyPage>
 </template>
 
@@ -76,6 +73,7 @@ import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../stores/auth';
+import AuthPanel from '../components/AuthPanel.vue';
 import { ChoyPage, ChoyCard, ChoyButton } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { runLoginAuthReady } from './login_auth_ready';

@@ -5,22 +5,23 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <div class="choy-chatter-composer flex flex-col gap-2" data-anchor="choy.chatter.composer">
-    <Textarea
+    <textarea
       v-model="body"
       :rows="3"
-      :placeholder="placeholder"
+      :placeholder="resolvedPlaceholder"
       :disabled="posting || disabled"
+      class="choy-input min-h-[4.5rem] h-auto py-2"
       @keydown.ctrl.enter="!$event.isComposing && ($event.preventDefault(), submit())"
       @keydown.meta.enter="!$event.isComposing && ($event.preventDefault(), submit())"
-    />
+    ></textarea>
     <div class="flex justify-end">
-      <Button
+      <ChoyButton
         size="sm"
         :disabled="disabled || posting || !canSubmit"
         @click="submit"
       >
-        {{ posting ? 'Posting…' : postLabel }}
-      </Button>
+        {{ posting ? postingLabel : resolvedPostLabel }}
+      </ChoyButton>
     </div>
     <p
       v-if="error"
@@ -34,8 +35,8 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import Button from '../vendor/ui/button/Button.vue';
-import Textarea from '../vendor/ui/textarea/Textarea.vue';
+import ChoyButton from '../layout/ChoyButton.vue';
+import { createTranslate } from '@/web/web/i18n';
 
 /**
  * Chatter composer: local draft only; emits post with trimmed body.
@@ -52,8 +53,8 @@ const props = withDefaults(
     disabled: false,
     posting: false,
     error: null,
-    placeholder: 'Write a comment...',
-    postLabel: 'Post',
+    placeholder: undefined,
+    postLabel: undefined,
   },
 );
 
@@ -61,8 +62,13 @@ const emit = defineEmits<{
   post: [body: string];
 }>();
 
+const { _t } = createTranslate('web', { scope: 'web/components/chatter/ChoyChatterComposer' });
+
 const body = ref('');
 const canSubmit = computed(() => body.value.trim().length > 0);
+const resolvedPlaceholder = computed(() => props.placeholder?.trim() || _t('Write a comment...'));
+const resolvedPostLabel = computed(() => props.postLabel?.trim() || _t('Post'));
+const postingLabel = computed(() => _t('Posting…'));
 
 function submit(): void {
   const text = body.value.trim();
@@ -75,5 +81,10 @@ function clear(): void {
   body.value = '';
 }
 
-defineExpose({ clear });
+/** Test/host helper: set the draft body without relying on DOM v-model. */
+function setDraft(text: string): void {
+  body.value = String(text ?? '');
+}
+
+defineExpose({ clear, submit, setDraft });
 </script>

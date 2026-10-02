@@ -5,29 +5,30 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <div
-    class="choy-chatter-follower-bar flex items-center gap-2"
+    class="choy-chatter-follower-bar flex flex-wrap items-center gap-2"
     data-anchor="choy.chatter.follower-bar"
   >
-    <Button
+    <ChoyButton
       size="sm"
       variant="outline"
       :disabled="!enabled"
       @click="toggle"
     >
-      {{ loading ? '…' : following ? unfollowLabel : followLabel }}
-    </Button>
+      {{ loading ? '…' : following ? resolvedUnfollowLabel : resolvedFollowLabel }}
+    </ChoyButton>
     <span
       v-if="followerCount > 0"
       class="text-xs text-muted-foreground"
     >
-      {{ followerCount }} {{ followerCount === 1 ? 'follower' : 'followers' }}
+      {{ followerCountLabel }}
     </span>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import Button from '../vendor/ui/button/Button.vue';
+import ChoyButton from '../layout/ChoyButton.vue';
+import { createTranslate } from '@/web/web/i18n';
 
 /**
  * Follow / unfollow control. Host owns following state and persistence.
@@ -48,8 +49,8 @@ const props = withDefaults(
     loading: false,
     disabled: false,
     canToggle: true,
-    followLabel: 'Follow',
-    unfollowLabel: 'Unfollow',
+    followLabel: undefined,
+    unfollowLabel: undefined,
   },
 );
 
@@ -58,9 +59,17 @@ const emit = defineEmits<{
   unfollow: [];
 }>();
 
+const { _t } = createTranslate('web', { scope: 'web/components/chatter/ChoyChatterFollowerBar' });
+
 const enabled = computed(
   () => props.canToggle && !props.disabled && !props.loading,
 );
+const resolvedFollowLabel = computed(() => props.followLabel?.trim() || _t('Follow'));
+const resolvedUnfollowLabel = computed(() => props.unfollowLabel?.trim() || _t('Unfollow'));
+const followerCountLabel = computed(() => {
+  const count = Number(props.followerCount) || 0;
+  return count === 1 ? _t('%d follower', count) : _t('%d followers', count);
+});
 
 function toggle(): void {
   if (!enabled.value) return;

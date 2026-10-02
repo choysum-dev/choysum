@@ -4,41 +4,41 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyPage :loading="loading" width="narrow" :padding="false" class="mx-auto flex min-h-full w-full max-w-lg items-center justify-center">
-    <ChoyCard :title="_t('Sign Out')" class="logout-card w-full">
-      <div class="logout-view flex flex-col items-center gap-4 py-4 text-center">
-        <transition name="fade" mode="out-in">
-          <div v-if="logoutSuccess" key="success" class="flex flex-col items-center gap-3">
-            <CheckCircle2 class="size-12 text-emerald-600" aria-hidden="true" />
-            <h4 class="text-lg font-semibold">{{ _t('Signed Out Successfully') }}</h4>
-            <p class="max-w-md text-sm text-foreground/70">{{ redirectSubtitle }}</p>
-            <div class="flex flex-wrap justify-center gap-2 pt-2">
-              <ChoyButton @click="navigateToLogin">{{ _t('Log In Again') }}</ChoyButton>
-              <ChoyButton variant="outline" @click="navigateToHome">{{ _t('Back to Home') }}</ChoyButton>
+  <ChoyPage :loading="loading" width="narrow" :padding="false" class="w-full">
+    <AuthPanel>
+      <ChoyCard :title="_t('Sign Out')" class="logout-card w-full shadow-sm">
+        <div class="logout-view flex flex-col items-center gap-4 py-4 text-center">
+          <transition name="fade" mode="out-in">
+            <div v-if="logoutSuccess" key="success" class="flex flex-col items-center gap-3">
+              <CheckCircle2 class="size-12 text-emerald-600" aria-hidden="true" />
+              <h4 class="text-lg font-semibold">{{ _t('Signed Out Successfully') }}</h4>
+              <p class="max-w-md text-sm text-foreground/70">{{ redirectSubtitle }}</p>
+              <div class="flex flex-wrap justify-center gap-2 pt-2">
+                <ChoyButton @click="navigateToLogin">{{ _t('Log In Again') }}</ChoyButton>
+              </div>
             </div>
-          </div>
 
-          <div v-else-if="error" key="error" class="flex flex-col items-center gap-3">
-            <XCircle class="size-12 text-destructive" aria-hidden="true" />
-            <h4 class="text-lg font-semibold">{{ _t('Sign-out Failed') }}</h4>
-            <p class="max-w-md text-sm text-foreground/70">{{ error }}</p>
-            <div class="flex flex-wrap justify-center gap-2 pt-2">
-              <ChoyButton @click="retryLogout">{{ _t('Retry') }}</ChoyButton>
-              <ChoyButton variant="outline" @click="navigateToHome">{{ _t('Back to Home') }}</ChoyButton>
-              <ChoyButton variant="outline" @click="navigateToLogin">{{ _t('Back to Login') }}</ChoyButton>
+            <div v-else-if="error" key="error" class="flex flex-col items-center gap-3">
+              <XCircle class="size-12 text-destructive" aria-hidden="true" />
+              <h4 class="text-lg font-semibold">{{ _t('Sign-out Failed') }}</h4>
+              <p class="max-w-md text-sm text-foreground/70">{{ error }}</p>
+              <div class="flex flex-wrap justify-center gap-2 pt-2">
+                <ChoyButton @click="retryLogout">{{ _t('Retry') }}</ChoyButton>
+                <ChoyButton variant="outline" @click="navigateToLogin">{{ _t('Back to Login') }}</ChoyButton>
+              </div>
             </div>
-          </div>
 
-          <div v-else key="loading" class="flex flex-col items-center gap-3">
-            <Loader2 class="size-12 animate-spin text-foreground/50" aria-hidden="true" />
-            <h4 class="text-lg font-semibold">{{ _t('Signing Out') }}</h4>
-            <p class="max-w-md text-sm text-foreground/70">
-              {{ _t('Please wait while your account is being signed out securely...') }}
-            </p>
-          </div>
-        </transition>
-      </div>
-    </ChoyCard>
+            <div v-else key="loading" class="flex flex-col items-center gap-3">
+              <Loader2 class="size-12 animate-spin text-foreground/50" aria-hidden="true" />
+              <h4 class="text-lg font-semibold">{{ _t('Signing Out') }}</h4>
+              <p class="max-w-md text-sm text-foreground/70">
+                {{ _t('Please wait while your account is being signed out securely...') }}
+              </p>
+            </div>
+          </transition>
+        </div>
+      </ChoyCard>
+    </AuthPanel>
   </ChoyPage>
 </template>
 
@@ -49,6 +49,7 @@ import { storeToRefs } from 'pinia';
 import { CheckCircle2, Loader2, XCircle } from 'lucide-vue-next';
 import { useAuthStore } from '../stores/auth';
 import { ChoysumError } from '../error';
+import AuthPanel from '../components/AuthPanel.vue';
 import { ChoyPage, ChoyCard, ChoyButton } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 
@@ -107,16 +108,6 @@ function navigateToLogin() {
 }
 
 /**
- * Navigate to the home page and stop the auto redirect timer.
- */
-function navigateToHome() {
-  if (autoRedirectTimer) {
-    clearInterval(autoRedirectTimer);
-  }
-  router.push('/');
-}
-
-/**
  * Reset the error state and retry the logout flow.
  */
 function retryLogout() {
@@ -124,4 +115,3 @@ function retryLogout() {
   performLogout();
 }
 </script>
-

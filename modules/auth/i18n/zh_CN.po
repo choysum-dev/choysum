@@ -826,32 +826,32 @@ msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr "用户注册失败"
 
-#: web/components/layout/ChoyWebShell.vue:5
+#: web/components/layout/ChoyWebShell.vue:6
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "Log In"
 msgstr "登录"
 
-#: web/components/layout/ChoyWebShell.vue:21
+#: web/components/layout/ChoyWebShell.vue:23
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "Log Out"
 msgstr "退出登录"
 
-#: web/components/layout/ChoyWebShell.vue:4
+#: web/components/layout/ChoyWebShell.vue:5
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "Log in"
 msgstr "登录"
 
-#: web/components/layout/ChoyWebShell.vue:15
+#: web/components/layout/ChoyWebShell.vue:17
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "Profile"
 msgstr "个人资料"
 
-#: web/components/layout/ChoyWebShell.vue:18
+#: web/components/layout/ChoyWebShell.vue:20
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "Settings"
 msgstr "设置"
 
-#: web/components/layout/ChoyWebShell.vue:10
+#: web/components/layout/ChoyWebShell.vue:12
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "User menu"
 msgstr "用户菜单"
@@ -866,12 +866,12 @@ msgctxt "web/components/layout/SwitchCompany"
 msgid "Available Companies"
 msgstr "可用公司"
 
-#: web/components/layout/SwitchCompany.vue:300
+#: web/components/layout/SwitchCompany.vue:301
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Available companies must include the current company"
 msgstr "可选公司必须包含当前公司"
 
-#: web/components/layout/SwitchCompany.vue:267 web/components/layout/SwitchCompany.vue:270
+#: web/components/layout/SwitchCompany.vue:268 web/components/layout/SwitchCompany.vue:271
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Company"
 msgstr "公司"
@@ -881,17 +881,17 @@ msgctxt "web/components/layout/SwitchCompany"
 msgid "Current Company"
 msgstr "当前公司"
 
-#: web/components/layout/SwitchCompany.vue:305
+#: web/components/layout/SwitchCompany.vue:306
 msgctxt "web/components/layout/SwitchCompany"
 msgid "No changes to apply"
 msgstr "没有可应用的更改"
 
-#: web/components/layout/SwitchCompany.vue:303
+#: web/components/layout/SwitchCompany.vue:304
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Only one company is available; nothing to apply"
 msgstr "仅有一家可选公司，无需应用"
 
-#: web/components/layout/SwitchCompany.vue:298
+#: web/components/layout/SwitchCompany.vue:299
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Select a current company"
 msgstr "请选择当前公司"
@@ -906,7 +906,7 @@ msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/preferences/PreferencesDialog.vue:165 web/components/preferences/PreferencesDialog.vue:174
+#: web/components/preferences/PreferencesDialog.vue:179 web/components/preferences/PreferencesDialog.vue:188
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Cannot update preferences: missing user id"
 msgstr "无法更新偏好设置：缺少用户 ID"
@@ -916,12 +916,12 @@ msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Edit Profile"
 msgstr "编辑个人资料"
 
-#: web/components/preferences/PreferencesDialog.vue:209
+#: web/components/preferences/PreferencesDialog.vue:223
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Failed to update preferences"
 msgstr "更新偏好设置失败"
 
-#: web/components/preferences/PreferencesDialog.vue:187
+#: web/components/preferences/PreferencesDialog.vue:201
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Invalid or inactive language"
 msgstr "无效或未启用的语言"
@@ -931,7 +931,7 @@ msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Language"
 msgstr "语言"
 
-#: web/components/preferences/PreferencesDialog.vue:206
+#: web/components/preferences/PreferencesDialog.vue:220
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Preferences updated"
 msgstr "偏好设置已更新"
@@ -1011,77 +1011,72 @@ msgctxt "web/menu/menus"
 msgid "User List"
 msgstr "用户列表"
 
-#: web/pages/Login.vue:7
+#: web/pages/Login.vue:8
 msgctxt "web/pages/Login"
 msgid "Close"
 msgstr "关闭"
 
-#: web/pages/Login.vue:36
+#: web/pages/Login.vue:37
 msgctxt "web/pages/Login"
 msgid "Don't have an account?"
 msgstr "还没有账号？"
 
-#: web/pages/Login.vue:22
+#: web/pages/Login.vue:23
 msgctxt "web/pages/Login"
 msgid "Enter password"
 msgstr "请输入密码"
 
-#: web/pages/Login.vue:16
+#: web/pages/Login.vue:17
 msgctxt "web/pages/Login"
 msgid "Enter username"
 msgstr "请输入用户名"
 
-#: web/pages/Login.vue:32
+#: web/pages/Login.vue:33
 msgctxt "web/pages/Login"
 msgid "Log In"
 msgstr "登录"
 
-#: web/pages/Login.vue:62
+#: web/pages/Login.vue:63
 msgctxt "web/pages/Login"
 msgid "Login failed. Please try again later."
 msgstr "登录失败，请稍后重试。"
 
-#: web/pages/Login.vue:21
+#: web/pages/Login.vue:22
 msgctxt "web/pages/Login"
 msgid "Password"
 msgstr "密码"
 
-#: web/pages/Login.vue:37
+#: web/pages/Login.vue:38
 msgctxt "web/pages/Login"
 msgid "Register now"
 msgstr "立即注册"
 
-#: web/pages/Login.vue:28
+#: web/pages/Login.vue:29
 msgctxt "web/pages/Login"
 msgid "Remember me"
 msgstr "记住我"
 
-#: web/pages/Login.vue:3
+#: web/pages/Login.vue:4
 msgctxt "web/pages/Login"
 msgid "User Login"
 msgstr "用户登录"
 
-#: web/pages/Login.vue:15
+#: web/pages/Login.vue:16
 msgctxt "web/pages/Login"
 msgid "Username"
 msgstr "用户名"
 
-#: web/pages/Logout.vue:12 web/pages/Logout.vue:22
-msgctxt "web/pages/Logout"
-msgid "Back to Home"
-msgstr "返回首页"
-
-#: web/pages/Logout.vue:23
+#: web/pages/Logout.vue:22
 msgctxt "web/pages/Logout"
 msgid "Back to Login"
 msgstr "返回登录"
 
-#: web/pages/Logout.vue:11
+#: web/pages/Logout.vue:12
 msgctxt "web/pages/Logout"
 msgid "Log In Again"
 msgstr "重新登录"
 
-#: web/pages/Logout.vue:31
+#: web/pages/Logout.vue:30
 msgctxt "web/pages/Logout"
 msgid "Please wait while your account is being signed out securely..."
 msgstr "请稍候，正在安全退出您的账户…"
@@ -1091,7 +1086,7 @@ msgctxt "web/pages/Logout"
 msgid "Retry"
 msgstr "重试"
 
-#: web/pages/Logout.vue:3
+#: web/pages/Logout.vue:4
 msgctxt "web/pages/Logout"
 msgid "Sign Out"
 msgstr "退出登录"
@@ -1101,137 +1096,137 @@ msgctxt "web/pages/Logout"
 msgid "Sign-out Failed"
 msgstr "退出失败"
 
-#: web/pages/Logout.vue:8
+#: web/pages/Logout.vue:9
 msgctxt "web/pages/Logout"
 msgid "Signed Out Successfully"
 msgstr "已成功退出"
 
-#: web/pages/Logout.vue:29
+#: web/pages/Logout.vue:28
 msgctxt "web/pages/Logout"
 msgid "Signing Out"
 msgstr "正在退出"
 
-#: web/pages/Logout.vue:20
+#: web/pages/Logout.vue:21
 msgctxt "web/pages/Logout"
 msgid "Thank you for using our service. Redirecting to the login page in %s seconds..."
 msgstr "感谢使用，将在 %s 秒后跳转到登录页…"
 
-#: web/pages/Logout.vue:50
+#: web/pages/Logout.vue:51
 msgctxt "web/pages/Logout"
 msgid "Unknown error occurred during logout"
 msgstr "退出时发生未知错误"
 
-#: web/pages/Register.vue:54
+#: web/pages/Register.vue:55
 msgctxt "web/pages/Register"
 msgid "Already have an account?"
 msgstr "已有账号？"
 
-#: web/pages/Register.vue:7
+#: web/pages/Register.vue:8
 msgctxt "web/pages/Register"
 msgid "Close"
 msgstr "关闭"
 
-#: web/pages/Register.vue:33
+#: web/pages/Register.vue:34
 msgctxt "web/pages/Register"
 msgid "Confirm Password"
 msgstr "确认密码"
 
-#: web/pages/Register.vue:3 web/pages/Register.vue:50
+#: web/pages/Register.vue:4 web/pages/Register.vue:51
 msgctxt "web/pages/Register"
 msgid "Create Account"
 msgstr "创建账户"
 
-#: web/pages/Register.vue:21
+#: web/pages/Register.vue:22
 msgctxt "web/pages/Register"
 msgid "Email"
 msgstr "邮箱"
 
-#: web/pages/Register.vue:62
+#: web/pages/Register.vue:63
 msgctxt "web/pages/Register"
 msgid "Enter a valid email address"
 msgstr "请输入有效的邮箱地址"
 
-#: web/pages/Register.vue:22 web/pages/Register.vue:58
+#: web/pages/Register.vue:23 web/pages/Register.vue:59
 msgctxt "web/pages/Register"
 msgid "Enter email address"
 msgstr "请输入邮箱地址"
 
-#: web/pages/Register.vue:28 web/pages/Register.vue:72
+#: web/pages/Register.vue:29 web/pages/Register.vue:73
 msgctxt "web/pages/Register"
 msgid "Enter password"
 msgstr "请输入密码"
 
-#: web/pages/Register.vue:16 web/pages/Register.vue:40
+#: web/pages/Register.vue:17 web/pages/Register.vue:41
 msgctxt "web/pages/Register"
 msgid "Enter username"
 msgstr "请输入用户名"
 
-#: web/pages/Register.vue:41
+#: web/pages/Register.vue:42
 msgctxt "web/pages/Register"
 msgid "I have read and agree to"
 msgstr "我已阅读并同意"
 
-#: web/pages/Register.vue:55
+#: web/pages/Register.vue:56
 msgctxt "web/pages/Register"
 msgid "Log in now"
 msgstr "立即登录"
 
-#: web/pages/Register.vue:27
+#: web/pages/Register.vue:28
 msgctxt "web/pages/Register"
 msgid "Password"
 msgstr "密码"
 
-#: web/pages/Register.vue:76
+#: web/pages/Register.vue:77
 msgctxt "web/pages/Register"
 msgid "Password must be at least 6 characters"
 msgstr "密码至少 6 个字符"
 
-#: web/pages/Register.vue:93
+#: web/pages/Register.vue:94
 msgctxt "web/pages/Register"
 msgid "Passwords do not match"
 msgstr "两次输入的密码不一致"
 
-#: web/pages/Register.vue:44
+#: web/pages/Register.vue:45
 msgctxt "web/pages/Register"
 msgid "Privacy Policy"
 msgstr "隐私政策"
 
-#: web/pages/Register.vue:34 web/pages/Register.vue:89
+#: web/pages/Register.vue:35 web/pages/Register.vue:90
 msgctxt "web/pages/Register"
 msgid "Re-enter password"
 msgstr "请再次输入密码"
 
-#: web/pages/Register.vue:135
+#: web/pages/Register.vue:136
 msgctxt "web/pages/Register"
 msgid "Registration failed. Please try again later."
 msgstr "注册失败，请稍后重试。"
 
-#: web/pages/Register.vue:42
+#: web/pages/Register.vue:43
 msgctxt "web/pages/Register"
 msgid "Terms of Service"
 msgstr "服务条款"
 
-#: web/pages/Register.vue:15
+#: web/pages/Register.vue:16
 msgctxt "web/pages/Register"
 msgid "Username"
 msgstr "用户名"
 
-#: web/pages/Register.vue:48
+#: web/pages/Register.vue:49
 msgctxt "web/pages/Register"
 msgid "Username can only contain letters, numbers, underscores, hyphens, and dots"
 msgstr "用户名只能包含字母、数字、下划线、连字符和点"
 
-#: web/pages/Register.vue:44
+#: web/pages/Register.vue:45
 msgctxt "web/pages/Register"
 msgid "Username must be at least 3 characters"
 msgstr "用户名至少 3 个字符"
 
-#: web/pages/Register.vue:102
+#: web/pages/Register.vue:103
 msgctxt "web/pages/Register"
 msgid "You must agree to the Terms of Service and Privacy Policy"
 msgstr "您必须同意服务条款和隐私政策"
 
-#: web/pages/Register.vue:43
+#: web/pages/Register.vue:44
 msgctxt "web/pages/Register"
 msgid "and"
 msgstr "和"
@@ -1546,27 +1541,27 @@ msgctxt "web/views/RoleFieldRuleFormView"
 msgid "System Information"
 msgstr "系统信息"
 
-#: web/views/RoleFieldRuleListView.vue:30
+#: web/views/RoleFieldRuleListView.vue:31
 msgctxt "web/views/RoleFieldRuleListView"
 msgid "Copy Field Rule"
 msgstr "复制字段规则"
 
-#: web/views/RoleFieldRuleListView.vue:30
+#: web/views/RoleFieldRuleListView.vue:31
 msgctxt "web/views/RoleFieldRuleListView"
 msgid "Create Field Rule"
 msgstr "创建字段规则"
 
-#: web/views/RoleFieldRuleListView.vue:30
+#: web/views/RoleFieldRuleListView.vue:31
 msgctxt "web/views/RoleFieldRuleListView"
 msgid "Delete Field Rule"
 msgstr "删除字段规则"
 
-#: web/views/RoleFieldRuleListView.vue:30
+#: web/views/RoleFieldRuleListView.vue:31
 msgctxt "web/views/RoleFieldRuleListView"
 msgid "Edit Field Rule"
 msgstr "编辑字段规则"
 
-#: web/views/RoleFieldRuleListView.vue:30
+#: web/views/RoleFieldRuleListView.vue:31
 msgctxt "web/views/RoleFieldRuleListView"
 msgid "Field Rule"
 msgstr "字段规则"
@@ -1731,27 +1726,27 @@ msgctxt "web/views/RoleFormView"
 msgid "Without a matching grant, records are invisible or not writable (deny-default)."
 msgstr "没有 matching grant 时，记录不可见或不可写（deny-default）。"
 
-#: web/views/RoleListView.vue:30
+#: web/views/RoleListView.vue:31
 msgctxt "web/views/RoleListView"
 msgid "Copy Role"
 msgstr "复制角色"
 
-#: web/views/RoleListView.vue:30
+#: web/views/RoleListView.vue:31
 msgctxt "web/views/RoleListView"
 msgid "Create Role"
 msgstr "新建角色"
 
-#: web/views/RoleListView.vue:30
+#: web/views/RoleListView.vue:31
 msgctxt "web/views/RoleListView"
 msgid "Delete Role"
 msgstr "删除角色"
 
-#: web/views/RoleListView.vue:30
+#: web/views/RoleListView.vue:31
 msgctxt "web/views/RoleListView"
 msgid "Edit Role"
 msgstr "编辑角色"
 
-#: web/views/RoleListView.vue:30
+#: web/views/RoleListView.vue:31
 msgctxt "web/views/RoleListView"
 msgid "Role"
 msgstr "角色"
@@ -1801,27 +1796,27 @@ msgctxt "web/views/RoleMethodAccessFormView"
 msgid "System Information"
 msgstr "系统信息"
 
-#: web/views/RoleMethodAccessListView.vue:30
+#: web/views/RoleMethodAccessListView.vue:31
 msgctxt "web/views/RoleMethodAccessListView"
 msgid "Copy Method Access"
 msgstr "复制方法访问"
 
-#: web/views/RoleMethodAccessListView.vue:30
+#: web/views/RoleMethodAccessListView.vue:31
 msgctxt "web/views/RoleMethodAccessListView"
 msgid "Create Method Access"
 msgstr "创建方法访问"
 
-#: web/views/RoleMethodAccessListView.vue:30
+#: web/views/RoleMethodAccessListView.vue:31
 msgctxt "web/views/RoleMethodAccessListView"
 msgid "Delete Method Access"
 msgstr "删除方法访问"
 
-#: web/views/RoleMethodAccessListView.vue:30
+#: web/views/RoleMethodAccessListView.vue:31
 msgctxt "web/views/RoleMethodAccessListView"
 msgid "Edit Method Access"
 msgstr "编辑方法访问"
 
-#: web/views/RoleMethodAccessListView.vue:30
+#: web/views/RoleMethodAccessListView.vue:31
 msgctxt "web/views/RoleMethodAccessListView"
 msgid "Method Access"
 msgstr "方法访问"
@@ -1881,27 +1876,27 @@ msgctxt "web/views/RoleRecordRuleFormView"
 msgid "System Information"
 msgstr "系统信息"
 
-#: web/views/RoleRecordRuleListView.vue:30
+#: web/views/RoleRecordRuleListView.vue:31
 msgctxt "web/views/RoleRecordRuleListView"
 msgid "Copy Record Rule"
 msgstr "复制记录规则"
 
-#: web/views/RoleRecordRuleListView.vue:30
+#: web/views/RoleRecordRuleListView.vue:31
 msgctxt "web/views/RoleRecordRuleListView"
 msgid "Create Record Rule"
 msgstr "创建记录规则"
 
-#: web/views/RoleRecordRuleListView.vue:30
+#: web/views/RoleRecordRuleListView.vue:31
 msgctxt "web/views/RoleRecordRuleListView"
 msgid "Delete Record Rule"
 msgstr "删除记录规则"
 
-#: web/views/RoleRecordRuleListView.vue:30
+#: web/views/RoleRecordRuleListView.vue:31
 msgctxt "web/views/RoleRecordRuleListView"
 msgid "Edit Record Rule"
 msgstr "编辑记录规则"
 
-#: web/views/RoleRecordRuleListView.vue:30
+#: web/views/RoleRecordRuleListView.vue:31
 msgctxt "web/views/RoleRecordRuleListView"
 msgid "Record Rule"
 msgstr "记录规则"
@@ -1951,27 +1946,27 @@ msgctxt "web/views/RoleUiResourceFormView"
 msgid "UI Resource Grant"
 msgstr "UI 资源授权"
 
-#: web/views/RoleUiResourceListView.vue:30
+#: web/views/RoleUiResourceListView.vue:31
 msgctxt "web/views/RoleUiResourceListView"
 msgid "Copy UI Resource Grant"
 msgstr "复制 UI 资源授权"
 
-#: web/views/RoleUiResourceListView.vue:30
+#: web/views/RoleUiResourceListView.vue:31
 msgctxt "web/views/RoleUiResourceListView"
 msgid "Create UI Resource Grant"
 msgstr "创建 UI 资源授权"
 
-#: web/views/RoleUiResourceListView.vue:30
+#: web/views/RoleUiResourceListView.vue:31
 msgctxt "web/views/RoleUiResourceListView"
 msgid "Delete UI Resource Grant"
 msgstr "删除 UI 资源授权"
 
-#: web/views/RoleUiResourceListView.vue:30
+#: web/views/RoleUiResourceListView.vue:31
 msgctxt "web/views/RoleUiResourceListView"
 msgid "Edit UI Resource Grant"
 msgstr "编辑 UI 资源授权"
 
-#: web/views/RoleUiResourceListView.vue:30
+#: web/views/RoleUiResourceListView.vue:31
 msgctxt "web/views/RoleUiResourceListView"
 msgid "UI Resource Grant"
 msgstr "UI 资源授权"
@@ -2016,27 +2011,27 @@ msgctxt "web/views/SessionFormView"
 msgid "System Information"
 msgstr "系统信息"
 
-#: web/views/SessionListView.vue:30
+#: web/views/SessionListView.vue:31
 msgctxt "web/views/SessionListView"
 msgid "Copy Session"
 msgstr "复制会话"
 
-#: web/views/SessionListView.vue:30
+#: web/views/SessionListView.vue:31
 msgctxt "web/views/SessionListView"
 msgid "Create Session"
 msgstr "新建会话"
 
-#: web/views/SessionListView.vue:30
+#: web/views/SessionListView.vue:31
 msgctxt "web/views/SessionListView"
 msgid "Delete Session"
 msgstr "删除会话"
 
-#: web/views/SessionListView.vue:30
+#: web/views/SessionListView.vue:31
 msgctxt "web/views/SessionListView"
 msgid "Edit Session"
 msgstr "编辑会话"
 
-#: web/views/SessionListView.vue:30
+#: web/views/SessionListView.vue:31
 msgctxt "web/views/SessionListView"
 msgid "Session"
 msgstr "会话"
@@ -2081,7 +2076,7 @@ msgctxt "web/views/TokenFormView"
 msgid "Token Information"
 msgstr "令牌信息"
 
-#: web/views/TokenKanbanView.vue:77
+#: web/views/TokenKanbanView.vue:12
 msgctxt "web/views/TokenKanbanView"
 msgid "All"
 msgstr "全部"
@@ -2091,12 +2086,12 @@ msgctxt "web/views/TokenKanbanView"
 msgid "Expires"
 msgstr "过期"
 
-#: web/views/TokenKanbanView.vue:135 web/views/TokenKanbanView.vue:156
+#: web/views/TokenKanbanView.vue:64 web/views/TokenKanbanView.vue:69
 msgctxt "web/views/TokenKanbanView"
 msgid "Failed to load kanban"
 msgstr "看板加载失败"
 
-#: web/views/TokenKanbanView.vue:202
+#: web/views/TokenKanbanView.vue:74
 msgctxt "web/views/TokenKanbanView"
 msgid "Failed to load more tokens"
 msgstr "加载更多令牌失败"
@@ -2121,7 +2116,7 @@ msgctxt "web/views/TokenKanbanView"
 msgid "Load more (%s remaining)"
 msgstr "加载更多（剩余 %s）"
 
-#: web/views/TokenKanbanView.vue:226
+#: web/views/TokenKanbanView.vue:79
 msgctxt "web/views/TokenKanbanView"
 msgid "Move failed; refreshed to recover"
 msgstr "移动失败；已刷新以恢复"
@@ -2136,12 +2131,12 @@ msgctxt "web/views/TokenKanbanView"
 msgid "No tokens in this lane"
 msgstr "此列暂无令牌"
 
-#: web/views/TokenKanbanView.vue:239 web/views/TokenKanbanView.vue:241
+#: web/views/TokenKanbanView.vue:57 web/views/TokenKanbanView.vue:59
 msgctxt "web/views/TokenKanbanView"
 msgid "Not Revoked"
 msgstr "未撤销"
 
-#: web/views/TokenKanbanView.vue:238 web/views/TokenKanbanView.vue:240
+#: web/views/TokenKanbanView.vue:56 web/views/TokenKanbanView.vue:58
 msgctxt "web/views/TokenKanbanView"
 msgid "Revoked"
 msgstr "已撤销"
@@ -2151,22 +2146,22 @@ msgctxt "web/views/TokenKanbanView"
 msgid "Revoked At"
 msgstr "撤销时间"
 
-#: web/views/TokenListView.vue:32
+#: web/views/TokenListView.vue:33
 msgctxt "web/views/TokenListView"
 msgid "Copy Token"
 msgstr "复制令牌"
 
-#: web/views/TokenListView.vue:32
+#: web/views/TokenListView.vue:33
 msgctxt "web/views/TokenListView"
 msgid "Create Token"
 msgstr "新建令牌"
 
-#: web/views/TokenListView.vue:32
+#: web/views/TokenListView.vue:33
 msgctxt "web/views/TokenListView"
 msgid "Delete Token"
 msgstr "删除令牌"
 
-#: web/views/TokenListView.vue:32
+#: web/views/TokenListView.vue:33
 msgctxt "web/views/TokenListView"
 msgid "Edit Token"
 msgstr "编辑令牌"
@@ -2186,7 +2181,7 @@ msgctxt "web/views/TokenListView"
 msgid "List View"
 msgstr "列表视图"
 
-#: web/views/TokenListView.vue:32
+#: web/views/TokenListView.vue:33
 msgctxt "web/views/TokenListView"
 msgid "Token"
 msgstr "令牌"
@@ -2261,27 +2256,27 @@ msgctxt "web/views/UserFormView"
 msgid "User"
 msgstr "用户"
 
-#: web/views/UserListView.vue:28
+#: web/views/UserListView.vue:29
 msgctxt "web/views/UserListView"
 msgid "Copy User"
 msgstr "复制用户"
 
-#: web/views/UserListView.vue:28
+#: web/views/UserListView.vue:29
 msgctxt "web/views/UserListView"
 msgid "Create User"
 msgstr "新建用户"
 
-#: web/views/UserListView.vue:28
+#: web/views/UserListView.vue:29
 msgctxt "web/views/UserListView"
 msgid "Delete User"
 msgstr "删除用户"
 
-#: web/views/UserListView.vue:28
+#: web/views/UserListView.vue:29
 msgctxt "web/views/UserListView"
 msgid "Edit User"
 msgstr "编辑用户"
 
-#: web/views/UserListView.vue:28
+#: web/views/UserListView.vue:29
 msgctxt "web/views/UserListView"
 msgid "User"
 msgstr "用户"
@@ -2358,6 +2353,10 @@ msgstr "启用"
 #~ msgctxt "web/components/layout/SwitchCompany"
 #~ msgid "Select company"
 #~ msgstr "选择公司"
+
+#~ msgctxt "web/pages/Logout"
+#~ msgid "Back to Home"
+#~ msgstr "返回首页"
 
 #~ msgctxt "web/pages/Register"
 #~ msgid "Enter your name"

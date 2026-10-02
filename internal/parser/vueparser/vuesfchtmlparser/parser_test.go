@@ -873,3 +873,195 @@ func TestMaskPascalCaseRawTextTagsCommentedScriptOpenerDoesNotSwallowTemplate(t 
 		t.Fatalf("Textarea must not swallow nested markup, got %q", rendered)
 	}
 }
+
+func TestIsSelfClosingSolidus(t *testing.T) {
+	cases := []struct {
+		attrs  string
+		before byte
+		want   bool
+	}{
+		{``, ' ', true},
+		{``, '\t', true},
+		{``, '\n', true},
+		{``, '\r', true},
+		{` class="x"`, '"', true},
+		{` title='y'`, '\'', true},
+		{``, 'a', true},                   // <textarea/>
+		{` disabled`, 'd', true},          // boolean only
+		{` foo=`, '=', true},              // empty value then solidus
+		{` class="x`, 'x', false},         // unclosed quote
+		{` id="x" disabled`, 'd', true},   // quoted then boolean
+		{` class="x"`, 'x', false},        // quoted, nothing after (after=="")
+		{` src=/a/b`, 'b', false},         // glued unquoted value
+		{` src=/a/b disabled`, 'd', true}, // unquoted value then boolean
+		{` src=/a/b` + "\n" + `disabled`, 'd', true},
+		{` src=/a/b` + "\t" + `disabled`, 'd', true},
+		{` src=/a/b` + "\r" + `disabled`, 'd', true},
+		{` title='x' disabled`, 'd', true}, // single-quoted then boolean
+	}
+	for _, tc := range cases {
+		if got := isSelfClosingSolidus(tc.attrs, tc.before); got != tc.want {
+			t.Fatalf("isSelfClosingSolidus(%q, %q)=%v want %v", tc.attrs, string(tc.before), got, tc.want)
+		}
+	}
+}
+
+func TestExpandSelfClosingLowerRawTextHTMLTags(t *testing.T) {
+	in := `<template><textarea v-model="x" class="a" /></template><script setup>const x=1</script>`
+	got := expandSelfClosingLowerRawTextHTMLTags(in)
+	if strings.Contains(got, `<textarea v-model="x" class="a" />`) {
+		t.Fatalf("self-closing textarea must be expanded, got %q", got)
+	}
+	if !strings.Contains(got, `</textarea>`) {
+		t.Fatalf("expected close tag after expand, got %q", got)
+	}
+	// Unquoted attrs with '/' must still expand when the self-close slash is spaced.
+	slashAttr := `<template><iframe src=/assets/x /></template><script setup>const x=1</script>`
+	gotSlash := expandSelfClosingLowerRawTextHTMLTags(slashAttr)
+	if strings.Contains(gotSlash, `<iframe src=/assets/x />`) || !strings.Contains(gotSlash, `</iframe>`) {
+		t.Fatalf("unquoted slash attr must expand, got %q", gotSlash)
+	}
+	// Trailing '/' glued to an unquoted value is part of the URL, not self-close.
+	glued := `<template><iframe src=/a/b/></template><script setup>const x=1</script>`
+	if expandSelfClosingLowerRawTextHTMLTags(glued) != glued {
+		t.Fatalf("glued trailing slash on unquoted value must stay, got %q", expandSelfClosingLowerRawTextHTMLTags(glued))
+	}
+	// Bare <textarea/> (no attrs) still expands.
+	bare := `<template><textarea/></template><script setup>const x=1</script>`
+	gotBare := expandSelfClosingLowerRawTextHTMLTags(bare)
+	if strings.Contains(gotBare, `<textarea/>`) || !strings.Contains(gotBare, `<textarea></textarea>`) {
+		t.Fatalf("bare self-closing textarea must expand, got %q", gotBare)
+	}
+	// Quoted attrs may omit the space before '/>'.
+	compactQuoted := `<template><textarea id="foo"/><iframe src='/a/b'/></template><script setup>const x=1</script>`
+	gotCompact := expandSelfClosingLowerRawTextHTMLTags(compactQuoted)
+	if strings.Contains(gotCompact, `id="foo"/`) || strings.Contains(gotCompact, `src='/a/b'/`) ||
+		!strings.Contains(gotCompact, `<textarea id="foo"></textarea>`) ||
+		!strings.Contains(gotCompact, `<iframe src='/a/b'></iframe>`) {
+		t.Fatalf("compact quoted self-close must expand, got %q", gotCompact)
+	}
+	// Boolean attrs and compact quoted class= must expand (not treated as unquoted values).
+	for _, src := range []string{
+		`<template><textarea disabled/></template><script setup>const x=1</script>`,
+		`<template><textarea class="x"/></template><script setup>const x=1</script>`,
+		`<template><textarea id="x" disabled/></template><script setup>const x=1</script>`,
+		`<template><iframe src=/a/b disabled/></template><script setup>const x=1</script>`,
+	} {
+		got := expandSelfClosingLowerRawTextHTMLTags(src)
+		if strings.Contains(got, `/>`) || !strings.Contains(got, `</`) {
+			t.Fatalf("boolean/quoted compact self-close must expand, got %q", got)
+		}
+	}
+	// PascalCase component tags must stay self-closing for the masker.
+	pascal := `<template><Textarea v-model="x" /></template><script setup></script>`
+	if expandSelfClosingLowerRawTextHTMLTags(pascal) != pascal {
+		t.Fatalf("PascalCase Textarea must stay self-closing, got %q", expandSelfClosingLowerRawTextHTMLTags(pascal))
+	}
+	// Literals inside script must not be rewritten.
+	inScript := `<script setup>const s = "<textarea />"</script><template><div/></template>`
+	if expandSelfClosingLowerRawTextHTMLTags(inScript) != inScript {
+		t.Fatalf("script string must stay intact, got %q", expandSelfClosingLowerRawTextHTMLTags(inScript))
+	}
+	// Quoted attrs / mustache literals must not be rewritten.
+	inAttr := `<template><div title="<textarea />" :hint="'<textarea />'">x</div></template>`
+	if expandSelfClosingLowerRawTextHTMLTags(inAttr) != inAttr {
+		t.Fatalf("quoted/mustache literals must stay intact, got %q", expandSelfClosingLowerRawTextHTMLTags(inAttr))
+	}
+	inMustache := `<template><span>{{ '<textarea />' }}</span></template>`
+	if expandSelfClosingLowerRawTextHTMLTags(inMustache) != inMustache {
+		t.Fatalf("mustache literal must stay intact, got %q", expandSelfClosingLowerRawTextHTMLTags(inMustache))
+	}
+}
+
+func TestFindScriptStyleRangesSkipsSelfClosingOpener(t *testing.T) {
+	src := `<script /><template><textarea /></template><script setup>const x=1</script>`
+	ranges := findScriptStyleRanges(src)
+	if len(ranges) != 1 {
+		t.Fatalf("expected 1 real script range, got %v", ranges)
+	}
+	block := src[ranges[0][0]:ranges[0][1]]
+	if !strings.Contains(block, `const x=1`) || strings.HasPrefix(block, `<script />`) {
+		t.Fatalf("range must be the real script block, got %q", block)
+	}
+	scripts, _, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Expanding <script /> yields an empty <script></script> before the real setup
+	// block; prefer the script whose text contains the setup body.
+	var setupBody string
+	for _, s := range scripts {
+		if s.FirstChild != nil && strings.Contains(s.FirstChild.Data, `const x=1`) {
+			setupBody = s.FirstChild.Data
+			break
+		}
+	}
+	if setupBody == "" {
+		t.Fatalf("setup script body missing among %d scripts", len(scripts))
+	}
+}
+
+func TestParseVueSfcSelfClosingLowerTextareaKeepsScript(t *testing.T) {
+	// Regression: native <textarea /> used to swallow <script setup> under x/net/html.
+	cases := []string{
+		`<template>
+  <div>
+    <textarea
+      v-model="body"
+      :rows="3"
+      class="choy-input"
+    />
+  </div>
+</template>
+<script setup lang="ts">
+const body = ''
+</script>`,
+		`<template><textarea disabled/></template>
+<script setup lang="ts">
+const body = ''
+</script>`,
+		`<template><textarea class="x"/></template>
+<script setup lang="ts">
+const body = ''
+</script>`,
+	}
+	for _, src := range cases {
+		scripts, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+		if err != nil {
+			t.Fatalf("parse failed: %v\nsrc=%s", err, src)
+		}
+		if len(scripts) != 1 {
+			t.Fatalf("expected 1 script, got %d\nsrc=%s", len(scripts), src)
+		}
+		if scripts[0].FirstChild == nil || !strings.Contains(scripts[0].FirstChild.Data, `const body`) {
+			t.Fatalf("script body missing, got %#v\nsrc=%s", scripts[0].FirstChild, src)
+		}
+		rendered, err := RenderVueSfcFromHtmlNode(templateNode)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(rendered, `<textarea`) || !strings.Contains(rendered, `</textarea>`) {
+			t.Fatalf("textarea must round-trip with close tag, got %q\nsrc=%s", rendered, src)
+		}
+	}
+}
+
+func TestHtmlOpenTagEnd(t *testing.T) {
+	if htmlOpenTagEnd("", 0) != -1 || htmlOpenTagEnd("x", 0) != -1 ||
+		htmlOpenTagEnd("<div>", -1) != -1 || htmlOpenTagEnd("<div>", 99) != -1 {
+		t.Fatal("invalid start must return -1")
+	}
+	src := "<div class=\"a\\\"b\" id='c' data=`d`>"
+	end := htmlOpenTagEnd(src, 0)
+	if end != len(src)-1 {
+		t.Fatalf("quoted attrs with escapes: end=%d want %d", end, len(src)-1)
+	}
+	unterminated := `<div class="x"`
+	if htmlOpenTagEnd(unterminated, 0) != -1 {
+		t.Fatal("unterminated open tag must return -1")
+	}
+	simple := `<script />`
+	if htmlOpenTagEnd(simple, 0) != len(simple)-1 {
+		t.Fatalf("simple self-closing open: end=%d", htmlOpenTagEnd(simple, 0))
+	}
+}

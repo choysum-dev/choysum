@@ -83,8 +83,10 @@ const messages: TranslationMessages = {
   chatter: {
     activity: '动态',
     post: '发布',
+    posting: '发布中…',
     follow: '关注',
     unfollow: '取消关注',
+    follower: '%d 位关注者',
     followers: '%d 位关注者',
     writeComment: '写评论...',
     loadingActivity: '正在加载动态...',

@@ -195,6 +195,14 @@ describe('ChoyChatter', () => {
     expect(onUnfollow.calls.length).toBe(1);
     mounted.unmount();
 
+    const titled = mountChrome({ title: 'Partner activity' }).mounted;
+    expect(titled.text()).toContain('Partner activity');
+    titled.unmount();
+
+    const blankTitle = mountChrome({ title: '   ' }).mounted;
+    expect(blankTitle.text()).toContain('Activity');
+    blankTitle.unmount();
+
     const emptyRes = mountChrome({ resId: '' }).mounted;
     expect(emptyRes.q('.composer-post')).toBeFalsy();
     emptyRes.unmount();

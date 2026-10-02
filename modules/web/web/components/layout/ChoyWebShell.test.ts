@@ -382,7 +382,7 @@ describe('ChoyWebShell', () => {
     mounted.unmount();
   });
 
-  test('hides aside chrome when route.meta.isAuthPage is set', async () => {
+  test('hides aside and header chrome when route.meta.isAuthPage is set', async () => {
     const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
     const { router } = createFeStubRouter({
       route: { path: '/login', fullPath: '/login', meta: { isAuthPage: true } },
@@ -396,8 +396,9 @@ describe('ChoyWebShell', () => {
     await flushPromises();
     const root = mounted.q('[data-test=choy-layout]');
     expect(root?.getAttribute('data-aside')).toBe('false');
+    expect(root?.getAttribute('data-header')).toBe('false');
     expect(mounted.q('[data-test=slot-aside]')).toBeNull();
-    expect(mounted.q('[data-test=slot-header]')?.textContent).toContain('Choysum');
+    expect(mounted.q('[data-test=slot-header]')).toBeNull();
     mounted.unmount();
   });
 

@@ -97,6 +97,56 @@ msgctxt "web.model.UserFilter.fields"
 msgid "User"
 msgstr ""
 
+#: web/components/chatter/ChoyChatter.vue:63
+msgctxt "web/components/chatter/ChoyChatter"
+msgid "Activity"
+msgstr ""
+
+#: web/components/chatter/ChoyChatter.vue:13
+msgctxt "web/components/chatter/ChoyChatter"
+msgid "Loading activity..."
+msgstr ""
+
+#: web/components/chatter/ChoyChatter.vue:13
+msgctxt "web/components/chatter/ChoyChatter"
+msgid "No activity yet"
+msgstr ""
+
+#: web/components/chatter/ChoyChatterComposer.vue:35
+msgctxt "web/components/chatter/ChoyChatterComposer"
+msgid "Post"
+msgstr ""
+
+#: web/components/chatter/ChoyChatterComposer.vue:36
+msgctxt "web/components/chatter/ChoyChatterComposer"
+msgid "Posting…"
+msgstr ""
+
+#: web/components/chatter/ChoyChatterComposer.vue:34
+msgctxt "web/components/chatter/ChoyChatterComposer"
+msgid "Write a comment..."
+msgstr ""
+
+#: web/components/chatter/ChoyChatterFollowerBar.vue:44
+msgctxt "web/components/chatter/ChoyChatterFollowerBar"
+msgid "%d follower"
+msgstr ""
+
+#: web/components/chatter/ChoyChatterFollowerBar.vue:45
+msgctxt "web/components/chatter/ChoyChatterFollowerBar"
+msgid "%d followers"
+msgstr ""
+
+#: web/components/chatter/ChoyChatterFollowerBar.vue:40
+msgctxt "web/components/chatter/ChoyChatterFollowerBar"
+msgid "Follow"
+msgstr ""
+
+#: web/components/chatter/ChoyChatterFollowerBar.vue:41
+msgctxt "web/components/chatter/ChoyChatterFollowerBar"
+msgid "Unfollow"
+msgstr ""
+
 #: web/components/field/ChoyBigintField.vue:254
 msgctxt "web/components/field/BigintField"
 msgid "Cannot be empty"
@@ -152,9 +202,24 @@ msgctxt "web/components/field/BinaryField"
 msgid "Upload file"
 msgstr ""
 
-#: web/components/field/ChoyBooleanField.vue:191
+#: web/components/field/ChoyBooleanField.vue:198
 msgctxt "web/components/field/BooleanField"
 msgid "Clear"
+msgstr ""
+
+#: web/components/field/ChoyBooleanField.vue:118
+msgctxt "web/components/field/BooleanField"
+msgid "No"
+msgstr ""
+
+#: web/components/field/ChoyBooleanField.vue:117
+msgctxt "web/components/field/BooleanField"
+msgid "Yes"
+msgstr ""
+
+#: web/components/field/ChoyBooleanField.vue:119
+msgctxt "web/components/field/BooleanField"
+msgid "—"
 msgstr ""
 
 #: web/components/field/ChoyDateField.vue:128
@@ -375,40 +440,40 @@ msgctxt "web/components/field/JsonobjectField"
 msgid "Parse failed"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyField.vue:10
-#: web/components/field/ChoyManyToManyField.vue:28
+#: web/components/field/ChoyManyToManyField.vue:12
+#: web/components/field/ChoyManyToManyField.vue:31
 msgctxt "web/components/field/ManyToManyField"
 msgid "Actions"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyField.vue:18
-#: web/components/field/ChoyManyToManyField.vue:36
+#: web/components/field/ChoyManyToManyField.vue:20
+#: web/components/field/ChoyManyToManyField.vue:39
 msgctxt "web/components/field/ManyToManyField"
 msgid "Add row"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyField.vue:62
+#: web/components/field/ChoyManyToManyField.vue:66
 msgctxt "web/components/field/ManyToManyField"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyField.vue:12
-#: web/components/field/ChoyManyToManyField.vue:30
+#: web/components/field/ChoyManyToManyField.vue:14
+#: web/components/field/ChoyManyToManyField.vue:33
 msgctxt "web/components/field/ManyToManyField"
 msgid "Delete"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyField.vue:63
+#: web/components/field/ChoyManyToManyField.vue:67
 msgctxt "web/components/field/ManyToManyField"
 msgid "OK"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyField.vue:96
+#: web/components/field/ChoyManyToManyField.vue:97
 msgctxt "web/components/field/ManyToManyField"
 msgid "Select related items"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyField.vue:226
+#: web/components/field/ChoyManyToManyField.vue:231
 msgctxt "web/components/field/ManyToManyField"
 msgid "relationStore is unresolved; cannot open picker"
 msgstr ""
@@ -468,7 +533,7 @@ msgctxt "web/components/field/ManyToManyRefTreeField"
 msgid "No data"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneField.vue:25
+#: web/components/field/ChoyManyToOneField.vue:29
 msgctxt "web/components/field/ManyToOneField"
 msgid "Cancel"
 msgstr ""
@@ -483,7 +548,7 @@ msgctxt "web/components/field/ManyToOneField"
 msgid "Create failed"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneField.vue:26
+#: web/components/field/ChoyManyToOneField.vue:30
 msgctxt "web/components/field/ManyToOneField"
 msgid "OK"
 msgstr ""
@@ -498,7 +563,7 @@ msgctxt "web/components/field/ManyToOneField"
 msgid "Select record"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneRefField.vue:25
+#: web/components/field/ChoyManyToOneRefField.vue:29
 msgctxt "web/components/field/ManyToOneRefField"
 msgid "Cancel"
 msgstr ""
@@ -513,7 +578,7 @@ msgctxt "web/components/field/ManyToOneRefField"
 msgid "Create failed"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneRefField.vue:26
+#: web/components/field/ChoyManyToOneRefField.vue:30
 msgctxt "web/components/field/ManyToOneRefField"
 msgid "OK"
 msgstr ""
@@ -548,17 +613,17 @@ msgctxt "web/components/field/NumberField"
 msgid "Value must be at most %s"
 msgstr ""
 
-#: web/components/field/ChoyOneToManyField.vue:10
+#: web/components/field/ChoyOneToManyField.vue:11
 msgctxt "web/components/field/OneToManyField"
 msgid "Actions"
 msgstr ""
 
-#: web/components/field/ChoyOneToManyField.vue:18
+#: web/components/field/ChoyOneToManyField.vue:19
 msgctxt "web/components/field/OneToManyField"
 msgid "Add row"
 msgstr ""
 
-#: web/components/field/ChoyOneToManyField.vue:12
+#: web/components/field/ChoyOneToManyField.vue:13
 msgctxt "web/components/field/OneToManyField"
 msgid "Delete"
 msgstr ""
@@ -751,6 +816,16 @@ msgctxt "web/components/field/VarCharField"
 msgid "Value must be a string"
 msgstr ""
 
+#: web/components/field/relationCountSummary.ts:14
+msgctxt "web/components/field/relationCountSummary@formatRelationCountSummary"
+msgid "%s record"
+msgstr ""
+
+#: web/components/field/relationCountSummary.ts:14
+msgctxt "web/components/field/relationCountSummary@formatRelationCountSummary"
+msgid "%s records"
+msgstr ""
+
 #: web/components/internal/ChoyTableHost.vue:12
 msgctxt "web/components/internal/ChoyTableHost"
 msgid "No data"
@@ -797,19 +872,100 @@ msgctxt "web/components/layout/ChoyPageIoMenu"
 msgid "No model/store available for this action."
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:573
+#: web/components/layout/ChoyPage.vue:57
+msgctxt "web/components/layout/Page"
+msgid "Loading..."
+msgstr ""
+
+#: web/components/view/ChoyChartView.vue:38
+msgctxt "web/components/view/ChartView"
+msgid "Chart type"
+msgstr ""
+
+#: web/components/view/ChoyChartView.vue:90
+#: web/components/view/ChoyChartView.vue:92
+msgctxt "web/components/view/ChartView"
+msgid "Loading..."
+msgstr ""
+
+#: web/components/view/ChoyChartView.vue:28
+msgctxt "web/components/view/ChartView"
+msgid "Metric"
+msgstr ""
+
+#: web/components/view/ChoyChartView.vue:29
+msgctxt "web/components/view/ChartView"
+msgid "Metric selection"
+msgstr ""
+
+#: web/components/view/ChoyChartView.vue:110
+msgctxt "web/components/view/ChartView"
+msgid "New"
+msgstr ""
+
+#: web/components/view/ChoyChartView.vue:113
+msgctxt "web/components/view/ChartView"
+msgid "No data or grouping not configured"
+msgstr ""
+
+#: web/components/view/ChoyChartView.vue:53
+msgctxt "web/components/view/ChartView"
+msgid "No sort"
+msgstr ""
+
+#: web/components/view/ChoyChartView.vue:111
+msgctxt "web/components/view/ChartView"
+msgid "Refresh"
+msgstr ""
+
+#: web/components/view/ChoyChartView.vue:97
+msgctxt "web/components/view/ChartView"
+msgid "Retry"
+msgstr ""
+
+#: web/components/view/ChoyChartView.vue:52
+msgctxt "web/components/view/ChartView"
+msgid "Sort"
+msgstr ""
+
+#: web/components/view/ChoyChartView.vue:56
+msgctxt "web/components/view/ChartView"
+msgid "Sort ascending"
+msgstr ""
+
+#: web/components/view/ChoyChartView.vue:59
+msgctxt "web/components/view/ChartView"
+msgid "Sort descending"
+msgstr ""
+
+#: web/components/view/ChoyChartView.vue:47
+msgctxt "web/components/view/ChartView"
+msgid "Stack"
+msgstr ""
+
+#: web/components/view/ChoyChartView.vue:5
+msgctxt "web/components/view/ChartView"
+msgid "System actions"
+msgstr ""
+
+#: web/components/view/ChoyChartView.vue:15
+msgctxt "web/components/view/ChartView"
+msgid "User actions"
+msgstr ""
+
+#: web/components/view/ChoyFormView.vue:574
 msgctxt "web/components/view/FormView"
 msgid "Are you sure you want to delete the current record? This action cannot be undone."
 msgstr ""
 
 #: web/components/view/ChoyFormView.vue:37
 #: web/components/view/ChoyFormView.vue:51
-#: web/components/view/ChoyFormView.vue:575
+#: web/components/view/ChoyFormView.vue:576
 msgctxt "web/components/view/FormView"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:573
+#: web/components/view/ChoyFormView.vue:574
 msgctxt "web/components/view/FormView"
 msgid "Confirm delete"
 msgstr ""
@@ -819,24 +975,24 @@ msgctxt "web/components/view/FormView"
 msgid "Copy"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:440
-#: web/components/view/ChoyFormView.vue:489
+#: web/components/view/ChoyFormView.vue:441
+#: web/components/view/ChoyFormView.vue:490
 msgctxt "web/components/view/FormView"
 msgid "Created successfully"
 msgstr ""
 
 #: web/components/view/ChoyFormView.vue:27
-#: web/components/view/ChoyFormView.vue:574
+#: web/components/view/ChoyFormView.vue:575
 msgctxt "web/components/view/FormView"
 msgid "Delete"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:617
+#: web/components/view/ChoyFormView.vue:619
 msgctxt "web/components/view/FormView"
 msgid "Delete failed"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:48
+#: web/components/view/ChoyFormView.vue:49
 msgctxt "web/components/view/FormView"
 msgid "Details"
 msgstr ""
@@ -851,18 +1007,18 @@ msgctxt "web/components/view/FormView"
 msgid "New"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:510
+#: web/components/view/ChoyFormView.vue:511
 msgctxt "web/components/view/FormView"
 msgid "Operation failed"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:317
-#: web/components/view/ChoyFormView.vue:324
+#: web/components/view/ChoyFormView.vue:318
+#: web/components/view/ChoyFormView.vue:325
 msgctxt "web/components/view/FormView"
 msgid "Please fix the errors in the form first"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:584
+#: web/components/view/ChoyFormView.vue:586
 msgctxt "web/components/view/FormView"
 msgid "Record deleted"
 msgstr ""
@@ -872,12 +1028,12 @@ msgctxt "web/components/view/FormView"
 msgid "Refresh"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:553
+#: web/components/view/ChoyFormView.vue:554
 msgctxt "web/components/view/FormView"
 msgid "Refresh failed"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:550
+#: web/components/view/ChoyFormView.vue:551
 msgctxt "web/components/view/FormView"
 msgid "Refreshed"
 msgstr ""
@@ -888,28 +1044,93 @@ msgctxt "web/components/view/FormView"
 msgid "Reset"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:158
+#: web/components/view/ChoyFormView.vue:159
 msgctxt "web/components/view/FormView"
 msgid "Save"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:440
-#: web/components/view/ChoyFormView.vue:489
+#: web/components/view/ChoyFormView.vue:441
+#: web/components/view/ChoyFormView.vue:490
 msgctxt "web/components/view/FormView"
 msgid "Saved successfully"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:158
+#: web/components/view/ChoyFormView.vue:159
 msgctxt "web/components/view/FormView"
 msgid "Saving..."
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:589
+#: web/components/view/ChoyFormView.vue:6
+msgctxt "web/components/view/FormView"
+msgid "System actions"
+msgstr ""
+
+#: web/components/view/ChoyFormView.vue:60
+msgctxt "web/components/view/FormView"
+msgid "User actions"
+msgstr ""
+
+#: web/components/view/ChoyKanbanView.vue:91
+msgctxt "web/components/view/KanbanView"
+msgid "Failed to move card"
+msgstr ""
+
+#: web/components/view/ChoyKanbanView.vue:41
+msgctxt "web/components/view/KanbanView"
+msgid "Kanban board"
+msgstr ""
+
+#: web/components/view/ChoyKanbanView.vue:86
+msgctxt "web/components/view/KanbanView"
+msgid "Load more (%s remaining)"
+msgstr ""
+
+#: web/components/view/ChoyKanbanView.vue:70
+msgctxt "web/components/view/KanbanView"
+msgid "Move to %s"
+msgstr ""
+
+#: web/components/view/ChoyKanbanView.vue:64
+msgctxt "web/components/view/KanbanView"
+msgid "Move to lane"
+msgstr ""
+
+#: web/components/view/ChoyKanbanView.vue:122
+msgctxt "web/components/view/KanbanView"
+msgid "New"
+msgstr ""
+
+#: web/components/view/ChoyKanbanView.vue:80
+msgctxt "web/components/view/KanbanView"
+msgid "No cards"
+msgstr ""
+
+#: web/components/view/ChoyKanbanView.vue:93
+msgctxt "web/components/view/KanbanView"
+msgid "No lanes"
+msgstr ""
+
+#: web/components/view/ChoyKanbanView.vue:32
+msgctxt "web/components/view/KanbanView"
+msgid "Select lane"
+msgstr ""
+
+#: web/components/view/ChoyKanbanView.vue:6
+msgctxt "web/components/view/KanbanView"
+msgid "System actions"
+msgstr ""
+
+#: web/components/view/ChoyKanbanView.vue:13
+msgctxt "web/components/view/KanbanView"
+msgid "User actions"
+msgstr ""
+
+#: web/components/view/ChoyListView.vue:590
 msgctxt "web/components/view/ListView"
 msgid "Are you sure you want to delete the selected %s record(s)? This action cannot be undone."
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:591
+#: web/components/view/ChoyListView.vue:592
 msgctxt "web/components/view/ListView"
 msgid "Cancel"
 msgstr ""
@@ -919,12 +1140,12 @@ msgctxt "web/components/view/ListView"
 msgid "Click to load more (%s remaining)"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:589
+#: web/components/view/ChoyListView.vue:590
 msgctxt "web/components/view/ListView"
 msgid "Confirm delete"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:590
+#: web/components/view/ChoyListView.vue:591
 msgctxt "web/components/view/ListView"
 msgid "Delete"
 msgstr ""
@@ -934,7 +1155,7 @@ msgctxt "web/components/view/ListView"
 msgid "Delete (%s)"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:622
+#: web/components/view/ChoyListView.vue:624
 msgctxt "web/components/view/ListView"
 msgid "Delete failed"
 msgstr ""
@@ -944,32 +1165,32 @@ msgctxt "web/components/view/ListView"
 msgid "Discard"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:214
+#: web/components/view/ChoyListView.vue:215
 msgctxt "web/components/view/ListView"
 msgid "Editing was discarded because the row is no longer visible."
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:475
+#: web/components/view/ChoyListView.vue:476
 msgctxt "web/components/view/ListView"
 msgid "Failed to load list"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:283
+#: web/components/view/ChoyListView.vue:284
 msgctxt "web/components/view/ListView"
 msgid "Failed to refresh after reorder"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:570
+#: web/components/view/ChoyListView.vue:571
 msgctxt "web/components/view/ListView"
 msgid "Failed to refresh list"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:283
+#: web/components/view/ChoyListView.vue:284
 msgctxt "web/components/view/ListView"
 msgid "Failed to reorder rows"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:562
+#: web/components/view/ChoyListView.vue:563
 msgctxt "web/components/view/ListView"
 msgid "List data refreshed"
 msgstr ""
@@ -994,24 +1215,49 @@ msgctxt "web/components/view/ListView"
 msgid "Save"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:608
+#: web/components/view/ChoyListView.vue:610
 msgctxt "web/components/view/ListView"
 msgid "Selected records are missing valid IDs"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:613
+#: web/components/view/ChoyListView.vue:615
 msgctxt "web/components/view/ListView"
 msgid "Successfully deleted %s record(s)"
 msgstr ""
 
-#: web/components/view/ListPagination.vue:58
-msgctxt "web/components/view/Pagination"
-msgid "%s - %s of %s"
+#: web/components/view/ChoyListView.vue:6
+msgctxt "web/components/view/ListView"
+msgid "System actions"
 msgstr ""
 
-#: web/components/view/ListPagination.vue:17
+#: web/components/view/ChoyListView.vue:34
+msgctxt "web/components/view/ListView"
+msgid "User actions"
+msgstr ""
+
+#: web/components/view/ChoyPagination.vue:64
 msgctxt "web/components/view/Pagination"
-msgid "of %s"
+msgid "%s total"
+msgstr ""
+
+#: web/components/view/ChoyPagination.vue:70
+msgctxt "web/components/view/Pagination"
+msgid "Next"
+msgstr ""
+
+#: web/components/view/ChoyPagination.vue:66
+msgctxt "web/components/view/Pagination"
+msgid "Page %s of %s"
+msgstr ""
+
+#: web/components/view/ChoyPagination.vue:69
+msgctxt "web/components/view/Pagination"
+msgid "Previous"
+msgstr ""
+
+#: web/components/view/ChoyPagination.vue:65
+msgctxt "web/components/view/Pagination"
+msgid "Rows per page"
 msgstr ""
 
 #: web/components/view/ChoySearchView.vue:57
@@ -1019,15 +1265,30 @@ msgctxt "web/components/view/SearchView"
 msgid "Search..."
 msgstr ""
 
-#: web/components/view/search/Search.vue:433
+#: web/components/view/search/Search.vue:434
 msgctxt "web/components/view/search/Search"
 msgid "Add at least one complete condition before confirming"
 msgstr ""
 
-#: web/components/view/search/Search.vue:127
+#: web/components/view/search/Search.vue:134
 #: web/components/view/search/Search.vue:204
 msgctxt "web/components/view/search/Search"
 msgid "Cancel"
+msgstr ""
+
+#: web/components/view/search/Search.vue:30
+msgctxt "web/components/view/search/Search"
+msgid "Clear"
+msgstr ""
+
+#: web/components/view/search/Search.vue:29
+msgctxt "web/components/view/search/Search"
+msgid "Clear all"
+msgstr ""
+
+#: web/components/view/search/Search.vue:13
+msgctxt "web/components/view/search/Search"
+msgid "Clear grouping"
 msgstr ""
 
 #: web/components/view/search/Search.vue:200
@@ -1035,12 +1296,12 @@ msgctxt "web/components/view/search/Search"
 msgid "Confirm delete"
 msgstr ""
 
-#: web/components/view/search/Search.vue:73
+#: web/components/view/search/Search.vue:80
 msgctxt "web/components/view/search/Search"
 msgid "Custom filter…"
 msgstr ""
 
-#: web/components/view/search/Search.vue:91
+#: web/components/view/search/Search.vue:98
 msgctxt "web/components/view/search/Search"
 msgid "Custom group by"
 msgstr ""
@@ -1060,7 +1321,7 @@ msgctxt "web/components/view/search/Search"
 msgid "Delete favorite \"%s\"? This cannot be undone."
 msgstr ""
 
-#: web/components/view/search/Search.vue:61
+#: web/components/view/search/Search.vue:68
 msgctxt "web/components/view/search/Search"
 msgid "Delete favorite %s"
 msgstr ""
@@ -1070,7 +1331,7 @@ msgctxt "web/components/view/search/Search"
 msgid "Edit favorite"
 msgstr ""
 
-#: web/components/view/search/Search.vue:58
+#: web/components/view/search/Search.vue:65
 msgctxt "web/components/view/search/Search"
 msgid "Edit favorite %s"
 msgstr ""
@@ -1080,47 +1341,47 @@ msgctxt "web/components/view/search/Search"
 msgid "Edit filter"
 msgstr ""
 
-#: web/components/view/search/Search.vue:246
+#: web/components/view/search/Search.vue:247
 msgctxt "web/components/view/search/Search"
 msgid "Enter a favorite name"
 msgstr ""
 
-#: web/components/view/search/Search.vue:66
+#: web/components/view/search/Search.vue:73
 msgctxt "web/components/view/search/Search"
 msgid "Failed to load favorites"
 msgstr ""
 
-#: web/components/view/search/Search.vue:213
+#: web/components/view/search/Search.vue:214
 msgctxt "web/components/view/search/Search"
 msgid "Favorite deleted"
 msgstr ""
 
-#: web/components/view/search/Search.vue:117
+#: web/components/view/search/Search.vue:124
 msgctxt "web/components/view/search/Search"
 msgid "Favorite name"
 msgstr ""
 
-#: web/components/view/search/Search.vue:265
+#: web/components/view/search/Search.vue:266
 msgctxt "web/components/view/search/Search"
 msgid "Favorite saved"
 msgstr ""
 
-#: web/components/view/search/Search.vue:258
+#: web/components/view/search/Search.vue:259
 msgctxt "web/components/view/search/Search"
 msgid "Favorite updated"
 msgstr ""
 
-#: web/components/view/search/Search.vue:47
+#: web/components/view/search/Search.vue:54
 msgctxt "web/components/view/search/Search"
 msgid "Favorites"
 msgstr ""
 
-#: web/components/view/search/Search.vue:35
+#: web/components/view/search/Search.vue:42
 msgctxt "web/components/view/search/Search"
 msgid "Filters"
 msgstr ""
 
-#: web/components/view/search/Search.vue:77
+#: web/components/view/search/Search.vue:84
 msgctxt "web/components/view/search/Search"
 msgid "Group by"
 msgstr ""
@@ -1135,7 +1396,7 @@ msgctxt "web/components/view/search/Search"
 msgid "Month"
 msgstr ""
 
-#: web/components/view/search/Search.vue:116
+#: web/components/view/search/Search.vue:123
 msgctxt "web/components/view/search/Search"
 msgid "Name"
 msgstr ""
@@ -1145,17 +1406,17 @@ msgctxt "web/components/view/search/Search"
 msgid "New filter"
 msgstr ""
 
-#: web/components/view/search/Search.vue:69
+#: web/components/view/search/Search.vue:76
 msgctxt "web/components/view/search/Search"
 msgid "No favorites yet"
 msgstr ""
 
-#: web/components/view/search/Search.vue:87
+#: web/components/view/search/Search.vue:94
 msgctxt "web/components/view/search/Search"
 msgid "Not set"
 msgstr ""
 
-#: web/components/view/search/Search.vue:27
+#: web/components/view/search/Search.vue:34
 msgctxt "web/components/view/search/Search"
 msgid "Open search menu"
 msgstr ""
@@ -1165,7 +1426,12 @@ msgctxt "web/components/view/search/Search"
 msgid "Quarter"
 msgstr ""
 
-#: web/components/view/search/Search.vue:67
+#: web/components/view/search/Search.vue:20
+msgctxt "web/components/view/search/Search"
+msgid "Remove filter"
+msgstr ""
+
+#: web/components/view/search/Search.vue:74
 msgctxt "web/components/view/search/Search"
 msgid "Retry"
 msgstr ""
@@ -1175,7 +1441,7 @@ msgctxt "web/components/view/search/Search"
 msgid "Run search"
 msgstr ""
 
-#: web/components/view/search/Search.vue:128
+#: web/components/view/search/Search.vue:135
 msgctxt "web/components/view/search/Search"
 msgid "Save"
 msgstr ""
@@ -1185,7 +1451,7 @@ msgctxt "web/components/view/search/Search"
 msgid "Save current filters"
 msgstr ""
 
-#: web/components/view/search/Search.vue:71
+#: web/components/view/search/Search.vue:78
 msgctxt "web/components/view/search/Search"
 msgid "Save current filters…"
 msgstr ""
@@ -1195,17 +1461,17 @@ msgctxt "web/components/view/search/Search"
 msgid "Search..."
 msgstr ""
 
-#: web/components/view/search/Search.vue:123
+#: web/components/view/search/Search.vue:130
 msgctxt "web/components/view/search/Search"
 msgid "Share with all users"
 msgstr ""
 
-#: web/components/view/search/Search.vue:55
+#: web/components/view/search/Search.vue:62
 msgctxt "web/components/view/search/Search"
 msgid "Shared"
 msgstr ""
 
-#: web/components/view/search/Search.vue:120
+#: web/components/view/search/Search.vue:127
 msgctxt "web/components/view/search/Search"
 msgid "Use by default"
 msgstr ""
@@ -1394,7 +1660,7 @@ msgctxt "web/composables/useListInlineEdit@save"
 msgid "Row saved"
 msgstr ""
 
-#: web/composables/useMenu.ts:224
+#: web/composables/useMenu.ts:248
 msgctxt "web/composables/useMenu"
 msgid "No menus available"
 msgstr ""
@@ -1617,137 +1883,87 @@ msgctxt "web/import/ImportPanel"
 msgid "Upload a UTF-8 CSV. Map columns to importable fields from the catalog."
 msgstr ""
 
-#: web/menu/menus.ts:18
-msgctxt "web/menu/menus"
-msgid "Home"
-msgstr ""
-
-#: web/pages/ErrorView.vue:69
+#: web/pages/ErrorView.vue:70
 msgctxt "web/pages/ErrorView"
 msgid "Access denied"
 msgstr ""
 
-#: web/pages/ErrorView.vue:80
+#: web/pages/ErrorView.vue:81
 msgctxt "web/pages/ErrorView"
 msgid "An internal error occurred. Try again later or contact support."
 msgstr ""
 
-#: web/pages/ErrorView.vue:63
-#: web/pages/ErrorView.vue:83
-#: web/pages/ErrorView.vue:94
+#: web/pages/ErrorView.vue:64
+#: web/pages/ErrorView.vue:84
+#: web/pages/ErrorView.vue:95
 msgctxt "web/pages/ErrorView"
-msgid "Back to home"
+msgid "Back to start"
 msgstr ""
 
-#: web/pages/ErrorView.vue:92
+#: web/pages/ErrorView.vue:93
 msgctxt "web/pages/ErrorView"
 msgid "Check that the URL is correct, or the page may have been moved or deleted."
 msgstr ""
 
-#: web/pages/ErrorView.vue:71
+#: web/pages/ErrorView.vue:72
 msgctxt "web/pages/ErrorView"
 msgid "Confirm you have access to this resource, or contact an administrator."
 msgstr ""
 
-#: web/pages/ErrorView.vue:67
+#: web/pages/ErrorView.vue:68
 msgctxt "web/pages/ErrorView"
 msgid "Contact administrator"
 msgstr ""
 
-#: web/pages/ErrorView.vue:65
-#: web/pages/ErrorView.vue:95
+#: web/pages/ErrorView.vue:66
+#: web/pages/ErrorView.vue:96
 msgctxt "web/pages/ErrorView"
 msgid "Go back"
 msgstr ""
 
-#: web/pages/ErrorView.vue:90
+#: web/pages/ErrorView.vue:91
 msgctxt "web/pages/ErrorView"
 msgid "Page not found"
 msgstr ""
 
-#: web/pages/ErrorView.vue:85
+#: web/pages/ErrorView.vue:86
 msgctxt "web/pages/ErrorView"
 msgid "Report a problem"
 msgstr ""
 
-#: web/pages/ErrorView.vue:84
+#: web/pages/ErrorView.vue:85
 msgctxt "web/pages/ErrorView"
 msgid "Retry"
 msgstr ""
 
-#: web/pages/ErrorView.vue:77
+#: web/pages/ErrorView.vue:78
 msgctxt "web/pages/ErrorView"
 msgid "Server error"
 msgstr ""
 
-#: web/pages/ErrorView.vue:91
+#: web/pages/ErrorView.vue:92
 msgctxt "web/pages/ErrorView"
 msgid "The page you requested does not exist"
 msgstr ""
 
-#: web/pages/ErrorView.vue:78
+#: web/pages/ErrorView.vue:79
 msgctxt "web/pages/ErrorView"
 msgid "The server encountered an error"
 msgstr ""
 
-#: web/pages/ErrorView.vue:61
+#: web/pages/ErrorView.vue:62
 msgctxt "web/pages/ErrorView"
 msgid "You are missing the required permission"
 msgstr ""
 
-#: web/pages/ErrorView.vue:59
+#: web/pages/ErrorView.vue:60
 msgctxt "web/pages/ErrorView"
 msgid "You are missing the required role"
 msgstr ""
 
-#: web/pages/ErrorView.vue:57
+#: web/pages/ErrorView.vue:58
 msgctxt "web/pages/ErrorView"
 msgid "You do not have permission to access this page"
-msgstr ""
-
-#: web/pages/HomeView.vue:12
-msgctxt "web/pages/HomeView"
-msgid "Choysum web shell is running on the Choy UI kit."
-msgstr ""
-
-#: web/pages/HomeView.vue:22
-msgctxt "web/pages/HomeView"
-msgid "Density"
-msgstr ""
-
-#: web/pages/HomeView.vue:29
-msgctxt "web/pages/HomeView"
-msgid "Domain modules still migrate onto Choy* in later cutover slices."
-msgstr ""
-
-#: web/pages/HomeView.vue:2
-msgctxt "web/pages/HomeView"
-msgid "Home"
-msgstr ""
-
-#: web/pages/HomeView.vue:27
-msgctxt "web/pages/HomeView"
-msgid "Next"
-msgstr ""
-
-#: web/pages/HomeView.vue:5
-msgctxt "web/pages/HomeView"
-msgid "Refresh"
-msgstr ""
-
-#: web/pages/HomeView.vue:15
-msgctxt "web/pages/HomeView"
-msgid "Status"
-msgstr ""
-
-#: web/pages/HomeView.vue:18
-msgctxt "web/pages/HomeView"
-msgid "Theme"
-msgstr ""
-
-#: web/pages/HomeView.vue:10
-msgctxt "web/pages/HomeView"
-msgid "Welcome"
 msgstr ""
 
 #: web/pages/TerminologyEditor.vue:4
@@ -1779,66 +1995,6 @@ msgstr ""
 #: web/pages/TerminologyEditor.vue:103
 msgctxt "web/pages/TerminologyEditor"
 msgid "TranslationTerm store is not available for this application"
-msgstr ""
-
-#: web/pages/WelcomeView.vue:15
-msgctxt "web/pages/WelcomeView"
-msgid "Back"
-msgstr ""
-
-#: web/pages/WelcomeView.vue:23
-msgctxt "web/pages/WelcomeView"
-msgid "Build"
-msgstr ""
-
-#: web/pages/WelcomeView.vue:18
-msgctxt "web/pages/WelcomeView"
-msgid "Continue"
-msgstr ""
-
-#: web/pages/WelcomeView.vue:24
-msgctxt "web/pages/WelcomeView"
-msgid "Domain modules import Choy* from @/web."
-msgstr ""
-
-#: web/pages/WelcomeView.vue:19
-msgctxt "web/pages/WelcomeView"
-msgid "Explore"
-msgstr ""
-
-#: web/pages/WelcomeView.vue:3
-msgctxt "web/pages/WelcomeView"
-msgid "Get started"
-msgstr ""
-
-#: web/pages/WelcomeView.vue:21
-msgctxt "web/pages/WelcomeView"
-msgid "Go to home"
-msgstr ""
-
-#: web/pages/WelcomeView.vue:5
-msgctxt "web/pages/WelcomeView"
-msgid "Next-generation open-source ERP platform."
-msgstr ""
-
-#: web/pages/WelcomeView.vue:20
-msgctxt "web/pages/WelcomeView"
-msgid "Open menus and records through the Choy shell."
-msgstr ""
-
-#: web/pages/WelcomeView.vue:15
-msgctxt "web/pages/WelcomeView"
-msgid "Sign in"
-msgstr ""
-
-#: web/pages/WelcomeView.vue:16
-msgctxt "web/pages/WelcomeView"
-msgid "Use your account to access the workspace."
-msgstr ""
-
-#: web/pages/WelcomeView.vue:2
-msgctxt "web/pages/WelcomeView"
-msgid "Welcome to Choysum"
 msgstr ""
 
 #: web/query/utils/filter/operators.ts:29
@@ -1923,11 +2079,6 @@ msgstr ""
 #: web/query/utils/filter/operators.ts:48
 msgctxt "web/query/utils/filter/operators"
 msgid "Not in"
-msgstr ""
-
-#: web/router/routes.ts:34
-msgctxt "web/route/routes"
-msgid "Home"
 msgstr ""
 
 #: web/stores/breadcrumbStore/index.ts:13
