@@ -900,6 +900,14 @@ func TestExpandSelfClosingLowerRawTextHTMLTags(t *testing.T) {
 	if strings.Contains(gotBare, `<textarea/>`) || !strings.Contains(gotBare, `<textarea></textarea>`) {
 		t.Fatalf("bare self-closing textarea must expand, got %q", gotBare)
 	}
+	// Quoted attrs may omit the space before '/>'.
+	compactQuoted := `<template><textarea id="foo"/><iframe src='/a/b'/></template><script setup>const x=1</script>`
+	gotCompact := expandSelfClosingLowerRawTextHTMLTags(compactQuoted)
+	if strings.Contains(gotCompact, `id="foo"/`) || strings.Contains(gotCompact, `src='/a/b'/`) ||
+		!strings.Contains(gotCompact, `<textarea id="foo"></textarea>`) ||
+		!strings.Contains(gotCompact, `<iframe src='/a/b'></iframe>`) {
+		t.Fatalf("compact quoted self-close must expand, got %q", gotCompact)
+	}
 	// PascalCase component tags must stay self-closing for the masker.
 	pascal := `<template><Textarea v-model="x" /></template><script setup></script>`
 	if expandSelfClosingLowerRawTextHTMLTags(pascal) != pascal {

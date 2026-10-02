@@ -64,8 +64,8 @@ const { _t } = createTranslate('web', { scope: 'web/components/chatter/ChoyChatt
 const enabled = computed(
   () => props.canToggle && !props.disabled && !props.loading,
 );
-const resolvedFollowLabel = computed(() => props.followLabel ?? _t('Follow'));
-const resolvedUnfollowLabel = computed(() => props.unfollowLabel ?? _t('Unfollow'));
+const resolvedFollowLabel = computed(() => props.followLabel?.trim() || _t('Follow'));
+const resolvedUnfollowLabel = computed(() => props.unfollowLabel?.trim() || _t('Unfollow'));
 const followerCountLabel = computed(() => {
   const count = Number(props.followerCount) || 0;
   return count === 1 ? _t('%d follower', count) : _t('%d followers', count);

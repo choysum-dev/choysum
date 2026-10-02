@@ -57,6 +57,24 @@ describe('ChoyChatterFollowerBar', () => {
     mounted.unmount();
   });
 
+  test('blank follow/unfollow labels fall back to defaults', async () => {
+    const mounted = mountApp(ChoyChatterFollowerBar as any, {
+      props: {
+        following: false,
+        followLabel: '   ',
+        unfollowLabel: '',
+        canToggle: true,
+      },
+      reactiveProps: true,
+    });
+    await flushPromises();
+    expect(mounted.text()).toContain('Follow');
+    mounted.props.following = true;
+    await nextTick();
+    expect(mounted.text()).toContain('Unfollow');
+    mounted.unmount();
+  });
+
   test('disables toggle while loading or when canToggle is false', async () => {
     const follows: string[] = [];
     const mounted = mountApp(ChoyChatterFollowerBar as any, {

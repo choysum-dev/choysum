@@ -173,14 +173,14 @@ func expandSelfClosingLowerRawTextHTMLTags(src string) string {
 		if inProtected(start) || inProtected(end-1) {
 			continue
 		}
-		// HTML/Vue: '/' is a self-closing marker only when preceded by whitespace
-		// (or immediately after the tag name). A glued trailing slash on an
-		// unquoted value (<iframe src=/a/b/>) belongs to that value — skip.
+		// HTML/Vue: '/' is a self-closing marker when preceded by whitespace, a
+		// closing quote (<tag id="foo"/>), or the tag name. A glued trailing
+		// slash on an unquoted value (<iframe src=/a/b/>) belongs to that value.
 		if end >= 3 && src[end-2] == '/' {
 			before := src[end-3]
 			switch before {
-			case ' ', '\t', '\n', '\r':
-				// <tag attrs />
+			case ' ', '\t', '\n', '\r', '"', '\'':
+				// <tag attrs /> or <tag attr="..." /> / <tag attr="..."/>
 			default:
 				if loc[4] >= 0 && loc[5] > loc[4] {
 					continue
