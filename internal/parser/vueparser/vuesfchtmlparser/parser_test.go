@@ -873,3 +873,57 @@ func TestMaskPascalCaseRawTextTagsCommentedScriptOpenerDoesNotSwallowTemplate(t 
 		t.Fatalf("Textarea must not swallow nested markup, got %q", rendered)
 	}
 }
+
+func TestExpandSelfClosingLowerRawTextHTMLTags(t *testing.T) {
+	in := `<template><textarea v-model="x" class="a" /></template><script setup>const x=1</script>`
+	got := expandSelfClosingLowerRawTextHTMLTags(in)
+	if strings.Contains(got, `<textarea v-model="x" class="a" />`) {
+		t.Fatalf("self-closing textarea must be expanded, got %q", got)
+	}
+	if !strings.Contains(got, `</textarea>`) {
+		t.Fatalf("expected close tag after expand, got %q", got)
+	}
+	// PascalCase component tags must stay self-closing for the masker.
+	pascal := `<template><Textarea v-model="x" /></template><script setup></script>`
+	if expandSelfClosingLowerRawTextHTMLTags(pascal) != pascal {
+		t.Fatalf("PascalCase Textarea must stay self-closing, got %q", expandSelfClosingLowerRawTextHTMLTags(pascal))
+	}
+	// Literals inside script must not be rewritten.
+	inScript := `<script setup>const s = "<textarea />"</script><template><div/></template>`
+	if expandSelfClosingLowerRawTextHTMLTags(inScript) != inScript {
+		t.Fatalf("script string must stay intact, got %q", expandSelfClosingLowerRawTextHTMLTags(inScript))
+	}
+}
+
+func TestParseVueSfcSelfClosingLowerTextareaKeepsScript(t *testing.T) {
+	// Regression: native <textarea /> used to swallow <script setup> under x/net/html.
+	src := `<template>
+  <div>
+    <textarea
+      v-model="body"
+      :rows="3"
+      class="choy-input"
+    />
+  </div>
+</template>
+<script setup lang="ts">
+const body = ''
+</script>`
+	scripts, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	if len(scripts) != 1 {
+		t.Fatalf("expected 1 script, got %d", len(scripts))
+	}
+	if scripts[0].FirstChild == nil || !strings.Contains(scripts[0].FirstChild.Data, `const body`) {
+		t.Fatalf("script body missing, got %#v", scripts[0].FirstChild)
+	}
+	rendered, err := RenderVueSfcFromHtmlNode(templateNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rendered, `<textarea`) || !strings.Contains(rendered, `</textarea>`) {
+		t.Fatalf("textarea must round-trip with close tag, got %q", rendered)
+	}
+}

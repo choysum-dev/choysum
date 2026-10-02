@@ -100,13 +100,18 @@ func ParseVueSfcToHtmlNode(r io.Reader) (scriptNodes []*html.Node, templateNode 
 		return nil, nil, nil, err
 	}
 	// x/net/html treats <textarea>/<title>/… as raw-text elements (case-insensitive).
+	// A Vue-style self-closing lowercase tag like <textarea /> is not a void element:
+	// the tokenizer treats '/' as ignored and keeps reading until </textarea>, so a
+	// following <script setup> is swallowed. Expand those to explicit open/close
+	// pairs before parse (PascalCase <Textarea /> stays for the masker below).
+	//
 	// Vue product SFCs often put PascalCase component tags (e.g. <Textarea>) before
 	// <script setup>; without masking, the tokenizer swallows the script block.
 	// Masking is limited to unquoted text inside <template> so script/style string
 	// literals and attribute values keep literal "<Textarea>" unchanged.
 	// Fast path: the multi-pass masker is a no-op unless a non-lowercase
 	// raw-text-named tag is present (real <script>/<textarea> stay unmasked).
-	masked := string(src)
+	masked := expandSelfClosingLowerRawTextHTMLTags(string(src))
 	if sourceNeedsPascalCaseRawTextMask(masked) {
 		masked = maskPascalCaseRawTextTags(masked)
 	}
@@ -125,6 +130,55 @@ func ParseVueSfcToHtmlNode(r io.Reader) (scriptNodes []*html.Node, templateNode 
 
 	return scriptNodes, templateNode, styleNodes, nil
 
+}
+
+// lowerSelfClosingRawTextTag matches Vue-style self-closing *lowercase* HTML
+// raw-text / RCDATA tags. PascalCase component tags (e.g. <Textarea />) are
+// intentionally excluded so the PascalCase masker can still rewrite them.
+var lowerSelfClosingRawTextTag = regexp.MustCompile(
+	`<(textarea|title|style|script|noscript|iframe|noembed|noframes|xmp|plaintext)((?:\s+(?:[^>"'/]|"[^"]*"|'[^']*')*)*)\s*/>`,
+)
+
+// expandSelfClosingLowerRawTextHTMLTags rewrites <textarea .../> (and siblings)
+// to <textarea ...></textarea> outside top-level <script>/<style> blocks so
+// x/net/html does not treat the rest of the SFC as raw-text content.
+func expandSelfClosingLowerRawTextHTMLTags(src string) string {
+	if !strings.Contains(src, "/>") || !lowerSelfClosingRawTextTag.MatchString(src) {
+		return src
+	}
+	scriptStyle := findScriptStyleRanges(src)
+	inScriptOrStyle := func(pos int) bool {
+		for _, r := range scriptStyle {
+			if pos >= r[0] && pos < r[1] {
+				return true
+			}
+		}
+		return false
+	}
+	var out strings.Builder
+	out.Grow(len(src) + 32)
+	last := 0
+	for _, loc := range lowerSelfClosingRawTextTag.FindAllStringSubmatchIndex(src, -1) {
+		start, end := loc[0], loc[1]
+		if inScriptOrStyle(start) {
+			continue
+		}
+		name := src[loc[2]:loc[3]]
+		attrs := ""
+		if loc[4] >= 0 {
+			attrs = src[loc[4]:loc[5]]
+		}
+		out.WriteString(src[last:start])
+		out.WriteByte('<')
+		out.WriteString(name)
+		out.WriteString(attrs)
+		out.WriteString("></")
+		out.WriteString(name)
+		out.WriteByte('>')
+		last = end
+	}
+	out.WriteString(src[last:])
+	return out.String()
 }
 
 // pascalCaseRawTextTag matches tags whose local names collide with HTML raw-text
