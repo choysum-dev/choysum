@@ -883,6 +883,12 @@ func TestExpandSelfClosingLowerRawTextHTMLTags(t *testing.T) {
 	if !strings.Contains(got, `</textarea>`) {
 		t.Fatalf("expected close tag after expand, got %q", got)
 	}
+	// Unquoted attrs with '/' must still expand (src=/a/b).
+	slashAttr := `<template><iframe src=/assets/x /></template><script setup>const x=1</script>`
+	gotSlash := expandSelfClosingLowerRawTextHTMLTags(slashAttr)
+	if strings.Contains(gotSlash, `<iframe src=/assets/x />`) || !strings.Contains(gotSlash, `</iframe>`) {
+		t.Fatalf("unquoted slash attr must expand, got %q", gotSlash)
+	}
 	// PascalCase component tags must stay self-closing for the masker.
 	pascal := `<template><Textarea v-model="x" /></template><script setup></script>`
 	if expandSelfClosingLowerRawTextHTMLTags(pascal) != pascal {
@@ -892,6 +898,34 @@ func TestExpandSelfClosingLowerRawTextHTMLTags(t *testing.T) {
 	inScript := `<script setup>const s = "<textarea />"</script><template><div/></template>`
 	if expandSelfClosingLowerRawTextHTMLTags(inScript) != inScript {
 		t.Fatalf("script string must stay intact, got %q", expandSelfClosingLowerRawTextHTMLTags(inScript))
+	}
+	// Quoted attrs / mustache literals must not be rewritten.
+	inAttr := `<template><div title="<textarea />" :hint="'<textarea />'">x</div></template>`
+	if expandSelfClosingLowerRawTextHTMLTags(inAttr) != inAttr {
+		t.Fatalf("quoted/mustache literals must stay intact, got %q", expandSelfClosingLowerRawTextHTMLTags(inAttr))
+	}
+	inMustache := `<template><span>{{ '<textarea />' }}</span></template>`
+	if expandSelfClosingLowerRawTextHTMLTags(inMustache) != inMustache {
+		t.Fatalf("mustache literal must stay intact, got %q", expandSelfClosingLowerRawTextHTMLTags(inMustache))
+	}
+}
+
+func TestFindScriptStyleRangesSkipsSelfClosingOpener(t *testing.T) {
+	src := `<script /><template><textarea /></template><script setup>const x=1</script>`
+	ranges := findScriptStyleRanges(src)
+	if len(ranges) != 1 {
+		t.Fatalf("expected 1 real script range, got %v", ranges)
+	}
+	block := src[ranges[0][0]:ranges[0][1]]
+	if !strings.Contains(block, `const x=1`) || strings.HasPrefix(block, `<script />`) {
+		t.Fatalf("range must be the real script block, got %q", block)
+	}
+	scripts, _, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(scripts[0].FirstChild.Data, `const x=1`) {
+		t.Fatalf("parsed script corrupted: %q", scripts[0].FirstChild.Data)
 	}
 }
 

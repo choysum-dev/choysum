@@ -109,7 +109,7 @@ const props = withDefaults(
   },
 );
 
-const resolvedTitle = computed(() => props.title ?? _t('Activity'));
+const resolvedTitle = computed(() => props.title?.trim() || _t('Activity'));
 
 const emit = defineEmits<{
   post: [body: string];

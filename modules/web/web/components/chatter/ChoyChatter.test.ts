@@ -199,6 +199,10 @@ describe('ChoyChatter', () => {
     expect(titled.text()).toContain('Partner activity');
     titled.unmount();
 
+    const blankTitle = mountChrome({ title: '   ' }).mounted;
+    expect(blankTitle.text()).toContain('Activity');
+    blankTitle.unmount();
+
     const emptyRes = mountChrome({ resId: '' }).mounted;
     expect(emptyRes.q('.composer-post')).toBeFalsy();
     emptyRes.unmount();

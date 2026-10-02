@@ -42,6 +42,11 @@ describe('ChoyChatterComposer', () => {
     mounted.props.posting = true;
     await nextTick();
     expect(mounted.text()).toContain('Posting');
+    // Guard: submit must be a no-op while a post is already in flight.
+    api.setDraft('second');
+    api.submit();
+    await flushPromises();
+    expect(posts).toEqual(['hello']);
     mounted.unmount();
   });
 

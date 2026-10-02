@@ -135,20 +135,30 @@ func ParseVueSfcToHtmlNode(r io.Reader) (scriptNodes []*html.Node, templateNode 
 // lowerSelfClosingRawTextTag matches Vue-style self-closing *lowercase* HTML
 // raw-text / RCDATA tags. PascalCase component tags (e.g. <Textarea />) are
 // intentionally excluded so the PascalCase masker can still rewrite them.
+// Unquoted attrs may contain '/' (e.g. src=/a/b); the trailing \s*/> still
+// anchors the self-closing marker via backtracking.
 var lowerSelfClosingRawTextTag = regexp.MustCompile(
-	`<(textarea|title|style|script|noscript|iframe|noembed|noframes|xmp|plaintext)((?:\s+(?:[^>"'/]|"[^"]*"|'[^']*')*)*)\s*/>`,
+	`<(textarea|title|style|script|noscript|iframe|noembed|noframes|xmp|plaintext)((?:\s+(?:[^>"']|"[^"]*"|'[^']*')*)*)\s*/>`,
 )
 
 // expandSelfClosingLowerRawTextHTMLTags rewrites <textarea .../> (and siblings)
-// to <textarea ...></textarea> outside top-level <script>/<style> blocks so
-// x/net/html does not treat the rest of the SFC as raw-text content.
+// to <textarea ...></textarea> so x/net/html does not treat the rest of the SFC
+// as raw-text content. Matches inside script/style, HTML comments, mustaches,
+// and quoted attribute values are left untouched.
 func expandSelfClosingLowerRawTextHTMLTags(src string) string {
 	if !strings.Contains(src, "/>") || !lowerSelfClosingRawTextTag.MatchString(src) {
 		return src
 	}
 	scriptStyle := findScriptStyleRanges(src)
-	inScriptOrStyle := func(pos int) bool {
-		for _, r := range scriptStyle {
+	comments := findHTMLCommentRanges(src, scriptStyle)
+	seed := findMustacheAndQuotedAttrRanges(src, comments)
+	skipForComments := append(append([][]int{}, scriptStyle...), seed...)
+	comments = findHTMLCommentRanges(src, skipForComments)
+	skipForMustache := append(append([][]int{}, scriptStyle...), comments...)
+	mustacheAttr := findMustacheAndQuotedAttrRanges(src, skipForMustache)
+	protected := append(append(append([][]int{}, scriptStyle...), comments...), mustacheAttr...)
+	inProtected := func(pos int) bool {
+		for _, r := range protected {
 			if pos >= r[0] && pos < r[1] {
 				return true
 			}
@@ -160,7 +170,7 @@ func expandSelfClosingLowerRawTextHTMLTags(src string) string {
 	last := 0
 	for _, loc := range lowerSelfClosingRawTextTag.FindAllStringSubmatchIndex(src, -1) {
 		start, end := loc[0], loc[1]
-		if inScriptOrStyle(start) {
+		if inProtected(start) || inProtected(end-1) {
 			continue
 		}
 		name := src[loc[2]:loc[3]]
@@ -364,10 +374,46 @@ func findScriptStyleRanges(src string) [][]int {
 			searchFrom = start + 1
 			continue
 		}
+		// Self-closing openers (<script />) satisfy the opener half of the
+		// paired regex and can latch onto a later real </script>. Skip them.
+		if openEnd := htmlOpenTagEnd(src, start); openEnd >= 0 && isSelfClosingHTMLOpenTag(src[start:openEnd+1]) {
+			searchFrom = openEnd + 1
+			continue
+		}
 		ranges = append(ranges, []int{start, end})
 		searchFrom = end
 	}
 	return ranges
+}
+
+// htmlOpenTagEnd returns the index of the closing '>' for an HTML open tag that
+// starts at start, skipping quoted attribute values. Returns -1 if unterminated.
+func htmlOpenTagEnd(src string, start int) int {
+	if start < 0 || start >= len(src) || src[start] != '<' {
+		return -1
+	}
+	inQuote := byte(0)
+	for j := start + 1; j < len(src); j++ {
+		c := src[j]
+		if inQuote != 0 {
+			if c == '\\' {
+				j++
+				continue
+			}
+			if c == inQuote {
+				inQuote = 0
+			}
+			continue
+		}
+		if c == '\'' || c == '"' || c == '`' {
+			inQuote = c
+			continue
+		}
+		if c == '>' {
+			return j
+		}
+	}
+	return -1
 }
 
 // findMustacheAndQuotedAttrRanges returns [start,end) spans that cannot hold a
