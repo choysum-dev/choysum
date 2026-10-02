@@ -166,7 +166,7 @@ test('permissionGuard delegates unauthenticated case to authGuard path', async (
   expect(loadPermissionState.calls.length).toBe(0);
 });
 
-test('permissionGuard soft-lands denied /home to first allowed app route', async () => {
+test('permissionGuard sends denied routes to Error (no /home soft-land)', async () => {
   const mockAuthStore = {
     isAuthenticated: true,
     loadPermissionState: asyncFnRecorder(),
@@ -176,41 +176,26 @@ test('permissionGuard soft-lands denied /home to first allowed app route', async
 
   const result = await permissionGuard(
     {
-      path: '/home',
-      fullPath: '/home',
-      meta: { requiresAuth: true, resourceId: 'web.route.home' },
+      path: '/meta/modules',
+      fullPath: '/meta/modules',
+      meta: { requiresAuth: true, resourceId: 'meta.route.module_board' },
     } as any,
     {} as any,
     depsFor(mockAuthStore)
   );
 
-  expect(result).toEqual({ path: '/auth/users', replace: true });
+  expect(result).toEqual({
+    path: '/error/403',
+    query: {
+      reason: 'permission',
+      message: 'PermissionDenied',
+      from: '/meta/modules',
+    },
+    replace: true,
+  });
 });
 
-test('permissionGuard soft-landing keeps deterministic order under same permission set', async () => {
-  const mockAuthStore = {
-    isAuthenticated: true,
-    loadPermissionState: asyncFnRecorder(),
-    permissionState: routesState(['auth.route.user_create', 'auth.route.role_list', 'auth.route.token_list']),
-    identity: { metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] } },
-  };
-
-  const result = await permissionGuard(
-    {
-      path: '/',
-      fullPath: '/',
-      meta: { requiresAuth: true, resourceId: 'web.route.home' },
-    } as any,
-    {} as any,
-    depsFor(mockAuthStore)
-  );
-
-  // role_list and token_list both routeSequence=10, so parent menu sequence decides (30 < 50).
-  // user_create has routeSequence=30 and should never win over the two list pages.
-  expect(result).toEqual({ path: '/auth/roles', replace: true });
-});
-
-test('permissionGuard soft-lands to access-rule create when that is the only grant', async () => {
+test('permissionGuard denied create-only grant still goes to Error without soft-land', async () => {
   const mockAuthStore = {
     isAuthenticated: true,
     loadPermissionState: asyncFnRecorder(),
@@ -220,34 +205,21 @@ test('permissionGuard soft-lands to access-rule create when that is the only gra
 
   const result = await permissionGuard(
     {
-      path: '/',
-      fullPath: '/',
-      meta: { requiresAuth: true, resourceId: 'web.route.home' },
+      path: '/auth/users',
+      fullPath: '/auth/users',
+      meta: { requiresAuth: true, resourceId: 'auth.route.user_list' },
     } as any,
     {} as any,
     depsFor(mockAuthStore)
   );
 
-  expect(result).toEqual({ path: '/auth/field-rules/new', replace: true });
-});
-
-test('permissionGuard soft-landing prefers record-rules before field-rules by leaf menu order', async () => {
-  const mockAuthStore = {
-    isAuthenticated: true,
-    loadPermissionState: asyncFnRecorder(),
-    permissionState: routesState(['auth.route.field_rule_list', 'auth.route.record_rule_list']),
-    identity: { metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] } },
-  };
-
-  const result = await permissionGuard(
-    {
-      path: '/home',
-      fullPath: '/home',
-      meta: { requiresAuth: true, resourceId: 'web.route.home' },
-    } as any,
-    {} as any,
-    depsFor(mockAuthStore)
-  );
-
-  expect(result).toEqual({ path: '/auth/record-rules', replace: true });
+  expect(result).toEqual({
+    path: '/error/403',
+    query: {
+      reason: 'permission',
+      message: 'PermissionDenied',
+      from: '/auth/users',
+    },
+    replace: true,
+  });
 });

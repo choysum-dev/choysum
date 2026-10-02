@@ -146,7 +146,7 @@ import TooltipProvider from '../vendor/ui/tooltip/TooltipProvider.vue';
 import TooltipTrigger from '../vendor/ui/tooltip/TooltipTrigger.vue';
 import { useMenu } from '../../composables/useMenu';
 import { useLayoutStore } from '../../stores/layoutStore';
-import { resolveDefaultLandPath } from '../../router/resolveDefaultLandPath';
+import { resolveRuntimeDefaultLandPath } from '../../router/resolveRuntimeDefaultLandPath';
 import {
   shellMenuTriggerLabel,
   shortAppVersion,
@@ -190,7 +190,7 @@ try {
   const router = useRouter();
   if (router) {
     onBrandClick = () => {
-      void router.push(resolveDefaultLandPath());
+      void router.push(resolveRuntimeDefaultLandPath());
     };
   }
 } catch {

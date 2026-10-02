@@ -38,7 +38,7 @@ describe('resolveDocumentTitle', () => {
     expect(
       resolveDocumentTitle(
         {
-          path: '/home',
+          path: '/partner',
           meta: { pageTitle: 'Home' },
         } as any,
         undefined,
@@ -111,7 +111,7 @@ describe('resolveDocumentTitle', () => {
     });
 
     const route = {
-      path: '/home',
+      path: '/partner',
       meta: {
         pageTitle: 'Users',
         pageTitleText: createTermReference('base', 'Users', { scope: 'base.route.users' }),

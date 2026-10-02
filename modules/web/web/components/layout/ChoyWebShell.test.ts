@@ -292,9 +292,9 @@ describe('ChoyWebShell', () => {
       Component: CachedPage as any,
       route: {
         meta: { keepAlive: true },
-        name: 'Home',
-        path: '/home',
-        fullPath: '/home?tab=a',
+        name: 'Modules',
+        path: '/meta/modules',
+        fullPath: '/meta/modules?tab=a',
       },
     });
 
@@ -315,9 +315,9 @@ describe('ChoyWebShell', () => {
       Component: CachedPage as any,
       route: {
         meta: { keepAlive: true },
-        name: 'Home',
-        path: '/home',
-        fullPath: '/home?tab=b',
+        name: 'Modules',
+        path: '/meta/modules',
+        fullPath: '/meta/modules?tab=b',
       },
     };
     await flushPromises();
@@ -423,7 +423,7 @@ describe('ChoyWebShell', () => {
     expect(brand).not.toBeNull();
     brand!.click();
     await flushPromises();
-    expect(pushes).toContain('/');
+    expect(pushes).toContain('/meta/modules');
     mounted.unmount();
   });
 
@@ -442,7 +442,7 @@ describe('ChoyWebShell', () => {
     const pinia = createPinia();
     setActivePinia(pinia);
     const { router } = createFeStubRouter({
-      route: { path: '/home', fullPath: '/home', meta: {} },
+      route: { path: '/meta/modules', fullPath: '/meta/modules', meta: {} },
     });
     const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
 

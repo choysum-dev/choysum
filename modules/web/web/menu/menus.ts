@@ -2,23 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { type MenuItem } from '@/core/web/menu';
-import { defineMenu } from '@/core/web/resource';
-import { House } from 'lucide-vue-next';
-import { createTranslate } from '@/web/web/i18n';
-
-const { _lt } = createTranslate('web', { scope: 'web/menu/menus' });
 
 /**
- * Menu configuration with the full menu structure and display metadata.
- * Kept separate from routing so it can focus on menu presentation.
+ * Platform menu declarations for the web module.
+ * Domain modules register their own menus; Home was retired in W4.
  */
-export const menus: MenuItem[] = [
-  // Home menu granted to base.user by default after sign-in.
-  defineMenu('web.menu.home', {
-    title: _lt('Home'),
-    icon: House,
-    path: '/home',
-    sequence: 1,
-    defaultRoles: ['base.user'],
-  }),
-];
+export const menus: MenuItem[] = [];

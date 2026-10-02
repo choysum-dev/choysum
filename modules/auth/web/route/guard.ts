@@ -4,7 +4,6 @@
 import { RouteLocationNormalized } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { canRoute } from '@/auth/web/permission';
-import { pickFirstAllowedSoftLandPath } from './soft_land_nav';
 
 /** Optional store injection for FE unit tests (default: Pinia useAuthStore). */
 export type AuthGuardDeps = {
@@ -85,13 +84,8 @@ export async function permissionGuard(
 
   const ok = canRoute(resourceId, authStore.permissionState, ctx);
   if (!ok) {
-    if (to.path === '/' || to.path === '/home') {
-      const fallbackPath = pickFirstAllowedSoftLandPath(canRoute, authStore.permissionState, ctx);
-      if (fallbackPath && fallbackPath !== to.path) {
-        return { path: fallbackPath, replace: true };
-      }
-    }
-
+    // Default land uses resolveDefaultLandPath (menu DFS → Module Board). Denied
+    // board / business routes go to Error — no /home soft-land special case.
     return {
       path: '/error/403',
       query: {

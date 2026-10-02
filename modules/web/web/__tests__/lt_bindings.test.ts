@@ -15,12 +15,13 @@ const fakeStore = {
   withContext: () => undefined,
 };
 
-test('web shell _lt bindings: pins TermReference titles on web menus and routes', () => {
-  const homeTitle = createTranslate('web', { scope: 'web/menu/menus' })._lt('Home');
-  const root = menus[0] as { title?: string; titleText?: unknown };
-  expect(root.title).toBe('Home');
-  expect(root.titleText).toEqual(homeTitle);
+test('web shell _lt bindings: web module ships empty menu baseline after Home retirement', () => {
+  expect(menus).toEqual([]);
   expect(routes.length).toBeGreaterThan(0);
+  expect(routes.some((r) => r.name === 'Error')).toBe(true);
+  expect(routes.some((r) => r.name === 'Home')).toBe(false);
+  const layout = routes.find((r) => r.name === 'Layout') as { children?: Array<{ name?: string }> } | undefined;
+  expect(layout?.children?.some((r) => r.name === 'Home')).toBe(false);
 });
 
 test('web shell _lt bindings: breadcrumbStore push preserves TermReference titles', async () => {

@@ -4,6 +4,7 @@
 import { h } from 'vue';
 import * as VueRouter from 'vue-router';
 const createFeStubRouter = (VueRouter as any).createFeStubRouter;
+import { createPinia, setActivePinia } from 'pinia';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import ErrorView from './ErrorView.vue';
 import ChoyPage from '@/web/web/components/layout/ChoyPage.vue';
@@ -12,6 +13,7 @@ import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 
 describe('ErrorView', () => {
   beforeEach(() => {
+    setActivePinia(createPinia());
     stubSfc(ChoyPage as any, {
       props: { title: String, padding: Boolean, width: String, class: null },
       setup: ((_props: any, { slots }: any) => {
@@ -60,9 +62,9 @@ describe('ErrorView', () => {
   test('resolves 403 from static /error/403 path', async () => {
     const mounted = mountError({
       path: '/error/403',
-      fullPath: '/error/403?reason=role&from=/home',
+      fullPath: '/error/403?reason=role&from=/meta/modules',
       params: {},
-      query: { reason: 'role', from: '/home', message: 'need admin' },
+      query: { reason: 'role', from: '/meta/modules', message: 'need admin' },
     });
     await flushPromises();
     expect(mounted.q('[data-test=card]')?.getAttribute('data-title')).toMatch(/denied|Access/i);
@@ -226,7 +228,7 @@ describe('ErrorView', () => {
       denied.click('[data-test=action]');
       (deniedActions[1] as HTMLElement).click();
       (deniedActions[2] as HTMLElement).click();
-      expect(deniedPush.calls.map(c => c[0])).toEqual(['/', '/auth/users']);
+      expect(deniedPush.calls.map(c => c[0])).toEqual(['/meta/modules', '/auth/users']);
       expect(open.calls[0]?.[0]).toBe('mailto:admin@example.com');
       expect(open.calls[0]?.[2]).toBe('noopener,noreferrer');
       denied.unmount();
