@@ -874,6 +874,38 @@ func TestMaskPascalCaseRawTextTagsCommentedScriptOpenerDoesNotSwallowTemplate(t 
 	}
 }
 
+func TestIsSelfClosingSolidus(t *testing.T) {
+	cases := []struct {
+		attrs  string
+		before byte
+		want   bool
+	}{
+		{``, ' ', true},
+		{``, '\t', true},
+		{``, '\n', true},
+		{``, '\r', true},
+		{` class="x"`, '"', true},
+		{` title='y'`, '\'', true},
+		{``, 'a', true},                   // <textarea/>
+		{` disabled`, 'd', true},          // boolean only
+		{` foo=`, '=', true},              // empty value then solidus
+		{` class="x`, 'x', false},         // unclosed quote
+		{` id="x" disabled`, 'd', true},   // quoted then boolean
+		{` class="x"`, 'x', false},        // quoted, nothing after (after=="")
+		{` src=/a/b`, 'b', false},         // glued unquoted value
+		{` src=/a/b disabled`, 'd', true}, // unquoted value then boolean
+		{` src=/a/b` + "\n" + `disabled`, 'd', true},
+		{` src=/a/b` + "\t" + `disabled`, 'd', true},
+		{` src=/a/b` + "\r" + `disabled`, 'd', true},
+		{` title='x' disabled`, 'd', true}, // single-quoted then boolean
+	}
+	for _, tc := range cases {
+		if got := isSelfClosingSolidus(tc.attrs, tc.before); got != tc.want {
+			t.Fatalf("isSelfClosingSolidus(%q, %q)=%v want %v", tc.attrs, string(tc.before), got, tc.want)
+		}
+	}
+}
+
 func TestExpandSelfClosingLowerRawTextHTMLTags(t *testing.T) {
 	in := `<template><textarea v-model="x" class="a" /></template><script setup>const x=1</script>`
 	got := expandSelfClosingLowerRawTextHTMLTags(in)
@@ -912,9 +944,11 @@ func TestExpandSelfClosingLowerRawTextHTMLTags(t *testing.T) {
 	for _, src := range []string{
 		`<template><textarea disabled/></template><script setup>const x=1</script>`,
 		`<template><textarea class="x"/></template><script setup>const x=1</script>`,
+		`<template><textarea id="x" disabled/></template><script setup>const x=1</script>`,
+		`<template><iframe src=/a/b disabled/></template><script setup>const x=1</script>`,
 	} {
 		got := expandSelfClosingLowerRawTextHTMLTags(src)
-		if strings.Contains(got, `/>`) || !strings.Contains(got, `</textarea>`) {
+		if strings.Contains(got, `/>`) || !strings.Contains(got, `</`) {
 			t.Fatalf("boolean/quoted compact self-close must expand, got %q", got)
 		}
 	}
