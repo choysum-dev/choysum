@@ -924,8 +924,17 @@ func TestFindScriptStyleRangesSkipsSelfClosingOpener(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(scripts[0].FirstChild.Data, `const x=1`) {
-		t.Fatalf("parsed script corrupted: %q", scripts[0].FirstChild.Data)
+	// Expanding <script /> yields an empty <script></script> before the real setup
+	// block; prefer the script whose text contains the setup body.
+	var setupBody string
+	for _, s := range scripts {
+		if s.FirstChild != nil && strings.Contains(s.FirstChild.Data, `const x=1`) {
+			setupBody = s.FirstChild.Data
+			break
+		}
+	}
+	if setupBody == "" {
+		t.Fatalf("setup script body missing among %d scripts", len(scripts))
 	}
 }
 

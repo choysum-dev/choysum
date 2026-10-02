@@ -184,7 +184,7 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyTabs>
       </ChoyCard>
 
-      <ChoyChatter v-if="recordId" :key="recordId" bind-store model="partner.Partner" :res-id="recordId" />
+      <ChoyChatter v-if="props.recordId" :key="props.recordId" bind-store model="partner.Partner" :res-id="props.recordId" />
     </div>
   </ChoyFormView>
 </template>
