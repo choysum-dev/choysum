@@ -124,13 +124,13 @@ export const useMenuStore = defineStore('menu', () => {
     // Methods.
     setActiveMenu,
 
-    // Proxies for menuManager methods.
-    hasMenu: menuManager.hasMenu.bind(menuManager),
-    getMenu: menuManager.getMenu.bind(menuManager),
-    getMenuByPath: menuManager.getMenuByPath.bind(menuManager),
-    getMenuChildren: menuManager.getMenuChildren.bind(menuManager),
-    getMenuParent: menuManager.getMenuParent.bind(menuManager),
-    getMenus: menuManager.getMenus.bind(menuManager),
+    // Proxies for menuManager methods (no-op safe when Menu inject is missing).
+    hasMenu: (id: string) => !!menuManager?.hasMenu?.(id),
+    getMenu: (id: string) => menuManager?.getMenu?.(id),
+    getMenuByPath: (path: string) => menuManager?.getMenuByPath?.(path),
+    getMenuChildren: (id: string) => menuManager?.getMenuChildren?.(id) ?? [],
+    getMenuParent: (id: string) => menuManager?.getMenuParent?.(id) ?? null,
+    getMenus: () => menuManager?.getMenus?.() ?? [],
 
     // Helper utilities.
     findFirstNavigableMenu,
