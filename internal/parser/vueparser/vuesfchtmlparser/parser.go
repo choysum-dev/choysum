@@ -173,26 +173,17 @@ func expandSelfClosingLowerRawTextHTMLTags(src string) string {
 		if inProtected(start) || inProtected(end-1) {
 			continue
 		}
-		// HTML/Vue: '/' is a self-closing marker when preceded by whitespace, a
-		// closing quote (<tag id="foo"/>), or the tag name. A glued trailing
-		// slash on an unquoted value (<iframe src=/a/b/>) belongs to that value.
-		if end >= 3 && src[end-2] == '/' {
-			before := src[end-3]
-			switch before {
-			case ' ', '\t', '\n', '\r', '"', '\'':
-				// <tag attrs /> or <tag attr="..." /> / <tag attr="..."/>
-			default:
-				if loc[4] >= 0 && loc[5] > loc[4] {
-					continue
-				}
-				// <textarea/> — slash immediately after the tag name.
-			}
-		}
-		name := src[loc[2]:loc[3]]
+		// Skip only when '/' is glued into an unquoted attribute value
+		// (<iframe src=/a/b/>). Boolean attrs (<textarea disabled/>) and
+		// quoted values (<textarea class="x"/>) still expand.
 		attrs := ""
 		if loc[4] >= 0 {
 			attrs = src[loc[4]:loc[5]]
 		}
+		if end >= 3 && src[end-2] == '/' && !isSelfClosingSolidus(attrs, src[end-3]) {
+			continue
+		}
+		name := src[loc[2]:loc[3]]
 		out.WriteString(src[last:start])
 		out.WriteByte('<')
 		out.WriteString(name)
@@ -204,6 +195,48 @@ func expandSelfClosingLowerRawTextHTMLTags(src string) string {
 	}
 	out.WriteString(src[last:])
 	return out.String()
+}
+
+// isSelfClosingSolidus reports whether '/' before '>' is a self-closing marker
+// given the attribute text captured before optional whitespace and "/>".
+func isSelfClosingSolidus(attrs string, before byte) bool {
+	switch before {
+	case ' ', '\t', '\n', '\r', '"', '\'':
+		return true
+	}
+	if attrs == "" {
+		return true
+	}
+	eq := strings.LastIndexByte(attrs, '=')
+	if eq < 0 {
+		// Boolean attribute(s) only: <textarea disabled/>
+		return true
+	}
+	i := eq + 1
+	if i >= len(attrs) {
+		return true
+	}
+	if q := attrs[i]; q == '"' || q == '\'' {
+		rest := attrs[i+1:]
+		close := strings.IndexByte(rest, q)
+		if close < 0 {
+			return false
+		}
+		after := strings.TrimLeft(rest[close+1:], " \t\n\r")
+		// Further attrs after a quoted value (e.g. id="x" disabled).
+		return after != ""
+	}
+	// Unquoted value ends at whitespace; more attrs after it → solidus is a marker.
+	j := i
+	for j < len(attrs) {
+		c := attrs[j]
+		if c == ' ' || c == '\t' || c == '\n' || c == '\r' {
+			break
+		}
+		j++
+	}
+	after := strings.TrimLeft(attrs[j:], " \t\n\r")
+	return after != ""
 }
 
 // pascalCaseRawTextTag matches tags whose local names collide with HTML raw-text

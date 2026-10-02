@@ -908,6 +908,16 @@ func TestExpandSelfClosingLowerRawTextHTMLTags(t *testing.T) {
 		!strings.Contains(gotCompact, `<iframe src='/a/b'></iframe>`) {
 		t.Fatalf("compact quoted self-close must expand, got %q", gotCompact)
 	}
+	// Boolean attrs and compact quoted class= must expand (not treated as unquoted values).
+	for _, src := range []string{
+		`<template><textarea disabled/></template><script setup>const x=1</script>`,
+		`<template><textarea class="x"/></template><script setup>const x=1</script>`,
+	} {
+		got := expandSelfClosingLowerRawTextHTMLTags(src)
+		if strings.Contains(got, `/>`) || !strings.Contains(got, `</textarea>`) {
+			t.Fatalf("boolean/quoted compact self-close must expand, got %q", got)
+		}
+	}
 	// PascalCase component tags must stay self-closing for the masker.
 	pascal := `<template><Textarea v-model="x" /></template><script setup></script>`
 	if expandSelfClosingLowerRawTextHTMLTags(pascal) != pascal {
@@ -959,7 +969,8 @@ func TestFindScriptStyleRangesSkipsSelfClosingOpener(t *testing.T) {
 
 func TestParseVueSfcSelfClosingLowerTextareaKeepsScript(t *testing.T) {
 	// Regression: native <textarea /> used to swallow <script setup> under x/net/html.
-	src := `<template>
+	cases := []string{
+		`<template>
   <div>
     <textarea
       v-model="body"
@@ -970,23 +981,34 @@ func TestParseVueSfcSelfClosingLowerTextareaKeepsScript(t *testing.T) {
 </template>
 <script setup lang="ts">
 const body = ''
-</script>`
-	scripts, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
-	if err != nil {
-		t.Fatalf("parse failed: %v", err)
+</script>`,
+		`<template><textarea disabled/></template>
+<script setup lang="ts">
+const body = ''
+</script>`,
+		`<template><textarea class="x"/></template>
+<script setup lang="ts">
+const body = ''
+</script>`,
 	}
-	if len(scripts) != 1 {
-		t.Fatalf("expected 1 script, got %d", len(scripts))
-	}
-	if scripts[0].FirstChild == nil || !strings.Contains(scripts[0].FirstChild.Data, `const body`) {
-		t.Fatalf("script body missing, got %#v", scripts[0].FirstChild)
-	}
-	rendered, err := RenderVueSfcFromHtmlNode(templateNode)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(rendered, `<textarea`) || !strings.Contains(rendered, `</textarea>`) {
-		t.Fatalf("textarea must round-trip with close tag, got %q", rendered)
+	for _, src := range cases {
+		scripts, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+		if err != nil {
+			t.Fatalf("parse failed: %v\nsrc=%s", err, src)
+		}
+		if len(scripts) != 1 {
+			t.Fatalf("expected 1 script, got %d\nsrc=%s", len(scripts), src)
+		}
+		if scripts[0].FirstChild == nil || !strings.Contains(scripts[0].FirstChild.Data, `const body`) {
+			t.Fatalf("script body missing, got %#v\nsrc=%s", scripts[0].FirstChild, src)
+		}
+		rendered, err := RenderVueSfcFromHtmlNode(templateNode)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(rendered, `<textarea`) || !strings.Contains(rendered, `</textarea>`) {
+			t.Fatalf("textarea must round-trip with close tag, got %q\nsrc=%s", rendered, src)
+		}
 	}
 }
 
