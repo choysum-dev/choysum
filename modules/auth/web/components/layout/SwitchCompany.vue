@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyButton
       variant="ghost"
       size="sm"
-      class="choy-header__action-item h-9 max-w-[12rem] truncate px-2.5"
+      class="choy-header__action-item h-control max-w-[12rem] truncate px-2.5"
       :aria-expanded="visible"
       :aria-label="_t('Switch company')"
       data-testid="company-switch-trigger"
@@ -28,7 +28,7 @@ SPDX-License-Identifier: Apache-2.0
           <span class="font-medium">{{ _t('Current Company') }}</span>
           <select
             v-model="draftActiveCompanyId"
-            class="choy-switch-company__select rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+            class="choy-switch-company__select h-control rounded-md border border-border bg-background px-2 text-sm"
             data-testid="company-active-select"
           >
             <option v-for="c in companies" :key="c.Id" :value="c.Id">{{ c.DisplayName || c.Id }}</option>
@@ -45,7 +45,7 @@ SPDX-License-Identifier: Apache-2.0
               <input
                 v-model="draftEnabledCompanyIds"
                 type="checkbox"
-                class="size-4 rounded border-border"
+                class="size-control shrink-0 rounded border-border"
                 :value="c.Id"
                 :disabled="isActiveCompanyEnabledLocked(c.Id, draftActiveCompanyId)"
                 @change="onEnabledChange"

@@ -12,7 +12,7 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyCard>
       <template #header>
         <div class="flex w-full items-center justify-between gap-3 font-semibold">
-          <span>{{ title }}</span>
+          <span>{{ resolvedTitle }}</span>
           <ChoyChatterFollowerBar
             :following="resolvedFollowing"
             :follower-count="resolvedFollowerCount"
@@ -40,6 +40,8 @@ SPDX-License-Identifier: Apache-2.0
         :loading="resolvedLoading"
         :error="resolvedError"
         :resolve-author-label="resolveAuthorLabel"
+        :loading-label="_t('Loading activity...')"
+        :empty-label="_t('No activity yet')"
       />
     </ChoyCard>
   </div>
@@ -54,12 +56,15 @@ import {
 } from '@/web/web/composables/chatter/chatterStores';
 import { useInjectedChatterTimeline } from '@/web/web/composables/chatter/useChatterTimeline';
 import { useInjectedChatterThreadTips } from '@/web/web/composables/chatter/useChatterThreadTips';
+import { createTranslate } from '@/web/web/i18n';
 import ChoyCard from '../layout/ChoyCard.vue';
 import type { ChatterTimelineEntry } from './chatterTypes';
 import { resolveChoyChatterAuthorLabel } from './chatterHelpers';
 import ChoyChatterComposer from './ChoyChatterComposer.vue';
 import ChoyChatterFollowerBar from './ChoyChatterFollowerBar.vue';
 import ChoyChatterTimeline from './ChoyChatterTimeline.vue';
+
+const { _t } = createTranslate('web', { scope: 'web/components/chatter/ChoyChatter' });
 
 /**
  * Chatter shell. Chrome mode: timeline / composer / followers via props + emits.
@@ -100,9 +105,11 @@ const props = withDefaults(
     postError: null,
     currentUserId: null,
     currentUserName: null,
-    title: 'Activity',
+    title: undefined,
   },
 );
+
+const resolvedTitle = computed(() => props.title ?? _t('Activity'));
 
 const emit = defineEmits<{
   post: [body: string];

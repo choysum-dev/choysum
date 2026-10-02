@@ -108,6 +108,8 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyOneToManyField>
       </ChoyTab>
     </ChoyTabs>
+
+    <ChoyChatter v-if="recordId" bind-store model="auth.User" :res-id="recordId" />
   </ChoyFormView>
 </template>
 
@@ -128,7 +130,7 @@ import type { TagClickPayload as RefTagClickPayload } from '@/web/web/components
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
-import { ChoyBooleanField, ChoyCard, ChoyCol, ChoyDatetimeField, ChoyFormView, ChoyGrid, ChoyImageField, ChoyJsonField, ChoyManyToManyField, ChoyManyToOneField, ChoyOneToManyField, ChoySelectionField, ChoyTab, ChoyTabs, ChoyVarcharField, ChoyManyToOneRefField, ChoyManyToManyRefTagsField} from '@/web';
+import { ChoyBooleanField, ChoyCard, ChoyChatter, ChoyCol, ChoyDatetimeField, ChoyFormView, ChoyGrid, ChoyImageField, ChoyJsonField, ChoyManyToManyField, ChoyManyToOneField, ChoyOneToManyField, ChoySelectionField, ChoyTab, ChoyTabs, ChoyVarcharField, ChoyManyToOneRefField, ChoyManyToManyRefTagsField} from '@/web';
 import type { ChoyViewMode as ViewMode } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 

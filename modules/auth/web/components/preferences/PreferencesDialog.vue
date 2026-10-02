@@ -35,7 +35,7 @@ SPDX-License-Identifier: Apache-2.0
             <span class="font-medium">{{ _t('Language') }}</span>
             <select
               v-model="languageCode"
-              class="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+              class="h-control rounded-md border border-border bg-background px-2 text-sm"
               data-testid="preferences-language"
             >
               <option v-for="opt in languageOptions" :key="opt.Code" :value="opt.Code">{{ opt.Name }}</option>
@@ -49,7 +49,7 @@ SPDX-License-Identifier: Apache-2.0
             <span class="font-medium">{{ _t('Timezone') }}</span>
             <select
               v-model="timezone"
-              class="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+              class="h-control rounded-md border border-border bg-background px-2 text-sm"
               data-testid="preferences-timezone"
             >
               <option value="">{{ _t('Select timezone') }}</option>

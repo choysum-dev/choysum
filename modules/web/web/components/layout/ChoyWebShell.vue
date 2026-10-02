@@ -157,7 +157,7 @@ import {
 /**
  * Dense Admin product shell: Top bar + Nav rail (drawer / collapsed / expanded)
  * + Canvas with KeepAlive-aware router-view. Rail foot holds open-source attribution.
- * Auth pages suppress the rail. Header actions anchor stays for auth xpath inject.
+ * Auth pages suppress the rail and top bar so §4.1 Auth is a fullscreen canvas.
  */
 const props = withDefaults(
   defineProps<{
@@ -210,7 +210,7 @@ try {
   tLayout = (key) => key;
 }
 
-const effectiveShowHeader = computed(() => props.showHeader);
+const effectiveShowHeader = computed(() => props.showHeader && !isAuthPage.value);
 const sidebarAllowed = computed(() => props.showSidebar && !isAuthPage.value);
 
 const railMode = computed(() => layoutStore?.sidebarMode ?? 'expanded');
