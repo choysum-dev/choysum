@@ -44,6 +44,19 @@ describe('ChoyChatterFollowerBar', () => {
     mounted.unmount();
   });
 
+  test('coerces string followerCount for plural label', async () => {
+    const mounted = mountApp(ChoyChatterFollowerBar as any, {
+      props: {
+        following: false,
+        followerCount: '2' as unknown as number,
+        canToggle: true,
+      },
+    });
+    await flushPromises();
+    expect(mounted.text()).toContain('followers');
+    mounted.unmount();
+  });
+
   test('disables toggle while loading or when canToggle is false', async () => {
     const follows: string[] = [];
     const mounted = mountApp(ChoyChatterFollowerBar as any, {

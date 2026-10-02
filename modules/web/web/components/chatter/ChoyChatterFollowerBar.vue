@@ -66,11 +66,10 @@ const enabled = computed(
 );
 const resolvedFollowLabel = computed(() => props.followLabel ?? _t('Follow'));
 const resolvedUnfollowLabel = computed(() => props.unfollowLabel ?? _t('Unfollow'));
-const followerCountLabel = computed(() =>
-  props.followerCount === 1
-    ? _t('%d follower', props.followerCount)
-    : _t('%d followers', props.followerCount),
-);
+const followerCountLabel = computed(() => {
+  const count = Number(props.followerCount) || 0;
+  return count === 1 ? _t('%d follower', count) : _t('%d followers', count);
+});
 
 function toggle(): void {
   if (!enabled.value) return;

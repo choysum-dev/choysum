@@ -66,8 +66,8 @@ const { _t } = createTranslate('web', { scope: 'web/components/chatter/ChoyChatt
 
 const body = ref('');
 const canSubmit = computed(() => body.value.trim().length > 0);
-const resolvedPlaceholder = computed(() => props.placeholder ?? _t('Write a comment...'));
-const resolvedPostLabel = computed(() => props.postLabel ?? _t('Post'));
+const resolvedPlaceholder = computed(() => props.placeholder?.trim() || _t('Write a comment...'));
+const resolvedPostLabel = computed(() => props.postLabel?.trim() || _t('Post'));
 const postingLabel = computed(() => _t('Posting…'));
 
 function submit(): void {

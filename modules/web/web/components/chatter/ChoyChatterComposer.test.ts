@@ -69,4 +69,17 @@ describe('ChoyChatterComposer', () => {
     expect(posts).toEqual([]);
     mounted.unmount();
   });
+
+  test('blank placeholder/postLabel fall back to defaults', async () => {
+    const mounted = mountApp(ChoyChatterComposer as any, {
+      props: {
+        placeholder: '   ',
+        postLabel: '',
+      },
+    });
+    await flushPromises();
+    expect(String(mounted.q('textarea')?.getAttribute('placeholder') || '')).toContain('Write a comment');
+    expect(mounted.text()).toContain('Post');
+    mounted.unmount();
+  });
 });

@@ -883,11 +883,22 @@ func TestExpandSelfClosingLowerRawTextHTMLTags(t *testing.T) {
 	if !strings.Contains(got, `</textarea>`) {
 		t.Fatalf("expected close tag after expand, got %q", got)
 	}
-	// Unquoted attrs with '/' must still expand (src=/a/b).
+	// Unquoted attrs with '/' must still expand when the self-close slash is spaced.
 	slashAttr := `<template><iframe src=/assets/x /></template><script setup>const x=1</script>`
 	gotSlash := expandSelfClosingLowerRawTextHTMLTags(slashAttr)
 	if strings.Contains(gotSlash, `<iframe src=/assets/x />`) || !strings.Contains(gotSlash, `</iframe>`) {
 		t.Fatalf("unquoted slash attr must expand, got %q", gotSlash)
+	}
+	// Trailing '/' glued to an unquoted value is part of the URL, not self-close.
+	glued := `<template><iframe src=/a/b/></template><script setup>const x=1</script>`
+	if expandSelfClosingLowerRawTextHTMLTags(glued) != glued {
+		t.Fatalf("glued trailing slash on unquoted value must stay, got %q", expandSelfClosingLowerRawTextHTMLTags(glued))
+	}
+	// Bare <textarea/> (no attrs) still expands.
+	bare := `<template><textarea/></template><script setup>const x=1</script>`
+	gotBare := expandSelfClosingLowerRawTextHTMLTags(bare)
+	if strings.Contains(gotBare, `<textarea/>`) || !strings.Contains(gotBare, `<textarea></textarea>`) {
+		t.Fatalf("bare self-closing textarea must expand, got %q", gotBare)
 	}
 	// PascalCase component tags must stay self-closing for the masker.
 	pascal := `<template><Textarea v-model="x" /></template><script setup></script>`
@@ -968,5 +979,25 @@ const body = ''
 	}
 	if !strings.Contains(rendered, `<textarea`) || !strings.Contains(rendered, `</textarea>`) {
 		t.Fatalf("textarea must round-trip with close tag, got %q", rendered)
+	}
+}
+
+func TestHtmlOpenTagEnd(t *testing.T) {
+	if htmlOpenTagEnd("", 0) != -1 || htmlOpenTagEnd("x", 0) != -1 ||
+		htmlOpenTagEnd("<div>", -1) != -1 || htmlOpenTagEnd("<div>", 99) != -1 {
+		t.Fatal("invalid start must return -1")
+	}
+	src := "<div class=\"a\\\"b\" id='c' data=`d`>"
+	end := htmlOpenTagEnd(src, 0)
+	if end != len(src)-1 {
+		t.Fatalf("quoted attrs with escapes: end=%d want %d", end, len(src)-1)
+	}
+	unterminated := `<div class="x"`
+	if htmlOpenTagEnd(unterminated, 0) != -1 {
+		t.Fatal("unterminated open tag must return -1")
+	}
+	simple := `<script />`
+	if htmlOpenTagEnd(simple, 0) != len(simple)-1 {
+		t.Fatalf("simple self-closing open: end=%d", htmlOpenTagEnd(simple, 0))
 	}
 }
