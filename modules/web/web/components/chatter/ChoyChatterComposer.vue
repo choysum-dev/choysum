@@ -13,7 +13,7 @@ SPDX-License-Identifier: Apache-2.0
       class="choy-input min-h-[4.5rem] h-auto py-2"
       @keydown.ctrl.enter="!$event.isComposing && ($event.preventDefault(), submit())"
       @keydown.meta.enter="!$event.isComposing && ($event.preventDefault(), submit())"
-    />
+    ></textarea>
     <div class="flex justify-end">
       <ChoyButton
         size="sm"
@@ -81,5 +81,10 @@ function clear(): void {
   body.value = '';
 }
 
-defineExpose({ clear });
+/** Test/host helper: set the draft body without relying on DOM v-model. */
+function setDraft(text: string): void {
+  body.value = String(text ?? '');
+}
+
+defineExpose({ clear, submit, setDraft });
 </script>
