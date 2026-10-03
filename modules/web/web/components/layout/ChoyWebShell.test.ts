@@ -2,9 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { defineComponent, h, onActivated, ref } from 'vue';
-import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import ChoyWebShell from './ChoyWebShell.vue';
-import ChoyLayout from './ChoyLayout.vue';
 
 describe('ChoyWebShell', () => {
   beforeEach(async () => {
@@ -12,43 +11,6 @@ describe('ChoyWebShell', () => {
     const { createPinia, setActivePinia } = await import('pinia');
     pinViewportWidth(1280);
     setActivePinia(createPinia());
-    stubSfc(ChoyLayout, {
-      props: {
-        showHeader: { type: Boolean, default: undefined },
-        showAside: { type: Boolean, default: undefined },
-        showFooter: { type: Boolean, default: undefined },
-        asideOverlay: { type: Boolean, default: false },
-        asideCollapsed: { type: Boolean, default: false },
-        class: null,
-      },
-      setup: ((props: any, { slots }: any) => {
-        return () =>
-          h(
-            'div',
-            {
-              'data-test': 'choy-layout',
-              'data-header': String(props.showHeader),
-              'data-aside': String(props.showAside),
-              'data-footer': String(props.showFooter),
-              'data-overlay': String(!!props.asideOverlay),
-              'data-collapsed': String(!!props.asideCollapsed),
-            },
-            [
-              slots.header ? h('div', { 'data-test': 'slot-header' }, slots.header()) : null,
-              slots.aside ? h('div', { 'data-test': 'slot-aside' }, slots.aside()) : null,
-              slots['aside-foot']
-                ? h('div', { 'data-test': 'slot-aside-foot' }, slots['aside-foot']())
-                : null,
-              slots.default?.(),
-              slots.footer ? h('div', { 'data-test': 'slot-footer' }, slots.footer()) : null,
-            ],
-          );
-      }) as any,
-    });
-  });
-
-  afterEach(() => {
-    restoreSfc(ChoyLayout);
   });
 
   test('defaults to header and sidebar and renders router-view', async () => {
@@ -58,15 +20,12 @@ describe('ChoyWebShell', () => {
       },
     });
     await flushPromises();
-    const root = mounted.q('[data-test=choy-layout]');
-    expect(root?.getAttribute('data-header')).toBe('true');
-    expect(root?.getAttribute('data-aside')).toBe('true');
-    expect(root?.getAttribute('data-footer')).toBe('false');
-    expect(mounted.q('[data-test=slot-header]')?.textContent).toContain('Choysum');
-    expect(mounted.q('[data-test=slot-aside]')).not.toBeNull();
-    expect(mounted.q('[data-test=slot-aside-foot]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell]')?.getAttribute('data-shell-mode')).toBe('sidebar');
+    expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-aside]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-attrib]')).not.toBeNull();
-    expect(mounted.q('[data-test=slot-footer]')).toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-menu-trigger]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-command-trigger]')).not.toBeNull();
     expect(mounted.q('[data-test=router-view]')).not.toBeNull();
     mounted.unmount();
   });
@@ -84,9 +43,6 @@ describe('ChoyWebShell', () => {
       },
     });
     await flushPromises();
-    const root = mounted.q('[data-test=choy-layout]');
-    expect(root?.getAttribute('data-aside')).toBe('true');
-    expect(root?.getAttribute('data-footer')).toBe('true');
     expect(mounted.q('[data-test=header-action]')?.textContent).toBe('A');
     expect(mounted.q('[data-test=nav-link]')?.textContent).toBe('Home');
     expect(mounted.q('[data-test=footer-note]')?.textContent).toBe('Foot');
@@ -101,9 +57,7 @@ describe('ChoyWebShell', () => {
       },
     });
     await flushPromises();
-    const root = mounted.q('[data-test=choy-layout]');
-    expect(root?.getAttribute('data-aside')).toBe('true');
-    expect(mounted.q('[data-test=slot-aside]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-aside]')).not.toBeNull();
     mounted.unmount();
   });
 
@@ -115,9 +69,8 @@ describe('ChoyWebShell', () => {
       },
     });
     await flushPromises();
-    const root = mounted.q('[data-test=choy-layout]');
-    expect(root?.getAttribute('data-footer')).toBe('false');
-    expect(mounted.q('[data-test=slot-footer]')).toBeNull();
+    expect(mounted.q('[data-testid=choy-shell]')?.getAttribute('data-shell-mode')).toBe('canvas');
+    expect(mounted.q('[data-test=footer-note]')).toBeNull();
     mounted.unmount();
   });
 
@@ -129,14 +82,14 @@ describe('ChoyWebShell', () => {
       },
     });
     await flushPromises();
-    expect(mounted.q('[data-test=slot-header]')).toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-header]')).toBeNull();
     expect(mounted.q('[data-test=router-view]')).not.toBeNull();
     mounted.unmount();
   });
 
   test('default slot overrides router-view fallback', async () => {
     const mounted = mountApp(ChoyWebShell as any, {
-      props: { showHeader: false },
+      props: { showHeader: false, showSidebar: false },
       slots: {
         default: () => h('div', { 'data-test': 'custom-body' }, 'Custom'),
       },
@@ -158,7 +111,7 @@ describe('ChoyWebShell', () => {
 
     function mountWithMeta(keepAlive: boolean) {
       return mountApp(ChoyWebShell as any, {
-        props: { showHeader: false },
+        props: { showHeader: false, showSidebar: false },
         stubs: {
           'router-view': {
             setup: (_props: any, { slots }: any) => {
@@ -186,7 +139,7 @@ describe('ChoyWebShell', () => {
 
   test('skips rendering when router-view has no matched Component', async () => {
     const mounted = mountApp(ChoyWebShell as any, {
-      props: { showHeader: false },
+      props: { showHeader: false, showSidebar: false },
       stubs: {
         'router-view': {
           setup: (_props: any, { slots }: any) => {
@@ -200,9 +153,8 @@ describe('ChoyWebShell', () => {
       },
     });
     await flushPromises();
-    expect(mounted.q('[data-test=choy-layout]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell]')).not.toBeNull();
     expect(mounted.q('[data-test=page]')).toBeNull();
-    expect(mounted.q('[data-test=cached]')).toBeNull();
     mounted.unmount();
   });
 
@@ -212,7 +164,7 @@ describe('ChoyWebShell', () => {
       setup: () => () => h('div', { 'data-test': 'page' }, 'ok'),
     });
     const mounted = mountApp(ChoyWebShell as any, {
-      props: { showHeader: false },
+      props: { showHeader: false, showSidebar: false },
       stubs: {
         'router-view': {
           setup: (_props: any, { slots }: any) => {
@@ -251,7 +203,7 @@ describe('ChoyWebShell', () => {
     });
 
     const mounted = mountApp(ChoyWebShell as any, {
-      props: { showHeader: false },
+      props: { showHeader: false, showSidebar: false },
       stubs: {
         'router-view': {
           setup: (_props: any, { slots }: any) => {
@@ -299,7 +251,7 @@ describe('ChoyWebShell', () => {
     });
 
     const mounted = mountApp(ChoyWebShell as any, {
-      props: { showHeader: false },
+      props: { showHeader: false, showSidebar: false },
       stubs: {
         'router-view': {
           setup: (_props: any, { slots }: any) => {
@@ -350,7 +302,7 @@ describe('ChoyWebShell', () => {
     });
 
     const mounted = mountApp(ChoyWebShell as any, {
-      props: { showHeader: false },
+      props: { showHeader: false, showSidebar: false },
       stubs: {
         'router-view': {
           setup: (_props: any, { slots }: any) => {
@@ -394,11 +346,9 @@ describe('ChoyWebShell', () => {
       },
     });
     await flushPromises();
-    const root = mounted.q('[data-test=choy-layout]');
-    expect(root?.getAttribute('data-aside')).toBe('false');
-    expect(root?.getAttribute('data-header')).toBe('false');
-    expect(mounted.q('[data-test=slot-aside]')).toBeNull();
-    expect(mounted.q('[data-test=slot-header]')).toBeNull();
+    expect(mounted.q('[data-testid=choy-shell]')?.getAttribute('data-shell-mode')).toBe('canvas');
+    expect(mounted.q('[data-testid=choy-shell-header]')).toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-aside]')).toBeNull();
     mounted.unmount();
   });
 
@@ -420,7 +370,7 @@ describe('ChoyWebShell', () => {
       },
     });
     await flushPromises();
-    const brand = mounted.q('.choy-shell__brand') as HTMLElement | null;
+    const brand = mounted.q('[data-testid=choy-shell-brand]') as HTMLElement | null;
     expect(brand).not.toBeNull();
     brand!.click();
     await flushPromises();
@@ -454,7 +404,7 @@ describe('ChoyWebShell', () => {
       },
     });
     await flushPromises();
-    expect(mounted.q('[data-test=slot-aside]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-aside]')).not.toBeNull();
     expect(mounted.text()).toContain('Shell App');
     mounted.unmount();
   });

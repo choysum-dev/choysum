@@ -36,6 +36,20 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
+### 2026-10-03 — W1 shell hard-cut FE SFC / Sheet adaptations
+
+- **Epic:** shadcn-vue alignment W1 (`ChoyWebShell` → Sidebar*).
+- **QuickJS FE:** avoid `defineProps<X>` where `X` is imported from `reka-ui`
+  (compiler rejects non-relative type imports). Inlined local props on Sidebar
+  Primitive hosts, Collapsible, Sheet, Avatar Fallback/Image.
+- **Sheet:** `Sheet.vue` uses `defineModel('open')` like product Dialog; Content /
+  Title / Description / Overlay drop `Dialog*Props` type imports; logical
+  `start`/`end` / `border-s`/`border-e` on left/right sheets.
+- **Sidebar:** `Sidebar.vue` no longer imports types from `"."` (directory); Sheet
+  children imported as concrete `.vue` files; cookie defaultOpen null-safe;
+  `sidebarMenuButtonVariants` moved to `sidebarMenuButtonVariants.ts`.
+- **Do not regress:** density `h-control*` / `size-control` on menu button variants.
+
 ### 2026-10-03 — W0 full L2 vendoring + semantic token pairs
 
 - **Epic:** shadcn-vue alignment W0 (`choy-shadcn-vue-alignment.md`).

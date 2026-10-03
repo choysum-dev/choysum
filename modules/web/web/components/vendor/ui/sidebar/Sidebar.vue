@@ -4,9 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import type { SidebarProps } from "."
+import type { HTMLAttributes } from "vue"
 import { cn } from "../../../../lib/utils"
-import { Sheet, SheetContent } from "../sheet"
+import Sheet from "../sheet/Sheet.vue"
+import SheetContent from "../sheet/SheetContent.vue"
 import SheetDescription from "../sheet/SheetDescription.vue"
 import SheetHeader from "../sheet/SheetHeader.vue"
 import SheetTitle from "../sheet/SheetTitle.vue"
@@ -16,7 +17,12 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<SidebarProps>(), {
+const props = withDefaults(defineProps<{
+  side?: "left" | "right"
+  variant?: "sidebar" | "floating" | "inset"
+  collapsible?: "offcanvas" | "icon" | "none"
+  class?: HTMLAttributes["class"]
+}>(), {
   side: "left",
   variant: "sidebar",
   collapsible: "offcanvas",

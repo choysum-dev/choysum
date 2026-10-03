@@ -4,16 +4,20 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import type { AvatarImageProps } from "reka-ui"
 import { AvatarImage } from "reka-ui"
 
-const props = defineProps<AvatarImageProps>()
+defineProps<{
+  src?: string
+  alt?: string
+}>()
 </script>
 
 <template>
   <AvatarImage
+    v-if="src"
     data-slot="avatar-image"
-    v-bind="props"
+    :src="src"
+    :alt="alt || ''"
     class="aspect-square size-full"
   >
     <slot />

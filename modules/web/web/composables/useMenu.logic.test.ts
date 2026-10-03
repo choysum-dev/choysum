@@ -1,0 +1,138 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+import { defineComponent, h, nextTick } from 'vue';
+import { createPinia, setActivePinia } from 'pinia';
+import * as VueRouter from 'vue-router';
+import { createMenuPlugin } from '@/core/web/menu';
+import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
+import { useMenuStore } from '../stores/menuStore';
+import { useMenu } from './useMenu';
+
+const createFeStubRouter = (VueRouter as any).createFeStubRouter;
+
+describe('useMenu logic', () => {
+  test('covers navigateTo branches, expand state, and store proxies', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'app',
+      title: 'App',
+      children: [
+        { id: 'leaf', title: 'Leaf', path: '/leaf' },
+        {
+          id: 'group',
+          title: 'Group',
+          children: [{ id: 'child', title: 'Child', path: '/child' }],
+        },
+        {
+          id: 'dead',
+          title: 'Dead',
+          children: [{ id: 'dead-child', title: 'Dead Child' }],
+        },
+        {
+          id: 'ext-blank',
+          title: 'Ext Blank',
+          path: 'https://example.com/a',
+          externalLink: true,
+          openMode: 'window',
+        },
+        {
+          id: 'ext-parent',
+          title: 'Ext Parent',
+          path: 'https://example.com/b',
+          externalLink: true,
+          openMode: 'parent',
+        },
+        {
+          id: 'ext-top',
+          title: 'Ext Top',
+          path: 'https://example.com/c',
+          externalLink: true,
+          openMode: 'top',
+        },
+        {
+          id: 'ext-self',
+          title: 'Ext Self',
+          path: 'https://example.com/d',
+          externalLink: true,
+        },
+      ],
+    } as any);
+
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: { path: '/leaf', fullPath: '/leaf', meta: {} },
+    });
+
+    const prevOpen = window.open;
+    const opened: string[] = [];
+    window.open = ((_url?: string | URL, target?: string) => {
+      opened.push(String(target || ''));
+      return null;
+    }) as typeof window.open;
+
+    let api!: ReturnType<typeof useMenu>;
+    const Host = defineComponent({
+      setup() {
+        api = useMenu();
+        return () => h('div', { 'data-testid': 'use-menu-host' });
+      },
+    });
+    const mounted = mountApp(Host as any, {
+      plugins: [menuPlugin, pinia, router],
+    });
+    await flushPromises();
+    await nextTick();
+
+    expect(await api.navigateTo('missing')).toBe(false);
+    expect(await api.navigateTo('dead')).toBe(false);
+    expect(await api.navigateTo('leaf')).toBe(true);
+    expect(await api.navigateTo('ext-blank')).toBe(true);
+    expect(await api.navigateTo('ext-parent')).toBe(true);
+    expect(await api.navigateTo('ext-top')).toBe(true);
+    expect(await api.navigateTo('ext-self')).toBe(true);
+    expect(opened).toEqual(['_blank', '_parent', '_top', '_self']);
+
+    const store = useMenuStore();
+    // Clear ancestry so manual expand/collapse is not forced open by activeMenu.
+    const leaf = store.getMenu('leaf');
+    expect(leaf).toBeTruthy();
+    store.setActiveMenu(leaf!);
+
+    expect(api.isExpanded('group')).toBe(false);
+    api.openSubMenu('group');
+    api.openSubMenu('group');
+    expect(api.isExpanded('group')).toBe(true);
+    api.closeSubMenu('group');
+    api.closeSubMenu('group');
+    expect(api.isExpanded('group')).toBe(false);
+    api.openSubMenu('');
+    api.closeSubMenu('');
+
+    const child = store.getMenu('child');
+    expect(child).toBeTruthy();
+    store.setActiveMenu(child!);
+    expect(api.isExpanded('group')).toBe(true);
+    expect(api.isExpanded('missing-group')).toBe(false);
+
+    const push = router.push.bind(router);
+    router.push = (async () => {
+      throw new Error('push failed');
+    }) as typeof router.push;
+    expect(await api.navigateTo('child')).toBe(false);
+    router.push = push;
+
+    expect(await api.navigateTo(leaf!)).toBe(true);
+    expect(api.hasMenu('leaf')).toBe(true);
+    expect(api.getMenu('leaf')?.id).toBe('leaf');
+    expect(api.getMenuByPath('/leaf')?.id).toBe('leaf');
+    expect(api.getMenuChildren('group').length).toBe(1);
+    expect(api.getMenuParent('child')?.id).toBe('group');
+    expect(api.getMenus().length).toBeGreaterThan(0);
+    api.setActiveMenu(leaf!);
+
+    window.open = prevOpen;
+    mounted.unmount();
+  });
+});

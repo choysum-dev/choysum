@@ -1,9 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import type { VariantProps } from '../../../../lib/cva'
 import type { HTMLAttributes } from "vue"
-import { cva } from '../../../../lib/cva'
 
 export interface SidebarProps {
   side?: "left" | "right"
@@ -37,27 +35,7 @@ export { default as SidebarSeparator } from "./SidebarSeparator.vue"
 export { default as SidebarTrigger } from "./SidebarTrigger.vue"
 
 export { useSidebar } from "./utils"
-
-export const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-hidden ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pe-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-control! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
-  {
-    variants: {
-      variant: {
-        default: "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-        outline:
-          "bg-background shadow-[0_0_0_1px_var(--sidebar-border)] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_var(--sidebar-accent)]",
-      },
-      size: {
-        default: "h-control-sm text-sm",
-        sm: "h-7 text-xs",
-        lg: "h-12 text-sm group-data-[collapsible=icon]:p-0!",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
-  },
-)
-
-export type SidebarMenuButtonVariants = VariantProps<typeof sidebarMenuButtonVariants>
+export {
+  sidebarMenuButtonVariants,
+  type SidebarMenuButtonVariants,
+} from "./sidebarMenuButtonVariants"

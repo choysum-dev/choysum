@@ -4,20 +4,25 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import type { CollapsibleRootEmits, CollapsibleRootProps } from "reka-ui"
-import { CollapsibleRoot, useForwardPropsEmits } from "reka-ui"
+import { CollapsibleRoot } from "reka-ui"
 
-const props = defineProps<CollapsibleRootProps>()
-const emits = defineEmits<CollapsibleRootEmits>()
+const open = defineModel<boolean>("open")
 
-const forwarded = useForwardPropsEmits(props, emits)
+const props = defineProps<{
+  defaultOpen?: boolean
+  disabled?: boolean
+  unmountOnHide?: boolean
+}>()
 </script>
 
 <template>
   <CollapsibleRoot
     v-slot="slotProps"
+    v-model:open="open"
     data-slot="collapsible"
-    v-bind="forwarded"
+    :default-open="props.defaultOpen"
+    :disabled="props.disabled"
+    :unmount-on-hide="props.unmountOnHide"
   >
     <slot v-bind="slotProps" />
   </CollapsibleRoot>

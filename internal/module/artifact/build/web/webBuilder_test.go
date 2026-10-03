@@ -43,8 +43,8 @@ import (
 
 // Merged script asserts: component keys inside `components: { ... }`, not template markup or values.
 var (
-	// First key (`{ Key`) or later key (`, Key`); values like `Foo: ChoyLayout` do not match.
-	mergedComponentsChoyLayoutRe = regexp.MustCompile(`components:\s*\{(?:\s*|[^}]*,\s*)ChoyLayout\s*[,}]`)
+	// First key (`{ Key`) or later key (`, Key`); values like `Foo: SidebarProvider` do not match.
+	mergedComponentsSidebarProviderRe = regexp.MustCompile(`components:\s*\{(?:\s*|[^}]*,\s*)SidebarProvider\s*[,}]`)
 	mergedComponentsXpathRe      = regexp.MustCompile(`components:\s*\{(?:\s*|[^}]*,\s*)Xpath\s*[,}]`)
 )
 
@@ -713,27 +713,27 @@ import { QuestionFilled } from '@element-plus/icons-vue';
 }
 
 func TestMergedComponentsRegexes_MatchMidObjectKeys(t *testing.T) {
-	if !mergedComponentsChoyLayoutRe.MatchString("components: { ChoyLayout }") {
-		t.Fatal("expected ChoyLayout regex to match a first-object key")
+	if !mergedComponentsSidebarProviderRe.MatchString("components: { SidebarProvider }") {
+		t.Fatal("expected SidebarProvider regex to match a first-object key")
 	}
-	if !mergedComponentsChoyLayoutRe.MatchString("components: { Foo, ChoyLayout }") {
-		t.Fatal("expected ChoyLayout regex to match a mid-object key")
+	if !mergedComponentsSidebarProviderRe.MatchString("components: { Foo, SidebarProvider }") {
+		t.Fatal("expected SidebarProvider regex to match a mid-object key")
 	}
-	if !mergedComponentsChoyLayoutRe.MatchString("components: { Foo, ChoyLayout, Bar }") {
-		t.Fatal("expected ChoyLayout regex to match a middle key among three")
+	if !mergedComponentsSidebarProviderRe.MatchString("components: { Foo, SidebarProvider, Bar }") {
+		t.Fatal("expected SidebarProvider regex to match a middle key among three")
 	}
 	if !mergedComponentsXpathRe.MatchString("components: {\n  Foo,\n  Xpath\n}") {
 		t.Fatal("expected Xpath regex to match a mid-object key")
 	}
-	if mergedComponentsXpathRe.MatchString("components: { Foo, ChoyLayout }") {
+	if mergedComponentsXpathRe.MatchString("components: { Foo, SidebarProvider }") {
 		t.Fatal("expected Xpath regex not to match when Xpath is absent")
 	}
-	if mergedComponentsChoyLayoutRe.MatchString("components: { Foo: ChoyLayout }") {
-		t.Fatal("expected ChoyLayout regex not to match a value reference")
+	if mergedComponentsSidebarProviderRe.MatchString("components: { Foo: SidebarProvider }") {
+		t.Fatal("expected SidebarProvider regex not to match a value reference")
 	}
 	// Value after a prior entry must not match either (key-vs-value guard).
-	if mergedComponentsChoyLayoutRe.MatchString("components: { Foo: Bar, Baz: ChoyLayout }") {
-		t.Fatal("expected ChoyLayout regex not to match a later entry's value reference")
+	if mergedComponentsSidebarProviderRe.MatchString("components: { Foo: Bar, Baz: SidebarProvider }") {
+		t.Fatal("expected SidebarProvider regex not to match a later entry's value reference")
 	}
 }
 
@@ -785,8 +785,8 @@ func TestGetScriptNode_InjectsParentLayout_ForRealAuthChoyWebShell(t *testing.T)
 	}
 	content := htmlquery.InnerText(scriptNode)
 
-	if !mergedComponentsChoyLayoutRe.MatchString(content) {
-		t.Fatalf("expected merged script to register ChoyLayout from parent, got:\n%s", content)
+	if !mergedComponentsSidebarProviderRe.MatchString(content) {
+		t.Fatalf("expected merged script to register SidebarProvider from parent, got:\n%s", content)
 	}
 	if mergedComponentsXpathRe.MatchString(content) {
 		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
@@ -840,8 +840,8 @@ func TestGetScriptNode_InjectsParentLayout_WithRelativeModulesPath(t *testing.T)
 	}
 	content := htmlquery.InnerText(scriptNode)
 
-	if !mergedComponentsChoyLayoutRe.MatchString(content) {
-		t.Fatalf("expected merged script to register ChoyLayout from parent, got:\n%s", content)
+	if !mergedComponentsSidebarProviderRe.MatchString(content) {
+		t.Fatalf("expected merged script to register SidebarProvider from parent, got:\n%s", content)
 	}
 	if mergedComponentsXpathRe.MatchString(content) {
 		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
@@ -896,8 +896,8 @@ func TestGetScriptNode_InjectsParentLayout_ResolvesAliasViaTsconfig(t *testing.T
 	}
 	content := htmlquery.InnerText(scriptNode)
 
-	if !mergedComponentsChoyLayoutRe.MatchString(content) {
-		t.Fatalf("expected merged script to register ChoyLayout from parent, got:\n%s", content)
+	if !mergedComponentsSidebarProviderRe.MatchString(content) {
+		t.Fatalf("expected merged script to register SidebarProvider from parent, got:\n%s", content)
 	}
 	if mergedComponentsXpathRe.MatchString(content) {
 		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
@@ -959,8 +959,8 @@ func TestGetScriptNode_InjectsParentLayout_WithRuntimeTsconfigAliasMap(t *testin
 	}
 	content := htmlquery.InnerText(scriptNode)
 
-	if !mergedComponentsChoyLayoutRe.MatchString(content) {
-		t.Fatalf("expected merged script to register ChoyLayout from parent, got:\n%s", content)
+	if !mergedComponentsSidebarProviderRe.MatchString(content) {
+		t.Fatalf("expected merged script to register SidebarProvider from parent, got:\n%s", content)
 	}
 	if mergedComponentsXpathRe.MatchString(content) {
 		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
@@ -1037,8 +1037,8 @@ func TestUpdateComponent_MergesAuthChoyWebShellIntoWeb(t *testing.T) {
 	if !strings.Contains(childParsed.Content, `data-anchor="choy.shell.header-actions"`) {
 		t.Fatalf("expected merged content to include the parent shell header-actions anchor, got:\n%s", childParsed.Content)
 	}
-	if !mergedComponentsChoyLayoutRe.MatchString(childParsed.Content) {
-		t.Fatalf("expected merged script to register ChoyLayout from parent, got:\n%s", childParsed.Content)
+	if !mergedComponentsSidebarProviderRe.MatchString(childParsed.Content) {
+		t.Fatalf("expected merged script to register SidebarProvider from parent, got:\n%s", childParsed.Content)
 	}
 }
 
@@ -1115,8 +1115,8 @@ func TestPrebuildUpdatePrebuildResult_RealAuthChoyWebShellMerges(t *testing.T) {
 	if !strings.Contains(childResult.Content, `data-anchor="choy.shell.header-actions"`) {
 		t.Fatalf("expected merged content to include the parent shell header-actions anchor, got:\n%s", childResult.Content)
 	}
-	if !mergedComponentsChoyLayoutRe.MatchString(childResult.Content) {
-		t.Fatalf("expected merged script to register ChoyLayout from parent, got:\n%s", childResult.Content)
+	if !mergedComponentsSidebarProviderRe.MatchString(childResult.Content) {
+		t.Fatalf("expected merged script to register SidebarProvider from parent, got:\n%s", childResult.Content)
 	}
 	if mergedComponentsXpathRe.MatchString(childResult.Content) {
 		t.Fatalf("expected xpath placeholder to be replaced in merged content, got:\n%s", childResult.Content)

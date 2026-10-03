@@ -535,30 +535,67 @@ func (c *tsgoImportExportCtx) parseExport(stmt *tsast.Node) {
 	}
 
 	if tsgoIsExportDeclaration(stmt) {
-		if name := tsgoExportDeclarationName(stmt); name != "" {
+		for _, name := range tsgoExportDeclarationNames(stmt) {
 			c.exports[name] = newExport(name, c.currentModuleSpecPath(), false)
 		}
 	}
 }
 
 func tsgoExportDeclarationName(stmt *tsast.Node) string {
-	if stmt == nil {
+	names := tsgoExportDeclarationNames(stmt)
+	if len(names) == 0 {
 		return ""
 	}
-	name := stmt.Name()
-	if name != nil {
-		return name.Text()
+	return names[0]
+}
+
+func tsgoExportDeclarationNames(stmt *tsast.Node) []string {
+	if stmt == nil {
+		return nil
 	}
-	if stmt.Kind == tsast.KindVariableStatement {
-		decls := stmt.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes
-		if len(decls) > 0 {
-			decl := decls[0]
-			if decl != nil {
-				return decl.AsVariableDeclaration().Name().Text()
-			}
+	if name := stmt.Name(); name != nil {
+		return tsgoBindingNameIdents(name)
+	}
+	if stmt.Kind != tsast.KindVariableStatement {
+		return nil
+	}
+	decls := stmt.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes
+	var out []string
+	for _, decl := range decls {
+		if decl == nil {
+			continue
 		}
+		out = append(out, tsgoBindingNameIdents(decl.AsVariableDeclaration().Name())...)
 	}
-	return ""
+	return out
+}
+
+func tsgoBindingNameIdents(name *tsast.Node) []string {
+	if name == nil {
+		return nil
+	}
+	switch name.Kind {
+	case tsast.KindIdentifier:
+		if text := name.Text(); text != "" {
+			return []string{text}
+		}
+		return nil
+	case tsast.KindObjectBindingPattern, tsast.KindArrayBindingPattern:
+		pattern := name.AsBindingPattern()
+		if pattern == nil || pattern.Elements == nil {
+			return nil
+		}
+		var out []string
+		for _, el := range pattern.Elements.Nodes {
+			if el == nil || el.Kind != tsast.KindBindingElement {
+				continue
+			}
+			out = append(out, tsgoBindingNameIdents(el.Name())...)
+		}
+		return out
+	default:
+		return nil
+	}
 }
 
 func tsgoHasModifier(node *tsast.Node, kind tsast.Kind) bool {
