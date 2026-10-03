@@ -9,6 +9,8 @@ import { AspectRatio } from "reka-ui"
 // Local props — avoid `defineProps<AspectRatioProps>()` (reka type import breaks QuickJS FE SFC).
 const props = defineProps<{
   ratio?: number
+  as?: any
+  asChild?: boolean
 }>()
 </script>
 

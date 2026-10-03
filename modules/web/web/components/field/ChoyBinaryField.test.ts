@@ -144,6 +144,9 @@ describe('BinaryField normalize helpers', () => {
     await flushPromises();
     expect(m.text()).toContain('report.pdf');
     expect(m.q('.choy-binary-current')).toBeTruthy();
+    expect(m.q('[data-slot=attachment]')).not.toBeNull();
+    expect(m.q('[data-slot=attachment-media]')).not.toBeNull();
+    expect(m.q('[data-slot=attachment-title]')).not.toBeNull();
     m.unmount();
   });
 

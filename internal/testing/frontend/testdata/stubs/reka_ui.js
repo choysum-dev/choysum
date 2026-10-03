@@ -161,6 +161,8 @@ export const TooltipTrigger = stub('TooltipTrigger');
 export const AvatarRoot = stub('AvatarRoot');
 export const AvatarFallback = stub('AvatarFallback');
 export const AvatarImage = stub('AvatarImage');
+// Vendor Avatar.vue imports AvatarRoot; keep a plain Avatar alias for other importers.
+export const Avatar = AvatarRoot;
 
 const COLLAPSIBLE_OPEN = Symbol('reka-collapsible-open');
 
@@ -272,8 +274,6 @@ export const ListboxItem = stub('ListboxItem');
 
 export const Label = stub('Label');
 export const AspectRatio = stub('AspectRatio');
-// Avatar.vue imports { Avatar as AvatarRoot } style — also export aliases used by vendor.
-export const Avatar = AvatarRoot;
 
 // AlertDialog: mirror DialogRoot open/closed so ConfirmHost mounts in FE unit.
 export const AlertDialogRoot = DialogRoot;
