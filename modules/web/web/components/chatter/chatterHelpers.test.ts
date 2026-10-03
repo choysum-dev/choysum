@@ -224,4 +224,5 @@ test('resolveChoyChatterInitials uses two letters, blank fallback, and expansion
   expect(resolveChoyChatterInitials('Ada Lovelace')).toBe('AL');
   expect(resolveChoyChatterInitials('Bob')).toBe('BO');
   expect(resolveChoyChatterInitials('ß Alice')).toBe('SA');
+  expect(resolveChoyChatterInitials('A 😀')).toBe('A😀');
 });

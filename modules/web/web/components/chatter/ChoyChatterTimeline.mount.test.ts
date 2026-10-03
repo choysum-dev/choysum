@@ -130,6 +130,8 @@ describe('ChoyChatterTimeline mount', () => {
     expect(mounted.q('[data-anchor="choy.chatter.field-change"]')).not.toBeNull();
     expect(mounted.text()).toContain('First');
     expect(mounted.text()).toContain('State');
+    expect(mounted.text()).toContain('Ann');
+    expect(mounted.text()).toContain('Ben');
     mounted.unmount();
   });
 

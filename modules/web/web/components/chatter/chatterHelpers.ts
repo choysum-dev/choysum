@@ -57,7 +57,7 @@ export function resolveChoyChatterInitials(label: string | null | undefined): st
   const firstChar = (part: string): string => Array.from(part.toUpperCase()).slice(0, 1).join('');
   const parts = normalized.split(/\s+/).filter(Boolean);
   if (parts.length >= 2) {
-    return `${firstChar(parts[0]!)}${firstChar(parts[1]!)}`.slice(0, 2);
+    return `${firstChar(parts[0]!)}${firstChar(parts[1]!)}`;
   }
   return Array.from(normalized.toUpperCase()).slice(0, 2).join('');
 }
