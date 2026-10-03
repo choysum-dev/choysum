@@ -32,7 +32,11 @@
     "@tanstack/vue-virtual": "3.13.39",
     "@internationalized/date": "3.12.4",
     "@unovis/vue": "1.7.0",
-    "@unovis/ts": "1.7.0"
+    "@unovis/ts": "1.7.0",
+    "vue-sonner": "^2.0.0",
+    "embla-carousel-vue": "^8.6.0",
+    "vue-input-otp": "^0.3.0",
+    "vee-validate": "^4.15.0"
   },
   "choysum": {
     "moduleName": "web",

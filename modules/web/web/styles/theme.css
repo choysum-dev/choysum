@@ -18,10 +18,13 @@
 
 @theme {
   --color-primary: var(--choy-color-primary);
+  --color-primary-foreground: var(--choy-color-primary-foreground);
   --color-success: var(--choy-color-success);
   --color-warning: var(--choy-color-warning);
   --color-danger: var(--choy-color-danger);
   --color-destructive: var(--choy-color-danger);
+  /* Text/icon on muted destructive surfaces; solid fills use text-primary-foreground. */
+  --color-destructive-foreground: var(--choy-color-danger);
   --color-info: var(--choy-color-info);
   --color-foreground: var(--choy-color-foreground);
   --color-background: var(--choy-color-background);
@@ -29,6 +32,23 @@
   --color-muted-foreground: var(--choy-color-muted-foreground);
   --color-border: var(--choy-color-border);
   --color-ring: var(--choy-color-ring);
+  --color-card: var(--choy-color-card);
+  --color-card-foreground: var(--choy-color-card-foreground);
+  --color-popover: var(--choy-color-popover);
+  --color-popover-foreground: var(--choy-color-popover-foreground);
+  --color-secondary: var(--choy-color-secondary);
+  --color-secondary-foreground: var(--choy-color-secondary-foreground);
+  --color-accent: var(--choy-color-accent);
+  --color-accent-foreground: var(--choy-color-accent-foreground);
+  --color-input: var(--choy-color-input);
+  --color-sidebar: var(--choy-color-sidebar);
+  --color-sidebar-foreground: var(--choy-color-sidebar-foreground);
+  --color-sidebar-primary: var(--choy-color-sidebar-primary);
+  --color-sidebar-primary-foreground: var(--choy-color-sidebar-primary-foreground);
+  --color-sidebar-accent: var(--choy-color-sidebar-accent);
+  --color-sidebar-accent-foreground: var(--choy-color-sidebar-accent-foreground);
+  --color-sidebar-border: var(--choy-color-sidebar-border);
+  --color-sidebar-ring: var(--choy-color-sidebar-ring);
 
   --color-primary-subtle: var(--choy-color-primary-subtle);
   --color-primary-soft: var(--choy-color-primary-soft);
@@ -39,6 +59,12 @@
   --color-warning-subtle: var(--choy-color-warning-subtle);
   --color-danger-subtle: var(--choy-color-danger-subtle);
   --color-info-subtle: var(--choy-color-info-subtle);
+
+  --color-chart-1: var(--choy-chart-1);
+  --color-chart-2: var(--choy-chart-2);
+  --color-chart-3: var(--choy-chart-3);
+  --color-chart-4: var(--choy-chart-4);
+  --color-chart-5: var(--choy-chart-5);
 
   --radius-sm: var(--choy-radius-sm);
   --radius-md: var(--choy-radius-md);

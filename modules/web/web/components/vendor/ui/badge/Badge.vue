@@ -18,10 +18,10 @@ const props = withDefaults(
 );
 
 const variantClass: Record<BadgeVariant, string> = {
-  default: 'border-transparent bg-primary text-background',
-  secondary: 'border-transparent bg-muted text-foreground',
+  default: 'border-transparent bg-primary text-primary-foreground',
+  secondary: 'border-transparent bg-secondary text-secondary-foreground',
   outline: 'border-border text-foreground',
-  destructive: 'border-transparent bg-danger text-background',
+  destructive: 'border-transparent bg-destructive text-primary-foreground',
 };
 
 const classes = computed(() =>
