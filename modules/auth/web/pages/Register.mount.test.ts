@@ -44,9 +44,7 @@ async function fillField(wrapper: { find: (sel: string) => any }, selector: stri
   const input = fieldInput(wrapper, selector);
   const el = input.element as HTMLInputElement;
   el.value = value;
-  const evt = new Event('input', { bubbles: true, cancelable: true });
-  if (typeof el.oninput === 'function') el.oninput(evt);
-  el.dispatchEvent(evt);
+  el.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
   el.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
   el.dispatchEvent(new Event('blur', { bubbles: true, cancelable: true }));
   await flushPromises();

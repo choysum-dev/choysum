@@ -128,6 +128,26 @@ test('runRegisterSubmit: register then login on success', async () => {
   expect(seen).toEqual(['reg', 'alice', 'a@b.co', 'secret1', 'login', 'alice', 'secret1']);
 });
 
+test('runRegisterSubmit: trims username and email', async () => {
+  const seen: string[] = [];
+  const ok = await runRegisterSubmit({
+    loading: false,
+    username: '  alice  ',
+    email: '  a@b.co  ',
+    password: 'secret1',
+    registerFailedMessage: 'Registration failed. Please try again later.',
+    register: async (username, email, password) => {
+      seen.push('reg', username, email, password);
+    },
+    login: async (username, password) => {
+      seen.push('login', username, password);
+    },
+    setError: () => undefined,
+  });
+  expect(ok).toBe(true);
+  expect(seen).toEqual(['reg', 'alice', 'a@b.co', 'secret1', 'login', 'alice', 'secret1']);
+});
+
 test('runRegisterSubmit: maps ChoysumError to setError', async () => {
   const errors: string[] = [];
   const ok = await runRegisterSubmit({

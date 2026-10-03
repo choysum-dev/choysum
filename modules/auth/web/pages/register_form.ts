@@ -123,12 +123,14 @@ export async function runRegisterSubmit(opts: {
 }): Promise<boolean> {
   if (opts.loading) return false;
   opts.setError('');
-  if (!String(opts.username ?? '').trim() || !String(opts.email ?? '').trim() || !opts.password) {
+  const username = String(opts.username ?? '').trim();
+  const email = String(opts.email ?? '').trim();
+  if (!username || !email || !opts.password) {
     return false;
   }
   try {
-    await opts.register(opts.username, opts.email, opts.password);
-    await opts.login(opts.username, opts.password);
+    await opts.register(username, email, opts.password);
+    await opts.login(username, opts.password);
     return true;
   } catch (err) {
     if (err instanceof ChoysumError) {
