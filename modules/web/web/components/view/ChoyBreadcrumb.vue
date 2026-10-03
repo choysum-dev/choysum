@@ -20,6 +20,13 @@ SPDX-License-Identifier: Apache-2.0
               {{ item.label }}
             </RouterLink>
           </BreadcrumbLink>
+          <!-- Intermediate non-link segments must not use BreadcrumbPage (aria-current=page). -->
+          <span
+            v-else-if="index !== items.length - 1"
+            class="text-foreground/70"
+          >
+            {{ item.label }}
+          </span>
           <BreadcrumbPage v-else>
             {{ item.label }}
           </BreadcrumbPage>
@@ -45,7 +52,9 @@ export type ChoyBreadcrumbItem = {
 };
 
 /**
- * Breadcrumb nav over vendor Breadcrumb*. Items with `to` render as router-link.
+ * Breadcrumb nav over vendor Breadcrumb*.
+ * Only the last item uses BreadcrumbPage (aria-current="page"); intermediates
+ * with `to` are links, without `to` are plain text.
  */
 const props = withDefaults(
   defineProps<{
