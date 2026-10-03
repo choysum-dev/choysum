@@ -26,7 +26,7 @@ export type FormSubmitHandler<T extends BaseModel> = (
   ctx: FormSubmitHandlerContext<T>
 ) => Promise<FormSubmitHandlerResult<T>> | FormSubmitHandlerResult<T>;
 
-export type FormSubmitFailureReason = 'loading' | 'validate-failed' | 'before-submit-canceled' | 'error';
+export type FormSubmitFailureReason = 'loading' | 'not-editable' | 'validate-failed' | 'before-submit-canceled' | 'error';
 
 export type FormSubmitOutcome<T extends BaseModel> = {
   ok: boolean;

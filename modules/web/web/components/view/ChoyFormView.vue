@@ -96,7 +96,7 @@ SPDX-License-Identifier: Apache-2.0
       :class="{ 'form-view__content--busy pointer-events-none opacity-65': loading }"
       :aria-busy="loading || undefined"
     >
-      <form ref="formRef" @submit.prevent="handleSubmit">
+      <form ref="formRef" @submit.prevent="onNativeSubmit">
         <slot :form-data="exposedFormData" :view-mode="viewMode" :loading="loading" />
       </form>
     </div>
@@ -261,6 +261,7 @@ const controller = createFormController(store as any);
 controller.provideToChildren();
 const viewMode = computed<ViewMode>(() => controller.vm.mode as ViewMode);
 const loading = computed<boolean>(() => !!controller.vm.loading);
+const submitting = ref(false);
 const saveLabel = computed(() => (loading.value ? _t('Saving...') : _t('Save')));
 const registerChildSubmitApi = inject<FormChildSubmitApiRegister | null>(FORM_CHILD_SUBMIT_API_REGISTER_KEY, null);
 const embeddedFromHost = inject<boolean | null>(FORM_EMBEDDED_CONTEXT_KEY, null);
@@ -470,7 +471,17 @@ async function handleSubmit(): Promise<FormSubmitOutcome<T>> {
   const modeForEmit: FormSubmitMode = (viewMode.value as any) === 'create' ? 'create' : 'edit';
   const currentFormData = () => (toRaw(exposedFormData.value) as Partial<ClientModel<T>>) || null;
 
-  if (loading.value) {
+  if (viewMode.value === 'display') {
+    return {
+      ok: false,
+      mode: modeForEmit,
+      handledByHandler: false,
+      record: null,
+      formData: currentFormData(),
+      reason: 'not-editable',
+    };
+  }
+  if (loading.value || submitting.value) {
     return {
       ok: false,
       mode: modeForEmit,
@@ -480,6 +491,7 @@ async function handleSubmit(): Promise<FormSubmitOutcome<T>> {
       reason: 'loading',
     };
   }
+  submitting.value = true;
   // Pause automatic onchange flushing during submit.
   onchangeCtrl.pause();
   try {
@@ -626,10 +638,16 @@ async function handleSubmit(): Promise<FormSubmitOutcome<T>> {
       error: err,
     };
   } finally {
+    submitting.value = false;
     onchangeCtrl.reset();
     resetOnchangeAgg();
     onchangeCtrl.resume();
   }
+}
+
+/** Native form submit (Enter / slot type=submit); do not pass SubmitEvent into handleSubmit. */
+function onNativeSubmit() {
+  void handleSubmit();
 }
 
 // =============================

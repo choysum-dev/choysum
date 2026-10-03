@@ -106,6 +106,40 @@ describe('FormView native form submit', () => {
     wrapper.unmount();
   });
 
+  test('a second native submit while the first is pending is ignored', async () => {
+    let resolveHandler: ((value: { handled: boolean; skipSuccessMessage: boolean }) => void) | undefined;
+    const submitHandler = fnRecorder(
+      () =>
+        new Promise<{ handled: boolean; skipSuccessMessage: boolean }>(resolve => {
+          resolveHandler = resolve;
+        })
+    );
+    const { wrapper } = mountForm({ submitHandler });
+    await flushPromises();
+    const form = wrapper.q('form') as HTMLFormElement | null;
+    expect(form).toBeTruthy();
+    form!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    form!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await flushPromises();
+    expect(submitHandler.calls.length).toBe(1);
+    resolveHandler?.({ handled: true, skipSuccessMessage: true });
+    await flushPromises();
+    expect(submitHandler.calls.length).toBe(1);
+    wrapper.unmount();
+  });
+
+  test('native submit in display mode does not call submitHandler', async () => {
+    const { wrapper, submitHandler } = mountForm();
+    await flushPromises();
+    wrapper.setupState().controller.vm.mode = 'display';
+    await flushPromises();
+    const form = wrapper.q('form') as HTMLFormElement | null;
+    form!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await flushPromises();
+    expect(submitHandler.calls.length).toBe(0);
+    wrapper.unmount();
+  });
+
   test('toolbar Save is type=button and a single submit does not double-call the handler', async () => {
     const { wrapper, submitHandler } = mountForm({ showActions: true });
     await flushPromises();
