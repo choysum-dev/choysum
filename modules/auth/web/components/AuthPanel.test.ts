@@ -19,6 +19,7 @@ describe('AuthPanel', () => {
     const mounted = mountApp(Host as any);
     await flushPromises();
     expect(mounted.q('[data-testid=auth-slot]')?.textContent).toBe('form');
+    expect(mounted.q('[data-testid=auth-panel-brand]')).toBeTruthy();
     const attrib = mounted.q('[data-testid=auth-panel-attrib]');
     expect(attrib).toBeTruthy();
     // Without vue-i18n, useI18n throws and keys are returned as-is.

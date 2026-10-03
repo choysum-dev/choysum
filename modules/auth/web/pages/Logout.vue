@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
         <div class="logout-view flex flex-col items-center gap-4 py-4 text-center">
           <transition name="fade" mode="out-in">
             <div v-if="logoutSuccess" key="success" class="flex flex-col items-center gap-3">
-              <CheckCircle2 class="size-12 text-emerald-600" aria-hidden="true" />
+              <CheckCircle2 class="size-12 text-primary" aria-hidden="true" />
               <h4 class="text-lg font-semibold">{{ _t('Signed Out Successfully') }}</h4>
               <p class="max-w-md text-sm text-foreground/70">{{ redirectSubtitle }}</p>
               <div class="flex flex-wrap justify-center gap-2 pt-2">

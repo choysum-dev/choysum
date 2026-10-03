@@ -7,8 +7,8 @@ SPDX-License-Identifier: Apache-2.0
   <!-- Auth / fullscreen canvas: no Sidebar chrome. -->
   <div
     v-if="isAuthPage || !sidebarAllowed"
-    class="flex min-h-svh w-full flex-col bg-background text-foreground"
-    :class="isAuthPage ? 'choy-shell--auth' : ''"
+    class="flex min-h-svh w-full flex-col text-foreground"
+    :class="isAuthPage ? 'choy-shell--auth bg-muted' : 'bg-background'"
     data-testid="choy-shell"
     data-shell-mode="canvas"
   >
@@ -37,7 +37,7 @@ SPDX-License-Identifier: Apache-2.0
     </header>
       <div
         class="choy-shell__main-inner min-h-0 flex-1 overflow-auto"
-        :class="isAuthPage ? 'bg-muted/50' : 'bg-muted/30'"
+        :class="isAuthPage ? 'bg-muted' : 'bg-muted/30'"
         data-testid="choy-shell-canvas"
       >
         <slot>
@@ -126,15 +126,7 @@ SPDX-License-Identifier: Apache-2.0
           data-testid="choy-shell-menu-trigger"
           :aria-label="menuTriggerLabel"
         />
-        <a
-          href="/"
-          class="choy-shell__brand inline-flex min-w-0 items-center gap-2 font-semibold tracking-tight text-foreground no-underline hover:opacity-90"
-          data-testid="choy-shell-brand"
-          @click.prevent="onBrandClick"
-        >
-          <img :src="logoUrl" alt="" class="size-6 shrink-0 md:hidden" width="24" height="24" />
-          <span class="truncate">Choysum</span>
-        </a>
+        <ChoyShellBreadcrumb />
         <div class="ms-auto flex items-center gap-1">
           <ChoyCommandPalette />
           <div data-anchor="choy.shell.header-actions" class="flex items-center gap-1">
@@ -181,6 +173,7 @@ import logoUrl from '../../assets/logo-32.png'
 import ChoySidebarNav from './ChoySidebarNav.vue'
 import ChoySidebarBridge from './ChoySidebarBridge.vue'
 import ChoyCommandPalette from './ChoyCommandPalette.vue'
+import ChoyShellBreadcrumb from './ChoyShellBreadcrumb.vue'
 import {
   Sidebar,
   SidebarContent,

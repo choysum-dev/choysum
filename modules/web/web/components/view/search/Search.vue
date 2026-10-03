@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <div class="choy-search w-full" data-anchor="choy.search">
     <div
-      class="choy-search__main flex min-h-[var(--choy-control-height)] cursor-text flex-wrap items-center gap-0.5 rounded-md border border-border bg-background px-2 py-0.5 hover:border-primary-muted focus-within:border-primary-muted"
+      class="choy-search__main flex min-h-[var(--choy-control-height)] cursor-text flex-wrap items-center gap-0.5 rounded-md border border-border bg-card px-2 py-0.5 hover:border-accent-foreground/20 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30"
       @click="focusInput"
     >
       <span>
@@ -25,14 +25,14 @@ SPDX-License-Identifier: Apache-2.0
       <div class="choy-search__tags flex max-w-full flex-wrap items-center gap-0.5">
         <span
           v-if="hasGrouping"
-          class="choy-search__tag choy-search__grouptag inline-flex h-control cursor-pointer select-none items-center gap-1 rounded border border-border px-1.5 text-sm transition-colors hover:border-primary hover:bg-muted hover:text-primary active:border-primary active:text-primary [&_button]:text-success hover:[&_button]:text-success"
+          class="choy-search__tag choy-search__grouptag inline-flex h-control cursor-pointer select-none items-center gap-1 rounded border border-border px-1.5 text-sm transition-colors hover:border-border hover:bg-accent hover:text-accent-foreground active:bg-accent"
           @click.stop="onEditGroupClick()"
           :title="groupingTooltip"
         >
           {{ _t('Group: %s', groupingSummary) }}
           <button
             type="button"
-            class="choy-search__tag-close m-0 size-3.5 shrink-0 cursor-pointer appearance-none rounded-full border-0 bg-transparent p-0 text-center text-xs leading-[14px] text-primary hover:bg-muted"
+            class="choy-search__tag-close m-0 size-3.5 shrink-0 cursor-pointer appearance-none rounded-full border-0 bg-transparent p-0 text-center text-xs leading-[14px] text-muted-foreground hover:bg-accent hover:text-foreground"
             :aria-label="_t('Clear grouping')"
             @click.stop="onGroupingClear"
           >
@@ -43,7 +43,7 @@ SPDX-License-Identifier: Apache-2.0
         <span
           v-for="f in filters"
           :key="f.id"
-          class="choy-search__tag inline-flex h-control cursor-pointer select-none items-center gap-1 rounded border border-border px-1.5 text-sm transition-colors hover:border-primary hover:bg-muted hover:text-primary active:border-primary active:text-primary"
+          class="choy-search__tag inline-flex h-control cursor-pointer select-none items-center gap-1 rounded border border-border px-1.5 text-sm transition-colors hover:border-border hover:bg-accent hover:text-accent-foreground active:bg-accent"
           :class="{ 'choy-search__tag--pending-delete border-danger bg-danger/10 text-danger hover:border-danger hover:text-danger [&_button]:text-danger': f.id === pendingDeleteFilterId }"
           @click.stop="onTagClick(f.id!)"
           :title="f.name || filterTooltip(f)"
@@ -51,7 +51,7 @@ SPDX-License-Identifier: Apache-2.0
           {{ f.name || summarizeFilterFields(f, 2) }}
           <button
             type="button"
-            class="choy-search__tag-close m-0 size-3.5 shrink-0 cursor-pointer appearance-none rounded-full border-0 bg-transparent p-0 text-center text-xs leading-[14px] text-primary hover:bg-muted"
+            class="choy-search__tag-close m-0 size-3.5 shrink-0 cursor-pointer appearance-none rounded-full border-0 bg-transparent p-0 text-center text-xs leading-[14px] text-muted-foreground hover:bg-accent hover:text-foreground"
             :aria-label="_t('Remove filter')"
             @click.stop="onTagClose(f.id!)"
           >
@@ -97,7 +97,7 @@ SPDX-License-Identifier: Apache-2.0
             <section class="min-w-[260px]">
               <div class="mb-2 font-semibold text-foreground">{{ _t('Filters') }}</div>
               <div class="flex flex-col">
-                <ChoyButton v-for="it in defaultFilterItems" :key="'df:' + it.name" class="choy-search__menu-item m-0 justify-start rounded px-1 py-1.5 hover:bg-primary-subtle" variant="ghost" @click="onToggleDefaultFilter(it)">
+                <ChoyButton v-for="it in defaultFilterItems" :key="'df:' + it.name" class="choy-search__menu-item m-0 justify-start rounded px-1 py-1.5 hover:bg-accent" variant="ghost" @click="onToggleDefaultFilter(it)">
                   <span v-if="it.name && appliedFilterNameSet.has(it.name)" class="choy-search__menu-icon choy-search__menu-icon--applied mr-1.5 inline-flex align-[-1px] text-base text-success">
                     <Check />
                   </span>
@@ -110,7 +110,7 @@ SPDX-License-Identifier: Apache-2.0
               <div class="my-1.5 font-semibold text-foreground">{{ _t('Favorites') }}</div>
               <div class="flex flex-col">
                 <div v-for="it in favoriteMenuItems" :key="'fav:' + it.id" class="flex items-center gap-0.5 [&_.choy-search__menu-item]:min-w-0 [&_.choy-search__menu-item]:flex-1">
-                  <ChoyButton class="choy-search__menu-item m-0 justify-start rounded px-1 py-1.5 hover:bg-primary-subtle" variant="ghost" @click="onApplyFavorite(it)">
+                  <ChoyButton class="choy-search__menu-item m-0 justify-start rounded px-1 py-1.5 hover:bg-accent" variant="ghost" @click="onApplyFavorite(it)">
                     <span v-if="it.name && appliedFilterNameSet.has(it.name)" class="choy-search__menu-icon choy-search__menu-icon--applied mr-1.5 inline-flex align-[-1px] text-base text-success">
                       <Check />
                     </span>
@@ -120,7 +120,7 @@ SPDX-License-Identifier: Apache-2.0
                   </ChoyButton>
                   <ChoyButton
                     v-if="it.canDelete"
-                    class="choy-search__menu-item-edit shrink-0 px-1 py-0 opacity-55 hover:text-primary hover:opacity-100"
+                    class="choy-search__menu-item-edit shrink-0 px-1 py-0 opacity-55 hover:text-foreground hover:opacity-100"
                     variant="ghost"
                     size="sm"
                     :aria-label="_t('Edit favorite %s', it.name)"
@@ -157,7 +157,7 @@ SPDX-License-Identifier: Apache-2.0
                 <ChoyButton
                   v-for="it in appliedGroupItems"
                   :key="it.key"
-                  class="choy-search__menu-item m-0 justify-start rounded px-1 py-1.5 hover:bg-primary-subtle"
+                  class="choy-search__menu-item m-0 justify-start rounded px-1 py-1.5 hover:bg-accent"
                   variant="ghost"
                   @click="it.type === 'plain' ? togglePlainGroupby(it.field) : toggleTemporalGroupby(it.field, it.granularity!)"
                 >
@@ -176,7 +176,7 @@ SPDX-License-Identifier: Apache-2.0
                 <ChoyButton
                   v-for="n in flatGroupOptions"
                   :key="n.id"
-                  class="m-0 justify-start rounded px-1 py-1.5 hover:bg-primary-subtle"
+                  class="m-0 justify-start rounded px-1 py-1.5 hover:bg-accent"
                   variant="ghost"
                   @click="onTreeSelectChange(n.id)"
                 >

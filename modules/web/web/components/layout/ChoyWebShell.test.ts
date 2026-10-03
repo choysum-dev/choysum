@@ -25,6 +25,8 @@ describe('ChoyWebShell', () => {
     expect(mounted.q('[data-testid=choy-shell-aside]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-attrib]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-menu-trigger]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-brand]')).toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-brand-rail]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-command-trigger]')).not.toBeNull();
     expect(mounted.q('[data-test=router-view]')).not.toBeNull();
     mounted.unmount();
@@ -370,7 +372,7 @@ describe('ChoyWebShell', () => {
       },
     });
     await flushPromises();
-    const brand = mounted.q('[data-testid=choy-shell-brand]') as HTMLElement | null;
+    const brand = mounted.q('[data-testid=choy-shell-brand-rail]') as HTMLElement | null;
     expect(brand).not.toBeNull();
     brand!.click();
     await flushPromises();

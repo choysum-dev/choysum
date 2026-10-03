@@ -36,6 +36,12 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
+### 2026-10-03 — Card surface + control icon inherit
+
+- **Card:** `bg-card text-card-foreground` (light `--choy-color-card` is solid white).
+- **Button / SidebarMenuButton:** idle `text-foreground` / `text-sidebar-foreground`;
+  SVG `text-current` so Lucide follows the control, not a leftover stroke.
+
 ### 2026-10-03 — W4 density / domain import CI gates
 
 - **Epic:** shadcn-vue alignment W4 (cleanup + gates).

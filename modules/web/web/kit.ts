@@ -22,6 +22,15 @@ export { default as ChoyCol } from './components/layout/ChoyCol.vue';
 export { default as ChoyTabs } from './components/layout/ChoyTabs.vue';
 export { default as ChoyTab } from './components/layout/ChoyTab.vue';
 export { default as ChoyButton } from './components/layout/ChoyButton.vue';
+export { default as ChoyInput } from './components/vendor/ui/input/Input.vue';
+export { default as ChoyCheckbox } from './components/vendor/ui/checkbox/Checkbox.vue';
+export {
+  Field as ChoyField,
+  FieldDescription as ChoyFieldDescription,
+  FieldError as ChoyFieldError,
+  FieldGroup as ChoyFieldGroup,
+  FieldLabel as ChoyFieldLabel,
+} from './components/vendor/ui/field';
 export { default as ChoyNotificationBell } from './components/layout/ChoyNotificationBell.vue';
 export { default as ChoyCommandPalette } from './components/layout/ChoyCommandPalette.vue';
 export { default as ChoySidebarNav } from './components/layout/ChoySidebarNav.vue';

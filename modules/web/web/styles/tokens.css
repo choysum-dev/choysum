@@ -26,7 +26,7 @@ html {
   --choy-color-ring: oklch(0.55 0.15 160);
 
   /* Elevated / floating / interactive surfaces (shadcn semantic pairs). */
-  --choy-color-card: var(--choy-color-background);
+  --choy-color-card: oklch(1 0 0);
   --choy-color-card-foreground: var(--choy-color-foreground);
   --choy-color-popover: var(--choy-color-background);
   --choy-color-popover-foreground: var(--choy-color-foreground);
