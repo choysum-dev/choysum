@@ -145,12 +145,15 @@ describe('Choy temporal field cells', () => {
       },
     });
     await flushPromises();
-    const dateInput = editMount.q('input.choy-date-picker') as HTMLInputElement;
-    expect(dateInput).toBeTruthy();
-    setPicker(dateInput, '2024-08-01');
+    // DateField edit chrome is Popover + Calendar (Button trigger), not a native <input>.
+    const dateTrigger = editMount.q('[data-anchor="choy.internal.date-picker"]');
+    expect(dateTrigger).toBeTruthy();
+    expect(dateTrigger?.textContent || '').toMatch(/2024-06-15/);
+    const clearBtn = editMount.q('.choy-date-picker__clear');
+    expect(clearBtn).toBeTruthy();
+    clearBtn!.dispatchEvent(new Event('click', { bubbles: true }));
     await flushPromises();
-    setPicker(dateInput, '');
-    await flushPromises();
+    expect((editBinding as any).__value.value).toBeNull();
     editMount.unmount();
 
     restoreSfc(FieldBase as any);

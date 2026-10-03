@@ -136,11 +136,12 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 			UnovisTs:            filepath.Join(stubDir, "unovis_ts.js"),
 			RekaUI:              filepath.Join(stubDir, "reka_ui.js"),
 			LucideVueNext:       filepath.Join(stubDir, "lucide_vue_next.js"),
+			VueSonner:           filepath.Join(stubDir, "vue_sonner.js"),
 		}
 		plugins = append(plugins, api.Plugin{
 			Name: "choysum-fe-unit-package-stubs",
 			Setup: func(build api.PluginBuild) {
-				build.OnResolve(api.OnResolveOptions{Filter: `^(vue-router|@choysum/page-mount|vuedraggable|@tiptap/vue-3|@tiptap/starter-kit|@tiptap/extension-link|dompurify|@unovis/vue|@unovis/ts|reka-ui|lucide-vue-next)$`},
+				build.OnResolve(api.OnResolveOptions{Filter: `^(vue-router|@choysum/page-mount|vuedraggable|@tiptap/vue-3|@tiptap/starter-kit|@tiptap/extension-link|dompurify|@unovis/vue|@unovis/ts|reka-ui|lucide-vue-next|vue-sonner)$`},
 					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
 						// Filter and feUnitPackageStubPath must stay in sync; if they
 						// drifted, fall through instead of resolving to an empty path.

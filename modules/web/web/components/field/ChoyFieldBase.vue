@@ -4,24 +4,23 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div
+  <Field
     v-if="isVisible"
     data-anchor="choy.field-base"
-    :class="cn('choy-field-base flex w-full flex-col gap-1.5', props.class)"
+    :class="cn('choy-field-base w-full', props.class)"
   >
     <div
       v-if="label || help || required"
       class="choy-field-base__label-row flex items-center gap-1.5"
     >
-      <label
+      <FieldLabel
         v-if="label"
         :id="labelId"
-        class="text-sm font-medium text-foreground"
         :for="controlId"
       >
         {{ label }}
         <span v-if="required" class="text-danger" aria-hidden="true">*</span>
-      </label>
+      </FieldLabel>
       <span
         v-else-if="required"
         class="text-sm text-danger"
@@ -53,28 +52,31 @@ SPDX-License-Identifier: Apache-2.0
         :aria-describedby="controlDescribedBy"
       />
     </div>
-    <p
+    <FieldDescription
       v-if="help"
       :id="helpId"
       class="sr-only"
     >
       {{ help }}
-    </p>
-    <p
+    </FieldDescription>
+    <FieldError
       v-if="error"
       :id="errorId"
-      class="choy-field-base__error text-sm text-danger"
-      role="alert"
+      class="choy-field-base__error text-danger"
     >
       {{ error }}
-    </p>
-  </div>
+    </FieldError>
+  </Field>
 </template>
 
 <script setup lang="ts">
 import { computed, useId } from 'vue';
 import { CircleHelp } from 'lucide-vue-next';
 import { cn, type ClassValue } from '../../lib/utils';
+import Field from '../vendor/ui/field/Field.vue';
+import FieldDescription from '../vendor/ui/field/FieldDescription.vue';
+import FieldError from '../vendor/ui/field/FieldError.vue';
+import FieldLabel from '../vendor/ui/field/FieldLabel.vue';
 import Tooltip from '../vendor/ui/tooltip/Tooltip.vue';
 import TooltipContent from '../vendor/ui/tooltip/TooltipContent.vue';
 import TooltipProvider from '../vendor/ui/tooltip/TooltipProvider.vue';

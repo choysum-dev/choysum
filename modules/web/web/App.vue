@@ -16,6 +16,6 @@ SPDX-License-Identifier: Apache-2.0
  * Root host for the web SPA. Theme class / density live on documentElement
  * (see applyChoyThemePreference from setupApp).
  */
-import Toaster from './components/vendor/ui/toast/Toaster.vue';
+import Toaster from './components/vendor/ui/sonner/Sonner.vue';
 import ChoyConfirmHost from './components/layout/ChoyConfirmHost.vue';
 </script>

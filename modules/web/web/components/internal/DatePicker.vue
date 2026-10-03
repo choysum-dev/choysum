@@ -30,8 +30,9 @@ SPDX-License-Identifier: Apache-2.0
       <button
         v-if="clearable && !!String(modelValue ?? '').trim() && !disabled"
         type="button"
-        class="shrink-0 text-xs text-foreground/50 hover:text-foreground"
+        class="choy-date-picker__clear shrink-0 text-xs text-foreground/50 hover:text-foreground"
         aria-label="Clear date"
+        data-testid="choy-date-picker-clear"
         @click="onClear"
       >
         Clear
@@ -143,7 +144,7 @@ const datePickerMinValue = new CalendarDate(1, 1, 1);
 const datePickerMaxValue = new CalendarDate(9999, 12, 31);
 
 /**
- * L3 date picker built on @internationalized/date + Reka Calendar.
+ * L3 date picker: Popover + Reka Calendar primitives (same surface as vendor/ui/calendar).
  * Model is YYYY-MM-DD string or null. Not a public Choy* export.
  */
 const props = withDefaults(

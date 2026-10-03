@@ -108,3 +108,10 @@ new HISTORY entry describing what was re-copied vs re-patched.
 - L2 `data-slot` kept; colors via `--choy-*` / theme aliases; chart shell for
   Unovis; no Element Plus / echarts / shadcn CLI. Exact per-file class diffs from
   upstream at copy time were not itemized here.
+
+## 2026-10-03 — W2 product wiring (AlertDialog / Sonner / Label / BreadcrumbLink)
+
+- Product hosts now mount AlertDialog (Confirm) and Sonner (ChoyMessage).
+- QuickJS FE: inlined local `defineProps` on AlertDialog*, Sonner, Label,
+  BreadcrumbLink (same rule as Sidebar* — no `defineProps` from `reka-ui` /
+  `vue-sonner` type imports).
