@@ -12,6 +12,7 @@ import App from './App.vue';
 
 import 'normalize.css/normalize.css';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
+import 'vue-sonner/style.css';
 import './styles/tokens.css';
 import './styles/index.css';
 import './styles/choy-tailwind.generated.css';

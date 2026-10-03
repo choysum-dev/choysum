@@ -145,7 +145,13 @@ const toDisplayText = (v: FieldType) => {
 };
 
 function normalizeToDate(v: any): FieldType {
-  return v instanceof Date ? (isNaN(v.getTime()) ? null : v) : v ? new Date(v) : null;
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+  // DatePicker emits YYYY-MM-DD; parse as local calendar day (not UTC midnight).
+  if (typeof v === 'string') {
+    const parsed = dayjs(v, 'YYYY-MM-DD', true);
+    return parsed.isValid() ? parsed.toDate() : null;
+  }
+  return v ? new Date(v) : null;
 }
 
 function isValidValue(value: any): boolean {
