@@ -925,6 +925,8 @@ function createEngine(props: MessageScrollerProviderProps) {
       scrollToEnd({ behavior: "auto" })
       return
     }
+    if (!autoScroll() && mode === "following-bottom")
+      mode = "free-scrolling"
     commitScrollState()
   }
 

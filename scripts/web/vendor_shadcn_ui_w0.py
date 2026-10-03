@@ -9,15 +9,12 @@ rewrites, lucide package rename, local cva, density height patches, SPDX.
 
 from __future__ import annotations
 
+import argparse
 import re
 import shutil
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-SRC = Path(
-    "/tmp/shadcn-vue-w0/shadcn-vue-67c9a3926dc0a854507b325c6337ff2210d16379"
-    "/apps/v4/registry/new-york-v4/ui"
-)
 DEST = REPO / "modules/web/web/components/vendor/ui"
 
 # Already product-patched; keep and only ensure thin index barrels.
@@ -200,8 +197,8 @@ def family_title(family: str) -> str:
     return "".join(p.title() for p in family.split("-"))
 
 
-def copy_family(family: str) -> None:
-    src_dir = SRC / family
+def copy_family(family: str, src: Path) -> None:
+    src_dir = src / family
     dest_dir = DEST / family
     if dest_dir.exists():
         shutil.rmtree(dest_dir)
@@ -256,16 +253,26 @@ def write_barrel() -> None:
 
 
 def main() -> None:
-    if not SRC.is_dir():
-        raise SystemExit(f"missing upstream tree: {SRC}")
+    parser = argparse.ArgumentParser(
+        description="Adapt a trusted shadcn-vue new-york-v4 ui tree into vendor/ui",
+    )
+    parser.add_argument(
+        "--src",
+        type=Path,
+        required=True,
+        help="trusted upstream UI directory (…/registry/new-york-v4/ui)",
+    )
+    src = parser.parse_args().src
+    if not src.is_dir():
+        raise SystemExit(f"missing upstream tree: {src}")
     missing = sorted(
         p.name
-        for p in SRC.iterdir()
+        for p in src.iterdir()
         if p.is_dir() and p.name not in KEEP and not p.name.startswith("_")
     )
     print(f"copying {len(missing)} families…")
     for fam in missing:
-        copy_family(fam)
+        copy_family(fam, src)
         print(f"  + {fam}")
     for fam in sorted(KEEP):
         ensure_keep_index(fam)

@@ -135,6 +135,7 @@ html {
   --accent: var(--choy-color-accent);
   --accent-foreground: var(--choy-color-accent-foreground);
   --destructive: var(--choy-color-danger);
+  --destructive-foreground: var(--choy-color-danger);
   --border: var(--choy-color-border);
   --input: var(--choy-color-input);
   --ring: var(--choy-color-ring);
