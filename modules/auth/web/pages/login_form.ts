@@ -121,6 +121,34 @@ export function normalizeLoginRedirectOrigin(
   }
 }
 
+export type LoginClientRule = {
+  required?: boolean;
+  message?: string;
+  validator?: (rule: unknown, value: unknown, cb: (error?: Error) => void) => void;
+};
+
+/**
+ * Username RuleItem: empty or whitespace-only is invalid (matches historical trim).
+ */
+export function loginUsernameRules(t: (msg: string) => string): LoginClientRule[] {
+  return [
+    {
+      validator: (_rule: unknown, value: unknown, cb: (error?: Error) => void) => {
+        if (!String(value ?? '').trim()) {
+          cb(new Error(t('Enter username')));
+          return;
+        }
+        cb();
+      },
+    },
+  ];
+}
+
+/** Password RuleItem: empty / null is invalid; whitespace-only is allowed. */
+export function loginPasswordRules(t: (msg: string) => string): LoginClientRule[] {
+  return [{ required: true, message: t('Enter password') }];
+}
+
 /**
  * Validate required login fields and write field-level error messages.
  */
@@ -157,29 +185,51 @@ export function formatLoginError(err: unknown, fallback: string): string {
 
 /**
  * Run the login store call and return whether redirect should follow.
- * Returns false when validation fails or a submit is already in flight.
+ * Field-level required checks belong on FormView Field rules; this only
+ * skips in-flight submits and empty credentials as a last guard.
  */
 export async function runLoginSubmit(opts: {
   loading: boolean;
-  form: LoginFormFields;
-  fieldErrors: LoginFieldErrors;
-  t: (msg: string) => string;
+  username: string;
+  password: string;
+  rememberMe: boolean;
   loginFailedMessage: string;
   login: (username: string, password: string, csrf: string, device: string, rememberMe: boolean) => Promise<void>;
-  rememberMe: boolean;
   setError: (message: string) => void;
 }): Promise<boolean> {
   if (opts.loading) return false;
-  // Clear any previous server error before re-validating so stale alerts
+  // Clear any previous server error before a new attempt so stale alerts
   // never sit next to freshly surfaced field errors.
   opts.setError('');
-  if (!validateLoginForm(opts.form, opts.fieldErrors, opts.t)) return false;
+  if (!String(opts.username ?? '').trim() || !opts.password) return false;
   try {
     // Trim username only; password whitespace can be intentional.
-    await opts.login(opts.form.username.trim(), opts.form.password, '', '', opts.rememberMe);
+    await opts.login(String(opts.username).trim(), opts.password, '', '', opts.rememberMe);
     return true;
   } catch (err) {
     opts.setError(formatLoginError(err, opts.loginFailedMessage));
     return false;
   }
+}
+
+/**
+ * Run an auth page submit handler and always mark it handled.
+ * Redirect/navigation stays outside the submit try so a rejected
+ * router.replace is not reported as a credential failure.
+ */
+export async function runHandledAuthSubmit(opts: {
+  submit: () => Promise<boolean>;
+  fallbackMessage: string;
+  setError: (message: string) => void;
+  onSuccess: () => void;
+}): Promise<{ handled: true; skipSuccessMessage: true }> {
+  let ok = false;
+  try {
+    ok = await opts.submit();
+  } catch (err) {
+    opts.setError(err instanceof Error ? err.message : opts.fallbackMessage);
+    return { handled: true, skipSuccessMessage: true };
+  }
+  if (ok) opts.onSuccess();
+  return { handled: true, skipSuccessMessage: true };
 }

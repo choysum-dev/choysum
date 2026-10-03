@@ -10,6 +10,7 @@ import {
   resolveLoginRedirect,
   resolveLoginRedirectOrigin,
   runLoginSubmit,
+  runHandledAuthSubmit,
   validateLoginForm,
   type LoginFieldErrors,
   type LoginFormFields,
@@ -180,14 +181,13 @@ test('runLoginSubmit: skips while loading', async () => {
   let calls = 0;
   const ok = await runLoginSubmit({
     loading: true,
-    form: { username: 'a', password: 'b' },
-    fieldErrors: emptyErrors(),
-    t,
+    username: 'a',
+    password: 'b',
+    rememberMe: true,
     loginFailedMessage: 'Login failed. Please try again later.',
     login: async () => {
       calls += 1;
     },
-    rememberMe: true,
     setError: () => undefined,
   });
   expect(ok).toBe(false);
@@ -199,14 +199,13 @@ test('runLoginSubmit: skips invalid form', async () => {
   const errors: string[] = [];
   const ok = await runLoginSubmit({
     loading: false,
-    form: { username: '', password: '' },
-    fieldErrors: emptyErrors(),
-    t,
+    username: '',
+    password: '',
+    rememberMe: true,
     loginFailedMessage: 'Login failed. Please try again later.',
     login: async () => {
       calls += 1;
     },
-    rememberMe: true,
     setError: m => errors.push(m),
   });
   expect(ok).toBe(false);
@@ -220,14 +219,13 @@ test('runLoginSubmit: returns true on success and trims username', async () => {
   const seen: string[] = [];
   const ok = await runLoginSubmit({
     loading: false,
-    form: { username: '  admin  ', password: 'secret' },
-    fieldErrors: emptyErrors(),
-    t,
+    username: '  admin  ',
+    password: 'secret',
+    rememberMe: false,
     loginFailedMessage: 'Login failed. Please try again later.',
     login: async (username, password) => {
       seen.push(username, password);
     },
-    rememberMe: false,
     setError: m => errors.push(m),
   });
   expect(ok).toBe(true);
@@ -239,16 +237,70 @@ test('runLoginSubmit: maps failures to setError', async () => {
   const errors: string[] = [];
   const ok = await runLoginSubmit({
     loading: false,
-    form: { username: 'admin', password: 'secret' },
-    fieldErrors: emptyErrors(),
-    t,
+    username: 'admin',
+    password: 'secret',
+    rememberMe: true,
     loginFailedMessage: 'Login failed. Please try again later.',
     login: async () => {
       throw new ChoysumError({ domain: 'auth', code: 'INVALID_CREDENTIALS', message: 'nope' });
     },
-    rememberMe: true,
     setError: m => errors.push(m),
   });
   expect(ok).toBe(false);
   expect(errors).toEqual(['', 'nope']);
+});
+
+test('runHandledAuthSubmit: redirects after success and skips on failure', async () => {
+  let redirected = 0;
+  const errors: string[] = [];
+  const ok = await runHandledAuthSubmit({
+    submit: async () => true,
+    fallbackMessage: 'fallback',
+    setError: m => errors.push(m),
+    onSuccess: () => {
+      redirected += 1;
+    },
+  });
+  expect(ok).toEqual({ handled: true, skipSuccessMessage: true });
+  expect(redirected).toBe(1);
+  const failed = await runHandledAuthSubmit({
+    submit: async () => false,
+    fallbackMessage: 'fallback',
+    setError: m => errors.push(m),
+    onSuccess: () => {
+      redirected += 1;
+    },
+  });
+  expect(failed).toEqual({ handled: true, skipSuccessMessage: true });
+  expect(redirected).toBe(1);
+  expect(errors).toEqual([]);
+});
+
+test('runHandledAuthSubmit: maps thrown Error and unknown values', async () => {
+  const errors: string[] = [];
+  let redirected = 0;
+  const fromError = await runHandledAuthSubmit({
+    submit: async () => {
+      throw new Error('nope');
+    },
+    fallbackMessage: 'fallback',
+    setError: m => errors.push(m),
+    onSuccess: () => {
+      redirected += 1;
+    },
+  });
+  const fromUnknown = await runHandledAuthSubmit({
+    submit: async () => {
+      throw 'boom';
+    },
+    fallbackMessage: 'fallback',
+    setError: m => errors.push(m),
+    onSuccess: () => {
+      redirected += 1;
+    },
+  });
+  expect(fromError).toEqual({ handled: true, skipSuccessMessage: true });
+  expect(fromUnknown).toEqual({ handled: true, skipSuccessMessage: true });
+  expect(errors).toEqual(['nope', 'fallback']);
+  expect(redirected).toBe(0);
 });

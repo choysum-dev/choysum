@@ -11,7 +11,17 @@ SPDX-License-Identifier: Apache-2.0
         :description="_t('Enter your username and password to continue')"
         class="login-card w-full"
       >
-        <form class="flex flex-col gap-4" @submit.prevent="handleLogin">
+        <ChoyFormView
+          :store="formStore"
+          view-mode="create"
+          embedded
+          :show-header="false"
+          :show-actions="false"
+          :show-messages="false"
+          :resolve-record-id-from-route="false"
+          :initial-values="loginInitialValues"
+          :submit-handler="onLoginSubmit"
+        >
           <ChoyFieldGroup class="gap-4">
             <ChoyField v-if="error">
               <div
@@ -30,42 +40,45 @@ SPDX-License-Identifier: Apache-2.0
               </div>
             </ChoyField>
 
-            <ChoyField :data-invalid="fieldErrors.username ? true : undefined">
-              <ChoyFieldLabel for="login-username">{{ _t('Username') }}</ChoyFieldLabel>
-              <ChoyInput
-                id="login-username"
-                v-model="form.username"
-                name="username"
-                type="text"
-                autocomplete="username"
-                :placeholder="_t('Enter username')"
-                class="login-username"
-                :aria-invalid="fieldErrors.username ? true : undefined"
-              />
-              <ChoyFieldError :errors="fieldErrors.username ? [fieldErrors.username] : []" />
-            </ChoyField>
-
-            <ChoyField :data-invalid="fieldErrors.password ? true : undefined">
-              <ChoyFieldLabel for="login-password">{{ _t('Password') }}</ChoyFieldLabel>
-              <ChoyInput
-                id="login-password"
-                v-model="form.password"
-                name="password"
-                type="password"
-                autocomplete="current-password"
-                :placeholder="_t('Enter password')"
-                class="login-password"
-                :aria-invalid="fieldErrors.password ? true : undefined"
-              />
-              <ChoyFieldError :errors="fieldErrors.password ? [fieldErrors.password] : []" />
-            </ChoyField>
-
-            <ChoyField orientation="horizontal">
-              <ChoyCheckbox id="login-remember" v-model="form.rememberMe" class="login-options" />
-              <ChoyFieldLabel for="login-remember" class="font-normal">
-                {{ _t('Remember me') }}
-              </ChoyFieldLabel>
-            </ChoyField>
+            <div class="login-username">
+            <ChoyVarcharField
+              :store="formStore"
+              prop="Username"
+              :placeholder="_t('Enter username')"
+              autocomplete="username"
+              name="username"
+              id="login-username"
+              buffer-strategy="live"
+              :nullable="false"
+              :show-word-limit="false"
+              show-inline-error
+              :rules="usernameRules"
+            />
+            </div>
+            <div class="login-password">
+            <ChoyVarcharField
+              :store="formStore"
+              prop="Password"
+              type="password"
+              :placeholder="_t('Enter password')"
+              autocomplete="current-password"
+              name="password"
+              id="login-password"
+              buffer-strategy="live"
+              :nullable="false"
+              :show-word-limit="false"
+              show-inline-error
+              :rules="passwordRules"
+            />
+            </div>
+            <ChoyBooleanField
+              class="login-options"
+              :store="formStore"
+              prop="RememberMe"
+              widget="checkbox"
+              :label="_t('Remember me')"
+              buffer-strategy="live"
+            />
 
             <ChoyField>
               <ChoyButton type="submit" class="submit-button w-full" :disabled="loading">
@@ -79,14 +92,14 @@ SPDX-License-Identifier: Apache-2.0
               </ChoyFieldDescription>
             </ChoyField>
           </ChoyFieldGroup>
-        </form>
+        </ChoyFormView>
       </ChoyCard>
     </AuthPanel>
   </ChoyPage>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { X } from 'lucide-vue-next';
@@ -96,41 +109,44 @@ import {
   ChoyPage,
   ChoyCard,
   ChoyButton,
-  ChoyInput,
-  ChoyCheckbox,
   ChoyField,
   ChoyFieldDescription,
-  ChoyFieldError,
   ChoyFieldGroup,
-  ChoyFieldLabel,
+  ChoyFormView,
+  ChoyVarcharField,
+  ChoyBooleanField,
+  createLocalFormStore,
 } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { runLoginAuthReady } from './login_auth_ready';
-import { resolveLoginRedirect, runLoginSubmit } from './login_form';
+import { loginPasswordRules, loginUsernameRules, resolveLoginRedirect, runHandledAuthSubmit, runLoginSubmit } from './login_form';
 
 const { _t } = createTranslate('auth', { scope: 'web/pages/Login' });
-
-/**
- * Form model for the login page.
- */
-interface LoginFormData {
-  username: string;
-  password: string;
-  rememberMe: boolean;
-}
 
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 const { loading, isAuthenticated } = storeToRefs(authStore);
 
-const form = reactive<LoginFormData>({
-  username: '',
-  password: '',
-  rememberMe: true,
+const loginInitialValues = {
+  Username: '',
+  Password: '',
+  RememberMe: true,
+};
+
+const formStore = createLocalFormStore({
+  fields: [
+    { name: 'Username', label: _t('Username'), type: 'varchar' },
+    { name: 'Password', label: _t('Password'), type: 'varchar' },
+    { name: 'RememberMe', label: _t('Remember me'), type: 'boolean' },
+  ],
+  initialValues: loginInitialValues,
+  storeId: 'auth.login',
 });
 
-const fieldErrors = reactive({ username: '', password: '' });
+const usernameRules = loginUsernameRules(_t);
+const passwordRules = loginPasswordRules(_t);
+
 const error = ref('');
 const showRegisterLink = computed(() => import.meta.env.CHOYSUM_ENABLE_REGISTRATION !== false);
 
@@ -139,6 +155,10 @@ const showRegisterLink = computed(() => import.meta.env.CHOYSUM_ENABLE_REGISTRAT
  */
 function handleRedirect() {
   router.replace(resolveLoginRedirect(route.query.redirect?.toString()));
+}
+
+function setPageError(message: string) {
+  error.value = message;
 }
 
 onMounted(async () => {
@@ -150,23 +170,24 @@ onMounted(async () => {
   });
 });
 
-/**
- * Validate the form and start the login flow.
- */
-async function handleLogin() {
-  const ok = await runLoginSubmit({
-    loading: !!loading.value,
-    form,
-    fieldErrors,
-    t: _t,
-    loginFailedMessage: _t('Login failed. Please try again later.'),
-    login: (username, password, csrf, device, rememberMe) =>
-      authStore.login(username, password, csrf, device, rememberMe),
-    rememberMe: form.rememberMe,
-    setError: message => {
-      error.value = message;
-    },
+async function onLoginSubmit(ctx: { formData: Record<string, unknown> }) {
+  const fallback = _t('Login failed. Please try again later.');
+  const data = ctx.formData;
+  return runHandledAuthSubmit({
+    submit: () =>
+      runLoginSubmit({
+        loading: !!loading.value,
+        username: String(data.Username ?? ''),
+        password: String(data.Password ?? ''),
+        rememberMe: data.RememberMe === true,
+        loginFailedMessage: fallback,
+        login: (username, password, csrf, device, rememberMe) =>
+          authStore.login(username, password, csrf, device, rememberMe),
+        setError: setPageError,
+      }),
+    fallbackMessage: fallback,
+    setError: setPageError,
+    onSuccess: handleRedirect,
   });
-  if (ok) handleRedirect();
 }
 </script>

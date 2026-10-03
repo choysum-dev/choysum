@@ -184,6 +184,8 @@ describe('FieldBase label and help', () => {
       renderMode: 'form',
     });
     expect(m.q('.choy-field-base__label-text')?.textContent).toContain('Access Token ID');
+    expect(String(m.q('.choy-field-base__label-text')?.tagName || '').toLowerCase()).toBe('label');
+    expect(m.q('.choy-field-base__label-text')?.getAttribute('for')).toBe('fld-AccessTokenId');
     m.unmount();
   });
 

@@ -27,6 +27,9 @@ export const useAuthStore = defineStore('auth-fe-stub', function () {
       isAuthenticated.value = true;
       return Promise.resolve();
     },
+    register: function () {
+      return Promise.resolve({ UserId: 'usr_fe_stub' });
+    },
     loadUser: function () {
       return Promise.resolve(currentUser.value);
     },

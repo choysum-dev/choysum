@@ -25,36 +25,70 @@ async function mountLogin(opts?: {
   return { wrapper, replaces };
 }
 
+function fieldInput(wrapper: { find: (sel: string) => any }, selector: string) {
+  const root = wrapper.find(selector);
+  if (!root.exists()) return root;
+  const el = root.element as HTMLElement;
+  if (String(el.tagName || '').toLowerCase() === 'input') return root;
+  const inner = typeof el.querySelector === 'function' ? el.querySelector('input') : null;
+  if (inner) {
+    return {
+      exists: () => true,
+      element: inner,
+      trigger: async (type: string) => {
+        inner.dispatchEvent(new Event(type, { bubbles: true }));
+      },
+    };
+  }
+  return root;
+}
+
+async function fillField(wrapper: { find: (sel: string) => any }, selector: string, value: string) {
+  const input = fieldInput(wrapper, selector);
+  const el = input.element as HTMLInputElement;
+  el.value = value;
+  el.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+  el.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+  el.dispatchEvent(new Event('blur', { bubbles: true, cancelable: true }));
+  await flushPromises();
+}
+
+function submitForm(wrapper: { find: (sel: string) => any }) {
+  const form = wrapper.find('form');
+  (form.element as HTMLFormElement).dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+}
+
+async function afterSubmit() {
+  for (let i = 0; i < 8; i++) await flushPromises();
+}
+
 test('Login.vue mounts under choysumMount and runs script setup', async () => {
   const { wrapper } = await mountLogin();
-  expect(wrapper.find('.login-username').exists()).toBe(true);
-  expect(wrapper.find('.login-password').exists()).toBe(true);
+  expect(fieldInput(wrapper, '.login-username').exists()).toBe(true);
+  expect(fieldInput(wrapper, '.login-password').exists()).toBe(true);
   wrapper.unmount();
 });
 
 test('Login.vue: empty submit keeps the form and shows field errors', async () => {
-  const { wrapper } = await mountLogin();
+  const { wrapper, replaces } = await mountLogin();
   const form = wrapper.find('form');
   expect(form.exists()).toBe(true);
-  await form.trigger('submit');
-  await flushPromises();
-  expect(wrapper.text().includes('Enter username') || wrapper.find('.text-destructive').exists()).toBe(true);
+  submitForm(wrapper);
+  await afterSubmit();
+  expect(wrapper.text().includes('Enter username') || wrapper.find('.text-destructive').exists() || wrapper.find('.text-danger').exists()).toBe(true);
+  expect(replaces).toEqual([]);
   wrapper.unmount();
 });
 
-test('Login.vue: successful submit redirects via query.redirect', async () => {
+test('Login.vue: filled native submit does not show required field errors', async () => {
   const { wrapper, replaces } = await mountLogin({ query: { redirect: '/auth/tokens' } });
-  const user = wrapper.find('.login-username');
-  const pass = wrapper.find('.login-password');
-  expect(user.exists()).toBe(true);
-  expect(pass.exists()).toBe(true);
-  (user.element as HTMLInputElement).value = 'admin';
-  await user.trigger('input');
-  (pass.element as HTMLInputElement).value = 'secret';
-  await pass.trigger('input');
-  await wrapper.find('form').trigger('submit');
-  await flushPromises();
-  // Auth stub marks authenticated: success must clear errors and navigate.
+  expect(fieldInput(wrapper, '.login-username').exists()).toBe(true);
+  expect(fieldInput(wrapper, '.login-password').exists()).toBe(true);
+  await fillField(wrapper, '.login-username', 'admin');
+  await fillField(wrapper, '.login-password', 'secret');
+  submitForm(wrapper);
+  await afterSubmit();
+  expect(wrapper.text().includes('Enter username')).toBe(false);
   expect(wrapper.find('.login-error').exists()).toBe(false);
   expect(wrapper.find('.text-destructive').exists()).toBe(false);
   expect(replaces).toEqual(['/auth/tokens']);

@@ -187,6 +187,11 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 				// or when web/web/components code is the importer (real child mounts).
 				build.OnResolve(api.OnResolveOptions{Filter: `(FormView|ListView|KanbanView)\.vue$`},
 					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
+						path := filepath.ToSlash(args.Path)
+						// Keep the kit FormView SFC so native submit and field rules run.
+						if strings.HasSuffix(path, "ChoyFormView.vue") {
+							return api.OnResolveResult{}, nil
+						}
 						importer := filepath.ToSlash(args.Importer)
 						if strings.Contains(importer, "/web/web/components/") ||
 							strings.HasSuffix(importer, ".test.ts") ||
