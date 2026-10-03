@@ -269,3 +269,16 @@ export const ListboxFilter = stub('ListboxFilter');
 export const ListboxGroup = stub('ListboxGroup');
 export const ListboxGroupLabel = stub('ListboxGroupLabel');
 export const ListboxItem = stub('ListboxItem');
+
+export const Label = stub('Label');
+
+// AlertDialog: mirror DialogRoot open/closed so ConfirmHost mounts in FE unit.
+export const AlertDialogRoot = DialogRoot;
+export const AlertDialogPortal = DialogPortal;
+export const AlertDialogOverlay = DialogOverlay;
+export const AlertDialogContent = DialogContent;
+export const AlertDialogTitle = DialogTitle;
+export const AlertDialogDescription = DialogDescription;
+export const AlertDialogTrigger = DialogTrigger;
+export const AlertDialogAction = stub('AlertDialogAction');
+export const AlertDialogCancel = stub('AlertDialogCancel');

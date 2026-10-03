@@ -114,7 +114,7 @@ SPDX-License-Identifier: Apache-2.0
           <slot />
           <template #empty>
             <slot name="empty">
-              <div class="w-full py-6 text-center text-muted-foreground">{{ _t('No data') }}</div>
+              <ChoyEmpty class="w-full" :description="_t('No data')" />
             </slot>
           </template>
         </ChoyTableHost>
@@ -134,6 +134,7 @@ import type { ClientModel, BaseModel, QueryCondition, OrderBy } from '@/core/rpc
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
 import ChoyPagination from './ChoyPagination.vue';
+import ChoyEmpty from '../layout/ChoyEmpty.vue';
 import {
   canMountListPagination,
   listPageSizeToPaginateState,

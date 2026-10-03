@@ -4,45 +4,40 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <nav
+  <Breadcrumb
     data-anchor="choy.breadcrumb"
-    aria-label="Breadcrumb"
     :class="['choy-breadcrumb text-sm text-foreground/70', props.class]"
   >
-    <ol class="flex flex-wrap items-center gap-1">
-      <li
-        v-for="(item, index) in items"
-        :key="`${item.label}-${index}`"
-        class="flex items-center gap-1"
-      >
-        <ChevronRight
-          v-if="index > 0"
-          class="size-3.5 shrink-0 text-foreground/40"
-          aria-hidden="true"
-        />
-        <RouterLink
-          v-if="item.to && index !== items.length - 1"
-          :to="item.to"
-          class="hover:text-foreground hover:underline"
-        >
-          {{ item.label }}
-        </RouterLink>
-        <span
-          v-else
-          class="text-foreground"
-          :aria-current="index === items.length - 1 ? 'page' : undefined"
-        >
-          {{ item.label }}
-        </span>
-      </li>
-    </ol>
-  </nav>
+    <BreadcrumbList>
+      <template v-for="(item, index) in items" :key="`${item.label}-${index}`">
+        <BreadcrumbSeparator v-if="index > 0" />
+        <BreadcrumbItem>
+          <BreadcrumbLink
+            v-if="item.to && index !== items.length - 1"
+            as-child
+          >
+            <RouterLink :to="item.to" class="hover:text-foreground hover:underline">
+              {{ item.label }}
+            </RouterLink>
+          </BreadcrumbLink>
+          <BreadcrumbPage v-else>
+            {{ item.label }}
+          </BreadcrumbPage>
+        </BreadcrumbItem>
+      </template>
+    </BreadcrumbList>
+  </Breadcrumb>
 </template>
 
 <script setup lang="ts">
 import { RouterLink, type RouteLocationRaw } from 'vue-router';
-import { ChevronRight } from 'lucide-vue-next';
 import type { ClassValue } from '../../lib/utils';
+import Breadcrumb from '../vendor/ui/breadcrumb/Breadcrumb.vue';
+import BreadcrumbItem from '../vendor/ui/breadcrumb/BreadcrumbItem.vue';
+import BreadcrumbLink from '../vendor/ui/breadcrumb/BreadcrumbLink.vue';
+import BreadcrumbList from '../vendor/ui/breadcrumb/BreadcrumbList.vue';
+import BreadcrumbPage from '../vendor/ui/breadcrumb/BreadcrumbPage.vue';
+import BreadcrumbSeparator from '../vendor/ui/breadcrumb/BreadcrumbSeparator.vue';
 
 export type ChoyBreadcrumbItem = {
   label: string;
@@ -50,7 +45,7 @@ export type ChoyBreadcrumbItem = {
 };
 
 /**
- * Breadcrumb nav. Items with `to` render as router-link; others as span.
+ * Breadcrumb nav over vendor Breadcrumb*. Items with `to` render as router-link.
  */
 const props = withDefaults(
   defineProps<{

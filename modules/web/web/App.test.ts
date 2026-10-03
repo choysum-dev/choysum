@@ -6,7 +6,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { flushPromises, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import App from './App.vue';
 import ChoyConfirmHost from './components/layout/ChoyConfirmHost.vue';
-import Toaster from './components/vendor/ui/toast/Toaster.vue';
+import Toaster from './components/vendor/ui/sonner/Sonner.vue';
 import { useI18nStore } from './stores';
 
 describe('App', () => {

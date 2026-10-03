@@ -39,6 +39,7 @@ import type { UseField } from '@/web/web/composables/useField';
 // Narrow aggregation types to count_distinct only.
 import type { NarrowAggProp, TemporalAggFns } from '@/web/web/composables/useField';
 import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
+import DatePicker from '../internal/DatePicker.vue';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
@@ -204,18 +205,16 @@ const ChoyDateCell = defineComponent({
       const value =
         current instanceof Date && !isNaN(current.getTime())
           ? dayjs(current).format('YYYY-MM-DD')
-          : '';
-      return h('input', {
+          : null;
+      return h(DatePicker, {
         ...attrs,
         ...(p.pickerProps || {}),
-        type: 'date',
         class: 'choy-date-picker w-full',
-        value,
-        onInput: (e: Event) => {
-          const raw = (e.target as HTMLInputElement).value;
+        modelValue: value,
+        'onUpdate:modelValue': (raw: string | null) => {
           buffer.setEditing(raw ? normalizeToDate(raw) : null);
+          buffer.onBlur();
         },
-        onBlur: () => buffer.onBlur(),
       });
     };
   },

@@ -4,50 +4,46 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <Dialog v-model:open="open">
-    <DialogContent
-      class="sm:max-w-md"
-      data-testid="choy-confirm-dialog"
-      @pointer-down-outside="onDismiss"
-      @escape-key-down="onDismiss"
-    >
-      <DialogTitle>{{ store.title }}</DialogTitle>
-      <DialogDescription class="whitespace-pre-wrap text-sm text-foreground/80">
-        {{ store.message }}
-      </DialogDescription>
-      <div class="mt-4 flex justify-end gap-2">
-        <ChoyButton
-          variant="outline"
-          size="sm"
-          data-testid="choy-confirm-cancel"
-          @click="onCancel"
-        >
+  <AlertDialog v-model:open="open">
+    <AlertDialogContent class="sm:max-w-md" data-testid="choy-confirm-dialog">
+      <AlertDialogHeader>
+        <AlertDialogTitle>{{ store.title }}</AlertDialogTitle>
+        <AlertDialogDescription class="whitespace-pre-wrap text-sm text-foreground/80">
+          {{ store.message }}
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel data-testid="choy-confirm-cancel" @click="onCancel">
           {{ store.cancelText }}
-        </ChoyButton>
-        <ChoyButton
-          :variant="store.destructive ? 'destructive' : 'default'"
-          size="sm"
+        </AlertDialogCancel>
+        <AlertDialogAction
           data-testid="choy-confirm-ok"
+          :class="store.destructive ? buttonVariants({ variant: 'destructive', size: 'sm' }) : buttonVariants({ size: 'sm' })"
           @click="onConfirm"
         >
           {{ store.confirmText }}
-        </ChoyButton>
-      </div>
-    </DialogContent>
-  </Dialog>
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import ChoyButton from '../layout/ChoyButton.vue';
-import Dialog from '../vendor/ui/dialog/Dialog.vue';
-import DialogContent from '../vendor/ui/dialog/DialogContent.vue';
-import DialogDescription from '../vendor/ui/dialog/DialogDescription.vue';
-import DialogTitle from '../vendor/ui/dialog/DialogTitle.vue';
+import AlertDialog from '../vendor/ui/alert-dialog/AlertDialog.vue';
+import AlertDialogAction from '../vendor/ui/alert-dialog/AlertDialogAction.vue';
+import AlertDialogCancel from '../vendor/ui/alert-dialog/AlertDialogCancel.vue';
+import AlertDialogContent from '../vendor/ui/alert-dialog/AlertDialogContent.vue';
+import AlertDialogDescription from '../vendor/ui/alert-dialog/AlertDialogDescription.vue';
+import AlertDialogFooter from '../vendor/ui/alert-dialog/AlertDialogFooter.vue';
+import AlertDialogHeader from '../vendor/ui/alert-dialog/AlertDialogHeader.vue';
+import AlertDialogTitle from '../vendor/ui/alert-dialog/AlertDialogTitle.vue';
+import { buttonVariants } from '../vendor/ui/button';
 import { resolveConfirmChoy, useConfirmChoyStore } from '../../composables/confirmChoyAction';
 
 /**
- * App-root host for confirmChoyAction / confirmChoyChoice (Dense Admin §5.9).
+ * App-root host for confirmChoyAction / confirmChoyChoice.
+ * Uses AlertDialog chrome; Promise / store contract is unchanged.
  */
 const store = useConfirmChoyStore();
 const open = computed({
@@ -68,4 +64,6 @@ function onCancel() {
 function onDismiss() {
   resolveConfirmChoy(store.distinguishCancelAndClose ? 'dismiss' : 'cancel');
 }
+
+defineExpose({ onConfirm, onCancel, onDismiss, open });
 </script>

@@ -36,6 +36,7 @@ func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 		UnovisTs:            "unovis-ts",
 		RekaUI:              "reka-ui",
 		LucideVueNext:       "lucide",
+		VueSonner:           "sonner",
 	}
 	for _, tt := range []struct {
 		path string
@@ -53,6 +54,7 @@ func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 		{"@unovis/ts", "unovis-ts", true},
 		{"reka-ui", "reka-ui", true},
 		{"lucide-vue-next", "lucide", true},
+		{"vue-sonner", "sonner", true},
 		{"element-plus", "", false},
 		{"echarts/core", "", false},
 		{"other", "", false},
@@ -192,7 +194,7 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 			OnDispose:      func(func()) {},
 			OnResolve: func(o api.OnResolveOptions, cb func(api.OnResolveArgs) (api.OnResolveResult, error)) {
 				switch o.Filter {
-				case `^(vue-router|@choysum/page-mount|vuedraggable|@tiptap/vue-3|@tiptap/starter-kit|@tiptap/extension-link|dompurify|@unovis/vue|@unovis/ts|reka-ui|lucide-vue-next)$`:
+				case `^(vue-router|@choysum/page-mount|vuedraggable|@tiptap/vue-3|@tiptap/starter-kit|@tiptap/extension-link|dompurify|@unovis/vue|@unovis/ts|reka-ui|lucide-vue-next|vue-sonner)$`:
 					pkgCB = cb
 				case `(?:^|/)(?:OPage|Page)\.vue$`:
 					pageCB = cb

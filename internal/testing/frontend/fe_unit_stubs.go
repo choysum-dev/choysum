@@ -27,6 +27,7 @@ type feUnitStubPaths struct {
 	UnovisTs            string
 	RekaUI              string
 	LucideVueNext       string
+	VueSonner           string
 }
 
 func feUnitPackageStubPath(importPath string, stubs feUnitStubPaths) (string, bool) {
@@ -53,6 +54,8 @@ func feUnitPackageStubPath(importPath string, stubs feUnitStubPaths) (string, bo
 		return stubs.RekaUI, true
 	case "lucide-vue-next":
 		return stubs.LucideVueNext, true
+	case "vue-sonner":
+		return stubs.VueSonner, true
 	default:
 		return "", false
 	}

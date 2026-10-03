@@ -4,17 +4,13 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import type { AlertDialogEmits, AlertDialogProps } from "reka-ui"
-import { AlertDialogRoot, useForwardPropsEmits } from "reka-ui"
+import { AlertDialogRoot } from "reka-ui"
 
-const props = defineProps<AlertDialogProps>()
-const emits = defineEmits<AlertDialogEmits>()
-
-const forwarded = useForwardPropsEmits(props, emits)
+const open = defineModel<boolean>("open", { default: false })
 </script>
 
 <template>
-  <AlertDialogRoot v-slot="slotProps" data-slot="alert-dialog" v-bind="forwarded">
-    <slot v-bind="slotProps" />
+  <AlertDialogRoot v-model:open="open" data-slot="alert-dialog">
+    <slot />
   </AlertDialogRoot>
 </template>
