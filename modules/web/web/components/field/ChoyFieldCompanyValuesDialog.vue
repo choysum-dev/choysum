@@ -12,12 +12,11 @@ SPDX-License-Identifier: Apache-2.0
           <div v-for="row in rows" :key="row.companyId" class="choy-field-company-values-dialog__row flex items-start gap-3">
             <label class="choy-field-company-values-dialog__label min-w-28 shrink-0 text-left leading-8 text-foreground">{{ row.label }}</label>
             <div class="choy-field-company-values-dialog__control min-w-0 flex-1">
-              <input
+              <ChoyInput
                 v-model="row.value"
-                class="choy-field-company-values-dialog__input min-h-8 w-full rounded-md border border-border bg-background px-2.5 py-1 text-foreground"
+                class="choy-field-company-values-dialog__input min-h-8 w-full"
                 :maxlength="maxLength ?? undefined"
-              />
-              
+              /> 
             </div>
           </div>
         </form>
@@ -36,6 +35,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, ref, watch } from 'vue';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyInput from '@/web/web/components/vendor/ui/input/Input.vue';
 import { ChoyMessage } from '../../composables/useChoyMessage';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createTranslate } from '@/web/web/i18n';

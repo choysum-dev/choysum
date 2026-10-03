@@ -12,9 +12,9 @@ SPDX-License-Identifier: Apache-2.0
           <div v-for="row in rows" :key="row.code" class="choy-field-translations-dialog__row grid grid-cols-[168px_1fr] items-start gap-3">
             <label class="choy-field-translations-dialog__label leading-8 text-foreground">{{ row.label }}</label>
             <div class="choy-field-translations-dialog__control">
-              <input
+              <ChoyInput
                 v-model="row.value"
-                class="choy-field-translations-dialog__input box-border min-h-8 w-full min-w-0 rounded-md border border-border bg-background px-2.5 py-1 text-foreground"
+                class="choy-field-translations-dialog__input box-border min-h-8 w-full min-w-0"
                 :maxlength="maxLength ?? undefined"
               />
               <div v-if="row.code === 'en_US'" class="choy-field-translations-dialog__hint mt-1 text-xs leading-snug text-muted-foreground">
@@ -38,6 +38,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, ref, watch } from 'vue';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyInput from '@/web/web/components/vendor/ui/input/Input.vue';
 import { ChoyMessage } from '../../composables/useChoyMessage';
 import { createTranslate } from '@/web/web/i18n';
 import { createStoreByModel } from '@/web/web/stores/registry';
