@@ -53,9 +53,15 @@ SPDX-License-Identifier: Apache-2.0
             {{ _t('Mark all read') }}
           </ChoyButton>
         </div>
-        <div v-if="loading" class="p-3 text-sm text-muted-foreground">{{ _t('Loading...') }}</div>
+        <div v-if="loading" class="flex justify-center p-3">
+          <ChoySpinner :label="_t('Loading...')" />
+        </div>
         <div v-else-if="error" class="p-3 text-sm text-danger">{{ error }}</div>
-        <div v-else-if="rows.length === 0" class="p-3 text-sm text-muted-foreground">{{ _t('No notifications') }}</div>
+        <ChoyEmpty
+          v-else-if="rows.length === 0"
+          class="w-full border-none p-3"
+          :description="_t('No notifications')"
+        />
         <template v-else>
           <DropdownMenuItem
             v-for="row in rows"
@@ -63,14 +69,14 @@ SPDX-License-Identifier: Apache-2.0
             :class="row.IsRead !== true ? 'is-unread bg-primary/10' : undefined"
             @select="() => handleItemClick(row)"
           >
-            <div class="flex min-w-64 flex-col gap-1">
-              <div class="text-sm text-foreground">
-                {{ formatNotificationTitle(row) }}
-              </div>
-              <div class="text-xs text-muted-foreground">
-                {{ formatUtcIso(row.CreatedAt, 'YYYY-MM-DD HH:mm') || '' }}
-              </div>
-            </div>
+            <Item size="sm" class="min-w-64 border-none bg-transparent p-0 shadow-none">
+              <ItemContent>
+                <ItemTitle>{{ formatNotificationTitle(row) }}</ItemTitle>
+                <ItemDescription>
+                  {{ formatUtcIso(row.CreatedAt, 'YYYY-MM-DD HH:mm') || '' }}
+                </ItemDescription>
+              </ItemContent>
+            </Item>
           </DropdownMenuItem>
         </template>
       </DropdownMenuContent>
@@ -87,6 +93,12 @@ import DropdownMenu from '../vendor/ui/dropdown-menu/DropdownMenu.vue';
 import DropdownMenuContent from '../vendor/ui/dropdown-menu/DropdownMenuContent.vue';
 import DropdownMenuItem from '../vendor/ui/dropdown-menu/DropdownMenuItem.vue';
 import DropdownMenuTrigger from '../vendor/ui/dropdown-menu/DropdownMenuTrigger.vue';
+import Item from '../vendor/ui/item/Item.vue';
+import ItemContent from '../vendor/ui/item/ItemContent.vue';
+import ItemDescription from '../vendor/ui/item/ItemDescription.vue';
+import ItemTitle from '../vendor/ui/item/ItemTitle.vue';
+import ChoyEmpty from './ChoyEmpty.vue';
+import ChoySpinner from './ChoySpinner.vue';
 import ChoyButton from './ChoyButton.vue';
 import { cn, type ClassValue } from '../../lib/utils';
 import {

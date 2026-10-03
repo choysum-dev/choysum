@@ -196,7 +196,7 @@ describe('NotificationBell', () => {
     loading.value = true;
     let mounted = mountBell();
     await flushPromises();
-    expect(mounted.text()).toContain('Loading...');
+    expect(mounted.q('[data-testid=choy-spinner]')).not.toBeNull();
     mounted.unmount();
 
     loading.value = false;

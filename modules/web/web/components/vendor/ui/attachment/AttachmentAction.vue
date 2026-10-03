@@ -4,12 +4,13 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import type { PrimitiveProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
 import type { ButtonVariants } from "../button"
 import Button from "../button/Button.vue"
 
-interface Props extends PrimitiveProps {
+interface Props {
+  as?: any
+  asChild?: boolean
   class?: HTMLAttributes["class"]
   variant?: ButtonVariants["variant"]
   size?: ButtonVariants["size"]

@@ -4,14 +4,15 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script lang='ts' setup>
-import type { PrimitiveProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
 import type { BubbleVariants } from "."
 import { Primitive } from "reka-ui"
 import { cn } from "../../../../lib/utils"
 import { bubbleVariants } from "."
 
-interface Props extends PrimitiveProps {
+interface Props {
+  as?: any
+  asChild?: boolean
   variant?: BubbleVariants["variant"]
   align?: "start" | "end"
   class?: HTMLAttributes["class"]

@@ -256,12 +256,11 @@ SPDX-License-Identifier: Apache-2.0
         <ChartLegendContent />
       </ChartContainer>
 
-      <div
+      <ChoyEmpty
         v-else
-        class="flex min-h-[280px] items-center justify-center text-sm text-muted-foreground"
-      >
-        {{ resolvedEmptyLabel }}
-      </div>
+        class="min-h-[280px] w-full border-none"
+        :description="resolvedEmptyLabel"
+      />
 
       <div
         v-if="boardBusy && !errorText"
@@ -269,8 +268,7 @@ SPDX-License-Identifier: Apache-2.0
         role="status"
         :aria-label="_t('Loading...')"
       >
-        <ChoySkeleton class="h-40 w-full max-w-lg" />
-        <span class="text-sm text-muted-foreground">{{ _t('Loading...') }}</span>
+        <ChoySpinner :label="_t('Loading...')" />
       </div>
       <div
         v-else-if="errorText"
@@ -308,7 +306,8 @@ import type { OrderByState } from '@/web/web/query/state';
 import type { ChoySearchQuery } from './searchViewHelpers';
 import ChoyButton from '../layout/ChoyButton.vue';
 import ChoyActionTray from '@/web/web/components/layout/ChoyActionTray.vue';
-import ChoySkeleton from '@/web/web/components/layout/ChoySkeleton.vue';
+import ChoyEmpty from '../layout/ChoyEmpty.vue';
+import ChoySpinner from '../layout/ChoySpinner.vue';
 import { createTranslate } from '@/web/web/i18n';
 import {
   ChartContainer,

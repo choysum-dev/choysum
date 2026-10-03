@@ -271,6 +271,9 @@ export const ListboxGroupLabel = stub('ListboxGroupLabel');
 export const ListboxItem = stub('ListboxItem');
 
 export const Label = stub('Label');
+export const AspectRatio = stub('AspectRatio');
+// Avatar.vue imports { Avatar as AvatarRoot } style — also export aliases used by vendor.
+export const Avatar = AvatarRoot;
 
 // AlertDialog: mirror DialogRoot open/closed so ConfirmHost mounts in FE unit.
 export const AlertDialogRoot = DialogRoot;
