@@ -98,13 +98,23 @@ SPDX-License-Identifier: Apache-2.0
               />
               <ChoyFieldLabel for="register-terms" class="font-normal">
                 {{ _t('I have read and agree to') }}
-                <a href="#" target="_blank" class="text-primary underline-offset-4 hover:underline">{{
-                  _t('Terms of Service')
-                }}</a>
+                <a
+                  href="#"
+                  target="_blank"
+                  class="text-primary underline-offset-4 hover:underline"
+                  @click.stop
+                >
+                  {{ _t('Terms of Service') }}
+                </a>
                 {{ _t('and') }}
-                <a href="#" target="_blank" class="text-primary underline-offset-4 hover:underline">{{
-                  _t('Privacy Policy')
-                }}</a>
+                <a
+                  href="#"
+                  target="_blank"
+                  class="text-primary underline-offset-4 hover:underline"
+                  @click.stop
+                >
+                  {{ _t('Privacy Policy') }}
+                </a>
               </ChoyFieldLabel>
             </ChoyField>
             <ChoyFieldError :errors="fieldErrors.agreeTerms ? [fieldErrors.agreeTerms] : []" />
