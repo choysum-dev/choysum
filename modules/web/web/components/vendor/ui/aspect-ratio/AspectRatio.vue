@@ -4,10 +4,14 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import type { AspectRatioProps } from "reka-ui"
 import { AspectRatio } from "reka-ui"
 
-const props = defineProps<AspectRatioProps>()
+// Local props — avoid `defineProps<AspectRatioProps>()` (reka type import breaks QuickJS FE SFC).
+const props = defineProps<{
+  ratio?: number
+  as?: any
+  asChild?: boolean
+}>()
 </script>
 
 <template>

@@ -4,14 +4,15 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import type { SeparatorProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
 import { cn } from "../../../../lib/utils"
 import { Separator } from "../separator"
 
-const props = defineProps<
-  SeparatorProps & { class?: HTMLAttributes["class"] }
->()
+const props = defineProps<{
+  class?: HTMLAttributes["class"]
+  orientation?: "horizontal" | "vertical"
+  decorative?: boolean
+}>()
 </script>
 
 <template>

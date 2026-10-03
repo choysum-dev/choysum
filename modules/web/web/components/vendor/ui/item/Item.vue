@@ -4,14 +4,15 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import type { PrimitiveProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
 import type { ItemVariants } from "."
 import { Primitive } from "reka-ui"
 import { cn } from "../../../../lib/utils"
 import { itemVariants } from "."
 
-const props = withDefaults(defineProps<PrimitiveProps & {
+const props = withDefaults(defineProps<{
+  as?: any
+  asChild?: boolean
   class?: HTMLAttributes["class"]
   variant?: ItemVariants["variant"]
   size?: ItemVariants["size"]

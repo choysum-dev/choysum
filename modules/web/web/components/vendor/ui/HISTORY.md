@@ -115,3 +115,10 @@ new HISTORY entry describing what was re-copied vs re-patched.
 - QuickJS FE: inlined local `defineProps` on AlertDialog*, Sonner, Label,
   BreadcrumbLink (same rule as Sidebar* — no `defineProps` from `reka-ui` /
   `vue-sonner` type imports).
+
+## 2026-10-03 — W3 product wiring (Bubble / Message / Item / Attachment / AspectRatio)
+
+- Product hosts mount Bubble/Message (Chatter), Attachment (Binary/Image), Item
+  (Notification inbox), AspectRatio (image preview).
+- QuickJS FE: inlined local `as`/`asChild` (and AspectRatio `ratio`) on those
+  vendor SFCs — no `defineProps` from `reka-ui` type imports.

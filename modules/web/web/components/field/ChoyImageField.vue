@@ -22,15 +22,24 @@ SPDX-License-Identifier: Apache-2.0
   >
     <template #edit="{ fieldValue, onFieldChange }">
       <div class="flex w-full max-w-[360px] flex-col items-start gap-3">
-        <div v-if="hasAttachment(fieldValue().value)" class="choy-image-current inline-flex max-w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-muted w-full px-3 py-2.5">
-          <img v-if="resolvePreviewUrl(fieldValue().value)" class="choy-image-current__preview size-12 shrink-0 rounded-[10px] border border-border bg-background object-cover" :src="resolvePreviewUrl(fieldValue().value)" alt="image preview" />
-          <div v-else class="inline-flex size-12 shrink-0 items-center justify-center rounded-[10px] border border-dashed border-border bg-muted text-muted-foreground [&_svg]:text-lg" aria-hidden="true">
-            <Picture class="size-4" />
-          </div>
-          <div class="flex min-w-0 flex-1 flex-col gap-1">
-            <span class="truncate text-sm leading-snug text-foreground" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
-            <span v-if="toMetaText(fieldValue().value)" class="truncate text-xs leading-snug text-muted-foreground">{{ toMetaText(fieldValue().value) }}</span>
-            <div class="mt-0.5 flex flex-wrap items-center gap-3">
+        <Attachment
+          v-if="hasAttachment(fieldValue().value)"
+          class="choy-image-current w-full max-w-full bg-muted"
+          state="done"
+        >
+          <AttachmentMedia variant="image" class="size-12 overflow-hidden border border-border">
+            <img
+              v-if="resolvePreviewUrl(fieldValue().value)"
+              class="choy-image-current__preview size-full object-cover"
+              :src="resolvePreviewUrl(fieldValue().value)"
+              alt="image preview"
+            />
+            <Picture v-else class="size-4 text-muted-foreground" />
+          </AttachmentMedia>
+          <AttachmentContent>
+            <AttachmentTitle :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</AttachmentTitle>
+            <AttachmentDescription v-if="toMetaText(fieldValue().value)">{{ toMetaText(fieldValue().value) }}</AttachmentDescription>
+            <AttachmentActions>
               <label class="inline-flex">
                 <input
                   type="file"
@@ -45,13 +54,12 @@ SPDX-License-Identifier: Apache-2.0
               <ChoyButton size="sm" variant="destructive" class="p-0" :disabled="uploadDisabled" @click="removeImage(fieldValue, onFieldChange)">
                 {{ _t('Remove') }}
               </ChoyButton>
-            </div>
-          </div>
-        </div>
+            </AttachmentActions>
+          </AttachmentContent>
+        </Attachment>
         <label
           v-else
-          class="choy-image-upload box-border block w-full"
-          :class="{ 'choy-image-upload--drag min-h-[126px] cursor-pointer rounded-xl border border-dashed border-border bg-muted px-4 py-5 hover:border-primary hover:bg-primary-subtle': uploadDrag }"
+          class="choy-image-upload box-border block w-full cursor-pointer"
           @dragover.prevent="onUploadDragOver"
           @drop.prevent="onNativeFileDrop($event, fieldValue, onFieldChange)"
         >
@@ -63,57 +71,91 @@ SPDX-License-Identifier: Apache-2.0
             :disabled="uploadDisabled"
             @change="onNativeFileChange($event, fieldValue, onFieldChange)"
           />
-          <template v-if="uploadDrag">
-            <Upload class="mx-auto mb-2.5 block size-5 text-primary" />
-            <div class="text-center text-[13px] leading-normal text-muted-foreground">{{ uploadDropText }}</div>
-          </template>
-          <ChoyButton v-else size="sm" variant="link" class="p-0" as="span">{{ uploadButtonText }}</ChoyButton>
+          <Attachment
+            state="idle"
+            class="w-full max-w-full"
+            :class="{ 'choy-image-upload--drag min-h-[126px] justify-center px-4 py-5 hover:border-primary hover:bg-primary-subtle': uploadDrag }"
+          >
+            <template v-if="uploadDrag">
+              <Upload class="mx-auto mb-2.5 block size-5 text-primary" />
+              <div class="w-full text-center text-[13px] leading-normal text-muted-foreground">{{ uploadDropText }}</div>
+            </template>
+            <ChoyButton v-else size="sm" variant="link" class="p-0" as="span">{{ uploadButtonText }}</ChoyButton>
+          </Attachment>
         </label>
       </div>
     </template>
     <template #display="{ fieldValue, renderMode: slotRenderMode }">
-      <div v-if="hasAttachment(fieldValue().value) && isTableRenderMode(slotRenderMode)" class="inline-flex max-w-[124px] min-w-0 items-center gap-2">
-        <img
-          v-if="resolvePreviewUrl(fieldValue().value)"
-          class="size-8 shrink-0 rounded-lg border border-border bg-background object-cover"
-          :src="resolvePreviewUrl(fieldValue().value)"
-          alt="image preview"
-        />
-        <div v-else class="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-muted text-muted-foreground [&_svg]:text-base" aria-hidden="true">
-          <span class="inline-flex"><Picture class="size-4" /></span>
-        </div>
-        <span class="min-w-0 truncate text-sm leading-snug text-foreground" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
-      </div>
+      <Attachment
+        v-if="hasAttachment(fieldValue().value) && isTableRenderMode(slotRenderMode)"
+        size="sm"
+        class="max-w-[124px] border-transparent bg-transparent shadow-none"
+        state="done"
+      >
+        <AttachmentMedia variant="image" class="size-8 overflow-hidden border border-border">
+          <img
+            v-if="resolvePreviewUrl(fieldValue().value)"
+            class="size-full object-cover"
+            :src="resolvePreviewUrl(fieldValue().value)"
+            alt="image preview"
+          />
+          <Picture v-else class="size-4 text-muted-foreground" />
+        </AttachmentMedia>
+        <AttachmentContent>
+          <AttachmentTitle :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</AttachmentTitle>
+        </AttachmentContent>
+      </Attachment>
       <a
         v-else-if="hasAttachment(fieldValue().value) && resolveLinkHref(fieldValue().value)"
-        class="choy-image-display-card inline-flex max-w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-muted choy-image-display-card--interactive cursor-pointer px-2.5 py-1.5 text-inherit no-underline transition-colors hover:border-primary-soft hover:bg-primary-subtle"
+        class="choy-image-display-card text-inherit no-underline"
         :href="resolveLinkHref(fieldValue().value)"
         target="_blank"
         rel="noopener noreferrer"
         @click.stop
       >
-        <img v-if="resolvePreviewUrl(fieldValue().value)" class="size-9 shrink-0 rounded-lg border border-border bg-background object-cover" :src="resolvePreviewUrl(fieldValue().value)" alt="image preview" />
-        <div v-else class="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-muted text-muted-foreground [&_svg]:text-lg" aria-hidden="true">
-          <span class="inline-flex"><Picture class="size-4" /></span>
-        </div>
-        <span class="flex min-w-0 flex-1 flex-col gap-1">
-          <span class="truncate text-sm leading-snug text-foreground" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
-          <span v-if="toMetaText(fieldValue().value)" class="truncate text-xs leading-snug text-muted-foreground">{{ toMetaText(fieldValue().value) }}</span>
-        </span>
+        <Attachment
+          class="choy-image-display-card--interactive max-w-full cursor-pointer bg-muted transition-colors hover:border-primary-soft hover:bg-primary-subtle"
+          state="done"
+        >
+          <AttachmentMedia variant="image" class="size-9 overflow-hidden border border-border">
+            <img
+              v-if="resolvePreviewUrl(fieldValue().value)"
+              class="size-full object-cover"
+              :src="resolvePreviewUrl(fieldValue().value)"
+              alt="image preview"
+            />
+            <Picture v-else class="size-4 text-muted-foreground" />
+          </AttachmentMedia>
+          <AttachmentContent>
+            <AttachmentTitle :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</AttachmentTitle>
+            <AttachmentDescription v-if="toMetaText(fieldValue().value)">{{ toMetaText(fieldValue().value) }}</AttachmentDescription>
+          </AttachmentContent>
+        </Attachment>
       </a>
-      <div v-else-if="hasAttachment(fieldValue().value)" class="choy-image-display-card inline-flex max-w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-muted px-2.5 py-1.5 text-inherit no-underline">
-        <img v-if="resolvePreviewUrl(fieldValue().value)" class="size-9 shrink-0 rounded-lg border border-border bg-background object-cover" :src="resolvePreviewUrl(fieldValue().value)" alt="image preview" />
-        <div v-else class="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-muted text-muted-foreground [&_svg]:text-lg" aria-hidden="true">
-          <span class="inline-flex"><Picture class="size-4" /></span>
-        </div>
-        <span class="flex min-w-0 flex-1 flex-col gap-1">
-          <span class="truncate text-sm leading-snug text-foreground" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
-          <span v-if="toMetaText(fieldValue().value)" class="truncate text-xs leading-snug text-muted-foreground">{{ toMetaText(fieldValue().value) }}</span>
-        </span>
-      </div>
-      <div v-else class="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-muted text-muted-foreground [&_svg]:text-lg" aria-hidden="true">
-        <span class="inline-flex"><Picture /></span>
-      </div>
+      <Attachment
+        v-else-if="hasAttachment(fieldValue().value)"
+        class="choy-image-display-card max-w-full bg-muted"
+        state="done"
+      >
+        <AttachmentMedia variant="image" class="size-9 overflow-hidden border border-border">
+          <img
+            v-if="resolvePreviewUrl(fieldValue().value)"
+            class="size-full object-cover"
+            :src="resolvePreviewUrl(fieldValue().value)"
+            alt="image preview"
+          />
+          <Picture v-else class="size-4 text-muted-foreground" />
+        </AttachmentMedia>
+        <AttachmentContent>
+          <AttachmentTitle :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</AttachmentTitle>
+          <AttachmentDescription v-if="toMetaText(fieldValue().value)">{{ toMetaText(fieldValue().value) }}</AttachmentDescription>
+        </AttachmentContent>
+      </Attachment>
+      <Attachment v-else size="sm" state="idle" aria-hidden="true" class="border-transparent bg-transparent shadow-none">
+        <AttachmentMedia variant="icon" aria-hidden="true" class="size-9 border border-dashed border-border bg-muted text-muted-foreground">
+          <Picture class="size-4" />
+        </AttachmentMedia>
+      </Attachment>
     </template>
   </FieldBase>
 </template>
@@ -132,6 +174,12 @@ import { resolveImageFieldLimitsFromSources, reportImageFieldValidation } from '
 import { normalizeOptionalString } from '@/core/service/utils/normalization';
 import { Image as Picture, Upload } from 'lucide-vue-next';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import Attachment from '../vendor/ui/attachment/Attachment.vue';
+import AttachmentActions from '../vendor/ui/attachment/AttachmentActions.vue';
+import AttachmentContent from '../vendor/ui/attachment/AttachmentContent.vue';
+import AttachmentDescription from '../vendor/ui/attachment/AttachmentDescription.vue';
+import AttachmentMedia from '../vendor/ui/attachment/AttachmentMedia.vue';
+import AttachmentTitle from '../vendor/ui/attachment/AttachmentTitle.vue';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/ImageField' });
 

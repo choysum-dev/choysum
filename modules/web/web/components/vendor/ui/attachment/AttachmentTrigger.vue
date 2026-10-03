@@ -4,11 +4,12 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import type { PrimitiveProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
 import { cn } from "../../../../lib/utils"
 
-interface Props extends PrimitiveProps {
+interface Props {
+  as?: any
+  asChild?: boolean
   class?: HTMLAttributes["class"]
 }
 const props = withDefaults(defineProps<Props>(), {

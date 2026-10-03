@@ -6,10 +6,10 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <div class="choy-chatter-timeline" data-anchor="choy.chatter.timeline">
     <div
-      v-if="loading && entries.length === 0"
-      class="px-3 py-4 text-center text-sm text-muted-foreground"
+      v-if="loading && entries.length === 0 && !error"
+      class="flex justify-center px-3 py-6"
     >
-      {{ loadingLabel || 'Loading activity...' }}
+      <ChoySpinner :label="loadingLabel || 'Loading activity...'" />
     </div>
     <div
       v-else-if="error"
@@ -18,26 +18,39 @@ SPDX-License-Identifier: Apache-2.0
     >
       {{ error }}
     </div>
-    <div
+    <ChoyEmpty
       v-else-if="entries.length === 0"
-      class="px-3 py-4 text-center text-sm text-muted-foreground"
+      class="w-full border-none"
+      :description="emptyLabel || 'No activity yet'"
+    />
+    <MessageScrollerProvider
+      v-else
+      auto-scroll
+      default-scroll-position="end"
     >
-      {{ emptyLabel || 'No activity yet' }}
-    </div>
-    <div v-else class="flex flex-col gap-2.5">
-      <template v-for="entry in entries" :key="`${entry.kind}:${entry.id}`">
-        <ChoyChatterMessageItem
-          v-if="entry.kind === 'message'"
-          :entry="entry"
-          :author-label="resolveAuthorLabel(entry.authorUid)"
-        />
-        <ChoyChatterFieldChangeItem
-          v-else
-          :entry="entry"
-          :author-label="resolveAuthorLabel(entry.actorUid)"
-        />
-      </template>
-    </div>
+      <MessageScroller class="h-auto max-h-[28rem] min-h-0">
+        <MessageScrollerViewport class="h-auto max-h-[28rem] px-0.5">
+          <MessageScrollerContent class="flex flex-col gap-2.5 py-1">
+            <MessageScrollerItem
+              v-for="entry in entries"
+              :key="`${entry.kind}:${entry.id}`"
+              :message-id="`${entry.kind}:${entry.id}`"
+            >
+              <ChoyChatterMessageItem
+                v-if="entry.kind === 'message'"
+                :entry="entry"
+                :author-label="resolveAuthorLabel(entry.authorUid)"
+              />
+              <ChoyChatterFieldChangeItem
+                v-else
+                :entry="entry"
+                :author-label="resolveAuthorLabel(entry.actorUid)"
+              />
+            </MessageScrollerItem>
+          </MessageScrollerContent>
+        </MessageScrollerViewport>
+      </MessageScroller>
+    </MessageScrollerProvider>
   </div>
 </template>
 
@@ -46,6 +59,13 @@ import type { ChatterTimelineEntry } from './chatterTypes';
 import { resolveChoyChatterAuthorLabel } from './chatterHelpers';
 import ChoyChatterFieldChangeItem from './ChoyChatterFieldChangeItem.vue';
 import ChoyChatterMessageItem from './ChoyChatterMessageItem.vue';
+import ChoyEmpty from '../layout/ChoyEmpty.vue';
+import ChoySpinner from '../layout/ChoySpinner.vue';
+import MessageScroller from '../vendor/ui/message-scroller/MessageScroller.vue';
+import MessageScrollerContent from '../vendor/ui/message-scroller/MessageScrollerContent.vue';
+import MessageScrollerItem from '../vendor/ui/message-scroller/MessageScrollerItem.vue';
+import MessageScrollerProvider from '../vendor/ui/message-scroller/MessageScrollerProvider.vue';
+import MessageScrollerViewport from '../vendor/ui/message-scroller/MessageScrollerViewport.vue';
 
 withDefaults(
   defineProps<{

@@ -252,6 +252,8 @@ describe('ImageField mount wiring', () => {
     );
     await flushPromises();
     expect(previewMount.q('.choy-image-current__preview')?.getAttribute('src')).toBe('/preview/img.png');
+    expect(previewMount.q('[data-slot=attachment]')).not.toBeNull();
+    expect(previewMount.q('[data-slot=attachment-media]')).not.toBeNull();
     previewMount.unmount();
   });
 

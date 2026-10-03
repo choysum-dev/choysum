@@ -55,6 +55,16 @@ describe('ChoyChartView chrome', () => {
     expect(mounted.text()).toContain('chart failed');
     expect(mounted.text()).toContain('Retry');
 
+    exposed.controller.vm.error = null;
+    exposed.controller.vm.loading = true;
+    await nextTick();
+    expect(mounted.q('[data-testid=choy-spinner]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-empty]')).toBeNull();
+
+    exposed.controller.vm.loading = false;
+    await nextTick();
+    expect(mounted.q('[data-testid=choy-empty]')).not.toBeNull();
+
     mounted.unmount();
   });
 });
