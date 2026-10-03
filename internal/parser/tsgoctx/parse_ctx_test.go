@@ -75,14 +75,21 @@ func TestParseTSGoCtxExportsDestructuredBindings(t *testing.T) {
 	content := `
 export const [useSidebar, provideSidebarContext] = [null, null]
 export const { useCommand, provideCommandContext } = { useCommand: null, provideCommandContext: null }
+export const [keep, , also] = [1, 2, 3]
+export const { nested: { deep } } = { nested: { deep: 1 } }
+export function namedFn() {}
+export {}
 `
 	ctx, err := Parse(nil, path, content)
 	if err != nil {
 		t.Fatalf("Parse() error = %v", err)
 	}
-	for _, name := range []string{"useSidebar", "provideSidebarContext", "useCommand", "provideCommandContext"} {
+	for _, name := range []string{
+		"useSidebar", "provideSidebarContext", "useCommand", "provideCommandContext",
+		"keep", "also", "deep", "namedFn",
+	} {
 		if ctx.Exports[name] == nil {
-			t.Fatalf("expected destructured export %q, got %#v", name, ctx.Exports)
+			t.Fatalf("expected destructured/named export %q, got %#v", name, ctx.Exports)
 		}
 	}
 	if got := ExportDeclarationName(nil); got != "" {
@@ -91,6 +98,85 @@ export const { useCommand, provideCommandContext } = { useCommand: null, provide
 	if got := ExportDeclarationNames(nil); got != nil {
 		t.Fatalf("ExportDeclarationNames(nil) = %#v, want nil", got)
 	}
+
+	// Cover Name()-based lookup, non-variable exports, holes, and nested patterns.
+	var exportEmpty *tsast.Node
+	var exportFn *tsast.Node
+	var exportArrayHole *tsast.Node
+	var exportNested *tsast.Node
+	for _, stmt := range ctx.Source.Statements.Nodes {
+		if stmt == nil {
+			continue
+		}
+		switch stmt.Kind {
+		case tsast.KindExportDeclaration:
+			exportEmpty = stmt
+		case tsast.KindFunctionDeclaration:
+			if HasModifier(stmt, tsast.KindExportKeyword) {
+				exportFn = stmt
+			}
+		case tsast.KindVariableStatement:
+			names := ExportDeclarationNames(stmt)
+			if len(names) == 2 && names[0] == "keep" && names[1] == "also" {
+				exportArrayHole = stmt
+			}
+			if len(names) == 1 && names[0] == "deep" {
+				exportNested = stmt
+			}
+		}
+	}
+	if exportEmpty == nil || exportFn == nil || exportArrayHole == nil || exportNested == nil {
+		t.Fatalf("expected fixture statements, got empty=%v fn=%v hole=%v nested=%v",
+			exportEmpty != nil, exportFn != nil, exportArrayHole != nil, exportNested != nil)
+	}
+	if got := ExportDeclarationNames(exportEmpty); got != nil {
+		t.Fatalf("ExportDeclarationNames(export {}) = %#v, want nil", got)
+	}
+	if got := ExportDeclarationName(exportFn); got != "namedFn" {
+		t.Fatalf("ExportDeclarationName(function) = %q, want namedFn", got)
+	}
+	if got := ExportDeclarationNames(exportArrayHole); len(got) != 2 || got[0] != "keep" || got[1] != "also" {
+		t.Fatalf("ExportDeclarationNames(array holes) = %#v", got)
+	}
+	if got := ExportDeclarationNames(exportNested); len(got) != 1 || got[0] != "deep" {
+		t.Fatalf("ExportDeclarationNames(nested) = %#v", got)
+	}
+
+	// Direct edge branches that source fixtures cannot easily hit.
+	if got := bindingNameIdents(nil); got != nil {
+		t.Fatalf("bindingNameIdents(nil) = %#v", got)
+	}
+	if got := bindingNameIdents(exportFn); got != nil {
+		t.Fatalf("bindingNameIdents(non-binding) = %#v", got)
+	}
+	factory := tsast.NewNodeFactory(tsast.NodeFactoryHooks{})
+	emptyIdent := factory.NewIdentifier("")
+	if got := bindingNameIdents(emptyIdent); got != nil {
+		t.Fatalf("bindingNameIdents(empty ident) = %#v", got)
+	}
+	emptyPattern := factory.NewBindingPattern(tsast.KindArrayBindingPattern, nil)
+	if got := bindingNameIdents(emptyPattern); got != nil {
+		t.Fatalf("bindingNameIdents(nil elements) = %#v", got)
+	}
+	// Nil list entries and non-binding elements (continue branches).
+	withHole := factory.NewBindingPattern(tsast.KindArrayBindingPattern, &tsast.NodeList{
+		Nodes: []*tsast.Node{
+			nil,
+			factory.NewOmittedExpression(),
+			factory.NewBindingElement(nil, nil, factory.NewIdentifier("kept"), nil),
+		},
+	})
+	if got := bindingNameIdents(withHole); len(got) != 1 || got[0] != "kept" {
+		t.Fatalf("bindingNameIdents(nil+omitted+kept) = %#v", got)
+	}
+	// Nil variable declarations in the list.
+	varList := exportArrayHole.AsVariableStatement().DeclarationList.AsVariableDeclarationList()
+	orig := varList.Declarations.Nodes
+	varList.Declarations.Nodes = append([]*tsast.Node{nil}, orig...)
+	if got := ExportDeclarationNames(exportArrayHole); len(got) != 2 {
+		t.Fatalf("ExportDeclarationNames(with nil decl) = %#v", got)
+	}
+	varList.Declarations.Nodes = orig
 }
 
 func TestParseTSGoCtxHandlesDefaultDeclarationsAndMergeHelpers(t *testing.T) {
