@@ -4,16 +4,17 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import type { CollapsibleTriggerProps } from "reka-ui"
 import { CollapsibleTrigger } from "reka-ui"
 
-const props = defineProps<CollapsibleTriggerProps>()
+defineProps<{
+  asChild?: boolean
+}>()
 </script>
 
 <template>
   <CollapsibleTrigger
     data-slot="collapsible-trigger"
-    v-bind="props"
+    :as-child="asChild"
   >
     <slot />
   </CollapsibleTrigger>

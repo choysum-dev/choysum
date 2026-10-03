@@ -18,51 +18,59 @@ SPDX-License-Identifier: Apache-2.0
     </template>
     <ChoyNotificationBell v-if="isAuthenticated" />
     <SwitchCompany v-if="isAuthenticated" />
-    <div v-if="isAuthenticated" ref="userMenuRoot" class="relative">
-      <ChoyButton
-        variant="ghost"
-        size="sm"
-        :aria-expanded="userMenuOpen"
-        :aria-label="_t('User menu')"
-        data-testid="auth-user-menu-trigger"
-        @click.stop="userMenuOpen = !userMenuOpen"
-      >
-        <User class="size-5" aria-hidden="true" />
-      </ChoyButton>
-      <div
-        v-if="userMenuOpen"
-        class="absolute end-0 top-full z-50 mt-1 min-w-[10rem] rounded-md border border-border bg-background py-1 shadow-md"
-        role="menu"
-        @click.stop
-      >
-        <button type="button" class="block w-full px-3 py-1.5 text-start text-sm hover:bg-muted" role="menuitem" @click="onMenuProfile">
+    <ChoyDropdownMenu v-if="isAuthenticated" v-model:open="userMenuOpen">
+      <ChoyDropdownMenuTrigger as-child>
+        <ChoyButton
+          variant="ghost"
+          size="icon"
+          type="button"
+          :aria-label="_t('User menu')"
+          data-testid="auth-user-menu-trigger"
+        >
+          <ChoyAvatar class="size-6">
+            <ChoyAvatarFallback class="bg-muted text-muted-foreground text-xs">
+              <User class="size-3.5" aria-hidden="true" />
+            </ChoyAvatarFallback>
+          </ChoyAvatar>
+        </ChoyButton>
+      </ChoyDropdownMenuTrigger>
+      <ChoyDropdownMenuContent align="end" class="min-w-[10rem]">
+        <ChoyDropdownMenuItem @select="onMenuProfile">
           {{ _t('Profile') }}
-        </button>
-        <button type="button" class="block w-full px-3 py-1.5 text-start text-sm hover:bg-muted" role="menuitem" @click="onMenuSettings">
+        </ChoyDropdownMenuItem>
+        <ChoyDropdownMenuItem @select="onMenuSettings">
           {{ _t('Settings') }}
-        </button>
-        <button type="button" class="block w-full px-3 py-1.5 text-start text-sm hover:bg-muted" role="menuitem" @click="onMenuLogout">
+        </ChoyDropdownMenuItem>
+        <ChoyDropdownMenuItem @select="onMenuLogout">
           {{ _t('Log Out') }}
-        </button>
-      </div>
-    </div>
+        </ChoyDropdownMenuItem>
+      </ChoyDropdownMenuContent>
+    </ChoyDropdownMenu>
     <PreferencesDialog v-if="isAuthenticated" v-model="preferencesVisible" />
   </Xpath>
 </template>
 
 <script lang="ts" _name="ChoyWebShell">
-import { computed, defineComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, defineComponent, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { User } from 'lucide-vue-next';
 import { Xpath } from '@/core/web';
-import { ChoyButton, ChoyNotificationBell } from '@/web';
+import {
+  ChoyAvatar,
+  ChoyAvatarFallback,
+  ChoyButton,
+  ChoyDropdownMenu,
+  ChoyDropdownMenuContent,
+  ChoyDropdownMenuItem,
+  ChoyDropdownMenuTrigger,
+  ChoyNotificationBell,
+} from '@/web';
 import ChoyWebShell from '@/web/web/components/layout/ChoyWebShell.vue';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createTranslate } from '@/web/web/i18n';
 import { shouldResetAuthHeaderPopups } from './auth_header_popup_state';
 import { reuseParentSetupState } from './reuse_parent_setup_state';
 import SwitchCompany from './SwitchCompany.vue';
-import { dismissPopupOnEscape } from './popup_escape_focus';
 import PreferencesDialog from '../preferences/PreferencesDialog.vue';
 
 /**
@@ -79,6 +87,12 @@ export default defineComponent({
     ChoyNotificationBell,
     SwitchCompany,
     PreferencesDialog,
+    ChoyAvatar,
+    ChoyAvatarFallback,
+    ChoyDropdownMenu,
+    ChoyDropdownMenuContent,
+    ChoyDropdownMenuItem,
+    ChoyDropdownMenuTrigger,
   },
   setup(props, ctx) {
     // extends merges options but does not run a script-setup parent's setup; call it here.
@@ -96,7 +110,6 @@ export default defineComponent({
     const isAuthPage = computed(() => !!route?.value?.meta?.isAuthPage);
     const preferencesVisible = ref(false);
     const userMenuOpen = ref(false);
-    const userMenuRoot = ref<HTMLElement | null>(null);
 
     function closeUserMenu() {
       userMenuOpen.value = false;
@@ -112,30 +125,6 @@ export default defineComponent({
       if (shouldResetAuthHeaderPopups(Boolean(wasAuthed), Boolean(authed))) {
         resetHeaderPopups();
       }
-    });
-
-    function onDocumentClick(event: MouseEvent) {
-      if (!userMenuOpen.value) return;
-      const root = userMenuRoot.value;
-      if (root && !root.contains(event.target as Node)) {
-        closeUserMenu();
-      }
-    }
-
-    function onDocumentKeydown(event: KeyboardEvent) {
-      if (event.key !== 'Escape') return;
-      const trigger = userMenuRoot.value?.querySelector<HTMLElement>('[data-testid="auth-user-menu-trigger"]');
-      dismissPopupOnEscape(userMenuOpen.value, closeUserMenu, trigger);
-    }
-
-    onMounted(() => {
-      document.addEventListener('click', onDocumentClick);
-      document.addEventListener('keydown', onDocumentKeydown);
-    });
-
-    onBeforeUnmount(() => {
-      document.removeEventListener('click', onDocumentClick);
-      document.removeEventListener('keydown', onDocumentKeydown);
     });
 
     function handleLogin() {
@@ -171,7 +160,6 @@ export default defineComponent({
       isAuthPage,
       preferencesVisible,
       userMenuOpen,
-      userMenuRoot,
       handleLogin,
       onMenuProfile,
       onMenuSettings,

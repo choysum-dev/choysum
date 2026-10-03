@@ -21,6 +21,15 @@ export { default as ChoyTabs } from './components/layout/ChoyTabs.vue';
 export { default as ChoyTab } from './components/layout/ChoyTab.vue';
 export { default as ChoyButton } from './components/layout/ChoyButton.vue';
 export { default as ChoyNotificationBell } from './components/layout/ChoyNotificationBell.vue';
+export { default as ChoyCommandPalette } from './components/layout/ChoyCommandPalette.vue';
+export { default as ChoySidebarNav } from './components/layout/ChoySidebarNav.vue';
+export { Avatar as ChoyAvatar, AvatarFallback as ChoyAvatarFallback } from './components/vendor/ui/avatar';
+export {
+  DropdownMenu as ChoyDropdownMenu,
+  DropdownMenuContent as ChoyDropdownMenuContent,
+  DropdownMenuItem as ChoyDropdownMenuItem,
+  DropdownMenuTrigger as ChoyDropdownMenuTrigger,
+} from './components/vendor/ui/dropdown-menu';
 
 export { default as ChoyFormView } from './components/view/ChoyFormView.vue';
 export { default as ChoyListView } from './components/view/ChoyListView.vue';

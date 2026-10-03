@@ -5,9 +5,9 @@
  * FE unit stub for `reka-ui`.
  * Real Reka primitives pull in browser-only APIs that throw in QuickJS
  * (`TypeError: not a function`). Passthrough slot hosts keep Dialog / Toast /
- * Combobox / Calendar mounts usable in FE unit tests.
+ * Combobox / Calendar / Sidebar mounts usable in FE unit tests.
  */
-import { defineComponent, h } from 'vue';
+import { computed, defineComponent, h, inject, provide, ref } from 'vue';
 
 function stub(name) {
   return defineComponent({
@@ -26,6 +26,41 @@ function stub(name) {
         );
     },
   });
+}
+
+/** Minimal createContext used by Sidebar / Command providers. */
+export function createContext(name) {
+  const key = Symbol(String(name || 'reka-context'));
+  function useContext(fallible) {
+    const value = inject(key, undefined);
+    if (value === undefined && !fallible) {
+      throw new Error(`reka-ui stub: missing context ${String(name)}`);
+    }
+    return value;
+  }
+  function provideContext(value) {
+    provide(key, value);
+  }
+  return [useContext, provideContext];
+}
+
+export function useForwardPropsEmits(props) {
+  return props;
+}
+
+export function useForwardProps(props) {
+  return props;
+}
+
+export function useId() {
+  return `reka-stub-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+export function useFilter() {
+  return {
+    contains: (value, search) =>
+      !search || String(value || '').toLowerCase().includes(String(search).toLowerCase()),
+  };
 }
 
 export const CalendarCell = stub('CalendarCell');
@@ -98,3 +133,114 @@ export const TooltipPortal = stub('TooltipPortal');
 export const TooltipProvider = stub('TooltipProvider');
 export const TooltipRoot = stub('TooltipRoot');
 export const TooltipTrigger = stub('TooltipTrigger');
+export const AvatarRoot = stub('AvatarRoot');
+export const AvatarFallback = stub('AvatarFallback');
+export const AvatarImage = stub('AvatarImage');
+
+const COLLAPSIBLE_OPEN = Symbol('reka-collapsible-open');
+
+export const CollapsibleRoot = defineComponent({
+  name: 'CollapsibleRoot',
+  inheritAttrs: false,
+  props: {
+    open: { type: Boolean, default: undefined },
+    defaultOpen: { type: Boolean, default: false },
+    disabled: { type: Boolean, default: false },
+  },
+  emits: ['update:open'],
+  setup(props, { slots, attrs, emit }) {
+    const uncontrolled = ref(!!props.defaultOpen);
+    const open = computed({
+      get: () => (props.open === undefined ? uncontrolled.value : !!props.open),
+      set: (value) => {
+        uncontrolled.value = value;
+        emit('update:open', value);
+      },
+    });
+    provide(COLLAPSIBLE_OPEN, open);
+    return () =>
+      h(
+        'div',
+        {
+          'data-reka-stub': 'CollapsibleRoot',
+          'data-state': open.value ? 'open' : 'closed',
+          ...attrs,
+        },
+        slots.default ? slots.default({ open: open.value }) : null,
+      );
+  },
+});
+
+export const CollapsibleContent = defineComponent({
+  name: 'CollapsibleContent',
+  inheritAttrs: false,
+  setup(_, { slots, attrs }) {
+    const open = inject(COLLAPSIBLE_OPEN, ref(true));
+    return () =>
+      open.value
+        ? h('div', { 'data-reka-stub': 'CollapsibleContent', ...attrs }, slots.default ? slots.default() : null)
+        : null;
+  },
+});
+
+export const CollapsibleTrigger = defineComponent({
+  name: 'CollapsibleTrigger',
+  inheritAttrs: false,
+  props: {
+    asChild: { type: Boolean, default: false },
+  },
+  setup(props, { slots, attrs }) {
+    const open = inject(COLLAPSIBLE_OPEN, ref(false));
+    function toggle() {
+      open.value = !open.value;
+    }
+    return () => {
+      if (props.asChild) {
+        return h(
+          'div',
+          {
+            'data-reka-stub': 'CollapsibleTrigger',
+            onClick: toggle,
+          },
+          slots.default ? slots.default() : null,
+        );
+      }
+      return h(
+        'button',
+        {
+          type: 'button',
+          'data-reka-stub': 'CollapsibleTrigger',
+          'aria-expanded': open.value ? 'true' : 'false',
+          ...attrs,
+          onClick: toggle,
+        },
+        slots.default ? slots.default() : null,
+      );
+    };
+  },
+});
+
+export const Primitive = defineComponent({
+  name: 'Primitive',
+  inheritAttrs: false,
+  props: {
+    as: { type: [String, Object], default: 'div' },
+    asChild: { type: Boolean, default: false },
+  },
+  setup(props, { slots, attrs }) {
+    return () => {
+      if (props.asChild) {
+        return slots.default ? slots.default() : null;
+      }
+      const tag = typeof props.as === 'string' ? props.as : 'div';
+      return h(tag, { 'data-reka-stub': 'Primitive', ...attrs }, slots.default ? slots.default() : null);
+    };
+  },
+});
+export const Separator = stub('Separator');
+export const ListboxRoot = stub('ListboxRoot');
+export const ListboxContent = stub('ListboxContent');
+export const ListboxFilter = stub('ListboxFilter');
+export const ListboxGroup = stub('ListboxGroup');
+export const ListboxGroupLabel = stub('ListboxGroupLabel');
+export const ListboxItem = stub('ListboxItem');

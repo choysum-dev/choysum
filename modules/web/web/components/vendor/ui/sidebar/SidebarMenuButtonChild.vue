@@ -4,14 +4,14 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import type { PrimitiveProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
-import type { SidebarMenuButtonVariants } from "."
 import { Primitive } from "reka-ui"
 import { cn } from "../../../../lib/utils"
-import { sidebarMenuButtonVariants } from "."
+import { sidebarMenuButtonVariants, type SidebarMenuButtonVariants } from "./sidebarMenuButtonVariants"
 
-export interface SidebarMenuButtonProps extends PrimitiveProps {
+export interface SidebarMenuButtonProps {
+  as?: string | object
+  asChild?: boolean
   variant?: SidebarMenuButtonVariants["variant"]
   size?: SidebarMenuButtonVariants["size"]
   isActive?: boolean

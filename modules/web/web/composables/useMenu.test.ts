@@ -7,8 +7,9 @@ import { createI18n } from 'vue-i18n';
 import * as VueRouter from 'vue-router';
 import { createMenuPlugin } from '@/core/web/menu';
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
-import { useMenu } from './useMenu';
 import { useMenuStore } from '../stores/menuStore';
+import ChoySidebarNav from '../components/layout/ChoySidebarNav.vue';
+import { SidebarProvider } from '../components/vendor/ui/sidebar/index';
 
 const createFeStubRouter = (VueRouter as any).createFeStubRouter;
 
@@ -50,13 +51,14 @@ async function mountSidebar(opts?: { activeChild?: boolean }) {
   const Host = defineComponent({
     name: 'UseMenuSidebarHost',
     setup() {
-      const menu = useMenu();
       const store = useMenuStore();
-      // Activate a leaf under the app so renderSidebarMenu shows app children.
       const activeId = opts?.activeChild ? 'child-a' : 'leaf';
       const active = store.getMenu(activeId);
       if (active) store.setActiveMenu(active);
-      return () => menu.renderSidebarMenu({ useDefaultIcon: true });
+      return () =>
+        h(SidebarProvider, null, {
+          default: () => h(ChoySidebarNav, { useDefaultIcon: true }),
+        });
     },
   });
 
@@ -68,18 +70,17 @@ async function mountSidebar(opts?: { activeChild?: boolean }) {
   return mounted;
 }
 
-describe('useMenu sidebar expansion', () => {
+describe('ChoySidebarNav expansion', () => {
   test('manually expands and collapses inactive groups', async () => {
     const mounted = await mountSidebar();
-    const groupBtn = Array.from(mounted.el.querySelectorAll('button.choy-menu__sub-title')).find(b =>
-      (b.textContent || '').includes('Group'),
-    ) as HTMLButtonElement | undefined;
+    const groupBtn = Array.from(
+      mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-group]'),
+    ).find((b) => (b.textContent || '').includes('Group')) as HTMLButtonElement | undefined;
     expect(groupBtn).toBeTruthy();
     expect(groupBtn!.getAttribute('aria-expanded')).toBe('false');
     expect(mounted.text()).not.toContain('Child A');
 
     groupBtn!.click();
-    // Second click before re-render still sees expanded=false; openSubMenu no-ops when already open.
     groupBtn!.click();
     await flushPromises();
     await nextTick();
@@ -96,14 +97,13 @@ describe('useMenu sidebar expansion', () => {
 
   test('keeps ancestry-expanded groups open for the active menu', async () => {
     const mounted = await mountSidebar({ activeChild: true });
-    const groupBtn = Array.from(mounted.el.querySelectorAll('button.choy-menu__sub-title')).find(b =>
-      (b.textContent || '').includes('Group'),
-    ) as HTMLButtonElement | undefined;
+    const groupBtn = Array.from(
+      mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-group]'),
+    ).find((b) => (b.textContent || '').includes('Group')) as HTMLButtonElement | undefined;
     expect(groupBtn).toBeTruthy();
     expect(groupBtn!.getAttribute('aria-expanded')).toBe('true');
     expect(mounted.text()).toContain('Child A');
 
-    // Already expanded via ancestry: click close is a no-op on the Set but still fires.
     groupBtn!.click();
     await flushPromises();
     await nextTick();
@@ -113,15 +113,14 @@ describe('useMenu sidebar expansion', () => {
 
   test('open/close with empty menu id is a no-op', async () => {
     const mounted = await mountSidebar();
-    const noIdBtn = Array.from(mounted.el.querySelectorAll('button.choy-menu__sub-title')).find(b =>
-      (b.textContent || '').includes('NoId Group'),
-    ) as HTMLButtonElement | undefined;
+    const noIdBtn = Array.from(
+      mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-group]'),
+    ).find((b) => (b.textContent || '').includes('NoId Group')) as HTMLButtonElement | undefined;
     expect(noIdBtn).toBeTruthy();
     expect(noIdBtn!.getAttribute('aria-expanded')).toBe('false');
     noIdBtn!.click();
     await flushPromises();
     await nextTick();
-    // Empty id cannot be stored in openedSubMenus.
     expect(noIdBtn!.getAttribute('aria-expanded')).toBe('false');
     mounted.unmount();
   });
@@ -147,11 +146,13 @@ describe('useMenu sidebar expansion', () => {
     const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
     const Host = defineComponent({
       setup() {
-        const menu = useMenu();
         const store = useMenuStore();
         const active = store.getMenu('noid-child');
         if (active) store.setActiveMenu(active);
-        return () => menu.renderSidebarMenu({ useDefaultIcon: true });
+        return () =>
+          h(SidebarProvider, null, {
+            default: () => h(ChoySidebarNav, { useDefaultIcon: true }),
+          });
       },
     });
     const mounted = mountApp(Host as any, {
@@ -159,9 +160,9 @@ describe('useMenu sidebar expansion', () => {
     });
     await flushPromises();
     await nextTick();
-    const noIdBtn = Array.from(mounted.el.querySelectorAll('button.choy-menu__sub-title')).find(b =>
-      (b.textContent || '').includes('NoId Group'),
-    ) as HTMLButtonElement | undefined;
+    const noIdBtn = Array.from(
+      mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-group]'),
+    ).find((b) => (b.textContent || '').includes('NoId Group')) as HTMLButtonElement | undefined;
     expect(noIdBtn).toBeTruthy();
     expect(noIdBtn!.getAttribute('aria-expanded')).toBe('true');
     noIdBtn!.click();
@@ -173,8 +174,8 @@ describe('useMenu sidebar expansion', () => {
 
   test('navigates when a leaf item is clicked', async () => {
     const mounted = await mountSidebar();
-    const leaf = Array.from(mounted.el.querySelectorAll('button.choy-menu__item')).find(b =>
-      (b.textContent || '').includes('Leaf'),
+    const leaf = Array.from(mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-leaf]')).find(
+      (b) => (b.textContent || '').includes('Leaf'),
     ) as HTMLButtonElement | undefined;
     expect(leaf).toBeTruthy();
     leaf!.click();
