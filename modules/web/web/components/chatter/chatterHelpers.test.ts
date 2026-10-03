@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { formatChoyUtcIso, formatFieldChangeSummary, resolveChoyChatterAuthorLabel } from './chatterHelpers';
+import { formatChoyUtcIso, formatFieldChangeSummary, resolveChoyChatterAuthorLabel, resolveChoyChatterInitials } from './chatterHelpers';
 
 const labels = {
   created: 'Record created',
@@ -216,4 +216,12 @@ test('resolveChoyChatterAuthorLabel maps system / you / other', () => {
       youLabel: 'Me',
     }),
   ).toBe('Me');
+});
+
+test('resolveChoyChatterInitials uses two letters, blank fallback, and expansion-safe first chars', () => {
+  expect(resolveChoyChatterInitials('')).toBe('?');
+  expect(resolveChoyChatterInitials('   ')).toBe('?');
+  expect(resolveChoyChatterInitials('Ada Lovelace')).toBe('AL');
+  expect(resolveChoyChatterInitials('Bob')).toBe('BO');
+  expect(resolveChoyChatterInitials('ß Alice')).toBe('SA');
 });

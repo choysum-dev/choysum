@@ -196,7 +196,9 @@ describe('NotificationBell', () => {
     loading.value = true;
     let mounted = mountBell();
     await flushPromises();
-    expect(mounted.q('[data-testid=choy-spinner]')).not.toBeNull();
+    const loadingSpinner = mounted.q('[data-testid=choy-spinner]');
+    expect(loadingSpinner).not.toBeNull();
+    expect(loadingSpinner?.getAttribute('aria-label') || '').toContain('Loading');
     mounted.unmount();
 
     loading.value = false;

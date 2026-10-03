@@ -54,11 +54,10 @@ export function formatChoyUtcIso(ms: number | null | undefined): string {
 export function resolveChoyChatterInitials(label: string | null | undefined): string {
   const normalized = String(label || '').trim();
   if (!normalized) return '?';
+  const firstChar = (part: string): string => Array.from(part.toUpperCase()).slice(0, 1).join('');
   const parts = normalized.split(/\s+/).filter(Boolean);
   if (parts.length >= 2) {
-    const first = Array.from(parts[0]!)[0] ?? '';
-    const second = Array.from(parts[1]!)[0] ?? '';
-    return Array.from(`${first}${second}`.toUpperCase()).slice(0, 2).join('');
+    return `${firstChar(parts[0]!)}${firstChar(parts[1]!)}`.slice(0, 2);
   }
   return Array.from(normalized.toUpperCase()).slice(0, 2).join('');
 }
