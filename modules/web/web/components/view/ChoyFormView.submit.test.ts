@@ -137,6 +137,48 @@ describe('FormView native form submit', () => {
     form!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await flushPromises();
     expect(submitHandler.calls.length).toBe(0);
+    const outcome = await wrapper.root.submit();
+    expect(outcome.reason).toBe('not-editable');
+    expect(submitHandler.calls.length).toBe(0);
+    wrapper.unmount();
+  });
+
+  test('nested form submit does not save the parent FormView', async () => {
+    const submitHandler = fnRecorder(async () => ({ handled: true, skipSuccessMessage: true }));
+    const Nested = defineComponent({
+      setup() {
+        return () =>
+          h('form', { 'data-test': 'nested-form' }, [
+            h('button', { type: 'submit', 'data-test': 'nested-submit' }, 'Inner'),
+          ]);
+      },
+    });
+    const { router } = createFeStubRouter({
+      route: { name: 'login', path: '/web/login', fullPath: '/web/login', params: {}, query: {}, meta: {} },
+    });
+    const wrapper = mountApp(FormView as any, {
+      props: {
+        store: loginStore(),
+        viewMode: 'create',
+        embedded: true,
+        showHeader: false,
+        showActions: false,
+        showMessages: false,
+        resolveRecordIdFromRoute: false,
+        initialValues: { Username: 'admin' },
+        submitHandler,
+      },
+      plugins: [createPinia(), router, NoopLoading],
+      slots: {
+        default: () => h(Nested),
+      },
+    });
+    await flushPromises();
+    const nested = wrapper.q('[data-test="nested-form"]') as HTMLFormElement | null;
+    expect(nested).toBeTruthy();
+    nested!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await flushPromises();
+    expect(submitHandler.calls.length).toBe(0);
     wrapper.unmount();
   });
 

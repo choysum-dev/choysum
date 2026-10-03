@@ -49,29 +49,29 @@ SPDX-License-Identifier: Apache-2.0
                 </ChoyButton>
               </template>
               <template v-if="viewMode === 'edit'">
-                <ChoyButton type="button" size="sm" variant="default" @click="handleSubmit" :disabled="loading">
+                <ChoyButton type="button" size="sm" variant="default" @click="handleSubmit" :disabled="formBusy">
                   <Check class="size-4" />
                   {{ saveLabel }}
                 </ChoyButton>
-                <ChoyButton type="button" size="sm" variant="outline" @click="handleCancel" :disabled="loading">
+                <ChoyButton type="button" size="sm" variant="outline" @click="handleCancel" :disabled="formBusy">
                   <X class="size-4" />
                   {{ _t('Cancel') }}
                 </ChoyButton>
-                <ChoyButton type="button" size="sm" variant="ghost" @click="handleReset" :disabled="loading">
+                <ChoyButton type="button" size="sm" variant="ghost" @click="handleReset" :disabled="formBusy">
                   <RotateCcw class="size-4" />
                   {{ _t('Reset') }}
                 </ChoyButton>
               </template>
               <template v-if="viewMode === 'create'">
-                <ChoyButton type="button" size="sm" variant="default" @click="handleSubmit" :disabled="loading">
+                <ChoyButton type="button" size="sm" variant="default" @click="handleSubmit" :disabled="formBusy">
                   <Check class="size-4" />
                   {{ saveLabel }}
                 </ChoyButton>
-                <ChoyButton type="button" size="sm" variant="outline" @click="handleCancel" :disabled="loading">
+                <ChoyButton type="button" size="sm" variant="outline" @click="handleCancel" :disabled="formBusy">
                   <X class="size-4" />
                   {{ _t('Cancel') }}
                 </ChoyButton>
-                <ChoyButton type="button" size="sm" variant="ghost" @click="handleReset" :disabled="loading">
+                <ChoyButton type="button" size="sm" variant="ghost" @click="handleReset" :disabled="formBusy">
                   <RotateCcw class="size-4" />
                   {{ _t('Reset') }}
                 </ChoyButton>
@@ -93,10 +93,10 @@ SPDX-License-Identifier: Apache-2.0
     <!-- Always render the form; busy state is local (no Element Plus v-loading). -->
     <div
       class="form-view__content relative py-3"
-      :class="{ 'form-view__content--busy pointer-events-none opacity-65': loading }"
-      :aria-busy="loading || undefined"
+      :class="{ 'form-view__content--busy pointer-events-none opacity-65': formBusy }"
+      :aria-busy="formBusy || undefined"
     >
-      <form ref="formRef" @submit.prevent="onNativeSubmit">
+      <form ref="formRef" @submit.self.prevent="onNativeSubmit">
         <slot :form-data="exposedFormData" :view-mode="viewMode" :loading="loading" />
       </form>
     </div>
@@ -262,7 +262,8 @@ controller.provideToChildren();
 const viewMode = computed<ViewMode>(() => controller.vm.mode as ViewMode);
 const loading = computed<boolean>(() => !!controller.vm.loading);
 const submitting = ref(false);
-const saveLabel = computed(() => (loading.value ? _t('Saving...') : _t('Save')));
+const formBusy = computed<boolean>(() => loading.value || submitting.value);
+const saveLabel = computed(() => (formBusy.value ? _t('Saving...') : _t('Save')));
 const registerChildSubmitApi = inject<FormChildSubmitApiRegister | null>(FORM_CHILD_SUBMIT_API_REGISTER_KEY, null);
 const embeddedFromHost = inject<boolean | null>(FORM_EMBEDDED_CONTEXT_KEY, null);
 const childSubmitRegistrationToken = nextLocalToken('form-view');
@@ -492,9 +493,9 @@ async function handleSubmit(): Promise<FormSubmitOutcome<T>> {
     };
   }
   submitting.value = true;
-  // Pause automatic onchange flushing during submit.
-  onchangeCtrl.pause();
   try {
+    // Pause automatic onchange flushing during submit.
+    onchangeCtrl.pause();
     try {
       (document.activeElement as HTMLElement | null)?.blur?.();
     } catch {}
