@@ -23,9 +23,13 @@ SPDX-License-Identifier: Apache-2.0
       class="w-full border-none"
       :description="emptyLabel || 'No activity yet'"
     />
-    <MessageScrollerProvider v-else default-scroll-position="end">
-      <MessageScroller class="max-h-[28rem] min-h-0">
-        <MessageScrollerViewport class="px-0.5">
+    <MessageScrollerProvider
+      v-else
+      auto-scroll
+      default-scroll-position="end"
+    >
+      <MessageScroller class="h-auto max-h-[28rem] min-h-0">
+        <MessageScrollerViewport class="h-auto max-h-[28rem] px-0.5">
           <MessageScrollerContent class="flex flex-col gap-2.5 py-1">
             <MessageScrollerItem
               v-for="entry in entries"
