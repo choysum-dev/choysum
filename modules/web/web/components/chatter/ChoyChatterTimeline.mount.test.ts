@@ -40,6 +40,14 @@ describe('ChoyChatterTimeline mount', () => {
     expect(mounted.q('[data-testid=choy-empty]')).toBeNull();
     expect(mounted.q('[data-slot=message-scroller]')).toBeNull();
     mounted.unmount();
+
+    const failing = mountApp(ChoyChatterTimeline as any, {
+      props: { error: 'Failed to load activity', entries: [], loading: true },
+    });
+    await flushPromises();
+    expect(failing.q('[role=alert]')).not.toBeNull();
+    expect(failing.q('[data-testid=choy-spinner]')).toBeNull();
+    failing.unmount();
   });
 
   test('message and field-change items render Message/Bubble anchors and initials', async () => {

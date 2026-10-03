@@ -14,7 +14,7 @@ SPDX-License-Identifier: Apache-2.0
         <AvatarFallback class="text-xs font-medium">{{ initials }}</AvatarFallback>
       </Avatar>
     </MessageAvatar>
-    <div class="flex min-w-0 flex-1 flex-col gap-1">
+    <MessageContent class="flex-1 gap-1">
       <MessageHeader class="justify-between gap-2 px-0">
         <span class="font-semibold text-foreground">{{ authorLabel }}</span>
         <span>{{ timeLabel }}</span>
@@ -24,7 +24,7 @@ SPDX-License-Identifier: Apache-2.0
           {{ entry.body }}
         </BubbleContent>
       </Bubble>
-    </div>
+    </MessageContent>
   </Message>
 </template>
 
@@ -38,6 +38,7 @@ import Bubble from '../vendor/ui/bubble/Bubble.vue';
 import BubbleContent from '../vendor/ui/bubble/BubbleContent.vue';
 import Message from '../vendor/ui/message/Message.vue';
 import MessageAvatar from '../vendor/ui/message/MessageAvatar.vue';
+import MessageContent from '../vendor/ui/message/MessageContent.vue';
 import MessageHeader from '../vendor/ui/message/MessageHeader.vue';
 
 const props = defineProps<{

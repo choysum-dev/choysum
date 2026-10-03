@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <div class="choy-chatter-timeline" data-anchor="choy.chatter.timeline">
     <div
-      v-if="loading && entries.length === 0"
+      v-if="loading && entries.length === 0 && !error"
       class="flex justify-center px-3 py-6"
     >
       <ChoySpinner :label="loadingLabel || 'Loading activity...'" />
