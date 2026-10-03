@@ -119,7 +119,7 @@ import {
 } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { runLoginAuthReady } from './login_auth_ready';
-import { loginPasswordRules, loginUsernameRules, resolveLoginRedirect, runLoginSubmit } from './login_form';
+import { loginPasswordRules, loginUsernameRules, resolveLoginRedirect, runHandledAuthSubmit, runLoginSubmit } from './login_form';
 
 const { _t } = createTranslate('auth', { scope: 'web/pages/Login' });
 
@@ -157,6 +157,10 @@ function handleRedirect() {
   router.replace(resolveLoginRedirect(route.query.redirect?.toString()));
 }
 
+function setPageError(message: string) {
+  error.value = message;
+}
+
 onMounted(async () => {
   await runLoginAuthReady({
     ensureAuthReady: () => authStore.ensureAuthReady(),
@@ -167,24 +171,23 @@ onMounted(async () => {
 });
 
 async function onLoginSubmit(ctx: { formData: Record<string, unknown> }) {
-  const data = ctx.formData || {};
-  try {
-    const ok = await runLoginSubmit({
-      loading: !!loading.value,
-      username: String(data.Username ?? ''),
-      password: String(data.Password ?? ''),
-      rememberMe: data.RememberMe === true,
-      loginFailedMessage: _t('Login failed. Please try again later.'),
-      login: (username, password, csrf, device, rememberMe) =>
-        authStore.login(username, password, csrf, device, rememberMe),
-      setError: message => {
-        error.value = message;
-      },
-    });
-    if (ok) handleRedirect();
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : _t('Login failed. Please try again later.');
-  }
-  return { handled: true, skipSuccessMessage: true };
+  const fallback = _t('Login failed. Please try again later.');
+  const data = ctx.formData;
+  return runHandledAuthSubmit({
+    submit: () =>
+      runLoginSubmit({
+        loading: !!loading.value,
+        username: String(data.Username ?? ''),
+        password: String(data.Password ?? ''),
+        rememberMe: data.RememberMe === true,
+        loginFailedMessage: fallback,
+        login: (username, password, csrf, device, rememberMe) =>
+          authStore.login(username, password, csrf, device, rememberMe),
+        setError: setPageError,
+      }),
+    fallbackMessage: fallback,
+    setError: setPageError,
+    onSuccess: handleRedirect,
+  });
 }
 </script>

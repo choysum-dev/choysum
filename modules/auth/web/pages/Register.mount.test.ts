@@ -70,10 +70,8 @@ function checkTerms(wrapper: { find: (sel: string) => any }) {
   const terms = queryIn(wrapper, '[data-testid="register-terms"]', 'input') as HTMLInputElement | null;
   expect(!!terms).toBe(true);
   terms!.checked = true;
-  const evt = new Event('change', { bubbles: true, cancelable: true });
-  if (typeof terms!.onchange === 'function') terms!.onchange(evt);
   terms!.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
-  terms!.dispatchEvent(evt);
+  terms!.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
 }
 
 test('Register.vue mounts under choysumMount', async () => {

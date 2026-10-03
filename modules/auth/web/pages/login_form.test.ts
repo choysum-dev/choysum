@@ -10,6 +10,7 @@ import {
   resolveLoginRedirect,
   resolveLoginRedirectOrigin,
   runLoginSubmit,
+  runHandledAuthSubmit,
   validateLoginForm,
   type LoginFieldErrors,
   type LoginFormFields,
@@ -247,4 +248,59 @@ test('runLoginSubmit: maps failures to setError', async () => {
   });
   expect(ok).toBe(false);
   expect(errors).toEqual(['', 'nope']);
+});
+
+test('runHandledAuthSubmit: redirects after success and skips on failure', async () => {
+  let redirected = 0;
+  const errors: string[] = [];
+  const ok = await runHandledAuthSubmit({
+    submit: async () => true,
+    fallbackMessage: 'fallback',
+    setError: m => errors.push(m),
+    onSuccess: () => {
+      redirected += 1;
+    },
+  });
+  expect(ok).toEqual({ handled: true, skipSuccessMessage: true });
+  expect(redirected).toBe(1);
+  const failed = await runHandledAuthSubmit({
+    submit: async () => false,
+    fallbackMessage: 'fallback',
+    setError: m => errors.push(m),
+    onSuccess: () => {
+      redirected += 1;
+    },
+  });
+  expect(failed).toEqual({ handled: true, skipSuccessMessage: true });
+  expect(redirected).toBe(1);
+  expect(errors).toEqual([]);
+});
+
+test('runHandledAuthSubmit: maps thrown Error and unknown values', async () => {
+  const errors: string[] = [];
+  let redirected = 0;
+  const fromError = await runHandledAuthSubmit({
+    submit: async () => {
+      throw new Error('nope');
+    },
+    fallbackMessage: 'fallback',
+    setError: m => errors.push(m),
+    onSuccess: () => {
+      redirected += 1;
+    },
+  });
+  const fromUnknown = await runHandledAuthSubmit({
+    submit: async () => {
+      throw 'boom';
+    },
+    fallbackMessage: 'fallback',
+    setError: m => errors.push(m),
+    onSuccess: () => {
+      redirected += 1;
+    },
+  });
+  expect(fromError).toEqual({ handled: true, skipSuccessMessage: true });
+  expect(fromUnknown).toEqual({ handled: true, skipSuccessMessage: true });
+  expect(errors).toEqual(['nope', 'fallback']);
+  expect(redirected).toBe(0);
 });

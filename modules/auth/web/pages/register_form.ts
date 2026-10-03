@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ChoysumError } from '../error';
+import { formatLoginError } from './login_form';
 
 export type RegisterClientRule = {
   required?: boolean;
@@ -117,6 +118,7 @@ export async function runRegisterSubmit(opts: {
   email: string;
   password: string;
   registerFailedMessage: string;
+  loginFailedMessage: string;
   register: (username: string, email: string, password: string) => Promise<unknown>;
   login: (username: string, password: string) => Promise<unknown>;
   setError: (message: string) => void;
@@ -130,8 +132,6 @@ export async function runRegisterSubmit(opts: {
   }
   try {
     await opts.register(username, email, opts.password);
-    await opts.login(username, opts.password);
-    return true;
   } catch (err) {
     if (err instanceof ChoysumError) {
       opts.setError(err.message || opts.registerFailedMessage);
@@ -139,6 +139,13 @@ export async function runRegisterSubmit(opts: {
       console.error('Registration flow failed:', err);
       opts.setError(opts.registerFailedMessage);
     }
+    return false;
+  }
+  try {
+    await opts.login(username, opts.password);
+    return true;
+  } catch (err) {
+    opts.setError(formatLoginError(err, opts.loginFailedMessage));
     return false;
   }
 }

@@ -14,6 +14,8 @@ import {
 
 const t = (msg: string) => msg;
 
+const loginFailedMessage = 'Your account was created, but signing in failed. Please log in.';
+
 test('registerUsernameError: required, length, and charset', () => {
   expect(registerUsernameError('', t)).toBe('Enter username');
   expect(registerUsernameError('ab', t)).toBe('Username must be at least 3 characters');
@@ -76,6 +78,7 @@ test('runRegisterSubmit: skips while loading', async () => {
     email: 'a@b.co',
     password: 'secret1',
     registerFailedMessage: 'Registration failed. Please try again later.',
+    loginFailedMessage,
     register: async () => {
       calls += 1;
     },
@@ -96,6 +99,7 @@ test('runRegisterSubmit: skips empty credentials', async () => {
     email: '',
     password: '',
     registerFailedMessage: 'Registration failed. Please try again later.',
+    loginFailedMessage,
     register: async () => {
       calls += 1;
     },
@@ -116,6 +120,7 @@ test('runRegisterSubmit: register then login on success', async () => {
     email: 'a@b.co',
     password: 'secret1',
     registerFailedMessage: 'Registration failed. Please try again later.',
+    loginFailedMessage,
     register: async (username, email, password) => {
       seen.push('reg', username, email, password);
     },
@@ -136,6 +141,7 @@ test('runRegisterSubmit: trims username and email', async () => {
     email: '  a@b.co  ',
     password: 'secret1',
     registerFailedMessage: 'Registration failed. Please try again later.',
+    loginFailedMessage,
     register: async (username, email, password) => {
       seen.push('reg', username, email, password);
     },
@@ -156,6 +162,7 @@ test('runRegisterSubmit: maps ChoysumError to setError', async () => {
     email: 'a@b.co',
     password: 'secret1',
     registerFailedMessage: 'Registration failed. Please try again later.',
+    loginFailedMessage,
     register: async () => {
       throw new ChoysumError({ domain: 'auth', code: 'REGISTRATION_FAILED', message: 'taken' });
     },
@@ -174,6 +181,7 @@ test('runRegisterSubmit: unknown errors use fallback', async () => {
     email: 'a@b.co',
     password: 'secret1',
     registerFailedMessage: 'Registration failed. Please try again later.',
+    loginFailedMessage,
     register: async () => {
       throw new Error('boom');
     },
@@ -182,4 +190,46 @@ test('runRegisterSubmit: unknown errors use fallback', async () => {
   });
   expect(ok).toBe(false);
   expect(errors).toEqual(['', 'Registration failed. Please try again later.']);
+});
+
+test('runRegisterSubmit: login ChoysumError after register uses loginFailedMessage', async () => {
+  const errors: string[] = [];
+  let registered = false;
+  const ok = await runRegisterSubmit({
+    loading: false,
+    username: 'alice',
+    email: 'a@b.co',
+    password: 'secret1',
+    registerFailedMessage: 'Registration failed. Please try again later.',
+    loginFailedMessage,
+    register: async () => {
+      registered = true;
+    },
+    login: async () => {
+      throw new ChoysumError({ domain: 'auth', code: 'INVALID_CREDENTIALS', message: 'nope' });
+    },
+    setError: m => errors.push(m),
+  });
+  expect(registered).toBe(true);
+  expect(ok).toBe(false);
+  expect(errors).toEqual(['', 'nope']);
+});
+
+test('runRegisterSubmit: login unknown error after register uses loginFailedMessage', async () => {
+  const errors: string[] = [];
+  const ok = await runRegisterSubmit({
+    loading: false,
+    username: 'alice',
+    email: 'a@b.co',
+    password: 'secret1',
+    registerFailedMessage: 'Registration failed. Please try again later.',
+    loginFailedMessage,
+    register: async () => undefined,
+    login: async () => {
+      throw new Error('boom');
+    },
+    setError: m => errors.push(m),
+  });
+  expect(ok).toBe(false);
+  expect(errors).toEqual(['', loginFailedMessage]);
 });

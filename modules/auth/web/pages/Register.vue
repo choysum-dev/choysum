@@ -181,7 +181,7 @@ import {
   createLocalFormStore,
 } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
-import { resolveLoginRedirect } from './login_form';
+import { resolveLoginRedirect, runHandledAuthSubmit } from './login_form';
 import {
   registerAgreeTermsRules,
   registerConfirmPasswordRules,
@@ -225,27 +225,30 @@ const agreeTermsRules = registerAgreeTermsRules(_t);
 
 const error = ref('');
 
+function setPageError(message: string) {
+  error.value = message;
+}
+
 async function onRegisterSubmit(ctx: { formData: Record<string, unknown> }) {
-  const data = ctx.formData || {};
-  try {
-    const registerFn = authStore.register.bind(authStore);
-    const loginFn = authStore.login.bind(authStore);
-    const ok = await runRegisterSubmit({
-      loading: !!loading.value,
-      username: String(data.Username ?? ''),
-      email: String(data.Email ?? ''),
-      password: String(data.Password ?? ''),
-      registerFailedMessage: _t('Registration failed. Please try again later.'),
-      register: (username, email, password) => registerFn(username, email, password),
-      login: (username, password) => loginFn(username, password),
-      setError: message => {
-        error.value = message;
-      },
-    });
-    if (ok) router.replace(resolveLoginRedirect(route.query.redirect?.toString()));
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : _t('Registration failed. Please try again later.');
-  }
-  return { handled: true, skipSuccessMessage: true };
+  const data = ctx.formData;
+  const registerFn = authStore.register.bind(authStore);
+  const loginFn = authStore.login.bind(authStore);
+  return runHandledAuthSubmit({
+    submit: () =>
+      runRegisterSubmit({
+        loading: !!loading.value,
+        username: String(data.Username ?? ''),
+        email: String(data.Email ?? ''),
+        password: String(data.Password ?? ''),
+        registerFailedMessage: _t('Registration failed. Please try again later.'),
+        loginFailedMessage: _t('Your account was created, but signing in failed. Please log in.'),
+        register: (username, email, password) => registerFn(username, email, password),
+        login: (username, password) => loginFn(username, password),
+        setError: setPageError,
+      }),
+    fallbackMessage: _t('Registration failed. Please try again later.'),
+    setError: setPageError,
+    onSuccess: () => router.replace(resolveLoginRedirect(route.query.redirect?.toString())),
+  });
 }
 </script>

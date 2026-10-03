@@ -85,6 +85,8 @@ func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 		{"./PartnerFormView.vue", "/x/PartnerFormView.vue", page, "child", true},
 		{"@/web/web/components/view/ChoyFormView.vue", "/modules/web/web/components/view/ChoyFormView.vue", page, "", false},
 		{"@/web/web/components/view/ChoyFormView.vue", "/modules/web/web/components/view/ChoyFormView.vue", "", "", false},
+		{"./ChoyFormView.vue", "/tmp/ChoyFormView.vue", page, "", false},
+		{"./ChoyFormView.vue", "/tmp/ChoyFormView.vue", "/other.ts", "", false},
 		{"./PartnerListView.vue", "/x/PartnerListView.vue", page, "child", true},
 		{"./ModuleKanbanView.vue", "/x/ModuleKanbanView.vue", view, "child", true},
 		{"./PartnerFormView.vue", "/x/PartnerFormView.vue", "/other.ts", "", false},
