@@ -62,4 +62,33 @@ describe('AuthPanel', () => {
     expect(attrib).toContain('Version');
     mounted.unmount();
   });
+
+  test('brand click pushes the default land path when a router is installed', async () => {
+    const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
+    const { router } = createFeStubRouter({
+      route: { path: '/login', fullPath: '/login', meta: { isAuthPage: true } },
+    });
+    const pushes: unknown[] = [];
+    const originalPush = router.push?.bind(router);
+    router.push = (to: unknown) => {
+      pushes.push(to);
+      return originalPush ? originalPush(to) : Promise.resolve();
+    };
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h(AuthPanel as any, null, {
+            default: () => h('div', { 'data-testid': 'auth-slot' }, 'form'),
+          });
+      },
+    });
+    const mounted = mountApp(Host as any, { plugins: [router] });
+    await flushPromises();
+    const brand = mounted.q('[data-testid=auth-panel-brand]') as HTMLElement | null;
+    expect(brand).toBeTruthy();
+    brand!.click();
+    await flushPromises();
+    expect(pushes).toContain('/meta/modules');
+    mounted.unmount();
+  });
 });
