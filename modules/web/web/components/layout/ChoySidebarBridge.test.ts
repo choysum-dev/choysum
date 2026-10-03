@@ -1,14 +1,20 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { defineComponent, h, nextTick } from 'vue';
+import { defineComponent, h, nextTick, type Ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import { pinViewportWidth } from '../../stores/layoutStore/pinViewport';
 import { SidebarProvider, useSidebar } from '../vendor/ui/sidebar/index';
 import ChoySidebarBridge from './ChoySidebarBridge.vue';
 
-type SidebarApi = ReturnType<typeof useSidebar>;
+/** Explicit shape — ReturnType<typeof useSidebar> collapses to never via createContext typing. */
+type SidebarApi = {
+  open: Ref<boolean>
+  setOpen: (value: boolean) => void
+  openMobile: Ref<boolean>
+  setOpenMobile: (value: boolean) => void
+};
 
 async function mountBridge(opts?: { mobile?: boolean }) {
   pinViewportWidth(opts?.mobile ? 500 : 1280);
@@ -17,7 +23,8 @@ async function mountBridge(opts?: { mobile?: boolean }) {
   const { useLayoutStore } = await import('../../stores/layoutStore');
   const layout = useLayoutStore();
 
-  let sidebarApi: SidebarApi | null = null;
+  // Nested setup assignment is invisible to TS CFA; use a holder + assertion.
+  const holder: { api?: SidebarApi } = {};
   const Host = defineComponent({
     setup() {
       return () =>
@@ -26,7 +33,7 @@ async function mountBridge(opts?: { mobile?: boolean }) {
             h(
               defineComponent({
                 setup() {
-                  sidebarApi = useSidebar();
+                  holder.api = useSidebar() as SidebarApi;
                   return () => h(ChoySidebarBridge);
                 },
               }),
@@ -37,8 +44,9 @@ async function mountBridge(opts?: { mobile?: boolean }) {
   const mounted = mountApp(Host as any, { plugins: [pinia] });
   await flushPromises();
   await nextTick();
-  if (!sidebarApi) throw new Error('expected sidebar api');
-  return { mounted, layout, sidebar: sidebarApi };
+  const sidebar = holder.api as SidebarApi;
+  if (!sidebar) throw new Error('expected sidebar api');
+  return { mounted, layout, sidebar };
 }
 
 describe('ChoySidebarBridge', () => {
