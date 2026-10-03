@@ -34,7 +34,7 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display="{ fieldValue }">
-      <div class="choy-textfield-display whitespace-pre-wrap break-words px-[11px] text-foreground leading-8">{{ toDisplayText(fieldValue().value) }}</div>
+      <div class="choy-textfield-display whitespace-pre-wrap wrap-break-word px-[11px] text-foreground leading-8">{{ toDisplayText(fieldValue().value) }}</div>
     </template>
   </FieldBase>
 </template>

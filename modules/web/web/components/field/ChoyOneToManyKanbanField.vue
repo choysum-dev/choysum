@@ -45,7 +45,7 @@ SPDX-License-Identifier: Apache-2.0
                   :removable="removable"
                 >
                   <div class="text-sm font-semibold leading-snug text-foreground">{{ resolveCardTitle(item) }}</div>
-                  <div class="mt-1.5 break-words text-xs text-muted-foreground" v-if="resolveCardSubtitle(item)">{{ resolveCardSubtitle(item) }}</div>
+                  <div class="mt-1.5 wrap-break-word text-xs text-muted-foreground" v-if="resolveCardSubtitle(item)">{{ resolveCardSubtitle(item) }}</div>
                   <div class="mt-2.5 flex items-center gap-2" v-if="editable || removable" @click.stop>
                     <ChoyButton v-if="editable" size="sm" variant="link" @click="handleEditItem(index)">{{ _t('Edit') }}</ChoyButton>
                     <ChoyButton v-if="removable" size="sm" variant="destructive" @click="handleRemoveItem(index)">{{ _t('Delete') }}</ChoyButton>
@@ -88,7 +88,7 @@ SPDX-License-Identifier: Apache-2.0
                   :removable="false"
                 >
                   <div class="text-sm font-semibold leading-snug text-foreground">{{ resolveCardTitle(item) }}</div>
-                  <div class="mt-1.5 break-words text-xs text-muted-foreground" v-if="resolveCardSubtitle(item)">{{ resolveCardSubtitle(item) }}</div>
+                  <div class="mt-1.5 wrap-break-word text-xs text-muted-foreground" v-if="resolveCardSubtitle(item)">{{ resolveCardSubtitle(item) }}</div>
                 </slot>
               </div>
             </template>

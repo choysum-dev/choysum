@@ -7,8 +7,7 @@
  * stays off; box-sizing / body reset live in index.css.
  *
  * Control mapping (density follows html[data-density=compact] in tokens.css):
- *   --height-control → h-control  (Choysum Go Tailwind dialect; locked by
- *     TestControlHeightThemeUtilitiesEmit)
+ *   --height-control → h-control / min-h-control
  *   --size-control   → size-control (square icon controls)
  *   --height-control-sm / -lg → Button size sm/lg only
  * Do not rename to --spacing-control* solely for stock TW docs: spacing would

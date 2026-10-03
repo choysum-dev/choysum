@@ -35,7 +35,7 @@ describe('ChoyChartView chrome', () => {
 
     const controls = mounted.q('[data-region=chart-controls]');
     expect(controls).not.toBeNull();
-    expect(controls?.className || '').toContain('min-h-[var(--choy-control-height)]');
+    expect(controls?.className || '').toContain('min-h-control');
 
     const metricSelect = mounted.q('select.choy-input') as HTMLSelectElement | null;
     expect(metricSelect).not.toBeNull();

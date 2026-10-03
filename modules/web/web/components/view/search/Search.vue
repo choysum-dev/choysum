@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <div class="choy-search w-full" data-anchor="choy.search">
     <div
-      class="choy-search__main flex min-h-[var(--choy-control-height)] cursor-text flex-wrap items-center gap-0.5 rounded-md border border-border bg-card px-2 py-0.5 hover:border-accent-foreground/20 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30"
+      class="choy-search__main flex min-h-control cursor-text flex-wrap items-center gap-0.5 rounded-md border border-border bg-card px-2 py-0.5 hover:border-accent-foreground/20 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30"
       @click="focusInput"
     >
       <span>

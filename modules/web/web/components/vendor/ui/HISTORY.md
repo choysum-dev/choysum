@@ -14,7 +14,7 @@ after merging Reka/shadcn markup.
 **Allowed (must stay after an upstream refresh):**
 
 - Bind default control height to `--choy-control-height` via theme utilities
-  (`h-control`, `h-control-sm`, `h-control-lg`, `size-control`) — not hard-coded
+  (`h-control`, `min-h-control`, `h-control-sm`, `h-control-lg`, `size-control`) — not hard-coded
   `h-9` / `h-10` / `h-8` on default Button / Input / Select trigger / Combobox
   input / TabsList (and icon Button → `size-control`).
 - Logical inset/padding for directional chrome (`ps` / `pe` / `start` / `end`

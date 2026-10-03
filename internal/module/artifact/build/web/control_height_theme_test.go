@@ -12,7 +12,7 @@ import (
 )
 
 // TestControlHeightThemeUtilitiesEmit locks the Dense Admin control ruler:
-// product theme.css must emit h-control / size-control from --height-* / --size-*
+// product theme.css must emit h-control / min-h-control / size-control from --height-* / --size-*
 // (Choysum's Go Tailwind dialect supports these namespaces; stock TW docs alone
 // are not enough to assume they work).
 func TestControlHeightThemeUtilitiesEmit(t *testing.T) {
@@ -26,12 +26,12 @@ func TestControlHeightThemeUtilitiesEmit(t *testing.T) {
 		t.Fatalf("read theme.css: %v", err)
 	}
 	css, _, err := GenerateTailwindCSS(string(dialect), []string{
-		"h-control", "h-control-sm", "h-control-lg", "size-control",
+		"h-control", "h-control-sm", "h-control-lg", "size-control", "min-h-control",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, needle := range []string{".h-control", ".h-control-sm", ".h-control-lg", ".size-control"} {
+	for _, needle := range []string{".h-control", ".h-control-sm", ".h-control-lg", ".size-control", ".min-h-control"} {
 		if !strings.Contains(css, needle) {
 			t.Fatalf("expected %s in generated CSS from modules/web theme.css", needle)
 		}
