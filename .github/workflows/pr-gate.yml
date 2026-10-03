@@ -113,6 +113,12 @@ jobs:
           python3 scripts/ci/forbid_legacy_ui_imports_test.py
           python3 scripts/ci/forbid_legacy_ui_imports.py
 
+      - name: Forbid domain vendor/ui, L2 h-9 regression, kit-host Dialog bypass
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/forbid_choy_ui_kit_gates_test.py
+          python3 scripts/ci/forbid_choy_ui_kit_gates.py
+
   build-choysum-cli:
     name: pr / build-choysum-cli
     if: >-

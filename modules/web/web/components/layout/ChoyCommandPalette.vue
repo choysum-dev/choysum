@@ -8,11 +8,7 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { Search } from 'lucide-vue-next'
 import { createTranslate } from '../../i18n'
 import ChoyButton from './ChoyButton.vue'
-import Dialog from '../vendor/ui/dialog/Dialog.vue'
-import DialogContent from '../vendor/ui/dialog/DialogContent.vue'
-import DialogDescription from '../vendor/ui/dialog/DialogDescription.vue'
-import DialogHeader from '../vendor/ui/dialog/DialogHeader.vue'
-import DialogTitle from '../vendor/ui/dialog/DialogTitle.vue'
+import { ChoyDialog as Dialog, ChoyDialogContent as DialogContent, ChoyDialogDescription as DialogDescription, ChoyDialogHeader as DialogHeader, ChoyDialogTitle as DialogTitle } from './choyDialog'
 import { shouldToggleCommandPalette } from './choyCommandPaletteHotkey'
 
 /**
