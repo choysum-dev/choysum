@@ -1,0 +1,137 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+import { mount, flushPromises } from '@choysum/test-utils';
+import Register from './Register.vue';
+import { buildPageMountGlobal } from '@choysum/page-mount';
+
+async function mountRegister() {
+  const replaces: unknown[] = [];
+  const wrapper = mount(Register as any, {
+    global: buildPageMountGlobal({
+      route: { path: '/register', query: {} },
+      router: {
+        replace: (to: unknown) => {
+          replaces.push(to);
+          return Promise.resolve(to);
+        },
+      },
+    }),
+  });
+  await flushPromises();
+  return { wrapper, replaces };
+}
+
+function fieldInput(wrapper: { find: (sel: string) => any }, selector: string) {
+  const root = wrapper.find(selector);
+  if (!root.exists()) return root;
+  const el = root.element as HTMLElement;
+  if (String(el.tagName || '').toLowerCase() === 'input') return root;
+  const inner = typeof el.querySelector === 'function' ? el.querySelector('input') : null;
+  if (inner) {
+    return {
+      exists: () => true,
+      element: inner,
+      trigger: async (type: string) => {
+        inner.dispatchEvent(new Event(type, { bubbles: true }));
+      },
+    };
+  }
+  return root;
+}
+
+async function fillField(wrapper: { find: (sel: string) => any }, selector: string, value: string) {
+  const input = fieldInput(wrapper, selector);
+  const el = input.element as HTMLInputElement;
+  el.value = value;
+  const evt = new Event('input', { bubbles: true, cancelable: true });
+  if (typeof el.oninput === 'function') el.oninput(evt);
+  el.dispatchEvent(evt);
+  el.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+  el.dispatchEvent(new Event('blur', { bubbles: true, cancelable: true }));
+  await flushPromises();
+}
+
+function submitForm(wrapper: { find: (sel: string) => any }) {
+  const form = wrapper.find('form');
+  (form.element as HTMLFormElement).dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+}
+
+async function afterSubmit() {
+  for (let i = 0; i < 8; i++) await flushPromises();
+}
+
+function queryIn(wrapper: { find: (sel: string) => any }, rootSelector: string, tag: string): HTMLElement | null {
+  const root = wrapper.find(rootSelector);
+  if (!root.exists()) return null;
+  const el = root.element as HTMLElement;
+  return typeof el.querySelector === 'function' ? (el.querySelector(tag) as HTMLElement | null) : null;
+}
+
+function checkTerms(wrapper: { find: (sel: string) => any }) {
+  const terms = queryIn(wrapper, '[data-testid="register-terms"]', 'input') as HTMLInputElement | null;
+  expect(!!terms).toBe(true);
+  terms!.checked = true;
+  const evt = new Event('change', { bubbles: true, cancelable: true });
+  if (typeof terms!.onchange === 'function') terms!.onchange(evt);
+  terms!.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+  terms!.dispatchEvent(evt);
+}
+
+test('Register.vue mounts under choysumMount', async () => {
+  const { wrapper } = await mountRegister();
+  expect(fieldInput(wrapper, '.register-username').exists()).toBe(true);
+  expect(wrapper.find('[data-testid="register-terms"]').exists()).toBe(true);
+  wrapper.unmount();
+});
+
+test('Register.vue: empty submit shows inline errors and does not register', async () => {
+  const { wrapper, replaces } = await mountRegister();
+  submitForm(wrapper);
+  await afterSubmit();
+  expect(wrapper.text().includes('Enter username')).toBe(true);
+  expect(replaces).toEqual([]);
+  wrapper.unmount();
+});
+
+test('Register.vue: confirm mismatch does not register', async () => {
+  const { wrapper, replaces } = await mountRegister();
+  await fillField(wrapper, '.register-username', 'alice');
+  await fillField(wrapper, '.register-email', 'alice@example.com');
+  await fillField(wrapper, '.register-password', 'secret1');
+  await fillField(wrapper, '.register-confirm', 'other99');
+  checkTerms(wrapper);
+  submitForm(wrapper);
+  await afterSubmit();
+  expect(wrapper.text().includes('Passwords do not match')).toBe(true);
+  expect(replaces).toEqual([]);
+  wrapper.unmount();
+});
+
+test('Register.vue: unchecked terms keeps submit disabled and does not register', async () => {
+  const { wrapper, replaces } = await mountRegister();
+  await fillField(wrapper, '.register-username', 'alice');
+  await fillField(wrapper, '.register-email', 'alice@example.com');
+  await fillField(wrapper, '.register-password', 'secret1');
+  await fillField(wrapper, '.register-confirm', 'secret1');
+  const submit = queryIn(wrapper, '.register-card', 'button') as HTMLButtonElement | null;
+  expect(!!submit).toBe(true);
+  expect(submit!.disabled).toBe(true);
+  expect(replaces).toEqual([]);
+  wrapper.unmount();
+});
+
+test('Register.vue: valid submit registers and redirects', async () => {
+  const { wrapper, replaces } = await mountRegister();
+  await fillField(wrapper, '.register-username', 'alice');
+  await fillField(wrapper, '.register-email', 'alice@example.com');
+  await fillField(wrapper, '.register-password', 'secret1');
+  await fillField(wrapper, '.register-confirm', 'secret1');
+  checkTerms(wrapper);
+  await flushPromises();
+  submitForm(wrapper);
+  await afterSubmit();
+  expect(wrapper.text().includes('Passwords do not match')).toBe(false);
+  expect(replaces).toEqual(['/']);
+  wrapper.unmount();
+});
