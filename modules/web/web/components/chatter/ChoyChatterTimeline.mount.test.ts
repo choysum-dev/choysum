@@ -124,4 +124,45 @@ describe('ChoyChatterTimeline mount', () => {
     expect(mounted.text()).toContain('State');
     mounted.unmount();
   });
+
+  test('falls back to ? initials when the author label is blank', async () => {
+    const mounted = mountApp(ChoyChatterMessageItem as any, {
+      props: {
+        authorLabel: '   ',
+        entry: {
+          kind: 'message',
+          id: 'm2',
+          at: Date.UTC(2024, 0, 2, 14, 0, 0),
+          type: 'comment',
+          body: 'Hi',
+          authorUid: 'u3',
+        },
+      },
+    });
+    await flushPromises();
+    expect(mounted.text()).toContain('?');
+    mounted.unmount();
+  });
+
+  test('loading with existing entries renders the scroller, not the spinner', async () => {
+    const mounted = mountApp(ChoyChatterTimeline as any, {
+      props: {
+        loading: true,
+        entries: [
+          {
+            kind: 'message',
+            id: 'm3',
+            at: Date.UTC(2024, 0, 2, 15, 0, 0),
+            type: 'comment',
+            body: 'Live',
+            authorUid: 'u1',
+          },
+        ],
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-testid=choy-spinner]')).toBeNull();
+    expect(mounted.q('[data-slot=message-scroller]')).not.toBeNull();
+    mounted.unmount();
+  });
 });

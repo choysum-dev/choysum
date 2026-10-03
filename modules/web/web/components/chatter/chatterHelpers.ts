@@ -56,9 +56,11 @@ export function resolveChoyChatterInitials(label: string | null | undefined): st
   if (!normalized) return '?';
   const parts = normalized.split(/\s+/).filter(Boolean);
   if (parts.length >= 2) {
-    return `${parts[0]![0] || ''}${parts[1]![0] || ''}`.toUpperCase();
+    const first = Array.from(parts[0]!)[0] ?? '';
+    const second = Array.from(parts[1]!)[0] ?? '';
+    return `${first}${second}`.toUpperCase().slice(0, 2);
   }
-  return normalized.slice(0, 2).toUpperCase();
+  return Array.from(normalized).slice(0, 2).join('').toUpperCase().slice(0, 2);
 }
 
 /**

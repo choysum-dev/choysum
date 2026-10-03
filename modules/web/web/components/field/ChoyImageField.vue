@@ -37,7 +37,7 @@ SPDX-License-Identifier: Apache-2.0
             <Picture v-else class="size-4 text-muted-foreground" />
           </AttachmentMedia>
           <AttachmentContent>
-            <AttachmentTitle>{{ toDisplayText(fieldValue().value) }}</AttachmentTitle>
+            <AttachmentTitle :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</AttachmentTitle>
             <AttachmentDescription v-if="toMetaText(fieldValue().value)">{{ toMetaText(fieldValue().value) }}</AttachmentDescription>
             <AttachmentActions>
               <label class="inline-flex">
@@ -102,7 +102,7 @@ SPDX-License-Identifier: Apache-2.0
           <Picture v-else class="size-4 text-muted-foreground" />
         </AttachmentMedia>
         <AttachmentContent>
-          <AttachmentTitle>{{ toDisplayText(fieldValue().value) }}</AttachmentTitle>
+          <AttachmentTitle :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</AttachmentTitle>
         </AttachmentContent>
       </Attachment>
       <a
@@ -127,7 +127,7 @@ SPDX-License-Identifier: Apache-2.0
             <Picture v-else class="size-4 text-muted-foreground" />
           </AttachmentMedia>
           <AttachmentContent>
-            <AttachmentTitle>{{ toDisplayText(fieldValue().value) }}</AttachmentTitle>
+            <AttachmentTitle :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</AttachmentTitle>
             <AttachmentDescription v-if="toMetaText(fieldValue().value)">{{ toMetaText(fieldValue().value) }}</AttachmentDescription>
           </AttachmentContent>
         </Attachment>
@@ -147,7 +147,7 @@ SPDX-License-Identifier: Apache-2.0
           <Picture v-else class="size-4 text-muted-foreground" />
         </AttachmentMedia>
         <AttachmentContent>
-          <AttachmentTitle>{{ toDisplayText(fieldValue().value) }}</AttachmentTitle>
+          <AttachmentTitle :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</AttachmentTitle>
           <AttachmentDescription v-if="toMetaText(fieldValue().value)">{{ toMetaText(fieldValue().value) }}</AttachmentDescription>
         </AttachmentContent>
       </Attachment>
