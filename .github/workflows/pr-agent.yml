@@ -6,6 +6,12 @@ on:
   issue_comment:
     types: [created, edited]
 
+# GLM-4.7-Flash free tier allows one in-flight request. Queue other PR-Agent
+# runs instead of overlapping (429) or cancelling in-progress reviews.
+concurrency:
+  group: pr-agent
+  cancel-in-progress: false
+
 permissions:
   pull-requests: write
   issues: write
@@ -24,12 +30,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOOGLE_AI_STUDIO.GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          # DeepSeek last-resort fallback when Gemini models are unavailable
-          # Create at https://platform.deepseek.com/api_keys ; store as repo secret DEEPSEEK_API_KEY
-          DEEPSEEK.KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          # Free Gemini first; DeepSeek V4 Flash if Gemini is unavailable (litellm: deepseek/<api_model>)
+          # Zhipu GLM-4.7-Flash last-resort fallback (free tokens, 1 concurrent).
+          # Create a key at https://open.bigmodel.cn ; store as repo secret ZHIPUAI_API_KEY
+          ZHIPUAI_API_KEY: ${{ secrets.ZHIPUAI_API_KEY }}
+          # Free Gemini first; GLM-4.7-Flash if Gemini is unavailable (litellm: zhipuai/<api_model>)
           config.model: "gemini/gemini-3.8-flash"
-          config.fallback_models: '["gemini/gemini-3.7-flash", "deepseek/deepseek-v4-flash"]'
+          config.fallback_models: '["gemini/gemini-3.7-flash", "zhipuai/glm-4.7-flash"]'
           # Cap the *input* budget used for /improve chunking. Setting this near 1M
           # made PR-Agent put multi-thousand-line PRs in a single chunk; models then
           # hit finish_reason=length (empty suggestions) or Gemini 503 under load.
@@ -37,9 +43,14 @@ jobs:
           config.custom_model_max_tokens: "100000"
           config.max_model_tokens: "100000"
           config.ai_timeout: "180"
+          # LiteLLM retries 429 with exponential backoff (GLM free tier RPM / 1 concurrent).
+          NUM_RETRIES: "6"
+          # Workflow env applies before .pr_agent.toml is on the default branch.
+          pr_code_suggestions.parallel_calls: "false"
+          pr_code_suggestions.max_number_of_calls: "3"
           # Note: config.reasoning_effort is intentionally unset. PR-Agent v0.45.0 only
           # forwards it for allowlisted ids (e.g. gemini-2.5-flash/pro), not for
-          # gemini-3.8-flash / deepseek-v4-flash — so it would be a no-op here.
+          # gemini-3.8-flash / glm-4.7-flash — so it would be a no-op here.
           # Auto review/describe/improve on open/reopen/ready_for_review.
           # Project-specific instructions live in .pr_agent.toml
           github_action_config.auto_review: "true"
