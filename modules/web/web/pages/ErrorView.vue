@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
   <ChoyPage width="medium" padding class="error-page">
     <ChoyCard :title="errorConfig.title">
       <p class="mb-2 text-sm text-foreground/70">{{ errorConfig.subtitle }}</p>
-      <p class="mb-4 break-words text-sm">{{ errorConfig.message }}</p>
+      <p class="mb-4 wrap-break-word text-sm">{{ errorConfig.message }}</p>
       <div class="flex flex-wrap justify-center gap-2">
         <ChoyButton
           v-for="(action, index) in errorConfig.actions"

@@ -20,7 +20,7 @@ SPDX-License-Identifier: Apache-2.0
         <span>{{ timeLabel }}</span>
       </MessageHeader>
       <Bubble variant="outline" align="start" class="border-l-[3px] border-l-info bg-muted/40">
-        <BubbleContent class="whitespace-pre-wrap break-words text-foreground/90">
+        <BubbleContent class="whitespace-pre-wrap wrap-break-word text-foreground/90">
           {{ summary }}
         </BubbleContent>
       </Bubble>

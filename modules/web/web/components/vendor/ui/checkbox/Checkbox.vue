@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { Check } from 'lucide-vue-next';
 import { CheckboxIndicator, CheckboxRoot } from 'reka-ui';
+import { computed } from 'vue';
 import { cn, type ClassValue } from '../../../../lib/utils';
 
 const props = defineProps<{
@@ -18,6 +19,8 @@ const props = defineProps<{
 }>();
 
 const checked = defineModel<boolean | 'indeterminate'>({ default: false });
+
+const on = computed(() => checked.value === true || checked.value === 'indeterminate');
 </script>
 
 <template>
@@ -31,16 +34,18 @@ const checked = defineModel<boolean | 'indeterminate'>({ default: false });
     :aria-describedby="props['aria-describedby']"
     :class="
       cn(
-        'peer size-4 shrink-0 rounded-sm border border-border bg-background shadow-sm',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'peer inline-flex size-4 shrink-0 items-center justify-center self-center appearance-none rounded-sm border p-0 leading-none shadow-xs outline-none',
+        'focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50',
         'disabled:cursor-not-allowed disabled:opacity-50',
-        'data-[state=checked]:bg-primary data-[state=checked]:text-background data-[state=indeterminate]:bg-primary',
+        on
+          ? 'border-primary bg-primary text-primary-foreground'
+          : 'border-input bg-transparent',
         props.class,
       )
     "
   >
     <CheckboxIndicator class="flex items-center justify-center text-current">
-      <Check class="size-3.5" />
+      <Check class="size-3.5 shrink-0" />
     </CheckboxIndicator>
   </CheckboxRoot>
 </template>

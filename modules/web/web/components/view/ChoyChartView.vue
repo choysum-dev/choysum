@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
   >
     <div
       v-if="showHeader"
-      class="flex flex-wrap items-center justify-between gap-2 min-h-[var(--choy-control-height)]"
+      class="flex flex-wrap items-center justify-between gap-2 min-h-control"
     >
       <div v-if="showActions" class="flex flex-wrap items-center gap-2">
         <ChoyActionTray
@@ -53,7 +53,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <div
       v-if="showChartControls"
-      class="flex flex-wrap items-center gap-2 min-h-[var(--choy-control-height)]"
+      class="flex flex-wrap items-center gap-2 min-h-control"
       data-region="chart-controls"
     >
       <slot

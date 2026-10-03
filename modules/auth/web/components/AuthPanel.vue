@@ -5,9 +5,18 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <div
-    class="auth-panel mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center gap-4 px-4 py-8"
+    class="auth-panel mx-auto flex min-h-svh w-full max-w-sm flex-col items-center justify-center gap-6 px-4 py-8"
     data-testid="auth-panel"
   >
+    <a
+      href="/"
+      class="flex items-center gap-2 self-center font-medium text-foreground no-underline"
+      data-testid="auth-panel-brand"
+      @click.prevent="onBrandClick"
+    >
+      <img :src="logoUrl" alt="" class="size-6 shrink-0" width="24" height="24" />
+      Choysum
+    </a>
     <div class="w-full">
       <slot />
     </div>
@@ -23,10 +32,12 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
+import logoUrl from '@/web/web/assets/logo-32.png';
+import { resolveRuntimeDefaultLandPath } from '@/web/web/router/resolveRuntimeDefaultLandPath';
 
 /**
- * Fullscreen Auth canvas wrapper: centered narrow panel slot + short open-source
- * attribution under the panel (copyright / Powered by / version).
+ * Auth canvas column: brand lockup, form slot, attribution.
  */
 defineOptions({ name: 'AuthPanel' });
 
@@ -36,6 +47,18 @@ try {
   tLayout = (key, values) => String(i18n.t(key, values as any));
 } catch {
   tLayout = (key) => key;
+}
+
+let onBrandClick = () => {};
+try {
+  const router = useRouter();
+  if (router) {
+    onBrandClick = () => {
+      void router.push(resolveRuntimeDefaultLandPath());
+    };
+  }
+} catch {
+  onBrandClick = () => {};
 }
 
 const appVersion = computed(

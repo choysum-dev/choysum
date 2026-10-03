@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
   >
     <template v-if="showHeader && ($slots.header || $slots.search || showActions)" #header>
       <div
-        class="choy-kanban-view__toolbar grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-border pb-1 min-h-[var(--choy-control-height)] max-md:grid-cols-1"
+        class="choy-kanban-view__toolbar grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-border pb-1 min-h-control max-md:grid-cols-1"
         data-anchor="choy.kanban.view-chrome"
       >
         <div class="choy-kanban-view__actions flex items-center gap-4">

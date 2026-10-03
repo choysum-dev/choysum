@@ -33,11 +33,11 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display="{ fieldValue }">
-      <pre v-if="isTableLike" class="choy-json-display m-0 whitespace-pre-wrap break-words px-2 py-1 font-mono leading-snug">{{ displayString(fieldValue().value) }}</pre>
+      <pre v-if="isTableLike" class="choy-json-display m-0 whitespace-pre-wrap wrap-break-word px-2 py-1 font-mono leading-snug">{{ displayString(fieldValue().value) }}</pre>
       <div v-else-if="normalizeIncoming(fieldValue().value) == null" class="choy-json-display choy-json-display--empty m-0 min-h-[1.4em] px-2 py-1 font-mono" />
       <VueJsonPretty
         v-else
-        class="choy-json-pretty w-full break-words px-2 py-1 text-[13px] leading-snug"
+        class="choy-json-pretty w-full wrap-break-word px-2 py-1 text-[13px] leading-snug"
         :data="normalizeIncoming(fieldValue().value)!"
         :deep="prettyDeep"
         :show-length="true"

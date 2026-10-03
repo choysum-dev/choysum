@@ -17,7 +17,7 @@ const props = defineProps<{
     data-slot="table-cell"
     :class="
       cn(
-        'p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pe-0 *:[[role=checkbox]]:translate-y-0.5',
+        'p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pe-0',
         props.class,
       )
     "

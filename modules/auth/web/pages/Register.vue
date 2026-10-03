@@ -6,109 +6,135 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <ChoyPage :loading="loading" width="narrow" :padding="false" class="w-full">
     <AuthPanel>
-      <ChoyCard :title="_t('Create Account')" class="register-card w-full shadow-sm">
-        <transition name="fade">
-          <div
-            v-if="error"
-            class="mb-4 flex items-start justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-            role="alert"
-          >
-            <span>{{ error }}</span>
-            <button type="button" class="text-destructive/80 hover:text-destructive" :aria-label="_t('Close')" @click="error = ''">
-              ×
-            </button>
-          </div>
-        </transition>
+      <ChoyCard
+        :title="_t('Create Account')"
+        :description="_t('Fill in the fields below to register')"
+        class="register-card w-full"
+      >
+        <form class="flex flex-col gap-4" @submit.prevent="handleRegister">
+          <ChoyFieldGroup class="gap-4">
+            <ChoyField v-if="error">
+              <div
+                class="flex items-center justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                role="alert"
+              >
+                <span class="min-w-0 leading-5">{{ error }}</span>
+                <button
+                  type="button"
+                  class="inline-flex size-6 shrink-0 items-center justify-center rounded-sm border-0 bg-transparent p-0 text-destructive/70 appearance-none shadow-none outline-none hover:bg-destructive/15 hover:text-destructive focus-visible:ring-2 focus-visible:ring-destructive/40"
+                  :aria-label="_t('Close')"
+                  @click="error = ''"
+                >
+                  <X class="size-3.5" />
+                </button>
+              </div>
+            </ChoyField>
 
-        <form class="flex flex-col gap-3" @submit.prevent="handleRegister">
-          <label class="flex flex-col gap-1 text-sm">
-            <span>{{ _t('Username') }}</span>
-            <input
-              v-model="form.username"
-              name="username"
-              type="text"
-              autocomplete="username"
-              :placeholder="_t('Enter username')"
-              class="choy-input"
-              :class="{ 'border-destructive': fieldErrors.username }"
-              @blur="validateUsernameField"
-            />
-            <span v-if="fieldErrors.username" class="text-xs text-destructive">{{ fieldErrors.username }}</span>
-          </label>
+            <ChoyField :data-invalid="fieldErrors.username ? true : undefined">
+              <ChoyFieldLabel for="register-username">{{ _t('Username') }}</ChoyFieldLabel>
+              <ChoyInput
+                id="register-username"
+                v-model="form.username"
+                name="username"
+                type="text"
+                autocomplete="username"
+                :placeholder="_t('Enter username')"
+                :aria-invalid="fieldErrors.username ? true : undefined"
+                @blur="validateUsernameField"
+              />
+              <ChoyFieldError :errors="fieldErrors.username ? [fieldErrors.username] : []" />
+            </ChoyField>
 
-          <label class="flex flex-col gap-1 text-sm">
-            <span>{{ _t('Email') }}</span>
-            <input
-              v-model="form.email"
-              name="email"
-              type="email"
-              autocomplete="email"
-              :placeholder="_t('Enter email address')"
-              class="choy-input"
-              :class="{ 'border-destructive': fieldErrors.email }"
-              @blur="validateEmailField"
-            />
-            <span v-if="fieldErrors.email" class="text-xs text-destructive">{{ fieldErrors.email }}</span>
-          </label>
+            <ChoyField :data-invalid="fieldErrors.email ? true : undefined">
+              <ChoyFieldLabel for="register-email">{{ _t('Email') }}</ChoyFieldLabel>
+              <ChoyInput
+                id="register-email"
+                v-model="form.email"
+                name="email"
+                type="email"
+                autocomplete="email"
+                :placeholder="_t('Enter email address')"
+                :aria-invalid="fieldErrors.email ? true : undefined"
+                @blur="validateEmailField"
+              />
+              <ChoyFieldError :errors="fieldErrors.email ? [fieldErrors.email] : []" />
+            </ChoyField>
 
-          <label class="flex flex-col gap-1 text-sm">
-            <span>{{ _t('Password') }}</span>
-            <input
-              v-model="form.password"
-              name="password"
-              type="password"
-              autocomplete="new-password"
-              :placeholder="_t('Enter password')"
-              class="choy-input"
-              :class="{ 'border-destructive': fieldErrors.password }"
-              @blur="validatePasswordField"
-            />
-            <span v-if="fieldErrors.password" class="text-xs text-destructive">{{ fieldErrors.password }}</span>
-          </label>
+            <ChoyField :data-invalid="fieldErrors.password ? true : undefined">
+              <ChoyFieldLabel for="register-password">{{ _t('Password') }}</ChoyFieldLabel>
+              <ChoyInput
+                id="register-password"
+                v-model="form.password"
+                name="password"
+                type="password"
+                autocomplete="new-password"
+                :placeholder="_t('Enter password')"
+                :aria-invalid="fieldErrors.password ? true : undefined"
+                @blur="validatePasswordField"
+              />
+              <ChoyFieldError :errors="fieldErrors.password ? [fieldErrors.password] : []" />
+            </ChoyField>
 
-          <label class="flex flex-col gap-1 text-sm">
-            <span>{{ _t('Confirm Password') }}</span>
-            <input
-              v-model="form.confirmPassword"
-              name="confirmPassword"
-              type="password"
-              autocomplete="new-password"
-              :placeholder="_t('Re-enter password')"
-              class="choy-input"
-              :class="{ 'border-destructive': fieldErrors.confirmPassword }"
-              @blur="validateConfirmPasswordField"
-            />
-            <span v-if="fieldErrors.confirmPassword" class="text-xs text-destructive">{{ fieldErrors.confirmPassword }}</span>
-          </label>
+            <ChoyField :data-invalid="fieldErrors.confirmPassword ? true : undefined">
+              <ChoyFieldLabel for="register-confirm">{{ _t('Confirm Password') }}</ChoyFieldLabel>
+              <ChoyInput
+                id="register-confirm"
+                v-model="form.confirmPassword"
+                name="confirmPassword"
+                type="password"
+                autocomplete="new-password"
+                :placeholder="_t('Re-enter password')"
+                :aria-invalid="fieldErrors.confirmPassword ? true : undefined"
+                @blur="validateConfirmPasswordField"
+              />
+              <ChoyFieldError :errors="fieldErrors.confirmPassword ? [fieldErrors.confirmPassword] : []" />
+            </ChoyField>
 
-          <label class="flex items-start gap-2 text-sm" data-testid="register-terms">
-            <input
-              v-model="form.agreeTerms"
-              type="checkbox"
-              class="mt-0.5 size-control shrink-0 rounded border-border"
-              @change="validateAgreeTermsField"
-            />
-            <span>
-              {{ _t('I have read and agree to') }}
-              <a href="#" target="_blank" class="text-primary hover:underline">{{ _t('Terms of Service') }}</a>
-              {{ _t('and') }}
-              <a href="#" target="_blank" class="text-primary hover:underline">{{ _t('Privacy Policy') }}</a>
-            </span>
-          </label>
-          <span v-if="fieldErrors.agreeTerms" class="-mt-2 text-xs text-destructive">{{ fieldErrors.agreeTerms }}</span>
+            <ChoyField orientation="horizontal" data-testid="register-terms">
+              <ChoyCheckbox
+                id="register-terms"
+                v-model="form.agreeTerms"
+                @update:model-value="validateAgreeTermsField"
+              />
+              <ChoyFieldLabel for="register-terms" class="font-normal">
+                {{ _t('I have read and agree to') }}
+                <a
+                  href="#"
+                  target="_blank"
+                  class="text-primary underline-offset-4 hover:underline"
+                  @click.stop
+                >
+                  {{ _t('Terms of Service') }}
+                </a>
+                {{ _t('and') }}
+                <a
+                  href="#"
+                  target="_blank"
+                  class="text-primary underline-offset-4 hover:underline"
+                  @click.stop
+                >
+                  {{ _t('Privacy Policy') }}
+                </a>
+              </ChoyFieldLabel>
+            </ChoyField>
+            <ChoyFieldError :errors="fieldErrors.agreeTerms ? [fieldErrors.agreeTerms] : []" />
 
-          <ChoyButton
-            type="submit"
-            class="submit-button w-full"
-            :disabled="loading || !form.agreeTerms"
-          >
-            {{ _t('Create Account') }}
-          </ChoyButton>
-
-          <div class="text-center text-sm text-foreground/70">
-            {{ _t('Already have an account?') }}
-            <router-link to="/login" class="ms-1 text-primary hover:underline">{{ _t('Log in now') }}</router-link>
-          </div>
+            <ChoyField>
+              <ChoyButton
+                type="submit"
+                class="submit-button w-full"
+                :disabled="loading || !form.agreeTerms"
+              >
+                {{ _t('Create Account') }}
+              </ChoyButton>
+              <ChoyFieldDescription class="text-center">
+                {{ _t('Already have an account?') }}
+                <router-link to="/login" class="text-primary hover:underline">{{
+                  _t('Log in now')
+                }}</router-link>
+              </ChoyFieldDescription>
+            </ChoyField>
+          </ChoyFieldGroup>
         </form>
       </ChoyCard>
     </AuthPanel>
@@ -119,10 +145,22 @@ SPDX-License-Identifier: Apache-2.0
 import { ref, reactive } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
+import { X } from 'lucide-vue-next';
 import { useAuthStore } from '../stores/auth';
 import { ChoysumError } from '../error';
 import AuthPanel from '../components/AuthPanel.vue';
-import { ChoyPage, ChoyCard, ChoyButton } from '@/web';
+import {
+  ChoyPage,
+  ChoyCard,
+  ChoyButton,
+  ChoyInput,
+  ChoyCheckbox,
+  ChoyField,
+  ChoyFieldDescription,
+  ChoyFieldError,
+  ChoyFieldGroup,
+  ChoyFieldLabel,
+} from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { resolveLoginRedirect } from './login_form';
 
@@ -255,5 +293,4 @@ async function handleRegister() {
     }
   }
 }
-
 </script>

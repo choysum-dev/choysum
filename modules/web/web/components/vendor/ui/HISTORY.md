@@ -14,7 +14,7 @@ after merging Reka/shadcn markup.
 **Allowed (must stay after an upstream refresh):**
 
 - Bind default control height to `--choy-control-height` via theme utilities
-  (`h-control`, `h-control-sm`, `h-control-lg`, `size-control`) — not hard-coded
+  (`h-control`, `min-h-control`, `h-control-sm`, `h-control-lg`, `size-control`) — not hard-coded
   `h-9` / `h-10` / `h-8` on default Button / Input / Select trigger / Combobox
   input / TabsList (and icon Button → `size-control`).
 - Logical inset/padding for directional chrome (`ps` / `pe` / `start` / `end`
@@ -35,6 +35,15 @@ new HISTORY entry describing what was re-copied vs re-patched.
 ---
 
 ## Entries (newest first)
+
+### 2026-10-03 — Card surface + control icon inherit
+
+- **Card:** `bg-card text-card-foreground` (light `--choy-color-card` is solid white).
+- **Button / Input / Checkbox:** new-york-v4 focus (`ring-3 ring-ring/50`, no `ring-offset`);
+  default Button `border-0` (no Tailwind preflight, so UA button chrome must be cleared);
+  Checkbox checked fill via `bg-primary` (not `data-[state=checked]:*`, whose `=`
+  is dropped by the engine so the browser never applies it) plus `p-0` to clear
+  UA button padding. SVG `text-current`. Heights stay `h-control*`.
 
 ### 2026-10-03 — W4 density / domain import CI gates
 

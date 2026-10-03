@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     :class="
       cn(
         'choy-action-tray flex flex-wrap items-center gap-2',
-        'min-h-[var(--choy-control-height)]',
+        'min-h-control',
         props.class,
       )
     "

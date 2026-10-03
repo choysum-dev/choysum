@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
   <ViewContainer :showHeader="resolvedShowHeader">
     <template #header>
       <div
-        class="form-view__action-bar flex items-center justify-between gap-3 border-b border-border pb-1 min-h-[var(--choy-control-height)] max-md:flex-col max-md:items-stretch"
+        class="form-view__action-bar flex items-center justify-between gap-3 border-b border-border pb-1 min-h-control max-md:flex-col max-md:items-stretch"
         data-anchor="choy.form.view-chrome"
       >
         <div class="form-view__actions flex flex-1 items-center gap-4 max-md:flex-col max-md:items-stretch max-md:gap-2" v-if="resolvedShowActions">

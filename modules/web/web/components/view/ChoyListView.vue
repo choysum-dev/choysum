@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
   <ViewContainer :showHeader="showHeader">
     <template #header>
       <div
-        class="choy-list__action-bar grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-border pb-1 min-h-[var(--choy-control-height)] max-md:grid-cols-1"
+        class="choy-list__action-bar grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-border pb-1 min-h-control max-md:grid-cols-1"
         data-anchor="choy.list.view-chrome"
       >
         <div class="choy-list__actions flex items-center gap-4">

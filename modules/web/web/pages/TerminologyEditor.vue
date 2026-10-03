@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <ChoyPage>
-    <div class="terminology-toolbar mb-3 flex min-h-[var(--choy-control-height)] flex-wrap items-center gap-2">
+    <div class="terminology-toolbar mb-3 flex min-h-control flex-wrap items-center gap-2">
       <select
         class="choy-input h-control w-[220px]"
         :value="selectedApp"
