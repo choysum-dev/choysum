@@ -101,9 +101,9 @@ function onLeafClick(item: MenuItem) {
       >
         {{ emptyText }}
       </p>
-      <SidebarMenu v-else role="menu">
+      <SidebarMenu v-else>
         <template v-for="item in items.filter((i) => !i.hidden)" :key="item.id || item.path || item.title">
-          <SidebarMenuItem v-if="item.children?.length" role="none">
+          <SidebarMenuItem v-if="item.children?.length">
             <Collapsible
               :open="groupExpanded(item)"
               class="group/collapsible"
@@ -129,7 +129,6 @@ function onLeafClick(item: MenuItem) {
                   <SidebarMenuSubItem
                     v-for="child in item.children.filter((c) => !c.hidden)"
                     :key="child.id || child.path || child.title"
-                    role="none"
                   >
                     <template v-if="child.children?.length">
                       <Collapsible
@@ -187,7 +186,7 @@ function onLeafClick(item: MenuItem) {
               </CollapsibleContent>
             </Collapsible>
           </SidebarMenuItem>
-          <SidebarMenuItem v-else role="none">
+          <SidebarMenuItem v-else>
             <SidebarMenuButton
               type="button"
               :is-active="leafActive(item)"

@@ -43,16 +43,20 @@ describe('ChoyWebShell mobile sidebar sheet', () => {
     expect(mounted.q('[data-mobile=true]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-menu-trigger]')).not.toBeNull();
     expect(layout.sidebarMode).toBe('expanded');
+    expect(mounted.q('[data-slot=sheet]')?.getAttribute('data-state')).toBe('open');
 
     layout.setSidebarMode('hidden', { isUserAction: true });
     await flushPromises();
     await nextTick();
     expect(layout.sidebarMode).toBe('hidden');
+    // Store→bridge closes the mobile Sheet (stub exposes data-state on DialogRoot).
+    expect(mounted.q('[data-slot=sheet]')?.getAttribute('data-state')).toBe('closed');
 
     layout.setSidebarMode('expanded', { isUserAction: true });
     await flushPromises();
     await nextTick();
     expect(layout.sidebarMode).toBe('expanded');
+    expect(mounted.q('[data-slot=sheet]')?.getAttribute('data-state')).toBe('open');
     expect(mounted.q('[data-mobile=true]')).not.toBeNull();
 
     mounted.unmount();

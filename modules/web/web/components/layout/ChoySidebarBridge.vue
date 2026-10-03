@@ -10,7 +10,9 @@ import { useLayoutStore } from '../../stores/layoutStore'
 
 /**
  * Keeps layoutStore.sidebarMode in sync with SidebarProvider open / openMobile.
- * Renders nothing; must be a child of SidebarProvider.
+ * Store→sidebar runs on mode or viewport class changes.
+ * Sidebar→store only follows open / openMobile toggles (not isMobile alone),
+ * so resizing does not rewrite a persisted preference.
  */
 let layoutStore: ReturnType<typeof useLayoutStore> | null = null
 try {
@@ -21,36 +23,24 @@ try {
 
 const { open, setOpen, openMobile, setOpenMobile, isMobile } = useSidebar()
 
-let syncing = false
-
 function applyStoreToSidebar() {
   if (!layoutStore) return
   const mode = layoutStore.sidebarMode
-  syncing = true
-  try {
-    if (isMobile.value) {
-      setOpenMobile(mode === 'expanded')
-    } else {
-      setOpen(mode === 'expanded')
-    }
-  } finally {
-    syncing = false
+  if (isMobile.value) {
+    const wantOpen = mode === 'expanded'
+    if (openMobile.value !== wantOpen) setOpenMobile(wantOpen)
+  } else {
+    const wantOpen = mode === 'expanded'
+    if (open.value !== wantOpen) setOpen(wantOpen)
   }
 }
 
-function applySidebarToStore() {
-  if (!layoutStore || syncing) return
-  if (isMobile.value) {
-    const next = openMobile.value ? 'expanded' : 'hidden'
-    if (layoutStore.sidebarMode !== next) {
-      layoutStore.setSidebarMode(next, { isUserAction: true })
-    }
-    return
-  }
-  const next = open.value ? 'expanded' : 'collapsed'
-  if (layoutStore.sidebarMode !== next) {
-    layoutStore.setSidebarMode(next, { isUserAction: true })
-  }
+/** Write store only when expanded-ness actually changed for the active rail. */
+function applySidebarToStore(isOpen: boolean, closedMode: 'hidden' | 'collapsed') {
+  if (!layoutStore) return
+  const storeOpen = layoutStore.sidebarMode === 'expanded'
+  if (storeOpen === isOpen) return
+  layoutStore.setSidebarMode(isOpen ? 'expanded' : closedMode, { isUserAction: true })
 }
 
 if (layoutStore) {
@@ -59,7 +49,12 @@ if (layoutStore) {
     () => applyStoreToSidebar(),
     { immediate: true },
   )
-  watch([open, openMobile, isMobile], () => applySidebarToStore())
+  watch(open, (v) => {
+    if (!isMobile.value) applySidebarToStore(!!v, 'collapsed')
+  })
+  watch(openMobile, (v) => {
+    if (isMobile.value) applySidebarToStore(!!v, 'hidden')
+  })
 }
 </script>
 

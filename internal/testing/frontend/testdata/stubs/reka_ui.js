@@ -90,7 +90,32 @@ export const DialogContent = stub('DialogContent');
 export const DialogDescription = stub('DialogDescription');
 export const DialogOverlay = stub('DialogOverlay');
 export const DialogPortal = stub('DialogPortal');
-export const DialogRoot = stub('DialogRoot');
+export const DialogRoot = defineComponent({
+  name: 'DialogRoot',
+  inheritAttrs: false,
+  props: {
+    open: { type: Boolean, default: undefined },
+  },
+  emits: ['update:open'],
+  setup(props, { slots, attrs, emit }) {
+    return () =>
+      h(
+        'div',
+        {
+          'data-reka-stub': 'DialogRoot',
+          // Treat undefined as open so legacy mounts that omit v-model still render.
+          'data-state': props.open === false ? 'closed' : 'open',
+          ...attrs,
+        },
+        slots.default
+          ? slots.default({
+              open: props.open !== false,
+              close: () => emit('update:open', false),
+            })
+          : null,
+      );
+  },
+});
 export const DialogTitle = stub('DialogTitle');
 export const DialogTrigger = stub('DialogTrigger');
 export const DropdownMenuContent = stub('DropdownMenuContent');

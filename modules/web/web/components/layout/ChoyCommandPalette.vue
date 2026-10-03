@@ -59,6 +59,7 @@ onUnmounted(() => {
           type="search"
           class="border-b border-border bg-transparent px-3 py-3 text-sm outline-none"
           :placeholder="_t('Type a command or search…')"
+          :aria-label="_t('Command palette')"
           data-testid="choy-shell-command-input"
         >
         <p class="text-muted-foreground px-3 py-6 text-center text-sm">
