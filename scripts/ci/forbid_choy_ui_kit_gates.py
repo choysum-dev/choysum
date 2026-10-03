@@ -25,7 +25,8 @@ SPEC_RE = re.compile(
     r"""|require\s*\(\s*['"]([^'"]+)['"]"""
 )
 
-HEIGHT_RE = re.compile(r"(?:^|[^A-Za-z0-9_-])h-(?:8|9|10)(?:$|[^A-Za-z0-9_-])")
+HEIGHT_RE = re.compile(r"(?<![A-Za-z0-9_-])h-(?:8|9|10)(?![A-Za-z0-9_-])")
+HTML_COMMENT_RE = re.compile(r"<!--.*?-->")
 
 SCAN_SUFFIXES = {".ts", ".tsx", ".vue", ".js", ".mjs", ".cjs"}
 
@@ -66,10 +67,58 @@ def iter_files(root: Path) -> list[Path]:
     return out
 
 
+def strip_comments(text: str) -> list[tuple[int, str]]:
+    """Return (original_line_no, code) pairs with comments removed, string-aware."""
+    lines_out: list[tuple[int, str]] = []
+    in_block = False
+    quote: str | None = None
+    for i, line in enumerate(text.splitlines(), start=1):
+        out: list[str] = []
+        j = 0
+        while j < len(line):
+            ch = line[j]
+            nxt = line[j + 1] if j + 1 < len(line) else ""
+            if in_block:
+                if ch == "*" and nxt == "/":
+                    in_block = False
+                    j += 2
+                    continue
+                j += 1
+                continue
+            if quote is not None:
+                if ch == "\\" and j + 1 < len(line):
+                    out.append(line[j : j + 2])
+                    j += 2
+                    continue
+                if ch == quote:
+                    quote = None
+                out.append(ch)
+                j += 1
+                continue
+            if ch in ("'", '"', "`"):
+                quote = ch
+                out.append(ch)
+                j += 1
+                continue
+            if ch == "/" and nxt == "/":
+                break
+            if ch == "/" and nxt == "*":
+                in_block = True
+                j += 2
+                continue
+            out.append(ch)
+            j += 1
+        if quote in ("'", '"'):
+            quote = None
+        code = HTML_COMMENT_RE.sub("", "".join(out))
+        lines_out.append((i, code))
+    return lines_out
+
+
 def specs_in(text: str) -> list[tuple[int, str]]:
     hits: list[tuple[int, str]] = []
-    for i, line in enumerate(text.splitlines(), start=1):
-        for m in SPEC_RE.finditer(line):
+    for i, code in strip_comments(text):
+        for m in SPEC_RE.finditer(code):
             spec = next(g for g in m.groups() if g)
             hits.append((i, spec.split("?", 1)[0].strip()))
     return hits
@@ -108,9 +157,9 @@ def scan_l2_heights(modules_root: Path) -> list[tuple[Path, int, str, str]]:
     vendor = modules_root / "web" / "web" / "components" / "vendor" / "ui"
     for path in iter_files(vendor):
         text = path.read_text(encoding="utf-8")
-        for i, line in enumerate(text.splitlines(), start=1):
-            if HEIGHT_RE.search(line):
-                violations.append((path, i, line.strip(), "l2-h-control"))
+        for i, code in strip_comments(text):
+            if HEIGHT_RE.search(code):
+                violations.append((path, i, code.strip(), "l2-h-control"))
     return violations
 
 

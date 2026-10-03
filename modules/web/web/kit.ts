@@ -46,6 +46,7 @@ export {
   ChoySheetHeader,
   ChoySheetTitle,
   ChoySheetTrigger,
+  ChoySheetClose,
 } from './components/layout/choySheet';
 
 export { default as ChoyFormView } from './components/view/ChoyFormView.vue';

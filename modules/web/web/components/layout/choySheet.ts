@@ -10,3 +10,4 @@ export { default as ChoySheetDescription } from '../vendor/ui/sheet/SheetDescrip
 export { default as ChoySheetHeader } from '../vendor/ui/sheet/SheetHeader.vue';
 export { default as ChoySheetTitle } from '../vendor/ui/sheet/SheetTitle.vue';
 export { default as ChoySheetTrigger } from '../vendor/ui/sheet/SheetTrigger.vue';
+export { default as ChoySheetClose } from '../vendor/ui/sheet/SheetClose.vue';

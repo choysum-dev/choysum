@@ -36,8 +36,39 @@ class ForbidChoyUiKitGatesTest(unittest.TestCase):
         self.assertTrue(mod.HEIGHT_RE.search('class="h-9 w-full"'))
         self.assertTrue(mod.HEIGHT_RE.search("h-10"))
         self.assertTrue(mod.HEIGHT_RE.search("h-8"))
+        self.assertTrue(mod.HEIGHT_RE.search("h-10 w-10"))
         self.assertIsNone(mod.HEIGHT_RE.search("h-control"))
         self.assertIsNone(mod.HEIGHT_RE.search("h-96"))
+        self.assertIsNone(mod.HEIGHT_RE.search("min-h-8"))
+        self.assertIsNone(mod.HEIGHT_RE.search("max-h-10"))
+        self.assertIsNone(mod.HEIGHT_RE.search("size-10"))
+
+    def test_comments_are_not_imports_or_heights(self):
+        mod = load_mod()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            partner = root / "partner" / "web"
+            partner.mkdir(parents=True)
+            (partner / "ok.ts").write_text(
+                "// import Button from '@/web/web/components/vendor/ui/button/Button.vue';\n"
+                "import { ChoyButton } from '@/web';\n",
+                encoding="utf-8",
+            )
+            vendor = root / "web" / "web" / "components" / "vendor" / "ui" / "button"
+            vendor.mkdir(parents=True)
+            (vendor / "Button.vue").write_text(
+                "<!-- default was h-9 -->\n"
+                '// class="h-9"\n'
+                '<button class="h-control min-h-8">x</button>\n',
+                encoding="utf-8",
+            )
+            field = root / "web" / "web" / "components" / "field"
+            field.mkdir(parents=True)
+            (field / "ChoyX.vue").write_text(
+                "// import Dialog from '@/web/web/components/vendor/ui/dialog/Dialog.vue';\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(mod.scan(root), [])
 
     def test_scan_tmp_tree(self):
         mod = load_mod()
