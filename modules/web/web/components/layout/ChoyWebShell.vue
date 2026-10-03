@@ -101,7 +101,10 @@ SPDX-License-Identifier: Apache-2.0
           <p class="m-0 truncate leading-snug group-data-[collapsible=icon]:hidden">
             {{ poweredLine }}
           </p>
-          <p class="m-0 truncate leading-snug group-data-[collapsible=icon]:text-center">
+          <p
+            class="m-0 truncate leading-snug group-data-[collapsible=icon]:text-center"
+            :title="versionLine"
+          >
             <span class="group-data-[collapsible=icon]:hidden">{{ versionLine }}</span>
             <span class="hidden font-medium tabular-nums group-data-[collapsible=icon]:inline">
               {{ versionShort }}

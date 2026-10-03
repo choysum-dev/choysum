@@ -70,6 +70,29 @@ export const ready = true
 	}
 }
 
+func TestParseTSGoCtxExportsDestructuredBindings(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "modules", "web", "web", "components", "vendor", "ui", "sidebar", "utils.ts")
+	content := `
+export const [useSidebar, provideSidebarContext] = [null, null]
+export const { useCommand, provideCommandContext } = { useCommand: null, provideCommandContext: null }
+`
+	ctx, err := Parse(nil, path, content)
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	for _, name := range []string{"useSidebar", "provideSidebarContext", "useCommand", "provideCommandContext"} {
+		if ctx.Exports[name] == nil {
+			t.Fatalf("expected destructured export %q, got %#v", name, ctx.Exports)
+		}
+	}
+	if got := ExportDeclarationName(nil); got != "" {
+		t.Fatalf("ExportDeclarationName(nil) = %q, want empty", got)
+	}
+	if got := ExportDeclarationNames(nil); got != nil {
+		t.Fatalf("ExportDeclarationNames(nil) = %#v, want nil", got)
+	}
+}
+
 func TestParseTSGoCtxHandlesDefaultDeclarationsAndMergeHelpers(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "component.vue")
 	content := `

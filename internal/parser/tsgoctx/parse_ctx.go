@@ -304,7 +304,7 @@ func (c *ParseCtx) parseExport(stmt *tsast.Node) {
 	}
 
 	if HasModifier(stmt, tsast.KindExportKeyword) {
-		if name := ExportDeclarationName(stmt); name != "" {
+		for _, name := range ExportDeclarationNames(stmt) {
 			c.Exports[name] = newExport(name, c.CurrentModuleSpecPath(), false)
 		}
 	}
@@ -327,23 +327,62 @@ func HasModifier(node *tsast.Node, kind tsast.Kind) bool {
 }
 
 func ExportDeclarationName(stmt *tsast.Node) string {
-	if stmt == nil {
+	names := ExportDeclarationNames(stmt)
+	if len(names) == 0 {
 		return ""
 	}
-	name := stmt.Name()
-	if name != nil {
-		return name.Text()
+	return names[0]
+}
+
+// ExportDeclarationNames returns binding names for an export declaration.
+// Handles identifiers and destructuring (`export const [a, b] = …`, `export const { a } = …`).
+func ExportDeclarationNames(stmt *tsast.Node) []string {
+	if stmt == nil {
+		return nil
 	}
-	if stmt.Kind == tsast.KindVariableStatement {
-		decls := stmt.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes
-		if len(decls) > 0 {
-			decl := decls[0]
-			if decl != nil {
-				return decl.AsVariableDeclaration().Name().Text()
-			}
+	if name := stmt.Name(); name != nil {
+		return bindingNameIdents(name)
+	}
+	if stmt.Kind != tsast.KindVariableStatement {
+		return nil
+	}
+	decls := stmt.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes
+	var out []string
+	for _, decl := range decls {
+		if decl == nil {
+			continue
 		}
+		out = append(out, bindingNameIdents(decl.AsVariableDeclaration().Name())...)
 	}
-	return ""
+	return out
+}
+
+func bindingNameIdents(name *tsast.Node) []string {
+	if name == nil {
+		return nil
+	}
+	switch name.Kind {
+	case tsast.KindIdentifier:
+		if text := name.Text(); text != "" {
+			return []string{text}
+		}
+		return nil
+	case tsast.KindObjectBindingPattern, tsast.KindArrayBindingPattern:
+		pattern := name.AsBindingPattern()
+		if pattern == nil || pattern.Elements == nil {
+			return nil
+		}
+		var out []string
+		for _, el := range pattern.Elements.Nodes {
+			if el == nil || el.Kind != tsast.KindBindingElement {
+				continue
+			}
+			out = append(out, bindingNameIdents(el.Name())...)
+		}
+		return out
+	default:
+		return nil
+	}
 }
 
 func MergeImports(dst map[string]*parser.Import, src map[string]*parser.Import) {

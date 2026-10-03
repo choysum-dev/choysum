@@ -13,6 +13,7 @@ import DialogContent from '../vendor/ui/dialog/DialogContent.vue'
 import DialogDescription from '../vendor/ui/dialog/DialogDescription.vue'
 import DialogHeader from '../vendor/ui/dialog/DialogHeader.vue'
 import DialogTitle from '../vendor/ui/dialog/DialogTitle.vue'
+import { shouldToggleCommandPalette } from './choyCommandPaletteHotkey'
 
 /**
  * Thin Command Palette shell: Ctrl/Cmd+K + header trigger.
@@ -23,8 +24,7 @@ const { _t } = createTranslate('web', { scope: 'web/components/layout/ChoyComman
 const open = ref(false)
 
 function onKeydown(event: KeyboardEvent) {
-  if (event.key !== 'k' && event.key !== 'K') return
-  if (!(event.metaKey || event.ctrlKey)) return
+  if (!shouldToggleCommandPalette(event)) return
   event.preventDefault()
   open.value = !open.value
 }
@@ -35,6 +35,8 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('keydown', onKeydown)
 })
+
+defineExpose({ onKeydown })
 </script>
 
 <template>

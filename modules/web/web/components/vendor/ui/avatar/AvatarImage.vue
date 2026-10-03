@@ -14,8 +14,9 @@ defineProps<{
 
 <template>
   <AvatarImage
+    v-if="src"
     data-slot="avatar-image"
-    :src="src || ''"
+    :src="src"
     :alt="alt || ''"
     class="aspect-square size-full"
   >

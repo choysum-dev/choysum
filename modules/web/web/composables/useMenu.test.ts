@@ -182,4 +182,96 @@ describe('ChoySidebarNav expansion', () => {
     await flushPromises();
     mounted.unmount();
   });
+
+  test('renders empty state when no menus exist', async () => {
+    const menuPlugin = createMenuPlugin();
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: { path: '/', fullPath: '/', meta: {} },
+    });
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h(SidebarProvider, null, {
+            default: () => h(ChoySidebarNav, { useDefaultIcon: false }),
+          });
+      },
+    });
+    const mounted = mountApp(Host as any, {
+      plugins: [menuPlugin, pinia, router, i18n],
+    });
+    await flushPromises();
+    await nextTick();
+    expect(mounted.q('[data-testid=choy-sidebar-nav-empty]')).not.toBeNull();
+    mounted.unmount();
+  });
+
+  test('hides hidden items and recurses past three levels', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'app',
+      title: 'App',
+      children: [
+        {
+          id: 'l1',
+          title: 'L1',
+          children: [
+            {
+              id: 'l2',
+              title: 'L2',
+              children: [
+                {
+                  id: 'l3',
+                  title: 'L3',
+                  children: [{ id: 'l4', title: 'L4 Leaf', path: '/l4' }],
+                },
+              ],
+            },
+          ],
+        },
+        { id: 'hidden-leaf', title: 'Hidden', path: '/h', hidden: true },
+      ],
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: { path: '/l4', fullPath: '/l4', meta: {} },
+    });
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+    const Host = defineComponent({
+      setup() {
+        const store = useMenuStore();
+        const active = store.getMenu('l4');
+        if (active) store.setActiveMenu(active);
+        return () =>
+          h(SidebarProvider, null, {
+            default: () => h(ChoySidebarNav, { useDefaultIcon: true }),
+          });
+      },
+    });
+    const mounted = mountApp(Host as any, {
+      plugins: [menuPlugin, pinia, router, i18n],
+    });
+    await flushPromises();
+    await nextTick();
+    expect(mounted.text()).not.toContain('Hidden');
+    expect(mounted.text()).toContain('L4 Leaf');
+    const l4 = Array.from(mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-leaf]')).find(
+      (b) => (b.textContent || '').includes('L4 Leaf'),
+    ) as HTMLButtonElement | undefined;
+    expect(l4).toBeTruthy();
+    l4!.click();
+    await flushPromises();
+    mounted.unmount();
+  });
+
+  test('tolerates missing menu store / router context', async () => {
+    setActivePinia(undefined as any);
+    const mounted = mountApp(ChoySidebarNav as any, { props: { useDefaultIcon: false } });
+    await flushPromises();
+    expect(mounted.q('[data-testid=choy-sidebar-nav-empty]')).not.toBeNull();
+    mounted.unmount();
+  });
 });
