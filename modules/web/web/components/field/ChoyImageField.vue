@@ -151,7 +151,7 @@ SPDX-License-Identifier: Apache-2.0
           <AttachmentDescription v-if="toMetaText(fieldValue().value)">{{ toMetaText(fieldValue().value) }}</AttachmentDescription>
         </AttachmentContent>
       </Attachment>
-      <Attachment v-else size="sm" state="idle" class="border-transparent bg-transparent shadow-none">
+      <Attachment v-else size="sm" state="idle" aria-hidden="true" class="border-transparent bg-transparent shadow-none">
         <AttachmentMedia variant="icon" aria-hidden="true" class="size-9 border border-dashed border-border bg-muted text-muted-foreground">
           <Picture class="size-4" />
         </AttachmentMedia>

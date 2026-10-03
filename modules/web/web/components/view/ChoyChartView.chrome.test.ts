@@ -59,6 +59,7 @@ describe('ChoyChartView chrome', () => {
     exposed.controller.vm.loading = true;
     await nextTick();
     expect(mounted.q('[data-testid=choy-spinner]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-empty]')).toBeNull();
 
     exposed.controller.vm.loading = false;
     await nextTick();

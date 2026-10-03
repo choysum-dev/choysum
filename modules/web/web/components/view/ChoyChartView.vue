@@ -257,7 +257,7 @@ SPDX-License-Identifier: Apache-2.0
       </ChartContainer>
 
       <ChoyEmpty
-        v-else
+        v-else-if="!boardBusy && !errorText"
         class="min-h-[280px] w-full border-none"
         :description="resolvedEmptyLabel"
       />
