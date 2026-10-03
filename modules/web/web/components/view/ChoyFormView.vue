@@ -14,24 +14,31 @@ SPDX-License-Identifier: Apache-2.0
           <ChoyActionTray class="form-view__system-actions" :aria-label="_t('System actions')">
             <slot name="system-actions">
               <template v-if="viewMode === 'display' && effectiveRecordId">
-                <ChoyButton v-if="resolvedCreateAction && canCreate" size="sm" variant="default" @click="handleCreate">
+                <ChoyButton
+                  v-if="resolvedCreateAction && canCreate"
+                  type="button"
+                  size="sm"
+                  variant="default"
+                  @click="handleCreate"
+                >
                   <Plus class="size-4" />
                   {{ _t('New') }}
                 </ChoyButton>
-                <ChoyButton v-if="canEdit" size="sm" variant="outline" @click="handleEdit">
+                <ChoyButton v-if="canEdit" type="button" size="sm" variant="outline" @click="handleEdit">
                   <Pencil class="size-4" />
                   {{ _t('Edit') }}
                 </ChoyButton>
-                <ChoyButton v-if="canRefresh" size="sm" variant="outline" @click="handleRefresh">
+                <ChoyButton v-if="canRefresh" type="button" size="sm" variant="outline" @click="handleRefresh">
                   <RefreshCw class="size-4" />
                   {{ _t('Refresh') }}
                 </ChoyButton>
-                <ChoyButton v-if="canCopy" size="sm" variant="ghost" @click="handleCopy">
+                <ChoyButton v-if="canCopy" type="button" size="sm" variant="ghost" @click="handleCopy">
                   <Copy class="size-4" />
                   {{ _t('Copy') }}
                 </ChoyButton>
                 <ChoyButton
                   v-if="canDelete"
+                  type="button"
                   size="sm"
                   variant="outline"
                   class="border-danger/40 text-danger hover:bg-danger-subtle"
@@ -42,29 +49,29 @@ SPDX-License-Identifier: Apache-2.0
                 </ChoyButton>
               </template>
               <template v-if="viewMode === 'edit'">
-                <ChoyButton size="sm" variant="default" @click="handleSubmit" :disabled="loading">
+                <ChoyButton type="button" size="sm" variant="default" @click="handleSubmit" :disabled="loading">
                   <Check class="size-4" />
                   {{ saveLabel }}
                 </ChoyButton>
-                <ChoyButton size="sm" variant="outline" @click="handleCancel" :disabled="loading">
+                <ChoyButton type="button" size="sm" variant="outline" @click="handleCancel" :disabled="loading">
                   <X class="size-4" />
                   {{ _t('Cancel') }}
                 </ChoyButton>
-                <ChoyButton size="sm" variant="ghost" @click="handleReset" :disabled="loading">
+                <ChoyButton type="button" size="sm" variant="ghost" @click="handleReset" :disabled="loading">
                   <RotateCcw class="size-4" />
                   {{ _t('Reset') }}
                 </ChoyButton>
               </template>
               <template v-if="viewMode === 'create'">
-                <ChoyButton size="sm" variant="default" @click="handleSubmit" :disabled="loading">
+                <ChoyButton type="button" size="sm" variant="default" @click="handleSubmit" :disabled="loading">
                   <Check class="size-4" />
                   {{ saveLabel }}
                 </ChoyButton>
-                <ChoyButton size="sm" variant="outline" @click="handleCancel" :disabled="loading">
+                <ChoyButton type="button" size="sm" variant="outline" @click="handleCancel" :disabled="loading">
                   <X class="size-4" />
                   {{ _t('Cancel') }}
                 </ChoyButton>
-                <ChoyButton size="sm" variant="ghost" @click="handleReset" :disabled="loading">
+                <ChoyButton type="button" size="sm" variant="ghost" @click="handleReset" :disabled="loading">
                   <RotateCcw class="size-4" />
                   {{ _t('Reset') }}
                 </ChoyButton>
@@ -88,7 +95,8 @@ SPDX-License-Identifier: Apache-2.0
       class="form-view__content relative py-3"
       :class="{ 'form-view__content--busy pointer-events-none opacity-65': loading }"
       :aria-busy="loading || undefined"
-    >      <form ref="formRef" @submit.prevent>
+    >
+      <form ref="formRef" @submit.prevent="handleSubmit">
         <slot :form-data="exposedFormData" :view-mode="viewMode" :loading="loading" />
       </form>
     </div>
