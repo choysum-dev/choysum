@@ -4,10 +4,13 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import type { DialogCloseProps } from "reka-ui"
 import { DialogClose } from "reka-ui"
 
-const props = defineProps<DialogCloseProps>()
+interface Props {
+  as?: any
+  asChild?: boolean
+}
+const props = defineProps<Props>()
 </script>
 
 <template>

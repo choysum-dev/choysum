@@ -190,9 +190,9 @@ SPDX-License-Identifier: Apache-2.0
       </div>
     </div>
 
-    <Dialog v-model:open="isEditorOpen">
-      <DialogContent>
-        <DialogTitle>{{ filterEditorTitle }}</DialogTitle>
+    <ChoyDialog v-model:open="isEditorOpen">
+      <ChoyDialogContent>
+        <ChoyDialogTitle>{{ filterEditorTitle }}</ChoyDialogTitle>
       <SearchFilter
         v-if="draftFilter"
         :store="store"
@@ -207,12 +207,12 @@ SPDX-License-Identifier: Apache-2.0
         @cancel="onEditorCancel"
         @confirm="onConfirmDraft"
       />
-      </DialogContent>
-    </Dialog>
+      </ChoyDialogContent>
+    </ChoyDialog>
 
-    <Dialog v-model:open="saveFavoriteOpen">
-      <DialogContent class="max-w-md">
-        <DialogTitle>{{ saveFavoriteDialogTitle }}</DialogTitle>
+    <ChoyDialog v-model:open="saveFavoriteOpen">
+      <ChoyDialogContent class="max-w-md">
+        <ChoyDialogTitle>{{ saveFavoriteDialogTitle }}</ChoyDialogTitle>
       <form @submit.prevent>
         <div>
           <label>{{ _t('Name') }}</label>
@@ -229,8 +229,8 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyButton size="sm" variant="outline" @click="saveFavoriteOpen = false">{{ _t('Cancel') }}</ChoyButton>
         <ChoyButton size="sm" variant="default" :disabled="saveFavoriteSaving" @click="onConfirmSaveFavorite">{{ _t('Save') }}</ChoyButton>
       </div>
-      </DialogContent>
-    </Dialog>
+      </ChoyDialogContent>
+    </ChoyDialog>
   </div>
 </template>
 
@@ -268,9 +268,7 @@ import { useMenuStore } from '@/web/web/stores/menuStore';
 import { useRoute } from 'vue-router';
 import { Search, ChevronDown, Check, Pencil } from 'lucide-vue-next';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
-import Dialog from '@/web/web/components/vendor/ui/dialog/Dialog.vue';
-import DialogContent from '@/web/web/components/vendor/ui/dialog/DialogContent.vue';
-import DialogTitle from '@/web/web/components/vendor/ui/dialog/DialogTitle.vue';
+import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import Popover from '@/web/web/components/vendor/ui/popover/Popover.vue';
 import PopoverContent from '@/web/web/components/vendor/ui/popover/PopoverContent.vue';
 import PopoverTrigger from '@/web/web/components/vendor/ui/popover/PopoverTrigger.vue';

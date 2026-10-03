@@ -66,9 +66,9 @@ SPDX-License-Identifier: Apache-2.0
     </template>
   </FieldBase>
 
-  <Dialog v-model:open="dialogVisible">
-    <DialogContent class="choy-relation-picker-dialog" :style="{ width: typeof searchViewWidth === 'number' ? searchViewWidth + 'px' : searchViewWidth }">
-      <DialogTitle>{{ effectiveSearchViewTitle }}</DialogTitle>
+  <ChoyDialog v-model:open="dialogVisible">
+    <ChoyDialogContent class="choy-relation-picker-dialog" :style="{ width: typeof searchViewWidth === 'number' ? searchViewWidth + 'px' : searchViewWidth }">
+      <ChoyDialogTitle>{{ effectiveSearchViewTitle }}</ChoyDialogTitle>
       <ChoyViewScope view-mode="display" :container="'List'">
       <component
         v-if="searchView && relationStore"
@@ -88,15 +88,13 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyButton @click="dialogVisible = false">{{ _t('Cancel') }}</ChoyButton>
         <ChoyButton @click="confirmPick">{{ _t('OK') }}</ChoyButton>
       </div>
-    </DialogContent>
-  </Dialog>
+    </ChoyDialogContent>
+  </ChoyDialog>
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, ClientModel<BaseModel> | null | undefined>, V = FieldPathType<T, P>">
 import { ref, computed, inject, Ref, getCurrentInstance } from 'vue';
-import Dialog from '@/web/web/components/vendor/ui/dialog/Dialog.vue';
-import DialogContent from '@/web/web/components/vendor/ui/dialog/DialogContent.vue';
-import DialogTitle from '@/web/web/components/vendor/ui/dialog/DialogTitle.vue';
+import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { ChoyMessage } from '../../composables/useChoyMessage';
 import type { RuleItem } from 'async-validator';

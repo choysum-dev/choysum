@@ -32,6 +32,22 @@ export {
   DropdownMenuItem as ChoyDropdownMenuItem,
   DropdownMenuTrigger as ChoyDropdownMenuTrigger,
 } from './components/vendor/ui/dropdown-menu';
+export {
+  ChoyDialog,
+  ChoyDialogContent,
+  ChoyDialogDescription,
+  ChoyDialogHeader,
+  ChoyDialogTitle,
+} from './components/layout/choyDialog';
+export {
+  ChoySheet,
+  ChoySheetContent,
+  ChoySheetDescription,
+  ChoySheetHeader,
+  ChoySheetTitle,
+  ChoySheetTrigger,
+  ChoySheetClose,
+} from './components/layout/choySheet';
 
 export { default as ChoyFormView } from './components/view/ChoyFormView.vue';
 export { default as ChoyListView } from './components/view/ChoyListView.vue';

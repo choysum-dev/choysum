@@ -36,6 +36,16 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
+### 2026-10-03 — W4 density / domain import CI gates
+
+- **Epic:** shadcn-vue alignment W4 (cleanup + gates).
+- **Sheet Trigger/Close:** local `as` / `asChild` props (no `defineProps<Dialog*Props>()`)
+  so kit `ChoySheet*` can load under QuickJS FE.
+- **Gates:** forbid `h-8` / `h-9` / `h-10` class tokens under this directory, domain
+  `vendor/ui` / `reka-ui` / `@unovis/*` imports, and kit-host Import/Search/Field
+  Dialog imports that bypass `layout/choyDialog.ts`.
+- **Do not regress:** `rg 'h-9|h-10|\\bh-8\\b' modules/web/web/components/vendor/ui`
+
 ### 2026-10-03 — W1 shell hard-cut FE SFC / Sheet adaptations
 
 - **Epic:** shadcn-vue alignment W1 (`ChoyWebShell` → Sidebar*).

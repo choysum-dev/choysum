@@ -102,9 +102,9 @@ SPDX-License-Identifier: Apache-2.0
     </template>
   </FieldBase>
 
-  <Dialog v-model:open="dialogVisible">
-    <DialogContent class="choy-relation-picker-dialog" :style="{ width: typeof dialogWidth === 'number' ? dialogWidth + 'px' : dialogWidth }">
-      <DialogTitle>{{ dialogTitleText }}</DialogTitle>
+  <ChoyDialog v-model:open="dialogVisible">
+    <ChoyDialogContent class="choy-relation-picker-dialog" :style="{ width: typeof dialogWidth === 'number' ? dialogWidth + 'px' : dialogWidth }">
+      <ChoyDialogTitle>{{ dialogTitleText }}</ChoyDialogTitle>
       <component
       v-if="formView"
       :is="formView"
@@ -125,15 +125,13 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyButton @click="handleDialogCancel">{{ _t('Cancel') }}</ChoyButton>
         <ChoyButton v-if="dialogMode !== 'display'" @click="handleDialogSubmit">{{ _t('Save') }}</ChoyButton>
       </div>
-    </DialogContent>
-  </Dialog>
+    </ChoyDialogContent>
+  </ChoyDialog>
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, ClientModel<BaseModel>[]>, V = FieldPathType<T, P>">
 import { computed, ref, watch, onMounted, provide, useSlots, type Component } from 'vue';
-import Dialog from '@/web/web/components/vendor/ui/dialog/Dialog.vue';
-import DialogContent from '@/web/web/components/vendor/ui/dialog/DialogContent.vue';
-import DialogTitle from '@/web/web/components/vendor/ui/dialog/DialogTitle.vue';
+import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { ChoyMessage } from '../../composables/useChoyMessage';
 import { confirmChoyAction, confirmChoyChoice } from '../../composables/confirmChoyAction';

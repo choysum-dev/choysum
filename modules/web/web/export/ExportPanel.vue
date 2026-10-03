@@ -4,9 +4,9 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <Dialog v-model:open="visible">
-    <DialogContent class="export-panel-dialog" @open-auto-focus.prevent>
-      <DialogTitle>{{ title }}</DialogTitle>
+  <ChoyDialog v-model:open="visible">
+    <ChoyDialogContent class="export-panel-dialog" @open-auto-focus.prevent>
+      <ChoyDialogTitle>{{ title }}</ChoyDialogTitle>
       <div class="flex flex-col gap-3">
         <p class="m-0 text-foreground">{{ scopeSummary }}</p>
 
@@ -59,15 +59,13 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyButton v-if="!exportDone" size="sm" variant="default" :disabled="busy" @click="commitExport">{{ exportActionLabel }}</ChoyButton>
         <ChoyButton v-else size="sm" variant="default" @click="visible = false">{{ doneLabel }}</ChoyButton>
       </div>
-    </DialogContent>
-  </Dialog>
+    </ChoyDialogContent>
+  </ChoyDialog>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
-import Dialog from '@/web/web/components/vendor/ui/dialog/Dialog.vue';
-import DialogContent from '@/web/web/components/vendor/ui/dialog/DialogContent.vue';
-import DialogTitle from '@/web/web/components/vendor/ui/dialog/DialogTitle.vue';
+import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { describeExportFields, previewExport, runExport, ExportMode, type ExportFieldNode, type ExportReport } from '@/core/web/export/client';
 import { downloadExportCsvBytes, suggestExportFileName } from '@/core/web/export/download_csv';

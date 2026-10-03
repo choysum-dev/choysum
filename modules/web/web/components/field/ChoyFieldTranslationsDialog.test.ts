@@ -8,9 +8,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
 import { replaceStoreFactory } from '@/web/web/stores/registry';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import Dialog from '@/web/web/components/vendor/ui/dialog/Dialog.vue';
-import DialogContent from '@/web/web/components/vendor/ui/dialog/DialogContent.vue';
-import DialogTitle from '@/web/web/components/vendor/ui/dialog/DialogTitle.vue';
+import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import FieldTranslationsDialog from './ChoyFieldTranslationsDialog.vue';
 
@@ -54,7 +52,7 @@ describe('FieldTranslationsDialog', () => {
   const messageError = fnRecorder();
 
   function installStubs() {
-    stubSfc(Dialog as any, {
+    stubSfc(ChoyDialog as any, {
       name: 'Dialog',
       props: {
         open: { type: Boolean, default: false },
@@ -67,13 +65,13 @@ describe('FieldTranslationsDialog', () => {
           ]);
       },
     });
-    stubSfc(DialogContent as any, {
+    stubSfc(ChoyDialogContent as any, {
       name: 'DialogContent',
       setup(_: any, { slots, attrs }: any) {
         return () => h('div', { class: ['dialog-content', attrs.class] }, slots.default?.());
       },
     });
-    stubSfc(DialogTitle as any, {
+    stubSfc(ChoyDialogTitle as any, {
       name: 'DialogTitle',
       setup(_: any, { slots }: any) {
         return () => h('div', { class: 'dialog-title' }, slots.default?.());
@@ -126,9 +124,9 @@ describe('FieldTranslationsDialog', () => {
     restoreLanguageFactory = undefined;
     ChoyMessage.success = origSuccess;
     ChoyMessage.error = origError;
-    restoreSfc(Dialog as any);
-    restoreSfc(DialogContent as any);
-    restoreSfc(DialogTitle as any);
+    restoreSfc(ChoyDialog as any);
+    restoreSfc(ChoyDialogContent as any);
+    restoreSfc(ChoyDialogTitle as any);
     restoreSfc(ChoyButton as any);
   });
 
