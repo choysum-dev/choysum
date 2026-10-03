@@ -26,7 +26,6 @@ SPEC_RE = re.compile(
 )
 
 HEIGHT_RE = re.compile(r"(?<![A-Za-z0-9_-])h-(?:8|9|10)(?![A-Za-z0-9_-])")
-HTML_COMMENT_RE = re.compile(r"<!--.*?-->")
 
 SCAN_SUFFIXES = {".ts", ".tsx", ".vue", ".js", ".mjs", ".cjs"}
 
@@ -71,6 +70,7 @@ def strip_comments(text: str) -> list[tuple[int, str]]:
     """Return (original_line_no, code) pairs with comments removed, string-aware."""
     lines_out: list[tuple[int, str]] = []
     in_block = False
+    in_html_comment = False
     quote: str | None = None
     for i, line in enumerate(text.splitlines(), start=1):
         out: list[str] = []
@@ -78,6 +78,13 @@ def strip_comments(text: str) -> list[tuple[int, str]]:
         while j < len(line):
             ch = line[j]
             nxt = line[j + 1] if j + 1 < len(line) else ""
+            if in_html_comment:
+                if line[j : j + 3] == "-->":
+                    in_html_comment = False
+                    j += 3
+                    continue
+                j += 1
+                continue
             if in_block:
                 if ch == "*" and nxt == "/":
                     in_block = False
@@ -95,6 +102,10 @@ def strip_comments(text: str) -> list[tuple[int, str]]:
                 out.append(ch)
                 j += 1
                 continue
+            if line[j : j + 4] == "<!--":
+                in_html_comment = True
+                j += 4
+                continue
             if ch in ("'", '"', "`"):
                 quote = ch
                 out.append(ch)
@@ -110,8 +121,7 @@ def strip_comments(text: str) -> list[tuple[int, str]]:
             j += 1
         if quote in ("'", '"'):
             quote = None
-        code = HTML_COMMENT_RE.sub("", "".join(out))
-        lines_out.append((i, code))
+        lines_out.append((i, "".join(out)))
     return lines_out
 
 

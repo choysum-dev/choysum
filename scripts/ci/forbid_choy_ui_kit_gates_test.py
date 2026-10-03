@@ -57,7 +57,9 @@ class ForbidChoyUiKitGatesTest(unittest.TestCase):
             vendor = root / "web" / "web" / "components" / "vendor" / "ui" / "button"
             vendor.mkdir(parents=True)
             (vendor / "Button.vue").write_text(
-                "<!-- default was h-9 -->\n"
+                "<!-- default was h-9\n"
+                "     still h-9\n"
+                "-->\n"
                 '// class="h-9"\n'
                 '<button class="h-control min-h-8">x</button>\n',
                 encoding="utf-8",
