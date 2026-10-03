@@ -12,7 +12,6 @@ SPDX-License-Identifier: Apache-2.0
         class="register-card w-full"
       >
         <ChoyFormView
-          ref="formViewRef"
           :store="formStore"
           view-mode="create"
           embedded
@@ -102,7 +101,7 @@ SPDX-License-Identifier: Apache-2.0
                 :nullable="false"
                 :show-word-limit="false"
                 show-inline-error
-                :rules="confirmPasswordRules"
+                :rules="registerConfirmPasswordRules(_t, () => formData.Password)"
               />
               </div>
 
@@ -117,7 +116,7 @@ SPDX-License-Identifier: Apache-2.0
                   show-inline-error
                   :rules="agreeTermsRules"
                 />
-                <p class="mt-1 text-sm leading-5">
+                <label for="fld-AgreeTerms" class="mt-1 text-sm leading-5">
                   {{ _t('I have read and agree to') }}
                   <a
                     href="#"
@@ -136,7 +135,7 @@ SPDX-License-Identifier: Apache-2.0
                   >
                     {{ _t('Privacy Policy') }}
                   </a>
-                </p>
+                </label>
               </div>
 
               <ChoyField>
@@ -219,12 +218,9 @@ const formStore = createLocalFormStore({
   storeId: 'auth.register',
 });
 
-const formViewRef = ref<{ getFormData?: () => Record<string, unknown> } | null>(null);
-
 const usernameRules = registerUsernameRules(_t);
 const emailRules = registerEmailRules(_t);
 const passwordRules = registerPasswordRules(_t);
-const confirmPasswordRules = registerConfirmPasswordRules(_t, () => formViewRef.value?.getFormData?.()?.Password);
 const agreeTermsRules = registerAgreeTermsRules(_t);
 
 const error = ref('');

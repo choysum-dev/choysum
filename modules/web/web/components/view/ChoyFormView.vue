@@ -93,6 +93,7 @@ SPDX-License-Identifier: Apache-2.0
     <!-- Always render the form; busy state is local (no Element Plus v-loading). -->
     <div
       class="form-view__content relative py-3"
+      data-anchor="choy.form-view"
       :class="{ 'form-view__content--busy pointer-events-none opacity-65': formBusy }"
       :aria-busy="formBusy || undefined"
     >

@@ -188,7 +188,7 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 				build.OnResolve(api.OnResolveOptions{Filter: `(FormView|ListView|KanbanView)\.vue$`},
 					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
 						path := filepath.ToSlash(args.Path)
-						// Kit engine FormView is the Login/Register submit host; keep it real.
+						// Keep the kit FormView SFC so native submit and field rules run.
 						if strings.HasSuffix(path, "ChoyFormView.vue") {
 							return api.OnResolveResult{}, nil
 						}

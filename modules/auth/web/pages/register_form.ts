@@ -108,7 +108,8 @@ export function validateRegisterForm(form: RegisterFormFields, t: (msg: string) 
 }
 
 /**
- * Create the account then log in. Field rules run in FormView before this.
+ * Create the account then log in. Field rules run in FormView before this;
+ * empty credentials are a last guard if submit bypasses those rules.
  */
 export async function runRegisterSubmit(opts: {
   loading: boolean;
@@ -122,6 +123,9 @@ export async function runRegisterSubmit(opts: {
 }): Promise<boolean> {
   if (opts.loading) return false;
   opts.setError('');
+  if (!String(opts.username ?? '').trim() || !String(opts.email ?? '').trim() || !opts.password) {
+    return false;
+  }
   try {
     await opts.register(opts.username, opts.email, opts.password);
     await opts.login(opts.username, opts.password);

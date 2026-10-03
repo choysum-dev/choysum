@@ -47,15 +47,21 @@ async function fillField(wrapper: { find: (sel: string) => any }, selector: stri
   const input = fieldInput(wrapper, selector);
   const el = input.element as HTMLInputElement;
   el.value = value;
-  el.dispatchEvent(new Event('input', { bubbles: true }));
-  el.dispatchEvent(new Event('change', { bubbles: true }));
-  el.dispatchEvent(new Event('blur', { bubbles: true }));
+  const evt = new Event('input', { bubbles: true, cancelable: true });
+  if (typeof el.oninput === 'function') el.oninput(evt);
+  el.dispatchEvent(evt);
+  el.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+  el.dispatchEvent(new Event('blur', { bubbles: true, cancelable: true }));
   await flushPromises();
 }
 
 function submitForm(wrapper: { find: (sel: string) => any }) {
   const form = wrapper.find('form');
   (form.element as HTMLFormElement).dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+}
+
+async function afterSubmit() {
+  for (let i = 0; i < 8; i++) await flushPromises();
 }
 
 test('Login.vue mounts under choysumMount and runs script setup', async () => {
@@ -70,7 +76,7 @@ test('Login.vue: empty submit keeps the form and shows field errors', async () =
   const form = wrapper.find('form');
   expect(form.exists()).toBe(true);
   submitForm(wrapper);
-  await flushPromises();
+  await afterSubmit();
   expect(wrapper.text().includes('Enter username') || wrapper.find('.text-destructive').exists() || wrapper.find('.text-danger').exists()).toBe(true);
   expect(replaces).toEqual([]);
   wrapper.unmount();
@@ -83,12 +89,10 @@ test('Login.vue: filled native submit does not show required field errors', asyn
   await fillField(wrapper, '.login-username', 'admin');
   await fillField(wrapper, '.login-password', 'secret');
   submitForm(wrapper);
-  await flushPromises();
+  await afterSubmit();
   expect(wrapper.text().includes('Enter username')).toBe(false);
   expect(wrapper.find('.login-error').exists()).toBe(false);
   expect(wrapper.find('.text-destructive').exists()).toBe(false);
-  if (replaces.length) {
-    expect(replaces).toEqual(['/auth/tokens']);
-  }
+  expect(replaces).toEqual(['/auth/tokens']);
   wrapper.unmount();
 });

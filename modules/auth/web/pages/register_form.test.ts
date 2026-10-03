@@ -88,6 +88,26 @@ test('runRegisterSubmit: skips while loading', async () => {
   expect(calls).toBe(0);
 });
 
+test('runRegisterSubmit: skips empty credentials', async () => {
+  let calls = 0;
+  const ok = await runRegisterSubmit({
+    loading: false,
+    username: '  ',
+    email: '',
+    password: '',
+    registerFailedMessage: 'Registration failed. Please try again later.',
+    register: async () => {
+      calls += 1;
+    },
+    login: async () => {
+      calls += 1;
+    },
+    setError: () => undefined,
+  });
+  expect(ok).toBe(false);
+  expect(calls).toBe(0);
+});
+
 test('runRegisterSubmit: register then login on success', async () => {
   const seen: string[] = [];
   const ok = await runRegisterSubmit({
