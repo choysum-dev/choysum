@@ -84,6 +84,81 @@ test('createLocalFormStore is not registered as a model factory', () => {
   expect(listRegisteredModelNames()).toEqual(before);
 });
 
+test('createLocalFormStore covers helpers, context, and remaining RPC stubs', async () => {
+  const empty = createLocalFormStore({ fields: undefined as any });
+  expect(empty.fieldNames).toEqual([]);
+  expect(empty.getValues()).toEqual({});
+  expect(empty.storeId.startsWith('local-form:')).toBe(true);
+
+  const blankId = createLocalFormStore({ fields: loginFields(), storeId: '   ' });
+  expect(blankId.storeId.startsWith('local-form:')).toBe(true);
+
+  const store = createLocalFormStore({
+    fields: [{ name: 'Username', label: 'Username', type: 'varchar', help: 'login id' }],
+  });
+  expect(store.getFieldMeta('Username')?.help).toBe('login id');
+  expect(store.getFieldMeta('')).toBeUndefined();
+  expect(store.getFieldMeta('   ')).toBeUndefined();
+  expect(store.getField('')).toBeUndefined();
+  expect(store.getFieldsGetTranslatedString('Username')).toBeUndefined();
+  expect(store.getFieldsGetTranslatedHelp('Username')).toBeUndefined();
+  store.clearFieldsGetCache();
+  store.destroy();
+
+  const all = await store.ensureFieldsGet();
+  expect(all.Username?.string).toBe('Username');
+  expect(await store.FieldsGet([])).toEqual(all);
+  const slice = await store.ensureFieldsGet(['', 'Nope', 'Username']);
+  expect(slice.Username?.string).toBe('Username');
+  expect(Object.keys(slice)).toEqual(['Username']);
+
+  store.setContext(null as any);
+  expect(store.getContext()).toEqual({});
+  store.setContext({ lang: 'zh_CN' });
+  expect(store.getContext()).toEqual({ lang: 'zh_CN' });
+  const seen = await store.withContext({ company: '1' }, async () => store.getContext());
+  expect(seen).toEqual({ lang: 'zh_CN', company: '1' });
+  expect(store.getContext()).toEqual({ lang: 'zh_CN' });
+  await store
+    .withContext({ company: '2' }, async () => {
+      throw new Error('boom');
+    })
+    .then(
+      () => {
+        throw new Error('expected withContext to reject');
+      },
+      err => {
+        expect((err as Error).message).toBe('boom');
+      }
+    );
+  expect(store.getContext()).toEqual({ lang: 'zh_CN' });
+
+  expect(await store.Onchange({} as any, [] as any)).toEqual({ value: undefined, messages: [] });
+
+  const stubs = [
+    'BrowseMany',
+    'CreateMany',
+    'Update',
+    'Copy',
+    'NameSearch',
+    'NameCreate',
+    'Count',
+    'Search',
+    'ReadGroup',
+    'ReadGroupCount',
+    'Delete',
+    'DeleteById',
+    'GetFieldTranslations',
+    'UpdateFieldTranslations',
+    'GetFieldCompanyValues',
+    'UpdateFieldCompanyValues',
+    'ResolveProperties',
+  ] as const;
+  for (const method of stubs) {
+    expect(() => (store as any)[method]()).toThrow(new RegExp(`does not support ${method}`));
+  }
+});
+
 test('createLocalFormStore rejects duplicate or empty field names', () => {
   expect(() =>
     createLocalFormStore({
