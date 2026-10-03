@@ -15,17 +15,17 @@ SPDX-License-Identifier: Apache-2.0
           <ChoyFieldGroup class="gap-4">
             <ChoyField v-if="error">
               <div
-                class="flex items-start justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                class="flex items-center justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
                 role="alert"
               >
-                <span>{{ error }}</span>
+                <span class="min-w-0 leading-5">{{ error }}</span>
                 <button
                   type="button"
-                  class="text-destructive/80 hover:text-destructive"
+                  class="inline-flex size-6 shrink-0 items-center justify-center rounded-sm border-0 bg-transparent p-0 text-destructive/70 appearance-none shadow-none outline-none hover:bg-destructive/15 hover:text-destructive focus-visible:ring-2 focus-visible:ring-destructive/40"
                   :aria-label="_t('Close')"
                   @click="error = ''"
                 >
-                  ×
+                  <X class="size-3.5" />
                 </button>
               </div>
             </ChoyField>
@@ -135,6 +135,7 @@ SPDX-License-Identifier: Apache-2.0
 import { ref, reactive } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
+import { X } from 'lucide-vue-next';
 import { useAuthStore } from '../stores/auth';
 import { ChoysumError } from '../error';
 import AuthPanel from '../components/AuthPanel.vue';

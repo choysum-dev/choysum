@@ -47,7 +47,8 @@ body {
 
   .choy-input:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--choy-color-ring);
+    border-color: var(--choy-color-ring);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--choy-color-ring) 50%, transparent);
   }
 
   .choy-input:disabled {
@@ -73,10 +74,22 @@ a:hover {
   color: inherit;
 }
 
-/* Lucide must follow surrounding text, not a leftover stroke/fill. */
+/* Icons follow surrounding text, including when a global svg color uses !important. */
+svg,
 .lucide {
-  color: inherit;
+  color: inherit !important;
   stroke: currentColor;
+}
+
+/* Cancel a leaked global [role=checkbox] { translate: 2px } from table utilities. */
+[data-slot='checkbox'] {
+  translate: none;
+}
+
+/* Table cells only: optical nudge vs adjacent text. */
+[data-slot='table-head'] [role='checkbox'],
+[data-slot='table-cell'] [role='checkbox'] {
+  translate: 0 0.125rem;
 }
 
 ul {

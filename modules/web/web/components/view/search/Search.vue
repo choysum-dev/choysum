@@ -32,11 +32,11 @@ SPDX-License-Identifier: Apache-2.0
           {{ _t('Group: %s', groupingSummary) }}
           <button
             type="button"
-            class="choy-search__tag-close m-0 size-3.5 shrink-0 cursor-pointer appearance-none rounded-full border-0 bg-transparent p-0 text-center text-xs leading-[14px] text-muted-foreground hover:bg-accent hover:text-foreground"
+            class="choy-search__tag-close m-0 inline-flex size-3.5 shrink-0 cursor-pointer items-center justify-center appearance-none rounded-full border-0 bg-transparent p-0 text-muted-foreground hover:bg-accent hover:text-foreground"
             :aria-label="_t('Clear grouping')"
             @click.stop="onGroupingClear"
           >
-            ×
+            <X class="size-3" />
           </button>
         </span>
 
@@ -51,11 +51,11 @@ SPDX-License-Identifier: Apache-2.0
           {{ f.name || summarizeFilterFields(f, 2) }}
           <button
             type="button"
-            class="choy-search__tag-close m-0 size-3.5 shrink-0 cursor-pointer appearance-none rounded-full border-0 bg-transparent p-0 text-center text-xs leading-[14px] text-muted-foreground hover:bg-accent hover:text-foreground"
+            class="choy-search__tag-close m-0 inline-flex size-3.5 shrink-0 cursor-pointer items-center justify-center appearance-none rounded-full border-0 bg-transparent p-0 text-muted-foreground hover:bg-accent hover:text-foreground"
             :aria-label="_t('Remove filter')"
             @click.stop="onTagClose(f.id!)"
           >
-            ×
+            <X class="size-3" />
           </button>
         </span>
       </div>
@@ -136,7 +136,7 @@ SPDX-License-Identifier: Apache-2.0
                     :aria-label="_t('Delete favorite %s', it.name)"
                     @click.stop="onRemoveFavorite(it)"
                   >
-                    ×
+                    <X class="size-3.5" />
                   </ChoyButton>
                 </div>
                 <div v-if="favoritesLoadError" class="text-muted-foreground">
@@ -266,7 +266,7 @@ import { createTranslate } from '@/web/web/i18n';
 import { useBreadcrumbStore } from '@/web/web/stores/breadcrumbStore';
 import { useMenuStore } from '@/web/web/stores/menuStore';
 import { useRoute } from 'vue-router';
-import { Search, ChevronDown, Check, Pencil } from 'lucide-vue-next';
+import { Search, ChevronDown, Check, Pencil, X } from 'lucide-vue-next';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import Popover from '@/web/web/components/vendor/ui/popover/Popover.vue';

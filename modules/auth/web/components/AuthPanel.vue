@@ -14,11 +14,7 @@ SPDX-License-Identifier: Apache-2.0
       data-testid="auth-panel-brand"
       @click.prevent="onBrandClick"
     >
-      <span
-        class="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md"
-      >
-        <img :src="logoUrl" alt="" class="size-4" width="16" height="16" />
-      </span>
+      <img :src="logoUrl" alt="" class="size-6 shrink-0" width="24" height="24" />
       Choysum
     </a>
     <div class="w-full">

@@ -5,6 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { onUnmounted } from 'vue';
+import { X } from 'lucide-vue-next';
 import { ToastClose, ToastDescription, ToastProvider, ToastRoot, ToastTitle, ToastViewport } from 'reka-ui';
 import { clearToasts, dismiss, useToastStore } from './useToast';
 
@@ -33,9 +34,11 @@ onUnmounted(() => {
         </ToastDescription>
       </div>
       <ToastClose
-        class="rounded-md p-1 opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        class="inline-flex rounded-md border-0 bg-transparent p-1 text-foreground opacity-70 appearance-none shadow-none outline-none transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label="Close"
-      />
+      >
+        <X class="size-4" />
+      </ToastClose>
     </ToastRoot>
     <ToastViewport
       data-slot="toast-viewport"

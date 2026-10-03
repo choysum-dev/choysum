@@ -39,8 +39,11 @@ new HISTORY entry describing what was re-copied vs re-patched.
 ### 2026-10-03 — Card surface + control icon inherit
 
 - **Card:** `bg-card text-card-foreground` (light `--choy-color-card` is solid white).
-- **Button / SidebarMenuButton:** idle `text-foreground` / `text-sidebar-foreground`;
-  SVG `text-current` so Lucide follows the control, not a leftover stroke.
+- **Button / Input / Checkbox:** new-york-v4 focus (`ring-3 ring-ring/50`, no `ring-offset`);
+  default Button `border-0` (no Tailwind preflight, so UA button chrome must be cleared);
+  Checkbox checked fill via `bg-primary` (not `data-[state=checked]:*`, whose `=`
+  is dropped by the engine so the browser never applies it) plus `p-0` to clear
+  UA button padding. SVG `text-current`. Heights stay `h-control*`.
 
 ### 2026-10-03 — W4 density / domain import CI gates
 

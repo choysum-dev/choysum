@@ -34,12 +34,12 @@ SPDX-License-Identifier: Apache-2.0
                   <button
                     v-if="tagClosable"
                     type="button"
-                    class="cursor-pointer border-0 bg-transparent p-0 text-sm leading-none text-inherit"
+                    class="inline-flex size-3.5 shrink-0 cursor-pointer items-center justify-center appearance-none border-0 bg-transparent p-0 text-inherit"
                     :aria-label="_t('Remove')"
                     data-testid="choy-m2m-tag-remove"
                     @click.stop="removeChip(item.id)"
                   >
-                    ×
+                    <X class="size-3" />
                   </button>
                 </span>
               </slot>
@@ -131,6 +131,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, string[]>, V = FieldPathType<T, P>">
 import { computed, ref, shallowRef, type Component, inject, Ref, watch, onBeforeUnmount, getCurrentInstance, nextTick } from 'vue';
+import { X } from 'lucide-vue-next';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { ChoyMessage } from '../../composables/useChoyMessage';
