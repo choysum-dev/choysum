@@ -152,7 +152,7 @@ SPDX-License-Identifier: Apache-2.0
         </AttachmentContent>
       </Attachment>
       <Attachment v-else size="sm" state="idle" class="border-transparent bg-transparent shadow-none">
-        <AttachmentMedia variant="icon" class="size-9 border border-dashed border-border bg-muted text-muted-foreground">
+        <AttachmentMedia variant="icon" aria-hidden="true" class="size-9 border border-dashed border-border bg-muted text-muted-foreground">
           <Picture class="size-4" />
         </AttachmentMedia>
       </Attachment>

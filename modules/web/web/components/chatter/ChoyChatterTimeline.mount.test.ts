@@ -28,6 +28,20 @@ describe('ChoyChatterTimeline mount', () => {
     empty.unmount();
   });
 
+  test('error branch shows alert text and skips empty/spinner chrome', async () => {
+    const mounted = mountApp(ChoyChatterTimeline as any, {
+      props: { error: 'Failed to load activity', entries: [], loading: false },
+    });
+    await flushPromises();
+    const alert = mounted.q('[role=alert]');
+    expect(alert).not.toBeNull();
+    expect(alert?.textContent || '').toContain('Failed to load activity');
+    expect(mounted.q('[data-testid=choy-spinner]')).toBeNull();
+    expect(mounted.q('[data-testid=choy-empty]')).toBeNull();
+    expect(mounted.q('[data-slot=message-scroller]')).toBeNull();
+    mounted.unmount();
+  });
+
   test('message and field-change items render Message/Bubble anchors and initials', async () => {
     const msg = mountApp(ChoyChatterMessageItem as any, {
       props: {

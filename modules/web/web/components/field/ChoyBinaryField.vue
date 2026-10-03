@@ -27,7 +27,7 @@ SPDX-License-Identifier: Apache-2.0
           class="choy-binary-current w-full max-w-full bg-muted"
           state="done"
         >
-          <AttachmentMedia variant="icon" class="border border-primary-muted bg-primary-subtle text-primary">
+          <AttachmentMedia variant="icon" aria-hidden="true" class="border border-primary-muted bg-primary-subtle text-primary">
             <FileText class="size-4" />
           </AttachmentMedia>
           <AttachmentContent>
@@ -86,7 +86,7 @@ SPDX-License-Identifier: Apache-2.0
         class="max-w-[140px] border-transparent bg-transparent shadow-none"
         state="done"
       >
-        <AttachmentMedia variant="icon" class="size-[30px] border border-primary-muted bg-primary-subtle text-primary">
+        <AttachmentMedia variant="icon" aria-hidden="true" class="size-[30px] border border-primary-muted bg-primary-subtle text-primary">
           <FileText class="size-4" />
         </AttachmentMedia>
         <AttachmentContent>
@@ -105,7 +105,7 @@ SPDX-License-Identifier: Apache-2.0
           class="choy-binary-display-card--interactive max-w-full cursor-pointer bg-muted transition-colors hover:border-primary-soft hover:bg-primary-subtle"
           state="done"
         >
-          <AttachmentMedia variant="icon" class="border border-primary-muted bg-primary-subtle text-primary">
+          <AttachmentMedia variant="icon" aria-hidden="true" class="border border-primary-muted bg-primary-subtle text-primary">
             <FileText class="size-4" />
           </AttachmentMedia>
           <AttachmentContent>
@@ -119,7 +119,7 @@ SPDX-License-Identifier: Apache-2.0
         class="choy-binary-display-card max-w-full bg-muted"
         state="done"
       >
-        <AttachmentMedia variant="icon" class="border border-primary-muted bg-primary-subtle text-primary">
+        <AttachmentMedia variant="icon" aria-hidden="true" class="border border-primary-muted bg-primary-subtle text-primary">
           <FileText class="size-4" />
         </AttachmentMedia>
         <AttachmentContent>

@@ -9,7 +9,7 @@ SPDX-License-Identifier: Apache-2.0
     data-anchor="choy.chatter.field-change"
     align="start"
   >
-    <MessageAvatar>
+    <MessageAvatar aria-hidden="true">
       <Avatar class="size-8">
         <AvatarFallback class="text-xs font-medium">{{ initials }}</AvatarFallback>
       </Avatar>
@@ -31,7 +31,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { ChatterFieldChangeEntry } from './chatterTypes';
-import { formatChoyUtcIso, formatFieldChangeSummary } from './chatterHelpers';
+import { formatChoyUtcIso, formatFieldChangeSummary, resolveChoyChatterInitials } from './chatterHelpers';
 import Avatar from '../vendor/ui/avatar/Avatar.vue';
 import AvatarFallback from '../vendor/ui/avatar/AvatarFallback.vue';
 import Bubble from '../vendor/ui/bubble/Bubble.vue';
@@ -71,13 +71,5 @@ const summary = computed(() =>
   }),
 );
 
-const initials = computed(() => {
-  const label = String(props.authorLabel || '').trim();
-  if (!label) return '?';
-  const parts = label.split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) {
-    return `${parts[0]![0] || ''}${parts[1]![0] || ''}`.toUpperCase();
-  }
-  return label.slice(0, 2).toUpperCase();
-});
+const initials = computed(() => resolveChoyChatterInitials(props.authorLabel));
 </script>

@@ -49,6 +49,19 @@ export function formatChoyUtcIso(ms: number | null | undefined): string {
 }
 
 /**
+ * Derives compact avatar initials from a chatter author display label.
+ */
+export function resolveChoyChatterInitials(label: string | null | undefined): string {
+  const normalized = String(label || '').trim();
+  if (!normalized) return '?';
+  const parts = normalized.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0]![0] || ''}${parts[1]![0] || ''}`.toUpperCase();
+  }
+  return normalized.slice(0, 2).toUpperCase();
+}
+
+/**
  * Resolves a display label for a chatter author / actor uid.
  */
 export function resolveChoyChatterAuthorLabel(
