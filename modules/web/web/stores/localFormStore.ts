@@ -44,9 +44,13 @@ function unsupported(method: string): () => never {
   };
 }
 
+function emptyDict<T>(): Record<string, T> {
+  return Object.create(null) as Record<string, T>;
+}
+
 function buildFieldsMetadata(fields: readonly LocalFormFieldDef[]): Record<string, WebFieldMetadata> {
   const names = new Set<string>();
-  const meta: Record<string, WebFieldMetadata> = {};
+  const meta = emptyDict<WebFieldMetadata>();
   for (const field of fields) {
     const name = String(field.name || '').trim();
     if (!name) {
@@ -85,13 +89,15 @@ export function createLocalFormStore(options: CreateLocalFormStoreOptions): Loca
   const fieldNames = Object.freeze(Object.keys(fieldsMetadata));
   const allowed = new Set(fieldNames);
 
-  const values = reactive<Record<string, unknown>>({});
+  const values = reactive(emptyDict<unknown>());
   for (const name of fieldNames) {
     const type = fieldsMetadata[name]!.type as LocalFormFieldType;
-    const incoming = options.initialValues && Object.prototype.hasOwnProperty.call(options.initialValues, name)
-      ? options.initialValues[name]
-      : defaultValueForType(type);
-    values[name] = incoming;
+    const initialValues = options.initialValues;
+    const candidate =
+      initialValues && Object.prototype.hasOwnProperty.call(initialValues, name)
+        ? initialValues[name]
+        : undefined;
+    values[name] = candidate === undefined ? defaultValueForType(type) : candidate;
   }
 
   const storeId = String(options.storeId || '').trim() || `local-form:${++localFormStoreSeq}`;
@@ -105,9 +111,13 @@ export function createLocalFormStore(options: CreateLocalFormStoreOptions): Loca
 
   const ensureFieldsGet = async (fields?: string[]): Promise<Record<string, WebFieldMetadata>> => {
     if (!fields?.length) {
-      return { ...fieldsMetadata };
+      const all = emptyDict<WebFieldMetadata>();
+      for (const name of fieldNames) {
+        all[name] = fieldsMetadata[name]!;
+      }
+      return all;
     }
-    const slice: Record<string, WebFieldMetadata> = {};
+    const slice = emptyDict<WebFieldMetadata>();
     for (const raw of fields) {
       const fieldName = String(raw || '').trim();
       const meta = fieldsMetadata[fieldName];
@@ -154,7 +164,7 @@ export function createLocalFormStore(options: CreateLocalFormStoreOptions): Loca
       values[fieldName] = value;
     },
     getValues(): Record<string, unknown> {
-      const out: Record<string, unknown> = {};
+      const out = emptyDict<unknown>();
       for (const name of fieldNames) {
         out[name] = values[name];
       }

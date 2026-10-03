@@ -38,6 +38,29 @@ test('createLocalFormStore reads and writes declared fields only', () => {
   expect(store.getValues().Extra).toBeUndefined();
 });
 
+test('createLocalFormStore treats undefined initialValues as type defaults', () => {
+  const store = createLocalFormStore({
+    fields: loginFields(),
+    initialValues: { Username: undefined, RememberMe: undefined },
+  });
+  expect(store.getField('Username')).toBe('');
+  expect(store.getField('RememberMe')).toBe(false);
+});
+
+test('createLocalFormStore does not treat inherited Object keys as fields', () => {
+  const initialValues = Object.create(null) as Record<string, unknown>;
+  initialValues['__proto__'] = 'own';
+  const store = createLocalFormStore({
+    fields: [{ name: '__proto__', label: 'Proto', type: 'varchar' }],
+    initialValues,
+  });
+  expect(store.getField('__proto__')).toBe('own');
+  expect(store.getFieldMeta('__proto__')?.string).toBe('Proto');
+  expect(store.getFieldMeta('toString')).toBeUndefined();
+  expect(store.getFieldMeta('constructor')).toBeUndefined();
+  expect(store.getField('toString')).toBeUndefined();
+});
+
 test('createLocalFormStore metadata is FieldsGet-shaped without RPC methods succeeding', async () => {
   const store = createLocalFormStore({ fields: loginFields() });
   const usernameMeta = store.getFieldMeta('Username');
@@ -73,6 +96,9 @@ test('createLocalFormStore rejects duplicate or empty field names', () => {
   expect(() => createLocalFormStore({ fields: [{ name: '  ', label: 'X', type: 'varchar' }] })).toThrow(
     /non-empty/
   );
+  expect(() =>
+    createLocalFormStore({ fields: [{ name: 'Age', label: 'Age', type: 'number' as any }] })
+  ).toThrow(/unsupported field type/);
 });
 
 describe('createLocalFormStore + ChoyFormView', () => {
