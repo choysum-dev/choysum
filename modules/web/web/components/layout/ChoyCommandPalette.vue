@@ -8,7 +8,7 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { Search } from 'lucide-vue-next'
 import { createTranslate } from '../../i18n'
 import ChoyButton from './ChoyButton.vue'
-import { ChoyDialog as Dialog, ChoyDialogContent as DialogContent, ChoyDialogDescription as DialogDescription, ChoyDialogHeader as DialogHeader, ChoyDialogTitle as DialogTitle } from './choyDialog'
+import { ChoyDialog, ChoyDialogContent, ChoyDialogDescription, ChoyDialogHeader, ChoyDialogTitle } from './choyDialog'
 import { shouldToggleCommandPalette } from './choyCommandPaletteHotkey'
 
 /**
@@ -46,12 +46,12 @@ defineExpose({ onKeydown })
   >
     <Search class="size-4" aria-hidden="true" />
   </ChoyButton>
-  <Dialog v-model:open="open">
-    <DialogContent class="overflow-hidden p-0 sm:max-w-lg" data-testid="choy-shell-command-dialog">
-      <DialogHeader class="sr-only">
-        <DialogTitle>{{ _t('Command palette') }}</DialogTitle>
-        <DialogDescription>{{ _t('Search…') }}</DialogDescription>
-      </DialogHeader>
+  <ChoyDialog v-model:open="open">
+    <ChoyDialogContent class="overflow-hidden p-0 sm:max-w-lg" data-testid="choy-shell-command-dialog">
+      <ChoyDialogHeader class="sr-only">
+        <ChoyDialogTitle>{{ _t('Command palette') }}</ChoyDialogTitle>
+        <ChoyDialogDescription>{{ _t('Search…') }}</ChoyDialogDescription>
+      </ChoyDialogHeader>
       <div class="flex flex-col">
         <input
           type="search"
@@ -64,6 +64,6 @@ defineExpose({ onKeydown })
           {{ _t('No results') }}
         </p>
       </div>
-    </DialogContent>
-  </Dialog>
+    </ChoyDialogContent>
+  </ChoyDialog>
 </template>

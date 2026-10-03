@@ -4,9 +4,9 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <Dialog v-model:open="visible">
-    <DialogContent class="choy-field-company-values-dialog max-w-xl" @open-auto-focus.prevent>
-      <DialogTitle>{{ dialogTitle }}</DialogTitle>
+  <ChoyDialog v-model:open="visible">
+    <ChoyDialogContent class="choy-field-company-values-dialog max-w-xl" @open-auto-focus.prevent>
+      <ChoyDialogTitle>{{ dialogTitle }}</ChoyDialogTitle>
       <div class="choy-field-company-values-dialog__body min-h-[120px]" :aria-busy="loading || undefined">
         <form class="choy-field-company-values-dialog__form flex flex-col gap-3.5" @submit.prevent>
           <div v-for="row in rows" :key="row.companyId" class="choy-field-company-values-dialog__row flex items-start gap-3">
@@ -28,13 +28,13 @@ SPDX-License-Identifier: Apache-2.0
           {{ _t('Save company values') }}
         </ChoyButton>
       </div>
-    </DialogContent>
-  </Dialog>
+    </ChoyDialogContent>
+  </ChoyDialog>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { ChoyDialog as Dialog, ChoyDialogContent as DialogContent, ChoyDialogTitle as DialogTitle } from '@/web/web/components/layout/choyDialog';
+import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { ChoyMessage } from '../../composables/useChoyMessage';
 import { useAuthStore } from '@/auth/web/stores/auth';

@@ -10,7 +10,7 @@ import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/
 import Search from './Search.vue';
 import SearchFilter from './SearchFilter.vue';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
-import { ChoyDialog as Dialog, ChoyDialogContent as DialogContent, ChoyDialogTitle as DialogTitle } from '@/web/web/components/layout/choyDialog';
+import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import Popover from '@/web/web/components/vendor/ui/popover/Popover.vue';
 import PopoverContent from '@/web/web/components/vendor/ui/popover/PopoverContent.vue';
 import PopoverTrigger from '@/web/web/components/vendor/ui/popover/PopoverTrigger.vue';
@@ -45,9 +45,9 @@ let stopConfirmWatch: (() => void) | undefined;
 
 const stubbed = [
   ChoyButton,
-  Dialog,
-  DialogContent,
-  DialogTitle,
+  ChoyDialog,
+  ChoyDialogContent,
+  ChoyDialogTitle,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -98,7 +98,7 @@ function installEpStubs() {
         );
     },
   });
-  stubSfc(Dialog as any, {
+  stubSfc(ChoyDialog as any, {
     name: 'Dialog',
     props: { open: { type: Boolean, default: false } },
     emits: ['update:open'],
@@ -109,13 +109,13 @@ function installEpStubs() {
           : null;
     },
   });
-  stubSfc(DialogContent as any, {
+  stubSfc(ChoyDialogContent as any, {
     name: 'DialogContent',
     setup(_: any, { slots }: any) {
       return () => h('div', { class: 'dialog-content' }, slots.default?.());
     },
   });
-  stubSfc(DialogTitle as any, {
+  stubSfc(ChoyDialogTitle as any, {
     name: 'DialogTitle',
     setup(_: any, { slots }: any) {
       return () => {

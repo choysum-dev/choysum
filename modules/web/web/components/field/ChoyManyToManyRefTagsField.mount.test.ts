@@ -15,7 +15,7 @@ import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/
 import { replaceStoreFactory } from '@/web/web/stores/registry';
 import FieldBase from './FieldBase.vue';
 import ChoyManyToManyRefTagsField from './ChoyManyToManyRefTagsField.vue';
-import { ChoyDialog as Dialog, ChoyDialogContent as DialogContent, ChoyDialogTitle as DialogTitle } from '@/web/web/components/layout/choyDialog';
+import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
 import RelationCombobox from '@/web/web/components/internal/RelationCombobox.vue';
@@ -151,7 +151,7 @@ function installStubs() {
         h('div', { class: 'field-base-stub' }, [slots.edit?.({}), slots.display?.({})]);
     },
   });
-  stubSfc(Dialog as any, {
+  stubSfc(ChoyDialog as any, {
     name: 'Dialog',
     props: { open: { type: Boolean, default: false } },
     setup(props: any, { slots }: any) {
@@ -161,13 +161,13 @@ function installStubs() {
         ]);
     },
   });
-  stubSfc(DialogContent as any, {
+  stubSfc(ChoyDialogContent as any, {
     name: 'DialogContent',
     setup(_: any, { slots, attrs }: any) {
       return () => h('div', { class: ['dialog-content', attrs.class] }, slots.default?.());
     },
   });
-  stubSfc(DialogTitle as any, {
+  stubSfc(ChoyDialogTitle as any, {
     name: 'DialogTitle',
     setup(_: any, { slots }: any) {
       return () => h('div', { class: 'dialog-title' }, slots.default?.());
@@ -234,9 +234,9 @@ describe('ChoyManyToManyRefTagsField patch coverage', () => {
     restoreFactory?.();
     restoreFactory = undefined;
     restoreSfc(FieldBase as any);
-    restoreSfc(Dialog as any);
-    restoreSfc(DialogContent as any);
-    restoreSfc(DialogTitle as any);
+    restoreSfc(ChoyDialog as any);
+    restoreSfc(ChoyDialogContent as any);
+    restoreSfc(ChoyDialogTitle as any);
     restoreSfc(ChoyButton as any);
     restoreSfc(ChoyViewScope as any);
     restoreSfc(RelationCombobox as any);

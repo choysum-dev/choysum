@@ -4,9 +4,9 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <Dialog v-model:open="visible">
-    <DialogContent class="import-panel-dialog" @open-auto-focus.prevent>
-      <DialogTitle>{{ title }}</DialogTitle>
+  <ChoyDialog v-model:open="visible">
+    <ChoyDialogContent class="import-panel-dialog" @open-auto-focus.prevent>
+      <ChoyDialogTitle>{{ title }}</ChoyDialogTitle>
       <ol class="import-panel-steps">
         <li :class="{ active: step === 0 }">{{ uploadStepTitle }}</li>
         <li :class="{ active: step === 1 }">{{ previewStepTitle }}</li>
@@ -77,13 +77,13 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyButton>
         <ChoyButton v-else-if="importDone" size="sm" variant="default" @click="finish">{{ doneLabel }}</ChoyButton>
       </div>
-    </DialogContent>
-  </Dialog>
+    </ChoyDialogContent>
+  </ChoyDialog>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { ChoyDialog as Dialog, ChoyDialogContent as DialogContent, ChoyDialogTitle as DialogTitle } from '@/web/web/components/layout/choyDialog';
+import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 type UploadFile = { raw?: File | null; name?: string };
 import {
