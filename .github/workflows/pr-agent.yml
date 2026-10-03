@@ -30,16 +30,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOOGLE_AI_STUDIO.GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          # Zhipu GLM-4.7-Flash last-resort fallback (free tokens, 1 concurrent).
+          # Zhipu GLM-4.7-Flash fallback (free tokens, 1 concurrent).
           # Create a key at https://open.bigmodel.cn ; store as repo secret ZHIPUAI_API_KEY.
           # PR-Agent v0.46 LiteLLM does not register the `zhipuai/` provider, so call
           # the OpenAI-compatible BigModel endpoint as openai/glm-4.7-flash.
           OPENAI_API_KEY: ${{ secrets.ZHIPUAI_API_KEY }}
           OPENAI_API_BASE: https://open.bigmodel.cn/api/paas/v4
           OPENAI_BASE_URL: https://open.bigmodel.cn/api/paas/v4
-          # Free Gemini first; GLM-4.7-Flash if Gemini is unavailable.
+          # DeepSeek last-resort when Gemini and GLM are unavailable.
+          # Create at https://platform.deepseek.com/api_keys ; store as repo secret DEEPSEEK_API_KEY
+          DEEPSEEK.KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          # Gemini → GLM-4.7-Flash → DeepSeek V4 Flash
           config.model: "gemini/gemini-3.8-flash"
-          config.fallback_models: '["gemini/gemini-3.7-flash", "openai/glm-4.7-flash"]'
+          config.fallback_models: '["gemini/gemini-3.7-flash", "openai/glm-4.7-flash", "deepseek/deepseek-v4-flash"]'
           # Cap the *input* budget used for /improve chunking. Setting this near 1M
           # made PR-Agent put multi-thousand-line PRs in a single chunk; models then
           # hit finish_reason=length (empty suggestions) or Gemini 503 under load.
