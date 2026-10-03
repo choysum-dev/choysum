@@ -102,6 +102,23 @@ class ForbidChoyUiKitGatesTest(unittest.TestCase):
             rules = {v[3] for v in violations}
             self.assertEqual(rules, {"domain-vendor-ui", "l2-h-control", "kit-host-dialog"})
 
+    def test_iter_files_ignores_ancestor_skip_dir_names(self):
+        mod = load_mod()
+        with tempfile.TemporaryDirectory() as tmp:
+            modules = pathlib.Path(tmp) / "dist" / "choysum" / "modules"
+            partner = modules / "partner" / "web"
+            partner.mkdir(parents=True)
+            leak = partner / "leak.ts"
+            leak.write_text(
+                "import Button from '@/web/web/components/vendor/ui/button/Button.vue';\n",
+                encoding="utf-8",
+            )
+            files = mod.iter_files(modules / "partner" / "web")
+            self.assertEqual([p.resolve() for p in files], [leak.resolve()])
+            violations = mod.scan(modules)
+            self.assertEqual(len(violations), 1)
+            self.assertEqual(violations[0][3], "domain-vendor-ui")
+
     def test_repo_is_clean(self):
         mod = load_mod()
         modules = REPO_ROOT / "modules"

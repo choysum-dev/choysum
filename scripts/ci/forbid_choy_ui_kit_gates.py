@@ -61,7 +61,7 @@ def iter_files(root: Path) -> list[Path]:
     for path in root.rglob("*"):
         if not path.is_file() or path.suffix not in SCAN_SUFFIXES:
             continue
-        if is_skip_dir(path):
+        if is_skip_dir(path.relative_to(root)):
             continue
         out.append(path)
     return out
