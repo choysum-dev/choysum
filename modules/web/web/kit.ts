@@ -58,6 +58,13 @@ export {
   ChoySheetClose,
 } from './components/layout/choySheet';
 
+export { createLocalFormStore } from './stores/localFormStore';
+export type {
+  CreateLocalFormStoreOptions,
+  LocalFormFieldDef,
+  LocalFormFieldType,
+  LocalFormStore,
+} from './stores/localFormStore';
 export { default as ChoyFormView } from './components/view/ChoyFormView.vue';
 export { default as ChoyListView } from './components/view/ChoyListView.vue';
 export { default as ChoyKanbanView } from './components/view/ChoyKanbanView.vue';
