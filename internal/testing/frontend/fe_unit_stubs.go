@@ -96,8 +96,13 @@ func feUnitPathStubPath(p, joined, importer string, stubs feUnitStubPaths) (stri
 			return stubs.OPage, true
 		}
 		if strings.HasSuffix(p, ".vue") || strings.Contains(joined, ".vue") {
+			if strings.HasSuffix(p, "ChoyFormView.vue") || strings.HasSuffix(joined, "ChoyFormView.vue") {
+				return "", false
+			}
 			return stubs.ChildView, true
 		}
+	case strings.HasSuffix(p, "ChoyFormView.vue") || strings.HasSuffix(joined, "ChoyFormView.vue"):
+		return "", false
 	case strings.HasSuffix(p, "FormView.vue") || strings.HasSuffix(joined, "FormView.vue") ||
 		strings.HasSuffix(p, "ListView.vue") || strings.HasSuffix(joined, "ListView.vue") ||
 		strings.HasSuffix(p, "KanbanView.vue") || strings.HasSuffix(joined, "KanbanView.vue"):
@@ -126,7 +131,9 @@ func feUnitPathStubPath(p, joined, importer string, stubs feUnitStubPaths) (stri
 			return stubs.PageComposable, true
 		}
 	case strings.Contains(joined, "/auth/web/stores/auth") || (strings.Contains(p, "stores/auth") && !strings.Contains(importer, "/stores/auth/")):
-		fromProduct := stubProductChildren || strings.Contains(importer, "Login.vue")
+		fromProduct := stubProductChildren ||
+			strings.Contains(importer, "Login.vue") ||
+			strings.Contains(importer, "Register.vue")
 		barrel := strings.HasSuffix(p, "/stores/auth") ||
 			p == "../stores/auth" ||
 			p == "./stores/auth" ||

@@ -83,6 +83,8 @@ func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 		{"./Page.vue", "/repo/modules/web/web/components/layout/Page.vue", "/repo/modules/web/web/components/layout/ChoyPageIoMenu.test.ts", "", false},
 		{"./OPage.vue", "/repo/modules/web/web/components/layout/OPage.vue", "/repo/modules/web/web/components/layout/ChoyPage.storeContext.mount.test.ts", "", false},
 		{"./PartnerFormView.vue", "/x/PartnerFormView.vue", page, "child", true},
+		{"@/web/web/components/view/ChoyFormView.vue", "/modules/web/web/components/view/ChoyFormView.vue", page, "", false},
+		{"@/web/web/components/view/ChoyFormView.vue", "/modules/web/web/components/view/ChoyFormView.vue", "", "", false},
 		{"./PartnerListView.vue", "/x/PartnerListView.vue", page, "child", true},
 		{"./ModuleKanbanView.vue", "/x/ModuleKanbanView.vue", view, "child", true},
 		{"./PartnerFormView.vue", "/x/PartnerFormView.vue", "/other.ts", "", false},
@@ -101,6 +103,7 @@ func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 		{"@/auth/web/stores/auth", "/modules/auth/web/stores/auth", page, "auth", true},
 		{"../stores/auth", "/modules/auth/web/stores/auth", page, "auth", true},
 		{"./stores/auth", "/modules/auth/web/stores/auth", "Login.vue", "auth", true},
+		{"./stores/auth", "/modules/auth/web/stores/auth", "Register.vue", "auth", true},
 		{"@/auth/web/stores/auth/index.ts", "/modules/auth/web/stores/auth/index.ts", page, "auth", true},
 		{"@/web/web/i18n", "/web/web/i18n/index", page, "i18n", true},
 		{"@/web/web/i18n", "/web/web/i18n/index", "/other.ts", "", false},
@@ -255,6 +258,10 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 	childSkip, err := childViewCB(api.OnResolveArgs{Path: "./ChoyFormView.vue", Importer: "/modules/web/web/components/view/ChoyFormView.route_reload.test.ts"})
 	if err != nil || childSkip.Path != "" {
 		t.Fatalf("child view skip for web unit test: %#v err=%v", childSkip, err)
+	}
+	choyFormKeep, err := childViewCB(api.OnResolveArgs{Path: "./ChoyFormView.vue", Importer: "/modules/web/web/kit.ts"})
+	if err != nil || choyFormKeep.Path != "" {
+		t.Fatalf("child view skip for kit ChoyFormView: %#v err=%v", choyFormKeep, err)
 	}
 	var pathHit, pageFromPage, pageFromTest bool
 	for _, pathCB := range pathCBs {
