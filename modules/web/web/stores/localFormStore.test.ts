@@ -45,6 +45,13 @@ test('createLocalFormStore treats undefined initialValues as type defaults', () 
   });
   expect(store.getField('Username')).toBe('');
   expect(store.getField('RememberMe')).toBe(false);
+
+  const fromNull = createLocalFormStore({
+    fields: loginFields(),
+    initialValues: { Username: null, RememberMe: null },
+  });
+  expect(fromNull.getField('Username')).toBe('');
+  expect(fromNull.getField('RememberMe')).toBe(false);
 });
 
 test('createLocalFormStore does not treat inherited Object keys as fields', () => {
@@ -174,6 +181,7 @@ test('createLocalFormStore rejects duplicate or empty field names', () => {
   expect(() =>
     createLocalFormStore({ fields: [{ name: 'Age', label: 'Age', type: 'number' as any }] })
   ).toThrow(/unsupported field type/);
+  expect(() => createLocalFormStore({ fields: [null as any] })).toThrow(/must be an object/);
 });
 
 describe('createLocalFormStore + ChoyFormView', () => {

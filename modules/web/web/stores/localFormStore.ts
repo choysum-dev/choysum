@@ -52,6 +52,9 @@ function buildFieldsMetadata(fields: readonly LocalFormFieldDef[]): Record<strin
   const names = new Set<string>();
   const meta = emptyDict<WebFieldMetadata>();
   for (const field of fields) {
+    if (!field || typeof field !== 'object') {
+      throw new Error('createLocalFormStore field definition must be an object');
+    }
     const name = String(field.name || '').trim();
     if (!name) {
       throw new Error('createLocalFormStore field name must be non-empty');
@@ -97,7 +100,7 @@ export function createLocalFormStore(options: CreateLocalFormStoreOptions): Loca
       initialValues && Object.prototype.hasOwnProperty.call(initialValues, name)
         ? initialValues[name]
         : undefined;
-    values[name] = candidate === undefined ? defaultValueForType(type) : candidate;
+    values[name] = candidate ?? defaultValueForType(type);
   }
 
   const storeId = String(options.storeId || '').trim() || `local-form:${++localFormStoreSeq}`;
