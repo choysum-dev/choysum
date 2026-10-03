@@ -44,11 +44,13 @@ Skip pure formatting nits that gofmt or existing linters already enforce.
 # false = also surface maintainability, missing guards, and test gaps (not only obvious bugs).
 focus_only_on_problems = false
 auto_extended_mode = true
-parallel_calls = true
+# GLM-4.7-Flash free tier is 1 concurrent request; sequential chunk calls only.
+parallel_calls = false
 # Fewer suggestions per chunk → shorter YAML completions; large PRs already call
 # multiple chunks after max_model_tokens is capped in the workflow.
 num_code_suggestions_per_chunk = 4
-max_number_of_calls = 5
+# Sequential chunks; keep this low so a busy repo does not stack GLM 429s.
+max_number_of_calls = 3
 suggestions_score_threshold = 0
 # false = each /improve (manual or auto-on-push) posts a new comment instead of editing the previous one.
 persistent_comment = false
