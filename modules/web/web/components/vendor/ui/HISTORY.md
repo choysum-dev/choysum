@@ -36,6 +36,28 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
+### 2026-10-03 — W0 full L2 vendoring + semantic token pairs
+
+- **Epic:** shadcn-vue alignment W0 (`choy-shadcn-vue-alignment.md`).
+- **Upstream:** `unovue/shadcn-vue@67c9a392` `apps/v4/registry/new-york-v4/ui` via
+  `scripts/web/vendor_shadcn_ui_w0.py` (missing families only; existing 19 kept).
+- **Tokens / theme (outside this folder, required together):**
+  - `tokens.css`: add `primary-foreground`, `card`/`popover`/`secondary`/`accent`/
+    `input`, full `sidebar-*`, `--choy-radius` base; short shadcn aliases
+    (`--popover`, `--primary`, …) for upstream `var(--*)` usage.
+  - `theme.css`: map new `--color-*` utilities (incl. `sidebar-*`, `chart-*`).
+- **Adaptations on new L2:**
+  - `@/lib/utils` → relative `lib/utils`; `@lucide/vue` → `lucide-vue-next`
+    (strip `Icon` suffix); `@/registry/.../ui/X` → relative sibling imports.
+  - `class-variance-authority` → local `lib/cva.ts`.
+  - Default heights `h-9`/`h-10`/`h-8`/`size-9` → `h-control*` / `size-control`;
+    `shadow-xs` → `shadow-sm`; `pl`/`pr` → `ps`/`pe`.
+  - Kept `button/index.ts` exports `buttonVariants` for AlertDialog/Calendar/
+    Pagination composers; Button.vue / Badge.vue recipes use `*-foreground` pairs.
+- **Peers added on `@choysum-dev/web` for niche L2:** `vue-sonner`,
+  `embla-carousel-vue`, `vue-input-otp`, `vee-validate`.
+- **Do not regress:** density ruler + domain ban on `vendor/ui` imports.
+
 ### 2026-09-30 — control-height ruler + logical chrome
 
 - **Commit:** `a3addc60` (`feat(web): bind L2 controls to density control-height tokens`).

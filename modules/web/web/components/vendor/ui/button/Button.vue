@@ -8,7 +8,7 @@ import { computed, useAttrs } from 'vue';
 import { cn, type ClassValue } from '../../../../lib/utils';
 
 type ButtonVariant = 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'link';
-type ButtonSize = 'default' | 'sm' | 'lg' | 'icon';
+type ButtonSize = 'default' | 'sm' | 'lg' | 'icon' | 'xs' | 'icon-xs' | 'icon-sm' | 'icon-lg';
 
 defineOptions({ inheritAttrs: false });
 
@@ -68,11 +68,11 @@ const nonButtonAttrs = computed(() => {
 });
 
 const variantClass: Record<ButtonVariant, string> = {
-  default: 'bg-primary text-background hover:opacity-90',
-  secondary: 'bg-muted text-foreground hover:opacity-90',
-  outline: 'border border-border bg-background hover:bg-muted',
-  ghost: 'hover:bg-muted',
-  destructive: 'bg-danger text-background hover:opacity-90',
+  default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+  secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+  outline: 'border border-border bg-background hover:bg-accent hover:text-accent-foreground',
+  ghost: 'hover:bg-accent hover:text-accent-foreground',
+  destructive: 'bg-destructive text-primary-foreground hover:bg-destructive/90',
   link: 'text-primary underline-offset-4 hover:underline',
 };
 
@@ -81,6 +81,10 @@ const sizeClass: Record<ButtonSize, string> = {
   sm: 'h-control-sm rounded-md px-3 text-xs',
   lg: 'h-control-lg rounded-md px-6',
   icon: 'size-control',
+  xs: 'h-control-sm gap-1 rounded-md px-2 text-xs',
+  'icon-xs': 'size-control rounded-md',
+  'icon-sm': 'size-control',
+  'icon-lg': 'size-control',
 };
 
 const classes = computed(() =>
