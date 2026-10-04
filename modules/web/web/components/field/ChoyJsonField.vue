@@ -311,19 +311,41 @@ const OJsonCell = defineComponent({
       buffer.onBlur();
     }
 
-    return () =>
-      h('div', {}, [
+    function callAttrListener(listener: unknown, event: Event) {
+      if (typeof listener === 'function') {
+        listener(event);
+        return;
+      }
+      if (Array.isArray(listener)) {
+        for (const item of listener) {
+          if (typeof item === 'function') item(event);
+        }
+      }
+    }
+
+    return () => {
+      const rest = { ...(attrs as Record<string, unknown>) };
+      delete rest.onInput;
+      delete rest.onBlur;
+      return h('div', {}, [
         h('textarea', {
-          ...attrs,
+          ...rest,
           class: 'choy-json-input w-full font-mono',
           placeholder: p.placeholder,
           rows: 6,
           value: editingText.value ?? '',
-          onInput: (e: Event) => onInput((e.target as HTMLTextAreaElement).value),
-          onBlur,
+          onInput: (e: Event) => {
+            onInput((e.target as HTMLTextAreaElement).value);
+            callAttrListener(attrs.onInput, e);
+          },
+          onBlur: (e: Event) => {
+            onBlur();
+            callAttrListener(attrs.onBlur, e);
+          },
         }),
         parseError.value ? h('div', { class: 'choy-json-err mt-1 text-xs text-danger' }, parseError.value) : null,
       ]);
+    };
   },
 });
 </script>
