@@ -41,42 +41,46 @@ SPDX-License-Identifier: Apache-2.0
             </ChoyField>
 
             <div class="login-username">
-            <ChoyVarcharField
-              :store="formStore"
-              prop="Username"
-              :placeholder="_t('Enter username')"
-              autocomplete="username"
-              name="username"
-              id="login-username"
-              buffer-strategy="live"
-              :nullable="false"
-              :show-word-limit="false"
-              show-inline-error
-              :rules="usernameRules"
-            />
+              <ChoyVarcharField
+                :store="formStore"
+                prop="Username"
+                :label="_t('Username')"
+                :placeholder="_t('Enter username')"
+                autocomplete="username"
+                name="username"
+                id="login-username"
+                buffer-strategy="live"
+                :nullable="false"
+                :show-word-limit="false"
+                show-inline-error
+                :rules="usernameRules"
+              />
             </div>
             <div class="login-password">
-            <ChoyVarcharField
-              :store="formStore"
-              prop="Password"
-              type="password"
-              :placeholder="_t('Enter password')"
-              autocomplete="current-password"
-              name="password"
-              id="login-password"
-              buffer-strategy="live"
-              :nullable="false"
-              :show-word-limit="false"
-              show-inline-error
-              :rules="passwordRules"
-            />
+              <ChoyVarcharField
+                :store="formStore"
+                prop="Password"
+                :label="_t('Password')"
+                type="password"
+                :placeholder="_t('Enter password')"
+                autocomplete="current-password"
+                name="password"
+                id="login-password"
+                buffer-strategy="live"
+                :nullable="false"
+                :show-word-limit="false"
+                show-inline-error
+                :rules="passwordRules"
+              />
             </div>
             <ChoyBooleanField
               class="login-options"
               :store="formStore"
               prop="RememberMe"
               widget="checkbox"
-              :label="_t('Remember me')"
+              :label="''"
+              :checkbox-label="_t('Remember me')"
+              render-mode="inline"
               buffer-strategy="live"
             />
 
@@ -136,16 +140,17 @@ const loginInitialValues = {
 
 const formStore = createLocalFormStore({
   fields: [
-    { name: 'Username', label: _t('Username'), type: 'varchar' },
-    { name: 'Password', label: _t('Password'), type: 'varchar' },
-    { name: 'RememberMe', label: _t('Remember me'), type: 'boolean' },
+    { name: 'Username', label: 'Username', type: 'varchar' },
+    { name: 'Password', label: 'Password', type: 'varchar' },
+    { name: 'RememberMe', label: 'Remember me', type: 'boolean' },
   ],
   initialValues: loginInitialValues,
   storeId: 'auth.login',
 });
 
-const usernameRules = loginUsernameRules(_t);
-const passwordRules = loginPasswordRules(_t);
+// Rebuild rules when locale changes so inline errors stay translated.
+const usernameRules = computed(() => loginUsernameRules(_t));
+const passwordRules = computed(() => loginPasswordRules(_t));
 
 const error = ref('');
 const showRegisterLink = computed(() => import.meta.env.CHOYSUM_ENABLE_REGISTRATION !== false);

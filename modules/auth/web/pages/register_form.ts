@@ -2,7 +2,24 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ChoysumError } from '../error';
+import { createTranslate } from '@/web/web/i18n';
 import { formatLoginError } from './login_form';
+
+// Literal `_t` anchors keep RuleItem msgids in the auth catalog.
+// `t('...')` parameters inside helpers are not scanned by i18n extract.
+const { _t: _tRegisterRule } = createTranslate('auth', { scope: 'web/pages/Register' });
+void [
+  _tRegisterRule('Enter username'),
+  _tRegisterRule('Username must be at least 3 characters'),
+  _tRegisterRule('Username can only contain letters, numbers, underscores, hyphens, and dots'),
+  _tRegisterRule('Enter email address'),
+  _tRegisterRule('Enter a valid email address'),
+  _tRegisterRule('Enter password'),
+  _tRegisterRule('Password must be at least 6 characters'),
+  _tRegisterRule('Re-enter password'),
+  _tRegisterRule('Passwords do not match'),
+  _tRegisterRule('You must agree to the Terms of Service and Privacy Policy'),
+];
 
 export type RegisterClientRule = {
   required?: boolean;

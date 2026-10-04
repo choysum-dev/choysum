@@ -831,7 +831,7 @@ msgctxt "web/components/layout/ChoyWebShell"
 msgid "Log In"
 msgstr "登录"
 
-#: web/components/layout/ChoyWebShell.vue:23
+#: web/components/layout/ChoyWebShell.vue:29
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "Log Out"
 msgstr "退出登录"
@@ -841,57 +841,57 @@ msgctxt "web/components/layout/ChoyWebShell"
 msgid "Log in"
 msgstr "登录"
 
-#: web/components/layout/ChoyWebShell.vue:17
+#: web/components/layout/ChoyWebShell.vue:23
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "Profile"
 msgstr "个人资料"
 
-#: web/components/layout/ChoyWebShell.vue:20
+#: web/components/layout/ChoyWebShell.vue:26
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "Settings"
 msgstr "设置"
 
-#: web/components/layout/ChoyWebShell.vue:12
+#: web/components/layout/ChoyWebShell.vue:13
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "User menu"
 msgstr "用户菜单"
 
-#: web/components/layout/SwitchCompany.vue:32
+#: web/components/layout/SwitchCompany.vue:34
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Apply"
 msgstr "应用"
 
-#: web/components/layout/SwitchCompany.vue:17
+#: web/components/layout/SwitchCompany.vue:19
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Available Companies"
 msgstr "可用公司"
 
-#: web/components/layout/SwitchCompany.vue:301
+#: web/components/layout/SwitchCompany.vue:310
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Available companies must include the current company"
 msgstr "可选公司必须包含当前公司"
 
-#: web/components/layout/SwitchCompany.vue:268 web/components/layout/SwitchCompany.vue:271
+#: web/components/layout/SwitchCompany.vue:277 web/components/layout/SwitchCompany.vue:280
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Company"
 msgstr "公司"
 
-#: web/components/layout/SwitchCompany.vue:10
+#: web/components/layout/SwitchCompany.vue:11
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Current Company"
 msgstr "当前公司"
 
-#: web/components/layout/SwitchCompany.vue:306
+#: web/components/layout/SwitchCompany.vue:315
 msgctxt "web/components/layout/SwitchCompany"
 msgid "No changes to apply"
 msgstr "没有可应用的更改"
 
-#: web/components/layout/SwitchCompany.vue:304
+#: web/components/layout/SwitchCompany.vue:313
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Only one company is available; nothing to apply"
 msgstr "仅有一家可选公司，无需应用"
 
-#: web/components/layout/SwitchCompany.vue:299
+#: web/components/layout/SwitchCompany.vue:308
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Select a current company"
 msgstr "请选择当前公司"
@@ -901,12 +901,12 @@ msgctxt "web/components/layout/SwitchCompany"
 msgid "Switch company"
 msgstr "切换公司"
 
-#: web/components/preferences/PreferencesDialog.vue:37
+#: web/components/preferences/PreferencesDialog.vue:16 web/components/preferences/PreferencesDialog.vue:38
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/preferences/PreferencesDialog.vue:179 web/components/preferences/PreferencesDialog.vue:188
+#: web/components/preferences/PreferencesDialog.vue:175 web/components/preferences/PreferencesDialog.vue:188
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Cannot update preferences: missing user id"
 msgstr "无法更新偏好设置：缺少用户 ID"
@@ -916,47 +916,32 @@ msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Edit Profile"
 msgstr "编辑个人资料"
 
-#: web/components/preferences/PreferencesDialog.vue:223
+#: web/components/preferences/PreferencesDialog.vue:214
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Failed to update preferences"
 msgstr "更新偏好设置失败"
 
-#: web/components/preferences/PreferencesDialog.vue:201
-msgctxt "web/components/preferences/PreferencesDialog"
-msgid "Invalid or inactive language"
-msgstr "无效或未启用的语言"
-
-#: web/components/preferences/PreferencesDialog.vue:16
-msgctxt "web/components/preferences/PreferencesDialog"
-msgid "Language"
-msgstr "语言"
-
-#: web/components/preferences/PreferencesDialog.vue:220
+#: web/components/preferences/PreferencesDialog.vue:208
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Preferences updated"
 msgstr "偏好设置已更新"
 
-#: web/components/preferences/PreferencesDialog.vue:28
+#: web/components/preferences/PreferencesDialog.vue:32
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Select timezone"
 msgstr "选择时区"
 
-#: web/components/preferences/PreferencesDialog.vue:32
+#: web/components/preferences/PreferencesDialog.vue:34
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Suggested from your browser"
 msgstr "根据浏览器建议"
 
-#: web/components/preferences/PreferencesDialog.vue:26
-msgctxt "web/components/preferences/PreferencesDialog"
-msgid "Timezone"
-msgstr "时区"
-
-#: web/components/preferences/PreferencesDialog.vue:38
+#: web/components/preferences/PreferencesDialog.vue:17 web/components/preferences/PreferencesDialog.vue:39
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Update preferences"
 msgstr "更新偏好设置"
 
-#: web/components/preferences/PreferencesDialog.vue:21
+#: web/components/preferences/PreferencesDialog.vue:28
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Using current session language"
 msgstr "当前使用会话语言"
@@ -1011,17 +996,17 @@ msgctxt "web/menu/menus"
 msgid "User List"
 msgstr "用户列表"
 
-#: web/pages/Login.vue:8
+#: web/pages/Login.vue:10
 msgctxt "web/pages/Login"
 msgid "Close"
 msgstr "关闭"
 
-#: web/pages/Login.vue:37
+#: web/pages/Login.vue:29
 msgctxt "web/pages/Login"
 msgid "Don't have an account?"
 msgstr "还没有账号？"
 
-#: web/pages/Login.vue:23
+#: web/pages/Login.vue:20
 msgctxt "web/pages/Login"
 msgid "Enter password"
 msgstr "请输入密码"
@@ -1031,27 +1016,32 @@ msgctxt "web/pages/Login"
 msgid "Enter username"
 msgstr "请输入用户名"
 
-#: web/pages/Login.vue:33
+#: web/pages/Login.vue:4
+msgctxt "web/pages/Login"
+msgid "Enter your username and password to continue"
+msgstr "请输入用户名和密码以继续"
+
+#: web/pages/Login.vue:26
 msgctxt "web/pages/Login"
 msgid "Log In"
 msgstr "登录"
 
-#: web/pages/Login.vue:63
+#: web/pages/Login.vue:75
 msgctxt "web/pages/Login"
 msgid "Login failed. Please try again later."
 msgstr "登录失败，请稍后重试。"
 
-#: web/pages/Login.vue:22
+#: web/pages/Login.vue:20
 msgctxt "web/pages/Login"
 msgid "Password"
 msgstr "密码"
 
-#: web/pages/Login.vue:38
+#: web/pages/Login.vue:31
 msgctxt "web/pages/Login"
 msgid "Register now"
 msgstr "立即注册"
 
-#: web/pages/Login.vue:29
+#: web/pages/Login.vue:22
 msgctxt "web/pages/Login"
 msgid "Remember me"
 msgstr "记住我"
@@ -1061,7 +1051,7 @@ msgctxt "web/pages/Login"
 msgid "User Login"
 msgstr "用户登录"
 
-#: web/pages/Login.vue:16
+#: web/pages/Login.vue:17
 msgctxt "web/pages/Login"
 msgid "Username"
 msgstr "用户名"
@@ -1116,117 +1106,127 @@ msgctxt "web/pages/Logout"
 msgid "Unknown error occurred during logout"
 msgstr "退出时发生未知错误"
 
-#: web/pages/Register.vue:55
+#: web/pages/Register.vue:49
 msgctxt "web/pages/Register"
 msgid "Already have an account?"
 msgstr "已有账号？"
 
-#: web/pages/Register.vue:8
+#: web/pages/Register.vue:11
 msgctxt "web/pages/Register"
 msgid "Close"
 msgstr "关闭"
 
-#: web/pages/Register.vue:34
+#: web/pages/Register.vue:27
 msgctxt "web/pages/Register"
 msgid "Confirm Password"
 msgstr "确认密码"
 
-#: web/pages/Register.vue:4 web/pages/Register.vue:51
+#: web/pages/Register.vue:4 web/pages/Register.vue:46
 msgctxt "web/pages/Register"
 msgid "Create Account"
 msgstr "创建账户"
 
-#: web/pages/Register.vue:22
+#: web/pages/Register.vue:21
 msgctxt "web/pages/Register"
 msgid "Email"
 msgstr "邮箱"
 
-#: web/pages/Register.vue:63
+#: web/pages/register_form.ts:15
 msgctxt "web/pages/Register"
 msgid "Enter a valid email address"
 msgstr "请输入有效的邮箱地址"
 
-#: web/pages/Register.vue:23 web/pages/Register.vue:59
+#: web/pages/Register.vue:21 web/pages/register_form.ts:14
 msgctxt "web/pages/Register"
 msgid "Enter email address"
 msgstr "请输入邮箱地址"
 
-#: web/pages/Register.vue:29 web/pages/Register.vue:73
+#: web/pages/Register.vue:24 web/pages/register_form.ts:16
 msgctxt "web/pages/Register"
 msgid "Enter password"
 msgstr "请输入密码"
 
-#: web/pages/Register.vue:17 web/pages/Register.vue:41
+#: web/pages/Register.vue:18 web/pages/register_form.ts:11
 msgctxt "web/pages/Register"
 msgid "Enter username"
 msgstr "请输入用户名"
 
-#: web/pages/Register.vue:42
+#: web/pages/Register.vue:4
+msgctxt "web/pages/Register"
+msgid "Fill in the fields below to register"
+msgstr "填写以下信息以注册"
+
+#: web/pages/Register.vue:33
 msgctxt "web/pages/Register"
 msgid "I have read and agree to"
 msgstr "我已阅读并同意"
 
-#: web/pages/Register.vue:56
+#: web/pages/Register.vue:51
 msgctxt "web/pages/Register"
 msgid "Log in now"
 msgstr "立即登录"
 
-#: web/pages/Register.vue:28
+#: web/pages/Register.vue:24
 msgctxt "web/pages/Register"
 msgid "Password"
 msgstr "密码"
 
-#: web/pages/Register.vue:77
+#: web/pages/register_form.ts:17
 msgctxt "web/pages/Register"
 msgid "Password must be at least 6 characters"
 msgstr "密码至少 6 个字符"
 
-#: web/pages/Register.vue:94
+#: web/pages/register_form.ts:19
 msgctxt "web/pages/Register"
 msgid "Passwords do not match"
 msgstr "两次输入的密码不一致"
 
-#: web/pages/Register.vue:45
+#: web/pages/Register.vue:39
 msgctxt "web/pages/Register"
 msgid "Privacy Policy"
 msgstr "隐私政策"
 
-#: web/pages/Register.vue:35 web/pages/Register.vue:90
+#: web/pages/Register.vue:27 web/pages/register_form.ts:18
 msgctxt "web/pages/Register"
 msgid "Re-enter password"
 msgstr "请再次输入密码"
 
-#: web/pages/Register.vue:136
+#: web/pages/Register.vue:83 web/pages/Register.vue:89
 msgctxt "web/pages/Register"
 msgid "Registration failed. Please try again later."
 msgstr "注册失败，请稍后重试。"
 
-#: web/pages/Register.vue:43
+#: web/pages/Register.vue:35
 msgctxt "web/pages/Register"
 msgid "Terms of Service"
 msgstr "服务条款"
 
-#: web/pages/Register.vue:16
+#: web/pages/Register.vue:18
 msgctxt "web/pages/Register"
 msgid "Username"
 msgstr "用户名"
 
-#: web/pages/Register.vue:49
+#: web/pages/register_form.ts:13
 msgctxt "web/pages/Register"
 msgid "Username can only contain letters, numbers, underscores, hyphens, and dots"
 msgstr "用户名只能包含字母、数字、下划线、连字符和点"
 
-#: web/pages/Register.vue:45
+#: web/pages/register_form.ts:12
 msgctxt "web/pages/Register"
 msgid "Username must be at least 3 characters"
 msgstr "用户名至少 3 个字符"
 
-#: web/pages/Register.vue:103
+#: web/pages/register_form.ts:20
 msgctxt "web/pages/Register"
 msgid "You must agree to the Terms of Service and Privacy Policy"
 msgstr "您必须同意服务条款和隐私政策"
 
-#: web/pages/Register.vue:44
+#: web/pages/Register.vue:84
+msgctxt "web/pages/Register"
+msgid "Your account was created, but signing in failed. Please log in."
+msgstr "账户已创建，但自动登录失败，请手动登录。"
+
+#: web/pages/Register.vue:37
 msgctxt "web/pages/Register"
 msgid "and"
 msgstr "和"
@@ -2286,3 +2286,14 @@ msgctxt "web/views/UserSearchView"
 msgid "Active"
 msgstr "启用"
 
+#~ msgctxt "web/components/preferences/PreferencesDialog"
+#~ msgid "Invalid or inactive language"
+#~ msgstr "无效或未启用的语言"
+
+#~ msgctxt "web/components/preferences/PreferencesDialog"
+#~ msgid "Language"
+#~ msgstr "语言"
+
+#~ msgctxt "web/components/preferences/PreferencesDialog"
+#~ msgid "Timezone"
+#~ msgstr "时区"
