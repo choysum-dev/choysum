@@ -754,12 +754,17 @@ const displayError = computed(() => {
   return undefined;
 });
 
+let clientRulesEvalSeq = 0;
+
 async function evaluateClientRules(opts?: { reveal?: boolean }): Promise<string> {
   if (!binding.env.isEditMode || readonlyForm.value || !visibleForm.value) {
     clientRuleError.value = '';
     return '';
   }
+  const seq = ++clientRulesEvalSeq;
   const message = await firstRuleError(props.rules, rawValueForm().value);
+  // Ignore superseded evaluations so rapid edit/blur/submit cannot paint stale errors.
+  if (seq !== clientRulesEvalSeq) return message;
   clientRuleError.value = message;
   if (opts?.reveal) clientRulesRevealed.value = true;
   return message;
@@ -769,8 +774,8 @@ function onFieldFocusOut(ev: FocusEvent) {
   const root = ev.currentTarget as HTMLElement | null;
   const next = ev.relatedTarget as Node | null;
   if (root && next && root.contains(next)) return;
-  clientRulesRevealed.value = true;
-  void evaluateClientRules();
+  // Reveal only when evaluateClientRules actually runs (editable + visible).
+  void evaluateClientRules({ reveal: true });
 }
 
 /** Per-instance key so list/table mounts of the same prop do not clobber each other. */

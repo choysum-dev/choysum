@@ -450,6 +450,57 @@ describe('FieldBase list-editing-row-id gate', () => {
     expect(validators.size).toBe(0);
   });
 
+  test('reveals client rules on focusout outside the field, not within it', async () => {
+    installUiStubs();
+    installDialogStubs();
+    const FocusableEdit = defineComponent({
+      name: 'FocusableEdit',
+      setup() {
+        return () => h('button', { class: 'edit-stub', type: 'button' }, 'edit');
+      },
+    });
+    const binding = makeBinding({ string: 'Name' });
+    binding.__value.value = '';
+    const m = mountApp(FieldBase as any, {
+      props: {
+        binding,
+        renderMode: 'form',
+        rules: [
+          {
+            validator: (_r: unknown, v: unknown, cb: (e?: Error) => void) => {
+              if (!v) cb(new Error('need value'));
+              else cb();
+            },
+          },
+        ],
+      },
+      slots: {
+        edit: () => h(FocusableEdit),
+        display: () => h(DisplayStub),
+      },
+    });
+    await flushPromises();
+    expect(m.q('.choy-field-base__error')).toBeFalsy();
+    const root = m.q('.choy-field-base') as HTMLElement;
+    const inner = m.q('.edit-stub') as HTMLElement;
+    expect(root && inner).toBeTruthy();
+    // QuickJS FE harness has no FocusEvent; synthesize focusout with relatedTarget.
+    const dispatchFocusOut = (relatedTarget: EventTarget | null) => {
+      const ev = new Event('focusout', { bubbles: true });
+      Object.defineProperty(ev, 'relatedTarget', { value: relatedTarget });
+      root.dispatchEvent(ev);
+    };
+    // Focus moved to a control still inside the field root — do not reveal.
+    dispatchFocusOut(inner);
+    await flushPromises();
+    expect(m.q('.choy-field-base__error')).toBeFalsy();
+    // Focus left the field — reveal client-rule errors.
+    dispatchFocusOut(null);
+    await flushPromises();
+    expect(m.q('.choy-field-base__error')?.textContent).toContain('need value');
+    m.unmount();
+  });
+
   test('client validators stay isolated across same-prop instances', async () => {
     installUiStubs();
     installDialogStubs();
