@@ -18,9 +18,9 @@ const fakeStore = {
 test('web shell _lt bindings: web module ships empty menu baseline after Home retirement', () => {
   expect(menus).toEqual([]);
   expect(routes.length).toBeGreaterThan(0);
-  expect(routes.some((r) => r.name === 'Error')).toBe(true);
-  expect(routes.some((r) => r.name === 'Home')).toBe(false);
   const layout = routes.find((r) => r.name === 'Layout') as { children?: Array<{ name?: string }> } | undefined;
+  expect(layout?.children?.some((r) => r.name === 'Error')).toBe(true);
+  expect(routes.some((r) => r.name === 'Home')).toBe(false);
   expect(layout?.children?.some((r) => r.name === 'Home')).toBe(false);
 });
 

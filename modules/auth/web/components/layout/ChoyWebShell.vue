@@ -5,15 +5,26 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <Xpath expr="//*[@data-anchor='choy.shell.header-actions']" position="inside">
-    <template v-if="!isAuthenticated && !isAuthPage">
-      <span class="mx-1 inline-block h-5 w-px bg-border" role="separator" />
+    <template v-if="!isAuthenticated">
       <ChoyButton
-        variant="ghost"
+        v-if="!isLoginRoute"
+        variant="default"
         size="sm"
         :aria-label="_t('Log in')"
+        data-testid="choy-shell-login"
         @click="handleLogin"
       >
         {{ _t('Log In') }}
+      </ChoyButton>
+      <ChoyButton
+        v-if="showRegister"
+        variant="outline"
+        size="sm"
+        :aria-label="_t('Register')"
+        data-testid="choy-shell-register"
+        @click="handleRegister"
+      >
+        {{ _t('Register') }}
       </ChoyButton>
     </template>
     <ChoyNotificationBell v-if="isAuthenticated" />
@@ -95,8 +106,6 @@ export default defineComponent({
     ChoyDropdownMenuTrigger,
   },
   setup(props, ctx) {
-    // extends merges options but does not run a script-setup parent's setup; call it here.
-    // Only reuse plain object state (a returned render function is not setup state).
     const baseSetupFn = (ChoyWebShell as any)?.setup;
     if (typeof baseSetupFn !== 'function') {
       throw new Error('auth ChoyWebShell: base web ChoyWebShell exposes no setup() to merge');
@@ -107,7 +116,18 @@ export default defineComponent({
     const route = router?.currentRoute;
     const authStore = useAuthStore();
     const isAuthenticated = computed(() => authStore.isAuthenticated);
-    const isAuthPage = computed(() => !!route?.value?.meta?.isAuthPage);
+    const isLoginRoute = computed(() => route?.value?.name === 'login' || route?.value?.path === '/login');
+    const isRegisterRoute = computed(
+      () => route?.value?.name === 'register' || route?.value?.path === '/register',
+    );
+    const showRegister = computed(() => {
+      if (isRegisterRoute.value) return false;
+      try {
+        return typeof router.hasRoute === 'function' ? router.hasRoute('register') : true;
+      } catch {
+        return true;
+      }
+    });
     const preferencesVisible = ref(false);
     const userMenuOpen = ref(false);
 
@@ -120,7 +140,6 @@ export default defineComponent({
       preferencesVisible.value = false;
     }
 
-    // Shell stays mounted; clear popup refs on logout / token expiry.
     watch(isAuthenticated, (authed, wasAuthed) => {
       if (shouldResetAuthHeaderPopups(Boolean(wasAuthed), Boolean(authed))) {
         resetHeaderPopups();
@@ -129,6 +148,10 @@ export default defineComponent({
 
     function handleLogin() {
       router.push({ name: 'login' });
+    }
+
+    function handleRegister() {
+      router.push({ name: 'register' });
     }
 
     function openPreferences() {
@@ -157,10 +180,12 @@ export default defineComponent({
       ...baseSetup,
       _t,
       isAuthenticated,
-      isAuthPage,
+      isLoginRoute,
+      showRegister,
       preferencesVisible,
       userMenuOpen,
       handleLogin,
+      handleRegister,
       onMenuProfile,
       onMenuSettings,
       onMenuLogout,

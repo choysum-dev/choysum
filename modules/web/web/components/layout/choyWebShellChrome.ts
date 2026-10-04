@@ -8,6 +8,13 @@ export function shortAppVersion(version: string | undefined | null): string {
   return v.slice(0, 6);
 }
 
+/** One-line page footer: Powered by Choysum v0.1.0 */
+export function shellPoweredByLine(version: string | undefined | null): string {
+  const raw = String(version ?? '').trim() || 'dev';
+  const label = /^v/i.test(raw) ? raw : `v${raw}`;
+  return `Powered by Choysum ${label}`;
+}
+
 /** Aria / tooltip label for the shell menu trigger. */
 export function shellMenuTriggerLabel(opts: {
   isMobile: boolean;

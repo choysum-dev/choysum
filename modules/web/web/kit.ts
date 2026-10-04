@@ -245,6 +245,7 @@ export type { ConfirmChoyChoice, ConfirmChoyOptions } from './composables/confir
 export { choyControlHeightPx } from './lib/choyControlHeight';
 export {
   applyChoyThemePreference,
+  nextChoyThemeMode,
   persistChoyThemePreference,
   readChoyThemePreference,
   resolveChoyThemePreference,
