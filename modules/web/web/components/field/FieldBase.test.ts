@@ -411,7 +411,7 @@ describe('FieldBase list-editing-row-id gate', () => {
     const cell = m.q('.choy-field-base__cell');
     const input = m.q('input.id-probe') as HTMLInputElement | null;
     expect(input?.id).toBe('fld-AccessTokenId-row-1');
-    expect(cell?.id || '').not.toBe(input?.id);
+    expect(cell?.id).toBeFalsy();
     m.unmount();
   });
 
