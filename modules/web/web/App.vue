@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div class="choy-app min-h-screen w-full bg-background text-foreground">
+  <div class="choy-app h-full w-full overflow-hidden bg-background text-foreground">
     <router-view />
     <Toaster />
     <ChoyConfirmHost />

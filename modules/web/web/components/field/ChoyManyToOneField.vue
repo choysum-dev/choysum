@@ -20,9 +20,10 @@ SPDX-License-Identifier: Apache-2.0
     :renderMode="renderMode"
     :showInlineError="showInlineError"
   >
-    <template #edit="{ fieldValue, record }">
+    <template #edit="{ fieldValue, record, inputId }">
       <div class="w-full" :style="{ width: width || '100%' }">
         <RelationCombobox
+          :id="inputId"
           :model-value="comboboxId(fieldValue().value)"
           :selected-option="selectedOptionFor(fieldValue().value)"
           :search="makeRelationSearch(record)"

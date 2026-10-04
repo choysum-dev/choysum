@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <header
-    class="flex shrink-0 items-center gap-2 border-b border-border px-3 text-sm"
+    class="choy-shell-header sticky top-0 z-40 flex shrink-0 items-center gap-2 bg-background/95 px-4 text-sm backdrop-blur"
     :style="{ height: 'var(--choy-layout-header-height)' }"
     data-testid="choy-shell-header"
   >
@@ -21,13 +21,19 @@ SPDX-License-Identifier: Apache-2.0
       @click.prevent="goHome"
     >
       <img :src="logoUrl" alt="" class="size-6 shrink-0" width="24" height="24" />
-      <span v-if="showSidebarChrome" class="truncate">Choysum</span>
+      <span class="truncate">Choysum</span>
     </a>
     <ChoyShellBreadcrumb v-if="showSidebarChrome" />
-    <div class="ms-auto flex items-center gap-1">
+    <div class="ms-auto flex items-center gap-2">
       <ChoyCommandPalette v-if="showSidebarChrome" />
       <ChoyShellThemeToggle />
       <ChoyShellLocaleMenu />
+      <div
+        v-if="$slots['header-actions']"
+        class="mx-1 h-4 w-px shrink-0 bg-border"
+        data-testid="choy-shell-header-sep"
+        aria-hidden="true"
+      />
       <slot name="header-actions" />
     </div>
   </header>

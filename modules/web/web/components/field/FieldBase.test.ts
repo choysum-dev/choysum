@@ -189,6 +189,21 @@ describe('FieldBase label and help', () => {
     m.unmount();
   });
 
+  test('uses explicit id for label for and edit-slot inputId', () => {
+    const m = mountBase(
+      { binding: makeBinding(), renderMode: 'form', id: 'register-confirm' },
+      {
+        slots: {
+          edit: (args: { inputId?: string }) => h('input', { id: args.inputId, class: 'id-probe' }),
+          display: () => h('span'),
+        },
+      },
+    );
+    expect(m.q('.choy-field-base__label-text')?.getAttribute('for')).toBe('register-confirm');
+    expect((m.q('input.id-probe') as HTMLInputElement | null)?.id).toBe('register-confirm');
+    m.unmount();
+  });
+
   test('lets explicit label override metadata', () => {
     const m = mountBase({
       binding: makeBinding({ string: 'Access Token ID' }),

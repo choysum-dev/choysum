@@ -22,9 +22,14 @@ describe('ChoyWebShell', () => {
     await flushPromises();
     expect(mounted.q('[data-testid=choy-shell]')?.getAttribute('data-shell-mode')).toBe('sidebar');
     expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-header]')?.className || '').toContain('sticky');
+    expect(mounted.q('.choy-shell')?.className || '').toContain('overflow-hidden');
+    expect(mounted.q('[data-testid=choy-shell-canvas]')?.className || '').toContain('overflow-y-auto');
+    expect(mounted.q('[data-testid=choy-shell-header-sep]')).not.toBeNull();
     expect(mounted.q('[data-anchor="choy.shell.header-actions"]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-aside]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-footer]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-footer]')?.className || '').not.toContain('border-t');
     expect(mounted.q('[data-testid=choy-app-footer]')?.textContent || '').toContain('Powered by Choysum');
     expect(mounted.q('[data-testid=choy-shell-menu-trigger]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-brand]')).not.toBeNull();
@@ -355,6 +360,7 @@ describe('ChoyWebShell', () => {
     expect(mounted.q('[data-testid=choy-shell-footer]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-aside]')).toBeNull();
     expect(mounted.q('[data-testid=choy-shell-menu-trigger]')).toBeNull();
+    expect((mounted.q('[data-testid=choy-shell-brand]')?.textContent || '').trim()).toBe('Choysum');
     mounted.unmount();
   });
 

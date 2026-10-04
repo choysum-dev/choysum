@@ -4,10 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <!-- Guest / auth: document-flow column, no sidebar. -->
+  <!-- Guest / auth: viewport-locked column, no sidebar. -->
   <div
     v-if="isAuthPage || !sidebarAllowed"
-    class="flex min-h-svh w-full flex-col bg-background text-foreground"
+    class="choy-shell flex h-full min-h-0 w-full flex-col overflow-hidden bg-background text-foreground"
     :class="isAuthPage ? 'choy-shell--auth' : undefined"
     data-testid="choy-shell"
     data-shell-mode="canvas"
@@ -19,13 +19,13 @@ SPDX-License-Identifier: Apache-2.0
       :go-home="onBrandClick"
     >
       <template #header-actions>
-        <div data-anchor="choy.shell.header-actions" class="flex items-center gap-1">
+        <div data-anchor="choy.shell.header-actions" class="flex items-center gap-2">
           <slot name="header-actions" />
         </div>
       </template>
     </ChoyShellHeader>
     <div
-      class="choy-shell__main-inner flex flex-1 flex-col bg-background"
+      class="choy-shell__main-inner flex min-h-0 flex-1 flex-col overflow-y-auto bg-background"
       data-testid="choy-shell-canvas"
     >
       <slot>
@@ -34,20 +34,22 @@ SPDX-License-Identifier: Apache-2.0
             <component
               :is="Component"
               v-if="Component && viewRoute.meta?.keepAlive"
+              class="min-h-0 flex-1"
               :key="viewRoute.path"
             />
           </KeepAlive>
-          <component
-            :is="Component"
-            v-if="Component && !viewRoute.meta?.keepAlive"
-            :key="viewRoute.fullPath"
-          />
+            <component
+              :is="Component"
+              v-if="Component && !viewRoute.meta?.keepAlive"
+              class="min-h-0 flex-1"
+              :key="viewRoute.fullPath"
+            />
         </router-view>
       </slot>
     </div>
     <footer
       v-if="showFooter"
-      class="shrink-0 border-t border-border px-4 py-2"
+      class="shrink-0 px-4 py-4"
       data-testid="choy-shell-footer"
     >
       <ChoyAppFooter />
@@ -55,10 +57,10 @@ SPDX-License-Identifier: Apache-2.0
     </footer>
   </div>
 
-  <!-- Product shell: full-bleed header, nav rail, document-flow footer. -->
+  <!-- Product shell: full-bleed header, nav rail, viewport-locked footer. -->
   <SidebarProvider
     v-else
-    class="choy-shell flex min-h-svh w-full flex-col"
+    class="choy-shell flex h-full min-h-0 w-full flex-col overflow-hidden"
     data-testid="choy-shell"
     data-shell-mode="sidebar"
   >
@@ -69,12 +71,12 @@ SPDX-License-Identifier: Apache-2.0
       :go-home="onBrandClick"
     >
       <template #header-actions>
-        <div data-anchor="choy.shell.header-actions" class="flex items-center gap-1">
+        <div data-anchor="choy.shell.header-actions" class="flex items-center gap-2">
           <slot name="header-actions" />
         </div>
       </template>
     </ChoyShellHeader>
-    <div class="flex flex-1">
+    <div class="choy-shell__body flex min-h-0 flex-1 overflow-hidden">
       <ChoySidebarBridge />
       <Sidebar collapsible="icon" side="left">
         <SidebarContent>
@@ -84,9 +86,9 @@ SPDX-License-Identifier: Apache-2.0
         </SidebarContent>
         <SidebarRail />
       </Sidebar>
-      <SidebarInset class="min-w-0">
+      <SidebarInset class="min-h-0 min-w-0 overflow-hidden">
         <div
-          class="choy-shell__main-inner flex flex-1 flex-col bg-muted/30"
+          class="choy-shell__main-inner flex min-h-0 flex-1 flex-col overflow-y-auto bg-muted/30"
           data-testid="choy-shell-canvas"
         >
           <slot>
@@ -95,12 +97,14 @@ SPDX-License-Identifier: Apache-2.0
                 <component
                   :is="Component"
                   v-if="Component && viewRoute.meta?.keepAlive"
+                  class="min-h-0 flex-1"
                   :key="viewRoute.path"
                 />
               </KeepAlive>
               <component
                 :is="Component"
                 v-if="Component && !viewRoute.meta?.keepAlive"
+                class="min-h-0 flex-1"
                 :key="viewRoute.fullPath"
               />
             </router-view>
@@ -110,7 +114,7 @@ SPDX-License-Identifier: Apache-2.0
     </div>
     <footer
       v-if="showFooter"
-      class="shrink-0 border-t border-border px-4 py-2"
+      class="shrink-0 px-4 py-4"
       data-testid="choy-shell-footer"
     >
       <ChoyAppFooter />
@@ -139,7 +143,7 @@ import { resolveRuntimeDefaultLandPath } from '../../router/resolveRuntimeDefaul
 import { shellMenuTriggerLabel } from './choyWebShellChrome'
 
 /**
- * Product shell: header + optional nav rail + document-flow footer.
+ * Product shell: header + optional nav rail + viewport-locked footer.
  * Auth pages keep the top bar and footer, and hide the rail.
  */
 const props = withDefaults(

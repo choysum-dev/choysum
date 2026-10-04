@@ -23,21 +23,24 @@ describe('ChoyShellThemeToggle', () => {
     localStorage.removeItem(CHOY_THEME_STORAGE_KEY);
   });
 
-  test('falls back to i18n keys and cycles light, dark, and auto', async () => {
+  test('shows resolved appearance and applies light, dark, and auto', async () => {
     writeTheme('light');
     const mounted = mountApp(ChoyShellThemeToggle as any);
     await flushPromises();
     const btn = themeButton(mounted);
     expect(btn).not.toBeNull();
-    expect(btn?.getAttribute('aria-label')).toBe('layout.header.lightMode');
-    const cycleTheme = mounted.setupState()?.cycleTheme as (() => void) | undefined;
-    expect(typeof cycleTheme).toBe('function');
-    cycleTheme?.();
+    expect(btn?.getAttribute('aria-label')).toBe('layout.header.theme');
+    expect(mounted.q('[data-lucide=Sun]')).not.toBeNull();
+    expect(mounted.q('[data-lucide=Monitor]')).toBeNull();
+    const applyTheme = mounted.setupState()?.applyTheme as ((mode: ChoyThemeMode) => void) | undefined;
+    expect(typeof applyTheme).toBe('function');
+    applyTheme?.('dark');
     await flushPromises();
-    expect(themeButton(mounted)?.getAttribute('aria-label')).toBe('layout.header.darkMode');
-    cycleTheme?.();
+    expect(mounted.q('[data-lucide=Moon]')).not.toBeNull();
+    applyTheme?.('auto');
     await flushPromises();
-    expect(themeButton(mounted)?.getAttribute('aria-label')).toBe('layout.header.autoMode');
+    expect(JSON.parse(localStorage.getItem(CHOY_THEME_STORAGE_KEY) || '{}').theme).toBe('auto');
+    expect(mounted.q('[data-lucide=Monitor]')).toBeNull();
     mounted.unmount();
   });
 
@@ -52,7 +55,9 @@ describe('ChoyShellThemeToggle', () => {
     });
     const mounted = mountApp(ChoyShellThemeToggle as any, { plugins: [i18n] });
     await flushPromises();
-    expect(themeButton(mounted)?.getAttribute('aria-label')).toBe('Dark Mode');
+    expect(themeButton(mounted)?.getAttribute('aria-label')).toBe('Theme');
+    const items = mounted.setupState()?.themeItems as Array<{ mode: string; label: string }> | undefined;
+    expect(items?.map((item) => item.label)).toEqual(['Light', 'Dark', 'Auto']);
     mounted.unmount();
   });
 });

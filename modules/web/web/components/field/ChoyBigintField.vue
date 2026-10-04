@@ -20,7 +20,7 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
     v-bind="$attrs"
   >
-    <template #edit="{ fieldValue }">
+    <template #edit="{ fieldValue, inputId }">
       <OBigintCell
         :field-value="fieldValue"
         :options="bufferOptions"
@@ -30,6 +30,7 @@ SPDX-License-Identifier: Apache-2.0
         :min="min"
         :max="max"
         v-bind="$attrs"
+        :id="inputId"
       />
     </template>
     <template #display="{ fieldValue }">

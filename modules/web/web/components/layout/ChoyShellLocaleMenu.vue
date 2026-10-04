@@ -8,20 +8,23 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyDropdownMenuTrigger as-child>
       <ChoyButton
         variant="ghost"
-        size="sm"
+        size="icon"
         type="button"
         :aria-label="tLayout('layout.header.languages')"
         data-testid="choy-shell-locale"
       >
-        {{ currentLabel }}
+        <Languages class="size-4" aria-hidden="true" />
       </ChoyButton>
     </ChoyDropdownMenuTrigger>
-    <ChoyDropdownMenuContent align="end" class="min-w-[10rem]">
+    <ChoyDropdownMenuContent align="end" class="max-h-72 min-w-[10rem] overflow-y-auto">
       <ChoyDropdownMenuItem
         v-for="code in codes"
         :key="code"
+        :data-testid="`choy-shell-locale-${code}`"
+        class="gap-2"
         @select="onSelect(code)"
       >
+        <Check class="size-4" :class="code === currentCode ? 'opacity-100' : 'opacity-0'" aria-hidden="true" />
         {{ localeName(code) }}
       </ChoyDropdownMenuItem>
     </ChoyDropdownMenuContent>
@@ -31,6 +34,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { Check, Languages } from 'lucide-vue-next';
 import ChoyButton from './ChoyButton.vue';
 import {
   DropdownMenu as ChoyDropdownMenu,
@@ -39,6 +43,7 @@ import {
   DropdownMenuTrigger as ChoyDropdownMenuTrigger,
 } from '../vendor/ui/dropdown-menu';
 import { useI18nStore } from '../../stores/i18nStore';
+import { DEFAULT_ACTIVE_UI_KEYS } from '../../stores/i18nStore/activeUiKeys';
 import { SUPPORTED_LOCALES } from '../../stores/i18nStore/locales';
 import { type SupportedLocale } from '../../stores/i18nStore/types';
 
@@ -60,15 +65,14 @@ try {
 }
 
 const codes = computed(() => {
-  const fromStore = i18nStore?.supportedLocales;
+  const fromStore = i18nStore?.activeUiKeys;
   if (Array.isArray(fromStore) && fromStore.length) return fromStore as SupportedLocale[];
-  return Object.keys(SUPPORTED_LOCALES) as SupportedLocale[];
+  return [...DEFAULT_ACTIVE_UI_KEYS] as SupportedLocale[];
 });
 
-const currentLabel = computed(() => {
-  const code = (i18nStore?.localeCode as SupportedLocale | null) || 'en';
-  return localeName(code);
-});
+const currentCode = computed(
+  () => (i18nStore?.localeCode as SupportedLocale | null) || 'en',
+);
 
 function localeName(code: string): string {
   return SUPPORTED_LOCALES[code as SupportedLocale]?.name || code;

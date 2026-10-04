@@ -53,6 +53,7 @@ function installFieldBaseStub(mode: 'edit' | 'display' | 'both' | 'rules' = 'bot
       cellVisible: { type: [Boolean, Function, Object], default: undefined },
       renderMode: { type: String, default: undefined },
       showInlineError: { type: Boolean, default: undefined },
+      id: { type: String, default: undefined },
     },
     setup(p: any, { slots }: any) {
       lastBaseProps.current = p;
@@ -191,6 +192,7 @@ describe('Choy native scalar field cells', () => {
     await flushPromises();
     expect(m.q('.choy-field-display-text')?.textContent).toBe('hi');
     const input = m.q('input.choy-input') as HTMLInputElement;
+    expect(input?.id).toBe('i');
     setInputValue(input, '  abcdXX  ');
     input.dispatchEvent(new Event('blur', { bubbles: true }));
     await flushPromises();

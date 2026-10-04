@@ -21,8 +21,8 @@ SPDX-License-Identifier: Apache-2.0
     v-bind="$attrs"
   >
     <!-- Form and inline editing: normalize and compare using the current record/row scale -->
-    <template #edit="{ fieldValue, record }">
-      <ODecimalCell :field-value="fieldValue" :options="makeBufferOptions(() => resolveEditScaleFrom(record().value))" :placeholder="placeholder" v-bind="$attrs" />
+    <template #edit="{ fieldValue, record, inputId }">
+      <ODecimalCell :field-value="fieldValue" :options="makeBufferOptions(() => resolveEditScaleFrom(record().value))" :placeholder="placeholder" v-bind="$attrs" :id="inputId" />
     </template>
 
     <!-- Display: fixed scale pads; free decimals keep significant digits -->

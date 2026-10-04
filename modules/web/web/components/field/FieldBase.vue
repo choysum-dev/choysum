@@ -366,6 +366,8 @@ const props = withDefaults(
     binding: UseField<T, V>;
     label?: string;
     rules?: RuleItem[];
+    /** Explicit control id; otherwise `fld-${prop}`. Label `for` and slot `inputId` share this. */
+    id?: string;
     formItemProps?: Partial<FormItemProps>;
     vColumnProps?: Record<string, unknown>;
     toView?: (raw: V) => View;
@@ -651,8 +653,11 @@ function guessRowKey(row: any): string {
   const rec = unwrapRecord(row);
   return String(row?.__rowKey ?? row?.key ?? rec?.Id ?? ++__autoRowKey);
 }
-const inputIdForm = computed(() => `fld-${inputName.value}`);
-const inputIdForRow = (row: T) => `fld-${inputName.value}-${guessRowKey(row)}`;
+const inputIdForm = computed(() => {
+  const explicit = typeof props.id === 'string' ? props.id.trim() : '';
+  return explicit || `fld-${inputName.value}`;
+});
+const inputIdForRow = (row: T) => `${inputIdForm.value}-${guessRowKey(row)}`;
 
 /* View mapping for slot rendering */
 const viewBinding =

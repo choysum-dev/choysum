@@ -23,9 +23,10 @@ export default {
     settings: 'Settings',
     notifications: 'Notifications',
     languages: 'Languages',
-    darkMode: 'Dark Mode',
-    lightMode: 'Light Mode',
-    autoMode: 'Auto Mode',
+    theme: 'Theme',
+    darkMode: 'Dark',
+    lightMode: 'Light',
+    autoMode: 'Auto',
     search: 'Search...',
   },
 

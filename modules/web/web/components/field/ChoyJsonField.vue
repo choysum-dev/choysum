@@ -20,7 +20,7 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
     v-bind="$attrs"
   >
-    <template #edit="{ fieldValue }">
+    <template #edit="{ fieldValue, inputId }">
       <OJsonCell
         :field-value="fieldValue"
         :options="bufferOptions"
@@ -29,6 +29,7 @@ SPDX-License-Identifier: Apache-2.0
         :nullable="nullable"
         :allow-array="allowArray"
         v-bind="$attrs"
+        :id="inputId"
       />
     </template>
 

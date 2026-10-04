@@ -13,11 +13,13 @@ SPDX-License-Identifier: Apache-2.0
         'choy-page relative mx-auto w-full text-foreground',
         props.padding ? 'p-4 md:p-6' : '',
         widthClass,
+        props.fillHeight ? 'flex min-h-0 flex-1 flex-col' : '',
         props.class,
       )
     "
   >
     <div
+      :class="props.fillHeight ? 'flex min-h-0 flex-1 flex-col' : undefined"
       :role="title ? 'region' : undefined"
       :aria-busy="loading || undefined"
       :aria-labelledby="title && !$slots.header ? pageTitleId : undefined"
@@ -116,7 +118,7 @@ SPDX-License-Identifier: Apache-2.0
 
       <div
         class="choy-page__body"
-        :class="{ 'pb-4': !!$slots.footer }"
+        :class="{ 'pb-4': !!$slots.footer, 'flex min-h-0 flex-1 flex-col': props.fillHeight }"
         :inert="loading || undefined"
       >
         <slot />
@@ -177,6 +179,8 @@ const props = withDefaults(
     showBreadcrumb?: boolean;
     padding?: boolean;
     width?: PageWidth;
+    /** Stretch to the shell main and let nested flex children (auth cards) center. */
+    fillHeight?: boolean;
     loading?: boolean;
     actionImport?: boolean;
     actionExport?: boolean;
@@ -197,6 +201,7 @@ const props = withDefaults(
     showBreadcrumb: false,
     padding: true,
     width: '',
+    fillHeight: false,
     loading: false,
     actionImport: false,
     actionExport: false,

@@ -18,7 +18,7 @@ SPDX-License-Identifier: Apache-2.0
       </ChoyButton>
       <ChoyButton
         v-if="showRegister"
-        variant="outline"
+        variant="default"
         size="sm"
         :aria-label="_t('Register')"
         data-testid="choy-shell-register"

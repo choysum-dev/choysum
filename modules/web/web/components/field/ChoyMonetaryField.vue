@@ -20,8 +20,8 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
     v-bind="$attrs"
   >
-    <template #edit="{ fieldValue, record }">
-      <OMonetaryCell :field-value="fieldValue" :options="makeBufferOptions(() => resolveScaleFrom(record().value))" :placeholder="placeholder" v-bind="$attrs" />
+    <template #edit="{ fieldValue, record, inputId }">
+      <OMonetaryCell :field-value="fieldValue" :options="makeBufferOptions(() => resolveScaleFrom(record().value))" :placeholder="placeholder" v-bind="$attrs" :id="inputId" />
     </template>
 
     <template #display="{ fieldValue, record }">

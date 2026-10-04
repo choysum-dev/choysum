@@ -9,13 +9,14 @@ import { useI18nStore } from '../../stores/i18nStore';
 import ChoyShellLocaleMenu from './ChoyShellLocaleMenu.vue';
 
 describe('ChoyShellLocaleMenu', () => {
-  test('falls back to the locale catalog when pinia is missing', async () => {
+  test('falls back to default UI keys when pinia is missing', async () => {
     setActivePinia(undefined as any);
     const mounted = mountApp(ChoyShellLocaleMenu as any);
     await flushPromises();
     const trigger = mounted.q('[data-testid=choy-shell-locale]');
     expect(trigger).not.toBeNull();
     expect(trigger?.getAttribute('aria-label')).toBe('layout.header.languages');
+    expect(mounted.q('[data-lucide=Languages]')).not.toBeNull();
     const ss = mounted.setupState() as {
       localeName?: (code: string) => string;
       onSelect?: (code: string) => void;
@@ -44,7 +45,7 @@ describe('ChoyShellLocaleMenu', () => {
     expect(typeof onSelect).toBe('function');
     onSelect?.('zh-CN');
     await flushPromises();
-    (store as { supportedLocales: string[] }).supportedLocales = [];
+    store.setActiveUiKeys(['en', 'zh-CN', 'ja']);
     await flushPromises();
     expect(mounted.q('[data-testid=choy-shell-locale]')).not.toBeNull();
     mounted.unmount();

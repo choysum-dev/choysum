@@ -20,7 +20,7 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
     v-bind="$attrs"
   >
-    <template #edit="{ fieldValue }">
+    <template #edit="{ fieldValue, inputId }">
       <OTextCell
         :field-value="fieldValue"
         :options="bufferOptions"
@@ -30,6 +30,7 @@ SPDX-License-Identifier: Apache-2.0
         :maxlength="maxLength ?? undefined"
         :show-word-limit="showWordLimit && !!maxLength"
         v-bind="$attrs"
+        :id="inputId"
       />
     </template>
 

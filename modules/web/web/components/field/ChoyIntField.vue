@@ -20,8 +20,8 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
     v-bind="$attrs"
   >
-    <template #edit="{ fieldValue }">
-      <OIntCell :field-value="fieldValue" :options="bufferOptions" :placeholder="placeholder" :nullable="nullable" :min="min" :max="max" v-bind="$attrs" />
+    <template #edit="{ fieldValue, inputId }">
+      <OIntCell :field-value="fieldValue" :options="bufferOptions" :placeholder="placeholder" :nullable="nullable" :min="min" :max="max" v-bind="$attrs" :id="inputId" />
     </template>
     <template #display="{ fieldValue }">
       <span class="choy-field-display-text inline-block max-w-full truncate whitespace-nowrap text-foreground">{{ fieldValue().value == null ? '' : fieldValue().value }}</span>
