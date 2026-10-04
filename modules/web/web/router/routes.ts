@@ -49,6 +49,7 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('../pages/ErrorView.vue'),
     meta: {
       requiresAuth: false,
+      isAuthPage: true,
     },
   },
 

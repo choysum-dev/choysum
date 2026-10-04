@@ -996,137 +996,132 @@ msgctxt "web/menu/menus"
 msgid "User List"
 msgstr "用户列表"
 
-#: web/pages/Login.vue:10
+#: web/pages/Login.vue:9
 msgctxt "web/pages/Login"
 msgid "Close"
 msgstr "关闭"
 
-#: web/pages/Login.vue:29
+#: web/pages/Login.vue:34
 msgctxt "web/pages/Login"
 msgid "Don't have an account?"
 msgstr "还没有账号？"
 
-#: web/pages/Login.vue:20
+#: web/pages/Login.vue:25
 msgctxt "web/pages/Login"
 msgid "Enter password"
 msgstr "请输入密码"
 
-#: web/pages/Login.vue:17
+#: web/pages/Login.vue:22
 msgctxt "web/pages/Login"
 msgid "Enter username"
 msgstr "请输入用户名"
 
-#: web/pages/Login.vue:4
+#: web/pages/Login.vue:14
 msgctxt "web/pages/Login"
 msgid "Enter your username and password to continue"
 msgstr "请输入用户名和密码以继续"
 
-#: web/pages/Login.vue:26
+#: web/pages/Login.vue:31
 msgctxt "web/pages/Login"
 msgid "Log In"
 msgstr "登录"
 
-#: web/pages/Login.vue:75
+#: web/pages/Login.vue:82
 msgctxt "web/pages/Login"
 msgid "Login failed. Please try again later."
 msgstr "登录失败，请稍后重试。"
 
-#: web/pages/Login.vue:20
+#: web/pages/Login.vue:25
 msgctxt "web/pages/Login"
 msgid "Password"
 msgstr "密码"
 
-#: web/pages/Login.vue:31
+#: web/pages/Login.vue:36
 msgctxt "web/pages/Login"
 msgid "Register now"
 msgstr "立即注册"
 
-#: web/pages/Login.vue:22
+#: web/pages/Login.vue:27
 msgctxt "web/pages/Login"
 msgid "Remember me"
 msgstr "记住我"
 
-#: web/pages/Login.vue:4
+#: web/pages/Login.vue:6
 msgctxt "web/pages/Login"
 msgid "User Login"
 msgstr "用户登录"
 
-#: web/pages/Login.vue:17
+#: web/pages/Login.vue:22
 msgctxt "web/pages/Login"
 msgid "Username"
 msgstr "用户名"
 
-#: web/pages/Logout.vue:22
+#: web/pages/Logout.vue:23
 msgctxt "web/pages/Logout"
 msgid "Back to Login"
 msgstr "返回登录"
 
-#: web/pages/Logout.vue:12
+#: web/pages/Logout.vue:14
 msgctxt "web/pages/Logout"
 msgid "Log In Again"
 msgstr "重新登录"
 
-#: web/pages/Logout.vue:30
+#: web/pages/Logout.vue:27
 msgctxt "web/pages/Logout"
-msgid "Please wait while your account is being signed out securely..."
-msgstr "请稍候，正在安全退出您的账户…"
+msgid "Redirecting to the login page in %s seconds"
+msgstr "将在 %s 秒后进入登录页"
 
-#: web/pages/Logout.vue:21
+#: web/pages/Logout.vue:19
 msgctxt "web/pages/Logout"
 msgid "Retry"
 msgstr "重试"
 
-#: web/pages/Logout.vue:4
-msgctxt "web/pages/Logout"
-msgid "Sign Out"
-msgstr "退出登录"
-
-#: web/pages/Logout.vue:18
+#: web/pages/Logout.vue:22
 msgctxt "web/pages/Logout"
 msgid "Sign-out Failed"
 msgstr "退出失败"
 
-#: web/pages/Logout.vue:9
+#: web/pages/Logout.vue:21
 msgctxt "web/pages/Logout"
 msgid "Signed Out Successfully"
 msgstr "已成功退出"
 
-#: web/pages/Logout.vue:28
+#: web/pages/Logout.vue:23
 msgctxt "web/pages/Logout"
 msgid "Signing Out"
 msgstr "正在退出"
 
-#: web/pages/Logout.vue:21
+#: web/pages/Logout.vue:29
 msgctxt "web/pages/Logout"
-msgid "Thank you for using our service. Redirecting to the login page in %s seconds..."
-msgstr "感谢使用，将在 %s 秒后跳转到登录页…"
+msgid "Signing out this session"
+msgstr "正在退出当前会话"
 
-#: web/pages/Logout.vue:51
+#: web/pages/Logout.vue:60
 msgctxt "web/pages/Logout"
 msgid "Unknown error occurred during logout"
 msgstr "退出时发生未知错误"
 
-#: web/pages/Register.vue:49
+#: web/pages/Register.vue:54
 msgctxt "web/pages/Register"
 msgid "Already have an account?"
 msgstr "已有账号？"
 
-#: web/pages/Register.vue:11
+#: web/pages/Register.vue:9
 msgctxt "web/pages/Register"
 msgid "Close"
 msgstr "关闭"
 
-#: web/pages/Register.vue:27
+#: web/pages/Register.vue:31
 msgctxt "web/pages/Register"
 msgid "Confirm Password"
 msgstr "确认密码"
 
-#: web/pages/Register.vue:4 web/pages/Register.vue:46
+#: web/pages/Register.vue:51 web/pages/Register.vue:6
 msgctxt "web/pages/Register"
 msgid "Create Account"
 msgstr "创建账户"
 
-#: web/pages/Register.vue:21
+#: web/pages/Register.vue:25
 msgctxt "web/pages/Register"
 msgid "Email"
 msgstr "邮箱"
@@ -1136,37 +1131,37 @@ msgctxt "web/pages/Register"
 msgid "Enter a valid email address"
 msgstr "请输入有效的邮箱地址"
 
-#: web/pages/Register.vue:21 web/pages/register_form.ts:14
+#: web/pages/Register.vue:25 web/pages/register_form.ts:14
 msgctxt "web/pages/Register"
 msgid "Enter email address"
 msgstr "请输入邮箱地址"
 
-#: web/pages/Register.vue:24 web/pages/register_form.ts:16
+#: web/pages/Register.vue:28 web/pages/register_form.ts:16
 msgctxt "web/pages/Register"
 msgid "Enter password"
 msgstr "请输入密码"
 
-#: web/pages/Register.vue:18 web/pages/register_form.ts:11
+#: web/pages/Register.vue:22 web/pages/register_form.ts:11
 msgctxt "web/pages/Register"
 msgid "Enter username"
 msgstr "请输入用户名"
 
-#: web/pages/Register.vue:4
+#: web/pages/Register.vue:14
 msgctxt "web/pages/Register"
 msgid "Fill in the fields below to register"
 msgstr "填写以下信息以注册"
 
-#: web/pages/Register.vue:33
+#: web/pages/Register.vue:37
 msgctxt "web/pages/Register"
 msgid "I have read and agree to"
 msgstr "我已阅读并同意"
 
-#: web/pages/Register.vue:51
+#: web/pages/Register.vue:56
 msgctxt "web/pages/Register"
 msgid "Log in now"
 msgstr "立即登录"
 
-#: web/pages/Register.vue:24
+#: web/pages/Register.vue:28
 msgctxt "web/pages/Register"
 msgid "Password"
 msgstr "密码"
@@ -1181,27 +1176,27 @@ msgctxt "web/pages/Register"
 msgid "Passwords do not match"
 msgstr "两次输入的密码不一致"
 
-#: web/pages/Register.vue:39
+#: web/pages/Register.vue:43
 msgctxt "web/pages/Register"
 msgid "Privacy Policy"
 msgstr "隐私政策"
 
-#: web/pages/Register.vue:27 web/pages/register_form.ts:18
+#: web/pages/Register.vue:31 web/pages/register_form.ts:18
 msgctxt "web/pages/Register"
 msgid "Re-enter password"
 msgstr "请再次输入密码"
 
-#: web/pages/Register.vue:83 web/pages/Register.vue:89
+#: web/pages/Register.vue:84 web/pages/Register.vue:90
 msgctxt "web/pages/Register"
 msgid "Registration failed. Please try again later."
 msgstr "注册失败，请稍后重试。"
 
-#: web/pages/Register.vue:35
+#: web/pages/Register.vue:39
 msgctxt "web/pages/Register"
 msgid "Terms of Service"
 msgstr "服务条款"
 
-#: web/pages/Register.vue:18
+#: web/pages/Register.vue:22
 msgctxt "web/pages/Register"
 msgid "Username"
 msgstr "用户名"
@@ -1221,12 +1216,12 @@ msgctxt "web/pages/Register"
 msgid "You must agree to the Terms of Service and Privacy Policy"
 msgstr "您必须同意服务条款和隐私政策"
 
-#: web/pages/Register.vue:84
+#: web/pages/Register.vue:85
 msgctxt "web/pages/Register"
 msgid "Your account was created, but signing in failed. Please log in."
 msgstr "账户已创建，但自动登录失败，请手动登录。"
 
-#: web/pages/Register.vue:37
+#: web/pages/Register.vue:41
 msgctxt "web/pages/Register"
 msgid "and"
 msgstr "和"
@@ -2297,3 +2292,15 @@ msgstr "启用"
 #~ msgctxt "web/components/preferences/PreferencesDialog"
 #~ msgid "Timezone"
 #~ msgstr "时区"
+
+#~ msgctxt "web/pages/Logout"
+#~ msgid "Please wait while your account is being signed out securely..."
+#~ msgstr "请稍候，正在安全退出您的账户…"
+
+#~ msgctxt "web/pages/Logout"
+#~ msgid "Sign Out"
+#~ msgstr "退出登录"
+
+#~ msgctxt "web/pages/Logout"
+#~ msgid "Thank you for using our service. Redirecting to the login page in %s seconds..."
+#~ msgstr "感谢使用，将在 %s 秒后跳转到登录页…"

@@ -6,36 +6,41 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <ChoyPage :loading="loading" width="narrow" :padding="false" class="w-full">
     <AuthPanel>
-      <ChoyCard :title="_t('Sign Out')" class="logout-card w-full shadow-sm">
-        <div class="logout-view flex flex-col items-center gap-4 py-4 text-center">
-          <transition name="fade" mode="out-in">
-            <div v-if="logoutSuccess" key="success" class="flex flex-col items-center gap-3">
-              <CheckCircle2 class="size-12 text-primary" aria-hidden="true" />
-              <h4 class="text-lg font-semibold">{{ _t('Signed Out Successfully') }}</h4>
-              <p class="max-w-md text-sm text-foreground/70">{{ redirectSubtitle }}</p>
-              <div class="flex flex-wrap justify-center gap-2 pt-2">
-                <ChoyButton @click="navigateToLogin">{{ _t('Log In Again') }}</ChoyButton>
-              </div>
-            </div>
+      <ChoyCard class="logout-card w-full">
+        <template #header>
+          <h3 class="font-semibold leading-none tracking-tight">{{ headerTitle }}</h3>
+          <div
+            v-if="error"
+            class="logout-error flex items-start gap-2 text-sm text-destructive"
+            role="alert"
+          >
+            <span class="min-w-0 leading-5">{{ error }}</span>
+          </div>
+          <p v-else class="text-sm text-foreground/70 tabular-nums">{{ headerDescription }}</p>
+        </template>
 
-            <div v-else-if="error" key="error" class="flex flex-col items-center gap-3">
-              <XCircle class="size-12 text-destructive" aria-hidden="true" />
-              <h4 class="text-lg font-semibold">{{ _t('Sign-out Failed') }}</h4>
-              <p class="max-w-md text-sm text-foreground/70">{{ error }}</p>
-              <div class="flex flex-wrap justify-center gap-2 pt-2">
-                <ChoyButton @click="retryLogout">{{ _t('Retry') }}</ChoyButton>
-                <ChoyButton variant="outline" @click="navigateToLogin">{{ _t('Back to Login') }}</ChoyButton>
-              </div>
-            </div>
+        <ChoyButton
+          v-if="logoutSuccess"
+          class="w-full"
+          data-testid="logout-login-again"
+          @click="navigateToLogin"
+        >
+          {{ _t('Log In Again') }}
+        </ChoyButton>
 
-            <div v-else key="loading" class="flex flex-col items-center gap-3">
-              <Loader2 class="size-12 animate-spin text-foreground/50" aria-hidden="true" />
-              <h4 class="text-lg font-semibold">{{ _t('Signing Out') }}</h4>
-              <p class="max-w-md text-sm text-foreground/70">
-                {{ _t('Please wait while your account is being signed out securely...') }}
-              </p>
-            </div>
-          </transition>
+        <div v-else-if="error" class="flex flex-col gap-4">
+          <ChoyButton class="w-full" data-testid="logout-retry" @click="retryLogout">
+            {{ _t('Retry') }}
+          </ChoyButton>
+          <p class="text-center text-sm">
+            <button
+              type="button"
+              class="logout-back-to-login cursor-pointer border-0 bg-transparent p-0 text-primary appearance-none shadow-none hover:underline"
+              @click="navigateToLogin"
+            >
+              {{ _t('Back to Login') }}
+            </button>
+          </p>
         </div>
       </ChoyCard>
     </AuthPanel>
@@ -46,12 +51,11 @@ SPDX-License-Identifier: Apache-2.0
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
-import { CheckCircle2, Loader2, XCircle } from 'lucide-vue-next';
 import { useAuthStore } from '../stores/auth';
-import { ChoysumError } from '../error';
 import AuthPanel from '../components/AuthPanel.vue';
 import { ChoyPage, ChoyCard, ChoyButton } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
+import { formatLogoutError, nextLogoutCountdown, stopLogoutRedirectTimer } from './logout_page';
 
 const { _t } = createTranslate('auth', { scope: 'web/pages/Logout' });
 
@@ -61,10 +65,18 @@ const { loading } = storeToRefs(authStore);
 
 const logoutSuccess = ref(false);
 const error = ref('');
-const countdown = ref(5);
-const redirectSubtitle = computed(() =>
-  _t('Thank you for using our service. Redirecting to the login page in %s seconds...', countdown.value)
-);
+const countdown = ref(3);
+const headerTitle = computed(() => {
+  if (logoutSuccess.value) return _t('Signed Out Successfully');
+  if (error.value) return _t('Sign-out Failed');
+  return _t('Signing Out');
+});
+const headerDescription = computed(() => {
+  if (logoutSuccess.value) {
+    return _t('Redirecting to the login page in %s seconds', countdown.value);
+  }
+  return _t('Signing out this session');
+});
 let autoRedirectTimer: ReturnType<typeof setInterval> | undefined;
 
 onMounted(async () => {
@@ -72,46 +84,35 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
-  if (autoRedirectTimer) {
-    clearInterval(autoRedirectTimer);
-  }
+  autoRedirectTimer = stopLogoutRedirectTimer(autoRedirectTimer);
 });
 
-/**
- * Perform logout and start the redirect countdown on success.
- */
 async function performLogout() {
+  autoRedirectTimer = stopLogoutRedirectTimer(autoRedirectTimer);
   try {
     await authStore.logout();
     logoutSuccess.value = true;
     autoRedirectTimer = setInterval(() => {
-      countdown.value--;
-      if (countdown.value <= 0) {
-        clearInterval(autoRedirectTimer);
+      const step = nextLogoutCountdown(countdown.value);
+      countdown.value = step.countdown;
+      if (step.done) {
+        autoRedirectTimer = stopLogoutRedirectTimer(autoRedirectTimer);
         navigateToLogin();
       }
     }, 1000);
   } catch (err) {
-    error.value = err instanceof ChoysumError ? err.message : err instanceof Error ? err.message : _t('Unknown error occurred during logout');
-    console.error('Logout failed:', err);
+    error.value = formatLogoutError(err, _t('Unknown error occurred during logout'));
   }
 }
 
-/**
- * Navigate to the login page and stop the auto redirect timer.
- */
 function navigateToLogin() {
-  if (autoRedirectTimer) {
-    clearInterval(autoRedirectTimer);
-  }
+  autoRedirectTimer = stopLogoutRedirectTimer(autoRedirectTimer);
   router.push('/login');
 }
 
-/**
- * Reset the error state and retry the logout flow.
- */
 function retryLogout() {
   error.value = '';
+  countdown.value = 3;
   performLogout();
 }
 </script>

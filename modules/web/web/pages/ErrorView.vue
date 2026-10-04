@@ -4,28 +4,35 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyPage width="medium" padding class="error-page">
-    <ChoyCard :title="errorConfig.title">
-      <p class="mb-2 text-sm text-foreground/70">{{ errorConfig.subtitle }}</p>
-      <p class="mb-4 wrap-break-word text-sm">{{ errorConfig.message }}</p>
-      <div class="flex flex-wrap justify-center gap-2">
-        <ChoyButton
-          v-for="(action, index) in errorConfig.actions"
-          :key="index"
-          :variant="action.variant"
-          type="button"
-          @click="action.action"
-        >
-          {{ action.text }}
-        </ChoyButton>
-      </div>
-    </ChoyCard>
+  <ChoyPage width="narrow" :padding="false" class="error-page w-full min-h-svh bg-background">
+    <AuthPanel>
+      <ChoyCard class="error-card w-full">
+        <template #header>
+          <h3 class="font-semibold leading-none tracking-tight">{{ errorConfig.title }}</h3>
+          <p class="text-sm text-foreground/70">{{ errorConfig.subtitle }}</p>
+        </template>
+        <p v-if="errorConfig.message" class="mb-4 text-sm leading-5">{{ errorConfig.message }}</p>
+        <div class="flex flex-col gap-3">
+          <ChoyButton
+            v-for="(action, index) in errorConfig.actions"
+            :key="index"
+            class="w-full"
+            :variant="action.variant"
+            type="button"
+            @click="action.action"
+          >
+            {{ action.text }}
+          </ChoyButton>
+        </div>
+      </ChoyCard>
+    </AuthPanel>
   </ChoyPage>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import AuthPanel from '@/auth/web/components/AuthPanel.vue';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyCard from '@/web/web/components/layout/ChoyCard.vue';
 import ChoyPage from '@/web/web/components/layout/ChoyPage.vue';
@@ -108,7 +115,7 @@ const errorConfig = computed<ErrorConfig>(() => {
         actions: [
           { text: _t('Back to start'), action: goDefaultLand, variant: 'default' },
           { text: _t('Retry'), action: retry, variant: 'outline' },
-          { text: _t('Report a problem'), action: reportIssue, variant: 'destructive' },
+          { text: _t('Report a problem'), action: reportIssue, variant: 'outline' },
         ],
       };
     default:
