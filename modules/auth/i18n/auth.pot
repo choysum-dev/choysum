@@ -845,32 +845,38 @@ msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr ""
 
-#: web/components/layout/ChoyWebShell.vue:6
+#: web/components/layout/ChoyWebShell.vue:5
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "Log In"
 msgstr ""
 
-#: web/components/layout/ChoyWebShell.vue:29
+#: web/components/layout/ChoyWebShell.vue:31
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "Log Out"
 msgstr ""
 
-#: web/components/layout/ChoyWebShell.vue:5
+#: web/components/layout/ChoyWebShell.vue:4
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "Log in"
 msgstr ""
 
-#: web/components/layout/ChoyWebShell.vue:23
+#: web/components/layout/ChoyWebShell.vue:25
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "Profile"
 msgstr ""
 
-#: web/components/layout/ChoyWebShell.vue:26
+#: web/components/layout/ChoyWebShell.vue:7
+#: web/components/layout/ChoyWebShell.vue:8
+msgctxt "web/components/layout/ChoyWebShell"
+msgid "Register"
+msgstr ""
+
+#: web/components/layout/ChoyWebShell.vue:28
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "Settings"
 msgstr ""
 
-#: web/components/layout/ChoyWebShell.vue:13
+#: web/components/layout/ChoyWebShell.vue:15
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "User menu"
 msgstr ""
@@ -1119,7 +1125,7 @@ msgctxt "web/pages/Logout"
 msgid "Signing out this session"
 msgstr ""
 
-#: web/pages/Logout.vue:60
+#: web/pages/Logout.vue:55
 msgctxt "web/pages/Logout"
 msgid "Unknown error occurred during logout"
 msgstr ""
