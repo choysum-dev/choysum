@@ -19,7 +19,9 @@ SPDX-License-Identifier: Apache-2.0
       :go-home="onBrandClick"
     >
       <template #header-actions>
-        <slot name="header-actions" />
+        <div data-anchor="choy.shell.header-actions" class="flex items-center gap-1">
+          <slot name="header-actions" />
+        </div>
       </template>
     </ChoyShellHeader>
     <div
@@ -67,7 +69,9 @@ SPDX-License-Identifier: Apache-2.0
       :go-home="onBrandClick"
     >
       <template #header-actions>
-        <slot name="header-actions" />
+        <div data-anchor="choy.shell.header-actions" class="flex items-center gap-1">
+          <slot name="header-actions" />
+        </div>
       </template>
     </ChoyShellHeader>
     <div class="flex flex-1">
@@ -80,7 +84,7 @@ SPDX-License-Identifier: Apache-2.0
         </SidebarContent>
         <SidebarRail />
       </Sidebar>
-      <SidebarInset>
+      <SidebarInset class="min-w-0">
         <div
           class="choy-shell__main-inner flex flex-1 flex-col bg-muted/30"
           data-testid="choy-shell-canvas"

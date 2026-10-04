@@ -25,6 +25,7 @@ export default {
     languages: 'Languages',
     darkMode: 'Dark Mode',
     lightMode: 'Light Mode',
+    autoMode: 'Auto Mode',
     search: 'Search...',
   },
 

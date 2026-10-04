@@ -28,9 +28,7 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyCommandPalette v-if="showSidebarChrome" />
       <ChoyShellThemeToggle />
       <ChoyShellLocaleMenu />
-      <div data-anchor="choy.shell.header-actions" class="flex items-center gap-1">
-        <slot name="header-actions" />
-      </div>
+      <slot name="header-actions" />
     </div>
   </header>
 </template>

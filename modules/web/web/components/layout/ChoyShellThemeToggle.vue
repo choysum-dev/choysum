@@ -20,6 +20,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { Monitor, Moon, Sun } from 'lucide-vue-next';
 import ChoyButton from './ChoyButton.vue';
 import {
@@ -31,12 +32,20 @@ import {
 
 defineOptions({ name: 'ChoyShellThemeToggle' });
 
+let tLayout: (key: string) => string = (key) => key;
+try {
+  const i18n = useI18n({ useScope: 'global' });
+  tLayout = (key) => String(i18n.t(key));
+} catch {
+  tLayout = (key) => key;
+}
+
 const mode = ref<ChoyThemeMode>(readChoyThemePreference().theme || 'light');
 
 const label = computed(() => {
-  if (mode.value === 'dark') return 'Dark';
-  if (mode.value === 'auto') return 'Auto';
-  return 'Light';
+  if (mode.value === 'dark') return tLayout('layout.header.darkMode');
+  if (mode.value === 'auto') return tLayout('layout.header.autoMode');
+  return tLayout('layout.header.lightMode');
 });
 
 function cycleTheme() {

@@ -22,6 +22,7 @@ describe('ChoyWebShell', () => {
     await flushPromises();
     expect(mounted.q('[data-testid=choy-shell]')?.getAttribute('data-shell-mode')).toBe('sidebar');
     expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
+    expect(mounted.q('[data-anchor="choy.shell.header-actions"]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-aside]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-footer]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-app-footer]')?.textContent || '').toContain('Powered by Choysum');
@@ -45,6 +46,7 @@ describe('ChoyWebShell', () => {
       },
     });
     await flushPromises();
+    expect(mounted.q('[data-anchor="choy.shell.header-actions"]')).not.toBeNull();
     expect(mounted.q('[data-test=header-action]')?.textContent).toBe('A');
     expect(mounted.q('[data-test=nav-link]')?.textContent).toBe('Home');
     expect(mounted.q('[data-test=footer-note]')?.textContent).toBe('Foot');
