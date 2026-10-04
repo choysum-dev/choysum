@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
       <slot />
     </div>
     <p
-      class="auth-panel__attrib m-0 max-w-full text-center text-xs leading-snug text-muted-foreground"
+      class="auth-panel__attrib max-w-full text-center text-xs leading-snug text-muted-foreground"
       data-testid="auth-panel-attrib"
     >
       {{ attribLine }}

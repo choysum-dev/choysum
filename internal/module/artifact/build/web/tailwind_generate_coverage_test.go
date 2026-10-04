@@ -516,6 +516,9 @@ func TestGenerateTailwindCSSEmptyCandidates(t *testing.T) {
 	if !strings.Contains(css, "--color-primary:") {
 		t.Fatalf("dialect-only generate should still emit ThemeCSS aliases:\n%s", css)
 	}
+	if !strings.Contains(css, "*, ::before") {
+		t.Fatalf("FullCSS must include preflight even without candidates:\n%s", css)
+	}
 }
 
 func TestScopeChoyUtilityCSS(t *testing.T) {

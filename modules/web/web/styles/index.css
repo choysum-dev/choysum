@@ -2,19 +2,10 @@
  * SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
  * SPDX-License-Identifier: Apache-2.0
  *
- * Global product styles (plain CSS; load after tokens.css).
- * Box-sizing / body reset substitute for Tailwind FullCSS preflight.
+ * Global product styles (plain CSS; load after tokens.css and FullCSS
+ * generated CSS). UA reset lives in Tailwind preflight; this file keeps
+ * Choy token mapping and product-only chrome.
  */
-
-html {
-  box-sizing: border-box;
-}
-
-*,
-*:before,
-*:after {
-  box-sizing: inherit;
-}
 
 body {
   font-family: var(--choy-font-family, system-ui, sans-serif);
@@ -64,12 +55,7 @@ body {
   line-height: 1.5 !important;
 }
 
-/* Inherit text color; use text-primary (or Button link) for CTA links. */
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
+/* Product link hover keeps inherited color (CTA uses text-primary / Button link). */
 a:hover {
   color: inherit;
 }
@@ -90,10 +76,6 @@ svg,
 [data-slot='table-head'] [role='checkbox'],
 [data-slot='table-cell'] [role='checkbox'] {
   translate: 0 0.125rem;
-}
-
-ul {
-  padding-inline-start: 0;
 }
 
 /* Vue <Transition name="fade"> (auth pages). */
