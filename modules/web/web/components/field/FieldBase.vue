@@ -230,7 +230,7 @@ SPDX-License-Identifier: Apache-2.0
   <div
     v-else-if="effectiveRenderMode === 'inline'"
     class="choy-field-base__inline inline-flex"
-    :class="showInlineError ? 'flex-col items-start' : 'items-center gap-1'"
+    :class="showInlineError ? 'w-full flex-col' : 'items-center gap-1'"
     v-show="visibleInline"
     @focusout="onFieldFocusOut"
   >
@@ -317,7 +317,7 @@ SPDX-License-Identifier: Apache-2.0
     </div>
     <p
       v-if="showInlineError"
-      class="choy-field-base__error mt-0 min-h-4 pb-2 max-w-full truncate whitespace-nowrap text-xs font-normal leading-4 text-destructive"
+      class="choy-field-base__error mt-0 min-h-4 pb-2 w-full whitespace-normal text-xs font-normal leading-4 text-destructive"
       :class="{ invisible: !displayError }"
       :title="displayError || undefined"
       :role="displayError ? 'alert' : undefined"

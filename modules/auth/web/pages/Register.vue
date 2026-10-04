@@ -117,9 +117,9 @@ SPDX-License-Identifier: Apache-2.0
                 />
               </div>
 
-              <div class="flex items-start gap-2" data-testid="register-terms">
+              <div class="w-full" data-testid="register-terms">
                 <ChoyBooleanField
-                  class="mt-0.5 shrink-0"
+                  class="w-full"
                   :store="formStore"
                   prop="AgreeTerms"
                   widget="checkbox"
@@ -128,27 +128,30 @@ SPDX-License-Identifier: Apache-2.0
                   buffer-strategy="live"
                   show-inline-error
                   :rules="agreeTermsRules"
-                />
-                <label for="fld-AgreeTerms" class="text-sm leading-5">
-                  {{ _t('I have read and agree to') }}
-                  <a
-                    href="#"
-                    target="_blank"
-                    class="text-primary underline-offset-4 hover:underline"
-                    @click.stop
-                  >
-                    {{ _t('Terms of Service') }}
-                  </a>
-                  {{ _t('and') }}
-                  <a
-                    href="#"
-                    target="_blank"
-                    class="text-primary underline-offset-4 hover:underline"
-                    @click.stop
-                  >
-                    {{ _t('Privacy Policy') }}
-                  </a>
-                </label>
+                >
+                  <template #side>
+                    <label for="fld-AgreeTerms" class="text-sm leading-5">
+                      {{ _t('I have read and agree to') }}
+                      <a
+                        href="#"
+                        target="_blank"
+                        class="text-primary underline-offset-4 hover:underline"
+                        @click.stop
+                      >
+                        {{ _t('Terms of Service') }}
+                      </a>
+                      {{ _t('and') }}
+                      <a
+                        href="#"
+                        target="_blank"
+                        class="text-primary underline-offset-4 hover:underline"
+                        @click.stop
+                      >
+                        {{ _t('Privacy Policy') }}
+                      </a>
+                    </label>
+                  </template>
+                </ChoyBooleanField>
               </div>
 
               <ChoyField>

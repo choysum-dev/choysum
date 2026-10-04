@@ -21,22 +21,28 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
   >
     <template #edit="{ fieldValue, inputName, inputId }">
-      <OBooleanCell
-        :field-value="fieldValue"
-        :options="bufferOptions"
-        :widget="widget"
-        :nullable="nullable"
-        :clearable="clearable"
-        :null-as-false="nullAsFalse"
-        :switch-active-text="switchActiveText"
-        :switch-inactive-text="switchInactiveText"
-        :checkbox-label="checkboxLabel"
-        :switch-props="switchProps"
-        :checkbox-props="checkboxProps"
-        :input-name="inputName"
-        :input-id="inputId"
-        v-bind="$attrs"
-      />
+      <div class="flex w-full items-start gap-2">
+        <OBooleanCell
+          :class="$slots.side ? 'mt-0.5 shrink-0' : undefined"
+          :field-value="fieldValue"
+          :options="bufferOptions"
+          :widget="widget"
+          :nullable="nullable"
+          :clearable="clearable"
+          :null-as-false="nullAsFalse"
+          :switch-active-text="switchActiveText"
+          :switch-inactive-text="switchInactiveText"
+          :checkbox-label="checkboxLabel"
+          :switch-props="switchProps"
+          :checkbox-props="checkboxProps"
+          :input-name="inputName"
+          :input-id="inputId"
+          v-bind="$attrs"
+        />
+        <div v-if="$slots.side" class="min-w-0 flex-1 text-sm leading-5">
+          <slot name="side" />
+        </div>
+      </div>
     </template>
 
     <template #display="{ fieldValue }">
