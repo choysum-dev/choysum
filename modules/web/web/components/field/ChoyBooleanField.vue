@@ -21,8 +21,9 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
   >
     <template #edit="{ fieldValue, inputName, inputId }">
-      <div class="flex w-full items-start gap-2">
+      <div class="flex w-full min-w-0 items-start gap-2">
         <OBooleanCell
+          v-bind="controlAttrs"
           :class="$slots.side ? 'mt-0.5 shrink-0' : undefined"
           :field-value="fieldValue"
           :options="bufferOptions"
@@ -37,7 +38,6 @@ SPDX-License-Identifier: Apache-2.0
           :checkbox-props="checkboxProps"
           :input-name="inputName"
           :input-id="inputId"
-          v-bind="$attrs"
         />
         <div v-if="$slots.side" class="min-w-0 flex-1 text-sm leading-5">
           <slot name="side" />
@@ -64,15 +64,25 @@ import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useF
 import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
 import { createTranslate } from '@/web/web/i18n';
-import { computed, defineComponent, h } from 'vue';
+import { computed, defineComponent, h, useAttrs } from 'vue';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/BooleanField' });
 
-defineOptions({ name: 'ChoyBooleanField' });
+defineOptions({ name: 'ChoyBooleanField', inheritAttrs: false });
 
 defineSlots<{
   side?: () => unknown;
 }>();
+
+const rawAttrs = useAttrs();
+const controlAttrs = computed(() => {
+  const out: Record<string, unknown> = {};
+  for (const key of Object.keys(rawAttrs)) {
+    if (key === 'class' || key === 'style') continue;
+    out[key] = (rawAttrs as Record<string, unknown>)[key];
+  }
+  return out;
+});
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 

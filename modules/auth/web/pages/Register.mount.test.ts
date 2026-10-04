@@ -81,6 +81,36 @@ test('Register.vue mounts under choysumMount', async () => {
   wrapper.unmount();
 });
 
+test('Register.vue: terms side copy does not inherit the field w-full class', async () => {
+  const { wrapper } = await mountRegister();
+  const terms = wrapper.find('[data-testid="register-terms"]');
+  expect(terms.exists()).toBe(true);
+  const root = terms.element as HTMLElement;
+  const editor = () => root.querySelector('.choy-bool-editor') as HTMLElement | null;
+  const wrap = () => root.querySelector('.choy-field-base__inline-wrap') as HTMLElement | null;
+  const side = () => root.querySelector('.flex-1') as HTMLElement | null;
+  expect(!!editor()).toBe(true);
+  expect(String(editor()!.className).includes('w-full')).toBe(false);
+  expect(!!wrap()).toBe(true);
+  expect(String(wrap()!.className).includes('w-full')).toBe(true);
+  expect(String(wrap()!.className).includes('min-w-0')).toBe(true);
+  expect(!!side()).toBe(true);
+  expect(String(side()!.textContent || '').includes('Terms of Service')).toBe(true);
+
+  await fillField(wrapper, '.register-username', 'alice');
+  await fillField(wrapper, '.register-email', 'alice@example.com');
+  await fillField(wrapper, '.register-password', 'secret1');
+  await fillField(wrapper, '.register-confirm', 'secret1');
+  submitForm(wrapper);
+  await afterSubmit();
+  expect(wrapper.text().includes('You must agree to the Terms of Service and Privacy Policy')).toBe(true);
+  expect(String(editor()!.className).includes('w-full')).toBe(false);
+  expect(String(wrap()!.className).includes('w-full')).toBe(true);
+  expect(String(wrap()!.className).includes('min-w-0')).toBe(true);
+  expect(String(side()!.textContent || '').includes('Terms of Service')).toBe(true);
+  wrapper.unmount();
+});
+
 test('Register.vue: empty submit shows inline errors and does not register', async () => {
   const { wrapper, replaces } = await mountRegister();
   submitForm(wrapper);
