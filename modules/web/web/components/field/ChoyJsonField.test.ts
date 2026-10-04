@@ -56,7 +56,7 @@ function installFieldBaseStub() {
       const record = () => (p.binding as any).recordRef();
       return () =>
         h('div', { class: 'field-base-stub' }, [
-          slots.edit?.({ fieldValue, record }),
+          slots.edit?.({ fieldValue, record, inputId: 'fld-Payload' }),
           slots.display?.({ fieldValue, record }),
         ]);
     },
@@ -202,7 +202,10 @@ describe('JsonobjectField', () => {
     });
     await nextTick();
     await flushPromises();
-    expect(m.q('.choy-json-input')).toBeTruthy();
+    const textarea = m.q('.choy-json-input') as HTMLTextAreaElement | null;
+    expect(textarea).toBeTruthy();
+    expect(textarea?.id).toBe('fld-Payload');
+    expect(textarea?.closest('div')?.id).not.toBe('fld-Payload');
     m.unmount();
   });
 

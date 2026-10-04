@@ -42,6 +42,11 @@ describe('ChoyShellThemeToggle', () => {
     expect(JSON.parse(localStorage.getItem(CHOY_THEME_STORAGE_KEY) || '{}').theme).toBe('auto');
     expect(mounted.q('[data-lucide=Sun]') || mounted.q('[data-lucide=Moon]')).not.toBeNull();
     expect(mounted.q('[data-lucide=Monitor]')).toBeNull();
+    const autoItem = mounted.q('[data-testid=choy-shell-theme-auto]');
+    if (autoItem) {
+      expect(autoItem.getAttribute('aria-checked')).toBe('true');
+      expect(autoItem.getAttribute('role')).toBe('menuitemradio');
+    }
     mounted.unmount();
   });
 

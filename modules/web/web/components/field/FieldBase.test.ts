@@ -392,6 +392,29 @@ describe('FieldBase list-editing-row-id gate', () => {
     m.unmount();
   });
 
+  test('table cell wrapper id stays distinct from the edit control id', () => {
+    const editing = ref('row-1');
+    installUiStubs();
+    installDialogStubs();
+    installOvColumnStub({ Id: 'row-1' });
+    const m = mountApp(FieldBase as any, {
+      props: {
+        binding: makeBinding({ string: 'Name' }),
+        renderMode: 'table',
+      },
+      provide: { 'list-editing-row-id': editing },
+      slots: {
+        edit: (args: { inputId?: string }) => h('input', { id: args.inputId, class: 'id-probe' }),
+        display: () => h(DisplayStub),
+      },
+    });
+    const cell = m.q('.choy-field-base__cell');
+    const input = m.q('input.id-probe') as HTMLInputElement | null;
+    expect(input?.id).toBe('fld-AccessTokenId-row-1');
+    expect(cell?.id || '').not.toBe(input?.id);
+    m.unmount();
+  });
+
   test('shows display when row id differs under active list-editing-row-id', () => {
     const m = mountTableCell({ Id: 'row-2' }, 'row-1');
     expect(m.q('.display-stub')).toBeTruthy();

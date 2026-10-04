@@ -21,6 +21,8 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyDropdownMenuItem
         v-for="item in themeItems"
         :key="item.mode"
+        role="menuitemradio"
+        :aria-checked="mode === item.mode"
         :data-testid="`choy-shell-theme-${item.mode}`"
         class="gap-2"
         @select="applyTheme(item.mode)"

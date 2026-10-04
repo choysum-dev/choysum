@@ -20,6 +20,8 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyDropdownMenuItem
         v-for="code in codes"
         :key="code"
+        role="menuitemradio"
+        :aria-checked="code === currentCode"
         :data-testid="`choy-shell-locale-${code}`"
         class="gap-2"
         @select="onSelect(code)"

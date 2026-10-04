@@ -185,7 +185,6 @@ SPDX-License-Identifier: Apache-2.0
       v-show="cellVisibleForRow(row)"
       :data-field="inputName"
       :data-row-key="guessRowKey(row)"
-      :id="`fld-${inputName}-${guessRowKey(row)}`"
     >
       <div
         class="choy-field-base__cell-item"

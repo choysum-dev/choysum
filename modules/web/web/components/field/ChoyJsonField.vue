@@ -237,6 +237,7 @@ const bufferOptions = computed(() => ({
 
 const OJsonCell = defineComponent({
   name: 'OJsonCell',
+  inheritAttrs: false,
   props: {
     fieldValue: { type: Function, required: true },
     options: { type: Object, required: true },
@@ -245,7 +246,7 @@ const OJsonCell = defineComponent({
     nullable: Boolean,
     allowArray: Boolean,
   },
-  setup(p) {
+  setup(p, { attrs }) {
     const modelRef = computed<JsonVal>({
       get: () => (p.fieldValue as any)().value,
       set: v => {
@@ -313,6 +314,7 @@ const OJsonCell = defineComponent({
     return () =>
       h('div', {}, [
         h('textarea', {
+          ...attrs,
           class: 'choy-json-input w-full font-mono',
           placeholder: p.placeholder,
           rows: 6,
