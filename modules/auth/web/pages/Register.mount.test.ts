@@ -78,6 +78,16 @@ test('Register.vue mounts under choysumMount', async () => {
   const { wrapper } = await mountRegister();
   expect(fieldInput(wrapper, '.register-username').exists()).toBe(true);
   expect(wrapper.find('[data-testid="register-terms"]').exists()).toBe(true);
+  const root = wrapper.element as HTMLElement;
+  const labels = Array.from(root.querySelectorAll('label'));
+  for (const id of ['register-username', 'register-email', 'register-password', 'register-confirm']) {
+    expect(labels.some(el => el.getAttribute('for') === id)).toBe(true);
+    const control = root.querySelector(`#${id}`);
+    expect(control).not.toBeNull();
+    expect(['INPUT', 'TEXTAREA', 'SELECT'].includes(String(control?.tagName || ''))).toBe(true);
+  }
+  expect(labels.some(el => el.getAttribute('for') === 'fld-AgreeTerms')).toBe(true);
+  expect(root.querySelector('#fld-AgreeTerms')).not.toBeNull();
   wrapper.unmount();
 });
 

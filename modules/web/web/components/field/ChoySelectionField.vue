@@ -21,13 +21,14 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
   >
     <!-- Shared form/row edit slot: derive options from fieldValue and record context -->
-    <template #edit="{ fieldValue, record }">
+    <template #edit="{ fieldValue, record, inputId }">
       <select
         class="choy-selection-field w-full"
         :value="fieldValue().value ?? ''"
         :disabled="disabled || optionsLoading"
         :data-loading="optionsLoading ? 'true' : 'false'"
         v-bind="selectProps"
+        :id="inputId"
         :style="{ width: width || '100%' }"
         @change="(e: Event) => onUpdate(fieldValue, (e.target as HTMLSelectElement).value || null)"
       >

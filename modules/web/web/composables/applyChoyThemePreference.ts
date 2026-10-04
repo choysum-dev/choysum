@@ -21,6 +21,13 @@ export type ResolvedChoyThemePreference = {
 
 export const CHOY_THEME_STORAGE_KEY = 'choy.ui.theme';
 
+/** Cycle light → dark → auto → light for the shell theme control. */
+export function nextChoyThemeMode(current: ChoyThemeMode | undefined | null): ChoyThemeMode {
+  if (current === 'light') return 'dark';
+  if (current === 'dark') return 'auto';
+  return 'light';
+}
+
 export type ApplyChoyThemePreferenceOptions = {
   root?: ParentNode & {
     classList: DOMTokenList;

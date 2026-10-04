@@ -74,8 +74,7 @@ describe('ChoyWebShell without layout store', () => {
     });
     await flushPromises();
     expect(
-      mounted.q('[data-testid=choy-shell-brand]') ||
-        mounted.q('[data-testid=choy-shell-brand-rail]'),
+      mounted.q('[data-testid=choy-shell-brand]'),
     ).not.toBeNull();
     mounted.unmount();
   });

@@ -2,12 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { defineComponent, h } from 'vue';
-import { createI18n } from 'vue-i18n';
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import AuthPanel from './AuthPanel.vue';
 
 describe('AuthPanel', () => {
-  test('renders slot content and attribution fallback without i18n', async () => {
+  test('renders slot content without a nested brand or footer', async () => {
     const Host = defineComponent({
       setup() {
         return () =>
@@ -19,76 +18,8 @@ describe('AuthPanel', () => {
     const mounted = mountApp(Host as any);
     await flushPromises();
     expect(mounted.q('[data-testid=auth-slot]')?.textContent).toBe('form');
-    const brand = mounted.q('[data-testid=auth-panel-brand]');
-    expect(brand).toBeTruthy();
-    expect(brand?.querySelector('img')).toBeTruthy();
-    expect(brand?.querySelector('.bg-primary')).toBeNull();
-    const attrib = mounted.q('[data-testid=auth-panel-attrib]');
-    expect(attrib).toBeTruthy();
-    // Without vue-i18n, useI18n throws and keys are returned as-is.
-    expect(attrib!.textContent || '').toContain('layout.footer');
-    mounted.unmount();
-  });
-
-  test('uses vue-i18n layout.footer keys when i18n is installed', async () => {
-    const i18n = createI18n({
-      legacy: false,
-      locale: 'en',
-      messages: {
-        en: {
-          layout: {
-            footer: {
-              copyright: '© {year} Choysum. All rights reserved.',
-              powered: 'Powered by Choysum',
-              version: 'Version {version}',
-            },
-          },
-        },
-      },
-    });
-    const Host = defineComponent({
-      setup() {
-        return () =>
-          h(AuthPanel as any, null, {
-            default: () => h('div', { 'data-testid': 'auth-slot' }, 'form'),
-          });
-      },
-    });
-    const mounted = mountApp(Host as any, { plugins: [i18n] });
-    await flushPromises();
-    const attrib = mounted.q('[data-testid=auth-panel-attrib]')?.textContent || '';
-    expect(attrib).toContain('Choysum');
-    expect(attrib).toContain('Powered by Choysum');
-    expect(attrib).toContain('Version');
-    mounted.unmount();
-  });
-
-  test('brand click pushes the default land path when a router is installed', async () => {
-    const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
-    const { router } = createFeStubRouter({
-      route: { path: '/login', fullPath: '/login', meta: { isAuthPage: true } },
-    });
-    const pushes: unknown[] = [];
-    const originalPush = router.push?.bind(router);
-    router.push = (to: unknown) => {
-      pushes.push(to);
-      return originalPush ? originalPush(to) : Promise.resolve();
-    };
-    const Host = defineComponent({
-      setup() {
-        return () =>
-          h(AuthPanel as any, null, {
-            default: () => h('div', { 'data-testid': 'auth-slot' }, 'form'),
-          });
-      },
-    });
-    const mounted = mountApp(Host as any, { plugins: [router] });
-    await flushPromises();
-    const brand = mounted.q('[data-testid=auth-panel-brand]') as HTMLElement | null;
-    expect(brand).toBeTruthy();
-    brand!.click();
-    await flushPromises();
-    expect(pushes).toContain('/meta/modules');
+    expect(mounted.q('[data-testid=auth-panel-brand]')).toBeNull();
+    expect(mounted.q('[data-testid=auth-panel-attrib]')).toBeNull();
     mounted.unmount();
   });
 });

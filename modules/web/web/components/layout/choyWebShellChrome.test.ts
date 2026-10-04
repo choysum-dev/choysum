@@ -3,6 +3,7 @@
 
 import {
   shellMenuTriggerLabel,
+  shellPoweredByLine,
   shortAppVersion,
   shouldCloseDrawerOnEscape,
   setDrawerBodyOverflow,
@@ -14,6 +15,12 @@ describe('choyWebShellChrome', () => {
     expect(shortAppVersion('  ')).toBe('dev');
     expect(shortAppVersion('1.2.3')).toBe('1.2.3');
     expect(shortAppVersion('1.2.3-alpha.9')).toBe('1.2.3-');
+  });
+
+  test('shellPoweredByLine prefixes a v when the version lacks one', () => {
+    expect(shellPoweredByLine('0.1.0')).toBe('Powered by Choysum v0.1.0');
+    expect(shellPoweredByLine('v0.1.0')).toBe('Powered by Choysum v0.1.0');
+    expect(shellPoweredByLine('')).toBe('Powered by Choysum vdev');
   });
 
   test('shellMenuTriggerLabel picks mobile vs expand/collapse copy', () => {

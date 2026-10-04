@@ -26,25 +26,25 @@ test('web routes: root and catch-all redirect via default land path', () => {
 });
 
 test('web routes: registers Error page and no Home route/menu', () => {
-  const error = routes.find(route => route.name === 'Error') as any;
+  const layout = routes.find(route => route.name === 'Layout') as any;
+  const error = layout?.children?.find((route: any) => route.name === 'Error');
   expect(error).toBeTruthy();
-  expect(error.path).toBe('/error/:code(\\d+)');
+  expect(error.path).toBe('error/:code(\\d+)');
   expect(error.meta?.requiresAuth).toBe(false);
   expect(error.meta?.isAuthPage).toBe(true);
 
-  const layout = routes.find(route => route.name === 'Layout') as any;
   const home = layout?.children?.find((route: any) => route.name === 'Home');
   expect(home).toBeUndefined();
   expect(menus).toEqual([]);
 });
 
-test('AppLayout enables sidebar menu chrome with header', () => {
+test('AppLayout enables sidebar menu chrome with header and footer', () => {
   const appLayout = routes.find(route => route.name === 'AppLayout') as any;
   expect(appLayout?.props?.showSidebar).toBe(true);
-  expect(appLayout?.props?.showFooter).toBe(false);
+  expect(appLayout?.props?.showFooter).toBe(true);
   expect(appLayout?.props?.showHeader).toBe(true);
 
   const layout = routes.find(route => route.name === 'Layout') as any;
   expect(layout?.props?.showSidebar).toBe(true);
-  expect(layout?.props?.showFooter).toBe(false);
+  expect(layout?.props?.showFooter).toBe(true);
 });

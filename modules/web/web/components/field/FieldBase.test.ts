@@ -189,6 +189,21 @@ describe('FieldBase label and help', () => {
     m.unmount();
   });
 
+  test('uses explicit id for label for and edit-slot inputId', () => {
+    const m = mountBase(
+      { binding: makeBinding(), renderMode: 'form', id: 'register-confirm' },
+      {
+        slots: {
+          edit: (args: { inputId?: string }) => h('input', { id: args.inputId, class: 'id-probe' }),
+          display: () => h('span'),
+        },
+      },
+    );
+    expect(m.q('.choy-field-base__label-text')?.getAttribute('for')).toBe('register-confirm');
+    expect((m.q('input.id-probe') as HTMLInputElement | null)?.id).toBe('register-confirm');
+    m.unmount();
+  });
+
   test('lets explicit label override metadata', () => {
     const m = mountBase({
       binding: makeBinding({ string: 'Access Token ID' }),
@@ -374,6 +389,29 @@ describe('FieldBase list-editing-row-id gate', () => {
     const m = mountTableCell({ Id: 'row-1' }, 'row-1');
     expect(m.q('.edit-stub')).toBeTruthy();
     expect(m.q('.display-stub')).toBeFalsy();
+    m.unmount();
+  });
+
+  test('table cell wrapper id stays distinct from the edit control id', () => {
+    const editing = ref('row-1');
+    installUiStubs();
+    installDialogStubs();
+    installOvColumnStub({ Id: 'row-1' });
+    const m = mountApp(FieldBase as any, {
+      props: {
+        binding: makeBinding({ string: 'Name' }),
+        renderMode: 'table',
+      },
+      provide: { 'list-editing-row-id': editing },
+      slots: {
+        edit: (args: { inputId?: string }) => h('input', { id: args.inputId, class: 'id-probe' }),
+        display: () => h(DisplayStub),
+      },
+    });
+    const cell = m.q('.choy-field-base__cell');
+    const input = m.q('input.id-probe') as HTMLInputElement | null;
+    expect(input?.id).toBe('fld-AccessTokenId-row-1');
+    expect(cell?.id).toBeFalsy();
     m.unmount();
   });
 

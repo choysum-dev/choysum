@@ -135,6 +135,21 @@ describe('ChoyButton mount', () => {
       w.unmount();
     }
   });
+
+  test('outline keeps a visible border class without border-0', async () => {
+    const w = mountApp(ChoyButton as any, {
+      props: { variant: 'outline', 'data-testid': 'outline-btn' },
+      slots: { default: () => 'Go' },
+    });
+    try {
+      await flushPromises();
+      const cls = (w.q('[data-testid="outline-btn"]') as HTMLButtonElement | null)?.className || '';
+      expect(cls).toContain('border-input');
+      expect(` ${cls} `.includes(' border-0 ')).toBe(false);
+    } finally {
+      w.unmount();
+    }
+  });
 });
 
 describe('Button host click guard', () => {

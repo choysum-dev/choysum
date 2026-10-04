@@ -7,6 +7,26 @@
  * Choy token mapping and product-only chrome.
  */
 
+html,
+body,
+#app {
+  height: 100%;
+  overflow: hidden;
+}
+
+@media print {
+  html,
+  body,
+  #app,
+  .choy-app,
+  .choy-shell,
+  .choy-shell__body,
+  .choy-shell__main-inner {
+    height: auto;
+    overflow: visible;
+  }
+}
+
 body {
   font-family: var(--choy-font-family, system-ui, sans-serif);
   font-size: var(--choy-font-size-base, 1rem);
@@ -15,6 +35,30 @@ body {
   background-color: var(--choy-color-background, transparent);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Viewport-locked chrome: header/footer stay put; only main-inner scrolls. */
+.choy-app,
+.choy-shell {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.choy-shell-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.choy-shell__body {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.choy-shell__main-inner {
+  min-height: 0;
+  overflow: auto;
 }
 
 /*

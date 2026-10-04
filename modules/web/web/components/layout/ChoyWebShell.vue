@@ -4,164 +4,122 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <!-- Auth / fullscreen canvas: no Sidebar chrome. -->
+  <!-- Guest / auth: viewport-locked column, no sidebar. -->
   <div
     v-if="isAuthPage || !sidebarAllowed"
-    class="flex min-h-svh w-full flex-col bg-background text-foreground"
+    class="choy-shell flex h-full min-h-0 w-full flex-col overflow-hidden bg-background text-foreground"
     :class="isAuthPage ? 'choy-shell--auth' : undefined"
     data-testid="choy-shell"
     data-shell-mode="canvas"
   >
-    <header
+    <ChoyShellHeader
       v-if="effectiveShowHeader"
-      class="shrink-0 border-b border-border"
-      data-testid="choy-shell-header"
+      :show-sidebar-chrome="false"
+      :menu-trigger-label="menuTriggerLabel"
+      :go-home="onBrandClick"
     >
-      <div
-        class="flex items-center gap-2 px-3 text-sm"
-        :style="{ height: 'var(--choy-layout-header-height)' }"
-      >
-        <a
-          href="/"
-          class="choy-shell__brand inline-flex min-w-0 items-center gap-2 font-semibold tracking-tight text-foreground no-underline hover:opacity-90"
-          data-testid="choy-shell-brand"
-          @click.prevent="onBrandClick"
-        >
-          <img :src="logoUrl" alt="" class="size-6 shrink-0" width="24" height="24" />
-          <span class="truncate">Choysum</span>
-        </a>
-        <div data-anchor="choy.shell.header-actions" class="ms-auto flex items-center gap-1">
+      <template #header-actions>
+        <div data-anchor="choy.shell.header-actions" class="flex items-center gap-2">
           <slot name="header-actions" />
         </div>
-      </div>
-    </header>
-      <div
-        class="choy-shell__main-inner min-h-0 flex-1 overflow-auto"
-        :class="isAuthPage ? 'bg-background' : 'bg-muted/30'"
-        data-testid="choy-shell-canvas"
-      >
-        <slot>
-          <router-view v-slot="{ Component, route: viewRoute }">
-            <KeepAlive>
-              <component
-                :is="Component"
-                v-if="Component && viewRoute.meta?.keepAlive"
-                :key="viewRoute.path"
-              />
-            </KeepAlive>
+      </template>
+    </ChoyShellHeader>
+    <div
+      class="choy-shell__main-inner flex min-h-0 flex-1 flex-col overflow-y-auto bg-background"
+      data-testid="choy-shell-canvas"
+    >
+      <slot>
+        <router-view v-slot="{ Component, route: viewRoute }">
+          <KeepAlive>
+            <component
+              :is="Component"
+              v-if="Component && viewRoute.meta?.keepAlive"
+              class="min-h-0 flex-1"
+              :key="viewRoute.path"
+            />
+          </KeepAlive>
             <component
               :is="Component"
               v-if="Component && !viewRoute.meta?.keepAlive"
+              class="min-h-0 flex-1"
               :key="viewRoute.fullPath"
             />
-          </router-view>
-        </slot>
-      </div>
+        </router-view>
+      </slot>
+    </div>
     <footer
-      v-if="showFooter && $slots.footer"
-      class="shrink-0 border-t border-border px-4 py-2 text-xs text-foreground/60"
+      v-if="showFooter"
+      class="shrink-0 px-4 py-4"
+      data-testid="choy-shell-footer"
     >
+      <ChoyAppFooter />
       <slot name="footer" />
     </footer>
   </div>
 
-  <!-- Product shell: SidebarProvider + Sidebar + SidebarInset. -->
+  <!-- Product shell: full-bleed header, nav rail, viewport-locked footer. -->
   <SidebarProvider
     v-else
-    class="choy-shell min-h-svh"
+    class="choy-shell flex h-full min-h-0 w-full flex-col overflow-hidden"
     data-testid="choy-shell"
     data-shell-mode="sidebar"
   >
-    <ChoySidebarBridge />
-    <Sidebar collapsible="icon" side="left">
-      <SidebarHeader class="gap-2 border-b border-sidebar-border px-2 py-2">
-        <a
-          href="/"
-          class="choy-shell__brand flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 font-semibold tracking-tight text-sidebar-foreground no-underline hover:bg-sidebar-accent"
-          data-testid="choy-shell-brand-rail"
-          @click.prevent="onBrandClick"
-        >
-          <img :src="logoUrl" alt="" class="size-6 shrink-0" width="24" height="24" />
-          <span class="truncate group-data-[collapsible=icon]:hidden">Choysum</span>
-        </a>
-      </SidebarHeader>
-      <SidebarContent>
-        <slot name="aside">
-          <ChoySidebarNav />
-        </slot>
-      </SidebarContent>
-      <SidebarFooter class="border-t border-sidebar-border">
+    <ChoyShellHeader
+      v-if="effectiveShowHeader"
+      :show-sidebar-chrome="true"
+      :menu-trigger-label="menuTriggerLabel"
+      :go-home="onBrandClick"
+    >
+      <template #header-actions>
+        <div data-anchor="choy.shell.header-actions" class="flex items-center gap-2">
+          <slot name="header-actions" />
+        </div>
+      </template>
+    </ChoyShellHeader>
+    <div class="choy-shell__body flex min-h-0 flex-1 overflow-hidden">
+      <ChoySidebarBridge />
+      <Sidebar collapsible="icon" side="left">
+        <SidebarContent>
+          <slot name="aside">
+            <ChoySidebarNav />
+          </slot>
+        </SidebarContent>
+        <SidebarRail />
+      </Sidebar>
+      <SidebarInset class="min-h-0 min-w-0 overflow-hidden">
         <div
-          class="choy-shell__attrib px-2 py-2 text-xs text-sidebar-foreground/70"
-          data-testid="choy-shell-attrib"
+          class="choy-shell__main-inner flex min-h-0 flex-1 flex-col overflow-y-auto bg-muted/30"
+          data-testid="choy-shell-canvas"
         >
-          <p class="truncate leading-snug group-data-[collapsible=icon]:hidden">
-            {{ copyrightLine }}
-          </p>
-          <p class="truncate leading-snug group-data-[collapsible=icon]:hidden">
-            {{ poweredLine }}
-          </p>
-          <p
-            class="truncate leading-snug group-data-[collapsible=icon]:text-center"
-            :title="versionLine"
-          >
-            <span class="group-data-[collapsible=icon]:hidden">{{ versionLine }}</span>
-            <span class="hidden font-medium tabular-nums group-data-[collapsible=icon]:inline">
-              {{ versionShort }}
-            </span>
-          </p>
-        </div>
-      </SidebarFooter>
-      <SidebarRail />
-    </Sidebar>
-
-    <SidebarInset>
-      <header
-        v-if="effectiveShowHeader"
-        class="flex shrink-0 items-center gap-2 border-b border-border px-3 text-sm"
-        :style="{ height: 'var(--choy-layout-header-height)' }"
-        data-testid="choy-shell-header"
-      >
-        <SidebarTrigger
-          data-testid="choy-shell-menu-trigger"
-          :aria-label="menuTriggerLabel"
-        />
-        <ChoyShellBreadcrumb />
-        <div class="ms-auto flex items-center gap-1">
-          <ChoyCommandPalette />
-          <div data-anchor="choy.shell.header-actions" class="flex items-center gap-1">
-            <slot name="header-actions" />
-          </div>
-        </div>
-      </header>
-      <div
-        class="choy-shell__main-inner min-h-0 flex-1 overflow-auto bg-muted/30"
-        data-testid="choy-shell-canvas"
-      >
-        <slot>
-          <router-view v-slot="{ Component, route: viewRoute }">
-            <KeepAlive>
+          <slot>
+            <router-view v-slot="{ Component, route: viewRoute }">
+              <KeepAlive>
+                <component
+                  :is="Component"
+                  v-if="Component && viewRoute.meta?.keepAlive"
+                  class="min-h-0 flex-1"
+                  :key="viewRoute.path"
+                />
+              </KeepAlive>
               <component
                 :is="Component"
-                v-if="Component && viewRoute.meta?.keepAlive"
-                :key="viewRoute.path"
+                v-if="Component && !viewRoute.meta?.keepAlive"
+                class="min-h-0 flex-1"
+                :key="viewRoute.fullPath"
               />
-            </KeepAlive>
-            <component
-              :is="Component"
-              v-if="Component && !viewRoute.meta?.keepAlive"
-              :key="viewRoute.fullPath"
-            />
-          </router-view>
-        </slot>
-      </div>
-      <footer
-        v-if="showFooter && $slots.footer"
-        class="shrink-0 border-t border-border px-4 py-2 text-xs text-foreground/60"
-      >
-        <slot name="footer" />
-      </footer>
-    </SidebarInset>
+            </router-view>
+          </slot>
+        </div>
+      </SidebarInset>
+    </div>
+    <footer
+      v-if="showFooter"
+      class="shrink-0 px-4 py-4"
+      data-testid="choy-shell-footer"
+    >
+      <ChoyAppFooter />
+      <slot name="footer" />
+    </footer>
   </SidebarProvider>
 </template>
 
@@ -169,28 +127,24 @@ SPDX-License-Identifier: Apache-2.0
 import { KeepAlive, computed, type ComputedRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import logoUrl from '../../assets/logo-32.png'
+import ChoyAppFooter from './ChoyAppFooter.vue'
+import ChoyShellHeader from './ChoyShellHeader.vue'
 import ChoySidebarNav from './ChoySidebarNav.vue'
 import ChoySidebarBridge from './ChoySidebarBridge.vue'
-import ChoyCommandPalette from './ChoyCommandPalette.vue'
-import ChoyShellBreadcrumb from './ChoyShellBreadcrumb.vue'
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
   SidebarInset,
   SidebarProvider,
   SidebarRail,
-  SidebarTrigger,
 } from '../vendor/ui/sidebar/index'
 import { useLayoutStore } from '../../stores/layoutStore'
 import { resolveRuntimeDefaultLandPath } from '../../router/resolveRuntimeDefaultLandPath'
-import { shellMenuTriggerLabel, shortAppVersion } from './choyWebShellChrome'
+import { shellMenuTriggerLabel } from './choyWebShellChrome'
 
 /**
- * Dense Admin product shell: Sidebar* chrome + Canvas with KeepAlive-aware router-view.
- * Auth pages suppress the rail and top bar so Auth is a fullscreen canvas.
+ * Product shell: header + optional nav rail + viewport-locked footer.
+ * Auth pages keep the top bar and footer, and hide the rail.
  */
 const props = withDefaults(
   defineProps<{
@@ -201,7 +155,7 @@ const props = withDefaults(
   {
     showHeader: true,
     showSidebar: true,
-    showFooter: false,
+    showFooter: true,
   },
 )
 
@@ -243,7 +197,7 @@ try {
   tLayout = (key) => key
 }
 
-const effectiveShowHeader = computed(() => props.showHeader && !isAuthPage.value)
+const effectiveShowHeader = computed(() => props.showHeader)
 const sidebarAllowed = computed(() => props.showSidebar && !isAuthPage.value)
 
 const menuTriggerLabel = computed(() =>
@@ -252,18 +206,5 @@ const menuTriggerLabel = computed(() =>
     railCollapsed: layoutStore?.sidebarMode === 'collapsed',
     t: (key) => tLayout(key),
   }),
-)
-
-const appVersion = computed(
-  () => String((import.meta as ImportMeta).env?.CHOYSUM_APP_VERSION || '').trim() || 'dev',
-)
-const versionShort = computed(() => shortAppVersion(appVersion.value))
-const year = computed(() => new Date().getFullYear())
-const copyrightLine = computed(() =>
-  tLayout('layout.footer.copyright', { year: year.value }),
-)
-const poweredLine = computed(() => tLayout('layout.footer.powered'))
-const versionLine = computed(() =>
-  tLayout('layout.footer.version', { version: appVersion.value }),
 )
 </script>

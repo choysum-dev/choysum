@@ -826,32 +826,42 @@ msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr "用户注册失败"
 
-#: web/components/layout/ChoyWebShell.vue:6
+#: web/components/layout/ChoyWebShell.vue:5
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "Log In"
 msgstr "登录"
 
-#: web/components/layout/ChoyWebShell.vue:29
+#: web/components/layout/ChoyWebShell.vue:31
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "Log Out"
 msgstr "退出登录"
 
-#: web/components/layout/ChoyWebShell.vue:5
+#: web/components/layout/ChoyWebShell.vue:4
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "Log in"
 msgstr "登录"
 
-#: web/components/layout/ChoyWebShell.vue:23
+#: web/components/layout/ChoyWebShell.vue:25
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "Profile"
 msgstr "个人资料"
 
-#: web/components/layout/ChoyWebShell.vue:26
+#: web/components/layout/ChoyWebShell.vue:28
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "Settings"
 msgstr "设置"
 
-#: web/components/layout/ChoyWebShell.vue:13
+#: web/components/layout/ChoyWebShell.vue:8
+msgctxt "web/components/layout/ChoyWebShell"
+msgid "Sign Up"
+msgstr "注册"
+
+#: web/components/layout/ChoyWebShell.vue:7
+msgctxt "web/components/layout/ChoyWebShell"
+msgid "Sign up"
+msgstr "注册"
+
+#: web/components/layout/ChoyWebShell.vue:15
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "User menu"
 msgstr "用户菜单"
@@ -1036,15 +1046,15 @@ msgctxt "web/pages/Login"
 msgid "Password"
 msgstr "密码"
 
-#: web/pages/Login.vue:36
-msgctxt "web/pages/Login"
-msgid "Register now"
-msgstr "立即注册"
-
 #: web/pages/Login.vue:27
 msgctxt "web/pages/Login"
 msgid "Remember me"
 msgstr "记住我"
+
+#: web/pages/Login.vue:36
+msgctxt "web/pages/Login"
+msgid "Sign up now"
+msgstr "立即注册"
 
 #: web/pages/Login.vue:6
 msgctxt "web/pages/Login"
@@ -1056,22 +1066,22 @@ msgctxt "web/pages/Login"
 msgid "Username"
 msgstr "用户名"
 
-#: web/pages/Logout.vue:23
+#: web/pages/Logout.vue:24
 msgctxt "web/pages/Logout"
 msgid "Back to Login"
 msgstr "返回登录"
 
-#: web/pages/Logout.vue:14
+#: web/pages/Logout.vue:13
 msgctxt "web/pages/Logout"
-msgid "Log In Again"
-msgstr "重新登录"
+msgid "Go now"
+msgstr "立即前往"
 
 #: web/pages/Logout.vue:27
 msgctxt "web/pages/Logout"
 msgid "Redirecting to the login page in %s seconds"
 msgstr "将在 %s 秒后进入登录页"
 
-#: web/pages/Logout.vue:19
+#: web/pages/Logout.vue:20
 msgctxt "web/pages/Logout"
 msgid "Retry"
 msgstr "重试"
@@ -1096,7 +1106,7 @@ msgctxt "web/pages/Logout"
 msgid "Signing out this session"
 msgstr "正在退出当前会话"
 
-#: web/pages/Logout.vue:60
+#: web/pages/Logout.vue:55
 msgctxt "web/pages/Logout"
 msgid "Unknown error occurred during logout"
 msgstr "退出时发生未知错误"
@@ -2281,6 +2291,10 @@ msgctxt "web/views/UserSearchView"
 msgid "Active"
 msgstr "启用"
 
+#~ msgctxt "web/components/layout/ChoyWebShell"
+#~ msgid "Register"
+#~ msgstr "注册"
+
 #~ msgctxt "web/components/preferences/PreferencesDialog"
 #~ msgid "Invalid or inactive language"
 #~ msgstr "无效或未启用的语言"
@@ -2292,6 +2306,18 @@ msgstr "启用"
 #~ msgctxt "web/components/preferences/PreferencesDialog"
 #~ msgid "Timezone"
 #~ msgstr "时区"
+
+#~ msgctxt "web/pages/Login"
+#~ msgid "Register now"
+#~ msgstr "立即注册"
+
+#~ msgctxt "web/pages/Logout"
+#~ msgid "Go to login"
+#~ msgstr "进入登录页"
+
+#~ msgctxt "web/pages/Logout"
+#~ msgid "Log In Again"
+#~ msgstr "重新登录"
 
 #~ msgctxt "web/pages/Logout"
 #~ msgid "Please wait while your account is being signed out securely..."

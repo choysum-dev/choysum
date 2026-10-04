@@ -69,7 +69,8 @@ html {
   --choy-font-size-base: 1rem;
   --choy-font-size-lg: 1.125rem;
 
-  --choy-layout-header-height: var(--choy-control-height);
+  /* Shell chrome (shadcn-vue docs header ~h-14); not the control ruler. */
+  --choy-layout-header-height: 3.5rem;
   --choy-layout-sidebar-width: 15rem;
   --choy-layout-sidebar-collapsed-width: 3.5rem;
   --choy-layout-content-padding: 1.25rem;
@@ -211,6 +212,7 @@ html[data-density='compact'] {
   --choy-control-height: 28px;
   --choy-control-height-sm: 24px;
   --choy-control-height-lg: 32px;
+  --choy-layout-header-height: 3rem;
 }
 
 html[dir='rtl'] {

@@ -23,10 +23,19 @@ export const routes: RouteRecordRaw[] = [
     props: {
       showSidebar: true,
       showHeader: true,
-      // Footer slot cannot be filled via router-view; omit empty chrome.
-      showFooter: false,
+      showFooter: true,
     },
-    children: [],
+    children: [
+      {
+        path: 'error/:code(\\d+)',
+        name: 'Error',
+        component: () => import('../pages/ErrorView.vue'),
+        meta: {
+          requiresAuth: false,
+          isAuthPage: true,
+        },
+      },
+    ],
   },
 
   {
@@ -38,19 +47,9 @@ export const routes: RouteRecordRaw[] = [
       // cannot fill named #aside slots via a plain router-view.
       showSidebar: true,
       showHeader: true,
-      showFooter: false,
+      showFooter: true,
     },
     children: [],
-  },
-
-  {
-    path: '/error/:code(\\d+)',
-    name: 'Error',
-    component: () => import('../pages/ErrorView.vue'),
-    meta: {
-      requiresAuth: false,
-      isAuthPage: true,
-    },
   },
 
   {

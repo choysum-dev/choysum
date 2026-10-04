@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyPage :loading="loading" width="narrow" :padding="false" class="w-full">
+  <ChoyPage :loading="loading" :padding="false" fill-height class="flex min-h-0 w-full flex-1 flex-col">
     <AuthPanel>
       <ChoyCard class="login-card w-full">
         <template #header>
@@ -99,7 +99,7 @@ SPDX-License-Identifier: Apache-2.0
                 <ChoyFieldDescription v-if="showRegisterLink" class="text-center">
                   {{ _t("Don't have an account?") }}
                   <router-link to="/register" class="text-primary hover:underline">{{
-                    _t('Register now')
+                    _t('Sign up now')
                   }}</router-link>
                 </ChoyFieldDescription>
               </ChoyField>

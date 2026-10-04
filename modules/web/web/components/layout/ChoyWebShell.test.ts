@@ -22,11 +22,17 @@ describe('ChoyWebShell', () => {
     await flushPromises();
     expect(mounted.q('[data-testid=choy-shell]')?.getAttribute('data-shell-mode')).toBe('sidebar');
     expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-header]')?.className || '').toContain('sticky');
+    expect(mounted.q('.choy-shell')?.className || '').toContain('overflow-hidden');
+    expect(mounted.q('[data-testid=choy-shell-canvas]')?.className || '').toContain('overflow-y-auto');
+    expect(mounted.q('[data-testid=choy-shell-header-sep]')).not.toBeNull();
+    expect(mounted.q('[data-anchor="choy.shell.header-actions"]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-aside]')).not.toBeNull();
-    expect(mounted.q('[data-testid=choy-shell-attrib]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-footer]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-footer]')?.className || '').not.toContain('border-t');
+    expect(mounted.q('[data-testid=choy-app-footer]')?.textContent || '').toContain('Powered by Choysum');
     expect(mounted.q('[data-testid=choy-shell-menu-trigger]')).not.toBeNull();
-    expect(mounted.q('[data-testid=choy-shell-brand]')).toBeNull();
-    expect(mounted.q('[data-testid=choy-shell-brand-rail]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-brand]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-command-trigger]')).not.toBeNull();
     expect(mounted.q('[data-test=router-view]')).not.toBeNull();
     mounted.unmount();
@@ -45,6 +51,7 @@ describe('ChoyWebShell', () => {
       },
     });
     await flushPromises();
+    expect(mounted.q('[data-anchor="choy.shell.header-actions"]')).not.toBeNull();
     expect(mounted.q('[data-test=header-action]')?.textContent).toBe('A');
     expect(mounted.q('[data-test=nav-link]')?.textContent).toBe('Home');
     expect(mounted.q('[data-test=footer-note]')?.textContent).toBe('Foot');
@@ -63,7 +70,7 @@ describe('ChoyWebShell', () => {
     mounted.unmount();
   });
 
-  test('skips empty footer chrome when showFooter lacks footer slot', async () => {
+  test('renders built-in Powered by footer when showFooter has no footer slot', async () => {
     const mounted = mountApp(ChoyWebShell as any, {
       props: { showHeader: true, showSidebar: false, showFooter: true },
       stubs: {
@@ -72,7 +79,7 @@ describe('ChoyWebShell', () => {
     });
     await flushPromises();
     expect(mounted.q('[data-testid=choy-shell]')?.getAttribute('data-shell-mode')).toBe('canvas');
-    expect(mounted.q('[data-test=footer-note]')).toBeNull();
+    expect(mounted.q('[data-testid=choy-app-footer]')?.textContent || '').toContain('Powered by Choysum');
     mounted.unmount();
   });
 
@@ -336,7 +343,7 @@ describe('ChoyWebShell', () => {
     mounted.unmount();
   });
 
-  test('hides aside and header chrome when route.meta.isAuthPage is set', async () => {
+  test('hides aside but keeps header and footer when route.meta.isAuthPage is set', async () => {
     const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
     const { router } = createFeStubRouter({
       route: { path: '/login', fullPath: '/login', meta: { isAuthPage: true } },
@@ -349,8 +356,11 @@ describe('ChoyWebShell', () => {
     });
     await flushPromises();
     expect(mounted.q('[data-testid=choy-shell]')?.getAttribute('data-shell-mode')).toBe('canvas');
-    expect(mounted.q('[data-testid=choy-shell-header]')).toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-footer]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-aside]')).toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-menu-trigger]')).toBeNull();
+    expect((mounted.q('[data-testid=choy-shell-brand]')?.textContent || '').trim()).toBe('Choysum');
     mounted.unmount();
   });
 
@@ -372,7 +382,7 @@ describe('ChoyWebShell', () => {
       },
     });
     await flushPromises();
-    const brand = mounted.q('[data-testid=choy-shell-brand-rail]') as HTMLElement | null;
+    const brand = mounted.q('[data-testid=choy-shell-brand]') as HTMLElement | null;
     expect(brand).not.toBeNull();
     brand!.click();
     await flushPromises();

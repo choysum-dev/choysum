@@ -53,18 +53,19 @@ async function mountLogout(opts?: { failLogout?: string }) {
   return { wrapper, pushes };
 }
 
-test('Logout.vue: success uses a login-style header and full-width CTA', async () => {
+test('Logout.vue: success uses a login-style header and inline skip link', async () => {
   const { wrapper } = await mountLogout();
   expect(wrapper.text().includes('Signed Out Successfully')).toBe(true);
   expect(wrapper.text().includes('Redirecting to the login page in 3 seconds')).toBe(true);
   expect(wrapper.text().includes('Thank you for using our service')).toBe(false);
-  const cta = wrapper.find('[data-testid="logout-login-again"]');
-  expect(cta.exists()).toBe(true);
-  expect(String((cta.element as HTMLElement).className).includes('w-full')).toBe(true);
+  const link = wrapper.find('[data-testid="logout-login-again"]');
+  expect(link.exists()).toBe(true);
+  expect(wrapper.text().includes('Go now')).toBe(true);
+  expect(wrapper.text().includes('Go to login')).toBe(false);
   wrapper.unmount();
 });
 
-test('Logout.vue: Log In Again navigates to login', async () => {
+test('Logout.vue: Go now navigates to login', async () => {
   const { wrapper, pushes } = await mountLogout();
   const cta = wrapper.find('[data-testid="logout-login-again"]');
   expect(cta.exists()).toBe(true);

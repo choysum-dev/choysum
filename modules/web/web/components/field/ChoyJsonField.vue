@@ -20,7 +20,7 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
     v-bind="$attrs"
   >
-    <template #edit="{ fieldValue }">
+    <template #edit="{ fieldValue, inputId }">
       <OJsonCell
         :field-value="fieldValue"
         :options="bufferOptions"
@@ -29,6 +29,7 @@ SPDX-License-Identifier: Apache-2.0
         :nullable="nullable"
         :allow-array="allowArray"
         v-bind="$attrs"
+        :id="inputId"
       />
     </template>
 
@@ -236,6 +237,7 @@ const bufferOptions = computed(() => ({
 
 const OJsonCell = defineComponent({
   name: 'OJsonCell',
+  inheritAttrs: false,
   props: {
     fieldValue: { type: Function, required: true },
     options: { type: Object, required: true },
@@ -244,7 +246,7 @@ const OJsonCell = defineComponent({
     nullable: Boolean,
     allowArray: Boolean,
   },
-  setup(p) {
+  setup(p, { attrs }) {
     const modelRef = computed<JsonVal>({
       get: () => (p.fieldValue as any)().value,
       set: v => {
@@ -309,18 +311,41 @@ const OJsonCell = defineComponent({
       buffer.onBlur();
     }
 
-    return () =>
-      h('div', {}, [
+    function callAttrListener(listener: unknown, event: Event) {
+      if (typeof listener === 'function') {
+        listener(event);
+        return;
+      }
+      if (Array.isArray(listener)) {
+        for (const item of listener) {
+          if (typeof item === 'function') item(event);
+        }
+      }
+    }
+
+    return () => {
+      const rest = { ...(attrs as Record<string, unknown>) };
+      delete rest.onInput;
+      delete rest.onBlur;
+      return h('div', {}, [
         h('textarea', {
+          ...rest,
           class: 'choy-json-input w-full font-mono',
           placeholder: p.placeholder,
           rows: 6,
           value: editingText.value ?? '',
-          onInput: (e: Event) => onInput((e.target as HTMLTextAreaElement).value),
-          onBlur,
+          onInput: (e: Event) => {
+            onInput((e.target as HTMLTextAreaElement).value);
+            callAttrListener(attrs.onInput, e);
+          },
+          onBlur: (e: Event) => {
+            onBlur();
+            callAttrListener(attrs.onBlur, e);
+          },
         }),
         parseError.value ? h('div', { class: 'choy-json-err mt-1 text-xs text-danger' }, parseError.value) : null,
       ]);
+    };
   },
 });
 </script>

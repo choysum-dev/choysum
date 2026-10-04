@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyPage :loading="loading" width="narrow" :padding="false" class="w-full">
+  <ChoyPage :loading="loading" :padding="false" fill-height class="flex min-h-0 w-full flex-1 flex-col">
     <AuthPanel>
       <ChoyCard class="logout-card w-full">
         <template #header>
@@ -16,19 +16,21 @@ SPDX-License-Identifier: Apache-2.0
           >
             <span class="min-w-0 leading-5">{{ error }}</span>
           </div>
-          <p v-else class="text-sm text-foreground/70 tabular-nums">{{ headerDescription }}</p>
+          <p v-else class="text-sm text-foreground/70 tabular-nums">
+            {{ headerDescription }}
+            <button
+              v-if="logoutSuccess"
+              type="button"
+              class="logout-go-to-login ms-2 cursor-pointer border-0 bg-transparent p-0 text-primary appearance-none shadow-none hover:underline"
+              data-testid="logout-login-again"
+              @click="navigateToLogin"
+            >
+              {{ _t('Go now') }}
+            </button>
+          </p>
         </template>
 
-        <ChoyButton
-          v-if="logoutSuccess"
-          class="w-full"
-          data-testid="logout-login-again"
-          @click="navigateToLogin"
-        >
-          {{ _t('Log In Again') }}
-        </ChoyButton>
-
-        <div v-else-if="error" class="flex flex-col gap-4">
+        <div v-if="error" class="flex flex-col gap-4">
           <ChoyButton class="w-full" data-testid="logout-retry" @click="retryLogout">
             {{ _t('Retry') }}
           </ChoyButton>

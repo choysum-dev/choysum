@@ -3,11 +3,19 @@
 
 import {
   applyChoyThemePreference,
+  nextChoyThemeMode,
   persistChoyThemePreference,
   readChoyThemePreference,
   resolveChoyThemePreference,
   type ChoyThemePreference,
 } from './applyChoyThemePreference';
+
+test('nextChoyThemeMode cycles light, dark, and auto', () => {
+  expect(nextChoyThemeMode('light')).toBe('dark');
+  expect(nextChoyThemeMode('dark')).toBe('auto');
+  expect(nextChoyThemeMode('auto')).toBe('light');
+  expect(nextChoyThemeMode(undefined)).toBe('light');
+});
 
 test('resolveChoyThemePreference maps standard density and auto theme', () => {
   expect(resolveChoyThemePreference({ theme: 'dark', density: 'standard' })).toEqual({

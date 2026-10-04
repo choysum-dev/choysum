@@ -56,7 +56,7 @@ function installFieldBaseStub() {
       const record = () => (p.binding as any).recordRef();
       return () =>
         h('div', { class: 'field-base-stub' }, [
-          slots.edit?.({ fieldValue, record }),
+          slots.edit?.({ fieldValue, record, inputId: 'fld-Payload' }),
           slots.display?.({ fieldValue, record }),
         ]);
     },
@@ -202,7 +202,37 @@ describe('JsonobjectField', () => {
     });
     await nextTick();
     await flushPromises();
-    expect(m.q('.choy-json-input')).toBeTruthy();
+    const textarea = m.q('.choy-json-input') as HTMLTextAreaElement | null;
+    expect(textarea).toBeTruthy();
+    expect(textarea?.id).toBe('fld-Payload');
+    expect(textarea?.closest('div')?.id).not.toBe('fld-Payload');
+    m.unmount();
+  });
+
+  test('edit textarea still forwards caller input listeners', async () => {
+    installFieldBaseStub();
+    installPrettyStub();
+    installElInputStub();
+    const binding = makeBinding(
+      { Payload: { x: 1 } },
+      { isForm: true, isEditMode: true, viewMode: 'edit', fieldPrefix: null }
+    );
+    let forwarded = 0;
+    const m = mountApp(JsonobjectField as any, {
+      props: { binding, renderMode: 'form' },
+      on: {
+        onInput: () => {
+          forwarded += 1;
+        },
+      },
+    });
+    await nextTick();
+    await flushPromises();
+    const textarea = m.q('.choy-json-input') as HTMLTextAreaElement;
+    textarea.value = '{"y":2}';
+    textarea.dispatchEvent(new Event('input'));
+    await flushPromises();
+    expect(forwarded).toBe(1);
     m.unmount();
   });
 

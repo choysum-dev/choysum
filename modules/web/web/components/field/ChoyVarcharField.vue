@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
     v-bind="$attrs"
   >
     <!-- Reuse the slot-provided fieldValue for both form and row rendering. -->
-    <template #edit="{ fieldValue }">
+    <template #edit="{ fieldValue, inputId }">
       <OVarCharCell
         :field-value="fieldValue"
         :options="bufferOptions"
@@ -29,6 +29,7 @@ SPDX-License-Identifier: Apache-2.0
         :maxlength="effectiveMaxLength ?? undefined"
         :show-word-limit="showWordLimit"
         v-bind="$attrs"
+        :id="inputId"
       />
     </template>
     <template #display="{ fieldValue }">
