@@ -119,6 +119,7 @@ SPDX-License-Identifier: Apache-2.0
 
               <div class="w-full" data-testid="register-terms">
                 <ChoyBooleanField
+                  v-slot:side
                   class="w-full"
                   :store="formStore"
                   prop="AgreeTerms"
@@ -129,7 +130,6 @@ SPDX-License-Identifier: Apache-2.0
                   show-inline-error
                   :rules="agreeTermsRules"
                 >
-                  <template #side>
                     <label for="fld-AgreeTerms" class="text-sm leading-5">
                       {{ _t('I have read and agree to') }}
                       <a
@@ -150,7 +150,6 @@ SPDX-License-Identifier: Apache-2.0
                         {{ _t('Privacy Policy') }}
                       </a>
                     </label>
-                  </template>
                 </ChoyBooleanField>
               </div>
 

@@ -70,6 +70,10 @@ const { _t } = createTranslate('web', { scope: 'web/components/field/BooleanFiel
 
 defineOptions({ name: 'ChoyBooleanField' });
 
+defineSlots<{
+  side?: () => unknown;
+}>();
+
 type IsAny<T> = 0 extends 1 & T ? true : false;
 
 type FieldType = boolean | null;

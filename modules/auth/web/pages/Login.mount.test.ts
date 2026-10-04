@@ -96,8 +96,10 @@ test('Login.vue: filled native submit does not show required field errors', asyn
   expect(wrapper.find('.login-error').exists()).toBe(false);
   expect(wrapper.text().includes('Login failed')).toBe(false);
   const fieldErrors = (wrapper.element as HTMLElement).querySelectorAll('.choy-field-base__error');
+  expect(fieldErrors.length).toBeGreaterThan(0);
   for (let i = 0; i < fieldErrors.length; i++) {
     expect(fieldErrors[i]!.getAttribute('role')).toBe(null);
+    expect(fieldErrors[i]!.className.includes('invisible')).toBe(true);
   }
   expect(replaces).toEqual(['/auth/tokens']);
   wrapper.unmount();
