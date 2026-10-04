@@ -18,6 +18,27 @@ function routesState(routes: string[]): PermissionState {
   };
 }
 
+test('authGuard allows authenticated users on isAuthPage error routes', async () => {
+  const ensureAuthReady = asyncFnRecorder();
+  const mockAuthStore = {
+    ensureAuthReady,
+    isAuthenticated: true,
+  };
+
+  const result = await authGuard(
+    {
+      path: '/error/403',
+      fullPath: '/error/403?from=/auth/users',
+      meta: { requiresAuth: false, isAuthPage: true },
+    } as any,
+    {} as any,
+    depsFor(mockAuthStore)
+  );
+
+  expect(result).toBe(true);
+  expect(ensureAuthReady.calls.length).toBe(0);
+});
+
 test('authGuard redirects unauthenticated users to login', async () => {
   const ensureAuthReady = asyncFnRecorder();
   const mockAuthStore = {

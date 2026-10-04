@@ -13,6 +13,7 @@ export const useAuthStore = defineStore('auth-fe-stub', function () {
   var isAuthenticated = ref(false);
   var currentUser = ref(null);
   var identity = ref({ metadata: {} });
+  var nextLogoutError = null;
   return {
     loading: loading,
     isAuthenticated: computed(function () {
@@ -31,8 +32,16 @@ export const useAuthStore = defineStore('auth-fe-stub', function () {
       return Promise.resolve({ UserId: 'usr_fe_stub' });
     },
     logout: function () {
+      if (nextLogoutError) {
+        var message = nextLogoutError;
+        nextLogoutError = null;
+        throw new Error(message);
+      }
       isAuthenticated.value = false;
       return Promise.resolve();
+    },
+    failNextLogout: function (message) {
+      nextLogoutError = message || 'logout failed';
     },
     loadUser: function () {
       return Promise.resolve(currentUser.value);

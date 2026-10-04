@@ -90,6 +90,10 @@ onBeforeUnmount(() => {
 });
 
 async function performLogout() {
+  if (autoRedirectTimer) {
+    clearInterval(autoRedirectTimer);
+    autoRedirectTimer = undefined;
+  }
   try {
     await authStore.logout();
     logoutSuccess.value = true;

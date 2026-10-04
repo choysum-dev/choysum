@@ -17,7 +17,7 @@ SPDX-License-Identifier: Apache-2.0
             v-for="(action, index) in errorConfig.actions"
             :key="index"
             class="w-full"
-            :variant="index === 0 ? 'default' : 'outline'"
+            :variant="action.variant"
             type="button"
             @click="action.action"
           >
