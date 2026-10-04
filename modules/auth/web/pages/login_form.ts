@@ -251,7 +251,8 @@ export async function runHandledAuthSubmit(opts: {
 
 /**
  * Clear a page-level auth error when credentials change after a failed attempt.
- * Keeps the banner from lingering while the user edits username/password.
+ * Bind the watch source to FormView draft fields (slot `formData`), not
+ * createLocalFormStore getters — field edits write through form-root into draft.
  */
 export function watchClearPageErrorOnCredentialChange(
   credentials: WatchSource,

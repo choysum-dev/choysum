@@ -139,7 +139,14 @@ SPDX-License-Identifier: Apache-2.0
         />
       </template>
     </template>
-    <p v-if="displayError" class="choy-field-base__error mt-1 whitespace-normal text-sm font-normal text-destructive" role="alert">{{ displayError }}</p>
+    <!-- Compact reserved line when showInlineError so sibling fields do not jump. -->
+    <p
+      v-if="showInlineError || displayError"
+      class="choy-field-base__error mt-0.5 min-h-4 whitespace-normal text-xs font-normal leading-4 text-destructive"
+      :class="{ invisible: showInlineError && !displayError }"
+      :role="displayError ? 'alert' : undefined"
+      :aria-hidden="showInlineError && !displayError ? true : undefined"
+    >{{ displayError || '\u00a0' }}</p>
     <FieldTranslationsDialog
       v-if="showTranslateAction"
       v-model="translationsOpen"
