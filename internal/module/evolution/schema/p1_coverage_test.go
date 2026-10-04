@@ -212,9 +212,10 @@ func TestDefaultGetIndexes_NonSQLiteAndSQLiteBranches(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Non-sqlite dialector name uses Migrator().GetIndexes while keeping a real sqlite migrator.
+	// Non-sqlite / non-postgres dialector name uses Migrator().GetIndexes while
+	// keeping a real sqlite migrator (postgres has its own catalog path).
 	origDialector := db.Dialector
-	db.Dialector = dialectorWithName{Dialector: origDialector, name: "postgres"}
+	db.Dialector = dialectorWithName{Dialector: origDialector, name: "mysql"}
 	indexes, err := defaultGetIndexes(db, "idx_cov")
 	db.Dialector = origDialector
 	if err != nil {
@@ -297,6 +298,167 @@ func TestDefaultGetIndexes_NonSQLiteAndSQLiteBranches(t *testing.T) {
 	// Invalid/empty names skipped; origin "u" retained for uniqueness visibility.
 	if len(out) != 3 {
 		t.Fatalf("expected uniq_from_constraint + idx_ok + idx_pk, got %#v", out)
+	}
+
+	// origin "u"/"pk" must mark Unique even when the pragma unique bool scans as false
+	// (zero value), otherwise liveHasIndex misses sqlite_autoindex_* constraints.
+	sqliteIndexListScan = func(_ *gorm.DB, _ string, dest any) error {
+		rows := dest.(*[]sqliteIndexListRow)
+		*rows = []sqliteIndexListRow{
+			{Name: sql.NullString{String: "sqlite_autoindex_t_2", Valid: true}, Origin: "u", Unique: false},
+			{Name: sql.NullString{String: "sqlite_autoindex_t_1", Valid: true}, Origin: "pk", Unique: false},
+			{Name: sql.NullString{String: "idx_plain", Valid: true}, Origin: "c", Unique: false},
+		}
+		return nil
+	}
+	sqliteIndexInfoScan = func(_ *gorm.DB, name string, dest any) error {
+		cols := dest.(*[]sql.NullString)
+		switch name {
+		case "sqlite_autoindex_t_2":
+			*cols = []sql.NullString{{String: "code", Valid: true}}
+		case "sqlite_autoindex_t_1":
+			*cols = []sql.NullString{{String: "id", Valid: true}}
+		default:
+			*cols = []sql.NullString{{String: "note", Valid: true}}
+		}
+		return nil
+	}
+	out, err = sqliteGetIndexes(db, "idx_cov")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out) != 3 {
+		t.Fatalf("origin-unique fallback indexes: %#v", out)
+	}
+	for _, idx := range out {
+		u, ok := idx.Unique()
+		switch idx.Name() {
+		case "sqlite_autoindex_t_2", "sqlite_autoindex_t_1":
+			if !ok || !u {
+				t.Fatalf("%s must be unique via origin, got unique=%v ok=%v", idx.Name(), u, ok)
+			}
+		case "idx_plain":
+			if !ok || u {
+				t.Fatalf("idx_plain must stay non-unique, got unique=%v ok=%v", u, ok)
+			}
+		}
+	}
+}
+
+func TestPostgresGetIndexes_IncludesUniqueConstraints(t *testing.T) {
+	t.Parallel()
+	origScan := postgresIndexScan
+	t.Cleanup(func() { postgresIndexScan = origScan })
+
+	if _, err := postgresGetIndexes(nil, "auth_user"); err == nil || !strings.Contains(err.Error(), "nil") {
+		t.Fatalf("nil db: %v", err)
+	}
+	out, err := postgresGetIndexes(&gorm.DB{}, "  ")
+	if err != nil || len(out) != 0 {
+		t.Fatalf("empty table: %#v %v", out, err)
+	}
+
+	postgresIndexScan = func(*gorm.DB, string, any) error {
+		return gorm.ErrInvalidDB
+	}
+	if _, err := postgresGetIndexes(&gorm.DB{}, "auth_user"); err == nil {
+		t.Fatal("expected scan error")
+	}
+
+	postgresIndexScan = func(_ *gorm.DB, _ string, dest any) error {
+		rows := dest.(*[]postgresIndexRow)
+		*rows = []postgresIndexRow{
+			{IndexName: "", ColumnName: "skip"},
+			{IndexName: "uni_auth_user_username", IsUnique: true, ColumnName: "username", ColumnOrd: 1},
+			{IndexName: "uni_auth_user_email", IsUnique: true, ColumnName: "email", ColumnOrd: 1},
+			{IndexName: "auth_user_pkey", IsUnique: true, IsPrimary: true, ColumnName: "id", ColumnOrd: 1},
+			{IndexName: "idx_auth_user_company_id", IsUnique: false, ColumnName: "company_id", ColumnOrd: 1},
+			// Composite unique keeps column order from ColumnOrd scan order.
+			{IndexName: "uq_pair", IsUnique: true, ColumnName: "a", ColumnOrd: 1},
+			{IndexName: "uq_pair", IsUnique: true, ColumnName: "b", ColumnOrd: 2},
+		}
+		return nil
+	}
+	out, err = postgresGetIndexes(&gorm.DB{}, "auth_user")
+	if err != nil {
+		t.Fatal(err)
+	}
+	byName := map[string]gorm.Index{}
+	for _, idx := range out {
+		byName[idx.Name()] = idx
+	}
+	if len(byName) != 5 {
+		t.Fatalf("indexes = %#v", out)
+	}
+	u, ok := byName["uni_auth_user_username"].Unique()
+	if !ok || !u {
+		t.Fatal("username unique constraint must be visible")
+	}
+	if got := byName["uni_auth_user_username"].Columns(); len(got) != 1 || got[0] != "username" {
+		t.Fatalf("username cols = %#v", got)
+	}
+	pk, pkOK := byName["auth_user_pkey"].PrimaryKey()
+	if !pkOK || !pk {
+		t.Fatal("pkey must be primary")
+	}
+	if got := byName["uq_pair"].Columns(); len(got) != 2 || got[0] != "a" || got[1] != "b" {
+		t.Fatalf("composite cols = %#v", got)
+	}
+
+	// defaultGetIndexes routes postgres/postgresql dialector names.
+	runtimeScope := newSchemaTestScope(t)
+	db := runtimeScope.Session().DB
+	origDialector := db.Dialector
+	t.Cleanup(func() { db.Dialector = origDialector })
+	postgresIndexScan = func(_ *gorm.DB, table string, dest any) error {
+		if table != "routed" {
+			t.Fatalf("table = %q", table)
+		}
+		rows := dest.(*[]postgresIndexRow)
+		*rows = []postgresIndexRow{{IndexName: "uni_x", IsUnique: true, ColumnName: "x", ColumnOrd: 1}}
+		return nil
+	}
+	for _, name := range []string{"postgres", "postgresql", "Postgres"} {
+		db.Dialector = dialectorWithName{Dialector: origDialector, name: name}
+		got, err := defaultGetIndexes(db, "routed")
+		if err != nil || len(got) != 1 || got[0].Name() != "uni_x" {
+			t.Fatalf("route %s: %#v %v", name, got, err)
+		}
+	}
+}
+
+func TestPlan_PostgresStyleUniqueConstraintSatisfiesDesired(t *testing.T) {
+	t.Parallel()
+	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
+		"auth_user": {
+			{Name: "username", FieldName: "Username", PhysicalType: "varchar", Unique: true},
+			{Name: "email", FieldName: "Email", PhysicalType: "varchar", Unique: true},
+		},
+	}}
+	live := LiveSchema{
+		Tables: map[string]bool{"auth_user": true},
+		Columns: map[string]map[string]LiveColumn{
+			"auth_user": {
+				"username": {Name: "username", DatabaseTypeName: "varchar"},
+				"email":    {Name: "email", DatabaseTypeName: "varchar"},
+			},
+		},
+		Indexes: map[string][]LiveIndex{
+			"auth_user": {
+				{Name: "uni_auth_user_username", Columns: []string{"username"}, Unique: true},
+				{Name: "uni_auth_user_email", Columns: []string{"email"}, Unique: true},
+			},
+		},
+		RowCount: map[string]int64{"auth_user": 3},
+	}
+	plan, err := buildPlan("auth", desired, live, "postgres")
+	if err != nil {
+		t.Fatalf("buildPlan: %v", err)
+	}
+	for _, op := range plan.Ops {
+		if op.Kind == OpAddIndex {
+			t.Fatalf("existing UNIQUE CONSTRAINT must not plan add_index, got %#v", plan.Ops)
+		}
 	}
 }
 
