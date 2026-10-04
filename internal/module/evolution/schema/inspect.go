@@ -197,6 +197,7 @@ FROM pg_index i
 	JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord) ON true
 	JOIN pg_attribute a ON a.attrelid = ct.oid AND a.attnum = k.attnum
 WHERE ct.relkind = 'r'
+	AND i.indisvalid
 	AND ct.relname = ?
 	AND n.nspname = current_schema()
 	AND a.attnum > 0

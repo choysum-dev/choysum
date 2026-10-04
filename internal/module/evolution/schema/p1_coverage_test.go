@@ -368,6 +368,9 @@ func TestPostgresGetIndexes_IncludesUniqueConstraints(t *testing.T) {
 	if !strings.Contains(sqlBody, "ke.attnum = 0") {
 		t.Fatal("expected expression-index exclusion (attnum 0) in postgresIndexScan SQL")
 	}
+	if !strings.Contains(sqlBody, "i.indisvalid") {
+		t.Fatal("expected indisvalid filter in postgresIndexScan SQL")
+	}
 
 	if _, err := postgresGetIndexes(nil, "auth_user"); err == nil || !strings.Contains(err.Error(), "nil") {
 		t.Fatalf("nil db: %v", err)

@@ -320,7 +320,7 @@ func isUniqueViolation(err error) bool {
 	}
 	msg := strings.ToLower(err.Error())
 	// Cross-DB heuristic (sqlite/mysql/postgres) without driver-specific imports.
-	if strings.Contains(msg, "23505") { // Postgres unique_violation
+	if strings.Contains(msg, "sqlstate 23505") { // Postgres unique_violation
 		return true
 	}
 	if strings.Contains(msg, "duplicate key") && strings.Contains(msg, "unique") {
