@@ -26,7 +26,11 @@ const ForceWebBuildEnv = "CHOYSUM_FORCE_WEB_BUILD"
 
 // webInputDigestSchema invalidates stamped digests when the digest algorithm or
 // embedded web toolchain contract changes across choysum binaries.
-const webInputDigestSchema = "web-input-digest-v7"
+// v8: product CSS emit is FullCSS (theme+preflight+utilities). Dialect,
+// candidates, and tailwind-go engine alone do not distinguish that from a
+// utilities-only stamp, so upgrade would otherwise skip regeneration.
+// Tests may replace this to assert the salt changes the digest.
+var webInputDigestSchema = "web-input-digest-v8"
 
 const choyTailwindGoModulePath = "github.com/dhamidi/tailwind-go"
 

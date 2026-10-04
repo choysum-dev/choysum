@@ -263,6 +263,16 @@ func TestComputeWebInputDigestStableAndSensitive(t *testing.T) {
 		t.Fatalf("engine version change must alter digest: %q vs %q (%v)", afterOther, bumpedEngine, err)
 	}
 
+	// Schema salt must invalidate stamps when Choysum emit contract changes
+	// without dialect/candidates/engine moving (e.g. FullCSS vs utilities-only).
+	prevSchema := webInputDigestSchema
+	webInputDigestSchema = "web-input-digest-test-salt"
+	bumpedSchema, err := ComputeWebInputDigest(in)
+	webInputDigestSchema = prevSchema
+	if err != nil || bumpedSchema == bumpedEngine {
+		t.Fatalf("digest schema change must alter digest: %q vs %q (%v)", bumpedEngine, bumpedSchema, err)
+	}
+
 	// TailwindInputDigest error should fail the digest.
 	badTheme := filepath.Join(root, "web", "web", "styles", "theme.css")
 	if err := os.Chmod(badTheme, 0o000); err != nil {
@@ -739,5 +749,15 @@ func TestIndexCSSBareAtRuleSemi(t *testing.T) {
 	}
 	if got := indexCSSBareAtRuleSemi(`@import /* unterminated`); got != -1 {
 		t.Fatalf("unterminated comment => -1, got %d", got)
+	}
+}
+
+func TestWebInputDigestSchemaFullCSSEmit(t *testing.T) {
+	t.Parallel()
+	// FullCSS (theme+preflight+utilities) emit must keep stamps on v8+ so
+	// upgrade rebuilds CSS that was produced under a utilities-only contract.
+	const want = "web-input-digest-v8"
+	if webInputDigestSchema != want {
+		t.Fatalf("webInputDigestSchema = %q, want %q for FullCSS emit contract", webInputDigestSchema, want)
 	}
 }
