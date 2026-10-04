@@ -147,11 +147,11 @@ export default defineComponent({
     });
 
     function handleLogin() {
-      router.push({ name: 'login' });
+      void router?.push?.({ name: 'login' });
     }
 
     function handleRegister() {
-      router.push({ name: 'register' });
+      void router?.push?.({ name: 'register' });
     }
 
     function openPreferences() {
@@ -161,7 +161,7 @@ export default defineComponent({
 
     function handleLogout() {
       resetHeaderPopups();
-      router.push({ name: 'logout' });
+      void router?.push?.({ name: 'logout' });
     }
 
     function onMenuProfile() {

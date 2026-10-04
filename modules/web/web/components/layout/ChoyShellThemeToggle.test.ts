@@ -40,6 +40,7 @@ describe('ChoyShellThemeToggle', () => {
     applyTheme?.('auto');
     await flushPromises();
     expect(JSON.parse(localStorage.getItem(CHOY_THEME_STORAGE_KEY) || '{}').theme).toBe('auto');
+    expect(mounted.q('[data-lucide=Sun]') || mounted.q('[data-lucide=Moon]')).not.toBeNull();
     expect(mounted.q('[data-lucide=Monitor]')).toBeNull();
     mounted.unmount();
   });
