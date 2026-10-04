@@ -23,6 +23,7 @@ SPDX-License-Identifier: Apache-2.0
     <template #edit="{ fieldValue, inputName, inputId }">
       <div class="flex w-full min-w-0 items-start gap-2">
         <OBooleanCell
+          v-bind="controlAttrs"
           :class="$slots.side ? 'mt-0.5 shrink-0' : undefined"
           :field-value="fieldValue"
           :options="bufferOptions"
@@ -63,7 +64,7 @@ import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useF
 import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
 import { createTranslate } from '@/web/web/i18n';
-import { computed, defineComponent, h } from 'vue';
+import { computed, defineComponent, h, useAttrs } from 'vue';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/BooleanField' });
 
@@ -72,6 +73,16 @@ defineOptions({ name: 'ChoyBooleanField', inheritAttrs: false });
 defineSlots<{
   side?: () => unknown;
 }>();
+
+const rawAttrs = useAttrs();
+const controlAttrs = computed(() => {
+  const out: Record<string, unknown> = {};
+  for (const key of Object.keys(rawAttrs)) {
+    if (key === 'class' || key === 'style') continue;
+    out[key] = (rawAttrs as Record<string, unknown>)[key];
+  }
+  return out;
+});
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 
@@ -209,7 +220,7 @@ const OBooleanCell = defineComponent({
     inputName: String,
     inputId: String,
   },
-  setup(p) {
+  setup(p, { attrs }) {
     const modelRef = computed<FieldType>({
       get: () => (p.fieldValue as any)().value,
       set: v => {
@@ -240,6 +251,7 @@ const OBooleanCell = defineComponent({
         [
           h('input', {
             ...(isCheckbox ? (p.checkboxProps as any) : (p.switchProps as any)),
+            ...attrs,
             type: 'checkbox',
             class: 'choy-bool-input align-middle',
             name: p.inputName,
