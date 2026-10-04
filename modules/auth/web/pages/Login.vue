@@ -46,7 +46,7 @@ SPDX-License-Identifier: Apache-2.0
               :has-error="!!error"
               @clear="error = ''"
             />
-            <ChoyFieldGroup>
+            <ChoyFieldGroup class="login-fields" :style="{ gap: '0' }">
               <div class="login-username">
                 <ChoyVarcharField
                   :store="formStore"
@@ -89,6 +89,7 @@ SPDX-License-Identifier: Apache-2.0
                 :checkbox-label="_t('Remember me')"
                 render-mode="inline"
                 buffer-strategy="live"
+                show-inline-error
               />
 
               <ChoyField>

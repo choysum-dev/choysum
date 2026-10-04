@@ -142,7 +142,7 @@ SPDX-License-Identifier: Apache-2.0
     <!-- Compact reserved line when showInlineError so sibling fields do not jump. -->
     <p
       v-if="showInlineError || displayError"
-      class="choy-field-base__error mt-0.5 min-h-4 whitespace-normal text-xs font-normal leading-4 text-destructive"
+      class="choy-field-base__error mt-0 min-h-4 pb-2 whitespace-normal text-xs font-normal leading-4 text-destructive"
       :class="{ invisible: showInlineError && !displayError }"
       :role="displayError ? 'alert' : undefined"
       :aria-hidden="showInlineError && !displayError ? true : undefined"
@@ -229,14 +229,14 @@ SPDX-License-Identifier: Apache-2.0
   <!-- INLINE mode -->
   <div
     v-else-if="effectiveRenderMode === 'inline'"
-    class="choy-field-base__inline inline-flex items-center gap-1"
+    class="choy-field-base__inline inline-flex"
+    :class="showInlineError ? 'flex-col items-start' : 'items-center gap-1'"
     v-show="visibleInline"
     @focusout="onFieldFocusOut"
   >
     <div
       v-if="showInlineError && displayError"
       class="choy-field-base__inline-wrap choy-field-base__inline-wrap--has-error inline-flex items-center gap-1.5"
-      :title="displayError"
     >
       <template v-if="effectiveEditInline">
         <slot
@@ -268,7 +268,6 @@ SPDX-License-Identifier: Apache-2.0
           :onchangeRunning="onchangeHandlers.running?.value"
         />
       </template>
-      <CircleAlert class="choy-inline-err-icon size-4" />
     </div>
 
     <div
@@ -316,6 +315,14 @@ SPDX-License-Identifier: Apache-2.0
         <CircleHelp class="size-3.5" />
       </button>
     </div>
+    <p
+      v-if="showInlineError"
+      class="choy-field-base__error mt-0 min-h-4 pb-2 max-w-full truncate whitespace-nowrap text-xs font-normal leading-4 text-destructive"
+      :class="{ invisible: !displayError }"
+      :title="displayError || undefined"
+      :role="displayError ? 'alert' : undefined"
+      :aria-hidden="displayError ? undefined : true"
+    >{{ displayError || '\u00a0' }}</p>
   </div>
 </template>
 
@@ -332,7 +339,7 @@ import {
   FIELD_CLIENT_VALIDATORS_KEY,
   firstRuleError,
 } from '@/web/web/composables/fieldClientValidation';
-import { CircleAlert, CircleHelp, Languages, Building2 } from 'lucide-vue-next';
+import { CircleHelp, Languages, Building2 } from 'lucide-vue-next';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { createTranslate, getGlobalComposer } from '@/web/web/i18n/translate';
 import { resolveFieldLabel } from '@/web/web/composables/resolveFieldLabel';

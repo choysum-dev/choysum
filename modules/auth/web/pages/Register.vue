@@ -48,7 +48,7 @@ SPDX-License-Identifier: Apache-2.0
               :has-error="!!error"
               @clear="error = ''"
             />
-            <ChoyFieldGroup>
+            <ChoyFieldGroup class="register-fields" :style="{ gap: '0' }">
               <div class="register-username">
                 <ChoyVarcharField
                   :store="formStore"
