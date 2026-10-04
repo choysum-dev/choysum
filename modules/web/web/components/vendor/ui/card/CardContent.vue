@@ -10,7 +10,7 @@ defineProps<{ class?: ClassValue }>();
 </script>
 
 <template>
-  <div data-slot="card-content" :class="cn('p-3 pt-0', $props.class)">
+  <div data-slot="card-content" :class="cn('px-6', $props.class)">
     <slot />
   </div>
 </template>

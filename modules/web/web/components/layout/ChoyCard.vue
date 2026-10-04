@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
         <CardDescription v-if="description">{{ description }}</CardDescription>
       </slot>
     </CardHeader>
-    <CardContent v-if="$slots.default" :class="title || description || $slots.header ? undefined : 'pt-4'">
+    <CardContent v-if="$slots.default">
       <slot />
     </CardContent>
     <CardFooter v-if="$slots.footer">
