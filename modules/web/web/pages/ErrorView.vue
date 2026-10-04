@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyPage width="narrow" :padding="false" class="error-page w-full min-h-svh bg-muted">
+  <ChoyPage width="narrow" :padding="false" class="error-page w-full min-h-svh bg-background">
     <AuthPanel>
       <ChoyCard class="error-card w-full">
         <template #header>

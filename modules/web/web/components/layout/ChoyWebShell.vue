@@ -7,8 +7,8 @@ SPDX-License-Identifier: Apache-2.0
   <!-- Auth / fullscreen canvas: no Sidebar chrome. -->
   <div
     v-if="isAuthPage || !sidebarAllowed"
-    class="flex min-h-svh w-full flex-col text-foreground"
-    :class="isAuthPage ? 'choy-shell--auth bg-muted' : 'bg-background'"
+    class="flex min-h-svh w-full flex-col bg-background text-foreground"
+    :class="isAuthPage ? 'choy-shell--auth' : undefined"
     data-testid="choy-shell"
     data-shell-mode="canvas"
   >
@@ -37,7 +37,7 @@ SPDX-License-Identifier: Apache-2.0
     </header>
       <div
         class="choy-shell__main-inner min-h-0 flex-1 overflow-auto"
-        :class="isAuthPage ? 'bg-muted' : 'bg-muted/30'"
+        :class="isAuthPage ? 'bg-background' : 'bg-muted/30'"
         data-testid="choy-shell-canvas"
       >
         <slot>
