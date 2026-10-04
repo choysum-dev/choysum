@@ -265,12 +265,12 @@ func TestComputeWebInputDigestStableAndSensitive(t *testing.T) {
 
 	// Schema salt must invalidate stamps when Choysum emit contract changes
 	// without dialect/candidates/engine moving (e.g. FullCSS vs utilities-only).
-	prevSchema := webInputDigestSchema
-	webInputDigestSchema = "web-input-digest-test-salt"
-	bumpedSchema, err := ComputeWebInputDigest(in)
-	webInputDigestSchema = prevSchema
-	if err != nil || bumpedSchema == bumpedEngine {
-		t.Fatalf("digest schema change must alter digest: %q vs %q (%v)", bumpedEngine, bumpedSchema, err)
+	// Compare against afterOther (default schema+engine), not bumpedEngine: the
+	// engine stub was already restored, so vs bumpedEngine would pass even if
+	// the salt were ignored.
+	bumpedSchema, err := computeWebInputDigest(in, "web-input-digest-test-salt")
+	if err != nil || bumpedSchema == afterOther {
+		t.Fatalf("digest schema change must alter digest: %q vs %q (%v)", afterOther, bumpedSchema, err)
 	}
 
 	// TailwindInputDigest error should fail the digest.

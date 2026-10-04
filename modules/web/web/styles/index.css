@@ -19,25 +19,15 @@ body {
 
 /*
  * Shared field / auth inputs (align with vendor/ui Input).
- * Keep these unlayered: FullCSS preflight is unlayered, and unlayered rules beat
- * @layer components regardless of specificity — so a layered .choy-input loses
- * border/padding/radius to *, input { border:0; padding:0; border-radius:0 }.
+ * Unlayered only for properties FullCSS preflight also sets unlayered
+ * (border/padding/radius/background); layout/typography stay in @layer
+ * components so Tailwind utilities can still override them.
  */
 .choy-input {
-  display: flex;
-  width: 100%;
-  height: var(--choy-control-height, var(--choy-component-size-base, 2rem));
   border-radius: var(--choy-radius-md);
   border: 1px solid var(--choy-color-border);
   background-color: var(--choy-color-background);
   padding: 0.25rem 0.75rem;
-  font-size: var(--choy-font-size-sm);
-  color: var(--choy-color-foreground);
-  box-shadow: 0 1px 2px color-mix(in oklab, var(--choy-color-foreground) 4%, transparent);
-}
-
-.choy-input::placeholder {
-  color: color-mix(in oklab, var(--choy-color-foreground) 45%, transparent);
 }
 
 .choy-input:focus-visible {
@@ -46,9 +36,24 @@ body {
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--choy-color-ring) 50%, transparent);
 }
 
-.choy-input:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
+@layer components {
+  .choy-input {
+    display: flex;
+    width: 100%;
+    height: var(--choy-control-height, var(--choy-component-size-base, 2rem));
+    font-size: var(--choy-font-size-sm);
+    color: var(--choy-color-foreground);
+    box-shadow: 0 1px 2px color-mix(in oklab, var(--choy-color-foreground) 4%, transparent);
+  }
+
+  .choy-input::placeholder {
+    color: color-mix(in oklab, var(--choy-color-foreground) 45%, transparent);
+  }
+
+  .choy-input:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
 }
 
 /* Readonly form values: text, not fake inputs. */
