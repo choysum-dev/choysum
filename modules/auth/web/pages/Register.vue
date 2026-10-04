@@ -23,7 +23,7 @@ SPDX-License-Identifier: Apache-2.0
           :submit-handler="onRegisterSubmit"
         >
           <template #default="{ formData }">
-            <ChoyFieldGroup class="gap-4">
+            <ChoyFieldGroup>
               <ChoyField v-if="error">
                 <div
                   class="flex items-center justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"

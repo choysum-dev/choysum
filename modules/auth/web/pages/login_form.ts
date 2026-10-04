@@ -129,6 +129,7 @@ export type LoginClientRule = {
 
 /**
  * Username RuleItem: empty or whitespace-only is invalid (matches historical trim).
+ * Use a live validator so locale switches refresh the message on the next check.
  */
 export function loginUsernameRules(t: (msg: string) => string): LoginClientRule[] {
   return [
@@ -144,9 +145,22 @@ export function loginUsernameRules(t: (msg: string) => string): LoginClientRule[
   ];
 }
 
-/** Password RuleItem: empty / null is invalid; whitespace-only is allowed. */
+/**
+ * Password RuleItem: empty / null is invalid; whitespace-only is allowed.
+ * Validator (not a frozen `message`) keeps the copy in sync with the active locale.
+ */
 export function loginPasswordRules(t: (msg: string) => string): LoginClientRule[] {
-  return [{ required: true, message: t('Enter password') }];
+  return [
+    {
+      validator: (_rule: unknown, value: unknown, cb: (error?: Error) => void) => {
+        if (value == null || value === '') {
+          cb(new Error(t('Enter password')));
+          return;
+        }
+        cb();
+      },
+    },
+  ];
 }
 
 /**

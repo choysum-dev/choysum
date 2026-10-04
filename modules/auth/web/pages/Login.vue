@@ -22,7 +22,7 @@ SPDX-License-Identifier: Apache-2.0
           :initial-values="loginInitialValues"
           :submit-handler="onLoginSubmit"
         >
-          <ChoyFieldGroup class="gap-4">
+          <ChoyFieldGroup>
             <ChoyField v-if="error">
               <div
                 class="login-error flex items-center justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
