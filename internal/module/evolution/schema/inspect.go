@@ -181,6 +181,8 @@ var postgresIndexScan = func(db *gorm.DB, table string, dest any) error {
 	// Include constraint-backed UNIQUE/PK indexes that GORM's GetIndexes omits.
 	// Column order follows indkey; only the first indnkeyatts entries are key
 	// columns (INCLUDE columns follow and must not affect uniqueness matching).
+	// Expression key columns use attnum 0 and would be dropped by the attribute
+	// join, shortening ColumnList — skip any index that has such a key column.
 	const sql = `
 SELECT
 	ci.relname AS index_name,
@@ -200,6 +202,11 @@ WHERE ct.relkind = 'r'
 	AND a.attnum > 0
 	AND NOT a.attisdropped
 	AND k.ord <= i.indnkeyatts
+	AND NOT EXISTS (
+		SELECT 1
+		FROM unnest(i.indkey) WITH ORDINALITY AS ke(attnum, ord)
+		WHERE ke.attnum = 0 AND ke.ord <= i.indnkeyatts
+	)
 ORDER BY ci.relname, k.ord`
 	return db.Raw(sql, table).Scan(dest).Error
 }

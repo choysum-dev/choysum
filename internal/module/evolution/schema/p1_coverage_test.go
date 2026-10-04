@@ -5,6 +5,7 @@ package schema
 
 import (
 	"database/sql"
+	"os"
 	"strings"
 	"testing"
 
@@ -354,6 +355,18 @@ func TestPostgresGetIndexes_IncludesUniqueConstraints(t *testing.T) {
 	// Postgres-only catalog SQL fails on the sqlite test DB after the query runs.
 	if err := origScan(newSchemaTestScope(t).Session().DB, "auth_user", &[]postgresIndexRow{}); err == nil {
 		t.Fatal("expected default postgresIndexScan to fail on sqlite test DB")
+	}
+	// Source contract: key-only ordinals + skip expression key columns (attnum 0).
+	src, err := os.ReadFile("inspect.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlBody := string(src)
+	if !strings.Contains(sqlBody, "k.ord <= i.indnkeyatts") {
+		t.Fatal("expected indnkeyatts key-column filter in postgresIndexScan SQL")
+	}
+	if !strings.Contains(sqlBody, "ke.attnum = 0") {
+		t.Fatal("expected expression-index exclusion (attnum 0) in postgresIndexScan SQL")
 	}
 
 	if _, err := postgresGetIndexes(nil, "auth_user"); err == nil || !strings.Contains(err.Error(), "nil") {
