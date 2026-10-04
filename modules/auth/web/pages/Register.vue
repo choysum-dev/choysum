@@ -119,6 +119,7 @@ SPDX-License-Identifier: Apache-2.0
 
               <div class="flex items-start gap-2" data-testid="register-terms">
                 <ChoyBooleanField
+                  class="mt-0.5 shrink-0"
                   :store="formStore"
                   prop="AgreeTerms"
                   widget="checkbox"
@@ -128,7 +129,7 @@ SPDX-License-Identifier: Apache-2.0
                   show-inline-error
                   :rules="agreeTermsRules"
                 />
-                <label for="fld-AgreeTerms" class="mt-1 text-sm leading-5">
+                <label for="fld-AgreeTerms" class="text-sm leading-5">
                   {{ _t('I have read and agree to') }}
                   <a
                     href="#"
