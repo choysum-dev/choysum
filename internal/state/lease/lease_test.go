@@ -247,6 +247,18 @@ func TestSQLiteSessionDBAndErrorHelpers(t *testing.T) {
 	if !isUniqueViolation(errors.New(`ERROR: duplicate key value violates unique constraint "idx_meta_lock_lease_resource" (SQLSTATE 23505)`)) {
 		t.Fatal("expected postgres unique_violation (23505) to be detected")
 	}
+	if !isUniqueViolation(errors.New("Error 1062: Duplicate entry 'x' for key 'PRIMARY'")) {
+		t.Fatal("expected mysql Duplicate entry to be detected")
+	}
+	if !isUniqueViolation(errors.New("duplicate key value violates unique constraint idx_x")) {
+		t.Fatal("expected duplicate key + unique without SQLSTATE to be detected")
+	}
+	if !isUniqueViolation(errors.New("unique failed on resource")) {
+		t.Fatal("expected unique failed to be detected")
+	}
+	if !isUniqueViolation(errors.New("duplicate primary key")) {
+		t.Fatal("expected duplicate+key heuristic to be detected")
+	}
 	if isUniqueViolation(nil) || isUniqueViolation(errors.New("other error")) {
 		t.Fatal("unexpected unique violation detection result")
 	}
@@ -593,6 +605,144 @@ func TestAcquireLeaseHandlesCreateConflictBranches(t *testing.T) {
 		record, ok := fetchLease(t, runtimeScope, resource)
 		if !ok || record.OwnerId != "owner-b" {
 			t.Fatalf("unexpected busy conflict lease: ok=%v record=%#v", ok, record)
+		}
+	})
+}
+
+func TestAcquireLeaseErrorBranches(t *testing.T) {
+	_, runtimeScope := newSQLiteLocker(t)
+	db := runtimeScope.Session().WithContext(context.Background()).Unscoped()
+
+	t.Run("non-unique insert error propagates", func(t *testing.T) {
+		resource := "resource-insert-nonunique"
+		cb := "lease_test_insert_nonunique"
+		if err := db.Callback().Create().Before("gorm:create").Register(cb, func(tx *gorm.DB) {
+			leaseRow, ok := tx.Statement.Dest.(*modmeta.LockLease)
+			if !ok || leaseRow.Resource != resource {
+				return
+			}
+			_ = tx.AddError(errors.New("connection reset by peer"))
+		}); err != nil {
+			t.Fatalf("register create callback: %v", err)
+		}
+		t.Cleanup(func() {
+			if err := db.Callback().Create().Remove(cb); err != nil {
+				t.Fatalf("remove create callback: %v", err)
+			}
+		})
+		err := acquireLease(db, resource, "owner-a", time.Now(), time.Now().Add(time.Minute))
+		if err == nil || !strings.Contains(err.Error(), "acquire lease insert") {
+			t.Fatalf("acquireLease insert error = %v", err)
+		}
+	})
+
+	t.Run("driver unique error still resolves existing row", func(t *testing.T) {
+		resource := "resource-insert-unique-err"
+		now := time.Now()
+		if err := db.Exec(
+			"INSERT INTO meta_lock_lease (id, created_at, updated_at, resource, owner_id, expires_at) VALUES (?, ?, ?, ?, ?, ?)",
+			"seed-"+resource, now, now, resource, "owner-b", now.Add(2*time.Minute),
+		).Error; err != nil {
+			t.Fatalf("seed rival lease: %v", err)
+		}
+		cb := "lease_test_insert_unique_err"
+		if err := db.Callback().Create().Before("gorm:create").Register(cb, func(tx *gorm.DB) {
+			leaseRow, ok := tx.Statement.Dest.(*modmeta.LockLease)
+			if !ok || leaseRow.Resource != resource {
+				return
+			}
+			_ = tx.AddError(errors.New(`ERROR: duplicate key value violates unique constraint (SQLSTATE 23505)`))
+		}); err != nil {
+			t.Fatalf("register create callback: %v", err)
+		}
+		t.Cleanup(func() {
+			if err := db.Callback().Create().Remove(cb); err != nil {
+				t.Fatalf("remove create callback: %v", err)
+			}
+		})
+		if err := acquireLease(db, resource, "owner-a", now, now.Add(3*time.Minute)); !errors.Is(err, ErrLeaseBusy) {
+			t.Fatalf("acquireLease unique-error resolve = %v, want %v", err, ErrLeaseBusy)
+		}
+	})
+
+	t.Run("reload error after conflict", func(t *testing.T) {
+		resource := "resource-reload-err"
+		registerLeaseInsertConflict(t, db, resource, "owner-b", time.Now().Add(2*time.Minute))
+		cb := "lease_test_reload_err"
+		// After the conflicting insert + DoNothing create, delete the row so Take fails.
+		if err := db.Callback().Create().After("gorm:create").Register(cb, func(tx *gorm.DB) {
+			leaseRow, ok := tx.Statement.Dest.(*modmeta.LockLease)
+			if !ok || leaseRow.Resource != resource {
+				return
+			}
+			if err := tx.Session(&gorm.Session{NewDB: true}).Exec(
+				"DELETE FROM meta_lock_lease WHERE resource = ?", resource,
+			).Error; err != nil {
+				t.Fatalf("delete conflicting lease for reload test: %v", err)
+			}
+		}); err != nil {
+			t.Fatalf("register create after callback: %v", err)
+		}
+		t.Cleanup(func() {
+			if err := db.Callback().Create().Remove(cb); err != nil {
+				t.Fatalf("remove create after callback: %v", err)
+			}
+		})
+		err := acquireLease(db, resource, "owner-a", time.Now(), time.Now().Add(3*time.Minute))
+		if err == nil || !strings.Contains(err.Error(), "acquire lease reload") {
+			t.Fatalf("acquireLease reload error = %v", err)
+		}
+	})
+
+	t.Run("refresh error after same-owner conflict", func(t *testing.T) {
+		resource := "resource-refresh-err"
+		registerLeaseInsertConflict(t, db, resource, "owner-a", time.Now().Add(15*time.Second))
+		cb := "lease_test_refresh_err"
+		updates := 0
+		if err := db.Callback().Update().Before("gorm:update").Register(cb, func(tx *gorm.DB) {
+			updates++
+			// Skip the initial expired/owned fast-path UPDATE (0 rows).
+			if updates < 2 {
+				return
+			}
+			_ = tx.AddError(errors.New("refresh boom"))
+		}); err != nil {
+			t.Fatalf("register update callback: %v", err)
+		}
+		t.Cleanup(func() {
+			if err := db.Callback().Update().Remove(cb); err != nil {
+				t.Fatalf("remove update callback: %v", err)
+			}
+		})
+		err := acquireLease(db, resource, "owner-a", time.Now(), time.Now().Add(2*time.Minute))
+		if err == nil || !strings.Contains(err.Error(), "acquire lease refresh") {
+			t.Fatalf("acquireLease refresh error = %v", err)
+		}
+	})
+
+	t.Run("takeover error after expired rival conflict", func(t *testing.T) {
+		resource := "resource-takeover-err"
+		now := time.Now()
+		registerLeaseInsertConflict(t, db, resource, "owner-old", now.Add(-time.Minute))
+		cb := "lease_test_takeover_err"
+		updates := 0
+		if err := db.Callback().Update().Before("gorm:update").Register(cb, func(tx *gorm.DB) {
+			updates++
+			if updates < 2 {
+				return
+			}
+			_ = tx.AddError(errors.New("takeover boom"))
+		}); err != nil {
+			t.Fatalf("register update callback: %v", err)
+		}
+		t.Cleanup(func() {
+			if err := db.Callback().Update().Remove(cb); err != nil {
+				t.Fatalf("remove update callback: %v", err)
+			}
+		})
+		err := acquireLease(db, resource, "owner-new", now, now.Add(3*time.Minute))
+		if err == nil || !strings.Contains(err.Error(), "acquire lease takeover") {
+			t.Fatalf("acquireLease takeover error = %v", err)
 		}
 	})
 }

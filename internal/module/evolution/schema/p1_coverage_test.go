@@ -350,6 +350,12 @@ func TestPostgresGetIndexes_IncludesUniqueConstraints(t *testing.T) {
 	origScan := postgresIndexScan
 	t.Cleanup(func() { postgresIndexScan = origScan })
 
+	// Execute the default scanner body (SQL string + Raw) for coverage. The
+	// Postgres-only catalog SQL fails on the sqlite test DB after the query runs.
+	if err := origScan(newSchemaTestScope(t).Session().DB, "auth_user", &[]postgresIndexRow{}); err == nil {
+		t.Fatal("expected default postgresIndexScan to fail on sqlite test DB")
+	}
+
 	if _, err := postgresGetIndexes(nil, "auth_user"); err == nil || !strings.Contains(err.Error(), "nil") {
 		t.Fatalf("nil db: %v", err)
 	}
@@ -376,6 +382,8 @@ func TestPostgresGetIndexes_IncludesUniqueConstraints(t *testing.T) {
 			// Composite unique keeps column order from ColumnOrd scan order.
 			{IndexName: "uq_pair", IsUnique: true, ColumnName: "a", ColumnOrd: 1},
 			{IndexName: "uq_pair", IsUnique: true, ColumnName: "b", ColumnOrd: 2},
+			// Later rows OR unique/primary onto an existing aggregate; blank column skipped.
+			{IndexName: "uq_pair", IsUnique: false, IsPrimary: true, ColumnName: "  ", ColumnOrd: 3},
 		}
 		return nil
 	}
@@ -403,6 +411,10 @@ func TestPostgresGetIndexes_IncludesUniqueConstraints(t *testing.T) {
 	}
 	if got := byName["uq_pair"].Columns(); len(got) != 2 || got[0] != "a" || got[1] != "b" {
 		t.Fatalf("composite cols = %#v", got)
+	}
+	pkPair, pkPairOK := byName["uq_pair"].PrimaryKey()
+	if !pkPairOK || !pkPair {
+		t.Fatal("later primary flag must OR onto existing aggregate")
 	}
 
 	// defaultGetIndexes routes postgres/postgresql dialector names.

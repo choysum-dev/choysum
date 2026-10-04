@@ -179,7 +179,8 @@ func sqliteGetIndexes(db *gorm.DB, table string) ([]gorm.Index, error) {
 // Overridable Postgres index scanner (tests inject failures and synthetic rows).
 var postgresIndexScan = func(db *gorm.DB, table string, dest any) error {
 	// Include constraint-backed UNIQUE/PK indexes that GORM's GetIndexes omits.
-	// Column order follows indkey so composite uniques stay comparable by position.
+	// Column order follows indkey; only the first indnkeyatts entries are key
+	// columns (INCLUDE columns follow and must not affect uniqueness matching).
 	const sql = `
 SELECT
 	ci.relname AS index_name,
@@ -198,6 +199,7 @@ WHERE ct.relkind = 'r'
 	AND n.nspname = current_schema()
 	AND a.attnum > 0
 	AND NOT a.attisdropped
+	AND k.ord <= i.indnkeyatts
 ORDER BY ci.relname, k.ord`
 	return db.Raw(sql, table).Scan(dest).Error
 }
