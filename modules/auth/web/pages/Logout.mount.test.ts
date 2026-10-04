@@ -7,6 +7,30 @@ import Logout from './Logout.vue';
 import { buildPageMountGlobal } from '@choysum/page-mount';
 import { useAuthStore } from '../stores/auth';
 
+function installFakeInterval() {
+  const realSet = globalThis.setInterval.bind(globalThis);
+  const realClear = globalThis.clearInterval.bind(globalThis);
+  const ticks: Array<() => void> = [];
+  let seq = 1;
+  (globalThis as unknown as { setInterval: typeof setInterval }).setInterval = ((fn: TimerHandler) => {
+    ticks.push(fn as () => void);
+    return seq++ as unknown as ReturnType<typeof setInterval>;
+  }) as unknown as typeof setInterval;
+  (globalThis as unknown as { clearInterval: typeof clearInterval }).clearInterval = ((_id: ReturnType<typeof setInterval>) => {
+    ticks.length = 0;
+  }) as unknown as typeof clearInterval;
+  return {
+    tick() {
+      const fns = ticks.slice();
+      for (let i = 0; i < fns.length; i++) fns[i]();
+    },
+    restore() {
+      globalThis.setInterval = realSet;
+      globalThis.clearInterval = realClear;
+    },
+  };
+}
+
 async function mountLogout(opts?: { failLogout?: string }) {
   const pushes: unknown[] = [];
   const global = buildPageMountGlobal({
@@ -74,4 +98,23 @@ test('Logout.vue: Retry after failed logout reaches success', async () => {
   expect(wrapper.text().includes('Signed Out Successfully')).toBe(true);
   expect(wrapper.find('[data-testid="logout-login-again"]').exists()).toBe(true);
   wrapper.unmount();
+});
+
+test('Logout.vue: countdown auto-redirects to login', async () => {
+  const fake = installFakeInterval();
+  try {
+    const { wrapper, pushes } = await mountLogout();
+    expect(wrapper.text().includes('Redirecting to the login page in 3 seconds')).toBe(true);
+    fake.tick();
+    await flushPromises();
+    expect(wrapper.text().includes('Redirecting to the login page in 2 seconds')).toBe(true);
+    fake.tick();
+    await flushPromises();
+    fake.tick();
+    await flushPromises();
+    expect(pushes).toEqual(['/login']);
+    wrapper.unmount();
+  } finally {
+    fake.restore();
+  }
 });

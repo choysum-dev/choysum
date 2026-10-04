@@ -52,10 +52,10 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../stores/auth';
-import { ChoysumError } from '../error';
 import AuthPanel from '../components/AuthPanel.vue';
 import { ChoyPage, ChoyCard, ChoyButton } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
+import { formatLogoutError, nextLogoutCountdown, stopLogoutRedirectTimer } from './logout_page';
 
 const { _t } = createTranslate('auth', { scope: 'web/pages/Logout' });
 
@@ -84,40 +84,29 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
-  if (autoRedirectTimer) {
-    clearInterval(autoRedirectTimer);
-  }
+  autoRedirectTimer = stopLogoutRedirectTimer(autoRedirectTimer);
 });
 
 async function performLogout() {
-  if (autoRedirectTimer) {
-    clearInterval(autoRedirectTimer);
-    autoRedirectTimer = undefined;
-  }
+  autoRedirectTimer = stopLogoutRedirectTimer(autoRedirectTimer);
   try {
     await authStore.logout();
     logoutSuccess.value = true;
     autoRedirectTimer = setInterval(() => {
-      countdown.value--;
-      if (countdown.value <= 0) {
-        clearInterval(autoRedirectTimer);
+      const step = nextLogoutCountdown(countdown.value);
+      countdown.value = step.countdown;
+      if (step.done) {
+        autoRedirectTimer = stopLogoutRedirectTimer(autoRedirectTimer);
         navigateToLogin();
       }
     }, 1000);
   } catch (err) {
-    error.value =
-      err instanceof ChoysumError
-        ? err.message
-        : err instanceof Error
-          ? err.message
-          : _t('Unknown error occurred during logout');
+    error.value = formatLogoutError(err, _t('Unknown error occurred during logout'));
   }
 }
 
 function navigateToLogin() {
-  if (autoRedirectTimer) {
-    clearInterval(autoRedirectTimer);
-  }
+  autoRedirectTimer = stopLogoutRedirectTimer(autoRedirectTimer);
   router.push('/login');
 }
 
