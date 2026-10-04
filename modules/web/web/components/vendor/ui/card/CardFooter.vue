@@ -10,7 +10,7 @@ defineProps<{ class?: ClassValue }>();
 </script>
 
 <template>
-  <div data-slot="card-footer" :class="cn('flex items-center px-6 [.border-t]:pt-6', $props.class)">
+  <div data-slot="card-footer" :class="cn('flex items-center p-4 pt-0', $props.class)">
     <slot />
   </div>
 </template>

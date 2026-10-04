@@ -36,13 +36,6 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
-### 2026-10-04 — Card new-york-v4 spacing
-
-- **Card:** align with shadcn-vue new-york-v4 — `flex flex-col gap-6 rounded-xl border py-6`
-  (keep `border-border` / `bg-card text-card-foreground`); Header/Content/Footer use `px-6`;
-  Description `text-muted-foreground`; add `CardAction`.
-- **Do not regress:** Login / FormView cards should not fall back to dense `p-3` / `rounded-lg`.
-
 ### 2026-10-03 — Card surface + control icon inherit
 
 - **Card:** `bg-card text-card-foreground` (light `--choy-color-card` is solid white).

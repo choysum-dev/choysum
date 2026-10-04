@@ -10,7 +10,7 @@ defineProps<{ class?: ClassValue }>();
 </script>
 
 <template>
-  <h3 data-slot="card-title" :class="cn('leading-none font-semibold', $props.class)">
+  <h3 data-slot="card-title" :class="cn('font-semibold leading-none tracking-tight', $props.class)">
     <slot />
   </h3>
 </template>
