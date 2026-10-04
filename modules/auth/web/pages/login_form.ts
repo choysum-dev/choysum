@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { watch, type WatchSource } from 'vue';
 import { ChoysumError } from '../error';
 
 export type LoginFormFields = {
@@ -246,4 +247,18 @@ export async function runHandledAuthSubmit(opts: {
   }
   if (ok) opts.onSuccess();
   return { handled: true, skipSuccessMessage: true };
+}
+
+/**
+ * Clear a page-level auth error when credentials change after a failed attempt.
+ * Bind the watch source to FormView draft fields (slot `formData`), not
+ * createLocalFormStore getters — field edits write through form-root into draft.
+ */
+export function watchClearPageErrorOnCredentialChange(
+  credentials: WatchSource,
+  opts: { hasError: () => boolean; clearError: () => void },
+) {
+  return watch(credentials, () => {
+    if (opts.hasError()) opts.clearError();
+  });
 }

@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { ref, nextTick } from 'vue';
 import { ChoysumError } from '../error';
 import {
   decodeLoginRedirectPath,
@@ -12,6 +13,7 @@ import {
   runLoginSubmit,
   runHandledAuthSubmit,
   validateLoginForm,
+  watchClearPageErrorOnCredentialChange,
   type LoginFieldErrors,
   type LoginFormFields,
 } from './login_form';
@@ -303,4 +305,40 @@ test('runHandledAuthSubmit: maps thrown Error and unknown values', async () => {
   expect(fromUnknown).toEqual({ handled: true, skipSuccessMessage: true });
   expect(errors).toEqual(['nope', 'fallback']);
   expect(redirected).toBe(0);
+});
+
+test('watchClearPageErrorOnCredentialChange: clears only when an error is present', async () => {
+  const username = ref('admin');
+  const password = ref('secret');
+  const error = ref('Login failed');
+  let clearCalls = 0;
+  const stop = watchClearPageErrorOnCredentialChange(
+    () => [username.value, password.value] as const,
+    {
+      hasError: () => !!error.value,
+      clearError: () => {
+        error.value = '';
+        clearCalls += 1;
+      },
+    },
+  );
+  username.value = 'admin2';
+  await nextTick();
+  expect(error.value).toBe('');
+  expect(clearCalls).toBe(1);
+  error.value = 'Login failed';
+  password.value = 'other';
+  await nextTick();
+  expect(error.value).toBe('');
+  expect(clearCalls).toBe(2);
+  username.value = 'admin3';
+  await nextTick();
+  expect(error.value).toBe('');
+  expect(clearCalls).toBe(2);
+  stop();
+  error.value = 'Login failed';
+  username.value = 'admin4';
+  await nextTick();
+  expect(error.value).toBe('Login failed');
+  expect(clearCalls).toBe(2);
 });

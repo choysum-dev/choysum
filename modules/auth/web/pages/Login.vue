@@ -6,11 +6,28 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <ChoyPage :loading="loading" width="narrow" :padding="false" class="w-full">
     <AuthPanel>
-      <ChoyCard
-        :title="_t('User Login')"
-        :description="_t('Enter your username and password to continue')"
-        class="login-card w-full"
-      >
+      <ChoyCard class="login-card w-full">
+        <template #header>
+          <h3 class="font-semibold leading-none tracking-tight">{{ _t('User Login') }}</h3>
+          <div
+            v-if="error"
+            class="login-error flex items-start justify-between gap-2 text-sm text-destructive"
+            role="alert"
+          >
+            <span class="min-w-0 leading-5">{{ error }}</span>
+            <button
+              type="button"
+              class="inline-flex size-5 shrink-0 items-center justify-center rounded-sm border-0 bg-transparent p-0 text-destructive/70 appearance-none shadow-none outline-none hover:text-destructive focus-visible:ring-2 focus-visible:ring-destructive/40"
+              :aria-label="_t('Close')"
+              @click="error = ''"
+            >
+              <X class="size-3.5" />
+            </button>
+          </div>
+          <p v-else class="text-sm text-foreground/70">
+            {{ _t('Enter your username and password to continue') }}
+          </p>
+        </template>
         <ChoyFormView
           :store="formStore"
           view-mode="create"
@@ -22,80 +39,72 @@ SPDX-License-Identifier: Apache-2.0
           :initial-values="loginInitialValues"
           :submit-handler="onLoginSubmit"
         >
-          <ChoyFieldGroup>
-            <ChoyField v-if="error">
-              <div
-                class="login-error flex items-center justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-                role="alert"
-              >
-                <span class="min-w-0 leading-5">{{ error }}</span>
-                <button
-                  type="button"
-                  class="inline-flex size-6 shrink-0 items-center justify-center rounded-sm border-0 bg-transparent p-0 text-destructive/70 appearance-none shadow-none outline-none hover:bg-destructive/15 hover:text-destructive focus-visible:ring-2 focus-visible:ring-destructive/40"
-                  :aria-label="_t('Close')"
-                  @click="error = ''"
-                >
-                  <X class="size-3.5" />
-                </button>
-              </div>
-            </ChoyField>
-
-            <div class="login-username">
-              <ChoyVarcharField
-                :store="formStore"
-                prop="Username"
-                :label="_t('Username')"
-                :placeholder="_t('Enter username')"
-                autocomplete="username"
-                name="username"
-                id="login-username"
-                buffer-strategy="live"
-                :nullable="false"
-                :show-word-limit="false"
-                show-inline-error
-                :rules="usernameRules"
-              />
-            </div>
-            <div class="login-password">
-              <ChoyVarcharField
-                :store="formStore"
-                prop="Password"
-                :label="_t('Password')"
-                type="password"
-                :placeholder="_t('Enter password')"
-                autocomplete="current-password"
-                name="password"
-                id="login-password"
-                buffer-strategy="live"
-                :nullable="false"
-                :show-word-limit="false"
-                show-inline-error
-                :rules="passwordRules"
-              />
-            </div>
-            <ChoyBooleanField
-              class="login-options"
-              :store="formStore"
-              prop="RememberMe"
-              widget="checkbox"
-              :label="''"
-              :checkbox-label="_t('Remember me')"
-              render-mode="inline"
-              buffer-strategy="live"
+          <template #default="{ formData }">
+            <AuthPageErrorClear
+              :username="formData.Username"
+              :password="formData.Password"
+              :has-error="!!error"
+              @clear="error = ''"
             />
+            <ChoyFieldGroup class="login-fields" :style="{ gap: '0' }">
+              <div class="login-username">
+                <ChoyVarcharField
+                  :store="formStore"
+                  prop="Username"
+                  :label="_t('Username')"
+                  :placeholder="_t('Enter username')"
+                  autocomplete="username"
+                  name="username"
+                  id="login-username"
+                  buffer-strategy="live"
+                  :nullable="false"
+                  :show-word-limit="false"
+                  show-inline-error
+                  :rules="usernameRules"
+                />
+              </div>
+              <div class="login-password">
+                <ChoyVarcharField
+                  :store="formStore"
+                  prop="Password"
+                  :label="_t('Password')"
+                  type="password"
+                  :placeholder="_t('Enter password')"
+                  autocomplete="current-password"
+                  name="password"
+                  id="login-password"
+                  buffer-strategy="live"
+                  :nullable="false"
+                  :show-word-limit="false"
+                  show-inline-error
+                  :rules="passwordRules"
+                />
+              </div>
+              <ChoyBooleanField
+                class="login-options"
+                :store="formStore"
+                prop="RememberMe"
+                widget="checkbox"
+                :label="''"
+                :checkbox-label="_t('Remember me')"
+                render-mode="inline"
+                buffer-strategy="live"
+                show-inline-error
+              />
 
-            <ChoyField>
-              <ChoyButton type="submit" class="submit-button w-full" :disabled="loading">
-                {{ loading ? _t('Log In') + '…' : _t('Log In') }}
-              </ChoyButton>
-              <ChoyFieldDescription v-if="showRegisterLink" class="text-center">
-                {{ _t("Don't have an account?") }}
-                <router-link to="/register" class="text-primary hover:underline">{{
-                  _t('Register now')
-                }}</router-link>
-              </ChoyFieldDescription>
-            </ChoyField>
-          </ChoyFieldGroup>
+              <ChoyField>
+                <ChoyButton type="submit" class="submit-button w-full" :disabled="loading">
+                  {{ loading ? _t('Log In') + '…' : _t('Log In') }}
+                </ChoyButton>
+                <ChoyFieldDescription v-if="showRegisterLink" class="text-center">
+                  {{ _t("Don't have an account?") }}
+                  <router-link to="/register" class="text-primary hover:underline">{{
+                    _t('Register now')
+                  }}</router-link>
+                </ChoyFieldDescription>
+              </ChoyField>
+            </ChoyFieldGroup>
+          </template>
         </ChoyFormView>
       </ChoyCard>
     </AuthPanel>
@@ -109,6 +118,7 @@ import { storeToRefs } from 'pinia';
 import { X } from 'lucide-vue-next';
 import { useAuthStore } from '../stores/auth';
 import AuthPanel from '../components/AuthPanel.vue';
+import AuthPageErrorClear from './AuthPageErrorClear.vue';
 import {
   ChoyPage,
   ChoyCard,
@@ -123,7 +133,13 @@ import {
 } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { runLoginAuthReady } from './login_auth_ready';
-import { loginPasswordRules, loginUsernameRules, resolveLoginRedirect, runHandledAuthSubmit, runLoginSubmit } from './login_form';
+import {
+  loginPasswordRules,
+  loginUsernameRules,
+  resolveLoginRedirect,
+  runHandledAuthSubmit,
+  runLoginSubmit,
+} from './login_form';
 
 const { _t } = createTranslate('auth', { scope: 'web/pages/Login' });
 
