@@ -11,6 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     v-show="visibleForm"
     class="choy-field-base p-0"
     v-bind="formItemProps"
+    @focusout="onFieldFocusOut"
   >
     <div class="choy-field-base__label mb-1 inline-flex max-w-full items-center gap-1 text-sm font-medium leading-none text-foreground">
       <label class="choy-field-base__label-text min-w-0" :for="inputIdForm || undefined">{{ resolvedLabel }}</label>
@@ -219,7 +220,12 @@ SPDX-License-Identifier: Apache-2.0
   </ChoyTableColumn>
 
   <!-- INLINE mode -->
-  <div v-else-if="effectiveRenderMode === 'inline'" class="choy-field-base__inline inline-flex items-center gap-1" v-show="visibleInline">
+  <div
+    v-else-if="effectiveRenderMode === 'inline'"
+    class="choy-field-base__inline inline-flex items-center gap-1"
+    v-show="visibleInline"
+    @focusout="onFieldFocusOut"
+  >
     <div
       v-if="showInlineError && displayError"
       class="choy-field-base__inline-wrap choy-field-base__inline-wrap--has-error inline-flex items-center gap-1.5"
@@ -740,31 +746,53 @@ watch(
 /* Server errors are shown via dedicated alert nodes; client rules also gate submit. */
 const fieldClientValidators = inject(FIELD_CLIENT_VALIDATORS_KEY, null);
 const clientRuleError = ref('');
-const displayError = computed(() => serverError.value || clientRuleError.value || undefined);
+/** Client rule messages stay hidden until blur or FormView submit validation. */
+const clientRulesRevealed = ref(false);
+const displayError = computed(() => {
+  if (serverError.value) return serverError.value;
+  if (clientRulesRevealed.value && clientRuleError.value) return clientRuleError.value;
+  return undefined;
+});
 
-async function evaluateClientRules(): Promise<string> {
+let clientRulesEvalSeq = 0;
+
+async function evaluateClientRules(opts?: { reveal?: boolean }): Promise<string> {
   if (!binding.env.isEditMode || readonlyForm.value || !visibleForm.value) {
     clientRuleError.value = '';
     return '';
   }
+  const seq = ++clientRulesEvalSeq;
   const message = await firstRuleError(props.rules, rawValueForm().value);
+  // Ignore superseded evaluations so rapid edit/blur/submit cannot paint stale errors.
+  if (seq !== clientRulesEvalSeq) return message;
   clientRuleError.value = message;
+  if (opts?.reveal) clientRulesRevealed.value = true;
   return message;
+}
+
+function onFieldFocusOut(ev: FocusEvent) {
+  const root = ev.currentTarget as HTMLElement | null;
+  const next = ev.relatedTarget as Node | null;
+  if (root && next && root.contains(next)) return;
+  // Reveal only when evaluateClientRules actually runs (editable + visible).
+  void evaluateClientRules({ reveal: true });
 }
 
 /** Per-instance key so list/table mounts of the same prop do not clobber each other. */
 const clientValidatorKey = `field-client-validator:${getCurrentInstance()?.uid ?? Math.random().toString(36).slice(2)}`;
+/** Form submit validation reveals messages so empty submit still surfaces errors. */
+const validateForForm = () => evaluateClientRules({ reveal: true });
 
 onMounted(() => {
   const map = fieldClientValidators;
   if (map) {
-    map.set(clientValidatorKey, evaluateClientRules);
+    map.set(clientValidatorKey, validateForForm);
   }
 });
 
 onBeforeUnmount(() => {
   const map = fieldClientValidators;
-  if (map && map.get(clientValidatorKey) === evaluateClientRules) {
+  if (map && map.get(clientValidatorKey) === validateForForm) {
     map.delete(clientValidatorKey);
   }
 });
@@ -775,6 +803,13 @@ watch(
     void evaluateClientRules();
   },
   { immediate: true, deep: true }
+);
+
+watch(
+  () => binding.env.isEditMode,
+  isEdit => {
+    if (!isEdit) clientRulesRevealed.value = false;
+  },
 );
 
 /* Slot type declarations */

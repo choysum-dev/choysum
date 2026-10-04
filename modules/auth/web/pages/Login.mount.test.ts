@@ -66,6 +66,9 @@ test('Login.vue mounts under choysumMount and runs script setup', async () => {
   const { wrapper } = await mountLogin();
   expect(fieldInput(wrapper, '.login-username').exists()).toBe(true);
   expect(fieldInput(wrapper, '.login-password').exists()).toBe(true);
+  // Required rules must not paint until blur or submit.
+  expect(wrapper.text().includes('Enter username')).toBe(false);
+  expect(wrapper.text().includes('Enter password')).toBe(false);
   wrapper.unmount();
 });
 
