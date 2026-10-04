@@ -1066,22 +1066,22 @@ msgctxt "web/pages/Login"
 msgid "Username"
 msgstr "用户名"
 
-#: web/pages/Logout.vue:23
+#: web/pages/Logout.vue:24
 msgctxt "web/pages/Logout"
 msgid "Back to Login"
 msgstr "返回登录"
 
-#: web/pages/Logout.vue:14
+#: web/pages/Logout.vue:13
 msgctxt "web/pages/Logout"
-msgid "Log In Again"
-msgstr "重新登录"
+msgid "Go now"
+msgstr "立即前往"
 
 #: web/pages/Logout.vue:27
 msgctxt "web/pages/Logout"
 msgid "Redirecting to the login page in %s seconds"
 msgstr "将在 %s 秒后进入登录页"
 
-#: web/pages/Logout.vue:19
+#: web/pages/Logout.vue:20
 msgctxt "web/pages/Logout"
 msgid "Retry"
 msgstr "重试"
@@ -2310,6 +2310,14 @@ msgstr "启用"
 #~ msgctxt "web/pages/Login"
 #~ msgid "Register now"
 #~ msgstr "立即注册"
+
+#~ msgctxt "web/pages/Logout"
+#~ msgid "Go to login"
+#~ msgstr "进入登录页"
+
+#~ msgctxt "web/pages/Logout"
+#~ msgid "Log In Again"
+#~ msgstr "重新登录"
 
 #~ msgctxt "web/pages/Logout"
 #~ msgid "Please wait while your account is being signed out securely..."

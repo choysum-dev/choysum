@@ -1089,14 +1089,14 @@ msgctxt "web/pages/Login"
 msgid "Username"
 msgstr ""
 
-#: web/pages/Logout.vue:23
+#: web/pages/Logout.vue:24
 msgctxt "web/pages/Logout"
 msgid "Back to Login"
 msgstr ""
 
-#: web/pages/Logout.vue:14
+#: web/pages/Logout.vue:13
 msgctxt "web/pages/Logout"
-msgid "Log In Again"
+msgid "Go now"
 msgstr ""
 
 #: web/pages/Logout.vue:27
@@ -1104,7 +1104,7 @@ msgctxt "web/pages/Logout"
 msgid "Redirecting to the login page in %s seconds"
 msgstr ""
 
-#: web/pages/Logout.vue:19
+#: web/pages/Logout.vue:20
 msgctxt "web/pages/Logout"
 msgid "Retry"
 msgstr ""
