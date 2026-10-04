@@ -33,8 +33,8 @@ export const DEFAULT_MODULE_INDEX_SEARCH = ['Available', '=', true] as const;
 
 /**
  * Assert a module-index search condition shape.
- * Empty array/object is rejected — callers that want the catalog default must pass
- * {@link DEFAULT_MODULE_INDEX_SEARCH} explicitly.
+ * Empty array/object is rejected here — Search/Count map those to
+ * {@link DEFAULT_MODULE_INDEX_SEARCH} via {@link resolveSearchCondition}.
  */
 export function assertSearchCondition(condition: unknown): unknown {
   if (condition == null) {
@@ -49,6 +49,22 @@ export function assertSearchCondition(condition: unknown): unknown {
     throw new Error('search condition must be an array or object');
   }
   return condition;
+}
+
+/**
+ * Search/Count filter: omitted, empty `[]`, and empty `{}` become
+ * {@link DEFAULT_MODULE_INDEX_SEARCH} so generic list/kanban callers still load the catalog.
+ */
+export function resolveSearchCondition(condition: unknown): unknown {
+  if (condition == null) {
+    return DEFAULT_MODULE_INDEX_SEARCH;
+  }
+  const emptyArray = Array.isArray(condition) && condition.length === 0;
+  const emptyObject = !Array.isArray(condition) && typeof condition === 'object' && Object.keys(condition).length === 0;
+  if (emptyArray || emptyObject) {
+    return DEFAULT_MODULE_INDEX_SEARCH;
+  }
+  return assertSearchCondition(condition);
 }
 
 type SortSpec = { field: string; desc: boolean };

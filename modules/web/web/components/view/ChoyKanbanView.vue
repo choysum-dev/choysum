@@ -91,7 +91,33 @@ SPDX-License-Identifier: Apache-2.0
             </slot>
           </header>
 
+          <div
+            v-if="readonly"
+            class="choy-kanban-view__lane-body flex flex-1 flex-col gap-2 p-2"
+            data-testid="choy-kanban-lane-static"
+            :style="{ minHeight: '8rem' }"
+          >
+            <article
+              v-for="card in lane.cards"
+              :key="card.id"
+              class="choy-kanban-view__card cursor-pointer rounded-md border border-border bg-background p-3 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              :data-card-id="card.id"
+              tabindex="0"
+              role="article"
+              :aria-label="card.title"
+              @click="onCardClick(card)"
+              @keydown.enter.self.prevent="onCardClick(card)"
+            >
+              <slot name="card" :card="card" :lane="lane">
+                <div class="text-sm font-medium text-foreground">{{ card.title }}</div>
+                <div v-if="card.subtitle" class="mt-1 text-xs text-foreground/60">
+                  {{ card.subtitle }}
+                </div>
+              </slot>
+            </article>
+          </div>
           <draggable
+            v-else
             class="choy-kanban-view__lane-body flex flex-1 flex-col gap-2 p-2"
             :list="lane.cards"
             item-key="id"
