@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 /**
- * FE unit stub for auth store used when mounting Login.vue under QJS.
+ * FE unit stub for auth store used when mounting Login/Register/Logout under QJS.
  * Activated via host_bundle path stub for modules/auth/web/stores/auth.
  */
 import { defineStore } from 'pinia';
@@ -29,6 +29,10 @@ export const useAuthStore = defineStore('auth-fe-stub', function () {
     },
     register: function () {
       return Promise.resolve({ UserId: 'usr_fe_stub' });
+    },
+    logout: function () {
+      isAuthenticated.value = false;
+      return Promise.resolve();
     },
     loadUser: function () {
       return Promise.resolve(currentUser.value);

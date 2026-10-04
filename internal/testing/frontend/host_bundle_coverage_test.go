@@ -106,6 +106,7 @@ func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 		{"../stores/auth", "/modules/auth/web/stores/auth", page, "auth", true},
 		{"./stores/auth", "/modules/auth/web/stores/auth", "Login.vue", "auth", true},
 		{"./stores/auth", "/modules/auth/web/stores/auth", "Register.vue", "auth", true},
+		{"../stores/auth", "/modules/auth/web/stores/auth", "Logout.vue", "auth", true},
 		{"@/auth/web/stores/auth/index.ts", "/modules/auth/web/stores/auth/index.ts", page, "auth", true},
 		{"@/web/web/i18n", "/web/web/i18n/index", page, "i18n", true},
 		{"@/web/web/i18n", "/web/web/i18n/index", "/other.ts", "", false},

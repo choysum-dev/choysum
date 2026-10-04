@@ -133,7 +133,8 @@ func feUnitPathStubPath(p, joined, importer string, stubs feUnitStubPaths) (stri
 	case strings.Contains(joined, "/auth/web/stores/auth") || (strings.Contains(p, "stores/auth") && !strings.Contains(importer, "/stores/auth/")):
 		fromProduct := stubProductChildren ||
 			strings.Contains(importer, "Login.vue") ||
-			strings.Contains(importer, "Register.vue")
+			strings.Contains(importer, "Register.vue") ||
+			strings.Contains(importer, "Logout.vue")
 		barrel := strings.HasSuffix(p, "/stores/auth") ||
 			p == "../stores/auth" ||
 			p == "./stores/auth" ||
