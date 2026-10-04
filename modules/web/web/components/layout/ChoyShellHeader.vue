@@ -16,11 +16,11 @@ SPDX-License-Identifier: Apache-2.0
     />
     <a
       href="/"
-      class="choy-shell__brand inline-flex min-w-0 items-center gap-2 font-semibold tracking-tight text-foreground no-underline hover:opacity-90"
+      class="choy-shell__brand inline-flex min-w-0 items-center gap-2 font-medium tracking-tight text-foreground no-underline hover:opacity-90"
       data-testid="choy-shell-brand"
       @click.prevent="goHome"
     >
-      <img :src="logoUrl" alt="" class="size-6 shrink-0" width="24" height="24" />
+      <img :src="logoUrl" alt="" class="size-5 shrink-0 saturate-50" width="20" height="20" />
       <span class="truncate">Choysum</span>
     </a>
     <ChoyShellBreadcrumb v-if="showSidebarChrome" />

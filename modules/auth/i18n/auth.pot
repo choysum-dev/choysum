@@ -865,15 +865,19 @@ msgctxt "web/components/layout/ChoyWebShell"
 msgid "Profile"
 msgstr ""
 
-#: web/components/layout/ChoyWebShell.vue:7
-#: web/components/layout/ChoyWebShell.vue:8
-msgctxt "web/components/layout/ChoyWebShell"
-msgid "Register"
-msgstr ""
-
 #: web/components/layout/ChoyWebShell.vue:28
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "Settings"
+msgstr ""
+
+#: web/components/layout/ChoyWebShell.vue:8
+msgctxt "web/components/layout/ChoyWebShell"
+msgid "Sign Up"
+msgstr ""
+
+#: web/components/layout/ChoyWebShell.vue:7
+msgctxt "web/components/layout/ChoyWebShell"
+msgid "Sign up"
 msgstr ""
 
 #: web/components/layout/ChoyWebShell.vue:15
@@ -1065,14 +1069,14 @@ msgctxt "web/pages/Login"
 msgid "Password"
 msgstr ""
 
-#: web/pages/Login.vue:36
-msgctxt "web/pages/Login"
-msgid "Register now"
-msgstr ""
-
 #: web/pages/Login.vue:27
 msgctxt "web/pages/Login"
 msgid "Remember me"
+msgstr ""
+
+#: web/pages/Login.vue:36
+msgctxt "web/pages/Login"
+msgid "Sign up now"
 msgstr ""
 
 #: web/pages/Login.vue:6

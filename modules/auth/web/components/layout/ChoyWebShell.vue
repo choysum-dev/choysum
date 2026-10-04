@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     <template v-if="!isAuthenticated">
       <ChoyButton
         v-if="!isLoginRoute"
-        variant="default"
+        variant="outline"
         size="sm"
         :aria-label="_t('Log in')"
         data-testid="choy-shell-login"
@@ -18,13 +18,13 @@ SPDX-License-Identifier: Apache-2.0
       </ChoyButton>
       <ChoyButton
         v-if="showRegister"
-        variant="default"
+        variant="outline"
         size="sm"
-        :aria-label="_t('Register')"
+        :aria-label="_t('Sign up')"
         data-testid="choy-shell-register"
         @click="handleRegister"
       >
-        {{ _t('Register') }}
+        {{ _t('Sign Up') }}
       </ChoyButton>
     </template>
     <ChoyNotificationBell v-if="isAuthenticated" />

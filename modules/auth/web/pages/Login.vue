@@ -99,7 +99,7 @@ SPDX-License-Identifier: Apache-2.0
                 <ChoyFieldDescription v-if="showRegisterLink" class="text-center">
                   {{ _t("Don't have an account?") }}
                   <router-link to="/register" class="text-primary hover:underline">{{
-                    _t('Register now')
+                    _t('Sign up now')
                   }}</router-link>
                 </ChoyFieldDescription>
               </ChoyField>

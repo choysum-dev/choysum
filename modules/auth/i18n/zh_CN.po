@@ -846,15 +846,20 @@ msgctxt "web/components/layout/ChoyWebShell"
 msgid "Profile"
 msgstr "个人资料"
 
-#: web/components/layout/ChoyWebShell.vue:7 web/components/layout/ChoyWebShell.vue:8
-msgctxt "web/components/layout/ChoyWebShell"
-msgid "Register"
-msgstr "注册"
-
 #: web/components/layout/ChoyWebShell.vue:28
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "Settings"
 msgstr "设置"
+
+#: web/components/layout/ChoyWebShell.vue:8
+msgctxt "web/components/layout/ChoyWebShell"
+msgid "Sign Up"
+msgstr "注册"
+
+#: web/components/layout/ChoyWebShell.vue:7
+msgctxt "web/components/layout/ChoyWebShell"
+msgid "Sign up"
+msgstr "注册"
 
 #: web/components/layout/ChoyWebShell.vue:15
 msgctxt "web/components/layout/ChoyWebShell"
@@ -1041,15 +1046,15 @@ msgctxt "web/pages/Login"
 msgid "Password"
 msgstr "密码"
 
-#: web/pages/Login.vue:36
-msgctxt "web/pages/Login"
-msgid "Register now"
-msgstr "立即注册"
-
 #: web/pages/Login.vue:27
 msgctxt "web/pages/Login"
 msgid "Remember me"
 msgstr "记住我"
+
+#: web/pages/Login.vue:36
+msgctxt "web/pages/Login"
+msgid "Sign up now"
+msgstr "立即注册"
 
 #: web/pages/Login.vue:6
 msgctxt "web/pages/Login"
@@ -2286,6 +2291,10 @@ msgctxt "web/views/UserSearchView"
 msgid "Active"
 msgstr "启用"
 
+#~ msgctxt "web/components/layout/ChoyWebShell"
+#~ msgid "Register"
+#~ msgstr "注册"
+
 #~ msgctxt "web/components/preferences/PreferencesDialog"
 #~ msgid "Invalid or inactive language"
 #~ msgstr "无效或未启用的语言"
@@ -2297,6 +2306,10 @@ msgstr "启用"
 #~ msgctxt "web/components/preferences/PreferencesDialog"
 #~ msgid "Timezone"
 #~ msgstr "时区"
+
+#~ msgctxt "web/pages/Login"
+#~ msgid "Register now"
+#~ msgstr "立即注册"
 
 #~ msgctxt "web/pages/Logout"
 #~ msgid "Please wait while your account is being signed out securely..."

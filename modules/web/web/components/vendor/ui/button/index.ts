@@ -11,16 +11,16 @@ export { default as Button } from './Button.vue';
  * Heights bind to h-control* (Dense Admin density ruler).
  */
 export const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all appearance-none border-0 outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-current",
+  "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all appearance-none outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-current",
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        outline: 'border border-border bg-background text-foreground shadow-xs hover:bg-accent hover:text-accent-foreground',
-        ghost: 'text-foreground hover:bg-accent hover:text-accent-foreground',
-        destructive: 'bg-destructive text-primary-foreground hover:bg-destructive/90',
-        link: 'text-primary underline-offset-4 hover:underline',
+        default: 'border-0 bg-primary text-primary-foreground hover:bg-primary/90',
+        secondary: 'border-0 bg-secondary text-secondary-foreground hover:bg-secondary/80',
+        outline: 'border border-input bg-background text-foreground shadow-xs hover:bg-accent hover:text-accent-foreground',
+        ghost: 'border-0 text-foreground hover:bg-accent hover:text-accent-foreground',
+        destructive: 'border-0 bg-destructive text-primary-foreground hover:bg-destructive/90',
+        link: 'border-0 text-primary underline-offset-4 hover:underline',
       },
       size: {
         default: 'h-control px-4 py-2',
