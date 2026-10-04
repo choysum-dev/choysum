@@ -10,10 +10,10 @@ import { setupApp } from './appSetup';
 
 import App from './App.vue';
 
-import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
-import 'vue-sonner/style.css';
 import './styles/tokens.css';
 import './styles/choy-tailwind.generated.css';
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
+import 'vue-sonner/style.css';
 import './styles/index.css';
 
 const app = createApp(App).setup(setupApp);

@@ -55,9 +55,36 @@ body {
   line-height: 1.5 !important;
 }
 
-/* Product link hover keeps inherited color (CTA uses text-primary / Button link). */
+/* Product links: no underline by default (preflight uses text-decoration: inherit). */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
 a:hover {
   color: inherit;
+}
+
+/* Record-import step list: restore numbering stripped by preflight. */
+.import-panel-steps {
+  list-style: decimal;
+  padding-inline-start: 1.25rem;
+  margin-block: 0.75rem;
+}
+
+/* Rich-text field content: keep list markers after preflight list-style:none. */
+.prose-choy ul,
+.choy-html-field__prose ul {
+  list-style: disc;
+  padding-inline-start: 1.25rem;
+  margin-block: 0.5rem;
+}
+
+.prose-choy ol,
+.choy-html-field__prose ol {
+  list-style: decimal;
+  padding-inline-start: 1.25rem;
+  margin-block: 0.5rem;
 }
 
 /* Icons follow surrounding text, including when a global svg color uses !important. */

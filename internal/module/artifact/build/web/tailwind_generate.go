@@ -394,6 +394,11 @@ func isPlausibleTailwindCandidate(c string) bool {
 // PropertiesCSS). Emit unscoped so the SPA can consume Choy utilities.
 func GenerateTailwindCSS(dialectCSS string, candidates []string) (css string, dur time.Duration, err error) {
 	start := time.Now()
+	// FullCSS always emits preflight, so the empty-kit write guard cannot detect
+	// a degenerate call; fail here when neither dialect nor candidates exist.
+	if strings.TrimSpace(dialectCSS) == "" && len(candidates) == 0 {
+		return "", time.Since(start), fmt.Errorf("tailwind generate called without dialect CSS or candidates")
+	}
 	eng := tw.New()
 	if strings.TrimSpace(dialectCSS) != "" {
 		if err := choyLoadCSS(eng, []byte(dialectCSS)); err != nil {
