@@ -435,10 +435,13 @@ describe('FieldBase list-editing-row-id gate', () => {
       },
     });
     await flushPromises();
-    expect(m.q('.choy-field-base__error')?.textContent).toContain('need value');
+    // Mount evaluates rules for submit gating but must not paint errors yet.
+    expect(m.q('.choy-field-base__error')).toBeFalsy();
     expect(validators.size).toBe(1);
     const validate = [...validators.values()][0];
     expect(await validate()).toBe('need value');
+    await flushPromises();
+    expect(m.q('.choy-field-base__error')?.textContent).toContain('need value');
     binding.__value.value = 'ok';
     await flushPromises();
     expect(await validate()).toBe('');
