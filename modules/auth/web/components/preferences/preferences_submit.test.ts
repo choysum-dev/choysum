@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { runPreferencesSubmit } from './preferences_submit';
+import { normalizePreferenceLanguageId, runPreferencesSubmit } from './preferences_submit';
 
 function deps(overrides?: Partial<Parameters<typeof runPreferencesSubmit>[0]>) {
   const calls: string[] = [];
@@ -40,6 +40,14 @@ function deps(overrides?: Partial<Parameters<typeof runPreferencesSubmit>[0]>) {
   };
 }
 
+test('normalizePreferenceLanguageId: unwraps ManyToOne and scalars', () => {
+  expect(normalizePreferenceLanguageId({ Id: 'lang-1' })).toBe('lang-1');
+  expect(normalizePreferenceLanguageId('lang-2')).toBe('lang-2');
+  expect(normalizePreferenceLanguageId({ Id: '' })).toBe(null);
+  expect(normalizePreferenceLanguageId(null)).toBe(null);
+  expect(normalizePreferenceLanguageId(['lang-tuple'])).toBe(null);
+});
+
 test('runPreferencesSubmit: missing user id errors without Write', async () => {
   const { calls, opts } = deps({ userId: '' });
   const ok = await runPreferencesSubmit(opts);
@@ -55,6 +63,25 @@ test('runPreferencesSubmit: defaultSubmit then language/token side effects', asy
     'defaultSubmit',
     'patch:lang-1:Asia/Shanghai',
     'apply:lang-1',
+    'refreshToken',
+    'afterLocaleChange',
+    'success',
+  ]);
+});
+
+test('runPreferencesSubmit: normalizes ManyToOne LanguageId before side effects', async () => {
+  const { calls, opts } = deps({
+    defaultSubmit: async () => {
+      calls.push('defaultSubmit');
+      return { LanguageId: { Id: 'lang-obj' }, Timezone: 'UTC' };
+    },
+  });
+  const ok = await runPreferencesSubmit(opts);
+  expect(ok).toBe(true);
+  expect(calls).toEqual([
+    'defaultSubmit',
+    'patch:lang-obj:UTC',
+    'apply:lang-obj',
     'refreshToken',
     'afterLocaleChange',
     'success',
@@ -86,7 +113,7 @@ test('runPreferencesSubmit: defaultSubmit failure surfaces the error', async () 
   expect(calls).toEqual(['defaultSubmit', 'error:write failed']);
 });
 
-test('runPreferencesSubmit: side-effect failure after Write surfaces the error', async () => {
+test('runPreferencesSubmit: applyLanguage failure still refreshes and succeeds', async () => {
   const { calls, opts } = deps({
     applyLanguage: async () => {
       calls.push('apply:lang-1');
@@ -94,16 +121,36 @@ test('runPreferencesSubmit: side-effect failure after Write surfaces the error',
     },
   });
   const ok = await runPreferencesSubmit(opts);
-  expect(ok).toBe(false);
+  expect(ok).toBe(true);
   expect(calls).toEqual([
     'defaultSubmit',
     'patch:lang-1:Asia/Shanghai',
     'apply:lang-1',
-    'error:locale failed',
+    'refreshToken',
+    'afterLocaleChange',
+    'success',
   ]);
 });
 
-test('runPreferencesSubmit: non-Error throws keep their string message', async () => {
+test('runPreferencesSubmit: refreshToken failure after Write still succeeds', async () => {
+  const { calls, opts } = deps({
+    refreshToken: async () => {
+      calls.push('refreshToken');
+      throw new Error('token failed');
+    },
+  });
+  const ok = await runPreferencesSubmit(opts);
+  expect(ok).toBe(true);
+  expect(calls).toEqual([
+    'defaultSubmit',
+    'patch:lang-1:Asia/Shanghai',
+    'apply:lang-1',
+    'refreshToken',
+    'success',
+  ]);
+});
+
+test('runPreferencesSubmit: non-Error Write throws keep their string message', async () => {
   const { calls, opts } = deps({
     defaultSubmit: async () => {
       throw 'plain failure';
