@@ -53,6 +53,7 @@ describe('FormView native form submit', () => {
 
   function mountForm(opts?: {
     showMessages?: boolean;
+    showHeader?: boolean;
     showActions?: boolean;
     failValidate?: boolean;
     submitHandler?: ReturnType<typeof fnRecorder>;
@@ -67,7 +68,7 @@ describe('FormView native form submit', () => {
         store: loginStore(),
         viewMode: 'create',
         embedded: true,
-        showHeader: opts?.showActions ?? false,
+        showHeader: opts?.showHeader ?? opts?.showActions ?? false,
         showActions: opts?.showActions ?? false,
         showMessages: opts?.showMessages ?? false,
         resolveRecordIdFromRoute: false,
@@ -81,6 +82,18 @@ describe('FormView native form submit', () => {
     });
     return { wrapper, submitHandler };
   }
+
+  test('showHeader=false omits view-chrome action bar', async () => {
+    const { wrapper: hidden } = mountForm({ showHeader: false, showActions: false });
+    await flushPromises();
+    expect(hidden.q('[data-anchor="choy.form.view-chrome"]')).toBeNull();
+    hidden.unmount();
+
+    const { wrapper: shown } = mountForm({ showHeader: true, showActions: true });
+    await flushPromises();
+    expect(shown.q('[data-anchor="choy.form.view-chrome"]')).toBeTruthy();
+    shown.unmount();
+  });
 
   test('slot type=submit button lives in the form and native submit runs submitHandler once', async () => {
     const { wrapper, submitHandler } = mountForm();

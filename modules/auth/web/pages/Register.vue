@@ -23,7 +23,7 @@ SPDX-License-Identifier: Apache-2.0
           :submit-handler="onRegisterSubmit"
         >
           <template #default="{ formData }">
-            <ChoyFieldGroup class="gap-4">
+            <ChoyFieldGroup>
               <ChoyField v-if="error">
                 <div
                   class="flex items-center justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
@@ -45,6 +45,7 @@ SPDX-License-Identifier: Apache-2.0
               <ChoyVarcharField
                 :store="formStore"
                 prop="Username"
+                :label="_t('Username')"
                 :placeholder="_t('Enter username')"
                 autocomplete="username"
                 name="username"
@@ -60,6 +61,7 @@ SPDX-License-Identifier: Apache-2.0
               <ChoyVarcharField
                 :store="formStore"
                 prop="Email"
+                :label="_t('Email')"
                 type="email"
                 :placeholder="_t('Enter email address')"
                 autocomplete="email"
@@ -76,6 +78,7 @@ SPDX-License-Identifier: Apache-2.0
               <ChoyVarcharField
                 :store="formStore"
                 prop="Password"
+                :label="_t('Password')"
                 type="password"
                 :placeholder="_t('Enter password')"
                 autocomplete="new-password"
@@ -92,6 +95,7 @@ SPDX-License-Identifier: Apache-2.0
               <ChoyVarcharField
                 :store="formStore"
                 prop="ConfirmPassword"
+                :label="_t('Confirm Password')"
                 type="password"
                 :placeholder="_t('Re-enter password')"
                 autocomplete="new-password"
@@ -101,7 +105,7 @@ SPDX-License-Identifier: Apache-2.0
                 :nullable="false"
                 :show-word-limit="false"
                 show-inline-error
-                :rules="registerConfirmPasswordRules(_t, () => formData.Password)"
+                :rules="confirmPasswordRules(formData.Password)"
               />
               </div>
 
@@ -162,7 +166,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { X } from 'lucide-vue-next';
@@ -208,20 +212,23 @@ const registerInitialValues = {
 
 const formStore = createLocalFormStore({
   fields: [
-    { name: 'Username', label: _t('Username'), type: 'varchar' },
-    { name: 'Email', label: _t('Email'), type: 'varchar' },
-    { name: 'Password', label: _t('Password'), type: 'varchar' },
-    { name: 'ConfirmPassword', label: _t('Confirm Password'), type: 'varchar' },
-    { name: 'AgreeTerms', label: _t('I have read and agree to'), type: 'boolean' },
+    { name: 'Username', label: 'Username', type: 'varchar' },
+    { name: 'Email', label: 'Email', type: 'varchar' },
+    { name: 'Password', label: 'Password', type: 'varchar' },
+    { name: 'ConfirmPassword', label: 'Confirm Password', type: 'varchar' },
+    { name: 'AgreeTerms', label: 'I have read and agree to', type: 'boolean' },
   ],
   initialValues: registerInitialValues,
   storeId: 'auth.register',
 });
 
-const usernameRules = registerUsernameRules(_t);
-const emailRules = registerEmailRules(_t);
-const passwordRules = registerPasswordRules(_t);
-const agreeTermsRules = registerAgreeTermsRules(_t);
+// Rebuild rules when locale changes so inline errors stay translated.
+const usernameRules = computed(() => registerUsernameRules(_t));
+const emailRules = computed(() => registerEmailRules(_t));
+const passwordRules = computed(() => registerPasswordRules(_t));
+const agreeTermsRules = computed(() => registerAgreeTermsRules(_t));
+const confirmPasswordRules = (password: unknown) =>
+  registerConfirmPasswordRules(_t, () => password);
 
 const error = ref('');
 

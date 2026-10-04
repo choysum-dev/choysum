@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <ViewContainer :showHeader="resolvedShowHeader">
-    <template #header>
+    <template v-if="resolvedShowHeader" #header>
       <div
         class="form-view__action-bar flex items-center justify-between gap-3 border-b border-border pb-1 min-h-control max-md:flex-col max-md:items-stretch"
         data-anchor="choy.form.view-chrome"

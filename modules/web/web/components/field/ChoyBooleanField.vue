@@ -219,35 +219,56 @@ const OBooleanCell = defineComponent({
     return () => {
       const checked = buffer.editingValue.value === true;
       const indeterminate = buffer.editingValue.value === null && !(p.nullAsFalse || !p.nullable);
-      return h('div', { class: 'choy-bool-editor inline-flex items-center gap-2 px-[11px]' }, [
-        h('input', {
-          ...(p.widget === 'checkbox' ? (p.checkboxProps as any) : (p.switchProps as any)),
-          ...attrs,
-          type: 'checkbox',
-          class: 'choy-bool-input align-middle',
-          name: p.inputName,
-          id: p.inputId,
-          checked,
-          indeterminate,
-          onChange: (e: Event) => setVal((e.target as HTMLInputElement).checked),
-        }),
-        clearable
-          ? h(
-              'button',
-              {
-                type: 'button',
-                class: 'choy-clear-btn p-0',
-                onClick: () => {
-                  if (buffer.editingValue.value !== null) {
-                    buffer.setEditing(null);
-                    buffer.onBlur();
-                  }
+      const isCheckbox = p.widget === 'checkbox';
+      const sideLabel = isCheckbox ? String(p.checkboxLabel || '').trim() : '';
+      return h(
+        'div',
+        {
+          class: isCheckbox
+            ? 'choy-bool-editor inline-flex items-center gap-2'
+            : 'choy-bool-editor inline-flex items-center gap-2 px-[11px]',
+        },
+        [
+          h('input', {
+            ...(isCheckbox ? (p.checkboxProps as any) : (p.switchProps as any)),
+            ...attrs,
+            type: 'checkbox',
+            class: 'choy-bool-input align-middle',
+            name: p.inputName,
+            id: p.inputId,
+            checked,
+            indeterminate,
+            onChange: (e: Event) => setVal((e.target as HTMLInputElement).checked),
+          }),
+          sideLabel
+            ? h(
+                'label',
+                {
+                  for: p.inputId || undefined,
+                  class: 'choy-bool-label cursor-pointer text-sm leading-none text-foreground',
                 },
-              },
-              p.checkboxLabel || _t('Clear')
-            )
-          : null,
-      ]);
+                sideLabel,
+              )
+            : null,
+          clearable
+            ? h(
+                'button',
+                {
+                  type: 'button',
+                  class: 'choy-clear-btn p-0',
+                  onClick: () => {
+                    if (buffer.editingValue.value !== null) {
+                      buffer.setEditing(null);
+                      buffer.onBlur();
+                    }
+                  },
+                },
+                // Clear control keeps its own text; side label is the field caption.
+                sideLabel ? _t('Clear') : p.checkboxLabel || _t('Clear'),
+              )
+            : null,
+        ],
+      );
     };
   },
 });

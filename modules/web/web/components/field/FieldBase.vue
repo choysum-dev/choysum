@@ -12,7 +12,7 @@ SPDX-License-Identifier: Apache-2.0
     class="choy-field-base p-0"
     v-bind="formItemProps"
   >
-    <div class="choy-field-base__label mb-1 inline-flex max-w-full items-center gap-1 text-xs font-medium text-muted-foreground">
+    <div class="choy-field-base__label mb-1 inline-flex max-w-full items-center gap-1 text-sm font-medium leading-none text-foreground">
       <label class="choy-field-base__label-text min-w-0" :for="inputIdForm || undefined">{{ resolvedLabel }}</label>
       <button
         v-if="effectiveHelp"
@@ -138,7 +138,7 @@ SPDX-License-Identifier: Apache-2.0
         />
       </template>
     </template>
-    <p v-if="displayError" class="choy-field-base__error mt-1 whitespace-normal text-sm text-danger" role="alert">{{ displayError }}</p>
+    <p v-if="displayError" class="choy-field-base__error mt-1 whitespace-normal text-sm font-normal text-destructive" role="alert">{{ displayError }}</p>
     <FieldTranslationsDialog
       v-if="showTranslateAction"
       v-model="translationsOpen"

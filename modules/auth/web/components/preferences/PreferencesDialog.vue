@@ -30,41 +30,62 @@ SPDX-License-Identifier: Apache-2.0
           </div>
         </div>
 
-        <form class="choy-preferences-dialog__form flex flex-col gap-4" @submit.prevent="handleSave">
-          <label class="flex flex-col gap-1 text-sm">
-            <span class="font-medium">{{ _t('Language') }}</span>
-            <select
-              v-model="languageCode"
-              class="h-control rounded-md border border-border bg-background px-2 text-sm"
-              data-testid="preferences-language"
-            >
-              <option v-for="opt in languageOptions" :key="opt.Code" :value="opt.Code">{{ opt.Name }}</option>
-            </select>
-            <div v-if="languageFromSession" class="choy-preferences-dialog__hint text-xs text-foreground/60">
-              {{ _t('Using current session language') }}
-            </div>
-          </label>
-
-          <label class="flex flex-col gap-1 text-sm">
-            <span class="font-medium">{{ _t('Timezone') }}</span>
-            <select
-              v-model="timezone"
-              class="h-control rounded-md border border-border bg-background px-2 text-sm"
-              data-testid="preferences-timezone"
-            >
-              <option value="">{{ _t('Select timezone') }}</option>
-              <option v-for="tz in timezoneOptions" :key="tz.value" :value="tz.value">{{ tz.label }}</option>
-            </select>
-            <div v-if="timezoneFromBrowser" class="choy-preferences-dialog__hint text-xs text-foreground/60">
-              {{ _t('Suggested from your browser') }}
-            </div>
-          </label>
-
+        <form v-if="!userId" class="choy-preferences-dialog__form flex flex-col gap-4" @submit.prevent="onMissingUserSubmit">
           <div class="flex justify-end gap-2 pt-2">
             <ChoyButton type="button" variant="outline" @click="visible = false">{{ _t('Cancel') }}</ChoyButton>
-            <ChoyButton type="submit" :disabled="saving">{{ _t('Update preferences') }}</ChoyButton>
+            <ChoyButton type="submit">{{ _t('Update preferences') }}</ChoyButton>
           </div>
         </form>
+
+        <ChoyFormView
+          v-else
+          :store="userStore"
+          :record-id="userId"
+          view-mode="edit"
+          embedded
+          :show-header="false"
+          :show-actions="false"
+          :show-messages="false"
+          :resolve-record-id-from-route="false"
+          :submit-handler="onPreferencesSubmit"
+        >
+          <template #default="{ formData, loading }">
+            <PreferenceDraftSeeder
+              :ready="!loading"
+              :language-id="seedLanguageId"
+              :timezone="seedTimezone"
+            />
+            <ChoyFieldGroup class="choy-preferences-dialog__form gap-4">
+              <div class="choy-preferences-dialog__language">
+                <ChoyManyToOneRefField
+                  :store="userStore"
+                  prop="LanguageId"
+                  data-testid="preferences-language"
+                  show-inline-error
+                />
+                <div v-if="showLanguageSessionHint(formData)" class="choy-preferences-dialog__hint text-xs text-foreground/60">
+                  {{ _t('Using current session language') }}
+                </div>
+              </div>
+              <div class="choy-preferences-dialog__timezone">
+                <ChoySelectionField
+                  :store="userStore"
+                  prop="Timezone"
+                  :placeholder="_t('Select timezone')"
+                  :select-props="{ 'data-testid': 'preferences-timezone' }"
+                  show-inline-error
+                />
+                <div v-if="showTimezoneBrowserHint(formData)" class="choy-preferences-dialog__hint text-xs text-foreground/60">
+                  {{ _t('Suggested from your browser') }}
+                </div>
+              </div>
+              <div class="flex justify-end gap-2 pt-2">
+                <ChoyButton type="button" variant="outline" @click="visible = false">{{ _t('Cancel') }}</ChoyButton>
+                <ChoyButton type="submit" :disabled="saving || loading">{{ _t('Update preferences') }}</ChoyButton>
+              </div>
+            </ChoyFieldGroup>
+          </template>
+        </ChoyFormView>
       </div>
     </div>
   </Teleport>
@@ -72,19 +93,28 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, useId, watch } from 'vue';
-import { ChoyButton, ChoyMessage } from '@/web';
+import {
+  ChoyButton,
+  ChoyFieldGroup,
+  ChoyFormView,
+  ChoyManyToOneRefField,
+  ChoyMessage,
+  ChoySelectionField,
+} from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { useI18nStore, langToUiKey, afterLocaleChange, softLocaleRemount } from '@/web/web/stores/i18nStore';
 import { createStoreByModel } from '@/web/web/stores/registry';
+import { applyUserLanguagePreference } from '@/auth/web/stores/auth/language_preference';
 import {
   detectBrowserTimezone,
   resolvePreferenceLanguage,
-  resolvePreferenceTimezone
+  resolvePreferenceTimezone,
 } from './preferences_defaults';
 import { restoreDialogFocus } from './dialog_focus_restore';
 import { trapDialogTabKey } from './dialog_focus_trap';
-import { resolveLanguageCodeFromId } from './preferences_language';
+import { PreferenceDraftSeeder } from './PreferenceDraftSeeder';
+import { runPreferencesSubmit } from './preferences_submit';
 
 defineOptions({ name: 'PreferencesDialog' });
 
@@ -125,66 +155,77 @@ const displayName = computed(() => {
   return String(u.DisplayName || u.Username || u.Email || '');
 });
 
-const languageCode = ref('');
-const savedLanguageCode = ref('');
-const timezone = ref('');
+const userId = computed(() => String(currentUser.value?.Id || authStore.identity?.userId || '').trim());
+const seedLanguageId = ref('');
+const seedTimezone = ref('');
 const languageFromSession = ref(false);
 const timezoneFromBrowser = ref(false);
-const languageOptions = ref<Array<{ Code: string; Name: string }>>([]);
-const timezoneOptions = ref<Array<{ value: string; label: string }>>([]);
 const saving = ref(false);
 
-async function loadLanguageOptions() {
+function languageRefId(value: unknown): string {
+  if (value == null || Array.isArray(value)) return '';
+  if (typeof value !== 'object') return String(value).trim();
+  if (!('Id' in value)) return '';
+  return String((value as { Id?: unknown }).Id ?? '').trim();
+}
+
+function timezoneText(value: unknown): string {
+  return value == null ? '' : String(value).trim();
+}
+
+function showLanguageSessionHint(formData: Record<string, unknown>): boolean {
+  const seed = languageRefId(seedLanguageId.value);
+  if (!languageFromSession.value || !seed) return false;
+  return languageRefId(formData?.LanguageId) === seed;
+}
+
+function showTimezoneBrowserHint(formData: Record<string, unknown>): boolean {
+  const seed = timezoneText(seedTimezone.value);
+  if (!timezoneFromBrowser.value || !seed) return false;
+  return timezoneText(formData?.Timezone) === seed;
+}
+
+async function resolveSeedLanguageId(): Promise<void> {
+  const savedId = languageRefId(currentUser.value?.LanguageId);
+  if (savedId) {
+    seedLanguageId.value = savedId;
+    languageFromSession.value = false;
+    return;
+  }
+  const session = resolvePreferenceLanguage(null, i18nStore.terminologyLang);
+  languageFromSession.value = session.fromSession;
+  const code = String(session.code || '').trim();
+  if (!code) {
+    seedLanguageId.value = '';
+    return;
+  }
   try {
-    const rows = await (languageStore as any).GetActiveLanguages();
-    languageOptions.value = (rows || [])
-      .map((r: any) => ({ Code: String(r.Code || ''), Name: String(r.Name || r.Code || '') }))
-      .filter((r: { Code: string }) => !!r.Code);
+    const rows = (await (languageStore as any).Search(
+      { And: [['Code', '=', code], ['IsActive', '=', true]] } as any,
+      { fields: ['Id'], limit: 1 } as any,
+    )) as Array<{ Id?: string }>;
+    seedLanguageId.value = String(rows?.[0]?.Id || '').trim();
   } catch {
-    languageOptions.value = [
-      { Code: 'en_US', Name: 'English (US)' },
-      { Code: 'zh_CN', Name: 'Chinese (Simplified)' },
-    ];
+    seedLanguageId.value = '';
   }
 }
 
-async function loadTimezoneOptions() {
+async function resolveSeedTimezone(): Promise<void> {
+  let allowed: string[] = [];
   try {
     const fields = await (userStore as any).FieldsGet?.(['Timezone']);
     const selection = fields?.Timezone?.selection || fields?.fields?.Timezone?.selection;
     if (Array.isArray(selection)) {
-      timezoneOptions.value = selection
-        .map((item: any) => ({
-          value: String(item.value ?? item.Value ?? ''),
-          label: String(item.label ?? item.Label ?? item.value ?? ''),
-        }))
-        .filter((item: { value: string }) => !!item.value);
-      return;
+      allowed = selection
+        .map((item: any) => String(item.value ?? item.Value ?? ''))
+        .filter((value: string) => !!value);
     }
   } catch {
-    // fall through
+    allowed = [];
   }
-  timezoneOptions.value = [];
-}
-
-async function syncLanguageFromUser() {
-  const code = await resolveLanguageCodeFromId(currentUser.value?.LanguageId, (id, fields) =>
-    (languageStore as any).Browse(id, fields)
-  );
-  savedLanguageCode.value = code;
-  const resolved = resolvePreferenceLanguage(code || null, i18nStore.terminologyLang);
-  languageCode.value = resolved.code;
-  languageFromSession.value = resolved.fromSession;
-}
-
-function applyTimezoneFromUserOrBrowser() {
-  const allowed = timezoneOptions.value.map(opt => opt.value);
   const resolved = resolvePreferenceTimezone(currentUser.value?.Timezone, detectBrowserTimezone(), allowed);
-  timezone.value = resolved.timezone ?? '';
+  seedTimezone.value = resolved.timezone ?? '';
   timezoneFromBrowser.value = resolved.fromBrowser;
-  if (resolved.fromBrowser && resolved.timezone && !allowed.includes(resolved.timezone)) {
-    timezoneOptions.value = [{ value: resolved.timezone, label: resolved.timezone }, ...timezoneOptions.value];
-  }
 }
 
 async function openAndLoad() {
@@ -195,9 +236,7 @@ async function openAndLoad() {
       // Fall back to whatever is already in auth state / identity.
     }
   }
-  await syncLanguageFromUser();
-  await Promise.all([loadLanguageOptions(), loadTimezoneOptions()]);
-  applyTimezoneFromUserOrBrowser();
+  await Promise.all([resolveSeedLanguageId(), resolveSeedTimezone()]);
 }
 
 watch(
@@ -214,24 +253,8 @@ watch(
     }
     restoreDialogFocus(lastFocused);
     lastFocused = null;
-  }
+  },
 );
-
-watch(languageCode, code => {
-  if (!languageFromSession.value) return;
-  const saved = savedLanguageCode.value;
-  if (code !== saved && code !== String(i18nStore.terminologyLang || '').trim()) {
-    languageFromSession.value = false;
-  }
-});
-
-watch(timezone, value => {
-  if (!timezoneFromBrowser.value) return;
-  const browserTz = detectBrowserTimezone();
-  if (value !== browserTz) {
-    timezoneFromBrowser.value = false;
-  }
-});
 
 onMounted(async () => {
   if (!props.modelValue) return;
@@ -241,60 +264,51 @@ onMounted(async () => {
   await openAndLoad();
 });
 
-function resolveUserId(): string {
-  return String(currentUser.value?.Id || authStore.identity?.userId || '').trim();
+function onMissingUserSubmit() {
+  ChoyMessage.error(_t('Cannot update preferences: missing user id'));
 }
 
-async function handleSave() {
-  let userId = resolveUserId();
-  if (!userId) {
-    ChoyMessage.error(_t('Cannot update preferences: missing user id'));
-    return;
-  }
+async function onPreferencesSubmit(ctx: {
+  formData: Record<string, unknown>;
+  defaultSubmit: () => Promise<Record<string, unknown> | null>;
+}) {
   saving.value = true;
   try {
-    if (!currentUser.value?.Id) {
-      await authStore.loadUser(true);
-      userId = resolveUserId();
-      if (!userId) {
-        throw new Error(_t('Cannot update preferences: missing user id'));
-      }
-    }
-    const nextLang = String(languageCode.value || '').trim();
-    const nextTz = timezone.value ? String(timezone.value).trim() : null;
-    let languageId: string | null = null;
-    if (nextLang) {
-      const rows = (await (languageStore as any).Search(
-        { And: [['Code', '=', nextLang], ['IsActive', '=', true]] } as any,
-        { fields: ['Id'], limit: 1 } as any
-      )) as Array<{ Id?: string }>;
-      languageId = String(rows?.[0]?.Id || '').trim() || null;
-      if (!languageId) {
-        throw new Error(_t('Invalid or inactive language'));
-      }
-    }
-    await userStore.UpdateById(
-      userId,
-      { LanguageId: languageId, Timezone: nextTz } as any,
-      ['Id', 'LanguageId', 'Timezone'] as any
-    );
-    if (authStore.currentUser) {
-      (authStore.currentUser as any).LanguageId = languageId;
-      (authStore.currentUser as any).Timezone = nextTz;
-    }
-    savedLanguageCode.value = nextLang;
-    if (nextLang) {
-      await i18nStore.setUiKey(langToUiKey(nextLang));
-    }
-    i18nStore.setDisplayOverrides((authStore.currentUser as any)?.Preferences?.display ?? null);
-    await authStore.refreshToken(true);
-    await afterLocaleChange({ remount: softLocaleRemount });
-    ChoyMessage.success(_t('Preferences updated'));
-    visible.value = false;
-  } catch (err: any) {
-    ChoyMessage.error(String(err?.message || err || _t('Failed to update preferences')));
+    await runPreferencesSubmit({
+      userId: userId.value,
+      hasCurrentUserId: Boolean(currentUser.value?.Id),
+      loadUser: () => authStore.loadUser(true),
+      missingUserMessage: _t('Cannot update preferences: missing user id'),
+      defaultSubmit: async () => (await ctx.defaultSubmit()) as Record<string, unknown> | null,
+      formData: (ctx.formData || {}) as Record<string, unknown>,
+      patchCurrentUser: (languageId, timezone) => {
+        if (!authStore.currentUser) return;
+        (authStore.currentUser as any).LanguageId = languageId;
+        (authStore.currentUser as any).Timezone = timezone;
+      },
+      applyLanguage: languageId =>
+        applyUserLanguagePreference({
+          languageId,
+          displayOverrides: (authStore.currentUser as any)?.Preferences?.display,
+          browseLanguage: (id, fields) => (languageStore as any).Browse(id, fields),
+          setUiKey: k => i18nStore.setUiKey(k),
+          setDisplayOverrides: o => i18nStore.setDisplayOverrides(o as never),
+          langToUiKey,
+        }),
+      refreshToken: () => authStore.refreshToken(true),
+      afterLocaleChange: () => afterLocaleChange({ remount: softLocaleRemount }),
+      onSuccess: () => {
+        ChoyMessage.success(_t('Preferences updated'));
+        visible.value = false;
+      },
+      onError: message => {
+        ChoyMessage.error(message);
+      },
+      failedMessage: _t('Failed to update preferences'),
+    });
   } finally {
     saving.value = false;
   }
-}
+  return { handled: true, skipSuccessMessage: true };
+};
 </script>

@@ -850,7 +850,7 @@ msgctxt "web/components/layout/ChoyWebShell"
 msgid "Log In"
 msgstr ""
 
-#: web/components/layout/ChoyWebShell.vue:23
+#: web/components/layout/ChoyWebShell.vue:29
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "Log Out"
 msgstr ""
@@ -860,58 +860,58 @@ msgctxt "web/components/layout/ChoyWebShell"
 msgid "Log in"
 msgstr ""
 
-#: web/components/layout/ChoyWebShell.vue:17
+#: web/components/layout/ChoyWebShell.vue:23
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "Profile"
 msgstr ""
 
-#: web/components/layout/ChoyWebShell.vue:20
+#: web/components/layout/ChoyWebShell.vue:26
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "Settings"
 msgstr ""
 
-#: web/components/layout/ChoyWebShell.vue:12
+#: web/components/layout/ChoyWebShell.vue:13
 msgctxt "web/components/layout/ChoyWebShell"
 msgid "User menu"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:32
+#: web/components/layout/SwitchCompany.vue:34
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Apply"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:17
+#: web/components/layout/SwitchCompany.vue:19
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Available Companies"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:301
+#: web/components/layout/SwitchCompany.vue:310
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Available companies must include the current company"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:268
-#: web/components/layout/SwitchCompany.vue:271
+#: web/components/layout/SwitchCompany.vue:277
+#: web/components/layout/SwitchCompany.vue:280
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Company"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:10
+#: web/components/layout/SwitchCompany.vue:11
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Current Company"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:306
+#: web/components/layout/SwitchCompany.vue:315
 msgctxt "web/components/layout/SwitchCompany"
 msgid "No changes to apply"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:304
+#: web/components/layout/SwitchCompany.vue:313
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Only one company is available; nothing to apply"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:299
+#: web/components/layout/SwitchCompany.vue:308
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Select a current company"
 msgstr ""
@@ -921,12 +921,13 @@ msgctxt "web/components/layout/SwitchCompany"
 msgid "Switch company"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:37
+#: web/components/preferences/PreferencesDialog.vue:16
+#: web/components/preferences/PreferencesDialog.vue:38
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:179
+#: web/components/preferences/PreferencesDialog.vue:175
 #: web/components/preferences/PreferencesDialog.vue:188
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Cannot update preferences: missing user id"
@@ -937,47 +938,33 @@ msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Edit Profile"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:223
+#: web/components/preferences/PreferencesDialog.vue:214
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Failed to update preferences"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:201
-msgctxt "web/components/preferences/PreferencesDialog"
-msgid "Invalid or inactive language"
-msgstr ""
-
-#: web/components/preferences/PreferencesDialog.vue:16
-msgctxt "web/components/preferences/PreferencesDialog"
-msgid "Language"
-msgstr ""
-
-#: web/components/preferences/PreferencesDialog.vue:220
+#: web/components/preferences/PreferencesDialog.vue:208
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Preferences updated"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:28
+#: web/components/preferences/PreferencesDialog.vue:32
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Select timezone"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:32
+#: web/components/preferences/PreferencesDialog.vue:34
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Suggested from your browser"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:26
-msgctxt "web/components/preferences/PreferencesDialog"
-msgid "Timezone"
-msgstr ""
-
-#: web/components/preferences/PreferencesDialog.vue:38
+#: web/components/preferences/PreferencesDialog.vue:17
+#: web/components/preferences/PreferencesDialog.vue:39
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Update preferences"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:21
+#: web/components/preferences/PreferencesDialog.vue:28
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Using current session language"
 msgstr ""
@@ -1032,17 +1019,17 @@ msgctxt "web/menu/menus"
 msgid "User List"
 msgstr ""
 
-#: web/pages/Login.vue:8
+#: web/pages/Login.vue:10
 msgctxt "web/pages/Login"
 msgid "Close"
 msgstr ""
 
-#: web/pages/Login.vue:37
+#: web/pages/Login.vue:29
 msgctxt "web/pages/Login"
 msgid "Don't have an account?"
 msgstr ""
 
-#: web/pages/Login.vue:23
+#: web/pages/Login.vue:20
 msgctxt "web/pages/Login"
 msgid "Enter password"
 msgstr ""
@@ -1052,27 +1039,32 @@ msgctxt "web/pages/Login"
 msgid "Enter username"
 msgstr ""
 
-#: web/pages/Login.vue:33
+#: web/pages/Login.vue:4
+msgctxt "web/pages/Login"
+msgid "Enter your username and password to continue"
+msgstr ""
+
+#: web/pages/Login.vue:26
 msgctxt "web/pages/Login"
 msgid "Log In"
 msgstr ""
 
-#: web/pages/Login.vue:63
+#: web/pages/Login.vue:75
 msgctxt "web/pages/Login"
 msgid "Login failed. Please try again later."
 msgstr ""
 
-#: web/pages/Login.vue:22
+#: web/pages/Login.vue:20
 msgctxt "web/pages/Login"
 msgid "Password"
 msgstr ""
 
-#: web/pages/Login.vue:38
+#: web/pages/Login.vue:31
 msgctxt "web/pages/Login"
 msgid "Register now"
 msgstr ""
 
-#: web/pages/Login.vue:29
+#: web/pages/Login.vue:22
 msgctxt "web/pages/Login"
 msgid "Remember me"
 msgstr ""
@@ -1082,7 +1074,7 @@ msgctxt "web/pages/Login"
 msgid "User Login"
 msgstr ""
 
-#: web/pages/Login.vue:16
+#: web/pages/Login.vue:17
 msgctxt "web/pages/Login"
 msgid "Username"
 msgstr ""
@@ -1137,122 +1129,133 @@ msgctxt "web/pages/Logout"
 msgid "Unknown error occurred during logout"
 msgstr ""
 
-#: web/pages/Register.vue:55
+#: web/pages/Register.vue:49
 msgctxt "web/pages/Register"
 msgid "Already have an account?"
 msgstr ""
 
-#: web/pages/Register.vue:8
+#: web/pages/Register.vue:11
 msgctxt "web/pages/Register"
 msgid "Close"
 msgstr ""
 
-#: web/pages/Register.vue:34
+#: web/pages/Register.vue:27
 msgctxt "web/pages/Register"
 msgid "Confirm Password"
 msgstr ""
 
 #: web/pages/Register.vue:4
-#: web/pages/Register.vue:51
+#: web/pages/Register.vue:46
 msgctxt "web/pages/Register"
 msgid "Create Account"
 msgstr ""
 
-#: web/pages/Register.vue:22
+#: web/pages/Register.vue:21
 msgctxt "web/pages/Register"
 msgid "Email"
 msgstr ""
 
-#: web/pages/Register.vue:63
+#: web/pages/register_form.ts:15
 msgctxt "web/pages/Register"
 msgid "Enter a valid email address"
 msgstr ""
 
-#: web/pages/Register.vue:23
-#: web/pages/Register.vue:59
+#: web/pages/Register.vue:21
+#: web/pages/register_form.ts:14
 msgctxt "web/pages/Register"
 msgid "Enter email address"
 msgstr ""
 
-#: web/pages/Register.vue:29
-#: web/pages/Register.vue:73
+#: web/pages/Register.vue:24
+#: web/pages/register_form.ts:16
 msgctxt "web/pages/Register"
 msgid "Enter password"
 msgstr ""
 
-#: web/pages/Register.vue:17
-#: web/pages/Register.vue:41
+#: web/pages/Register.vue:18
+#: web/pages/register_form.ts:11
 msgctxt "web/pages/Register"
 msgid "Enter username"
 msgstr ""
 
-#: web/pages/Register.vue:42
+#: web/pages/Register.vue:4
+msgctxt "web/pages/Register"
+msgid "Fill in the fields below to register"
+msgstr ""
+
+#: web/pages/Register.vue:33
 msgctxt "web/pages/Register"
 msgid "I have read and agree to"
 msgstr ""
 
-#: web/pages/Register.vue:56
+#: web/pages/Register.vue:51
 msgctxt "web/pages/Register"
 msgid "Log in now"
 msgstr ""
 
-#: web/pages/Register.vue:28
+#: web/pages/Register.vue:24
 msgctxt "web/pages/Register"
 msgid "Password"
 msgstr ""
 
-#: web/pages/Register.vue:77
+#: web/pages/register_form.ts:17
 msgctxt "web/pages/Register"
 msgid "Password must be at least 6 characters"
 msgstr ""
 
-#: web/pages/Register.vue:94
+#: web/pages/register_form.ts:19
 msgctxt "web/pages/Register"
 msgid "Passwords do not match"
 msgstr ""
 
-#: web/pages/Register.vue:45
+#: web/pages/Register.vue:39
 msgctxt "web/pages/Register"
 msgid "Privacy Policy"
 msgstr ""
 
-#: web/pages/Register.vue:35
-#: web/pages/Register.vue:90
+#: web/pages/Register.vue:27
+#: web/pages/register_form.ts:18
 msgctxt "web/pages/Register"
 msgid "Re-enter password"
 msgstr ""
 
-#: web/pages/Register.vue:136
+#: web/pages/Register.vue:83
+#: web/pages/Register.vue:89
 msgctxt "web/pages/Register"
 msgid "Registration failed. Please try again later."
 msgstr ""
 
-#: web/pages/Register.vue:43
+#: web/pages/Register.vue:35
 msgctxt "web/pages/Register"
 msgid "Terms of Service"
 msgstr ""
 
-#: web/pages/Register.vue:16
+#: web/pages/Register.vue:18
 msgctxt "web/pages/Register"
 msgid "Username"
 msgstr ""
 
-#: web/pages/Register.vue:49
+#: web/pages/register_form.ts:13
 msgctxt "web/pages/Register"
 msgid "Username can only contain letters, numbers, underscores, hyphens, and dots"
 msgstr ""
 
-#: web/pages/Register.vue:45
+#: web/pages/register_form.ts:12
 msgctxt "web/pages/Register"
 msgid "Username must be at least 3 characters"
 msgstr ""
 
-#: web/pages/Register.vue:103
+#: web/pages/register_form.ts:20
 msgctxt "web/pages/Register"
 msgid "You must agree to the Terms of Service and Privacy Policy"
 msgstr ""
 
-#: web/pages/Register.vue:44
+#: web/pages/Register.vue:84
+msgctxt "web/pages/Register"
+msgid "Your account was created, but signing in failed. Please log in."
+msgstr ""
+
+#: web/pages/Register.vue:37
 msgctxt "web/pages/Register"
 msgid "and"
 msgstr ""

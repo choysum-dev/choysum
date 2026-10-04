@@ -24,36 +24,36 @@ SPDX-License-Identifier: Apache-2.0
       @click.stop
     >
       <div class="choy-switch-company__panel flex flex-col gap-3">
-        <label class="flex flex-col gap-1 text-sm">
-          <span class="font-medium">{{ _t('Current Company') }}</span>
-          <select
-            v-model="draftActiveCompanyId"
-            class="choy-switch-company__select h-control rounded-md border border-border bg-background px-2 text-sm"
-            data-testid="company-active-select"
-          >
-            <option v-for="c in companies" :key="c.Id" :value="c.Id">{{ c.DisplayName || c.Id }}</option>
-          </select>
-        </label>
+        <ChoyField class="gap-1">
+          <ChoyFieldLabel class="flex flex-col gap-1 text-sm">
+            {{ _t('Current Company') }}
+            <select
+              v-model="draftActiveCompanyId"
+              class="choy-switch-company__select h-control rounded-md border border-border bg-background px-2 text-sm font-normal"
+              data-testid="company-active-select"
+            >
+              <option v-for="c in companies" :key="c.Id" :value="c.Id">{{ c.DisplayName || c.Id }}</option>
+            </select>
+          </ChoyFieldLabel>
+        </ChoyField>
 
-        <div class="flex flex-col gap-1 text-sm">
-          <span class="font-medium">{{ _t('Available Companies') }}</span>
+        <ChoyField class="gap-1">
+          <ChoyFieldLabel class="text-sm font-medium">{{ _t('Available Companies') }}</ChoyFieldLabel>
           <div
             class="choy-switch-company__select flex max-h-56 min-h-[5.5rem] flex-col gap-1 overflow-y-auto rounded-md border border-border bg-background px-2 py-1.5 text-sm"
             data-testid="company-enabled-select"
           >
             <label v-for="c in companies" :key="'enabled-' + c.Id" class="flex items-center gap-2">
-              <input
-                v-model="draftEnabledCompanyIds"
-                type="checkbox"
-                class="size-control shrink-0 rounded border-border"
-                :value="c.Id"
+              <ChoyCheckbox
+                class="size-control shrink-0"
+                :model-value="draftEnabledCompanyIds.includes(c.Id)"
                 :disabled="isActiveCompanyEnabledLocked(c.Id, draftActiveCompanyId)"
-                @change="onEnabledChange"
+                @update:model-value="on => setCompanyEnabled(c.Id, on)"
               />
               <span>{{ c.DisplayName || c.Id }}</span>
             </label>
           </div>
-        </div>
+        </ChoyField>
 
         <div v-if="applyDisabledReason" class="choy-switch-company__hint text-xs text-foreground/60" data-testid="company-switch-hint">
           {{ applyDisabledReason }}
@@ -71,13 +71,17 @@ SPDX-License-Identifier: Apache-2.0
 
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { ChoyButton } from '@/web';
+import { ChoyButton, ChoyCheckbox, ChoyField, ChoyFieldLabel } from '@/web';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import type Company from '@/base/service/models/company';
 import { createTranslate } from '@/web/web/i18n';
 import { dismissPopupOnEscape } from './popup_escape_focus';
-import { isActiveCompanyEnabledLocked, syncCompanyDraftsFromJwt } from './o_switch_company_draft';
+import {
+  isActiveCompanyEnabledLocked,
+  syncCompanyDraftsFromJwt,
+  toggleEnabledCompanyId,
+} from './o_switch_company_draft';
 
 defineOptions({ name: 'SwitchCompany' });
 
@@ -196,10 +200,15 @@ function ensureActiveInEnabled(): void {
 }
 
 /**
- * Keep the current company in available companies after select changes.
+ * Toggle one company in the enabled draft. The active company stays locked in.
  */
-function onEnabledChange(): void {
-  ensureActiveInEnabled();
+function setCompanyEnabled(id: string, on: boolean | 'indeterminate'): void {
+  draftEnabledCompanyIds.value = toggleEnabledCompanyId({
+    companyId: id,
+    on,
+    draftActiveCompanyId: draftActiveCompanyId.value,
+    draftEnabledCompanyIds: draftEnabledCompanyIds.value,
+  });
 }
 
 watch(
