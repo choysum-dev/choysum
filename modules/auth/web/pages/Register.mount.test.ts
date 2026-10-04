@@ -81,6 +81,20 @@ test('Register.vue mounts under choysumMount', async () => {
   wrapper.unmount();
 });
 
+test('Register.vue: terms side copy does not inherit the field w-full class', async () => {
+  const { wrapper } = await mountRegister();
+  const terms = wrapper.find('[data-testid="register-terms"]');
+  expect(terms.exists()).toBe(true);
+  const root = terms.element as HTMLElement;
+  const editor = root.querySelector('.choy-bool-editor') as HTMLElement | null;
+  expect(!!editor).toBe(true);
+  expect(String(editor!.className).includes('w-full')).toBe(false);
+  const side = root.querySelector('.flex-1') as HTMLElement | null;
+  expect(!!side).toBe(true);
+  expect(String(side!.textContent || '').includes('Terms of Service')).toBe(true);
+  wrapper.unmount();
+});
+
 test('Register.vue: empty submit shows inline errors and does not register', async () => {
   const { wrapper, replaces } = await mountRegister();
   submitForm(wrapper);

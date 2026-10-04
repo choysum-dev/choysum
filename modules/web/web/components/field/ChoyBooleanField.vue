@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
   >
     <template #edit="{ fieldValue, inputName, inputId }">
-      <div class="flex w-full items-start gap-2">
+      <div class="flex w-full min-w-0 items-start gap-2">
         <OBooleanCell
           :class="$slots.side ? 'mt-0.5 shrink-0' : undefined"
           :field-value="fieldValue"
@@ -37,7 +37,6 @@ SPDX-License-Identifier: Apache-2.0
           :checkbox-props="checkboxProps"
           :input-name="inputName"
           :input-id="inputId"
-          v-bind="$attrs"
         />
         <div v-if="$slots.side" class="min-w-0 flex-1 text-sm leading-5">
           <slot name="side" />
@@ -68,7 +67,7 @@ import { computed, defineComponent, h } from 'vue';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/BooleanField' });
 
-defineOptions({ name: 'ChoyBooleanField' });
+defineOptions({ name: 'ChoyBooleanField', inheritAttrs: false });
 
 defineSlots<{
   side?: () => unknown;
@@ -210,7 +209,7 @@ const OBooleanCell = defineComponent({
     inputName: String,
     inputId: String,
   },
-  setup(p, { attrs }) {
+  setup(p) {
     const modelRef = computed<FieldType>({
       get: () => (p.fieldValue as any)().value,
       set: v => {
@@ -241,7 +240,6 @@ const OBooleanCell = defineComponent({
         [
           h('input', {
             ...(isCheckbox ? (p.checkboxProps as any) : (p.switchProps as any)),
-            ...attrs,
             type: 'checkbox',
             class: 'choy-bool-input align-middle',
             name: p.inputName,

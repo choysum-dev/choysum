@@ -230,13 +230,13 @@ SPDX-License-Identifier: Apache-2.0
   <div
     v-else-if="effectiveRenderMode === 'inline'"
     class="choy-field-base__inline inline-flex"
-    :class="showInlineError ? 'w-full flex-col' : 'items-center gap-1'"
+    :class="showInlineError ? 'w-full min-w-0 flex-col' : 'items-center gap-1'"
     v-show="visibleInline"
     @focusout="onFieldFocusOut"
   >
     <div
       v-if="showInlineError && displayError"
-      class="choy-field-base__inline-wrap choy-field-base__inline-wrap--has-error inline-flex items-center gap-1.5"
+      class="choy-field-base__inline-wrap choy-field-base__inline-wrap--has-error flex w-full min-w-0 items-center gap-1.5"
     >
       <template v-if="effectiveEditInline">
         <slot
@@ -272,8 +272,11 @@ SPDX-License-Identifier: Apache-2.0
 
     <div
       v-else
-      class="choy-field-base__inline-wrap inline-flex items-center gap-1.5"
-      :class="{ 'choy-field-base__inline-wrap--has-help': !!effectiveHelp }"
+      class="choy-field-base__inline-wrap items-center gap-1.5"
+      :class="[
+        showInlineError ? 'flex w-full min-w-0' : 'inline-flex',
+        { 'choy-field-base__inline-wrap--has-help': !!effectiveHelp },
+      ]"
     >
       <template v-if="effectiveEditInline">
         <slot
