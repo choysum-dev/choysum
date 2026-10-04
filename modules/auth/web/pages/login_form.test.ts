@@ -311,20 +311,34 @@ test('watchClearPageErrorOnCredentialChange: clears only when an error is presen
   const username = ref('admin');
   const password = ref('secret');
   const error = ref('Login failed');
+  let clearCalls = 0;
   const stop = watchClearPageErrorOnCredentialChange(
     () => [username.value, password.value] as const,
-    { getError: () => error.value, setError: m => { error.value = m; } },
+    {
+      hasError: () => !!error.value,
+      clearError: () => {
+        error.value = '';
+        clearCalls += 1;
+      },
+    },
   );
   username.value = 'admin2';
   await nextTick();
   expect(error.value).toBe('');
+  expect(clearCalls).toBe(1);
   error.value = 'Login failed';
   password.value = 'other';
   await nextTick();
   expect(error.value).toBe('');
-  // No-op when already clear.
+  expect(clearCalls).toBe(2);
   username.value = 'admin3';
   await nextTick();
   expect(error.value).toBe('');
+  expect(clearCalls).toBe(2);
   stop();
+  error.value = 'Login failed';
+  username.value = 'admin4';
+  await nextTick();
+  expect(error.value).toBe('Login failed');
+  expect(clearCalls).toBe(2);
 });

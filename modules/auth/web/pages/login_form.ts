@@ -256,9 +256,9 @@ export async function runHandledAuthSubmit(opts: {
  */
 export function watchClearPageErrorOnCredentialChange(
   credentials: WatchSource,
-  opts: { getError: () => string; setError: (message: string) => void },
+  opts: { hasError: () => boolean; clearError: () => void },
 ) {
   return watch(credentials, () => {
-    if (opts.getError()) opts.setError('');
+    if (opts.hasError()) opts.clearError();
   });
 }

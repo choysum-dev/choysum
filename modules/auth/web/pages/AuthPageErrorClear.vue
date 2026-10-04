@@ -24,8 +24,8 @@ const emit = defineEmits<{ clear: [] }>();
 watchClearPageErrorOnCredentialChange(
   () => [props.username, props.password, props.email, props.confirmPassword] as const,
   {
-    getError: () => (props.hasError ? '1' : ''),
-    setError: () => emit('clear'),
+    hasError: () => props.hasError,
+    clearError: () => emit('clear'),
   },
 );
 </script>
