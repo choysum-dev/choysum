@@ -174,13 +174,15 @@ function timezoneText(value: unknown): string {
 }
 
 function showLanguageSessionHint(formData: Record<string, unknown>): boolean {
-  if (!languageFromSession.value) return false;
-  return languageRefId(formData?.LanguageId) === languageRefId(seedLanguageId.value);
+  const seed = languageRefId(seedLanguageId.value);
+  if (!languageFromSession.value || !seed) return false;
+  return languageRefId(formData?.LanguageId) === seed;
 }
 
 function showTimezoneBrowserHint(formData: Record<string, unknown>): boolean {
-  if (!timezoneFromBrowser.value) return false;
-  return timezoneText(formData?.Timezone) === seedTimezone.value;
+  const seed = timezoneText(seedTimezone.value);
+  if (!timezoneFromBrowser.value || !seed) return false;
+  return timezoneText(formData?.Timezone) === seed;
 }
 
 async function resolveSeedLanguageId(): Promise<void> {

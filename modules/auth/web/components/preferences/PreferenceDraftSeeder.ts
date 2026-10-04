@@ -37,7 +37,9 @@ export function seedPreferenceDraft(
 }
 
 /**
- * After FormView beginEdit, seed empty preference fields once.
+ * After FormView beginEdit, seed empty preference fields once each seed value arrives.
+ * Language and timezone are tracked separately so a ready form that settles before
+ * seed resolution still receives late-arriving hints.
  */
 export const PreferenceDraftSeeder = defineComponent({
   name: 'PreferenceDraftSeeder',
@@ -48,12 +50,19 @@ export const PreferenceDraftSeeder = defineComponent({
   },
   setup(props) {
     const formRoot = inject<FormRootApi | null>('form-root', null);
-    let applied = false;
+    let languageApplied = false;
+    let timezoneApplied = false;
 
     function apply(): void {
-      if (!formRoot || applied || !props.ready) return;
-      seedPreferenceDraft(formRoot, { languageId: props.languageId, timezone: props.timezone });
-      applied = true;
+      if (!formRoot || !props.ready) return;
+      if (!languageApplied && props.languageId) {
+        seedPreferenceDraft(formRoot, { languageId: props.languageId });
+        languageApplied = true;
+      }
+      if (!timezoneApplied && props.timezone) {
+        seedPreferenceDraft(formRoot, { timezone: props.timezone });
+        timezoneApplied = true;
+      }
     }
 
     watch(

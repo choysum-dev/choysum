@@ -85,3 +85,31 @@ test('runPreferencesSubmit: defaultSubmit failure surfaces the error', async () 
   expect(ok).toBe(false);
   expect(calls).toEqual(['defaultSubmit', 'error:write failed']);
 });
+
+test('runPreferencesSubmit: side-effect failure after Write surfaces the error', async () => {
+  const { calls, opts } = deps({
+    applyLanguage: async () => {
+      calls.push('apply:lang-1');
+      throw new Error('locale failed');
+    },
+  });
+  const ok = await runPreferencesSubmit(opts);
+  expect(ok).toBe(false);
+  expect(calls).toEqual([
+    'defaultSubmit',
+    'patch:lang-1:Asia/Shanghai',
+    'apply:lang-1',
+    'error:locale failed',
+  ]);
+});
+
+test('runPreferencesSubmit: non-Error throws keep their string message', async () => {
+  const { calls, opts } = deps({
+    defaultSubmit: async () => {
+      throw 'plain failure';
+    },
+  });
+  const ok = await runPreferencesSubmit(opts);
+  expect(ok).toBe(false);
+  expect(calls).toEqual(['error:plain failure']);
+});

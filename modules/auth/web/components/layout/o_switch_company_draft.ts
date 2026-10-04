@@ -27,3 +27,29 @@ export function isActiveCompanyEnabledLocked(
   if (!active) return false;
   return String(companyId ?? '').trim() === active;
 }
+
+/**
+ * Toggle one company in the enabled draft. The active company stays locked in
+ * and is always included after the toggle.
+ */
+export function toggleEnabledCompanyId(opts: {
+  companyId: string;
+  on: boolean | 'indeterminate';
+  draftActiveCompanyId: string;
+  draftEnabledCompanyIds: readonly string[];
+}): string[] {
+  const id = String(opts.companyId ?? '').trim();
+  const active = String(opts.draftActiveCompanyId ?? '').trim();
+  let next = Array.from(
+    new Set(opts.draftEnabledCompanyIds.map(x => String(x ?? '').trim()).filter(Boolean)),
+  );
+  if (opts.on === true) {
+    if (id && !next.includes(id)) next = [...next, id];
+  } else if (id && !isActiveCompanyEnabledLocked(id, active)) {
+    next = next.filter(x => x !== id);
+  }
+  if (active && !next.includes(active)) {
+    next = [active, ...next];
+  }
+  return next;
+}

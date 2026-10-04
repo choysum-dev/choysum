@@ -77,7 +77,11 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import type Company from '@/base/service/models/company';
 import { createTranslate } from '@/web/web/i18n';
 import { dismissPopupOnEscape } from './popup_escape_focus';
-import { isActiveCompanyEnabledLocked, syncCompanyDraftsFromJwt } from './o_switch_company_draft';
+import {
+  isActiveCompanyEnabledLocked,
+  syncCompanyDraftsFromJwt,
+  toggleEnabledCompanyId,
+} from './o_switch_company_draft';
 
 defineOptions({ name: 'SwitchCompany' });
 
@@ -199,13 +203,12 @@ function ensureActiveInEnabled(): void {
  * Toggle one company in the enabled draft. The active company stays locked in.
  */
 function setCompanyEnabled(id: string, on: boolean | 'indeterminate'): void {
-  const checked = on === true;
-  if (checked) {
-    draftEnabledCompanyIds.value = uniq([...draftEnabledCompanyIds.value, id]);
-  } else if (!isActiveCompanyEnabledLocked(id, draftActiveCompanyId.value)) {
-    draftEnabledCompanyIds.value = draftEnabledCompanyIds.value.filter(x => x !== id);
-  }
-  ensureActiveInEnabled();
+  draftEnabledCompanyIds.value = toggleEnabledCompanyId({
+    companyId: id,
+    on,
+    draftActiveCompanyId: draftActiveCompanyId.value,
+    draftEnabledCompanyIds: draftEnabledCompanyIds.value,
+  });
 }
 
 watch(

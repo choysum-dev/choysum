@@ -39,7 +39,8 @@ export async function runPreferencesSubmit(opts: {
     opts.onSuccess();
     return true;
   } catch (err) {
-    const message = err instanceof Error ? String(err.message || '').trim() : '';
+    const message =
+      err instanceof Error ? String(err.message || '').trim() : String(err ?? '').trim();
     opts.onError(message || opts.failedMessage);
     return false;
   }
