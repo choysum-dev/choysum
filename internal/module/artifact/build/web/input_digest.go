@@ -26,7 +26,10 @@ const ForceWebBuildEnv = "CHOYSUM_FORCE_WEB_BUILD"
 
 // webInputDigestSchema invalidates stamped digests when the digest algorithm or
 // embedded web toolchain contract changes across choysum binaries.
-const webInputDigestSchema = "web-input-digest-v7"
+// v8: product CSS emit is FullCSS (theme+preflight+utilities). Dialect,
+// candidates, and tailwind-go engine alone do not distinguish that from a
+// utilities-only stamp, so upgrade would otherwise skip regeneration.
+const webInputDigestSchema = "web-input-digest-v8"
 
 const choyTailwindGoModulePath = "github.com/dhamidi/tailwind-go"
 
@@ -106,8 +109,14 @@ func LoadWebInputDigestInputs(runtimeScope scope.Scope, modulesPath string, sour
 // ForceRebuild is ignored here; callers should refuse to skip while still
 // stamping the returned digest after a forced build.
 func ComputeWebInputDigest(in WebInputDigestInputs) (string, error) {
+	return computeWebInputDigest(in, webInputDigestSchema)
+}
+
+// computeWebInputDigest is ComputeWebInputDigest with an explicit schema salt
+// so tests can assert salt sensitivity without mutating package state.
+func computeWebInputDigest(in WebInputDigestInputs, schema string) (string, error) {
 	h := sha256.New()
-	_, _ = fmt.Fprintf(h, "schema=%s\nsourcemap=%v\nminify=%v\ntreeshaking=%v\n", webInputDigestSchema, in.SourceMap, in.Minify, in.TreeShaking)
+	_, _ = fmt.Fprintf(h, "schema=%s\nsourcemap=%v\nminify=%v\ntreeshaking=%v\n", schema, in.SourceMap, in.Minify, in.TreeShaking)
 	if modulesPath := strings.TrimSpace(in.ModulesPath); modulesPath != "" {
 		if err := hashWebSourceTree(h, filepath.Join(modulesPath, "api", "web")); err != nil {
 			return "", err

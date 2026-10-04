@@ -78,13 +78,13 @@ SPDX-License-Identifier: Apache-2.0
               <h1
                 v-if="title"
                 :id="pageTitleId"
-                class="choy-page__title m-0 min-w-0 truncate text-base font-semibold tracking-tight text-foreground"
+                class="choy-page__title min-w-0 truncate text-base font-semibold tracking-tight text-foreground"
               >
                 {{ title }}
               </h1>
               <p
                 v-if="description"
-                class="choy-page__description m-0 text-xs text-muted-foreground"
+                class="choy-page__description text-xs text-muted-foreground"
               >
                 {{ description }}
               </p>

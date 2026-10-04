@@ -20,7 +20,7 @@ SPDX-License-Identifier: Apache-2.0
     >
       {{ emptyText || 'No data' }}
     </div>
-    <ul v-else class="choy-relation-tree__list m-0 list-none p-0">
+    <ul v-else class="choy-relation-tree__list">
       <li
         v-for="row in visibleRows"
         :key="row.key"

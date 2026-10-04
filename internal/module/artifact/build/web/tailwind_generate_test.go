@@ -57,13 +57,29 @@ func TestGenerateTailwindCSSNonEmptyAndWithinBudget(t *testing.T) {
 	if strings.Contains(css, choyGalleryRootSelector+" .flex") {
 		t.Fatalf("cutover CSS must not gallery-scope utilities, got:\n%s", css)
 	}
-	if strings.Contains(css, "*, ::before") {
-		t.Fatalf("generated CSS must not include Tailwind preflight:\n%s", css)
+	if !strings.Contains(css, "*, ::before") {
+		t.Fatalf("generated CSS must include Tailwind preflight:\n%s", css)
+	}
+	if !strings.Contains(css, "border: 0 solid") {
+		t.Fatalf("expected preflight border reset:\n%s", css)
+	}
+	if !strings.Contains(css, "box-sizing: border-box") {
+		t.Fatalf("expected preflight box-sizing reset (index.css no longer sets it):\n%s", css)
+	}
+	if !strings.Contains(css, "list-style: none") {
+		t.Fatalf("expected preflight list reset (components dropped list-none/p-0):\n%s", css)
 	}
 	if dur > ChoyTailwindBudget {
 		t.Fatalf("generate duration %v exceeds budget %v", dur, ChoyTailwindBudget)
 	}
 	t.Logf("GenerateTailwindCSS duration=%v len=%d (budget=%v)", dur, len(css), ChoyTailwindBudget)
+}
+
+func TestGenerateTailwindCSSRejectsEmptyInputs(t *testing.T) {
+	_, _, err := GenerateTailwindCSS("", nil)
+	if err == nil || !strings.Contains(err.Error(), "without dialect CSS or candidates") {
+		t.Fatalf("expected empty-input error, got %v", err)
+	}
 }
 
 func TestGenerateChoyTailwindForModuleWritesFile(t *testing.T) {
@@ -109,8 +125,11 @@ func TestGenerateChoyTailwindForModuleWritesFile(t *testing.T) {
 	if !strings.Contains(body, "engine=") {
 		t.Fatalf("header must record engine version:\n%s", body)
 	}
-	if strings.Contains(body, "*, ::before") {
-		t.Fatalf("generated CSS contains Tailwind preflight:\n%s", body)
+	if !strings.Contains(body, "*, ::before") {
+		t.Fatalf("generated CSS must include Tailwind preflight:\n%s", body)
+	}
+	if !strings.Contains(body, "FullCSS") {
+		t.Fatalf("header must record FullCSS cutover:\n%s", body)
 	}
 	if !strings.Contains(body, "--color-primary:") {
 		t.Fatalf("expected ThemeCSS --color-primary alias:\n%s", body)

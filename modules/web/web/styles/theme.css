@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * Tailwind v4 dialect for Choy UI (Go interpreter LoadCSS input).
- * Maps utility names onto --choy-* tokens. Product FullCSS preflight
- * stays off; box-sizing / body reset live in index.css.
+ * Maps utility names onto --choy-* tokens. Product main bundle emits
+ * FullCSS (theme + preflight + utilities); index.css keeps Choy product rules.
  *
  * Control mapping (density follows html[data-density=compact] in tokens.css):
  *   --height-control → h-control / min-h-control

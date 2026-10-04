@@ -95,14 +95,14 @@ SPDX-License-Identifier: Apache-2.0
           class="choy-shell__attrib px-2 py-2 text-xs text-sidebar-foreground/70"
           data-testid="choy-shell-attrib"
         >
-          <p class="m-0 truncate leading-snug group-data-[collapsible=icon]:hidden">
+          <p class="truncate leading-snug group-data-[collapsible=icon]:hidden">
             {{ copyrightLine }}
           </p>
-          <p class="m-0 truncate leading-snug group-data-[collapsible=icon]:hidden">
+          <p class="truncate leading-snug group-data-[collapsible=icon]:hidden">
             {{ poweredLine }}
           </p>
           <p
-            class="m-0 truncate leading-snug group-data-[collapsible=icon]:text-center"
+            class="truncate leading-snug group-data-[collapsible=icon]:text-center"
             :title="versionLine"
           >
             <span class="group-data-[collapsible=icon]:hidden">{{ versionLine }}</span>
