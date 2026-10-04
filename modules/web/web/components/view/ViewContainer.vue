@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <div class="flex h-full w-full min-w-0 flex-col">
-    <div v-if="$slots.header || showHeader" class="shrink-0">
+    <div v-if="showHeader" class="shrink-0">
       <slot name="header" />
     </div>
     <div class="min-h-0 min-w-0 flex-1">

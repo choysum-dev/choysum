@@ -15,6 +15,7 @@ import (
 	statepkg "github.com/choysum-dev/choysum/pkg/state"
 	"golang.org/x/exp/errors/fmt"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 var (
@@ -132,46 +133,47 @@ func acquireLease(db *gorm.DB, resource, ownerId string, now, expiresAt time.Tim
 		return nil
 	}
 
-	// Try insert.
+	// Insert with ON CONFLICT DO NOTHING so a concurrent unique hit does not
+	// abort the Postgres/MySQL transaction (plain Create → SQLSTATE 25P02).
 	row := &modmeta.LockLease{Resource: resource, OwnerId: ownerId, ExpiresAt: expiresAt}
-	if err := newDB().Create(row).Error; err != nil {
-		if !isUniqueViolation(err) {
-			return fmt.Errorf("acquire lease insert: %w", err)
-		}
-
-		// Someone else inserted concurrently; re-check.
-		var existing modmeta.LockLease
-		if err := newDB().Where("resource = ?", resource).Take(&existing).Error; err != nil {
-			return fmt.Errorf("acquire lease reload: %w", err)
-		}
-
-		// Idempotent: treat as acquired, refresh.
-		if existing.OwnerId == ownerId {
-			if err := newDB().Model(&modmeta.LockLease{}).
-				Where("resource = ? AND owner_id = ?", resource, ownerId).
-				Updates(map[string]any{"expires_at": expiresAt, "deleted_at": nil}).Error; err != nil {
-				return fmt.Errorf("acquire lease refresh: %w", err)
-			}
-			return nil
-		}
-
-		// Try take over if expired.
-		if existing.ExpiresAt.Before(now) {
-			res2 := newDB().Model(&modmeta.LockLease{}).
-				Where("resource = ? AND expires_at < ?", resource, now).
-				Updates(map[string]any{"owner_id": ownerId, "expires_at": expiresAt, "deleted_at": nil})
-			if res2.Error != nil {
-				return fmt.Errorf("acquire lease takeover: %w", res2.Error)
-			}
-			if res2.RowsAffected == 1 {
-				return nil
-			}
-		}
-
-		return ErrLeaseBusy
+	insert := newDB().Clauses(clause.OnConflict{DoNothing: true}).Create(row)
+	if insert.Error != nil && !isUniqueViolation(insert.Error) {
+		return fmt.Errorf("acquire lease insert: %w", insert.Error)
+	}
+	if insert.Error == nil && insert.RowsAffected == 1 {
+		return nil
 	}
 
-	return nil
+	// Conflict or driver-reported unique violation: resolve the existing row.
+	var existing modmeta.LockLease
+	if err := newDB().Where("resource = ?", resource).Take(&existing).Error; err != nil {
+		return fmt.Errorf("acquire lease reload: %w", err)
+	}
+
+	// Idempotent: treat as acquired, refresh.
+	if existing.OwnerId == ownerId {
+		if err := newDB().Model(&modmeta.LockLease{}).
+			Where("resource = ? AND owner_id = ?", resource, ownerId).
+			Updates(map[string]any{"expires_at": expiresAt, "deleted_at": nil}).Error; err != nil {
+			return fmt.Errorf("acquire lease refresh: %w", err)
+		}
+		return nil
+	}
+
+	// Try take over if expired.
+	if existing.ExpiresAt.Before(now) {
+		res2 := newDB().Model(&modmeta.LockLease{}).
+			Where("resource = ? AND expires_at < ?", resource, now).
+			Updates(map[string]any{"owner_id": ownerId, "expires_at": expiresAt, "deleted_at": nil})
+		if res2.Error != nil {
+			return fmt.Errorf("acquire lease takeover: %w", res2.Error)
+		}
+		if res2.RowsAffected == 1 {
+			return nil
+		}
+	}
+
+	return ErrLeaseBusy
 }
 
 func (l *Locker) Renew(ctx context.Context, resource, ownerId string, ttl time.Duration) error {
@@ -318,6 +320,9 @@ func isUniqueViolation(err error) bool {
 	}
 	msg := strings.ToLower(err.Error())
 	// Cross-DB heuristic (sqlite/mysql/postgres) without driver-specific imports.
+	if strings.Contains(msg, "23505") { // Postgres unique_violation
+		return true
+	}
 	if strings.Contains(msg, "duplicate key") && strings.Contains(msg, "unique") {
 		return true
 	}

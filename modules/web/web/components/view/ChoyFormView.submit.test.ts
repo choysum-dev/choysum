@@ -82,6 +82,18 @@ describe('FormView native form submit', () => {
     return { wrapper, submitHandler };
   }
 
+  test('showHeader=false omits view-chrome action bar', async () => {
+    const { wrapper: hidden } = mountForm({ showActions: false });
+    await flushPromises();
+    expect(hidden.q('[data-anchor="choy.form.view-chrome"]')).toBeNull();
+    hidden.unmount();
+
+    const { wrapper: shown } = mountForm({ showActions: true });
+    await flushPromises();
+    expect(shown.q('[data-anchor="choy.form.view-chrome"]')).toBeTruthy();
+    shown.unmount();
+  });
+
   test('slot type=submit button lives in the form and native submit runs submitHandler once', async () => {
     const { wrapper, submitHandler } = mountForm();
     await flushPromises();

@@ -244,6 +244,9 @@ func TestSQLiteSessionDBAndErrorHelpers(t *testing.T) {
 	if !isUniqueViolation(errors.New("UNIQUE constraint failed: meta_lock_lease.resource")) {
 		t.Fatal("expected sqlite unique violation to be detected")
 	}
+	if !isUniqueViolation(errors.New(`ERROR: duplicate key value violates unique constraint "idx_meta_lock_lease_resource" (SQLSTATE 23505)`)) {
+		t.Fatal("expected postgres unique_violation (23505) to be detected")
+	}
 	if isUniqueViolation(nil) || isUniqueViolation(errors.New("other error")) {
 		t.Fatal("unexpected unique violation detection result")
 	}
