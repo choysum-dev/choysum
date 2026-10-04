@@ -185,7 +185,7 @@ import {
   createLocalFormStore,
 } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
-import { resolveLoginRedirect, runHandledAuthSubmit } from './login_form';
+import { resolveLoginRedirect, runHandledAuthSubmit, watchClearPageErrorOnCredentialChange } from './login_form';
 import {
   registerAgreeTermsRules,
   registerConfirmPasswordRules,
@@ -235,6 +235,17 @@ const error = ref('');
 function setPageError(message: string) {
   error.value = message;
 }
+
+watchClearPageErrorOnCredentialChange(
+  () =>
+    [
+      formStore.getField('Username'),
+      formStore.getField('Email'),
+      formStore.getField('Password'),
+      formStore.getField('ConfirmPassword'),
+    ] as const,
+  { getError: () => error.value, setError: setPageError },
+);
 
 async function onRegisterSubmit(ctx: { formData: Record<string, unknown> }) {
   const data = ctx.formData;

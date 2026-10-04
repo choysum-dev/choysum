@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { watch, type WatchSource } from 'vue';
 import { ChoysumError } from '../error';
 
 export type LoginFormFields = {
@@ -246,4 +247,17 @@ export async function runHandledAuthSubmit(opts: {
   }
   if (ok) opts.onSuccess();
   return { handled: true, skipSuccessMessage: true };
+}
+
+/**
+ * Clear a page-level auth error when credentials change after a failed attempt.
+ * Keeps the banner from lingering while the user edits username/password.
+ */
+export function watchClearPageErrorOnCredentialChange(
+  credentials: WatchSource,
+  opts: { getError: () => string; setError: (message: string) => void },
+) {
+  return watch(credentials, () => {
+    if (opts.getError()) opts.setError('');
+  });
 }

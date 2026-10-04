@@ -123,7 +123,14 @@ import {
 } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { runLoginAuthReady } from './login_auth_ready';
-import { loginPasswordRules, loginUsernameRules, resolveLoginRedirect, runHandledAuthSubmit, runLoginSubmit } from './login_form';
+import {
+  loginPasswordRules,
+  loginUsernameRules,
+  resolveLoginRedirect,
+  runHandledAuthSubmit,
+  runLoginSubmit,
+  watchClearPageErrorOnCredentialChange,
+} from './login_form';
 
 const { _t } = createTranslate('auth', { scope: 'web/pages/Login' });
 
@@ -165,6 +172,11 @@ function handleRedirect() {
 function setPageError(message: string) {
   error.value = message;
 }
+
+watchClearPageErrorOnCredentialChange(
+  () => [formStore.getField('Username'), formStore.getField('Password')] as const,
+  { getError: () => error.value, setError: setPageError },
+);
 
 onMounted(async () => {
   await runLoginAuthReady({
