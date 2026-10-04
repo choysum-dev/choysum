@@ -7,6 +7,7 @@ const createFeStubRouter = (VueRouter as any).createFeStubRouter;
 import { createPinia, setActivePinia } from 'pinia';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import ErrorView from './ErrorView.vue';
+import AuthPanel from '@/auth/web/components/AuthPanel.vue';
 import ChoyPage from '@/web/web/components/layout/ChoyPage.vue';
 import ChoyCard from '@/web/web/components/layout/ChoyCard.vue';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
@@ -20,11 +21,19 @@ describe('ErrorView', () => {
         return () => h('div', { 'data-test': 'page' }, slots.default?.());
       }) as any,
     } as any);
+    stubSfc(AuthPanel as any, {
+      setup: ((_props: any, { slots }: any) => {
+        return () => h('div', { 'data-test': 'auth-panel' }, slots.default?.());
+      }) as any,
+    } as any);
     stubSfc(ChoyCard as any, {
       props: { title: String },
       setup: ((props: any, { slots }: any) => {
         return () =>
-          h('section', { 'data-test': 'card', 'data-title': props.title || '' }, slots.default?.());
+          h('section', { 'data-test': 'card', 'data-title': props.title || '' }, [
+            slots.header?.(),
+            slots.default?.(),
+          ]);
       }) as any,
     } as any);
     stubSfc(ChoyButton as any, {
@@ -48,6 +57,7 @@ describe('ErrorView', () => {
 
   afterEach(() => {
     restoreSfc(ChoyPage);
+    restoreSfc(AuthPanel);
     restoreSfc(ChoyCard);
     restoreSfc(ChoyButton);
   });
@@ -67,7 +77,7 @@ describe('ErrorView', () => {
       query: { reason: 'role', from: '/meta/modules', message: 'need admin' },
     });
     await flushPromises();
-    expect(mounted.q('[data-test=card]')?.getAttribute('data-title')).toMatch(/denied|Access/i);
+    expect(mounted.text()).toMatch(/denied|Access/i);
     expect(mounted.text()).toContain('need admin');
     expect(mounted.qa('[data-test=action]').length).toBeGreaterThanOrEqual(2);
     mounted.unmount();
@@ -81,7 +91,7 @@ describe('ErrorView', () => {
       query: {},
     });
     await flushPromises();
-    expect(five.q('[data-test=card]')?.getAttribute('data-title')).toMatch(/Server|error/i);
+    expect(five.text()).toMatch(/Server|error/i);
     five.unmount();
 
     const missing = mountError({
@@ -91,7 +101,7 @@ describe('ErrorView', () => {
       query: {},
     });
     await flushPromises();
-    expect(missing.q('[data-test=card]')?.getAttribute('data-title')).toMatch(/not found|Page/i);
+    expect(missing.text()).toMatch(/not found|Page/i);
     missing.unmount();
   });
 
@@ -103,7 +113,7 @@ describe('ErrorView', () => {
       query: {},
     });
     await flushPromises();
-    expect(mounted.q('[data-test=card]')?.getAttribute('data-title')).toMatch(/Server|error/i);
+    expect(mounted.text()).toMatch(/Server|error/i);
     mounted.unmount();
   });
 
@@ -115,7 +125,7 @@ describe('ErrorView', () => {
       query: { code: '500' },
     });
     await flushPromises();
-    expect(mounted.q('[data-test=card]')?.getAttribute('data-title')).toMatch(/denied|Access/i);
+    expect(mounted.text()).toMatch(/denied|Access/i);
     mounted.unmount();
   });
 
@@ -127,7 +137,7 @@ describe('ErrorView', () => {
       query: {},
     });
     await flushPromises();
-    expect(fromParams.q('[data-test=card]')?.getAttribute('data-title')).toMatch(/Server|error/i);
+    expect(fromParams.text()).toMatch(/Server|error/i);
     fromParams.unmount();
 
     const fromQuery = mountError({
@@ -137,7 +147,7 @@ describe('ErrorView', () => {
       query: { code: ['403', '404'] },
     });
     await flushPromises();
-    expect(fromQuery.q('[data-test=card]')?.getAttribute('data-title')).toMatch(/denied|Access/i);
+    expect(fromQuery.text()).toMatch(/denied|Access/i);
     fromQuery.unmount();
   });
 

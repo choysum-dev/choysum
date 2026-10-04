@@ -196,22 +196,22 @@ msgctxt "web/components/field/BinaryField"
 msgid "Upload file"
 msgstr "上传文件"
 
-#: web/components/field/ChoyBooleanField.vue:218
+#: web/components/field/ChoyBooleanField.vue:232
 msgctxt "web/components/field/BooleanField"
 msgid "Clear"
 msgstr "清除"
 
-#: web/components/field/ChoyBooleanField.vue:118
+#: web/components/field/ChoyBooleanField.vue:132
 msgctxt "web/components/field/BooleanField"
 msgid "No"
 msgstr "否"
 
-#: web/components/field/ChoyBooleanField.vue:117
+#: web/components/field/ChoyBooleanField.vue:131
 msgctxt "web/components/field/BooleanField"
 msgid "Yes"
 msgstr "是"
 
-#: web/components/field/ChoyBooleanField.vue:119
+#: web/components/field/ChoyBooleanField.vue:133
 msgctxt "web/components/field/BooleanField"
 msgid "—"
 msgstr "—"
@@ -1871,82 +1871,82 @@ msgctxt "web/import/ImportPanel"
 msgid "Upload a UTF-8 CSV. Map columns to importable fields from the catalog."
 msgstr "上传 UTF-8 CSV。将列映射到目录中的可导入字段。"
 
-#: web/pages/ErrorView.vue:70
+#: web/pages/ErrorView.vue:71
 msgctxt "web/pages/ErrorView"
 msgid "Access denied"
 msgstr "权限不足"
 
-#: web/pages/ErrorView.vue:81
+#: web/pages/ErrorView.vue:82
 msgctxt "web/pages/ErrorView"
 msgid "An internal error occurred. Try again later or contact support."
 msgstr "系统发生了内部错误，请稍后重试或联系技术支持。"
 
-#: web/pages/ErrorView.vue:64 web/pages/ErrorView.vue:84 web/pages/ErrorView.vue:95
+#: web/pages/ErrorView.vue:65 web/pages/ErrorView.vue:85 web/pages/ErrorView.vue:96
 msgctxt "web/pages/ErrorView"
 msgid "Back to start"
 msgstr "回到起点"
 
-#: web/pages/ErrorView.vue:93
+#: web/pages/ErrorView.vue:94
 msgctxt "web/pages/ErrorView"
 msgid "Check that the URL is correct, or the page may have been moved or deleted."
 msgstr "请检查 URL 是否正确，或者该页面可能已被移动或删除。"
 
-#: web/pages/ErrorView.vue:72
+#: web/pages/ErrorView.vue:73
 msgctxt "web/pages/ErrorView"
 msgid "Confirm you have access to this resource, or contact an administrator."
 msgstr "请确认您拥有访问此资源的权限，或联系系统管理员获取帮助。"
 
-#: web/pages/ErrorView.vue:68
+#: web/pages/ErrorView.vue:69
 msgctxt "web/pages/ErrorView"
 msgid "Contact administrator"
 msgstr "联系管理员"
 
-#: web/pages/ErrorView.vue:66 web/pages/ErrorView.vue:96
+#: web/pages/ErrorView.vue:67 web/pages/ErrorView.vue:97
 msgctxt "web/pages/ErrorView"
 msgid "Go back"
 msgstr "返回上一页"
 
-#: web/pages/ErrorView.vue:91
+#: web/pages/ErrorView.vue:92
 msgctxt "web/pages/ErrorView"
 msgid "Page not found"
 msgstr "页面未找到"
 
-#: web/pages/ErrorView.vue:86
+#: web/pages/ErrorView.vue:87
 msgctxt "web/pages/ErrorView"
 msgid "Report a problem"
 msgstr "报告问题"
 
-#: web/pages/ErrorView.vue:85
+#: web/pages/ErrorView.vue:86
 msgctxt "web/pages/ErrorView"
 msgid "Retry"
 msgstr "重试"
 
-#: web/pages/ErrorView.vue:78
+#: web/pages/ErrorView.vue:79
 msgctxt "web/pages/ErrorView"
 msgid "Server error"
 msgstr "服务器错误"
 
-#: web/pages/ErrorView.vue:92
+#: web/pages/ErrorView.vue:93
 msgctxt "web/pages/ErrorView"
 msgid "The page you requested does not exist"
 msgstr "您访问的页面不存在"
 
-#: web/pages/ErrorView.vue:79
+#: web/pages/ErrorView.vue:80
 msgctxt "web/pages/ErrorView"
 msgid "The server encountered an error"
 msgstr "服务器遇到了一个错误"
 
-#: web/pages/ErrorView.vue:62
+#: web/pages/ErrorView.vue:63
 msgctxt "web/pages/ErrorView"
 msgid "You are missing the required permission"
 msgstr "您缺少所需访问权限"
 
-#: web/pages/ErrorView.vue:60
+#: web/pages/ErrorView.vue:61
 msgctxt "web/pages/ErrorView"
 msgid "You are missing the required role"
 msgstr "您缺少所需角色权限"
 
-#: web/pages/ErrorView.vue:58
+#: web/pages/ErrorView.vue:59
 msgctxt "web/pages/ErrorView"
 msgid "You do not have permission to access this page"
 msgstr "您没有权限访问此页面"

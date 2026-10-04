@@ -30,6 +30,7 @@ test('web routes: registers Error page and no Home route/menu', () => {
   expect(error).toBeTruthy();
   expect(error.path).toBe('/error/:code(\\d+)');
   expect(error.meta?.requiresAuth).toBe(false);
+  expect(error.meta?.isAuthPage).toBe(true);
 
   const layout = routes.find(route => route.name === 'Layout') as any;
   const home = layout?.children?.find((route: any) => route.name === 'Home');
