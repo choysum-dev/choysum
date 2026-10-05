@@ -1263,6 +1263,47 @@ test('meta.MetaModuleIndex Count uses grouped module count', async () => {
   }
 });
 
+test('meta.MetaModuleIndex Search/Count empty [] and {} use the catalog default', async () => {
+  resetRequestContext();
+
+  const restoreGroupedRepo = mockMetaModuleIndexGroupedRepo([{ ModuleName: 'auth' }], 3);
+  const restoreBaseSearch = mockMetaModuleIndexBaseSearch([
+    {
+      Id: 'idx_local',
+      ModuleName: 'auth',
+      OriginType: 'local',
+      OriginRef: 'local',
+      Available: true,
+      Version: '1.0.0',
+      ManifestJson: { source: 'local' },
+      LocalPath: '/modules/auth',
+      LastSyncAt: new Date(),
+      LastBatchSyncAt: new Date(),
+      SyncRevision: 'r1',
+      LastErrorMessage: '',
+      InstalledStatus: 'installed',
+      InstalledVersion: '1.0.0',
+    },
+  ]);
+
+  try {
+    const fromArray = await (MetaModuleIndex as any).Search([], { fields: ['ModuleName'], limit: 10 });
+    expect(Array.isArray(fromArray)).toBe(true);
+    expect(fromArray.length).toBe(1);
+    expect(fromArray[0].ModuleName).toBe('auth');
+
+    const fromObject = await (MetaModuleIndex as any).Search({}, { fields: ['ModuleName'], limit: 10 });
+    expect(fromObject.length).toBe(1);
+    expect(fromObject[0].ModuleName).toBe('auth');
+
+    expect(await (MetaModuleIndex as any).Count([])).toBe(3);
+    expect(await (MetaModuleIndex as any).Count({})).toBe(3);
+  } finally {
+    restoreGroupedRepo();
+    restoreBaseSearch();
+  }
+});
+
 test('meta.MetaModuleIndex Search hydrates with no field filter and empty aggregate rows', async () => {
   resetRequestContext();
 
