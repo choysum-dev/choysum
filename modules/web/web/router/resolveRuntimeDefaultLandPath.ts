@@ -33,12 +33,29 @@ function resolveLandRouter(): LandRouter | undefined {
   }
 }
 
+type UiGrantPack = { ui?: { routes?: unknown; menus?: unknown; actions?: unknown } };
+
+/** True when any UI grant bucket has entries (routes / menus / actions, including `*`). */
+function hasUiGrantSnapshot(state: unknown): boolean {
+  if (!state || typeof state !== 'object') return false;
+  const byCompany = (state as { byCompany?: unknown }).byCompany;
+  if (!byCompany || typeof byCompany !== 'object') return false;
+  for (const pack of Object.values(byCompany as Record<string, UiGrantPack>)) {
+    const ui = pack?.ui;
+    if (!ui) continue;
+    for (const bucket of [ui.routes, ui.menus, ui.actions]) {
+      if (Array.isArray(bucket) && bucket.length > 0) return true;
+    }
+  }
+  return false;
+}
+
 /** True when the snapshot has at least one route grant (including `*`). */
 function hasRouteGrantSnapshot(state: unknown): boolean {
   if (!state || typeof state !== 'object') return false;
   const byCompany = (state as { byCompany?: unknown }).byCompany;
   if (!byCompany || typeof byCompany !== 'object') return false;
-  for (const pack of Object.values(byCompany as Record<string, { ui?: { routes?: unknown } }>)) {
+  for (const pack of Object.values(byCompany as Record<string, UiGrantPack>)) {
     const routes = pack?.ui?.routes;
     if (Array.isArray(routes) && routes.length > 0) return true;
   }
@@ -50,7 +67,7 @@ function buildRuntimeCanNavigate(): ((path: string) => boolean) | undefined {
     const auth = useAuthStore();
     const snapshot = auth.permissionState;
     // Empty persist `{ permStateVersion: 0, byCompany: {} }` is truthy but
-    // fail-closes canRoute; wait until a real grant set exists.
+    // fail-closes canRoute; wait until a real route grant set exists.
     if (!hasRouteGrantSnapshot(snapshot)) return undefined;
     const router = resolveLandRouter();
     if (!router) return undefined;
@@ -113,15 +130,16 @@ function readRuntimeMenus(): MenuItem[] {
 export function resolveRuntimeDefaultLandPath(): string {
   try {
     const raw = readRuntimeMenus();
-    let snapshotReady = false;
+    let uiSnapshotReady = false;
     try {
-      snapshotReady = hasRouteGrantSnapshot(useAuthStore().permissionState);
+      // Any UI grant bucket means the sidebar already uses projected `hidden`.
+      uiSnapshotReady = hasUiGrantSnapshot(useAuthStore().permissionState);
     } catch {
-      snapshotReady = false;
+      uiSnapshotReady = false;
     }
-    // Restore declared visibility only before a grant snapshot exists; afterwards
+    // Restore declared visibility only before a UI grant snapshot exists; afterwards
     // keep permission-projected `hidden` so land matches the sidebar.
-    const menus = snapshotReady ? raw : raw.map(withDeclaredVisibility);
+    const menus = uiSnapshotReady ? raw : raw.map(withDeclaredVisibility);
     return resolveDefaultLandPath({
       menus,
       canNavigate: buildRuntimeCanNavigate(),

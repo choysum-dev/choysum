@@ -28,22 +28,38 @@ test('createMenuPlugin: installs menu manager onto app globals and injection wit
   expect((globalThis as any).__CHOYSUM_ROUTER__).toBeUndefined();
 });
 
-test('createMenuPlugin: clears getInstalledMenu on unmount; create does not', () => {
+test('createMenuPlugin: restores prior getInstalledMenu on unmount; create does not clear', () => {
+  resetInstalledMenu();
   const unmountCalls: number[] = [];
-  const app = {
+  const firstApp = {
     config: { globalProperties: {} },
     provide() {},
     unmount() {
       unmountCalls.push(1);
     },
   } as any;
+  const secondApp = {
+    config: { globalProperties: {} },
+    provide() {},
+    unmount() {
+      unmountCalls.push(2);
+    },
+  } as any;
 
-  const plugin = createMenuPlugin();
-  plugin.install(app);
-  expect(getInstalledMenu()).toBe(plugin.manager);
-  app.unmount();
+  const first = createMenuPlugin();
+  first.install(firstApp);
+  expect(getInstalledMenu()).toBe(first.manager);
+
+  const second = createMenuPlugin();
+  second.install(secondApp);
+  expect(getInstalledMenu()).toBe(second.manager);
+  secondApp.unmount();
+  expect(getInstalledMenu()).toBe(first.manager);
+  expect(unmountCalls).toEqual([2]);
+
+  firstApp.unmount();
   expect(getInstalledMenu()).toBeNull();
-  expect(unmountCalls).toEqual([1]);
+  expect(unmountCalls).toEqual([2, 1]);
 
   const leftover = createMenuPlugin();
   leftover.install({

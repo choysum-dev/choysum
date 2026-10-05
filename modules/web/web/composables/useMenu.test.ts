@@ -185,12 +185,26 @@ describe('ChoySidebarNav expansion', () => {
     mounted.unmount();
   });
 
-  test('omits href on a disabled leaf', async () => {
+  test('omits href on unsafe external schemes and disabled leaves', async () => {
     const menuPlugin = createMenuPlugin();
     menuPlugin.manager.addMenu({
       id: 'app',
       title: 'App',
-      children: [{ id: 'off', title: 'Off', path: '/off', disabled: true } as any],
+      children: [
+        { id: 'off', title: 'Off', path: '/off', disabled: true } as any,
+        {
+          id: 'evil',
+          title: 'Evil',
+          path: 'javascript:alert(1)',
+          externalLink: true,
+        } as any,
+        {
+          id: 'ok',
+          title: 'Docs',
+          path: 'https://example.com/docs',
+          externalLink: true,
+        } as any,
+      ],
     } as any);
     const pinia = createPinia();
     setActivePinia(pinia);
@@ -211,11 +225,15 @@ describe('ChoySidebarNav expansion', () => {
     });
     await flushPromises();
     await nextTick();
-    const leaf = Array.from(mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-leaf]')).find(
-      (b) => (b.textContent || '').includes('Off'),
-    ) as HTMLAnchorElement | undefined;
-    expect(leaf).toBeTruthy();
-    expect(leaf!.hasAttribute('href')).toBe(false);
+    const leaves = Array.from(mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-leaf]')) as HTMLAnchorElement[];
+    const off = leaves.find((b) => (b.textContent || '').includes('Off'));
+    const evil = leaves.find((b) => (b.textContent || '').includes('Evil'));
+    const docs = leaves.find((b) => (b.textContent || '').includes('Docs'));
+    expect(off).toBeTruthy();
+    expect(off!.hasAttribute('href')).toBe(false);
+    expect(evil).toBeTruthy();
+    expect(evil!.hasAttribute('href')).toBe(false);
+    expect(docs?.getAttribute('href')).toBe('https://example.com/docs');
     mounted.unmount();
   });
 

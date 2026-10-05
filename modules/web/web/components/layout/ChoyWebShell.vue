@@ -214,8 +214,9 @@ const menuTriggerLabel = computed(() =>
   --sidebar-width: 13.5rem !important;
 }
 
-/* Sit under the product header: kit default is viewport-fixed h-svh. */
-.choy-shell[data-shell-mode='sidebar'] .choy-shell__body :deep([data-slot='sidebar'] > .fixed) {
+/* Sit under the product header: kit default is viewport-fixed h-svh.
+   Unscoped style: plain descendant selectors (no :deep). */
+.choy-shell[data-shell-mode='sidebar'] .choy-shell__body [data-slot='sidebar'] > .fixed {
   position: absolute;
   height: 100%;
 }

@@ -47,12 +47,17 @@ const isGroup = computed(() => visibleChildren.value.length > 0)
 const Wrapper = computed(() => (props.depth === 0 ? SidebarMenuItem : SidebarMenuSubItem))
 const Button = computed(() => (props.depth === 0 ? SidebarMenuButton : SidebarMenuSubButton))
 
+/** Reject scriptable URL schemes on developer-declared external menu paths. */
+const UNSAFE_EXTERNAL_SCHEME = /^\s*(?:javascript|data|vbscript):/i
+
 /**
  * Resolves the leaf href, including the router base for in-app paths.
  */
 function leafHref(item: MenuItem): string | undefined {
   if (!item.path) return undefined
-  if (item.externalLink) return item.path
+  if (item.externalLink) {
+    return UNSAFE_EXTERNAL_SCHEME.test(item.path) ? undefined : item.path
+  }
   if (!router) return item.path
   try {
     return router.resolve(item.path).href || item.path

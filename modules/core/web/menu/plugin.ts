@@ -47,13 +47,14 @@ export function createMenuPlugin(): MenuPlugin {
 
   return {
     install(app: App) {
+      const prevInstalled = installedMenu;
       installedMenu = menuManager;
       app.config.globalProperties.$menu = menuManager;
       app.provide(MenuSymbol, menuManager);
       const prevUnmount = typeof app.unmount === 'function' ? app.unmount.bind(app) : undefined;
       if (prevUnmount) {
         app.unmount = () => {
-          if (installedMenu === menuManager) installedMenu = null;
+          if (installedMenu === menuManager) installedMenu = prevInstalled;
           prevUnmount();
         };
       }
