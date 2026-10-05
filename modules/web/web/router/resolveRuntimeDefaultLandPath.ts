@@ -8,7 +8,7 @@
  * route grants are separate buckets); falls back to Module Board when stores
  * are unavailable (early boot / unit mounts).
  */
-import { inject } from 'vue';
+import { inject, getCurrentInstance } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { canRoute } from '@/auth/web/permission';
@@ -117,12 +117,14 @@ function readRuntimeMenus(): MenuItem[] {
   } catch {
     // Store setup may throw before router/pinia are ready.
   }
-  try {
-    const injected = inject(MenuSymbol, null) as { getMenus?: () => MenuItem[] } | null;
-    const fromInject = injected?.getMenus?.() ?? [];
-    if (fromInject.length) return fromInject;
-  } catch {
-    // Router redirect callbacks have no currentInstance.
+  if (getCurrentInstance()) {
+    try {
+      const injected = inject(MenuSymbol, null) as { getMenus?: () => MenuItem[] } | null;
+      const fromInject = injected?.getMenus?.() ?? [];
+      if (fromInject.length) return fromInject;
+    } catch {
+      // Inject still failed despite an instance.
+    }
   }
   return getInstalledMenu()?.getMenus?.() ?? [];
 }

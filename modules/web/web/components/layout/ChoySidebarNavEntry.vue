@@ -47,7 +47,7 @@ const isGroup = computed(() => visibleChildren.value.length > 0)
 const Wrapper = computed(() => (props.depth === 0 ? SidebarMenuItem : SidebarMenuSubItem))
 const Button = computed(() => (props.depth === 0 ? SidebarMenuButton : SidebarMenuSubButton))
 
-/** Reject scriptable URL schemes on developer-declared external menu paths. */
+/** Reject scriptable URL schemes on developer-declared menu paths. */
 const UNSAFE_EXTERNAL_SCHEME = /^\s*(?:javascript|data|vbscript):/i
 
 /**
@@ -55,9 +55,8 @@ const UNSAFE_EXTERNAL_SCHEME = /^\s*(?:javascript|data|vbscript):/i
  */
 function leafHref(item: MenuItem): string | undefined {
   if (!item.path) return undefined
-  if (item.externalLink) {
-    return UNSAFE_EXTERNAL_SCHEME.test(item.path) ? undefined : item.path
-  }
+  if (UNSAFE_EXTERNAL_SCHEME.test(item.path)) return undefined
+  if (item.externalLink) return item.path
   if (!router) return item.path
   try {
     return router.resolve(item.path).href || item.path

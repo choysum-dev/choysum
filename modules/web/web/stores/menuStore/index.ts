@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { ref, computed, inject } from 'vue';
+import { ref, computed, inject, getCurrentInstance } from 'vue';
 import { useRoute } from 'vue-router';
 import { defineStore } from 'pinia';
 import { MenuSymbol, getInstalledMenu } from '@/core/web/menu';
@@ -13,11 +13,13 @@ import type { Menu, MenuItem } from '@/core/web/menu';
  * inject is empty then, so fall back to the installed plugin singleton.
  */
 function resolveMenuManager(): Menu | null {
-  try {
-    const injected = inject(MenuSymbol, null) as Menu | null;
-    if (injected) return injected;
-  } catch {
-    // No currentInstance: router redirects and detached Pinia callers.
+  if (getCurrentInstance()) {
+    try {
+      const injected = inject(MenuSymbol, null) as Menu | null;
+      if (injected) return injected;
+    } catch {
+      // Inject still failed despite an instance.
+    }
   }
   return getInstalledMenu();
 }

@@ -199,6 +199,11 @@ describe('ChoySidebarNav expansion', () => {
           externalLink: true,
         } as any,
         {
+          id: 'evil-inapp',
+          title: 'Script',
+          path: 'javascript:alert(2)',
+        } as any,
+        {
           id: 'ok',
           title: 'Docs',
           path: 'https://example.com/docs',
@@ -228,11 +233,14 @@ describe('ChoySidebarNav expansion', () => {
     const leaves = Array.from(mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-leaf]')) as HTMLAnchorElement[];
     const off = leaves.find((b) => (b.textContent || '').includes('Off'));
     const evil = leaves.find((b) => (b.textContent || '').includes('Evil'));
+    const script = leaves.find((b) => (b.textContent || '').includes('Script'));
     const docs = leaves.find((b) => (b.textContent || '').includes('Docs'));
     expect(off).toBeTruthy();
     expect(off!.hasAttribute('href')).toBe(false);
     expect(evil).toBeTruthy();
     expect(evil!.hasAttribute('href')).toBe(false);
+    expect(script).toBeTruthy();
+    expect(script!.hasAttribute('href')).toBe(false);
     expect(docs?.getAttribute('href')).toBe('https://example.com/docs');
     mounted.unmount();
   });
