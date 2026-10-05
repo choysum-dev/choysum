@@ -26,6 +26,7 @@ describe('ChoyTableHost baseIndex', () => {
         enableSorting: { type: Boolean, default: false },
         showEmpty: { type: Boolean, default: false },
         sortingMode: { type: String, default: '' },
+        virtualize: { type: Boolean, default: true },
       },
       emits: ['row-click', 'sort-change'],
       setup() {

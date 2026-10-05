@@ -71,32 +71,42 @@ SPDX-License-Identifier: Apache-2.0
     >
       <div
         role="none"
-        :style="{
-          height: `${totalSize}px`,
-          position: 'relative',
-          minWidth: `${tableMinWidth}px`,
-          width: '100%',
-        }"
+        :style="
+          isVirtualized
+            ? {
+                height: `${totalSize}px`,
+                position: 'relative',
+                minWidth: `${tableMinWidth}px`,
+                width: '100%',
+              }
+            : {
+                minWidth: `${tableMinWidth}px`,
+                width: '100%',
+              }
+        "
       >
         <div
-          v-for="virtualRow in virtualRows"
-          :key="String(rows[virtualRow.index]?.id ?? virtualRow.key)"
-          :ref="measureRowElement"
-          :data-index="virtualRow.index"
+          v-for="item in bodyRows"
+          :key="String(item.key)"
+          :ref="isVirtualized ? measureRowElement : undefined"
+          :data-index="item.index"
           role="row"
-          :aria-rowindex="virtualRow.index + 2"
-          :aria-selected="rows[virtualRow.index]?.getIsSelected() ?? false"
+          :aria-rowindex="item.index + 2"
+          :aria-selected="item.row?.getIsSelected() ?? false"
           tabindex="0"
-          class="absolute left-0 grid w-full border-b border-border/60 text-sm hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          class="grid w-full border-b border-border/60 text-sm hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          :class="isVirtualized ? 'absolute left-0' : undefined"
           :style="{
-            transform: `translateY(${virtualRow.start}px)`,
             gridTemplateColumns: gridTemplate,
+            ...(isVirtualized && item.start != null
+              ? { transform: `translateY(${item.start}px)` }
+              : undefined),
           }"
-          @click="onRowClick($event, rows[virtualRow.index])"
-          @keydown="onRowKeydown($event, rows[virtualRow.index])"
+          @click="onRowClick($event, item.row)"
+          @keydown="onRowKeydown($event, item.row)"
         >
           <div
-            v-for="cell in rows[virtualRow.index]?.getVisibleCells() ?? []"
+            v-for="cell in item.row?.getVisibleCells() ?? []"
             :key="cell.id"
             role="gridcell"
             class="flex items-center truncate px-2"
@@ -104,7 +114,7 @@ SPDX-License-Identifier: Apache-2.0
             <Checkbox
               v-if="cell.column.id === '__select'"
               :model-value="cell.row.getIsSelected()"
-              :aria-label="`Select row ${virtualRow.index + 1}`"
+              :aria-label="`Select row ${item.index + 1}`"
               @click.stop
               @update:model-value="(v: boolean | 'indeterminate') => cell.row.toggleSelected(v === true)"
             />
@@ -174,6 +184,11 @@ const props = withDefaults(
     rowSelection?: DataTableRowId[] | null;
     height?: number;
     estimateSize?: number;
+    /**
+     * When false, render every row in normal flow and do not attach a
+     * virtualizer ResizeObserver (embedded M2M/O2M tables in overflow-hidden form chrome).
+     */
+    virtualize?: boolean;
     enableSorting?: boolean;
     /**
      * client: reorder rows in the table.
@@ -187,6 +202,7 @@ const props = withDefaults(
   {
     height: 280,
     estimateSize: 32,
+    virtualize: true,
     enableSorting: true,
     sortingMode: 'client',
     enableRowSelection: true,
@@ -387,11 +403,17 @@ watch(rows, (current) => {
   }
 });
 
+const isVirtualized = computed(
+  () => props.virtualize !== false && rows.value.length > 0,
+);
+
 const virtualizer = useVirtualizer({
   get count() {
-    return rows.value.length;
+    return isVirtualized.value ? rows.value.length : 0;
   },
-  getScrollElement: () => parentRef.value as Element | null,
+  // Skip the observer when virtualization is off or the row set is empty.
+  getScrollElement: () =>
+    isVirtualized.value ? (parentRef.value as Element | null) : null,
   estimateSize: () => resolveDataTableEstimateSize(props.estimateSize, 32),
   // Keep measurements attached to the logical row so sorting does not reuse stale heights.
   getItemKey: (index) => rows.value[index]?.id ?? index,
@@ -402,7 +424,9 @@ const virtualizer = useVirtualizer({
 watch(
   () => props.estimateSize,
   () => {
-    virtualizer.value.measure();
+    if (isVirtualized.value) {
+      virtualizer.value.measure();
+    }
   },
 );
 
@@ -414,7 +438,9 @@ watch(
     if (parentRef.value) {
       parentRef.value.scrollTop = 0;
     }
-    virtualizer.value.measure();
+    if (isVirtualized.value) {
+      virtualizer.value.measure();
+    }
   },
 );
 
@@ -431,8 +457,25 @@ watch(
 const virtualRows = computed(() => virtualizer.value.getVirtualItems());
 const totalSize = computed(() => virtualizer.value.getTotalSize());
 
+const bodyRows = computed(() => {
+  if (!isVirtualized.value) {
+    return rows.value.map((row, index) => ({
+      key: row.id,
+      index,
+      start: undefined as number | undefined,
+      row,
+    }));
+  }
+  return virtualRows.value.map((virtualRow) => ({
+    key: rows.value[virtualRow.index]?.id ?? virtualRow.key,
+    index: virtualRow.index,
+    start: virtualRow.start,
+    row: rows.value[virtualRow.index],
+  }));
+});
+
 function measureRowElement(el: Element | null): void {
-  if (el) {
+  if (el && isVirtualized.value) {
     virtualizer.value.measureElement(el);
   }
 }
@@ -481,7 +524,16 @@ function scrollToRow(index: number, align?: 'start' | 'center' | 'end' | 'auto')
   if (!Number.isFinite(index) || index < 0) {
     return;
   }
-  virtualizer.value.scrollToIndex(index, { align: align ?? 'auto' });
+  if (isVirtualized.value) {
+    virtualizer.value.scrollToIndex(index, { align: align ?? 'auto' });
+    return;
+  }
+  const parent = parentRef.value;
+  if (!parent) {
+    return;
+  }
+  const size = resolveDataTableEstimateSize(props.estimateSize, 32);
+  parent.scrollTop = Math.max(0, index * size);
 }
 
 defineExpose({ scrollToRow });

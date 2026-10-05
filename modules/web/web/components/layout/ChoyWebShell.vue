@@ -78,12 +78,21 @@ SPDX-License-Identifier: Apache-2.0
     </ChoyShellHeader>
     <div class="choy-shell__body relative flex min-h-0 flex-1 overflow-hidden">
       <ChoySidebarBridge />
-      <Sidebar collapsible="icon" side="left">
-        <SidebarContent>
-          <slot name="aside">
-            <ChoySidebarNav />
-          </slot>
-        </SidebarContent>
+      <Sidebar collapsible="icon" side="left" class="overflow-hidden">
+        <div
+          class="flex h-full min-h-0 w-full flex-row"
+          data-testid="choy-shell-nav-split"
+        >
+          <ChoyAppRail />
+          <div
+            class="bg-sidebar flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+            data-testid="choy-shell-nav-pane"
+          >
+            <slot name="aside">
+              <ChoySidebarNav />
+            </slot>
+          </div>
+        </div>
         <SidebarRail />
       </Sidebar>
       <SidebarInset class="min-h-0 min-w-0 overflow-hidden">
@@ -129,11 +138,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import ChoyAppFooter from './ChoyAppFooter.vue'
 import ChoyShellHeader from './ChoyShellHeader.vue'
+import ChoyAppRail from './ChoyAppRail.vue'
 import ChoySidebarNav from './ChoySidebarNav.vue'
 import ChoySidebarBridge from './ChoySidebarBridge.vue'
 import {
   Sidebar,
-  SidebarContent,
   SidebarInset,
   SidebarProvider,
   SidebarRail,
@@ -211,7 +220,7 @@ const menuTriggerLabel = computed(() =>
 
 <style>
 .choy-shell[data-shell-mode='sidebar'] {
-  --sidebar-width: 13.5rem !important;
+  --sidebar-width: calc(var(--sidebar-width-icon) + 13.5rem) !important;
 }
 
 /* Sit under the product header: kit default is viewport-fixed h-svh.
@@ -219,5 +228,15 @@ const menuTriggerLabel = computed(() =>
 .choy-shell[data-shell-mode='sidebar'] .choy-shell__body [data-slot='sidebar'] > .fixed {
   position: absolute;
   height: 100%;
+  border-right-width: 0;
+}
+
+/* Kit inner shell is flex-col; keep L1 rail and L2/L3 pane side by side. */
+.choy-shell[data-shell-mode='sidebar']
+  .choy-shell__body
+  [data-slot='sidebar']
+  > .fixed
+  > [data-sidebar='sidebar'] {
+  flex-direction: row;
 }
 </style>

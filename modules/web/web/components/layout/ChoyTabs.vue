@@ -50,7 +50,7 @@ const props = defineProps<{
 
 const modelValue = defineModel<string>();
 const tabs = ref<ChoyTabRegistration[]>([]);
-const ctx = createChoyTabsContext(tabs);
+const ctx = createChoyTabsContext(tabs, modelValue);
 /** True after initial mount; children have already registered by then. */
 const settled = ref(false);
 

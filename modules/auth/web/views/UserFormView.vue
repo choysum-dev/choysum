@@ -114,7 +114,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, defineAsyncComponent, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
 import type { ClientModel, BaseModel } from '@/core/rpc';
@@ -123,8 +123,8 @@ import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type User from '@/auth/service/models/user/user';
 import type Company from '@/base/service/models/company';
 
-import RoleListView from '@/auth/web/views/RoleListView.vue';
-import CompanyListView from '@/base/web/views/CompanyListView.vue';
+const RoleListView = defineAsyncComponent(() => import('@/auth/web/views/RoleListView.vue'));
+const CompanyListView = defineAsyncComponent(() => import('@/base/web/views/CompanyListView.vue'));
 import type { ValueClickPayload as ManyToOneRefValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 import type { TagClickPayload as RefTagClickPayload } from '@/web/web/components/field/manyToManyTagsTypes';
 import { defineModelActions } from '@/core/web/resource';

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { ref, computed, inject, getCurrentInstance } from 'vue';
+import { ref, computed, inject, getCurrentInstance, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { defineStore } from 'pinia';
 import { MenuSymbol, getInstalledMenu } from '@/core/web/menu';
@@ -113,35 +113,36 @@ export const useMenuStore = defineStore('menu', () => {
 
   /**
    * Active menu synchronized from routing with upward path fallback.
-   * It prefers activeMenuId when present; otherwise it walks up the current route
-   * path, selects the first navigable match, and syncs activeMenuId to that entry.
+   * Prefers activeMenuId when present; otherwise walks up the current route path.
    */
   const activeMenu = computed(() => {
     const menuManager = resolveMenuManager();
     if (!menuManager) return null;
 
-    // Prefer the manually assigned activeMenuId.
     if (activeMenuId.value) {
-      return menuManager.getMenu(activeMenuId.value);
+      return menuManager.getMenu(activeMenuId.value) ?? null;
     }
 
-    // Match by walking up the current route path.
     const fromRoute = findMenuByPathWithFallback(currentRoutePath());
-    const navigable = findFirstNavigableMenu(fromRoute);
-
-    if (navigable) {
-      // Keep activeMenuId aligned for later reads.
-      activeMenuId.value = navigable.id;
-      return navigable;
-    }
-
-    return null;
+    return findFirstNavigableMenu(fromRoute);
   });
 
   const activeApp = computed(() => {
     if (!activeMenu.value) return null;
     return findAppRoot(activeMenu.value);
   });
+
+  // Keep activeMenuId aligned outside the computed so evaluating activeMenu
+  // during render cannot retrigger Vue's update cycle.
+  watch(
+    () => activeMenu.value?.id ?? null,
+    (nextId) => {
+      if (activeMenuId.value !== nextId) {
+        activeMenuId.value = nextId;
+      }
+    },
+    { immediate: true, flush: 'sync' },
+  );
 
   /**
    * Sets the active menu id, or clears it when null.
@@ -155,13 +156,15 @@ export const useMenuStore = defineStore('menu', () => {
    */
   function findAppRoot(menu: MenuItem): MenuItem | null {
     let current: MenuItem | null = menu;
-    while (current) {
+    let hops = 0;
+    while (current && hops < 64) {
+      hops += 1;
       if (!current.__parent) {
         return current;
       }
       current = current.__parent;
     }
-    return null;
+    return current;
   }
 
   return {

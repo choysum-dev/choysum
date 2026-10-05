@@ -78,7 +78,9 @@ export function useMenu() {
     if (!currentActiveMenu) return false
 
     let current: MenuItem | null = currentActiveMenu
-    while (current) {
+    let hops = 0
+    while (current && hops < 64) {
+      hops += 1
       if (current.__parent?.id === menuId) {
         return true
       }

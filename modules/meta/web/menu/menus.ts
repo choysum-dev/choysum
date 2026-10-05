@@ -4,6 +4,7 @@
 import { type MenuItem } from '@/core/web/menu';
 import { defineMenu } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
+import { Boxes } from 'lucide-vue-next';
 
 const { _lt } = createTranslate('meta', { scope: 'web/menu/menus' });
 
@@ -11,6 +12,7 @@ export const metaMenus: MenuItem[] = [
   defineMenu('meta.menu.root', {
     title: _lt('Module Management'),
     sequence: 60,
+    icon: Boxes,
     children: [
       defineMenu('meta.menu.module_board', {
         title: _lt('Module Board'),

@@ -245,12 +245,10 @@ describe('ChoySidebarNav expansion', () => {
     mounted.unmount();
   });
 
-  test('labels app roots and marks the current leaf', async () => {
+  test('labels the active app in the nested header and marks the current leaf', async () => {
     const mounted = await mountSidebar();
-    const labels = Array.from(
-      mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-group-label]'),
-    ).map((el) => (el.textContent || '').trim());
-    expect(labels).toEqual(['App']);
+    expect(mounted.q('[data-testid=choy-sidebar-nav-app-title]')?.textContent?.trim()).toBe('App');
+    expect(mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-group-label]').length).toBe(0);
 
     const leaf = Array.from(mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-leaf]')).find(
       (b) => (b.textContent || '').includes('Leaf'),
@@ -265,7 +263,7 @@ describe('ChoySidebarNav expansion', () => {
     mounted.unmount();
   });
 
-  test('renders every app root, not only the active app', async () => {
+  test('nested nav shows only the active app, not every app root', async () => {
     const menuPlugin = createMenuPlugin();
     menuPlugin.manager.addMenu({
       id: 'meta',
@@ -299,11 +297,11 @@ describe('ChoySidebarNav expansion', () => {
     });
     await flushPromises();
     await nextTick();
-    const labels = Array.from(
-      mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-group-label]'),
-    ).map((el) => (el.textContent || '').trim());
-    expect(labels).toEqual(['Module Management', 'Master Data']);
-    expect(mounted.text()).toContain('Company');
+    expect(mounted.q('[data-testid=choy-sidebar-nav-app-title]')?.textContent?.trim()).toBe(
+      'Module Management',
+    );
+    expect(mounted.text()).not.toContain('Company');
+    expect(mounted.text()).not.toContain('Master Data');
     const activeLeaf = Array.from(
       mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-leaf]'),
     ).find((b) => (b.textContent || '').includes('Module Board')) as HTMLButtonElement | undefined;

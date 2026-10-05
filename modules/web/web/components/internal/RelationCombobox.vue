@@ -42,6 +42,7 @@ SPDX-License-Identifier: Apache-2.0
     </ComboboxAnchor>
     <ComboboxPortal>
       <ComboboxContent
+        v-if="open"
         position="popper"
         class="z-50 w-[var(--reka-combobox-trigger-width)] overflow-hidden rounded-md border border-border bg-background text-foreground shadow-md"
       >
@@ -210,9 +211,9 @@ const displayOptions = computed(() =>
 
 const virtualizer = useVirtualizer({
   get count() {
-    return displayOptions.value.length;
+    return open.value ? displayOptions.value.length : 0;
   },
-  getScrollElement: () => listParent.value as Element | null,
+  getScrollElement: () => (open.value ? (listParent.value as Element | null) : null),
   estimateSize: () =>
     Number.isFinite(props.estimateSize) && props.estimateSize > 0 ? props.estimateSize : 32,
   // Prepending the selected option shifts indices; keep measurements bound to the option.

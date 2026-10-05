@@ -337,6 +337,7 @@ describe('ChoyManyToManyField mount coverage', () => {
     m2.click('[data-test="dialog-cancel"]');
     await nextTick();
     expect(m2.q('.dialog')?.getAttribute('data-open')).toBe('0');
+    expect(m2.q('.search-list-stub')).toBeFalsy();
     m2.unmount();
   });
 

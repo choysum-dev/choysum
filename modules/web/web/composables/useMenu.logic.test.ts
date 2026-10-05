@@ -135,4 +135,68 @@ describe('useMenu logic', () => {
     window.open = prevOpen;
     mounted.unmount();
   });
+
+  test('record detail path fallback keeps a stable activeMenuId', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'auth',
+      title: 'Access Control',
+      children: [{ id: 'users', title: 'User List', path: '/auth/users' }],
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: {
+        name: 'UserDetail',
+        path: '/auth/users/u1',
+        fullPath: '/auth/users/u1',
+        params: { id: 'u1' },
+        meta: {},
+      },
+    });
+    const Host = defineComponent({
+      setup() {
+        const store = useMenuStore();
+        return () =>
+          h('div', {
+            'data-active-menu': store.activeMenu?.id || '',
+            'data-active-app': store.activeApp?.id || '',
+          });
+      },
+    });
+    const mounted = mountApp(Host as any, {
+      plugins: [menuPlugin, pinia, router],
+    });
+    await flushPromises();
+    await nextTick();
+    const store = useMenuStore();
+    expect(store.activeMenu?.id).toBe('users');
+    expect(store.activeMenuId).toBe('users');
+    expect(store.activeApp?.id).toBe('auth');
+    mounted.unmount();
+  });
+
+  test('isExpanded stops walking a cyclic __parent chain', async () => {
+    const menuPlugin = createMenuPlugin();
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: { name: 'Loop', path: '/loop', fullPath: '/loop', params: {}, meta: {} },
+    });
+    const a = { id: 'a', title: 'A', path: '/a' } as any;
+    const b = { id: 'b', title: 'B', path: '/b' } as any;
+    a.__parent = b;
+    b.__parent = a;
+    const Host = defineComponent({
+      setup() {
+        const api = useMenu();
+        api.setActiveMenu(a);
+        return () => h('div', { 'data-expanded': api.isExpanded('never') ? '1' : '0' });
+      },
+    });
+    const mounted = mountApp(Host as any, { plugins: [menuPlugin, pinia, router] });
+    await flushPromises();
+    expect(mounted.q('[data-expanded]')?.getAttribute('data-expanded')).toBe('0');
+    mounted.unmount();
+  });
 });

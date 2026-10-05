@@ -29,6 +29,9 @@ describe('ChoyWebShell', () => {
     expect(mounted.q('[data-testid=choy-shell-canvas]')?.className || '').toContain('overflow-y-auto');
     expect(mounted.q('[data-testid=choy-shell-header-sep]')).not.toBeNull();
     expect(mounted.q('[data-anchor="choy.shell.header-actions"]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-nav-split]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-nav-pane]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-app-rail]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-aside]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-footer]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-footer]')?.className || '').not.toContain('border-t');
@@ -68,6 +71,7 @@ describe('ChoyWebShell', () => {
       },
     });
     await flushPromises();
+    expect(mounted.q('[data-testid=choy-shell-app-rail]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-aside]')).not.toBeNull();
     mounted.unmount();
   });
@@ -360,6 +364,7 @@ describe('ChoyWebShell', () => {
     expect(mounted.q('[data-testid=choy-shell]')?.getAttribute('data-shell-mode')).toBe('canvas');
     expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-footer]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-app-rail]')).toBeNull();
     expect(mounted.q('[data-testid=choy-shell-aside]')).toBeNull();
     expect(mounted.q('[data-testid=choy-shell-menu-trigger]')).toBeNull();
     expect((mounted.q('[data-testid=choy-shell-brand]')?.textContent || '').trim()).toBe('Choysum');
@@ -418,6 +423,7 @@ describe('ChoyWebShell', () => {
       },
     });
     await flushPromises();
+    expect(mounted.q('[data-testid=choy-shell-app-rail]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-aside]')).not.toBeNull();
     expect(mounted.text()).toContain('Shell App');
     mounted.unmount();

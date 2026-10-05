@@ -13,12 +13,12 @@ SPDX-License-Identifier: Apache-2.0
     :value="registeredValue"
     :class="props.class"
   >
-    <slot />
+    <slot v-if="isActive" />
   </TabsContent>
 </template>
 
 <script setup lang="ts">
-import { inject, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import TabsContent from '../vendor/ui/tabs/TabsContent.vue';
 import type { ClassValue } from '../../lib/utils';
 import { ChoyTabsContextKey } from './choyTabsContext';
@@ -42,6 +42,7 @@ const props = withDefaults(
 const ctx = inject(ChoyTabsContextKey, null);
 /** Value currently registered with the parent (may lag props.value briefly). */
 const registeredValue = ref(props.value);
+const isActive = computed(() => !!ctx && ctx.activeValue.value === registeredValue.value);
 /** False when register was refused (duplicate value); skip unregister/patch. */
 const ownsRegistration = ref(false);
 
