@@ -5,13 +5,18 @@ import { menus } from '../menu/menus';
 import routes from './routes';
 import { MODULE_BOARD_PATH } from './resolveDefaultLandPath';
 import { createPinia, setActivePinia } from 'pinia';
+import { createMenuPlugin } from '@/core/web/menu';
 
 test('web routes: root and catch-all redirect via default land path', () => {
   setActivePinia(createPinia());
+  createMenuPlugin().install({
+    config: { globalProperties: {} },
+    provide() {},
+  } as any);
   const root = routes.find(route => route.name === 'Root') as any;
   expect(root).toBeTruthy();
   expect(typeof root.redirect).toBe('function');
-  // Without menu injection, runtime land falls back to Module Board.
+  // Without menus, runtime land falls back to Module Board.
   expect(root.redirect()).toBe(MODULE_BOARD_PATH);
 
   const catchAll = routes.find(route => route.name === 'CatchAll') as any;

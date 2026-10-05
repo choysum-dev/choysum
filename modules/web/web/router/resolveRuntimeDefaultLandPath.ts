@@ -8,16 +8,69 @@
  * route grants are separate buckets); falls back to Module Board when stores
  * are unavailable (early boot / unit mounts).
  */
+import { inject, getCurrentInstance } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { canRoute } from '@/auth/web/permission';
+import { MenuSymbol, getInstalledMenu, type MenuItem } from '@/core/web/menu';
 import { useMenuStore } from '../stores/menuStore';
 import { resolveDefaultLandPath, MODULE_BOARD_PATH } from './resolveDefaultLandPath';
+
+type LandRouter = { resolve: (to: string) => { meta?: unknown } };
+
+/**
+ * Vue's `useRouter()` injects without throwing when there is no currentInstance
+ * (sync Root/CatchAll redirect). A dangling `undefined.resolve` then fail-closes
+ * every leaf and lands on Module Board.
+ */
+function resolveLandRouter(): LandRouter | undefined {
+  try {
+    const router = useRouter() as LandRouter | undefined;
+    if (!router || typeof router.resolve !== 'function') return undefined;
+    return router;
+  } catch {
+    return undefined;
+  }
+}
+
+type UiGrantPack = { ui?: { routes?: unknown; menus?: unknown; actions?: unknown } };
+
+/** True when any UI grant bucket has entries (routes / menus / actions, including `*`). */
+function hasUiGrantSnapshot(state: unknown): boolean {
+  if (!state || typeof state !== 'object') return false;
+  const byCompany = (state as { byCompany?: unknown }).byCompany;
+  if (!byCompany || typeof byCompany !== 'object') return false;
+  for (const pack of Object.values(byCompany as Record<string, UiGrantPack>)) {
+    const ui = pack?.ui;
+    if (!ui) continue;
+    for (const bucket of [ui.routes, ui.menus, ui.actions]) {
+      if (Array.isArray(bucket) && bucket.length > 0) return true;
+    }
+  }
+  return false;
+}
+
+/** True when the snapshot has at least one route grant (including `*`). */
+function hasRouteGrantSnapshot(state: unknown): boolean {
+  if (!state || typeof state !== 'object') return false;
+  const byCompany = (state as { byCompany?: unknown }).byCompany;
+  if (!byCompany || typeof byCompany !== 'object') return false;
+  for (const pack of Object.values(byCompany as Record<string, UiGrantPack>)) {
+    const routes = pack?.ui?.routes;
+    if (Array.isArray(routes) && routes.length > 0) return true;
+  }
+  return false;
+}
 
 function buildRuntimeCanNavigate(): ((path: string) => boolean) | undefined {
   try {
     const auth = useAuthStore();
-    const router = useRouter();
+    const snapshot = auth.permissionState;
+    // Empty persist `{ permStateVersion: 0, byCompany: {} }` is truthy but
+    // fail-closes canRoute; wait until a real route grant set exists.
+    if (!hasRouteGrantSnapshot(snapshot)) return undefined;
+    const router = resolveLandRouter();
+    if (!router) return undefined;
     const meta = (auth.identity as any)?.metadata as any;
     const ctx = {
       activeCompanyId: meta?.activeCompanyId,
@@ -29,7 +82,7 @@ function buildRuntimeCanNavigate(): ((path: string) => boolean) | undefined {
         const resourceId = String((resolved.meta as any)?.resourceId || '').trim();
         // No resource id → treat as reachable (layout / public); authGuard still applies.
         if (!resourceId) return true;
-        return canRoute(resourceId, auth.permissionState, ctx);
+        return canRoute(resourceId, snapshot, ctx);
       } catch {
         // Unverifiable path: skip so DFS can fall through to the next leaf / Module Board.
         return false;
@@ -40,9 +93,55 @@ function buildRuntimeCanNavigate(): ((path: string) => boolean) | undefined {
   }
 }
 
+/**
+ * Land DFS uses declared visibility, not permission-projected `hidden`.
+ * Root redirect is sync and often runs before the permission snapshot is ready.
+ */
+function withDeclaredVisibility(item: MenuItem): MenuItem {
+  const meta = item.meta as { __permBaseHidden?: boolean } | undefined;
+  const hidden = meta && meta.__permBaseHidden !== undefined ? !!meta.__permBaseHidden : !!item.hidden;
+  return {
+    ...item,
+    hidden,
+    children: item.children?.map(withDeclaredVisibility),
+  };
+}
+
+/**
+ * Reads the live menu tree without requiring a component inject context.
+ */
+function readRuntimeMenus(): MenuItem[] {
+  try {
+    const fromStore = useMenuStore().getMenus?.() ?? [];
+    if (fromStore.length) return fromStore;
+  } catch {
+    // Store setup may throw before router/pinia are ready.
+  }
+  if (getCurrentInstance()) {
+    try {
+      const injected = inject(MenuSymbol, null) as { getMenus?: () => MenuItem[] } | null;
+      const fromInject = injected?.getMenus?.() ?? [];
+      if (fromInject.length) return fromInject;
+    } catch {
+      // Inject still failed despite an instance.
+    }
+  }
+  return getInstalledMenu()?.getMenus?.() ?? [];
+}
+
 export function resolveRuntimeDefaultLandPath(): string {
   try {
-    const menus = useMenuStore().getMenus?.() ?? [];
+    const raw = readRuntimeMenus();
+    let uiSnapshotReady = false;
+    try {
+      // Any UI grant bucket means the sidebar already uses projected `hidden`.
+      uiSnapshotReady = hasUiGrantSnapshot(useAuthStore().permissionState);
+    } catch {
+      uiSnapshotReady = false;
+    }
+    // Restore declared visibility only before a UI grant snapshot exists; afterwards
+    // keep permission-projected `hidden` so land matches the sidebar.
+    const menus = uiSnapshotReady ? raw : raw.map(withDeclaredVisibility);
     return resolveDefaultLandPath({
       menus,
       canNavigate: buildRuntimeCanNavigate(),

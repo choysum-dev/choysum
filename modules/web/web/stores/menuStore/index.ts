@@ -1,21 +1,61 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { ref, computed, inject } from 'vue';
+import { ref, computed, inject, getCurrentInstance } from 'vue';
 import { useRoute } from 'vue-router';
 import { defineStore } from 'pinia';
-import { MenuSymbol } from '@/core/web/menu';
+import { MenuSymbol, getInstalledMenu } from '@/core/web/menu';
 import type { Menu, MenuItem } from '@/core/web/menu';
 
-export const useMenuStore = defineStore('menu', () => {
-  const route = useRoute();
+/**
+ * Resolves the live Menu registry.
+ * Store setup may run outside a component (router redirect, effectScope);
+ * inject is empty then, so fall back to the installed plugin singleton.
+ */
+function resolveMenuManager(): Menu | null {
+  if (getCurrentInstance()) {
+    try {
+      const injected = inject(MenuSymbol, null) as Menu | null;
+      if (injected) return injected;
+    } catch {
+      // Inject still failed despite an instance.
+    }
+  }
+  return getInstalledMenu();
+}
 
-  // Core state.
+export const useMenuStore = defineStore('menu', () => {
   const activeMenuId = ref<string | null>(null);
 
-  // Inject directly during setup.
-  const menuManager = inject(MenuSymbol) as Menu;
-  // Shared lookup for the first navigable menu item.
+  // Capture the reactive route during store setup when inject is available.
+  // Re-try on later reads so a store created in a router redirect can still
+  // pick up the route once a component render provides injection.
+  let capturedRoute: { path?: string } | undefined;
+  try {
+    capturedRoute = useRoute();
+  } catch {
+    capturedRoute = undefined;
+  }
+
+  /**
+   * Reads the current route path when vue-router injection is available.
+   */
+  function currentRoutePath(): string {
+    if (capturedRoute && typeof capturedRoute.path === 'string') {
+      return capturedRoute.path;
+    }
+    try {
+      const route = useRoute();
+      if (route) capturedRoute = route;
+      return String(route?.path || '');
+    } catch {
+      return String(capturedRoute?.path || '');
+    }
+  }
+
+  /**
+   * Shared lookup for the first navigable menu item.
+   */
   function findFirstNavigableMenu(menuItem: MenuItem | null | undefined): MenuItem | null {
     if (!menuItem) return null;
 
@@ -35,8 +75,11 @@ export const useMenuStore = defineStore('menu', () => {
     return menuItem.path ? menuItem : null;
   }
 
-  // Walk up the path to find a menu, also handling routes without the /web prefix.
+  /**
+   * Walk up the path to find a menu, also handling routes without the /web prefix.
+   */
   function findMenuByPathWithFallback(rawPath: string): MenuItem | null {
+    const menuManager = resolveMenuManager();
     if (!menuManager) return null;
 
     const normalize = (p: string) => {
@@ -74,6 +117,7 @@ export const useMenuStore = defineStore('menu', () => {
    * path, selects the first navigable match, and syncs activeMenuId to that entry.
    */
   const activeMenu = computed(() => {
+    const menuManager = resolveMenuManager();
     if (!menuManager) return null;
 
     // Prefer the manually assigned activeMenuId.
@@ -82,7 +126,7 @@ export const useMenuStore = defineStore('menu', () => {
     }
 
     // Match by walking up the current route path.
-    const fromRoute = findMenuByPathWithFallback(route.path);
+    const fromRoute = findMenuByPathWithFallback(currentRoutePath());
     const navigable = findFirstNavigableMenu(fromRoute);
 
     if (navigable) {
@@ -99,12 +143,16 @@ export const useMenuStore = defineStore('menu', () => {
     return findAppRoot(activeMenu.value);
   });
 
-  // State management methods.
+  /**
+   * Sets the active menu id, or clears it when null.
+   */
   function setActiveMenu(menu: MenuItem | null) {
     activeMenuId.value = menu ? menu.id : null;
   }
 
-  // Helper functions.
+  /**
+   * Walks to the app-root ancestor of a menu item.
+   */
   function findAppRoot(menu: MenuItem): MenuItem | null {
     let current: MenuItem | null = menu;
     while (current) {
@@ -125,12 +173,12 @@ export const useMenuStore = defineStore('menu', () => {
     setActiveMenu,
 
     // Proxies for menuManager methods (no-op safe when Menu inject is missing).
-    hasMenu: (id: string) => !!menuManager?.hasMenu?.(id),
-    getMenu: (id: string) => menuManager?.getMenu?.(id),
-    getMenuByPath: (path: string) => menuManager?.getMenuByPath?.(path),
-    getMenuChildren: (id: string) => menuManager?.getMenuChildren?.(id) ?? [],
-    getMenuParent: (id: string) => menuManager?.getMenuParent?.(id) ?? null,
-    getMenus: () => menuManager?.getMenus?.() ?? [],
+    hasMenu: (id: string) => !!resolveMenuManager()?.hasMenu?.(id),
+    getMenu: (id: string) => resolveMenuManager()?.getMenu?.(id),
+    getMenuByPath: (path: string) => resolveMenuManager()?.getMenuByPath?.(path),
+    getMenuChildren: (id: string) => resolveMenuManager()?.getMenuChildren?.(id) ?? [],
+    getMenuParent: (id: string) => resolveMenuManager()?.getMenuParent?.(id) ?? null,
+    getMenus: () => resolveMenuManager()?.getMenus?.() ?? [],
 
     // Helper utilities.
     findFirstNavigableMenu,

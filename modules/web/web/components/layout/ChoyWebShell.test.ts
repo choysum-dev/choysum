@@ -11,6 +11,8 @@ describe('ChoyWebShell', () => {
     const { createPinia, setActivePinia } = await import('pinia');
     pinViewportWidth(1280);
     setActivePinia(createPinia());
+    const { resetInstalledMenu } = await import('@/core/web/menu');
+    resetInstalledMenu();
   });
 
   test('defaults to header and sidebar and renders router-view', async () => {

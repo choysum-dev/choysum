@@ -11,6 +11,11 @@ import { resolveRuntimeDefaultLandPath } from './resolveRuntimeDefaultLandPath';
 describe('resolveRuntimeDefaultLandPath', () => {
   test('falls back to Module Board without menu injection', () => {
     setActivePinia(createPinia());
+    const empty = createMenuPlugin();
+    empty.install({
+      config: { globalProperties: {} },
+      provide() {},
+    } as any);
     expect(resolveRuntimeDefaultLandPath()).toBe(MODULE_BOARD_PATH);
   });
 
@@ -140,7 +145,7 @@ describe('resolveRuntimeDefaultLandPath', () => {
     mounted.unmount();
   });
 
-  test('falls back to Module Board when menu store cannot init without router', async () => {
+  test('uses installed menu even when the store cannot call useRoute', async () => {
     const menuPlugin = createMenuPlugin();
     menuPlugin.manager.addMenu({
       id: 'only.menu',
@@ -162,9 +167,202 @@ describe('resolveRuntimeDefaultLandPath', () => {
       plugins: [menuPlugin, pinia],
     });
     await flushPromises();
-    // useMenuStore setup calls useRoute(); without a router plugin it throws and
-    // resolveRuntimeDefaultLandPath fails closed to Module Board.
-    expect(mounted.q('[data-path]')?.getAttribute('data-path')).toBe(MODULE_BOARD_PATH);
+    expect(mounted.q('[data-path]')?.getAttribute('data-path')).toBe('/only');
     mounted.unmount();
+  });
+
+  test('reads menus during a router-style callback with no component instance', () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'base.menu.company',
+      title: 'Company',
+      path: '/base/companies',
+      order: 1,
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    menuPlugin.install({
+      config: { globalProperties: {} },
+      provide() {},
+    } as any);
+    expect(resolveRuntimeDefaultLandPath()).toBe('/base/companies');
+  });
+
+  test('does not fail-closed when persist snapshot is empty and useRouter is unavailable', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'base.menu.company',
+      title: 'Company',
+      path: '/base/companies',
+      order: 1,
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { useAuthStore } = await import('@/auth/web/stores/auth');
+    const auth = useAuthStore(pinia);
+    (auth as any).isAuthenticated = true;
+    (auth as any).permissionState = { permStateVersion: 0, byCompany: {} };
+    menuPlugin.install({
+      config: { globalProperties: {} },
+      provide() {},
+    } as any);
+    expect(resolveRuntimeDefaultLandPath()).toBe('/base/companies');
+  });
+
+  test('does not fail-closed when persist snapshot is empty even if useRouter works', async () => {
+    const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'base.menu.company',
+      title: 'Company',
+      path: '/base/companies',
+      order: 1,
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: { path: '/', fullPath: '/', meta: {} },
+    });
+    router.resolve = () => ({
+      path: '/base/companies',
+      fullPath: '/base/companies',
+      href: '/base/companies',
+      name: undefined,
+      query: {},
+      params: {},
+      matched: [{ path: '/base/companies' }],
+      meta: { resourceId: 'base.route.company_list' },
+    });
+    const { useAuthStore } = await import('@/auth/web/stores/auth');
+    const auth = useAuthStore(pinia);
+    (auth as any).isAuthenticated = true;
+    (auth as any).permissionState = { permStateVersion: 0, byCompany: {} };
+
+    const Host = defineComponent({
+      setup() {
+        const path = resolveRuntimeDefaultLandPath();
+        return () => h('div', { 'data-path': path });
+      },
+    });
+    const mounted = mountApp(Host as any, {
+      plugins: [menuPlugin, pinia, router],
+    });
+    await flushPromises();
+    expect(mounted.q('[data-path]')?.getAttribute('data-path')).toBe('/base/companies');
+    mounted.unmount();
+  });
+
+  test('does not fail-closed when grants exist but useRouter has no resolve', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'base.menu.company',
+      title: 'Company',
+      path: '/base/companies',
+      order: 1,
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { useAuthStore } = await import('@/auth/web/stores/auth');
+    const auth = useAuthStore(pinia);
+    (auth as any).isAuthenticated = true;
+    (auth as any).permissionState = {
+      permStateVersion: 1,
+      byCompany: { '*': { ui: { routes: ['*'], menus: ['*'], actions: [] } } },
+    };
+    menuPlugin.install({
+      config: { globalProperties: {} },
+      provide() {},
+    } as any);
+    // Sync redirect: FE stub useRouter throws; production injects undefined.
+    expect(resolveRuntimeDefaultLandPath()).toBe('/base/companies');
+  });
+
+  test('lands on first declared leaf even when permission has hidden the tree', () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'base.menu.company',
+      title: 'Company',
+      path: '/base/companies',
+      order: 1,
+      hidden: true,
+      meta: { __permBaseHidden: false },
+    } as any);
+    menuPlugin.manager.addMenu({
+      id: 'meta.menu.board',
+      title: 'Board',
+      path: '/meta/modules',
+      order: 2,
+      hidden: true,
+      meta: { __permBaseHidden: false },
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    menuPlugin.install({
+      config: { globalProperties: {} },
+      provide() {},
+    } as any);
+    expect(resolveRuntimeDefaultLandPath()).toBe('/base/companies');
+  });
+
+  test('skips permission-hidden leaves once a grant snapshot exists', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'base.menu.company',
+      title: 'Company',
+      path: '/base/companies',
+      order: 1,
+      hidden: true,
+      meta: { __permBaseHidden: false },
+    } as any);
+    menuPlugin.manager.addMenu({
+      id: 'base.menu.address',
+      title: 'Address',
+      path: '/base/addresses',
+      order: 2,
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { useAuthStore } = await import('@/auth/web/stores/auth');
+    const auth = useAuthStore(pinia);
+    (auth as any).permissionState = {
+      permStateVersion: 1,
+      byCompany: { '*': { ui: { routes: ['*'], menus: ['*'], actions: [] } } },
+    };
+    menuPlugin.install({
+      config: { globalProperties: {} },
+      provide() {},
+    } as any);
+    expect(resolveRuntimeDefaultLandPath()).toBe('/base/addresses');
+  });
+
+  test('menus-only grant snapshot still respects projected hidden without canRoute', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'base.menu.company',
+      title: 'Company',
+      path: '/base/companies',
+      order: 1,
+      hidden: true,
+      meta: { __permBaseHidden: false },
+    } as any);
+    menuPlugin.manager.addMenu({
+      id: 'base.menu.address',
+      title: 'Address',
+      path: '/base/addresses',
+      order: 2,
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { useAuthStore } = await import('@/auth/web/stores/auth');
+    const auth = useAuthStore(pinia);
+    (auth as any).permissionState = {
+      permStateVersion: 1,
+      byCompany: { '*': { ui: { routes: [], menus: ['*'], actions: [] } } },
+    };
+    menuPlugin.install({
+      config: { globalProperties: {} },
+      provide() {},
+    } as any);
+    expect(resolveRuntimeDefaultLandPath()).toBe('/base/addresses');
   });
 });

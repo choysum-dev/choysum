@@ -76,7 +76,7 @@ SPDX-License-Identifier: Apache-2.0
         </div>
       </template>
     </ChoyShellHeader>
-    <div class="choy-shell__body flex min-h-0 flex-1 overflow-hidden">
+    <div class="choy-shell__body relative flex min-h-0 flex-1 overflow-hidden">
       <ChoySidebarBridge />
       <Sidebar collapsible="icon" side="left">
         <SidebarContent>
@@ -208,3 +208,16 @@ const menuTriggerLabel = computed(() =>
   }),
 )
 </script>
+
+<style>
+.choy-shell[data-shell-mode='sidebar'] {
+  --sidebar-width: 13.5rem !important;
+}
+
+/* Sit under the product header: kit default is viewport-fixed h-svh.
+   Unscoped style: plain descendant selectors (no :deep). */
+.choy-shell[data-shell-mode='sidebar'] .choy-shell__body [data-slot='sidebar'] > .fixed {
+  position: absolute;
+  height: 100%;
+}
+</style>

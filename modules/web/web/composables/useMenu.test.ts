@@ -57,7 +57,7 @@ async function mountSidebar(opts?: { activeChild?: boolean }) {
       if (active) store.setActiveMenu(active);
       return () =>
         h(SidebarProvider, null, {
-          default: () => h(ChoySidebarNav, { useDefaultIcon: true }),
+          default: () => h(ChoySidebarNav),
         });
     },
   });
@@ -151,7 +151,7 @@ describe('ChoySidebarNav expansion', () => {
         if (active) store.setActiveMenu(active);
         return () =>
           h(SidebarProvider, null, {
-            default: () => h(ChoySidebarNav, { useDefaultIcon: true }),
+            default: () => h(ChoySidebarNav),
           });
       },
     });
@@ -176,10 +176,148 @@ describe('ChoySidebarNav expansion', () => {
     const mounted = await mountSidebar();
     const leaf = Array.from(mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-leaf]')).find(
       (b) => (b.textContent || '').includes('Leaf'),
-    ) as HTMLButtonElement | undefined;
+    ) as HTMLAnchorElement | undefined;
     expect(leaf).toBeTruthy();
+    expect(leaf!.tagName).toBe('A');
+    expect(leaf!.getAttribute('href')).toBe('/leaf');
     leaf!.click();
     await flushPromises();
+    mounted.unmount();
+  });
+
+  test('omits href on unsafe external schemes and disabled leaves', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'app',
+      title: 'App',
+      children: [
+        { id: 'off', title: 'Off', path: '/off', disabled: true } as any,
+        {
+          id: 'evil',
+          title: 'Evil',
+          path: 'javascript:alert(1)',
+          externalLink: true,
+        } as any,
+        {
+          id: 'evil-inapp',
+          title: 'Script',
+          path: 'javascript:alert(2)',
+        } as any,
+        {
+          id: 'ok',
+          title: 'Docs',
+          path: 'https://example.com/docs',
+          externalLink: true,
+        } as any,
+      ],
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: { path: '/', fullPath: '/', meta: {} },
+    });
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h(SidebarProvider, null, {
+            default: () => h(ChoySidebarNav),
+          });
+      },
+    });
+    const mounted = mountApp(Host as any, {
+      plugins: [menuPlugin, pinia, router, i18n],
+    });
+    await flushPromises();
+    await nextTick();
+    const leaves = Array.from(mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-leaf]')) as HTMLAnchorElement[];
+    const off = leaves.find((b) => (b.textContent || '').includes('Off'));
+    const evil = leaves.find((b) => (b.textContent || '').includes('Evil'));
+    const script = leaves.find((b) => (b.textContent || '').includes('Script'));
+    const docs = leaves.find((b) => (b.textContent || '').includes('Docs'));
+    expect(off).toBeTruthy();
+    expect(off!.hasAttribute('href')).toBe(false);
+    expect(evil).toBeTruthy();
+    expect(evil!.hasAttribute('href')).toBe(false);
+    expect(script).toBeTruthy();
+    expect(script!.hasAttribute('href')).toBe(false);
+    expect(docs?.getAttribute('href')).toBe('https://example.com/docs');
+    mounted.unmount();
+  });
+
+  test('labels app roots and marks the current leaf', async () => {
+    const mounted = await mountSidebar();
+    const labels = Array.from(
+      mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-group-label]'),
+    ).map((el) => (el.textContent || '').trim());
+    expect(labels).toEqual(['App']);
+
+    const leaf = Array.from(mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-leaf]')).find(
+      (b) => (b.textContent || '').includes('Leaf'),
+    ) as HTMLButtonElement | undefined;
+    expect(leaf?.getAttribute('data-active')).toBe('true');
+    expect(leaf?.getAttribute('aria-current')).toBe('page');
+
+    const other = Array.from(mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-leaf]')).find(
+      (b) => (b.textContent || '').includes('Child A'),
+    );
+    expect(other).toBeUndefined();
+    mounted.unmount();
+  });
+
+  test('renders every app root, not only the active app', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'meta',
+      title: 'Module Management',
+      children: [{ id: 'meta-board', title: 'Module Board', path: '/meta/modules' }],
+    } as any);
+    menuPlugin.manager.addMenu({
+      id: 'base',
+      title: 'Master Data',
+      children: [{ id: 'base-company', title: 'Company', path: '/base/companies' }],
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: { path: '/meta/modules', fullPath: '/meta/modules', meta: {} },
+    });
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+    const Host = defineComponent({
+      setup() {
+        const store = useMenuStore();
+        const active = store.getMenu('meta-board');
+        if (active) store.setActiveMenu(active);
+        return () =>
+          h(SidebarProvider, null, {
+            default: () => h(ChoySidebarNav),
+          });
+      },
+    });
+    const mounted = mountApp(Host as any, {
+      plugins: [menuPlugin, pinia, router, i18n],
+    });
+    await flushPromises();
+    await nextTick();
+    const labels = Array.from(
+      mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-group-label]'),
+    ).map((el) => (el.textContent || '').trim());
+    expect(labels).toEqual(['Module Management', 'Master Data']);
+    expect(mounted.text()).toContain('Company');
+    const activeLeaf = Array.from(
+      mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-leaf]'),
+    ).find((b) => (b.textContent || '').includes('Module Board')) as HTMLButtonElement | undefined;
+    expect(activeLeaf?.getAttribute('data-active')).toBe('true');
+    mounted.unmount();
+  });
+
+  test('renders text-only leaves when menus declare no icon', async () => {
+    const mounted = await mountSidebar();
+    const leaf = Array.from(mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-leaf]')).find(
+      (b) => (b.textContent || '').includes('Leaf'),
+    ) as HTMLButtonElement | undefined;
+    expect(leaf?.querySelector('svg')).toBeNull();
+    expect(leaf?.querySelector('[aria-hidden=true]')).toBeNull();
     mounted.unmount();
   });
 
@@ -195,7 +333,7 @@ describe('ChoySidebarNav expansion', () => {
       setup() {
         return () =>
           h(SidebarProvider, null, {
-            default: () => h(ChoySidebarNav, { useDefaultIcon: false }),
+            default: () => h(ChoySidebarNav),
           });
       },
     });
@@ -247,7 +385,7 @@ describe('ChoySidebarNav expansion', () => {
         if (active) store.setActiveMenu(active);
         return () =>
           h(SidebarProvider, null, {
-            default: () => h(ChoySidebarNav, { useDefaultIcon: true }),
+            default: () => h(ChoySidebarNav),
           });
       },
     });
@@ -269,7 +407,7 @@ describe('ChoySidebarNav expansion', () => {
 
   test('tolerates missing menu store / router context', async () => {
     setActivePinia(undefined as any);
-    const mounted = mountApp(ChoySidebarNav as any, { props: { useDefaultIcon: false } });
+    const mounted = mountApp(ChoySidebarNav as any);
     await flushPromises();
     expect(mounted.q('[data-testid=choy-sidebar-nav-empty]')).not.toBeNull();
     mounted.unmount();
