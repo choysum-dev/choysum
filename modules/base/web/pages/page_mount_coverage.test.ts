@@ -29,7 +29,6 @@ import UoM from './UoM.vue';
 import UoMList from './UoMList.vue';
 import UoMCategory from './UoMCategory.vue';
 import UoMCategoryList from './UoMCategoryList.vue';
-import { Building2 } from 'lucide-vue-next';
 import { baseMenus } from '../menu/menus';
 
 const pages: Array<[string, any, string]> = [
@@ -86,7 +85,7 @@ test('base page mount: every ChoyPage host mounts under choysumMount', async () 
   if (failures.length) throw new Error(`base page mount failed: ${failures.join(', ')}`);
 });
 
-test('base menus: root icon is Lucide Building2 component', () => {
+test('base menus: root is text-only without a default icon', () => {
   expect(baseMenus.length).toBeGreaterThan(0);
-  expect(baseMenus[0]!.icon).toBe(Building2);
+  expect(baseMenus[0]!.icon).toBeUndefined();
 });

@@ -77,7 +77,7 @@ test('setupApp > registers plugins and exposes browser i18n globals', () => {
   expect(registerGlobalDirectives.calls[0][0]).toBe(app);
   expect(exposeBrowserI18nOnWindow.calls.length).toBe(1);
   expect(applyTheme.calls).toEqual([[{ theme: 'dark', density: 'compact' }]]);
-  expect(pluginNames(app)).toEqual(['pinia', 'i18n', 'router', 'menu']);
+  expect(pluginNames(app)).toEqual(['pinia', 'i18n', 'menu', 'router']);
   expect(createAppRouter.calls.length).toBe(1);
   expect(createAppMenu.calls.length).toBe(1);
   expect(createTerminologyCatalogMerger.calls.length).toBe(1);
@@ -498,6 +498,6 @@ test('setupApp > uses production defaults for omitted deps', () => {
     createAppMenu: (() => ({})) as any,
   });
 
-  expect(pluginNames(app)).toEqual(['pinia', 'i18n', 'router', 'menu']);
+  expect(pluginNames(app)).toEqual(['pinia', 'i18n', 'menu', 'router']);
   expect(exposeBrowserI18nOnWindow.calls.length).toBe(1);
 });

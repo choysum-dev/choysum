@@ -170,9 +170,9 @@ export function setupApp(app: ChoysumWebApp, deps: SetupAppDeps = {}): void {
 
   app.usePlugin('i18n', i18n);
 
-  const router = makeRouter(baseUrl, i18n.global);
-  app.usePlugin('router', router);
-
   const menuPlugin = makeMenu();
   app.usePlugin('menu', menuPlugin);
+
+  const router = makeRouter(baseUrl, i18n.global);
+  app.usePlugin('router', router);
 }

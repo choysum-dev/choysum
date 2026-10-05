@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { createMenuPlugin, MenuSymbol } from './plugin';
+import { createMenuPlugin, MenuSymbol, getInstalledMenu } from './plugin';
 
 test('createMenuPlugin: installs menu manager onto app globals and injection without global router leakage', () => {
   const provideCalls: unknown[][] = [];
@@ -23,6 +23,7 @@ test('createMenuPlugin: installs menu manager onto app globals and injection wit
   plugin.install(app);
 
   expect(app.config.globalProperties.$menu).toBe(plugin.manager);
+  expect(getInstalledMenu()).toBe(plugin.manager);
   expect(provideCalls).toEqual([[MenuSymbol, plugin.manager]]);
   expect((globalThis as any).__CHOYSUM_ROUTER__).toBeUndefined();
 });

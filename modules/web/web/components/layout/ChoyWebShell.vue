@@ -63,6 +63,7 @@ SPDX-License-Identifier: Apache-2.0
     class="choy-shell flex h-full min-h-0 w-full flex-col overflow-hidden"
     data-testid="choy-shell"
     data-shell-mode="sidebar"
+    :style="{ '--sidebar-width': '13.5rem' }"
   >
     <ChoyShellHeader
       v-if="effectiveShowHeader"
@@ -76,7 +77,7 @@ SPDX-License-Identifier: Apache-2.0
         </div>
       </template>
     </ChoyShellHeader>
-    <div class="choy-shell__body flex min-h-0 flex-1 overflow-hidden">
+    <div class="choy-shell__body relative flex min-h-0 flex-1 overflow-hidden">
       <ChoySidebarBridge />
       <Sidebar collapsible="icon" side="left">
         <SidebarContent>
@@ -208,3 +209,9 @@ const menuTriggerLabel = computed(() =>
   }),
 )
 </script>
+
+<style>
+.choy-shell[data-shell-mode='sidebar'] {
+  --sidebar-width: 13.5rem !important;
+}
+</style>

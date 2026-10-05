@@ -7,7 +7,6 @@ import ModuleDetail from './ModuleDetail.vue';
 import ModuleHistory from './ModuleHistory.vue';
 import ModuleList from './ModuleList.vue';
 import ModuleListTable from './ModuleListTable.vue';
-import { Settings } from 'lucide-vue-next';
 import { metaMenus } from '../menu/menus';
 
 const pages: Array<[string, any, string]> = [
@@ -42,7 +41,7 @@ test('meta page mount: every ChoyPage host mounts under choysumMount', async () 
   if (failures.length) throw new Error(`meta page mount failed: ${failures.join(', ')}`);
 });
 
-test('meta menus: root icon is Lucide Settings component', () => {
+test('meta menus: root is text-only without a default icon', () => {
   expect(metaMenus.length).toBeGreaterThan(0);
-  expect(metaMenus[0]!.icon).toBe(Settings);
+  expect(metaMenus[0]!.icon).toBeUndefined();
 });

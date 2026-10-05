@@ -7,6 +7,16 @@ import type { Menu, MenuItem } from './types';
 
 export const MenuSymbol = Symbol('ChoysumMenu');
 
+let installedMenu: Menu | null = null;
+
+/**
+ * Returns the Menu from the last `createMenuPlugin().install()`.
+ * Used when Pinia/router callbacks have no inject context.
+ */
+export function getInstalledMenu(): Menu | null {
+  return installedMenu;
+}
+
 export interface MenuPlugin {
   install(app: App): void;
   readonly manager: Menu;
@@ -29,6 +39,7 @@ export function createMenuPlugin(): MenuPlugin {
 
   return {
     install(app: App) {
+      installedMenu = menuManager;
       app.config.globalProperties.$menu = menuManager;
       app.provide(MenuSymbol, menuManager);
     },
