@@ -36,12 +36,21 @@ export interface MenuPlugin {
 
 export function createMenuPlugin(): MenuPlugin {
   const menuManager = new MenuManager();
+  // FE unit tests share one JS realm; drop a stale singleton until this plugin installs.
+  if (installedMenu) installedMenu = null;
 
   return {
     install(app: App) {
       installedMenu = menuManager;
       app.config.globalProperties.$menu = menuManager;
       app.provide(MenuSymbol, menuManager);
+      const prevUnmount = typeof app.unmount === 'function' ? app.unmount.bind(app) : undefined;
+      if (prevUnmount) {
+        app.unmount = () => {
+          if (installedMenu === menuManager) installedMenu = null;
+          prevUnmount();
+        };
+      }
     },
     manager: menuManager,
     addMenu: menuManager.addMenu.bind(menuManager),

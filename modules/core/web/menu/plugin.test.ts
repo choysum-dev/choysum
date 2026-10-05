@@ -28,6 +28,33 @@ test('createMenuPlugin: installs menu manager onto app globals and injection wit
   expect((globalThis as any).__CHOYSUM_ROUTER__).toBeUndefined();
 });
 
+test('createMenuPlugin: clears getInstalledMenu on unmount and on a later createMenuPlugin', () => {
+  const unmountCalls: number[] = [];
+  const app = {
+    config: { globalProperties: {} },
+    provide() {},
+    unmount() {
+      unmountCalls.push(1);
+    },
+  } as any;
+
+  const plugin = createMenuPlugin();
+  plugin.install(app);
+  expect(getInstalledMenu()).toBe(plugin.manager);
+  app.unmount();
+  expect(getInstalledMenu()).toBeNull();
+  expect(unmountCalls).toEqual([1]);
+
+  const leftover = createMenuPlugin();
+  leftover.install({
+    config: { globalProperties: {} },
+    provide() {},
+  } as any);
+  expect(getInstalledMenu()).toBe(leftover.manager);
+  createMenuPlugin();
+  expect(getInstalledMenu()).toBeNull();
+});
+
 test('createMenuPlugin: delegates menu operations to the underlying manager', () => {
   const plugin = createMenuPlugin();
 

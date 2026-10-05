@@ -5,7 +5,9 @@ import { h } from 'vue';
 import * as VueRouter from 'vue-router';
 const createFeStubRouter = (VueRouter as any).createFeStubRouter;
 import { createPinia, setActivePinia } from 'pinia';
+import { createMenuPlugin } from '@/core/web/menu';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import { MODULE_BOARD_PATH } from '../router/resolveDefaultLandPath';
 import ErrorView from './ErrorView.vue';
 import AuthPanel from '@/auth/web/components/AuthPanel.vue';
 import ChoyPage from '@/web/web/components/layout/ChoyPage.vue';
@@ -15,6 +17,8 @@ import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 describe('ErrorView', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
+    // Drop a leaked getInstalledMenu singleton from earlier files in this FE realm.
+    createMenuPlugin();
     stubSfc(ChoyPage as any, {
       props: { title: String, padding: Boolean, width: String, class: null },
       setup: ((_props: any, { slots }: any) => {
@@ -238,7 +242,7 @@ describe('ErrorView', () => {
       denied.click('[data-test=action]');
       (deniedActions[1] as HTMLElement).click();
       (deniedActions[2] as HTMLElement).click();
-      expect(deniedPush.calls.map(c => c[0])).toEqual(['/meta/modules', '/auth/users']);
+      expect(deniedPush.calls.map(c => c[0])).toEqual([MODULE_BOARD_PATH, '/auth/users']);
       expect(open.calls[0]?.[0]).toBe('mailto:admin@example.com');
       expect(open.calls[0]?.[2]).toBe('noopener,noreferrer');
       denied.unmount();
