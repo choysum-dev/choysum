@@ -112,7 +112,16 @@ function readRuntimeMenus(): MenuItem[] {
 
 export function resolveRuntimeDefaultLandPath(): string {
   try {
-    const menus = readRuntimeMenus().map(withDeclaredVisibility);
+    const raw = readRuntimeMenus();
+    let snapshotReady = false;
+    try {
+      snapshotReady = hasRouteGrantSnapshot(useAuthStore().permissionState);
+    } catch {
+      snapshotReady = false;
+    }
+    // Restore declared visibility only before a grant snapshot exists; afterwards
+    // keep permission-projected `hidden` so land matches the sidebar.
+    const menus = snapshotReady ? raw : raw.map(withDeclaredVisibility);
     return resolveDefaultLandPath({
       menus,
       canNavigate: buildRuntimeCanNavigate(),

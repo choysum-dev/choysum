@@ -63,7 +63,6 @@ SPDX-License-Identifier: Apache-2.0
     class="choy-shell flex h-full min-h-0 w-full flex-col overflow-hidden"
     data-testid="choy-shell"
     data-shell-mode="sidebar"
-    :style="{ '--sidebar-width': '13.5rem' }"
   >
     <ChoyShellHeader
       v-if="effectiveShowHeader"
@@ -213,5 +212,11 @@ const menuTriggerLabel = computed(() =>
 <style>
 .choy-shell[data-shell-mode='sidebar'] {
   --sidebar-width: 13.5rem !important;
+}
+
+/* Sit under the product header: kit default is viewport-fixed h-svh. */
+.choy-shell[data-shell-mode='sidebar'] .choy-shell__body :deep([data-slot='sidebar'] > .fixed) {
+  position: absolute;
+  height: 100%;
 }
 </style>

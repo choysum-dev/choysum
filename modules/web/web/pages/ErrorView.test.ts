@@ -5,7 +5,7 @@ import { h } from 'vue';
 import * as VueRouter from 'vue-router';
 const createFeStubRouter = (VueRouter as any).createFeStubRouter;
 import { createPinia, setActivePinia } from 'pinia';
-import { createMenuPlugin } from '@/core/web/menu';
+import { resetInstalledMenu } from '@/core/web/menu';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import { MODULE_BOARD_PATH } from '../router/resolveDefaultLandPath';
 import ErrorView from './ErrorView.vue';
@@ -18,7 +18,7 @@ describe('ErrorView', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     // Drop a leaked getInstalledMenu singleton from earlier files in this FE realm.
-    createMenuPlugin();
+    resetInstalledMenu();
     stubSfc(ChoyPage as any, {
       props: { title: String, padding: Boolean, width: String, class: null },
       setup: ((_props: any, { slots }: any) => {

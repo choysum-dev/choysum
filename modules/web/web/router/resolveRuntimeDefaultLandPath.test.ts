@@ -303,4 +303,35 @@ describe('resolveRuntimeDefaultLandPath', () => {
     } as any);
     expect(resolveRuntimeDefaultLandPath()).toBe('/base/companies');
   });
+
+  test('skips permission-hidden leaves once a grant snapshot exists', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'base.menu.company',
+      title: 'Company',
+      path: '/base/companies',
+      order: 1,
+      hidden: true,
+      meta: { __permBaseHidden: false },
+    } as any);
+    menuPlugin.manager.addMenu({
+      id: 'base.menu.address',
+      title: 'Address',
+      path: '/base/addresses',
+      order: 2,
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { useAuthStore } = await import('@/auth/web/stores/auth');
+    const auth = useAuthStore(pinia);
+    (auth as any).permissionState = {
+      permStateVersion: 1,
+      byCompany: { '*': { ui: { routes: ['*'], menus: ['*'], actions: [] } } },
+    };
+    menuPlugin.install({
+      config: { globalProperties: {} },
+      provide() {},
+    } as any);
+    expect(resolveRuntimeDefaultLandPath()).toBe('/base/addresses');
+  });
 });

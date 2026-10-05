@@ -17,6 +17,14 @@ export function getInstalledMenu(): Menu | null {
   return installedMenu;
 }
 
+/**
+ * Drops the last installed manager. App unmount also does this; tests that share
+ * one JS realm call it between cases so a leftover tree cannot leak.
+ */
+export function resetInstalledMenu(): void {
+  installedMenu = null;
+}
+
 export interface MenuPlugin {
   install(app: App): void;
   readonly manager: Menu;
@@ -36,8 +44,6 @@ export interface MenuPlugin {
 
 export function createMenuPlugin(): MenuPlugin {
   const menuManager = new MenuManager();
-  // FE unit tests share one JS realm; drop a stale singleton until this plugin installs.
-  if (installedMenu) installedMenu = null;
 
   return {
     install(app: App) {

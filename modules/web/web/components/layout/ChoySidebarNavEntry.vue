@@ -140,7 +140,7 @@ function onLeafActivate(item: MenuItem, e: MouseEvent) {
       v-else
       :is="Button"
       :as="item.path ? 'a' : 'button'"
-      :href="leafHref(item)"
+      :href="item.disabled ? undefined : leafHref(item)"
       :target="leafTarget(item)"
       :rel="leafTarget(item) === '_blank' ? 'noopener noreferrer' : undefined"
       :type="item.path ? undefined : 'button'"

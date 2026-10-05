@@ -25,14 +25,29 @@ function resolveMenuManager(): Menu | null {
 export const useMenuStore = defineStore('menu', () => {
   const activeMenuId = ref<string | null>(null);
 
+  // Capture the reactive route during store setup when inject is available.
+  // Re-try on later reads so a store created in a router redirect can still
+  // pick up the route once a component render provides injection.
+  let capturedRoute: { path?: string } | undefined;
+  try {
+    capturedRoute = useRoute();
+  } catch {
+    capturedRoute = undefined;
+  }
+
   /**
    * Reads the current route path when vue-router injection is available.
    */
   function currentRoutePath(): string {
+    if (capturedRoute && typeof capturedRoute.path === 'string') {
+      return capturedRoute.path;
+    }
     try {
-      return String(useRoute()?.path || '');
+      const route = useRoute();
+      if (route) capturedRoute = route;
+      return String(route?.path || '');
     } catch {
-      return '';
+      return String(capturedRoute?.path || '');
     }
   }
 

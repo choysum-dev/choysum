@@ -69,7 +69,7 @@ const navGroups = computed((): NavGroup[] => {
         label: labelOf(root),
         items: children,
       })
-    } else {
+    } else if (!root.children?.length) {
       ungrouped.push(root)
     }
   }

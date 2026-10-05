@@ -185,6 +185,40 @@ describe('ChoySidebarNav expansion', () => {
     mounted.unmount();
   });
 
+  test('omits href on a disabled leaf', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'app',
+      title: 'App',
+      children: [{ id: 'off', title: 'Off', path: '/off', disabled: true } as any],
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: { path: '/', fullPath: '/', meta: {} },
+    });
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h(SidebarProvider, null, {
+            default: () => h(ChoySidebarNav),
+          });
+      },
+    });
+    const mounted = mountApp(Host as any, {
+      plugins: [menuPlugin, pinia, router, i18n],
+    });
+    await flushPromises();
+    await nextTick();
+    const leaf = Array.from(mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-leaf]')).find(
+      (b) => (b.textContent || '').includes('Off'),
+    ) as HTMLAnchorElement | undefined;
+    expect(leaf).toBeTruthy();
+    expect(leaf!.hasAttribute('href')).toBe(false);
+    mounted.unmount();
+  });
+
   test('labels app roots and marks the current leaf', async () => {
     const mounted = await mountSidebar();
     const labels = Array.from(
