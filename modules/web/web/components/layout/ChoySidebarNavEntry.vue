@@ -92,6 +92,10 @@ function onLeafActivate(item: MenuItem, e: MouseEvent) {
   }
   if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
   if (item.externalLink) return
+  if (!item.path || UNSAFE_EXTERNAL_SCHEME.test(item.path)) {
+    e.preventDefault()
+    return
+  }
   e.preventDefault()
   props.onLeafClick(item)
 }

@@ -61,6 +61,25 @@ test('createMenuPlugin: restores prior getInstalledMenu on unmount; create does 
   expect(getInstalledMenu()).toBeNull();
   expect(unmountCalls).toEqual([2, 1]);
 
+  const a = createMenuPlugin();
+  const b = createMenuPlugin();
+  const appA = {
+    config: { globalProperties: {} },
+    provide() {},
+    unmount() {},
+  } as any;
+  const appB = {
+    config: { globalProperties: {} },
+    provide() {},
+    unmount() {},
+  } as any;
+  a.install(appA);
+  b.install(appB);
+  appA.unmount();
+  expect(getInstalledMenu()).toBe(b.manager);
+  appB.unmount();
+  expect(getInstalledMenu()).toBeNull();
+
   const leftover = createMenuPlugin();
   leftover.install({
     config: { globalProperties: {} },

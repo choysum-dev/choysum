@@ -8,6 +8,7 @@ import type { Menu, MenuItem } from './types';
 export const MenuSymbol = Symbol('ChoysumMenu');
 
 let installedMenu: Menu | null = null;
+const installedMenuStack: Menu[] = [];
 
 /**
  * Returns the Menu from the last `createMenuPlugin().install()`.
@@ -17,12 +18,24 @@ export function getInstalledMenu(): Menu | null {
   return installedMenu;
 }
 
+function retainInstalledMenu(menu: Menu): void {
+  installedMenuStack.push(menu);
+  installedMenu = menu;
+}
+
+function releaseInstalledMenu(menu: Menu): void {
+  const idx = installedMenuStack.lastIndexOf(menu);
+  if (idx !== -1) installedMenuStack.splice(idx, 1);
+  installedMenu = installedMenuStack[installedMenuStack.length - 1] ?? null;
+}
+
 /**
- * Drops the last installed manager. App unmount also does this; tests that share
+ * Drops every installed manager. App unmount also does this; tests that share
  * one JS realm call it between cases so a leftover tree cannot leak.
  */
 export function resetInstalledMenu(): void {
   installedMenu = null;
+  installedMenuStack.length = 0;
 }
 
 export interface MenuPlugin {
@@ -47,14 +60,13 @@ export function createMenuPlugin(): MenuPlugin {
 
   return {
     install(app: App) {
-      const prevInstalled = installedMenu;
-      installedMenu = menuManager;
+      retainInstalledMenu(menuManager);
       app.config.globalProperties.$menu = menuManager;
       app.provide(MenuSymbol, menuManager);
       const prevUnmount = typeof app.unmount === 'function' ? app.unmount.bind(app) : undefined;
       if (prevUnmount) {
         app.unmount = () => {
-          if (installedMenu === menuManager) installedMenu = prevInstalled;
+          releaseInstalledMenu(menuManager);
           prevUnmount();
         };
       }

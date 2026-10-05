@@ -49,6 +49,21 @@ test('applyPermissionToMenus: leaves declared visibility when snapshot is missin
   expect(Boolean(menus[0].children?.[0].hidden)).toBe(false);
 });
 
+test('applyPermissionToMenus: hides an empty group when all children are declared hidden without a snapshot', () => {
+  const menus = [
+    {
+      id: 'base.menu.root',
+      title: 'Master Data',
+      children: [{ id: 'base.menu.company', title: 'Company', path: '/base/companies', hidden: true }],
+    },
+  ] as unknown as MenuItem[];
+
+  applyPermissionToMenus(menus, null, ctx);
+
+  expect(Boolean(menus[0].hidden)).toBe(true);
+  expect(Boolean(menus[0].children?.[0].hidden)).toBe(true);
+});
+
 test('applyPermissionToMenus: hides unauthorized menu item by default', () => {
   const menus = [
     {
