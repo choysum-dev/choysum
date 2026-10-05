@@ -31,17 +31,30 @@ const MODULE_INDEX_DATETIME_FIELDS = ['LastSyncAt', 'LastBatchSyncAt'] as const 
 /** Default search when the caller omits a filter (not applied to empty/invalid payloads). */
 export const DEFAULT_MODULE_INDEX_SEARCH = ['Available', '=', true] as const;
 
+function isEmptyArrayCondition(condition: unknown): boolean {
+  return Array.isArray(condition) && condition.length === 0;
+}
+
+/** True for keyless plain records (`{}` / `Object.create(null)`), not Date/Map/class instances. */
+function isEmptyPlainObjectCondition(condition: unknown): boolean {
+  if (condition == null || Array.isArray(condition) || typeof condition !== 'object') return false;
+  const proto = Object.getPrototypeOf(condition);
+  if (proto !== Object.prototype && proto !== null) return false;
+  return Object.keys(condition).length === 0;
+}
+
 /**
  * Assert a module-index search condition shape.
- * Empty array/object is rejected — callers that want the catalog default must pass
- * {@link DEFAULT_MODULE_INDEX_SEARCH} explicitly.
+ * Empty array/object is rejected here — Search/Count map those to
+ * {@link DEFAULT_MODULE_INDEX_SEARCH} via {@link resolveSearchCondition}.
  */
 export function assertSearchCondition(condition: unknown): unknown {
   if (condition == null) {
     throw new Error('search condition is required');
   }
-  const emptyArray = Array.isArray(condition) && condition.length === 0;
-  const emptyObject = !Array.isArray(condition) && typeof condition === 'object' && Object.keys(condition).length === 0;
+  const emptyArray = isEmptyArrayCondition(condition);
+  const emptyObject =
+    !Array.isArray(condition) && typeof condition === 'object' && Object.keys(condition).length === 0;
   if (emptyArray || emptyObject) {
     throw new Error('search condition must not be empty');
   }
@@ -49,6 +62,20 @@ export function assertSearchCondition(condition: unknown): unknown {
     throw new Error('search condition must be an array or object');
   }
   return condition;
+}
+
+/**
+ * Search/Count filter: omitted, empty `[]`, and empty plain `{}` become
+ * {@link DEFAULT_MODULE_INDEX_SEARCH} so generic list/kanban callers still load the catalog.
+ */
+export function resolveSearchCondition(condition: unknown): unknown {
+  if (condition == null) {
+    return DEFAULT_MODULE_INDEX_SEARCH;
+  }
+  if (isEmptyArrayCondition(condition) || isEmptyPlainObjectCondition(condition)) {
+    return DEFAULT_MODULE_INDEX_SEARCH;
+  }
+  return assertSearchCondition(condition);
 }
 
 type SortSpec = { field: string; desc: boolean };

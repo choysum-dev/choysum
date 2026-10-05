@@ -23,7 +23,7 @@ import {
   extractGroupedModuleNames,
   assertOriginType,
   originTypeOrAll,
-  assertSearchCondition,
+  resolveSearchCondition,
   DEFAULT_MODULE_INDEX_SEARCH,
   parseSortSpecs,
   projectFields,
@@ -199,7 +199,7 @@ export default class MetaModuleIndex extends BaseModel {
     condition: QueryCondition<RowOf<C>> | [] = DEFAULT_MODULE_INDEX_SEARCH as QueryCondition<RowOf<C>>,
     options?: Omit<SearchOptions<RowOf<C>>, 'fields'> & { fields?: F }
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
-    const normalized = assertSearchCondition(condition);
+    const normalized = resolveSearchCondition(condition);
     const rawOptions = { ...(options || {}) } as Record<string, unknown>;
     const requestedFields = normalizeFields(rawOptions.fields);
     const sortSpecs = parseSortSpecs(rawOptions.orderBy);
@@ -313,7 +313,7 @@ export default class MetaModuleIndex extends BaseModel {
     condition: QueryCondition<RowOf<C>> | [] = DEFAULT_MODULE_INDEX_SEARCH as QueryCondition<RowOf<C>>,
     options?: SoftDeleteOptions
   ): Promise<number> {
-    const normalized = assertSearchCondition(condition);
+    const normalized = resolveSearchCondition(condition);
     const readGroupCountOptions: Record<string, unknown> = {
       groupby: 'ModuleName',
       condition: normalized,

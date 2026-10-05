@@ -283,6 +283,9 @@ describe('ChoyKanbanView chrome', () => {
     rs.moveCardToLane(dragged, 'todo', 'done');
     expect(moves.length).toBe(before);
     expect(readonlyMount.q('[data-testid=choy-kanban-move-to-lane]')).toBeNull();
+    expect(readonlyMount.q('.fe-stub-draggable')).toBeNull();
+    expect(readonlyMount.q('[data-testid=choy-kanban-lane-static]')).not.toBeNull();
+    expect(readonlyMount.text()).toContain('Card One');
     readonlyMount.unmount();
   });
 

@@ -91,7 +91,34 @@ SPDX-License-Identifier: Apache-2.0
             </slot>
           </header>
 
+          <div
+            v-if="readonly"
+            class="choy-kanban-view__lane-body flex flex-1 flex-col gap-2 p-2"
+            data-testid="choy-kanban-lane-static"
+            :style="{ minHeight: '8rem' }"
+          >
+            <article
+              v-for="card in lane.cards"
+              :key="card.id"
+              class="choy-kanban-view__card cursor-pointer rounded-md border border-border bg-background p-3 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              :data-card-id="card.id"
+              tabindex="0"
+              role="article"
+              :aria-label="card.title"
+              @click="onCardClick(card)"
+              @keydown.enter.self.prevent="onCardClick(card)"
+            >
+              <div class="flex items-start gap-1">
+                <div class="min-w-0 flex-1">
+                  <slot name="card" :card="card" :lane="lane">
+                    <ChoyKanbanCardFallback :card="card" />
+                  </slot>
+                </div>
+              </div>
+            </article>
+          </div>
           <draggable
+            v-else
             class="choy-kanban-view__lane-body flex flex-1 flex-col gap-2 p-2"
             :list="lane.cards"
             item-key="id"
@@ -116,10 +143,7 @@ SPDX-License-Identifier: Apache-2.0
                 <div class="flex items-start gap-1">
                   <div class="min-w-0 flex-1">
                     <slot name="card" :card="card" :lane="lane">
-                      <div class="text-sm font-medium text-foreground">{{ card.title }}</div>
-                      <div v-if="card.subtitle" class="mt-1 text-xs text-foreground/60">
-                        {{ card.subtitle }}
-                      </div>
+                      <ChoyKanbanCardFallback :card="card" />
                     </slot>
                   </div>
                   <DropdownMenu v-if="!effectiveReadonly && otherLanes(lane.key).length">
@@ -198,7 +222,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, defineComponent, h, ref, watch, type PropType } from 'vue';
 import draggable from 'vuedraggable';
 import { MoreHorizontal } from 'lucide-vue-next';
 import type { ClassValue } from '../../lib/utils';
@@ -228,6 +252,22 @@ import {
   type ChoyKanbanLoadMore,
   type ChoyKanbanMove,
 } from './kanbanViewHelpers';
+
+/** Shared default card body for readonly and draggable lane cards. */
+const ChoyKanbanCardFallback = defineComponent({
+  name: 'ChoyKanbanCardFallback',
+  props: {
+    card: { type: Object as PropType<ChoyKanbanCard>, required: true },
+  },
+  setup(props) {
+    return () => [
+      h('div', { class: 'text-sm font-medium text-foreground' }, props.card.title),
+      props.card.subtitle
+        ? h('div', { class: 'mt-1 text-xs text-foreground/60' }, props.card.subtitle)
+        : null,
+    ];
+  },
+});
 
 /**
  * Store-bound kanban board. Requires :store or a page-provided store.
