@@ -104,4 +104,42 @@ describe('ChoyAppRail', () => {
     expect(mounted.q('[data-testid=choy-shell-app-rail-tooltip]')).toBeNull();
     mounted.unmount();
   });
+
+  test('opens a tooltip portal and skips apps without a key', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'custom',
+      title: '公司管理',
+      children: [{ id: 'custom-leaf', title: 'Leaf', path: '/custom' }],
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: { path: '/custom', fullPath: '/custom', meta: {} },
+    });
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+    const mounted = mountApp(ChoyAppRail as any, {
+      plugins: [menuPlugin, pinia, router, i18n],
+    });
+    await flushPromises();
+    await nextTick();
+    const ss = mounted.setupState();
+    ss.onTooltipOpen({ id: '', path: '', title: '' }, true);
+    ss.onTooltipOpen({ id: 'custom', title: '公司管理' }, true);
+    await nextTick();
+    expect(mounted.q('[data-testid=choy-shell-app-rail-tooltip]')).not.toBeNull();
+    ss.onTooltipOpen({ id: 'custom', title: '公司管理' }, false);
+    await nextTick();
+    expect(mounted.q('[data-testid=choy-shell-app-rail-tooltip]')).toBeNull();
+    mounted.unmount();
+  });
+
+  test('renders without menu, i18n, or sidebar context', async () => {
+    setActivePinia(undefined as any);
+    const mounted = mountApp(ChoyAppRail as any);
+    await flushPromises();
+    expect(mounted.q('[data-testid=choy-shell-app-rail]')).not.toBeNull();
+    expect(mounted.qa('[data-testid=choy-shell-app-rail-item]').length).toBe(0);
+    mounted.unmount();
+  });
 });

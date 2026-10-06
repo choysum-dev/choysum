@@ -88,9 +88,14 @@ SPDX-License-Identifier: Apache-2.0
             class="bg-sidebar flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
             data-testid="choy-shell-nav-pane"
           >
-            <slot name="aside">
-              <ChoySidebarNav />
-            </slot>
+            <div
+              class="flex min-h-0 flex-1 flex-col overflow-auto"
+              data-testid="choy-shell-nav-pane-scroll"
+            >
+              <slot name="aside">
+                <ChoySidebarNav />
+              </slot>
+            </div>
           </div>
         </div>
         <SidebarRail />

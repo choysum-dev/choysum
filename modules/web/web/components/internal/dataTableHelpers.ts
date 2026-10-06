@@ -329,3 +329,106 @@ export function resolveDataTableEstimateSize(
     : fallback;
 }
 
+/** Virtualize when the host left it on and at least one row is present. */
+export function dataTableIsVirtualized(virtualize: boolean | undefined, rowCount: number): boolean {
+  return virtualize !== false && rowCount > 0;
+}
+
+export function dataTableVirtualizerCount(virtualized: boolean, rowCount: number): number {
+  return virtualized ? rowCount : 0;
+}
+
+export function dataTableScrollElement(
+  virtualized: boolean,
+  parent: Element | null,
+): Element | null {
+  return virtualized ? parent : null;
+}
+
+export function dataTableShouldMeasureRow(el: Element | null, virtualized: boolean): boolean {
+  return !!el && virtualized;
+}
+
+export function dataTableMaybeMeasure(virtualized: boolean, measure: () => void): void {
+  if (virtualized) {
+    measure();
+  }
+}
+
+export function dataTableNonVirtualScrollTop(opts: {
+  index: number;
+  align?: 'start' | 'center' | 'end' | 'auto';
+  row?: { offsetTop: number; offsetHeight: number } | null;
+  viewHeight: number;
+  estimateSize: number;
+}): number {
+  const row = opts.row;
+  if (row) {
+    const top = row.offsetTop;
+    const rowHeight = row.offsetHeight;
+    const view = opts.viewHeight;
+    if (opts.align === 'end') {
+      return Math.max(0, top + rowHeight - view);
+    }
+    if (opts.align === 'center') {
+      return Math.max(0, top - (view - rowHeight) / 2);
+    }
+    return Math.max(0, top);
+  }
+  return Math.max(0, opts.index * opts.estimateSize);
+}
+
+export function mapDataTableBodyRows<T extends { id: unknown }>(opts: {
+  virtualized: boolean;
+  rows: readonly T[];
+  virtualItems: readonly { index: number; key: unknown; start: number }[];
+}): Array<{ key: unknown; index: number; start: number | undefined; row: T }> {
+  if (opts.virtualized && opts.virtualItems.length) {
+    return opts.virtualItems.map((virtualRow) => ({
+      key: opts.rows[virtualRow.index]?.id ?? virtualRow.key,
+      index: virtualRow.index,
+      start: virtualRow.start,
+      row: opts.rows[virtualRow.index],
+    }));
+  }
+  return opts.rows.map((row, index) => ({
+    key: row.id,
+    index,
+    start: undefined,
+    row,
+  }));
+}
+
+export function applyDataTableScrollToRow(opts: {
+  index: number;
+  align?: 'start' | 'center' | 'end' | 'auto';
+  virtualized: boolean;
+  parent: { querySelector: (sel: string) => Element | null; clientHeight: number } | null;
+  estimateSize: number | undefined | null;
+  scrollVirtual: (index: number, align: 'start' | 'center' | 'end' | 'auto') => void;
+  setScrollTop: (top: number) => void;
+}): void {
+  if (!Number.isFinite(opts.index) || opts.index < 0) {
+    return;
+  }
+  if (opts.virtualized) {
+    opts.scrollVirtual(opts.index, opts.align ?? 'auto');
+    return;
+  }
+  if (!opts.parent) {
+    return;
+  }
+  const row = opts.parent.querySelector(`[data-index="${opts.index}"]`) as
+    | (Element & { offsetTop: number; offsetHeight: number })
+    | null;
+  opts.setScrollTop(
+    dataTableNonVirtualScrollTop({
+      index: opts.index,
+      align: opts.align,
+      row,
+      viewHeight: opts.parent.clientHeight,
+      estimateSize: resolveDataTableEstimateSize(opts.estimateSize, 32),
+    }),
+  );
+}
+

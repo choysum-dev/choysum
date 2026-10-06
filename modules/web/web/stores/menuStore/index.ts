@@ -164,7 +164,8 @@ export const useMenuStore = defineStore('menu', () => {
       }
       current = current.__parent;
     }
-    return current;
+    // Hop cap means a cyclic __parent chain; do not treat a mid-chain node as the app root.
+    return null;
   }
 
   return {

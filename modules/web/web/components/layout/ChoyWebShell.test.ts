@@ -31,6 +31,9 @@ describe('ChoyWebShell', () => {
     expect(mounted.q('[data-anchor="choy.shell.header-actions"]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-nav-split]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-nav-pane]')).not.toBeNull();
+    expect(
+      mounted.q('[data-testid=choy-shell-nav-pane-scroll]')?.className || '',
+    ).toContain('overflow-auto');
     expect(mounted.q('[data-testid=choy-shell-app-rail]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-aside]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-footer]')).not.toBeNull();

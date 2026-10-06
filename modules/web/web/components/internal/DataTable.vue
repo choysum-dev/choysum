@@ -155,10 +155,17 @@ import { useVirtualizer } from '@tanstack/vue-virtual';
 import { cn, type ClassValue } from '../../lib/utils';
 import Checkbox from '../vendor/ui/checkbox/Checkbox.vue';
 import {
+  applyDataTableScrollToRow,
   compareDataTableValues,
+  dataTableIsVirtualized,
+  dataTableMaybeMeasure,
+  dataTableScrollElement,
   dataTableSelectionIdsEqual,
+  dataTableShouldMeasureRow,
+  dataTableVirtualizerCount,
   decodeDataTableRowKey,
   encodeDataTableRowKey,
+  mapDataTableBodyRows,
   mapDataTableSelectionKeys,
   mergeDataTableControlledSelection,
   nextDataTableSort,
@@ -403,17 +410,17 @@ watch(rows, (current) => {
   }
 });
 
-const isVirtualized = computed(
-  () => props.virtualize !== false && rows.value.length > 0,
+const isVirtualized = computed(() =>
+  dataTableIsVirtualized(props.virtualize, rows.value.length),
 );
 
 const virtualizer = useVirtualizer({
   get count() {
-    return isVirtualized.value ? rows.value.length : 0;
+    return dataTableVirtualizerCount(isVirtualized.value, rows.value.length);
   },
   // Skip the observer when virtualization is off or the row set is empty.
   getScrollElement: () =>
-    isVirtualized.value ? (parentRef.value as Element | null) : null,
+    dataTableScrollElement(isVirtualized.value, parentRef.value as Element | null),
   estimateSize: () => resolveDataTableEstimateSize(props.estimateSize, 32),
   // Keep measurements attached to the logical row so sorting does not reuse stale heights.
   getItemKey: (index) => rows.value[index]?.id ?? index,
@@ -424,9 +431,7 @@ const virtualizer = useVirtualizer({
 watch(
   () => props.estimateSize,
   () => {
-    if (isVirtualized.value) {
-      virtualizer.value.measure();
-    }
+    dataTableMaybeMeasure(isVirtualized.value, () => virtualizer.value.measure());
   },
 );
 
@@ -438,9 +443,7 @@ watch(
     if (parentRef.value) {
       parentRef.value.scrollTop = 0;
     }
-    if (isVirtualized.value) {
-      virtualizer.value.measure();
-    }
+    dataTableMaybeMeasure(isVirtualized.value, () => virtualizer.value.measure());
   },
 );
 
@@ -457,26 +460,17 @@ watch(
 const virtualRows = computed(() => virtualizer.value.getVirtualItems());
 const totalSize = computed(() => virtualizer.value.getTotalSize());
 
-const bodyRows = computed(() => {
-  if (!isVirtualized.value) {
-    return rows.value.map((row, index) => ({
-      key: row.id,
-      index,
-      start: undefined as number | undefined,
-      row,
-    }));
-  }
-  return virtualRows.value.map((virtualRow) => ({
-    key: rows.value[virtualRow.index]?.id ?? virtualRow.key,
-    index: virtualRow.index,
-    start: virtualRow.start,
-    row: rows.value[virtualRow.index],
-  }));
-});
+const bodyRows = computed(() =>
+  mapDataTableBodyRows({
+    virtualized: isVirtualized.value,
+    rows: rows.value,
+    virtualItems: virtualRows.value,
+  }),
+);
 
 function measureRowElement(el: Element | null): void {
-  if (el && isVirtualized.value) {
-    virtualizer.value.measureElement(el);
+  if (dataTableShouldMeasureRow(el, isVirtualized.value)) {
+    virtualizer.value.measureElement(el as Element);
   }
 }
 const gridTemplate = computed(() =>
@@ -521,19 +515,21 @@ function onHeaderClick(columnId: string, canSort: boolean): void {
 }
 
 function scrollToRow(index: number, align?: 'start' | 'center' | 'end' | 'auto'): void {
-  if (!Number.isFinite(index) || index < 0) {
-    return;
-  }
-  if (isVirtualized.value) {
-    virtualizer.value.scrollToIndex(index, { align: align ?? 'auto' });
-    return;
-  }
-  const parent = parentRef.value;
-  if (!parent) {
-    return;
-  }
-  const size = resolveDataTableEstimateSize(props.estimateSize, 32);
-  parent.scrollTop = Math.max(0, index * size);
+  applyDataTableScrollToRow({
+    index,
+    align,
+    virtualized: isVirtualized.value,
+    parent: parentRef.value,
+    estimateSize: props.estimateSize,
+    scrollVirtual: (rowIndex, rowAlign) => {
+      virtualizer.value.scrollToIndex(rowIndex, { align: rowAlign });
+    },
+    setScrollTop: (top) => {
+      if (parentRef.value) {
+        parentRef.value.scrollTop = top;
+      }
+    },
+  });
 }
 
 defineExpose({ scrollToRow });

@@ -410,4 +410,72 @@ describe('ChoySidebarNav expansion', () => {
     expect(mounted.q('[data-testid=choy-sidebar-nav-empty]')).not.toBeNull();
     mounted.unmount();
   });
+
+  test('renders a path-only app root as an ungrouped leaf', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'solo',
+      title: 'Solo App',
+      path: '/solo',
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: { path: '/solo', fullPath: '/solo', meta: {} },
+    });
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+    const Host = defineComponent({
+      setup() {
+        const store = useMenuStore();
+        const active = store.getMenu('solo');
+        if (active) store.setActiveMenu(active);
+        return () =>
+          h(SidebarProvider, null, {
+            default: () => h(ChoySidebarNav),
+          });
+      },
+    });
+    const mounted = mountApp(Host as any, {
+      plugins: [menuPlugin, pinia, router, i18n],
+    });
+    await flushPromises();
+    await nextTick();
+    expect(mounted.q('[data-testid=choy-sidebar-nav-app-title]')?.textContent?.trim()).toBe('Solo App');
+    expect(mounted.text()).toContain('Solo App');
+    expect(mounted.q('[data-testid=choy-sidebar-nav-empty]')).toBeNull();
+    mounted.unmount();
+  });
+
+  test('shows empty nested nav when every child is hidden', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'app',
+      title: 'App',
+      children: [{ id: 'hidden', title: 'Hidden', path: '/h', hidden: true }],
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: { path: '/', fullPath: '/', meta: {} },
+    });
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+    const Host = defineComponent({
+      setup() {
+        const store = useMenuStore();
+        const active = store.getMenu('app');
+        if (active) store.setActiveMenu(active);
+        return () =>
+          h(SidebarProvider, null, {
+            default: () => h(ChoySidebarNav),
+          });
+      },
+    });
+    const mounted = mountApp(Host as any, {
+      plugins: [menuPlugin, pinia, router, i18n],
+    });
+    await flushPromises();
+    await nextTick();
+    expect(mounted.q('[data-testid=choy-sidebar-nav-empty]')).not.toBeNull();
+    mounted.unmount();
+  });
 });

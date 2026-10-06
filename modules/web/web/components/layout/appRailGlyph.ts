@@ -8,6 +8,21 @@
 export function firstGrapheme(title: string): string {
   const trimmed = String(title || '').trim();
   if (!trimmed) return '?';
-  const ch = Array.from(trimmed)[0] || '?';
+  let ch: string | undefined;
+  try {
+    const Segmenter = (Intl as unknown as {
+      Segmenter?: new (
+        locale?: string,
+        opts?: { granularity: string },
+      ) => { segment: (input: string) => Iterable<{ segment: string }> };
+    }).Segmenter;
+    if (Segmenter) {
+      ch = Array.from(new Segmenter(undefined, { granularity: 'grapheme' }).segment(trimmed))[0]
+        ?.segment;
+    }
+  } catch {
+    ch = undefined;
+  }
+  ch = ch || Array.from(trimmed)[0] || '?';
   return /[a-z]/i.test(ch) ? ch.toUpperCase() : ch;
 }

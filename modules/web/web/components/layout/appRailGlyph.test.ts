@@ -9,4 +9,7 @@ test('firstGrapheme uppercases latin and keeps the first CJK character', () => {
   expect(firstGrapheme('公司管理')).toBe('公');
   expect(firstGrapheme('')).toBe('?');
   expect(firstGrapheme('   ')).toBe('?');
+  const emoji = firstGrapheme('👨‍👩‍👧 team');
+  expect(emoji.length).toBeGreaterThan(0);
+  expect(emoji).not.toBe('?');
 });

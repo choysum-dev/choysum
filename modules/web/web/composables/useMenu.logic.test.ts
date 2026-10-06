@@ -176,6 +176,40 @@ describe('useMenu logic', () => {
     mounted.unmount();
   });
 
+  test('activeApp is null when __parent hops exceed the cycle cap', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({ id: 'a', title: 'A', path: '/a' } as any);
+    menuPlugin.manager.addMenu({ id: 'b', title: 'B', path: '/b' } as any);
+    const a = menuPlugin.manager.getMenu('a') as any;
+    const b = menuPlugin.manager.getMenu('b') as any;
+    a.__parent = b;
+    b.__parent = a;
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: { name: 'Loop', path: '/a', fullPath: '/a', params: {}, meta: {} },
+    });
+    const Host = defineComponent({
+      setup() {
+        const store = useMenuStore();
+        store.setActiveMenu(a);
+        return () =>
+          h('div', {
+            'data-app': store.activeApp?.id || '',
+            'data-menu': store.activeMenu?.id || '',
+          });
+      },
+    });
+    const mounted = mountApp(Host as any, { plugins: [menuPlugin, pinia, router] });
+    await flushPromises();
+    expect(mounted.q('[data-app]')?.getAttribute('data-app')).toBe('');
+    expect(mounted.q('[data-menu]')?.getAttribute('data-menu')).toBe('a');
+    const store = useMenuStore();
+    store.setActiveMenu(store.activeMenu);
+    await flushPromises();
+    mounted.unmount();
+  });
+
   test('isExpanded stops walking a cyclic __parent chain', async () => {
     const menuPlugin = createMenuPlugin();
     const pinia = createPinia();
