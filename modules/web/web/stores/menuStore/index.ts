@@ -26,6 +26,7 @@ function resolveMenuManager(): Menu | null {
 
 export const useMenuStore = defineStore('menu', () => {
   const activeMenuId = ref<string | null>(null);
+  const routePath = ref('');
 
   // Capture the reactive route during store setup when inject is available.
   // Re-try on later reads so a store created in a router redirect can still
@@ -33,8 +34,30 @@ export const useMenuStore = defineStore('menu', () => {
   let capturedRoute: { path?: string } | undefined;
   try {
     capturedRoute = useRoute();
+    routePath.value = String(capturedRoute?.path || '');
   } catch {
     capturedRoute = undefined;
+  }
+
+  /**
+   * Binds vue-router injection when a component finally has it.
+   * Store setup may have run in a guard with no route; this invalidates
+   * the cached activeMenu computed once a path is available.
+   */
+  function bindRouteFromInjection(): void {
+    try {
+      const route = capturedRoute ?? useRoute();
+      if (!route) {
+        return;
+      }
+      capturedRoute = route;
+      const next = String(route.path || '');
+      if (routePath.value !== next) {
+        routePath.value = next;
+      }
+    } catch {
+      // Route inject is still missing.
+    }
   }
 
   /**
@@ -44,13 +67,7 @@ export const useMenuStore = defineStore('menu', () => {
     if (capturedRoute && typeof capturedRoute.path === 'string') {
       return capturedRoute.path;
     }
-    try {
-      const route = useRoute();
-      if (route) capturedRoute = route;
-      return String(route?.path || '');
-    } catch {
-      return String(capturedRoute?.path || '');
-    }
+    return routePath.value;
   }
 
   /**
@@ -116,6 +133,7 @@ export const useMenuStore = defineStore('menu', () => {
    * Prefers activeMenuId when present; otherwise walks up the current route path.
    */
   const activeMenu = computed(() => {
+    void routePath.value;
     const menuManager = resolveMenuManager();
     if (!menuManager) return null;
 
@@ -175,6 +193,8 @@ export const useMenuStore = defineStore('menu', () => {
 
     // Methods.
     setActiveMenu,
+
+    bindRouteFromInjection,
 
     // Proxies for menuManager methods (no-op safe when Menu inject is missing).
     hasMenu: (id: string) => !!resolveMenuManager()?.hasMenu?.(id),

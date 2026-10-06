@@ -395,7 +395,7 @@ export function mapDataTableBodyRows<T extends { id: unknown }>(opts: {
   virtualized: boolean;
   rows: readonly T[];
   virtualItems: readonly { index: number; key: unknown; start: number }[];
-}): Array<{ key: unknown; index: number; start: number | undefined; row: T }> {
+}): Array<{ key: unknown; index: number; start: number | undefined; row: T | undefined }> {
   if (opts.virtualized && opts.virtualItems.length) {
     return opts.virtualItems.map((virtualRow) => ({
       key: opts.rows[virtualRow.index]?.id ?? virtualRow.key,

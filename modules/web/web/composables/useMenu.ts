@@ -13,6 +13,7 @@ import type { MenuItem } from '@/core/web/menu'
 export function useMenu() {
   const router = useRouter()
   const menuStore = useMenuStore()
+  menuStore.bindRouteFromInjection()
   // Prefer store proxy reads over storeToRefs: setup-store computeds are not always
   // present on the object returned by storeToRefs during early shell mount.
   const activeMenu = computed(() => menuStore.activeMenu)

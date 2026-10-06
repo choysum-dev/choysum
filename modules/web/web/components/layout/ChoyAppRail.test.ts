@@ -134,6 +134,42 @@ describe('ChoyAppRail', () => {
     mounted.unmount();
   });
 
+  test('lists apps when the menu store is present without a router', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'custom',
+      title: '公司管理',
+      children: [{ id: 'custom-leaf', title: 'Leaf', path: '/custom' }],
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+    const Host = defineComponent({
+      setup() {
+        const store = useMenuStore();
+        return () =>
+          h(SidebarProvider, null, {
+            default: () =>
+              h('div', [
+                h('span', {
+                  'data-testid': 'menu-count',
+                  'data-count': String(store.getMenus().length),
+                }),
+                h(ChoyAppRail),
+              ]),
+          });
+      },
+    });
+    const mounted = mountApp(Host as any, {
+      plugins: [menuPlugin, pinia, i18n],
+    });
+    await flushPromises();
+    await nextTick();
+    expect(mounted.q('[data-testid=menu-count]')?.getAttribute('data-count')).toBe('1');
+    expect(mounted.qa('[data-testid=choy-shell-app-rail-item]').length).toBe(1);
+    mounted.unmount();
+  });
+
   test('renders without menu, i18n, or sidebar context', async () => {
     setActivePinia(undefined as any);
     const mounted = mountApp(ChoyAppRail as any);

@@ -38,9 +38,12 @@ let menuApi: ReturnType<typeof useMenu> | null = null
 let menuStore: ReturnType<typeof useMenuStore> | null = null
 try {
   menuStore = useMenuStore()
-  menuApi = useMenu()
 } catch {
   menuStore = null
+}
+try {
+  menuApi = useMenu()
+} catch {
   menuApi = null
 }
 

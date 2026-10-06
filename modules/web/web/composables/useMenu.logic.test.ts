@@ -176,6 +176,44 @@ describe('useMenu logic', () => {
     mounted.unmount();
   });
 
+  test('binds the route after the store was created without injection', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'auth',
+      title: 'Access Control',
+      children: [{ id: 'users', title: 'User List', path: '/auth/users' }],
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const early = useMenuStore();
+    expect(early.activeApp).toBeNull();
+    const { router } = createFeStubRouter({
+      route: {
+        name: 'UserList',
+        path: '/auth/users',
+        fullPath: '/auth/users',
+        params: {},
+        meta: {},
+      },
+    });
+    const Host = defineComponent({
+      setup() {
+        const api = useMenu();
+        return () =>
+          h('div', {
+            'data-app': api.activeApp.value?.id || '',
+            'data-menu': api.activeMenu.value?.id || '',
+          });
+      },
+    });
+    const mounted = mountApp(Host as any, { plugins: [menuPlugin, pinia, router] });
+    await flushPromises();
+    await nextTick();
+    expect(mounted.q('[data-app]')?.getAttribute('data-app')).toBe('auth');
+    expect(mounted.q('[data-menu]')?.getAttribute('data-menu')).toBe('users');
+    mounted.unmount();
+  });
+
   test('activeApp is null when __parent hops exceed the cycle cap', async () => {
     const menuPlugin = createMenuPlugin();
     menuPlugin.manager.addMenu({ id: 'a', title: 'A', path: '/a' } as any);

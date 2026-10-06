@@ -114,7 +114,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref } from 'vue';
+import { computed, defineAsyncComponent, defineComponent, h, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
 import type { ClientModel, BaseModel } from '@/core/rpc';
@@ -123,8 +123,6 @@ import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type User from '@/auth/service/models/user/user';
 import type Company from '@/base/service/models/company';
 
-const RoleListView = defineAsyncComponent(() => import('@/auth/web/views/RoleListView.vue'));
-const CompanyListView = defineAsyncComponent(() => import('@/base/web/views/CompanyListView.vue'));
 import type { ValueClickPayload as ManyToOneRefValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 import type { TagClickPayload as RefTagClickPayload } from '@/web/web/components/field/manyToManyTagsTypes';
 import { defineModelActions } from '@/core/web/resource';
@@ -136,6 +134,27 @@ import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'UserFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('auth', { scope: 'web/views/UserFormView' });
+const pickerLoadError = defineComponent({
+  name: 'PickerLoadError',
+  setup() {
+    return () => h('p', { role: 'alert' }, _t('Unable to load picker. Close and reopen to retry.'));
+  },
+});
+function loadPickerView(loader: () => Promise<unknown>) {
+  return defineAsyncComponent({
+    loader: loader as () => Promise<Record<string, unknown>>,
+    errorComponent: pickerLoadError,
+    onError(_error, retry, fail, attempts) {
+      if (attempts <= 2) {
+        retry();
+        return;
+      }
+      fail();
+    },
+  });
+}
+const RoleListView = loadPickerView(() => import('@/auth/web/views/RoleListView.vue'));
+const CompanyListView = loadPickerView(() => import('@/base/web/views/CompanyListView.vue'));
 const userDetailTab = ref('roles');
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 

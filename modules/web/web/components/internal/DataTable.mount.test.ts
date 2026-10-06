@@ -49,10 +49,18 @@ describe('DataTable virtualize', () => {
     });
     await flushPromises();
     const body = mounted.q('.choy-data-table__body') as HTMLElement | null;
+    const row = mounted.qa('[data-index]')[1] as HTMLElement | undefined;
     expect(body).toBeTruthy();
+    expect(row).toBeTruthy();
+    Object.defineProperty(row, 'offsetTop', { configurable: true, value: 80 });
+    Object.defineProperty(row, 'offsetHeight', { configurable: true, value: 40 });
+    Object.defineProperty(body, 'clientHeight', { configurable: true, value: 100 });
     mounted.root?.scrollToRow?.(1, 'start');
+    expect(body!.scrollTop).toBe(80);
     mounted.root?.scrollToRow?.(1, 'center');
+    expect(body!.scrollTop).toBe(50);
     mounted.root?.scrollToRow?.(1, 'end');
+    expect(body!.scrollTop).toBe(20);
     mounted.root?.scrollToRow?.(99, 'start');
     mounted.setupState()?.measureRowElement?.(mounted.qa('[data-index]')[0] || null);
     mounted.setupState()?.measureRowElement?.(null);
