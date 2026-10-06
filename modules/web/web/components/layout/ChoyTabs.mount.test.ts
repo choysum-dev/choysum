@@ -13,7 +13,7 @@ describe('ChoyTabs mount', () => {
       setup() {
         return () =>
           h(
-            ChoyTabs,
+            ChoyTabs as any,
             {
               modelValue: selected.value,
               'onUpdate:modelValue': (value: string) => {

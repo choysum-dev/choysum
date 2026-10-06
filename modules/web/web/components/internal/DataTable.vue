@@ -155,13 +155,14 @@ import { useVirtualizer } from '@tanstack/vue-virtual';
 import { cn, type ClassValue } from '../../lib/utils';
 import Checkbox from '../vendor/ui/checkbox/Checkbox.vue';
 import {
+  applyDataTableParentScroll,
   applyDataTableScrollToRow,
   compareDataTableValues,
   dataTableIsVirtualized,
   dataTableMaybeMeasure,
+  dataTableMeasureRow,
   dataTableScrollElement,
   dataTableSelectionIdsEqual,
-  dataTableShouldMeasureRow,
   dataTableVirtualizerCount,
   decodeDataTableRowKey,
   encodeDataTableRowKey,
@@ -431,7 +432,7 @@ const virtualizer = useVirtualizer({
 watch(
   () => props.estimateSize,
   () => {
-    dataTableMaybeMeasure(isVirtualized.value, () => virtualizer.value.measure());
+    dataTableMaybeMeasure(isVirtualized.value, virtualizer.value);
   },
 );
 
@@ -443,7 +444,7 @@ watch(
     if (parentRef.value) {
       parentRef.value.scrollTop = 0;
     }
-    dataTableMaybeMeasure(isVirtualized.value, () => virtualizer.value.measure());
+    dataTableMaybeMeasure(isVirtualized.value, virtualizer.value);
   },
 );
 
@@ -469,9 +470,7 @@ const bodyRows = computed(() =>
 );
 
 function measureRowElement(el: Element | null): void {
-  if (dataTableShouldMeasureRow(el, isVirtualized.value)) {
-    virtualizer.value.measureElement(el as Element);
-  }
+  dataTableMeasureRow(el, isVirtualized.value, virtualizer.value);
 }
 const gridTemplate = computed(() =>
   table
@@ -521,13 +520,9 @@ function scrollToRow(index: number, align?: 'start' | 'center' | 'end' | 'auto')
     virtualized: isVirtualized.value,
     parent: parentRef.value,
     estimateSize: props.estimateSize,
-    scrollVirtual: (rowIndex, rowAlign) => {
-      virtualizer.value.scrollToIndex(rowIndex, { align: rowAlign });
-    },
+    virtualizer: virtualizer.value,
     setScrollTop: (top) => {
-      if (parentRef.value) {
-        parentRef.value.scrollTop = top;
-      }
+      applyDataTableParentScroll(parentRef.value, top);
     },
   });
 }

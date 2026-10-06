@@ -2,11 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  applyDataTableParentScroll,
   applyDataTableScrollToRow,
   clampDataTableVirtualWindow,
   compareDataTableValues,
   dataTableIsVirtualized,
   dataTableMaybeMeasure,
+  dataTableMeasureRow,
   dataTableScrollElement,
   dataTableSelectionIdsEqual,
   dataTableShouldMeasureRow,
@@ -268,13 +270,15 @@ describe('dataTableHelpers', () => {
     expect(dataTableShouldMeasureRow(null, true)).toBe(false);
     expect(dataTableShouldMeasureRow(parent, false)).toBe(false);
     let measured = 0;
-    dataTableMaybeMeasure(true, () => {
-      measured += 1;
-    });
-    dataTableMaybeMeasure(false, () => {
-      measured += 1;
-    });
+    dataTableMaybeMeasure(true, { measure: () => { measured += 1; } });
+    dataTableMaybeMeasure(false, { measure: () => { measured += 1; } });
+    dataTableMaybeMeasure(true, null);
     expect(measured).toBe(1);
+    let rowMeasured = 0;
+    dataTableMeasureRow(parent, true, { measureElement: () => { rowMeasured += 1; } });
+    dataTableMeasureRow(null, true, { measureElement: () => { rowMeasured += 1; } });
+    dataTableMeasureRow(parent, false, { measureElement: () => { rowMeasured += 1; } });
+    expect(rowMeasured).toBe(1);
   });
 
   test('mapDataTableBodyRows prefers virtual items when present', () => {
@@ -308,14 +312,19 @@ describe('dataTableHelpers', () => {
   });
 
   test('applyDataTableScrollToRow covers virtual, measured, and estimate paths', () => {
-    const virtual: Array<[number, string]> = [];
+    const virtual: Array<[number, string | undefined]> = [];
     const tops: number[] = [];
+    const virtualizer = {
+      scrollToIndex: (i: number, opts?: { align?: 'start' | 'center' | 'end' | 'auto' }) => {
+        virtual.push([i, opts?.align]);
+      },
+    };
     applyDataTableScrollToRow({
       index: Number.NaN,
       virtualized: true,
       parent: null,
       estimateSize: 32,
-      scrollVirtual: (i, a) => virtual.push([i, a]),
+      virtualizer,
       setScrollTop: (top) => tops.push(top),
     });
     applyDataTableScrollToRow({
@@ -323,7 +332,7 @@ describe('dataTableHelpers', () => {
       virtualized: true,
       parent: null,
       estimateSize: 32,
-      scrollVirtual: (i, a) => virtual.push([i, a]),
+      virtualizer,
       setScrollTop: (top) => tops.push(top),
     });
     applyDataTableScrollToRow({
@@ -332,7 +341,7 @@ describe('dataTableHelpers', () => {
       virtualized: true,
       parent: null,
       estimateSize: 32,
-      scrollVirtual: (i, a) => virtual.push([i, a]),
+      virtualizer,
       setScrollTop: (top) => tops.push(top),
     });
     applyDataTableScrollToRow({
@@ -340,7 +349,15 @@ describe('dataTableHelpers', () => {
       virtualized: true,
       parent: null,
       estimateSize: 32,
-      scrollVirtual: (i, a) => virtual.push([i, a]),
+      virtualizer,
+      setScrollTop: (top) => tops.push(top),
+    });
+    applyDataTableScrollToRow({
+      index: 2,
+      virtualized: true,
+      parent: null,
+      estimateSize: 32,
+      virtualizer: null,
       setScrollTop: (top) => tops.push(top),
     });
     expect(virtual).toEqual([
@@ -352,7 +369,7 @@ describe('dataTableHelpers', () => {
       virtualized: false,
       parent: null,
       estimateSize: 32,
-      scrollVirtual: (i, a) => virtual.push([i, a]),
+      virtualizer,
       setScrollTop: (top) => tops.push(top),
     });
     const row = { offsetTop: 80, offsetHeight: 40 };
@@ -366,7 +383,7 @@ describe('dataTableHelpers', () => {
       virtualized: false,
       parent,
       estimateSize: 32,
-      scrollVirtual: (i, a) => virtual.push([i, a]),
+      virtualizer,
       setScrollTop: (top) => tops.push(top),
     });
     applyDataTableScrollToRow({
@@ -375,7 +392,7 @@ describe('dataTableHelpers', () => {
       virtualized: false,
       parent,
       estimateSize: 32,
-      scrollVirtual: (i, a) => virtual.push([i, a]),
+      virtualizer,
       setScrollTop: (top) => tops.push(top),
     });
     applyDataTableScrollToRow({
@@ -384,7 +401,7 @@ describe('dataTableHelpers', () => {
       virtualized: false,
       parent,
       estimateSize: 32,
-      scrollVirtual: (i, a) => virtual.push([i, a]),
+      virtualizer,
       setScrollTop: (top) => tops.push(top),
     });
     applyDataTableScrollToRow({
@@ -395,9 +412,13 @@ describe('dataTableHelpers', () => {
         querySelector: () => null,
       },
       estimateSize: 32,
-      scrollVirtual: (i, a) => virtual.push([i, a]),
+      virtualizer,
       setScrollTop: (top) => tops.push(top),
     });
     expect(tops).toEqual([80, 50, 20, 128]);
+    applyDataTableParentScroll(null, 1);
+    const scroller = { scrollTop: 0 };
+    applyDataTableParentScroll(scroller, 9);
+    expect(scroller.scrollTop).toBe(9);
   });
 });

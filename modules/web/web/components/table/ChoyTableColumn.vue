@@ -12,6 +12,11 @@ import { h, onMounted, onBeforeUnmount, useSlots, watch, inject } from 'vue';
 import { useTableUseColumnRegistry, useTableUseBuildContext, setTableColumnMeta, type Column } from '@/web/web/composables/useTable';
 import type { TableColumnMeta } from '@/web/web/composables/useTable';
 import { LIST_HANDLE_API_KEY, type ListHandleReorderApi } from '@/web/web/composables/useListHandleReorder';
+import {
+  onTableColumnSignatureChange,
+  skipTableColumnReregister,
+  tableColumnPropSignature,
+} from './choyTableColumnSignature';
 
 defineOptions({ name: 'ChoyTableColumn' });
 
@@ -66,7 +71,7 @@ onBeforeUnmount(() => {
  * plus columns.splice would otherwise loop until the tab OOMs).
  */
 function columnPropSignature(): string {
-  return JSON.stringify({
+  return tableColumnPropSignature({
     type: props.type ?? null,
     prop: props.prop ?? null,
     dataKey: props.dataKey ?? null,
@@ -84,9 +89,8 @@ function columnPropSignature(): string {
 let lastSignature = '';
 
 watch(columnPropSignature, (signature) => {
-  if (signature === lastSignature) return;
-  registerOrReplace();
-});
+  onTableColumnSignatureChange(signature, lastSignature, registerOrReplace);
+}, { immediate: true });
 
 function mergeColumnProps(raw: any) {
   const flat = {
@@ -145,7 +149,7 @@ function getByPath(obj: any, path?: string) {
 function registerOrReplace() {
   if (!reg) return;
   const signature = columnPropSignature();
-  if (currentCol && signature === lastSignature) return;
+  if (skipTableColumnReregister(!!currentCol, signature, lastSignature)) return;
   lastSignature = signature;
   const nextCol = buildColumn();
   if (!currentCol) {

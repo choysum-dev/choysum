@@ -54,6 +54,8 @@ describe('DataTable virtualize', () => {
     mounted.root?.scrollToRow?.(1, 'center');
     mounted.root?.scrollToRow?.(1, 'end');
     mounted.root?.scrollToRow?.(99, 'start');
+    mounted.setupState()?.measureRowElement?.(mounted.qa('[data-index]')[0] || null);
+    mounted.setupState()?.measureRowElement?.(null);
     expect(mounted.qa('[data-index]').length).toBe(2);
     mounted.unmount();
   });

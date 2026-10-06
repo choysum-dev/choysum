@@ -349,9 +349,22 @@ export function dataTableShouldMeasureRow(el: Element | null, virtualized: boole
   return !!el && virtualized;
 }
 
-export function dataTableMaybeMeasure(virtualized: boolean, measure: () => void): void {
+export function dataTableMaybeMeasure(
+  virtualized: boolean,
+  virtualizer: { measure?: () => void } | null | undefined,
+): void {
   if (virtualized) {
-    measure();
+    virtualizer?.measure?.();
+  }
+}
+
+export function dataTableMeasureRow(
+  el: Element | null,
+  virtualized: boolean,
+  virtualizer: { measureElement?: (node: Element) => void } | null | undefined,
+): void {
+  if (dataTableShouldMeasureRow(el, virtualized)) {
+    virtualizer?.measureElement?.(el as Element);
   }
 }
 
@@ -399,28 +412,43 @@ export function mapDataTableBodyRows<T extends { id: unknown }>(opts: {
   }));
 }
 
+export function applyDataTableParentScroll(
+  parent: { scrollTop: number } | null | undefined,
+  top: number,
+): void {
+  if (parent) {
+    parent.scrollTop = top;
+  }
+}
+
 export function applyDataTableScrollToRow(opts: {
   index: number;
   align?: 'start' | 'center' | 'end' | 'auto';
   virtualized: boolean;
-  parent: { querySelector: (sel: string) => Element | null; clientHeight: number } | null;
+  parent: {
+    querySelector: (sel: string) => { offsetTop: number; offsetHeight: number } | null;
+    clientHeight: number;
+  } | null;
   estimateSize: number | undefined | null;
-  scrollVirtual: (index: number, align: 'start' | 'center' | 'end' | 'auto') => void;
+  virtualizer: {
+    scrollToIndex?: (
+      index: number,
+      opts?: { align?: 'start' | 'center' | 'end' | 'auto' },
+    ) => void;
+  } | null;
   setScrollTop: (top: number) => void;
 }): void {
   if (!Number.isFinite(opts.index) || opts.index < 0) {
     return;
   }
   if (opts.virtualized) {
-    opts.scrollVirtual(opts.index, opts.align ?? 'auto');
+    opts.virtualizer?.scrollToIndex?.(opts.index, { align: opts.align ?? 'auto' });
     return;
   }
   if (!opts.parent) {
     return;
   }
-  const row = opts.parent.querySelector(`[data-index="${opts.index}"]`) as
-    | (Element & { offsetTop: number; offsetHeight: number })
-    | null;
+  const row = opts.parent.querySelector(`[data-index="${opts.index}"]`);
   opts.setScrollTop(
     dataTableNonVirtualScrollTop({
       index: opts.index,
