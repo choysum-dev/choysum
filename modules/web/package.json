@@ -30,7 +30,6 @@
     "lucide-vue-next": "0.542.0",
     "@tanstack/vue-table": "8.21.3",
     "@tanstack/vue-virtual": "3.13.39",
-    "@opentelemetry/sdk-trace-base": "2.8.0",
     "@internationalized/date": "3.12.4",
     "@unovis/vue": "1.7.0",
     "@unovis/ts": "1.7.0",

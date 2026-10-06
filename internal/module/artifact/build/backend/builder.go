@@ -218,6 +218,7 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 		if upstream := strings.TrimSpace(runtimeOptions.esmUpstreamURL); upstream != "" {
 			resolverOpts = append(resolverOpts, esmresolver.WithUpstream(upstream))
 		}
+		resolverOpts = b.appendExactPinsFromPackageJSON(resolverOpts)
 		buildOptions.Plugins = append([]api.Plugin{esmresolver.New(resolverOpts...).Plugin()}, basePlugins...)
 		buildOptions.Write = false
 	} else {
@@ -237,12 +238,30 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 		if upstream := strings.TrimSpace(runtimeOptions.esmUpstreamURL); upstream != "" {
 			resolverOpts = append(resolverOpts, esmresolver.WithUpstream(upstream))
 		}
+		resolverOpts = b.appendExactPinsFromPackageJSON(resolverOpts)
 		buildOptions.Plugins = append([]api.Plugin{esmresolver.New(resolverOpts...).Plugin()}, basePlugins...)
 		// Do not let esbuild write directly to dist; we publish outputs atomically.
 		buildOptions.Write = false
 	}
 
 	return &buildOptions
+}
+
+func (b *ModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Option) []esmresolver.Option {
+	if b == nil || b.module == nil || strings.TrimSpace(b.module.Path) == "" {
+		return opts
+	}
+	modulePath := filepath.Clean(strings.TrimSpace(b.module.Path))
+	corePath := filepath.Join(filepath.Dir(modulePath), "core")
+	roots := []string{modulePath}
+	if corePath != modulePath {
+		roots = []string{corePath, modulePath}
+	}
+	pins := esmresolver.MergeExactPinsFromPackageJSON(roots...)
+	if len(pins) == 0 {
+		return opts
+	}
+	return append(opts, esmresolver.WithBareImportPins(pins))
 }
 
 func (b *ModuleBuilder) entryPointImports() []string {

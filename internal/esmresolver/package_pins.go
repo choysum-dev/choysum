@@ -48,6 +48,26 @@ func ExactPinsFromPackageJSON(moduleRoot string) (map[string]string, error) {
 	return out, nil
 }
 
+// MergeExactPinsFromPackageJSON reads exact versions from each module root.
+// Later roots win when the same package is listed twice. Missing package.json
+// files are skipped. Returns nil when nothing is pinned.
+func MergeExactPinsFromPackageJSON(moduleRoots ...string) map[string]string {
+	out := map[string]string{}
+	for _, root := range moduleRoots {
+		got, err := ExactPinsFromPackageJSON(root)
+		if err != nil || len(got) == 0 {
+			continue
+		}
+		for name, ver := range got {
+			out[name] = ver
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
 func collectExactPins(dst map[string]string, src map[string]string) {
 	for name, ver := range src {
 		name = strings.TrimSpace(name)

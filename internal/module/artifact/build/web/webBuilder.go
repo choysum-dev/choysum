@@ -2369,6 +2369,10 @@ func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Opt
 	if kitHost != modulePath {
 		mergePins(kitHost, kitHost)
 	}
+	corePath := filepath.Join(filepath.Dir(modulePath), "core")
+	if corePath != modulePath && corePath != kitHost {
+		mergePins(corePath, corePath)
+	}
 	mergePins(modulePath, b.module.Name)
 	opts = append(opts, esmresolver.WithBareImportPins(pins))
 	return opts

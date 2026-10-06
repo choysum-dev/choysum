@@ -327,9 +327,9 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 	return out, nil
 }
 
-// vueHostBareImportPins merges exact versions from modules/web/package.json
-// with a single Vue instance pin. Exact "vue" in that package.json is the
-// SSOT; generated VuePackageVersion is only the fallback when missing.
+// vueHostBareImportPins merges exact versions from modules/core then
+// modules/web/package.json with a single Vue instance pin. Exact "vue" in the
+// web package.json is the SSOT; generated VuePackageVersion is the fallback.
 func vueHostBareImportPins(repoRoot string) (map[string]string, error) {
 	webPins, err := esmresolver.ExactPinsFromPackageJSON(filepath.Join(repoRoot, "modules", "web"))
 	if err != nil {
@@ -345,6 +345,16 @@ func vueHostBareImportPins(repoRoot string) (map[string]string, error) {
 		return nil, xfmt.Errorf("vue host bundle: modules/web/package.json has no exact vue pin")
 	}
 	pins := choysummount.VueBareImportPinsFor(vueVer)
+	corePins, coreErr := esmresolver.ExactPinsFromPackageJSON(filepath.Join(repoRoot, "modules", "core"))
+	if coreErr != nil {
+		return nil, xfmt.Errorf("vue host bundle: exact pins from modules/core: %w", coreErr)
+	}
+	for name, ver := range corePins {
+		if choysummount.IsHostVueRuntimePackage(name) {
+			continue
+		}
+		pins[name] = ver
+	}
 	for name, ver := range webPins {
 		if choysummount.IsHostVueRuntimePackage(name) {
 			continue

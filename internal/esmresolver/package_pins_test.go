@@ -37,9 +37,9 @@ func TestExactPinsFromPackageJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]string{
-		"left-pad":             "1.3.0",
-		"@tanstack/vue-table":  "8.21.3",
-		"reka-ui":              "2.10.4",
+		"left-pad":            "1.3.0",
+		"@tanstack/vue-table": "8.21.3",
+		"reka-ui":             "2.10.4",
 	}
 	if len(pins) != len(want) {
 		t.Fatalf("pins=%v want %v", pins, want)
@@ -105,5 +105,27 @@ func TestExactPinsFromPackageJSONReadErrorAndEmptyExact(t *testing.T) {
 	_, err = ExactPinsFromPackageJSON(badRoot)
 	if err == nil {
 		t.Fatal("expected read error when package.json is a directory")
+	}
+}
+
+func TestMergeExactPinsFromPackageJSONLaterRootWins(t *testing.T) {
+	t.Parallel()
+	if got := MergeExactPinsFromPackageJSON(); got != nil {
+		t.Fatalf("empty roots => nil, got %#v", got)
+	}
+	a := t.TempDir()
+	b := t.TempDir()
+	if err := os.WriteFile(filepath.Join(a, "package.json"), []byte(`{"dependencies":{"left-pad":"1.0.0","keep":"9.9.9"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(b, "package.json"), []byte(`{"dependencies":{"left-pad":"1.3.0"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := MergeExactPinsFromPackageJSON(a, t.TempDir(), b)
+	if got["left-pad"] != "1.3.0" {
+		t.Fatalf("later root should win, got %#v", got)
+	}
+	if got["keep"] != "9.9.9" {
+		t.Fatalf("unrelated pin should remain, got %#v", got)
 	}
 }
