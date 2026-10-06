@@ -211,6 +211,55 @@ describe('useMenu logic', () => {
     await nextTick();
     expect(mounted.q('[data-app]')?.getAttribute('data-app')).toBe('auth');
     expect(mounted.q('[data-menu]')?.getAttribute('data-menu')).toBe('users');
+    const store = useMenuStore();
+    store.bindRouteFromInjection();
+    store.bindRouteFromInjection();
+    mounted.unmount();
+  });
+
+  test('keeps a manual selection while the menu manager is missing', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const store = useMenuStore();
+    store.setActiveMenu({ id: 'keep', title: 'Keep', path: '/keep' } as any);
+    expect(store.activeMenu).toBeNull();
+    expect(store.activeMenuId).toBe('keep');
+    store.bindRouteFromInjection();
+    store.setActiveMenu(null);
+    expect(store.activeMenuId).toBeNull();
+  });
+
+  test('path fallback matches /web-prefixed routes after late bind', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'auth',
+      title: 'Access Control',
+      children: [{ id: 'users', title: 'User List', path: '/auth/users' }],
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const early = useMenuStore();
+    expect(early.activeMenu).toBeNull();
+    const { router } = createFeStubRouter({
+      route: {
+        name: 'UserList',
+        path: '/web/auth/users',
+        fullPath: '/web/auth/users',
+        params: {},
+        meta: {},
+      },
+    });
+    const Host = defineComponent({
+      setup() {
+        const store = useMenuStore();
+        store.bindRouteFromInjection();
+        return () => h('div', { 'data-menu': store.activeMenu?.id || '' });
+      },
+    });
+    const mounted = mountApp(Host as any, { plugins: [menuPlugin, pinia, router] });
+    await flushPromises();
+    await nextTick();
+    expect(mounted.q('[data-menu]')?.getAttribute('data-menu')).toBe('users');
     mounted.unmount();
   });
 

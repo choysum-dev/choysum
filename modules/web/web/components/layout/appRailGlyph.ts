@@ -18,8 +18,8 @@ export function readGraphemeCluster(input: string): string | undefined {
     if (!Segmenter) {
       return undefined;
     }
-    return Array.from(new Segmenter(undefined, { granularity: 'grapheme' }).segment(input))[0]
-      ?.segment;
+    const segments = new Segmenter(undefined, { granularity: 'grapheme' }).segment(input);
+    return segments[Symbol.iterator]().next().value?.segment;
   } catch {
     return undefined;
   }
@@ -33,5 +33,5 @@ export function firstGrapheme(title: string, clusterOf: GraphemeClusterFn = read
   const trimmed = String(title || '').trim();
   if (!trimmed) return '?';
   const ch = clusterOf(trimmed) || Array.from(trimmed)[0] || '?';
-  return /[a-z]/i.test(ch) ? ch.toUpperCase() : ch;
+  return ch.toUpperCase();
 }

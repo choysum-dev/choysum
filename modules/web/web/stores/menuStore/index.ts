@@ -47,9 +47,6 @@ export const useMenuStore = defineStore('menu', () => {
   function bindRouteFromInjection(): void {
     try {
       const route = capturedRoute ?? useRoute();
-      if (!route) {
-        return;
-      }
       capturedRoute = route;
       const next = String(route.path || '');
       if (routePath.value !== next) {
@@ -155,6 +152,10 @@ export const useMenuStore = defineStore('menu', () => {
   watch(
     () => activeMenu.value?.id ?? null,
     (nextId) => {
+      // A missing manager is transient; do not drop a manual selection for it.
+      if (nextId === null && !resolveMenuManager()) {
+        return;
+      }
       if (activeMenuId.value !== nextId) {
         activeMenuId.value = nextId;
       }

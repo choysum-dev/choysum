@@ -15,6 +15,7 @@ test('firstGrapheme uppercases latin and keeps the first CJK character', () => {
 });
 
 test('firstGrapheme uses injected cluster readers and code-point fallback', () => {
+  expect(firstGrapheme('école', () => undefined)).toBe('É');
   expect(firstGrapheme('ab', () => 'z')).toBe('Z');
   expect(firstGrapheme('ab', () => undefined)).toBe('A');
   expect(firstGrapheme('ab', () => '')).toBe('A');
@@ -34,10 +35,37 @@ test('readGraphemeCluster tolerates missing or throwing Segmenter', () => {
     expect(readGraphemeCluster('ab')).toBeUndefined();
     intl.Segmenter = class {
       segment() {
-        return [];
+        return {
+          [Symbol.iterator]() {
+            return {
+              next() {
+                return { done: true, value: undefined };
+              },
+            };
+          },
+        };
       }
     };
     expect(readGraphemeCluster('ab')).toBeUndefined();
+    intl.Segmenter = class {
+      segment() {
+        let first = true;
+        return {
+          [Symbol.iterator]() {
+            return {
+              next() {
+                if (!first) {
+                  return { done: true, value: undefined };
+                }
+                first = false;
+                return { done: false, value: { segment: 'é' } };
+              },
+            };
+          },
+        };
+      }
+    };
+    expect(readGraphemeCluster('école')).toBe('é');
   } finally {
     intl.Segmenter = prev;
   }

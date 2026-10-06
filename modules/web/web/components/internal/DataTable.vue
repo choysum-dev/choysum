@@ -95,10 +95,10 @@ SPDX-License-Identifier: Apache-2.0
           :aria-selected="item.row?.getIsSelected() ?? false"
           tabindex="0"
           class="grid w-full border-b border-border/60 text-sm hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          :class="isVirtualized ? 'absolute left-0' : undefined"
+          :class="item.start != null ? 'absolute left-0' : undefined"
           :style="{
             gridTemplateColumns: gridTemplate,
-            ...(isVirtualized && item.start != null
+            ...(item.start != null
               ? { transform: `translateY(${item.start}px)` }
               : undefined),
           }"
