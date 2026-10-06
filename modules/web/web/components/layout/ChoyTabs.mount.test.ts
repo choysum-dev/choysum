@@ -52,4 +52,28 @@ describe('ChoyTabs mount', () => {
     expect(mounted.text()).toContain('ALONE');
     mounted.unmount();
   });
+
+  test('uncontrolled ChoyTabs still renders the default panel', async () => {
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h(
+            ChoyTabs as any,
+            { defaultValue: 'a' },
+            {
+              default: () => [
+                h(ChoyTab, { value: 'a', label: 'Alpha' }, { default: () => 'PANEL-A' }),
+                h(ChoyTab, { value: 'b', label: 'Beta' }, { default: () => 'PANEL-B' }),
+              ],
+            },
+          );
+      },
+    });
+    const mounted = mountApp(Host as any);
+    await flushPromises();
+    await nextTick();
+    expect(mounted.text()).toContain('PANEL-A');
+    expect(mounted.text()).not.toContain('PANEL-B');
+    mounted.unmount();
+  });
 });

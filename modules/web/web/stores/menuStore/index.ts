@@ -27,6 +27,8 @@ function resolveMenuManager(): Menu | null {
 export const useMenuStore = defineStore('menu', () => {
   const activeMenuId = ref<string | null>(null);
   const routePath = ref('');
+  // True after setActiveMenu until the route path changes (navigateTo push, Back).
+  const selectionLocked = ref(false);
 
   // Capture the reactive route during store setup when inject is available.
   // Re-try on later reads so a store created in a router redirect can still
@@ -50,6 +52,7 @@ export const useMenuStore = defineStore('menu', () => {
       capturedRoute = route;
       const next = String(route.path || '');
       if (routePath.value !== next) {
+        selectionLocked.value = false;
         routePath.value = next;
       }
     } catch {
@@ -127,25 +130,40 @@ export const useMenuStore = defineStore('menu', () => {
 
   /**
    * Active menu synchronized from routing with upward path fallback.
-   * Prefers activeMenuId when present; otherwise walks up the current route path.
+   * A live route match wins so Back/forward and non-navigateTo pushes
+   * update the rail; otherwise keep a previously selected id.
    */
   const activeMenu = computed(() => {
+    const path = currentRoutePath();
     void routePath.value;
     const menuManager = resolveMenuManager();
     if (!menuManager) return null;
 
-    if (activeMenuId.value) {
+    if (selectionLocked.value && activeMenuId.value) {
       return menuManager.getMenu(activeMenuId.value) ?? null;
     }
 
-    const fromRoute = findMenuByPathWithFallback(currentRoutePath());
-    return findFirstNavigableMenu(fromRoute);
+    const fromRoute = findFirstNavigableMenu(findMenuByPathWithFallback(path));
+    if (fromRoute) return fromRoute;
+    if (activeMenuId.value) return menuManager.getMenu(activeMenuId.value) ?? null;
+    return null;
   });
 
   const activeApp = computed(() => {
     if (!activeMenu.value) return null;
     return findAppRoot(activeMenu.value);
   });
+
+  watch(
+    () => currentRoutePath(),
+    (next) => {
+      if (routePath.value !== next) {
+        selectionLocked.value = false;
+        routePath.value = next;
+      }
+    },
+    { immediate: true, flush: 'sync' },
+  );
 
   // Keep activeMenuId aligned outside the computed so evaluating activeMenu
   // during render cannot retrigger Vue's update cycle.
@@ -168,6 +186,7 @@ export const useMenuStore = defineStore('menu', () => {
    */
   function setActiveMenu(menu: MenuItem | null) {
     activeMenuId.value = menu ? menu.id : null;
+    selectionLocked.value = !!menu;
   }
 
   /**

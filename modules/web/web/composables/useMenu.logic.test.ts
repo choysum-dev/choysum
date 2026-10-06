@@ -263,6 +263,52 @@ describe('useMenu logic', () => {
     mounted.unmount();
   });
 
+  test('later route changes refresh the rail after an initial selection', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'auth',
+      title: 'Access Control',
+      children: [{ id: 'users', title: 'User List', path: '/auth/users' }],
+    } as any);
+    menuPlugin.manager.addMenu({
+      id: 'meta',
+      title: 'Meta',
+      children: [{ id: 'apps', title: 'Apps', path: '/meta/apps' }],
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: {
+        name: 'UserList',
+        path: '/auth/users',
+        fullPath: '/auth/users',
+        params: {},
+        meta: {},
+      },
+    });
+    const Host = defineComponent({
+      setup() {
+        const api = useMenu();
+        return () =>
+          h('div', {
+            'data-app': api.activeApp.value?.id || '',
+            'data-menu': api.activeMenu.value?.id || '',
+          });
+      },
+    });
+    const mounted = mountApp(Host as any, { plugins: [menuPlugin, pinia, router] });
+    await flushPromises();
+    await nextTick();
+    expect(mounted.q('[data-app]')?.getAttribute('data-app')).toBe('auth');
+    expect(mounted.q('[data-menu]')?.getAttribute('data-menu')).toBe('users');
+    await router.push({ path: '/meta/apps', name: 'Apps' });
+    await flushPromises();
+    await nextTick();
+    expect(mounted.q('[data-app]')?.getAttribute('data-app')).toBe('meta');
+    expect(mounted.q('[data-menu]')?.getAttribute('data-menu')).toBe('apps');
+    mounted.unmount();
+  });
+
   test('activeApp is null when __parent hops exceed the cycle cap', async () => {
     const menuPlugin = createMenuPlugin();
     menuPlugin.manager.addMenu({ id: 'a', title: 'A', path: '/a' } as any);
