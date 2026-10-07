@@ -46,6 +46,19 @@ describe('ChoyGuestShell', () => {
     mounted.unmount();
   });
 
+  test('hides footer when showFooter is false', async () => {
+    const mounted = mountApp(ChoyGuestShell as any, {
+      props: { showHeader: true, showFooter: false },
+      stubs: {
+        'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-footer]')).toBeNull();
+    mounted.unmount();
+  });
+
   test('default slot overrides router-view fallback', async () => {
     const mounted = mountApp(ChoyGuestShell as any, {
       props: { showHeader: false },
