@@ -26,6 +26,7 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyViewScope v-else :view-mode="binding.env.viewMode" :container="'List'" :field-prefix="String(prop)">
         <div class="w-full min-w-0" :style="{ height: tableHeightPxEdit }" tabindex="-1">
           <ChoyTableHost
+            v-if="tableReady"
             ref="ovTableRef"
             :data="getItems()"
             :row-key="'__rowKey'"
@@ -34,6 +35,7 @@ SPDX-License-Identifier: Apache-2.0
             :table-height="tableHeightEdit"
             :store="store"
             :base-index="1"
+            :virtualize="false"
           >
             <ChoyTableColumn v-if="showHandleColumn" type="handle" col-key="__handle__" :vColumnProps="{ width: 36, align: 'center' }" />
             <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'right', width: 50 }" />
@@ -59,6 +61,7 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyViewScope v-else view-mode="display" :container="'List'" :field-prefix="String(prop)">
         <div class="w-full min-w-0" :style="{ height: tableHeightPxDisplay }">
           <ChoyTableHost
+            v-if="tableReady"
             :data="getItems()"
             :row-key="'__rowKey'"
             :row-height="rowHeightDisplayRes"
@@ -66,6 +69,7 @@ SPDX-License-Identifier: Apache-2.0
             :table-height="tableHeightDisplay"
             :store="store"
             :base-index="1"
+            :virtualize="false"
           >
             <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'right', width: 50 }" />
             <slot />
@@ -77,7 +81,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, ClientModel<BaseModel>[]>, V = FieldPathType<T, P>">
-import { computed, nextTick, ref, watch, onMounted, provide } from 'vue';
+import { computed, nextTick, ref, shallowRef, watch, onMounted, provide } from 'vue';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType, ClientModel } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
@@ -206,6 +210,8 @@ const tableHeightDisplay = computed(() => {
 const tableHeightPxEdit = computed(() => `${tableHeightEdit.value}px`);
 const tableHeightPxDisplay = computed(() => `${tableHeightDisplay.value}px`);
 const ovTableRef = ref<InstanceType<typeof ChoyTableHost> | null>(null);
+// Mount after the host form finishes its sync initializeForm flush.
+const tableReady = shallowRef(false);
 
 // Read the row-key seed without relying on generic field properties.
 function readRowKeySeed(row: unknown): string | number | undefined {
@@ -283,12 +289,15 @@ function makeDefaultItem(): Record<string, any> {
   return row;
 }
 
-// Keep row keys hydrated.
-onMounted(hydrateRowKeys);
+onMounted(() => {
+  tableReady.value = true;
+  hydrateRowKeys();
+});
 watch(
   () => getItems().length,
-  () => hydrateRowKeys(),
-  { immediate: true }
+  () => {
+    if (tableReady.value) hydrateRowKeys();
+  },
 );
 </script>
 

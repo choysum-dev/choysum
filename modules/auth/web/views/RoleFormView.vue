@@ -249,15 +249,13 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, defineAsyncComponent, defineComponent, h, ref } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type Role from '@/auth/service/models/role';
 
 import { CircleHelp, GitBranch, Menu, Settings, User } from 'lucide-vue-next';
 
-import UserListView from './UserListView.vue';
-import RoleListView from './RoleListView.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
@@ -270,6 +268,27 @@ import { selectInspectedUiResource, getInspectedUiResourceId, getInspectedUiReso
 
 defineOptions({ name: 'RoleFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('auth', { scope: 'web/views/RoleFormView' });
+const pickerLoadError = defineComponent({
+  name: 'PickerLoadError',
+  setup() {
+    return () => h('p', { role: 'alert' }, _t('Unable to load picker. Close and reopen to retry.'));
+  },
+});
+function loadPickerView(loader: () => Promise<unknown>) {
+  return defineAsyncComponent({
+    loader: loader as () => Promise<Record<string, unknown>>,
+    errorComponent: pickerLoadError,
+    onError(_error, retry, fail, attempts) {
+      if (attempts <= 2) {
+        retry();
+        return;
+      }
+      fail();
+    },
+  });
+}
+const UserListView = loadPickerView(() => import('./UserListView.vue'));
+const RoleListView = loadPickerView(() => import('./RoleListView.vue'));
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 
 const props = withDefaults(

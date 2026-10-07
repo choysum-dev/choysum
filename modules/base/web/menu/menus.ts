@@ -4,6 +4,7 @@
 import { type MenuItem } from '@/core/web/menu';
 import { defineMenu } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
+import { Building2 } from 'lucide-vue-next';
 
 const { _lt } = createTranslate('base', { scope: 'web/menu/menus' });
 
@@ -11,6 +12,7 @@ export const baseMenus: MenuItem[] = [
   defineMenu('base.menu.root', {
     title: _lt('Master Data'),
     sequence: 20,
+    icon: Building2,
     children: [
       defineMenu('base.menu.company', { title: _lt('Company Management'), path: '/base/companies', sequence: 10 }),
       defineMenu('base.menu.address', { title: _lt('Address Management'), path: '/base/addresses', sequence: 20 }),

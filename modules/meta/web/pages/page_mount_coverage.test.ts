@@ -41,7 +41,8 @@ test('meta page mount: every ChoyPage host mounts under choysumMount', async () 
   if (failures.length) throw new Error(`meta page mount failed: ${failures.join(', ')}`);
 });
 
-test('meta menus: root is text-only without a default icon', () => {
+test('meta menus: root declares an icon and leaves stay text-only', () => {
   expect(metaMenus.length).toBeGreaterThan(0);
-  expect(metaMenus[0]!.icon).toBeUndefined();
+  expect(metaMenus[0]!.icon).toBeTruthy();
+  expect(metaMenus[0]!.children?.every((child) => child.icon == null)).toBe(true);
 });

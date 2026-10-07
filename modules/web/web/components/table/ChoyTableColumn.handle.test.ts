@@ -115,4 +115,40 @@ describe('ChoyTableColumn handle type', () => {
     expect(handleApi.draggingIndex.value).toBeNull();
     unmount();
   });
+
+  test('skips re-registration when the column signature is unchanged', async () => {
+    let registry: ColumnRegistry | null = null;
+    let columnVm: any = null;
+    const tick = ref(0);
+    const Host = defineComponent({
+      setup() {
+        registry = useTableProvideColumnRegistry();
+        useTableProvideBuildContext({ getRows: () => [], baseIndex: ref(1) });
+        return () => [
+          h('span', String(tick.value)),
+          h(ChoyTableColumn, {
+            prop: 'Name',
+            label: 'Name',
+            vColumnProps: { align: 'left', width: 80 },
+            ref: (r: any) => {
+              columnVm = r;
+            },
+          }),
+        ];
+      },
+    });
+    const mounted = mountApp(Host);
+    await nextTick();
+    await flushPromises();
+    expect(registry!.columns.value).toHaveLength(1);
+    const first = registry!.columns.value[0];
+    tick.value = 1;
+    await nextTick();
+    await flushPromises();
+    expect(registry!.columns.value[0]).toBe(first);
+    columnVm?.$?.setupState?.registerOrReplace?.();
+    expect(registry!.columns.value).toHaveLength(1);
+    expect(registry!.columns.value[0]).toBe(first);
+    mounted.unmount();
+  });
 });

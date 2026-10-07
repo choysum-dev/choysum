@@ -72,7 +72,7 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyDialogTitle>{{ effectiveSearchViewTitle }}</ChoyDialogTitle>
       <ChoyViewScope view-mode="display" :container="'List'">
       <component
-        v-if="searchView && relationStore"
+        v-if="dialogVisible && searchView && relationStore"
         :is="searchView"
         ref="searchViewRef"
         :store="relationStore"

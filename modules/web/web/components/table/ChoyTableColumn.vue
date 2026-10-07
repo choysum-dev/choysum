@@ -12,6 +12,11 @@ import { h, onMounted, onBeforeUnmount, useSlots, watch, inject } from 'vue';
 import { useTableUseColumnRegistry, useTableUseBuildContext, setTableColumnMeta, type Column } from '@/web/web/composables/useTable';
 import type { TableColumnMeta } from '@/web/web/composables/useTable';
 import { LIST_HANDLE_API_KEY, type ListHandleReorderApi } from '@/web/web/composables/useListHandleReorder';
+import {
+  onTableColumnSignatureChange,
+  skipTableColumnReregister,
+  tableColumnPropSignature,
+} from './choyTableColumnSignature';
 
 defineOptions({ name: 'ChoyTableColumn' });
 
@@ -60,23 +65,32 @@ onBeforeUnmount(() => {
   currentCol = null;
 });
 
-watch(
-  () => ({
-    type: props.type,
-    prop: props.prop,
-    dataKey: props.dataKey,
-    colKey: props.colKey,
-    label: props.label,
-    width: props.width,
-    minWidth: props.minWidth,
-    align: props.align,
-    fixed: props.fixed,
-    sortable: props.sortable,
-    vColumnProps: props.vColumnProps,
-  }),
-  () => registerOrReplace(),
-  { deep: true }
-);
+/**
+ * Primitive snapshot so inline `:vColumnProps="{ ... }"` in a parent slot
+ * cannot retrigger registration on every host re-render (object identity churn
+ * plus columns.splice would otherwise loop until the tab OOMs).
+ */
+function columnPropSignature(): string {
+  return tableColumnPropSignature({
+    type: props.type ?? null,
+    prop: props.prop ?? null,
+    dataKey: props.dataKey ?? null,
+    colKey: props.colKey ?? null,
+    label: props.label ?? null,
+    width: props.width ?? null,
+    minWidth: props.minWidth ?? null,
+    align: props.align ?? null,
+    fixed: props.fixed ?? null,
+    sortable: props.sortable ?? null,
+    vColumnProps: props.vColumnProps ?? null,
+  });
+}
+
+let lastSignature = '';
+
+watch(columnPropSignature, (signature) => {
+  onTableColumnSignatureChange(signature, lastSignature, registerOrReplace);
+}, { immediate: true });
 
 function mergeColumnProps(raw: any) {
   const flat = {
@@ -134,6 +148,9 @@ function getByPath(obj: any, path?: string) {
 
 function registerOrReplace() {
   if (!reg) return;
+  const signature = columnPropSignature();
+  if (skipTableColumnReregister(!!currentCol, signature, lastSignature)) return;
+  lastSignature = signature;
   const nextCol = buildColumn();
   if (!currentCol) {
     reg.columns.value.push(nextCol);

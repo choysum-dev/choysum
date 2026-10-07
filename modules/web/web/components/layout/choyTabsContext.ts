@@ -11,6 +11,8 @@ export type ChoyTabRegistration = {
 
 export type ChoyTabsContext = {
   tabs: Ref<ChoyTabRegistration[]>;
+  /** Host v-model; tab panels render their slot only when this matches. */
+  activeValue: Ref<string | undefined>;
   register: (tab: ChoyTabRegistration) => boolean;
   unregister: (value: string) => void;
   update: (value: string, patch: Partial<ChoyTabRegistration>) => boolean;
@@ -28,9 +30,11 @@ function isUsableTabValue(value: string | undefined): boolean {
  */
 export function createChoyTabsContext(
   tabs: Ref<ChoyTabRegistration[]> = ref([]),
+  activeValue: Ref<string | undefined> = ref(undefined),
 ): ChoyTabsContext {
   return {
     tabs,
+    activeValue,
     register(tab) {
       if (!isUsableTabValue(tab.value)) {
         return false;
@@ -57,12 +61,23 @@ export function createChoyTabsContext(
       // A colliding rename keeps the owned value but still applies the rest of
       // the patch so callers do not silently lose label / disabled updates.
       const effectiveValue = valueTaken ? value : nextValue;
+      const current = tabs.value.find((item) => item.value === value);
+      const nextLabel = patch.label ?? current?.label ?? '';
+      const nextDisabled = patch.disabled ?? current?.disabled ?? false;
+      if (
+        current &&
+        current.value === effectiveValue &&
+        current.label === nextLabel &&
+        current.disabled === nextDisabled
+      ) {
+        return !valueTaken;
+      }
       tabs.value = tabs.value.map((item) =>
         item.value === value
           ? {
               value: effectiveValue,
-              label: patch.label ?? item.label,
-              disabled: patch.disabled ?? item.disabled,
+              label: nextLabel,
+              disabled: nextDisabled,
             }
           : item,
       );

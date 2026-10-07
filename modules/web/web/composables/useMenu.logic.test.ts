@@ -135,4 +135,235 @@ describe('useMenu logic', () => {
     window.open = prevOpen;
     mounted.unmount();
   });
+
+  test('record detail path fallback keeps a stable activeMenuId', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'auth',
+      title: 'Access Control',
+      children: [{ id: 'users', title: 'User List', path: '/auth/users' }],
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: {
+        name: 'UserDetail',
+        path: '/auth/users/u1',
+        fullPath: '/auth/users/u1',
+        params: { id: 'u1' },
+        meta: {},
+      },
+    });
+    const Host = defineComponent({
+      setup() {
+        const store = useMenuStore();
+        return () =>
+          h('div', {
+            'data-active-menu': store.activeMenu?.id || '',
+            'data-active-app': store.activeApp?.id || '',
+          });
+      },
+    });
+    const mounted = mountApp(Host as any, {
+      plugins: [menuPlugin, pinia, router],
+    });
+    await flushPromises();
+    await nextTick();
+    const store = useMenuStore();
+    expect(store.activeMenu?.id).toBe('users');
+    expect(store.activeMenuId).toBe('users');
+    expect(store.activeApp?.id).toBe('auth');
+    mounted.unmount();
+  });
+
+  test('binds the route after the store was created without injection', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'auth',
+      title: 'Access Control',
+      children: [{ id: 'users', title: 'User List', path: '/auth/users' }],
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const early = useMenuStore();
+    expect(early.activeApp).toBeNull();
+    const { router } = createFeStubRouter({
+      route: {
+        name: 'UserList',
+        path: '/auth/users',
+        fullPath: '/auth/users',
+        params: {},
+        meta: {},
+      },
+    });
+    const Host = defineComponent({
+      setup() {
+        const api = useMenu();
+        return () =>
+          h('div', {
+            'data-app': api.activeApp.value?.id || '',
+            'data-menu': api.activeMenu.value?.id || '',
+          });
+      },
+    });
+    const mounted = mountApp(Host as any, { plugins: [menuPlugin, pinia, router] });
+    await flushPromises();
+    await nextTick();
+    expect(mounted.q('[data-app]')?.getAttribute('data-app')).toBe('auth');
+    expect(mounted.q('[data-menu]')?.getAttribute('data-menu')).toBe('users');
+    const store = useMenuStore();
+    store.bindRouteFromInjection();
+    store.bindRouteFromInjection();
+    mounted.unmount();
+  });
+
+  test('keeps a manual selection while the menu manager is missing', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const store = useMenuStore();
+    store.setActiveMenu({ id: 'keep', title: 'Keep', path: '/keep' } as any);
+    expect(store.activeMenu).toBeNull();
+    expect(store.activeMenuId).toBe('keep');
+    store.bindRouteFromInjection();
+    store.setActiveMenu(null);
+    expect(store.activeMenuId).toBeNull();
+  });
+
+  test('path fallback matches /web-prefixed routes after late bind', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'auth',
+      title: 'Access Control',
+      children: [{ id: 'users', title: 'User List', path: '/auth/users' }],
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const early = useMenuStore();
+    expect(early.activeMenu).toBeNull();
+    const { router } = createFeStubRouter({
+      route: {
+        name: 'UserList',
+        path: '/web/auth/users',
+        fullPath: '/web/auth/users',
+        params: {},
+        meta: {},
+      },
+    });
+    const Host = defineComponent({
+      setup() {
+        const store = useMenuStore();
+        store.bindRouteFromInjection();
+        return () => h('div', { 'data-menu': store.activeMenu?.id || '' });
+      },
+    });
+    const mounted = mountApp(Host as any, { plugins: [menuPlugin, pinia, router] });
+    await flushPromises();
+    await nextTick();
+    expect(mounted.q('[data-menu]')?.getAttribute('data-menu')).toBe('users');
+    mounted.unmount();
+  });
+
+  test('later route changes refresh the rail after an initial selection', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'auth',
+      title: 'Access Control',
+      children: [{ id: 'users', title: 'User List', path: '/auth/users' }],
+    } as any);
+    menuPlugin.manager.addMenu({
+      id: 'meta',
+      title: 'Meta',
+      children: [{ id: 'apps', title: 'Apps', path: '/meta/apps' }],
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: {
+        name: 'UserList',
+        path: '/auth/users',
+        fullPath: '/auth/users',
+        params: {},
+        meta: {},
+      },
+    });
+    const Host = defineComponent({
+      setup() {
+        const api = useMenu();
+        return () =>
+          h('div', {
+            'data-app': api.activeApp.value?.id || '',
+            'data-menu': api.activeMenu.value?.id || '',
+          });
+      },
+    });
+    const mounted = mountApp(Host as any, { plugins: [menuPlugin, pinia, router] });
+    await flushPromises();
+    await nextTick();
+    expect(mounted.q('[data-app]')?.getAttribute('data-app')).toBe('auth');
+    expect(mounted.q('[data-menu]')?.getAttribute('data-menu')).toBe('users');
+    await router.push({ path: '/meta/apps', name: 'Apps' });
+    await flushPromises();
+    await nextTick();
+    expect(mounted.q('[data-app]')?.getAttribute('data-app')).toBe('meta');
+    expect(mounted.q('[data-menu]')?.getAttribute('data-menu')).toBe('apps');
+    mounted.unmount();
+  });
+
+  test('activeApp is null when __parent hops exceed the cycle cap', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({ id: 'a', title: 'A', path: '/a' } as any);
+    menuPlugin.manager.addMenu({ id: 'b', title: 'B', path: '/b' } as any);
+    const a = menuPlugin.manager.getMenu('a') as any;
+    const b = menuPlugin.manager.getMenu('b') as any;
+    a.__parent = b;
+    b.__parent = a;
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: { name: 'Loop', path: '/a', fullPath: '/a', params: {}, meta: {} },
+    });
+    const Host = defineComponent({
+      setup() {
+        const store = useMenuStore();
+        store.setActiveMenu(a);
+        return () =>
+          h('div', {
+            'data-app': store.activeApp?.id || '',
+            'data-menu': store.activeMenu?.id || '',
+          });
+      },
+    });
+    const mounted = mountApp(Host as any, { plugins: [menuPlugin, pinia, router] });
+    await flushPromises();
+    expect(mounted.q('[data-app]')?.getAttribute('data-app')).toBe('');
+    expect(mounted.q('[data-menu]')?.getAttribute('data-menu')).toBe('a');
+    const store = useMenuStore();
+    store.setActiveMenu(store.activeMenu);
+    await flushPromises();
+    mounted.unmount();
+  });
+
+  test('isExpanded stops walking a cyclic __parent chain', async () => {
+    const menuPlugin = createMenuPlugin();
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: { name: 'Loop', path: '/loop', fullPath: '/loop', params: {}, meta: {} },
+    });
+    const a = { id: 'a', title: 'A', path: '/a' } as any;
+    const b = { id: 'b', title: 'B', path: '/b' } as any;
+    a.__parent = b;
+    b.__parent = a;
+    const Host = defineComponent({
+      setup() {
+        const api = useMenu();
+        api.setActiveMenu(a);
+        return () => h('div', { 'data-expanded': api.isExpanded('never') ? '1' : '0' });
+      },
+    });
+    const mounted = mountApp(Host as any, { plugins: [menuPlugin, pinia, router] });
+    await flushPromises();
+    expect(mounted.q('[data-expanded]')?.getAttribute('data-expanded')).toBe('0');
+    mounted.unmount();
+  });
 });

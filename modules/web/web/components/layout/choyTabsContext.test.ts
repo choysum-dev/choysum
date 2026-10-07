@@ -18,6 +18,7 @@ describe('createChoyTabsContext', () => {
 
     expect(ctx.update('a', { value: 'b', label: 'A2' })).toBe(false);
     expect(ctx.tabs.value[0]).toEqual({ value: 'a', label: 'A2', disabled: false });
+    expect(ctx.activeValue.value).toBeUndefined();
     expect(ctx.update('a', { value: 'c', label: 'C', disabled: true })).toBe(true);
     expect(ctx.tabs.value.map((t) => t.value)).toEqual(['c', 'b']);
     expect(ctx.tabs.value[0]).toEqual({ value: 'c', label: 'C', disabled: true });
@@ -39,7 +40,15 @@ describe('createChoyTabsContext', () => {
     expect(ctx.tabs.value).toEqual([{ value: 'a', label: 'A', disabled: false }]);
   });
 
-  test('update with undefined value in the patch keeps tab identity', () => {
+  test('update with identical fields keeps the same array identity', () => {
+    const ctx = createChoyTabsContext();
+    ctx.register({ value: 'a', label: 'A', disabled: false });
+    const before = ctx.tabs.value;
+    expect(ctx.update('a', { label: 'A', disabled: false })).toBe(true);
+    expect(ctx.tabs.value).toBe(before);
+  });
+
+  test('update with undefined value keeps key and applies other fields', () => {
     const ctx = createChoyTabsContext();
     ctx.register({ value: 'a', label: 'A', disabled: false });
     expect(ctx.update('a', { value: undefined, label: 'Renamed' })).toBe(true);

@@ -71,32 +71,42 @@ SPDX-License-Identifier: Apache-2.0
     >
       <div
         role="none"
-        :style="{
-          height: `${totalSize}px`,
-          position: 'relative',
-          minWidth: `${tableMinWidth}px`,
-          width: '100%',
-        }"
+        :style="
+          isVirtualized
+            ? {
+                height: `${totalSize}px`,
+                position: 'relative',
+                minWidth: `${tableMinWidth}px`,
+                width: '100%',
+              }
+            : {
+                minWidth: `${tableMinWidth}px`,
+                width: '100%',
+              }
+        "
       >
         <div
-          v-for="virtualRow in virtualRows"
-          :key="String(rows[virtualRow.index]?.id ?? virtualRow.key)"
-          :ref="measureRowElement"
-          :data-index="virtualRow.index"
+          v-for="item in bodyRows"
+          :key="String(item.key)"
+          :ref="isVirtualized ? measureRowElement : undefined"
+          :data-index="item.index"
           role="row"
-          :aria-rowindex="virtualRow.index + 2"
-          :aria-selected="rows[virtualRow.index]?.getIsSelected() ?? false"
+          :aria-rowindex="item.index + 2"
+          :aria-selected="item.row?.getIsSelected() ?? false"
           tabindex="0"
-          class="absolute left-0 grid w-full border-b border-border/60 text-sm hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          class="grid w-full border-b border-border/60 text-sm hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          :class="item.start != null ? 'absolute left-0' : undefined"
           :style="{
-            transform: `translateY(${virtualRow.start}px)`,
             gridTemplateColumns: gridTemplate,
+            ...(item.start != null
+              ? { transform: `translateY(${item.start}px)` }
+              : undefined),
           }"
-          @click="onRowClick($event, rows[virtualRow.index])"
-          @keydown="onRowKeydown($event, rows[virtualRow.index])"
+          @click="onRowClick($event, item.row)"
+          @keydown="onRowKeydown($event, item.row)"
         >
           <div
-            v-for="cell in rows[virtualRow.index]?.getVisibleCells() ?? []"
+            v-for="cell in item.row?.getVisibleCells() ?? []"
             :key="cell.id"
             role="gridcell"
             class="flex items-center truncate px-2"
@@ -104,7 +114,7 @@ SPDX-License-Identifier: Apache-2.0
             <Checkbox
               v-if="cell.column.id === '__select'"
               :model-value="cell.row.getIsSelected()"
-              :aria-label="`Select row ${virtualRow.index + 1}`"
+              :aria-label="`Select row ${item.index + 1}`"
               @click.stop
               @update:model-value="(v: boolean | 'indeterminate') => cell.row.toggleSelected(v === true)"
             />
@@ -145,10 +155,18 @@ import { useVirtualizer } from '@tanstack/vue-virtual';
 import { cn, type ClassValue } from '../../lib/utils';
 import Checkbox from '../vendor/ui/checkbox/Checkbox.vue';
 import {
+  applyDataTableParentScroll,
+  applyDataTableScrollToRow,
   compareDataTableValues,
+  dataTableIsVirtualized,
+  dataTableMaybeMeasure,
+  dataTableMeasureRow,
+  dataTableScrollElement,
   dataTableSelectionIdsEqual,
+  dataTableVirtualizerCount,
   decodeDataTableRowKey,
   encodeDataTableRowKey,
+  mapDataTableBodyRows,
   mapDataTableSelectionKeys,
   mergeDataTableControlledSelection,
   nextDataTableSort,
@@ -174,6 +192,11 @@ const props = withDefaults(
     rowSelection?: DataTableRowId[] | null;
     height?: number;
     estimateSize?: number;
+    /**
+     * When false, render every row in normal flow and do not attach a
+     * virtualizer ResizeObserver (embedded M2M/O2M tables in overflow-hidden form chrome).
+     */
+    virtualize?: boolean;
     enableSorting?: boolean;
     /**
      * client: reorder rows in the table.
@@ -187,6 +210,7 @@ const props = withDefaults(
   {
     height: 280,
     estimateSize: 32,
+    virtualize: true,
     enableSorting: true,
     sortingMode: 'client',
     enableRowSelection: true,
@@ -387,11 +411,17 @@ watch(rows, (current) => {
   }
 });
 
+const isVirtualized = computed(() =>
+  dataTableIsVirtualized(props.virtualize, rows.value.length),
+);
+
 const virtualizer = useVirtualizer({
   get count() {
-    return rows.value.length;
+    return dataTableVirtualizerCount(isVirtualized.value, rows.value.length);
   },
-  getScrollElement: () => parentRef.value as Element | null,
+  // Skip the observer when virtualization is off or the row set is empty.
+  getScrollElement: () =>
+    dataTableScrollElement(isVirtualized.value, parentRef.value as Element | null),
   estimateSize: () => resolveDataTableEstimateSize(props.estimateSize, 32),
   // Keep measurements attached to the logical row so sorting does not reuse stale heights.
   getItemKey: (index) => rows.value[index]?.id ?? index,
@@ -402,7 +432,7 @@ const virtualizer = useVirtualizer({
 watch(
   () => props.estimateSize,
   () => {
-    virtualizer.value.measure();
+    dataTableMaybeMeasure(isVirtualized.value, virtualizer.value);
   },
 );
 
@@ -414,7 +444,7 @@ watch(
     if (parentRef.value) {
       parentRef.value.scrollTop = 0;
     }
-    virtualizer.value.measure();
+    dataTableMaybeMeasure(isVirtualized.value, virtualizer.value);
   },
 );
 
@@ -431,10 +461,16 @@ watch(
 const virtualRows = computed(() => virtualizer.value.getVirtualItems());
 const totalSize = computed(() => virtualizer.value.getTotalSize());
 
+const bodyRows = computed(() =>
+  mapDataTableBodyRows({
+    virtualized: isVirtualized.value,
+    rows: rows.value,
+    virtualItems: virtualRows.value,
+  }),
+);
+
 function measureRowElement(el: Element | null): void {
-  if (el) {
-    virtualizer.value.measureElement(el);
-  }
+  dataTableMeasureRow(el, isVirtualized.value, virtualizer.value);
 }
 const gridTemplate = computed(() =>
   table
@@ -478,10 +514,17 @@ function onHeaderClick(columnId: string, canSort: boolean): void {
 }
 
 function scrollToRow(index: number, align?: 'start' | 'center' | 'end' | 'auto'): void {
-  if (!Number.isFinite(index) || index < 0) {
-    return;
-  }
-  virtualizer.value.scrollToIndex(index, { align: align ?? 'auto' });
+  applyDataTableScrollToRow({
+    index,
+    align,
+    virtualized: isVirtualized.value,
+    parent: parentRef.value,
+    estimateSize: props.estimateSize,
+    virtualizer: virtualizer.value,
+    setScrollTop: (top) => {
+      applyDataTableParentScroll(parentRef.value, top);
+    },
+  });
 }
 
 defineExpose({ scrollToRow });

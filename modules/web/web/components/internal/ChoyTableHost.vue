@@ -19,6 +19,7 @@ SPDX-License-Identifier: Apache-2.0
         :row-id="resolveRowId"
         :height="bodyHeight"
         :estimate-size="rowHeight"
+        :virtualize="virtualize"
         :enable-row-selection="false"
         :enable-sorting="true"
         :show-empty="false"
@@ -64,11 +65,13 @@ const props = withDefaults(
     headerHeight?: number;
     tableHeight?: number;
     footerHeight?: number;
+    /** When false, skip TanStack virtualizer (embedded M2M/O2M form tables). */
+    virtualize?: boolean;
     selectionApi?: ReturnType<typeof useTableSelection>;
     baseIndex?: number | Ref<number>;
     store?: any;
   }>(),
-  { rowKey: 'Id', rowHeight: 32, headerHeight: 32, footerHeight: 0 },
+  { rowKey: 'Id', rowHeight: 32, headerHeight: 32, footerHeight: 0, virtualize: true },
 );
 
 const emit = defineEmits<{

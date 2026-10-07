@@ -85,7 +85,8 @@ test('base page mount: every ChoyPage host mounts under choysumMount', async () 
   if (failures.length) throw new Error(`base page mount failed: ${failures.join(', ')}`);
 });
 
-test('base menus: root is text-only without a default icon', () => {
+test('base menus: root declares an icon and leaves stay text-only', () => {
   expect(baseMenus.length).toBeGreaterThan(0);
-  expect(baseMenus[0]!.icon).toBeUndefined();
+  expect(baseMenus[0]!.icon).toBeTruthy();
+  expect(baseMenus[0]!.children?.every((child) => child.icon == null)).toBe(true);
 });

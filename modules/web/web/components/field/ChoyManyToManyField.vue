@@ -28,6 +28,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyViewScope view-mode="display" :container="'List'" :field-prefix="String(prop)">
           <div class="w-full min-w-0" :style="{ height: tableHeightPxEdit }" tabindex="-1">
             <ChoyTableHost
+              v-if="tableReady"
               ref="ovTableRef"
               :data="getItems()"
               :row-key="'__rowKey'"
@@ -36,6 +37,7 @@ SPDX-License-Identifier: Apache-2.0
               :table-height="tableHeightEdit"
               :store="store"
               :base-index="1"
+              :virtualize="false"
             >
               <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'right', width: 50 }" />
               <slot />
@@ -56,6 +58,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyViewScope :view-mode="binding.env.viewMode" :container="'List'" :field-prefix="String(prop)">
           <div class="w-full min-w-0" :style="{ height: tableHeightPxEdit }" tabindex="-1">
             <ChoyTableHost
+              v-if="tableReady"
               ref="ovTableRef"
               :data="getItems()"
               :row-key="'__rowKey'"
@@ -64,6 +67,7 @@ SPDX-License-Identifier: Apache-2.0
               :table-height="tableHeightEdit"
               :store="store"
               :base-index="1"
+              :virtualize="false"
             >
               <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'right', width: 50 }" />
               <slot />
@@ -91,6 +95,7 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyViewScope v-else view-mode="display" :container="'List'" :field-prefix="String(prop)">
         <div class="w-full min-w-0" :style="{ height: tableHeightPxDisplay }">
           <ChoyTableHost
+            v-if="tableReady"
             :data="getItems()"
             :row-key="'__rowKey'"
             :row-height="rowHeightDisplayRes"
@@ -98,6 +103,7 @@ SPDX-License-Identifier: Apache-2.0
             :table-height="tableHeightDisplay"
             :store="store"
             :base-index="1"
+            :virtualize="false"
           >
             <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'right', width: 50 }" />
             <slot />
@@ -112,7 +118,7 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyDialogTitle>{{ effectiveSearchViewTitle }}</ChoyDialogTitle>
       <ChoyViewScope view-mode="display">
       <component
-        v-if="searchList && relationStore"
+        v-if="dialogVisible && searchList && relationStore"
         :is="searchList"
         ref="searchViewRef"
         :store="relationStore"
@@ -132,7 +138,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, ClientModel<BaseModel>[]>, V = FieldPathType<T, P>">
-import { computed, ref, type Component, nextTick, watch, onMounted, onBeforeUnmount, inject, Ref } from 'vue';
+import { computed, ref, type Component, nextTick, watch, onMounted, onBeforeUnmount, inject, Ref, shallowRef } from 'vue';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { ChoyMessage } from '../../composables/useChoyMessage';
@@ -269,6 +275,8 @@ const tableHeightPxDisplay = computed(() => `${tableHeightDisplay.value}px`);
 const dialogVisible = ref(false);
 const searchViewRef = ref<SelectionExpose<any> | null>(null);
 const ovTableRef = ref<InstanceType<typeof ChoyTableHost> | null>(null);
+// Mount after the host form finishes its sync initializeForm flush.
+const tableReady = shallowRef(false);
 
 // Read the row-key seed.
 function readRowKeySeed(row: unknown): string | number | undefined {
@@ -407,12 +415,15 @@ async function confirmAdd() {
   }
 }
 
-// Keep row keys hydrated.
-onMounted(hydrateRowKeys);
+onMounted(() => {
+  tableReady.value = true;
+  hydrateRowKeys();
+});
 watch(
   () => getItems().length,
-  () => hydrateRowKeys(),
-  { immediate: true }
+  () => {
+    if (tableReady.value) hydrateRowKeys();
+  },
 );
 
 // Expose store for the template.

@@ -43,14 +43,28 @@ type E2EBundleResult struct {
 	JSPath string
 }
 
-// e2eExactPinsWithoutVue loads exact pins from modules/web/package.json and drops
-// vue so the embedded host remains the single Vue instance (same as vueHostBareImportPins).
+// e2eExactPinsWithoutVue loads exact pins from core then web package.json and
+// drops vue so the embedded host remains the single Vue instance.
 func e2eExactPinsWithoutVue(repoRoot string) (map[string]string, error) {
-	pins, err := esmresolver.ExactPinsFromPackageJSON(filepath.Join(repoRoot, "modules", "web"))
+	corePins, err := esmresolver.ExactPinsFromPackageJSON(filepath.Join(repoRoot, "modules", "core"))
 	if err != nil {
 		return nil, err
 	}
+	webPins, err := esmresolver.ExactPinsFromPackageJSON(filepath.Join(repoRoot, "modules", "web"))
+	if err != nil {
+		return nil, err
+	}
+	pins := map[string]string{}
+	for name, ver := range corePins {
+		pins[name] = ver
+	}
+	for name, ver := range webPins {
+		pins[name] = ver
+	}
 	delete(pins, "vue")
+	if len(pins) == 0 {
+		return nil, nil
+	}
 	return pins, nil
 }
 
