@@ -45,7 +45,8 @@ import (
 var (
 	// First key (`{ Key`) or later key (`, Key`); values like `Foo: SidebarProvider` do not match.
 	mergedComponentsSidebarProviderRe = regexp.MustCompile(`components:\s*\{(?:\s*|[^}]*,\s*)SidebarProvider\s*[,}]`)
-	mergedComponentsXpathRe      = regexp.MustCompile(`components:\s*\{(?:\s*|[^}]*,\s*)Xpath\s*[,}]`)
+	mergedComponentsChoyShellHeaderRe = regexp.MustCompile(`components:\s*\{(?:\s*|[^}]*,\s*)ChoyShellHeader\s*[,}]`)
+	mergedComponentsXpathRe           = regexp.MustCompile(`components:\s*\{(?:\s*|[^}]*,\s*)Xpath\s*[,}]`)
 )
 
 type testScope struct {
@@ -793,6 +794,62 @@ func TestGetScriptNode_InjectsParentLayout_ForRealAuthChoyAppShell(t *testing.T)
 	}
 }
 
+func TestGetScriptNode_InjectsParentLayout_ForRealAuthChoyGuestShell(t *testing.T) {
+	testRuntimeScope := newTestScope()
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+
+	childPath := "/virtual/modules/auth/web/components/layout/ChoyGuestShell.vue"
+	parentPath := "/virtual/modules/web/web/components/layout/ChoyGuestShell.vue"
+
+	repoRoot, err := findRepoRootFromWD()
+	if err != nil {
+		t.Fatalf("locate repo root failed: %v", err)
+	}
+
+	childContent, err := os.ReadFile(filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "ChoyGuestShell.vue"))
+	if err != nil {
+		t.Fatalf("read child ChoyGuestShell failed: %v", err)
+	}
+	parentContent, err := os.ReadFile(filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "ChoyGuestShell.vue"))
+	if err != nil {
+		t.Fatalf("read parent ChoyGuestShell failed: %v", err)
+	}
+
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/auth"})
+	alias := map[string]string{"@": "/virtual/modules"}
+
+	childParsed, err := p.Parse(alias, childPath, string(childContent))
+	if err != nil {
+		t.Fatalf("parse child ChoyGuestShell failed: %v", err)
+	}
+	parentParsed, err := p.Parse(alias, parentPath, string(parentContent))
+	if err != nil {
+		t.Fatalf("parse parent ChoyGuestShell failed: %v", err)
+	}
+
+	if childParsed == nil || childParsed.VueComponent == nil {
+		t.Fatalf("expected child VueComponent")
+	}
+	if parentParsed == nil || parentParsed.VueComponent == nil {
+		t.Fatalf("expected parent VueComponent")
+	}
+
+	childParsed.VueComponent.Extends = parentPath
+
+	scriptNode, err := b.getScriptNode(childParsed, parentParsed)
+	if err != nil {
+		t.Fatalf("getScriptNode failed: %v", err)
+	}
+	content := htmlquery.InnerText(scriptNode)
+
+	if !mergedComponentsChoyShellHeaderRe.MatchString(content) {
+		t.Fatalf("expected merged script to register ChoyShellHeader from parent, got:\n%s", content)
+	}
+	if mergedComponentsXpathRe.MatchString(content) {
+		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
+	}
+}
+
 func TestGetScriptNode_InjectsParentLayout_WithRelativeModulesPath(t *testing.T) {
 	repoRoot, err := findRepoRootFromWD()
 	if err != nil {
@@ -1039,6 +1096,80 @@ func TestUpdateComponent_MergesAuthChoyAppShellIntoWeb(t *testing.T) {
 	}
 	if !mergedComponentsSidebarProviderRe.MatchString(childParsed.Content) {
 		t.Fatalf("expected merged script to register SidebarProvider from parent, got:\n%s", childParsed.Content)
+	}
+}
+
+func TestUpdateComponent_MergesAuthChoyGuestShellIntoWeb(t *testing.T) {
+	repoRoot, err := findRepoRootFromWD()
+	if err != nil {
+		t.Fatalf("locate repo root failed: %v", err)
+	}
+
+	modulesPath := filepath.Join(repoRoot, "modules")
+	choysumHome := isolatedChoysumHome(t)
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	testRuntimeScope.cfg.ModulesPath = modulesPath
+	testRuntimeScope.cfg.DefaultChoysumPath = choysumHome
+	if err := testRuntimeScope.db.AutoMigrate(&meta.Component{}); err != nil {
+		t.Fatalf("auto migrate components failed: %v", err)
+	}
+	mod := &meta.Module{Path: filepath.Join(modulesPath, "auth")}
+	b := &WebModuleBuilder{
+		runtimeScope: testRuntimeScope,
+		module:       mod,
+		parser:       defaultparser.NewVueParser(testRuntimeScope, mod),
+	}
+
+	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
+	if err := esmresolver.UpdateTsconfigPaths(tsconfigPath, nil); err != nil {
+		t.Fatalf("ensure modules tsconfig failed: %v", err)
+	}
+
+	pathAlias, err := parser.ParseTsconfigPathAlias(&api.BuildOptions{Tsconfig: tsconfigPath})
+	if err != nil {
+		t.Fatalf("parse tsconfig alias failed: %v", err)
+	}
+
+	childPath := filepath.Join(modulesPath, "auth", "web", "components", "layout", "ChoyGuestShell.vue")
+	parentPath := filepath.Join(modulesPath, "web", "web", "components", "layout", "ChoyGuestShell.vue")
+
+	childContentBytes, err := os.ReadFile(childPath)
+	if err != nil {
+		t.Fatalf("read child ChoyGuestShell failed: %v", err)
+	}
+	parentContentBytes, err := os.ReadFile(parentPath)
+	if err != nil {
+		t.Fatalf("read parent ChoyGuestShell failed: %v", err)
+	}
+
+	childContent := vueplugin.ResolveVueStylePath(string(childContentBytes), childPath, pathAlias)
+	parentContent := vueplugin.ResolveVueStylePath(string(parentContentBytes), parentPath, pathAlias)
+
+	childParsed, err := b.parser.Parse(pathAlias, childPath, childContent)
+	if err != nil {
+		t.Fatalf("parse child ChoyGuestShell failed: %v", err)
+	}
+	parentParsed, err := b.parser.Parse(pathAlias, parentPath, parentContent)
+	if err != nil {
+		t.Fatalf("parse parent ChoyGuestShell failed: %v", err)
+	}
+
+	buildResult := withParserResults(&module.BuildResult{}, childParsed, parentParsed)
+	if err := b.updateComponent(buildResult, pathAlias, childPath); err != nil {
+		t.Fatalf("updateComponent failed: %v", err)
+	}
+
+	if childParsed.Content == "" {
+		t.Fatal("expected merged child content after update")
+	}
+	if !strings.Contains(childParsed.Content, "choy-shell-login") {
+		t.Fatalf("expected merged content to keep guest login testid, got:\n%s", childParsed.Content)
+	}
+	if !strings.Contains(childParsed.Content, `data-anchor="choy.shell.header-actions"`) {
+		t.Fatalf("expected merged content to include the parent shell header-actions anchor, got:\n%s", childParsed.Content)
+	}
+	if !mergedComponentsChoyShellHeaderRe.MatchString(childParsed.Content) {
+		t.Fatalf("expected merged script to register ChoyShellHeader from parent, got:\n%s", childParsed.Content)
 	}
 }
 

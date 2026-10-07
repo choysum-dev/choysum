@@ -5,26 +5,28 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <Xpath expr="//*[@data-anchor='choy.shell.header-actions']" position="inside">
-    <ChoyButton
-      v-if="!isLoginRoute"
-      variant="outline"
-      size="sm"
-      :aria-label="_t('Log in')"
-      data-testid="choy-shell-login"
-      @click="handleLogin"
-    >
-      {{ _t('Log In') }}
-    </ChoyButton>
-    <ChoyButton
-      v-if="showRegister"
-      variant="outline"
-      size="sm"
-      :aria-label="_t('Sign up')"
-      data-testid="choy-shell-register"
-      @click="handleRegister"
-    >
-      {{ _t('Sign Up') }}
-    </ChoyButton>
+    <template v-if="!isAuthenticated">
+      <ChoyButton
+        v-if="!isLoginRoute"
+        variant="outline"
+        size="sm"
+        :aria-label="_t('Log in')"
+        data-testid="choy-shell-login"
+        @click="handleLogin"
+      >
+        {{ _t('Log In') }}
+      </ChoyButton>
+      <ChoyButton
+        v-if="showRegister"
+        variant="outline"
+        size="sm"
+        :aria-label="_t('Sign up')"
+        data-testid="choy-shell-register"
+        @click="handleRegister"
+      >
+        {{ _t('Sign Up') }}
+      </ChoyButton>
+    </template>
   </Xpath>
 </template>
 
@@ -34,12 +36,14 @@ import { useRouter } from 'vue-router';
 import { Xpath } from '@/core/web';
 import { ChoyButton } from '@/web';
 import ChoyGuestShell from '@/web/web/components/layout/ChoyGuestShell.vue';
+import { useAuthStore } from '@/auth/web/stores/auth';
 import { createTranslate } from '@/web/web/i18n';
 import { reuseParentSetupState } from './reuse_parent_setup_state';
 
 /**
  * Extends the guest shell so login/register actions merge into
  * data-anchor="choy.shell.header-actions" at web build time.
+ * Authenticated sessions on guest routes (e.g. /error/403) get no guest actions.
  */
 export default defineComponent({
   name: 'ChoyGuestShell',
@@ -57,6 +61,8 @@ export default defineComponent({
     const { _t } = createTranslate('auth', { scope: 'web/components/layout/ChoyGuestShell' });
     const router = useRouter();
     const route = router?.currentRoute;
+    const authStore = useAuthStore();
+    const isAuthenticated = computed(() => authStore.isAuthenticated);
     const isLoginRoute = computed(() => route?.value?.name === 'login' || route?.value?.path === '/login');
     const isRegisterRoute = computed(
       () => route?.value?.name === 'register' || route?.value?.path === '/register',
@@ -81,6 +87,7 @@ export default defineComponent({
     return {
       ...baseSetup,
       _t,
+      isAuthenticated,
       isLoginRoute,
       showRegister,
       handleLogin,

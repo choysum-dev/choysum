@@ -318,4 +318,34 @@ describe('ChoyGuestShell', () => {
     expect(pushes).toContain('/meta/modules');
     mounted.unmount();
   });
+
+  test('uses i18n when the plugin is installed', async () => {
+    const { createI18n } = await import('vue-i18n');
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+    const mounted = mountApp(ChoyGuestShell as any, {
+      plugins: [i18n],
+      stubs: {
+        'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-testid=choy-shell]')?.getAttribute('data-shell-mode')).toBe('guest');
+    expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
+    mounted.unmount();
+  });
+});
+
+describe('ChoyGuestShell without layout store', () => {
+  test('tolerates missing layout store and still renders chrome', async () => {
+    const { setActivePinia } = await import('pinia');
+    setActivePinia(undefined as any);
+    const mounted = mountApp(ChoyGuestShell as any, {
+      stubs: {
+        'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-testid=choy-shell-brand]')).not.toBeNull();
+    mounted.unmount();
+  });
 });
