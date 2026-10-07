@@ -845,43 +845,43 @@ msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr ""
 
-#: web/components/layout/ChoyWebShell.vue:5
-msgctxt "web/components/layout/ChoyWebShell"
+#: web/components/layout/ChoyGuestShell.vue:16
+msgctxt "web/components/layout/ChoyGuestShell"
 msgid "Log In"
 msgstr ""
 
-#: web/components/layout/ChoyWebShell.vue:31
-msgctxt "web/components/layout/ChoyWebShell"
-msgid "Log Out"
-msgstr ""
-
-#: web/components/layout/ChoyWebShell.vue:4
-msgctxt "web/components/layout/ChoyWebShell"
+#: web/components/layout/ChoyGuestShell.vue:13
+msgctxt "web/components/layout/ChoyGuestShell"
 msgid "Log in"
 msgstr ""
 
-#: web/components/layout/ChoyWebShell.vue:25
-msgctxt "web/components/layout/ChoyWebShell"
-msgid "Profile"
-msgstr ""
-
-#: web/components/layout/ChoyWebShell.vue:28
-msgctxt "web/components/layout/ChoyWebShell"
-msgid "Settings"
-msgstr ""
-
-#: web/components/layout/ChoyWebShell.vue:8
-msgctxt "web/components/layout/ChoyWebShell"
+#: web/components/layout/ChoyGuestShell.vue:26
+msgctxt "web/components/layout/ChoyGuestShell"
 msgid "Sign Up"
 msgstr ""
 
-#: web/components/layout/ChoyWebShell.vue:7
-msgctxt "web/components/layout/ChoyWebShell"
+#: web/components/layout/ChoyGuestShell.vue:23
+msgctxt "web/components/layout/ChoyGuestShell"
 msgid "Sign up"
 msgstr ""
 
-#: web/components/layout/ChoyWebShell.vue:15
-msgctxt "web/components/layout/ChoyWebShell"
+#: web/components/layout/ChoyAppShell.vue:34
+msgctxt "web/components/layout/ChoyAppShell"
+msgid "Log Out"
+msgstr ""
+
+#: web/components/layout/ChoyAppShell.vue:28
+msgctxt "web/components/layout/ChoyAppShell"
+msgid "Profile"
+msgstr ""
+
+#: web/components/layout/ChoyAppShell.vue:31
+msgctxt "web/components/layout/ChoyAppShell"
+msgid "Settings"
+msgstr ""
+
+#: web/components/layout/ChoyAppShell.vue:16
+msgctxt "web/components/layout/ChoyAppShell"
 msgid "User menu"
 msgstr ""
 

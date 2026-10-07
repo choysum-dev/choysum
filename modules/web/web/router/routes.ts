@@ -18,10 +18,9 @@ export const routes: RouteRecordRaw[] = [
 
   {
     path: '/',
-    component: () => import('../components/layout/ChoyWebShell.vue'),
-    name: 'Layout',
+    component: () => import('../components/layout/ChoyGuestShell.vue'),
+    name: 'GuestLayout',
     props: {
-      showSidebar: true,
       showHeader: true,
       showFooter: true,
     },
@@ -32,7 +31,6 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('../pages/ErrorView.vue'),
         meta: {
           requiresAuth: false,
-          isAuthPage: true,
         },
       },
     ],
@@ -40,10 +38,10 @@ export const routes: RouteRecordRaw[] = [
 
   {
     path: '/',
-    component: () => import('../components/layout/ChoyWebShell.vue'),
+    component: () => import('../components/layout/ChoyAppShell.vue'),
     name: 'AppLayout',
     props: {
-      // Sidebar menu is rendered inside ChoyWebShell (useMenu); route children
+      // Sidebar menu is rendered inside ChoyAppShell (useMenu); route children
       // cannot fill named #aside slots via a plain router-view.
       showSidebar: true,
       showHeader: true,

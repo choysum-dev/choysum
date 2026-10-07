@@ -18,7 +18,7 @@ function routesState(routes: string[]): PermissionState {
   };
 }
 
-test('authGuard allows authenticated users on isAuthPage error routes', async () => {
+test('authGuard allows authenticated users on public error routes', async () => {
   const ensureAuthReady = asyncFnRecorder();
   const mockAuthStore = {
     ensureAuthReady,
@@ -29,7 +29,7 @@ test('authGuard allows authenticated users on isAuthPage error routes', async ()
     {
       path: '/error/403',
       fullPath: '/error/403?from=/auth/users',
-      meta: { requiresAuth: false, isAuthPage: true },
+      meta: { requiresAuth: false },
     } as any,
     {} as any,
     depsFor(mockAuthStore)

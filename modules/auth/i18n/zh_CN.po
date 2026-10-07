@@ -826,43 +826,43 @@ msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr "用户注册失败"
 
-#: web/components/layout/ChoyWebShell.vue:5
-msgctxt "web/components/layout/ChoyWebShell"
+#: web/components/layout/ChoyGuestShell.vue:16
+msgctxt "web/components/layout/ChoyGuestShell"
 msgid "Log In"
 msgstr "登录"
 
-#: web/components/layout/ChoyWebShell.vue:31
-msgctxt "web/components/layout/ChoyWebShell"
-msgid "Log Out"
-msgstr "退出登录"
-
-#: web/components/layout/ChoyWebShell.vue:4
-msgctxt "web/components/layout/ChoyWebShell"
+#: web/components/layout/ChoyGuestShell.vue:13
+msgctxt "web/components/layout/ChoyGuestShell"
 msgid "Log in"
 msgstr "登录"
 
-#: web/components/layout/ChoyWebShell.vue:25
-msgctxt "web/components/layout/ChoyWebShell"
-msgid "Profile"
-msgstr "个人资料"
-
-#: web/components/layout/ChoyWebShell.vue:28
-msgctxt "web/components/layout/ChoyWebShell"
-msgid "Settings"
-msgstr "设置"
-
-#: web/components/layout/ChoyWebShell.vue:8
-msgctxt "web/components/layout/ChoyWebShell"
+#: web/components/layout/ChoyGuestShell.vue:26
+msgctxt "web/components/layout/ChoyGuestShell"
 msgid "Sign Up"
 msgstr "注册"
 
-#: web/components/layout/ChoyWebShell.vue:7
-msgctxt "web/components/layout/ChoyWebShell"
+#: web/components/layout/ChoyGuestShell.vue:23
+msgctxt "web/components/layout/ChoyGuestShell"
 msgid "Sign up"
 msgstr "注册"
 
-#: web/components/layout/ChoyWebShell.vue:15
-msgctxt "web/components/layout/ChoyWebShell"
+#: web/components/layout/ChoyAppShell.vue:34
+msgctxt "web/components/layout/ChoyAppShell"
+msgid "Log Out"
+msgstr "退出登录"
+
+#: web/components/layout/ChoyAppShell.vue:28
+msgctxt "web/components/layout/ChoyAppShell"
+msgid "Profile"
+msgstr "个人资料"
+
+#: web/components/layout/ChoyAppShell.vue:31
+msgctxt "web/components/layout/ChoyAppShell"
+msgid "Settings"
+msgstr "设置"
+
+#: web/components/layout/ChoyAppShell.vue:16
+msgctxt "web/components/layout/ChoyAppShell"
 msgid "User menu"
 msgstr "用户菜单"
 

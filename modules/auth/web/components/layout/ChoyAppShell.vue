@@ -5,31 +5,9 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <Xpath expr="//*[@data-anchor='choy.shell.header-actions']" position="inside">
-    <template v-if="!isAuthenticated">
-      <ChoyButton
-        v-if="!isLoginRoute"
-        variant="outline"
-        size="sm"
-        :aria-label="_t('Log in')"
-        data-testid="choy-shell-login"
-        @click="handleLogin"
-      >
-        {{ _t('Log In') }}
-      </ChoyButton>
-      <ChoyButton
-        v-if="showRegister"
-        variant="outline"
-        size="sm"
-        :aria-label="_t('Sign up')"
-        data-testid="choy-shell-register"
-        @click="handleRegister"
-      >
-        {{ _t('Sign Up') }}
-      </ChoyButton>
-    </template>
-    <ChoyNotificationBell v-if="isAuthenticated" />
-    <SwitchCompany v-if="isAuthenticated" />
-    <ChoyDropdownMenu v-if="isAuthenticated" v-model:open="userMenuOpen">
+    <ChoyNotificationBell />
+    <SwitchCompany />
+    <ChoyDropdownMenu v-model:open="userMenuOpen">
       <ChoyDropdownMenuTrigger as-child>
         <ChoyButton
           variant="ghost"
@@ -57,12 +35,12 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyDropdownMenuItem>
       </ChoyDropdownMenuContent>
     </ChoyDropdownMenu>
-    <PreferencesDialog v-if="isAuthenticated" v-model="preferencesVisible" />
+    <PreferencesDialog v-model="preferencesVisible" />
   </Xpath>
 </template>
 
-<script lang="ts" _name="ChoyWebShell">
-import { computed, defineComponent, ref, watch } from 'vue';
+<script lang="ts" _name="ChoyAppShell">
+import { defineComponent, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { User } from 'lucide-vue-next';
 import { Xpath } from '@/core/web';
@@ -76,21 +54,19 @@ import {
   ChoyDropdownMenuTrigger,
   ChoyNotificationBell,
 } from '@/web';
-import ChoyWebShell from '@/web/web/components/layout/ChoyWebShell.vue';
-import { useAuthStore } from '@/auth/web/stores/auth';
+import ChoyAppShell from '@/web/web/components/layout/ChoyAppShell.vue';
 import { createTranslate } from '@/web/web/i18n';
-import { shouldResetAuthHeaderPopups } from './auth_header_popup_state';
 import { reuseParentSetupState } from './reuse_parent_setup_state';
 import SwitchCompany from './SwitchCompany.vue';
 import PreferencesDialog from '../preferences/PreferencesDialog.vue';
 
 /**
- * Extends the product shell so auth header actions merge into
+ * Extends the app shell so session header actions merge into
  * data-anchor="choy.shell.header-actions" at web build time.
  */
 export default defineComponent({
-  name: 'ChoyWebShell',
-  extends: ChoyWebShell,
+  name: 'ChoyAppShell',
+  extends: ChoyAppShell,
   components: {
     Xpath,
     User,
@@ -106,28 +82,13 @@ export default defineComponent({
     ChoyDropdownMenuTrigger,
   },
   setup(props, ctx) {
-    const baseSetupFn = (ChoyWebShell as any)?.setup;
+    const baseSetupFn = (ChoyAppShell as any)?.setup;
     if (typeof baseSetupFn !== 'function') {
-      throw new Error('auth ChoyWebShell: base web ChoyWebShell exposes no setup() to merge');
+      throw new Error('auth ChoyAppShell: base web ChoyAppShell exposes no setup() to merge');
     }
     const baseSetup = reuseParentSetupState(baseSetupFn(props, ctx));
-    const { _t } = createTranslate('auth', { scope: 'web/components/layout/ChoyWebShell' });
+    const { _t } = createTranslate('auth', { scope: 'web/components/layout/ChoyAppShell' });
     const router = useRouter();
-    const route = router?.currentRoute;
-    const authStore = useAuthStore();
-    const isAuthenticated = computed(() => authStore.isAuthenticated);
-    const isLoginRoute = computed(() => route?.value?.name === 'login' || route?.value?.path === '/login');
-    const isRegisterRoute = computed(
-      () => route?.value?.name === 'register' || route?.value?.path === '/register',
-    );
-    const showRegister = computed(() => {
-      if (isRegisterRoute.value) return false;
-      try {
-        return typeof router.hasRoute === 'function' ? router.hasRoute('register') : true;
-      } catch {
-        return true;
-      }
-    });
     const preferencesVisible = ref(false);
     const userMenuOpen = ref(false);
 
@@ -138,20 +99,6 @@ export default defineComponent({
     function resetHeaderPopups() {
       closeUserMenu();
       preferencesVisible.value = false;
-    }
-
-    watch(isAuthenticated, (authed, wasAuthed) => {
-      if (shouldResetAuthHeaderPopups(Boolean(wasAuthed), Boolean(authed))) {
-        resetHeaderPopups();
-      }
-    });
-
-    function handleLogin() {
-      void router?.push?.({ name: 'login' });
-    }
-
-    function handleRegister() {
-      void router?.push?.({ name: 'register' });
     }
 
     function openPreferences() {
@@ -179,13 +126,8 @@ export default defineComponent({
     return {
       ...baseSetup,
       _t,
-      isAuthenticated,
-      isLoginRoute,
-      showRegister,
       preferencesVisible,
       userMenuOpen,
-      handleLogin,
-      handleRegister,
       onMenuProfile,
       onMenuSettings,
       onMenuLogout,

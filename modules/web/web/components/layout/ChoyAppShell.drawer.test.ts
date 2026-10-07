@@ -3,10 +3,10 @@
 
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import { nextTick, h } from 'vue';
-import ChoyWebShell from './ChoyWebShell.vue';
+import ChoyAppShell from './ChoyAppShell.vue';
 import { pinViewportWidth } from '../../stores/layoutStore/pinViewport';
 
-describe('ChoyWebShell mobile sidebar sheet', () => {
+describe('ChoyAppShell mobile sidebar sheet', () => {
   test('shows mobile sheet when layout store expands and hides when store collapses', async () => {
     pinViewportWidth(500);
     const { createPinia, setActivePinia } = await import('pinia');
@@ -31,7 +31,7 @@ describe('ChoyWebShell mobile sidebar sheet', () => {
       messages: { en: sourceMessages as any },
     });
 
-    const mounted = mountApp(ChoyWebShell as any, {
+    const mounted = mountApp(ChoyAppShell as any, {
       plugins: [pinia, router, i18n],
       stubs: {
         'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
@@ -63,11 +63,11 @@ describe('ChoyWebShell mobile sidebar sheet', () => {
   });
 });
 
-describe('ChoyWebShell without layout store', () => {
+describe('ChoyAppShell without layout store', () => {
   test('tolerates missing layout store and still renders chrome', async () => {
     const { setActivePinia } = await import('pinia');
     setActivePinia(undefined as any);
-    const mounted = mountApp(ChoyWebShell as any, {
+    const mounted = mountApp(ChoyAppShell as any, {
       stubs: {
         'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
       },
