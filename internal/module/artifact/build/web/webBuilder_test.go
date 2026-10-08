@@ -845,6 +845,9 @@ func TestGetScriptNode_InjectsParentLayout_ForRealAuthChoyGuestShell(t *testing.
 	if !mergedComponentsChoyShellHeaderRe.MatchString(content) {
 		t.Fatalf("expected merged script to register ChoyShellHeader from parent, got:\n%s", content)
 	}
+	if mergedComponentsSidebarProviderRe.MatchString(content) {
+		t.Fatalf("expected guest merged script not to register SidebarProvider, got:\n%s", content)
+	}
 	if mergedComponentsXpathRe.MatchString(content) {
 		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
 	}
@@ -1170,6 +1173,9 @@ func TestUpdateComponent_MergesAuthChoyGuestShellIntoWeb(t *testing.T) {
 	}
 	if !mergedComponentsChoyShellHeaderRe.MatchString(childParsed.Content) {
 		t.Fatalf("expected merged script to register ChoyShellHeader from parent, got:\n%s", childParsed.Content)
+	}
+	if mergedComponentsSidebarProviderRe.MatchString(childParsed.Content) {
+		t.Fatalf("expected guest merged script not to register SidebarProvider, got:\n%s", childParsed.Content)
 	}
 }
 
