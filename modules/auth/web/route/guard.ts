@@ -24,7 +24,7 @@ export async function authGuard(
   // is not treated as a legacy next-callback guard by vue-router.
   deps: AuthGuardDeps = {}
 ) {
-  if (to.meta.requiresAuth === false || to.meta.isAuthPage) {
+  if (to.meta.requiresAuth === false) {
     return true;
   }
 

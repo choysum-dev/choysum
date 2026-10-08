@@ -845,44 +845,44 @@ msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr ""
 
-#: web/components/layout/ChoyWebShell.vue:5
-msgctxt "web/components/layout/ChoyWebShell"
-msgid "Log In"
-msgstr ""
-
-#: web/components/layout/ChoyWebShell.vue:31
-msgctxt "web/components/layout/ChoyWebShell"
+#: web/components/layout/ChoyAppShell.vue:23
+msgctxt "web/components/layout/ChoyAppShell"
 msgid "Log Out"
 msgstr ""
 
-#: web/components/layout/ChoyWebShell.vue:4
-msgctxt "web/components/layout/ChoyWebShell"
-msgid "Log in"
-msgstr ""
-
-#: web/components/layout/ChoyWebShell.vue:25
-msgctxt "web/components/layout/ChoyWebShell"
+#: web/components/layout/ChoyAppShell.vue:17
+msgctxt "web/components/layout/ChoyAppShell"
 msgid "Profile"
 msgstr ""
 
-#: web/components/layout/ChoyWebShell.vue:28
-msgctxt "web/components/layout/ChoyWebShell"
+#: web/components/layout/ChoyAppShell.vue:20
+msgctxt "web/components/layout/ChoyAppShell"
 msgid "Settings"
 msgstr ""
 
-#: web/components/layout/ChoyWebShell.vue:8
-msgctxt "web/components/layout/ChoyWebShell"
+#: web/components/layout/ChoyAppShell.vue:7
+msgctxt "web/components/layout/ChoyAppShell"
+msgid "User menu"
+msgstr ""
+
+#: web/components/layout/ChoyGuestShell.vue:5
+msgctxt "web/components/layout/ChoyGuestShell"
+msgid "Log In"
+msgstr ""
+
+#: web/components/layout/ChoyGuestShell.vue:4
+msgctxt "web/components/layout/ChoyGuestShell"
+msgid "Log in"
+msgstr ""
+
+#: web/components/layout/ChoyGuestShell.vue:8
+msgctxt "web/components/layout/ChoyGuestShell"
 msgid "Sign Up"
 msgstr ""
 
-#: web/components/layout/ChoyWebShell.vue:7
-msgctxt "web/components/layout/ChoyWebShell"
+#: web/components/layout/ChoyGuestShell.vue:7
+msgctxt "web/components/layout/ChoyGuestShell"
 msgid "Sign up"
-msgstr ""
-
-#: web/components/layout/ChoyWebShell.vue:15
-msgctxt "web/components/layout/ChoyWebShell"
-msgid "User menu"
 msgstr ""
 
 #: web/components/layout/SwitchCompany.vue:34
@@ -1310,52 +1310,52 @@ msgctxt "web/pages/UserList"
 msgid "User List"
 msgstr ""
 
-#: web/route/routes.ts:239
+#: web/route/routes.ts:237
 msgctxt "web/route/routes"
 msgid "Create Field Rule"
 msgstr ""
 
-#: web/route/routes.ts:282
+#: web/route/routes.ts:280
 msgctxt "web/route/routes"
 msgid "Create Method Access"
 msgstr ""
 
-#: web/route/routes.ts:196
+#: web/route/routes.ts:194
 msgctxt "web/route/routes"
 msgid "Create Record Rule"
 msgstr ""
 
-#: web/route/routes.ts:92
+#: web/route/routes.ts:90
 msgctxt "web/route/routes"
 msgid "Create Role"
 msgstr ""
 
-#: web/route/routes.ts:119
+#: web/route/routes.ts:117
 msgctxt "web/route/routes"
 msgid "Create Session"
 msgstr ""
 
-#: web/route/routes.ts:148
+#: web/route/routes.ts:146
 msgctxt "web/route/routes"
 msgid "Create Token"
 msgstr ""
 
-#: web/route/routes.ts:325
+#: web/route/routes.ts:323
 msgctxt "web/route/routes"
 msgid "Create UI Resource Grant"
 msgstr ""
 
-#: web/route/routes.ts:63
+#: web/route/routes.ts:61
 msgctxt "web/route/routes"
 msgid "Create User"
 msgstr ""
 
-#: web/route/routes.ts:225
+#: web/route/routes.ts:223
 msgctxt "web/route/routes"
 msgid "Field Rule Details"
 msgstr ""
 
-#: web/route/routes.ts:211
+#: web/route/routes.ts:209
 msgctxt "web/route/routes"
 msgid "Field Rule List"
 msgstr ""
@@ -1365,87 +1365,87 @@ msgctxt "web/route/routes"
 msgid "Login"
 msgstr ""
 
-#: web/route/routes.ts:28
+#: web/route/routes.ts:27
 msgctxt "web/route/routes"
 msgid "Logout"
 msgstr ""
 
-#: web/route/routes.ts:268
+#: web/route/routes.ts:266
 msgctxt "web/route/routes"
 msgid "Method Access Details"
 msgstr ""
 
-#: web/route/routes.ts:254
+#: web/route/routes.ts:252
 msgctxt "web/route/routes"
 msgid "Method Access List"
 msgstr ""
 
-#: web/route/routes.ts:182
+#: web/route/routes.ts:180
 msgctxt "web/route/routes"
 msgid "Record Rule Details"
 msgstr ""
 
-#: web/route/routes.ts:168
+#: web/route/routes.ts:166
 msgctxt "web/route/routes"
 msgid "Record Rule List"
 msgstr ""
 
-#: web/route/routes.ts:343
+#: web/route/routes.ts:341
 msgctxt "web/route/routes"
 msgid "Register"
 msgstr ""
 
-#: web/route/routes.ts:83
+#: web/route/routes.ts:81
 msgctxt "web/route/routes"
 msgid "Role Details"
 msgstr ""
 
-#: web/route/routes.ts:74
+#: web/route/routes.ts:72
 msgctxt "web/route/routes"
 msgid "Role Management"
 msgstr ""
 
-#: web/route/routes.ts:110
+#: web/route/routes.ts:108
 msgctxt "web/route/routes"
 msgid "Session Details"
 msgstr ""
 
-#: web/route/routes.ts:101
+#: web/route/routes.ts:99
 msgctxt "web/route/routes"
 msgid "Session Management"
 msgstr ""
 
-#: web/route/routes.ts:157
+#: web/route/routes.ts:155
 msgctxt "web/route/routes"
 msgid "Token Board"
 msgstr ""
 
-#: web/route/routes.ts:139
+#: web/route/routes.ts:137
 msgctxt "web/route/routes"
 msgid "Token Details"
 msgstr ""
 
-#: web/route/routes.ts:130
+#: web/route/routes.ts:128
 msgctxt "web/route/routes"
 msgid "Token Management"
 msgstr ""
 
-#: web/route/routes.ts:311
+#: web/route/routes.ts:309
 msgctxt "web/route/routes"
 msgid "UI Resource Grant Details"
 msgstr ""
 
-#: web/route/routes.ts:297
+#: web/route/routes.ts:295
 msgctxt "web/route/routes"
 msgid "UI Resource Grant List"
 msgstr ""
 
-#: web/route/routes.ts:54
+#: web/route/routes.ts:52
 msgctxt "web/route/routes"
 msgid "User Details"
 msgstr ""
 
-#: web/route/routes.ts:45
+#: web/route/routes.ts:43
 msgctxt "web/route/routes"
 msgid "User List"
 msgstr ""
@@ -1626,22 +1626,22 @@ msgctxt "web/views/RoleFormView"
 msgid "Configure record/field/RPC grants under deny-default. The UI resource tree does not derive Record or Field rules; Advanced is the main place for data and method access."
 msgstr ""
 
-#: web/views/RoleFormView.vue:41
+#: web/views/RoleFormView.vue:60
 msgctxt "web/views/RoleFormView"
 msgid "Copy Role"
 msgstr ""
 
-#: web/views/RoleFormView.vue:41
+#: web/views/RoleFormView.vue:60
 msgctxt "web/views/RoleFormView"
 msgid "Create Role"
 msgstr ""
 
-#: web/views/RoleFormView.vue:41
+#: web/views/RoleFormView.vue:60
 msgctxt "web/views/RoleFormView"
 msgid "Delete Role"
 msgstr ""
 
-#: web/views/RoleFormView.vue:41
+#: web/views/RoleFormView.vue:60
 msgctxt "web/views/RoleFormView"
 msgid "Edit Role"
 msgstr ""
@@ -1698,7 +1698,7 @@ msgctxt "web/views/RoleFormView"
 msgid "Related Data"
 msgstr ""
 
-#: web/views/RoleFormView.vue:23
+#: web/views/RoleFormView.vue:42
 msgctxt "web/views/RoleFormView"
 msgid "Required"
 msgstr ""
@@ -1708,7 +1708,7 @@ msgctxt "web/views/RoleFormView"
 msgid "Requires → derived Method RPCs"
 msgstr ""
 
-#: web/views/RoleFormView.vue:41
+#: web/views/RoleFormView.vue:60
 msgctxt "web/views/RoleFormView"
 msgid "Role"
 msgstr ""
@@ -1746,6 +1746,11 @@ msgstr ""
 #: web/views/RoleFormView.vue:184
 msgctxt "web/views/RoleFormView"
 msgid "UI Resource Details (manual bypass)"
+msgstr ""
+
+#: web/views/RoleFormView.vue:24
+msgctxt "web/views/RoleFormView"
+msgid "Unable to load picker. Close and reopen to retry."
 msgstr ""
 
 #: web/views/RoleFormView.vue:91
@@ -2240,27 +2245,27 @@ msgctxt "web/views/UserFormView"
 msgid "Account Information"
 msgstr ""
 
-#: web/views/UserFormView.vue:43
+#: web/views/UserFormView.vue:62
 msgctxt "web/views/UserFormView"
 msgid "Copy User"
 msgstr ""
 
-#: web/views/UserFormView.vue:43
+#: web/views/UserFormView.vue:62
 msgctxt "web/views/UserFormView"
 msgid "Create User"
 msgstr ""
 
-#: web/views/UserFormView.vue:43
+#: web/views/UserFormView.vue:62
 msgctxt "web/views/UserFormView"
 msgid "Delete User"
 msgstr ""
 
-#: web/views/UserFormView.vue:43
+#: web/views/UserFormView.vue:62
 msgctxt "web/views/UserFormView"
 msgid "Edit User"
 msgstr ""
 
-#: web/views/UserFormView.vue:25
+#: web/views/UserFormView.vue:44
 msgctxt "web/views/UserFormView"
 msgid "Required"
 msgstr ""
@@ -2295,7 +2300,12 @@ msgctxt "web/views/UserFormView"
 msgid "Tokens"
 msgstr ""
 
-#: web/views/UserFormView.vue:43
+#: web/views/UserFormView.vue:25
+msgctxt "web/views/UserFormView"
+msgid "Unable to load picker. Close and reopen to retry."
+msgstr ""
+
+#: web/views/UserFormView.vue:62
 msgctxt "web/views/UserFormView"
 msgid "User"
 msgstr ""

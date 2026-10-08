@@ -3,98 +3,39 @@
 
 import { defineComponent, h, onActivated, ref } from 'vue';
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
-import ChoyWebShell from './ChoyWebShell.vue';
+import ChoyGuestShell from './ChoyGuestShell.vue';
 
-describe('ChoyWebShell', () => {
+describe('ChoyGuestShell', () => {
   beforeEach(async () => {
     const { pinViewportWidth } = await import('../../stores/layoutStore/pinViewport');
     const { createPinia, setActivePinia } = await import('pinia');
     pinViewportWidth(1280);
     setActivePinia(createPinia());
-    const { resetInstalledMenu } = await import('@/core/web/menu');
-    resetInstalledMenu();
   });
 
-  test('defaults to header and sidebar and renders router-view', async () => {
-    const mounted = mountApp(ChoyWebShell as any, {
+  test('renders guest canvas chrome without the app rail', async () => {
+    const mounted = mountApp(ChoyGuestShell as any, {
       stubs: {
         'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
       },
     });
     await flushPromises();
-    expect(mounted.q('[data-testid=choy-shell]')?.getAttribute('data-shell-mode')).toBe('sidebar');
+    expect(mounted.q('[data-testid=choy-shell]')?.getAttribute('data-shell-mode')).toBe('guest');
+    expect(mounted.q('.choy-shell')?.className || '').toContain('choy-shell--guest');
     expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
-    expect(mounted.q('[data-testid=choy-shell-header]')?.className || '').toContain('sticky');
-    expect(mounted.q('.choy-shell')?.className || '').toContain('overflow-hidden');
-    expect(mounted.q('[data-testid=choy-shell-canvas]')?.className || '').toContain('overflow-y-auto');
-    expect(mounted.q('[data-testid=choy-shell-header-sep]')).not.toBeNull();
-    expect(mounted.q('[data-anchor="choy.shell.header-actions"]')).not.toBeNull();
-    expect(mounted.q('[data-testid=choy-shell-nav-split]')).not.toBeNull();
-    expect(mounted.q('[data-testid=choy-shell-nav-pane]')).not.toBeNull();
-    expect(
-      mounted.q('[data-testid=choy-shell-nav-pane-scroll]')?.className || '',
-    ).toContain('overflow-auto');
-    expect(mounted.q('[data-testid=choy-shell-app-rail]')).not.toBeNull();
-    expect(mounted.q('[data-testid=choy-shell-aside]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-footer]')).not.toBeNull();
-    expect(mounted.q('[data-testid=choy-shell-footer]')?.className || '').not.toContain('border-t');
+    expect(mounted.q('[data-testid=choy-shell-app-rail]')).toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-aside]')).toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-menu-trigger]')).toBeNull();
+    expect((mounted.q('[data-testid=choy-shell-brand]')?.textContent || '').trim()).toBe('Choysum');
     expect(mounted.q('[data-testid=choy-app-footer]')?.textContent || '').toContain('Powered by Choysum');
-    expect(mounted.q('[data-testid=choy-shell-menu-trigger]')).not.toBeNull();
-    expect(mounted.q('[data-testid=choy-shell-brand]')).not.toBeNull();
-    expect(mounted.q('[data-testid=choy-shell-command-trigger]')).not.toBeNull();
     expect(mounted.q('[data-test=router-view]')).not.toBeNull();
     mounted.unmount();
   });
 
-  test('renders aside and footer chrome when enabled', async () => {
-    const mounted = mountApp(ChoyWebShell as any, {
-      props: { showHeader: true, showSidebar: true, showFooter: true },
-      slots: {
-        'header-actions': () => h('button', { 'data-test': 'header-action' }, 'A'),
-        aside: () => h('a', { 'data-test': 'nav-link' }, 'Home'),
-        footer: () => h('span', { 'data-test': 'footer-note' }, 'Foot'),
-      },
-      stubs: {
-        'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
-      },
-    });
-    await flushPromises();
-    expect(mounted.q('[data-anchor="choy.shell.header-actions"]')).not.toBeNull();
-    expect(mounted.q('[data-test=header-action]')?.textContent).toBe('A');
-    expect(mounted.q('[data-test=nav-link]')?.textContent).toBe('Home');
-    expect(mounted.q('[data-test=footer-note]')?.textContent).toBe('Foot');
-    mounted.unmount();
-  });
-
-  test('renders built-in aside chrome when showSidebar has no aside slot', async () => {
-    const mounted = mountApp(ChoyWebShell as any, {
-      props: { showHeader: true, showSidebar: true, showFooter: false },
-      stubs: {
-        'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
-      },
-    });
-    await flushPromises();
-    expect(mounted.q('[data-testid=choy-shell-app-rail]')).not.toBeNull();
-    expect(mounted.q('[data-testid=choy-shell-aside]')).not.toBeNull();
-    mounted.unmount();
-  });
-
-  test('renders built-in Powered by footer when showFooter has no footer slot', async () => {
-    const mounted = mountApp(ChoyWebShell as any, {
-      props: { showHeader: true, showSidebar: false, showFooter: true },
-      stubs: {
-        'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
-      },
-    });
-    await flushPromises();
-    expect(mounted.q('[data-testid=choy-shell]')?.getAttribute('data-shell-mode')).toBe('canvas');
-    expect(mounted.q('[data-testid=choy-app-footer]')?.textContent || '').toContain('Powered by Choysum');
-    mounted.unmount();
-  });
-
   test('hides header chrome when showHeader is false', async () => {
-    const mounted = mountApp(ChoyWebShell as any, {
-      props: { showHeader: false, showSidebar: false, showFooter: false },
+    const mounted = mountApp(ChoyGuestShell as any, {
+      props: { showHeader: false, showFooter: false },
       stubs: {
         'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
       },
@@ -105,9 +46,22 @@ describe('ChoyWebShell', () => {
     mounted.unmount();
   });
 
+  test('hides footer when showFooter is false', async () => {
+    const mounted = mountApp(ChoyGuestShell as any, {
+      props: { showHeader: true, showFooter: false },
+      stubs: {
+        'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-footer]')).toBeNull();
+    mounted.unmount();
+  });
+
   test('default slot overrides router-view fallback', async () => {
-    const mounted = mountApp(ChoyWebShell as any, {
-      props: { showHeader: false, showSidebar: false },
+    const mounted = mountApp(ChoyGuestShell as any, {
+      props: { showHeader: false },
       slots: {
         default: () => h('div', { 'data-test': 'custom-body' }, 'Custom'),
       },
@@ -128,8 +82,8 @@ describe('ChoyWebShell', () => {
     });
 
     function mountWithMeta(keepAlive: boolean) {
-      return mountApp(ChoyWebShell as any, {
-        props: { showHeader: false, showSidebar: false },
+      return mountApp(ChoyGuestShell as any, {
+        props: { showHeader: false },
         stubs: {
           'router-view': {
             setup: (_props: any, { slots }: any) => {
@@ -156,15 +110,15 @@ describe('ChoyWebShell', () => {
   });
 
   test('skips rendering when router-view has no matched Component', async () => {
-    const mounted = mountApp(ChoyWebShell as any, {
-      props: { showHeader: false, showSidebar: false },
+    const mounted = mountApp(ChoyGuestShell as any, {
+      props: { showHeader: false },
       stubs: {
         'router-view': {
           setup: (_props: any, { slots }: any) => {
             return () =>
               slots.default?.({
                 Component: undefined,
-                route: { meta: { keepAlive: false }, name: 'AppLayout', path: '/', fullPath: '/' },
+                route: { meta: { keepAlive: false }, name: 'GuestLayout', path: '/', fullPath: '/' },
               });
           },
         },
@@ -181,8 +135,8 @@ describe('ChoyWebShell', () => {
       name: 'NoMetaPage',
       setup: () => () => h('div', { 'data-test': 'page' }, 'ok'),
     });
-    const mounted = mountApp(ChoyWebShell as any, {
-      props: { showHeader: false, showSidebar: false },
+    const mounted = mountApp(ChoyGuestShell as any, {
+      props: { showHeader: false },
       stubs: {
         'router-view': {
           setup: (_props: any, { slots }: any) => {
@@ -220,8 +174,8 @@ describe('ChoyWebShell', () => {
       },
     });
 
-    const mounted = mountApp(ChoyWebShell as any, {
-      props: { showHeader: false, showSidebar: false },
+    const mounted = mountApp(ChoyGuestShell as any, {
+      props: { showHeader: false },
       stubs: {
         'router-view': {
           setup: (_props: any, { slots }: any) => {
@@ -268,8 +222,8 @@ describe('ChoyWebShell', () => {
       },
     });
 
-    const mounted = mountApp(ChoyWebShell as any, {
-      props: { showHeader: false, showSidebar: false },
+    const mounted = mountApp(ChoyGuestShell as any, {
+      props: { showHeader: false },
       stubs: {
         'router-view': {
           setup: (_props: any, { slots }: any) => {
@@ -319,8 +273,8 @@ describe('ChoyWebShell', () => {
       route: { meta: { keepAlive: true }, name: 'Cached', path: '/cached', fullPath: '/cached' },
     });
 
-    const mounted = mountApp(ChoyWebShell as any, {
-      props: { showHeader: false, showSidebar: false },
+    const mounted = mountApp(ChoyGuestShell as any, {
+      props: { showHeader: false },
       stubs: {
         'router-view': {
           setup: (_props: any, { slots }: any) => {
@@ -352,32 +306,10 @@ describe('ChoyWebShell', () => {
     mounted.unmount();
   });
 
-  test('hides aside but keeps header and footer when route.meta.isAuthPage is set', async () => {
-    const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
-    const { router } = createFeStubRouter({
-      route: { path: '/login', fullPath: '/login', meta: { isAuthPage: true } },
-    });
-    const mounted = mountApp(ChoyWebShell as any, {
-      plugins: [router],
-      stubs: {
-        'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
-      },
-    });
-    await flushPromises();
-    expect(mounted.q('[data-testid=choy-shell]')?.getAttribute('data-shell-mode')).toBe('canvas');
-    expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
-    expect(mounted.q('[data-testid=choy-shell-footer]')).not.toBeNull();
-    expect(mounted.q('[data-testid=choy-shell-app-rail]')).toBeNull();
-    expect(mounted.q('[data-testid=choy-shell-aside]')).toBeNull();
-    expect(mounted.q('[data-testid=choy-shell-menu-trigger]')).toBeNull();
-    expect((mounted.q('[data-testid=choy-shell-brand]')?.textContent || '').trim()).toBe('Choysum');
-    mounted.unmount();
-  });
-
   test('brand link navigates home when a router is installed', async () => {
     const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
     const { router } = createFeStubRouter({
-      route: { path: '/other', fullPath: '/other', meta: {} },
+      route: { path: '/login', fullPath: '/login', meta: {} },
     });
     const pushes: unknown[] = [];
     const originalPush = router.push?.bind(router);
@@ -385,7 +317,7 @@ describe('ChoyWebShell', () => {
       pushes.push(to);
       return originalPush ? originalPush(to) : Promise.resolve();
     };
-    const mounted = mountApp(ChoyWebShell as any, {
+    const mounted = mountApp(ChoyGuestShell as any, {
       plugins: [router],
       stubs: {
         'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
@@ -400,35 +332,33 @@ describe('ChoyWebShell', () => {
     mounted.unmount();
   });
 
-  test('wires built-in sidebar menu when pinia and menu plugin are installed', async () => {
-    const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
-    const { createPinia, setActivePinia } = await import('pinia');
-    const { createMenuPlugin } = await import('@/core/web/menu');
+  test('uses i18n when the plugin is installed', async () => {
     const { createI18n } = await import('vue-i18n');
-
-    const menuPlugin = createMenuPlugin();
-    menuPlugin.manager.addMenu({
-      id: 'shell-app',
-      title: 'Shell App',
-      path: '/shell-app',
-    } as any);
-    const pinia = createPinia();
-    setActivePinia(pinia);
-    const { router } = createFeStubRouter({
-      route: { path: '/meta/modules', fullPath: '/meta/modules', meta: {} },
-    });
     const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
-
-    const mounted = mountApp(ChoyWebShell as any, {
-      plugins: [menuPlugin, pinia, router, i18n],
+    const mounted = mountApp(ChoyGuestShell as any, {
+      plugins: [i18n],
       stubs: {
         'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
       },
     });
     await flushPromises();
-    expect(mounted.q('[data-testid=choy-shell-app-rail]')).not.toBeNull();
-    expect(mounted.q('[data-testid=choy-shell-aside]')).not.toBeNull();
-    expect(mounted.text()).toContain('Shell App');
+    expect(mounted.q('[data-testid=choy-shell]')?.getAttribute('data-shell-mode')).toBe('guest');
+    expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
+    mounted.unmount();
+  });
+});
+
+describe('ChoyGuestShell without layout store', () => {
+  test('tolerates missing layout store and still renders chrome', async () => {
+    const { setActivePinia } = await import('pinia');
+    setActivePinia(undefined as any);
+    const mounted = mountApp(ChoyGuestShell as any, {
+      stubs: {
+        'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-testid=choy-shell-brand]')).not.toBeNull();
     mounted.unmount();
   });
 });

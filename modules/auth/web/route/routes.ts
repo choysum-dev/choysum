@@ -19,7 +19,6 @@ export const authRoutes: RouteRecordRaw[] = [
     component: () => import('../pages/Login.vue'),
     meta: {
       requiresAuth: false,
-      isAuthPage: true,
     },
   }),
 
@@ -31,7 +30,6 @@ export const authRoutes: RouteRecordRaw[] = [
     component: () => import('../pages/Logout.vue'),
     meta: {
       requiresAuth: false,
-      isAuthPage: true,
     },
   }),
 ];
@@ -346,7 +344,6 @@ if (import.meta.env.CHOYSUM_ENABLE_REGISTRATION !== false) {
       component: () => import('../pages/Register.vue'),
       meta: {
         requiresAuth: false,
-        isAuthPage: true,
       },
     })
   );

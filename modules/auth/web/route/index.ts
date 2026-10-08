@@ -12,9 +12,9 @@ import { nextTick } from 'vue';
  */
 export function setupRouter(app: ChoysumWebApp): void {
   const router = app.router;
-  // Register auth-only routes under the main layout.
+  // Register guest auth routes under the guest layout.
   for (const route of authRoutes) {
-    router.addRoute('Layout', route);
+    router.addRoute('GuestLayout', route);
   }
 
   for (const route of appRoutes) {

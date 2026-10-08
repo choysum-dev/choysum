@@ -30,26 +30,29 @@ test('web routes: root and catch-all redirect via default land path', () => {
   });
 });
 
-test('web routes: registers Error page and no Home route/menu', () => {
-  const layout = routes.find(route => route.name === 'Layout') as any;
-  const error = layout?.children?.find((route: any) => route.name === 'Error');
+test('web routes: registers Error page under GuestLayout and no Home route/menu', () => {
+  const guest = routes.find(route => route.name === 'GuestLayout') as any;
+  const error = guest?.children?.find((route: any) => route.name === 'Error');
   expect(error).toBeTruthy();
   expect(error.path).toBe('error/:code(\\d+)');
   expect(error.meta?.requiresAuth).toBe(false);
-  expect(error.meta?.isAuthPage).toBe(true);
+  expect(error.meta?.isAuthPage).toBeUndefined();
 
-  const home = layout?.children?.find((route: any) => route.name === 'Home');
+  const home = guest?.children?.find((route: any) => route.name === 'Home');
   expect(home).toBeUndefined();
   expect(menus).toEqual([]);
 });
 
-test('AppLayout enables sidebar menu chrome with header and footer', () => {
+test('web routes: GuestLayout and AppLayout use separate shells with expected chrome props', () => {
   const appLayout = routes.find(route => route.name === 'AppLayout') as any;
   expect(appLayout?.props?.showSidebar).toBe(true);
   expect(appLayout?.props?.showFooter).toBe(true);
   expect(appLayout?.props?.showHeader).toBe(true);
+  expect(String(appLayout?.component?.toString?.() ?? appLayout?.component)).toContain('ChoyAppShell');
 
-  const layout = routes.find(route => route.name === 'Layout') as any;
-  expect(layout?.props?.showSidebar).toBe(true);
-  expect(layout?.props?.showFooter).toBe(true);
+  const guest = routes.find(route => route.name === 'GuestLayout') as any;
+  expect(guest?.props?.showFooter).toBe(true);
+  expect(guest?.props?.showHeader).toBe(true);
+  expect(guest?.props?.showSidebar).toBeUndefined();
+  expect(String(guest?.component?.toString?.() ?? guest?.component)).toContain('ChoyGuestShell');
 });
