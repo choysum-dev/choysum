@@ -257,22 +257,22 @@ msgctxt "web/components/field/DecimalField"
 msgid "Total digits must not exceed %s"
 msgstr ""
 
-#: web/components/field/FieldBase.vue:179
+#: web/components/field/FieldBase.vue:181
 msgctxt "web/components/field/FieldBase"
 msgid "Company values"
 msgstr ""
 
-#: web/components/field/FieldBase.vue:179
+#: web/components/field/FieldBase.vue:181
 msgctxt "web/components/field/FieldBase"
 msgid "Company values: %s"
 msgstr ""
 
-#: web/components/field/FieldBase.vue:172
+#: web/components/field/FieldBase.vue:174
 msgctxt "web/components/field/FieldBase"
 msgid "Translate field"
 msgstr ""
 
-#: web/components/field/FieldBase.vue:172
+#: web/components/field/FieldBase.vue:174
 msgctxt "web/components/field/FieldBase"
 msgid "Translate: %s"
 msgstr ""
@@ -414,7 +414,7 @@ msgid "Arrays are not allowed"
 msgstr ""
 
 #: web/components/field/ChoyJsonField.vue:170
-#: web/components/field/ChoyJsonField.vue:243
+#: web/components/field/ChoyJsonField.vue:244
 msgctxt "web/components/field/JsonobjectField"
 msgid "Cannot be empty"
 msgstr ""
@@ -435,7 +435,7 @@ msgctxt "web/components/field/JsonobjectField"
 msgid "Must be an object"
 msgstr ""
 
-#: web/components/field/ChoyJsonField.vue:250
+#: web/components/field/ChoyJsonField.vue:251
 msgctxt "web/components/field/JsonobjectField"
 msgid "Parse failed"
 msgstr ""
@@ -473,7 +473,7 @@ msgctxt "web/components/field/ManyToManyField"
 msgid "Select related items"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyField.vue:229
+#: web/components/field/ChoyManyToManyField.vue:231
 msgctxt "web/components/field/ManyToManyField"
 msgid "relationStore is unresolved; cannot open picker"
 msgstr ""
@@ -857,6 +857,16 @@ msgctxt "web/components/layout/ChoyCommandPalette"
 msgid "Type a command or search…"
 msgstr ""
 
+#: web/components/layout/ChoyGuestHeader.vue:15
+msgctxt "web/components/layout/ChoyGuestHeader"
+msgid "Home"
+msgstr ""
+
+#: web/components/layout/ChoyGuestMobileNav.vue:48
+msgctxt "web/components/layout/ChoyGuestMobileNav"
+msgid "Menu"
+msgstr ""
+
 #: web/components/layout/ChoyNotificationBell.vue:29
 msgctxt "web/components/layout/ChoyNotificationBell"
 msgid "Loading..."
@@ -898,12 +908,12 @@ msgctxt "web/components/layout/ChoyPageIoMenu"
 msgid "No model/store available for this action."
 msgstr ""
 
-#: web/components/layout/ChoySidebarNav.vue:51
+#: web/components/layout/ChoySidebarNav.vue:87
 msgctxt "web/components/layout/ChoySidebarNav"
 msgid "No menus available"
 msgstr ""
 
-#: web/components/layout/ChoyPage.vue:57
+#: web/components/layout/ChoyPage.vue:60
 msgctxt "web/components/layout/Page"
 msgid "Loading..."
 msgstr ""
@@ -1101,7 +1111,7 @@ msgctxt "web/components/view/FormView"
 msgid "User actions"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:91
+#: web/components/view/ChoyKanbanView.vue:107
 msgctxt "web/components/view/KanbanView"
 msgid "Failed to move card"
 msgstr ""
@@ -1111,32 +1121,32 @@ msgctxt "web/components/view/KanbanView"
 msgid "Kanban board"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:86
+#: web/components/view/ChoyKanbanView.vue:94
 msgctxt "web/components/view/KanbanView"
 msgid "Load more (%s remaining)"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:70
+#: web/components/view/ChoyKanbanView.vue:78
 msgctxt "web/components/view/KanbanView"
 msgid "Move to %s"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:64
+#: web/components/view/ChoyKanbanView.vue:72
 msgctxt "web/components/view/KanbanView"
 msgid "Move to lane"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:122
+#: web/components/view/ChoyKanbanView.vue:138
 msgctxt "web/components/view/KanbanView"
 msgid "New"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:80
+#: web/components/view/ChoyKanbanView.vue:88
 msgctxt "web/components/view/KanbanView"
 msgid "No cards"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:93
+#: web/components/view/ChoyKanbanView.vue:101
 msgctxt "web/components/view/KanbanView"
 msgid "No lanes"
 msgstr ""

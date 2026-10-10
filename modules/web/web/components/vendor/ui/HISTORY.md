@@ -36,6 +36,27 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
+### 2026-10-10 — PopoverContent positioning props
+
+- **PopoverContent:** expose `align` / `side` / `sideOffset` / `alignOffset` so product
+  hosts (Guest mobile nav) can match SiteHeader MobileNav placement without editing
+  kit defaults for every call site.
+- **Attrs:** `inheritAttrs: false` + `v-bind="$attrs"` on the Reka content node so
+  callers can set `style` / data attrs on the panel (not the portal wrapper).
+
+### 2026-10-10 — NavigationMenu QuickJS FE props + Link outline
+
+- **NavigationMenu*:** drop `defineProps<NavigationMenu*Props>()` / `import type` from
+  `reka-ui` and `@vueuse/core` `reactiveOmit` forwarding so GuestShell can import the
+  family under QuickJS FE (same rule as Sheet / Sidebar / DropdownMenu).
+- **navigationMenuTriggerStyle:** moved out of `index.ts` into
+  `navigationMenuTriggerStyle.ts` (avoid directory `"."` import in Trigger).
+- **NavigationMenuLink:** add `outline-none` and drop always-on `outline-ring` /
+  `ring-ring` color utilities (upstream has `outline-none`; without it top-nav links
+  painted a primary-colored outline box).
+- **Do not regress:** inline local props only; keep `h-control` on trigger style.
+  Top-nav ghost density stays in product hosts (`ChoyGuestHeader`), not kit defaults.
+
 ### 2026-10-03 — Card surface + control icon inherit
 
 - **Card:** `bg-card text-card-foreground` (light `--choy-color-card` is solid white).

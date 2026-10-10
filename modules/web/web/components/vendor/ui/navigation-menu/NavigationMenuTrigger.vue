@@ -4,29 +4,19 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import type { NavigationMenuTriggerProps } from "reka-ui"
-import type { HTMLAttributes } from "vue"
 import { ChevronDown } from 'lucide-vue-next'
-import { reactiveOmit } from "@vueuse/core"
-import {
-  NavigationMenuTrigger,
-  useForwardProps,
-} from "reka-ui"
-import { cn } from "../../../../lib/utils"
-import { navigationMenuTriggerStyle } from "."
+import { NavigationMenuTrigger } from 'reka-ui'
+import { cn, type ClassValue } from '../../../../lib/utils'
+import { navigationMenuTriggerStyle } from './navigationMenuTriggerStyle'
 
-const props = defineProps<NavigationMenuTriggerProps & { class?: HTMLAttributes["class"] }>()
-
-const delegatedProps = reactiveOmit(props, "class")
-
-const forwardedProps = useForwardProps(delegatedProps)
+defineProps<{ class?: ClassValue; disabled?: boolean }>()
 </script>
 
 <template>
   <NavigationMenuTrigger
     data-slot="navigation-menu-trigger"
-    v-bind="forwardedProps"
-    :class="cn(navigationMenuTriggerStyle(), 'group', props.class)"
+    :disabled="disabled"
+    :class="cn(navigationMenuTriggerStyle(), 'group', $props.class)"
   >
     <slot />
     <ChevronDown

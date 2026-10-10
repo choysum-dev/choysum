@@ -4,37 +4,49 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <!-- Guest marketing top bar aligned to shadcn SiteHeader density. -->
+  <!-- Guest top bar: SiteHeader density; desktop NavigationMenu + mobile Popover nav. -->
   <header
-    class="choy-guest-header sticky top-0 z-50 w-full shrink-0 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+    class="choy-guest-header sticky top-0 z-50 w-full shrink-0 bg-background/95 backdrop-blur"
     data-testid="choy-shell-header"
   >
-    <div class="container mx-auto flex h-14 max-w-screen-2xl items-center gap-2 px-4 md:gap-4 md:px-8">
-      <a
-        href="/"
-        class="choy-shell__brand mr-2 inline-flex min-w-0 items-center gap-2 text-sm font-bold tracking-tight text-foreground no-underline hover:opacity-90 md:mr-4"
-        data-testid="choy-shell-brand"
-        @click.prevent="goHome"
-      >
-        <img :src="logoUrl" alt="" class="size-5 shrink-0" width="20" height="20" />
-        <span class="truncate">Choysum</span>
-      </a>
-      <nav class="flex min-w-0 items-center gap-4 text-sm md:gap-6" aria-label="Guest">
-        <a
-          href="/"
-          class="text-foreground/80 hover:text-foreground font-medium no-underline transition-colors"
-          data-testid="choy-guest-nav-home"
-          @click.prevent="goHome"
+    <div class="w-full px-4 sm:px-6">
+      <div class="mx-auto flex h-14 max-w-screen-2xl items-center gap-2">
+        <ChoyGuestMobileNav :items="navItems" class="flex lg:hidden" />
+        <NavigationMenu
+          :viewport="false"
+          class="hidden max-w-none flex-none justify-start lg:flex"
         >
-          {{ homeLabel }}
-        </a>
-      </nav>
-      <div class="ms-auto flex items-center gap-2 md:flex-1 md:justify-end">
-        <nav class="flex items-center gap-0.5 [&_button]:size-8">
-          <ChoyShellThemeToggle />
-          <ChoyShellLocaleMenu />
-        </nav>
-        <slot name="header-actions" />
+          <NavigationMenuList class="gap-0">
+            <NavigationMenuItem v-for="item in navItems" :key="item.id">
+              <NavigationMenuLink
+                :class="navLinkClass"
+                :href="item.href"
+                :data-testid="`choy-guest-nav-${item.id}`"
+                @click.prevent="item.onSelect()"
+              >
+                {{ item.label }}
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+          </NavigationMenuList>
+        </NavigationMenu>
+        <div class="ml-auto flex items-center gap-2 md:flex-1 md:justify-end">
+          <nav class="flex items-center gap-0.5">
+            <ChoyShellThemeToggle />
+            <Separator
+              orientation="vertical"
+              class="mx-1 hidden !h-4 sm:block"
+              data-testid="choy-guest-header-sep-tools"
+            />
+            <ChoyShellLocaleMenu />
+          </nav>
+          <Separator
+            v-if="$slots['header-actions']"
+            orientation="vertical"
+            class="mx-1 hidden !h-4 lg:block"
+            data-testid="choy-shell-header-sep"
+          />
+          <slot name="header-actions" />
+        </div>
       </div>
     </div>
   </header>
@@ -42,24 +54,46 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
-import logoUrl from '../../assets/logo-32.png'
+import ChoyGuestMobileNav, { type ChoyGuestNavItem } from './ChoyGuestMobileNav.vue'
 import ChoyShellLocaleMenu from './ChoyShellLocaleMenu.vue'
 import ChoyShellThemeToggle from './ChoyShellThemeToggle.vue'
+import { Separator } from '../vendor/ui/separator'
+import {
+  NavigationMenu,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+} from '../vendor/ui/navigation-menu'
+import { cn } from '../../lib/utils'
+import { createTranslate } from '../../i18n'
 
 defineOptions({ name: 'ChoyGuestHeader' })
 
-defineProps<{
+const props = defineProps<{
   goHome: () => void
 }>()
 
-let tLayout: (key: string) => string = (key) => key
-try {
-  const i18n = useI18n({ useScope: 'global' })
-  tLayout = (key) => String(i18n.t(key))
-} catch {
-  tLayout = (key) => key
-}
+const { _t } = createTranslate('web', { scope: 'web/components/layout/ChoyGuestHeader' })
 
-const homeLabel = computed(() => tLayout('layout.header.home'))
+/** Ghost-button density matching shadcn-vue MainNav (`Button variant="ghost" size="sm"`). */
+const navLinkClass = cn(
+  'inline-flex h-8 w-max flex-row items-center justify-center gap-0 rounded-md px-2.5 py-0',
+  'bg-transparent text-sm font-medium text-foreground/80 shadow-none',
+  'hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground',
+  'focus-visible:ring-0 focus-visible:outline-none',
+  'data-active:bg-accent/50 data-active:text-foreground',
+)
+
+/**
+ * Guest primary nav. Shared by desktop NavigationMenu and mobile Popover.
+ * Add entries here when new guest destinations ship.
+ */
+const navItems = computed<ChoyGuestNavItem[]>(() => [
+  {
+    id: 'home',
+    label: _t('Home'),
+    href: '/',
+    onSelect: () => props.goHome(),
+  },
+])
 </script>

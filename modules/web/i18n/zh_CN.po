@@ -251,22 +251,22 @@ msgctxt "web/components/field/DecimalField"
 msgid "Total digits must not exceed %s"
 msgstr "总位数不得超过 %s"
 
-#: web/components/field/FieldBase.vue:179
+#: web/components/field/FieldBase.vue:181
 msgctxt "web/components/field/FieldBase"
 msgid "Company values"
 msgstr "公司值"
 
-#: web/components/field/FieldBase.vue:179
+#: web/components/field/FieldBase.vue:181
 msgctxt "web/components/field/FieldBase"
 msgid "Company values: %s"
 msgstr "公司值：%s"
 
-#: web/components/field/FieldBase.vue:172
+#: web/components/field/FieldBase.vue:174
 msgctxt "web/components/field/FieldBase"
 msgid "Translate field"
 msgstr "翻译字段"
 
-#: web/components/field/FieldBase.vue:172
+#: web/components/field/FieldBase.vue:174
 msgctxt "web/components/field/FieldBase"
 msgid "Translate: %s"
 msgstr "翻译：%s"
@@ -406,7 +406,7 @@ msgctxt "web/components/field/JsonobjectField"
 msgid "Arrays are not allowed"
 msgstr "不允许数组"
 
-#: web/components/field/ChoyJsonField.vue:170 web/components/field/ChoyJsonField.vue:243
+#: web/components/field/ChoyJsonField.vue:170 web/components/field/ChoyJsonField.vue:244
 msgctxt "web/components/field/JsonobjectField"
 msgid "Cannot be empty"
 msgstr "不能为空"
@@ -426,7 +426,7 @@ msgctxt "web/components/field/JsonobjectField"
 msgid "Must be an object"
 msgstr "必须是对象"
 
-#: web/components/field/ChoyJsonField.vue:250
+#: web/components/field/ChoyJsonField.vue:251
 msgctxt "web/components/field/JsonobjectField"
 msgid "Parse failed"
 msgstr "解析失败"
@@ -461,7 +461,7 @@ msgctxt "web/components/field/ManyToManyField"
 msgid "Select related items"
 msgstr "选择关联项"
 
-#: web/components/field/ChoyManyToManyField.vue:229
+#: web/components/field/ChoyManyToManyField.vue:231
 msgctxt "web/components/field/ManyToManyField"
 msgid "relationStore is unresolved; cannot open picker"
 msgstr "relationStore 未解析，无法打开选择器"
@@ -841,6 +841,16 @@ msgctxt "web/components/layout/ChoyCommandPalette"
 msgid "Type a command or search…"
 msgstr "输入命令或搜索…"
 
+#: web/components/layout/ChoyGuestHeader.vue:15
+msgctxt "web/components/layout/ChoyGuestHeader"
+msgid "Home"
+msgstr "首页"
+
+#: web/components/layout/ChoyGuestMobileNav.vue:48
+msgctxt "web/components/layout/ChoyGuestMobileNav"
+msgid "Menu"
+msgstr "菜单"
+
 #: web/components/layout/ChoyNotificationBell.vue:29
 msgctxt "web/components/layout/ChoyNotificationBell"
 msgid "Loading..."
@@ -881,12 +891,12 @@ msgctxt "web/components/layout/ChoyPageIoMenu"
 msgid "No model/store available for this action."
 msgstr "此操作没有可用的模型/存储。"
 
-#: web/components/layout/ChoySidebarNav.vue:51
+#: web/components/layout/ChoySidebarNav.vue:87
 msgctxt "web/components/layout/ChoySidebarNav"
 msgid "No menus available"
 msgstr "暂无可用菜单"
 
-#: web/components/layout/ChoyPage.vue:57
+#: web/components/layout/ChoyPage.vue:60
 msgctxt "web/components/layout/Page"
 msgid "Loading..."
 msgstr "加载中..."
@@ -1076,7 +1086,7 @@ msgctxt "web/components/view/FormView"
 msgid "User actions"
 msgstr "用户操作"
 
-#: web/components/view/ChoyKanbanView.vue:91
+#: web/components/view/ChoyKanbanView.vue:107
 msgctxt "web/components/view/KanbanView"
 msgid "Failed to move card"
 msgstr "移动卡片失败"
@@ -1086,32 +1096,32 @@ msgctxt "web/components/view/KanbanView"
 msgid "Kanban board"
 msgstr "看板"
 
-#: web/components/view/ChoyKanbanView.vue:86
+#: web/components/view/ChoyKanbanView.vue:94
 msgctxt "web/components/view/KanbanView"
 msgid "Load more (%s remaining)"
 msgstr "加载更多（剩余 %s）"
 
-#: web/components/view/ChoyKanbanView.vue:70
+#: web/components/view/ChoyKanbanView.vue:78
 msgctxt "web/components/view/KanbanView"
 msgid "Move to %s"
 msgstr "移至 %s"
 
-#: web/components/view/ChoyKanbanView.vue:64
+#: web/components/view/ChoyKanbanView.vue:72
 msgctxt "web/components/view/KanbanView"
 msgid "Move to lane"
 msgstr "移至泳道"
 
-#: web/components/view/ChoyKanbanView.vue:122
+#: web/components/view/ChoyKanbanView.vue:138
 msgctxt "web/components/view/KanbanView"
 msgid "New"
 msgstr "新建"
 
-#: web/components/view/ChoyKanbanView.vue:80
+#: web/components/view/ChoyKanbanView.vue:88
 msgctxt "web/components/view/KanbanView"
 msgid "No cards"
 msgstr "暂无卡片"
 
-#: web/components/view/ChoyKanbanView.vue:93
+#: web/components/view/ChoyKanbanView.vue:101
 msgctxt "web/components/view/KanbanView"
 msgid "No lanes"
 msgstr "暂无泳道"

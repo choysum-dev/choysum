@@ -123,9 +123,56 @@ export const DropdownMenuItem = stub('DropdownMenuItem');
 export const DropdownMenuPortal = stub('DropdownMenuPortal');
 export const DropdownMenuRoot = stub('DropdownMenuRoot');
 export const DropdownMenuTrigger = stub('DropdownMenuTrigger');
+export const NavigationMenuContent = stub('NavigationMenuContent');
+export const NavigationMenuIndicator = stub('NavigationMenuIndicator');
+export const NavigationMenuItem = stub('NavigationMenuItem');
+export const NavigationMenuLink = defineComponent({
+  name: 'NavigationMenuLink',
+  inheritAttrs: false,
+  props: {
+    href: { type: String, default: undefined },
+    active: { type: Boolean, default: undefined },
+    asChild: { type: Boolean, default: false },
+  },
+  setup(props, { slots, attrs }) {
+    return () =>
+      h(
+        props.href ? 'a' : 'div',
+        {
+          'data-reka-stub': 'NavigationMenuLink',
+          href: props.href,
+          ...attrs,
+        },
+        slots.default ? slots.default() : null,
+      );
+  },
+});
+export const NavigationMenuList = stub('NavigationMenuList');
+export const NavigationMenuRoot = stub('NavigationMenuRoot');
+export const NavigationMenuTrigger = stub('NavigationMenuTrigger');
+export const NavigationMenuViewport = stub('NavigationMenuViewport');
 export const PopoverContent = stub('PopoverContent');
 export const PopoverPortal = stub('PopoverPortal');
-export const PopoverRoot = stub('PopoverRoot');
+export const PopoverRoot = defineComponent({
+  name: 'PopoverRoot',
+  inheritAttrs: false,
+  props: {
+    open: { type: Boolean, default: undefined },
+  },
+  emits: ['update:open'],
+  setup(props, { slots, attrs }) {
+    return () =>
+      h(
+        'div',
+        {
+          'data-reka-stub': 'PopoverRoot',
+          'data-state': props.open ? 'open' : 'closed',
+          ...attrs,
+        },
+        slots.default ? slots.default() : null,
+      );
+  },
+});
 export const PopoverTrigger = stub('PopoverTrigger');
 export const ScrollAreaRoot = stub('ScrollAreaRoot');
 export const ScrollAreaScrollbar = stub('ScrollAreaScrollbar');

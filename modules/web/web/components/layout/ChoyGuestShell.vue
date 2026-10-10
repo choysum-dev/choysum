@@ -45,14 +45,16 @@ SPDX-License-Identifier: Apache-2.0
     </div>
     <footer
       v-if="showFooter"
-      class="shrink-0 border-t py-6 md:py-0"
+      class="shrink-0 bg-background"
       data-testid="choy-shell-footer"
     >
-      <div
-        class="container mx-auto flex max-w-screen-2xl flex-col items-center justify-between gap-4 px-4 md:h-24 md:flex-row md:px-8"
-      >
-        <ChoyAppFooter class="text-balance text-center text-sm leading-loose md:text-left" />
-        <slot name="footer" />
+      <div class="w-full px-6">
+        <div class="mx-auto flex h-16 max-w-screen-2xl items-center justify-center">
+          <ChoyAppFooter
+            class="w-full px-1 text-center text-xs leading-loose text-muted-foreground sm:text-sm"
+          />
+          <slot name="footer" />
+        </div>
       </div>
     </footer>
   </div>

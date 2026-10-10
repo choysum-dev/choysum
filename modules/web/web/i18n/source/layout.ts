@@ -19,7 +19,6 @@ export default {
   // Header.
   header: {
     menu: 'Menu',
-    home: 'Home',
     profile: 'Profile',
     settings: 'Settings',
     notifications: 'Notifications',

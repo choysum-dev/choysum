@@ -20,6 +20,7 @@ SPDX-License-Identifier: Apache-2.0
         v-if="showRegister"
         variant="default"
         size="sm"
+        class="h-[31px] rounded-lg"
         :aria-label="_t('Sign up')"
         data-testid="choy-shell-register"
         @click="handleRegister"

@@ -23,16 +23,21 @@ describe('ChoyGuestShell', () => {
     expect(mounted.q('[data-testid=choy-shell]')?.getAttribute('data-shell-mode')).toBe('guest');
     expect(mounted.q('.choy-shell')?.className || '').toContain('choy-shell--guest');
     expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
-    expect(mounted.q('.choy-guest-header')?.className || '').toContain('border-border/40');
+    expect(mounted.q('.choy-guest-header')?.className || '').toContain('bg-background/95');
     expect(mounted.q('.choy-guest-header')?.className || '').toContain('backdrop-blur');
-    expect(mounted.q('[data-testid=choy-shell-header-sep]')).toBeNull();
-    expect(mounted.q('[data-testid=choy-shell-footer]')?.className || '').toContain('border-t');
+    expect(mounted.q('.choy-guest-header')?.className || '').not.toContain('border-b');
+    expect(mounted.q('[data-testid=choy-shell-footer]')?.className || '').not.toContain('border-t');
     expect(mounted.q('[data-testid=choy-shell-app-rail]')).toBeNull();
     expect(mounted.q('[data-testid=choy-shell-aside]')).toBeNull();
     expect(mounted.q('[data-testid=choy-shell-menu-trigger]')).toBeNull();
-    expect((mounted.q('[data-testid=choy-shell-brand]')?.textContent || '').trim()).toBe('Choysum');
+    expect(mounted.q('[data-testid=choy-shell-brand]')).toBeNull();
     expect(mounted.q('[data-testid=choy-guest-nav-home]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-guest-mobile-nav]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-guest-mobile-nav]')?.className || '').toContain('lg:hidden');
+    expect(mounted.q('[data-slot=navigation-menu]')?.className || '').toContain('hidden');
+    expect(mounted.q('[data-slot=navigation-menu]')?.className || '').toContain('lg:flex');
     expect(mounted.q('[data-testid=choy-app-footer]')?.textContent || '').toContain('Powered by Choysum');
+    expect(mounted.q('[data-testid=choy-app-footer-logo]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-app-footer]')?.className || '').toContain('leading-loose');
     expect(mounted.q('[data-test=router-view]')).not.toBeNull();
     mounted.unmount();
@@ -311,32 +316,6 @@ describe('ChoyGuestShell', () => {
     mounted.unmount();
   });
 
-  test('brand link navigates home when a router is installed', async () => {
-    const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
-    const { router } = createFeStubRouter({
-      route: { path: '/login', fullPath: '/login', meta: {} },
-    });
-    const pushes: unknown[] = [];
-    const originalPush = router.push?.bind(router);
-    router.push = (to: unknown) => {
-      pushes.push(to);
-      return originalPush ? originalPush(to) : Promise.resolve();
-    };
-    const mounted = mountApp(ChoyGuestShell as any, {
-      plugins: [router],
-      stubs: {
-        'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
-      },
-    });
-    await flushPromises();
-    const brand = mounted.q('[data-testid=choy-shell-brand]') as HTMLElement | null;
-    expect(brand).not.toBeNull();
-    brand!.click();
-    await flushPromises();
-    expect(pushes).toContain('/meta/modules');
-    mounted.unmount();
-  });
-
   test('Home nav link navigates to the land path when a router is installed', async () => {
     const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
     const { router } = createFeStubRouter({
@@ -363,16 +342,8 @@ describe('ChoyGuestShell', () => {
     mounted.unmount();
   });
 
-  test('uses i18n when the plugin is installed', async () => {
-    const { createI18n } = await import('vue-i18n');
-    const sourceMessages = (await import('../../i18n/source')).default;
-    const i18n = createI18n({
-      legacy: false,
-      locale: 'en',
-      messages: { en: sourceMessages as any },
-    });
+  test('renders Home nav label from translate fallback', async () => {
     const mounted = mountApp(ChoyGuestShell as any, {
-      plugins: [i18n],
       stubs: {
         'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
       },
@@ -381,6 +352,33 @@ describe('ChoyGuestShell', () => {
     expect(mounted.q('[data-testid=choy-shell]')?.getAttribute('data-shell-mode')).toBe('guest');
     expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
     expect((mounted.q('[data-testid=choy-guest-nav-home]')?.textContent || '').trim()).toBe('Home');
+    mounted.unmount();
+  });
+
+  test('mobile nav Home link navigates to the land path when a router is installed', async () => {
+    const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
+    const { router } = createFeStubRouter({
+      route: { path: '/login', fullPath: '/login', meta: {} },
+    });
+    const pushes: unknown[] = [];
+    const originalPush = router.push?.bind(router);
+    router.push = (to: unknown) => {
+      pushes.push(to);
+      return originalPush ? originalPush(to) : Promise.resolve();
+    };
+    const mounted = mountApp(ChoyGuestShell as any, {
+      plugins: [router],
+      stubs: {
+        'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
+      },
+    });
+    await flushPromises();
+    const home = mounted.q('[data-testid=choy-guest-mobile-nav-home]') as HTMLElement | null;
+    expect(home).not.toBeNull();
+    expect((home?.textContent || '').trim()).toBe('Home');
+    home!.click();
+    await flushPromises();
+    expect(pushes).toContain('/meta/modules');
     mounted.unmount();
   });
 });
