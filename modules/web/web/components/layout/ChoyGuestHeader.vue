@@ -22,7 +22,7 @@ SPDX-License-Identifier: Apache-2.0
                 :class="navLinkClass"
                 :href="item.href"
                 :data-testid="`choy-guest-nav-${item.id}`"
-                @click.prevent="item.onSelect()"
+                @click="onNavActivate($event, item)"
               >
                 {{ item.label }}
               </NavigationMenuLink>
@@ -66,11 +66,14 @@ import {
 } from '../vendor/ui/navigation-menu'
 import { cn } from '../../lib/utils'
 import { createTranslate } from '../../i18n'
+import { isUnmodifiedPrimaryClick } from './guestNavActivate'
 
 defineOptions({ name: 'ChoyGuestHeader' })
 
 const props = defineProps<{
   goHome: () => void
+  /** Resolved land path advertised on Home anchors (modified clicks stay native). */
+  homeHref: string
 }>()
 
 const { _t } = createTranslate('web', { scope: 'web/components/layout/ChoyGuestHeader' })
@@ -92,8 +95,15 @@ const navItems = computed<ChoyGuestNavItem[]>(() => [
   {
     id: 'home',
     label: _t('Home'),
-    href: '/',
+    href: props.homeHref,
     onSelect: () => props.goHome(),
   },
 ])
+
+/** In-app SPA push for plain left-clicks; Ctrl/Cmd/etc. keep native anchor behavior. */
+function onNavActivate(e: MouseEvent, item: ChoyGuestNavItem) {
+  if (!isUnmodifiedPrimaryClick(e)) return
+  e.preventDefault()
+  item.onSelect()
+}
 </script>

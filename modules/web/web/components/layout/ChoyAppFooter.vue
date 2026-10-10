@@ -6,7 +6,6 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <p
     class="m-0 inline-flex items-center justify-center gap-1.5 text-center text-xs leading-snug text-muted-foreground"
-    :class="attrsClass"
     data-testid="choy-app-footer"
   >
     <img
@@ -22,16 +21,13 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, useAttrs } from 'vue';
-import logoUrl from '../../assets/logo-32.png';
-import { shellPoweredByLine } from './choyWebShellChrome';
+import { computed } from 'vue'
+import logoUrl from '../../assets/logo-32.png'
+import { shellPoweredByLine } from './choyWebShellChrome'
 
-defineOptions({ name: 'ChoyAppFooter', inheritAttrs: false });
-
-const attrs = useAttrs();
-const attrsClass = computed(() => attrs.class);
+defineOptions({ name: 'ChoyAppFooter' })
 
 const line = computed(() =>
   shellPoweredByLine(String((import.meta as ImportMeta).env?.CHOYSUM_APP_VERSION || '').trim() || 'dev'),
-);
+)
 </script>

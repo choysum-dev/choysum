@@ -65,7 +65,7 @@ SPDX-License-Identifier: Apache-2.0
               :href="item.href"
               class="text-2xl font-medium text-foreground no-underline hover:opacity-80"
               :data-testid="`choy-guest-mobile-nav-${item.id}`"
-              @click.prevent="onNavigate(item)"
+              @click="onNavigate($event, item)"
             >
               {{ item.label }}
             </a>
@@ -86,6 +86,7 @@ import {
 } from '../vendor/ui/popover'
 import { cn, type ClassValue } from '../../lib/utils'
 import { createTranslate } from '../../i18n'
+import { isUnmodifiedPrimaryClick } from './guestNavActivate'
 
 export type ChoyGuestNavItem = {
   id: string
@@ -116,7 +117,9 @@ const panelStyle = {
   maxWidth: '100vw',
 }
 
-function onNavigate(item: ChoyGuestNavItem) {
+function onNavigate(e: MouseEvent, item: ChoyGuestNavItem) {
+  if (!isUnmodifiedPrimaryClick(e)) return
+  e.preventDefault()
   open.value = false
   item.onSelect()
 }

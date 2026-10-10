@@ -46,6 +46,7 @@ var (
 	// First key (`{ Key`) or later key (`, Key`); values like `Foo: SidebarProvider` do not match.
 	mergedComponentsSidebarProviderRe = regexp.MustCompile(`components:\s*\{(?:\s*|[^}]*,\s*)SidebarProvider\s*[,}]`)
 	mergedComponentsChoyGuestHeaderRe = regexp.MustCompile(`components:\s*\{(?:\s*|[^}]*,\s*)ChoyGuestHeader\s*[,}]`)
+	mergedComponentsChoyAppHeaderRe   = regexp.MustCompile(`components:\s*\{(?:\s*|[^}]*,\s*)ChoyAppHeader\s*[,}]`)
 	mergedComponentsXpathRe           = regexp.MustCompile(`components:\s*\{(?:\s*|[^}]*,\s*)Xpath\s*[,}]`)
 )
 
@@ -844,6 +845,9 @@ func TestGetScriptNode_InjectsParentLayout_ForRealAuthChoyGuestShell(t *testing.
 
 	if !mergedComponentsChoyGuestHeaderRe.MatchString(content) {
 		t.Fatalf("expected merged script to register ChoyGuestHeader from parent, got:\n%s", content)
+	}
+	if mergedComponentsChoyAppHeaderRe.MatchString(content) {
+		t.Fatalf("expected guest merged script not to register ChoyAppHeader, got:\n%s", content)
 	}
 	if mergedComponentsSidebarProviderRe.MatchString(content) {
 		t.Fatalf("expected guest merged script not to register SidebarProvider, got:\n%s", content)

@@ -336,6 +336,7 @@ describe('ChoyGuestShell', () => {
     await flushPromises();
     const home = mounted.q('[data-testid=choy-guest-nav-home]') as HTMLElement | null;
     expect(home).not.toBeNull();
+    expect(home!.getAttribute('href')).toBe('/meta/modules');
     home!.click();
     await flushPromises();
     expect(pushes).toContain('/meta/modules');
@@ -376,9 +377,22 @@ describe('ChoyGuestShell', () => {
     const home = mounted.q('[data-testid=choy-guest-mobile-nav-home]') as HTMLElement | null;
     expect(home).not.toBeNull();
     expect((home?.textContent || '').trim()).toBe('Home');
+    expect(home!.getAttribute('href')).toBe('/meta/modules');
     home!.click();
     await flushPromises();
     expect(pushes).toContain('/meta/modules');
     mounted.unmount();
   });
+
+  test('isUnmodifiedPrimaryClick accepts plain left clicks only', async () => {
+    const { isUnmodifiedPrimaryClick } = await import('./guestNavActivate');
+    expect(isUnmodifiedPrimaryClick({ button: 0 } as MouseEvent)).toBe(true);
+    expect(isUnmodifiedPrimaryClick({} as MouseEvent)).toBe(true);
+    expect(isUnmodifiedPrimaryClick({ button: 0, metaKey: true } as MouseEvent)).toBe(false);
+    expect(isUnmodifiedPrimaryClick({ button: 0, ctrlKey: true } as MouseEvent)).toBe(false);
+    expect(isUnmodifiedPrimaryClick({ button: 0, shiftKey: true } as MouseEvent)).toBe(false);
+    expect(isUnmodifiedPrimaryClick({ button: 0, altKey: true } as MouseEvent)).toBe(false);
+    expect(isUnmodifiedPrimaryClick({ button: 1 } as MouseEvent)).toBe(false);
+  });
 });
+

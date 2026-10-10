@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     data-testid="choy-shell"
     data-shell-mode="guest"
   >
-    <ChoyGuestHeader v-if="effectiveShowHeader" :go-home="onBrandClick">
+    <ChoyGuestHeader v-if="effectiveShowHeader" :go-home="onBrandClick" :home-href="homeHref">
       <template #header-actions>
         <div
           data-anchor="choy.shell.header-actions"
@@ -81,17 +81,23 @@ const props = withDefaults(
   },
 )
 
-let onBrandClick = () => {}
+const homeHref = resolveRuntimeDefaultLandPath()
+
+let onBrandClick = () => {
+  if (typeof location !== 'undefined') {
+    location.assign(homeHref)
+  }
+}
 
 try {
   const router = useRouter()
   if (router) {
     onBrandClick = () => {
-      void router.push(resolveRuntimeDefaultLandPath())
+      void router.push(homeHref)
     }
   }
 } catch {
-  onBrandClick = () => {}
+  // Keep location.assign fallback when router injection is unavailable.
 }
 
 const effectiveShowHeader = computed(() => props.showHeader)
