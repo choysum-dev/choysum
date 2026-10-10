@@ -23,7 +23,9 @@ describe('ChoyGuestShell', () => {
     expect(mounted.q('[data-testid=choy-shell]')?.getAttribute('data-shell-mode')).toBe('guest');
     expect(mounted.q('.choy-shell')?.className || '').toContain('choy-shell--guest');
     expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
-    expect(mounted.q('.choy-guest-header')?.className || '').toContain('border-b');
+    expect(mounted.q('.choy-guest-header')?.className || '').toContain('border-border/40');
+    expect(mounted.q('.choy-guest-header')?.className || '').toContain('backdrop-blur');
+    expect(mounted.q('[data-testid=choy-shell-header-sep]')).toBeNull();
     expect(mounted.q('[data-testid=choy-shell-footer]')?.className || '').toContain('border-t');
     expect(mounted.q('[data-testid=choy-shell-app-rail]')).toBeNull();
     expect(mounted.q('[data-testid=choy-shell-aside]')).toBeNull();
@@ -31,6 +33,7 @@ describe('ChoyGuestShell', () => {
     expect((mounted.q('[data-testid=choy-shell-brand]')?.textContent || '').trim()).toBe('Choysum');
     expect(mounted.q('[data-testid=choy-guest-nav-home]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-app-footer]')?.textContent || '').toContain('Powered by Choysum');
+    expect(mounted.q('[data-testid=choy-app-footer]')?.className || '').toContain('leading-loose');
     expect(mounted.q('[data-test=router-view]')).not.toBeNull();
     mounted.unmount();
   });

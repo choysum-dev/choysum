@@ -4,43 +4,36 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <!-- Guest marketing-style top bar: brand + Home nav, no app sidebar chrome. -->
+  <!-- Guest marketing top bar aligned to shadcn SiteHeader density. -->
   <header
-    class="choy-guest-header sticky top-0 z-40 w-full shrink-0 border-b bg-background/95 text-sm backdrop-blur"
-    :style="{ height: 'var(--choy-layout-header-height)' }"
+    class="choy-guest-header sticky top-0 z-50 w-full shrink-0 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
     data-testid="choy-shell-header"
   >
-    <div
-      class="mx-auto flex h-full w-full max-w-screen-2xl items-center gap-4 px-4"
-    >
+    <div class="container mx-auto flex h-14 max-w-screen-2xl items-center gap-2 px-4 md:gap-4 md:px-8">
       <a
         href="/"
-        class="choy-shell__brand inline-flex min-w-0 items-center gap-2 font-medium tracking-tight text-foreground no-underline hover:opacity-90"
+        class="choy-shell__brand mr-2 inline-flex min-w-0 items-center gap-2 text-sm font-bold tracking-tight text-foreground no-underline hover:opacity-90 md:mr-4"
         data-testid="choy-shell-brand"
         @click.prevent="goHome"
       >
-        <img :src="logoUrl" alt="" class="size-5 shrink-0 saturate-50" width="20" height="20" />
+        <img :src="logoUrl" alt="" class="size-5 shrink-0" width="20" height="20" />
         <span class="truncate">Choysum</span>
       </a>
-      <nav class="flex min-w-0 items-center gap-4" aria-label="Guest">
+      <nav class="flex min-w-0 items-center gap-4 text-sm md:gap-6" aria-label="Guest">
         <a
           href="/"
-          class="text-muted-foreground hover:text-foreground font-medium no-underline transition-colors"
+          class="text-foreground/80 hover:text-foreground font-medium no-underline transition-colors"
           data-testid="choy-guest-nav-home"
           @click.prevent="goHome"
         >
           {{ homeLabel }}
         </a>
       </nav>
-      <div class="ms-auto flex items-center gap-2">
-        <ChoyShellThemeToggle />
-        <ChoyShellLocaleMenu />
-        <div
-          v-if="$slots['header-actions']"
-          class="mx-1 h-4 w-px shrink-0 bg-border"
-          data-testid="choy-shell-header-sep"
-          aria-hidden="true"
-        />
+      <div class="ms-auto flex items-center gap-2 md:flex-1 md:justify-end">
+        <nav class="flex items-center gap-0.5 [&_button]:size-8">
+          <ChoyShellThemeToggle />
+          <ChoyShellLocaleMenu />
+        </nav>
         <slot name="header-actions" />
       </div>
     </div>

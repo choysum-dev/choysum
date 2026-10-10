@@ -12,7 +12,10 @@ SPDX-License-Identifier: Apache-2.0
   >
     <ChoyGuestHeader v-if="effectiveShowHeader" :go-home="onBrandClick">
       <template #header-actions>
-        <div data-anchor="choy.shell.header-actions" class="flex items-center gap-2">
+        <div
+          data-anchor="choy.shell.header-actions"
+          class="flex items-center gap-1.5"
+        >
           <slot name="header-actions" />
         </div>
       </template>
@@ -42,11 +45,15 @@ SPDX-License-Identifier: Apache-2.0
     </div>
     <footer
       v-if="showFooter"
-      class="shrink-0 border-t px-4 py-4"
+      class="shrink-0 border-t py-6 md:py-0"
       data-testid="choy-shell-footer"
     >
-      <ChoyAppFooter />
-      <slot name="footer" />
+      <div
+        class="container mx-auto flex max-w-screen-2xl flex-col items-center justify-between gap-4 px-4 md:h-24 md:flex-row md:px-8"
+      >
+        <ChoyAppFooter class="text-balance text-center text-sm leading-loose md:text-left" />
+        <slot name="footer" />
+      </div>
     </footer>
   </div>
 </template>
