@@ -23,12 +23,22 @@ describe('ChoyGuestShell', () => {
     expect(mounted.q('[data-testid=choy-shell]')?.getAttribute('data-shell-mode')).toBe('guest');
     expect(mounted.q('.choy-shell')?.className || '').toContain('choy-shell--guest');
     expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
-    expect(mounted.q('[data-testid=choy-shell-footer]')).not.toBeNull();
+    expect(mounted.q('.choy-guest-header')?.className || '').toContain('bg-background/95');
+    expect(mounted.q('.choy-guest-header')?.className || '').toContain('backdrop-blur');
+    expect(mounted.q('.choy-guest-header')?.className || '').not.toContain('border-b');
+    expect(mounted.q('[data-testid=choy-shell-footer]')?.className || '').not.toContain('border-t');
     expect(mounted.q('[data-testid=choy-shell-app-rail]')).toBeNull();
     expect(mounted.q('[data-testid=choy-shell-aside]')).toBeNull();
     expect(mounted.q('[data-testid=choy-shell-menu-trigger]')).toBeNull();
-    expect((mounted.q('[data-testid=choy-shell-brand]')?.textContent || '').trim()).toBe('Choysum');
+    expect(mounted.q('[data-testid=choy-shell-brand]')).toBeNull();
+    expect(mounted.q('[data-testid=choy-guest-nav-home]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-guest-mobile-nav]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-guest-mobile-nav]')?.className || '').toContain('lg:hidden');
+    expect(mounted.q('[data-slot=navigation-menu]')?.className || '').toContain('hidden');
+    expect(mounted.q('[data-slot=navigation-menu]')?.className || '').toContain('lg:flex');
     expect(mounted.q('[data-testid=choy-app-footer]')?.textContent || '').toContain('Powered by Choysum');
+    expect(mounted.q('[data-testid=choy-app-footer-logo]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-app-footer]')?.className || '').toContain('leading-loose');
     expect(mounted.q('[data-test=router-view]')).not.toBeNull();
     mounted.unmount();
   });
@@ -306,7 +316,7 @@ describe('ChoyGuestShell', () => {
     mounted.unmount();
   });
 
-  test('brand link navigates home when a router is installed', async () => {
+  test('Home nav link navigates to the land path when a router is installed', async () => {
     const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
     const { router } = createFeStubRouter({
       route: { path: '/login', fullPath: '/login', meta: {} },
@@ -324,19 +334,54 @@ describe('ChoyGuestShell', () => {
       },
     });
     await flushPromises();
-    const brand = mounted.q('[data-testid=choy-shell-brand]') as HTMLElement | null;
-    expect(brand).not.toBeNull();
-    brand!.click();
+    const home = mounted.q('[data-testid=choy-guest-nav-home]') as HTMLElement | null;
+    expect(home).not.toBeNull();
+    expect(home!.getAttribute('href')).toBe('/meta/modules');
+    const ctrlClick = new Event('click', { bubbles: true, cancelable: true }) as MouseEvent;
+    Object.assign(ctrlClick, { button: 0, ctrlKey: true, metaKey: false, shiftKey: false, altKey: false });
+    home!.dispatchEvent(ctrlClick);
+    await flushPromises();
+    expect(pushes).not.toContain('/meta/modules');
+    home!.click();
     await flushPromises();
     expect(pushes).toContain('/meta/modules');
     mounted.unmount();
   });
 
-  test('uses i18n when the plugin is installed', async () => {
-    const { createI18n } = await import('vue-i18n');
-    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+  test('Home nav falls back to location.assign without a router', async () => {
+    const assigns: string[] = [];
+    const original = globalThis.location;
+    Object.defineProperty(globalThis, 'location', {
+      configurable: true,
+      value: {
+        assign: (url: string) => {
+          assigns.push(url);
+        },
+      },
+    });
+    try {
+      const mounted = mountApp(ChoyGuestShell as any, {
+        stubs: {
+          'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
+        },
+      });
+      await flushPromises();
+      const home = mounted.q('[data-testid=choy-guest-nav-home]') as HTMLElement | null;
+      expect(home).not.toBeNull();
+      home!.click();
+      await flushPromises();
+      expect(assigns).toContain('/meta/modules');
+      mounted.unmount();
+    } finally {
+      Object.defineProperty(globalThis, 'location', {
+        configurable: true,
+        value: original,
+      });
+    }
+  });
+
+  test('renders Home nav label from translate fallback', async () => {
     const mounted = mountApp(ChoyGuestShell as any, {
-      plugins: [i18n],
       stubs: {
         'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
       },
@@ -344,21 +389,47 @@ describe('ChoyGuestShell', () => {
     await flushPromises();
     expect(mounted.q('[data-testid=choy-shell]')?.getAttribute('data-shell-mode')).toBe('guest');
     expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
+    expect((mounted.q('[data-testid=choy-guest-nav-home]')?.textContent || '').trim()).toBe('Home');
     mounted.unmount();
   });
-});
 
-describe('ChoyGuestShell without layout store', () => {
-  test('tolerates missing layout store and still renders chrome', async () => {
-    const { setActivePinia } = await import('pinia');
-    setActivePinia(undefined as any);
+  test('mobile nav Home link navigates to the land path when a router is installed', async () => {
+    const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
+    const { router } = createFeStubRouter({
+      route: { path: '/login', fullPath: '/login', meta: {} },
+    });
+    const pushes: unknown[] = [];
+    const originalPush = router.push?.bind(router);
+    router.push = (to: unknown) => {
+      pushes.push(to);
+      return originalPush ? originalPush(to) : Promise.resolve();
+    };
     const mounted = mountApp(ChoyGuestShell as any, {
+      plugins: [router],
       stubs: {
         'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
       },
     });
     await flushPromises();
-    expect(mounted.q('[data-testid=choy-shell-brand]')).not.toBeNull();
+    const home = mounted.q('[data-testid=choy-guest-mobile-nav-home]') as HTMLElement | null;
+    expect(home).not.toBeNull();
+    expect((home?.textContent || '').trim()).toBe('Home');
+    expect(home!.getAttribute('href')).toBe('/meta/modules');
+    home!.click();
+    await flushPromises();
+    expect(pushes).toContain('/meta/modules');
     mounted.unmount();
   });
+
+  test('isUnmodifiedPrimaryClick accepts plain left clicks only', async () => {
+    const { isUnmodifiedPrimaryClick } = await import('./guestNavActivate');
+    expect(isUnmodifiedPrimaryClick({ button: 0 } as MouseEvent)).toBe(true);
+    expect(isUnmodifiedPrimaryClick({} as MouseEvent)).toBe(true);
+    expect(isUnmodifiedPrimaryClick({ button: 0, metaKey: true } as MouseEvent)).toBe(false);
+    expect(isUnmodifiedPrimaryClick({ button: 0, ctrlKey: true } as MouseEvent)).toBe(false);
+    expect(isUnmodifiedPrimaryClick({ button: 0, shiftKey: true } as MouseEvent)).toBe(false);
+    expect(isUnmodifiedPrimaryClick({ button: 0, altKey: true } as MouseEvent)).toBe(false);
+    expect(isUnmodifiedPrimaryClick({ button: 1 } as MouseEvent)).toBe(false);
+  });
 });
+

@@ -4,37 +4,34 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import type { NavigationMenuRootEmits, NavigationMenuRootProps } from "reka-ui"
-import type { HTMLAttributes } from "vue"
-import { reactiveOmit } from "@vueuse/core"
-import {
-  NavigationMenuRoot,
-  useForwardPropsEmits,
-} from "reka-ui"
-import { cn } from "../../../../lib/utils"
-import NavigationMenuViewport from "./NavigationMenuViewport.vue"
+import { NavigationMenuRoot } from 'reka-ui'
+import { cn, type ClassValue } from '../../../../lib/utils'
+import NavigationMenuViewport from './NavigationMenuViewport.vue'
 
-const props = withDefaults(defineProps<NavigationMenuRootProps & {
-  class?: HTMLAttributes["class"]
-  viewport?: boolean
-}>(), {
-  viewport: true,
-})
-const emits = defineEmits<NavigationMenuRootEmits>()
-
-const delegatedProps = reactiveOmit(props, "class", "viewport")
-const forwarded = useForwardPropsEmits(delegatedProps, emits)
+withDefaults(
+  defineProps<{
+    class?: ClassValue
+    /** When true, render the floating viewport under the root. */
+    viewport?: boolean
+  }>(),
+  {
+    viewport: true,
+  },
+)
 </script>
 
 <template>
   <NavigationMenuRoot
-    v-slot="slotProps"
     data-slot="navigation-menu"
     :data-viewport="viewport"
-    v-bind="forwarded"
-    :class="cn('group/navigation-menu relative flex max-w-max flex-1 items-center justify-center', props.class)"
+    :class="
+      cn(
+        'group/navigation-menu relative flex max-w-max flex-1 items-center justify-center',
+        $props.class,
+      )
+    "
   >
-    <slot v-bind="slotProps" />
+    <slot />
     <NavigationMenuViewport v-if="viewport" />
   </NavigationMenuRoot>
 </template>
