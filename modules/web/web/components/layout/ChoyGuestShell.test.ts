@@ -337,10 +337,47 @@ describe('ChoyGuestShell', () => {
     const home = mounted.q('[data-testid=choy-guest-nav-home]') as HTMLElement | null;
     expect(home).not.toBeNull();
     expect(home!.getAttribute('href')).toBe('/meta/modules');
+    const ctrlClick = new Event('click', { bubbles: true, cancelable: true }) as MouseEvent;
+    Object.assign(ctrlClick, { button: 0, ctrlKey: true, metaKey: false, shiftKey: false, altKey: false });
+    home!.dispatchEvent(ctrlClick);
+    await flushPromises();
+    expect(pushes).not.toContain('/meta/modules');
     home!.click();
     await flushPromises();
     expect(pushes).toContain('/meta/modules');
     mounted.unmount();
+  });
+
+  test('Home nav falls back to location.assign without a router', async () => {
+    const assigns: string[] = [];
+    const original = globalThis.location;
+    Object.defineProperty(globalThis, 'location', {
+      configurable: true,
+      value: {
+        assign: (url: string) => {
+          assigns.push(url);
+        },
+      },
+    });
+    try {
+      const mounted = mountApp(ChoyGuestShell as any, {
+        stubs: {
+          'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
+        },
+      });
+      await flushPromises();
+      const home = mounted.q('[data-testid=choy-guest-nav-home]') as HTMLElement | null;
+      expect(home).not.toBeNull();
+      home!.click();
+      await flushPromises();
+      expect(assigns).toContain('/meta/modules');
+      mounted.unmount();
+    } finally {
+      Object.defineProperty(globalThis, 'location', {
+        configurable: true,
+        value: original,
+      });
+    }
   });
 
   test('renders Home nav label from translate fallback', async () => {

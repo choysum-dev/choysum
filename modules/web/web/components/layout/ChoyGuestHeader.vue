@@ -14,9 +14,9 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyGuestMobileNav :items="navItems" class="flex lg:hidden" />
         <NavigationMenu
           :viewport="false"
-          class="hidden max-w-none flex-none justify-start lg:flex"
+          class="hidden !max-w-none flex-none justify-start lg:flex"
         >
-          <NavigationMenuList class="gap-0">
+          <NavigationMenuList class="!gap-0">
             <NavigationMenuItem v-for="item in navItems" :key="item.id">
               <NavigationMenuLink
                 :class="navLinkClass"

@@ -53,8 +53,8 @@ SPDX-License-Identifier: Apache-2.0
           <ChoyAppFooter
             class="w-full px-1 text-center text-xs leading-loose text-muted-foreground sm:text-sm"
           />
-          <slot name="footer" />
         </div>
+        <slot name="footer" />
       </div>
     </footer>
   </div>
@@ -65,6 +65,7 @@ import { KeepAlive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import ChoyAppFooter from './ChoyAppFooter.vue'
 import ChoyGuestHeader from './ChoyGuestHeader.vue'
+import { createGuestHomeNavigate } from './guestHomeNavigate'
 import { resolveRuntimeDefaultLandPath } from '../../router/resolveRuntimeDefaultLandPath'
 
 /**
@@ -81,24 +82,11 @@ const props = withDefaults(
   },
 )
 
-const homeHref = resolveRuntimeDefaultLandPath()
-
-let onBrandClick = () => {
-  if (typeof location !== 'undefined') {
-    location.assign(homeHref)
-  }
-}
-
-try {
-  const router = useRouter()
-  if (router) {
-    onBrandClick = () => {
-      void router.push(homeHref)
-    }
-  }
-} catch {
-  // Keep location.assign fallback when router injection is unavailable.
-}
+const homeHref = computed(() => resolveRuntimeDefaultLandPath())
+const onBrandClick = createGuestHomeNavigate(
+  () => homeHref.value,
+  () => useRouter(),
+)
 
 const effectiveShowHeader = computed(() => props.showHeader)
 </script>
