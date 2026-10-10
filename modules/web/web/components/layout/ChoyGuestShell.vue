@@ -10,18 +10,13 @@ SPDX-License-Identifier: Apache-2.0
     data-testid="choy-shell"
     data-shell-mode="guest"
   >
-    <ChoyShellHeader
-      v-if="effectiveShowHeader"
-      :show-sidebar-chrome="false"
-      :menu-trigger-label="menuTriggerLabel"
-      :go-home="onBrandClick"
-    >
+    <ChoyGuestHeader v-if="effectiveShowHeader" :go-home="onBrandClick">
       <template #header-actions>
         <div data-anchor="choy.shell.header-actions" class="flex items-center gap-2">
           <slot name="header-actions" />
         </div>
       </template>
-    </ChoyShellHeader>
+    </ChoyGuestHeader>
     <div
       class="choy-shell__main-inner flex min-h-0 flex-1 flex-col overflow-y-auto bg-background"
       data-testid="choy-shell-canvas"
@@ -47,7 +42,7 @@ SPDX-License-Identifier: Apache-2.0
     </div>
     <footer
       v-if="showFooter"
-      class="shrink-0 px-4 py-4"
+      class="shrink-0 border-t px-4 py-4"
       data-testid="choy-shell-footer"
     >
       <ChoyAppFooter />
@@ -59,15 +54,12 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { KeepAlive, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useI18n } from 'vue-i18n'
 import ChoyAppFooter from './ChoyAppFooter.vue'
-import ChoyShellHeader from './ChoyShellHeader.vue'
-import { useLayoutStore } from '../../stores/layoutStore'
+import ChoyGuestHeader from './ChoyGuestHeader.vue'
 import { resolveRuntimeDefaultLandPath } from '../../router/resolveRuntimeDefaultLandPath'
-import { shellMenuTriggerLabel } from './choyWebShellChrome'
 
 /**
- * Guest shell: header + main canvas + footer, without the app nav rail.
+ * Guest shell: marketing-style header + main canvas + shared footer, without the app nav rail.
  */
 const props = withDefaults(
   defineProps<{
@@ -81,8 +73,6 @@ const props = withDefaults(
 )
 
 let onBrandClick = () => {}
-let layoutStore: ReturnType<typeof useLayoutStore> | null = null
-let tLayout: (key: string, values?: Record<string, unknown>) => string = (key) => key
 
 try {
   const router = useRouter()
@@ -95,26 +85,5 @@ try {
   onBrandClick = () => {}
 }
 
-try {
-  layoutStore = useLayoutStore()
-} catch {
-  layoutStore = null
-}
-
-try {
-  const i18n = useI18n({ useScope: 'global' })
-  tLayout = (key, values) => String(i18n.t(key, values as any))
-} catch {
-  tLayout = (key) => key
-}
-
 const effectiveShowHeader = computed(() => props.showHeader)
-
-const menuTriggerLabel = computed(() =>
-  shellMenuTriggerLabel({
-    isMobile: !!layoutStore?.isMobile,
-    railCollapsed: layoutStore?.sidebarMode === 'collapsed',
-    t: (key) => tLayout(key),
-  }),
-)
 </script>

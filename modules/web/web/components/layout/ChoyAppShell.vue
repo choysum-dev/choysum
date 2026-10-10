@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     data-testid="choy-shell"
     data-shell-mode="app"
   >
-    <ChoyShellHeader
+    <ChoyAppHeader
       v-if="effectiveShowHeader"
       :show-sidebar-chrome="showSidebar"
       :menu-trigger-label="menuTriggerLabel"
@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
           <slot name="header-actions" />
         </div>
       </template>
-    </ChoyShellHeader>
+    </ChoyAppHeader>
     <div class="choy-shell__body relative flex min-h-0 flex-1 overflow-hidden">
       <template v-if="showSidebar">
         <ChoySidebarBridge />
@@ -90,7 +90,7 @@ import { KeepAlive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import ChoyAppFooter from './ChoyAppFooter.vue'
-import ChoyShellHeader from './ChoyShellHeader.vue'
+import ChoyAppHeader from './ChoyAppHeader.vue'
 import ChoyAppRail from './ChoyAppRail.vue'
 import ChoySidebarNav from './ChoySidebarNav.vue'
 import ChoySidebarBridge from './ChoySidebarBridge.vue'

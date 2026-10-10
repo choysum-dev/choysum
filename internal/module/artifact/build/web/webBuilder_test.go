@@ -45,7 +45,7 @@ import (
 var (
 	// First key (`{ Key`) or later key (`, Key`); values like `Foo: SidebarProvider` do not match.
 	mergedComponentsSidebarProviderRe = regexp.MustCompile(`components:\s*\{(?:\s*|[^}]*,\s*)SidebarProvider\s*[,}]`)
-	mergedComponentsChoyShellHeaderRe = regexp.MustCompile(`components:\s*\{(?:\s*|[^}]*,\s*)ChoyShellHeader\s*[,}]`)
+	mergedComponentsChoyGuestHeaderRe = regexp.MustCompile(`components:\s*\{(?:\s*|[^}]*,\s*)ChoyGuestHeader\s*[,}]`)
 	mergedComponentsXpathRe           = regexp.MustCompile(`components:\s*\{(?:\s*|[^}]*,\s*)Xpath\s*[,}]`)
 )
 
@@ -842,8 +842,8 @@ func TestGetScriptNode_InjectsParentLayout_ForRealAuthChoyGuestShell(t *testing.
 	}
 	content := htmlquery.InnerText(scriptNode)
 
-	if !mergedComponentsChoyShellHeaderRe.MatchString(content) {
-		t.Fatalf("expected merged script to register ChoyShellHeader from parent, got:\n%s", content)
+	if !mergedComponentsChoyGuestHeaderRe.MatchString(content) {
+		t.Fatalf("expected merged script to register ChoyGuestHeader from parent, got:\n%s", content)
 	}
 	if mergedComponentsSidebarProviderRe.MatchString(content) {
 		t.Fatalf("expected guest merged script not to register SidebarProvider, got:\n%s", content)
@@ -1171,8 +1171,8 @@ func TestUpdateComponent_MergesAuthChoyGuestShellIntoWeb(t *testing.T) {
 	if !strings.Contains(childParsed.Content, `data-anchor="choy.shell.header-actions"`) {
 		t.Fatalf("expected merged content to include the parent shell header-actions anchor, got:\n%s", childParsed.Content)
 	}
-	if !mergedComponentsChoyShellHeaderRe.MatchString(childParsed.Content) {
-		t.Fatalf("expected merged script to register ChoyShellHeader from parent, got:\n%s", childParsed.Content)
+	if !mergedComponentsChoyGuestHeaderRe.MatchString(childParsed.Content) {
+		t.Fatalf("expected merged script to register ChoyGuestHeader from parent, got:\n%s", childParsed.Content)
 	}
 	if mergedComponentsSidebarProviderRe.MatchString(childParsed.Content) {
 		t.Fatalf("expected guest merged script not to register SidebarProvider, got:\n%s", childParsed.Content)

@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <header
-    class="choy-shell-header sticky top-0 z-40 flex shrink-0 items-center gap-2 bg-background/95 px-4 text-sm backdrop-blur"
+    class="choy-app-header sticky top-0 z-40 flex shrink-0 items-center gap-2 bg-background/95 px-4 text-sm backdrop-blur"
     :style="{ height: 'var(--choy-layout-header-height)' }"
     data-testid="choy-shell-header"
   >
@@ -47,7 +47,7 @@ import ChoyShellLocaleMenu from './ChoyShellLocaleMenu.vue'
 import ChoyShellThemeToggle from './ChoyShellThemeToggle.vue'
 import { SidebarTrigger } from '../vendor/ui/sidebar/index'
 
-defineOptions({ name: 'ChoyShellHeader' })
+defineOptions({ name: 'ChoyAppHeader' })
 
 defineProps<{
   showSidebarChrome: boolean

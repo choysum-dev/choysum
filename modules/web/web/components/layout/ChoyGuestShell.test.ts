@@ -23,11 +23,13 @@ describe('ChoyGuestShell', () => {
     expect(mounted.q('[data-testid=choy-shell]')?.getAttribute('data-shell-mode')).toBe('guest');
     expect(mounted.q('.choy-shell')?.className || '').toContain('choy-shell--guest');
     expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
-    expect(mounted.q('[data-testid=choy-shell-footer]')).not.toBeNull();
+    expect(mounted.q('.choy-guest-header')?.className || '').toContain('border-b');
+    expect(mounted.q('[data-testid=choy-shell-footer]')?.className || '').toContain('border-t');
     expect(mounted.q('[data-testid=choy-shell-app-rail]')).toBeNull();
     expect(mounted.q('[data-testid=choy-shell-aside]')).toBeNull();
     expect(mounted.q('[data-testid=choy-shell-menu-trigger]')).toBeNull();
     expect((mounted.q('[data-testid=choy-shell-brand]')?.textContent || '').trim()).toBe('Choysum');
+    expect(mounted.q('[data-testid=choy-guest-nav-home]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-app-footer]')?.textContent || '').toContain('Powered by Choysum');
     expect(mounted.q('[data-test=router-view]')).not.toBeNull();
     mounted.unmount();
@@ -332,9 +334,40 @@ describe('ChoyGuestShell', () => {
     mounted.unmount();
   });
 
+  test('Home nav link navigates to the land path when a router is installed', async () => {
+    const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
+    const { router } = createFeStubRouter({
+      route: { path: '/login', fullPath: '/login', meta: {} },
+    });
+    const pushes: unknown[] = [];
+    const originalPush = router.push?.bind(router);
+    router.push = (to: unknown) => {
+      pushes.push(to);
+      return originalPush ? originalPush(to) : Promise.resolve();
+    };
+    const mounted = mountApp(ChoyGuestShell as any, {
+      plugins: [router],
+      stubs: {
+        'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
+      },
+    });
+    await flushPromises();
+    const home = mounted.q('[data-testid=choy-guest-nav-home]') as HTMLElement | null;
+    expect(home).not.toBeNull();
+    home!.click();
+    await flushPromises();
+    expect(pushes).toContain('/meta/modules');
+    mounted.unmount();
+  });
+
   test('uses i18n when the plugin is installed', async () => {
     const { createI18n } = await import('vue-i18n');
-    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+    const sourceMessages = (await import('../../i18n/source')).default;
+    const i18n = createI18n({
+      legacy: false,
+      locale: 'en',
+      messages: { en: sourceMessages as any },
+    });
     const mounted = mountApp(ChoyGuestShell as any, {
       plugins: [i18n],
       stubs: {
@@ -344,21 +377,7 @@ describe('ChoyGuestShell', () => {
     await flushPromises();
     expect(mounted.q('[data-testid=choy-shell]')?.getAttribute('data-shell-mode')).toBe('guest');
     expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
-    mounted.unmount();
-  });
-});
-
-describe('ChoyGuestShell without layout store', () => {
-  test('tolerates missing layout store and still renders chrome', async () => {
-    const { setActivePinia } = await import('pinia');
-    setActivePinia(undefined as any);
-    const mounted = mountApp(ChoyGuestShell as any, {
-      stubs: {
-        'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
-      },
-    });
-    await flushPromises();
-    expect(mounted.q('[data-testid=choy-shell-brand]')).not.toBeNull();
+    expect((mounted.q('[data-testid=choy-guest-nav-home]')?.textContent || '').trim()).toBe('Home');
     mounted.unmount();
   });
 });
