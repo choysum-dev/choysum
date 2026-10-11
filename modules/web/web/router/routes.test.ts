@@ -7,7 +7,7 @@ import { MODULE_BOARD_PATH } from './resolveDefaultLandPath';
 import { createPinia, setActivePinia } from 'pinia';
 import { createMenuPlugin } from '@/core/web/menu';
 
-test('web routes: root and catch-all redirect via default land path', () => {
+test('web routes: root sends guests to login; catch-all uses default land path', () => {
   setActivePinia(createPinia());
   createMenuPlugin().install({
     config: { globalProperties: {} },
@@ -16,8 +16,8 @@ test('web routes: root and catch-all redirect via default land path', () => {
   const root = routes.find(route => route.name === 'Root') as any;
   expect(root).toBeTruthy();
   expect(typeof root.redirect).toBe('function');
-  // Without menus, runtime land falls back to Module Board.
-  expect(root.redirect()).toBe(MODULE_BOARD_PATH);
+  // Unauthenticated (default pinia auth) → guest login, not land path.
+  expect(root.redirect()).toEqual({ name: 'login' });
 
   const catchAll = routes.find(route => route.name === 'CatchAll') as any;
   expect(typeof catchAll.redirect).toBe('function');
