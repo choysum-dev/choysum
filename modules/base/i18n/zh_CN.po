@@ -96,17 +96,17 @@ msgctxt "base.model.City.fields"
 msgid "State/Province"
 msgstr "州/省"
 
-#: service/models/company.ts:82
+#: service/models/company.ts:89
 msgctxt "base.model.Company.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/company.ts:108
+#: service/models/company.ts:115
 msgctxt "base.model.Company.fields"
 msgid "Address"
 msgstr "地址"
 
-#: service/models/company.ts:70
+#: service/models/company.ts:77
 msgctxt "base.model.Company.fields"
 msgid "Base Currency"
 msgstr "本位币"
@@ -116,37 +116,47 @@ msgctxt "base.model.Company.fields"
 msgid "Code"
 msgstr "编码"
 
-#: service/models/company.ts:100
+#: service/models/company.ts:107
 msgctxt "base.model.Company.fields"
 msgid "Country"
 msgstr "国家/地区"
 
-#: service/models/company.ts:58
+#: service/models/company.ts:65
 msgctxt "base.model.Company.fields"
 msgid "IANA timezone for business dates and scheduled jobs in this company."
 msgstr "该公司业务日期与计划任务使用的 IANA 时区。"
 
-#: service/models/company.ts:91
+#: service/models/company.ts:98
 msgctxt "base.model.Company.fields"
 msgid "Language"
 msgstr "语言"
+
+#: service/models/company.ts:42
+msgctxt "base.model.Company.fields"
+msgid "Logo"
+msgstr "徽标"
 
 #: service/models/company.ts:25
 msgctxt "base.model.Company.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/company.ts:45
+#: service/models/company.ts:43
+msgctxt "base.model.Company.fields"
+msgid "Optional company logo image."
+msgstr "可选的公司徽标图片。"
+
+#: service/models/company.ts:52
 msgctxt "base.model.Company.fields"
 msgid "Parent Company"
 msgstr "上级公司"
 
-#: service/models/company.ts:46
+#: service/models/company.ts:53
 msgctxt "base.model.Company.fields"
 msgid "Parent in the company tree; cannot be self or a descendant."
 msgstr "公司树中的上级公司；不能是自身或下级。"
 
-#: service/models/company.ts:71
+#: service/models/company.ts:78
 msgctxt "base.model.Company.fields"
 msgid "Reporting currency; foreign amounts convert to this currency."
 msgstr "报表货币；外币金额会换算到此货币。"
@@ -156,7 +166,7 @@ msgctxt "base.model.Company.fields"
 msgid "Short unique code used in references and integrations."
 msgstr "用于引用与集成的短唯一编码。"
 
-#: service/models/company.ts:57
+#: service/models/company.ts:64
 msgctxt "base.model.Company.fields"
 msgid "Time Zone"
 msgstr "时区"
@@ -821,37 +831,37 @@ msgctxt "service/models/city"
 msgid "State.CountryId must equal City.CountryId"
 msgstr "State.CountryId 必须与 City.CountryId 相同"
 
-#: service/models/company.ts:115
+#: service/models/company.ts:122
 msgctxt "service/models/company"
 msgid "%s is required"
 msgstr "%s 为必填项"
 
-#: service/models/company.ts:128
+#: service/models/company.ts:135
 msgctxt "service/models/company"
 msgid "Company Code must be unique"
 msgstr "公司编码必须唯一"
 
-#: service/models/company.ts:137
+#: service/models/company.ts:144
 msgctxt "service/models/company"
 msgid "CurrencyId is required"
 msgstr "CurrencyId 为必填项"
 
-#: service/models/company.ts:148
+#: service/models/company.ts:155
 msgctxt "service/models/company"
 msgid "Invalid IANA timezone: %s"
 msgstr "无效的 IANA 时区：%s"
 
-#: service/models/company.ts:171
+#: service/models/company.ts:178
 msgctxt "service/models/company"
 msgid "ParentId cannot be a descendant of the company"
 msgstr "ParentId 不能是该公司的下级公司"
 
-#: service/models/company.ts:158
+#: service/models/company.ts:165
 msgctxt "service/models/company"
 msgid "ParentId cannot be self"
 msgstr "ParentId 不能指向自身"
 
-#: service/models/company.ts:145
+#: service/models/company.ts:152
 msgctxt "service/models/company"
 msgid "Timezone is required"
 msgstr "时区为必填项"
@@ -1056,12 +1066,12 @@ msgctxt "web/menu/menus"
 msgid "Master Data"
 msgstr "基础数据"
 
-#: web/menu/menus.ts:35
+#: web/menu/menus.ts:34
 msgctxt "web/menu/menus"
 msgid "Sequence Idempotency Record"
 msgstr "序列幂等记录"
 
-#: web/menu/menus.ts:34
+#: web/menu/menus.ts:33
 msgctxt "web/menu/menus"
 msgid "Sequence Management"
 msgstr "序列管理"
@@ -1076,12 +1086,12 @@ msgctxt "web/menu/menus"
 msgid "Terminology Editor"
 msgstr "术语编辑器"
 
-#: web/menu/menus.ts:37
+#: web/menu/menus.ts:36
 msgctxt "web/menu/menus"
 msgid "Unit of Measure"
 msgstr "计量单位"
 
-#: web/menu/menus.ts:36
+#: web/menu/menus.ts:35
 msgctxt "web/menu/menus"
 msgid "Unit of Measure Category"
 msgstr "计量单位类别"
@@ -1596,17 +1606,17 @@ msgctxt "web/views/CompanyFormView"
 msgid "Required"
 msgstr "必填"
 
-#: web/views/CompanyFormView.vue:14
+#: web/views/CompanyFormView.vue:20
 msgctxt "web/views/CompanyFormView"
 msgid "Select Currency"
 msgstr "选择币种"
 
-#: web/views/CompanyFormView.vue:19
+#: web/views/CompanyFormView.vue:25
 msgctxt "web/views/CompanyFormView"
 msgid "Select Parent Company"
 msgstr "选择上级公司"
 
-#: web/views/CompanyFormView.vue:11
+#: web/views/CompanyFormView.vue:17
 msgctxt "web/views/CompanyFormView"
 msgid "Select a time zone"
 msgstr "选择时区"
@@ -2216,3 +2226,6 @@ msgctxt "web/views/UoMListView"
 msgid "Unit of Measure"
 msgstr "计量单位"
 
+#~ msgctxt "base.model.Company.fields"
+#~ msgid "Shown in the app sidebar header; empty uses the product logo."
+#~ msgstr "显示在应用侧栏顶部；为空时使用产品 Logo。"

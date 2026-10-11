@@ -102,17 +102,17 @@ msgctxt "base.model.City.fields"
 msgid "State/Province"
 msgstr ""
 
-#: service/models/company.ts:82
+#: service/models/company.ts:89
 msgctxt "base.model.Company.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/company.ts:108
+#: service/models/company.ts:115
 msgctxt "base.model.Company.fields"
 msgid "Address"
 msgstr ""
 
-#: service/models/company.ts:70
+#: service/models/company.ts:77
 msgctxt "base.model.Company.fields"
 msgid "Base Currency"
 msgstr ""
@@ -122,19 +122,24 @@ msgctxt "base.model.Company.fields"
 msgid "Code"
 msgstr ""
 
-#: service/models/company.ts:100
+#: service/models/company.ts:107
 msgctxt "base.model.Company.fields"
 msgid "Country"
 msgstr ""
 
-#: service/models/company.ts:58
+#: service/models/company.ts:65
 msgctxt "base.model.Company.fields"
 msgid "IANA timezone for business dates and scheduled jobs in this company."
 msgstr ""
 
-#: service/models/company.ts:91
+#: service/models/company.ts:98
 msgctxt "base.model.Company.fields"
 msgid "Language"
+msgstr ""
+
+#: service/models/company.ts:42
+msgctxt "base.model.Company.fields"
+msgid "Logo"
 msgstr ""
 
 #: service/models/company.ts:25
@@ -142,17 +147,22 @@ msgctxt "base.model.Company.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/company.ts:45
+#: service/models/company.ts:43
+msgctxt "base.model.Company.fields"
+msgid "Optional company logo image."
+msgstr ""
+
+#: service/models/company.ts:52
 msgctxt "base.model.Company.fields"
 msgid "Parent Company"
 msgstr ""
 
-#: service/models/company.ts:46
+#: service/models/company.ts:53
 msgctxt "base.model.Company.fields"
 msgid "Parent in the company tree; cannot be self or a descendant."
 msgstr ""
 
-#: service/models/company.ts:71
+#: service/models/company.ts:78
 msgctxt "base.model.Company.fields"
 msgid "Reporting currency; foreign amounts convert to this currency."
 msgstr ""
@@ -162,7 +172,7 @@ msgctxt "base.model.Company.fields"
 msgid "Short unique code used in references and integrations."
 msgstr ""
 
-#: service/models/company.ts:57
+#: service/models/company.ts:64
 msgctxt "base.model.Company.fields"
 msgid "Time Zone"
 msgstr ""
@@ -831,37 +841,37 @@ msgctxt "service/models/city"
 msgid "State.CountryId must equal City.CountryId"
 msgstr ""
 
-#: service/models/company.ts:115
+#: service/models/company.ts:122
 msgctxt "service/models/company"
 msgid "%s is required"
 msgstr ""
 
-#: service/models/company.ts:128
+#: service/models/company.ts:135
 msgctxt "service/models/company"
 msgid "Company Code must be unique"
 msgstr ""
 
-#: service/models/company.ts:137
+#: service/models/company.ts:144
 msgctxt "service/models/company"
 msgid "CurrencyId is required"
 msgstr ""
 
-#: service/models/company.ts:148
+#: service/models/company.ts:155
 msgctxt "service/models/company"
 msgid "Invalid IANA timezone: %s"
 msgstr ""
 
-#: service/models/company.ts:171
+#: service/models/company.ts:178
 msgctxt "service/models/company"
 msgid "ParentId cannot be a descendant of the company"
 msgstr ""
 
-#: service/models/company.ts:158
+#: service/models/company.ts:165
 msgctxt "service/models/company"
 msgid "ParentId cannot be self"
 msgstr ""
 
-#: service/models/company.ts:145
+#: service/models/company.ts:152
 msgctxt "service/models/company"
 msgid "Timezone is required"
 msgstr ""
@@ -1066,12 +1076,12 @@ msgctxt "web/menu/menus"
 msgid "Master Data"
 msgstr ""
 
-#: web/menu/menus.ts:35
+#: web/menu/menus.ts:34
 msgctxt "web/menu/menus"
 msgid "Sequence Idempotency Record"
 msgstr ""
 
-#: web/menu/menus.ts:34
+#: web/menu/menus.ts:33
 msgctxt "web/menu/menus"
 msgid "Sequence Management"
 msgstr ""
@@ -1086,12 +1096,12 @@ msgctxt "web/menu/menus"
 msgid "Terminology Editor"
 msgstr ""
 
-#: web/menu/menus.ts:37
+#: web/menu/menus.ts:36
 msgctxt "web/menu/menus"
 msgid "Unit of Measure"
 msgstr ""
 
-#: web/menu/menus.ts:36
+#: web/menu/menus.ts:35
 msgctxt "web/menu/menus"
 msgid "Unit of Measure Category"
 msgstr ""
@@ -1606,17 +1616,17 @@ msgctxt "web/views/CompanyFormView"
 msgid "Required"
 msgstr ""
 
-#: web/views/CompanyFormView.vue:14
+#: web/views/CompanyFormView.vue:20
 msgctxt "web/views/CompanyFormView"
 msgid "Select Currency"
 msgstr ""
 
-#: web/views/CompanyFormView.vue:19
+#: web/views/CompanyFormView.vue:25
 msgctxt "web/views/CompanyFormView"
 msgid "Select Parent Company"
 msgstr ""
 
-#: web/views/CompanyFormView.vue:11
+#: web/views/CompanyFormView.vue:17
 msgctxt "web/views/CompanyFormView"
 msgid "Select a time zone"
 msgstr ""

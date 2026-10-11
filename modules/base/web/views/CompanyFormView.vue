@@ -10,7 +10,13 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     v-on="$attrs"
   >
-    <ChoyCard :title="_t('Basic Information')" class="mb-3.5"><ChoyGrid :cols="12">
+    <ChoyCard :title="_t('Basic Information')" class="mb-3.5">
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="3">
+          <ChoyImageField :store="store" prop="Logo" />
+        </ChoyCol>
+      </ChoyGrid>
+      <ChoyGrid :cols="12">
         <ChoyCol :span="3">
           <ChoyVarcharField :store="store" prop="Name" :rules="requiredRules" />
         </ChoyCol>
@@ -75,7 +81,7 @@ import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
-import { ChoyCard, ChoyCol, ChoyDatetimeField, ChoyFormView, ChoyGrid, ChoyManyToOneField, ChoySelectionField, ChoyVarcharField} from '@/web';
+import { ChoyCard, ChoyCol, ChoyDatetimeField, ChoyFormView, ChoyGrid, ChoyImageField, ChoyManyToOneField, ChoySelectionField, ChoyVarcharField} from '@/web';
 import type { ChoyViewMode as ViewMode } from '@/web';
 
 defineOptions({ name: 'CompanyFormView', inheritAttrs: true });
