@@ -38,6 +38,16 @@ export default class Company extends BaseModel {
   Code: string;
 
   @Field({
+    type: 'image',
+    index: true,
+    string: _lt('Logo', { scope: 'base.model.Company.fields' }),
+    help: _lt('Shown in the app sidebar header; empty uses the product logo.', {
+      scope: 'base.model.Company.fields',
+    }),
+  })
+  Logo?: string;
+
+  @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => Company },
     condition: ['IsActive', '=', true],
