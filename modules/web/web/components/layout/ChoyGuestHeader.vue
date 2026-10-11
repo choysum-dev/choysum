@@ -72,7 +72,7 @@ defineOptions({ name: 'ChoyGuestHeader' })
 
 const props = defineProps<{
   goHome: () => void
-  /** Resolved land path advertised on Home anchors (modified clicks stay native). */
+  /** Site-root href for Home anchors (modified clicks stay native). */
   homeHref: string
 }>()
 

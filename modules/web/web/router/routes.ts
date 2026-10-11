@@ -3,17 +3,19 @@
 
 import 'vue-router';
 import type { RouteRecordRaw } from 'vue-router';
+import { resolveRootRedirect } from './resolveRootRedirect';
 import { resolveRuntimeDefaultLandPath } from './resolveRuntimeDefaultLandPath';
 
 /**
  * Static route configuration for the web shell.
- * Home/Welcome are retired; `/` and catch-all resolve via the default land path.
+ * `/` sends guests to login and authenticated users to the default land path;
+ * catch-all still resolves via the land path (with a loop guard).
  */
 export const routes: RouteRecordRaw[] = [
   {
     path: '/',
     name: 'Root',
-    redirect: () => resolveRuntimeDefaultLandPath(),
+    redirect: () => resolveRootRedirect(),
   },
 
   {
