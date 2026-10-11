@@ -66,7 +66,9 @@ import { useRouter } from 'vue-router'
 import ChoyAppFooter from './ChoyAppFooter.vue'
 import ChoyGuestHeader from './ChoyGuestHeader.vue'
 import { createGuestHomeNavigate } from './guestHomeNavigate'
-import { resolveRuntimeDefaultLandPath } from '../../router/resolveRuntimeDefaultLandPath'
+
+/** Guest "Home" is the site root, not the authenticated default land path. */
+const GUEST_HOME_HREF = '/'
 
 /**
  * Guest shell: marketing-style header + main canvas + shared footer, without the app nav rail.
@@ -82,9 +84,9 @@ const props = withDefaults(
   },
 )
 
-const homeHref = computed(() => resolveRuntimeDefaultLandPath())
+const homeHref = GUEST_HOME_HREF
 const onBrandClick = createGuestHomeNavigate(
-  () => homeHref.value,
+  () => GUEST_HOME_HREF,
   () => useRouter(),
 )
 

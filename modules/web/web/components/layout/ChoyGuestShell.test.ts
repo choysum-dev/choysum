@@ -316,7 +316,7 @@ describe('ChoyGuestShell', () => {
     mounted.unmount();
   });
 
-  test('Home nav link navigates to the land path when a router is installed', async () => {
+  test('Home nav link navigates to / when a router is installed', async () => {
     const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
     const { router } = createFeStubRouter({
       route: { path: '/login', fullPath: '/login', meta: {} },
@@ -336,15 +336,15 @@ describe('ChoyGuestShell', () => {
     await flushPromises();
     const home = mounted.q('[data-testid=choy-guest-nav-home]') as HTMLElement | null;
     expect(home).not.toBeNull();
-    expect(home!.getAttribute('href')).toBe('/meta/modules');
+    expect(home!.getAttribute('href')).toBe('/');
     const ctrlClick = new Event('click', { bubbles: true, cancelable: true }) as MouseEvent;
     Object.assign(ctrlClick, { button: 0, ctrlKey: true, metaKey: false, shiftKey: false, altKey: false });
     home!.dispatchEvent(ctrlClick);
     await flushPromises();
-    expect(pushes).not.toContain('/meta/modules');
+    expect(pushes).not.toContain('/');
     home!.click();
     await flushPromises();
-    expect(pushes).toContain('/meta/modules');
+    expect(pushes).toContain('/');
     mounted.unmount();
   });
 
@@ -370,7 +370,7 @@ describe('ChoyGuestShell', () => {
       expect(home).not.toBeNull();
       home!.click();
       await flushPromises();
-      expect(assigns).toContain('/meta/modules');
+      expect(assigns).toContain('/');
       mounted.unmount();
     } finally {
       Object.defineProperty(globalThis, 'location', {
@@ -393,7 +393,7 @@ describe('ChoyGuestShell', () => {
     mounted.unmount();
   });
 
-  test('mobile nav Home link navigates to the land path when a router is installed', async () => {
+  test('mobile nav Home link navigates to / when a router is installed', async () => {
     const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
     const { router } = createFeStubRouter({
       route: { path: '/login', fullPath: '/login', meta: {} },
@@ -414,10 +414,10 @@ describe('ChoyGuestShell', () => {
     const home = mounted.q('[data-testid=choy-guest-mobile-nav-home]') as HTMLElement | null;
     expect(home).not.toBeNull();
     expect((home?.textContent || '').trim()).toBe('Home');
-    expect(home!.getAttribute('href')).toBe('/meta/modules');
+    expect(home!.getAttribute('href')).toBe('/');
     home!.click();
     await flushPromises();
-    expect(pushes).toContain('/meta/modules');
+    expect(pushes).toContain('/');
     mounted.unmount();
   });
 
