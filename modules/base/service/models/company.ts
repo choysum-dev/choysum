@@ -39,11 +39,8 @@ export default class Company extends BaseModel {
 
   @Field({
     type: 'image',
-    index: true,
     string: _lt('Logo', { scope: 'base.model.Company.fields' }),
-    help: _lt('Shown in the app sidebar header; empty uses the product logo.', {
-      scope: 'base.model.Company.fields',
-    }),
+    help: _lt('Optional company logo image.', { scope: 'base.model.Company.fields' }),
   })
   Logo?: string;
 
