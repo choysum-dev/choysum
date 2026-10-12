@@ -17,13 +17,8 @@ import {
   SidebarGroupLabel,
   SidebarMenu,
 } from '../vendor/ui/sidebar/index'
+import { buildAppNavGroups, type AppNavGroup } from './buildAppNavGroups'
 import ChoySidebarNavEntry from './ChoySidebarNavEntry.vue'
-
-type NavGroup = {
-  key: string
-  label: string
-  items: MenuItem[]
-}
 
 /**
  * Product nested sidebar: L2/L3 of the active app (or the first visible root).
@@ -69,33 +64,7 @@ const scopedRoot = computed((): MenuItem | null => {
   return roots[0] ?? null
 })
 
-const navGroups = computed((): NavGroup[] => {
-  const root = scopedRoot.value
-  if (!root) return []
-  const children = visibleItems(root.children)
-  if (!children.length) {
-    return [{ key: 'ungrouped', label: '', items: [root] }]
-  }
-
-  const groups: NavGroup[] = []
-  const loose: MenuItem[] = []
-  for (const child of children) {
-    const nested = visibleItems(child.children)
-    if (nested.length) {
-      groups.push({
-        key: child.id || child.path || child.title,
-        label: labelOf(child),
-        items: nested,
-      })
-    } else {
-      loose.push(child)
-    }
-  }
-  if (loose.length) {
-    groups.unshift({ key: `${root.id || root.path || 'root'}-loose`, label: '', items: loose })
-  }
-  return groups
-})
+const navGroups = computed((): AppNavGroup[] => buildAppNavGroups(scopedRoot.value, labelOf))
 
 const isEmpty = computed(() => !navGroups.value.some((group) => group.items.length))
 

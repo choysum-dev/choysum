@@ -40,9 +40,13 @@ export { Avatar as ChoyAvatar, AvatarFallback as ChoyAvatarFallback } from './co
 export {
   DropdownMenu as ChoyDropdownMenu,
   DropdownMenuContent as ChoyDropdownMenuContent,
+  DropdownMenuGroup as ChoyDropdownMenuGroup,
   DropdownMenuItem as ChoyDropdownMenuItem,
   DropdownMenuLabel as ChoyDropdownMenuLabel,
   DropdownMenuSeparator as ChoyDropdownMenuSeparator,
+  DropdownMenuSub as ChoyDropdownMenuSub,
+  DropdownMenuSubContent as ChoyDropdownMenuSubContent,
+  DropdownMenuSubTrigger as ChoyDropdownMenuSubTrigger,
   DropdownMenuTrigger as ChoyDropdownMenuTrigger,
 } from './components/vendor/ui/dropdown-menu';
 export {
