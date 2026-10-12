@@ -4,24 +4,43 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div ref="rootRef" class="relative">
-    <ChoyButton
-      variant="ghost"
-      size="sm"
-      class="choy-header__action-item h-control max-w-[12rem] truncate px-2.5"
-      :aria-expanded="visible"
-      :aria-label="_t('Switch company')"
-      data-testid="company-switch-trigger"
-      @click.stop="togglePanel"
-    >
-      {{ currentCompanyLabel }}
-    </ChoyButton>
-
-    <div
-      v-if="visible"
-      class="absolute end-0 top-full z-50 mt-1 w-80 rounded-md border border-border bg-background p-3 shadow-lg"
+  <!-- Popover portals outside the sidebar so the panel is not clipped by overflow. -->
+  <ChoyPopover v-model:open="visible">
+    <ChoyPopoverTrigger as-child>
+      <ChoyButton
+        variant="ghost"
+        size="sm"
+        :class="triggerClass"
+        :aria-expanded="visible"
+        :aria-label="_t('Switch company')"
+        data-testid="company-switch-trigger"
+      >
+        <img
+          v-if="variant === 'sidebar'"
+          :src="companyLogoUrl"
+          alt=""
+          class="size-6 shrink-0 rounded-md"
+          width="24"
+          height="24"
+          data-testid="company-switch-logo"
+        />
+        <span class="truncate text-sm font-medium" data-testid="company-switch-label">
+          {{ currentCompanyLabel }}
+        </span>
+        <ChevronsUpDown
+          v-if="variant === 'sidebar'"
+          class="ms-auto size-4 shrink-0 opacity-50"
+          aria-hidden="true"
+          data-testid="company-switch-chevrons"
+        />
+      </ChoyButton>
+    </ChoyPopoverTrigger>
+    <ChoyPopoverContent
+      class="w-72 p-3"
+      :align="variant === 'sidebar' ? 'start' : 'end'"
+      :side="variant === 'sidebar' ? 'right' : 'bottom'"
+      :side-offset="4"
       data-testid="company-switch-panel"
-      @click.stop
     >
       <div class="choy-switch-company__panel flex flex-col gap-3">
         <ChoyField class="gap-1">
@@ -65,18 +84,27 @@ SPDX-License-Identifier: Apache-2.0
           </ChoyButton>
         </div>
       </div>
-    </div>
-  </div>
+    </ChoyPopoverContent>
+  </ChoyPopover>
 </template>
 
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { ChoyButton, ChoyCheckbox, ChoyField, ChoyFieldLabel } from '@/web';
+import { computed, ref, watch } from 'vue';
+import { ChevronsUpDown } from 'lucide-vue-next';
+import {
+  ChoyButton,
+  ChoyCheckbox,
+  ChoyField,
+  ChoyFieldLabel,
+  ChoyPopover,
+  ChoyPopoverContent,
+  ChoyPopoverTrigger,
+  resolveCompanyLogoUrl,
+} from '@/web';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import type Company from '@/base/service/models/company';
 import { createTranslate } from '@/web/web/i18n';
-import { dismissPopupOnEscape } from './popup_escape_focus';
 import {
   isActiveCompanyEnabledLocked,
   syncCompanyDraftsFromJwt,
@@ -85,9 +113,24 @@ import {
 
 defineOptions({ name: 'SwitchCompany' });
 
+const props = withDefaults(
+  defineProps<{
+    /** toolbar = inset header actions; sidebar = SidebarHeader workspace switcher */
+    variant?: 'toolbar' | 'sidebar';
+  }>(),
+  { variant: 'toolbar' },
+);
+
 const { _t } = createTranslate('auth', { scope: 'web/components/layout/SwitchCompany' });
 
-type CompanyRow = { Id: string; DisplayName?: string };
+type CompanyRow = { Id: string; DisplayName?: string; Logo?: unknown };
+
+const triggerClass = computed(() =>
+  props.variant === 'sidebar'
+    ? // size-6 mark + rounded-md; shell CSS keeps expand/collapse x-stable.
+      'h-7 w-full justify-start gap-2 rounded-md px-1 hover:bg-sidebar-accent data-[state=open]:bg-sidebar-accent'
+    : 'choy-header__action-item h-control max-w-[12rem] truncate px-2.5',
+);
 
 const authStore = useAuthStore();
 let globalCompanyStore: any | null = null;
@@ -102,37 +145,8 @@ function getGlobalCompanyStore(): any {
 }
 
 const visible = ref(false);
-const rootRef = ref<HTMLElement | null>(null);
 /** Guards async open-sync so a late refresh cannot reset an in-progress selection. */
 let panelOpenGeneration = 0;
-
-function togglePanel() {
-  visible.value = !visible.value;
-}
-
-function onDocumentClick(event: MouseEvent) {
-  if (!visible.value) return;
-  const root = rootRef.value;
-  if (root && !root.contains(event.target as Node)) {
-    visible.value = false;
-  }
-}
-
-function onDocumentKeydown(event: KeyboardEvent) {
-  if (event.key !== 'Escape') return;
-  const trigger = rootRef.value?.querySelector<HTMLElement>('[data-testid="company-switch-trigger"]');
-  dismissPopupOnEscape(visible.value, () => { visible.value = false; }, trigger);
-}
-
-onMounted(() => {
-  document.addEventListener('click', onDocumentClick);
-  document.addEventListener('keydown', onDocumentKeydown);
-});
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', onDocumentClick);
-  document.removeEventListener('keydown', onDocumentKeydown);
-});
 
 const meta = computed(() => ((authStore.identity as any)?.metadata ?? {}) as any);
 const currentActiveCompanyId = computed(() => String(meta.value?.activeCompanyId ?? '').trim());
@@ -263,11 +277,18 @@ async function ensureCompanies(): Promise<void> {
 
   try {
     const companyStore = getGlobalCompanyStore();
-    const rows = (await companyStore.Search(['Id', 'in', ids] as any, { fields: ['Id', 'DisplayName'], limit: 1000 } as any)) as any[];
+    const rows = (await companyStore.Search(['Id', 'in', ids] as any, {
+      fields: ['Id', 'DisplayName', 'Logo'],
+      limit: 1000,
+    } as any)) as any[];
     if (fetchedSig.value !== sig) return;
 
     const out: CompanyRow[] = (rows || [])
-      .map(r => ({ Id: String((r as any)?.Id ?? '').trim(), DisplayName: String((r as any)?.DisplayName ?? '').trim() }))
+      .map(r => ({
+        Id: String((r as any)?.Id ?? '').trim(),
+        DisplayName: String((r as any)?.DisplayName ?? '').trim(),
+        Logo: (r as any)?.Logo,
+      }))
       .filter(r => !!r.Id);
 
     const map = new Map(out.map(r => [r.Id, r] as const));
@@ -349,6 +370,12 @@ const currentCompanyLabel = computed(() => {
   const name = companyNameById.value.get(id);
   if (name) return name;
   return labelsReady.value ? id : _t('Company');
+});
+
+const companyLogoUrl = computed(() => {
+  const id = currentActiveCompanyId.value;
+  const row = companies.value.find(c => c.Id === id);
+  return resolveCompanyLogoUrl(row?.Logo);
 });
 
 /** Normalize enabled scope the same way drafts do (active is always included). */

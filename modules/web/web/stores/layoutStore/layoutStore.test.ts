@@ -45,4 +45,13 @@ describe('useLayoutStore', () => {
     store.closeSidebar();
     expect(store.sidebarMode).toBe('hidden');
   });
+
+  test('toggleSidebar on mobile goes expanded → hidden in one step', () => {
+    pinViewportWidth(500);
+    setActivePinia(createPinia());
+    const store = useLayoutStore();
+    store.setSidebarMode('expanded', { isUserAction: true });
+    store.toggleSidebar();
+    expect(store.sidebarMode).toBe('hidden');
+  });
 });

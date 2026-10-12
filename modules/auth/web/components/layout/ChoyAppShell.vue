@@ -6,30 +6,76 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <Xpath expr="//*[@data-anchor='choy.shell.header-actions']" position="inside">
     <ChoyNotificationBell />
-    <SwitchCompany />
+  </Xpath>
+  <Xpath expr="//*[@data-anchor='choy.shell.sidebar-header']" position="inside">
+    <SwitchCompany variant="sidebar" />
+  </Xpath>
+  <Xpath expr="//*[@data-anchor='choy.shell.sidebar-footer']" position="inside">
     <ChoyDropdownMenu v-model:open="userMenuOpen">
       <ChoyDropdownMenuTrigger as-child>
         <ChoyButton
           variant="ghost"
-          size="icon"
+          size="sm"
           type="button"
+          class="h-7 w-full justify-start gap-2 rounded-md px-1 hover:bg-sidebar-accent"
           :aria-label="_t('User menu')"
           data-testid="auth-user-menu-trigger"
         >
-          <ChoyAvatar class="size-6">
-            <ChoyAvatarFallback class="bg-muted text-muted-foreground text-xs">
-              <User class="size-3.5" aria-hidden="true" />
+          <!-- Inline size wins over Avatar's baked size-control (kit cn has no twMerge). -->
+          <ChoyAvatar
+            class="shrink-0 rounded-md"
+            :style="{ width: '1.5rem', height: '1.5rem' }"
+          >
+            <ChoyAvatarFallback class="bg-sidebar-primary text-sidebar-primary-foreground rounded-md text-[10px]">
+              <User class="size-3" aria-hidden="true" />
             </ChoyAvatarFallback>
           </ChoyAvatar>
+          <span class="truncate text-sm font-medium" data-testid="auth-user-menu-label">{{
+            userMenuLabel
+          }}</span>
+          <ChevronsUpDown
+            class="ms-auto size-4 shrink-0 opacity-50"
+            aria-hidden="true"
+            data-testid="auth-user-menu-chevrons"
+          />
         </ChoyButton>
       </ChoyDropdownMenuTrigger>
-      <ChoyDropdownMenuContent align="end" class="min-w-[10rem]">
+      <ChoyDropdownMenuContent side="right" align="start" class="min-w-[12rem]">
         <ChoyDropdownMenuItem @select="onMenuProfile">
           {{ _t('Profile') }}
         </ChoyDropdownMenuItem>
         <ChoyDropdownMenuItem @select="onMenuSettings">
           {{ _t('Settings') }}
         </ChoyDropdownMenuItem>
+        <ChoyDropdownMenuSeparator />
+        <ChoyDropdownMenuLabel>{{ _t('Theme') }}</ChoyDropdownMenuLabel>
+        <ChoyDropdownMenuItem
+          v-for="item in themeItems"
+          :key="item.mode"
+          role="menuitemradio"
+          :aria-checked="themeMode === item.mode"
+          :data-testid="`auth-user-menu-theme-${item.mode}`"
+          class="gap-2"
+          @select="applyTheme(item.mode)"
+        >
+          <Check class="size-4" :class="themeMode === item.mode ? 'opacity-100' : 'opacity-0'" aria-hidden="true" />
+          {{ item.label }}
+        </ChoyDropdownMenuItem>
+        <ChoyDropdownMenuSeparator />
+        <ChoyDropdownMenuLabel>{{ _t('Language') }}</ChoyDropdownMenuLabel>
+        <ChoyDropdownMenuItem
+          v-for="code in localeCodes"
+          :key="code"
+          role="menuitemradio"
+          :aria-checked="code === currentLocaleCode"
+          :data-testid="`auth-user-menu-locale-${code}`"
+          class="gap-2"
+          @select="applyLocale(code)"
+        >
+          <Check class="size-4" :class="code === currentLocaleCode ? 'opacity-100' : 'opacity-0'" aria-hidden="true" />
+          {{ localeName(code) }}
+        </ChoyDropdownMenuItem>
+        <ChoyDropdownMenuSeparator />
         <ChoyDropdownMenuItem @select="onMenuLogout">
           {{ _t('Log Out') }}
         </ChoyDropdownMenuItem>
@@ -40,9 +86,9 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script lang="ts" _name="ChoyAppShell">
-import { defineComponent, ref } from 'vue';
+import { computed, defineComponent, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { User } from 'lucide-vue-next';
+import { Check, ChevronsUpDown, User } from 'lucide-vue-next';
 import { Xpath } from '@/core/web';
 import {
   ChoyAvatar,
@@ -51,18 +97,30 @@ import {
   ChoyDropdownMenu,
   ChoyDropdownMenuContent,
   ChoyDropdownMenuItem,
+  ChoyDropdownMenuLabel,
+  ChoyDropdownMenuSeparator,
   ChoyDropdownMenuTrigger,
   ChoyNotificationBell,
 } from '@/web';
 import ChoyAppShell from '@/web/web/components/layout/ChoyAppShell.vue';
 import { createTranslate } from '@/web/web/i18n';
+import { useAuthStore } from '@/auth/web/stores/auth';
+import {
+  applyChoyThemePreference,
+  readChoyThemePreference,
+  type ChoyThemeMode,
+} from '@/web/web/composables/applyChoyThemePreference';
+import { useI18nStore } from '@/web/web/stores/i18nStore';
+import { DEFAULT_ACTIVE_UI_KEYS } from '@/web/web/stores/i18nStore/activeUiKeys';
+import { SUPPORTED_LOCALES } from '@/web/web/stores/i18nStore/locales';
+import type { SupportedLocale } from '@/web/web/stores/i18nStore/types';
 import { reuseParentSetupState } from './reuse_parent_setup_state';
 import SwitchCompany from './SwitchCompany.vue';
 import PreferencesDialog from '../preferences/PreferencesDialog.vue';
 
 /**
- * Extends the app shell so session header actions merge into
- * data-anchor="choy.shell.header-actions" at web build time.
+ * Extends the app shell so session chrome merges into shell anchors at build time:
+ * notifications → header-actions; company → sidebar-header; user → sidebar-footer.
  */
 export default defineComponent({
   name: 'ChoyAppShell',
@@ -70,6 +128,8 @@ export default defineComponent({
   components: {
     Xpath,
     User,
+    Check,
+    ChevronsUpDown,
     ChoyButton,
     ChoyNotificationBell,
     SwitchCompany,
@@ -79,6 +139,8 @@ export default defineComponent({
     ChoyDropdownMenu,
     ChoyDropdownMenuContent,
     ChoyDropdownMenuItem,
+    ChoyDropdownMenuLabel,
+    ChoyDropdownMenuSeparator,
     ChoyDropdownMenuTrigger,
   },
   setup(props, ctx) {
@@ -89,8 +151,55 @@ export default defineComponent({
     const baseSetup = reuseParentSetupState(baseSetupFn(props, ctx));
     const { _t } = createTranslate('auth', { scope: 'web/components/layout/ChoyAppShell' });
     const router = useRouter();
+    const authStore = useAuthStore();
     const preferencesVisible = ref(false);
     const userMenuOpen = ref(false);
+    const themeMode = ref<ChoyThemeMode>(readChoyThemePreference().theme || 'light');
+
+    let i18nStore: ReturnType<typeof useI18nStore> | null = null;
+    try {
+      i18nStore = useI18nStore();
+    } catch {
+      i18nStore = null;
+    }
+
+    const userMenuLabel = computed(() => {
+      const user = (authStore.currentUser as any) || {};
+      const fromProfile = String(user.FullName || user.Username || user.Email || '').trim();
+      if (fromProfile) return fromProfile;
+      const identity = (authStore.identity as any) || {};
+      const fromToken = String(identity.displayName || identity.username || '').trim();
+      return fromToken || _t('Account');
+    });
+
+    const themeItems = computed(() => [
+      { mode: 'light' as const, label: _t('Light') },
+      { mode: 'dark' as const, label: _t('Dark') },
+      { mode: 'auto' as const, label: _t('System') },
+    ]);
+
+    const localeCodes = computed(() => {
+      const fromStore = i18nStore?.activeUiKeys;
+      if (Array.isArray(fromStore) && fromStore.length) return fromStore as SupportedLocale[];
+      return [...DEFAULT_ACTIVE_UI_KEYS] as SupportedLocale[];
+    });
+
+    const currentLocaleCode = computed(
+      () => (i18nStore?.localeCode as SupportedLocale | null) || 'en',
+    );
+
+    function localeName(code: string): string {
+      return SUPPORTED_LOCALES[code as SupportedLocale]?.name || code;
+    }
+
+    function applyTheme(next: ChoyThemeMode) {
+      themeMode.value = next;
+      applyChoyThemePreference({ theme: next });
+    }
+
+    function applyLocale(code: SupportedLocale) {
+      void i18nStore?.setUiKey(code);
+    }
 
     function closeUserMenu() {
       userMenuOpen.value = false;
@@ -128,6 +237,14 @@ export default defineComponent({
       _t,
       preferencesVisible,
       userMenuOpen,
+      userMenuLabel,
+      themeMode,
+      themeItems,
+      localeCodes,
+      currentLocaleCode,
+      localeName,
+      applyTheme,
+      applyLocale,
       onMenuProfile,
       onMenuSettings,
       onMenuLogout,

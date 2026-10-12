@@ -36,6 +36,20 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
+### 2026-10-12 — DropdownMenuContent positioning props
+
+- **DropdownMenuContent:** expose `align` / `side` / `sideOffset` / `alignOffset`
+  (same contract as PopoverContent) so AppShell company/account menus can open
+  `side="right"` into the inset instead of covering the nav rail.
+- **Attrs:** `inheritAttrs: false` + `v-bind="$attrs"` on the Reka content node so
+  `side` / `align` are not swallowed by the portal wrapper.
+
+### 2026-10-11 — DropdownMenu Label + Separator
+
+- Added `DropdownMenuLabel.vue` / `DropdownMenuSeparator.vue` and barrel exports.
+- Needed for AppShell account menu section grouping (theme / language); thin
+  Reka wrappers, no product density baked into defaults.
+
 ### 2026-10-10 — PopoverContent positioning props
 
 - **PopoverContent:** expose `align` / `side` / `sideOffset` / `alignOffset` so product

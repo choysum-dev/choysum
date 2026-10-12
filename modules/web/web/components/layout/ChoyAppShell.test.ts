@@ -26,9 +26,11 @@ describe('ChoyAppShell', () => {
     expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-header]')?.className || '').toContain('sticky');
     expect(mounted.q('.choy-shell')?.className || '').toContain('overflow-hidden');
-    expect(mounted.q('[data-testid=choy-shell-canvas]')?.className || '').toContain('overflow-y-auto');
+    expect(mounted.q('[data-testid=choy-shell-scroll]')?.className || '').toContain('overflow-y-auto');
     expect(mounted.q('[data-testid=choy-shell-header-sep]')).not.toBeNull();
     expect(mounted.q('[data-anchor="choy.shell.header-actions"]')).not.toBeNull();
+    expect(mounted.q('[data-anchor="choy.shell.sidebar-header"]')).not.toBeNull();
+    expect(mounted.q('[data-anchor="choy.shell.sidebar-footer"]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-nav-split]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-nav-pane]')).not.toBeNull();
     expect(
@@ -40,9 +42,19 @@ describe('ChoyAppShell', () => {
     expect(mounted.q('[data-testid=choy-shell-footer]')?.className || '').not.toContain('border-t');
     expect(mounted.q('[data-testid=choy-app-footer]')?.textContent || '').toContain('Powered by Choysum');
     expect(mounted.q('[data-testid=choy-shell-menu-trigger]')).not.toBeNull();
-    expect(mounted.q('[data-testid=choy-shell-brand]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-brand]')).toBeNull();
     expect(mounted.q('[data-testid=choy-shell-command-trigger]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-sidebar-nav-app-title]')).toBeNull();
     expect(mounted.q('[data-test=router-view]')).not.toBeNull();
+    // Sticky-footer column lives in the Inset (footer after canvas inside one scrollport).
+    expect(mounted.q('[data-slot=sidebar-inset]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-footer]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-canvas]')).not.toBeNull();
+    const footer = mounted.q('[data-testid=choy-shell-footer]');
+    const canvas = mounted.q('[data-testid=choy-shell-canvas]');
+    expect(footer?.parentElement).toBe(canvas?.parentElement);
+    expect(footer?.parentElement?.className || '').toContain('choy-shell__scroll-inner');
     mounted.unmount();
   });
 
@@ -119,32 +131,6 @@ describe('ChoyAppShell', () => {
     await flushPromises();
     expect(mounted.q('[data-test=custom-body]')?.textContent).toBe('Custom');
     expect(mounted.q('[data-test=router-view]')).toBeNull();
-    mounted.unmount();
-  });
-
-  test('brand link navigates home when a router is installed', async () => {
-    const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
-    const { router } = createFeStubRouter({
-      route: { path: '/other', fullPath: '/other', meta: {} },
-    });
-    const pushes: unknown[] = [];
-    const originalPush = router.push?.bind(router);
-    router.push = (to: unknown) => {
-      pushes.push(to);
-      return originalPush ? originalPush(to) : Promise.resolve();
-    };
-    const mounted = mountApp(ChoyAppShell as any, {
-      plugins: [router],
-      stubs: {
-        'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
-      },
-    });
-    await flushPromises();
-    const brand = mounted.q('[data-testid=choy-shell-brand]') as HTMLElement | null;
-    expect(brand).not.toBeNull();
-    brand!.click();
-    await flushPromises();
-    expect(pushes).toContain('/meta/modules');
     mounted.unmount();
   });
 

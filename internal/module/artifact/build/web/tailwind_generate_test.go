@@ -1351,3 +1351,14 @@ func TestScanChoyProductTailwindCandidatesIncludesDomain(t *testing.T) {
 		t.Fatalf("domain-only modulesPath must still yield candidates, got %v", got)
 	}
 }
+
+func TestSanitizeTailwindBorderSidePadding(t *testing.T) {
+	in := ".border-b {\n  padding-bottom: calc(var(--spacing) * 3);\n}\n\n.border-b {\n  border-bottom-width: 1px;\n}\n\n.border-t {\n  padding-top: calc(var(--spacing) * 3);\n}\n\n.border-t {\n  border-top-width: 1px;\n}\n"
+	got := sanitizeTailwindBorderSidePadding(in)
+	if strings.Contains(got, "padding-bottom") || strings.Contains(got, "padding-top") {
+		t.Fatalf("padding rules should be stripped, got:\n%s", got)
+	}
+	if !strings.Contains(got, "border-bottom-width: 1px") || !strings.Contains(got, "border-top-width: 1px") {
+		t.Fatalf("border width rules should remain, got:\n%s", got)
+	}
+}

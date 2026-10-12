@@ -98,14 +98,14 @@ function onTooltipOpen(app: MenuItem, open: boolean) {
 
 <template>
   <div
-    class="bg-muted text-sidebar-foreground flex h-full shrink-0 flex-col overflow-hidden"
+    class="text-sidebar-foreground flex h-full shrink-0 flex-col overflow-hidden"
     data-testid="choy-shell-app-rail"
-    :style="{ width: 'calc(var(--sidebar-width-icon) + 1px)' }"
+    :style="{ width: 'var(--sidebar-width-icon)' }"
   >
-    <SidebarContent class="pt-2">
+    <SidebarContent class="pt-1.5">
       <SidebarGroup class="px-2 py-0">
         <SidebarGroupContent>
-          <SidebarMenu class="gap-1.5">
+          <SidebarMenu class="gap-1">
             <SidebarMenuItem v-for="app in apps" :key="appKey(app)">
               <Tooltip
                 :open="!!tooltipOpen[appKey(app)]"
@@ -115,13 +115,13 @@ function onTooltipOpen(app: MenuItem, open: boolean) {
                   <SidebarMenuButton
                     size="lg"
                     type="button"
-                    class="group/rail h-10 justify-center p-1 hover:bg-transparent data-[active=true]:bg-transparent"
+                    class="group/rail h-9 justify-center p-1 hover:bg-transparent data-[active=true]:bg-transparent"
                     :is-active="isActive(app)"
                     data-testid="choy-shell-app-rail-item"
                     @click="onSelect(app)"
                   >
                     <span
-                      class="flex size-8 shrink-0 items-center justify-center rounded-lg [&>svg]:size-4"
+                      class="flex size-7 shrink-0 items-center justify-center rounded-md [&>svg]:size-4"
                       data-testid="choy-shell-app-rail-tile"
                       :class="tileClass(app)"
                     >

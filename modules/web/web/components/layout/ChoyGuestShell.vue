@@ -20,43 +20,54 @@ SPDX-License-Identifier: Apache-2.0
         </div>
       </template>
     </ChoyGuestHeader>
+    <!--
+      Sticky footer column: short pages pin Powered-by to the viewport bottom;
+      tall pages place it after content inside the same scrollport.
+    -->
     <div
-      class="choy-shell__main-inner flex min-h-0 flex-1 flex-col overflow-y-auto bg-background"
-      data-testid="choy-shell-canvas"
+      class="choy-shell__scroll min-h-0 flex-1 overflow-y-auto bg-background"
+      data-testid="choy-shell-scroll"
     >
-      <slot>
-        <router-view v-slot="{ Component, route: viewRoute }">
-          <KeepAlive>
-            <component
-              :is="Component"
-              v-if="Component && viewRoute.meta?.keepAlive"
-              class="min-h-0 flex-1"
-              :key="viewRoute.path"
-            />
-          </KeepAlive>
-          <component
-            :is="Component"
-            v-if="Component && !viewRoute.meta?.keepAlive"
-            class="min-h-0 flex-1"
-            :key="viewRoute.fullPath"
-          />
-        </router-view>
-      </slot>
-    </div>
-    <footer
-      v-if="showFooter"
-      class="shrink-0 bg-background"
-      data-testid="choy-shell-footer"
-    >
-      <div class="w-full px-6">
-        <div class="mx-auto flex h-16 max-w-screen-2xl items-center justify-center">
-          <ChoyAppFooter
-            class="w-full px-1 text-center text-xs leading-loose text-muted-foreground sm:text-sm"
-          />
+      <div class="choy-shell__scroll-inner flex min-h-full flex-col">
+        <div
+          class="choy-shell__main-inner flex flex-1 flex-col"
+          data-testid="choy-shell-canvas"
+        >
+          <slot>
+            <router-view v-slot="{ Component, route: viewRoute }">
+              <KeepAlive>
+                <component
+                  :is="Component"
+                  v-if="Component && viewRoute.meta?.keepAlive"
+                  class="min-h-0 flex-1"
+                  :key="viewRoute.path"
+                />
+              </KeepAlive>
+              <component
+                :is="Component"
+                v-if="Component && !viewRoute.meta?.keepAlive"
+                class="min-h-0 flex-1"
+                :key="viewRoute.fullPath"
+              />
+            </router-view>
+          </slot>
         </div>
-        <slot name="footer" />
+        <footer
+          v-if="showFooter"
+          class="choy-shell__footer shrink-0 bg-background"
+          data-testid="choy-shell-footer"
+        >
+          <div class="w-full px-6">
+            <div class="mx-auto flex h-16 max-w-screen-2xl items-center justify-center">
+              <ChoyAppFooter
+                class="w-full px-1 text-center text-xs leading-loose text-muted-foreground sm:text-sm"
+              />
+            </div>
+            <slot name="footer" />
+          </div>
+        </footer>
       </div>
-    </footer>
+    </div>
   </div>
 </template>
 

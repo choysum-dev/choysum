@@ -34,13 +34,22 @@ export {
 export { default as ChoyNotificationBell } from './components/layout/ChoyNotificationBell.vue';
 export { default as ChoyCommandPalette } from './components/layout/ChoyCommandPalette.vue';
 export { default as ChoySidebarNav } from './components/layout/ChoySidebarNav.vue';
+export { resolveCompanyLogoUrl, productLogoUrl } from './utils/resolveCompanyLogoUrl';
+
 export { Avatar as ChoyAvatar, AvatarFallback as ChoyAvatarFallback } from './components/vendor/ui/avatar';
 export {
   DropdownMenu as ChoyDropdownMenu,
   DropdownMenuContent as ChoyDropdownMenuContent,
   DropdownMenuItem as ChoyDropdownMenuItem,
+  DropdownMenuLabel as ChoyDropdownMenuLabel,
+  DropdownMenuSeparator as ChoyDropdownMenuSeparator,
   DropdownMenuTrigger as ChoyDropdownMenuTrigger,
 } from './components/vendor/ui/dropdown-menu';
+export {
+  Popover as ChoyPopover,
+  PopoverContent as ChoyPopoverContent,
+  PopoverTrigger as ChoyPopoverTrigger,
+} from './components/vendor/ui/popover';
 export {
   ChoyDialog,
   ChoyDialogContent,

@@ -826,22 +826,52 @@ msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr "用户注册失败"
 
-#: web/components/layout/ChoyAppShell.vue:23
+#: web/components/layout/ChoyAppShell.vue:84
+msgctxt "web/components/layout/ChoyAppShell"
+msgid "Account"
+msgstr "账户"
+
+#: web/components/layout/ChoyAppShell.vue:89
+msgctxt "web/components/layout/ChoyAppShell"
+msgid "Dark"
+msgstr "深色"
+
+#: web/components/layout/ChoyAppShell.vue:34
+msgctxt "web/components/layout/ChoyAppShell"
+msgid "Language"
+msgstr "语言"
+
+#: web/components/layout/ChoyAppShell.vue:88
+msgctxt "web/components/layout/ChoyAppShell"
+msgid "Light"
+msgstr "浅色"
+
+#: web/components/layout/ChoyAppShell.vue:41
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Log Out"
 msgstr "退出登录"
 
-#: web/components/layout/ChoyAppShell.vue:17
+#: web/components/layout/ChoyAppShell.vue:22
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Profile"
 msgstr "个人资料"
 
-#: web/components/layout/ChoyAppShell.vue:20
+#: web/components/layout/ChoyAppShell.vue:25
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Settings"
 msgstr "设置"
 
-#: web/components/layout/ChoyAppShell.vue:7
+#: web/components/layout/ChoyAppShell.vue:90
+msgctxt "web/components/layout/ChoyAppShell"
+msgid "System"
+msgstr "跟随系统"
+
+#: web/components/layout/ChoyAppShell.vue:28
+msgctxt "web/components/layout/ChoyAppShell"
+msgid "Theme"
+msgstr "主题"
+
+#: web/components/layout/ChoyAppShell.vue:11
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "User menu"
 msgstr "用户菜单"
@@ -866,17 +896,17 @@ msgctxt "web/components/layout/ChoyGuestShell"
 msgid "Sign up"
 msgstr "注册"
 
-#: web/components/layout/SwitchCompany.vue:34
+#: web/components/layout/SwitchCompany.vue:39
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Apply"
 msgstr "应用"
 
-#: web/components/layout/SwitchCompany.vue:19
+#: web/components/layout/SwitchCompany.vue:24
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Available Companies"
 msgstr "可用公司"
 
-#: web/components/layout/SwitchCompany.vue:310
+#: web/components/layout/SwitchCompany.vue:316
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Available companies must include the current company"
 msgstr "可选公司必须包含当前公司"
@@ -886,27 +916,27 @@ msgctxt "web/components/layout/SwitchCompany"
 msgid "Company"
 msgstr "公司"
 
-#: web/components/layout/SwitchCompany.vue:11
+#: web/components/layout/SwitchCompany.vue:16
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Current Company"
 msgstr "当前公司"
 
-#: web/components/layout/SwitchCompany.vue:315
+#: web/components/layout/SwitchCompany.vue:321
 msgctxt "web/components/layout/SwitchCompany"
 msgid "No changes to apply"
 msgstr "没有可应用的更改"
 
-#: web/components/layout/SwitchCompany.vue:313
+#: web/components/layout/SwitchCompany.vue:319
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Only one company is available; nothing to apply"
 msgstr "仅有一家可选公司，无需应用"
 
-#: web/components/layout/SwitchCompany.vue:308
+#: web/components/layout/SwitchCompany.vue:314
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Select a current company"
 msgstr "请选择当前公司"
 
-#: web/components/layout/SwitchCompany.vue:3
+#: web/components/layout/SwitchCompany.vue:5
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Switch company"
 msgstr "切换公司"

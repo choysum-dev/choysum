@@ -15,7 +15,6 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
-  SidebarHeader,
   SidebarMenu,
 } from '../vendor/ui/sidebar/index'
 import ChoySidebarNavEntry from './ChoySidebarNavEntry.vue'
@@ -29,6 +28,7 @@ type NavGroup = {
 /**
  * Product nested sidebar: L2/L3 of the active app (or the first visible root).
  * Icons are optional; when absent, items render as text-only labels.
+ * Section roots (items with children) become SidebarGroup labels.
  */
 const { _t: _tMenu } = createTranslate('web', { scope: 'web/components/layout/ChoySidebarNav' })
 
@@ -69,22 +69,32 @@ const scopedRoot = computed((): MenuItem | null => {
   return roots[0] ?? null
 })
 
-const appTitle = computed(() => {
-  const root = scopedRoot.value
-  return root ? labelOf(root) : ''
-})
-
 const navGroups = computed((): NavGroup[] => {
   const root = scopedRoot.value
   if (!root) return []
   const children = visibleItems(root.children)
-  if (children.length) {
-    return [{ key: root.id || root.path || root.title, label: '', items: children }]
-  }
-  if (!root.children?.length) {
+  if (!children.length) {
     return [{ key: 'ungrouped', label: '', items: [root] }]
   }
-  return []
+
+  const groups: NavGroup[] = []
+  const loose: MenuItem[] = []
+  for (const child of children) {
+    const nested = visibleItems(child.children)
+    if (nested.length) {
+      groups.push({
+        key: child.id || child.path || child.title,
+        label: labelOf(child),
+        items: nested,
+      })
+    } else {
+      loose.push(child)
+    }
+  }
+  if (loose.length) {
+    groups.unshift({ key: `${root.id || root.path || 'root'}-loose`, label: '', items: loose })
+  }
+  return groups
 })
 
 const isEmpty = computed(() => !navGroups.value.some((group) => group.items.length))
@@ -113,14 +123,6 @@ function onLeafClick(item: MenuItem) {
 
 <template>
   <div class="choy-sidebar-nav flex h-full min-h-0 flex-1 flex-col" data-testid="choy-shell-aside">
-    <SidebarHeader v-if="appTitle" class="px-4 pt-3 pb-1">
-      <div
-        class="text-sidebar-foreground text-base font-medium tracking-tight"
-        data-testid="choy-sidebar-nav-app-title"
-      >
-        {{ appTitle }}
-      </div>
-    </SidebarHeader>
     <SidebarContent>
     <p
       v-if="isEmpty"
@@ -216,4 +218,3 @@ function onLeafClick(item: MenuItem) {
   color: var(--color-sidebar-accent-foreground);
 }
 </style>
-

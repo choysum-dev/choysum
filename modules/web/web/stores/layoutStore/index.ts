@@ -109,7 +109,8 @@ export const useLayoutStore = defineStore(
 
       switch (sidebarMode.value) {
         case 'expanded':
-          setSidebarMode('collapsed', { isUserAction: true });
+          // Mobile closes the Sheet in one step; desktop collapses to L1 icon rail.
+          setSidebarMode(isMobile.value ? 'hidden' : 'collapsed', { isUserAction: true });
           break;
         case 'collapsed':
           setSidebarMode(isMobile.value ? 'hidden' : 'expanded', { isUserAction: true });

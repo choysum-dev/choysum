@@ -5,29 +5,35 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <header
-    class="choy-app-header sticky top-0 z-40 flex shrink-0 items-center gap-2 bg-background/95 px-4 text-sm backdrop-blur"
-    :style="{ height: 'var(--choy-layout-header-height)' }"
+    class="choy-app-header sticky top-0 z-40 flex shrink-0 items-center gap-2 bg-background px-4 text-sm"
+    :style="headerStyle"
     data-testid="choy-shell-header"
   >
-    <SidebarTrigger
+    <ChoyButton
       v-if="showSidebarChrome"
+      variant="ghost"
+      size="icon"
+      type="button"
+      class="size-7 shrink-0"
+      :style="{ width: '1.75rem', height: '1.75rem' }"
       data-testid="choy-shell-menu-trigger"
+      data-sidebar="trigger"
+      data-slot="sidebar-trigger"
       :aria-label="menuTriggerLabel"
-    />
-    <a
-      href="/"
-      class="choy-shell__brand inline-flex min-w-0 items-center gap-2 font-medium tracking-tight text-foreground no-underline hover:opacity-90"
-      data-testid="choy-shell-brand"
-      @click.prevent="goHome"
+      @click="onMenuToggle"
     >
-      <img :src="logoUrl" alt="" class="size-5 shrink-0 saturate-50" width="20" height="20" />
-      <span class="truncate">Choysum</span>
-    </a>
+      <PanelLeft class="size-4" aria-hidden="true" />
+    </ChoyButton>
+    <Separator
+      v-if="showSidebarChrome"
+      orientation="vertical"
+      class="mx-2 self-center"
+      :style="{ height: '1rem' }"
+      data-testid="choy-shell-header-sep-trigger"
+    />
     <ChoyShellBreadcrumb v-if="showSidebarChrome" />
     <div class="ms-auto flex items-center gap-2">
       <ChoyCommandPalette v-if="showSidebarChrome" />
-      <ChoyShellThemeToggle />
-      <ChoyShellLocaleMenu />
       <div
         v-if="$slots['header-actions']"
         class="mx-1 h-4 w-px shrink-0 bg-border"
@@ -40,18 +46,48 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import logoUrl from '../../assets/logo-32.png'
+import { PanelLeft } from 'lucide-vue-next'
+import ChoyButton from './ChoyButton.vue'
 import ChoyCommandPalette from './ChoyCommandPalette.vue'
 import ChoyShellBreadcrumb from './ChoyShellBreadcrumb.vue'
-import ChoyShellLocaleMenu from './ChoyShellLocaleMenu.vue'
-import ChoyShellThemeToggle from './ChoyShellThemeToggle.vue'
-import { SidebarTrigger } from '../vendor/ui/sidebar/index'
+import { Separator } from '../vendor/ui/separator'
+import { useSidebar } from '../vendor/ui/sidebar/utils'
+import { useLayoutStore } from '../../stores/layoutStore'
 
 defineOptions({ name: 'ChoyAppHeader' })
 
 defineProps<{
   showSidebarChrome: boolean
   menuTriggerLabel: string
-  goHome: () => void
 }>()
+
+let layoutStore: ReturnType<typeof useLayoutStore> | null = null
+try {
+  layoutStore = useLayoutStore()
+} catch {
+  layoutStore = null
+}
+
+const { toggleSidebar } = useSidebar()
+
+/** Inline border/height: avoid broken `.border-b` utility that also sets padding-bottom. */
+const headerStyle = {
+  height: 'var(--choy-layout-header-height)',
+  borderBottom: '1px solid var(--color-border, var(--choy-color-border))',
+  paddingTop: '0',
+  paddingBottom: '0',
+  boxSizing: 'border-box' as const,
+}
+
+/**
+ * Prefer layoutStore so ChoySidebarBridge remains the single writer to kit open state.
+ * Falls back to kit toggle when the layout store is unavailable (tests).
+ */
+function onMenuToggle() {
+  if (layoutStore) {
+    layoutStore.toggleSidebar()
+    return
+  }
+  toggleSidebar()
+}
 </script>

@@ -411,8 +411,21 @@ func GenerateTailwindCSS(dialectCSS string, candidates []string) (css string, du
 		_, _ = eng.Write(payload)
 	}
 	eng.Flush()
-	css = eng.FullCSS()
+	css = sanitizeTailwindBorderSidePadding(eng.FullCSS())
 	return css, time.Since(start), nil
+}
+
+// sanitizeTailwindBorderSidePadding drops a known-bad FullCSS emit where
+// .border-b / .border-t also receive pb-3 / pt-3 padding declarations.
+// The real border-*-width rules are kept.
+func sanitizeTailwindBorderSidePadding(css string) string {
+	for _, bad := range []string{
+		".border-b {\n  padding-bottom: calc(var(--spacing) * 3);\n}\n\n",
+		".border-t {\n  padding-top: calc(var(--spacing) * 3);\n}\n\n",
+	} {
+		css = strings.ReplaceAll(css, bad, "")
+	}
+	return css
 }
 
 // choyLoadCSS wraps Engine.LoadCSS so tests can force parse failures.

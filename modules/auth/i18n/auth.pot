@@ -845,22 +845,52 @@ msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:23
+#: web/components/layout/ChoyAppShell.vue:84
+msgctxt "web/components/layout/ChoyAppShell"
+msgid "Account"
+msgstr ""
+
+#: web/components/layout/ChoyAppShell.vue:89
+msgctxt "web/components/layout/ChoyAppShell"
+msgid "Dark"
+msgstr ""
+
+#: web/components/layout/ChoyAppShell.vue:34
+msgctxt "web/components/layout/ChoyAppShell"
+msgid "Language"
+msgstr ""
+
+#: web/components/layout/ChoyAppShell.vue:88
+msgctxt "web/components/layout/ChoyAppShell"
+msgid "Light"
+msgstr ""
+
+#: web/components/layout/ChoyAppShell.vue:41
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Log Out"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:17
+#: web/components/layout/ChoyAppShell.vue:22
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Profile"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:20
+#: web/components/layout/ChoyAppShell.vue:25
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Settings"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:7
+#: web/components/layout/ChoyAppShell.vue:90
+msgctxt "web/components/layout/ChoyAppShell"
+msgid "System"
+msgstr ""
+
+#: web/components/layout/ChoyAppShell.vue:28
+msgctxt "web/components/layout/ChoyAppShell"
+msgid "Theme"
+msgstr ""
+
+#: web/components/layout/ChoyAppShell.vue:11
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "User menu"
 msgstr ""
@@ -885,17 +915,17 @@ msgctxt "web/components/layout/ChoyGuestShell"
 msgid "Sign up"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:34
+#: web/components/layout/SwitchCompany.vue:39
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Apply"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:19
+#: web/components/layout/SwitchCompany.vue:24
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Available Companies"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:310
+#: web/components/layout/SwitchCompany.vue:316
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Available companies must include the current company"
 msgstr ""
@@ -906,27 +936,27 @@ msgctxt "web/components/layout/SwitchCompany"
 msgid "Company"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:11
+#: web/components/layout/SwitchCompany.vue:16
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Current Company"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:315
+#: web/components/layout/SwitchCompany.vue:321
 msgctxt "web/components/layout/SwitchCompany"
 msgid "No changes to apply"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:313
+#: web/components/layout/SwitchCompany.vue:319
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Only one company is available; nothing to apply"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:308
+#: web/components/layout/SwitchCompany.vue:314
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Select a current company"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:3
+#: web/components/layout/SwitchCompany.vue:5
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Switch company"
 msgstr ""
