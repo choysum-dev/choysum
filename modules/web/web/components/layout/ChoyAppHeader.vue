@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <header
-    class="choy-app-header sticky top-0 z-40 flex shrink-0 items-center gap-2 bg-background px-4 text-sm"
+    class="choy-app-header sticky top-0 z-50 flex shrink-0 items-center gap-2 bg-background/95 px-4 text-sm backdrop-blur sm:px-6"
     :style="headerStyle"
     data-testid="choy-shell-header"
   >
@@ -27,18 +27,17 @@ SPDX-License-Identifier: Apache-2.0
     <Separator
       v-if="showSidebarChrome"
       orientation="vertical"
-      class="mx-2 self-center"
-      :style="{ height: '1rem' }"
+      class="mx-2 !h-4 self-center"
       data-testid="choy-shell-header-sep-trigger"
     />
     <ChoyShellBreadcrumb v-if="showSidebarChrome" />
     <div class="ms-auto flex items-center gap-2">
       <ChoyCommandPalette v-if="showSidebarChrome" />
-      <div
+      <Separator
         v-if="$slots['header-actions']"
-        class="mx-1 h-4 w-px shrink-0 bg-border"
+        orientation="vertical"
+        class="mx-1 !h-4"
         data-testid="choy-shell-header-sep"
-        aria-hidden="true"
       />
       <slot name="header-actions" />
     </div>

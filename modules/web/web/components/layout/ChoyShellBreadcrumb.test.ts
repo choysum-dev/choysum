@@ -22,14 +22,17 @@ describe('ChoyShellBreadcrumb', () => {
       {
         title: 'Module List',
         path: '/meta/modules',
-        clickable: false,
+        clickable: true,
         timestamp: 1,
+        kind: 'menu',
+        menuId: 'meta-board',
       },
       {
         title: 'Details',
         path: '/meta/modules/x',
-        clickable: true,
+        clickable: false,
         timestamp: 2,
+        kind: 'page',
       },
     ];
     await flushPromises();
