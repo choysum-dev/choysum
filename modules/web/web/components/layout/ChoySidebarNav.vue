@@ -22,7 +22,8 @@ import ChoySidebarNavEntry from './ChoySidebarNavEntry.vue'
 /**
  * Product nested sidebar: L2+ of the active app (or the first visible root).
  * Icons are optional; when absent, items render as text-only labels.
- * Branch nodes keep children and render as Collapsible at any depth.
+ * Branch nodes are Collapsible only (no navigate); expand uses sibling
+ * accordion with active-menu ancestry kept open via useMenu.isExpanded.
  */
 const { _t: _tMenu } = createTranslate('web', { scope: 'web/components/layout/ChoySidebarNav' })
 

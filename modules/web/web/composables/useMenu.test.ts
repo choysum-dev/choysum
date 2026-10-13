@@ -111,6 +111,75 @@ describe('ChoySidebarNav expansion', () => {
     mounted.unmount();
   });
 
+  test('sibling accordion closes another manually expanded folder', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'app',
+      title: 'App',
+      children: [
+        {
+          id: 'group-a',
+          title: 'Group A',
+          children: [{ id: 'a1', title: 'A1', path: '/a1' }],
+        },
+        {
+          id: 'group-b',
+          title: 'Group B',
+          children: [{ id: 'b1', title: 'B1', path: '/b1' }],
+        },
+        { id: 'leaf', title: 'Leaf', path: '/leaf' },
+      ],
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: { path: '/leaf', fullPath: '/leaf', meta: {} },
+    });
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+    const Host = defineComponent({
+      setup() {
+        const store = useMenuStore();
+        const active = store.getMenu('leaf');
+        if (active) store.setActiveMenu(active);
+        return () =>
+          h(SidebarProvider, null, {
+            default: () => h(ChoySidebarNav),
+          });
+      },
+    });
+    const mounted = mountApp(Host as any, {
+      plugins: [menuPlugin, pinia, router, i18n],
+    });
+    await flushPromises();
+    await nextTick();
+
+    const groupA = Array.from(
+      mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-group]'),
+    ).find((b) => (b.textContent || '').includes('Group A')) as HTMLButtonElement | undefined;
+    const groupB = Array.from(
+      mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-group]'),
+    ).find((b) => (b.textContent || '').includes('Group B')) as HTMLButtonElement | undefined;
+    expect(groupA).toBeTruthy();
+    expect(groupB).toBeTruthy();
+
+    groupA!.click();
+    groupA!.click();
+    await flushPromises();
+    await nextTick();
+    expect(groupA!.getAttribute('aria-expanded')).toBe('true');
+    expect(mounted.text()).toContain('A1');
+
+    groupB!.click();
+    groupB!.click();
+    await flushPromises();
+    await nextTick();
+    expect(groupB!.getAttribute('aria-expanded')).toBe('true');
+    expect(mounted.text()).toContain('B1');
+    expect(groupA!.getAttribute('aria-expanded')).toBe('false');
+    expect(mounted.text()).not.toContain('A1');
+    mounted.unmount();
+  });
+
   test('open/close with empty menu id is a no-op', async () => {
     const mounted = await mountSidebar();
     const noIdBtn = Array.from(
