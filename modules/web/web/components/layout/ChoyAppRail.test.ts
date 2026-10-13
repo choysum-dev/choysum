@@ -104,7 +104,7 @@ describe('ChoyAppRail', () => {
     mounted.unmount();
   });
 
-  test('collapsed click does not navigate the app root; flyout lists grouped leaves', async () => {
+  test('collapsed click does not navigate the app root; flyout lists leaves and branch subs', async () => {
     const menuPlugin = createMenuPlugin();
     menuPlugin.manager.addMenu({
       id: 'base',
@@ -162,8 +162,9 @@ describe('ChoyAppRail', () => {
     expect(railMounted.q('[data-testid=choy-shell-app-rail-flyout]')).not.toBeNull();
     expect(railMounted.qa('[data-testid=choy-shell-app-rail-flyout-leaf]').length).toBeGreaterThan(0);
     expect(
-      railMounted.q('[data-testid=choy-shell-app-rail-flyout-group]')?.textContent?.trim(),
+      railMounted.q('[data-testid=choy-shell-app-rail-flyout-sub]')?.textContent?.trim(),
     ).toBe('Units');
+    expect(railMounted.q('[data-testid=choy-shell-app-rail-flyout-group]')).toBeNull();
     mounted.unmount();
     railMounted.unmount();
   });
@@ -194,6 +195,51 @@ describe('ChoyAppRail', () => {
     await new Promise((r) => setTimeout(r, 120));
     expect(ss.openFlyoutKey).toBe('base');
     ss.setFlyoutOpen(app, false);
+    expect(ss.openFlyoutKey).toBe('base');
+    ss.onFlyoutHoverLeave(app);
+    await new Promise((r) => setTimeout(r, 220));
+    expect(ss.openFlyoutKey).toBeNull();
+    mounted.unmount();
+  });
+
+  test('collapsed flyout stays open while pointer crosses into nested submenu', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'base',
+      title: 'Master Data',
+      children: [
+        {
+          id: 'units',
+          title: 'Units',
+          children: [{ id: 'unit', title: 'Unit', path: '/base/units' }],
+        },
+      ],
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    pinViewportWidth(900);
+    useLayoutStore().sidebarMode = 'collapsed';
+    const { router } = createFeStubRouter({
+      route: { path: '/', fullPath: '/', meta: {} },
+    });
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+    const mounted = mountApp(ChoyAppRail as any, {
+      plugins: [menuPlugin, pinia, router, i18n],
+    });
+    await flushPromises();
+    await nextTick();
+    const ss = mounted.setupState();
+    const app = { id: 'base', title: 'Master Data' };
+    ss.onFlyoutHoverEnter(app);
+    await new Promise((r) => setTimeout(r, 120));
+    expect(ss.openFlyoutKey).toBe('base');
+    // Leave L1 content toward portaled L2; Reka often dismisses in that gap.
+    ss.onFlyoutHoverLeave(app);
+    ss.setFlyoutOpen(app, false);
+    expect(ss.openFlyoutKey).toBe('base');
+    // Nested SubContent re-arms hover intent before the close grace ends.
+    ss.onFlyoutHoverEnter(app);
+    await new Promise((r) => setTimeout(r, 250));
     expect(ss.openFlyoutKey).toBe('base');
     ss.onFlyoutHoverLeave(app);
     await new Promise((r) => setTimeout(r, 220));

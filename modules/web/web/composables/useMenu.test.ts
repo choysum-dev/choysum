@@ -245,9 +245,8 @@ describe('ChoySidebarNav expansion', () => {
     mounted.unmount();
   });
 
-  test('labels the active app in the nested header and marks the current leaf', async () => {
+  test('marks the current leaf and keeps inactive branches collapsed', async () => {
     const mounted = await mountSidebar();
-    expect(mounted.q('[data-testid=choy-sidebar-nav-app-title]')?.textContent?.trim()).toBe('App');
     expect(mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-group-label]').length).toBe(0);
 
     const leaf = Array.from(mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-leaf]')).find(
@@ -297,9 +296,6 @@ describe('ChoySidebarNav expansion', () => {
     });
     await flushPromises();
     await nextTick();
-    expect(mounted.q('[data-testid=choy-sidebar-nav-app-title]')?.textContent?.trim()).toBe(
-      'Module Management',
-    );
     expect(mounted.text()).not.toContain('Company');
     expect(mounted.text()).not.toContain('Master Data');
     const activeLeaf = Array.from(
@@ -440,8 +436,10 @@ describe('ChoySidebarNav expansion', () => {
     });
     await flushPromises();
     await nextTick();
-    expect(mounted.q('[data-testid=choy-sidebar-nav-app-title]')?.textContent?.trim()).toBe('Solo App');
-    expect(mounted.text()).toContain('Solo App');
+    const solo = Array.from(mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-leaf]')).find(
+      (b) => (b.textContent || '').includes('Solo App'),
+    );
+    expect(solo).toBeTruthy();
     expect(mounted.q('[data-testid=choy-sidebar-nav-empty]')).toBeNull();
     mounted.unmount();
   });

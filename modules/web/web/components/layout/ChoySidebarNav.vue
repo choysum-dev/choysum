@@ -14,16 +14,15 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
 } from '../vendor/ui/sidebar/index'
 import { buildAppNavGroups, type AppNavGroup } from './buildAppNavGroups'
 import ChoySidebarNavEntry from './ChoySidebarNavEntry.vue'
 
 /**
- * Product nested sidebar: L2/L3 of the active app (or the first visible root).
+ * Product nested sidebar: L2+ of the active app (or the first visible root).
  * Icons are optional; when absent, items render as text-only labels.
- * Section roots (items with children) become SidebarGroup labels.
+ * Branch nodes keep children and render as Collapsible at any depth.
  */
 const { _t: _tMenu } = createTranslate('web', { scope: 'web/components/layout/ChoySidebarNav' })
 
@@ -64,7 +63,7 @@ const scopedRoot = computed((): MenuItem | null => {
   return roots[0] ?? null
 })
 
-const navGroups = computed((): AppNavGroup[] => buildAppNavGroups(scopedRoot.value, labelOf))
+const navGroups = computed((): AppNavGroup[] => buildAppNavGroups(scopedRoot.value))
 
 const isEmpty = computed(() => !navGroups.value.some((group) => group.items.length))
 
@@ -102,12 +101,6 @@ function onLeafClick(item: MenuItem) {
     </p>
     <div v-else class="flex flex-col px-1 py-2">
       <SidebarGroup v-for="group in navGroups" :key="group.key">
-        <SidebarGroupLabel
-          v-if="group.label"
-          data-testid="choy-sidebar-nav-group-label"
-        >
-          {{ group.label }}
-        </SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu>
             <ChoySidebarNavEntry
@@ -136,16 +129,6 @@ function onLeafClick(item: MenuItem) {
 .choy-sidebar-nav :deep([data-sidebar='group-content']) {
   font-size: 0.875rem;
   line-height: 1.25rem;
-}
-.choy-sidebar-nav :deep([data-sidebar='group-label']) {
-  margin-bottom: 0.25rem;
-  height: auto;
-  min-height: 1.5rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  line-height: 1rem;
-  color: var(--color-sidebar-foreground);
-  opacity: 0.55;
 }
 .choy-sidebar-nav :deep([data-sidebar='menu']) {
   gap: 0.125rem;

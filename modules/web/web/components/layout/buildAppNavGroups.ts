@@ -5,6 +5,7 @@ import type { MenuItem } from '@/core/web/menu';
 
 export type AppNavGroup = {
   key: string;
+  /** Reserved; always empty — branch nodes stay as Collapsible / flyout Sub items. */
   label: string;
   items: MenuItem[];
 };
@@ -14,43 +15,28 @@ function visibleItems(list: MenuItem[] | undefined): MenuItem[] {
 }
 
 /**
- * Groups an app root's children the same way ChoySidebarNav does:
- * section roots (with visible children) become labeled groups; loose leaves
- * sit in an unlabeled group at the front. A root with no children yields a
- * single ungrouped entry containing the root itself.
+ * Flattens an app root into one unlabeled nav group whose items keep their
+ * nested children. Branch nodes render as Collapsible (sidebar) or DropdownMenuSub
+ * (rail flyout) at any depth. A root with no children yields a single entry
+ * containing the root itself.
  */
-export function buildAppNavGroups(
-  root: MenuItem | null | undefined,
-  labelOf: (item: MenuItem) => string,
-): AppNavGroup[] {
+export function buildAppNavGroups(root: MenuItem | null | undefined): AppNavGroup[] {
   if (!root) return [];
-  const children = visibleItems(root.children);
+  const declared = root.children || [];
+  const children = visibleItems(declared);
   if (!children.length) {
+    // Declared children that are all hidden → empty nav. No children at all →
+    // treat the root itself as the sole leaf (path-only app).
+    if (declared.length > 0) return [];
     return [{ key: 'ungrouped', label: '', items: [root] }];
   }
-
-  const groups: AppNavGroup[] = [];
-  const loose: MenuItem[] = [];
-  for (const child of children) {
-    const nested = visibleItems(child.children);
-    if (nested.length) {
-      groups.push({
-        key: child.id || child.path || child.title,
-        label: labelOf(child),
-        items: nested,
-      });
-    } else {
-      loose.push(child);
-    }
-  }
-  if (loose.length) {
-    groups.unshift({
-      key: `${root.id || root.path || 'root'}-loose`,
+  return [
+    {
+      key: root.id || root.path || 'root',
       label: '',
-      items: loose,
-    });
-  }
-  return groups;
+      items: children,
+    },
+  ];
 }
 
 /** Visible non-hidden children of a menu node (for nested flyout rows). */

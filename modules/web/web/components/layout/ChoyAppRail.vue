@@ -168,6 +168,9 @@ function setFlyoutOpen(app: MenuItem, open: boolean) {
   }
   // Ignore Reka dismiss while the pointer is still on the trigger/content (modal overlay flicker).
   if ((hoverIntent[key] || 0) > 0) return
+  // Nested SubContent is portaled: leaving L1 briefly zeros intent and Reka emits
+  // open=false before the pointer reaches L2. Keep open for the hover-close grace.
+  if (hoverCloseTimers.has(key)) return
   clearHoverTimers(key)
   if (openFlyoutKey.value === key) openFlyoutKey.value = null
 }
@@ -281,6 +284,8 @@ watch(useFlyout, (enabled) => {
                     :root="app"
                     :label-of="labelOf"
                     :on-leaf-select="onFlyoutLeaf"
+                    :on-hover-enter="() => onFlyoutHoverEnter(app)"
+                    :on-hover-leave="() => onFlyoutHoverLeave(app)"
                   />
                 </DropdownMenuContent>
               </DropdownMenu>

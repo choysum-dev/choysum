@@ -3,43 +3,48 @@
 
 import { buildAppNavGroups, visibleMenuChildren } from './buildAppNavGroups';
 
-const labelOf = (item: { title?: string }) => String(item.title || '');
-
 describe('buildAppNavGroups', () => {
   test('returns empty for null root', () => {
-    expect(buildAppNavGroups(null, labelOf)).toEqual([]);
+    expect(buildAppNavGroups(null)).toEqual([]);
   });
 
   test('wraps a leaf-only root as a single ungrouped item', () => {
     const root = { id: 'solo', title: 'Solo', path: '/solo' } as any;
-    expect(buildAppNavGroups(root, labelOf)).toEqual([
+    expect(buildAppNavGroups(root)).toEqual([
       { key: 'ungrouped', label: '', items: [root] },
     ]);
   });
 
-  test('splits section roots and loose leaves', () => {
+  test('returns empty when every declared child is hidden', () => {
+    const root = {
+      id: 'app',
+      title: 'App',
+      children: [{ id: 'h', title: 'Hidden', path: '/h', hidden: true }],
+    } as any;
+    expect(buildAppNavGroups(root)).toEqual([]);
+  });
+
+  test('keeps section roots as branch items with nested children', () => {
+    const nested = [
+      { id: 'u1', title: 'Unit', path: '/u1' },
+      { id: 'hidden', title: 'Hidden', path: '/h', hidden: true },
+    ];
+    const grp = {
+      id: 'grp',
+      title: 'Units',
+      children: nested,
+    };
     const root = {
       id: 'base',
       title: 'Base',
-      children: [
-        { id: 'loose', title: 'Company', path: '/c' },
-        {
-          id: 'grp',
-          title: 'Units',
-          children: [
-            { id: 'u1', title: 'Unit', path: '/u1' },
-            { id: 'hidden', title: 'Hidden', path: '/h', hidden: true },
-          ],
-        },
-      ],
+      children: [{ id: 'loose', title: 'Company', path: '/c' }, grp],
     } as any;
-    const groups = buildAppNavGroups(root, labelOf);
-    expect(groups.map((g) => ({ key: g.key, label: g.label, ids: g.items.map((i) => i.id) }))).toEqual(
-      [
-        { key: 'base-loose', label: '', ids: ['loose'] },
-        { key: 'grp', label: 'Units', ids: ['u1'] },
-      ],
-    );
+    const groups = buildAppNavGroups(root);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.key).toBe('base');
+    expect(groups[0]!.label).toBe('');
+    expect(groups[0]!.items.map((i) => i.id)).toEqual(['loose', 'grp']);
+    expect(groups[0]!.items[1]).toBe(grp);
   });
 
   test('visibleMenuChildren skips hidden', () => {
