@@ -111,6 +111,75 @@ describe('ChoySidebarNav expansion', () => {
     mounted.unmount();
   });
 
+  test('sibling accordion closes another manually expanded folder', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'app',
+      title: 'App',
+      children: [
+        {
+          id: 'group-a',
+          title: 'Group A',
+          children: [{ id: 'a1', title: 'A1', path: '/a1' }],
+        },
+        {
+          id: 'group-b',
+          title: 'Group B',
+          children: [{ id: 'b1', title: 'B1', path: '/b1' }],
+        },
+        { id: 'leaf', title: 'Leaf', path: '/leaf' },
+      ],
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: { path: '/leaf', fullPath: '/leaf', meta: {} },
+    });
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+    const Host = defineComponent({
+      setup() {
+        const store = useMenuStore();
+        const active = store.getMenu('leaf');
+        if (active) store.setActiveMenu(active);
+        return () =>
+          h(SidebarProvider, null, {
+            default: () => h(ChoySidebarNav),
+          });
+      },
+    });
+    const mounted = mountApp(Host as any, {
+      plugins: [menuPlugin, pinia, router, i18n],
+    });
+    await flushPromises();
+    await nextTick();
+
+    const groupA = Array.from(
+      mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-group]'),
+    ).find((b) => (b.textContent || '').includes('Group A')) as HTMLButtonElement | undefined;
+    const groupB = Array.from(
+      mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-group]'),
+    ).find((b) => (b.textContent || '').includes('Group B')) as HTMLButtonElement | undefined;
+    expect(groupA).toBeTruthy();
+    expect(groupB).toBeTruthy();
+
+    groupA!.click();
+    groupA!.click();
+    await flushPromises();
+    await nextTick();
+    expect(groupA!.getAttribute('aria-expanded')).toBe('true');
+    expect(mounted.text()).toContain('A1');
+
+    groupB!.click();
+    groupB!.click();
+    await flushPromises();
+    await nextTick();
+    expect(groupB!.getAttribute('aria-expanded')).toBe('true');
+    expect(mounted.text()).toContain('B1');
+    expect(groupA!.getAttribute('aria-expanded')).toBe('false');
+    expect(mounted.text()).not.toContain('A1');
+    mounted.unmount();
+  });
+
   test('open/close with empty menu id is a no-op', async () => {
     const mounted = await mountSidebar();
     const noIdBtn = Array.from(
@@ -245,9 +314,8 @@ describe('ChoySidebarNav expansion', () => {
     mounted.unmount();
   });
 
-  test('labels the active app in the nested header and marks the current leaf', async () => {
+  test('marks the current leaf and keeps inactive branches collapsed', async () => {
     const mounted = await mountSidebar();
-    expect(mounted.q('[data-testid=choy-sidebar-nav-app-title]')?.textContent?.trim()).toBe('App');
     expect(mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-group-label]').length).toBe(0);
 
     const leaf = Array.from(mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-leaf]')).find(
@@ -297,9 +365,6 @@ describe('ChoySidebarNav expansion', () => {
     });
     await flushPromises();
     await nextTick();
-    expect(mounted.q('[data-testid=choy-sidebar-nav-app-title]')?.textContent?.trim()).toBe(
-      'Module Management',
-    );
     expect(mounted.text()).not.toContain('Company');
     expect(mounted.text()).not.toContain('Master Data');
     const activeLeaf = Array.from(
@@ -440,8 +505,10 @@ describe('ChoySidebarNav expansion', () => {
     });
     await flushPromises();
     await nextTick();
-    expect(mounted.q('[data-testid=choy-sidebar-nav-app-title]')?.textContent?.trim()).toBe('Solo App');
-    expect(mounted.text()).toContain('Solo App');
+    const solo = Array.from(mounted.el.querySelectorAll('[data-testid=choy-sidebar-nav-leaf]')).find(
+      (b) => (b.textContent || '').includes('Solo App'),
+    );
+    expect(solo).toBeTruthy();
     expect(mounted.q('[data-testid=choy-sidebar-nav-empty]')).toBeNull();
     mounted.unmount();
   });

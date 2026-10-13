@@ -14,21 +14,16 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
   SidebarMenu,
 } from '../vendor/ui/sidebar/index'
+import { buildAppNavGroups, type AppNavGroup } from './buildAppNavGroups'
 import ChoySidebarNavEntry from './ChoySidebarNavEntry.vue'
 
-type NavGroup = {
-  key: string
-  label: string
-  items: MenuItem[]
-}
-
 /**
- * Product nested sidebar: L2/L3 of the active app (or the first visible root).
+ * Product nested sidebar: L2+ of the active app (or the first visible root).
  * Icons are optional; when absent, items render as text-only labels.
+ * Branch nodes are Collapsible only (no navigate); expand uses sibling
+ * accordion with active-menu ancestry kept open via useMenu.isExpanded.
  */
 const { _t: _tMenu } = createTranslate('web', { scope: 'web/components/layout/ChoySidebarNav' })
 
@@ -69,23 +64,7 @@ const scopedRoot = computed((): MenuItem | null => {
   return roots[0] ?? null
 })
 
-const appTitle = computed(() => {
-  const root = scopedRoot.value
-  return root ? labelOf(root) : ''
-})
-
-const navGroups = computed((): NavGroup[] => {
-  const root = scopedRoot.value
-  if (!root) return []
-  const children = visibleItems(root.children)
-  if (children.length) {
-    return [{ key: root.id || root.path || root.title, label: '', items: children }]
-  }
-  if (!root.children?.length) {
-    return [{ key: 'ungrouped', label: '', items: [root] }]
-  }
-  return []
-})
+const navGroups = computed((): AppNavGroup[] => buildAppNavGroups(scopedRoot.value))
 
 const isEmpty = computed(() => !navGroups.value.some((group) => group.items.length))
 
@@ -113,14 +92,6 @@ function onLeafClick(item: MenuItem) {
 
 <template>
   <div class="choy-sidebar-nav flex h-full min-h-0 flex-1 flex-col" data-testid="choy-shell-aside">
-    <SidebarHeader v-if="appTitle" class="px-4 pt-3 pb-1">
-      <div
-        class="text-sidebar-foreground text-base font-medium tracking-tight"
-        data-testid="choy-sidebar-nav-app-title"
-      >
-        {{ appTitle }}
-      </div>
-    </SidebarHeader>
     <SidebarContent>
     <p
       v-if="isEmpty"
@@ -131,12 +102,6 @@ function onLeafClick(item: MenuItem) {
     </p>
     <div v-else class="flex flex-col px-1 py-2">
       <SidebarGroup v-for="group in navGroups" :key="group.key">
-        <SidebarGroupLabel
-          v-if="group.label"
-          data-testid="choy-sidebar-nav-group-label"
-        >
-          {{ group.label }}
-        </SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu>
             <ChoySidebarNavEntry
@@ -165,16 +130,6 @@ function onLeafClick(item: MenuItem) {
 .choy-sidebar-nav :deep([data-sidebar='group-content']) {
   font-size: 0.875rem;
   line-height: 1.25rem;
-}
-.choy-sidebar-nav :deep([data-sidebar='group-label']) {
-  margin-bottom: 0.25rem;
-  height: auto;
-  min-height: 1.5rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  line-height: 1rem;
-  color: var(--color-sidebar-foreground);
-  opacity: 0.55;
 }
 .choy-sidebar-nav :deep([data-sidebar='menu']) {
   gap: 0.125rem;
@@ -216,4 +171,3 @@ function onLeafClick(item: MenuItem) {
   color: var(--color-sidebar-accent-foreground);
 }
 </style>
-

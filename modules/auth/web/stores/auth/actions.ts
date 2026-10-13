@@ -489,6 +489,17 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
         return;
       }
 
+      // Tokens alone do not carry a display name; hydrate the profile for shell chrome.
+      // Failure here must not clear the session — labels fall back to a generic Account string.
+      if (state.identity.value?.userId) {
+        try {
+          await loadUser(false);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.warn('[auth] Failed to load user profile during auth initialization:', msg);
+        }
+      }
+
       // Re-arm automatic refresh scheduling when enabled.
       if (state.authOptions.autoRefresh) {
         helpers.setupRefreshTimer(() => refreshToken(false));

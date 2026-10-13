@@ -123,8 +123,7 @@ function onLeafActivate(item: MenuItem, e: MouseEvent) {
           <component :is="item.icon" v-if="item.icon" />
           <span>{{ labelOf(item) }}</span>
           <ChevronRight
-            v-if="depth === 0"
-            class="ms-auto text-muted-foreground/70 transition-transform group-data-[state=open]/collapsible:rotate-90"
+            class="ms-auto shrink-0 text-muted-foreground/70 transition-transform group-data-[state=open]/collapsible:rotate-90"
           />
         </component>
       </CollapsibleTrigger>

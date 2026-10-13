@@ -6,9 +6,12 @@ import { useRouter } from 'vue-router'
 import { useMenuStore } from '../stores/menuStore'
 import type { MenuItem } from '@/core/web/menu'
 
+const ANCESTRY_HOP_CAP = 64
+
 /**
  * Menu navigation helpers and group expand state for Sidebar* nav.
- * DOM rendering lives in ChoySidebarNav (SidebarMenu* + Collapsible).
+ * Branch nodes toggle Collapsible only (no navigate). Manual expands use
+ * sibling accordion; active-menu ancestry always stays open via isExpanded.
  */
 export function useMenu() {
   const router = useRouter()
@@ -23,6 +26,8 @@ export function useMenu() {
 
   /**
    * Navigates to a menu item or menu id.
+   * Resolves folders to the first navigable leaf (L1 / breadcrumb). L2 folders
+   * do not call this — they only toggle Collapsible.
    */
   async function navigateTo(menuIdOrItem: string | MenuItem): Promise<boolean> {
     const menuItem = typeof menuIdOrItem === 'string' ? menuStore.getMenu(menuIdOrItem) : menuIdOrItem
@@ -38,6 +43,7 @@ export function useMenu() {
     }
 
     menuStore.setActiveMenu(targetMenuItem)
+    pruneOpenedToAncestry(targetMenuItem)
 
     try {
       if (targetMenuItem.externalLink) {
@@ -70,6 +76,51 @@ export function useMenu() {
   }
 
   /**
+   * Collects folder ids on the path from `menu` up to the app root.
+   * Empty-string ids are kept so pathless folders still ancestry-expand.
+   */
+  function ancestryFolderIds(menu: MenuItem | null | undefined): Set<string> {
+    const ids = new Set<string>()
+    let current: MenuItem | null | undefined = menu
+    let hops = 0
+    while (current && hops < ANCESTRY_HOP_CAP) {
+      hops += 1
+      if (current.__parent) {
+        ids.add(current.__parent.id ?? '')
+      }
+      current = current.__parent || null
+    }
+    return ids
+  }
+
+  /**
+   * True when `menuId` is under `ancestorId` in the menu tree.
+   */
+  function isUnderAncestor(menuId: string, ancestorId: string): boolean {
+    if (!menuId || !ancestorId || menuId === ancestorId) return false
+    let current: MenuItem | null | undefined = menuStore.getMenu(menuId)
+    let hops = 0
+    while (current && hops < ANCESTRY_HOP_CAP) {
+      hops += 1
+      if (current.__parent?.id === ancestorId) return true
+      current = current.__parent || null
+    }
+    return false
+  }
+
+  /**
+   * Drops manual expands that are not ancestors of the active leaf.
+   */
+  function pruneOpenedToAncestry(leaf: MenuItem) {
+    const keep = ancestryFolderIds(leaf)
+    const next = new Set<string>()
+    for (const id of openedSubMenus.value) {
+      if (keep.has(id)) next.add(id)
+    }
+    openedSubMenus.value = next
+  }
+
+  /**
    * Reports whether a submenu should be expanded (manual toggle or active ancestry).
    */
   function isExpanded(menuId: string): boolean {
@@ -78,21 +129,36 @@ export function useMenu() {
     const currentActiveMenu = activeMenu.value
     if (!currentActiveMenu) return false
 
-    let current: MenuItem | null = currentActiveMenu
-    let hops = 0
-    while (current && hops < 64) {
-      hops += 1
-      if (current.__parent?.id === menuId) {
-        return true
-      }
-      current = current.__parent || null
-    }
-    return false
+    return ancestryFolderIds(currentActiveMenu).has(menuId)
   }
 
+  /**
+   * Opens a folder and closes manually opened siblings (and their subtrees).
+   * Active-menu ancestry remains visible via isExpanded even if removed here.
+   */
   function openSubMenu(key: string) {
-    if (!key || openedSubMenus.value.has(key)) return
-    const next = new Set(openedSubMenus.value)
+    if (!key) return
+    const item = menuStore.getMenu(key)
+    const parent = item?.__parent
+    const siblingIds = new Set(
+      (parent?.children || [])
+        .map((c) => c.id || '')
+        .filter((id) => !!id && id !== key),
+    )
+
+    const next = new Set<string>()
+    for (const id of openedSubMenus.value) {
+      if (siblingIds.has(id)) continue
+      let underSibling = false
+      for (const siblingId of siblingIds) {
+        if (isUnderAncestor(id, siblingId)) {
+          underSibling = true
+          break
+        }
+      }
+      if (underSibling) continue
+      next.add(id)
+    }
     next.add(key)
     openedSubMenus.value = next
   }
@@ -101,6 +167,10 @@ export function useMenu() {
     if (!key || !openedSubMenus.value.has(key)) return
     const next = new Set(openedSubMenus.value)
     next.delete(key)
+    // Drop nested manual expands under this folder.
+    for (const id of openedSubMenus.value) {
+      if (isUnderAncestor(id, key)) next.delete(id)
+    }
     openedSubMenus.value = next
   }
 

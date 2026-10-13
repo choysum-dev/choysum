@@ -7,10 +7,18 @@ SPDX-License-Identifier: Apache-2.0
 import { DropdownMenuRoot } from 'reka-ui';
 
 const open = defineModel<boolean>('open', { default: false });
+
+withDefaults(
+  defineProps<{
+    /** When false, no dismiss overlay — needed for hover-open menus that share the pointer with the trigger. */
+    modal?: boolean;
+  }>(),
+  { modal: true },
+);
 </script>
 
 <template>
-  <DropdownMenuRoot v-model:open="open" data-slot="dropdown-menu">
+  <DropdownMenuRoot v-model:open="open" :modal="modal" data-slot="dropdown-menu">
     <slot />
   </DropdownMenuRoot>
 </template>

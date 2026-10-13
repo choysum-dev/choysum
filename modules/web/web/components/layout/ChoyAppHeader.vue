@@ -5,34 +5,50 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <header
-    class="choy-app-header sticky top-0 z-40 flex shrink-0 items-center gap-2 bg-background/95 px-4 text-sm backdrop-blur"
-    :style="{ height: 'var(--choy-layout-header-height)' }"
+    class="choy-app-header choy-inset-pad-x sticky top-0 z-50 flex shrink-0 items-center gap-2 bg-background/95 text-sm backdrop-blur"
+    :style="headerStyle"
     data-testid="choy-shell-header"
   >
-    <SidebarTrigger
+    <!--
+      Trigger + sep + breadcrumb share one items-center row.
+      size=icon is size-control (32px) with a size-4 (16px) glyph, so the
+      hit-box has 8px inset on each side. -ms-2 / -me-2 pull the button so
+      the glyph optically aligns with the page gutter and sits gap-2 from
+      the separator (matching separator→breadcrumb), instead of looking
+      wider because of the transparent hit padding.
+    -->
+    <div
       v-if="showSidebarChrome"
-      data-testid="choy-shell-menu-trigger"
-      :aria-label="menuTriggerLabel"
-    />
-    <a
-      href="/"
-      class="choy-shell__brand inline-flex min-w-0 items-center gap-2 font-medium tracking-tight text-foreground no-underline hover:opacity-90"
-      data-testid="choy-shell-brand"
-      @click.prevent="goHome"
+      class="flex min-w-0 flex-1 items-center gap-2"
+      data-testid="choy-shell-header-start"
     >
-      <img :src="logoUrl" alt="" class="size-5 shrink-0 saturate-50" width="20" height="20" />
-      <span class="truncate">Choysum</span>
-    </a>
-    <ChoyShellBreadcrumb v-if="showSidebarChrome" />
+      <ChoyButton
+        variant="ghost"
+        size="icon"
+        type="button"
+        class="-ms-2 -me-2 shrink-0 leading-none"
+        data-testid="choy-shell-menu-trigger"
+        data-sidebar="trigger"
+        data-slot="sidebar-trigger"
+        :aria-label="menuTriggerLabel"
+        @click="onMenuTriggerClick"
+      >
+        <PanelLeft class="size-4" aria-hidden="true" />
+      </ChoyButton>
+      <Separator
+        orientation="vertical"
+        class="!h-4 w-px shrink-0"
+        data-testid="choy-shell-header-sep-trigger"
+      />
+      <ChoyShellBreadcrumb />
+    </div>
     <div class="ms-auto flex items-center gap-2">
       <ChoyCommandPalette v-if="showSidebarChrome" />
-      <ChoyShellThemeToggle />
-      <ChoyShellLocaleMenu />
-      <div
+      <Separator
         v-if="$slots['header-actions']"
-        class="mx-1 h-4 w-px shrink-0 bg-border"
+        orientation="vertical"
+        class="mx-1 !h-4 w-px shrink-0"
         data-testid="choy-shell-header-sep"
-        aria-hidden="true"
       />
       <slot name="header-actions" />
     </div>
@@ -40,18 +56,46 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import logoUrl from '../../assets/logo-32.png'
+import { PanelLeft } from 'lucide-vue-next'
+import ChoyButton from './ChoyButton.vue'
 import ChoyCommandPalette from './ChoyCommandPalette.vue'
 import ChoyShellBreadcrumb from './ChoyShellBreadcrumb.vue'
-import ChoyShellLocaleMenu from './ChoyShellLocaleMenu.vue'
-import ChoyShellThemeToggle from './ChoyShellThemeToggle.vue'
-import { SidebarTrigger } from '../vendor/ui/sidebar/index'
+import { runShellMenuToggle } from './runShellMenuToggle'
+import { Separator } from '../vendor/ui/separator'
+import { useSidebar } from '../vendor/ui/sidebar/utils'
+import { useLayoutStore } from '../../stores/layoutStore'
 
 defineOptions({ name: 'ChoyAppHeader' })
 
 defineProps<{
   showSidebarChrome: boolean
   menuTriggerLabel: string
-  goHome: () => void
 }>()
+
+let layoutStore: ReturnType<typeof useLayoutStore> | null = null
+try {
+  layoutStore = useLayoutStore()
+} catch {
+  layoutStore = null
+}
+
+let toggleSidebar: () => void = () => {}
+try {
+  toggleSidebar = useSidebar().toggleSidebar
+} catch {
+  toggleSidebar = () => {}
+}
+
+function onMenuTriggerClick() {
+  runShellMenuToggle(layoutStore, toggleSidebar)
+}
+
+/** Height only — shared shell top chrome is translucent + blur with no hairline border. */
+const headerStyle = {
+  height: 'var(--choy-layout-header-height)',
+  paddingTop: '0',
+  paddingBottom: '0',
+  boxSizing: 'border-box' as const,
+}
+
 </script>

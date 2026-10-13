@@ -27,6 +27,7 @@ describe('ChoyGuestShell', () => {
     expect(mounted.q('.choy-guest-header')?.className || '').toContain('backdrop-blur');
     expect(mounted.q('.choy-guest-header')?.className || '').not.toContain('border-b');
     expect(mounted.q('[data-testid=choy-shell-footer]')?.className || '').not.toContain('border-t');
+    expect(mounted.q('[data-testid=choy-shell-scroll]')?.className || '').toContain('overflow-y-auto');
     expect(mounted.q('[data-testid=choy-shell-app-rail]')).toBeNull();
     expect(mounted.q('[data-testid=choy-shell-aside]')).toBeNull();
     expect(mounted.q('[data-testid=choy-shell-menu-trigger]')).toBeNull();
@@ -38,8 +39,18 @@ describe('ChoyGuestShell', () => {
     expect(mounted.q('[data-slot=navigation-menu]')?.className || '').toContain('lg:flex');
     expect(mounted.q('[data-testid=choy-app-footer]')?.textContent || '').toContain('Powered by Choysum');
     expect(mounted.q('[data-testid=choy-app-footer-logo]')).not.toBeNull();
-    expect(mounted.q('[data-testid=choy-app-footer]')?.className || '').toContain('leading-loose');
+    expect(mounted.q('[data-testid=choy-app-footer]')?.className || '').toContain('leading-snug');
+    expect(mounted.q('[data-testid=choy-shell-header-tools]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-theme]')).not.toBeNull();
+    expect(
+      (mounted.q('.choy-guest-header') as HTMLElement | null)?.style?.height || '',
+    ).toContain('--choy-layout-header-height');
     expect(mounted.q('[data-test=router-view]')).not.toBeNull();
+    // Sticky-footer: canvas then footer inside one scrollport.
+    const footer = mounted.q('[data-testid=choy-shell-footer]');
+    const canvas = mounted.q('[data-testid=choy-shell-canvas]');
+    expect(footer?.parentElement).toBe(canvas?.parentElement);
+    expect(footer?.parentElement?.className || '').toContain('choy-shell__scroll-inner');
     mounted.unmount();
   });
 

@@ -1351,3 +1351,38 @@ func TestScanChoyProductTailwindCandidatesIncludesDomain(t *testing.T) {
 		t.Fatalf("domain-only modulesPath must still yield candidates, got %v", got)
 	}
 }
+
+func TestSanitizeTailwindBorderSidePadding(t *testing.T) {
+	cases := []string{
+		".border-b {\n  padding-bottom: calc(var(--spacing) * 3);\n}\n\n.border-b {\n  border-bottom-width: 1px;\n}\n\n.border-t {\n  padding-top: calc(var(--spacing) * 3);\n}\n\n.border-t {\n  border-top-width: 1px;\n}\n",
+		// Spacing multiplier / blank-line shape must not defeat the strip.
+		".border-b {\n  padding-bottom: calc(var(--spacing) * 4);\n}\n\n\n.border-b {\n  border-bottom-width: 1px;\n}\n",
+	}
+	for _, in := range cases {
+		got := sanitizeTailwindBorderSidePadding(in)
+		if strings.Contains(got, "padding-bottom") || strings.Contains(got, "padding-top") {
+			t.Fatalf("padding rules should be stripped, got:\n%s", got)
+		}
+		if !strings.Contains(got, "border-bottom-width: 1px") {
+			t.Fatalf("border width rules should remain, got:\n%s", got)
+		}
+	}
+
+	// Only lone padding-* rules are stripped; mixed-declaration rules stay intact.
+	mixed := ".border-b {\n  padding-bottom: calc(var(--spacing) * 3);\n  border-bottom-width: 1px;\n}\n"
+	if got := sanitizeTailwindBorderSidePadding(mixed); got != mixed {
+		t.Fatalf("mixed-declaration rules should remain unchanged, got:\n%s", got)
+	}
+
+	// Fractional multipliers and EOF (no trailing newline) must still strip.
+	eofFrac := ".border-b {\n  padding-bottom: calc(var(--spacing) * 1.5);\n}"
+	if got := sanitizeTailwindBorderSidePadding(eofFrac); strings.Contains(got, "padding-bottom") {
+		t.Fatalf("EOF fractional padding rule should be stripped, got:\n%s", got)
+	}
+
+	// Collapsed / single-line emit must also strip.
+	single := ".border-b { padding-bottom: calc(var(--spacing) * 3); }"
+	if got := sanitizeTailwindBorderSidePadding(single); strings.Contains(got, "padding-bottom") {
+		t.Fatalf("single-line padding rule should be stripped, got:\n%s", got)
+	}
+}

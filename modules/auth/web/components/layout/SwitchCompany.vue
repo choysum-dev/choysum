@@ -4,24 +4,140 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div ref="rootRef" class="relative">
-    <ChoyButton
-      variant="ghost"
-      size="sm"
-      class="choy-header__action-item h-control max-w-[12rem] truncate px-2.5"
-      :aria-expanded="visible"
-      :aria-label="_t('Switch company')"
-      data-testid="company-switch-trigger"
-      @click.stop="togglePanel"
-    >
-      {{ currentCompanyLabel }}
-    </ChoyButton>
+  <!--
+    Sidebar: Popover on a bare SidebarMenuButton (real DOM anchor). Collapsed tip
+    hosts outside the as-child chain so TooltipRoot cannot steal the panel position.
+    Toolbar: Popover (no tip needed).
+  -->
+  <ChoySidebarMenu v-if="variant === 'sidebar'" class="w-full min-w-0">
+    <ChoySidebarMenuItem>
+      <ChoyCollapsedIdentityTipHost :label="companyIdentityTooltip">
+        <ChoyPopover v-model:open="visible">
+          <ChoyPopoverTrigger as-child>
+            <ChoySidebarMenuButton
+              size="lg"
+              type="button"
+              class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              :aria-expanded="visible"
+              :aria-label="_t('Switch company')"
+              data-testid="company-switch-trigger"
+            >
+              <span
+                class="bg-background text-foreground ring-sidebar-border/60 flex aspect-square size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg ring-1"
+                data-testid="company-switch-logo-wrap"
+              >
+                <img
+                  :src="companyLogoUrl"
+                  alt=""
+                  class="size-8 object-contain p-0.5"
+                  width="32"
+                  height="32"
+                  data-testid="company-switch-logo"
+                />
+              </span>
+              <span
+                class="grid min-w-0 flex-1 text-start text-sm leading-tight"
+                data-testid="company-switch-label"
+              >
+                <span class="truncate font-medium">{{ currentCompanyLabel }}</span>
+                <span
+                  class="text-muted-foreground truncate text-xs"
+                  data-testid="company-switch-meta"
+                >
+                  {{ currentCompanyMeta }}
+                </span>
+              </span>
+              <span
+                class="ms-auto inline-flex shrink-0 opacity-50"
+                aria-hidden="true"
+                data-testid="company-switch-chevrons"
+              >
+                <ChevronsUpDown class="size-4" />
+              </span>
+            </ChoySidebarMenuButton>
+          </ChoyPopoverTrigger>
+          <ChoyPopoverContent
+            side="right"
+            align="start"
+            :side-offset="4"
+            class="w-72 min-w-56 rounded-lg p-3"
+            data-testid="company-switch-panel"
+          >
+            <div class="choy-switch-company__panel flex flex-col gap-3">
+              <ChoyField class="gap-1">
+                <ChoyFieldLabel class="flex flex-col gap-1 text-sm">
+                  {{ _t('Current Company') }}
+                  <select
+                    v-model="draftActiveCompanyId"
+                    class="choy-switch-company__select h-control rounded-md border border-border bg-background px-2 text-sm font-normal"
+                    data-testid="company-active-select"
+                  >
+                    <option v-for="c in companies" :key="c.Id" :value="c.Id">
+                      {{ c.DisplayName || c.Id }}
+                    </option>
+                  </select>
+                </ChoyFieldLabel>
+              </ChoyField>
 
-    <div
-      v-if="visible"
-      class="absolute end-0 top-full z-50 mt-1 w-80 rounded-md border border-border bg-background p-3 shadow-lg"
+              <ChoyField class="gap-1">
+                <ChoyFieldLabel class="text-sm font-medium">{{ _t('Available Companies') }}</ChoyFieldLabel>
+                <div
+                  class="choy-switch-company__select flex max-h-56 min-h-[5.5rem] flex-col gap-1 overflow-y-auto rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+                  data-testid="company-enabled-select"
+                >
+                  <label v-for="c in companies" :key="'enabled-' + c.Id" class="flex items-center gap-2">
+                    <ChoyCheckbox
+                      class="size-control shrink-0"
+                      :model-value="draftEnabledCompanyIds.includes(c.Id)"
+                      :disabled="isActiveCompanyEnabledLocked(c.Id, draftActiveCompanyId)"
+                      @update:model-value="on => setCompanyEnabled(c.Id, on)"
+                    />
+                    <span>{{ c.DisplayName || c.Id }}</span>
+                  </label>
+                </div>
+              </ChoyField>
+
+              <div
+                v-if="applyDisabledReason"
+                class="choy-switch-company__hint text-xs text-foreground/60"
+                data-testid="company-switch-hint"
+              >
+                {{ applyDisabledReason }}
+              </div>
+
+              <div class="choy-switch-company__actions flex justify-end">
+                <ChoyButton size="sm" :disabled="!canApply" data-testid="company-switch-apply" @click.stop="apply">
+                  {{ _t('Apply') }}
+                </ChoyButton>
+              </div>
+            </div>
+          </ChoyPopoverContent>
+        </ChoyPopover>
+      </ChoyCollapsedIdentityTipHost>
+    </ChoySidebarMenuItem>
+  </ChoySidebarMenu>
+
+  <ChoyPopover v-else v-model:open="visible">
+    <ChoyPopoverTrigger as-child>
+      <ChoyButton
+        variant="ghost"
+        size="sm"
+        :class="triggerClass"
+        :aria-expanded="visible"
+        :aria-label="_t('Switch company')"
+        data-testid="company-switch-trigger"
+      >
+        <span class="truncate text-sm font-medium" data-testid="company-switch-label">
+          {{ currentCompanyLabel }}
+        </span>
+      </ChoyButton>
+    </ChoyPopoverTrigger>
+    <ChoyPopoverContent
+      class="w-72 min-w-56 rounded-lg p-3"
+      align="end"
+      side="bottom"
+      :side-offset="4"
       data-testid="company-switch-panel"
-      @click.stop
     >
       <div class="choy-switch-company__panel flex flex-col gap-3">
         <ChoyField class="gap-1">
@@ -65,18 +181,32 @@ SPDX-License-Identifier: Apache-2.0
           </ChoyButton>
         </div>
       </div>
-    </div>
-  </div>
+    </ChoyPopoverContent>
+  </ChoyPopover>
 </template>
 
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { ChoyButton, ChoyCheckbox, ChoyField, ChoyFieldLabel } from '@/web';
+import { computed, ref, watch } from 'vue';
+import { ChevronsUpDown } from 'lucide-vue-next';
+import {
+  ChoyButton,
+  ChoyCheckbox,
+  ChoyCollapsedIdentityTipHost,
+  ChoyField,
+  ChoyFieldLabel,
+  ChoyPopover,
+  ChoyPopoverContent,
+  ChoyPopoverTrigger,
+  ChoySidebarMenu,
+  ChoySidebarMenuButton,
+  ChoySidebarMenuItem,
+  resolveCompanyLogoUrl,
+} from '@/web';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import type Company from '@/base/service/models/company';
 import { createTranslate } from '@/web/web/i18n';
-import { dismissPopupOnEscape } from './popup_escape_focus';
+import { collapsedIdentityTooltip } from './collapsed_identity_tooltip';
 import {
   isActiveCompanyEnabledLocked,
   syncCompanyDraftsFromJwt,
@@ -85,9 +215,19 @@ import {
 
 defineOptions({ name: 'SwitchCompany' });
 
+const props = withDefaults(
+  defineProps<{
+    /** toolbar = inset header actions; sidebar = SidebarHeader workspace switcher */
+    variant?: 'toolbar' | 'sidebar';
+  }>(),
+  { variant: 'toolbar' },
+);
+
 const { _t } = createTranslate('auth', { scope: 'web/components/layout/SwitchCompany' });
 
-type CompanyRow = { Id: string; DisplayName?: string };
+type CompanyRow = { Id: string; DisplayName?: string; Code?: string; Logo?: unknown };
+
+const triggerClass = 'choy-header__action-item h-control max-w-[12rem] truncate px-2.5';
 
 const authStore = useAuthStore();
 let globalCompanyStore: any | null = null;
@@ -102,37 +242,8 @@ function getGlobalCompanyStore(): any {
 }
 
 const visible = ref(false);
-const rootRef = ref<HTMLElement | null>(null);
 /** Guards async open-sync so a late refresh cannot reset an in-progress selection. */
 let panelOpenGeneration = 0;
-
-function togglePanel() {
-  visible.value = !visible.value;
-}
-
-function onDocumentClick(event: MouseEvent) {
-  if (!visible.value) return;
-  const root = rootRef.value;
-  if (root && !root.contains(event.target as Node)) {
-    visible.value = false;
-  }
-}
-
-function onDocumentKeydown(event: KeyboardEvent) {
-  if (event.key !== 'Escape') return;
-  const trigger = rootRef.value?.querySelector<HTMLElement>('[data-testid="company-switch-trigger"]');
-  dismissPopupOnEscape(visible.value, () => { visible.value = false; }, trigger);
-}
-
-onMounted(() => {
-  document.addEventListener('click', onDocumentClick);
-  document.addEventListener('keydown', onDocumentKeydown);
-});
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', onDocumentClick);
-  document.removeEventListener('keydown', onDocumentKeydown);
-});
 
 const meta = computed(() => ((authStore.identity as any)?.metadata ?? {}) as any);
 const currentActiveCompanyId = computed(() => String(meta.value?.activeCompanyId ?? '').trim());
@@ -263,11 +374,19 @@ async function ensureCompanies(): Promise<void> {
 
   try {
     const companyStore = getGlobalCompanyStore();
-    const rows = (await companyStore.Search(['Id', 'in', ids] as any, { fields: ['Id', 'DisplayName'], limit: 1000 } as any)) as any[];
+    const rows = (await companyStore.Search(['Id', 'in', ids] as any, {
+      fields: ['Id', 'DisplayName', 'Code', 'Logo'],
+      limit: 1000,
+    } as any)) as any[];
     if (fetchedSig.value !== sig) return;
 
     const out: CompanyRow[] = (rows || [])
-      .map(r => ({ Id: String((r as any)?.Id ?? '').trim(), DisplayName: String((r as any)?.DisplayName ?? '').trim() }))
+      .map(r => ({
+        Id: String((r as any)?.Id ?? '').trim(),
+        DisplayName: String((r as any)?.DisplayName ?? '').trim(),
+        Code: String((r as any)?.Code ?? '').trim(),
+        Logo: (r as any)?.Logo,
+      }))
       .filter(r => !!r.Id);
 
     const map = new Map(out.map(r => [r.Id, r] as const));
@@ -349,6 +468,26 @@ const currentCompanyLabel = computed(() => {
   const name = companyNameById.value.get(id);
   if (name) return name;
   return labelsReady.value ? id : _t('Company');
+});
+
+/** Collapsed tip label; omitted while the switcher panel is open. */
+const companyIdentityTooltip = computed(() =>
+  collapsedIdentityTooltip(visible.value, currentCompanyLabel.value),
+);
+
+/** Muted second line under the company name (Code, else a workspace fallback). */
+const currentCompanyMeta = computed(() => {
+  const id = currentActiveCompanyId.value;
+  const row = companies.value.find(c => c.Id === id);
+  const code = String(row?.Code || '').trim();
+  if (code) return code;
+  return _t('Workspace');
+});
+
+const companyLogoUrl = computed(() => {
+  const id = currentActiveCompanyId.value;
+  const row = companies.value.find(c => c.Id === id);
+  return resolveCompanyLogoUrl(row?.Logo);
 });
 
 /** Normalize enabled scope the same way drafts do (active is always included). */

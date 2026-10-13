@@ -19,7 +19,8 @@ html {
   --choy-color-danger: oklch(0.58 0.18 25);
   --choy-color-info: oklch(0.65 0.08 230);
   --choy-color-foreground: oklch(0.22 0.01 260);
-  --choy-color-background: oklch(0.985 0.004 260);
+  /* Pure white canvas; sidebar token stays slightly muted (sidebar-09). */
+  --choy-color-background: oklch(1 0 0);
   --choy-color-muted: oklch(0.96 0.006 260);
   --choy-color-muted-foreground: oklch(0.45 0.02 260);
   --choy-color-border: oklch(0.9 0.01 260);
@@ -37,11 +38,13 @@ html {
   --choy-color-input: oklch(0.9 0.01 260);
 
   /* Sidebar palette (Sidebar* L2; layout width tokens stay separate). */
-  --choy-color-sidebar: oklch(0.985 0.004 260);
+  /* Neutral chrome; AppShell L2 pane overrides to a lighter nested surface. */
+  --choy-color-sidebar: oklch(0.965 0 0);
   --choy-color-sidebar-foreground: oklch(0.22 0.01 260);
   --choy-color-sidebar-primary: var(--choy-color-primary);
   --choy-color-sidebar-primary-foreground: var(--choy-color-primary-foreground);
-  --choy-color-sidebar-accent: oklch(0.96 0.006 260);
+  /* Must sit clearly below chrome/pane (0.965 / 0.985); 0.96 was optically invisible. */
+  --choy-color-sidebar-accent: oklch(0.915 0.01 260);
   --choy-color-sidebar-accent-foreground: oklch(0.22 0.01 260);
   --choy-color-sidebar-border: oklch(0.9 0.01 260);
   --choy-color-sidebar-ring: var(--choy-color-ring);
@@ -71,9 +74,11 @@ html {
 
   /* Shell chrome (shadcn-vue docs header ~h-14); not the control ruler. */
   --choy-layout-header-height: 3.5rem;
+  --choy-layout-footer-height: 4rem;
   --choy-layout-sidebar-width: 15rem;
   --choy-layout-sidebar-collapsed-width: 3.5rem;
-  --choy-layout-content-padding: 1.25rem;
+  /* Inset gutter for App/Guest header, ChoyPage, and Powered-by footer (sidebar-07 p-4). */
+  --choy-layout-content-padding: 1rem;
 
   --choy-motion-duration-fast: 120ms;
   --choy-motion-duration-normal: 200ms;
@@ -213,6 +218,7 @@ html[data-density='compact'] {
   --choy-control-height-sm: 24px;
   --choy-control-height-lg: 32px;
   --choy-layout-header-height: 3rem;
+  --choy-layout-footer-height: 3.5rem;
 }
 
 html[dir='rtl'] {

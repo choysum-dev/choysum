@@ -34,13 +34,32 @@ export {
 export { default as ChoyNotificationBell } from './components/layout/ChoyNotificationBell.vue';
 export { default as ChoyCommandPalette } from './components/layout/ChoyCommandPalette.vue';
 export { default as ChoySidebarNav } from './components/layout/ChoySidebarNav.vue';
+export { default as ChoyCollapsedIdentityTipHost } from './components/layout/ChoyCollapsedIdentityTipHost.vue';
+export {
+  SidebarMenu as ChoySidebarMenu,
+  SidebarMenuButton as ChoySidebarMenuButton,
+  SidebarMenuItem as ChoySidebarMenuItem,
+} from './components/vendor/ui/sidebar/index';
+export { resolveCompanyLogoUrl, productLogoUrl } from './utils/resolveCompanyLogoUrl';
+
 export { Avatar as ChoyAvatar, AvatarFallback as ChoyAvatarFallback } from './components/vendor/ui/avatar';
 export {
   DropdownMenu as ChoyDropdownMenu,
   DropdownMenuContent as ChoyDropdownMenuContent,
+  DropdownMenuGroup as ChoyDropdownMenuGroup,
   DropdownMenuItem as ChoyDropdownMenuItem,
+  DropdownMenuLabel as ChoyDropdownMenuLabel,
+  DropdownMenuSeparator as ChoyDropdownMenuSeparator,
+  DropdownMenuSub as ChoyDropdownMenuSub,
+  DropdownMenuSubContent as ChoyDropdownMenuSubContent,
+  DropdownMenuSubTrigger as ChoyDropdownMenuSubTrigger,
   DropdownMenuTrigger as ChoyDropdownMenuTrigger,
 } from './components/vendor/ui/dropdown-menu';
+export {
+  Popover as ChoyPopover,
+  PopoverContent as ChoyPopoverContent,
+  PopoverTrigger as ChoyPopoverTrigger,
+} from './components/vendor/ui/popover';
 export {
   ChoyDialog,
   ChoyDialogContent,

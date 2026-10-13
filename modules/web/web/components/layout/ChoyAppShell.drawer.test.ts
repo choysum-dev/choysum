@@ -73,9 +73,9 @@ describe('ChoyAppShell without layout store', () => {
       },
     });
     await flushPromises();
-    expect(
-      mounted.q('[data-testid=choy-shell-brand]'),
-    ).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-brand]')).toBeNull();
+    expect(mounted.q('[data-anchor="choy.shell.sidebar-header"]')).not.toBeNull();
     mounted.unmount();
   });
 });

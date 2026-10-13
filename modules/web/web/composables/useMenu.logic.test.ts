@@ -366,4 +366,145 @@ describe('useMenu logic', () => {
     expect(mounted.q('[data-expanded]')?.getAttribute('data-expanded')).toBe('0');
     mounted.unmount();
   });
+
+  test('openSubMenu accordion closes sibling folders and nested manual expands', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'app',
+      title: 'App',
+      children: [
+        { id: 'leaf', title: 'Leaf', path: '/leaf' },
+        {
+          id: 'group-a',
+          title: 'Group A',
+          children: [
+            {
+              id: 'group-a-nested',
+              title: 'Nested',
+              children: [{ id: 'a-leaf', title: 'A Leaf', path: '/a' }],
+            },
+          ],
+        },
+        {
+          id: 'group-b',
+          title: 'Group B',
+          children: [{ id: 'b-leaf', title: 'B Leaf', path: '/b' }],
+        },
+      ],
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: { path: '/leaf', fullPath: '/leaf', meta: {} },
+    });
+    let api!: ReturnType<typeof useMenu>;
+    const Host = defineComponent({
+      setup() {
+        api = useMenu();
+        return () => h('div');
+      },
+    });
+    const mounted = mountApp(Host as any, { plugins: [menuPlugin, pinia, router] });
+    await flushPromises();
+    await nextTick();
+    const store = useMenuStore();
+    store.setActiveMenu(store.getMenu('leaf')!);
+
+    api.openSubMenu('group-a');
+    api.openSubMenu('group-a-nested');
+    expect(api.isExpanded('group-a')).toBe(true);
+    expect(api.isExpanded('group-a-nested')).toBe(true);
+
+    api.openSubMenu('group-b');
+    expect(api.isExpanded('group-b')).toBe(true);
+    expect(api.isExpanded('group-a')).toBe(false);
+    expect(api.isExpanded('group-a-nested')).toBe(false);
+    mounted.unmount();
+  });
+
+  test('navigateTo prunes unrelated manual expands but keeps active ancestry', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'app',
+      title: 'App',
+      children: [
+        {
+          id: 'group-a',
+          title: 'Group A',
+          children: [{ id: 'a-leaf', title: 'A Leaf', path: '/a' }],
+        },
+        {
+          id: 'group-b',
+          title: 'Group B',
+          children: [{ id: 'b-leaf', title: 'B Leaf', path: '/b' }],
+        },
+      ],
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: { path: '/a', fullPath: '/a', meta: {} },
+    });
+    let api!: ReturnType<typeof useMenu>;
+    const Host = defineComponent({
+      setup() {
+        api = useMenu();
+        return () => h('div');
+      },
+    });
+    const mounted = mountApp(Host as any, { plugins: [menuPlugin, pinia, router] });
+    await flushPromises();
+    await nextTick();
+
+    api.openSubMenu('group-a');
+    expect(api.isExpanded('group-a')).toBe(true);
+    expect(await api.navigateTo('b-leaf')).toBe(true);
+    expect(api.isExpanded('group-b')).toBe(true);
+    expect(api.isExpanded('group-a')).toBe(false);
+    mounted.unmount();
+  });
+
+  test('ancestry keeps a folder open after accordion removed it from the manual set', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'app',
+      title: 'App',
+      children: [
+        {
+          id: 'group-a',
+          title: 'Group A',
+          children: [{ id: 'a-leaf', title: 'A Leaf', path: '/a' }],
+        },
+        {
+          id: 'group-b',
+          title: 'Group B',
+          children: [{ id: 'b-leaf', title: 'B Leaf', path: '/b' }],
+        },
+      ],
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: { path: '/a', fullPath: '/a', meta: {} },
+    });
+    let api!: ReturnType<typeof useMenu>;
+    const Host = defineComponent({
+      setup() {
+        api = useMenu();
+        return () => h('div');
+      },
+    });
+    const mounted = mountApp(Host as any, { plugins: [menuPlugin, pinia, router] });
+    await flushPromises();
+    await nextTick();
+    const store = useMenuStore();
+    store.setActiveMenu(store.getMenu('a-leaf')!);
+    expect(api.isExpanded('group-a')).toBe(true);
+
+    api.openSubMenu('group-b');
+    // group-a stays open via ancestry even though accordion dropped the manual open.
+    expect(api.isExpanded('group-a')).toBe(true);
+    expect(api.isExpanded('group-b')).toBe(true);
+    mounted.unmount();
+  });
 });

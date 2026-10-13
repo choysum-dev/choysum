@@ -29,7 +29,7 @@ export const authMenus: MenuItem[] = [
         path: '/auth/roles',
         sequence: 30,
       }),
-      // Pathless group: cross-role / everyone rule catalog (PR-C-5). Flat leaf URLs.
+      // Pathless folder: cross-role / everyone rule catalog.
       defineMenu('auth.menu.access_rules', {
         title: _lt('Access Rules'),
         sequence: 35,

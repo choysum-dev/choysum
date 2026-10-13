@@ -21,6 +21,7 @@ body,
   .choy-app,
   .choy-shell,
   .choy-shell__body,
+  .choy-shell__scroll,
   .choy-shell__main-inner {
     height: auto;
     overflow: visible;
@@ -37,7 +38,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Viewport-locked chrome: header/footer stay put; only main-inner scrolls. */
+/*
+ * Viewport-locked shell chrome: header stays put; Guest/App share one scrollport
+ * (content + Powered-by). Short pages pin the footer; tall pages scroll it after
+ * content (see ChoyGuestShell / ChoyAppShell).
+ */
 .choy-app,
 .choy-shell {
   height: 100%;
@@ -45,20 +50,31 @@ body {
   overflow: hidden;
 }
 
-.choy-shell-header {
-  position: sticky;
-  top: 0;
-  z-index: 40;
-}
-
 .choy-shell__body {
   min-height: 0;
   overflow: hidden;
 }
 
-.choy-shell__main-inner {
+.choy-shell__scroll {
   min-height: 0;
   overflow: auto;
+}
+
+.choy-shell__main-inner {
+  min-height: 0;
+  overflow: visible;
+}
+
+/*
+ * Inset content gutter: App header / ChoyPage / Powered-by footer (and Guest
+ * chrome) share --choy-layout-content-padding so left edges line up.
+ */
+.choy-inset-pad-x {
+  padding-inline: var(--choy-layout-content-padding);
+}
+
+.choy-inset-pad {
+  padding: var(--choy-layout-content-padding);
 }
 
 /*

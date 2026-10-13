@@ -1,0 +1,590 @@
+/*
+ * SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Enter/exit motion for overlay surfaces (dropdown, popover, sheet, …).
+ * Compat layer for shadcn-vue tw-animate-css class names: tailwind-go emits
+ * `animation: in|out` and data-state animate wrappers, but not keyframes or
+ * fade/zoom/slide enter variables.
+ */
+
+@keyframes in {
+  from {
+    filter: blur(var(--tw-enter-blur, 0));
+    opacity: var(--tw-enter-opacity, 1);
+    transform: translate3d(
+        var(--tw-enter-translate-x, 0),
+        var(--tw-enter-translate-y, 0),
+        0
+      )
+      scale3d(
+        var(--tw-enter-scale, 1),
+        var(--tw-enter-scale, 1),
+        var(--tw-enter-scale, 1)
+      )
+      rotate(var(--tw-enter-rotate, 0));
+  }
+}
+
+@keyframes out {
+  to {
+    filter: blur(var(--tw-exit-blur, 0));
+    opacity: var(--tw-exit-opacity, 1);
+    transform: translate3d(
+        var(--tw-exit-translate-x, 0),
+        var(--tw-exit-translate-y, 0),
+        0
+      )
+      scale3d(var(--tw-exit-scale, 1), var(--tw-exit-scale, 1), var(--tw-exit-scale, 1))
+      rotate(var(--tw-exit-rotate, 0));
+  }
+}
+
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--reka-accordion-content-height, var(--radix-accordion-content-height, auto));
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--reka-accordion-content-height, var(--radix-accordion-content-height, auto));
+  }
+  to {
+    height: 0;
+  }
+}
+
+@keyframes collapsible-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--reka-collapsible-content-height, auto);
+  }
+}
+
+@keyframes collapsible-up {
+  from {
+    height: var(--reka-collapsible-content-height, auto);
+  }
+  to {
+    height: 0;
+  }
+}
+
+/*
+ * Overlay surfaces (dropdown / popover / select / …).
+ * Match sidebar-07: fade + zoom-95 + 0.5rem side slide, origin on the trigger edge.
+ * data-slot rules win over broken tailwind-go `animation: in` (duration 0) and
+ * missing origin-(--reka-*) utilities.
+ */
+[data-slot='dropdown-menu-content'],
+[data-slot='dropdown-menu-sub-content'],
+[data-slot='popover-content'],
+[data-slot='select-content'],
+[data-slot='combobox-content'],
+[data-slot='tooltip-content'],
+[data-slot='context-menu-content'],
+[data-slot='context-menu-sub-content'],
+[data-slot='menubar-content'],
+[data-slot='menubar-sub-content'],
+[data-slot='hover-card-content'] {
+  transform-origin: var(
+    --reka-dropdown-menu-content-transform-origin,
+    var(
+      --reka-popover-content-transform-origin,
+      var(
+        --reka-select-content-transform-origin,
+        var(
+          --reka-combobox-content-transform-origin,
+          var(
+            --reka-tooltip-content-transform-origin,
+            var(
+              --reka-hover-card-content-transform-origin,
+              var(--reka-context-menu-content-transform-origin, var(--reka-popper-transform-origin, 0 0))
+            )
+          )
+        )
+      )
+    )
+  );
+}
+
+[data-slot='dropdown-menu-content'][data-state='open'],
+[data-slot='dropdown-menu-sub-content'][data-state='open'],
+[data-slot='popover-content'][data-state='open'],
+[data-slot='select-content'][data-state='open'],
+[data-slot='combobox-content'][data-state='open'],
+[data-slot='tooltip-content'][data-state='delayed-open'],
+[data-slot='tooltip-content'][data-state='instant-open'],
+[data-slot='context-menu-content'][data-state='open'],
+[data-slot='context-menu-sub-content'][data-state='open'],
+[data-slot='menubar-content'][data-state='open'],
+[data-slot='menubar-sub-content'][data-state='open'],
+[data-slot='hover-card-content'][data-state='open'] {
+  --tw-enter-opacity: 0;
+  --tw-enter-scale: 0.95;
+  animation: in 150ms ease both;
+}
+
+[data-slot='dropdown-menu-content'][data-state='closed'],
+[data-slot='dropdown-menu-sub-content'][data-state='closed'],
+[data-slot='popover-content'][data-state='closed'],
+[data-slot='select-content'][data-state='closed'],
+[data-slot='combobox-content'][data-state='closed'],
+[data-slot='tooltip-content'][data-state='closed'],
+[data-slot='context-menu-content'][data-state='closed'],
+[data-slot='context-menu-sub-content'][data-state='closed'],
+[data-slot='menubar-content'][data-state='closed'],
+[data-slot='menubar-sub-content'][data-state='closed'],
+[data-slot='hover-card-content'][data-state='closed'] {
+  --tw-exit-opacity: 0;
+  --tw-exit-scale: 0.95;
+  animation: out 150ms ease both;
+}
+
+/* Centered modals: fade only — zoom fights -translate-x/y centering. */
+[data-slot='dialog-overlay'][data-state='open'],
+[data-slot='alert-dialog-overlay'][data-state='open'],
+[data-slot='sheet-overlay'][data-state='open'] {
+  --tw-enter-opacity: 0;
+  --tw-enter-scale: 1;
+  animation: in 200ms ease both;
+}
+
+[data-slot='dialog-overlay'][data-state='closed'],
+[data-slot='alert-dialog-overlay'][data-state='closed'],
+[data-slot='sheet-overlay'][data-state='closed'] {
+  --tw-exit-opacity: 0;
+  --tw-exit-scale: 1;
+  animation: out 200ms ease both;
+}
+
+[data-slot='dialog-content'][data-state='open'],
+[data-slot='alert-dialog-content'][data-state='open'] {
+  --tw-enter-opacity: 0;
+  --tw-enter-scale: 1;
+  animation: in 200ms ease both;
+}
+
+[data-slot='dialog-content'][data-state='closed'],
+[data-slot='alert-dialog-content'][data-state='closed'] {
+  --tw-exit-opacity: 0;
+  --tw-exit-scale: 1;
+  animation: out 200ms ease both;
+}
+
+/* Sheet: edge slide with shadcn open 500ms / close 300ms (no zoom). */
+[data-slot='sheet-content'][data-state='open'] {
+  --tw-enter-opacity: 1;
+  --tw-enter-scale: 1;
+  animation: in 500ms ease both;
+}
+
+[data-slot='sheet-content'][data-state='closed'] {
+  --tw-exit-opacity: 1;
+  --tw-exit-scale: 1;
+  animation: out 300ms ease both;
+}
+
+[data-slot='dropdown-menu-content'][data-side='bottom'],
+[data-slot='dropdown-menu-sub-content'][data-side='bottom'],
+[data-slot='popover-content'][data-side='bottom'],
+[data-slot='select-content'][data-side='bottom'],
+[data-slot='combobox-content'][data-side='bottom'],
+[data-slot='tooltip-content'][data-side='bottom'],
+[data-slot='context-menu-content'][data-side='bottom'],
+[data-slot='context-menu-sub-content'][data-side='bottom'],
+[data-slot='menubar-content'][data-side='bottom'],
+[data-slot='menubar-sub-content'][data-side='bottom'],
+[data-slot='hover-card-content'][data-side='bottom'] {
+  --tw-enter-translate-y: calc(0.25rem * 2 * -1);
+  --tw-exit-translate-y: calc(0.25rem * 2 * -1);
+}
+
+[data-slot='dropdown-menu-content'][data-side='top'],
+[data-slot='dropdown-menu-sub-content'][data-side='top'],
+[data-slot='popover-content'][data-side='top'],
+[data-slot='select-content'][data-side='top'],
+[data-slot='combobox-content'][data-side='top'],
+[data-slot='tooltip-content'][data-side='top'],
+[data-slot='context-menu-content'][data-side='top'],
+[data-slot='context-menu-sub-content'][data-side='top'],
+[data-slot='menubar-content'][data-side='top'],
+[data-slot='menubar-sub-content'][data-side='top'],
+[data-slot='hover-card-content'][data-side='top'] {
+  --tw-enter-translate-y: calc(0.25rem * 2);
+  --tw-exit-translate-y: calc(0.25rem * 2);
+}
+
+[data-slot='dropdown-menu-content'][data-side='right'],
+[data-slot='dropdown-menu-sub-content'][data-side='right'],
+[data-slot='popover-content'][data-side='right'],
+[data-slot='select-content'][data-side='right'],
+[data-slot='combobox-content'][data-side='right'],
+[data-slot='tooltip-content'][data-side='right'],
+[data-slot='context-menu-content'][data-side='right'],
+[data-slot='context-menu-sub-content'][data-side='right'],
+[data-slot='menubar-content'][data-side='right'],
+[data-slot='menubar-sub-content'][data-side='right'],
+[data-slot='hover-card-content'][data-side='right'] {
+  --tw-enter-translate-x: calc(0.25rem * 2 * -1);
+  --tw-exit-translate-x: calc(0.25rem * 2 * -1);
+}
+
+[data-slot='dropdown-menu-content'][data-side='left'],
+[data-slot='dropdown-menu-sub-content'][data-side='left'],
+[data-slot='popover-content'][data-side='left'],
+[data-slot='select-content'][data-side='left'],
+[data-slot='combobox-content'][data-side='left'],
+[data-slot='tooltip-content'][data-side='left'],
+[data-slot='context-menu-content'][data-side='left'],
+[data-slot='context-menu-sub-content'][data-side='left'],
+[data-slot='menubar-content'][data-side='left'],
+[data-slot='menubar-sub-content'][data-side='left'],
+[data-slot='hover-card-content'][data-side='left'] {
+  --tw-enter-translate-x: calc(0.25rem * 2);
+  --tw-exit-translate-x: calc(0.25rem * 2);
+}
+
+/* Class-based wrappers (sheet / nav / etc.): engine leaves duration 0. */
+.animate-in,
+.animate-out,
+.data-\[state=open\]\:animate-in[data-state='open'],
+.data-\[state=closed\]\:animate-out[data-state='closed'],
+.data-\[state=visible\]\:animate-in[data-state='visible'],
+.data-\[state=hidden\]\:animate-out[data-state='hidden'],
+.data-\[motion\^=from-\]\:animate-in[data-motion^='from-'],
+.data-\[motion\^=to-\]\:animate-out[data-motion^='to-'] {
+  animation-duration: 150ms;
+  animation-timing-function: ease;
+  animation-fill-mode: both;
+}
+
+.animate-in {
+  animation-name: in;
+}
+
+.animate-out {
+  animation-name: out;
+}
+
+.data-\[state=open\]\:animate-accordion-down[data-state='open'] {
+  animation-name: accordion-down;
+  animation-duration: 200ms;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+.data-\[state=closed\]\:animate-accordion-up[data-state='closed'] {
+  animation-name: accordion-up;
+  animation-duration: 200ms;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+.data-\[state=open\]\:animate-collapsible-down[data-state='open'] {
+  animation-name: collapsible-down;
+  animation-duration: 200ms;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+.data-\[state=closed\]\:animate-collapsible-up[data-state='closed'] {
+  animation-name: collapsible-up;
+  animation-duration: 200ms;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+/* Navigation menu viewport / indicator. */
+[data-slot='navigation-menu-viewport'],
+[data-slot='navigation-menu-content'] {
+  transform-origin: top center;
+}
+
+[data-slot='navigation-menu-viewport'][data-state='open'],
+[data-slot='navigation-menu-content'][data-state='open'] {
+  --tw-enter-opacity: 0;
+  --tw-enter-scale: 0.95;
+  animation: in 200ms ease both;
+}
+
+[data-slot='navigation-menu-viewport'][data-state='closed'],
+[data-slot='navigation-menu-content'][data-state='closed'] {
+  --tw-exit-opacity: 0;
+  --tw-exit-scale: 0.95;
+  animation: out 200ms ease both;
+}
+
+[data-slot='navigation-menu-indicator'][data-state='visible'] {
+  --tw-enter-opacity: 0;
+  --tw-enter-scale: 1;
+  animation: in 150ms ease both;
+}
+
+[data-slot='navigation-menu-indicator'][data-state='hidden'] {
+  --tw-exit-opacity: 0;
+  --tw-exit-scale: 1;
+  animation: out 150ms ease both;
+}
+
+.origin-top-center {
+  transform-origin: top center;
+}
+
+/* Sidebar group label: engine omits margin/opacity from transition-[margin,opacity]. */
+[data-slot='sidebar-group-label'] {
+  transition-property: margin, opacity;
+  transition-duration: 200ms;
+  transition-timing-function: linear;
+}
+
+/* Missing origin-(--reka-*) utilities from tailwind-go. */
+.origin-\(--reka-dropdown-menu-content-transform-origin\),
+.origin-\(--reka-popover-content-transform-origin\),
+.origin-\(--reka-select-content-transform-origin\),
+.origin-\(--reka-combobox-content-transform-origin\),
+.origin-\(--reka-tooltip-content-transform-origin\),
+.origin-\(--reka-hover-card-content-transform-origin\),
+.origin-\(--reka-context-menu-content-transform-origin\),
+.origin-\(--reka-menubar-content-transform-origin\) {
+  transform-origin: var(
+    --reka-dropdown-menu-content-transform-origin,
+    var(
+      --reka-popover-content-transform-origin,
+      var(
+        --reka-select-content-transform-origin,
+        var(
+          --reka-combobox-content-transform-origin,
+          var(
+            --reka-tooltip-content-transform-origin,
+            var(
+              --reka-hover-card-content-transform-origin,
+              var(--reka-context-menu-content-transform-origin, var(--reka-popper-transform-origin, 0 0))
+            )
+          )
+        )
+      )
+    )
+  );
+}
+
+/* Enter / exit variable utilities used by kit overlay class strings. */
+.fade-in-0,
+.data-\[state=open\]\:fade-in-0[data-state='open'],
+.data-\[state=visible\]\:fade-in[data-state='visible'],
+.data-\[motion\^=from-\]\:fade-in[data-motion^='from-'] {
+  --tw-enter-opacity: 0;
+}
+
+.fade-out-0,
+.data-\[state=closed\]\:fade-out-0[data-state='closed'],
+.data-\[state=hidden\]\:fade-out[data-state='hidden'],
+.data-\[motion\^=to-\]\:fade-out[data-motion^='to-'] {
+  --tw-exit-opacity: 0;
+}
+
+.zoom-in-95,
+.data-\[state=open\]\:zoom-in-95[data-state='open'] {
+  --tw-enter-scale: 0.95;
+}
+
+.zoom-in-90,
+.data-\[state=open\]\:zoom-in-90[data-state='open'] {
+  --tw-enter-scale: 0.9;
+}
+
+.zoom-out-95,
+.data-\[state=closed\]\:zoom-out-95[data-state='closed'] {
+  --tw-exit-scale: 0.95;
+}
+
+.slide-in-from-top-2,
+.data-\[side=bottom\]\:slide-in-from-top-2[data-side='bottom'] {
+  --tw-enter-translate-y: calc(0.25rem * 2 * -1);
+}
+
+.slide-in-from-bottom-2,
+.data-\[side=top\]\:slide-in-from-bottom-2[data-side='top'] {
+  --tw-enter-translate-y: calc(0.25rem * 2);
+}
+
+.slide-in-from-left-2,
+.data-\[side=right\]\:slide-in-from-left-2[data-side='right'] {
+  --tw-enter-translate-x: calc(0.25rem * 2 * -1);
+}
+
+.slide-in-from-right-2,
+.data-\[side=left\]\:slide-in-from-right-2[data-side='left'] {
+  --tw-enter-translate-x: calc(0.25rem * 2);
+}
+
+/* Drawer / sheet full-edge enter (compound data-swipe + data-state). */
+.data-\[swipe-direction=up\]\:data-\[state=open\]\:slide-in-from-top[data-swipe-direction='up'][data-state='open'],
+.data-\[swipe-direction=down\]\:data-\[state=open\]\:slide-in-from-bottom[data-swipe-direction='down'][data-state='open'],
+.data-\[swipe-direction=left\]\:data-\[state=open\]\:slide-in-from-left[data-swipe-direction='left'][data-state='open'],
+.data-\[swipe-direction=right\]\:data-\[state=open\]\:slide-in-from-right[data-swipe-direction='right'][data-state='open'] {
+  animation-duration: 500ms;
+}
+
+.data-\[swipe-direction=up\]\:data-\[state=closed\]\:slide-out-to-top[data-swipe-direction='up'][data-state='closed'],
+.data-\[swipe-direction=down\]\:data-\[state=closed\]\:slide-out-to-bottom[data-swipe-direction='down'][data-state='closed'],
+.data-\[swipe-direction=left\]\:data-\[state=closed\]\:slide-out-to-left[data-swipe-direction='left'][data-state='closed'],
+.data-\[swipe-direction=right\]\:data-\[state=closed\]\:slide-out-to-right[data-swipe-direction='right'][data-state='closed'] {
+  animation-duration: 500ms;
+}
+
+.data-\[swipe-direction=up\]\:data-\[state=open\]\:slide-in-from-top[data-swipe-direction='up'][data-state='open'] {
+  --tw-enter-translate-y: -100%;
+}
+
+.data-\[swipe-direction=down\]\:data-\[state=open\]\:slide-in-from-bottom[data-swipe-direction='down'][data-state='open'] {
+  --tw-enter-translate-y: 100%;
+}
+
+.data-\[swipe-direction=left\]\:data-\[state=open\]\:slide-in-from-left[data-swipe-direction='left'][data-state='open'] {
+  --tw-enter-translate-x: -100%;
+}
+
+.data-\[swipe-direction=right\]\:data-\[state=open\]\:slide-in-from-right[data-swipe-direction='right'][data-state='open'] {
+  --tw-enter-translate-x: 100%;
+}
+
+.data-\[swipe-direction=up\]\:data-\[state=closed\]\:slide-out-to-top[data-swipe-direction='up'][data-state='closed'] {
+  --tw-exit-translate-y: -100%;
+}
+
+.data-\[swipe-direction=down\]\:data-\[state=closed\]\:slide-out-to-bottom[data-swipe-direction='down'][data-state='closed'] {
+  --tw-exit-translate-y: 100%;
+}
+
+.data-\[swipe-direction=left\]\:data-\[state=closed\]\:slide-out-to-left[data-swipe-direction='left'][data-state='closed'] {
+  --tw-exit-translate-x: -100%;
+}
+
+.data-\[swipe-direction=right\]\:data-\[state=closed\]\:slide-out-to-right[data-swipe-direction='right'][data-state='closed'] {
+  --tw-exit-translate-x: 100%;
+}
+
+.slide-in-from-top,
+.data-\[state=open\]\:slide-in-from-top[data-state='open'] {
+  --tw-enter-translate-y: -100%;
+}
+
+.slide-in-from-bottom,
+.data-\[state=open\]\:slide-in-from-bottom[data-state='open'] {
+  --tw-enter-translate-y: 100%;
+}
+
+.slide-in-from-left,
+.data-\[state=open\]\:slide-in-from-left[data-state='open'] {
+  --tw-enter-translate-x: -100%;
+}
+
+.slide-in-from-right,
+.data-\[state=open\]\:slide-in-from-right[data-state='open'] {
+  --tw-enter-translate-x: 100%;
+}
+
+.slide-out-to-top,
+.data-\[state=closed\]\:slide-out-to-top[data-state='closed'] {
+  --tw-exit-translate-y: -100%;
+}
+
+.slide-out-to-bottom,
+.data-\[state=closed\]\:slide-out-to-bottom[data-state='closed'] {
+  --tw-exit-translate-y: 100%;
+}
+
+.slide-out-to-left,
+.data-\[state=closed\]\:slide-out-to-left[data-state='closed'] {
+  --tw-exit-translate-x: -100%;
+}
+
+.slide-out-to-right,
+.data-\[state=closed\]\:slide-out-to-right[data-state='closed'] {
+  --tw-exit-translate-x: 100%;
+}
+
+.slide-in-from-left-52,
+.data-\[motion=from-start\]\:slide-in-from-left-52[data-motion='from-start'] {
+  --tw-enter-translate-x: -13rem;
+}
+
+.slide-in-from-right-52,
+.data-\[motion=from-end\]\:slide-in-from-right-52[data-motion='from-end'] {
+  --tw-enter-translate-x: 13rem;
+}
+
+.slide-out-to-left-52,
+.data-\[motion=to-start\]\:slide-out-to-left-52[data-motion='to-start'] {
+  --tw-exit-translate-x: -13rem;
+}
+
+.slide-out-to-right-52,
+.data-\[motion=to-end\]\:slide-out-to-right-52[data-motion='to-end'] {
+  --tw-exit-translate-x: 13rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-in,
+  .animate-out,
+  .data-\[state=open\]\:animate-in[data-state='open'],
+  .data-\[state=closed\]\:animate-out[data-state='closed'],
+  .data-\[state=visible\]\:animate-in[data-state='visible'],
+  .data-\[state=hidden\]\:animate-out[data-state='hidden'],
+  .data-\[motion\^=from-\]\:animate-in[data-motion^='from-'],
+  .data-\[motion\^=to-\]\:animate-out[data-motion^='to-'],
+  .data-\[state=open\]\:animate-accordion-down[data-state='open'],
+  .data-\[state=closed\]\:animate-accordion-up[data-state='closed'],
+  .data-\[state=open\]\:animate-collapsible-down[data-state='open'],
+  .data-\[state=closed\]\:animate-collapsible-up[data-state='closed'],
+  [data-slot='dialog-content'][data-state='open'],
+  [data-slot='dialog-content'][data-state='closed'],
+  [data-slot='dialog-overlay'][data-state='open'],
+  [data-slot='dialog-overlay'][data-state='closed'],
+  [data-slot='alert-dialog-content'][data-state='open'],
+  [data-slot='alert-dialog-content'][data-state='closed'],
+  [data-slot='alert-dialog-overlay'][data-state='open'],
+  [data-slot='alert-dialog-overlay'][data-state='closed'],
+  [data-slot='sheet-content'][data-state='open'],
+  [data-slot='sheet-content'][data-state='closed'],
+  [data-slot='sheet-overlay'][data-state='open'],
+  [data-slot='sheet-overlay'][data-state='closed'],
+  [data-slot='dropdown-menu-content'][data-state='open'],
+  [data-slot='dropdown-menu-content'][data-state='closed'],
+  [data-slot='dropdown-menu-sub-content'][data-state='open'],
+  [data-slot='dropdown-menu-sub-content'][data-state='closed'],
+  [data-slot='popover-content'][data-state='open'],
+  [data-slot='popover-content'][data-state='closed'],
+  [data-slot='select-content'][data-state='open'],
+  [data-slot='select-content'][data-state='closed'],
+  [data-slot='tooltip-content'][data-state='delayed-open'],
+  [data-slot='tooltip-content'][data-state='instant-open'],
+  [data-slot='tooltip-content'][data-state='closed'],
+  [data-slot='hover-card-content'][data-state='open'],
+  [data-slot='hover-card-content'][data-state='closed'],
+  [data-slot='navigation-menu-content'][data-state='open'],
+  [data-slot='navigation-menu-content'][data-state='closed'],
+  [data-slot='navigation-menu-viewport'][data-state='open'],
+  [data-slot='navigation-menu-viewport'][data-state='closed'],
+  [data-slot='context-menu-content'][data-state='open'],
+  [data-slot='context-menu-content'][data-state='closed'],
+  [data-slot='context-menu-sub-content'][data-state='open'],
+  [data-slot='context-menu-sub-content'][data-state='closed'],
+  [data-slot='menubar-content'][data-state='open'],
+  [data-slot='menubar-content'][data-state='closed'],
+  [data-slot='menubar-sub-content'][data-state='open'],
+  [data-slot='menubar-sub-content'][data-state='closed'],
+  [data-slot='navigation-menu-indicator'][data-state='visible'],
+  [data-slot='navigation-menu-indicator'][data-state='hidden'],
+  [data-slot='combobox-content'][data-state='open'],
+  [data-slot='combobox-content'][data-state='closed'] {
+    animation-duration: 0ms;
+  }
+}

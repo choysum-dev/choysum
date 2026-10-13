@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     :class="
       cn(
         'choy-page relative mx-auto w-full text-foreground',
-        props.padding ? 'p-4 md:p-6' : '',
+        props.padding ? 'choy-inset-pad' : '',
         widthClass,
         props.fillHeight ? 'flex min-h-0 flex-1 flex-col' : '',
         props.class,
@@ -35,13 +35,15 @@ SPDX-License-Identifier: Apache-2.0
           hasIoMenu ||
           $slots['title-actions']
         "
-        class="choy-page__header mb-3 flex flex-col gap-1 border-b border-border pb-2"
+        data-slot="page-header"
+        class="choy-page__header mb-4 flex flex-col gap-2 border-b border-border pb-3"
         :inert="loading || undefined"
       >
         <template v-if="$slots.header">
           <div
             v-if="showBreadcrumb || $slots.breadcrumb"
-            class="choy-page__breadcrumb text-sm text-foreground/70"
+            data-slot="page-breadcrumb"
+            class="choy-page__breadcrumb text-sm text-muted-foreground"
           >
             <slot name="breadcrumb" />
           </div>
@@ -68,25 +70,30 @@ SPDX-License-Identifier: Apache-2.0
           <slot v-else name="header" />
         </template>
         <template v-else>
-          <div v-if="showBreadcrumb || $slots.breadcrumb" class="choy-page__breadcrumb text-sm text-foreground/70">
+          <div
+            v-if="showBreadcrumb || $slots.breadcrumb"
+            data-slot="page-breadcrumb"
+            class="choy-page__breadcrumb text-sm text-muted-foreground"
+          >
             <slot name="breadcrumb" />
           </div>
           <div
             v-if="title || description || hasIoMenu || $slots['title-actions']"
-            class="choy-page__title-row flex items-center justify-between gap-3"
-            :style="{ minHeight: 'var(--choy-control-height)' }"
+            class="choy-page__title-row flex min-h-control items-start justify-between gap-3"
           >
-            <div class="min-w-0 flex-1">
+            <div class="min-w-0 flex-1 space-y-1">
               <h1
                 v-if="title"
                 :id="pageTitleId"
-                class="choy-page__title min-w-0 truncate text-base font-semibold tracking-tight text-foreground"
+                data-slot="page-title"
+                class="choy-page__title min-w-0 truncate text-lg font-semibold tracking-tight text-foreground"
               >
                 {{ title }}
               </h1>
               <p
                 v-if="description"
-                class="choy-page__description text-xs text-muted-foreground"
+                data-slot="page-description"
+                class="choy-page__description text-sm text-muted-foreground"
               >
                 {{ description }}
               </p>
@@ -109,6 +116,7 @@ SPDX-License-Identifier: Apache-2.0
 
       <div
         v-if="$slots.toolbar"
+        data-slot="page-toolbar"
         class="choy-page__toolbar mb-4"
         role="toolbar"
         :inert="loading || undefined"
@@ -117,6 +125,7 @@ SPDX-License-Identifier: Apache-2.0
       </div>
 
       <div
+        data-slot="page-body"
         class="choy-page__body"
         :class="{ 'pb-4': !!$slots.footer, 'flex min-h-0 flex-1 flex-col': props.fillHeight }"
         :inert="loading || undefined"
@@ -126,6 +135,7 @@ SPDX-License-Identifier: Apache-2.0
 
       <div
         v-if="$slots.footer"
+        data-slot="page-footer"
         class="choy-page__footer mt-4 border-t border-border pt-4"
         :inert="loading || undefined"
       >
@@ -135,15 +145,13 @@ SPDX-License-Identifier: Apache-2.0
 
     <div
       v-if="loading"
+      data-slot="page-loading"
       class="choy-page__loading-mask absolute inset-0 z-10 flex items-center justify-center bg-background/60"
       aria-hidden="true"
     >
       <ChoySkeleton class="h-control w-32" />
     </div>
-    <div
-      role="status"
-      class="absolute h-px w-px overflow-hidden whitespace-nowrap opacity-0"
-    >
+    <div role="status" class="sr-only">
       {{ loading ? loadingLabel : '' }}
     </div>
   </div>
