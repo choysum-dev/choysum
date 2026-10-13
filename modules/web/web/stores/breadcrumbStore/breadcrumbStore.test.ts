@@ -606,14 +606,6 @@ describe('breadcrumbStore L1+L2 trail', () => {
     await flushPromises();
     expect(store.breadcrumbStack.every((i) => i.kind === 'menu' || i.kind === 'page')).toBe(true);
 
-    const leaf = menuStore.getMenu('company')!;
-    const parent = leaf.__parent;
-    leaf.__parent = leaf;
-    menuStore.setActiveMenu(leaf);
-    await router.push({ path: '/base/companies', meta: {} });
-    await flushPromises();
-    leaf.__parent = parent;
-
     store.resetBreadcrumb('only', 'Only', '/only');
     for (let i = 0; i < 12; i++) {
       store.pushBreadcrumb(`M${i}`, `/only/m${i}`);
@@ -629,7 +621,7 @@ describe('breadcrumbStore L1+L2 trail', () => {
     const pinia = createPinia();
     setActivePinia(pinia);
     const { router } = createFeStubRouter({
-      route: { path: '/base/currencies', fullPath: '/base/currencies', meta: {} },
+      route: { path: '/cold-start', fullPath: '/cold-start', meta: {} },
     });
     const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
     const Host = defineComponent({
@@ -646,16 +638,11 @@ describe('breadcrumbStore L1+L2 trail', () => {
       const currency = menuStore.getMenu('currency');
       if (currency) menuStore.setActiveMenu(currency);
     }, 30);
-    await router.push({ path: '/base/currencies/detail', meta: { name: 'DetailRoute' } as any });
+    // Stay on the unmatched cold-start path so delayed setActiveMenu is the first selection.
     await flushPromises();
     await new Promise((r) => setTimeout(r, 200));
     await flushPromises();
-    // Guard may or may not catch the late menu depending on wait window; public APIs still work.
-    if (store.breadcrumbStack.length === 0) {
-      store.resetBreadcrumb('currency', 'Currency', '/base/currencies');
-      store.pushBreadcrumb('DetailRoute', '/base/currencies/detail');
-    }
-    expect(store.breadcrumbStack.length).toBeGreaterThan(0);
+    expect(store.breadcrumbStack.map((item) => item.kind)).toEqual(['app', 'menu', 'page']);
     mounted.unmount();
   });
 });

@@ -1367,4 +1367,10 @@ func TestSanitizeTailwindBorderSidePadding(t *testing.T) {
 			t.Fatalf("border width rules should remain, got:\n%s", got)
 		}
 	}
+
+	// Only lone padding-* rules are stripped; mixed-declaration rules stay intact.
+	mixed := ".border-b {\n  padding-bottom: calc(var(--spacing) * 3);\n  border-bottom-width: 1px;\n}\n"
+	if got := sanitizeTailwindBorderSidePadding(mixed); got != mixed {
+		t.Fatalf("mixed-declaration rules should remain unchanged, got:\n%s", got)
+	}
 }

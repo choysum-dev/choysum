@@ -49,7 +49,7 @@ export function resolveCompanyLogoUrl(logo: unknown): string {
   ];
   for (const candidate of candidates) {
     const url = normalizeOptionalString(candidate);
-    if (url) return url;
+    if (url && /^(https?:|data:|blob:|\/)/i.test(url)) return url;
   }
   return productLogoUrl;
 }

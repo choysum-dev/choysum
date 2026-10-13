@@ -78,7 +78,12 @@ try {
   layoutStore = null
 }
 
-const { toggleSidebar } = useSidebar()
+let toggleSidebar: () => void = () => {}
+try {
+  toggleSidebar = useSidebar().toggleSidebar
+} catch {
+  toggleSidebar = () => {}
+}
 
 /** Height only — shared shell top chrome is translucent + blur with no hairline border. */
 const headerStyle = {

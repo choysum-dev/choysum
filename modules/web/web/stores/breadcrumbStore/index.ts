@@ -103,7 +103,8 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
         return;
       }
       syncStackToActiveMenu(activeMenu, route, menuStore.activeApp);
-    } catch {
+    } catch (err) {
+      console.warn('[breadcrumbStore] handleInitialRoute failed', err);
       clearBreadcrumb();
     }
   }
@@ -123,7 +124,8 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
       }
 
       syncStackToActiveMenu(currentActiveMenu, to, menuStore.activeApp);
-    } catch {
+    } catch (err) {
+      console.warn('[breadcrumbStore] handleRouteChange failed', err);
       clearBreadcrumb();
     }
   }

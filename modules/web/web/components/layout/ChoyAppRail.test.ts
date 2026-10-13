@@ -415,6 +415,8 @@ describe('ChoyAppRail', () => {
     pinViewportWidth(1280);
     await flushPromises();
     await nextTick();
+    // Wait past HOVER_OPEN_MS so a leaked timer would still open the flyout.
+    await new Promise((r) => setTimeout(r, 120));
     expect(ss.openFlyoutKey).toBeNull();
     mounted.unmount();
   });

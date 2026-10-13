@@ -42,6 +42,14 @@ test('resolveCompanyLogoUrl: rejects opaque strings and empty attachment envelop
   expect(resolveCompanyLogoUrl({ kind: 'attachment' })).toBe(productLogoUrl);
   expect(
     resolveCompanyLogoUrl({
+      previewUrl: 'javascript:alert(1)',
+    }),
+  ).toBe(productLogoUrl);
+});
+
+test('resolveCompanyLogoUrl: reads Descriptor.downloadUrl and thumbnailUrl', () => {
+  expect(
+    resolveCompanyLogoUrl({
       Descriptor: { downloadUrl: 'https://cdn.example/from-descriptor.png' },
     }),
   ).toBe('https://cdn.example/from-descriptor.png');
