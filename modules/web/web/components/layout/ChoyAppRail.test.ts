@@ -11,9 +11,14 @@ import { useMenuStore } from '../../stores/menuStore';
 import { useLayoutStore } from '../../stores/layoutStore';
 import { pinViewportWidth } from '../../stores/layoutStore/pinViewport';
 import ChoyAppRail from './ChoyAppRail.vue';
+import { APP_RAIL_HOVER_CLOSE_MS, APP_RAIL_HOVER_OPEN_MS } from './appRailHover';
 import { SidebarProvider } from '../vendor/ui/sidebar/index';
 
 const createFeStubRouter = (VueRouter as any).createFeStubRouter;
+
+/** CI slack over production hover delays. */
+const HOVER_OPEN_WAIT_MS = APP_RAIL_HOVER_OPEN_MS * 3;
+const HOVER_CLOSE_WAIT_MS = APP_RAIL_HOVER_CLOSE_MS * 2;
 
 function mountRail(opts: {
   menus: Array<Record<string, unknown>>;
@@ -192,12 +197,12 @@ describe('ChoyAppRail', () => {
     const ss = mounted.setupState();
     const app = { id: 'base', title: 'Master Data' };
     ss.onFlyoutHoverEnter(app);
-    await new Promise((r) => setTimeout(r, 120));
+    await new Promise((r) => setTimeout(r, HOVER_OPEN_WAIT_MS));
     expect(ss.openFlyoutKey).toBe('base');
     ss.setFlyoutOpen(app, false);
     expect(ss.openFlyoutKey).toBe('base');
     ss.onFlyoutHoverLeave(app);
-    await new Promise((r) => setTimeout(r, 220));
+    await new Promise((r) => setTimeout(r, HOVER_CLOSE_WAIT_MS));
     expect(ss.openFlyoutKey).toBeNull();
     mounted.unmount();
   });
@@ -231,7 +236,7 @@ describe('ChoyAppRail', () => {
     const ss = mounted.setupState();
     const app = { id: 'base', title: 'Master Data' };
     ss.onFlyoutHoverEnter(app);
-    await new Promise((r) => setTimeout(r, 120));
+    await new Promise((r) => setTimeout(r, HOVER_OPEN_WAIT_MS));
     expect(ss.openFlyoutKey).toBe('base');
     // Leave L1 content toward portaled L2; Reka often dismisses in that gap.
     ss.onFlyoutHoverLeave(app);
@@ -239,10 +244,10 @@ describe('ChoyAppRail', () => {
     expect(ss.openFlyoutKey).toBe('base');
     // Nested SubContent re-arms hover intent before the close grace ends.
     ss.onFlyoutHoverEnter(app);
-    await new Promise((r) => setTimeout(r, 250));
+    await new Promise((r) => setTimeout(r, HOVER_CLOSE_WAIT_MS));
     expect(ss.openFlyoutKey).toBe('base');
     ss.onFlyoutHoverLeave(app);
-    await new Promise((r) => setTimeout(r, 220));
+    await new Promise((r) => setTimeout(r, HOVER_CLOSE_WAIT_MS));
     expect(ss.openFlyoutKey).toBeNull();
     mounted.unmount();
   });
@@ -415,8 +420,8 @@ describe('ChoyAppRail', () => {
     pinViewportWidth(1280);
     await flushPromises();
     await nextTick();
-    // Wait past HOVER_OPEN_MS so a leaked timer would still open the flyout.
-    await new Promise((r) => setTimeout(r, 120));
+    // Wait past APP_RAIL_HOVER_OPEN_MS so a leaked timer would still open the flyout.
+    await new Promise((r) => setTimeout(r, HOVER_OPEN_WAIT_MS));
     expect(ss.openFlyoutKey).toBeNull();
     mounted.unmount();
   });
@@ -451,10 +456,10 @@ describe('ChoyAppRail', () => {
     const base = { id: 'base', title: 'Master Data' };
     const auth = { id: 'auth', title: 'Auth' };
     ss.onFlyoutHoverEnter(base);
-    await new Promise((r) => setTimeout(r, 120));
+    await new Promise((r) => setTimeout(r, HOVER_OPEN_WAIT_MS));
     expect(ss.openFlyoutKey).toBe('base');
     ss.onFlyoutHoverEnter(auth);
-    await new Promise((r) => setTimeout(r, 120));
+    await new Promise((r) => setTimeout(r, HOVER_OPEN_WAIT_MS));
     expect(ss.openFlyoutKey).toBe('auth');
     expect(ss.hoverIntent.base || 0).toBe(0);
 
@@ -462,11 +467,11 @@ describe('ChoyAppRail', () => {
     // Closing path with an active close timer should keep the flyout until grace ends.
     ss.setFlyoutOpen(auth, false);
     expect(ss.openFlyoutKey).toBe('auth');
-    await new Promise((r) => setTimeout(r, 220));
+    await new Promise((r) => setTimeout(r, HOVER_CLOSE_WAIT_MS));
     expect(ss.openFlyoutKey).toBeNull();
 
     ss.onFlyoutHoverEnter(base);
-    await new Promise((r) => setTimeout(r, 120));
+    await new Promise((r) => setTimeout(r, HOVER_OPEN_WAIT_MS));
     expect(ss.openFlyoutKey).toBe('base');
     layout.sidebarMode = 'expanded';
     pinViewportWidth(1280);

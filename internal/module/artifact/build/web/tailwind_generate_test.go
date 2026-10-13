@@ -1379,4 +1379,10 @@ func TestSanitizeTailwindBorderSidePadding(t *testing.T) {
 	if got := sanitizeTailwindBorderSidePadding(eofFrac); strings.Contains(got, "padding-bottom") {
 		t.Fatalf("EOF fractional padding rule should be stripped, got:\n%s", got)
 	}
+
+	// Collapsed / single-line emit must also strip.
+	single := ".border-b { padding-bottom: calc(var(--spacing) * 3); }"
+	if got := sanitizeTailwindBorderSidePadding(single); strings.Contains(got, "padding-bottom") {
+		t.Fatalf("single-line padding rule should be stripped, got:\n%s", got)
+	}
 }

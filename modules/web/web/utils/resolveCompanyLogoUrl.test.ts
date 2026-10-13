@@ -39,6 +39,8 @@ test('resolveCompanyLogoUrl: rejects opaque strings and empty attachment envelop
   expect(resolveCompanyLogoUrl('relative/path.png')).toBe(productLogoUrl);
   expect(resolveCompanyLogoUrl('javascript:alert(1)')).toBe(productLogoUrl);
   expect(resolveCompanyLogoUrl('//evil.example/x.png')).toBe(productLogoUrl);
+  expect(resolveCompanyLogoUrl('/\\evil.example/x.png')).toBe(productLogoUrl);
+  expect(resolveCompanyLogoUrl('/static/\tx.png')).toBe(productLogoUrl);
   expect(resolveCompanyLogoUrl([])).toBe(productLogoUrl);
   expect(resolveCompanyLogoUrl({ kind: 'attachment' })).toBe(productLogoUrl);
   expect(
@@ -49,6 +51,11 @@ test('resolveCompanyLogoUrl: rejects opaque strings and empty attachment envelop
   expect(
     resolveCompanyLogoUrl({
       previewUrl: '//evil.example/x.png',
+    }),
+  ).toBe(productLogoUrl);
+  expect(
+    resolveCompanyLogoUrl({
+      previewUrl: '/\\evil.example/x.png',
     }),
   ).toBe(productLogoUrl);
 });

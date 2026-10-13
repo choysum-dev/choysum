@@ -6,6 +6,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { createI18n } from 'vue-i18n';
 import * as VueRouter from 'vue-router';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import { useLayoutStore } from '../../stores/layoutStore';
 import { pinViewportWidth } from '../../stores/layoutStore/pinViewport';
 import ChoyAppHeader from './ChoyAppHeader.vue';
 import ChoyAppShell from './ChoyAppShell.vue';
@@ -67,10 +68,13 @@ describe('ChoyAppHeader', () => {
     mounted.unmount();
   });
 
-  test('menu toggle is a no-op when SidebarProvider is missing', async () => {
+  test('menu toggle changes layout state when SidebarProvider is missing', async () => {
     pinViewportWidth(1280);
     const pinia = createPinia();
     setActivePinia(pinia);
+    const layoutStore = useLayoutStore();
+    layoutStore.setSidebarMode('expanded', { isUserAction: true });
+    expect(layoutStore.sidebarMode).toBe('expanded');
     const { router } = createFeStubRouter({
       route: { path: '/', fullPath: '/', meta: {} },
     });
@@ -93,8 +97,16 @@ describe('ChoyAppHeader', () => {
       await flushPromises();
       await nextTick();
       expect(mounted.q('[data-testid=choy-shell-menu-trigger]')).not.toBeNull();
-      mounted.click('[data-testid=choy-shell-menu-trigger]');
+      const ss = mounted.setupState() as {
+        layoutStore: { toggleSidebar: () => void } | null;
+        onMenuTriggerClick: () => void;
+      };
+      // Pinia is present so the header prefers layoutStore over the missing kit toggle.
+      expect(ss.layoutStore).toBeTruthy();
+      ss.onMenuTriggerClick();
       await flushPromises();
+      await nextTick();
+      expect(layoutStore.sidebarMode).toBe('collapsed');
       mounted.unmount();
     } finally {
       restoreSfc(ChoyShellBreadcrumb as any);

@@ -30,7 +30,7 @@ SPDX-License-Identifier: Apache-2.0
         data-sidebar="trigger"
         data-slot="sidebar-trigger"
         :aria-label="menuTriggerLabel"
-        @click="runShellMenuToggle(layoutStore, toggleSidebar)"
+        @click="onMenuTriggerClick"
       >
         <PanelLeft class="size-4" aria-hidden="true" />
       </ChoyButton>
@@ -83,6 +83,10 @@ try {
   toggleSidebar = useSidebar().toggleSidebar
 } catch {
   toggleSidebar = () => {}
+}
+
+function onMenuTriggerClick() {
+  runShellMenuToggle(layoutStore, toggleSidebar)
 }
 
 /** Height only — shared shell top chrome is translucent + blur with no hairline border. */

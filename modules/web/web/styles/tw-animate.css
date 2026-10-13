@@ -574,8 +574,14 @@
   [data-slot='navigation-menu-viewport'][data-state='closed'],
   [data-slot='context-menu-content'][data-state='open'],
   [data-slot='context-menu-content'][data-state='closed'],
+  [data-slot='context-menu-sub-content'][data-state='open'],
+  [data-slot='context-menu-sub-content'][data-state='closed'],
   [data-slot='menubar-content'][data-state='open'],
   [data-slot='menubar-content'][data-state='closed'],
+  [data-slot='menubar-sub-content'][data-state='open'],
+  [data-slot='menubar-sub-content'][data-state='closed'],
+  [data-slot='navigation-menu-indicator'][data-state='visible'],
+  [data-slot='navigation-menu-indicator'][data-state='hidden'],
   [data-slot='combobox-content'][data-state='open'],
   [data-slot='combobox-content'][data-state='closed'] {
     animation-duration: 0ms;

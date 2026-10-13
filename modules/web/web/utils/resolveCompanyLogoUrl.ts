@@ -3,6 +3,9 @@
 
 import productLogoUrl from '../assets/logo.svg';
 
+/** Allow-listed logo src; `\` is rejected because the URL parser normalizes it to `/`. */
+const SAFE_LOGO_SRC_RE = /^(https?:|data:|blob:|\/(?!\/))/i;
+
 function asRecord(raw: unknown): Record<string, unknown> | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   return raw as Record<string, unknown>;
@@ -12,6 +15,13 @@ function normalizeOptionalString(raw: unknown): string | undefined {
   if (typeof raw !== 'string') return undefined;
   const trimmed = raw.trim();
   return trimmed || undefined;
+}
+
+/** True when url is an allow-listed logo src without obfuscating controls. */
+function isSafeLogoSrc(url: string): boolean {
+  // Browsers may normalize `\` to `/` and discard tabs/newlines before parsing.
+  if (/[\\\t\n\r]/.test(url)) return false;
+  return SAFE_LOGO_SRC_RE.test(url);
 }
 
 function resolveDescriptor(raw: Record<string, unknown>): Record<string, unknown> | null {
@@ -27,10 +37,8 @@ export function resolveCompanyLogoUrl(logo: unknown): string {
   if (logo == null || logo === '') return productLogoUrl;
 
   if (typeof logo === 'string') {
-    const trimmed = logo.trim();
-    if (!trimmed) return productLogoUrl;
-    // Plain URL or data/blob from a prior local preview.
-    if (/^(https?:|data:|blob:|\/(?!\/))/i.test(trimmed)) return trimmed;
+    const trimmed = normalizeOptionalString(logo);
+    if (trimmed && isSafeLogoSrc(trimmed)) return trimmed;
     return productLogoUrl;
   }
 
@@ -49,7 +57,7 @@ export function resolveCompanyLogoUrl(logo: unknown): string {
   ];
   for (const candidate of candidates) {
     const url = normalizeOptionalString(candidate);
-    if (url && /^(https?:|data:|blob:|\/(?!\/))/i.test(url)) return url;
+    if (url && isSafeLogoSrc(url)) return url;
   }
   return productLogoUrl;
 }

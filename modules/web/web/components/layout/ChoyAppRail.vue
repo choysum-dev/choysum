@@ -12,6 +12,7 @@ import { useMenu } from '../../composables/useMenu'
 import { useMenuStore } from '../../stores/menuStore'
 import { useLayoutStore } from '../../stores/layoutStore'
 import { firstGrapheme } from './appRailGlyph'
+import { APP_RAIL_HOVER_CLOSE_MS, APP_RAIL_HOVER_OPEN_MS } from './appRailHover'
 import ChoyAppRailFlyout from './ChoyAppRailFlyout.vue'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../vendor/ui/tooltip'
 import {
@@ -127,9 +128,6 @@ const openFlyoutKey = ref<string | null>(null)
 const hoverIntent = reactive<Record<string, number>>({})
 const hoverOpenTimers = new Map<string, ReturnType<typeof setTimeout>>()
 const hoverCloseTimers = new Map<string, ReturnType<typeof setTimeout>>()
-const HOVER_OPEN_MS = 100
-const HOVER_CLOSE_MS = 200
-
 function clearHoverTimers(key: string) {
   const openT = hoverOpenTimers.get(key)
   if (openT) {
@@ -194,7 +192,7 @@ function bumpFlyoutHover(app: MenuItem, delta: number) {
       setTimeout(() => {
         hoverOpenTimers.delete(key)
         if ((hoverIntent[key] || 0) > 0) openFlyoutKey.value = key
-      }, HOVER_OPEN_MS),
+      }, APP_RAIL_HOVER_OPEN_MS),
     )
   } else {
     hoverCloseTimers.set(
@@ -204,7 +202,7 @@ function bumpFlyoutHover(app: MenuItem, delta: number) {
         if ((hoverIntent[key] || 0) === 0 && openFlyoutKey.value === key) {
           openFlyoutKey.value = null
         }
-      }, HOVER_CLOSE_MS),
+      }, APP_RAIL_HOVER_CLOSE_MS),
     )
   }
 }
