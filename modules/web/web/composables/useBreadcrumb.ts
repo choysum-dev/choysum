@@ -6,6 +6,15 @@ import { useBreadcrumbStore } from '../stores/breadcrumbStore';
 import type { BreadcrumbItem } from '../stores/breadcrumbStore';
 import { useMenu } from './useMenu';
 
+/** Resolve menu helpers when the menu plugin is mounted; otherwise null. */
+export function tryUseMenu(): ReturnType<typeof useMenu> | null {
+  try {
+    return useMenu();
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Provides computed breadcrumb data and navigation helpers.
  */
@@ -13,12 +22,7 @@ export function useBreadcrumb() {
   const router = useRouter();
   const route = useRoute();
   const breadcrumbStore = useBreadcrumbStore();
-  let menuApi: ReturnType<typeof useMenu> | null = null;
-  try {
-    menuApi = useMenu();
-  } catch {
-    menuApi = null;
-  }
+  const menuApi = tryUseMenu();
 
   /**
    * Navigates to a breadcrumb target when the item is clickable.

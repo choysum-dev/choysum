@@ -30,7 +30,7 @@ SPDX-License-Identifier: Apache-2.0
         data-sidebar="trigger"
         data-slot="sidebar-trigger"
         :aria-label="menuTriggerLabel"
-        @click="onMenuToggle"
+        @click="runShellMenuToggle(layoutStore, toggleSidebar)"
       >
         <PanelLeft class="size-4" aria-hidden="true" />
       </ChoyButton>
@@ -59,6 +59,7 @@ import { PanelLeft } from 'lucide-vue-next'
 import ChoyButton from './ChoyButton.vue'
 import ChoyCommandPalette from './ChoyCommandPalette.vue'
 import ChoyShellBreadcrumb from './ChoyShellBreadcrumb.vue'
+import { runShellMenuToggle } from './runShellMenuToggle'
 import { Separator } from '../vendor/ui/separator'
 import { useSidebar } from '../vendor/ui/sidebar/utils'
 import { useLayoutStore } from '../../stores/layoutStore'
@@ -87,15 +88,4 @@ const headerStyle = {
   boxSizing: 'border-box' as const,
 }
 
-/**
- * Prefer layoutStore so ChoySidebarBridge remains the single writer to kit open state.
- * Falls back to kit toggle when the layout store is unavailable (tests).
- */
-function onMenuToggle() {
-  if (layoutStore) {
-    layoutStore.toggleSidebar()
-    return
-  }
-  toggleSidebar()
-}
 </script>

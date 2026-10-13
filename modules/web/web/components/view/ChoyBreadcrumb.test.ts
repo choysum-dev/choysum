@@ -58,4 +58,34 @@ describe('ChoyBreadcrumb', () => {
     expect(mounted.text()).toContain('E');
     mounted.unmount();
   });
+
+  test('respects larger maxItems by keeping a longer trailing tail', async () => {
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h(ChoyBreadcrumb as any, {
+            maxItems: 6,
+            items: [
+              { label: 'A', to: '/a' },
+              { label: 'B', to: '/b' },
+              { label: 'C', to: '/c' },
+              { label: 'D', to: '/d' },
+              { label: 'E', to: '/e' },
+              { label: 'F', to: '/f' },
+              { label: 'G' },
+            ],
+          });
+      },
+    });
+    const mounted = mountApp(Host as any);
+    await flushPromises();
+    expect(mounted.q('[data-testid=choy-breadcrumb-ellipsis]')).not.toBeNull();
+    expect(mounted.text()).toContain('A');
+    expect(mounted.text()).not.toContain('B');
+    expect(mounted.text()).toContain('D');
+    expect(mounted.text()).toContain('E');
+    expect(mounted.text()).toContain('F');
+    expect(mounted.text()).toContain('G');
+    mounted.unmount();
+  });
 });

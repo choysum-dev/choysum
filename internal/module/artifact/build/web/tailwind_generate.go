@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -415,17 +416,17 @@ func GenerateTailwindCSS(dialectCSS string, candidates []string) (css string, du
 	return css, time.Since(start), nil
 }
 
+// borderSidePaddingRuleRE matches a lone .border-b / .border-t rule whose only
+// declaration is padding (any --spacing multiplier / whitespace shape).
+var borderSidePaddingRuleRE = regexp.MustCompile(
+	`(?m)^\.(border-[bt]) \{\s*\n\s*padding-(?:bottom|top):\s*calc\(var\(--spacing\)\s*\*\s*\d+\);\s*\n\}\s*\n+`,
+)
+
 // sanitizeTailwindBorderSidePadding drops a known-bad FullCSS emit where
 // .border-b / .border-t also receive pb-3 / pt-3 padding declarations.
 // The real border-*-width rules are kept.
 func sanitizeTailwindBorderSidePadding(css string) string {
-	for _, bad := range []string{
-		".border-b {\n  padding-bottom: calc(var(--spacing) * 3);\n}\n\n",
-		".border-t {\n  padding-top: calc(var(--spacing) * 3);\n}\n\n",
-	} {
-		css = strings.ReplaceAll(css, bad, "")
-	}
-	return css
+	return borderSidePaddingRuleRE.ReplaceAllString(css, "")
 }
 
 // choyLoadCSS wraps Engine.LoadCSS so tests can force parse failures.

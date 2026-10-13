@@ -841,12 +841,12 @@ msgctxt "web/components/layout/ChoyCommandPalette"
 msgid "Type a command or search…"
 msgstr "输入命令或搜索…"
 
-#: web/components/layout/ChoyGuestHeader.vue:15
+#: web/components/layout/ChoyGuestHeader.vue:50
 msgctxt "web/components/layout/ChoyGuestHeader"
 msgid "Home"
 msgstr "首页"
 
-#: web/components/layout/ChoyGuestMobileNav.vue:48
+#: web/components/layout/ChoyGuestMobileNav.vue:29
 msgctxt "web/components/layout/ChoyGuestMobileNav"
 msgid "Menu"
 msgstr "菜单"
@@ -891,7 +891,7 @@ msgctxt "web/components/layout/ChoyPageIoMenu"
 msgid "No model/store available for this action."
 msgstr "此操作没有可用的模型/存储。"
 
-#: web/components/layout/ChoySidebarNav.vue:87
+#: web/components/layout/ChoySidebarNav.vue:66
 msgctxt "web/components/layout/ChoySidebarNav"
 msgid "No menus available"
 msgstr "暂无可用菜单"
@@ -2061,12 +2061,12 @@ msgctxt "web/query/utils/filter/operators"
 msgid "Not in"
 msgstr "不属于"
 
-#: web/stores/breadcrumbStore/index.ts:13
+#: web/stores/breadcrumbStore/index.ts:12
 msgctxt "web/stores/breadcrumbStore"
 msgid "Details"
 msgstr "详情"
 
-#: web/stores/breadcrumbStore/index.ts:12
+#: web/stores/breadcrumbStore/index.ts:11
 msgctxt "web/stores/breadcrumbStore"
 msgid "Page"
 msgstr "页面"

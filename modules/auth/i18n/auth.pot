@@ -845,52 +845,53 @@ msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:84
+#: web/components/layout/ChoyAppShell.vue:108
+#: web/components/layout/ChoyAppShell.vue:94
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Account"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:89
+#: web/components/layout/ChoyAppShell.vue:124
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Dark"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:34
+#: web/components/layout/ChoyAppShell.vue:59
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Language"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:88
+#: web/components/layout/ChoyAppShell.vue:123
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Light"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:41
+#: web/components/layout/ChoyAppShell.vue:66
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Log Out"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:22
+#: web/components/layout/ChoyAppShell.vue:47
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Profile"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:25
+#: web/components/layout/ChoyAppShell.vue:50
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Settings"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:90
+#: web/components/layout/ChoyAppShell.vue:125
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "System"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:28
+#: web/components/layout/ChoyAppShell.vue:53
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Theme"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:11
+#: web/components/layout/ChoyAppShell.vue:14
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "User menu"
 msgstr ""
@@ -915,50 +916,59 @@ msgctxt "web/components/layout/ChoyGuestShell"
 msgid "Sign up"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:39
+#: web/components/layout/SwitchCompany.vue:101
+#: web/components/layout/SwitchCompany.vue:56
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Apply"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:24
+#: web/components/layout/SwitchCompany.vue:41
+#: web/components/layout/SwitchCompany.vue:86
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Available Companies"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:316
+#: web/components/layout/SwitchCompany.vue:333
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Available companies must include the current company"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:277
 #: web/components/layout/SwitchCompany.vue:280
+#: web/components/layout/SwitchCompany.vue:283
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Company"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:16
+#: web/components/layout/SwitchCompany.vue:31
+#: web/components/layout/SwitchCompany.vue:78
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Current Company"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:321
+#: web/components/layout/SwitchCompany.vue:338
 msgctxt "web/components/layout/SwitchCompany"
 msgid "No changes to apply"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:319
+#: web/components/layout/SwitchCompany.vue:336
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Only one company is available; nothing to apply"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:314
+#: web/components/layout/SwitchCompany.vue:331
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Select a current company"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:5
+#: web/components/layout/SwitchCompany.vue:12
+#: web/components/layout/SwitchCompany.vue:68
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Switch company"
+msgstr ""
+
+#: web/components/layout/SwitchCompany.vue:297
+msgctxt "web/components/layout/SwitchCompany"
+msgid "Workspace"
 msgstr ""
 
 #: web/components/preferences/PreferencesDialog.vue:16
@@ -1485,7 +1495,7 @@ msgctxt "web/stores/auth/actions"
 msgid "Cannot load user details: missing userId"
 msgstr ""
 
-#: web/stores/auth/actions.ts:504
+#: web/stores/auth/actions.ts:515
 msgctxt "web/stores/auth/actions"
 msgid "Failed to initialize auth"
 msgstr ""

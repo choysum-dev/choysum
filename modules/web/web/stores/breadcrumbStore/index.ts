@@ -6,6 +6,12 @@ import { defineStore } from 'pinia';
 import { useRouter } from 'vue-router';
 import { isTermReference, type TermReference } from '@/core/service/i18n';
 import { createTranslate, type TextSource } from '../../i18n';
+import {
+  getMenuBasePath,
+  getMenuId,
+  getPageTitle as resolvePageTitle,
+  resolveAppRoot,
+} from './breadcrumb_helpers';
 
 const { _lt } = createTranslate('web', { scope: 'web/stores/breadcrumbStore' });
 const pageFallback = _lt('Page');
@@ -48,24 +54,16 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
       const router = useRouter();
 
       router.afterEach(async (to, from) => {
-        try {
-          await nextTick();
-          await handleRouteChange(to, from);
-        } catch (error) {
-          console.error('Breadcrumb router guard failed:', error);
-        }
+        await nextTick();
+        await handleRouteChange(to, from);
       });
 
       routerGuardInstalled.value = true;
 
       nextTick(async () => {
-        try {
-          const currentRoute = router.currentRoute.value;
-          if (currentRoute.path !== '/' && breadcrumbStack.value.length === 0) {
-            await handleInitialRoute(currentRoute);
-          }
-        } catch (error) {
-          console.error('Failed to process the initial route:', error);
+        const currentRoute = router.currentRoute.value;
+        if (currentRoute.path !== '/' && breadcrumbStack.value.length === 0) {
+          await handleInitialRoute(currentRoute);
         }
       });
     } catch (error) {
@@ -105,8 +103,8 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
         return;
       }
       syncStackToActiveMenu(activeMenu, route, menuStore.activeApp);
-    } catch (error) {
-      console.error('Failed to process the initial route:', error);
+    } catch {
+      clearBreadcrumb();
     }
   }
 
@@ -125,8 +123,8 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
       }
 
       syncStackToActiveMenu(currentActiveMenu, to, menuStore.activeApp);
-    } catch (error) {
-      console.error('Failed to process the route change:', error);
+    } catch {
+      clearBreadcrumb();
     }
   }
 
@@ -164,55 +162,8 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
     }
   }
 
-  function resolveAppRoot(activeMenu: any): any | null {
-    let current = activeMenu;
-    let hops = 0;
-    while (current && hops < 64) {
-      hops += 1;
-      if (!current.__parent) return current;
-      current = current.__parent;
-    }
-    return activeMenu || null;
-  }
-
-  function getMenuId(menu: any): string {
-    if (!menu) return '';
-    if (menu.id) return String(menu.id);
-    if (menu.path) return String(menu.path).replace(/\//g, '-');
-    if (menu.name) return String(menu.name);
-    return 'unknown-menu';
-  }
-
-  function getMenuBasePath(currentPath: string, menu: any): string {
-    if (menu?.path) return menu.path;
-    return currentPath;
-  }
-
   function getPageTitle(route: any): TextSource {
-    if (route.meta?.pageTitleText) {
-      return route.meta.pageTitleText;
-    }
-    if (route.meta?.pageTitle) {
-      return typeof route.meta.pageTitle === 'function'
-        ? route.meta.pageTitle(route)
-        : String(route.meta.pageTitle);
-    }
-    if (route.meta?.title) {
-      return String(route.meta.title);
-    }
-    if (route.name) {
-      return String(route.name);
-    }
-    const pathSegments = String(route.path || '')
-      .split('/')
-      .filter(Boolean);
-    if (pathSegments.length > 0) {
-      const lastSegment = pathSegments[pathSegments.length - 1];
-      if (/^[a-z0-9]{16,}$/.test(lastSegment) || /^\d+$/.test(lastSegment)) {
-        return detailsFallback;
-      }
-    }
-    return pageFallback;
+    return resolvePageTitle(route, detailsFallback, pageFallback);
   }
 
   function normalizeTitle(source: TextSource): Pick<BreadcrumbItem, 'title' | 'titleText'> {
@@ -239,12 +190,8 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
   function trimStackPreservingRoot() {
     if (breadcrumbStack.value.length <= MAX_STACK) return;
     const prefix = rootPrefixLength();
+    // prefix is 0–2 and MAX_STACK is 10, so keepTail stays positive.
     const keepTail = MAX_STACK - prefix;
-    if (keepTail <= 0) {
-      breadcrumbStack.value = breadcrumbStack.value.slice(0, MAX_STACK);
-      applyClickableFlags();
-      return;
-    }
     const head = breadcrumbStack.value.slice(0, prefix);
     const tail = breadcrumbStack.value.slice(-keepTail);
     breadcrumbStack.value = [...head, ...tail];

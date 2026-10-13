@@ -380,4 +380,98 @@ describe('ChoyAppRail', () => {
     expect(mounted.qa('[data-testid=choy-shell-app-rail-item]').length).toBe(0);
     mounted.unmount();
   });
+
+  test('collapsed flyout closes without hover timers and clears pending open timers on expand', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'base',
+      title: 'Master Data',
+      children: [{ id: 'loose', title: 'Company', path: '/base/companies' }],
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    pinViewportWidth(900);
+    const layout = useLayoutStore();
+    layout.sidebarMode = 'collapsed';
+    const { router } = createFeStubRouter({
+      route: { path: '/', fullPath: '/', meta: {} },
+    });
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+    const mounted = mountApp(ChoyAppRail as any, {
+      plugins: [menuPlugin, pinia, router, i18n],
+    });
+    await flushPromises();
+    await nextTick();
+    const ss = mounted.setupState();
+    const app = { id: 'base', title: 'Master Data' };
+    ss.setFlyoutOpen(app, true);
+    expect(ss.openFlyoutKey).toBe('base');
+    ss.setFlyoutOpen(app, false);
+    expect(ss.openFlyoutKey).toBeNull();
+
+    ss.onFlyoutHoverEnter(app);
+    // Expand while the open timer is still pending so clearAllHoverTimers runs with work.
+    layout.sidebarMode = 'expanded';
+    pinViewportWidth(1280);
+    await flushPromises();
+    await nextTick();
+    expect(ss.openFlyoutKey).toBeNull();
+    mounted.unmount();
+  });
+
+  test('collapsed flyout switches apps and clears timers on expand', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'base',
+      title: 'Master Data',
+      children: [{ id: 'loose', title: 'Company', path: '/base/companies' }],
+    } as any);
+    menuPlugin.manager.addMenu({
+      id: 'auth',
+      title: 'Auth',
+      children: [{ id: 'users', title: 'Users', path: '/auth/users' }],
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    pinViewportWidth(900);
+    const layout = useLayoutStore();
+    layout.sidebarMode = 'collapsed';
+    const { router } = createFeStubRouter({
+      route: { path: '/', fullPath: '/', meta: {} },
+    });
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+    const mounted = mountApp(ChoyAppRail as any, {
+      plugins: [menuPlugin, pinia, router, i18n],
+    });
+    await flushPromises();
+    await nextTick();
+    const ss = mounted.setupState();
+    const base = { id: 'base', title: 'Master Data' };
+    const auth = { id: 'auth', title: 'Auth' };
+    ss.onFlyoutHoverEnter(base);
+    await new Promise((r) => setTimeout(r, 120));
+    expect(ss.openFlyoutKey).toBe('base');
+    ss.onFlyoutHoverEnter(auth);
+    await new Promise((r) => setTimeout(r, 120));
+    expect(ss.openFlyoutKey).toBe('auth');
+    expect(ss.hoverIntent.base || 0).toBe(0);
+
+    ss.onFlyoutHoverLeave(auth);
+    // Closing path with an active close timer should keep the flyout until grace ends.
+    ss.setFlyoutOpen(auth, false);
+    expect(ss.openFlyoutKey).toBe('auth');
+    await new Promise((r) => setTimeout(r, 220));
+    expect(ss.openFlyoutKey).toBeNull();
+
+    ss.onFlyoutHoverEnter(base);
+    await new Promise((r) => setTimeout(r, 120));
+    expect(ss.openFlyoutKey).toBe('base');
+    layout.sidebarMode = 'expanded';
+    pinViewportWidth(1280);
+    await flushPromises();
+    await nextTick();
+    await new Promise((r) => setTimeout(r, 20));
+    expect(ss.openFlyoutKey).toBeNull();
+    mounted.unmount();
+  });
 });

@@ -857,12 +857,12 @@ msgctxt "web/components/layout/ChoyCommandPalette"
 msgid "Type a command or search…"
 msgstr ""
 
-#: web/components/layout/ChoyGuestHeader.vue:15
+#: web/components/layout/ChoyGuestHeader.vue:50
 msgctxt "web/components/layout/ChoyGuestHeader"
 msgid "Home"
 msgstr ""
 
-#: web/components/layout/ChoyGuestMobileNav.vue:48
+#: web/components/layout/ChoyGuestMobileNav.vue:29
 msgctxt "web/components/layout/ChoyGuestMobileNav"
 msgid "Menu"
 msgstr ""
@@ -908,7 +908,7 @@ msgctxt "web/components/layout/ChoyPageIoMenu"
 msgid "No model/store available for this action."
 msgstr ""
 
-#: web/components/layout/ChoySidebarNav.vue:87
+#: web/components/layout/ChoySidebarNav.vue:66
 msgctxt "web/components/layout/ChoySidebarNav"
 msgid "No menus available"
 msgstr ""
@@ -2117,12 +2117,12 @@ msgctxt "web/query/utils/filter/operators"
 msgid "Not in"
 msgstr ""
 
-#: web/stores/breadcrumbStore/index.ts:13
+#: web/stores/breadcrumbStore/index.ts:12
 msgctxt "web/stores/breadcrumbStore"
 msgid "Details"
 msgstr ""
 
-#: web/stores/breadcrumbStore/index.ts:12
+#: web/stores/breadcrumbStore/index.ts:11
 msgctxt "web/stores/breadcrumbStore"
 msgid "Page"
 msgstr ""

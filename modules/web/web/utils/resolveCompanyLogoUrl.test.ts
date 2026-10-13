@@ -31,4 +31,23 @@ test('resolveCompanyLogoUrl: reads nested descriptor previewUrl', () => {
 test('resolveCompanyLogoUrl: accepts absolute and root-relative strings', () => {
   expect(resolveCompanyLogoUrl('/static/x.png')).toBe('/static/x.png');
   expect(resolveCompanyLogoUrl('https://example.com/a.png')).toBe('https://example.com/a.png');
+  expect(resolveCompanyLogoUrl('data:image/png;base64,abc')).toBe('data:image/png;base64,abc');
+  expect(resolveCompanyLogoUrl('blob:https://example.com/1')).toBe('blob:https://example.com/1');
+});
+
+test('resolveCompanyLogoUrl: rejects opaque strings and empty attachment envelopes', () => {
+  expect(resolveCompanyLogoUrl('relative/path.png')).toBe(productLogoUrl);
+  expect(resolveCompanyLogoUrl('javascript:alert(1)')).toBe(productLogoUrl);
+  expect(resolveCompanyLogoUrl([])).toBe(productLogoUrl);
+  expect(resolveCompanyLogoUrl({ kind: 'attachment' })).toBe(productLogoUrl);
+  expect(
+    resolveCompanyLogoUrl({
+      Descriptor: { downloadUrl: 'https://cdn.example/from-descriptor.png' },
+    }),
+  ).toBe('https://cdn.example/from-descriptor.png');
+  expect(
+    resolveCompanyLogoUrl({
+      thumbnailUrl: 'https://cdn.example/thumb.png',
+    }),
+  ).toBe('https://cdn.example/thumb.png');
 });

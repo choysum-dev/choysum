@@ -112,8 +112,9 @@ const displaySegments = computed((): DisplaySegment[] => {
     return items.map((item, index) => toItem(item, index));
   }
 
-  // Keep first + last two (shadcn docs / sidebar-style collapse).
-  const tailStart = n - 2;
+  // Keep first + ellipsis + as many trailing crumbs as maxItems allows.
+  const tailCount = Math.max(1, maxItems - 2);
+  const tailStart = n - tailCount;
   const segs: DisplaySegment[] = [toItem(items[0]!, 0), { type: 'ellipsis', key: 'ellipsis' }];
   for (let i = tailStart; i < n; i++) {
     segs.push(toItem(items[i]!, i));
