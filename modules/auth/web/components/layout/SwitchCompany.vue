@@ -9,11 +9,18 @@ SPDX-License-Identifier: Apache-2.0
     <template v-if="variant === 'sidebar'">
       <SidebarMenu class="w-full min-w-0">
         <SidebarMenuItem>
+          <!--
+            PopoverTrigger must as-child onto the real button. Do not wrap with
+            TooltipTrigger or pass SidebarMenuButton tooltip — both put TooltipRoot
+            in the as-child chain and break popover anchoring / click.
+            Collapsed identity tip uses the native title attribute instead.
+          -->
           <ChoyPopoverTrigger as-child>
             <SidebarMenuButton
               size="lg"
               type="button"
               class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              :title="companyCollapsedTitle"
               :aria-expanded="visible"
               :aria-label="_t('Switch company')"
               data-testid="company-switch-trigger"
@@ -138,10 +145,12 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/web/web/components/vendor/ui/sidebar/index';
+import { useSidebar } from '@/web/web/components/vendor/ui/sidebar/utils';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import type Company from '@/base/service/models/company';
 import { createTranslate } from '@/web/web/i18n';
+import { collapsedIdentityTooltip } from './collapsed_identity_tooltip';
 import {
   isActiveCompanyEnabledLocked,
   syncCompanyDraftsFromJwt,
@@ -179,6 +188,14 @@ function getGlobalCompanyStore(): any {
 const visible = ref(false);
 /** Guards async open-sync so a late refresh cannot reset an in-progress selection. */
 let panelOpenGeneration = 0;
+
+/** Sidebar context is absent for the toolbar variant (outside SidebarProvider). */
+let sidebarCtx: ReturnType<typeof useSidebar> | null = null;
+try {
+  sidebarCtx = useSidebar();
+} catch {
+  sidebarCtx = null;
+}
 
 const meta = computed(() => ((authStore.identity as any)?.metadata ?? {}) as any);
 const currentActiveCompanyId = computed(() => String(meta.value?.activeCompanyId ?? '').trim());
@@ -403,6 +420,20 @@ const currentCompanyLabel = computed(() => {
   const name = companyNameById.value.get(id);
   if (name) return name;
   return labelsReady.value ? id : _t('Company');
+});
+
+/**
+ * Native title tip when the rail is collapsed. Avoids Tooltip/Popover as-child nesting.
+ */
+const companyCollapsedTitle = computed(() => {
+  if (
+    !sidebarCtx ||
+    sidebarCtx.isMobile.value ||
+    sidebarCtx.state.value !== 'collapsed'
+  ) {
+    return undefined;
+  }
+  return collapsedIdentityTooltip(visible.value, currentCompanyLabel.value);
 });
 
 /** Muted second line under the company name (Code, else a workspace fallback). */

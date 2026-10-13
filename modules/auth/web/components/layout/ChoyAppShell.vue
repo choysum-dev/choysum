@@ -19,6 +19,7 @@ SPDX-License-Identifier: Apache-2.0
               size="lg"
               type="button"
               class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              :tooltip="userIdentityTooltip"
               :aria-label="_t('User menu')"
               data-testid="auth-user-menu-trigger"
             >
@@ -48,7 +49,7 @@ SPDX-License-Identifier: Apache-2.0
               />
             </SidebarMenuButton>
           </ChoyDropdownMenuTrigger>
-          <ChoyDropdownMenuContent side="right" align="start" class="min-w-56 rounded-lg">
+          <ChoyDropdownMenuContent side="right" align="end" class="min-w-56 rounded-lg">
             <ChoyDropdownMenuLabel class="p-0 font-normal text-foreground">
               <div
                 class="flex items-center gap-2 px-1 py-1.5 text-start text-sm"
@@ -156,6 +157,7 @@ import { useI18nStore } from '@/web/web/stores/i18nStore';
 import { DEFAULT_ACTIVE_UI_KEYS } from '@/web/web/stores/i18nStore/activeUiKeys';
 import { SUPPORTED_LOCALES } from '@/web/web/stores/i18nStore/locales';
 import type { SupportedLocale } from '@/web/web/stores/i18nStore/types';
+import { collapsedIdentityTooltip } from './collapsed_identity_tooltip';
 import { reuseParentSetupState } from './reuse_parent_setup_state';
 import SwitchCompany from './SwitchCompany.vue';
 import PreferencesDialog from '../preferences/PreferencesDialog.vue';
@@ -216,6 +218,11 @@ export default defineComponent({
       const fromToken = String(identity.displayName || identity.username || '').trim();
       return fromToken || _t('Account');
     });
+
+    /** Collapsed tip via SidebarMenuButton; omitted while the user menu is open. */
+    const userIdentityTooltip = computed(() =>
+      collapsedIdentityTooltip(userMenuOpen.value, userMenuLabel.value),
+    );
 
     const userMenuMeta = computed(() => {
       const user = (authStore.currentUser as any) || {};
@@ -303,6 +310,7 @@ export default defineComponent({
       preferencesVisible,
       userMenuOpen,
       userMenuLabel,
+      userIdentityTooltip,
       userMenuMeta,
       userInitials,
       themeMode,
