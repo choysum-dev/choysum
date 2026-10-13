@@ -12,9 +12,10 @@ SPDX-License-Identifier: Apache-2.0
     <!--
       Trigger + sep + breadcrumb share one items-center row.
       size=icon is size-control (32px) with a size-4 (16px) glyph, so the
-      hit-box has 8px inset on each side. -ms-2 pulls the button back so the
-      glyph’s inline-start edge lands on the same 16px gutter as ChoyPage
-      (shadcn sidebar blocks use the same optical -m* on SidebarTrigger).
+      hit-box has 8px inset on each side. -ms-2 / -me-2 pull the button so
+      the glyph optically aligns with the page gutter and sits gap-2 from
+      the separator (matching separator→breadcrumb), instead of looking
+      wider because of the transparent hit padding.
     -->
     <div
       v-if="showSidebarChrome"
@@ -25,7 +26,7 @@ SPDX-License-Identifier: Apache-2.0
         variant="ghost"
         size="icon"
         type="button"
-        class="-ms-2 shrink-0 leading-none"
+        class="-ms-2 -me-2 shrink-0 leading-none"
         data-testid="choy-shell-menu-trigger"
         data-sidebar="trigger"
         data-slot="sidebar-trigger"
@@ -36,7 +37,7 @@ SPDX-License-Identifier: Apache-2.0
       </ChoyButton>
       <Separator
         orientation="vertical"
-        class="mx-1 !h-4 w-px shrink-0"
+        class="!h-4 w-px shrink-0"
         data-testid="choy-shell-header-sep-trigger"
       />
       <ChoyShellBreadcrumb />

@@ -185,6 +185,8 @@ const menuTriggerLabel = computed(() =>
   /* Chrome + L1 + header/footer; L2 is a lighter nested pane. Both neutral. */
   --choy-shell-chrome: oklch(0.965 0 0);
   --choy-shell-pane: oklch(0.985 0 0);
+  /* Identity row hover/open on chrome — keep in sync with --choy-color-sidebar-accent. */
+  --choy-shell-chrome-hover: var(--choy-color-sidebar-accent);
   min-height: 0 !important;
   height: 100%;
   max-height: 100%;
@@ -194,6 +196,7 @@ html.dark .choy-shell[data-shell-mode='app'],
 .dark .choy-shell[data-shell-mode='app'] {
   --choy-shell-chrome: oklch(0.18 0 0);
   --choy-shell-pane: oklch(0.205 0 0);
+  --choy-shell-chrome-hover: var(--choy-color-sidebar-accent);
 }
 
 /*
@@ -296,9 +299,11 @@ html.dark .choy-shell[data-shell-mode='app'],
 }
 
 /*
- * sidebar-07-like header/footer: kit p-2 + size=lg (h-12) rows.
- * Mark left edge = header pad only (0.5rem). In a 3rem icon rail that leaves a
- * 2rem slot — exactly size-8 — so collapse only clips text, glyphs do not move.
+ * sidebar-07-like header/footer: size=lg (h-12) identity rows.
+ * Inline pad stays 0.5rem: in a 3rem icon rail that leaves a 2rem slot
+ * (size-8), so collapse only clips text and mark glyphs do not shift.
+ * Block pad is slightly roomier (0.75rem) so rows are not flush to the
+ * shell top/bottom edge; vertical-only change keeps the collapse animation stable.
  */
 .choy-shell[data-shell-mode='app'] [data-slot='sidebar-header'],
 .choy-shell[data-shell-mode='app'] [data-slot='sidebar-footer'] {
@@ -311,7 +316,8 @@ html.dark .choy-shell[data-shell-mode='app'],
   height: auto !important;
   min-height: 0 !important;
   max-height: none !important;
-  padding: 0.5rem !important;
+  padding-block: 0.75rem !important;
+  padding-inline: 0.5rem !important;
   border: 0 !important;
   background-color: var(--choy-shell-chrome) !important;
   background-image: none !important;
@@ -333,6 +339,16 @@ html.dark .choy-shell[data-shell-mode='app'],
   border-radius: var(--radius-md, 0.375rem);
   gap: 0.5rem !important;
   overflow: hidden !important;
+}
+
+/* Chrome rows need an explicit hover fill; kit accent alone was ≈ chrome in light. */
+.choy-shell[data-shell-mode='app'] [data-testid='company-switch-trigger']:hover,
+.choy-shell[data-shell-mode='app'] [data-testid='company-switch-trigger']:active,
+.choy-shell[data-shell-mode='app'] [data-testid='company-switch-trigger'][data-state='open'],
+.choy-shell[data-shell-mode='app'] [data-testid='auth-user-menu-trigger']:hover,
+.choy-shell[data-shell-mode='app'] [data-testid='auth-user-menu-trigger']:active,
+.choy-shell[data-shell-mode='app'] [data-testid='auth-user-menu-trigger'][data-state='open'] {
+  background-color: var(--choy-shell-chrome-hover) !important;
 }
 
 /* Defeat kit icon-mode size-control shrink — keep the same h-12 hit row. */

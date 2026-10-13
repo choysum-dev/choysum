@@ -43,7 +43,8 @@ html {
   --choy-color-sidebar-foreground: oklch(0.22 0.01 260);
   --choy-color-sidebar-primary: var(--choy-color-primary);
   --choy-color-sidebar-primary-foreground: var(--choy-color-primary-foreground);
-  --choy-color-sidebar-accent: oklch(0.96 0.006 260);
+  /* Must sit clearly below chrome/pane (0.965 / 0.985); 0.96 was optically invisible. */
+  --choy-color-sidebar-accent: oklch(0.915 0.01 260);
   --choy-color-sidebar-accent-foreground: oklch(0.22 0.01 260);
   --choy-color-sidebar-border: oklch(0.9 0.01 260);
   --choy-color-sidebar-ring: var(--choy-color-ring);
