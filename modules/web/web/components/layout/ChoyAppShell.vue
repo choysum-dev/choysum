@@ -101,7 +101,7 @@ SPDX-License-Identifier: Apache-2.0
             </div>
             <footer
               v-if="showFooter"
-              class="choy-shell__footer flex shrink-0 items-center justify-center bg-background px-4 sm:px-6"
+              class="choy-shell__footer choy-inset-pad-x flex shrink-0 items-center justify-center bg-background"
               :style="{ minHeight: 'var(--choy-layout-footer-height)' }"
               data-testid="choy-shell-footer"
             >

@@ -58,7 +58,7 @@ SPDX-License-Identifier: Apache-2.0
           data-testid="choy-shell-footer"
         >
           <div
-            class="mx-auto flex w-full max-w-screen-2xl items-center justify-center px-4 sm:px-6"
+            class="choy-inset-pad-x mx-auto flex w-full max-w-screen-2xl items-center justify-center"
             :style="{ minHeight: 'var(--choy-layout-footer-height)' }"
           >
             <ChoyAppFooter />

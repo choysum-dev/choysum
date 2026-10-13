@@ -76,7 +76,8 @@ html {
   --choy-layout-footer-height: 4rem;
   --choy-layout-sidebar-width: 15rem;
   --choy-layout-sidebar-collapsed-width: 3.5rem;
-  --choy-layout-content-padding: 1.25rem;
+  /* Inset gutter for App/Guest header, ChoyPage, and Powered-by footer (sidebar-07 p-4). */
+  --choy-layout-content-padding: 1rem;
 
   --choy-motion-duration-fast: 120ms;
   --choy-motion-duration-normal: 200ms;

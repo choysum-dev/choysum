@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     :style="headerStyle"
     data-testid="choy-shell-header"
   >
-    <div class="flex h-full w-full items-center px-4 sm:px-6">
+    <div class="choy-inset-pad-x flex h-full w-full items-center">
       <div class="mx-auto flex h-full w-full max-w-screen-2xl items-center gap-2">
         <ChoyGuestMobileNav :items="navItems" class="flex lg:hidden" />
         <NavigationMenu

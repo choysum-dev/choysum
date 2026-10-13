@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     :class="
       cn(
         'choy-page relative mx-auto w-full text-foreground',
-        props.padding ? 'p-4 md:p-6' : '',
+        props.padding ? 'choy-inset-pad' : '',
         widthClass,
         props.fillHeight ? 'flex min-h-0 flex-1 flex-col' : '',
         props.class,

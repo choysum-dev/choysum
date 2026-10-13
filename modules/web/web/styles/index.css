@@ -66,6 +66,18 @@ body {
 }
 
 /*
+ * Inset content gutter: App header / ChoyPage / Powered-by footer (and Guest
+ * chrome) share --choy-layout-content-padding so left edges line up.
+ */
+.choy-inset-pad-x {
+  padding-inline: var(--choy-layout-content-padding);
+}
+
+.choy-inset-pad {
+  padding: var(--choy-layout-content-padding);
+}
+
+/*
  * Shared field / auth inputs (align with vendor/ui Input).
  * Unlayered only for properties FullCSS preflight also sets unlayered
  * (border/padding/radius/background); layout/typography stay in @layer

@@ -25,6 +25,9 @@ describe('ChoyAppShell', () => {
     expect(mounted.q('[data-testid=choy-shell]')?.getAttribute('data-shell-mode')).toBe('app');
     expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-header]')?.className || '').toContain('sticky');
+    expect(mounted.q('[data-testid=choy-shell-header]')?.className || '').toContain(
+      'choy-inset-pad-x',
+    );
     expect(mounted.q('.choy-shell')?.className || '').toContain('overflow-hidden');
     expect(mounted.q('[data-testid=choy-shell-scroll]')?.className || '').toContain('overflow-y-auto');
     expect(mounted.q('[data-testid=choy-shell-header-sep]')).not.toBeNull();
@@ -42,7 +45,9 @@ describe('ChoyAppShell', () => {
     expect(mounted.q('[data-testid=choy-shell-aside]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-footer]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-footer]')?.className || '').not.toContain('border-t');
-    expect(mounted.q('[data-testid=choy-shell-footer]')?.className || '').toContain('px-4');
+    expect(mounted.q('[data-testid=choy-shell-footer]')?.className || '').toContain(
+      'choy-inset-pad-x',
+    );
     expect(
       (mounted.q('[data-testid=choy-shell-footer]') as HTMLElement | null)?.style?.minHeight || '',
     ).toContain('--choy-layout-footer-height');
