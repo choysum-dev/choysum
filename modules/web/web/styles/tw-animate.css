@@ -58,6 +58,24 @@
   }
 }
 
+@keyframes collapsible-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--reka-collapsible-content-height, auto);
+  }
+}
+
+@keyframes collapsible-up {
+  from {
+    height: var(--reka-collapsible-content-height, auto);
+  }
+  to {
+    height: 0;
+  }
+}
+
 /*
  * Overlay surfaces (dropdown / popover / select / …).
  * Match sidebar-07: fade + zoom-95 + 0.5rem side slide, origin on the trigger edge.
@@ -68,6 +86,7 @@
 [data-slot='dropdown-menu-sub-content'],
 [data-slot='popover-content'],
 [data-slot='select-content'],
+[data-slot='combobox-content'],
 [data-slot='tooltip-content'],
 [data-slot='context-menu-content'],
 [data-slot='context-menu-sub-content'],
@@ -81,8 +100,14 @@
       var(
         --reka-select-content-transform-origin,
         var(
-          --reka-tooltip-content-transform-origin,
-          var(--reka-context-menu-content-transform-origin, var(--reka-popper-transform-origin, 0 0))
+          --reka-combobox-content-transform-origin,
+          var(
+            --reka-tooltip-content-transform-origin,
+            var(
+              --reka-hover-card-content-transform-origin,
+              var(--reka-context-menu-content-transform-origin, var(--reka-popper-transform-origin, 0 0))
+            )
+          )
         )
       )
     )
@@ -93,6 +118,7 @@
 [data-slot='dropdown-menu-sub-content'][data-state='open'],
 [data-slot='popover-content'][data-state='open'],
 [data-slot='select-content'][data-state='open'],
+[data-slot='combobox-content'][data-state='open'],
 [data-slot='tooltip-content'][data-state='delayed-open'],
 [data-slot='tooltip-content'][data-state='instant-open'],
 [data-slot='context-menu-content'][data-state='open'],
@@ -109,6 +135,7 @@
 [data-slot='dropdown-menu-sub-content'][data-state='closed'],
 [data-slot='popover-content'][data-state='closed'],
 [data-slot='select-content'][data-state='closed'],
+[data-slot='combobox-content'][data-state='closed'],
 [data-slot='tooltip-content'][data-state='closed'],
 [data-slot='context-menu-content'][data-state='closed'],
 [data-slot='context-menu-sub-content'][data-state='closed'],
@@ -120,11 +147,60 @@
   animation: out 150ms ease both;
 }
 
+/* Centered modals: fade only — zoom fights -translate-x/y centering. */
+[data-slot='dialog-overlay'][data-state='open'],
+[data-slot='alert-dialog-overlay'][data-state='open'],
+[data-slot='sheet-overlay'][data-state='open'] {
+  --tw-enter-opacity: 0;
+  --tw-enter-scale: 1;
+  animation: in 200ms ease both;
+}
+
+[data-slot='dialog-overlay'][data-state='closed'],
+[data-slot='alert-dialog-overlay'][data-state='closed'],
+[data-slot='sheet-overlay'][data-state='closed'] {
+  --tw-exit-opacity: 0;
+  --tw-exit-scale: 1;
+  animation: out 200ms ease both;
+}
+
+[data-slot='dialog-content'][data-state='open'],
+[data-slot='alert-dialog-content'][data-state='open'] {
+  --tw-enter-opacity: 0;
+  --tw-enter-scale: 1;
+  animation: in 200ms ease both;
+}
+
+[data-slot='dialog-content'][data-state='closed'],
+[data-slot='alert-dialog-content'][data-state='closed'] {
+  --tw-exit-opacity: 0;
+  --tw-exit-scale: 1;
+  animation: out 200ms ease both;
+}
+
+/* Sheet: edge slide with shadcn open 500ms / close 300ms (no zoom). */
+[data-slot='sheet-content'][data-state='open'] {
+  --tw-enter-opacity: 1;
+  --tw-enter-scale: 1;
+  animation: in 500ms ease both;
+}
+
+[data-slot='sheet-content'][data-state='closed'] {
+  --tw-exit-opacity: 1;
+  --tw-exit-scale: 1;
+  animation: out 300ms ease both;
+}
+
 [data-slot='dropdown-menu-content'][data-side='bottom'],
 [data-slot='dropdown-menu-sub-content'][data-side='bottom'],
 [data-slot='popover-content'][data-side='bottom'],
 [data-slot='select-content'][data-side='bottom'],
+[data-slot='combobox-content'][data-side='bottom'],
 [data-slot='tooltip-content'][data-side='bottom'],
+[data-slot='context-menu-content'][data-side='bottom'],
+[data-slot='context-menu-sub-content'][data-side='bottom'],
+[data-slot='menubar-content'][data-side='bottom'],
+[data-slot='menubar-sub-content'][data-side='bottom'],
 [data-slot='hover-card-content'][data-side='bottom'] {
   --tw-enter-translate-y: calc(0.25rem * 2 * -1);
   --tw-exit-translate-y: calc(0.25rem * 2 * -1);
@@ -134,7 +210,12 @@
 [data-slot='dropdown-menu-sub-content'][data-side='top'],
 [data-slot='popover-content'][data-side='top'],
 [data-slot='select-content'][data-side='top'],
+[data-slot='combobox-content'][data-side='top'],
 [data-slot='tooltip-content'][data-side='top'],
+[data-slot='context-menu-content'][data-side='top'],
+[data-slot='context-menu-sub-content'][data-side='top'],
+[data-slot='menubar-content'][data-side='top'],
+[data-slot='menubar-sub-content'][data-side='top'],
 [data-slot='hover-card-content'][data-side='top'] {
   --tw-enter-translate-y: calc(0.25rem * 2);
   --tw-exit-translate-y: calc(0.25rem * 2);
@@ -144,7 +225,12 @@
 [data-slot='dropdown-menu-sub-content'][data-side='right'],
 [data-slot='popover-content'][data-side='right'],
 [data-slot='select-content'][data-side='right'],
+[data-slot='combobox-content'][data-side='right'],
 [data-slot='tooltip-content'][data-side='right'],
+[data-slot='context-menu-content'][data-side='right'],
+[data-slot='context-menu-sub-content'][data-side='right'],
+[data-slot='menubar-content'][data-side='right'],
+[data-slot='menubar-sub-content'][data-side='right'],
 [data-slot='hover-card-content'][data-side='right'] {
   --tw-enter-translate-x: calc(0.25rem * 2 * -1);
   --tw-exit-translate-x: calc(0.25rem * 2 * -1);
@@ -154,7 +240,12 @@
 [data-slot='dropdown-menu-sub-content'][data-side='left'],
 [data-slot='popover-content'][data-side='left'],
 [data-slot='select-content'][data-side='left'],
+[data-slot='combobox-content'][data-side='left'],
 [data-slot='tooltip-content'][data-side='left'],
+[data-slot='context-menu-content'][data-side='left'],
+[data-slot='context-menu-sub-content'][data-side='left'],
+[data-slot='menubar-content'][data-side='left'],
+[data-slot='menubar-sub-content'][data-side='left'],
 [data-slot='hover-card-content'][data-side='left'] {
   --tw-enter-translate-x: calc(0.25rem * 2);
   --tw-exit-translate-x: calc(0.25rem * 2);
@@ -182,18 +273,84 @@
   animation-name: out;
 }
 
-.data-\[state=open\]\:animate-accordion-down[data-state='open'],
-.data-\[state=closed\]\:animate-accordion-up[data-state='closed'] {
+.data-\[state=open\]\:animate-accordion-down[data-state='open'] {
+  animation-name: accordion-down;
   animation-duration: 200ms;
   animation-timing-function: ease-out;
   animation-fill-mode: both;
+}
+
+.data-\[state=closed\]\:animate-accordion-up[data-state='closed'] {
+  animation-name: accordion-up;
+  animation-duration: 200ms;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+.data-\[state=open\]\:animate-collapsible-down[data-state='open'] {
+  animation-name: collapsible-down;
+  animation-duration: 200ms;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+.data-\[state=closed\]\:animate-collapsible-up[data-state='closed'] {
+  animation-name: collapsible-up;
+  animation-duration: 200ms;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+/* Navigation menu viewport / indicator. */
+[data-slot='navigation-menu-viewport'],
+[data-slot='navigation-menu-content'] {
+  transform-origin: top center;
+}
+
+[data-slot='navigation-menu-viewport'][data-state='open'],
+[data-slot='navigation-menu-content'][data-state='open'] {
+  --tw-enter-opacity: 0;
+  --tw-enter-scale: 0.95;
+  animation: in 200ms ease both;
+}
+
+[data-slot='navigation-menu-viewport'][data-state='closed'],
+[data-slot='navigation-menu-content'][data-state='closed'] {
+  --tw-exit-opacity: 0;
+  --tw-exit-scale: 0.95;
+  animation: out 200ms ease both;
+}
+
+[data-slot='navigation-menu-indicator'][data-state='visible'] {
+  --tw-enter-opacity: 0;
+  --tw-enter-scale: 1;
+  animation: in 150ms ease both;
+}
+
+[data-slot='navigation-menu-indicator'][data-state='hidden'] {
+  --tw-exit-opacity: 0;
+  --tw-exit-scale: 1;
+  animation: out 150ms ease both;
+}
+
+.origin-top-center {
+  transform-origin: top center;
+}
+
+/* Sidebar group label: engine omits margin/opacity from transition-[margin,opacity]. */
+[data-slot='sidebar-group-label'] {
+  transition-property: margin, opacity;
+  transition-duration: 200ms;
+  transition-timing-function: linear;
 }
 
 /* Missing origin-(--reka-*) utilities from tailwind-go. */
 .origin-\(--reka-dropdown-menu-content-transform-origin\),
 .origin-\(--reka-popover-content-transform-origin\),
 .origin-\(--reka-select-content-transform-origin\),
+.origin-\(--reka-combobox-content-transform-origin\),
 .origin-\(--reka-tooltip-content-transform-origin\),
+.origin-\(--reka-hover-card-content-transform-origin\),
 .origin-\(--reka-context-menu-content-transform-origin\),
 .origin-\(--reka-menubar-content-transform-origin\) {
   transform-origin: var(
@@ -203,8 +360,14 @@
       var(
         --reka-select-content-transform-origin,
         var(
-          --reka-tooltip-content-transform-origin,
-          var(--reka-context-menu-content-transform-origin, var(--reka-popper-transform-origin, 0 0))
+          --reka-combobox-content-transform-origin,
+          var(
+            --reka-tooltip-content-transform-origin,
+            var(
+              --reka-hover-card-content-transform-origin,
+              var(--reka-context-menu-content-transform-origin, var(--reka-popper-transform-origin, 0 0))
+            )
+          )
         )
       )
     )
@@ -369,6 +532,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .animate-in,
+  .animate-out,
   .data-\[state=open\]\:animate-in[data-state='open'],
   .data-\[state=closed\]\:animate-out[data-state='closed'],
   .data-\[state=visible\]\:animate-in[data-state='visible'],
@@ -376,7 +541,21 @@
   .data-\[motion\^=from-\]\:animate-in[data-motion^='from-'],
   .data-\[motion\^=to-\]\:animate-out[data-motion^='to-'],
   .data-\[state=open\]\:animate-accordion-down[data-state='open'],
-  .data-\[state=closed\]\:animate-accordion-up[data-state='closed'] {
+  .data-\[state=closed\]\:animate-accordion-up[data-state='closed'],
+  .data-\[state=open\]\:animate-collapsible-down[data-state='open'],
+  .data-\[state=closed\]\:animate-collapsible-up[data-state='closed'],
+  [data-slot='dialog-content'][data-state='open'],
+  [data-slot='dialog-content'][data-state='closed'],
+  [data-slot='dialog-overlay'][data-state='open'],
+  [data-slot='dialog-overlay'][data-state='closed'],
+  [data-slot='alert-dialog-content'][data-state='open'],
+  [data-slot='alert-dialog-content'][data-state='closed'],
+  [data-slot='alert-dialog-overlay'][data-state='open'],
+  [data-slot='alert-dialog-overlay'][data-state='closed'],
+  [data-slot='sheet-content'][data-state='open'],
+  [data-slot='sheet-content'][data-state='closed'],
+  [data-slot='sheet-overlay'][data-state='open'],
+  [data-slot='sheet-overlay'][data-state='closed'] {
     animation-duration: 0ms;
   }
 }

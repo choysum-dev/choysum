@@ -13,8 +13,7 @@ import { useMenuStore } from '../../stores/menuStore'
 import { useLayoutStore } from '../../stores/layoutStore'
 import { firstGrapheme } from './appRailGlyph'
 import ChoyAppRailFlyout from './ChoyAppRailFlyout.vue'
-import { Tooltip, TooltipTrigger } from '../vendor/ui/tooltip'
-import { TooltipContent, TooltipPortal } from 'reka-ui'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../vendor/ui/tooltip'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -318,17 +317,15 @@ watch(useFlyout, (enabled) => {
                     <span class="sr-only">{{ labelOf(app) }}</span>
                   </SidebarMenuButton>
                 </TooltipTrigger>
-                <TooltipPortal v-if="tooltipOpen[appKey(app)] && !sidebarIsMobile">
-                  <TooltipContent
-                    data-testid="choy-shell-app-rail-tooltip"
-                    side="right"
-                    align="center"
-                    :side-offset="8"
-                    class="z-50 overflow-hidden rounded-md border border-border bg-background px-3 py-1.5 text-xs text-foreground shadow-md"
-                  >
-                    {{ labelOf(app) }}
-                  </TooltipContent>
-                </TooltipPortal>
+                <TooltipContent
+                  v-if="tooltipOpen[appKey(app)] && !sidebarIsMobile"
+                  data-testid="choy-shell-app-rail-tooltip"
+                  side="right"
+                  align="center"
+                  :side-offset="8"
+                >
+                  {{ labelOf(app) }}
+                </TooltipContent>
               </Tooltip>
             </SidebarMenuItem>
           </SidebarMenu>

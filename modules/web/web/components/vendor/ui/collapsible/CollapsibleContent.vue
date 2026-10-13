@@ -18,7 +18,12 @@ const props = defineProps<{
   <CollapsibleContent
     data-slot="collapsible-content"
     :force-mount="forceMount"
-    :class="cn(props.class)"
+    :class="
+      cn(
+        'data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden',
+        props.class,
+      )
+    "
   >
     <slot />
   </CollapsibleContent>
