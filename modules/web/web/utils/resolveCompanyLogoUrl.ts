@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import productLogoUrl from '../assets/logo-32.png';
+import productLogoUrl from '../assets/logo.svg';
 
 function asRecord(raw: unknown): Record<string, unknown> | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
@@ -21,7 +21,7 @@ function resolveDescriptor(raw: Record<string, unknown>): Record<string, unknown
 /**
  * Resolve a display URL for `base.Company.Logo`.
  * Prefers attachment preview/download URLs from Search/Browse enrichment;
- * falls back to the product mark (`logo-32.png`) when empty.
+ * falls back to the product mark (`logo.svg`) when empty.
  */
 export function resolveCompanyLogoUrl(logo: unknown): string {
   if (logo == null || logo === '') return productLogoUrl;

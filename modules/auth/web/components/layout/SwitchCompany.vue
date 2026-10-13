@@ -4,35 +4,32 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <!-- Popover portals outside the sidebar so the panel is not clipped by overflow. -->
-  <ChoyPopover v-model:open="visible">
-    <template v-if="variant === 'sidebar'">
-      <SidebarMenu class="w-full min-w-0">
-        <SidebarMenuItem>
-          <!--
-            PopoverTrigger must as-child onto the real button. Do not wrap with
-            TooltipTrigger or pass SidebarMenuButton tooltip — both put TooltipRoot
-            in the as-child chain and break popover anchoring / click.
-            Collapsed identity tip uses the native title attribute instead.
-          -->
+  <!--
+    Sidebar: Popover on a bare SidebarMenuButton (real DOM anchor). Collapsed tip
+    hosts outside the as-child chain so TooltipRoot cannot steal the panel position.
+    Toolbar: Popover (no tip needed).
+  -->
+  <ChoySidebarMenu v-if="variant === 'sidebar'" class="w-full min-w-0">
+    <ChoySidebarMenuItem>
+      <ChoyCollapsedIdentityTipHost :label="companyIdentityTooltip">
+        <ChoyPopover v-model:open="visible">
           <ChoyPopoverTrigger as-child>
-            <SidebarMenuButton
+            <ChoySidebarMenuButton
               size="lg"
               type="button"
               class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-              :title="companyCollapsedTitle"
               :aria-expanded="visible"
               :aria-label="_t('Switch company')"
               data-testid="company-switch-trigger"
             >
               <span
-                class="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg"
+                class="bg-background text-foreground ring-sidebar-border/60 flex aspect-square size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg ring-1"
                 data-testid="company-switch-logo-wrap"
               >
                 <img
                   :src="companyLogoUrl"
                   alt=""
-                  class="size-8 object-cover"
+                  class="size-8 object-contain p-0.5"
                   width="32"
                   height="32"
                   data-testid="company-switch-logo"
@@ -50,17 +47,78 @@ SPDX-License-Identifier: Apache-2.0
                   {{ currentCompanyMeta }}
                 </span>
               </span>
-              <ChevronsUpDown
-                class="ms-auto size-4 shrink-0 opacity-50"
+              <span
+                class="ms-auto inline-flex shrink-0 opacity-50"
                 aria-hidden="true"
                 data-testid="company-switch-chevrons"
-              />
-            </SidebarMenuButton>
+              >
+                <ChevronsUpDown class="size-4" />
+              </span>
+            </ChoySidebarMenuButton>
           </ChoyPopoverTrigger>
-        </SidebarMenuItem>
-      </SidebarMenu>
-    </template>
-    <ChoyPopoverTrigger v-else as-child>
+          <ChoyPopoverContent
+            side="right"
+            align="start"
+            :side-offset="4"
+            class="w-72 min-w-56 rounded-lg p-3"
+            data-testid="company-switch-panel"
+          >
+            <div class="choy-switch-company__panel flex flex-col gap-3">
+              <ChoyField class="gap-1">
+                <ChoyFieldLabel class="flex flex-col gap-1 text-sm">
+                  {{ _t('Current Company') }}
+                  <select
+                    v-model="draftActiveCompanyId"
+                    class="choy-switch-company__select h-control rounded-md border border-border bg-background px-2 text-sm font-normal"
+                    data-testid="company-active-select"
+                  >
+                    <option v-for="c in companies" :key="c.Id" :value="c.Id">
+                      {{ c.DisplayName || c.Id }}
+                    </option>
+                  </select>
+                </ChoyFieldLabel>
+              </ChoyField>
+
+              <ChoyField class="gap-1">
+                <ChoyFieldLabel class="text-sm font-medium">{{ _t('Available Companies') }}</ChoyFieldLabel>
+                <div
+                  class="choy-switch-company__select flex max-h-56 min-h-[5.5rem] flex-col gap-1 overflow-y-auto rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+                  data-testid="company-enabled-select"
+                >
+                  <label v-for="c in companies" :key="'enabled-' + c.Id" class="flex items-center gap-2">
+                    <ChoyCheckbox
+                      class="size-control shrink-0"
+                      :model-value="draftEnabledCompanyIds.includes(c.Id)"
+                      :disabled="isActiveCompanyEnabledLocked(c.Id, draftActiveCompanyId)"
+                      @update:model-value="on => setCompanyEnabled(c.Id, on)"
+                    />
+                    <span>{{ c.DisplayName || c.Id }}</span>
+                  </label>
+                </div>
+              </ChoyField>
+
+              <div
+                v-if="applyDisabledReason"
+                class="choy-switch-company__hint text-xs text-foreground/60"
+                data-testid="company-switch-hint"
+              >
+                {{ applyDisabledReason }}
+              </div>
+
+              <div class="choy-switch-company__actions flex justify-end">
+                <ChoyButton size="sm" :disabled="!canApply" data-testid="company-switch-apply" @click.stop="apply">
+                  {{ _t('Apply') }}
+                </ChoyButton>
+              </div>
+            </div>
+          </ChoyPopoverContent>
+        </ChoyPopover>
+      </ChoyCollapsedIdentityTipHost>
+    </ChoySidebarMenuItem>
+  </ChoySidebarMenu>
+
+  <ChoyPopover v-else v-model:open="visible">
+    <ChoyPopoverTrigger as-child>
       <ChoyButton
         variant="ghost"
         size="sm"
@@ -76,8 +134,8 @@ SPDX-License-Identifier: Apache-2.0
     </ChoyPopoverTrigger>
     <ChoyPopoverContent
       class="w-72 min-w-56 rounded-lg p-3"
-      :align="variant === 'sidebar' ? 'start' : 'end'"
-      :side="variant === 'sidebar' ? 'right' : 'bottom'"
+      align="end"
+      side="bottom"
       :side-offset="4"
       data-testid="company-switch-panel"
     >
@@ -133,19 +191,17 @@ import { ChevronsUpDown } from 'lucide-vue-next';
 import {
   ChoyButton,
   ChoyCheckbox,
+  ChoyCollapsedIdentityTipHost,
   ChoyField,
   ChoyFieldLabel,
   ChoyPopover,
   ChoyPopoverContent,
   ChoyPopoverTrigger,
+  ChoySidebarMenu,
+  ChoySidebarMenuButton,
+  ChoySidebarMenuItem,
   resolveCompanyLogoUrl,
 } from '@/web';
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from '@/web/web/components/vendor/ui/sidebar/index';
-import { useSidebar } from '@/web/web/components/vendor/ui/sidebar/utils';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import type Company from '@/base/service/models/company';
@@ -188,14 +244,6 @@ function getGlobalCompanyStore(): any {
 const visible = ref(false);
 /** Guards async open-sync so a late refresh cannot reset an in-progress selection. */
 let panelOpenGeneration = 0;
-
-/** Sidebar context is absent for the toolbar variant (outside SidebarProvider). */
-let sidebarCtx: ReturnType<typeof useSidebar> | null = null;
-try {
-  sidebarCtx = useSidebar();
-} catch {
-  sidebarCtx = null;
-}
 
 const meta = computed(() => ((authStore.identity as any)?.metadata ?? {}) as any);
 const currentActiveCompanyId = computed(() => String(meta.value?.activeCompanyId ?? '').trim());
@@ -422,19 +470,10 @@ const currentCompanyLabel = computed(() => {
   return labelsReady.value ? id : _t('Company');
 });
 
-/**
- * Native title tip when the rail is collapsed. Avoids Tooltip/Popover as-child nesting.
- */
-const companyCollapsedTitle = computed(() => {
-  if (
-    !sidebarCtx ||
-    sidebarCtx.isMobile.value ||
-    sidebarCtx.state.value !== 'collapsed'
-  ) {
-    return undefined;
-  }
-  return collapsedIdentityTooltip(visible.value, currentCompanyLabel.value);
-});
+/** Collapsed tip label; omitted while the switcher panel is open. */
+const companyIdentityTooltip = computed(() =>
+  collapsedIdentityTooltip(visible.value, currentCompanyLabel.value),
+);
 
 /** Muted second line under the company name (Code, else a workspace fallback). */
 const currentCompanyMeta = computed(() => {

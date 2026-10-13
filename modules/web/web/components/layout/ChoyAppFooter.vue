@@ -22,7 +22,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import logoUrl from '../../assets/logo-32.png'
+import logoUrl from '../../assets/logo.svg'
 import { shellPoweredByLine } from './choyWebShellChrome'
 
 defineOptions({ name: 'ChoyAppFooter' })

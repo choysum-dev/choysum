@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Label for SidebarMenuButton tooltip on collapsed company/user triggers.
+ * Label for collapsed company/user tip hosts.
  * Returns undefined while the popover/dropdown is open so tip and panel do not stack.
- * Kit TooltipContent already hides when the sidebar is expanded or mobile.
+ * Tip hosts hide the content when the sidebar is expanded or mobile.
  */
 export function collapsedIdentityTooltip(
   menuOpen: boolean,

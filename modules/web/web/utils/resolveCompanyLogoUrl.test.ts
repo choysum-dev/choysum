@@ -3,7 +3,7 @@
 
 import { productLogoUrl, resolveCompanyLogoUrl } from './resolveCompanyLogoUrl';
 
-test('resolveCompanyLogoUrl: empty falls back to product logo-32.png', () => {
+test('resolveCompanyLogoUrl: empty falls back to product logo.svg', () => {
   expect(resolveCompanyLogoUrl(undefined)).toBe(productLogoUrl);
   expect(resolveCompanyLogoUrl(null)).toBe(productLogoUrl);
   expect(resolveCompanyLogoUrl('')).toBe(productLogoUrl);
