@@ -243,8 +243,8 @@ export default defineComponent({
       const label = userMenuLabel.value;
       const parts = label.split(/\s+/).filter(Boolean);
       if (parts.length >= 2 && /^[\x00-\x7F]+$/.test(parts[0] || '')) {
-        const a = parts[0]?.[0] || '';
-        const b = parts[1]?.[0] || '';
+        const a = firstGrapheme(parts[0] || '');
+        const b = firstGrapheme(parts[1] || '');
         return `${a}${b}`.toUpperCase() || firstGrapheme(label);
       }
       return firstGrapheme(label);

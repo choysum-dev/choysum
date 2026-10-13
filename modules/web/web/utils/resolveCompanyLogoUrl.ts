@@ -4,7 +4,7 @@
 import productLogoUrl from '../assets/logo.svg';
 
 /** Allow-listed logo src; `\` is rejected because the URL parser normalizes it to `/`. */
-const SAFE_LOGO_SRC_RE = /^(https?:|data:|blob:|\/(?!\/))/i;
+const SAFE_LOGO_SRC_RE = /^(https?:|data:image\/|blob:|\/(?!\/))/i;
 
 function asRecord(raw: unknown): Record<string, unknown> | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;

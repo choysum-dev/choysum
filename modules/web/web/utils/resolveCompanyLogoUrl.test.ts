@@ -38,6 +38,7 @@ test('resolveCompanyLogoUrl: accepts absolute and root-relative strings', () => 
 test('resolveCompanyLogoUrl: rejects opaque strings and empty attachment envelopes', () => {
   expect(resolveCompanyLogoUrl('relative/path.png')).toBe(productLogoUrl);
   expect(resolveCompanyLogoUrl('javascript:alert(1)')).toBe(productLogoUrl);
+  expect(resolveCompanyLogoUrl('data:text/html,<svg></svg>')).toBe(productLogoUrl);
   expect(resolveCompanyLogoUrl('//evil.example/x.png')).toBe(productLogoUrl);
   expect(resolveCompanyLogoUrl('/\\evil.example/x.png')).toBe(productLogoUrl);
   expect(resolveCompanyLogoUrl('/static/\tx.png')).toBe(productLogoUrl);

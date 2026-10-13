@@ -181,9 +181,15 @@ function bumpFlyoutHover(app: MenuItem, delta: number) {
   hoverIntent[key] = next
   clearHoverTimers(key)
   if (next > 0) {
+    // Any other app's pending hover is stale once the pointer moves here;
+    // clear it so a late open timer cannot resurrect the wrong flyout.
+    for (const other of Object.keys(hoverIntent)) {
+      if (other !== key) {
+        hoverIntent[other] = 0
+        clearHoverTimers(other)
+      }
+    }
     if (openFlyoutKey.value && openFlyoutKey.value !== key) {
-      const prev = openFlyoutKey.value
-      hoverIntent[prev] = 0
       openFlyoutKey.value = null
     }
     if (openFlyoutKey.value === key) return
