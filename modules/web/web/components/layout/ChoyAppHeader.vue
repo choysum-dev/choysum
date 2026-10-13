@@ -9,34 +9,44 @@ SPDX-License-Identifier: Apache-2.0
     :style="headerStyle"
     data-testid="choy-shell-header"
   >
-    <ChoyButton
+    <!--
+      Trigger + sep + breadcrumb share one items-center row.
+      size=icon is size-control (32px) with a size-4 (16px) glyph, so the
+      hit-box has 8px inset on each side. -ms-2 pulls the button back so the
+      glyph’s inline-start edge lands on the same 16px gutter as ChoyPage
+      (shadcn sidebar blocks use the same optical -m* on SidebarTrigger).
+    -->
+    <div
       v-if="showSidebarChrome"
-      variant="ghost"
-      size="icon"
-      type="button"
-      class="size-7 shrink-0"
-      :style="{ width: '1.75rem', height: '1.75rem' }"
-      data-testid="choy-shell-menu-trigger"
-      data-sidebar="trigger"
-      data-slot="sidebar-trigger"
-      :aria-label="menuTriggerLabel"
-      @click="onMenuToggle"
+      class="flex min-w-0 flex-1 items-center gap-2"
+      data-testid="choy-shell-header-start"
     >
-      <PanelLeft class="size-4" aria-hidden="true" />
-    </ChoyButton>
-    <Separator
-      v-if="showSidebarChrome"
-      orientation="vertical"
-      class="mx-2 !h-4 self-center"
-      data-testid="choy-shell-header-sep-trigger"
-    />
-    <ChoyShellBreadcrumb v-if="showSidebarChrome" />
+      <ChoyButton
+        variant="ghost"
+        size="icon"
+        type="button"
+        class="-ms-2 shrink-0 leading-none"
+        data-testid="choy-shell-menu-trigger"
+        data-sidebar="trigger"
+        data-slot="sidebar-trigger"
+        :aria-label="menuTriggerLabel"
+        @click="onMenuToggle"
+      >
+        <PanelLeft class="size-4" aria-hidden="true" />
+      </ChoyButton>
+      <Separator
+        orientation="vertical"
+        class="mx-1 !h-4 w-px shrink-0"
+        data-testid="choy-shell-header-sep-trigger"
+      />
+      <ChoyShellBreadcrumb />
+    </div>
     <div class="ms-auto flex items-center gap-2">
       <ChoyCommandPalette v-if="showSidebarChrome" />
       <Separator
         v-if="$slots['header-actions']"
         orientation="vertical"
-        class="mx-1 !h-4"
+        class="mx-1 !h-4 w-px shrink-0"
         data-testid="choy-shell-header-sep"
       />
       <slot name="header-actions" />

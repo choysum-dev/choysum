@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
   <ChoyBreadcrumb
     v-if="items.length"
     :items="items"
-    class="min-w-0 flex-1"
+    class="flex min-h-control min-w-0 flex-1 items-center [&_[data-slot=breadcrumb-list]]:leading-none"
     data-testid="choy-shell-breadcrumb"
   />
 </template>
