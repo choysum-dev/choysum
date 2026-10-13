@@ -6,7 +6,54 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <!-- Popover portals outside the sidebar so the panel is not clipped by overflow. -->
   <ChoyPopover v-model:open="visible">
-    <ChoyPopoverTrigger as-child>
+    <template v-if="variant === 'sidebar'">
+      <SidebarMenu class="w-full min-w-0">
+        <SidebarMenuItem>
+          <ChoyPopoverTrigger as-child>
+            <SidebarMenuButton
+              size="lg"
+              type="button"
+              class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              :aria-expanded="visible"
+              :aria-label="_t('Switch company')"
+              data-testid="company-switch-trigger"
+            >
+              <span
+                class="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg"
+                data-testid="company-switch-logo-wrap"
+              >
+                <img
+                  :src="companyLogoUrl"
+                  alt=""
+                  class="size-8 object-cover"
+                  width="32"
+                  height="32"
+                  data-testid="company-switch-logo"
+                />
+              </span>
+              <span
+                class="grid min-w-0 flex-1 text-start text-sm leading-tight"
+                data-testid="company-switch-label"
+              >
+                <span class="truncate font-medium">{{ currentCompanyLabel }}</span>
+                <span
+                  class="text-muted-foreground truncate text-xs"
+                  data-testid="company-switch-meta"
+                >
+                  {{ currentCompanyMeta }}
+                </span>
+              </span>
+              <ChevronsUpDown
+                class="ms-auto size-4 shrink-0 opacity-50"
+                aria-hidden="true"
+                data-testid="company-switch-chevrons"
+              />
+            </SidebarMenuButton>
+          </ChoyPopoverTrigger>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    </template>
+    <ChoyPopoverTrigger v-else as-child>
       <ChoyButton
         variant="ghost"
         size="sm"
@@ -15,28 +62,13 @@ SPDX-License-Identifier: Apache-2.0
         :aria-label="_t('Switch company')"
         data-testid="company-switch-trigger"
       >
-        <img
-          v-if="variant === 'sidebar'"
-          :src="companyLogoUrl"
-          alt=""
-          class="size-6 shrink-0 rounded-md"
-          width="24"
-          height="24"
-          data-testid="company-switch-logo"
-        />
         <span class="truncate text-sm font-medium" data-testid="company-switch-label">
           {{ currentCompanyLabel }}
         </span>
-        <ChevronsUpDown
-          v-if="variant === 'sidebar'"
-          class="ms-auto size-4 shrink-0 opacity-50"
-          aria-hidden="true"
-          data-testid="company-switch-chevrons"
-        />
       </ChoyButton>
     </ChoyPopoverTrigger>
     <ChoyPopoverContent
-      class="w-72 p-3"
+      class="w-72 min-w-56 rounded-lg p-3"
       :align="variant === 'sidebar' ? 'start' : 'end'"
       :side="variant === 'sidebar' ? 'right' : 'bottom'"
       :side-offset="4"
@@ -101,6 +133,11 @@ import {
   ChoyPopoverTrigger,
   resolveCompanyLogoUrl,
 } from '@/web';
+import {
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from '@/web/web/components/vendor/ui/sidebar/index';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import type Company from '@/base/service/models/company';
@@ -123,14 +160,9 @@ const props = withDefaults(
 
 const { _t } = createTranslate('auth', { scope: 'web/components/layout/SwitchCompany' });
 
-type CompanyRow = { Id: string; DisplayName?: string; Logo?: unknown };
+type CompanyRow = { Id: string; DisplayName?: string; Code?: string; Logo?: unknown };
 
-const triggerClass = computed(() =>
-  props.variant === 'sidebar'
-    ? // size-6 mark + rounded-md; shell CSS keeps expand/collapse x-stable.
-      'h-7 w-full justify-start gap-2 rounded-md px-1 hover:bg-sidebar-accent data-[state=open]:bg-sidebar-accent'
-    : 'choy-header__action-item h-control max-w-[12rem] truncate px-2.5',
-);
+const triggerClass = 'choy-header__action-item h-control max-w-[12rem] truncate px-2.5';
 
 const authStore = useAuthStore();
 let globalCompanyStore: any | null = null;
@@ -278,7 +310,7 @@ async function ensureCompanies(): Promise<void> {
   try {
     const companyStore = getGlobalCompanyStore();
     const rows = (await companyStore.Search(['Id', 'in', ids] as any, {
-      fields: ['Id', 'DisplayName', 'Logo'],
+      fields: ['Id', 'DisplayName', 'Code', 'Logo'],
       limit: 1000,
     } as any)) as any[];
     if (fetchedSig.value !== sig) return;
@@ -287,6 +319,7 @@ async function ensureCompanies(): Promise<void> {
       .map(r => ({
         Id: String((r as any)?.Id ?? '').trim(),
         DisplayName: String((r as any)?.DisplayName ?? '').trim(),
+        Code: String((r as any)?.Code ?? '').trim(),
         Logo: (r as any)?.Logo,
       }))
       .filter(r => !!r.Id);
@@ -370,6 +403,15 @@ const currentCompanyLabel = computed(() => {
   const name = companyNameById.value.get(id);
   if (name) return name;
   return labelsReady.value ? id : _t('Company');
+});
+
+/** Muted second line under the company name (Code, else a workspace fallback). */
+const currentCompanyMeta = computed(() => {
+  const id = currentActiveCompanyId.value;
+  const row = companies.value.find(c => c.Id === id);
+  const code = String(row?.Code || '').trim();
+  if (code) return code;
+  return _t('Workspace');
 });
 
 const companyLogoUrl = computed(() => {

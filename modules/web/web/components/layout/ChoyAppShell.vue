@@ -15,10 +15,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoySidebarBridge />
         <Sidebar collapsible="icon" side="left">
           <!-- Height/padding locked in product CSS so kit p-2 cannot shrink the band. -->
-          <SidebarHeader
-            class="choy-shell__sidebar-header"
-            :style="{ height: 'var(--choy-layout-header-height)' }"
-          >
+          <SidebarHeader class="choy-shell__sidebar-header">
             <div
               data-anchor="choy.shell.sidebar-header"
               class="flex w-full min-w-0 items-center"
@@ -218,11 +215,26 @@ html.dark .choy-shell[data-shell-mode='app'],
   top: 0 !important;
   bottom: 0 !important;
   height: auto !important;
-  /* Match sidebar-16: outer edge against the inset canvas. */
-  border-right: 1px solid var(--color-sidebar-border, var(--choy-color-sidebar-border)) !important;
+  box-sizing: border-box !important;
+  /* Real border steals 1px from the icon rail; outer/inset shadows get covered. */
+  border-right: 0 !important;
+  box-shadow: none !important;
   transition-property: left, right, width;
   transition-duration: 200ms;
   transition-timing-function: linear;
+}
+
+/* Full-height hairline above chrome children; does not consume layout width. */
+.choy-shell[data-shell-mode='app'] [data-slot='sidebar'] > .fixed::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  width: 1px;
+  pointer-events: none;
+  background-color: var(--color-sidebar-border, var(--choy-color-sidebar-border));
 }
 
 /*
@@ -242,15 +254,21 @@ html.dark .choy-shell[data-shell-mode='app'],
 }
 
 /*
- * Collapsed: hide labels only. Keep the same justify-start + padding as expanded
- * so the company / user glyphs do not jump horizontally when the L2 pane closes.
+ * Collapsed: hide labels / meta / chevrons only. Mark size + left inset stay
+ * identical to expanded so width animation does not jump the glyphs.
  */
 .choy-shell[data-shell-mode='app']
   [data-slot='sidebar'][data-collapsible='icon']
   [data-testid='company-switch-label'],
 .choy-shell[data-shell-mode='app']
   [data-slot='sidebar'][data-collapsible='icon']
+  [data-testid='company-switch-meta'],
+.choy-shell[data-shell-mode='app']
+  [data-slot='sidebar'][data-collapsible='icon']
   [data-testid='auth-user-menu-label'],
+.choy-shell[data-shell-mode='app']
+  [data-slot='sidebar'][data-collapsible='icon']
+  [data-testid='auth-user-menu-meta'],
 .choy-shell[data-shell-mode='app']
   [data-slot='sidebar'][data-collapsible='icon']
   [data-testid='company-switch-chevrons'],
@@ -277,6 +295,11 @@ html.dark .choy-shell[data-shell-mode='app'],
   background-color: var(--color-background, var(--choy-color-background)) !important;
 }
 
+/*
+ * sidebar-07-like header/footer: kit p-2 + size=lg (h-12) rows.
+ * Mark left edge = header pad only (0.5rem). In a 3rem icon rail that leaves a
+ * 2rem slot — exactly size-8 — so collapse only clips text, glyphs do not move.
+ */
 .choy-shell[data-shell-mode='app'] [data-slot='sidebar-header'],
 .choy-shell[data-shell-mode='app'] [data-slot='sidebar-footer'] {
   box-sizing: border-box;
@@ -285,41 +308,68 @@ html.dark .choy-shell[data-shell-mode='app'],
   align-items: center !important;
   justify-content: flex-start !important;
   gap: 0 !important;
-  height: var(--choy-layout-header-height) !important;
-  min-height: var(--choy-layout-header-height) !important;
-  max-height: var(--choy-layout-header-height) !important;
-  /* Match rail icon column inset so the mark stays put when collapsing. */
-  padding: 0 0.5rem !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  padding: 0.5rem !important;
   border: 0 !important;
   background-color: var(--choy-shell-chrome) !important;
   background-image: none !important;
   box-shadow: none !important;
 }
 
-/*
- * size-6 marks + rounded-md; fixed inline padding keeps expand/collapse x-stable.
- * Vertical center still shares the header band midline with Inset PanelLeft.
- */
 .choy-shell[data-shell-mode='app'] [data-testid='company-switch-trigger'],
 .choy-shell[data-shell-mode='app'] [data-testid='auth-user-menu-trigger'] {
   justify-content: flex-start !important;
-  width: 100%;
-  height: 1.75rem !important;
-  min-height: 1.75rem !important;
-  padding-block: 0 !important;
-  padding-inline: 0.25rem !important;
+  align-items: center !important;
+  width: 100% !important;
+  height: 3rem !important;
+  min-height: 3rem !important;
+  min-width: 0 !important;
+  /* No inline pad: mark x stays at header inset in both expand and collapse. */
+  padding-block: 0.5rem !important;
+  padding-inline: 0 !important;
+  margin-inline: 0 !important;
   border-radius: var(--radius-md, 0.375rem);
   gap: 0.5rem !important;
+  overflow: hidden !important;
 }
 
-/* Match company mark (size-6); Avatar defaults to size-control without twMerge. */
+/* Defeat kit icon-mode size-control shrink — keep the same h-12 hit row. */
+.choy-shell[data-shell-mode='app']
+  [data-slot='sidebar'][data-collapsible='icon']
+  [data-testid='company-switch-trigger'],
+.choy-shell[data-shell-mode='app']
+  [data-slot='sidebar'][data-collapsible='icon']
+  [data-testid='auth-user-menu-trigger'] {
+  width: 100% !important;
+  height: 3rem !important;
+  min-height: 3rem !important;
+  min-width: 0 !important;
+  padding-block: 0.5rem !important;
+  padding-inline: 0 !important;
+  margin-inline: 0 !important;
+  justify-content: flex-start !important;
+}
+
+.choy-shell[data-shell-mode='app'] [data-testid='company-switch-logo-wrap'],
+.choy-shell[data-shell-mode='app'] [data-testid='company-switch-logo'] {
+  width: 2rem !important;
+  height: 2rem !important;
+  min-width: 2rem !important;
+  min-height: 2rem !important;
+}
+
 .choy-shell[data-shell-mode='app']
   [data-testid='auth-user-menu-trigger']
+  [data-slot='avatar'],
+.choy-shell[data-shell-mode='app']
+  [data-testid='auth-user-menu-heading']
   [data-slot='avatar'] {
-  width: 1.5rem !important;
-  height: 1.5rem !important;
-  min-width: 1.5rem !important;
-  min-height: 1.5rem !important;
-  border-radius: var(--radius-md, 0.375rem) !important;
+  width: 2rem !important;
+  height: 2rem !important;
+  min-width: 2rem !important;
+  min-height: 2rem !important;
+  border-radius: 9999px !important;
 }
 </style>
