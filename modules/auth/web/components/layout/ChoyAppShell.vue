@@ -127,7 +127,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script lang="ts" _name="ChoyAppShell">
-import { computed, defineComponent, ref } from 'vue';
+import { computed, defineComponent, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { Check, ChevronsUpDown } from 'lucide-vue-next';
 import { Xpath } from '@/core/web';
@@ -203,6 +203,9 @@ export default defineComponent({
     const preferencesVisible = ref(false);
     const userMenuOpen = ref(false);
     const themeMode = ref<ChoyThemeMode>(readChoyThemePreference().theme || 'light');
+    watch(userMenuOpen, (open) => {
+      if (open) themeMode.value = readChoyThemePreference().theme || 'light';
+    });
 
     let i18nStore: ReturnType<typeof useI18nStore> | null = null;
     try {

@@ -419,7 +419,7 @@ func GenerateTailwindCSS(dialectCSS string, candidates []string) (css string, du
 // borderSidePaddingRuleRE matches a lone .border-b / .border-t rule whose only
 // declaration is padding (any --spacing multiplier / whitespace shape).
 var borderSidePaddingRuleRE = regexp.MustCompile(
-	`(?m)^\.(border-[bt]) \{\s*\n\s*padding-(?:bottom|top):\s*calc\(var\(--spacing\)\s*\*\s*\d+\);\s*\n\}\s*\n+`,
+	`(?m)^\.(border-[bt]) \{\s*\n\s*padding-(?:bottom|top):\s*calc\(var\(--spacing\)\s*\*\s*[\d.]+\);\s*\n\}\s*\n*`,
 )
 
 // sanitizeTailwindBorderSidePadding drops a known-bad FullCSS emit where

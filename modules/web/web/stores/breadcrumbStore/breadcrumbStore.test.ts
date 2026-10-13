@@ -455,6 +455,17 @@ describe('breadcrumbStore L1+L2 trail', () => {
     expect(store.navigateToBreadcrumb(0)).toBe('/solo');
     expect(store.navigateToBreadcrumb(0)).toBe('/solo');
 
+    store.resetBreadcrumb('base', 'Master Data', '');
+    // Force an L1 app crumb so navigateToBreadcrumb must leave the trail intact.
+    if (store.breadcrumbStack[0]) {
+      store.breadcrumbStack[0].kind = 'app';
+      store.breadcrumbStack[0].path = '';
+    }
+    store.pushBreadcrumb('Leaf', '/base/leaf');
+    const beforeAppNav = store.breadcrumbStack.map((i) => i.kind);
+    expect(store.navigateToBreadcrumb(0)).toBeNull();
+    expect(store.breadcrumbStack.map((i) => i.kind)).toEqual(beforeAppNav);
+
     mounted.unmount();
   });
 

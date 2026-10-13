@@ -349,10 +349,12 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
       return null;
     }
 
+    const targetItem = breadcrumbStack.value[index];
+    // App crumbs navigate via menuApi; do not truncate the trail here.
+    if (targetItem.kind === 'app') return null;
+
     breadcrumbStack.value = breadcrumbStack.value.slice(0, index + 1);
     applyClickableFlags();
-    const targetItem = breadcrumbStack.value[index];
-    if (targetItem.kind === 'app') return null;
     return targetItem.path || null;
   }
 

@@ -30,7 +30,7 @@ export function resolveCompanyLogoUrl(logo: unknown): string {
     const trimmed = logo.trim();
     if (!trimmed) return productLogoUrl;
     // Plain URL or data/blob from a prior local preview.
-    if (/^(https?:|data:|blob:|\/)/i.test(trimmed)) return trimmed;
+    if (/^(https?:|data:|blob:|\/(?!\/))/i.test(trimmed)) return trimmed;
     return productLogoUrl;
   }
 
@@ -49,7 +49,7 @@ export function resolveCompanyLogoUrl(logo: unknown): string {
   ];
   for (const candidate of candidates) {
     const url = normalizeOptionalString(candidate);
-    if (url && /^(https?:|data:|blob:|\/)/i.test(url)) return url;
+    if (url && /^(https?:|data:|blob:|\/(?!\/))/i.test(url)) return url;
   }
   return productLogoUrl;
 }

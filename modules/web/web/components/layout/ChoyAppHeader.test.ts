@@ -5,9 +5,12 @@ import { h, nextTick } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { createI18n } from 'vue-i18n';
 import * as VueRouter from 'vue-router';
-import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
+import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import { pinViewportWidth } from '../../stores/layoutStore/pinViewport';
+import ChoyAppHeader from './ChoyAppHeader.vue';
 import ChoyAppShell from './ChoyAppShell.vue';
+import ChoyCommandPalette from './ChoyCommandPalette.vue';
+import ChoyShellBreadcrumb from './ChoyShellBreadcrumb.vue';
 import sourceMessages from '../../i18n/source';
 
 const createFeStubRouter = (VueRouter as any).createFeStubRouter;
@@ -62,5 +65,40 @@ describe('ChoyAppHeader', () => {
     mounted.click('[data-testid=choy-shell-menu-trigger]');
     await flushPromises();
     mounted.unmount();
+  });
+
+  test('menu toggle is a no-op when SidebarProvider is missing', async () => {
+    pinViewportWidth(1280);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: { path: '/', fullPath: '/', meta: {} },
+    });
+    const i18n = createI18n({
+      legacy: false,
+      locale: 'en',
+      messages: { en: sourceMessages as any },
+    });
+    stubSfc(ChoyShellBreadcrumb as any, {
+      setup: () => () => h('div', { 'data-stub': 'breadcrumb' }),
+    });
+    stubSfc(ChoyCommandPalette as any, {
+      setup: () => () => h('div', { 'data-stub': 'palette' }),
+    });
+    try {
+      const mounted = mountApp(ChoyAppHeader as any, {
+        props: { showSidebarChrome: true, menuTriggerLabel: 'Menu' },
+        plugins: [pinia, router, i18n],
+      });
+      await flushPromises();
+      await nextTick();
+      expect(mounted.q('[data-testid=choy-shell-menu-trigger]')).not.toBeNull();
+      mounted.click('[data-testid=choy-shell-menu-trigger]');
+      await flushPromises();
+      mounted.unmount();
+    } finally {
+      restoreSfc(ChoyShellBreadcrumb as any);
+      restoreSfc(ChoyCommandPalette as any);
+    }
   });
 });

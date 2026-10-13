@@ -1373,4 +1373,10 @@ func TestSanitizeTailwindBorderSidePadding(t *testing.T) {
 	if got := sanitizeTailwindBorderSidePadding(mixed); got != mixed {
 		t.Fatalf("mixed-declaration rules should remain unchanged, got:\n%s", got)
 	}
+
+	// Fractional multipliers and EOF (no trailing newline) must still strip.
+	eofFrac := ".border-b {\n  padding-bottom: calc(var(--spacing) * 1.5);\n}"
+	if got := sanitizeTailwindBorderSidePadding(eofFrac); strings.Contains(got, "padding-bottom") {
+		t.Fatalf("EOF fractional padding rule should be stripped, got:\n%s", got)
+	}
 }
