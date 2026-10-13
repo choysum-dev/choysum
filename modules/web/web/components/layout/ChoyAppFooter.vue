@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <p
-    class="m-0 inline-flex items-center justify-center gap-1.5 text-center text-xs leading-snug text-muted-foreground"
+    class="m-0 inline-flex items-center justify-center gap-1.5 text-center text-xs leading-snug text-muted-foreground sm:text-sm"
     data-testid="choy-app-footer"
   >
     <img

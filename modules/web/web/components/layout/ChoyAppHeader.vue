@@ -69,10 +69,9 @@ try {
 
 const { toggleSidebar } = useSidebar()
 
-/** Inline border/height: avoid broken `.border-b` utility that also sets padding-bottom. */
+/** Height only — shared shell top chrome is translucent + blur with no hairline border. */
 const headerStyle = {
   height: 'var(--choy-layout-header-height)',
-  borderBottom: '1px solid var(--color-border, var(--choy-color-border))',
   paddingTop: '0',
   paddingBottom: '0',
   boxSizing: 'border-box' as const,

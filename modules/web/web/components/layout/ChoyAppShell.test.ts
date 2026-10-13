@@ -28,6 +28,8 @@ describe('ChoyAppShell', () => {
     expect(mounted.q('.choy-shell')?.className || '').toContain('overflow-hidden');
     expect(mounted.q('[data-testid=choy-shell-scroll]')?.className || '').toContain('overflow-y-auto');
     expect(mounted.q('[data-testid=choy-shell-header-sep]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-header-tools]')).toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-theme]')).toBeNull();
     expect(mounted.q('[data-anchor="choy.shell.header-actions"]')).not.toBeNull();
     expect(mounted.q('[data-anchor="choy.shell.sidebar-header"]')).not.toBeNull();
     expect(mounted.q('[data-anchor="choy.shell.sidebar-footer"]')).not.toBeNull();
@@ -40,6 +42,11 @@ describe('ChoyAppShell', () => {
     expect(mounted.q('[data-testid=choy-shell-aside]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-footer]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-footer]')?.className || '').not.toContain('border-t');
+    expect(mounted.q('[data-testid=choy-shell-footer]')?.className || '').toContain('px-4');
+    expect(
+      (mounted.q('[data-testid=choy-shell-footer]') as HTMLElement | null)?.style?.minHeight || '',
+    ).toContain('--choy-layout-footer-height');
+    expect(mounted.q('[data-testid=choy-app-footer]')?.className || '').toContain('leading-snug');
     expect(mounted.q('[data-testid=choy-app-footer]')?.textContent || '').toContain('Powered by Choysum');
     expect(mounted.q('[data-testid=choy-shell-menu-trigger]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-brand]')).toBeNull();

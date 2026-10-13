@@ -7,10 +7,11 @@ SPDX-License-Identifier: Apache-2.0
   <!-- Guest top bar: SiteHeader density; desktop NavigationMenu + mobile Popover nav. -->
   <header
     class="choy-guest-header sticky top-0 z-50 w-full shrink-0 bg-background/95 backdrop-blur"
+    :style="headerStyle"
     data-testid="choy-shell-header"
   >
-    <div class="w-full px-4 sm:px-6">
-      <div class="mx-auto flex h-14 max-w-screen-2xl items-center gap-2">
+    <div class="flex h-full w-full items-center px-4 sm:px-6">
+      <div class="mx-auto flex h-full w-full max-w-screen-2xl items-center gap-2">
         <ChoyGuestMobileNav :items="navItems" class="flex lg:hidden" />
         <NavigationMenu
           :viewport="false"
@@ -30,15 +31,7 @@ SPDX-License-Identifier: Apache-2.0
           </NavigationMenuList>
         </NavigationMenu>
         <div class="ml-auto flex items-center gap-2 md:flex-1 md:justify-end">
-          <nav class="flex items-center gap-0.5">
-            <ChoyShellThemeToggle />
-            <Separator
-              orientation="vertical"
-              class="mx-1 hidden !h-4 sm:block"
-              data-testid="choy-guest-header-sep-tools"
-            />
-            <ChoyShellLocaleMenu />
-          </nav>
+          <ChoyShellHeaderTools />
           <Separator
             v-if="$slots['header-actions']"
             orientation="vertical"
@@ -55,8 +48,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed } from 'vue'
 import ChoyGuestMobileNav, { type ChoyGuestNavItem } from './ChoyGuestMobileNav.vue'
-import ChoyShellLocaleMenu from './ChoyShellLocaleMenu.vue'
-import ChoyShellThemeToggle from './ChoyShellThemeToggle.vue'
+import ChoyShellHeaderTools from './ChoyShellHeaderTools.vue'
 import { Separator } from '../vendor/ui/separator'
 import {
   NavigationMenu,
@@ -77,6 +69,14 @@ const props = defineProps<{
 }>()
 
 const { _t } = createTranslate('web', { scope: 'web/components/layout/ChoyGuestHeader' })
+
+/** Same height contract as ChoyAppHeader / sidebar header band. */
+const headerStyle = {
+  height: 'var(--choy-layout-header-height)',
+  paddingTop: '0',
+  paddingBottom: '0',
+  boxSizing: 'border-box' as const,
+}
 
 /** Ghost-button density matching shadcn-vue MainNav (`Button variant="ghost" size="sm"`). */
 const navLinkClass = cn(

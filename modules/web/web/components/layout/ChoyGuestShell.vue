@@ -14,7 +14,7 @@ SPDX-License-Identifier: Apache-2.0
       <template #header-actions>
         <div
           data-anchor="choy.shell.header-actions"
-          class="flex items-center gap-1.5"
+          class="flex items-center gap-2"
         >
           <slot name="header-actions" />
         </div>
@@ -57,12 +57,11 @@ SPDX-License-Identifier: Apache-2.0
           class="choy-shell__footer shrink-0 bg-background"
           data-testid="choy-shell-footer"
         >
-          <div class="w-full px-6">
-            <div class="mx-auto flex h-16 max-w-screen-2xl items-center justify-center">
-              <ChoyAppFooter
-                class="w-full px-1 text-center text-xs leading-loose text-muted-foreground sm:text-sm"
-              />
-            </div>
+          <div
+            class="mx-auto flex w-full max-w-screen-2xl items-center justify-center px-4 sm:px-6"
+            :style="{ minHeight: 'var(--choy-layout-footer-height)' }"
+          >
+            <ChoyAppFooter />
             <slot name="footer" />
           </div>
         </footer>
