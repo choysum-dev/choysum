@@ -202,7 +202,17 @@ html.dark .choy-shell[data-shell-mode='app'],
 /*
  * Kit desktop sidebar uses position:fixed + h-svh and would paint over a shell-level
  * footer. Pin the panel to .choy-shell__body instead; powered-by lives in the inset.
+ *
+ * Collapse motion matches sidebar-07 (width / left / right over 200ms linear).
+ * Product override — tailwind-go emits transition-[width] without `width` in
+ * transition-property, so the kit utility classes alone do not animate.
  */
+.choy-shell[data-shell-mode='app'] [data-slot='sidebar'] > div {
+  transition-property: width;
+  transition-duration: 200ms;
+  transition-timing-function: linear;
+}
+
 .choy-shell[data-shell-mode='app'] [data-slot='sidebar'] > .fixed {
   position: absolute !important;
   top: 0 !important;
@@ -210,6 +220,9 @@ html.dark .choy-shell[data-shell-mode='app'],
   height: auto !important;
   /* Match sidebar-16: outer edge against the inset canvas. */
   border-right: 1px solid var(--color-sidebar-border, var(--choy-color-sidebar-border)) !important;
+  transition-property: left, right, width;
+  transition-duration: 200ms;
+  transition-timing-function: linear;
 }
 
 /*
