@@ -27,7 +27,7 @@ describe('ListInlineEditScope', () => {
       },
     });
 
-    mountApp(ListInlineEditScope as any, {
+    const { unmount } = mountApp(ListInlineEditScope as any, {
       props: { formRoot, viewMode: 'edit' },
       slots: {
         default: () => h(Probe),
@@ -36,5 +36,6 @@ describe('ListInlineEditScope', () => {
 
     expect(scopeKind).toBe('List');
     expect(injectedFormRoot).toBe(formRoot);
+    unmount();
   });
 });

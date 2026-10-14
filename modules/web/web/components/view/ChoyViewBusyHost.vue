@@ -10,14 +10,18 @@ SPDX-License-Identifier: Apache-2.0
     v-bind="hostAttrs"
   >
     <slot />
-    <div
-      v-if="busy"
-      role="status"
-      aria-live="polite"
-      class="sr-only"
-    >
-      {{ busyLabel }}
-    </div>
+    <!-- Live region must stay outside the inert host subtree so AT can announce it. -->
+    <Teleport to="body">
+      <div
+        v-if="busy"
+        role="status"
+        aria-live="polite"
+        class="sr-only"
+        data-slot="view-busy-status"
+      >
+        {{ busyLabel }}
+      </div>
+    </Teleport>
     <div
       v-if="busy"
       data-slot="view-busy-overlay"

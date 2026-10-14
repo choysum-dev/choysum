@@ -111,9 +111,15 @@ export function useFormViewSubmit<T extends BaseModel>(opts: UseFormViewSubmitOp
         };
       }
 
-      const runDefaultSubmit = async (): Promise<Partial<ClientModel<T>> | null> => {
-        await opts.controller.submit();
-        return (opts.controller.vm.original as any) || null;
+      // Memoize so a handler that calls defaultSubmit then returns false cannot double-save.
+      let defaultSubmitPromise: Promise<Partial<ClientModel<T>> | null> | null = null;
+      const runDefaultSubmit = (): Promise<Partial<ClientModel<T>> | null> => {
+        if (!defaultSubmitPromise) {
+          defaultSubmitPromise = opts.controller
+            .submit()
+            .then(() => (opts.controller.vm.original as any) || null);
+        }
+        return defaultSubmitPromise;
       };
 
       let handledByHandler = false;

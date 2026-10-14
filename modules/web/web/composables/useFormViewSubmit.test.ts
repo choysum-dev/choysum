@@ -256,6 +256,19 @@ describe('useFormViewSubmit', () => {
     m.unmount();
   });
 
+  test('submitHandler that calls defaultSubmit then returns false does not double-save', async () => {
+    const m = mountSubmit({
+      viewMode: 'edit',
+      submitHandler: async ({ defaultSubmit }) => {
+        await defaultSubmit();
+        return false;
+      },
+    });
+    await m.api().handleSubmit();
+    expect(m.controller.submit.calls.length).toBe(1);
+    m.unmount();
+  });
+
   test('submitHandler void/undefined treated as not handled', async () => {
     const m = mountSubmit({
       viewMode: 'edit',

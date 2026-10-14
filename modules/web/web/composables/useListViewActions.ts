@@ -78,7 +78,8 @@ export function useListViewActions<T extends BaseModel>(opts: UseListViewActions
         })
         .filter((id: any) => id != null) as string[];
 
-      if (ids.length === 0) {
+      // Refuse partial deletes: mixed selections would otherwise delete some rows and clear all.
+      if (ids.length === 0 || ids.length !== opts.selectedItems.value.length) {
         ChoyMessage.warning(opts._t('Selected records are missing valid IDs'));
         return;
       }

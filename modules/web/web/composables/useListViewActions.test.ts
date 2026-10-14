@@ -165,6 +165,18 @@ describe('useListViewActions', () => {
     m.unmount();
   });
 
+  test('handleDelete refuses mixed selection with and without Ids', async () => {
+    const m = mountListActions({
+      selectedItems: [{ Id: 'a' }, { Name: 'no-id' }],
+    });
+    const pending = m.api().handleDelete();
+    resolveConfirmChoy('confirm');
+    await pending;
+    expect(m.store.Delete.calls.length).toBe(0);
+    expect((ChoyMessage.warning as any).calls.length).toBe(1);
+    m.unmount();
+  });
+
   test('handleDelete maps selection shapes and succeeds', async () => {
     const m = mountListActions({
       selectedItems: [

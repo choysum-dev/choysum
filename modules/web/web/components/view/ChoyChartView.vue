@@ -176,7 +176,7 @@ SPDX-License-Identifier: Apache-2.0
     </div>
 
     <ChoyViewBusyHost
-      :busy="boardBusy"
+      :busy="boardBusy && !errorText"
       class="relative min-h-[280px] w-full"
       data-region="chart-body"
     >
