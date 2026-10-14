@@ -25,7 +25,7 @@ SPDX-License-Identifier: Apache-2.0
     </div>
     <!-- Do not put controlId on this wrapper — the slotted control owns the id for label association. -->
     <div data-slot="form-control">
-      <slot :described-by="describedBy" :invalid="!!error" />
+      <slot :describedBy="describedBy" :invalid="!!error" />
     </div>
     <p
       v-if="error || reserveError"

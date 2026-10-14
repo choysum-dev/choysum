@@ -331,7 +331,7 @@ describe('useFormViewLifecycle', () => {
     m.unmount();
   });
 
-  test('handleCreate no-op without create action; push swallows errors', async () => {
+  test('handleCreate no-op without create action; push emits action-error on failure', async () => {
     const m = mountLifecycle({ watchIdentity: false, createAction: undefined });
     await m.api().handleCreate();
     expect(m.router.push).toBeDefined();
@@ -346,6 +346,7 @@ describe('useFormViewLifecycle', () => {
       throw new Error('nav fail');
     }) as any;
     await m2.api().handleCreate();
+    expect(m2.emit.calls.some(c => c[0] === 'action-error' && (c[1] as any)?.action === 'create')).toBe(true);
     m.unmount();
     m2.unmount();
   });

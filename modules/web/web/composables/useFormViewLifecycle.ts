@@ -135,7 +135,10 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
     if (!opts.resolvedCreateAction.value) return;
     try {
       await opts.router.push(opts.resolvedCreateAction.value);
-    } catch {}
+    } catch (e: unknown) {
+      const err = e instanceof Error ? e : new Error(String(e));
+      opts.emit('action-error', { action: 'create', error: err });
+    }
   }
 
   async function handleRefresh() {

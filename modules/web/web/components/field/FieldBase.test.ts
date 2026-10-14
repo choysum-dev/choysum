@@ -627,12 +627,13 @@ describe('FieldBase auto renderMode from fieldPresentation', () => {
     m.unmount();
   });
 
-  test('forwards describedBy and invalid to the edit slot', () => {
+  test('forwards describedBy and invalid to the edit slot', async () => {
     const m = mountBase(
       {
         binding: makeBinding({ string: 'Name' }),
         renderMode: 'form',
         id: 'aria-field',
+        formItemProps: { description: 'Help text' },
       },
       {
         slots: {
@@ -640,17 +641,19 @@ describe('FieldBase auto renderMode from fieldPresentation', () => {
             h('input', {
               id: args.inputId,
               class: 'aria-probe',
-              'data-has-describedby': args.describedBy === undefined ? 'undefined' : 'set',
+              'data-describedby': args.describedBy ?? '',
               'data-invalid': String(!!args.invalid),
             }),
           display: () => h('span'),
         },
       },
     );
+    await flushPromises();
     const probe = m.q('input.aria-probe') as HTMLElement | null;
     expect(probe).toBeTruthy();
     expect(probe?.id).toBe('aria-field');
     expect(probe?.getAttribute('data-invalid')).toBe('false');
+    expect(probe?.getAttribute('data-describedby')).toBe('aria-field-description');
     m.unmount();
   });
 });

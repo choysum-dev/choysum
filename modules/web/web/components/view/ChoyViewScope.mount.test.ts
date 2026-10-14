@@ -74,6 +74,32 @@ describe('ChoyViewScope', () => {
     }
   });
 
+  test('omitted fieldPrefix resets instead of inheriting parent prefix', async () => {
+    let prefix: string | null | undefined = 'unset';
+    const Probe = defineComponent({
+      setup() {
+        const scope = useViewScope();
+        prefix = scope.fieldPrefix.value;
+        return () => h('span', { 'data-test': 'probe-reset-prefix' });
+      },
+    });
+    const Inner = defineComponent({
+      setup() {
+        return () => h(ChoyViewScope, { viewMode: 'display', kind: 'List' }, () => h(Probe));
+      },
+    });
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h(ChoyViewScope, { viewMode: 'edit', kind: 'Form', fieldPrefix: 'Lines' }, () => h(Inner));
+      },
+    });
+    const w = mountApp(Host);
+    await flushPromises();
+    expect(prefix).toBeNull();
+    w.unmount();
+  });
+
   test('defaults kind to Form when neither kind nor container is set', async () => {
     let kind = '';
     let mode = '';

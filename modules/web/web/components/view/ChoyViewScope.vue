@@ -55,7 +55,7 @@ const mode = computed<ViewMode>(
 useProvideViewScope({
   kind,
   mode,
-  // undefined keeps the parent prefix; a string overrides nested relation paths.
-  fieldPrefix: computed(() => props.fieldPrefix),
+  // Absent prop resets to null so relation-picker dialogs do not inherit an enclosing prefix.
+  fieldPrefix: computed(() => props.fieldPrefix ?? null),
 });
 </script>

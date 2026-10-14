@@ -330,7 +330,8 @@ const OJsonCell = defineComponent({
       delete rest.onInput;
       delete rest.onBlur;
       const controlId = rest.id != null && String(rest.id) !== '' ? String(rest.id) : '';
-      const parseErrorId = controlId ? `${controlId}-parse-error` : 'choy-json-parse-error';
+      // Only synthesize an error id when the control has one; avoid duplicate hard-coded ids.
+      const parseErrorId = controlId ? `${controlId}-parse-error` : '';
       const formDescribedBy = rest['aria-describedby'] != null ? String(rest['aria-describedby']) : '';
       const describedBy = [formDescribedBy, parseError.value ? parseErrorId : '']
         .map(s => s.trim())
@@ -359,7 +360,7 @@ const OJsonCell = defineComponent({
           ? h(
               'div',
               {
-                id: parseErrorId,
+                id: parseErrorId || undefined,
                 class: 'choy-json-err mt-1 text-xs text-danger',
                 role: 'alert',
               },
