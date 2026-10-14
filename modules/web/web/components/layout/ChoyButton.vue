@@ -22,7 +22,14 @@ SPDX-License-Identifier: Apache-2.0
 import Button from '../vendor/ui/button/Button.vue';
 import type { ClassValue } from '../../lib/utils';
 
-type ButtonVariant = 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'link';
+type ButtonVariant =
+  | 'default'
+  | 'secondary'
+  | 'outline'
+  | 'outline-destructive'
+  | 'ghost'
+  | 'destructive'
+  | 'link';
 type ButtonSize = 'default' | 'sm' | 'lg' | 'icon';
 
 /**

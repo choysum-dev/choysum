@@ -17,7 +17,7 @@ SPDX-License-Identifier: Apache-2.0
             <!-- Keep Save/Discard outside the overridable slot so custom toolbars cannot hide them. -->
             <ChoyButton
               v-if="editable && isEditing"
-              size="sm"
+              size="default"
               variant="default"
               :disabled="inlineSaving"
               @click="handleInlineSave"
@@ -25,7 +25,7 @@ SPDX-License-Identifier: Apache-2.0
               {{ _t('Save') }}
             </ChoyButton>
 
-            <ChoyButton v-if="editable && isEditing" size="sm" variant="outline" @click="handleInlineDiscard">
+            <ChoyButton v-if="editable && isEditing" size="default" variant="outline" @click="handleInlineDiscard">
               {{ _t('Discard') }}
             </ChoyButton>
 
@@ -38,7 +38,7 @@ SPDX-License-Identifier: Apache-2.0
               :save="handleInlineSave"
               :discard="handleInlineDiscard"
             >
-              <ChoyButton v-if="resolvedCreateAction && canCreate" size="sm" variant="default" @click="handleCreate">
+              <ChoyButton v-if="resolvedCreateAction && canCreate" size="default" variant="default" @click="handleCreate">
                 <Plus class="size-4" aria-hidden="true" />
                 {{ _t('New') }}
               </ChoyButton>
@@ -91,27 +91,32 @@ SPDX-License-Identifier: Apache-2.0
               role="toolbar"
               :aria-label="_t('Selection actions')"
             >
-              <ChoyBadge variant="outline" class="gap-1 tabular-nums">
-                <span>{{ _t('%s selected', selectedItems.length) }}</span>
-                <button
+              <!-- Count as muted text (shadcn data-table); clear is a ghost icon button. -->
+              <div class="flex min-w-0 items-center gap-1">
+                <span class="truncate text-sm text-muted-foreground tabular-nums">
+                  {{ _t('%s selected', selectedItems.length) }}
+                </span>
+                <ChoyButton
                   type="button"
-                  class="inline-flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  variant="ghost"
+                  size="icon"
+                  class="size-control shrink-0 text-muted-foreground"
                   :aria-label="_t('Clear selection')"
                   @click="clearSelection"
                 >
-                  <X class="size-3" aria-hidden="true" />
-                </button>
-              </ChoyBadge>
+                  <X class="size-4" aria-hidden="true" />
+                </ChoyButton>
+              </div>
 
               <ChoyButton
                 v-if="deleteAction && canDelete"
-                size="sm"
-                variant="destructive"
+                size="default"
+                variant="outline-destructive"
                 :disabled="deleteLoading"
                 @click="handleDelete"
               >
                 <Trash2 class="size-4" aria-hidden="true" />
-                {{ _t('Delete (%s)', selectedItems.length) }}
+                {{ _t('Delete') }}
               </ChoyButton>
 
               <slot name="selection-actions" :selected-items="selectedItems" :clear="clearSelection" />
@@ -184,7 +189,7 @@ SPDX-License-Identifier: Apache-2.0
             <slot name="empty">
               <ChoyEmpty class="w-full" :description="_t('No data')">
                 <template v-if="resolvedCreateAction && canCreate" #actions>
-                  <ChoyButton size="sm" variant="default" @click="handleCreate">
+                  <ChoyButton size="default" variant="default" @click="handleCreate">
                     <Plus class="size-4" aria-hidden="true" />
                     {{ _t('New') }}
                   </ChoyButton>
@@ -258,7 +263,6 @@ import {
 } from '@/web/web/composables/usePageContext';
 import { useResolvedCreateAction } from '@/web/web/composables/resolveCreateRoute';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
-import ChoyBadge from '@/web/web/components/layout/ChoyBadge.vue';
 import ChoyPageTitleActions from '@/web/web/components/layout/ChoyPageTitleActions.vue';
 import { Separator } from '@/web/web/components/vendor/ui/separator';
 import DropdownMenuItem from '@/web/web/components/vendor/ui/dropdown-menu/DropdownMenuItem.vue';

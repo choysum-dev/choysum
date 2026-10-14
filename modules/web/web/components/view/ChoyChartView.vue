@@ -19,7 +19,7 @@ SPDX-License-Identifier: Apache-2.0
           <slot name="system-actions">
             <ChoyButton
               v-if="showCreate"
-              size="sm"
+              size="default"
               variant="outline"
               @click="emit('create')"
             >
@@ -27,7 +27,7 @@ SPDX-License-Identifier: Apache-2.0
             </ChoyButton>
             <ChoyButton
               v-if="showRefresh"
-              size="sm"
+              size="default"
               variant="outline"
               :disabled="boardBusy"
               @click="onRefresh"

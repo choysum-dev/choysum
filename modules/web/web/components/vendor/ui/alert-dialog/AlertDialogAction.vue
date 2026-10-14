@@ -7,13 +7,25 @@ SPDX-License-Identifier: Apache-2.0
 import type { HTMLAttributes } from "vue"
 import { AlertDialogAction } from "reka-ui"
 import { cn } from "../../../../lib/utils"
-import { buttonVariants } from "../button"
+import { buttonVariants, type ButtonVariants } from "../button"
 
-defineProps<{ class?: HTMLAttributes["class"] }>()
+withDefaults(
+  defineProps<{
+    class?: HTMLAttributes["class"]
+    variant?: ButtonVariants["variant"]
+    size?: ButtonVariants["size"]
+  }>(),
+  {
+    variant: "default",
+    size: "default",
+  },
+)
 </script>
 
 <template>
-  <AlertDialogAction :class="cn(buttonVariants(), $props.class)">
+  <AlertDialogAction
+    :class="cn(buttonVariants({ variant, size }), $props.class)"
+  >
     <slot />
   </AlertDialogAction>
 </template>

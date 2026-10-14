@@ -19,7 +19,8 @@ export interface AdaptiveHeightOptions {
  * Computes content height from either the viewport or a container with requestAnimationFrame throttling.
  * - auto: use container mode inside .el-dialog__body, otherwise viewport mode
  * - container: compute height from the resolved container and subtract the dialog footer when present
- * - viewport: compute height from the distance to the viewport bottom
+ * - viewport: fill to AppShell scroll canvas (above footer) when nested there;
+ *   otherwise distance to the viewport bottom minus viewportGap
  * - none: leave height untouched
  */
 export function useAdaptiveHeight(wrapRef: Ref<Element | null>, opts: AdaptiveHeightOptions = {}) {
@@ -36,6 +37,7 @@ export function useAdaptiveHeight(wrapRef: Ref<Element | null>, opts: AdaptiveHe
   const pxHeight = computed(() => (height.value > 0 ? `${height.value}px` : ''));
 
   let containerEl: HTMLElement | null = null;
+  let observedEls: HTMLElement[] = [];
   let ro: ResizeObserver | null = null;
   let rafId: number | null = null;
 
@@ -77,7 +79,26 @@ export function useAdaptiveHeight(wrapRef: Ref<Element | null>, opts: AdaptiveHe
       // Fall back to viewport mode when no container can be resolved.
     }
 
-    // Viewport mode.
+    // Viewport mode. Inside AppShell, size to the scroll canvas above the
+    // in-flow Powered-by footer so the list body does not also force shell
+    // overflow (double vertical scrollbars).
+    const shellScroll = wrap.closest('[data-testid="choy-shell-scroll"]') as HTMLElement | null;
+    if (shellScroll) {
+      const footer = shellScroll.querySelector(
+        '[data-testid="choy-shell-footer"]',
+      ) as HTMLElement | null;
+      const bottom = footer
+        ? footer.getBoundingClientRect().top
+        : shellScroll.getBoundingClientRect().bottom;
+      const page = wrap.closest('[data-anchor="choy.page"]') as HTMLElement | null;
+      const pagePadBottom = page
+        ? Number.parseFloat(getComputedStyle(page).paddingBottom) || 0
+        : 0;
+      const h = Math.floor(bottom - rect.top - pagePadBottom);
+      height.value = Math.max(options.minViewportHeight, h);
+      return;
+    }
+
     const vh = window.innerHeight || document.documentElement.clientHeight;
     const gap = options.viewportGap ?? 0;
     const h = Math.floor(vh - rect.top - gap);
@@ -92,6 +113,14 @@ export function useAdaptiveHeight(wrapRef: Ref<Element | null>, opts: AdaptiveHe
     });
   }
 
+  function observeEl(el: HTMLElement | null | undefined) {
+    if (!el || !ro) return;
+    try {
+      ro.observe(el);
+      observedEls.push(el);
+    } catch {}
+  }
+
   function setupObservers() {
     if (options.mode === 'none') return;
     window.addEventListener('resize', recompute);
@@ -99,20 +128,26 @@ export function useAdaptiveHeight(wrapRef: Ref<Element | null>, opts: AdaptiveHe
 
     const wrap = wrapRef.value;
     const autoContainer = wrap?.closest('.el-dialog__body') as HTMLElement | null;
-    const needContainerObs = options.mode === 'container' || (options.mode === 'auto' && autoContainer);
-    if (needContainerObs) {
+    const shellScroll = wrap?.closest('[data-testid="choy-shell-scroll"]') as HTMLElement | null;
+    const needContainerObs =
+      options.mode === 'container' || (options.mode === 'auto' && !!autoContainer) || !!shellScroll;
+    if (needContainerObs && 'ResizeObserver' in window) {
       containerEl =
         (options.containerSelector
-          ? (wrap?.closest(options.containerSelector) as HTMLElement) || (document.querySelector(options.containerSelector) as HTMLElement)
+          ? (wrap?.closest(options.containerSelector) as HTMLElement) ||
+            (document.querySelector(options.containerSelector) as HTMLElement)
           : null) ||
         autoContainer ||
+        shellScroll ||
         wrap?.parentElement ||
         null;
-      if (containerEl && 'ResizeObserver' in window) {
-        ro = new ResizeObserver(() => recompute());
-        try {
-          ro.observe(containerEl);
-        } catch {}
+      ro = new ResizeObserver(() => recompute());
+      observeEl(containerEl);
+      if (shellScroll) {
+        observeEl(shellScroll);
+        observeEl(
+          shellScroll.querySelector('[data-testid="choy-shell-footer"]') as HTMLElement | null,
+        );
       }
     }
   }
@@ -120,11 +155,14 @@ export function useAdaptiveHeight(wrapRef: Ref<Element | null>, opts: AdaptiveHe
   function cleanupObservers() {
     window.removeEventListener('resize', recompute);
     window.removeEventListener('orientationchange', recompute);
-    if (ro && containerEl) {
-      try {
-        ro.unobserve(containerEl);
-      } catch {}
+    if (ro) {
+      for (const el of observedEls) {
+        try {
+          ro.unobserve(el);
+        } catch {}
+      }
     }
+    observedEls = [];
     ro = null;
     containerEl = null;
   }
