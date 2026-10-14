@@ -56,7 +56,7 @@ SPDX-License-Identifier: Apache-2.0
               <slot name="header" />
             </div>
             <ChoyPageTitleActions
-              :has-io-menu="hasIoMenu"
+              :has-io-menu="pageTitleActionsHasIo"
               :action-import="actionImport"
               :action-export="actionExport"
               :action-import-upload-hint="actionImportUploadHint"
@@ -101,7 +101,7 @@ SPDX-License-Identifier: Apache-2.0
             </div>
             <ChoyPageTitleActions
               v-if="showPageTitleActions"
-              :has-io-menu="hasIoMenu"
+              :has-io-menu="pageTitleActionsHasIo"
               :action-import="actionImport"
               :action-export="actionExport"
               :action-import-upload-hint="actionImportUploadHint"
@@ -247,9 +247,13 @@ const pageCtx = providePageContext({
 
 const titleHostedByView = computed(() => pageCtx.titleHostedByView.value);
 const showPageTitle = computed(() => !!props.title && !titleHostedByView.value);
-const showPageTitleActions = computed(
-  () => (hasIoMenu.value || !!slots['title-actions']) && !titleHostedByView.value,
-);
+// When a view hosts the title, IO moves into that chrome; keep page #title-actions
+// visible (without duplicating the IO menu) so custom page actions do not disappear.
+const showPageTitleActions = computed(() => {
+  if (titleHostedByView.value) return !!slots['title-actions'];
+  return hasIoMenu.value || !!slots['title-actions'];
+});
+const pageTitleActionsHasIo = computed(() => hasIoMenu.value && !titleHostedByView.value);
 
 const rootEl = ref<HTMLElement | null>(null);
 

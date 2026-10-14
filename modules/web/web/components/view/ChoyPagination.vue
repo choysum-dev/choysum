@@ -38,7 +38,7 @@ SPDX-License-Identifier: Apache-2.0
         {{ rangeValueLabel }}
       </button>
       <span aria-hidden="true">/</span>
-      <span class="choy-pagination__total tabular-nums" aria-live="polite">{{ props.total }}</span>
+      <span class="choy-pagination__total tabular-nums" aria-live="polite">{{ normalizedTotal }}</span>
     </div>
     <ChoyButtonGroup>
       <ChoyButton
@@ -133,13 +133,24 @@ const canNext = computed(
   () => currentPage.value < totalPages.value && !props.disabled,
 );
 
+/** Positive integer page size for range math (matches choyTotalPages / offset flooring). */
+const effectivePageSize = computed(() => {
+  const n = Number(pageSize.value);
+  if (!Number.isFinite(n) || n <= 0) return 1;
+  return Math.max(1, Math.floor(n));
+});
+const normalizedTotal = computed(() => {
+  const n = Number(props.total);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.floor(n);
+});
 const rangeStart = computed(() => {
-  if (!Number.isFinite(props.total) || props.total <= 0) return 0;
-  return (currentPage.value - 1) * pageSize.value + 1;
+  if (normalizedTotal.value <= 0) return 0;
+  return (currentPage.value - 1) * effectivePageSize.value + 1;
 });
 const rangeEnd = computed(() => {
-  if (!Number.isFinite(props.total) || props.total <= 0) return 0;
-  return Math.min(currentPage.value * pageSize.value, props.total);
+  if (normalizedTotal.value <= 0) return 0;
+  return Math.min(currentPage.value * effectivePageSize.value, normalizedTotal.value);
 });
 const rangeValueLabel = computed(() =>
   formatChoyPagerRangeValue(rangeStart.value, rangeEnd.value),
@@ -183,8 +194,16 @@ function cancelEdit(): void {
 
 async function commitEdit(): Promise<void> {
   if (suppressBlurCommit.value || !editing.value) return;
+  const draft = editDraft.value;
+  // Opening the editor pre-fills the current window; committing it untouched
+  // must not rewrite pageSize (a partial last page would shrink the window).
+  if (draft.trim() === rangeValueLabel.value) {
+    editing.value = false;
+    editDraft.value = '';
+    return;
+  }
   const next = applyChoyPagerRangeEdit({
-    draft: editDraft.value,
+    draft,
     total: props.total,
     pageSize: pageSize.value,
   });

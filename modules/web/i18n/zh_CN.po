@@ -251,22 +251,22 @@ msgctxt "web/components/field/DecimalField"
 msgid "Total digits must not exceed %s"
 msgstr "总位数不得超过 %s"
 
-#: web/components/field/FieldBase.vue:181
+#: web/components/field/FieldBase.vue:182
 msgctxt "web/components/field/FieldBase"
 msgid "Company values"
 msgstr "公司值"
 
-#: web/components/field/FieldBase.vue:181
+#: web/components/field/FieldBase.vue:182
 msgctxt "web/components/field/FieldBase"
 msgid "Company values: %s"
 msgstr "公司值：%s"
 
-#: web/components/field/FieldBase.vue:174
+#: web/components/field/FieldBase.vue:175
 msgctxt "web/components/field/FieldBase"
 msgid "Translate field"
 msgstr "翻译字段"
 
-#: web/components/field/FieldBase.vue:174
+#: web/components/field/FieldBase.vue:175
 msgctxt "web/components/field/FieldBase"
 msgid "Translate: %s"
 msgstr "翻译：%s"
@@ -811,7 +811,7 @@ msgctxt "web/components/field/relationCountSummary@formatRelationCountSummary"
 msgid "%s records"
 msgstr "%s 条记录"
 
-#: web/components/internal/ChoyTableHost.vue:12
+#: web/components/internal/ChoyTableHost.vue:14
 msgctxt "web/components/internal/ChoyTableHost"
 msgid "No data"
 msgstr "暂无数据"
@@ -881,17 +881,17 @@ msgctxt "web/components/layout/ChoyNotificationBell"
 msgid "Update on %s (%s)"
 msgstr "%s (%s) 有更新"
 
-#: web/components/layout/ChoyPageIoMenu.vue:53
+#: web/components/layout/ChoyPageIoMenu.vue:134
 msgctxt "web/components/layout/ChoyPageIoMenu"
 msgid "Import and export"
 msgstr "导入与导出"
 
-#: web/components/layout/ChoyPageIoMenu.vue
+#: web/components/layout/ChoyPageIoMenu.vue:134
 msgctxt "web/components/layout/ChoyPageIoMenu"
 msgid "More actions"
 msgstr "更多操作"
 
-#: web/components/layout/ChoyPageIoMenu.vue:111
+#: web/components/layout/ChoyPageIoMenu.vue:113
 msgctxt "web/components/layout/ChoyPageIoMenu"
 msgid "No model/store available for this action."
 msgstr "此操作没有可用的模型/存储。"
@@ -901,122 +901,97 @@ msgctxt "web/components/layout/ChoySidebarNav"
 msgid "No menus available"
 msgstr "暂无可用菜单"
 
-#: web/components/layout/ChoyPage.vue:60
+#: web/components/layout/ChoyPage.vue:63
 msgctxt "web/components/layout/Page"
 msgid "Loading..."
 msgstr "加载中..."
 
-#: web/components/view/ChoyChartView.vue:38
+#: web/components/view/ChoyChartView.vue:40
 msgctxt "web/components/view/ChartView"
 msgid "Chart type"
 msgstr "图表类型"
 
-#: web/components/view/ChoyChartView.vue:88 web/components/view/ChoyChartView.vue:89
-msgctxt "web/components/view/ChartView"
-msgid "Loading..."
-msgstr "加载中..."
-
-#: web/components/view/ChoyChartView.vue:28
+#: web/components/view/ChoyChartView.vue:30
 msgctxt "web/components/view/ChartView"
 msgid "Metric"
 msgstr "度量"
 
-#: web/components/view/ChoyChartView.vue:29
+#: web/components/view/ChoyChartView.vue:31
 msgctxt "web/components/view/ChartView"
 msgid "Metric selection"
 msgstr "度量选择"
 
-#: web/components/view/ChoyChartView.vue:111
+#: web/components/view/ChoyChartView.vue:115
 msgctxt "web/components/view/ChartView"
 msgid "New"
 msgstr "新建"
 
-#: web/components/view/ChoyChartView.vue:114
+#: web/components/view/ChoyChartView.vue:118
 msgctxt "web/components/view/ChartView"
 msgid "No data or grouping not configured"
 msgstr "暂无数据或未配置分组"
 
-#: web/components/view/ChoyChartView.vue:53
+#: web/components/view/ChoyChartView.vue:55
 msgctxt "web/components/view/ChartView"
 msgid "No sort"
 msgstr "不排序"
 
-#: web/components/view/ChoyChartView.vue:112
+#: web/components/view/ChoyChartView.vue:116
 msgctxt "web/components/view/ChartView"
 msgid "Refresh"
 msgstr "刷新"
 
-#: web/components/view/ChoyChartView.vue:94
+#: web/components/view/ChoyChartView.vue:93
 msgctxt "web/components/view/ChartView"
 msgid "Retry"
 msgstr "重试"
 
-#: web/components/view/ChoyChartView.vue:52
+#: web/components/view/ChoyChartView.vue:54
 msgctxt "web/components/view/ChartView"
 msgid "Sort"
 msgstr "排序"
 
-#: web/components/view/ChoyChartView.vue:56
+#: web/components/view/ChoyChartView.vue:58
 msgctxt "web/components/view/ChartView"
 msgid "Sort ascending"
 msgstr "升序"
 
-#: web/components/view/ChoyChartView.vue:59
+#: web/components/view/ChoyChartView.vue:61
 msgctxt "web/components/view/ChartView"
 msgid "Sort descending"
 msgstr "降序"
 
-#: web/components/view/ChoyChartView.vue:47
+#: web/components/view/ChoyChartView.vue:49
 msgctxt "web/components/view/ChartView"
 msgid "Stack"
 msgstr "堆叠"
 
-#: web/components/view/ChoyChartView.vue:5
+#: web/components/view/ChoyChartView.vue:4
 msgctxt "web/components/view/ChartView"
 msgid "System actions"
 msgstr "系统操作"
 
-#: web/components/view/ChoyChartView.vue:15
+#: web/components/view/ChoyChartView.vue:4
 msgctxt "web/components/view/ChartView"
 msgid "User actions"
 msgstr "用户操作"
 
-#: web/components/view/ChoyFormView.vue:593
-msgctxt "web/components/view/FormView"
-msgid "Are you sure you want to delete the current record? This action cannot be undone."
-msgstr "确定要删除当前记录吗？此操作无法撤销。"
-
-#: web/components/view/ChoyFormView.vue:37 web/components/view/ChoyFormView.vue:51 web/components/view/ChoyFormView.vue:595
+#: web/components/view/ChoyFormView.vue:37 web/components/view/ChoyFormView.vue:51
 msgctxt "web/components/view/FormView"
 msgid "Cancel"
 msgstr "取消"
-
-#: web/components/view/ChoyFormView.vue:593
-msgctxt "web/components/view/FormView"
-msgid "Confirm delete"
-msgstr "确认删除"
 
 #: web/components/view/ChoyFormView.vue:23
 msgctxt "web/components/view/FormView"
 msgid "Copy"
 msgstr "复制"
 
-#: web/components/view/ChoyFormView.vue:454 web/components/view/ChoyFormView.vue:503
-msgctxt "web/components/view/FormView"
-msgid "Created successfully"
-msgstr "创建成功"
-
-#: web/components/view/ChoyFormView.vue:27 web/components/view/ChoyFormView.vue:594
+#: web/components/view/ChoyFormView.vue:27
 msgctxt "web/components/view/FormView"
 msgid "Delete"
 msgstr "删除"
 
-#: web/components/view/ChoyFormView.vue:638
-msgctxt "web/components/view/FormView"
-msgid "Delete failed"
-msgstr "删除失败"
-
-#: web/components/view/ChoyFormView.vue:49
+#: web/components/view/ChoyFormView.vue:43
 msgctxt "web/components/view/FormView"
 msgid "Details"
 msgstr "详情"
@@ -1031,202 +1006,147 @@ msgctxt "web/components/view/FormView"
 msgid "New"
 msgstr "新建"
 
-#: web/components/view/ChoyFormView.vue:524
-msgctxt "web/components/view/FormView"
-msgid "Operation failed"
-msgstr "操作失败"
-
-#: web/components/view/ChoyFormView.vue:320 web/components/view/ChoyFormView.vue:327
-msgctxt "web/components/view/FormView"
-msgid "Please fix the errors in the form first"
-msgstr "请先修正表单中的错误"
-
-#: web/components/view/ChoyFormView.vue:605
-msgctxt "web/components/view/FormView"
-msgid "Record deleted"
-msgstr "记录已删除"
-
 #: web/components/view/ChoyFormView.vue:19
 msgctxt "web/components/view/FormView"
 msgid "Refresh"
 msgstr "刷新"
-
-#: web/components/view/ChoyFormView.vue:573
-msgctxt "web/components/view/FormView"
-msgid "Refresh failed"
-msgstr "刷新失败"
-
-#: web/components/view/ChoyFormView.vue:570
-msgctxt "web/components/view/FormView"
-msgid "Refreshed"
-msgstr "已刷新"
 
 #: web/components/view/ChoyFormView.vue:41 web/components/view/ChoyFormView.vue:55
 msgctxt "web/components/view/FormView"
 msgid "Reset"
 msgstr "重置"
 
-#: web/components/view/ChoyFormView.vue:161
+#: web/components/view/ChoyFormView.vue:284
 msgctxt "web/components/view/FormView"
 msgid "Save"
 msgstr "保存"
 
-#: web/components/view/ChoyFormView.vue:454 web/components/view/ChoyFormView.vue:503
-msgctxt "web/components/view/FormView"
-msgid "Saved successfully"
-msgstr "保存成功"
-
-#: web/components/view/ChoyFormView.vue:161
+#: web/components/view/ChoyFormView.vue:284
 msgctxt "web/components/view/FormView"
 msgid "Saving..."
 msgstr "保存中..."
 
-#: web/components/view/ChoyFormView.vue:6
+#: web/components/view/ChoyFormView.vue:5
 msgctxt "web/components/view/FormView"
 msgid "System actions"
 msgstr "系统操作"
 
-#: web/components/view/ChoyFormView.vue:60
+#: web/components/view/ChoyFormView.vue:5
 msgctxt "web/components/view/FormView"
 msgid "User actions"
 msgstr "用户操作"
 
-#: web/components/view/ChoyKanbanView.vue:107
+#: web/components/view/ChoyKanbanView.vue:111
 msgctxt "web/components/view/KanbanView"
 msgid "Failed to move card"
 msgstr "移动卡片失败"
 
-#: web/components/view/ChoyKanbanView.vue:41
+#: web/components/view/ChoyKanbanView.vue:40
 msgctxt "web/components/view/KanbanView"
 msgid "Kanban board"
 msgstr "看板"
 
-#: web/components/view/ChoyKanbanView.vue:94
+#: web/components/view/ChoyKanbanView.vue:93
 msgctxt "web/components/view/KanbanView"
 msgid "Load more (%s remaining)"
 msgstr "加载更多（剩余 %s）"
 
-#: web/components/view/ChoyKanbanView.vue:78
+#: web/components/view/ChoyKanbanView.vue:77
 msgctxt "web/components/view/KanbanView"
 msgid "Move to %s"
 msgstr "移至 %s"
 
-#: web/components/view/ChoyKanbanView.vue:72
+#: web/components/view/ChoyKanbanView.vue:71
 msgctxt "web/components/view/KanbanView"
 msgid "Move to lane"
 msgstr "移至泳道"
 
-#: web/components/view/ChoyKanbanView.vue:138
+#: web/components/view/ChoyKanbanView.vue:142
 msgctxt "web/components/view/KanbanView"
 msgid "New"
 msgstr "新建"
 
-#: web/components/view/ChoyKanbanView.vue:88
+#: web/components/view/ChoyKanbanView.vue:87
 msgctxt "web/components/view/KanbanView"
 msgid "No cards"
 msgstr "暂无卡片"
 
-#: web/components/view/ChoyKanbanView.vue:101
+#: web/components/view/ChoyKanbanView.vue:100
 msgctxt "web/components/view/KanbanView"
 msgid "No lanes"
 msgstr "暂无泳道"
 
-#: web/components/view/ChoyKanbanView.vue:32
+#: web/components/view/ChoyKanbanView.vue:31
 msgctxt "web/components/view/KanbanView"
 msgid "Select lane"
 msgstr "选择泳道"
 
-#: web/components/view/ChoyKanbanView.vue:6
+#: web/components/view/ChoyKanbanView.vue:5
 msgctxt "web/components/view/KanbanView"
 msgid "System actions"
 msgstr "系统操作"
 
-#: web/components/view/ChoyKanbanView.vue:13
+#: web/components/view/ChoyKanbanView.vue:5
 msgctxt "web/components/view/KanbanView"
 msgid "User actions"
 msgstr "用户操作"
 
-#: web/components/view/ChoyListView.vue:632
+#: web/components/view/ChoyListView.vue:48
 msgctxt "web/components/view/ListView"
-msgid "Are you sure you want to delete the selected %s record(s)? This action cannot be undone."
-msgstr "确定要删除选中的 %s 条记录吗？此操作无法撤销。"
+msgid "%s selected"
+msgstr "已选 %s"
 
-#: web/components/view/ChoyListView.vue:634
+#: web/components/view/ChoyListView.vue:50
 msgctxt "web/components/view/ListView"
-msgid "Cancel"
-msgstr "取消"
+msgid "Clear selection"
+msgstr "清除选择"
 
-#: web/components/view/ChoyListView.vue:66
+#: web/components/view/ChoyListView.vue:95
 msgctxt "web/components/view/ListView"
 msgid "Click to load more (%s remaining)"
 msgstr "点击加载更多（剩余 %s 条）"
 
-#: web/components/view/ChoyListView.vue:632
-msgctxt "web/components/view/ListView"
-msgid "Confirm delete"
-msgstr "确认删除"
-
-#: web/components/view/ChoyListView.vue:633
+#: web/components/view/ChoyListView.vue:57
 msgctxt "web/components/view/ListView"
 msgid "Delete"
 msgstr "删除"
-
-#: web/components/view/ChoyListView.vue:29
-msgctxt "web/components/view/ListView"
-msgid "Delete (%s)"
-msgstr "删除（%s）"
-
-#: web/components/view/ChoyListView.vue:666
-msgctxt "web/components/view/ListView"
-msgid "Delete failed"
-msgstr "删除失败"
 
 #: web/components/view/ChoyListView.vue:13
 msgctxt "web/components/view/ListView"
 msgid "Discard"
 msgstr "放弃"
 
-#: web/components/view/ChoyListView.vue:223
+#: web/components/view/ChoyListView.vue:236
 msgctxt "web/components/view/ListView"
 msgid "Editing was discarded because the row is no longer visible."
 msgstr "该行已不可见，编辑已放弃。"
 
-#: web/components/view/ChoyListView.vue:518
+#: web/components/view/ChoyListView.vue:553
 msgctxt "web/components/view/ListView"
 msgid "Failed to load list"
 msgstr "列表加载失败"
 
-#: web/components/view/ChoyListView.vue:292
+#: web/components/view/ChoyListView.vue:305
 msgctxt "web/components/view/ListView"
 msgid "Failed to refresh after reorder"
 msgstr "重排后刷新失败"
 
-#: web/components/view/ChoyListView.vue:613
-msgctxt "web/components/view/ListView"
-msgid "Failed to refresh list"
-msgstr "列表刷新失败"
-
-#: web/components/view/ChoyListView.vue:292
+#: web/components/view/ChoyListView.vue:305
 msgctxt "web/components/view/ListView"
 msgid "Failed to reorder rows"
 msgstr "行重排失败"
 
-#: web/components/view/ChoyListView.vue:605
-msgctxt "web/components/view/ListView"
-msgid "List data refreshed"
-msgstr "列表数据已刷新"
-
-#: web/components/view/ChoyListView.vue:19
+#: web/components/view/ChoyListView.vue:106 web/components/view/ChoyListView.vue:19
 msgctxt "web/components/view/ListView"
 msgid "New"
 msgstr "新建"
 
-#: web/components/view/ChoyListView.vue:73
+#: web/components/view/ChoyListView.vue:102
 msgctxt "web/components/view/ListView"
 msgid "No data"
 msgstr "暂无数据"
 
-#: web/components/view/ChoyListView.vue:24
+#: web/components/view/ChoyListView.vue:31
 msgctxt "web/components/view/ListView"
 msgid "Refresh"
 msgstr "刷新"
@@ -1236,55 +1156,45 @@ msgctxt "web/components/view/ListView"
 msgid "Save"
 msgstr "保存"
 
-#: web/components/view/ChoyListView.vue
+#: web/components/view/ChoyListView.vue:44
 msgctxt "web/components/view/ListView"
-msgid "%s selected"
-msgstr "已选 %s"
+msgid "Selection actions"
+msgstr "选择操作"
 
-#: web/components/view/ChoyListView.vue:652
-msgctxt "web/components/view/ListView"
-msgid "Selected records are missing valid IDs"
-msgstr "所选记录缺少有效 ID"
-
-#: web/components/view/ChoyListView.vue:657
-msgctxt "web/components/view/ListView"
-msgid "Successfully deleted %s record(s)"
-msgstr "已成功删除 %s 条记录"
-
-#: web/components/view/ChoyListView.vue:6
+#: web/components/view/ChoyListView.vue:5
 msgctxt "web/components/view/ListView"
 msgid "System actions"
 msgstr "系统操作"
 
-#: web/components/view/ChoyListView.vue:34
+#: web/components/view/ChoyListView.vue:5
 msgctxt "web/components/view/ListView"
 msgid "User actions"
 msgstr "用户操作"
 
-#: web/components/view/ChoyPagination.vue
+#: web/components/view/ChoyPagination.vue:91
 msgctxt "web/components/view/Pagination"
-msgid "%s–%s / %s"
-msgstr "%s–%s / %s"
+msgid "Edit page range"
+msgstr "编辑页码范围"
 
-#: web/components/view/ChoyPagination.vue
+#: web/components/view/ChoyPagination.vue:93
 msgctxt "web/components/view/Pagination"
 msgid "Next"
 msgstr "下一页"
 
-#: web/components/view/ChoyPagination.vue
+#: web/components/view/ChoyPagination.vue:92
 msgctxt "web/components/view/Pagination"
 msgid "Previous"
 msgstr "上一页"
 
-#: web/components/view/ChoyPagination.vue
-msgctxt "web/components/view/Pagination"
-msgid "Rows per page"
-msgstr "每页行数"
-
-#: web/components/view/ChoySearchView.vue:57
+#: web/components/view/ChoySearchView.vue:60
 msgctxt "web/components/view/SearchView"
 msgid "Search..."
 msgstr "搜索…"
+
+#: web/components/view/ChoyViewBusyHost.vue:23
+msgctxt "web/components/view/ViewBusyHost"
+msgid "Loading"
+msgstr "加载中"
 
 #: web/components/view/search/Search.vue:432
 msgctxt "web/components/view/search/Search"
@@ -2066,16 +1976,105 @@ msgctxt "web/query/utils/filter/operators"
 msgid "Not in"
 msgstr "不属于"
 
-#: web/stores/breadcrumbStore/index.ts:12
+#: web/stores/breadcrumbStore/index.ts:18
 msgctxt "web/stores/breadcrumbStore"
 msgid "Details"
 msgstr "详情"
 
-#: web/stores/breadcrumbStore/index.ts:11
+#: web/stores/breadcrumbStore/index.ts:17
 msgctxt "web/stores/breadcrumbStore"
 msgid "Page"
 msgstr "页面"
 
+#~ msgctxt "web/components/view/ChartView"
+#~ msgid "Loading..."
+#~ msgstr "加载中..."
+
+#~ msgctxt "web/components/view/FormView"
+#~ msgid "Are you sure you want to delete the current record? This action cannot be undone."
+#~ msgstr "确定要删除当前记录吗？此操作无法撤销。"
+
+#~ msgctxt "web/components/view/FormView"
+#~ msgid "Confirm delete"
+#~ msgstr "确认删除"
+
+#~ msgctxt "web/components/view/FormView"
+#~ msgid "Created successfully"
+#~ msgstr "创建成功"
+
+#~ msgctxt "web/components/view/FormView"
+#~ msgid "Delete failed"
+#~ msgstr "删除失败"
+
+#~ msgctxt "web/components/view/FormView"
+#~ msgid "Operation failed"
+#~ msgstr "操作失败"
+
+#~ msgctxt "web/components/view/FormView"
+#~ msgid "Please fix the errors in the form first"
+#~ msgstr "请先修正表单中的错误"
+
+#~ msgctxt "web/components/view/FormView"
+#~ msgid "Record deleted"
+#~ msgstr "记录已删除"
+
+#~ msgctxt "web/components/view/FormView"
+#~ msgid "Refresh failed"
+#~ msgstr "刷新失败"
+
+#~ msgctxt "web/components/view/FormView"
+#~ msgid "Refreshed"
+#~ msgstr "已刷新"
+
+#~ msgctxt "web/components/view/FormView"
+#~ msgid "Saved successfully"
+#~ msgstr "保存成功"
+
+#~ msgctxt "web/components/view/ListView"
+#~ msgid "Are you sure you want to delete the selected %s record(s)? This action cannot be undone."
+#~ msgstr "确定要删除选中的 %s 条记录吗？此操作无法撤销。"
+
+#~ msgctxt "web/components/view/ListView"
+#~ msgid "Cancel"
+#~ msgstr "取消"
+
+#~ msgctxt "web/components/view/ListView"
+#~ msgid "Confirm delete"
+#~ msgstr "确认删除"
+
+#~ msgctxt "web/components/view/ListView"
+#~ msgid "Delete (%s)"
+#~ msgstr "删除（%s）"
+
+#~ msgctxt "web/components/view/ListView"
+#~ msgid "Delete failed"
+#~ msgstr "删除失败"
+
+#~ msgctxt "web/components/view/ListView"
+#~ msgid "Failed to refresh list"
+#~ msgstr "列表刷新失败"
+
+#~ msgctxt "web/components/view/ListView"
+#~ msgid "List data refreshed"
+#~ msgstr "列表数据已刷新"
+
+#~ msgctxt "web/components/view/ListView"
+#~ msgid "Selected records are missing valid IDs"
+#~ msgstr "所选记录缺少有效 ID"
+
+#~ msgctxt "web/components/view/ListView"
+#~ msgid "Successfully deleted %s record(s)"
+#~ msgstr "已成功删除 %s 条记录"
+
+#~ msgctxt "web/components/view/Pagination"
+#~ msgid "%s–%s / %s"
+#~ msgstr "%s–%s / %s"
+
+#~ msgctxt "web/components/view/Pagination"
+#~ msgid "Rows per page"
+#~ msgstr "每页行数"
+
 #~ msgctxt "web/composables/useMenu"
 #~ msgid "No menus available"
 #~ msgstr "暂无可用菜单"
+

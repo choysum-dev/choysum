@@ -94,8 +94,9 @@ export function useAdaptiveHeight(wrapRef: Ref<Element | null>, opts: AdaptiveHe
       const pagePadBottom = page
         ? Number.parseFloat(getComputedStyle(page).paddingBottom) || 0
         : 0;
+      // Hard-cap to the shell canvas: do not force minViewportHeight past the footer.
       const h = Math.floor(bottom - rect.top - pagePadBottom);
-      height.value = Math.max(options.minViewportHeight, h);
+      height.value = Math.max(0, h);
       return;
     }
 

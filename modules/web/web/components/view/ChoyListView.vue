@@ -680,7 +680,8 @@ const listTableHeight = computed(() => {
   const rowH = effectiveRowHeight.value || 32;
   const headerH = props.headerHeight ?? 32;
   const contentH = headerH + Math.max(n, 4) * rowH + 16;
-  if (contentH < viewport) return Math.max(240, contentH);
+  // Floor at 240 only when the adaptive viewport is tall enough; never exceed it.
+  if (contentH < viewport) return Math.min(viewport, Math.max(240, contentH));
   return viewport;
 });
 const listTablePxHeight = computed(() => (listTableHeight.value > 0 ? `${listTableHeight.value}px` : ''));

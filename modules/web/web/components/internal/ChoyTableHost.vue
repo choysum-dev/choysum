@@ -28,9 +28,12 @@ SPDX-License-Identifier: Apache-2.0
         @sort-change="onSortChange"
       />
       <div v-if="!rowsArray.length" class="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <slot name="empty">
-          <div class="p-6 text-center text-muted-foreground">{{ _t('No data') }}</div>
-        </slot>
+        <!-- Overlay is non-interactive so it does not steal table clicks; CTAs re-enable pointer events. -->
+        <div class="pointer-events-auto">
+          <slot name="empty">
+            <div class="p-6 text-center text-muted-foreground">{{ _t('No data') }}</div>
+          </slot>
+        </div>
       </div>
     </div>
 

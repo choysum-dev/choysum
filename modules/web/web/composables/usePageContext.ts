@@ -76,12 +76,16 @@ export function providePageContext(options: {
     }
   }
 
+  let pageTitleClaims = 0;
+
   function claimPageTitle() {
+    pageTitleClaims += 1;
     titleHostedByView.value = true;
   }
 
   function releasePageTitle() {
-    titleHostedByView.value = false;
+    pageTitleClaims = Math.max(0, pageTitleClaims - 1);
+    titleHostedByView.value = pageTitleClaims > 0;
   }
 
   const ctx: PageContext = {

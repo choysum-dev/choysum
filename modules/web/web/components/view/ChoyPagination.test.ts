@@ -63,6 +63,35 @@ describe('ChoyPagination', () => {
     mounted.unmount();
   });
 
+
+  test('unchanged range draft does not rewrite pageSize', async () => {
+    const page = ref(6);
+    const pageSize = ref(20);
+    const mounted = mountApp(ChoyPagination as any, {
+      props: {
+        total: 105,
+        page: page.value,
+        pageSize: pageSize.value,
+      },
+      on: {
+        'onUpdate:page': (v: number) => {
+          page.value = v;
+        },
+        'onUpdate:pageSize': (v: number) => {
+          pageSize.value = v;
+        },
+      },
+    });
+    await flushPromises();
+    const state = mounted.setupState() as any;
+    await state.startEdit();
+    await state.commitEdit();
+    await flushPromises();
+    expect(pageSize.value).toBe(20);
+    expect(page.value).toBe(6);
+    mounted.unmount();
+  });
+
   test('editing min-max updates pageSize window and page', async () => {
     const page = ref(2);
     const pageSize = ref(20);
