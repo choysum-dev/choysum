@@ -18,6 +18,7 @@ export type ViewKindDef = {
 };
 
 const registry = new Map<ViewKindId, ViewKindDef>();
+const warnedUnknown = new Set<string>();
 
 /** Register or replace a view kind definition. */
 export function registerViewKind(def: ViewKindDef): void {
@@ -27,13 +28,15 @@ export function registerViewKind(def: ViewKindDef): void {
     return;
   }
   registry.set(id, { ...def, id });
+  warnedUnknown.delete(id);
 }
 
-/** Resolve a registered kind; unknown ids warn and fall back to presentation none. */
+/** Resolve a registered kind; unknown ids warn once and fall back to presentation none. */
 export function getViewKind(id: ViewKindId | null | undefined): ViewKindDef {
   const key = String(id ?? '').trim();
   if (key && registry.has(key)) return registry.get(key)!;
-  if (key) {
+  if (key && !warnedUnknown.has(key)) {
+    warnedUnknown.add(key);
     console.warn(`[viewKinds] unknown view kind "${key}"; fieldPresentation=none`);
   }
   return { id: key || 'unknown', fieldPresentation: 'none', defaultMode: 'display' };
@@ -46,6 +49,7 @@ export function listViewKinds(): ViewKindDef[] {
 /** Clear registry (tests). */
 export function clearViewKindsForTests(): void {
   registry.clear();
+  warnedUnknown.clear();
 }
 
 let builtinsRegistered = false;

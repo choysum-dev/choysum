@@ -33,9 +33,12 @@ SPDX-License-Identifier: Apache-2.0
 import { computed } from 'vue';
 import ChoySpinner from '../layout/ChoySpinner.vue';
 import type { ClassValue } from '../../lib/utils';
+import { createTranslate } from '@/web/web/i18n';
 import { viewBusyHostAttrs, viewBusyHostClass } from './viewBusy';
 
 defineOptions({ name: 'ChoyViewBusyHost' });
+
+const { _t } = createTranslate('web', { scope: 'web/components/view/ViewBusyHost' });
 
 const props = withDefaults(
   defineProps<{
@@ -44,11 +47,11 @@ const props = withDefaults(
     /** Polite live-region text announced while busy (overlay stays aria-hidden). */
     busyLabel?: string;
   }>(),
-  { busy: false, busyLabel: 'Loading' },
+  { busy: false },
 );
 
 const busy = computed(() => !!props.busy);
-const busyLabel = computed(() => props.busyLabel || 'Loading');
+const busyLabel = computed(() => props.busyLabel || _t('Loading'));
 const hostClass = computed(() => viewBusyHostClass(busy.value, props.class));
 const hostAttrs = computed(() => viewBusyHostAttrs(busy.value));
 </script>

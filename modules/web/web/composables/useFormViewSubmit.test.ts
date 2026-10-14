@@ -278,6 +278,20 @@ describe('useFormViewSubmit', () => {
     m.unmount();
   });
 
+  test('create success with null original skips router.replace without throwing', async () => {
+    const m = mountSubmit({ viewMode: 'create', routePath: '/app/items/new' });
+    m.controller.submit.mockImplementation(async () => {
+      m.controller.vm.original = null;
+    });
+    const replace = fnRecorder(async () => {});
+    m.router.replace = replace as any;
+    const out = await m.api().handleSubmit();
+    expect(out.ok).toBe(true);
+    expect(replace.calls.length).toBe(0);
+    expect(m.emit.calls.some(c => c[0] === 'action-error')).toBe(false);
+    m.unmount();
+  });
+
   test('submit error emits action-error and shows message', async () => {
     const m = mountSubmit({ viewMode: 'edit', showMessages: true });
     m.controller.submit.mockImplementation(async () => {

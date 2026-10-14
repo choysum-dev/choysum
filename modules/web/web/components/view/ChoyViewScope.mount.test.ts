@@ -48,25 +48,55 @@ describe('ChoyViewScope', () => {
     console.warn = warn as typeof console.warn;
     let mode = '';
     let kind = '';
+    let w: ReturnType<typeof mountApp> | undefined;
+    try {
+      const Probe = defineComponent({
+        setup() {
+          const scope = useViewScope();
+          mode = scope.mode.value;
+          kind = scope.kind.value;
+          return () => h('span', { 'data-test': 'probe2' });
+        },
+      });
+      const Host = defineComponent({
+        setup() {
+          return () => h(ChoyViewScope, { container: 'List' }, () => h(Probe));
+        },
+      });
+      w = mountApp(Host);
+      await flushPromises();
+      expect(kind).toBe('List');
+      expect(mode).toBe('display');
+      expect(warn.calls.some((c: unknown[]) => String(c[0]).includes('container'))).toBe(true);
+    } finally {
+      console.warn = prev;
+      w?.unmount();
+    }
+  });
+
+  test('defaults kind to Form when neither kind nor container is set', async () => {
+    let kind = '';
+    let mode = '';
+    let presentation = '';
     const Probe = defineComponent({
       setup() {
         const scope = useViewScope();
-        mode = scope.mode.value;
         kind = scope.kind.value;
-        return () => h('span', { 'data-test': 'probe2' });
+        mode = scope.mode.value;
+        presentation = scope.fieldPresentation.value;
+        return () => h('span', { 'data-test': 'probe-default' });
       },
     });
     const Host = defineComponent({
       setup() {
-        return () => h(ChoyViewScope, { container: 'List' }, () => h(Probe));
+        return () => h(ChoyViewScope, {}, () => h(Probe));
       },
     });
     const w = mountApp(Host);
     await flushPromises();
-    expect(kind).toBe('List');
-    expect(mode).toBe('display');
-    expect(warn.calls.some((c: unknown[]) => String(c[0]).includes('container'))).toBe(true);
-    console.warn = prev;
+    expect(kind).toBe('Form');
+    expect(mode).toBe('edit');
+    expect(presentation).toBe('form');
     w.unmount();
   });
 });

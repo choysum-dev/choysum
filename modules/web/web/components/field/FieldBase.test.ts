@@ -28,15 +28,22 @@ function makeBinding(
     isReadonly?: boolean;
     type?: string;
   },
-  opts?: { recordId?: string | null; isEditMode?: boolean; fieldPrefix?: string | null; store?: any }
+  opts?: {
+    recordId?: string | null;
+    isEditMode?: boolean;
+    fieldPrefix?: string | null;
+    store?: any;
+    fieldPresentation?: 'form' | 'cell' | 'none';
+  }
 ): UseField & { __value: any } {
   const value = ref('x');
   const recordId = opts && 'recordId' in opts ? opts.recordId : '1';
   const record = ref(recordId ? { Id: recordId } : {});
+  const presentation = opts?.fieldPresentation ?? 'form';
   return {
     env: {
-      isForm: true,
-      fieldPresentation: 'form',
+      isForm: presentation === 'form',
+      fieldPresentation: presentation,
       isEditMode: opts?.isEditMode ?? true,
       viewMode: opts?.isEditMode === false ? 'display' : 'edit',
       fieldPrefix: opts?.fieldPrefix ?? null,
@@ -578,5 +585,72 @@ describe('FieldBase list-editing-row-id gate', () => {
     expect(await remaining()).toBe('');
     b.unmount();
     expect(validators.size).toBe(0);
+  });
+});
+
+describe('FieldBase auto renderMode from fieldPresentation', () => {
+  afterEach(() => {
+    restoreAll();
+  });
+
+  test('cell presentation selects table mode', () => {
+    installUiStubs();
+    installDialogStubs();
+    stubSfc(ChoyTableColumn as any, {
+      name: 'ChoyTableColumn',
+      setup(_p: any, { slots }: any) {
+        return () => h('div', { class: 'ov-column-stub' }, slots.default?.({ row: { Id: '1' }, $index: 0 }));
+      },
+    });
+    const m = mountApp(FieldBase as any, {
+      props: {
+        binding: makeBinding({ string: 'Name' }, { fieldPresentation: 'cell', isEditMode: false }),
+        renderMode: 'auto',
+      },
+      slots: {
+        edit: () => h(EditStub),
+        display: () => h(DisplayStub),
+      },
+    });
+    expect(m.q('.choy-field-base__cell')).toBeTruthy();
+    expect(m.q('[data-slot="form-item"]')).toBeFalsy();
+    m.unmount();
+  });
+
+  test('none presentation selects inline mode', () => {
+    const m = mountBase({
+      binding: makeBinding({ string: 'Name' }, { fieldPresentation: 'none', isEditMode: false }),
+      renderMode: 'auto',
+    });
+    expect(m.q('.choy-field-base__inline')).toBeTruthy();
+    expect(m.q('[data-slot="form-item"]')).toBeFalsy();
+    m.unmount();
+  });
+
+  test('forwards describedBy and invalid to the edit slot', () => {
+    const m = mountBase(
+      {
+        binding: makeBinding({ string: 'Name' }),
+        renderMode: 'form',
+        id: 'aria-field',
+      },
+      {
+        slots: {
+          edit: (args: { describedBy?: string; invalid?: boolean; inputId?: string }) =>
+            h('input', {
+              id: args.inputId,
+              class: 'aria-probe',
+              'data-has-describedby': args.describedBy === undefined ? 'undefined' : 'set',
+              'data-invalid': String(!!args.invalid),
+            }),
+          display: () => h('span'),
+        },
+      },
+    );
+    const probe = m.q('input.aria-probe') as HTMLElement | null;
+    expect(probe).toBeTruthy();
+    expect(probe?.id).toBe('aria-field');
+    expect(probe?.getAttribute('data-invalid')).toBe('false');
+    m.unmount();
   });
 });

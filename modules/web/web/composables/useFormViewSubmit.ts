@@ -154,7 +154,7 @@ export function useFormViewSubmit<T extends BaseModel>(opts: UseFormViewSubmitOp
           if (!defaultPrevented) {
             const currentRoute = opts.router.currentRoute.value;
             if (currentRoute.path.endsWith('/new')) {
-              const newId = (opts.controller.vm.original as any).Id;
+              const newId = (opts.controller.vm.original as any)?.Id;
               if (newId) {
                 const newPath = currentRoute.path.replace(/\/new$/, `/${newId}`);
                 try {

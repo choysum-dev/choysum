@@ -33,8 +33,22 @@ describe('viewKinds registry', () => {
     ]);
   });
 
-  test('unknown kind falls back to none', () => {
-    expect(getViewKind('Gantt').fieldPresentation).toBe('none');
+  test('unknown kind falls back to none and warns once', () => {
+    const warn = fnRecorder(() => {});
+    const prev = console.warn;
+    console.warn = warn as typeof console.warn;
+    try {
+      expect(getViewKind('Gantt').fieldPresentation).toBe('none');
+      expect(getViewKind('Gantt').fieldPresentation).toBe('none');
+      expect(warn.calls.filter((c: unknown[]) => String(c[0]).includes('Gantt')).length).toBe(1);
+      registerViewKind({ id: 'Gantt', defaultMode: 'display', fieldPresentation: 'cell' });
+      expect(getViewKind('Gantt').fieldPresentation).toBe('cell');
+      clearViewKindsForTests();
+      expect(getViewKind('Gantt').fieldPresentation).toBe('none');
+      expect(warn.calls.filter((c: unknown[]) => String(c[0]).includes('Gantt')).length).toBe(2);
+    } finally {
+      console.warn = prev;
+    }
   });
 
   test('apps can register additional kinds', () => {

@@ -20,11 +20,7 @@ SPDX-License-Identifier: Apache-2.0
     @focusout="onFieldFocusOut"
   >
     <template #default="{ describedBy, invalid }">
-    <div
-      class="w-full min-w-0"
-      :aria-describedby="describedBy || undefined"
-      :aria-invalid="invalid ? 'true' : undefined"
-    >
+    <div class="w-full min-w-0">
     <template v-if="preserveModeSlotForm">
       <div v-show="effectiveEditForm" class="choy-field-base__edit-wrap flex w-full items-center gap-0.5">
         <div class="choy-field-base__edit-control min-w-0 flex-1">
@@ -37,6 +33,8 @@ SPDX-License-Identifier: Apache-2.0
             :visible="visibleForm"
             :inputName="inputName"
             :inputId="inputIdForm"
+            :describedBy="describedBy"
+            :invalid="invalid"
             :onFieldChange="onchangeHandlers.onChange"
             :triggerOnchange="onchangeHandlers.trigger"
             :onchangeRunning="onchangeHandlers.running?.value"
@@ -94,6 +92,8 @@ SPDX-License-Identifier: Apache-2.0
               :visible="visibleForm"
               :inputName="inputName"
               :inputId="inputIdForm"
+              :describedBy="describedBy"
+              :invalid="invalid"
               :onFieldChange="onchangeHandlers.onChange"
               :triggerOnchange="onchangeHandlers.trigger"
               :onchangeRunning="onchangeHandlers.running?.value"
@@ -842,6 +842,8 @@ defineSlots<{
     visible: boolean;
     inputName: string | undefined;
     inputId: string | undefined;
+    describedBy?: string;
+    invalid?: boolean;
     onFieldChange: () => Promise<void>;
     triggerOnchange: (fp?: string | string[]) => Promise<void>;
     onchangeRunning: boolean | undefined;

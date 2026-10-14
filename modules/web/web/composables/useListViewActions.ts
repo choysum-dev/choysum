@@ -33,19 +33,17 @@ export function useListViewActions<T extends BaseModel>(opts: UseListViewActions
     const ok = await opts.emitCancelable('before-refresh');
     if (!ok) return;
 
-    opts.controller
-      .apply()
-      .then(() => {
-        ChoyMessage.success(opts._t('List data refreshed'));
-        const total = Number(((opts.store.state as any).result?.total ?? 0) as any) || 0;
-        opts.emit('refresh-success', { items: (opts.items.value as any) || [], total });
-        return opts.afterLayoutRecompute();
-      })
-      .catch(e => {
-        const err = e instanceof Error ? e : new Error(String(e));
-        opts.emit('action-error', { action: 'refresh', error: err });
-        ChoyMessage.error(opts._t('Failed to refresh list'));
-      });
+    try {
+      await opts.controller.apply();
+      ChoyMessage.success(opts._t('List data refreshed'));
+      const total = Number(((opts.store.state as any).result?.total ?? 0) as any) || 0;
+      opts.emit('refresh-success', { items: (opts.items.value as any) || [], total });
+      await opts.afterLayoutRecompute();
+    } catch (e: unknown) {
+      const err = e instanceof Error ? e : new Error(String(e));
+      opts.emit('action-error', { action: 'refresh', error: err });
+      ChoyMessage.error(opts._t('Failed to refresh list'));
+    }
   }
 
   async function handleCreate() {
