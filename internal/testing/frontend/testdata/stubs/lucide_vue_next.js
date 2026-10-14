@@ -35,6 +35,7 @@ export const Database = icon('Database');
 export const Download = icon('Download');
 export const EllipsisVertical = icon('EllipsisVertical');
 export const FileText = icon('FileText');
+export const FolderSync = icon('FolderSync');
 export const GitBranch = icon('GitBranch');
 export const History = icon('History');
 export const House = icon('House');

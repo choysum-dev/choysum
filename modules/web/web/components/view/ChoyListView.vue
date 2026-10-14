@@ -89,6 +89,8 @@ SPDX-License-Identifier: Apache-2.0
           </template>
 
           <template #header-right>
+            <!-- Domain chrome (view switchers, etc.) before pager so the pager stays at the trailing edge. -->
+            <slot name="header-right" />
             <div v-if="showPaginate && canMountPagination">
               <ChoyPagination
                 :total="listPaginationEffective.total"
@@ -96,7 +98,6 @@ SPDX-License-Identifier: Apache-2.0
                 v-model:page-size="listPageSizeModel"
               />
             </div>
-            <slot name="header-right" />
           </template>
         </ChoyViewActionBar>
       </div>

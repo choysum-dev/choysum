@@ -61,6 +61,12 @@ export {
   PopoverTrigger as ChoyPopoverTrigger,
 } from './components/vendor/ui/popover';
 export {
+  Tooltip as ChoyTooltip,
+  TooltipContent as ChoyTooltipContent,
+  TooltipProvider as ChoyTooltipProvider,
+  TooltipTrigger as ChoyTooltipTrigger,
+} from './components/vendor/ui/tooltip';
+export {
   ChoyDialog,
   ChoyDialogContent,
   ChoyDialogDescription,

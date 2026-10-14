@@ -10,6 +10,7 @@ import {
   isModuleInstalled,
   manifestSummaryText,
   moduleStatusBadgeClass,
+  moduleStatusBadgeVariant,
   resolveModuleKanbanCardId,
   resolveModuleKanbanCardKey,
   shouldRecoverStaleKanbanSearch,
@@ -21,6 +22,14 @@ test('moduleStatusBadgeClass: unavailable and known statuses', () => {
   expect(moduleStatusBadgeClass('queued')).toContain('amber');
   expect(moduleStatusBadgeClass('broken')).toContain('destructive');
   expect(moduleStatusBadgeClass('other')).toContain('muted');
+});
+
+test('moduleStatusBadgeVariant: maps to ChoyBadge variants', () => {
+  expect(moduleStatusBadgeVariant('installed', false)).toBe('destructive');
+  expect(moduleStatusBadgeVariant('installed')).toBe('default');
+  expect(moduleStatusBadgeVariant('uninstalled')).toBe('outline');
+  expect(moduleStatusBadgeVariant('broken')).toBe('destructive');
+  expect(moduleStatusBadgeVariant('queued')).toBe('secondary');
 });
 
 test('isModuleInstalled: case-insensitive installed only', () => {

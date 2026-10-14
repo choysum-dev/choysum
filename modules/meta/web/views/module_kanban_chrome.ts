@@ -20,6 +20,19 @@ export function moduleStatusBadgeClass(status?: string, available?: boolean): st
   return 'bg-muted text-foreground/70';
 }
 
+/** ChoyBadge variant for list/table status cells (semantic kit variants only). */
+export function moduleStatusBadgeVariant(
+  status?: string,
+  available?: boolean,
+): 'default' | 'secondary' | 'destructive' | 'outline' {
+  if (available === false) return 'destructive';
+  const val = String(status || '').toLowerCase();
+  if (val === 'installed' || val === 'succeeded') return 'default';
+  if (val === 'broken' || val === 'failed') return 'destructive';
+  if (val === 'uninstalled') return 'outline';
+  return 'secondary';
+}
+
 /** True when InstalledStatus means the module is installed. */
 export function isModuleInstalled(status?: string): boolean {
   return String(status || '').toLowerCase() === 'installed';
