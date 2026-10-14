@@ -90,6 +90,8 @@ export function useAdaptiveHeight(wrapRef: Ref<Element | null>, opts: AdaptiveHe
   }
 
   function setupObservers() {
+    // Idempotent: a repeat run must not stack ResizeObservers / listeners.
+    cleanupObservers();
     if (options.mode === 'none') return;
     // Minimal FE test DOM may omit window event APIs; skip rather than throw.
     if (typeof window.addEventListener === 'function') {

@@ -42,9 +42,12 @@ export function computeViewportAdaptiveHeight(
     const footer = shellScroll.querySelector(
       '[data-testid="choy-shell-footer"]',
     ) as HTMLElement | null;
-    const bottom = footer
-      ? footer.getBoundingClientRect().top
-      : shellScroll.getBoundingClientRect().bottom;
+    // A hidden footer reports an all-zero rect; prefer the shell canvas bottom.
+    const footerRect = footer?.getBoundingClientRect() ?? null;
+    const bottom =
+      footerRect && (footerRect.height > 0 || footerRect.top > 0)
+        ? footerRect.top
+        : shellScroll.getBoundingClientRect().bottom;
     const page = wrap.closest('[data-anchor="choy.page"]') as HTMLElement | null;
     const pagePadBottom = page
       ? Number.parseFloat(getComputedStyle(page).paddingBottom) || 0

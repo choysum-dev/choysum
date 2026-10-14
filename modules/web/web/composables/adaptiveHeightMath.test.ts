@@ -71,6 +71,22 @@ describe('adaptiveHeightMath', () => {
     ).toBe(400);
   });
 
+  test('computeViewportAdaptiveHeight ignores degenerate zero-size footer', () => {
+    const shell = document.createElement('div');
+    shell.setAttribute('data-testid', 'choy-shell-scroll');
+    shell.getBoundingClientRect = () => rect({ top: 0, bottom: 700 });
+    const footer = document.createElement('div');
+    footer.setAttribute('data-testid', 'choy-shell-footer');
+    footer.getBoundingClientRect = () => rect({ top: 0, bottom: 0, height: 0 });
+    shell.appendChild(footer);
+    const wrap = document.createElement('div');
+    wrap.closest = ((sel: string) =>
+      sel === '[data-testid="choy-shell-scroll"]' ? shell : null) as typeof wrap.closest;
+    expect(
+      computeViewportAdaptiveHeight(wrap, 100, { viewportGap: 12, minViewportHeight: 240 }),
+    ).toBe(600); // shell bottom, not footer.top=0
+  });
+
   test('computeViewportAdaptiveHeight falls back to window with min floor', () => {
     const wrap = document.createElement('div');
     wrap.closest = (() => null) as typeof wrap.closest;

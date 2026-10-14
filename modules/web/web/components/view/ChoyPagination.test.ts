@@ -357,6 +357,18 @@ describe('ChoyPagination', () => {
     await state2.startEdit();
     expect(mounted2.q('.choy-pagination__range-input')).toBeNull();
     mounted2.unmount();
+
+    // NaN total → normalizedTotal 0; range edit stays disabled.
+    const mounted3 = mountApp(ChoyPagination as any, {
+      props: { total: Number.NaN, page: 1, pageSize: 20, disabled: false },
+    });
+    await flushPromises();
+    const rangeBtn = mounted3.q('.choy-pagination__range-value') as HTMLButtonElement | null;
+    expect(rangeBtn?.disabled).toBe(true);
+    const state3 = mounted3.setupState() as any;
+    await state3.startEdit();
+    expect(mounted3.q('.choy-pagination__range-input')).toBeNull();
+    mounted3.unmount();
   });
 
   test('prev and next advance when enabled', async () => {

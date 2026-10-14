@@ -31,7 +31,7 @@ SPDX-License-Identifier: Apache-2.0
         v-else
         type="button"
         class="choy-pagination__range-value box-border inline-flex h-control w-14 shrink-0 items-center justify-center rounded-md border border-transparent bg-transparent px-1 text-sm tabular-nums text-foreground underline decoration-muted-foreground/60 underline-offset-4 hover:decoration-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
-        :disabled="disabled || props.total <= 0"
+        :disabled="disabled || normalizedTotal <= 0"
         :aria-label="rangeEditAriaLabel"
         @click="startEdit"
       >
@@ -169,7 +169,7 @@ function onEditInput(event: Event): void {
 }
 
 async function startEdit(): Promise<void> {
-  if (props.disabled || props.total <= 0) return;
+  if (props.disabled || normalizedTotal.value <= 0) return;
   editing.value = true;
   editDraft.value = rangeValueLabel.value;
   await nextTick();
