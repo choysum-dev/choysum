@@ -4,7 +4,10 @@
 import { defineComponent, h, onMounted } from 'vue';
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import ChoyPage from './ChoyPage.vue';
-import { usePageContext } from '@/web/web/composables/usePageContext';
+import {
+  useHostPageTitleInView,
+  usePageContext,
+} from '@/web/web/composables/usePageContext';
 
 const fakeStore = {
   modelName: 'auth.User',
@@ -104,6 +107,7 @@ describe('ChoyPage title hosting', () => {
             actionImport: true,
             actionExport: false,
             padding: true,
+            width: 'medium',
           });
       },
     });
@@ -114,6 +118,65 @@ describe('ChoyPage title hosting', () => {
     const root = wrapper.q('[data-anchor="choy.page"]') as HTMLElement | null;
     expect(root?.className || '').toContain('choy-inset-pad');
     expect(root?.className || '').not.toContain('choy-inset-pad-no-top');
+    expect(root?.className || '').toContain('max-w-4xl');
     wrapper.unmount();
+  });
+
+  test('useHostPageTitleInView reads titleActionsIo from the page context', async () => {
+    let hostedIo: { actionImport?: boolean; actionExport?: boolean } | null | undefined;
+    const HostChild = defineComponent({
+      setup() {
+        const host = useHostPageTitleInView(true);
+        hostedIo = host.pageTitleActionsIo.value ?? null;
+        return () => h('div', { 'data-test': 'host-child' });
+      },
+    });
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h(
+            ChoyPage as any,
+            {
+              store: fakeStore,
+              title: 'Tokens',
+              actionImport: true,
+              actionExport: true,
+              actionImportUploadHint: 'csv',
+              width: 'narrow',
+            },
+            { default: () => h(HostChild) },
+          );
+      },
+    });
+    const wrapper = mountApp(Host);
+    await flushPromises();
+    expect(hostedIo?.actionImport).toBe(true);
+    expect(hostedIo?.actionExport).toBe(true);
+    expect(wrapper.q('[data-slot=page-title]')).toBeNull();
+    wrapper.unmount();
+  });
+
+  test('width variants apply max-width utility classes', async () => {
+    for (const [width, cls] of [
+      ['wide', 'max-w-6xl'],
+      ['full', 'max-w-none'],
+    ] as const) {
+      const Host = defineComponent({
+        setup() {
+          return () =>
+            h(ChoyPage as any, {
+              store: fakeStore,
+              title: 'W',
+              width,
+              padding: false,
+            });
+        },
+      });
+      const wrapper = mountApp(Host);
+      await flushPromises();
+      const root = wrapper.q('[data-anchor="choy.page"]') as HTMLElement | null;
+      expect(root?.className || '').toContain(cls);
+      wrapper.unmount();
+    }
   });
 });

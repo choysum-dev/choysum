@@ -149,6 +149,58 @@ describe('ChoyPagination', () => {
     mounted.unmount();
   });
 
+  test('clamps page when it exceeds totalPages', async () => {
+    const page = ref(9);
+    const pageSize = ref(20);
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h(ChoyPagination as any, {
+            total: 40,
+            page: page.value,
+            pageSize: pageSize.value,
+            'onUpdate:page': (v: number) => {
+              page.value = v;
+            },
+            'onUpdate:pageSize': (v: number) => {
+              pageSize.value = v;
+            },
+          });
+      },
+    });
+    const mounted = mountApp(Host as any);
+    await flushPromises();
+    // total 40 / size 20 → 2 pages; page 9 clamps to 2.
+    expect(page.value).toBe(2);
+    mounted.unmount();
+  });
+
+  test('startEdit focuses and selects the range input when available', async () => {
+    const mounted = mountApp(ChoyPagination as any, {
+      props: { total: 50, page: 1, pageSize: 10 },
+    });
+    await flushPromises();
+    const state = mounted.setupState() as any;
+    await state.startEdit();
+    await flushPromises();
+    const input = mounted.q('.choy-pagination__range-input') as any;
+    expect(input).not.toBeNull();
+    let focused = false;
+    let selected = false;
+    input.focus = () => {
+      focused = true;
+    };
+    input.select = () => {
+      selected = true;
+    };
+    // Re-enter edit so startEdit's nextTick path calls the stubs.
+    await state.startEdit();
+    await flushPromises();
+    expect(focused).toBe(true);
+    expect(selected).toBe(true);
+    mounted.unmount();
+  });
+
   test('prev/next no-op when disabled', async () => {
     const page = ref(3);
     const mounted = mountApp(ChoyPagination as any, {

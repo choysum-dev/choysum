@@ -91,13 +91,17 @@ export function useAdaptiveHeight(wrapRef: Ref<Element | null>, opts: AdaptiveHe
 
   function setupObservers() {
     if (options.mode === 'none') return;
-    window.addEventListener('resize', recompute);
-    window.addEventListener('orientationchange', recompute);
+    // Minimal FE test DOM may omit window event APIs; skip rather than throw.
+    if (typeof window.addEventListener === 'function') {
+      window.addEventListener('resize', recompute);
+      window.addEventListener('orientationchange', recompute);
+    }
 
     const targets = collectAdaptiveHeightObserveTargets(wrapRef.value, options);
-    if (!targets.length || !('ResizeObserver' in window)) return;
+    const RO = typeof ResizeObserver === 'function' ? ResizeObserver : null;
+    if (!targets.length || !RO) return;
     containerEl = targets[0] ?? null;
-    ro = new ResizeObserver(() => recompute());
+    ro = new RO(() => recompute());
     for (const el of targets) {
       ro.observe(el);
       observedEls.push(el);
@@ -105,8 +109,10 @@ export function useAdaptiveHeight(wrapRef: Ref<Element | null>, opts: AdaptiveHe
   }
 
   function cleanupObservers() {
-    window.removeEventListener('resize', recompute);
-    window.removeEventListener('orientationchange', recompute);
+    if (typeof window.removeEventListener === 'function') {
+      window.removeEventListener('resize', recompute);
+      window.removeEventListener('orientationchange', recompute);
+    }
     if (ro) {
       for (const el of observedEls) {
         ro.unobserve(el);

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { defineComponent, h, nextTick, ref, type Ref } from 'vue';
+import { defineComponent, h, KeepAlive, nextTick, ref, type Ref } from 'vue';
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import { useAdaptiveHeight } from './useAdaptiveHeight';
 
@@ -32,7 +32,38 @@ async function flushFrames(n = 3) {
   }
 }
 
+/** fe-qjs minimal DOM omits window listeners / ResizeObserver; stub for observer paths. */
+function installWindowObserverStubs() {
+  const w = window as any;
+  if (typeof w.addEventListener !== 'function') {
+    const bag = new Map<string, Set<() => void>>();
+    w.addEventListener = (type: string, fn: () => void) => {
+      if (!bag.has(type)) bag.set(type, new Set());
+      bag.get(type)!.add(fn);
+    };
+    w.removeEventListener = (type: string, fn: () => void) => {
+      bag.get(type)?.delete(fn);
+    };
+  }
+  if (typeof w.ResizeObserver !== 'function') {
+    w.ResizeObserver = class ResizeObserverStub {
+      private cb: () => void;
+      constructor(cb: () => void) {
+        this.cb = cb;
+      }
+      observe(_el: Element) {
+        // Touch the callback so the RO wiring is covered.
+        void this.cb;
+      }
+      unobserve(_el: Element) {}
+      disconnect() {}
+    };
+  }
+}
+
 describe('useAdaptiveHeight', () => {
+  installWindowObserverStubs();
+
   test('mode none leaves height at 0', async () => {
     let height = 0;
     const Host = defineComponent({
@@ -231,6 +262,47 @@ describe('useAdaptiveHeight', () => {
     const m = mountApp(Host);
     await flushFrames();
     expect(api!.height.value).toBeGreaterThanOrEqual(120);
+    m.unmount();
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: prev });
+  });
+
+  test('auto mode without dialog uses viewport and KeepAlive reactivates', async () => {
+    let api: ReturnType<typeof useAdaptiveHeight> | null = null;
+    const show = ref(true);
+    const Inner = defineComponent({
+      name: 'AdaptiveInner',
+      setup() {
+        const elRef = wrapRef();
+        api = useAdaptiveHeight(elRef, { mode: 'auto', viewportGap: 0, minViewportHeight: 80 });
+        return () =>
+          h('div', {
+            ref: (el: any) => {
+              if (!el) return;
+              el.getBoundingClientRect = () => rect({ top: 100 });
+              el.closest = (() => null) as typeof el.closest;
+              elRef.value = el as Element;
+            },
+          });
+      },
+    });
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h(KeepAlive, null, {
+            default: () => (show.value ? h(Inner) : null),
+          });
+      },
+    });
+    const prev = window.innerHeight;
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 700 });
+    const m = mountApp(Host);
+    await flushFrames();
+    expect(api!.height.value).toBeGreaterThanOrEqual(80);
+    show.value = false;
+    await flushFrames();
+    show.value = true;
+    await flushFrames();
+    expect(api!.height.value).toBeGreaterThanOrEqual(80);
     m.unmount();
     Object.defineProperty(window, 'innerHeight', { configurable: true, value: prev });
   });
