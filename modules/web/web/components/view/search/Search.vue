@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <div class="choy-search w-full" data-anchor="choy.search">
     <div
-      class="choy-search__main flex min-h-control cursor-text flex-wrap items-center gap-0.5 rounded-md border border-border bg-card px-2 py-0.5 hover:border-accent-foreground/20 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30"
+      class="choy-search__main box-border flex min-h-control cursor-text flex-wrap items-center gap-0.5 rounded-md border border-border bg-card px-2 hover:border-accent-foreground/20 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30"
       @click="focusInput"
     >
       <span>
@@ -63,7 +63,7 @@ SPDX-License-Identifier: Apache-2.0
       <input
         ref="inputRef"
         v-model="keyword"
-        class="choy-search__input min-w-[140px] flex-1 border-0 bg-transparent p-1 text-sm text-foreground outline-none"
+        class="choy-search__input min-w-[140px] flex-1 border-0 bg-transparent px-1 py-0 text-sm leading-none text-foreground outline-none"
         :placeholder="placeholder"
         :name="inputName"
         :id="inputId"

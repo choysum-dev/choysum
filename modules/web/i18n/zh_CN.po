@@ -886,6 +886,11 @@ msgctxt "web/components/layout/ChoyPageIoMenu"
 msgid "Import and export"
 msgstr "导入与导出"
 
+#: web/components/layout/ChoyPageIoMenu.vue
+msgctxt "web/components/layout/ChoyPageIoMenu"
+msgid "More actions"
+msgstr "更多操作"
+
 #: web/components/layout/ChoyPageIoMenu.vue:111
 msgctxt "web/components/layout/ChoyPageIoMenu"
 msgid "No model/store available for this action."

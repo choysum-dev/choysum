@@ -77,6 +77,13 @@ body {
   padding: var(--choy-layout-content-padding);
 }
 
+/* List/Kanban host the page title in view chrome; keep side/bottom gutter only. */
+.choy-inset-pad-no-top {
+  padding-inline: var(--choy-layout-content-padding);
+  padding-bottom: var(--choy-layout-content-padding);
+  padding-top: 0;
+}
+
 /*
  * Shared field / auth inputs (align with vendor/ui Input).
  * Unlayered only for properties FullCSS preflight also sets unlayered

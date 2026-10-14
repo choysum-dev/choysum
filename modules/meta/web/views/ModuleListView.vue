@@ -15,14 +15,41 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     @row-click="onRowClick"
   >
+    <!-- Domain secondary actions share the title ⋮ with Refresh / import / export. -->
+    <template
+      v-if="showHeader && (canRoute('meta.route.module_history') || hasAction(moduleSyncIndexAction))"
+      #overflow-actions
+    >
+      <ChoyDropdownMenuItem
+        v-if="canRoute('meta.route.module_history')"
+        data-testid="module-overflow-history"
+        @select="toHistory"
+      >
+        <History class="size-4" aria-hidden="true" />
+        {{ _t('Operation History') }}
+      </ChoyDropdownMenuItem>
+      <ChoyDropdownMenuItem
+        v-if="hasAction(moduleSyncIndexAction)"
+        data-testid="module-overflow-sync"
+        :disabled="syncLoading"
+        @select="onSyncIndex"
+      >
+        <FolderSync class="size-4" :class="{ 'animate-spin': syncLoading }" aria-hidden="true" />
+        {{ _t('Sync Index') }}
+      </ChoyDropdownMenuItem>
+    </template>
+
+    <!-- View-mode toggles only; ListView keeps pagination at the trailing edge. -->
     <template v-if="showHeader" #header-right>
-      <div class="flex items-center gap-1">
+      <ChoyButtonGroup :aria-label="_t('View switcher')">
         <ChoyButton
           v-if="canRoute('meta.route.module_board')"
           type="button"
           size="icon"
-          :variant="isListRoute ? 'outline' : 'default'"
+          variant="outline"
+          :aria-pressed="!isListRoute"
           :aria-label="_t('Board View')"
+          :class="!isListRoute ? 'z-[1] bg-muted text-foreground hover:bg-muted' : undefined"
           @click="toKanban"
         >
           <LayoutGrid class="size-4" aria-hidden="true" />
@@ -31,48 +58,15 @@ SPDX-License-Identifier: Apache-2.0
           v-if="canRoute('meta.route.module_list')"
           type="button"
           size="icon"
-          :variant="isListRoute ? 'default' : 'outline'"
+          variant="outline"
+          :aria-pressed="isListRoute"
           :aria-label="_t('List View')"
+          :class="isListRoute ? 'z-[1] bg-muted text-foreground hover:bg-muted' : undefined"
           @click="toList"
         >
           <List class="size-4" aria-hidden="true" />
         </ChoyButton>
-
-        <ChoyTooltipProvider v-if="canRoute('meta.route.module_history')">
-          <ChoyTooltip>
-            <ChoyTooltipTrigger as-child>
-              <ChoyButton
-                type="button"
-                size="icon"
-                variant="ghost"
-                :aria-label="_t('Operation History')"
-                @click="toHistory"
-              >
-                <History class="size-4" aria-hidden="true" />
-              </ChoyButton>
-            </ChoyTooltipTrigger>
-            <ChoyTooltipContent side="bottom">{{ _t('Operation History') }}</ChoyTooltipContent>
-          </ChoyTooltip>
-        </ChoyTooltipProvider>
-
-        <ChoyTooltipProvider v-if="hasAction(moduleSyncIndexAction)">
-          <ChoyTooltip>
-            <ChoyTooltipTrigger as-child>
-              <ChoyButton
-                type="button"
-                size="icon"
-                variant="ghost"
-                :aria-label="_t('Sync Index')"
-                :disabled="syncLoading"
-                @click="onSyncIndex"
-              >
-                <FolderSync class="size-4" :class="{ 'animate-spin': syncLoading }" aria-hidden="true" />
-              </ChoyButton>
-            </ChoyTooltipTrigger>
-            <ChoyTooltipContent side="bottom">{{ _t('Sync Index') }}</ChoyTooltipContent>
-          </ChoyTooltip>
-        </ChoyTooltipProvider>
-      </div>
+      </ChoyButtonGroup>
     </template>
 
     <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
@@ -118,15 +112,13 @@ import {
   ChoyBadge,
   ChoyBooleanField,
   ChoyButton,
+  ChoyButtonGroup,
   ChoyDatetimeField,
+  ChoyDropdownMenuItem,
   ChoyListView,
   ChoyMessage,
   ChoySearchView,
   ChoyTableColumn,
-  ChoyTooltip,
-  ChoyTooltipContent,
-  ChoyTooltipProvider,
-  ChoyTooltipTrigger,
   ChoyVarcharField,
   ChoyVirtualField,
 } from '@/web';

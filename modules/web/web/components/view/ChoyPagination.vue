@@ -8,35 +8,39 @@ SPDX-License-Identifier: Apache-2.0
     data-anchor="choy.pagination"
     data-testid="choy-pagination"
     :class="[
-      'choy-pagination flex h-control flex-wrap items-center gap-3 text-sm text-foreground',
+      'choy-pagination flex h-control flex-wrap items-center gap-2 text-sm text-foreground',
       props.class,
     ]"
   >
-    <span
-      class="choy-pagination__range text-sm text-muted-foreground tabular-nums"
-      aria-live="polite"
-    >
-      {{ rangeLabel }}
-    </span>
-    <label class="choy-pagination__size inline-flex items-center gap-2 text-muted-foreground">
-      <span class="sr-only">{{ pageSizeLabel }}</span>
-      <NativeSelect
-        class="min-w-16"
+    <div class="choy-pagination__range inline-flex items-center gap-1 text-sm tabular-nums text-muted-foreground">
+      <!-- Shared narrow box so idle ↔ edit does not shift "/ total" or the pager buttons. -->
+      <input
+        v-if="editing"
+        ref="rangeInputRef"
+        type="text"
+        inputmode="numeric"
+        class="choy-pagination__range-input box-border h-control w-14 shrink-0 rounded-md border border-input bg-background px-1 text-center text-sm tabular-nums text-foreground outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:opacity-50"
         :disabled="disabled"
-        :aria-label="pageSizeLabel"
-        v-model="pageSizeModel"
+        :aria-label="rangeEditLabel"
+        :value="editDraft"
+        @input="onEditInput"
+        @keydown="onEditKeydown"
+        @blur="commitEdit"
+      />
+      <button
+        v-else
+        type="button"
+        class="choy-pagination__range-value box-border inline-flex h-control w-14 shrink-0 items-center justify-center rounded-md border border-transparent bg-transparent px-1 text-sm tabular-nums text-foreground underline decoration-muted-foreground/60 underline-offset-4 hover:decoration-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+        :disabled="disabled || props.total <= 0"
+        :aria-label="rangeEditLabel"
+        @click="startEdit"
       >
-        <NativeSelectOption v-for="n in effectivePageSizeOptions" :key="n" :value="String(n)">
-          {{ n }}
-        </NativeSelectOption>
-      </NativeSelect>
-    </label>
-    <!-- role=group mirrors ButtonGroup; avoid barrel import (sibling SFCs break FE-QJS compile). -->
-    <div
-      role="group"
-      data-slot="button-group"
-      class="ms-auto flex w-fit items-stretch [&>*:not(:first-child)]:rounded-l-none [&>*:not(:first-child)]:border-l-0 [&>*:not(:last-child)]:rounded-r-none"
-    >
+        {{ rangeValueLabel }}
+      </button>
+      <span aria-hidden="true">/</span>
+      <span class="choy-pagination__total tabular-nums" aria-live="polite">{{ props.total }}</span>
+    </div>
+    <ChoyButtonGroup>
       <ChoyButton
         type="button"
         variant="outline"
@@ -57,62 +61,57 @@ SPDX-License-Identifier: Apache-2.0
       >
         <ChevronRight class="size-4" aria-hidden="true" />
       </ChoyButton>
-    </div>
+    </ChoyButtonGroup>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import ChoyButton from '../layout/ChoyButton.vue';
-import NativeSelect from '../vendor/ui/native-select/NativeSelect.vue';
-import NativeSelectOption from '../vendor/ui/native-select/NativeSelectOption.vue';
+import ChoyButtonGroup from '../layout/ChoyButtonGroup.vue';
 import type { ClassValue } from '../../lib/utils';
 import { createTranslate } from '../../i18n';
-import { clampChoyPage, choyTotalPages } from './paginationHelpers';
+import {
+  applyChoyPagerRangeEdit,
+  clampChoyPage,
+  choyTotalPages,
+  formatChoyPagerRangeValue,
+} from './paginationHelpers';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/Pagination' });
 
 /**
- * Product pagination (Dense Admin): range + pageSize NativeSelect + icon prev/next.
- * Changing pageSize resets to page 1. Kit exports only this pagination API.
+ * Product pagination (Odoo-style): editable range + total + icon prev/next.
+ * Page size stays on the model for the list engine; there is no rows-per-page select.
+ * Editing "1-12" can jump by start index, or widen/narrow the window (updates pageSize).
  */
 const props = withDefaults(
   defineProps<{
     class?: ClassValue;
     total: number;
     disabled?: boolean;
-    pageSizeOptions?: number[];
   }>(),
   {
     disabled: false,
-    pageSizeOptions: () => [10, 20, 50, 80],
   },
 );
 
 const page = defineModel<number>('page', { default: 1 });
 const pageSize = defineModel<number>('pageSize', { default: 20 });
 
-const pageSizeModel = computed({
-  get: () => String(pageSize.value),
-  set: (value: unknown) => {
-    onPageSizeModel(value);
-  },
-});
-
-const effectivePageSizeOptions = computed(() => {
-  const opts = [...props.pageSizeOptions];
-  if (Number.isFinite(pageSize.value) && pageSize.value > 0 && !opts.includes(pageSize.value)) {
-    opts.push(pageSize.value);
-    opts.sort((a, b) => a - b);
-  }
-  return opts;
-});
+const editing = ref(false);
+const editDraft = ref('');
+const rangeInputRef = ref<HTMLInputElement | null>(null);
+const suppressBlurCommit = ref(false);
+/** Skip page→1 reset while applying an edited range that sets both models. */
+const applyingRangeEdit = ref(false);
 
 const totalPages = computed(() => choyTotalPages(props.total, pageSize.value));
 const currentPage = computed(() => clampChoyPage(page.value, totalPages.value));
 
 watch(pageSize, () => {
+  if (applyingRangeEdit.value) return;
   if (page.value !== 1) {
     page.value = 1;
   }
@@ -142,22 +141,73 @@ const rangeEnd = computed(() => {
   if (!Number.isFinite(props.total) || props.total <= 0) return 0;
   return Math.min(currentPage.value * pageSize.value, props.total);
 });
-const rangeLabel = computed(() =>
-  _t('%s–%s / %s', rangeStart.value, rangeEnd.value, props.total),
+const rangeValueLabel = computed(() =>
+  formatChoyPagerRangeValue(rangeStart.value, rangeEnd.value),
 );
-const pageSizeLabel = computed(() => _t('Rows per page'));
+const rangeEditLabel = computed(() => _t('Edit page range'));
 const prevLabel = computed(() => _t('Previous'));
 const nextLabel = computed(() => _t('Next'));
 
-function onPageSizeModel(value: unknown): void {
-  const raw = Number(value);
-  if (!Number.isFinite(raw) || raw <= 0) return;
-  pageSize.value = raw;
+function onEditInput(event: Event): void {
+  editDraft.value = (event.target as HTMLInputElement | null)?.value ?? '';
 }
 
-/** @deprecated Kept for unit tests that call setupState().onPageSizeChange */
-function onPageSizeChange(event: Event): void {
-  onPageSizeModel((event.target as HTMLSelectElement | null)?.value);
+async function startEdit(): Promise<void> {
+  if (props.disabled || props.total <= 0) return;
+  editing.value = true;
+  editDraft.value = rangeValueLabel.value;
+  await nextTick();
+  const el = rangeInputRef.value;
+  if (el && typeof el.focus === 'function') {
+    el.focus();
+  }
+  if (el && typeof el.select === 'function') {
+    el.select();
+  }
+}
+
+/** Test / programmatic: open edit with an explicit draft string. */
+async function startEditWith(draft: string): Promise<void> {
+  await startEdit();
+  editDraft.value = draft;
+}
+
+function cancelEdit(): void {
+  suppressBlurCommit.value = true;
+  editing.value = false;
+  editDraft.value = '';
+  queueMicrotask(() => {
+    suppressBlurCommit.value = false;
+  });
+}
+
+async function commitEdit(): Promise<void> {
+  if (suppressBlurCommit.value || !editing.value) return;
+  const next = applyChoyPagerRangeEdit({
+    draft: editDraft.value,
+    total: props.total,
+    pageSize: pageSize.value,
+  });
+  editing.value = false;
+  editDraft.value = '';
+  if (!next) return;
+  applyingRangeEdit.value = true;
+  if (next.pageSize !== pageSize.value) {
+    pageSize.value = next.pageSize;
+  }
+  page.value = next.page;
+  await nextTick();
+  applyingRangeEdit.value = false;
+}
+
+function onEditKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    commitEdit();
+  } else if (event.key === 'Escape') {
+    event.preventDefault();
+    cancelEdit();
+  }
 }
 
 function goPrev(): void {
@@ -170,5 +220,5 @@ function goNext(): void {
   page.value = currentPage.value + 1;
 }
 
-defineExpose({ onPageSizeChange, goPrev, goNext });
+defineExpose({ startEdit, startEditWith, commitEdit, cancelEdit, goPrev, goNext });
 </script>
