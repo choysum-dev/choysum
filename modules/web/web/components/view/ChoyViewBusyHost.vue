@@ -12,6 +12,14 @@ SPDX-License-Identifier: Apache-2.0
     <slot />
     <div
       v-if="busy"
+      role="status"
+      aria-live="polite"
+      class="sr-only"
+    >
+      {{ busyLabel }}
+    </div>
+    <div
+      v-if="busy"
       data-slot="view-busy-overlay"
       class="absolute inset-0 z-10 flex items-center justify-center bg-background/50"
       aria-hidden="true"
@@ -33,11 +41,14 @@ const props = withDefaults(
   defineProps<{
     busy?: boolean;
     class?: ClassValue;
+    /** Polite live-region text announced while busy (overlay stays aria-hidden). */
+    busyLabel?: string;
   }>(),
-  { busy: false },
+  { busy: false, busyLabel: 'Loading' },
 );
 
 const busy = computed(() => !!props.busy);
+const busyLabel = computed(() => props.busyLabel || 'Loading');
 const hostClass = computed(() => viewBusyHostClass(busy.value, props.class));
 const hostAttrs = computed(() => viewBusyHostAttrs(busy.value));
 </script>

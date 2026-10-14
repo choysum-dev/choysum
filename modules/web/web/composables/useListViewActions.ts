@@ -80,14 +80,15 @@ export function useListViewActions<T extends BaseModel>(opts: UseListViewActions
         })
         .filter((id: any) => id != null) as string[];
 
-      const ok = await opts.emitCancelable('before-delete', { ids });
-      if (!ok) return;
-
-      deleteLoading.value = true;
       if (ids.length === 0) {
         ChoyMessage.warning(opts._t('Selected records are missing valid IDs'));
         return;
       }
+
+      const ok = await opts.emitCancelable('before-delete', { ids });
+      if (!ok) return;
+
+      deleteLoading.value = true;
 
       await opts.store.Delete(['Id', 'in', ids] as QueryCondition<T>);
       ChoyMessage.success(opts._t('Successfully deleted %s record(s)', ids.length));

@@ -17,8 +17,9 @@ SPDX-License-Identifier: Apache-2.0
       )
     "
   >
+    <!-- Keep the first thirds-grid column even when actions are empty so center/right do not shift. -->
     <div
-      v-if="$slots['system-actions'] || $slots['user-actions']"
+      v-if="$slots['system-actions'] || $slots['user-actions'] || props.layout === 'thirds'"
       :class="
         cn(
           'flex min-w-0 items-center gap-3 max-md:flex-col max-md:items-stretch',

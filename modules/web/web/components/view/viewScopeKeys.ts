@@ -7,7 +7,7 @@ import {
   isRef,
   provide,
   ref,
-  toRef,
+  unref,
   type ComputedRef,
   type InjectionKey,
   type Ref,
@@ -45,19 +45,33 @@ function asRef<T>(value: Ref<T> | T): Ref<T> {
   return isRef(value) ? value : (ref(value) as Ref<T>);
 }
 
+const FALLBACK_KIND_DEF: ViewKindDef = {
+  id: 'unknown',
+  fieldPresentation: 'none',
+  defaultMode: 'display',
+};
+
 /**
  * Provide view environment for descendants (Form/List/Kanban/… or ChoyViewScope).
  * Ensures builtin kinds are registered once.
+ * When `fieldPrefix` is omitted, inherits the parent scope prefix (if any).
  */
 export function useProvideViewScope(opts: ProvideViewScopeOptions): ViewScopeValue {
   registerBuiltinViewKinds();
+  const parent = inject(VIEW_SCOPE_KEY, null);
   const kind = asRef(opts.kind) as Ref<ViewKindId>;
   const mode = (opts.mode !== undefined
     ? asRef(opts.mode)
     : computed(() => getViewKind(kind.value).defaultMode || 'display')) as Ref<ViewMode>;
-  const fieldPrefix = (opts.fieldPrefix !== undefined
-    ? asRef(opts.fieldPrefix)
-    : toRef(() => null as string | null)) as Ref<string | null | undefined>;
+  const fieldPrefix = computed(() => {
+    if (opts.fieldPrefix !== undefined) {
+      const v = unref(opts.fieldPrefix as Ref<string | null | undefined> | string | null);
+      // Explicit undefined (optional prop not set) still inherits the parent prefix.
+      if (v === undefined) return parent?.fieldPrefix.value ?? null;
+      return v;
+    }
+    return parent?.fieldPrefix.value ?? null;
+  }) as Ref<string | null | undefined>;
 
   const kindDef = computed(() => getViewKind(kind.value));
   const fieldPresentation = computed(() => kindDef.value.fieldPresentation);
@@ -75,17 +89,17 @@ export function useProvideViewScope(opts: ProvideViewScopeOptions): ViewScopeVal
 
 /**
  * Inject the nearest view scope. When missing, returns a display/none fallback
- * (no silent Form layout).
+ * without warning on the synthetic "unknown" kind id.
  */
 export function useViewScope(): ViewScopeValue {
   registerBuiltinViewKinds();
   const injected = inject(VIEW_SCOPE_KEY, null);
   if (injected) return injected;
 
-  const kind = toRef(() => 'unknown' as ViewKindId);
-  const mode = toRef(() => 'display' as ViewMode);
-  const fieldPrefix = toRef(() => null as string | null);
-  const kindDef = computed(() => getViewKind(kind.value));
-  const fieldPresentation = computed(() => kindDef.value.fieldPresentation);
+  const kind = ref<ViewKindId>('unknown');
+  const mode = ref<ViewMode>('display');
+  const fieldPrefix = ref<string | null>(null);
+  const kindDef = computed(() => FALLBACK_KIND_DEF);
+  const fieldPresentation = computed(() => FALLBACK_KIND_DEF.fieldPresentation);
   return { kind, mode, fieldPrefix, kindDef, fieldPresentation };
 }

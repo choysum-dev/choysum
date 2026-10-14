@@ -23,12 +23,14 @@ SPDX-License-Identifier: Apache-2.0
         <CircleHelp class="size-3.5" />
       </button>
     </div>
-    <div data-slot="form-control" :id="controlId || undefined">
-      <slot />
+    <!-- Do not put controlId on this wrapper — the slotted control owns the id for label association. -->
+    <div data-slot="form-control">
+      <slot :described-by="describedBy" :invalid="!!error" />
     </div>
     <p
       v-if="error || reserveError"
       data-slot="form-message"
+      :id="messageId || undefined"
       class="text-destructive text-sm"
       :class="{ invisible: reserveError && !error }"
       :role="error ? 'alert' : undefined"
@@ -39,6 +41,7 @@ SPDX-License-Identifier: Apache-2.0
     <p
       v-else-if="description"
       data-slot="form-description"
+      :id="descriptionId || undefined"
       class="text-sm text-muted-foreground"
     >
       {{ description }}
@@ -47,6 +50,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { CircleHelp } from 'lucide-vue-next';
 import FormItem from '../vendor/ui/form/FormItem.vue';
 import Label from '../vendor/ui/label/Label.vue';
@@ -65,4 +69,12 @@ const props = defineProps<{
   description?: string;
   controlId?: string;
 }>();
+
+const messageId = computed(() => (props.controlId ? `${props.controlId}-message` : ''));
+const descriptionId = computed(() => (props.controlId ? `${props.controlId}-description` : ''));
+const describedBy = computed(() => {
+  if (props.error && messageId.value) return messageId.value;
+  if (!props.error && props.description && descriptionId.value) return descriptionId.value;
+  return undefined;
+});
 </script>

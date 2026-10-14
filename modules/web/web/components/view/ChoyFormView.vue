@@ -319,11 +319,20 @@ provide('lastOnchangeResult', lastOnchangeResult);
 const exposedFormData = computed<Partial<ClientModel<T>>>(() => (controller.vm.draft as any) || {});
 
 const lifecycleDeps = {
+  // Getters keep identity reactive when the host reuses the form without remounting.
   identity: {
-    recordId: props.recordId,
-    viewMode: props.viewMode,
-    initialValues: props.initialValues,
-    onchangeSessionId: props.onchangeSessionId,
+    get recordId() {
+      return props.recordId;
+    },
+    get viewMode() {
+      return props.viewMode;
+    },
+    get initialValues() {
+      return props.initialValues;
+    },
+    get onchangeSessionId() {
+      return props.onchangeSessionId;
+    },
   },
   route,
   router,
@@ -360,7 +369,9 @@ const { submitting, handleSubmit, onNativeSubmit } = useFormViewSubmit({
   fieldClientValidators,
   fieldErrors,
   resolvedShowMessages,
-  submitHandler: props.submitHandler,
+  get submitHandler() {
+    return props.submitHandler;
+  },
   onchangeCtrl,
   resetOnchangeAgg,
   emitCancelable,

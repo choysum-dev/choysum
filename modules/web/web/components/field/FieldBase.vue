@@ -19,6 +19,12 @@ SPDX-License-Identifier: Apache-2.0
     v-bind="formItemProps"
     @focusout="onFieldFocusOut"
   >
+    <template #default="{ describedBy, invalid }">
+    <div
+      class="w-full min-w-0"
+      :aria-describedby="describedBy || undefined"
+      :aria-invalid="invalid ? 'true' : undefined"
+    >
     <template v-if="preserveModeSlotForm">
       <div v-show="effectiveEditForm" class="choy-field-base__edit-wrap flex w-full items-center gap-0.5">
         <div class="choy-field-base__edit-control min-w-0 flex-1">
@@ -156,6 +162,8 @@ SPDX-License-Identifier: Apache-2.0
       :draft-value="panelDraftValue"
       @saved="onCompanyValuesSaved"
     />
+    </div>
+    </template>
   </ChoyFormItem>
 
   <!-- TABLE mode -->
@@ -533,7 +541,11 @@ const effectiveRenderMode = computed(() => {
   const rm = props.renderMode || 'auto';
   if (rm !== 'auto') return rm;
   if (injectedRenderOverride) return injectedRenderOverride;
-  return binding.env.isForm ? 'form' : 'table';
+  const presentation = binding.env.fieldPresentation;
+  if (presentation === 'form') return 'form';
+  if (presentation === 'cell') return 'table';
+  // 'none' (and missing): compact inline — never silent Form or table chrome.
+  return 'inline';
 });
 const showInlineError = computed(() => props.showInlineError === true);
 const preserveModeSlotForm = computed(() => props.preserveModeSlot === true);

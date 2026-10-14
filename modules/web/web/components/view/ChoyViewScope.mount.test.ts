@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { defineComponent, h } from 'vue';
-import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
+import { flushPromises, fnRecorder, mountApp } from '@/web/web/__tests__/mountApp';
 import ChoyViewScope from './ChoyViewScope.vue';
 import { useViewScope } from './viewScopeKeys';
 
@@ -39,6 +39,34 @@ describe('ChoyViewScope', () => {
     expect(kind).toBe('List');
     expect(prefix).toBe('Lines');
     expect(presentation).toBe('cell');
+    w.unmount();
+  });
+
+  test('omitted viewMode uses kind defaultMode; deprecated container warns', async () => {
+    const warn = fnRecorder(() => {});
+    const prev = console.warn;
+    console.warn = warn as typeof console.warn;
+    let mode = '';
+    let kind = '';
+    const Probe = defineComponent({
+      setup() {
+        const scope = useViewScope();
+        mode = scope.mode.value;
+        kind = scope.kind.value;
+        return () => h('span', { 'data-test': 'probe2' });
+      },
+    });
+    const Host = defineComponent({
+      setup() {
+        return () => h(ChoyViewScope, { container: 'List' }, () => h(Probe));
+      },
+    });
+    const w = mountApp(Host);
+    await flushPromises();
+    expect(kind).toBe('List');
+    expect(mode).toBe('display');
+    expect(warn.calls.some((c: unknown[]) => String(c[0]).includes('container'))).toBe(true);
+    console.warn = prev;
     w.unmount();
   });
 });
