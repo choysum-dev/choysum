@@ -2,6 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, onBeforeUnmount, onMounted, onActivated, ref, type Ref } from 'vue';
+import {
+  collectAdaptiveHeightObserveTargets,
+  computeContainerAdaptiveHeight,
+  computeViewportAdaptiveHeight,
+} from './adaptiveHeightMath';
 
 export type HeightMode = 'auto' | 'viewport' | 'container' | 'none';
 
@@ -19,7 +24,8 @@ export interface AdaptiveHeightOptions {
  * Computes content height from either the viewport or a container with requestAnimationFrame throttling.
  * - auto: use container mode inside .el-dialog__body, otherwise viewport mode
  * - container: compute height from the resolved container and subtract the dialog footer when present
- * - viewport: compute height from the distance to the viewport bottom
+ * - viewport: fill to AppShell scroll canvas (above footer) when nested there;
+ *   otherwise distance to the viewport bottom minus viewportGap
  * - none: leave height untouched
  */
 export function useAdaptiveHeight(wrapRef: Ref<Element | null>, opts: AdaptiveHeightOptions = {}) {
@@ -36,6 +42,7 @@ export function useAdaptiveHeight(wrapRef: Ref<Element | null>, opts: AdaptiveHe
   const pxHeight = computed(() => (height.value > 0 ? `${height.value}px` : ''));
 
   let containerEl: HTMLElement | null = null;
+  let observedEls: HTMLElement[] = [];
   let ro: ResizeObserver | null = null;
   let rafId: number | null = null;
 
@@ -65,23 +72,13 @@ export function useAdaptiveHeight(wrapRef: Ref<Element | null>, opts: AdaptiveHe
         : null;
       containerEl = bySelector || (wrap.closest('.el-dialog__body') as HTMLElement) || wrap.parentElement;
       if (containerEl) {
-        const crect = containerEl.getBoundingClientRect();
-        const dialog = containerEl.closest('.el-dialog') as HTMLElement | null;
-        const footer = dialog?.querySelector('.el-dialog__footer') as HTMLElement | null;
-        const footerH = footer ? footer.getBoundingClientRect().height : 0;
-        const pad = options.containerPadding ?? 0;
-        const h = Math.floor(crect.bottom - rect.top - footerH - pad);
-        height.value = Math.max(options.minContainerHeight, h);
+        height.value = computeContainerAdaptiveHeight(rect.top, containerEl, options);
         return;
       }
       // Fall back to viewport mode when no container can be resolved.
     }
 
-    // Viewport mode.
-    const vh = window.innerHeight || document.documentElement.clientHeight;
-    const gap = options.viewportGap ?? 0;
-    const h = Math.floor(vh - rect.top - gap);
-    height.value = Math.max(options.minViewportHeight, h);
+    height.value = computeViewportAdaptiveHeight(wrap, rect.top, options);
   }
 
   function recompute() {
@@ -93,38 +90,37 @@ export function useAdaptiveHeight(wrapRef: Ref<Element | null>, opts: AdaptiveHe
   }
 
   function setupObservers() {
+    // Idempotent: a repeat run must not stack ResizeObservers / listeners.
+    cleanupObservers();
     if (options.mode === 'none') return;
-    window.addEventListener('resize', recompute);
-    window.addEventListener('orientationchange', recompute);
+    // Minimal FE test DOM may omit window event APIs; skip rather than throw.
+    if (typeof window.addEventListener === 'function') {
+      window.addEventListener('resize', recompute);
+      window.addEventListener('orientationchange', recompute);
+    }
 
-    const wrap = wrapRef.value;
-    const autoContainer = wrap?.closest('.el-dialog__body') as HTMLElement | null;
-    const needContainerObs = options.mode === 'container' || (options.mode === 'auto' && autoContainer);
-    if (needContainerObs) {
-      containerEl =
-        (options.containerSelector
-          ? (wrap?.closest(options.containerSelector) as HTMLElement) || (document.querySelector(options.containerSelector) as HTMLElement)
-          : null) ||
-        autoContainer ||
-        wrap?.parentElement ||
-        null;
-      if (containerEl && 'ResizeObserver' in window) {
-        ro = new ResizeObserver(() => recompute());
-        try {
-          ro.observe(containerEl);
-        } catch {}
-      }
+    const targets = collectAdaptiveHeightObserveTargets(wrapRef.value, options);
+    const RO = typeof ResizeObserver === 'function' ? ResizeObserver : null;
+    if (!targets.length || !RO) return;
+    containerEl = targets[0] ?? null;
+    ro = new RO(() => recompute());
+    for (const el of targets) {
+      ro.observe(el);
+      observedEls.push(el);
     }
   }
 
   function cleanupObservers() {
-    window.removeEventListener('resize', recompute);
-    window.removeEventListener('orientationchange', recompute);
-    if (ro && containerEl) {
-      try {
-        ro.unobserve(containerEl);
-      } catch {}
+    if (typeof window.removeEventListener === 'function') {
+      window.removeEventListener('resize', recompute);
+      window.removeEventListener('orientationchange', recompute);
     }
+    if (ro) {
+      for (const el of observedEls) {
+        ro.unobserve(el);
+      }
+    }
+    observedEls = [];
     ro = null;
     containerEl = null;
   }

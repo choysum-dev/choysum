@@ -4,13 +4,17 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <DropdownMenu v-if="visibleItems.length">
-    <DropdownMenuTrigger
-      class="cursor-pointer border-0 bg-transparent px-2 py-1"
-      :aria-label="menuAriaLabel"
-      data-testid="page-io-menu-trigger"
-    >
-      <Settings class="size-[18px]" />
+  <DropdownMenu v-if="showMenu">
+    <DropdownMenuTrigger as-child>
+      <ChoyButton
+        type="button"
+        variant="ghost"
+        size="icon"
+        :aria-label="menuAriaLabel"
+        data-testid="page-io-menu-trigger"
+      >
+        <EllipsisVertical class="size-4" aria-hidden="true" />
+      </ChoyButton>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end">
       <DropdownMenuItem
@@ -20,8 +24,14 @@ SPDX-License-Identifier: Apache-2.0
         :data-testid="`page-io-menu-${item.key}`"
         @select="onCommand(item.key)"
       >
+        <Upload v-if="item.key === 'import'" class="size-4" aria-hidden="true" />
+        <Download v-else-if="item.key === 'export'" class="size-4" aria-hidden="true" />
         {{ item.label }}
       </DropdownMenuItem>
+      <template v-if="$slots.default">
+        <DropdownMenuSeparator v-if="visibleItems.length" />
+        <slot />
+      </template>
     </DropdownMenuContent>
   </DropdownMenu>
 
@@ -44,11 +54,13 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { Settings } from 'lucide-vue-next';
+import { computed, ref, useSlots } from 'vue';
+import { Download, EllipsisVertical, Upload } from 'lucide-vue-next';
+import ChoyButton from './ChoyButton.vue';
 import DropdownMenu from '../vendor/ui/dropdown-menu/DropdownMenu.vue';
 import DropdownMenuContent from '../vendor/ui/dropdown-menu/DropdownMenuContent.vue';
 import DropdownMenuItem from '../vendor/ui/dropdown-menu/DropdownMenuItem.vue';
+import DropdownMenuSeparator from '../vendor/ui/dropdown-menu/DropdownMenuSeparator.vue';
 import DropdownMenuTrigger from '../vendor/ui/dropdown-menu/DropdownMenuTrigger.vue';
 import { createTranslate } from '@/web/web/i18n';
 import { useRecordIoMenu } from '@/web/web/composables/useRecordIoMenu';
@@ -95,7 +107,7 @@ const emit = defineEmits<{
 }>();
 
 const { _t } = createTranslate('web', { scope: 'web/components/layout/ChoyPageIoMenu' });
-const menuAriaLabel = _t('Import and export');
+const slots = useSlots();
 
 const importOpen = ref(false);
 const exportOpen = ref(false);
@@ -172,6 +184,11 @@ const visibleItems = computed(() => {
   return source.filter(item => !item.hidden);
 });
 
+const showMenu = computed(() => visibleItems.value.length > 0 || !!slots.default);
+const menuAriaLabel = computed(() =>
+  visibleItems.value.length && !slots.default ? _t('Import and export') : _t('More actions'),
+);
+
 function onCommand(key: string) {
   const item = visibleItems.value.find(entry => entry.key === key);
   if (item && !item.disabled) {
@@ -186,4 +203,3 @@ function onImported() {
 
 defineExpose({ onCommand });
 </script>
-

@@ -101,8 +101,10 @@ describe('ChoyAppRail', () => {
     const tiles = Array.from(
       mounted.el.querySelectorAll('[data-testid=choy-shell-app-rail-tile]'),
     ) as HTMLElement[];
-    expect(tiles[0]?.className || '').toContain('bg-sidebar-primary');
-    expect(tiles[1]?.className || '').not.toContain('bg-sidebar-primary');
+    expect(tiles[0]?.className || '').toContain('bg-sidebar-primary/15');
+    expect(tiles[0]?.className || '').toContain('text-sidebar-primary');
+    expect(tiles[1]?.className || '').not.toContain('bg-sidebar-primary/15');
+    expect(tiles[1]?.className || '').not.toContain('text-sidebar-primary');
     items[1]!.click();
     await flushPromises();
     expect(pushes).toContain('/base/companies');

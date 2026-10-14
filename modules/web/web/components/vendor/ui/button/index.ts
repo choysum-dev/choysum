@@ -20,6 +20,8 @@ export const buttonVariants = cva(
         outline: 'border border-input bg-background text-foreground shadow-xs hover:bg-accent hover:text-accent-foreground',
         ghost: 'border-0 text-foreground hover:bg-accent hover:text-accent-foreground',
         destructive: 'border-0 bg-destructive text-primary-foreground hover:bg-destructive/90',
+        'outline-destructive':
+          'border border-destructive/40 bg-background text-destructive shadow-xs hover:bg-destructive/10 hover:text-destructive',
         link: 'border-0 text-primary underline-offset-4 hover:underline',
       },
       size: {

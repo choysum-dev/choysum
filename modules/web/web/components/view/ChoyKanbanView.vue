@@ -19,7 +19,7 @@ SPDX-License-Identifier: Apache-2.0
             <slot name="system-actions">
               <ChoyButton
                 v-if="!effectiveReadonly"
-                size="sm"
+                size="default"
                 @click="onCreate"
               >
                 {{ resolvedCreateLabel }}

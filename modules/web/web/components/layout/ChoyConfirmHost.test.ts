@@ -23,6 +23,8 @@ describe('ChoyConfirmHost', () => {
     expect(store.destructive).toBe(true);
     const ok = mounted.q('[data-testid=choy-confirm-ok]') as HTMLElement | null;
     expect(ok).not.toBeNull();
+    expect(ok!.className).toContain('bg-destructive');
+    expect(ok!.className).not.toContain('bg-primary');
     // Prefer setupState handlers (DOM click on nested Button is unreliable in FE harness).
     const state = mounted.setupState() as any;
     expect(typeof state?.onConfirm).toBe('function');

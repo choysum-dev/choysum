@@ -826,12 +826,12 @@ msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr "用户注册失败"
 
-#: web/components/layout/ChoyAppShell.vue:108 web/components/layout/ChoyAppShell.vue:94
+#: web/components/layout/ChoyAppShell.vue:111 web/components/layout/ChoyAppShell.vue:97
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Account"
 msgstr "账户"
 
-#: web/components/layout/ChoyAppShell.vue:124
+#: web/components/layout/ChoyAppShell.vue:127
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Dark"
 msgstr "深色"
@@ -841,7 +841,7 @@ msgctxt "web/components/layout/ChoyAppShell"
 msgid "Language"
 msgstr "语言"
 
-#: web/components/layout/ChoyAppShell.vue:123
+#: web/components/layout/ChoyAppShell.vue:126
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Light"
 msgstr "浅色"
@@ -861,7 +861,7 @@ msgctxt "web/components/layout/ChoyAppShell"
 msgid "Settings"
 msgstr "设置"
 
-#: web/components/layout/ChoyAppShell.vue:125
+#: web/components/layout/ChoyAppShell.vue:128
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "System"
 msgstr "跟随系统"
@@ -2191,45 +2191,45 @@ msgctxt "web/views/TokenKanbanView"
 msgid "Revoked At"
 msgstr "撤销时间"
 
-#: web/views/TokenListView.vue:33
+#: web/views/TokenListView.vue:42
 msgctxt "web/views/TokenListView"
 msgid "Copy Token"
 msgstr "复制令牌"
 
-#: web/views/TokenListView.vue:33
+#: web/views/TokenListView.vue:42
 msgctxt "web/views/TokenListView"
 msgid "Create Token"
 msgstr "新建令牌"
 
-#: web/views/TokenListView.vue:33
+#: web/views/TokenListView.vue:42
 msgctxt "web/views/TokenListView"
 msgid "Delete Token"
 msgstr "删除令牌"
 
-#: web/views/TokenListView.vue:33
+#: web/views/TokenListView.vue:42
 msgctxt "web/views/TokenListView"
 msgid "Edit Token"
 msgstr "编辑令牌"
 
-#: web/views/TokenListView.vue:11
-msgctxt "web/views/TokenListView"
-msgid "Icon View"
-msgstr "图标视图"
-
-#: web/views/TokenListView.vue:8
+#: web/views/TokenListView.vue:9
 msgctxt "web/views/TokenListView"
 msgid "Kanban View"
 msgstr "看板视图"
 
-#: web/views/TokenListView.vue:5
+#: web/views/TokenListView.vue:6
 msgctxt "web/views/TokenListView"
 msgid "List View"
 msgstr "列表视图"
 
-#: web/views/TokenListView.vue:33
+#: web/views/TokenListView.vue:42
 msgctxt "web/views/TokenListView"
 msgid "Token"
 msgstr "令牌"
+
+#: web/views/TokenListView.vue:5
+msgctxt "web/views/TokenListView"
+msgid "View switcher"
+msgstr "视图切换"
 
 #: web/views/UserFormView.vue:57
 msgctxt "web/views/UserFormView"
@@ -2375,3 +2375,7 @@ msgstr "启用"
 #~ msgctxt "web/pages/Logout"
 #~ msgid "Thank you for using our service. Redirecting to the login page in %s seconds..."
 #~ msgstr "感谢使用，将在 %s 秒后跳转到登录页…"
+
+#~ msgctxt "web/views/TokenListView"
+#~ msgid "Icon View"
+#~ msgstr "图标视图"

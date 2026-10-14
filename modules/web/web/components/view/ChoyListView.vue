@@ -9,14 +9,15 @@ SPDX-License-Identifier: Apache-2.0
       <div data-anchor="choy.list.view-chrome">
         <ChoyViewActionBar
           layout="thirds"
+          class="gap-2 border-b-0 pb-2"
           :system-actions-label="_t('System actions')"
           :user-actions-label="_t('User actions')"
         >
-          <template v-if="showActions" #system-actions>
+          <template v-if="showActions || pageTitle || showTitleOverflow" #system-actions>
             <!-- Keep Save/Discard outside the overridable slot so custom toolbars cannot hide them. -->
             <ChoyButton
               v-if="editable && isEditing"
-              size="sm"
+              size="default"
               variant="default"
               :disabled="inlineSaving"
               @click="handleInlineSave"
@@ -24,11 +25,12 @@ SPDX-License-Identifier: Apache-2.0
               {{ _t('Save') }}
             </ChoyButton>
 
-            <ChoyButton v-if="editable && isEditing" size="sm" variant="outline" @click="handleInlineDiscard">
+            <ChoyButton v-if="editable && isEditing" size="default" variant="outline" @click="handleInlineDiscard">
               {{ _t('Discard') }}
             </ChoyButton>
 
             <slot
+              v-if="showActions"
               name="system-actions"
               :selected-items="selectedItems"
               :is-editing="isEditing"
@@ -36,56 +38,126 @@ SPDX-License-Identifier: Apache-2.0
               :save="handleInlineSave"
               :discard="handleInlineDiscard"
             >
-              <ChoyButton v-if="resolvedCreateAction && canCreate" size="sm" variant="default" @click="handleCreate">
-                <Plus class="size-4" />
+              <ChoyButton v-if="resolvedCreateAction && canCreate" size="default" variant="default" @click="handleCreate">
+                <Plus class="size-4" aria-hidden="true" />
                 {{ _t('New') }}
               </ChoyButton>
-
-              <ChoyButton v-if="refreshAction && canRefresh" size="sm" variant="outline" @click="handleRefresh">
-                <RefreshCw class="size-4" />
-                {{ _t('Refresh') }}
-              </ChoyButton>
-
-              <ChoyButton
-                v-if="deleteAction && canDelete"
-                size="sm"
-                variant="outline"
-                class="border-danger/40 text-danger hover:bg-danger-subtle"
-                :disabled="selectedItems.length === 0 || deleteLoading"
-                @click="handleDelete"
-              >
-                <Trash2 class="size-4" />
-                {{ _t('Delete (%s)', selectedItems.length) }}
-              </ChoyButton>
             </slot>
+
+            <!-- Page title + ⋮ (IO / refresh / domain overflow) live in view chrome, not a separate Page band. -->
+            <h1
+              v-if="pageTitle"
+              :id="pageTitleId || undefined"
+              data-slot="page-title"
+              class="choy-list-view__page-title min-w-0 max-w-[10rem] truncate text-base font-semibold tracking-tight text-foreground sm:max-w-[14rem]"
+            >
+              {{ pageTitle }}
+            </h1>
+            <ChoyPageTitleActions
+              v-if="showTitleOverflow"
+              :has-io-menu="!!pageTitleActionsIo"
+              :action-import="pageTitleActionsIo?.actionImport ?? false"
+              :action-export="pageTitleActionsIo?.actionExport ?? false"
+              :action-import-upload-hint="pageTitleActionsIo?.actionImportUploadHint"
+              :action-import-column-mapping="pageTitleActionsIo?.actionImportColumnMapping"
+              :action-list-ref="(pageTitleActionsIo?.actionListRef as any)"
+              :action-company-id="pageTitleActionsIo?.actionCompanyId"
+              :store="store"
+            >
+              <template v-if="showRefreshInOverflow || $slots['overflow-actions']" #overflow>
+                <DropdownMenuItem
+                  v-if="showRefreshInOverflow"
+                  data-testid="list-overflow-refresh"
+                  @select="handleRefresh"
+                >
+                  <RefreshCw class="size-4" aria-hidden="true" />
+                  {{ _t('Refresh') }}
+                </DropdownMenuItem>
+                <slot name="overflow-actions" :selected-items="selectedItems" />
+              </template>
+            </ChoyPageTitleActions>
           </template>
 
           <template v-if="showActions" #user-actions>
             <slot name="user-actions" :selected-items="selectedItems" />
           </template>
 
-          <template v-if="resolvedSearchView" #center>
-            <div class="flex min-w-60 items-center justify-center max-md:order-2">
-              <component :is="resolvedSearchView" :store="store" @query-update="onSearch" />
+          <!-- Odoo-style: selection chrome replaces Search in the center slot.
+               Keep #center registered unconditionally so ActionBar can swap content
+               when selection appears (v-if on the slot template would omit the outlet). -->
+          <template #center>
+            <div
+              v-if="hasSelection"
+              data-anchor="choy.list.selection-bar"
+              class="flex min-w-0 w-full flex-wrap items-center gap-2"
+              role="toolbar"
+              :aria-label="_t('Selection actions')"
+            >
+              <!-- Count as muted text (shadcn data-table); clear is a ghost icon button. -->
+              <div class="flex min-w-0 items-center gap-1">
+                <span class="truncate text-sm text-muted-foreground tabular-nums">
+                  {{ _t('%s selected', selectedItems.length) }}
+                </span>
+                <ChoyButton
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  class="size-control shrink-0 text-muted-foreground"
+                  :aria-label="_t('Clear selection')"
+                  @click="clearSelection"
+                >
+                  <X class="size-4" aria-hidden="true" />
+                </ChoyButton>
+              </div>
+
+              <ChoyButton
+                v-if="deleteAction && canDelete"
+                size="default"
+                variant="outline-destructive"
+                :disabled="deleteLoading"
+                @click="handleDelete"
+              >
+                <Trash2 class="size-4" aria-hidden="true" />
+                {{ _t('Delete') }}
+              </ChoyButton>
+
+              <slot name="selection-actions" :selected-items="selectedItems" :clear="clearSelection" />
+            </div>
+            <div v-else-if="resolvedSearchView" class="flex min-w-0 w-full items-center">
+              <component :is="resolvedSearchView" class="min-w-0 w-full" :store="store" @query-update="onSearch" />
             </div>
           </template>
 
           <template #header-right>
+            <!-- View-mode chrome, then a hairline, then pager at the trailing edge. -->
+            <div v-if="$slots['header-right']" class="flex items-center gap-1">
+              <slot name="header-right" />
+            </div>
+            <Separator
+              v-if="$slots['header-right'] && showPaginate && canMountPagination"
+              orientation="vertical"
+              class="mx-0 !h-4 w-px shrink-0 max-md:hidden"
+            />
             <div v-if="showPaginate && canMountPagination">
               <ChoyPagination
+                class="gap-2"
                 :total="listPaginationEffective.total"
                 v-model:page="listPageModel"
                 v-model:page-size="listPageSizeModel"
               />
             </div>
-            <slot name="header-right" />
           </template>
         </ChoyViewActionBar>
       </div>
     </template>
 
     <ChoyViewBusyHost :busy="listBusy" class="min-h-0 min-w-0 flex-1">
-    <div class="min-h-0 min-w-0 flex-1 [&_.choy-field-base]:mb-0 [&_.choy-field-base__cell-item]:mb-0" ref="tableWrapRef" :style="{ height: tablePxHeight }">
+    <div
+      ref="tableWrapRef"
+      data-anchor="choy.list.table"
+      class="choy-list-view__table min-h-0 min-w-0 flex-1 overflow-hidden rounded-md border border-border/70 bg-card shadow-xs [&_.choy-field-base]:mb-0 [&_.choy-field-base__cell-item]:mb-0 [&_.choy-data-table]:h-full [&_.choy-data-table]:rounded-none [&_.choy-data-table]:border-0 [&_.choy-data-table__header]:border-border/50 [&_.choy-data-table__header]:bg-muted/40 [&_.choy-data-table__body_[role=row]]:border-border/40 [&_.choy-data-table__body_[role=row]:hover]:bg-muted/50"
+      :style="{ height: listTablePxHeight }"
+    >
       <!-- form-root + edit view-mode only under the table so header search cannot touch the row draft -->
       <ListInlineEditScope :form-root="inlineFormRoot" :view-mode="inlineTableViewMode">
         <ChoyTableHost
@@ -93,7 +165,7 @@ SPDX-License-Identifier: Apache-2.0
           :row-key="computedRowKey"
           :row-height="effectiveRowHeight"
           :header-height="headerHeight"
-          :table-height="tableHeight"
+          :table-height="listTableHeight"
           :selection-api="selection"
           :base-index="baseIndex"
           :store="store"
@@ -117,7 +189,14 @@ SPDX-License-Identifier: Apache-2.0
           <slot />
           <template #empty>
             <slot name="empty">
-              <ChoyEmpty class="w-full" :description="_t('No data')" />
+              <ChoyEmpty class="w-full" :description="_t('No data')">
+                <template v-if="resolvedCreateAction && canCreate" #actions>
+                  <ChoyButton size="default" variant="default" @click="handleCreate">
+                    <Plus class="size-4" aria-hidden="true" />
+                    {{ _t('New') }}
+                  </ChoyButton>
+                </template>
+              </ChoyEmpty>
             </slot>
           </template>
         </ChoyTableHost>
@@ -130,7 +209,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts" generic="T extends BaseModel">
 import type { ConditionGroup, QueryUpdatePayload } from '@/web/web/query/types';
 import { ChoyMessage } from '../../composables/useChoyMessage';
-import { computed, onMounted, onBeforeUnmount, provide, ref, nextTick, watch, markRaw, toRaw } from 'vue';
+import { computed, onMounted, onBeforeUnmount, provide, ref, nextTick, watch, markRaw, toRaw, useSlots } from 'vue';
 import { useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
 import type { ClientModel, BaseModel, QueryCondition, OrderBy } from '@/core/rpc';
@@ -168,6 +247,7 @@ import { createListController } from '@/web/web/controllers/listController';
 import type { OrderByState, PaginationState } from '@/web/web/query/state';
 import { useCancelableEmit } from '@/web/web/composables/useCancelableEmit';
 import { useAdaptiveHeight } from '@/web/web/composables/useAdaptiveHeight';
+import { computeListTableBodyHeight } from '@/web/web/composables/adaptiveHeightMath';
 import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
 import ChoyViewActionBar from '@/web/web/components/view/ChoyViewActionBar.vue';
 import ChoyViewBusyHost from '@/web/web/components/view/ChoyViewBusyHost.vue';
@@ -179,10 +259,17 @@ import { shouldDeferViewFirstFrame } from '@/web/web/components/view/kanbanFirst
 import { canShowAction, type ActionIdMap } from '@/web/web/components/view/actionVisibility';
 import { createTranslate } from '@/web/web/i18n';
 import type { SelectionExpose, RowEventPayload, RowEventHandlerParams } from '@/web/web/components/view/listViewTypes';
-import { resolvePageStore, useRegisterPageActionTarget } from '@/web/web/composables/usePageContext';
+import {
+  resolvePageStore,
+  useHostPageTitleInView,
+  useRegisterPageActionTarget,
+} from '@/web/web/composables/usePageContext';
 import { useResolvedCreateAction } from '@/web/web/composables/resolveCreateRoute';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
-import { Plus, RefreshCw, Trash2 } from 'lucide-vue-next';
+import ChoyPageTitleActions from '@/web/web/components/layout/ChoyPageTitleActions.vue';
+import { Separator } from '@/web/web/components/vendor/ui/separator';
+import DropdownMenuItem from '@/web/web/components/vendor/ui/dropdown-menu/DropdownMenuItem.vue';
+import { Plus, RefreshCw, Trash2, X } from 'lucide-vue-next';
 
 defineOptions({ name: 'ChoyListView', inheritAttrs: false });
 
@@ -264,6 +351,8 @@ const props = withDefaults(
 
 const store = resolvePageStore(props.store, 'ListView');
 const resolvedCreateAction = useResolvedCreateAction(() => props.createAction);
+const { pageTitle, pageTitleId, pageTitleActionsIo } = useHostPageTitleInView(() => props.showHeader);
+const slots = useSlots();
 
 const emit = defineEmits<{
   (e: 'before-load', payload: { query: QueryCondition<T>; page: number; pageSize: number; confirm: () => void; cancel: () => void }): void;
@@ -299,6 +388,12 @@ const resolvedSearchView = computed(() => {
 const canCreate = computed(() => canShowAction(props.actionIds?.create, props.hasAction));
 const canRefresh = computed(() => canShowAction(props.actionIds?.refresh, props.hasAction));
 const canDelete = computed(() => canShowAction(props.actionIds?.delete, props.hasAction));
+const showRefreshInOverflow = computed(
+  () => props.showActions && props.refreshAction && canRefresh.value,
+);
+const showTitleOverflow = computed(
+  () => !!pageTitleActionsIo.value || showRefreshInOverflow.value || !!slots['overflow-actions'],
+);
 // List controller
 const controller = createListController(store as any);
 const listBusy = computed(() => !!controller.vm.loading);
@@ -456,8 +551,16 @@ const selection = useTableSelection(
   props.selectionMode
 );
 
-// Selected items shown in the header bar
+// Selected items; bulk actions render in the center selection bar (Odoo-style).
 const selectedItems = ref<any[]>([]);
+const hasSelection = computed(() => selectedItems.value.length > 0);
+
+function clearSelection() {
+  selection.clear();
+  selectedItems.value = [];
+  emit('selection-change', { rows: [], ids: [] });
+}
+
 function onSelectionChange(rows: any[]) {
   // In group-tree mode, keep only the actual record Ids of detail rows
   const ids = (rows || [])
@@ -553,8 +656,7 @@ watch(items, () => {
 // =============================
 const tableWrapRef = ref<HTMLElement | null>(null);
 const {
-  height: tableHeight,
-  pxHeight: tablePxHeight,
+  height: adaptiveTableHeight,
   recompute: recomputeTableHeight,
 } = useAdaptiveHeight(tableWrapRef as Ref<Element | null>, {
   mode: props.heightMode,
@@ -571,6 +673,17 @@ const {
 // Future rowHeight and overscan tuning can be driven here by column config or density
 const virtualization = useVirtualizationAdapter({ rowHeight: props.rowHeight });
 const effectiveRowHeight = computed(() => virtualization.config.value.rowHeight || props.rowHeight || 32);
+
+/** Cap short pages so the list body does not leave a tall empty void under few rows. */
+const listTableHeight = computed(() =>
+  computeListTableBodyHeight({
+    viewport: adaptiveTableHeight.value,
+    rowCount: tableItems.value?.length ?? 0,
+    rowHeight: effectiveRowHeight.value || 32,
+    headerHeight: props.headerHeight ?? 32,
+  }),
+);
+const listTablePxHeight = computed(() => (listTableHeight.value > 0 ? `${listTableHeight.value}px` : ''));
 watch(
   () => props.rowHeight,
   v => {
@@ -824,6 +937,8 @@ defineExpose<
     listPageModel: typeof listPageModel;
     listPageSizeModel: typeof listPageSizeModel;
     canMountPagination: typeof canMountPagination;
+    clearSelection: typeof clearSelection;
+    onSelectionChange: typeof onSelectionChange;
   }
 >({
   selectedItems: selectedItems as any,
@@ -834,6 +949,8 @@ defineExpose<
   listPageModel,
   listPageSizeModel,
   canMountPagination,
+  clearSelection,
+  onSelectionChange,
 });
 
 useRegisterPageActionTarget({

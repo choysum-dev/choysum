@@ -19,10 +19,17 @@ import ChoyPageIoMenu from '@/web/web/components/layout/ChoyPageIoMenu.vue';
 import DropdownMenu from '../vendor/ui/dropdown-menu/DropdownMenu.vue';
 import DropdownMenuContent from '../vendor/ui/dropdown-menu/DropdownMenuContent.vue';
 import DropdownMenuItem from '../vendor/ui/dropdown-menu/DropdownMenuItem.vue';
+import DropdownMenuSeparator from '../vendor/ui/dropdown-menu/DropdownMenuSeparator.vue';
 import DropdownMenuTrigger from '../vendor/ui/dropdown-menu/DropdownMenuTrigger.vue';
 
 describe('ChoyPageIoMenu', () => {
-  const menuSfcs = [DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger];
+  const menuSfcs = [
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+  ];
 
   function installMenuStubs() {
     stubSfc(DropdownMenu as any, {
@@ -65,6 +72,12 @@ describe('ChoyPageIoMenu', () => {
             },
             slots.default?.()
           );
+      },
+    });
+    stubSfc(DropdownMenuSeparator as any, {
+      name: 'DropdownMenuSeparator',
+      setup() {
+        return () => h('hr', { 'data-testid': 'page-io-menu-separator' });
       },
     });
   }
@@ -388,6 +401,40 @@ describe('ChoyPageIoMenu', () => {
     mounted.click('[data-testid=emit-imported]');
     await flushPromises();
     expect(onImported.calls.length).toBe(1);
+    mounted.unmount();
+  });
+
+  test('renders default-slot extras and shows the menu without IO flags', async () => {
+    const mounted = mountMenu(
+      {},
+      {
+        slots: {
+          default: () => h('button', { type: 'button', 'data-testid': 'extra-overflow' }, 'Refresh'),
+        },
+      }
+    );
+    await flushPromises();
+    expect(mounted.q('[data-testid=page-io-menu-trigger]')).toBeTruthy();
+    expect(mounted.q('[data-testid=extra-overflow]')).toBeTruthy();
+    expect(mounted.q('[data-testid=page-io-menu-import]')).toBeFalsy();
+    expect(mounted.q('[data-testid=page-io-menu-separator]')).toBeFalsy();
+    mounted.unmount();
+  });
+
+  test('separates IO items from default-slot extras', async () => {
+    const store = { storeId: 's1', fullModelName: 'partner.Partner', state: { result: { total: 1 } } };
+    const mounted = mountMenu(
+      { actionImport: true, store },
+      {
+        slots: {
+          default: () => h('button', { type: 'button', 'data-testid': 'extra-overflow' }, 'Refresh'),
+        },
+      }
+    );
+    await flushPromises();
+    expect(mounted.q('[data-testid=page-io-menu-import]')).toBeTruthy();
+    expect(mounted.q('[data-testid=page-io-menu-separator]')).toBeTruthy();
+    expect(mounted.q('[data-testid=extra-overflow]')).toBeTruthy();
     mounted.unmount();
   });
 });

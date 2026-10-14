@@ -4,100 +4,133 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div class="module-list-view">
-    <div v-if="showHeader" class="mb-2 flex justify-end">
-      <div class="flex items-center gap-1">
+  <ChoyListView
+    ref="listRef"
+    class="module-list-view"
+    v-bind="$attrs"
+    :store="store"
+    :searchView="ChoySearchView"
+    :show-header="showHeader"
+    :action-ids="{ delete: moduleIndexActions.delete }"
+    :has-action="hasAction"
+    @row-click="onRowClick"
+  >
+    <!-- Domain secondary actions share the title ⋮ with Refresh / import / export. -->
+    <template
+      v-if="showHeader && (canRoute('meta.route.module_history') || hasAction(moduleSyncIndexAction))"
+      #overflow-actions
+    >
+      <ChoyDropdownMenuItem
+        v-if="canRoute('meta.route.module_history')"
+        data-testid="module-overflow-history"
+        @select="toHistory"
+      >
+        <History class="size-4" aria-hidden="true" />
+        {{ _t('Operation History') }}
+      </ChoyDropdownMenuItem>
+      <ChoyDropdownMenuItem
+        v-if="hasAction(moduleSyncIndexAction)"
+        data-testid="module-overflow-sync"
+        :disabled="syncLoading"
+        @select="onSyncIndex"
+      >
+        <FolderSync class="size-4" :class="{ 'animate-spin': syncLoading }" aria-hidden="true" />
+        {{ _t('Sync Index') }}
+      </ChoyDropdownMenuItem>
+    </template>
+
+    <!-- View-mode toggles only; ListView keeps pagination at the trailing edge. -->
+    <template v-if="showHeader" #header-right>
+      <ChoyButtonGroup :aria-label="_t('View switcher')">
         <ChoyButton
           v-if="canRoute('meta.route.module_board')"
+          type="button"
+          size="icon"
           variant="outline"
-          size="sm"
-          :title="_t('Board View')"
+          :aria-pressed="!isListRoute"
+          :aria-label="_t('Board View')"
+          :class="!isListRoute ? 'z-[1] bg-muted text-foreground hover:bg-muted' : undefined"
           @click="toKanban"
         >
           <LayoutGrid class="size-4" aria-hidden="true" />
         </ChoyButton>
         <ChoyButton
           v-if="canRoute('meta.route.module_list')"
-          size="sm"
-          :title="_t('List View')"
+          type="button"
+          size="icon"
+          variant="outline"
+          :aria-pressed="isListRoute"
+          :aria-label="_t('List View')"
+          :class="isListRoute ? 'z-[1] bg-muted text-foreground hover:bg-muted' : undefined"
           @click="toList"
         >
           <List class="size-4" aria-hidden="true" />
         </ChoyButton>
-        <ChoyButton
-          v-if="canRoute('meta.route.module_history')"
-          variant="outline"
-          size="sm"
-          :title="_t('Operation History')"
-          @click="toHistory"
-        >
-          <History class="size-4" aria-hidden="true" />
-        </ChoyButton>
-        <ChoyButton
-          v-if="hasAction(moduleSyncIndexAction)"
-          variant="outline"
-          size="sm"
-          :title="_t('Sync Index')"
-          :disabled="syncLoading"
-          @click="onSyncIndex"
-        >
-          <RefreshCw class="size-4" :class="{ 'animate-spin': syncLoading }" aria-hidden="true" />
-        </ChoyButton>
-      </div>
-    </div>
-    <ChoyListView
-      ref="listRef"
-      v-bind="$attrs"
-      :store="store"
-      :searchView="ChoySearchView"
-      :show-header="showHeader"
-      :action-ids="{ delete: moduleIndexActions.delete }"
-      :has-action="hasAction"
-      @row-click="onRowClick"
+      </ChoyButtonGroup>
+    </template>
+
+    <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
+    <ChoyVarcharField prop="ModuleName" :store="store" :vColumnProps="{ minWidth: 180 }" />
+    <ChoyVarcharField prop="LocalVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <ChoyVarcharField prop="RegistryVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <ChoyVarcharField prop="Version" :label="_t('Display Version')" :store="store" :vColumnProps="{ minWidth: 120 }" />
+
+    <ChoyVirtualField :store="store" prop="InstalledStatus" />
+    <ChoyTableColumn
+      prop="InstalledStatus"
+      :label="_t('Install Status')"
+      :vColumnProps="{ minWidth: 120 }"
     >
-      <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
-      <ChoyVarcharField prop="ModuleName" :store="store" :vColumnProps="{ minWidth: 180 }" />
-      <ChoyVarcharField prop="LocalVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
-      <ChoyVarcharField prop="RegistryVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
-      <ChoyVarcharField prop="Version" :label="_t('Display Version')" :store="store" :vColumnProps="{ minWidth: 120 }" />
-      <ChoyVarcharField prop="InstalledStatus" :store="store" :vColumnProps="{ minWidth: 120 }" />
-      <ChoyVarcharField prop="InstalledVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
-      <ChoyBooleanField prop="Available" :store="store" :vColumnProps="{ minWidth: 100 }" />
-      <ChoyVarcharField prop="OriginTypes" :label="_t('Origin')" :store="store" :vColumnProps="{ minWidth: 140 }" />
-      <ChoyVarcharField prop="LocalPath" :label="_t('Path')" :store="store" :vColumnProps="{ minWidth: 220 }" />
-      <ChoyDatetimeField prop="LastSyncAt" :label="_t('Synced At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
-    </ChoyListView>
-  </div>
+      <template #default="{ row }">
+        <ChoyBadge :variant="statusBadgeVariant(row)" class="font-normal">
+          {{ statusLabel(row) }}
+        </ChoyBadge>
+      </template>
+    </ChoyTableColumn>
+
+    <ChoyVarcharField prop="InstalledVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <ChoyBooleanField prop="Available" :store="store" :vColumnProps="{ minWidth: 100 }" />
+    <ChoyVarcharField prop="OriginTypes" :label="_t('Origin')" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <ChoyVarcharField prop="LocalPath" :label="_t('Path')" :store="store" :vColumnProps="{ minWidth: 220 }" />
+    <ChoyDatetimeField prop="LastSyncAt" :label="_t('Synced At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+  </ChoyListView>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
-import { History, LayoutGrid, List, RefreshCw } from 'lucide-vue-next';
+import { computed, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { FolderSync, History, LayoutGrid, List } from 'lucide-vue-next';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type MetaModuleIndex from '@/meta/service/models/module_index';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
+import { unwrapListRecord } from '@/web/web/composables/listRowEdit';
 import { defineAction, defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import {
+  ChoyBadge,
   ChoyBooleanField,
   ChoyButton,
+  ChoyButtonGroup,
   ChoyDatetimeField,
+  ChoyDropdownMenuItem,
   ChoyListView,
   ChoyMessage,
   ChoySearchView,
   ChoyTableColumn,
-  ChoyVarcharField
+  ChoyVarcharField,
+  ChoyVirtualField,
 } from '@/web';
 import { resolveListRowRecordId } from './list_row_nav';
+import { moduleStatusBadgeVariant } from './module_kanban_chrome';
 
 defineOptions({ name: 'ModuleListView', inheritAttrs: false });
 
 const { _t, _lt } = createTranslate('meta', { scope: 'web/views/ModuleListView' });
 
 const router = useRouter();
+const route = useRoute();
 
 const props = withDefaults(
   defineProps<{
@@ -119,6 +152,8 @@ const moduleIndexActions = defineModelActions('meta.MetaModuleIndex', {
   entityTitle: _lt('Module Index'),
 });
 const { canRoute, hasAction } = usePermission();
+
+const isListRoute = computed(() => String(route.path || '').includes('/meta/modules/list'));
 
 const syncLoading = ref(false);
 const autoSyncTriggered = ref(false);
@@ -161,6 +196,34 @@ function toList() {
 }
 function toHistory() {
   router.push('/meta/modules/history');
+}
+
+function rowRecord(row: unknown): Record<string, unknown> {
+  const rec = unwrapListRecord(row);
+  return rec && typeof rec === 'object' ? (rec as Record<string, unknown>) : {};
+}
+
+function statusBadgeVariant(row: unknown) {
+  const rec = rowRecord(row);
+  return moduleStatusBadgeVariant(
+    String(rec.InstalledStatus ?? ''),
+    rec.Available as boolean | undefined,
+  );
+}
+
+function statusLabel(row: unknown) {
+  const rec = rowRecord(row);
+  if (rec.Available === false) return _t('Unavailable');
+  const val = String(rec.InstalledStatus || '').toLowerCase();
+  if (val === 'installed') return _t('Installed');
+  if (val === 'uninstalled') return _t('Not Installed');
+  if (val === 'disabled') return _t('Disabled');
+  if (val === 'broken') return _t('Broken');
+  if (val === 'succeeded') return _t('Succeeded');
+  if (val === 'failed') return _t('Failed');
+  if (val === 'dispatching') return _t('Dispatching');
+  if (val === 'queued') return _t('Queued');
+  return String(rec.InstalledStatus || '') || _t('Unknown');
 }
 
 const { listRef, expose } = useListViewExpose<MetaModuleIndex>();

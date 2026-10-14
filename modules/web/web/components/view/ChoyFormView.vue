@@ -18,29 +18,29 @@ SPDX-License-Identifier: Apache-2.0
                 <ChoyButton
                   v-if="resolvedCreateAction && canCreate"
                   type="button"
-                  size="sm"
+                  size="default"
                   variant="default"
                   @click="handleCreate"
                 >
                   <Plus class="size-4" />
                   {{ _t('New') }}
                 </ChoyButton>
-                <ChoyButton v-if="canEdit" type="button" size="sm" variant="outline" @click="handleEdit">
+                <ChoyButton v-if="canEdit" type="button" size="default" variant="outline" @click="handleEdit">
                   <Pencil class="size-4" />
                   {{ _t('Edit') }}
                 </ChoyButton>
-                <ChoyButton v-if="canRefresh" type="button" size="sm" variant="outline" @click="handleRefresh">
+                <ChoyButton v-if="canRefresh" type="button" size="default" variant="outline" @click="handleRefresh">
                   <RefreshCw class="size-4" />
                   {{ _t('Refresh') }}
                 </ChoyButton>
-                <ChoyButton v-if="canCopy" type="button" size="sm" variant="ghost" @click="handleCopy">
+                <ChoyButton v-if="canCopy" type="button" size="default" variant="ghost" @click="handleCopy">
                   <Copy class="size-4" />
                   {{ _t('Copy') }}
                 </ChoyButton>
                 <ChoyButton
                   v-if="canDelete"
                   type="button"
-                  size="sm"
+                  size="default"
                   variant="outline"
                   class="border-danger/40 text-danger hover:bg-danger-subtle"
                   @click="handleDelete"
@@ -50,29 +50,29 @@ SPDX-License-Identifier: Apache-2.0
                 </ChoyButton>
               </template>
               <template v-if="viewMode === 'edit'">
-                <ChoyButton type="button" size="sm" variant="default" @click="handleSubmit" :disabled="formBusy">
+                <ChoyButton type="button" size="default" variant="default" @click="handleSubmit" :disabled="formBusy">
                   <Check class="size-4" />
                   {{ saveLabel }}
                 </ChoyButton>
-                <ChoyButton type="button" size="sm" variant="outline" @click="handleCancel" :disabled="formBusy">
+                <ChoyButton type="button" size="default" variant="outline" @click="handleCancel" :disabled="formBusy">
                   <X class="size-4" />
                   {{ _t('Cancel') }}
                 </ChoyButton>
-                <ChoyButton type="button" size="sm" variant="ghost" @click="handleReset" :disabled="formBusy">
+                <ChoyButton type="button" size="default" variant="ghost" @click="handleReset" :disabled="formBusy">
                   <RotateCcw class="size-4" />
                   {{ _t('Reset') }}
                 </ChoyButton>
               </template>
               <template v-if="viewMode === 'create'">
-                <ChoyButton type="button" size="sm" variant="default" @click="handleSubmit" :disabled="formBusy">
+                <ChoyButton type="button" size="default" variant="default" @click="handleSubmit" :disabled="formBusy">
                   <Check class="size-4" />
                   {{ saveLabel }}
                 </ChoyButton>
-                <ChoyButton type="button" size="sm" variant="outline" @click="handleCancel" :disabled="formBusy">
+                <ChoyButton type="button" size="default" variant="outline" @click="handleCancel" :disabled="formBusy">
                   <X class="size-4" />
                   {{ _t('Cancel') }}
                 </ChoyButton>
-                <ChoyButton type="button" size="sm" variant="ghost" @click="handleReset" :disabled="formBusy">
+                <ChoyButton type="button" size="default" variant="ghost" @click="handleReset" :disabled="formBusy">
                   <RotateCcw class="size-4" />
                   {{ _t('Reset') }}
                 </ChoyButton>

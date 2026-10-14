@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     <AlertDialogContent class="sm:max-w-md" data-testid="choy-confirm-dialog">
       <AlertDialogHeader>
         <AlertDialogTitle>{{ store.title }}</AlertDialogTitle>
-        <AlertDialogDescription class="whitespace-pre-wrap text-sm text-foreground/80">
+        <AlertDialogDescription class="whitespace-pre-wrap">
           {{ store.message }}
         </AlertDialogDescription>
       </AlertDialogHeader>
@@ -18,7 +18,7 @@ SPDX-License-Identifier: Apache-2.0
         </AlertDialogCancel>
         <AlertDialogAction
           data-testid="choy-confirm-ok"
-          :class="store.destructive ? buttonVariants({ variant: 'destructive', size: 'sm' }) : buttonVariants({ size: 'sm' })"
+          :variant="store.destructive ? 'destructive' : 'default'"
           @click="onConfirm"
         >
           {{ store.confirmText }}
@@ -38,7 +38,6 @@ import AlertDialogDescription from '../vendor/ui/alert-dialog/AlertDialogDescrip
 import AlertDialogFooter from '../vendor/ui/alert-dialog/AlertDialogFooter.vue';
 import AlertDialogHeader from '../vendor/ui/alert-dialog/AlertDialogHeader.vue';
 import AlertDialogTitle from '../vendor/ui/alert-dialog/AlertDialogTitle.vue';
-import { buttonVariants } from '../vendor/ui/button';
 import { resolveConfirmChoy, useConfirmChoyStore } from '../../composables/confirmChoyAction';
 
 /**

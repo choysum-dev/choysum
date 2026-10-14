@@ -7,10 +7,12 @@ import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import {
   providePageContext,
   resolvePageStore,
+  useHostPageTitleInView,
   useOptionalPageStore,
   useRegisterPageActionTarget,
   useResolvedOptionalPageStore,
 } from './usePageContext';
+import { ref } from 'vue';
 
 describe('usePageContext', () => {
   test('provides store for descendants', () => {
@@ -254,5 +256,108 @@ describe('usePageContext', () => {
       const { unmount } = mountApp(Orphan);
       unmount();
     }).not.toThrow();
+  });
+
+  test('page title claims are reference-counted across hosts', () => {
+    const store = { storeId: 'page' };
+    let ctx: ReturnType<typeof providePageContext> | null = null;
+    const Parent = defineComponent({
+      setup() {
+        ctx = providePageContext({ store, title: 'Sessions' });
+        return () => h('div');
+      },
+    });
+    const { unmount } = mountApp(Parent);
+    ctx!.claimPageTitle();
+    ctx!.claimPageTitle();
+    expect(ctx!.titleHostedByView.value).toBe(true);
+    ctx!.releasePageTitle();
+    expect(ctx!.titleHostedByView.value).toBe(true);
+    ctx!.releasePageTitle();
+    expect(ctx!.titleHostedByView.value).toBe(false);
+    ctx!.releasePageTitle();
+    expect(ctx!.titleHostedByView.value).toBe(false);
+    unmount();
+  });
+
+  test('useHostPageTitleInView claims while enabled and releases on unmount', async () => {
+    const store = { storeId: 'page' };
+    let ctx: ReturnType<typeof providePageContext> | null = null;
+    let hostedTitle = '';
+    const enabled = ref(true);
+    const Child = defineComponent({
+      setup() {
+        const host = useHostPageTitleInView(enabled);
+        hostedTitle = host.pageTitle.value;
+        return () => h('div', { 'data-test': 'host' });
+      },
+    });
+    const Parent = defineComponent({
+      setup() {
+        ctx = providePageContext({
+          store,
+          title: 'Company list',
+          titleActionsIo: () => ({ actionImport: true, actionExport: false }),
+        });
+        return () => h(Child);
+      },
+    });
+    const { unmount } = mountApp(Parent);
+    await flushPromises();
+    expect(ctx!.titleHostedByView.value).toBe(true);
+    expect(hostedTitle).toBe('Company list');
+    enabled.value = false;
+    await flushPromises();
+    // watch syncs release when disabled
+    expect(ctx!.titleHostedByView.value).toBe(false);
+    enabled.value = true;
+    await flushPromises();
+    expect(ctx!.titleHostedByView.value).toBe(true);
+    unmount();
+    await flushPromises();
+    expect(ctx!.titleHostedByView.value).toBe(false);
+  });
+
+  test('useHostPageTitleInView no-ops without page context', () => {
+    const Orphan = defineComponent({
+      setup() {
+        const host = useHostPageTitleInView(true);
+        expect(host.pageTitle.value).toBe('');
+        expect(host.pageTitleActionsIo.value).toBeNull();
+        return () => h('div');
+      },
+    });
+    const { unmount } = mountApp(Orphan);
+    unmount();
+  });
+
+  test('useHostPageTitleInView hosts when only titleActionsIo is set', async () => {
+    const store = { storeId: 'page' };
+    let ctx: ReturnType<typeof providePageContext> | null = null;
+    let io: ReturnType<typeof useHostPageTitleInView>['pageTitleActionsIo'] | null = null;
+    const Child = defineComponent({
+      setup() {
+        const host = useHostPageTitleInView(true);
+        io = host.pageTitleActionsIo;
+        return () => h('div');
+      },
+    });
+    const Parent = defineComponent({
+      setup() {
+        ctx = providePageContext({
+          store,
+          title: '',
+          titleActionsIo: () => ({ actionImport: true, actionExport: true }),
+        });
+        return () => h(Child);
+      },
+    });
+    const { unmount } = mountApp(Parent);
+    await flushPromises();
+    expect(ctx!.titleHostedByView.value).toBe(true);
+    expect(io!.value?.actionImport).toBe(true);
+    unmount();
+    await flushPromises();
+    expect(ctx!.titleHostedByView.value).toBe(false);
   });
 });

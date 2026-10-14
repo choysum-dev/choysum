@@ -5,19 +5,21 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <div
-    v-if="hasIoMenu || $slots.default"
+    v-if="hasIoMenu || $slots.overflow || $slots.default"
     class="choy-page__title-actions flex shrink-0 items-center gap-2"
   >
     <ChoyPageIoMenu
-      v-if="hasIoMenu"
-      :action-import="actionImport"
-      :action-export="actionExport"
-      :action-import-upload-hint="actionImportUploadHint"
-      :action-import-column-mapping="actionImportColumnMapping"
-      :action-list-ref="actionListRef"
-      :action-company-id="actionCompanyId"
+      v-if="hasIoMenu || $slots.overflow"
+      :action-import="hasIoMenu ? actionImport : false"
+      :action-export="hasIoMenu ? actionExport : false"
+      :action-import-upload-hint="hasIoMenu ? actionImportUploadHint : undefined"
+      :action-import-column-mapping="hasIoMenu ? actionImportColumnMapping : undefined"
+      :action-list-ref="hasIoMenu ? actionListRef : undefined"
+      :action-company-id="hasIoMenu ? actionCompanyId : undefined"
       :store="store"
-    />
+    >
+      <slot name="overflow" />
+    </ChoyPageIoMenu>
     <slot />
   </div>
 </template>
@@ -27,7 +29,8 @@ import ChoyPageIoMenu from './ChoyPageIoMenu.vue';
 import type { PageIoMenuListRef } from './ChoyPageIoMenu.vue';
 
 /**
- * Shared title-actions row for ChoyPage (header and fallback title layouts).
+ * Shared title-actions row for ChoyPage and list chrome.
+ * `#overflow` items land inside the ⋮ menu; default slot stays beside the trigger.
  */
 defineProps<{
   hasIoMenu: boolean;

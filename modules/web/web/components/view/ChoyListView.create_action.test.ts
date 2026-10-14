@@ -13,6 +13,7 @@ import { h } from 'vue';
 import { buildPageMountGlobal } from '@choysum/page-mount';
 
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyListView from './ChoyListView.vue';
 import ChoyPagination from './ChoyPagination.vue';
 import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
@@ -43,26 +44,37 @@ function makeStore() {
   } as any;
 }
 
-function buttonStub() {
-  return {
-    name: 'ElButton',
-    emits: ['click'],
-    setup(_props: any, { slots, emit }: any) {
-      return () =>
-        h(
-          'button',
-          { type: 'button', class: 'el-btn', onClick: (e: Event) => emit('click', e) },
-          slots.default?.()
-        );
-    },
-  };
-}
-
 function findNewButton(el: HTMLElement) {
   return Array.from(el.querySelectorAll('button')).find(b => (b.textContent || '').includes('New'));
 }
 
 function stubListChrome() {
+  // fe-qjs: nested vendor Button often drops native click; stub ChoyButton like Search tests.
+  stubSfc(ChoyButton as any, {
+    name: 'ChoyButton',
+    inheritAttrs: false,
+    props: {
+      variant: { type: String, default: 'default' },
+      size: { type: String, default: 'default' },
+      disabled: { type: Boolean, default: false },
+      type: { type: String, default: 'button' },
+    },
+    emits: ['click'],
+    setup(props: any, { slots, emit, attrs }: any) {
+      return () =>
+        h(
+          'button',
+          {
+            type: props.type || 'button',
+            ...attrs,
+            class: ['choy-btn', attrs.class],
+            disabled: props.disabled || undefined,
+            onClick: (e: Event) => emit('click', e),
+          },
+          slots.default?.(),
+        );
+    },
+  });
   stubSfc(ChoyTableHost, {
     name: 'ChoyTableHost',
     setup(_p: any, { slots }: any) {
@@ -86,6 +98,7 @@ function stubListChrome() {
 }
 
 function restoreListChrome() {
+  restoreSfc(ChoyButton as any);
   restoreSfc(ChoyTableHost);
   restoreSfc(ChoyTableColumn);
   restoreSfc(ChoyPagination);
@@ -121,21 +134,16 @@ describe('ListView create action', () => {
         showPaginate: false,
       },
       plugins,
-      stubs: { ElButton: buttonStub(), ElIcon: true },
+      stubs: { ElIcon: true },
     });
     await flushPromises();
 
     const newBtn = findNewButton(el);
-    if (newBtn) {
-      (newBtn as HTMLElement).click();
-      await flushPromises();
-      expect(push.calls[0]?.[0]).toBe('/partner/partners/new');
-    } else {
-      // QJS host: list chrome may not paint New yet; keep mount/expose smoke.
-      expect(root).toBeTruthy();
-      expect(typeof root.load).toBe('function');
-      expect(push.calls.length).toBe(0);
-    }
+    expect(newBtn).toBeTruthy();
+    (newBtn as HTMLElement).click();
+    await flushPromises();
+    expect(push.calls[0]?.[0]).toBe('/partner/partners/new');
+    expect(root).toBeTruthy();
     unmount();
   });
 
@@ -160,20 +168,17 @@ describe('ListView create action', () => {
       },
       plugins,
       on: { onActionError },
-      stubs: { ElButton: buttonStub(), ElIcon: true },
+      stubs: { ElIcon: true },
     });
     await flushPromises();
 
     const newBtn = findNewButton(el);
-    if (newBtn) {
-      (newBtn as HTMLElement).click();
-      await flushPromises();
-      expect((onActionError.calls[0]?.[0] as any)?.action).toBe('create');
-      expect((onActionError.calls[0]?.[0] as any)?.error?.message).toBe('nav failed');
-    } else {
-      expect(root).toBeTruthy();
-      expect(onActionError.calls.length).toBe(0);
-    }
+    expect(newBtn).toBeTruthy();
+    (newBtn as HTMLElement).click();
+    await flushPromises();
+    expect((onActionError.calls[0]?.[0] as any)?.action).toBe('create');
+    expect((onActionError.calls[0]?.[0] as any)?.error?.message).toBe('nav failed');
+    expect(root).toBeTruthy();
     unmount();
   });
 
@@ -193,7 +198,7 @@ describe('ListView create action', () => {
         showPaginate: false,
       },
       plugins,
-      stubs: { ElButton: buttonStub(), ElIcon: true },
+      stubs: { ElIcon: true },
     });
     await flushPromises();
     expect(findNewButton(el)).toBeFalsy();

@@ -845,13 +845,13 @@ msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:108
-#: web/components/layout/ChoyAppShell.vue:94
+#: web/components/layout/ChoyAppShell.vue:111
+#: web/components/layout/ChoyAppShell.vue:97
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Account"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:124
+#: web/components/layout/ChoyAppShell.vue:127
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Dark"
 msgstr ""
@@ -861,7 +861,7 @@ msgctxt "web/components/layout/ChoyAppShell"
 msgid "Language"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:123
+#: web/components/layout/ChoyAppShell.vue:126
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Light"
 msgstr ""
@@ -881,7 +881,7 @@ msgctxt "web/components/layout/ChoyAppShell"
 msgid "Settings"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:125
+#: web/components/layout/ChoyAppShell.vue:128
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "System"
 msgstr ""
@@ -2235,44 +2235,44 @@ msgctxt "web/views/TokenKanbanView"
 msgid "Revoked At"
 msgstr ""
 
-#: web/views/TokenListView.vue:33
+#: web/views/TokenListView.vue:42
 msgctxt "web/views/TokenListView"
 msgid "Copy Token"
 msgstr ""
 
-#: web/views/TokenListView.vue:33
+#: web/views/TokenListView.vue:42
 msgctxt "web/views/TokenListView"
 msgid "Create Token"
 msgstr ""
 
-#: web/views/TokenListView.vue:33
+#: web/views/TokenListView.vue:42
 msgctxt "web/views/TokenListView"
 msgid "Delete Token"
 msgstr ""
 
-#: web/views/TokenListView.vue:33
+#: web/views/TokenListView.vue:42
 msgctxt "web/views/TokenListView"
 msgid "Edit Token"
 msgstr ""
 
-#: web/views/TokenListView.vue:11
-msgctxt "web/views/TokenListView"
-msgid "Icon View"
-msgstr ""
-
-#: web/views/TokenListView.vue:8
+#: web/views/TokenListView.vue:9
 msgctxt "web/views/TokenListView"
 msgid "Kanban View"
 msgstr ""
 
-#: web/views/TokenListView.vue:5
+#: web/views/TokenListView.vue:6
 msgctxt "web/views/TokenListView"
 msgid "List View"
 msgstr ""
 
-#: web/views/TokenListView.vue:33
+#: web/views/TokenListView.vue:42
 msgctxt "web/views/TokenListView"
 msgid "Token"
+msgstr ""
+
+#: web/views/TokenListView.vue:5
+msgctxt "web/views/TokenListView"
+msgid "View switcher"
 msgstr ""
 
 #: web/views/UserFormView.vue:57

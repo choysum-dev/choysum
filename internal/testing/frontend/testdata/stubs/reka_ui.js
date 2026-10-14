@@ -325,7 +325,17 @@ export const ListboxGroup = stub('ListboxGroup');
 export const ListboxGroupLabel = stub('ListboxGroupLabel');
 export const ListboxItem = stub('ListboxItem');
 
-export const Label = stub('Label');
+/** Native <label> so FormItem `for` association works in FE-QJS (generic stub is a div). */
+export const Label = defineComponent({
+  name: 'Label',
+  inheritAttrs: false,
+  setup(_, { slots, attrs }) {
+    return () =>
+      h('label', { 'data-reka-stub': 'Label', ...attrs }, [
+        slots.default ? slots.default() : null,
+      ]);
+  },
+});
 export const AspectRatio = stub('AspectRatio');
 
 // AlertDialog: mirror DialogRoot open/closed so ConfirmHost mounts in FE unit.

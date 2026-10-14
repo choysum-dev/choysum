@@ -22,6 +22,7 @@ export { default as ChoyCol } from './components/layout/ChoyCol.vue';
 export { default as ChoyTabs } from './components/layout/ChoyTabs.vue';
 export { default as ChoyTab } from './components/layout/ChoyTab.vue';
 export { default as ChoyButton } from './components/layout/ChoyButton.vue';
+export { default as ChoyButtonGroup } from './components/layout/ChoyButtonGroup.vue';
 export { default as ChoyInput } from './components/vendor/ui/input/Input.vue';
 export { default as ChoyCheckbox } from './components/vendor/ui/checkbox/Checkbox.vue';
 export {
@@ -60,6 +61,12 @@ export {
   PopoverContent as ChoyPopoverContent,
   PopoverTrigger as ChoyPopoverTrigger,
 } from './components/vendor/ui/popover';
+export {
+  Tooltip as ChoyTooltip,
+  TooltipContent as ChoyTooltipContent,
+  TooltipProvider as ChoyTooltipProvider,
+  TooltipTrigger as ChoyTooltipTrigger,
+} from './components/vendor/ui/tooltip';
 export {
   ChoyDialog,
   ChoyDialogContent,

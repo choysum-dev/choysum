@@ -9,6 +9,7 @@ import {
   provide,
   shallowRef,
   toValue,
+  watch,
   type ComputedRef,
   type InjectionKey,
   type MaybeRefOrGetter,
@@ -21,20 +22,49 @@ export type PageActionTarget = {
   refresh?: () => Promise<void> | void;
 };
 
+/** Props for page Import/Export menu when a view hosts the title row. */
+export type PageTitleActionsIo = {
+  actionImport: boolean;
+  actionExport: boolean;
+  actionImportUploadHint?: string;
+  actionImportColumnMapping?: Record<string, string>;
+  actionListRef?: unknown;
+  actionCompanyId?: string;
+};
+
 /** Default screen-level store and optional primary view action target from `Page`. */
 export type PageContext = {
   store: ComputedRef<unknown | null>;
   actionTarget: ShallowRef<PageActionTarget | null>;
   registerActionTarget: (target: PageActionTarget) => void;
   unregisterActionTarget: (target: PageActionTarget) => void;
+  /** Page title from ChoyPage (trimmed; empty when unset). */
+  title: ComputedRef<string>;
+  /** DOM id for the page title heading (aria-labelledby). */
+  titleId: string;
+  /** Import/Export menu props when the page enables IO; null otherwise. */
+  titleActionsIo: ComputedRef<PageTitleActionsIo | null>;
+  /** True while List/Kanban view chrome hosts the page title (+ IO). */
+  titleHostedByView: ShallowRef<boolean>;
+  claimPageTitle: () => void;
+  releasePageTitle: () => void;
 };
 
 /** Stable across `vi.resetModules()` so provide/inject still match in unit tests. */
 export const PageContextKey: InjectionKey<PageContext> = Symbol.for('choysum.pageContext');
 
-export function providePageContext(options: { store: MaybeRefOrGetter<unknown | null | undefined> }) {
+export function providePageContext(options: {
+  store: MaybeRefOrGetter<unknown | null | undefined>;
+  title?: MaybeRefOrGetter<string | undefined>;
+  titleId?: string;
+  titleActionsIo?: MaybeRefOrGetter<PageTitleActionsIo | null | undefined>;
+}) {
   const store = computed(() => (toValue(options.store) ?? null) as unknown | null);
   const actionTarget = shallowRef<PageActionTarget | null>(null);
+  const title = computed(() => String(toValue(options.title) ?? '').trim());
+  const titleId = options.titleId ?? '';
+  const titleActionsIo = computed(() => (toValue(options.titleActionsIo) ?? null) as PageTitleActionsIo | null);
+  const titleHostedByView = shallowRef(false);
 
   function registerActionTarget(target: PageActionTarget) {
     actionTarget.value = target;
@@ -46,11 +76,29 @@ export function providePageContext(options: { store: MaybeRefOrGetter<unknown | 
     }
   }
 
+  let pageTitleClaims = 0;
+
+  function claimPageTitle() {
+    pageTitleClaims += 1;
+    titleHostedByView.value = true;
+  }
+
+  function releasePageTitle() {
+    pageTitleClaims = Math.max(0, pageTitleClaims - 1);
+    titleHostedByView.value = pageTitleClaims > 0;
+  }
+
   const ctx: PageContext = {
     store,
     actionTarget,
     registerActionTarget,
     unregisterActionTarget,
+    title,
+    titleId,
+    titleActionsIo,
+    titleHostedByView,
+    claimPageTitle,
+    releasePageTitle,
   };
   provide(PageContextKey, ctx);
   return ctx;
@@ -131,4 +179,52 @@ export function useRegisterPageActionTarget(options: {
       registered = false;
     }
   });
+}
+
+/**
+ * List/Kanban view chrome hosts the page title (+ IO menu) so Page does not
+ * render a separate title band above the action bar.
+ */
+export function useHostPageTitleInView(enabled: MaybeRefOrGetter<boolean>) {
+  const ctx = inject(PageContextKey, null);
+  let claimed = false;
+
+  function shouldHost(): boolean {
+    if (!ctx || !toValue(enabled)) return false;
+    return !!ctx.title.value || !!ctx.titleActionsIo.value;
+  }
+
+  function sync() {
+    if (!ctx) return;
+    const on = shouldHost();
+    if (on && !claimed) {
+      ctx.claimPageTitle();
+      claimed = true;
+    } else if (!on && claimed) {
+      ctx.releasePageTitle();
+      claimed = false;
+    }
+  }
+
+  // Claim during setup (parent Page already provided ctx) so the first paint
+  // hides the page title band and drops top inset — not only after mount.
+  sync();
+  onMounted(sync);
+  watch(
+    () => [toValue(enabled), ctx?.title.value, ctx?.titleActionsIo.value] as const,
+    sync,
+  );
+
+  onBeforeUnmount(() => {
+    if (claimed && ctx) {
+      ctx.releasePageTitle();
+      claimed = false;
+    }
+  });
+
+  return {
+    pageTitle: computed(() => (shouldHost() ? (ctx?.title.value ?? '') : '')),
+    pageTitleId: computed(() => ctx?.titleId ?? ''),
+    pageTitleActionsIo: computed(() => (shouldHost() ? (ctx?.titleActionsIo.value ?? null) : null)),
+  };
 }
