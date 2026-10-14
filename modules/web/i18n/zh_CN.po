@@ -1231,6 +1231,11 @@ msgctxt "web/components/view/ListView"
 msgid "Save"
 msgstr "保存"
 
+#: web/components/view/ChoyListView.vue
+msgctxt "web/components/view/ListView"
+msgid "%s selected"
+msgstr "已选 %s"
+
 #: web/components/view/ChoyListView.vue:652
 msgctxt "web/components/view/ListView"
 msgid "Selected records are missing valid IDs"
@@ -1251,27 +1256,22 @@ msgctxt "web/components/view/ListView"
 msgid "User actions"
 msgstr "用户操作"
 
-#: web/components/view/ChoyPagination.vue:64
+#: web/components/view/ChoyPagination.vue
 msgctxt "web/components/view/Pagination"
-msgid "%s total"
-msgstr "共 %s 条"
+msgid "%s–%s / %s"
+msgstr "%s–%s / %s"
 
-#: web/components/view/ChoyPagination.vue:70
+#: web/components/view/ChoyPagination.vue
 msgctxt "web/components/view/Pagination"
 msgid "Next"
 msgstr "下一页"
 
-#: web/components/view/ChoyPagination.vue:66
-msgctxt "web/components/view/Pagination"
-msgid "Page %s of %s"
-msgstr "第 %s / %s 页"
-
-#: web/components/view/ChoyPagination.vue:69
+#: web/components/view/ChoyPagination.vue
 msgctxt "web/components/view/Pagination"
 msgid "Previous"
 msgstr "上一页"
 
-#: web/components/view/ChoyPagination.vue:65
+#: web/components/view/ChoyPagination.vue
 msgctxt "web/components/view/Pagination"
 msgid "Rows per page"
 msgstr "每页行数"

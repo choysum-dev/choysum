@@ -5,12 +5,16 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <DropdownMenu v-if="visibleItems.length">
-    <DropdownMenuTrigger
-      class="cursor-pointer border-0 bg-transparent px-2 py-1"
-      :aria-label="menuAriaLabel"
-      data-testid="page-io-menu-trigger"
-    >
-      <Settings class="size-[18px]" />
+    <DropdownMenuTrigger as-child>
+      <ChoyButton
+        type="button"
+        variant="ghost"
+        size="icon"
+        :aria-label="menuAriaLabel"
+        data-testid="page-io-menu-trigger"
+      >
+        <EllipsisVertical class="size-4" aria-hidden="true" />
+      </ChoyButton>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end">
       <DropdownMenuItem
@@ -20,6 +24,8 @@ SPDX-License-Identifier: Apache-2.0
         :data-testid="`page-io-menu-${item.key}`"
         @select="onCommand(item.key)"
       >
+        <Upload v-if="item.key === 'import'" class="size-4" aria-hidden="true" />
+        <Download v-else-if="item.key === 'export'" class="size-4" aria-hidden="true" />
         {{ item.label }}
       </DropdownMenuItem>
     </DropdownMenuContent>
@@ -45,7 +51,8 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { Settings } from 'lucide-vue-next';
+import { Download, EllipsisVertical, Upload } from 'lucide-vue-next';
+import ChoyButton from './ChoyButton.vue';
 import DropdownMenu from '../vendor/ui/dropdown-menu/DropdownMenu.vue';
 import DropdownMenuContent from '../vendor/ui/dropdown-menu/DropdownMenuContent.vue';
 import DropdownMenuItem from '../vendor/ui/dropdown-menu/DropdownMenuItem.vue';
@@ -186,4 +193,3 @@ function onImported() {
 
 defineExpose({ onCommand });
 </script>
-

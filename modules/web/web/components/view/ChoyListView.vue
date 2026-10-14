@@ -37,24 +37,42 @@ SPDX-License-Identifier: Apache-2.0
               :discard="handleInlineDiscard"
             >
               <ChoyButton v-if="resolvedCreateAction && canCreate" size="sm" variant="default" @click="handleCreate">
-                <Plus class="size-4" />
+                <Plus class="size-4" aria-hidden="true" />
                 {{ _t('New') }}
               </ChoyButton>
 
-              <ChoyButton v-if="refreshAction && canRefresh" size="sm" variant="outline" @click="handleRefresh">
-                <RefreshCw class="size-4" />
-                {{ _t('Refresh') }}
-              </ChoyButton>
+              <TooltipProvider v-if="refreshAction && canRefresh">
+                <Tooltip>
+                  <TooltipTrigger as-child>
+                    <ChoyButton
+                      size="icon"
+                      variant="ghost"
+                      :aria-label="_t('Refresh')"
+                      @click="handleRefresh"
+                    >
+                      <RefreshCw class="size-4" aria-hidden="true" />
+                    </ChoyButton>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">{{ _t('Refresh') }}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              <ChoyBadge
+                v-if="selectedItems.length > 0"
+                variant="secondary"
+                class="tabular-nums"
+              >
+                {{ _t('%s selected', selectedItems.length) }}
+              </ChoyBadge>
 
               <ChoyButton
-                v-if="deleteAction && canDelete"
+                v-if="deleteAction && canDelete && selectedItems.length > 0"
                 size="sm"
-                variant="outline"
-                class="border-danger/40 text-danger hover:bg-danger-subtle"
-                :disabled="selectedItems.length === 0 || deleteLoading"
+                variant="destructive"
+                :disabled="deleteLoading"
                 @click="handleDelete"
               >
-                <Trash2 class="size-4" />
+                <Trash2 class="size-4" aria-hidden="true" />
                 {{ _t('Delete (%s)', selectedItems.length) }}
               </ChoyButton>
             </slot>
@@ -65,8 +83,8 @@ SPDX-License-Identifier: Apache-2.0
           </template>
 
           <template v-if="resolvedSearchView" #center>
-            <div class="flex min-w-60 items-center justify-center max-md:order-2">
-              <component :is="resolvedSearchView" :store="store" @query-update="onSearch" />
+            <div class="flex min-w-0 w-full items-center">
+              <component :is="resolvedSearchView" class="min-w-0 w-full" :store="store" @query-update="onSearch" />
             </div>
           </template>
 
@@ -117,7 +135,14 @@ SPDX-License-Identifier: Apache-2.0
           <slot />
           <template #empty>
             <slot name="empty">
-              <ChoyEmpty class="w-full" :description="_t('No data')" />
+              <ChoyEmpty class="w-full" :description="_t('No data')">
+                <template v-if="resolvedCreateAction && canCreate" #actions>
+                  <ChoyButton size="sm" variant="default" @click="handleCreate">
+                    <Plus class="size-4" aria-hidden="true" />
+                    {{ _t('New') }}
+                  </ChoyButton>
+                </template>
+              </ChoyEmpty>
             </slot>
           </template>
         </ChoyTableHost>
@@ -182,6 +207,13 @@ import type { SelectionExpose, RowEventPayload, RowEventHandlerParams } from '@/
 import { resolvePageStore, useRegisterPageActionTarget } from '@/web/web/composables/usePageContext';
 import { useResolvedCreateAction } from '@/web/web/composables/resolveCreateRoute';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyBadge from '@/web/web/components/layout/ChoyBadge.vue';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/web/web/components/vendor/ui/tooltip';
 import { Plus, RefreshCw, Trash2 } from 'lucide-vue-next';
 
 defineOptions({ name: 'ChoyListView', inheritAttrs: false });

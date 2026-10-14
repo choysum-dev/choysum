@@ -1256,6 +1256,11 @@ msgctxt "web/components/view/ListView"
 msgid "Save"
 msgstr ""
 
+#: web/components/view/ChoyListView.vue
+msgctxt "web/components/view/ListView"
+msgid "%s selected"
+msgstr ""
+
 #: web/components/view/ChoyListView.vue:652
 msgctxt "web/components/view/ListView"
 msgid "Selected records are missing valid IDs"
@@ -1276,27 +1281,22 @@ msgctxt "web/components/view/ListView"
 msgid "User actions"
 msgstr ""
 
-#: web/components/view/ChoyPagination.vue:64
+#: web/components/view/ChoyPagination.vue
 msgctxt "web/components/view/Pagination"
-msgid "%s total"
+msgid "%s–%s / %s"
 msgstr ""
 
-#: web/components/view/ChoyPagination.vue:70
+#: web/components/view/ChoyPagination.vue
 msgctxt "web/components/view/Pagination"
 msgid "Next"
 msgstr ""
 
-#: web/components/view/ChoyPagination.vue:66
-msgctxt "web/components/view/Pagination"
-msgid "Page %s of %s"
-msgstr ""
-
-#: web/components/view/ChoyPagination.vue:69
+#: web/components/view/ChoyPagination.vue
 msgctxt "web/components/view/Pagination"
 msgid "Previous"
 msgstr ""
 
-#: web/components/view/ChoyPagination.vue:65
+#: web/components/view/ChoyPagination.vue
 msgctxt "web/components/view/Pagination"
 msgid "Rows per page"
 msgstr ""

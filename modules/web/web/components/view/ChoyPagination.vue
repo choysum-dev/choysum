@@ -12,50 +12,50 @@ SPDX-License-Identifier: Apache-2.0
       props.class,
     ]"
   >
-    <span class="choy-pagination__total text-muted-foreground tabular-nums" aria-live="polite">
-      {{ totalLabel }}
+    <span
+      class="choy-pagination__range text-sm text-muted-foreground tabular-nums"
+      aria-live="polite"
+    >
+      {{ rangeLabel }}
     </span>
     <label class="choy-pagination__size inline-flex items-center gap-2 text-muted-foreground">
       <span class="sr-only">{{ pageSizeLabel }}</span>
-      <select
-        class="h-control min-w-16 rounded-md border border-border bg-background px-2 text-sm text-foreground"
+      <NativeSelect
+        class="min-w-16"
         :disabled="disabled"
         :aria-label="pageSizeLabel"
-        :value="String(pageSize)"
-        @change="onPageSizeChange"
+        v-model="pageSizeModel"
       >
-        <option v-for="n in effectivePageSizeOptions" :key="n" :value="String(n)">
+        <NativeSelectOption v-for="n in effectivePageSizeOptions" :key="n" :value="String(n)">
           {{ n }}
-        </option>
-      </select>
+        </NativeSelectOption>
+      </NativeSelect>
     </label>
-    <div class="ms-auto flex items-center gap-2">
+    <!-- role=group mirrors ButtonGroup; avoid barrel import (sibling SFCs break FE-QJS compile). -->
+    <div
+      role="group"
+      data-slot="button-group"
+      class="ms-auto flex w-fit items-stretch [&>*:not(:first-child)]:rounded-l-none [&>*:not(:first-child)]:border-l-0 [&>*:not(:last-child)]:rounded-r-none"
+    >
       <ChoyButton
         type="button"
         variant="outline"
-        size="sm"
+        size="icon"
         :disabled="!canPrev"
         :aria-label="prevLabel"
         @click="goPrev"
       >
-        {{ prevLabel }}
+        <ChevronLeft class="size-4" aria-hidden="true" />
       </ChoyButton>
-      <span
-        class="choy-pagination__summary tabular-nums"
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        {{ pageOfLabel }}
-      </span>
       <ChoyButton
         type="button"
         variant="outline"
-        size="sm"
+        size="icon"
         :disabled="!canNext"
         :aria-label="nextLabel"
         @click="goNext"
       >
-        {{ nextLabel }}
+        <ChevronRight class="size-4" aria-hidden="true" />
       </ChoyButton>
     </div>
   </div>
@@ -63,7 +63,10 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed, watch } from 'vue';
+import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import ChoyButton from '../layout/ChoyButton.vue';
+import NativeSelect from '../vendor/ui/native-select/NativeSelect.vue';
+import NativeSelectOption from '../vendor/ui/native-select/NativeSelectOption.vue';
 import type { ClassValue } from '../../lib/utils';
 import { createTranslate } from '../../i18n';
 import { clampChoyPage, choyTotalPages } from './paginationHelpers';
@@ -71,7 +74,7 @@ import { clampChoyPage, choyTotalPages } from './paginationHelpers';
 const { _t } = createTranslate('web', { scope: 'web/components/view/Pagination' });
 
 /**
- * Product pagination (Dense Admin §5.6): total + pageSize select + prev/next.
+ * Product pagination (Dense Admin): range + pageSize NativeSelect + icon prev/next.
  * Changing pageSize resets to page 1. Kit exports only this pagination API.
  */
 const props = withDefaults(
@@ -89,6 +92,13 @@ const props = withDefaults(
 
 const page = defineModel<number>('page', { default: 1 });
 const pageSize = defineModel<number>('pageSize', { default: 20 });
+
+const pageSizeModel = computed({
+  get: () => String(pageSize.value),
+  set: (value: unknown) => {
+    onPageSizeModel(value);
+  },
+});
 
 const effectivePageSizeOptions = computed(() => {
   const opts = [...props.pageSizeOptions];
@@ -124,18 +134,30 @@ const canNext = computed(
   () => currentPage.value < totalPages.value && !props.disabled,
 );
 
-const totalLabel = computed(() => _t('%s total', props.total));
-const pageSizeLabel = computed(() => _t('Rows per page'));
-const pageOfLabel = computed(() =>
-  _t('Page %s of %s', currentPage.value, totalPages.value),
+const rangeStart = computed(() => {
+  if (!Number.isFinite(props.total) || props.total <= 0) return 0;
+  return (currentPage.value - 1) * pageSize.value + 1;
+});
+const rangeEnd = computed(() => {
+  if (!Number.isFinite(props.total) || props.total <= 0) return 0;
+  return Math.min(currentPage.value * pageSize.value, props.total);
+});
+const rangeLabel = computed(() =>
+  _t('%s–%s / %s', rangeStart.value, rangeEnd.value, props.total),
 );
+const pageSizeLabel = computed(() => _t('Rows per page'));
 const prevLabel = computed(() => _t('Previous'));
 const nextLabel = computed(() => _t('Next'));
 
-function onPageSizeChange(event: Event): void {
-  const raw = Number((event.target as HTMLSelectElement).value);
+function onPageSizeModel(value: unknown): void {
+  const raw = Number(value);
   if (!Number.isFinite(raw) || raw <= 0) return;
   pageSize.value = raw;
+}
+
+/** @deprecated Kept for unit tests that call setupState().onPageSizeChange */
+function onPageSizeChange(event: Event): void {
+  onPageSizeModel((event.target as HTMLSelectElement | null)?.value);
 }
 
 function goPrev(): void {
@@ -147,4 +169,6 @@ function goNext(): void {
   if (!canNext.value) return;
   page.value = currentPage.value + 1;
 }
+
+defineExpose({ onPageSizeChange, goPrev, goNext });
 </script>
