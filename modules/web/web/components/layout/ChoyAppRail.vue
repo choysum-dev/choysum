@@ -94,7 +94,7 @@ function isActive(app: MenuItem): boolean {
 
 function tileClass(app: MenuItem): string {
   return isActive(app)
-    ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+    ? 'bg-sidebar-primary/15 text-sidebar-primary'
     : 'text-sidebar-foreground/80 group-hover/rail:bg-sidebar-accent group-hover/rail:text-sidebar-accent-foreground'
 }
 

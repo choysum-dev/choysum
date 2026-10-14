@@ -25,7 +25,7 @@ SPDX-License-Identifier: Apache-2.0
               >
                 <ChoyAvatar class="size-8 shrink-0 rounded-full" data-testid="auth-user-menu-avatar">
                   <ChoyAvatarFallback
-                    class="bg-sidebar-primary text-sidebar-primary-foreground rounded-full text-xs font-medium"
+                    class="rounded-full border border-sidebar-border bg-background text-xs font-medium text-sidebar-foreground"
                   >
                     {{ userInitials }}
                   </ChoyAvatarFallback>
@@ -59,7 +59,7 @@ SPDX-License-Identifier: Apache-2.0
                 >
                   <ChoyAvatar class="size-8 shrink-0 rounded-full">
                     <ChoyAvatarFallback
-                      class="bg-sidebar-primary text-sidebar-primary-foreground rounded-full text-xs font-medium"
+                      class="rounded-full border border-sidebar-border bg-background text-xs font-medium text-sidebar-foreground"
                     >
                       {{ userInitials }}
                     </ChoyAvatarFallback>
