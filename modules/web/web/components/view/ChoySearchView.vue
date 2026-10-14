@@ -5,10 +5,10 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <div
-    class="choy-search-view"
+    data-slot="search-view"
     data-test="choy-search"
     data-anchor="choy.search-view"
-    :class="[{ 'pointer-events-none select-none': disabled }, props.class]"
+    :class="cn('choy-search-view', { 'pointer-events-none select-none': disabled }, props.class)"
     :inert="disabled || undefined"
     :aria-disabled="disabled ? 'true' : undefined"
     v-bind="splitAttrs.bind"
@@ -40,7 +40,8 @@ import { mergeUserFilterDefaults } from '@/web/web/composables/search/userFilter
 import { createTranslate } from '@/web/web/i18n';
 import { splitChoyAttrsListeners } from '@/web/web/composables/choyStoreMode';
 import { resolvePageStore, useOptionalPageStore } from '@/web/web/composables/usePageContext';
-import type { ClassValue } from '../../lib/utils';
+import { cn, type ClassValue } from '../../lib/utils';
+import { useProvideViewScope } from '@/web/web/components/view/viewScopeKeys';
 import {
   choySearchQueryFromPayload,
   type ChoySearchQuery
@@ -49,6 +50,8 @@ import {
 defineOptions({ name: 'ChoySearchView', inheritAttrs: false });
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/SearchView' });
+
+useProvideViewScope({ kind: 'Search' });
 
 /**
  * Store-bound search chrome. Requires :store or a page-provided store.

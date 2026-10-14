@@ -269,7 +269,12 @@ describe('JsonobjectField', () => {
     ta.dispatchEvent(new Event('input', { bubbles: true }));
     ta.dispatchEvent(new Event('blur', { bubbles: true }));
     await flushPromises();
-    expect(m.q('.choy-json-err')).toBeTruthy();
+    const errEl = m.q('.choy-json-err') as HTMLElement | null;
+    expect(errEl).toBeTruthy();
+    expect(ta.getAttribute('aria-invalid')).toBe('true');
+    const errId = errEl?.id || '';
+    expect(errId).toBeTruthy();
+    expect(ta.getAttribute('aria-describedby') || '').toContain(errId);
 
     ta.value = '[1]';
     ta.dispatchEvent(new Event('input', { bubbles: true }));

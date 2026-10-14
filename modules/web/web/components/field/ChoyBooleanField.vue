@@ -20,7 +20,7 @@ SPDX-License-Identifier: Apache-2.0
     :renderMode="renderMode"
     :showInlineError="showInlineError"
   >
-    <template #edit="{ fieldValue, inputName, inputId }">
+    <template #edit="{ fieldValue, inputName, inputId, describedBy, invalid}">
       <div class="flex w-full min-w-0 items-start gap-2">
         <OBooleanCell
           v-bind="controlAttrs"
@@ -38,6 +38,8 @@ SPDX-License-Identifier: Apache-2.0
           :checkbox-props="checkboxProps"
           :input-name="inputName"
           :input-id="inputId"
+          :aria-describedby="describedBy || undefined"
+          :aria-invalid="invalid ? 'true' : undefined"
         />
         <div v-if="$slots.side" class="min-w-0 flex-1 text-sm leading-5">
           <slot name="side" />

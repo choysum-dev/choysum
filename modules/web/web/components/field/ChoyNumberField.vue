@@ -14,8 +14,10 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
     v-bind="$attrs"
   >
-    <template #edit="{ fieldValue, inputId }">
-      <ONumberCell :field-value="fieldValue" :options="bufferOptions" :placeholder="placeholder" :nullable="nullable" :min="min" :max="max" v-bind="$attrs" :id="inputId" />
+    <template #edit="{ fieldValue, inputId, describedBy, invalid}">
+      <ONumberCell :field-value="fieldValue" :options="bufferOptions" :placeholder="placeholder" :nullable="nullable" :min="min" :max="max" v-bind="$attrs" :id="inputId"
+        :aria-describedby="describedBy || undefined"
+        :aria-invalid="invalid ? 'true' : undefined" />
     </template>
     <template #display="{ fieldValue }">
       <span class="choy-field-display-text truncate whitespace-nowrap text-foreground inline-block max-w-full text-right">{{ toDisplayText(fieldValue().value) }}</span>

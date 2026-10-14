@@ -80,7 +80,7 @@ describe('FormView reloads when route identity changes', () => {
         ElIcon: true,
         ElForm: true,
         Breadcrumb: true,
-        ViewContainer: true,
+        ChoyViewContainer: true,
       },
     });
     return { wrapper, route, store };

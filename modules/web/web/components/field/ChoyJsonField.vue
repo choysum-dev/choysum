@@ -20,7 +20,7 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
     v-bind="$attrs"
   >
-    <template #edit="{ fieldValue, inputId }">
+    <template #edit="{ fieldValue, inputId, describedBy, invalid}">
       <OJsonCell
         :field-value="fieldValue"
         :options="bufferOptions"
@@ -30,6 +30,8 @@ SPDX-License-Identifier: Apache-2.0
         :allow-array="allowArray"
         v-bind="$attrs"
         :id="inputId"
+        :aria-describedby="describedBy || undefined"
+        :aria-invalid="invalid ? 'true' : undefined"
       />
     </template>
 
@@ -327,6 +329,15 @@ const OJsonCell = defineComponent({
       const rest = { ...(attrs as Record<string, unknown>) };
       delete rest.onInput;
       delete rest.onBlur;
+      const controlId = rest.id != null && String(rest.id) !== '' ? String(rest.id) : '';
+      // Only synthesize an error id when the control has one; avoid duplicate hard-coded ids.
+      const parseErrorId = controlId ? `${controlId}-parse-error` : '';
+      const formDescribedBy = rest['aria-describedby'] != null ? String(rest['aria-describedby']) : '';
+      const describedBy = [formDescribedBy, parseError.value ? parseErrorId : '']
+        .map(s => s.trim())
+        .filter(Boolean)
+        .join(' ');
+      const formInvalid = rest['aria-invalid'] === true || rest['aria-invalid'] === 'true';
       return h('div', {}, [
         h('textarea', {
           ...rest,
@@ -334,6 +345,8 @@ const OJsonCell = defineComponent({
           placeholder: p.placeholder,
           rows: 6,
           value: editingText.value ?? '',
+          'aria-describedby': describedBy || undefined,
+          'aria-invalid': parseError.value || formInvalid ? 'true' : undefined,
           onInput: (e: Event) => {
             onInput((e.target as HTMLTextAreaElement).value);
             callAttrListener(attrs.onInput, e);
@@ -343,7 +356,17 @@ const OJsonCell = defineComponent({
             callAttrListener(attrs.onBlur, e);
           },
         }),
-        parseError.value ? h('div', { class: 'choy-json-err mt-1 text-xs text-danger' }, parseError.value) : null,
+        parseError.value
+          ? h(
+              'div',
+              {
+                id: parseErrorId || undefined,
+                class: 'choy-json-err mt-1 text-xs text-danger',
+                role: 'alert',
+              },
+              parseError.value,
+            )
+          : null,
       ]);
     };
   },

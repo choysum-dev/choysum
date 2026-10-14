@@ -8,37 +8,54 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { toRef, provide } from 'vue';
-import {
-  VIEW_MODE_KEY,
-  VIEW_CONTAINER_KEY,
-  FIELD_PREFIX_KEY,
-  type ViewMode,
-  type ViewContainer
-} from './viewScopeKeys';
+import { computed, watchEffect } from 'vue';
+import { getViewKind } from './viewKinds';
+import { useProvideViewScope, type ViewMode } from './viewScopeKeys';
+import type { ViewKindId } from './viewKinds';
+import { registerBuiltinViewKinds } from './viewKinds';
 
-export type { ViewMode, ViewContainer };
+export type { ViewMode };
+export type { ViewKindId };
+/** @deprecated Use ViewKindId */
+export type ViewContainer = ViewKindId;
 
 defineOptions({ name: 'ChoyViewScope', inheritAttrs: false });
 
-const props = withDefaults(
-  defineProps<{
-    viewMode?: ViewMode;
-    container?: ViewContainer;
-    fieldPrefix?: string;
-  }>(),
-  {
-    viewMode: 'edit',
-    container: 'Form',
-    fieldPrefix: undefined,
-  },
+registerBuiltinViewKinds();
+
+const props = defineProps<{
+  viewMode?: ViewMode;
+  /** Registered view kind id (Form, List, Kanban, …). */
+  kind?: ViewKindId;
+  /**
+   * @deprecated Use `kind`. Accepted only to surface a clear warning when
+   * call sites still pass the removed prop (inheritAttrs is false).
+   */
+  container?: ViewKindId;
+  fieldPrefix?: string;
+}>();
+
+watchEffect(() => {
+  if (props.container !== undefined && props.kind === undefined) {
+    console.warn('[ChoyViewScope] prop "container" was removed; use "kind" instead');
+  }
+});
+
+const kind = computed<ViewKindId>(() => {
+  if (props.kind !== undefined) return props.kind;
+  if (props.container !== undefined) return props.container;
+  return 'Form';
+});
+
+/** Prefer explicit viewMode; otherwise the registered kind defaultMode. */
+const mode = computed<ViewMode>(
+  () => props.viewMode ?? getViewKind(kind.value).defaultMode ?? 'display',
 );
 
-const modeRef = toRef(props, 'viewMode');
-const containerRef = toRef(props, 'container');
-const fieldPrefixRef = toRef(props, 'fieldPrefix');
-
-provide(VIEW_MODE_KEY, modeRef);
-provide(VIEW_CONTAINER_KEY, containerRef);
-provide(FIELD_PREFIX_KEY, fieldPrefixRef);
+useProvideViewScope({
+  kind,
+  mode,
+  // Absent prop resets to null so relation-picker dialogs do not inherit an enclosing prefix.
+  fieldPrefix: computed(() => props.fieldPrefix ?? null),
+});
 </script>

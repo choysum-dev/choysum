@@ -4,20 +4,18 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div
+  <ChoyViewContainer
     data-anchor="choy.chart-view"
     data-region="chart-view"
     :class="cn('choy-chart-view flex flex-col gap-3', props.class)"
   >
-    <div
-      v-if="showHeader"
-      class="flex flex-wrap items-center justify-between gap-2 min-h-control"
-    >
-      <div v-if="showActions" class="flex flex-wrap items-center gap-2">
-        <ChoyActionTray
-          class="choy-chart__system-actions"
-          :aria-label="_t('System actions')"
-        >
+    <template v-if="showHeader" #header>
+      <ChoyViewActionBar
+        :layout="$slots.search ? 'thirds' : 'split'"
+        :system-actions-label="_t('System actions')"
+        :user-actions-label="_t('User actions')"
+      >
+        <template v-if="showActions" #system-actions>
           <slot name="system-actions">
             <ChoyButton
               v-if="showCreate"
@@ -37,19 +35,18 @@ SPDX-License-Identifier: Apache-2.0
               {{ resolvedRefreshLabel }}
             </ChoyButton>
           </slot>
-        </ChoyActionTray>
-        <ChoyActionTray
-          class="choy-chart__user-actions"
-          :aria-label="_t('User actions')"
-        >
+        </template>
+        <template v-if="showActions" #user-actions>
           <slot name="user-actions" />
-        </ChoyActionTray>
-      </div>
-      <div class="min-w-0 flex-1">
-        <slot name="search" :on-query-update="onSearch" />
-      </div>
-      <slot name="header-right" />
-    </div>
+        </template>
+        <template v-if="$slots.search" #center>
+          <slot name="search" :on-query-update="onSearch" />
+        </template>
+        <template v-if="$slots['header-right']" #header-right>
+          <slot name="header-right" />
+        </template>
+      </ChoyViewActionBar>
+    </template>
 
     <div
       v-if="showChartControls"
@@ -178,7 +175,11 @@ SPDX-License-Identifier: Apache-2.0
       </slot>
     </div>
 
-    <div class="relative min-h-[280px] w-full" data-region="chart-body">
+    <ChoyViewBusyHost
+      :busy="boardBusy && !errorText"
+      class="relative min-h-[280px] w-full"
+      data-region="chart-body"
+    >
       <ChartContainer
         v-if="spec"
         :config="spec.config"
@@ -263,15 +264,7 @@ SPDX-License-Identifier: Apache-2.0
       />
 
       <div
-        v-if="boardBusy && !errorText"
-        class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/60"
-        role="status"
-        :aria-label="_t('Loading...')"
-      >
-        <ChoySpinner :label="_t('Loading...')" />
-      </div>
-      <div
-        v-else-if="errorText"
+        v-if="errorText"
         class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/70 text-sm text-destructive"
         role="alert"
       >
@@ -280,8 +273,8 @@ SPDX-License-Identifier: Apache-2.0
           {{ _t('Retry') }}
         </ChoyButton>
       </div>
-    </div>
-  </div>
+    </ChoyViewBusyHost>
+  </ChoyViewContainer>
 </template>
 
 <script setup lang="ts">
@@ -305,9 +298,11 @@ import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { OrderByState } from '@/web/web/query/state';
 import type { ChoySearchQuery } from './searchViewHelpers';
 import ChoyButton from '../layout/ChoyButton.vue';
-import ChoyActionTray from '@/web/web/components/layout/ChoyActionTray.vue';
 import ChoyEmpty from '../layout/ChoyEmpty.vue';
-import ChoySpinner from '../layout/ChoySpinner.vue';
+import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
+import ChoyViewActionBar from '@/web/web/components/view/ChoyViewActionBar.vue';
+import ChoyViewBusyHost from '@/web/web/components/view/ChoyViewBusyHost.vue';
+import { useProvideViewScope } from '@/web/web/components/view/viewScopeKeys';
 import { createTranslate } from '@/web/web/i18n';
 import {
   ChartContainer,
@@ -345,6 +340,8 @@ import { groupRowsToChartSeries } from './chartStoreHelpers';
  * Owns createChartController and maps grouped snapshots into Unovis series.
  */
 const { _t } = createTranslate('web', { scope: 'web/components/view/ChartView' });
+
+useProvideViewScope({ kind: 'Chart', mode: 'display' });
 
 const props = withDefaults(
   defineProps<{

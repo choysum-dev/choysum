@@ -1,9 +1,10 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { nextTick, ref, defineComponent, provide } from 'vue';
+import { nextTick, ref, defineComponent } from 'vue';
 
 import { disposeOnchange, getOnchangeController } from '@/web/web/composables/useOnchange';
+import { useProvideViewScope } from '@/web/web/components/view/viewScopeKeys';
 import { fnRecorder, flushPromises, mountApp, type CallRecorder } from '@/web/web/__tests__/mountApp';
 
 function sleep(ms: number): Promise<void> {
@@ -251,7 +252,7 @@ describe('useOnchange.rebind view-mode inject gating', () => {
 
     const Host = defineComponent({
       setup() {
-        provide('view-mode', viewMode);
+        useProvideViewScope({ kind: 'Form', mode: viewMode });
         ctrl = getOnchangeController(store, 'InsideSetup', {
           getRoot: () => draft.value,
         });

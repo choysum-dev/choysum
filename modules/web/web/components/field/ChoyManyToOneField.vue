@@ -20,10 +20,12 @@ SPDX-License-Identifier: Apache-2.0
     :renderMode="renderMode"
     :showInlineError="showInlineError"
   >
-    <template #edit="{ fieldValue, record, inputId }">
+    <template #edit="{ fieldValue, record, inputId, describedBy, invalid}">
       <div class="w-full" :style="{ width: width || '100%' }">
         <RelationCombobox
           :id="inputId"
+          :aria-describedby="describedBy || undefined"
+          :aria-invalid="invalid ? 'true' : undefined"
           :model-value="comboboxId(fieldValue().value)"
           :selected-option="selectedOptionFor(fieldValue().value)"
           :search="makeRelationSearch(record)"
@@ -70,7 +72,7 @@ SPDX-License-Identifier: Apache-2.0
   <ChoyDialog v-model:open="dialogVisible">
     <ChoyDialogContent class="choy-relation-picker-dialog" :style="{ width: typeof searchViewWidth === 'number' ? searchViewWidth + 'px' : searchViewWidth }">
       <ChoyDialogTitle>{{ effectiveSearchViewTitle }}</ChoyDialogTitle>
-      <ChoyViewScope view-mode="display" :container="'List'">
+      <ChoyViewScope view-mode="display" :kind="'List'">
       <component
         v-if="dialogVisible && searchView && relationStore"
         :is="searchView"

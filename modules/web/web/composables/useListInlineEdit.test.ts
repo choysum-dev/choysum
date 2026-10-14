@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { defineComponent, h, inject, provide, ref } from 'vue';
+import { useProvideViewScope } from '@/web/web/components/view/viewScopeKeys';
 import { ChoyMessage } from '../composables/useChoyMessage';
 import {
   disposeOnchange,
@@ -66,7 +67,7 @@ function mountInline(opts?: {
       const TableScope = defineComponent({
         setup(_, { slots }) {
           provide('form-root', api!.formRoot);
-          provide('view-mode', api!.tableViewMode);
+          useProvideViewScope({ kind: 'List', mode: api!.tableViewMode });
           return () => h('div', { class: 'table-scope' }, slots.default?.());
         },
       });

@@ -6,25 +6,21 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <!-- ================= Render Mode Dispatch ================= -->
   <!-- FORM mode -->
-  <div
+  <ChoyFormItem
     v-if="effectiveRenderMode === 'form'"
     v-show="visibleForm"
     class="choy-field-base p-0"
+    :label="resolvedLabel"
+    :help="effectiveHelp || undefined"
+    :help-label="helpAccessibleLabel"
+    :error="displayError"
+    :reserve-error="showInlineError"
+    :control-id="inputIdForm"
     v-bind="formItemProps"
     @focusout="onFieldFocusOut"
   >
-    <div class="choy-field-base__label mb-1 inline-flex max-w-full items-center gap-1 text-sm font-medium leading-none text-foreground">
-      <label class="choy-field-base__label-text min-w-0" :for="inputIdForm || undefined">{{ resolvedLabel }}</label>
-      <button
-        v-if="effectiveHelp"
-        type="button"
-        class="choy-field-base__help-btn m-0 inline-flex cursor-help items-center justify-center border-0 bg-transparent p-0 leading-none text-inherit focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        :aria-label="helpAccessibleLabel"
-        :title="effectiveHelp"
-      >
-        <CircleHelp class="size-3.5" />
-      </button>
-    </div>
+    <template #default="{ describedBy, invalid }">
+    <div class="w-full min-w-0">
     <template v-if="preserveModeSlotForm">
       <div v-show="effectiveEditForm" class="choy-field-base__edit-wrap flex w-full items-center gap-0.5">
         <div class="choy-field-base__edit-control min-w-0 flex-1">
@@ -37,6 +33,8 @@ SPDX-License-Identifier: Apache-2.0
             :visible="visibleForm"
             :inputName="inputName"
             :inputId="inputIdForm"
+            :describedBy="describedBy"
+            :invalid="invalid"
             :onFieldChange="onchangeHandlers.onChange"
             :triggerOnchange="onchangeHandlers.trigger"
             :onchangeRunning="onchangeHandlers.running?.value"
@@ -94,6 +92,8 @@ SPDX-License-Identifier: Apache-2.0
               :visible="visibleForm"
               :inputName="inputName"
               :inputId="inputIdForm"
+              :describedBy="describedBy"
+              :invalid="invalid"
               :onFieldChange="onchangeHandlers.onChange"
               :triggerOnchange="onchangeHandlers.trigger"
               :onchangeRunning="onchangeHandlers.running?.value"
@@ -139,14 +139,6 @@ SPDX-License-Identifier: Apache-2.0
         />
       </template>
     </template>
-    <!-- Compact reserved line when showInlineError so sibling fields do not jump. -->
-    <p
-      v-if="showInlineError || displayError"
-      class="choy-field-base__error mt-0 min-h-4 pb-2 whitespace-normal text-xs font-normal leading-4 text-destructive"
-      :class="{ invisible: showInlineError && !displayError }"
-      :role="displayError ? 'alert' : undefined"
-      :aria-hidden="showInlineError && !displayError ? true : undefined"
-    >{{ displayError || '\u00a0' }}</p>
     <FieldTranslationsDialog
       v-if="showTranslateAction"
       v-model="translationsOpen"
@@ -170,7 +162,9 @@ SPDX-License-Identifier: Apache-2.0
       :draft-value="panelDraftValue"
       @saved="onCompanyValuesSaved"
     />
-  </div>
+    </div>
+    </template>
+  </ChoyFormItem>
 
   <!-- TABLE mode -->
   <ChoyTableColumn
@@ -343,6 +337,7 @@ import {
 } from '@/web/web/composables/fieldClientValidation';
 import { CircleHelp, Languages, Building2 } from 'lucide-vue-next';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyFormItem from '@/web/web/components/layout/ChoyFormItem.vue';
 import { createTranslate, getGlobalComposer } from '@/web/web/i18n/translate';
 import { resolveFieldLabel } from '@/web/web/composables/resolveFieldLabel';
 import { resolveFieldHelp } from '@/web/web/composables/resolveFieldHelp';
@@ -546,7 +541,11 @@ const effectiveRenderMode = computed(() => {
   const rm = props.renderMode || 'auto';
   if (rm !== 'auto') return rm;
   if (injectedRenderOverride) return injectedRenderOverride;
-  return binding.env.isForm ? 'form' : 'table';
+  const presentation = binding.env.fieldPresentation;
+  if (presentation === 'form') return 'form';
+  if (presentation === 'cell') return 'table';
+  // 'none' (and missing): compact inline — never silent Form or table chrome.
+  return 'inline';
 });
 const showInlineError = computed(() => props.showInlineError === true);
 const preserveModeSlotForm = computed(() => props.preserveModeSlot === true);
@@ -843,6 +842,8 @@ defineSlots<{
     visible: boolean;
     inputName: string | undefined;
     inputId: string | undefined;
+    describedBy?: string;
+    invalid?: boolean;
     onFieldChange: () => Promise<void>;
     triggerOnchange: (fp?: string | string[]) => Promise<void>;
     onchangeRunning: boolean | undefined;

@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
   >
     <!-- Shared form/row edit slot: derive options from fieldValue and record context -->
-    <template #edit="{ fieldValue, record, inputId }">
+    <template #edit="{ fieldValue, record, inputId, describedBy, invalid}">
       <select
         class="choy-selection-field w-full"
         :value="fieldValue().value ?? ''"
@@ -29,6 +29,8 @@ SPDX-License-Identifier: Apache-2.0
         :data-loading="optionsLoading ? 'true' : 'false'"
         v-bind="selectProps"
         :id="inputId"
+        :aria-describedby="describedBy || undefined"
+        :aria-invalid="invalid ? 'true' : undefined"
         :style="{ width: width || '100%' }"
         @change="(e: Event) => onUpdate(fieldValue, (e.target as HTMLSelectElement).value || null)"
       >

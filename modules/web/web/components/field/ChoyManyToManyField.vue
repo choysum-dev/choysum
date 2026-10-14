@@ -25,7 +25,7 @@ SPDX-License-Identifier: Apache-2.0
         data-testid="choy-m2m-summary"
       >{{ cellSummaryText }}</span>
       <template v-else-if="!allowRowEdit">
-        <ChoyViewScope view-mode="display" :container="'List'" :field-prefix="String(prop)">
+        <ChoyViewScope view-mode="display" :kind="'List'" :field-prefix="String(prop)">
           <div class="w-full min-w-0" :style="{ height: tableHeightPxEdit }" tabindex="-1">
             <ChoyTableHost
               v-if="tableReady"
@@ -55,7 +55,7 @@ SPDX-License-Identifier: Apache-2.0
       </template>
 
       <template v-else>
-        <ChoyViewScope :view-mode="binding.env.viewMode" :container="'List'" :field-prefix="String(prop)">
+        <ChoyViewScope :view-mode="binding.env.viewMode" :kind="'List'" :field-prefix="String(prop)">
           <div class="w-full min-w-0" :style="{ height: tableHeightPxEdit }" tabindex="-1">
             <ChoyTableHost
               v-if="tableReady"
@@ -92,7 +92,7 @@ SPDX-License-Identifier: Apache-2.0
         class="truncate text-sm text-foreground"
         data-testid="choy-m2m-summary"
       >{{ cellSummaryText }}</span>
-      <ChoyViewScope v-else view-mode="display" :container="'List'" :field-prefix="String(prop)">
+      <ChoyViewScope v-else view-mode="display" :kind="'List'" :field-prefix="String(prop)">
         <div class="w-full min-w-0" :style="{ height: tableHeightPxDisplay }">
           <ChoyTableHost
             v-if="tableReady"

@@ -20,8 +20,10 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
     v-bind="$attrs"
   >
-    <template #edit="{ fieldValue, inputId }">
-      <ChoyTimeCell :field-value="fieldValue" :options="bufferOptions" :display-format="displayFormat" :picker-props="timePickerProps" v-bind="$attrs" :id="inputId" />
+    <template #edit="{ fieldValue, inputId, describedBy, invalid}">
+      <ChoyTimeCell :field-value="fieldValue" :options="bufferOptions" :display-format="displayFormat" :picker-props="timePickerProps" v-bind="$attrs" :id="inputId"
+        :aria-describedby="describedBy || undefined"
+        :aria-invalid="invalid ? 'true' : undefined" />
     </template>
     <template #display="{ fieldValue }">
       <span class="choy-field-display-text inline-block max-w-full truncate whitespace-nowrap text-foreground">{{ toDisplayText(fieldValue().value) }}</span>
