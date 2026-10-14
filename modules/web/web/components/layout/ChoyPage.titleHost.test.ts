@@ -93,4 +93,27 @@ describe('ChoyPage title hosting', () => {
     expect(root?.className || '').toContain('choy-inset-pad-no-top');
     wrapper.unmount();
   });
+
+  test('unhosted title keeps page title band, IO menu, and top padding', async () => {
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h(ChoyPage as any, {
+            store: fakeStore,
+            title: 'Company list',
+            actionImport: true,
+            actionExport: false,
+            padding: true,
+          });
+      },
+    });
+    const wrapper = mountApp(Host);
+    await flushPromises();
+    expect(wrapper.q('[data-slot=page-title]')?.textContent?.trim()).toBe('Company list');
+    expect(wrapper.q('[data-testid=page-io-menu-trigger]')).not.toBeNull();
+    const root = wrapper.q('[data-anchor="choy.page"]') as HTMLElement | null;
+    expect(root?.className || '').toContain('choy-inset-pad');
+    expect(root?.className || '').not.toContain('choy-inset-pad-no-top');
+    wrapper.unmount();
+  });
 });

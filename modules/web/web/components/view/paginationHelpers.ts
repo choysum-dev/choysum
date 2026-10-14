@@ -90,7 +90,10 @@ export function applyChoyPagerRangeEdit(opts: {
 
   if (parsed.maximum != null) {
     const maximum = Math.min(Math.max(minimum, Math.floor(parsed.maximum)), total);
-    size = Math.max(1, maximum - minimum + 1);
+    // A single-index draft like "5-5" jumps to that row; keep the current page size.
+    if (maximum > minimum) {
+      size = Math.max(1, maximum - minimum + 1);
+    }
   }
 
   const offset = minimum - 1;

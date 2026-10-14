@@ -18,10 +18,10 @@ SPDX-License-Identifier: Apache-2.0
         v-if="editing"
         ref="rangeInputRef"
         type="text"
-        inputmode="numeric"
+        inputmode="text"
         class="choy-pagination__range-input box-border h-control w-14 shrink-0 rounded-md border border-input bg-background px-1 text-center text-sm tabular-nums text-foreground outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:opacity-50"
         :disabled="disabled"
-        :aria-label="rangeEditLabel"
+        :aria-label="rangeEditAriaLabel"
         :value="editDraft"
         @input="onEditInput"
         @keydown="onEditKeydown"
@@ -32,7 +32,7 @@ SPDX-License-Identifier: Apache-2.0
         type="button"
         class="choy-pagination__range-value box-border inline-flex h-control w-14 shrink-0 items-center justify-center rounded-md border border-transparent bg-transparent px-1 text-sm tabular-nums text-foreground underline decoration-muted-foreground/60 underline-offset-4 hover:decoration-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
         :disabled="disabled || props.total <= 0"
-        :aria-label="rangeEditLabel"
+        :aria-label="rangeEditAriaLabel"
         @click="startEdit"
       >
         {{ rangeValueLabel }}
@@ -135,10 +135,10 @@ const canNext = computed(
   () => currentPage.value < totalPages.value && !props.disabled,
 );
 
-/** Positive integer page size for range math (matches choyTotalPages / offset flooring). */
+/** Positive integer page size for range math (matches list default / applyChoyPagerRangeEdit). */
 const effectivePageSize = computed(() => {
   const n = Number(pageSize.value);
-  if (!Number.isFinite(n) || n <= 0) return 1;
+  if (!Number.isFinite(n) || n <= 0) return 20;
   return Math.max(1, Math.floor(n));
 });
 const normalizedTotal = computed(() => {
@@ -158,6 +158,9 @@ const rangeValueLabel = computed(() =>
   formatChoyPagerRangeValue(rangeStart.value, rangeEnd.value),
 );
 const rangeEditLabel = computed(() => _t('Edit page range'));
+const rangeEditAriaLabel = computed(
+  () => `${rangeEditLabel.value}: ${rangeValueLabel.value} / ${normalizedTotal.value}`,
+);
 const prevLabel = computed(() => _t('Previous'));
 const nextLabel = computed(() => _t('Next'));
 
@@ -213,12 +216,15 @@ async function commitEdit(): Promise<void> {
   editDraft.value = '';
   if (!next) return;
   applyingRangeEdit.value = true;
-  if (next.pageSize !== pageSize.value) {
-    pageSize.value = next.pageSize;
+  try {
+    if (next.pageSize !== pageSize.value) {
+      pageSize.value = next.pageSize;
+    }
+    page.value = next.page;
+    await nextTick();
+  } finally {
+    applyingRangeEdit.value = false;
   }
-  page.value = next.page;
-  await nextTick();
-  applyingRangeEdit.value = false;
 }
 
 function onEditKeydown(event: KeyboardEvent): void {

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { defineComponent, h, nextTick, ref } from 'vue';
+import { defineComponent, h, nextTick, ref, type Ref } from 'vue';
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import { useAdaptiveHeight } from './useAdaptiveHeight';
 
@@ -20,6 +20,11 @@ function rect(partial: Partial<DOMRect>): DOMRect {
   } as DOMRect;
 }
 
+function wrapRef(): Ref<Element | null> {
+  // Choysum's DOM typings widen Element; cast keeps the composable contract.
+  return ref(null) as Ref<Element | null>;
+}
+
 async function flushFrames(n = 3) {
   for (let i = 0; i < n; i++) {
     await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
@@ -32,13 +37,13 @@ describe('useAdaptiveHeight', () => {
     let height = 0;
     const Host = defineComponent({
       setup() {
-        const wrapRef = ref<HTMLElement | null>(null);
-        const api = useAdaptiveHeight(wrapRef, { mode: 'none' });
+        const elRef = wrapRef();
+        const api = useAdaptiveHeight(elRef, { mode: 'none' });
         return () => {
           height = api.height.value;
           return h('div', {
-            ref: (el: any) => {
-              wrapRef.value = el;
+            ref: (el: unknown) => {
+              elRef.value = (el as Element | null) ?? null;
             },
           });
         };
@@ -54,15 +59,15 @@ describe('useAdaptiveHeight', () => {
     let api: ReturnType<typeof useAdaptiveHeight> | null = null;
     const Host = defineComponent({
       setup() {
-        const wrapRef = ref<HTMLElement | null>(null);
-        api = useAdaptiveHeight(wrapRef, { mode: 'viewport', viewportGap: 0, minViewportHeight: 100 });
+        const elRef = wrapRef();
+        api = useAdaptiveHeight(elRef, { mode: 'viewport', viewportGap: 0, minViewportHeight: 100 });
         return () =>
           h('div', {
             ref: (el: any) => {
               if (!el) return;
               el.getBoundingClientRect = () => rect({ top: 200 });
               el.closest = () => null;
-              wrapRef.value = el;
+              elRef.value = el as Element;
             },
           });
       },
@@ -89,8 +94,8 @@ describe('useAdaptiveHeight', () => {
 
     const Host = defineComponent({
       setup() {
-        const wrapRef = ref<HTMLElement | null>(null);
-        api = useAdaptiveHeight(wrapRef, { mode: 'viewport', minViewportHeight: 240 });
+        const elRef = wrapRef();
+        api = useAdaptiveHeight(elRef, { mode: 'viewport', minViewportHeight: 240 });
         return () =>
           h('div', {
             ref: (el: any) => {
@@ -100,7 +105,7 @@ describe('useAdaptiveHeight', () => {
                 if (sel === '[data-testid="choy-shell-scroll"]') return shell;
                 return null;
               }) as typeof el.closest;
-              wrapRef.value = el;
+              elRef.value = el as Element;
             },
           });
       },
@@ -127,8 +132,8 @@ describe('useAdaptiveHeight', () => {
 
     const Host = defineComponent({
       setup() {
-        const wrapRef = ref<HTMLElement | null>(null);
-        api = useAdaptiveHeight(wrapRef, {
+        const elRef = wrapRef();
+        api = useAdaptiveHeight(elRef, {
           mode: 'container',
           minContainerHeight: 100,
           containerPadding: 0,
@@ -142,7 +147,7 @@ describe('useAdaptiveHeight', () => {
                 if (sel === '.el-dialog__body') return body;
                 return null;
               }) as typeof el.closest;
-              wrapRef.value = el;
+              elRef.value = el as Element;
             },
           });
       },
@@ -167,8 +172,8 @@ describe('useAdaptiveHeight', () => {
 
     const Host = defineComponent({
       setup() {
-        const wrapRef = ref<HTMLElement | null>(null);
-        api = useAdaptiveHeight(wrapRef, {
+        const elRef = wrapRef();
+        api = useAdaptiveHeight(elRef, {
           mode: 'auto',
           containerSelector: '.custom-container',
           minContainerHeight: 80,
@@ -183,7 +188,7 @@ describe('useAdaptiveHeight', () => {
                 if (sel === '.el-dialog__body' || sel === '.custom-container') return body;
                 return null;
               }) as typeof el.closest;
-              wrapRef.value = el;
+              elRef.value = el as Element;
             },
           });
       },
@@ -191,7 +196,6 @@ describe('useAdaptiveHeight', () => {
     const m = mountApp(Host);
     await flushFrames();
     expect(api!.height.value).toBeGreaterThanOrEqual(80);
-    // Coalesce overlapping rAF recomputes.
     api!.recompute();
     api!.recompute();
     await flushFrames(2);
@@ -204,8 +208,8 @@ describe('useAdaptiveHeight', () => {
     let api: ReturnType<typeof useAdaptiveHeight> | null = null;
     const Host = defineComponent({
       setup() {
-        const wrapRef = ref<HTMLElement | null>(null);
-        api = useAdaptiveHeight(wrapRef, {
+        const elRef = wrapRef();
+        api = useAdaptiveHeight(elRef, {
           mode: 'container',
           minViewportHeight: 120,
           viewportGap: 0,
@@ -217,7 +221,7 @@ describe('useAdaptiveHeight', () => {
               el.getBoundingClientRect = () => rect({ top: 100 });
               el.closest = (() => null) as typeof el.closest;
               Object.defineProperty(el, 'parentElement', { configurable: true, value: null });
-              wrapRef.value = el;
+              elRef.value = el as Element;
             },
           });
       },

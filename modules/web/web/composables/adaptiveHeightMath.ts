@@ -75,3 +75,42 @@ export function computeListTableBodyHeight(args: {
   if (contentH < viewport) return Math.min(viewport, Math.max(240, contentH));
   return viewport;
 }
+
+export type AdaptiveHeightObserveMode = 'auto' | 'viewport' | 'container' | 'none';
+
+/**
+ * Elements whose size changes should trigger a recompute (container, shell
+ * scroll canvas, and in-flow shell footer when present).
+ */
+export function collectAdaptiveHeightObserveTargets(
+  wrap: Element | null | undefined,
+  opts: { mode?: AdaptiveHeightObserveMode; containerSelector?: string },
+): HTMLElement[] {
+  if (!wrap || opts.mode === 'none') return [];
+  const autoContainer = wrap.closest('.el-dialog__body') as HTMLElement | null;
+  const shellScroll = wrap.closest('[data-testid="choy-shell-scroll"]') as HTMLElement | null;
+  const need =
+    opts.mode === 'container' || (opts.mode === 'auto' && !!autoContainer) || !!shellScroll;
+  if (!need) return [];
+
+  const bySelector = opts.containerSelector
+    ? (wrap.closest(opts.containerSelector) as HTMLElement | null) ||
+      (document.querySelector(opts.containerSelector) as HTMLElement | null)
+    : null;
+  const primary =
+    bySelector || autoContainer || shellScroll || (wrap.parentElement as HTMLElement | null);
+
+  const out: HTMLElement[] = [];
+  const seen = new Set<HTMLElement>();
+  const push = (el: HTMLElement | null | undefined) => {
+    if (!el || seen.has(el)) return;
+    seen.add(el);
+    out.push(el);
+  };
+  push(primary);
+  if (shellScroll) {
+    push(shellScroll);
+    push(shellScroll.querySelector('[data-testid="choy-shell-footer"]') as HTMLElement | null);
+  }
+  return out;
+}

@@ -221,6 +221,14 @@ describe('ChoyPagination', () => {
     expect(mounted2.q('.choy-pagination__total')?.textContent?.trim()).toBe('25');
     expect(mounted2.q('.choy-pagination__range-value')?.textContent?.trim()).toBe('11-20');
     mounted2.unmount();
+
+    // Invalid pageSize falls back to 20 (same as applyChoyPagerRangeEdit).
+    const mounted3 = mountApp(ChoyPagination as any, {
+      props: { total: 40, page: 1, pageSize: 0 },
+    });
+    await flushPromises();
+    expect(mounted3.q('.choy-pagination__range-value')?.textContent?.trim()).toBe('1-20');
+    mounted3.unmount();
   });
 
   test('keyboard Enter commits, Escape cancels, invalid draft no-ops', async () => {
@@ -270,10 +278,11 @@ describe('ChoyPagination', () => {
     await flushPromises();
     expect(pageSize.value).toBe(20);
 
-    // Cover the @input handler (draft is committed via startEditWith elsewhere).
+    // Cover the @input handler (including a null target → empty draft).
     await state.startEditWith('1');
     expect(typeof state.onEditInput).toBe('function');
     state.onEditInput({ target: { value: '31' } });
+    state.onEditInput({ target: null });
     state.cancelEdit();
     mounted.unmount();
   });

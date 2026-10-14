@@ -3,6 +3,7 @@
 
 import { computed, onBeforeUnmount, onMounted, onActivated, ref, type Ref } from 'vue';
 import {
+  collectAdaptiveHeightObserveTargets,
   computeContainerAdaptiveHeight,
   computeViewportAdaptiveHeight,
 } from './adaptiveHeightMath';
@@ -88,42 +89,18 @@ export function useAdaptiveHeight(wrapRef: Ref<Element | null>, opts: AdaptiveHe
     });
   }
 
-  function observeEl(el: HTMLElement | null | undefined) {
-    if (!el || !ro) return;
-    try {
-      ro.observe(el);
-      observedEls.push(el);
-    } catch {}
-  }
-
   function setupObservers() {
     if (options.mode === 'none') return;
     window.addEventListener('resize', recompute);
     window.addEventListener('orientationchange', recompute);
 
-    const wrap = wrapRef.value;
-    const autoContainer = wrap?.closest('.el-dialog__body') as HTMLElement | null;
-    const shellScroll = wrap?.closest('[data-testid="choy-shell-scroll"]') as HTMLElement | null;
-    const needContainerObs =
-      options.mode === 'container' || (options.mode === 'auto' && !!autoContainer) || !!shellScroll;
-    if (needContainerObs && 'ResizeObserver' in window) {
-      containerEl =
-        (options.containerSelector
-          ? (wrap?.closest(options.containerSelector) as HTMLElement) ||
-            (document.querySelector(options.containerSelector) as HTMLElement)
-          : null) ||
-        autoContainer ||
-        shellScroll ||
-        wrap?.parentElement ||
-        null;
-      ro = new ResizeObserver(() => recompute());
-      observeEl(containerEl);
-      if (shellScroll) {
-        observeEl(shellScroll);
-        observeEl(
-          shellScroll.querySelector('[data-testid="choy-shell-footer"]') as HTMLElement | null,
-        );
-      }
+    const targets = collectAdaptiveHeightObserveTargets(wrapRef.value, options);
+    if (!targets.length || !('ResizeObserver' in window)) return;
+    containerEl = targets[0] ?? null;
+    ro = new ResizeObserver(() => recompute());
+    for (const el of targets) {
+      ro.observe(el);
+      observedEls.push(el);
     }
   }
 
@@ -132,9 +109,7 @@ export function useAdaptiveHeight(wrapRef: Ref<Element | null>, opts: AdaptiveHe
     window.removeEventListener('orientationchange', recompute);
     if (ro) {
       for (const el of observedEls) {
-        try {
-          ro.unobserve(el);
-        } catch {}
+        ro.unobserve(el);
       }
     }
     observedEls = [];

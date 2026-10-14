@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  collectAdaptiveHeightObserveTargets,
   computeContainerAdaptiveHeight,
   computeListTableBodyHeight,
   computeViewportAdaptiveHeight,
@@ -102,5 +103,49 @@ describe('adaptiveHeightMath', () => {
     expect(
       computeContainerAdaptiveHeight(80, body, { minContainerHeight: 160, containerPadding: 8 }),
     ).toBe(322); // 450 - 80 - 40 - 8
+  });
+
+  test('collectAdaptiveHeightObserveTargets covers shell, dialog, and none', () => {
+    expect(collectAdaptiveHeightObserveTargets(null, { mode: 'viewport' })).toEqual([]);
+
+    const wrapNone = document.createElement('div');
+    expect(collectAdaptiveHeightObserveTargets(wrapNone, { mode: 'none' })).toEqual([]);
+    wrapNone.closest = (() => null) as typeof wrapNone.closest;
+    expect(collectAdaptiveHeightObserveTargets(wrapNone, { mode: 'viewport' })).toEqual([]);
+
+    const shell = document.createElement('div');
+    shell.setAttribute('data-testid', 'choy-shell-scroll');
+    const footer = document.createElement('div');
+    footer.setAttribute('data-testid', 'choy-shell-footer');
+    shell.appendChild(footer);
+    const wrapShell = document.createElement('div');
+    wrapShell.closest = ((sel: string) =>
+      sel === '[data-testid="choy-shell-scroll"]' ? shell : null) as typeof wrapShell.closest;
+    expect(collectAdaptiveHeightObserveTargets(wrapShell, { mode: 'viewport' })).toEqual([
+      shell,
+      footer,
+    ]);
+
+    const body = document.createElement('div');
+    body.className = 'el-dialog__body custom-container';
+    document.body.appendChild(body);
+    const wrapDialog = document.createElement('div');
+    wrapDialog.closest = ((sel: string) => {
+      if (sel === '.el-dialog__body' || sel === '.custom-container') return body;
+      return null;
+    }) as typeof wrapDialog.closest;
+    expect(
+      collectAdaptiveHeightObserveTargets(wrapDialog, {
+        mode: 'auto',
+        containerSelector: '.custom-container',
+      }),
+    ).toEqual([body]);
+
+    const wrapParent = document.createElement('div');
+    const parent = document.createElement('div');
+    parent.appendChild(wrapParent);
+    wrapParent.closest = (() => null) as typeof wrapParent.closest;
+    expect(collectAdaptiveHeightObserveTargets(wrapParent, { mode: 'container' })).toEqual([parent]);
+    body.remove();
   });
 });

@@ -64,6 +64,11 @@ describe('paginationHelpers', () => {
       page: 1,
       pageSize: 50,
     });
+    // Degenerate "5-5" jumps to that index without collapsing pageSize to 1.
+    expect(applyChoyPagerRangeEdit({ draft: '5-5', total: 100, pageSize: 20 })).toEqual({
+      page: 1,
+      pageSize: 20,
+    });
     expect(applyChoyPagerRangeEdit({ draft: 'x', total: 100, pageSize: 20 })).toBeNull();
   });
 });
