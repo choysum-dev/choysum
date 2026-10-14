@@ -174,4 +174,162 @@ describe('ChoyPagination', () => {
     expect(page.value).toBe(3);
     mounted.unmount();
   });
+
+  test('normalizedTotal and effectivePageSize handle NaN and fractional values', async () => {
+    const page = ref(1);
+    const pageSize = ref(10.7);
+    const mounted = mountApp(ChoyPagination as any, {
+      props: {
+        total: Number.NaN,
+        page: page.value,
+        pageSize: pageSize.value,
+      },
+      on: {
+        'onUpdate:page': (v: number) => {
+          page.value = v;
+        },
+        'onUpdate:pageSize': (v: number) => {
+          pageSize.value = v;
+        },
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('.choy-pagination__total')?.textContent?.trim()).toBe('0');
+    // formatChoyPagerRangeValue collapses empty ranges to a single "0".
+    expect(mounted.q('.choy-pagination__range-value')?.textContent?.trim()).toBe('0');
+    mounted.unmount();
+
+    const page2 = ref(2);
+    const pageSize2 = ref(10.7);
+    const mounted2 = mountApp(ChoyPagination as any, {
+      props: {
+        total: 25.9,
+        page: page2.value,
+        pageSize: pageSize2.value,
+      },
+      on: {
+        'onUpdate:page': (v: number) => {
+          page2.value = v;
+        },
+        'onUpdate:pageSize': (v: number) => {
+          pageSize2.value = v;
+        },
+      },
+    });
+    await flushPromises();
+    // floor(total)=25, floor(pageSize)=10 → page 2 is 11-20
+    expect(mounted2.q('.choy-pagination__total')?.textContent?.trim()).toBe('25');
+    expect(mounted2.q('.choy-pagination__range-value')?.textContent?.trim()).toBe('11-20');
+    mounted2.unmount();
+  });
+
+  test('keyboard Enter commits, Escape cancels, invalid draft no-ops', async () => {
+    const page = ref(1);
+    const pageSize = ref(20);
+    const mounted = mountApp(ChoyPagination as any, {
+      props: {
+        total: 100,
+        page: page.value,
+        pageSize: pageSize.value,
+      },
+      on: {
+        'onUpdate:page': (v: number) => {
+          page.value = v;
+        },
+        'onUpdate:pageSize': (v: number) => {
+          pageSize.value = v;
+        },
+      },
+    });
+    await flushPromises();
+    const state = mounted.setupState() as any;
+    await state.startEditWith('41');
+    expect(mounted.q('.choy-pagination__range-input')).not.toBeNull();
+    await state.commitEdit();
+    await flushPromises();
+    expect(page.value).toBe(3);
+
+    await state.startEditWith('nope');
+    state.cancelEdit();
+    await flushPromises();
+    expect(mounted.q('.choy-pagination__range-input')).toBeNull();
+    expect(pageSize.value).toBe(20);
+
+    await state.startEditWith('55');
+    state.onEditKeydown?.({ key: 'Enter', preventDefault() {} });
+    await flushPromises();
+    expect(page.value).toBe(3);
+
+    await state.startEditWith('??');
+    state.onEditKeydown?.({ key: 'Escape', preventDefault() {} });
+    await flushPromises();
+    expect(mounted.q('.choy-pagination__range-input')).toBeNull();
+
+    await state.startEditWith('???');
+    await state.commitEdit();
+    await flushPromises();
+    expect(pageSize.value).toBe(20);
+
+    // Cover the @input handler (draft is committed via startEditWith elsewhere).
+    await state.startEditWith('1');
+    expect(typeof state.onEditInput).toBe('function');
+    state.onEditInput({ target: { value: '31' } });
+    state.cancelEdit();
+    mounted.unmount();
+  });
+
+  test('startEdit is a no-op when disabled or total is empty', async () => {
+    const mounted = mountApp(ChoyPagination as any, {
+      props: { total: 0, page: 1, pageSize: 20, disabled: false },
+    });
+    await flushPromises();
+    const state = mounted.setupState() as any;
+    await state.startEdit();
+    expect(mounted.q('.choy-pagination__range-input')).toBeNull();
+    mounted.unmount();
+
+    const mounted2 = mountApp(ChoyPagination as any, {
+      props: { total: 10, page: 1, pageSize: 20, disabled: true },
+    });
+    await flushPromises();
+    const state2 = mounted2.setupState() as any;
+    await state2.startEdit();
+    expect(mounted2.q('.choy-pagination__range-input')).toBeNull();
+    mounted2.unmount();
+  });
+
+  test('prev and next advance when enabled', async () => {
+    const page = ref(2);
+    const pageSize = ref(10);
+    let pager: { goNext: () => void; goPrev: () => void } | null = null;
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h(ChoyPagination as any, {
+            ref: (el: any) => {
+              pager = el;
+            },
+            total: 100,
+            page: page.value,
+            pageSize: pageSize.value,
+            'onUpdate:page': (v: number) => {
+              page.value = v;
+            },
+            'onUpdate:pageSize': (v: number) => {
+              pageSize.value = v;
+            },
+          });
+      },
+    });
+    const mounted = mountApp(Host as any);
+    await flushPromises();
+    expect(pager).not.toBeNull();
+    pager!.goNext();
+    await flushPromises();
+    expect(page.value).toBe(3);
+    pager!.goPrev();
+    await flushPromises();
+    expect(page.value).toBe(2);
+    mounted.unmount();
+  });
 });

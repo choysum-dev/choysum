@@ -2,6 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, onBeforeUnmount, onMounted, onActivated, ref, type Ref } from 'vue';
+import {
+  computeContainerAdaptiveHeight,
+  computeViewportAdaptiveHeight,
+} from './adaptiveHeightMath';
 
 export type HeightMode = 'auto' | 'viewport' | 'container' | 'none';
 
@@ -67,43 +71,13 @@ export function useAdaptiveHeight(wrapRef: Ref<Element | null>, opts: AdaptiveHe
         : null;
       containerEl = bySelector || (wrap.closest('.el-dialog__body') as HTMLElement) || wrap.parentElement;
       if (containerEl) {
-        const crect = containerEl.getBoundingClientRect();
-        const dialog = containerEl.closest('.el-dialog') as HTMLElement | null;
-        const footer = dialog?.querySelector('.el-dialog__footer') as HTMLElement | null;
-        const footerH = footer ? footer.getBoundingClientRect().height : 0;
-        const pad = options.containerPadding ?? 0;
-        const h = Math.floor(crect.bottom - rect.top - footerH - pad);
-        height.value = Math.max(options.minContainerHeight, h);
+        height.value = computeContainerAdaptiveHeight(rect.top, containerEl, options);
         return;
       }
       // Fall back to viewport mode when no container can be resolved.
     }
 
-    // Viewport mode. Inside AppShell, size to the scroll canvas above the
-    // in-flow Powered-by footer so the list body does not also force shell
-    // overflow (double vertical scrollbars).
-    const shellScroll = wrap.closest('[data-testid="choy-shell-scroll"]') as HTMLElement | null;
-    if (shellScroll) {
-      const footer = shellScroll.querySelector(
-        '[data-testid="choy-shell-footer"]',
-      ) as HTMLElement | null;
-      const bottom = footer
-        ? footer.getBoundingClientRect().top
-        : shellScroll.getBoundingClientRect().bottom;
-      const page = wrap.closest('[data-anchor="choy.page"]') as HTMLElement | null;
-      const pagePadBottom = page
-        ? Number.parseFloat(getComputedStyle(page).paddingBottom) || 0
-        : 0;
-      // Hard-cap to the shell canvas: do not force minViewportHeight past the footer.
-      const h = Math.floor(bottom - rect.top - pagePadBottom);
-      height.value = Math.max(0, h);
-      return;
-    }
-
-    const vh = window.innerHeight || document.documentElement.clientHeight;
-    const gap = options.viewportGap ?? 0;
-    const h = Math.floor(vh - rect.top - gap);
-    height.value = Math.max(options.minViewportHeight, h);
+    height.value = computeViewportAdaptiveHeight(wrap, rect.top, options);
   }
 
   function recompute() {

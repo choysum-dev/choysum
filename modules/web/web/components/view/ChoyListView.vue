@@ -82,8 +82,10 @@ SPDX-License-Identifier: Apache-2.0
             <slot name="user-actions" :selected-items="selectedItems" />
           </template>
 
-          <!-- Odoo-style: selection chrome replaces Search in the center slot. -->
-          <template v-if="hasSelection || resolvedSearchView" #center>
+          <!-- Odoo-style: selection chrome replaces Search in the center slot.
+               Keep #center registered unconditionally so ActionBar can swap content
+               when selection appears (v-if on the slot template would omit the outlet). -->
+          <template #center>
             <div
               v-if="hasSelection"
               data-anchor="choy.list.selection-bar"
@@ -121,7 +123,7 @@ SPDX-License-Identifier: Apache-2.0
 
               <slot name="selection-actions" :selected-items="selectedItems" :clear="clearSelection" />
             </div>
-            <div v-else class="flex min-w-0 w-full items-center">
+            <div v-else-if="resolvedSearchView" class="flex min-w-0 w-full items-center">
               <component :is="resolvedSearchView" class="min-w-0 w-full" :store="store" @query-update="onSearch" />
             </div>
           </template>
@@ -245,6 +247,7 @@ import { createListController } from '@/web/web/controllers/listController';
 import type { OrderByState, PaginationState } from '@/web/web/query/state';
 import { useCancelableEmit } from '@/web/web/composables/useCancelableEmit';
 import { useAdaptiveHeight } from '@/web/web/composables/useAdaptiveHeight';
+import { computeListTableBodyHeight } from '@/web/web/composables/adaptiveHeightMath';
 import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
 import ChoyViewActionBar from '@/web/web/components/view/ChoyViewActionBar.vue';
 import ChoyViewBusyHost from '@/web/web/components/view/ChoyViewBusyHost.vue';
@@ -672,18 +675,14 @@ const virtualization = useVirtualizationAdapter({ rowHeight: props.rowHeight });
 const effectiveRowHeight = computed(() => virtualization.config.value.rowHeight || props.rowHeight || 32);
 
 /** Cap short pages so the list body does not leave a tall empty void under few rows. */
-const listTableHeight = computed(() => {
-  const viewport = adaptiveTableHeight.value;
-  if (!viewport || viewport <= 0) return viewport;
-  const n = tableItems.value?.length ?? 0;
-  if (n <= 0) return viewport;
-  const rowH = effectiveRowHeight.value || 32;
-  const headerH = props.headerHeight ?? 32;
-  const contentH = headerH + Math.max(n, 4) * rowH + 16;
-  // Floor at 240 only when the adaptive viewport is tall enough; never exceed it.
-  if (contentH < viewport) return Math.min(viewport, Math.max(240, contentH));
-  return viewport;
-});
+const listTableHeight = computed(() =>
+  computeListTableBodyHeight({
+    viewport: adaptiveTableHeight.value,
+    rowCount: tableItems.value?.length ?? 0,
+    rowHeight: effectiveRowHeight.value || 32,
+    headerHeight: props.headerHeight ?? 32,
+  }),
+);
 const listTablePxHeight = computed(() => (listTableHeight.value > 0 ? `${listTableHeight.value}px` : ''));
 watch(
   () => props.rowHeight,
@@ -938,6 +937,8 @@ defineExpose<
     listPageModel: typeof listPageModel;
     listPageSizeModel: typeof listPageSizeModel;
     canMountPagination: typeof canMountPagination;
+    clearSelection: typeof clearSelection;
+    onSelectionChange: typeof onSelectionChange;
   }
 >({
   selectedItems: selectedItems as any,
@@ -948,6 +949,8 @@ defineExpose<
   listPageModel,
   listPageSizeModel,
   canMountPagination,
+  clearSelection,
+  onSelectionChange,
 });
 
 useRegisterPageActionTarget({

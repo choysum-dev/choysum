@@ -124,6 +124,36 @@ describe('ListView', () => {
     unmount();
   });
 
+
+  test('selection change and clearSelection update selectedItems', async () => {
+    const { plugins } = buildPageMountGlobal();
+    const { unmount, root } = mountApp(ChoyListView as any, {
+      props: {
+        store: makeStore(),
+        showPaginate: false,
+        refreshAction: false,
+        deleteAction: true,
+      },
+      plugins,
+      stubs: { ElButton: true, ElIcon: true },
+    });
+    await flushPromises();
+    expect(typeof root.onSelectionChange).toBe('function');
+    expect(typeof root.clearSelection).toBe('function');
+    // Cover group-tree / record-row id extraction paths.
+    root.onSelectionChange([
+      { type: 'record', record: { Id: 'r1' } },
+      { kind: 'record', payload: { Id: 'r2' } },
+      { Id: 'r3', Name: 'plain' },
+    ]);
+    await flushPromises();
+    expect(root.selectedItems.length).toBe(3);
+    root.clearSelection();
+    await flushPromises();
+    expect(root.selectedItems.length).toBe(0);
+    unmount();
+  });
+
   test('auto-registers selectedItems and refresh when omitted registerActionTarget stays undefined', async () => {
     const store = makeStore();
     let ctx: ReturnType<typeof providePageContext> | null = null;

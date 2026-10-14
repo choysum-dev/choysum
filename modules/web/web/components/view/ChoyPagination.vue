@@ -45,6 +45,7 @@ SPDX-License-Identifier: Apache-2.0
         type="button"
         variant="outline"
         size="icon"
+        data-testid="choy-pagination-prev"
         :disabled="!canPrev"
         :aria-label="prevLabel"
         @click="goPrev"
@@ -55,6 +56,7 @@ SPDX-License-Identifier: Apache-2.0
         type="button"
         variant="outline"
         size="icon"
+        data-testid="choy-pagination-next"
         :disabled="!canNext"
         :aria-label="nextLabel"
         @click="goNext"
@@ -239,5 +241,14 @@ function goNext(): void {
   page.value = currentPage.value + 1;
 }
 
-defineExpose({ startEdit, startEditWith, commitEdit, cancelEdit, goPrev, goNext });
+defineExpose({
+  startEdit,
+  startEditWith,
+  commitEdit,
+  cancelEdit,
+  goPrev,
+  goNext,
+  onEditKeydown,
+  onEditInput,
+});
 </script>
