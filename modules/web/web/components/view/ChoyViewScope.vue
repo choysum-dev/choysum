@@ -8,37 +8,37 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { toRef, provide } from 'vue';
-import {
-  VIEW_MODE_KEY,
-  VIEW_CONTAINER_KEY,
-  FIELD_PREFIX_KEY,
-  type ViewMode,
-  type ViewContainer
-} from './viewScopeKeys';
+import { toRef } from 'vue';
+import { useProvideViewScope, type ViewMode } from './viewScopeKeys';
+import type { ViewKindId } from './viewKinds';
+import { registerBuiltinViewKinds } from './viewKinds';
 
-export type { ViewMode, ViewContainer };
+export type { ViewMode };
+export type { ViewKindId };
+/** @deprecated Use ViewKindId */
+export type ViewContainer = ViewKindId;
 
 defineOptions({ name: 'ChoyViewScope', inheritAttrs: false });
+
+registerBuiltinViewKinds();
 
 const props = withDefaults(
   defineProps<{
     viewMode?: ViewMode;
-    container?: ViewContainer;
+    /** Registered view kind id (Form, List, Kanban, …). */
+    kind?: ViewKindId;
     fieldPrefix?: string;
   }>(),
   {
     viewMode: 'edit',
-    container: 'Form',
+    kind: 'Form',
     fieldPrefix: undefined,
   },
 );
 
-const modeRef = toRef(props, 'viewMode');
-const containerRef = toRef(props, 'container');
-const fieldPrefixRef = toRef(props, 'fieldPrefix');
-
-provide(VIEW_MODE_KEY, modeRef);
-provide(VIEW_CONTAINER_KEY, containerRef);
-provide(FIELD_PREFIX_KEY, fieldPrefixRef);
+useProvideViewScope({
+  kind: toRef(props, 'kind'),
+  mode: toRef(props, 'viewMode'),
+  fieldPrefix: toRef(props, 'fieldPrefix'),
+});
 </script>

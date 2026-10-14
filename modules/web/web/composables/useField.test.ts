@@ -1,14 +1,15 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { defineComponent, h, provide, ref } from 'vue';
+import { defineComponent, h, provide } from 'vue';
 
 import { mountApp } from '@/web/web/__tests__/mountApp';
 import { useField } from '@/web/web/composables/useField';
-import type { ViewContainer, ViewMode } from '@/web/web/components/view/ChoyViewScope.vue';
+import type { ViewKindId, ViewMode } from '@/web/web/components/view/ChoyViewScope.vue';
+import { useProvideViewScope } from '@/web/web/components/view/viewScopeKeys';
 
 function mountFieldEnv(opts: {
-  viewContainer?: ViewContainer;
+  viewContainer?: ViewKindId;
   viewMode?: ViewMode;
   formRoot?: { draft: Record<string, unknown> } | null;
 }) {
@@ -21,8 +22,10 @@ function mountFieldEnv(opts: {
 
   const Host = defineComponent({
     setup() {
-      provide('view-container', ref(opts.viewContainer ?? 'List'));
-      provide('view-mode', ref(opts.viewMode ?? 'display'));
+      useProvideViewScope({
+        kind: opts.viewContainer ?? 'List',
+        mode: opts.viewMode ?? 'display',
+      });
       if (opts.formRoot) provide('form-root', opts.formRoot);
       return () => h(Probe);
     },

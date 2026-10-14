@@ -4,22 +4,18 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ViewContainer
-    :show-header="showHeader"
+  <ChoyViewContainer
     data-anchor="choy.kanban-view"
     :class="['choy-kanban-view', props.class]"
   >
     <template v-if="showHeader && ($slots.header || $slots.search || showActions)" #header>
-      <div
-        class="choy-kanban-view__toolbar grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-border pb-1 min-h-control max-md:grid-cols-1"
-        data-anchor="choy.kanban.view-chrome"
-      >
-        <div class="choy-kanban-view__actions flex items-center gap-4">
-          <ChoyActionTray
-            v-if="showActions"
-            class="choy-kanban__system-actions"
-            :aria-label="_t('System actions')"
-          >
+      <div data-anchor="choy.kanban.view-chrome">
+        <ChoyViewActionBar
+          layout="thirds"
+          :system-actions-label="_t('System actions')"
+          :user-actions-label="_t('User actions')"
+        >
+          <template v-if="showActions" #system-actions>
             <slot name="system-actions">
               <ChoyButton
                 v-if="!effectiveReadonly"
@@ -29,31 +25,26 @@ SPDX-License-Identifier: Apache-2.0
                 {{ resolvedCreateLabel }}
               </ChoyButton>
             </slot>
-          </ChoyActionTray>
-          <ChoyActionTray
-            v-if="showActions"
-            class="choy-kanban__user-actions"
-            :aria-label="_t('User actions')"
-          >
-            <slot name="user-actions" />
-          </ChoyActionTray>
-          <div v-if="$slots.header" class="min-w-0">
-            <slot name="header" />
-          </div>
-        </div>
-
-        <div
-          v-if="$slots.search"
-          class="choy-kanban-view__search flex min-w-60 items-center justify-center max-md:order-2"
-        >
-          <slot name="search" :on-query-update="engine.applySearch" />
-        </div>
-
-        <div class="choy-kanban-view__header-right" />
+          </template>
+          <template v-if="showActions || $slots.header" #user-actions>
+            <slot v-if="showActions" name="user-actions" />
+            <div v-if="$slots.header" class="min-w-0">
+              <slot name="header" />
+            </div>
+          </template>
+          <template v-if="$slots.search" #center>
+            <div class="flex min-w-60 items-center justify-center max-md:order-2">
+              <slot name="search" :on-query-update="engine.applySearch" />
+            </div>
+          </template>
+        </ChoyViewActionBar>
       </div>
     </template>
 
-    <div class="choy-kanban-view__body flex min-h-0 flex-1 flex-col gap-3 p-1">
+    <ChoyViewBusyHost
+      :busy="boardBusy"
+      class="choy-kanban-view__body flex min-h-0 flex-1 flex-col gap-3 p-1"
+    >
       <div v-if="laneCount > 0" class="md:hidden">
         <Select :model-value="mobileLaneKey" @update:model-value="onMobileLaneChange">
           <SelectTrigger
@@ -217,8 +208,8 @@ SPDX-License-Identifier: Apache-2.0
           {{ _t('No lanes') }}
         </div>
       </div>
-    </div>
-  </ViewContainer>
+    </ChoyViewBusyHost>
+  </ChoyViewContainer>
 </template>
 
 <script setup lang="ts">
@@ -229,8 +220,10 @@ import type { ClassValue } from '../../lib/utils';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { Lane } from '@/web/web/query/types';
 import ChoyButton from '../layout/ChoyButton.vue';
-import ChoyActionTray from '@/web/web/components/layout/ChoyActionTray.vue';
-import ViewContainer from '@/web/web/components/view/ViewContainer.vue';
+import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
+import ChoyViewActionBar from '@/web/web/components/view/ChoyViewActionBar.vue';
+import ChoyViewBusyHost from '@/web/web/components/view/ChoyViewBusyHost.vue';
+import { useProvideViewScope } from '@/web/web/components/view/viewScopeKeys';
 import DropdownMenu from '../vendor/ui/dropdown-menu/DropdownMenu.vue';
 import DropdownMenuContent from '../vendor/ui/dropdown-menu/DropdownMenuContent.vue';
 import DropdownMenuItem from '../vendor/ui/dropdown-menu/DropdownMenuItem.vue';
@@ -275,6 +268,8 @@ const ChoyKanbanCardFallback = defineComponent({
  * Dense Admin chrome: ActionTray, vuedraggable, mobile lane select, move-to-lane menu.
  */
 const { _t } = createTranslate('web', { scope: 'web/components/view/KanbanView' });
+
+useProvideViewScope({ kind: 'Kanban', mode: 'display' });
 
 const props = withDefaults(
   defineProps<{

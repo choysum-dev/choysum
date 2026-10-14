@@ -18,7 +18,7 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
   >
     <template #edit>
-      <ChoyViewScope :view-mode="binding.env.viewMode" :container="'Kanban'" :field-prefix="String(prop)">
+      <ChoyViewScope :view-mode="binding.env.viewMode" :kind="'Kanban'" :field-prefix="String(prop)">
         <div class="flex w-full min-w-0 flex-col gap-2.5">
           <div v-if="showToolbar" class="flex items-center justify-start">
             <slot name="toolbar" :items="getItems()" :add="handleAddItem" :editable="editable">
@@ -67,7 +67,7 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display>
-      <ChoyViewScope view-mode="display" :container="'Kanban'" :field-prefix="String(prop)">
+      <ChoyViewScope view-mode="display" :kind="'Kanban'" :field-prefix="String(prop)">
         <div class="flex w-full min-w-0 flex-col gap-2.5">
           <div class="grid w-full min-w-0 overflow-auto p-0.5 [grid-template-columns:repeat(auto-fill,minmax(var(--kanban-min-card-width),1fr))] gap-[var(--kanban-gap)]" :style="boardStyle">
             <template v-if="getItems().length > 0">

@@ -8,7 +8,7 @@ import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/
 import ChoyListView from './ChoyListView.vue';
 import ChoySearchView from './ChoySearchView.vue';
 import ListInlineEditScope from '@/web/web/components/view/ListInlineEditScope.vue';
-import ViewContainer from '@/web/web/components/view/ViewContainer.vue';
+import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
 import ChoyPagination from './ChoyPagination.vue';
 import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
 import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
@@ -39,8 +39,8 @@ function makeStore(search?: ReturnType<typeof fnRecorder>) {
 }
 
 function stubListChrome() {
-  stubSfc(ViewContainer, {
-    name: 'ViewContainer',
+  stubSfc(ChoyViewContainer, {
+    name: 'ChoyViewContainer',
     setup(_p: any, { slots }: any) {
       return () => h('div', { class: 'ovc' }, [slots.header?.(), slots.fields?.(), slots.default?.()]);
     },
@@ -71,7 +71,7 @@ function stubListChrome() {
 }
 
 function restoreListChrome() {
-  restoreSfc(ViewContainer);
+  restoreSfc(ChoyViewContainer);
   restoreSfc(ListInlineEditScope);
   restoreSfc(ChoyTableHost);
   restoreSfc(ChoyTableColumn);

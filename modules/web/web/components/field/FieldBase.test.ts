@@ -36,8 +36,9 @@ function makeBinding(
   return {
     env: {
       isForm: true,
+      fieldPresentation: 'form',
       isEditMode: opts?.isEditMode ?? true,
-      viewMode: opts?.isEditMode === false ? 'readonly' : 'edit',
+      viewMode: opts?.isEditMode === false ? 'display' : 'edit',
       fieldPrefix: opts?.fieldPrefix ?? null,
     },
     prop: 'AccessTokenId',
@@ -183,9 +184,9 @@ describe('FieldBase label and help', () => {
       binding: makeBinding({ string: 'Access Token ID' }),
       renderMode: 'form',
     });
-    expect(m.q('.choy-field-base__label-text')?.textContent).toContain('Access Token ID');
-    expect(String(m.q('.choy-field-base__label-text')?.tagName || '').toLowerCase()).toBe('label');
-    expect(m.q('.choy-field-base__label-text')?.getAttribute('for')).toBe('fld-AccessTokenId');
+    const label = m.q('[data-slot="label"]');
+    expect(label?.textContent).toContain('Access Token ID');
+    expect(label?.getAttribute('for')).toBe('fld-AccessTokenId');
     m.unmount();
   });
 
@@ -199,7 +200,7 @@ describe('FieldBase label and help', () => {
         },
       },
     );
-    expect(m.q('.choy-field-base__label-text')?.getAttribute('for')).toBe('register-confirm');
+    expect(m.q('[data-slot="label"]')?.getAttribute('for')).toBe('register-confirm');
     expect((m.q('input.id-probe') as HTMLInputElement | null)?.id).toBe('register-confirm');
     m.unmount();
   });
@@ -210,7 +211,7 @@ describe('FieldBase label and help', () => {
       label: 'Custom Name',
       renderMode: 'form',
     });
-    expect(m.q('.choy-field-base__label-text')?.textContent).toContain('Custom Name');
+    expect(m.q('[data-slot="label"]')?.textContent).toContain('Custom Name');
     m.unmount();
   });
 
@@ -224,7 +225,7 @@ describe('FieldBase label and help', () => {
       getFieldsGetTranslatedString: (name: string) => (name === 'AccessTokenId' ? '访问令牌 ID' : undefined),
     } as any;
     const m = mountBase({ binding, renderMode: 'form' });
-    expect(m.q('.choy-field-base__label-text')?.textContent).toContain('访问令牌 ID');
+    expect(m.q('[data-slot="label"]')?.textContent).toContain('访问令牌 ID');
     m.unmount();
   });
 
@@ -233,7 +234,7 @@ describe('FieldBase label and help', () => {
       binding: makeBinding({ string: 'Code', help: 'Short unique code used in references' }),
       renderMode: 'form',
     });
-    const help = m.q('.choy-field-base__help-btn') as HTMLElement | null;
+    const help = m.q('[data-slot="form-help"]') as HTMLElement | null;
     expect(help).toBeTruthy();
     expect(help!.getAttribute('title')).toBe('Short unique code used in references');
     m.unmount();
@@ -244,7 +245,7 @@ describe('FieldBase label and help', () => {
       binding: makeBinding({ string: 'Code', help: '   ' }),
       renderMode: 'form',
     });
-    expect(m.q('.choy-field-base__help-btn')).toBeFalsy();
+    expect(m.q('[data-slot="form-help"]')).toBeFalsy();
     m.unmount();
   });
 
@@ -474,16 +475,16 @@ describe('FieldBase list-editing-row-id gate', () => {
     });
     await flushPromises();
     // Mount evaluates rules for submit gating but must not paint errors yet.
-    expect(m.q('.choy-field-base__error')).toBeFalsy();
+    expect(m.q('[data-slot="form-message"]')).toBeFalsy();
     expect(validators.size).toBe(1);
     const validate = [...validators.values()][0];
     expect(await validate()).toBe('need value');
     await flushPromises();
-    expect(m.q('.choy-field-base__error')?.textContent).toContain('need value');
+    expect(m.q('[data-slot="form-message"]')?.textContent).toContain('need value');
     binding.__value.value = 'ok';
     await flushPromises();
     expect(await validate()).toBe('');
-    expect(m.q('.choy-field-base__error')).toBeFalsy();
+    expect(m.q('[data-slot="form-message"]')).toBeFalsy();
     m.unmount();
     expect(validators.size).toBe(0);
   });
@@ -518,7 +519,7 @@ describe('FieldBase list-editing-row-id gate', () => {
       },
     });
     await flushPromises();
-    expect(m.q('.choy-field-base__error')).toBeFalsy();
+    expect(m.q('[data-slot="form-message"]')).toBeFalsy();
     const root = m.q('.choy-field-base') as HTMLElement;
     const inner = m.q('.edit-stub') as HTMLElement;
     expect(root && inner).toBeTruthy();
@@ -531,11 +532,11 @@ describe('FieldBase list-editing-row-id gate', () => {
     // Focus moved to a control still inside the field root — do not reveal.
     dispatchFocusOut(inner);
     await flushPromises();
-    expect(m.q('.choy-field-base__error')).toBeFalsy();
+    expect(m.q('[data-slot="form-message"]')).toBeFalsy();
     // Focus left the field — reveal client-rule errors.
     dispatchFocusOut(null);
     await flushPromises();
-    expect(m.q('.choy-field-base__error')?.textContent).toContain('need value');
+    expect(m.q('[data-slot="form-message"]')?.textContent).toContain('need value');
     m.unmount();
   });
 

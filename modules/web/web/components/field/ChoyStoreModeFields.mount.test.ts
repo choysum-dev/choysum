@@ -11,6 +11,7 @@ import ChoySearchView from '../view/ChoySearchView.vue';
 import ListView from '../view/ChoyListView.vue';
 import Search from '../view/search/Search.vue';
 import ChoyViewScope from '../view/ChoyViewScope.vue';
+import { VIEW_SCOPE_KEY } from '../view/viewScopeKeys';
 import ChoyButtonBox from '../view/ChoyButtonBox.vue';
 import ChoyStatInfo from '../view/ChoyStatInfo.vue';
 import ChoyTableColumn from '../table/ChoyTableColumn.vue';
@@ -461,20 +462,20 @@ describe('Choy store-mode field hosts', () => {
     let injectedMode: unknown = undefined;
     const Probe = defineComponent({
       setup() {
-        injectedMode = inject('view-mode');
+        injectedMode = inject(VIEW_SCOPE_KEY, null);
         return () => h('span', { 'data-test': 'scope-probe' });
       },
     });
     const scopeHost = defineComponent({
       setup() {
         return () =>
-          h(ChoyViewScope, { viewMode: 'display', container: 'List' }, () => h(Probe));
+          h(ChoyViewScope, { viewMode: 'display', kind: 'List' }, () => h(Probe));
       },
     });
     const scope = mountApp(scopeHost);
     await flushPromises();
     expect(scope.q('[data-test=scope-probe]')).not.toBeNull();
-    expect((injectedMode as { value?: string } | null)?.value).toBe('display');
+    expect((injectedMode as { mode?: { value?: string } } | null)?.mode?.value).toBe('display');
     scope.unmount();
 
     const HostBox = defineComponent({

@@ -89,6 +89,10 @@ export { default as ChoyListView } from './components/view/ChoyListView.vue';
 export { default as ChoyKanbanView } from './components/view/ChoyKanbanView.vue';
 export { default as ChoyChartView } from './components/view/ChoyChartView.vue';
 export { default as ChoySearchView } from './components/view/ChoySearchView.vue';
+export { default as ChoyViewContainer } from './components/view/ChoyViewContainer.vue';
+export { default as ChoyViewActionBar } from './components/view/ChoyViewActionBar.vue';
+export { default as ChoyViewBusyHost } from './components/view/ChoyViewBusyHost.vue';
+export { default as ChoyFormItem } from './components/layout/ChoyFormItem.vue';
 export { default as ChoyPagination } from './components/view/ChoyPagination.vue';
 export { default as ChoyBreadcrumb } from './components/view/ChoyBreadcrumb.vue';
 export { default as ChoyViewScope } from './components/view/ChoyViewScope.vue';
@@ -96,7 +100,18 @@ export { default as ChoyButtonBox } from './components/view/ChoyButtonBox.vue';
 export { default as ChoyStatInfo } from './components/view/ChoyStatInfo.vue';
 export { default as ChoyTableColumn } from './components/table/ChoyTableColumn.vue';
 export type { ChoyBreadcrumbItem } from './components/view/ChoyBreadcrumb.vue';
-export type { ViewMode as ChoyViewMode, ViewContainer as ChoyViewContainer } from './components/view/ChoyViewScope.vue';
+export type { ViewMode as ChoyViewMode, ViewKindId as ChoyViewKindId } from './components/view/ChoyViewScope.vue';
+export type { FieldPresentation as ChoyFieldPresentation } from './components/view/viewKinds';
+export {
+  registerViewKind,
+  getViewKind,
+  registerBuiltinViewKinds,
+} from './components/view/viewKinds';
+export {
+  useProvideViewScope,
+  useViewScope,
+  VIEW_SCOPE_KEY,
+} from './components/view/viewScopeKeys';
 export {
   buildChoySearchQuery,
   filterRowsByKeyword,

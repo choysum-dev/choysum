@@ -1,25 +1,24 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { defineComponent, h, inject } from 'vue';
+import { defineComponent, h } from 'vue';
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import ChoyViewScope from './ChoyViewScope.vue';
-import {
-  FIELD_PREFIX_KEY,
-  VIEW_CONTAINER_KEY,
-  VIEW_MODE_KEY,
-} from './viewScopeKeys';
+import { useViewScope } from './viewScopeKeys';
 
-describe('ViewScope shared keys', () => {
-  test('provides mode/container/prefix via shared keys', async () => {
-    let mode: unknown;
-    let container: unknown;
-    let prefix: unknown;
+describe('ChoyViewScope', () => {
+  test('provides kind/mode/prefix via VIEW_SCOPE_KEY', async () => {
+    let kind: string | undefined;
+    let mode: string | undefined;
+    let prefix: string | null | undefined;
+    let presentation: string | undefined;
     const Probe = defineComponent({
       setup() {
-        mode = inject(VIEW_MODE_KEY);
-        container = inject(VIEW_CONTAINER_KEY);
-        prefix = inject(FIELD_PREFIX_KEY);
+        const scope = useViewScope();
+        kind = scope.kind.value;
+        mode = scope.mode.value;
+        prefix = scope.fieldPrefix.value;
+        presentation = scope.fieldPresentation.value;
         return () => h('span', { 'data-test': 'probe' });
       },
     });
@@ -28,7 +27,7 @@ describe('ViewScope shared keys', () => {
         return () =>
           h(
             ChoyViewScope,
-            { viewMode: 'display', container: 'List', fieldPrefix: 'Lines' },
+            { viewMode: 'display', kind: 'List', fieldPrefix: 'Lines' },
             () => h(Probe),
           );
       },
@@ -36,9 +35,10 @@ describe('ViewScope shared keys', () => {
     const w = mountApp(Host);
     await flushPromises();
     expect(w.q('[data-test=probe]')).not.toBeNull();
-    expect((mode as { value?: string } | null)?.value).toBe('display');
-    expect((container as { value?: string } | null)?.value).toBe('List');
-    expect((prefix as { value?: string } | null)?.value).toBe('Lines');
+    expect(mode).toBe('display');
+    expect(kind).toBe('List');
+    expect(prefix).toBe('Lines');
+    expect(presentation).toBe('cell');
     w.unmount();
   });
 });

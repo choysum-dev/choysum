@@ -4,14 +4,15 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ViewContainer :showHeader="showHeader">
-    <template #header>
-      <div
-        class="choy-list__action-bar grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-border pb-1 min-h-control max-md:grid-cols-1"
-        data-anchor="choy.list.view-chrome"
-      >
-        <div class="choy-list__actions flex items-center gap-4">
-          <ChoyActionTray v-if="showActions" class="choy-list__system-actions" :aria-label="_t('System actions')">
+  <ChoyViewContainer>
+    <template v-if="showHeader" #header>
+      <div data-anchor="choy.list.view-chrome">
+        <ChoyViewActionBar
+          layout="thirds"
+          :system-actions-label="_t('System actions')"
+          :user-actions-label="_t('User actions')"
+        >
+          <template v-if="showActions" #system-actions>
             <!-- Keep Save/Discard outside the overridable slot so custom toolbars cannot hide them. -->
             <ChoyButton
               v-if="editable && isEditing"
@@ -57,32 +58,34 @@ SPDX-License-Identifier: Apache-2.0
                 {{ _t('Delete (%s)', selectedItems.length) }}
               </ChoyButton>
             </slot>
-          </ChoyActionTray>
+          </template>
 
-          <ChoyActionTray v-if="showActions" class="choy-list__user-actions" :aria-label="_t('User actions')">
+          <template v-if="showActions" #user-actions>
             <slot name="user-actions" :selected-items="selectedItems" />
-          </ChoyActionTray>
-        </div>
+          </template>
 
-        <!-- Centered search: render only when searchView is provided -->
-        <div class="choy-list__search flex min-w-60 items-center justify-center max-md:order-2" v-if="resolvedSearchView">
-          <component :is="resolvedSearchView" :store="store" @query-update="onSearch" />
-        </div>
+          <template v-if="resolvedSearchView" #center>
+            <div class="flex min-w-60 items-center justify-center max-md:order-2">
+              <component :is="resolvedSearchView" :store="store" @query-update="onSearch" />
+            </div>
+          </template>
 
-        <div class="choy-list__header-right flex items-center justify-end gap-2">
-          <div class="choy-list__default-pagination" v-if="showPaginate && canMountPagination">
-            <ChoyPagination
-              :total="listPaginationEffective.total"
-              v-model:page="listPageModel"
-              v-model:page-size="listPageSizeModel"
-            />
-          </div>
-          <slot name="header-right" />
-        </div>
+          <template #header-right>
+            <div v-if="showPaginate && canMountPagination">
+              <ChoyPagination
+                :total="listPaginationEffective.total"
+                v-model:page="listPageModel"
+                v-model:page-size="listPageSizeModel"
+              />
+            </div>
+            <slot name="header-right" />
+          </template>
+        </ChoyViewActionBar>
       </div>
     </template>
 
-    <div class="choy-list__table min-h-0 min-w-0 flex-1 [&_.choy-field-base]:mb-0 [&_.choy-field-base__cell-item]:mb-0" ref="tableWrapRef" :style="{ height: tablePxHeight }">
+    <ChoyViewBusyHost :busy="listBusy" class="min-h-0 min-w-0 flex-1">
+    <div class="min-h-0 min-w-0 flex-1 [&_.choy-field-base]:mb-0 [&_.choy-field-base__cell-item]:mb-0" ref="tableWrapRef" :style="{ height: tablePxHeight }">
       <!-- form-root + edit view-mode only under the table so header search cannot touch the row draft -->
       <ListInlineEditScope :form-root="inlineFormRoot" :view-mode="inlineTableViewMode">
         <ChoyTableHost
@@ -120,14 +123,14 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyTableHost>
       </ListInlineEditScope>
     </div>
-  </ViewContainer>
+    </ChoyViewBusyHost>
+  </ChoyViewContainer>
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel">
 import type { ConditionGroup, QueryUpdatePayload } from '@/web/web/query/types';
 import { ChoyMessage } from '../../composables/useChoyMessage';
-import { confirmChoyAction, confirmChoyChoice } from '../../composables/confirmChoyAction';
-import { computed, onMounted, onBeforeUnmount, provide, ref, nextTick, watch, markRaw, toRaw, DefineComponent } from 'vue';
+import { computed, onMounted, onBeforeUnmount, provide, ref, nextTick, watch, markRaw, toRaw } from 'vue';
 import { useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
 import type { ClientModel, BaseModel, QueryCondition, OrderBy } from '@/core/rpc';
@@ -148,7 +151,8 @@ import { useTableSelection } from '@/web/web/composables/useTable';
 import type { Component } from 'vue';
 import type { SearchViewComponent } from '@/web/web/query/types';
 import type { Ref } from 'vue';
-import type { ViewMode, ViewContainer as ViewContainerKind } from '@/web/web/components/view/ChoyViewScope.vue';
+import type { ViewMode } from '@/web/web/components/view/viewScopeKeys';
+import { useProvideViewScope } from '@/web/web/components/view/viewScopeKeys';
 import { useListInlineEdit } from '@/web/web/composables/useListInlineEdit';
 import { hasHandleField, isListRecordRow, listRecordId, unwrapListRecord } from '@/web/web/composables/listRowEdit';
 import { LIST_HANDLE_API_KEY, useListHandleReorder } from '@/web/web/composables/useListHandleReorder';
@@ -164,7 +168,10 @@ import { createListController } from '@/web/web/controllers/listController';
 import type { OrderByState, PaginationState } from '@/web/web/query/state';
 import { useCancelableEmit } from '@/web/web/composables/useCancelableEmit';
 import { useAdaptiveHeight } from '@/web/web/composables/useAdaptiveHeight';
-import ViewContainer from '@/web/web/components/view/ViewContainer.vue';
+import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
+import ChoyViewActionBar from '@/web/web/components/view/ChoyViewActionBar.vue';
+import ChoyViewBusyHost from '@/web/web/components/view/ChoyViewBusyHost.vue';
+import { useListViewActions } from '@/web/web/composables/useListViewActions';
 import { useVirtualizationAdapter } from '@/web/web/composables/virtualizationAdapter';
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
 import ChoySearchView from '@/web/web/components/view/ChoySearchView.vue';
@@ -175,7 +182,6 @@ import type { SelectionExpose, RowEventPayload, RowEventHandlerParams } from '@/
 import { resolvePageStore, useRegisterPageActionTarget } from '@/web/web/composables/usePageContext';
 import { useResolvedCreateAction } from '@/web/web/composables/resolveCreateRoute';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
-import ChoyActionTray from '@/web/web/components/layout/ChoyActionTray.vue';
 import { Plus, RefreshCw, Trash2 } from 'lucide-vue-next';
 
 defineOptions({ name: 'ChoyListView', inheritAttrs: false });
@@ -280,14 +286,9 @@ const { emitCancelable } = useCancelableEmit(emit as any);
 // =============================
 // Section 5: View context provisioning
 // =============================
-// Identify the container type
-const viewContainer = ref<ViewContainerKind>('List');
-provide('view-container', viewContainer);
-
 // List root stays display so header/search fields never inherit S2 edit mode.
-// Table-scoped edit mode is provided by ListInlineEditScope.
 const listViewMode = ref<ViewMode>('display');
-provide('view-mode', listViewMode);
+useProvideViewScope({ kind: 'List', mode: listViewMode });
 
 const router = useRouter();
 // Avoid Vue "component made reactive" warn when a Component is passed as searchView prop.
@@ -300,6 +301,7 @@ const canRefresh = computed(() => canShowAction(props.actionIds?.refresh, props.
 const canDelete = computed(() => canShowAction(props.actionIds?.delete, props.hasAction));
 // List controller
 const controller = createListController(store as any);
+const listBusy = computed(() => !!controller.vm.loading);
 
 // Whether grouped mode is active, based on the controller result
 const isGroupMode = computed(() => controller.vm.result?.kind === 'group');
@@ -717,82 +719,20 @@ function onTableSortChange(payload: { field: string; direction?: 'asc' | 'desc' 
     });
 }
 
-// =============================
-// Section 21: Top action bar (refresh/create/delete)
-// =============================
-async function handleRefresh() {
-  const ok = await emitCancelable('before-refresh');
-  if (!ok) return;
-
-  controller
-    .apply()
-    .then(() => {
-      ChoyMessage.success(_t('List data refreshed'));
-      const total = Number(((store.state as any).result?.total ?? 0) as any) || 0;
-      emit('refresh-success', { items: (items.value as any) || [], total });
-      return afterLayoutRecompute();
-    })
-    .catch(e => {
-      const err = e instanceof Error ? e : new Error(String(e));
-      emit('action-error', { action: 'refresh', error: err });
-      ChoyMessage.error(_t('Failed to refresh list'));
-    });
-}
-
-async function handleCreate() {
-  if (!resolvedCreateAction.value) return;
-  try {
-    await router.push(resolvedCreateAction.value);
-  } catch (e) {
-    const err = e instanceof Error ? e : new Error(String(e));
-    emit('action-error', { action: 'create', error: err });
-  }
-}
-
-const deleteLoading = ref(false);
-async function handleDelete() {
-  if (selectedItems.value.length === 0) return;
-  const count = selectedItems.value.length;
-  try {
-    await confirmChoyAction(_t('Are you sure you want to delete the selected %s record(s)? This action cannot be undone.', count), _t('Confirm delete'), {
-      confirmText: _t('Delete'),
-      cancelText: _t('Cancel'),
-      destructive: true,
-    });
-    // Prefer reading Id from record rows
-    const ids = (selectedItems.value as any[])
-      .map((r: any) => {
-        if (r?.type === 'record') return r?.record?.Id;
-        if (r?.kind === 'record') return r?.payload?.Id;
-        const rec = r?.payload ?? r?.record ?? r;
-        return rec?.Id;
-      })
-      .filter((id: any) => id != null) as string[];
-
-    const ok = await emitCancelable('before-delete', { ids });
-    if (!ok) return;
-
-    deleteLoading.value = true;
-    if (ids.length === 0) {
-      ChoyMessage.warning(_t('Selected records are missing valid IDs'));
-      return;
-    }
-
-    await store.Delete(['Id', 'in', ids] as QueryCondition<T>);
-    ChoyMessage.success(_t('Successfully deleted %s record(s)', ids.length));
-    selection.clear();
-    selectedItems.value = [];
-    await loadData();
-    emit('delete-success', { ids });
-  } catch (e) {
-    if (e === 'cancel' || e === 'dismiss') return;
-    const err = e instanceof Error ? e : new Error(String(e));
-    emit('action-error', { action: 'delete', error: err });
-    ChoyMessage.error(_t('Delete failed'));
-  } finally {
-    deleteLoading.value = false;
-  }
-}
+const { deleteLoading, handleRefresh, handleCreate, handleDelete } = useListViewActions({
+  store,
+  controller,
+  router,
+  resolvedCreateAction,
+  selectedItems,
+  items,
+  selection,
+  emitCancelable,
+  emit: emit as (event: string, payload?: unknown) => void,
+  loadData,
+  afterLayoutRecompute,
+  _t,
+});
 
 // =============================
 // Section 22: Row click interactions (groups & records)

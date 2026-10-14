@@ -70,7 +70,7 @@ SPDX-License-Identifier: Apache-2.0
   <ChoyDialog v-model:open="dialogVisible">
     <ChoyDialogContent class="choy-relation-picker-dialog" :style="{ width: typeof searchViewWidth === 'number' ? searchViewWidth + 'px' : searchViewWidth }">
       <ChoyDialogTitle>{{ effectiveSearchViewTitle }}</ChoyDialogTitle>
-      <ChoyViewScope view-mode="display" :container="'List'">
+      <ChoyViewScope view-mode="display" :kind="'List'">
       <component
         v-if="dialogVisible && searchView && relationStore"
         :is="searchView"

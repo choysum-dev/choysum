@@ -15,7 +15,11 @@ import { registerFieldPath, unregisterFieldPath } from '@/web/web/query/utils/re
 import { registerMetric, unregisterMetric } from '@/web/web/query/utils/registry/metric';
 import type { MetricSpec } from '@/web/web/query/utils/registry/metric';
 import { ComponentScopeManager } from '@/web/web/stores/storeScopeManager/component';
-import type { ViewMode, ViewContainer } from '@/web/web/components/view/ChoyViewScope.vue';
+import { useViewScope, type ViewMode } from '@/web/web/components/view/viewScopeKeys';
+import type { FieldPresentation } from '@/web/web/components/view/viewKinds';
+import { registerBuiltinViewKinds } from '@/web/web/components/view/viewKinds';
+
+registerBuiltinViewKinds();
 
 /* ===================== Environment and core helpers ===================== */
 
@@ -23,7 +27,9 @@ import type { ViewMode, ViewContainer } from '@/web/web/components/view/ChoyView
  * Environment flags exposed by useField.
  */
 export interface FieldEnv {
+  /** True when fieldPresentation is form (legacy name kept for call sites). */
   readonly isForm: boolean;
+  readonly fieldPresentation: FieldPresentation;
   readonly isEditMode: boolean;
   readonly viewMode: ViewMode;
   readonly fieldPrefix: string | null;
@@ -152,29 +158,30 @@ export function useField<T = any, P extends string = string, V = any>(opts: {
   const currentTargetStore = () => (suppressFieldRegistration === true ? resolveAltStore() : store);
   const currentTargetStoreId = () => currentTargetStore()?.storeId;
 
-  // View context provided by ViewScope or FormView.
-  const viewContainer = inject<Ref<ViewContainer>>('view-container', ref<ViewContainer>('Form'));
-  const viewModeRef = inject<Ref<ViewMode>>('view-mode', ref<ViewMode>('display'));
-  const fieldPrefixRef = inject<Ref<string | null>>('field-prefix', ref<string | null>(null));
+  // View context from useProvideViewScope (Form/List/Kanban/ChoyViewScope).
+  const viewScope = useViewScope();
   const formRoot = inject<any>('form-root', null); // { draft, getField, setField, ... }
 
   const env: FieldEnv = {
+    get fieldPresentation() {
+      return viewScope.fieldPresentation.value;
+    },
     get isForm() {
-      return viewContainer.value === 'Form';
+      return viewScope.fieldPresentation.value === 'form';
     },
     get isEditMode() {
-      // D4: Form container is writable in edit/create; List/Kanban need an injected form-root
-      // with a non-null draft (standalone List row S2, Kanban card, O2M under parent Form draft).
-      const modeOk = viewModeRef.value === 'edit' || viewModeRef.value === 'create';
+      // Form presentation is writable in edit/create; cell presentation needs form-root draft
+      // (standalone List row S2, Kanban card, O2M under parent Form draft).
+      const modeOk = viewScope.mode.value === 'edit' || viewScope.mode.value === 'create';
       if (!modeOk) return false;
-      if (viewContainer.value === 'Form') return true;
+      if (viewScope.fieldPresentation.value === 'form') return true;
       return formRoot?.draft != null;
     },
     get viewMode() {
-      return viewModeRef.value;
+      return viewScope.mode.value;
     },
     get fieldPrefix() {
-      return fieldPrefixRef.value;
+      return viewScope.fieldPrefix.value ?? null;
     },
   };
 
@@ -282,7 +289,7 @@ export function useField<T = any, P extends string = string, V = any>(opts: {
     // When registration is redirected to an alternate store (e.g., relationStore inside m2m slots),
     // strip the field prefix so the target store receives relative field names.
     if (suppressFieldRegistration === true) {
-      const prefix = fieldPrefixRef.value ? String(fieldPrefixRef.value) : '';
+      const prefix = viewScope.fieldPrefix.value ? String(viewScope.fieldPrefix.value) : '';
       if (prefix) {
         if (p === prefix) p = '';
         else if (p.startsWith(prefix + '.')) p = p.slice(prefix.length + 1);
@@ -497,6 +504,7 @@ export function useStandaloneField<V, T = any>(opts: {
 
   const env: FieldEnv = {
     isForm: false,
+    fieldPresentation: 'none' as FieldPresentation,
     isEditMode: true,
     viewMode: 'edit',
     fieldPrefix: null,

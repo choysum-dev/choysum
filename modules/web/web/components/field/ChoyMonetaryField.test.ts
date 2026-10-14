@@ -12,6 +12,7 @@ import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import FieldBase from './FieldBase.vue';
 import MonetaryField from './ChoyMonetaryField.vue';
+import { useProvideViewScope } from '@/web/web/components/view/viewScopeKeys';
 
 function makeBinding(
   record: Record<string, unknown>,
@@ -247,8 +248,7 @@ describe('MonetaryField mount wiring', () => {
     });
     const Host = defineComponent({
       setup() {
-        provide('view-container', ref('Form'));
-        provide('view-mode', ref('edit'));
+        useProvideViewScope({ kind: 'Form', mode: 'edit' });
         provide('form-root', { draft });
         return () =>
           h(MonetaryField as any, {
