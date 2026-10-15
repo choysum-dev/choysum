@@ -52,7 +52,7 @@ msgctxt "web.model.ExportTemplate.fields"
 msgid "When true, saved paths are intended for import round-trip workflows."
 msgstr ""
 
-#: service/models/user_filter.ts:122
+#: service/models/user_filter.ts:136
 msgctxt "web.model.UserFilter"
 msgid "Cannot assign a favorite to another user"
 msgstr ""
@@ -67,7 +67,12 @@ msgctxt "web.model.UserFilter.fields"
 msgid "Condition"
 msgstr ""
 
-#: service/models/user_filter.ts:107
+#: service/models/user_filter.ts:95
+msgctxt "web.model.UserFilter.fields"
+msgid "Group By"
+msgstr ""
+
+#: service/models/user_filter.ts:121
 msgctxt "web.model.UserFilter.fields"
 msgid "Is Default"
 msgstr ""
@@ -92,7 +97,7 @@ msgctxt "web.model.UserFilter.fields"
 msgid "Scope Key"
 msgstr ""
 
-#: service/models/user_filter.ts:96
+#: service/models/user_filter.ts:110
 msgctxt "web.model.UserFilter.fields"
 msgid "User"
 msgstr ""
@@ -918,7 +923,7 @@ msgctxt "web/components/layout/ChoySidebarNav"
 msgid "No menus available"
 msgstr ""
 
-#: web/components/layout/ChoyPage.vue:63
+#: web/components/layout/ChoyPage.vue:64
 msgctxt "web/components/layout/Page"
 msgid "Loading..."
 msgstr ""
@@ -1110,22 +1115,22 @@ msgctxt "web/components/view/KanbanView"
 msgid "User actions"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:48
+#: web/components/view/ChoyListView.vue:52
 msgctxt "web/components/view/ListView"
 msgid "%s selected"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:50
+#: web/components/view/ChoyListView.vue:54
 msgctxt "web/components/view/ListView"
 msgid "Clear selection"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:95
+#: web/components/view/ChoyListView.vue:101
 msgctxt "web/components/view/ListView"
 msgid "Click to load more (%s remaining)"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:57
+#: web/components/view/ChoyListView.vue:61
 msgctxt "web/components/view/ListView"
 msgid "Delete"
 msgstr ""
@@ -1135,33 +1140,33 @@ msgctxt "web/components/view/ListView"
 msgid "Discard"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:236
+#: web/components/view/ChoyListView.vue:239
 msgctxt "web/components/view/ListView"
 msgid "Editing was discarded because the row is no longer visible."
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:553
+#: web/components/view/ChoyListView.vue:569
 msgctxt "web/components/view/ListView"
 msgid "Failed to load list"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:305
+#: web/components/view/ChoyListView.vue:308
 msgctxt "web/components/view/ListView"
 msgid "Failed to refresh after reorder"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:305
+#: web/components/view/ChoyListView.vue:308
 msgctxt "web/components/view/ListView"
 msgid "Failed to reorder rows"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:106
+#: web/components/view/ChoyListView.vue:112
 #: web/components/view/ChoyListView.vue:19
 msgctxt "web/components/view/ListView"
 msgid "New"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:102
+#: web/components/view/ChoyListView.vue:108
 msgctxt "web/components/view/ListView"
 msgid "No data"
 msgstr ""
@@ -1176,7 +1181,7 @@ msgctxt "web/components/view/ListView"
 msgid "Save"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:44
+#: web/components/view/ChoyListView.vue:48
 msgctxt "web/components/view/ListView"
 msgid "Selection actions"
 msgstr ""
@@ -1191,17 +1196,17 @@ msgctxt "web/components/view/ListView"
 msgid "User actions"
 msgstr ""
 
-#: web/components/view/ChoyPagination.vue:91
+#: web/components/view/ChoyPagination.vue:110
 msgctxt "web/components/view/Pagination"
 msgid "Edit page range"
 msgstr ""
 
-#: web/components/view/ChoyPagination.vue:93
+#: web/components/view/ChoyPagination.vue:115
 msgctxt "web/components/view/Pagination"
 msgid "Next"
 msgstr ""
 
-#: web/components/view/ChoyPagination.vue:92
+#: web/components/view/ChoyPagination.vue:114
 msgctxt "web/components/view/Pagination"
 msgid "Previous"
 msgstr ""
@@ -1216,223 +1221,233 @@ msgctxt "web/components/view/ViewBusyHost"
 msgid "Loading"
 msgstr ""
 
-#: web/components/view/search/Search.vue:432
+#: web/components/view/search/Search.vue:631
 msgctxt "web/components/view/search/Search"
 msgid "Add at least one complete condition before confirming"
 msgstr ""
 
-#: web/components/view/search/Search.vue:134
-#: web/components/view/search/Search.vue:202
+#: web/components/view/search/Search.vue:184
+#: web/components/view/search/Search.vue:301
 msgctxt "web/components/view/search/Search"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/view/search/Search.vue:30
-msgctxt "web/components/view/search/Search"
-msgid "Clear"
-msgstr ""
-
-#: web/components/view/search/Search.vue:29
+#: web/components/view/search/Search.vue:42
 msgctxt "web/components/view/search/Search"
 msgid "Clear all"
 msgstr ""
 
-#: web/components/view/search/Search.vue:13
+#: web/components/view/search/Search.vue:17
+msgctxt "web/components/view/search/Search"
+msgid "Clear favorite"
+msgstr ""
+
+#: web/components/view/search/Search.vue:25
 msgctxt "web/components/view/search/Search"
 msgid "Clear grouping"
 msgstr ""
 
-#: web/components/view/search/Search.vue:198
+#: web/components/view/search/Search.vue:297
 msgctxt "web/components/view/search/Search"
 msgid "Confirm delete"
 msgstr ""
 
-#: web/components/view/search/Search.vue:80
+#: web/components/view/search/Search.vue:74
 msgctxt "web/components/view/search/Search"
 msgid "Custom filter…"
 msgstr ""
 
-#: web/components/view/search/Search.vue:98
+#: web/components/view/search/Search.vue:99
 msgctxt "web/components/view/search/Search"
 msgid "Custom group by"
 msgstr ""
 
-#: web/components/view/search/Search.vue:71
+#: web/components/view/search/Search.vue:92
 msgctxt "web/components/view/search/Search"
 msgid "Day"
 msgstr ""
 
-#: web/components/view/search/Search.vue:201
+#: web/components/view/search/Search.vue:300
 msgctxt "web/components/view/search/Search"
 msgid "Delete"
 msgstr ""
 
-#: web/components/view/search/Search.vue:197
+#: web/components/view/search/Search.vue:296
 msgctxt "web/components/view/search/Search"
 msgid "Delete favorite \"%s\"? This cannot be undone."
 msgstr ""
 
-#: web/components/view/search/Search.vue:68
+#: web/components/view/search/Search.vue:135
 msgctxt "web/components/view/search/Search"
 msgid "Delete favorite %s"
 msgstr ""
 
-#: web/components/view/search/Search.vue:183
+#: web/components/view/search/Search.vue:242
 msgctxt "web/components/view/search/Search"
 msgid "Edit favorite"
 msgstr ""
 
-#: web/components/view/search/Search.vue:65
+#: web/components/view/search/Search.vue:132
 msgctxt "web/components/view/search/Search"
 msgid "Edit favorite %s"
 msgstr ""
 
-#: web/components/view/search/Search.vue:106
+#: web/components/view/search/Search.vue:121
 msgctxt "web/components/view/search/Search"
 msgid "Edit filter"
 msgstr ""
 
-#: web/components/view/search/Search.vue:245
+#: web/components/view/search/Search.vue:347
 msgctxt "web/components/view/search/Search"
 msgid "Enter a favorite name"
 msgstr ""
 
-#: web/components/view/search/Search.vue:73
+#: web/components/view/search/Search.vue:140
 msgctxt "web/components/view/search/Search"
 msgid "Failed to load favorites"
 msgstr ""
 
-#: web/components/view/search/Search.vue:212
+#: web/components/view/search/Search.vue:312
 msgctxt "web/components/view/search/Search"
 msgid "Favorite deleted"
 msgstr ""
 
-#: web/components/view/search/Search.vue:124
+#: web/components/view/search/Search.vue:172
 msgctxt "web/components/view/search/Search"
 msgid "Favorite name"
 msgstr ""
 
-#: web/components/view/search/Search.vue:264
+#: web/components/view/search/Search.vue:366
 msgctxt "web/components/view/search/Search"
 msgid "Favorite saved"
 msgstr ""
 
-#: web/components/view/search/Search.vue:257
+#: web/components/view/search/Search.vue:359
 msgctxt "web/components/view/search/Search"
 msgid "Favorite updated"
 msgstr ""
 
-#: web/components/view/search/Search.vue:54
+#: web/components/view/search/Search.vue:120
 msgctxt "web/components/view/search/Search"
 msgid "Favorites"
 msgstr ""
 
-#: web/components/view/search/Search.vue:42
+#: web/components/view/search/Search.vue:57
 msgctxt "web/components/view/search/Search"
 msgid "Filters"
 msgstr ""
 
-#: web/components/view/search/Search.vue:84
+#: web/components/view/search/Search.vue:82
 msgctxt "web/components/view/search/Search"
 msgid "Group by"
 msgstr ""
 
-#: web/components/view/search/Search.vue:12
-msgctxt "web/components/view/search/Search"
-msgid "Group: %s"
-msgstr ""
-
-#: web/components/view/search/Search.vue:69
+#: web/components/view/search/Search.vue:90
 msgctxt "web/components/view/search/Search"
 msgid "Month"
 msgstr ""
 
-#: web/components/view/search/Search.vue:123
+#: web/components/view/search/Search.vue:171
 msgctxt "web/components/view/search/Search"
 msgid "Name"
 msgstr ""
 
-#: web/components/view/search/Search.vue:106
+#: web/components/view/search/Search.vue:121
 msgctxt "web/components/view/search/Search"
 msgid "New filter"
 msgstr ""
 
-#: web/components/view/search/Search.vue:76
+#: web/components/view/search/Search.vue:146
 msgctxt "web/components/view/search/Search"
 msgid "No favorites yet"
 msgstr ""
 
-#: web/components/view/search/Search.vue:94
+#: web/components/view/search/Search.vue:107
+msgctxt "web/components/view/search/Search"
+msgid "No fields"
+msgstr ""
+
+#: web/components/view/search/Search.vue:69
+msgctxt "web/components/view/search/Search"
+msgid "No preset filters"
+msgstr ""
+
+#: web/components/view/search/Search.vue:97
 msgctxt "web/components/view/search/Search"
 msgid "Not set"
 msgstr ""
 
-#: web/components/view/search/Search.vue:34
-msgctxt "web/components/view/search/Search"
-msgid "Open search menu"
-msgstr ""
-
-#: web/components/view/search/Search.vue:68
+#: web/components/view/search/Search.vue:89
 msgctxt "web/components/view/search/Search"
 msgid "Quarter"
 msgstr ""
 
-#: web/components/view/search/Search.vue:20
+#: web/components/view/search/Search.vue:33
 msgctxt "web/components/view/search/Search"
 msgid "Remove filter"
 msgstr ""
 
-#: web/components/view/search/Search.vue:74
+#: web/components/view/search/Search.vue:142
 msgctxt "web/components/view/search/Search"
 msgid "Retry"
 msgstr ""
 
-#: web/components/view/search/Search.vue:5
+#: web/components/view/search/Search.vue:8
 msgctxt "web/components/view/search/Search"
 msgid "Run search"
 msgstr ""
 
-#: web/components/view/search/Search.vue:135
+#: web/components/view/search/Search.vue:185
 msgctxt "web/components/view/search/Search"
 msgid "Save"
 msgstr ""
 
-#: web/components/view/search/Search.vue:183
+#: web/components/view/search/Search.vue:242
 msgctxt "web/components/view/search/Search"
 msgid "Save current filters"
 msgstr ""
 
-#: web/components/view/search/Search.vue:78
+#: web/components/view/search/Search.vue:151
 msgctxt "web/components/view/search/Search"
 msgid "Save current filters…"
 msgstr ""
 
-#: web/components/view/search/Search.vue:133
+#: web/components/view/search/Search.vue:186
 msgctxt "web/components/view/search/Search"
 msgid "Search..."
 msgstr ""
 
-#: web/components/view/search/Search.vue:130
+#: web/components/view/search/Search.vue:102
+msgctxt "web/components/view/search/Search"
+msgid "Select a field…"
+msgstr ""
+
+#: web/components/view/search/Search.vue:180
 msgctxt "web/components/view/search/Search"
 msgid "Share with all users"
 msgstr ""
 
-#: web/components/view/search/Search.vue:62
+#: web/components/view/search/Search.vue:129
 msgctxt "web/components/view/search/Search"
 msgid "Shared"
 msgstr ""
 
-#: web/components/view/search/Search.vue:127
+#: web/components/view/search/Search.vue:45
+msgctxt "web/components/view/search/Search"
+msgid "Toggle search menu"
+msgstr ""
+
+#: web/components/view/search/Search.vue:176
 msgctxt "web/components/view/search/Search"
 msgid "Use by default"
 msgstr ""
 
-#: web/components/view/search/Search.vue:70
+#: web/components/view/search/Search.vue:91
 msgctxt "web/components/view/search/Search"
 msgid "Week"
 msgstr ""
 
-#: web/components/view/search/Search.vue:67
+#: web/components/view/search/Search.vue:88
 msgctxt "web/components/view/search/Search"
 msgid "Year"
 msgstr ""

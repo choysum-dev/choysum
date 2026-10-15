@@ -142,6 +142,11 @@ describe('useSearch actions and helpers', () => {
     api.actions.clearAll();
     expect(api.state.filters.value).toHaveLength(0);
     expect(api.state.keyword.value).toBe('');
+
+    // Groupby-only favorites persist empty Condition as [] / {}; apply must not throw.
+    expect(() => api.actions.applyNamedFilter({ name: 'ByYear', query: [] } as any)).not.toThrow();
+    expect(() => api.actions.applyNamedFilter({ name: 'ByYearObj', query: {} } as any)).not.toThrow();
+    expect(api.state.filters.value).toHaveLength(0);
   });
 
   test('summarizes nested groups, fields, tooltips, and buildQuery', () => {

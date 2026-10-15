@@ -13,13 +13,17 @@ SPDX-License-Identifier: Apache-2.0
         </AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>
-        <AlertDialogCancel data-testid="choy-confirm-cancel" @click="onCancel">
+        <!--
+          Capture settles the Promise before Reka AlertDialog emits update:open=false,
+          so the v-model setter does not treat Action/Cancel as overlay dismiss.
+        -->
+        <AlertDialogCancel data-testid="choy-confirm-cancel" @click.capture="onCancel">
           {{ store.cancelText }}
         </AlertDialogCancel>
         <AlertDialogAction
           data-testid="choy-confirm-ok"
           :variant="store.destructive ? 'destructive' : 'default'"
-          @click="onConfirm"
+          @click.capture="onConfirm"
         >
           {{ store.confirmText }}
         </AlertDialogAction>
@@ -48,7 +52,9 @@ const store = useConfirmChoyStore();
 const open = computed({
   get: () => store.open,
   set: (v: boolean) => {
-    if (!v && store.open) onDismiss();
+    // Action/Cancel already called resolveConfirmChoy (resolve cleared + open false).
+    // Only treat remaining close paths (overlay / Esc) as dismiss.
+    if (!v && store.open && store.resolve) onDismiss();
   },
 });
 

@@ -10,6 +10,20 @@ export type DataTableRowId = string | number;
 
 export type DataTableSortDir = 'asc' | 'desc';
 
+/** Row original may use `kind` (current) or legacy `type`. */
+export function dataTableRowKind(row: { original?: unknown } | null | undefined): string | undefined {
+  const o = row?.original as { kind?: unknown; type?: unknown } | undefined;
+  if (!o) return undefined;
+  const k = o.kind ?? o.type;
+  return k == null || k === '' ? undefined : String(k);
+}
+
+/** Group header or "load more" rows span the full grid (see main OVTable RowMerge). */
+export function dataTableIsGroupLikeRow(row: { original?: unknown } | null | undefined): boolean {
+  const k = dataTableRowKind(row);
+  return k === 'group' || k === 'more';
+}
+
 export type DataTableSortState = {
   id: string;
   desc: boolean;

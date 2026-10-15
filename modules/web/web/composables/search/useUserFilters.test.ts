@@ -115,6 +115,7 @@ describe('useUserFilters', () => {
         Id: 'p1',
         Name: 'Mine',
         Condition: { And: [['A', '=', 1]] },
+        GroupBy: [{ field: 'CreatedAt', granularity: 'year' }],
         IsDefault: true,
         UserId: 'me',
         CreatedUid: 'me',
@@ -161,7 +162,9 @@ describe('useUserFilters', () => {
       shared: false,
       isDefault: true,
       canDelete: true,
+      groups: [{ field: 'CreatedAt', granularity: 'year' }],
     });
+    expect(api.favoriteMenuItems.value[1]).toMatchObject({ groups: [] });
   });
 
   test('load records error and clears favorites', async () => {
@@ -180,6 +183,63 @@ describe('useUserFilters', () => {
     expect(api.loadError.value).toBe('network');
     expect(api.favorites.value).toEqual([]);
     expect(api.loading.value).toBe(false);
+  });
+
+  test('load falls back when Search with GroupBy fails', async () => {
+    Search.setImpl(async (_cond: any, opts: any) => {
+      if (Array.isArray(opts?.fields) && opts.fields.includes('GroupBy')) {
+        throw new Error('column group_by does not exist');
+      }
+      return [
+        {
+          Id: 'f1',
+          Name: 'Legacy',
+          Condition: { And: [['Name', '=', 'a']] },
+          IsDefault: false,
+          UserId: 'me',
+          CreatedUid: 'me',
+        },
+      ];
+    });
+    const api = runInSetup(() =>
+      useUserFilters({
+        store: { application: 'demo', modelName: 'Widget' },
+        filtersRef: ref([]),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
+      })
+    );
+    await api.load();
+    expect(api.loadError.value).toBeNull();
+    expect(api.favorites.value).toHaveLength(1);
+    expect(api.favorites.value[0]).toMatchObject({ Name: 'Legacy', GroupBy: [] });
+    expect(Search.calls.length).toBe(2);
+  });
+
+  test('load treats empty-object GroupBy as no grouping', async () => {
+    // jsonobject columns may decode empty payloads as {} instead of [].
+    Search.setImpl(async () => [
+      {
+        Id: 'f1',
+        Name: 'EmptyGb',
+        Condition: {},
+        GroupBy: {},
+        IsDefault: false,
+        UserId: 'me',
+        CreatedUid: 'me',
+      },
+    ]);
+    const api = runInSetup(() =>
+      useUserFilters({
+        store: { application: 'demo', modelName: 'Widget' },
+        filtersRef: ref([]),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
+      })
+    );
+    await api.load();
+    expect(api.loadError.value).toBeNull();
+    expect(api.favorites.value[0]).toMatchObject({ Name: 'EmptyGb', GroupBy: [] });
   });
 
   test('load ignores stale responses when a newer load started', async () => {
@@ -368,6 +428,7 @@ describe('useUserFilters', () => {
       UserId: 'me',
       IsDefault: true,
       Condition: { And: [['Name', '=', 'x']] },
+      GroupBy: [],
     });
     expect(privateCreated).toMatchObject({ Id: 'created-1', shared: false, canDelete: true });
 
@@ -395,7 +456,7 @@ describe('useUserFilters', () => {
     expect(!('UserId' in values)).toBe(true);
   });
 
-  test('saveCurrent uses empty Condition when filtersToQuery returns null', async () => {
+  test('saveCurrent uses empty Condition when filtersToQuery returns null or []', async () => {
     filtersToQuery.setImpl(() => null);
     const api = runInSetup(() =>
       useUserFilters({
@@ -409,7 +470,41 @@ describe('useUserFilters', () => {
     expect(Create.calls[0]![0]).toMatchObject({
       Name: 'NullCond',
       Condition: {},
+      GroupBy: [],
       UserId: 'me',
+    });
+
+    Create.reset(async (values: any) => ({
+      Id: 'created-2',
+      Name: values.Name,
+      Condition: values.Condition,
+      IsDefault: values.IsDefault,
+      UserId: values.UserId,
+      CreatedUid: 'me',
+    }));
+    filtersToQuery.setImpl(() => [] as any);
+    await api.saveCurrent({ name: 'EmptyArrCond' });
+    expect(Create.calls[0]![0]).toMatchObject({
+      Name: 'EmptyArrCond',
+      Condition: {},
+      GroupBy: [],
+    });
+  });
+
+  test('saveCurrent persists getAppliedGroups into GroupBy', async () => {
+    const api = runInSetup(() =>
+      useUserFilters({
+        store: { application: 'demo', modelName: 'Widget', fieldsMetadata: {}, state: { queryState: {} } },
+        filtersRef: ref([]),
+        applyNamedFilter: fnRecorder(),
+        getAppliedGroups: () => [{ field: 'CreatedAt', granularity: 'year' }],
+        ...deps(),
+      })
+    );
+    await api.saveCurrent({ name: 'ByYear' });
+    expect(Create.calls[0]![0]).toMatchObject({
+      Name: 'ByYear',
+      GroupBy: [{ field: 'CreatedAt', granularity: 'year' }],
     });
   });
 

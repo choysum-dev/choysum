@@ -86,6 +86,24 @@ export function isCondition(node: Condition | ConditionGroup): node is Condition
 }
 
 /**
+ * True when a named-filter query carries no conditions (groupby-only favorites,
+ * empty filtersToQuery result `[]`, or empty And/Or envelopes).
+ */
+export function isEmptyNamedFilterQuery(query: unknown): boolean {
+  if (query == null) return true;
+  if (Array.isArray(query)) return query.length === 0;
+  if (typeof query !== 'object') return false;
+  const q = query as Record<string, unknown>;
+  if (Array.isArray(q.And)) return q.And.length === 0;
+  if (Array.isArray(q.Or)) return q.Or.length === 0;
+  // Plain {} has no And/Or/leaf shape.
+  if (!('And' in q) && !('Or' in q) && !('logic' in q) && !('children' in q)) {
+    return Object.keys(q).length === 0;
+  }
+  return false;
+}
+
+/**
  * Convert a backend QueryCondition (leaf tuple or And/Or tree) into a UI ConditionGroup.
  */
 function queryConditionToGroup(query: any, name?: string): ConditionGroup | null {
@@ -136,10 +154,10 @@ export function toFilters(input?: NamedFilter | NamedFilter[] | ConditionGroup |
     } else if (typeof it === 'object' && 'query' in it) {
       const nf = it as NamedFilter;
       if (!nf.name) continue;
-      if (nf.query == null) continue;
+      if (nf.query == null || isEmptyNamedFilterQuery(nf.query)) continue;
       const group = queryConditionToGroup(nf.query, nf.name);
       if (!group) throw new Error('invalid_named_filter_query');
-      out.push(group);
+      out.push(group)
     } else if (typeof it === 'object' && !Array.isArray(it)) {
       // Incomplete NamedFilter-like objects without query are skipped.
       continue;

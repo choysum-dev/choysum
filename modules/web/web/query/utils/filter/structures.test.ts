@@ -129,12 +129,15 @@ test('filter structures helpers: deepCloneFilter preserves name and handles miss
 test('filter structures helpers: toFilters skips null query and blank name, throws on invalid query shapes', () => {
   expect(toFilters({ name: 'NullQ', query: null } as any)).toEqual([]);
   expect(toFilters({ name: '', query: ['A', '=', 1] } as any)).toEqual([]);
+  // Empty queries (groupby-only favorites / filtersToQuery []) apply as no-op chips.
+  expect(toFilters({ name: 'EmptyArr', query: [] } as any)).toEqual([]);
+  expect(toFilters({ name: 'EmptyObj', query: {} } as any)).toEqual([]);
+  expect(toFilters({ name: 'EmptyAnd', query: { And: [] } } as any)).toEqual([]);
+  expect(toFilters({ name: 'EmptyOr', query: { Or: [] } } as any)).toEqual([]);
 
   for (const bad of [
     { name: 'BadArr', query: ['only', 'two'] },
     { name: 'Str', query: 'nope' },
-    { name: 'EmptyAnd', query: { And: [] } },
-    { name: 'EmptyOr', query: { Or: [] } },
     { name: 'JunkParts', query: { And: [null, 'x', { foo: 1 }] } },
     { name: 'NonStringLeaf', query: [1, '=', 2] },
     { name: 'NonStringOp', query: ['A', 1, 2] },

@@ -36,6 +36,20 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
+### 2026-10-15 — PopoverAnchor + Combobox Root props
+
+- **PopoverAnchor:** thin Reka wrapper + barrel export so hosts can position
+  `PopoverContent` against a custom shell (Search anchors the menu to the whole
+  input group while open state is controlled separately from the chevron).
+  Product layer cannot import `reka-ui` directly; Anchor is missing from the
+  prior L2 surface (Trigger-only).
+- **Combobox:** forward `ignoreFilter` / `openOnFocus` / `openOnClick` to
+  `ComboboxRoot` (all default `false`) so callers that filter the item list
+  themselves (Search custom group-by) can opt in without baking Search behavior
+  into kit defaults.
+- **Do not regress:** keep defaults off; do not restyle Combobox/Popover chrome
+  here for Search density.
+
 ### 2026-10-12 — DropdownMenu modal prop
 
 - **DropdownMenu:** expose `modal` (default `true`) so hover-open hosts (L1 rail

@@ -139,6 +139,76 @@ describe('DataTable chrome', () => {
     mounted.unmount();
   });
 
+  test('group and more rows render a single full-width group cell', async () => {
+    type GroupRow = {
+      kind: 'group' | 'more' | 'record';
+      key: string;
+      label?: string;
+      count?: number;
+      remain?: number;
+      Name?: string;
+    };
+    const groupColumns: ColumnDef<GroupRow, unknown>[] = [
+      {
+        id: '__index__',
+        header: '#',
+        cell: () => '1',
+        size: 40,
+      },
+      {
+        id: '__group_label',
+        header: '',
+        cell: (ctx) => {
+          const row = ctx.row.original;
+          if (row.kind === 'group') return `${row.label} (${row.count ?? 0})`;
+          if (row.kind === 'more') return `more:${row.remain ?? 0}`;
+          return '';
+        },
+        size: 200,
+      },
+      {
+        accessorKey: 'Name',
+        header: 'Name',
+        cell: (ctx) => String(ctx.getValue() ?? ''),
+        size: 120,
+      },
+    ];
+    const groupRows: GroupRow[] = [
+      { kind: 'group', key: 'g1', label: 'Available', count: 3 },
+      { kind: 'more', key: 'm1', remain: 2 },
+      { kind: 'record', key: 'r1', Name: 'alpha' },
+    ];
+    const mounted = mountApp(DataTable as any, {
+      props: {
+        columns: groupColumns,
+        data: groupRows,
+        height: 200,
+        virtualize: false,
+        enableRowSelection: false,
+        rowId: (row: GroupRow) => row.key,
+      },
+    });
+    await flushPromises();
+    const groupEl = mounted.q('[data-row-kind=group]');
+    const moreEl = mounted.q('[data-row-kind=more]');
+    const recordEl = mounted.q('[data-row-kind=record]');
+    expect(groupEl).toBeTruthy();
+    expect(moreEl).toBeTruthy();
+    expect(recordEl).toBeTruthy();
+    expect(groupEl!.querySelector('[data-slot=group-row]')).toBeTruthy();
+    expect(moreEl!.querySelector('[data-slot=group-row]')).toBeTruthy();
+    expect(recordEl!.querySelector('[data-slot=group-row]')).toBeFalsy();
+    expect(groupEl!.textContent || '').toContain('Available');
+    expect(groupEl!.textContent || '').toContain('(3)');
+    expect(groupEl!.textContent || '').not.toContain('alpha');
+    expect(moreEl!.textContent || '').toContain('more:2');
+    expect(recordEl!.textContent || '').toContain('alpha');
+    // Group row is one cell spanning the grid; record row keeps per-column cells.
+    expect(groupEl!.querySelectorAll('[role=gridcell]').length).toBe(1);
+    expect(recordEl!.querySelectorAll('[role=gridcell]').length).toBe(3);
+    mounted.unmount();
+  });
+
   test('sorted column header shows a chevron icon instead of text arrows', async () => {
     const mounted = mountApp(DataTable as any, {
       props: {

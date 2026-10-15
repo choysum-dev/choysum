@@ -197,6 +197,7 @@ export const NavigationMenuList = stub('NavigationMenuList');
 export const NavigationMenuRoot = stub('NavigationMenuRoot');
 export const NavigationMenuTrigger = stub('NavigationMenuTrigger');
 export const NavigationMenuViewport = stub('NavigationMenuViewport');
+export const PopoverAnchor = stub('PopoverAnchor');
 export const PopoverContent = stub('PopoverContent');
 export const PopoverPortal = stub('PopoverPortal');
 export const PopoverRoot = defineComponent({

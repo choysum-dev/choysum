@@ -9,7 +9,7 @@ import type UserFilter from '@/web/service/models/user_filter';
  * Field names follow {@link UserFilter}; timestamps/Condition/UserId stay wire-loose
  * (JSON may send ISO strings or nested `{ Id }`).
  */
-export type UserFilterRow = Partial<Pick<UserFilter, 'Id' | 'Name' | 'IsDefault' | 'CreatedUid'>> & {
+export type UserFilterRow = Partial<Pick<UserFilter, 'Id' | 'Name' | 'IsDefault' | 'CreatedUid' | 'GroupBy'>> & {
   Condition?: unknown;
   UserId?: string | null | { Id?: string | null };
   UpdatedAt?: Date | string | null;

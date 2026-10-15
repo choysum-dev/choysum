@@ -122,11 +122,13 @@ SPDX-License-Identifier: Apache-2.0
           :aria-rowindex="item.index + 2"
           :aria-selected="rowIsSelected(item.row)"
           :data-state="rowIsSelected(item.row) ? 'selected' : undefined"
+          :data-row-kind="dataTableRowKind(item.row)"
           tabindex="0"
           class="grid min-h-list-row w-full border-b border-border/60 text-sm transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           :class="[
             item.start != null ? 'absolute left-0' : undefined,
             rowIsSelected(item.row) ? 'bg-muted hover:bg-muted' : undefined,
+            dataTableIsGroupLikeRow(item.row) ? 'bg-muted/30' : undefined,
           ]"
           :style="{
             gridTemplateColumns: gridTemplate,
@@ -137,33 +139,52 @@ SPDX-License-Identifier: Apache-2.0
           @click="onRowClick($event, item.row)"
           @keydown="onRowKeydown($event, item.row)"
         >
+          <!-- Group / more rows: one full-width cell (main OVTable RowMerge). -->
           <div
-            v-for="cell in item.row?.getVisibleCells() ?? []"
-            :key="cell.id"
+            v-if="dataTableIsGroupLikeRow(item.row)"
             role="gridcell"
-            class="flex min-h-list-row min-w-0 items-center overflow-hidden px-2 transition-colors"
-            :class="[
-              isSelectColumn(cell.column) ? 'cursor-pointer justify-center' : undefined,
-              columnHoverClass(cell.column.id),
-            ]"
-            :data-col-hover="isColumnHovered(cell.column.id) ? '' : undefined"
-            :data-no-row-click="isSelectColumn(cell.column) ? '' : undefined"
-            @mouseenter="setHoveredColumn(cell.column.id)"
-            @click="onSelectCellClick($event, cell.column, cell.row)"
+            data-slot="group-row"
+            class="flex min-h-list-row min-w-0 items-center overflow-hidden px-2"
+            style="grid-column: 1 / -1"
           >
-            <Checkbox
-              v-if="cell.column.id === '__select'"
-              :model-value="cell.row.getIsSelected()"
-              :aria-label="`Select row ${item.index + 1}`"
-              @click.stop
-              @update:model-value="(v: boolean | 'indeterminate') => cell.row.toggleSelected(v === true)"
-            />
             <FlexRender
-              v-else
-              :render="cell.column.columnDef.cell"
-              :props="cell.getContext()"
+              v-if="groupLabelBodyCell(item.row)"
+              :render="groupLabelBodyCell(item.row)!.column.columnDef.cell"
+              :props="groupLabelBodyCell(item.row)!.getContext()"
             />
+            <span v-else class="truncate font-medium text-foreground">
+              {{ groupRowFallbackLabel(item.row) }}
+            </span>
           </div>
+          <template v-else>
+            <div
+              v-for="cell in item.row?.getVisibleCells() ?? []"
+              :key="cell.id"
+              role="gridcell"
+              class="flex min-h-list-row min-w-0 items-center overflow-hidden px-2 transition-colors"
+              :class="[
+                isSelectColumn(cell.column) ? 'cursor-pointer justify-center' : undefined,
+                columnHoverClass(cell.column.id),
+              ]"
+              :data-col-hover="isColumnHovered(cell.column.id) ? '' : undefined"
+              :data-no-row-click="isSelectColumn(cell.column) ? '' : undefined"
+              @mouseenter="setHoveredColumn(cell.column.id)"
+              @click="onSelectCellClick($event, cell.column, cell.row)"
+            >
+              <Checkbox
+                v-if="cell.column.id === '__select'"
+                :model-value="cell.row.getIsSelected()"
+                :aria-label="`Select row ${item.index + 1}`"
+                @click.stop
+                @update:model-value="(v: boolean | 'indeterminate') => cell.row.toggleSelected(v === true)"
+              />
+              <FlexRender
+                v-else
+                :render="cell.column.columnDef.cell"
+                :props="cell.getContext()"
+              />
+            </div>
+          </template>
         </div>
       </div>
       <div
@@ -200,9 +221,11 @@ import {
   applyDataTableParentScroll,
   applyDataTableScrollToRow,
   compareDataTableValues,
+  dataTableIsGroupLikeRow,
   dataTableIsVirtualized,
   dataTableMaybeMeasure,
   dataTableMeasureRow,
+  dataTableRowKind,
   dataTableScrollElement,
   dataTableSelectionIdsEqual,
   dataTableVirtualizerCount,
@@ -683,6 +706,25 @@ function isSelectColumn(column: TableColumnLike | undefined): boolean {
   if (!column) return false;
   if (column.id === '__select' || column.id === '__selection__') return true;
   return column.columnDef?.meta?.selectColumn === true;
+}
+
+type BodyRowLike = NonNullable<(typeof rows.value)[number]>;
+
+function groupLabelBodyCell(row: BodyRowLike | undefined) {
+  if (!row) return null;
+  const cells = row.getVisibleCells();
+  return cells.find((c) => c.column.id === '__group_label') ?? null;
+}
+
+function groupRowFallbackLabel(row: BodyRowLike | undefined): string {
+  const o = row?.original as { label?: unknown; remain?: unknown; kind?: unknown; type?: unknown } | undefined;
+  if (!o) return '';
+  const k = o.kind ?? o.type;
+  if (k === 'more') {
+    const remain = Number(o.remain ?? 0);
+    return `Load more (${Number.isFinite(remain) ? Math.max(0, remain) : 0})`;
+  }
+  return o.label == null ? '' : String(o.label);
 }
 
 function clickSelectCheckboxIn(event: MouseEvent): void {

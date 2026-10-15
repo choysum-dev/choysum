@@ -19,7 +19,8 @@ export function normalizeGroupby<T = any>(
       if (gran && KNOWN_GRANS.has(gran as TemporalGranularity)) out.push({ field: f, granularity: gran as TemporalGranularity });
       else out.push({ field: f });
     } else if (typeof g === 'object') {
-      let field: string = g.field;
+      let field = typeof g.field === 'string' ? g.field : '';
+      if (!field) continue;
       let gran = g.granularity as TemporalGranularity | undefined;
       if (!gran && field.includes(':')) {
         const [base, maybeGran] = field.split(':');
