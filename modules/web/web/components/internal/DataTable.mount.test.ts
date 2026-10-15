@@ -92,6 +92,53 @@ describe('DataTable chrome', () => {
     mounted.unmount();
   });
 
+  test('highlightColumnOnHover marks matching header and body cells', async () => {
+    const mounted = mountApp(DataTable as any, {
+      props: {
+        columns,
+        data: rows,
+        height: 120,
+        virtualize: false,
+        enableRowSelection: false,
+        highlightColumnOnHover: true,
+      },
+    });
+    await flushPromises();
+    const state = mounted.setupState() as {
+      setHoveredColumn?: (id: string) => void;
+      clearHoveredColumn?: () => void;
+    };
+    expect(typeof state.setHoveredColumn).toBe('function');
+    state.setHoveredColumn!('Name');
+    await flushPromises();
+    const hovered = mounted.qa('[data-col-hover]');
+    expect(hovered.length).toBe(3); // 1 header + 2 body cells
+    expect(hovered.every((el) => (el.className || '').includes('bg-muted/40'))).toBe(true);
+    state.clearHoveredColumn!();
+    await flushPromises();
+    expect(mounted.qa('[data-col-hover]').length).toBe(0);
+    mounted.unmount();
+  });
+
+  test('highlightColumnOnHover=false ignores column hover updates', async () => {
+    const mounted = mountApp(DataTable as any, {
+      props: {
+        columns,
+        data: rows,
+        height: 120,
+        virtualize: false,
+        enableRowSelection: false,
+        highlightColumnOnHover: false,
+      },
+    });
+    await flushPromises();
+    const state = mounted.setupState() as { setHoveredColumn?: (id: string) => void };
+    state.setHoveredColumn!('Name');
+    await flushPromises();
+    expect(mounted.qa('[data-col-hover]').length).toBe(0);
+    mounted.unmount();
+  });
+
   test('sorted column header shows a chevron icon instead of text arrows', async () => {
     const mounted = mountApp(DataTable as any, {
       props: {

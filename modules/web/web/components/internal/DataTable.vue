@@ -17,6 +17,7 @@ SPDX-License-Identifier: Apache-2.0
       )
     "
     :style="rootHeightStyle"
+    @mouseleave="clearHoveredColumn"
   >
     <div
       ref="headerRef"
@@ -34,8 +35,12 @@ SPDX-License-Identifier: Apache-2.0
           v-for="header in (table.getHeaderGroups().slice(-1)[0]?.headers ?? [])"
           :key="header.id"
           role="columnheader"
-          class="flex min-h-list-header items-center gap-1 px-2 py-1"
-          :class="isSelectColumn(header.column) ? 'cursor-pointer justify-center' : undefined"
+          class="flex min-h-list-header items-center gap-1 px-2 py-1 transition-colors"
+          :class="[
+            isSelectColumn(header.column) ? 'cursor-pointer justify-center' : undefined,
+            columnHoverClass(header.column.id),
+          ]"
+          :data-col-hover="isColumnHovered(header.column.id) ? '' : undefined"
           :data-no-row-click="isSelectColumn(header.column) ? '' : undefined"
           :aria-sort="
             isSelectColumn(header.column) || !header.column.getCanSort()
@@ -46,6 +51,7 @@ SPDX-License-Identifier: Apache-2.0
                   ? 'descending'
                   : 'none'
           "
+          @mouseenter="setHoveredColumn(header.column.id)"
           @click="onSelectHeaderClick($event, header.column)"
         >
           <Checkbox
@@ -135,9 +141,14 @@ SPDX-License-Identifier: Apache-2.0
             v-for="cell in item.row?.getVisibleCells() ?? []"
             :key="cell.id"
             role="gridcell"
-            class="flex min-h-list-row min-w-0 items-center overflow-hidden px-2"
-            :class="isSelectColumn(cell.column) ? 'cursor-pointer justify-center' : undefined"
+            class="flex min-h-list-row min-w-0 items-center overflow-hidden px-2 transition-colors"
+            :class="[
+              isSelectColumn(cell.column) ? 'cursor-pointer justify-center' : undefined,
+              columnHoverClass(cell.column.id),
+            ]"
+            :data-col-hover="isColumnHovered(cell.column.id) ? '' : undefined"
             :data-no-row-click="isSelectColumn(cell.column) ? '' : undefined"
+            @mouseenter="setHoveredColumn(cell.column.id)"
             @click="onSelectCellClick($event, cell.column, cell.row)"
           >
             <Checkbox
@@ -237,6 +248,8 @@ const props = withDefaults(
     enableRowSelection?: boolean;
     /** When false, host renders its own empty state. */
     showEmpty?: boolean;
+    /** Highlight the hovered column (header + body cells) with the row hover. */
+    highlightColumnOnHover?: boolean;
   }>(),
   {
     height: 280,
@@ -246,6 +259,36 @@ const props = withDefaults(
     sortingMode: 'client',
     enableRowSelection: true,
     showEmpty: true,
+    highlightColumnOnHover: true,
+  },
+);
+
+/** Column id under the pointer; drives crosshair column chrome when enabled. */
+const hoveredColumnId = ref<string | null>(null);
+
+function setHoveredColumn(columnId: string): void {
+  if (!props.highlightColumnOnHover) return;
+  if (hoveredColumnId.value === columnId) return;
+  hoveredColumnId.value = columnId;
+}
+
+function clearHoveredColumn(): void {
+  hoveredColumnId.value = null;
+}
+
+function isColumnHovered(columnId: string): boolean {
+  return props.highlightColumnOnHover && hoveredColumnId.value === columnId;
+}
+
+/** Soft column wash; row :hover still owns the stronger band via CSS. */
+function columnHoverClass(columnId: string): string | undefined {
+  return isColumnHovered(columnId) ? 'bg-muted/40' : undefined;
+}
+
+watch(
+  () => props.highlightColumnOnHover,
+  (enabled) => {
+    if (!enabled) clearHoveredColumn();
   },
 );
 
@@ -718,5 +761,10 @@ function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | u
 }
 .choy-data-table__header::-webkit-scrollbar {
   display: none;
+}
+
+/* Crosshair: deepen the cell where row hover meets the hovered column. */
+.choy-data-table__body [role='row']:hover > [data-col-hover] {
+  background-color: color-mix(in oklab, var(--muted) 55%, transparent);
 }
 </style>
