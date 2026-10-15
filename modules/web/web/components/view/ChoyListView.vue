@@ -4,12 +4,12 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyViewContainer>
+  <ChoyViewContainer class="gap-4">
     <template v-if="showHeader" #header>
       <div data-anchor="choy.list.view-chrome">
         <ChoyViewActionBar
           layout="thirds"
-          class="gap-2 border-b-0 pb-2 [border-bottom-width:0px]"
+          class="gap-2 border-b-0 [border-bottom-width:0px]"
           :system-actions-label="_t('System actions')"
           :user-actions-label="_t('User actions')"
         >

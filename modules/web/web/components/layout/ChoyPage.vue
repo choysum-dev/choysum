@@ -116,6 +116,11 @@ SPDX-License-Identifier: Apache-2.0
         </template>
       </div>
 
+      <!--
+        Page-level toolbar band (unused by current ERP List/Form paths that host
+        actions in ChoyViewActionBar). Keep mb-4; if a page stacks this above a
+        ViewContainer, prefer lowering to mb-2 so it does not double region gaps.
+      -->
       <div
         v-if="$slots.toolbar"
         data-slot="page-toolbar"
