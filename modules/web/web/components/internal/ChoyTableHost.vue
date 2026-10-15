@@ -4,13 +4,16 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div class="flex w-full min-h-0 flex-col" :style="{ height: tableHeight ? `${tableHeight}px` : undefined }">
+  <div
+    :class="cn('flex w-full min-h-0 flex-col', !tableHeight && 'h-full', props.class)"
+    :style="{ height: tableHeight ? `${tableHeight}px` : undefined }"
+  >
     <!-- Hidden slot used only for ChoyTableColumn registration. -->
     <div class="hidden" aria-hidden="true">
       <slot />
     </div>
 
-    <div class="relative min-h-0 flex-1" :style="{ height: `${bodyHeight}px` }">
+    <div class="relative min-h-0 flex-1 overflow-hidden">
       <DataTable
         ref="dataTableRef"
         class="h-full"
@@ -52,6 +55,7 @@ import {
   type Column,
 } from '@/web/web/composables/useTable';
 import { createTranslate } from '@/web/web/i18n';
+import { cn, type ClassValue } from '@/web/web/lib/utils';
 import DataTable from './DataTable.vue';
 import { columnsToColumnDefs } from './columnAdapter';
 import type { DataTableRowId } from './dataTableHelpers';
@@ -61,6 +65,7 @@ const { _t } = createTranslate('web', { scope: 'web/components/internal/ChoyTabl
 
 const props = withDefaults(
   defineProps<{
+    class?: ClassValue;
     data: any[] | (() => any[]) | any;
     columns?: Column[];
     rowKey?: string;
@@ -134,6 +139,7 @@ const columnsToUse = computed<Column[]>(() => {
 
 const columnDefs = computed(() => columnsToColumnDefs(columnsToUse.value));
 
+/** Fallback body estimate for standalone mounts; flex hosts size via h-full. */
 const bodyHeight = computed(() => {
   const total = props.tableHeight;
   if (total == null || !Number.isFinite(total)) {

@@ -789,6 +789,24 @@ describe('OSearch behavior', () => {
     m.unmount();
   });
 
+  function favCheckboxRoot(labelEl: Element): HTMLElement {
+    return labelEl.querySelector('[data-slot="checkbox"]') as HTMLElement;
+  }
+
+  function favCheckboxOn(labelEl: Element): boolean {
+    const el = favCheckboxRoot(labelEl);
+    return (
+      el?.getAttribute('data-state') === 'checked' ||
+      el?.getAttribute('aria-checked') === 'true'
+    );
+  }
+
+  async function setFavCheckbox(labelEl: Element, on: boolean): Promise<void> {
+    if (favCheckboxOn(labelEl) === on) return;
+    favCheckboxRoot(labelEl).click();
+    await nextTick();
+  }
+
   test('saves with isDefault and shared checkboxes enabled', async () => {
     const m = mountSearch();
     await flushPromises();
@@ -799,10 +817,7 @@ describe('OSearch behavior', () => {
     await nextTick();
     const defaultCheck = m.qa('.fav-check').find(l => (l.textContent || '').includes('Use by default'));
     expect(defaultCheck).toBeTruthy();
-    const defaultInput = defaultCheck!.querySelector('input') as HTMLInputElement;
-    defaultInput.checked = true;
-    defaultInput.dispatchEvent(new Event('change', { bubbles: true }));
-    await nextTick();
+    await setFavCheckbox(defaultCheck!, true);
     const saveBtn = m.qa('button').find(b => (b.textContent || '').trim() === 'Save') as HTMLElement;
     saveBtn.click();
     await flushPromises();
@@ -819,10 +834,7 @@ describe('OSearch behavior', () => {
     await nextTick();
     const sharedCheck = m.qa('.fav-check').find(l => (l.textContent || '').includes('Share with all users'));
     expect(sharedCheck).toBeTruthy();
-    const sharedInput = sharedCheck!.querySelector('input') as HTMLInputElement;
-    sharedInput.checked = true;
-    sharedInput.dispatchEvent(new Event('change', { bubbles: true }));
-    await nextTick();
+    await setFavCheckbox(sharedCheck!, true);
     (m.qa('button').find(b => (b.textContent || '').trim() === 'Save') as HTMLElement).click();
     await flushPromises();
     expect(savedFiltersApi.saveCurrent.calls[0]![0]).toEqual({
@@ -865,15 +877,12 @@ describe('OSearch behavior', () => {
     expect((((m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null) as HTMLInputElement).value).toBe('Company Management');
     const defaultCheck = m.qa('.fav-check').find(l => (l.textContent || '').includes('Use by default'));
     const sharedCheck = m.qa('.fav-check').find(l => (l.textContent || '').includes('Share with all users'));
-    expect((defaultCheck!.querySelector('input') as HTMLInputElement).checked).toBe(true);
-    expect((sharedCheck!.querySelector('input') as HTMLInputElement).checked).toBe(true);
+    expect(favCheckboxOn(defaultCheck!)).toBe(true);
+    expect(favCheckboxOn(sharedCheck!)).toBe(true);
 
     setInputValue(((m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), 'Renamed Fav');
     await nextTick();
-    const sharedInput = sharedCheck!.querySelector('input') as HTMLInputElement;
-    sharedInput.checked = false;
-    sharedInput.dispatchEvent(new Event('change', { bubbles: true }));
-    await nextTick();
+    await setFavCheckbox(sharedCheck!, false);
     const beforeReady = (m.emitted['defaults-ready'] || []).length;
     (m.qa('button').find(b => (b.textContent || '').trim() === 'Save') as HTMLElement).click();
     await flushPromises();

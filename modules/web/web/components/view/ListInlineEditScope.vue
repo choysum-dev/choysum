@@ -4,7 +4,9 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <slot />
+  <div :class="props.class">
+    <slot />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -14,11 +16,13 @@ SPDX-License-Identifier: Apache-2.0
  * reading/writing the active row draft via list-wide provides.
  */
 import { provide, toRef } from 'vue';
+import type { ClassValue } from '../../lib/utils';
 import { useProvideViewScope, type ViewMode } from './viewScopeKeys';
 
 defineOptions({ name: 'ListInlineEditScope' });
 
 const props = defineProps<{
+  class?: ClassValue;
   formRoot: {
     draft: unknown;
     getField: (path: string) => unknown;

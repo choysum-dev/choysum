@@ -10,12 +10,18 @@ SPDX-License-Identifier: Apache-2.0
     :aria-multiselectable="enableRowSelection ? 'true' : undefined"
     :aria-rowcount="rows.length ? rows.length + 1 : 2"
     :aria-colcount="table.getVisibleLeafColumns().length"
-    :class="cn('choy-data-table overflow-hidden rounded-md border border-border bg-background', props.class)"
+    :class="
+      cn(
+        'choy-data-table flex min-h-0 flex-col overflow-hidden rounded-md border border-border bg-background',
+        props.class,
+      )
+    "
+    :style="rootHeightStyle"
   >
     <div
       ref="headerRef"
       role="rowgroup"
-      class="choy-data-table__header overflow-x-auto overflow-y-hidden border-b border-border bg-muted/20 text-xs font-medium text-muted-foreground"
+      class="choy-data-table__header shrink-0 overflow-x-auto overflow-y-hidden border-b border-border bg-muted/20 text-xs font-medium text-muted-foreground"
       @scroll.passive="onHeaderScroll"
     >
       <div
@@ -65,8 +71,7 @@ SPDX-License-Identifier: Apache-2.0
     <div
       ref="parentRef"
       role="rowgroup"
-      class="choy-data-table__body relative overflow-auto"
-      :style="{ height: `${height}px` }"
+      class="choy-data-table__body relative min-h-0 flex-1 overflow-auto"
       @scroll.passive="onBodyScroll"
     >
       <div
@@ -223,6 +228,16 @@ const emit = defineEmits<{
   'row-click': [row: T];
   'sort-change': [payload: { field: string; direction?: 'asc' | 'desc' }];
 }>();
+
+/** Total table height (header + body). Hosts that pass `h-full` size via parent instead. */
+const rootHeightStyle = computed(() => {
+  const cls = props.class;
+  const classStr = typeof cls === 'string' ? cls : Array.isArray(cls) ? cls.filter(Boolean).join(' ') : '';
+  if (classStr.includes('h-full')) return undefined;
+  const h = props.height;
+  if (h == null || !Number.isFinite(h) || h <= 0) return undefined;
+  return { height: `${h}px` };
+});
 
 const sorting = ref<SortingState>([]);
 const rowSelection = ref<RowSelectionState>({});

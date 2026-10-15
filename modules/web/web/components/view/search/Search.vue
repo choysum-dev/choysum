@@ -5,29 +5,30 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <div class="choy-search w-full" data-anchor="choy.search">
-    <div
-      class="choy-search__main box-border flex min-h-control cursor-text flex-wrap items-center gap-0.5 rounded-md border border-border bg-card px-2 hover:border-accent-foreground/20 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30"
+    <InputGroup
+      class="choy-search__main h-auto min-h-control flex-wrap items-center gap-0.5 bg-card shadow-none"
       @click="focusInput"
     >
-      <span>
+      <InputGroupAddon align="inline-start" class="py-0 pe-0">
         <ChoyButton
           size="sm"
           variant="ghost"
-          class="choy-search__leading-btn me-0.5 px-1.5 py-0"
+          class="choy-search__leading-btn px-1.5 py-0"
           :aria-label="_t('Run search')"
           @mousedown.prevent
           @click.stop="onSearchIconClick"
         >
           <Search class="size-4" />
         </ChoyButton>
-      </span>
+      </InputGroupAddon>
 
-      <div class="choy-search__tags flex max-w-full flex-wrap items-center gap-0.5">
-        <span
+      <div class="choy-search__tags flex max-w-full flex-wrap items-center gap-0.5 py-0.5">
+        <ChoyBadge
           v-if="hasGrouping"
-          class="choy-search__tag choy-search__grouptag inline-flex h-control cursor-pointer select-none items-center gap-1 rounded border border-border px-1.5 text-sm transition-colors hover:border-border hover:bg-accent hover:text-accent-foreground active:bg-accent"
-          @click.stop="onEditGroupClick()"
+          variant="secondary"
+          class="choy-search__tag choy-search__grouptag h-control cursor-pointer gap-1 rounded-md px-1.5 text-sm font-normal"
           :title="groupingTooltip"
+          @click.stop="onEditGroupClick()"
         >
           {{ _t('Group: %s', groupingSummary) }}
           <button
@@ -38,15 +39,16 @@ SPDX-License-Identifier: Apache-2.0
           >
             <X class="size-3" />
           </button>
-        </span>
+        </ChoyBadge>
 
-        <span
+        <ChoyBadge
           v-for="f in filters"
           :key="f.id"
-          class="choy-search__tag inline-flex h-control cursor-pointer select-none items-center gap-1 rounded border border-border px-1.5 text-sm transition-colors hover:border-border hover:bg-accent hover:text-accent-foreground active:bg-accent"
-          :class="{ 'choy-search__tag--pending-delete border-danger bg-danger/10 text-danger hover:border-danger hover:text-danger [&_button]:text-danger': f.id === pendingDeleteFilterId }"
-          @click.stop="onTagClick(f.id!)"
+          :variant="f.id === pendingDeleteFilterId ? 'destructive' : 'secondary'"
+          class="choy-search__tag h-control cursor-pointer gap-1 rounded-md px-1.5 text-sm font-normal"
+          :class="{ 'choy-search__tag--pending-delete': f.id === pendingDeleteFilterId }"
           :title="f.name || filterTooltip(f)"
+          @click.stop="onTagClick(f.id!)"
         >
           {{ f.name || summarizeFilterFields(f, 2) }}
           <button
@@ -57,13 +59,13 @@ SPDX-License-Identifier: Apache-2.0
           >
             <X class="size-3" />
           </button>
-        </span>
+        </ChoyBadge>
       </div>
 
-      <input
+      <InputGroupInput
         ref="inputRef"
         v-model="keyword"
-        class="choy-search__input min-w-[140px] flex-1 border-0 bg-transparent px-1 py-0 text-sm leading-none text-foreground outline-none"
+        class="choy-search__input min-w-[140px] px-1"
         :placeholder="placeholder"
         :name="inputName"
         :id="inputId"
@@ -72,7 +74,7 @@ SPDX-License-Identifier: Apache-2.0
         @blur="onInputBlur"
       />
 
-      <div class="choy-search__suffix ml-1 flex items-center gap-0.5 border-l border-border pl-1.5">
+      <InputGroupAddon align="inline-end" class="choy-search__suffix gap-0.5 border-l border-border py-0 ps-1.5">
         <ChoyButton
           v-if="hasClearableSearch"
           size="sm"
@@ -187,8 +189,8 @@ SPDX-License-Identifier: Apache-2.0
           </div>
           </PopoverContent>
         </Popover>
-      </div>
-    </div>
+      </InputGroupAddon>
+    </InputGroup>
 
     <ChoyDialog v-model:open="isEditorOpen">
       <ChoyDialogContent>
@@ -213,17 +215,25 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyDialog v-model:open="saveFavoriteOpen">
       <ChoyDialogContent class="max-w-md">
         <ChoyDialogTitle>{{ saveFavoriteDialogTitle }}</ChoyDialogTitle>
-      <form @submit.prevent>
-        <div>
-          <label>{{ _t('Name') }}</label>
-          <input class="fav-name" v-model="saveFavoriteName" :placeholder="_t('Favorite name')" @keydown.enter.prevent="onConfirmSaveFavorite" />
+      <form class="flex flex-col gap-3" @submit.prevent>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-foreground" for="choy-search-fav-name">{{ _t('Name') }}</label>
+          <Input
+            id="choy-search-fav-name"
+            class="fav-name"
+            v-model="saveFavoriteName"
+            :placeholder="_t('Favorite name')"
+            @keydown.enter.prevent="onConfirmSaveFavorite"
+          />
         </div>
-        <div>
-          <label class="fav-check"><input type="checkbox" v-model="saveFavoriteIsDefault" /> {{ _t('Use by default') }}</label>
-        </div>
-        <div>
-          <label class="fav-check"><input type="checkbox" v-model="saveFavoriteShared" /> {{ _t('Share with all users') }}</label>
-        </div>
+        <label class="fav-check flex items-center gap-2 text-sm text-foreground">
+          <Checkbox v-model="saveFavoriteIsDefault" />
+          {{ _t('Use by default') }}
+        </label>
+        <label class="fav-check flex items-center gap-2 text-sm text-foreground">
+          <Checkbox v-model="saveFavoriteShared" />
+          {{ _t('Share with all users') }}
+        </label>
       </form>
       <div class="mt-4 flex justify-end gap-2">
         <ChoyButton size="sm" variant="outline" @click="saveFavoriteOpen = false">{{ _t('Cancel') }}</ChoyButton>
@@ -267,8 +277,16 @@ import { useBreadcrumbStore } from '@/web/web/stores/breadcrumbStore';
 import { useMenuStore } from '@/web/web/stores/menuStore';
 import { useRoute } from 'vue-router';
 import { Search, ChevronDown, Check, Pencil, X } from 'lucide-vue-next';
+import ChoyBadge from '@/web/web/components/layout/ChoyBadge.vue';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
+import Checkbox from '@/web/web/components/vendor/ui/checkbox/Checkbox.vue';
+import Input from '@/web/web/components/vendor/ui/input/Input.vue';
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from '@/web/web/components/vendor/ui/input-group';
 import Popover from '@/web/web/components/vendor/ui/popover/Popover.vue';
 import PopoverContent from '@/web/web/components/vendor/ui/popover/PopoverContent.vue';
 import PopoverTrigger from '@/web/web/components/vendor/ui/popover/PopoverTrigger.vue';
@@ -369,7 +387,7 @@ const hasGrouping = computed(() => {
 const placeholder = computed(() => props.placeholder || _t('Search...'));
 const inputName = computed(() => `${(store as any)?.storeId || 'search'}-keyword`);
 const inputId = computed(() => `${inputName.value}-input`);
-const inputRef = ref<HTMLInputElement | null>(null);
+const inputRef = ref<{ $el?: HTMLInputElement } | HTMLInputElement | null>(null);
 const pendingDeleteFilterId = ref<string | null>(null);
 const menuVisible = ref(false);
 
@@ -631,7 +649,14 @@ function onSearchIconClick() {
 }
 
 function focusInput() {
-  inputRef.value?.focus();
+  const r = inputRef.value as { $el?: HTMLInputElement; focus?: () => void } | HTMLInputElement | null;
+  if (!r) return;
+  if (typeof (r as HTMLInputElement).focus === 'function' && !(r as { $el?: unknown }).$el) {
+    (r as HTMLInputElement).focus();
+    return;
+  }
+  const el = (r as { $el?: HTMLInputElement }).$el;
+  if (el && typeof el.focus === 'function') el.focus();
 }
 
 function onTagClick(id: string) {

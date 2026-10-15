@@ -68,47 +68,46 @@ SPDX-License-Identifier: Apache-2.0
           </template>
         </ChoyAppHeader>
         <!--
-          Same sticky-footer contract as GuestShell: short canvas pins Powered-by
-          to the inset bottom; tall canvas scrolls with footer after content.
+          Workspace layout (ERP): main column does not scroll; footer is pinned
+          below the canvas. List/Kanban/Form fill the canvas and scroll inside.
         -->
         <div
-          class="choy-shell__scroll min-h-0 flex-1 overflow-y-auto"
+          class="choy-shell__workspace flex min-h-0 flex-1 flex-col overflow-hidden"
           data-testid="choy-shell-scroll"
+          data-shell-layout="workspace"
         >
-          <div class="choy-shell__scroll-inner flex min-h-full flex-col">
-            <div
-              class="choy-shell__main-inner flex flex-1 flex-col"
-              data-testid="choy-shell-canvas"
-            >
-              <slot>
-                <router-view v-slot="{ Component, route: viewRoute }">
-                  <KeepAlive>
-                    <component
-                      :is="Component"
-                      v-if="Component && viewRoute.meta?.keepAlive"
-                      class="min-h-0 flex-1"
-                      :key="viewRoute.path"
-                    />
-                  </KeepAlive>
+          <div
+            class="choy-shell__main-inner flex min-h-0 flex-1 flex-col overflow-hidden"
+            data-testid="choy-shell-canvas"
+          >
+            <slot>
+              <router-view v-slot="{ Component, route: viewRoute }">
+                <KeepAlive>
                   <component
                     :is="Component"
-                    v-if="Component && !viewRoute.meta?.keepAlive"
+                    v-if="Component && viewRoute.meta?.keepAlive"
                     class="min-h-0 flex-1"
-                    :key="viewRoute.fullPath"
+                    :key="viewRoute.path"
                   />
-                </router-view>
-              </slot>
-            </div>
-            <footer
-              v-if="showFooter"
-              class="choy-shell__footer choy-inset-pad-x flex shrink-0 items-center justify-center bg-background"
-              :style="{ minHeight: 'var(--choy-layout-footer-height)' }"
-              data-testid="choy-shell-footer"
-            >
-              <ChoyAppFooter />
-              <slot name="footer" />
-            </footer>
+                </KeepAlive>
+                <component
+                  :is="Component"
+                  v-if="Component && !viewRoute.meta?.keepAlive"
+                  class="min-h-0 flex-1"
+                  :key="viewRoute.fullPath"
+                />
+              </router-view>
+            </slot>
           </div>
+          <footer
+            v-if="showFooter"
+            class="choy-shell__footer choy-inset-pad-x flex shrink-0 items-center justify-center bg-background"
+            :style="{ minHeight: 'var(--choy-layout-footer-height)' }"
+            data-testid="choy-shell-footer"
+          >
+            <ChoyAppFooter />
+            <slot name="footer" />
+          </footer>
         </div>
       </SidebarInset>
     </div>
@@ -294,7 +293,8 @@ html.dark .choy-shell[data-shell-mode='app'],
   background-color: var(--choy-shell-pane) !important;
 }
 
-.choy-shell[data-shell-mode='app'] [data-testid='choy-shell-scroll'] {
+.choy-shell[data-shell-mode='app'] [data-testid='choy-shell-scroll'],
+.choy-shell[data-shell-mode='app'] [data-testid='choy-shell-canvas'] {
   background-color: var(--color-background, var(--choy-color-background)) !important;
 }
 

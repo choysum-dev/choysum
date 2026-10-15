@@ -9,7 +9,7 @@ SPDX-License-Identifier: Apache-2.0
       <div data-anchor="choy.list.view-chrome">
         <ChoyViewActionBar
           layout="thirds"
-          class="gap-2 border-b-0 pb-2"
+          class="gap-2 border-b-0 pb-2 [border-bottom-width:0px]"
           :system-actions-label="_t('System actions')"
           :user-actions-label="_t('User actions')"
         >
@@ -151,21 +151,26 @@ SPDX-License-Identifier: Apache-2.0
       </div>
     </template>
 
-    <ChoyViewBusyHost :busy="listBusy" class="min-h-0 min-w-0 flex-1">
+    <ChoyViewBusyHost :busy="listBusy" class="flex min-h-0 min-w-0 flex-1 flex-col">
     <div
       ref="tableWrapRef"
       data-anchor="choy.list.table"
-      class="choy-list-view__table min-h-0 min-w-0 flex-1 overflow-hidden rounded-md border border-border/70 bg-card shadow-xs [&_.choy-field-base]:mb-0 [&_.choy-field-base__cell-item]:mb-0 [&_.choy-data-table]:h-full [&_.choy-data-table]:rounded-none [&_.choy-data-table]:border-0 [&_.choy-data-table__header]:border-border/50 [&_.choy-data-table__header]:bg-muted/40 [&_.choy-data-table__body_[role=row]]:border-border/40 [&_.choy-data-table__body_[role=row]:hover]:bg-muted/50"
-      :style="{ height: listTablePxHeight }"
+      class="choy-list-view__table flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden rounded-md border border-border bg-card shadow-xs [&_.choy-field-base]:mb-0 [&_.choy-field-base__cell-item]:mb-0 [&_.choy-data-table]:h-full [&_.choy-data-table]:rounded-none [&_.choy-data-table]:border-0 [&_.choy-data-table__header]:border-border [&_.choy-data-table__header]:bg-muted/30 [&_.choy-data-table__body_[role=row]]:border-border/50 [&_.choy-data-table__body_[role=row]:hover]:bg-muted/40"
+      :style="listTableWrapStyle"
     >
       <!-- form-root + edit view-mode only under the table so header search cannot touch the row draft -->
-      <ListInlineEditScope :form-root="inlineFormRoot" :view-mode="inlineTableViewMode">
+      <ListInlineEditScope
+        class="flex min-h-0 flex-1 flex-col"
+        :form-root="inlineFormRoot"
+        :view-mode="inlineTableViewMode"
+      >
         <ChoyTableHost
+          class="min-h-0 flex-1"
           :data="tableItems"
           :row-key="computedRowKey"
           :row-height="effectiveRowHeight"
           :header-height="headerHeight"
-          :table-height="listTableHeight"
+          :table-height="pixelTableHeight"
           :selection-api="selection"
           :base-index="baseIndex"
           :store="store"
@@ -178,7 +183,18 @@ SPDX-License-Identifier: Apache-2.0
           <ChoyTableColumn v-if="isGroupMode" col-key="__group_label" :sortable="false">
             <template #default="{ row }">
               <div v-if="row?.kind === 'group'" class="inline-flex min-w-0 items-center gap-1.5" :style="{ paddingLeft: `${row.depth * 16}px` }">
-                <span class="inline-block size-0 cursor-pointer border-y-4 border-y-transparent border-l-[6px] border-l-foreground transition-transform duration-100" :class="{ 'rotate-90': isExpanded(row.key) }" @click.stop="onToggleGroup(row.key)" />
+                <button
+                  type="button"
+                  class="inline-flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+                  :aria-expanded="isExpanded(row.key)"
+                  @click.stop="onToggleGroup(row.key)"
+                >
+                  <ChevronRight
+                    class="size-3.5 transition-transform duration-100"
+                    :class="{ 'rotate-90': isExpanded(row.key) }"
+                    aria-hidden="true"
+                  />
+                </button>
                 <span class="max-w-full truncate font-medium text-foreground">{{ row.label }}</span>
                 <span class="text-muted-foreground">({{ row.count ?? 0 }})</span>
               </div>
@@ -247,7 +263,6 @@ import { createListController } from '@/web/web/controllers/listController';
 import type { OrderByState, PaginationState } from '@/web/web/query/state';
 import { useCancelableEmit } from '@/web/web/composables/useCancelableEmit';
 import { useAdaptiveHeight } from '@/web/web/composables/useAdaptiveHeight';
-import { computeListTableBodyHeight } from '@/web/web/composables/adaptiveHeightMath';
 import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
 import ChoyViewActionBar from '@/web/web/components/view/ChoyViewActionBar.vue';
 import ChoyViewBusyHost from '@/web/web/components/view/ChoyViewBusyHost.vue';
@@ -269,7 +284,7 @@ import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyPageTitleActions from '@/web/web/components/layout/ChoyPageTitleActions.vue';
 import { Separator } from '@/web/web/components/vendor/ui/separator';
 import DropdownMenuItem from '@/web/web/components/vendor/ui/dropdown-menu/DropdownMenuItem.vue';
-import { Plus, RefreshCw, Trash2, X } from 'lucide-vue-next';
+import { ChevronRight, Plus, RefreshCw, Trash2, X } from 'lucide-vue-next';
 
 defineOptions({ name: 'ChoyListView', inheritAttrs: false });
 
@@ -328,7 +343,8 @@ const props = withDefaults(
     rowHeight: 32,
     rowKey: 'Id',
     showPagination: true,
-    viewportGap: 78,
+    // Shell path uses footer.top; this only applies outside AppShell.
+    viewportGap: 12,
     refreshAction: true,
     deleteAction: true,
     selectionMode: 'multiple',
@@ -652,14 +668,26 @@ watch(items, () => {
 });
 
 // =============================
-// Section 13: Adaptive height composable integration
+// Section 13: Height — workspace flex fill vs dialog pixel height
 // =============================
+// auto (default): CSS flex-1 fill under AppShell workspace (no shell scroll).
+// viewport | container: pixel height for relation pickers / dialog embeds.
+const usePixelHeight = computed(
+  () => props.heightMode === 'viewport' || props.heightMode === 'container',
+);
+const adaptiveMode = computed(() => {
+  if (props.heightMode === 'container') return 'container' as const;
+  if (props.heightMode === 'viewport') return 'viewport' as const;
+  return 'none' as const;
+});
+
 const tableWrapRef = ref<HTMLElement | null>(null);
 const {
   height: adaptiveTableHeight,
   recompute: recomputeTableHeight,
 } = useAdaptiveHeight(tableWrapRef as Ref<Element | null>, {
-  mode: props.heightMode,
+  // Snapshot at setup: workspace lists use auto→none; pickers pass viewport/container.
+  mode: adaptiveMode.value,
   containerSelector: props.containerSelector,
   viewportGap: props.viewportGap,
   minContainerHeight: 160,
@@ -674,16 +702,18 @@ const {
 const virtualization = useVirtualizationAdapter({ rowHeight: props.rowHeight });
 const effectiveRowHeight = computed(() => virtualization.config.value.rowHeight || props.rowHeight || 32);
 
-/** Cap short pages so the list body does not leave a tall empty void under few rows. */
-const listTableHeight = computed(() =>
-  computeListTableBodyHeight({
-    viewport: adaptiveTableHeight.value,
-    rowCount: tableItems.value?.length ?? 0,
-    rowHeight: effectiveRowHeight.value || 32,
-    headerHeight: props.headerHeight ?? 32,
-  }),
-);
-const listTablePxHeight = computed(() => (listTableHeight.value > 0 ? `${listTableHeight.value}px` : ''));
+/** Pixel height only for viewport/container embeds; workspace lists leave this undefined. */
+const pixelTableHeight = computed(() => {
+  if (!usePixelHeight.value) return undefined;
+  const h = adaptiveTableHeight.value;
+  return h > 0 ? h : undefined;
+});
+const listTableWrapStyle = computed(() => {
+  const h = pixelTableHeight.value;
+  if (h == null) return undefined;
+  const px = `${h}px`;
+  return { height: px, maxHeight: px };
+});
 watch(
   () => props.rowHeight,
   v => {
@@ -693,8 +723,9 @@ watch(
   }
 );
 
-// Utility: recompute height on next tick after layout changes
+// Utility: recompute pixel height after layout changes (embed modes only).
 function afterLayoutRecompute() {
+  if (!usePixelHeight.value) return nextTick();
   return nextTick().then(recomputeTableHeight);
 }
 

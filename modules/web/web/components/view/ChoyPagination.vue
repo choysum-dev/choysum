@@ -8,37 +8,43 @@ SPDX-License-Identifier: Apache-2.0
     data-anchor="choy.pagination"
     data-testid="choy-pagination"
     :class="[
-      'choy-pagination flex h-control flex-wrap items-center gap-2 text-sm text-foreground',
+      'choy-pagination flex h-control shrink-0 flex-nowrap items-center gap-2 text-sm text-foreground',
       props.class,
     ]"
   >
-    <div class="choy-pagination__range inline-flex items-center gap-1 text-sm tabular-nums text-muted-foreground">
-      <!-- Shared narrow box so idle ↔ edit does not shift "/ total" or the pager buttons. -->
-      <input
+    <div
+      class="choy-pagination__range inline-flex items-center gap-1 whitespace-nowrap text-sm tabular-nums text-muted-foreground"
+    >
+      <!-- Edit replaces the whole range cluster (value / total) so the input is never cramped or fake-wide. -->
+      <Input
         v-if="editing"
         ref="rangeInputRef"
         type="text"
         inputmode="text"
-        class="choy-pagination__range-input box-border h-control w-14 shrink-0 rounded-md border border-input bg-background px-1 text-center text-sm tabular-nums text-foreground outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:opacity-50"
+        class="choy-pagination__range-input box-border h-control w-auto shrink-0 bg-background px-1.5 text-center text-sm tabular-nums shadow-none focus-visible:border-ring focus-visible:ring-0 focus-visible:ring-offset-0"
+        :style="{ width: rangeInputWidth }"
         :disabled="disabled"
         :aria-label="rangeEditAriaLabel"
-        :value="editDraft"
-        @input="onEditInput"
+        v-model="editDraft"
         @keydown="onEditKeydown"
         @blur="commitEdit"
       />
       <button
         v-else
         type="button"
-        class="choy-pagination__range-value box-border inline-flex h-control w-14 shrink-0 items-center justify-center rounded-md border border-transparent bg-transparent px-1 text-sm tabular-nums text-foreground underline decoration-muted-foreground/60 underline-offset-4 hover:decoration-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+        class="choy-pagination__range-idle inline-flex h-control w-auto shrink-0 items-center gap-1 rounded-md border border-transparent bg-transparent px-1 text-sm tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
         :disabled="disabled || normalizedTotal <= 0"
         :aria-label="rangeEditAriaLabel"
         @click="startEdit"
       >
-        {{ rangeValueLabel }}
+        <span
+          class="choy-pagination__range-value whitespace-nowrap text-foreground underline decoration-muted-foreground/60 underline-offset-4 hover:decoration-foreground"
+        >
+          {{ rangeValueLabel }}
+        </span>
+        <span aria-hidden="true">/</span>
+        <span class="choy-pagination__total tabular-nums" aria-live="polite">{{ normalizedTotal }}</span>
       </button>
-      <span aria-hidden="true">/</span>
-      <span class="choy-pagination__total tabular-nums" aria-live="polite">{{ normalizedTotal }}</span>
     </div>
     <ChoyButtonGroup>
       <ChoyButton
@@ -72,6 +78,7 @@ import { computed, nextTick, ref, watch } from 'vue';
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import ChoyButton from '../layout/ChoyButton.vue';
 import ChoyButtonGroup from '../layout/ChoyButtonGroup.vue';
+import Input from '../vendor/ui/input/Input.vue';
 import type { ClassValue } from '../../lib/utils';
 import { createTranslate } from '../../i18n';
 import {
@@ -104,8 +111,18 @@ const pageSize = defineModel<number>('pageSize', { default: 20 });
 
 const editing = ref(false);
 const editDraft = ref('');
-const rangeInputRef = ref<HTMLInputElement | null>(null);
+const rangeInputRef = ref<{ $el?: HTMLInputElement } | HTMLInputElement | null>(null);
 const suppressBlurCommit = ref(false);
+
+function rangeInputEl(): HTMLInputElement | null {
+  const r = rangeInputRef.value;
+  if (!r) return null;
+  if (typeof (r as HTMLInputElement).focus === 'function' && !(r as { $el?: unknown }).$el) {
+    return r as HTMLInputElement;
+  }
+  const el = (r as { $el?: HTMLInputElement }).$el;
+  return el instanceof HTMLInputElement ? el : null;
+}
 /** Skip page→1 reset while applying an edited range that sets both models. */
 const applyingRangeEdit = ref(false);
 
@@ -157,6 +174,14 @@ const rangeEnd = computed(() => {
 const rangeValueLabel = computed(() =>
   formatChoyPagerRangeValue(rangeStart.value, rangeEnd.value),
 );
+/** Idle cluster text used to size the edit input (replaces value + / + total). */
+const rangeIdleLabel = computed(
+  () => `${rangeValueLabel.value} / ${normalizedTotal.value}`,
+);
+const rangeInputWidth = computed(() => {
+  const ch = Math.min(18, Math.max(10, rangeIdleLabel.value.length + 1));
+  return `${ch}ch`;
+});
 const rangeEditLabel = computed(() => _t('Edit page range'));
 const rangeEditAriaLabel = computed(
   () => `${rangeEditLabel.value}: ${rangeValueLabel.value} / ${normalizedTotal.value}`,
@@ -173,7 +198,7 @@ async function startEdit(): Promise<void> {
   editing.value = true;
   editDraft.value = rangeValueLabel.value;
   await nextTick();
-  const el = rangeInputRef.value;
+  const el = rangeInputEl();
   if (el && typeof el.focus === 'function') {
     el.focus();
   }

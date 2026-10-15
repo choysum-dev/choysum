@@ -129,7 +129,10 @@ SPDX-License-Identifier: Apache-2.0
       <div
         data-slot="page-body"
         class="choy-page__body"
-        :class="{ 'pb-4': !!$slots.footer, 'flex min-h-0 flex-1 flex-col': props.fillHeight }"
+        :class="{
+          'pb-4': !!$slots.footer,
+          'flex min-h-0 flex-1 flex-col overflow-hidden': props.fillHeight,
+        }"
         :inert="loading || undefined"
       >
         <slot />
@@ -213,7 +216,8 @@ const props = withDefaults(
     showBreadcrumb: false,
     padding: true,
     width: '',
-    fillHeight: false,
+    // ERP workspace pages fill the shell canvas; opt out for rare document pages.
+    fillHeight: true,
     loading: false,
     actionImport: false,
     actionExport: false,
