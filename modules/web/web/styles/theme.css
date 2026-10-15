@@ -10,6 +10,7 @@
  *   --height-control → h-control / min-h-control
  *   --size-control   → size-control (square icon controls)
  *   --height-control-sm / -lg → Button size sm/lg only
+ *   --height-list-row / --height-list-header → List/DataTable row tracks
  * Do not rename to --spacing-control* solely for stock TW docs: spacing would
  * also invent p-control / m-control / gap-control from the same scale.
  * Colors, radius, and ring stay on --choy-color-* / --choy-radius-*.
@@ -73,6 +74,8 @@
   --height-control-sm: var(--choy-control-height-sm);
   --height-control-lg: var(--choy-control-height-lg);
   --size-control: var(--choy-control-height);
+  --height-list-row: var(--choy-list-row-height);
+  --height-list-header: var(--choy-list-header-height);
 }
 
 @custom-variant dark (&:where(.dark, .dark *));

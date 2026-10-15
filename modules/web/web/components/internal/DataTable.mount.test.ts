@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { ColumnDef } from '@tanstack/vue-table';
-import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
+import { flushPromises, fnRecorder, mountApp } from '@/web/web/__tests__/mountApp';
 import DataTable from './DataTable.vue';
 
 type Row = { Id: string; Name: string };
@@ -15,6 +15,108 @@ const rows: Row[] = [
   { Id: '1', Name: 'alpha' },
   { Id: '2', Name: 'beta' },
 ];
+
+describe('DataTable chrome', () => {
+  test('selected rows expose data-state and keep dense header/body classes', async () => {
+    const mounted = mountApp(DataTable as any, {
+      props: {
+        columns,
+        data: rows,
+        height: 120,
+        virtualize: false,
+        enableRowSelection: true,
+        rowSelection: ['1'],
+      },
+    });
+    await flushPromises();
+    const bodyRows = mounted.qa('[data-index]');
+    expect(bodyRows.length).toBe(2);
+    const selected = bodyRows.filter((el) => el.getAttribute('data-state') === 'selected');
+    expect(selected.length).toBe(1);
+    expect(selected[0]?.getAttribute('aria-selected')).toBe('true');
+    expect(selected[0]?.className || '').toContain('bg-muted');
+    expect(selected[0]?.className || '').toContain('min-h-list-row');
+    const header = mounted.q('.choy-data-table__header');
+    expect(header?.className || '').toContain('text-sm');
+    expect(header?.className || '').not.toContain('text-xs');
+    mounted.unmount();
+  });
+
+  test('host-controlled rowSelection paints selected chrome without built-in select column', async () => {
+    const mounted = mountApp(DataTable as any, {
+      props: {
+        columns,
+        data: rows,
+        height: 120,
+        virtualize: false,
+        enableRowSelection: false,
+        rowSelection: ['2'],
+      },
+    });
+    await flushPromises();
+    const bodyRows = mounted.qa('[data-index]');
+    const selected = bodyRows.filter((el) => el.getAttribute('data-state') === 'selected');
+    expect(selected.length).toBe(1);
+    expect(selected[0]?.getAttribute('data-index')).toBe('1');
+    expect(selected[0]?.getAttribute('aria-selected')).toBe('true');
+    expect(selected[0]?.className || '').toContain('bg-muted');
+    mounted.unmount();
+  });
+
+  test('select column cell click toggles selection without emitting row-click', async () => {
+    const onRowClick = fnRecorder();
+    const onUpdateRowSelection = fnRecorder();
+    const mounted = mountApp(DataTable as any, {
+      props: {
+        columns,
+        data: rows,
+        height: 120,
+        virtualize: false,
+        enableRowSelection: true,
+        rowSelection: [],
+      },
+      on: {
+        onRowClick,
+        'onUpdate:rowSelection': onUpdateRowSelection,
+      },
+    });
+    await flushPromises();
+    const selectCell = mounted.qa('[role=gridcell]').find((el) => el.getAttribute('data-no-row-click') != null);
+    expect(selectCell).toBeTruthy();
+    (selectCell as HTMLElement).click();
+    await flushPromises();
+    expect(onUpdateRowSelection.calls.length).toBeGreaterThan(0);
+    const next = onUpdateRowSelection.calls.at(-1)?.[0] as unknown[];
+    expect(Array.isArray(next) && next.length > 0).toBe(true);
+    expect(onRowClick.calls.length).toBe(0);
+    mounted.unmount();
+  });
+
+  test('sorted column header shows a chevron icon instead of text arrows', async () => {
+    const mounted = mountApp(DataTable as any, {
+      props: {
+        columns,
+        data: rows,
+        height: 120,
+        virtualize: false,
+        enableRowSelection: false,
+        enableSorting: true,
+        sortingMode: 'client',
+      },
+    });
+    await flushPromises();
+    const state = mounted.setupState() as { onHeaderClick?: (id: string, canSort: boolean) => void };
+    expect(typeof state.onHeaderClick).toBe('function');
+    state.onHeaderClick!('Name', true);
+    await flushPromises();
+    const chevrons =
+      mounted.qa('[data-lucide=ChevronUp]').length + mounted.qa('[data-lucide=ChevronDown]').length;
+    expect(chevrons).toBeGreaterThan(0);
+    expect(mounted.text()).not.toContain('↑');
+    expect(mounted.text()).not.toContain('↓');
+    mounted.unmount();
+  });
+});
 
 describe('DataTable virtualize', () => {
   test('virtualize=false renders every row in document flow', async () => {
@@ -43,7 +145,7 @@ describe('DataTable virtualize', () => {
         data: rows,
         height: 120,
         virtualize: false,
-        estimateSize: 32,
+        estimateSize: 40,
         enableRowSelection: false,
       },
     });

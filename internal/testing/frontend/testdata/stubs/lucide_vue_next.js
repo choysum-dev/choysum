@@ -27,6 +27,7 @@ export const CheckCircle2 = icon('CheckCircle2');
 export const ChevronDown = icon('ChevronDown');
 export const ChevronLeft = icon('ChevronLeft');
 export const ChevronRight = icon('ChevronRight');
+export const ChevronUp = icon('ChevronUp');
 export const CircleAlert = icon('CircleAlert');
 export const CircleCheck = icon('CircleCheck');
 export const CircleHelp = icon('CircleHelp');

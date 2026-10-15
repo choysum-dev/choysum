@@ -21,22 +21,24 @@ SPDX-License-Identifier: Apache-2.0
     <div
       ref="headerRef"
       role="rowgroup"
-      class="choy-data-table__header shrink-0 overflow-x-auto overflow-y-hidden border-b border-border bg-muted/20 text-xs font-medium text-muted-foreground"
+      class="choy-data-table__header shrink-0 overflow-x-auto overflow-y-hidden scrollbar-none border-b border-border bg-muted text-sm font-medium text-muted-foreground"
       @scroll.passive="onHeaderScroll"
     >
       <div
         role="row"
         aria-rowindex="1"
-        class="grid"
+        class="grid min-h-list-header"
         :style="{ minWidth: `${tableMinWidth}px`, gridTemplateColumns: gridTemplate }"
       >
         <div
           v-for="header in (table.getHeaderGroups().slice(-1)[0]?.headers ?? [])"
           :key="header.id"
           role="columnheader"
-          class="flex items-center gap-1 px-2 py-1.5"
+          class="flex min-h-list-header items-center gap-1 px-2 py-1"
+          :class="isSelectColumn(header.column) ? 'cursor-pointer justify-center' : undefined"
+          :data-no-row-click="isSelectColumn(header.column) ? '' : undefined"
           :aria-sort="
-            header.column.id === '__select' || !header.column.getCanSort()
+            isSelectColumn(header.column) || !header.column.getCanSort()
               ? undefined
               : header.column.getIsSorted() === 'asc'
                 ? 'ascending'
@@ -44,25 +46,40 @@ SPDX-License-Identifier: Apache-2.0
                   ? 'descending'
                   : 'none'
           "
+          @click="onSelectHeaderClick($event, header.column)"
         >
           <Checkbox
             v-if="header.column.id === '__select'"
             :model-value="allSelected"
             aria-label="Select all"
+            @click.stop
             @update:model-value="(v: boolean | 'indeterminate') => table.toggleAllPageRowsSelected(v === true)"
           />
+          <div
+            v-else-if="isSelectColumn(header.column)"
+            class="flex flex-1 items-center justify-center"
+          >
+            <FlexRender :render="header.column.columnDef.header" :props="header.getContext()" />
+          </div>
           <button
             v-else
             type="button"
-            class="flex flex-1 items-center gap-1 border-0 bg-transparent p-0 text-left font-medium text-muted-foreground hover:text-foreground"
+            class="flex flex-1 items-center gap-1 border-0 bg-transparent p-0 text-left text-sm font-medium text-muted-foreground hover:text-foreground"
             :class="{ 'cursor-default': !header.column.getCanSort(), 'cursor-pointer': header.column.getCanSort() }"
             :disabled="!header.column.getCanSort()"
             @click="onHeaderClick(header.column.id, header.column.getCanSort())"
           >
             <FlexRender :render="header.column.columnDef.header" :props="header.getContext()" />
-            <span v-if="header.column.getIsSorted()" class="text-[10px] text-foreground/50">
-              {{ header.column.getIsSorted() === 'desc' ? '↓' : '↑' }}
-            </span>
+            <ChevronDown
+              v-if="header.column.getIsSorted() === 'desc'"
+              class="size-3.5 shrink-0 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <ChevronUp
+              v-else-if="header.column.getIsSorted() === 'asc'"
+              class="size-3.5 shrink-0 text-muted-foreground"
+              aria-hidden="true"
+            />
           </button>
         </div>
       </div>
@@ -97,10 +114,14 @@ SPDX-License-Identifier: Apache-2.0
           :data-index="item.index"
           role="row"
           :aria-rowindex="item.index + 2"
-          :aria-selected="item.row?.getIsSelected() ?? false"
+          :aria-selected="rowIsSelected(item.row)"
+          :data-state="rowIsSelected(item.row) ? 'selected' : undefined"
           tabindex="0"
-          class="grid w-full border-b border-border/60 text-sm hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          :class="item.start != null ? 'absolute left-0' : undefined"
+          class="grid min-h-list-row w-full border-b border-border/60 text-sm transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          :class="[
+            item.start != null ? 'absolute left-0' : undefined,
+            rowIsSelected(item.row) ? 'bg-muted hover:bg-muted' : undefined,
+          ]"
           :style="{
             gridTemplateColumns: gridTemplate,
             ...(item.start != null
@@ -114,7 +135,10 @@ SPDX-License-Identifier: Apache-2.0
             v-for="cell in item.row?.getVisibleCells() ?? []"
             :key="cell.id"
             role="gridcell"
-            class="flex items-center truncate px-2"
+            class="flex min-h-list-row min-w-0 items-center overflow-hidden px-2"
+            :class="isSelectColumn(cell.column) ? 'cursor-pointer justify-center' : undefined"
+            :data-no-row-click="isSelectColumn(cell.column) ? '' : undefined"
+            @click="onSelectCellClick($event, cell.column, cell.row)"
           >
             <Checkbox
               v-if="cell.column.id === '__select'"
@@ -157,6 +181,8 @@ import {
   type SortingState
 } from '@tanstack/vue-table';
 import { useVirtualizer } from '@tanstack/vue-virtual';
+import { ChevronDown, ChevronUp } from 'lucide-vue-next';
+import { CHOY_LIST_ROW_HEIGHT } from '../../composables/listDensity';
 import { cn, type ClassValue } from '../../lib/utils';
 import Checkbox from '../vendor/ui/checkbox/Checkbox.vue';
 import {
@@ -214,7 +240,7 @@ const props = withDefaults(
   }>(),
   {
     height: 280,
-    estimateSize: 32,
+    estimateSize: CHOY_LIST_ROW_HEIGHT,
     virtualize: true,
     enableSorting: true,
     sortingMode: 'client',
@@ -437,7 +463,7 @@ const virtualizer = useVirtualizer({
   // Skip the observer when virtualization is off or the row set is empty.
   getScrollElement: () =>
     dataTableScrollElement(isVirtualized.value, parentRef.value as Element | null),
-  estimateSize: () => resolveDataTableEstimateSize(props.estimateSize, 32),
+  estimateSize: () => resolveDataTableEstimateSize(props.estimateSize, CHOY_LIST_ROW_HEIGHT),
   // Keep measurements attached to the logical row so sorting does not reuse stale heights.
   getItemKey: (index) => rows.value[index]?.id ?? index,
   overscan: 8,
@@ -509,6 +535,23 @@ watch(
   { deep: true },
 );
 
+/** Selected chrome: TanStack selection and/or host-controlled rowSelection ids (List path). */
+function rowIsSelected(row: { getIsSelected?: () => boolean; id?: string } | null | undefined): boolean {
+  if (!row) return false;
+  if (typeof row.getIsSelected === 'function' && row.getIsSelected()) {
+    return true;
+  }
+  const ids = props.rowSelection;
+  if (ids == null || row.id == null) return false;
+  for (const raw of ids) {
+    const normalized = normalizeDataTableRowId(raw);
+    if (normalized != null && encodeDataTableRowKey(normalized) === row.id) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function onHeaderClick(columnId: string, canSort: boolean): void {
   if (!canSort || !props.enableSorting || columnId === '__select') {
     return;
@@ -542,7 +585,7 @@ function scrollToRow(index: number, align?: 'start' | 'center' | 'end' | 'auto')
   });
 }
 
-defineExpose({ scrollToRow });
+defineExpose({ scrollToRow, onHeaderClick });
 
 const allSelected = computed(() => {
   if (table.getIsAllPageRowsSelected()) {
@@ -587,6 +630,65 @@ function onRowClick(event: MouseEvent, row: (typeof rows.value)[number] | undefi
   emit('row-click', row.original);
 }
 
+type TableColumnLike = {
+  id: string;
+  columnDef?: { meta?: { selectColumn?: boolean } };
+};
+
+/** Built-in TanStack select column or List host `ChoyTableColumn type="selection"`. */
+function isSelectColumn(column: TableColumnLike | undefined): boolean {
+  if (!column) return false;
+  if (column.id === '__select' || column.id === '__selection__') return true;
+  return column.columnDef?.meta?.selectColumn === true;
+}
+
+function clickSelectCheckboxIn(event: MouseEvent): void {
+  const target = event.target;
+  if (target instanceof Element && target.closest('input[type="checkbox"],[role="checkbox"]')) {
+    return;
+  }
+  const host = event.currentTarget;
+  if (!(host instanceof HTMLElement)) return;
+  const input = host.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
+  input?.click();
+}
+
+/** Expand checkbox hit target to the whole select column cell (padding clicks). */
+function onSelectCellClick(
+  event: MouseEvent,
+  column: TableColumnLike,
+  row: (typeof rows.value)[number] | undefined,
+): void {
+  if (!isSelectColumn(column)) {
+    return;
+  }
+  event.stopPropagation();
+  if (column.id === '__select') {
+    if (!row || !props.enableRowSelection || !row.getCanSelect()) {
+      return;
+    }
+    row.toggleSelected();
+    return;
+  }
+  // List host selection column: toggle via the rendered native checkbox.
+  clickSelectCheckboxIn(event);
+}
+
+function onSelectHeaderClick(event: MouseEvent, column: TableColumnLike): void {
+  if (!isSelectColumn(column)) {
+    return;
+  }
+  event.stopPropagation();
+  if (column.id === '__select') {
+    if (!props.enableRowSelection) {
+      return;
+    }
+    table.toggleAllPageRowsSelected(!(allSelected.value === true));
+    return;
+  }
+  clickSelectCheckboxIn(event);
+}
+
 function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | undefined): void {
   if (!row || isInteractiveRowClickTarget(event.target)) {
     return;
@@ -607,3 +709,14 @@ function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | u
   emit('row-click', row.original);
 }
 </script>
+
+<style>
+/* Keep overflow-x for scroll sync with the body; hide the duplicate track. */
+.choy-data-table__header {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.choy-data-table__header::-webkit-scrollbar {
+  display: none;
+}
+</style>

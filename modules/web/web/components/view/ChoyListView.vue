@@ -82,12 +82,14 @@ SPDX-License-Identifier: Apache-2.0
             <slot name="user-actions" :selected-items="selectedItems" />
           </template>
 
-          <!-- Odoo-style: selection chrome replaces Search in the center slot.
+          <!-- Odoo-style: selection chrome replaces Search visually in the center slot.
                Keep #center registered unconditionally so ActionBar can swap content
-               when selection appears (v-if on the slot template would omit the outlet). -->
+               when selection appears (v-if on the slot template would omit the outlet).
+               Use v-show (not v-if) for the Search host so clearing selection does not
+               remount ChoySearchView and re-run UserFilter + list Search/Count. -->
           <template #center>
             <div
-              v-if="hasSelection"
+              v-show="hasSelection"
               data-anchor="choy.list.selection-bar"
               class="flex min-w-0 w-full flex-wrap items-center gap-2"
               role="toolbar"
@@ -123,7 +125,11 @@ SPDX-License-Identifier: Apache-2.0
 
               <slot name="selection-actions" :selected-items="selectedItems" :clear="clearSelection" />
             </div>
-            <div v-else-if="resolvedSearchView" class="flex min-w-0 w-full items-center">
+            <div
+              v-if="resolvedSearchView"
+              v-show="!hasSelection"
+              class="flex min-w-0 w-full items-center"
+            >
               <component :is="resolvedSearchView" class="min-w-0 w-full" :store="store" @query-update="onSearch" />
             </div>
           </template>
@@ -155,7 +161,7 @@ SPDX-License-Identifier: Apache-2.0
     <div
       ref="tableWrapRef"
       data-anchor="choy.list.table"
-      class="choy-list-view__table flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden rounded-md border border-border bg-card shadow-xs [&_.choy-field-base]:mb-0 [&_.choy-field-base__cell-item]:mb-0 [&_.choy-data-table]:h-full [&_.choy-data-table]:rounded-none [&_.choy-data-table]:border-0 [&_.choy-data-table__header]:border-border [&_.choy-data-table__header]:bg-muted/30 [&_.choy-data-table__body_[role=row]]:border-border/50 [&_.choy-data-table__body_[role=row]:hover]:bg-muted/40"
+      class="choy-list-view__table flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden rounded-md border border-border bg-card shadow-xs [&_.choy-field-base]:mb-0 [&_.choy-data-table]:h-full [&_.choy-data-table]:rounded-none [&_.choy-data-table]:border-0"
       :style="listTableWrapStyle"
     >
       <!-- form-root + edit view-mode only under the table so header search cannot touch the row draft -->
@@ -242,6 +248,7 @@ import {
 } from './listPaginationAdapter';
 import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 import { useTableSelection } from '@/web/web/composables/useTable';
+import { CHOY_LIST_HEADER_HEIGHT, CHOY_LIST_ROW_HEIGHT } from '@/web/web/composables/listDensity';
 // Search view type: must accept store and emit query-update
 import type { Component } from 'vue';
 import type { SearchViewComponent } from '@/web/web/query/types';
@@ -340,7 +347,8 @@ const props = withDefaults(
     showHeader: true,
     showActions: true,
     /* Removed: showHeaderRight: true, */
-    rowHeight: 32,
+    rowHeight: CHOY_LIST_ROW_HEIGHT,
+    headerHeight: CHOY_LIST_HEADER_HEIGHT,
     rowKey: 'Id',
     showPagination: true,
     // Shell path uses footer.top; this only applies outside AppShell.
@@ -700,7 +708,9 @@ const {
 // =============================
 // Future rowHeight and overscan tuning can be driven here by column config or density
 const virtualization = useVirtualizationAdapter({ rowHeight: props.rowHeight });
-const effectiveRowHeight = computed(() => virtualization.config.value.rowHeight || props.rowHeight || 32);
+const effectiveRowHeight = computed(
+  () => virtualization.config.value.rowHeight || props.rowHeight || CHOY_LIST_ROW_HEIGHT,
+);
 
 /** Pixel height only for viewport/container embeds; workspace lists leave this undefined. */
 const pixelTableHeight = computed(() => {

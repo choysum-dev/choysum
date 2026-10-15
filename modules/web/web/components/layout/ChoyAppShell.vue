@@ -302,8 +302,7 @@ html.dark .choy-shell[data-shell-mode='app'],
  * sidebar-07-like header/footer: size=lg (h-12) identity rows.
  * Inline pad stays 0.5rem: in a 3rem icon rail that leaves a 2rem slot
  * (size-8), so collapse only clips text and mark glyphs do not shift.
- * Block pad is slightly roomier (0.75rem) so rows are not flush to the
- * shell top/bottom edge; vertical-only change keeps the collapse animation stable.
+ * Block pad matches inline (0.5rem): enough edge air without a tall chrome band.
  */
 .choy-shell[data-shell-mode='app'] [data-slot='sidebar-header'],
 .choy-shell[data-shell-mode='app'] [data-slot='sidebar-footer'] {
@@ -316,7 +315,7 @@ html.dark .choy-shell[data-shell-mode='app'],
   height: auto !important;
   min-height: 0 !important;
   max-height: none !important;
-  padding-block: 0.75rem !important;
+  padding-block: 0.5rem !important;
   padding-inline: 0.5rem !important;
   border: 0 !important;
   background-color: var(--choy-shell-chrome) !important;

@@ -45,6 +45,8 @@ export function columnsToColumnDefs<T extends Record<string, unknown>>(
       meta: {
         align: col.align,
         fixed: col.fixed,
+        // List host selection column (ChoyTableColumn type="selection").
+        selectColumn: id === '__selection__' || id === '__select',
       },
     };
     if (minSize != null) {

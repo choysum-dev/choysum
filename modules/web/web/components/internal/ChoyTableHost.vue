@@ -24,6 +24,7 @@ SPDX-License-Identifier: Apache-2.0
         :estimate-size="rowHeight"
         :virtualize="virtualize"
         :enable-row-selection="false"
+        :row-selection="selectedRowIds"
         :enable-sorting="true"
         :show-empty="false"
         sorting-mode="server"
@@ -56,6 +57,7 @@ import {
 } from '@/web/web/composables/useTable';
 import { createTranslate } from '@/web/web/i18n';
 import { cn, type ClassValue } from '@/web/web/lib/utils';
+import { CHOY_LIST_HEADER_HEIGHT, CHOY_LIST_ROW_HEIGHT } from '@/web/web/composables/listDensity';
 import DataTable from './DataTable.vue';
 import { columnsToColumnDefs } from './columnAdapter';
 import type { DataTableRowId } from './dataTableHelpers';
@@ -79,7 +81,13 @@ const props = withDefaults(
     baseIndex?: number | Ref<number>;
     store?: any;
   }>(),
-  { rowKey: 'Id', rowHeight: 32, headerHeight: 32, footerHeight: 0, virtualize: true },
+  {
+    rowKey: 'Id',
+    rowHeight: CHOY_LIST_ROW_HEIGHT,
+    headerHeight: CHOY_LIST_HEADER_HEIGHT,
+    footerHeight: 0,
+    virtualize: true,
+  },
 );
 
 const emit = defineEmits<{
@@ -145,7 +153,7 @@ const bodyHeight = computed(() => {
   if (total == null || !Number.isFinite(total)) {
     return 280;
   }
-  const header = props.headerHeight ?? 48;
+  const header = props.headerHeight ?? CHOY_LIST_HEADER_HEIGHT;
   return Math.max(80, total - header);
 });
 
@@ -181,6 +189,12 @@ function resolveRowId(row: Record<string, unknown>): DataTableRowId {
 const selectedItems = computed(() => {
   const set = props.selectionApi?.selected.value ?? new Set<string | number>();
   return (rowsArray.value || []).filter((r) => set.has(keyOf(r)));
+});
+
+/** Mirror host selection into DataTable row state for selected-row chrome (no built-in select column). */
+const selectedRowIds = computed<DataTableRowId[] | undefined>(() => {
+  if (!props.selectionApi) return undefined;
+  return [...(props.selectionApi.selected.value ?? new Set())] as DataTableRowId[];
 });
 
 watch(
