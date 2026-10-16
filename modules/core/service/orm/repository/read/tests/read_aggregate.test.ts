@@ -349,6 +349,35 @@ test('repository read aggregate runtime readGroup rewrites single SqlCompute ord
   ]);
 });
 
+test('repository read aggregate runtime readGroup keeps the group alias when an aggregate uses the same field', async () => {
+  const { params, log } = createAggregateRuntime({
+    meta: {
+      type: class DemoModel {},
+      fields: new Map([['InstalledStatus', { type: 'varchar' }]]),
+      sqlComputeHandlers: new Map([['InstalledStatus', { method: 'sqlInstalledStatus' }]]),
+    } as any,
+    normalizeOrderBy() {
+      return [{ field: 'InstalledStatus', order: 'asc' }];
+    },
+    applyOrderByToQuery(query: any, _meta: any, _table: string, orderBy: any) {
+      log.push({ method: 'applyOrderByToQuery', orderBy });
+      return query;
+    },
+  });
+
+  await executeRepositoryReadGroup(
+    params as any,
+    {
+      groupby: { field: 'InstalledStatus', alias: 'status_alias' },
+      fields: [{ field: 'InstalledStatus', agg: 'count' }],
+      orderBy: 'InstalledStatus asc',
+    } as any,
+  );
+
+  const orderCall = log.find(item => item.method === 'applyOrderByToQuery') as any;
+  expect(orderCall.orderBy).toEqual([{ field: 'status_alias', order: 'asc' }]);
+});
+
 test('repository read aggregate runtime readGroup applies having/order/limit/offset and normalizes __count', async () => {
   const { params, log } = createAggregateRuntime({
     normalizeOrderBy() {

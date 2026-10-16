@@ -682,11 +682,35 @@ func TestStripJSQuotedSpans(t *testing.T) {
 		{"`a\\nb ${Name}`", "${Name}"},
 		{"`${a\\nb}`", "${a\\nb}"},
 		{"`${fn('}') + CompanyListView.name}`", "${fn('}') + CompanyListView.name}"},
+		{"`${fn(\"}\")}`", "${fn(\"}\")}"},
+		{"`${fn(`}`)}`", "${fn(`}`)}"},
+		{"`trailing $`", " "},
+		{"`trailing $x`", " "},
+		{"`${fn('\\` ", "${fn('\\` "},
+		{"`${fn('unclosed`", "${fn('unclosed`"},
 	}
 	for _, tc := range cases {
 		if got := stripJSQuotedSpans(tc.in); got != tc.want {
 			t.Fatalf("stripJSQuotedSpans(%q) = %q, want %q", tc.in, got, tc.want)
 		}
+	}
+}
+
+func TestSkipJSQuotedSpan(t *testing.T) {
+	if got := skipJSQuotedSpan("", 0); got != 0 {
+		t.Fatalf("skipJSQuotedSpan(empty) = %d, want 0", got)
+	}
+	if got := skipJSQuotedSpan("'", 1); got != 1 {
+		t.Fatalf("skipJSQuotedSpan past end = %d, want 1", got)
+	}
+	if got := skipJSQuotedSpan("'abc", 0); got != 4 {
+		t.Fatalf("skipJSQuotedSpan(unclosed) = %d, want 4", got)
+	}
+	if got := skipJSQuotedSpan("'a\\'b'", 0); got != 6 {
+		t.Fatalf("skipJSQuotedSpan(escaped) = %d, want 6", got)
+	}
+	if got := skipJSQuotedSpan("'\\", 0); got != 2 {
+		t.Fatalf("skipJSQuotedSpan(trailing slash) = %d, want 2", got)
 	}
 }
 

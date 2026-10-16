@@ -191,6 +191,7 @@ SPDX-License-Identifier: Apache-2.0
         :aria-label="_t('Kanban board')"
         :data-drag-mode="resolvedDragMode"
         data-testid="choy-kanban-board"
+        @dragend="laneDropActiveKey = ''"
       >
         <section
           v-for="lane in displayLanes"

@@ -395,6 +395,13 @@ describe('ChoyKanbanView chrome', () => {
       dropLane,
     );
     expect(state.laneDropActiveKey).toBe('done');
+    mounted.q('[data-testid=choy-kanban-board]')?.dispatchEvent(new Event('dragend', { bubbles: true }));
+    expect(state.laneDropActiveKey).toBe('');
+    state.onLaneDragOver(
+      { preventDefault() {}, dataTransfer: dt } as unknown as DragEvent,
+      dropLane,
+    );
+    expect(state.laneDropActiveKey).toBe('done');
 
     const laneEl = { contains: (node: unknown) => node === laneEl };
     state.onLaneDragLeave(

@@ -88,10 +88,9 @@ watch(
       clearRearmTimer();
       return;
     }
-    // Busy cleared: re-bind observer, then re-arm after cooldown so a short
-    // lane can chain-load once without same-tick storms.
+    // Busy cleared: the existing observer already tracked whether the sentinel
+    // stayed on screen. Re-binding would emit immediately and again after cooldown.
     if (wasDisabled && root.value) {
-      connect();
       clearRearmTimer();
       rearmTimer = setTimeout(() => {
         rearmTimer = null;

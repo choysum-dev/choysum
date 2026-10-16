@@ -153,7 +153,11 @@ function outerAggregateOrderSpecs(orderBy: unknown[], group: GroupSpecLike, aggs
   }
   for (const agg of aggs) {
     fieldToAlias.set(agg.alias, agg.alias);
-    if (!aliases.has(agg.field)) fieldToAlias.set(agg.field, agg.alias);
+    // A group key already mapped to its projected alias must win over an
+    // aggregate on the same source field.
+    if (!aliases.has(agg.field) && !fieldToAlias.has(agg.field)) {
+      fieldToAlias.set(agg.field, agg.alias);
+    }
   }
   return orderBy.map(spec => {
     const field = String((spec as { field?: string })?.field ?? '');
