@@ -45,4 +45,15 @@ describe('columnsToColumnDefs', () => {
     const ordered = orderListTableColumns(cols).map((c) => String(c.key));
     expect(ordered).toEqual(['__selection__', '__handle__', '__index__', '__group_label', 'Name']);
   });
+
+  test('selection column type marks meta.selectColumn even with a custom key', () => {
+    const cols: Column[] = [
+      { key: 'pick', title: '', type: 'selection' },
+      { key: 'Name', dataKey: 'Name', title: 'Name' },
+    ];
+    const ordered = orderListTableColumns(cols).map((c) => String(c.key));
+    expect(ordered[0]).toBe('pick');
+    const defs = columnsToColumnDefs(cols);
+    expect((defs[0].meta as { selectColumn?: boolean } | undefined)?.selectColumn).toBe(true);
+  });
 });

@@ -18,7 +18,7 @@ export function orderListTableColumns(columns: readonly Column[]): Column[] {
   if (!columns.length) return [];
   const isSel = (c: Column) => {
     const k = columnKey(c);
-    return k === '__selection__' || k === '__select';
+    return k === '__selection__' || k === '__select' || c.type === 'selection';
   };
   const isHandle = (c: Column) => columnKey(c) === '__handle__' || c.type === 'handle';
   const isIdx = (c: Column) => columnKey(c) === '__index__' || c.type === 'index';
@@ -78,8 +78,8 @@ export function columnsToColumnDefs<T extends Record<string, unknown>>(
       meta: {
         align: col.align,
         fixed: col.fixed,
-        // List host selection column (ChoyTableColumn type="selection").
-        selectColumn: id === '__selection__' || id === '__select',
+        // List host selection column (ChoyTableColumn type="selection"); key is the fallback.
+        selectColumn: id === '__selection__' || id === '__select' || col.type === 'selection',
       },
     };
     if (minSize != null) {

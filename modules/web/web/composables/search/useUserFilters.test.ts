@@ -222,6 +222,35 @@ describe('useUserFilters', () => {
     expect(cachedOpts?.fields).not.toContain('GroupBy');
   });
 
+  test('load falls back when Search rejects with a plain message object', async () => {
+    Search.setImpl(async (_cond: any, opts: any) => {
+      if (Array.isArray(opts?.fields) && opts.fields.includes('GroupBy')) {
+        throw { message: 'column group_by does not exist' };
+      }
+      return [
+        {
+          Id: 'f1',
+          Name: 'PlainMsg',
+          Condition: {},
+          IsDefault: false,
+          UserId: 'me',
+          CreatedUid: 'me',
+        },
+      ];
+    });
+    const api = runInSetup(() =>
+      useUserFilters({
+        store: { application: 'demo', modelName: 'Widget' },
+        filtersRef: ref([]),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
+      })
+    );
+    await api.load();
+    expect(api.loadError.value).toBeNull();
+    expect(api.favorites.value[0]).toMatchObject({ Name: 'PlainMsg', GroupBy: [] });
+  });
+
   test('load falls back when Search reports field(UserFilter.GroupBy) not found', async () => {
     Search.setImpl(async (_cond: any, opts: any) => {
       if (Array.isArray(opts?.fields) && opts.fields.includes('GroupBy')) {

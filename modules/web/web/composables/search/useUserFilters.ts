@@ -45,9 +45,18 @@ function normalizeFavoriteGroups(raw: unknown): GroupBySpec[] {
   return normalizeGroupby(list as GroupBySpec[]) as GroupBySpec[];
 }
 
+/** Best-effort message string from Error / RPC payloads (avoid `[object Object]`). */
+function errorMessage(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (e != null && typeof e === 'object' && typeof (e as { message?: unknown }).message === 'string') {
+    return String((e as { message: string }).message);
+  }
+  return String(e);
+}
+
 /** True when a UserFilter RPC failed because GroupBy / group_by is not on the schema yet. */
 function isMissingGroupByColumn(e: unknown): boolean {
-  const msg = e instanceof Error ? e.message : String(e);
+  const msg = errorMessage(e);
   // SQL/driver phrasing, plus SelectCtx field resolution: field(UserFilter.GroupBy) not found.
   return (
     (/group_?by/i.test(msg) && /(does not exist|unknown|no such|undefined column)/i.test(msg)) ||
