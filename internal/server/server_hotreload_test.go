@@ -14,7 +14,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/choysum-dev/choysum/pkg/oerrors"
 	"github.com/fsnotify/fsnotify"
+	xfmt "golang.org/x/exp/errors/fmt"
 )
 
 func TestServerHotreloadLifecycleRecreatesWatcherForReuse(t *testing.T) {
@@ -236,6 +238,102 @@ func TestServerRegisterWatchDirAndDispatchWatchHandlerResolvesSymlinks(t *testin
 	}
 	if firstCall.module != "demo" || firstCall.file != resolvedChangedFile {
 		t.Fatalf("unexpected symlink watch callback: %#v", firstCall)
+	}
+}
+
+func TestShouldIgnoreWatchPath(t *testing.T) {
+	cases := []struct {
+		path string
+		want bool
+	}{
+		{filepath.Join("modules", "web", "web", "styles", "choy-tailwind.generated.css"), true},
+		{filepath.Join("modules", "web", "web", "styles", ".choy-tailwind-2477883981.tmp"), true},
+		{filepath.Join("modules", "web", "web", "components", "field", "Foo.vue"), false},
+		{filepath.Join("modules", "partner", "web", "views", "PartnerFormView.vue"), false},
+		{filepath.Join("tmp", "other.tmp"), false},
+		{filepath.Join("styles", ".choy-tailwind-x.tmp.bak"), false},
+	}
+	for _, tc := range cases {
+		if got := shouldIgnoreWatchPath(tc.path); got != tc.want {
+			t.Fatalf("shouldIgnoreWatchPath(%q) = %v, want %v", tc.path, got, tc.want)
+		}
+	}
+}
+
+func TestIsModuleLeaseConflict(t *testing.T) {
+	leaseErr := oerrors.New("meta.lock", "LEASE_CONFLICT", "lease is busy").WithMetadata("retry_after_ms", "60000")
+	if !isModuleLeaseConflict(leaseErr) {
+		t.Fatal("expected raw LEASE_CONFLICT to match")
+	}
+	if !isModuleLeaseConflict(xfmt.Errorf("error running watch handler: %w", leaseErr)) {
+		t.Fatal("expected wrapped LEASE_CONFLICT to match")
+	}
+	if isModuleLeaseConflict(errors.New("watch failed")) {
+		t.Fatal("expected plain error not to match")
+	}
+	if isModuleLeaseConflict(oerrors.New("meta.lock", "OTHER", "nope")) {
+		t.Fatal("expected other meta.lock codes not to match")
+	}
+}
+
+func TestEnqueueWatchEventIgnoresChoyTailwindArtifacts(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	srv := &GRPCWebServer{runtimeScope: runtimeScope, hotreload: hotreloadState{queue: make(chan string, 2)}}
+	root := t.TempDir()
+	styles := filepath.Join(root, "styles")
+	if err := os.MkdirAll(styles, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	generated := filepath.Join(styles, "choy-tailwind.generated.css")
+	tmp := filepath.Join(styles, ".choy-tailwind-deadbeef.tmp")
+	source := filepath.Join(styles, "theme.css")
+	for _, path := range []string{generated, tmp, source} {
+		if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
+			t.Fatalf("WriteFile(%s) error = %v", path, err)
+		}
+	}
+
+	if srv.enqueueWatchEvent(generated) {
+		t.Fatal("expected generated CSS watch event to be ignored")
+	}
+	if srv.enqueueWatchEvent(tmp) {
+		t.Fatal("expected Tailwind tmp watch event to be ignored")
+	}
+	if !srv.enqueueWatchEvent(source) {
+		t.Fatal("expected non-generated CSS watch event to enqueue")
+	}
+	select {
+	case <-srv.hotreloadQueue():
+	default:
+		t.Fatal("expected source watch event to remain queued")
+	}
+	assertHotreloadCounters(t, srv, 0, 0, "ignored generated artifacts must not count as drops/coalesces")
+}
+
+func TestHandleWatchedFileChangeDefersOnLeaseConflict(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	root := t.TempDir()
+	changedFile := filepath.Join(root, "handler.ts")
+	if err := os.WriteFile(changedFile, []byte("export {}"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	leaseErr := oerrors.New("meta.lock", "LEASE_CONFLICT", "lease is busy").WithMetadata("retry_after_ms", "60000")
+	tracked := &fakeWatchedService{
+		name:      "web",
+		watchDirs: []string{root},
+		watchErr:  xfmt.Errorf("error running watch handler: %w", leaseErr),
+	}
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{watcher: mustNewWatcher(t), queue: make(chan string, 1)},
+	}
+	srv.hotreload.storeWatchTargets(srv.buildRegisteredWatchTargets(tracked.watchPlans(), tracked.watchCallback))
+
+	if err := srv.handleWatchedFileChange(changedFile); err != nil {
+		t.Fatalf("handleWatchedFileChange() error = %v, want nil on LEASE_CONFLICT", err)
+	}
+	if tracked.callCount() != 1 {
+		t.Fatalf("watch handler calls = %d, want 1", tracked.callCount())
 	}
 }
 

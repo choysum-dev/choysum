@@ -7,7 +7,33 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/choysum-dev/choysum/pkg/oerrors"
 )
+
+// choyTailwindGeneratedCSSName matches the kit Tailwind emit basename under
+// modules/web/web/styles. Kept in sync with web build's generated CSS name.
+const choyTailwindGeneratedCSSName = "choy-tailwind.generated.css"
+
+// shouldIgnoreWatchPath reports paths that must not trigger module Upgrade.
+// Kit Tailwind atomic writes (.choy-tailwind-*.tmp → choy-tailwind.generated.css)
+// run during install/web_build inside a watched module tree; upgrading on those
+// events races the module_management lease and must be skipped.
+func shouldIgnoreWatchPath(path string) bool {
+	base := filepath.Base(path)
+	if base == choyTailwindGeneratedCSSName {
+		return true
+	}
+	if strings.HasPrefix(base, ".choy-tailwind-") && strings.HasSuffix(base, ".tmp") {
+		return true
+	}
+	return false
+}
+
+// isModuleLeaseConflict reports meta.lock LEASE_CONFLICT through wrapped errors.
+func isModuleLeaseConflict(err error) bool {
+	return oerrors.Is(err, "meta.lock", "LEASE_CONFLICT")
+}
 
 // resolveWatchPath canonicalizes symlinked watch roots and event paths while
 // still tolerating missing leaf paths from remove/rename events.

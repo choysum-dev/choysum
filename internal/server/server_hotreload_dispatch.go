@@ -119,6 +119,10 @@ func (s *GRPCWebServer) handleWatchedFileChangeResolved(resolvedFile string) err
 	if s.runtimeScope == nil {
 		return xfmt.Errorf("runtime scope is nil")
 	}
+	if shouldIgnoreWatchPath(resolvedFile) {
+		s.runtimeScope.Logger().Debug("watch file ignored", "file", resolvedFile, "reason", "generated_artifact")
+		return nil
+	}
 	// Skip reload when file content hasn't actually changed (e.g. no-op
 	// save or atomic-save that produces an identical file). The check runs
 	// after debounce so temp-file rename sequences have already settled.
@@ -137,6 +141,23 @@ func (s *GRPCWebServer) handleWatchedFileChangeResolved(resolvedFile string) err
 	if err != nil {
 		if errors.Is(err, context.Canceled) || (s.runtimeScope.Context() != nil && errors.Is(s.runtimeScope.Context().Err(), context.Canceled)) {
 			s.runtimeScope.Logger().Debug("watch handler canceled", "error", err)
+			return nil
+		}
+		// Module install/upgrade/uninstall holds module_management; a concurrent
+		// watch Upgrade must not kill the server — defer until the next save.
+		if isModuleLeaseConflict(err) {
+			s.hotreload.clearFingerprint(resolvedFile)
+			if line != nil {
+				s.hotreload.progressMu.Lock()
+				line.Clear()
+				line.Done("→", fmt.Sprintf("Deferred (module busy): %s", filepath.Base(resolvedFile)))
+				s.hotreload.progressMu.Unlock()
+			}
+			s.runtimeScope.Logger().Warn(
+				"watch reload deferred: module management lease busy",
+				"file", resolvedFile,
+				"error", err,
+			)
 			return nil
 		}
 		// Evict fingerprint so the user can retry by saving again.
