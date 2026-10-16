@@ -4,35 +4,33 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import type { ToggleEmits, ToggleProps } from "reka-ui"
-import type { HTMLAttributes } from "vue"
-import type { ToggleVariants } from "."
-import { reactiveOmit } from "@vueuse/core"
-import { Toggle, useForwardPropsEmits } from "reka-ui"
-import { cn } from "../../../../lib/utils"
-import { toggleVariants } from "."
+import { Toggle } from 'reka-ui';
+import { cn, type ClassValue } from '../../../../lib/utils';
+import { toggleVariants } from './toggleVariants';
 
-const props = withDefaults(defineProps<ToggleProps & {
-  class?: HTMLAttributes["class"]
-  variant?: ToggleVariants["variant"]
-  size?: ToggleVariants["size"]
-}>(), {
-  variant: "default",
-  size: "default",
-  disabled: false,
-})
+const pressed = defineModel<boolean>('pressed', { default: false });
 
-const emits = defineEmits<ToggleEmits>()
-
-const delegatedProps = reactiveOmit(props, "class", "size", "variant")
-const forwarded = useForwardPropsEmits(delegatedProps, emits)
+const props = withDefaults(
+  defineProps<{
+    class?: ClassValue;
+    variant?: 'default' | 'outline';
+    size?: 'default' | 'sm' | 'lg';
+    disabled?: boolean;
+  }>(),
+  {
+    variant: 'default',
+    size: 'default',
+    disabled: false,
+  },
+);
 </script>
 
 <template>
   <Toggle
     v-slot="slotProps"
+    v-model:pressed="pressed"
     data-slot="toggle"
-    v-bind="forwarded"
+    :disabled="disabled"
     :class="cn(toggleVariants({ variant, size }), props.class)"
   >
     <slot v-bind="slotProps" />

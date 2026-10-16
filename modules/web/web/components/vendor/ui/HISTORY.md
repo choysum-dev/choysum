@@ -9,6 +9,15 @@ Hand-adapted shadcn-vue L2 under this directory. Upstream is not synced by CLI;
 product contract patches are recorded here so a future re-copy can replay them
 after merging Reka/shadcn markup.
 
+## Changelog
+
+### 2026-10-15 — ComboboxInput displayValue + Select class
+
+- `combobox/ComboboxInput.vue`: forward Reka `displayValue` so callers can show
+  a label while the model stays a technical id/prop (filter field picker).
+- `select/Select.vue`: forward `class` onto `SelectRoot` (plus default
+  `min-w-0`) so grid/flex hosts can constrain the select cell width.
+
 ## Patch policy
 
 **Allowed (must stay after an upstream refresh):**
@@ -35,6 +44,16 @@ new HISTORY entry describing what was re-copied vs re-patched.
 ---
 
 ## Entries (newest first)
+
+### 2026-10-15 — Toggle / ToggleGroup QuickJS-safe props
+
+- **Toggle / ToggleGroup / ToggleGroupItem:** drop `defineProps` typed from
+  `reka-ui` and `@vueuse/core` `reactiveOmit`; use local props + `defineModel`.
+- **toggleVariants:** moved to `toggle/toggleVariants.ts` so ToggleGroupItem does
+  not pull `Toggle.vue` via directory `"."` import (same pattern as
+  `sidebarMenuButtonVariants`).
+- Defaults stay upstream-aligned (`type=single`, `spacing=0`); no product density
+  baked into kit chrome.
 
 ### 2026-10-15 — PopoverAnchor + Combobox Root props
 

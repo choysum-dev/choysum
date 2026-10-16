@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { Condition, ConditionGroup, NamedFilter } from '@/web/web/query/types';
+import { isNullOperator } from '@/web/web/query/utils/filter/operators';
 
 let _id = 0;
 
@@ -169,6 +170,38 @@ export function toFilters(input?: NamedFilter | NamedFilter[] | ConditionGroup |
 }
 
 /**
+ * Reports whether a draft condition has field, operator, and a usable value when required.
+ */
+export function isConditionComplete(c: Partial<Condition> | null | undefined): boolean {
+  if (!c || !c.field || !c.operator) return false;
+  if (isNullOperator(c.operator)) return true;
+  const v = c.value;
+  if (Array.isArray(v)) return v.length > 0;
+  if (v == null) return false;
+  if (typeof v === 'string') return v.trim() !== '';
+  if (typeof v === 'object' && v !== null && 'Id' in (v as object)) {
+    const id = (v as { Id?: unknown }).Id;
+    return id != null && id !== '';
+  }
+  return true;
+}
+
+/** Counts complete vs incomplete leaf conditions under a group. */
+export function countFilterLeaves(g: ConditionGroup): { complete: number; incomplete: number } {
+  let complete = 0;
+  let incomplete = 0;
+  function walk(node: ConditionGroup) {
+    for (const ch of Array.isArray(node.children) ? node.children : []) {
+      if (isGroup(ch)) walk(ch);
+      else if (isConditionComplete(ch as Condition)) complete += 1;
+      else incomplete += 1;
+    }
+  }
+  walk(g);
+  return { complete, incomplete };
+}
+
+/**
  * Prunes incomplete draft filter nodes (C representation); does not invent backend query shapes.
  */
 export function normalizeFilters(filters: ConditionGroup[] = []): ConditionGroup[] {
@@ -188,7 +221,7 @@ export function normalizeFilters(filters: ConditionGroup[] = []): ConditionGroup
         if (sub && sub.children.length > 0) children.push(sub);
       } else if ((ch as any).operator !== undefined || (ch as any).field !== undefined) {
         const c = ch as any;
-        if (!c.field || !c.operator) continue;
+        if (!isConditionComplete(c)) continue;
         children.push({
           id: c.id || genId(),
           field: c.field,

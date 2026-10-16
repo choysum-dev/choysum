@@ -133,7 +133,7 @@ SPDX-License-Identifier: Apache-2.0
         class="choy-search-popover p-0"
         align="start"
         side="bottom"
-        :side-offset="6"
+        :side-offset="0"
         @open-auto-focus.prevent
         @close-auto-focus.prevent
         @pointer-down-outside="onMenuDismissOutside"
@@ -312,7 +312,7 @@ SPDX-License-Identifier: Apache-2.0
     </Popover>
 
     <ChoyDialog v-model:open="isEditorOpen">
-      <ChoyDialogContent>
+      <ChoyDialogContent class="max-w-5xl gap-5">
         <ChoyDialogTitle>{{ filterEditorTitle }}</ChoyDialogTitle>
       <SearchFilter
         v-if="draftFilter"
@@ -483,7 +483,9 @@ const filters = state.filters;
 // Editor layer.
 const isEditorOpen = editor.isEditorOpen;
 const draftFilter = editor.draftFilter;
-const filterEditorTitle = computed(() => (draftFilter.value?.baseId ? _t('Edit filter') : _t('New filter')));
+const filterEditorTitle = computed(() =>
+  draftFilter.value?.baseId ? _t('Edit filter') : _t('Custom filter')
+);
 const openNewFilter = editor.openNew;
 const openEditFilter = editor.openEdit;
 const closeEditor = editor.close;

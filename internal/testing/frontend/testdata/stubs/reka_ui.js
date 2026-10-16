@@ -221,6 +221,51 @@ export const PopoverRoot = defineComponent({
   },
 });
 export const PopoverTrigger = stub('PopoverTrigger');
+/** Single/multiple toggle group host used by SearchFilter AND/OR. */
+export const ToggleGroupRoot = defineComponent({
+  name: 'ToggleGroupRoot',
+  inheritAttrs: false,
+  props: {
+    modelValue: { default: undefined },
+    type: { type: String, default: 'single' },
+    disabled: { type: Boolean, default: false },
+  },
+  emits: ['update:modelValue'],
+  setup(props, { slots, emit, attrs }) {
+    return () =>
+      h(
+        'div',
+        {
+          'data-reka-stub': 'ToggleGroupRoot',
+          'data-state': props.modelValue != null ? 'on' : 'off',
+          ...attrs,
+        },
+        slots.default ? slots.default() : null,
+      );
+  },
+});
+export const ToggleGroupItem = defineComponent({
+  name: 'ToggleGroupItem',
+  inheritAttrs: false,
+  props: {
+    value: { type: String, required: true },
+    disabled: { type: Boolean, default: false },
+  },
+  setup(props, { slots, attrs }) {
+    return () =>
+      h(
+        'button',
+        {
+          type: 'button',
+          'data-reka-stub': 'ToggleGroupItem',
+          'data-value': props.value,
+          disabled: props.disabled || undefined,
+          ...attrs,
+        },
+        slots.default ? slots.default() : null,
+      );
+  },
+});
 export const ScrollAreaRoot = stub('ScrollAreaRoot');
 export const ScrollAreaScrollbar = stub('ScrollAreaScrollbar');
 export const ScrollAreaThumb = stub('ScrollAreaThumb');

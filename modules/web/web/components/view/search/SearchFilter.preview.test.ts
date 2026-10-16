@@ -68,6 +68,8 @@ describe('SearchFilter preview labels', () => {
           { id: 'c2', field: 'PartnerId', operator: 'in', value: [{ Id: 'p1' }, 'p2'] },
           { id: 'c3', field: 'Active', operator: 'is', value: null },
           { id: 'c4', field: '', operator: '=', value: '' },
+          { id: 'c5', field: 'Name', operator: '=', value: '' },
+          { id: 'c6', field: 'PartnerId', operator: '=', value: { Id: '' } },
         ],
       },
     };
@@ -88,7 +90,9 @@ describe('SearchFilter preview labels', () => {
     expect(expr).toContain('合作伙伴');
     expect(expr).toContain('启用');
     expect(expr).toContain('(incomplete)');
-    expect(q('.label')?.textContent || '').toContain('4');
+    // Missing field / empty value / empty many-to-one Id → incomplete (not half-cut "Id equals").
+    expect((expr.match(/\(incomplete\)/g) || []).length).toBe(3);
+    expect(q('.label')?.textContent || '').toContain('6');
     unmount();
   });
 
@@ -185,13 +189,20 @@ describe('SearchFilter preview labels', () => {
     const onCancel = fnRecorder();
     const onConfirm = fnRecorder();
 
-    const store = { fieldsMetadata: {} } as any;
-    const { unmount, click, qa, q } = mountApp(SearchFilter as any, {
+    const store = { fieldsMetadata: { Name: { type: 'varchar' } } } as any;
+    const { unmount, click, qa, q, props } = mountApp(SearchFilter as any, {
       props: {
         store,
-        draft: { root: { id: 'g', logic: 'And', children: [] } },
-        fields: [],
+        draft: {
+          root: {
+            id: 'g',
+            logic: 'And',
+            children: [{ id: 'c1', field: 'Name', operator: '=', value: 'ok' }],
+          },
+        },
+        fields: [{ prop: 'Name', label: '名称' }],
       },
+      reactiveProps: true,
       on: {
         onLogicChange,
         onAddCondition,
@@ -225,6 +236,20 @@ describe('SearchFilter preview labels', () => {
     expect(onUpdateCondition.calls[0]).toEqual(['c1', { value: 1 }]);
     expect(onRemoveCondition.calls[0]).toEqual(['c1']);
     expect(onCancel.calls.length).toBe(1);
+    expect(onConfirm.calls.length).toBe(1);
+
+    // Incomplete draft disables Confirm and does not emit.
+    props.draft = {
+      root: {
+        id: 'g',
+        logic: 'And',
+        children: [{ id: 'c1', field: 'Name', operator: '=', value: '' }],
+      },
+    };
+    await nextTick();
+    const confirmBtn = buttons[1] as HTMLButtonElement;
+    expect(confirmBtn.disabled).toBe(true);
+    confirmBtn.click();
     expect(onConfirm.calls.length).toBe(1);
     unmount();
   });

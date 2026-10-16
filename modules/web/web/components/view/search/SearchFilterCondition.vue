@@ -4,61 +4,139 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div class="choy-search-filter__row flex items-center gap-2">
-    <select
-      class="w-field w-[180px]"
-      :placeholder="_t('Field')"
-      :value="condition.field"
-      @change="onFieldChange(($event.target as HTMLSelectElement).value)"
+  <div
+    class="choy-search-filter__row grid min-w-0 items-center gap-2 rounded-md px-2 py-2 hover:bg-muted/25"
+    :style="incompleteRowStyle()"
+    data-slot="search-filter-row"
+    :data-incomplete="incomplete ? 'true' : 'false'"
+  >
+    <Combobox
+      class="choy-search-filter__field min-w-0"
+      :model-value="condition.field || undefined"
+      v-model:open="fieldOpen"
+      ignore-filter
+      open-on-focus
+      open-on-click
+      @update:model-value="onFieldCombobox"
     >
-      <option v-for="f in fields" :key="f.prop" :label="f.label" :value="f.prop" />
-    </select>
+      <ComboboxAnchor class="w-full min-w-0">
+        <ComboboxInput
+          v-model="fieldQuery"
+          class="choy-search-filter__field-input h-control w-full min-w-0 bg-background text-sm font-medium"
+          data-testid="choy-search-filter-field"
+          :placeholder="_t('Field')"
+          :aria-label="_t('Field')"
+          :display-value="fieldDisplayValue"
+          @focus="onFieldFocus"
+        />
+      </ComboboxAnchor>
+      <ComboboxContent class="choy-search-filter__field-content z-[80] p-0">
+        <div class="max-h-56 overflow-y-auto p-1">
+          <div
+            v-if="!filteredFields.length"
+            class="px-2 py-1.5 text-sm text-muted-foreground"
+          >
+            {{ _t('No fields') }}
+          </div>
+          <ComboboxItem
+            v-for="f in filteredFields"
+            :key="f.prop"
+            :value="f.prop"
+            class="text-sm"
+          >
+            {{ f.label }}
+          </ComboboxItem>
+        </div>
+      </ComboboxContent>
+    </Combobox>
 
-    <select
-      class="w-operator w-[140px]"
-      :disabled="!condition.field"
-      :value="condition.operator"
-      @change="onOperatorChange(($event.target as HTMLSelectElement).value)"
+    <Select
+      class="choy-search-filter__operator min-w-0"
+      :model-value="condition.operator || null"
+      @update:model-value="onOperatorSelect"
     >
-      <option v-for="op in operatorOptions" :key="op.value" :label="op.label" :value="op.value" />
-    </select>
+      <SelectTrigger
+        class="choy-search-filter__operator-trigger h-control w-full min-w-0 bg-background text-muted-foreground"
+        :disabled="!condition.field"
+        :placeholder="_t('Operator')"
+        :aria-label="_t('Operator')"
+      />
+      <SelectContent>
+        <SelectItem v-for="op in operatorOptions" :key="op.value" :value="op.value">
+          {{ op.label }}
+        </SelectItem>
+      </SelectContent>
+    </Select>
 
-    <input
-      v-if="condition.field && isMultiValueOperator(condition.operator) && !isRelationValueField"
-      class="w-value flex-1"
-      data-multi="true"
-      :value="(multiValues || []).join(',')"
-      :placeholder="_t('Add values')"
-      @change="onMultiValuesChange(String(($event.target as HTMLInputElement).value).split(',').map(s => s.trim()).filter(Boolean))"
-    />
-    <component
-      v-else-if="condition.field && requiresValue(condition.operator)"
-      :key="`${conditionId}-${condition.field}-${condition.operator}`"
-      :is="fieldComponent"
-      class="flex-1"
-      :store="store"
-      :binding="binding"
-      v-bind="extraProps"
-      :label="''"
-      :rules="[]"
-      :placeholder="valuePlaceholder"
-      :formItemProps="{ labelWidth: 0, style: { margin: 0, padding: 0 } }"
-    />
-    <span v-else-if="condition.field && isNullOperator(condition.operator)" class="w-value choy-null-flag flex-1 text-info">NULL</span>
-    <input v-else class="flex-1" :placeholder="_t('Select a field')" disabled />
+    <div class="choy-search-filter__value w-value min-w-0">
+      <Input
+        v-if="condition.field && isMultiValueOperator(condition.operator) && !isRelationValueField"
+        class="w-value h-control w-full bg-background"
+        data-multi="true"
+        :model-value="(multiValues || []).join(',')"
+        :placeholder="_t('Add values')"
+        @update:model-value="onMultiInput"
+      />
+      <component
+        v-else-if="condition.field && requiresValue(condition.operator)"
+        :key="`${conditionId}-${condition.field}-${condition.operator}`"
+        :is="fieldComponent"
+        class="choy-search-filter__value-field w-full min-w-0"
+        :store="store"
+        :binding="binding"
+        v-bind="extraProps"
+        :label="''"
+        :rules="[]"
+        :placeholder="valuePlaceholder"
+        :formItemProps="{ labelWidth: 0, style: { margin: 0, padding: 0 } }"
+      />
+      <span
+        v-else-if="condition.field && isNullOperator(condition.operator)"
+        class="choy-null-flag flex h-control items-center rounded-md border border-dashed border-border bg-background px-2 text-sm text-muted-foreground"
+      >
+        NULL
+      </span>
+      <Input
+        v-else
+        class="h-control w-full bg-background"
+        :model-value="''"
+        :placeholder="_t('Select a field')"
+        disabled
+      />
+    </div>
 
-    <ChoyButton class="rm" size="sm" variant="destructive" @click="onRemove">{{ _t('Remove') }}</ChoyButton>
+    <ChoyButton
+      class="rm size-control shrink-0 justify-self-end text-muted-foreground opacity-70 hover:bg-destructive/10 hover:text-destructive hover:opacity-100"
+      size="icon"
+      variant="ghost"
+      :aria-label="_t('Remove')"
+      @click="onRemove"
+    >
+      <Trash2 class="size-4" aria-hidden="true" />
+    </ChoyButton>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { Condition } from '@/web/web/query/types';
 import type { WebFieldMetadata, WebModelStore } from '@/web/web/stores/modelStore';
 import { useStandaloneField } from '@/web/web/composables/useField';
 import { useInjectedFilterEditorBindings } from '@/web/web/composables/search/useFilterEditorBindings';
 import { createTranslate } from '@/web/web/i18n';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import Input from '@/web/web/components/vendor/ui/input/Input.vue';
+import Select from '@/web/web/components/vendor/ui/select/Select.vue';
+import SelectContent from '@/web/web/components/vendor/ui/select/SelectContent.vue';
+import SelectItem from '@/web/web/components/vendor/ui/select/SelectItem.vue';
+import SelectTrigger from '@/web/web/components/vendor/ui/select/SelectTrigger.vue';
+import Combobox from '@/web/web/components/vendor/ui/combobox/Combobox.vue';
+import ComboboxAnchor from '@/web/web/components/vendor/ui/combobox/ComboboxAnchor.vue';
+import ComboboxContent from '@/web/web/components/vendor/ui/combobox/ComboboxContent.vue';
+import ComboboxInput from '@/web/web/components/vendor/ui/combobox/ComboboxInput.vue';
+import ComboboxItem from '@/web/web/components/vendor/ui/combobox/ComboboxItem.vue';
+import { Trash2 } from 'lucide-vue-next';
+import { isConditionComplete } from '@/web/web/query/utils/filter/structures';
 
 import ChoyVarcharField from '@/web/web/components/field/ChoyVarcharField.vue';
 import ChoyTextField from '@/web/web/components/field/ChoyTextField.vue';
@@ -96,8 +174,52 @@ const { metaTypeOf, relationStoreOf, getOperatorOptionsForField, isNullOperator,
   useInjectedFilterEditorBindings(props.store);
 
 const conditionId = computed(() => props.condition.tempId || props.condition.id);
+const incomplete = computed(() => !isConditionComplete(props.condition));
+
+function incompleteRowStyle(): Record<string, string> | undefined {
+  if (!incomplete.value) return undefined;
+  return {
+    boxShadow: 'inset 2px 0 0 color-mix(in oklab, var(--color-warning) 55%, transparent)',
+    backgroundColor: 'color-mix(in oklab, var(--color-warning) 6%, transparent)',
+  };
+}
 
 const operatorOptions = computed(() => getOperatorOptionsForField(props.condition.field));
+
+const fieldOpen = ref(false);
+const fieldQuery = ref('');
+
+const selectedFieldLabel = computed(
+  () => props.fields.find(f => f.prop === props.condition.field)?.label || '',
+);
+
+function fieldDisplayValue(value: string) {
+  if (!value) return '';
+  return props.fields.find(f => f.prop === value)?.label || value;
+}
+
+watch(
+  () => [props.condition.field, fieldOpen.value] as const,
+  () => {
+    if (!fieldOpen.value) {
+      fieldQuery.value = selectedFieldLabel.value;
+    }
+  },
+  { immediate: true },
+);
+
+const filteredFields = computed(() => {
+  const q = fieldQuery.value.trim().toLowerCase();
+  const selected = selectedFieldLabel.value.trim().toLowerCase();
+  if (!q || (fieldOpen.value && q === selected)) return props.fields;
+  return props.fields.filter(
+    f => f.label.toLowerCase().includes(q) || f.prop.toLowerCase().includes(q),
+  );
+});
+
+function onFieldFocus() {
+  fieldOpen.value = true;
+}
 
 const fieldType = computed(() => metaTypeOf(props.condition.field || ''));
 const isRelationValueField = computed(() => fieldType.value === 'manytoone' || fieldType.value === 'manytooneref');
@@ -107,7 +229,6 @@ const fieldComponent = computed(() => {
     case 'char':
     case 'varchar':
     case 'html':
-      // Search filter uses plaintext entry for html; Form uses ChoyHtmlField.
       return ChoyVarcharField;
     case 'text':
       return ChoyTextField;
@@ -206,13 +327,10 @@ const fieldMeta = computed(() => {
   return {
     ...staticMeta,
     type: (staticMeta.type || t) as any,
-    // Filter value editors must stay writable even when the column is form-readonly
-    // (e.g. DisplayName / computed fields) — otherwise FieldBase swaps to an empty display slot.
     isReadonly: false,
   } as Partial<WebFieldMetadata>;
 });
 
-// Built once per condition row instance (not per parent re-render).
 const binding = useStandaloneField({
   value: valueRef,
   meta: fieldMeta.value,
@@ -221,7 +339,6 @@ const binding = useStandaloneField({
   record: {},
 }) as any;
 
-// Keep ensureFieldsGet for selection/ACL overlays, but never let getFieldMeta re-apply isReadonly.
 binding.store = {
   get fieldsMetadata() {
     return (props.store as any)?.fieldsMetadata;
@@ -247,16 +364,25 @@ watch(
         ? relationStoreOf(fieldName)
         : undefined;
   },
-  { immediate: true }
+  { immediate: true },
 );
 
-function onFieldChange(val: string) {
+function onFieldSelect(val: string | null) {
+  if (val == null || val === '') return;
   const ops = getOperatorOptionsForField(val);
   const firstOp = ops.length > 0 ? ops[0].value : undefined;
   props.onUpdateCondition(conditionId.value, { field: val, operator: firstOp, value: undefined });
 }
 
-function onOperatorChange(op: string) {
+function onFieldCombobox(val: string | null | undefined) {
+  if (val == null || val === '') return;
+  onFieldSelect(val);
+  fieldQuery.value = props.fields.find(f => f.prop === val)?.label || val;
+  fieldOpen.value = false;
+}
+
+function onOperatorSelect(op: string | null) {
+  if (op == null || op === '') return;
   const patch: Partial<CondLike> = { operator: op };
   if (isNullOperator(op)) {
     patch.value = null;
@@ -272,8 +398,60 @@ function onOperatorChange(op: string) {
   props.onUpdateCondition(conditionId.value, patch);
 }
 
+function onMultiInput(raw: string) {
+  onMultiValuesChange(
+    String(raw || '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean),
+  );
+}
+
 function onRemove() {
   props.onRemoveCondition(conditionId.value);
 }
 </script>
 
+<style scoped>
+.choy-search-filter__row {
+  display: grid;
+  grid-template-columns: minmax(8rem, 11rem) minmax(5.75rem, 7.5rem) minmax(0, 1fr) var(--size-control, 2rem);
+  align-items: center;
+  column-gap: 0.625rem;
+}
+
+.choy-search-filter__field,
+.choy-search-filter__operator,
+.choy-search-filter__value {
+  min-width: 0;
+}
+
+.choy-search-filter__value-field :deep([data-slot='form-item']),
+.choy-search-filter__value-field :deep(.choy-field),
+.choy-search-filter__value-field :deep(.el-form-item) {
+  margin: 0;
+  width: 100%;
+}
+
+.choy-search-filter__value-field :deep([data-slot='form-item'] > label),
+.choy-search-filter__value-field :deep(.choy-field > label),
+.choy-search-filter__value-field :deep(.el-form-item__label) {
+  display: none;
+}
+
+.choy-search-filter__value-field :deep([data-slot='form-item'] > div),
+.choy-search-filter__value-field :deep(.el-form-item__content) {
+  margin: 0;
+  width: 100%;
+}
+
+.choy-search-filter__value-field :deep(input),
+.choy-search-filter__value-field :deep(textarea),
+.choy-search-filter__value-field :deep(button[data-slot='select-trigger']),
+.choy-search-filter__value-field :deep([data-slot='combobox-input']) {
+  height: var(--choy-control-height, 2rem);
+  min-height: var(--choy-control-height, 2rem);
+  max-height: var(--choy-control-height, 2rem);
+  background-color: var(--color-background);
+}
+</style>

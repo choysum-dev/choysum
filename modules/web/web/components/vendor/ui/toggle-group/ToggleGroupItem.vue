@@ -4,47 +4,49 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import type { VariantProps } from '../../../../lib/cva'
-import type { ToggleGroupItemProps } from "reka-ui"
-import type { HTMLAttributes } from "vue"
-import { reactiveOmit } from "@vueuse/core"
-import { ToggleGroupItem, useForwardProps } from "reka-ui"
-import { inject } from "vue"
-import { cn } from "../../../../lib/utils"
-import { toggleVariants } from "../toggle"
+import { ToggleGroupItem } from 'reka-ui';
+import { inject } from 'vue';
+import { cn, type ClassValue } from '../../../../lib/utils';
+import { toggleVariants } from '../toggle/toggleVariants';
 
-type ToggleGroupVariants = VariantProps<typeof toggleVariants> & {
-  spacing?: number
-}
+type ToggleVariant = 'default' | 'outline';
+type ToggleSize = 'default' | 'sm' | 'lg';
 
-const props = defineProps<ToggleGroupItemProps & {
-  class?: HTMLAttributes["class"]
-  variant?: ToggleGroupVariants["variant"]
-  size?: ToggleGroupVariants["size"]
-}>()
+const props = defineProps<{
+  class?: ClassValue;
+  value: string;
+  disabled?: boolean;
+  variant?: ToggleVariant;
+  size?: ToggleSize;
+}>();
 
-const context = inject<ToggleGroupVariants>("toggleGroup")
-
-const delegatedProps = reactiveOmit(props, "class", "size", "variant")
-const forwardedProps = useForwardProps(delegatedProps)
+const context = inject<{
+  variant?: ToggleVariant;
+  size?: ToggleSize;
+  spacing?: number;
+}>('toggleGroup');
 </script>
 
 <template>
   <ToggleGroupItem
     v-slot="slotProps"
     data-slot="toggle-group-item"
+    :value="value"
+    :disabled="disabled"
     :data-variant="context?.variant || variant"
     :data-size="context?.size || size"
     :data-spacing="context?.spacing"
-    v-bind="forwardedProps"
-    :class="cn(
-      toggleVariants({
-        variant: context?.variant || variant,
-        size: context?.size || size,
-      }),
-      'w-auto min-w-0 shrink-0 px-3 focus:z-10 focus-visible:z-10',
-      'data-[spacing=0]:rounded-none data-[spacing=0]:shadow-none data-[spacing=0]:first:rounded-l-md data-[spacing=0]:last:rounded-r-md data-[spacing=0]:data-[variant=outline]:border-l-0 data-[spacing=0]:data-[variant=outline]:first:border-l',
-      props.class)"
+    :class="
+      cn(
+        toggleVariants({
+          variant: context?.variant || variant,
+          size: context?.size || size,
+        }),
+        'w-auto min-w-0 shrink-0 px-3 focus:z-10 focus-visible:z-10',
+        'data-[spacing=0]:rounded-none data-[spacing=0]:shadow-none data-[spacing=0]:first:rounded-l-md data-[spacing=0]:last:rounded-r-md data-[spacing=0]:data-[variant=outline]:border-l-0 data-[spacing=0]:data-[variant=outline]:first:border-l',
+        props.class,
+      )
+    "
   >
     <slot v-bind="slotProps" />
   </ToggleGroupItem>

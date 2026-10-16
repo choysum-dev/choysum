@@ -4,50 +4,64 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import type { VariantProps } from '../../../../lib/cva'
-import type { ToggleGroupRootEmits, ToggleGroupRootProps } from "reka-ui"
-import type { HTMLAttributes } from "vue"
-import type { toggleVariants } from "../toggle"
-import { reactiveOmit } from "@vueuse/core"
-import { ToggleGroupRoot, useForwardPropsEmits } from "reka-ui"
-import { provide } from "vue"
-import { cn } from "../../../../lib/utils"
+import { ToggleGroupRoot } from 'reka-ui';
+import { provide } from 'vue';
+import { cn, type ClassValue } from '../../../../lib/utils';
 
-type ToggleGroupVariants = VariantProps<typeof toggleVariants>
+type ToggleVariant = 'default' | 'outline';
+type ToggleSize = 'default' | 'sm' | 'lg';
 
-const props = withDefaults(defineProps<ToggleGroupRootProps & {
-  class?: HTMLAttributes["class"]
-  variant?: ToggleGroupVariants["variant"]
-  size?: ToggleGroupVariants["size"]
-  spacing?: number
-}>(), {
-  spacing: 0,
-})
+const modelValue = defineModel<string | string[] | undefined>();
 
-const emits = defineEmits<ToggleGroupRootEmits>()
+const props = withDefaults(
+  defineProps<{
+    class?: ClassValue;
+    variant?: ToggleVariant;
+    size?: ToggleSize;
+    spacing?: number;
+    type?: 'single' | 'multiple';
+    disabled?: boolean;
+    orientation?: 'horizontal' | 'vertical';
+    loop?: boolean;
+    rovingFocus?: boolean;
+  }>(),
+  {
+    spacing: 0,
+    type: 'single',
+    disabled: false,
+    orientation: 'horizontal',
+    loop: true,
+    rovingFocus: true,
+  },
+);
 
-provide("toggleGroup", {
+provide('toggleGroup', {
   variant: props.variant,
   size: props.size,
   spacing: props.spacing,
-})
-
-const delegatedProps = reactiveOmit(props, "class", "size", "variant")
-const forwarded = useForwardPropsEmits(delegatedProps, emits)
+});
 </script>
 
 <template>
   <ToggleGroupRoot
     v-slot="slotProps"
+    v-model="modelValue"
     data-slot="toggle-group"
+    :type="type"
+    :disabled="disabled"
+    :orientation="orientation"
+    :loop="loop"
+    :roving-focus="rovingFocus"
     :data-size="size"
     :data-variant="variant"
     :data-spacing="spacing"
-    :style="{
-      '--gap': spacing,
-    }"
-    v-bind="forwarded"
-    :class="cn('group/toggle-group flex w-fit items-center gap-[--spacing(var(--gap))] rounded-md data-[spacing=default]:data-[variant=outline]:shadow-sm', props.class)"
+    :style="{ '--gap': spacing }"
+    :class="
+      cn(
+        'group/toggle-group flex w-fit items-center gap-[--spacing(var(--gap))] rounded-md data-[spacing=default]:data-[variant=outline]:shadow-sm',
+        props.class,
+      )
+    "
   >
     <slot v-bind="slotProps" />
   </ToggleGroupRoot>

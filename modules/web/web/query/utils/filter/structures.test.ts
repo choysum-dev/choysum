@@ -3,11 +3,13 @@
 
 import {
   cloneFilter,
+  countFilterLeaves,
   createCondition,
   createFilter,
   deepCloneFilter,
   genId,
   isCondition,
+  isConditionComplete,
   isGroup,
   normalizeFilters,
   toFilters,
@@ -82,6 +84,17 @@ test('filter structures helpers: toFilters converts named filters and groups', (
   expect(toFilters(groupWithQuery)[0]).toBe(groupWithQuery);
 });
 
+test('filter structures helpers: isConditionComplete requires value when operator needs one', () => {
+  expect(isConditionComplete({ field: 'Name', operator: '=', value: 'x' })).toBe(true);
+  expect(isConditionComplete({ field: 'Name', operator: '=', value: '' })).toBe(false);
+  expect(isConditionComplete({ field: 'Name', operator: '=', value: '   ' })).toBe(false);
+  expect(isConditionComplete({ field: '', operator: '=', value: 'x' })).toBe(false);
+  expect(isConditionComplete({ field: 'Active', operator: 'is', value: null })).toBe(true);
+  expect(isConditionComplete({ field: 'PartnerId', operator: '=', value: { Id: 'p1' } })).toBe(true);
+  expect(isConditionComplete({ field: 'PartnerId', operator: '=', value: { Id: '' } })).toBe(false);
+  expect(isConditionComplete({ field: 'PartnerId', operator: 'in', value: [] })).toBe(false);
+});
+
 test('filter structures helpers: normalizeFilters drops incomplete nodes and empty groups', () => {
   const raw = [
     {
@@ -90,6 +103,7 @@ test('filter structures helpers: normalizeFilters drops incomplete nodes and emp
       name: 'N',
       children: [
         { id: 'c1', field: '', operator: '=', value: 1 },
+        { id: 'c1b', field: 'Name', operator: '=', value: '' },
         { id: 'c2', field: 'Name', operator: '=', value: 'ok' },
         {
           id: 'g2',
@@ -109,6 +123,16 @@ test('filter structures helpers: normalizeFilters drops incomplete nodes and emp
   expect(out[0].children).toHaveLength(2);
   expect((out[0].children[0] as any).field).toBe('Name');
   expect(isGroup(out[0].children[1])).toBe(true);
+
+  const leaves = countFilterLeaves({
+    id: 'g',
+    logic: 'And',
+    children: [
+      { id: 'a', field: 'Name', operator: '=', value: 'ok' },
+      { id: 'b', field: 'Name', operator: '=', value: '' },
+    ],
+  } as any);
+  expect(leaves).toEqual({ complete: 1, incomplete: 1 });
 });
 
 test('filter structures helpers: deepCloneFilter preserves name and handles missing children', () => {
