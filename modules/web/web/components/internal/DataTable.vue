@@ -601,21 +601,26 @@ watch(
   { deep: true },
 );
 
+/** Host-controlled rowSelection ids encoded once for O(1) selected chrome lookup. */
+const selectedRowKeySet = computed(() => {
+  const keys = new Set<string>();
+  const ids = props.rowSelection;
+  if (ids == null) return keys;
+  for (const raw of ids) {
+    const normalized = normalizeDataTableRowId(raw);
+    if (normalized != null) keys.add(encodeDataTableRowKey(normalized));
+  }
+  return keys;
+});
+
 /** Selected chrome: TanStack selection and/or host-controlled rowSelection ids (List path). */
 function rowIsSelected(row: { getIsSelected?: () => boolean; id?: string } | null | undefined): boolean {
   if (!row) return false;
   if (typeof row.getIsSelected === 'function' && row.getIsSelected()) {
     return true;
   }
-  const ids = props.rowSelection;
-  if (ids == null || row.id == null) return false;
-  for (const raw of ids) {
-    const normalized = normalizeDataTableRowId(raw);
-    if (normalized != null && encodeDataTableRowKey(normalized) === row.id) {
-      return true;
-    }
-  }
-  return false;
+  if (row.id == null) return false;
+  return selectedRowKeySet.value.has(row.id);
 }
 
 function onHeaderClick(columnId: string, canSort: boolean): void {

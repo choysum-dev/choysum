@@ -170,6 +170,36 @@ func TestVueHostBareImportPinsFallbackAndHostVueWins(t *testing.T) {
 	if _, err := vueHostBareImportPins(root); err == nil || !strings.Contains(err.Error(), "has no exact vue pin") {
 		t.Fatalf("expected missing exact vue pin error, got %v", err)
 	}
+
+	// Restore a valid web pin, then break modules/core so core ExactPins errors.
+	if err := os.WriteFile(filepath.Join(webRoot, "package.json"), []byte(`{"peerDependencies":{"vue":"3.5.13"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	coreRoot := filepath.Join(root, "modules", "core")
+	if err := os.MkdirAll(coreRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(coreRoot, "package.json"), []byte(`{`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := vueHostBareImportPins(root); err == nil || !strings.Contains(err.Error(), "modules/core") {
+		t.Fatalf("expected modules/core exact pins error, got %v", err)
+	}
+
+	// Valid core+web; host vue runtime keys from core must be skipped (continue path).
+	if err := os.WriteFile(filepath.Join(coreRoot, "package.json"), []byte(`{"dependencies":{"vue":"3.5.13","local-core":"1.0.0"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	pins, err = vueHostBareImportPins(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pins["local-core"] != "1.0.0" {
+		t.Fatalf("expected non-vue core pin, got %#v", pins)
+	}
+	if pins["vue"] != "3.5.13" {
+		t.Fatalf("web vue pin must win, got %#v", pins)
+	}
 }
 
 func TestBuildFrontendVueHostBundleExactPinsError(t *testing.T) {

@@ -173,10 +173,15 @@ export function useUserFilters(params: {
         })) as UserFilterRow[];
       } catch (e) {
         if (!isMissingGroupByColumn(e)) throw e;
-        rows = (await uf.Search(condition, {
-          fields: fieldsWithoutGroupBy,
-          orderBy,
-        })) as UserFilterRow[];
+        try {
+          rows = (await uf.Search(condition, {
+            fields: fieldsWithoutGroupBy,
+            orderBy,
+          })) as UserFilterRow[];
+        } catch {
+          // Prefer the original schema error over a secondary fallback failure.
+          throw e;
+        }
       }
 
       if (gen !== loadGeneration) return;

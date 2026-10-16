@@ -216,6 +216,26 @@ describe('useUserFilters', () => {
     expect(Search.calls.length).toBe(2);
   });
 
+  test('load surfaces original GroupBy schema error when fallback Search also fails', async () => {
+    Search.setImpl(async (_cond: any, opts: any) => {
+      if (Array.isArray(opts?.fields) && opts.fields.includes('GroupBy')) {
+        throw new Error('column group_by does not exist');
+      }
+      throw new Error('fallback boom');
+    });
+    const api = runInSetup(() =>
+      useUserFilters({
+        store: { application: 'demo', modelName: 'Widget' },
+        filtersRef: ref([]),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
+      })
+    );
+    await api.load();
+    expect(String(api.loadError.value || '')).toContain('group_by');
+    expect(api.favorites.value).toHaveLength(0);
+  });
+
   test('load treats empty-object GroupBy as no grouping', async () => {
     // jsonobject columns may decode empty payloads as {} instead of [].
     Search.setImpl(async () => [

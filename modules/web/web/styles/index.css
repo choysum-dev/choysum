@@ -105,6 +105,7 @@ body {
 .scrollbar-none {
   scrollbar-width: none;
   -ms-overflow-style: none;
+  overscroll-behavior: contain;
 }
 .scrollbar-none::-webkit-scrollbar {
   display: none;

@@ -776,6 +776,8 @@ describe('OSearch behavior', () => {
     expect(confirmCallCount).toBeGreaterThan(0);
     expect(savedFiltersApi.remove.calls[0]).toEqual(['fav-1']);
     expect(msgSuccess.calls.length).toBeGreaterThan(0);
+    // Deleting the applied favorite clears the star facet from the chip row.
+    expect(m.q('[data-testid=choy-search-favorite-tag]')).toBeFalsy();
     const menuAfterDelete =
       typeof st.menuVisible === 'boolean' ? st.menuVisible : st.menuVisible?.value;
     expect(menuAfterDelete).toBe(true);

@@ -14,6 +14,17 @@ import (
 	"github.com/evanw/esbuild/pkg/api"
 )
 
+func TestFeUnitPackageStubResolveUnknownFallsThrough(t *testing.T) {
+	stubs := feUnitStubPaths{RekaUI: "reka-ui"}
+	if _, ok := feUnitPackageStubResolve("not-a-stubbed-package", stubs); ok {
+		t.Fatal("unknown package must not resolve")
+	}
+	res, ok := feUnitPackageStubResolve("reka-ui", stubs)
+	if !ok || res.Path != "reka-ui" || res.Namespace != "file" {
+		t.Fatalf("reka-ui resolve = (%+v,%v)", res, ok)
+	}
+}
+
 func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 	stubs := feUnitStubPaths{
 		Router:              "router",

@@ -673,6 +673,7 @@ async function onRemoveFavorite(it: { id: string; name: string }) {
   }
   try {
     await removeFavorite(it.id);
+    if (activeFavorite.value?.id === it.id) onClearActiveFavorite();
     emit('defaults-ready', defaultsForOpen.value as NamedFilter[]);
     ChoyMessage.success(_t('Favorite deleted'));
   } catch (e: any) {
