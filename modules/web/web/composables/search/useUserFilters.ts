@@ -92,6 +92,9 @@ export function useUserFilters(params: {
   const loading = ref(false);
   const loadError = ref<string | null>(null);
   let loadGeneration = 0;
+  // After the first missing-column error, skip GroupBy so a pre-migration schema
+  // does not pay a failed RPC on every favorites load / save.
+  let groupByColumnSupported = true;
 
   const application = computed(() => String((store as any)?.application || '').trim());
   const modelName = computed(() => String((store as any)?.modelName || '').trim());
@@ -166,22 +169,30 @@ export function useUserFilters(params: {
       // Prefer GroupBy when the column exists; fall back after failed upgrades /
       // mixed FE–BE where web_user_filter.group_by is not migrated yet.
       let rows: UserFilterRow[];
-      try {
-        rows = (await uf.Search(condition, {
-          fields: fieldsWithGroupBy,
-          orderBy,
-        })) as UserFilterRow[];
-      } catch (e) {
-        if (!isMissingGroupByColumn(e)) throw e;
+      if (groupByColumnSupported) {
         try {
           rows = (await uf.Search(condition, {
-            fields: fieldsWithoutGroupBy,
+            fields: fieldsWithGroupBy,
             orderBy,
           })) as UserFilterRow[];
-        } catch {
-          // Prefer the original schema error over a secondary fallback failure.
-          throw e;
+        } catch (e) {
+          if (!isMissingGroupByColumn(e)) throw e;
+          groupByColumnSupported = false;
+          try {
+            rows = (await uf.Search(condition, {
+              fields: fieldsWithoutGroupBy,
+              orderBy,
+            })) as UserFilterRow[];
+          } catch {
+            // Prefer the original schema error over a secondary fallback failure.
+            throw e;
+          }
         }
+      } else {
+        rows = (await uf.Search(condition, {
+          fields: fieldsWithoutGroupBy,
+          orderBy,
+        })) as UserFilterRow[];
       }
 
       if (gen !== loadGeneration) return;
@@ -296,11 +307,17 @@ export function useUserFilters(params: {
       'CreatedUid',
     ];
     let created: any;
-    try {
-      created = await uf.Create(values, createFieldsWithGroupBy);
-    } catch (e) {
-      if (!isMissingGroupByColumn(e)) throw e;
-      // Schema not migrated yet: persist Condition only so Favorites still save.
+    if (groupByColumnSupported) {
+      try {
+        created = await uf.Create(values, createFieldsWithGroupBy);
+      } catch (e) {
+        if (!isMissingGroupByColumn(e)) throw e;
+        groupByColumnSupported = false;
+        // Schema not migrated yet: persist Condition only so Favorites still save.
+        delete values.GroupBy;
+        created = await uf.Create(values, createFieldsWithoutGroupBy);
+      }
+    } else {
       delete values.GroupBy;
       created = await uf.Create(values, createFieldsWithoutGroupBy);
     }

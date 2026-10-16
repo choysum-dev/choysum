@@ -84,18 +84,22 @@ body {
   padding-top: 0;
 }
 
-/* List/DataTable row tracks (tokens --choy-list-*-height; not control-height). */
-.min-h-list-row {
-  min-height: var(--choy-list-row-height, 40px);
-}
-.h-list-row {
-  height: var(--choy-list-row-height, 40px);
-}
-.min-h-list-header {
-  min-height: var(--choy-list-header-height, 40px);
-}
-.h-list-header {
-  height: var(--choy-list-header-height, 40px);
+@layer components {
+  /* List/DataTable row tracks (tokens --choy-list-*-height; not control-height). */
+  .min-h-list-row {
+    min-height: var(--choy-list-row-height, 40px);
+  }
+  .h-list-row {
+    height: var(--choy-list-row-height, 40px);
+    /* Virtual rows are fixed-height; clip wrap so tracks do not paint into neighbors. */
+    overflow: hidden;
+  }
+  .min-h-list-header {
+    min-height: var(--choy-list-header-height, 40px);
+  }
+  .h-list-header {
+    height: var(--choy-list-header-height, 40px);
+  }
 }
 
 /*

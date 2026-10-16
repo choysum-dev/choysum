@@ -250,6 +250,11 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 			t.Fatalf("package stub %q: %#v err=%v", path, res, err)
 		}
 	}
+	// Filter/path drift fallthrough: callback returns empty resolve for unknown packages.
+	fallthroughRes, err := pkgCB(api.OnResolveArgs{Path: "not-a-stubbed-package"})
+	if err != nil || fallthroughRes.Path != "" {
+		t.Fatalf("package stub fallthrough: %#v err=%v", fallthroughRes, err)
+	}
 	pageRes, err := pageCB(api.OnResolveArgs{Path: "./Page.vue", Importer: "/modules/web/web/pages/TerminologyEditor.vue"})
 	if err != nil || !strings.HasSuffix(pageRes.Path, "OPage.stub.vue") {
 		t.Fatalf("page stub: %#v err=%v", pageRes, err)

@@ -214,6 +214,11 @@ describe('useUserFilters', () => {
     expect(api.favorites.value).toHaveLength(1);
     expect(api.favorites.value[0]).toMatchObject({ Name: 'Legacy', GroupBy: [] });
     expect(Search.calls.length).toBe(2);
+    // Negative cache: later loads skip the doomed GroupBy Search.
+    Search.calls.length = 0;
+    await api.load();
+    expect(Search.calls.length).toBe(1);
+    expect(Search.calls[0]?.[1]?.fields).not.toContain('GroupBy');
   });
 
   test('load surfaces original GroupBy schema error when fallback Search also fails', async () => {

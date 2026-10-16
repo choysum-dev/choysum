@@ -426,6 +426,8 @@ type ActiveFavorite = {
   name: string;
   filter: unknown;
   groups: Array<{ field: string; granularity?: string }>;
+  /** Chip id contributed by apply; omitted when the favorite added no named chip. */
+  filterChipId?: string;
 };
 
 /** Captured in setup so click handlers never call inject()-based APIs. */
@@ -543,9 +545,13 @@ const groupingTooltip = computed(() => groupingSummary.value);
 /** Funnel chips excluding the active favorite's own named condition chip. */
 const visibleFilters = computed(() => {
   const list = Array.isArray(filters.value) ? filters.value : [];
-  const favName = String(activeFavorite.value?.name || '').trim();
-  if (!favName) return list;
-  return list.filter(f => String(f.name || '').trim() !== favName);
+  const fav = activeFavorite.value;
+  if (!fav) return list;
+  if (fav.filterChipId) {
+    return list.filter(f => f.id !== fav.filterChipId);
+  }
+  // Groupby-only / empty favorites contribute no chip; leave other same-name filters.
+  return list;
 });
 
 const hasFacetTags = computed(
@@ -612,32 +618,44 @@ const saveFavoriteDialogTitle = computed(() =>
   editingFavoriteId.value ? _t('Edit favorite') : _t('Save current filters')
 );
 
-function removeFilterChipsNamed(name: string) {
-  const n = String(name || '').trim();
-  if (!n) return;
-  filters.value = (filters.value || []).filter(f => String(f.name || '').trim() !== n);
+/** Remove only the chip this favorite contributed (by id); no-op when none was added. */
+function removeActiveFavoriteChip(fav: ActiveFavorite) {
+  const chipId = fav.filterChipId;
+  if (!chipId) return;
+  filters.value = (filters.value || []).filter(f => f.id !== chipId);
 }
 
 function onApplyFavorite(it: UserFavoriteMenuItem) {
   const prev = activeFavorite.value;
+  const filtersSnapshot = (filters.value || []).slice();
   let baseGroups = (props.currentAppliedGroups as any) ?? [];
   if (prev) {
     // Replace previous favorite contribution; keep user-added filters/groups.
-    removeFilterChipsNamed(prev.name);
+    removeActiveFavoriteChip(prev);
     baseGroups = removeFavoriteGroups(baseGroups, prev.groups);
   }
   const favGroups = normalizeGroupby((it.groups ?? []) as any) as Array<{
     field: string;
     granularity?: string;
   }>;
+  const beforeIds = new Set((filters.value || []).map(f => f.id));
+  try {
+    // Apply condition into query (named chip may exist); UI folds it into the star tag.
+    applyFavorite({ name: it.name, filter: it.filter });
+  } catch (e) {
+    // Roll back chip removal so local filters still match the applied query.
+    filters.value = filtersSnapshot;
+    ChoyMessage.error(e instanceof Error ? e.message : String(e));
+    return;
+  }
+  const added = (filters.value || []).find(f => f.id && !beforeIds.has(f.id));
   activeFavorite.value = {
     id: String(it.id),
     name: String(it.name || '').trim(),
     filter: it.filter,
     groups: favGroups,
+    ...(added?.id ? { filterChipId: String(added.id) } : {}),
   };
-  // Apply condition into query (named chip may exist); UI folds it into the star tag.
-  applyFavorite({ name: it.name, filter: it.filter });
   const merged = mergeFavoriteGroups(baseGroups, favGroups);
   emitQueryUpdate(buildPayload(merged as any));
   menuVisible.value = false;
@@ -646,7 +664,7 @@ function onApplyFavorite(it: UserFavoriteMenuItem) {
 function onClearActiveFavorite() {
   const prev = activeFavorite.value;
   if (!prev) return;
-  removeFilterChipsNamed(prev.name);
+  removeActiveFavoriteChip(prev);
   const nextGroups = removeFavoriteGroups(props.currentAppliedGroups as any, prev.groups);
   activeFavorite.value = null;
   emitQueryUpdate(buildPayload(nextGroups as any));

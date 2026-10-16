@@ -288,6 +288,25 @@ describe('DataTable virtualize', () => {
     mounted.unmount();
   });
 
+  test('object-form h-full class skips fixed root height', async () => {
+    const mounted = mountApp(DataTable as any, {
+      props: {
+        class: { 'h-full': true, 'min-h-0': true },
+        columns,
+        data: rows,
+        height: 280,
+        virtualize: false,
+        enableRowSelection: false,
+      },
+    });
+    await flushPromises();
+    const root = mounted.q('.choy-data-table') as HTMLElement | null;
+    expect(root).toBeTruthy();
+    expect((root!.style?.height || '').trim()).toBe('');
+    expect((root!.getAttribute('class') || '').split(/\s+/)).toContain('h-full');
+    mounted.unmount();
+  });
+
   test('empty non-virtual table shows rows after data arrives', async () => {
     const mounted = mountApp(DataTable as any, {
       props: {

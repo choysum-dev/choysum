@@ -1029,6 +1029,93 @@ describe('OSearch behavior', () => {
     m.unmount();
   });
 
+  test('clearing favorite preserves same-name filter when apply added no chip', async () => {
+    savedFiltersApi.state!.favoriteMenuItems = [
+      {
+        id: 'fav-same',
+        name: 'SharedName',
+        shared: false,
+        isDefault: false,
+        canDelete: true,
+        filter: { And: [['Active', '=', true]] },
+        groups: [],
+      },
+    ];
+    const m = mountSearch({
+      currentAppliedFilters: [
+        {
+          id: 'pre-existing',
+          name: 'SharedName',
+          logic: 'And',
+          children: [{ id: 'c-pre', field: 'Code', operator: '=', value: 'keep' }],
+        },
+      ],
+    });
+    await flushPromises();
+    const st = m.setupState() as { filters?: any[] | { value: any[] } };
+    const filterList = (): any[] => {
+      const f = st.filters as any;
+      return Array.isArray(f) ? f : f?.value || [];
+    };
+
+    (btnByText(m, 'SharedName') as HTMLElement).click();
+    await flushPromises();
+    expect(m.q('[data-testid=choy-search-favorite-tag]')?.textContent || '').toContain('SharedName');
+    // Same-name named filter is not duplicated; favorite records no chip id.
+    expect(filterList().filter((f: any) => f.name === 'SharedName')).toHaveLength(1);
+    expect(filterList()[0]?.id).toBe('pre-existing');
+    expect(m.q('.choy-search__tag')?.textContent || '').toContain('SharedName');
+
+    (m.q('[data-testid=choy-search-favorite-clear]') as HTMLElement).click();
+    await flushPromises();
+    expect(m.q('[data-testid=choy-search-favorite-tag]')).toBeFalsy();
+    expect(filterList()).toHaveLength(1);
+    expect(filterList()[0]?.id).toBe('pre-existing');
+    m.unmount();
+  });
+
+  test('clearing favorite removes only the contributed chip by id', async () => {
+    savedFiltersApi.state!.favoriteMenuItems = [
+      {
+        id: 'fav-chip',
+        name: 'SharedName',
+        shared: false,
+        isDefault: false,
+        canDelete: true,
+        filter: { And: [['Active', '=', true]] },
+        groups: [],
+      },
+    ];
+    const m = mountSearch();
+    await flushPromises();
+    const st = m.setupState() as { filters?: any[] | { value: any[] } };
+    const filterList = (): any[] => {
+      const f = st.filters as any;
+      return Array.isArray(f) ? f : f?.value || [];
+    };
+
+    (btnByText(m, 'SharedName') as HTMLElement).click();
+    await flushPromises();
+    const contributedId = filterList().find((f: any) => f.name === 'SharedName')?.id;
+    expect(contributedId).toBeTruthy();
+    filterList().push({
+      id: 'collision',
+      name: 'SharedName',
+      logic: 'And',
+      children: [{ id: 'c-col', field: 'Code', operator: '=', value: 'keep' }],
+    });
+    await nextTick();
+    expect(filterList().filter((f: any) => f.name === 'SharedName')).toHaveLength(2);
+
+    (m.q('[data-testid=choy-search-favorite-clear]') as HTMLElement).click();
+    await flushPromises();
+    const after = filterList().filter((f: any) => f.name === 'SharedName');
+    expect(after).toHaveLength(1);
+    expect(after[0]?.id).toBe('collision');
+    expect(after[0]?.id).not.toBe(contributedId);
+    m.unmount();
+  });
+
   test('stacks filters after favorite and clears favorite without wiping extras', async () => {
     savedFiltersApi.state!.favoriteMenuItems = [
       {

@@ -321,11 +321,16 @@ const emit = defineEmits<{
   'sort-change': [payload: { field: string; direction?: 'asc' | 'desc' }];
 }>();
 
+/** True when the host class tree requests `h-full` (string / array / object forms). */
+function classTreeHasToken(cls: ClassValue | undefined, token: string): boolean {
+  return cn(cls)
+    .split(/\s+/)
+    .some(part => part === token);
+}
+
 /** Total table height (header + body). Hosts that pass `h-full` size via parent instead. */
 const rootHeightStyle = computed(() => {
-  const cls = props.class;
-  const classStr = typeof cls === 'string' ? cls : Array.isArray(cls) ? cls.filter(Boolean).join(' ') : '';
-  if (classStr.includes('h-full')) return undefined;
+  if (classTreeHasToken(props.class, 'h-full')) return undefined;
   const h = props.height;
   if (h == null || !Number.isFinite(h) || h <= 0) return undefined;
   return { height: `${h}px` };
