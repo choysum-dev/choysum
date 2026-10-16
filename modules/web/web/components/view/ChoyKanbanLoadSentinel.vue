@@ -72,7 +72,7 @@ function connect(): void {
     },
     { root: scrollRoot, rootMargin: '80px 0px', threshold: 0 },
   );
-  observer.observe(el);
+  observer.observe(el as unknown as Element);
 }
 
 onMounted(connect);

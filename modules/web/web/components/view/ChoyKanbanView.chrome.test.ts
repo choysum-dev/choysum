@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
-import { h, nextTick } from 'vue';
+import { computed, h, nextTick, shallowRef } from 'vue';
 import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
+import { PageContextKey, type PageActionTarget } from '@/web/web/composables/usePageContext';
 import ChoyKanbanView from './ChoyKanbanView.vue';
 import type { ChoyKanbanCard, ChoyKanbanLane, ChoyKanbanMove } from './kanbanViewHelpers';
 
@@ -393,6 +394,18 @@ describe('ChoyKanbanView chrome', () => {
     );
     expect(state.laneDropActiveKey).toBe('done');
 
+    const laneEl = { contains: (node: unknown) => node === laneEl };
+    state.onLaneDragLeave(
+      { relatedTarget: laneEl, currentTarget: laneEl } as unknown as DragEvent,
+      dropLane,
+    );
+    expect(state.laneDropActiveKey).toBe('done');
+    state.onLaneDragLeave(
+      { relatedTarget: null, currentTarget: laneEl } as unknown as DragEvent,
+      dropLane,
+    );
+    expect(state.laneDropActiveKey).toBe('');
+
     state.onLaneDrop(
       { preventDefault() {}, dataTransfer: dt } as unknown as DragEvent,
       dropLane,
@@ -499,6 +512,42 @@ describe('ChoyKanbanView chrome', () => {
 
     state.onLaneLoadMore({ key: 'done', label: 'Done', cards: [], remain: 0 });
     expect(payloads.length).toBe(1);
+    mounted.unmount();
+  });
+
+  test('registers an empty selection target and refresh does not reject', async () => {
+    const store = makeStore();
+    let target: PageActionTarget | null = null;
+    const mounted = mountApp(ChoyKanbanView as any, {
+      props: {
+        store,
+        autoBootstrap: false,
+        showActions: false,
+        registerActionTarget: true,
+      },
+      provide: {
+        [PageContextKey as symbol]: {
+          store: computed(() => store),
+          actionTarget: shallowRef(null),
+          registerActionTarget(next: PageActionTarget) {
+            target = next;
+          },
+          unregisterActionTarget() {},
+          title: computed(() => ''),
+          titleId: 'page-title',
+          titleActionsIo: computed(() => null),
+          titleHostedByView: shallowRef(false),
+          claimPageTitle() {},
+          releasePageTitle() {},
+        },
+      },
+    });
+    await flushPromises();
+    expect(target).toBeTruthy();
+    expect((target as PageActionTarget).selectedItems).toEqual([]);
+    const state = mounted.setupState() as { onRefresh: () => void };
+    state.onRefresh();
+    await flushPromises();
     mounted.unmount();
   });
 });

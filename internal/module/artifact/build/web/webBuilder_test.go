@@ -668,12 +668,19 @@ func TestStripJSQuotedSpans(t *testing.T) {
 	cases := []struct {
 		in, want string
 	}{
+		{"", ""},
 		{`_t('Select Company')`, `_t( )`},
 		{`_t("Select Company")`, `_t( )`},
 		{"_t(`Select Company`)", `_t( )`},
 		{`CompanyListView`, `CompanyListView`},
 		{`foo + 'bar' + Company`, `foo +   + Company`},
 		{`'a\'b' + Company`, `  + Company`},
+		{"`'unclosed", " "},
+		{"'\\", " "},
+		{"`prefix ${CompanyListView.name} suffix`", "${CompanyListView.name}"},
+		{"`nested ${foo({ bar: 1 })}`", "${foo({ bar: 1 })}"},
+		{"`a\\nb ${Name}`", "${Name}"},
+		{"`${a\\nb}`", "${a\\nb}"},
 	}
 	for _, tc := range cases {
 		if got := stripJSQuotedSpans(tc.in); got != tc.want {
@@ -710,6 +717,26 @@ void Company;
 	}
 	if _, ok := imports["Company"]; ok {
 		t.Fatalf("Company mentioned only inside a string literal must not be treated as a template component, got %+v", imports)
+	}
+}
+
+func TestGetTemplateImportComponents_KeepsTemplateLiteralInterpolation(t *testing.T) {
+	testRuntimeScope := newTestScope()
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+
+	parentPath := "/virtual/modules/partner/web/views/PartnerFormView.vue"
+	parentSFC := "<template>\n  <div :is=\"`${CompanyListView.name}`\" />\n</template>\n<script setup lang=\"ts\">\nimport CompanyListView from '@/base/web/views/CompanyListView.vue';\n</script>"
+
+	parentParsed, err := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/partner"}).Parse(map[string]string{"@": "/virtual/modules"}, parentPath, parentSFC)
+	if err != nil {
+		t.Fatalf("parse parent failed: %v", err)
+	}
+	imports, err := b.getTemplateImportComponents(parentParsed)
+	if err != nil {
+		t.Fatalf("getTemplateImportComponents failed: %v", err)
+	}
+	if _, ok := imports["CompanyListView"]; !ok {
+		t.Fatalf("CompanyListView used in a template interpolation must be collected, got %+v", imports)
 	}
 }
 

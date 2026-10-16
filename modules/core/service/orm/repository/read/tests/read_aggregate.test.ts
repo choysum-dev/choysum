@@ -195,6 +195,99 @@ test('repository read aggregate runtime readGroup projects SqlCompute keys befor
   expect(log.some(item => item.method === 'groupBy' && item.tableOrAlias?.alias === '__rg')).toBe(true);
 });
 
+test('repository read aggregate runtime readGroup orders SqlCompute outer query by alias', async () => {
+  const { params, log } = createAggregateRuntime({
+    meta: {
+      type: class DemoModel {},
+      fields: new Map([
+        ['Id', { type: 'varchar' }],
+        ['InstalledStatus', { type: 'varchar' }],
+        ['Amount', { type: 'decimal' }],
+      ]),
+      sqlComputeHandlers: new Map([['InstalledStatus', { method: 'sqlInstalledStatus' }]]),
+    } as any,
+    normalizeOrderBy() {
+      return [
+        { field: 'InstalledStatus', order: 'asc' },
+        { field: 'Amount', order: 'desc' },
+        { field: 'Amount__sum', order: 'asc' },
+      ];
+    },
+    applyOrderByToQuery(query: any, meta: any, table: string, orderBy: any) {
+      log.push({
+        method: 'applyOrderByToQuery',
+        table,
+        fieldCount: meta?.fields?.size,
+        orderBy,
+      });
+      return query;
+    },
+  });
+
+  await executeRepositoryReadGroup(
+    params as any,
+    {
+      groupby: ['InstalledStatus', 'Amount'],
+      fields: [{ field: 'Amount', agg: 'sum' }],
+      orderBy: 'InstalledStatus asc',
+    } as any,
+  );
+
+  const orderCall = log.find(item => item.method === 'applyOrderByToQuery') as any;
+  expect(orderCall.table).toBe('__rg');
+  expect(orderCall.fieldCount).toBe(0);
+  expect(orderCall.orderBy).toEqual([
+    { field: 'InstalledStatus', order: 'asc' },
+    { field: 'Amount', order: 'desc' },
+    { field: 'Amount__sum', order: 'asc' },
+  ]);
+});
+
+test('repository read aggregate runtime readGroup rewrites single SqlCompute order fields to aliases', async () => {
+  const { params, log } = createAggregateRuntime({
+    meta: {
+      type: class DemoModel {},
+      fields: new Map([
+        ['InstalledStatus', { type: 'varchar' }],
+        ['Note', { type: 'varchar' }],
+      ]),
+      sqlComputeHandlers: new Map([['InstalledStatus', { method: 'sqlInstalledStatus' }]]),
+    } as any,
+    normalizeOrderBy() {
+      return [
+        { field: 'InstalledStatus', order: 'asc' },
+        { field: 'Note', order: 'desc' },
+        { field: 'Lane.Name', order: 'asc' },
+        { field: 'Nope', order: 'asc' },
+        { field: '', order: 'asc' },
+      ];
+    },
+    applyOrderByToQuery(query: any, _meta: any, table: string, orderBy: any) {
+      log.push({ method: 'applyOrderByToQuery', table, orderBy });
+      return query;
+    },
+  });
+
+  await executeRepositoryReadGroup(
+    params as any,
+    {
+      groupby: { field: 'InstalledStatus', alias: 'status_alias' },
+      fields: [{ field: 'Note', agg: 'sum' }],
+      orderBy: 'InstalledStatus asc',
+    } as any,
+  );
+
+  const orderCall = log.find(item => item.method === 'applyOrderByToQuery') as any;
+  expect(orderCall.table).toBe('__rg');
+  expect(orderCall.orderBy).toEqual([
+    { field: 'status_alias', order: 'asc' },
+    { field: 'Note__sum', order: 'desc' },
+    { field: 'Lane.Name', order: 'asc' },
+    { field: 'Nope', order: 'asc' },
+    { field: '', order: 'asc' },
+  ]);
+});
+
 test('repository read aggregate runtime readGroup applies having/order/limit/offset and normalizes __count', async () => {
   const { params, log } = createAggregateRuntime({
     normalizeOrderBy() {

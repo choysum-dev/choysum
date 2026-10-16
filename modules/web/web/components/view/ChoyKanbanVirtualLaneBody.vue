@@ -198,7 +198,7 @@ const virtualizer = useVirtualizer({
   get count() {
     return virtualized.value ? props.cards.length : 0;
   },
-  getScrollElement: () => (virtualized.value ? scrollRef.value : null),
+  getScrollElement: () => (virtualized.value ? (scrollRef.value as Element | null) : null),
   estimateSize: () => estimateSize.value,
   getItemKey: (index) => props.cards[index]?.id ?? index,
   overscan: 8,
@@ -246,4 +246,9 @@ function moveToLabel(label: string): string {
   if (props.moveToLabelFn) return props.moveToLabelFn(label);
   return `Move to ${label}`;
 }
+
+defineExpose({
+  /** Test hook: run the virtualizer measure callback. */
+  measureElement,
+});
 </script>

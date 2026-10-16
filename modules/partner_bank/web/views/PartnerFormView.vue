@@ -49,10 +49,11 @@ SPDX-License-Identifier: Apache-2.0
                   </ChoyBadge>
                 </div>
               </div>
-              <div class="truncate text-xs text-muted-foreground">{{ item?.BankNameSnapshot || '-' }}</div>
-              <div class="truncate text-xs text-muted-foreground">{{ getAccountTypeLabel(item?.AccountType) }}</div>
-              <div class="truncate text-xs text-muted-foreground">{{ item?.AccountNoMasked || '-' }}</div>
+              <div class="truncate text-xs text-muted-foreground">{{ _t('Bank') }} {{ item?.BankNameSnapshot || '-' }}</div>
+              <div class="truncate text-xs text-muted-foreground">{{ _t('Type') }} {{ getAccountTypeLabel(item?.AccountType) }}</div>
+              <div class="truncate text-xs text-muted-foreground">{{ _t('Account Number') }} {{ item?.AccountNoMasked || '-' }}</div>
               <div class="truncate text-xs text-muted-foreground">
+                {{ _t('Inbound/Outbound') }}
                 {{ item?.AllowInbound ? _t('Yes') : _t('No') }}/{{ item?.AllowOutbound ? _t('Yes') : _t('No') }}
               </div>
               <div v-if="editable || removable" class="mt-auto inline-flex gap-1 pt-1">

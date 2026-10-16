@@ -71,7 +71,11 @@ export function resolveModuleKanbanLaneStatus(laneKey: string, laneLabel?: strin
     lower === 'installed' ||
     lower === 'uninstalled' ||
     lower === 'disabled' ||
-    lower === 'broken'
+    lower === 'broken' ||
+    lower === 'succeeded' ||
+    lower === 'failed' ||
+    lower === 'dispatching' ||
+    lower === 'queued'
   ) {
     return lower;
   }
@@ -80,7 +84,7 @@ export function resolveModuleKanbanLaneStatus(laneKey: string, laneLabel?: strin
   if (raw === '未安装' || lower === 'not installed') return 'uninstalled';
   if (raw === '已禁用') return 'disabled';
   if (raw === '损坏') return 'broken';
-  return lower;
+  return '';
 }
 
 /**

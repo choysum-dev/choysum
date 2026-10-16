@@ -230,7 +230,7 @@ SPDX-License-Identifier: Apache-2.0
             :other-lanes="otherLanes(lane.key)"
             :empty-label="_t('No cards')"
             :move-to-lane-label="_t('Move to lane')"
-            :move-to-label-fn="(label) => _t('Move to %s', label)"
+            :move-to-label-fn="(label: string) => _t('Move to %s', label)"
             @card-click="onCardClick"
             @load-more="onLaneLoadMore(lane)"
             @move-to-lane="(card, toKey) => moveCardToLane(card, lane.key, toKey)"
@@ -534,7 +534,7 @@ function onCreate(): void {
 }
 
 function onRefresh(): void {
-  void engine.bootstrap();
+  void engine.bootstrap().catch(() => undefined);
 }
 
 function onLaneLoadMore(lane: ChoyKanbanLane): void {

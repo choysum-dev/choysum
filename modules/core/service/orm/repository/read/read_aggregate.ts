@@ -92,7 +92,8 @@ export async function executeRepositoryReadGroup<T>(params: RepositoryReadAggreg
 
   // Correlated @SqlCompute keys must be projected before GROUP BY (PostgreSQL 42803).
   let qb: AggregateQueryLike;
-  if (groupSpecUsesSqlCompute(params.meta, group)) {
+  const projectsSqlCompute = groupSpecUsesSqlCompute(params.meta, group);
+  if (projectsSqlCompute) {
     let inner: AggregateQueryLike = db.selectFrom(params.table);
     inner = inner.select((selBuilder: unknown) =>
       buildRepositoryReadAggregateProjectionSelections(params, selBuilder, group, aggs, timezone),
@@ -121,7 +122,13 @@ export async function executeRepositoryReadGroup<T>(params: RepositoryReadAggreg
 
   const optOrder = params.normalizeOrderBy(options.orderBy);
   if (Array.isArray(optOrder) && optOrder.length) {
-    qb = params.applyOrderByToQuery(qb, params.meta, params.table, optOrder) as AggregateQueryLike;
+    if (projectsSqlCompute) {
+      // Outer query columns are `__rg` aliases. Ordering `table.field` is not visible there.
+      const outerMeta = { fields: new Map() };
+      qb = params.applyOrderByToQuery(qb, outerMeta, '__rg', outerAggregateOrderSpecs(optOrder, group, aggs)) as AggregateQueryLike;
+    } else {
+      qb = params.applyOrderByToQuery(qb, params.meta, params.table, optOrder) as AggregateQueryLike;
+    }
   }
 
   if (typeof options.limit === 'number') qb = qb.limit(options.limit);
@@ -131,6 +138,29 @@ export async function executeRepositoryReadGroup<T>(params: RepositoryReadAggreg
   normalizeRepositoryAggregateDecimals(params.meta, rows as ObjectRecord[], aggs);
   for (const row of rows) row.__count = Number(row.__count ?? 0);
   return rows;
+}
+
+/** Map group/agg field names onto outer `__rg` aliases so ORDER BY does not use the base table. */
+function outerAggregateOrderSpecs(orderBy: unknown[], group: GroupSpecLike, aggs: NormalizedAgg[]): unknown[] {
+  const aliases = resolveRepositoryReadAggregateKnownAliases(group, aggs);
+  const fieldToAlias = new Map<string, string>();
+  if ('composite' in group && group.composite) {
+    for (const part of group.parts) {
+      if (part.field) fieldToAlias.set(part.field, part.alias);
+    }
+  } else if ('field' in group) {
+    fieldToAlias.set(group.field, group.alias);
+  }
+  for (const agg of aggs) {
+    fieldToAlias.set(agg.alias, agg.alias);
+    if (!aliases.has(agg.field)) fieldToAlias.set(agg.field, agg.alias);
+  }
+  return orderBy.map(spec => {
+    const field = String((spec as { field?: string })?.field ?? '');
+    if (!field || aliases.has(field) || field.includes('.') || field.includes('__')) return spec;
+    const alias = fieldToAlias.get(field);
+    return alias ? { ...(spec as object), field: alias } : spec;
+  });
 }
 
 export async function executeRepositoryReadTotals<T>(params: RepositoryReadAggregateDeps, options: RepositoryReadTotalsOptions<T>): Promise<RepositoryReadTotalsRow> {

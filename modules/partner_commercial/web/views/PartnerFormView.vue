@@ -46,12 +46,12 @@ SPDX-License-Identifier: Apache-2.0
                     </ChoyBadge>
                   </div>
                 </div>
-                <div class="truncate text-xs text-muted-foreground">{{ item?.Value || '-' }}</div>
-                <div class="truncate text-xs text-muted-foreground">{{ resolveCountryLabel(item) }}</div>
+                <div class="truncate text-xs text-muted-foreground">{{ _t('Value') }} {{ item?.Value || '-' }}</div>
+                <div class="truncate text-xs text-muted-foreground">{{ _t('Country') }} {{ resolveCountryLabel(item) }}</div>
                 <div class="truncate text-xs text-muted-foreground">
-                  {{ formatDateTime(item?.ValidFrom) || '-' }}
+                  {{ _t('Valid From') }} {{ formatDateTime(item?.ValidFrom) || '-' }}
                   <span class="text-muted-foreground/60"> · </span>
-                  {{ formatDateTime(item?.ValidTo) || '-' }}
+                  {{ _t('Valid To') }} {{ formatDateTime(item?.ValidTo) || '-' }}
                 </div>
                 <div v-if="editable || removable" class="mt-auto inline-flex gap-1 pt-1">
                   <ChoyButton v-if="editable" variant="ghost" size="sm" @click.stop="edit">{{ _t('Edit') }}</ChoyButton>

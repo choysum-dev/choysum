@@ -718,7 +718,8 @@ func templateUsesImportInDynamicBinding(root *html.Node, importName string) bool
 }
 
 // stripJSQuotedSpans removes '…' / "…" / `…` spans (with basic backslash escapes)
-// so identifier scans do not hit string contents.
+// so identifier scans do not hit string contents. Template-literal ${…} expressions
+// are kept, because they are code rather than literal text.
 func stripJSQuotedSpans(value string) string {
 	if value == "" {
 		return value
@@ -734,6 +735,45 @@ func stripJSQuotedSpans(value string) string {
 		}
 		quote := c
 		i++
+		if quote == '`' {
+			wroteExpr := false
+			for i < len(value) {
+				if value[i] == '\\' && i+1 < len(value) {
+					i += 2
+					continue
+				}
+				if value[i] == '`' {
+					i++
+					break
+				}
+				if value[i] == '$' && i+1 < len(value) && value[i+1] == '{' {
+					start := i
+					i += 2
+					depth := 1
+					for i < len(value) && depth > 0 {
+						if value[i] == '\\' && i+1 < len(value) {
+							i += 2
+							continue
+						}
+						switch value[i] {
+						case '{':
+							depth++
+						case '}':
+							depth--
+						}
+						i++
+					}
+					b.WriteString(value[start:i])
+					wroteExpr = true
+					continue
+				}
+				i++
+			}
+			if !wroteExpr {
+				b.WriteByte(' ')
+			}
+			continue
+		}
 		for i < len(value) {
 			if value[i] == '\\' && i+1 < len(value) {
 				i += 2

@@ -158,7 +158,9 @@ func (s *GRPCWebServer) handleWatchedFileChangeResolved(resolvedFile string) err
 				"file", resolvedFile,
 				"error", err,
 			)
-			return nil
+			// Surface the conflict so serve() can keep the process alive.
+			// Bookkeeping above already cleared the fingerprint for a later save.
+			return err
 		}
 		// Evict fingerprint so the user can retry by saving again.
 		s.hotreload.clearFingerprint(resolvedFile)

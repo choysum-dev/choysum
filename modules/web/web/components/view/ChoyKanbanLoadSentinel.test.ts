@@ -11,6 +11,51 @@ type SentinelSetup = {
 };
 
 describe('ChoyKanbanLoadSentinel', () => {
+  test('connects an IntersectionObserver and re-arms from its callback', async () => {
+    const originals = globalThis.IntersectionObserver;
+    const seen: boolean[] = [];
+    class FakeObserver {
+      static last: FakeObserver | null = null;
+      callback: (entries: Array<{ isIntersecting: boolean }>) => void;
+      constructor(callback: (entries: Array<{ isIntersecting: boolean }>) => void) {
+        this.callback = callback;
+        FakeObserver.last = this;
+      }
+      observe() {}
+      disconnect() {}
+      emit(intersecting: boolean) {
+        this.callback([{ isIntersecting: intersecting }]);
+      }
+    }
+    (globalThis as any).IntersectionObserver = FakeObserver;
+    try {
+      const visibles: number[] = [];
+      const mounted = mountApp(ChoyKanbanLoadSentinel as any, {
+        props: { disabled: false },
+        reactiveProps: true,
+        on: { onVisible: () => visibles.push(1) },
+      });
+      await flushPromises();
+      const observer = FakeObserver.last;
+      expect(observer).toBeTruthy();
+      observer!.emit(false);
+      observer!.emit(true);
+      observer!.emit(true);
+      expect(visibles.length).toBe(1);
+      seen.push(true);
+
+      mounted.props.disabled = true;
+      await nextTick();
+      mounted.props.disabled = false;
+      await nextTick();
+      mounted.unmount();
+    } finally {
+      if (originals) (globalThis as any).IntersectionObserver = originals;
+      else delete (globalThis as any).IntersectionObserver;
+    }
+    expect(seen).toEqual([true]);
+  });
+
   test('emits once per intersecting stay; re-arms after leave', async () => {
     const visibles: number[] = [];
     const mounted = mountApp(ChoyKanbanLoadSentinel as any, {

@@ -189,7 +189,17 @@ func TestServerServeContinuesOnModuleLeaseConflict(t *testing.T) {
 		runtimeScope: runtimeScope,
 		hotreload:    hotreloadState{watcher: mustNewWatcher(t), queue: make(chan string, 1)},
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	runtimeScope.ctx = ctx
+	errCh := make(chan error, 1)
+	finished := make(chan struct{})
 	t.Cleanup(func() {
+		cancel()
+		select {
+		case <-finished:
+		case <-time.After(2 * time.Second):
+		}
 		if watcher := srv.hotreloadWatcher(); watcher != nil {
 			_ = watcher.Close()
 		}
@@ -198,10 +208,6 @@ func TestServerServeContinuesOnModuleLeaseConflict(t *testing.T) {
 		}
 	})
 
-	ctx, cancel := context.WithCancel(context.Background())
-	runtimeScope.ctx = ctx
-
-	errCh := make(chan error, 1)
 	go func() {
 		errCh <- srv.serve()
 	}()
@@ -235,6 +241,7 @@ func TestServerServeContinuesOnModuleLeaseConflict(t *testing.T) {
 
 	cancel()
 	err := <-errCh
+	close(finished)
 	if err != nil {
 		t.Fatalf("serve() returned error after context cancel: %v", err)
 	}

@@ -181,12 +181,12 @@ SPDX-License-Identifier: Apache-2.0
                       </div>
                     </div>
                     <div class="truncate text-xs text-muted-foreground">
-                      {{ getContactRoleLabel(item?.ContactRole) }}
+                      {{ _t('Role') }} {{ getContactRoleLabel(item?.ContactRole) }}
                       <span class="text-muted-foreground/60"> · </span>
-                      {{ getAddressTypeLabel(item?.AddressType) }}
+                      {{ _t('Address Type') }} {{ getAddressTypeLabel(item?.AddressType) }}
                     </div>
-                    <div v-if="item?.Email" class="truncate text-xs text-muted-foreground">{{ item.Email }}</div>
-                    <div v-if="item?.Phone" class="truncate text-xs text-muted-foreground">{{ item.Phone }}</div>
+                    <div v-if="item?.Email" class="truncate text-xs text-muted-foreground">{{ _t('Email') }} {{ item.Email }}</div>
+                    <div v-if="item?.Phone" class="truncate text-xs text-muted-foreground">{{ _t('Phone') }} {{ item.Phone }}</div>
                     <div v-if="editable || removable" class="mt-auto inline-flex gap-1 pt-1">
                       <ChoyButton v-if="editable" variant="ghost" size="sm" @click.stop="edit">{{ _t('Edit') }}</ChoyButton>
                       <ChoyButton

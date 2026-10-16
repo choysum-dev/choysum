@@ -151,6 +151,9 @@ test('resolveModuleKanbanLaneStatus: key/label → status token', () => {
   expect(resolveModuleKanbanLaneStatus('other', '未安装')).toBe('uninstalled');
   expect(resolveModuleKanbanLaneStatus('other', 'Not Installed')).toBe('uninstalled');
   expect(resolveModuleKanbanLaneStatus('OriginType=local')).toBe('');
+  expect(resolveModuleKanbanLaneStatus('local')).toBe('');
+  expect(resolveModuleKanbanLaneStatus('other', 'local')).toBe('');
+  expect(resolveModuleKanbanLaneStatus('queued')).toBe('queued');
   expect(resolveModuleKanbanLaneStatus('InstalledStatus=__null__')).toBe('');
   expect(resolveModuleKanbanLaneStatus('')).toBe('');
 });

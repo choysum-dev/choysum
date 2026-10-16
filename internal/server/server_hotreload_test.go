@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/choysum-dev/choysum/internal/logger"
 	"github.com/choysum-dev/choysum/pkg/oerrors"
 	"github.com/fsnotify/fsnotify"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -329,11 +330,44 @@ func TestHandleWatchedFileChangeDefersOnLeaseConflict(t *testing.T) {
 	}
 	srv.hotreload.storeWatchTargets(srv.buildRegisteredWatchTargets(tracked.watchPlans(), tracked.watchCallback))
 
-	if err := srv.handleWatchedFileChange(changedFile); err != nil {
-		t.Fatalf("handleWatchedFileChange() error = %v, want nil on LEASE_CONFLICT", err)
+	var progress bytes.Buffer
+	srv.hotreload.progressLine = logger.NewProgressLine(&progress)
+
+	err := srv.handleWatchedFileChange(changedFile)
+	if !isModuleLeaseConflict(err) {
+		t.Fatalf("handleWatchedFileChange() error = %v, want LEASE_CONFLICT", err)
 	}
 	if tracked.callCount() != 1 {
 		t.Fatalf("watch handler calls = %d, want 1", tracked.callCount())
+	}
+	if !strings.Contains(progress.String(), "Deferred (module busy)") {
+		t.Fatalf("progress = %q, want deferred marker", progress.String())
+	}
+}
+
+func TestHandleWatchedFileChangeIgnoresGeneratedArtifact(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	root := t.TempDir()
+	generated := filepath.Join(root, "choy-tailwind.generated.css")
+	if err := os.WriteFile(generated, []byte("css"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	tracked := &fakeWatchedService{
+		name:      "web",
+		watchDirs: []string{root},
+		watchErr:  errors.New("should not run"),
+	}
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{watcher: mustNewWatcher(t), queue: make(chan string, 1)},
+	}
+	srv.hotreload.storeWatchTargets(srv.buildRegisteredWatchTargets(tracked.watchPlans(), tracked.watchCallback))
+
+	if err := srv.handleWatchedFileChange(generated); err != nil {
+		t.Fatalf("handleWatchedFileChange() error = %v, want nil for generated artifact", err)
+	}
+	if tracked.callCount() != 0 {
+		t.Fatalf("watch handler calls = %d, want 0", tracked.callCount())
 	}
 }
 
