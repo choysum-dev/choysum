@@ -6,6 +6,39 @@ import type { Column } from '@/web/web/composables/useTable';
 
 const DEFAULT_COLUMN_SIZE = 150;
 
+function columnKey(col: Column): string {
+  return String(col.key ?? col.dataKey ?? '');
+}
+
+/**
+ * Stable list column order for grouped mode: selection → handle → index →
+ * group label → remaining field columns (matches main OVTable normalizeColumns).
+ */
+export function orderListTableColumns(columns: readonly Column[]): Column[] {
+  if (!columns.length) return [];
+  const isSel = (c: Column) => {
+    const k = columnKey(c);
+    return k === '__selection__' || k === '__select' || c.type === 'selection';
+  };
+  const isHandle = (c: Column) => columnKey(c) === '__handle__' || c.type === 'handle';
+  const isIdx = (c: Column) => columnKey(c) === '__index__' || c.type === 'index';
+  const isGroup = (c: Column) => columnKey(c) === '__group_label';
+
+  const sel: Column[] = [];
+  const handle: Column[] = [];
+  const idx: Column[] = [];
+  const group: Column[] = [];
+  const rest: Column[] = [];
+  for (const c of columns) {
+    if (isSel(c)) sel.push(c);
+    else if (isHandle(c)) handle.push(c);
+    else if (isIdx(c)) idx.push(c);
+    else if (isGroup(c)) group.push(c);
+    else rest.push(c);
+  }
+  return [...sel, ...handle, ...idx, ...group, ...rest];
+}
+
 /**
  * Maps ChoyTableColumn registry entries (legacy Column) to TanStack ColumnDef for DataTable.
  * Cell/header renderers stay on the Column so slot-built VNodes keep working.
@@ -13,7 +46,7 @@ const DEFAULT_COLUMN_SIZE = 150;
 export function columnsToColumnDefs<T extends Record<string, unknown>>(
   columns: readonly Column[],
 ): ColumnDef<T, unknown>[] {
-  return columns.map((col, index) => {
+  return orderListTableColumns(columns).map((col, index) => {
     const id = String(col.key ?? col.dataKey ?? `col_${index}`);
     const size =
       typeof col.width === 'number' && col.width > 0 ? col.width : DEFAULT_COLUMN_SIZE;
@@ -45,6 +78,8 @@ export function columnsToColumnDefs<T extends Record<string, unknown>>(
       meta: {
         align: col.align,
         fixed: col.fixed,
+        // List host selection column (ChoyTableColumn type="selection"); key is the fallback.
+        selectColumn: id === '__selection__' || id === '__select' || col.type === 'selection',
       },
     };
     if (minSize != null) {

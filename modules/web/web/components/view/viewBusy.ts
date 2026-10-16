@@ -13,5 +13,5 @@ export function viewBusyHostAttrs(busy: boolean): {
 }
 
 export function viewBusyHostClass(busy: boolean, extra?: ClassValue): string {
-  return cn('relative', busy && 'pointer-events-none', extra);
+  return cn('relative min-h-0', busy && 'pointer-events-none', extra);
 }

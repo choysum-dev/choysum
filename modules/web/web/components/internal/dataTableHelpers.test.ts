@@ -6,9 +6,11 @@ import {
   applyDataTableScrollToRow,
   clampDataTableVirtualWindow,
   compareDataTableValues,
+  dataTableIsGroupLikeRow,
   dataTableIsVirtualized,
   dataTableMaybeMeasure,
   dataTableMeasureRow,
+  dataTableRowKind,
   dataTableScrollElement,
   dataTableSelectionIdsEqual,
   dataTableShouldMeasureRow,
@@ -30,6 +32,15 @@ import {
 } from './dataTableHelpers';
 
 describe('dataTableHelpers', () => {
+  test('dataTableRowKind / dataTableIsGroupLikeRow read kind or legacy type', () => {
+    expect(dataTableRowKind({ original: { kind: 'group' } })).toBe('group');
+    expect(dataTableRowKind({ original: { type: 'more' } })).toBe('more');
+    expect(dataTableRowKind({ original: { Name: 'x' } })).toBeUndefined();
+    expect(dataTableIsGroupLikeRow({ original: { kind: 'group' } })).toBe(true);
+    expect(dataTableIsGroupLikeRow({ original: { type: 'more' } })).toBe(true);
+    expect(dataTableIsGroupLikeRow({ original: { kind: 'record' } })).toBe(false);
+  });
+
   test('cycles sort none → asc → desc → none', () => {
     expect(nextDataTableSort(null, 'name')).toEqual({ id: 'name', desc: false });
     expect(nextDataTableSort({ id: 'name', desc: false }, 'name')).toEqual({

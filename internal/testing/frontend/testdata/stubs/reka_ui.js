@@ -76,7 +76,47 @@ export const CalendarNext = stub('CalendarNext');
 export const CalendarPrev = stub('CalendarPrev');
 export const CalendarRoot = stub('CalendarRoot');
 export const CheckboxIndicator = stub('CheckboxIndicator');
-export const CheckboxRoot = stub('CheckboxRoot');
+/** Toggleable checkbox host so kit Checkbox v-model works under FE-QJS. */
+export const CheckboxRoot = defineComponent({
+  name: 'CheckboxRoot',
+  inheritAttrs: false,
+  props: {
+    modelValue: { type: [Boolean, String], default: false },
+    checked: { type: [Boolean, String], default: undefined },
+    disabled: { type: Boolean, default: false },
+  },
+  emits: ['update:modelValue', 'update:checked'],
+  setup(props, { slots, attrs, emit }) {
+    const on = computed(() => {
+      const v = props.checked !== undefined ? props.checked : props.modelValue;
+      return v === true || v === 'indeterminate';
+    });
+    function toggle() {
+      if (props.disabled) return;
+      const next = !on.value;
+      emit('update:modelValue', next);
+      emit('update:checked', next);
+    }
+    return () =>
+      h(
+        'button',
+        {
+          type: 'button',
+          ...attrs,
+          'data-reka-stub': 'CheckboxRoot',
+          'data-state': on.value ? 'checked' : 'unchecked',
+          'aria-checked': on.value ? 'true' : 'false',
+          disabled: props.disabled || undefined,
+          onClick: (e) => {
+            const prev = attrs.onClick;
+            if (typeof prev === 'function') prev(e);
+            toggle();
+          },
+        },
+        slots.default ? slots.default() : null,
+      );
+  },
+});
 export const ComboboxAnchor = stub('ComboboxAnchor');
 export const ComboboxContent = stub('ComboboxContent');
 export const ComboboxEmpty = stub('ComboboxEmpty');
@@ -157,6 +197,7 @@ export const NavigationMenuList = stub('NavigationMenuList');
 export const NavigationMenuRoot = stub('NavigationMenuRoot');
 export const NavigationMenuTrigger = stub('NavigationMenuTrigger');
 export const NavigationMenuViewport = stub('NavigationMenuViewport');
+export const PopoverAnchor = stub('PopoverAnchor');
 export const PopoverContent = stub('PopoverContent');
 export const PopoverPortal = stub('PopoverPortal');
 export const PopoverRoot = defineComponent({
@@ -180,6 +221,51 @@ export const PopoverRoot = defineComponent({
   },
 });
 export const PopoverTrigger = stub('PopoverTrigger');
+/** Single/multiple toggle group host used by SearchFilter AND/OR. */
+export const ToggleGroupRoot = defineComponent({
+  name: 'ToggleGroupRoot',
+  inheritAttrs: false,
+  props: {
+    modelValue: { default: undefined },
+    type: { type: String, default: 'single' },
+    disabled: { type: Boolean, default: false },
+  },
+  emits: ['update:modelValue'],
+  setup(props, { slots, emit, attrs }) {
+    return () =>
+      h(
+        'div',
+        {
+          'data-reka-stub': 'ToggleGroupRoot',
+          'data-state': props.modelValue != null ? 'on' : 'off',
+          ...attrs,
+        },
+        slots.default ? slots.default() : null,
+      );
+  },
+});
+export const ToggleGroupItem = defineComponent({
+  name: 'ToggleGroupItem',
+  inheritAttrs: false,
+  props: {
+    value: { type: String, required: true },
+    disabled: { type: Boolean, default: false },
+  },
+  setup(props, { slots, attrs }) {
+    return () =>
+      h(
+        'button',
+        {
+          type: 'button',
+          'data-reka-stub': 'ToggleGroupItem',
+          'data-value': props.value,
+          disabled: props.disabled || undefined,
+          ...attrs,
+        },
+        slots.default ? slots.default() : null,
+      );
+  },
+});
 export const ScrollAreaRoot = stub('ScrollAreaRoot');
 export const ScrollAreaScrollbar = stub('ScrollAreaScrollbar');
 export const ScrollAreaThumb = stub('ScrollAreaThumb');

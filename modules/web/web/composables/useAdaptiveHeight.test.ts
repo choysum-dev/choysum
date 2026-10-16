@@ -119,7 +119,7 @@ describe('useAdaptiveHeight', () => {
     shell.getBoundingClientRect = () => rect({ top: 0, bottom: 800 });
     const footer = document.createElement('div');
     footer.setAttribute('data-testid', 'choy-shell-footer');
-    footer.getBoundingClientRect = () => rect({ top: 600, bottom: 640 });
+    footer.getBoundingClientRect = () => rect({ top: 600, bottom: 640, height: 40 });
     shell.appendChild(footer);
     document.body.appendChild(shell);
 
@@ -143,10 +143,11 @@ describe('useAdaptiveHeight', () => {
     });
     const m = mountApp(Host);
     await flushFrames();
-    expect(api!.height.value).toBe(500);
+    // (scrollBottom - footerH) - wrapTop = (800 - 40) - 100
+    expect(api!.height.value).toBe(660);
     api!.recompute();
     await flushFrames(2);
-    expect(api!.height.value).toBe(500);
+    expect(api!.height.value).toBe(660);
     m.unmount();
     shell.remove();
   });

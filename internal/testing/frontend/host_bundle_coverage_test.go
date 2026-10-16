@@ -14,6 +14,17 @@ import (
 	"github.com/evanw/esbuild/pkg/api"
 )
 
+func TestFeUnitPackageStubResolveUnknownFallsThrough(t *testing.T) {
+	stubs := feUnitStubPaths{RekaUI: "reka-ui"}
+	if _, ok := feUnitPackageStubResolve("not-a-stubbed-package", stubs); ok {
+		t.Fatal("unknown package must not resolve")
+	}
+	res, ok := feUnitPackageStubResolve("reka-ui", stubs)
+	if !ok || res.Path != "reka-ui" || res.Namespace != "file" {
+		t.Fatalf("reka-ui resolve = (%+v,%v)", res, ok)
+	}
+}
+
 func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 	stubs := feUnitStubPaths{
 		Router:              "router",
@@ -238,6 +249,11 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 		if err != nil || res.Path == "" {
 			t.Fatalf("package stub %q: %#v err=%v", path, res, err)
 		}
+	}
+	// Filter/path drift fallthrough: callback returns empty resolve for unknown packages.
+	fallthroughRes, err := pkgCB(api.OnResolveArgs{Path: "not-a-stubbed-package"})
+	if err != nil || fallthroughRes.Path != "" {
+		t.Fatalf("package stub fallthrough: %#v err=%v", fallthroughRes, err)
 	}
 	pageRes, err := pageCB(api.OnResolveArgs{Path: "./Page.vue", Importer: "/modules/web/web/pages/TerminologyEditor.vue"})
 	if err != nil || !strings.HasSuffix(pageRes.Path, "OPage.stub.vue") {

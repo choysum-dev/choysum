@@ -298,19 +298,22 @@ func isChoyKitTailwindInputPath(webRoot, path string) bool {
 		if strings.HasPrefix(base, "O") && strings.EqualFold(filepath.Ext(base), ".vue") {
 			return false
 		}
+		// Domain view SFCs are PascalCase (Search*.vue, Kanban*.vue); match
+		// prefixes case-insensitively so their Tailwind classes are emitted.
+		lowerBase := strings.ToLower(base)
 		return strings.HasPrefix(base, "Choy") ||
 			strings.Contains(base, "Helpers") ||
 			strings.Contains(base, "Types") ||
 			strings.Contains(base, "Adapter") ||
-			strings.HasPrefix(base, "merge") ||
-			strings.HasPrefix(base, "chart") ||
-			strings.HasPrefix(base, "html") ||
-			strings.HasPrefix(base, "json") ||
-			strings.HasPrefix(base, "properties") ||
-			strings.HasPrefix(base, "chatter") ||
-			strings.HasPrefix(base, "kanban") ||
-			strings.HasPrefix(base, "pagination") ||
-			strings.HasPrefix(base, "search")
+			strings.HasPrefix(lowerBase, "merge") ||
+			strings.HasPrefix(lowerBase, "chart") ||
+			strings.HasPrefix(lowerBase, "html") ||
+			strings.HasPrefix(lowerBase, "json") ||
+			strings.HasPrefix(lowerBase, "properties") ||
+			strings.HasPrefix(lowerBase, "chatter") ||
+			strings.HasPrefix(lowerBase, "kanban") ||
+			strings.HasPrefix(lowerBase, "pagination") ||
+			strings.HasPrefix(lowerBase, "search")
 	default:
 		// Unknown directories may still hold kit files; Choy*/choy* naming is the
 		// safety net so new kit paths are not silently dropped from candidate scanning.

@@ -84,6 +84,46 @@ body {
   padding-top: 0;
 }
 
+@layer components {
+  /* List/DataTable row tracks (tokens --choy-list-*-height; not control-height). */
+  .min-h-list-row {
+    min-height: var(--choy-list-row-height, 40px);
+  }
+  .h-list-row {
+    height: var(--choy-list-row-height, 40px);
+    /* Virtual rows are fixed-height; clip wrap so tracks do not paint into neighbors.
+     * clip (not only hidden) avoids a programmatic scroll container, so focusing an
+     * inline-edit input cannot shift the track; margin keeps focus rings visible. */
+    overflow: hidden; /* fallback for engines without clip */
+    overflow: clip;
+    overflow-clip-margin: 4px;
+  }
+  .min-h-list-header {
+    min-height: var(--choy-list-header-height, 40px);
+  }
+  .h-list-header {
+    height: var(--choy-list-header-height, 40px);
+  }
+}
+
+@layer utilities {
+  /*
+   * Hide scrollbars while keeping overflow scroll (DataTable header syncs x with body;
+   * only the body track should show a visible horizontal scrollbar).
+   */
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  /* Scroll-chain containment for nested overflow tracks (pair with scrollbar-none when needed). */
+  .scroll-contain {
+    overscroll-behavior: contain;
+  }
+}
+
 /*
  * Shared field / auth inputs (align with vendor/ui Input).
  * Unlayered only for properties FullCSS preflight also sets unlayered

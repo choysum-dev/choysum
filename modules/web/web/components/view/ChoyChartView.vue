@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
   <ChoyViewContainer
     data-anchor="choy.chart-view"
     data-region="chart-view"
-    :class="cn('choy-chart-view flex flex-col gap-3', props.class)"
+    :class="cn('choy-chart-view', props.class)"
   >
     <template v-if="showHeader" #header>
       <ChoyViewActionBar

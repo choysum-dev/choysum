@@ -4,12 +4,12 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyViewContainer>
+  <ChoyViewContainer class="gap-4">
     <template v-if="showHeader" #header>
       <div data-anchor="choy.list.view-chrome">
         <ChoyViewActionBar
           layout="thirds"
-          class="gap-2 border-b-0 pb-2"
+          class="gap-2 border-b-0 [border-bottom-width:0px]"
           :system-actions-label="_t('System actions')"
           :user-actions-label="_t('User actions')"
         >
@@ -82,12 +82,14 @@ SPDX-License-Identifier: Apache-2.0
             <slot name="user-actions" :selected-items="selectedItems" />
           </template>
 
-          <!-- Odoo-style: selection chrome replaces Search in the center slot.
+          <!-- Odoo-style: selection chrome replaces Search visually in the center slot.
                Keep #center registered unconditionally so ActionBar can swap content
-               when selection appears (v-if on the slot template would omit the outlet). -->
+               when selection appears (v-if on the slot template would omit the outlet).
+               Use v-show (not v-if) for the Search host so clearing selection does not
+               remount ChoySearchView and re-run UserFilter + list Search/Count. -->
           <template #center>
             <div
-              v-if="hasSelection"
+              v-show="hasSelection"
               data-anchor="choy.list.selection-bar"
               class="flex min-w-0 w-full flex-wrap items-center gap-2"
               role="toolbar"
@@ -123,7 +125,11 @@ SPDX-License-Identifier: Apache-2.0
 
               <slot name="selection-actions" :selected-items="selectedItems" :clear="clearSelection" />
             </div>
-            <div v-else-if="resolvedSearchView" class="flex min-w-0 w-full items-center">
+            <div
+              v-if="resolvedSearchView"
+              v-show="!hasSelection"
+              class="flex min-w-0 w-full items-center"
+            >
               <component :is="resolvedSearchView" class="min-w-0 w-full" :store="store" @query-update="onSearch" />
             </div>
           </template>
@@ -151,21 +157,26 @@ SPDX-License-Identifier: Apache-2.0
       </div>
     </template>
 
-    <ChoyViewBusyHost :busy="listBusy" class="min-h-0 min-w-0 flex-1">
+    <ChoyViewBusyHost :busy="listBusy" class="flex min-h-0 min-w-0 flex-1 flex-col">
     <div
       ref="tableWrapRef"
       data-anchor="choy.list.table"
-      class="choy-list-view__table min-h-0 min-w-0 flex-1 overflow-hidden rounded-md border border-border/70 bg-card shadow-xs [&_.choy-field-base]:mb-0 [&_.choy-field-base__cell-item]:mb-0 [&_.choy-data-table]:h-full [&_.choy-data-table]:rounded-none [&_.choy-data-table]:border-0 [&_.choy-data-table__header]:border-border/50 [&_.choy-data-table__header]:bg-muted/40 [&_.choy-data-table__body_[role=row]]:border-border/40 [&_.choy-data-table__body_[role=row]:hover]:bg-muted/50"
-      :style="{ height: listTablePxHeight }"
+      class="choy-list-view__table flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden rounded-md border border-border bg-card shadow-xs [&_.choy-field-base]:mb-0 [&_.choy-data-table]:h-full [&_.choy-data-table]:rounded-none [&_.choy-data-table]:border-0"
+      :style="listTableWrapStyle"
     >
       <!-- form-root + edit view-mode only under the table so header search cannot touch the row draft -->
-      <ListInlineEditScope :form-root="inlineFormRoot" :view-mode="inlineTableViewMode">
+      <ListInlineEditScope
+        class="flex min-h-0 flex-1 flex-col"
+        :form-root="inlineFormRoot"
+        :view-mode="inlineTableViewMode"
+      >
         <ChoyTableHost
+          class="min-h-0 flex-1"
           :data="tableItems"
           :row-key="computedRowKey"
           :row-height="effectiveRowHeight"
           :header-height="headerHeight"
-          :table-height="listTableHeight"
+          :table-height="pixelTableHeight"
           :selection-api="selection"
           :base-index="baseIndex"
           :store="store"
@@ -178,7 +189,19 @@ SPDX-License-Identifier: Apache-2.0
           <ChoyTableColumn v-if="isGroupMode" col-key="__group_label" :sortable="false">
             <template #default="{ row }">
               <div v-if="row?.kind === 'group'" class="inline-flex min-w-0 items-center gap-1.5" :style="{ paddingLeft: `${row.depth * 16}px` }">
-                <span class="inline-block size-0 cursor-pointer border-y-4 border-y-transparent border-l-[6px] border-l-foreground transition-transform duration-100" :class="{ 'rotate-90': isExpanded(row.key) }" @click.stop="onToggleGroup(row.key)" />
+                <button
+                  type="button"
+                  class="inline-flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+                  :aria-expanded="isExpanded(row.key)"
+                  :aria-label="_t('Toggle group %s', String(row.label ?? ''))"
+                  @click.stop="onToggleGroup(row.key)"
+                >
+                  <ChevronRight
+                    class="size-3.5 transition-transform duration-100"
+                    :class="{ 'rotate-90': isExpanded(row.key) }"
+                    aria-hidden="true"
+                  />
+                </button>
                 <span class="max-w-full truncate font-medium text-foreground">{{ row.label }}</span>
                 <span class="text-muted-foreground">({{ row.count ?? 0 }})</span>
               </div>
@@ -226,6 +249,7 @@ import {
 } from './listPaginationAdapter';
 import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 import { useTableSelection } from '@/web/web/composables/useTable';
+import { CHOY_LIST_HEADER_HEIGHT, CHOY_LIST_ROW_HEIGHT } from '@/web/web/composables/listDensity';
 // Search view type: must accept store and emit query-update
 import type { Component } from 'vue';
 import type { SearchViewComponent } from '@/web/web/query/types';
@@ -247,7 +271,6 @@ import { createListController } from '@/web/web/controllers/listController';
 import type { OrderByState, PaginationState } from '@/web/web/query/state';
 import { useCancelableEmit } from '@/web/web/composables/useCancelableEmit';
 import { useAdaptiveHeight } from '@/web/web/composables/useAdaptiveHeight';
-import { computeListTableBodyHeight } from '@/web/web/composables/adaptiveHeightMath';
 import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
 import ChoyViewActionBar from '@/web/web/components/view/ChoyViewActionBar.vue';
 import ChoyViewBusyHost from '@/web/web/components/view/ChoyViewBusyHost.vue';
@@ -269,7 +292,7 @@ import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyPageTitleActions from '@/web/web/components/layout/ChoyPageTitleActions.vue';
 import { Separator } from '@/web/web/components/vendor/ui/separator';
 import DropdownMenuItem from '@/web/web/components/vendor/ui/dropdown-menu/DropdownMenuItem.vue';
-import { Plus, RefreshCw, Trash2, X } from 'lucide-vue-next';
+import { ChevronRight, Plus, RefreshCw, Trash2, X } from 'lucide-vue-next';
 
 defineOptions({ name: 'ChoyListView', inheritAttrs: false });
 
@@ -325,10 +348,12 @@ const props = withDefaults(
     showHeader: true,
     showActions: true,
     /* Removed: showHeaderRight: true, */
-    rowHeight: 32,
+    rowHeight: CHOY_LIST_ROW_HEIGHT,
+    headerHeight: CHOY_LIST_HEADER_HEIGHT,
     rowKey: 'Id',
     showPagination: true,
-    viewportGap: 78,
+    // Shell path uses footer.top; this only applies outside AppShell.
+    viewportGap: 12,
     refreshAction: true,
     deleteAction: true,
     selectionMode: 'multiple',
@@ -652,14 +677,26 @@ watch(items, () => {
 });
 
 // =============================
-// Section 13: Adaptive height composable integration
+// Section 13: Height — workspace flex fill vs dialog pixel height
 // =============================
+// auto (default): CSS flex-1 fill under AppShell workspace (no shell scroll).
+// viewport | container: pixel height for relation pickers / dialog embeds.
+const usePixelHeight = computed(
+  () => props.heightMode === 'viewport' || props.heightMode === 'container',
+);
+const adaptiveMode = computed(() => {
+  if (props.heightMode === 'container') return 'container' as const;
+  if (props.heightMode === 'viewport') return 'viewport' as const;
+  return 'none' as const;
+});
+
 const tableWrapRef = ref<HTMLElement | null>(null);
 const {
   height: adaptiveTableHeight,
   recompute: recomputeTableHeight,
 } = useAdaptiveHeight(tableWrapRef as Ref<Element | null>, {
-  mode: props.heightMode,
+  // Snapshot at setup: workspace lists use auto→none; pickers pass viewport/container.
+  mode: adaptiveMode.value,
   containerSelector: props.containerSelector,
   viewportGap: props.viewportGap,
   minContainerHeight: 160,
@@ -672,18 +709,22 @@ const {
 // =============================
 // Future rowHeight and overscan tuning can be driven here by column config or density
 const virtualization = useVirtualizationAdapter({ rowHeight: props.rowHeight });
-const effectiveRowHeight = computed(() => virtualization.config.value.rowHeight || props.rowHeight || 32);
-
-/** Cap short pages so the list body does not leave a tall empty void under few rows. */
-const listTableHeight = computed(() =>
-  computeListTableBodyHeight({
-    viewport: adaptiveTableHeight.value,
-    rowCount: tableItems.value?.length ?? 0,
-    rowHeight: effectiveRowHeight.value || 32,
-    headerHeight: props.headerHeight ?? 32,
-  }),
+const effectiveRowHeight = computed(
+  () => virtualization.config.value.rowHeight || props.rowHeight || CHOY_LIST_ROW_HEIGHT,
 );
-const listTablePxHeight = computed(() => (listTableHeight.value > 0 ? `${listTableHeight.value}px` : ''));
+
+/** Pixel height only for viewport/container embeds; workspace lists leave this undefined. */
+const pixelTableHeight = computed(() => {
+  if (!usePixelHeight.value) return undefined;
+  const h = adaptiveTableHeight.value;
+  return h > 0 ? h : undefined;
+});
+const listTableWrapStyle = computed(() => {
+  const h = pixelTableHeight.value;
+  if (h == null) return undefined;
+  const px = `${h}px`;
+  return { height: px, maxHeight: px };
+});
 watch(
   () => props.rowHeight,
   v => {
@@ -693,8 +734,9 @@ watch(
   }
 );
 
-// Utility: recompute height on next tick after layout changes
+// Utility: recompute pixel height after layout changes (embed modes only).
 function afterLayoutRecompute() {
+  if (!usePixelHeight.value) return nextTick();
   return nextTick().then(recomputeTableHeight);
 }
 

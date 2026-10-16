@@ -43,7 +43,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <ChoyViewBusyHost
       :busy="boardBusy"
-      class="choy-kanban-view__body flex min-h-0 flex-1 flex-col gap-3 p-1"
+      class="choy-kanban-view__body flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden p-1"
     >
       <div v-if="laneCount > 0" class="md:hidden">
         <Select :model-value="mobileLaneKey" @update:model-value="onMobileLaneChange">
@@ -62,15 +62,14 @@ SPDX-License-Identifier: Apache-2.0
       </div>
 
       <div
-        class="choy-kanban-view__board flex gap-3 overflow-x-auto pb-1"
-        :style="{ minHeight: '12rem' }"
+        class="choy-kanban-view__board flex min-h-0 flex-1 gap-3 overflow-x-auto overflow-y-hidden pb-1"
         role="list"
         :aria-label="_t('Kanban board')"
       >
         <section
           v-for="lane in displayLanes"
           :key="lane.key"
-          class="choy-kanban-view__lane flex w-64 shrink-0 flex-col rounded-md border border-border bg-muted/30"
+          class="choy-kanban-view__lane flex h-full min-h-0 w-64 shrink-0 flex-col rounded-md border border-border bg-muted/30"
           role="listitem"
           :aria-label="lane.label"
           :data-mobile-active="lane.key === mobileLaneKey ? 'true' : 'false'"
@@ -84,9 +83,8 @@ SPDX-License-Identifier: Apache-2.0
 
           <div
             v-if="readonly"
-            class="choy-kanban-view__lane-body flex flex-1 flex-col gap-2 p-2"
+            class="choy-kanban-view__lane-body flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2"
             data-testid="choy-kanban-lane-static"
-            :style="{ minHeight: '8rem' }"
           >
             <article
               v-for="card in lane.cards"
@@ -110,14 +108,13 @@ SPDX-License-Identifier: Apache-2.0
           </div>
           <draggable
             v-else
-            class="choy-kanban-view__lane-body flex flex-1 flex-col gap-2 p-2"
+            class="choy-kanban-view__lane-body flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2"
             :list="lane.cards"
             item-key="id"
             group="choy-kanban"
             :animation="150"
             :disabled="effectiveReadonly"
             ghost-class="choy-kanban-ghost"
-            :style="{ minHeight: '8rem' }"
             @change="(evt: DraggableChangeEvent) => onDragChange(lane.key, evt)"
           >
             <template #item="{ element: card }">

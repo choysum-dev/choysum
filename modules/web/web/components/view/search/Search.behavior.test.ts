@@ -13,7 +13,6 @@ import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import Popover from '@/web/web/components/vendor/ui/popover/Popover.vue';
 import PopoverContent from '@/web/web/components/vendor/ui/popover/PopoverContent.vue';
-import PopoverTrigger from '@/web/web/components/vendor/ui/popover/PopoverTrigger.vue';
 
 const savedFiltersApi = {
   state: null as null | {
@@ -50,7 +49,6 @@ const stubbed = [
   ChoyDialogTitle,
   Popover,
   PopoverContent,
-  PopoverTrigger,
   SearchFilter,
 ];
 
@@ -134,12 +132,6 @@ function installEpStubs() {
     setup(_: any, { slots }: any) {
       // Always show trigger + content so menu actions are clickable in unit tests.
       return () => h('div', { class: 'el-popover' }, slots.default?.());
-    },
-  });
-  stubSfc(PopoverTrigger as any, {
-    name: 'PopoverTrigger',
-    setup(_: any, { slots }: any) {
-      return () => h('div', { class: 'popover-trigger' }, slots.default?.());
     },
   });
   stubSfc(PopoverContent as any, {
@@ -310,6 +302,108 @@ describe('OSearch behavior', () => {
     m.unmount();
   });
 
+  function isMenuOpen(m: { setupState: () => any }): boolean {
+    const st = m.setupState() as { menuVisible?: { value: boolean } | boolean };
+    return typeof st.menuVisible === 'boolean' ? st.menuVisible : !!st.menuVisible?.value;
+  }
+
+  test('opens search menu on input focus and shell click', async () => {
+    const m = mountSearch();
+    await flushPromises();
+    expect(isMenuOpen(m)).toBe(false);
+
+    m.setupState().onInputFocus();
+    await nextTick();
+    expect(isMenuOpen(m)).toBe(true);
+
+    // Close via toggle, then shell click re-opens even if input stays focused.
+    (m.q('[data-testid=choy-search-menu-toggle]') as HTMLElement).click();
+    await nextTick();
+    expect(isMenuOpen(m)).toBe(false);
+
+    m.setupState().focusInput();
+    await nextTick();
+    expect(isMenuOpen(m)).toBe(true);
+    m.unmount();
+  });
+
+  test('keeps menu open when dismiss-outside fires right after focus open', async () => {
+    const m = mountSearch();
+    await flushPromises();
+    const st = m.setupState() as {
+      onInputFocus: () => void;
+      onMenuDismissOutside: (e: any) => void;
+      searchRootRef?: HTMLElement | { value: HTMLElement | null };
+    };
+    st.onInputFocus();
+    await nextTick();
+    expect(isMenuOpen(m)).toBe(true);
+
+    // Same-gesture focusOutside/pointerDownOutside must not close the menu.
+    let prevented = false;
+    st.onMenuDismissOutside({
+      preventDefault() {
+        prevented = true;
+      },
+      detail: { originalEvent: { target: document.body } },
+    });
+    expect(prevented).toBe(true);
+    expect(isMenuOpen(m)).toBe(true);
+
+    const root = m.q('.choy-search') as HTMLElement;
+    if (st.searchRootRef && typeof st.searchRootRef === 'object' && 'value' in st.searchRootRef) {
+      st.searchRootRef.value = root;
+    }
+    // After suppress window, shell-targeted dismiss still prevented; true outside is not.
+    await new Promise<void>(resolve => setTimeout(resolve, 350));
+    prevented = false;
+    st.onMenuDismissOutside({
+      preventDefault() {
+        prevented = true;
+      },
+      detail: { originalEvent: { target: root, closest: (s: string) => (s.includes('choy.search') ? root : null) } },
+    });
+    expect(prevented).toBe(true);
+
+    prevented = false;
+    st.onMenuDismissOutside({
+      preventDefault() {
+        prevented = true;
+      },
+      detail: { originalEvent: { target: document.body } },
+    });
+    expect(prevented).toBe(false);
+    m.unmount();
+  });
+
+  test('chevron toggles search menu and Escape closes it', async () => {
+    const m = mountSearch();
+    await flushPromises();
+    const toggle = m.q('[data-testid=choy-search-menu-toggle]') as HTMLElement;
+
+    toggle.click();
+    await nextTick();
+    expect(isMenuOpen(m)).toBe(true);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+
+    toggle.click();
+    await nextTick();
+    expect(isMenuOpen(m)).toBe(false);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+
+    toggle.click();
+    await nextTick();
+    expect(isMenuOpen(m)).toBe(true);
+
+    m.setupState().onInputKeydown({
+      key: 'Escape',
+      preventDefault() {},
+    });
+    await nextTick();
+    expect(isMenuOpen(m)).toBe(false);
+    m.unmount();
+  });
+
   test('shows grouping tag and clears grouping', async () => {
     const m = mountSearch({
       currentAppliedGroups: [{ field: 'Status' }, { field: 'CreatedAt', granularity: 'month' }],
@@ -398,9 +492,9 @@ describe('OSearch behavior', () => {
   test('applies tree select change for grouping', async () => {
     const m = mountSearch();
     await nextTick();
-    const statusOpt = btnByText(m, 'Status');
-    expect(statusOpt).toBeTruthy();
-    (statusOpt as HTMLElement).click();
+    const state = m.setupState() as { onGroupFieldSelect?: (id: string | null) => void };
+    expect(typeof state.onGroupFieldSelect).toBe('function');
+    state.onGroupFieldSelect!('f:Status');
     await flushPromises();
     expect((m.emitted['query-update'] || []).length).toBeGreaterThan(0);
     const queryUpdates = m.emitted['query-update']!;
@@ -542,6 +636,61 @@ describe('OSearch behavior', () => {
     m.unmount();
   });
 
+  test('search menu exposes Filters, Group by, and Favorites columns', async () => {
+    const m = mountSearch();
+    await flushPromises();
+    expect(m.q('[data-slot=search-menu]')).toBeTruthy();
+    expect(m.q('.choy-search-menu')).toBeTruthy();
+    expect(m.q('[data-slot=search-filters]')).toBeTruthy();
+    expect(m.q('[data-slot=search-groupby]')).toBeTruthy();
+    expect(m.q('[data-slot=search-favorites]')).toBeTruthy();
+    expect(m.q('.choy-search-menu__col--groupby')).toBeTruthy();
+    expect(m.q('.choy-search-menu__col--favorites')).toBeTruthy();
+    expect(m.q('[data-slot=search-filters]')?.textContent || '').toContain('Custom filter');
+    expect(m.q('[data-slot=search-favorites]')?.textContent || '').toContain('Save current filters');
+    expect(m.q('[data-slot=search-groupby]')?.textContent || '').toContain('Custom group by');
+    expect(m.q('[data-testid=choy-search-groupby-select]')).toBeTruthy();
+    m.unmount();
+  });
+
+  test('group-by field Combobox applies a field and closes the menu', async () => {
+    const m = mountSearch();
+    await flushPromises();
+    const state = m.setupState() as {
+      flatGroupOptions?: { value: Array<{ id: string; label: string }> } | Array<{ id: string; label: string }>;
+      filteredGroupOptions?: { value: Array<{ id: string; label: string }> } | Array<{ id: string; label: string }>;
+      onGroupFieldSelect?: (id: string | null | undefined) => void;
+      menuVisible?: { value: boolean } | boolean;
+      groupFieldOpen?: { value: boolean } | boolean;
+    };
+    const input = m.q('[data-testid=choy-search-groupby-select]') as HTMLElement | null;
+    expect(input).toBeTruthy();
+    input!.dispatchEvent(new Event('focus', { bubbles: true }));
+    await flushPromises();
+    const opened =
+      typeof state.groupFieldOpen === 'boolean' ? state.groupFieldOpen : state.groupFieldOpen?.value;
+    expect(opened).toBe(true);
+    const options = Array.isArray(state.flatGroupOptions)
+      ? state.flatGroupOptions
+      : state.flatGroupOptions?.value || [];
+    expect(options.length).toBeGreaterThan(0);
+    const filtered = Array.isArray(state.filteredGroupOptions)
+      ? state.filteredGroupOptions
+      : state.filteredGroupOptions?.value || options;
+    expect(filtered.length).toBe(options.length);
+    const pick = options[0]!;
+    expect(typeof state.onGroupFieldSelect).toBe('function');
+    state.onGroupFieldSelect!(pick.id);
+    await flushPromises();
+    const updates = m.emitted['query-update'] || [];
+    expect(updates.length).toBeGreaterThan(0);
+    const last = updates[updates.length - 1]?.[0] as { appliedGroups?: unknown[] };
+    expect(Array.isArray(last?.appliedGroups) && last.appliedGroups!.length > 0).toBe(true);
+    const open = typeof state.menuVisible === 'boolean' ? state.menuVisible : state.menuVisible?.value;
+    expect(open).toBe(false);
+    m.unmount();
+  });
+
   test('covers codeDefaults singleton/undefined branches', async () => {
     const a = mountSearch({ defaultFilters: undefined as any });
     await flushPromises();
@@ -554,7 +703,7 @@ describe('OSearch behavior', () => {
     b.unmount();
   });
 
-  test('shows Check icon for applied favorite names', async () => {
+  test('shows Check icon for the active favorite id', async () => {
     savedFiltersApi.state!.favoriteMenuItems = [
       {
         id: 'fav-check',
@@ -563,21 +712,22 @@ describe('OSearch behavior', () => {
         isDefault: false,
         canDelete: false,
         filter: {},
+        groups: [],
       },
     ];
-    const m = mountSearch({
-      currentAppliedFilters: [
-        {
-          id: 'f-mine',
-          name: 'Mine',
-          logic: 'And',
-          children: [{ id: 'c1', field: 'Active', operator: '=', value: true }],
-        },
-      ],
-    });
+    const m = mountSearch();
+    await flushPromises();
+    expect(m.q('.choy-search__menu-icon--applied')).toBeFalsy();
+    (btnByText(m, 'Mine') as HTMLElement).click();
+    await flushPromises();
+    // Re-open menu after apply closes it.
+    const st = m.setupState() as { menuVisible?: { value: boolean } | boolean };
+    if (typeof st.menuVisible === 'boolean') st.menuVisible = true;
+    else if (st.menuVisible) st.menuVisible.value = true;
     await flushPromises();
     expect(m.q('.choy-search__menu-icon--applied')).toBeTruthy();
     expect(m.text()).toContain('Shared');
+    expect(m.q('[data-testid=choy-search-favorite-tag]')?.textContent || '').toContain('Mine');
     m.unmount();
   });
 
@@ -590,6 +740,7 @@ describe('OSearch behavior', () => {
         isDefault: false,
         canDelete: true,
         filter: { And: [['Active', '=', true]] },
+        groups: [{ field: 'CreatedAt', granularity: 'year' }],
       },
     ];
     const m = mountSearch();
@@ -605,12 +756,31 @@ describe('OSearch behavior', () => {
       filter: { And: [['Active', '=', true]] },
     });
     expect((m.emitted['query-update'] || []).length).toBeGreaterThan(beforeEmit);
+    const applyEmits = m.emitted['query-update'] || [];
+    const applyPayload = (applyEmits[applyEmits.length - 1] || [])[0] as {
+      appliedGroups?: Array<{ field?: string; granularity?: string }>;
+    };
+    expect(applyPayload?.appliedGroups?.[0]).toMatchObject({
+      field: 'CreatedAt',
+      granularity: 'year',
+    });
+
+    // Re-open the search menu so delete starts with menuVisible=true (apply closed it).
+    const st = m.setupState() as { menuVisible?: { value: boolean } | boolean };
+    if (typeof st.menuVisible === 'boolean') st.menuVisible = true;
+    else if (st.menuVisible) st.menuVisible.value = true;
+    await flushPromises();
 
     (m.q('.choy-search__menu-item-delete') as HTMLElement).click();
     await flushPromises();
     expect(confirmCallCount).toBeGreaterThan(0);
     expect(savedFiltersApi.remove.calls[0]).toEqual(['fav-1']);
     expect(msgSuccess.calls.length).toBeGreaterThan(0);
+    // Deleting the applied favorite clears the star facet from the chip row.
+    expect(m.q('[data-testid=choy-search-favorite-tag]')).toBeFalsy();
+    const menuAfterDelete =
+      typeof st.menuVisible === 'boolean' ? st.menuVisible : st.menuVisible?.value;
+    expect(menuAfterDelete).toBe(true);
 
     const saveOpen = btnByText(m, 'Save current filters');
     (saveOpen as HTMLElement).click();
@@ -654,11 +824,18 @@ describe('OSearch behavior', () => {
     ];
     const m = mountSearch();
     await flushPromises();
+    const st = m.setupState() as { menuVisible?: { value: boolean } | boolean };
+    if (typeof st.menuVisible === 'boolean') st.menuVisible = true;
+    else if (st.menuVisible) st.menuVisible.value = true;
+    await flushPromises();
     (m.q('.choy-search__menu-item-delete') as HTMLElement).click();
     await flushPromises();
     expect(savedFiltersApi.remove.calls.length).toBe(0);
     expect(msgSuccess.calls.length).toBe(0);
     expect(msgError.calls.length).toBe(0);
+    const menuAfterCancel =
+      typeof st.menuVisible === 'boolean' ? st.menuVisible : st.menuVisible?.value;
+    expect(menuAfterCancel).toBe(true);
     m.unmount();
   });
 
@@ -763,31 +940,284 @@ describe('OSearch behavior', () => {
     m.unmount();
   });
 
-  test('does not emit query-update when applying a favorite leaves filter length unchanged', async () => {
+  test('emits query-update for groupby-only favorites and shows star facet', async () => {
     savedFiltersApi.state!.favoriteMenuItems = [
       {
-        id: 'fav-noop',
-        name: 'Noop',
+        id: 'fav-groupby',
+        name: 'ByYear',
+        shared: false,
+        isDefault: false,
+        canDelete: true,
+        filter: {},
+        groups: [{ field: 'CreatedAt', granularity: 'year' }],
+      },
+    ];
+    const m = mountSearch({
+      currentAppliedGroups: [{ field: 'Status' }],
+    });
+    await flushPromises();
+    // Override after mount: factory wires applyNamedFilter during setup.
+    savedFiltersApi.apply.mockImplementation(() => {
+      /* no-op: filters length stays the same (groupby-only favorite) */
+    });
+    const beforeEmit = (m.emitted['query-update'] || []).length;
+    const applyBtn = btnByText(m, 'ByYear');
+    (applyBtn as HTMLElement).click();
+    await flushPromises();
+    expect(savedFiltersApi.apply.calls.length).toBeGreaterThan(0);
+    expect((m.emitted['query-update'] || []).length).toBeGreaterThan(beforeEmit);
+    const lastEmits = m.emitted['query-update'] || [];
+    const last = (lastEmits[lastEmits.length - 1] || [])[0] as {
+      appliedGroups?: Array<{ field?: string; granularity?: string }>;
+    };
+    // Merge: keep Status, add/overwrite CreatedAt from favorite.
+    const groupFields = (last?.appliedGroups || []).map(g =>
+      g.granularity ? `${g.field}:${g.granularity}` : String(g.field)
+    );
+    expect(groupFields).toContain('Status');
+    expect(groupFields).toContain('CreatedAt:year');
+    expect(m.q('[data-testid=choy-search-favorite-tag]')?.textContent || '').toContain('ByYear');
+    // Star folds favorite groups; only user-stacked Status remains as a group tag.
+    const groupTagText = m.q('.choy-search__grouptag')?.textContent || '';
+    expect(groupTagText).toContain('Status');
+    expect(groupTagText).not.toContain('CreatedAt');
+    m.unmount();
+  });
+
+  test('favorite alone shows only the star tag (Odoo-style)', async () => {
+    savedFiltersApi.state!.favoriteMenuItems = [
+      {
+        id: 'fav-only',
+        name: 'Module List',
         shared: false,
         isDefault: false,
         canDelete: true,
         filter: { And: [['Active', '=', true]] },
+        groups: [{ field: 'CreatedAt', granularity: 'year' }],
+      },
+    ];
+    const m = mountSearch({ currentAppliedGroups: [] });
+    await flushPromises();
+    savedFiltersApi.apply.mockImplementation((fav: { name: string; filter: any }) => {
+      const st = m.setupState() as { filters?: any[] | { value: any[] }; applyNamedFilter?: (nf: any) => void };
+      if (typeof st.applyNamedFilter === 'function') {
+        st.applyNamedFilter({ name: fav.name, query: fav.filter });
+      } else {
+        const list = Array.isArray(st.filters) ? st.filters : st.filters?.value;
+        list?.push({
+          id: 'fav-cond',
+          name: fav.name,
+          logic: 'And',
+          children: [{ id: 'c1', field: 'Active', operator: '=', value: true }],
+        });
+      }
+    });
+    (btnByText(m, 'Module List') as HTMLElement).click();
+    await flushPromises();
+    // Parent would pass applied groups back; simulate controlled prop update.
+    (m.props as any).currentAppliedGroups = [{ field: 'CreatedAt', granularity: 'year' }];
+    await nextTick();
+    expect(m.q('[data-testid=choy-search-favorite-tag]')?.textContent || '').toContain('Module List');
+    expect(m.q('.choy-search__grouptag')).toBeFalsy();
+    // Favorite condition chip is folded into the star (not a separate funnel tag).
+    const funnelTags = m.qa('.choy-search__tag').filter(
+      el =>
+        !(el as HTMLElement).classList.contains('choy-search__grouptag') &&
+        !(el as HTMLElement).classList.contains('choy-search__favtag')
+    );
+    expect(funnelTags.some(el => (el.textContent || '').includes('Module List'))).toBe(false);
+    m.unmount();
+  });
+
+  test('clearing favorite preserves same-name filter when apply added no chip', async () => {
+    savedFiltersApi.state!.favoriteMenuItems = [
+      {
+        id: 'fav-same',
+        name: 'SharedName',
+        shared: false,
+        isDefault: false,
+        canDelete: true,
+        filter: { And: [['Active', '=', true]] },
+        groups: [],
+      },
+    ];
+    const m = mountSearch({
+      currentAppliedFilters: [
+        {
+          id: 'pre-existing',
+          name: 'SharedName',
+          logic: 'And',
+          children: [{ id: 'c-pre', field: 'Code', operator: '=', value: 'keep' }],
+        },
+      ],
+    });
+    await flushPromises();
+    const st = m.setupState() as { filters?: any[] | { value: any[] } };
+    const filterList = (): any[] => {
+      const f = st.filters as any;
+      return Array.isArray(f) ? f : f?.value || [];
+    };
+
+    (btnByText(m, 'SharedName') as HTMLElement).click();
+    await flushPromises();
+    expect(m.q('[data-testid=choy-search-favorite-tag]')?.textContent || '').toContain('SharedName');
+    // Same-name named filter is not duplicated; favorite records no chip id.
+    expect(filterList().filter((f: any) => f.name === 'SharedName')).toHaveLength(1);
+    expect(filterList()[0]?.id).toBe('pre-existing');
+    expect(m.q('.choy-search__tag')?.textContent || '').toContain('SharedName');
+
+    (m.q('[data-testid=choy-search-favorite-clear]') as HTMLElement).click();
+    await flushPromises();
+    expect(m.q('[data-testid=choy-search-favorite-tag]')).toBeFalsy();
+    expect(filterList()).toHaveLength(1);
+    expect(filterList()[0]?.id).toBe('pre-existing');
+    m.unmount();
+  });
+
+  test('clearing favorite removes only the contributed chip by id', async () => {
+    savedFiltersApi.state!.favoriteMenuItems = [
+      {
+        id: 'fav-chip',
+        name: 'SharedName',
+        shared: false,
+        isDefault: false,
+        canDelete: true,
+        filter: { And: [['Active', '=', true]] },
+        groups: [],
       },
     ];
     const m = mountSearch();
     await flushPromises();
-    // Override after mount: factory wires applyNamedFilter during setup.
-    savedFiltersApi.apply.mockImplementation(() => {
-      /* no-op: filters length stays the same */
-    });
-    const beforeEmit = (m.emitted['query-update'] || []).length;
-    const applyBtn = btnByText(m, 'Noop');
-    (applyBtn as HTMLElement).click();
+    const st = m.setupState() as { filters?: any[] | { value: any[] } };
+    const filterList = (): any[] => {
+      const f = st.filters as any;
+      return Array.isArray(f) ? f : f?.value || [];
+    };
+
+    (btnByText(m, 'SharedName') as HTMLElement).click();
     await flushPromises();
-    expect(savedFiltersApi.apply.calls.length).toBeGreaterThan(0);
-    expect((m.emitted['query-update'] || []).length).toBe(beforeEmit);
+    const contributedId = filterList().find((f: any) => f.name === 'SharedName')?.id;
+    expect(contributedId).toBeTruthy();
+    filterList().push({
+      id: 'collision',
+      name: 'SharedName',
+      logic: 'And',
+      children: [{ id: 'c-col', field: 'Code', operator: '=', value: 'keep' }],
+    });
+    await nextTick();
+    expect(filterList().filter((f: any) => f.name === 'SharedName')).toHaveLength(2);
+
+    (m.q('[data-testid=choy-search-favorite-clear]') as HTMLElement).click();
+    await flushPromises();
+    const after = filterList().filter((f: any) => f.name === 'SharedName');
+    expect(after).toHaveLength(1);
+    expect(after[0]?.id).toBe('collision');
+    expect(after[0]?.id).not.toBe(contributedId);
     m.unmount();
   });
+
+  test('stacks filters after favorite and clears favorite without wiping extras', async () => {
+    savedFiltersApi.state!.favoriteMenuItems = [
+      {
+        id: 'fav-a',
+        name: 'ByYear',
+        shared: false,
+        isDefault: false,
+        canDelete: true,
+        filter: { And: [['Active', '=', true]] },
+        groups: [{ field: 'CreatedAt', granularity: 'year' }],
+      },
+      {
+        id: 'fav-b',
+        name: 'ByName',
+        shared: false,
+        isDefault: false,
+        canDelete: true,
+        filter: {},
+        groups: [{ field: 'Name' }],
+      },
+    ];
+    const m = mountSearch({ currentAppliedGroups: [{ field: 'Status' }] });
+    await flushPromises();
+
+    (btnByText(m, 'ByYear') as HTMLElement).click();
+    await flushPromises();
+    expect(m.q('[data-testid=choy-search-favorite-tag]')?.textContent || '').toContain('ByYear');
+
+    // Extra funnel chip after favorite (simulates custom filter / named filter).
+    const st = m.setupState() as {
+      filters?: any[] | { value: any[] };
+      applyNamedFilter?: (nf: any) => void;
+    };
+    const filterList = (): any[] => {
+      const f = st.filters as any;
+      return Array.isArray(f) ? f : f?.value || [];
+    };
+    if (typeof st.applyNamedFilter === 'function') {
+      st.applyNamedFilter({ name: 'Extra', query: ['Code', '=', 'x'] });
+    } else {
+      filterList().push({
+        id: 'extra-1',
+        name: 'Extra',
+        logic: 'And',
+        children: [{ id: 'c-x', field: 'Code', operator: '=', value: 'x' }],
+      });
+    }
+    await nextTick();
+    expect(filterList().some((f: any) => f.name === 'Extra')).toBe(true);
+    expect(filterList().some((f: any) => f.name === 'ByYear')).toBe(true);
+
+    // Switch favorite: replace star + its groups/condition; keep Extra.
+    const stMenu = m.setupState() as { menuVisible?: { value: boolean } | boolean };
+    if (typeof stMenu.menuVisible === 'boolean') stMenu.menuVisible = true;
+    else if (stMenu.menuVisible) stMenu.menuVisible.value = true;
+    await flushPromises();
+    (btnByText(m, 'ByName') as HTMLElement).click();
+    await flushPromises();
+    expect(m.q('[data-testid=choy-search-favorite-tag]')?.textContent || '').toContain('ByName');
+    expect(filterList().some((f: any) => f.name === 'Extra')).toBe(true);
+    expect(filterList().some((f: any) => f.name === 'ByYear')).toBe(false);
+    const switchEmits = m.emitted['query-update'] || [];
+    const afterSwitch = (switchEmits[switchEmits.length - 1] || [])[0] as {
+      appliedGroups?: Array<{ field?: string; granularity?: string }>;
+    };
+    const switchFields = (afterSwitch?.appliedGroups || []).map(g => String(g.field));
+    expect(switchFields).toContain('Status');
+    expect(switchFields).toContain('Name');
+    expect(switchFields).not.toContain('CreatedAt');
+
+    // Clear star: drop ByName contribution; keep Extra + Status.
+    (m.q('[data-testid=choy-search-favorite-clear]') as HTMLElement).click();
+    await flushPromises();
+    expect(m.q('[data-testid=choy-search-favorite-tag]')).toBeFalsy();
+    expect(filterList().some((f: any) => f.name === 'Extra')).toBe(true);
+    const clearEmits = m.emitted['query-update'] || [];
+    const afterClear = (clearEmits[clearEmits.length - 1] || [])[0] as {
+      appliedGroups?: Array<{ field?: string; granularity?: string }>;
+    };
+    const clearFields = (afterClear?.appliedGroups || []).map(g => String(g.field));
+    expect(clearFields).toContain('Status');
+    expect(clearFields).not.toContain('Name');
+    m.unmount();
+  });
+
+  function favCheckboxRoot(labelEl: Element): HTMLElement {
+    return labelEl.querySelector('[data-slot="checkbox"]') as HTMLElement;
+  }
+
+  function favCheckboxOn(labelEl: Element): boolean {
+    const el = favCheckboxRoot(labelEl);
+    return (
+      el?.getAttribute('data-state') === 'checked' ||
+      el?.getAttribute('aria-checked') === 'true'
+    );
+  }
+
+  async function setFavCheckbox(labelEl: Element, on: boolean): Promise<void> {
+    if (favCheckboxOn(labelEl) === on) return;
+    favCheckboxRoot(labelEl).click();
+    await nextTick();
+  }
 
   test('saves with isDefault and shared checkboxes enabled', async () => {
     const m = mountSearch();
@@ -799,10 +1229,7 @@ describe('OSearch behavior', () => {
     await nextTick();
     const defaultCheck = m.qa('.fav-check').find(l => (l.textContent || '').includes('Use by default'));
     expect(defaultCheck).toBeTruthy();
-    const defaultInput = defaultCheck!.querySelector('input') as HTMLInputElement;
-    defaultInput.checked = true;
-    defaultInput.dispatchEvent(new Event('change', { bubbles: true }));
-    await nextTick();
+    await setFavCheckbox(defaultCheck!, true);
     const saveBtn = m.qa('button').find(b => (b.textContent || '').trim() === 'Save') as HTMLElement;
     saveBtn.click();
     await flushPromises();
@@ -819,10 +1246,7 @@ describe('OSearch behavior', () => {
     await nextTick();
     const sharedCheck = m.qa('.fav-check').find(l => (l.textContent || '').includes('Share with all users'));
     expect(sharedCheck).toBeTruthy();
-    const sharedInput = sharedCheck!.querySelector('input') as HTMLInputElement;
-    sharedInput.checked = true;
-    sharedInput.dispatchEvent(new Event('change', { bubbles: true }));
-    await nextTick();
+    await setFavCheckbox(sharedCheck!, true);
     (m.qa('button').find(b => (b.textContent || '').trim() === 'Save') as HTMLElement).click();
     await flushPromises();
     expect(savedFiltersApi.saveCurrent.calls[0]![0]).toEqual({
@@ -865,15 +1289,12 @@ describe('OSearch behavior', () => {
     expect((((m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null) as HTMLInputElement).value).toBe('Company Management');
     const defaultCheck = m.qa('.fav-check').find(l => (l.textContent || '').includes('Use by default'));
     const sharedCheck = m.qa('.fav-check').find(l => (l.textContent || '').includes('Share with all users'));
-    expect((defaultCheck!.querySelector('input') as HTMLInputElement).checked).toBe(true);
-    expect((sharedCheck!.querySelector('input') as HTMLInputElement).checked).toBe(true);
+    expect(favCheckboxOn(defaultCheck!)).toBe(true);
+    expect(favCheckboxOn(sharedCheck!)).toBe(true);
 
     setInputValue(((m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), 'Renamed Fav');
     await nextTick();
-    const sharedInput = sharedCheck!.querySelector('input') as HTMLInputElement;
-    sharedInput.checked = false;
-    sharedInput.dispatchEvent(new Event('change', { bubbles: true }));
-    await nextTick();
+    await setFavCheckbox(sharedCheck!, false);
     const beforeReady = (m.emitted['defaults-ready'] || []).length;
     (m.qa('button').find(b => (b.textContent || '').trim() === 'Save') as HTMLElement).click();
     await flushPromises();

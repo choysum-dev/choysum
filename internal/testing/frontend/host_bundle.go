@@ -145,11 +145,10 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
 						// Filter and feUnitPackageStubPath must stay in sync; if they
 						// drifted, fall through instead of resolving to an empty path.
-						path, ok := feUnitPackageStubPath(args.Path, stubs)
-						if !ok {
-							return api.OnResolveResult{}, nil
+						if res, ok := feUnitPackageStubResolve(args.Path, stubs); ok {
+							return res, nil
 						}
-						return api.OnResolveResult{Path: path, Namespace: "file"}, nil
+						return api.OnResolveResult{}, nil
 					})
 			},
 		})
@@ -325,6 +324,16 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 		out.Warnings = append(out.Warnings, w.Text)
 	}
 	return out, nil
+}
+
+// feUnitPackageStubResolve maps a bare package import to its FE unit stub path.
+// ok is false when the path is unknown so the resolver can fall through.
+func feUnitPackageStubResolve(importPath string, stubs feUnitStubPaths) (api.OnResolveResult, bool) {
+	path, ok := feUnitPackageStubPath(importPath, stubs)
+	if !ok {
+		return api.OnResolveResult{}, false
+	}
+	return api.OnResolveResult{Path: path, Namespace: "file"}, true
 }
 
 // vueHostBareImportPins merges exact versions from modules/core then

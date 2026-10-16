@@ -6,6 +6,9 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed } from 'vue';
 import { SelectRoot } from 'reka-ui';
+import { cn, type ClassValue } from '../../../../lib/utils';
+
+defineProps<{ class?: ClassValue }>();
 
 const modelValue = defineModel<string | null>();
 
@@ -20,7 +23,7 @@ const rootValue = computed({
 </script>
 
 <template>
-  <SelectRoot v-model="rootValue" data-slot="select">
+  <SelectRoot v-model="rootValue" data-slot="select" :class="cn('min-w-0', $props.class)">
     <slot />
   </SelectRoot>
 </template>

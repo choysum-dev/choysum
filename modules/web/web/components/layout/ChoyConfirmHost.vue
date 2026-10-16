@@ -13,13 +13,17 @@ SPDX-License-Identifier: Apache-2.0
         </AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>
-        <AlertDialogCancel data-testid="choy-confirm-cancel" @click="onCancel">
+        <!--
+          Capture settles the Promise before Reka AlertDialog emits update:open=false,
+          so the v-model setter does not treat Action/Cancel as overlay dismiss.
+        -->
+        <AlertDialogCancel data-testid="choy-confirm-cancel" @click.capture="onCancel">
           {{ store.cancelText }}
         </AlertDialogCancel>
         <AlertDialogAction
           data-testid="choy-confirm-ok"
           :variant="store.destructive ? 'destructive' : 'default'"
-          @click="onConfirm"
+          @click.capture="onConfirm"
         >
           {{ store.confirmText }}
         </AlertDialogAction>
@@ -48,7 +52,22 @@ const store = useConfirmChoyStore();
 const open = computed({
   get: () => store.open,
   set: (v: boolean) => {
-    if (!v && store.open) onDismiss();
+    if (v) {
+      store.open = true;
+      return;
+    }
+    // Already settled by Action/Cancel (resolve cleared); just sync closed.
+    if (!store.resolve) {
+      store.open = false;
+      return;
+    }
+    // Still pending: close UI now, but defer dismiss so a same-tick confirm/cancel
+    // can clear resolve first (capture vs Reka close order is not guaranteed).
+    const pending = store.resolve;
+    store.open = false;
+    queueMicrotask(() => {
+      if (store.resolve === pending) onDismiss();
+    });
   },
 });
 

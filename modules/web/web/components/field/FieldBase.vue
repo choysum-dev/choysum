@@ -175,13 +175,13 @@ SPDX-License-Identifier: Apache-2.0
     v-slot="{ row, $index }"
   >
     <div
-      class="choy-field-base__cell block w-full"
+      class="choy-field-base__cell flex min-w-0 w-full items-center"
       v-show="cellVisibleForRow(row)"
       :data-field="inputName"
       :data-row-key="guessRowKey(row)"
     >
       <div
-        class="choy-field-base__cell-item"
+        class="choy-field-base__cell-item flex min-w-0 w-full items-center leading-none"
         :class="{ 'choy-field-base__cell-item--error': !!serverErrorForRow(row, $index) }"
         :data-error="serverErrorForRow(row, $index) || undefined"
       >

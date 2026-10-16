@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div class="choy-search-filter flex flex-col gap-4">
+  <div class="choy-search-filter flex min-w-0 flex-col gap-4">
     <!-- Root group rendered recursively. -->
     <SearchFilterGroup
       :group="draft.root"
@@ -19,14 +19,28 @@ SPDX-License-Identifier: Apache-2.0
       :on-remove-group="onRemoveGroup"
     />
 
-    <div class="choy-search-filter__footer flex flex-col gap-3 border-t border-border pt-3">
-      <div class="choy-search-filter__preview flex gap-1.5 text-xs">
-        <span class="label text-muted-foreground">{{ _t('Preview (%s):', leafCount) }}</span>
-        <span class="expr break-all">{{ preview }}</span>
+    <div class="choy-search-filter__footer flex flex-col gap-3">
+      <div
+        class="choy-search-filter__preview flex items-start gap-2 rounded-md bg-muted/40 px-3 py-2 text-sm"
+      >
+        <span class="label shrink-0 pt-px text-xs font-medium text-muted-foreground">
+          {{ _t('Preview (%s):', leafCount) }}
+        </span>
+        <span class="expr min-w-0 flex-1 break-all font-mono text-[0.8125rem] leading-5 text-foreground/90">
+          {{ preview }}
+        </span>
       </div>
       <div class="choy-search-filter__actions flex justify-end gap-2">
-        <ChoyButton class="btn" @click="$emit('cancel')">{{ _t('Cancel') }}</ChoyButton>
-        <ChoyButton class="btn" @click="$emit('confirm')">{{ _t('Confirm') }}</ChoyButton>
+        <ChoyButton class="btn" variant="outline" @click="$emit('cancel')">{{ _t('Cancel') }}</ChoyButton>
+        <ChoyButton
+          class="btn"
+          variant="default"
+          :disabled="!canConfirm"
+          :title="canConfirm ? undefined : _t('Add at least one complete condition before confirming')"
+          @click="onConfirmClick"
+        >
+          {{ _t('Confirm') }}
+        </ChoyButton>
       </div>
     </div>
   </div>
@@ -41,7 +55,7 @@ import SearchFilterGroup from './SearchFilterGroup.vue';
 import { valueToPreview } from '@/web/web/query/utils/condition/like';
 import { getOperatorLabel } from '@/web/web/query/utils/filter/operators';
 import { FilterEditorBindingsKey, useFilterEditorBindings } from '@/web/web/composables/search/useFilterEditorBindings';
-import { isGroup } from '@/web/web/query/utils/filter/structures';
+import { countFilterLeaves, isConditionComplete, isGroup } from '@/web/web/query/utils/filter/structures';
 import { createTranslate } from '@/web/web/i18n';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/search/SearchFilter' });
@@ -100,6 +114,14 @@ function onUpdateCondition(id: string, patch: Partial<Condition>) {
   emit('update-condition', id, patch);
 }
 
+const leafStats = computed(() => countFilterLeaves(props.draft.root));
+const canConfirm = computed(() => leafStats.value.complete > 0 && leafStats.value.incomplete === 0);
+
+function onConfirmClick() {
+  if (!canConfirm.value) return;
+  emit('confirm');
+}
+
 // Recursive preview and leaf counting using SQL-style formatting.
 const { preview, leafCount } = (() => {
   // Convert many-to-one objects to ids for preview output.
@@ -121,7 +143,7 @@ const { preview, leafCount } = (() => {
     return `(${inner.join(` ${joiner} `)})`;
   }
   function expCond(c: Condition): string {
-    if (!c.field || !c.operator) return _t('(incomplete)');
+    if (!isConditionComplete(c)) return _t('(incomplete)');
     const op = String(c.operator);
     const fieldLabel = props.fields.find(f => f.prop === c.field)?.label || c.field;
     const label = getOperatorLabel(op);

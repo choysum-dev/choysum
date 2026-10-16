@@ -76,4 +76,38 @@ describe('ChoyConfirmHost', () => {
     expect(store.open).toBe(false);
     mounted.unmount();
   });
+
+  test('Action close after onConfirm does not settle as cancel', async () => {
+    const mounted = mountApp(ChoyConfirmHost as any);
+    await flushPromises();
+    const pending = confirmChoyAction('Delete?', 'Confirm delete', { destructive: true });
+    await flushPromises();
+    const store = useConfirmChoyStore();
+    const state = mounted.setupState() as any;
+    // Capture path: settle confirm first, then AlertDialog emits update:open=false.
+    state.onConfirm();
+    state.open = false;
+    await pending;
+    expect(store.open).toBe(false);
+    expect(store.resolve).toBeNull();
+    mounted.unmount();
+  });
+
+  test('open=false while resolve is pending still dismisses as cancel', async () => {
+    const mounted = mountApp(ChoyConfirmHost as any);
+    await flushPromises();
+    const pending = confirmChoyAction('Leave?', 'Title');
+    await flushPromises();
+    const state = mounted.setupState() as any;
+    state.open = false;
+    await pending.then(
+      () => {
+        throw new Error('expected cancel');
+      },
+      (e) => {
+        expect(e).toBe('cancel');
+      },
+    );
+    mounted.unmount();
+  });
 });

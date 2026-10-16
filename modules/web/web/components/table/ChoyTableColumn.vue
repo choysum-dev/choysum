@@ -203,21 +203,41 @@ function buildColumn(): Column {
         const rows = getRows() || [];
         const allSel = rows.length > 0 && rows.every(r => api?.isSelected(r));
         const someSel = rows.some(r => api?.isSelected(r));
-        return h('input', {
-          type: 'checkbox',
-          checked: allSel,
-          indeterminate: !allSel && someSel,
-          onChange: (e: Event) => api?.toggleAll(rows, !!(e.target as HTMLInputElement).checked),
-          onClick: (e: Event) => e.stopPropagation(),
-        });
+        // Label + DataTable select-cell click expand the hit target; keep the
+        // checkbox optically centered in the narrow selection column.
+        return h(
+          'label',
+          {
+            class: 'choy-table-select-hit flex w-full cursor-pointer items-center justify-center',
+            'data-no-row-click': '',
+            onClick: (e: Event) => e.stopPropagation(),
+          },
+          [
+            h('input', {
+              type: 'checkbox',
+              checked: allSel,
+              indeterminate: !allSel && someSel,
+              onChange: (e: Event) => api?.toggleAll(rows, !!(e.target as HTMLInputElement).checked),
+            }),
+          ],
+        );
       },
       cellRenderer: ({ rowData }: any) =>
-        h('input', {
-          type: 'checkbox',
-          checked: api?.isSelected(rowData) ?? false,
-          onChange: (e: Event) => api?.toggleRow(rowData, !!(e.target as HTMLInputElement).checked),
-          onClick: (e: Event) => e.stopPropagation(),
-        }),
+        h(
+          'label',
+          {
+            class: 'choy-table-select-hit flex w-full cursor-pointer items-center justify-center',
+            'data-no-row-click': '',
+            onClick: (e: Event) => e.stopPropagation(),
+          },
+          [
+            h('input', {
+              type: 'checkbox',
+              checked: api?.isSelected(rowData) ?? false,
+              onChange: (e: Event) => api?.toggleRow(rowData, !!(e.target as HTMLInputElement).checked),
+            }),
+          ],
+        ),
     };
   } else if (type === 'index') {
     const width = colProps.width ?? 50;

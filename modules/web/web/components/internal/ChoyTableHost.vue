@@ -4,13 +4,16 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div class="flex w-full min-h-0 flex-col" :style="{ height: tableHeight ? `${tableHeight}px` : undefined }">
+  <div
+    :class="cn('flex w-full min-h-0 flex-col', !tableHeight && 'h-full', props.class)"
+    :style="{ height: tableHeight ? `${tableHeight}px` : undefined }"
+  >
     <!-- Hidden slot used only for ChoyTableColumn registration. -->
     <div class="hidden" aria-hidden="true">
       <slot />
     </div>
 
-    <div class="relative min-h-0 flex-1" :style="{ height: `${bodyHeight}px` }">
+    <div class="relative min-h-0 flex-1 overflow-hidden">
       <DataTable
         ref="dataTableRef"
         class="h-full"
@@ -21,6 +24,7 @@ SPDX-License-Identifier: Apache-2.0
         :estimate-size="rowHeight"
         :virtualize="virtualize"
         :enable-row-selection="false"
+        :row-selection="selectedRowIds"
         :enable-sorting="true"
         :show-empty="false"
         sorting-mode="server"
@@ -52,6 +56,8 @@ import {
   type Column,
 } from '@/web/web/composables/useTable';
 import { createTranslate } from '@/web/web/i18n';
+import { cn, type ClassValue } from '@/web/web/lib/utils';
+import { CHOY_LIST_HEADER_HEIGHT, CHOY_LIST_ROW_HEIGHT } from '@/web/web/composables/listDensity';
 import DataTable from './DataTable.vue';
 import { columnsToColumnDefs } from './columnAdapter';
 import type { DataTableRowId } from './dataTableHelpers';
@@ -61,6 +67,7 @@ const { _t } = createTranslate('web', { scope: 'web/components/internal/ChoyTabl
 
 const props = withDefaults(
   defineProps<{
+    class?: ClassValue;
     data: any[] | (() => any[]) | any;
     columns?: Column[];
     rowKey?: string;
@@ -74,7 +81,13 @@ const props = withDefaults(
     baseIndex?: number | Ref<number>;
     store?: any;
   }>(),
-  { rowKey: 'Id', rowHeight: 32, headerHeight: 32, footerHeight: 0, virtualize: true },
+  {
+    rowKey: 'Id',
+    rowHeight: CHOY_LIST_ROW_HEIGHT,
+    headerHeight: CHOY_LIST_HEADER_HEIGHT,
+    footerHeight: 0,
+    virtualize: true,
+  },
 );
 
 const emit = defineEmits<{
@@ -134,12 +147,13 @@ const columnsToUse = computed<Column[]>(() => {
 
 const columnDefs = computed(() => columnsToColumnDefs(columnsToUse.value));
 
+/** Fallback body estimate for standalone mounts; flex hosts size via h-full. */
 const bodyHeight = computed(() => {
   const total = props.tableHeight;
   if (total == null || !Number.isFinite(total)) {
     return 280;
   }
-  const header = props.headerHeight ?? 48;
+  const header = props.headerHeight ?? CHOY_LIST_HEADER_HEIGHT;
   return Math.max(80, total - header);
 });
 
@@ -175,6 +189,12 @@ function resolveRowId(row: Record<string, unknown>): DataTableRowId {
 const selectedItems = computed(() => {
   const set = props.selectionApi?.selected.value ?? new Set<string | number>();
   return (rowsArray.value || []).filter((r) => set.has(keyOf(r)));
+});
+
+/** Mirror host selection into DataTable row state for selected-row chrome (no built-in select column). */
+const selectedRowIds = computed<DataTableRowId[] | undefined>(() => {
+  if (!props.selectionApi) return undefined;
+  return [...(props.selectionApi.selected.value ?? new Set())] as DataTableRowId[];
 });
 
 watch(

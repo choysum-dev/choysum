@@ -10,27 +10,40 @@ SPDX-License-Identifier: Apache-2.0
     :aria-multiselectable="enableRowSelection ? 'true' : undefined"
     :aria-rowcount="rows.length ? rows.length + 1 : 2"
     :aria-colcount="table.getVisibleLeafColumns().length"
-    :class="cn('choy-data-table overflow-hidden rounded-md border border-border bg-background', props.class)"
+    :class="
+      cn(
+        'choy-data-table flex min-h-0 flex-col overflow-hidden rounded-md border border-border bg-background',
+        props.class,
+      )
+    "
+    :style="rootHeightStyle"
+    @mouseleave="clearHoveredColumn"
   >
     <div
       ref="headerRef"
       role="rowgroup"
-      class="choy-data-table__header overflow-x-auto overflow-y-hidden border-b border-border bg-muted/20 text-xs font-medium text-muted-foreground"
+      class="choy-data-table__header shrink-0 overflow-x-auto overflow-y-hidden scrollbar-none scroll-contain border-b border-border bg-muted text-sm font-medium text-muted-foreground"
       @scroll.passive="onHeaderScroll"
     >
       <div
         role="row"
         aria-rowindex="1"
-        class="grid"
+        class="grid min-h-list-header"
         :style="{ minWidth: `${tableMinWidth}px`, gridTemplateColumns: gridTemplate }"
       >
         <div
           v-for="header in (table.getHeaderGroups().slice(-1)[0]?.headers ?? [])"
           :key="header.id"
           role="columnheader"
-          class="flex items-center gap-1 px-2 py-1.5"
+          class="flex min-h-list-header items-center gap-1 px-2 py-1 transition-colors"
+          :class="[
+            isSelectColumn(header.column) ? 'cursor-pointer justify-center' : undefined,
+            columnHoverClass(header.column.id),
+          ]"
+          :data-col-hover="isColumnHovered(header.column.id) ? '' : undefined"
+          :data-no-row-click="isSelectColumn(header.column) ? '' : undefined"
           :aria-sort="
-            header.column.id === '__select' || !header.column.getCanSort()
+            isSelectColumn(header.column) || !header.column.getCanSort()
               ? undefined
               : header.column.getIsSorted() === 'asc'
                 ? 'ascending'
@@ -38,25 +51,41 @@ SPDX-License-Identifier: Apache-2.0
                   ? 'descending'
                   : 'none'
           "
+          @mouseenter="setHoveredColumn(header.column.id)"
+          @click="onSelectHeaderClick($event, header.column)"
         >
           <Checkbox
             v-if="header.column.id === '__select'"
             :model-value="allSelected"
             aria-label="Select all"
+            @click.stop
             @update:model-value="(v: boolean | 'indeterminate') => table.toggleAllPageRowsSelected(v === true)"
           />
+          <div
+            v-else-if="isSelectColumn(header.column)"
+            class="flex flex-1 items-center justify-center"
+          >
+            <FlexRender :render="header.column.columnDef.header" :props="header.getContext()" />
+          </div>
           <button
             v-else
             type="button"
-            class="flex flex-1 items-center gap-1 border-0 bg-transparent p-0 text-left font-medium text-muted-foreground hover:text-foreground"
+            class="flex flex-1 items-center gap-1 border-0 bg-transparent p-0 text-left text-sm font-medium text-muted-foreground hover:text-foreground"
             :class="{ 'cursor-default': !header.column.getCanSort(), 'cursor-pointer': header.column.getCanSort() }"
             :disabled="!header.column.getCanSort()"
             @click="onHeaderClick(header.column.id, header.column.getCanSort())"
           >
             <FlexRender :render="header.column.columnDef.header" :props="header.getContext()" />
-            <span v-if="header.column.getIsSorted()" class="text-[10px] text-foreground/50">
-              {{ header.column.getIsSorted() === 'desc' ? '↓' : '↑' }}
-            </span>
+            <ChevronDown
+              v-if="header.column.getIsSorted() === 'desc'"
+              class="size-3.5 shrink-0 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <ChevronUp
+              v-else-if="header.column.getIsSorted() === 'asc'"
+              class="size-3.5 shrink-0 text-muted-foreground"
+              aria-hidden="true"
+            />
           </button>
         </div>
       </div>
@@ -65,8 +94,7 @@ SPDX-License-Identifier: Apache-2.0
     <div
       ref="parentRef"
       role="rowgroup"
-      class="choy-data-table__body relative overflow-auto"
-      :style="{ height: `${height}px` }"
+      class="choy-data-table__body relative min-h-0 flex-1 overflow-auto"
       @scroll.passive="onBodyScroll"
     >
       <div
@@ -92,10 +120,16 @@ SPDX-License-Identifier: Apache-2.0
           :data-index="item.index"
           role="row"
           :aria-rowindex="item.index + 2"
-          :aria-selected="item.row?.getIsSelected() ?? false"
+          :aria-selected="rowIsSelected(item.row)"
+          :data-state="rowIsSelected(item.row) ? 'selected' : undefined"
+          :data-row-kind="dataTableRowKind(item.row)"
           tabindex="0"
-          class="grid w-full border-b border-border/60 text-sm hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          :class="item.start != null ? 'absolute left-0' : undefined"
+          class="grid min-h-list-row w-full border-b border-border/60 text-sm transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          :class="[
+            item.start != null ? 'absolute left-0' : undefined,
+            rowIsSelected(item.row) ? 'bg-muted hover:bg-muted' : undefined,
+            dataTableIsGroupLikeRow(item.row) ? 'bg-muted/30' : undefined,
+          ]"
           :style="{
             gridTemplateColumns: gridTemplate,
             ...(item.start != null
@@ -105,25 +139,52 @@ SPDX-License-Identifier: Apache-2.0
           @click="onRowClick($event, item.row)"
           @keydown="onRowKeydown($event, item.row)"
         >
+          <!-- Group / more rows: one full-width cell (main OVTable RowMerge). -->
           <div
-            v-for="cell in item.row?.getVisibleCells() ?? []"
-            :key="cell.id"
+            v-if="dataTableIsGroupLikeRow(item.row)"
             role="gridcell"
-            class="flex items-center truncate px-2"
+            data-slot="group-row"
+            class="flex min-h-list-row min-w-0 items-center overflow-hidden px-2"
+            style="grid-column: 1 / -1"
           >
-            <Checkbox
-              v-if="cell.column.id === '__select'"
-              :model-value="cell.row.getIsSelected()"
-              :aria-label="`Select row ${item.index + 1}`"
-              @click.stop
-              @update:model-value="(v: boolean | 'indeterminate') => cell.row.toggleSelected(v === true)"
-            />
             <FlexRender
-              v-else
-              :render="cell.column.columnDef.cell"
-              :props="cell.getContext()"
+              v-if="groupLabelBodyCell(item.row)"
+              :render="groupLabelBodyCell(item.row)!.column.columnDef.cell"
+              :props="groupLabelBodyCell(item.row)!.getContext()"
             />
+            <span v-else class="truncate font-medium text-foreground">
+              {{ groupRowFallbackLabel(item.row) }}
+            </span>
           </div>
+          <template v-else>
+            <div
+              v-for="cell in item.row?.getVisibleCells() ?? []"
+              :key="cell.id"
+              role="gridcell"
+              class="flex min-h-list-row min-w-0 items-center overflow-hidden px-2 transition-colors"
+              :class="[
+                isSelectColumn(cell.column) ? 'cursor-pointer justify-center' : undefined,
+                columnHoverClass(cell.column.id),
+              ]"
+              :data-col-hover="isColumnHovered(cell.column.id) ? '' : undefined"
+              :data-no-row-click="isSelectColumn(cell.column) ? '' : undefined"
+              @mouseenter="setHoveredColumn(cell.column.id)"
+              @click="onSelectCellClick($event, cell.column, cell.row)"
+            >
+              <Checkbox
+                v-if="cell.column.id === '__select'"
+                :model-value="cell.row.getIsSelected()"
+                :aria-label="`Select row ${item.index + 1}`"
+                @click.stop
+                @update:model-value="(v: boolean | 'indeterminate') => cell.row.toggleSelected(v === true)"
+              />
+              <FlexRender
+                v-else
+                :render="cell.column.columnDef.cell"
+                :props="cell.getContext()"
+              />
+            </div>
+          </template>
         </div>
       </div>
       <div
@@ -152,15 +213,19 @@ import {
   type SortingState
 } from '@tanstack/vue-table';
 import { useVirtualizer } from '@tanstack/vue-virtual';
+import { ChevronDown, ChevronUp } from 'lucide-vue-next';
+import { CHOY_LIST_ROW_HEIGHT } from '../../composables/listDensity';
 import { cn, type ClassValue } from '../../lib/utils';
 import Checkbox from '../vendor/ui/checkbox/Checkbox.vue';
 import {
   applyDataTableParentScroll,
   applyDataTableScrollToRow,
   compareDataTableValues,
+  dataTableIsGroupLikeRow,
   dataTableIsVirtualized,
   dataTableMaybeMeasure,
   dataTableMeasureRow,
+  dataTableRowKind,
   dataTableScrollElement,
   dataTableSelectionIdsEqual,
   dataTableVirtualizerCount,
@@ -206,15 +271,47 @@ const props = withDefaults(
     enableRowSelection?: boolean;
     /** When false, host renders its own empty state. */
     showEmpty?: boolean;
+    /** Highlight the hovered column (header + body cells) with the row hover. */
+    highlightColumnOnHover?: boolean;
   }>(),
   {
     height: 280,
-    estimateSize: 32,
+    estimateSize: CHOY_LIST_ROW_HEIGHT,
     virtualize: true,
     enableSorting: true,
     sortingMode: 'client',
     enableRowSelection: true,
     showEmpty: true,
+    highlightColumnOnHover: true,
+  },
+);
+
+/** Column id under the pointer; drives crosshair column chrome when enabled. */
+const hoveredColumnId = ref<string | null>(null);
+
+function setHoveredColumn(columnId: string): void {
+  if (!props.highlightColumnOnHover) return;
+  if (hoveredColumnId.value === columnId) return;
+  hoveredColumnId.value = columnId;
+}
+
+function clearHoveredColumn(): void {
+  hoveredColumnId.value = null;
+}
+
+function isColumnHovered(columnId: string): boolean {
+  return props.highlightColumnOnHover && hoveredColumnId.value === columnId;
+}
+
+/** Soft column wash; row :hover still owns the stronger band via CSS. */
+function columnHoverClass(columnId: string): string | undefined {
+  return isColumnHovered(columnId) ? 'bg-muted/40' : undefined;
+}
+
+watch(
+  () => props.highlightColumnOnHover,
+  (enabled) => {
+    if (!enabled) clearHoveredColumn();
   },
 );
 
@@ -223,6 +320,21 @@ const emit = defineEmits<{
   'row-click': [row: T];
   'sort-change': [payload: { field: string; direction?: 'asc' | 'desc' }];
 }>();
+
+/** True when the host class tree requests `h-full` (string / array / object forms). */
+function classTreeHasToken(cls: ClassValue | undefined, token: string): boolean {
+  return cn(cls)
+    .split(/\s+/)
+    .some(part => part === token);
+}
+
+/** Total table height (header + body). Hosts that pass `h-full` size via parent instead. */
+const rootHeightStyle = computed(() => {
+  if (classTreeHasToken(props.class, 'h-full')) return undefined;
+  const h = props.height;
+  if (h == null || !Number.isFinite(h) || h <= 0) return undefined;
+  return { height: `${h}px` };
+});
 
 const sorting = ref<SortingState>([]);
 const rowSelection = ref<RowSelectionState>({});
@@ -422,7 +534,7 @@ const virtualizer = useVirtualizer({
   // Skip the observer when virtualization is off or the row set is empty.
   getScrollElement: () =>
     dataTableScrollElement(isVirtualized.value, parentRef.value as Element | null),
-  estimateSize: () => resolveDataTableEstimateSize(props.estimateSize, 32),
+  estimateSize: () => resolveDataTableEstimateSize(props.estimateSize, CHOY_LIST_ROW_HEIGHT),
   // Keep measurements attached to the logical row so sorting does not reuse stale heights.
   getItemKey: (index) => rows.value[index]?.id ?? index,
   overscan: 8,
@@ -494,6 +606,28 @@ watch(
   { deep: true },
 );
 
+/** Host-controlled rowSelection ids encoded once for O(1) selected chrome lookup. */
+const selectedRowKeySet = computed(() => {
+  const keys = new Set<string>();
+  const ids = props.rowSelection;
+  if (ids == null) return keys;
+  for (const raw of ids) {
+    const normalized = normalizeDataTableRowId(raw);
+    if (normalized != null) keys.add(encodeDataTableRowKey(normalized));
+  }
+  return keys;
+});
+
+/** Selected chrome: TanStack selection and/or host-controlled rowSelection ids (List path). */
+function rowIsSelected(row: { getIsSelected?: () => boolean; id?: string } | null | undefined): boolean {
+  if (!row) return false;
+  if (typeof row.getIsSelected === 'function' && row.getIsSelected()) {
+    return true;
+  }
+  if (row.id == null) return false;
+  return selectedRowKeySet.value.has(row.id);
+}
+
 function onHeaderClick(columnId: string, canSort: boolean): void {
   if (!canSort || !props.enableSorting || columnId === '__select') {
     return;
@@ -527,7 +661,7 @@ function scrollToRow(index: number, align?: 'start' | 'center' | 'end' | 'auto')
   });
 }
 
-defineExpose({ scrollToRow });
+defineExpose({ scrollToRow, onHeaderClick });
 
 const allSelected = computed(() => {
   if (table.getIsAllPageRowsSelected()) {
@@ -572,6 +706,84 @@ function onRowClick(event: MouseEvent, row: (typeof rows.value)[number] | undefi
   emit('row-click', row.original);
 }
 
+type TableColumnLike = {
+  id: string;
+  columnDef?: { meta?: { selectColumn?: boolean } };
+};
+
+/** Built-in TanStack select column or List host `ChoyTableColumn type="selection"`. */
+function isSelectColumn(column: TableColumnLike | undefined): boolean {
+  if (!column) return false;
+  if (column.id === '__select' || column.id === '__selection__') return true;
+  return column.columnDef?.meta?.selectColumn === true;
+}
+
+type BodyRowLike = NonNullable<(typeof rows.value)[number]>;
+
+function groupLabelBodyCell(row: BodyRowLike | undefined) {
+  if (!row) return null;
+  const cells = row.getVisibleCells();
+  return cells.find((c) => c.column.id === '__group_label') ?? null;
+}
+
+function groupRowFallbackLabel(row: BodyRowLike | undefined): string {
+  const o = row?.original as { label?: unknown; remain?: unknown; kind?: unknown; type?: unknown } | undefined;
+  if (!o) return '';
+  const k = o.kind ?? o.type;
+  if (k === 'more') {
+    const remain = Number(o.remain ?? 0);
+    return `Load more (${Number.isFinite(remain) ? Math.max(0, remain) : 0})`;
+  }
+  return o.label == null ? '' : String(o.label);
+}
+
+function clickSelectCheckboxIn(event: MouseEvent): void {
+  const target = event.target;
+  if (target instanceof Element && target.closest('input[type="checkbox"],[role="checkbox"]')) {
+    return;
+  }
+  const host = event.currentTarget;
+  if (!(host instanceof HTMLElement)) return;
+  const input = host.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
+  input?.click();
+}
+
+/** Expand checkbox hit target to the whole select column cell (padding clicks). */
+function onSelectCellClick(
+  event: MouseEvent,
+  column: TableColumnLike,
+  row: (typeof rows.value)[number] | undefined,
+): void {
+  if (!isSelectColumn(column)) {
+    return;
+  }
+  event.stopPropagation();
+  if (column.id === '__select') {
+    if (!row || !props.enableRowSelection || !row.getCanSelect()) {
+      return;
+    }
+    row.toggleSelected();
+    return;
+  }
+  // List host selection column: toggle via the rendered native checkbox.
+  clickSelectCheckboxIn(event);
+}
+
+function onSelectHeaderClick(event: MouseEvent, column: TableColumnLike): void {
+  if (!isSelectColumn(column)) {
+    return;
+  }
+  event.stopPropagation();
+  if (column.id === '__select') {
+    if (!props.enableRowSelection) {
+      return;
+    }
+    table.toggleAllPageRowsSelected(!(allSelected.value === true));
+    return;
+  }
+  clickSelectCheckboxIn(event);
+}
+
 function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | undefined): void {
   if (!row || isInteractiveRowClickTarget(event.target)) {
     return;
@@ -592,3 +804,19 @@ function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | u
   emit('row-click', row.original);
 }
 </script>
+
+<style>
+/* Keep overflow-x for scroll sync with the body; hide the duplicate track. */
+.choy-data-table__header {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.choy-data-table__header::-webkit-scrollbar {
+  display: none;
+}
+
+/* Crosshair: deepen the cell where row hover meets the hovered column. */
+.choy-data-table__body [role='row']:hover > [data-col-hover] {
+  background-color: color-mix(in oklab, var(--muted) 55%, transparent);
+}
+</style>

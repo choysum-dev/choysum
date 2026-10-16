@@ -9,7 +9,10 @@ SPDX-License-Identifier: Apache-2.0
     :data-layout="props.layout"
     :class="
       cn(
-        'items-center gap-3 border-b border-border pb-3 min-h-control',
+        // Region gap (ActionBar ↔ body) belongs on ChoyViewContainer.
+        // pb-* here is only air between controls and the hairline when bordered.
+        'items-center gap-3 border-b border-border min-h-control',
+        !isBorderless(props.class) ? 'pb-2' : undefined,
         props.layout === 'thirds'
           ? 'grid grid-cols-[auto_1fr_auto] max-md:grid-cols-1'
           : 'flex justify-between max-md:flex-col max-md:items-stretch',
@@ -79,4 +82,21 @@ const props = withDefaults(
   },
 );
 
+/** True when the consumer clears the bottom hairline (no pb air needed). */
+function isBorderless(value: ClassValue | undefined): boolean {
+  if (value == null || value === false || value === '') return false;
+  if (typeof value === 'string') {
+    return /(?:^|\s)(?:!)?border-b-0(?:\s|$)/.test(value) || /\[border-bottom-width:0px\]/.test(value);
+  }
+  if (typeof value === 'number') return false;
+  if (Array.isArray(value)) return value.some((item) => isBorderless(item as ClassValue));
+  if (typeof value === 'object') {
+    return Object.entries(value).some(
+      ([key, on]) =>
+        !!on &&
+        (/(?:^|:)(?:!)?border-b-0(?:$|:)/.test(key) || key.includes('[border-bottom-width:0px]')),
+    );
+  }
+  return false;
+}
 </script>

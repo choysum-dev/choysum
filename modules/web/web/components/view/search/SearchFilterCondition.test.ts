@@ -182,25 +182,13 @@ describe('SearchFilterCondition', () => {
 
   test('patches field change with first operator and clears value', async () => {
     const condition = reactive<any>({ id: 'c1', field: 'Name', operator: '=', value: 'x' });
-    const { unmount, setupState, onUpdateCondition, q } = mountRow(condition);
-    await setupState().onFieldChange('Status');
+    const { unmount, setupState, onUpdateCondition } = mountRow(condition);
+    await setupState().onFieldSelect('Status');
     expect(onUpdateCondition.calls.length).toBeGreaterThan(0);
     const patch = onUpdateCondition.calls[0]![1] as any;
     expect(patch.field).toBe('Status');
     expect(patch.value).toBeUndefined();
     expect(typeof patch.operator).toBe('string');
-
-    // Controlled <select> dispatches through onFieldChange without mutating the prop in place first.
-    onUpdateCondition.calls.length = 0;
-    condition.field = 'Name';
-    await nextTick();
-    const fieldSelect = q('.w-field') as HTMLSelectElement | null;
-    expect(fieldSelect).toBeTruthy();
-    fieldSelect!.value = 'Status';
-    fieldSelect!.dispatchEvent(new Event('change', { bubbles: true }));
-    await nextTick();
-    expect(onUpdateCondition.calls.length).toBeGreaterThan(0);
-    expect((onUpdateCondition.calls[0]![1] as any).field).toBe('Status');
     unmount();
   });
 
@@ -208,16 +196,16 @@ describe('SearchFilterCondition', () => {
     const condition = reactive<any>({ id: 'c1', field: 'Name', operator: '=', value: 'x' });
     const { unmount, setupState, onUpdateCondition } = mountRow(condition);
 
-    await setupState().onOperatorChange('is');
+    await setupState().onOperatorSelect('is');
     expect(onUpdateCondition.calls[onUpdateCondition.calls.length - 1]![1]).toEqual({ operator: 'is', value: null });
 
     condition.value = 'solo';
-    await setupState().onOperatorChange('in');
+    await setupState().onOperatorSelect('in');
     expect(onUpdateCondition.calls[onUpdateCondition.calls.length - 1]![1]).toEqual({ operator: 'in', value: ['solo'] });
 
     condition.value = null;
     condition.field = 'Name';
-    await setupState().onOperatorChange('=');
+    await setupState().onOperatorSelect('=');
     const last = onUpdateCondition.calls[onUpdateCondition.calls.length - 1]![1] as any;
     expect(last.operator).toBe('=');
     unmount();
@@ -263,7 +251,7 @@ describe('SearchFilterCondition', () => {
   test('renders NULL flag and selection / datetime field components', async () => {
     const nullCond = reactive<any>({ id: 'c1', field: 'Name', operator: 'is', value: null });
     const nullRow = mountRow(nullCond);
-    expect(nullRow.q('.choy-null-flag')?.textContent).toBe('NULL');
+    expect((nullRow.q('.choy-null-flag')?.textContent || '').trim()).toBe('NULL');
     nullRow.unmount();
 
     const sel = reactive<any>({ id: 'c2', field: 'Status', operator: '=', value: 'a' });
@@ -353,12 +341,12 @@ describe('SearchFilterCondition', () => {
         },
       },
     });
-    await setupState().onOperatorChange('=');
+    await setupState().onOperatorSelect('=');
     expect(onUpdateCondition.calls[onUpdateCondition.calls.length - 1]![1]).toEqual({ operator: '=', value: false });
 
     condition.field = 'Name';
     condition.value = ['a', 'b'];
-    await setupState().onOperatorChange('in');
+    await setupState().onOperatorSelect('in');
     expect(onUpdateCondition.calls[onUpdateCondition.calls.length - 1]![1]).toEqual({ operator: 'in' });
 
     await setupState().onMultiValuesChange('not-array' as any);
@@ -389,10 +377,21 @@ describe('SearchFilterCondition', () => {
   test('uses tempId as condition identity when present', async () => {
     const condition = reactive<any>({ id: 'c1', tempId: 'tmp-9', field: 'Name', operator: '=', value: 'x' });
     const { unmount, setupState, onUpdateCondition, onRemoveCondition } = mountRow(condition);
-    await setupState().onFieldChange('Status');
+    await setupState().onFieldSelect('Status');
     expect(onUpdateCondition.calls[0]![0]).toBe('tmp-9');
     setupState().onRemove();
     expect(onRemoveCondition.calls[0]).toEqual(['tmp-9']);
+    unmount();
+  });
+
+  test('marks incomplete rows for scanability', async () => {
+    const condition = reactive<any>({ id: 'c1', field: 'Name', operator: '=', value: '' });
+    const { unmount, q } = mountRow(condition);
+    await nextTick();
+    expect(q('[data-slot="search-filter-row"]')?.getAttribute('data-incomplete')).toBe('true');
+    condition.value = 'ok';
+    await nextTick();
+    expect(q('[data-slot="search-filter-row"]')?.getAttribute('data-incomplete')).toBe('false');
     unmount();
   });
 });

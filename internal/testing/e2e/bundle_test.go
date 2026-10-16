@@ -272,6 +272,18 @@ func TestE2EExactPinsWithoutVue(t *testing.T) {
 	if _, err := e2eExactPinsWithoutVue(t.TempDir()); err != nil {
 		t.Fatalf("missing package.json is empty pins, not error: %v", err)
 	}
+
+	broken := t.TempDir()
+	coreBroken := filepath.Join(broken, "modules", "core")
+	if err := os.MkdirAll(coreBroken, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(coreBroken, "package.json"), []byte(`{`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e2eExactPinsWithoutVue(broken); err == nil {
+		t.Fatal("expected error when modules/core/package.json is invalid JSON")
+	}
 }
 
 func TestBuildE2EBundleConnectProtobuf(t *testing.T) {

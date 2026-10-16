@@ -3,7 +3,14 @@
 
 import { ref } from 'vue';
 import type { ConditionGroup, Condition } from '@/web/web/query/types';
-import { createFilter, deepCloneFilter, genId, isGroup, normalizeFilters } from '@/web/web/query/utils/filter/structures';
+import {
+  countFilterLeaves,
+  createFilter,
+  deepCloneFilter,
+  genId,
+  isGroup,
+  normalizeFilters,
+} from '@/web/web/query/utils/filter/structures';
 
 export interface UseSearchEditorOptions {
   createGroupId?: () => string;
@@ -23,6 +30,7 @@ export function useSearchEditor(opts: UseSearchEditorOptions) {
   function openNewFilter() {
     const root = createFilter('And', []);
     root.id = createGroupId();
+    root.children.push({ id: createCondId(), field: '', operator: '=', value: '' });
     draftFilter.value = { baseId: undefined, root };
     isEditorOpen.value = true;
     activeFilterId.value = null;
@@ -78,9 +86,12 @@ export function useSearchEditor(opts: UseSearchEditorOptions) {
 
   function saveDraft(): boolean {
     if (!draftFilter.value) return false;
+    const leaves = countFilterLeaves(draftFilter.value.root);
+    // Refuse while any leaf is incomplete so Confirm cannot silently drop unfinished rows.
+    if (leaves.incomplete > 0 || leaves.complete === 0) return false;
     const normalized = normalizeFilters([draftFilter.value.root]);
     const root = normalized[0];
-    // Drop incomplete / empty nodes; refuse to persist a filter that would not affect Search.
+    // Drop empty groups; refuse to persist a filter that would not affect Search.
     if (!root || !Array.isArray(root.children) || root.children.length === 0) return false;
     if (draftFilter.value.baseId) {
       const i = filters.value.findIndex(f => f.id === draftFilter.value!.baseId);
@@ -102,14 +113,20 @@ export function useSearchEditor(opts: UseSearchEditorOptions) {
     filters.value = filters.value.filter(f => f.id !== id);
   }
 
+  function groupKey(g: ConditionGroup & { tempId?: string }) {
+    return g.tempId || g.id;
+  }
+  function conditionKey(c: Condition & { tempId?: string }) {
+    return c.tempId || c.id;
+  }
   function findGroupInDraft(groupId?: string): ConditionGroup | null {
     if (!draftFilter.value) return null;
     const root: ConditionGroup = draftFilter.value.root;
     if (!groupId) return root;
     const stack: ConditionGroup[] = [root];
     while (stack.length) {
-      const g = stack.pop()!;
-      if (g.id === groupId) return g;
+      const g = stack.pop()! as ConditionGroup & { tempId?: string };
+      if (groupKey(g) === groupId) return g;
       for (const ch of g.children) if (isGroup(ch)) stack.push(ch);
     }
     return null;
@@ -122,7 +139,7 @@ export function useSearchEditor(opts: UseSearchEditorOptions) {
       const g = stack.pop()!;
       for (const ch of g.children) {
         if (isGroup(ch)) stack.push(ch);
-        else if ((ch as Condition).id === id) return ch as Condition;
+        else if (conditionKey(ch as Condition & { tempId?: string }) === id) return ch as Condition;
       }
     }
     return null;
@@ -130,11 +147,11 @@ export function useSearchEditor(opts: UseSearchEditorOptions) {
   function removeNodeById(group: ConditionGroup, id: string) {
     group.children = group.children.filter(ch => {
       if (isGroup(ch)) {
-        if (ch.id === id) return false;
+        if (groupKey(ch as ConditionGroup & { tempId?: string }) === id) return false;
         removeNodeById(ch, id);
         return true;
       }
-      return (ch as Condition).id !== id;
+      return conditionKey(ch as Condition & { tempId?: string }) !== id;
     });
   }
 

@@ -39,15 +39,20 @@ export function computeViewportAdaptiveHeight(
 ): number {
   const shellScroll = wrap.closest('[data-testid="choy-shell-scroll"]') as HTMLElement | null;
   if (shellScroll) {
+    const scrollRect = shellScroll.getBoundingClientRect();
     const footer = shellScroll.querySelector(
       '[data-testid="choy-shell-footer"]',
     ) as HTMLElement | null;
-    // A hidden footer reports an all-zero rect; prefer the shell canvas bottom.
+    // A hidden footer reports an all-zero rect; treat as absent.
     const footerRect = footer?.getBoundingClientRect() ?? null;
-    const bottom =
-      footerRect && (footerRect.height > 0 || footerRect.top > 0)
-        ? footerRect.top
-        : shellScroll.getBoundingClientRect().bottom;
+    const footerVisible =
+      !!footerRect && (footerRect.height > 0 || footerRect.top > 0);
+    const footerH = footerVisible
+      ? footerRect!.height || Math.max(0, footerRect!.bottom - footerRect!.top)
+      : 0;
+    // Cap to the *visible* scrollport minus in-flow footer height. Using footer.top
+    // alone can inflate height after overflow (footer drifts down → double scrollbars).
+    const bottom = scrollRect.bottom - footerH;
     const page = wrap.closest('[data-anchor="choy.page"]') as HTMLElement | null;
     const pagePadBottom = page
       ? Number.parseFloat(getComputedStyle(page).paddingBottom) || 0
@@ -73,9 +78,9 @@ export function computeListTableBodyHeight(args: {
   const { viewport, rowCount, rowHeight, headerHeight } = args;
   if (!viewport || viewport <= 0) return viewport;
   if (rowCount <= 0) return viewport;
-  const contentH = headerHeight + Math.max(rowCount, 4) * rowHeight + 16;
-  // Floor at 240 only when the adaptive viewport is tall enough; never exceed it.
-  if (contentH < viewport) return Math.min(viewport, Math.max(240, contentH));
+  // Hug content height (plus a small pad); never force a tall min floor past the rows.
+  const contentH = headerHeight + rowCount * rowHeight + 16;
+  if (contentH < viewport) return contentH;
   return viewport;
 }
 

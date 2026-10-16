@@ -4,194 +4,315 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div class="choy-search w-full" data-anchor="choy.search">
-    <div
-      class="choy-search__main box-border flex min-h-control cursor-text flex-wrap items-center gap-0.5 rounded-md border border-border bg-card px-2 hover:border-accent-foreground/20 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30"
-      @click="focusInput"
-    >
-      <span>
-        <ChoyButton
-          size="sm"
-          variant="ghost"
-          class="choy-search__leading-btn me-0.5 px-1.5 py-0"
-          :aria-label="_t('Run search')"
-          @mousedown.prevent
-          @click.stop="onSearchIconClick"
+  <div ref="searchRootRef" class="choy-search w-full" data-anchor="choy.search">
+    <Popover v-model:open="menuVisible">
+      <!-- Anchor the panel to the whole search shell (not the chevron alone). -->
+      <PopoverAnchor as-child>
+        <InputGroup
+          class="choy-search__main gap-0.5 overflow-hidden bg-card shadow-none"
+          @click="focusInput"
         >
-          <Search class="size-4" />
-        </ChoyButton>
-      </span>
+          <InputGroupAddon align="inline-start" class="choy-search__leading ps-0 pe-0">
+            <ChoyButton
+              size="icon"
+              variant="ghost"
+              class="choy-search__leading-btn shrink-0 rounded-none"
+              :aria-label="_t('Run search')"
+              @mousedown.prevent
+              @click.stop="onSearchIconClick"
+            >
+              <Search class="size-4" />
+            </ChoyButton>
+          </InputGroupAddon>
 
-      <div class="choy-search__tags flex max-w-full flex-wrap items-center gap-0.5">
-        <span
-          v-if="hasGrouping"
-          class="choy-search__tag choy-search__grouptag inline-flex h-control cursor-pointer select-none items-center gap-1 rounded border border-border px-1.5 text-sm transition-colors hover:border-border hover:bg-accent hover:text-accent-foreground active:bg-accent"
-          @click.stop="onEditGroupClick()"
-          :title="groupingTooltip"
-        >
-          {{ _t('Group: %s', groupingSummary) }}
-          <button
-            type="button"
-            class="choy-search__tag-close m-0 inline-flex size-3.5 shrink-0 cursor-pointer items-center justify-center appearance-none rounded-full border-0 bg-transparent p-0 text-muted-foreground hover:bg-accent hover:text-foreground"
-            :aria-label="_t('Clear grouping')"
-            @click.stop="onGroupingClear"
-          >
-            <X class="size-3" />
-          </button>
-        </span>
+          <div v-if="hasFacetTags" class="choy-search__tags flex max-w-full flex-nowrap items-center gap-0.5">
+            <ChoyBadge
+              v-if="activeFavorite"
+              variant="secondary"
+              class="choy-search__tag choy-search__favtag cursor-pointer gap-1 rounded-md px-1.5 py-0 text-sm font-normal"
+              data-testid="choy-search-favorite-tag"
+              :title="activeFavorite.name"
+            >
+              <Star class="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span class="truncate">{{ activeFavorite.name }}</span>
+              <button
+                type="button"
+                class="choy-search__tag-close m-0 inline-flex size-3.5 shrink-0 cursor-pointer items-center justify-center appearance-none rounded-full border-0 bg-transparent p-0 text-muted-foreground hover:bg-accent hover:text-foreground"
+                :aria-label="_t('Clear favorite')"
+                data-testid="choy-search-favorite-clear"
+                @click.stop="onClearActiveFavorite"
+              >
+                <X class="size-3" />
+              </button>
+            </ChoyBadge>
 
-        <span
-          v-for="f in filters"
-          :key="f.id"
-          class="choy-search__tag inline-flex h-control cursor-pointer select-none items-center gap-1 rounded border border-border px-1.5 text-sm transition-colors hover:border-border hover:bg-accent hover:text-accent-foreground active:bg-accent"
-          :class="{ 'choy-search__tag--pending-delete border-danger bg-danger/10 text-danger hover:border-danger hover:text-danger [&_button]:text-danger': f.id === pendingDeleteFilterId }"
-          @click.stop="onTagClick(f.id!)"
-          :title="f.name || filterTooltip(f)"
-        >
-          {{ f.name || summarizeFilterFields(f, 2) }}
-          <button
-            type="button"
-            class="choy-search__tag-close m-0 inline-flex size-3.5 shrink-0 cursor-pointer items-center justify-center appearance-none rounded-full border-0 bg-transparent p-0 text-muted-foreground hover:bg-accent hover:text-foreground"
-            :aria-label="_t('Remove filter')"
-            @click.stop="onTagClose(f.id!)"
-          >
-            <X class="size-3" />
-          </button>
-        </span>
-      </div>
+            <ChoyBadge
+              v-if="hasVisibleGrouping"
+              variant="secondary"
+              class="choy-search__tag choy-search__grouptag cursor-pointer gap-1 rounded-md px-1.5 py-0 text-sm font-normal"
+              :title="groupingTooltip"
+              @click.stop="onEditGroupClick()"
+            >
+              <Layers class="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span class="truncate">{{ groupingSummary }}</span>
+              <button
+                type="button"
+                class="choy-search__tag-close m-0 inline-flex size-3.5 shrink-0 cursor-pointer items-center justify-center appearance-none rounded-full border-0 bg-transparent p-0 text-muted-foreground hover:bg-accent hover:text-foreground"
+                :aria-label="_t('Clear grouping')"
+                @click.stop="onGroupingClear"
+              >
+                <X class="size-3" />
+              </button>
+            </ChoyBadge>
 
-      <input
-        ref="inputRef"
-        v-model="keyword"
-        class="choy-search__input min-w-[140px] flex-1 border-0 bg-transparent px-1 py-0 text-sm leading-none text-foreground outline-none"
-        :placeholder="placeholder"
-        :name="inputName"
-        :id="inputId"
-        @keydown.enter.stop.prevent="onEnter"
-        @keydown="onInputKeydown"
-        @blur="onInputBlur"
-      />
+            <ChoyBadge
+              v-for="f in visibleFilters"
+              :key="f.id"
+              :variant="f.id === pendingDeleteFilterId ? 'destructive' : 'secondary'"
+              class="choy-search__tag cursor-pointer gap-1 rounded-md px-1.5 py-0 text-sm font-normal"
+              :class="{ 'choy-search__tag--pending-delete': f.id === pendingDeleteFilterId }"
+              :title="f.name || filterTooltip(f)"
+              @click.stop="onTagClick(f.id!)"
+            >
+              <Funnel class="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span class="truncate">{{ f.name || summarizeFilterFields(f, 2) }}</span>
+              <button
+                type="button"
+                class="choy-search__tag-close m-0 inline-flex size-3.5 shrink-0 cursor-pointer items-center justify-center appearance-none rounded-full border-0 bg-transparent p-0 text-muted-foreground hover:bg-accent hover:text-foreground"
+                :aria-label="_t('Remove filter')"
+                @click.stop="onTagClose(f.id!)"
+              >
+                <X class="size-3" />
+              </button>
+            </ChoyBadge>
+          </div>
 
-      <div class="choy-search__suffix ml-1 flex items-center gap-0.5 border-l border-border pl-1.5">
-        <ChoyButton
-          v-if="hasClearableSearch"
-          size="sm"
-          variant="ghost"
-          class="choy-search__clear-btn px-1.5 py-0"
-          data-testid="choy-search-clear-all"
-          :aria-label="_t('Clear all')"
-          @mousedown.prevent
-          @click.stop="onClearAll"
-        >
-          {{ _t('Clear') }}
-        </ChoyButton>
-        <Popover v-model:open="menuVisible">
-          <PopoverTrigger as-child>
-            <ChoyButton size="sm" variant="ghost" class="choy-search__trailing-btn px-1.5 py-0" :aria-label="_t('Open search menu')" @click.stop>
+          <InputGroupInput
+            ref="inputRef"
+            v-model="keyword"
+            class="choy-search__input min-w-[140px] px-1"
+            :placeholder="placeholder"
+            :name="inputName"
+            :id="inputId"
+            @focus="onInputFocus"
+            @keydown.enter.stop.prevent="onEnter"
+            @keydown="onInputKeydown"
+            @blur="onInputBlur"
+          />
+
+          <InputGroupAddon align="inline-end" class="choy-search__suffix gap-0 border-l border-border ps-0">
+            <ChoyButton
+              v-if="hasClearableSearch"
+              size="icon"
+              variant="ghost"
+              class="choy-search__clear-btn shrink-0 rounded-none"
+              data-testid="choy-search-clear-all"
+              :aria-label="_t('Clear all')"
+              @mousedown.prevent
+              @click.stop="onClearAll"
+            >
+              <X class="size-4" />
+            </ChoyButton>
+            <ChoyButton
+              size="icon"
+              variant="ghost"
+              class="choy-search__trailing-btn shrink-0 rounded-none"
+              data-testid="choy-search-menu-toggle"
+              :aria-label="_t('Toggle search menu')"
+              :aria-expanded="menuVisible"
+              @mousedown.prevent
+              @click.stop="onToggleSearchMenu"
+            >
               <ChevronDown class="size-4" />
             </ChoyButton>
-          </PopoverTrigger>
-          <PopoverContent class="choy-search-popover w-auto min-w-fit p-0" align="end">
+          </InputGroupAddon>
+        </InputGroup>
+      </PopoverAnchor>
 
-          <div class="grid max-w-[70vw] grid-cols-2 gap-4 px-3.5 py-3">
-            <section class="min-w-[260px]">
-              <div class="mb-2 font-semibold text-foreground">{{ _t('Filters') }}</div>
-              <div class="flex flex-col">
-                <ChoyButton v-for="it in defaultFilterItems" :key="'df:' + it.name" class="choy-search__menu-item m-0 justify-start rounded px-1 py-1.5 hover:bg-accent" variant="ghost" @click="onToggleDefaultFilter(it)">
-                  <span v-if="it.name && appliedFilterNameSet.has(it.name)" class="choy-search__menu-icon choy-search__menu-icon--applied mr-1.5 inline-flex align-[-1px] text-base text-success">
-                    <Check />
-                  </span>
-                  <span class="whitespace-nowrap">
-                    {{ it.name || summarizeFilter(it.filter, 2) }}
-                  </span>
-                </ChoyButton>
-              </div>
-              <hr class="my-2.5" />
-              <div class="my-1.5 font-semibold text-foreground">{{ _t('Favorites') }}</div>
-              <div class="flex flex-col">
-                <div v-for="it in favoriteMenuItems" :key="'fav:' + it.id" class="flex items-center gap-0.5 [&_.choy-search__menu-item]:min-w-0 [&_.choy-search__menu-item]:flex-1">
-                  <ChoyButton class="choy-search__menu-item m-0 justify-start rounded px-1 py-1.5 hover:bg-accent" variant="ghost" @click="onApplyFavorite(it)">
-                    <span v-if="it.name && appliedFilterNameSet.has(it.name)" class="choy-search__menu-icon choy-search__menu-icon--applied mr-1.5 inline-flex align-[-1px] text-base text-success">
-                      <Check />
-                    </span>
-                    <span class="whitespace-nowrap">
-                      {{ it.name }}{{ it.shared ? ` (${_t('Shared')})` : '' }}
-                    </span>
-                  </ChoyButton>
-                  <ChoyButton
-                    v-if="it.canDelete"
-                    class="choy-search__menu-item-edit shrink-0 px-1 py-0 opacity-55 hover:text-foreground hover:opacity-100"
-                    variant="ghost"
-                    size="sm"
-                    :aria-label="_t('Edit favorite %s', it.name)"
-                    @click.stop="onEditFavorite(it)"
-                  >
-                    <span class="inline-flex"><Pencil class="size-3.5" /></span>
-                  </ChoyButton>
-                  <ChoyButton
-                    v-if="it.canDelete"
-                    class="choy-search__menu-item-delete shrink-0 px-1 py-0 opacity-55 hover:text-danger hover:opacity-100"
-                    variant="ghost"
-                    size="sm"
-                    :aria-label="_t('Delete favorite %s', it.name)"
-                    @click.stop="onRemoveFavorite(it)"
-                  >
-                    <X class="size-3.5" />
-                  </ChoyButton>
-                </div>
-                <div v-if="favoritesLoadError" class="text-muted-foreground">
-                  {{ _t('Failed to load favorites') }}
-                  <ChoyButton class="justify-start px-1 py-1.5" variant="ghost" @click="onRetryFavorites">{{ _t('Retry') }}</ChoyButton>
-                </div>
-                <div v-else-if="!favoriteMenuItems.length && !favoritesLoading" class="text-muted-foreground">{{ _t('No favorites yet') }}</div>
-              </div>
-              <ChoyButton class="justify-start px-1 py-1.5" variant="ghost" @click="onOpenSaveFavorite">{{ _t('Save current filters…') }}</ChoyButton>
-              <hr class="my-2.5" />
-              <ChoyButton class="justify-start px-1 py-1.5" variant="ghost" @click="onAddFilterClickAndClose">{{ _t('Custom filter…') }}</ChoyButton>
-            </section>
-
-            <section class="min-w-[260px] border-l border-border pl-4">
-              <div class="mb-2 font-semibold text-foreground">{{ _t('Group by') }}</div>
-
-              <div v-if="currentAppliedGroups.length > 0" class="flex flex-col">
-                <ChoyButton
-                  v-for="it in appliedGroupItems"
-                  :key="it.key"
-                  class="choy-search__menu-item m-0 justify-start rounded px-1 py-1.5 hover:bg-accent"
-                  variant="ghost"
-                  @click="it.type === 'plain' ? togglePlainGroupby(it.field) : toggleTemporalGroupby(it.field, it.granularity!)"
+      <PopoverContent
+        class="choy-search-popover p-0"
+        align="start"
+        side="bottom"
+        :side-offset="0"
+        @open-auto-focus.prevent
+        @close-auto-focus.prevent
+        @pointer-down-outside="onMenuDismissOutside"
+        @focus-outside="onMenuDismissOutside"
+      >
+        <div class="choy-search-menu" data-slot="search-menu">
+          <section class="choy-search-menu__col" data-slot="search-filters">
+            <div class="choy-search-menu__heading">
+              <Funnel class="size-3.5 shrink-0" aria-hidden="true" />
+              {{ _t('Filters') }}
+            </div>
+            <div class="choy-search-menu__col-body">
+              <ChoyButton
+                v-for="it in defaultFilterItems"
+                :key="'df:' + it.name"
+                class="choy-search__menu-item"
+                variant="ghost"
+                @click="onToggleDefaultFilter(it)"
+              >
+                <span
+                  v-if="it.name && appliedFilterNameSet.has(it.name)"
+                  class="choy-search__menu-icon choy-search__menu-icon--applied"
                 >
-                  <span class="choy-search__menu-icon choy-search__menu-icon--applied mr-1.5 inline-flex align-[-1px] text-base text-success">
-                    <Check />
-                  </span>
-                  <span class="whitespace-nowrap">{{ it.label }}</span>
-                </ChoyButton>
+                  <Check class="size-3.5" />
+                </span>
+                <span class="truncate">
+                  {{ it.name || summarizeFilter(it.filter, 2) }}
+                </span>
+              </ChoyButton>
+              <div v-if="!defaultFilterItems.length" class="choy-search-menu__empty">
+                {{ _t('No preset filters') }}
               </div>
-              <div v-else class="text-muted-foreground">{{ _t('Not set') }}</div>
+            </div>
+            <div class="choy-search-menu__footer">
+              <ChoyButton class="choy-search__menu-item" variant="ghost" @click="onAddFilterClickAndClose">
+                {{ _t('Custom filter…') }}
+              </ChoyButton>
+            </div>
+          </section>
 
-              <hr class="my-2.5" />
+          <section class="choy-search-menu__col choy-search-menu__col--groupby" data-slot="search-groupby">
+            <div class="choy-search-menu__heading">
+              <Layers class="size-3.5 shrink-0" aria-hidden="true" />
+              {{ _t('Group by') }}
+            </div>
 
-              <div class="my-1.5 font-semibold text-foreground">{{ _t('Custom group by') }}</div>
-              <div class="flex flex-col">
+            <div v-if="currentAppliedGroups.length > 0" class="choy-search-menu__applied">
+              <ChoyButton
+                v-for="it in appliedGroupItems"
+                :key="it.key"
+                class="choy-search__menu-item"
+                variant="ghost"
+                @click="
+                  it.type === 'plain'
+                    ? togglePlainGroupby(it.field)
+                    : toggleTemporalGroupby(it.field, it.granularity!)
+                "
+              >
+                <span class="choy-search__menu-icon choy-search__menu-icon--applied">
+                  <Check class="size-3.5" />
+                </span>
+                <span class="truncate">{{ it.label }}</span>
+              </ChoyButton>
+            </div>
+            <div v-else class="choy-search-menu__empty">{{ _t('Not set') }}</div>
+
+            <div class="choy-search-menu__subheading">{{ _t('Custom group by') }}</div>
+            <Combobox
+              v-model="groupFieldSelect"
+              v-model:open="groupFieldOpen"
+              ignore-filter
+              open-on-focus
+              open-on-click
+              class="choy-search__group-combobox w-full"
+              @update:model-value="onGroupFieldSelect"
+            >
+              <ComboboxAnchor class="w-full">
+                <ComboboxInput
+                  v-model="groupFieldQuery"
+                  class="choy-search__group-select"
+                  data-testid="choy-search-groupby-select"
+                  :placeholder="_t('Select a field…')"
+                  :aria-label="_t('Select a field…')"
+                  @focus="groupFieldOpen = true"
+                />
+              </ComboboxAnchor>
+              <ComboboxContent class="choy-search__group-select-content p-0">
+                <div class="choy-search__group-select-list max-h-56 overflow-y-auto p-1">
+                  <div
+                    v-if="!filteredGroupOptions.length"
+                    class="px-2 py-1.5 text-sm text-muted-foreground"
+                  >
+                    {{ _t('No fields') }}
+                  </div>
+                  <ComboboxItem
+                    v-for="n in filteredGroupOptions"
+                    :key="n.id"
+                    :value="n.id"
+                    class="choy-search__group-select-item"
+                  >
+                    {{ n.label }}
+                  </ComboboxItem>
+                </div>
+              </ComboboxContent>
+            </Combobox>
+          </section>
+
+          <section class="choy-search-menu__col choy-search-menu__col--favorites" data-slot="search-favorites">
+            <div class="choy-search-menu__heading">
+              <Star class="size-3.5 shrink-0" aria-hidden="true" />
+              {{ _t('Favorites') }}
+            </div>
+            <div class="choy-search-menu__col-body">
+              <div
+                v-for="it in favoriteMenuItems"
+                :key="'fav:' + it.id"
+                class="choy-search__favorite-row"
+              >
                 <ChoyButton
-                  v-for="n in flatGroupOptions"
-                  :key="n.id"
-                  class="m-0 justify-start rounded px-1 py-1.5 hover:bg-accent"
+                  class="choy-search__menu-item choy-search__menu-item--grow"
                   variant="ghost"
-                  @click="onTreeSelectChange(n.id)"
+                  @click="onApplyFavorite(it)"
                 >
-                  {{ n.label }}
+                  <span
+                    v-if="activeFavorite?.id === it.id"
+                    class="choy-search__menu-icon choy-search__menu-icon--applied"
+                  >
+                    <Check class="size-3.5" />
+                  </span>
+                  <span class="truncate">
+                    {{ it.name }}{{ it.shared ? ` (${_t('Shared')})` : '' }}
+                  </span>
+                </ChoyButton>
+                <ChoyButton
+                  v-if="it.canDelete"
+                  class="choy-search__menu-item-edit"
+                  variant="ghost"
+                  size="sm"
+                  :aria-label="_t('Edit favorite %s', it.name)"
+                  @click.stop="onEditFavorite(it)"
+                >
+                  <Pencil class="size-3.5" />
+                </ChoyButton>
+                <ChoyButton
+                  v-if="it.canDelete"
+                  class="choy-search__menu-item-delete"
+                  variant="ghost"
+                  size="sm"
+                  :aria-label="_t('Delete favorite %s', it.name)"
+                  @click.stop="onRemoveFavorite(it)"
+                >
+                  <X class="size-3.5" />
                 </ChoyButton>
               </div>
-            </section>
-          </div>
-          </PopoverContent>
-        </Popover>
-      </div>
-    </div>
+              <div v-if="favoritesLoadError" class="choy-search-menu__status choy-search-menu__status--error">
+                <span>{{ _t('Failed to load favorites') }}</span>
+                <button type="button" class="choy-search-menu__link" @click="onRetryFavorites">
+                  {{ _t('Retry') }}
+                </button>
+              </div>
+              <div
+                v-else-if="!favoriteMenuItems.length && !favoritesLoading"
+                class="choy-search-menu__empty"
+              >
+                {{ _t('No favorites yet') }}
+              </div>
+            </div>
+            <div class="choy-search-menu__footer">
+              <ChoyButton class="choy-search__menu-item" variant="ghost" @click="onOpenSaveFavorite">
+                {{ _t('Save current filters…') }}
+              </ChoyButton>
+            </div>
+          </section>
+        </div>
+      </PopoverContent>
+    </Popover>
 
     <ChoyDialog v-model:open="isEditorOpen">
-      <ChoyDialogContent>
+      <ChoyDialogContent class="max-w-5xl gap-5">
         <ChoyDialogTitle>{{ filterEditorTitle }}</ChoyDialogTitle>
       <SearchFilter
         v-if="draftFilter"
@@ -213,17 +334,25 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyDialog v-model:open="saveFavoriteOpen">
       <ChoyDialogContent class="max-w-md">
         <ChoyDialogTitle>{{ saveFavoriteDialogTitle }}</ChoyDialogTitle>
-      <form @submit.prevent>
-        <div>
-          <label>{{ _t('Name') }}</label>
-          <input class="fav-name" v-model="saveFavoriteName" :placeholder="_t('Favorite name')" @keydown.enter.prevent="onConfirmSaveFavorite" />
+      <form class="flex flex-col gap-3" @submit.prevent>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-foreground" for="choy-search-fav-name">{{ _t('Name') }}</label>
+          <Input
+            id="choy-search-fav-name"
+            class="fav-name"
+            v-model="saveFavoriteName"
+            :placeholder="_t('Favorite name')"
+            @keydown.enter.prevent="onConfirmSaveFavorite"
+          />
         </div>
-        <div>
-          <label class="fav-check"><input type="checkbox" v-model="saveFavoriteIsDefault" /> {{ _t('Use by default') }}</label>
-        </div>
-        <div>
-          <label class="fav-check"><input type="checkbox" v-model="saveFavoriteShared" /> {{ _t('Share with all users') }}</label>
-        </div>
+        <label class="fav-check flex items-center gap-2 text-sm text-foreground">
+          <Checkbox v-model="saveFavoriteIsDefault" />
+          {{ _t('Use by default') }}
+        </label>
+        <label class="fav-check flex items-center gap-2 text-sm text-foreground">
+          <Checkbox v-model="saveFavoriteShared" />
+          {{ _t('Share with all users') }}
+        </label>
       </form>
       <div class="mt-4 flex justify-end gap-2">
         <ChoyButton size="sm" variant="outline" @click="saveFavoriteOpen = false">{{ _t('Cancel') }}</ChoyButton>
@@ -251,7 +380,10 @@ import { formatGroupItemForDisplay } from '@/web/web/query/utils/grouping/format
 import { normalizeGroupby } from '@/web/web/query/utils/grouping/normalize';
 import { buildQueryUpdatePayload } from '@/web/web/query/utils/search/payload';
 import { useFilterPresets } from '@/web/web/composables/search/useFilterPresets';
-import { useInjectedUserFilters } from '@/web/web/composables/search/useUserFilters';
+import {
+  useInjectedUserFilters,
+  type UserFavoriteMenuItem,
+} from '@/web/web/composables/search/useUserFilters';
 import {
   modelIdentityFromStore,
   pickDefaultFavoriteName,
@@ -262,18 +394,41 @@ import { trySetupHook } from '@/web/web/composables/search/trySetupHook';
 import { SearchNavContextKey } from '@/web/web/composables/search/searchNavContext';
 import { useFilterableSearchFields } from '@/web/web/composables/search/useSearchFieldOptions';
 import { useSearchGrouping, type SearchGroupByItem } from '@/web/web/composables/search/useSearchGrouping';
+import { mergeFavoriteGroups, removeFavoriteGroups } from '@/web/web/composables/search/mergeFavoriteGroups';
 import { createTranslate } from '@/web/web/i18n';
 import { useBreadcrumbStore } from '@/web/web/stores/breadcrumbStore';
 import { useMenuStore } from '@/web/web/stores/menuStore';
 import { useRoute } from 'vue-router';
-import { Search, ChevronDown, Check, Pencil, X } from 'lucide-vue-next';
+import { Search, ChevronDown, Check, Pencil, X, Funnel, Layers, Star } from 'lucide-vue-next';
+import ChoyBadge from '@/web/web/components/layout/ChoyBadge.vue';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
+import Checkbox from '@/web/web/components/vendor/ui/checkbox/Checkbox.vue';
+import Input from '@/web/web/components/vendor/ui/input/Input.vue';
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from '@/web/web/components/vendor/ui/input-group';
 import Popover from '@/web/web/components/vendor/ui/popover/Popover.vue';
+import PopoverAnchor from '@/web/web/components/vendor/ui/popover/PopoverAnchor.vue';
 import PopoverContent from '@/web/web/components/vendor/ui/popover/PopoverContent.vue';
-import PopoverTrigger from '@/web/web/components/vendor/ui/popover/PopoverTrigger.vue';
+import Combobox from '@/web/web/components/vendor/ui/combobox/Combobox.vue';
+import ComboboxAnchor from '@/web/web/components/vendor/ui/combobox/ComboboxAnchor.vue';
+import ComboboxContent from '@/web/web/components/vendor/ui/combobox/ComboboxContent.vue';
+import ComboboxInput from '@/web/web/components/vendor/ui/combobox/ComboboxInput.vue';
+import ComboboxItem from '@/web/web/components/vendor/ui/combobox/ComboboxItem.vue';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/search/Search' });
+
+type ActiveFavorite = {
+  id: string;
+  name: string;
+  filter: unknown;
+  groups: Array<{ field: string; granularity?: string }>;
+  /** Chip id contributed by apply; omitted when the favorite added no named chip. */
+  filterChipId?: string;
+};
 
 /** Captured in setup so click handlers never call inject()-based APIs. */
 const navCtx = inject(SearchNavContextKey, null);
@@ -325,12 +480,6 @@ const emit = defineEmits<{
   (e: 'defaults-ready', defaults: NamedFilter[]): void;
 }>();
 const store = props.store;
-const groupingSummary = computed(() => {
-  const arr = props.currentAppliedGroups ? (Array.isArray(props.currentAppliedGroups) ? props.currentAppliedGroups : [props.currentAppliedGroups]) : [];
-  if (!arr.length) return '';
-  return arr.map(x => formatGroupItemForDisplay(x, granLabelMap.value)).join(' > ');
-});
-const groupingTooltip = computed(() => groupingSummary.value);
 
 /* Split useSearch into state, editor, actions, and helper layers. */
 const { state, editor, actions, helpers } = useSearch({ attachStore: store as any });
@@ -339,7 +488,9 @@ const filters = state.filters;
 // Editor layer.
 const isEditorOpen = editor.isEditorOpen;
 const draftFilter = editor.draftFilter;
-const filterEditorTitle = computed(() => (draftFilter.value?.baseId ? _t('Edit filter') : _t('New filter')));
+const filterEditorTitle = computed(() =>
+  draftFilter.value?.baseId ? _t('Edit filter') : _t('Custom filter')
+);
 const openNewFilter = editor.openNew;
 const openEditFilter = editor.openEdit;
 const closeEditor = editor.close;
@@ -365,13 +516,60 @@ const hasGrouping = computed(() => {
   return Array.isArray(gb) ? gb.length > 0 : !!gb;
 });
 
+/** Active Favorites facet (Odoo-style star tag); at most one at a time. */
+const activeFavorite = ref<ActiveFavorite | null>(null);
+
+/**
+ * Groups not contributed by the active favorite (user-stacked).
+ * Favorite groupbys stay applied but are folded into the star tag, like Odoo.
+ */
+const userFacingGroups = computed(() => {
+  const fav = activeFavorite.value;
+  if (!fav?.groups?.length) {
+    const gb = props.currentAppliedGroups;
+    if (!gb) return [] as Array<{ field: string; granularity?: string }>;
+    return (normalizeGroupby(gb as any) as Array<{ field: string; granularity?: string }>).slice();
+  }
+  return removeFavoriteGroups(props.currentAppliedGroups as any, fav.groups);
+});
+
+const hasVisibleGrouping = computed(() => userFacingGroups.value.length > 0);
+
+const groupingSummary = computed(() => {
+  const arr = userFacingGroups.value;
+  if (!arr.length) return '';
+  return arr.map(x => formatGroupItemForDisplay(x, granLabelMap.value)).join(' > ');
+});
+const groupingTooltip = computed(() => groupingSummary.value);
+
+/** Funnel chips excluding the active favorite's own named condition chip. */
+const visibleFilters = computed(() => {
+  const list = Array.isArray(filters.value) ? filters.value : [];
+  const fav = activeFavorite.value;
+  if (!fav) return list;
+  if (fav.filterChipId) {
+    return list.filter(f => f.id !== fav.filterChipId);
+  }
+  // Groupby-only / empty favorites contribute no chip; leave other same-name filters.
+  return list;
+});
+
+const hasFacetTags = computed(
+  () => !!activeFavorite.value || hasVisibleGrouping.value || visibleFilters.value.length > 0
+);
+
 /* Input and helper state. */
 const placeholder = computed(() => props.placeholder || _t('Search...'));
 const inputName = computed(() => `${(store as any)?.storeId || 'search'}-keyword`);
 const inputId = computed(() => `${inputName.value}-input`);
-const inputRef = ref<HTMLInputElement | null>(null);
+const inputRef = ref<{ $el?: HTMLInputElement } | HTMLInputElement | null>(null);
 const pendingDeleteFilterId = ref<string | null>(null);
 const menuVisible = ref(false);
+/** Transient Combobox value for custom group-by; cleared after apply / menu close. */
+const groupFieldSelect = ref<string>('');
+const groupFieldQuery = ref('');
+const groupFieldOpen = ref(false);
+
 
 /* Menu support: named presets come from a reusable composable. */
 type FilterMenuItem = { name: string; filter: any };
@@ -401,6 +599,7 @@ const {
   filtersRef: filters as any,
   keywordRef: keyword as any,
   applyNamedFilter,
+  getAppliedGroups: () => (props.currentAppliedGroups as any) ?? [],
   codeDefaults: () => {
     const df = props.defaultFilters as any;
     if (!df) return undefined;
@@ -419,16 +618,63 @@ const saveFavoriteDialogTitle = computed(() =>
   editingFavoriteId.value ? _t('Edit favorite') : _t('Save current filters')
 );
 
-function onApplyFavorite(it: { name: string; filter: any }) {
-  const before = filters.value.length;
-  applyFavorite(it);
-  if (filters.value.length !== before) {
-    emitQueryUpdate();
+/** Remove only the chip this favorite contributed (by id); no-op when none was added. */
+function removeActiveFavoriteChip(fav: ActiveFavorite) {
+  const chipId = fav.filterChipId;
+  if (!chipId) return;
+  filters.value = (filters.value || []).filter(f => f.id !== chipId);
+}
+
+function onApplyFavorite(it: UserFavoriteMenuItem) {
+  const prev = activeFavorite.value;
+  const filtersSnapshot = (filters.value || []).slice();
+  let baseGroups = (props.currentAppliedGroups as any) ?? [];
+  if (prev) {
+    // Replace previous favorite contribution; keep user-added filters/groups.
+    removeActiveFavoriteChip(prev);
+    baseGroups = removeFavoriteGroups(baseGroups, prev.groups);
   }
+  const favGroups = normalizeGroupby((it.groups ?? []) as any) as Array<{
+    field: string;
+    granularity?: string;
+  }>;
+  const beforeIds = new Set((filters.value || []).map(f => f.id));
+  try {
+    // Apply condition into query (named chip may exist); UI folds it into the star tag.
+    applyFavorite({ name: it.name, filter: it.filter });
+  } catch (e) {
+    // Roll back chip removal so local filters still match the applied query.
+    filters.value = filtersSnapshot;
+    ChoyMessage.error(e instanceof Error ? e.message : String(e));
+    return;
+  }
+  const added = (filters.value || []).find(f => f.id && !beforeIds.has(f.id));
+  activeFavorite.value = {
+    id: String(it.id),
+    name: String(it.name || '').trim(),
+    filter: it.filter,
+    groups: favGroups,
+    ...(added?.id ? { filterChipId: String(added.id) } : {}),
+  };
+  const merged = mergeFavoriteGroups(baseGroups, favGroups);
+  emitQueryUpdate(buildPayload(merged as any));
   menuVisible.value = false;
 }
 
+function onClearActiveFavorite() {
+  const prev = activeFavorite.value;
+  if (!prev) return;
+  removeActiveFavoriteChip(prev);
+  const nextGroups = removeFavoriteGroups(props.currentAppliedGroups as any, prev.groups);
+  activeFavorite.value = null;
+  emitQueryUpdate(buildPayload(nextGroups as any));
+}
+
 async function onRemoveFavorite(it: { id: string; name: string }) {
+  // Close the search menu before the confirm dialog (same as Edit/Save) so the
+  // popover is not dismissed as a focus side-effect of AlertDialog.
+  const reopenMenu = menuVisible.value;
+  menuVisible.value = false;
   try {
     await confirmChoyAction(
       _t('Delete favorite "%s"? This cannot be undone.', it.name),
@@ -440,14 +686,18 @@ async function onRemoveFavorite(it: { id: string; name: string }) {
       }
     );
   } catch {
+    if (reopenMenu) menuVisible.value = true;
     return;
   }
   try {
     await removeFavorite(it.id);
+    if (activeFavorite.value?.id === it.id) onClearActiveFavorite();
     emit('defaults-ready', defaultsForOpen.value as NamedFilter[]);
     ChoyMessage.success(_t('Favorite deleted'));
   } catch (e: any) {
     ChoyMessage.error(e instanceof Error ? e.message : String(e));
+  } finally {
+    if (reopenMenu) menuVisible.value = true;
   }
 }
 
@@ -590,11 +840,97 @@ const flatGroupOptions = computed(() => {
   return out;
 });
 
+const filteredGroupOptions = computed(() => {
+  const q = groupFieldQuery.value.trim().toLowerCase();
+  if (!q) return flatGroupOptions.value;
+  return flatGroupOptions.value.filter(
+    (n) => n.label.toLowerCase().includes(q) || n.id.toLowerCase().includes(q),
+  );
+});
+
+watch(menuVisible, (open) => {
+  if (!open) {
+    groupFieldSelect.value = '';
+    groupFieldQuery.value = '';
+    groupFieldOpen.value = false;
+  }
+});
+
+function onGroupFieldSelect(id: string | null | undefined): void {
+  if (id == null || id === '') return;
+  onTreeSelectChange(id);
+  groupFieldSelect.value = '';
+  groupFieldQuery.value = '';
+  groupFieldOpen.value = false;
+  menuVisible.value = false;
+}
+
+const searchRootRef = ref<HTMLElement | null>(null);
+/** Ignore DismissableLayer outside events right after opening (same click/focus that opened). */
+let suppressMenuDismissUntil = 0;
+
+function markMenuDismissSuppressed(ms = 300) {
+  suppressMenuDismissUntil = Date.now() + ms;
+}
+
+function isEventFromSearchShell(event: Event): boolean {
+  const detail = (event as CustomEvent<{ originalEvent?: Event }>).detail;
+  const original = (detail?.originalEvent ?? event) as Event & {
+    composedPath?: () => EventTarget[];
+    target?: EventTarget | null;
+  };
+  const root = searchRootRef.value;
+  if (!root) return false;
+  if (typeof original.composedPath === 'function') {
+    try {
+      if (original.composedPath().includes(root)) return true;
+    } catch {
+      /* ignore */
+    }
+  }
+  const target = original.target as { closest?: (s: string) => Element | null } | null;
+  if (target && typeof target.closest === 'function') {
+    try {
+      if (target.closest('[data-anchor="choy.search"]')) return true;
+    } catch {
+      /* ignore */
+    }
+  }
+  let n: { parentNode?: unknown; parentElement?: unknown } | null = target as any;
+  while (n) {
+    if (n === root) return true;
+    n = ((n as any).parentNode ?? (n as any).parentElement ?? null) as any;
+  }
+  return false;
+}
+
+/** Prevent popover dismiss when interacting with the search shell (input / tags / chevron). */
+function onMenuDismissOutside(event: Event) {
+  if (Date.now() < suppressMenuDismissUntil || isEventFromSearchShell(event)) {
+    event.preventDefault();
+  }
+}
+
+function onInputFocus() {
+  markMenuDismissSuppressed();
+  menuVisible.value = true;
+}
+
+function onToggleSearchMenu() {
+  if (!menuVisible.value) markMenuDismissSuppressed();
+  menuVisible.value = !menuVisible.value;
+}
+
 function onInputBlur() {
   pendingDeleteFilterId.value = null;
 }
 
 function onInputKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && menuVisible.value) {
+    menuVisible.value = false;
+    e.preventDefault();
+    return;
+  }
   if (e.key === 'Backspace') {
     const el = e.target as HTMLInputElement;
     if (el.selectionStart === 0 && el.selectionEnd === 0) {
@@ -631,7 +967,18 @@ function onSearchIconClick() {
 }
 
 function focusInput() {
-  inputRef.value?.focus();
+  const r = inputRef.value as { $el?: HTMLInputElement; focus?: () => void } | HTMLInputElement | null;
+  if (!r) return;
+  markMenuDismissSuppressed();
+  if (typeof (r as HTMLInputElement).focus === 'function' && !(r as { $el?: unknown }).$el) {
+    (r as HTMLInputElement).focus();
+    // Focus may be a no-op when already focused; still open the menu (Odoo-style).
+    menuVisible.value = true;
+    return;
+  }
+  const el = (r as { $el?: HTMLInputElement }).$el;
+  if (el && typeof el.focus === 'function') el.focus();
+  menuVisible.value = true;
 }
 
 function onTagClick(id: string) {
@@ -680,11 +1027,12 @@ function onAddFilterClickAndClose() {
 }
 
 function onGroupingClear() {
-  // Pass an explicit empty array so buildPayload preserves [].
-  emitQueryUpdate(buildPayload([]));
+  // Clear only user-facing groups; keep favorite contribution folded under the star.
+  const favGroups = activeFavorite.value?.groups ?? [];
+  emitQueryUpdate(buildPayload((favGroups.length ? favGroups : []) as any));
 }
 
-/** Clears keyword, filter chips, and grouping in one action (instant emit). */
+/** Clears keyword, filter chips, favorite facet, and grouping in one action (instant emit). */
 function onClearAll() {
   if (!hasClearableSearch.value) return;
   debouncedTrigger.cancel();
@@ -694,6 +1042,7 @@ function onClearAll() {
     syncingKeyword.value = false;
   });
   filters.value = [];
+  activeFavorite.value = null;
   pendingDeleteFilterId.value = null;
   emitQueryUpdate(buildPayload([]));
 }
@@ -701,10 +1050,11 @@ function onClearAll() {
 const hasClearableSearch = computed(() => {
   const hasKw = Boolean(String(keyword.value ?? '').trim());
   const hasFilters = Array.isArray(filters.value) && filters.value.length > 0;
-  return hasKw || hasFilters || hasGrouping.value;
+  return hasKw || hasFilters || hasGrouping.value || !!activeFavorite.value;
 });
 
 function onEditGroupClick() {
+  markMenuDismissSuppressed();
   menuVisible.value = true;
 }
 
@@ -753,4 +1103,305 @@ watch(
   { deep: true, immediate: true }
 );
 </script>
+
+<!--
+  Teleported PopoverContent is outside this SFC's scope tree, so menu layout
+  cannot rely on scoped selectors or on md:* utilities missing from FullCSS.
+-->
+<style>
+.choy-search-popover[data-slot='popover-content'] {
+  /* Compact panel — do not stretch to the full search-shell width. */
+  width: min(90vw, 36rem) !important;
+  min-width: min(90vw, 22rem);
+  max-width: 90vw;
+  padding: 0;
+  overflow: hidden;
+}
+
+.choy-search-popover .choy-search-menu {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  max-height: min(70vh, 24rem);
+  overflow: auto;
+}
+
+.choy-search-popover .choy-search-menu__col {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 0.875rem;
+}
+
+.choy-search-popover .choy-search-menu__col--groupby,
+.choy-search-popover .choy-search-menu__col--favorites {
+  border-top: 1px solid var(--border);
+}
+
+.choy-search-popover .choy-search-menu__heading {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 1.25rem;
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--foreground);
+}
+
+.choy-search-popover .choy-search-menu__heading svg {
+  color: var(--muted-foreground);
+}
+
+.choy-search-popover .choy-search-menu__subheading {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.choy-search-popover .choy-search-menu__empty {
+  padding: 0.25rem 0.125rem;
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+}
+
+.choy-search-popover .choy-search-menu__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.375rem;
+  padding: 0.125rem 0;
+  font-size: 0.8125rem;
+}
+
+.choy-search-popover .choy-search-menu__status--error {
+  background: transparent;
+  color: var(--muted-foreground);
+}
+
+.choy-search-popover .choy-search-menu__link {
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  font: inherit;
+  font-size: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.choy-search-popover .choy-search-menu__col-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  max-height: 12rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--muted-foreground) 35%, transparent) transparent;
+}
+
+.choy-search-popover .choy-search-menu__col-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.choy-search-popover .choy-search-menu__col-body::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--muted-foreground) 35%, transparent);
+}
+
+.choy-search-popover .choy-search-menu__footer {
+  margin-top: 0.375rem;
+  padding-top: 0.375rem;
+  border-top: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+}
+
+.choy-search-popover .choy-search__menu-item {
+  justify-content: flex-start;
+  margin: 0;
+  height: auto;
+  min-height: 1.75rem;
+  padding: 0.25rem 0.375rem;
+  border-radius: calc(var(--radius-md) - 2px);
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+
+.choy-search-popover .choy-search__menu-item--grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.choy-search-popover .choy-search__menu-icon {
+  display: inline-flex;
+  margin-inline-end: 0.375rem;
+  color: var(--success, var(--primary));
+}
+
+.choy-search-popover .choy-search__favorite-row {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+
+.choy-search-popover .choy-search__menu-item-edit,
+.choy-search-popover .choy-search__menu-item-delete {
+  height: 1.75rem;
+  width: 1.75rem;
+  padding: 0;
+  opacity: 0.55;
+}
+
+.choy-search-popover .choy-search__menu-item-edit:hover {
+  opacity: 1;
+}
+
+.choy-search-popover .choy-search__menu-item-delete:hover {
+  opacity: 1;
+  color: var(--destructive);
+}
+
+.choy-search-popover .choy-search__group-select {
+  height: 2rem;
+  min-height: 2rem;
+  width: 100%;
+  padding-inline: 0.5rem;
+  font-size: 0.8125rem;
+  box-shadow: none;
+}
+
+.choy-search-popover .choy-search__group-select:focus-visible {
+  border-color: var(--border);
+  box-shadow: none;
+  outline: none;
+}
+
+.choy-search__group-select-content {
+  z-index: 60;
+}
+
+.choy-search__group-select-item {
+  font-size: 0.8125rem;
+}
+
+@media (min-width: 48rem) {
+  .choy-search-popover .choy-search-menu {
+    grid-template-columns: minmax(9.5rem, 1fr) minmax(12rem, 1.2fr) minmax(9.5rem, 1fr);
+    align-items: stretch;
+    overflow: hidden;
+  }
+
+  .choy-search-popover .choy-search-menu__col {
+    min-width: 9.5rem;
+  }
+
+  .choy-search-popover .choy-search-menu__col--groupby,
+  .choy-search-popover .choy-search-menu__col--favorites {
+    border-top: 0;
+    border-inline-start: 1px solid var(--border);
+  }
+
+  .choy-search-popover .choy-search-menu__col-body {
+    max-height: 14rem;
+  }
+}
+</style>
+
+<style scoped>
+/*
+  Stretch every shell column to the control height and center inside it, so
+  icons stay put when facet tags appear or clear. Kit InputGroup ships
+  h-control + addon py-1.5; cn cannot twMerge those away.
+*/
+.choy-search__main {
+  height: var(--height-control) !important;
+  min-height: var(--height-control) !important;
+  flex-wrap: nowrap;
+  align-items: stretch;
+}
+
+.choy-search__main :deep([data-slot='input-group-addon']) {
+  display: inline-flex;
+  align-items: center;
+  align-self: stretch;
+  height: auto !important;
+  min-height: 0;
+  padding-block: 0 !important;
+  margin: 0;
+}
+
+.choy-search__main :deep(.choy-search__leading) {
+  padding-inline: 0 !important;
+  margin-inline-start: 0;
+}
+
+.choy-search__main :deep(.choy-search__suffix) {
+  padding-inline: 0 !important;
+  margin-inline-end: 0;
+}
+
+.choy-search__tags {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  line-height: 1;
+}
+
+.choy-search__main :deep([data-slot='input-group-control'].choy-search__input) {
+  align-self: stretch;
+  height: auto !important;
+  min-height: 0 !important;
+  padding-block: 0 !important;
+  line-height: 1.25;
+  border-width: 0;
+  box-shadow: none;
+}
+
+.choy-search__main :deep(.choy-search__leading-btn),
+.choy-search__main :deep(.choy-search__trailing-btn),
+.choy-search__main :deep(.choy-search__clear-btn) {
+  height: 100%;
+  width: var(--height-control);
+  min-height: 0;
+  padding: 0;
+  border-radius: 0;
+}
+
+.choy-search__main :deep(.choy-search__leading-btn svg),
+.choy-search__main :deep(.choy-search__trailing-btn svg),
+.choy-search__main :deep(.choy-search__clear-btn svg) {
+  width: 1rem;
+  height: 1rem;
+}
+
+.choy-search__main :deep(.choy-search__tag) {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  height: calc(var(--height-control) - 8px);
+  max-height: calc(var(--height-control) - 8px);
+  margin: 0;
+  padding-block: 0 !important;
+  line-height: 1;
+}
+
+.choy-search__main :deep([data-slot='popover-trigger']) {
+  display: inline-flex;
+  align-items: center;
+  align-self: stretch;
+  height: auto;
+  line-height: 0;
+}
+</style>
 

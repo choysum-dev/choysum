@@ -532,6 +532,8 @@ func TestScanChoyKitTailwindCandidatesFiltersAndEdges(t *testing.T) {
 	write("components/layout/OLayout.vue", `<div class="max-w-0"></div>`)
 	write("components/view/Helpers.ts", `export const c = "rounded"`)
 	write("components/view/OHelpers.ts", `export const c = "kit-options-util"`)
+	// PascalCase Search*.vue must match the case-insensitive "search" kit prefix.
+	write("components/view/search/SearchFilterGroup.vue", `<div class="kit-search-filter-util"></div>`)
 	write("components/field/plain.ts", `export const c = "border"`)
 	write("components/chatter/chatterHelpers.ts", `export const c = "shadow"`)
 	write("other/Ignore.vue", `<div class="opacity-0"></div>`)
@@ -580,7 +582,7 @@ func TestScanChoyKitTailwindCandidatesFiltersAndEdges(t *testing.T) {
 	for _, c := range got {
 		set[c] = true
 	}
-	for _, want := range []string{"flex", "gap-2", "p-2", "text-sm", "block", "inline", "grid", "min-h-0", "rounded", "shadow", "kit-shell-extra", "kit-page-settings", "kit-options-util"} {
+	for _, want := range []string{"flex", "gap-2", "p-2", "text-sm", "block", "inline", "grid", "min-h-0", "rounded", "shadow", "kit-shell-extra", "kit-page-settings", "kit-options-util", "kit-search-filter-util"} {
 		if !set[want] {
 			t.Fatalf("missing candidate %q in %v", want, got)
 		}

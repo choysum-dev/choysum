@@ -74,7 +74,8 @@ html {
 
   /* Shell chrome (shadcn-vue docs header ~h-14); not the control ruler. */
   --choy-layout-header-height: 3.5rem;
-  --choy-layout-footer-height: 4rem;
+  /* Powered-by line is ~1.25rem; keep a short band, not a second toolbar. */
+  --choy-layout-footer-height: 2.5rem;
   --choy-layout-sidebar-width: 15rem;
   --choy-layout-sidebar-collapsed-width: 3.5rem;
   /* Inset gutter for App/Guest header, ChoyPage, and Powered-by footer (sidebar-07 p-4). */
@@ -106,9 +107,9 @@ html {
   --choy-line-height-base: 1.5;
 
   /*
-   * Control height ruler (comfortable): single default for Button / Input /
-   * Select / Combobox / TabsList and table row targets. L2 binds via theme
-   * utilities h-control / size-control (see theme.css).
+   * Control height ruler (comfortable): Button / Input / Select / Combobox /
+   * TabsList. L2 binds via theme utilities h-control / size-control (see theme.css).
+   * List/DataTable body rows use --choy-list-row-height (Odoo-like ~40), not this.
    */
   --choy-control-height: 32px;
   --choy-control-height-sm: 28px;
@@ -116,6 +117,10 @@ html {
   --choy-component-size-base: var(--choy-control-height);
   --choy-component-size-sm: var(--choy-control-height-sm);
   --choy-component-size-lg: var(--choy-control-height-lg);
+
+  /* List virtual row + header track (comfortable ≈ Odoo list density). */
+  --choy-list-row-height: 40px;
+  --choy-list-header-height: 40px;
 
   /* Direction defaults; updateDocumentDirection may override at runtime. */
   --choy-direction: ltr;
@@ -217,8 +222,10 @@ html[data-density='compact'] {
   --choy-control-height: 28px;
   --choy-control-height-sm: 24px;
   --choy-control-height-lg: 32px;
+  --choy-list-row-height: 36px;
+  --choy-list-header-height: 36px;
   --choy-layout-header-height: 3rem;
-  --choy-layout-footer-height: 3.5rem;
+  --choy-layout-footer-height: 2.25rem;
 }
 
 html[dir='rtl'] {

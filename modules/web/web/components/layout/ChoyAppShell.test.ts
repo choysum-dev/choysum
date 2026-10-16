@@ -29,7 +29,10 @@ describe('ChoyAppShell', () => {
       'choy-inset-pad-x',
     );
     expect(mounted.q('.choy-shell')?.className || '').toContain('overflow-hidden');
-    expect(mounted.q('[data-testid=choy-shell-scroll]')?.className || '').toContain('overflow-y-auto');
+    expect(mounted.q('[data-testid=choy-shell-scroll]')?.className || '').toContain('overflow-hidden');
+    expect(mounted.q('[data-testid=choy-shell-scroll]')?.getAttribute('data-shell-layout')).toBe(
+      'workspace',
+    );
     expect(mounted.q('[data-testid=choy-shell-header-sep]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-header-tools]')).toBeNull();
     expect(mounted.q('[data-testid=choy-shell-theme]')).toBeNull();
@@ -58,7 +61,7 @@ describe('ChoyAppShell', () => {
     expect(mounted.q('[data-testid=choy-shell-command-trigger]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-sidebar-nav-app-title]')).toBeNull();
     expect(mounted.q('[data-test=router-view]')).not.toBeNull();
-    // Sticky-footer column lives in the Inset (footer after canvas inside one scrollport).
+    // Workspace: footer is a sibling of the canvas under the non-scrolling column.
     expect(mounted.q('[data-slot=sidebar-inset]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-footer]')).not.toBeNull();
@@ -66,7 +69,8 @@ describe('ChoyAppShell', () => {
     const footer = mounted.q('[data-testid=choy-shell-footer]');
     const canvas = mounted.q('[data-testid=choy-shell-canvas]');
     expect(footer?.parentElement).toBe(canvas?.parentElement);
-    expect(footer?.parentElement?.className || '').toContain('choy-shell__scroll-inner');
+    expect(footer?.parentElement?.getAttribute('data-shell-layout')).toBe('workspace');
+    expect(footer?.parentElement?.className || '').toContain('choy-shell__workspace');
     mounted.unmount();
   });
 

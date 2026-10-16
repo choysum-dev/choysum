@@ -36,6 +36,37 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
+### 2026-10-15 — ComboboxInput displayValue + Select class
+
+- `combobox/ComboboxInput.vue`: forward Reka `displayValue` so callers can show
+  a label while the model stays a technical id/prop (filter field picker).
+- `select/Select.vue`: forward `class` onto `SelectRoot` (plus default
+  `min-w-0`) so grid/flex hosts can constrain the select cell width.
+
+### 2026-10-15 — Toggle / ToggleGroup QuickJS-safe props
+
+- **Toggle / ToggleGroup / ToggleGroupItem:** drop `defineProps` typed from
+  `reka-ui` and `@vueuse/core` `reactiveOmit`; use local props + `defineModel`.
+- **toggleVariants:** moved to `toggle/toggleVariants.ts` so ToggleGroupItem does
+  not pull `Toggle.vue` via directory `"."` import (same pattern as
+  `sidebarMenuButtonVariants`).
+- Defaults stay upstream-aligned (`type=single`, `spacing=0`); no product density
+  baked into kit chrome.
+
+### 2026-10-15 — PopoverAnchor + Combobox Root props
+
+- **PopoverAnchor:** thin Reka wrapper + barrel export so hosts can position
+  `PopoverContent` against a custom shell (Search anchors the menu to the whole
+  input group while open state is controlled separately from the chevron).
+  Product layer cannot import `reka-ui` directly; Anchor is missing from the
+  prior L2 surface (Trigger-only).
+- **Combobox:** forward `ignoreFilter` / `openOnFocus` / `openOnClick` to
+  `ComboboxRoot` (all default `false`) so callers that filter the item list
+  themselves (Search custom group-by) can opt in without baking Search behavior
+  into kit defaults.
+- **Do not regress:** keep defaults off; do not restyle Combobox/Popover chrome
+  here for Search density.
+
 ### 2026-10-12 — DropdownMenu modal prop
 
 - **DropdownMenu:** expose `modal` (default `true`) so hover-open hosts (L1 rail

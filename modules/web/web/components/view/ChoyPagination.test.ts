@@ -28,10 +28,51 @@ describe('ChoyPagination', () => {
     const mounted = mountApp(Host as any);
     await flushPromises();
     expect(mounted.q('select')).toBeNull();
-    const rangeBtn = mounted.q('.choy-pagination__range-value') as HTMLButtonElement | null;
+    const rangeBtn = mounted.q('.choy-pagination__range-idle') as HTMLButtonElement | null;
     expect(rangeBtn).not.toBeNull();
-    expect(rangeBtn!.textContent?.trim()).toBe('1-12');
+    expect(mounted.q('.choy-pagination__range-value')?.textContent?.trim()).toBe('1-12');
     expect(mounted.q('.choy-pagination__total')?.textContent?.trim()).toBe('12');
+    expect(mounted.q('.choy-pagination__range')?.className || '').toContain('whitespace-nowrap');
+    expect(mounted.q('[data-testid="choy-pagination"]')?.className || '').toContain('flex-nowrap');
+    expect(mounted.q('.choy-pagination__range-input')).toBeNull();
+    mounted.unmount();
+  });
+
+  test('wide range stays single-line and edit replaces / total with sized input', async () => {
+    const page = ref(2);
+    const pageSize = ref(100);
+    const mounted = mountApp(ChoyPagination as any, {
+      props: {
+        total: 1230,
+        page: page.value,
+        pageSize: pageSize.value,
+      },
+      on: {
+        'onUpdate:page': (v: number) => {
+          page.value = v;
+        },
+        'onUpdate:pageSize': (v: number) => {
+          pageSize.value = v;
+        },
+      },
+    });
+    await flushPromises();
+    const rangeValue = mounted.q('.choy-pagination__range-value');
+    expect(rangeValue?.textContent?.trim()).toBe('101-200');
+    expect(rangeValue?.className || '').toContain('whitespace-nowrap');
+    expect(rangeValue?.className || '').not.toContain('w-14');
+    expect(mounted.q('.choy-pagination__total')?.textContent?.trim()).toBe('1230');
+
+    const state = mounted.setupState() as any;
+    await state.startEdit();
+    await flushPromises();
+    expect(mounted.q('.choy-pagination__total')).toBeNull();
+    expect(mounted.q('.choy-pagination__range-value')).toBeNull();
+    const input = mounted.q('.choy-pagination__range-input') as HTMLInputElement | null;
+    expect(input).not.toBeNull();
+    expect(input!.className).not.toContain('w-14');
+    // Input width tracks idle "101-200 / 1230" length (+1), clamped to 10–18ch.
+    expect(input!.style.width).toBe('15ch');
     mounted.unmount();
   });
 
@@ -363,7 +404,7 @@ describe('ChoyPagination', () => {
       props: { total: Number.NaN, page: 1, pageSize: 20, disabled: false },
     });
     await flushPromises();
-    const rangeBtn = mounted3.q('.choy-pagination__range-value') as HTMLButtonElement | null;
+    const rangeBtn = mounted3.q('.choy-pagination__range-idle') as HTMLButtonElement | null;
     expect(rangeBtn?.disabled).toBe(true);
     const state3 = mounted3.setupState() as any;
     await state3.startEdit();

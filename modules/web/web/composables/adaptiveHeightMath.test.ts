@@ -24,21 +24,23 @@ function rect(partial: Partial<DOMRect>): DOMRect {
 }
 
 describe('adaptiveHeightMath', () => {
-  test('computeListTableBodyHeight floors at 240 but never past viewport', () => {
+  test('computeListTableBodyHeight hugs short content and never past viewport', () => {
     expect(computeListTableBodyHeight({ viewport: 0, rowCount: 2, rowHeight: 32, headerHeight: 32 })).toBe(0);
     expect(computeListTableBodyHeight({ viewport: 800, rowCount: 0, rowHeight: 32, headerHeight: 32 })).toBe(800);
-    expect(computeListTableBodyHeight({ viewport: 800, rowCount: 2, rowHeight: 32, headerHeight: 32 })).toBe(240);
-    expect(computeListTableBodyHeight({ viewport: 200, rowCount: 2, rowHeight: 32, headerHeight: 32 })).toBe(200);
+    // 32 + 2*32 + 16 = 112
+    expect(computeListTableBodyHeight({ viewport: 800, rowCount: 2, rowHeight: 32, headerHeight: 32 })).toBe(112);
+    expect(computeListTableBodyHeight({ viewport: 100, rowCount: 2, rowHeight: 32, headerHeight: 32 })).toBe(100);
     expect(computeListTableBodyHeight({ viewport: 100, rowCount: 50, rowHeight: 32, headerHeight: 32 })).toBe(100);
   });
 
   test('computeViewportAdaptiveHeight hard-caps to shell footer', () => {
     const shell = document.createElement('div');
     shell.setAttribute('data-testid', 'choy-shell-scroll');
-    shell.getBoundingClientRect = () => rect({ top: 0, bottom: 900 });
+    // Visible scrollport; footer sits in the last 40px (pinned when content fits).
+    shell.getBoundingClientRect = () => rect({ top: 0, bottom: 540 });
     const footer = document.createElement('div');
     footer.setAttribute('data-testid', 'choy-shell-footer');
-    footer.getBoundingClientRect = () => rect({ top: 500, bottom: 540 });
+    footer.getBoundingClientRect = () => rect({ top: 500, bottom: 540, height: 40 });
     shell.appendChild(footer);
     const page = document.createElement('div');
     page.setAttribute('data-anchor', 'choy.page');
@@ -51,12 +53,31 @@ describe('adaptiveHeightMath', () => {
     const orig = window.getComputedStyle;
     (window as any).getComputedStyle = () => ({ paddingBottom: '16px' });
     try {
+      // (scrollBottom - footerH) - wrapTop - pagePad = (540 - 40) - 100 - 16
       expect(
         computeViewportAdaptiveHeight(wrap, 100, { viewportGap: 12, minViewportHeight: 240 }),
-      ).toBe(384); // 500 - 100 - 16
+      ).toBe(384);
     } finally {
       (window as any).getComputedStyle = orig;
     }
+  });
+
+  test('computeViewportAdaptiveHeight ignores drifted footer.top after overflow', () => {
+    const shell = document.createElement('div');
+    shell.setAttribute('data-testid', 'choy-shell-scroll');
+    shell.getBoundingClientRect = () => rect({ top: 0, bottom: 540 });
+    const footer = document.createElement('div');
+    footer.setAttribute('data-testid', 'choy-shell-footer');
+    // Footer has drifted below the visible scrollport (content overflow).
+    footer.getBoundingClientRect = () => rect({ top: 700, bottom: 740, height: 40 });
+    shell.appendChild(footer);
+    const wrap = document.createElement('div');
+    wrap.closest = ((sel: string) =>
+      sel === '[data-testid="choy-shell-scroll"]' ? shell : null) as typeof wrap.closest;
+    // Still caps to visible scrollport: 540 - 40 - 100 = 400 (not 700 - 100).
+    expect(
+      computeViewportAdaptiveHeight(wrap, 100, { viewportGap: 12, minViewportHeight: 240 }),
+    ).toBe(400);
   });
 
   test('computeViewportAdaptiveHeight uses shell bottom when footer missing', () => {

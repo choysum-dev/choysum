@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { Condition, ConditionGroup, NamedFilter } from '@/web/web/query/types';
+import { isNullOperator } from '@/web/web/query/utils/filter/operators';
 
 let _id = 0;
 
@@ -86,6 +87,24 @@ export function isCondition(node: Condition | ConditionGroup): node is Condition
 }
 
 /**
+ * True when a named-filter query carries no conditions (groupby-only favorites,
+ * empty filtersToQuery result `[]`, or empty And/Or envelopes).
+ */
+export function isEmptyNamedFilterQuery(query: unknown): boolean {
+  if (query == null) return true;
+  if (Array.isArray(query)) return query.length === 0;
+  if (typeof query !== 'object') return false;
+  const q = query as Record<string, unknown>;
+  if (Array.isArray(q.And)) return q.And.length === 0;
+  if (Array.isArray(q.Or)) return q.Or.length === 0;
+  // Plain {} has no And/Or/leaf shape.
+  if (!('And' in q) && !('Or' in q) && !('logic' in q) && !('children' in q)) {
+    return Object.keys(q).length === 0;
+  }
+  return false;
+}
+
+/**
  * Convert a backend QueryCondition (leaf tuple or And/Or tree) into a UI ConditionGroup.
  */
 function queryConditionToGroup(query: any, name?: string): ConditionGroup | null {
@@ -136,10 +155,10 @@ export function toFilters(input?: NamedFilter | NamedFilter[] | ConditionGroup |
     } else if (typeof it === 'object' && 'query' in it) {
       const nf = it as NamedFilter;
       if (!nf.name) continue;
-      if (nf.query == null) continue;
+      if (nf.query == null || isEmptyNamedFilterQuery(nf.query)) continue;
       const group = queryConditionToGroup(nf.query, nf.name);
       if (!group) throw new Error('invalid_named_filter_query');
-      out.push(group);
+      out.push(group)
     } else if (typeof it === 'object' && !Array.isArray(it)) {
       // Incomplete NamedFilter-like objects without query are skipped.
       continue;
@@ -148,6 +167,38 @@ export function toFilters(input?: NamedFilter | NamedFilter[] | ConditionGroup |
     }
   }
   return out;
+}
+
+/**
+ * Reports whether a draft condition has field, operator, and a usable value when required.
+ */
+export function isConditionComplete(c: Partial<Condition> | null | undefined): boolean {
+  if (!c || !c.field || !c.operator) return false;
+  if (isNullOperator(c.operator)) return true;
+  const v = c.value;
+  if (Array.isArray(v)) return v.length > 0;
+  if (v == null) return false;
+  if (typeof v === 'string') return v.trim() !== '';
+  if (typeof v === 'object' && v !== null && 'Id' in (v as object)) {
+    const id = (v as { Id?: unknown }).Id;
+    return id != null && id !== '';
+  }
+  return true;
+}
+
+/** Counts complete vs incomplete leaf conditions under a group. */
+export function countFilterLeaves(g: ConditionGroup): { complete: number; incomplete: number } {
+  let complete = 0;
+  let incomplete = 0;
+  function walk(node: ConditionGroup) {
+    for (const ch of Array.isArray(node.children) ? node.children : []) {
+      if (isGroup(ch)) walk(ch);
+      else if (isConditionComplete(ch as Condition)) complete += 1;
+      else incomplete += 1;
+    }
+  }
+  walk(g);
+  return { complete, incomplete };
 }
 
 /**
@@ -170,6 +221,8 @@ export function normalizeFilters(filters: ConditionGroup[] = []): ConditionGroup
         if (sub && sub.children.length > 0) children.push(sub);
       } else if ((ch as any).operator !== undefined || (ch as any).field !== undefined) {
         const c = ch as any;
+        // Keep field+operator for externally supplied filters (empty value can be intentional).
+        // Draft save uses isConditionComplete separately and refuses incomplete leaves.
         if (!c.field || !c.operator) continue;
         children.push({
           id: c.id || genId(),
