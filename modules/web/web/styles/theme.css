@@ -74,8 +74,8 @@
   --height-control-sm: var(--choy-control-height-sm);
   --height-control-lg: var(--choy-control-height-lg);
   --size-control: var(--choy-control-height);
-  --height-list-row: var(--choy-list-row-height);
-  --height-list-header: var(--choy-list-header-height);
+  --height-list-row: var(--choy-list-row-height, 40px);
+  --height-list-header: var(--choy-list-header-height, 40px);
 }
 
 @custom-variant dark (&:where(.dark, .dark *));

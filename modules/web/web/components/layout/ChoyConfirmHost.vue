@@ -52,9 +52,22 @@ const store = useConfirmChoyStore();
 const open = computed({
   get: () => store.open,
   set: (v: boolean) => {
-    // Action/Cancel already called resolveConfirmChoy (resolve cleared + open false).
-    // Only treat remaining close paths (overlay / Esc) as dismiss.
-    if (!v && store.open && store.resolve) onDismiss();
+    if (v) {
+      store.open = true;
+      return;
+    }
+    // Already settled by Action/Cancel (resolve cleared); just sync closed.
+    if (!store.resolve) {
+      store.open = false;
+      return;
+    }
+    // Still pending: close UI now, but defer dismiss so a same-tick confirm/cancel
+    // can clear resolve first (capture vs Reka close order is not guaranteed).
+    const pending = store.resolve;
+    store.open = false;
+    queueMicrotask(() => {
+      if (store.resolve === pending) onDismiss();
+    });
   },
 });
 

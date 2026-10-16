@@ -40,13 +40,19 @@ function normalizeFavoriteGroups(raw: unknown): GroupBySpec[] {
   if (typeof raw === 'object' && !Array.isArray(raw) && typeof (raw as { field?: unknown }).field !== 'string') {
     return [];
   }
-  return normalizeGroupby(raw as GroupBySpec[]) as GroupBySpec[];
+  // normalizeGroupby already wraps a lone field spec; keep arrays as-is.
+  const list = Array.isArray(raw) ? raw : [raw];
+  return normalizeGroupby(list as GroupBySpec[]) as GroupBySpec[];
 }
 
 /** True when a UserFilter RPC failed because GroupBy / group_by is not on the schema yet. */
 function isMissingGroupByColumn(e: unknown): boolean {
   const msg = e instanceof Error ? e.message : String(e);
-  return /group_?by/i.test(msg) && /(does not exist|unknown|no such|undefined column)/i.test(msg);
+  // SQL/driver phrasing, plus SelectCtx field resolution: field(UserFilter.GroupBy) not found.
+  return (
+    (/group_?by/i.test(msg) && /(does not exist|unknown|no such|undefined column)/i.test(msg)) ||
+    /field\([^)]*\.group_?by\)\s+not found/i.test(msg)
+  );
 }
 
 export type UserFiltersDeps = {
@@ -307,17 +313,20 @@ export function useUserFilters(params: {
       'CreatedUid',
     ];
     let created: any;
+    let groupByPersisted = groupByColumnSupported;
     if (groupByColumnSupported) {
       try {
         created = await uf.Create(values, createFieldsWithGroupBy);
       } catch (e) {
         if (!isMissingGroupByColumn(e)) throw e;
         groupByColumnSupported = false;
+        groupByPersisted = false;
         // Schema not migrated yet: persist Condition only so Favorites still save.
         delete values.GroupBy;
         created = await uf.Create(values, createFieldsWithoutGroupBy);
       }
     } else {
+      groupByPersisted = false;
       delete values.GroupBy;
       created = await uf.Create(values, createFieldsWithoutGroupBy);
     }
@@ -328,7 +337,10 @@ export function useUserFilters(params: {
       ...(created as any),
       Id: String((created as any).Id),
       Name: String((created as any).Name || name),
-      GroupBy: normalizeFavoriteGroups((created as any).GroupBy ?? groups),
+      // When GroupBy was dropped for the schema fallback, do not advertise unpersisted groups.
+      GroupBy: normalizeFavoriteGroups(
+        (created as any).GroupBy ?? (groupByPersisted ? groups : [])
+      ),
       shared,
       createUid,
       canDelete: true,

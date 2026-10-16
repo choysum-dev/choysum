@@ -218,7 +218,38 @@ describe('useUserFilters', () => {
     Search.calls.length = 0;
     await api.load();
     expect(Search.calls.length).toBe(1);
-    expect(Search.calls[0]?.[1]?.fields).not.toContain('GroupBy');
+    const cachedOpts = Search.calls[0]?.[1] as { fields?: string[] } | undefined;
+    expect(cachedOpts?.fields).not.toContain('GroupBy');
+  });
+
+  test('load falls back when Search reports field(UserFilter.GroupBy) not found', async () => {
+    Search.setImpl(async (_cond: any, opts: any) => {
+      if (Array.isArray(opts?.fields) && opts.fields.includes('GroupBy')) {
+        throw new Error('field(UserFilter.GroupBy) not found');
+      }
+      return [
+        {
+          Id: 'f1',
+          Name: 'LegacyField',
+          Condition: { And: [['Name', '=', 'a']] },
+          IsDefault: false,
+          UserId: 'me',
+          CreatedUid: 'me',
+        },
+      ];
+    });
+    const api = runInSetup(() =>
+      useUserFilters({
+        store: { application: 'demo', modelName: 'Widget' },
+        filtersRef: ref([]),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
+      })
+    );
+    await api.load();
+    expect(api.loadError.value).toBeNull();
+    expect(api.favorites.value).toHaveLength(1);
+    expect(api.favorites.value[0]).toMatchObject({ Name: 'LegacyField', GroupBy: [] });
   });
 
   test('load surfaces original GroupBy schema error when fallback Search also fails', async () => {
@@ -531,6 +562,35 @@ describe('useUserFilters', () => {
       Name: 'ByYear',
       GroupBy: [{ field: 'CreatedAt', granularity: 'year' }],
     });
+  });
+
+  test('saveCurrent omits unpersisted GroupBy when Create falls back without the column', async () => {
+    Create.setImpl(async (values: any, fields?: string[]) => {
+      if (Array.isArray(fields) && fields.includes('GroupBy')) {
+        throw new Error('field(UserFilter.GroupBy) not found');
+      }
+      return {
+        Id: 'created-legacy',
+        Name: values.Name,
+        Condition: values.Condition,
+        IsDefault: values.IsDefault,
+        UserId: values.UserId,
+        CreatedUid: 'me',
+      };
+    });
+    const api = runInSetup(() =>
+      useUserFilters({
+        store: { application: 'demo', modelName: 'Widget', fieldsMetadata: {}, state: { queryState: {} } },
+        filtersRef: ref([]),
+        applyNamedFilter: fnRecorder(),
+        getAppliedGroups: () => [{ field: 'CreatedAt', granularity: 'year' }],
+        ...deps(),
+      })
+    );
+    const created = await api.saveCurrent({ name: 'ByYearLegacy' });
+    expect(Create.calls.length).toBe(2);
+    expect(Create.calls[1]![0]).not.toHaveProperty('GroupBy');
+    expect(created).toMatchObject({ Id: 'created-legacy', GroupBy: [] });
   });
 
   test('saveCurrent treats empty UserId as shared and falls back createUid to actor', async () => {

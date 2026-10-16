@@ -22,7 +22,7 @@ SPDX-License-Identifier: Apache-2.0
     <div
       ref="headerRef"
       role="rowgroup"
-      class="choy-data-table__header shrink-0 overflow-x-auto overflow-y-hidden scrollbar-none border-b border-border bg-muted text-sm font-medium text-muted-foreground"
+      class="choy-data-table__header shrink-0 overflow-x-auto overflow-y-hidden scrollbar-none scroll-contain border-b border-border bg-muted text-sm font-medium text-muted-foreground"
       @scroll.passive="onHeaderScroll"
     >
       <div
