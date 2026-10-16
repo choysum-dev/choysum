@@ -681,6 +681,7 @@ func TestStripJSQuotedSpans(t *testing.T) {
 		{"`nested ${foo({ bar: 1 })}`", "${foo({ bar: 1 })}"},
 		{"`a\\nb ${Name}`", "${Name}"},
 		{"`${a\\nb}`", "${a\\nb}"},
+		{"`${fn('}') + CompanyListView.name}`", "${fn('}') + CompanyListView.name}"},
 	}
 	for _, tc := range cases {
 		if got := stripJSQuotedSpans(tc.in); got != tc.want {

@@ -59,14 +59,10 @@ export function isModuleInstalled(status?: string): boolean {
  * (`installed`, `uninstalled`, …), or empty when unrecognized.
  * Accepts bare status keys from client-side lanes and `InstalledStatus=…` group keys.
  */
-export function resolveModuleKanbanLaneStatus(laneKey: string, laneLabel?: string): string {
-  const key = String(laneKey || '').trim();
-  const fromKey = key.match(/InstalledStatus=(.+?)(?:#\d+)?$/i);
-  const raw = (fromKey?.[1] ?? laneLabel ?? key).trim();
-  if (!raw || raw === '__null__' || raw === '__unset__') return '';
-  // Bare Field=value keys (other than InstalledStatus) are not status tokens.
-  if (!fromKey && raw.includes('=')) return '';
-  const lower = raw.toLowerCase();
+function moduleKanbanStatusToken(raw: string): string {
+  const text = raw.trim();
+  if (!text || text === '__null__' || text === '__unset__') return '';
+  const lower = text.toLowerCase();
   if (
     lower === 'installed' ||
     lower === 'uninstalled' ||
@@ -79,11 +75,27 @@ export function resolveModuleKanbanLaneStatus(laneKey: string, laneLabel?: strin
   ) {
     return lower;
   }
-  // Localized / display lane labels when key is not InstalledStatus=….
-  if (raw === '已安装') return 'installed';
-  if (raw === '未安装' || lower === 'not installed') return 'uninstalled';
-  if (raw === '已禁用') return 'disabled';
-  if (raw === '损坏') return 'broken';
+  if (text === '已安装') return 'installed';
+  if (text === '未安装' || lower === 'not installed') return 'uninstalled';
+  if (text === '已禁用') return 'disabled';
+  if (text === '损坏') return 'broken';
+  return '';
+}
+
+export function resolveModuleKanbanLaneStatus(laneKey: string, laneLabel?: string): string {
+  const key = String(laneKey || '').trim();
+  const fromKey = key.match(/InstalledStatus=(.+?)(?:#\d+)?$/i);
+  // InstalledStatus=… wins. Otherwise try the bare key before the display label
+  // so a translation does not hide a token such as queued.
+  const candidates = fromKey
+    ? [fromKey[1] ?? '']
+    : key.includes('=')
+      ? [laneLabel ?? '']
+      : [key, laneLabel ?? ''];
+  for (const candidate of candidates) {
+    const token = moduleKanbanStatusToken(String(candidate ?? ''));
+    if (token) return token;
+  }
   return '';
 }
 

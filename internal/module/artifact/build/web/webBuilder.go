@@ -755,6 +755,11 @@ func stripJSQuotedSpans(value string) string {
 							i += 2
 							continue
 						}
+						// A brace inside a string, such as ${fn('}')}, is not a delimiter.
+						if value[i] == '\'' || value[i] == '"' || value[i] == '`' {
+							i = skipJSQuotedSpan(value, i)
+							continue
+						}
 						switch value[i] {
 						case '{':
 							depth++
@@ -788,6 +793,26 @@ func stripJSQuotedSpans(value string) string {
 		b.WriteByte(' ')
 	}
 	return b.String()
+}
+
+// skipJSQuotedSpan advances past a quote that starts at i, including its closer.
+func skipJSQuotedSpan(value string, i int) int {
+	if i >= len(value) {
+		return i
+	}
+	quote := value[i]
+	i++
+	for i < len(value) {
+		if value[i] == '\\' && i+1 < len(value) {
+			i += 2
+			continue
+		}
+		if value[i] == quote {
+			return i + 1
+		}
+		i++
+	}
+	return i
 }
 
 func (b *WebModuleBuilder) getScriptNode(result *parser.ParserResult, extendsResult *parser.ParserResult) (*html.Node, error) {

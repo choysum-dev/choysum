@@ -154,6 +154,7 @@ test('resolveModuleKanbanLaneStatus: key/label → status token', () => {
   expect(resolveModuleKanbanLaneStatus('local')).toBe('');
   expect(resolveModuleKanbanLaneStatus('other', 'local')).toBe('');
   expect(resolveModuleKanbanLaneStatus('queued')).toBe('queued');
+  expect(resolveModuleKanbanLaneStatus('queued', '排队中')).toBe('queued');
   expect(resolveModuleKanbanLaneStatus('InstalledStatus=__null__')).toBe('');
   expect(resolveModuleKanbanLaneStatus('')).toBe('');
 });

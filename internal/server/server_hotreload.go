@@ -22,9 +22,10 @@ const choyTailwindGeneratedCSSName = "choy-tailwind.generated.css"
 func shouldIgnoreWatchPath(path string) bool {
 	base := filepath.Base(path)
 	dir := filepath.ToSlash(filepath.Dir(path))
-	// Only the kit emit directory. A checked-in file with the same basename
-	// elsewhere must still reload.
-	if !strings.HasSuffix(dir, "web/web/styles") {
+	// Kit Tailwind output only. Another module's web/web/styles tree, or a
+	// directory that merely ends in the same letters, must still reload.
+	const kitStyles = "modules/web/web/styles"
+	if dir != kitStyles && !strings.HasSuffix(dir, "/"+kitStyles) {
 		return false
 	}
 	if base == choyTailwindGeneratedCSSName {
