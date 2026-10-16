@@ -92,6 +92,66 @@ describe('ChoyKanbanView chrome', () => {
     mounted.unmount();
   });
 
+  test('ungrouped flat lane tiles cards in a grid (no column chrome)', async () => {
+    const store = makeStore();
+    const mounted = mountApp(ChoyKanbanView as any, {
+      props: {
+        store,
+        autoBootstrap: false,
+        showActions: false,
+        readonly: true,
+      },
+    });
+    await flushPromises();
+    const state = mounted.setupState() as KanbanSetup;
+    state.displayLanes = [
+      {
+        key: 'all',
+        label: 'All',
+        cards: [
+          { id: 'c1', title: 'Alpha', laneKey: 'all' },
+          { id: 'c2', title: 'Beta', laneKey: 'all' },
+        ],
+      },
+    ];
+    await nextTick();
+
+    expect(mounted.q('[data-testid=choy-kanban-flat-board]')).not.toBeNull();
+    expect(mounted.q('.choy-kanban-view__lane')).toBeNull();
+    expect(mounted.q('[data-testid=choy-kanban-mobile-lane]')).toBeNull();
+    expect(mounted.text()).toContain('Alpha');
+    expect(mounted.text()).toContain('Beta');
+    expect(mounted.text()).not.toContain('All');
+    mounted.unmount();
+  });
+
+  test('lane header shows count badge without parentheses', async () => {
+    const store = makeStore();
+    const mounted = mountApp(ChoyKanbanView as any, {
+      props: {
+        store,
+        autoBootstrap: false,
+        showActions: false,
+        readonly: true,
+      },
+    });
+    await flushPromises();
+    const state = mounted.setupState() as KanbanSetup;
+    state.displayLanes = twoLanes();
+    await nextTick();
+
+    const counts = mounted.qa('[data-testid=choy-kanban-lane-count]');
+    expect(counts.length).toBe(2);
+    expect(counts[0]!.textContent?.trim()).toBe('1');
+    expect(counts[1]!.textContent?.trim()).toBe('0');
+    expect(mounted.q('.choy-kanban-view__card')?.className).toContain('hover:bg-accent/40');
+    // Soft lane wash, no outer bordered frame (cards carry the border).
+    const laneClass = mounted.q('.choy-kanban-view__lane')?.className ?? '';
+    expect(laneClass).toContain('bg-muted/40');
+    expect(laneClass).not.toMatch(/\bborder\b/);
+    mounted.unmount();
+  });
+
   test('shows No cards empty lane, subtitle, and move-to-lane control', async () => {
     const store = makeStore();
     const mounted = mountApp(ChoyKanbanView as any, {
@@ -329,6 +389,28 @@ describe('ChoyKanbanView chrome', () => {
     }
   });
 
+  test('lane with remain shows load-more button and scroll sentinel', async () => {
+    const store = makeStore();
+    const mounted = mountApp(ChoyKanbanView as any, {
+      props: {
+        store,
+        autoBootstrap: false,
+        showActions: false,
+        readonly: true,
+      },
+    });
+    await flushPromises();
+    const state = mounted.setupState() as KanbanSetup;
+    state.displayLanes = twoLanes({ remain: 12 });
+    await nextTick();
+
+    expect(mounted.q('[data-testid=choy-kanban-load-more]')).not.toBeNull();
+    expect(mounted.text()).toContain('12 more');
+    expect(mounted.qa('[data-testid=choy-kanban-load-more-sentinel]').length).toBeGreaterThan(0);
+    expect(mounted.q('[data-testid=choy-kanban-lane-count]')?.textContent?.trim()).toBe('13');
+    mounted.unmount();
+  });
+
   test('lane load-more emits when remain > 0 and skips otherwise', async () => {
     const payloads: Array<{ laneKey: string }> = [];
     const mounted = mountApp(ChoyKanbanView as any, {
@@ -346,7 +428,7 @@ describe('ChoyKanbanView chrome', () => {
     state.displayLanes = twoLanes({ remain: 3 });
     await nextTick();
     expect(mounted.q('[data-testid=choy-kanban-load-more]')).not.toBeNull();
-    expect(mounted.text()).toContain('Load more');
+    expect(mounted.text()).toContain('3 more');
 
     state.onLaneLoadMore(state.displayLanes[0]!);
     await flushPromises();

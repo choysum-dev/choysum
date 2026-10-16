@@ -418,6 +418,35 @@ describe('OSearch behavior', () => {
     m.unmount();
   });
 
+  test('locked groups survive clear grouping and hide the clear control when alone', async () => {
+    const m = mountSearch({
+      currentAppliedGroups: [{ field: 'InstalledStatus' }, { field: 'OriginType' }],
+      lockedGroups: ['InstalledStatus'],
+    });
+    await nextTick();
+    expect(m.q('.choy-search__grouptag')).toBeTruthy();
+    const clearGrouping = m.q('[data-testid=choy-search-groupby-clear]') as HTMLElement | null;
+    expect(clearGrouping).toBeTruthy();
+    clearGrouping!.click();
+    await flushPromises();
+    const updates = m.emitted['query-update']!;
+    const afterClear = updates[updates.length - 1]![0] as {
+      appliedGroups?: Array<{ field?: string }>;
+    };
+    expect(afterClear.appliedGroups).toEqual([{ field: 'InstalledStatus' }]);
+    m.unmount();
+
+    const lockedOnly = mountSearch({
+      currentAppliedGroups: [{ field: 'InstalledStatus' }],
+      lockedGroups: ['InstalledStatus'],
+    });
+    await nextTick();
+    expect(lockedOnly.q('.choy-search__grouptag')).toBeTruthy();
+    expect(lockedOnly.q('[data-testid=choy-search-groupby-clear]')).toBeFalsy();
+    expect(lockedOnly.q('[data-testid=choy-search-clear-all]')).toBeFalsy();
+    lockedOnly.unmount();
+  });
+
   test('opens custom filter editor, warns on incomplete save, and cancels', async () => {
     const m = mountSearch();
     await nextTick();

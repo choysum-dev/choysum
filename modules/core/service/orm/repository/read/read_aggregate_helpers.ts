@@ -14,6 +14,7 @@ import type {
   RepositoryTableConditionConvertDepsLike,
   RepositoryWhereCapableLike,
 } from '../types/engine';
+import { hasRepositorySqlComputeExpression } from '../query/sql_compute_expression';
 import type { GroupSpecLike, NormalizedAgg, NormalizedCompositeGroupSpec, NormalizedGroupSpec } from './group_spec';
 import type { UnknownRecord } from '../../../../utils/types';
 import { asObjectRecord } from '../../../../utils/object';
@@ -133,6 +134,95 @@ export function buildRepositoryReadAggregateGroupExprs(
       ? buildRepositoryTimeGroupExpression(params, builder, group, timezone)
       : params.makeSelectCtx(builder, params.table, params.meta).field(toModelCtor(params.meta), group.field),
   ];
+}
+
+/**
+ * True when a group key is a @SqlCompute field. Correlated SqlCompute expressions
+ * cannot appear in PostgreSQL GROUP BY (SQLSTATE 42803); callers must project
+ * them in a derived table first, then group by the projected alias.
+ */
+export function groupSpecUsesSqlCompute(meta: ModelMetadata, group: GroupSpecLike): boolean {
+  if (isCompositeGroupSpec(group)) {
+    return group.parts.some(
+      part => !part.isTime && hasRepositorySqlComputeExpression(meta, part.field),
+    );
+  }
+  return !group.isTime && hasRepositorySqlComputeExpression(meta, group.field);
+}
+
+/** Stable inner-projection alias for an aggregate source column. */
+export function repositoryReadAggregateSourceAlias(aggAlias: string): string {
+  return `__agg_${aggAlias}`;
+}
+
+/** Aggregate a pre-projected column reference (outer query after SqlCompute projection). */
+export function buildRepositoryAggregateOnRef(
+  fieldRef: unknown,
+  aggSpec: Pick<NormalizedAgg, 'agg' | 'distinct'>,
+): unknown {
+  switch (aggSpec.agg) {
+    case 'sum':
+      return sql`SUM(${fieldRef})`;
+    case 'avg':
+      return sql`AVG(${fieldRef})`;
+    case 'min':
+      return sql`MIN(${fieldRef})`;
+    case 'max':
+      return sql`MAX(${fieldRef})`;
+    case 'count_distinct':
+      return sql`COUNT(DISTINCT ${fieldRef})`;
+    case 'count':
+    default:
+      if (aggSpec.distinct) return sql`COUNT(DISTINCT ${fieldRef})`;
+      return sql`COUNT(${fieldRef})`;
+  }
+}
+
+/** Project group keys (+ optional agg sources) for the SqlCompute-safe inner query. */
+export function buildRepositoryReadAggregateProjectionSelections(
+  params: RepositoryReadAggregateExpressionDeps,
+  selBuilder: unknown,
+  group: GroupSpecLike,
+  aggs: NormalizedAgg[],
+  timezone?: string,
+): unknown[] {
+  const selections: unknown[] = [];
+  const groupExprs = buildRepositoryReadAggregateGroupExprs(params, selBuilder, group, timezone);
+  if (isCompositeGroupSpec(group)) {
+    groupExprs.forEach((expr, index) =>
+      selections.push(asAliasableExpression(expr).as(group.parts[index]!.alias)),
+    );
+  } else {
+    selections.push(asAliasableExpression(groupExprs[0]).as(group.alias));
+  }
+
+  const ctx = params.makeSelectCtx(selBuilder, params.table, params.meta);
+  for (const agg of aggs) {
+    const fieldExpr = ctx.field(toModelCtor(params.meta), agg.field);
+    selections.push(asAliasableExpression(fieldExpr).as(repositoryReadAggregateSourceAlias(agg.alias)));
+  }
+  return selections;
+}
+
+/** Outer SELECT/GROUP BY over a projected `__rg` subquery (group by alias, not SqlCompute). */
+export function buildRepositoryReadAggregateOuterSelections(
+  selBuilder: unknown,
+  group: GroupSpecLike,
+  aggs: NormalizedAgg[],
+  countAll: () => AliasableExpression,
+): { selections: unknown[]; groupExprs: unknown[] } {
+  const builder = asSelectBuilder(selBuilder);
+  const groupAliases = isCompositeGroupSpec(group) ? group.parts.map(part => part.alias) : [group.alias];
+  const groupExprs = groupAliases.map(alias => builder.ref(alias));
+  const selections: unknown[] = groupAliases.map((alias, index) =>
+    asAliasableExpression(groupExprs[index]).as(alias),
+  );
+  for (const agg of aggs) {
+    const srcRef = builder.ref(repositoryReadAggregateSourceAlias(agg.alias));
+    selections.push(asAliasableExpression(buildRepositoryAggregateOnRef(srcRef, agg)).as(agg.alias));
+  }
+  selections.push(countAll().as('__count'));
+  return { selections, groupExprs };
 }
 
 export function buildRepositoryReadAggregateSelections(

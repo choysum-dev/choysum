@@ -1182,7 +1182,7 @@ msgstr ""
 
 #: web/pages/ModuleList.vue:13
 msgctxt "web/pages/ModuleList"
-msgid "Module List"
+msgid "Module Board"
 msgstr ""
 
 #: web/pages/ModuleListTable.vue:12

@@ -170,10 +170,13 @@ export default class MetaModuleIndex extends BaseModel {
 
   @SqlCompute<MetaModuleIndex>('InstalledStatus')
   sqlInstalledStatus() {
+    // Correlate via ModuleName (not a raw table.col) so Search/ReadGroup share one path.
+    // ReadGroup projects this expression before GROUP BY — PG rejects correlated
+    // subqueries that reference ungrouped outer columns (SQLSTATE 42803).
     const moduleStatus = this.$sql
       .selectFrom('meta_module as m')
       .select('m.status')
-      .whereRef('m.name', '=', this.$sql.col('meta_module_index', 'module_name'))
+      .whereRef('m.name', '=', this.$sql.field('ModuleName'))
       .limit(1);
     return sql<string>`coalesce((${moduleStatus}), 'uninstalled')`;
   }
@@ -190,7 +193,7 @@ export default class MetaModuleIndex extends BaseModel {
     return this.$sql
       .selectFrom('meta_module as m')
       .select('m.version')
-      .whereRef('m.name', '=', this.$sql.col('meta_module_index', 'module_name'))
+      .whereRef('m.name', '=', this.$sql.field('ModuleName'))
       .limit(1);
   }
 

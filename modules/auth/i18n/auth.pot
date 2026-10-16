@@ -2198,9 +2198,9 @@ msgctxt "web/views/TokenKanbanView"
 msgid "List View"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:61
+#: web/views/TokenKanbanView.vue:112
 msgctxt "web/views/TokenKanbanView"
-msgid "Load more (%s remaining)"
+msgid "%s more"
 msgstr ""
 
 #: web/views/TokenKanbanView.vue:79

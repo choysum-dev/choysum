@@ -2156,10 +2156,10 @@ msgctxt "web/views/TokenKanbanView"
 msgid "List View"
 msgstr "列表视图"
 
-#: web/views/TokenKanbanView.vue:61
+#: web/views/TokenKanbanView.vue:112
 msgctxt "web/views/TokenKanbanView"
-msgid "Load more (%s remaining)"
-msgstr "加载更多（剩余 %s）"
+msgid "%s more"
+msgstr "还有 %s 条"
 
 #: web/views/TokenKanbanView.vue:79
 msgctxt "web/views/TokenKanbanView"

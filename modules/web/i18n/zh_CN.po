@@ -1051,10 +1051,10 @@ msgctxt "web/components/view/KanbanView"
 msgid "Kanban board"
 msgstr "看板"
 
-#: web/components/view/ChoyKanbanView.vue:93
+#: web/components/view/ChoyKanbanView.vue:250
 msgctxt "web/components/view/KanbanView"
-msgid "Load more (%s remaining)"
-msgstr "加载更多（剩余 %s）"
+msgid "%s more"
+msgstr "还有 %s 条"
 
 #: web/components/view/ChoyKanbanView.vue:77
 msgctxt "web/components/view/KanbanView"

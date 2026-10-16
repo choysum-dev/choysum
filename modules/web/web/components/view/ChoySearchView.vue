@@ -22,6 +22,7 @@ SPDX-License-Identifier: Apache-2.0
       :current-applied-filters="appliedFiltersForChild"
       :current-applied-groups="appliedGroupsForChild"
       :default-filters="codeDefaultFilters"
+      :locked-groups="lockedGroups"
       @query-update="onQueryUpdate"
       @defaults-ready="onDefaultsReady"
     />
@@ -66,6 +67,8 @@ const props = withDefaults(
     appliedFilters?: ConditionGroup[];
     appliedGroups?: Array<GroupBySpec<T>>;
     defaultGroups?: Array<GroupBySpec<T>>;
+    /** Group-by fields that cannot be cleared from Search chrome (kanban lanes). */
+    lockedGroups?: string[];
     defaultFilters?: NamedFilter<T> | NamedFilter<T>[];
     keywordFields?: string[];
     initialEmit?: boolean;
@@ -75,6 +78,8 @@ const props = withDefaults(
     initialEmit: true,
   },
 );
+
+const lockedGroups = computed(() => props.lockedGroups || []);
 
 const attrs = useAttrs();
 const pageStore = useOptionalPageStore<WebModelStore<T>>();

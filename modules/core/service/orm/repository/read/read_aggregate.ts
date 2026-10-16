@@ -27,8 +27,11 @@ import type {
 import {
   applyRepositoryReadAggregateCondition,
   buildRepositoryReadAggregateGroupExprs,
+  buildRepositoryReadAggregateOuterSelections,
+  buildRepositoryReadAggregateProjectionSelections,
   buildRepositoryReadAggregateSelections,
   buildRepositoryReadAggregateTotalSelections,
+  groupSpecUsesSqlCompute,
   normalizeRepositoryAggregateDecimals,
   resolveRepositoryReadAggregateKnownAliases,
 } from './read_aggregate_helpers';
@@ -83,15 +86,33 @@ export async function executeRepositoryReadGroup<T>(params: RepositoryReadAggreg
     : normalizeGroupBySpecShared(options.groupby as GroupBySpec<ObjectRecord>);
   const aggs: NormalizedAgg[] = (options.fields ?? []).map(field => normalizeFieldAggregationShared(field as FieldAggregation<ObjectRecord>));
 
-  const db = params.db as AggregateDbLike;
-  let qb: AggregateQueryLike = db.selectFrom(params.table);
-  qb = qb.select((selBuilder: unknown) => buildRepositoryReadAggregateSelections(params, selBuilder, group, aggs, () => db.fn.countAll(), timezone));
-
   const condWithRR = await params.applyRecordRuleToCondition((options.condition ?? []) as UntypedQueryCondition, 'read');
   const filtered = params.applyDefaultLayers(condWithRR);
-  qb = applyRepositoryReadAggregateCondition(qb, params, filtered);
+  const db = params.db as AggregateDbLike;
 
-  qb = qb.groupBy((gb: unknown) => buildRepositoryReadAggregateGroupExprs(params, gb, group, timezone));
+  // Correlated @SqlCompute keys must be projected before GROUP BY (PostgreSQL 42803).
+  let qb: AggregateQueryLike;
+  if (groupSpecUsesSqlCompute(params.meta, group)) {
+    let inner: AggregateQueryLike = db.selectFrom(params.table);
+    inner = inner.select((selBuilder: unknown) =>
+      buildRepositoryReadAggregateProjectionSelections(params, selBuilder, group, aggs, timezone),
+    );
+    inner = applyRepositoryReadAggregateCondition(inner, params, filtered);
+    qb = db.selectFrom(inner.as('__rg') as never);
+    qb = qb.select((selBuilder: unknown) =>
+      buildRepositoryReadAggregateOuterSelections(selBuilder, group, aggs, () => db.fn.countAll()).selections,
+    );
+    qb = qb.groupBy((gb: unknown) =>
+      buildRepositoryReadAggregateOuterSelections(gb, group, aggs, () => db.fn.countAll()).groupExprs,
+    );
+  } else {
+    qb = db.selectFrom(params.table);
+    qb = qb.select((selBuilder: unknown) =>
+      buildRepositoryReadAggregateSelections(params, selBuilder, group, aggs, () => db.fn.countAll(), timezone),
+    );
+    qb = applyRepositoryReadAggregateCondition(qb, params, filtered);
+    qb = qb.groupBy((gb: unknown) => buildRepositoryReadAggregateGroupExprs(params, gb, group, timezone));
+  }
 
   if (options.having) {
     const knownAliases = resolveRepositoryReadAggregateKnownAliases(group, aggs);

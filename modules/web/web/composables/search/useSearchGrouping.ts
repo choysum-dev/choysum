@@ -24,6 +24,8 @@ export type AppliedGroupMenuItem = {
 export function useSearchGrouping(opts: {
   store: WebModelStore<any>;
   currentAppliedGroups: MaybeRefOrGetter<Array<GroupBySpec<any>> | undefined>;
+  /** Field names that cannot be toggled off from the Group by menu. */
+  lockedGroupFields?: MaybeRefOrGetter<ReadonlyArray<string> | undefined>;
   onGroupsChange: (next: SearchGroupByItem[]) => void;
 }) {
   const {
@@ -55,11 +57,21 @@ export function useSearchGrouping(opts: {
     opts.onGroupsChange(normalized || []);
   }
 
+  function isLockedGroupField(field: string): boolean {
+    const locked = toValue(opts.lockedGroupFields) || [];
+    return locked.some((f) => String(f || '').trim() === String(field || '').trim());
+  }
+
   function togglePlainGroupby(field: string) {
     const list = [...currentAppliedGroups.value];
     const i = list.findIndex(gb => (typeof gb === 'string' ? gb === field : gb.field === field && !gb.granularity));
-    if (i >= 0) list.splice(i, 1);
-    else list.push(field);
+    if (i >= 0) {
+      // Locked board groups stay applied (kanban lanes).
+      if (isLockedGroupField(field)) return;
+      list.splice(i, 1);
+    } else {
+      list.push(field);
+    }
     setGroupbyLocal(list);
   }
 

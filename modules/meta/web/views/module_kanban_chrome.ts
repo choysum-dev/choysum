@@ -38,6 +38,53 @@ export function isModuleInstalled(status?: string): boolean {
   return String(status || '').toLowerCase() === 'installed';
 }
 
+/**
+ * Normalize a kanban lane key/label into an InstalledStatus-like token
+ * (`installed`, `uninstalled`, …), or empty when unrecognized.
+ * Accepts bare status keys from client-side lanes and `InstalledStatus=…` group keys.
+ */
+export function resolveModuleKanbanLaneStatus(laneKey: string, laneLabel?: string): string {
+  const key = String(laneKey || '').trim();
+  const fromKey = key.match(/InstalledStatus=(.+?)(?:#\d+)?$/i);
+  const raw = (fromKey?.[1] ?? laneLabel ?? key).trim();
+  if (!raw || raw === '__null__' || raw === '__unset__') return '';
+  // Bare Field=value keys (other than InstalledStatus) are not status tokens.
+  if (!fromKey && raw.includes('=')) return '';
+  const lower = raw.toLowerCase();
+  if (
+    lower === 'installed' ||
+    lower === 'uninstalled' ||
+    lower === 'disabled' ||
+    lower === 'broken'
+  ) {
+    return lower;
+  }
+  // Localized / display lane labels when key is not InstalledStatus=….
+  if (raw === '已安装') return 'installed';
+  if (raw === '未安装' || lower === 'not installed') return 'uninstalled';
+  if (raw === '已禁用') return 'disabled';
+  if (raw === '损坏') return 'broken';
+  return lower;
+}
+
+/**
+ * Hide status badge when the lane already encodes the same InstalledStatus.
+ * Always show when Unavailable, or when status differs from the lane.
+ */
+export function shouldShowModuleKanbanCardStatusBadge(opts: {
+  installedStatus?: unknown;
+  available?: unknown;
+  laneKey: string;
+  laneLabel?: string;
+}): boolean {
+  if (opts.available === false) return true;
+  const status = String(opts.installedStatus ?? '').toLowerCase();
+  const laneStatus = resolveModuleKanbanLaneStatus(opts.laneKey, opts.laneLabel);
+  if (laneStatus && laneStatus === status) return false;
+  return true;
+}
+
+
 /** Format module timestamps for card metadata (local YYYY-MM-DD HH:mm). */
 export function formatModuleKanbanDate(dt?: unknown): string {
   if (dt === undefined || dt === null) return '';

@@ -1070,9 +1070,9 @@ msgctxt "web/components/view/KanbanView"
 msgid "Kanban board"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:93
+#: web/components/view/ChoyKanbanView.vue:250
 msgctxt "web/components/view/KanbanView"
-msgid "Load more (%s remaining)"
+msgid "%s more"
 msgstr ""
 
 #: web/components/view/ChoyKanbanView.vue:77

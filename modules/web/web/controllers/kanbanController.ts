@@ -14,6 +14,7 @@ import { buildUnifiedQuery } from '@/web/web/query/context';
 import { stableStringify } from '@/web/web/query/planner';
 import { handoffCache } from '@/web/web/query/utils/handoff';
 import { asPresentCondition } from '@/web/web/query/utils/condition/absent';
+import { resolveChoyKanbanLaneRemain } from '@/web/web/components/view/kanbanViewHelpers';
 
 // Lane & IKanbanController centralized in query/types.ts
 
@@ -108,21 +109,26 @@ export function createKanbanController(store: WebModelStore<any>): IKanbanContro
   }
 
   function getLaneRemain(lane: Lane): number {
+    // Prefer counted Search remain when published; skipCount preloads leave it
+    // unset so we fall back to ReadGroup lane.count − loaded.
     const loaded = (laneRecords.value[lane.key] || []).length;
-    const total = Number(lane.count ?? 0);
-    return Math.max(0, total - loaded);
+    const fromFetch = list.getGroupRecordRemain?.(lane.key);
+    return resolveChoyKanbanLaneRemain({
+      loaded,
+      laneCount: Number(lane.count ?? 0),
+      fetchRemain: fromFetch,
+    });
   }
 
   async function preloadLane(key: string): Promise<void> {
     if (laneRecords.value[key]) return;
-    const rows = await (list as any).fetchGroupRecords?.(key, (store.state as any)?.queryState?.pagination, { skipCount: true });
+    const rows = await list.fetchGroupRecords?.(key, (store.state as any)?.queryState?.pagination, { skipCount: true });
     const arr = (rows || list.vm.result?.groupRecords?.get?.(key) || []) as RecordRow[];
     laneRecords.value[key] = Array.isArray(arr) ? arr.slice() : [];
   }
 
   async function loadMoreLane(key: string): Promise<void> {
-    await (list as any).loadMoreGroupRecords?.(key);
-    await (list as any).loadMoreGroupRecords?.(key);
+    await list.loadMoreGroupRecords?.(key);
     const arr = (list.vm.result?.groupRecords?.get?.(key) as any) || [];
     laneRecords.value[key] = Array.isArray(arr) ? arr.slice() : [];
   }

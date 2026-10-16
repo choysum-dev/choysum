@@ -133,11 +133,14 @@ export {
 } from './components/view/paginationHelpers';
 export {
   applyChoyKanbanMove,
+  CHOY_KANBAN_FLAT_LANE_KEY,
   choyKanbanLaneRemain,
   formatChoyKanbanLoadMoreLabel,
   groupRowsIntoChoyKanbanLanes,
+  isChoyKanbanFlatBoard,
   normalizeChoyKanbanLaneKey,
   resolveChoyKanbanCardId,
+  resolveChoyKanbanLaneRemain,
   type ChoyKanbanCard,
   type ChoyKanbanLane,
   type ChoyKanbanLoadMore,

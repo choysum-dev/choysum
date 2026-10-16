@@ -1173,8 +1173,8 @@ msgstr "模块历史"
 
 #: web/pages/ModuleList.vue:13
 msgctxt "web/pages/ModuleList"
-msgid "Module List"
-msgstr "模块列表"
+msgid "Module Board"
+msgstr "模块看板"
 
 #: web/pages/ModuleListTable.vue:12
 msgctxt "web/pages/ModuleListTable"

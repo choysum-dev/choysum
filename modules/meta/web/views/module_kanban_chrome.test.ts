@@ -13,7 +13,9 @@ import {
   moduleStatusBadgeVariant,
   resolveModuleKanbanCardId,
   resolveModuleKanbanCardKey,
+  resolveModuleKanbanLaneStatus,
   shouldRecoverStaleKanbanSearch,
+  shouldShowModuleKanbanCardStatusBadge,
 } from './module_kanban_chrome';
 
 test('moduleStatusBadgeClass: unavailable and known statuses', () => {
@@ -128,6 +130,56 @@ test('createPlanDialogSessionGate: ignore superseded plan responses', () => {
   const second = gate.begin();
   expect(gate.isCurrent(first)).toBe(false);
   expect(gate.isCurrent(second)).toBe(true);
+});
+
+test('resolveModuleKanbanLaneStatus: key/label → status token', () => {
+  expect(resolveModuleKanbanLaneStatus('InstalledStatus=installed')).toBe('installed');
+  expect(resolveModuleKanbanLaneStatus('InstalledStatus=uninstalled#0')).toBe('uninstalled');
+  expect(resolveModuleKanbanLaneStatus('installed')).toBe('installed');
+  expect(resolveModuleKanbanLaneStatus('other', 'Installed')).toBe('installed');
+  expect(resolveModuleKanbanLaneStatus('other', '已安装')).toBe('installed');
+  expect(resolveModuleKanbanLaneStatus('other', '未安装')).toBe('uninstalled');
+  expect(resolveModuleKanbanLaneStatus('other', 'Not Installed')).toBe('uninstalled');
+  expect(resolveModuleKanbanLaneStatus('OriginType=local')).toBe('');
+  expect(resolveModuleKanbanLaneStatus('InstalledStatus=__null__')).toBe('');
+  expect(resolveModuleKanbanLaneStatus('')).toBe('');
+});
+
+test('shouldShowModuleKanbanCardStatusBadge: hide when lane matches status', () => {
+  expect(
+    shouldShowModuleKanbanCardStatusBadge({
+      installedStatus: 'installed',
+      available: true,
+      laneKey: 'InstalledStatus=installed',
+    }),
+  ).toBe(false);
+  expect(
+    shouldShowModuleKanbanCardStatusBadge({
+      installedStatus: 'uninstalled',
+      laneKey: 'InstalledStatus=uninstalled',
+      laneLabel: '未安装',
+    }),
+  ).toBe(false);
+  expect(
+    shouldShowModuleKanbanCardStatusBadge({
+      installedStatus: 'installed',
+      available: false,
+      laneKey: 'InstalledStatus=installed',
+    }),
+  ).toBe(true);
+  expect(
+    shouldShowModuleKanbanCardStatusBadge({
+      installedStatus: 'installed',
+      laneKey: 'all',
+      laneLabel: 'All',
+    }),
+  ).toBe(true);
+  expect(
+    shouldShowModuleKanbanCardStatusBadge({
+      installedStatus: 'broken',
+      laneKey: 'InstalledStatus=installed',
+    }),
+  ).toBe(true);
 });
 
 test('resolveModuleKanbanCardKey: fail-closed id then ModuleName then synthetic', () => {

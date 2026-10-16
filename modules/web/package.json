@@ -20,7 +20,7 @@
     "vue": "3.5.38",
     "vue-i18n": "^11.4.5",
     "vue-router": "^5.1.0",
-    "vuedraggable": "^4.1.0",
+    "vuedraggable": "4.1.0",
     "@tiptap/vue-3": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5",
     "@tiptap/extension-link": "^2.11.5",
