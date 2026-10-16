@@ -162,19 +162,42 @@ SPDX-License-Identifier: Apache-2.0
                 <template #card="{ item, editable, removable, edit, remove }">
                   <div class="flex h-full min-h-0 flex-col gap-1.5">
                     <div class="flex items-center justify-between gap-2">
-                      <div class="text-sm font-semibold text-foreground">{{ item?.Name || _t('Unnamed Contact') }}</div>
-                      <div class="inline-flex gap-1.5">
-                        <span v-if="item?.IsDefault" class="inline-flex items-center rounded-md border border-transparent px-2 py-0.5 text-xs font-semibold bg-success/20 text-success">{{ _t('Default') }}</span>
-                        <span v-if="item?.IsActive === false" class="inline-flex items-center rounded-md border border-transparent px-2 py-0.5 text-xs font-semibold bg-muted text-muted-foreground">{{ _t('Inactive') }}</span>
+                      <div class="truncate text-sm font-medium text-foreground">{{ item?.Name || _t('Unnamed Contact') }}</div>
+                      <div class="inline-flex shrink-0 gap-1">
+                        <ChoyBadge
+                          v-if="item?.IsDefault"
+                          variant="secondary"
+                          class="px-1.5 py-0 text-[10px] font-normal"
+                        >
+                          {{ _t('Default') }}
+                        </ChoyBadge>
+                        <ChoyBadge
+                          v-if="item?.IsActive === false"
+                          variant="outline"
+                          class="px-1.5 py-0 text-[10px] font-normal"
+                        >
+                          {{ _t('Inactive') }}
+                        </ChoyBadge>
                       </div>
                     </div>
-                    <div class="text-xs text-muted-foreground">{{ _t('Role') }}: {{ getContactRoleLabel(item?.ContactRole) }}</div>
-                    <div class="text-xs text-muted-foreground">{{ _t('Address Type') }}: {{ getAddressTypeLabel(item?.AddressType) }}</div>
-                    <div v-if="item?.Email" class="text-xs text-muted-foreground">{{ _t('Email') }}: {{ item.Email }}</div>
-                    <div v-if="item?.Phone" class="text-xs text-muted-foreground">{{ _t('Phone') }}: {{ item.Phone }}</div>
+                    <div class="truncate text-xs text-muted-foreground">
+                      {{ getContactRoleLabel(item?.ContactRole) }}
+                      <span class="text-muted-foreground/60"> · </span>
+                      {{ getAddressTypeLabel(item?.AddressType) }}
+                    </div>
+                    <div v-if="item?.Email" class="truncate text-xs text-muted-foreground">{{ item.Email }}</div>
+                    <div v-if="item?.Phone" class="truncate text-xs text-muted-foreground">{{ item.Phone }}</div>
                     <div v-if="editable || removable" class="mt-auto inline-flex gap-1 pt-1">
                       <ChoyButton v-if="editable" variant="ghost" size="sm" @click.stop="edit">{{ _t('Edit') }}</ChoyButton>
-                      <ChoyButton v-if="removable" variant="ghost" size="sm" @click.stop="remove">{{ _t('Delete') }}</ChoyButton>
+                      <ChoyButton
+                        v-if="removable"
+                        variant="ghost"
+                        size="sm"
+                        class="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        @click.stop="remove"
+                      >
+                        {{ _t('Delete') }}
+                      </ChoyButton>
                     </div>
                   </div>
                 </template>
@@ -207,6 +230,7 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
 import {
+  ChoyBadge,
   ChoyBooleanField,
   ChoyButton,
   ChoyCard,

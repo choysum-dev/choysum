@@ -24,22 +24,48 @@ SPDX-License-Identifier: Apache-2.0
           <template #card="{ item, editable, removable, edit, remove }">
             <div class="flex h-full min-h-0 flex-col gap-1.5">
               <div class="flex items-center justify-between gap-2">
-                <div class="text-sm font-semibold text-foreground">{{ item?.AccountName || _t('Unnamed Account') }}</div>
-                <div class="inline-flex gap-1.5">
-                  <span v-if="item?.IsDefaultInbound" class="inline-flex items-center rounded-md border border-transparent px-2 py-0.5 text-xs font-semibold bg-success/20 text-success">{{ _t('Default Inbound') }}</span>
-                  <span v-if="item?.IsDefaultOutbound" class="inline-flex items-center rounded-md border border-transparent px-2 py-0.5 text-xs font-semibold bg-warning/20 text-warning">{{ _t('Default Outbound') }}</span>
-                  <span v-if="item?.IsActive === false" class="inline-flex items-center rounded-md border border-transparent px-2 py-0.5 text-xs font-semibold bg-muted text-muted-foreground">{{ _t('Inactive') }}</span>
+                <div class="truncate text-sm font-medium text-foreground">{{ item?.AccountName || _t('Unnamed Account') }}</div>
+                <div class="inline-flex shrink-0 flex-wrap justify-end gap-1">
+                  <ChoyBadge
+                    v-if="item?.IsDefaultInbound"
+                    variant="secondary"
+                    class="px-1.5 py-0 text-[10px] font-normal"
+                  >
+                    {{ _t('Default Inbound') }}
+                  </ChoyBadge>
+                  <ChoyBadge
+                    v-if="item?.IsDefaultOutbound"
+                    variant="outline"
+                    class="px-1.5 py-0 text-[10px] font-normal"
+                  >
+                    {{ _t('Default Outbound') }}
+                  </ChoyBadge>
+                  <ChoyBadge
+                    v-if="item?.IsActive === false"
+                    variant="outline"
+                    class="px-1.5 py-0 text-[10px] font-normal"
+                  >
+                    {{ _t('Inactive') }}
+                  </ChoyBadge>
                 </div>
               </div>
-              <div class="text-xs text-muted-foreground">{{ _t('Bank') }}: {{ item?.BankNameSnapshot || '-' }}</div>
-              <div class="text-xs text-muted-foreground">{{ _t('Type') }}: {{ getAccountTypeLabel(item?.AccountType) }}</div>
-              <div class="text-xs text-muted-foreground">{{ _t('Account Number') }}: {{ item?.AccountNoMasked || '-' }}</div>
-              <div class="text-xs text-muted-foreground">
-                {{ _t('Inbound/Outbound') }}: {{ item?.AllowInbound ? _t('Yes') : _t('No') }}/{{ item?.AllowOutbound ? _t('Yes') : _t('No') }}
+              <div class="truncate text-xs text-muted-foreground">{{ item?.BankNameSnapshot || '-' }}</div>
+              <div class="truncate text-xs text-muted-foreground">{{ getAccountTypeLabel(item?.AccountType) }}</div>
+              <div class="truncate text-xs text-muted-foreground">{{ item?.AccountNoMasked || '-' }}</div>
+              <div class="truncate text-xs text-muted-foreground">
+                {{ item?.AllowInbound ? _t('Yes') : _t('No') }}/{{ item?.AllowOutbound ? _t('Yes') : _t('No') }}
               </div>
               <div v-if="editable || removable" class="mt-auto inline-flex gap-1 pt-1">
                 <ChoyButton v-if="editable" variant="ghost" size="sm" @click.stop="edit">{{ _t('Edit') }}</ChoyButton>
-                <ChoyButton v-if="removable" variant="ghost" size="sm" @click.stop="remove">{{ _t('Delete') }}</ChoyButton>
+                <ChoyButton
+                  v-if="removable"
+                  variant="ghost"
+                  size="sm"
+                  class="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  @click.stop="remove"
+                >
+                  {{ _t('Delete') }}
+                </ChoyButton>
               </div>
             </div>
           </template>
@@ -56,10 +82,13 @@ import PartnerFormView from '@/partner/web/views/PartnerFormView.vue';
 import type Partner from '@/partner_bank/service/models/partner';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import {
+  ChoyBadge,
   ChoyButton,
   ChoyOneToManyField,
+  ChoyOneToManyKanbanField,
   ChoyTab,
-  PARTNER_DETAIL_TAB_PANELS_XPATH,  ChoyOneToManyKanbanField} from '@/web';
+  PARTNER_DETAIL_TAB_PANELS_XPATH,
+} from '@/web';
 import PartnerBankAccountFormView from '@/partner_bank/web/views/PartnerBankAccountFormView.vue';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
@@ -73,9 +102,11 @@ export default defineComponent({
   extends: PartnerFormView,
   components: {
     Xpath,
+    ChoyBadge,
     ChoyButton,
     ChoyTab,
     ChoyOneToManyField,
+    ChoyOneToManyKanbanField,
     PartnerBankAccountFormView,
   },
   /**

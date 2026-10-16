@@ -28,19 +28,42 @@ SPDX-License-Identifier: Apache-2.0
             <template #card="{ item, editable, removable, edit, remove }">
               <div class="flex h-full min-h-0 flex-col gap-1.5">
                 <div class="flex items-center justify-between gap-2">
-                  <div class="text-sm font-semibold text-foreground">{{ item?.IdentifierType || _t('Unnamed Type') }}</div>
-                  <div class="inline-flex gap-1.5">
-                    <span v-if="item?.IsPrimary" class="inline-flex items-center rounded-md border border-transparent px-2 py-0.5 text-xs font-semibold bg-success/20 text-success">{{ _t('Primary') }}</span>
-                    <span v-if="item?.IsActive === false" class="inline-flex items-center rounded-md border border-transparent px-2 py-0.5 text-xs font-semibold bg-muted text-muted-foreground">{{ _t('Inactive') }}</span>
+                  <div class="truncate text-sm font-medium text-foreground">{{ item?.IdentifierType || _t('Unnamed Type') }}</div>
+                  <div class="inline-flex shrink-0 gap-1">
+                    <ChoyBadge
+                      v-if="item?.IsPrimary"
+                      variant="secondary"
+                      class="px-1.5 py-0 text-[10px] font-normal"
+                    >
+                      {{ _t('Primary') }}
+                    </ChoyBadge>
+                    <ChoyBadge
+                      v-if="item?.IsActive === false"
+                      variant="outline"
+                      class="px-1.5 py-0 text-[10px] font-normal"
+                    >
+                      {{ _t('Inactive') }}
+                    </ChoyBadge>
                   </div>
                 </div>
-                <div class="text-xs text-muted-foreground">{{ _t('Value') }}: {{ item?.Value || '-' }}</div>
-                <div class="text-xs text-muted-foreground">{{ _t('Country') }}: {{ resolveCountryLabel(item) }}</div>
-                <div class="text-xs text-muted-foreground">{{ _t('Valid From') }}: {{ formatDateTime(item?.ValidFrom) || '-' }}</div>
-                <div class="text-xs text-muted-foreground">{{ _t('Valid To') }}: {{ formatDateTime(item?.ValidTo) || '-' }}</div>
+                <div class="truncate text-xs text-muted-foreground">{{ item?.Value || '-' }}</div>
+                <div class="truncate text-xs text-muted-foreground">{{ resolveCountryLabel(item) }}</div>
+                <div class="truncate text-xs text-muted-foreground">
+                  {{ formatDateTime(item?.ValidFrom) || '-' }}
+                  <span class="text-muted-foreground/60"> · </span>
+                  {{ formatDateTime(item?.ValidTo) || '-' }}
+                </div>
                 <div v-if="editable || removable" class="mt-auto inline-flex gap-1 pt-1">
                   <ChoyButton v-if="editable" variant="ghost" size="sm" @click.stop="edit">{{ _t('Edit') }}</ChoyButton>
-                  <ChoyButton v-if="removable" variant="ghost" size="sm" @click.stop="remove">{{ _t('Delete') }}</ChoyButton>
+                  <ChoyButton
+                    v-if="removable"
+                    variant="ghost"
+                    size="sm"
+                    class="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    @click.stop="remove"
+                  >
+                    {{ _t('Delete') }}
+                  </ChoyButton>
                 </div>
               </div>
             </template>
@@ -56,10 +79,13 @@ import { defineComponent } from 'vue';
 import { Xpath } from '@/core/web';
 import PartnerFormView from '@/partner/web/views/PartnerFormView.vue';
 import {
+  ChoyBadge,
   ChoyButton,
   ChoyOneToManyField,
+  ChoyOneToManyKanbanField,
   ChoyTab,
-  PARTNER_DETAIL_TAB_PANELS_XPATH,  ChoyOneToManyKanbanField} from '@/web';
+  PARTNER_DETAIL_TAB_PANELS_XPATH,
+} from '@/web';
 import PartnerIdentifierFormView from '@/partner_commercial/web/views/PartnerIdentifierFormView.vue';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
@@ -73,9 +99,11 @@ export default defineComponent({
   extends: PartnerFormView,
   components: {
     Xpath,
+    ChoyBadge,
     ChoyButton,
     ChoyTab,
     ChoyOneToManyField,
+    ChoyOneToManyKanbanField,
     PartnerIdentifierFormView,
   },
   /**
