@@ -31,20 +31,22 @@ export type UserFavoriteMenuItem = {
   isDefault: boolean;
   canDelete: boolean;
   filter: unknown;
-  groups: Array<{ field: string; granularity?: string; alias?: string }>;
+  groups: GroupBySpec[];
 };
 
-function normalizeFavoriteGroups(raw: unknown): Array<{ field: string; granularity?: string; alias?: string }> {
+function normalizeFavoriteGroups(raw: unknown): GroupBySpec[] {
   if (raw == null || raw === '') return [];
   // jsonobject columns may decode empty as {} (not []); only arrays / field specs are grouping.
   if (typeof raw === 'object' && !Array.isArray(raw) && typeof (raw as { field?: unknown }).field !== 'string') {
     return [];
   }
-  return normalizeGroupby(raw as GroupBySpec[]) as Array<{
-    field: string;
-    granularity?: string;
-    alias?: string;
-  }>;
+  return normalizeGroupby(raw as GroupBySpec[]) as GroupBySpec[];
+}
+
+/** True when a UserFilter RPC failed because GroupBy / group_by is not on the schema yet. */
+function isMissingGroupByColumn(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return /group_?by/i.test(msg) && /(does not exist|unknown|no such|undefined column)/i.test(msg);
 }
 
 export type UserFiltersDeps = {
@@ -169,7 +171,8 @@ export function useUserFilters(params: {
           fields: fieldsWithGroupBy,
           orderBy,
         })) as UserFilterRow[];
-      } catch {
+      } catch (e) {
+        if (!isMissingGroupByColumn(e)) throw e;
         rows = (await uf.Search(condition, {
           fields: fieldsWithoutGroupBy,
           orderBy,
@@ -180,7 +183,7 @@ export function useUserFilters(params: {
 
       favorites.value = (rows || [])
         .filter(r => r && r.Id && r.Name)
-        .map(r => {
+        .map((r): UserFavoriteItem => {
           const createUid = String(r.CreatedUid || '').trim();
           const ownerId = resolveUserFilterUserId(r.UserId);
           const shared = !ownerId;
@@ -290,7 +293,8 @@ export function useUserFilters(params: {
     let created: any;
     try {
       created = await uf.Create(values, createFieldsWithGroupBy);
-    } catch {
+    } catch (e) {
+      if (!isMissingGroupByColumn(e)) throw e;
       // Schema not migrated yet: persist Condition only so Favorites still save.
       delete values.GroupBy;
       created = await uf.Create(values, createFieldsWithoutGroupBy);

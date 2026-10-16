@@ -756,7 +756,8 @@ describe('OSearch behavior', () => {
       filter: { And: [['Active', '=', true]] },
     });
     expect((m.emitted['query-update'] || []).length).toBeGreaterThan(beforeEmit);
-    const applyPayload = (m.emitted['query-update'] || []).at(-1)?.[0] as {
+    const applyEmits = m.emitted['query-update'] || [];
+    const applyPayload = (applyEmits[applyEmits.length - 1] || [])[0] as {
       appliedGroups?: Array<{ field?: string; granularity?: string }>;
     };
     expect(applyPayload?.appliedGroups?.[0]).toMatchObject({
@@ -963,7 +964,8 @@ describe('OSearch behavior', () => {
     await flushPromises();
     expect(savedFiltersApi.apply.calls.length).toBeGreaterThan(0);
     expect((m.emitted['query-update'] || []).length).toBeGreaterThan(beforeEmit);
-    const last = (m.emitted['query-update'] || []).at(-1)?.[0] as {
+    const lastEmits = m.emitted['query-update'] || [];
+    const last = (lastEmits[lastEmits.length - 1] || [])[0] as {
       appliedGroups?: Array<{ field?: string; granularity?: string }>;
     };
     // Merge: keep Status, add/overwrite CreatedAt from favorite.
@@ -1086,7 +1088,8 @@ describe('OSearch behavior', () => {
     expect(m.q('[data-testid=choy-search-favorite-tag]')?.textContent || '').toContain('ByName');
     expect(filterList().some((f: any) => f.name === 'Extra')).toBe(true);
     expect(filterList().some((f: any) => f.name === 'ByYear')).toBe(false);
-    const afterSwitch = (m.emitted['query-update'] || []).at(-1)?.[0] as {
+    const switchEmits = m.emitted['query-update'] || [];
+    const afterSwitch = (switchEmits[switchEmits.length - 1] || [])[0] as {
       appliedGroups?: Array<{ field?: string; granularity?: string }>;
     };
     const switchFields = (afterSwitch?.appliedGroups || []).map(g => String(g.field));
@@ -1099,7 +1102,8 @@ describe('OSearch behavior', () => {
     await flushPromises();
     expect(m.q('[data-testid=choy-search-favorite-tag]')).toBeFalsy();
     expect(filterList().some((f: any) => f.name === 'Extra')).toBe(true);
-    const afterClear = (m.emitted['query-update'] || []).at(-1)?.[0] as {
+    const clearEmits = m.emitted['query-update'] || [];
+    const afterClear = (clearEmits[clearEmits.length - 1] || [])[0] as {
       appliedGroups?: Array<{ field?: string; granularity?: string }>;
     };
     const clearFields = (afterClear?.appliedGroups || []).map(g => String(g.field));

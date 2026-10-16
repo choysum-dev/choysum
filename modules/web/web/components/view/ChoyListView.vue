@@ -193,6 +193,7 @@ SPDX-License-Identifier: Apache-2.0
                   type="button"
                   class="inline-flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground"
                   :aria-expanded="isExpanded(row.key)"
+                  :aria-label="_t('Toggle group %s', String(row.label ?? ''))"
                   @click.stop="onToggleGroup(row.key)"
                 >
                   <ChevronRight

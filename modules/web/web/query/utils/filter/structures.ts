@@ -221,7 +221,9 @@ export function normalizeFilters(filters: ConditionGroup[] = []): ConditionGroup
         if (sub && sub.children.length > 0) children.push(sub);
       } else if ((ch as any).operator !== undefined || (ch as any).field !== undefined) {
         const c = ch as any;
-        if (!isConditionComplete(c)) continue;
+        // Keep field+operator for externally supplied filters (empty value can be intentional).
+        // Draft save uses isConditionComplete separately and refuses incomplete leaves.
+        if (!c.field || !c.operator) continue;
         children.push({
           id: c.id || genId(),
           field: c.field,

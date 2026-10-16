@@ -68,8 +68,8 @@ SPDX-License-Identifier: Apache-2.0
           </template>
         </ChoyAppHeader>
         <!--
-          Workspace layout (ERP): main column does not scroll; footer is pinned
-          below the canvas. List/Kanban/Form fill the canvas and scroll inside.
+          Workspace layout (ERP): footer stays pinned. Fill-height views scroll
+          inside their own body; non-fill pages scroll on this canvas.
         -->
         <div
           class="choy-shell__workspace flex min-h-0 flex-1 flex-col overflow-hidden"
@@ -77,7 +77,7 @@ SPDX-License-Identifier: Apache-2.0
           data-shell-layout="workspace"
         >
           <div
-            class="choy-shell__main-inner flex min-h-0 flex-1 flex-col overflow-hidden"
+            class="choy-shell__main-inner flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto"
             data-testid="choy-shell-canvas"
           >
             <slot>

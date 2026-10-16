@@ -1191,6 +1191,11 @@ msgctxt "web/components/view/ListView"
 msgid "System actions"
 msgstr ""
 
+#: web/components/view/ChoyListView.vue:95
+msgctxt "web/components/view/ListView"
+msgid "Toggle group %s"
+msgstr ""
+
 #: web/components/view/ChoyListView.vue:5
 msgctxt "web/components/view/ListView"
 msgid "User actions"
@@ -1221,13 +1226,13 @@ msgctxt "web/components/view/ViewBusyHost"
 msgid "Loading"
 msgstr ""
 
-#: web/components/view/search/Search.vue:633
+#: web/components/view/search/Search.vue:631
 msgctxt "web/components/view/search/Search"
 msgid "Add at least one complete condition before confirming"
 msgstr ""
 
 #: web/components/view/search/Search.vue:184
-#: web/components/view/search/Search.vue:303
+#: web/components/view/search/Search.vue:301
 msgctxt "web/components/view/search/Search"
 msgid "Cancel"
 msgstr ""
@@ -1247,12 +1252,12 @@ msgctxt "web/components/view/search/Search"
 msgid "Clear grouping"
 msgstr ""
 
-#: web/components/view/search/Search.vue:299
+#: web/components/view/search/Search.vue:297
 msgctxt "web/components/view/search/Search"
 msgid "Confirm delete"
 msgstr ""
 
-#: web/components/view/search/Search.vue:122
+#: web/components/view/search/Search.vue:125
 msgctxt "web/components/view/search/Search"
 msgid "Custom filter"
 msgstr ""
@@ -1267,17 +1272,17 @@ msgctxt "web/components/view/search/Search"
 msgid "Custom group by"
 msgstr ""
 
-#: web/components/view/search/Search.vue:92
+#: web/components/view/search/Search.vue:95
 msgctxt "web/components/view/search/Search"
 msgid "Day"
 msgstr ""
 
-#: web/components/view/search/Search.vue:302
+#: web/components/view/search/Search.vue:300
 msgctxt "web/components/view/search/Search"
 msgid "Delete"
 msgstr ""
 
-#: web/components/view/search/Search.vue:298
+#: web/components/view/search/Search.vue:296
 msgctxt "web/components/view/search/Search"
 msgid "Delete favorite \"%s\"? This cannot be undone."
 msgstr ""
@@ -1287,7 +1292,7 @@ msgctxt "web/components/view/search/Search"
 msgid "Delete favorite %s"
 msgstr ""
 
-#: web/components/view/search/Search.vue:244
+#: web/components/view/search/Search.vue:247
 msgctxt "web/components/view/search/Search"
 msgid "Edit favorite"
 msgstr ""
@@ -1297,12 +1302,12 @@ msgctxt "web/components/view/search/Search"
 msgid "Edit favorite %s"
 msgstr ""
 
-#: web/components/view/search/Search.vue:122
+#: web/components/view/search/Search.vue:125
 msgctxt "web/components/view/search/Search"
 msgid "Edit filter"
 msgstr ""
 
-#: web/components/view/search/Search.vue:349
+#: web/components/view/search/Search.vue:347
 msgctxt "web/components/view/search/Search"
 msgid "Enter a favorite name"
 msgstr ""
@@ -1312,7 +1317,7 @@ msgctxt "web/components/view/search/Search"
 msgid "Failed to load favorites"
 msgstr ""
 
-#: web/components/view/search/Search.vue:314
+#: web/components/view/search/Search.vue:312
 msgctxt "web/components/view/search/Search"
 msgid "Favorite deleted"
 msgstr ""
@@ -1322,12 +1327,12 @@ msgctxt "web/components/view/search/Search"
 msgid "Favorite name"
 msgstr ""
 
-#: web/components/view/search/Search.vue:368
+#: web/components/view/search/Search.vue:366
 msgctxt "web/components/view/search/Search"
 msgid "Favorite saved"
 msgstr ""
 
-#: web/components/view/search/Search.vue:361
+#: web/components/view/search/Search.vue:359
 msgctxt "web/components/view/search/Search"
 msgid "Favorite updated"
 msgstr ""
@@ -1347,7 +1352,7 @@ msgctxt "web/components/view/search/Search"
 msgid "Group by"
 msgstr ""
 
-#: web/components/view/search/Search.vue:90
+#: web/components/view/search/Search.vue:93
 msgctxt "web/components/view/search/Search"
 msgid "Month"
 msgstr ""
@@ -1377,7 +1382,7 @@ msgctxt "web/components/view/search/Search"
 msgid "Not set"
 msgstr ""
 
-#: web/components/view/search/Search.vue:89
+#: web/components/view/search/Search.vue:92
 msgctxt "web/components/view/search/Search"
 msgid "Quarter"
 msgstr ""
@@ -1402,7 +1407,7 @@ msgctxt "web/components/view/search/Search"
 msgid "Save"
 msgstr ""
 
-#: web/components/view/search/Search.vue:244
+#: web/components/view/search/Search.vue:247
 msgctxt "web/components/view/search/Search"
 msgid "Save current filters"
 msgstr ""
@@ -1412,7 +1417,7 @@ msgctxt "web/components/view/search/Search"
 msgid "Save current filters…"
 msgstr ""
 
-#: web/components/view/search/Search.vue:188
+#: web/components/view/search/Search.vue:191
 msgctxt "web/components/view/search/Search"
 msgid "Search..."
 msgstr ""
@@ -1442,128 +1447,135 @@ msgctxt "web/components/view/search/Search"
 msgid "Use by default"
 msgstr ""
 
-#: web/components/view/search/Search.vue:91
+#: web/components/view/search/Search.vue:94
 msgctxt "web/components/view/search/Search"
 msgid "Week"
 msgstr ""
 
-#: web/components/view/search/Search.vue:88
+#: web/components/view/search/Search.vue:91
 msgctxt "web/components/view/search/Search"
 msgid "Year"
 msgstr ""
 
-#: web/components/view/search/SearchFilter.vue:84
+#: web/components/view/search/SearchFilter.vue:92
 msgctxt "web/components/view/search/SearchFilter"
 msgid "(empty)"
 msgstr ""
 
-#: web/components/view/search/SearchFilter.vue:90
+#: web/components/view/search/SearchFilter.vue:98
 msgctxt "web/components/view/search/SearchFilter"
 msgid "(incomplete)"
 msgstr ""
 
-#: web/components/view/search/SearchFilter.vue:12
+#: web/components/view/search/SearchFilter.vue:17
+msgctxt "web/components/view/search/SearchFilter"
+msgid "Add at least one complete condition before confirming"
+msgstr ""
+
+#: web/components/view/search/SearchFilter.vue:16
 msgctxt "web/components/view/search/SearchFilter"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/view/search/SearchFilter.vue:13
+#: web/components/view/search/SearchFilter.vue:18
 msgctxt "web/components/view/search/SearchFilter"
 msgid "Confirm"
 msgstr ""
 
-#: web/components/view/search/SearchFilter.vue:8
+#: web/components/view/search/SearchFilter.vue:9
 msgctxt "web/components/view/search/SearchFilter"
 msgid "Preview (%s):"
 msgstr ""
 
-#: web/components/view/search/SearchFilterCondition.vue:30
+#: web/components/view/search/SearchFilterCondition.vue:29
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Add values"
 msgstr ""
 
-#: web/components/view/search/SearchFilterCondition.vue:149
+#: web/components/view/search/SearchFilterCondition.vue:163
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Enter JSON"
 msgstr ""
 
-#: web/components/view/search/SearchFilterCondition.vue:6
+#: web/components/view/search/SearchFilterCondition.vue:5
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Field"
 msgstr ""
 
-#: web/components/view/search/SearchFilterCondition.vue:11
+#: web/components/view/search/SearchFilterCondition.vue:10
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "No fields"
 msgstr ""
 
-#: web/components/view/search/SearchFilterCondition.vue:21
+#: web/components/view/search/SearchFilterCondition.vue:20
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Operator"
 msgstr ""
 
-#: web/components/view/search/SearchFilterCondition.vue:151
+#: web/components/view/search/SearchFilterCondition.vue:165
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Please select..."
 msgstr ""
 
-#: web/components/view/search/SearchFilterCondition.vue:39
+#: web/components/view/search/SearchFilterCondition.vue:37
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Remove"
 msgstr ""
 
-#: web/components/view/search/SearchFilterCondition.vue:35
+#: web/components/view/search/SearchFilterCondition.vue:34
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Select a field"
 msgstr ""
 
-#: web/components/view/search/SearchFilterCondition.vue:141
+#: web/components/view/search/SearchFilterCondition.vue:155
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Select a record"
 msgstr ""
 
-#: web/components/view/search/SearchFilterCondition.vue:143
+#: web/components/view/search/SearchFilterCondition.vue:157
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Select date"
 msgstr ""
 
-#: web/components/view/search/SearchFilterCondition.vue:145
+#: web/components/view/search/SearchFilterCondition.vue:159
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Select date and time"
 msgstr ""
 
-#: web/components/view/search/SearchFilterCondition.vue:147
+#: web/components/view/search/SearchFilterCondition.vue:161
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Select time"
 msgstr ""
 
-#: web/components/view/search/SearchFilterCondition.vue:153
+#: web/components/view/search/SearchFilterCondition.vue:167
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Value"
 msgstr ""
 
-#: web/components/view/search/SearchFilterGroup.vue:35
+#: web/components/view/search/SearchFilterGroup.vue:55
 msgctxt "web/components/view/search/SearchFilterGroup"
 msgid "Add a condition to start filtering"
 msgstr ""
 
-#: web/components/view/search/SearchFilterGroup.vue:19
+#: web/components/view/search/SearchFilterGroup.vue:36
+#: web/components/view/search/SearchFilterGroup.vue:38
 msgctxt "web/components/view/search/SearchFilterGroup"
 msgid "Add condition"
 msgstr ""
 
-#: web/components/view/search/SearchFilterGroup.vue:23
+#: web/components/view/search/SearchFilterGroup.vue:40
+#: web/components/view/search/SearchFilterGroup.vue:42
 msgctxt "web/components/view/search/SearchFilterGroup"
 msgid "Add group"
 msgstr ""
 
-#: web/components/view/search/SearchFilterGroup.vue:10
-#: web/components/view/search/SearchFilterGroup.vue:11
+#: web/components/view/search/SearchFilterGroup.vue:23
+#: web/components/view/search/SearchFilterGroup.vue:25
 msgctxt "web/components/view/search/SearchFilterGroup"
 msgid "Group relation"
 msgstr ""
 
-#: web/components/view/search/SearchFilterGroup.vue:26
+#: web/components/view/search/SearchFilterGroup.vue:44
 msgctxt "web/components/view/search/SearchFilterGroup"
 msgid "Remove group"
 msgstr ""

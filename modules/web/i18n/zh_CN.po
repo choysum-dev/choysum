@@ -1171,6 +1171,11 @@ msgctxt "web/components/view/ListView"
 msgid "System actions"
 msgstr "系统操作"
 
+#: web/components/view/ChoyListView.vue:95
+msgctxt "web/components/view/ListView"
+msgid "Toggle group %s"
+msgstr "切换分组 %s"
+
 #: web/components/view/ChoyListView.vue:5
 msgctxt "web/components/view/ListView"
 msgid "User actions"
@@ -1201,12 +1206,12 @@ msgctxt "web/components/view/ViewBusyHost"
 msgid "Loading"
 msgstr "加载中"
 
-#: web/components/view/search/Search.vue:633
+#: web/components/view/search/Search.vue:631
 msgctxt "web/components/view/search/Search"
 msgid "Add at least one complete condition before confirming"
 msgstr "确认前请至少添加一条完整条件"
 
-#: web/components/view/search/Search.vue:184 web/components/view/search/Search.vue:303
+#: web/components/view/search/Search.vue:184 web/components/view/search/Search.vue:301
 msgctxt "web/components/view/search/Search"
 msgid "Cancel"
 msgstr "取消"
@@ -1226,12 +1231,12 @@ msgctxt "web/components/view/search/Search"
 msgid "Clear grouping"
 msgstr "清除分组"
 
-#: web/components/view/search/Search.vue:299
+#: web/components/view/search/Search.vue:297
 msgctxt "web/components/view/search/Search"
 msgid "Confirm delete"
 msgstr "确认删除"
 
-#: web/components/view/search/Search.vue:122
+#: web/components/view/search/Search.vue:125
 msgctxt "web/components/view/search/Search"
 msgid "Custom filter"
 msgstr "自定义筛选"
@@ -1246,17 +1251,17 @@ msgctxt "web/components/view/search/Search"
 msgid "Custom group by"
 msgstr "自定义分组"
 
-#: web/components/view/search/Search.vue:92
+#: web/components/view/search/Search.vue:95
 msgctxt "web/components/view/search/Search"
 msgid "Day"
 msgstr "日"
 
-#: web/components/view/search/Search.vue:302
+#: web/components/view/search/Search.vue:300
 msgctxt "web/components/view/search/Search"
 msgid "Delete"
 msgstr "删除"
 
-#: web/components/view/search/Search.vue:298
+#: web/components/view/search/Search.vue:296
 msgctxt "web/components/view/search/Search"
 msgid "Delete favorite \"%s\"? This cannot be undone."
 msgstr "删除收藏「%s」？此操作无法撤销。"
@@ -1266,7 +1271,7 @@ msgctxt "web/components/view/search/Search"
 msgid "Delete favorite %s"
 msgstr "删除收藏 %s"
 
-#: web/components/view/search/Search.vue:244
+#: web/components/view/search/Search.vue:247
 msgctxt "web/components/view/search/Search"
 msgid "Edit favorite"
 msgstr "编辑收藏"
@@ -1276,12 +1281,12 @@ msgctxt "web/components/view/search/Search"
 msgid "Edit favorite %s"
 msgstr "编辑收藏 %s"
 
-#: web/components/view/search/Search.vue:122
+#: web/components/view/search/Search.vue:125
 msgctxt "web/components/view/search/Search"
 msgid "Edit filter"
 msgstr "编辑筛选"
 
-#: web/components/view/search/Search.vue:349
+#: web/components/view/search/Search.vue:347
 msgctxt "web/components/view/search/Search"
 msgid "Enter a favorite name"
 msgstr "请输入收藏名称"
@@ -1291,7 +1296,7 @@ msgctxt "web/components/view/search/Search"
 msgid "Failed to load favorites"
 msgstr "加载收藏失败"
 
-#: web/components/view/search/Search.vue:314
+#: web/components/view/search/Search.vue:312
 msgctxt "web/components/view/search/Search"
 msgid "Favorite deleted"
 msgstr "收藏已删除"
@@ -1301,12 +1306,12 @@ msgctxt "web/components/view/search/Search"
 msgid "Favorite name"
 msgstr "收藏名称"
 
-#: web/components/view/search/Search.vue:368
+#: web/components/view/search/Search.vue:366
 msgctxt "web/components/view/search/Search"
 msgid "Favorite saved"
 msgstr "收藏已保存"
 
-#: web/components/view/search/Search.vue:361
+#: web/components/view/search/Search.vue:359
 msgctxt "web/components/view/search/Search"
 msgid "Favorite updated"
 msgstr "收藏已更新"
@@ -1326,7 +1331,7 @@ msgctxt "web/components/view/search/Search"
 msgid "Group by"
 msgstr "分组"
 
-#: web/components/view/search/Search.vue:90
+#: web/components/view/search/Search.vue:93
 msgctxt "web/components/view/search/Search"
 msgid "Month"
 msgstr "月"
@@ -1356,7 +1361,7 @@ msgctxt "web/components/view/search/Search"
 msgid "Not set"
 msgstr "未设置"
 
-#: web/components/view/search/Search.vue:89
+#: web/components/view/search/Search.vue:92
 msgctxt "web/components/view/search/Search"
 msgid "Quarter"
 msgstr "季度"
@@ -1381,7 +1386,7 @@ msgctxt "web/components/view/search/Search"
 msgid "Save"
 msgstr "保存"
 
-#: web/components/view/search/Search.vue:244
+#: web/components/view/search/Search.vue:247
 msgctxt "web/components/view/search/Search"
 msgid "Save current filters"
 msgstr "保存当前筛选"
@@ -1391,7 +1396,7 @@ msgctxt "web/components/view/search/Search"
 msgid "Save current filters…"
 msgstr "保存当前筛选…"
 
-#: web/components/view/search/Search.vue:188
+#: web/components/view/search/Search.vue:191
 msgctxt "web/components/view/search/Search"
 msgid "Search..."
 msgstr "搜索…"
@@ -1421,127 +1426,132 @@ msgctxt "web/components/view/search/Search"
 msgid "Use by default"
 msgstr "设为默认"
 
-#: web/components/view/search/Search.vue:91
+#: web/components/view/search/Search.vue:94
 msgctxt "web/components/view/search/Search"
 msgid "Week"
 msgstr "周"
 
-#: web/components/view/search/Search.vue:88
+#: web/components/view/search/Search.vue:91
 msgctxt "web/components/view/search/Search"
 msgid "Year"
 msgstr "年"
 
-#: web/components/view/search/SearchFilter.vue:84
+#: web/components/view/search/SearchFilter.vue:92
 msgctxt "web/components/view/search/SearchFilter"
 msgid "(empty)"
 msgstr "（空）"
 
-#: web/components/view/search/SearchFilter.vue:90
+#: web/components/view/search/SearchFilter.vue:98
 msgctxt "web/components/view/search/SearchFilter"
 msgid "(incomplete)"
 msgstr "（不完整）"
 
-#: web/components/view/search/SearchFilter.vue:12
+#: web/components/view/search/SearchFilter.vue:17
+msgctxt "web/components/view/search/SearchFilter"
+msgid "Add at least one complete condition before confirming"
+msgstr "确认前请至少添加一条完整条件"
+
+#: web/components/view/search/SearchFilter.vue:16
 msgctxt "web/components/view/search/SearchFilter"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/view/search/SearchFilter.vue:13
+#: web/components/view/search/SearchFilter.vue:18
 msgctxt "web/components/view/search/SearchFilter"
 msgid "Confirm"
 msgstr "确认"
 
-#: web/components/view/search/SearchFilter.vue:8
+#: web/components/view/search/SearchFilter.vue:9
 msgctxt "web/components/view/search/SearchFilter"
 msgid "Preview (%s):"
 msgstr "预览（%s）："
 
-#: web/components/view/search/SearchFilterCondition.vue:30
+#: web/components/view/search/SearchFilterCondition.vue:29
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Add values"
 msgstr "添加值"
 
-#: web/components/view/search/SearchFilterCondition.vue:149
+#: web/components/view/search/SearchFilterCondition.vue:163
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Enter JSON"
 msgstr "输入 JSON"
 
-#: web/components/view/search/SearchFilterCondition.vue:6
+#: web/components/view/search/SearchFilterCondition.vue:5
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Field"
 msgstr "字段"
 
-#: web/components/view/search/SearchFilterCondition.vue:11
+#: web/components/view/search/SearchFilterCondition.vue:10
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "No fields"
 msgstr "无可用字段"
 
-#: web/components/view/search/SearchFilterCondition.vue:21
+#: web/components/view/search/SearchFilterCondition.vue:20
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Operator"
 msgstr "运算符"
 
-#: web/components/view/search/SearchFilterCondition.vue:151
+#: web/components/view/search/SearchFilterCondition.vue:165
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Please select..."
 msgstr "请选择…"
 
-#: web/components/view/search/SearchFilterCondition.vue:39
+#: web/components/view/search/SearchFilterCondition.vue:37
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Remove"
 msgstr "移除"
 
-#: web/components/view/search/SearchFilterCondition.vue:35
+#: web/components/view/search/SearchFilterCondition.vue:34
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Select a field"
 msgstr "选择字段"
 
-#: web/components/view/search/SearchFilterCondition.vue:141
+#: web/components/view/search/SearchFilterCondition.vue:155
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Select a record"
 msgstr "选择记录"
 
-#: web/components/view/search/SearchFilterCondition.vue:143
+#: web/components/view/search/SearchFilterCondition.vue:157
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Select date"
 msgstr "选择日期"
 
-#: web/components/view/search/SearchFilterCondition.vue:145
+#: web/components/view/search/SearchFilterCondition.vue:159
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Select date and time"
 msgstr "选择日期和时间"
 
-#: web/components/view/search/SearchFilterCondition.vue:147
+#: web/components/view/search/SearchFilterCondition.vue:161
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Select time"
 msgstr "选择时间"
 
-#: web/components/view/search/SearchFilterCondition.vue:153
+#: web/components/view/search/SearchFilterCondition.vue:167
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Value"
 msgstr "值"
 
-#: web/components/view/search/SearchFilterGroup.vue:35
+#: web/components/view/search/SearchFilterGroup.vue:55
 msgctxt "web/components/view/search/SearchFilterGroup"
 msgid "Add a condition to start filtering"
 msgstr "添加条件以开始筛选"
 
-#: web/components/view/search/SearchFilterGroup.vue:19
+#: web/components/view/search/SearchFilterGroup.vue:36 web/components/view/search/SearchFilterGroup.vue:38
 msgctxt "web/components/view/search/SearchFilterGroup"
 msgid "Add condition"
 msgstr "添加条件"
 
-#: web/components/view/search/SearchFilterGroup.vue:23
+#: web/components/view/search/SearchFilterGroup.vue:40 web/components/view/search/SearchFilterGroup.vue:42
 msgctxt "web/components/view/search/SearchFilterGroup"
 msgid "Add group"
 msgstr "添加分组"
 
-#: web/components/view/search/SearchFilterGroup.vue:10 web/components/view/search/SearchFilterGroup.vue:11
+#: web/components/view/search/SearchFilterGroup.vue:23 web/components/view/search/SearchFilterGroup.vue:25
 msgctxt "web/components/view/search/SearchFilterGroup"
 msgid "Group relation"
 msgstr "分组关系"
 
-#: web/components/view/search/SearchFilterGroup.vue:26
+#: web/components/view/search/SearchFilterGroup.vue:44
 msgctxt "web/components/view/search/SearchFilterGroup"
 msgid "Remove group"
 msgstr "移除分组"

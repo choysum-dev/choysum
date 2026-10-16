@@ -120,9 +120,12 @@ test('filter structures helpers: normalizeFilters drops incomplete nodes and emp
   expect(out).toHaveLength(1);
   expect(out[0].logic).toBe('Or');
   expect(out[0].name).toBe('N');
-  expect(out[0].children).toHaveLength(2);
+  // Empty value kept for external filters; incomplete field dropped.
+  expect(out[0].children).toHaveLength(3);
   expect((out[0].children[0] as any).field).toBe('Name');
-  expect(isGroup(out[0].children[1])).toBe(true);
+  expect((out[0].children[0] as any).value).toBe('');
+  expect((out[0].children[1] as any).field).toBe('Name');
+  expect(isGroup(out[0].children[2])).toBe(true);
 
   const leaves = countFilterLeaves({
     id: 'g',

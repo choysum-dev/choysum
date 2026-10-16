@@ -204,8 +204,11 @@ describe('useSearch actions and helpers', () => {
     const { state, editor } = useSearch({});
     editor.openNew();
     editor.addCondition();
-    const condId = (editor.draftFilter.value!.root.children[0] as any).id;
+    const kids = editor.draftFilter.value!.root.children as any[];
+    const condId = kids[0].id;
     editor.updateCondition(condId, { field: 'Name', operator: '=', value: 'z' });
+    // openNew + addCondition leaves an incomplete row; remove it before save.
+    editor.removeCondition(kids[1].id);
     editor.setLogic('Or');
     expect(editor.draftFilter.value!.root.logic).toBe('Or');
     editor.addGroup();
@@ -278,9 +281,8 @@ describe('useSearchEditor nested draft ops', () => {
 
     editor.openNewFilter();
     editor.draftFilter.value!.root.name = 'Fresh';
-    editor.addDraftCondition();
-    const id = (editor.draftFilter.value!.root.children[0] as any).id;
-    editor.updateDraftCondition(id, { field: 'X', operator: '=', value: 1 });
+    const freshKids = editor.draftFilter.value!.root.children as any[];
+    editor.updateDraftCondition(freshKids[0].id, { field: 'X', operator: '=', value: 1 });
     expect(editor.saveDraft()).toBe(true);
     expect(filters.value.some(f => f.name === 'Fresh')).toBe(true);
 

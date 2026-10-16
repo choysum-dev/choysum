@@ -381,7 +381,7 @@ function onFieldCombobox(val: string | null | undefined) {
   fieldOpen.value = false;
 }
 
-function onOperatorSelect(op: string | null) {
+function onOperatorSelect(op: string | null | undefined) {
   if (op == null || op === '') return;
   const patch: Partial<CondLike> = { operator: op };
   if (isNullOperator(op)) {
@@ -427,20 +427,17 @@ function onRemove() {
 }
 
 .choy-search-filter__value-field :deep([data-slot='form-item']),
-.choy-search-filter__value-field :deep(.choy-field),
-.choy-search-filter__value-field :deep(.el-form-item) {
+.choy-search-filter__value-field :deep(.choy-field) {
   margin: 0;
   width: 100%;
 }
 
 .choy-search-filter__value-field :deep([data-slot='form-item'] > label),
-.choy-search-filter__value-field :deep(.choy-field > label),
-.choy-search-filter__value-field :deep(.el-form-item__label) {
+.choy-search-filter__value-field :deep(.choy-field > label) {
   display: none;
 }
 
-.choy-search-filter__value-field :deep([data-slot='form-item'] > div),
-.choy-search-filter__value-field :deep(.el-form-item__content) {
+.choy-search-filter__value-field :deep([data-slot='form-item'] > div) {
   margin: 0;
   width: 100%;
 }

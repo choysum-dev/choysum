@@ -86,7 +86,8 @@ describe('DataTable chrome', () => {
     (selectCell as HTMLElement).click();
     await flushPromises();
     expect(onUpdateRowSelection.calls.length).toBeGreaterThan(0);
-    const next = onUpdateRowSelection.calls.at(-1)?.[0] as unknown[];
+    const selCalls = onUpdateRowSelection.calls;
+    const next = selCalls[selCalls.length - 1]?.[0] as unknown[];
     expect(Array.isArray(next) && next.length > 0).toBe(true);
     expect(onRowClick.calls.length).toBe(0);
     mounted.unmount();

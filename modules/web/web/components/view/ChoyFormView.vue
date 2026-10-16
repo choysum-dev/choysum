@@ -92,7 +92,11 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <!-- pt tighter than pb: ViewContainer gap already separates ActionBar hairline. -->
-    <ChoyViewBusyHost :busy="formBusy" class="pt-2 pb-3" data-anchor="choy.form-view">
+    <ChoyViewBusyHost
+      :busy="formBusy"
+      class="min-h-0 flex-1 overflow-y-auto pt-2 pb-3"
+      data-anchor="choy.form-view"
+    >
       <form ref="formRef" @submit.self.prevent="onNativeSubmit">
         <slot :form-data="exposedFormData" :view-mode="viewMode" :loading="loading" />
       </form>

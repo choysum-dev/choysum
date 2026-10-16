@@ -380,7 +380,10 @@ import { formatGroupItemForDisplay } from '@/web/web/query/utils/grouping/format
 import { normalizeGroupby } from '@/web/web/query/utils/grouping/normalize';
 import { buildQueryUpdatePayload } from '@/web/web/query/utils/search/payload';
 import { useFilterPresets } from '@/web/web/composables/search/useFilterPresets';
-import { useInjectedUserFilters } from '@/web/web/composables/search/useUserFilters';
+import {
+  useInjectedUserFilters,
+  type UserFavoriteMenuItem,
+} from '@/web/web/composables/search/useUserFilters';
 import {
   modelIdentityFromStore,
   pickDefaultFavoriteName,
@@ -615,12 +618,7 @@ function removeFilterChipsNamed(name: string) {
   filters.value = (filters.value || []).filter(f => String(f.name || '').trim() !== n);
 }
 
-function onApplyFavorite(it: {
-  id: string;
-  name: string;
-  filter: any;
-  groups?: Array<GroupBySpec<any>>;
-}) {
+function onApplyFavorite(it: UserFavoriteMenuItem) {
   const prev = activeFavorite.value;
   let baseGroups = (props.currentAppliedGroups as any) ?? [];
   if (prev) {
@@ -639,7 +637,7 @@ function onApplyFavorite(it: {
     groups: favGroups,
   };
   // Apply condition into query (named chip may exist); UI folds it into the star tag.
-  applyFavorite(it);
+  applyFavorite({ name: it.name, filter: it.filter });
   const merged = mergeFavoriteGroups(baseGroups, favGroups);
   emitQueryUpdate(buildPayload(merged as any));
   menuVisible.value = false;
