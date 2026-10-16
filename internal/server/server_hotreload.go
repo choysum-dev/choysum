@@ -21,6 +21,12 @@ const choyTailwindGeneratedCSSName = "choy-tailwind.generated.css"
 // events races the module_management lease and must be skipped.
 func shouldIgnoreWatchPath(path string) bool {
 	base := filepath.Base(path)
+	dir := filepath.ToSlash(filepath.Dir(path))
+	// Only the kit emit directory. A checked-in file with the same basename
+	// elsewhere must still reload.
+	if !strings.HasSuffix(dir, "web/web/styles") {
+		return false
+	}
 	if base == choyTailwindGeneratedCSSName {
 		return true
 	}

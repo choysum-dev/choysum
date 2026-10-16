@@ -626,7 +626,9 @@ export function createListController(store: WebModelStore<any>): IListController
       // Prefer Search Count total; fall back to ReadGroup group count when Count
       // is missing so remain does not collapse to 0 after a short page.
       const groupTotal = Number((g as any).count ?? (g as any).__count);
-      const snapTotal = Number(snap.total);
+      // Number(null) is 0, which would look like an exhausted lane and skip
+      // the ReadGroup count fallback.
+      const snapTotal = snap.total == null ? Number.NaN : Number(snap.total);
       const total = Number.isFinite(snapTotal)
         ? snapTotal
         : Number.isFinite(groupTotal)

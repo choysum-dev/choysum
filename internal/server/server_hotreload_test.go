@@ -249,6 +249,8 @@ func TestShouldIgnoreWatchPath(t *testing.T) {
 	}{
 		{filepath.Join("modules", "web", "web", "styles", "choy-tailwind.generated.css"), true},
 		{filepath.Join("modules", "web", "web", "styles", ".choy-tailwind-2477883981.tmp"), true},
+		{filepath.Join("modules", "docs", "choy-tailwind.generated.css"), false},
+		{filepath.Join("modules", "docs", ".choy-tailwind-fixture.tmp"), false},
 		{filepath.Join("modules", "web", "web", "components", "field", "Foo.vue"), false},
 		{filepath.Join("modules", "partner", "web", "views", "PartnerFormView.vue"), false},
 		{filepath.Join("tmp", "other.tmp"), false},
@@ -281,7 +283,7 @@ func TestEnqueueWatchEventIgnoresChoyTailwindArtifacts(t *testing.T) {
 	runtimeScope := newRichServerTestScope(t)
 	srv := &GRPCWebServer{runtimeScope: runtimeScope, hotreload: hotreloadState{queue: make(chan string, 2)}}
 	root := t.TempDir()
-	styles := filepath.Join(root, "styles")
+	styles := filepath.Join(root, "web", "web", "styles")
 	if err := os.MkdirAll(styles, 0o755); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
@@ -348,7 +350,10 @@ func TestHandleWatchedFileChangeDefersOnLeaseConflict(t *testing.T) {
 func TestHandleWatchedFileChangeIgnoresGeneratedArtifact(t *testing.T) {
 	runtimeScope := newRichServerTestScope(t)
 	root := t.TempDir()
-	generated := filepath.Join(root, "choy-tailwind.generated.css")
+	generated := filepath.Join(root, "web", "web", "styles", "choy-tailwind.generated.css")
+	if err := os.MkdirAll(filepath.Dir(generated), 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
 	if err := os.WriteFile(generated, []byte("css"), 0o644); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}

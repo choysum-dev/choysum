@@ -573,7 +573,9 @@ function moveCardToLane(card: ChoyKanbanCard, fromLaneKey: string, toLaneKey: st
 }
 
 function laneDropEnabled(): boolean {
-  return resolvedDragMode.value === 'lane' && !effectiveReadonly.value;
+  // load-more replaces the lane array from the server, so a drop in that
+  // window would be overwritten by the arriving page.
+  return resolvedDragMode.value === 'lane' && !effectiveReadonly.value && !loadMoreBusy.value;
 }
 
 function readLaneDragPayload(event: DragEvent) {

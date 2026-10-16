@@ -371,7 +371,9 @@ describe('ChoyKanbanView chrome', () => {
     const state = mounted.setupState() as KanbanSetup & {
       onLaneDrop: (event: DragEvent, lane: ChoyKanbanLane) => void;
       onLaneDragOver: (event: DragEvent, lane: ChoyKanbanLane) => void;
+      onLaneDragLeave: (event: DragEvent, lane: ChoyKanbanLane) => void;
       laneDropActiveKey: string;
+      engine: { loadMorePending: { value: boolean } };
     };
     state.displayLanes = twoLanes();
     await nextTick();
@@ -405,6 +407,14 @@ describe('ChoyKanbanView chrome', () => {
       dropLane,
     );
     expect(state.laneDropActiveKey).toBe('');
+
+    state.engine.loadMorePending.value = true;
+    state.onLaneDragOver(
+      { preventDefault() {}, dataTransfer: dt } as unknown as DragEvent,
+      dropLane,
+    );
+    expect(state.laneDropActiveKey).toBe('');
+    state.engine.loadMorePending.value = false;
 
     state.onLaneDrop(
       { preventDefault() {}, dataTransfer: dt } as unknown as DragEvent,
@@ -517,7 +527,7 @@ describe('ChoyKanbanView chrome', () => {
 
   test('registers an empty selection target and refresh does not reject', async () => {
     const store = makeStore();
-    let target: PageActionTarget | null = null;
+    const holder: { target: PageActionTarget | null } = { target: null };
     const mounted = mountApp(ChoyKanbanView as any, {
       props: {
         store,
@@ -530,7 +540,7 @@ describe('ChoyKanbanView chrome', () => {
           store: computed(() => store),
           actionTarget: shallowRef(null),
           registerActionTarget(next: PageActionTarget) {
-            target = next;
+            holder.target = next;
           },
           unregisterActionTarget() {},
           title: computed(() => ''),
@@ -543,8 +553,7 @@ describe('ChoyKanbanView chrome', () => {
       },
     });
     await flushPromises();
-    expect(target).toBeTruthy();
-    expect((target as PageActionTarget).selectedItems).toEqual([]);
+    expect(holder.target?.selectedItems).toEqual([]);
     const state = mounted.setupState() as { onRefresh: () => void };
     state.onRefresh();
     await flushPromises();

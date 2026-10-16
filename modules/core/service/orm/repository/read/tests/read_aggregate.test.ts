@@ -195,6 +195,67 @@ test('repository read aggregate runtime readGroup projects SqlCompute keys befor
   expect(log.some(item => item.method === 'groupBy' && item.tableOrAlias?.alias === '__rg')).toBe(true);
 });
 
+test('repository read aggregate runtime readGroup projects a SqlCompute time bucket before GROUP BY', async () => {
+  const { params, log } = createAggregateRuntime({
+    meta: {
+      type: class DemoModel {},
+      fields: new Map([['InstalledStatus', { type: 'datetime' }]]),
+      sqlComputeHandlers: new Map([['InstalledStatus', { method: 'sqlInstalledStatus' }]]),
+    } as any,
+    async execute(query: any) {
+      log.push({ method: 'execute', groupByArg: query.groupByArg });
+      return [];
+    },
+  });
+
+  await executeRepositoryReadGroup(
+    params as any,
+    {
+      groupby: { field: 'InstalledStatus', granularity: 'month' },
+      fields: [],
+    } as any,
+  );
+
+  expect(
+    log.some(
+      item =>
+        item.method === 'selectFrom' &&
+        item.tableOrAlias?.kind === 'aliased-subquery' &&
+        item.tableOrAlias?.alias === '__rg',
+    ),
+  ).toBe(true);
+});
+
+test('repository read aggregate runtime readGroup quotes dotted group aliases as one identifier', async () => {
+  const { params, log } = createAggregateRuntime({
+    meta: {
+      type: class DemoModel {},
+      fields: new Map([
+        ['InstalledStatus', { type: 'varchar' }],
+        ['Name', { type: 'varchar' }],
+      ]),
+      sqlComputeHandlers: new Map([['InstalledStatus', { method: 'sqlInstalledStatus' }]]),
+    } as any,
+    async execute(query: any) {
+      log.push({ method: 'execute', groupByArg: query.groupByArg });
+      return [];
+    },
+  });
+
+  await executeRepositoryReadGroup(
+    params as any,
+    {
+      groupby: ['InstalledStatus', 'Partner.Name'],
+      fields: [],
+    } as any,
+  );
+
+  const executed = log.find(item => item.method === 'execute') as any;
+  const fields = (executed.groupByArg as any[]).map(item => item?.field);
+  expect(fields).toContain('InstalledStatus');
+  expect(fields).not.toContain('Partner.Name');
+});
+
 test('repository read aggregate runtime readGroup orders SqlCompute outer query by alias', async () => {
   const { params, log } = createAggregateRuntime({
     meta: {

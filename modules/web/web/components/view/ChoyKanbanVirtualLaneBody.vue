@@ -29,9 +29,9 @@ SPDX-License-Identifier: Apache-2.0
         tabindex="0"
         role="article"
         :aria-label="cards[item.index]?.title"
-        @click="onCardClick(cards[item.index]!)"
-        @keydown.enter.self.prevent="onCardClick(cards[item.index]!)"
-        @dragstart="onCardDragStart($event, cards[item.index]!)"
+        @click="onCardClick(cards[item.index])"
+        @keydown.enter.self.prevent="onCardClick(cards[item.index])"
+        @dragstart="onCardDragStart($event, cards[item.index])"
       >
         <div class="flex items-start gap-1 pb-2">
           <div class="min-w-0 flex-1">
@@ -217,8 +217,8 @@ function onCardClick(card: ChoyKanbanCard | undefined): void {
   if (card) emit('card-click', card);
 }
 
-function onCardDragStart(event: DragEvent, card: ChoyKanbanCard): void {
-  if (!props.laneDrag || !event.dataTransfer) return;
+function onCardDragStart(event: DragEvent, card: ChoyKanbanCard | undefined): void {
+  if (!card || !props.laneDrag || !event.dataTransfer) return;
   const encoded = encodeChoyKanbanLaneDragPayload({
     cardId: card.id,
     fromLaneKey: props.lane.key,

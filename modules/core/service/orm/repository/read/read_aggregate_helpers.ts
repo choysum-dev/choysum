@@ -44,6 +44,13 @@ function asSelectBuilder(value: unknown): SelectBuilderLike {
   return value as SelectBuilderLike;
 }
 
+function outerProjectedRef(builder: SelectBuilderLike, alias: string): unknown {
+  if (!alias.includes('.')) return builder.ref(alias);
+  // ref() treats '.' as a table qualifier. A group alias such as Partner.Name
+  // is one column of the __rg subquery.
+  return sql.id(alias);
+}
+
 function getFieldScale(fieldMeta: FieldMetadata): number | undefined {
   const columnRecord = asObjectRecord(fieldMeta.column);
   const scale = columnRecord?.scale;
@@ -143,11 +150,9 @@ export function buildRepositoryReadAggregateGroupExprs(
  */
 export function groupSpecUsesSqlCompute(meta: ModelMetadata, group: GroupSpecLike): boolean {
   if (isCompositeGroupSpec(group)) {
-    return group.parts.some(
-      part => !part.isTime && hasRepositorySqlComputeExpression(meta, part.field),
-    );
+    return group.parts.some(part => hasRepositorySqlComputeExpression(meta, part.field));
   }
-  return !group.isTime && hasRepositorySqlComputeExpression(meta, group.field);
+  return hasRepositorySqlComputeExpression(meta, group.field);
 }
 
 /** Stable inner-projection alias for an aggregate source column. */
@@ -213,12 +218,12 @@ export function buildRepositoryReadAggregateOuterSelections(
 ): { selections: unknown[]; groupExprs: unknown[] } {
   const builder = asSelectBuilder(selBuilder);
   const groupAliases = isCompositeGroupSpec(group) ? group.parts.map(part => part.alias) : [group.alias];
-  const groupExprs = groupAliases.map(alias => builder.ref(alias));
+  const groupExprs = groupAliases.map(alias => outerProjectedRef(builder, alias));
   const selections: unknown[] = groupAliases.map((alias, index) =>
     asAliasableExpression(groupExprs[index]).as(alias),
   );
   for (const agg of aggs) {
-    const srcRef = builder.ref(repositoryReadAggregateSourceAlias(agg.alias));
+    const srcRef = outerProjectedRef(builder, repositoryReadAggregateSourceAlias(agg.alias));
     selections.push(asAliasableExpression(buildRepositoryAggregateOnRef(srcRef, agg)).as(agg.alias));
   }
   selections.push(countAll().as('__count'));
