@@ -594,6 +594,13 @@ func (b *WebModuleBuilder) getTemplateImportComponents(extendsResult *parser.Par
 
 	// Iterate through all imported components
 	for importName, importInfo := range extendsResult.Imports {
+		if importInfo == nil || importInfo.IsTypeOnly {
+			// Type-only imports have no runtime value; never promote them into
+			// the child components map / value imports (that can pull service ORM
+			// into the browser bundle).
+			continue
+		}
+
 		found := templateUsesImportAsTag(extendsResult.RawTemplateNode, importName)
 
 		if found {
@@ -690,7 +697,9 @@ func templateUsesImportInDynamicBinding(root *html.Node, importName string) bool
 					continue
 				}
 
-				if identPattern.MatchString(value) {
+				// Ignore matches inside string literals so `_t('Select Company')`
+				// does not treat a type-named import `Company` as a component.
+				if identPattern.MatchString(stripJSQuotedSpans(value)) {
 					return true
 				}
 			}
@@ -706,6 +715,39 @@ func templateUsesImportInDynamicBinding(root *html.Node, importName string) bool
 	}
 
 	return walk(root)
+}
+
+// stripJSQuotedSpans removes '…' / "…" / `…` spans (with basic backslash escapes)
+// so identifier scans do not hit string contents.
+func stripJSQuotedSpans(value string) string {
+	if value == "" {
+		return value
+	}
+	var b strings.Builder
+	b.Grow(len(value))
+	for i := 0; i < len(value); {
+		c := value[i]
+		if c != '\'' && c != '"' && c != '`' {
+			b.WriteByte(c)
+			i++
+			continue
+		}
+		quote := c
+		i++
+		for i < len(value) {
+			if value[i] == '\\' && i+1 < len(value) {
+				i += 2
+				continue
+			}
+			if value[i] == quote {
+				i++
+				break
+			}
+			i++
+		}
+		b.WriteByte(' ')
+	}
+	return b.String()
 }
 
 func (b *WebModuleBuilder) getScriptNode(result *parser.ParserResult, extendsResult *parser.ParserResult) (*html.Node, error) {
