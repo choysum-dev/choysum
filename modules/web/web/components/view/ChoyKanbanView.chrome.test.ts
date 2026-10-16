@@ -39,7 +39,6 @@ function twoLanes(opts?: { remain?: number; subtitle?: string }): ChoyKanbanLane
 
 type KanbanSetup = {
   displayLanes: ChoyKanbanLane[];
-  onDragChange: (laneKey: string, evt: any) => void;
   moveCardToLane: (card: ChoyKanbanCard, from: string, to: string) => void;
   commitMove: (move: ChoyKanbanMove) => void;
   onCardClick: (card: ChoyKanbanCard) => void;
@@ -274,7 +273,88 @@ describe('ChoyKanbanView chrome', () => {
     mounted.unmount();
   });
 
-  test('onDragChange covers removed/added/moved and readonly guard', async () => {
+  test('defaults to lane drag with VirtualLaneBody (no Sortable)', async () => {
+    const mounted = mountApp(ChoyKanbanView as any, {
+      props: {
+        store: makeStore(),
+        autoBootstrap: false,
+        showActions: false,
+      },
+    });
+    await flushPromises();
+    const state = mounted.setupState() as KanbanSetup;
+    state.displayLanes = twoLanes();
+    await nextTick();
+
+    expect(mounted.q('[data-drag-mode=lane]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-kanban-virtual-lane-body]')).not.toBeNull();
+    expect(mounted.q('.fe-stub-draggable')).toBeNull();
+    expect(mounted.q('[data-testid=choy-kanban-move-to-lane]')).not.toBeNull();
+    mounted.unmount();
+  });
+
+  test('readonly forces none dragMode and blocks move-to-lane', async () => {
+    const moves: ChoyKanbanMove[] = [];
+    const readonlyMount = mountApp(ChoyKanbanView as any, {
+      props: {
+        store: makeStore(),
+        autoBootstrap: false,
+        showActions: false,
+        readonly: true,
+      },
+      on: {
+        onCardMove: (m: ChoyKanbanMove) => moves.push(m),
+      },
+    });
+    await flushPromises();
+    const rs = readonlyMount.setupState() as KanbanSetup;
+    rs.displayLanes = twoLanes();
+    await nextTick();
+    const dragged = { id: 'c1', title: 'Card One', laneKey: 'todo' };
+    rs.moveCardToLane(dragged, 'todo', 'done');
+    expect(moves.length).toBe(0);
+    expect(readonlyMount.q('[data-testid=choy-kanban-move-to-lane]')).toBeNull();
+    expect(readonlyMount.q('[data-testid=choy-kanban-virtual-lane-body]')).not.toBeNull();
+    expect(readonlyMount.q('[data-drag-mode=none]')).not.toBeNull();
+    expect(readonlyMount.q('[data-virtualized=false]')).not.toBeNull();
+    expect(readonlyMount.text()).toContain('Card One');
+    readonlyMount.unmount();
+  });
+
+  test('readonly long lane mounts virtual spacer; short lane does not', async () => {
+    const mounted = mountApp(ChoyKanbanView as any, {
+      props: {
+        store: makeStore(),
+        autoBootstrap: false,
+        showActions: false,
+        readonly: true,
+      },
+    });
+    await flushPromises();
+    const state = mounted.setupState() as KanbanSetup;
+    const many = Array.from({ length: 40 }, (_, i) => ({
+      id: `c${i}`,
+      title: `Card ${i}`,
+      laneKey: 'todo',
+    }));
+    state.displayLanes = [
+      { key: 'todo', label: 'Todo', cards: many },
+      { key: 'done', label: 'Done', cards: [{ id: 'd1', title: 'Done One', laneKey: 'done' }] },
+    ];
+    await nextTick();
+    await flushPromises();
+
+    const spacer = mounted.q('[data-testid=choy-kanban-virtual-spacer]');
+    expect(spacer).not.toBeNull();
+    expect(spacer?.className ?? '').toContain('shrink-0');
+    const bodies = mounted.qa('[data-testid=choy-kanban-virtual-lane-body]');
+    expect(bodies.some((el) => el.getAttribute('data-virtualized') === 'true')).toBe(true);
+    expect(bodies.some((el) => el.getAttribute('data-virtualized') === 'false')).toBe(true);
+    expect(mounted.q('.fe-stub-draggable')).toBeNull();
+    mounted.unmount();
+  });
+
+  test('lane drop commits cross-lane move (default dragMode)', async () => {
     const moves: ChoyKanbanMove[] = [];
     const mounted = mountApp(ChoyKanbanView as any, {
       props: {
@@ -287,15 +367,38 @@ describe('ChoyKanbanView chrome', () => {
       },
     });
     await flushPromises();
-    const state = mounted.setupState() as KanbanSetup;
+    const state = mounted.setupState() as KanbanSetup & {
+      onLaneDrop: (event: DragEvent, lane: ChoyKanbanLane) => void;
+      onLaneDragOver: (event: DragEvent, lane: ChoyKanbanLane) => void;
+      laneDropActiveKey: string;
+    };
     state.displayLanes = twoLanes();
     await nextTick();
 
-    const dragged = { id: 'c1', title: 'Card One', laneKey: 'todo' };
-    state.onDragChange('todo', null);
-    state.onDragChange('todo', { removed: { element: dragged, oldIndex: 0 } });
-    state.onDragChange('done', { added: { element: dragged, newIndex: 0 } });
-    await flushPromises();
+    expect(mounted.q('[data-drag-mode=lane]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-kanban-virtual-lane-body]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-kanban-move-to-lane]')).not.toBeNull();
+
+    const mime = 'application/x-choy-kanban-card';
+    const payload = JSON.stringify({ cardId: 'c1', fromLaneKey: 'todo' });
+    const dropLane = state.displayLanes[1]!;
+    const dt = {
+      types: [mime, 'text/plain'],
+      dropEffect: 'none',
+      getData: (type: string) => (type === mime ? payload : type === 'text/plain' ? 'c1' : ''),
+    };
+    state.onLaneDragOver(
+      { preventDefault() {}, dataTransfer: dt } as unknown as DragEvent,
+      dropLane,
+    );
+    expect(state.laneDropActiveKey).toBe('done');
+
+    state.onLaneDrop(
+      { preventDefault() {}, dataTransfer: dt } as unknown as DragEvent,
+      dropLane,
+    );
+
+    // Assert optimistic board state before persistMove/sync settles (fake store).
     expect(moves.length).toBe(1);
     expect(moves[0]).toEqual({
       cardId: 'c1',
@@ -303,50 +406,10 @@ describe('ChoyKanbanView chrome', () => {
       toLaneKey: 'done',
       toIndex: 0,
     });
-    expect(dragged.laneKey).toBe('done');
-
-    // added without matching pendingRemoval falls back to element.laneKey
-    const orphan = { id: 'c2', title: 'Two', laneKey: 'todo' };
-    state.displayLanes = [
-      { key: 'todo', label: 'Todo', cards: [orphan] },
-      { key: 'done', label: 'Done', cards: [] },
-    ];
-    await nextTick();
-    state.onDragChange('done', { added: { element: orphan, newIndex: 0 } });
+    expect(state.displayLanes[0]!.cards.length).toBe(0);
+    expect(state.displayLanes[1]!.cards.map((c) => c.id)).toEqual(['c1']);
     await flushPromises();
-    expect(moves[moves.length - 1]!.fromLaneKey).toBe('todo');
-
-    // same-lane reorder
-    state.onDragChange('done', {
-      moved: { element: orphan, newIndex: 0, oldIndex: 0 },
-    });
-    await flushPromises();
-    expect(moves[moves.length - 1]!.fromLaneKey).toBe('done');
-    expect(moves[moves.length - 1]!.toLaneKey).toBe('done');
-
     mounted.unmount();
-
-    const readonlyMount = mountApp(ChoyKanbanView as any, {
-      props: {
-        store: makeStore(),
-        autoBootstrap: false,
-        showActions: false,
-        readonly: true,
-      },
-    });
-    await flushPromises();
-    const rs = readonlyMount.setupState() as KanbanSetup;
-    rs.displayLanes = twoLanes();
-    await nextTick();
-    const before = moves.length;
-    rs.onDragChange('todo', { removed: { element: dragged, oldIndex: 0 } });
-    rs.moveCardToLane(dragged, 'todo', 'done');
-    expect(moves.length).toBe(before);
-    expect(readonlyMount.q('[data-testid=choy-kanban-move-to-lane]')).toBeNull();
-    expect(readonlyMount.q('.fe-stub-draggable')).toBeNull();
-    expect(readonlyMount.q('[data-testid=choy-kanban-lane-static]')).not.toBeNull();
-    expect(readonlyMount.text()).toContain('Card One');
-    readonlyMount.unmount();
   });
 
   test('handleMoveError uses onMoveError or default ChoyMessage', async () => {

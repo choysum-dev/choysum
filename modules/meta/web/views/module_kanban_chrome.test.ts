@@ -9,6 +9,7 @@ import {
   formatModuleOpSummary,
   isModuleInstalled,
   manifestSummaryText,
+  moduleKanbanCardBadgeVariant,
   moduleStatusBadgeClass,
   moduleStatusBadgeVariant,
   resolveModuleKanbanCardId,
@@ -32,6 +33,15 @@ test('moduleStatusBadgeVariant: maps to ChoyBadge variants', () => {
   expect(moduleStatusBadgeVariant('uninstalled')).toBe('outline');
   expect(moduleStatusBadgeVariant('broken')).toBe('destructive');
   expect(moduleStatusBadgeVariant('queued')).toBe('secondary');
+});
+
+test('moduleKanbanCardBadgeVariant: keeps Install CTA as the only primary accent', () => {
+  expect(moduleKanbanCardBadgeVariant('installed')).toBe('secondary');
+  expect(moduleKanbanCardBadgeVariant('succeeded')).toBe('secondary');
+  expect(moduleKanbanCardBadgeVariant('uninstalled')).toBe('outline');
+  expect(moduleKanbanCardBadgeVariant('queued')).toBe('secondary');
+  expect(moduleKanbanCardBadgeVariant('broken')).toBe('destructive');
+  expect(moduleKanbanCardBadgeVariant('installed', false)).toBe('destructive');
 });
 
 test('isModuleInstalled: case-insensitive installed only', () => {
@@ -167,11 +177,18 @@ test('shouldShowModuleKanbanCardStatusBadge: hide when lane matches status', () 
       laneKey: 'InstalledStatus=installed',
     }),
   ).toBe(true);
+  // Flat board (no GroupBy): always show status on the card.
   expect(
     shouldShowModuleKanbanCardStatusBadge({
       installedStatus: 'installed',
       laneKey: 'all',
       laneLabel: 'All',
+    }),
+  ).toBe(true);
+  expect(
+    shouldShowModuleKanbanCardStatusBadge({
+      installedStatus: 'uninstalled',
+      laneKey: 'all',
     }),
   ).toBe(true);
   expect(

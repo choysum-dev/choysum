@@ -152,7 +152,7 @@ SPDX-License-Identifier: Apache-2.0
           <ChoyKanbanLoadSentinel
             v-if="choyKanbanLaneRemain(lane) > 0"
             class="col-span-full"
-            :disabled="boardBusy"
+            :disabled="laneFetchBusy"
             @visible="onLaneLoadMore(lane)"
           />
 
@@ -165,7 +165,7 @@ SPDX-License-Identifier: Apache-2.0
               :lane="lane"
               :remain="choyKanbanLaneRemain(lane)"
               :load-more="() => onLaneLoadMore(lane)"
-              :busy="boardBusy"
+              :busy="laneFetchBusy"
             >
               <ChoyButton
                 v-if="choyKanbanLaneRemain(lane) > 0"
@@ -174,7 +174,7 @@ SPDX-License-Identifier: Apache-2.0
                 size="sm"
                 class="w-full"
                 data-testid="choy-kanban-load-more"
-                :disabled="boardBusy"
+                :disabled="laneFetchBusy"
                 @click="onLaneLoadMore(lane)"
               >
                 {{ formatChoyKanbanLoadMoreLabel(choyKanbanLaneRemain(lane), (n) => _t('%s more', n)) }}
@@ -189,14 +189,21 @@ SPDX-License-Identifier: Apache-2.0
         class="choy-kanban-view__board flex min-h-0 flex-1 gap-3 overflow-x-auto overflow-y-hidden pb-1"
         role="list"
         :aria-label="_t('Kanban board')"
+        :data-drag-mode="resolvedDragMode"
+        data-testid="choy-kanban-board"
       >
         <section
           v-for="lane in displayLanes"
           :key="lane.key"
           class="choy-kanban-view__lane flex h-full min-h-0 w-72 shrink-0 flex-col rounded-md bg-muted/40"
+          :class="{ 'ring-2 ring-ring/40': laneDropActiveKey === lane.key }"
           role="listitem"
           :aria-label="lane.label"
           :data-mobile-active="lane.key === mobileLaneKey ? 'true' : 'false'"
+          :data-drag-mode="resolvedDragMode"
+          @dragover="onLaneDragOver($event, lane)"
+          @dragleave="onLaneDragLeave($event, lane)"
+          @drop="onLaneDrop($event, lane)"
         >
           <!-- Soft lane wash only (no outer border); cards keep the bordered surface. -->
           <header class="flex items-center justify-between gap-2 px-2 pb-2 pt-2">
@@ -212,101 +219,31 @@ SPDX-License-Identifier: Apache-2.0
             </slot>
           </header>
 
-          <div
-            class="choy-kanban-view__lane-body flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2"
-            :data-testid="readonly ? 'choy-kanban-lane-static' : undefined"
+          <ChoyKanbanVirtualLaneBody
+            :cards="lane.cards"
+            :lane="lane"
+            :virtualize="virtualize"
+            :estimate-card-size="estimateCardSize"
+            :remain="choyKanbanLaneRemain(lane)"
+            :load-more-busy="laneFetchBusy"
+            :lane-drag="resolvedDragMode === 'lane' && !effectiveReadonly"
+            :other-lanes="otherLanes(lane.key)"
+            :empty-label="_t('No cards')"
+            :move-to-lane-label="_t('Move to lane')"
+            :move-to-label-fn="(label) => _t('Move to %s', label)"
+            @card-click="onCardClick"
+            @load-more="onLaneLoadMore(lane)"
+            @move-to-lane="(card, toKey) => moveCardToLane(card, lane.key, toKey)"
           >
-            <template v-if="readonly">
-              <article
-                v-for="card in lane.cards"
-                :key="card.id"
-                class="choy-kanban-view__card cursor-pointer rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring"
-                :data-card-id="card.id"
-                tabindex="0"
-                role="article"
-                :aria-label="card.title"
-                @click="onCardClick(card)"
-                @keydown.enter.self.prevent="onCardClick(card)"
-              >
-                <div class="flex items-start gap-1">
-                  <div class="min-w-0 flex-1">
-                    <slot name="card" :card="card" :lane="lane">
-                      <ChoyKanbanCardFallback :card="card" />
-                    </slot>
-                  </div>
-                </div>
-              </article>
+            <template #card="slotProps">
+              <slot name="card" v-bind="slotProps">
+                <ChoyKanbanCardFallback :card="slotProps.card" />
+              </slot>
             </template>
-            <draggable
-              v-else
-              class="flex flex-col gap-2"
-              :list="lane.cards"
-              item-key="id"
-              group="choy-kanban"
-              :animation="150"
-              :disabled="effectiveReadonly"
-              ghost-class="choy-kanban-ghost"
-              @change="(evt: DraggableChangeEvent) => onDragChange(lane.key, evt)"
-            >
-              <template #item="{ element: card }">
-                <article
-                  class="choy-kanban-view__card rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring"
-                  :class="effectiveReadonly ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'"
-                  :data-card-id="card.id"
-                  tabindex="0"
-                  role="article"
-                  :aria-label="card.title"
-                  @click="onCardClick(card)"
-                  @keydown.enter.self.prevent="onCardClick(card)"
-                >
-                  <div class="flex items-start gap-1">
-                    <div class="min-w-0 flex-1">
-                      <slot name="card" :card="card" :lane="lane">
-                        <ChoyKanbanCardFallback :card="card" />
-                      </slot>
-                    </div>
-                    <DropdownMenu v-if="!effectiveReadonly && otherLanes(lane.key).length">
-                      <DropdownMenuTrigger as-child>
-                        <ChoyButton
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          class="h-7 w-7 shrink-0 px-0"
-                          data-testid="choy-kanban-move-to-lane"
-                          :aria-label="_t('Move to lane')"
-                          @click.stop
-                        >
-                          <MoreHorizontal class="size-4" aria-hidden="true" />
-                        </ChoyButton>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" class="min-w-[10rem]">
-                        <DropdownMenuItem
-                          v-for="target in otherLanes(lane.key)"
-                          :key="target.key"
-                          @select="moveCardToLane(card, lane.key, target.key)"
-                        >
-                          {{ _t('Move to %s', target.label) }}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </article>
-              </template>
-            </draggable>
-
-            <div
-              v-if="lane.cards.length === 0"
-              class="rounded-md border border-dashed border-border/70 px-3 py-6 text-center text-xs text-muted-foreground"
-            >
+            <template #card-empty>
               <slot name="card-empty" :lane="lane">{{ _t('No cards') }}</slot>
-            </div>
-
-            <ChoyKanbanLoadSentinel
-              v-if="choyKanbanLaneRemain(lane) > 0"
-              :disabled="boardBusy"
-              @visible="onLaneLoadMore(lane)"
-            />
-          </div>
+            </template>
+          </ChoyKanbanVirtualLaneBody>
 
           <div
             v-if="$slots['lane-footer'] || choyKanbanLaneRemain(lane) > 0"
@@ -317,7 +254,7 @@ SPDX-License-Identifier: Apache-2.0
               :lane="lane"
               :remain="choyKanbanLaneRemain(lane)"
               :load-more="() => onLaneLoadMore(lane)"
-              :busy="boardBusy"
+              :busy="laneFetchBusy"
             >
               <ChoyButton
                 v-if="choyKanbanLaneRemain(lane) > 0"
@@ -326,7 +263,7 @@ SPDX-License-Identifier: Apache-2.0
                 size="sm"
                 class="w-full"
                 data-testid="choy-kanban-load-more"
-                :disabled="boardBusy"
+                :disabled="laneFetchBusy"
                 @click="onLaneLoadMore(lane)"
               >
                 {{ formatChoyKanbanLoadMoreLabel(choyKanbanLaneRemain(lane), (n) => _t('%s more', n)) }}
@@ -349,8 +286,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed, defineComponent, h, ref, useSlots, watch, type PropType } from 'vue';
-import draggable from 'vuedraggable';
-import { MoreHorizontal, RefreshCw } from 'lucide-vue-next';
+import { RefreshCw } from 'lucide-vue-next';
 import type { ClassValue } from '../../lib/utils';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { Lane } from '@/web/web/query/types';
@@ -361,6 +297,7 @@ import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
 import ChoyViewActionBar from '@/web/web/components/view/ChoyViewActionBar.vue';
 import ChoyViewBusyHost from '@/web/web/components/view/ChoyViewBusyHost.vue';
 import ChoyKanbanLoadSentinel from '@/web/web/components/view/ChoyKanbanLoadSentinel.vue';
+import ChoyKanbanVirtualLaneBody from '@/web/web/components/view/ChoyKanbanVirtualLaneBody.vue';
 import { useProvideViewScope } from '@/web/web/components/view/viewScopeKeys';
 import DropdownMenu from '../vendor/ui/dropdown-menu/DropdownMenu.vue';
 import DropdownMenuContent from '../vendor/ui/dropdown-menu/DropdownMenuContent.vue';
@@ -390,8 +327,15 @@ import {
   type ChoyKanbanLoadMore,
   type ChoyKanbanMove,
 } from './kanbanViewHelpers';
+import {
+  CHOY_KANBAN_LANE_DRAG_MIME,
+  decodeChoyKanbanLaneDragPayload,
+  resolveChoyKanbanLaneDropMove,
+  type ChoyKanbanDragMode,
+  type ChoyKanbanVirtualizeMode,
+} from './kanbanVirtualHelpers';
 
-/** Shared default card body for readonly and draggable lane cards. */
+/** Shared default card body for lane cards. */
 const ChoyKanbanCardFallback = defineComponent({
   name: 'ChoyKanbanCardFallback',
   props: {
@@ -410,7 +354,7 @@ const ChoyKanbanCardFallback = defineComponent({
 /**
  * Store-bound kanban board. Requires :store or a page-provided store.
  * Owns createKanbanController, lane sync, search apply, load-more, and move persist.
- * Dense Admin chrome: ActionTray, vuedraggable, mobile lane select, move-to-lane menu.
+ * Lane bodies use VirtualLaneBody; cross-lane moves use HTML5 whole-lane drop.
  */
 const { _t } = createTranslate('web', { scope: 'web/components/view/KanbanView' });
 
@@ -424,6 +368,16 @@ const props = withDefaults(
     showActions?: boolean;
     createLabel?: string;
     readonly?: boolean;
+    /**
+     * Card drag behavior. `readonly` forces `none`.
+     * - `lane`: HTML5 drag + whole-lane drop (append to target lane)
+     * - `none`: no drag
+     */
+    dragMode?: ChoyKanbanDragMode;
+    /** Lane-body virtualization: `auto` uses the loaded-card threshold. */
+    virtualize?: ChoyKanbanVirtualizeMode;
+    /** Estimated card height for the virtualizer (px). */
+    estimateCardSize?: number;
     keywordFields?: string[];
     titleField?: string;
     flatLaneLabel?: string;
@@ -450,6 +404,8 @@ const props = withDefaults(
     showActions: true,
     createLabel: undefined,
     readonly: false,
+    dragMode: 'lane',
+    virtualize: 'auto',
     autoBootstrap: true,
     // Keep omitted as undefined (not false) so matching page-store views auto-register.
     registerActionTarget: undefined,
@@ -527,13 +483,23 @@ const displayLanes = computed({
   },
 });
 
+/** Search / move: drives BusyHost and chrome (e.g. hide New). */
 const boardBusy = computed(() => engine.boardBusy.value);
+/** Lane append in flight; disable sentinel / load-more only. */
+const loadMoreBusy = computed(() => engine.loadMorePending.value);
+const laneFetchBusy = computed(() => boardBusy.value || loadMoreBusy.value);
 const effectiveReadonly = computed(() => props.readonly || boardBusy.value);
+const resolvedDragMode = computed<ChoyKanbanDragMode>(() => {
+  if (props.readonly) return 'none';
+  return props.dragMode ?? 'lane';
+});
 const resolvedCreateLabel = computed(() => props.createLabel || _t('New'));
 const laneCount = computed(() => displayLanes.value.length);
 const isFlatBoard = computed(() => isChoyKanbanFlatBoard(displayLanes.value));
 
 const mobileLaneKey = ref('');
+/** Lane key currently highlighted as an HTML5 drop target. */
+const laneDropActiveKey = ref('');
 
 watch(
   displayLanes,
@@ -606,58 +572,51 @@ function moveCardToLane(card: ChoyKanbanCard, fromLaneKey: string, toLaneKey: st
   });
 }
 
-type DraggableAdded = { element: ChoyKanbanCard; newIndex: number };
-type DraggableRemoved = { element: ChoyKanbanCard; oldIndex: number };
-type DraggableMoved = { element: ChoyKanbanCard; newIndex: number; oldIndex: number };
-type DraggableChangeEvent = {
-  added?: DraggableAdded;
-  removed?: DraggableRemoved;
-  moved?: DraggableMoved;
-};
+function laneDropEnabled(): boolean {
+  return resolvedDragMode.value === 'lane' && !effectiveReadonly.value;
+}
 
-/** Cross-lane moves fire removed then added; persist only from the added side. */
-const pendingRemoval = ref<{ cardId: string; fromLaneKey: string } | null>(null);
+function readLaneDragPayload(event: DragEvent) {
+  const dt = event.dataTransfer;
+  if (!dt) return null;
+  return decodeChoyKanbanLaneDragPayload(dt.getData(CHOY_KANBAN_LANE_DRAG_MIME));
+}
 
-function onDragChange(laneKey: string, evt: DraggableChangeEvent): void {
-  if (effectiveReadonly.value || !evt) return;
+function onLaneDragOver(event: DragEvent, lane: ChoyKanbanLane): void {
+  if (!laneDropEnabled()) return;
+  const types = event.dataTransfer?.types;
+  const accepts =
+    !!types &&
+    (Array.from(types as ArrayLike<string>).includes(CHOY_KANBAN_LANE_DRAG_MIME) ||
+      Array.from(types as ArrayLike<string>).includes('text/plain'));
+  if (!accepts) return;
+  event.preventDefault();
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+  laneDropActiveKey.value = lane.key;
+}
 
-  if (evt.removed) {
-    pendingRemoval.value = {
-      cardId: evt.removed.element.id,
-      fromLaneKey: laneKey,
-    };
-    return;
+function onLaneDragLeave(event: DragEvent, lane: ChoyKanbanLane): void {
+  if (!laneDropEnabled()) return;
+  const related = event.relatedTarget as Node | null;
+  const current = event.currentTarget as Node | null;
+  if (related && current && current.contains(related)) return;
+  if (laneDropActiveKey.value === lane.key) {
+    laneDropActiveKey.value = '';
   }
+}
 
-  if (evt.added) {
-    const from =
-      pendingRemoval.value?.cardId === evt.added.element.id
-        ? pendingRemoval.value.fromLaneKey
-        : evt.added.element.laneKey;
-    pendingRemoval.value = null;
-    // Cards were already moved in-place by vuedraggable; update laneKey and persist.
-    evt.added.element.laneKey = laneKey;
-    const finalized: ChoyKanbanMove = {
-      cardId: evt.added.element.id,
-      fromLaneKey: from,
-      toLaneKey: laneKey,
-      toIndex: evt.added.newIndex,
-    };
-    emit('card-move', finalized);
-    void engine.persistMove(finalized);
-    return;
-  }
-
-  if (evt.moved) {
-    const finalized: ChoyKanbanMove = {
-      cardId: evt.moved.element.id,
-      fromLaneKey: laneKey,
-      toLaneKey: laneKey,
-      toIndex: evt.moved.newIndex,
-    };
-    emit('card-move', finalized);
-    void engine.persistMove(finalized);
-  }
+function onLaneDrop(event: DragEvent, lane: ChoyKanbanLane): void {
+  if (!laneDropEnabled()) return;
+  event.preventDefault();
+  laneDropActiveKey.value = '';
+  const payload = readLaneDragPayload(event);
+  const move = resolveChoyKanbanLaneDropMove({
+    payload,
+    toLaneKey: lane.key,
+    toLaneCardCount: lane.cards.length,
+  });
+  if (!move) return;
+  commitMove(move);
 }
 
 defineExpose({
@@ -673,10 +632,6 @@ defineExpose({
   .choy-kanban-view__board > .choy-kanban-view__lane:not([data-mobile-active='true']) {
     display: none;
   }
-}
-
-.choy-kanban-ghost {
-  opacity: 0.45;
 }
 
 /*

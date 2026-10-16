@@ -177,7 +177,7 @@ export function createKanbanController(store: WebModelStore<any>): IKanbanContro
       if (laneRecords.value[to]) {
         const targetList = laneRecords.value[to];
 
-        // vuedraggable may already have moved the element into the target array.
+        // Optimistic UI may already have placed the card in the target array.
         const existingIdx = targetList.findIndex(r => r.payload?.Id === cardId || r.key === cardId);
 
         // Prefer the backend record, otherwise patch the existing payload locally.

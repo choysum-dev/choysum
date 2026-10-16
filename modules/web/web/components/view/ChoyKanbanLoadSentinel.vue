@@ -9,6 +9,9 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 /**
  * Fires `visible` when this node intersects the lane scrollport (for auto load-more).
  * Must be rendered inside `.choy-kanban-view__lane-body`.
+ *
+ * After a fire, waits for a non-intersecting frame (or a short cooldown after busy
+ * clears) before emitting again so load-more ↔ laneFetchBusy does not storm RPCs.
  */
 const props = withDefaults(
   defineProps<{
@@ -21,12 +24,32 @@ const emit = defineEmits<{
   visible: [];
 }>();
 
+/** Delay before re-arming while still intersecting after busy clears (ms). */
+const REARM_AFTER_BUSY_MS = 250;
+
 const root = ref<HTMLElement | null>(null);
 let observer: IntersectionObserver | null = null;
+/** False after emit until leave-view or busy-clear cooldown. */
+let armed = true;
+let lastIntersecting = false;
+let rearmTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearRearmTimer(): void {
+  if (rearmTimer != null) {
+    clearTimeout(rearmTimer);
+    rearmTimer = null;
+  }
+}
 
 function disconnect(): void {
   observer?.disconnect();
   observer = null;
+}
+
+function fireVisible(): void {
+  if (props.disabled || !armed) return;
+  armed = false;
+  emit('visible');
 }
 
 function connect(): void {
@@ -39,10 +62,13 @@ function connect(): void {
     null;
   observer = new IntersectionObserver(
     (entries) => {
-      if (props.disabled) return;
-      if (entries.some((entry) => entry.isIntersecting)) {
-        emit('visible');
+      const intersecting = entries.some((entry) => entry.isIntersecting);
+      lastIntersecting = intersecting;
+      if (!intersecting) {
+        armed = true;
+        return;
       }
+      fireVisible();
     },
     { root: scrollRoot, rootMargin: '80px 0px', threshold: 0 },
   );
@@ -50,16 +76,47 @@ function connect(): void {
 }
 
 onMounted(connect);
-onBeforeUnmount(disconnect);
+onBeforeUnmount(() => {
+  clearRearmTimer();
+  disconnect();
+});
+
 watch(
   () => props.disabled,
-  () => {
-    // Re-check when busy clears while the sentinel stays in view.
-    if (!props.disabled && root.value) {
+  (disabled, wasDisabled) => {
+    if (disabled) {
+      clearRearmTimer();
+      return;
+    }
+    // Busy cleared: re-bind observer, then re-arm after cooldown so a short
+    // lane can chain-load once without same-tick storms.
+    if (wasDisabled && root.value) {
       connect();
+      clearRearmTimer();
+      rearmTimer = setTimeout(() => {
+        rearmTimer = null;
+        armed = true;
+        if (!props.disabled && lastIntersecting) {
+          fireVisible();
+        }
+      }, REARM_AFTER_BUSY_MS);
     }
   },
 );
+
+defineExpose({
+  /** Test hook: whether the next intersecting callback may emit. */
+  isArmed: () => armed,
+  /** Test hook: simulate IO intersection changes. */
+  handleIntersectionForTest: (intersecting: boolean) => {
+    lastIntersecting = intersecting;
+    if (!intersecting) {
+      armed = true;
+      return;
+    }
+    fireVisible();
+  },
+});
 </script>
 
 <template>

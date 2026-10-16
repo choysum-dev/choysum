@@ -33,6 +33,22 @@ export function moduleStatusBadgeVariant(
   return 'secondary';
 }
 
+/**
+ * Quieter badge variants for the module kanban gallery so status does not
+ * compete with the Install primary CTA (installed is secondary, not default).
+ */
+export function moduleKanbanCardBadgeVariant(
+  status?: string,
+  available?: boolean,
+): 'default' | 'secondary' | 'destructive' | 'outline' {
+  if (available === false) return 'destructive';
+  const val = String(status || '').toLowerCase();
+  if (val === 'broken' || val === 'failed') return 'destructive';
+  if (val === 'uninstalled') return 'outline';
+  // installed / succeeded / queued / unknown — muted chips
+  return 'secondary';
+}
+
 /** True when InstalledStatus means the module is installed. */
 export function isModuleInstalled(status?: string): boolean {
   return String(status || '').toLowerCase() === 'installed';

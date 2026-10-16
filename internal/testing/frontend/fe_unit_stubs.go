@@ -18,7 +18,6 @@ type feUnitStubPaths struct {
 	Scope               string
 	Permission          string
 	PageComposable      string
-	Vuedraggable        string
 	TipTapVue3          string
 	TipTapStarterKit    string
 	TipTapExtensionLink string
@@ -36,8 +35,6 @@ func feUnitPackageStubPath(importPath string, stubs feUnitStubPaths) (string, bo
 		return stubs.Router, true
 	case "@choysum/page-mount":
 		return stubs.PageMount, true
-	case "vuedraggable":
-		return stubs.Vuedraggable, true
 	case "@tiptap/vue-3":
 		return stubs.TipTapVue3, true
 	case "@tiptap/starter-kit":

@@ -127,7 +127,6 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 			Scope:               filepath.Join(stubDir, "store_scope_manager.js"),
 			Permission:          filepath.Join(stubDir, "use_permission.js"),
 			PageComposable:      filepath.Join(stubDir, "page_composables.js"),
-			Vuedraggable:        filepath.Join(stubDir, "vuedraggable.js"),
 			TipTapVue3:          filepath.Join(stubDir, "tiptap_vue3.js"),
 			TipTapStarterKit:    filepath.Join(stubDir, "tiptap_starter_kit.js"),
 			TipTapExtensionLink: filepath.Join(stubDir, "tiptap_extension_link.js"),
@@ -141,7 +140,7 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 		plugins = append(plugins, api.Plugin{
 			Name: "choysum-fe-unit-package-stubs",
 			Setup: func(build api.PluginBuild) {
-				build.OnResolve(api.OnResolveOptions{Filter: `^(vue-router|@choysum/page-mount|vuedraggable|@tiptap/vue-3|@tiptap/starter-kit|@tiptap/extension-link|dompurify|@unovis/vue|@unovis/ts|reka-ui|lucide-vue-next|vue-sonner)$`},
+				build.OnResolve(api.OnResolveOptions{Filter: `^(vue-router|@choysum/page-mount|@tiptap/vue-3|@tiptap/starter-kit|@tiptap/extension-link|dompurify|@unovis/vue|@unovis/ts|reka-ui|lucide-vue-next|vue-sonner)$`},
 					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
 						// Filter and feUnitPackageStubPath must stay in sync; if they
 						// drifted, fall through instead of resolving to an empty path.

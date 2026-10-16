@@ -303,9 +303,9 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
     });
   }
 
-  const boardBusy = computed(
-    () => movePending.value || loadMorePending.value || searchPending.value,
-  );
+  // Full-board chrome / BusyHost: search and move only.
+  // Lane load-more uses loadMorePending so New / overlay do not flash.
+  const boardBusy = computed(() => movePending.value || searchPending.value);
 
   return {
     lanes,

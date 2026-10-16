@@ -64,7 +64,6 @@ SPDX-License-Identifier: Apache-2.0
         <ChoySearchView
           class="min-w-0 w-full"
           :store="store"
-          :default-groups="defaultGroups"
           @query-update="onQueryUpdate"
         />
       </template>
@@ -104,8 +103,8 @@ SPDX-License-Identifier: Apache-2.0
             <span class="name truncate text-sm font-medium text-foreground">{{ recordField(card, 'ModuleName') }}</span>
             <ChoyBadge
               v-if="shouldShowCardStatusBadge(card, lane)"
-              :variant="statusBadgeVariant(payloadRecord(card))"
-              class="shrink-0 font-normal"
+              :variant="cardBadgeVariant(payloadRecord(card))"
+              class="shrink-0 px-1.5 py-0 text-[10px] font-normal"
             >
               {{ statusLabel(String(payloadRecord(card).InstalledStatus ?? ''), payloadRecord(card).Available) }}
             </ChoyBadge>
@@ -117,7 +116,7 @@ SPDX-License-Identifier: Apache-2.0
           </div>
           <div
             v-if="manifestSummary(recordField(card, 'ManifestJson'))"
-            class="line-clamp-2 text-muted-foreground"
+            class="line-clamp-1 text-muted-foreground"
           >
             {{ manifestSummary(recordField(card, 'ManifestJson')) }}
           </div>
@@ -339,7 +338,7 @@ import { restoreDialogFocus } from '@/auth/web/components/preferences/dialog_foc
 import { trapDialogTabKey } from '@/auth/web/components/preferences/dialog_focus_trap';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
-import type { GroupBySpec, Lane } from '@/web/web/query/types';
+import type { Lane } from '@/web/web/query/types';
 import {
   ChoyBadge,
   ChoyButton,
@@ -363,8 +362,8 @@ import {
   formatModuleOpSummary,
   isModuleInstalled,
   manifestSummaryText,
+  moduleKanbanCardBadgeVariant,
   moduleStatusBadgeClass,
-  moduleStatusBadgeVariant,
   resolveModuleKanbanCardId,
   resolveModuleKanbanCardKey,
   resolveModuleKanbanLaneStatus,
@@ -384,9 +383,7 @@ const { showHeader } = props;
 const moduleStore = props.moduleStore;
 
 const keywordFields = ['ModuleName', 'Version', 'OriginType', 'OriginRef'];
-/** Board lanes follow install status (same field List shows as a column); removable like any group. */
-const defaultGroups = ['InstalledStatus'] as GroupBySpec<MetaModuleIndex>[];
-/** Prefer installed modules first in the board. */
+/** Prefer installed modules first when the user groups by InstalledStatus. */
 const laneOrder = ['installed', 'uninstalled'] as const;
 
 const router = useRouter();
@@ -577,8 +574,11 @@ function statusBadgeClass(status?: string, available?: boolean): string {
   return moduleStatusBadgeClass(status, available);
 }
 
-function statusBadgeVariant(row: ClientModelProps<MetaModuleIndex>) {
-  return moduleStatusBadgeVariant(String(row.InstalledStatus ?? ''), row.Available as boolean | undefined);
+function cardBadgeVariant(row: ClientModelProps<MetaModuleIndex>) {
+  return moduleKanbanCardBadgeVariant(
+    String(row.InstalledStatus ?? ''),
+    row.Available as boolean | undefined,
+  );
 }
 
 function statusLabel(status?: string, available?: boolean) {
@@ -731,3 +731,10 @@ defineExpose({
   targetModule,
 });
 </script>
+
+<style scoped>
+/* Denser gallery than ChoyKanbanView flat default (18rem) for the module index. */
+.module-kanban-view :deep([data-testid='choy-kanban-flat-board']) {
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+}
+</style>
