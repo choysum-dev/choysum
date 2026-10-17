@@ -664,6 +664,207 @@ import { QuestionFilled } from '@element-plus/icons-vue';
 	}
 }
 
+func TestStripJSQuotedSpans(t *testing.T) {
+	cases := []struct {
+		in, want string
+	}{
+		{"", ""},
+		{`_t('Select Company')`, `_t( )`},
+		{`_t("Select Company")`, `_t( )`},
+		{"_t(`Select Company`)", `_t( )`},
+		{`CompanyListView`, `CompanyListView`},
+		{`foo + 'bar' + Company`, `foo +   + Company`},
+		{`'a\'b' + Company`, `  + Company`},
+		{"`'unclosed", " "},
+		{"'\\", " "},
+		{"`prefix ${CompanyListView.name} suffix`", "${CompanyListView.name}"},
+		{"`nested ${foo({ bar: 1 })}`", "${foo({ bar: 1 })}"},
+		{"`a\\nb ${Name}`", "${Name}"},
+		{"`${a\\nb}`", "${a\\nb}"},
+		{"`${fn('}') + CompanyListView.name}`", "${fn('}') + CompanyListView.name}"},
+		{"`${fn(\"}\")}`", "${fn(\"}\")}"},
+		{"`${fn(`}`)}`", "${fn(`}`)}"},
+		{"`trailing $`", " "},
+		{"`trailing $x`", " "},
+		{"`${fn('\\` ", "${fn('\\` "},
+		{"`${fn('unclosed`", "${fn('unclosed`"},
+	}
+	for _, tc := range cases {
+		if got := stripJSQuotedSpans(tc.in); got != tc.want {
+			t.Fatalf("stripJSQuotedSpans(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestSkipJSQuotedSpan(t *testing.T) {
+	if got := skipJSQuotedSpan("", 0); got != 0 {
+		t.Fatalf("skipJSQuotedSpan(empty) = %d, want 0", got)
+	}
+	if got := skipJSQuotedSpan("'", 1); got != 1 {
+		t.Fatalf("skipJSQuotedSpan past end = %d, want 1", got)
+	}
+	if got := skipJSQuotedSpan("'abc", 0); got != 4 {
+		t.Fatalf("skipJSQuotedSpan(unclosed) = %d, want 4", got)
+	}
+	if got := skipJSQuotedSpan("'a\\'b'", 0); got != 6 {
+		t.Fatalf("skipJSQuotedSpan(escaped) = %d, want 6", got)
+	}
+	if got := skipJSQuotedSpan("'\\", 0); got != 2 {
+		t.Fatalf("skipJSQuotedSpan(trailing slash) = %d, want 2", got)
+	}
+}
+
+func TestGetTemplateImportComponents_IgnoresIdentifierInsideStringLiteral(t *testing.T) {
+	testRuntimeScope := newTestScope()
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+
+	parentPath := "/virtual/modules/partner/web/views/PartnerFormView.vue"
+	parentSFC := `<template>
+  <div :title="_t('Select Company')" />
+</template>
+<script setup lang="ts">
+import Company from '@/base/service/models/company';
+const _t = (s: string) => s;
+void Company;
+</script>`
+
+	parentParsed, err := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/partner"}).Parse(map[string]string{"@": "/virtual/modules"}, parentPath, parentSFC)
+	if err != nil {
+		t.Fatalf("parse parent failed: %v", err)
+	}
+	if parentParsed.Imports["Company"] == nil || parentParsed.Imports["Company"].IsTypeOnly {
+		t.Fatalf("expected Company to be a value import for this case, got %#v", parentParsed.Imports["Company"])
+	}
+
+	imports, err := b.getTemplateImportComponents(parentParsed)
+	if err != nil {
+		t.Fatalf("getTemplateImportComponents failed: %v", err)
+	}
+	if _, ok := imports["Company"]; ok {
+		t.Fatalf("Company mentioned only inside a string literal must not be treated as a template component, got %+v", imports)
+	}
+}
+
+func TestGetTemplateImportComponents_KeepsTemplateLiteralInterpolation(t *testing.T) {
+	testRuntimeScope := newTestScope()
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+
+	parentPath := "/virtual/modules/partner/web/views/PartnerFormView.vue"
+	parentSFC := "<template>\n  <div :is=\"`${CompanyListView.name}`\" />\n</template>\n<script setup lang=\"ts\">\nimport CompanyListView from '@/base/web/views/CompanyListView.vue';\n</script>"
+
+	parentParsed, err := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/partner"}).Parse(map[string]string{"@": "/virtual/modules"}, parentPath, parentSFC)
+	if err != nil {
+		t.Fatalf("parse parent failed: %v", err)
+	}
+	imports, err := b.getTemplateImportComponents(parentParsed)
+	if err != nil {
+		t.Fatalf("getTemplateImportComponents failed: %v", err)
+	}
+	if _, ok := imports["CompanyListView"]; !ok {
+		t.Fatalf("CompanyListView used in a template interpolation must be collected, got %+v", imports)
+	}
+}
+
+func TestGetTemplateImportComponents_SkipsTypeOnlyAndStringLiteralNameHits(t *testing.T) {
+	testRuntimeScope := newTestScope()
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+
+	parentPath := "/virtual/modules/partner/web/views/PartnerFormView.vue"
+	parentSFC := `<template>
+  <div>
+    <CompanyListView />
+    <ChoyManyToOneRefField
+      :searchView="CompanyListView"
+      :search-view-title="_t('Select Company')"
+      @value-click="onCompanyValueClick"
+    />
+  </div>
+</template>
+<script setup lang="ts">
+import type Company from '@/base/service/models/company';
+import CompanyListView from '@/base/web/views/CompanyListView.vue';
+import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
+function onCompanyValueClick(_payload: ManyToOneValueClickPayload<Company>) {}
+const _t = (s: string) => s;
+</script>`
+
+	parentParsed, err := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/partner"}).Parse(map[string]string{"@": "/virtual/modules"}, parentPath, parentSFC)
+	if err != nil {
+		t.Fatalf("parse parent failed: %v", err)
+	}
+	if parentParsed.Imports["Company"] == nil || !parentParsed.Imports["Company"].IsTypeOnly {
+		t.Fatalf("expected Company to be parsed as type-only import, got %#v", parentParsed.Imports["Company"])
+	}
+
+	imports, err := b.getTemplateImportComponents(parentParsed)
+	if err != nil {
+		t.Fatalf("getTemplateImportComponents failed: %v", err)
+	}
+	if _, ok := imports["Company"]; ok {
+		t.Fatalf("type-only Company must not be promoted to xpath components, got %+v", imports)
+	}
+	if _, ok := imports["CompanyListView"]; !ok {
+		t.Fatalf("expected CompanyListView to remain a template component, got %+v", imports)
+	}
+}
+
+func TestGetScriptNode_DoesNotAppendTypeOnlyServiceModelImports(t *testing.T) {
+	testRuntimeScope := newTestScope()
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+
+	childPath := "/virtual/modules/partner_bank/web/views/PartnerFormView.vue"
+	parentPath := "/virtual/modules/partner/web/views/PartnerFormView.vue"
+
+	childSFC := `<template>
+  <Xpath expr="//div[@data-region='partner-panel']" position="inside" />
+</template>
+<script lang="ts" _name="PartnerFormView">
+import { defineComponent } from 'vue';
+import { Xpath } from '@/core/web';
+import PartnerFormView from '@/partner/web/views/PartnerFormView.vue';
+
+export default defineComponent({
+  extends: PartnerFormView,
+  components: { Xpath },
+});
+</script>`
+
+	parentSFC := `<template>
+  <div data-region="partner-panel">
+    <CompanyListView />
+    <span :title="_t('Select Company')" />
+  </div>
+</template>
+<script setup lang="ts">
+import type Company from '@/base/service/models/company';
+import CompanyListView from '@/base/web/views/CompanyListView.vue';
+const _t = (s: string) => s;
+void 0 as unknown as Company;
+</script>`
+
+	childParsed := parseVueResult(t, testRuntimeScope, childPath, childSFC)
+	parentParsed, err := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/partner"}).Parse(map[string]string{"@": "/virtual/modules"}, parentPath, parentSFC)
+	if err != nil {
+		t.Fatalf("parse parent failed: %v", err)
+	}
+
+	scriptNode, err := b.getScriptNode(childParsed, parentParsed)
+	if err != nil {
+		t.Fatalf("getScriptNode failed: %v", err)
+	}
+	content := htmlquery.InnerText(scriptNode)
+
+	if strings.Contains(content, "service/models/company") {
+		t.Fatalf("xpath merge must not append type-only service model import, got:\n%s", content)
+	}
+	if !strings.Contains(content, "CompanyListView") {
+		t.Fatalf("expected CompanyListView to be merged into xpath child, got:\n%s", content)
+	}
+	if strings.Contains(content, "components: { Xpath }") || strings.Contains(content, "components: {Xpath}") {
+		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
+	}
+}
+
 func TestGetScriptNode_AppendsScriptSetupParentTemplateIconImports(t *testing.T) {
 	testRuntimeScope := newTestScope()
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}

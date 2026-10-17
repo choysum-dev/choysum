@@ -378,11 +378,30 @@ describe('Choy store-mode field hosts', () => {
         cardTitleField: 'Name',
         cardSubtitleField: 'Email',
         editable: true,
+        removable: true,
       },
     });
     await flushPromises();
     expect(w.text()).toContain('Alpha');
     expect(w.text()).toContain('n1');
+    const card = w.q('[data-testid=choy-o2m-kanban-card]');
+    expect(card).not.toBeNull();
+    const cardClass = String(card?.getAttribute('class') ?? '');
+    expect(cardClass).toContain('bg-card');
+    expect(cardClass).toContain('hover:bg-accent/40');
+    expect(cardClass).not.toContain('hover:border-primary');
+    const deleteBtn = w.q('[data-testid=choy-o2m-kanban-delete]');
+    expect(deleteBtn).not.toBeNull();
+    const deleteClass = String(deleteBtn?.getAttribute('class') ?? '');
+    // Ghost + destructive text (not solid destructive fill).
+    expect(deleteClass).toContain('text-destructive');
+    expect(deleteClass).toContain('hover:bg-accent');
+    expect(deleteClass).not.toMatch(/(?:^|\s)bg-destructive(?:\s|$)/);
+    const addTile = w.q('[data-testid=choy-o2m-kanban-add]');
+    expect(addTile).not.toBeNull();
+    const addClass = String(addTile?.getAttribute('class') ?? '');
+    expect(addClass).toContain('bg-muted/30');
+    expect(addClass).not.toContain('bg-primary');
     w.unmount();
     restoreSfc(FieldBase as any);
     stubStoreFieldBase();

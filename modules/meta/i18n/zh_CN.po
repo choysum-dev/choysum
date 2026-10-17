@@ -671,7 +671,7 @@ msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Install Status"
 msgstr "安装状态"
 
-#: service/models/module_index.ts:184
+#: service/models/module_index.ts:187
 msgctxt "meta.model.MetaModuleIndex.fields"
 msgid "Installed Version"
 msgstr "已装版本"
@@ -1173,8 +1173,8 @@ msgstr "模块历史"
 
 #: web/pages/ModuleList.vue:13
 msgctxt "web/pages/ModuleList"
-msgid "Module List"
-msgstr "模块列表"
+msgid "Module Board"
+msgstr "模块看板"
 
 #: web/pages/ModuleListTable.vue:12
 msgctxt "web/pages/ModuleListTable"
@@ -1246,7 +1246,7 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Affected Modules"
 msgstr "影响模块"
 
-#: web/views/ModuleKanbanView.vue:16
+#: web/views/ModuleKanbanView.vue:16 web/views/ModuleKanbanView.vue:175
 msgctxt "web/views/ModuleKanbanView"
 msgid "All"
 msgstr "全部"
@@ -1256,12 +1256,12 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Blockers"
 msgstr "阻断原因"
 
-#: web/views/ModuleKanbanView.vue:21
+#: web/views/ModuleKanbanView.vue:38
 msgctxt "web/views/ModuleKanbanView"
 msgid "Board View"
 msgstr "看板视图"
 
-#: web/views/ModuleKanbanView.vue:226
+#: web/views/ModuleKanbanView.vue:264
 msgctxt "web/views/ModuleKanbanView"
 msgid "Broken"
 msgstr "异常"
@@ -1271,7 +1271,7 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/views/ModuleKanbanView.vue:131
+#: web/views/ModuleKanbanView.vue:140
 msgctxt "web/views/ModuleKanbanView"
 msgid "Completed"
 msgstr "执行完成"
@@ -1286,20 +1286,15 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Confirm the impact of this operation"
 msgstr "请确认本次操作影响范围"
 
-#: web/views/ModuleKanbanView.vue:225
+#: web/views/ModuleKanbanView.vue:263
 msgctxt "web/views/ModuleKanbanView"
 msgid "Disabled"
 msgstr "已禁用"
 
-#: web/views/ModuleKanbanView.vue:229
+#: web/views/ModuleKanbanView.vue:267
 msgctxt "web/views/ModuleKanbanView"
 msgid "Dispatching"
 msgstr "执行中"
-
-#: web/views/ModuleKanbanView.vue:53
-msgctxt "web/views/ModuleKanbanView"
-msgid "Display:"
-msgstr "展示："
 
 #: web/views/ModuleKanbanView.vue:181
 msgctxt "web/views/ModuleKanbanView"
@@ -1321,22 +1316,22 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Execution Status"
 msgstr "执行状态"
 
-#: web/views/ModuleKanbanView.vue:228
+#: web/views/ModuleKanbanView.vue:266
 msgctxt "web/views/ModuleKanbanView"
 msgid "Failed"
 msgstr "失败"
 
-#: web/views/ModuleKanbanView.vue:119
+#: web/views/ModuleKanbanView.vue:128
 msgctxt "web/views/ModuleKanbanView"
 msgid "Failed to get status"
 msgstr "获取状态失败"
 
-#: web/views/ModuleKanbanView.vue:178 web/views/ModuleKanbanView.vue:183
+#: web/views/ModuleKanbanView.vue:209 web/views/ModuleKanbanView.vue:214
 msgctxt "web/views/ModuleKanbanView"
 msgid "Failed to load kanban"
 msgstr "加载看板失败"
 
-#: web/views/ModuleKanbanView.vue:268
+#: web/views/ModuleKanbanView.vue:302
 msgctxt "web/views/ModuleKanbanView"
 msgid "Failed to load plan"
 msgstr "获取计划失败"
@@ -1356,62 +1351,47 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Install"
 msgstr "安装"
 
-#: web/views/ModuleKanbanView.vue:126 web/views/ModuleKanbanView.vue:61
+#: web/views/ModuleKanbanView.vue:135 web/views/ModuleKanbanView.vue:70
 msgctxt "web/views/ModuleKanbanView"
 msgid "Install Module"
 msgstr "安装模块"
 
-#: web/views/ModuleKanbanView.vue:223
+#: web/views/ModuleKanbanView.vue:261
 msgctxt "web/views/ModuleKanbanView"
 msgid "Installed"
 msgstr "已安装"
 
-#: web/views/ModuleKanbanView.vue:54
-msgctxt "web/views/ModuleKanbanView"
-msgid "Installed:"
-msgstr "已安装："
-
-#: web/views/ModuleKanbanView.vue:117
+#: web/views/ModuleKanbanView.vue:126
 msgctxt "web/views/ModuleKanbanView"
 msgid "Job is still running in the background; refresh later"
 msgstr "任务仍在后台执行，可稍后刷新查看"
 
-#: web/views/ModuleKanbanView.vue:24
+#: web/views/ModuleKanbanView.vue:41
 msgctxt "web/views/ModuleKanbanView"
 msgid "List View"
 msgstr "列表视图"
-
-#: web/views/ModuleKanbanView.vue:49
-msgctxt "web/views/ModuleKanbanView"
-msgid "Local:"
-msgstr "本地："
-
-#: web/views/ModuleKanbanView.vue:61
-msgctxt "web/views/ModuleKanbanView"
-msgid "No description"
-msgstr "暂无描述"
 
 #: web/views/ModuleKanbanView.vue:78
 msgctxt "web/views/ModuleKanbanView"
 msgid "No modules"
 msgstr "暂无模块"
 
-#: web/views/ModuleKanbanView.vue:224
+#: web/views/ModuleKanbanView.vue:262
 msgctxt "web/views/ModuleKanbanView"
 msgid "Not Installed"
 msgstr "未安装"
 
-#: web/views/ModuleKanbanView.vue:132
+#: web/views/ModuleKanbanView.vue:141
 msgctxt "web/views/ModuleKanbanView"
 msgid "Operation Failed"
 msgstr "操作失败"
 
-#: web/views/ModuleKanbanView.vue:27
+#: web/views/ModuleKanbanView.vue:23
 msgctxt "web/views/ModuleKanbanView"
 msgid "Operation History"
 msgstr "操作历史"
 
-#: web/views/ModuleKanbanView.vue:133
+#: web/views/ModuleKanbanView.vue:142
 msgctxt "web/views/ModuleKanbanView"
 msgid "Operation Succeeded"
 msgstr "操作成功"
@@ -1421,25 +1401,15 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Operation in progress, please wait"
 msgstr "任务执行中，请稍候"
 
-#: web/views/ModuleKanbanView.vue:296
+#: web/views/ModuleKanbanView.vue:330
 msgctxt "web/views/ModuleKanbanView"
 msgid "Operation request failed"
 msgstr "操作请求失败"
 
-#: web/views/ModuleKanbanView.vue:57
-msgctxt "web/views/ModuleKanbanView"
-msgid "Origin:"
-msgstr "来源："
-
-#: web/views/ModuleKanbanView.vue:230
+#: web/views/ModuleKanbanView.vue:268
 msgctxt "web/views/ModuleKanbanView"
 msgid "Queued"
 msgstr "排队中"
-
-#: web/views/ModuleKanbanView.vue:50
-msgctxt "web/views/ModuleKanbanView"
-msgid "Registry:"
-msgstr "仓库："
 
 #: web/views/ModuleKanbanView.vue:174
 msgctxt "web/views/ModuleKanbanView"
@@ -1461,7 +1431,7 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Risks"
 msgstr "风险提示"
 
-#: web/views/ModuleKanbanView.vue:118
+#: web/views/ModuleKanbanView.vue:127
 msgctxt "web/views/ModuleKanbanView"
 msgid "Service is restarting; status will retry automatically"
 msgstr "服务正在重启，状态查询会自动重试"
@@ -1471,12 +1441,12 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Status:"
 msgstr "状态："
 
-#: web/views/ModuleKanbanView.vue:227
+#: web/views/ModuleKanbanView.vue:265
 msgctxt "web/views/ModuleKanbanView"
 msgid "Succeeded"
 msgstr "成功"
 
-#: web/views/ModuleKanbanView.vue:133
+#: web/views/ModuleKanbanView.vue:142
 msgctxt "web/views/ModuleKanbanView"
 msgid "Succeeded but reload failed"
 msgstr "操作成功但重载失败"
@@ -1486,35 +1456,30 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Summary:"
 msgstr "摘要："
 
-#: web/views/ModuleKanbanView.vue:30
+#: web/views/ModuleKanbanView.vue:27
 msgctxt "web/views/ModuleKanbanView"
 msgid "Sync Index"
 msgstr "同步索引"
 
-#: web/views/ModuleKanbanView.vue:73
+#: web/views/ModuleKanbanView.vue:82
 msgctxt "web/views/ModuleKanbanView"
 msgid "Sync Module Index"
 msgstr "同步模块索引"
 
-#: web/views/ModuleKanbanView.vue:351
+#: web/views/ModuleKanbanView.vue:385
 msgctxt "web/views/ModuleKanbanView"
 msgid "Sync failed: %s"
 msgstr "同步失败：%s"
 
-#: web/views/ModuleKanbanView.vue:349
+#: web/views/ModuleKanbanView.vue:383
 msgctxt "web/views/ModuleKanbanView"
 msgid "Sync job triggered"
 msgstr "已触发同步任务"
 
-#: web/views/ModuleKanbanView.vue:349
+#: web/views/ModuleKanbanView.vue:383
 msgctxt "web/views/ModuleKanbanView"
 msgid "Sync job triggered: all:%s"
 msgstr "已触发同步任务：all:%s"
-
-#: web/views/ModuleKanbanView.vue:58
-msgctxt "web/views/ModuleKanbanView"
-msgid "Synced:"
-msgstr "同步："
 
 #: web/views/ModuleKanbanView.vue:176
 msgctxt "web/views/ModuleKanbanView"
@@ -1526,7 +1491,7 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Triggered"
 msgstr "已触发"
 
-#: web/views/ModuleKanbanView.vue:221
+#: web/views/ModuleKanbanView.vue:259
 msgctxt "web/views/ModuleKanbanView"
 msgid "Unavailable"
 msgstr "不可用"
@@ -1536,12 +1501,12 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Uninstall"
 msgstr "卸载"
 
-#: web/views/ModuleKanbanView.vue:126 web/views/ModuleKanbanView.vue:69
+#: web/views/ModuleKanbanView.vue:135 web/views/ModuleKanbanView.vue:78
 msgctxt "web/views/ModuleKanbanView"
 msgid "Uninstall Module"
 msgstr "卸载模块"
 
-#: web/views/ModuleKanbanView.vue:231
+#: web/views/ModuleKanbanView.vue:269
 msgctxt "web/views/ModuleKanbanView"
 msgid "Unknown"
 msgstr "未知"
@@ -1551,10 +1516,15 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Upgrade"
 msgstr "升级"
 
-#: web/views/ModuleKanbanView.vue:126 web/views/ModuleKanbanView.vue:65
+#: web/views/ModuleKanbanView.vue:135 web/views/ModuleKanbanView.vue:74
 msgctxt "web/views/ModuleKanbanView"
 msgid "Upgrade Module"
 msgstr "升级模块"
+
+#: web/views/ModuleKanbanView.vue:37
+msgctxt "web/views/ModuleKanbanView"
+msgid "View switcher"
+msgstr "视图切换"
 
 #: web/views/ModuleListView.vue:18
 msgctxt "web/views/ModuleListView"
@@ -1746,3 +1716,30 @@ msgctxt "web/views/ModuleLogListView"
 msgid "Started At"
 msgstr "开始时间"
 
+#~ msgctxt "web/views/ModuleKanbanView"
+#~ msgid "Display:"
+#~ msgstr "展示："
+
+#~ msgctxt "web/views/ModuleKanbanView"
+#~ msgid "Installed:"
+#~ msgstr "已安装："
+
+#~ msgctxt "web/views/ModuleKanbanView"
+#~ msgid "Local:"
+#~ msgstr "本地："
+
+#~ msgctxt "web/views/ModuleKanbanView"
+#~ msgid "No description"
+#~ msgstr "暂无描述"
+
+#~ msgctxt "web/views/ModuleKanbanView"
+#~ msgid "Origin:"
+#~ msgstr "来源："
+
+#~ msgctxt "web/views/ModuleKanbanView"
+#~ msgid "Registry:"
+#~ msgstr "仓库："
+
+#~ msgctxt "web/views/ModuleKanbanView"
+#~ msgid "Synced:"
+#~ msgstr "同步："

@@ -26,12 +26,17 @@ SPDX-License-Identifier: Apache-2.0
             </slot>
           </div>
 
-          <div class="grid w-full min-w-0 overflow-auto p-0.5 [grid-template-columns:repeat(auto-fill,minmax(var(--kanban-min-card-width),1fr))] gap-[var(--kanban-gap)]" :style="boardStyle">
+          <div
+            class="grid w-full min-w-0 overflow-auto p-0.5 [grid-template-columns:repeat(auto-fill,minmax(var(--kanban-min-card-width),1fr))] gap-[var(--kanban-gap)]"
+            data-testid="choy-o2m-kanban-board"
+            :style="boardStyle"
+          >
             <template v-if="getItems().length > 0">
               <div
                 v-for="(item, index) in getItems()"
                 :key="String(readRowKeySeed(item) ?? index)"
-                class="cursor-pointer rounded-lg border border-border bg-background p-3 transition-[border-color,box-shadow] duration-150 hover:border-primary-soft hover:shadow-sm"
+                class="choy-o2m-kanban-card cursor-pointer rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40"
+                data-testid="choy-o2m-kanban-card"
                 @click="handleCardClick(index, false)"
               >
                 <slot
@@ -44,21 +49,51 @@ SPDX-License-Identifier: Apache-2.0
                   :editable="editable"
                   :removable="removable"
                 >
-                  <div class="text-sm font-semibold leading-snug text-foreground">{{ resolveCardTitle(item) }}</div>
-                  <div class="mt-1.5 wrap-break-word text-xs text-muted-foreground" v-if="resolveCardSubtitle(item)">{{ resolveCardSubtitle(item) }}</div>
-                  <div class="mt-2.5 flex items-center gap-2" v-if="editable || removable" @click.stop>
-                    <ChoyButton v-if="editable" size="sm" variant="link" @click="handleEditItem(index)">{{ _t('Edit') }}</ChoyButton>
-                    <ChoyButton v-if="removable" size="sm" variant="destructive" @click="handleRemoveItem(index)">{{ _t('Delete') }}</ChoyButton>
+                  <div class="text-sm font-medium leading-snug text-foreground">{{ resolveCardTitle(item) }}</div>
+                  <div
+                    v-if="resolveCardSubtitle(item)"
+                    class="mt-1 truncate text-xs text-muted-foreground"
+                  >
+                    {{ resolveCardSubtitle(item) }}
+                  </div>
+                  <div class="mt-2 flex items-center gap-1" v-if="editable || removable" @click.stop>
+                    <ChoyButton
+                      v-if="editable"
+                      size="sm"
+                      variant="ghost"
+                      data-testid="choy-o2m-kanban-edit"
+                      @click="handleEditItem(index)"
+                    >
+                      {{ _t('Edit') }}
+                    </ChoyButton>
+                    <ChoyButton
+                      v-if="removable"
+                      size="sm"
+                      variant="ghost"
+                      class="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      data-testid="choy-o2m-kanban-delete"
+                      @click="handleRemoveItem(index)"
+                    >
+                      {{ _t('Delete') }}
+                    </ChoyButton>
                   </div>
                 </slot>
               </div>
             </template>
 
-            <div v-else class="col-span-full flex min-h-[90px] items-center justify-center rounded-lg border border-dashed border-border text-[13px] text-muted-foreground">
+            <div
+              v-else
+              class="col-span-full flex min-h-[90px] items-center justify-center rounded-md border border-dashed border-border text-[13px] text-muted-foreground"
+            >
               <slot name="empty">{{ effectiveEmptyText }}</slot>
             </div>
 
-            <div v-if="editable" class="flex min-h-24 cursor-pointer select-none items-center justify-center rounded-lg border border-dashed border-border bg-primary/5 text-primary hover:border-primary" @click="handleAddItem">
+            <div
+              v-if="editable"
+              class="flex min-h-24 cursor-pointer select-none items-center justify-center rounded-md border border-dashed border-border bg-muted/30 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+              data-testid="choy-o2m-kanban-add"
+              @click="handleAddItem"
+            >
               <span>{{ effectiveAddButtonText }}</span>
             </div>
           </div>
@@ -69,12 +104,17 @@ SPDX-License-Identifier: Apache-2.0
     <template #display>
       <ChoyViewScope view-mode="display" :kind="'Kanban'" :field-prefix="String(prop)">
         <div class="flex w-full min-w-0 flex-col gap-2.5">
-          <div class="grid w-full min-w-0 overflow-auto p-0.5 [grid-template-columns:repeat(auto-fill,minmax(var(--kanban-min-card-width),1fr))] gap-[var(--kanban-gap)]" :style="boardStyle">
+          <div
+            class="grid w-full min-w-0 overflow-auto p-0.5 [grid-template-columns:repeat(auto-fill,minmax(var(--kanban-min-card-width),1fr))] gap-[var(--kanban-gap)]"
+            data-testid="choy-o2m-kanban-board"
+            :style="boardStyle"
+          >
             <template v-if="getItems().length > 0">
               <div
                 v-for="(item, index) in getItems()"
                 :key="String(readRowKeySeed(item) ?? index)"
-                class="cursor-pointer rounded-lg border border-border bg-background p-3 transition-[border-color,box-shadow] duration-150 hover:border-primary-soft hover:shadow-sm"
+                class="choy-o2m-kanban-card cursor-pointer rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40"
+                data-testid="choy-o2m-kanban-card"
                 @click="handleCardClick(index, true)"
               >
                 <slot
@@ -87,13 +127,21 @@ SPDX-License-Identifier: Apache-2.0
                   :editable="false"
                   :removable="false"
                 >
-                  <div class="text-sm font-semibold leading-snug text-foreground">{{ resolveCardTitle(item) }}</div>
-                  <div class="mt-1.5 wrap-break-word text-xs text-muted-foreground" v-if="resolveCardSubtitle(item)">{{ resolveCardSubtitle(item) }}</div>
+                  <div class="text-sm font-medium leading-snug text-foreground">{{ resolveCardTitle(item) }}</div>
+                  <div
+                    v-if="resolveCardSubtitle(item)"
+                    class="mt-1 truncate text-xs text-muted-foreground"
+                  >
+                    {{ resolveCardSubtitle(item) }}
+                  </div>
                 </slot>
               </div>
             </template>
 
-            <div v-else class="col-span-full flex min-h-[90px] items-center justify-center rounded-lg border border-dashed border-border text-[13px] text-muted-foreground">
+            <div
+              v-else
+              class="col-span-full flex min-h-[90px] items-center justify-center rounded-md border border-dashed border-border text-[13px] text-muted-foreground"
+            >
               <slot name="empty">{{ effectiveEmptyText }}</slot>
             </div>
           </div>

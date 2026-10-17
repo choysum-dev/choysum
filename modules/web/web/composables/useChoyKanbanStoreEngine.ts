@@ -8,6 +8,8 @@ import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
 import type { ChoySearchQuery } from '@/web/web/components/view/searchViewHelpers';
 import type { Lane } from '@/web/web/query/types';
 import {
+  CHOY_KANBAN_FLAT_LANE_KEY,
+  sortChoyKanbanLanesByOrder,
   type ChoyKanbanCard,
   type ChoyKanbanLane,
   type ChoyKanbanLoadMore,
@@ -27,6 +29,10 @@ export type ChoyKanbanStoreEngineOptions = {
   keywordFields?: MaybeRefOrGetter<string[] | undefined>;
   titleField?: MaybeRefOrGetter<string | undefined>;
   flatLaneLabel?: MaybeRefOrGetter<string | undefined>;
+  /** Preferred lane order tokens matched against lane keys/labels after sync. */
+  laneOrder?: MaybeRefOrGetter<ReadonlyArray<string> | undefined>;
+  /** Optional resolver for laneOrder tokens (defaults to lane.key). */
+  laneOrderToken?: (lane: Pick<ChoyKanbanLane, 'key' | 'label'>) => string;
   laneLabel?: (lane: Pick<ChoyKanbanLane, 'key' | 'label'> | Lane) => string;
   mapRowToCard?: (row: unknown, index: number, laneKey: string) => ChoyKanbanCard;
   resolveMoveRecordId?: (
@@ -71,6 +77,15 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
     return String((lane as ChoyKanbanLane).label ?? (lane as Lane).label ?? (lane as ChoyKanbanLane).key ?? '');
   }
 
+  function orderLanes(next: ChoyKanbanLane[]): ChoyKanbanLane[] {
+    const order = toValue(opts.laneOrder);
+    if (!order?.length) return next;
+    const tokenOf =
+      opts.laneOrderToken ||
+      ((lane: Pick<ChoyKanbanLane, 'key' | 'label'>) => String(lane.key || ''));
+    return sortChoyKanbanLanesByOrder(next, order, tokenOf);
+  }
+
   async function syncLanesFromController(): Promise<void> {
     if ((await laneSyncGate.enter()) === 'waited') return;
     try {
@@ -82,7 +97,7 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
             controller.vm.result?.kind === 'search'
               ? ((controller.vm.result.rows as any[]) || [])
               : [];
-          const flatKey = 'all';
+          const flatKey = CHOY_KANBAN_FLAT_LANE_KEY;
           lanes.value = [
             {
               key: flatKey,
@@ -100,14 +115,16 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
             }),
           ),
         );
-        lanes.value = laneList.map((lane) => ({
-          key: lane.key,
-          label: labelFor(lane),
-          remain: controller.getLaneRemain(lane),
-          cards: (controller.laneRecords.value[lane.key] || []).map((row, index) =>
-            mapRow(row, index, lane.key),
-          ),
-        }));
+        lanes.value = orderLanes(
+          laneList.map((lane) => ({
+            key: lane.key,
+            label: labelFor(lane),
+            remain: controller.getLaneRemain(lane),
+            cards: (controller.laneRecords.value[lane.key] || []).map((row, index) =>
+              mapRow(row, index, lane.key),
+            ),
+          })),
+        );
       } while (laneSyncGate.shouldResync());
     } finally {
       laneSyncGate.leave();
@@ -286,9 +303,9 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
     });
   }
 
-  const boardBusy = computed(
-    () => movePending.value || loadMorePending.value || searchPending.value,
-  );
+  // Full-board chrome / BusyHost: search and move only.
+  // Lane load-more uses loadMorePending so New / overlay do not flash.
+  const boardBusy = computed(() => movePending.value || searchPending.value);
 
   return {
     lanes,

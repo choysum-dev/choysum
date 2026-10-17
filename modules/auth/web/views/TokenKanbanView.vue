@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div class="token-kanban-view">
+  <div class="token-kanban-view flex h-full min-h-0 min-w-0 flex-1 flex-col">
     <div class="sr-only" aria-hidden="true">
       <ChoyVirtualField :store="store" prop="TokenType" />
       <ChoyVirtualField :store="store" prop="ExpiresAt" />
@@ -31,28 +31,39 @@ SPDX-License-Identifier: Apache-2.0
       @create="onCreate"
     >
       <template #search="{ onQueryUpdate }">
-        <ChoySearchView :store="store" @query-update="onQueryUpdate" />
+        <ChoySearchView
+          class="min-w-0 w-full"
+          :store="store"
+          :default-groups="defaultGroups"
+          @query-update="onQueryUpdate"
+        />
       </template>
 
-      <template #user-actions>
-        <div class="flex items-center gap-1">
-          <ChoyButton variant="outline" size="sm" :title="_t('List View')" @click="toList">
+      <!-- View-mode toggles on the trailing edge (same as TokenListView). -->
+      <template v-if="showHeader" #header-right>
+        <ChoyButtonGroup :aria-label="_t('View switcher')">
+          <ChoyButton
+            type="button"
+            size="icon"
+            variant="outline"
+            :aria-pressed="false"
+            :aria-label="_t('List View')"
+            @click="toList"
+          >
             <List class="size-4" aria-hidden="true" />
           </ChoyButton>
-          <ChoyButton size="sm" :title="_t('Kanban View')" @click="toKanban">
+          <ChoyButton
+            type="button"
+            size="icon"
+            variant="outline"
+            :aria-pressed="true"
+            :aria-label="_t('Kanban View')"
+            class="z-[1] bg-muted text-foreground hover:bg-muted"
+            @click="toKanban"
+          >
             <LayoutGrid class="size-4" aria-hidden="true" />
           </ChoyButton>
-          <ChoyButton variant="outline" size="sm" :title="_t('Icon View')" @click="toKanban">
-            <BarChart3 class="size-4" aria-hidden="true" />
-          </ChoyButton>
-        </div>
-      </template>
-
-      <template #lane-header="{ lane }">
-        <div class="token-lane-header flex items-center gap-1.5 text-sm font-semibold text-foreground">
-          <span class="title">{{ lane.label }}</span>
-          <span class="count text-foreground/60">({{ lane.cards.length }})</span>
-        </div>
+        </ChoyButtonGroup>
       </template>
 
       <template #card="{ card }">
@@ -87,10 +98,11 @@ SPDX-License-Identifier: Apache-2.0
           variant="ghost"
           size="sm"
           class="w-full"
+          data-testid="token-kanban-load-more"
           :disabled="busy"
           @click="loadMore()"
         >
-          {{ _t('Load more (%s remaining)', remain) }}
+          {{ _t('%s more', remain) }}
         </ChoyButton>
       </template>
     </ChoyKanbanView>
@@ -99,11 +111,12 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
-import { BarChart3, LayoutGrid, List } from 'lucide-vue-next';
+import { LayoutGrid, List } from 'lucide-vue-next';
 import type Token from '@/auth/service/models/token';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import {
   ChoyButton,
+  ChoyButtonGroup,
   ChoyKanbanView,
   ChoyMessage,
   ChoySearchView,
@@ -113,7 +126,7 @@ import {
 } from '@/web';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
-import type { Lane } from '@/web/web/query/types';
+import type { GroupBySpec, Lane } from '@/web/web/query/types';
 import {
   resolveTokenDetailId,
   resolveTokenKanbanCardId,
@@ -129,6 +142,8 @@ const { _t } = createTranslate('auth', { scope: 'web/views/TokenKanbanView' });
 const props = withDefaults(defineProps<{ store?: WebModelStore<Token>; showHeader?: boolean }>(), { showHeader: true });
 const store = resolvePageStore(props.store, 'TokenKanbanView');
 const { showHeader } = props;
+/** Board lanes follow revoked state (List shows the same column); clearable like Module. */
+const defaultGroups = ['Revoked'] as GroupBySpec<Token>[];
 
 const router = useRouter();
 

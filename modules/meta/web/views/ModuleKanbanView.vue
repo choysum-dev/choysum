@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div class="module-kanban-view">
+  <div class="module-kanban-view flex h-full min-h-0 min-w-0 flex-1 flex-col">
     <div class="sr-only" aria-hidden="true">
       <ChoyVirtualField :store="store" prop="ModuleName" />
       <ChoyVirtualField :store="store" prop="Version" />
@@ -25,6 +25,9 @@ SPDX-License-Identifier: Apache-2.0
       :readonly="true"
       :keyword-fields="keywordFields"
       :flat-lane-label="_t('All')"
+      :lane-order="laneOrder"
+      :lane-order-token="laneOrderToken"
+      :lane-label="laneLabel"
       :map-row-to-card="rowToCard"
       :before-bootstrap="beforeBootstrap"
       :on-load-error="onKanbanLoadError"
@@ -33,77 +36,95 @@ SPDX-License-Identifier: Apache-2.0
     >
       <template #system-actions />
 
-      <template #user-actions>
-        <div class="flex items-center gap-1">
-          <ChoyButton size="sm" :title="_t('Board View')" @click="toKanban">
+      <!-- Domain secondary actions share the title ⋮ with import / export (List parity). -->
+      <template
+        v-if="showHeader && (canRoute('meta.route.module_history') || hasAction(moduleSyncIndexAction))"
+        #overflow-actions
+      >
+        <ChoyDropdownMenuItem
+          v-if="canRoute('meta.route.module_history')"
+          data-testid="module-kanban-overflow-history"
+          @select="toHistory"
+        >
+          <History class="size-4" aria-hidden="true" />
+          {{ _t('Operation History') }}
+        </ChoyDropdownMenuItem>
+        <ChoyDropdownMenuItem
+          v-if="hasAction(moduleSyncIndexAction)"
+          data-testid="module-kanban-overflow-sync"
+          :disabled="syncLoading"
+          @select="onSyncIndex"
+        >
+          <FolderSync class="size-4" :class="{ 'animate-spin': syncLoading }" aria-hidden="true" />
+          {{ _t('Sync Index') }}
+        </ChoyDropdownMenuItem>
+      </template>
+
+      <template #search="{ onQueryUpdate }">
+        <ChoySearchView
+          class="min-w-0 w-full"
+          :store="store"
+          @query-update="onQueryUpdate"
+        />
+      </template>
+
+      <!-- View-mode toggles on the trailing edge (same as ModuleListView). -->
+      <template v-if="showHeader" #header-right>
+        <ChoyButtonGroup :aria-label="_t('View switcher')">
+          <ChoyButton
+            v-if="canRoute('meta.route.module_board')"
+            type="button"
+            size="icon"
+            variant="outline"
+            :aria-pressed="true"
+            :aria-label="_t('Board View')"
+            class="z-[1] bg-muted text-foreground hover:bg-muted"
+            @click="toKanban"
+          >
             <LayoutGrid class="size-4" aria-hidden="true" />
           </ChoyButton>
           <ChoyButton
             v-if="canRoute('meta.route.module_list')"
+            type="button"
+            size="icon"
             variant="outline"
-            size="sm"
-            :title="_t('List View')"
+            :aria-pressed="false"
+            :aria-label="_t('List View')"
             @click="toList"
           >
             <List class="size-4" aria-hidden="true" />
           </ChoyButton>
-          <ChoyButton
-            v-if="canRoute('meta.route.module_history')"
-            variant="outline"
-            size="sm"
-            :title="_t('Operation History')"
-            @click="toHistory"
-          >
-            <History class="size-4" aria-hidden="true" />
-          </ChoyButton>
-          <ChoyButton
-            v-if="hasAction(moduleSyncIndexAction)"
-            variant="outline"
-            size="sm"
-            :title="_t('Sync Index')"
-            :disabled="syncLoading"
-            @click="onSyncIndex"
-          >
-            <RefreshCw class="size-4" :class="{ 'animate-spin': syncLoading }" aria-hidden="true" />
-          </ChoyButton>
-        </div>
+        </ChoyButtonGroup>
       </template>
 
-      <template #search="{ onQueryUpdate }">
-        <ChoySearchView :store="store" @query-update="onQueryUpdate" />
-      </template>
-
-      <template #card="{ card }">
+      <template #card="{ card, lane }">
         <div class="module-card flex flex-col gap-1.5 text-xs">
           <div class="module-card__title flex items-center justify-between gap-2">
-            <span class="name text-sm font-semibold text-foreground">{{ recordField(card, 'ModuleName') }}</span>
-            <span
-              class="module-card__status shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium"
-              :class="statusBadgeClass(String(payloadRecord(card).InstalledStatus ?? ''), payloadRecord(card).Available)"
+            <span class="name truncate text-sm font-medium text-foreground">{{ recordField(card, 'ModuleName') }}</span>
+            <ChoyBadge
+              v-if="shouldShowCardStatusBadge(card, lane)"
+              :variant="cardBadgeVariant(payloadRecord(card))"
+              class="shrink-0 px-1.5 py-0 text-[10px] font-normal"
             >
               {{ statusLabel(String(payloadRecord(card).InstalledStatus ?? ''), payloadRecord(card).Available) }}
-            </span>
+            </ChoyBadge>
           </div>
-          <div class="flex justify-between gap-3 text-foreground/70">
-            <span>{{ _t('Local:') }} {{ recordField(card, 'LocalVersion') || '—' }}</span>
-            <span>{{ _t('Registry:') }} {{ recordField(card, 'RegistryVersion') || '—' }}</span>
+          <div class="truncate text-muted-foreground">
+            {{ recordField(card, 'Version') || recordField(card, 'LocalVersion') || '—' }}
+            <span class="text-muted-foreground/60"> · </span>
+            {{ recordField(card, 'OriginTypes') || recordField(card, 'OriginType') || 'local' }}
           </div>
-          <div class="flex justify-between gap-3 text-foreground/70">
-            <span>{{ _t('Display:') }} {{ recordField(card, 'Version') || '—' }}</span>
-            <span>{{ _t('Installed:') }} {{ recordField(card, 'InstalledVersion') || '—' }}</span>
+          <div
+            v-if="manifestSummary(recordField(card, 'ManifestJson'))"
+            class="line-clamp-1 text-muted-foreground"
+          >
+            {{ manifestSummary(recordField(card, 'ManifestJson')) }}
           </div>
-          <div class="flex justify-between gap-3 text-foreground/70">
-            <span>{{ _t('Origin:') }} {{ recordField(card, 'OriginTypes') || recordField(card, 'OriginType') || 'local' }}</span>
-            <span>{{ _t('Synced:') }} {{ formatDate(recordField(card, 'LastSyncAt')) || '—' }}</span>
-          </div>
-          <div class="min-h-[2rem] text-foreground/80">
-            {{ manifestSummary(recordField(card, 'ManifestJson')) || _t('No description') }}
-          </div>
-          <div class="flex flex-wrap gap-2 pt-1">
+          <div class="flex flex-wrap gap-1.5 pt-1">
             <ChoyButton
               v-if="!isInstalled(String(recordField(card, 'InstalledStatus') || '')) && hasAction(moduleInstallAction)"
               size="sm"
-              variant="outline"
+              variant="default"
               :disabled="recordField(card, 'Available') === false"
               @click.stop="onActionClick('install', payloadRecord(card))"
             >
@@ -120,8 +141,8 @@ SPDX-License-Identifier: Apache-2.0
             <ChoyButton
               v-if="isInstalled(String(recordField(card, 'InstalledStatus') || '')) && hasAction(moduleUninstallAction)"
               size="sm"
-              variant="outline"
-              class="text-destructive hover:text-destructive"
+              variant="ghost"
+              class="text-destructive hover:bg-destructive/10 hover:text-destructive"
               @click.stop="onActionClick('uninstall', payloadRecord(card))"
             >
               {{ _t('Uninstall') }}
@@ -306,7 +327,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { History, LayoutGrid, List, RefreshCw } from 'lucide-vue-next';
+import { FolderSync, History, LayoutGrid, List } from 'lucide-vue-next';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type MetaModule from '@/meta/service/models/module';
 import type MetaModuleIndex from '@/meta/service/models/module_index';
@@ -317,13 +338,18 @@ import { restoreDialogFocus } from '@/auth/web/components/preferences/dialog_foc
 import { trapDialogTabKey } from '@/auth/web/components/preferences/dialog_focus_trap';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
+import type { Lane } from '@/web/web/query/types';
 import {
+  ChoyBadge,
   ChoyButton,
+  ChoyButtonGroup,
+  ChoyDropdownMenuItem,
   ChoyKanbanView,
   ChoyMessage,
   ChoySearchView,
   ChoyVirtualField,
-  type ChoyKanbanCard
+  type ChoyKanbanCard,
+  type ChoyKanbanLane,
 } from '@/web';
 import {
   createModuleOpProgressSession,
@@ -333,13 +359,15 @@ import { createModuleKanbanOpProgressHooks } from '../composables/moduleKanbanOp
 import {
   captureDialogFocusTarget,
   createPlanDialogSessionGate,
-  formatModuleKanbanDate,
   formatModuleOpSummary,
   isModuleInstalled,
   manifestSummaryText,
+  moduleKanbanCardBadgeVariant,
   moduleStatusBadgeClass,
   resolveModuleKanbanCardId,
-  resolveModuleKanbanCardKey
+  resolveModuleKanbanCardKey,
+  resolveModuleKanbanLaneStatus,
+  shouldShowModuleKanbanCardStatusBadge,
 } from './module_kanban_chrome';
 
 defineOptions({ name: 'ModuleKanbanView' });
@@ -355,6 +383,8 @@ const { showHeader } = props;
 const moduleStore = props.moduleStore;
 
 const keywordFields = ['ModuleName', 'Version', 'OriginType', 'OriginRef'];
+/** Prefer installed modules first when the user groups by InstalledStatus. */
+const laneOrder = ['installed', 'uninstalled'] as const;
 
 const router = useRouter();
 
@@ -463,6 +493,28 @@ function rowToCard(row: unknown, index: number, laneKey: string): ChoyKanbanCard
   };
 }
 
+function laneLabel(lane: Pick<ChoyKanbanLane, 'key' | 'label'> | Lane): string {
+  const key = String((lane as Lane).key ?? (lane as ChoyKanbanLane).key ?? '');
+  const label = String((lane as Lane).label ?? (lane as ChoyKanbanLane).label ?? '');
+  const status = resolveModuleKanbanLaneStatus(key, label);
+  if (status) return statusLabel(status);
+  return label || key || _t('All');
+}
+
+function laneOrderToken(lane: Pick<ChoyKanbanLane, 'key' | 'label'>): string {
+  return resolveModuleKanbanLaneStatus(lane.key, lane.label) || String(lane.key || '');
+}
+
+function shouldShowCardStatusBadge(card: ChoyKanbanCard, lane: ChoyKanbanLane): boolean {
+  const row = payloadRecord(card);
+  return shouldShowModuleKanbanCardStatusBadge({
+    installedStatus: row.InstalledStatus,
+    available: row.Available,
+    laneKey: lane.key,
+    laneLabel: lane.label,
+  });
+}
+
 function resolveRowPayload(row: unknown): Record<string, unknown> {
   if (!row || typeof row !== 'object') return {};
   const bag = row as Record<string, unknown>;
@@ -522,6 +574,13 @@ function statusBadgeClass(status?: string, available?: boolean): string {
   return moduleStatusBadgeClass(status, available);
 }
 
+function cardBadgeVariant(row: ClientModelProps<MetaModuleIndex>) {
+  return moduleKanbanCardBadgeVariant(
+    String(row.InstalledStatus ?? ''),
+    row.Available as boolean | undefined,
+  );
+}
+
 function statusLabel(status?: string, available?: boolean) {
   if (available === false) return _t('Unavailable');
   const val = String(status || '').toLowerCase();
@@ -538,10 +597,6 @@ function statusLabel(status?: string, available?: boolean) {
 
 function isInstalled(status?: string) {
   return isModuleInstalled(status);
-}
-
-function formatDate(dt?: unknown) {
-  return formatModuleKanbanDate(dt);
 }
 
 function formatSummary(summary: unknown) {
@@ -676,3 +731,10 @@ defineExpose({
   targetModule,
 });
 </script>
+
+<style scoped>
+/* Denser gallery than ChoyKanbanView flat default (18rem) for the module index. */
+.module-kanban-view :deep([data-testid='choy-kanban-flat-board']) {
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+}
+</style>

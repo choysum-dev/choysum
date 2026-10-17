@@ -38,7 +38,6 @@ func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 		Scope:               "scope",
 		Permission:          "perm",
 		PageComposable:      "pageComp",
-		Vuedraggable:        "drag",
 		TipTapVue3:          "tiptap-vue3",
 		TipTapStarterKit:    "tiptap-starter",
 		TipTapExtensionLink: "tiptap-link",
@@ -56,7 +55,6 @@ func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 	}{
 		{"vue-router", "router", true},
 		{"@choysum/page-mount", "pm", true},
-		{"vuedraggable", "drag", true},
 		{"@tiptap/vue-3", "tiptap-vue3", true},
 		{"@tiptap/starter-kit", "tiptap-starter", true},
 		{"@tiptap/extension-link", "tiptap-link", true},
@@ -212,7 +210,7 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 			OnDispose:      func(func()) {},
 			OnResolve: func(o api.OnResolveOptions, cb func(api.OnResolveArgs) (api.OnResolveResult, error)) {
 				switch o.Filter {
-				case `^(vue-router|@choysum/page-mount|vuedraggable|@tiptap/vue-3|@tiptap/starter-kit|@tiptap/extension-link|dompurify|@unovis/vue|@unovis/ts|reka-ui|lucide-vue-next|vue-sonner)$`:
+				case `^(vue-router|@choysum/page-mount|@tiptap/vue-3|@tiptap/starter-kit|@tiptap/extension-link|dompurify|@unovis/vue|@unovis/ts|reka-ui|lucide-vue-next|vue-sonner)$`:
 					pkgCB = cb
 				case `(?:^|/)(?:OPage|Page)\.vue$`:
 					pageCB = cb
@@ -244,7 +242,7 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 	if pkgCB == nil || pageCB == nil || childViewCB == nil || len(pathCBs) == 0 {
 		t.Fatal("expected FE stub OnResolve callbacks to be registered")
 	}
-	for _, path := range []string{"vue-router", "@choysum/page-mount", "vuedraggable", "dompurify"} {
+	for _, path := range []string{"vue-router", "@choysum/page-mount", "dompurify"} {
 		res, err := pkgCB(api.OnResolveArgs{Path: path})
 		if err != nil || res.Path == "" {
 			t.Fatalf("package stub %q: %#v err=%v", path, res, err)

@@ -13,6 +13,9 @@ export type ChoyKanbanCard = {
   payload?: Record<string, unknown>;
 };
 
+/** Synthetic lane key when Search has no group-by (ungrouped / flat board). */
+export const CHOY_KANBAN_FLAT_LANE_KEY = 'all';
+
 export type ChoyKanbanLane = {
   key: string;
   label: string;
@@ -23,6 +26,16 @@ export type ChoyKanbanLane = {
    */
   remain?: number;
 };
+
+/**
+ * True when the board is a single ungrouped lane (`all`).
+ * Flat boards tile cards in a responsive grid instead of one narrow column.
+ */
+export function isChoyKanbanFlatBoard(
+  lanes: ReadonlyArray<Pick<ChoyKanbanLane, 'key'>> | null | undefined,
+): boolean {
+  return Array.isArray(lanes) && lanes.length === 1 && lanes[0]?.key === CHOY_KANBAN_FLAT_LANE_KEY;
+}
 
 export type ChoyKanbanLoadMore = {
   laneKey: string;
@@ -35,10 +48,60 @@ export function choyKanbanLaneRemain(lane: Pick<ChoyKanbanLane, 'remain'> | null
   return Math.floor(n);
 }
 
+/**
+ * Resolve unloaded row count for a kanban lane.
+ * Prefer Search-page remain when set (including 0 after a counted fetch);
+ * otherwise fall back to ReadGroup `laneCount - loaded`.
+ */
+export function resolveChoyKanbanLaneRemain(opts: {
+  loaded: number;
+  laneCount?: number | null;
+  /** `undefined` = unset (e.g. skipCount preload); a number is authoritative. */
+  fetchRemain?: number | null;
+}): number {
+  const loaded = Math.max(0, Math.floor(Number(opts.loaded) || 0));
+  if (typeof opts.fetchRemain === 'number' && Number.isFinite(opts.fetchRemain)) {
+    return Math.max(0, Math.floor(opts.fetchRemain));
+  }
+  const total = Number(opts.laneCount ?? 0);
+  if (!Number.isFinite(total) || total <= 0) return 0;
+  return Math.max(0, Math.floor(total) - loaded);
+}
+
+/** Loaded cards plus remaining (header total when load-more is in play). */
+export function choyKanbanLaneTotal(
+  lane: Pick<ChoyKanbanLane, 'cards' | 'remain'> | null | undefined,
+): number {
+  const loaded = Array.isArray(lane?.cards) ? lane!.cards.length : 0;
+  return loaded + choyKanbanLaneRemain(lane);
+}
+
+/**
+ * Stable sort of lanes by preferred status/key tokens (e.g. installed before uninstalled).
+ * Unknown keys keep relative order after ordered ones.
+ */
+export function sortChoyKanbanLanesByOrder<T extends { key: string; label?: string }>(
+  lanes: ReadonlyArray<T>,
+  order: ReadonlyArray<string>,
+  resolveToken: (lane: T) => string = (lane) => String(lane.key || ''),
+): T[] {
+  if (!order.length || !lanes.length) return [...lanes];
+  const rank = new Map(order.map((token, index) => [String(token).toLowerCase(), index]));
+  return [...lanes].sort((a, b) => {
+    const ra = rank.has(resolveToken(a).toLowerCase())
+      ? rank.get(resolveToken(a).toLowerCase())!
+      : order.length;
+    const rb = rank.has(resolveToken(b).toLowerCase())
+      ? rank.get(resolveToken(b).toLowerCase())!
+      : order.length;
+    return ra - rb;
+  });
+}
+
 /** Default load-more label for Choy kanban chrome (host may localize via `format`). */
 export function formatChoyKanbanLoadMoreLabel(
   remain: number,
-  format: (n: number) => string = (n) => `Load more (${n} remaining)`,
+  format: (n: number) => string = (n) => `${n} more`,
 ): string {
   return format(choyKanbanLaneRemain({ remain }));
 }

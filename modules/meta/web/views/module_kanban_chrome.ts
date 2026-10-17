@@ -33,10 +33,89 @@ export function moduleStatusBadgeVariant(
   return 'secondary';
 }
 
+/**
+ * Quieter badge variants for the module kanban gallery so status does not
+ * compete with the Install primary CTA (installed is secondary, not default).
+ */
+export function moduleKanbanCardBadgeVariant(
+  status?: string,
+  available?: boolean,
+): 'default' | 'secondary' | 'destructive' | 'outline' {
+  if (available === false) return 'destructive';
+  const val = String(status || '').toLowerCase();
+  if (val === 'broken' || val === 'failed') return 'destructive';
+  if (val === 'uninstalled') return 'outline';
+  // installed / succeeded / queued / unknown — muted chips
+  return 'secondary';
+}
+
 /** True when InstalledStatus means the module is installed. */
 export function isModuleInstalled(status?: string): boolean {
   return String(status || '').toLowerCase() === 'installed';
 }
+
+/**
+ * Normalize a kanban lane key/label into an InstalledStatus-like token
+ * (`installed`, `uninstalled`, …), or empty when unrecognized.
+ * Accepts bare status keys from client-side lanes and `InstalledStatus=…` group keys.
+ */
+function moduleKanbanStatusToken(raw: string): string {
+  const text = raw.trim();
+  if (!text || text === '__null__' || text === '__unset__') return '';
+  const lower = text.toLowerCase();
+  if (
+    lower === 'installed' ||
+    lower === 'uninstalled' ||
+    lower === 'disabled' ||
+    lower === 'broken' ||
+    lower === 'succeeded' ||
+    lower === 'failed' ||
+    lower === 'dispatching' ||
+    lower === 'queued'
+  ) {
+    return lower;
+  }
+  if (text === '已安装') return 'installed';
+  if (text === '未安装' || lower === 'not installed') return 'uninstalled';
+  if (text === '已禁用') return 'disabled';
+  if (text === '损坏') return 'broken';
+  return '';
+}
+
+export function resolveModuleKanbanLaneStatus(laneKey: string, laneLabel?: string): string {
+  const key = String(laneKey || '').trim();
+  const fromKey = key.match(/InstalledStatus=(.+?)(?:#\d+)?$/i);
+  // InstalledStatus=… wins. Otherwise try the bare key before the display label
+  // so a translation does not hide a token such as queued.
+  const candidates = fromKey
+    ? [fromKey[1] ?? '']
+    : key.includes('=')
+      ? [laneLabel ?? '']
+      : [key, laneLabel ?? ''];
+  for (const candidate of candidates) {
+    const token = moduleKanbanStatusToken(String(candidate ?? ''));
+    if (token) return token;
+  }
+  return '';
+}
+
+/**
+ * Hide status badge when the lane already encodes the same InstalledStatus.
+ * Always show when Unavailable, or when status differs from the lane.
+ */
+export function shouldShowModuleKanbanCardStatusBadge(opts: {
+  installedStatus?: unknown;
+  available?: unknown;
+  laneKey: string;
+  laneLabel?: string;
+}): boolean {
+  if (opts.available === false) return true;
+  const status = String(opts.installedStatus ?? '').toLowerCase();
+  const laneStatus = resolveModuleKanbanLaneStatus(opts.laneKey, opts.laneLabel);
+  if (laneStatus && laneStatus === status) return false;
+  return true;
+}
+
 
 /** Format module timestamps for card metadata (local YYYY-MM-DD HH:mm). */
 export function formatModuleKanbanDate(dt?: unknown): string {

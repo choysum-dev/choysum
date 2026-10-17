@@ -56,9 +56,11 @@ SPDX-License-Identifier: Apache-2.0
               <Layers class="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
               <span class="truncate">{{ groupingSummary }}</span>
               <button
+                v-if="canClearVisibleGrouping"
                 type="button"
                 class="choy-search__tag-close m-0 inline-flex size-3.5 shrink-0 cursor-pointer items-center justify-center appearance-none rounded-full border-0 bg-transparent p-0 text-muted-foreground hover:bg-accent hover:text-foreground"
                 :aria-label="_t('Clear grouping')"
+                data-testid="choy-search-groupby-clear"
                 @click.stop="onGroupingClear"
               >
                 <X class="size-3" />
@@ -473,6 +475,11 @@ const props = defineProps<{
   currentKeyword?: string;
   /** Default named filters used for menu display only. */
   defaultFilters?: NamedFilter<T> | NamedFilter<T>[];
+  /**
+   * Group-by field names that cannot be cleared (e.g. kanban board lane field).
+   * Still shown as a facet; clear / clear-all leave them applied.
+   */
+  lockedGroups?: string[];
 }>();
 
 const emit = defineEmits<{
@@ -534,6 +541,34 @@ const userFacingGroups = computed(() => {
 });
 
 const hasVisibleGrouping = computed(() => userFacingGroups.value.length > 0);
+
+const lockedGroupFieldSet = computed(
+  () => new Set((props.lockedGroups || []).map((f) => String(f || '').trim()).filter(Boolean)),
+);
+
+function isLockedGroupField(field: string): boolean {
+  return lockedGroupFieldSet.value.has(String(field || '').trim());
+}
+
+/** True when the grouping facet has at least one removable (non-locked) group. */
+const canClearVisibleGrouping = computed(() =>
+  userFacingGroups.value.some((g) => !isLockedGroupField(String(g.field || ''))),
+);
+
+/** Re-inject locked group fields so board lanes cannot collapse to a flat list. */
+function ensureLockedGroups(
+  groups: Array<GroupBySpec<any> | SearchGroupByItem> | undefined | null,
+): GroupBySpec<any>[] {
+  const normalized = (normalizeGroupby((groups || []) as any) || []) as GroupBySpec<any>[];
+  const fields = new Set(
+    normalized.map((g) => String((typeof g === 'string' ? g : g.field) || '').trim()),
+  );
+  const next = normalized.slice();
+  for (const field of lockedGroupFieldSet.value) {
+    if (!fields.has(field)) next.unshift({ field } as GroupBySpec<any>);
+  }
+  return next;
+}
 
 const groupingSummary = computed(() => {
   const arr = userFacingGroups.value;
@@ -819,8 +854,9 @@ const {
 } = useSearchGrouping({
   store: store as any,
   currentAppliedGroups: () => props.currentAppliedGroups as any,
+  lockedGroupFields: () => props.lockedGroups,
   onGroupsChange: (next: SearchGroupByItem[]) => {
-    emitQueryUpdate(buildPayload(next as any));
+    emitQueryUpdate(buildPayload(ensureLockedGroups(next)));
   },
 });
 
@@ -1027,12 +1063,13 @@ function onAddFilterClickAndClose() {
 }
 
 function onGroupingClear() {
-  // Clear only user-facing groups; keep favorite contribution folded under the star.
-  const favGroups = activeFavorite.value?.groups ?? [];
-  emitQueryUpdate(buildPayload((favGroups.length ? favGroups : []) as any));
+  if (!canClearVisibleGrouping.value) return;
+  // Clear removable user-facing groups; keep favorite contribution and locked board groups.
+  const favGroups = (activeFavorite.value?.groups ?? []) as SearchGroupByItem[];
+  emitQueryUpdate(buildPayload(ensureLockedGroups(favGroups)));
 }
 
-/** Clears keyword, filter chips, favorite facet, and grouping in one action (instant emit). */
+/** Clears keyword, filter chips, favorite facet, and removable grouping in one action. */
 function onClearAll() {
   if (!hasClearableSearch.value) return;
   debouncedTrigger.cancel();
@@ -1044,13 +1081,13 @@ function onClearAll() {
   filters.value = [];
   activeFavorite.value = null;
   pendingDeleteFilterId.value = null;
-  emitQueryUpdate(buildPayload([]));
+  emitQueryUpdate(buildPayload(ensureLockedGroups([])));
 }
 
 const hasClearableSearch = computed(() => {
   const hasKw = Boolean(String(keyword.value ?? '').trim());
   const hasFilters = Array.isArray(filters.value) && filters.value.length > 0;
-  return hasKw || hasFilters || hasGrouping.value || !!activeFavorite.value;
+  return hasKw || hasFilters || canClearVisibleGrouping.value || !!activeFavorite.value;
 });
 
 function onEditGroupClick() {

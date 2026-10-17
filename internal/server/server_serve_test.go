@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/choysum-dev/choysum/pkg/config"
+	"github.com/choysum-dev/choysum/pkg/oerrors"
+	xfmt "golang.org/x/exp/errors/fmt"
 )
 
 func TestServerServeReturnsErrorForInvalidBundleMode(t *testing.T) {
@@ -158,6 +160,88 @@ func TestServerServeSkipsRestartWhenNoModuleMatchesWatchedFile(t *testing.T) {
 	// Cancel the runtime context so serve() returns cleanly.
 	cancel()
 	err := <-errCh
+	if err != nil {
+		t.Fatalf("serve() returned error after context cancel: %v", err)
+	}
+}
+
+func TestServerServeContinuesOnModuleLeaseConflict(t *testing.T) {
+	runtimeScope := &noSessionServerScope{serverTestScope: newRichServerTestScope(t)}
+	runtimeScope.cfg.Auth.Enabled = false
+	assignEphemeralServerPort(t, runtimeScope.cfg)
+	runtimeScope.cfg.Server.EnableGrpcWebProxy = false
+	runtimeScope.cfg.Server.HotReload = false
+
+	watchRoot := t.TempDir()
+	changedFile := filepath.Join(watchRoot, "changed.ts")
+	if err := os.WriteFile(changedFile, []byte("export {}"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	leaseErr := oerrors.New("meta.lock", "LEASE_CONFLICT", "lease is busy").WithMetadata("retry_after_ms", "60000")
+	tracked := &fakeWatchedService{
+		name:      "web",
+		watchDirs: []string{watchRoot},
+		watchErr:  xfmt.Errorf("error running watch handler: %w", leaseErr),
+		callCh:    make(chan watchedCall, 1),
+	}
+
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{watcher: mustNewWatcher(t), queue: make(chan string, 1)},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	runtimeScope.ctx = ctx
+	errCh := make(chan error, 1)
+	finished := make(chan struct{})
+	t.Cleanup(func() {
+		cancel()
+		select {
+		case <-finished:
+		case <-time.After(2 * time.Second):
+		}
+		if watcher := srv.hotreloadWatcher(); watcher != nil {
+			_ = watcher.Close()
+		}
+		if srv.httpServer != nil || srv.server != nil || srv.listener != nil || srv.grpcClientPool != nil {
+			_ = srv.stop(false)
+		}
+	})
+
+	go func() {
+		errCh <- srv.serve()
+	}()
+
+	deadline := time.After(3 * time.Second)
+	for !srv.ready.Load() {
+		select {
+		case err := <-errCh:
+			t.Fatalf("serve() returned before ready: %v", err)
+		case <-deadline:
+			t.Fatal("timed out waiting for server to become ready")
+		default:
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+
+	srv.hotreload.storeWatchTargets(srv.buildRegisteredWatchTargets(tracked.watchPlans(), tracked.watchCallback))
+	srv.hotreloadQueue() <- changedFile
+
+	select {
+	case <-tracked.callCh:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for watch handler call")
+	}
+
+	select {
+	case err := <-errCh:
+		t.Fatalf("serve() returned unexpectedly after LEASE_CONFLICT: %v", err)
+	default:
+	}
+
+	cancel()
+	err := <-errCh
+	close(finished)
 	if err != nil {
 		t.Fatalf("serve() returned error after context cancel: %v", err)
 	}

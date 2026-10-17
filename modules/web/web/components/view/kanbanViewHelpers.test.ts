@@ -4,10 +4,15 @@
 import {
   applyChoyKanbanMove,
   choyKanbanLaneRemain,
+  choyKanbanLaneTotal,
   formatChoyKanbanLoadMoreLabel,
+  isChoyKanbanFlatBoard,
+  resolveChoyKanbanLaneRemain,
+  CHOY_KANBAN_FLAT_LANE_KEY,
   groupRowsIntoChoyKanbanLanes,
   normalizeChoyKanbanLaneKey,
   resolveChoyKanbanCardId,
+  sortChoyKanbanLanesByOrder,
 } from './kanbanViewHelpers';
 
 describe('kanbanViewHelpers', () => {
@@ -133,10 +138,50 @@ describe('kanbanViewHelpers', () => {
     expect(choyKanbanLaneRemain({ remain: Number.NaN })).toBe(0);
   });
 
+  test('choyKanbanLaneTotal = loaded + remain', () => {
+    expect(choyKanbanLaneTotal(undefined)).toBe(0);
+    expect(
+      choyKanbanLaneTotal({
+        cards: [{ id: '1', title: 'A', laneKey: 'a' }],
+        remain: 8,
+      }),
+    ).toBe(9);
+  });
+
+  test('sortChoyKanbanLanesByOrder prefers listed tokens', () => {
+    const sorted = sortChoyKanbanLanesByOrder(
+      [
+        { key: 'InstalledStatus=uninstalled', label: 'uninstalled' },
+        { key: 'InstalledStatus=installed', label: 'installed' },
+        { key: 'InstalledStatus=broken', label: 'broken' },
+      ],
+      ['installed', 'uninstalled'],
+      (lane) => String(lane.label || ''),
+    );
+    expect(sorted.map((l) => l.label)).toEqual(['installed', 'uninstalled', 'broken']);
+  });
+
   test('formatChoyKanbanLoadMoreLabel uses normalized remain', () => {
-    expect(formatChoyKanbanLoadMoreLabel(3)).toBe('Load more (3 remaining)');
-    expect(formatChoyKanbanLoadMoreLabel(0)).toBe('Load more (0 remaining)');
+    expect(formatChoyKanbanLoadMoreLabel(3)).toBe('3 more');
+    expect(formatChoyKanbanLoadMoreLabel(0)).toBe('0 more');
     expect(formatChoyKanbanLoadMoreLabel(2, (n) => `还有 ${n} 条`)).toBe('还有 2 条');
+  });
+
+  test('isChoyKanbanFlatBoard detects the synthetic ungrouped lane', () => {
+    expect(isChoyKanbanFlatBoard([{ key: CHOY_KANBAN_FLAT_LANE_KEY }])).toBe(true);
+    expect(isChoyKanbanFlatBoard([{ key: 'all' }, { key: 'other' }])).toBe(false);
+    expect(isChoyKanbanFlatBoard([{ key: 'InstalledStatus=installed' }])).toBe(false);
+    expect(isChoyKanbanFlatBoard([])).toBe(false);
+    expect(isChoyKanbanFlatBoard(null)).toBe(false);
+  });
+
+  test('resolveChoyKanbanLaneRemain prefers counted fetchRemain; else ReadGroup count', () => {
+    // skipCount preload leaves fetchRemain unset → fall back to lane.count − loaded
+    expect(resolveChoyKanbanLaneRemain({ loaded: 100, laneCount: 1503 })).toBe(1403);
+    // Counted fetch published remain=0 → exhausted
+    expect(resolveChoyKanbanLaneRemain({ loaded: 100, laneCount: 1503, fetchRemain: 0 })).toBe(0);
+    expect(resolveChoyKanbanLaneRemain({ loaded: 80, laneCount: 1503, fetchRemain: 1423 })).toBe(1423);
+    expect(resolveChoyKanbanLaneRemain({ loaded: 10, laneCount: 0 })).toBe(0);
   });
 
   test('applyChoyKanbanMove preserves lane.remain', () => {

@@ -24,7 +24,7 @@ import { ChoyPage } from '@/web';
 defineOptions({ name: 'MetaModuleListPage' });
 
 const { _t } = createTranslate('meta', { scope: 'web/pages/ModuleList' });
-const pageTitle = _t('Module List');
+const pageTitle = _t('Module Board');
 
 const indexStore = createStoreByModel<typeof MetaModuleIndex>('meta.MetaModuleIndex', {
   storeId: 'MetaModuleIndex_ListKanban',
