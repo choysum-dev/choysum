@@ -78,7 +78,8 @@ SPDX-License-Identifier: Apache-2.0
             </ChoyPageTitleActions>
           </template>
 
-          <template v-if="showActions" #user-actions>
+          <!-- Only register when filled — empty tray would paint a dangling ActionBar separator. -->
+          <template v-if="showActions && !!slots['user-actions']" #user-actions>
             <slot name="user-actions" :selected-items="selectedItems" />
           </template>
 

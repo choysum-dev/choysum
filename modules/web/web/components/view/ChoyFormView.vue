@@ -14,7 +14,13 @@ SPDX-License-Identifier: Apache-2.0
           :user-actions-label="_t('User actions')"
         >
           <template v-if="resolvedShowActions || pageTitle || showTitleOverflow" #system-actions>
-            <!-- Keep Save/Cancel/Reset outside the overridable slot so custom toolbars cannot hide them. -->
+            <!--
+              Left chrome contract (List / Kanban / Form):
+              [primary] [page title][⋮] [secondary…]
+              create/edit: primary=Save/Cancel, Reset in ⋮ (no trailing secondary).
+              display: primary=New, secondary=Edit/Copy/Delete after the title cluster.
+            -->
+            <!-- Primary: Save/Cancel while editing; New (or #system-actions) in display. -->
             <template v-if="isEditing">
               <ChoyButton type="button" size="default" variant="default" :disabled="controlsLocked" @click="handleSubmit">
                 <Check class="size-4" aria-hidden="true" />
@@ -24,42 +30,19 @@ SPDX-License-Identifier: Apache-2.0
                 <X class="size-4" aria-hidden="true" />
                 {{ _t('Cancel') }}
               </ChoyButton>
-              <ChoyButton type="button" size="default" variant="ghost" :disabled="controlsLocked" @click="handleReset">
-                <RotateCcw class="size-4" aria-hidden="true" />
-                {{ _t('Reset') }}
-              </ChoyButton>
             </template>
-            <slot v-if="resolvedShowActions" name="system-actions">
-              <template v-if="viewMode === 'display' && effectiveRecordId">
-                <ChoyButton
-                  v-if="resolvedCreateAction && canCreate"
-                  type="button"
-                  size="default"
-                  variant="default"
-                  @click="handleCreate"
-                >
-                  <Plus class="size-4" aria-hidden="true" />
-                  {{ _t('New') }}
-                </ChoyButton>
-                <ChoyButton v-if="canEdit" type="button" size="default" variant="outline" @click="handleEdit">
-                  <Pencil class="size-4" aria-hidden="true" />
-                  {{ _t('Edit') }}
-                </ChoyButton>
-                <ChoyButton v-if="canCopy" type="button" size="default" variant="outline" @click="handleCopy">
-                  <Copy class="size-4" aria-hidden="true" />
-                  {{ _t('Copy') }}
-                </ChoyButton>
-                <ChoyButton
-                  v-if="canDelete"
-                  type="button"
-                  size="default"
-                  variant="outline-destructive"
-                  @click="handleDelete"
-                >
-                  <Trash2 class="size-4" aria-hidden="true" />
-                  {{ _t('Delete') }}
-                </ChoyButton>
-              </template>
+            <slot v-else-if="resolvedShowActions" name="system-actions">
+              <ChoyButton
+                v-if="viewMode === 'display' && effectiveRecordId && resolvedCreateAction && canCreate"
+                type="button"
+                size="default"
+                variant="default"
+                data-testid="form-primary-new"
+                @click="handleCreate"
+              >
+                <Plus class="size-4" aria-hidden="true" />
+                {{ _t('New') }}
+              </ChoyButton>
             </slot>
 
             <h1
@@ -81,7 +64,10 @@ SPDX-License-Identifier: Apache-2.0
               :action-company-id="pageTitleActionsIo?.actionCompanyId"
               :store="store"
             >
-              <template v-if="showRefreshInOverflow || $slots['overflow-actions']" #overflow>
+              <template
+                v-if="showRefreshInOverflow || showResetInOverflow || $slots['overflow-actions']"
+                #overflow
+              >
                 <DropdownMenuItem
                   v-if="showRefreshInOverflow"
                   data-testid="form-overflow-refresh"
@@ -90,11 +76,58 @@ SPDX-License-Identifier: Apache-2.0
                   <RefreshCw class="size-4" aria-hidden="true" />
                   {{ _t('Refresh') }}
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  v-if="showResetInOverflow"
+                  data-testid="form-overflow-reset"
+                  :disabled="controlsLocked"
+                  @select="handleReset"
+                >
+                  <RotateCcw class="size-4" aria-hidden="true" />
+                  {{ _t('Reset') }}
+                </DropdownMenuItem>
                 <slot name="overflow-actions" />
               </template>
             </ChoyPageTitleActions>
+
+            <!-- Secondary (display only): Edit/Copy/Delete after the title cluster. -->
+            <template v-if="resolvedShowActions && viewMode === 'display' && effectiveRecordId">
+              <ChoyButton
+                v-if="canEdit"
+                type="button"
+                size="default"
+                variant="outline"
+                data-testid="form-secondary-edit"
+                @click="handleEdit"
+              >
+                <Pencil class="size-4" aria-hidden="true" />
+                {{ _t('Edit') }}
+              </ChoyButton>
+              <ChoyButton
+                v-if="canCopy"
+                type="button"
+                size="default"
+                variant="outline"
+                data-testid="form-secondary-copy"
+                @click="handleCopy"
+              >
+                <Copy class="size-4" aria-hidden="true" />
+                {{ _t('Copy') }}
+              </ChoyButton>
+              <ChoyButton
+                v-if="canDelete"
+                type="button"
+                size="default"
+                variant="outline-destructive"
+                data-testid="form-secondary-delete"
+                @click="handleDelete"
+              >
+                <Trash2 class="size-4" aria-hidden="true" />
+                {{ _t('Delete') }}
+              </ChoyButton>
+            </template>
           </template>
-          <template v-if="resolvedShowActions" #user-actions>
+          <!-- Only register when filled — empty tray would paint a dangling ActionBar separator. -->
+          <template v-if="resolvedShowActions && !!slots['user-actions']" #user-actions>
             <slot name="user-actions" />
           </template>
           <!-- Keep #center registered so the thirds grid does not collapse. -->
@@ -233,6 +266,7 @@ const hasResolveRecordIdFromRouteProp = hasExplicitProp('resolveRecordIdFromRout
 // =============================
 defineSlots<{
   breadcrumb(): any;
+  /** Primary actions before the page title (default: New in display). */
   'system-actions'(): any;
   'user-actions'(): any;
   statusbar(): any;
@@ -422,8 +456,16 @@ const isEditing = computed(() => viewMode.value === 'edit' || viewMode.value ===
 const showRefreshInOverflow = computed(
   () => resolvedShowActions.value && resolvedShowHeader.value && canRefresh.value && viewMode.value === 'display' && !!effectiveRecordId.value,
 );
+/** Reset lives in ⋮ during create/edit so the left bar stays [Save][Cancel][title][⋮]. */
+const showResetInOverflow = computed(
+  () => resolvedShowActions.value && resolvedShowHeader.value && isEditing.value,
+);
 const showTitleOverflow = computed(
-  () => !!pageTitleActionsIo.value || showRefreshInOverflow.value || !!slots['overflow-actions'],
+  () =>
+    !!pageTitleActionsIo.value ||
+    showRefreshInOverflow.value ||
+    showResetInOverflow.value ||
+    !!slots['overflow-actions'],
 );
 
 useRegisterPageActionTarget({

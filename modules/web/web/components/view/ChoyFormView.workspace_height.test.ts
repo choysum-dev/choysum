@@ -41,6 +41,32 @@ function mountForm(props: Record<string, unknown> = {}, extra: Record<string, un
   });
 }
 
+/** Action-tray chrome order for the minimal DOM (no compound querySelector). */
+function actionTrayOrder(tray: Element): string[] {
+  const out: string[] = [];
+  const walk = (node: Element) => {
+    const testId = node.getAttribute('data-testid');
+    if (testId === 'form-primary-new' || testId === 'form-secondary-edit' || testId === 'form-secondary-reset') {
+      out.push(testId);
+      return;
+    }
+    if (node.getAttribute('data-slot') === 'page-title') {
+      out.push('page-title');
+      return;
+    }
+    if (node.tagName === 'BUTTON' || node.tagName === 'button') {
+      const label = (node.textContent || '').replace(/\s+/g, ' ').trim();
+      if (label) out.push(label);
+      return;
+    }
+    for (const child of Array.from(node.children)) {
+      walk(child as Element);
+    }
+  };
+  walk(tray);
+  return out;
+}
+
 describe('ChoyFormView workspace height', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
@@ -79,6 +105,92 @@ describe('ChoyFormView workspace height', () => {
     expect(cls).toContain('border-b-0');
     expect(cls).toContain('[border-bottom-width:0px]');
     expect(mounted.q('[data-testid="page-io-menu-trigger"]')).not.toBeNull();
+
+    mounted.unmount();
+  });
+
+  test('display left chrome is primary → title → secondary', async () => {
+    const store = loginStore();
+    const { router } = createFeStubRouter({
+      route: { name: 'login', path: '/web/login', fullPath: '/web/login', params: {}, query: {}, meta: {} },
+    });
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h(
+            ChoyPage as any,
+            { store, title: 'Token Details', padding: true },
+            {
+              default: () =>
+                h(ChoyFormView as any, {
+                  store,
+                  viewMode: 'display',
+                  recordId: 'tok-1',
+                  resolveRecordIdFromRoute: false,
+                  showHeader: true,
+                  showActions: true,
+                  showMessages: false,
+                  createAction: '/tokens/new',
+                }),
+            },
+          );
+      },
+    });
+    const mounted = mountApp(Host, { plugins: [createPinia(), router] });
+    await flushPromises();
+
+    const tray = mounted.q('[data-testid=choy-action-tray]') as HTMLElement | null;
+    expect(tray).not.toBeNull();
+    const order = actionTrayOrder(tray!);
+    const newIdx = order.indexOf('form-primary-new');
+    const titleIdx = order.indexOf('page-title');
+    const editIdx = order.indexOf('form-secondary-edit');
+    expect(newIdx).toBeGreaterThanOrEqual(0);
+    expect(titleIdx).toBeGreaterThan(newIdx);
+    expect(editIdx).toBeGreaterThan(titleIdx);
+
+    mounted.unmount();
+  });
+
+  test('create left chrome is Save/Cancel → title → ⋮ (Reset in overflow)', async () => {
+    const store = loginStore();
+    const { router } = createFeStubRouter({
+      route: { name: 'login', path: '/web/login', fullPath: '/web/login', params: {}, query: {}, meta: {} },
+    });
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h(
+            ChoyPage as any,
+            { store, title: 'New Token', padding: true },
+            {
+              default: () =>
+                h(ChoyFormView as any, {
+                  store,
+                  viewMode: 'create',
+                  resolveRecordIdFromRoute: false,
+                  showHeader: true,
+                  showActions: true,
+                  showMessages: false,
+                }),
+            },
+          );
+      },
+    });
+    const mounted = mountApp(Host, { plugins: [createPinia(), router] });
+    await flushPromises();
+
+    const tray = mounted.q('[data-testid=choy-action-tray]') as HTMLElement | null;
+    expect(tray).not.toBeNull();
+    const order = actionTrayOrder(tray!);
+    const saveIdx = order.findIndex(t => t.includes('Save') || t.includes('保存'));
+    const cancelIdx = order.findIndex(t => t.includes('Cancel') || t.includes('取消'));
+    const titleIdx = order.indexOf('page-title');
+    expect(saveIdx).toBeGreaterThanOrEqual(0);
+    expect(cancelIdx).toBeGreaterThan(saveIdx);
+    expect(titleIdx).toBeGreaterThan(cancelIdx);
+    expect(order.includes('form-secondary-reset')).toBe(false);
+    expect(mounted.q('[data-testid=page-io-menu-trigger]')).not.toBeNull();
 
     mounted.unmount();
   });
