@@ -39,6 +39,31 @@ body {
 }
 
 /*
+ * Product-wide thin scrollbars (Form / List / shell / popovers).
+ * Stay in @layer base so utilities like .scrollbar-none can still hide tracks.
+ */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--muted-foreground) 35%, transparent) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--muted-foreground) 35%, transparent);
+  }
+}
+
+/*
  * Viewport-locked shell chrome: header stays put; Guest/App share one scrollport
  * (content + Powered-by). Short pages pin the footer; tall pages scroll it after
  * content (see ChoyGuestShell / ChoyAppShell).

@@ -1242,17 +1242,6 @@ watch(
   max-height: 12rem;
   overflow-x: hidden;
   overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in oklab, var(--muted-foreground) 35%, transparent) transparent;
-}
-
-.choy-search-popover .choy-search-menu__col-body::-webkit-scrollbar {
-  width: 6px;
-}
-
-.choy-search-popover .choy-search-menu__col-body::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: color-mix(in oklab, var(--muted-foreground) 35%, transparent);
 }
 
 .choy-search-popover .choy-search-menu__footer {

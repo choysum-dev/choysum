@@ -637,29 +637,4 @@ defineExpose({
   }
 }
 
-/*
- * Classic OS/browser scrollbars paint a track gutter that reads as a lane
- * border. Prefer a thin thumb on a transparent track (same idea as Search).
- */
-.choy-kanban-view__lane-body,
-.choy-kanban-view__board--flat {
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in oklab, var(--muted-foreground) 35%, transparent) transparent;
-}
-
-.choy-kanban-view__lane-body::-webkit-scrollbar,
-.choy-kanban-view__board--flat::-webkit-scrollbar {
-  width: 6px;
-}
-
-.choy-kanban-view__lane-body::-webkit-scrollbar-track,
-.choy-kanban-view__board--flat::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.choy-kanban-view__lane-body::-webkit-scrollbar-thumb,
-.choy-kanban-view__board--flat::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: color-mix(in oklab, var(--muted-foreground) 35%, transparent);
-}
 </style>
