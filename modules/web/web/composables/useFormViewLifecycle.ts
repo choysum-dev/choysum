@@ -1,10 +1,11 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { computed, nextTick, toRaw, watch, type ComputedRef, type Ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, toRaw, watch, type ComputedRef } from 'vue';
 import type { RouteLocationNormalizedLoaded, RouteLocationRaw, Router } from 'vue-router';
 import { ChoyMessage } from './useChoyMessage';
 import { confirmChoyAction } from './confirmChoyAction';
+import { isRowDraftDirty } from './listRowEdit';
 import { deepClonePreserve } from '@/core/utils/clone';
 import type { ClientModel, BaseModel } from '@/core/rpc';
 import type { ViewMode } from '@/web/web/components/view/viewScopeKeys';
@@ -39,6 +40,7 @@ export type UseFormViewLifecycleOpts<T extends BaseModel> = {
   emitCancelable: (event: string, payload?: any) => Promise<boolean>;
   emit: (event: string, payload?: any) => void;
   _t: (key: string, ...args: any[]) => string;
+  fieldsMetadata?: () => Record<string, { isReadonly?: boolean } | undefined> | undefined;
 };
 
 function normalizeRecordId(raw: unknown): string | undefined {
@@ -60,6 +62,49 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
 
   const effectiveRecordId = computed(() => normalizeRecordId(opts.identity.recordId) ?? peekRouteRecordId());
 
+  const createBaseline = ref<Record<string, unknown> | null>(null);
+  let leaving = false;
+
+  function snapshotCreateBaseline() {
+    const draft = opts.controller.vm.draft as Record<string, unknown> | null | undefined;
+    createBaseline.value = draft ? (deepClonePreserve(draft) as Record<string, unknown>) : null;
+  }
+
+  function isFormDirty(): boolean {
+    const draft = opts.controller.vm.draft as Record<string, unknown> | null | undefined;
+    const meta = opts.fieldsMetadata?.();
+    if (opts.viewMode.value === 'edit') {
+      return isRowDraftDirty(opts.controller.vm.original as Record<string, unknown> | null, draft, meta as any);
+    }
+    if (opts.viewMode.value === 'create') {
+      return isRowDraftDirty(createBaseline.value, draft, meta as any);
+    }
+    return false;
+  }
+
+  async function confirmDiscardIfDirty(): Promise<boolean> {
+    if (leaving || !isFormDirty()) return true;
+    const _t = opts._t;
+    try {
+      await confirmChoyAction(_t('You have unsaved changes. Discard them?'), _t('Unsaved changes'), {
+        confirmText: _t('Discard'),
+        cancelText: _t('Cancel'),
+        destructive: true,
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  const removeLeaveGuard = opts.router.beforeEach?.(() => {
+    if (leaving || !isFormDirty()) return true;
+    return confirmDiscardIfDirty();
+  });
+  onBeforeUnmount(() => {
+    removeLeaveGuard?.();
+  });
+
   let initializeSeq = 0;
 
   async function initializeForm() {
@@ -74,11 +119,13 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
       if (normId) {
         await opts.controller.beginDisplay(normId);
         if (isStale()) return;
+        createBaseline.value = null;
         opts.emit('mode-change', { mode: opts.controller.vm.mode as ViewMode });
         opts.emit('load-success', { record: (opts.controller.vm.original as any) || null });
       } else {
         await opts.controller.beginCreate(deepClonePreserve((opts.identity.initialValues || {}) as any));
         if (isStale()) return;
+        snapshotCreateBaseline();
         if ((opts.identity.viewMode as any) === 'display') {
           (opts.controller.vm as any).mode = 'display';
         }
@@ -106,22 +153,29 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
   }
 
   async function handleCancel() {
-    opts.onchangeCtrl.reset();
-    opts.resetOnchangeAgg();
-    if (opts.viewMode.value === 'create') {
-      opts.router.back();
-      return;
-    }
-    const id = effectiveRecordId.value;
-    if (id) {
-      try {
-        await opts.controller.beginDisplay(id);
-      } catch (e: any) {
-        const err = e instanceof Error ? e : new Error(String(e));
-        opts.emit('action-error', { action: 'load', error: err });
+    if (!(await confirmDiscardIfDirty())) return;
+    leaving = true;
+    try {
+      opts.onchangeCtrl.reset();
+      opts.resetOnchangeAgg();
+      if (opts.viewMode.value === 'create') {
+        await opts.router.back();
+        return;
       }
+      const id = effectiveRecordId.value;
+      if (id) {
+        try {
+          await opts.controller.beginDisplay(id);
+        } catch (e: any) {
+          const err = e instanceof Error ? e : new Error(String(e));
+          opts.emit('action-error', { action: 'load', error: err });
+        }
+      }
+      createBaseline.value = null;
+      opts.emit('mode-change', { mode: 'display' });
+    } finally {
+      leaving = false;
     }
-    opts.emit('mode-change', { mode: 'display' });
   }
 
   function handleReset() {
@@ -142,6 +196,7 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
   }
 
   async function handleRefresh() {
+    if (!(await confirmDiscardIfDirty())) return;
     const ok = await opts.emitCancelable('before-refresh');
     if (!ok) return;
 
@@ -166,6 +221,7 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
     const cp = deepClonePreserve(opts.controller.vm.original as any);
     delete (cp as any).Id;
     await opts.controller.beginCreate(cp);
+    snapshotCreateBaseline();
     opts.resetOnchangeAgg();
     opts.emit('mode-change', { mode: 'create' });
     opts.onchangeCtrl.reset();
@@ -245,6 +301,7 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
 
   return {
     effectiveRecordId,
+    isFormDirty,
     initializeForm,
     bumpInitializeSeq,
     handleEdit,

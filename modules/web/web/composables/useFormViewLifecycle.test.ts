@@ -6,7 +6,7 @@ import * as VueRouter from 'vue-router';
 import { createPinia, setActivePinia } from 'pinia';
 
 import { flushPromises, fnRecorder, mountApp } from '@/web/web/__tests__/mountApp';
-import { resolveConfirmChoy } from '@/web/web/composables/confirmChoyAction';
+import { resolveConfirmChoy, useConfirmChoyStore } from '@/web/web/composables/confirmChoyAction';
 import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
 import { useFormViewLifecycle } from '@/web/web/composables/useFormViewLifecycle';
 import type { ViewMode } from '@/web/web/components/view/viewScopeKeys';
@@ -20,7 +20,7 @@ const origWarn = console.warn;
 
 function makeController() {
   const ctrl = {
-    vm: reactive({ mode: 'display' as ViewMode, original: null as any }),
+    vm: reactive({ mode: 'display' as ViewMode, original: null as any, draft: null as any }),
     beginDisplay: fnRecorder(async (_id: string) => {}),
     beginCreate: fnRecorder(async (_seed: any) => {}),
     beginEdit: fnRecorder(() => {
@@ -545,5 +545,37 @@ describe('useFormViewLifecycle', () => {
     resolveConfirmChoy('confirm');
     await flushPromises();
     expect((console.warn as any).calls.some((c: any[]) => String(c[0]).includes('breadcrumb'))).toBe(true);
+  });
+
+  test('dirty edit cancel and refresh wait for discard confirmation', async () => {
+    const m = mountLifecycle({ watchIdentity: false, viewMode: 'edit' });
+    m.controller.vm.original = { Id: 'rec-1', Name: 'a' };
+    m.controller.vm.draft = { Id: 'rec-1', Name: 'b' };
+    expect(m.api().isFormDirty()).toBe(true);
+
+    const pendingCancel = m.api().handleCancel();
+    await flushPromises();
+    resolveConfirmChoy('cancel');
+    await pendingCancel;
+    expect(m.controller.beginDisplay.calls.length).toBe(0);
+
+    const pendingRefresh = m.api().handleRefresh();
+    await flushPromises();
+    resolveConfirmChoy('confirm');
+    await pendingRefresh;
+    expect(m.controller.beginDisplay.calls.length).toBe(1);
+    m.unmount();
+  });
+
+  test('route leave asks before discarding a dirty edit', async () => {
+    const m = mountLifecycle({ watchIdentity: false, viewMode: 'edit' });
+    m.controller.vm.original = { Id: 'rec-1', Name: 'a' };
+    m.controller.vm.draft = { Id: 'rec-1', Name: 'b' };
+    const pending = m.router.push('/elsewhere');
+    await flushPromises();
+    expect(useConfirmChoyStore().open).toBe(true);
+    resolveConfirmChoy('dismiss');
+    await pending;
+    m.unmount();
   });
 });

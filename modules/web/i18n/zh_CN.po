@@ -1596,6 +1596,26 @@ msgctxt "web/composables/search/useSearch"
 msgid "Not configured"
 msgstr "未配置"
 
+#: web/composables/useFormViewLifecycle.ts:91
+msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/composables/useFormViewLifecycle.ts:90
+msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
+msgid "Discard"
+msgstr "放弃"
+
+#: web/composables/useFormViewLifecycle.ts:89
+msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
+msgid "Unsaved changes"
+msgstr "未保存的更改"
+
+#: web/composables/useFormViewLifecycle.ts:89
+msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
+msgid "You have unsaved changes. Discard them?"
+msgstr "有未保存的更改。要放弃吗？"
+
 #: web/composables/useListInlineEdit.ts:107
 msgctxt "web/composables/useListInlineEdit@promptDirtySwitch"
 msgid "Discard"

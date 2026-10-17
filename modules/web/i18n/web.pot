@@ -998,54 +998,52 @@ msgctxt "web/components/view/ChartView"
 msgid "User actions"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:37
-#: web/components/view/ChoyFormView.vue:51
+#: web/components/view/ChoyFormView.vue:15
 msgctxt "web/components/view/FormView"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:23
+#: web/components/view/ChoyFormView.vue:34
 msgctxt "web/components/view/FormView"
 msgid "Copy"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:27
+#: web/components/view/ChoyFormView.vue:38
 msgctxt "web/components/view/FormView"
 msgid "Delete"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:43
+#: web/components/view/ChoyFormView.vue:45
 msgctxt "web/components/view/FormView"
 msgid "Details"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:15
+#: web/components/view/ChoyFormView.vue:30
 msgctxt "web/components/view/FormView"
 msgid "Edit"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:11
+#: web/components/view/ChoyFormView.vue:26
 msgctxt "web/components/view/FormView"
 msgid "New"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:19
+#: web/components/view/ChoyFormView.vue:50
 msgctxt "web/components/view/FormView"
 msgid "Refresh"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:41
-#: web/components/view/ChoyFormView.vue:55
+#: web/components/view/ChoyFormView.vue:19
 msgctxt "web/components/view/FormView"
 msgid "Reset"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:284
+#: web/components/view/ChoyFormView.vue:296
 msgctxt "web/components/view/FormView"
 msgid "Save"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:284
+#: web/components/view/ChoyFormView.vue:296
 msgctxt "web/components/view/FormView"
 msgid "Saving..."
 msgstr ""
@@ -1629,6 +1627,26 @@ msgstr ""
 #: web/composables/search/useSearch.ts:81
 msgctxt "web/composables/search/useSearch"
 msgid "Not configured"
+msgstr ""
+
+#: web/composables/useFormViewLifecycle.ts:91
+msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
+msgid "Cancel"
+msgstr ""
+
+#: web/composables/useFormViewLifecycle.ts:90
+msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
+msgid "Discard"
+msgstr ""
+
+#: web/composables/useFormViewLifecycle.ts:89
+msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
+msgid "Unsaved changes"
+msgstr ""
+
+#: web/composables/useFormViewLifecycle.ts:89
+msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
+msgid "You have unsaved changes. Discard them?"
 msgstr ""
 
 #: web/composables/useListInlineEdit.ts:107

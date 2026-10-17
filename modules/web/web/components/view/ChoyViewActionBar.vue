@@ -70,7 +70,7 @@ defineOptions({ name: 'ChoyViewActionBar' });
 const props = withDefaults(
   defineProps<{
     class?: ClassValue;
-    /** split = Form-style flex; thirds = List/Kanban grid with center search. */
+    /** split = flex toolbar; thirds = grid with a center column. */
     layout?: 'split' | 'thirds';
     systemActionsLabel?: string;
     userActionsLabel?: string;

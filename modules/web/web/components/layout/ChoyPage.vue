@@ -22,10 +22,10 @@ SPDX-License-Identifier: Apache-2.0
   >
     <div
       :class="props.fillHeight ? 'flex min-h-0 flex-1 flex-col' : undefined"
-      :role="title ? 'region' : undefined"
+      :role="effectiveTitle ? 'region' : undefined"
       :aria-busy="loading || undefined"
-      :aria-labelledby="title && !$slots.header ? pageTitleId : undefined"
-      :aria-label="title && $slots.header ? title : undefined"
+      :aria-labelledby="effectiveTitle && !$slots.header ? pageTitleId : undefined"
+      :aria-label="effectiveTitle && $slots.header ? effectiveTitle : undefined"
     >
       <div
         v-if="
@@ -89,7 +89,7 @@ SPDX-License-Identifier: Apache-2.0
                 data-slot="page-title"
                 class="choy-page__title min-w-0 truncate text-lg font-semibold tracking-tight text-foreground"
               >
-                {{ title }}
+                {{ effectiveTitle }}
               </h1>
               <p
                 v-if="description"
@@ -168,7 +168,8 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, useId, useSlots, watch } from 'vue';
+import { computed, inject, onMounted, ref, useId, useSlots, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { cn, type ClassValue } from '../../lib/utils';
 import {
   providePageContext,
@@ -180,9 +181,30 @@ import { blurFocusedDescendant } from './choy_page_loading_focus';
 import ChoyPageTitleActions from './ChoyPageTitleActions.vue';
 import ChoySkeleton from './ChoySkeleton.vue';
 import type { PageIoMenuListRef } from './ChoyPageIoMenu.vue';
-import { createTranslate } from '../../i18n';
+import { createTranslate, getGlobalComposer } from '../../i18n';
+import { resolveRoutePageTitle } from '../../router/documentTitle';
 
 const { _t } = createTranslate('web', { scope: 'web/components/layout/Page' });
+
+type PageRouteLike = { meta?: Record<string, unknown>; path?: string };
+
+/**
+ * Prefer vue-router's useRoute (production). Fall back to the FE stub's
+ * string provide keys, then null when unit mounts omit a router plugin.
+ */
+function useOptionalRouteForTitle(): PageRouteLike | null {
+  try {
+    const fromUseRoute = useRoute() as PageRouteLike | null | undefined;
+    if (fromUseRoute) return fromUseRoute;
+  } catch {
+    // FE stub throws when the router plugin is absent.
+  }
+  const fromStub = inject<PageRouteLike | null>('route', null);
+  if (fromStub) return fromStub;
+  const stubRouter = inject<{ currentRoute?: { value?: PageRouteLike } } | null>('router', null);
+  return stubRouter?.currentRoute?.value ?? null;
+}
+const pageRoute = useOptionalRouteForTitle();
 
 type PageWidth = '' | 'narrow' | 'medium' | 'wide' | 'full';
 
@@ -247,15 +269,28 @@ const titleActionsIo = computed<PageTitleActionsIo | null>(() => {
 });
 
 const parentPageStore = useOptionalPageStore();
+const effectiveStore = computed(() => props.store ?? parentPageStore.value);
+/**
+ * Explicit title wins. Workspace pages that pass :store inherit the route
+ * meta title (Form Detail / Create) so List and Form both host a title in
+ * view chrome without duplicating strings on every form page.
+ */
+const effectiveTitle = computed(() => {
+  const fromProp = String(props.title || '').trim();
+  if (fromProp) return fromProp;
+  if (!effectiveStore.value) return '';
+  return resolveRoutePageTitle(pageRoute, getGlobalComposer());
+});
+
 const pageCtx = providePageContext({
-  store: () => props.store ?? parentPageStore.value,
-  title: () => props.title,
+  store: () => effectiveStore.value,
+  title: () => effectiveTitle.value,
   titleId: pageTitleId,
   titleActionsIo,
 });
 
 const titleHostedByView = computed(() => pageCtx.titleHostedByView.value);
-const showPageTitle = computed(() => !!props.title && !titleHostedByView.value);
+const showPageTitle = computed(() => !!effectiveTitle.value && !titleHostedByView.value);
 // When a view hosts the title, IO moves into that chrome; keep page #title-actions
 // visible (without duplicating the IO menu) so custom page actions do not disappear.
 const showPageTitleActions = computed(() => {

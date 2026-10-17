@@ -38,6 +38,24 @@ export type UseFormViewSubmitOpts<T extends BaseModel> = {
   _t: (key: string, ...args: any[]) => string;
 };
 
+/** Path to open after a successful create, including copy that still sits on the source record URL. */
+export function formCreateSuccessPath(path: string, newId: string, currentRecordId?: string): string | null {
+  const id = String(newId || '').trim();
+  if (!id) return null;
+  if (path.endsWith('/new')) return path.slice(0, -'new'.length) + id;
+  const current = String(currentRecordId || '').trim();
+  if (!current || current === id) return null;
+  if (!path.endsWith('/' + current)) return null;
+  return path.slice(0, -current.length) + id;
+}
+
+function routeRecordId(route: { params?: Record<string, unknown>; query?: Record<string, unknown> }): string | undefined {
+  const raw = route.params?.recordId ?? route.params?.id ?? route.params?.Id ?? route.query?.recordId ?? route.query?.id ?? route.query?.Id;
+  const s = String(raw ?? '').trim();
+  if (!s || s === 'undefined' || s === 'null') return undefined;
+  return s;
+}
+
 export function useFormViewSubmit<T extends BaseModel>(opts: UseFormViewSubmitOpts<T>) {
   const submitting = ref(false);
 
@@ -159,25 +177,24 @@ export function useFormViewSubmit<T extends BaseModel>(opts: UseFormViewSubmitOp
           });
           if (!defaultPrevented) {
             const currentRoute = opts.router.currentRoute.value;
-            if (currentRoute.path.endsWith('/new')) {
-              const newId = (opts.controller.vm.original as any)?.Id;
-              if (newId) {
-                const newPath = currentRoute.path.replace(/\/new$/, `/${newId}`);
-                try {
-                  const breadcrumbStore = useBreadcrumbStore();
-                  const stack = breadcrumbStore.breadcrumbStack;
-                  if (stack.length > 0 && stack[stack.length - 1].path === currentRoute.path) {
-                    stack[stack.length - 1].path = newPath;
-                    Object.assign(stack[stack.length - 1], {
-                      title: opts.detailsTitle.src,
-                      titleText: { ...opts.detailsTitle },
-                    });
-                  }
-                } catch (e) {
-                  console.warn('Failed to update breadcrumb', e);
+            const newId = String((opts.controller.vm.original as any)?.Id ?? '').trim();
+            const newPath = formCreateSuccessPath(currentRoute.path, newId, routeRecordId(currentRoute));
+            if (newPath && newPath !== currentRoute.path) {
+              (opts.controller.vm as { mode: string }).mode = 'display';
+              try {
+                const breadcrumbStore = useBreadcrumbStore();
+                const stack = breadcrumbStore.breadcrumbStack;
+                if (stack.length > 0 && stack[stack.length - 1].path === currentRoute.path) {
+                  stack[stack.length - 1].path = newPath;
+                  Object.assign(stack[stack.length - 1], {
+                    title: opts.detailsTitle.src,
+                    titleText: { ...opts.detailsTitle },
+                  });
                 }
-                opts.router.replace(newPath);
+              } catch (e) {
+                console.warn('Failed to update breadcrumb', e);
               }
+              opts.router.replace(newPath);
             }
           }
         } else opts.emit('update-success', { record: opts.controller.vm.original as any });

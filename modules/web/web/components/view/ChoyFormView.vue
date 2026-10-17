@@ -4,16 +4,32 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyViewContainer>
+  <ChoyViewContainer class="gap-4">
     <template v-if="resolvedShowHeader" #header>
       <div data-anchor="choy.form.view-chrome">
         <ChoyViewActionBar
-          layout="split"
+          layout="thirds"
+          class="gap-2 border-b-0 [border-bottom-width:0px]"
           :system-actions-label="_t('System actions')"
           :user-actions-label="_t('User actions')"
         >
-          <template v-if="resolvedShowActions" #system-actions>
-            <slot name="system-actions">
+          <template v-if="resolvedShowActions || pageTitle || showTitleOverflow" #system-actions>
+            <!-- Keep Save/Cancel/Reset outside the overridable slot so custom toolbars cannot hide them. -->
+            <template v-if="isEditing">
+              <ChoyButton type="button" size="default" variant="default" :disabled="controlsLocked" @click="handleSubmit">
+                <Check class="size-4" aria-hidden="true" />
+                {{ saveLabel }}
+              </ChoyButton>
+              <ChoyButton type="button" size="default" variant="outline" :disabled="controlsLocked" @click="handleCancel">
+                <X class="size-4" aria-hidden="true" />
+                {{ _t('Cancel') }}
+              </ChoyButton>
+              <ChoyButton type="button" size="default" variant="ghost" :disabled="controlsLocked" @click="handleReset">
+                <RotateCcw class="size-4" aria-hidden="true" />
+                {{ _t('Reset') }}
+              </ChoyButton>
+            </template>
+            <slot v-if="resolvedShowActions" name="system-actions">
               <template v-if="viewMode === 'display' && effectiveRecordId">
                 <ChoyButton
                   v-if="resolvedCreateAction && canCreate"
@@ -22,65 +38,68 @@ SPDX-License-Identifier: Apache-2.0
                   variant="default"
                   @click="handleCreate"
                 >
-                  <Plus class="size-4" />
+                  <Plus class="size-4" aria-hidden="true" />
                   {{ _t('New') }}
                 </ChoyButton>
                 <ChoyButton v-if="canEdit" type="button" size="default" variant="outline" @click="handleEdit">
-                  <Pencil class="size-4" />
+                  <Pencil class="size-4" aria-hidden="true" />
                   {{ _t('Edit') }}
                 </ChoyButton>
-                <ChoyButton v-if="canRefresh" type="button" size="default" variant="outline" @click="handleRefresh">
-                  <RefreshCw class="size-4" />
-                  {{ _t('Refresh') }}
-                </ChoyButton>
-                <ChoyButton v-if="canCopy" type="button" size="default" variant="ghost" @click="handleCopy">
-                  <Copy class="size-4" />
+                <ChoyButton v-if="canCopy" type="button" size="default" variant="outline" @click="handleCopy">
+                  <Copy class="size-4" aria-hidden="true" />
                   {{ _t('Copy') }}
                 </ChoyButton>
                 <ChoyButton
                   v-if="canDelete"
                   type="button"
                   size="default"
-                  variant="outline"
-                  class="border-danger/40 text-danger hover:bg-danger-subtle"
+                  variant="outline-destructive"
                   @click="handleDelete"
                 >
-                  <Trash2 class="size-4" />
+                  <Trash2 class="size-4" aria-hidden="true" />
                   {{ _t('Delete') }}
                 </ChoyButton>
               </template>
-              <template v-if="viewMode === 'edit'">
-                <ChoyButton type="button" size="default" variant="default" @click="handleSubmit" :disabled="formBusy">
-                  <Check class="size-4" />
-                  {{ saveLabel }}
-                </ChoyButton>
-                <ChoyButton type="button" size="default" variant="outline" @click="handleCancel" :disabled="formBusy">
-                  <X class="size-4" />
-                  {{ _t('Cancel') }}
-                </ChoyButton>
-                <ChoyButton type="button" size="default" variant="ghost" @click="handleReset" :disabled="formBusy">
-                  <RotateCcw class="size-4" />
-                  {{ _t('Reset') }}
-                </ChoyButton>
-              </template>
-              <template v-if="viewMode === 'create'">
-                <ChoyButton type="button" size="default" variant="default" @click="handleSubmit" :disabled="formBusy">
-                  <Check class="size-4" />
-                  {{ saveLabel }}
-                </ChoyButton>
-                <ChoyButton type="button" size="default" variant="outline" @click="handleCancel" :disabled="formBusy">
-                  <X class="size-4" />
-                  {{ _t('Cancel') }}
-                </ChoyButton>
-                <ChoyButton type="button" size="default" variant="ghost" @click="handleReset" :disabled="formBusy">
-                  <RotateCcw class="size-4" />
-                  {{ _t('Reset') }}
-                </ChoyButton>
-              </template>
             </slot>
+
+            <h1
+              v-if="pageTitle"
+              :id="pageTitleId || undefined"
+              data-slot="page-title"
+              class="choy-form-view__page-title min-w-0 max-w-[10rem] truncate text-base font-semibold tracking-tight text-foreground sm:max-w-[14rem]"
+            >
+              {{ pageTitle }}
+            </h1>
+            <ChoyPageTitleActions
+              v-if="showTitleOverflow"
+              :has-io-menu="!!pageTitleActionsIo"
+              :action-import="pageTitleActionsIo?.actionImport ?? false"
+              :action-export="pageTitleActionsIo?.actionExport ?? false"
+              :action-import-upload-hint="pageTitleActionsIo?.actionImportUploadHint"
+              :action-import-column-mapping="pageTitleActionsIo?.actionImportColumnMapping"
+              :action-list-ref="(pageTitleActionsIo?.actionListRef as any)"
+              :action-company-id="pageTitleActionsIo?.actionCompanyId"
+              :store="store"
+            >
+              <template v-if="showRefreshInOverflow || $slots['overflow-actions']" #overflow>
+                <DropdownMenuItem
+                  v-if="showRefreshInOverflow"
+                  data-testid="form-overflow-refresh"
+                  @select="handleRefresh"
+                >
+                  <RefreshCw class="size-4" aria-hidden="true" />
+                  {{ _t('Refresh') }}
+                </DropdownMenuItem>
+                <slot name="overflow-actions" />
+              </template>
+            </ChoyPageTitleActions>
           </template>
           <template v-if="resolvedShowActions" #user-actions>
             <slot name="user-actions" />
+          </template>
+          <!-- Keep #center registered so the thirds grid does not collapse. -->
+          <template #center>
+            <div class="min-w-0" />
           </template>
           <template #header-right>
             <slot name="statusbar" />
@@ -91,13 +110,12 @@ SPDX-License-Identifier: Apache-2.0
       </div>
     </template>
 
-    <!-- pt tighter than pb: ViewContainer gap already separates ActionBar hairline. -->
     <ChoyViewBusyHost
-      :busy="formBusy"
-      class="min-h-0 flex-1 overflow-y-auto pt-2 pb-3"
+      :busy="overlayBusy"
+      class="min-h-0 flex-1 overflow-y-auto pb-3"
       data-anchor="choy.form-view"
     >
-      <form ref="formRef" @submit.self.prevent="onNativeSubmit">
+      <form ref="formRef" :inert="submitting || undefined" @submit.self.prevent="onNativeSubmit">
         <slot :form-data="exposedFormData" :view-mode="viewMode" :loading="loading" />
       </form>
     </ChoyViewBusyHost>
@@ -108,14 +126,14 @@ SPDX-License-Identifier: Apache-2.0
 // =============================
 // Section 1: Imports
 // =============================
-import { ref, computed, provide, inject, watch, toRaw, onMounted, onBeforeUnmount, getCurrentInstance } from 'vue';
+import { ref, computed, provide, inject, watch, toRaw, onMounted, onBeforeUnmount, getCurrentInstance, useSlots } from 'vue';
 import { FIELD_CLIENT_VALIDATORS_KEY } from '@/web/web/composables/fieldClientValidation';
 import type { ClientModel, BaseModel, Updateable, Insertable } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { RouteLocationRaw } from 'vue-router';
 import { useRoute, useRouter } from 'vue-router';
 import { canShowAction, type ActionIdMap } from '@/web/web/components/view/actionVisibility';
-import { resolvePageStore } from '@/web/web/composables/usePageContext';
+import { resolvePageStore, useHostPageTitleInView, useRegisterPageActionTarget } from '@/web/web/composables/usePageContext';
 import { useResolvedCreateAction } from '@/web/web/composables/resolveCreateRoute';
 
 import { provideOnchange } from '@/web/web/composables/useOnchange';
@@ -129,9 +147,11 @@ import { useFormViewSubmit } from '@/web/web/composables/useFormViewSubmit';
 import { nextLocalToken } from '@/web/web/components/view/localToken';
 import { createTranslate } from '@/web/web/i18n';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyPageTitleActions from '@/web/web/components/layout/ChoyPageTitleActions.vue';
 import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
 import ChoyViewActionBar from '@/web/web/components/view/ChoyViewActionBar.vue';
 import ChoyViewBusyHost from '@/web/web/components/view/ChoyViewBusyHost.vue';
+import DropdownMenuItem from '@/web/web/components/vendor/ui/dropdown-menu/DropdownMenuItem.vue';
 import { Plus, Pencil, RefreshCw, Trash2, Check, X, Copy, RotateCcw } from 'lucide-vue-next';
 import type {
   FormSubmitHandler,
@@ -178,6 +198,8 @@ const props = withDefaults(
     onchangeImmediateFirst?: boolean;
     submitHandler?: FormSubmitHandler<T>;
     resolveRecordIdFromRoute?: boolean;
+    /** Opt out of page IO action-target registration (embedded views pass false). */
+    registerActionTarget?: boolean;
   }>(),
   {
     createAction: undefined,
@@ -185,6 +207,8 @@ const props = withDefaults(
     onchangeDebounceMs: 150,
     onchangeImmediateFirst: false,
     submitHandler: undefined,
+    // Keep omitted as undefined (not false) so matching page-store views auto-register.
+    registerActionTarget: undefined,
   }
 );
 
@@ -199,9 +223,10 @@ const hasShowMessagesProp = hasExplicitProp('showMessages', 'show-messages');
 const hasResolveRecordIdFromRouteProp = hasExplicitProp('resolveRecordIdFromRoute', 'resolve-record-id-from-route');
 
 // =============================
-// Section 4: View layout notes (no auto-height here)
+// Section 4: View layout notes
 // =============================
-// Adaptive height is intentionally disabled for this view.
+// The shell fills the workspace. Field, notebook, and chatter content scroll
+// inside the form body rather than the page shell.
 
 // =============================
 // Section 5: Slots declaration
@@ -213,6 +238,7 @@ defineSlots<{
   statusbar(): any;
   'button-box'(): any;
   'header-right'(): any;
+  'overflow-actions'(): any;
   default(props: { formData: Partial<ClientModel<T>>; viewMode: ViewMode; loading: boolean }): any;
 }>();
 
@@ -274,6 +300,8 @@ const resolvedResolveRecordIdFromRoute = computed<boolean>(() =>
 const resolvedCreateAction = useResolvedCreateAction(() => props.createAction, {
   enabled: () => !isEmbedded.value,
 });
+const slots = useSlots();
+const { pageTitle, pageTitleId, pageTitleActionsIo } = useHostPageTitleInView(resolvedShowHeader);
 
 // Guard the current submit channel from being captured by deeper nested FormView instances.
 // Deeper nesting should re-provide its own registration entry from the nearest container.
@@ -352,6 +380,7 @@ const lifecycleDeps = {
   emitCancelable,
   emit: emit as (event: string, payload?: unknown) => void,
   _t,
+  fieldsMetadata: () => (store as { fieldsMetadata?: Record<string, { isReadonly?: boolean }> }).fieldsMetadata,
 };
 
 const {
@@ -386,8 +415,28 @@ const { submitting, handleSubmit, onNativeSubmit } = useFormViewSubmit({
   _t,
 });
 
-const formBusy = computed<boolean>(() => loading.value || submitting.value);
-const saveLabel = computed(() => (formBusy.value ? _t('Saving...') : _t('Save')));
+const overlayBusy = computed<boolean>(() => loading.value && !submitting.value);
+const controlsLocked = computed<boolean>(() => loading.value || submitting.value);
+const saveLabel = computed(() => (submitting.value ? _t('Saving...') : _t('Save')));
+const isEditing = computed(() => viewMode.value === 'edit' || viewMode.value === 'create');
+const showRefreshInOverflow = computed(
+  () => resolvedShowActions.value && resolvedShowHeader.value && canRefresh.value && viewMode.value === 'display' && !!effectiveRecordId.value,
+);
+const showTitleOverflow = computed(
+  () => !!pageTitleActionsIo.value || showRefreshInOverflow.value || !!slots['overflow-actions'],
+);
+
+useRegisterPageActionTarget({
+  store,
+  enabled: () => (isEmbedded.value ? false : props.registerActionTarget),
+  target: {
+    get selectedItems() {
+      const id = effectiveRecordId.value || (controller.vm.original as { Id?: string } | null)?.Id;
+      return id ? [{ Id: String(id) }] : [];
+    },
+    refresh: () => handleRefresh(),
+  },
+});
 
 watch(exposedFormData, v => emit('change', { formData: toRaw(v) as any }), { deep: true, flush: 'post' });
 
