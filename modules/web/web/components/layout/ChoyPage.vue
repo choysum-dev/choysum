@@ -87,7 +87,7 @@ SPDX-License-Identifier: Apache-2.0
                 v-if="showPageTitle"
                 :id="pageTitleId"
                 data-slot="page-title"
-                class="choy-page__title min-w-0 truncate text-lg font-semibold tracking-tight text-foreground"
+                class="choy-page__title min-w-0 truncate text-lg font-semibold text-foreground"
               >
                 {{ effectiveTitle }}
               </h1>

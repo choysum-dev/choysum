@@ -30,7 +30,7 @@ SPDX-License-Identifier: Apache-2.0
         <FieldLegend
           v-if="title"
           variant="legend"
-          class="mb-0 font-semibold tracking-tight text-foreground"
+          class="mb-0 font-semibold text-foreground"
         >
           {{ title }}
         </FieldLegend>

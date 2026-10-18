@@ -49,7 +49,7 @@ SPDX-License-Identifier: Apache-2.0
               v-if="pageTitle"
               :id="pageTitleId || undefined"
               data-slot="page-title"
-              class="choy-form-view__page-title min-w-0 max-w-[10rem] truncate text-base font-semibold tracking-tight text-foreground sm:max-w-[14rem]"
+              class="choy-form-view__page-title min-w-0 max-w-[10rem] truncate text-base font-semibold text-foreground sm:max-w-[14rem]"
             >
               {{ pageTitle }}
             </h1>

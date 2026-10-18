@@ -108,7 +108,22 @@ html {
   --choy-color-danger-subtle: color-mix(in oklab, var(--choy-color-danger) 12%, white);
   --choy-color-info-subtle: color-mix(in oklab, var(--choy-color-info) 12%, white);
 
-  --choy-font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /*
+   * UI sans: system first for Latin metrics on Apple; explicit CJK faces so
+   * Windows/Linux do not render Han with Arial/Roboto fallbacks.
+   */
+  --choy-font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    'PingFang SC',
+    'Hiragino Sans GB',
+    'Microsoft YaHei UI',
+    'Microsoft YaHei',
+    'Noto Sans SC',
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
   --choy-line-height-base: 1.5;
 
   /*
