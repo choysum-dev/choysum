@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <TooltipProvider v-if="resolved.length" :delay-duration="delayDuration">
+  <TooltipProvider v-if="resolved.length > 1" :delay-duration="delayDuration">
     <ChoyButtonGroup
       data-testid="choy-view-switcher"
       :aria-label="ariaLabel"

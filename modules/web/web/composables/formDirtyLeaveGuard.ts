@@ -12,9 +12,6 @@ export function isAuthExitNavigation(to: {
   /** Accept vue-router meta bags; only `resourceId` is read. */
   meta?: { resourceId?: unknown } | Record<string, unknown> | null;
 }): boolean {
-  const name = String(to?.name ?? '').trim();
-  if (name === 'login' || name === 'logout' || name === 'register') return true;
-
   const resourceId = String((to?.meta as { resourceId?: unknown } | null | undefined)?.resourceId ?? '').trim();
   if (
     resourceId === 'auth.route.login' ||
@@ -24,10 +21,20 @@ export function isAuthExitNavigation(to: {
     return true;
   }
 
-  const path = String(to?.path ?? '').split('?')[0]!.replace(/\/+$/, '') || '/';
+  const rawPath = String(to?.path ?? '').split('?')[0] ?? '';
+  const path = rawPath.replace(/\/+$/, '') || '/';
   if (path === '/login' || path === '/logout' || path === '/register') return true;
   // App may be mounted under /web/ (exact segments only — not /pos/register).
   if (/^\/web\/(login|logout|register)$/.test(path)) return true;
+
+  const name = String(to?.name ?? '').trim();
+  if (name === 'login' || name === 'logout' || name === 'register') {
+    // Name-only matches are for auth stubs; a concrete non-auth path (e.g. POS
+    // `/pos/register` named `register`) must keep the dirty-leave prompt.
+    const hasConcretePath = String(to?.path ?? '').trim() !== '';
+    if (!hasConcretePath || path === '/') return true;
+    return false;
+  }
 
   return false;
 }

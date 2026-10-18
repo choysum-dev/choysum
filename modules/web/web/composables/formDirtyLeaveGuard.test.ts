@@ -11,6 +11,12 @@ describe('isAuthExitNavigation', () => {
     expect(isAuthExitNavigation({ name: 'UserDetail' })).toBe(false);
   });
 
+  test('name-only auth match does not skip domain paths like /pos/register', () => {
+    expect(isAuthExitNavigation({ name: 'register', path: '/pos/register' })).toBe(false);
+    expect(isAuthExitNavigation({ name: 'register', path: '/register' })).toBe(true);
+    expect(isAuthExitNavigation({ name: 'login', path: '/web/login' })).toBe(true);
+  });
+
   test('matches auth route resource ids', () => {
     expect(isAuthExitNavigation({ meta: { resourceId: 'auth.route.login' } })).toBe(true);
     expect(isAuthExitNavigation({ meta: { resourceId: 'auth.route.logout' } })).toBe(true);

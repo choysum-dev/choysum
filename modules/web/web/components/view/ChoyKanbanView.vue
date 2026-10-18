@@ -38,6 +38,7 @@ SPDX-License-Identifier: Apache-2.0
                 type="button"
                 size="default"
                 variant="default"
+                :disabled="boardBusy"
                 @click="onCreate"
               >
                 <Plus class="size-4" aria-hidden="true" />

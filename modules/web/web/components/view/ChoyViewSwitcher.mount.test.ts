@@ -53,6 +53,18 @@ describe('ChoyViewSwitcher mount', () => {
     mounted.unmount();
   });
 
+  test('renders nothing when only one option remains', async () => {
+    const mounted = mountApp(ChoyViewSwitcher as any, {
+      props: {
+        active: 'list',
+        options: [{ value: 'list', label: 'List View' }],
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-testid=choy-view-switcher]')).toBeNull();
+    mounted.unmount();
+  });
+
   test('select emits for enabled options and ignores disabled', async () => {
     const selected: string[] = [];
     const mounted = mountApp(ChoyViewSwitcher as any, {

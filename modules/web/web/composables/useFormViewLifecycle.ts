@@ -176,21 +176,24 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
 
   /**
    * Keep `leaving` true across create-cancel back() so the dirty leave guard does
-   * not open a second confirm. Resolves when navigation finishes (afterEach) or
-   * when back() is a no-op (no popstate / still on the same route).
+   * not open a second confirm. Resolves when navigation finishes (afterEach), when
+   * back() is a no-op, or after a bounded fallback if popstate never commits.
    */
   function awaitCreateCancelBack(): Promise<void> {
     const fromPath = String(opts.router.currentRoute.value.fullPath ?? '');
     return new Promise((resolve) => {
       let done = false;
       let popSeen = false;
+      let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
+      const g = globalThis as typeof globalThis & {
+        addEventListener?: (type: string, listener: EventListener) => void;
+        removeEventListener?: (type: string, listener: EventListener) => void;
+      };
       const finish = () => {
         if (done) return;
         done = true;
+        if (fallbackTimer != null) clearTimeout(fallbackTimer);
         removeAfter?.();
-        const g = globalThis as typeof globalThis & {
-          removeEventListener?: (type: string, listener: EventListener) => void;
-        };
         g.removeEventListener?.('popstate', onPopState);
         resolve();
       };
@@ -200,14 +203,14 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
       const removeAfter = opts.router.afterEach?.(() => {
         finish();
       });
-      const g = globalThis as typeof globalThis & {
-        addEventListener?: (type: string, listener: EventListener) => void;
-      };
+      // Absolute release so `leaving` cannot stick if afterEach never runs.
+      fallbackTimer = setTimeout(() => {
+        finish();
+      }, 250);
       g.addEventListener?.('popstate', onPopState);
       opts.router.back();
       if (done) return;
-      // Macrotask after history.go has queued popstate (if any). No popstate and
-      // still on fromPath ⇒ no-op. If popstate ran, wait for afterEach only.
+      // Fast no-op: next macrotask, no popstate, still on fromPath.
       setTimeout(() => {
         if (done) return;
         if (popSeen) return;

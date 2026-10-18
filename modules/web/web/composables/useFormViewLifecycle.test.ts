@@ -328,6 +328,118 @@ describe('useFormViewLifecycle', () => {
     m.unmount();
   });
 
+  test('handleCancel create back with popstate still suppresses the leave prompt', async () => {
+    const m = mountLifecycle({
+      viewMode: 'create',
+      watchIdentity: false,
+      route: {
+        name: 'New',
+        path: '/app/items/new',
+        fullPath: '/app/items/new',
+        params: {},
+        query: {},
+        meta: {},
+      },
+    });
+    m.controller.beginCreate.mockImplementation(async (seed: any) => {
+      m.controller.vm.draft = { ...(seed || {}) };
+      m.controller.vm.mode = 'create';
+    });
+    await m.api().initializeForm();
+    await flushPromises();
+    m.controller.vm.draft = { Name: 'edited-away' };
+
+    // QuickJS FE host has no DOM EventTarget; capture the popstate listener directly.
+    let popListener: ((ev?: unknown) => void) | null = null;
+    const g = globalThis as typeof globalThis & {
+      addEventListener?: (type: string, listener: (ev?: unknown) => void) => void;
+      removeEventListener?: (type: string, listener: (ev?: unknown) => void) => void;
+    };
+    const prevAdd = g.addEventListener;
+    const prevRemove = g.removeEventListener;
+    g.addEventListener = (type: string, listener: (ev?: unknown) => void) => {
+      if (type === 'popstate') popListener = listener;
+    };
+    g.removeEventListener = (type: string, listener: (ev?: unknown) => void) => {
+      if (type === 'popstate' && popListener === listener) popListener = null;
+    };
+    try {
+      m.router.back = () => {
+        popListener?.({});
+        void m.router.push('/app/items');
+      };
+      const cancelPending = m.api().handleCancel();
+      await flushPromises();
+      resolveConfirmChoy('confirm');
+      await cancelPending;
+      await flushPromises();
+      expect(useConfirmChoyStore().open).toBe(false);
+      expect(m.router.currentRoute.value.fullPath).toBe('/app/items');
+    } finally {
+      g.addEventListener = prevAdd;
+      g.removeEventListener = prevRemove;
+      m.unmount();
+    }
+  });
+
+  test('handleCancel create back releases leaving when popstate never commits', async () => {
+    const m = mountLifecycle({
+      viewMode: 'create',
+      watchIdentity: false,
+      route: {
+        name: 'New',
+        path: '/app/items/new',
+        fullPath: '/app/items/new',
+        params: {},
+        query: {},
+        meta: {},
+      },
+    });
+    m.controller.beginCreate.mockImplementation(async (seed: any) => {
+      m.controller.vm.draft = { ...(seed || {}) };
+      m.controller.vm.mode = 'create';
+    });
+    await m.api().initializeForm();
+    await flushPromises();
+    m.controller.vm.draft = { Name: 'edited-away' };
+
+    let popListener: ((ev?: unknown) => void) | null = null;
+    const g = globalThis as typeof globalThis & {
+      addEventListener?: (type: string, listener: (ev?: unknown) => void) => void;
+      removeEventListener?: (type: string, listener: (ev?: unknown) => void) => void;
+    };
+    const prevAdd = g.addEventListener;
+    const prevRemove = g.removeEventListener;
+    g.addEventListener = (type: string, listener: (ev?: unknown) => void) => {
+      if (type === 'popstate') popListener = listener;
+    };
+    g.removeEventListener = (type: string, listener: (ev?: unknown) => void) => {
+      if (type === 'popstate' && popListener === listener) popListener = null;
+    };
+    try {
+      // popstate without a committed navigation — bounded fallback must release leaving.
+      m.router.back = () => {
+        popListener?.({});
+      };
+      const cancelPending = m.api().handleCancel();
+      await flushPromises();
+      resolveConfirmChoy('confirm');
+      await new Promise<void>((resolve) => setTimeout(resolve, 300));
+      await cancelPending;
+      expect(m.router.currentRoute.value.fullPath).toBe('/app/items/new');
+      expect(m.api().isFormDirty()).toBe(true);
+      const pending = m.router.push('/app/elsewhere');
+      await flushPromises();
+      expect(useConfirmChoyStore().open).toBe(true);
+      resolveConfirmChoy('dismiss');
+      await pending;
+    } finally {
+      g.addEventListener = prevAdd;
+      g.removeEventListener = prevRemove;
+      m.unmount();
+    }
+  });
+
   test('handleCancel create no-op back still prompts on a later dirty leave', async () => {
     const m = mountLifecycle({
       viewMode: 'create',
