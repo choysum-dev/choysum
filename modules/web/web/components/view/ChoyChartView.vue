@@ -19,10 +19,12 @@ SPDX-License-Identifier: Apache-2.0
           <slot name="system-actions">
             <ChoyButton
               v-if="showCreate"
+              type="button"
               size="default"
-              variant="outline"
+              variant="default"
               @click="emit('create')"
             >
+              <Plus class="size-4" aria-hidden="true" />
               {{ resolvedCreateLabel }}
             </ChoyButton>
             <ChoyButton
@@ -281,6 +283,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
+import { Plus } from 'lucide-vue-next';
 import {
   VisArea,
   VisAxis,

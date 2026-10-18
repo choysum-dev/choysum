@@ -17,15 +17,24 @@ SPDX-License-Identifier: Apache-2.0
             <!-- Keep Save/Discard outside the overridable slot so custom toolbars cannot hide them. -->
             <ChoyButton
               v-if="editable && isEditing"
+              type="button"
               size="default"
               variant="default"
               :disabled="inlineSaving"
               @click="handleInlineSave"
             >
+              <Check class="size-4" aria-hidden="true" />
               {{ _t('Save') }}
             </ChoyButton>
 
-            <ChoyButton v-if="editable && isEditing" size="default" variant="outline" @click="handleInlineDiscard">
+            <ChoyButton
+              v-if="editable && isEditing"
+              type="button"
+              size="default"
+              variant="outline"
+              @click="handleInlineDiscard"
+            >
+              <X class="size-4" aria-hidden="true" />
               {{ _t('Discard') }}
             </ChoyButton>
 
@@ -38,7 +47,13 @@ SPDX-License-Identifier: Apache-2.0
               :save="handleInlineSave"
               :discard="handleInlineDiscard"
             >
-              <ChoyButton v-if="resolvedCreateAction && canCreate" size="default" variant="default" @click="handleCreate">
+              <ChoyButton
+                v-if="resolvedCreateAction && canCreate"
+                type="button"
+                size="default"
+                variant="default"
+                @click="handleCreate"
+              >
                 <Plus class="size-4" aria-hidden="true" />
                 {{ _t('New') }}
               </ChoyButton>
@@ -207,7 +222,7 @@ SPDX-License-Identifier: Apache-2.0
             <slot name="empty">
               <ChoyEmpty class="w-full" :description="_t('No data')">
                 <template v-if="resolvedCreateAction && canCreate" #actions>
-                  <ChoyButton size="default" variant="default" @click="handleCreate">
+                  <ChoyButton type="button" size="default" variant="default" @click="handleCreate">
                     <Plus class="size-4" aria-hidden="true" />
                     {{ _t('New') }}
                   </ChoyButton>
@@ -286,7 +301,7 @@ import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyPageTitleActions from '@/web/web/components/layout/ChoyPageTitleActions.vue';
 import { Separator } from '@/web/web/components/vendor/ui/separator';
 import DropdownMenuItem from '@/web/web/components/vendor/ui/dropdown-menu/DropdownMenuItem.vue';
-import { ChevronRight, Plus, RefreshCw, Trash2, X } from 'lucide-vue-next';
+import { Check, ChevronRight, Plus, RefreshCw, Trash2, X } from 'lucide-vue-next';
 
 defineOptions({ name: 'ChoyListView', inheritAttrs: false });
 

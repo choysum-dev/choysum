@@ -29,11 +29,18 @@ SPDX-License-Identifier: Apache-2.0
         >
           <template v-if="showActions || pageTitle || showTitleOverflow" #system-actions>
             <slot v-if="showActions" name="system-actions">
+              <!--
+                Keep New mounted during search/move busy. Hiding it behind
+                boardBusy made the action bar flash when switching into Kanban.
+              -->
               <ChoyButton
-                v-if="!effectiveReadonly"
+                v-if="!props.readonly"
+                type="button"
                 size="default"
+                variant="default"
                 @click="onCreate"
               >
+                <Plus class="size-4" aria-hidden="true" />
                 {{ resolvedCreateLabel }}
               </ChoyButton>
             </slot>
@@ -283,7 +290,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed, defineComponent, h, ref, useSlots, watch, type PropType } from 'vue';
-import { RefreshCw } from 'lucide-vue-next';
+import { Plus, RefreshCw } from 'lucide-vue-next';
 import type { ClassValue } from '../../lib/utils';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { Lane } from '@/web/web/query/types';
@@ -481,7 +488,7 @@ const displayLanes = computed({
   },
 });
 
-/** Search / move: drives BusyHost and chrome (e.g. hide New). */
+/** Search / move: drives BusyHost and blocks drag; does not hide New. */
 const boardBusy = computed(() => engine.boardBusy.value);
 /** Lane append in flight; disable sentinel / load-more only. */
 const loadMoreBusy = computed(() => engine.loadMorePending.value);

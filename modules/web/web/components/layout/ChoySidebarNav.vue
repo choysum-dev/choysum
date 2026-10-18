@@ -124,10 +124,6 @@ function onLeafClick(item: MenuItem) {
 </template>
 
 <style scoped>
-/* Top inset matches main's section gap so the first item lines up with the view action bar. */
-.choy-sidebar-nav__groups {
-  padding-block: var(--choy-layout-section-gap);
-}
 .choy-sidebar-nav :deep([data-sidebar='group']) {
   padding-block: 0;
   padding-inline: 0.5rem;
@@ -147,7 +143,7 @@ function onLeafClick(item: MenuItem) {
   font-size: inherit;
   font-weight: 400;
   line-height: 1.25rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-sm, 0.375rem);
   color: var(--color-sidebar-foreground);
 }
 .choy-sidebar-nav :deep([data-sidebar='menu-sub-button']) {

@@ -303,8 +303,9 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
     });
   }
 
-  // Full-board chrome / BusyHost: search and move only.
-  // Lane load-more uses loadMorePending so New / overlay do not flash.
+  // Full-board BusyHost + drag lock: search and move only.
+  // Lane load-more uses loadMorePending so the overlay does not flash.
+  // Action-bar New stays mounted while this is true (see ChoyKanbanView).
   const boardBusy = computed(() => movePending.value || searchPending.value);
 
   return {

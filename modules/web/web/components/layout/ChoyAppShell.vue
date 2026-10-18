@@ -306,8 +306,20 @@ html.dark .choy-shell[data-shell-mode='app'],
   background-color: var(--choy-shell-chrome) !important;
 }
 
+/*
+ * The pane is the rounded menu surface. Its block padding is the air between
+ * that edge and the scroller, so the first item does not sit on the radius.
+ * Radius is one step under inset <main> — xl reads oversized on this narrow column.
+ */
 .choy-shell[data-shell-mode='app'] [data-testid='choy-shell-nav-pane'] {
   background-color: var(--choy-shell-pane) !important;
+  box-sizing: border-box;
+  padding-block: var(--choy-layout-section-gap) !important;
+  border-radius: var(--radius-md, 0.5rem);
+}
+
+.choy-shell[data-shell-mode='app'] [data-testid='choy-shell-nav-pane-scroll'] {
+  background-color: transparent !important;
 }
 
 /*
