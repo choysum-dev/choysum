@@ -5,6 +5,7 @@ import { computed, nextTick, onBeforeUnmount, ref, toRaw, watch, type ComputedRe
 import type { RouteLocationNormalizedLoaded, RouteLocationRaw, Router } from 'vue-router';
 import { ChoyMessage } from './useChoyMessage';
 import { confirmChoyAction } from './confirmChoyAction';
+import { isAuthExitNavigation } from './formDirtyLeaveGuard';
 import { isRowDraftDirty } from './listRowEdit';
 import { deepClonePreserve } from '@/core/utils/clone';
 import type { ClientModel, BaseModel } from '@/core/rpc';
@@ -97,8 +98,10 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
     }
   }
 
-  const removeLeaveGuard = opts.router.beforeEach?.(() => {
-    if (leaving || !isFormDirty()) return true;
+  // Auth exits (login/logout/register) skip the prompt — the session is leaving
+  // and the draft cannot be saved on the public shell.
+  const removeLeaveGuard = opts.router.beforeEach?.((to) => {
+    if (leaving || !isFormDirty() || isAuthExitNavigation(to)) return true;
     return confirmDiscardIfDirty();
   });
   onBeforeUnmount(() => {

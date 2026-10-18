@@ -578,4 +578,15 @@ describe('useFormViewLifecycle', () => {
     await pending;
     m.unmount();
   });
+
+  test('route leave skips discard prompt when navigating to login', async () => {
+    const m = mountLifecycle({ watchIdentity: false, viewMode: 'edit' });
+    m.controller.vm.original = { Id: 'rec-1', Name: 'a' };
+    m.controller.vm.draft = { Id: 'rec-1', Name: 'b' };
+    const pending = m.router.push({ name: 'login', path: '/login' });
+    await flushPromises();
+    expect(useConfirmChoyStore().open).toBe(false);
+    await pending;
+    m.unmount();
+  });
 });

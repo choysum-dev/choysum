@@ -17,6 +17,7 @@ export { default as ChoyEmpty } from './components/layout/ChoyEmpty.vue';
 export { default as ChoySpinner } from './components/layout/ChoySpinner.vue';
 export { default as ChoyBadge } from './components/layout/ChoyBadge.vue';
 export { default as ChoyCard } from './components/layout/ChoyCard.vue';
+export { default as ChoySection } from './components/layout/ChoySection.vue';
 export { default as ChoyGrid } from './components/layout/ChoyGrid.vue';
 export { default as ChoyCol } from './components/layout/ChoyCol.vue';
 export { default as ChoyTabs } from './components/layout/ChoyTabs.vue';
