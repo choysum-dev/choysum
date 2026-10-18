@@ -230,7 +230,7 @@ SPDX-License-Identifier: Apache-2.0
             :estimate-card-size="estimateCardSize"
             :remain="choyKanbanLaneRemain(lane)"
             :load-more-busy="loadMoreBusy"
-            :lane-drag="resolvedDragMode === 'lane' && !boardBusy"
+            :lane-drag="resolvedDragMode === 'lane' && !boardBusy && !loadMoreBusy"
             :other-lanes="otherLanes(lane.key)"
             :empty-label="_t('No cards')"
             :move-to-lane-label="_t('Move to lane')"

@@ -146,9 +146,17 @@ onMounted(() => {
       attributeFilter: ['data-search-active'],
     };
     if (root) observer.observe(root as unknown as Node, opts);
-    const host = rowEl?.value;
-    if (host) observer.observe(host as unknown as Node, opts);
     mo = observer;
+    // Parent template refs assign after child mount; watch until the ActionBar row exists.
+    watch(
+      () => rowEl?.value ?? null,
+      (host) => {
+        if (!host) return;
+        observer.observe(host as unknown as Node, opts);
+        syncActive();
+      },
+      { immediate: true },
+    );
   }
 });
 

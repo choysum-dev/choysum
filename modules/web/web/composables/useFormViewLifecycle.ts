@@ -65,8 +65,6 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
 
   const createBaseline = ref<Record<string, unknown> | null>(null);
   let leaving = false;
-  /** One-shot skip after confirmed create-cancel back(); cleared on the next guard run. */
-  let suppressLeaveOnce = false;
 
   function snapshotCreateBaseline() {
     const draft = opts.controller.vm.draft as Record<string, unknown> | null | undefined;
@@ -117,10 +115,6 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
   // not durable drafts, and a pending leave dialog must not overlay the auth page.
   const removeLeaveGuard = opts.router.beforeEach?.((to, from) => {
     if (leaving) return true;
-    if (suppressLeaveOnce) {
-      suppressLeaveOnce = false;
-      return true;
-    }
     if (shouldSkipFormDirtyLeavePrompt(to, from)) {
       dismissLeaveConfirmIfPending();
       return true;
@@ -180,6 +174,50 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
     opts.emit('mode-change', { mode: 'edit' });
   }
 
+  /**
+   * Keep `leaving` true across create-cancel back() so the dirty leave guard does
+   * not open a second confirm. Resolves when navigation finishes (afterEach) or
+   * when back() is a no-op (no popstate / still on the same route).
+   */
+  function awaitCreateCancelBack(): Promise<void> {
+    const fromPath = String(opts.router.currentRoute.value.fullPath ?? '');
+    return new Promise((resolve) => {
+      let done = false;
+      let popSeen = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        removeAfter?.();
+        const g = globalThis as typeof globalThis & {
+          removeEventListener?: (type: string, listener: EventListener) => void;
+        };
+        g.removeEventListener?.('popstate', onPopState);
+        resolve();
+      };
+      const onPopState = () => {
+        popSeen = true;
+      };
+      const removeAfter = opts.router.afterEach?.(() => {
+        finish();
+      });
+      const g = globalThis as typeof globalThis & {
+        addEventListener?: (type: string, listener: EventListener) => void;
+      };
+      g.addEventListener?.('popstate', onPopState);
+      opts.router.back();
+      if (done) return;
+      // Macrotask after history.go has queued popstate (if any). No popstate and
+      // still on fromPath ⇒ no-op. If popstate ran, wait for afterEach only.
+      setTimeout(() => {
+        if (done) return;
+        if (popSeen) return;
+        if (String(opts.router.currentRoute.value.fullPath ?? '') === fromPath) {
+          finish();
+        }
+      }, 0);
+    });
+  }
+
   async function handleCancel() {
     if (!(await confirmDiscardIfDirty())) return;
     leaving = true;
@@ -187,21 +225,7 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
       opts.onchangeCtrl.reset();
       opts.resetOnchangeAgg();
       if (opts.viewMode.value === 'create') {
-        // router.back() is void / async popstate — suppress the next leave guard
-        // so the still-dirty create draft does not open a second confirm.
-        suppressLeaveOnce = true;
-        const fromPath = String(opts.router.currentRoute.value.fullPath ?? '');
-        opts.router.back();
-        // If back() was a no-op (no prior history), the leave guard never runs and
-        // the flag would otherwise swallow the next dirty-leave prompt.
-        void nextTick(() => {
-          if (
-            suppressLeaveOnce &&
-            String(opts.router.currentRoute.value.fullPath ?? '') === fromPath
-          ) {
-            suppressLeaveOnce = false;
-          }
-        });
+        await awaitCreateCancelBack();
         return;
       }
       const id = effectiveRecordId.value;

@@ -323,7 +323,7 @@ describe('useFormViewLifecycle', () => {
     queueMicrotask(() => resolveConfirmChoy('confirm'));
     await m.api().handleCancel();
     await flushPromises();
-    // suppressLeaveOnce must absorb the navigation without a second confirm dialog.
+    // `leaving` stays true across back() so the leave guard does not open a second confirm.
     expect(useConfirmChoyStore().open).toBe(false);
     m.unmount();
   });
@@ -349,7 +349,7 @@ describe('useFormViewLifecycle', () => {
     await flushPromises();
     m.controller.vm.draft = { Name: 'edited-away' };
     expect(m.api().isFormDirty()).toBe(true);
-    // First history entry: back() does not navigate, so the one-shot must clear.
+    // First history entry: back() does not navigate; leaving must clear after the no-op.
     m.router.back = () => {};
     const cancelPending = m.api().handleCancel();
     await flushPromises();
