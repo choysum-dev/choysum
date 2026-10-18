@@ -5,7 +5,8 @@ SPDX-License-Identifier: Apache-2.0
 
 <!--
   Wide action bars keep the field in the center column. Narrow bars show an
-  icon there; a click opens or closes the field on the next row.
+  icon there; a click opens or closes the field on the ActionBar-owned next row
+  (Teleport → injected search-fit-row; no imperative DOM insert).
 -->
 <template>
   <div ref="rootRef" class="flex min-w-0 w-full items-center" :class="wide ? undefined : 'justify-end'">
@@ -36,17 +37,19 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Search as SearchIcon } from 'lucide-vue-next';
 import { createTranslate } from '@/web/web/i18n';
 import { searchFieldFits } from '@/web/web/components/view/searchFit';
+import { ChoySearchFitRowKey } from './choySearchFitContext';
 
 defineOptions({ name: 'ChoySearchFit' });
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/ChoySearchFit' });
 
 const rootRef = ref<HTMLElement | null>(null);
-const rowEl = ref<HTMLElement | null>(null);
+/** Host row from ChoyViewActionBar; null when mounted outside an ActionBar. */
+const rowEl = inject(ChoySearchFitRowKey, null);
 const wide = ref(true);
 const opened = ref(false);
 const active = ref(false);
@@ -55,11 +58,15 @@ let mo: { disconnect: () => void } | null = null;
 
 const label = computed(() => (opened.value ? _t('Hide search') : _t('Show search')));
 /** Teleport host; cast through unknown — QuickJS DOM typings diverge from lib.dom Element. */
-const teleportTarget = computed(() => (rowEl.value ? (rowEl.value as unknown as Element) : null));
+const teleportTarget = computed(() => {
+  const el = rowEl?.value ?? null;
+  return el ? (el as unknown as Element) : null;
+});
 
 function syncActive() {
+  const host = rowEl?.value ?? null;
   const node =
-    rowEl.value?.querySelector('[data-anchor="choy.search"]') ||
+    host?.querySelector('[data-anchor="choy.search"]') ||
     rootRef.value?.querySelector('[data-anchor="choy.search"]');
   active.value = node?.getAttribute('data-search-active') === 'true';
 }
@@ -78,9 +85,10 @@ function barWidth(): number {
 }
 
 function focusInput() {
-  const input = (rowEl.value?.querySelector('input') ||
+  const host = rowEl?.value ?? null;
+  const input = (host?.querySelector('input') ||
     rootRef.value?.querySelector('input') ||
-    rowEl.value?.querySelector('textarea') ||
+    host?.querySelector('textarea') ||
     rootRef.value?.querySelector('textarea')) as HTMLElement | null;
   if (!input) return;
   // Focus the field without opening its filter menu; a later user focus still opens it.
@@ -101,14 +109,6 @@ watch(wide, () => {
 onMounted(() => {
   const root = rootRef.value;
   const bar = root?.closest('[data-slot="view-action-bar"]') as HTMLElement | null;
-  const parent = bar?.parentElement;
-  if (bar && parent) {
-    const row = document.createElement('div');
-    row.setAttribute('data-slot', 'search-fit-row');
-    row.className = 'min-w-0';
-    parent.insertBefore(row, bar.nextSibling);
-    rowEl.value = row;
-  }
   applyWidth(barWidth());
   syncActive();
   const Observer = (globalThis as { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
@@ -130,7 +130,8 @@ onMounted(() => {
       attributeFilter: ['data-search-active'],
     };
     if (root) observer.observe(root as unknown as Node, opts);
-    if (rowEl.value) observer.observe(rowEl.value as unknown as Node, opts);
+    const host = rowEl?.value;
+    if (host) observer.observe(host as unknown as Node, opts);
     mo = observer;
   }
 });
@@ -138,7 +139,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   disconnect?.();
   mo?.disconnect();
-  rowEl.value?.remove();
-  rowEl.value = null;
+  // Row is owned by ChoyViewActionBar — do not remove it.
 });
 </script>
