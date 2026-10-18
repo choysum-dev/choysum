@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  CHOY_KANBAN_CARD_GAP,
   CHOY_KANBAN_DEFAULT_CARD_SIZE,
   CHOY_KANBAN_VIRTUAL_THRESHOLD,
   choyKanbanShouldVirtualize,
@@ -20,6 +21,11 @@ describe('kanbanVirtualHelpers', () => {
     expect(choyKanbanShouldVirtualize(true, 0)).toBe(false);
     expect(choyKanbanShouldVirtualize(false, 100)).toBe(false);
     expect(choyKanbanShouldVirtualize(undefined, 40)).toBe(true);
+  });
+
+  test('virtual card gap matches non-virtual gap-2', () => {
+    expect(CHOY_KANBAN_CARD_GAP).toBe(8);
+    expect(CHOY_KANBAN_DEFAULT_CARD_SIZE).toBe(88);
   });
 
   test('resolveChoyKanbanEstimateCardSize falls back to default', () => {
