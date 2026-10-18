@@ -140,7 +140,7 @@ SPDX-License-Identifier: Apache-2.0
         class="choy-search-popover p-0"
         align="start"
         side="bottom"
-        :side-offset="0"
+        :side-offset="6"
         @open-auto-focus.prevent
         @close-auto-focus.prevent
         @pointer-down-outside="onMenuDismissOutside"
