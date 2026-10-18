@@ -38,6 +38,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Align Tailwind .font-mono with the product mono stack (tokens.css). */
+html {
+  --font-mono: var(--choy-font-family-mono);
+}
+
 /*
  * Product-wide thin scrollbars (Form / List / shell / popovers).
  * Stay in @layer base so utilities like .scrollbar-none can still hide tracks.
@@ -192,6 +197,46 @@ body {
 .choy-textfield-display {
   padding-inline: 0 !important;
   line-height: 1.5 !important;
+}
+
+/*
+ * Form field chrome density. Kit FormItem/Field ship gap-2 / gap-3; product
+ * hosts win via these selectors so label↔control tracks --choy-field-*-gap
+ * (including data-density=compact). cn() does not merge conflicting gap-*.
+ */
+[data-slot='form-item'].choy-form-item,
+[data-slot='field'].choy-field-base {
+  gap: var(--choy-field-stack-gap);
+}
+
+.choy-form-item__label,
+.choy-field-base__label-row {
+  gap: var(--choy-field-label-inline-gap);
+  font-size: var(--choy-font-size-sm);
+  line-height: var(--choy-field-label-line-height);
+}
+
+/* Kit Label / FieldLabel keep text-sm / leading-none; product chrome wins. */
+.choy-form-item__label [data-slot='label'],
+.choy-field-base__label-row [data-slot='field-label'] {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* Error / description track the same density scale as labels. */
+.choy-form-item [data-slot='form-message'],
+.choy-form-item [data-slot='form-description'],
+.choy-field-base [data-slot='field-error'] {
+  font-size: var(--choy-font-size-sm);
+}
+
+/* Numeric field controls + display: stable digit width in lists/forms. */
+.choy-number-input,
+.choy-monetary-input,
+.choy-bigint-input,
+.choy-decimal-input,
+.choy-field-display-text--numeric {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Product links: no underline by default (preflight uses text-decoration: inherit). */

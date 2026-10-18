@@ -124,6 +124,16 @@ html {
     'Helvetica Neue',
     Arial,
     sans-serif;
+  /* Code / JSON / search expressions; TW .font-mono follows via index.css. */
+  --choy-font-family-mono:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    'Liberation Mono',
+    'Courier New',
+    monospace;
   --choy-line-height-base: 1.5;
 
   /*
@@ -141,6 +151,16 @@ html {
   /* List virtual row + header track (comfortable ≈ Odoo list density). */
   --choy-list-row-height: 40px;
   --choy-list-header-height: 40px;
+
+  /*
+   * Form field chrome (product ChoyFormItem / ChoyFieldBase).
+   * Stack = label ↔ control ↔ message; inline = label ↔ help icon.
+   * Kit Field/FormItem keep their own gap-* defaults; product CSS overrides.
+   */
+  --choy-field-stack-gap: 0.375rem;
+  --choy-field-label-inline-gap: 0.25rem;
+  /* Slightly open vs leading-none so CJK glyphs are not clipped. */
+  --choy-field-label-line-height: 1.25;
 
   /* Direction defaults; updateDocumentDirection may override at runtime. */
   --choy-direction: ltr;
@@ -246,6 +266,8 @@ html[data-density='compact'] {
   --choy-list-row-height: 36px;
   --choy-list-header-height: 36px;
   --choy-layout-chrome-height: 3rem;
+  --choy-field-stack-gap: 0.25rem;
+  --choy-field-label-inline-gap: 0.2rem;
 }
 
 html[dir='rtl'] {

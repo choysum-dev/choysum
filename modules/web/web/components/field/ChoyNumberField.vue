@@ -20,7 +20,7 @@ SPDX-License-Identifier: Apache-2.0
         :aria-invalid="invalid ? 'true' : undefined" />
     </template>
     <template #display="{ fieldValue }">
-      <span class="choy-field-display-text truncate whitespace-nowrap text-foreground inline-block max-w-full text-right">{{ toDisplayText(fieldValue().value) }}</span>
+      <span class="choy-field-display-text choy-field-display-text--numeric truncate whitespace-nowrap text-foreground inline-block max-w-full text-right">{{ toDisplayText(fieldValue().value) }}</span>
     </template>
   </FieldBase>
 </template>

@@ -7,16 +7,18 @@ SPDX-License-Identifier: Apache-2.0
   <Field
     v-if="isVisible"
     data-anchor="choy.field-base"
+    orientation="vertical"
     :class="cn('choy-field-base w-full', props.class)"
   >
     <div
       v-if="label || help || required"
-      class="choy-field-base__label-row flex items-center gap-1.5"
+      class="choy-field-base__label-row flex items-center font-medium text-muted-foreground"
     >
       <FieldLabel
         v-if="label"
         :id="labelId"
         :for="controlId"
+        class="text-muted-foreground"
       >
         {{ label }}
         <span v-if="required" class="text-danger" aria-hidden="true">*</span>
