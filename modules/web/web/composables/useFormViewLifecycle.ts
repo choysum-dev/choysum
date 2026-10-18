@@ -89,6 +89,8 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
 
   async function confirmDiscardIfDirty(): Promise<boolean> {
     if (leaving || !isFormDirty()) return true;
+    // One dialog at a time: a second Cancel click must not stack confirms.
+    if (leaveConfirmPending) return false;
     const _t = opts._t;
     leaveConfirmPending = true;
     try {
@@ -188,7 +190,18 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
         // router.back() is void / async popstate — suppress the next leave guard
         // so the still-dirty create draft does not open a second confirm.
         suppressLeaveOnce = true;
+        const fromPath = String(opts.router.currentRoute.value.fullPath ?? '');
         opts.router.back();
+        // If back() was a no-op (no prior history), the leave guard never runs and
+        // the flag would otherwise swallow the next dirty-leave prompt.
+        void nextTick(() => {
+          if (
+            suppressLeaveOnce &&
+            String(opts.router.currentRoute.value.fullPath ?? '') === fromPath
+          ) {
+            suppressLeaveOnce = false;
+          }
+        });
         return;
       }
       const id = effectiveRecordId.value;

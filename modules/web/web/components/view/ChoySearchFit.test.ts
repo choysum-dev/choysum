@@ -91,10 +91,12 @@ test('ChoySearchFit width threshold is 640px of the action bar', () => {
 
 test('ChoySearchFit shows the active dot from a teleported search node', async () => {
   const prevMo = (globalThis as { MutationObserver?: unknown }).MutationObserver;
+  let lastObserver: { trigger: () => void } | null = null;
   class FakeMutationObserver {
     private cb: () => void;
     constructor(cb: () => void) {
       this.cb = cb;
+      lastObserver = this;
     }
     observe() {}
     disconnect() {}
@@ -116,14 +118,57 @@ test('ChoySearchFit shows the active dot from a teleported search node', async (
       );
     });
     await flushPromises();
+    const anchor = mounted!.q('[data-testid=search-anchor]') as HTMLElement;
+    expect(anchor.closest('[data-slot=search-fit-row]')).not.toBeNull();
     expect(mounted!.q('[data-testid=choy-search-fit-dot]')).not.toBeNull();
     expect(mounted!.q('[data-testid=choy-search-fit-toggle]')?.getAttribute('data-search-active')).toBe(
       'true',
+    );
+    anchor.setAttribute('data-search-active', 'false');
+    lastObserver!.trigger();
+    await flushPromises();
+    expect(mounted!.q('[data-testid=choy-search-fit-dot]')).toBeNull();
+    expect(mounted!.q('[data-testid=choy-search-fit-toggle]')?.getAttribute('data-search-active')).toBe(
+      'false',
     );
   } finally {
     (globalThis as { MutationObserver?: unknown }).MutationObserver = prevMo;
     mounted!.unmount();
   }
+});
+
+test('ChoySearchFit hides the teleported field when fieldVisible is false', async () => {
+  const Host = defineComponent({
+    name: 'SearchFitVisibleHost',
+    setup() {
+      return () =>
+        h(
+          ChoyViewActionBar,
+          { layout: 'thirds' },
+          {
+            center: () =>
+              h(
+                ChoySearchFit,
+                { fieldVisible: false },
+                {
+                  default: () => h('input', { 'data-testid': 'search-field' }),
+                },
+              ),
+          },
+        );
+    },
+  });
+  let mounted: ReturnType<typeof mountApp> | null = null;
+  withWidth(480, () => {
+    mounted = mountApp(Host);
+  });
+  await flushPromises();
+  mounted!.click('[data-testid=choy-search-fit-toggle]');
+  await flushPromises();
+  const field = mounted!.q('[data-testid=search-field]') as HTMLElement;
+  expect(field.closest('[data-slot=search-fit-row]')).not.toBeNull();
+  expect(field.parentElement?.style.display).toBe('none');
+  mounted!.unmount();
 });
 
 test('ChoySearchFit focuses the input when the collapsed field opens', async () => {

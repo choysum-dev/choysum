@@ -137,7 +137,11 @@ SPDX-License-Identifier: Apache-2.0
 
               <slot name="selection-actions" :selected-items="selectedItems" :clear="clearSelection" />
             </div>
-            <ChoySearchFit v-if="resolvedSearchView" v-show="!hasSelection">
+            <ChoySearchFit
+              v-if="resolvedSearchView"
+              v-show="!hasSelection"
+              :field-visible="!hasSelection"
+            >
               <component :is="resolvedSearchView" class="min-w-0 w-full" :store="store" @query-update="onSearch" />
             </ChoySearchFit>
           </template>

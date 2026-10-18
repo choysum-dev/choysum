@@ -29,7 +29,12 @@ SPDX-License-Identifier: Apache-2.0
       />
     </button>
     <Teleport :to="teleportTarget" :disabled="wide || !teleportTarget">
-      <div v-show="wide || opened" class="min-w-0 w-full" :class="wide ? undefined : 'pt-2'" data-testid="choy-search-fit-field">
+      <div
+        v-show="fieldVisible && (wide || opened)"
+        class="min-w-0 w-full"
+        :class="wide ? undefined : 'pt-2'"
+        data-testid="choy-search-fit-field"
+      >
         <slot />
       </div>
     </Teleport>
@@ -44,6 +49,17 @@ import { searchFieldFits } from '@/web/web/components/view/searchFit';
 import { ChoySearchFitRowKey } from './choySearchFitContext';
 
 defineOptions({ name: 'ChoySearchFit' });
+
+withDefaults(
+  defineProps<{
+    /**
+     * When false, hide the teleported field too (v-show on this root does not
+     * cover Teleport content under the ActionBar row).
+     */
+    fieldVisible?: boolean;
+  }>(),
+  { fieldVisible: true },
+);
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/ChoySearchFit' });
 

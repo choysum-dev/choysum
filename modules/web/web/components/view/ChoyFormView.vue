@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
               display: primary=New, secondary=Edit/Copy/Delete after the title cluster.
             -->
             <!-- Primary: Save/Cancel while editing; New (or #system-actions) in display. -->
-            <template v-if="isEditing">
+            <template v-if="isEditing && resolvedShowActions">
               <ChoyButton type="button" size="default" variant="default" :disabled="controlsLocked" @click="handleSubmit">
                 <Check class="size-4" aria-hidden="true" />
                 {{ saveLabel }}

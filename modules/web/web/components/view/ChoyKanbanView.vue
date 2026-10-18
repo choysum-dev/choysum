@@ -155,7 +155,7 @@ SPDX-License-Identifier: Apache-2.0
           <ChoyKanbanLoadSentinel
             v-if="choyKanbanLaneRemain(lane) > 0"
             class="col-span-full"
-            :disabled="isLaneFetchBusy(lane.key)"
+            :disabled="loadMoreBusy"
             @visible="onLaneLoadMore(lane)"
           />
 
@@ -177,7 +177,7 @@ SPDX-License-Identifier: Apache-2.0
                 size="sm"
                 class="w-full"
                 data-testid="choy-kanban-load-more"
-                :disabled="isLaneFetchBusy(lane.key)"
+                :disabled="loadMoreBusy"
                 @click="onLaneLoadMore(lane)"
               >
                 {{ formatChoyKanbanLoadMoreLabel(choyKanbanLaneRemain(lane), (n) => _t('%s more', n)) }}
@@ -229,7 +229,7 @@ SPDX-License-Identifier: Apache-2.0
             :virtualize="virtualize"
             :estimate-card-size="estimateCardSize"
             :remain="choyKanbanLaneRemain(lane)"
-            :load-more-busy="isLaneFetchBusy(lane.key)"
+            :load-more-busy="loadMoreBusy"
             :lane-drag="resolvedDragMode === 'lane' && !boardBusy"
             :other-lanes="otherLanes(lane.key)"
             :empty-label="_t('No cards')"
@@ -267,7 +267,7 @@ SPDX-License-Identifier: Apache-2.0
                 size="sm"
                 class="w-full"
                 data-testid="choy-kanban-load-more"
-                :disabled="isLaneFetchBusy(lane.key)"
+                :disabled="loadMoreBusy"
                 @click="onLaneLoadMore(lane)"
               >
                 {{ formatChoyKanbanLoadMoreLabel(choyKanbanLaneRemain(lane), (n) => _t('%s more', n)) }}

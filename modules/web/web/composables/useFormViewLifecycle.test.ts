@@ -328,6 +328,44 @@ describe('useFormViewLifecycle', () => {
     m.unmount();
   });
 
+  test('handleCancel create no-op back still prompts on a later dirty leave', async () => {
+    const m = mountLifecycle({
+      viewMode: 'create',
+      watchIdentity: false,
+      route: {
+        name: 'New',
+        path: '/app/items/new',
+        fullPath: '/app/items/new',
+        params: {},
+        query: {},
+        meta: {},
+      },
+    });
+    m.controller.beginCreate.mockImplementation(async (seed: any) => {
+      m.controller.vm.draft = { ...(seed || {}) };
+      m.controller.vm.mode = 'create';
+    });
+    await m.api().initializeForm();
+    await flushPromises();
+    m.controller.vm.draft = { Name: 'edited-away' };
+    expect(m.api().isFormDirty()).toBe(true);
+    // First history entry: back() does not navigate, so the one-shot must clear.
+    m.router.back = () => {};
+    const cancelPending = m.api().handleCancel();
+    await flushPromises();
+    resolveConfirmChoy('confirm');
+    await cancelPending;
+    await flushPromises();
+    expect(m.router.currentRoute.value.fullPath).toBe('/app/items/new');
+    expect(m.api().isFormDirty()).toBe(true);
+    const pending = m.router.push('/app/elsewhere');
+    await flushPromises();
+    expect(useConfirmChoyStore().open).toBe(true);
+    resolveConfirmChoy('dismiss');
+    await pending;
+    m.unmount();
+  });
+
   test('handleCancel reloads display and handles beginDisplay error', async () => {
     const m = mountLifecycle({ watchIdentity: false });
     m.controller.beginDisplay.mockImplementation(async () => {
