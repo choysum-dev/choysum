@@ -18,6 +18,32 @@ const origSuccess = ChoyMessage.success;
 const origError = ChoyMessage.error;
 const origWarn = console.warn;
 
+/** QuickJS FE host has no DOM EventTarget; stub popstate registration for leave-back tests. */
+function installPopstateCapture(): {
+  fire: () => void;
+  restore: () => void;
+} {
+  let popListener: ((ev?: unknown) => void) | null = null;
+  const g = globalThis as any;
+  const prevAdd = g.addEventListener;
+  const prevRemove = g.removeEventListener;
+  g.addEventListener = (type: string, listener: (ev?: unknown) => void) => {
+    if (type === 'popstate') popListener = listener;
+  };
+  g.removeEventListener = (type: string, listener: (ev?: unknown) => void) => {
+    if (type === 'popstate' && popListener === listener) popListener = null;
+  };
+  return {
+    fire: () => {
+      popListener?.({});
+    },
+    restore: () => {
+      g.addEventListener = prevAdd;
+      g.removeEventListener = prevRemove;
+    },
+  };
+}
+
 function makeController() {
   const ctrl = {
     vm: reactive({ mode: 'display' as ViewMode, original: null as any, draft: null as any }),
@@ -349,23 +375,10 @@ describe('useFormViewLifecycle', () => {
     await flushPromises();
     m.controller.vm.draft = { Name: 'edited-away' };
 
-    // QuickJS FE host has no DOM EventTarget; capture the popstate listener directly.
-    let popListener: ((ev?: unknown) => void) | null = null;
-    const g = globalThis as typeof globalThis & {
-      addEventListener?: (type: string, listener: (ev?: unknown) => void) => void;
-      removeEventListener?: (type: string, listener: (ev?: unknown) => void) => void;
-    };
-    const prevAdd = g.addEventListener;
-    const prevRemove = g.removeEventListener;
-    g.addEventListener = (type: string, listener: (ev?: unknown) => void) => {
-      if (type === 'popstate') popListener = listener;
-    };
-    g.removeEventListener = (type: string, listener: (ev?: unknown) => void) => {
-      if (type === 'popstate' && popListener === listener) popListener = null;
-    };
+    const pop = installPopstateCapture();
     try {
       m.router.back = () => {
-        popListener?.({});
+        pop.fire();
         void m.router.push('/app/items');
       };
       const cancelPending = m.api().handleCancel();
@@ -376,8 +389,7 @@ describe('useFormViewLifecycle', () => {
       expect(useConfirmChoyStore().open).toBe(false);
       expect(m.router.currentRoute.value.fullPath).toBe('/app/items');
     } finally {
-      g.addEventListener = prevAdd;
-      g.removeEventListener = prevRemove;
+      pop.restore();
       m.unmount();
     }
   });
@@ -403,23 +415,11 @@ describe('useFormViewLifecycle', () => {
     await flushPromises();
     m.controller.vm.draft = { Name: 'edited-away' };
 
-    let popListener: ((ev?: unknown) => void) | null = null;
-    const g = globalThis as typeof globalThis & {
-      addEventListener?: (type: string, listener: (ev?: unknown) => void) => void;
-      removeEventListener?: (type: string, listener: (ev?: unknown) => void) => void;
-    };
-    const prevAdd = g.addEventListener;
-    const prevRemove = g.removeEventListener;
-    g.addEventListener = (type: string, listener: (ev?: unknown) => void) => {
-      if (type === 'popstate') popListener = listener;
-    };
-    g.removeEventListener = (type: string, listener: (ev?: unknown) => void) => {
-      if (type === 'popstate' && popListener === listener) popListener = null;
-    };
+    const pop = installPopstateCapture();
     try {
       // popstate without a committed navigation — bounded fallback must release leaving.
       m.router.back = () => {
-        popListener?.({});
+        pop.fire();
       };
       const cancelPending = m.api().handleCancel();
       await flushPromises();
@@ -434,8 +434,7 @@ describe('useFormViewLifecycle', () => {
       resolveConfirmChoy('dismiss');
       await pending;
     } finally {
-      g.addEventListener = prevAdd;
-      g.removeEventListener = prevRemove;
+      pop.restore();
       m.unmount();
     }
   });
