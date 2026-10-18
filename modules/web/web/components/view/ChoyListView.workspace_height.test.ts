@@ -85,6 +85,15 @@ describe('ChoyListView workspace height', () => {
     expect(wrap!.style.height || '').toBe('');
     expect(wrap!.style.maxHeight || '').toBe('');
     expect(wrap!.className).toContain('flex-1');
+    expect(wrap!.className.includes('bg-card')).toBe(false);
+    expect(wrap!.className.includes('border-border')).toBe(false);
+    expect(wrap!.className.includes('rounded-md')).toBe(false);
+    expect(wrap!.className.includes('shadow-xs')).toBe(false);
+
+    const sheet = mounted.q('[data-anchor="choy.view.sheet"]') as HTMLElement | null;
+    expect(sheet).not.toBeNull();
+    // White surface is shell inset <main>; view-body is scroll region only.
+    expect(sheet!.className.includes('bg-card')).toBe(false);
     mounted.unmount();
   });
 });

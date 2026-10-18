@@ -10,9 +10,9 @@ SPDX-License-Identifier: Apache-2.0
     data-print="page"
     :class="
       cn(
+        // App shell owns paper gutter (choy.shell.content). Page padding is opt-in
+        // for rare document/guest layouts — not the ERP default.
         'choy-page relative mx-auto w-full text-foreground',
-        // Title hosted in view chrome: keep side/bottom gutter, drop top pad so
-        // ActionBar sits flush under the shell header (no empty title-band gap).
         props.padding ? (titleHostedByView ? 'choy-inset-pad-no-top' : 'choy-inset-pad') : '',
         widthClass,
         props.fillHeight ? 'flex min-h-0 flex-1 flex-col' : '',
@@ -22,10 +22,10 @@ SPDX-License-Identifier: Apache-2.0
   >
     <div
       :class="props.fillHeight ? 'flex min-h-0 flex-1 flex-col' : undefined"
-      :role="title ? 'region' : undefined"
+      :role="effectiveTitle ? 'region' : undefined"
       :aria-busy="loading || undefined"
-      :aria-labelledby="title && !$slots.header ? pageTitleId : undefined"
-      :aria-label="title && $slots.header ? title : undefined"
+      :aria-labelledby="effectiveTitle && !$slots.header ? pageTitleId : undefined"
+      :aria-label="effectiveTitle && $slots.header ? effectiveTitle : undefined"
     >
       <div
         v-if="
@@ -87,9 +87,9 @@ SPDX-License-Identifier: Apache-2.0
                 v-if="showPageTitle"
                 :id="pageTitleId"
                 data-slot="page-title"
-                class="choy-page__title min-w-0 truncate text-lg font-semibold tracking-tight text-foreground"
+                class="choy-page__title min-w-0 truncate text-lg font-semibold text-foreground"
               >
-                {{ title }}
+                {{ effectiveTitle }}
               </h1>
               <p
                 v-if="description"
@@ -168,7 +168,8 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, useId, useSlots, watch } from 'vue';
+import { computed, inject, onMounted, ref, useId, useSlots, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { cn, type ClassValue } from '../../lib/utils';
 import {
   providePageContext,
@@ -180,9 +181,30 @@ import { blurFocusedDescendant } from './choy_page_loading_focus';
 import ChoyPageTitleActions from './ChoyPageTitleActions.vue';
 import ChoySkeleton from './ChoySkeleton.vue';
 import type { PageIoMenuListRef } from './ChoyPageIoMenu.vue';
-import { createTranslate } from '../../i18n';
+import { createTranslate, getGlobalComposer } from '../../i18n';
+import { resolveRoutePageTitle } from '../../router/documentTitle';
 
 const { _t } = createTranslate('web', { scope: 'web/components/layout/Page' });
+
+type PageRouteLike = { meta?: Record<string, unknown>; path?: string };
+
+/**
+ * Prefer vue-router's useRoute (production). Fall back to the FE stub's
+ * string provide keys, then null when unit mounts omit a router plugin.
+ */
+function useOptionalRouteForTitle(): PageRouteLike | null {
+  try {
+    const fromUseRoute = useRoute() as PageRouteLike | null | undefined;
+    if (fromUseRoute) return fromUseRoute;
+  } catch {
+    // FE stub throws when the router plugin is absent.
+  }
+  const fromStub = inject<PageRouteLike | null>('route', null);
+  if (fromStub) return fromStub;
+  const stubRouter = inject<{ currentRoute?: { value?: PageRouteLike } } | null>('router', null);
+  return stubRouter?.currentRoute?.value ?? null;
+}
+const pageRoute = useOptionalRouteForTitle();
 
 type PageWidth = '' | 'narrow' | 'medium' | 'wide' | 'full';
 
@@ -197,6 +219,7 @@ const props = withDefaults(
     title?: string;
     description?: string;
     showBreadcrumb?: boolean;
+    /** Opt-in page gutter. ERP gutters live on shell content; default is off. */
     padding?: boolean;
     width?: PageWidth;
     /** Stretch to the shell main and let nested flex children (auth cards) center. */
@@ -219,7 +242,8 @@ const props = withDefaults(
     title: '',
     description: '',
     showBreadcrumb: false,
-    padding: true,
+    // Shell content frame owns ERP gutters; set true only for extra page pad.
+    padding: false,
     width: '',
     // ERP workspace pages fill the shell canvas; opt out for rare document pages.
     fillHeight: true,
@@ -247,15 +271,28 @@ const titleActionsIo = computed<PageTitleActionsIo | null>(() => {
 });
 
 const parentPageStore = useOptionalPageStore();
+const effectiveStore = computed(() => props.store ?? parentPageStore.value);
+/**
+ * Explicit title wins. Workspace pages that pass :store inherit the route
+ * meta title (Form Detail / Create) so List and Form both host a title in
+ * view chrome without duplicating strings on every form page.
+ */
+const effectiveTitle = computed(() => {
+  const fromProp = String(props.title || '').trim();
+  if (fromProp) return fromProp;
+  if (!effectiveStore.value) return '';
+  return resolveRoutePageTitle(pageRoute, getGlobalComposer());
+});
+
 const pageCtx = providePageContext({
-  store: () => props.store ?? parentPageStore.value,
-  title: () => props.title,
+  store: () => effectiveStore.value,
+  title: () => effectiveTitle.value,
   titleId: pageTitleId,
   titleActionsIo,
 });
 
 const titleHostedByView = computed(() => pageCtx.titleHostedByView.value);
-const showPageTitle = computed(() => !!props.title && !titleHostedByView.value);
+const showPageTitle = computed(() => !!effectiveTitle.value && !titleHostedByView.value);
 // When a view hosts the title, IO moves into that chrome; keep page #title-actions
 // visible (without duplicating the IO menu) so custom page actions do not disappear.
 const showPageTitleActions = computed(() => {

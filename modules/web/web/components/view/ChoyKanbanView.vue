@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <ChoyViewContainer
     data-anchor="choy.kanban-view"
-    :class="['choy-kanban-view', 'gap-4', props.class]"
+    :class="['choy-kanban-view', 'gap-5', props.class]"
   >
     <template
       v-if="
@@ -29,11 +29,19 @@ SPDX-License-Identifier: Apache-2.0
         >
           <template v-if="showActions || pageTitle || showTitleOverflow" #system-actions>
             <slot v-if="showActions" name="system-actions">
+              <!--
+                Keep New mounted during search/move busy. Hiding it behind
+                boardBusy made the action bar flash when switching into Kanban.
+              -->
               <ChoyButton
-                v-if="!effectiveReadonly"
+                v-if="!props.readonly"
+                type="button"
                 size="default"
+                variant="default"
+                :disabled="boardBusy"
                 @click="onCreate"
               >
+                <Plus class="size-4" aria-hidden="true" />
                 {{ resolvedCreateLabel }}
               </ChoyButton>
             </slot>
@@ -43,7 +51,7 @@ SPDX-License-Identifier: Apache-2.0
               v-if="pageTitle"
               :id="pageTitleId || undefined"
               data-slot="page-title"
-              class="choy-kanban-view__page-title min-w-0 max-w-[10rem] truncate text-base font-semibold tracking-tight text-foreground sm:max-w-[14rem]"
+              class="choy-kanban-view__page-title min-w-0 max-w-[10rem] truncate text-base font-semibold text-foreground sm:max-w-[14rem]"
             >
               {{ pageTitle }}
             </h1>
@@ -78,17 +86,13 @@ SPDX-License-Identifier: Apache-2.0
               <slot name="header" />
             </div>
           </template>
-          <!-- Keep #center registered so thirds grid stays stable even without search. -->
+          <!-- Keep #center registered so the trailing controls stay in the last column. -->
           <template #center>
-            <div
-              v-if="$slots.search"
-              class="flex min-w-0 w-full items-center max-md:order-2"
-            >
+            <ChoySearchFit v-if="$slots.search">
               <slot name="search" :on-query-update="engine.applySearch" />
-            </div>
+            </ChoySearchFit>
           </template>
 
-          <!-- View-mode toggles (and optional trailing chrome); mirrors ListView #header-right. -->
           <template v-if="$slots['header-right']" #header-right>
             <slot name="header-right" />
           </template>
@@ -98,7 +102,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <ChoyViewBusyHost
       :busy="boardBusy"
-      class="choy-kanban-view__body flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden"
+      class="choy-kanban-view__body flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden p-3"
     >
       <div v-if="laneCount > 0 && !isFlatBoard" class="md:hidden">
         <Select :model-value="mobileLaneKey" @update:model-value="onMobileLaneChange">
@@ -152,7 +156,7 @@ SPDX-License-Identifier: Apache-2.0
           <ChoyKanbanLoadSentinel
             v-if="choyKanbanLaneRemain(lane) > 0"
             class="col-span-full"
-            :disabled="laneFetchBusy"
+            :disabled="loadMoreBusy"
             @visible="onLaneLoadMore(lane)"
           />
 
@@ -165,7 +169,7 @@ SPDX-License-Identifier: Apache-2.0
               :lane="lane"
               :remain="choyKanbanLaneRemain(lane)"
               :load-more="() => onLaneLoadMore(lane)"
-              :busy="laneFetchBusy"
+              :busy="isLaneFetchBusy(lane.key)"
             >
               <ChoyButton
                 v-if="choyKanbanLaneRemain(lane) > 0"
@@ -174,7 +178,7 @@ SPDX-License-Identifier: Apache-2.0
                 size="sm"
                 class="w-full"
                 data-testid="choy-kanban-load-more"
-                :disabled="laneFetchBusy"
+                :disabled="loadMoreBusy"
                 @click="onLaneLoadMore(lane)"
               >
                 {{ formatChoyKanbanLoadMoreLabel(choyKanbanLaneRemain(lane), (n) => _t('%s more', n)) }}
@@ -196,7 +200,7 @@ SPDX-License-Identifier: Apache-2.0
         <section
           v-for="lane in displayLanes"
           :key="lane.key"
-          class="choy-kanban-view__lane flex h-full min-h-0 w-72 shrink-0 flex-col rounded-md bg-muted/40"
+          class="choy-kanban-view__lane flex h-full min-h-0 w-72 shrink-0 flex-col rounded-md bg-muted/70"
           :class="{ 'ring-2 ring-ring/40': laneDropActiveKey === lane.key }"
           role="listitem"
           :aria-label="lane.label"
@@ -226,8 +230,8 @@ SPDX-License-Identifier: Apache-2.0
             :virtualize="virtualize"
             :estimate-card-size="estimateCardSize"
             :remain="choyKanbanLaneRemain(lane)"
-            :load-more-busy="laneFetchBusy"
-            :lane-drag="resolvedDragMode === 'lane' && !laneFetchBusy"
+            :load-more-busy="loadMoreBusy"
+            :lane-drag="resolvedDragMode === 'lane' && !boardBusy && !loadMoreBusy"
             :other-lanes="otherLanes(lane.key)"
             :empty-label="_t('No cards')"
             :move-to-lane-label="_t('Move to lane')"
@@ -255,7 +259,7 @@ SPDX-License-Identifier: Apache-2.0
               :lane="lane"
               :remain="choyKanbanLaneRemain(lane)"
               :load-more="() => onLaneLoadMore(lane)"
-              :busy="laneFetchBusy"
+              :busy="isLaneFetchBusy(lane.key)"
             >
               <ChoyButton
                 v-if="choyKanbanLaneRemain(lane) > 0"
@@ -264,7 +268,7 @@ SPDX-License-Identifier: Apache-2.0
                 size="sm"
                 class="w-full"
                 data-testid="choy-kanban-load-more"
-                :disabled="laneFetchBusy"
+                :disabled="loadMoreBusy"
                 @click="onLaneLoadMore(lane)"
               >
                 {{ formatChoyKanbanLoadMoreLabel(choyKanbanLaneRemain(lane), (n) => _t('%s more', n)) }}
@@ -287,7 +291,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed, defineComponent, h, ref, useSlots, watch, type PropType } from 'vue';
-import { RefreshCw } from 'lucide-vue-next';
+import { Plus, RefreshCw } from 'lucide-vue-next';
 import type { ClassValue } from '../../lib/utils';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { Lane } from '@/web/web/query/types';
@@ -296,6 +300,7 @@ import ChoyButton from '../layout/ChoyButton.vue';
 import ChoyPageTitleActions from '@/web/web/components/layout/ChoyPageTitleActions.vue';
 import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
 import ChoyViewActionBar from '@/web/web/components/view/ChoyViewActionBar.vue';
+import ChoySearchFit from '@/web/web/components/view/ChoySearchFit.vue';
 import ChoyViewBusyHost from '@/web/web/components/view/ChoyViewBusyHost.vue';
 import ChoyKanbanLoadSentinel from '@/web/web/components/view/ChoyKanbanLoadSentinel.vue';
 import ChoyKanbanVirtualLaneBody from '@/web/web/components/view/ChoyKanbanVirtualLaneBody.vue';
@@ -484,11 +489,19 @@ const displayLanes = computed({
   },
 });
 
-/** Search / move: drives BusyHost and chrome (e.g. hide New). */
+/** Search / move: drives BusyHost and blocks drag; does not hide New. */
 const boardBusy = computed(() => engine.boardBusy.value);
-/** Lane append in flight; disable sentinel / load-more only. */
+/** Any lane append in flight (blocks drops board-wide so pages are not overwritten). */
 const loadMoreBusy = computed(() => engine.loadMorePending.value);
-const laneFetchBusy = computed(() => boardBusy.value || loadMoreBusy.value);
+/** Lane key currently appending; busy chrome is scoped to this lane only. */
+const loadMoreLaneKey = computed(() => engine.loadMoreLaneKey.value);
+
+/** True while this lane should disable its own load-more control / sentinel. */
+function isLaneFetchBusy(laneKey: string): boolean {
+  if (boardBusy.value) return true;
+  return loadMoreBusy.value && loadMoreLaneKey.value === laneKey;
+}
+
 const effectiveReadonly = computed(() => props.readonly || boardBusy.value);
 const resolvedDragMode = computed<ChoyKanbanDragMode>(() => {
   if (props.readonly) return 'none';
@@ -637,29 +650,4 @@ defineExpose({
   }
 }
 
-/*
- * Classic OS/browser scrollbars paint a track gutter that reads as a lane
- * border. Prefer a thin thumb on a transparent track (same idea as Search).
- */
-.choy-kanban-view__lane-body,
-.choy-kanban-view__board--flat {
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in oklab, var(--muted-foreground) 35%, transparent) transparent;
-}
-
-.choy-kanban-view__lane-body::-webkit-scrollbar,
-.choy-kanban-view__board--flat::-webkit-scrollbar {
-  width: 6px;
-}
-
-.choy-kanban-view__lane-body::-webkit-scrollbar-track,
-.choy-kanban-view__board--flat::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.choy-kanban-view__lane-body::-webkit-scrollbar-thumb,
-.choy-kanban-view__board--flat::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: color-mix(in oklab, var(--muted-foreground) 35%, transparent);
-}
 </style>

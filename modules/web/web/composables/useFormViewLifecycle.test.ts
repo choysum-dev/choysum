@@ -6,7 +6,7 @@ import * as VueRouter from 'vue-router';
 import { createPinia, setActivePinia } from 'pinia';
 
 import { flushPromises, fnRecorder, mountApp } from '@/web/web/__tests__/mountApp';
-import { resolveConfirmChoy } from '@/web/web/composables/confirmChoyAction';
+import { resolveConfirmChoy, useConfirmChoyStore } from '@/web/web/composables/confirmChoyAction';
 import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
 import { useFormViewLifecycle } from '@/web/web/composables/useFormViewLifecycle';
 import type { ViewMode } from '@/web/web/components/view/viewScopeKeys';
@@ -18,9 +18,35 @@ const origSuccess = ChoyMessage.success;
 const origError = ChoyMessage.error;
 const origWarn = console.warn;
 
+/** QuickJS FE host has no DOM EventTarget; stub popstate registration for leave-back tests. */
+function installPopstateCapture(): {
+  fire: () => void;
+  restore: () => void;
+} {
+  let popListener: ((ev?: unknown) => void) | null = null;
+  const g = globalThis as any;
+  const prevAdd = g.addEventListener;
+  const prevRemove = g.removeEventListener;
+  g.addEventListener = (type: string, listener: (ev?: unknown) => void) => {
+    if (type === 'popstate') popListener = listener;
+  };
+  g.removeEventListener = (type: string, listener: (ev?: unknown) => void) => {
+    if (type === 'popstate' && popListener === listener) popListener = null;
+  };
+  return {
+    fire: () => {
+      popListener?.({});
+    },
+    restore: () => {
+      g.addEventListener = prevAdd;
+      g.removeEventListener = prevRemove;
+    },
+  };
+}
+
 function makeController() {
   const ctrl = {
-    vm: reactive({ mode: 'display' as ViewMode, original: null as any }),
+    vm: reactive({ mode: 'display' as ViewMode, original: null as any, draft: null as any }),
     beginDisplay: fnRecorder(async (_id: string) => {}),
     beginCreate: fnRecorder(async (_seed: any) => {}),
     beginEdit: fnRecorder(() => {
@@ -311,6 +337,146 @@ describe('useFormViewLifecycle', () => {
     m.unmount();
   });
 
+  test('handleCancel create back suppresses a second dirty-leave prompt', async () => {
+    const m = mountLifecycle({ viewMode: 'create', watchIdentity: false });
+    await m.api().initializeForm();
+    await flushPromises();
+    m.controller.vm.draft = { Name: 'edited-away' };
+    // Real back() is void; drive the leave guard via push like a delayed popstate.
+    m.router.back = () => {
+      void m.router.push('/app/items');
+    };
+    queueMicrotask(() => resolveConfirmChoy('confirm'));
+    await m.api().handleCancel();
+    await flushPromises();
+    // `leaving` stays true across back() so the leave guard does not open a second confirm.
+    expect(useConfirmChoyStore().open).toBe(false);
+    m.unmount();
+  });
+
+  test('handleCancel create back with popstate still suppresses the leave prompt', async () => {
+    const m = mountLifecycle({
+      viewMode: 'create',
+      watchIdentity: false,
+      route: {
+        name: 'New',
+        path: '/app/items/new',
+        fullPath: '/app/items/new',
+        params: {},
+        query: {},
+        meta: {},
+      },
+    });
+    m.controller.beginCreate.mockImplementation(async (seed: any) => {
+      m.controller.vm.draft = { ...(seed || {}) };
+      m.controller.vm.mode = 'create';
+    });
+    await m.api().initializeForm();
+    await flushPromises();
+    m.controller.vm.draft = { Name: 'edited-away' };
+
+    const pop = installPopstateCapture();
+    try {
+      m.router.back = () => {
+        pop.fire();
+        void m.router.push('/app/items');
+      };
+      const cancelPending = m.api().handleCancel();
+      await flushPromises();
+      resolveConfirmChoy('confirm');
+      await cancelPending;
+      await flushPromises();
+      expect(useConfirmChoyStore().open).toBe(false);
+      expect(m.router.currentRoute.value.fullPath).toBe('/app/items');
+    } finally {
+      pop.restore();
+      m.unmount();
+    }
+  });
+
+  test('handleCancel create back releases leaving when popstate never commits', async () => {
+    const m = mountLifecycle({
+      viewMode: 'create',
+      watchIdentity: false,
+      route: {
+        name: 'New',
+        path: '/app/items/new',
+        fullPath: '/app/items/new',
+        params: {},
+        query: {},
+        meta: {},
+      },
+    });
+    m.controller.beginCreate.mockImplementation(async (seed: any) => {
+      m.controller.vm.draft = { ...(seed || {}) };
+      m.controller.vm.mode = 'create';
+    });
+    await m.api().initializeForm();
+    await flushPromises();
+    m.controller.vm.draft = { Name: 'edited-away' };
+
+    const pop = installPopstateCapture();
+    try {
+      // popstate without a committed navigation — bounded fallback must release leaving.
+      m.router.back = () => {
+        pop.fire();
+      };
+      const cancelPending = m.api().handleCancel();
+      await flushPromises();
+      resolveConfirmChoy('confirm');
+      await new Promise<void>((resolve) => setTimeout(resolve, 300));
+      await cancelPending;
+      expect(m.router.currentRoute.value.fullPath).toBe('/app/items/new');
+      expect(m.api().isFormDirty()).toBe(true);
+      const pending = m.router.push('/app/elsewhere');
+      await flushPromises();
+      expect(useConfirmChoyStore().open).toBe(true);
+      resolveConfirmChoy('dismiss');
+      await pending;
+    } finally {
+      pop.restore();
+      m.unmount();
+    }
+  });
+
+  test('handleCancel create no-op back still prompts on a later dirty leave', async () => {
+    const m = mountLifecycle({
+      viewMode: 'create',
+      watchIdentity: false,
+      route: {
+        name: 'New',
+        path: '/app/items/new',
+        fullPath: '/app/items/new',
+        params: {},
+        query: {},
+        meta: {},
+      },
+    });
+    m.controller.beginCreate.mockImplementation(async (seed: any) => {
+      m.controller.vm.draft = { ...(seed || {}) };
+      m.controller.vm.mode = 'create';
+    });
+    await m.api().initializeForm();
+    await flushPromises();
+    m.controller.vm.draft = { Name: 'edited-away' };
+    expect(m.api().isFormDirty()).toBe(true);
+    // First history entry: back() does not navigate; leaving must clear after the no-op.
+    m.router.back = () => {};
+    const cancelPending = m.api().handleCancel();
+    await flushPromises();
+    resolveConfirmChoy('confirm');
+    await cancelPending;
+    await flushPromises();
+    expect(m.router.currentRoute.value.fullPath).toBe('/app/items/new');
+    expect(m.api().isFormDirty()).toBe(true);
+    const pending = m.router.push('/app/elsewhere');
+    await flushPromises();
+    expect(useConfirmChoyStore().open).toBe(true);
+    resolveConfirmChoy('dismiss');
+    await pending;
+    m.unmount();
+  });
+
   test('handleCancel reloads display and handles beginDisplay error', async () => {
     const m = mountLifecycle({ watchIdentity: false });
     m.controller.beginDisplay.mockImplementation(async () => {
@@ -545,5 +711,77 @@ describe('useFormViewLifecycle', () => {
     resolveConfirmChoy('confirm');
     await flushPromises();
     expect((console.warn as any).calls.some((c: any[]) => String(c[0]).includes('breadcrumb'))).toBe(true);
+  });
+
+  test('dirty edit cancel and refresh wait for discard confirmation', async () => {
+    const m = mountLifecycle({ watchIdentity: false, viewMode: 'edit' });
+    m.controller.vm.original = { Id: 'rec-1', Name: 'a' };
+    m.controller.vm.draft = { Id: 'rec-1', Name: 'b' };
+    expect(m.api().isFormDirty()).toBe(true);
+
+    const pendingCancel = m.api().handleCancel();
+    await flushPromises();
+    resolveConfirmChoy('cancel');
+    await pendingCancel;
+    expect(m.controller.beginDisplay.calls.length).toBe(0);
+
+    const pendingRefresh = m.api().handleRefresh();
+    await flushPromises();
+    resolveConfirmChoy('confirm');
+    await pendingRefresh;
+    expect(m.controller.beginDisplay.calls.length).toBe(1);
+    m.unmount();
+  });
+
+  test('route leave asks before discarding a dirty edit', async () => {
+    const m = mountLifecycle({ watchIdentity: false, viewMode: 'edit' });
+    m.controller.vm.original = { Id: 'rec-1', Name: 'a' };
+    m.controller.vm.draft = { Id: 'rec-1', Name: 'b' };
+    const pending = m.router.push('/elsewhere');
+    await flushPromises();
+    expect(useConfirmChoyStore().open).toBe(true);
+    resolveConfirmChoy('dismiss');
+    await pending;
+    m.unmount();
+  });
+
+  test('route leave skips discard prompt when navigating to login', async () => {
+    const m = mountLifecycle({ watchIdentity: false, viewMode: 'edit' });
+    m.controller.vm.original = { Id: 'rec-1', Name: 'a' };
+    m.controller.vm.draft = { Id: 'rec-1', Name: 'b' };
+    const pending = m.router.push({ name: 'login', path: '/login' });
+    await flushPromises();
+    expect(useConfirmChoyStore().open).toBe(false);
+    await pending;
+    m.unmount();
+  });
+
+  test('route leave skips discard prompt when leaving login', async () => {
+    const m = mountLifecycle({
+      watchIdentity: false,
+      viewMode: 'edit',
+      route: { name: 'login', path: '/login', fullPath: '/login' },
+    });
+    m.controller.vm.original = { Id: 'rec-1', Name: 'a' };
+    m.controller.vm.draft = { Id: 'rec-1', Name: 'b' };
+    const pending = m.router.push('/home');
+    await flushPromises();
+    expect(useConfirmChoyStore().open).toBe(false);
+    await pending;
+    m.unmount();
+  });
+
+  test('auth exit dismisses an in-flight leave confirm', async () => {
+    const m = mountLifecycle({ watchIdentity: false, viewMode: 'edit' });
+    m.controller.vm.original = { Id: 'rec-1', Name: 'a' };
+    m.controller.vm.draft = { Id: 'rec-1', Name: 'b' };
+    void m.router.push('/elsewhere');
+    await flushPromises();
+    expect(useConfirmChoyStore().open).toBe(true);
+    const toLogin = m.router.push({ name: 'login', path: '/login' });
+    await flushPromises();
+    expect(useConfirmChoyStore().open).toBe(false);
+    await toLogin;
+    m.unmount();
   });
 });

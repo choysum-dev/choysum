@@ -17,6 +17,7 @@ export { default as ChoyEmpty } from './components/layout/ChoyEmpty.vue';
 export { default as ChoySpinner } from './components/layout/ChoySpinner.vue';
 export { default as ChoyBadge } from './components/layout/ChoyBadge.vue';
 export { default as ChoyCard } from './components/layout/ChoyCard.vue';
+export { default as ChoySection } from './components/layout/ChoySection.vue';
 export { default as ChoyGrid } from './components/layout/ChoyGrid.vue';
 export { default as ChoyCol } from './components/layout/ChoyCol.vue';
 export { default as ChoyTabs } from './components/layout/ChoyTabs.vue';
@@ -99,6 +100,19 @@ export { default as ChoySearchView } from './components/view/ChoySearchView.vue'
 export { default as ChoyViewContainer } from './components/view/ChoyViewContainer.vue';
 export { default as ChoyViewActionBar } from './components/view/ChoyViewActionBar.vue';
 export { default as ChoyViewBusyHost } from './components/view/ChoyViewBusyHost.vue';
+export { default as ChoyViewSwitcher } from './components/view/ChoyViewSwitcher.vue';
+export type { ChoyViewSwitcherOption } from './components/view/ChoyViewSwitcher.vue';
+export type {
+  ChoyViewSwitcherKind,
+  ChoyViewSwitcherPreset,
+  ChoyViewSwitcherResolvedOption,
+} from './components/view/choyViewSwitcherPresets';
+export {
+  getChoyViewSwitcherPreset,
+  listChoyViewSwitcherPresetIds,
+  registerChoyViewSwitcherPreset,
+  resolveChoyViewSwitcherOptions,
+} from './components/view/choyViewSwitcherPresets';
 export { default as ChoyFormItem } from './components/layout/ChoyFormItem.vue';
 export { default as ChoyPagination } from './components/view/ChoyPagination.vue';
 export { default as ChoyBreadcrumb } from './components/view/ChoyBreadcrumb.vue';

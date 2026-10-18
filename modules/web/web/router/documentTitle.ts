@@ -10,11 +10,10 @@ type RouteTitleMeta = {
   pageTitleText?: unknown;
 };
 
-/** Resolve the browser document title for a route (term reference or string fallback). */
-export function resolveDocumentTitle(
+/** Resolve the display title for a route (term reference or string fallback), without the app suffix. */
+export function resolveRoutePageTitle(
   route: { meta?: RouteTitleMeta } | null | undefined,
   composer?: ComposerLike,
-  appName = 'Choysum'
 ): string {
   const pageTitle = route?.meta?.pageTitle;
   let fallback = '';
@@ -28,6 +27,15 @@ export function resolveDocumentTitle(
     fallback = pageTitle;
   }
   const reference = isTermReference(route?.meta?.pageTitleText) ? route!.meta!.pageTitleText : undefined;
-  const title = translateTerm(composer, reference, fallback);
+  return String(translateTerm(composer, reference, fallback) || '').trim();
+}
+
+/** Resolve the browser document title for a route (term reference or string fallback). */
+export function resolveDocumentTitle(
+  route: { meta?: RouteTitleMeta } | null | undefined,
+  composer?: ComposerLike,
+  appName = 'Choysum'
+): string {
+  const title = resolveRoutePageTitle(route, composer);
   return title ? `${title} - ${appName}` : appName;
 }

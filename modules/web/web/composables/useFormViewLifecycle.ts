@@ -1,10 +1,12 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { computed, nextTick, toRaw, watch, type ComputedRef, type Ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, toRaw, watch, type ComputedRef } from 'vue';
 import type { RouteLocationNormalizedLoaded, RouteLocationRaw, Router } from 'vue-router';
 import { ChoyMessage } from './useChoyMessage';
-import { confirmChoyAction } from './confirmChoyAction';
+import { confirmChoyAction, resolveConfirmChoy } from './confirmChoyAction';
+import { shouldSkipFormDirtyLeavePrompt } from './formDirtyLeaveGuard';
+import { isRowDraftDirty } from './listRowEdit';
 import { deepClonePreserve } from '@/core/utils/clone';
 import type { ClientModel, BaseModel } from '@/core/rpc';
 import type { ViewMode } from '@/web/web/components/view/viewScopeKeys';
@@ -39,6 +41,7 @@ export type UseFormViewLifecycleOpts<T extends BaseModel> = {
   emitCancelable: (event: string, payload?: any) => Promise<boolean>;
   emit: (event: string, payload?: any) => void;
   _t: (key: string, ...args: any[]) => string;
+  fieldsMetadata?: () => Record<string, { isReadonly?: boolean } | undefined> | undefined;
 };
 
 function normalizeRecordId(raw: unknown): string | undefined {
@@ -60,6 +63,70 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
 
   const effectiveRecordId = computed(() => normalizeRecordId(opts.identity.recordId) ?? peekRouteRecordId());
 
+  const createBaseline = ref<Record<string, unknown> | null>(null);
+  let leaving = false;
+
+  function snapshotCreateBaseline() {
+    const draft = opts.controller.vm.draft as Record<string, unknown> | null | undefined;
+    createBaseline.value = draft ? (deepClonePreserve(draft) as Record<string, unknown>) : null;
+  }
+
+  function isFormDirty(): boolean {
+    const draft = opts.controller.vm.draft as Record<string, unknown> | null | undefined;
+    const meta = opts.fieldsMetadata?.();
+    if (opts.viewMode.value === 'edit') {
+      return isRowDraftDirty(opts.controller.vm.original as Record<string, unknown> | null, draft, meta as any);
+    }
+    if (opts.viewMode.value === 'create') {
+      return isRowDraftDirty(createBaseline.value, draft, meta as any);
+    }
+    return false;
+  }
+
+  let leaveConfirmPending = false;
+
+  async function confirmDiscardIfDirty(): Promise<boolean> {
+    if (leaving || !isFormDirty()) return true;
+    // One dialog at a time: a second Cancel click must not stack confirms.
+    if (leaveConfirmPending) return false;
+    const _t = opts._t;
+    leaveConfirmPending = true;
+    try {
+      await confirmChoyAction(_t('You have unsaved changes. Discard them?'), _t('Unsaved changes'), {
+        confirmText: _t('Discard'),
+        cancelText: _t('Cancel'),
+        destructive: true,
+      });
+      return true;
+    } catch {
+      return false;
+    } finally {
+      leaveConfirmPending = false;
+    }
+  }
+
+  function dismissLeaveConfirmIfPending() {
+    if (!leaveConfirmPending) return;
+    resolveConfirmChoy('dismiss');
+    leaveConfirmPending = false;
+  }
+
+  // Skip when entering or leaving login/logout/register — credential shells are
+  // not durable drafts, and a pending leave dialog must not overlay the auth page.
+  const removeLeaveGuard = opts.router.beforeEach?.((to, from) => {
+    if (leaving) return true;
+    if (shouldSkipFormDirtyLeavePrompt(to, from)) {
+      dismissLeaveConfirmIfPending();
+      return true;
+    }
+    if (!isFormDirty()) return true;
+    return confirmDiscardIfDirty();
+  });
+  onBeforeUnmount(() => {
+    removeLeaveGuard?.();
+    dismissLeaveConfirmIfPending();
+  });
+
   let initializeSeq = 0;
 
   async function initializeForm() {
@@ -74,11 +141,13 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
       if (normId) {
         await opts.controller.beginDisplay(normId);
         if (isStale()) return;
+        createBaseline.value = null;
         opts.emit('mode-change', { mode: opts.controller.vm.mode as ViewMode });
         opts.emit('load-success', { record: (opts.controller.vm.original as any) || null });
       } else {
         await opts.controller.beginCreate(deepClonePreserve((opts.identity.initialValues || {}) as any));
         if (isStale()) return;
+        snapshotCreateBaseline();
         if ((opts.identity.viewMode as any) === 'display') {
           (opts.controller.vm as any).mode = 'display';
         }
@@ -105,23 +174,77 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
     opts.emit('mode-change', { mode: 'edit' });
   }
 
-  async function handleCancel() {
-    opts.onchangeCtrl.reset();
-    opts.resetOnchangeAgg();
-    if (opts.viewMode.value === 'create') {
+  /**
+   * Keep `leaving` true across create-cancel back() so the dirty leave guard does
+   * not open a second confirm. Resolves when navigation finishes (afterEach), when
+   * back() is a no-op, or after a bounded fallback if popstate never commits.
+   */
+  function awaitCreateCancelBack(): Promise<void> {
+    const fromPath = String(opts.router.currentRoute.value.fullPath ?? '');
+    return new Promise((resolve) => {
+      let done = false;
+      let popSeen = false;
+      let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
+      const g = globalThis as typeof globalThis & {
+        addEventListener?: (type: string, listener: EventListener) => void;
+        removeEventListener?: (type: string, listener: EventListener) => void;
+      };
+      const finish = () => {
+        if (done) return;
+        done = true;
+        if (fallbackTimer != null) clearTimeout(fallbackTimer);
+        removeAfter?.();
+        g.removeEventListener?.('popstate', onPopState);
+        resolve();
+      };
+      const onPopState = () => {
+        popSeen = true;
+      };
+      const removeAfter = opts.router.afterEach?.(() => {
+        finish();
+      });
+      // Absolute release so `leaving` cannot stick if afterEach never runs.
+      fallbackTimer = setTimeout(() => {
+        finish();
+      }, 250);
+      g.addEventListener?.('popstate', onPopState);
       opts.router.back();
-      return;
-    }
-    const id = effectiveRecordId.value;
-    if (id) {
-      try {
-        await opts.controller.beginDisplay(id);
-      } catch (e: any) {
-        const err = e instanceof Error ? e : new Error(String(e));
-        opts.emit('action-error', { action: 'load', error: err });
+      if (done) return;
+      // Fast no-op: next macrotask, no popstate, still on fromPath.
+      setTimeout(() => {
+        if (done) return;
+        if (popSeen) return;
+        if (String(opts.router.currentRoute.value.fullPath ?? '') === fromPath) {
+          finish();
+        }
+      }, 0);
+    });
+  }
+
+  async function handleCancel() {
+    if (!(await confirmDiscardIfDirty())) return;
+    leaving = true;
+    try {
+      opts.onchangeCtrl.reset();
+      opts.resetOnchangeAgg();
+      if (opts.viewMode.value === 'create') {
+        await awaitCreateCancelBack();
+        return;
       }
+      const id = effectiveRecordId.value;
+      if (id) {
+        try {
+          await opts.controller.beginDisplay(id);
+        } catch (e: any) {
+          const err = e instanceof Error ? e : new Error(String(e));
+          opts.emit('action-error', { action: 'load', error: err });
+        }
+      }
+      createBaseline.value = null;
+      opts.emit('mode-change', { mode: 'display' });
+    } finally {
+      leaving = false;
     }
-    opts.emit('mode-change', { mode: 'display' });
   }
 
   function handleReset() {
@@ -142,6 +265,7 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
   }
 
   async function handleRefresh() {
+    if (!(await confirmDiscardIfDirty())) return;
     const ok = await opts.emitCancelable('before-refresh');
     if (!ok) return;
 
@@ -166,6 +290,7 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
     const cp = deepClonePreserve(opts.controller.vm.original as any);
     delete (cp as any).Id;
     await opts.controller.beginCreate(cp);
+    snapshotCreateBaseline();
     opts.resetOnchangeAgg();
     opts.emit('mode-change', { mode: 'create' });
     opts.onchangeCtrl.reset();
@@ -245,6 +370,7 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
 
   return {
     effectiveRecordId,
+    isFormDirty,
     initializeForm,
     bumpInitializeSeq,
     handleEdit,

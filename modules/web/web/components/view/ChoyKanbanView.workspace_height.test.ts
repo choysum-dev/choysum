@@ -22,7 +22,7 @@ function makeStore() {
 }
 
 describe('ChoyKanbanView workspace height', () => {
-  test('body and board keep flex fill classes without body padding', async () => {
+  test('body and board keep flex fill classes with sheet padding', async () => {
     const mounted = mountApp(ChoyKanbanView as any, {
       props: {
         store: makeStore(),
@@ -34,13 +34,18 @@ describe('ChoyKanbanView workspace height', () => {
 
     const root = mounted.q('[data-anchor="choy.kanban-view"]') as HTMLElement | null;
     expect(root).not.toBeNull();
-    expect(root!.className).toContain('gap-4');
+    expect(root!.className).toContain('gap-5');
+
+    const sheet = mounted.q('[data-anchor="choy.view.sheet"]') as HTMLElement | null;
+    expect(sheet).not.toBeNull();
+    expect(sheet!.className.includes('bg-card')).toBe(false);
 
     const body = mounted.q('.choy-kanban-view__body') as HTMLElement | null;
     expect(body).not.toBeNull();
     expect(body!.className).toContain('min-h-0');
     expect(body!.className).toContain('flex-1');
     expect(body!.className).toContain('overflow-hidden');
+    expect(body!.className).toContain('p-3');
     expect(body!.className.split(/\s+/)).not.toContain('p-1');
 
     const board = mounted.q('.choy-kanban-view__board') as HTMLElement | null;
@@ -98,7 +103,6 @@ describe('ChoyKanbanView workspace height', () => {
             {
               store,
               title: 'Token board',
-              padding: true,
             },
             {
               default: () =>
@@ -116,9 +120,9 @@ describe('ChoyKanbanView workspace height', () => {
     const mounted = mountApp(Host);
     await flushPromises();
 
-    // Page band title is claimed away; ActionBar hosts it.
+    // Page band title is claimed away; ActionBar hosts it. Gutters are on shell content.
     const pageRoot = mounted.q('[data-anchor="choy.page"]') as HTMLElement | null;
-    expect(pageRoot?.className || '').toContain('choy-inset-pad-no-top');
+    expect(pageRoot?.className || '').not.toContain('choy-inset-pad');
 
     const titles = mounted.qa('[data-slot=page-title]');
     expect(titles.length).toBe(1);

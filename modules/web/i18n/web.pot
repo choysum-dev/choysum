@@ -923,67 +923,67 @@ msgctxt "web/components/layout/ChoySidebarNav"
 msgid "No menus available"
 msgstr ""
 
-#: web/components/layout/ChoyPage.vue:64
+#: web/components/layout/ChoyPage.vue:88
 msgctxt "web/components/layout/Page"
 msgid "Loading..."
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:40
+#: web/components/view/ChoyChartView.vue:43
 msgctxt "web/components/view/ChartView"
 msgid "Chart type"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:30
+#: web/components/view/ChoyChartView.vue:33
 msgctxt "web/components/view/ChartView"
 msgid "Metric"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:31
+#: web/components/view/ChoyChartView.vue:34
 msgctxt "web/components/view/ChartView"
 msgid "Metric selection"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:115
+#: web/components/view/ChoyChartView.vue:117
 msgctxt "web/components/view/ChartView"
 msgid "New"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:118
+#: web/components/view/ChoyChartView.vue:120
 msgctxt "web/components/view/ChartView"
 msgid "No data or grouping not configured"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:55
+#: web/components/view/ChoyChartView.vue:58
 msgctxt "web/components/view/ChartView"
 msgid "No sort"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:116
+#: web/components/view/ChoyChartView.vue:118
 msgctxt "web/components/view/ChartView"
 msgid "Refresh"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:93
+#: web/components/view/ChoyChartView.vue:96
 msgctxt "web/components/view/ChartView"
 msgid "Retry"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:54
+#: web/components/view/ChoyChartView.vue:57
 msgctxt "web/components/view/ChartView"
 msgid "Sort"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:58
+#: web/components/view/ChoyChartView.vue:61
 msgctxt "web/components/view/ChartView"
 msgid "Sort ascending"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:61
+#: web/components/view/ChoyChartView.vue:64
 msgctxt "web/components/view/ChartView"
 msgid "Sort descending"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:49
+#: web/components/view/ChoyChartView.vue:52
 msgctxt "web/components/view/ChartView"
 msgid "Stack"
 msgstr ""
@@ -998,54 +998,62 @@ msgctxt "web/components/view/ChartView"
 msgid "User actions"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:37
-#: web/components/view/ChoyFormView.vue:51
+#: web/components/view/ChoySearchFit.vue:19
+msgctxt "web/components/view/ChoySearchFit"
+msgid "Hide search"
+msgstr ""
+
+#: web/components/view/ChoySearchFit.vue:19
+msgctxt "web/components/view/ChoySearchFit"
+msgid "Show search"
+msgstr ""
+
+#: web/components/view/ChoyFormView.vue:21
 msgctxt "web/components/view/FormView"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:23
+#: web/components/view/ChoyFormView.vue:56
 msgctxt "web/components/view/FormView"
 msgid "Copy"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:27
+#: web/components/view/ChoyFormView.vue:60
 msgctxt "web/components/view/FormView"
 msgid "Delete"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:43
+#: web/components/view/ChoyFormView.vue:45
 msgctxt "web/components/view/FormView"
 msgid "Details"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:15
+#: web/components/view/ChoyFormView.vue:52
 msgctxt "web/components/view/FormView"
 msgid "Edit"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:11
+#: web/components/view/ChoyFormView.vue:27
 msgctxt "web/components/view/FormView"
 msgid "New"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:19
+#: web/components/view/ChoyFormView.vue:38
 msgctxt "web/components/view/FormView"
 msgid "Refresh"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:41
-#: web/components/view/ChoyFormView.vue:55
+#: web/components/view/ChoyFormView.vue:42
 msgctxt "web/components/view/FormView"
 msgid "Reset"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:284
+#: web/components/view/ChoyFormView.vue:297
 msgctxt "web/components/view/FormView"
 msgid "Save"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:284
+#: web/components/view/ChoyFormView.vue:297
 msgctxt "web/components/view/FormView"
 msgid "Saving..."
 msgstr ""
@@ -1060,56 +1068,56 @@ msgctxt "web/components/view/FormView"
 msgid "User actions"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:120
-#: web/components/view/ChoyKanbanView.vue:87
+#: web/components/view/ChoyKanbanView.vue:124
+#: web/components/view/ChoyKanbanView.vue:91
 msgctxt "web/components/view/KanbanView"
 msgid "%s more"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:157
+#: web/components/view/ChoyKanbanView.vue:158
 msgctxt "web/components/view/KanbanView"
 msgid "Failed to move card"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:70
-#: web/components/view/ChoyKanbanView.vue:94
+#: web/components/view/ChoyKanbanView.vue:74
+#: web/components/view/ChoyKanbanView.vue:98
 msgctxt "web/components/view/KanbanView"
 msgid "Kanban board"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:106
+#: web/components/view/ChoyKanbanView.vue:110
 msgctxt "web/components/view/KanbanView"
 msgid "Move to %s"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:106
+#: web/components/view/ChoyKanbanView.vue:110
 msgctxt "web/components/view/KanbanView"
 msgid "Move to lane"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:210
+#: web/components/view/ChoyKanbanView.vue:219
 msgctxt "web/components/view/KanbanView"
 msgid "New"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:106
-#: web/components/view/ChoyKanbanView.vue:113
-#: web/components/view/ChoyKanbanView.vue:79
+#: web/components/view/ChoyKanbanView.vue:110
+#: web/components/view/ChoyKanbanView.vue:117
+#: web/components/view/ChoyKanbanView.vue:83
 msgctxt "web/components/view/KanbanView"
 msgid "No cards"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:127
+#: web/components/view/ChoyKanbanView.vue:131
 msgctxt "web/components/view/KanbanView"
 msgid "No lanes"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:29
+#: web/components/view/ChoyKanbanView.vue:34
 msgctxt "web/components/view/KanbanView"
 msgid "Refresh"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:60
+#: web/components/view/ChoyKanbanView.vue:64
 msgctxt "web/components/view/KanbanView"
 msgid "Select lane"
 msgstr ""
@@ -1124,73 +1132,73 @@ msgctxt "web/components/view/KanbanView"
 msgid "User actions"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:52
+#: web/components/view/ChoyListView.vue:51
 msgctxt "web/components/view/ListView"
 msgid "%s selected"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:54
+#: web/components/view/ChoyListView.vue:53
 msgctxt "web/components/view/ListView"
 msgid "Clear selection"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:101
+#: web/components/view/ChoyListView.vue:100
 msgctxt "web/components/view/ListView"
 msgid "Click to load more (%s remaining)"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:61
+#: web/components/view/ChoyListView.vue:60
 msgctxt "web/components/view/ListView"
 msgid "Delete"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:13
+#: web/components/view/ChoyListView.vue:15
 msgctxt "web/components/view/ListView"
 msgid "Discard"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:239
+#: web/components/view/ChoyListView.vue:240
 msgctxt "web/components/view/ListView"
 msgid "Editing was discarded because the row is no longer visible."
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:569
+#: web/components/view/ChoyListView.vue:570
 msgctxt "web/components/view/ListView"
 msgid "Failed to load list"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:308
+#: web/components/view/ChoyListView.vue:309
 msgctxt "web/components/view/ListView"
 msgid "Failed to refresh after reorder"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:308
+#: web/components/view/ChoyListView.vue:309
 msgctxt "web/components/view/ListView"
 msgid "Failed to reorder rows"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:112
-#: web/components/view/ChoyListView.vue:19
+#: web/components/view/ChoyListView.vue:111
+#: web/components/view/ChoyListView.vue:21
 msgctxt "web/components/view/ListView"
 msgid "New"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:108
+#: web/components/view/ChoyListView.vue:107
 msgctxt "web/components/view/ListView"
 msgid "No data"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:31
+#: web/components/view/ChoyListView.vue:33
 msgctxt "web/components/view/ListView"
 msgid "Refresh"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:9
+#: web/components/view/ChoyListView.vue:10
 msgctxt "web/components/view/ListView"
 msgid "Save"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:48
+#: web/components/view/ChoyListView.vue:47
 msgctxt "web/components/view/ListView"
 msgid "Selection actions"
 msgstr ""
@@ -1200,7 +1208,7 @@ msgctxt "web/components/view/ListView"
 msgid "System actions"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:95
+#: web/components/view/ChoyListView.vue:94
 msgctxt "web/components/view/ListView"
 msgid "Toggle group %s"
 msgstr ""
@@ -1235,7 +1243,7 @@ msgctxt "web/components/view/ViewBusyHost"
 msgid "Loading"
 msgstr ""
 
-#: web/components/view/search/Search.vue:684
+#: web/components/view/search/Search.vue:689
 msgctxt "web/components/view/search/Search"
 msgid "Add at least one complete condition before confirming"
 msgstr ""
@@ -1629,6 +1637,26 @@ msgstr ""
 #: web/composables/search/useSearch.ts:81
 msgctxt "web/composables/search/useSearch"
 msgid "Not configured"
+msgstr ""
+
+#: web/composables/useFormViewLifecycle.ts:97
+msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
+msgid "Cancel"
+msgstr ""
+
+#: web/composables/useFormViewLifecycle.ts:96
+msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
+msgid "Discard"
+msgstr ""
+
+#: web/composables/useFormViewLifecycle.ts:95
+msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
+msgid "Unsaved changes"
+msgstr ""
+
+#: web/composables/useFormViewLifecycle.ts:95
+msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
+msgid "You have unsaved changes. Discard them?"
 msgstr ""
 
 #: web/composables/useListInlineEdit.ts:107

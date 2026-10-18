@@ -45,14 +45,16 @@ export function computeViewportAdaptiveHeight(
     ) as HTMLElement | null;
     // A hidden footer reports an all-zero rect; treat as absent.
     const footerRect = footer?.getBoundingClientRect() ?? null;
-    const footerVisible =
-      !!footerRect && (footerRect.height > 0 || footerRect.top > 0);
+    const footerVisible = !!footerRect && (footerRect.height > 0 || footerRect.top > 0);
     const footerH = footerVisible
       ? footerRect!.height || Math.max(0, footerRect!.bottom - footerRect!.top)
       : 0;
-    // Cap to the *visible* scrollport minus in-flow footer height. Using footer.top
-    // alone can inflate height after overflow (footer drifts down → double scrollbars).
-    const bottom = scrollRect.bottom - footerH;
+    // In-flow footer sits below a main gap; that gap is not part of the canvas.
+    const rowGap = footerVisible ? readRowGapPx(shellScroll) : 0;
+    // Cap to the *visible* scrollport minus in-flow footer height. The scroll
+    // ancestor (testid choy-shell-scroll) must contain the footer — AppShell
+    // puts that testid on <main>. Using footer.top alone inflates height after overflow.
+    const bottom = scrollRect.bottom - footerH - rowGap;
     const page = wrap.closest('[data-anchor="choy.page"]') as HTMLElement | null;
     const pagePadBottom = page
       ? Number.parseFloat(getComputedStyle(page).paddingBottom) || 0
@@ -66,6 +68,14 @@ export function computeViewportAdaptiveHeight(
   const gap = opts.viewportGap ?? 0;
   const h = Math.floor(vh - wrapRectTop - gap);
   return Math.max(opts.minViewportHeight, h);
+}
+
+/** Parsed flex/grid row-gap. `normal` and missing styles count as 0. */
+function readRowGapPx(el: HTMLElement): number {
+  const style = getComputedStyle(el);
+  const raw = style.rowGap && style.rowGap !== 'normal' ? style.rowGap : style.gap;
+  const n = Number.parseFloat(raw || '');
+  return Number.isFinite(n) ? n : 0;
 }
 
 /** Cap short list pages so the body does not leave a tall empty void under few rows. */

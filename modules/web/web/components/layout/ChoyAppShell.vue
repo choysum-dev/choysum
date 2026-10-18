@@ -55,7 +55,15 @@ SPDX-License-Identifier: Apache-2.0
           <SidebarRail />
         </Sidebar>
       </template>
-      <SidebarInset class="min-h-0 min-w-0 overflow-hidden">
+      <!--
+        Inset main: margin + radius + white surface. Header, canvas, and footer
+        are in-flow siblings; vertical rhythm is gap on this element.
+        data-testid=choy-shell-scroll marks the ancestor adaptive height measures.
+      -->
+      <SidebarInset
+        class="choy-shell__inset flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+        data-testid="choy-shell-scroll"
+      >
         <ChoyAppHeader
           v-if="effectiveShowHeader"
           :show-sidebar-chrome="showSidebar"
@@ -67,18 +75,14 @@ SPDX-License-Identifier: Apache-2.0
             </div>
           </template>
         </ChoyAppHeader>
-        <!--
-          Workspace layout (ERP): footer stays pinned. Fill-height views scroll
-          inside their own body; non-fill pages scroll on this canvas.
-        -->
         <div
-          class="choy-shell__workspace flex min-h-0 flex-1 flex-col overflow-hidden"
-          data-testid="choy-shell-scroll"
-          data-shell-layout="workspace"
+          class="choy-shell__canvas flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto"
+          data-testid="choy-shell-canvas"
         >
           <div
-            class="choy-shell__main-inner flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto"
-            data-testid="choy-shell-canvas"
+            class="choy-shell__content flex min-h-0 w-full min-w-0 flex-1 flex-col"
+            data-anchor="choy.shell.content"
+            data-testid="choy-shell-content"
           >
             <slot>
               <router-view v-slot="{ Component, route: viewRoute }">
@@ -99,16 +103,16 @@ SPDX-License-Identifier: Apache-2.0
               </router-view>
             </slot>
           </div>
-          <footer
-            v-if="showFooter"
-            class="choy-shell__footer choy-inset-pad-x flex shrink-0 items-center justify-center bg-background"
-            :style="{ minHeight: 'var(--choy-layout-footer-height)' }"
-            data-testid="choy-shell-footer"
-          >
-            <ChoyAppFooter />
-            <slot name="footer" />
-          </footer>
         </div>
+        <footer
+          v-if="showFooter"
+          class="choy-shell__footer flex shrink-0 items-center justify-center"
+          :style="{ height: 'var(--choy-layout-chrome-height)', boxSizing: 'border-box' }"
+          data-testid="choy-shell-footer"
+        >
+          <ChoyAppFooter />
+          <slot name="footer" />
+        </footer>
       </SidebarInset>
     </div>
   </SidebarProvider>
@@ -184,6 +188,17 @@ const menuTriggerLabel = computed(() =>
   /* Chrome + L1 + header/footer; L2 is a lighter nested pane. Both neutral. */
   --choy-shell-chrome: oklch(0.965 0 0);
   --choy-shell-pane: oklch(0.985 0 0);
+  /*
+   * Workspace canvas behind List/Kanban/Form sheets — deeper than sidebar chrome
+   * so white view-body sheets and ActionBar-on-gray read clearly.
+   */
+  /* Same as sidebar header/footer chrome so inset gutters match the rail poles. */
+  --choy-shell-workspace: var(--choy-shell-chrome);
+  /* Inset main gutters + radius (dashboard-01-like; tune without touching kit). */
+  --choy-shell-inset-margin-y: 0.5rem;
+  --choy-shell-inset-margin-x: 0.5rem;
+  --choy-shell-inset-radius: var(--radius-xl, 0.75rem);
+  --choy-shell-inset-bg: oklch(1 0 0);
   /* Identity row hover/open on chrome — keep in sync with --choy-color-sidebar-accent. */
   --choy-shell-chrome-hover: var(--choy-color-sidebar-accent);
   min-height: 0 !important;
@@ -195,6 +210,8 @@ html.dark .choy-shell[data-shell-mode='app'],
 .dark .choy-shell[data-shell-mode='app'] {
   --choy-shell-chrome: oklch(0.18 0 0);
   --choy-shell-pane: oklch(0.205 0 0);
+  --choy-shell-workspace: var(--choy-shell-chrome);
+  --choy-shell-inset-bg: var(--choy-color-card);
   --choy-shell-chrome-hover: var(--choy-color-sidebar-accent);
 }
 
@@ -214,29 +231,49 @@ html.dark .choy-shell[data-shell-mode='app'],
 
 .choy-shell[data-shell-mode='app'] [data-slot='sidebar'] > .fixed {
   position: absolute !important;
-  top: 0 !important;
-  bottom: 0 !important;
+  /*
+   * Same block inset as <main> so sidebar header/footer bands share a horizontal
+   * seam with the content header/footer (dashboard-01 inset rhythm).
+   */
+  top: var(--choy-shell-inset-margin-y) !important;
+  bottom: var(--choy-shell-inset-margin-y) !important;
   height: auto !important;
   box-sizing: border-box !important;
-  /* Real border steals 1px from the icon rail; outer/inset shadows get covered. */
+  /*
+   * No right edge: inset <main> gutters already separate the rail from the
+   * white surface (a hairline would sit in the chrome gap and look redundant).
+   */
   border-right: 0 !important;
   box-shadow: none !important;
+  border-radius: var(--choy-shell-inset-radius);
+  /*
+   * Keep overflow visible so SidebarRail's outside hit target (-right-4) is not
+   * clipped. Rounding still applies via the inner sidebar surface background.
+   */
+  overflow: visible;
   transition-property: left, right, width;
   transition-duration: 200ms;
   transition-timing-function: linear;
 }
 
-/* Full-height hairline above chrome children; does not consume layout width. */
+.choy-shell[data-shell-mode='app'] [data-slot='sidebar'] > .fixed > [data-sidebar='sidebar'] {
+  border-radius: inherit;
+  /* Clip chrome content to the radius without eating the rail sibling hit box…
+   * Rail is a child of this node, so clip only non-rail bands below. */
+  overflow: visible;
+}
+
+.choy-shell[data-shell-mode='app']
+  [data-slot='sidebar']
+  > .fixed
+  > [data-sidebar='sidebar']
+  > :not([data-sidebar='rail']) {
+  /* Header / nav / footer stay inside the rounded pane. */
+  max-width: 100%;
+}
+
 .choy-shell[data-shell-mode='app'] [data-slot='sidebar'] > .fixed::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 40;
-  width: 1px;
-  pointer-events: none;
-  background-color: var(--color-sidebar-border, var(--choy-color-sidebar-border));
+  content: none !important;
 }
 
 /*
@@ -289,20 +326,53 @@ html.dark .choy-shell[data-shell-mode='app'],
   background-color: var(--choy-shell-chrome) !important;
 }
 
+/*
+ * The pane is the rounded menu surface. Its block padding is the air between
+ * that edge and the scroller, so the first item does not sit on the radius.
+ * Radius is one step under inset <main> — xl reads oversized on this narrow column.
+ */
 .choy-shell[data-shell-mode='app'] [data-testid='choy-shell-nav-pane'] {
   background-color: var(--choy-shell-pane) !important;
+  box-sizing: border-box;
+  padding-block: var(--choy-layout-section-gap) !important;
+  border-radius: var(--radius-md, 0.5rem);
 }
 
-.choy-shell[data-shell-mode='app'] [data-testid='choy-shell-scroll'],
-.choy-shell[data-shell-mode='app'] [data-testid='choy-shell-canvas'] {
-  background-color: var(--color-background, var(--choy-color-background)) !important;
+.choy-shell[data-shell-mode='app'] [data-testid='choy-shell-nav-pane-scroll'] {
+  background-color: transparent !important;
 }
 
 /*
- * sidebar-07-like header/footer: size=lg (h-12) identity rows.
- * Inline pad stays 0.5rem: in a 3rem icon rail that leaves a 2rem slot
- * (size-8), so collapse only clips text and mark glyphs do not shift.
- * Block pad matches inline (0.5rem): enough edge air without a tall chrome band.
+ * Outer shell body is workspace gray; inset <main> is the white surface
+ * (margin + radius). Inner scroll/canvas/footer inherit — no second bg.
+ */
+.choy-shell[data-shell-mode='app'] .choy-shell__body {
+  background-color: var(--choy-shell-workspace);
+}
+
+.choy-shell[data-shell-mode='app'] [data-slot='sidebar-inset'] {
+  margin-block: var(--choy-shell-inset-margin-y) !important;
+  margin-inline-end: var(--choy-shell-inset-margin-x) !important;
+  margin-inline-start: var(--choy-shell-inset-margin-x) !important;
+  border-radius: var(--choy-shell-inset-radius) !important;
+  background-color: var(--choy-shell-inset-bg) !important;
+  /* Match dashboard-01 inset main (shadow-sm). */
+  box-shadow: var(--shadow-sm) !important;
+  overflow: hidden !important;
+  min-height: 0 !important;
+  /* Header ↔ canvas ↔ footer. Inline gutter stays the wider content pad. */
+  gap: var(--choy-layout-section-gap) !important;
+  padding-inline: var(--choy-layout-content-padding) !important;
+}
+
+.choy-shell[data-shell-mode='app'] [data-testid='choy-shell-canvas'] {
+  background-color: transparent !important;
+}
+
+/*
+ * Sidebar header/footer bands match inset header/footer via layout tokens
+ * so left/right poles share one horizontal seam. Identity triggers fill the
+ * band; inline pad 0.5rem keeps mark x stable in the icon rail (size-8 slot).
  */
 .choy-shell[data-shell-mode='app'] [data-slot='sidebar-header'],
 .choy-shell[data-shell-mode='app'] [data-slot='sidebar-footer'] {
@@ -312,10 +382,10 @@ html.dark .choy-shell[data-shell-mode='app'],
   align-items: center !important;
   justify-content: flex-start !important;
   gap: 0 !important;
-  height: auto !important;
-  min-height: 0 !important;
-  max-height: none !important;
-  padding-block: 0.5rem !important;
+  height: var(--choy-layout-chrome-height) !important;
+  min-height: var(--choy-layout-chrome-height) !important;
+  max-height: var(--choy-layout-chrome-height) !important;
+  padding-block: 0.25rem !important;
   padding-inline: 0.5rem !important;
   border: 0 !important;
   background-color: var(--choy-shell-chrome) !important;
@@ -323,16 +393,22 @@ html.dark .choy-shell[data-shell-mode='app'],
   box-shadow: none !important;
 }
 
+.choy-shell[data-shell-mode='app'] [data-testid='choy-shell-sidebar-header'],
+.choy-shell[data-shell-mode='app'] [data-testid='choy-shell-sidebar-footer'] {
+  height: 100%;
+  min-height: 0;
+}
+
 .choy-shell[data-shell-mode='app'] [data-testid='company-switch-trigger'],
 .choy-shell[data-shell-mode='app'] [data-testid='auth-user-menu-trigger'] {
   justify-content: flex-start !important;
   align-items: center !important;
   width: 100% !important;
-  height: 3rem !important;
-  min-height: 3rem !important;
+  height: 100% !important;
+  min-height: 0 !important;
   min-width: 0 !important;
   /* No inline pad: mark x stays at header inset in both expand and collapse. */
-  padding-block: 0.5rem !important;
+  padding-block: 0 !important;
   padding-inline: 0 !important;
   margin-inline: 0 !important;
   border-radius: var(--radius-md, 0.375rem);
@@ -350,7 +426,7 @@ html.dark .choy-shell[data-shell-mode='app'],
   background-color: var(--choy-shell-chrome-hover) !important;
 }
 
-/* Defeat kit icon-mode size-control shrink — keep the same h-12 hit row. */
+/* Defeat kit icon-mode size-control shrink — fill the shared chrome band. */
 .choy-shell[data-shell-mode='app']
   [data-slot='sidebar'][data-collapsible='icon']
   [data-testid='company-switch-trigger'],
@@ -358,10 +434,10 @@ html.dark .choy-shell[data-shell-mode='app'],
   [data-slot='sidebar'][data-collapsible='icon']
   [data-testid='auth-user-menu-trigger'] {
   width: 100% !important;
-  height: 3rem !important;
-  min-height: 3rem !important;
+  height: 100% !important;
+  min-height: 0 !important;
   min-width: 0 !important;
-  padding-block: 0.5rem !important;
+  padding-block: 0 !important;
   padding-inline: 0 !important;
   margin-inline: 0 !important;
   justify-content: flex-start !important;

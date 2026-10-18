@@ -4,11 +4,11 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyPage :loading="loading" :padding="false" fill-height class="flex min-h-0 w-full flex-1 flex-col">
+  <ChoyPage :loading="loading" fill-height class="flex min-h-0 w-full flex-1 flex-col">
     <AuthPanel>
       <ChoyCard class="register-card w-full">
         <template #header>
-          <h3 class="font-semibold leading-none tracking-tight">{{ _t('Create Account') }}</h3>
+          <h3 class="font-semibold leading-none">{{ _t('Create Account') }}</h3>
           <div
             v-if="error"
             class="register-error flex items-start justify-between gap-2 text-sm text-destructive"
@@ -24,7 +24,7 @@ SPDX-License-Identifier: Apache-2.0
               <X class="size-3.5" />
             </button>
           </div>
-          <p v-else class="text-sm text-foreground/70">
+          <p v-else class="text-sm text-foreground/60">
             {{ _t('Fill in the fields below to register') }}
           </p>
         </template>

@@ -25,14 +25,16 @@ describe('ChoyAppShell', () => {
     expect(mounted.q('[data-testid=choy-shell]')?.getAttribute('data-shell-mode')).toBe('app');
     expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-header]')?.className || '').toContain('sticky');
-    expect(mounted.q('[data-testid=choy-shell-header]')?.className || '').toContain(
+    expect(mounted.q('[data-testid=choy-shell-header]')?.className || '').not.toContain(
       'choy-inset-pad-x',
     );
     expect(mounted.q('.choy-shell')?.className || '').toContain('overflow-hidden');
-    expect(mounted.q('[data-testid=choy-shell-scroll]')?.className || '').toContain('overflow-hidden');
-    expect(mounted.q('[data-testid=choy-shell-scroll]')?.getAttribute('data-shell-layout')).toBe(
-      'workspace',
-    );
+    // Scroll ancestor is <main> (header / canvas / footer are in-flow siblings).
+    const scroll = mounted.q('[data-testid=choy-shell-scroll]');
+    expect(scroll?.getAttribute('data-slot')).toBe('sidebar-inset');
+    expect(scroll?.className || '').toContain('choy-shell__inset');
+    expect(scroll?.className || '').toContain('overflow-hidden');
+    expect(mounted.q('.choy-shell__workspace')).toBeNull();
     expect(mounted.q('[data-testid=choy-shell-header-sep]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-header-tools]')).toBeNull();
     expect(mounted.q('[data-testid=choy-shell-theme]')).toBeNull();
@@ -48,12 +50,12 @@ describe('ChoyAppShell', () => {
     expect(mounted.q('[data-testid=choy-shell-aside]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-footer]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-footer]')?.className || '').not.toContain('border-t');
-    expect(mounted.q('[data-testid=choy-shell-footer]')?.className || '').toContain(
+    expect(mounted.q('[data-testid=choy-shell-footer]')?.className || '').not.toContain(
       'choy-inset-pad-x',
     );
     expect(
-      (mounted.q('[data-testid=choy-shell-footer]') as HTMLElement | null)?.style?.minHeight || '',
-    ).toContain('--choy-layout-footer-height');
+      (mounted.q('[data-testid=choy-shell-footer]') as HTMLElement | null)?.style?.height || '',
+    ).toContain('--choy-layout-chrome-height');
     expect(mounted.q('[data-testid=choy-app-footer]')?.className || '').toContain('leading-snug');
     expect(mounted.q('[data-testid=choy-app-footer]')?.textContent || '').toContain('Powered by Choysum');
     expect(mounted.q('[data-testid=choy-shell-menu-trigger]')).not.toBeNull();
@@ -61,16 +63,26 @@ describe('ChoyAppShell', () => {
     expect(mounted.q('[data-testid=choy-shell-command-trigger]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-sidebar-nav-app-title]')).toBeNull();
     expect(mounted.q('[data-test=router-view]')).not.toBeNull();
-    // Workspace: footer is a sibling of the canvas under the non-scrolling column.
+    // Footer is an in-flow sibling of the canvas under <main> (main gap, not overlay).
     expect(mounted.q('[data-slot=sidebar-inset]')).not.toBeNull();
     expect(mounted.q('[data-testid=choy-shell-header]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-header]')?.className || '').toContain('bg-transparent');
     expect(mounted.q('[data-testid=choy-shell-footer]')).not.toBeNull();
-    expect(mounted.q('[data-testid=choy-shell-canvas]')).not.toBeNull();
-    const footer = mounted.q('[data-testid=choy-shell-footer]');
+    expect(mounted.q('[data-testid=choy-shell-footer]')?.getAttribute('data-shell-footer')).toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-footer]')?.className || '').not.toContain('absolute');
+    expect(mounted.q('[data-testid=choy-shell-footer]')?.className || '').toContain('shrink-0');
     const canvas = mounted.q('[data-testid=choy-shell-canvas]');
-    expect(footer?.parentElement).toBe(canvas?.parentElement);
-    expect(footer?.parentElement?.getAttribute('data-shell-layout')).toBe('workspace');
-    expect(footer?.parentElement?.className || '').toContain('choy-shell__workspace');
+    expect(canvas).not.toBeNull();
+    expect(canvas?.className || '').toContain('choy-shell__canvas');
+    expect(canvas?.parentElement === scroll).toBe(true);
+    const content = mounted.q('[data-testid=choy-shell-content]');
+    expect(content).not.toBeNull();
+    expect(content?.getAttribute('data-anchor')).toBe('choy.shell.content');
+    expect(content?.className || '').toContain('choy-shell__content');
+    expect(content?.className || '').not.toContain('choy-inset-pad');
+    expect(content?.parentElement === canvas).toBe(true);
+    const footer = mounted.q('[data-testid=choy-shell-footer]');
+    expect(footer?.parentElement === scroll).toBe(true);
     mounted.unmount();
   });
 

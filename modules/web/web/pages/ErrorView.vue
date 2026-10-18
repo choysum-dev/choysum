@@ -4,11 +4,11 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyPage :padding="false" fill-height class="error-page flex min-h-0 w-full flex-1 flex-col">
+  <ChoyPage fill-height class="error-page flex min-h-0 w-full flex-1 flex-col">
     <AuthPanel>
       <ChoyCard class="error-card w-full">
         <template #header>
-          <h3 class="font-semibold leading-none tracking-tight">{{ errorConfig.title }}</h3>
+          <h3 class="font-semibold leading-none">{{ errorConfig.title }}</h3>
           <p class="text-sm text-foreground/70">{{ errorConfig.subtitle }}</p>
         </template>
         <p v-if="errorConfig.message" class="mb-4 text-sm leading-5">{{ errorConfig.message }}</p>

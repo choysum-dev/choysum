@@ -10,106 +10,109 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     v-on="$attrs"
   >
-    <ChoyCard :title="_t('Account Information')" class="mb-3.5">
-      <ChoyGrid :cols="12">
-        <ChoyCol :span="6">
-          <ChoyImageField :store="store" prop="Avatar" />
-        </ChoyCol>
-        <ChoyCol :span="6">
-          <ChoyVarcharField :store="store" prop="Username" :rules="requiredRules" />
-        </ChoyCol>
-        <ChoyCol :span="6">
-          <ChoyVarcharField :store="store" prop="Email" />
-        </ChoyCol>
-        <ChoyCol :span="6">
-          <ChoyVarcharField :store="store" prop="Phone" />
-        </ChoyCol>
-        <ChoyCol :span="6">
-          <ChoyBooleanField :store="store" prop="IsActive" widget="switch" />
-        </ChoyCol>
-        <ChoyCol :span="6">
-          <ChoyVarcharField :store="store" prop="FirstName" />
-        </ChoyCol>
-        <ChoyCol :span="6">
-          <ChoyVarcharField :store="store" prop="LastName" />
-        </ChoyCol>
-        <ChoyCol :span="6">
-          <ChoyVarcharField :store="store" prop="FullName" />
-        </ChoyCol>
-        <ChoyCol :span="6">
-          <ChoyManyToOneRefField :store="store" prop="LanguageId" />
-        </ChoyCol>
-        <ChoyCol :span="6">
-          <ChoySelectionField
-            :store="store"
-            prop="Timezone"
-            :placeholder="_t('Select a time zone')"
-            :select-props="{ filterable: true, allowCreate: false }"
-          />
-        </ChoyCol>
-        <ChoyCol :span="6">
-          <ChoyManyToOneRefField :store="store" prop="CompanyId" @value-click="onCompanyValueClick" />
-        </ChoyCol>
-        <ChoyCol :span="6">
-          <ChoyJsonField :store="store" prop="Preferences" />
-        </ChoyCol>
-      </ChoyGrid>
+    <!-- Form sections on the shared view-body sheet (no nested Card / bg-card). -->
+    <div data-anchor="choy.form.sheet" class="min-h-full">
+      <ChoySection :title="_t('Account Information')">
+        <ChoyGrid :cols="12">
+          <ChoyCol :span="6">
+            <ChoyImageField :store="store" prop="Avatar" />
+          </ChoyCol>
+          <ChoyCol :span="6">
+            <ChoyVarcharField :store="store" prop="Username" :rules="requiredRules" />
+          </ChoyCol>
+          <ChoyCol :span="6">
+            <ChoyVarcharField :store="store" prop="Email" />
+          </ChoyCol>
+          <ChoyCol :span="6">
+            <ChoyVarcharField :store="store" prop="Phone" />
+          </ChoyCol>
+          <ChoyCol :span="6">
+            <ChoyBooleanField :store="store" prop="IsActive" widget="switch" />
+          </ChoyCol>
+          <ChoyCol :span="6">
+            <ChoyVarcharField :store="store" prop="FirstName" />
+          </ChoyCol>
+          <ChoyCol :span="6">
+            <ChoyVarcharField :store="store" prop="LastName" />
+          </ChoyCol>
+          <ChoyCol :span="6">
+            <ChoyVarcharField :store="store" prop="FullName" />
+          </ChoyCol>
+          <ChoyCol :span="6">
+            <ChoyManyToOneRefField :store="store" prop="LanguageId" />
+          </ChoyCol>
+          <ChoyCol :span="6">
+            <ChoySelectionField
+              :store="store"
+              prop="Timezone"
+              :placeholder="_t('Select a time zone')"
+              :select-props="{ filterable: true, allowCreate: false }"
+            />
+          </ChoyCol>
+          <ChoyCol :span="6">
+            <ChoyManyToOneRefField :store="store" prop="CompanyId" @value-click="onCompanyValueClick" />
+          </ChoyCol>
+          <ChoyCol :span="6">
+            <ChoyJsonField :store="store" prop="Preferences" />
+          </ChoyCol>
+        </ChoyGrid>
 
-      <ChoyGrid :cols="12">
-        <ChoyCol :span="6">
-          <ChoyDatetimeField :store="store" prop="LastLogin" />
-        </ChoyCol>
-        <ChoyCol :span="6">
-          <ChoyDatetimeField :store="store" prop="CreatedAt" />
-        </ChoyCol>
-        <ChoyCol :span="6">
-          <ChoyDatetimeField :store="store" prop="UpdatedAt" />
-        </ChoyCol>
-      </ChoyGrid>
+        <ChoyGrid :cols="12">
+          <ChoyCol :span="6">
+            <ChoyDatetimeField :store="store" prop="LastLogin" />
+          </ChoyCol>
+          <ChoyCol :span="6">
+            <ChoyDatetimeField :store="store" prop="CreatedAt" />
+          </ChoyCol>
+          <ChoyCol :span="6">
+            <ChoyDatetimeField :store="store" prop="UpdatedAt" />
+          </ChoyCol>
+        </ChoyGrid>
 
-      <ChoyGrid :cols="12">
-        <ChoyCol :span="12">
-          <ChoyManyToManyRefTagsField
-            :store="store"
-            prop="CompanyIds"
-            :label="_t('Accessible Companies')"
-            :search-list="CompanyListView"
-            :search-view-title="_t('Select Company')"
-            :tag-label-field="['Name', 'DisplayName', 'Code', 'Id']"
-            @tag-click="onCompanyTagClick as any"
-          />
-        </ChoyCol>
-      </ChoyGrid>
-    </ChoyCard>
+        <ChoyGrid :cols="12">
+          <ChoyCol :span="12">
+            <ChoyManyToManyRefTagsField
+              :store="store"
+              prop="CompanyIds"
+              :label="_t('Accessible Companies')"
+              :search-list="CompanyListView"
+              :search-view-title="_t('Select Company')"
+              :tag-label-field="['Name', 'DisplayName', 'Code', 'Id']"
+              @tag-click="onCompanyTagClick as any"
+            />
+          </ChoyCol>
+        </ChoyGrid>
+      </ChoySection>
 
-    <ChoyTabs v-model="userDetailTab">
-      <ChoyTab :label="_t('Roles')" value="roles">
-        <ChoyManyToManyField :store="store" prop="Roles" label="" :search-list="RoleListView" :search-view-title="_t('Select Role')">
-          <ChoyVarcharField :store="store" prop="Roles.Id" />
-          <ChoyVarcharField :store="store" prop="Roles.Name" />
-          <ChoyDatetimeField :store="store" prop="Roles.CreatedAt" />
-        </ChoyManyToManyField>
-      </ChoyTab>
+      <ChoyTabs v-model="userDetailTab" class="mt-8">
+        <ChoyTab :label="_t('Roles')" value="roles">
+          <ChoyManyToManyField :store="store" prop="Roles" label="" :search-list="RoleListView" :search-view-title="_t('Select Role')">
+            <ChoyVarcharField :store="store" prop="Roles.Id" />
+            <ChoyVarcharField :store="store" prop="Roles.Name" />
+            <ChoyDatetimeField :store="store" prop="Roles.CreatedAt" />
+          </ChoyManyToManyField>
+        </ChoyTab>
 
-      <ChoyTab :label="_t('Sessions')" value="sessions">
-        <ChoyOneToManyField :store="store" prop="Sessions" label="">
-          <ChoyVarcharField :store="store" prop="Sessions.Id" />
-          <ChoyVarcharField :store="store" prop="Sessions.Status" />
-          <ChoyDatetimeField :store="store" prop="Sessions.LastActivityAt" />
-          <ChoyDatetimeField :store="store" prop="Sessions.CreatedAt" />
-        </ChoyOneToManyField>
-      </ChoyTab>
+        <ChoyTab :label="_t('Sessions')" value="sessions">
+          <ChoyOneToManyField :store="store" prop="Sessions" label="">
+            <ChoyVarcharField :store="store" prop="Sessions.Id" />
+            <ChoyVarcharField :store="store" prop="Sessions.Status" />
+            <ChoyDatetimeField :store="store" prop="Sessions.LastActivityAt" />
+            <ChoyDatetimeField :store="store" prop="Sessions.CreatedAt" />
+          </ChoyOneToManyField>
+        </ChoyTab>
 
-      <ChoyTab :label="_t('Tokens')" value="tokens">
-        <ChoyOneToManyField :store="store" prop="Tokens" label="">
-          <ChoyVarcharField :store="store" prop="Tokens.Id" />
-          <ChoyVarcharField :store="store" prop="Tokens.TokenType" />
-          <ChoyDatetimeField :store="store" prop="Tokens.CreatedAt" />
-        </ChoyOneToManyField>
-      </ChoyTab>
-    </ChoyTabs>
+        <ChoyTab :label="_t('Tokens')" value="tokens">
+          <ChoyOneToManyField :store="store" prop="Tokens" label="">
+            <ChoyVarcharField :store="store" prop="Tokens.Id" />
+            <ChoyVarcharField :store="store" prop="Tokens.TokenType" />
+            <ChoyDatetimeField :store="store" prop="Tokens.CreatedAt" />
+          </ChoyOneToManyField>
+        </ChoyTab>
+      </ChoyTabs>
 
-    <ChoyChatter v-if="props.recordId" :key="props.recordId" bind-store model="auth.User" :res-id="props.recordId" />
+      <ChoyChatter v-if="props.recordId" :key="props.recordId" bind-store model="auth.User" :res-id="props.recordId" />
+    </div>
   </ChoyFormView>
 </template>
 
@@ -128,7 +131,7 @@ import type { TagClickPayload as RefTagClickPayload } from '@/web/web/components
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
-import { ChoyBooleanField, ChoyCard, ChoyChatter, ChoyCol, ChoyDatetimeField, ChoyFormView, ChoyGrid, ChoyImageField, ChoyJsonField, ChoyManyToManyField, ChoyManyToOneField, ChoyOneToManyField, ChoySelectionField, ChoyTab, ChoyTabs, ChoyVarcharField, ChoyManyToOneRefField, ChoyManyToManyRefTagsField} from '@/web';
+import { ChoyBooleanField, ChoyChatter, ChoyCol, ChoyDatetimeField, ChoyFormView, ChoyGrid, ChoyImageField, ChoyJsonField, ChoyManyToManyField, ChoyManyToOneField, ChoyOneToManyField, ChoySection, ChoySelectionField, ChoyTab, ChoyTabs, ChoyVarcharField, ChoyManyToOneRefField, ChoyManyToManyRefTagsField} from '@/web';
 import type { ChoyViewMode as ViewMode } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 

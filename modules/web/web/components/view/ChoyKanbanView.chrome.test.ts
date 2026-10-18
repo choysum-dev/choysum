@@ -147,7 +147,7 @@ describe('ChoyKanbanView chrome', () => {
     expect(mounted.q('.choy-kanban-view__card')?.className).toContain('hover:bg-accent/40');
     // Soft lane wash, no outer bordered frame (cards carry the border).
     const laneClass = mounted.q('.choy-kanban-view__lane')?.className ?? '';
-    expect(laneClass).toContain('bg-muted/40');
+    expect(laneClass).toContain('bg-muted/70');
     expect(laneClass).not.toMatch(/\bborder\b/);
     mounted.unmount();
   });
@@ -529,6 +529,45 @@ describe('ChoyKanbanView chrome', () => {
 
     state.onLaneLoadMore({ key: 'done', label: 'Done', cards: [], remain: 0 });
     expect(payloads.length).toBe(1);
+    mounted.unmount();
+  });
+
+  test('load-more busy chrome is scoped to the appending lane', async () => {
+    const mounted = mountApp(ChoyKanbanView as any, {
+      props: {
+        store: makeStore(),
+        autoBootstrap: false,
+        showActions: false,
+        readonly: true,
+      },
+    });
+    await flushPromises();
+    const state = mounted.setupState() as KanbanSetup & {
+      isLaneFetchBusy: (laneKey: string) => boolean;
+      boardBusy: boolean | { value: boolean };
+      engine: {
+        loadMorePending: { value: boolean };
+        loadMoreLaneKey: { value: string | null };
+      };
+    };
+    // No remain: avoids IntersectionObserver sentinels racing onLaneLoadMore.
+    state.displayLanes = [
+      { key: 'active', label: 'Active', cards: [] },
+      { key: 'revoked', label: 'Revoked', cards: [] },
+    ];
+    await nextTick();
+
+    expect(typeof state.isLaneFetchBusy).toBe('function');
+    const busy =
+      typeof state.boardBusy === 'boolean' ? state.boardBusy : !!state.boardBusy.value;
+    expect(busy).toBe(false);
+
+    state.engine.loadMorePending.value = true;
+    state.engine.loadMoreLaneKey.value = 'revoked';
+    expect(state.engine.loadMoreLaneKey.value).toBe('revoked');
+    expect(state.isLaneFetchBusy('revoked')).toBe(true);
+    expect(state.isLaneFetchBusy('active')).toBe(false);
+
     mounted.unmount();
   });
 

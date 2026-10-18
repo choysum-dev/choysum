@@ -10,59 +10,63 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     v-on="$attrs"
   >
-    <ChoyCard :title="_t('Basic Information')" class="mb-3.5">
-      <ChoyGrid :cols="12">
-        <ChoyCol :span="3">
-          <ChoyImageField :store="store" prop="Logo" />
-        </ChoyCol>
-      </ChoyGrid>
-      <ChoyGrid :cols="12">
-        <ChoyCol :span="3">
-          <ChoyVarcharField :store="store" prop="Name" :rules="requiredRules" />
-        </ChoyCol>
-        <ChoyCol :span="3">
-          <ChoyVarcharField :store="store" prop="Code" :rules="requiredRules" />
-        </ChoyCol>
-        <ChoyCol :span="3">
-          <ChoySelectionField
-            :store="store"
-            prop="Timezone"
-            :rules="requiredRules"
-            :placeholder="_t('Select a time zone')"
-            :select-props="{ filterable: true, allowCreate: false }"
-          />
-        </ChoyCol>
-        <ChoyCol :span="3">
-          <ChoyManyToOneField
-            :store="store"
-            prop="CurrencyId"
-            :rules="requiredRules"
-            :search-view="CurrencyListView"
-            :search-view-title="_t('Select Currency')"
-            @value-click="onCurrencyValueClick"
-          />
-        </ChoyCol>
-      </ChoyGrid>
-      <ChoyGrid :cols="12">
-        <ChoyCol :span="3">
-          <ChoyManyToOneField
-            :store="store"
-            prop="ParentId"
-            :search-view="CompanyListView"
-            :search-view-title="_t('Select Parent Company')"
-            @value-click="onParentCompanyValueClick"
-          />
-        </ChoyCol>
-      </ChoyGrid>
-      <ChoyGrid :cols="12">
-        <ChoyCol :span="3">
-          <ChoyDatetimeField :store="store" prop="CreatedAt" />
-        </ChoyCol>
-        <ChoyCol :span="3">
-          <ChoyDatetimeField :store="store" prop="UpdatedAt" />
-        </ChoyCol>
-      </ChoyGrid>
-    </ChoyCard>
+    <!-- Form sections on the shared view-body sheet (no nested Card / bg-card). -->
+    <div data-anchor="choy.form.sheet" class="min-h-full">
+      <section class="space-y-4">
+        <h3 class="text-base font-semibold tracking-tight text-foreground">{{ _t('Basic Information') }}</h3>
+        <ChoyGrid :cols="12">
+          <ChoyCol :span="3">
+            <ChoyImageField :store="store" prop="Logo" />
+          </ChoyCol>
+        </ChoyGrid>
+        <ChoyGrid :cols="12">
+          <ChoyCol :span="3">
+            <ChoyVarcharField :store="store" prop="Name" :rules="requiredRules" />
+          </ChoyCol>
+          <ChoyCol :span="3">
+            <ChoyVarcharField :store="store" prop="Code" :rules="requiredRules" />
+          </ChoyCol>
+          <ChoyCol :span="3">
+            <ChoySelectionField
+              :store="store"
+              prop="Timezone"
+              :rules="requiredRules"
+              :placeholder="_t('Select a time zone')"
+              :select-props="{ filterable: true, allowCreate: false }"
+            />
+          </ChoyCol>
+          <ChoyCol :span="3">
+            <ChoyManyToOneField
+              :store="store"
+              prop="CurrencyId"
+              :rules="requiredRules"
+              :search-view="CurrencyListView"
+              :search-view-title="_t('Select Currency')"
+              @value-click="onCurrencyValueClick"
+            />
+          </ChoyCol>
+        </ChoyGrid>
+        <ChoyGrid :cols="12">
+          <ChoyCol :span="3">
+            <ChoyManyToOneField
+              :store="store"
+              prop="ParentId"
+              :search-view="CompanyListView"
+              :search-view-title="_t('Select Parent Company')"
+              @value-click="onParentCompanyValueClick"
+            />
+          </ChoyCol>
+        </ChoyGrid>
+        <ChoyGrid :cols="12">
+          <ChoyCol :span="3">
+            <ChoyDatetimeField :store="store" prop="CreatedAt" />
+          </ChoyCol>
+          <ChoyCol :span="3">
+            <ChoyDatetimeField :store="store" prop="UpdatedAt" />
+          </ChoyCol>
+        </ChoyGrid>
+      </section>
+    </div>
   </ChoyFormView>
 </template>
 
@@ -81,7 +85,16 @@ import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
-import { ChoyCard, ChoyCol, ChoyDatetimeField, ChoyFormView, ChoyGrid, ChoyImageField, ChoyManyToOneField, ChoySelectionField, ChoyVarcharField} from '@/web';
+import {
+  ChoyCol,
+  ChoyDatetimeField,
+  ChoyFormView,
+  ChoyGrid,
+  ChoyImageField,
+  ChoyManyToOneField,
+  ChoySelectionField,
+  ChoyVarcharField,
+} from '@/web';
 import type { ChoyViewMode as ViewMode } from '@/web';
 
 defineOptions({ name: 'CompanyFormView', inheritAttrs: true });
@@ -122,4 +135,3 @@ function onCurrencyValueClick(payload: ManyToOneValueClickPayload<Currency>) {
   void router.push({ name: 'CurrencyDetail', params: { id } });
 }
 </script>
-

@@ -4,12 +4,12 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <FormItem :class="cn('gap-1.5', props.class)">
+  <FormItem :class="cn('choy-form-item', props.class)">
     <div
       v-if="label || $slots.label || help"
-      class="inline-flex max-w-full items-center gap-1 text-sm font-medium leading-none text-foreground"
+      class="choy-form-item__label inline-flex max-w-full items-center font-normal text-muted-foreground"
     >
-      <Label v-if="label || $slots.label" class="min-w-0" :for="controlId || undefined">
+      <Label v-if="label || $slots.label" class="min-w-0 text-muted-foreground" :for="controlId || undefined">
         <slot name="label">{{ label }}</slot>
       </Label>
       <button
@@ -31,7 +31,7 @@ SPDX-License-Identifier: Apache-2.0
       v-if="error || reserveError"
       data-slot="form-message"
       :id="messageId || undefined"
-      class="text-destructive text-sm"
+      class="text-destructive"
       :class="{ invisible: reserveError && !error }"
       :role="error ? 'alert' : undefined"
       :aria-hidden="reserveError && !error ? true : undefined"
@@ -42,7 +42,7 @@ SPDX-License-Identifier: Apache-2.0
       v-else-if="description"
       data-slot="form-description"
       :id="descriptionId || undefined"
-      class="text-sm text-muted-foreground"
+      class="text-muted-foreground"
     >
       {{ description }}
     </p>
@@ -58,6 +58,7 @@ import { cn, type ClassValue } from '../../lib/utils';
 
 defineOptions({ name: 'ChoyFormItem' });
 
+/** Vertical label-above-control; stack gap from --choy-field-stack-gap in index.css. */
 const props = defineProps<{
   class?: ClassValue;
   label?: string;

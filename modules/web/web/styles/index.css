@@ -22,7 +22,7 @@ body,
   .choy-shell,
   .choy-shell__body,
   .choy-shell__scroll,
-  .choy-shell__main-inner {
+  .choy-shell__canvas {
     height: auto;
     overflow: visible;
   }
@@ -38,10 +38,39 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Align Tailwind .font-mono with the product mono stack (tokens.css). */
+html {
+  --font-mono: var(--choy-font-family-mono);
+}
+
 /*
- * Viewport-locked shell chrome: header stays put; Guest/App share one scrollport
- * (content + Powered-by). Short pages pin the footer; tall pages scroll it after
- * content (see ChoyGuestShell / ChoyAppShell).
+ * Product-wide thin scrollbars (Form / List / shell / popovers).
+ * Stay in @layer base so utilities like .scrollbar-none can still hide tracks.
+ */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--muted-foreground) 35%, transparent) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--muted-foreground) 35%, transparent);
+  }
+}
+
+/*
+ * Viewport-locked shell chrome: header and footer stay put; the canvas scrolls
+ * (see ChoyGuestShell / ChoyAppShell).
  */
 .choy-app,
 .choy-shell {
@@ -60,14 +89,14 @@ body {
   overflow: auto;
 }
 
-.choy-shell__main-inner {
+.choy-shell__canvas {
   min-height: 0;
   overflow: visible;
 }
 
 /*
- * Inset content gutter: App header / ChoyPage / Powered-by footer (and Guest
- * chrome) share --choy-layout-content-padding so left edges line up.
+ * Shared inline gutter for ChoyPage opt-in pad. App <main> and guest .choy-shell__main
+ * own section gap (--choy-layout-section-gap) and this inline gutter.
  */
 .choy-inset-pad-x {
   padding-inline: var(--choy-layout-content-padding);
@@ -77,7 +106,7 @@ body {
   padding: var(--choy-layout-content-padding);
 }
 
-/* List/Kanban host the page title in view chrome; keep side/bottom gutter only. */
+/* ChoyPage opt-in only: side + bottom; top flush when a view hosts the title. */
 .choy-inset-pad-no-top {
   padding-inline: var(--choy-layout-content-padding);
   padding-bottom: var(--choy-layout-content-padding);
@@ -168,6 +197,53 @@ body {
 .choy-textfield-display {
   padding-inline: 0 !important;
   line-height: 1.5 !important;
+}
+
+/*
+ * Form field chrome density. Kit FormItem/Field/FieldGroup ship gap-*; product
+ * hosts win via these selectors so spacing tracks --choy-field-*-gap
+ * (including data-density=compact). cn() does not merge conflicting gap-*.
+ */
+[data-slot='form-item'].choy-form-item,
+[data-slot='field'].choy-field-base {
+  gap: var(--choy-field-stack-gap);
+}
+
+/* Field ↔ field rhythm for FieldGroup stacks (ChoyGrid default is gap-2). */
+[data-slot='field-group'] {
+  gap: var(--choy-field-group-gap);
+}
+
+.choy-form-item__label,
+.choy-field-base__label-row {
+  gap: var(--choy-field-label-inline-gap);
+  font-size: var(--choy-font-size-sm);
+  line-height: var(--choy-field-label-line-height);
+  font-weight: 400;
+}
+
+/* Kit Label / FieldLabel keep text-sm / leading-none / font-medium; product wins. */
+.choy-form-item__label [data-slot='label'],
+.choy-field-base__label-row [data-slot='field-label'] {
+  font-size: inherit;
+  line-height: inherit;
+  font-weight: inherit;
+}
+
+/* Error / description track the same density scale as labels. */
+.choy-form-item [data-slot='form-message'],
+.choy-form-item [data-slot='form-description'],
+.choy-field-base [data-slot='field-error'] {
+  font-size: var(--choy-font-size-sm);
+}
+
+/* Numeric field controls + display: stable digit width in lists/forms. */
+.choy-number-input,
+.choy-monetary-input,
+.choy-bigint-input,
+.choy-decimal-input,
+.choy-field-display-text--numeric {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Product links: no underline by default (preflight uses text-decoration: inherit). */

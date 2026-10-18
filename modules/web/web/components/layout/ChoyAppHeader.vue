@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <header
-    class="choy-app-header choy-inset-pad-x sticky top-0 z-50 flex shrink-0 items-center gap-2 bg-background/95 text-sm backdrop-blur"
+    class="choy-app-header sticky top-0 z-50 flex shrink-0 items-center gap-2 bg-transparent text-sm"
     :style="headerStyle"
     data-testid="choy-shell-header"
   >
@@ -92,7 +92,7 @@ function onMenuTriggerClick() {
 
 /** Height only — shared shell top chrome is translucent + blur with no hairline border. */
 const headerStyle = {
-  height: 'var(--choy-layout-header-height)',
+  height: 'var(--choy-layout-chrome-height)',
   paddingTop: '0',
   paddingBottom: '0',
   boxSizing: 'border-box' as const,

@@ -11,9 +11,12 @@ SPDX-License-Identifier: Apache-2.0
       cn(
         'inline-flex w-fit items-stretch',
         // Drop per-button shadow so adjacent outline borders share one edge.
-        '[&>*]:shadow-none',
+        // Also join nested buttons (e.g. TooltipRoot wrapping each control).
+        '[&>*]:shadow-none [&>*_button]:shadow-none',
         '[&>*:not(:first-child)]:rounded-l-none [&>*:not(:first-child)]:border-l-0',
+        '[&>*:not(:first-child)_button]:rounded-l-none [&>*:not(:first-child)_button]:border-l-0',
         '[&>*:not(:last-child)]:rounded-r-none',
+        '[&>*:not(:last-child)_button]:rounded-r-none',
         props.class,
       )
     "

@@ -33,7 +33,7 @@ SPDX-License-Identifier: Apache-2.0
         @keydown.enter.self.prevent="onCardClick(cards[item.index])"
         @dragstart="onCardDragStart($event, cards[item.index])"
       >
-        <div class="flex items-start gap-1 pb-2">
+        <div class="flex items-start gap-1">
           <div class="min-w-0 flex-1">
             <slot name="card" :card="cards[item.index]!" :lane="lane">
               <div class="text-sm font-medium text-foreground">{{ cards[item.index]!.title }}</div>
@@ -146,6 +146,7 @@ import DropdownMenuItem from '../vendor/ui/dropdown-menu/DropdownMenuItem.vue';
 import DropdownMenuTrigger from '../vendor/ui/dropdown-menu/DropdownMenuTrigger.vue';
 import ChoyKanbanLoadSentinel from './ChoyKanbanLoadSentinel.vue';
 import {
+  CHOY_KANBAN_CARD_GAP,
   CHOY_KANBAN_LANE_DRAG_MIME,
   choyKanbanShouldVirtualize,
   encodeChoyKanbanLaneDragPayload,
@@ -200,6 +201,8 @@ const virtualizer = useVirtualizer({
   },
   getScrollElement: () => (virtualized.value ? (scrollRef.value as Element | null) : null),
   estimateSize: () => estimateSize.value,
+  // Same rhythm as the non-virtual `gap-2` column so dense/sparse lanes match.
+  gap: CHOY_KANBAN_CARD_GAP,
   getItemKey: (index) => props.cards[index]?.id ?? index,
   overscan: 8,
 });

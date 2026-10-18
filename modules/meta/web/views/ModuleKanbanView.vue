@@ -69,32 +69,13 @@ SPDX-License-Identifier: Apache-2.0
       </template>
 
       <!-- View-mode toggles on the trailing edge (same as ModuleListView). -->
-      <template v-if="showHeader" #header-right>
-        <ChoyButtonGroup :aria-label="_t('View switcher')">
-          <ChoyButton
-            v-if="canRoute('meta.route.module_board')"
-            type="button"
-            size="icon"
-            variant="outline"
-            :aria-pressed="true"
-            :aria-label="_t('Board View')"
-            class="z-[1] bg-muted text-foreground hover:bg-muted"
-            @click="toKanban"
-          >
-            <LayoutGrid class="size-4" aria-hidden="true" />
-          </ChoyButton>
-          <ChoyButton
-            v-if="canRoute('meta.route.module_list')"
-            type="button"
-            size="icon"
-            variant="outline"
-            :aria-pressed="false"
-            :aria-label="_t('List View')"
-            @click="toList"
-          >
-            <List class="size-4" aria-hidden="true" />
-          </ChoyButton>
-        </ChoyButtonGroup>
+      <template v-if="showHeader && viewSwitcherOptions.length" #header-right>
+        <ChoyViewSwitcher
+          :aria-label="_t('View switcher')"
+          active="board"
+          :options="viewSwitcherOptions"
+          @select="onViewSelect"
+        />
       </template>
 
       <template #card="{ card, lane }">
@@ -327,7 +308,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { FolderSync, History, LayoutGrid, List } from 'lucide-vue-next';
+import { FolderSync, History } from 'lucide-vue-next';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type MetaModule from '@/meta/service/models/module';
 import type MetaModuleIndex from '@/meta/service/models/module_index';
@@ -342,14 +323,15 @@ import type { Lane } from '@/web/web/query/types';
 import {
   ChoyBadge,
   ChoyButton,
-  ChoyButtonGroup,
   ChoyDropdownMenuItem,
   ChoyKanbanView,
   ChoyMessage,
   ChoySearchView,
+  ChoyViewSwitcher,
   ChoyVirtualField,
   type ChoyKanbanCard,
   type ChoyKanbanLane,
+  type ChoyViewSwitcherOption,
 } from '@/web';
 import {
   createModuleOpProgressSession,
@@ -541,12 +523,20 @@ function onKanbanSearchError(e: unknown) {
   console.error('Module kanban search failed:', e);
 }
 
-function toKanban() {
-  router.push('/meta/modules');
-}
+const viewSwitcherOptions = computed<ChoyViewSwitcherOption[]>(() => {
+  const opts: ChoyViewSwitcherOption[] = [];
+  if (canRoute('meta.route.module_board')) {
+    opts.push({ value: 'board', label: _t('Board View') });
+  }
+  if (canRoute('meta.route.module_list')) {
+    opts.push({ value: 'list', label: _t('List View') });
+  }
+  return opts;
+});
 
-function toList() {
-  router.push('/meta/modules/list');
+function onViewSelect(value: string) {
+  if (value === 'list') router.push('/meta/modules/list');
+  else router.push('/meta/modules');
 }
 
 function toHistory() {

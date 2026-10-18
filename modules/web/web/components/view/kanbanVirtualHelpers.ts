@@ -4,8 +4,14 @@
 /** Min loaded cards before auto virtualization kicks in. */
 export const CHOY_KANBAN_VIRTUAL_THRESHOLD = 40;
 
-/** Default estimated card height including inter-card gap (px). */
-export const CHOY_KANBAN_DEFAULT_CARD_SIZE = 96;
+/**
+ * Default estimated card height (px), content only — not inter-card gap.
+ * Gap is applied separately via TanStack Virtual `gap` (see CHOY_KANBAN_CARD_GAP).
+ */
+export const CHOY_KANBAN_DEFAULT_CARD_SIZE = 88;
+
+/** Inter-card gap for virtualized lanes; matches non-virtual `gap-2` (8px). */
+export const CHOY_KANBAN_CARD_GAP = 8;
 
 /** MIME type for HTML5 lane-drop card payloads. */
 export const CHOY_KANBAN_LANE_DRAG_MIME = 'application/x-choy-kanban-card';

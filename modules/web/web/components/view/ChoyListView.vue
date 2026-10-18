@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyViewContainer class="gap-4">
+  <ChoyViewContainer class="gap-5">
     <template v-if="showHeader" #header>
       <div data-anchor="choy.list.view-chrome">
         <ChoyViewActionBar
@@ -17,15 +17,24 @@ SPDX-License-Identifier: Apache-2.0
             <!-- Keep Save/Discard outside the overridable slot so custom toolbars cannot hide them. -->
             <ChoyButton
               v-if="editable && isEditing"
+              type="button"
               size="default"
               variant="default"
               :disabled="inlineSaving"
               @click="handleInlineSave"
             >
+              <Check class="size-4" aria-hidden="true" />
               {{ _t('Save') }}
             </ChoyButton>
 
-            <ChoyButton v-if="editable && isEditing" size="default" variant="outline" @click="handleInlineDiscard">
+            <ChoyButton
+              v-if="editable && isEditing"
+              type="button"
+              size="default"
+              variant="outline"
+              @click="handleInlineDiscard"
+            >
+              <X class="size-4" aria-hidden="true" />
               {{ _t('Discard') }}
             </ChoyButton>
 
@@ -38,7 +47,13 @@ SPDX-License-Identifier: Apache-2.0
               :save="handleInlineSave"
               :discard="handleInlineDiscard"
             >
-              <ChoyButton v-if="resolvedCreateAction && canCreate" size="default" variant="default" @click="handleCreate">
+              <ChoyButton
+                v-if="resolvedCreateAction && canCreate"
+                type="button"
+                size="default"
+                variant="default"
+                @click="handleCreate"
+              >
                 <Plus class="size-4" aria-hidden="true" />
                 {{ _t('New') }}
               </ChoyButton>
@@ -49,7 +64,7 @@ SPDX-License-Identifier: Apache-2.0
               v-if="pageTitle"
               :id="pageTitleId || undefined"
               data-slot="page-title"
-              class="choy-list-view__page-title min-w-0 max-w-[10rem] truncate text-base font-semibold tracking-tight text-foreground sm:max-w-[14rem]"
+              class="choy-list-view__page-title min-w-0 max-w-[10rem] truncate text-base font-semibold text-foreground sm:max-w-[14rem]"
             >
               {{ pageTitle }}
             </h1>
@@ -78,20 +93,17 @@ SPDX-License-Identifier: Apache-2.0
             </ChoyPageTitleActions>
           </template>
 
-          <template v-if="showActions" #user-actions>
+          <!-- Only register when filled — empty tray would paint a dangling ActionBar separator. -->
+          <template v-if="showActions && !!slots['user-actions']" #user-actions>
             <slot name="user-actions" :selected-items="selectedItems" />
           </template>
 
-          <!-- Odoo-style: selection chrome replaces Search visually in the center slot.
-               Keep #center registered unconditionally so ActionBar can swap content
-               when selection appears (v-if on the slot template would omit the outlet).
-               Use v-show (not v-if) for the Search host so clearing selection does not
-               remount ChoySearchView and re-run UserFilter + list Search/Count. -->
+          <!-- Selection replaces Search in the center column. Search stays mounted. -->
           <template #center>
             <div
               v-show="hasSelection"
               data-anchor="choy.list.selection-bar"
-              class="flex min-w-0 w-full flex-wrap items-center gap-2"
+              class="flex min-w-0 w-full flex-nowrap items-center gap-2 overflow-x-auto"
               role="toolbar"
               :aria-label="_t('Selection actions')"
             >
@@ -125,13 +137,13 @@ SPDX-License-Identifier: Apache-2.0
 
               <slot name="selection-actions" :selected-items="selectedItems" :clear="clearSelection" />
             </div>
-            <div
+            <ChoySearchFit
               v-if="resolvedSearchView"
               v-show="!hasSelection"
-              class="flex min-w-0 w-full items-center"
+              :field-visible="!hasSelection"
             >
               <component :is="resolvedSearchView" class="min-w-0 w-full" :store="store" @query-update="onSearch" />
-            </div>
+            </ChoySearchFit>
           </template>
 
           <template #header-right>
@@ -161,7 +173,7 @@ SPDX-License-Identifier: Apache-2.0
     <div
       ref="tableWrapRef"
       data-anchor="choy.list.table"
-      class="choy-list-view__table flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden rounded-md border border-border bg-card shadow-xs [&_.choy-field-base]:mb-0 [&_.choy-data-table]:h-full [&_.choy-data-table]:rounded-none [&_.choy-data-table]:border-0"
+      class="choy-list-view__table flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden [&_.choy-field-base]:mb-0 [&_.choy-data-table]:h-full [&_.choy-data-table]:rounded-none [&_.choy-data-table]:border-0"
       :style="listTableWrapStyle"
     >
       <!-- form-root + edit view-mode only under the table so header search cannot touch the row draft -->
@@ -214,7 +226,7 @@ SPDX-License-Identifier: Apache-2.0
             <slot name="empty">
               <ChoyEmpty class="w-full" :description="_t('No data')">
                 <template v-if="resolvedCreateAction && canCreate" #actions>
-                  <ChoyButton size="default" variant="default" @click="handleCreate">
+                  <ChoyButton type="button" size="default" variant="default" @click="handleCreate">
                     <Plus class="size-4" aria-hidden="true" />
                     {{ _t('New') }}
                   </ChoyButton>
@@ -273,6 +285,7 @@ import { useCancelableEmit } from '@/web/web/composables/useCancelableEmit';
 import { useAdaptiveHeight } from '@/web/web/composables/useAdaptiveHeight';
 import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
 import ChoyViewActionBar from '@/web/web/components/view/ChoyViewActionBar.vue';
+import ChoySearchFit from '@/web/web/components/view/ChoySearchFit.vue';
 import ChoyViewBusyHost from '@/web/web/components/view/ChoyViewBusyHost.vue';
 import { useListViewActions } from '@/web/web/composables/useListViewActions';
 import { useVirtualizationAdapter } from '@/web/web/composables/virtualizationAdapter';
@@ -292,7 +305,7 @@ import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyPageTitleActions from '@/web/web/components/layout/ChoyPageTitleActions.vue';
 import { Separator } from '@/web/web/components/vendor/ui/separator';
 import DropdownMenuItem from '@/web/web/components/vendor/ui/dropdown-menu/DropdownMenuItem.vue';
-import { ChevronRight, Plus, RefreshCw, Trash2, X } from 'lucide-vue-next';
+import { Check, ChevronRight, Plus, RefreshCw, Trash2, X } from 'lucide-vue-next';
 
 defineOptions({ name: 'ChoyListView', inheritAttrs: false });
 

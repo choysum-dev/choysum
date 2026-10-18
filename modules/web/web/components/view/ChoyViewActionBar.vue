@@ -4,73 +4,87 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
+  <!--
+    Column host: toolbar row + Vue-owned search-fit row (narrow SearchFit teleports here).
+    data-slot=view-action-bar stays on the toolbar so width observers keep measuring it.
+  -->
   <div
-    data-slot="view-action-bar"
-    :data-layout="props.layout"
-    :class="
-      cn(
-        // Region gap (ActionBar ↔ body) belongs on ChoyViewContainer.
-        // pb-* here is only air between controls and the hairline when bordered.
-        'items-center gap-3 border-b border-border min-h-control',
-        !isBorderless(props.class) ? 'pb-2' : undefined,
-        props.layout === 'thirds'
-          ? 'grid grid-cols-[auto_1fr_auto] max-md:grid-cols-1'
-          : 'flex justify-between max-md:flex-col max-md:items-stretch',
-        props.class,
-      )
-    "
+    class="choy-view-action-bar-host flex min-w-0 w-full flex-col"
+    data-testid="choy-view-action-bar-host"
   >
-    <!-- Keep the first thirds-grid column even when actions are empty so center/right do not shift. -->
     <div
-      v-if="$slots['system-actions'] || $slots['user-actions'] || props.layout === 'thirds'"
+      data-slot="view-action-bar"
+      :data-layout="props.layout"
       :class="
         cn(
-          'flex min-w-0 items-center gap-3 max-md:flex-col max-md:items-stretch',
-          props.layout === 'split' ? 'flex-1' : '',
+          // Region gap (ActionBar ↔ body) belongs on ChoyViewContainer.
+          // pb-* here is only air between controls and the hairline when bordered.
+          'min-w-0 items-center gap-3 overflow-x-auto border-b border-border min-h-control',
+          !isBorderless(props.class) ? 'pb-2' : undefined,
+          props.layout === 'thirds'
+            ? 'grid grid-cols-[minmax(0,auto)_minmax(0,1fr)_auto]'
+            : 'flex flex-nowrap justify-between',
+          props.class,
         )
       "
     >
-      <ChoyActionTray v-if="$slots['system-actions']" :aria-label="props.systemActionsLabel">
-        <slot name="system-actions" />
-      </ChoyActionTray>
-      <template v-if="$slots['system-actions'] && $slots['user-actions']">
-        <Separator
-          orientation="vertical"
-          class="mx-0 !h-4 w-px shrink-0 max-md:hidden"
-        />
-        <div class="hidden max-md:block w-full border-t border-border" aria-hidden="true" />
-      </template>
-      <ChoyActionTray
-        v-if="$slots['user-actions']"
-        :aria-label="props.userActionsLabel"
-        class="max-md:pt-0"
+      <!-- Keep the first thirds-grid column even when actions are empty so center/right do not shift. -->
+      <div
+        v-if="$slots['system-actions'] || $slots['user-actions'] || props.layout === 'thirds'"
+        :class="
+          cn(
+            'flex min-w-0 flex-nowrap items-center gap-3',
+            props.layout === 'split' ? 'flex-1' : '',
+          )
+        "
       >
-        <slot name="user-actions" />
-      </ChoyActionTray>
-    </div>
-    <div v-if="$slots.center" class="min-w-0 flex-1">
-      <slot name="center" />
+        <ChoyActionTray v-if="$slots['system-actions']" :aria-label="props.systemActionsLabel">
+          <slot name="system-actions" />
+        </ChoyActionTray>
+        <template v-if="$slots['system-actions'] && $slots['user-actions']">
+          <Separator
+            orientation="vertical"
+            class="mx-0 !h-4 w-px shrink-0"
+          />
+        </template>
+        <ChoyActionTray
+          v-if="$slots['user-actions']"
+          :aria-label="props.userActionsLabel"
+        >
+          <slot name="user-actions" />
+        </ChoyActionTray>
+      </div>
+      <div v-if="$slots.center" class="min-w-0 flex-1">
+        <slot name="center" />
+      </div>
+      <div
+        v-if="$slots['header-right']"
+        class="flex shrink-0 items-center justify-end gap-3"
+      >
+        <slot name="header-right" />
+      </div>
     </div>
     <div
-      v-if="$slots['header-right']"
-      class="flex items-center justify-end gap-3 max-md:justify-center"
-    >
-      <slot name="header-right" />
-    </div>
+      ref="searchFitRowRef"
+      data-slot="search-fit-row"
+      class="min-w-0"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
+import { provide, ref, type Ref } from 'vue';
 import ChoyActionTray from '../layout/ChoyActionTray.vue';
 import { Separator } from '../vendor/ui/separator';
 import { cn, type ClassValue } from '../../lib/utils';
+import { ChoySearchFitRowKey } from './choySearchFitContext';
 
 defineOptions({ name: 'ChoyViewActionBar' });
 
 const props = withDefaults(
   defineProps<{
     class?: ClassValue;
-    /** split = Form-style flex; thirds = List/Kanban grid with center search. */
+    /** split = flex toolbar; thirds = grid with a center column. */
     layout?: 'split' | 'thirds';
     systemActionsLabel?: string;
     userActionsLabel?: string;
@@ -81,6 +95,10 @@ const props = withDefaults(
     userActionsLabel: 'User actions',
   },
 );
+
+const searchFitRowRef = ref<HTMLElement | null>(null);
+// Template-ref Element typings diverge from lib.dom HTMLElement under QuickJS.
+provide(ChoySearchFitRowKey, searchFitRowRef as unknown as Ref<HTMLElement | null>);
 
 /** True when the consumer clears the bottom hairline (no pb air needed). */
 function isBorderless(value: ClassValue | undefined): boolean {

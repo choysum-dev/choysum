@@ -5,7 +5,7 @@ import { computed } from 'vue';
 import { createI18n } from 'vue-i18n';
 import { createTermReference } from '@/core/service/i18n';
 import { projectTerminologyMessages } from '../i18n/terminology';
-import { resolveDocumentTitle } from './documentTitle';
+import { resolveDocumentTitle, resolveRoutePageTitle } from './documentTitle';
 import { createAppRouter, defaultAppName } from './index';
 
 describe('defaultAppName', () => {
@@ -30,6 +30,18 @@ describe('createAppRouter', () => {
     await router.push('/').catch(() => undefined);
     await router.isReady().catch(() => undefined);
     expect(typeof router.currentRoute.value.path).toBe('string');
+  });
+});
+
+describe('resolveRoutePageTitle', () => {
+  test('returns the bare page title without the app suffix', () => {
+    expect(
+      resolveRoutePageTitle({
+        path: '/base/companies/1',
+        meta: { pageTitle: 'Company Details' },
+      } as any)
+    ).toBe('Company Details');
+    expect(resolveRoutePageTitle(null)).toBe('');
   });
 });
 

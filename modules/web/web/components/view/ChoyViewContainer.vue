@@ -3,7 +3,10 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
-<!-- Region spacing (header ↔ body ↔ footer) is flex gap on the root; shell owns page gutters. -->
+<!--
+  Region spacing (header ↔ body ↔ footer) is flex gap on the root. Paper surface
+  and gutters live on shell inset/content; view-body is a scroll region only.
+-->
 <template>
   <div
     data-slot="view-container"
@@ -18,7 +21,11 @@ SPDX-License-Identifier: Apache-2.0
     <div v-if="$slots.header" data-slot="view-header" class="shrink-0">
       <slot name="header" />
     </div>
-    <div data-slot="view-body" class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+    <div
+      data-slot="view-body"
+      data-anchor="choy.view.sheet"
+      class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+    >
       <slot />
     </div>
     <div v-if="$slots.footer" data-slot="view-footer" class="shrink-0">

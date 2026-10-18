@@ -7,7 +7,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { flushPromises, fnRecorder, mountApp } from '@/web/web/__tests__/mountApp';
 import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
-import { useFormViewSubmit } from '@/web/web/composables/useFormViewSubmit';
+import { formCreateSuccessPath, useFormViewSubmit } from '@/web/web/composables/useFormViewSubmit';
 import { useBreadcrumbStore } from '@/web/web/stores/breadcrumbStore';
 
 const createFeStubRouter = (VueRouter as any).createFeStubRouter;
@@ -22,6 +22,7 @@ function mountSubmit(opts?: {
   showMessages?: boolean;
   submitHandler?: (...args: any[]) => any;
   routePath?: string;
+  routeParams?: Record<string, string>;
   fieldErrors?: Map<string, string>;
   validators?: Map<string, () => Promise<string>>;
 }) {
@@ -29,7 +30,7 @@ function mountSubmit(opts?: {
     route: {
       path: opts?.routePath ?? '/app/items/new',
       fullPath: opts?.routePath ?? '/app/items/new',
-      params: {},
+      params: opts?.routeParams ?? {},
       query: {},
       meta: {},
     },
@@ -184,6 +185,30 @@ describe('useFormViewSubmit', () => {
     expect(out.ok).toBe(true);
     expect(replace.calls.length).toBe(1);
     expect(m.emit.calls.some(c => c[0] === 'create-success')).toBe(true);
+    m.unmount();
+  });
+
+  test('copy save replaces the source record id and returns to display', async () => {
+    const m = mountSubmit({
+      viewMode: 'create',
+      routePath: '/app/items/rec-1',
+      routeParams: { id: 'rec-1' },
+    });
+    const replace = fnRecorder(async (_to: any) => {});
+    m.router.replace = replace as any;
+    const store = useBreadcrumbStore();
+    store.breadcrumbStack.push({
+      title: 'Source',
+      path: '/app/items/rec-1',
+      clickable: true,
+      timestamp: 1,
+      kind: 'page',
+    });
+    const out = await m.api().handleSubmit();
+    expect(out.ok).toBe(true);
+    expect(replace.calls[0]?.[0]).toBe('/app/items/created-1');
+    expect(m.controller.vm.mode).toBe('display');
+    expect(store.breadcrumbStack[0]?.path).toBe('/app/items/created-1');
     m.unmount();
   });
 
@@ -366,5 +391,16 @@ describe('useFormViewSubmit', () => {
 
     api!.onNativeSubmit();
     await flushPromises();
+  });
+});
+
+describe('formCreateSuccessPath', () => {
+  test('rewrites /new and copy source paths, including trailing slashes', () => {
+    expect(formCreateSuccessPath('/app/items/new', '42')).toBe('/app/items/42');
+    expect(formCreateSuccessPath('/app/items/new/', '42')).toBe('/app/items/42');
+    expect(formCreateSuccessPath('/app/items/rec-1', '99', 'rec-1')).toBe('/app/items/99');
+    expect(formCreateSuccessPath('/app/items/rec-1/', '99', 'rec-1')).toBe('/app/items/99');
+    expect(formCreateSuccessPath('/app/items/rec-1/', '99', 'other')).toBeNull();
+    expect(formCreateSuccessPath('/app/items/new', '')).toBeNull();
   });
 });
