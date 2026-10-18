@@ -41,29 +41,12 @@ SPDX-License-Identifier: Apache-2.0
 
       <!-- View-mode toggles on the trailing edge (same as TokenListView). -->
       <template v-if="showHeader" #header-right>
-        <ChoyButtonGroup :aria-label="_t('View switcher')">
-          <ChoyButton
-            type="button"
-            size="icon"
-            variant="outline"
-            :aria-pressed="false"
-            :aria-label="_t('List View')"
-            @click="toList"
-          >
-            <List class="size-4" aria-hidden="true" />
-          </ChoyButton>
-          <ChoyButton
-            type="button"
-            size="icon"
-            variant="outline"
-            :aria-pressed="true"
-            :aria-label="_t('Kanban View')"
-            class="z-[1] bg-muted text-foreground hover:bg-muted"
-            @click="toKanban"
-          >
-            <LayoutGrid class="size-4" aria-hidden="true" />
-          </ChoyButton>
-        </ChoyButtonGroup>
+        <ChoyViewSwitcher
+          :aria-label="_t('View switcher')"
+          active="kanban"
+          :options="viewSwitcherOptions"
+          @select="onViewSelect"
+        />
       </template>
 
       <template #card="{ card }">
@@ -110,19 +93,20 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { LayoutGrid, List } from 'lucide-vue-next';
 import type Token from '@/auth/service/models/token';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import {
   ChoyButton,
-  ChoyButtonGroup,
   ChoyKanbanView,
   ChoyMessage,
   ChoySearchView,
+  ChoyViewSwitcher,
   ChoyVirtualField,
   type ChoyKanbanCard,
-  type ChoyKanbanLane
+  type ChoyKanbanLane,
+  type ChoyViewSwitcherOption,
 } from '@/web';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
@@ -146,6 +130,16 @@ const { showHeader } = props;
 const defaultGroups = ['Revoked'] as GroupBySpec<Token>[];
 
 const router = useRouter();
+
+const viewSwitcherOptions = computed<ChoyViewSwitcherOption[]>(() => [
+  { value: 'list', label: _t('List View') },
+  { value: 'kanban', label: _t('Kanban View') },
+]);
+
+function onViewSelect(value: string) {
+  if (value === 'list') router.push('/auth/tokens');
+  else router.push('/auth/tokens/kanban');
+}
 
 function rowToCard(row: unknown, index: number, laneKey: string): ChoyKanbanCard {
   const payload = resolveTokenKanbanRowPayload(row as TokenKanbanRow);
@@ -192,14 +186,6 @@ function onLoadMoreError(e: unknown) {
 function onMoveError(e: unknown) {
   ChoyMessage.error(_t('Move failed; refreshed to recover'));
   console.error('Token kanban move failed:', e);
-}
-
-function toList() {
-  router.push('/auth/tokens');
-}
-
-function toKanban() {
-  router.push('/auth/tokens/kanban');
 }
 
 function onCreate() {

@@ -100,6 +100,19 @@ export { default as ChoySearchView } from './components/view/ChoySearchView.vue'
 export { default as ChoyViewContainer } from './components/view/ChoyViewContainer.vue';
 export { default as ChoyViewActionBar } from './components/view/ChoyViewActionBar.vue';
 export { default as ChoyViewBusyHost } from './components/view/ChoyViewBusyHost.vue';
+export { default as ChoyViewSwitcher } from './components/view/ChoyViewSwitcher.vue';
+export type { ChoyViewSwitcherOption } from './components/view/ChoyViewSwitcher.vue';
+export type {
+  ChoyViewSwitcherKind,
+  ChoyViewSwitcherPreset,
+  ChoyViewSwitcherResolvedOption,
+} from './components/view/choyViewSwitcherPresets';
+export {
+  getChoyViewSwitcherPreset,
+  listChoyViewSwitcherPresetIds,
+  registerChoyViewSwitcherPreset,
+  resolveChoyViewSwitcherOptions,
+} from './components/view/choyViewSwitcherPresets';
 export { default as ChoyFormItem } from './components/layout/ChoyFormItem.vue';
 export { default as ChoyPagination } from './components/view/ChoyPagination.vue';
 export { default as ChoyBreadcrumb } from './components/view/ChoyBreadcrumb.vue';

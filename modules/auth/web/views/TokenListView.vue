@@ -17,30 +17,12 @@ SPDX-License-Identifier: Apache-2.0
   >
     <!-- View-mode toggles only; ListView keeps pagination at the trailing edge. -->
     <template v-if="showHeader" #header-right>
-      <ChoyButtonGroup :aria-label="_t('View switcher')">
-        <ChoyButton
-          type="button"
-          size="icon"
-          variant="outline"
-          :aria-pressed="isListRoute"
-          :aria-label="_t('List View')"
-          :class="isListRoute ? 'z-[1] bg-muted text-foreground hover:bg-muted' : undefined"
-          @click="toList"
-        >
-          <List class="size-4" aria-hidden="true" />
-        </ChoyButton>
-        <ChoyButton
-          type="button"
-          size="icon"
-          variant="outline"
-          :aria-pressed="!isListRoute"
-          :aria-label="_t('Kanban View')"
-          :class="!isListRoute ? 'z-[1] bg-muted text-foreground hover:bg-muted' : undefined"
-          @click="toKanban"
-        >
-          <LayoutGrid class="size-4" aria-hidden="true" />
-        </ChoyButton>
-      </ChoyButtonGroup>
+      <ChoyViewSwitcher
+        :aria-label="_t('View switcher')"
+        :active="isListRoute ? 'list' : 'kanban'"
+        :options="viewSwitcherOptions"
+        @select="onViewSelect"
+      />
     </template>
 
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
@@ -60,20 +42,19 @@ import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type Token from '@/auth/service/models/token';
-import { LayoutGrid, List } from 'lucide-vue-next';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import {
   ChoyBooleanField,
-  ChoyButton,
-  ChoyButtonGroup,
   ChoyDatetimeField,
   ChoyListView,
   ChoySearchView,
   ChoyTableColumn,
   ChoyVarcharField,
+  ChoyViewSwitcher,
+  type ChoyViewSwitcherOption,
 } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { resolveListRowRecordId } from './list_row_nav';
@@ -101,17 +82,19 @@ const { hasAction } = usePermission();
 
 const isListRoute = computed(() => !String(route.path || '').includes('/kanban'));
 
+const viewSwitcherOptions = computed<ChoyViewSwitcherOption[]>(() => [
+  { value: 'list', label: _t('List View') },
+  { value: 'kanban', label: _t('Kanban View') },
+]);
+
 function onRowClick(row: Record<string, unknown>) {
   const id = resolveListRowRecordId(row);
   if (id) router.push(`/auth/tokens/${id}`);
 }
 
-function toList() {
-  router.push('/auth/tokens');
-}
-
-function toKanban() {
-  router.push('/auth/tokens/kanban');
+function onViewSelect(value: string) {
+  if (value === 'kanban') router.push('/auth/tokens/kanban');
+  else router.push('/auth/tokens');
 }
 
 const { listRef, expose } = useListViewExpose<Token>();

@@ -40,33 +40,13 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <!-- View-mode toggles only; ListView keeps pagination at the trailing edge. -->
-    <template v-if="showHeader" #header-right>
-      <ChoyButtonGroup :aria-label="_t('View switcher')">
-        <ChoyButton
-          v-if="canRoute('meta.route.module_board')"
-          type="button"
-          size="icon"
-          variant="outline"
-          :aria-pressed="!isListRoute"
-          :aria-label="_t('Board View')"
-          :class="!isListRoute ? 'z-[1] bg-muted text-foreground hover:bg-muted' : undefined"
-          @click="toKanban"
-        >
-          <LayoutGrid class="size-4" aria-hidden="true" />
-        </ChoyButton>
-        <ChoyButton
-          v-if="canRoute('meta.route.module_list')"
-          type="button"
-          size="icon"
-          variant="outline"
-          :aria-pressed="isListRoute"
-          :aria-label="_t('List View')"
-          :class="isListRoute ? 'z-[1] bg-muted text-foreground hover:bg-muted' : undefined"
-          @click="toList"
-        >
-          <List class="size-4" aria-hidden="true" />
-        </ChoyButton>
-      </ChoyButtonGroup>
+    <template v-if="showHeader && viewSwitcherOptions.length" #header-right>
+      <ChoyViewSwitcher
+        :aria-label="_t('View switcher')"
+        :active="isListRoute ? 'list' : 'board'"
+        :options="viewSwitcherOptions"
+        @select="onViewSelect"
+      />
     </template>
 
     <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
@@ -99,7 +79,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { FolderSync, History, LayoutGrid, List } from 'lucide-vue-next';
+import { FolderSync, History } from 'lucide-vue-next';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type MetaModuleIndex from '@/meta/service/models/module_index';
 import { useListViewExpose } from '@/web/web/composables/useListView';
@@ -111,8 +91,6 @@ import { createTranslate } from '@/web/web/i18n';
 import {
   ChoyBadge,
   ChoyBooleanField,
-  ChoyButton,
-  ChoyButtonGroup,
   ChoyDatetimeField,
   ChoyDropdownMenuItem,
   ChoyListView,
@@ -120,7 +98,9 @@ import {
   ChoySearchView,
   ChoyTableColumn,
   ChoyVarcharField,
+  ChoyViewSwitcher,
   ChoyVirtualField,
+  type ChoyViewSwitcherOption,
 } from '@/web';
 import { resolveListRowRecordId } from './list_row_nav';
 import { moduleStatusBadgeVariant } from './module_kanban_chrome';
@@ -188,12 +168,22 @@ function onRowClick(row: Record<string, unknown>) {
   if (id) router.push(`/meta/modules/${id}`);
 }
 
-function toKanban() {
-  router.push('/meta/modules');
+const viewSwitcherOptions = computed<ChoyViewSwitcherOption[]>(() => {
+  const opts: ChoyViewSwitcherOption[] = [];
+  if (canRoute('meta.route.module_board')) {
+    opts.push({ value: 'board', label: _t('Board View') });
+  }
+  if (canRoute('meta.route.module_list')) {
+    opts.push({ value: 'list', label: _t('List View') });
+  }
+  return opts;
+});
+
+function onViewSelect(value: string) {
+  if (value === 'list') router.push('/meta/modules/list');
+  else router.push('/meta/modules');
 }
-function toList() {
-  router.push('/meta/modules/list');
-}
+
 function toHistory() {
   router.push('/meta/modules/history');
 }
