@@ -78,17 +78,13 @@ SPDX-License-Identifier: Apache-2.0
               <slot name="header" />
             </div>
           </template>
-          <!-- Keep #center registered so thirds grid stays stable even without search. -->
+          <!-- Keep #center registered so the trailing controls stay in the last column. -->
           <template #center>
-            <div
-              v-if="$slots.search"
-              class="flex min-w-0 w-full items-center max-md:order-2"
-            >
+            <ChoySearchFit v-if="$slots.search">
               <slot name="search" :on-query-update="engine.applySearch" />
-            </div>
+            </ChoySearchFit>
           </template>
 
-          <!-- View-mode toggles (and optional trailing chrome); mirrors ListView #header-right. -->
           <template v-if="$slots['header-right']" #header-right>
             <slot name="header-right" />
           </template>
@@ -296,6 +292,7 @@ import ChoyButton from '../layout/ChoyButton.vue';
 import ChoyPageTitleActions from '@/web/web/components/layout/ChoyPageTitleActions.vue';
 import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
 import ChoyViewActionBar from '@/web/web/components/view/ChoyViewActionBar.vue';
+import ChoySearchFit from '@/web/web/components/view/ChoySearchFit.vue';
 import ChoyViewBusyHost from '@/web/web/components/view/ChoyViewBusyHost.vue';
 import ChoyKanbanLoadSentinel from '@/web/web/components/view/ChoyKanbanLoadSentinel.vue';
 import ChoyKanbanVirtualLaneBody from '@/web/web/components/view/ChoyKanbanVirtualLaneBody.vue';

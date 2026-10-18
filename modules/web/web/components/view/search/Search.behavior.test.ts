@@ -327,6 +327,18 @@ describe('OSearch behavior', () => {
     m.unmount();
   });
 
+  test('keeps the search menu closed for a quiet programmatic focus', async () => {
+    const m = mountSearch();
+    await flushPromises();
+    const input = m.q('input.choy-search__input') as HTMLElement;
+    input.setAttribute('data-search-focus-quiet', '');
+    m.setupState().onInputFocus({ target: input });
+    await nextTick();
+    expect(isMenuOpen(m)).toBe(false);
+    expect(input.hasAttribute('data-search-focus-quiet')).toBe(false);
+    m.unmount();
+  });
+
   test('keeps menu open when dismiss-outside fires right after focus open', async () => {
     const m = mountSearch();
     await flushPromises();

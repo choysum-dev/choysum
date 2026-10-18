@@ -11,11 +11,11 @@ SPDX-License-Identifier: Apache-2.0
       cn(
         // Region gap (ActionBar ↔ body) belongs on ChoyViewContainer.
         // pb-* here is only air between controls and the hairline when bordered.
-        'items-center gap-3 border-b border-border min-h-control',
+        'min-w-0 items-center gap-3 overflow-x-auto border-b border-border min-h-control',
         !isBorderless(props.class) ? 'pb-2' : undefined,
         props.layout === 'thirds'
-          ? 'grid grid-cols-[auto_1fr_auto] max-md:grid-cols-1'
-          : 'flex justify-between max-md:flex-col max-md:items-stretch',
+          ? 'grid grid-cols-[minmax(0,auto)_minmax(0,1fr)_auto]'
+          : 'flex flex-nowrap justify-between',
         props.class,
       )
     "
@@ -25,7 +25,7 @@ SPDX-License-Identifier: Apache-2.0
       v-if="$slots['system-actions'] || $slots['user-actions'] || props.layout === 'thirds'"
       :class="
         cn(
-          'flex min-w-0 items-center gap-3 max-md:flex-col max-md:items-stretch',
+          'flex min-w-0 flex-nowrap items-center gap-3',
           props.layout === 'split' ? 'flex-1' : '',
         )
       "
@@ -36,14 +36,12 @@ SPDX-License-Identifier: Apache-2.0
       <template v-if="$slots['system-actions'] && $slots['user-actions']">
         <Separator
           orientation="vertical"
-          class="mx-0 !h-4 w-px shrink-0 max-md:hidden"
+          class="mx-0 !h-4 w-px shrink-0"
         />
-        <div class="hidden max-md:block w-full border-t border-border" aria-hidden="true" />
       </template>
       <ChoyActionTray
         v-if="$slots['user-actions']"
         :aria-label="props.userActionsLabel"
-        class="max-md:pt-0"
       >
         <slot name="user-actions" />
       </ChoyActionTray>
@@ -53,7 +51,7 @@ SPDX-License-Identifier: Apache-2.0
     </div>
     <div
       v-if="$slots['header-right']"
-      class="flex items-center justify-end gap-3 max-md:justify-center"
+      class="flex shrink-0 items-center justify-end gap-3"
     >
       <slot name="header-right" />
     </div>

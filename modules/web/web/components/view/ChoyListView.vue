@@ -83,16 +83,12 @@ SPDX-License-Identifier: Apache-2.0
             <slot name="user-actions" :selected-items="selectedItems" />
           </template>
 
-          <!-- Odoo-style: selection chrome replaces Search visually in the center slot.
-               Keep #center registered unconditionally so ActionBar can swap content
-               when selection appears (v-if on the slot template would omit the outlet).
-               Use v-show (not v-if) for the Search host so clearing selection does not
-               remount ChoySearchView and re-run UserFilter + list Search/Count. -->
+          <!-- Selection replaces Search in the center column. Search stays mounted. -->
           <template #center>
             <div
               v-show="hasSelection"
               data-anchor="choy.list.selection-bar"
-              class="flex min-w-0 w-full flex-wrap items-center gap-2"
+              class="flex min-w-0 w-full flex-nowrap items-center gap-2 overflow-x-auto"
               role="toolbar"
               :aria-label="_t('Selection actions')"
             >
@@ -126,13 +122,9 @@ SPDX-License-Identifier: Apache-2.0
 
               <slot name="selection-actions" :selected-items="selectedItems" :clear="clearSelection" />
             </div>
-            <div
-              v-if="resolvedSearchView"
-              v-show="!hasSelection"
-              class="flex min-w-0 w-full items-center"
-            >
+            <ChoySearchFit v-if="resolvedSearchView" v-show="!hasSelection">
               <component :is="resolvedSearchView" class="min-w-0 w-full" :store="store" @query-update="onSearch" />
-            </div>
+            </ChoySearchFit>
           </template>
 
           <template #header-right>
@@ -274,6 +266,7 @@ import { useCancelableEmit } from '@/web/web/composables/useCancelableEmit';
 import { useAdaptiveHeight } from '@/web/web/composables/useAdaptiveHeight';
 import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
 import ChoyViewActionBar from '@/web/web/components/view/ChoyViewActionBar.vue';
+import ChoySearchFit from '@/web/web/components/view/ChoySearchFit.vue';
 import ChoyViewBusyHost from '@/web/web/components/view/ChoyViewBusyHost.vue';
 import { useListViewActions } from '@/web/web/composables/useListViewActions';
 import { useVirtualizationAdapter } from '@/web/web/composables/virtualizationAdapter';

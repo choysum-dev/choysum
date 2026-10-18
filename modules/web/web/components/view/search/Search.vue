@@ -4,7 +4,12 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div ref="searchRootRef" class="choy-search w-full" data-anchor="choy.search">
+  <div
+    ref="searchRootRef"
+    class="choy-search w-full"
+    data-anchor="choy.search"
+    :data-search-active="hasClearableSearch ? 'true' : 'false'"
+  >
     <Popover v-model:open="menuVisible">
       <!-- Anchor the panel to the whole search shell (not the chevron alone). -->
       <PopoverAnchor as-child>
@@ -92,7 +97,7 @@ SPDX-License-Identifier: Apache-2.0
           <InputGroupInput
             ref="inputRef"
             v-model="keyword"
-            class="choy-search__input min-w-[140px] px-1"
+            class="choy-search__input min-w-0 px-1"
             :placeholder="placeholder"
             :name="inputName"
             :id="inputId"
@@ -947,7 +952,12 @@ function onMenuDismissOutside(event: Event) {
   }
 }
 
-function onInputFocus() {
+function onInputFocus(e?: { target?: EventTarget | null }) {
+  const el = e?.target as { getAttribute?: (name: string) => string | null; removeAttribute?: (name: string) => void } | null;
+  if (el && typeof el.getAttribute === 'function' && el.getAttribute('data-search-focus-quiet') != null) {
+    el.removeAttribute?.('data-search-focus-quiet');
+    return;
+  }
   markMenuDismissSuppressed();
   menuVisible.value = true;
 }
@@ -1089,7 +1099,6 @@ const hasClearableSearch = computed(() => {
   const hasFilters = Array.isArray(filters.value) && filters.value.length > 0;
   return hasKw || hasFilters || canClearVisibleGrouping.value || !!activeFavorite.value;
 });
-
 function onEditGroupClick() {
   markMenuDismissSuppressed();
   menuVisible.value = true;

@@ -40,7 +40,9 @@ SPDX-License-Identifier: Apache-2.0
           <slot name="user-actions" />
         </template>
         <template v-if="$slots.search" #center>
-          <slot name="search" :on-query-update="onSearch" />
+          <ChoySearchFit>
+            <slot name="search" :on-query-update="onSearch" />
+          </ChoySearchFit>
         </template>
         <template v-if="$slots['header-right']" #header-right>
           <slot name="header-right" />
@@ -301,6 +303,7 @@ import ChoyButton from '../layout/ChoyButton.vue';
 import ChoyEmpty from '../layout/ChoyEmpty.vue';
 import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
 import ChoyViewActionBar from '@/web/web/components/view/ChoyViewActionBar.vue';
+import ChoySearchFit from '@/web/web/components/view/ChoySearchFit.vue';
 import ChoyViewBusyHost from '@/web/web/components/view/ChoyViewBusyHost.vue';
 import { useProvideViewScope } from '@/web/web/components/view/viewScopeKeys';
 import { createTranslate } from '@/web/web/i18n';
