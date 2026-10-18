@@ -42,11 +42,13 @@ export type UseFormViewSubmitOpts<T extends BaseModel> = {
 export function formCreateSuccessPath(path: string, newId: string, currentRecordId?: string): string | null {
   const id = String(newId || '').trim();
   if (!id) return null;
-  if (path.endsWith('/new')) return path.slice(0, -'new'.length) + id;
+  // Trailing slashes (e.g. /app/items/rec-1/) must not block the copy→saved replace.
+  const normalized = String(path || '').replace(/\/+$/, '') || '/';
+  if (normalized.endsWith('/new')) return normalized.slice(0, -'new'.length) + id;
   const current = String(currentRecordId || '').trim();
   if (!current || current === id) return null;
-  if (!path.endsWith('/' + current)) return null;
-  return path.slice(0, -current.length) + id;
+  if (!normalized.endsWith('/' + current)) return null;
+  return normalized.slice(0, -current.length) + id;
 }
 
 function routeRecordId(route: { params?: Record<string, unknown>; query?: Record<string, unknown> }): string | undefined {

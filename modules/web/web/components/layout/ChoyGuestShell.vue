@@ -112,4 +112,13 @@ const effectiveShowHeader = computed(() => props.showHeader)
   overflow-x: hidden;
   overflow-y: auto;
 }
+
+/* Screen scrollport must not trap printed pages (more specific than index.css). */
+@media print {
+  .choy-shell[data-shell-mode='guest'] .choy-shell__canvas,
+  .choy-shell[data-shell-mode='guest'] .choy-shell__content {
+    height: auto;
+    overflow: visible;
+  }
+}
 </style>

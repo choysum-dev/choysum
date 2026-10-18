@@ -7,7 +7,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { flushPromises, fnRecorder, mountApp } from '@/web/web/__tests__/mountApp';
 import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
-import { useFormViewSubmit } from '@/web/web/composables/useFormViewSubmit';
+import { formCreateSuccessPath, useFormViewSubmit } from '@/web/web/composables/useFormViewSubmit';
 import { useBreadcrumbStore } from '@/web/web/stores/breadcrumbStore';
 
 const createFeStubRouter = (VueRouter as any).createFeStubRouter;
@@ -391,5 +391,16 @@ describe('useFormViewSubmit', () => {
 
     api!.onNativeSubmit();
     await flushPromises();
+  });
+});
+
+describe('formCreateSuccessPath', () => {
+  test('rewrites /new and copy source paths, including trailing slashes', () => {
+    expect(formCreateSuccessPath('/app/items/new', '42')).toBe('/app/items/42');
+    expect(formCreateSuccessPath('/app/items/new/', '42')).toBe('/app/items/42');
+    expect(formCreateSuccessPath('/app/items/rec-1', '99', 'rec-1')).toBe('/app/items/99');
+    expect(formCreateSuccessPath('/app/items/rec-1/', '99', 'rec-1')).toBe('/app/items/99');
+    expect(formCreateSuccessPath('/app/items/rec-1/', '99', 'other')).toBeNull();
+    expect(formCreateSuccessPath('/app/items/new', '')).toBeNull();
   });
 });

@@ -23,6 +23,9 @@ describe('isAuthExitNavigation', () => {
     expect(isAuthExitNavigation({ path: '/web/login' })).toBe(true);
     expect(isAuthExitNavigation({ path: '/web/logout/' })).toBe(true);
     expect(isAuthExitNavigation({ path: '/auth/users' })).toBe(false);
+    // Domain routes that merely end in /register must keep the dirty-leave prompt.
+    expect(isAuthExitNavigation({ path: '/pos/register' })).toBe(false);
+    expect(isAuthExitNavigation({ path: '/events/42/register' })).toBe(false);
   });
 });
 

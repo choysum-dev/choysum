@@ -103,8 +103,9 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
    * (avoids virtualizer / drag-chrome flicker in untouched columns).
    */
   function patchLaneFromController(laneKey: string): boolean {
-    const key = String(laneKey || '').trim();
-    if (!key) return false;
+    // Preserve surrounding whitespace in lane keys; only reject blank-after-trim.
+    const key = String(laneKey ?? '');
+    if (!key.trim()) return false;
     const ctrlLane = controller.lanes.value.find((lane) => String(lane.key) === key);
     const idx = lanes.value.findIndex((lane) => lane.key === key);
     if (!ctrlLane || idx < 0) return false;
@@ -230,12 +231,13 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
   }
 
   async function onLaneLoadMore(payload: ChoyKanbanLoadMore): Promise<void> {
-    const laneKey = String(payload?.laneKey ?? '').trim();
+    // Keep the controller key as-is (may include padding); only reject blank keys.
+    const laneKey = String(payload?.laneKey ?? '');
     if (
       loadMorePending.value ||
       movePending.value ||
       searchPending.value ||
-      !laneKey
+      !laneKey.trim()
     ) {
       return;
     }

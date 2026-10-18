@@ -65,6 +65,8 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
 
   const createBaseline = ref<Record<string, unknown> | null>(null);
   let leaving = false;
+  /** One-shot skip after confirmed create-cancel back(); cleared on the next guard run. */
+  let suppressLeaveOnce = false;
 
   function snapshotCreateBaseline() {
     const draft = opts.controller.vm.draft as Record<string, unknown> | null | undefined;
@@ -113,6 +115,10 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
   // not durable drafts, and a pending leave dialog must not overlay the auth page.
   const removeLeaveGuard = opts.router.beforeEach?.((to, from) => {
     if (leaving) return true;
+    if (suppressLeaveOnce) {
+      suppressLeaveOnce = false;
+      return true;
+    }
     if (shouldSkipFormDirtyLeavePrompt(to, from)) {
       dismissLeaveConfirmIfPending();
       return true;
@@ -179,7 +185,10 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
       opts.onchangeCtrl.reset();
       opts.resetOnchangeAgg();
       if (opts.viewMode.value === 'create') {
-        await opts.router.back();
+        // router.back() is void / async popstate — suppress the next leave guard
+        // so the still-dirty create draft does not open a second confirm.
+        suppressLeaveOnce = true;
+        opts.router.back();
         return;
       }
       const id = effectiveRecordId.value;

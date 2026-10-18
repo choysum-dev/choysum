@@ -54,9 +54,9 @@ describe('ChoyGuestShell', () => {
     const frame = mounted.q('[data-testid=choy-shell-scroll]');
     const footer = mounted.q('[data-testid=choy-shell-footer]');
     const canvas = mounted.q('[data-testid=choy-shell-canvas]');
-    expect(footer?.parentElement).toBe(frame);
-    expect(canvas?.parentElement).toBe(frame);
-    expect(mounted.q('[data-testid=choy-shell-header]')?.parentElement).toBe(frame);
+    expect(footer?.parentElement === frame).toBe(true);
+    expect(canvas?.parentElement === frame).toBe(true);
+    expect(mounted.q('[data-testid=choy-shell-header]')?.parentElement === frame).toBe(true);
     mounted.unmount();
   });
 

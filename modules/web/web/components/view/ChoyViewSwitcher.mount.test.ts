@@ -52,4 +52,29 @@ describe('ChoyViewSwitcher mount', () => {
     expect(mounted.q('[data-testid=choy-view-switcher]')).toBeNull();
     mounted.unmount();
   });
+
+  test('select emits for enabled options and ignores disabled', async () => {
+    const selected: string[] = [];
+    const mounted = mountApp(ChoyViewSwitcher as any, {
+      props: {
+        active: 'list',
+        options: [
+          { value: 'list', label: 'List View' },
+          { value: 'kanban', label: 'Kanban View', disabled: true },
+        ],
+      },
+      on: {
+        onSelect: (value: string) => selected.push(value),
+      },
+    });
+    await flushPromises();
+    // TooltipTrigger as-child can swallow DOM click in jsdom; drive the handler directly.
+    const state = mounted.setupState() as {
+      onSelect: (opt: { value: string; disabled: boolean; label: string; icon: unknown }) => void;
+    };
+    state.onSelect({ value: 'list', disabled: false, label: 'List View', icon: {} });
+    state.onSelect({ value: 'kanban', disabled: true, label: 'Kanban View', icon: {} });
+    expect(selected).toEqual(['list']);
+    mounted.unmount();
+  });
 });

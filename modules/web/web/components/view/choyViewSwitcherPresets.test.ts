@@ -73,4 +73,22 @@ describe('choyViewSwitcherPresets', () => {
       { value: 'calendar', label: 'Calendar', icon: ExtraIcon, disabled: false },
     ]);
   });
+
+  test('register ignores empty ids and resolve skips empty values', () => {
+    const warn = console.warn;
+    const seen: string[] = [];
+    console.warn = (msg?: unknown) => {
+      seen.push(String(msg ?? ''));
+    };
+    try {
+      registerChoyViewSwitcherPreset('   ', { defaultLabel: 'X', icon: ExtraIcon });
+      expect(listChoyViewSwitcherPresetIds()).not.toContain('');
+      expect(seen.some((m) => m.includes('empty id'))).toBe(true);
+      expect(resolveChoyViewSwitcherOptions([{ value: '   ' as any }, { value: 'list' }]).map((o) => o.value)).toEqual([
+        'list',
+      ]);
+    } finally {
+      console.warn = warn;
+    }
+  });
 });

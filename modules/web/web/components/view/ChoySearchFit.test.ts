@@ -77,3 +77,67 @@ test('ChoySearchFit width threshold is 640px of the action bar', () => {
   expect(searchFieldFits(640)).toBe(true);
   expect(searchFieldFits(639)).toBe(false);
 });
+
+test('ChoySearchFit shows the active dot from a teleported search node', async () => {
+  const prevMo = (globalThis as { MutationObserver?: unknown }).MutationObserver;
+  class FakeMutationObserver {
+    private cb: () => void;
+    constructor(cb: () => void) {
+      this.cb = cb;
+    }
+    observe() {}
+    disconnect() {}
+    trigger() {
+      this.cb();
+    }
+  }
+  (globalThis as { MutationObserver?: unknown }).MutationObserver = FakeMutationObserver;
+
+  let mounted: ReturnType<typeof mountFit> | null = null;
+  try {
+    withWidth(480, () => {
+      const Host = defineComponent({
+        name: 'SearchFitActiveHost',
+        setup() {
+          return () =>
+            h('div', { 'data-slot': 'view-action-bar' }, [
+              h(ChoySearchFit, null, {
+                default: () =>
+                  h('div', {
+                    'data-anchor': 'choy.search',
+                    'data-search-active': 'true',
+                    'data-testid': 'search-anchor',
+                  }),
+              }),
+            ]);
+        },
+      });
+      mounted = mountApp(Host) as ReturnType<typeof mountFit>;
+    });
+    await flushPromises();
+    expect(mounted!.q('[data-testid=choy-search-fit-dot]')).not.toBeNull();
+    expect(mounted!.q('[data-testid=choy-search-fit-toggle]')?.getAttribute('data-search-active')).toBe(
+      'true',
+    );
+  } finally {
+    (globalThis as { MutationObserver?: unknown }).MutationObserver = prevMo;
+    mounted!.unmount();
+  }
+});
+
+test('ChoySearchFit focuses the input when the collapsed field opens', async () => {
+  let mounted: ReturnType<typeof mountFit> | null = null;
+  withWidth(480, () => {
+    mounted = mountFit();
+  });
+  await flushPromises();
+  const field = mounted!.q('[data-testid=search-field]') as HTMLInputElement;
+  let focused = false;
+  field.focus = () => {
+    focused = true;
+  };
+  mounted!.click('[data-testid=choy-search-fit-toggle]');
+  await flushPromises();
+  expect(focused).toBe(true);
+  mounted!.unmount();
+});

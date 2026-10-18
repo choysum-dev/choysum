@@ -21,19 +21,20 @@ SPDX-License-Identifier: Apache-2.0
       )
     "
   >
+    <!-- Legend must be a direct fieldset child so AT associates the group name. -->
+    <FieldLegend
+      v-if="title && !$slots.header"
+      variant="legend"
+      class="mb-0 font-semibold text-foreground"
+    >
+      {{ title }}
+    </FieldLegend>
     <div
-      v-if="title || description || $slots.header"
+      v-if="description || $slots.header"
       data-slot="choy-section-header"
       class="flex flex-col gap-1"
     >
       <slot name="header">
-        <FieldLegend
-          v-if="title"
-          variant="legend"
-          class="mb-0 font-semibold text-foreground"
-        >
-          {{ title }}
-        </FieldLegend>
         <FieldDescription v-if="description">
           {{ description }}
         </FieldDescription>

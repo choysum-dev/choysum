@@ -246,10 +246,30 @@ html.dark .choy-shell[data-shell-mode='app'],
   border-right: 0 !important;
   box-shadow: none !important;
   border-radius: var(--choy-shell-inset-radius);
-  overflow: hidden;
+  /*
+   * Keep overflow visible so SidebarRail's outside hit target (-right-4) is not
+   * clipped. Rounding still applies via the inner sidebar surface background.
+   */
+  overflow: visible;
   transition-property: left, right, width;
   transition-duration: 200ms;
   transition-timing-function: linear;
+}
+
+.choy-shell[data-shell-mode='app'] [data-slot='sidebar'] > .fixed > [data-sidebar='sidebar'] {
+  border-radius: inherit;
+  /* Clip chrome content to the radius without eating the rail sibling hit box…
+   * Rail is a child of this node, so clip only non-rail bands below. */
+  overflow: visible;
+}
+
+.choy-shell[data-shell-mode='app']
+  [data-slot='sidebar']
+  > .fixed
+  > [data-sidebar='sidebar']
+  > :not([data-sidebar='rail']) {
+  /* Header / nav / footer stay inside the rounded pane. */
+  max-width: 100%;
 }
 
 .choy-shell[data-shell-mode='app'] [data-slot='sidebar'] > .fixed::after {

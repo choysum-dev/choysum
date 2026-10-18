@@ -9,12 +9,13 @@
 export function isAuthExitNavigation(to: {
   name?: unknown;
   path?: unknown;
-  meta?: { resourceId?: unknown; requiresAuth?: unknown } | null;
+  /** Accept vue-router meta bags; only `resourceId` is read. */
+  meta?: { resourceId?: unknown } | Record<string, unknown> | null;
 }): boolean {
   const name = String(to?.name ?? '').trim();
   if (name === 'login' || name === 'logout' || name === 'register') return true;
 
-  const resourceId = String(to?.meta?.resourceId ?? '').trim();
+  const resourceId = String((to?.meta as { resourceId?: unknown } | null | undefined)?.resourceId ?? '').trim();
   if (
     resourceId === 'auth.route.login' ||
     resourceId === 'auth.route.logout' ||
@@ -25,8 +26,8 @@ export function isAuthExitNavigation(to: {
 
   const path = String(to?.path ?? '').split('?')[0]!.replace(/\/+$/, '') || '/';
   if (path === '/login' || path === '/logout' || path === '/register') return true;
-  // App may be mounted under /web/.
-  if (/\/(login|logout|register)$/.test(path)) return true;
+  // App may be mounted under /web/ (exact segments only — not /pos/register).
+  if (/^\/web\/(login|logout|register)$/.test(path)) return true;
 
   return false;
 }

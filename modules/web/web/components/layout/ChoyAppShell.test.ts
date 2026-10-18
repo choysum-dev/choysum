@@ -74,15 +74,15 @@ describe('ChoyAppShell', () => {
     const canvas = mounted.q('[data-testid=choy-shell-canvas]');
     expect(canvas).not.toBeNull();
     expect(canvas?.className || '').toContain('choy-shell__canvas');
-    expect(canvas?.parentElement).toBe(scroll);
+    expect(canvas?.parentElement === scroll).toBe(true);
     const content = mounted.q('[data-testid=choy-shell-content]');
     expect(content).not.toBeNull();
     expect(content?.getAttribute('data-anchor')).toBe('choy.shell.content');
     expect(content?.className || '').toContain('choy-shell__content');
     expect(content?.className || '').not.toContain('choy-inset-pad');
-    expect(content?.parentElement).toBe(canvas);
+    expect(content?.parentElement === canvas).toBe(true);
     const footer = mounted.q('[data-testid=choy-shell-footer]');
-    expect(footer?.parentElement).toBe(scroll);
+    expect(footer?.parentElement === scroll).toBe(true);
     mounted.unmount();
   });
 

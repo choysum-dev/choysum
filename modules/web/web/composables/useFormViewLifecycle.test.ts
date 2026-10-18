@@ -311,6 +311,23 @@ describe('useFormViewLifecycle', () => {
     m.unmount();
   });
 
+  test('handleCancel create back suppresses a second dirty-leave prompt', async () => {
+    const m = mountLifecycle({ viewMode: 'create', watchIdentity: false });
+    await m.api().initializeForm();
+    await flushPromises();
+    m.controller.vm.draft = { Name: 'edited-away' };
+    // Real back() is void; drive the leave guard via push like a delayed popstate.
+    m.router.back = () => {
+      void m.router.push('/app/items');
+    };
+    queueMicrotask(() => resolveConfirmChoy('confirm'));
+    await m.api().handleCancel();
+    await flushPromises();
+    // suppressLeaveOnce must absorb the navigation without a second confirm dialog.
+    expect(useConfirmChoyStore().open).toBe(false);
+    m.unmount();
+  });
+
   test('handleCancel reloads display and handles beginDisplay error', async () => {
     const m = mountLifecycle({ watchIdentity: false });
     m.controller.beginDisplay.mockImplementation(async () => {

@@ -27,7 +27,7 @@ SPDX-License-Identifier: Apache-2.0
         data-testid="choy-search-fit-dot"
       />
     </button>
-    <Teleport :to="rowEl" :disabled="wide || !rowEl">
+    <Teleport :to="teleportTarget" :disabled="wide || !teleportTarget">
       <div v-show="wide || opened" class="min-w-0 w-full" :class="wide ? undefined : 'pt-2'" data-testid="choy-search-fit-field">
         <slot />
       </div>
@@ -36,7 +36,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Search as SearchIcon } from 'lucide-vue-next';
 import { createTranslate } from '@/web/web/i18n';
 import { searchFieldFits } from '@/web/web/components/view/searchFit';
@@ -54,9 +54,13 @@ let disconnect: (() => void) | null = null;
 let mo: { disconnect: () => void } | null = null;
 
 const label = computed(() => (opened.value ? _t('Hide search') : _t('Show search')));
+/** Teleport host; cast through unknown — QuickJS DOM typings diverge from lib.dom Element. */
+const teleportTarget = computed(() => (rowEl.value ? (rowEl.value as unknown as Element) : null));
 
 function syncActive() {
-  const node = rootRef.value?.querySelector('[data-anchor="choy.search"]');
+  const node =
+    rowEl.value?.querySelector('[data-anchor="choy.search"]') ||
+    rootRef.value?.querySelector('[data-anchor="choy.search"]');
   active.value = node?.getAttribute('data-search-active') === 'true';
 }
 
@@ -90,6 +94,10 @@ function toggleField() {
   if (opened.value) nextTick(() => focusInput());
 }
 
+watch(wide, () => {
+  void nextTick(() => syncActive());
+});
+
 onMounted(() => {
   const root = rootRef.value;
   const bar = root?.closest('[data-slot="view-action-bar"]') as HTMLElement | null;
@@ -104,7 +112,7 @@ onMounted(() => {
   applyWidth(barWidth());
   syncActive();
   const Observer = (globalThis as { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
-  const observed = bar || root;
+  const observed = (bar || root) as unknown as Element | null;
   if (typeof Observer === 'function' && observed) {
     const observer = new Observer((entries) => {
       applyWidth(entries[0]?.contentRect?.width ?? 0);
@@ -113,9 +121,16 @@ onMounted(() => {
     disconnect = () => observer.disconnect();
   }
   const MutationObs = (globalThis as { MutationObserver?: typeof MutationObserver }).MutationObserver;
-  if (typeof MutationObs === 'function' && root) {
+  if (typeof MutationObs === 'function') {
     const observer = new MutationObs(() => syncActive());
-    observer.observe(root, { attributes: true, subtree: true, attributeFilter: ['data-search-active'] });
+    const opts: MutationObserverInit = {
+      attributes: true,
+      subtree: true,
+      childList: true,
+      attributeFilter: ['data-search-active'],
+    };
+    if (root) observer.observe(root as unknown as Node, opts);
+    if (rowEl.value) observer.observe(rowEl.value as unknown as Node, opts);
     mo = observer;
   }
 });

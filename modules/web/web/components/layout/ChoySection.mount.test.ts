@@ -28,7 +28,9 @@ describe('ChoySection mount', () => {
     expect(mounted.text()).toContain('Account Information');
     expect(mounted.text()).toContain('Primary identity fields');
     expect(mounted.q('[data-testid=section-body]')).not.toBeNull();
-    expect(mounted.q('[data-slot=field-legend]')).not.toBeNull();
+    const legend = mounted.q('[data-slot=field-legend]') as HTMLElement | null;
+    expect(legend).not.toBeNull();
+    expect(legend?.parentElement === root).toBe(true);
     expect(mounted.q('[data-slot=field-description]')).not.toBeNull();
     mounted.unmount();
   });
