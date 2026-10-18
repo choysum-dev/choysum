@@ -11,7 +11,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
  * Must be rendered inside `.choy-kanban-view__lane-body`.
  *
  * After a fire, waits for a non-intersecting frame (or a short cooldown after busy
- * clears) before emitting again so load-more ↔ laneFetchBusy does not storm RPCs.
+ * clears) before emitting again so load-more ↔ per-lane busy does not storm RPCs.
  */
 const props = withDefaults(
   defineProps<{

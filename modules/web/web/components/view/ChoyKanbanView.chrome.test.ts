@@ -532,6 +532,45 @@ describe('ChoyKanbanView chrome', () => {
     mounted.unmount();
   });
 
+  test('load-more busy chrome is scoped to the appending lane', async () => {
+    const mounted = mountApp(ChoyKanbanView as any, {
+      props: {
+        store: makeStore(),
+        autoBootstrap: false,
+        showActions: false,
+        readonly: true,
+      },
+    });
+    await flushPromises();
+    const state = mounted.setupState() as KanbanSetup & {
+      isLaneFetchBusy: (laneKey: string) => boolean;
+      boardBusy: boolean | { value: boolean };
+      engine: {
+        loadMorePending: { value: boolean };
+        loadMoreLaneKey: { value: string | null };
+      };
+    };
+    // No remain: avoids IntersectionObserver sentinels racing onLaneLoadMore.
+    state.displayLanes = [
+      { key: 'active', label: 'Active', cards: [] },
+      { key: 'revoked', label: 'Revoked', cards: [] },
+    ];
+    await nextTick();
+
+    expect(typeof state.isLaneFetchBusy).toBe('function');
+    const busy =
+      typeof state.boardBusy === 'boolean' ? state.boardBusy : !!state.boardBusy.value;
+    expect(busy).toBe(false);
+
+    state.engine.loadMorePending.value = true;
+    state.engine.loadMoreLaneKey.value = 'revoked';
+    expect(state.engine.loadMoreLaneKey.value).toBe('revoked');
+    expect(state.isLaneFetchBusy('revoked')).toBe(true);
+    expect(state.isLaneFetchBusy('active')).toBe(false);
+
+    mounted.unmount();
+  });
+
   test('registers an empty selection target and refresh does not reject', async () => {
     const store = makeStore();
     const holder: { target: PageActionTarget | null } = { target: null };

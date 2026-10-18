@@ -155,7 +155,7 @@ SPDX-License-Identifier: Apache-2.0
           <ChoyKanbanLoadSentinel
             v-if="choyKanbanLaneRemain(lane) > 0"
             class="col-span-full"
-            :disabled="laneFetchBusy"
+            :disabled="isLaneFetchBusy(lane.key)"
             @visible="onLaneLoadMore(lane)"
           />
 
@@ -168,7 +168,7 @@ SPDX-License-Identifier: Apache-2.0
               :lane="lane"
               :remain="choyKanbanLaneRemain(lane)"
               :load-more="() => onLaneLoadMore(lane)"
-              :busy="laneFetchBusy"
+              :busy="isLaneFetchBusy(lane.key)"
             >
               <ChoyButton
                 v-if="choyKanbanLaneRemain(lane) > 0"
@@ -177,7 +177,7 @@ SPDX-License-Identifier: Apache-2.0
                 size="sm"
                 class="w-full"
                 data-testid="choy-kanban-load-more"
-                :disabled="laneFetchBusy"
+                :disabled="isLaneFetchBusy(lane.key)"
                 @click="onLaneLoadMore(lane)"
               >
                 {{ formatChoyKanbanLoadMoreLabel(choyKanbanLaneRemain(lane), (n) => _t('%s more', n)) }}
@@ -229,8 +229,8 @@ SPDX-License-Identifier: Apache-2.0
             :virtualize="virtualize"
             :estimate-card-size="estimateCardSize"
             :remain="choyKanbanLaneRemain(lane)"
-            :load-more-busy="laneFetchBusy"
-            :lane-drag="resolvedDragMode === 'lane' && !laneFetchBusy"
+            :load-more-busy="isLaneFetchBusy(lane.key)"
+            :lane-drag="resolvedDragMode === 'lane' && !boardBusy"
             :other-lanes="otherLanes(lane.key)"
             :empty-label="_t('No cards')"
             :move-to-lane-label="_t('Move to lane')"
@@ -258,7 +258,7 @@ SPDX-License-Identifier: Apache-2.0
               :lane="lane"
               :remain="choyKanbanLaneRemain(lane)"
               :load-more="() => onLaneLoadMore(lane)"
-              :busy="laneFetchBusy"
+              :busy="isLaneFetchBusy(lane.key)"
             >
               <ChoyButton
                 v-if="choyKanbanLaneRemain(lane) > 0"
@@ -267,7 +267,7 @@ SPDX-License-Identifier: Apache-2.0
                 size="sm"
                 class="w-full"
                 data-testid="choy-kanban-load-more"
-                :disabled="laneFetchBusy"
+                :disabled="isLaneFetchBusy(lane.key)"
                 @click="onLaneLoadMore(lane)"
               >
                 {{ formatChoyKanbanLoadMoreLabel(choyKanbanLaneRemain(lane), (n) => _t('%s more', n)) }}
@@ -490,9 +490,17 @@ const displayLanes = computed({
 
 /** Search / move: drives BusyHost and blocks drag; does not hide New. */
 const boardBusy = computed(() => engine.boardBusy.value);
-/** Lane append in flight; disable sentinel / load-more only. */
+/** Any lane append in flight (blocks drops board-wide so pages are not overwritten). */
 const loadMoreBusy = computed(() => engine.loadMorePending.value);
-const laneFetchBusy = computed(() => boardBusy.value || loadMoreBusy.value);
+/** Lane key currently appending; busy chrome is scoped to this lane only. */
+const loadMoreLaneKey = computed(() => engine.loadMoreLaneKey.value);
+
+/** True while this lane should disable its own load-more control / sentinel. */
+function isLaneFetchBusy(laneKey: string): boolean {
+  if (boardBusy.value) return true;
+  return loadMoreBusy.value && loadMoreLaneKey.value === laneKey;
+}
+
 const effectiveReadonly = computed(() => props.readonly || boardBusy.value);
 const resolvedDragMode = computed<ChoyKanbanDragMode>(() => {
   if (props.readonly) return 'none';

@@ -59,6 +59,8 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
   const laneSyncGate = createLaneSyncGate();
   const movePending = ref(false);
   const loadMorePending = ref(false);
+  /** Lane key currently appending pages; null when idle. */
+  const loadMoreLaneKey = ref<string | null>(null);
   const searchPending = ref(false);
   let searchSeq = 0;
   let searchInFlight = 0;
@@ -84,6 +86,32 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
       opts.laneOrderToken ||
       ((lane: Pick<ChoyKanbanLane, 'key' | 'label'>) => String(lane.key || ''));
     return sortChoyKanbanLanesByOrder(next, order, tokenOf);
+  }
+
+  function materializeGroupedLane(lane: Lane): ChoyKanbanLane {
+    const key = String(lane.key ?? '');
+    return {
+      key,
+      label: labelFor(lane),
+      remain: controller.getLaneRemain(lane),
+      cards: (controller.laneRecords.value[key] || []).map((row, index) => mapRow(row, index, key)),
+    };
+  }
+
+  /**
+   * Refresh one lane's cards/remain after load-more without rematerializing siblings
+   * (avoids virtualizer / drag-chrome flicker in untouched columns).
+   */
+  function patchLaneFromController(laneKey: string): boolean {
+    const key = String(laneKey || '').trim();
+    if (!key) return false;
+    const ctrlLane = controller.lanes.value.find((lane) => String(lane.key) === key);
+    const idx = lanes.value.findIndex((lane) => lane.key === key);
+    if (!ctrlLane || idx < 0) return false;
+    const next = lanes.value.slice();
+    next[idx] = materializeGroupedLane(ctrlLane);
+    lanes.value = next;
+    return true;
   }
 
   async function syncLanesFromController(): Promise<void> {
@@ -115,16 +143,7 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
             }),
           ),
         );
-        lanes.value = orderLanes(
-          laneList.map((lane) => ({
-            key: lane.key,
-            label: labelFor(lane),
-            remain: controller.getLaneRemain(lane),
-            cards: (controller.laneRecords.value[lane.key] || []).map((row, index) =>
-              mapRow(row, index, lane.key),
-            ),
-          })),
-        );
+        lanes.value = orderLanes(laneList.map((lane) => materializeGroupedLane(lane)));
       } while (laneSyncGate.shouldResync());
     } finally {
       laneSyncGate.leave();
@@ -211,22 +230,27 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
   }
 
   async function onLaneLoadMore(payload: ChoyKanbanLoadMore): Promise<void> {
+    const laneKey = String(payload?.laneKey ?? '').trim();
     if (
       loadMorePending.value ||
       movePending.value ||
       searchPending.value ||
-      !payload?.laneKey
+      !laneKey
     ) {
       return;
     }
     loadMorePending.value = true;
+    loadMoreLaneKey.value = laneKey;
     try {
-      await controller.loadMoreLane(payload.laneKey);
-      await syncLanesFromController();
+      await controller.loadMoreLane(laneKey);
+      if (!patchLaneFromController(laneKey)) {
+        await syncLanesFromController();
+      }
     } catch (e) {
       opts.onLoadMoreError?.(e);
     } finally {
       loadMorePending.value = false;
+      loadMoreLaneKey.value = null;
     }
   }
 
@@ -313,6 +337,7 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
     controller,
     movePending,
     loadMorePending,
+    loadMoreLaneKey,
     searchPending,
     boardBusy,
     applySearch,
