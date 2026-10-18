@@ -10,28 +10,29 @@ SPDX-License-Identifier: Apache-2.0
     data-testid="choy-shell"
     data-shell-mode="guest"
   >
-    <ChoyGuestHeader v-if="effectiveShowHeader" :go-home="onBrandClick" :home-href="homeHref">
-      <template #header-actions>
-        <div
-          data-anchor="choy.shell.header-actions"
-          class="flex items-center gap-2"
-        >
-          <slot name="header-actions" />
-        </div>
-      </template>
-    </ChoyGuestHeader>
     <!--
-      Sticky footer column: short pages pin Powered-by to the viewport bottom;
-      tall pages place it after content inside the same scrollport.
+      Same column as app <main>: header / canvas / footer are siblings.
+      Gap and inline gutter live on this frame, not on each band.
     -->
     <div
-      class="choy-shell__scroll min-h-0 flex-1 overflow-y-auto bg-background"
+      class="choy-shell__main flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background"
       data-testid="choy-shell-scroll"
     >
-      <div class="choy-shell__scroll-inner flex min-h-full flex-col">
+      <ChoyGuestHeader v-if="effectiveShowHeader" :go-home="onBrandClick" :home-href="homeHref">
+        <template #header-actions>
+          <div data-anchor="choy.shell.header-actions" class="flex items-center gap-2">
+            <slot name="header-actions" />
+          </div>
+        </template>
+      </ChoyGuestHeader>
+      <div
+        class="choy-shell__canvas flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto"
+        data-testid="choy-shell-canvas"
+      >
         <div
-          class="choy-shell__main-inner flex flex-1 flex-col"
-          data-testid="choy-shell-canvas"
+          class="choy-shell__content flex min-h-0 w-full min-w-0 flex-1 flex-col"
+          data-anchor="choy.shell.content"
+          data-testid="choy-shell-content"
         >
           <slot>
             <router-view v-slot="{ Component, route: viewRoute }">
@@ -52,20 +53,16 @@ SPDX-License-Identifier: Apache-2.0
             </router-view>
           </slot>
         </div>
-        <footer
-          v-if="showFooter"
-          class="choy-shell__footer shrink-0 bg-background"
-          data-testid="choy-shell-footer"
-        >
-          <div
-            class="choy-inset-pad-x mx-auto flex w-full max-w-screen-2xl items-center justify-center"
-            :style="{ minHeight: 'var(--choy-layout-footer-height)' }"
-          >
-            <ChoyAppFooter />
-            <slot name="footer" />
-          </div>
-        </footer>
       </div>
+      <footer
+        v-if="showFooter"
+        class="choy-shell__footer flex shrink-0 items-center justify-center"
+        :style="{ height: 'var(--choy-layout-chrome-height)', boxSizing: 'border-box' }"
+        data-testid="choy-shell-footer"
+      >
+        <ChoyAppFooter />
+        <slot name="footer" />
+      </footer>
     </div>
   </div>
 </template>
@@ -102,3 +99,17 @@ const onBrandClick = createGuestHomeNavigate(
 
 const effectiveShowHeader = computed(() => props.showHeader)
 </script>
+
+<style>
+/* Match app <main>: tighter section gap, wider shared inline gutter. */
+.choy-shell[data-shell-mode='guest'] .choy-shell__main {
+  gap: var(--choy-layout-section-gap);
+  padding-inline: var(--choy-layout-content-padding);
+}
+
+/* Win over the shared .choy-shell__canvas { overflow: visible } rule. */
+.choy-shell[data-shell-mode='guest'] .choy-shell__canvas {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+</style>

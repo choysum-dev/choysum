@@ -115,7 +115,7 @@ describe('ChoyPage title hosting', () => {
     wrapper.unmount();
   });
 
-  test('unhosted title keeps page title band, IO menu, and top padding', async () => {
+  test('opt-in padding: unhosted title keeps page title band, IO menu, and full pad', async () => {
     const Host = defineComponent({
       setup() {
         return () =>

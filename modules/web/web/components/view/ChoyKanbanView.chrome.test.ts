@@ -147,7 +147,7 @@ describe('ChoyKanbanView chrome', () => {
     expect(mounted.q('.choy-kanban-view__card')?.className).toContain('hover:bg-accent/40');
     // Soft lane wash, no outer bordered frame (cards carry the border).
     const laneClass = mounted.q('.choy-kanban-view__lane')?.className ?? '';
-    expect(laneClass).toContain('bg-muted/40');
+    expect(laneClass).toContain('bg-muted/70');
     expect(laneClass).not.toMatch(/\bborder\b/);
     mounted.unmount();
   });

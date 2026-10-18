@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyViewContainer class="gap-4">
+  <ChoyViewContainer class="gap-5">
     <template v-if="showHeader" #header>
       <div data-anchor="choy.list.view-chrome">
         <ChoyViewActionBar
@@ -162,7 +162,7 @@ SPDX-License-Identifier: Apache-2.0
     <div
       ref="tableWrapRef"
       data-anchor="choy.list.table"
-      class="choy-list-view__table flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden rounded-md border border-border bg-card shadow-xs [&_.choy-field-base]:mb-0 [&_.choy-data-table]:h-full [&_.choy-data-table]:rounded-none [&_.choy-data-table]:border-0"
+      class="choy-list-view__table flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden [&_.choy-field-base]:mb-0 [&_.choy-data-table]:h-full [&_.choy-data-table]:rounded-none [&_.choy-data-table]:border-0"
       :style="listTableWrapStyle"
     >
       <!-- form-root + edit view-mode only under the table so header search cannot touch the row draft -->

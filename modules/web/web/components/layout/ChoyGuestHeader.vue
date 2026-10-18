@@ -10,8 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     :style="headerStyle"
     data-testid="choy-shell-header"
   >
-    <div class="choy-inset-pad-x flex h-full w-full items-center">
-      <div class="mx-auto flex h-full w-full max-w-screen-2xl items-center gap-2">
+    <div class="mx-auto flex h-full w-full max-w-screen-2xl items-center gap-2">
         <ChoyGuestMobileNav :items="navItems" class="flex lg:hidden" />
         <NavigationMenu
           :viewport="false"
@@ -40,7 +39,6 @@ SPDX-License-Identifier: Apache-2.0
           />
           <slot name="header-actions" />
         </div>
-      </div>
     </div>
   </header>
 </template>
@@ -70,9 +68,9 @@ const props = defineProps<{
 
 const { _t } = createTranslate('web', { scope: 'web/components/layout/ChoyGuestHeader' })
 
-/** Same height contract as ChoyAppHeader / sidebar header band. */
+/** Same chrome band height as AppShell poles (header / footer). */
 const headerStyle = {
-  height: 'var(--choy-layout-header-height)',
+  height: 'var(--choy-layout-chrome-height)',
   paddingTop: '0',
   paddingBottom: '0',
   boxSizing: 'border-box' as const,

@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyViewContainer class="gap-4">
+  <ChoyViewContainer class="gap-5">
     <template v-if="resolvedShowHeader" #header>
       <div data-anchor="choy.form.view-chrome">
         <ChoyViewActionBar
@@ -145,7 +145,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <ChoyViewBusyHost
       :busy="overlayBusy"
-      class="min-h-0 flex-1 overflow-y-auto pb-3"
+      class="min-h-0 flex-1 overflow-y-auto p-5"
       data-anchor="choy.form-view"
     >
       <form ref="formRef" :inert="submitting || undefined" @submit.self.prevent="onNativeSubmit">

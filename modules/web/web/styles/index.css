@@ -22,7 +22,7 @@ body,
   .choy-shell,
   .choy-shell__body,
   .choy-shell__scroll,
-  .choy-shell__main-inner {
+  .choy-shell__canvas {
     height: auto;
     overflow: visible;
   }
@@ -64,9 +64,8 @@ body {
 }
 
 /*
- * Viewport-locked shell chrome: header stays put; Guest/App share one scrollport
- * (content + Powered-by). Short pages pin the footer; tall pages scroll it after
- * content (see ChoyGuestShell / ChoyAppShell).
+ * Viewport-locked shell chrome: header and footer stay put; the canvas scrolls
+ * (see ChoyGuestShell / ChoyAppShell).
  */
 .choy-app,
 .choy-shell {
@@ -85,14 +84,14 @@ body {
   overflow: auto;
 }
 
-.choy-shell__main-inner {
+.choy-shell__canvas {
   min-height: 0;
   overflow: visible;
 }
 
 /*
- * Inset content gutter: App header / ChoyPage / Powered-by footer (and Guest
- * chrome) share --choy-layout-content-padding so left edges line up.
+ * Shared inline gutter for ChoyPage opt-in pad. App <main> and guest .choy-shell__main
+ * own section gap (--choy-layout-section-gap) and this inline gutter.
  */
 .choy-inset-pad-x {
   padding-inline: var(--choy-layout-content-padding);
@@ -102,7 +101,7 @@ body {
   padding: var(--choy-layout-content-padding);
 }
 
-/* List/Kanban host the page title in view chrome; keep side/bottom gutter only. */
+/* ChoyPage opt-in only: side + bottom; top flush when a view hosts the title. */
 .choy-inset-pad-no-top {
   padding-inline: var(--choy-layout-content-padding);
   padding-bottom: var(--choy-layout-content-padding);

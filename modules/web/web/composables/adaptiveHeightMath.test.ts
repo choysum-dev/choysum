@@ -33,7 +33,7 @@ describe('adaptiveHeightMath', () => {
     expect(computeListTableBodyHeight({ viewport: 100, rowCount: 50, rowHeight: 32, headerHeight: 32 })).toBe(100);
   });
 
-  test('computeViewportAdaptiveHeight hard-caps to shell footer', () => {
+  test('computeViewportAdaptiveHeight hard-caps to in-flow shell footer', () => {
     const shell = document.createElement('div');
     shell.setAttribute('data-testid', 'choy-shell-scroll');
     // Visible scrollport; footer sits in the last 40px (pinned when content fits).
@@ -54,6 +54,29 @@ describe('adaptiveHeightMath', () => {
     (window as any).getComputedStyle = () => ({ paddingBottom: '16px' });
     try {
       // (scrollBottom - footerH) - wrapTop - pagePad = (540 - 40) - 100 - 16
+      expect(
+        computeViewportAdaptiveHeight(wrap, 100, { viewportGap: 12, minViewportHeight: 240 }),
+      ).toBe(384);
+    } finally {
+      (window as any).getComputedStyle = orig;
+    }
+  });
+
+  test('computeViewportAdaptiveHeight subtracts the main row-gap above an in-flow footer', () => {
+    const shell = document.createElement('div');
+    shell.setAttribute('data-testid', 'choy-shell-scroll');
+    shell.getBoundingClientRect = () => rect({ top: 0, bottom: 540 });
+    const footer = document.createElement('div');
+    footer.setAttribute('data-testid', 'choy-shell-footer');
+    footer.getBoundingClientRect = () => rect({ top: 500, bottom: 540, height: 40 });
+    shell.appendChild(footer);
+    const wrap = document.createElement('div');
+    wrap.closest = ((sel: string) =>
+      sel === '[data-testid="choy-shell-scroll"]' ? shell : null) as typeof wrap.closest;
+    const orig = window.getComputedStyle;
+    (window as any).getComputedStyle = () => ({ rowGap: '16px', gap: '16px', paddingBottom: '0px' });
+    try {
+      // (scrollBottom - footerH - rowGap) - wrapTop = (540 - 40 - 16) - 100
       expect(
         computeViewportAdaptiveHeight(wrap, 100, { viewportGap: 12, minViewportHeight: 240 }),
       ).toBe(384);

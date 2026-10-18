@@ -27,7 +27,11 @@ describe('ChoyGuestShell', () => {
     expect(mounted.q('.choy-guest-header')?.className || '').toContain('backdrop-blur');
     expect(mounted.q('.choy-guest-header')?.className || '').not.toContain('border-b');
     expect(mounted.q('[data-testid=choy-shell-footer]')?.className || '').not.toContain('border-t');
-    expect(mounted.q('[data-testid=choy-shell-scroll]')?.className || '').toContain('overflow-y-auto');
+    expect(mounted.q('[data-testid=choy-shell-scroll]')?.className || '').toContain('choy-shell__main');
+    expect(mounted.q('[data-testid=choy-shell-scroll]')?.className || '').toContain('overflow-hidden');
+    expect(mounted.q('[data-testid=choy-shell-canvas]')?.className || '').toContain('overflow-y-auto');
+    expect(mounted.q('[data-testid=choy-shell-content]')).not.toBeNull();
+    expect(mounted.q('.choy-shell__scroll-inner')).toBeNull();
     expect(mounted.q('[data-testid=choy-shell-app-rail]')).toBeNull();
     expect(mounted.q('[data-testid=choy-shell-aside]')).toBeNull();
     expect(mounted.q('[data-testid=choy-shell-menu-trigger]')).toBeNull();
@@ -44,13 +48,15 @@ describe('ChoyGuestShell', () => {
     expect(mounted.q('[data-testid=choy-shell-theme]')).not.toBeNull();
     expect(
       (mounted.q('.choy-guest-header') as HTMLElement | null)?.style?.height || '',
-    ).toContain('--choy-layout-header-height');
+    ).toContain('--choy-layout-chrome-height');
     expect(mounted.q('[data-test=router-view]')).not.toBeNull();
-    // Sticky-footer: canvas then footer inside one scrollport.
+    // Header, canvas, and footer are siblings on the guest frame.
+    const frame = mounted.q('[data-testid=choy-shell-scroll]');
     const footer = mounted.q('[data-testid=choy-shell-footer]');
     const canvas = mounted.q('[data-testid=choy-shell-canvas]');
-    expect(footer?.parentElement).toBe(canvas?.parentElement);
-    expect(footer?.parentElement?.className || '').toContain('choy-shell__scroll-inner');
+    expect(footer?.parentElement).toBe(frame);
+    expect(canvas?.parentElement).toBe(frame);
+    expect(mounted.q('[data-testid=choy-shell-header]')?.parentElement).toBe(frame);
     mounted.unmount();
   });
 

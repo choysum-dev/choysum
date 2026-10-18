@@ -10,9 +10,9 @@ SPDX-License-Identifier: Apache-2.0
     data-print="page"
     :class="
       cn(
+        // App shell owns paper gutter (choy.shell.content). Page padding is opt-in
+        // for rare document/guest layouts — not the ERP default.
         'choy-page relative mx-auto w-full text-foreground',
-        // Title hosted in view chrome: keep side/bottom gutter, drop top pad so
-        // ActionBar sits flush under the shell header (no empty title-band gap).
         props.padding ? (titleHostedByView ? 'choy-inset-pad-no-top' : 'choy-inset-pad') : '',
         widthClass,
         props.fillHeight ? 'flex min-h-0 flex-1 flex-col' : '',
@@ -219,6 +219,7 @@ const props = withDefaults(
     title?: string;
     description?: string;
     showBreadcrumb?: boolean;
+    /** Opt-in page gutter. ERP gutters live on shell content; default is off. */
     padding?: boolean;
     width?: PageWidth;
     /** Stretch to the shell main and let nested flex children (auth cards) center. */
@@ -241,7 +242,8 @@ const props = withDefaults(
     title: '',
     description: '',
     showBreadcrumb: false,
-    padding: true,
+    // Shell content frame owns ERP gutters; set true only for extra page pad.
+    padding: false,
     width: '',
     // ERP workspace pages fill the shell canvas; opt out for rare document pages.
     fillHeight: true,

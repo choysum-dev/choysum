@@ -5,117 +5,116 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <!--
-    Sidebar: Popover on a bare SidebarMenuButton (real DOM anchor). Collapsed tip
-    hosts outside the as-child chain so TooltipRoot cannot steal the panel position.
-    Toolbar: Popover (no tip needed).
+    Sidebar: identity button + Popover (not SidebarMenu ul/li — header is not a
+    nav list). Collapsed tip hosts outside the as-child chain so TooltipRoot
+    cannot steal the panel position. Toolbar: Popover (no tip needed).
   -->
-  <ChoySidebarMenu v-if="variant === 'sidebar'" class="w-full min-w-0">
-    <ChoySidebarMenuItem>
-      <ChoyCollapsedIdentityTipHost :label="companyIdentityTooltip">
-        <ChoyPopover v-model:open="visible">
-          <ChoyPopoverTrigger as-child>
-            <ChoySidebarMenuButton
-              size="lg"
-              type="button"
-              class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-              :aria-expanded="visible"
-              :aria-label="_t('Switch company')"
-              data-testid="company-switch-trigger"
-            >
-              <span
-                class="bg-background text-foreground ring-sidebar-border/60 flex aspect-square size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg ring-1"
-                data-testid="company-switch-logo-wrap"
-              >
-                <img
-                  :src="companyLogoUrl"
-                  alt=""
-                  class="size-8 object-contain p-0.5"
-                  width="32"
-                  height="32"
-                  data-testid="company-switch-logo"
-                />
-              </span>
-              <span
-                class="grid min-w-0 flex-1 text-start text-sm leading-tight"
-                data-testid="company-switch-label"
-              >
-                <span class="truncate font-medium">{{ currentCompanyLabel }}</span>
-                <span
-                  class="text-muted-foreground truncate text-xs"
-                  data-testid="company-switch-meta"
-                >
-                  {{ currentCompanyMeta }}
-                </span>
-              </span>
-              <span
-                class="ms-auto inline-flex shrink-0 opacity-50"
-                aria-hidden="true"
-                data-testid="company-switch-chevrons"
-              >
-                <ChevronsUpDown class="size-4" />
-              </span>
-            </ChoySidebarMenuButton>
-          </ChoyPopoverTrigger>
-          <ChoyPopoverContent
-            side="right"
-            align="start"
-            :side-offset="4"
-            class="w-72 min-w-56 rounded-lg p-3"
-            data-testid="company-switch-panel"
+  <ChoyCollapsedIdentityTipHost
+    v-if="variant === 'sidebar'"
+    :label="companyIdentityTooltip"
+  >
+    <ChoyPopover v-model:open="visible">
+      <ChoyPopoverTrigger as-child>
+        <ChoySidebarMenuButton
+          size="lg"
+          type="button"
+          class="w-full min-w-0 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+          :aria-expanded="visible"
+          :aria-label="_t('Switch company')"
+          data-testid="company-switch-trigger"
+        >
+          <span
+            class="bg-background text-foreground ring-sidebar-border/60 flex aspect-square size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg ring-1"
+            data-testid="company-switch-logo-wrap"
           >
-            <div class="choy-switch-company__panel flex flex-col gap-3">
-              <ChoyField class="gap-1">
-                <ChoyFieldLabel class="flex flex-col gap-1 text-sm">
-                  {{ _t('Current Company') }}
-                  <select
-                    v-model="draftActiveCompanyId"
-                    class="choy-switch-company__select h-control rounded-md border border-border bg-background px-2 text-sm font-normal"
-                    data-testid="company-active-select"
-                  >
-                    <option v-for="c in companies" :key="c.Id" :value="c.Id">
-                      {{ c.DisplayName || c.Id }}
-                    </option>
-                  </select>
-                </ChoyFieldLabel>
-              </ChoyField>
-
-              <ChoyField class="gap-1">
-                <ChoyFieldLabel class="text-sm font-medium">{{ _t('Available Companies') }}</ChoyFieldLabel>
-                <div
-                  class="choy-switch-company__select flex max-h-56 min-h-[5.5rem] flex-col gap-1 overflow-y-auto rounded-md border border-border bg-background px-2 py-1.5 text-sm"
-                  data-testid="company-enabled-select"
-                >
-                  <label v-for="c in companies" :key="'enabled-' + c.Id" class="flex items-center gap-2">
-                    <ChoyCheckbox
-                      class="size-control shrink-0"
-                      :model-value="draftEnabledCompanyIds.includes(c.Id)"
-                      :disabled="isActiveCompanyEnabledLocked(c.Id, draftActiveCompanyId)"
-                      @update:model-value="on => setCompanyEnabled(c.Id, on)"
-                    />
-                    <span>{{ c.DisplayName || c.Id }}</span>
-                  </label>
-                </div>
-              </ChoyField>
-
-              <div
-                v-if="applyDisabledReason"
-                class="choy-switch-company__hint text-xs text-foreground/60"
-                data-testid="company-switch-hint"
+            <img
+              :src="companyLogoUrl"
+              alt=""
+              class="size-8 object-contain p-0.5"
+              width="32"
+              height="32"
+              data-testid="company-switch-logo"
+            />
+          </span>
+          <span
+            class="grid min-w-0 flex-1 text-start text-sm leading-tight"
+            data-testid="company-switch-label"
+          >
+            <span class="truncate font-medium">{{ currentCompanyLabel }}</span>
+            <span
+              class="text-muted-foreground truncate text-xs"
+              data-testid="company-switch-meta"
+            >
+              {{ currentCompanyMeta }}
+            </span>
+          </span>
+          <span
+            class="ms-auto inline-flex shrink-0 opacity-50"
+            aria-hidden="true"
+            data-testid="company-switch-chevrons"
+          >
+            <ChevronsUpDown class="size-4" />
+          </span>
+        </ChoySidebarMenuButton>
+      </ChoyPopoverTrigger>
+      <ChoyPopoverContent
+        side="right"
+        align="start"
+        :side-offset="4"
+        class="w-72 min-w-56 rounded-lg p-3"
+        data-testid="company-switch-panel"
+      >
+        <div class="choy-switch-company__panel flex flex-col gap-3">
+          <ChoyField class="gap-1">
+            <ChoyFieldLabel class="flex flex-col gap-1 text-sm">
+              {{ _t('Current Company') }}
+              <select
+                v-model="draftActiveCompanyId"
+                class="choy-switch-company__select h-control rounded-md border border-border bg-background px-2 text-sm font-normal"
+                data-testid="company-active-select"
               >
-                {{ applyDisabledReason }}
-              </div>
+                <option v-for="c in companies" :key="c.Id" :value="c.Id">
+                  {{ c.DisplayName || c.Id }}
+                </option>
+              </select>
+            </ChoyFieldLabel>
+          </ChoyField>
 
-              <div class="choy-switch-company__actions flex justify-end">
-                <ChoyButton size="sm" :disabled="!canApply" data-testid="company-switch-apply" @click.stop="apply">
-                  {{ _t('Apply') }}
-                </ChoyButton>
-              </div>
+          <ChoyField class="gap-1">
+            <ChoyFieldLabel class="text-sm font-medium">{{ _t('Available Companies') }}</ChoyFieldLabel>
+            <div
+              class="choy-switch-company__select flex max-h-56 min-h-[5.5rem] flex-col gap-1 overflow-y-auto rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+              data-testid="company-enabled-select"
+            >
+              <label v-for="c in companies" :key="'enabled-' + c.Id" class="flex items-center gap-2">
+                <ChoyCheckbox
+                  class="size-control shrink-0"
+                  :model-value="draftEnabledCompanyIds.includes(c.Id)"
+                  :disabled="isActiveCompanyEnabledLocked(c.Id, draftActiveCompanyId)"
+                  @update:model-value="on => setCompanyEnabled(c.Id, on)"
+                />
+                <span>{{ c.DisplayName || c.Id }}</span>
+              </label>
             </div>
-          </ChoyPopoverContent>
-        </ChoyPopover>
-      </ChoyCollapsedIdentityTipHost>
-    </ChoySidebarMenuItem>
-  </ChoySidebarMenu>
+          </ChoyField>
+
+          <div
+            v-if="applyDisabledReason"
+            class="choy-switch-company__hint text-xs text-foreground/60"
+            data-testid="company-switch-hint"
+          >
+            {{ applyDisabledReason }}
+          </div>
+
+          <div class="choy-switch-company__actions flex justify-end">
+            <ChoyButton size="sm" :disabled="!canApply" data-testid="company-switch-apply" @click.stop="apply">
+              {{ _t('Apply') }}
+            </ChoyButton>
+          </div>
+        </div>
+      </ChoyPopoverContent>
+    </ChoyPopover>
+  </ChoyCollapsedIdentityTipHost>
 
   <ChoyPopover v-else v-model:open="visible">
     <ChoyPopoverTrigger as-child>
@@ -197,9 +196,7 @@ import {
   ChoyPopover,
   ChoyPopoverContent,
   ChoyPopoverTrigger,
-  ChoySidebarMenu,
   ChoySidebarMenuButton,
-  ChoySidebarMenuItem,
   resolveCompanyLogoUrl,
 } from '@/web';
 import { useAuthStore } from '@/auth/web/stores/auth';

@@ -72,23 +72,26 @@ describe('ChoyFormView workspace height', () => {
     setActivePinia(createPinia());
   });
 
-  test('body scrolls inside the shell and the container uses gap-4', async () => {
+  test('body scrolls inside the shell and the container uses gap-5', async () => {
     const mounted = mountForm({ showHeader: false, showActions: false });
     await flushPromises();
 
     const root = mounted.q('[data-slot="view-container"]') as HTMLElement | null;
     expect(root).not.toBeNull();
-    expect(root!.className).toContain('gap-4');
+    expect(root!.className).toContain('gap-5');
 
     const shell = mounted.q('[data-slot="view-body"]') as HTMLElement | null;
     expect(shell).not.toBeNull();
     expect(shell!.className).toContain('overflow-hidden');
+    expect(shell!.className.includes('bg-card')).toBe(false);
+    expect(shell!.getAttribute('data-anchor')).toBe('choy.view.sheet');
 
     const body = mounted.q('[data-anchor="choy.form-view"]') as HTMLElement | null;
     expect(body).not.toBeNull();
     expect(body!.className).toContain('min-h-0');
     expect(body!.className).toContain('flex-1');
     expect(body!.className).toContain('overflow-y-auto');
+    expect(body!.className).toContain('p-5');
     expect(body!.className.split(/\s+/)).not.toContain('pt-2');
 
     mounted.unmount();
@@ -119,7 +122,7 @@ describe('ChoyFormView workspace height', () => {
         return () =>
           h(
             ChoyPage as any,
-            { store, title: 'Token Details', padding: true },
+            { store, title: 'Token Details' },
             {
               default: () =>
                 h(ChoyFormView as any, {
@@ -162,7 +165,7 @@ describe('ChoyFormView workspace height', () => {
         return () =>
           h(
             ChoyPage as any,
-            { store, title: 'New Token', padding: true },
+            { store, title: 'New Token' },
             {
               default: () =>
                 h(ChoyFormView as any, {
@@ -205,7 +208,7 @@ describe('ChoyFormView workspace height', () => {
         return () =>
           h(
             ChoyPage as any,
-            { store, title: 'Partner', padding: true },
+            { store, title: 'Partner' },
             {
               default: () =>
                 h(ChoyFormView as any, {
@@ -225,7 +228,8 @@ describe('ChoyFormView workspace height', () => {
     await flushPromises();
 
     const pageRoot = mounted.q('[data-anchor="choy.page"]') as HTMLElement | null;
-    expect(pageRoot?.className || '').toContain('choy-inset-pad-no-top');
+    // Shell content owns gutters; page default padding is off.
+    expect(pageRoot?.className || '').not.toContain('choy-inset-pad');
 
     const titles = mounted.qa('[data-slot=page-title]');
     expect(titles.length).toBe(1);
@@ -252,7 +256,7 @@ describe('ChoyFormView workspace height', () => {
         return () =>
           h(
             ChoyPage as any,
-            { store, padding: true },
+            { store },
             {
               default: () =>
                 h(ChoyFormView as any, {
@@ -276,8 +280,8 @@ describe('ChoyFormView workspace height', () => {
     expect(titles.length).toBe(1);
     expect(titles[0]?.textContent?.trim()).toBe('Company Details');
     expect(titles[0]?.closest('[data-anchor="choy.form.view-chrome"]')).not.toBeNull();
-    expect((mounted.q('[data-anchor="choy.page"]') as HTMLElement | null)?.className || '').toContain(
-      'choy-inset-pad-no-top',
+    expect((mounted.q('[data-anchor="choy.page"]') as HTMLElement | null)?.className || '').not.toContain(
+      'choy-inset-pad',
     );
 
     mounted.unmount();

@@ -11,117 +11,114 @@ SPDX-License-Identifier: Apache-2.0
     <SwitchCompany variant="sidebar" />
   </Xpath>
   <Xpath expr="//*[@data-anchor='choy.shell.sidebar-footer']" position="inside">
-    <ChoySidebarMenu class="w-full min-w-0">
-      <ChoySidebarMenuItem>
-        <ChoyCollapsedIdentityTipHost :label="userIdentityTooltip">
-          <ChoyDropdownMenu v-model:open="userMenuOpen">
-            <ChoyDropdownMenuTrigger as-child>
-              <ChoySidebarMenuButton
-                size="lg"
-                type="button"
-                class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-                :aria-label="_t('User menu')"
-                data-testid="auth-user-menu-trigger"
+    <!-- Identity control only — not a SidebarMenu ul/li (footer is not a nav list). -->
+    <ChoyCollapsedIdentityTipHost :label="userIdentityTooltip">
+      <ChoyDropdownMenu v-model:open="userMenuOpen">
+        <ChoyDropdownMenuTrigger as-child>
+          <ChoySidebarMenuButton
+            size="lg"
+            type="button"
+            class="w-full min-w-0 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+            :aria-label="_t('User menu')"
+            data-testid="auth-user-menu-trigger"
+          >
+            <ChoyAvatar class="size-8 shrink-0 rounded-full" data-testid="auth-user-menu-avatar">
+              <ChoyAvatarFallback
+                class="rounded-full border border-sidebar-border bg-background text-xs font-medium text-sidebar-foreground"
               >
-                <ChoyAvatar class="size-8 shrink-0 rounded-full" data-testid="auth-user-menu-avatar">
-                  <ChoyAvatarFallback
-                    class="rounded-full border border-sidebar-border bg-background text-xs font-medium text-sidebar-foreground"
-                  >
-                    {{ userInitials }}
-                  </ChoyAvatarFallback>
-                </ChoyAvatar>
-                <span
-                  class="grid min-w-0 flex-1 text-start text-sm leading-tight"
-                  data-testid="auth-user-menu-label"
-                >
-                  <span class="truncate font-medium">{{ userMenuLabel }}</span>
-                  <span
-                    class="text-muted-foreground truncate text-xs"
-                    data-testid="auth-user-menu-meta"
-                  >
-                    {{ userMenuMeta }}
-                  </span>
-                </span>
-                <span
-                  class="ms-auto inline-flex shrink-0 opacity-50"
-                  aria-hidden="true"
-                  data-testid="auth-user-menu-chevrons"
-                >
-                  <ChevronsUpDown class="size-4" />
-                </span>
-              </ChoySidebarMenuButton>
-            </ChoyDropdownMenuTrigger>
-            <ChoyDropdownMenuContent side="right" align="end" class="min-w-56 rounded-lg">
-              <ChoyDropdownMenuLabel class="p-0 font-normal text-foreground">
-                <div
-                  class="flex items-center gap-2 px-1 py-1.5 text-start text-sm"
-                  data-testid="auth-user-menu-heading"
-                >
-                  <ChoyAvatar class="size-8 shrink-0 rounded-full">
-                    <ChoyAvatarFallback
-                      class="rounded-full border border-sidebar-border bg-background text-xs font-medium text-sidebar-foreground"
-                    >
-                      {{ userInitials }}
-                    </ChoyAvatarFallback>
-                  </ChoyAvatar>
-                  <div class="grid min-w-0 flex-1 text-start text-sm leading-tight">
-                    <span class="truncate font-medium">{{ userMenuLabel }}</span>
-                    <span class="text-muted-foreground truncate text-xs">{{ userMenuMeta }}</span>
-                  </div>
-                </div>
-              </ChoyDropdownMenuLabel>
-              <ChoyDropdownMenuSeparator />
-              <ChoyDropdownMenuItem @select="onMenuProfile">
-                {{ _t('Profile') }}
-              </ChoyDropdownMenuItem>
-              <ChoyDropdownMenuItem @select="onMenuSettings">
-                {{ _t('Settings') }}
-              </ChoyDropdownMenuItem>
-              <ChoyDropdownMenuSeparator />
-              <ChoyDropdownMenuLabel>{{ _t('Theme') }}</ChoyDropdownMenuLabel>
-              <ChoyDropdownMenuItem
-                v-for="item in themeItems"
-                :key="item.mode"
-                role="menuitemradio"
-                :aria-checked="themeMode === item.mode"
-                :data-testid="`auth-user-menu-theme-${item.mode}`"
-                class="gap-2"
-                @select="applyTheme(item.mode)"
+                {{ userInitials }}
+              </ChoyAvatarFallback>
+            </ChoyAvatar>
+            <span
+              class="grid min-w-0 flex-1 text-start text-sm leading-tight"
+              data-testid="auth-user-menu-label"
+            >
+              <span class="truncate font-medium">{{ userMenuLabel }}</span>
+              <span
+                class="text-muted-foreground truncate text-xs"
+                data-testid="auth-user-menu-meta"
               >
-                <Check
-                  class="size-4"
-                  :class="themeMode === item.mode ? 'opacity-100' : 'opacity-0'"
-                  aria-hidden="true"
-                />
-                {{ item.label }}
-              </ChoyDropdownMenuItem>
-              <ChoyDropdownMenuSeparator />
-              <ChoyDropdownMenuLabel>{{ _t('Language') }}</ChoyDropdownMenuLabel>
-              <ChoyDropdownMenuItem
-                v-for="code in localeCodes"
-                :key="code"
-                role="menuitemradio"
-                :aria-checked="code === currentLocaleCode"
-                :data-testid="`auth-user-menu-locale-${code}`"
-                class="gap-2"
-                @select="applyLocale(code)"
-              >
-                <Check
-                  class="size-4"
-                  :class="code === currentLocaleCode ? 'opacity-100' : 'opacity-0'"
-                  aria-hidden="true"
-                />
-                {{ localeName(code) }}
-              </ChoyDropdownMenuItem>
-              <ChoyDropdownMenuSeparator />
-              <ChoyDropdownMenuItem @select="onMenuLogout">
-                {{ _t('Log Out') }}
-              </ChoyDropdownMenuItem>
-            </ChoyDropdownMenuContent>
-          </ChoyDropdownMenu>
-        </ChoyCollapsedIdentityTipHost>
-      </ChoySidebarMenuItem>
-    </ChoySidebarMenu>
+                {{ userMenuMeta }}
+              </span>
+            </span>
+            <span
+              class="ms-auto inline-flex shrink-0 opacity-50"
+              aria-hidden="true"
+              data-testid="auth-user-menu-chevrons"
+            >
+              <ChevronsUpDown class="size-4" />
+            </span>
+          </ChoySidebarMenuButton>
+        </ChoyDropdownMenuTrigger>
+        <ChoyDropdownMenuContent side="right" align="end" class="min-w-56 rounded-lg">
+          <ChoyDropdownMenuLabel class="p-0 font-normal text-foreground">
+            <div
+              class="flex items-center gap-2 px-1 py-1.5 text-start text-sm"
+              data-testid="auth-user-menu-heading"
+            >
+              <ChoyAvatar class="size-8 shrink-0 rounded-full">
+                <ChoyAvatarFallback
+                  class="rounded-full border border-sidebar-border bg-background text-xs font-medium text-sidebar-foreground"
+                >
+                  {{ userInitials }}
+                </ChoyAvatarFallback>
+              </ChoyAvatar>
+              <div class="grid min-w-0 flex-1 text-start text-sm leading-tight">
+                <span class="truncate font-medium">{{ userMenuLabel }}</span>
+                <span class="text-muted-foreground truncate text-xs">{{ userMenuMeta }}</span>
+              </div>
+            </div>
+          </ChoyDropdownMenuLabel>
+          <ChoyDropdownMenuSeparator />
+          <ChoyDropdownMenuItem @select="onMenuProfile">
+            {{ _t('Profile') }}
+          </ChoyDropdownMenuItem>
+          <ChoyDropdownMenuItem @select="onMenuSettings">
+            {{ _t('Settings') }}
+          </ChoyDropdownMenuItem>
+          <ChoyDropdownMenuSeparator />
+          <ChoyDropdownMenuLabel>{{ _t('Theme') }}</ChoyDropdownMenuLabel>
+          <ChoyDropdownMenuItem
+            v-for="item in themeItems"
+            :key="item.mode"
+            role="menuitemradio"
+            :aria-checked="themeMode === item.mode"
+            :data-testid="`auth-user-menu-theme-${item.mode}`"
+            class="gap-2"
+            @select="applyTheme(item.mode)"
+          >
+            <Check
+              class="size-4"
+              :class="themeMode === item.mode ? 'opacity-100' : 'opacity-0'"
+              aria-hidden="true"
+            />
+            {{ item.label }}
+          </ChoyDropdownMenuItem>
+          <ChoyDropdownMenuSeparator />
+          <ChoyDropdownMenuLabel>{{ _t('Language') }}</ChoyDropdownMenuLabel>
+          <ChoyDropdownMenuItem
+            v-for="code in localeCodes"
+            :key="code"
+            role="menuitemradio"
+            :aria-checked="code === currentLocaleCode"
+            :data-testid="`auth-user-menu-locale-${code}`"
+            class="gap-2"
+            @select="applyLocale(code)"
+          >
+            <Check
+              class="size-4"
+              :class="code === currentLocaleCode ? 'opacity-100' : 'opacity-0'"
+              aria-hidden="true"
+            />
+            {{ localeName(code) }}
+          </ChoyDropdownMenuItem>
+          <ChoyDropdownMenuSeparator />
+          <ChoyDropdownMenuItem @select="onMenuLogout">
+            {{ _t('Log Out') }}
+          </ChoyDropdownMenuItem>
+        </ChoyDropdownMenuContent>
+      </ChoyDropdownMenu>
+    </ChoyCollapsedIdentityTipHost>
     <PreferencesDialog v-model="preferencesVisible" />
   </Xpath>
 </template>
@@ -142,9 +139,7 @@ import {
   ChoyDropdownMenuTrigger,
   ChoyCollapsedIdentityTipHost,
   ChoyNotificationBell,
-  ChoySidebarMenu,
   ChoySidebarMenuButton,
-  ChoySidebarMenuItem,
 } from '@/web';
 import { firstGrapheme } from '@/web/web/components/layout/appRailGlyph';
 import ChoyAppShell from '@/web/web/components/layout/ChoyAppShell.vue';
@@ -187,9 +182,7 @@ export default defineComponent({
     ChoyDropdownMenuLabel,
     ChoyDropdownMenuSeparator,
     ChoyDropdownMenuTrigger,
-    ChoySidebarMenu,
     ChoySidebarMenuButton,
-    ChoySidebarMenuItem,
   },
   setup(props, ctx) {
     const baseSetupFn = (ChoyAppShell as any)?.setup;

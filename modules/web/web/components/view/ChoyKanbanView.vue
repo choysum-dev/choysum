@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <ChoyViewContainer
     data-anchor="choy.kanban-view"
-    :class="['choy-kanban-view', 'gap-4', props.class]"
+    :class="['choy-kanban-view', 'gap-5', props.class]"
   >
     <template
       v-if="
@@ -98,7 +98,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <ChoyViewBusyHost
       :busy="boardBusy"
-      class="choy-kanban-view__body flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden"
+      class="choy-kanban-view__body flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden p-3"
     >
       <div v-if="laneCount > 0 && !isFlatBoard" class="md:hidden">
         <Select :model-value="mobileLaneKey" @update:model-value="onMobileLaneChange">
@@ -196,7 +196,7 @@ SPDX-License-Identifier: Apache-2.0
         <section
           v-for="lane in displayLanes"
           :key="lane.key"
-          class="choy-kanban-view__lane flex h-full min-h-0 w-72 shrink-0 flex-col rounded-md bg-muted/40"
+          class="choy-kanban-view__lane flex h-full min-h-0 w-72 shrink-0 flex-col rounded-md bg-muted/70"
           :class="{ 'ring-2 ring-ring/40': laneDropActiveKey === lane.key }"
           role="listitem"
           :aria-label="lane.label"
