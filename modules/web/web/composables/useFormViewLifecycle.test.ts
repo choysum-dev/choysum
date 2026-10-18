@@ -589,4 +589,33 @@ describe('useFormViewLifecycle', () => {
     await pending;
     m.unmount();
   });
+
+  test('route leave skips discard prompt when leaving login', async () => {
+    const m = mountLifecycle({
+      watchIdentity: false,
+      viewMode: 'edit',
+      route: { name: 'login', path: '/login', fullPath: '/login' },
+    });
+    m.controller.vm.original = { Id: 'rec-1', Name: 'a' };
+    m.controller.vm.draft = { Id: 'rec-1', Name: 'b' };
+    const pending = m.router.push('/home');
+    await flushPromises();
+    expect(useConfirmChoyStore().open).toBe(false);
+    await pending;
+    m.unmount();
+  });
+
+  test('auth exit dismisses an in-flight leave confirm', async () => {
+    const m = mountLifecycle({ watchIdentity: false, viewMode: 'edit' });
+    m.controller.vm.original = { Id: 'rec-1', Name: 'a' };
+    m.controller.vm.draft = { Id: 'rec-1', Name: 'b' };
+    void m.router.push('/elsewhere');
+    await flushPromises();
+    expect(useConfirmChoyStore().open).toBe(true);
+    const toLogin = m.router.push({ name: 'login', path: '/login' });
+    await flushPromises();
+    expect(useConfirmChoyStore().open).toBe(false);
+    await toLogin;
+    m.unmount();
+  });
 });

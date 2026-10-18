@@ -4,8 +4,8 @@
 import { computed, nextTick, onBeforeUnmount, ref, toRaw, watch, type ComputedRef } from 'vue';
 import type { RouteLocationNormalizedLoaded, RouteLocationRaw, Router } from 'vue-router';
 import { ChoyMessage } from './useChoyMessage';
-import { confirmChoyAction } from './confirmChoyAction';
-import { isAuthExitNavigation } from './formDirtyLeaveGuard';
+import { confirmChoyAction, resolveConfirmChoy } from './confirmChoyAction';
+import { shouldSkipFormDirtyLeavePrompt } from './formDirtyLeaveGuard';
 import { isRowDraftDirty } from './listRowEdit';
 import { deepClonePreserve } from '@/core/utils/clone';
 import type { ClientModel, BaseModel } from '@/core/rpc';
@@ -83,9 +83,12 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
     return false;
   }
 
+  let leaveConfirmPending = false;
+
   async function confirmDiscardIfDirty(): Promise<boolean> {
     if (leaving || !isFormDirty()) return true;
     const _t = opts._t;
+    leaveConfirmPending = true;
     try {
       await confirmChoyAction(_t('You have unsaved changes. Discard them?'), _t('Unsaved changes'), {
         confirmText: _t('Discard'),
@@ -95,17 +98,31 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
       return true;
     } catch {
       return false;
+    } finally {
+      leaveConfirmPending = false;
     }
   }
 
-  // Auth exits (login/logout/register) skip the prompt — the session is leaving
-  // and the draft cannot be saved on the public shell.
-  const removeLeaveGuard = opts.router.beforeEach?.((to) => {
-    if (leaving || !isFormDirty() || isAuthExitNavigation(to)) return true;
+  function dismissLeaveConfirmIfPending() {
+    if (!leaveConfirmPending) return;
+    resolveConfirmChoy('dismiss');
+    leaveConfirmPending = false;
+  }
+
+  // Skip when entering or leaving login/logout/register — credential shells are
+  // not durable drafts, and a pending leave dialog must not overlay the auth page.
+  const removeLeaveGuard = opts.router.beforeEach?.((to, from) => {
+    if (leaving) return true;
+    if (shouldSkipFormDirtyLeavePrompt(to, from)) {
+      dismissLeaveConfirmIfPending();
+      return true;
+    }
+    if (!isFormDirty()) return true;
     return confirmDiscardIfDirty();
   });
   onBeforeUnmount(() => {
     removeLeaveGuard?.();
+    dismissLeaveConfirmIfPending();
   });
 
   let initializeSeq = 0;

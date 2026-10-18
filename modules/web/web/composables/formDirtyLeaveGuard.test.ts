@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { isAuthExitNavigation } from './formDirtyLeaveGuard';
+import { isAuthExitNavigation, shouldSkipFormDirtyLeavePrompt } from './formDirtyLeaveGuard';
 
 describe('isAuthExitNavigation', () => {
   test('matches login / logout / register by name', () => {
@@ -23,5 +23,26 @@ describe('isAuthExitNavigation', () => {
     expect(isAuthExitNavigation({ path: '/web/login' })).toBe(true);
     expect(isAuthExitNavigation({ path: '/web/logout/' })).toBe(true);
     expect(isAuthExitNavigation({ path: '/auth/users' })).toBe(false);
+  });
+});
+
+describe('shouldSkipFormDirtyLeavePrompt', () => {
+  test('skips when navigating to an auth exit', () => {
+    expect(shouldSkipFormDirtyLeavePrompt({ name: 'login' }, { name: 'UserDetail' })).toBe(true);
+  });
+
+  test('skips when leaving login / register (credential shell)', () => {
+    expect(shouldSkipFormDirtyLeavePrompt({ path: '/' }, { name: 'login', path: '/login' })).toBe(
+      true
+    );
+    expect(
+      shouldSkipFormDirtyLeavePrompt({ path: '/home' }, { name: 'register', path: '/register' })
+    ).toBe(true);
+  });
+
+  test('does not skip ordinary app-to-app navigation', () => {
+    expect(
+      shouldSkipFormDirtyLeavePrompt({ name: 'UserList' }, { name: 'UserDetail', path: '/users/1' })
+    ).toBe(false);
   });
 });

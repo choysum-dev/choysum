@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Destinations where a dirty form cannot be saved (session exit / public auth).
- * Leave guards must not prompt — discard silently and let navigation proceed.
+ * Public auth destinations (login / logout / register).
+ * Dirty leave prompts are skipped when navigating to or from these routes —
+ * credential shells are not durable drafts, and session exits cannot save.
  */
 export function isAuthExitNavigation(to: {
   name?: unknown;
@@ -27,5 +28,15 @@ export function isAuthExitNavigation(to: {
   // App may be mounted under /web/.
   if (/\/(login|logout|register)$/.test(path)) return true;
 
+  return false;
+}
+
+/** Skip the dirty-leave confirm when entering or leaving the public auth shell. */
+export function shouldSkipFormDirtyLeavePrompt(
+  to: Parameters<typeof isAuthExitNavigation>[0],
+  from?: Parameters<typeof isAuthExitNavigation>[0] | null
+): boolean {
+  if (isAuthExitNavigation(to)) return true;
+  if (from != null && isAuthExitNavigation(from)) return true;
   return false;
 }
