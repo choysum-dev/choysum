@@ -29,9 +29,11 @@ describe('ChoyFormItem mount', () => {
     const labelRow = mounted.q('.choy-form-item__label') as HTMLElement | null;
     expect(labelRow).not.toBeNull();
     expect(labelRow?.className || '').toContain('text-muted-foreground');
+    expect(labelRow?.className || '').toContain('font-normal');
     // Size / line-height come from --choy-font-size-sm and --choy-field-label-line-height.
     expect(labelRow?.className || '').not.toContain('text-sm');
     expect(labelRow?.className || '').not.toContain('leading-none');
+    expect(labelRow?.className || '').not.toContain('font-medium');
     expect(mounted.text()).toContain('Username');
 
     const help = mounted.q('[data-slot=form-help]') as HTMLElement | null;

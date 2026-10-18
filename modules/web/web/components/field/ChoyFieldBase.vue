@@ -12,7 +12,7 @@ SPDX-License-Identifier: Apache-2.0
   >
     <div
       v-if="label || help || required"
-      class="choy-field-base__label-row flex items-center font-medium text-muted-foreground"
+      class="choy-field-base__label-row flex items-center font-normal text-muted-foreground"
     >
       <FieldLabel
         v-if="label"

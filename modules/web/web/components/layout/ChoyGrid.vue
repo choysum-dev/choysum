@@ -48,7 +48,8 @@ const gapClass = computed(() => {
     case 'lg':
       return 'gap-6';
     default:
-      return 'gap-3';
+      // Tighter than gap-3 so form field blocks match --choy-field-group-gap.
+      return 'gap-2';
   }
 });
 

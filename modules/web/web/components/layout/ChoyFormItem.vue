@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
   <FormItem :class="cn('choy-form-item', props.class)">
     <div
       v-if="label || $slots.label || help"
-      class="choy-form-item__label inline-flex max-w-full items-center font-medium text-muted-foreground"
+      class="choy-form-item__label inline-flex max-w-full items-center font-normal text-muted-foreground"
     >
       <Label v-if="label || $slots.label" class="min-w-0 text-muted-foreground" :for="controlId || undefined">
         <slot name="label">{{ label }}</slot>

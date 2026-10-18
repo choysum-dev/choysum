@@ -200,8 +200,8 @@ html {
 }
 
 /*
- * Form field chrome density. Kit FormItem/Field ship gap-2 / gap-3; product
- * hosts win via these selectors so label↔control tracks --choy-field-*-gap
+ * Form field chrome density. Kit FormItem/Field/FieldGroup ship gap-*; product
+ * hosts win via these selectors so spacing tracks --choy-field-*-gap
  * (including data-density=compact). cn() does not merge conflicting gap-*.
  */
 [data-slot='form-item'].choy-form-item,
@@ -209,18 +209,25 @@ html {
   gap: var(--choy-field-stack-gap);
 }
 
+/* Field ↔ field rhythm for FieldGroup stacks (ChoyGrid default is gap-2). */
+[data-slot='field-group'] {
+  gap: var(--choy-field-group-gap);
+}
+
 .choy-form-item__label,
 .choy-field-base__label-row {
   gap: var(--choy-field-label-inline-gap);
   font-size: var(--choy-font-size-sm);
   line-height: var(--choy-field-label-line-height);
+  font-weight: 400;
 }
 
-/* Kit Label / FieldLabel keep text-sm / leading-none; product chrome wins. */
+/* Kit Label / FieldLabel keep text-sm / leading-none / font-medium; product wins. */
 .choy-form-item__label [data-slot='label'],
 .choy-field-base__label-row [data-slot='field-label'] {
   font-size: inherit;
   line-height: inherit;
+  font-weight: inherit;
 }
 
 /* Error / description track the same density scale as labels. */

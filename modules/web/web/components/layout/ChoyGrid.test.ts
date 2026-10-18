@@ -15,7 +15,7 @@ describe('ChoyGrid', () => {
     await flushPromises();
     const root = mounted.q('[data-anchor="choy.grid"]') as HTMLElement | null;
     expect(root).not.toBeNull();
-    expect(root!.className).toContain('gap-3');
+    expect(root!.className).toContain('gap-2');
     expect(root!.style.gridTemplateColumns).toContain('repeat(12');
     expect(mounted.q('[data-test=cell]')?.textContent).toBe('c');
     mounted.unmount();
