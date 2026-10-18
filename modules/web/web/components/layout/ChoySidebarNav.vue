@@ -100,7 +100,7 @@ function onLeafClick(item: MenuItem) {
     >
       {{ emptyText }}
     </p>
-    <div v-else class="flex flex-col px-1 py-2">
+    <div v-else class="choy-sidebar-nav__groups flex flex-col px-1">
       <SidebarGroup v-for="group in navGroups" :key="group.key">
         <SidebarGroupContent>
           <SidebarMenu>
@@ -124,8 +124,13 @@ function onLeafClick(item: MenuItem) {
 </template>
 
 <style scoped>
+/* Top inset matches main's section gap so the first item lines up with the view action bar. */
+.choy-sidebar-nav__groups {
+  padding-block: var(--choy-layout-section-gap);
+}
 .choy-sidebar-nav :deep([data-sidebar='group']) {
-  padding: 0.25rem 0.5rem;
+  padding-block: 0;
+  padding-inline: 0.5rem;
 }
 .choy-sidebar-nav :deep([data-sidebar='group-content']) {
   font-size: 0.875rem;
