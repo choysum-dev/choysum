@@ -559,6 +559,23 @@ test('buildChartXyTooltipHtml uses category title and all series rows', () => {
   expect(multi).toContain('Open');
   expect(multi).toContain('Done');
   expect(multi).not.toContain('>Count<');
+  expect(multi).not.toContain('Total');
+  const stacked = buildChartXyTooltipHtml(
+    {
+      categories: ['access'],
+      series: [
+        { key: 'a', name: 'Open', values: [9] },
+        { key: 'b', name: 'Done', values: [229] },
+      ],
+      config: { a: { color: '#0f0' }, b: { color: '#00f' } },
+      stacked: true,
+      totalLabel: '合计',
+    },
+    0,
+  );
+  expect(stacked).toContain('合计');
+  expect(stacked).toContain('238');
+  expect(stacked).toContain('swatch--empty');
   const single = buildChartXyTooltipHtml(
     {
       categories: ['only'],

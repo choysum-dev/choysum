@@ -1643,6 +1643,8 @@ function buildXyTooltipHtml(
       metricLabel: current.metricLabel,
       percent: current.percent,
       palette: CHOY_CHART_DEFAULT_PALETTE,
+      stacked: !!current.stacked,
+      totalLabel: _t('Total'),
     },
     categoryIdx,
   );

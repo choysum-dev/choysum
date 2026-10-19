@@ -630,6 +630,8 @@ export type ChartTooltipRow = {
   color: string;
   label: string;
   valueText: string;
+  /** When false, omit the color swatch (e.g. stack total row). Default true. */
+  swatch?: boolean;
 };
 
 /** Input for {@link formatChartTooltipHtml} (metric title + value rows). */
@@ -659,11 +661,16 @@ export type ChartXyTooltipSpec = {
   metricLabel?: string;
   percent?: boolean;
   palette?: readonly string[];
+  /** When true with 2+ series, append a category total row. */
+  stacked?: boolean;
+  /** Label for the stack total row (caller i18n). Default `Total`. */
+  totalLabel?: string;
 };
 
 /**
  * Odoo-like XY tip HTML: title is the category; multi-series lists every series
- * at that category. Returns null when the category/series set is empty.
+ * at that category. Stacked multi-series also appends a total row. Returns null
+ * when the category/series set is empty.
  */
 export function buildChartXyTooltipHtml(
   current: ChartXyTooltipSpec,
@@ -691,7 +698,7 @@ export function buildChartXyTooltipHtml(
       ],
     });
   }
-  const rows = seriesList.map((series, idx) => {
+  const rows: ChartTooltipRow[] = seriesList.map((series, idx) => {
     const color =
       current.config[series.key]?.color ||
       palette[idx % palette.length] ||
@@ -703,6 +710,19 @@ export function buildChartXyTooltipHtml(
       valueText: formatChartTooltipValue(value, { percent: !!current.percent }),
     };
   });
+  if (current.stacked) {
+    let total = 0;
+    for (const series of seriesList) {
+      const v = Number(series.values[categoryIdx]) || 0;
+      if (Number.isFinite(v)) total += v;
+    }
+    rows.push({
+      color: 'transparent',
+      label: current.totalLabel || 'Total',
+      valueText: formatChartTooltipValue(total, { percent: !!current.percent }),
+      swatch: false,
+    });
+  }
   return formatChartTooltipHtml({ title: category, rows });
 }
 
@@ -827,12 +847,18 @@ export function formatChartTooltipHtml(input: ChartTooltipHtmlInput): string {
   const rows = Array.isArray(input.rows) ? input.rows : [];
   const rowHtml = rows
     .map((row) => {
-      const color = escapeChartTooltipText(row.color || CHOY_CHART_FALLBACK_COLOR);
       const label = escapeChartTooltipText(row.label ?? '');
       const valueText = escapeChartTooltipText(row.valueText ?? '');
+      const showSwatch = row.swatch !== false;
+      const swatch = showSwatch
+        ? (() => {
+            const color = escapeChartTooltipText(row.color || CHOY_CHART_FALLBACK_COLOR);
+            return `<span class="choy-chart-tooltip__swatch" style="background-color:${color}"></span>`;
+          })()
+        : `<span class="choy-chart-tooltip__swatch choy-chart-tooltip__swatch--empty"></span>`;
       return (
         `<div class="choy-chart-tooltip__row">` +
-        `<span class="choy-chart-tooltip__swatch" style="background-color:${color}"></span>` +
+        swatch +
         `<span class="choy-chart-tooltip__label">${label}</span>` +
         `<span class="choy-chart-tooltip__value">${valueText}</span>` +
         `</div>`
