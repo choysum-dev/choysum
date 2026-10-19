@@ -20,12 +20,14 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
     v-bind="$attrs"
   >
-    <template #edit="{ fieldValue, inputId, describedBy, invalid }">
+    <template #edit="{ fieldValue, inputId, inputName, describedBy, invalid, required }">
       <ChoyHtmlEditorCell
         :field-value="fieldValue"
         :id="inputId"
+        :name="inputName"
         :aria-describedby="describedBy || undefined"
         :aria-invalid="invalid ? 'true' : undefined"
+        :aria-required="required ? 'true' : undefined"
       />
     </template>
     <template #display="{ fieldValue }">
@@ -59,7 +61,7 @@ const props = withDefaults(
   defineProps<{
     store?: WebModelStore<T>;
     prop?: P | (IsAny<T> extends true ? string : never);
-    agg?: NarrowAggProp<NonNumericAggFns, P>;
+    agg?: NarrowAggProp<NonNumericAggFns>;
     binding?: UseField<T, V>;
 
     label?: string;
@@ -84,6 +86,10 @@ const props = withDefaults(
     renderMode: 'auto',
     showInlineError: false,
     plaintext: false,
+    visible: true,
+    cellVisible: true,
+    readonly: false,
+    required: false,
   },
 );
 
@@ -130,6 +136,7 @@ function toggleLink(ed: Editor): void {
  */
 const ChoyHtmlEditorCell = defineComponent({
   name: 'ChoyHtmlEditorCell',
+  inheritAttrs: false,
   props: {
     fieldValue: { type: Function, required: true },
   },
@@ -203,7 +210,9 @@ const ChoyHtmlEditorCell = defineComponent({
           h(EditorContent, {
             editor: ed,
             id: attrs.id as string | undefined,
+            name: attrs.name as string | undefined,
             'aria-invalid': attrs['aria-invalid'],
+            'aria-required': attrs['aria-required'],
             'aria-describedby': attrs['aria-describedby'],
           }),
         ],

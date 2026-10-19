@@ -9,6 +9,8 @@ import { defineComponent, h, onBeforeUnmount, shallowRef } from 'vue';
 
 /** @type {null | Record<string, any>} */
 export let __feStubLastEditor = null;
+/** @type {null | { value: any }} */
+export let __feStubEditorRef = null;
 
 function createEditor(options) {
   var html = options && options.content != null ? String(options.content) : '';
@@ -55,6 +57,7 @@ function createEditor(options) {
       return chainApi;
     },
     run: function () {
+      emit('update');
       return true;
     },
   };
@@ -104,8 +107,14 @@ export function useEditor(options) {
   // Create synchronously so v-if="editor" toolbar renders on first paint.
   // Real TipTap defers to onMounted; OHtmlCommitBridge already handles both.
   var ed = createEditor(options || {});
+  if (options && typeof options.onUpdate === 'function') {
+    ed.on('update', function () {
+      options.onUpdate({ editor: ed });
+    });
+  }
   __feStubLastEditor = ed;
   var editorRef = shallowRef(ed);
+  __feStubEditorRef = editorRef;
   onBeforeUnmount(function () {
     if (editorRef.value) editorRef.value.destroy();
     if (__feStubLastEditor === editorRef.value) __feStubLastEditor = null;

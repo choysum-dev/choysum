@@ -190,7 +190,8 @@ SPDX-License-Identifier: Apache-2.0
     </FieldError>
     <p
       v-else-if="showInlineError"
-      class="choy-field-base__error-reserve invisible text-xs"
+      class="choy-field-base__error-reserve invisible text-sm font-normal"
+      data-slot="field-error"
       aria-hidden="true"
     >
       &nbsp;
