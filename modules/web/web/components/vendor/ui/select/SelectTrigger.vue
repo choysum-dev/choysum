@@ -35,7 +35,11 @@ defineProps<{
       )
     "
   >
-    <SelectValue :placeholder="placeholder" />
+    <!-- Empty default slot still occupies SelectValue and hides selected text. -->
+    <SelectValue v-if="!$slots.default" :placeholder="placeholder" />
+    <SelectValue v-else :placeholder="placeholder">
+      <slot />
+    </SelectValue>
     <SelectIcon as-child>
       <ChevronDown class="size-4 opacity-50" />
     </SelectIcon>

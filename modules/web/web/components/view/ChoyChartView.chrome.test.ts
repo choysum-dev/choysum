@@ -28,6 +28,11 @@ describe('ChoyChartView chrome', () => {
     });
     await flushPromises();
 
+    const bar = mounted.q('[data-slot=view-action-bar]') as HTMLElement | null;
+    expect(bar).not.toBeNull();
+    expect(bar?.getAttribute('data-layout')).toBe('thirds');
+    expect(String(bar?.className || '')).toContain('border-b-0');
+
     const trays = mounted.qa('[data-testid=choy-action-tray]');
     expect(trays.length).toBe(2);
     expect(trays[0]?.getAttribute('aria-label')).toBe('System actions');
@@ -37,15 +42,25 @@ describe('ChoyChartView chrome', () => {
     expect(controls).not.toBeNull();
     expect(controls?.className || '').toContain('min-h-control');
 
-    const metricSelect = mounted.q('select.choy-input') as HTMLSelectElement | null;
-    expect(metricSelect).not.toBeNull();
-    expect(String(metricSelect?.className || '')).toContain('h-control');
-    expect(metricSelect?.getAttribute('aria-label')).toBe('Metric selection');
-    expect(mounted.text()).toContain('Metric');
-    expect(mounted.text()).toContain('Stack');
+    const metricTrigger = mounted.q('[data-testid=choy-chart-metric]') as HTMLElement | null;
+    expect(metricTrigger).not.toBeNull();
+    expect(metricTrigger?.getAttribute('aria-label')).toBe('Metric selection');
+    // Empty / single-series: stack chrome is hidden (same as pie).
+    expect(mounted.q('[data-testid=choy-chart-stack]')).toBeNull();
     expect(mounted.text()).toContain('New');
-    expect(mounted.text()).toContain('Refresh');
+    expect(mounted.q('[data-testid=choy-chart-type-bar]')).not.toBeNull();
+    expect(mounted.q('[data-testid=choy-chart-type-group]')).not.toBeNull();
     expect(mounted.q('[data-test=user-act]')).not.toBeNull();
+
+    expect(mounted.q('[data-testid=page-io-menu-trigger]')).not.toBeNull();
+    mounted.click('[data-testid=page-io-menu-trigger]');
+    await flushPromises();
+    expect(mounted.q('[data-testid=chart-overflow-refresh]')).not.toBeNull();
+    expect(mounted.text()).toContain('Refresh');
+
+    const body = mounted.q('[data-region=chart-body]') as HTMLElement | null;
+    expect(body).not.toBeNull();
+    expect(String(body?.className || '')).toContain('flex-1');
 
     const exposed = mounted.root as {
       controller: { vm: { loading: boolean; error: unknown } };
@@ -64,6 +79,26 @@ describe('ChoyChartView chrome', () => {
     exposed.controller.vm.loading = false;
     await nextTick();
     expect(mounted.q('[data-testid=choy-empty]')).not.toBeNull();
+
+    mounted.unmount();
+  });
+
+  test('omits empty user-actions tray and keeps thirds center without search', async () => {
+    const store = makeStore();
+    const mounted = mountApp(ChoyChartView as any, {
+      props: {
+        store,
+        autoBootstrap: false,
+        showCreate: false,
+        metrics: [{ alias: 'count', label: 'Count' }],
+      },
+    });
+    await flushPromises();
+
+    const trays = mounted.qa('[data-testid=choy-action-tray]');
+    expect(trays.length).toBe(1);
+    expect(trays[0]?.getAttribute('aria-label')).toBe('System actions');
+    expect(mounted.q('[data-slot=view-action-bar]')?.getAttribute('data-layout')).toBe('thirds');
 
     mounted.unmount();
   });

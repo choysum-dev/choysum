@@ -928,82 +928,109 @@ msgctxt "web/components/layout/Page"
 msgid "Loading..."
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:43
+#: web/components/view/ChoyChartView.vue:514
+msgctxt "web/components/view/ChartView"
+msgid "Bar"
+msgstr ""
+
+#: web/components/view/ChoyChartView.vue:69
 msgctxt "web/components/view/ChartView"
 msgid "Chart type"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:33
+#: web/components/view/ChoyChartView.vue:236
+msgctxt "web/components/view/ChartView"
+msgid "Count"
+msgstr ""
+
+#: web/components/view/ChoyChartView.vue:515
+msgctxt "web/components/view/ChartView"
+msgid "Line"
+msgstr ""
+
+#: web/components/view/ChoyChartView.vue:220
+#: web/components/view/ChoyChartView.vue:51
+#: web/components/view/ChoyChartView.vue:53
 msgctxt "web/components/view/ChartView"
 msgid "Metric"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:34
+#: web/components/view/ChoyChartView.vue:53
 msgctxt "web/components/view/ChartView"
 msgid "Metric selection"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:117
+#: web/components/view/ChoyChartView.vue:157
 msgctxt "web/components/view/ChartView"
 msgid "New"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:120
+#: web/components/view/ChoyChartView.vue:160
 msgctxt "web/components/view/ChartView"
 msgid "No data or grouping not configured"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:58
+#: web/components/view/ChoyChartView.vue:520
 msgctxt "web/components/view/ChartView"
 msgid "No sort"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:118
+#: web/components/view/ChoyChartView.vue:516
+msgctxt "web/components/view/ChartView"
+msgid "Pie"
+msgstr ""
+
+#: web/components/view/ChoyChartView.vue:158
 msgctxt "web/components/view/ChartView"
 msgid "Refresh"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:96
+#: web/components/view/ChoyChartView.vue:138
 msgctxt "web/components/view/ChartView"
 msgid "Retry"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:57
+#: web/components/view/ChoyChartView.vue:89
 msgctxt "web/components/view/ChartView"
 msgid "Sort"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:61
+#: web/components/view/ChoyChartView.vue:521
 msgctxt "web/components/view/ChartView"
 msgid "Sort ascending"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:64
+#: web/components/view/ChoyChartView.vue:522
 msgctxt "web/components/view/ChartView"
 msgid "Sort descending"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:52
+#: web/components/view/ChoyChartView.vue:80
 msgctxt "web/components/view/ChartView"
 msgid "Stack"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:4
+#: web/components/view/ChoyChartView.vue
+msgctxt "web/components/view/ChartView"
+msgid "Cumulative"
+msgstr ""
+
+#: web/components/view/ChoyChartView.vue:5
 msgctxt "web/components/view/ChartView"
 msgid "System actions"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:4
+#: web/components/view/ChoyChartView.vue:5
 msgctxt "web/components/view/ChartView"
 msgid "User actions"
 msgstr ""
 
-#: web/components/view/ChoySearchFit.vue:19
+#: web/components/view/ChoySearchFit.vue:32
 msgctxt "web/components/view/ChoySearchFit"
 msgid "Hide search"
 msgstr ""
 
-#: web/components/view/ChoySearchFit.vue:19
+#: web/components/view/ChoySearchFit.vue:32
 msgctxt "web/components/view/ChoySearchFit"
 msgid "Show search"
 msgstr ""

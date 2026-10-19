@@ -36,6 +36,13 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
+### 2026-10-19 — ChartLegendContent class prop + denser swatches
+
+- **ChartLegendContent:** accept optional `class` (merged via `cn`) so product
+  hosts can place the legend (e.g. pie top-end overlay) without forking the kit.
+- **ChartLegendContent:** slightly denser swatch (`size-2` / `rounded-sm`) and
+  `text-xs` labels to match Odoo-like pie legend chrome.
+
 ### 2026-10-15 — ComboboxInput displayValue + Select class
 
 - `combobox/ComboboxInput.vue`: forward Reka `displayValue` so callers can show
@@ -121,9 +128,12 @@ new HISTORY entry describing what was re-copied vs re-patched.
 - **Button / Input / Checkbox:** new-york-v4 focus (`ring-3 ring-ring/50`, no `ring-offset`);
   default Button `border-0` / `appearance-none` (defense-in-depth with FullCSS
   preflight; preflight sets `appearance: button`, solid variants still clear chrome);
-  Checkbox checked fill via `bg-primary` (not `data-[state=checked]:*`, whose `=`
-  is dropped by the engine so the browser never applies it) plus `p-0` for control
-  chrome. SVG `text-current`. Heights stay `h-control*`.
+  Checkbox checked fill via Vue `on ? bg-primary : …` (covers indeterminate) plus
+  `p-0` for control chrome. SVG `text-current`. Heights stay `h-control*`.
+  Switch uses the same pattern (Vue `checked` + CSS variables / `ms-auto` thumb):
+  `tailwind-go` can emit `data-[state=checked]:*`, but kit control chrome stays on
+  explicit bindings so visuals do not depend on that utility being present in the
+  served main CSS.
 
 ### 2026-10-03 — W4 density / domain import CI gates
 

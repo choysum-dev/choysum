@@ -4,6 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { SwitchRoot, SwitchThumb } from 'reka-ui';
 import { cn, type ClassValue } from '../../../../lib/utils';
 
@@ -17,6 +18,13 @@ const props = defineProps<{
 }>();
 
 const checked = defineModel<boolean>({ default: false });
+
+/** Checked chrome via Vue binding + tokens — avoids relying on data-[state=*]:* utilities in the served bundle. */
+const rootStyle = computed(() => ({
+  paddingInline: '2px',
+  backgroundColor: checked.value ? 'var(--choy-color-primary)' : 'var(--choy-color-input)',
+  borderColor: checked.value ? 'var(--choy-color-primary)' : 'var(--choy-color-border)',
+}));
 </script>
 
 <template>
@@ -30,22 +38,20 @@ const checked = defineModel<boolean>({ default: false });
     :aria-describedby="props['aria-describedby']"
     :class="
       cn(
-        'peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent shadow-sm transition-colors',
+        'peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border shadow-sm transition-colors',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
         'disabled:cursor-not-allowed disabled:opacity-50',
-        'data-[state=checked]:bg-primary data-[state=unchecked]:bg-muted',
         props.class,
       )
     "
+    :style="rootStyle"
   >
     <SwitchThumb
       data-slot="switch-thumb"
       :class="
         cn(
-          'pointer-events-none block size-4 rounded-full bg-background shadow-lg ring-0 transition-transform',
-          'data-[state=unchecked]:translate-x-0',
-          'ltr:data-[state=checked]:translate-x-4',
-          'rtl:data-[state=checked]:-translate-x-4',
+          'pointer-events-none block size-4 rounded-full bg-background shadow-sm ring-1 ring-border',
+          checked ? 'ms-auto' : undefined,
         )
       "
     />

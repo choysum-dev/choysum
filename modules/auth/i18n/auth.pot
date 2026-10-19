@@ -845,53 +845,53 @@ msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:111
-#: web/components/layout/ChoyAppShell.vue:97
+#: web/components/layout/ChoyAppShell.vue:107
+#: web/components/layout/ChoyAppShell.vue:93
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Account"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:127
+#: web/components/layout/ChoyAppShell.vue:123
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Dark"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:59
+#: web/components/layout/ChoyAppShell.vue:58
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Language"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:126
+#: web/components/layout/ChoyAppShell.vue:122
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Light"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:66
+#: web/components/layout/ChoyAppShell.vue:65
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Log Out"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:47
+#: web/components/layout/ChoyAppShell.vue:46
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Profile"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:50
+#: web/components/layout/ChoyAppShell.vue:49
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Settings"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:128
+#: web/components/layout/ChoyAppShell.vue:124
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "System"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:53
+#: web/components/layout/ChoyAppShell.vue:52
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Theme"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:14
+#: web/components/layout/ChoyAppShell.vue:13
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "User menu"
 msgstr ""
@@ -916,57 +916,57 @@ msgctxt "web/components/layout/ChoyGuestShell"
 msgid "Sign up"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:101
-#: web/components/layout/SwitchCompany.vue:56
+#: web/components/layout/SwitchCompany.vue:54
+#: web/components/layout/SwitchCompany.vue:97
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Apply"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:41
-#: web/components/layout/SwitchCompany.vue:86
+#: web/components/layout/SwitchCompany.vue:39
+#: web/components/layout/SwitchCompany.vue:82
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Available Companies"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:333
+#: web/components/layout/SwitchCompany.vue:331
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Available companies must include the current company"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:280
-#: web/components/layout/SwitchCompany.vue:283
+#: web/components/layout/SwitchCompany.vue:278
+#: web/components/layout/SwitchCompany.vue:281
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Company"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:31
-#: web/components/layout/SwitchCompany.vue:78
+#: web/components/layout/SwitchCompany.vue:29
+#: web/components/layout/SwitchCompany.vue:74
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Current Company"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:338
+#: web/components/layout/SwitchCompany.vue:336
 msgctxt "web/components/layout/SwitchCompany"
 msgid "No changes to apply"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:336
+#: web/components/layout/SwitchCompany.vue:334
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Only one company is available; nothing to apply"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:331
+#: web/components/layout/SwitchCompany.vue:329
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Select a current company"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:12
-#: web/components/layout/SwitchCompany.vue:68
+#: web/components/layout/SwitchCompany.vue:10
+#: web/components/layout/SwitchCompany.vue:64
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Switch company"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:297
+#: web/components/layout/SwitchCompany.vue:295
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Workspace"
 msgstr ""
@@ -1335,6 +1335,11 @@ msgctxt "web/pages/SessionList"
 msgid "Session List"
 msgstr ""
 
+#: web/pages/TokenChart.vue:10
+msgctxt "web/pages/TokenChart"
+msgid "Token Chart"
+msgstr ""
+
 #: web/pages/TokenKanban.vue:10
 msgctxt "web/pages/TokenKanban"
 msgid "Token Kanban"
@@ -1350,17 +1355,17 @@ msgctxt "web/pages/UserList"
 msgid "User List"
 msgstr ""
 
-#: web/route/routes.ts:237
+#: web/route/routes.ts:246
 msgctxt "web/route/routes"
 msgid "Create Field Rule"
 msgstr ""
 
-#: web/route/routes.ts:280
+#: web/route/routes.ts:289
 msgctxt "web/route/routes"
 msgid "Create Method Access"
 msgstr ""
 
-#: web/route/routes.ts:194
+#: web/route/routes.ts:203
 msgctxt "web/route/routes"
 msgid "Create Record Rule"
 msgstr ""
@@ -1380,7 +1385,7 @@ msgctxt "web/route/routes"
 msgid "Create Token"
 msgstr ""
 
-#: web/route/routes.ts:323
+#: web/route/routes.ts:332
 msgctxt "web/route/routes"
 msgid "Create UI Resource Grant"
 msgstr ""
@@ -1390,12 +1395,12 @@ msgctxt "web/route/routes"
 msgid "Create User"
 msgstr ""
 
-#: web/route/routes.ts:223
+#: web/route/routes.ts:232
 msgctxt "web/route/routes"
 msgid "Field Rule Details"
 msgstr ""
 
-#: web/route/routes.ts:209
+#: web/route/routes.ts:218
 msgctxt "web/route/routes"
 msgid "Field Rule List"
 msgstr ""
@@ -1410,27 +1415,27 @@ msgctxt "web/route/routes"
 msgid "Logout"
 msgstr ""
 
-#: web/route/routes.ts:266
+#: web/route/routes.ts:275
 msgctxt "web/route/routes"
 msgid "Method Access Details"
 msgstr ""
 
-#: web/route/routes.ts:252
+#: web/route/routes.ts:261
 msgctxt "web/route/routes"
 msgid "Method Access List"
 msgstr ""
 
-#: web/route/routes.ts:180
+#: web/route/routes.ts:189
 msgctxt "web/route/routes"
 msgid "Record Rule Details"
 msgstr ""
 
-#: web/route/routes.ts:166
+#: web/route/routes.ts:175
 msgctxt "web/route/routes"
 msgid "Record Rule List"
 msgstr ""
 
-#: web/route/routes.ts:341
+#: web/route/routes.ts:350
 msgctxt "web/route/routes"
 msgid "Register"
 msgstr ""
@@ -1460,6 +1465,11 @@ msgctxt "web/route/routes"
 msgid "Token Board"
 msgstr ""
 
+#: web/route/routes.ts:164
+msgctxt "web/route/routes"
+msgid "Token Chart"
+msgstr ""
+
 #: web/route/routes.ts:137
 msgctxt "web/route/routes"
 msgid "Token Details"
@@ -1470,12 +1480,12 @@ msgctxt "web/route/routes"
 msgid "Token Management"
 msgstr ""
 
-#: web/route/routes.ts:309
+#: web/route/routes.ts:318
 msgctxt "web/route/routes"
 msgid "UI Resource Grant Details"
 msgstr ""
 
-#: web/route/routes.ts:295
+#: web/route/routes.ts:304
 msgctxt "web/route/routes"
 msgid "UI Resource Grant List"
 msgstr ""
@@ -2122,47 +2132,93 @@ msgctxt "web/views/SessionListView"
 msgid "Session"
 msgstr ""
 
-#: web/views/TokenFormView.vue:38
+#: web/views/TokenChartView.vue:50
+msgctxt "web/views/TokenChartView"
+msgid "Chart View"
+msgstr ""
+
+#: web/views/TokenChartView.vue:43
+msgctxt "web/views/TokenChartView"
+msgid "Count"
+msgstr ""
+
+#: web/views/TokenChartView.vue:69
+#: web/views/TokenChartView.vue:74
+msgctxt "web/views/TokenChartView"
+msgid "Failed to load chart"
+msgstr ""
+
+#: web/views/TokenChartView.vue:49
+msgctxt "web/views/TokenChartView"
+msgid "Kanban View"
+msgstr ""
+
+#: web/views/TokenChartView.vue:48
+msgctxt "web/views/TokenChartView"
+msgid "List View"
+msgstr ""
+
+#: web/views/TokenChartView.vue:11
+msgctxt "web/views/TokenChartView"
+msgid "New"
+msgstr ""
+
+#: web/views/TokenChartView.vue:56
+msgctxt "web/views/TokenChartView"
+msgid "Not Revoked"
+msgstr ""
+
+#: web/views/TokenChartView.vue:55
+msgctxt "web/views/TokenChartView"
+msgid "Revoked"
+msgstr ""
+
+#: web/views/TokenChartView.vue:17
+msgctxt "web/views/TokenChartView"
+msgid "View switcher"
+msgstr ""
+
+#: web/views/TokenFormView.vue:37
 msgctxt "web/views/TokenFormView"
 msgid "Copy Token"
 msgstr ""
 
-#: web/views/TokenFormView.vue:38
+#: web/views/TokenFormView.vue:37
 msgctxt "web/views/TokenFormView"
 msgid "Create Token"
 msgstr ""
 
-#: web/views/TokenFormView.vue:38
+#: web/views/TokenFormView.vue:37
 msgctxt "web/views/TokenFormView"
 msgid "Delete Token"
 msgstr ""
 
-#: web/views/TokenFormView.vue:38
+#: web/views/TokenFormView.vue:37
 msgctxt "web/views/TokenFormView"
 msgid "Edit Token"
 msgstr ""
 
-#: web/views/TokenFormView.vue:6
+#: web/views/TokenFormView.vue:9
 msgctxt "web/views/TokenFormView"
 msgid "Select User"
 msgstr ""
 
-#: web/views/TokenFormView.vue:29
+#: web/views/TokenFormView.vue:33
 msgctxt "web/views/TokenFormView"
 msgid "System Information"
 msgstr ""
 
-#: web/views/TokenFormView.vue:38
+#: web/views/TokenFormView.vue:37
 msgctxt "web/views/TokenFormView"
 msgid "Token"
 msgstr ""
 
-#: web/views/TokenFormView.vue:3
+#: web/views/TokenFormView.vue:6
 msgctxt "web/views/TokenFormView"
 msgid "Token Information"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:52
+#: web/views/TokenKanbanView.vue:45
 msgctxt "web/views/TokenKanbanView"
 msgid "%s more"
 msgstr ""
@@ -2172,33 +2228,38 @@ msgctxt "web/views/TokenKanbanView"
 msgid "All"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:38
+#: web/views/TokenKanbanView.vue:53
+msgctxt "web/views/TokenKanbanView"
+msgid "Chart View"
+msgstr ""
+
+#: web/views/TokenKanbanView.vue:31
 msgctxt "web/views/TokenKanbanView"
 msgid "Expires"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:67
-#: web/views/TokenKanbanView.vue:72
+#: web/views/TokenKanbanView.vue:88
+#: web/views/TokenKanbanView.vue:93
 msgctxt "web/views/TokenKanbanView"
 msgid "Failed to load kanban"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:77
+#: web/views/TokenKanbanView.vue:98
 msgctxt "web/views/TokenKanbanView"
 msgid "Failed to load more tokens"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:23
+#: web/views/TokenKanbanView.vue:52
 msgctxt "web/views/TokenKanbanView"
 msgid "Kanban View"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:20
+#: web/views/TokenKanbanView.vue:51
 msgctxt "web/views/TokenKanbanView"
 msgid "List View"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:82
+#: web/views/TokenKanbanView.vue:103
 msgctxt "web/views/TokenKanbanView"
 msgid "Move failed; refreshed to recover"
 msgstr ""
@@ -2208,24 +2269,24 @@ msgctxt "web/views/TokenKanbanView"
 msgid "New"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:47
+#: web/views/TokenKanbanView.vue:40
 msgctxt "web/views/TokenKanbanView"
 msgid "No tokens in this lane"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:60
-#: web/views/TokenKanbanView.vue:62
+#: web/views/TokenKanbanView.vue:81
+#: web/views/TokenKanbanView.vue:83
 msgctxt "web/views/TokenKanbanView"
 msgid "Not Revoked"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:59
-#: web/views/TokenKanbanView.vue:61
+#: web/views/TokenKanbanView.vue:80
+#: web/views/TokenKanbanView.vue:82
 msgctxt "web/views/TokenKanbanView"
 msgid "Revoked"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:41
+#: web/views/TokenKanbanView.vue:34
 msgctxt "web/views/TokenKanbanView"
 msgid "Revoked At"
 msgstr ""
@@ -2233,6 +2294,11 @@ msgstr ""
 #: web/views/TokenKanbanView.vue:19
 msgctxt "web/views/TokenKanbanView"
 msgid "View switcher"
+msgstr ""
+
+#: web/views/TokenListView.vue:50
+msgctxt "web/views/TokenListView"
+msgid "Chart View"
 msgstr ""
 
 #: web/views/TokenListView.vue:42
@@ -2255,12 +2321,12 @@ msgctxt "web/views/TokenListView"
 msgid "Edit Token"
 msgstr ""
 
-#: web/views/TokenListView.vue:9
+#: web/views/TokenListView.vue:49
 msgctxt "web/views/TokenListView"
 msgid "Kanban View"
 msgstr ""
 
-#: web/views/TokenListView.vue:6
+#: web/views/TokenListView.vue:48
 msgctxt "web/views/TokenListView"
 msgid "List View"
 msgstr ""
@@ -2275,12 +2341,12 @@ msgctxt "web/views/TokenListView"
 msgid "View switcher"
 msgstr ""
 
-#: web/views/UserFormView.vue:57
+#: web/views/UserFormView.vue:59
 msgctxt "web/views/UserFormView"
 msgid "Accessible Companies"
 msgstr ""
 
-#: web/views/UserFormView.vue:3
+#: web/views/UserFormView.vue:5
 msgctxt "web/views/UserFormView"
 msgid "Account Information"
 msgstr ""
@@ -2310,32 +2376,32 @@ msgctxt "web/views/UserFormView"
 msgid "Required"
 msgstr ""
 
-#: web/views/UserFormView.vue:63
+#: web/views/UserFormView.vue:65
 msgctxt "web/views/UserFormView"
 msgid "Roles"
 msgstr ""
 
-#: web/views/UserFormView.vue:57
+#: web/views/UserFormView.vue:59
 msgctxt "web/views/UserFormView"
 msgid "Select Company"
 msgstr ""
 
-#: web/views/UserFormView.vue:64
+#: web/views/UserFormView.vue:66
 msgctxt "web/views/UserFormView"
 msgid "Select Role"
 msgstr ""
 
-#: web/views/UserFormView.vue:33
+#: web/views/UserFormView.vue:35
 msgctxt "web/views/UserFormView"
 msgid "Select a time zone"
 msgstr ""
 
-#: web/views/UserFormView.vue:71
+#: web/views/UserFormView.vue:73
 msgctxt "web/views/UserFormView"
 msgid "Sessions"
 msgstr ""
 
-#: web/views/UserFormView.vue:80
+#: web/views/UserFormView.vue:82
 msgctxt "web/views/UserFormView"
 msgid "Tokens"
 msgstr ""
