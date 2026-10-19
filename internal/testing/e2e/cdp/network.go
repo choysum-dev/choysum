@@ -45,16 +45,11 @@ type pendingResp struct {
 
 // fetchResponseBody loads a CDP response body; tests may override.
 var fetchResponseBody = func(ctx context.Context, reqID network.RequestID) ([]byte, error) {
-	var body []byte
-	err := chromedp.Run(ctx, chromedp.ActionFunc(func(ctx context.Context) error {
-		b, err := network.GetResponseBody(reqID).Do(ctx)
-		if err != nil {
-			return err
-		}
-		body = b
-		return nil
-	}))
-	return body, err
+	res, err := chromedp.Call(ctx, network.GetResponseBody, network.GetResponseBodyParams{RequestID: reqID})
+	if err != nil {
+		return nil, err
+	}
+	return res.Body, nil
 }
 
 // EnableNetwork turns on CDP Network domain for the page.
@@ -62,11 +57,12 @@ func EnableNetwork(p *Page) error {
 	if p == nil {
 		return fmt.Errorf("cdp: nil page")
 	}
-	return chromedp.Run(p.ctx, network.Enable())
+	_, err := chromedp.Call(p.ctx, network.Enable, network.EnableParams{})
+	return err
 }
 
 // WaitForResponse waits until a response matching m arrives (or timeout).
-// Registers the CDP listener before returning to the select, so callers can
+// Subscribes via Events on the calling goroutine before select, so callers can
 // arm this concurrently with the action that triggers the request.
 func (p *Page) WaitForResponse(m ResponseMatch, timeout time.Duration) (*MatchedResponse, error) {
 	if p == nil {
@@ -119,10 +115,20 @@ func (p *Page) WaitForResponseContext(ctx context.Context, m ResponseMatch, time
 	listenerCtx, stopListener := context.WithCancel(p.ctx)
 	defer stopListener()
 
+	// finishedEarly records LoadingFinished that arrived before ResponseReceived
+	// populated matchedResp. Three Events iterators are not causally ordered, so
+	// tryFinish must tolerate that race (ListenTarget is gone in chromedp v0.21).
+	finishedEarly := map[network.RequestID]struct{}{}
+
 	tryFinish := func(reqID network.RequestID) {
 		mu.Lock()
 		resp, ok := matchedResp[reqID]
-		if !ok || finishing[reqID] {
+		if !ok {
+			noteFinishedEarlyIfPending(finishedEarly, pending, reqID)
+			mu.Unlock()
+			return
+		}
+		if finishing[reqID] {
 			mu.Unlock()
 			return
 		}
@@ -132,16 +138,36 @@ func (p *Page) WaitForResponseContext(ctx context.Context, m ResponseMatch, time
 		go finishMatchedResponse(listenerCtx, &mu, matchedResp, pending, finishing, resultCh, reqID, resp, bodyGone, fetchResponseBody)
 	}
 
-	chromedp.ListenTarget(listenerCtx, func(ev interface{}) {
-		switch e := ev.(type) {
-		case *network.EventRequestWillBeSent:
-			ingestRequestWillBeSent(e, &mu, pending)
-		case *network.EventResponseReceived:
-			ingestResponseReceived(e, &mu, pending, matchedResp, methodWant, matches, tryFinish)
-		case *network.EventLoadingFinished:
-			tryFinish(e.RequestID)
+	// Events subscribes on return, before ranging — construct on this goroutine
+	// before select so concurrent triggers cannot race the subscription.
+	reqEvents := chromedp.Events(listenerCtx, network.RequestWillBeSent)
+	respEvents := chromedp.Events(listenerCtx, network.ResponseReceived)
+	loadEvents := chromedp.Events(listenerCtx, network.LoadingFinished)
+
+	go func() {
+		for ev, err := range reqEvents {
+			if err != nil {
+				return
+			}
+			ingestRequestWillBeSent(ev, &mu, pending)
 		}
-	})
+	}()
+	go func() {
+		for ev, err := range respEvents {
+			if err != nil {
+				return
+			}
+			ingestResponseReceived(ev, &mu, pending, matchedResp, finishedEarly, methodWant, matches, tryFinish)
+		}
+	}()
+	go func() {
+		for ev, err := range loadEvents {
+			if err != nil {
+				return
+			}
+			tryFinish(ev.RequestID)
+		}
+	}()
 
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
@@ -157,7 +183,20 @@ func (p *Page) WaitForResponseContext(ctx context.Context, m ResponseMatch, time
 	}
 }
 
-func ingestRequestWillBeSent(e *network.EventRequestWillBeSent, mu *sync.Mutex, pending map[network.RequestID]pendingReq) {
+// noteFinishedEarlyIfPending records LoadingFinished that arrived before a
+// matched ResponseReceived. Unrelated finished IDs (not in pending) are ignored
+// so finishedEarly cannot grow without bound on asset-heavy pages.
+func noteFinishedEarlyIfPending(
+	finishedEarly map[network.RequestID]struct{},
+	pending map[network.RequestID]pendingReq,
+	reqID network.RequestID,
+) {
+	if _, waiting := pending[reqID]; waiting {
+		finishedEarly[reqID] = struct{}{}
+	}
+}
+
+func ingestRequestWillBeSent(e network.EventRequestWillBeSent, mu *sync.Mutex, pending map[network.RequestID]pendingReq) {
 	if networkRequestNil(e) {
 		return
 	}
@@ -172,10 +211,11 @@ func ingestRequestWillBeSent(e *network.EventRequestWillBeSent, mu *sync.Mutex, 
 }
 
 func ingestResponseReceived(
-	e *network.EventResponseReceived,
+	e network.EventResponseReceived,
 	mu *sync.Mutex,
 	pending map[network.RequestID]pendingReq,
 	matchedResp map[network.RequestID]pendingResp,
+	finishedEarly map[network.RequestID]struct{},
 	methodWant string,
 	matches func(method, url, ct string) bool,
 	tryFinish func(network.RequestID),
@@ -190,6 +230,10 @@ func ingestResponseReceived(
 	req.url = url
 	req.ct = ct
 	if !matches(req.method, url, ct) && !matches(req.method, req.url, ct) {
+		delete(pending, e.RequestID)
+		if finishedEarly != nil {
+			delete(finishedEarly, e.RequestID)
+		}
 		mu.Unlock()
 		return
 	}
@@ -207,7 +251,16 @@ func ingestResponseReceived(
 		ct:      ct,
 	}
 	reqID := e.RequestID
+	early := false
+	if finishedEarly != nil {
+		_, early = finishedEarly[reqID]
+		delete(finishedEarly, reqID)
+	}
 	mu.Unlock()
+	if early {
+		tryFinish(reqID)
+		return
+	}
 	// Prefer LoadingFinished for body availability; also arm a fallback in case
 	// that event is skipped for some response types.
 	go func() {
@@ -215,7 +268,6 @@ func ingestResponseReceived(
 		tryFinish(reqID)
 	}()
 }
-
 // finishMatchedResponse fetches a matched response body and publishes once.
 // When the body is already gone (navigated away), it still publishes status/headers
 // with a nil body so WaitForResponse does not hang until timeout.
@@ -308,15 +360,15 @@ func coalesceResponseMeta(respURL, respCT string, pending pendingReq, hadPending
 	return url, ct, method
 }
 
-func networkRequestNil(e *network.EventRequestWillBeSent) bool {
-	return e == nil || e.Request == nil
+func networkRequestNil(e network.EventRequestWillBeSent) bool {
+	return e.Request == nil
 }
 
-func networkResponseNil(e *network.EventResponseReceived) bool {
-	return e == nil || e.Response == nil
+func networkResponseNil(e network.EventResponseReceived) bool {
+	return e.Response == nil
 }
 
-func headerValue(headers map[string]interface{}, name string) string {
+func headerValue(headers network.Headers, name string) string {
 	if headers == nil {
 		return ""
 	}

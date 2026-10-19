@@ -127,6 +127,26 @@ func TestNewPageEnableNetworkError(t *testing.T) {
 	}
 }
 
+func TestNewPageClearCookiesError(t *testing.T) {
+	session := startTestSession(t)
+	old := clearBrowserCookiesForPage
+	clearBrowserCookiesForPage = func(context.Context) error { return errors.New("clear cookies boom") }
+	t.Cleanup(func() { clearBrowserCookiesForPage = old })
+	if _, err := session.NewPage(); err == nil || !strings.Contains(err.Error(), "clear cookies") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestNewPageResetDocumentError(t *testing.T) {
+	session := startTestSession(t)
+	old := resetDocumentForPage
+	resetDocumentForPage = func(context.Context) error { return errors.New("reset document boom") }
+	t.Cleanup(func() { resetDocumentForPage = old })
+	if _, err := session.NewPage(); err == nil || !strings.Contains(err.Error(), "reset document") {
+		t.Fatalf("got %v", err)
+	}
+}
+
 func TestNewPageDeadBrowserContext(t *testing.T) {
 	session := startPrivateTestSession(t)
 	session.Close()
@@ -156,6 +176,16 @@ func TestWaitForFunctionChromedpErrorDeadline(t *testing.T) {
 	t.Cleanup(func() { pageEvaluate = old })
 	if err := page.WaitForFunction("true", 80*time.Millisecond); err == nil || !strings.Contains(err.Error(), "waitForFunction") {
 		t.Fatalf("expected wrapped waitForFunction error, got %v", err)
+	}
+}
+
+func TestPageEvaluateDefaultErrorWithoutChromedpContext(t *testing.T) {
+	var out bool
+	if err := pageEvaluate(context.Background(), "true", &out); err == nil {
+		t.Fatal("expected pageEvaluate error without a chromedp context")
+	}
+	if err := pageEvaluate(context.Background(), "true", nil); err == nil {
+		t.Fatal("expected pageEvaluate error with nil out")
 	}
 }
 

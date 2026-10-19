@@ -5,13 +5,13 @@ package cdp
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/fetch"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
@@ -55,39 +55,49 @@ func (p *Page) fetchOrInit() *fetchState {
 	return p.fetch
 }
 
-// continueFetchAsync continues a paused request off the ListenTarget callback.
+// continueFetchAsync continues a paused request off the Events callback.
 func continueFetchAsync(ctx context.Context, reqID fetch.RequestID) {
 	go func() {
-		_ = chromedp.Run(ctx, fetch.ContinueRequest(reqID))
+		_, _ = chromedp.Call(ctx, fetch.ContinueRequest, fetch.ContinueRequestParams{RequestID: reqID})
 	}()
 }
 
 // runFetchEnable enables CDP Fetch; tests may override to force errors.
 var runFetchEnable = func(ctx context.Context) error {
-	return chromedp.Run(ctx, fetch.Enable().WithPatterns([]*fetch.RequestPattern{{
-		URLPattern:   "*",
-		RequestStage: fetch.RequestStageRequest,
-	}}))
+	_, err := chromedp.Call(ctx, fetch.Enable, fetch.EnableParams{
+		Patterns: []*fetch.RequestPattern{{
+			URLPattern:   "*",
+			RequestStage: fetch.RequestStageRequest,
+		}},
+	})
+	return err
 }
 
 // runFetchDisable disables CDP Fetch; tests may override to force errors.
 var runFetchDisable = func(ctx context.Context) error {
-	return chromedp.Run(ctx, fetch.Disable())
+	_, err := chromedp.Call(ctx, fetch.Disable, cdp.Empty{})
+	return err
 }
 
 // runFulfillRequest fulfills a paused request; tests may override to force errors.
-var runFulfillRequest = func(ctx context.Context, params *fetch.FulfillRequestParams) error {
-	return chromedp.Run(ctx, params)
+var runFulfillRequest = func(ctx context.Context, params fetch.FulfillRequestParams) error {
+	_, err := chromedp.Call(ctx, fetch.FulfillRequest, params)
+	return err
 }
 
 // runContinueRequest continues a paused request; tests may override to force errors.
 var runContinueRequest = func(ctx context.Context, reqID fetch.RequestID) error {
-	return chromedp.Run(ctx, fetch.ContinueRequest(reqID))
+	_, err := chromedp.Call(ctx, fetch.ContinueRequest, fetch.ContinueRequestParams{RequestID: reqID})
+	return err
 }
 
 // runFailRequest fails a paused request; tests may override to force errors.
 var runFailRequest = func(ctx context.Context, reqID fetch.RequestID) error {
-	return chromedp.Run(ctx, fetch.FailRequest(reqID, network.ErrorReasonFailed))
+	_, err := chromedp.Call(ctx, fetch.FailRequest, fetch.FailRequestParams{
+		RequestID:   reqID,
+		ErrorReason: network.ErrorReasonFailed,
+	})
+	return err
 }
 
 // claimFetch takes exclusive ownership of a paused request for a decision.
@@ -144,9 +154,17 @@ func (p *Page) EnableFetch() error {
 	st.decided = map[string]struct{}{}
 	st.mu.Unlock()
 
-	chromedp.ListenTarget(listenerCtx, func(ev any) {
-		p.onRequestPaused(st, listenerCtx, ev)
-	})
+	// Events subscribes on return, before ranging — arm before Enable so
+	// RequestPaused cannot arrive unsubscribed.
+	pausedEvents := chromedp.Events(listenerCtx, fetch.RequestPaused)
+	go func() {
+		for ev, err := range pausedEvents {
+			if err != nil {
+				return
+			}
+			p.onRequestPaused(st, listenerCtx, ev)
+		}
+	}()
 
 	err := runFetchEnable(p.ctx)
 	if err != nil {
@@ -162,9 +180,8 @@ func (p *Page) EnableFetch() error {
 	return nil
 }
 
-func (p *Page) onRequestPaused(st *fetchState, listenerCtx context.Context, ev any) {
-	e, ok := ev.(*fetch.EventRequestPaused)
-	if !ok || e == nil || e.Request == nil {
+func (p *Page) onRequestPaused(st *fetchState, listenerCtx context.Context, e fetch.EventRequestPaused) {
+	if e.Request == nil {
 		return
 	}
 	// Response-stage pauses must be continued; we only mock at Request stage.
@@ -226,7 +243,7 @@ func (p *Page) DisableFetch() error {
 		cancel()
 	}
 	for _, reqID := range ids {
-		_ = chromedp.Run(p.ctx, fetch.ContinueRequest(reqID))
+		_, _ = chromedp.Call(p.ctx, fetch.ContinueRequest, fetch.ContinueRequestParams{RequestID: reqID})
 	}
 	if !wasEnabled {
 		return nil
@@ -311,10 +328,11 @@ func (p *Page) Fulfill(id string, opts FulfillOptions) error {
 		}
 		headers = append(headers, &fetch.HeaderEntry{Name: k, Value: v})
 	}
-	bodyB64 := base64.StdEncoding.EncodeToString(opts.Body)
-	params := fetch.FulfillRequest(reqID, int64(status)).WithResponseHeaders(headers)
-	if bodyB64 != "" {
-		params = params.WithBody(bodyB64)
+	params := fetch.FulfillRequestParams{
+		RequestID:       reqID,
+		ResponseCode:    int64(status),
+		ResponseHeaders: headers,
+		Body:            opts.Body,
 	}
 	if err := runFulfillRequest(p.ctx, params); err != nil {
 		st.restoreFetchClaim(id, reqID)
