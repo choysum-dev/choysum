@@ -62,7 +62,7 @@ func EnableNetwork(p *Page) error {
 }
 
 // WaitForResponse waits until a response matching m arrives (or timeout).
-// Registers the CDP listener before returning to the select, so callers can
+// Subscribes via Events on the calling goroutine before select, so callers can
 // arm this concurrently with the action that triggers the request.
 func (p *Page) WaitForResponse(m ResponseMatch, timeout time.Duration) (*MatchedResponse, error) {
 	if p == nil {
@@ -138,8 +138,14 @@ func (p *Page) WaitForResponseContext(ctx context.Context, m ResponseMatch, time
 		go finishMatchedResponse(listenerCtx, &mu, matchedResp, pending, finishing, resultCh, reqID, resp, bodyGone, fetchResponseBody)
 	}
 
+	// Events subscribes on return, before ranging — construct on this goroutine
+	// before select so concurrent triggers cannot race the subscription.
+	reqEvents := chromedp.Events(listenerCtx, network.RequestWillBeSent)
+	respEvents := chromedp.Events(listenerCtx, network.ResponseReceived)
+	loadEvents := chromedp.Events(listenerCtx, network.LoadingFinished)
+
 	go func() {
-		for ev, err := range chromedp.Events(listenerCtx, network.RequestWillBeSent) {
+		for ev, err := range reqEvents {
 			if err != nil {
 				return
 			}
@@ -147,7 +153,7 @@ func (p *Page) WaitForResponseContext(ctx context.Context, m ResponseMatch, time
 		}
 	}()
 	go func() {
-		for ev, err := range chromedp.Events(listenerCtx, network.ResponseReceived) {
+		for ev, err := range respEvents {
 			if err != nil {
 				return
 			}
@@ -155,7 +161,7 @@ func (p *Page) WaitForResponseContext(ctx context.Context, m ResponseMatch, time
 		}
 	}()
 	go func() {
-		for ev, err := range chromedp.Events(listenerCtx, network.LoadingFinished) {
+		for ev, err := range loadEvents {
 			if err != nil {
 				return
 			}

@@ -154,8 +154,11 @@ func (p *Page) EnableFetch() error {
 	st.decided = map[string]struct{}{}
 	st.mu.Unlock()
 
+	// Events subscribes on return, before ranging — arm before Enable so
+	// RequestPaused cannot arrive unsubscribed.
+	pausedEvents := chromedp.Events(listenerCtx, fetch.RequestPaused)
 	go func() {
-		for ev, err := range chromedp.Events(listenerCtx, fetch.RequestPaused) {
+		for ev, err := range pausedEvents {
 			if err != nil {
 				return
 			}
