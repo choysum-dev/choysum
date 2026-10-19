@@ -167,4 +167,34 @@ describe('groupRowsToChartSeries', () => {
     expect(categories).toEqual(['only-key']);
     expect(seriesMatrix).toEqual([{ name: 'child-key', data: [4] }]);
   });
+
+  test('nested series identity uses child key when labels collide', () => {
+    const { categories, seriesMatrix } = groupRowsToChartSeries(
+      [
+        {
+          kind: 'group',
+          depth: 0,
+          key: 'west',
+          label: 'West',
+          children: [
+            { kind: 'group', depth: 1, key: 'a', label: 'Same', count: 2 },
+            { kind: 'group', depth: 1, key: 'b', label: 'Same', count: 4 },
+          ],
+        },
+        {
+          kind: 'group',
+          depth: 0,
+          key: 'east',
+          label: 'East',
+          children: [{ kind: 'group', depth: 1, key: 'a', label: 'Same', count: 1 }],
+        },
+      ],
+      { metricAlias: 'count', metricLabel: 'Count' },
+    );
+    expect(categories).toEqual(['West', 'East']);
+    expect(seriesMatrix).toEqual([
+      { name: 'Same', data: [2, 1] },
+      { name: 'Same', data: [4, 0] },
+    ]);
+  });
 });

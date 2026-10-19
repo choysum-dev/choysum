@@ -18,7 +18,7 @@ SPDX-License-Identifier: Apache-2.0
       :store="store"
       :show-header="showHeader"
       :show-actions="true"
-      :show-create="true"
+      :show-create="hasAction('auth.action.token_create')"
       :create-label="_t('New')"
       :default-groups="defaultGroups"
       :format-label="formatChartLabel"
@@ -56,6 +56,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import type Token from '@/auth/service/models/token';
+import { usePermission } from '@/auth/web/composables/usePermission';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import {
   ChoyChartView,
@@ -84,6 +85,7 @@ const props = withDefaults(defineProps<{ store?: WebModelStore<Token>; showHeade
 });
 const store = resolvePageStore(props.store, 'TokenChartView');
 const { showHeader } = props;
+const { hasAction } = usePermission();
 
 // Correct shared-store groups before ChoyChartView bootstraps (parent setup first).
 ensureTokenViewGroups(store, 'chart');

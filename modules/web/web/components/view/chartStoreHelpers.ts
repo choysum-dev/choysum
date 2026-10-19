@@ -41,11 +41,17 @@ function childGroups(row: ChartGroupLike): ChartGroupLike[] {
   return kids.filter((c) => isGroupRow(c));
 }
 
+function seriesIdOf(row: ChartGroupLike): string {
+  const key = (row as GroupRow).key;
+  return key != null && String(key) !== '' ? String(key) : groupLabel(row);
+}
+
 /**
  * Map group rows from a chart controller snapshot into chart categories and
- * series. With nested children on category groups, each child label becomes a
- * series (Odoo-style second groupby). Otherwise a single metric series is used.
- * Parent order follows the snapshot; temporal X-axis sorting lives in ChoyChartView.
+ * series. With nested children on category groups, each child key becomes a
+ * series (Odoo-style second groupby; label is display only). Otherwise a single
+ * metric series is used. Parent order follows the snapshot; temporal X-axis
+ * sorting lives in ChoyChartView.
  */
 export function groupRowsToChartSeries(
   rows: ReadonlyArray<ChartGroupLike>,
@@ -60,21 +66,21 @@ export function groupRowsToChartSeries(
 
   const nested = parents.some((p) => childGroups(p).length > 0);
   if (nested) {
-    const seriesNames: string[] = [];
-    const seen = new Set<string>();
+    const seriesIds: string[] = [];
+    const seriesLabels = new Map<string, string>();
     for (const parent of parents) {
       for (const child of childGroups(parent)) {
-        const name = groupLabel(child);
-        if (seen.has(name)) continue;
-        seen.add(name);
-        seriesNames.push(name);
+        const id = seriesIdOf(child);
+        if (seriesLabels.has(id)) continue;
+        seriesLabels.set(id, groupLabel(child));
+        seriesIds.push(id);
       }
     }
     const categories = parents.map((p) => groupLabel(p));
-    const seriesMatrix: ChoyChartSeries[] = seriesNames.map((name) => ({
-      name,
+    const seriesMatrix: ChoyChartSeries[] = seriesIds.map((id) => ({
+      name: seriesLabels.get(id) ?? id,
       data: parents.map((parent) => {
-        const child = childGroups(parent).find((c) => groupLabel(c) === name);
+        const child = childGroups(parent).find((c) => seriesIdOf(c) === id);
         return child ? metricValue(child, alias) : 0;
       }),
     }));
