@@ -276,13 +276,14 @@ describe('ChoyChartView coverage', () => {
 
   test('autoBootstrap ResizeObserver syncs plot height', async () => {
     const PrevRO = (globalThis as any).ResizeObserver;
-    let roCb: (() => void) | null = null;
+    const resizeCallbacks: Array<() => void> = [];
     (globalThis as any).ResizeObserver = class {
-      constructor(cb: () => void) {
-        roCb = cb;
+      constructor(cb: (entries?: unknown, observer?: unknown) => void) {
+        resizeCallbacks.push(() => cb([], undefined));
       }
       observe() {
-        if (roCb) roCb();
+        const last = resizeCallbacks[resizeCallbacks.length - 1];
+        if (last) last();
       }
       disconnect() {}
     };
@@ -295,7 +296,7 @@ describe('ChoyChartView coverage', () => {
         },
       });
       await flushPromises();
-      if (roCb) roCb();
+      for (const run of resizeCallbacks) run();
       const ex = mounted.root as ChartExpose;
       ex.controller.vm.result = flatGroupResult;
       ex.rebuildFromSnapshot();

@@ -50,6 +50,12 @@ test('ensureTokenViewGroups creates queryState when missing', () => {
   expect(store.state?.queryState?.appliedGroups).toEqual(['TokenType', 'Revoked']);
 });
 
+test('ensureTokenViewGroups ignores nullish or non-object store', () => {
+  ensureTokenViewGroups(null, 'list');
+  ensureTokenViewGroups(undefined, 'list');
+  ensureTokenViewGroups('nope', 'list');
+});
+
 test('formatTokenRevokedChartLabel maps boolean and field=value keys', () => {
   const labels = { revoked: 'Revoked', notRevoked: 'Not Revoked' };
   expect(formatTokenRevokedChartLabel('true', labels)).toBe('Revoked');

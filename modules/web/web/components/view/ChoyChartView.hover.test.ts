@@ -254,6 +254,7 @@ describe('ChoyChartView line hover tip', () => {
     exposed.rebuildFromSnapshot();
     await nextTick();
     exposed.updateLinePlotHover({ clientX: 430, clientY: 80 });
+    expect(tipVisible()).toBe(false);
 
     mounted.unmount();
   });

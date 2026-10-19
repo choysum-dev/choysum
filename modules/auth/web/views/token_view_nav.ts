@@ -32,6 +32,7 @@ export function tokenViewDefaultGroups(kind: TokenViewKind): string[] {
  * defaults are not masked by a prior Kanban Revoked-only selection (and vice versa).
  */
 export function ensureTokenViewGroups(store: unknown, kind: TokenViewKind): void {
+  if (!store || typeof store !== 'object') return;
   const root = store as { state?: Record<string, unknown> };
   const state = (root.state || (root.state = {})) as Record<string, unknown>;
   const qs = (state.queryState || (state.queryState = {})) as Record<string, unknown>;

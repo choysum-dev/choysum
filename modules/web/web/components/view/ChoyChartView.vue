@@ -1527,6 +1527,10 @@ function updateLinePlotHover(event: MouseEvent): void {
     return;
   }
   const nCat = current.categories.length;
+  if (!nCat) {
+    clearLinePlotHover();
+    return;
+  }
   const relX = (event.clientX - plotRect.left) / plotRect.width;
   const relY = (event.clientY - plotRect.top) / plotRect.height;
   const { categoryIdx, seriesIdx } = resolveLinePlotHoverTarget({

@@ -645,7 +645,7 @@ export type ChartXyTooltipSpec = {
   config: Record<string, { color?: string } | undefined>;
   metricLabel?: string;
   percent?: boolean;
-  palette?: string[];
+  palette?: readonly string[];
 };
 
 /**
