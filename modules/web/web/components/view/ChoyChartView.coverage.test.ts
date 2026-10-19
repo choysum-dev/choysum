@@ -327,6 +327,12 @@ describe('ChoyChartView coverage', () => {
     ex.yTickFormat(50);
     ex.selectSort('desc');
     ex.selectChartType('line');
+    // Line + stacked must not use column-sum Y domain (Unovis auto-scale path).
+    const lineDomain = (ex as ChartExpose & { linePlotYDomain: () => [number, number] }).linePlotYDomain();
+    expect(lineDomain[1]).toBeGreaterThan(0);
+    expect(lineDomain[1]).toBeLessThan(100);
+    // Stack toggle is disabled on line charts.
+    ex.toggleStacked();
     ex.toggleCumulative();
     await nextTick();
     mounted.unmount();

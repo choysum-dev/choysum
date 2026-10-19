@@ -154,10 +154,13 @@ describe('groupRowsToChartSeries', () => {
           depth: 0,
           key: 'only-key',
           children: [
+            null,
+            undefined,
             { kind: 'record', depth: 1, key: 'skip' } as any,
             { kind: 'group', depth: 1, key: 'child-key', count: 4 },
-          ],
+          ] as any,
         },
+        null as any,
       ],
       { metricAlias: 'count', metricLabel: 'Count' },
     );

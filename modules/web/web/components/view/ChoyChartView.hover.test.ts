@@ -180,7 +180,13 @@ describe('ChoyChartView line hover tip', () => {
     exposed.updateLinePlotHover({ clientX: 430, clientY: 80 });
     await nextTick();
     expect(tipVisible()).toBe(true);
+    // Same HTML with a measured tip skips the nextTick remasure path.
     exposed.placeLineHoverTip('<div>x</div>', 430, 80);
+    await nextTick();
+    exposed.placeLineHoverTip('<div>x</div>', 440, 90);
+    await nextTick();
+    // Changed HTML still remasures after paint.
+    exposed.placeLineHoverTip('<div>longer tip content</div>', 440, 90);
     await nextTick();
     exposed.updateLinePlotHover({ clientX: 10, clientY: 10 });
     await nextTick();

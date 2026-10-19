@@ -146,7 +146,7 @@ SPDX-License-Identifier: Apache-2.0
             </div>
           </slot>
 
-          <!-- Pie / single-series: hide stack (Odoo graph chrome). -->
+          <!-- Non-bar or single-series: hide stack (Odoo graph chrome). -->
           <slot
             v-if="!stackedDisabled"
             name="stacked-switcher"
@@ -900,7 +900,7 @@ const metricLabel = computed(() => {
 });
 
 const stackedDisabled = computed(
-  () => localChartType.value === 'pie' || seriesMatrix.value.length <= 1,
+  () => localChartType.value !== 'bar' || seriesMatrix.value.length <= 1,
 );
 
 const sortDisabled = computed(() => localChartType.value === 'pie');
@@ -996,10 +996,10 @@ const xyClipPathExtend = computed(() =>
   spec.value?.kind === 'line' ? CHOY_CHART_LINE_CLIP_EXTEND : 2,
 );
 
-/** Stacked plots need a domain from the column sum; grouped/line keep Unovis auto-scale. */
+/** Stacked bar plots need a domain from the column sum; grouped/line keep Unovis auto-scale. */
 const xyYDomain = computed<[number, number] | undefined>(() => {
   const s = spec.value;
-  if (!s || s.kind === 'pie' || !s.stacked) return undefined;
+  if (!s || s.kind !== 'bar' || !s.stacked) return undefined;
   return resolveStackedYDomain(
     xyRows.value,
     s.series.map((series) => series.key),
@@ -1449,10 +1449,10 @@ function clearLinePlotHover(): void {
  */
 function placeLineHoverTip(html: string, clientX: number, clientY: number): void {
   const measured = lineHoverTipEl.value?.getBoundingClientRect();
-  const tipSize =
-    measured && measured.width > 0 && measured.height > 0
-      ? { width: measured.width, height: measured.height }
-      : LINE_HOVER_TIP_FALLBACK;
+  const hasMeasured = !!(measured && measured.width > 0 && measured.height > 0);
+  const tipSize = hasMeasured
+    ? { width: measured!.width, height: measured!.height }
+    : LINE_HOVER_TIP_FALLBACK;
   const viewport = resolveChartTooltipViewportSize();
   const placed = resolveChartFloatingTooltipPosition({
     cursorX: clientX,
@@ -1462,7 +1462,10 @@ function placeLineHoverTip(html: string, clientX: number, clientY: number): void
     tipWidth: tipSize.width,
     tipHeight: tipSize.height,
   });
+  const prevHtml = lineHoverTip.value?.html;
   lineHoverTip.value = { html, x: placed.x, y: placed.y };
+  // Remeasure only when the tip is new/unmeasured or the HTML size may have changed.
+  if (hasMeasured && prevHtml === html) return;
   void nextTick(() => {
     if (!lineHoverTip.value || lineHoverTip.value.html !== html) return;
     const tipNow = lineHoverTipEl.value;
@@ -1527,10 +1530,6 @@ function updateLinePlotHover(event: MouseEvent): void {
     return;
   }
   const nCat = current.categories.length;
-  if (!nCat) {
-    clearLinePlotHover();
-    return;
-  }
   const relX = (event.clientX - plotRect.left) / plotRect.width;
   const relY = (event.clientY - plotRect.top) / plotRect.height;
   const { categoryIdx, seriesIdx } = resolveLinePlotHoverTarget({

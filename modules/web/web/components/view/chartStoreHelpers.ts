@@ -16,8 +16,8 @@ type ChartGroupLike =
       children?: ChartGroupLike[];
     };
 
-function isGroupRow(row: ChartGroupLike): boolean {
-  return (row as GroupRow).kind === 'group';
+function isGroupRow(row: ChartGroupLike | null | undefined): boolean {
+  return typeof row === 'object' && row !== null && (row as GroupRow).kind === 'group';
 }
 
 function metricValue(row: ChartGroupLike, alias: string): number {
