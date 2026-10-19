@@ -4,76 +4,208 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage :loading="loading" class="register-page-container">
-    <el-card class="register-card" shadow="hover">
-      <template #header>
-        <div class="card-header">
-          <h3>{{ _t('Create Account') }}</h3>
-        </div>
-      </template>
-      <transition name="fade">
-        <el-alert v-if="error" :title="error" type="error" :closable="true" @close="error = ''" />
-      </transition>
+  <ChoyPage :loading="loading" fill-height class="flex min-h-0 w-full flex-1 flex-col">
+    <AuthPanel>
+      <ChoyCard class="register-card w-full">
+        <template #header>
+          <h3 class="font-semibold leading-none">{{ _t('Create Account') }}</h3>
+          <div
+            v-if="error"
+            class="register-error flex items-start justify-between gap-2 text-sm text-destructive"
+            role="alert"
+          >
+            <span class="min-w-0 leading-5">{{ error }}</span>
+            <button
+              type="button"
+              class="inline-flex size-5 shrink-0 items-center justify-center rounded-sm border-0 bg-transparent p-0 text-destructive/70 appearance-none shadow-none outline-none hover:text-destructive focus-visible:ring-2 focus-visible:ring-destructive/40"
+              :aria-label="_t('Close')"
+              @click="error = ''"
+            >
+              <X class="size-3.5" />
+            </button>
+          </div>
+          <p v-else class="text-sm text-foreground/60">
+            {{ _t('Fill in the fields below to register') }}
+          </p>
+        </template>
+        <ChoyFormView
+          :store="formStore"
+          view-mode="create"
+          embedded
+          :show-header="false"
+          :show-actions="false"
+          :show-messages="false"
+          :resolve-record-id-from-route="false"
+          :initial-values="registerInitialValues"
+          :submit-handler="onRegisterSubmit"
+        >
+          <template #default="{ formData }">
+            <AuthPageErrorClear
+              :username="formData.Username"
+              :password="formData.Password"
+              :email="formData.Email"
+              :confirm-password="formData.ConfirmPassword"
+              :has-error="!!error"
+              @clear="error = ''"
+            />
+            <ChoyFieldGroup class="register-fields" :style="{ gap: '0' }">
+              <div class="register-username">
+                <ChoyVarcharField
+                  :store="formStore"
+                  prop="Username"
+                  :label="_t('Username')"
+                  :placeholder="_t('Enter username')"
+                  autocomplete="username"
+                  name="username"
+                  id="register-username"
+                  buffer-strategy="live"
+                  :nullable="false"
+                  :show-word-limit="false"
+                  show-inline-error
+                  :rules="usernameRules"
+                />
+              </div>
+              <div class="register-email">
+                <ChoyVarcharField
+                  :store="formStore"
+                  prop="Email"
+                  :label="_t('Email')"
+                  type="email"
+                  :placeholder="_t('Enter email address')"
+                  autocomplete="email"
+                  name="email"
+                  id="register-email"
+                  buffer-strategy="live"
+                  :nullable="false"
+                  :show-word-limit="false"
+                  show-inline-error
+                  :rules="emailRules"
+                />
+              </div>
+              <div class="register-password">
+                <ChoyVarcharField
+                  :store="formStore"
+                  prop="Password"
+                  :label="_t('Password')"
+                  type="password"
+                  :placeholder="_t('Enter password')"
+                  autocomplete="new-password"
+                  name="password"
+                  id="register-password"
+                  buffer-strategy="live"
+                  :nullable="false"
+                  :show-word-limit="false"
+                  show-inline-error
+                  :rules="passwordRules"
+                />
+              </div>
+              <div class="register-confirm">
+                <ChoyVarcharField
+                  :store="formStore"
+                  prop="ConfirmPassword"
+                  :label="_t('Confirm Password')"
+                  type="password"
+                  :placeholder="_t('Re-enter password')"
+                  autocomplete="new-password"
+                  name="confirmPassword"
+                  id="register-confirm"
+                  buffer-strategy="live"
+                  :nullable="false"
+                  :show-word-limit="false"
+                  show-inline-error
+                  :rules="confirmPasswordRules(formData.Password)"
+                />
+              </div>
 
-      <el-form ref="registerForm" :model="form" :rules="rules" label-position="top" @keydown="handleKeyDown" @submit.prevent="handleRegister">
-        <el-form-item prop="username" :label="_t('Username')">
-          <el-input v-model="form.username" :placeholder="_t('Enter username')" :prefix-icon="User" autocomplete="username" />
-        </el-form-item>
+              <div class="w-full" data-testid="register-terms">
+                <ChoyBooleanField
+                  v-slot:side
+                  class="w-full"
+                  :store="formStore"
+                  prop="AgreeTerms"
+                  widget="checkbox"
+                  :label="''"
+                  render-mode="inline"
+                  buffer-strategy="live"
+                  show-inline-error
+                  :rules="agreeTermsRules"
+                >
+                    <label for="fld-AgreeTerms" class="text-sm leading-5">
+                      {{ _t('I have read and agree to') }}
+                      <a
+                        href="#"
+                        target="_blank"
+                        class="text-primary underline-offset-4 hover:underline"
+                        @click.stop
+                      >
+                        {{ _t('Terms of Service') }}
+                      </a>
+                      {{ _t('and') }}
+                      <a
+                        href="#"
+                        target="_blank"
+                        class="text-primary underline-offset-4 hover:underline"
+                        @click.stop
+                      >
+                        {{ _t('Privacy Policy') }}
+                      </a>
+                    </label>
+                </ChoyBooleanField>
+              </div>
 
-        <el-form-item prop="email" :label="_t('Email')">
-          <el-input v-model="form.email" :placeholder="_t('Enter email address')" :prefix-icon="Message" type="email" autocomplete="email" />
-        </el-form-item>
-
-        <el-form-item prop="password" :label="_t('Password')">
-          <el-input v-model="form.password" :placeholder="_t('Enter password')" :prefix-icon="Lock" type="password" autocomplete="new-password" show-password />
-        </el-form-item>
-
-        <el-form-item prop="confirmPassword" :label="_t('Confirm Password')">
-          <el-input
-            v-model="form.confirmPassword"
-            :placeholder="_t('Re-enter password')"
-            :prefix-icon="Lock"
-            type="password"
-            autocomplete="new-password"
-            show-password
-          />
-        </el-form-item>
-
-        <el-form-item prop="agreeTerms">
-          <el-checkbox v-model="form.agreeTerms">
-            {{ _t('I have read and agree to') }}
-            <a href="#" target="_blank">{{ _t('Terms of Service') }}</a>
-            {{ _t('and') }}
-            <a href="#" target="_blank">{{ _t('Privacy Policy') }}</a>
-          </el-checkbox>
-        </el-form-item>
-
-        <el-form-item>
-          <el-button type="primary" native-type="submit" :loading="loading" class="submit-button" :disabled="!form.agreeTerms">
-            {{ _t('Create Account') }}
-          </el-button>
-        </el-form-item>
-
-        <div class="login-link">
-          {{ _t('Already have an account?') }}
-          <router-link to="/login">{{ _t('Log in now') }}</router-link>
-        </div>
-      </el-form>
-    </el-card>
-  </OPage>
+              <ChoyField>
+                <ChoyButton
+                  type="submit"
+                  class="submit-button w-full"
+                  :disabled="loading || !formData.AgreeTerms"
+                >
+                  {{ _t('Create Account') }}
+                </ChoyButton>
+                <ChoyFieldDescription class="text-center">
+                  {{ _t('Already have an account?') }}
+                  <router-link to="/login" class="text-primary hover:underline">{{
+                    _t('Log in now')
+                  }}</router-link>
+                </ChoyFieldDescription>
+              </ChoyField>
+            </ChoyFieldGroup>
+          </template>
+        </ChoyFormView>
+      </ChoyCard>
+    </AuthPanel>
+  </ChoyPage>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
+import { X } from 'lucide-vue-next';
 import { useAuthStore } from '../stores/auth';
-import { ChoysumError } from '../error';
-import { ElForm, ElFormItem, ElInput, ElButton, ElAlert, ElCheckbox, ElCard } from 'element-plus';
-import { User, Lock, Message } from '@element-plus/icons-vue';
-import OPage from '@/web/web/components/page/OPage.vue';
-import type { FormRules } from 'element-plus';
+import AuthPanel from '../components/AuthPanel.vue';
+import AuthPageErrorClear from './AuthPageErrorClear.vue';
+import {
+  ChoyPage,
+  ChoyCard,
+  ChoyButton,
+  ChoyField,
+  ChoyFieldDescription,
+  ChoyFieldGroup,
+  ChoyFormView,
+  ChoyVarcharField,
+  ChoyBooleanField,
+  createLocalFormStore,
+} from '@/web';
 import { createTranslate } from '@/web/web/i18n';
+import { resolveLoginRedirect, runHandledAuthSubmit } from './login_form';
+import {
+  registerAgreeTermsRules,
+  registerConfirmPasswordRules,
+  registerEmailRules,
+  registerPasswordRules,
+  registerUsernameRules,
+  runRegisterSubmit,
+} from './register_form';
 
 const { _t } = createTranslate('auth', { scope: 'web/pages/Register' });
 
@@ -82,202 +214,60 @@ const route = useRoute();
 const authStore = useAuthStore();
 const { loading } = storeToRefs(authStore);
 
-const registerForm = ref();
-const form = reactive({
-  username: '',
-  email: '',
-  password: '',
-  confirmPassword: '',
-  fullName: '',
-  agreeTerms: false,
+const registerInitialValues = {
+  Username: '',
+  Email: '',
+  Password: '',
+  ConfirmPassword: '',
+  AgreeTerms: false,
+};
+
+const formStore = createLocalFormStore({
+  fields: [
+    { name: 'Username', label: 'Username', type: 'varchar' },
+    { name: 'Email', label: 'Email', type: 'varchar' },
+    { name: 'Password', label: 'Password', type: 'varchar' },
+    { name: 'ConfirmPassword', label: 'Confirm Password', type: 'varchar' },
+    { name: 'AgreeTerms', label: 'I have read and agree to', type: 'boolean' },
+  ],
+  initialValues: registerInitialValues,
+  storeId: 'auth.register',
 });
+
+// Rebuild rules when locale changes so inline errors stay translated.
+const usernameRules = computed(() => registerUsernameRules(_t));
+const emailRules = computed(() => registerEmailRules(_t));
+const passwordRules = computed(() => registerPasswordRules(_t));
+const agreeTermsRules = computed(() => registerAgreeTermsRules(_t));
+const confirmPasswordRules = (password: unknown) =>
+  registerConfirmPasswordRules(_t, () => password);
 
 const error = ref('');
 
-/**
- * Validate the username field against local registration rules.
- */
-const validateUsername = (rule: any, value: string, callback: any) => {
-  if (!value) {
-    callback(new Error(_t('Enter username')));
-  } else if (value.length < 3) {
-    callback(new Error(_t('Username must be at least 3 characters')));
-  } else if (!/^[a-zA-Z0-9_\-\.]+$/.test(value)) {
-    callback(new Error(_t('Username can only contain letters, numbers, underscores, hyphens, and dots')));
-  } else {
-    callback();
-  }
-};
-
-/**
- * Validate the email field against the expected address format.
- */
-const validateEmail = (rule: any, value: string, callback: any) => {
-  if (!value) {
-    callback(new Error(_t('Enter email address')));
-  } else if (!/^[\w-]+(\.[\w-]+)*@[\w-]+(\.[\w-]+)+$/.test(value)) {
-    callback(new Error(_t('Enter a valid email address')));
-  } else {
-    callback();
-  }
-};
-
-/**
- * Validate the password field and recheck confirmation when needed.
- */
-const validatePassword = (rule: any, value: string, callback: any) => {
-  if (!value) {
-    callback(new Error(_t('Enter password')));
-  } else if (value.length < 6) {
-    callback(new Error(_t('Password must be at least 6 characters')));
-  } else {
-    // Revalidate the confirmation field after the password changes.
-    if (form.confirmPassword) {
-      registerForm.value.validateField('confirmPassword');
-    }
-    callback();
-  }
-};
-
-/**
- * Validate that the confirmation password matches the primary password.
- */
-const validateConfirmPassword = (rule: any, value: string, callback: any) => {
-  if (!value) {
-    callback(new Error(_t('Re-enter password')));
-  } else if (value !== form.password) {
-    callback(new Error(_t('Passwords do not match')));
-  } else {
-    callback();
-  }
-};
-
-/**
- * Validate that the user accepted the required terms.
- */
-const validateAgreeTerms = (rule: any, value: boolean, callback: any) => {
-  if (!value) {
-    callback(new Error(_t('You must agree to the Terms of Service and Privacy Policy')));
-  } else {
-    callback();
-  }
-};
-
-const rules = computed<FormRules>(() => ({
-  username: [{ validator: validateUsername, trigger: 'blur' }],
-  email: [{ validator: validateEmail, trigger: 'blur' }],
-  password: [{ validator: validatePassword, trigger: 'blur' }],
-  confirmPassword: [{ validator: validateConfirmPassword, trigger: 'blur' }],
-  fullName: [{ required: false, message: _t('Enter your name'), trigger: 'blur' }],
-  agreeTerms: [{ validator: validateAgreeTerms, trigger: 'change' }],
-}));
-
-/**
- * Validate the registration form and create a new user session.
- */
-async function handleRegister() {
-  if (!registerForm.value) return;
-
-  try {
-    await registerForm.value.validate();
-
-    error.value = '';
-
-    await authStore.register(form.username, form.email, form.password, form.fullName ? { fullName: form.fullName } : {});
-
-    await authStore.login(form.username, form.password);
-
-    const redirect = route.query.redirect?.toString() || '/';
-    router.replace(redirect);
-  } catch (err) {
-    if (err instanceof ChoysumError) {
-      error.value = err.message;
-    } else {
-      error.value = _t('Registration failed. Please try again later.');
-      console.error('Registration flow failed:', err);
-    }
-  }
+function setPageError(message: string) {
+  error.value = message;
 }
 
-/**
- * Navigate back to the login page.
- */
-function goToLogin() {
-  router.push('/login');
-}
-
-/**
- * Submit the form when Enter is pressed and terms are accepted.
- */
-function handleKeyDown(event: KeyboardEvent) {
-  if (event.key === 'Enter' && form.agreeTerms) {
-    handleRegister();
-  }
+async function onRegisterSubmit(ctx: { formData: Record<string, unknown> }) {
+  const data = ctx.formData;
+  const registerFn = authStore.register.bind(authStore);
+  const loginFn = authStore.login.bind(authStore);
+  return runHandledAuthSubmit({
+    submit: () =>
+      runRegisterSubmit({
+        loading: !!loading.value,
+        username: String(data.Username ?? ''),
+        email: String(data.Email ?? ''),
+        password: String(data.Password ?? ''),
+        registerFailedMessage: _t('Registration failed. Please try again later.'),
+        loginFailedMessage: _t('Your account was created, but signing in failed. Please log in.'),
+        register: (username, email, password) => registerFn(username, email, password),
+        login: (username, password) => loginFn(username, password),
+        setError: setPageError,
+      }),
+    fallbackMessage: _t('Registration failed. Please try again later.'),
+    setError: setPageError,
+    onSuccess: () => router.replace(resolveLoginRedirect(route.query.redirect?.toString())),
+  });
 }
 </script>
-
-<style lang="scss" scoped>
-.register-page-container {
-  &.o-page--with-padding {
-    padding: 0;
-  }
-
-  :deep(.o-page__body) {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    padding: var(--el-padding-large) 0;
-  }
-}
-
-.register-card {
-  width: 100%;
-  max-width: 420px;
-}
-
-.card-header {
-  text-align: center;
-  h3 {
-    margin: 0;
-    font-size: var(--el-font-size-large);
-    font-weight: var(--el-font-weight-bold);
-  }
-}
-
-.submit-button {
-  width: 100%;
-}
-
-.login-link {
-  text-align: center;
-  margin-block-start: var(--el-margin-base, 16px);
-  font-size: var(--el-font-size-small, 14px);
-  color: var(--el-text-color-secondary);
-
-  a {
-    color: var(--el-color-primary);
-    text-decoration: none;
-    margin-inline-start: var(--el-margin-small, 4px);
-
-    &:hover {
-      text-decoration: underline;
-    }
-  }
-}
-
-:deep(.el-checkbox__label) {
-  a {
-    color: var(--el-color-primary);
-    text-decoration: none;
-
-    &:hover {
-      text-decoration: underline;
-    }
-  }
-}
-
-:deep(.el-alert) {
-  margin-block-end: var(--el-margin-medium, 20px);
-}
-</style>

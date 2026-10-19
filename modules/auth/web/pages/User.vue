@@ -4,18 +4,18 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage :store="userStore">
+  <ChoyPage :store="userStore">
     <UserFormView />
-  </OPage>
+  </ChoyPage>
 </template>
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
 import { createStoreByModel } from '@/web/web/stores/registry';
-import OPage from '@/web/web/components/page/OPage.vue';
 import UserFormView from '@/auth/web/views/UserFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type User from '@/auth/service/models/user/user';
+import { ChoyPage } from '@/web';
 
 const route = useRoute();
 const userStore = createStoreByModel<typeof User>('auth.User', {

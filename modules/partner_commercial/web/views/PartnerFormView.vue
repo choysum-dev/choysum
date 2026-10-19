@@ -4,11 +4,15 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <Xpath expr="//el-tabs[@data-slot='partner-detail-tab-panels']" position="inside">
-    <el-tab-pane :label="_t('Identifiers and Commercial Extensions')" name="commercial_identifiers" data-region="partner-commercial-tab">
+  <Xpath :expr="PARTNER_DETAIL_TAB_PANELS_XPATH" position="inside">
+    <ChoyTab
+      value="commercial_identifiers"
+      :label="_t('Identifiers and Commercial Extensions')"
+      data-region="partner-commercial-tab"
+    >
       <div data-region="partner-commercial-panel">
         <div data-region="partner-identifier-section">
-          <OOneToManyKanbanField
+          <ChoyOneToManyKanbanField
             :store="store"
             :prop="'PartnerIdentifiers' as any"
             label=""
@@ -22,28 +26,51 @@ SPDX-License-Identifier: Apache-2.0
             :display-dialog-title="_t('View Identifier')"
           >
             <template #card="{ item, editable, removable, edit, remove }">
-              <div class="pcmv-identifier-card">
-                <div class="pcmv-identifier-card__title-row">
-                  <div class="pcmv-identifier-card__title">{{ item?.IdentifierType || _t('Unnamed Type') }}</div>
-                  <div class="pcmv-identifier-card__flags">
-                    <el-tag v-if="item?.IsPrimary" size="small" type="success">{{ _t('Primary') }}</el-tag>
-                    <el-tag v-if="item?.IsActive === false" size="small" type="info">{{ _t('Inactive') }}</el-tag>
+              <div class="flex h-full min-h-0 flex-col gap-1.5">
+                <div class="flex items-center justify-between gap-2">
+                  <div class="truncate text-sm font-medium text-foreground">{{ item?.IdentifierType || _t('Unnamed Type') }}</div>
+                  <div class="inline-flex shrink-0 gap-1">
+                    <ChoyBadge
+                      v-if="item?.IsPrimary"
+                      variant="secondary"
+                      class="px-1.5 py-0 text-[10px] font-normal"
+                    >
+                      {{ _t('Primary') }}
+                    </ChoyBadge>
+                    <ChoyBadge
+                      v-if="item?.IsActive === false"
+                      variant="outline"
+                      class="px-1.5 py-0 text-[10px] font-normal"
+                    >
+                      {{ _t('Inactive') }}
+                    </ChoyBadge>
                   </div>
                 </div>
-                <div class="pcmv-identifier-card__line">{{ _t('Value') }}: {{ item?.Value || '-' }}</div>
-                <div class="pcmv-identifier-card__meta">{{ _t('Country') }}: {{ resolveCountryLabel(item) }}</div>
-                <div class="pcmv-identifier-card__meta">{{ _t('Valid From') }}: {{ formatDateTime(item?.ValidFrom) || '-' }}</div>
-                <div class="pcmv-identifier-card__meta">{{ _t('Valid To') }}: {{ formatDateTime(item?.ValidTo) || '-' }}</div>
-                <div v-if="editable || removable" class="pcmv-identifier-card__actions">
-                  <el-button v-if="editable" type="primary" text size="small" @click.stop="edit">{{ _t('Edit') }}</el-button>
-                  <el-button v-if="removable" type="danger" text size="small" @click.stop="remove">{{ _t('Delete') }}</el-button>
+                <div class="truncate text-xs text-muted-foreground">{{ _t('Value') }} {{ item?.Value || '-' }}</div>
+                <div class="truncate text-xs text-muted-foreground">{{ _t('Country') }} {{ resolveCountryLabel(item) }}</div>
+                <div class="truncate text-xs text-muted-foreground">
+                  {{ _t('Valid From') }} {{ formatDateTime(item?.ValidFrom) || '-' }}
+                  <span class="text-muted-foreground/60"> · </span>
+                  {{ _t('Valid To') }} {{ formatDateTime(item?.ValidTo) || '-' }}
+                </div>
+                <div v-if="editable || removable" class="mt-auto inline-flex gap-1 pt-1">
+                  <ChoyButton v-if="editable" variant="ghost" size="sm" @click.stop="edit">{{ _t('Edit') }}</ChoyButton>
+                  <ChoyButton
+                    v-if="removable"
+                    variant="ghost"
+                    size="sm"
+                    class="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    @click.stop="remove"
+                  >
+                    {{ _t('Delete') }}
+                  </ChoyButton>
                 </div>
               </div>
             </template>
-          </OOneToManyKanbanField>
+          </ChoyOneToManyKanbanField>
         </div>
       </div>
-    </el-tab-pane>
+    </ChoyTab>
   </Xpath>
 </template>
 
@@ -51,8 +78,14 @@ SPDX-License-Identifier: Apache-2.0
 import { defineComponent } from 'vue';
 import { Xpath } from '@/core/web';
 import PartnerFormView from '@/partner/web/views/PartnerFormView.vue';
-import { ElButton, ElTabPane, ElTag } from 'element-plus';
-import OOneToManyKanbanField from '@/web/web/components/field/OOneToManyKanbanField.vue';
+import {
+  ChoyBadge,
+  ChoyButton,
+  ChoyOneToManyField,
+  ChoyOneToManyKanbanField,
+  ChoyTab,
+  PARTNER_DETAIL_TAB_PANELS_XPATH,
+} from '@/web';
 import PartnerIdentifierFormView from '@/partner_commercial/web/views/PartnerIdentifierFormView.vue';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
@@ -66,10 +99,11 @@ export default defineComponent({
   extends: PartnerFormView,
   components: {
     Xpath,
-    ElButton,
-    ElTabPane,
-    ElTag,
-    OOneToManyKanbanField,
+    ChoyBadge,
+    ChoyButton,
+    ChoyTab,
+    ChoyOneToManyField,
+    ChoyOneToManyKanbanField,
     PartnerIdentifierFormView,
   },
   /**
@@ -129,6 +163,7 @@ export default defineComponent({
       hasAction,
       partnerIdentifierActions,
       PartnerIdentifierFormView,
+      PARTNER_DETAIL_TAB_PANELS_XPATH,
       defaultIdentifierRecord,
       canEditIdentifiers,
       resolveCountryLabel,
@@ -138,43 +173,3 @@ export default defineComponent({
 });
 </script>
 
-<style scoped>
-.pcmv-identifier-card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  height: 100%;
-  min-height: 0;
-}
-
-.pcmv-identifier-card__title-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
-
-.pcmv-identifier-card__title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-.pcmv-identifier-card__flags {
-  display: inline-flex;
-  gap: 6px;
-}
-
-.pcmv-identifier-card__meta,
-.pcmv-identifier-card__line {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-
-.pcmv-identifier-card__actions {
-  margin-top: auto;
-  padding-top: 4px;
-  display: inline-flex;
-  gap: 4px;
-}
-</style>

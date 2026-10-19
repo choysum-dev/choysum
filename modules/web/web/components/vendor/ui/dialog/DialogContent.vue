@@ -1,0 +1,37 @@
+<!--
+SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+SPDX-License-Identifier: Apache-2.0
+-->
+
+<script setup lang="ts">
+import { X } from 'lucide-vue-next';
+import { DialogClose, DialogContent, DialogPortal } from 'reka-ui';
+import { cn, type ClassValue } from '../../../../lib/utils';
+import DialogOverlay from './DialogOverlay.vue';
+
+defineProps<{ class?: ClassValue }>();
+</script>
+
+<template>
+  <DialogPortal>
+    <DialogOverlay />
+    <DialogContent
+      data-slot="dialog-content"
+      :class="
+        cn(
+          'bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg border border-border p-6 text-foreground shadow-lg duration-200',
+          'focus:outline-none',
+          $props.class,
+        )
+      "
+    >
+      <slot />
+      <DialogClose
+        class="absolute end-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        aria-label="Close"
+      >
+        <X class="size-4" />
+      </DialogClose>
+    </DialogContent>
+  </DialogPortal>
+</template>

@@ -11,11 +11,13 @@ import { waitForGrpcWebUnaryOk } from './grpcweb.ts';
  * - Login.vue `ensureAuthReady` / nprogress can still be settling when the runner
  *   fills and clicks, so the submit is ignored and the suite stays on
  *   `/web/login?redirect=...`.
+ * - ChoyPage `:loading` marks the form inert and shows `.choy-page__loading-mask`
+ *   while `authStore.login` runs; clicks during that window are ignored.
  * - A successful Login can navigate away before CDP fetches the response body
  *   (`bodyGone`), leaving `waitForResponse` hanging until timeout even though
  *   auth already landed on `/web/auth/users`.
  * - Under CI load the first submit may be ignored; re-click while still on login
- *   and the button is not loading instead of burning a full waitForResponse timeout.
+ *   and the button is idle instead of burning a full waitForResponse timeout.
  */
 export async function loginAsE2EAdmin(page: Page, baseURL: string): Promise<void> {
   const runOnce = async () => {
@@ -39,15 +41,15 @@ export async function loginAsE2EAdmin(page: Page, baseURL: string): Promise<void
     const username = page.getByPlaceholder(/username/i);
     await expect(username).toBeVisible({ timeout: 10_000 });
 
-    // Route guard / auth init briefly marks the document busy; the submit button
-    // also shows Element Plus loading while loginImpl awaits initInFlight.
+    // Route guard / auth init briefly marks the document busy; ChoyPage loading
+    // also disables the submit button and puts inert on the form body.
     await page
       .waitForFunction(
         () => {
           if (document.documentElement.classList.contains('nprogress-busy')) return false;
+          if (document.querySelector('.choy-page__loading-mask')) return false;
           const btn = document.querySelector('button[type="submit"]');
           if (!btn) return false;
-          if (btn.classList.contains('is-loading')) return false;
           return !('disabled' in btn && btn.disabled);
         },
         undefined,
@@ -111,11 +113,12 @@ export async function loginAsE2EAdmin(page: Page, baseURL: string): Promise<void
       const href = String(await page.url());
       if (!/\/web\/login/.test(href)) continue;
 
-      // First submit was ignored (auth init / nprogress). Re-click only when the
-      // button is idle so we do not stack parallel loginImpl calls mid-flight.
+      // First submit was ignored (auth init / nprogress / ChoyPage loading).
+      // Re-click only when the button is idle so we do not stack parallel loginImpl calls.
       const canRetry = await page.evaluate(() => {
+        if (document.querySelector('.choy-page__loading-mask')) return false;
         const btn = document.querySelector('button[type="submit"]');
-        if (!btn || btn.classList.contains('is-loading')) return false;
+        if (!btn) return false;
         return !('disabled' in btn && btn.disabled);
       });
       if (!canRetry) continue;

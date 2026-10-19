@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-// FormController: drives OFormView (display/edit/create)
+// FormController: drives FormView (display/edit/create)
 // VM: { mode, draft, original, loading, error }
 // Methods: beginDisplay/beginEdit/beginCreate/reset/validate/submit/delete/provideToChildren
 

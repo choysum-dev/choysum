@@ -3,51 +3,48 @@
 
 import 'vue-router';
 import type { RouteRecordRaw } from 'vue-router';
-import { defineRoute } from '@/core/web/resource';
-import { createTranslate } from '@/web/web/i18n';
-
-const { _lt } = createTranslate('web', { scope: 'web/route/routes' });
+import { resolveRootRedirect } from './resolveRootRedirect';
+import { resolveRuntimeDefaultLandPath } from './resolveRuntimeDefaultLandPath';
 
 /**
  * Static route configuration for the web shell.
+ * `/` sends guests to login and authenticated users to the default land path;
+ * catch-all still resolves via the land path (with a loop guard).
  */
 export const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    redirect: '/home',
     name: 'Root',
+    redirect: () => resolveRootRedirect(),
   },
 
   {
     path: '/',
-    component: () => import('../components/layout/OLayout.vue'),
-    name: 'Layout',
+    component: () => import('../components/layout/ChoyGuestShell.vue'),
+    name: 'GuestLayout',
     props: {
-      showSidebar: false,
       showHeader: true,
       showFooter: true,
     },
     children: [
-      defineRoute('web.route.home', {
-        sequence: 1,
-        title: _lt('Home'),
-        defaultRoles: ['base.user'],
-        path: 'home',
-        name: 'Home',
-        component: () => import('../pages/HomeView.vue'),
+      {
+        path: 'error/:code(\\d+)',
+        name: 'Error',
+        component: () => import('../pages/ErrorView.vue'),
         meta: {
-          requiresAuth: true,
-          keepAlive: true,
+          requiresAuth: false,
         },
-      }),
+      },
     ],
   },
 
   {
     path: '/',
-    component: () => import('../components/layout/OLayout.vue'),
+    component: () => import('../components/layout/ChoyAppShell.vue'),
     name: 'AppLayout',
     props: {
+      // Sidebar menu is rendered inside ChoyAppShell (useMenu); route children
+      // cannot fill named #aside slots via a plain router-view.
       showSidebar: true,
       showHeader: true,
       showFooter: true,
@@ -57,8 +54,15 @@ export const routes: RouteRecordRaw[] = [
 
   {
     path: '/:pathMatch(.*)*',
-    redirect: '/home',
     name: 'CatchAll',
+    redirect: (to) => {
+      const target = resolveRuntimeDefaultLandPath();
+      // Unregistered land paths rematch this catch-all; bail to Error instead of looping.
+      if (!target || target === to.path) {
+        return { name: 'Error', params: { code: '404' } };
+      }
+      return target;
+    },
   },
 ];
 

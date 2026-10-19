@@ -1411,7 +1411,7 @@ test('PermissionState: bootstrap sys admin gets UI wildcard from RoleUiResource 
   expect(globalUi.actions).toEqual(['*']);
 });
 
-test('PermissionState: bootstrap base.user gets home baseline menu', async () => {
+test('PermissionState: bootstrap base.user gets module board baseline menu', async () => {
   resetRequestContext();
   const c1 = { Id: uid('C1') };
 
@@ -1423,15 +1423,15 @@ test('PermissionState: bootstrap base.user gets home baseline menu', async () =>
       const userId = await createUser(c1.Id);
       const baseUserRoleId = await resolveRoleByCode('base.user');
 
-      // Production seeds these via web defineRoute/Menu defaultRoles=['base.user'].
+      // Production seeds these via meta defineRoute/Menu defaultRoles=['base.user'].
       // Auth BE skips SPA install, so mirror the catalog + grant here.
-      const homeMenuId = 'web.menu.home';
-      const homeRouteId = 'web.route.home';
-      await createUiResource({ resourceId: homeMenuId, type: 'MENU', module: 'web', requires: [] });
-      await createUiResource({ resourceId: homeRouteId, type: 'ROUTE', module: 'web', requires: [] });
-      await createMenuRouteRelation({ menuResourceId: homeMenuId, routeResourceId: homeRouteId });
-      await createRoleUiResourceGrant({ roleId: baseUserRoleId, resourceId: homeMenuId });
-      await createRoleUiResourceGrant({ roleId: baseUserRoleId, resourceId: homeRouteId });
+      const boardMenuId = 'meta.menu.module_board';
+      const boardRouteId = 'meta.route.module_board';
+      await createUiResource({ resourceId: boardMenuId, type: 'MENU', module: 'meta', requires: [] });
+      await createUiResource({ resourceId: boardRouteId, type: 'ROUTE', module: 'meta', requires: [] });
+      await createMenuRouteRelation({ menuResourceId: boardMenuId, routeResourceId: boardRouteId });
+      await createRoleUiResourceGrant({ roleId: baseUserRoleId, resourceId: boardMenuId });
+      await createRoleUiResourceGrant({ roleId: baseUserRoleId, resourceId: boardRouteId });
 
       await UserRole.Create(
         {
@@ -1454,8 +1454,8 @@ test('PermissionState: bootstrap base.user gets home baseline menu', async () =>
   );
 
   const companyUi = out.ps.byCompany[c1.Id]?.ui ?? {};
-  expect((companyUi.menus ?? []).includes('web.menu.home')).toBe(true);
-  expect((companyUi.routes ?? []).includes('web.route.home')).toBe(true);
+  expect((companyUi.menus ?? []).includes('meta.menu.module_board')).toBe(true);
+  expect((companyUi.routes ?? []).includes('meta.route.module_board')).toBe(true);
 });
 
 test('PermissionState: global role ui grants appear under specific company scope (fallback from *)', async () => {

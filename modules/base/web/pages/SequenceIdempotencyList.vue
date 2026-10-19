@@ -4,25 +4,24 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage
+  <ChoyPage
     :title="pageTitle"
     :store="sequenceIdempotencyStore"
-    action-import
-    action-export
-    :action-import-upload-hint="_t('Upload a UTF-8 CSV with columns IdempotencyKey, Count, DryRun, RangeStart, RangeEnd.')"
+    :action-import="true"
+    :action-export="true"
   >
     <SequenceIdempotencyListView />
-  </OPage>
+  </ChoyPage>
 </template>
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
 import { createStoreByModel } from '@/web/web/stores/registry';
-import OPage from '@/web/web/components/page/OPage.vue';
 import SequenceIdempotencyListView from '../views/SequenceIdempotencyListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
 import type SequenceIdempotency from '@/base/service/models/sequence_idempotency';
+import { ChoyPage } from '@/web';
 
 defineOptions({ name: 'SequenceIdempotencyListPage' });
 

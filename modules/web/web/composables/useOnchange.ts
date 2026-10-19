@@ -19,7 +19,7 @@ import { collectChangedPaths } from '@/core/utils/diff';
 import type { RelationType } from '@/core/utils/diff';
 import { deepClonePreserve as deepClone } from '@/core/utils/clone';
 import type { OnchangeResult } from '@/core/service/api/onchange';
-import type { ViewMode, ViewContainer } from '@/web/web/components/view/OViewScope.vue';
+import { VIEW_SCOPE_KEY, type ViewMode } from '@/web/web/components/view/viewScopeKeys';
 /* ============================= Type definitions ============================= */
 
 export interface OnchangeFlushPayload {
@@ -508,13 +508,12 @@ function createAutoOnchangeController(store: WebModelStore<any>, opts?: CreateOn
 
   // Pause in display mode and resume in edit/create mode while resetting tracked state.
   // Only inject when called from setup(); getOnchangeController is also used outside components.
-  const injectedViewMode = getCurrentInstance()
-    ? inject<Ref<ViewMode> | null>('view-mode', null as any)
-    : null;
+  const injectedScope = getCurrentInstance() ? inject(VIEW_SCOPE_KEY, null) : null;
+  const injectedViewMode = injectedScope?.mode ?? null;
   if (injectedViewMode) {
     watch(
       injectedViewMode,
-      mode => {
+      (mode: ViewMode) => {
         // Reset tracked state so initial detail-page values are not treated as changes.
         const r = root();
         baseline = r ? deepClone(r) : null;

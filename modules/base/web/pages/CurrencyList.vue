@@ -4,25 +4,24 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage
+  <ChoyPage
     :title="pageTitle"
     :store="currencyStore"
-    action-import
-    action-export
-    :action-import-upload-hint="_t('Upload a UTF-8 CSV with columns Name, Code, Symbol, DecimalDigits, Rounding, IsActive.')"
+    :action-import="true"
+    :action-export="true"
   >
     <CurrencyListView />
-  </OPage>
+  </ChoyPage>
 </template>
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
 import { createStoreByModel } from '@/web/web/stores/registry';
-import OPage from '@/web/web/components/page/OPage.vue';
 import CurrencyListView from '../views/CurrencyListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
 import type Currency from '@/base/service/models/currency';
+import { ChoyPage } from '@/web';
 
 defineOptions({ name: 'CurrencyListPage' });
 

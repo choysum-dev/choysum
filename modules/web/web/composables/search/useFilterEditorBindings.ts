@@ -18,7 +18,7 @@ export type FilterEditorBindingsDeps = {
   createStoreByModel?: typeof defaultCreateStoreByModel;
 };
 
-/** Shared across nested OSearchFilterGroup instances so relation stores are created once. */
+/** Shared across nested SearchFilterGroup instances so relation stores are created once. */
 export const FilterEditorBindingsKey: InjectionKey<FilterEditorBindings> = Symbol('FilterEditorBindings');
 
 export function useInjectedFilterEditorBindings(store: WebModelStore<any>): FilterEditorBindings {

@@ -5,7 +5,7 @@ import { computed } from 'vue';
 import { createI18n } from 'vue-i18n';
 import { createTermReference } from '@/core/service/i18n';
 import { projectTerminologyMessages } from '../i18n/terminology';
-import { resolveDocumentTitle } from './documentTitle';
+import { resolveDocumentTitle, resolveRoutePageTitle } from './documentTitle';
 import { createAppRouter, defaultAppName } from './index';
 
 describe('defaultAppName', () => {
@@ -33,12 +33,24 @@ describe('createAppRouter', () => {
   });
 });
 
+describe('resolveRoutePageTitle', () => {
+  test('returns the bare page title without the app suffix', () => {
+    expect(
+      resolveRoutePageTitle({
+        path: '/base/companies/1',
+        meta: { pageTitle: 'Company Details' },
+      } as any)
+    ).toBe('Company Details');
+    expect(resolveRoutePageTitle(null)).toBe('');
+  });
+});
+
 describe('resolveDocumentTitle', () => {
   test('formats a plain pageTitle with the app name', () => {
     expect(
       resolveDocumentTitle(
         {
-          path: '/home',
+          path: '/partner',
           meta: { pageTitle: 'Home' },
         } as any,
         undefined,
@@ -111,7 +123,7 @@ describe('resolveDocumentTitle', () => {
     });
 
     const route = {
-      path: '/home',
+      path: '/partner',
       meta: {
         pageTitle: 'Users',
         pageTitleText: createTermReference('base', 'Users', { scope: 'base.route.users' }),

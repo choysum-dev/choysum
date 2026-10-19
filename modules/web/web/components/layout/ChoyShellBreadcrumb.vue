@@ -1,0 +1,77 @@
+<!--
+SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+SPDX-License-Identifier: Apache-2.0
+-->
+
+<template>
+  <ChoyBreadcrumb
+    v-if="items.length"
+    :items="items"
+    class="flex min-h-control min-w-0 flex-1 items-center [&_[data-slot=breadcrumb-list]]:leading-none"
+    data-testid="choy-shell-breadcrumb"
+  />
+</template>
+
+<script setup lang="ts">
+import { computed, type ComputedRef } from 'vue'
+import { useI18n } from 'vue-i18n'
+import ChoyBreadcrumb, { type ChoyBreadcrumbItem } from '../view/ChoyBreadcrumb.vue'
+import { translateTerm } from '../../i18n'
+import { useBreadcrumbStore } from '../../stores/breadcrumbStore'
+import { useMenu } from '../../composables/useMenu'
+
+/**
+ * Product-shell header trail from breadcrumbStore (L1 app + L2 leaf + pages).
+ * L1 app crumbs call navigateTo(app) for app-home; menu/page crumbs use RouterLink.
+ */
+defineOptions({ name: 'ChoyShellBreadcrumb' })
+
+let items: ComputedRef<ChoyBreadcrumbItem[]> = computed(() => [])
+
+try {
+  const store = useBreadcrumbStore()
+  let composer: { t: (...args: any[]) => unknown } | null = null
+  try {
+    composer = useI18n({ useScope: 'global' }) as any
+  } catch {
+    composer = null
+  }
+
+  let menuApi: ReturnType<typeof useMenu> | null = null
+  try {
+    menuApi = useMenu()
+  } catch {
+    menuApi = null
+  }
+
+  function onAppSelect(menuId: string | undefined) {
+    if (!menuId || !menuApi) return
+    void menuApi.navigateTo(menuId)
+  }
+
+  items = computed(() => {
+    const stack = store.breadcrumbStack || []
+    return stack.map((entry, index) => {
+      const label = composer
+        ? String(translateTerm(composer, entry.titleText, entry.title) || entry.title || '')
+        : String(entry.title || '')
+      const isLast = index === stack.length - 1
+      if (isLast || !entry.clickable) {
+        return { label }
+      }
+      if (entry.kind === 'app') {
+        return {
+          label,
+          onSelect: () => onAppSelect(entry.menuId),
+        }
+      }
+      return {
+        label,
+        to: entry.path || undefined,
+      }
+    })
+  })
+} catch {
+  items = computed(() => [])
+}
+</script>

@@ -51,7 +51,7 @@ async function runRegisterOnce(baseURL: string): Promise<void> {
 
   await page.evaluate(() => {
     const input = document.querySelector(
-      'label.el-checkbox input.el-checkbox__original, .el-checkbox input[type="checkbox"]'
+      '[data-testid="register-terms"] input[type="checkbox"]'
     ) as HTMLInputElement | null;
     if (!input) throw new Error('register: terms checkbox not found');
     if (!input.checked) input.click();
@@ -61,9 +61,9 @@ async function runRegisterOnce(baseURL: string): Promise<void> {
       input.dispatchEvent(new Event('change', { bubbles: true }));
     }
   });
-  await expect(
-    page.locator('label.el-checkbox input.el-checkbox__original, .el-checkbox input[type="checkbox"]')
-  ).toBeChecked({ timeout: 10_000 });
+  await expect(page.locator('[data-testid="register-terms"] input[type="checkbox"]')).toBeChecked({
+    timeout: 10_000,
+  });
 
   const submit = page.getByRole('button', { name: /Create Account|创建账户/ });
   await expect(submit).toBeEnabled({ timeout: 10_000 });

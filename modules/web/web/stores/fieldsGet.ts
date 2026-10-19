@@ -12,7 +12,7 @@ import type { WebFieldMetadata } from '@/web/web/stores/modelStore';
 
 /**
  * Shared attribute list for field-component ensure calls (selection + ACL overlay).
- * Keep identical across OFieldBase / OSelectionField so cache keys dedupe (P5).
+ * Keep identical across FieldBase / SelectionField so cache keys dedupe (P5).
  */
 export const FIELD_PRESENTATION_FIELDS_GET_ATTRS = [
   'type',

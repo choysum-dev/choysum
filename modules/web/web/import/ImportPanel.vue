@@ -4,107 +4,95 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <el-dialog
-    v-model="visible"
-    :title="title"
-    width="780px"
-    destroy-on-close
-    :close-on-click-modal="!busy"
-    :close-on-press-escape="!busy"
-    :before-close="handleBeforeClose"
-    @closed="resetState"
-    @open="loadCatalog"
-  >
-    <div class="import-panel">
-      <el-steps :active="step" finish-status="success" align-center>
-        <el-step :title="uploadStepTitle" />
-        <el-step :title="previewStepTitle" />
-        <el-step :title="importStepTitle" />
-      </el-steps>
+  <ChoyDialog v-model:open="visible">
+    <ChoyDialogContent class="import-panel-dialog" @open-auto-focus.prevent>
+      <ChoyDialogTitle>{{ title }}</ChoyDialogTitle>
+      <ol class="import-panel-steps">
+        <li :class="{ active: step === 0 }">{{ uploadStepTitle }}</li>
+        <li :class="{ active: step === 1 }">{{ previewStepTitle }}</li>
+        <li :class="{ active: step === 2 }">{{ importStepTitle }}</li>
+      </ol>
 
-      <section v-if="step === 0" class="import-panel-section">
-        <p class="import-panel-hint">{{ resolvedUploadHint }}</p>
-        <p v-if="defaultFieldsHint" class="import-panel-hint" data-test="import-default-fields">
-          {{ defaultFieldsLabel }}: {{ defaultFieldsHint }}
-        </p>
-        <el-alert v-if="catalogError" type="warning" :title="catalogError" show-icon :closable="false" class="import-panel-alert" />
-        <el-upload drag accept=".csv,text/csv" :auto-upload="false" :limit="1" :on-change="onFileSelected" :on-remove="onFileRemoved">
-          <div class="el-upload__text">{{ uploadDropText }}</div>
-        </el-upload>
+      <section v-if="step === 0" class="min-h-[180px]">
+        <p class="mb-3 text-muted-foreground">{{ resolvedUploadHint }}</p>
+        <p v-if="defaultFieldsHint" class="mb-3 text-muted-foreground" data-test="import-default-fields">{{ defaultFieldsHint }}</p>
+        <div v-if="catalogError" role="alert" class="mt-3">{{ catalogError }}</div>
+        <label class="block">
+          <input type="file" accept=".csv,text/csv" @change="onNativeFile" />
+          <div>{{ uploadDropText }}</div>
+        </label>
       </section>
 
-      <section v-else-if="step === 1" class="import-panel-section">
-        <p class="import-panel-hint">{{ mappingHint }}</p>
-        <div v-if="mappingRows.length" class="import-mapping" data-test="import-mapping-table">
-          <div class="import-mapping__row import-mapping__row--head">
-            <div>{{ csvColumnLabel }}</div>
-            <div>{{ importFieldLabel }}</div>
-          </div>
-          <div v-for="(row, idx) in mappingRows" :key="`${row.header}-${idx}`" class="import-mapping__row">
-            <div class="import-mapping__header">{{ row.header }}</div>
-            <el-select
-              v-model="row.fieldPath"
-              filterable
-              clearable
-              :placeholder="sameAsHeaderLabel"
-              class="import-mapping__select"
-              @change="onMappingChange"
-            >
-              <el-option
-                v-for="opt in catalogOptions"
-                :key="opt.path"
-                :label="opt.label"
-                :value="opt.path"
-              />
-            </el-select>
-          </div>
+      <section v-else-if="step === 1" class="min-h-[180px]">
+        <p class="mb-3 text-muted-foreground">{{ mappingHint }}</p>
+        <div v-for="row in mappingRows" :key="row.header" class="mb-2 grid grid-cols-[minmax(120px,1fr)_minmax(180px,1.4fr)] items-center gap-2">
+          <span>{{ row.header }}</span>
+          <select v-model="row.fieldPath" @change="onMappingChange">
+            <option value="">{{ sameAsHeaderLabel }}</option>
+            <option v-for="f in catalogOptions" :key="f.path" :value="f.path">{{ f.label }}</option>
+          </select>
         </div>
-        <el-alert v-if="previewReport" :type="previewAlertType" :closable="false" show-icon class="import-panel-alert">
-          <template #title>{{ previewSummary }}</template>
-        </el-alert>
-        <el-table v-if="previewMessages.length" :data="previewMessages" size="small" max-height="200" class="import-panel-table">
-          <el-table-column prop="row" :label="rowLabel" width="72" />
-          <el-table-column prop="field" :label="fieldLabel" width="120" />
-          <el-table-column prop="code" :label="codeLabel" width="140" />
-          <el-table-column prop="text" :label="messageLabel" min-width="220" />
-        </el-table>
+        <div v-if="previewReport" role="alert" class="mt-3">{{ previewSummary }}</div>
+        <table v-if="previewMessages.length" class="mt-3">
+          <thead>
+            <tr>
+              <th>{{ rowLabel }}</th>
+              <th>{{ fieldLabel }}</th>
+              <th>{{ codeLabel }}</th>
+              <th>{{ messageLabel }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(msg, i) in previewMessages" :key="i">
+              <td>{{ msg.row }}</td>
+              <td>{{ msg.field }}</td>
+              <td>{{ msg.code }}</td>
+              <td>{{ msg.text }}</td>
+            </tr>
+          </tbody>
+        </table>
       </section>
 
-      <section v-else class="import-panel-section">
-        <el-result v-if="importDone" icon="success" :title="importSuccessTitle" :sub-title="importSuccessSubtitle" />
-        <el-alert v-else-if="importError" type="error" :title="importError" show-icon :closable="false" />
+      <section v-else class="min-h-[180px]">
+        <div v-if="importDone" class="text-success">
+          <strong>{{ importSuccessTitle }}</strong>
+          <p>{{ importSuccessSubtitle }}</p>
+        </div>
+        <div v-else-if="importError" role="alert" class="mt-3">{{ importError }}</div>
       </section>
-    </div>
 
-    <template #footer>
-      <el-button :disabled="busy" @click="visible = false">{{ cancelLabel }}</el-button>
-      <el-button
-        v-if="step === 0 || (step === 1 && !canImport && !!sourceRef)"
-        type="primary"
-        :loading="busy"
-        :disabled="step === 0 ? !selectedFile : busy"
-        @click="uploadAndPreview"
-      >
-        {{ previewActionLabel }}
-      </el-button>
-      <el-button v-else-if="step === 1" type="primary" :loading="busy" :disabled="!canImport" @click="commitImport">
-        {{ importActionLabel }}
-      </el-button>
-      <el-button v-else-if="importDone" type="primary" @click="finish">{{ doneLabel }}</el-button>
-    </template>
-  </el-dialog>
+      <div class="mt-4 flex justify-end gap-2">
+        <ChoyButton size="sm" variant="outline" :disabled="busy" @click="visible = false">{{ cancelLabel }}</ChoyButton>
+        <ChoyButton
+          v-if="step === 0"
+          size="sm"
+          variant="default"
+          :disabled="!selectedFile || busy"
+          @click="uploadAndPreview"
+        >
+          {{ previewActionLabel }}
+        </ChoyButton>
+        <ChoyButton v-else-if="step === 1" size="sm" variant="default" :disabled="!canImport || busy" @click="commitImport">
+          {{ importActionLabel }}
+        </ChoyButton>
+        <ChoyButton v-else-if="importDone" size="sm" variant="default" @click="finish">{{ doneLabel }}</ChoyButton>
+      </div>
+    </ChoyDialogContent>
+  </ChoyDialog>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import type { UploadFile } from 'element-plus';
+import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
+import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+type UploadFile = { raw?: File | null; name?: string };
 import {
   describeImportFields,
   parseHeaders,
   previewImport,
   runImport,
   type ImportFieldNode,
-  type ImportReport,
+  type ImportReport
 } from '@/core/web/import';
 import { uploadImportCsv } from '@/core/web/import/upload_csv';
 import { createTranslate } from '@/web/web/i18n';
@@ -245,6 +233,16 @@ function onFileSelected(uploadFile: UploadFile) {
   clearUploadDerivedState();
 }
 
+
+function onNativeFile(ev: Event) {
+  const input = ev.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) {
+    onFileRemoved();
+    return;
+  }
+  onFileSelected({ raw: file, name: file.name } as UploadFile);
+}
 function onFileRemoved() {
   selectedFile.value = null;
   if (busy.value) {
@@ -446,51 +444,3 @@ watch(visible, value => {
 });
 </script>
 
-<style scoped>
-.import-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin-top: 8px;
-}
-
-.import-panel-section {
-  min-height: 180px;
-}
-
-.import-panel-hint {
-  margin: 0 0 12px;
-  color: var(--el-text-color-secondary);
-}
-
-.import-panel-table {
-  margin-top: 12px;
-}
-
-.import-panel-alert {
-  margin-top: 12px;
-}
-
-.import-mapping {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.import-mapping__row {
-  display: grid;
-  grid-template-columns: minmax(120px, 1fr) minmax(180px, 1.4fr);
-  gap: 8px;
-  align-items: center;
-}
-
-.import-mapping__header {
-  font-size: 13px;
-  word-break: break-all;
-}
-
-.import-mapping__select {
-  width: 100%;
-}
-</style>

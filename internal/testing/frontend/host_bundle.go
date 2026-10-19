@@ -37,8 +37,9 @@ type VueHostBundleOptions struct {
 	// WithVuePlugin enables vueplugin (needed for .vue entries/imports).
 	WithVuePlugin bool
 	// ExtraStubAliases maps import paths (package names or absolute file paths) to stub files.
-	// Default FE unit stubs (element-plus, icons, vue-router, path stubs, auth store) always apply.
-	// OPage.vue uses a dedicated OPage.vue$ rewrite (skips OPage*.test.ts importers) plus path stubs.
+	// Default FE unit stubs (vue-router, page-mount, tiptap, path stubs, auth store) always apply.
+	// Page.vue / legacy OPage.vue use a dedicated rewrite (skips Page*.test.ts / OPage*.test.ts
+	// importers) plus path stubs so domain page mounts stay light.
 	ExtraStubAliases map[string]string
 	// DisableDefaultFEStubs skips built-in package/path stubs (host unit tests only).
 	DisableDefaultFEStubs bool
@@ -87,8 +88,9 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 	modulesDir := filepath.Join(repoRoot, "modules")
 	stubDir := filepath.Join(repoRoot, "internal", "testing", "frontend", "testdata", "stubs")
 
-	// Keep path aliases for @; vue is pinned via WithBareImportPins (bare +
-	// esm.sh /vue@^… peer paths from pinia/vue-i18n) so one Vue instance is used.
+	// Keep path aliases for @; vue (+ exact peers from modules/web) are pinned
+	// via WithBareImportPins so esm.sh does not float to incompatible majors
+	// (e.g. @tanstack/vue-table v9 renaming useVueTable).
 	alias := map[string]string{
 		"@": modulesDir,
 	}
@@ -114,8 +116,6 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 	}
 	if !opts.DisableDefaultFEStubs {
 		stubs := feUnitStubPaths{
-			ElementPlus:         filepath.Join(stubDir, "element_plus.js"),
-			Icons:               filepath.Join(stubDir, "element_plus_icons.js"),
 			Router:              filepath.Join(stubDir, "vue_router.js"),
 			PageMount:           filepath.Join(stubDir, "page_mount.js"),
 			OPage:               filepath.Join(stubDir, "OPage.stub.vue"),
@@ -127,42 +127,50 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 			Scope:               filepath.Join(stubDir, "store_scope_manager.js"),
 			Permission:          filepath.Join(stubDir, "use_permission.js"),
 			PageComposable:      filepath.Join(stubDir, "page_composables.js"),
-			Vicons:              filepath.Join(stubDir, "vicons_material.js"),
-			VueEcharts:          filepath.Join(stubDir, "vue_echarts.js"),
-			Vuedraggable:        filepath.Join(stubDir, "vuedraggable.js"),
-			Echarts:             filepath.Join(stubDir, "echarts.js"),
 			TipTapVue3:          filepath.Join(stubDir, "tiptap_vue3.js"),
 			TipTapStarterKit:    filepath.Join(stubDir, "tiptap_starter_kit.js"),
 			TipTapExtensionLink: filepath.Join(stubDir, "tiptap_extension_link.js"),
 			DOMPurify:           filepath.Join(stubDir, "dompurify.js"),
+			UnovisVue:           filepath.Join(stubDir, "unovis_vue.js"),
+			UnovisTs:            filepath.Join(stubDir, "unovis_ts.js"),
+			RekaUI:              filepath.Join(stubDir, "reka_ui.js"),
+			LucideVueNext:       filepath.Join(stubDir, "lucide_vue_next.js"),
+			VueSonner:           filepath.Join(stubDir, "vue_sonner.js"),
 		}
 		plugins = append(plugins, api.Plugin{
 			Name: "choysum-fe-unit-package-stubs",
 			Setup: func(build api.PluginBuild) {
-				build.OnResolve(api.OnResolveOptions{Filter: `^(element-plus|@element-plus/icons-vue|@vicons/material|vue-router|@choysum/page-mount|vue-echarts|vuedraggable|echarts(/.*)?|@tiptap/vue-3|@tiptap/starter-kit|@tiptap/extension-link|dompurify)$`},
+				build.OnResolve(api.OnResolveOptions{Filter: `^(vue-router|@choysum/page-mount|@tiptap/vue-3|@tiptap/starter-kit|@tiptap/extension-link|dompurify|@unovis/vue|@unovis/ts|reka-ui|lucide-vue-next|vue-sonner)$`},
 					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
-						// Filter only admits known package names; lookup always succeeds.
-						path, _ := feUnitPackageStubPath(args.Path, stubs)
-						return api.OnResolveResult{Path: path, Namespace: "file"}, nil
+						// Filter and feUnitPackageStubPath must stay in sync; if they
+						// drifted, fall through instead of resolving to an empty path.
+						if res, ok := feUnitPackageStubResolve(args.Path, stubs); ok {
+							return res, nil
+						}
+						return api.OnResolveResult{}, nil
 					})
 			},
 		})
 		plugins = append(plugins, api.Plugin{
-			Name: "choysum-fe-unit-opage-stub",
+			Name: "choysum-fe-unit-page-stub",
 			Setup: func(build api.PluginBuild) {
-				// Blanket OPage.vue$ rewrite for product pages (path-alias resolves often
-				// leave Importer empty, so feUnitPathStubPath alone is not enough).
-				// Skip when a web OPage unit test imports the real SUT.
-				build.OnResolve(api.OnResolveOptions{Filter: `OPage\.vue$`},
+				// Blanket Page.vue / legacy OPage.vue rewrite for product pages (path-alias
+				// resolves often leave Importer empty, so feUnitPathStubPath alone is not
+				// enough). Does not match ChoyPage.vue. Skip when a web Page unit test
+				// imports the real SUT.
+				build.OnResolve(api.OnResolveOptions{Filter: `(?:^|/)(?:OPage|Page)\.vue$`},
 					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
 						importer := filepath.ToSlash(args.Importer)
-						// Match feUnitPathStubPath: web component tests/SFCs keep real OPage.
+						// Match feUnitPathStubPath: web component tests/SFCs keep real Page.
 						isWebComponentUnit := strings.Contains(importer, "/web/web/components/") &&
 							(strings.Contains(importer, ".test.") || strings.Contains(importer, ".spec.") ||
 								strings.HasSuffix(importer, ".vue"))
+						base := filepath.Base(importer)
 						if isWebComponentUnit ||
-							strings.Contains(importer, "OPage.mapping.test.") ||
-							strings.Contains(importer, "OPage.test.") {
+							strings.HasPrefix(base, "Page.mapping.test.") ||
+							strings.HasPrefix(base, "Page.test.") ||
+							strings.HasPrefix(base, "OPage.mapping.test.") ||
+							strings.HasPrefix(base, "OPage.test.") {
 							return api.OnResolveResult{}, nil
 						}
 						return api.OnResolveResult{Path: stubs.OPage, Namespace: "file"}, nil
@@ -172,11 +180,16 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 		plugins = append(plugins, api.Plugin{
 			Name: "choysum-fe-unit-child-view-stub",
 			Setup: func(build api.PluginBuild) {
-				// Same Importer-empty problem as OPage: stub nested Form/List/Kanban for
+				// Same Importer-empty problem as Page: stub nested Form/List/Kanban for
 				// product page/view mounts. Skip when a FE unit test imports the *View SUT,
 				// or when web/web/components code is the importer (real child mounts).
 				build.OnResolve(api.OnResolveOptions{Filter: `(FormView|ListView|KanbanView)\.vue$`},
 					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
+						path := filepath.ToSlash(args.Path)
+						// Keep the kit FormView SFC so native submit and field rules run.
+						if strings.HasSuffix(path, "ChoyFormView.vue") {
+							return api.OnResolveResult{}, nil
+						}
 						importer := filepath.ToSlash(args.Importer)
 						if strings.Contains(importer, "/web/web/components/") ||
 							strings.HasSuffix(importer, ".test.ts") ||
@@ -206,13 +219,15 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 			},
 		})
 	}
+	barePins, pinErr := vueHostBareImportPins(repoRoot)
+	if pinErr != nil {
+		return nil, pinErr
+	}
 	plugins = append(plugins, esmresolver.New(
 		esmresolver.WithCacheDir(cacheDir),
 		esmresolver.WithTarget("es2020"),
 		esmresolver.WithModulePath(repoRoot),
-		esmresolver.WithBareImportPins(map[string]string{
-			"vue": choysummount.VuePackageVersion,
-		}),
+		esmresolver.WithBareImportPins(barePins),
 	).Plugin())
 	if opts.WithVuePlugin {
 		if opts.JsExecutor == nil {
@@ -308,4 +323,51 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 		out.Warnings = append(out.Warnings, w.Text)
 	}
 	return out, nil
+}
+
+// feUnitPackageStubResolve maps a bare package import to its FE unit stub path.
+// ok is false when the path is unknown so the resolver can fall through.
+func feUnitPackageStubResolve(importPath string, stubs feUnitStubPaths) (api.OnResolveResult, bool) {
+	path, ok := feUnitPackageStubPath(importPath, stubs)
+	if !ok {
+		return api.OnResolveResult{}, false
+	}
+	return api.OnResolveResult{Path: path, Namespace: "file"}, true
+}
+
+// vueHostBareImportPins merges exact versions from modules/core then
+// modules/web/package.json with a single Vue instance pin. Exact "vue" in the
+// web package.json is the SSOT; generated VuePackageVersion is the fallback.
+func vueHostBareImportPins(repoRoot string) (map[string]string, error) {
+	webPins, err := esmresolver.ExactPinsFromPackageJSON(filepath.Join(repoRoot, "modules", "web"))
+	if err != nil {
+		return nil, xfmt.Errorf("vue host bundle: exact pins from modules/web: %w", err)
+	}
+	vueVer := choysummount.VuePackageVersion
+	if v := webPins["vue"]; v != "" {
+		if !choysummount.IsExactVuePin(v) {
+			return nil, xfmt.Errorf("vue host bundle: modules/web exact vue %q is not a valid exact pin", v)
+		}
+		vueVer = v
+	} else if _, statErr := os.Stat(filepath.Join(repoRoot, "modules", "web", "package.json")); statErr == nil {
+		return nil, xfmt.Errorf("vue host bundle: modules/web/package.json has no exact vue pin")
+	}
+	pins := choysummount.VueBareImportPinsFor(vueVer)
+	corePins, coreErr := esmresolver.ExactPinsFromPackageJSON(filepath.Join(repoRoot, "modules", "core"))
+	if coreErr != nil {
+		return nil, xfmt.Errorf("vue host bundle: exact pins from modules/core: %w", coreErr)
+	}
+	for name, ver := range corePins {
+		if choysummount.IsHostVueRuntimePackage(name) {
+			continue
+		}
+		pins[name] = ver
+	}
+	for name, ver := range webPins {
+		if choysummount.IsHostVueRuntimePackage(name) {
+			continue
+		}
+		pins[name] = ver
+	}
+	return pins, nil
 }

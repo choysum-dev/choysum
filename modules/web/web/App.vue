@@ -4,27 +4,18 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <el-config-provider :locale="i18nStore.currentLocale.elementLocale" :size="componentSize">
+  <div class="choy-app h-full w-full overflow-hidden bg-background text-foreground">
     <router-view />
-  </el-config-provider>
+    <Toaster />
+    <ChoyConfirmHost />
+  </div>
 </template>
 
 <script setup lang="ts">
-import { useI18nStore } from './stores';
-import { ref } from 'vue';
-import { ElConfigProvider } from 'element-plus';
-import type { ComponentSize } from 'element-plus';
-
-const i18nStore = useI18nStore();
-const componentSize = ref<ComponentSize>('default');
+/**
+ * Root host for the web SPA. Theme class / density live on documentElement
+ * (see applyChoyThemePreference from setupApp).
+ */
+import Toaster from './components/vendor/ui/sonner/Sonner.vue';
+import ChoyConfirmHost from './components/layout/ChoyConfirmHost.vue';
 </script>
-
-<style lang="scss" scoped>
-.el-config-provider {
-  min-height: 100vh;
-  width: 100%;
-  color: var(--el-text-color-primary);
-  font-family: var(--el-font-family);
-  font-size: var(--el-font-size-base);
-}
-</style>

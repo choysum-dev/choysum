@@ -4,96 +4,169 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage :loading="loading" class="login-page-container">
-    <el-card class="login-card" shadow="hover">
-      <template #header>
-        <div class="card-header">
-          <h3>{{ _t('User Login') }}</h3>
-        </div>
-      </template>
+  <ChoyPage :loading="loading" fill-height class="flex min-h-0 w-full flex-1 flex-col">
+    <AuthPanel>
+      <ChoyCard class="login-card w-full">
+        <template #header>
+          <h3 class="font-semibold leading-none">{{ _t('User Login') }}</h3>
+          <div
+            v-if="error"
+            class="login-error flex items-start justify-between gap-2 text-sm text-destructive"
+            role="alert"
+          >
+            <span class="min-w-0 leading-5">{{ error }}</span>
+            <button
+              type="button"
+              class="inline-flex size-5 shrink-0 items-center justify-center rounded-sm border-0 bg-transparent p-0 text-destructive/70 appearance-none shadow-none outline-none hover:text-destructive focus-visible:ring-2 focus-visible:ring-destructive/40"
+              :aria-label="_t('Close')"
+              @click="error = ''"
+            >
+              <X class="size-3.5" />
+            </button>
+          </div>
+          <p v-else class="text-sm text-foreground/60">
+            {{ _t('Enter your username and password to continue') }}
+          </p>
+        </template>
+        <ChoyFormView
+          :store="formStore"
+          view-mode="create"
+          embedded
+          :show-header="false"
+          :show-actions="false"
+          :show-messages="false"
+          :resolve-record-id-from-route="false"
+          :initial-values="loginInitialValues"
+          :submit-handler="onLoginSubmit"
+        >
+          <template #default="{ formData }">
+            <AuthPageErrorClear
+              :username="formData.Username"
+              :password="formData.Password"
+              :has-error="!!error"
+              @clear="error = ''"
+            />
+            <ChoyFieldGroup class="login-fields" :style="{ gap: '0' }">
+              <div class="login-username">
+                <ChoyVarcharField
+                  :store="formStore"
+                  prop="Username"
+                  :label="_t('Username')"
+                  :placeholder="_t('Enter username')"
+                  autocomplete="username"
+                  name="username"
+                  id="login-username"
+                  buffer-strategy="live"
+                  :nullable="false"
+                  :show-word-limit="false"
+                  show-inline-error
+                  :rules="usernameRules"
+                />
+              </div>
+              <div class="login-password">
+                <ChoyVarcharField
+                  :store="formStore"
+                  prop="Password"
+                  :label="_t('Password')"
+                  type="password"
+                  :placeholder="_t('Enter password')"
+                  autocomplete="current-password"
+                  name="password"
+                  id="login-password"
+                  buffer-strategy="live"
+                  :nullable="false"
+                  :show-word-limit="false"
+                  show-inline-error
+                  :rules="passwordRules"
+                />
+              </div>
+              <ChoyBooleanField
+                class="login-options"
+                :store="formStore"
+                prop="RememberMe"
+                widget="checkbox"
+                :label="''"
+                :checkbox-label="_t('Remember me')"
+                render-mode="inline"
+                buffer-strategy="live"
+                show-inline-error
+              />
 
-      <transition name="fade">
-        <el-alert v-if="error" :title="error" type="error" :closable="true" @close="error = ''" />
-      </transition>
-
-      <el-form ref="loginForm" :model="form" :rules="rules" label-position="top" @keydown="handleKeyDown" @submit.prevent="handleLogin">
-        <el-form-item prop="username" :label="_t('Username')">
-          <el-input v-model="form.username" :placeholder="_t('Enter username')" :prefix-icon="User" autocomplete="username" />
-        </el-form-item>
-
-        <el-form-item prop="password" :label="_t('Password')">
-          <el-input v-model="form.password" :placeholder="_t('Enter password')" :prefix-icon="Lock" type="password" autocomplete="current-password" show-password />
-        </el-form-item>
-
-        <div class="login-options">
-          <el-checkbox v-model="form.rememberMe">{{ _t('Remember me') }}</el-checkbox>
-        </div>
-
-        <el-form-item>
-          <el-button type="primary" native-type="submit" :loading="loading" class="submit-button">{{ _t('Log In') }}</el-button>
-        </el-form-item>
-
-        <div v-if="showRegisterLink" class="register-link">
-          {{ _t("Don't have an account?") }}
-          <router-link to="/register">{{ _t('Register now') }}</router-link>
-        </div>
-      </el-form>
-    </el-card>
-  </OPage>
+              <ChoyField>
+                <ChoyButton type="submit" class="submit-button w-full" :disabled="loading">
+                  {{ loading ? _t('Log In') + '…' : _t('Log In') }}
+                </ChoyButton>
+                <ChoyFieldDescription v-if="showRegisterLink" class="text-center">
+                  {{ _t("Don't have an account?") }}
+                  <router-link to="/register" class="text-primary hover:underline">{{
+                    _t('Sign up now')
+                  }}</router-link>
+                </ChoyFieldDescription>
+              </ChoyField>
+            </ChoyFieldGroup>
+          </template>
+        </ChoyFormView>
+      </ChoyCard>
+    </AuthPanel>
+  </ChoyPage>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
+import { X } from 'lucide-vue-next';
 import { useAuthStore } from '../stores/auth';
-import { ChoysumError } from '../error';
-import OPage from '@/web/web/components/page/OPage.vue';
-import { ElForm, ElFormItem, ElInput, ElButton, ElCheckbox, ElAlert, ElCard } from 'element-plus';
-import { User, Lock } from '@element-plus/icons-vue';
-import type { FormRules } from 'element-plus';
+import AuthPanel from '../components/AuthPanel.vue';
+import AuthPageErrorClear from './AuthPageErrorClear.vue';
+import {
+  ChoyPage,
+  ChoyCard,
+  ChoyButton,
+  ChoyField,
+  ChoyFieldDescription,
+  ChoyFieldGroup,
+  ChoyFormView,
+  ChoyVarcharField,
+  ChoyBooleanField,
+  createLocalFormStore,
+} from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { runLoginAuthReady } from './login_auth_ready';
+import {
+  loginPasswordRules,
+  loginUsernameRules,
+  resolveLoginRedirect,
+  runHandledAuthSubmit,
+  runLoginSubmit,
+} from './login_form';
 
 const { _t } = createTranslate('auth', { scope: 'web/pages/Login' });
-
-/**
- * Form model for the login page.
- */
-interface LoginFormData {
-  username: string;
-  password: string;
-  rememberMe: boolean;
-}
 
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 const { loading, isAuthenticated } = storeToRefs(authStore);
 
-const loginForm = ref();
-const form = reactive<LoginFormData>({
-  username: '',
-  password: '',
-  rememberMe: true,
+const loginInitialValues = {
+  Username: '',
+  Password: '',
+  RememberMe: true,
+};
+
+const formStore = createLocalFormStore({
+  fields: [
+    { name: 'Username', label: 'Username', type: 'varchar' },
+    { name: 'Password', label: 'Password', type: 'varchar' },
+    { name: 'RememberMe', label: 'Remember me', type: 'boolean' },
+  ],
+  initialValues: loginInitialValues,
+  storeId: 'auth.login',
 });
 
-const rules = computed<FormRules<LoginFormData>>(() => ({
-  username: [
-    {
-      required: true,
-      message: _t('Enter username'),
-      trigger: 'blur',
-    },
-  ],
-  password: [
-    {
-      required: true,
-      message: _t('Enter password'),
-      trigger: 'blur',
-    },
-  ],
-}));
+// Rebuild rules when locale changes so inline errors stay translated.
+const usernameRules = computed(() => loginUsernameRules(_t));
+const passwordRules = computed(() => loginPasswordRules(_t));
 
 const error = ref('');
 const showRegisterLink = computed(() => import.meta.env.CHOYSUM_ENABLE_REGISTRATION !== false);
@@ -102,13 +175,14 @@ const showRegisterLink = computed(() => import.meta.env.CHOYSUM_ENABLE_REGISTRAT
  * Redirect the user to the requested destination after login.
  */
 function handleRedirect() {
-  const redirect = route.query.redirect?.toString() || '/';
-  router.replace(redirect);
+  router.replace(resolveLoginRedirect(route.query.redirect?.toString()));
+}
+
+function setPageError(message: string) {
+  error.value = message;
 }
 
 onMounted(async () => {
-  // Ensure auth initialization runs so stale tokens (e.g. from a previous
-  // database reset) are cleared before the user submits the login form.
   await runLoginAuthReady({
     ensureAuthReady: () => authStore.ensureAuthReady(),
     getRoutePath: () => route.path,
@@ -117,96 +191,24 @@ onMounted(async () => {
   });
 });
 
-/**
- * Validate the form and start the login flow.
- */
-async function handleLogin() {
-  if (!loginForm.value) return;
-
-  try {
-    await loginForm.value.validate();
-    error.value = '';
-
-    await authStore.login(form.username, form.password, '', '', form.rememberMe);
-
-    handleRedirect();
-  } catch (err) {
-    if (err instanceof ChoysumError) {
-      // Show translated message; keep machine code on the error object for FE routing.
-      error.value = err.message;
-    } else {
-      error.value = _t('Login failed. Please try again later.');
-      console.error('Login flow failed:', err);
-    }
-  }
-}
-
-/**
- * Submit the form when the user presses Enter.
- */
-function handleKeyDown(event: KeyboardEvent) {
-  if (event.key === 'Enter') {
-    handleLogin();
-  }
+async function onLoginSubmit(ctx: { formData: Record<string, unknown> }) {
+  const fallback = _t('Login failed. Please try again later.');
+  const data = ctx.formData;
+  return runHandledAuthSubmit({
+    submit: () =>
+      runLoginSubmit({
+        loading: !!loading.value,
+        username: String(data.Username ?? ''),
+        password: String(data.Password ?? ''),
+        rememberMe: data.RememberMe === true,
+        loginFailedMessage: fallback,
+        login: (username, password, csrf, device, rememberMe) =>
+          authStore.login(username, password, csrf, device, rememberMe),
+        setError: setPageError,
+      }),
+    fallbackMessage: fallback,
+    setError: setPageError,
+    onSuccess: handleRedirect,
+  });
 }
 </script>
-
-<style lang="scss" scoped>
-.login-page-container {
-  &.o-page--with-padding {
-    padding: 0;
-  }
-
-  :deep(.o-page__body) {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-  }
-}
-
-.login-card {
-  width: 100%;
-  max-width: 400px;
-}
-
-.card-header {
-  text-align: center;
-  h3 {
-    margin: 0;
-    font-size: var(--el-font-size-large);
-    font-weight: var(--el-font-weight-bold);
-  }
-}
-
-.login-options {
-  display: flex;
-  justify-content: space-between;
-  margin-block-end: var(--el-margin-base, 16px);
-}
-
-.submit-button {
-  width: 100%;
-}
-
-.register-link {
-  text-align: center;
-  margin-block-start: var(--el-margin-base, 16px);
-  font-size: var(--el-font-size-small, 14px);
-  color: var(--el-text-color-secondary);
-
-  a {
-    color: var(--el-color-primary);
-    text-decoration: none;
-    margin-inline-start: var(--el-margin-small, 4px);
-
-    &:hover {
-      text-decoration: underline;
-    }
-  }
-}
-
-:deep(.el-alert) {
-  margin-block-end: var(--el-margin-medium, 20px);
-}
-</style>

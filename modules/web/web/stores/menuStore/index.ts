@@ -1,21 +1,78 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { ref, computed, inject } from 'vue';
+import { ref, computed, inject, getCurrentInstance, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { defineStore } from 'pinia';
-import { MenuSymbol } from '@/core/web/menu';
+import { MenuSymbol, getInstalledMenu } from '@/core/web/menu';
 import type { Menu, MenuItem } from '@/core/web/menu';
 
+/**
+ * Resolves the live Menu registry.
+ * Store setup may run outside a component (router redirect, effectScope);
+ * inject is empty then, so fall back to the installed plugin singleton.
+ */
+function resolveMenuManager(): Menu | null {
+  if (getCurrentInstance()) {
+    try {
+      const injected = inject(MenuSymbol, null) as Menu | null;
+      if (injected) return injected;
+    } catch {
+      // Inject still failed despite an instance.
+    }
+  }
+  return getInstalledMenu();
+}
+
 export const useMenuStore = defineStore('menu', () => {
-  const route = useRoute();
-
-  // Core state.
   const activeMenuId = ref<string | null>(null);
+  const routePath = ref('');
+  // True after setActiveMenu until the route path changes (navigateTo push, Back).
+  const selectionLocked = ref(false);
 
-  // Inject directly during setup.
-  const menuManager = inject(MenuSymbol) as Menu;
-  // Shared lookup for the first navigable menu item.
+  // Capture the reactive route during store setup when inject is available.
+  // Re-try on later reads so a store created in a router redirect can still
+  // pick up the route once a component render provides injection.
+  let capturedRoute: { path?: string } | undefined;
+  try {
+    capturedRoute = useRoute();
+    routePath.value = String(capturedRoute?.path || '');
+  } catch {
+    capturedRoute = undefined;
+  }
+
+  /**
+   * Binds vue-router injection when a component finally has it.
+   * Store setup may have run in a guard with no route; this invalidates
+   * the cached activeMenu computed once a path is available.
+   */
+  function bindRouteFromInjection(): void {
+    try {
+      const route = capturedRoute ?? useRoute();
+      capturedRoute = route;
+      const next = String(route.path || '');
+      if (routePath.value !== next) {
+        selectionLocked.value = false;
+        routePath.value = next;
+      }
+    } catch {
+      // Route inject is still missing.
+    }
+  }
+
+  /**
+   * Reads the current route path when vue-router injection is available.
+   */
+  function currentRoutePath(): string {
+    if (capturedRoute && typeof capturedRoute.path === 'string') {
+      return capturedRoute.path;
+    }
+    return routePath.value;
+  }
+
+  /**
+   * Shared lookup for the first navigable menu item.
+   */
   function findFirstNavigableMenu(menuItem: MenuItem | null | undefined): MenuItem | null {
     if (!menuItem) return null;
 
@@ -35,8 +92,11 @@ export const useMenuStore = defineStore('menu', () => {
     return menuItem.path ? menuItem : null;
   }
 
-  // Walk up the path to find a menu, also handling routes without the /web prefix.
+  /**
+   * Walk up the path to find a menu, also handling routes without the /web prefix.
+   */
   function findMenuByPathWithFallback(rawPath: string): MenuItem | null {
+    const menuManager = resolveMenuManager();
     if (!menuManager) return null;
 
     const normalize = (p: string) => {
@@ -70,27 +130,22 @@ export const useMenuStore = defineStore('menu', () => {
 
   /**
    * Active menu synchronized from routing with upward path fallback.
-   * It prefers activeMenuId when present; otherwise it walks up the current route
-   * path, selects the first navigable match, and syncs activeMenuId to that entry.
+   * A live route match wins so Back/forward and non-navigateTo pushes
+   * update the rail; otherwise keep a previously selected id.
    */
   const activeMenu = computed(() => {
+    const path = currentRoutePath();
+    void routePath.value;
+    const menuManager = resolveMenuManager();
     if (!menuManager) return null;
 
-    // Prefer the manually assigned activeMenuId.
-    if (activeMenuId.value) {
-      return menuManager.getMenu(activeMenuId.value);
+    if (selectionLocked.value && activeMenuId.value) {
+      return menuManager.getMenu(activeMenuId.value) ?? null;
     }
 
-    // Match by walking up the current route path.
-    const fromRoute = findMenuByPathWithFallback(route.path);
-    const navigable = findFirstNavigableMenu(fromRoute);
-
-    if (navigable) {
-      // Keep activeMenuId aligned for later reads.
-      activeMenuId.value = navigable.id;
-      return navigable;
-    }
-
+    const fromRoute = findFirstNavigableMenu(findMenuByPathWithFallback(path));
+    if (fromRoute) return fromRoute;
+    if (activeMenuId.value) return menuManager.getMenu(activeMenuId.value) ?? null;
     return null;
   });
 
@@ -99,20 +154,55 @@ export const useMenuStore = defineStore('menu', () => {
     return findAppRoot(activeMenu.value);
   });
 
-  // State management methods.
+  watch(
+    () => currentRoutePath(),
+    (next) => {
+      if (routePath.value !== next) {
+        selectionLocked.value = false;
+        routePath.value = next;
+      }
+    },
+    { immediate: true, flush: 'sync' },
+  );
+
+  // Keep activeMenuId aligned outside the computed so evaluating activeMenu
+  // during render cannot retrigger Vue's update cycle.
+  watch(
+    () => activeMenu.value?.id ?? null,
+    (nextId) => {
+      // A missing manager is transient; do not drop a manual selection for it.
+      if (nextId === null && !resolveMenuManager()) {
+        return;
+      }
+      if (activeMenuId.value !== nextId) {
+        activeMenuId.value = nextId;
+      }
+    },
+    { immediate: true, flush: 'sync' },
+  );
+
+  /**
+   * Sets the active menu id, or clears it when null.
+   */
   function setActiveMenu(menu: MenuItem | null) {
     activeMenuId.value = menu ? menu.id : null;
+    selectionLocked.value = !!menu;
   }
 
-  // Helper functions.
+  /**
+   * Walks to the app-root ancestor of a menu item.
+   */
   function findAppRoot(menu: MenuItem): MenuItem | null {
     let current: MenuItem | null = menu;
-    while (current) {
+    let hops = 0;
+    while (current && hops < 64) {
+      hops += 1;
       if (!current.__parent) {
         return current;
       }
       current = current.__parent;
     }
+    // Hop cap means a cyclic __parent chain; do not treat a mid-chain node as the app root.
     return null;
   }
 
@@ -124,13 +214,15 @@ export const useMenuStore = defineStore('menu', () => {
     // Methods.
     setActiveMenu,
 
-    // Proxies for menuManager methods.
-    hasMenu: menuManager.hasMenu.bind(menuManager),
-    getMenu: menuManager.getMenu.bind(menuManager),
-    getMenuByPath: menuManager.getMenuByPath.bind(menuManager),
-    getMenuChildren: menuManager.getMenuChildren.bind(menuManager),
-    getMenuParent: menuManager.getMenuParent.bind(menuManager),
-    getMenus: menuManager.getMenus.bind(menuManager),
+    bindRouteFromInjection,
+
+    // Proxies for menuManager methods (no-op safe when Menu inject is missing).
+    hasMenu: (id: string) => !!resolveMenuManager()?.hasMenu?.(id),
+    getMenu: (id: string) => resolveMenuManager()?.getMenu?.(id),
+    getMenuByPath: (path: string) => resolveMenuManager()?.getMenuByPath?.(path),
+    getMenuChildren: (id: string) => resolveMenuManager()?.getMenuChildren?.(id) ?? [],
+    getMenuParent: (id: string) => resolveMenuManager()?.getMenuParent?.(id) ?? null,
+    getMenus: () => resolveMenuManager()?.getMenus?.() ?? [],
 
     // Helper utilities.
     findFirstNavigableMenu,

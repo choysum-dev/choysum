@@ -561,9 +561,14 @@ export function createListController(store: WebModelStore<any>): IListController
     // Sync the internal cache so later loadMore calls compute offsets correctly.
     groupRecords.set(key, rows);
 
-    // Track the remaining row count for future "more" affordances.
-    const total = Number(snap.total ?? rows.length);
-    groupRecordRemain.set(key, Math.max(0, total - rows.length));
+    // When Count was skipped, snap.total collapses to the page length — do not
+    // publish a fake remain=0 (kanban falls back to ReadGroup lane.count).
+    if (!options?.skipCount) {
+      const total = Number(snap.total ?? rows.length);
+      groupRecordRemain.set(key, Math.max(0, total - rows.length));
+    } else {
+      groupRecordRemain.delete(key);
+    }
     return rows;
   }
 
@@ -618,7 +623,17 @@ export function createListController(store: WebModelStore<any>): IListController
       groupRecords.set(key, next);
       if (!r.groupRecords) r.groupRecords = new Map();
       r.groupRecords.set(key, next);
-      const total = Number(snap.total ?? next.length);
+      // Prefer Search Count total; fall back to ReadGroup group count when Count
+      // is missing so remain does not collapse to 0 after a short page.
+      const groupTotal = Number((g as any).count ?? (g as any).__count);
+      // Number(null) is 0, which would look like an exhausted lane and skip
+      // the ReadGroup count fallback.
+      const snapTotal = snap.total == null ? Number.NaN : Number(snap.total);
+      const total = Number.isFinite(snapTotal)
+        ? snapTotal
+        : Number.isFinite(groupTotal)
+          ? groupTotal
+          : next.length;
       groupRecordRemain.set(key, Math.max(0, total - next.length));
       recomputeVisible();
     } catch (e) {
@@ -630,6 +645,11 @@ export function createListController(store: WebModelStore<any>): IListController
     } finally {
       loadingMore.delete(key);
     }
+  }
+
+  function getGroupRecordRemain(key: string): number | undefined {
+    if (!groupRecordRemain.has(key)) return undefined;
+    return Math.max(0, Number(groupRecordRemain.get(key) || 0));
   }
 
   async function loadMoreGroupChildren(parentKey: string): Promise<void> {
@@ -716,6 +736,7 @@ export function createListController(store: WebModelStore<any>): IListController
     fetchGroupRecords,
     loadMoreGroupRecords,
     loadMoreGroupChildren,
+    getGroupRecordRemain,
   };
   return api;
 }

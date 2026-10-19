@@ -87,3 +87,18 @@ test('createChartController appliedFilters clear flag: does not set the clear fl
   expect(store.state.queryState.userClearedDefaultFilters).toBeUndefined();
 });
 
+test('createChartController clears vm.error on no-group early return', async () => {
+  const store = {
+    state: {
+      queryState: {},
+    },
+  } as any;
+  const ctrl = createChartController(store);
+  ctrl.vm.error = new Error('stale chart failure');
+  await ctrl.refresh();
+  expect(ctrl.vm.error).toBeNull();
+  expect(ctrl.vm.result).toBeTruthy();
+  expect((ctrl.vm.result as any).kind).toBe('group');
+  expect((ctrl.vm.result as any).rows).toEqual([]);
+});
+

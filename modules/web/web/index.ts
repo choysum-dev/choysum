@@ -4,8 +4,10 @@
 /**
  * Entry point for the Choysum Web module.
  *
- * This file exports the application instance and connects it with manifest.json.
+ * Exports the application instance and the public Choy UI kit surface.
+ * Domain modules must import only public Choy* names (and listed helpers)
+ * from `@/web` (modules/web/index → kit) — never ui/*, internal/*, Reka, Unovis, or TanStack.
  */
 
-// Export the app instance.
 export { default } from './app';
+export * from './kit';

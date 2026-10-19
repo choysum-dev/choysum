@@ -50,6 +50,12 @@ func (s *GRPCWebServer) enqueueWatchEvent(file string) bool {
 		return false
 	}
 	file = resolvedFile
+	if shouldIgnoreWatchPath(file) {
+		if s.runtimeScope != nil {
+			s.runtimeScope.Logger().Debug("watch event ignored", "file", file, "reason", "generated_artifact")
+		}
+		return false
+	}
 	watchQueue := s.hotreloadQueue()
 	if watchQueue == nil {
 		s.recordDroppedWatchEvent("queue_unavailable", file, nil)

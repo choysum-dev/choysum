@@ -43,6 +43,31 @@ type E2EBundleResult struct {
 	JSPath string
 }
 
+// e2eExactPinsWithoutVue loads exact pins from core then web package.json and
+// drops vue so the embedded host remains the single Vue instance.
+func e2eExactPinsWithoutVue(repoRoot string) (map[string]string, error) {
+	corePins, err := esmresolver.ExactPinsFromPackageJSON(filepath.Join(repoRoot, "modules", "core"))
+	if err != nil {
+		return nil, err
+	}
+	webPins, err := esmresolver.ExactPinsFromPackageJSON(filepath.Join(repoRoot, "modules", "web"))
+	if err != nil {
+		return nil, err
+	}
+	pins := map[string]string{}
+	for name, ver := range corePins {
+		pins[name] = ver
+	}
+	for name, ver := range webPins {
+		pins[name] = ver
+	}
+	delete(pins, "vue")
+	if len(pins) == 0 {
+		return nil, nil
+	}
+	return pins, nil
+}
+
 // WriteE2EEntry writes a generated entry that imports each absolute spec path.
 func WriteE2EEntry(entryPath string, specFiles []string) error {
 	if strings.TrimSpace(entryPath) == "" {
@@ -163,11 +188,17 @@ func BuildE2EBundle(opts E2EBundleOptions) (*E2EBundleResult, error) {
 		})
 	}
 
-	plugins = append(plugins, esmresolver.New(
+	esmOpts := []esmresolver.Option{
 		esmresolver.WithCacheDir(cacheDir),
 		esmresolver.WithTarget("es2020"),
 		esmresolver.WithModulePath(repoRoot),
-	).Plugin())
+	}
+	if pins, pinErr := e2eExactPinsWithoutVue(repoRoot); pinErr != nil {
+		return nil, xfmt.Errorf("e2e bundle: exact pins from modules/web/package.json: %w", pinErr)
+	} else if len(pins) > 0 {
+		esmOpts = append(esmOpts, esmresolver.WithBareImportPins(pins))
+	}
+	plugins = append(plugins, esmresolver.New(esmOpts...).Plugin())
 
 	absWorkingDir := strings.TrimSpace(opts.WorkingDir)
 	if absWorkingDir == "" {

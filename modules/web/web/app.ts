@@ -6,15 +6,16 @@
  * Uses core/web/application to create the app and register Pinia and router plugins.
  */
 import { createApp } from '@/core/web/application';
-import { setupApp } from './app_setup';
+import { setupApp } from './appSetup';
 
 import App from './App.vue';
 
-import 'normalize.css/normalize.css';
-import 'element-plus/dist/index.css';
-import 'element-plus/theme-chalk/display.css';
+import './styles/tokens.css';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
-import './styles/index.scss';
+import 'vue-sonner/style.css';
+import './styles/choy-tailwind.generated.css';
+import './styles/tw-animate.css';
+import './styles/index.css';
 
 const app = createApp(App).setup(setupApp);
 

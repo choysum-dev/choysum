@@ -89,6 +89,39 @@ test('base.company: Timezone FieldsGet exposes dynamic IANA selection', async ()
   expect(selection.some((item: { value?: string }) => item.value === 'UTC')).toBe(true);
 });
 
+test('base.company: Logo is an optional image field', async () => {
+  const logoField = MetadataStorage.instance.getModelMetadata(Company).fields.get('Logo');
+  expect(logoField?.type).toBe('image');
+  expect(logoField?.column?.notNull).toBeFalsy();
+
+  const meta = await Company.FieldsGet(['Logo'], ['type']);
+  expect(meta.Logo?.type).toBe('image');
+
+  const currency = await Currency.Create(
+    {
+      Name: uid('CurrencyLogo'),
+      Code: currencyCode3(),
+      DecimalDigits: 2,
+      Rounding: '0.01',
+      IsActive: true,
+    } as any,
+    ['Id'] as any
+  );
+
+  const company = await Company.Create(
+    {
+      Name: uid('CompanyLogo'),
+      Code: companyCode8(),
+      Timezone: 'UTC',
+      CurrencyId: currency.Id,
+      IsActive: true,
+    } as any,
+    ['Id', 'Logo'] as any
+  );
+  expect(Boolean((company as any).Id)).toBe(true);
+  expect((company as any).Logo == null || (company as any).Logo === '').toBe(true);
+});
+
 test('base.company: missing CurrencyId is rejected', async () => {
   await expectRepoValidationFailed('create', async () => {
     await Company.Create(

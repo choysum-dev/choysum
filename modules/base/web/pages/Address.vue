@@ -4,18 +4,18 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage :store="addressStore">
+  <ChoyPage :store="addressStore">
     <AddressFormView />
-  </OPage>
+  </ChoyPage>
 </template>
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
 import { createStoreByModel } from '@/web/web/stores/registry';
-import OPage from '@/web/web/components/page/OPage.vue';
 import AddressFormView from '../views/AddressFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type Address from '@/base/service/models/address';
+import { ChoyPage } from '@/web';
 
 defineOptions({ name: 'AddressPage' });
 

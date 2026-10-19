@@ -19,7 +19,6 @@ export const authRoutes: RouteRecordRaw[] = [
     component: () => import('../pages/Login.vue'),
     meta: {
       requiresAuth: false,
-      isAuthPage: true,
     },
   }),
 
@@ -31,7 +30,6 @@ export const authRoutes: RouteRecordRaw[] = [
     component: () => import('../pages/Logout.vue'),
     meta: {
       requiresAuth: false,
-      isAuthPage: true,
     },
   }),
 ];
@@ -158,6 +156,15 @@ export const appRoutes: RouteRecordRaw[] = [
     path: 'auth/tokens/kanban',
     name: 'TokenKanban',
     component: () => import('../pages/TokenKanban.vue'),
+    actions: ['auth.action.token_create', 'auth.action.token_edit', 'auth.action.token_delete', 'auth.action.token_copy'],
+    meta: { requiresAuth: true },
+  }),
+  defineRoute('auth.route.token_chart', {
+    sequence: 50,
+    title: _lt('Token Chart'),
+    path: 'auth/tokens/chart',
+    name: 'TokenChart',
+    component: () => import('../pages/TokenChart.vue'),
     actions: ['auth.action.token_create', 'auth.action.token_edit', 'auth.action.token_delete', 'auth.action.token_copy'],
     meta: { requiresAuth: true },
   }),
@@ -346,7 +353,6 @@ if (import.meta.env.CHOYSUM_ENABLE_REGISTRATION !== false) {
       component: () => import('../pages/Register.vue'),
       meta: {
         requiresAuth: false,
-        isAuthPage: true,
       },
     })
   );

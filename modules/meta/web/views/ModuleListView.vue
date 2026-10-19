@@ -4,73 +4,113 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OListView
+  <ChoyListView
     ref="listRef"
+    class="module-list-view"
     v-bind="$attrs"
     :store="store"
-    :searchView="OSearchView"
+    :searchView="ChoySearchView"
     :show-header="showHeader"
     :action-ids="{ delete: moduleIndexActions.delete }"
     :has-action="hasAction"
     @row-click="onRowClick"
   >
-    <template #header-right>
-      <el-button-group>
-        <el-tooltip v-if="canRoute('meta.route.module_board')" :content="_t('Board View')" placement="top">
-          <el-button :icon="GridViewSharp" @click="toKanban" />
-        </el-tooltip>
-        <el-tooltip v-if="canRoute('meta.route.module_list')" :content="_t('List View')" placement="top">
-          <el-button :icon="FormatListBulletedOutlined" @click="toList" type="primary" />
-        </el-tooltip>
-        <el-tooltip v-if="canRoute('meta.route.module_history')" :content="_t('Operation History')" placement="top">
-          <el-button :icon="HistoryOutlined" @click="toHistory" />
-        </el-tooltip>
-        <el-tooltip v-if="hasAction(moduleSyncIndexAction)" :content="_t('Sync Index')" placement="top">
-          <el-button :icon="Refresh" :loading="syncLoading" @click="onSyncIndex" />
-        </el-tooltip>
-      </el-button-group>
+    <!-- Domain secondary actions share the title ⋮ with Refresh / import / export. -->
+    <template
+      v-if="showHeader && (canRoute('meta.route.module_history') || hasAction(moduleSyncIndexAction))"
+      #overflow-actions
+    >
+      <ChoyDropdownMenuItem
+        v-if="canRoute('meta.route.module_history')"
+        data-testid="module-overflow-history"
+        @select="toHistory"
+      >
+        <History class="size-4" aria-hidden="true" />
+        {{ _t('Operation History') }}
+      </ChoyDropdownMenuItem>
+      <ChoyDropdownMenuItem
+        v-if="hasAction(moduleSyncIndexAction)"
+        data-testid="module-overflow-sync"
+        :disabled="syncLoading"
+        @select="onSyncIndex"
+      >
+        <FolderSync class="size-4" :class="{ 'animate-spin': syncLoading }" aria-hidden="true" />
+        {{ _t('Sync Index') }}
+      </ChoyDropdownMenuItem>
     </template>
 
-    <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField prop="ModuleName" :store="store" :vColumnProps="{ minWidth: 180 }" />
-    <OVarCharField prop="LocalVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <OVarCharField prop="RegistryVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <OVarCharField prop="Version" :label="_t('Display Version')" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <OVarCharField prop="InstalledStatus" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <OVarCharField prop="InstalledVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <OBooleanField prop="Available" :store="store" :vColumnProps="{ minWidth: 100 }" />
-    <OVarCharField prop="OriginTypes" :label="_t('Origin')" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <OVarCharField prop="LocalPath" :label="_t('Path')" :store="store" :vColumnProps="{ minWidth: 220 }" />
-    <ODateTimeField prop="LastSyncAt" :label="_t('Synced At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
-  </OListView>
+    <!-- View-mode toggles only; ListView keeps pagination at the trailing edge. -->
+    <template v-if="showHeader && viewSwitcherOptions.length" #header-right>
+      <ChoyViewSwitcher
+        :aria-label="_t('View switcher')"
+        :active="isListRoute ? 'list' : 'board'"
+        :options="viewSwitcherOptions"
+        @select="onViewSelect"
+      />
+    </template>
+
+    <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
+    <ChoyVarcharField prop="ModuleName" :store="store" :vColumnProps="{ minWidth: 180 }" />
+    <ChoyVarcharField prop="LocalVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <ChoyVarcharField prop="RegistryVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <ChoyVarcharField prop="Version" :label="_t('Display Version')" :store="store" :vColumnProps="{ minWidth: 120 }" />
+
+    <ChoyVirtualField :store="store" prop="InstalledStatus" />
+    <ChoyTableColumn
+      prop="InstalledStatus"
+      :label="_t('Install Status')"
+      :vColumnProps="{ minWidth: 120 }"
+    >
+      <template #default="{ row }">
+        <ChoyBadge :variant="statusBadgeVariant(row)" class="font-normal">
+          {{ statusLabel(row) }}
+        </ChoyBadge>
+      </template>
+    </ChoyTableColumn>
+
+    <ChoyVarcharField prop="InstalledVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <ChoyBooleanField prop="Available" :store="store" :vColumnProps="{ minWidth: 100 }" />
+    <ChoyVarcharField prop="OriginTypes" :label="_t('Origin')" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <ChoyVarcharField prop="LocalPath" :label="_t('Path')" :store="store" :vColumnProps="{ minWidth: 220 }" />
+    <ChoyDatetimeField prop="LastSyncAt" :label="_t('Synced At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+  </ChoyListView>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { FolderSync, History } from 'lucide-vue-next';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type MetaModuleIndex from '@/meta/service/models/module_index';
-import OListView from '@/web/web/components/view/OListView.vue';
-import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
-import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
-import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
-import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
-import type { RowEventPayload } from '@/web/web/components/view/listViewTypes';
-import { ElButton, ElTooltip, ElButtonGroup, ElMessage } from 'element-plus';
-import { FormatListBulletedOutlined, GridViewSharp, HistoryOutlined } from '@vicons/material';
-import { Refresh } from '@element-plus/icons-vue';
-import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
+import { unwrapListRecord } from '@/web/web/composables/listRowEdit';
 import { defineAction, defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
+import {
+  ChoyBadge,
+  ChoyBooleanField,
+  ChoyDatetimeField,
+  ChoyDropdownMenuItem,
+  ChoyListView,
+  ChoyMessage,
+  ChoySearchView,
+  ChoyTableColumn,
+  ChoyVarcharField,
+  ChoyViewSwitcher,
+  ChoyVirtualField,
+  type ChoyViewSwitcherOption,
+} from '@/web';
+import { resolveListRowRecordId } from './list_row_nav';
+import { moduleStatusBadgeVariant } from './module_kanban_chrome';
 
-defineOptions({ name: 'ModuleListView', inheritAttrs: true });
+defineOptions({ name: 'ModuleListView', inheritAttrs: false });
 
 const { _t, _lt } = createTranslate('meta', { scope: 'web/views/ModuleListView' });
 
 const router = useRouter();
+const route = useRoute();
 
 const props = withDefaults(
   defineProps<{
@@ -79,7 +119,7 @@ const props = withDefaults(
   }>(),
   {
     showHeader: true,
-  }
+  },
 );
 
 const store = resolvePageStore(props.store, 'ModuleListView');
@@ -93,16 +133,19 @@ const moduleIndexActions = defineModelActions('meta.MetaModuleIndex', {
 });
 const { canRoute, hasAction } = usePermission();
 
+const isListRoute = computed(() => String(route.path || '').includes('/meta/modules/list'));
+
 const syncLoading = ref(false);
 const autoSyncTriggered = ref(false);
+
 async function onSyncIndex() {
   if (syncLoading.value) return;
   syncLoading.value = true;
   try {
     const jobId = await (store as any).RequestSync({ Force: true, IfStale: false });
-    ElMessage.success(jobId ? _t('Sync job triggered: all:%s', String(jobId)) : _t('Sync job triggered'));
+    ChoyMessage.success(jobId ? _t('Sync job triggered: all:%s', String(jobId)) : _t('Sync job triggered'));
   } catch (error: any) {
-    ElMessage.warning(_t('Sync failed: %s', String(error?.message || 'request failed')));
+    ChoyMessage.warning(_t('Sync failed: %s', String(error?.message || 'request failed')));
   } finally {
     syncLoading.value = false;
   }
@@ -117,21 +160,60 @@ watch(
     if (rows.length > 0) return;
     autoSyncTriggered.value = true;
     void onSyncIndex();
-  }
+  },
 );
 
-function onRowClick(payload: RowEventPayload<MetaModuleIndex>) {
-  router.push(`/meta/modules/${payload.row.Id}`);
+function onRowClick(row: Record<string, unknown>) {
+  const id = resolveListRowRecordId(row);
+  if (id) router.push(`/meta/modules/${id}`);
 }
 
-function toKanban() {
-  router.push('/meta/modules');
+const viewSwitcherOptions = computed<ChoyViewSwitcherOption[]>(() => {
+  const opts: ChoyViewSwitcherOption[] = [];
+  if (canRoute('meta.route.module_board')) {
+    opts.push({ value: 'board', label: _t('Board View') });
+  }
+  if (canRoute('meta.route.module_list')) {
+    opts.push({ value: 'list', label: _t('List View') });
+  }
+  return opts;
+});
+
+function onViewSelect(value: string) {
+  if (value === 'list') router.push('/meta/modules/list');
+  else router.push('/meta/modules');
 }
-function toList() {
-  router.push('/meta/modules/list');
-}
+
 function toHistory() {
   router.push('/meta/modules/history');
+}
+
+function rowRecord(row: unknown): Record<string, unknown> {
+  const rec = unwrapListRecord(row);
+  return rec && typeof rec === 'object' ? (rec as Record<string, unknown>) : {};
+}
+
+function statusBadgeVariant(row: unknown) {
+  const rec = rowRecord(row);
+  return moduleStatusBadgeVariant(
+    String(rec.InstalledStatus ?? ''),
+    rec.Available as boolean | undefined,
+  );
+}
+
+function statusLabel(row: unknown) {
+  const rec = rowRecord(row);
+  if (rec.Available === false) return _t('Unavailable');
+  const val = String(rec.InstalledStatus || '').toLowerCase();
+  if (val === 'installed') return _t('Installed');
+  if (val === 'uninstalled') return _t('Not Installed');
+  if (val === 'disabled') return _t('Disabled');
+  if (val === 'broken') return _t('Broken');
+  if (val === 'succeeded') return _t('Succeeded');
+  if (val === 'failed') return _t('Failed');
+  if (val === 'dispatching') return _t('Dispatching');
+  if (val === 'queued') return _t('Queued');
+  return String(rec.InstalledStatus || '') || _t('Unknown');
 }
 
 const { listRef, expose } = useListViewExpose<MetaModuleIndex>();

@@ -57,13 +57,37 @@ export function createFeStubRouter(overrides) {
       overrides.route || {}
     )
   );
+  var afterHooks = [];
+  var beforeHooks = [];
   var router = Object.assign(
     {
       currentRoute: { value: route },
       push: function (to) {
+        var fromSnapshot = {
+          path: route.path,
+          fullPath: route.fullPath,
+          name: route.name,
+          query: route.query,
+          params: route.params,
+          meta: route.meta,
+          matched: route.matched,
+        };
         applyRoute(route, normalizeTo(to));
         router.currentRoute.value = route;
-        return Promise.resolve(to);
+        var chain = Promise.resolve();
+        beforeHooks.forEach(function (fn) {
+          chain = chain.then(function () {
+            return fn(route, fromSnapshot);
+          });
+        });
+        afterHooks.forEach(function (fn) {
+          chain = chain.then(function () {
+            return fn(route, fromSnapshot);
+          });
+        });
+        return chain.then(function () {
+          return to;
+        });
       },
       replace: function (to) {
         return router.push(to);
@@ -87,11 +111,21 @@ export function createFeStubRouter(overrides) {
           meta: n.meta || {},
         };
       },
-      beforeEach: function () {
-        return function () {};
+      beforeEach: function (fn) {
+        if (typeof fn !== 'function') return function () {};
+        beforeHooks.push(fn);
+        return function () {
+          var i = beforeHooks.indexOf(fn);
+          if (i >= 0) beforeHooks.splice(i, 1);
+        };
       },
-      afterEach: function () {
-        return function () {};
+      afterEach: function (fn) {
+        if (typeof fn !== 'function') return function () {};
+        afterHooks.push(fn);
+        return function () {
+          var i = afterHooks.indexOf(fn);
+          if (i >= 0) afterHooks.splice(i, 1);
+        };
       },
       onError: function () {
         return function () {};

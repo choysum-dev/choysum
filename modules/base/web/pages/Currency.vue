@@ -4,18 +4,18 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage :store="currencyStore">
+  <ChoyPage :store="currencyStore">
     <CurrencyFormView />
-  </OPage>
+  </ChoyPage>
 </template>
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
 import { createStoreByModel } from '@/web/web/stores/registry';
-import OPage from '@/web/web/components/page/OPage.vue';
 import CurrencyFormView from '../views/CurrencyFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type Currency from '@/base/service/models/currency';
+import { ChoyPage } from '@/web';
 
 defineOptions({ name: 'CurrencyPage' });
 

@@ -205,14 +205,14 @@ test('permission flow: smoke whitelist drives route guard and action visibility 
   expect(hasAction('auth.action.token_delete', state, { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] })).toBe(false);
 });
 
-test('permission flow: keeps home visible in menu projection for ordinary users', async () => {
+test('permission flow: keeps module board visible in menu projection for ordinary users', async () => {
   const state: PermissionState = {
     permStateVersion: 1,
     byCompany: {
       '*': {
         ui: {
-          routes: ['web.route.home'],
-          menus: ['web.menu.home'],
+          routes: ['meta.route.module_board'],
+          menus: ['meta.menu.module_board'],
           actions: [],
         },
       },
@@ -223,19 +223,19 @@ test('permission flow: keeps home visible in menu projection for ordinary users'
 
   const result = await permissionGuard(
     {
-      path: '/home',
-      fullPath: '/home',
-      meta: { requiresAuth: true, resourceId: 'web.route.home' },
+      path: '/meta/modules',
+      fullPath: '/meta/modules',
+      meta: { requiresAuth: true, resourceId: 'meta.route.module_board' },
     } as any,
     {} as any,
     depsFor(store)
   );
 
   expect(result).toBe(true);
-  expect(canRoute('web.route.home', state, { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] })).toBe(true);
+  expect(canRoute('meta.route.module_board', state, { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] })).toBe(true);
 
   const menus = clone([
-    { id: 'web.menu.home', title: 'Home', path: '/home' },
+    { id: 'meta.menu.module_board', title: 'Modules', path: '/meta/modules' },
     { id: 'auth.menu.root', title: 'Access Control', children: [{ id: 'auth.menu.user_list', title: 'Users' }] },
   ]) as any[];
   applyPermissionToMenus(menus as any, state, {
@@ -243,12 +243,12 @@ test('permission flow: keeps home visible in menu projection for ordinary users'
     enabledCompanyIds: ['c1'],
   });
 
-  const homeMenu = menus.find(menu => menu.id === 'web.menu.home');
+  const boardMenu = menus.find(menu => menu.id === 'meta.menu.module_board');
   const authRoot = menus.find(menu => menu.id === 'auth.menu.root');
 
-  expect(homeMenu).toBeTruthy();
-  expect(Boolean(homeMenu.hidden)).toBe(false);
-  expect(Boolean(homeMenu.disabled)).toBe(false);
+  expect(boardMenu).toBeTruthy();
+  expect(Boolean(boardMenu.hidden)).toBe(false);
+  expect(Boolean(boardMenu.disabled)).toBe(false);
 
   expect(authRoot).toBeTruthy();
   expect(Boolean(authRoot.hidden)).toBe(true);

@@ -1,0 +1,333 @@
+/*
+ * SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Global product styles (plain CSS; load after tokens.css and FullCSS
+ * generated CSS). UA reset lives in Tailwind preflight; this file keeps
+ * Choy token mapping and product-only chrome.
+ */
+
+html,
+body,
+#app {
+  height: 100%;
+  overflow: hidden;
+}
+
+@media print {
+  html,
+  body,
+  #app,
+  .choy-app,
+  .choy-shell,
+  .choy-shell__body,
+  .choy-shell__scroll,
+  .choy-shell__canvas {
+    height: auto;
+    overflow: visible;
+  }
+}
+
+body {
+  font-family: var(--choy-font-family, system-ui, sans-serif);
+  font-size: var(--choy-font-size-base, 1rem);
+  line-height: var(--choy-line-height-base, 1.5);
+  color: var(--choy-color-foreground, inherit);
+  background-color: var(--choy-color-background, transparent);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Align Tailwind .font-mono with the product mono stack (tokens.css). */
+html {
+  --font-mono: var(--choy-font-family-mono);
+}
+
+/*
+ * Product-wide thin scrollbars (Form / List / shell / popovers).
+ * Stay in @layer base so utilities like .scrollbar-none can still hide tracks.
+ */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--muted-foreground) 35%, transparent) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--muted-foreground) 35%, transparent);
+  }
+}
+
+/*
+ * Viewport-locked shell chrome: header and footer stay put; the canvas scrolls
+ * (see ChoyGuestShell / ChoyAppShell).
+ */
+.choy-app,
+.choy-shell {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.choy-shell__body {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.choy-shell__scroll {
+  min-height: 0;
+  overflow: auto;
+}
+
+.choy-shell__canvas {
+  min-height: 0;
+  overflow: visible;
+}
+
+/*
+ * Shared inline gutter for ChoyPage opt-in pad. App <main> and guest .choy-shell__main
+ * own section gap (--choy-layout-section-gap) and this inline gutter.
+ */
+.choy-inset-pad-x {
+  padding-inline: var(--choy-layout-content-padding);
+}
+
+.choy-inset-pad {
+  padding: var(--choy-layout-content-padding);
+}
+
+/* ChoyPage opt-in only: side + bottom; top flush when a view hosts the title. */
+.choy-inset-pad-no-top {
+  padding-inline: var(--choy-layout-content-padding);
+  padding-bottom: var(--choy-layout-content-padding);
+  padding-top: 0;
+}
+
+@layer components {
+  /* List/DataTable row tracks (tokens --choy-list-*-height; not control-height). */
+  .min-h-list-row {
+    min-height: var(--choy-list-row-height, 40px);
+  }
+  .h-list-row {
+    height: var(--choy-list-row-height, 40px);
+    /* Virtual rows are fixed-height; clip wrap so tracks do not paint into neighbors.
+     * clip (not only hidden) avoids a programmatic scroll container, so focusing an
+     * inline-edit input cannot shift the track; margin keeps focus rings visible. */
+    overflow: hidden; /* fallback for engines without clip */
+    overflow: clip;
+    overflow-clip-margin: 4px;
+  }
+  .min-h-list-header {
+    min-height: var(--choy-list-header-height, 40px);
+  }
+  .h-list-header {
+    height: var(--choy-list-header-height, 40px);
+  }
+}
+
+@layer utilities {
+  /*
+   * Hide scrollbars while keeping overflow scroll (DataTable header syncs x with body;
+   * only the body track should show a visible horizontal scrollbar).
+   */
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  /* Scroll-chain containment for nested overflow tracks (pair with scrollbar-none when needed). */
+  .scroll-contain {
+    overscroll-behavior: contain;
+  }
+}
+
+/*
+ * Shared field / auth inputs (align with vendor/ui Input).
+ * Unlayered only for properties FullCSS preflight also sets unlayered
+ * (border/padding/radius/background); layout/typography stay in @layer
+ * components so Tailwind utilities can still override them.
+ */
+.choy-input {
+  border-radius: var(--choy-radius-md);
+  border: 1px solid var(--choy-color-border);
+  background-color: var(--choy-color-background);
+  padding: 0.25rem 0.75rem;
+}
+
+.choy-input:focus-visible {
+  outline: none;
+  border-color: var(--choy-color-ring);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--choy-color-ring) 50%, transparent);
+}
+
+@layer components {
+  .choy-input {
+    display: flex;
+    width: 100%;
+    height: var(--choy-control-height, var(--choy-component-size-base, 2rem));
+    font-size: var(--choy-font-size-sm);
+    color: var(--choy-color-foreground);
+    box-shadow: 0 1px 2px color-mix(in oklab, var(--choy-color-foreground) 4%, transparent);
+  }
+
+  .choy-input::placeholder {
+    color: color-mix(in oklab, var(--choy-color-foreground) 45%, transparent);
+  }
+
+  .choy-input:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+/* Readonly form values: text, not fake inputs. */
+.choy-field-display-text,
+.choy-textfield-display {
+  padding-inline: 0 !important;
+  line-height: 1.5 !important;
+}
+
+/*
+ * Form field chrome density. Kit FormItem/Field/FieldGroup ship gap-*; product
+ * hosts win via these selectors so spacing tracks --choy-field-*-gap
+ * (including data-density=compact). cn() does not merge conflicting gap-*.
+ */
+[data-slot='form-item'].choy-form-item,
+[data-slot='field'].choy-field-base {
+  gap: var(--choy-field-stack-gap);
+}
+
+/* Field ↔ field rhythm for FieldGroup stacks (ChoyGrid default is gap-2). */
+[data-slot='field-group'] {
+  gap: var(--choy-field-group-gap);
+}
+
+.choy-form-item__label,
+.choy-field-base__label-row {
+  gap: var(--choy-field-label-inline-gap);
+  font-size: var(--choy-font-size-sm);
+  line-height: var(--choy-field-label-line-height);
+  font-weight: 400;
+}
+
+/* Kit Label / FieldLabel keep text-sm / leading-none / font-medium; product wins. */
+.choy-form-item__label [data-slot='label'],
+.choy-field-base__label-row [data-slot='field-label'] {
+  font-size: inherit;
+  line-height: inherit;
+  font-weight: inherit;
+}
+
+/* Error / description track the same density scale as labels. */
+.choy-form-item [data-slot='form-message'],
+.choy-form-item [data-slot='form-description'],
+.choy-field-base [data-slot='field-error'] {
+  font-size: var(--choy-font-size-sm);
+}
+
+/* Numeric field controls + display: stable digit width in lists/forms. */
+.choy-number-input,
+.choy-monetary-input,
+.choy-bigint-input,
+.choy-decimal-input,
+.choy-field-display-text--numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Product links: no underline by default (preflight uses text-decoration: inherit). */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a:hover {
+  color: inherit;
+}
+
+/* Record-import step list: restore numbering stripped by preflight. */
+.import-panel-steps {
+  list-style: decimal;
+  padding-inline-start: 1.25rem;
+  margin-block: 0.75rem;
+}
+
+/* Rich-text field content: keep list markers after preflight list-style:none. */
+.prose-choy ul,
+.choy-html-field__prose ul {
+  list-style: disc;
+  padding-inline-start: 1.25rem;
+  margin-block: 0.5rem;
+}
+
+.prose-choy ol,
+.choy-html-field__prose ol {
+  list-style: decimal;
+  padding-inline-start: 1.25rem;
+  margin-block: 0.5rem;
+}
+
+/* Icons follow surrounding text, including when a global svg color uses !important. */
+svg,
+.lucide {
+  color: inherit !important;
+  stroke: currentColor;
+}
+
+/* Cancel a leaked global [role=checkbox] { translate: 2px } from table utilities. */
+[data-slot='checkbox'] {
+  translate: none;
+}
+
+/* Table cells only: optical nudge vs adjacent text. */
+[data-slot='table-head'] [role='checkbox'],
+[data-slot='table-cell'] [role='checkbox'] {
+  translate: 0 0.125rem;
+}
+
+/* Vue <Transition name="fade"> (auth pages). */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity var(--choy-motion-duration-normal, 200ms) var(--choy-motion-ease-in-out, ease-in-out);
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* Accessibility */
+[aria-busy='true'] {
+  cursor: progress;
+}
+
+[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+@media (prefers-contrast: more) {
+  :focus-visible {
+    outline: 4px solid var(--choy-color-foreground, CanvasText) !important;
+    outline-offset: 2px !important;
+  }
+
+  a,
+  button,
+  [role='button'],
+  [role='link'] {
+    text-decoration: underline;
+  }
+}

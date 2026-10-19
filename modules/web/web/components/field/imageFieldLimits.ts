@@ -10,7 +10,7 @@ export type ImageFieldLimits = {
   maxHeight?: number;
 };
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/OImageField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ImageField' });
 
 export function resolveImageFieldLimits(meta: ImageFieldLimits | null | undefined): ImageFieldLimits {
   const out: ImageFieldLimits = {};
@@ -31,7 +31,7 @@ type FieldMetaStore = {
 };
 
 /**
- * Resolves upload limits from binding/store the same way OImageField does.
+ * Resolves upload limits from binding/store the same way ImageField does.
  */
 export function resolveImageFieldLimitsFromSources(input: {
   bindingProp?: unknown;
@@ -133,16 +133,16 @@ export async function validateImageFieldFile(
 
 export function imageFieldLimitErrorMessage(result: Extract<ImageFieldValidationResult, { ok: false }>): string {
   if (result.reason === 'fileTooLarge') {
-    return _t('Image exceeds maximum size (%s)', { scope: 'web/components/field/OImageField' }, result.detail);
+    return _t('Image exceeds maximum size (%s)', { scope: 'web/components/field/ImageField' }, result.detail);
   }
   if (result.reason === 'widthTooLarge') {
-    return _t('Image width exceeds maximum (%s px)', { scope: 'web/components/field/OImageField' }, result.detail);
+    return _t('Image width exceeds maximum (%s px)', { scope: 'web/components/field/ImageField' }, result.detail);
   }
-  return _t('Image height exceeds maximum (%s px)', { scope: 'web/components/field/OImageField' }, result.detail);
+  return _t('Image height exceeds maximum (%s px)', { scope: 'web/components/field/ImageField' }, result.detail);
 }
 
 /**
- * Client-side gate used by OImageField before applying a selected file.
+ * Client-side gate used by ImageField before applying a selected file.
  * Returns false after invoking onError when validation fails.
  */
 export async function reportImageFieldValidation(

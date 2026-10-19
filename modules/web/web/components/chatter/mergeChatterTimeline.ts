@@ -1,0 +1,159 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+import type {
+  ChatterFieldChangeRow,
+  ChatterMessageRow,
+  ChatterTimelineEntry,
+} from './chatterTypes';
+
+/**
+ * Parses a wire timestamp into epoch ms, or null when unusable.
+ */
+export function parseChatterTimestamp(value: unknown): number | null {
+  if (value == null || value === '') return null;
+  if (value instanceof Date) {
+    const ms = value.getTime();
+    return Number.isNaN(ms) ? null : ms;
+  }
+  if (typeof value === 'number') {
+    return asValidEpochMs(value);
+  }
+  const raw = String(value).trim();
+  if (!raw) return null;
+  // Protobuf JSON serializes int64 timestamps as strings; Date.parse fails on them.
+  if (/^-?\d+$/.test(raw)) {
+    return asValidEpochMs(Number(raw));
+  }
+  // Wire contract is ISO-8601 with `T` (or epoch digits above). Reject space
+  // separators and locale/RFC forms that Date.parse resolves differently
+  // across V8 vs QuickJS. Offset requires the ISO `:` separator.
+  if (
+    !/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?)?$/.test(
+      raw,
+    )
+  ) {
+    return null;
+  }
+  // Date.parse rolls impossible calendar days (e.g. 2024-02-30 → Mar 1);
+  // reject those so timeline sort/display cannot use a drifted date.
+  const [year, month, day] = raw.slice(0, 10).split('-').map(Number);
+  const calendarDate = new Date(0);
+  calendarDate.setUTCFullYear(year!, month! - 1, day!);
+  calendarDate.setUTCHours(0, 0, 0, 0);
+  if (
+    calendarDate.getUTCFullYear() !== year ||
+    calendarDate.getUTCMonth() !== month! - 1 ||
+    calendarDate.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  // Regex admits `24:xx` / `99:xx`; engines disagree on Date.parse rollover vs
+  // reject, so validate time parts the same way as calendar days.
+  const timeMatch = /T(\d{2}):(\d{2})(?::(\d{2}))?/.exec(raw);
+  if (timeMatch) {
+    const hour = Number(timeMatch[1]);
+    const minute = Number(timeMatch[2]);
+    const second = timeMatch[3] === undefined ? 0 : Number(timeMatch[3]);
+    if (hour > 23 || minute > 59 || second > 59) return null;
+  }
+  // ISO regex admits out-of-range offsets (e.g. `+99:99`); engines may reject
+  // or roll them, so validate offset parts like the time parts above.
+  const offsetMatch = /[+-](\d{2}):(\d{2})$/.exec(raw);
+  if (offsetMatch) {
+    const offsetHour = Number(offsetMatch[1]);
+    const offsetMinute = Number(offsetMatch[2]);
+    if (offsetHour > 23 || offsetMinute > 59) return null;
+  }
+  // Naive date-times (no Z/offset) parse as local time and drift by host TZ;
+  // pin them to UTC so V8 and QuickJS agree. Date-only forms stay UTC per ES.
+  // ECMA-262 only defines millisecond precision; trim longer fractions so
+  // engines cannot fall back to implementation-defined parsing.
+  // Also pad missing seconds and short fractions — minute-only / 1–2 digit
+  // forms are similarly engine-specific under Date.parse.
+  const trimmed = raw
+    .replace(/(\.\d{3})\d+/, '$1')
+    .replace(/\.(\d{1,2})(?=$|Z|[+-])/, (_, frac: string) => `.${frac.padEnd(3, '0')}`);
+  const normalized = trimmed.replace(/T(\d{2}:\d{2})(?=$|Z|[+-])/, 'T$1:00');
+  const hasTime = normalized.includes('T');
+  const hasZone = /(?:Z|[+-]\d{2}:\d{2})$/.test(normalized);
+  const parsed = Date.parse(hasTime && !hasZone ? `${normalized}Z` : normalized);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+/** Safe integer that `Date` can represent (ECMAScript TimeClip range). */
+function asValidEpochMs(value: number): number | null {
+  if (!Number.isSafeInteger(value)) return null;
+  // Some safe integers (e.g. Number.MAX_SAFE_INTEGER) are still Invalid Date.
+  return Number.isNaN(new Date(value).getTime()) ? null : value;
+}
+
+/**
+ * Merges message and field-change rows into a sorted timeline.
+ */
+export function mergeChatterTimeline(
+  messages: ChatterMessageRow[] | null | undefined,
+  fieldChanges: ChatterFieldChangeRow[] | null | undefined,
+): ChatterTimelineEntry[] {
+  const entries: ChatterTimelineEntry[] = [];
+
+  for (const row of messages || []) {
+    const id = String(row?.Id || '').trim();
+    const at = parseChatterTimestamp(row?.CreatedAt);
+    if (!id || at == null) continue;
+    entries.push({
+      kind: 'message',
+      id,
+      at,
+      type: String(row?.Type || 'comment').trim() || 'comment',
+      body: String(row?.Body ?? ''),
+      authorUid:
+        row?.AuthorUid == null || String(row.AuthorUid).trim() === ''
+          ? null
+          : String(row.AuthorUid).trim(),
+    });
+  }
+
+  for (const row of fieldChanges || []) {
+    const id = String(row?.Id || '').trim();
+    const at = parseChatterTimestamp(row?.At);
+    if (!id || at == null) continue;
+    entries.push({
+      kind: 'fieldChange',
+      id,
+      at,
+      field:
+        row?.Field == null || String(row.Field).trim() === '' ? null : String(row.Field).trim(),
+      changeKind: String(row?.Kind || '').trim() || 'field',
+      oldValue: row?.OldValue == null ? null : String(row.OldValue),
+      newValue: row?.NewValue == null ? null : String(row.NewValue),
+      actorUid:
+        row?.ActorUid == null || String(row.ActorUid).trim() === ''
+          ? null
+          : String(row.ActorUid).trim(),
+    });
+  }
+
+  // Collapse duplicates by `kind:id` before sorting so the winner does not
+  // depend on sort stability for equal comparator results (QuickJS).
+  const byKey = new Map<string, ChatterTimelineEntry>();
+  for (const entry of entries) {
+    const key = `${entry.kind}:${entry.id}`;
+    const existing = byKey.get(key);
+    if (!existing || entry.at < existing.at) byKey.set(key, entry);
+  }
+  return [...byKey.values()].sort(compareChatterTimelineEntries);
+}
+
+/**
+ * Ascending by time; fieldChange before message on ties; then id.
+ */
+export function compareChatterTimelineEntries(
+  left: ChatterTimelineEntry,
+  right: ChatterTimelineEntry,
+): number {
+  if (left.at !== right.at) return left.at - right.at;
+  if (left.kind !== right.kind) return left.kind === 'fieldChange' ? -1 : 1;
+  // Code-unit order so tie-breaks are locale-independent.
+  return left.id < right.id ? -1 : left.id > right.id ? 1 : 0;
+}

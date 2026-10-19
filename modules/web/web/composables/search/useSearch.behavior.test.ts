@@ -73,26 +73,44 @@ describe('useSearchEditor clone/ids', () => {
     expect((filters.value[0].children[0] as any).value).toBe('a');
   });
 
+  test('openNewFilter seeds one empty condition', () => {
+    const filters = ref<ConditionGroup[]>([]);
+    const editor = useSearchEditor({ filters });
+    editor.openNewFilter();
+    expect(editor.draftFilter.value?.root.children).toHaveLength(1);
+    expect((editor.draftFilter.value!.root.children[0] as any).field).toBe('');
+  });
+
   test('rejects save when all conditions are incomplete', () => {
     const filters = ref<ConditionGroup[]>([]);
     const editor = useSearchEditor({ filters });
     editor.openNewFilter();
-    editor.addDraftCondition();
     expect(editor.saveDraft()).toBe(false);
     expect(filters.value).toHaveLength(0);
   });
 
-  test('saves only complete conditions after normalize', () => {
+  test('refuses save while incomplete conditions remain', () => {
     const filters = ref<ConditionGroup[]>([]);
     const editor = useSearchEditor({ filters });
     editor.openNewFilter();
-    editor.addDraftCondition();
     editor.addDraftCondition();
     const [incomplete, complete] = editor.draftFilter.value!.root.children as any[];
     incomplete.field = '';
     complete.field = 'Name';
     complete.operator = '=';
     complete.value = 'ok';
+    expect(editor.saveDraft()).toBe(false);
+    expect(filters.value).toHaveLength(0);
+  });
+
+  test('saves when every leaf condition is complete', () => {
+    const filters = ref<ConditionGroup[]>([]);
+    const editor = useSearchEditor({ filters });
+    editor.openNewFilter();
+    const [only] = editor.draftFilter.value!.root.children as any[];
+    only.field = 'Name';
+    only.operator = '=';
+    only.value = 'ok';
     expect(editor.saveDraft()).toBe(true);
     expect(filters.value).toHaveLength(1);
     expect(filters.value[0].children).toHaveLength(1);
@@ -142,6 +160,11 @@ describe('useSearch actions and helpers', () => {
     api.actions.clearAll();
     expect(api.state.filters.value).toHaveLength(0);
     expect(api.state.keyword.value).toBe('');
+
+    // Groupby-only favorites persist empty Condition as [] / {}; apply must not throw.
+    expect(() => api.actions.applyNamedFilter({ name: 'ByYear', query: [] } as any)).not.toThrow();
+    expect(() => api.actions.applyNamedFilter({ name: 'ByYearObj', query: {} } as any)).not.toThrow();
+    expect(api.state.filters.value).toHaveLength(0);
   });
 
   test('summarizes nested groups, fields, tooltips, and buildQuery', () => {
@@ -181,8 +204,11 @@ describe('useSearch actions and helpers', () => {
     const { state, editor } = useSearch({});
     editor.openNew();
     editor.addCondition();
-    const condId = (editor.draftFilter.value!.root.children[0] as any).id;
+    const kids = editor.draftFilter.value!.root.children as any[];
+    const condId = kids[0].id;
     editor.updateCondition(condId, { field: 'Name', operator: '=', value: 'z' });
+    // openNew + addCondition leaves an incomplete row; remove it before save.
+    editor.removeCondition(kids[1].id);
     editor.setLogic('Or');
     expect(editor.draftFilter.value!.root.logic).toBe('Or');
     editor.addGroup();
@@ -255,9 +281,8 @@ describe('useSearchEditor nested draft ops', () => {
 
     editor.openNewFilter();
     editor.draftFilter.value!.root.name = 'Fresh';
-    editor.addDraftCondition();
-    const id = (editor.draftFilter.value!.root.children[0] as any).id;
-    editor.updateDraftCondition(id, { field: 'X', operator: '=', value: 1 });
+    const freshKids = editor.draftFilter.value!.root.children as any[];
+    editor.updateDraftCondition(freshKids[0].id, { field: 'X', operator: '=', value: 1 });
     expect(editor.saveDraft()).toBe(true);
     expect(filters.value.some(f => f.name === 'Fresh')).toBe(true);
 
@@ -278,6 +303,29 @@ describe('useSearchEditor nested draft ops', () => {
     editor.removeDraftCondition('x');
     editor.removeDraftGroup('x');
     expect(editor.saveDraft()).toBe(false);
+  });
+
+  test('setDraftLogic resolves nested groups by tempId without rewriting the root', () => {
+    const filters = ref<ConditionGroup[]>([
+      {
+        id: 'root-1',
+        logic: 'And',
+        children: [{ id: 'cond-1', field: 'Name', operator: '=', value: 'a' }],
+      },
+    ]);
+    const editor = useSearchEditor({
+      filters,
+      createGroupId: () => 'g-nested',
+      createCondId: () => 'c-nested',
+    });
+    editor.openEditFilter('root-1');
+    editor.addDraftGroup('root-1');
+    const nested = editor.draftFilter.value!.root.children.find((c: any) => c.id === 'g-nested') as any;
+    expect(nested).toBeTruthy();
+    nested.tempId = 'tmp-nested';
+    editor.setDraftLogic('Or', 'tmp-nested');
+    expect(editor.draftFilter.value!.root.logic).toBe('And');
+    expect(nested.logic).toBe('Or');
   });
 });
 

@@ -11,9 +11,6 @@ declare module 'vue-router' {
 
     /** Resource id injected by defineRoute for permission checks. */
     resourceId?: string;
-
-    /** Whether the route belongs to the auth entry flow. */
-    isAuthPage?: boolean;
   }
 }
 

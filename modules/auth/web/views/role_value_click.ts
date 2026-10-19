@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Resolve a Role Id from an OManyToOneField value-click payload.
+ * Resolve a Role Id from an ChoyManyToOneField value-click payload.
  * Empty / whitespace → '' (caller should no-op).
  */
 export function roleIdFromValueClick(payload: { id?: unknown } | null | undefined): string {

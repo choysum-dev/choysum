@@ -1,0 +1,227 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+/**
+ * Pure helpers for ChoyKanbanView: lane keys, card identity, and move payloads.
+ */
+
+export type ChoyKanbanCard = {
+  id: string;
+  title: string;
+  subtitle?: string;
+  laneKey: string;
+  payload?: Record<string, unknown>;
+};
+
+/** Synthetic lane key when Search has no group-by (ungrouped / flat board). */
+export const CHOY_KANBAN_FLAT_LANE_KEY = 'all';
+
+export type ChoyKanbanLane = {
+  key: string;
+  label: string;
+  cards: ChoyKanbanCard[];
+  /**
+   * Unloaded records still available for this lane. When > 0, ChoyKanbanView
+   * shows load-more chrome (host handles `lane-load-more` and updates lanes).
+   */
+  remain?: number;
+};
+
+/**
+ * True when the board is a single ungrouped lane (`all`).
+ * Flat boards tile cards in a responsive grid instead of one narrow column.
+ */
+export function isChoyKanbanFlatBoard(
+  lanes: ReadonlyArray<Pick<ChoyKanbanLane, 'key'>> | null | undefined,
+): boolean {
+  return Array.isArray(lanes) && lanes.length === 1 && lanes[0]?.key === CHOY_KANBAN_FLAT_LANE_KEY;
+}
+
+export type ChoyKanbanLoadMore = {
+  laneKey: string;
+};
+
+/** Normalize lane.remain to a non-negative integer (invalid → 0). */
+export function choyKanbanLaneRemain(lane: Pick<ChoyKanbanLane, 'remain'> | null | undefined): number {
+  const n = Number(lane?.remain ?? 0);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.floor(n);
+}
+
+/**
+ * Resolve unloaded row count for a kanban lane.
+ * Prefer Search-page remain when set (including 0 after a counted fetch);
+ * otherwise fall back to ReadGroup `laneCount - loaded`.
+ */
+export function resolveChoyKanbanLaneRemain(opts: {
+  loaded: number;
+  laneCount?: number | null;
+  /** `undefined` = unset (e.g. skipCount preload); a number is authoritative. */
+  fetchRemain?: number | null;
+}): number {
+  const loaded = Math.max(0, Math.floor(Number(opts.loaded) || 0));
+  if (typeof opts.fetchRemain === 'number' && Number.isFinite(opts.fetchRemain)) {
+    return Math.max(0, Math.floor(opts.fetchRemain));
+  }
+  const total = Number(opts.laneCount ?? 0);
+  if (!Number.isFinite(total) || total <= 0) return 0;
+  return Math.max(0, Math.floor(total) - loaded);
+}
+
+/** Loaded cards plus remaining (header total when load-more is in play). */
+export function choyKanbanLaneTotal(
+  lane: Pick<ChoyKanbanLane, 'cards' | 'remain'> | null | undefined,
+): number {
+  const loaded = Array.isArray(lane?.cards) ? lane!.cards.length : 0;
+  return loaded + choyKanbanLaneRemain(lane);
+}
+
+/**
+ * Stable sort of lanes by preferred status/key tokens (e.g. installed before uninstalled).
+ * Unknown keys keep relative order after ordered ones.
+ */
+export function sortChoyKanbanLanesByOrder<T extends { key: string; label?: string }>(
+  lanes: ReadonlyArray<T>,
+  order: ReadonlyArray<string>,
+  resolveToken: (lane: T) => string = (lane) => String(lane.key || ''),
+): T[] {
+  if (!order.length || !lanes.length) return [...lanes];
+  const rank = new Map(order.map((token, index) => [String(token).toLowerCase(), index]));
+  return [...lanes].sort((a, b) => {
+    const ra = rank.has(resolveToken(a).toLowerCase())
+      ? rank.get(resolveToken(a).toLowerCase())!
+      : order.length;
+    const rb = rank.has(resolveToken(b).toLowerCase())
+      ? rank.get(resolveToken(b).toLowerCase())!
+      : order.length;
+    return ra - rb;
+  });
+}
+
+/** Default load-more label for Choy kanban chrome (host may localize via `format`). */
+export function formatChoyKanbanLoadMoreLabel(
+  remain: number,
+  format: (n: number) => string = (n) => `${n} more`,
+): string {
+  return format(choyKanbanLaneRemain({ remain }));
+}
+
+export type ChoyKanbanMove = {
+  cardId: string;
+  fromLaneKey: string;
+  toLaneKey: string;
+  /**
+   * For `applyChoyKanbanMove` input: drop target index before the card is removed.
+   * For `card-move` emit: index within the destination lane after the move.
+   */
+  toIndex: number;
+};
+
+/** Stable string key for a lane (empty → `"__unset__"`). */
+export function normalizeChoyKanbanLaneKey(raw: unknown): string {
+  const s = String(raw ?? '').trim();
+  return s || '__unset__';
+}
+
+/** Prefer Id / id; fall back to index-based synthetic id. */
+export function resolveChoyKanbanCardId(raw: Record<string, unknown>, index: number): string {
+  const id = raw.Id ?? raw.id;
+  if (id != null && String(id).trim() !== '') {
+    return String(id);
+  }
+  return `__row_${index}`;
+}
+
+/**
+ * Group flat rows into lanes by `laneField`. Unknown lane keys are kept under
+ * their normalized key with a generated label.
+ */
+export function groupRowsIntoChoyKanbanLanes(
+  rows: Record<string, unknown>[],
+  opts: {
+    laneField: string;
+    laneDefs?: Array<{ key: string; label: string }>;
+    titleField?: string;
+    subtitleField?: string;
+  },
+): ChoyKanbanLane[] {
+  const titleField = opts.titleField || 'Title';
+  const subtitleField = opts.subtitleField;
+  const defs = opts.laneDefs ?? [];
+  const byKey = new Map<string, ChoyKanbanLane>();
+
+  for (const def of defs) {
+    const key = normalizeChoyKanbanLaneKey(def.key);
+    byKey.set(key, { key, label: def.label || key, cards: [] });
+  }
+
+  rows.forEach((row, index) => {
+    const laneKey = normalizeChoyKanbanLaneKey(row[opts.laneField]);
+    let lane = byKey.get(laneKey);
+    if (!lane) {
+      lane = { key: laneKey, label: laneKey === '__unset__' ? 'Unset' : laneKey, cards: [] };
+      byKey.set(laneKey, lane);
+    }
+    const titleRaw = row[titleField];
+    lane.cards.push({
+      id: resolveChoyKanbanCardId(row, index),
+      title: titleRaw == null || titleRaw === '' ? resolveChoyKanbanCardId(row, index) : String(titleRaw),
+      subtitle:
+        subtitleField && row[subtitleField] != null && row[subtitleField] !== ''
+          ? String(row[subtitleField])
+          : undefined,
+      laneKey,
+      payload: row,
+    });
+  });
+
+  if (defs.length) {
+    const ordered: ChoyKanbanLane[] = [];
+    const seen = new Set<string>();
+    for (const def of defs) {
+      const key = normalizeChoyKanbanLaneKey(def.key);
+      // Duplicate / equivalent defs must not push the same lane twice.
+      if (seen.has(key)) continue;
+      const lane = byKey.get(key);
+      if (lane) {
+        ordered.push(lane);
+        seen.add(key);
+      }
+    }
+    for (const [key, lane] of byKey) {
+      if (!seen.has(key)) ordered.push(lane);
+    }
+    return ordered;
+  }
+
+  return [...byKey.values()];
+}
+
+/**
+ * Apply a card move immutably. Returns null when the card or lanes are missing,
+ * or when from/to are identical with no index change.
+ */
+export function applyChoyKanbanMove(lanes: ChoyKanbanLane[], move: ChoyKanbanMove): ChoyKanbanLane[] | null {
+  const fromIdx = lanes.findIndex(l => l.key === move.fromLaneKey);
+  const toIdx = lanes.findIndex(l => l.key === move.toLaneKey);
+  if (fromIdx < 0 || toIdx < 0) return null;
+
+  const next = lanes.map(l => ({ ...l, cards: [...l.cards] }));
+  const fromLane = next[fromIdx]!;
+  const toLane = next[toIdx]!;
+  const cardIndex = fromLane.cards.findIndex(c => c.id === move.cardId);
+  if (cardIndex < 0) return null;
+
+  const [card] = fromLane.cards.splice(cardIndex, 1);
+  const moved: ChoyKanbanCard = { ...card!, laneKey: move.toLaneKey };
+  // Drop targets use pre-removal indexes. Same-lane downward moves must subtract
+  // one after the splice so the card lands before the hovered target, not after.
+  const sameLane = fromIdx === toIdx;
+  const rawInsertAt = sameLane && cardIndex < move.toIndex ? move.toIndex - 1 : move.toIndex;
+  const insertAt = Math.max(0, Math.min(rawInsertAt, toLane.cards.length));
+  if (sameLane && insertAt === cardIndex) {
+    return null;
+  }
+  toLane.cards.splice(insertAt, 0, moved);
+  return next;
+}

@@ -4,25 +4,24 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage
+  <ChoyPage
     :title="pageTitle"
     :store="uiResourceGrantStore"
-    action-import
-    action-export
-    :action-import-upload-hint="_t('Upload a UTF-8 CSV with columns Mode.')"
+    :action-import="true"
+    :action-export="true"
   >
     <RoleUiResourceListView selection-mode="multiple" />
-  </OPage>
+  </ChoyPage>
 </template>
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
 import { createStoreByModel } from '@/web/web/stores/registry';
-import OPage from '@/web/web/components/page/OPage.vue';
 import RoleUiResourceListView from '@/auth/web/views/RoleUiResourceListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
 import type RoleUiResource from '@/auth/service/models/role_ui_resource';
+import { ChoyPage } from '@/web';
 
 const { _t } = createTranslate('auth', { scope: 'web/pages/RoleUiResourceList' });
 const pageTitle = _t('UI Resource Grant List');

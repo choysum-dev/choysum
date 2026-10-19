@@ -9,7 +9,7 @@ import type UserFilter from '@/web/service/models/user_filter';
  * Field names follow {@link UserFilter}; timestamps/Condition/UserId stay wire-loose
  * (JSON may send ISO strings or nested `{ Id }`).
  */
-export type UserFilterRow = Partial<Pick<UserFilter, 'Id' | 'Name' | 'IsDefault' | 'CreatedUid'>> & {
+export type UserFilterRow = Partial<Pick<UserFilter, 'Id' | 'Name' | 'IsDefault' | 'CreatedUid' | 'GroupBy'>> & {
   Condition?: unknown;
   UserId?: string | null | { Id?: string | null };
   UpdatedAt?: Date | string | null;
@@ -27,7 +27,7 @@ export function resolveUserFilterUserId(userId: unknown): string {
 }
 
 /**
- * Convert a UserFilter row into a NamedFilter for OSearch menus / first-frame defaults.
+ * Convert a UserFilter row into a NamedFilter for Search menus / first-frame defaults.
  */
 export function userFilterToNamedFilter(row: UserFilterRow, selected = false): NamedFilter {
   return {

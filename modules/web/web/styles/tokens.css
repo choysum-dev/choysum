@@ -1,0 +1,290 @@
+/*
+ * SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Choysum Choy UI tokens (frozen names; values tunable).
+ * Product SPA consumes --choy-* from :root / html (and html.dark /
+ * [data-density=compact] / [dir=rtl]).
+ * Recipe: shadcn-vue semantic pairs (card/popover/accent/sidebar-*) +
+ * emerald primary; density ruler unchanged.
+ */
+
+:root,
+html {
+  /* Emerald primary; success stays teal-green but distinguishable. */
+  --choy-color-primary: oklch(0.55 0.15 160);
+  --choy-color-primary-foreground: oklch(0.985 0.004 160);
+  --choy-color-success: oklch(0.58 0.12 145);
+  --choy-color-warning: oklch(0.75 0.14 85);
+  --choy-color-danger: oklch(0.58 0.18 25);
+  --choy-color-info: oklch(0.65 0.08 230);
+  --choy-color-foreground: oklch(0.22 0.01 260);
+  /* Pure white canvas; sidebar token stays slightly muted (sidebar-09). */
+  --choy-color-background: oklch(1 0 0);
+  --choy-color-muted: oklch(0.96 0.006 260);
+  /* Slightly deeper than 0.45 so labels stay readable on weak displays. */
+  --choy-color-muted-foreground: oklch(0.40 0.02 260);
+  --choy-color-border: oklch(0.9 0.01 260);
+  --choy-color-ring: oklch(0.55 0.15 160);
+
+  /* Elevated / floating / interactive surfaces (shadcn semantic pairs). */
+  --choy-color-card: oklch(1 0 0);
+  --choy-color-card-foreground: var(--choy-color-foreground);
+  --choy-color-popover: var(--choy-color-background);
+  --choy-color-popover-foreground: var(--choy-color-foreground);
+  --choy-color-secondary: oklch(0.96 0.006 260);
+  --choy-color-secondary-foreground: oklch(0.22 0.01 260);
+  --choy-color-accent: oklch(0.96 0.006 260);
+  --choy-color-accent-foreground: oklch(0.22 0.01 260);
+  --choy-color-input: oklch(0.9 0.01 260);
+
+  /* Sidebar palette (Sidebar* L2; layout width tokens stay separate). */
+  /* Neutral chrome; AppShell L2 pane overrides to a lighter nested surface. */
+  --choy-color-sidebar: oklch(0.965 0 0);
+  --choy-color-sidebar-foreground: oklch(0.22 0.01 260);
+  --choy-color-sidebar-primary: var(--choy-color-primary);
+  --choy-color-sidebar-primary-foreground: var(--choy-color-primary-foreground);
+  /* Must sit clearly below chrome/pane (0.965 / 0.985); 0.96 was optically invisible. */
+  --choy-color-sidebar-accent: oklch(0.915 0.01 260);
+  --choy-color-sidebar-accent-foreground: oklch(0.22 0.01 260);
+  --choy-color-sidebar-border: oklch(0.9 0.01 260);
+  --choy-color-sidebar-ring: var(--choy-color-ring);
+
+  /* Distinct hues so multi-series charts stay readable (1/2 were both green). */
+  --choy-chart-1: oklch(0.55 0.15 160);
+  --choy-chart-2: oklch(0.52 0.14 250);
+  --choy-chart-3: oklch(0.72 0.14 85);
+  --choy-chart-4: oklch(0.58 0.18 25);
+  --choy-chart-5: oklch(0.55 0.12 310);
+
+  /* Base radius; sm/md/lg derive in theme.css like shadcn --radius scale. */
+  --choy-radius: 0.5rem;
+  --choy-radius-sm: calc(var(--choy-radius) * 0.75);
+  --choy-radius-md: var(--choy-radius);
+  --choy-radius-lg: calc(var(--choy-radius) * 1.5);
+
+  --choy-space-1: 0.25rem;
+  --choy-space-2: 0.5rem;
+  --choy-space-3: 0.75rem;
+  --choy-space-4: 1rem;
+  --choy-space-6: 1.5rem;
+  --choy-space-8: 2rem;
+
+  --choy-font-size-sm: 0.875rem;
+  --choy-font-size-base: 1rem;
+  --choy-font-size-lg: 1.125rem;
+
+  /*
+   * One chrome band height for all four poles (sidebar + inset header/footer)
+   * so seams stay aligned. Identity rows (company / user, size-8 mark) must fit.
+   */
+  --choy-layout-chrome-height: 3.5rem;
+  --choy-layout-header-height: var(--choy-layout-chrome-height);
+  --choy-layout-footer-height: var(--choy-layout-chrome-height);
+  --choy-layout-sidebar-width: 15rem;
+  --choy-layout-sidebar-collapsed-width: 3.5rem;
+  /* Inline gutter for App/Guest frames and ChoyPage opt-in pad (sidebar-07 p-4). */
+  --choy-layout-content-padding: 1rem;
+  /* Vertical rhythm between header, canvas, and footer. Tighter than the inline gutter. */
+  --choy-layout-section-gap: 0.5rem;
+
+  --choy-motion-duration-fast: 120ms;
+  --choy-motion-duration-normal: 200ms;
+  --choy-motion-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --choy-z-dropdown: 1000;
+  --choy-z-modal: 1100;
+  --choy-z-toast: 1200;
+
+  /* Semantic text / fill / border for product scoped CSS. */
+  --choy-color-fill: var(--choy-color-muted);
+  --choy-color-fill-light: var(--choy-color-muted);
+  --choy-color-border-light: var(--choy-color-border);
+  --choy-color-primary-light: color-mix(in oklab, var(--choy-color-primary) 82%, white);
+  --choy-color-primary-dark: color-mix(in oklab, var(--choy-color-primary) 82%, black);
+  --choy-color-primary-soft: color-mix(in oklab, var(--choy-color-primary) 55%, white);
+  --choy-color-primary-muted: color-mix(in oklab, var(--choy-color-primary) 35%, white);
+  --choy-color-primary-subtle: color-mix(in oklab, var(--choy-color-primary) 12%, white);
+  --choy-color-success-subtle: color-mix(in oklab, var(--choy-color-success) 12%, white);
+  --choy-color-warning-subtle: color-mix(in oklab, var(--choy-color-warning) 12%, white);
+  --choy-color-danger-subtle: color-mix(in oklab, var(--choy-color-danger) 12%, white);
+  --choy-color-info-subtle: color-mix(in oklab, var(--choy-color-info) 12%, white);
+
+  /*
+   * UI sans: system first for Latin metrics on Apple; explicit CJK faces so
+   * Windows/Linux do not render Han with Arial/Roboto fallbacks.
+   */
+  --choy-font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    'PingFang SC',
+    'Hiragino Sans GB',
+    'Microsoft YaHei UI',
+    'Microsoft YaHei',
+    'Noto Sans SC',
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
+  /* Code / JSON / search expressions; TW .font-mono follows via index.css. */
+  --choy-font-family-mono:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    'Liberation Mono',
+    'Courier New',
+    monospace;
+  --choy-line-height-base: 1.5;
+
+  /*
+   * Control height ruler (comfortable): Button / Input / Select / Combobox /
+   * TabsList. L2 binds via theme utilities h-control / size-control (see theme.css).
+   * List/DataTable body rows use --choy-list-row-height (Odoo-like ~40), not this.
+   */
+  --choy-control-height: 32px;
+  --choy-control-height-sm: 28px;
+  --choy-control-height-lg: 36px;
+  --choy-component-size-base: var(--choy-control-height);
+  --choy-component-size-sm: var(--choy-control-height-sm);
+  --choy-component-size-lg: var(--choy-control-height-lg);
+
+  /* List virtual row + header track (comfortable ≈ Odoo list density). */
+  --choy-list-row-height: 40px;
+  --choy-list-header-height: 40px;
+
+  /*
+   * Form field chrome (product ChoyFormItem / ChoyFieldBase).
+   * Stack = label ↔ control ↔ message; group = field ↔ field (grid / FieldGroup).
+   * Kit Field/FormItem keep their own gap-* defaults; product CSS overrides.
+   */
+  --choy-field-stack-gap: 0.375rem;
+  /* Between field blocks; keep above stack-gap so groups read as units. */
+  --choy-field-group-gap: 0.5rem;
+  --choy-field-label-inline-gap: 0.25rem;
+  /* Slightly open vs leading-none so CJK glyphs are not clipped. */
+  --choy-field-label-line-height: 1.25;
+
+  /* Direction defaults; updateDocumentDirection may override at runtime. */
+  --choy-direction: ltr;
+  --choy-transform-direction: -100%;
+  --choy-direction-flip: 1;
+
+  /*
+   * Short aliases matching shadcn-vue Theming var(--popover) etc.
+   * Prefer --choy-color-* in product CSS; L2 upstream may use short names.
+   */
+  --background: var(--choy-color-background);
+  --foreground: var(--choy-color-foreground);
+  --card: var(--choy-color-card);
+  --card-foreground: var(--choy-color-card-foreground);
+  --popover: var(--choy-color-popover);
+  --popover-foreground: var(--choy-color-popover-foreground);
+  --primary: var(--choy-color-primary);
+  --primary-foreground: var(--choy-color-primary-foreground);
+  --secondary: var(--choy-color-secondary);
+  --secondary-foreground: var(--choy-color-secondary-foreground);
+  --muted: var(--choy-color-muted);
+  --muted-foreground: var(--choy-color-muted-foreground);
+  --accent: var(--choy-color-accent);
+  --accent-foreground: var(--choy-color-accent-foreground);
+  --destructive: var(--choy-color-danger);
+  --destructive-foreground: var(--choy-color-danger);
+  --border: var(--choy-color-border);
+  --input: var(--choy-color-input);
+  --ring: var(--choy-color-ring);
+  --radius: var(--choy-radius);
+  --sidebar: var(--choy-color-sidebar);
+  --sidebar-foreground: var(--choy-color-sidebar-foreground);
+  --sidebar-primary: var(--choy-color-sidebar-primary);
+  --sidebar-primary-foreground: var(--choy-color-sidebar-primary-foreground);
+  --sidebar-accent: var(--choy-color-sidebar-accent);
+  --sidebar-accent-foreground: var(--choy-color-sidebar-accent-foreground);
+  --sidebar-border: var(--choy-color-sidebar-border);
+  --sidebar-ring: var(--choy-color-sidebar-ring);
+  --chart-1: var(--choy-chart-1);
+  --chart-2: var(--choy-chart-2);
+  --chart-3: var(--choy-chart-3);
+  --chart-4: var(--choy-chart-4);
+  --chart-5: var(--choy-chart-5);
+}
+
+html.dark {
+  --choy-color-primary: oklch(0.72 0.14 160);
+  --choy-color-primary-foreground: oklch(0.18 0.02 160);
+  --choy-color-success: oklch(0.7 0.11 145);
+  --choy-color-warning: oklch(0.8 0.12 85);
+  --choy-color-danger: oklch(0.68 0.16 25);
+  --choy-color-info: oklch(0.72 0.08 230);
+  --choy-color-foreground: oklch(0.95 0.01 260);
+  --choy-color-background: oklch(0.18 0.015 260);
+  --choy-color-muted: oklch(0.28 0.015 260);
+  --choy-color-border: oklch(0.35 0.015 260);
+  --choy-color-ring: oklch(0.72 0.14 160);
+  --choy-color-muted-foreground: oklch(0.72 0.02 260);
+  --choy-color-card: oklch(0.205 0.015 260);
+  --choy-color-card-foreground: oklch(0.95 0.01 260);
+  --choy-color-popover: oklch(0.205 0.015 260);
+  --choy-color-popover-foreground: oklch(0.95 0.01 260);
+  --choy-color-secondary: oklch(0.28 0.015 260);
+  --choy-color-secondary-foreground: oklch(0.95 0.01 260);
+  --choy-color-accent: oklch(0.28 0.015 260);
+  --choy-color-accent-foreground: oklch(0.95 0.01 260);
+  --choy-color-input: oklch(1 0 0 / 15%);
+  --choy-color-sidebar: oklch(0.205 0.015 260);
+  --choy-color-sidebar-foreground: oklch(0.95 0.01 260);
+  --choy-color-sidebar-primary: var(--choy-color-primary);
+  --choy-color-sidebar-primary-foreground: var(--choy-color-primary-foreground);
+  --choy-color-sidebar-accent: oklch(0.28 0.015 260);
+  --choy-color-sidebar-accent-foreground: oklch(0.95 0.01 260);
+  --choy-color-sidebar-border: oklch(1 0 0 / 10%);
+  --choy-color-sidebar-ring: var(--choy-color-ring);
+  --choy-color-primary-light: color-mix(in oklab, var(--choy-color-primary) 82%, black);
+  --choy-color-primary-dark: color-mix(in oklab, var(--choy-color-primary) 82%, white);
+  --choy-color-primary-soft: color-mix(in oklab, var(--choy-color-primary) 55%, black);
+  --choy-color-primary-muted: color-mix(in oklab, var(--choy-color-primary) 35%, black);
+  --choy-color-primary-subtle: color-mix(in oklab, var(--choy-color-primary) 18%, black);
+  --choy-color-success-subtle: color-mix(in oklab, var(--choy-color-success) 18%, black);
+  --choy-color-warning-subtle: color-mix(in oklab, var(--choy-color-warning) 18%, black);
+  --choy-color-danger-subtle: color-mix(in oklab, var(--choy-color-danger) 18%, black);
+  --choy-color-info-subtle: color-mix(in oklab, var(--choy-color-info) 18%, black);
+  color-scheme: dark;
+}
+
+html[data-density='compact'] {
+  --choy-space-1: 0.2rem;
+  --choy-space-2: 0.4rem;
+  --choy-space-3: 0.6rem;
+  --choy-space-4: 0.8rem;
+  --choy-space-6: 1.2rem;
+  --choy-space-8: 1.6rem;
+  --choy-font-size-sm: 0.8125rem;
+  --choy-font-size-base: 0.9375rem;
+  --choy-font-size-lg: 1.0625rem;
+  --choy-layout-content-padding: 0.75rem;
+  --choy-layout-section-gap: 0.375rem;
+  --choy-control-height: 28px;
+  --choy-control-height-sm: 24px;
+  --choy-control-height-lg: 32px;
+  --choy-list-row-height: 36px;
+  --choy-list-header-height: 36px;
+  --choy-layout-chrome-height: 3rem;
+  --choy-field-stack-gap: 0.25rem;
+  --choy-field-group-gap: 0.375rem;
+  --choy-field-label-inline-gap: 0.2rem;
+}
+
+html[dir='rtl'] {
+  --choy-direction: rtl;
+  --choy-transform-direction: 100%;
+  --choy-direction-flip: -1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root,
+  html {
+    --choy-motion-duration-fast: 0ms;
+    --choy-motion-duration-normal: 0ms;
+  }
+}

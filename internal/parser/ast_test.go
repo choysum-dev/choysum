@@ -252,6 +252,103 @@ func TestParseTSTreeAndTSGoHelperFunctions(t *testing.T) {
 	}
 }
 
+func TestTSGoExportDeclarationNamesDestructuring(t *testing.T) {
+	content := `
+export const [useSidebar, provideSidebarContext] = [null, null]
+export const { useCommand, provideCommandContext } = { useCommand: null, provideCommandContext: null }
+export const [keep, , also] = [1, 2, 3]
+export const { nested: { deep } } = { nested: { deep: 1 } }
+export function namedFn() {}
+export {}
+`
+	_, ctx := mustParseTSGoCtx(t, "/virtual/modules/web/web/components/vendor/ui/sidebar/utils.ts", content)
+	for _, name := range []string{
+		"useSidebar", "provideSidebarContext", "useCommand", "provideCommandContext",
+		"keep", "also", "deep", "namedFn",
+	} {
+		if ctx.exports[name] == nil {
+			t.Fatalf("expected export %q in %#v", name, ctx.exports)
+		}
+	}
+	if got := tsgoExportDeclarationName(nil); got != "" {
+		t.Fatalf("tsgoExportDeclarationName(nil) = %q", got)
+	}
+	if got := tsgoExportDeclarationNames(nil); got != nil {
+		t.Fatalf("tsgoExportDeclarationNames(nil) = %#v", got)
+	}
+
+	var exportEmpty *tsast.Node
+	var exportFn *tsast.Node
+	var exportArrayHole *tsast.Node
+	var exportNested *tsast.Node
+	for _, stmt := range ctx.source.Statements.Nodes {
+		if stmt == nil {
+			continue
+		}
+		switch stmt.Kind {
+		case tsast.KindExportDeclaration:
+			exportEmpty = stmt
+		case tsast.KindFunctionDeclaration:
+			if tsgoHasModifier(stmt, tsast.KindExportKeyword) {
+				exportFn = stmt
+			}
+		case tsast.KindVariableStatement:
+			names := tsgoExportDeclarationNames(stmt)
+			if len(names) == 2 && names[0] == "keep" && names[1] == "also" {
+				exportArrayHole = stmt
+			}
+			if len(names) == 1 && names[0] == "deep" {
+				exportNested = stmt
+			}
+		}
+	}
+	if exportEmpty == nil || exportFn == nil || exportArrayHole == nil || exportNested == nil {
+		t.Fatalf("missing fixture statements")
+	}
+	if got := tsgoExportDeclarationNames(exportEmpty); got != nil {
+		t.Fatalf("tsgoExportDeclarationNames(export {}) = %#v", got)
+	}
+	if got := tsgoExportDeclarationName(exportFn); got != "namedFn" {
+		t.Fatalf("tsgoExportDeclarationName(function) = %q", got)
+	}
+	if got := tsgoBindingNameIdents(nil); got != nil {
+		t.Fatalf("tsgoBindingNameIdents(nil) = %#v", got)
+	}
+	if got := tsgoBindingNameIdents(exportFn); got != nil {
+		t.Fatalf("tsgoBindingNameIdents(non-binding) = %#v", got)
+	}
+	if got := tsgoExportDeclarationNames(exportArrayHole); len(got) != 2 {
+		t.Fatalf("array holes = %#v", got)
+	}
+	if got := tsgoExportDeclarationNames(exportNested); len(got) != 1 || got[0] != "deep" {
+		t.Fatalf("nested = %#v", got)
+	}
+	factory := tsast.NewNodeFactory(tsast.NodeFactoryHooks{})
+	if got := tsgoBindingNameIdents(factory.NewIdentifier("")); got != nil {
+		t.Fatalf("tsgoBindingNameIdents(empty ident) = %#v", got)
+	}
+	if got := tsgoBindingNameIdents(factory.NewBindingPattern(tsast.KindObjectBindingPattern, nil)); got != nil {
+		t.Fatalf("tsgoBindingNameIdents(nil elements) = %#v", got)
+	}
+	withHole := factory.NewBindingPattern(tsast.KindArrayBindingPattern, &tsast.NodeList{
+		Nodes: []*tsast.Node{
+			nil,
+			factory.NewOmittedExpression(),
+			factory.NewBindingElement(nil, nil, factory.NewIdentifier("kept"), nil),
+		},
+	})
+	if got := tsgoBindingNameIdents(withHole); len(got) != 1 || got[0] != "kept" {
+		t.Fatalf("tsgoBindingNameIdents(nil+omitted+kept) = %#v", got)
+	}
+	varList := exportArrayHole.AsVariableStatement().DeclarationList.AsVariableDeclarationList()
+	orig := varList.Declarations.Nodes
+	varList.Declarations.Nodes = append([]*tsast.Node{nil}, orig...)
+	if got := tsgoExportDeclarationNames(exportArrayHole); len(got) != 2 {
+		t.Fatalf("tsgoExportDeclarationNames(with nil decl) = %#v", got)
+	}
+	varList.Declarations.Nodes = orig
+}
+
 func TestTSGoParseDecoratorObjectAndClassMembers(t *testing.T) {
 	content := "import BaseModel from './base'\n" +
 		"import * as decorators from '@/decorators'\n" +

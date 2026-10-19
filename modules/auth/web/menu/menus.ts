@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { type MenuItem } from '@/core/web/menu';
-import { UserFilled } from '@element-plus/icons-vue';
 import { defineMenu } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
+import { Shield } from 'lucide-vue-next';
 
 const { _lt } = createTranslate('auth', { scope: 'web/menu/menus' });
 
@@ -16,8 +16,8 @@ const { _lt } = createTranslate('auth', { scope: 'web/menu/menus' });
 export const authMenus: MenuItem[] = [
   defineMenu('auth.menu.root', {
     title: _lt('Access Control'),
-    icon: UserFilled,
     sequence: 100,
+    icon: Shield,
     children: [
       defineMenu('auth.menu.user_list', {
         title: _lt('User List'),
@@ -29,7 +29,7 @@ export const authMenus: MenuItem[] = [
         path: '/auth/roles',
         sequence: 30,
       }),
-      // Pathless group: cross-role / everyone rule catalog (PR-C-5). Flat leaf URLs.
+      // Pathless folder: cross-role / everyone rule catalog.
       defineMenu('auth.menu.access_rules', {
         title: _lt('Access Rules'),
         sequence: 35,

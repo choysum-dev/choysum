@@ -4,19 +4,13 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage
-    :title="pageTitle"
-    :store="tokenStore"
-    action-import
-    action-export
-    :action-import-upload-hint="_t('Upload a UTF-8 CSV with columns TokenType, Revoked.')"
-  >
+  <ChoyPage :title="pageTitle" :store="tokenStore">
     <TokenKanbanView />
-  </OPage>
+  </ChoyPage>
 </template>
 
 <script setup lang="ts">
-import OPage from '@/web/web/components/page/OPage.vue';
+import { ChoyPage } from '@/web';
 import TokenKanbanView from '../views/TokenKanbanView.vue';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';

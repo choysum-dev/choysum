@@ -4,90 +4,69 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <el-dialog
-    v-model="visible"
-    :title="title"
-    width="640px"
-    destroy-on-close
-    :close-on-click-modal="!busy"
-    :close-on-press-escape="!busy"
-    @open="onOpen"
-    @closed="resetState"
-  >
-    <div class="export-panel">
-      <p class="export-panel-scope">{{ scopeSummary }}</p>
+  <ChoyDialog v-model:open="visible">
+    <ChoyDialogContent class="export-panel-dialog" @open-auto-focus.prevent>
+      <ChoyDialogTitle>{{ title }}</ChoyDialogTitle>
+      <div class="flex flex-col gap-3">
+        <p class="m-0 text-foreground">{{ scopeSummary }}</p>
 
-      <el-collapse v-model="customFieldsOpen">
-        <el-collapse-item :title="customFieldsLabel" name="fields">
-          <div v-if="templatesEnabled" class="export-panel-templates">
-            <div class="export-panel-template-row">
-              <el-select
-                v-model="selectedTemplateId"
-                clearable
-                filterable
-                :loading="exportTemplatesLoading"
-                :placeholder="templateSelectLabel"
-                class="export-panel-template-select"
-              >
-                <el-option
-                  v-for="item in exportTemplateItems"
-                  :key="item.Id"
-                  :label="item.shared ? `${item.Name} (${sharedTemplateLabel})` : item.Name"
-                  :value="item.Id"
-                />
-              </el-select>
-              <el-button :disabled="!selectedTemplateId || busy" @click="applySelectedTemplate">{{ loadTemplateLabel }}</el-button>
-              <el-button
-                :disabled="!selectedTemplateCanDelete || busy"
-                type="danger"
-                plain
-                @click="deleteSelectedTemplate"
-              >
-                {{ deleteTemplateLabel }}
-              </el-button>
+        <details class="export-panel-fields" :open="customFieldsOpen.includes('fields')" @toggle="onFieldsToggle">
+          <summary>{{ customFieldsLabel }}</summary>
+          <div v-if="templatesEnabled" class="mb-3 flex flex-col gap-2">
+            <div class="flex flex-wrap items-center gap-2">
+              <select v-model="selectedTemplateId" class="min-w-[220px] flex-[1_1_220px]">
+                <option value="">{{ templateSelectLabel }}</option>
+                <option v-for="item in exportTemplateItems" :key="item.Id" :value="item.Id">
+                  {{ item.shared ? `${item.Name} (${sharedTemplateLabel})` : item.Name }}
+                </option>
+              </select>
+              <ChoyButton size="sm" variant="outline" :disabled="!selectedTemplateId || busy" @click="applySelectedTemplate">{{ loadTemplateLabel }}</ChoyButton>
+              <ChoyButton size="sm" variant="destructive" :disabled="!selectedTemplateCanDelete || busy" @click="deleteSelectedTemplate">{{ deleteTemplateLabel }}</ChoyButton>
             </div>
-            <div class="export-panel-template-row">
-              <el-input v-model="templateSaveName" :placeholder="templateNameLabel" class="export-panel-template-name" />
-              <el-checkbox v-model="templateSaveShared">{{ sharedTemplateLabel }}</el-checkbox>
-              <el-button :disabled="!canSaveTemplate || busy" @click="saveCurrentTemplate">{{ saveTemplateLabel }}</el-button>
+            <div class="flex flex-wrap items-center gap-2">
+              <input v-model="templateSaveName" :placeholder="templateNameLabel" class="min-w-[180px] flex-[1_1_180px]" />
+              <label class="inline-flex items-center gap-2">
+                <input type="checkbox" v-model="templateSaveShared" />
+                {{ sharedTemplateLabel }}
+              </label>
+              <ChoyButton size="sm" variant="outline" :disabled="!canSaveTemplate || busy" @click="saveCurrentTemplate">{{ saveTemplateLabel }}</ChoyButton>
             </div>
-            <p v-if="exportTemplatesLoadError" class="export-panel-hint">{{ exportTemplatesLoadError }}</p>
+            <p v-if="exportTemplatesLoadError" class="m-0 text-muted-foreground">{{ exportTemplatesLoadError }}</p>
           </div>
-          <el-tree
-            v-if="fieldTree.length"
-            ref="fieldTreeRef"
-            show-checkbox
-            node-key="path"
-            :data="fieldTree"
-            :props="treeProps"
-            :default-checked-keys="selectedFieldPaths"
-            @check="onFieldCheck"
-          />
-          <p v-else-if="fieldsLoading" class="export-panel-hint">{{ loadingFieldsLabel }}</p>
-          <p v-else class="export-panel-hint">{{ noFieldsLabel }}</p>
-        </el-collapse-item>
-      </el-collapse>
+          <ul v-if="fieldTree.length" class="export-panel-field-list">
+            <li v-for="node in flatFieldNodes" :key="node.path">
+              <label class="inline-flex items-center gap-2">
+                <input type="checkbox" :checked="selectedFieldPaths.includes(node.path)" @change="toggleFieldPath(node.path, ($event.target as HTMLInputElement).checked)" />
+                <span>{{ node.label }}</span>
+              </label>
+            </li>
+          </ul>
+          <p v-else-if="fieldsLoading" class="m-0 text-muted-foreground">{{ loadingFieldsLabel }}</p>
+          <p v-else class="m-0 text-muted-foreground">{{ noFieldsLabel }}</p>
+        </details>
 
-      <el-alert v-if="previewReport" :type="previewAlertType" :closable="false" show-icon class="export-panel-alert">
-        <template #title>{{ previewSummary }}</template>
-      </el-alert>
+        <div v-if="previewReport" role="alert" class="mt-1">{{ previewSummary }}</div>
+        <div v-if="exportDone" class="export-panel-success">
+          <strong>{{ exportSuccessTitle }}</strong>
+          <p>{{ exportSuccessSubtitle }}</p>
+        </div>
+        <div v-else-if="exportError" role="alert" class="mt-1">{{ exportError }}</div>
+      </div>
 
-      <el-result v-if="exportDone" icon="success" :title="exportSuccessTitle" :sub-title="exportSuccessSubtitle" />
-      <el-alert v-else-if="exportError" type="error" :title="exportError" show-icon :closable="false" />
-    </div>
-
-    <template #footer>
-      <el-button :disabled="busy" @click="visible = false">{{ cancelLabel }}</el-button>
-      <el-button v-if="!exportDone" plain :loading="busy" @click="runPreview">{{ previewActionLabel }}</el-button>
-      <el-button v-if="!exportDone" type="primary" :loading="busy" @click="commitExport">{{ exportActionLabel }}</el-button>
-      <el-button v-else type="primary" @click="visible = false">{{ doneLabel }}</el-button>
-    </template>
-  </el-dialog>
+      <div class="export-panel-footer">
+        <ChoyButton size="sm" variant="outline" :disabled="busy" @click="visible = false">{{ cancelLabel }}</ChoyButton>
+        <ChoyButton v-if="!exportDone" size="sm" variant="outline" :disabled="busy" @click="runPreview">{{ previewActionLabel }}</ChoyButton>
+        <ChoyButton v-if="!exportDone" size="sm" variant="default" :disabled="busy" @click="commitExport">{{ exportActionLabel }}</ChoyButton>
+        <ChoyButton v-else size="sm" variant="default" @click="visible = false">{{ doneLabel }}</ChoyButton>
+      </div>
+    </ChoyDialogContent>
+  </ChoyDialog>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
-import type ElTree from 'element-plus/es/components/tree/src/tree.vue';
+import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
+import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { describeExportFields, previewExport, runExport, ExportMode, type ExportFieldNode, type ExportReport } from '@/core/web/export/client';
 import { downloadExportCsvBytes, suggestExportFileName } from '@/core/web/export/download_csv';
 import { normalizeExportFieldPaths } from '@/core/web/export/field_paths';
@@ -139,7 +118,7 @@ const previewReport = ref<ExportReport | null>(null);
 const exportDone = ref(false);
 const exportError = ref('');
 const exportSuccessSubtitle = ref('');
-const fieldTreeRef = ref<InstanceType<typeof ElTree> | null>(null);
+const fieldTreeRef = ref<HTMLElement | null>(null);
 const exportTemplates = useExportTemplates(() => props.model);
 const { templates: exportTemplateItems, loading: exportTemplatesLoading, loadError: exportTemplatesLoadError, load: loadExportTemplates, apply: applyExportTemplate, saveCurrent: saveExportTemplate, remove: removeExportTemplate } = exportTemplates;
 const selectedTemplateId = ref('');
@@ -206,8 +185,7 @@ const scopeSummary = computed(() => {
 });
 
 const effectiveFields = computed(() => {
-  const checked = fieldTreeRef.value?.getCheckedKeys?.(false) as string[] | undefined;
-  const paths = (checked?.length ? checked : selectedFieldPaths.value).map(String).filter(Boolean);
+  const paths = selectedFieldPaths.value.map(String).filter(Boolean);
   if (paths.length > 0) {
     return paths;
   }
@@ -264,7 +242,6 @@ async function loadFields() {
     pendingFieldPaths.value = null;
     selectedFieldPaths.value = normalizeExportFieldPaths(paths);
     await nextTick();
-    fieldTreeRef.value?.setCheckedKeys?.(selectedFieldPaths.value);
   } catch (err) {
     if (shouldIgnoreRpcError(token, err)) {
       return;
@@ -281,7 +258,6 @@ async function loadFields() {
 function applyFieldPaths(paths: string[]) {
   const normalized = normalizeExportFieldPaths(paths);
   selectedFieldPaths.value = normalized;
-  fieldTreeRef.value?.setCheckedKeys?.(normalized);
   invalidateSession();
   previewReport.value = null;
 }
@@ -334,6 +310,33 @@ async function deleteSelectedTemplate() {
   } finally {
     busy.value = false;
   }
+}
+
+
+const flatFieldNodes = computed(() => {
+  const out: Array<{ path: string; label: string }> = [];
+  const walk = (nodes: any[], prefix = '') => {
+    for (const n of nodes || []) {
+      const label = String(n.label ?? n.path ?? '');
+      if (n.path) out.push({ path: String(n.path), label: prefix ? `${prefix} / ${label}` : label });
+      if (Array.isArray(n.children) && n.children.length) walk(n.children, prefix ? `${prefix} / ${label}` : label);
+    }
+  };
+  walk(fieldTree.value as any[]);
+  return out;
+});
+
+function toggleFieldPath(path: string, on: boolean) {
+  const set = new Set(selectedFieldPaths.value);
+  if (on) set.add(path);
+  else set.delete(path);
+  selectedFieldPaths.value = Array.from(set);
+  onFieldCheck();
+}
+
+function onFieldsToggle(ev: Event) {
+  const open = (ev.target as HTMLDetailsElement).open;
+  customFieldsOpen.value = open ? ['fields'] : [];
 }
 
 function onOpen() {
@@ -450,48 +453,3 @@ watch(
 );
 </script>
 
-<style scoped>
-.export-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.export-panel-scope {
-  margin: 0;
-  color: var(--el-text-color-regular);
-}
-
-.export-panel-hint {
-  margin: 0;
-  color: var(--el-text-color-secondary);
-}
-
-.export-panel-templates {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.export-panel-template-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
-.export-panel-template-select {
-  min-width: 220px;
-  flex: 1 1 220px;
-}
-
-.export-panel-template-name {
-  min-width: 180px;
-  flex: 1 1 180px;
-}
-
-.export-panel-alert {
-  margin-top: 4px;
-}
-</style>

@@ -1442,3 +1442,27 @@ func TestPersistModuleModels_ErrorBranches(t *testing.T) {
 		}
 	})
 }
+
+func TestAppendExactPinsFromPackageJSONAppliesWhenPinsPresent(t *testing.T) {
+	root := t.TempDir()
+	modPath := filepath.Join(root, "partner")
+	if err := os.MkdirAll(modPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(modPath, "package.json"), []byte(`{"dependencies":{"local-only":"1.2.3"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	b := &ModuleBuilder{module: &meta.Module{Name: "partner", Path: modPath}}
+	opts := b.appendExactPinsFromPackageJSON(nil)
+	if len(opts) != 1 {
+		t.Fatalf("expected WithBareImportPins option, got %d", len(opts))
+	}
+	opts = b.appendExactPinsFromPackageJSON(nil)
+	if b.appendExactPinsFromPackageJSON(opts) == nil {
+		t.Fatal("appendExactPinsFromPackageJSON must keep opts")
+	}
+	empty := &ModuleBuilder{}
+	if got := empty.appendExactPinsFromPackageJSON(opts); len(got) != len(opts) {
+		t.Fatalf("nil builder must return opts unchanged")
+	}
+}

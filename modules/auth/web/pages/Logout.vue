@@ -4,47 +4,49 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage :loading="loading" class="logout-page-container">
-    <el-card class="logout-card" shadow="hover">
-      <template #header>
-        <div class="card-header">
-          <h3>{{ _t('Sign Out') }}</h3>
-        </div>
-      </template>
-      <div class="logout-view">
-        <transition name="fade" mode="out-in">
-          <el-result
-            v-if="logoutSuccess"
-            key="success"
-            icon="success"
-            :title="_t('Signed Out Successfully')"
-            :sub-title="redirectSubtitle"
+  <ChoyPage :loading="loading" fill-height class="flex min-h-0 w-full flex-1 flex-col">
+    <AuthPanel>
+      <ChoyCard class="logout-card w-full">
+        <template #header>
+          <h3 class="font-semibold leading-none">{{ headerTitle }}</h3>
+          <div
+            v-if="error"
+            class="logout-error flex items-start gap-2 text-sm text-destructive"
+            role="alert"
           >
-            <template #extra>
-              <el-button type="primary" @click="navigateToLogin">{{ _t('Log In Again') }}</el-button>
-              <el-button @click="navigateToHome">{{ _t('Back to Home') }}</el-button>
-            </template>
-          </el-result>
+            <span class="min-w-0 leading-5">{{ error }}</span>
+          </div>
+          <p v-else class="text-sm text-foreground/60 tabular-nums">
+            {{ headerDescription }}
+            <button
+              v-if="logoutSuccess"
+              type="button"
+              class="logout-go-to-login ms-2 cursor-pointer border-0 bg-transparent p-0 text-primary appearance-none shadow-none hover:underline"
+              data-testid="logout-login-again"
+              @click="navigateToLogin"
+            >
+              {{ _t('Go now') }}
+            </button>
+          </p>
+        </template>
 
-          <el-result v-else-if="error" key="error" icon="error" :title="_t('Sign-out Failed')" :sub-title="error">
-            <template #extra>
-              <el-button type="primary" @click="retryLogout">{{ _t('Retry') }}</el-button>
-              <el-button @click="navigateToHome">{{ _t('Back to Home') }}</el-button>
-              <el-button @click="navigateToLogin">{{ _t('Back to Login') }}</el-button>
-            </template>
-          </el-result>
-
-          <el-result
-            v-else
-            key="loading"
-            icon="info"
-            :title="_t('Signing Out')"
-            :sub-title="_t('Please wait while your account is being signed out securely...')"
-          />
-        </transition>
-      </div>
-    </el-card>
-  </OPage>
+        <div v-if="error" class="flex flex-col gap-4">
+          <ChoyButton class="w-full" data-testid="logout-retry" @click="retryLogout">
+            {{ _t('Retry') }}
+          </ChoyButton>
+          <p class="text-center text-sm">
+            <button
+              type="button"
+              class="logout-back-to-login cursor-pointer border-0 bg-transparent p-0 text-primary appearance-none shadow-none hover:underline"
+              @click="navigateToLogin"
+            >
+              {{ _t('Back to Login') }}
+            </button>
+          </p>
+        </div>
+      </ChoyCard>
+    </AuthPanel>
+  </ChoyPage>
 </template>
 
 <script setup lang="ts">
@@ -52,10 +54,10 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../stores/auth';
-import { ChoysumError } from '../error';
-import OPage from '@/web/web/components/page/OPage.vue';
-import { ElResult, ElButton, ElCard } from 'element-plus';
+import AuthPanel from '../components/AuthPanel.vue';
+import { ChoyPage, ChoyCard, ChoyButton } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
+import { formatLogoutError, nextLogoutCountdown, stopLogoutRedirectTimer } from './logout_page';
 
 const { _t } = createTranslate('auth', { scope: 'web/pages/Logout' });
 
@@ -65,10 +67,18 @@ const { loading } = storeToRefs(authStore);
 
 const logoutSuccess = ref(false);
 const error = ref('');
-const countdown = ref(5);
-const redirectSubtitle = computed(() =>
-  _t('Thank you for using our service. Redirecting to the login page in %s seconds...', countdown.value)
-);
+const countdown = ref(3);
+const headerTitle = computed(() => {
+  if (logoutSuccess.value) return _t('Signed Out Successfully');
+  if (error.value) return _t('Sign-out Failed');
+  return _t('Signing Out');
+});
+const headerDescription = computed(() => {
+  if (logoutSuccess.value) {
+    return _t('Redirecting to the login page in %s seconds', countdown.value);
+  }
+  return _t('Signing out this session');
+});
 let autoRedirectTimer: ReturnType<typeof setInterval> | undefined;
 
 onMounted(async () => {
@@ -76,107 +86,35 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
-  if (autoRedirectTimer) {
-    clearInterval(autoRedirectTimer);
-  }
+  autoRedirectTimer = stopLogoutRedirectTimer(autoRedirectTimer);
 });
 
-/**
- * Perform logout and start the redirect countdown on success.
- */
 async function performLogout() {
+  autoRedirectTimer = stopLogoutRedirectTimer(autoRedirectTimer);
   try {
     await authStore.logout();
     logoutSuccess.value = true;
     autoRedirectTimer = setInterval(() => {
-      countdown.value--;
-      if (countdown.value <= 0) {
-        clearInterval(autoRedirectTimer);
+      const step = nextLogoutCountdown(countdown.value);
+      countdown.value = step.countdown;
+      if (step.done) {
+        autoRedirectTimer = stopLogoutRedirectTimer(autoRedirectTimer);
         navigateToLogin();
       }
     }, 1000);
   } catch (err) {
-    error.value = err instanceof ChoysumError ? err.message : err instanceof Error ? err.message : _t('Unknown error occurred during logout');
-    console.error('Logout failed:', err);
+    error.value = formatLogoutError(err, _t('Unknown error occurred during logout'));
   }
 }
 
-/**
- * Navigate to the login page and stop the auto redirect timer.
- */
 function navigateToLogin() {
-  if (autoRedirectTimer) {
-    clearInterval(autoRedirectTimer);
-  }
+  autoRedirectTimer = stopLogoutRedirectTimer(autoRedirectTimer);
   router.push('/login');
 }
 
-/**
- * Navigate to the home page and stop the auto redirect timer.
- */
-function navigateToHome() {
-  if (autoRedirectTimer) {
-    clearInterval(autoRedirectTimer);
-  }
-  router.push('/');
-}
-
-/**
- * Reset the error state and retry the logout flow.
- */
 function retryLogout() {
   error.value = '';
+  countdown.value = 3;
   performLogout();
 }
 </script>
-
-<style lang="scss" scoped>
-.logout-page-container {
-  &.o-page--with-padding {
-    padding: 0;
-  }
-
-  :deep(.o-page__body) {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-  }
-}
-
-.logout-card {
-  width: 100%;
-  max-width: 500px;
-}
-
-.card-header {
-  text-align: center;
-  h3 {
-    margin: 0;
-    font-size: var(--el-font-size-large);
-    font-weight: var(--el-font-weight-bold);
-  }
-}
-
-.logout-view {
-  text-align: center;
-
-  :deep(.el-result__icon) {
-    margin-block-end: var(--el-margin-large, 20px);
-  }
-
-  :deep(.el-result__title) {
-    margin-block-start: 0;
-  }
-
-  :deep(.el-result__subtitle) {
-    margin-block-start: var(--el-margin-small, 10px);
-    max-width: 500px;
-    margin-inline: auto;
-  }
-
-  :deep(.el-button) {
-    margin: var(--el-margin-extra-small, 5px);
-  }
-}
-</style>

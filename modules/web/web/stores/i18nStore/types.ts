@@ -20,9 +20,7 @@ export interface LocaleConfig {
   name: string;
   textDirection: TextDirection;
   dayjsLocaleCode: string;
-  elementLocaleCode: string;
   // Dynamic import hooks.
-  importElement?: () => Promise<any>;
   importDayjs?: () => Promise<any>;
   importVueI18n?: () => Promise<any>;
 

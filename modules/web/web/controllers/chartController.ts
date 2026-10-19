@@ -88,6 +88,8 @@ export function createChartController(store: WebModelStore<any>): IChartControll
     const currentGroups: string[] = normalized.map(g => (g.granularity ? `${g.field}:${g.granularity}` : g.field)).filter(x => x && x.length > 0);
     const hasGroups = currentGroups.length > 0;
     if (!hasGroups) {
+      // Clear stale errors so Retry with no groups does not leave the alert up.
+      vm.error = null;
       // Return an empty grouped snapshot when no grouping is available.
       vm.result = { kind: 'group', rows: [], total: 0, ts: Date.now(), uiView: 'chart' } as any;
       return vm.result as DataSetSnapshot;

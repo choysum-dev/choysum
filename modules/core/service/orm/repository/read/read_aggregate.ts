@@ -27,8 +27,11 @@ import type {
 import {
   applyRepositoryReadAggregateCondition,
   buildRepositoryReadAggregateGroupExprs,
+  buildRepositoryReadAggregateOuterSelections,
+  buildRepositoryReadAggregateProjectionSelections,
   buildRepositoryReadAggregateSelections,
   buildRepositoryReadAggregateTotalSelections,
+  groupSpecUsesSqlCompute,
   normalizeRepositoryAggregateDecimals,
   resolveRepositoryReadAggregateKnownAliases,
 } from './read_aggregate_helpers';
@@ -83,15 +86,34 @@ export async function executeRepositoryReadGroup<T>(params: RepositoryReadAggreg
     : normalizeGroupBySpecShared(options.groupby as GroupBySpec<ObjectRecord>);
   const aggs: NormalizedAgg[] = (options.fields ?? []).map(field => normalizeFieldAggregationShared(field as FieldAggregation<ObjectRecord>));
 
-  const db = params.db as AggregateDbLike;
-  let qb: AggregateQueryLike = db.selectFrom(params.table);
-  qb = qb.select((selBuilder: unknown) => buildRepositoryReadAggregateSelections(params, selBuilder, group, aggs, () => db.fn.countAll(), timezone));
-
   const condWithRR = await params.applyRecordRuleToCondition((options.condition ?? []) as UntypedQueryCondition, 'read');
   const filtered = params.applyDefaultLayers(condWithRR);
-  qb = applyRepositoryReadAggregateCondition(qb, params, filtered);
+  const db = params.db as AggregateDbLike;
 
-  qb = qb.groupBy((gb: unknown) => buildRepositoryReadAggregateGroupExprs(params, gb, group, timezone));
+  // Correlated @SqlCompute keys must be projected before GROUP BY (PostgreSQL 42803).
+  let qb: AggregateQueryLike;
+  const projectsSqlCompute = groupSpecUsesSqlCompute(params.meta, group);
+  if (projectsSqlCompute) {
+    let inner: AggregateQueryLike = db.selectFrom(params.table);
+    inner = inner.select((selBuilder: unknown) =>
+      buildRepositoryReadAggregateProjectionSelections(params, selBuilder, group, aggs, timezone),
+    );
+    inner = applyRepositoryReadAggregateCondition(inner, params, filtered);
+    qb = db.selectFrom(inner.as('__rg') as never);
+    qb = qb.select((selBuilder: unknown) =>
+      buildRepositoryReadAggregateOuterSelections(selBuilder, group, aggs, () => db.fn.countAll()).selections,
+    );
+    qb = qb.groupBy((gb: unknown) =>
+      buildRepositoryReadAggregateOuterSelections(gb, group, aggs, () => db.fn.countAll()).groupExprs,
+    );
+  } else {
+    qb = db.selectFrom(params.table);
+    qb = qb.select((selBuilder: unknown) =>
+      buildRepositoryReadAggregateSelections(params, selBuilder, group, aggs, () => db.fn.countAll(), timezone),
+    );
+    qb = applyRepositoryReadAggregateCondition(qb, params, filtered);
+    qb = qb.groupBy((gb: unknown) => buildRepositoryReadAggregateGroupExprs(params, gb, group, timezone));
+  }
 
   if (options.having) {
     const knownAliases = resolveRepositoryReadAggregateKnownAliases(group, aggs);
@@ -100,7 +122,13 @@ export async function executeRepositoryReadGroup<T>(params: RepositoryReadAggreg
 
   const optOrder = params.normalizeOrderBy(options.orderBy);
   if (Array.isArray(optOrder) && optOrder.length) {
-    qb = params.applyOrderByToQuery(qb, params.meta, params.table, optOrder) as AggregateQueryLike;
+    if (projectsSqlCompute) {
+      // Outer query columns are `__rg` aliases. Ordering `table.field` is not visible there.
+      const outerMeta = { fields: new Map() };
+      qb = params.applyOrderByToQuery(qb, outerMeta, '__rg', outerAggregateOrderSpecs(optOrder, group, aggs)) as AggregateQueryLike;
+    } else {
+      qb = params.applyOrderByToQuery(qb, params.meta, params.table, optOrder) as AggregateQueryLike;
+    }
   }
 
   if (typeof options.limit === 'number') qb = qb.limit(options.limit);
@@ -110,6 +138,33 @@ export async function executeRepositoryReadGroup<T>(params: RepositoryReadAggreg
   normalizeRepositoryAggregateDecimals(params.meta, rows as ObjectRecord[], aggs);
   for (const row of rows) row.__count = Number(row.__count ?? 0);
   return rows;
+}
+
+/** Map group/agg field names onto outer `__rg` aliases so ORDER BY does not use the base table. */
+function outerAggregateOrderSpecs(orderBy: unknown[], group: GroupSpecLike, aggs: NormalizedAgg[]): unknown[] {
+  const aliases = resolveRepositoryReadAggregateKnownAliases(group, aggs);
+  const fieldToAlias = new Map<string, string>();
+  if ('composite' in group && group.composite) {
+    for (const part of group.parts) {
+      if (part.field) fieldToAlias.set(part.field, part.alias);
+    }
+  } else if ('field' in group) {
+    fieldToAlias.set(group.field, group.alias);
+  }
+  for (const agg of aggs) {
+    fieldToAlias.set(agg.alias, agg.alias);
+    // A group key already mapped to its projected alias must win over an
+    // aggregate on the same source field.
+    if (!aliases.has(agg.field) && !fieldToAlias.has(agg.field)) {
+      fieldToAlias.set(agg.field, agg.alias);
+    }
+  }
+  return orderBy.map(spec => {
+    const field = String((spec as { field?: string })?.field ?? '');
+    if (!field || aliases.has(field) || field.includes('.') || field.includes('__')) return spec;
+    const alias = fieldToAlias.get(field);
+    return alias ? { ...(spec as object), field: alias } : spec;
+  });
 }
 
 export async function executeRepositoryReadTotals<T>(params: RepositoryReadAggregateDeps, options: RepositoryReadTotalsOptions<T>): Promise<RepositoryReadTotalsRow> {
