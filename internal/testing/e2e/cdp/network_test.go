@@ -26,7 +26,7 @@ func TestHeaderValue(t *testing.T) {
 	if got := headerValue(nil, "content-type"); got != "" {
 		t.Fatalf("nil headers: %q", got)
 	}
-	h := map[string]interface{}{
+	h := network.Headers{
 		"Content-Type": "application/json",
 		"X-Other":      42,
 	}
@@ -61,27 +61,25 @@ func TestCoalesceResponseMeta(t *testing.T) {
 }
 
 func TestNetworkEventNilGuards(t *testing.T) {
-	if !networkRequestNil(nil) || !networkRequestNil(&network.EventRequestWillBeSent{}) {
+	if !networkRequestNil(network.EventRequestWillBeSent{}) {
 		t.Fatal("expected nil request guard")
 	}
-	if !networkResponseNil(nil) || !networkResponseNil(&network.EventResponseReceived{}) {
+	if !networkResponseNil(network.EventResponseReceived{}) {
 		t.Fatal("expected nil response guard")
 	}
 
 	var mu sync.Mutex
 	pending := map[network.RequestID]pendingReq{}
 	matched := map[network.RequestID]pendingResp{}
-	// Nil events return without mutating maps (covers ingest early returns).
-	ingestRequestWillBeSent(nil, &mu, pending)
-	ingestRequestWillBeSent(&network.EventRequestWillBeSent{}, &mu, pending)
-	ingestResponseReceived(nil, &mu, pending, matched, "GET", func(string, string, string) bool { return true }, func(network.RequestID) {})
-	ingestResponseReceived(&network.EventResponseReceived{}, &mu, pending, matched, "GET", func(string, string, string) bool { return true }, func(network.RequestID) {})
+	// Zero-value events return without mutating maps (covers ingest early returns).
+	ingestRequestWillBeSent(network.EventRequestWillBeSent{}, &mu, pending)
+	ingestResponseReceived(network.EventResponseReceived{}, &mu, pending, matched, nil, "GET", func(string, string, string) bool { return true }, func(network.RequestID) {})
 	if len(pending) != 0 || len(matched) != 0 {
 		t.Fatalf("nil ingest mutated maps: pending=%v matched=%v", pending, matched)
 	}
 
 	id := network.RequestID("req-1")
-	ingestRequestWillBeSent(&network.EventRequestWillBeSent{
+	ingestRequestWillBeSent(network.EventRequestWillBeSent{
 		RequestID: id,
 		Request: &network.Request{
 			Method:  "POST",
@@ -91,6 +89,85 @@ func TestNetworkEventNilGuards(t *testing.T) {
 	}, &mu, pending)
 	if pending[id].method != "POST" || pending[id].url != "http://x/a" || pending[id].ct != "application/json" {
 		t.Fatalf("pending=%v", pending[id])
+	}
+}
+
+func TestNoteFinishedEarlyIfPending(t *testing.T) {
+	id := network.RequestID("p1")
+	finishedEarly := map[network.RequestID]struct{}{}
+	pending := map[network.RequestID]pendingReq{}
+
+	noteFinishedEarlyIfPending(finishedEarly, pending, id)
+	if _, ok := finishedEarly[id]; ok {
+		t.Fatal("unrelated LoadingFinished must not enter finishedEarly")
+	}
+
+	pending[id] = pendingReq{method: "GET", url: "http://x/a"}
+	noteFinishedEarlyIfPending(finishedEarly, pending, id)
+	if _, ok := finishedEarly[id]; !ok {
+		t.Fatal("pending request LoadingFinished must enter finishedEarly")
+	}
+}
+
+func TestIngestResponseReceivedFinishedEarly(t *testing.T) {
+	var mu sync.Mutex
+	pending := map[network.RequestID]pendingReq{}
+	matched := map[network.RequestID]pendingResp{}
+	finishedEarly := map[network.RequestID]struct{}{}
+	id := network.RequestID("early-1")
+	finishedEarly[id] = struct{}{}
+	finished := 0
+	ingestResponseReceived(network.EventResponseReceived{
+		RequestID: id,
+		Response: &network.Response{
+			URL:    "http://x/api",
+			Status: 200,
+			Headers: network.Headers{
+				"content-type": "application/json",
+			},
+		},
+	}, &mu, pending, matched, finishedEarly, "GET", func(string, string, string) bool { return true }, func(network.RequestID) {
+		finished++
+	})
+	if finished != 1 {
+		t.Fatalf("expected immediate tryFinish after early LoadingFinished, got %d", finished)
+	}
+	if _, ok := finishedEarly[id]; ok {
+		t.Fatal("expected finishedEarly entry cleared")
+	}
+	if _, ok := matched[id]; !ok {
+		t.Fatal("expected matchedResp entry")
+	}
+}
+
+func TestIngestResponseReceivedFilterClearsEarly(t *testing.T) {
+	var mu sync.Mutex
+	id := network.RequestID("filter-1")
+	pending := map[network.RequestID]pendingReq{id: {method: "GET", url: "http://x/asset.js"}}
+	matched := map[network.RequestID]pendingResp{}
+	finishedEarly := map[network.RequestID]struct{}{id: {}}
+	finished := 0
+	ingestResponseReceived(network.EventResponseReceived{
+		RequestID: id,
+		Response: &network.Response{
+			URL:     "http://x/asset.js",
+			Status:  200,
+			Headers: network.Headers{"content-type": "application/javascript"},
+		},
+	}, &mu, pending, matched, finishedEarly, "GET", func(string, string, string) bool { return false }, func(network.RequestID) {
+		finished++
+	})
+	if finished != 0 {
+		t.Fatalf("filtered response must not tryFinish, got %d", finished)
+	}
+	if _, ok := pending[id]; ok {
+		t.Fatal("expected pending cleared on filter mismatch")
+	}
+	if _, ok := finishedEarly[id]; ok {
+		t.Fatal("expected finishedEarly cleared on filter mismatch")
+	}
+	if _, ok := matched[id]; ok {
+		t.Fatal("filtered response must not enter matchedResp")
 	}
 }
 

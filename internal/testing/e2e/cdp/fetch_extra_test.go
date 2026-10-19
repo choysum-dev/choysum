@@ -246,7 +246,7 @@ func TestContinueFetchAsyncAndQueueFull(t *testing.T) {
 	defer stop()
 
 	// Queue-full path via onRequestPaused.
-	p.onRequestPaused(st, listenerCtx, &fetch.EventRequestPaused{
+	p.onRequestPaused(st, listenerCtx, fetch.EventRequestPaused{
 		RequestID: "r1",
 		Request:   &network.Request{URL: "http://x/1", Method: "post"},
 	})
@@ -269,21 +269,20 @@ func TestFetchOnRequestPausedBranches(t *testing.T) {
 	st.listenCtx = listenerCtx
 	p := &Page{ctx: context.Background(), fetch: st}
 
-	p.onRequestPaused(st, listenerCtx, nil)
-	p.onRequestPaused(st, listenerCtx, &fetch.EventRequestPaused{})
-	p.onRequestPaused(st, listenerCtx, &fetch.EventRequestPaused{
+	p.onRequestPaused(st, listenerCtx, fetch.EventRequestPaused{})
+	p.onRequestPaused(st, listenerCtx, fetch.EventRequestPaused{
 		RequestID:          "resp",
 		Request:            &network.Request{URL: "http://x/", Method: "GET"},
 		ResponseStatusCode: 200,
 	})
-	p.onRequestPaused(st, listenerCtx, &fetch.EventRequestPaused{
+	p.onRequestPaused(st, listenerCtx, fetch.EventRequestPaused{
 		RequestID:           "err",
 		Request:             &network.Request{URL: "http://x/e", Method: "GET"},
 		ResponseErrorReason: network.ErrorReasonFailed,
 	})
 
 	// Happy path enqueue.
-	p.onRequestPaused(st, listenerCtx, &fetch.EventRequestPaused{
+	p.onRequestPaused(st, listenerCtx, fetch.EventRequestPaused{
 		RequestID: "ok",
 		Request:   &network.Request{URL: "http://x/ok", Method: "get"},
 	})
@@ -300,7 +299,7 @@ func TestFetchOnRequestPausedBranches(t *testing.T) {
 	st.mu.Lock()
 	st.cancel = nil
 	st.mu.Unlock()
-	p.onRequestPaused(st, listenerCtx, &fetch.EventRequestPaused{
+	p.onRequestPaused(st, listenerCtx, fetch.EventRequestPaused{
 		RequestID: "inactive",
 		Request:   &network.Request{URL: "http://x/i", Method: "GET"},
 	})
@@ -315,7 +314,7 @@ func TestFetchOnRequestPausedBranches(t *testing.T) {
 	doneCancel()
 	st2.cancel = func() {}
 	p2 := &Page{ctx: context.Background(), fetch: st2}
-	p2.onRequestPaused(st2, doneCtx, &fetch.EventRequestPaused{
+	p2.onRequestPaused(st2, doneCtx, fetch.EventRequestPaused{
 		RequestID: "canceled",
 		Request:   &network.Request{URL: "http://x/c", Method: "GET"},
 	})
@@ -517,7 +516,7 @@ func TestFetchFulfillContinueRunErrors(t *testing.T) {
 		runContinueRequest = oldC
 		runFailRequest = oldFail
 	}()
-	runFulfillRequest = func(ctx context.Context, params *fetch.FulfillRequestParams) error {
+	runFulfillRequest = func(ctx context.Context, params fetch.FulfillRequestParams) error {
 		return fmt.Errorf("fulfill boom")
 	}
 	runContinueRequest = func(ctx context.Context, reqID fetch.RequestID) error {

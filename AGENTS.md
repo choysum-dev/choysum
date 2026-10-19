@@ -22,7 +22,7 @@ TypeScript runtime and serves the ERP platform (gRPC + gRPC-Web + Vue web UI)
 from one process. TypeScript/Vue modules under `modules/` are compiled and run
 inside that Go process — no Node.js binary, `npm`, or `node_modules` for
 install, run, or `choysum test typecheck|unit|e2e`. Tooling versions already
-installed: Go 1.26.x and Python 3 (Chromium install for E2E). Node.js is only
+installed: Go 1.27.x and Python 3 (Chromium install for E2E). Node.js is only
 needed to publish `@choysum-dev/*` packages (and optional maintainer scripts
 under `scripts/typecheck_vue_codegen/`).
 
