@@ -334,6 +334,8 @@ describe('ChoyChartView coverage', () => {
     ).linePlotYDomain();
     // Nested Open+Done totals 30/category; single-series max is 25.
     expect(lineStackedDomain[1]).toBeGreaterThan(25);
+    // Absolute column-sum domain (percent is bar-only); not a stale 0–100 scale.
+    expect(lineStackedDomain[1]).toBeLessThan(100);
     // Line keeps Stack control (Odoo); toggle off → unstacked series max.
     ex.toggleStacked();
     await nextTick();
@@ -376,8 +378,9 @@ describe('ChoyChartView coverage', () => {
     expect(accessors.length).toBeGreaterThan(1);
     expect(rows.length).toBeGreaterThan(0);
     const tops = accessors.map((fn) => fn(rows[0]!));
-    expect(tops[0]).toBeGreaterThan(0);
-    expect(tops[1]).toBeGreaterThan(tops[0]!);
+    // First fixture row: Open=10, Done=20 → stacked tops 10 / 30.
+    expect(tops[0]).toBe(10);
+    expect(tops[1]).toBe(30);
     ex.toggleStacked();
     await nextTick();
     expect(ex.linePlotYDomain()[1]).toBeLessThanOrEqual(domain[1]);

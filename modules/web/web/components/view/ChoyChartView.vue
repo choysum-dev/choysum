@@ -1032,11 +1032,8 @@ const linePlotYAccessors = computed(() => {
     return keys.map((key) => (d: Record<string, string | number>) => Number(d[key]) || 0);
   }
   return keys.map((_, seriesIdx) => (d: Record<string, string | number>) => {
-    let sum = 0;
-    for (let i = 0; i <= seriesIdx; i++) {
-      sum += Number(d[keys[i]!]) || 0;
-    }
-    return sum;
+    const tops = stackSeriesTopsAtCategory(keys.map((key) => Number(d[key])));
+    return tops[seriesIdx]!;
   });
 });
 
