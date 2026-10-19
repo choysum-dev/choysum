@@ -200,11 +200,10 @@ html {
 }
 
 /*
- * Form field chrome density. Kit FormItem/Field/FieldGroup ship gap-*; product
- * hosts win via these selectors so spacing tracks --choy-field-*-gap
+ * Form field chrome density. Kit Field/FieldGroup ship gap-*; product hosts
+ * win via these selectors so spacing tracks --choy-field-*-gap
  * (including data-density=compact). cn() does not merge conflicting gap-*.
  */
-[data-slot='form-item'].choy-form-item,
 [data-slot='field'].choy-field-base {
   gap: var(--choy-field-stack-gap);
 }
@@ -214,7 +213,6 @@ html {
   gap: var(--choy-field-group-gap);
 }
 
-.choy-form-item__label,
 .choy-field-base__label-row {
   gap: var(--choy-field-label-inline-gap);
   font-size: var(--choy-font-size-sm);
@@ -223,7 +221,6 @@ html {
 }
 
 /* Kit Label / FieldLabel keep text-sm / leading-none / font-medium; product wins. */
-.choy-form-item__label [data-slot='label'],
 .choy-field-base__label-row [data-slot='field-label'] {
   font-size: inherit;
   line-height: inherit;
@@ -231,8 +228,6 @@ html {
 }
 
 /* Error / description track the same density scale as labels. */
-.choy-form-item [data-slot='form-message'],
-.choy-form-item [data-slot='form-description'],
 .choy-field-base [data-slot='field-error'] {
   font-size: var(--choy-font-size-sm);
 }

@@ -267,17 +267,13 @@ async function onSelect(getter: () => WritableComputedRef<string | null>, raw: s
 }
 
 const mergedFormItemProps = computed(() => {
-  const extra = props.formItemProps ?? {};
-  const extraClass = (extra as { class?: unknown }).class;
+  const extraClass = props.formItemProps?.class;
   const classes = ['choy-statusbar-form-item'];
   if (extraClass != null && extraClass !== '') {
     if (Array.isArray(extraClass)) classes.push(...extraClass.map(String));
     else classes.push(String(extraClass));
   }
-  return {
-    ...extra,
-    class: classes,
-  };
+  return { class: classes };
 });
 
 const internalRule = {

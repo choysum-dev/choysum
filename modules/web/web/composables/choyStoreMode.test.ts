@@ -62,7 +62,7 @@ describe('choyStoreMode', () => {
     w.unmount();
   });
 
-  test('storeBind omits chrome defineModel keys', async () => {
+  test('storeBind forwards declared props onto the store engine', async () => {
     const pageStore = { modelName: 'auth.User' };
     let bind: Record<string, unknown> = {};
     const Probe = defineComponent({
@@ -96,8 +96,8 @@ describe('choyStoreMode', () => {
     expect(bind.prop).toBe('Lines');
     expect(bind.readonly).toBe(true);
     expect(bind.class).toBe('x');
-    expect('modelValue' in bind).toBe(false);
-    expect('modelModifiers' in bind).toBe(false);
+    expect(bind.modelValue).toEqual([{ Id: '1' }]);
+    expect(bind.modelModifiers).toEqual({ trim: true });
     w.unmount();
   });
 

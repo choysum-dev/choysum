@@ -6,7 +6,6 @@ import { useOptionalPageStore } from '@/web/web/composables/usePageContext';
 
 /**
  * Detects whether a Choy field should bind to a WebModelStore engine.
- * Field chrome (`defineModel`) remains for FE unit mounts that omit store+prop.
  * `pageStore` covers fields under a store-backed ChoyPage that only pass `prop`.
  */
 export function isChoyStoreFieldBinding(
@@ -54,8 +53,6 @@ export function useChoyStoreFieldBinding(
     storeBind: computed(() => {
       const bind: Record<string, unknown> = { ...attrs };
       for (const [key, value] of Object.entries(props as Record<string, unknown>)) {
-        // Chrome defineModel state must not clobber the store-bound engine.
-        if (key === 'modelValue' || key === 'modelModifiers') continue;
         bind[key] = value;
       }
       bind.store = props.store ?? pageStore.value;

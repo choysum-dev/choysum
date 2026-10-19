@@ -6,20 +6,42 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <!-- ================= Render Mode Dispatch ================= -->
   <!-- FORM mode -->
-  <ChoyFormItem
+  <Field
     v-if="effectiveRenderMode === 'form'"
     v-show="visibleForm"
-    class="choy-field-base p-0"
-    :label="resolvedLabel"
-    :help="effectiveHelp || undefined"
-    :help-label="helpAccessibleLabel"
-    :error="displayError"
-    :reserve-error="showInlineError"
-    :control-id="inputIdForm"
-    v-bind="formItemProps"
+    data-anchor="choy.field-base"
+    orientation="vertical"
+    :class="formChromeClass"
     @focusout="onFieldFocusOut"
   >
-    <template #default="{ describedBy, invalid }">
+    <div
+      v-if="resolvedLabel || effectiveHelp || requiredForm"
+      class="choy-field-base__label-row flex items-center gap-1 font-normal text-muted-foreground"
+    >
+      <FieldLabel :for="inputIdForm">
+        {{ resolvedLabel }}
+        <span v-if="requiredForm" class="text-destructive" aria-hidden="true">*</span>
+      </FieldLabel>
+      <TooltipProvider v-if="effectiveHelp">
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <button
+              type="button"
+              class="inline-flex text-muted-foreground hover:text-foreground"
+              data-slot="form-help"
+              :title="effectiveHelp"
+              :aria-label="helpAccessibleLabel"
+            >
+              <CircleHelp class="size-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{{ effectiveHelp }}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
+    <FieldDescription v-if="effectiveHelp" :id="formHelpId" class="sr-only">
+      {{ effectiveHelp }}
+    </FieldDescription>
     <div class="w-full min-w-0">
     <template v-if="preserveModeSlotForm">
       <div v-show="effectiveEditForm" class="choy-field-base__edit-wrap flex w-full items-center gap-0.5">
@@ -33,8 +55,8 @@ SPDX-License-Identifier: Apache-2.0
             :visible="visibleForm"
             :inputName="inputName"
             :inputId="inputIdForm"
-            :describedBy="describedBy"
-            :invalid="invalid"
+            :describedBy="formDescribedBy"
+            :invalid="formInvalid"
             :onFieldChange="onchangeHandlers.onChange"
             :triggerOnchange="onchangeHandlers.trigger"
             :onchangeRunning="onchangeHandlers.running?.value"
@@ -92,8 +114,8 @@ SPDX-License-Identifier: Apache-2.0
               :visible="visibleForm"
               :inputName="inputName"
               :inputId="inputIdForm"
-              :describedBy="describedBy"
-              :invalid="invalid"
+              :describedBy="formDescribedBy"
+              :invalid="formInvalid"
               :onFieldChange="onchangeHandlers.onChange"
               :triggerOnchange="onchangeHandlers.trigger"
               :onchangeRunning="onchangeHandlers.running?.value"
@@ -163,8 +185,17 @@ SPDX-License-Identifier: Apache-2.0
       @saved="onCompanyValuesSaved"
     />
     </div>
-    </template>
-  </ChoyFormItem>
+    <FieldError v-if="displayError" :id="formErrorId">
+      {{ displayError }}
+    </FieldError>
+    <p
+      v-else-if="showInlineError"
+      class="choy-field-base__error-reserve invisible text-xs"
+      aria-hidden="true"
+    >
+      &nbsp;
+    </p>
+  </Field>
 
   <!-- TABLE mode -->
   <ChoyTableColumn
@@ -313,7 +344,8 @@ SPDX-License-Identifier: Apache-2.0
     </div>
     <p
       v-if="showInlineError"
-      class="choy-field-base__error mt-0 min-h-4 pb-2 w-full whitespace-normal text-xs font-normal leading-4 text-destructive"
+      class="choy-field-base__error mt-0 min-h-4 w-full whitespace-normal pb-2 text-sm font-normal leading-4 text-destructive"
+      data-slot="field-error"
       :class="{ invisible: !displayError }"
       :title="displayError || undefined"
       :role="displayError ? 'alert' : undefined"
@@ -336,8 +368,13 @@ import {
   firstRuleError,
 } from '@/web/web/composables/fieldClientValidation';
 import { CircleHelp, Languages, Building2 } from 'lucide-vue-next';
+import { cn, type ClassValue } from '@/web/web/lib/utils';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
-import ChoyFormItem from '@/web/web/components/layout/ChoyFormItem.vue';
+import Field from '@/web/web/components/vendor/ui/field/Field.vue';
+import FieldDescription from '@/web/web/components/vendor/ui/field/FieldDescription.vue';
+import FieldError from '@/web/web/components/vendor/ui/field/FieldError.vue';
+import FieldLabel from '@/web/web/components/vendor/ui/field/FieldLabel.vue';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/web/web/components/vendor/ui/tooltip';
 import { createTranslate, getGlobalComposer } from '@/web/web/i18n/translate';
 import { resolveFieldLabel } from '@/web/web/composables/resolveFieldLabel';
 import { resolveFieldHelp } from '@/web/web/composables/resolveFieldHelp';
@@ -345,8 +382,10 @@ import { FIELD_PRESENTATION_FIELDS_GET_ATTRS } from '@/web/web/stores/fieldsGet'
 import FieldTranslationsDialog from './ChoyFieldTranslationsDialog.vue';
 import FieldCompanyValuesDialog from './ChoyFieldCompanyValuesDialog.vue';
 
-/** Native form-item chrome attrs (Element Plus FormItemProps removed). */
-export type FormItemProps = Record<string, unknown>;
+/** Extra class merged onto the form field chrome root. */
+export type FormItemProps = {
+  class?: ClassValue;
+};
 
 export type FieldStatePredicate<T, V> = (args: { record: T; value: V | null; env: FieldEnv }) => boolean;
 export type FieldStateExpr<T, V> = boolean | FieldStatePredicate<T, V>;
@@ -773,6 +812,18 @@ const displayError = computed(() => {
   if (clientRulesRevealed.value && clientRuleError.value) return clientRuleError.value;
   return undefined;
 });
+const formHelpId = computed(() => (effectiveHelp.value ? `${inputIdForm.value}-help` : ''));
+const formErrorId = computed(() => `${inputIdForm.value}-error`);
+const formDescribedBy = computed(() => {
+  const parts: string[] = [];
+  if (displayError.value) parts.push(formErrorId.value);
+  if (effectiveHelp.value) parts.push(formHelpId.value);
+  return parts.length ? parts.join(' ') : undefined;
+});
+const formInvalid = computed(() => !!displayError.value);
+const formChromeClass = computed(() =>
+  cn('choy-field-base w-full p-0', props.formItemProps?.class),
+);
 
 let clientRulesEvalSeq = 0;
 
