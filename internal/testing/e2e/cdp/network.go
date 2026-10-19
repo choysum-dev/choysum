@@ -115,10 +115,20 @@ func (p *Page) WaitForResponseContext(ctx context.Context, m ResponseMatch, time
 	listenerCtx, stopListener := context.WithCancel(p.ctx)
 	defer stopListener()
 
+	// finishedEarly records LoadingFinished that arrived before ResponseReceived
+	// populated matchedResp. Three Events iterators are not causally ordered, so
+	// tryFinish must tolerate that race (ListenTarget is gone in chromedp v0.21).
+	finishedEarly := map[network.RequestID]struct{}{}
+
 	tryFinish := func(reqID network.RequestID) {
 		mu.Lock()
 		resp, ok := matchedResp[reqID]
-		if !ok || finishing[reqID] {
+		if !ok {
+			finishedEarly[reqID] = struct{}{}
+			mu.Unlock()
+			return
+		}
+		if finishing[reqID] {
 			mu.Unlock()
 			return
 		}
@@ -141,7 +151,7 @@ func (p *Page) WaitForResponseContext(ctx context.Context, m ResponseMatch, time
 			if err != nil {
 				return
 			}
-			ingestResponseReceived(ev, &mu, pending, matchedResp, methodWant, matches, tryFinish)
+			ingestResponseReceived(ev, &mu, pending, matchedResp, finishedEarly, methodWant, matches, tryFinish)
 		}
 	}()
 	go func() {
@@ -186,6 +196,7 @@ func ingestResponseReceived(
 	mu *sync.Mutex,
 	pending map[network.RequestID]pendingReq,
 	matchedResp map[network.RequestID]pendingResp,
+	finishedEarly map[network.RequestID]struct{},
 	methodWant string,
 	matches func(method, url, ct string) bool,
 	tryFinish func(network.RequestID),
@@ -217,7 +228,16 @@ func ingestResponseReceived(
 		ct:      ct,
 	}
 	reqID := e.RequestID
+	early := false
+	if finishedEarly != nil {
+		_, early = finishedEarly[reqID]
+		delete(finishedEarly, reqID)
+	}
 	mu.Unlock()
+	if early {
+		tryFinish(reqID)
+		return
+	}
 	// Prefer LoadingFinished for body availability; also arm a fallback in case
 	// that event is skipped for some response types.
 	go func() {
@@ -225,7 +245,6 @@ func ingestResponseReceived(
 		tryFinish(reqID)
 	}()
 }
-
 // finishMatchedResponse fetches a matched response body and publishes once.
 // When the body is already gone (navigated away), it still publishes status/headers
 // with a nil body so WaitForResponse does not hang until timeout.

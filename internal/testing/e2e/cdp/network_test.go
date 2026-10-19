@@ -73,7 +73,7 @@ func TestNetworkEventNilGuards(t *testing.T) {
 	matched := map[network.RequestID]pendingResp{}
 	// Zero-value events return without mutating maps (covers ingest early returns).
 	ingestRequestWillBeSent(network.EventRequestWillBeSent{}, &mu, pending)
-	ingestResponseReceived(network.EventResponseReceived{}, &mu, pending, matched, "GET", func(string, string, string) bool { return true }, func(network.RequestID) {})
+	ingestResponseReceived(network.EventResponseReceived{}, &mu, pending, matched, nil, "GET", func(string, string, string) bool { return true }, func(network.RequestID) {})
 	if len(pending) != 0 || len(matched) != 0 {
 		t.Fatalf("nil ingest mutated maps: pending=%v matched=%v", pending, matched)
 	}
@@ -89,6 +89,37 @@ func TestNetworkEventNilGuards(t *testing.T) {
 	}, &mu, pending)
 	if pending[id].method != "POST" || pending[id].url != "http://x/a" || pending[id].ct != "application/json" {
 		t.Fatalf("pending=%v", pending[id])
+	}
+}
+
+func TestIngestResponseReceivedFinishedEarly(t *testing.T) {
+	var mu sync.Mutex
+	pending := map[network.RequestID]pendingReq{}
+	matched := map[network.RequestID]pendingResp{}
+	finishedEarly := map[network.RequestID]struct{}{}
+	id := network.RequestID("early-1")
+	finishedEarly[id] = struct{}{}
+	finished := 0
+	ingestResponseReceived(network.EventResponseReceived{
+		RequestID: id,
+		Response: &network.Response{
+			URL:    "http://x/api",
+			Status: 200,
+			Headers: network.Headers{
+				"content-type": "application/json",
+			},
+		},
+	}, &mu, pending, matched, finishedEarly, "GET", func(string, string, string) bool { return true }, func(network.RequestID) {
+		finished++
+	})
+	if finished != 1 {
+		t.Fatalf("expected immediate tryFinish after early LoadingFinished, got %d", finished)
+	}
+	if _, ok := finishedEarly[id]; ok {
+		t.Fatal("expected finishedEarly entry cleared")
+	}
+	if _, ok := matched[id]; !ok {
+		t.Fatal("expected matchedResp entry")
 	}
 }
 

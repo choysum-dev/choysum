@@ -159,6 +159,16 @@ func TestWaitForFunctionChromedpErrorDeadline(t *testing.T) {
 	}
 }
 
+func TestPageEvaluateDefaultErrorWithoutChromedpContext(t *testing.T) {
+	var out bool
+	if err := pageEvaluate(context.Background(), "true", &out); err == nil {
+		t.Fatal("expected pageEvaluate error without a chromedp context")
+	}
+	if err := pageEvaluate(context.Background(), "true", nil); err == nil {
+		t.Fatal("expected pageEvaluate error with nil out")
+	}
+}
+
 func TestEvaluateEmptyResultAndJSONQuoteFallback(t *testing.T) {
 	if got := normalizeEvaluateOut(""); got != "null" {
 		t.Fatalf("empty evaluate: %q", got)
