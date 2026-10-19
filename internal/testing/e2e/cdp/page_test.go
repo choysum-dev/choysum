@@ -127,6 +127,26 @@ func TestNewPageEnableNetworkError(t *testing.T) {
 	}
 }
 
+func TestNewPageClearCookiesError(t *testing.T) {
+	session := startTestSession(t)
+	old := clearBrowserCookiesForPage
+	clearBrowserCookiesForPage = func(context.Context) error { return errors.New("clear cookies boom") }
+	t.Cleanup(func() { clearBrowserCookiesForPage = old })
+	if _, err := session.NewPage(); err == nil || !strings.Contains(err.Error(), "clear cookies") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestNewPageResetDocumentError(t *testing.T) {
+	session := startTestSession(t)
+	old := resetDocumentForPage
+	resetDocumentForPage = func(context.Context) error { return errors.New("reset document boom") }
+	t.Cleanup(func() { resetDocumentForPage = old })
+	if _, err := session.NewPage(); err == nil || !strings.Contains(err.Error(), "reset document") {
+		t.Fatalf("got %v", err)
+	}
+}
+
 func TestNewPageDeadBrowserContext(t *testing.T) {
 	session := startPrivateTestSession(t)
 	session.Close()

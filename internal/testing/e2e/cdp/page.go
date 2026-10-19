@@ -24,6 +24,17 @@ import (
 // enableNetworkForPage enables the CDP Network domain; tests may override.
 var enableNetworkForPage = EnableNetwork
 
+// clearBrowserCookiesForPage clears browser cookies; tests may override.
+var clearBrowserCookiesForPage = func(ctx context.Context) error {
+	_, err := chromedp.Call(ctx, network.ClearBrowserCookies, cdp.Empty{})
+	return err
+}
+
+// resetDocumentForPage navigates to about:blank; tests may override.
+var resetDocumentForPage = func(ctx context.Context) error {
+	return chromedp.Do(ctx, chromedp.Navigate("about:blank"))
+}
+
 // emptyEvaluateJSON is returned when CDP yields an empty Evaluate string.
 var emptyEvaluateJSON = "null"
 
@@ -64,11 +75,11 @@ func (s *Session) NewPage() (*Page, error) {
 		return nil, err
 	}
 	// Drop cookies so a prior login cannot skip the login form on the next test.
-	if _, err := chromedp.Call(p.ctx, network.ClearBrowserCookies, cdp.Empty{}); err != nil {
+	if err := clearBrowserCookiesForPage(p.ctx); err != nil {
 		return nil, fmt.Errorf("cdp: new page: clear cookies: %w", err)
 	}
 	// Reset document between tests.
-	if err := chromedp.Do(p.ctx, chromedp.Navigate("about:blank")); err != nil {
+	if err := resetDocumentForPage(p.ctx); err != nil {
 		return nil, fmt.Errorf("cdp: new page: reset document: %w", err)
 	}
 	return p, nil

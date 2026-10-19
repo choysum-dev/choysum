@@ -92,6 +92,23 @@ func TestNetworkEventNilGuards(t *testing.T) {
 	}
 }
 
+func TestNoteFinishedEarlyIfPending(t *testing.T) {
+	id := network.RequestID("p1")
+	finishedEarly := map[network.RequestID]struct{}{}
+	pending := map[network.RequestID]pendingReq{}
+
+	noteFinishedEarlyIfPending(finishedEarly, pending, id)
+	if _, ok := finishedEarly[id]; ok {
+		t.Fatal("unrelated LoadingFinished must not enter finishedEarly")
+	}
+
+	pending[id] = pendingReq{method: "GET", url: "http://x/a"}
+	noteFinishedEarlyIfPending(finishedEarly, pending, id)
+	if _, ok := finishedEarly[id]; !ok {
+		t.Fatal("pending request LoadingFinished must enter finishedEarly")
+	}
+}
+
 func TestIngestResponseReceivedFinishedEarly(t *testing.T) {
 	var mu sync.Mutex
 	pending := map[network.RequestID]pendingReq{}

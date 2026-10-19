@@ -124,11 +124,7 @@ func (p *Page) WaitForResponseContext(ctx context.Context, m ResponseMatch, time
 		mu.Lock()
 		resp, ok := matchedResp[reqID]
 		if !ok {
-			// Only remember IDs still awaiting a matched ResponseReceived;
-			// unrelated LoadingFinished must not grow finishedEarly unboundedly.
-			if _, waiting := pending[reqID]; waiting {
-				finishedEarly[reqID] = struct{}{}
-			}
+			noteFinishedEarlyIfPending(finishedEarly, pending, reqID)
 			mu.Unlock()
 			return
 		}
@@ -184,6 +180,19 @@ func (p *Page) WaitForResponseContext(ctx context.Context, m ResponseMatch, time
 		return res, nil
 	case <-timer.C:
 		return nil, fmt.Errorf("cdp: waitForResponse timeout after %s (urlIncludes=%q method=%q)", timeout, urlPart, methodWant)
+	}
+}
+
+// noteFinishedEarlyIfPending records LoadingFinished that arrived before a
+// matched ResponseReceived. Unrelated finished IDs (not in pending) are ignored
+// so finishedEarly cannot grow without bound on asset-heavy pages.
+func noteFinishedEarlyIfPending(
+	finishedEarly map[network.RequestID]struct{},
+	pending map[network.RequestID]pendingReq,
+	reqID network.RequestID,
+) {
+	if _, waiting := pending[reqID]; waiting {
+		finishedEarly[reqID] = struct{}{}
 	}
 }
 
