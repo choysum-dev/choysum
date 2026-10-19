@@ -38,10 +38,10 @@ const items = computed(() => {
       class="flex items-center gap-1.5"
     >
       <span
-        class="inline-block size-2.5 shrink-0 rounded-[2px]"
+        class="inline-block size-2 shrink-0 rounded-sm"
         :style="{ backgroundColor: item.color }"
       />
-      <span class="text-sm text-foreground/80">{{ item.label }}</span>
+      <span class="text-xs text-foreground/80">{{ item.label }}</span>
     </div>
   </div>
 </template>

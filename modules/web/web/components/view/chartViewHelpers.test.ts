@@ -14,9 +14,11 @@ import {
   chartCategoryAxisIsTemporal,
   chartSpecToPieRows,
   chartSpecToXyRows,
+  formatChartCompactNumber,
   formatChartTooltipHtml,
   formatChartTooltipPiePercent,
   formatChartTooltipValue,
+  resolveChartBarLayout,
   resolveChartFloatingTooltipPosition,
   normalizeSeriesToPercent,
   parseChartCategoryTime,
@@ -542,12 +544,22 @@ test('resolveStackedYDomain uses column sums so stacks are not clipped', () => {
   ]);
 });
 
-test('formatChartTooltipValue uses locale digits and percent suffix', () => {
-  const plain = formatChartTooltipValue(1234.5, { locale: 'en-US' });
+test('formatChartCompactNumber uses k/M suffixes', () => {
+  expect(formatChartCompactNumber(0)).toBe('0');
+  expect(formatChartCompactNumber(999)).toBe('999');
+  expect(formatChartCompactNumber(1234.5)).toBe('1.23k');
+  expect(formatChartCompactNumber(100_000)).toBe('100.00k');
+  expect(formatChartCompactNumber(1_500_000)).toBe('1.50M');
+  expect(formatChartCompactNumber(-2500)).toBe('-2.50k');
+});
+
+test('formatChartTooltipValue uses compact digits and percent suffix', () => {
+  expect(formatChartTooltipValue(1234.5)).toBe('1.23k');
+  expect(formatChartTooltipValue(12.5, { locale: 'en-US', percent: true })).toMatch(/12\.5%$/);
+  expect(formatChartTooltipValue(Number.NaN)).toBe('0');
+  const plain = formatChartTooltipValue(1234.5, { locale: 'en-US', compact: false });
   // QuickJS FE may lack Intl.NumberFormat; accept ungrouped digits there.
   expect(plain === '1,234.5' || plain === '1234.5').toBe(true);
-  expect(formatChartTooltipValue(12.5, { locale: 'en-US', percent: true })).toMatch(/12\.5%$/);
-  expect(formatChartTooltipValue(Number.NaN, { locale: 'en-US' })).toBe('0');
 });
 
 test('formatChartTooltipPiePercent is share of positive total', () => {
@@ -555,6 +567,13 @@ test('formatChartTooltipPiePercent is share of positive total', () => {
   expect(formatChartTooltipPiePercent(1, 3)).toBe('33.33%');
   expect(formatChartTooltipPiePercent(10, 0)).toBe('0.00%');
   expect(formatChartTooltipPiePercent(-5, 100)).toBe('0.00%');
+});
+
+test('resolveChartBarLayout widens few-category bars', () => {
+  const two = resolveChartBarLayout(2);
+  const many = resolveChartBarLayout(12);
+  expect(two.barMaxWidth).toBeGreaterThanOrEqual(many.barMaxWidth);
+  expect(two.barPadding).toBeLessThan(many.barPadding);
 });
 
 test('resolveChartFloatingTooltipPosition flips when near the right/top edges', () => {
@@ -580,6 +599,20 @@ test('resolveChartFloatingTooltipPosition flips when near the right/top edges', 
   });
   expect(nearRight.x).toBeLessThan(380 - 140);
   expect(nearRight.x + 140).toBeLessThanOrEqual(400 - 12);
+  // Viewport-style clamp: tip stays fully inside a wide window near the right edge.
+  const viewportEdge = resolveChartFloatingTooltipPosition({
+    cursorX: 1260,
+    cursorY: 40,
+    hostWidth: 1280,
+    hostHeight: 800,
+    tipWidth: 180,
+    tipHeight: 72,
+    gap: 12,
+  });
+  expect(viewportEdge.x).toBeGreaterThanOrEqual(12);
+  expect(viewportEdge.x + 180).toBeLessThanOrEqual(1280 - 12);
+  expect(viewportEdge.y).toBeGreaterThanOrEqual(12);
+  expect(viewportEdge.y + 72).toBeLessThanOrEqual(800 - 12);
 });
 
 test('formatChartTooltipHtml renders title, swatch, label, value and escapes text', () => {

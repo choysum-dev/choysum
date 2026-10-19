@@ -4,6 +4,12 @@
 /** FE unit stub for `@unovis/ts` (peer of `@unovis/vue`). */
 export const Scale = {};
 
+/** Minimal CurveType enum used by VisLine / VisArea. */
+export const CurveType = {
+  Linear: 'linear',
+  MonotoneX: 'monotoneX',
+};
+
 export const GroupedBar = {
   selectors: { bar: '.bar', barGroup: '.barGroup' },
 };
@@ -22,6 +28,7 @@ export const Donut = {
 
 export default {
   Scale,
+  CurveType,
   GroupedBar,
   StackedBar,
   Line,

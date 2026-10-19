@@ -456,17 +456,42 @@ export const CHOY_CHART_LEGEND_RESERVE = 40;
  */
 export const CHOY_CHART_BAR_MAX_WIDTH = 280;
 
+/** Stacked / grouped bar padding + max-width for a category count (Odoo-like density). */
+export type ChartBarLayout = {
+  barMaxWidth: number;
+  barPadding: number;
+  groupPadding: number;
+};
+
+/**
+ * Wider bars / less intra-band padding when there are few categories so the
+ * plot does not look like two thin sticks in a sea of white space.
+ */
+export function resolveChartBarLayout(categoryCount: number): ChartBarLayout {
+  const n = Math.max(0, Math.floor(Number(categoryCount) || 0));
+  if (n <= 2) {
+    return { barMaxWidth: 360, barPadding: 0.08, groupPadding: 0.12 };
+  }
+  if (n <= 4) {
+    return { barMaxWidth: 300, barPadding: 0.12, groupPadding: 0.16 };
+  }
+  if (n <= 8) {
+    return { barMaxWidth: CHOY_CHART_BAR_MAX_WIDTH, barPadding: 0.16, groupPadding: 0.2 };
+  }
+  return { barMaxWidth: CHOY_CHART_BAR_MAX_WIDTH, barPadding: 0.18, groupPadding: 0.2 };
+}
+
 /** Line stroke width (px). */
 export const CHOY_CHART_LINE_WIDTH = 2.5;
 
-/** Scatter marker diameter (px) at line vertices (large enough for stable hover). */
-export const CHOY_CHART_LINE_POINT_SIZE = 14;
+/** Resting scatter marker diameter (px) at line vertices (hover uses a halo). */
+export const CHOY_CHART_LINE_POINT_SIZE = 8;
 
 /**
  * Extra px beyond the Unovis plot clip so line vertex markers at x=0 / x=n-1
  * stay fully visible while the domain stays flush (Odoo-like).
  */
-export const CHOY_CHART_LINE_CLIP_EXTEND = Math.ceil(CHOY_CHART_LINE_POINT_SIZE / 2) + 2;
+export const CHOY_CHART_LINE_CLIP_EXTEND = Math.ceil(CHOY_CHART_LINE_POINT_SIZE / 2) + 4;
 
 /** Area fill under line series (0–1); keep light so the stroke stays primary. */
 export const CHOY_CHART_LINE_AREA_OPACITY = 0.2;
@@ -532,27 +557,56 @@ function escapeChartTooltipText(raw: string): string {
 }
 
 /**
- * Formats a chart measure for tooltips with locale digits; percent stacks append `%`.
- * Falls back to `String(n)` when `Intl.NumberFormat` is unavailable (e.g. FE QuickJS).
+ * Odoo-like compact axis / tip numbers: `1.23k`, `4.50M`; smaller values stay plain.
+ */
+export function formatChartCompactNumber(n: number): string {
+  const value = Number.isFinite(n) ? n : 0;
+  const sign = value < 0 ? '-' : '';
+  const abs = Math.abs(value);
+  if (abs >= 1_000_000) return `${sign}${(abs / 1_000_000).toFixed(2)}M`;
+  if (abs >= 1_000) return `${sign}${(abs / 1_000).toFixed(2)}k`;
+  if (Number.isInteger(abs)) return `${sign}${abs}`;
+  return `${sign}${abs.toFixed(2)}`;
+}
+
+/**
+ * Formats a chart measure for tooltips; percent stacks append `%`.
+ * Non-percent values use {@link formatChartCompactNumber} (Odoo-like `k`/`M`).
+ * Falls back to `String(n)` when formatting fails.
  */
 export function formatChartTooltipValue(
   n: number,
-  opts?: { percent?: boolean; locale?: string },
+  opts?: { percent?: boolean; locale?: string; compact?: boolean },
 ): string {
   const value = Number.isFinite(n) ? n : 0;
-  let formatted: string;
+  if (opts?.percent) {
+    let formatted: string;
+    try {
+      const NumberFormatCtor = (
+        globalThis as { Intl?: { NumberFormat?: new (locales?: string) => { format: (v: number) => string } } }
+      ).Intl?.NumberFormat;
+      formatted =
+        typeof NumberFormatCtor === 'function'
+          ? new NumberFormatCtor(opts?.locale).format(value)
+          : String(value);
+    } catch {
+      formatted = String(value);
+    }
+    return `${formatted}%`;
+  }
+  const useCompact = opts?.compact !== false;
+  if (useCompact) return formatChartCompactNumber(value);
   try {
     const NumberFormatCtor = (
       globalThis as { Intl?: { NumberFormat?: new (locales?: string) => { format: (v: number) => string } } }
     ).Intl?.NumberFormat;
-    formatted =
-      typeof NumberFormatCtor === 'function'
-        ? new NumberFormatCtor(opts?.locale).format(value)
-        : String(value);
+    if (typeof NumberFormatCtor === 'function') {
+      return new NumberFormatCtor(opts?.locale).format(value);
+    }
   } catch {
-    formatted = String(value);
+    /* fall through */
   }
-  return opts?.percent ? `${formatted}%` : formatted;
+  return String(value);
 }
 
 /**
@@ -566,8 +620,10 @@ export function formatChartTooltipPiePercent(value: number, total: number): stri
 }
 
 /**
- * Places a floating chart tooltip near the cursor while keeping it inside the host.
- * Prefers above-right; flips left/below when the preferred corner would overflow.
+ * Places a floating chart tooltip near the cursor while keeping it inside bounds.
+ * `hostWidth`/`hostHeight` are the clamp box (plot host or the viewport for a
+ * `position: fixed` tip teleported to `body`). Prefers above-right; flips
+ * left/below when the preferred corner would overflow.
  */
 export function resolveChartFloatingTooltipPosition(input: {
   cursorX: number;
@@ -599,6 +655,18 @@ export function resolveChartFloatingTooltipPosition(input: {
   y = Math.max(gap, Math.min(y, Math.max(gap, hostH - tipH - gap)));
 
   return { x, y };
+}
+
+/** Viewport size for fixed floating tips (SSR-safe fallback). */
+export function resolveChartTooltipViewportSize(): { width: number; height: number } {
+  if (typeof globalThis !== 'undefined') {
+    const w = (globalThis as { innerWidth?: number }).innerWidth;
+    const h = (globalThis as { innerHeight?: number }).innerHeight;
+    if (typeof w === 'number' && w > 0 && typeof h === 'number' && h > 0) {
+      return { width: w, height: h };
+    }
+  }
+  return { width: 1024, height: 768 };
 }
 
 /**

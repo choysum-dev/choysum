@@ -277,9 +277,9 @@ SPDX-License-Identifier: Apache-2.0
                 :x="xAccessor"
                 :y="xyYAccessors"
                 :color="xyColors"
-                :group-max-width="CHOY_CHART_BAR_MAX_WIDTH"
-                :group-padding="0.2"
-                :bar-padding="0.12"
+                :group-max-width="barLayout.barMaxWidth"
+                :group-padding="barLayout.groupPadding"
+                :bar-padding="barLayout.barPadding"
                 :rounded-corners="4"
                 :events="groupedBarEvents"
               />
@@ -288,8 +288,8 @@ SPDX-License-Identifier: Apache-2.0
                 :x="xAccessor"
                 :y="xyYAccessors"
                 :color="xyColors"
-                :bar-max-width="CHOY_CHART_BAR_MAX_WIDTH"
-                :bar-padding="0.18"
+                :bar-max-width="barLayout.barMaxWidth"
+                :bar-padding="barLayout.barPadding"
                 :rounded-corners="4"
                 :events="stackedBarEvents"
               />
@@ -298,12 +298,14 @@ SPDX-License-Identifier: Apache-2.0
                   :x="xAccessor"
                   :y="xyYAccessors"
                   :color="xyColors"
+                  :curve-type="CurveType.MonotoneX"
                   :opacity="CHOY_CHART_LINE_AREA_OPACITY"
                 />
                 <VisLine
                   :x="xAccessor"
                   :y="xyYAccessors"
                   :color="xyColors"
+                  :curve-type="CurveType.MonotoneX"
                   :line-width="CHOY_CHART_LINE_WIDTH"
                   :events="lineEvents"
                 />
@@ -313,7 +315,7 @@ SPDX-License-Identifier: Apache-2.0
                   :color="xyColors"
                   :size="CHOY_CHART_LINE_POINT_SIZE"
                   stroke-color="var(--choy-color-background)"
-                  :stroke-width="2"
+                  :stroke-width="1.5"
                 />
               </template>
               <VisAxis
@@ -335,13 +337,17 @@ SPDX-License-Identifier: Apache-2.0
                 :num-ticks="5"
                 tick-text-color="var(--choy-color-muted-foreground)"
                 tick-text-font-size="12px"
-                :tick-format="spec.percent ? ((v: number) => `${v}%`) : undefined"
+                :tick-format="yTickFormat"
               />
-              <!-- Line hover uses a full-plot overlay tip; VisTooltip stays for bars. -->
+              <!-- Line hover uses a teleported overlay tip; VisTooltip stays for bars. -->
               <VisTooltip
                 v-if="spec.kind !== 'line'"
                 :triggers="xyTooltipTriggers"
                 class-name="choy-chart-tooltip"
+                :container="visTooltipContainer"
+                horizontal-placement="auto"
+                vertical-placement="top"
+                :follow-cursor="true"
               />
             </VisXYContainer>
             <!-- Odoo-like category column cue while line hover is active. -->
@@ -354,16 +360,6 @@ SPDX-License-Identifier: Apache-2.0
                 width: `${lineHoverBand.width}px`,
                 height: `${lineHoverBand.height}px`,
               }"
-            />
-            <div
-              v-if="spec.kind === 'line' && lineHoverTip"
-              ref="lineHoverTipEl"
-              class="choy-chart-tooltip choy-chart-tooltip--floating pointer-events-none absolute z-[2]"
-              :style="{
-                left: `${lineHoverTip.x}px`,
-                top: `${lineHoverTip.y}px`,
-              }"
-              v-html="lineHoverTip.html"
             />
           </div>
         </div>
@@ -385,16 +381,38 @@ SPDX-License-Identifier: Apache-2.0
             :corner-radius="0"
             :events="donutEvents"
           />
-          <VisTooltip :triggers="pieTooltipTriggers" class-name="choy-chart-tooltip" />
+          <VisTooltip
+            :triggers="pieTooltipTriggers"
+            class-name="choy-chart-tooltip"
+            :container="visTooltipContainer"
+            horizontal-placement="auto"
+            vertical-placement="top"
+            :follow-cursor="true"
+          />
         </VisSingleContainer>
 
         <ChartLegendContent
           :class="
             spec.kind === 'pie'
-              ? 'absolute end-3 top-3 z-[1] justify-end pt-0'
+              ? 'absolute end-3 top-3 z-[1] flex-col flex-nowrap items-end justify-end gap-1.5 pt-0 text-xs'
               : undefined
           "
         />
+
+        <!-- Fixed tip on body so overflow:hidden ancestors cannot clip the last category. -->
+        <Teleport to="body">
+          <div
+            v-if="spec.kind === 'line' && lineHoverTip"
+            ref="lineHoverTipEl"
+            class="choy-chart-tooltip choy-chart-tooltip--floating pointer-events-none"
+            data-testid="choy-chart-line-tooltip"
+            :style="{
+              left: `${lineHoverTip.x}px`,
+              top: `${lineHoverTip.y}px`,
+            }"
+            v-html="lineHoverTip.html"
+          />
+        </Teleport>
       </ChartContainer>
 
       <ChoyEmpty
@@ -450,7 +468,7 @@ import {
   VisTooltip,
   VisXYContainer
 } from '@unovis/vue';
-import { Donut, GroupedBar, Line, Scatter, StackedBar } from '@unovis/ts';
+import { CurveType, Donut, GroupedBar, Line, Scatter, StackedBar } from '@unovis/ts';
 import type { ClassValue } from '../../lib/utils';
 import { cn } from '../../lib/utils';
 import type { BaseModel } from '@/core/rpc';
@@ -497,7 +515,6 @@ import {
 } from './chart/chartTypeAdapter';
 import {
   accumulateChartSeries,
-  CHOY_CHART_BAR_MAX_WIDTH,
   CHOY_CHART_LINE_AREA_OPACITY,
   CHOY_CHART_LINE_CLIP_EXTEND,
   CHOY_CHART_LINE_POINT_SIZE,
@@ -506,12 +523,15 @@ import {
   chartCategoryAxisIsTemporal,
   chartSpecToPieRows,
   chartSpecToXyRows,
+  formatChartCompactNumber,
   formatChartTooltipHtml,
   formatChartTooltipPiePercent,
   formatChartTooltipValue,
   normalizeSeriesToPercent,
+  resolveChartBarLayout,
   resolveChartFloatingTooltipPosition,
   resolveChartPlotHeight,
+  resolveChartTooltipViewportSize,
   resolveChartXDomain,
   resolveStackedYDomain,
   resolveGroupedXyClickTarget,
@@ -952,6 +972,11 @@ const spec = computed<ChoyChartSpec | null>(() => {
 const xyRows = computed(() => (spec.value && spec.value.kind !== 'pie' ? chartSpecToXyRows(spec.value) : []));
 const pieRows = computed(() => (spec.value?.kind === 'pie' ? chartSpecToPieRows(spec.value) : []));
 
+/** Few categories → wider bars / less padding (closer to Odoo graph density). */
+const barLayout = computed(() =>
+  resolveChartBarLayout(spec.value?.kind === 'bar' ? spec.value.categories.length : 0),
+);
+
 /** Bar: band centers. Line: first category at x=0 (flush to the Y-axis, like Odoo). */
 const xyXDomain = computed<[number, number] | undefined>(() => {
   const s = spec.value;
@@ -991,6 +1016,11 @@ type XyRow = Record<string, string | number>;
 
 function xAccessor(d: XyRow): number {
   return Number(d.index) || 0;
+}
+
+function yTickFormat(v: number): string {
+  if (spec.value?.percent) return `${v}%`;
+  return formatChartCompactNumber(v);
 }
 
 function xTickFormat(v: number): string {
@@ -1363,6 +1393,16 @@ function highlightScatterPointForTooltip(
 
 const xyPlotHostRef = ref<HTMLElement | null>(null);
 const lineHoverTipEl = ref<HTMLElement | null>(null);
+/** Portal target so Unovis VisTooltip (bar/pie) is not clipped by plot overflow. */
+const chartTooltipPortal = ref<HTMLElement | undefined>(undefined);
+/**
+ * VisTooltip `container` typing can disagree with the app DOM lib's HTMLElement
+ * (duplicate lib.dom merges). Bridge with an unknown cast at the prop boundary.
+ */
+const visTooltipContainer = computed(
+  (): HTMLElement | undefined =>
+    chartTooltipPortal.value as unknown as HTMLElement | undefined,
+);
 
 type LineHoverTip = { html: string; x: number; y: number };
 type LineHoverBand = { left: number; top: number; width: number; height: number };
@@ -1371,12 +1411,48 @@ const lineHoverTip = ref<LineHoverTip | null>(null);
 const lineHoverBand = ref<LineHoverBand | null>(null);
 
 /** Fallback tip size before the floating node is measured. */
-const LINE_HOVER_TIP_FALLBACK = { width: 160, height: 56 };
+const LINE_HOVER_TIP_FALLBACK = { width: 180, height: 72 };
 
 function clearLinePlotHover(): void {
   clearChartHover();
   lineHoverTip.value = null;
   lineHoverBand.value = null;
+}
+
+/**
+ * Fixed viewport placement for the teleported line tip (client coordinates).
+ */
+function placeLineHoverTip(html: string, clientX: number, clientY: number): void {
+  const measured = lineHoverTipEl.value?.getBoundingClientRect();
+  const tipSize =
+    measured && measured.width > 0 && measured.height > 0
+      ? { width: measured.width, height: measured.height }
+      : LINE_HOVER_TIP_FALLBACK;
+  const viewport = resolveChartTooltipViewportSize();
+  const placed = resolveChartFloatingTooltipPosition({
+    cursorX: clientX,
+    cursorY: clientY,
+    hostWidth: viewport.width,
+    hostHeight: viewport.height,
+    tipWidth: tipSize.width,
+    tipHeight: tipSize.height,
+  });
+  lineHoverTip.value = { html, x: placed.x, y: placed.y };
+  void nextTick(() => {
+    if (!lineHoverTip.value || lineHoverTip.value.html !== html) return;
+    const tipNow = lineHoverTipEl.value;
+    if (!tipNow) return;
+    const tipNowRect = tipNow.getBoundingClientRect();
+    const again = resolveChartFloatingTooltipPosition({
+      cursorX: clientX,
+      cursorY: clientY,
+      hostWidth: viewport.width,
+      hostHeight: viewport.height,
+      tipWidth: tipNowRect.width,
+      tipHeight: tipNowRect.height,
+    });
+    lineHoverTip.value = { html, x: again.x, y: again.y };
+  });
 }
 
 function linePlotYDomain(): [number, number] {
@@ -1447,39 +1523,7 @@ function updateLinePlotHover(event: MouseEvent): void {
     width: bandWidth,
     height: svgRect.height,
   };
-  const cursorX = event.clientX - hostRect.left;
-  const cursorY = event.clientY - hostRect.top;
-  const measured = lineHoverTipEl.value?.getBoundingClientRect();
-  const tipSize = measured && measured.width > 0 && measured.height > 0
-    ? { width: measured.width, height: measured.height }
-    : LINE_HOVER_TIP_FALLBACK;
-  const placed = resolveChartFloatingTooltipPosition({
-    cursorX,
-    cursorY,
-    hostWidth: hostRect.width,
-    hostHeight: hostRect.height,
-    tipWidth: tipSize.width,
-    tipHeight: tipSize.height,
-  });
-  lineHoverTip.value = { html, x: placed.x, y: placed.y };
-  // Remeasure after mount/content change so the first paint near edges is accurate.
-  void nextTick(() => {
-    if (!lineHoverTip.value || lineHoverTip.value.html !== html) return;
-    const hostNow = xyPlotHostRef.value;
-    const tipNow = lineHoverTipEl.value;
-    if (!hostNow || !tipNow) return;
-    const hostNowRect = hostNow.getBoundingClientRect();
-    const tipNowRect = tipNow.getBoundingClientRect();
-    const again = resolveChartFloatingTooltipPosition({
-      cursorX,
-      cursorY,
-      hostWidth: hostNowRect.width,
-      hostHeight: hostNowRect.height,
-      tipWidth: tipNowRect.width,
-      tipHeight: tipNowRect.height,
-    });
-    lineHoverTip.value = { html, x: again.x, y: again.y };
-  });
+  placeLineHoverTip(html, event.clientX, event.clientY);
 }
 
 function onXyPointerMove(event: MouseEvent): void {
@@ -1522,7 +1566,8 @@ const donutEvents = computed(() => ({
 }));
 
 /**
- * Odoo-like hover panel for the resolved category/series cell (rendered values).
+ * Odoo-like hover panel: category title; multi-series shows every series at that category.
+ * `seriesIdx` is kept for call-site highlight sync and ignored for row content when multi.
  */
 function buildXyTooltipHtml(
   categoryIdx: number | null,
@@ -1532,20 +1577,39 @@ function buildXyTooltipHtml(
   if (!current || current.kind === 'pie' || categoryIdx == null) return null;
   const category = current.categories[categoryIdx];
   if (category == null) return null;
-  let si = seriesIdx;
-  if (current.series.length === 1) si = 0;
-  if (si == null || si < 0 || si >= current.series.length) return null;
-  const series = current.series[si]!;
-  const color =
-    current.config[series.key]?.color || CHOY_CHART_DEFAULT_PALETTE[0] || '#888';
-  const multiOrStacked = current.series.length > 1 || !!current.stacked;
-  const label = multiOrStacked ? series.name : category;
-  const value = Number(series.values[categoryIdx]) || 0;
-  const valueText = formatChartTooltipValue(value, { percent: !!current.percent });
-  return formatChartTooltipHtml({
-    title: current.metricLabel || '',
-    rows: [{ color, label, valueText }],
+  const seriesList = current.series;
+  if (!seriesList.length) return null;
+  const multi = seriesList.length > 1;
+  if (!multi) {
+    const series = seriesList[0]!;
+    const color =
+      current.config[series.key]?.color || CHOY_CHART_DEFAULT_PALETTE[0] || '#888';
+    const value = Number(series.values[categoryIdx]) || 0;
+    return formatChartTooltipHtml({
+      title: category,
+      rows: [
+        {
+          color,
+          label: current.metricLabel || series.name,
+          valueText: formatChartTooltipValue(value, { percent: !!current.percent }),
+        },
+      ],
+    });
+  }
+  void seriesIdx;
+  const rows = seriesList.map((series, idx) => {
+    const color =
+      current.config[series.key]?.color ||
+      CHOY_CHART_DEFAULT_PALETTE[idx % CHOY_CHART_DEFAULT_PALETTE.length] ||
+      '#888';
+    const value = Number(series.values[categoryIdx]) || 0;
+    return {
+      color,
+      label: series.name,
+      valueText: formatChartTooltipValue(value, { percent: !!current.percent }),
+    };
   });
+  return formatChartTooltipHtml({ title: category, rows });
 }
 
 function onStackedBarTooltip(
@@ -1659,8 +1723,14 @@ function onPieSegmentTooltip(
   const value = Number(slice.value) || 0;
   const valueText = `${formatChartTooltipValue(value)} (${formatChartTooltipPiePercent(value, total)})`;
   const html = formatChartTooltipHtml({
-    title: current.metricLabel || '',
-    rows: [{ color, label: slice.name, valueText }],
+    title: slice.name,
+    rows: [
+      {
+        color,
+        label: current.metricLabel || slice.name,
+        valueText,
+      },
+    ],
   });
   highlightTooltipMark(index, nodes);
   return html;
@@ -1680,6 +1750,9 @@ const pieTooltipTriggers = computed(() => ({
 }));
 
 onMounted(() => {
+  if (typeof document !== 'undefined') {
+    chartTooltipPortal.value = document.body;
+  }
   const Observer = (globalThis as { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
   const el = chartBodyEl();
   if (Observer && el) {
@@ -1748,6 +1821,12 @@ defineExpose({
   border: 1px solid var(--choy-color-border);
   border-radius: calc(var(--radius) - 2px);
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+}
+
+/* Teleported line tip: fixed to the viewport so shell overflow cannot clip it. */
+.choy-chart-tooltip--floating {
+  position: fixed;
+  z-index: 50;
 }
 
 .choy-chart-tooltip__panel {

@@ -36,10 +36,12 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
-### 2026-10-19 — ChartLegendContent class prop
+### 2026-10-19 — ChartLegendContent class prop + denser swatches
 
 - **ChartLegendContent:** accept optional `class` (merged via `cn`) so product
   hosts can place the legend (e.g. pie top-end overlay) without forking the kit.
+- **ChartLegendContent:** slightly denser swatch (`size-2` / `rounded-sm`) and
+  `text-xs` labels to match Odoo-like pie legend chrome.
 
 ### 2026-10-15 — ComboboxInput displayValue + Select class
 
