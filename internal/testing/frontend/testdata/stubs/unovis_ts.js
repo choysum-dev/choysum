@@ -13,6 +13,9 @@ export const StackedBar = {
 export const Line = {
   selectors: { line: '.line' },
 };
+export const Scatter = {
+  selectors: { point: '.point', pointGroup: '.pointGroup', root: '.root' },
+};
 export const Donut = {
   selectors: { segment: '.segment', background: '.background' },
 };
@@ -22,5 +25,6 @@ export default {
   GroupedBar,
   StackedBar,
   Line,
+  Scatter,
   Donut,
 };

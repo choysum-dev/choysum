@@ -17,6 +17,8 @@ function icon(name) {
   });
 }
 
+export const ArrowDown = icon('ArrowDown');
+export const ArrowUp = icon('ArrowUp');
 export const BarChart3 = icon('BarChart3');
 export const Bell = icon('Bell');
 export const Bookmark = icon('Bookmark');
@@ -35,6 +37,7 @@ export const Copy = icon('Copy');
 export const Database = icon('Database');
 export const Download = icon('Download');
 export const EllipsisVertical = icon('EllipsisVertical');
+export const Equal = icon('Equal');
 export const FileText = icon('FileText');
 export const FolderSync = icon('FolderSync');
 export const Funnel = icon('Funnel');
@@ -46,15 +49,17 @@ export const Info = icon('Info');
 export const Languages = icon('Languages');
 export const Layers = icon('Layers');
 export const LayoutGrid = icon('LayoutGrid');
+export const LineChart = icon('LineChart');
 export const List = icon('List');
 export const Loader2 = icon('Loader2');
 export const Menu = icon('Menu');
 export const Monitor = icon('Monitor');
 export const Moon = icon('Moon');
+export const MoreHorizontal = icon('MoreHorizontal');
 export const OctagonX = icon('OctagonX');
 export const PanelLeft = icon('PanelLeft');
-export const MoreHorizontal = icon('MoreHorizontal');
 export const Pencil = icon('Pencil');
+export const PieChart = icon('PieChart');
 export const Plus = icon('Plus');
 export const RefreshCw = icon('RefreshCw');
 export const RotateCcw = icon('RotateCcw');

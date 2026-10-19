@@ -19,6 +19,7 @@ export const VisGroupedBar = stub('VisGroupedBar');
 export const VisStackedBar = stub('VisStackedBar');
 export const VisLine = stub('VisLine');
 export const VisArea = stub('VisArea');
+export const VisScatter = stub('VisScatter');
 export const VisAxis = stub('VisAxis');
 export const VisDonut = stub('VisDonut');
 export const VisTooltip = stub('VisTooltip');
@@ -29,6 +30,7 @@ export default {
   VisStackedBar,
   VisLine,
   VisArea,
+  VisScatter,
   VisAxis,
   VisDonut,
   VisTooltip,

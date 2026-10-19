@@ -19,7 +19,7 @@ SPDX-License-Identifier: Apache-2.0
     <template v-if="showHeader" #header-right>
       <ChoyViewSwitcher
         :aria-label="_t('View switcher')"
-        :active="isListRoute ? 'list' : 'kanban'"
+        :active="activeView"
         :options="viewSwitcherOptions"
         @select="onViewSelect"
       />
@@ -58,6 +58,7 @@ import {
 } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { resolveListRowRecordId } from './list_row_nav';
+import { resolveTokenViewKind, tokenViewPath, type TokenViewKind } from './token_view_nav';
 
 defineOptions({ name: 'TokenListView', inheritAttrs: false });
 const { _t, _lt } = createTranslate('auth', { scope: 'web/views/TokenListView' });
@@ -80,11 +81,12 @@ const { showHeader } = props;
 const tokenActions = defineModelActions('auth.Token', { entityTitle: _lt('Token') });
 const { hasAction } = usePermission();
 
-const isListRoute = computed(() => !String(route.path || '').includes('/kanban'));
+const activeView = computed(() => resolveTokenViewKind(String(route.path || '')));
 
 const viewSwitcherOptions = computed<ChoyViewSwitcherOption[]>(() => [
   { value: 'list', label: _t('List View') },
   { value: 'kanban', label: _t('Kanban View') },
+  { value: 'chart', label: _t('Chart View') },
 ]);
 
 function onRowClick(row: Record<string, unknown>) {
@@ -93,8 +95,7 @@ function onRowClick(row: Record<string, unknown>) {
 }
 
 function onViewSelect(value: string) {
-  if (value === 'kanban') router.push('/auth/tokens/kanban');
-  else router.push('/auth/tokens');
+  router.push(tokenViewPath(value as TokenViewKind));
 }
 
 const { listRef, expose } = useListViewExpose<Token>();

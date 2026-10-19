@@ -119,6 +119,12 @@ import {
   resolveTokenUsernameLabel,
   type TokenKanbanRow
 } from './token_kanban_nav';
+import {
+  ensureTokenViewGroups,
+  tokenViewDefaultGroups,
+  tokenViewPath,
+  type TokenViewKind,
+} from './token_view_nav';
 
 defineOptions({ name: 'TokenKanbanView' });
 const { _t } = createTranslate('auth', { scope: 'web/views/TokenKanbanView' });
@@ -126,19 +132,23 @@ const { _t } = createTranslate('auth', { scope: 'web/views/TokenKanbanView' });
 const props = withDefaults(defineProps<{ store?: WebModelStore<Token>; showHeader?: boolean }>(), { showHeader: true });
 const store = resolvePageStore(props.store, 'TokenKanbanView');
 const { showHeader } = props;
+
+// Correct shared-store groups before Kanban bootstraps (parent setup first).
+ensureTokenViewGroups(store, 'kanban');
+
 /** Board lanes follow revoked state (List shows the same column); clearable like Module. */
-const defaultGroups = ['Revoked'] as GroupBySpec<Token>[];
+const defaultGroups = tokenViewDefaultGroups('kanban') as GroupBySpec<Token>[];
 
 const router = useRouter();
 
 const viewSwitcherOptions = computed<ChoyViewSwitcherOption[]>(() => [
   { value: 'list', label: _t('List View') },
   { value: 'kanban', label: _t('Kanban View') },
+  { value: 'chart', label: _t('Chart View') },
 ]);
 
 function onViewSelect(value: string) {
-  if (value === 'list') router.push('/auth/tokens');
-  else router.push('/auth/tokens/kanban');
+  router.push(tokenViewPath(value as TokenViewKind));
 }
 
 function rowToCard(row: unknown, index: number, laneKey: string): ChoyKanbanCard {

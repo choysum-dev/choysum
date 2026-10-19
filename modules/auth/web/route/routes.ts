@@ -159,6 +159,15 @@ export const appRoutes: RouteRecordRaw[] = [
     actions: ['auth.action.token_create', 'auth.action.token_edit', 'auth.action.token_delete', 'auth.action.token_copy'],
     meta: { requiresAuth: true },
   }),
+  defineRoute('auth.route.token_chart', {
+    sequence: 50,
+    title: _lt('Token Chart'),
+    path: 'auth/tokens/chart',
+    name: 'TokenChart',
+    component: () => import('../pages/TokenChart.vue'),
+    actions: ['auth.action.token_create', 'auth.action.token_edit', 'auth.action.token_delete', 'auth.action.token_copy'],
+    meta: { requiresAuth: true },
+  }),
 
   // Access Rules (PR-C-5): flat paths under /auth/* — no /auth/access-rules prefix.
   defineRoute('auth.route.record_rule_list', {

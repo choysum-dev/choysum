@@ -7,263 +7,399 @@ SPDX-License-Identifier: Apache-2.0
   <ChoyViewContainer
     data-anchor="choy.chart-view"
     data-region="chart-view"
-    :class="cn('choy-chart-view', props.class)"
+    :class="cn('choy-chart-view', 'gap-5', props.class)"
   >
     <template v-if="showHeader" #header>
-      <ChoyViewActionBar
-        :layout="$slots.search ? 'thirds' : 'split'"
-        :system-actions-label="_t('System actions')"
-        :user-actions-label="_t('User actions')"
-      >
-        <template v-if="showActions" #system-actions>
-          <slot name="system-actions">
-            <ChoyButton
-              v-if="showCreate"
-              type="button"
-              size="default"
-              variant="default"
-              @click="emit('create')"
+      <div data-anchor="choy.chart.view-chrome">
+        <ChoyViewActionBar
+          layout="thirds"
+          class="gap-2 border-b-0 [border-bottom-width:0px]"
+          :system-actions-label="_t('System actions')"
+          :user-actions-label="_t('User actions')"
+        >
+          <template v-if="showActions || pageTitle || showTitleOverflow" #system-actions>
+            <slot v-if="showActions" name="system-actions">
+              <!-- Keep New mounted during busy so the action bar does not flash. -->
+              <ChoyButton
+                v-if="showCreate"
+                type="button"
+                size="default"
+                variant="default"
+                :disabled="boardBusy"
+                @click="emit('create')"
+              >
+                <Plus class="size-4" aria-hidden="true" />
+                {{ resolvedCreateLabel }}
+              </ChoyButton>
+            </slot>
+
+            <h1
+              v-if="pageTitle"
+              :id="pageTitleId || undefined"
+              data-slot="page-title"
+              class="choy-chart-view__page-title min-w-0 max-w-[10rem] truncate text-base font-semibold text-foreground sm:max-w-[14rem]"
             >
-              <Plus class="size-4" aria-hidden="true" />
-              {{ resolvedCreateLabel }}
-            </ChoyButton>
-            <ChoyButton
-              v-if="showRefresh"
-              size="default"
-              variant="outline"
-              :disabled="boardBusy"
-              @click="onRefresh"
+              {{ pageTitle }}
+            </h1>
+            <ChoyPageTitleActions
+              v-if="showTitleOverflow"
+              :has-io-menu="!!pageTitleActionsIo"
+              :action-import="pageTitleActionsIo?.actionImport ?? false"
+              :action-export="pageTitleActionsIo?.actionExport ?? false"
+              :action-import-upload-hint="pageTitleActionsIo?.actionImportUploadHint"
+              :action-import-column-mapping="pageTitleActionsIo?.actionImportColumnMapping"
+              :action-list-ref="(pageTitleActionsIo?.actionListRef as any)"
+              :action-company-id="pageTitleActionsIo?.actionCompanyId"
+              :store="store"
             >
-              {{ resolvedRefreshLabel }}
-            </ChoyButton>
-          </slot>
-        </template>
-        <template v-if="showActions" #user-actions>
-          <slot name="user-actions" />
-        </template>
-        <template v-if="$slots.search" #center>
-          <ChoySearchFit>
-            <slot name="search" :on-query-update="onSearch" />
-          </ChoySearchFit>
-        </template>
-        <template v-if="$slots['header-right']" #header-right>
-          <slot name="header-right" />
-        </template>
-      </ChoyViewActionBar>
+              <template v-if="showRefreshInOverflow || $slots['overflow-actions']" #overflow>
+                <DropdownMenuItem
+                  v-if="showRefreshInOverflow"
+                  data-testid="chart-overflow-refresh"
+                  :disabled="boardBusy"
+                  @select="onRefresh"
+                >
+                  <RefreshCw class="size-4" aria-hidden="true" />
+                  {{ resolvedRefreshLabel }}
+                </DropdownMenuItem>
+                <slot name="overflow-actions" />
+              </template>
+            </ChoyPageTitleActions>
+          </template>
+
+          <template v-if="showActions && !!$slots['user-actions']" #user-actions>
+            <slot name="user-actions" />
+          </template>
+
+          <!-- Keep #center registered so trailing controls stay in the last column. -->
+          <template #center>
+            <ChoySearchFit v-if="$slots.search">
+              <slot name="search" :on-query-update="onSearch" />
+            </ChoySearchFit>
+            <div v-else class="min-w-0" />
+          </template>
+
+          <template v-if="$slots['header-right']" #header-right>
+            <slot name="header-right" />
+          </template>
+        </ChoyViewActionBar>
+      </div>
     </template>
 
     <div
       v-if="showChartControls"
-      class="flex flex-wrap items-center gap-2 min-h-control"
+      class="flex min-h-control flex-nowrap items-center justify-between gap-3 pb-3"
       data-region="chart-controls"
     >
+      <!-- Odoo-like: measure left (fixed width); stack / sort / type right. -->
       <slot
         name="metric-switcher"
         :metrics="resolvedMetrics"
         :current="localMetric"
         :change="selectMetric"
       >
-        <label
-          v-if="resolvedMetrics.length"
-          class="flex items-center gap-2 text-xs text-muted-foreground"
-        >
-          {{ _t('Metric') }}
-          <select
-            class="choy-input h-control"
-            :value="localMetric"
-            :aria-label="_t('Metric selection')"
-            @change="selectMetric(($event.target as HTMLSelectElement).value)"
+        <div v-if="resolvedMetrics.length" class="w-[9.5rem] shrink-0">
+          <Select
+            class="block w-full"
+            :model-value="localMetric"
+            @update:model-value="onMetricSelect"
           >
-            <option
-              v-for="m in resolvedMetrics"
-              :key="m.alias"
-              :value="m.alias"
+            <SelectTrigger
+              class="box-border h-control min-h-control w-full py-0 leading-none"
+              data-testid="choy-chart-metric"
+              :aria-label="_t('Metric selection')"
+              :placeholder="_t('Metric')"
             >
-              {{ m.label }}
-            </option>
-          </select>
-        </label>
-      </slot>
-
-      <slot
-        name="chart-type-switcher"
-        :types="availableTypes"
-        :current="localChartType"
-        :change="selectChartType"
-      >
-        <div
-          v-if="availableTypes.length"
-          class="inline-flex overflow-hidden rounded-md border border-border"
-          role="group"
-          :aria-label="_t('Chart type')"
-        >
-          <ChoyButton
-            v-for="t in availableTypes"
-            :key="t"
-            size="sm"
-            :variant="localChartType === t ? 'default' : 'ghost'"
-            class="rounded-none"
-            :aria-pressed="localChartType === t"
-            @click="selectChartType(t)"
-          >
-            {{ t }}
-          </ChoyButton>
+              {{ selectedMetricLabel }}
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem
+                v-for="m in resolvedMetrics"
+                :key="m.alias"
+                :value="m.alias"
+              >
+                {{ m.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </slot>
 
-      <slot
-        name="stacked-switcher"
-        :stacked="localStacked"
-        :disabled="stackedDisabled"
-        :toggle="toggleStacked"
-      >
-        <ChoyButton
-          size="sm"
-          :variant="localStacked && !stackedDisabled ? 'default' : 'outline'"
-          :disabled="stackedDisabled"
-          :aria-pressed="localStacked"
-          @click="toggleStacked"
-        >
-          {{ _t('Stack') }}
-        </ChoyButton>
-      </slot>
+      <TooltipProvider :delay-duration="200">
+        <div class="flex h-control shrink-0 items-center gap-3">
+          <!-- Odoo: Cumulative only on line charts; any category axis. -->
+          <slot
+            v-if="cumulativeAvailable"
+            name="cumulative-switcher"
+            :cumulative="localCumulative"
+            :toggle="toggleCumulative"
+          >
+            <div class="flex h-control items-center gap-2 text-sm leading-none text-foreground">
+              <span>{{ _t('Cumulative') }}</span>
+              <Switch
+                v-model="localCumulative"
+                data-testid="choy-chart-cumulative"
+                :aria-label="_t('Cumulative')"
+              />
+            </div>
+          </slot>
 
-      <slot
-        name="sort-switcher"
-        :current="localSort"
-        :disabled="sortDisabled"
-        :change="selectSort"
-      >
-        <div
-          class="inline-flex overflow-hidden rounded-md border border-border"
-          role="group"
-          :aria-label="_t('Sort')"
-        >
-          <ChoyButton
-            size="sm"
-            class="rounded-none"
-            :variant="localSort === 'none' ? 'default' : 'ghost'"
-            :disabled="sortDisabled"
-            :aria-pressed="localSort === 'none'"
-            :aria-label="_t('No sort')"
-            :title="_t('No sort')"
-            @click="selectSort('none')"
+          <!-- Pie / single-series: hide stack (Odoo graph chrome). -->
+          <slot
+            v-if="!stackedDisabled"
+            name="stacked-switcher"
+            :stacked="localStacked"
+            :disabled="stackedDisabled"
+            :toggle="toggleStacked"
           >
-            ∅
-          </ChoyButton>
-          <ChoyButton
-            size="sm"
-            class="rounded-none"
-            :variant="localSort === 'asc' ? 'default' : 'ghost'"
+            <div class="flex h-control items-center gap-2 text-sm leading-none text-foreground">
+              <span>{{ _t('Stack') }}</span>
+              <Switch
+                v-model="localStacked"
+                data-testid="choy-chart-stack"
+                :aria-label="_t('Stack')"
+              />
+            </div>
+          </slot>
+
+          <!-- Pie: sort does not apply; hide instead of disabled chrome. -->
+          <slot
+            v-if="!sortDisabled"
+            name="sort-switcher"
+            :current="localSort"
             :disabled="sortDisabled"
-            :aria-pressed="localSort === 'asc'"
-            :aria-label="_t('Sort ascending')"
-            :title="_t('Sort ascending')"
-            @click="selectSort('asc')"
+            :change="selectSort"
           >
-            ↑
-          </ChoyButton>
-          <ChoyButton
-            size="sm"
-            class="rounded-none"
-            :variant="localSort === 'desc' ? 'default' : 'ghost'"
-            :disabled="sortDisabled"
-            :aria-pressed="localSort === 'desc'"
-            :aria-label="_t('Sort descending')"
-            :title="_t('Sort descending')"
-            @click="selectSort('desc')"
+            <ChoyButtonGroup :aria-label="_t('Sort')" data-testid="choy-chart-sort-group">
+              <Tooltip v-for="opt in sortOptions" :key="opt.value">
+                <TooltipTrigger as-child>
+                  <ChoyButton
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    :class="localSort === opt.value ? chartControlActive : chartControlIdle"
+                    :aria-pressed="localSort === opt.value"
+                    :aria-label="opt.label"
+                    @click="selectSort(opt.value)"
+                  >
+                    <component :is="opt.icon" class="size-4" aria-hidden="true" />
+                  </ChoyButton>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" :side-offset="6">
+                  {{ opt.label }}
+                </TooltipContent>
+              </Tooltip>
+            </ChoyButtonGroup>
+          </slot>
+
+          <slot
+            name="chart-type-switcher"
+            :types="availableTypes"
+            :current="localChartType"
+            :change="selectChartType"
           >
-            ↓
-          </ChoyButton>
+            <ChoyButtonGroup
+              v-if="availableTypes.length"
+              :aria-label="_t('Chart type')"
+              data-testid="choy-chart-type-group"
+            >
+              <Tooltip v-for="t in availableTypes" :key="t">
+                <TooltipTrigger as-child>
+                  <ChoyButton
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    :class="localChartType === t ? chartControlActive : chartControlIdle"
+                    :aria-pressed="localChartType === t"
+                    :aria-label="chartTypeLabels[t]"
+                    :data-testid="`choy-chart-type-${t}`"
+                    @click="selectChartType(t)"
+                  >
+                    <component :is="chartTypeIcons[t]" class="size-4" aria-hidden="true" />
+                  </ChoyButton>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" :side-offset="6">
+                  {{ chartTypeLabels[t] }}
+                </TooltipContent>
+              </Tooltip>
+            </ChoyButtonGroup>
+          </slot>
         </div>
-      </slot>
+      </TooltipProvider>
     </div>
 
     <ChoyViewBusyHost
+      ref="chartBodyRef"
       :busy="boardBusy && !errorText"
-      class="relative min-h-[280px] w-full"
+      class="relative flex min-h-0 min-w-0 w-full flex-1 flex-col"
       data-region="chart-body"
     >
       <ChartContainer
         v-if="spec"
         :config="spec.config"
-        class="min-h-[280px] w-full"
+        class="relative min-h-0 w-full flex-1"
       >
-        <VisXYContainer
+          <div
           v-if="spec.kind === 'bar' || spec.kind === 'line'"
-          :data="xyRows"
-          :height="280"
-          class="h-[280px] w-full"
+          class="flex min-h-0 w-full min-w-0 flex-1"
+          data-region="chart-xy-frame"
+          @mousemove="onXyPointerMove"
+          @mouseleave="onXyPointerLeave"
         >
-          <VisGroupedBar
-            v-if="spec.kind === 'bar' && !spec.stacked"
-            :x="xAccessor"
-            :y="xyYAccessors"
-            :color="xyColors"
-            :rounded-corners="2"
-            :events="groupedBarEvents"
-          />
-          <VisStackedBar
-            v-else-if="spec.kind === 'bar' && spec.stacked"
-            :x="xAccessor"
-            :y="xyYAccessors"
-            :color="xyColors"
-            :rounded-corners="2"
-            :events="stackedBarEvents"
-          />
-          <template v-else-if="spec.kind === 'line'">
-            <VisArea
-              v-if="spec.stacked"
-              :x="xAccessor"
-              :y="xyYAccessors"
-              :color="xyColors"
-              :opacity="0.25"
+          <!-- Crisp HTML vertical metric label; SVG rotate(-90) blurs CJK. -->
+          <div
+            v-if="spec.metricLabel"
+            class="flex w-6 shrink-0 items-center justify-center self-stretch"
+            data-region="chart-y-label"
+            aria-hidden="true"
+          >
+            <span
+              class="select-none text-xs leading-none text-muted-foreground [writing-mode:vertical-rl]"
+            >
+              {{ spec.metricLabel }}
+            </span>
+          </div>
+          <div
+            ref="xyPlotHostRef"
+            class="relative h-full min-h-[280px] min-w-0 w-full flex-1"
+            data-region="chart-xy-plot"
+          >
+            <VisXYContainer
+              :data="xyRows"
+              :height="plotHeight"
+              :x-domain="xyXDomain"
+              :y-domain="xyYDomain"
+              :clip-path-extend="xyClipPathExtend"
+              class="h-full min-h-[280px] min-w-0 w-full"
+            >
+              <VisGroupedBar
+                v-if="spec.kind === 'bar' && !spec.stacked"
+                :x="xAccessor"
+                :y="xyYAccessors"
+                :color="xyColors"
+                :group-max-width="CHOY_CHART_BAR_MAX_WIDTH"
+                :group-padding="0.2"
+                :bar-padding="0.12"
+                :rounded-corners="4"
+                :events="groupedBarEvents"
+              />
+              <VisStackedBar
+                v-else-if="spec.kind === 'bar' && spec.stacked"
+                :x="xAccessor"
+                :y="xyYAccessors"
+                :color="xyColors"
+                :bar-max-width="CHOY_CHART_BAR_MAX_WIDTH"
+                :bar-padding="0.18"
+                :rounded-corners="4"
+                :events="stackedBarEvents"
+              />
+              <template v-else-if="spec.kind === 'line'">
+                <VisArea
+                  :x="xAccessor"
+                  :y="xyYAccessors"
+                  :color="xyColors"
+                  :opacity="CHOY_CHART_LINE_AREA_OPACITY"
+                />
+                <VisLine
+                  :x="xAccessor"
+                  :y="xyYAccessors"
+                  :color="xyColors"
+                  :line-width="CHOY_CHART_LINE_WIDTH"
+                  :events="lineEvents"
+                />
+                <VisScatter
+                  :x="xAccessor"
+                  :y="xyYAccessors"
+                  :color="xyColors"
+                  :size="CHOY_CHART_LINE_POINT_SIZE"
+                  stroke-color="var(--choy-color-background)"
+                  :stroke-width="2"
+                />
+              </template>
+              <VisAxis
+                type="x"
+                :x="xAccessor"
+                :tick-format="xTickFormat"
+                :tick-line="false"
+                :domain-line="false"
+                :grid-line="false"
+                tick-text-color="var(--choy-color-foreground)"
+                tick-text-font-size="12px"
+                :tick-text-hide-overlapping="true"
+              />
+              <VisAxis
+                type="y"
+                :tick-line="false"
+                :domain-line="false"
+                :grid-line="true"
+                :num-ticks="5"
+                tick-text-color="var(--choy-color-muted-foreground)"
+                tick-text-font-size="12px"
+                :tick-format="spec.percent ? ((v: number) => `${v}%`) : undefined"
+              />
+              <!-- Line hover uses a full-plot overlay tip; VisTooltip stays for bars. -->
+              <VisTooltip
+                v-if="spec.kind !== 'line'"
+                :triggers="xyTooltipTriggers"
+                class-name="choy-chart-tooltip"
+              />
+            </VisXYContainer>
+            <!-- Odoo-like category column cue while line hover is active. -->
+            <div
+              v-if="spec.kind === 'line' && lineHoverBand"
+              class="pointer-events-none absolute z-[1] bg-foreground/[0.04]"
+              :style="{
+                left: `${lineHoverBand.left}px`,
+                top: `${lineHoverBand.top}px`,
+                width: `${lineHoverBand.width}px`,
+                height: `${lineHoverBand.height}px`,
+              }"
             />
-            <VisLine
-              :x="xAccessor"
-              :y="xyYAccessors"
-              :color="xyColors"
-              :events="lineEvents"
+            <div
+              v-if="spec.kind === 'line' && lineHoverTip"
+              ref="lineHoverTipEl"
+              class="choy-chart-tooltip choy-chart-tooltip--floating pointer-events-none absolute z-[2]"
+              :style="{
+                left: `${lineHoverTip.x}px`,
+                top: `${lineHoverTip.y}px`,
+              }"
+              v-html="lineHoverTip.html"
             />
-          </template>
-          <VisAxis
-            type="x"
-            :x="xAccessor"
-            :tick-format="xTickFormat"
-            :tick-line="false"
-            :domain-line="false"
-            :grid-line="false"
-          />
-          <VisAxis
-            type="y"
-            :label="spec.metricLabel"
-            :tick-line="false"
-            :domain-line="false"
-            :grid-line="true"
-            :tick-format="spec.percent ? ((v: number) => `${v}%`) : undefined"
-          />
-        </VisXYContainer>
+          </div>
+        </div>
 
         <VisSingleContainer
           v-else-if="spec.kind === 'pie'"
           :data="pieRows"
-          :height="280"
-          class="h-[280px] w-full"
+          :height="plotHeight"
+          class="h-full min-h-[280px] w-full"
         >
+          <!-- arcWidth 0 → solid pie (Odoo graph); non-zero would be a donut ring. -->
+          <!-- Solid pie: hide Unovis donut track (showBackground) so no gray outer ring. -->
           <VisDonut
             :value="(d: { value: number }) => d.value"
             :color="(d: { color: string }) => d.color"
-            :arc-width="40"
+            :arc-width="0"
+            :show-background="false"
+            :pad-angle="0"
+            :corner-radius="0"
             :events="donutEvents"
           />
+          <VisTooltip :triggers="pieTooltipTriggers" class-name="choy-chart-tooltip" />
         </VisSingleContainer>
 
-        <ChartLegendContent />
+        <ChartLegendContent
+          :class="
+            spec.kind === 'pie'
+              ? 'absolute end-3 top-3 z-[1] justify-end pt-0'
+              : undefined
+          "
+        />
       </ChartContainer>
 
       <ChoyEmpty
         v-else-if="!boardBusy && !errorText"
-        class="min-h-[280px] w-full border-none"
+        class="min-h-[280px] w-full flex-1 border-none"
         :description="resolvedEmptyLabel"
       />
 
@@ -282,19 +418,39 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
-import { Plus } from 'lucide-vue-next';
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  useSlots,
+  watch,
+  type Component,
+} from 'vue';
+import {
+  ArrowDown,
+  ArrowUp,
+  BarChart3,
+  Equal,
+  LineChart,
+  PieChart,
+  Plus,
+  RefreshCw,
+} from 'lucide-vue-next';
 import {
   VisArea,
   VisAxis,
   VisDonut,
   VisGroupedBar,
   VisLine,
+  VisScatter,
   VisSingleContainer,
   VisStackedBar,
+  VisTooltip,
   VisXYContainer
 } from '@unovis/vue';
-import { Donut, GroupedBar, Line, StackedBar } from '@unovis/ts';
+import { Donut, GroupedBar, Line, Scatter, StackedBar } from '@unovis/ts';
 import type { ClassValue } from '../../lib/utils';
 import { cn } from '../../lib/utils';
 import type { BaseModel } from '@/core/rpc';
@@ -303,7 +459,9 @@ import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { OrderByState } from '@/web/web/query/state';
 import type { ChoySearchQuery } from './searchViewHelpers';
 import ChoyButton from '../layout/ChoyButton.vue';
+import ChoyButtonGroup from '../layout/ChoyButtonGroup.vue';
 import ChoyEmpty from '../layout/ChoyEmpty.vue';
+import ChoyPageTitleActions from '../layout/ChoyPageTitleActions.vue';
 import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
 import ChoyViewActionBar from '@/web/web/components/view/ChoyViewActionBar.vue';
 import ChoySearchFit from '@/web/web/components/view/ChoySearchFit.vue';
@@ -314,8 +472,18 @@ import {
   ChartContainer,
   ChartLegendContent
 } from '../vendor/ui/chart';
+import Select from '../vendor/ui/select/Select.vue';
+import SelectContent from '../vendor/ui/select/SelectContent.vue';
+import SelectItem from '../vendor/ui/select/SelectItem.vue';
+import SelectTrigger from '../vendor/ui/select/SelectTrigger.vue';
+import Switch from '../vendor/ui/switch/Switch.vue';
+import DropdownMenuItem from '../vendor/ui/dropdown-menu/DropdownMenuItem.vue';
+import Tooltip from '../vendor/ui/tooltip/Tooltip.vue';
+import TooltipContent from '../vendor/ui/tooltip/TooltipContent.vue';
+import TooltipProvider from '../vendor/ui/tooltip/TooltipProvider.vue';
+import TooltipTrigger from '../vendor/ui/tooltip/TooltipTrigger.vue';
 import { createChartController } from '@/web/web/controllers/chartController';
-import { resolvePageStore } from '@/web/web/composables/usePageContext';
+import { resolvePageStore, useHostPageTitleInView } from '@/web/web/composables/usePageContext';
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
 import { exportMetrics } from '@/web/web/query/utils/registry/metric';
 import {
@@ -328,14 +496,32 @@ import {
   type ChoyChartSpec
 } from './chart/chartTypeAdapter';
 import {
+  accumulateChartSeries,
+  CHOY_CHART_BAR_MAX_WIDTH,
+  CHOY_CHART_LINE_AREA_OPACITY,
+  CHOY_CHART_LINE_CLIP_EXTEND,
+  CHOY_CHART_LINE_POINT_SIZE,
+  CHOY_CHART_LINE_WIDTH,
+  CHOY_CHART_MIN_PLOT_HEIGHT,
+  chartCategoryAxisIsTemporal,
   chartSpecToPieRows,
   chartSpecToXyRows,
+  formatChartTooltipHtml,
+  formatChartTooltipPiePercent,
+  formatChartTooltipValue,
   normalizeSeriesToPercent,
+  resolveChartFloatingTooltipPosition,
+  resolveChartPlotHeight,
+  resolveChartXDomain,
+  resolveStackedYDomain,
   resolveGroupedXyClickTarget,
   resolveClickClientX,
   resolveLineClickCategory,
+  resolveLineHoverCategory,
+  resolveNearestLineSeriesByY,
   resolveStackedXyClickTarget,
   sortChartCategories,
+  sortChartCategoriesByTime,
   type ChoyChartItemClickPayload,
   type ChoyChartMetricOption
 } from './chartViewHelpers';
@@ -362,6 +548,8 @@ const props = withDefaults(
     chartTypes?: ChoyChartKind[];
     chartType?: ChoyChartKind;
     stacked?: boolean;
+    /** Running total along the category axis (line charts only, like Odoo). */
+    cumulative?: boolean;
     stackMode?: 'absolute' | 'percent';
     sort?: ChoyChartSort;
     groupDepth?: number;
@@ -376,6 +564,8 @@ const props = withDefaults(
     showRefresh?: boolean;
     autoBootstrap?: boolean;
     beforeBootstrap?: () => Promise<void>;
+    /** Optional remap for category / series labels after group snapshot mapping. */
+    formatLabel?: (label: string) => string;
     onLoadError?: (error: unknown) => void;
     onSearchError?: (error: unknown) => void;
   }>(),
@@ -385,6 +575,7 @@ const props = withDefaults(
     chartTypes: () => ['bar', 'line', 'pie'],
     chartType: 'bar',
     stacked: true,
+    cumulative: false,
     stackMode: 'absolute',
     sort: 'none',
     groupDepth: 0,
@@ -397,6 +588,20 @@ const props = withDefaults(
   },
 );
 
+const slots = useSlots();
+const { pageTitle, pageTitleId, pageTitleActionsIo } = useHostPageTitleInView(
+  () => props.showHeader,
+);
+const showRefreshInOverflow = computed(
+  () => props.showActions && props.showHeader && props.showRefresh,
+);
+const showTitleOverflow = computed(
+  () =>
+    !!pageTitleActionsIo.value ||
+    showRefreshInOverflow.value ||
+    !!slots['overflow-actions'],
+);
+
 const resolvedCreateLabel = computed(() => props.createLabel || _t('New'));
 const resolvedRefreshLabel = computed(() => props.refreshLabel || _t('Refresh'));
 const resolvedEmptyLabel = computed(
@@ -407,6 +612,7 @@ const emit = defineEmits<{
   'metric-change': [alias: string];
   'chart-type-change': [type: ChoyChartKind];
   'stacked-change': [stacked: boolean];
+  'cumulative-change': [cumulative: boolean];
   'sort-change': [sort: ChoyChartSort];
   'chart-item-click': [payload: ChoyChartItemClickPayload];
   refresh: [];
@@ -421,7 +627,26 @@ const categories = ref<string[]>([]);
 const seriesMatrix = ref<ChoyChartSeries[]>([]);
 const registryMetrics = ref<ChoyChartMetricOption[]>([]);
 
+const chartBodyRef = ref<{ $el?: HTMLElement } | HTMLElement | null>(null);
+const plotHeight = ref(CHOY_CHART_MIN_PLOT_HEIGHT);
+let chartBodyObserver: ResizeObserver | null = null;
+
+function chartBodyEl(): HTMLElement | null {
+  const r = chartBodyRef.value;
+  if (!r) return null;
+  if (r instanceof HTMLElement) return r;
+  const el = (r as { $el?: unknown }).$el;
+  return el instanceof HTMLElement ? el : null;
+}
+
+function syncPlotHeight(): void {
+  const el = chartBodyEl();
+  const h = el?.clientHeight ?? 0;
+  plotHeight.value = resolveChartPlotHeight(h);
+}
+
 const localStacked = ref(props.stacked);
+const localCumulative = ref(props.cumulative);
 const localSort = ref<ChoyChartSort>(props.sort);
 const localChartType = ref<ChoyChartKind>(props.chartType);
 const localMetric = ref(props.metricAlias || 'count');
@@ -439,6 +664,12 @@ const resolvedMetrics = computed(() => {
   return registryMetrics.value;
 });
 
+/** Explicit trigger text so SelectValue does not flash the raw alias before items mount. */
+const selectedMetricLabel = computed(() => {
+  const hit = resolvedMetrics.value.find((m) => m.alias === localMetric.value);
+  return hit?.label || localMetric.value || _t('Metric');
+});
+
 function normalizeDefaultGroups(): Array<GroupBySpec<any>> | undefined {
   const g = props.defaultGroups;
   if (!g) return undefined;
@@ -452,7 +683,7 @@ function initMetricOptions(): void {
     label: m.alias || `${m.field}:${m.agg}`,
   }));
   if (!arr.find((m) => m.alias === 'count')) {
-    arr.unshift({ alias: 'count', label: 'Count' });
+    arr.unshift({ alias: 'count', label: _t('Count') });
   }
   registryMetrics.value = arr;
   const preferred = props.metricAlias;
@@ -475,8 +706,17 @@ function rebuildFromSnapshot(): void {
     metricLabel,
     groupDepth: props.groupDepth,
   });
-  categories.value = mapped.categories;
-  seriesMatrix.value = mapped.seriesMatrix;
+  const fmt = props.formatLabel;
+  if (fmt) {
+    categories.value = mapped.categories.map((c) => fmt(c));
+    seriesMatrix.value = mapped.seriesMatrix.map((s) => ({
+      name: fmt(s.name),
+      data: s.data,
+    }));
+  } else {
+    categories.value = mapped.categories;
+    seriesMatrix.value = mapped.seriesMatrix;
+  }
 }
 
 async function applyQuery(overrides?: {
@@ -536,6 +776,18 @@ watch(
     localStacked.value = v;
   },
 );
+watch(localStacked, (v) => {
+  emit('stacked-change', v);
+});
+watch(
+  () => props.cumulative,
+  (v) => {
+    localCumulative.value = v;
+  },
+);
+watch(localCumulative, (v) => {
+  emit('cumulative-change', v);
+});
 watch(
   () => props.sort,
   (v) => {
@@ -626,6 +878,25 @@ const stackedDisabled = computed(
 
 const sortDisabled = computed(() => localChartType.value === 'pie');
 
+/** First applied/default groupby is temporal → keep timeline order when sort is none. */
+const activeChartGroups = computed(() => {
+  const fromStore = (store.state as { queryState?: { appliedGroups?: unknown } } | undefined)
+    ?.queryState?.appliedGroups;
+  if (Array.isArray(fromStore) && fromStore.length) return fromStore;
+  const defaults = props.defaultGroups;
+  if (Array.isArray(defaults)) return defaults;
+  return defaults != null ? [defaults] : [];
+});
+
+const categoryAxisIsTemporal = computed(() => chartCategoryAxisIsTemporal(activeChartGroups.value));
+
+/** Odoo: Cumulative toggle only for line charts. */
+const cumulativeAvailable = computed(() => localChartType.value === 'line');
+
+watch(cumulativeAvailable, (ok) => {
+  if (!ok && localCumulative.value) localCumulative.value = false;
+});
+
 const prepared = computed(() => {
   let cats = categories.value.slice();
   let matrix = seriesMatrix.value.map((s) => ({
@@ -643,6 +914,15 @@ const prepared = computed(() => {
     cats = sorted.categories;
     matrix = sorted.seriesMatrix;
     categoryOrder = sorted.order;
+  } else if (!sortDisabled.value && categoryAxisIsTemporal.value) {
+    // Default timeline order when the user has not picked value sort.
+    const sorted = sortChartCategoriesByTime(cats, matrix);
+    cats = sorted.categories;
+    matrix = sorted.seriesMatrix;
+    categoryOrder = sorted.order;
+  }
+  if (localCumulative.value && cumulativeAvailable.value) {
+    matrix = accumulateChartSeries(cats, matrix);
   }
   if (percent) {
     matrix = normalizeSeriesToPercent(cats, matrix);
@@ -672,6 +952,29 @@ const spec = computed<ChoyChartSpec | null>(() => {
 const xyRows = computed(() => (spec.value && spec.value.kind !== 'pie' ? chartSpecToXyRows(spec.value) : []));
 const pieRows = computed(() => (spec.value?.kind === 'pie' ? chartSpecToPieRows(spec.value) : []));
 
+/** Bar: band centers. Line: first category at x=0 (flush to the Y-axis, like Odoo). */
+const xyXDomain = computed<[number, number] | undefined>(() => {
+  const s = spec.value;
+  if (!s || s.kind === 'pie') return undefined;
+  return resolveChartXDomain(s.categories.length, s.kind === 'line' ? 'line' : 'bar');
+});
+
+/** Widen Unovis clip slightly for line markers at the flush domain edges. */
+const xyClipPathExtend = computed(() =>
+  spec.value?.kind === 'line' ? CHOY_CHART_LINE_CLIP_EXTEND : 2,
+);
+
+/** Stacked plots need a domain from the column sum; grouped/line keep Unovis auto-scale. */
+const xyYDomain = computed<[number, number] | undefined>(() => {
+  const s = spec.value;
+  if (!s || s.kind === 'pie' || !s.stacked) return undefined;
+  return resolveStackedYDomain(
+    xyRows.value,
+    s.series.map((series) => series.key),
+    { percent: s.percent },
+  );
+});
+
 const xyYAccessors = computed(() => {
   if (!spec.value) return [];
   return spec.value.series.map((s) => (d: Record<string, string | number>) => Number(d[s.key]) || 0);
@@ -699,11 +1002,38 @@ function xTickFormat(v: number): string {
   return cats[idx]!;
 }
 
+// Match ChoyViewSwitcher: muted fill for pressed toggles (not primary green).
+const chartControlActive = 'z-[1] bg-muted text-foreground hover:bg-muted';
+const chartControlIdle = 'text-muted-foreground';
+
+const chartTypeIcons: Record<ChoyChartKind, Component> = {
+  bar: BarChart3,
+  line: LineChart,
+  pie: PieChart,
+};
+
+const chartTypeLabels = computed(() => ({
+  bar: _t('Bar'),
+  line: _t('Line'),
+  pie: _t('Pie'),
+}));
+
+const sortOptions = computed(() => [
+  { value: 'none' as const, label: _t('No sort'), icon: Equal },
+  { value: 'asc' as const, label: _t('Sort ascending'), icon: ArrowUp },
+  { value: 'desc' as const, label: _t('Sort descending'), icon: ArrowDown },
+]);
+
 function selectMetric(alias: string): void {
   if (alias === localMetric.value) return;
   if (resolvedMetrics.value.length > 0 && !resolvedMetrics.value.some((m) => m.alias === alias)) return;
   localMetric.value = alias;
   emit('metric-change', alias);
+}
+
+function onMetricSelect(value: unknown): void {
+  if (value == null || value === '') return;
+  selectMetric(String(value));
 }
 
 function selectChartType(type: ChoyChartKind): void {
@@ -715,7 +1045,11 @@ function selectChartType(type: ChoyChartKind): void {
 function toggleStacked(): void {
   if (stackedDisabled.value) return;
   localStacked.value = !localStacked.value;
-  emit('stacked-change', localStacked.value);
+}
+
+function toggleCumulative(): void {
+  if (!cumulativeAvailable.value) return;
+  localCumulative.value = !localCumulative.value;
 }
 
 function selectSort(next: ChoyChartSort): void {
@@ -855,25 +1189,517 @@ function onPieSegmentClick(d: {
   });
 }
 
+/**
+ * Hover highlight — VisTooltip / line-plot overlay keep mark + panel in sync.
+ * Bars/pie: brightness. Scatter: halo ring only (no SVG scale — that fought
+ * Unovis `translate(...)` and left end markers looking inconsistently sized).
+ */
+const CHOY_CHART_HOVER_MARK_CLASS = 'choy-chart-mark--hover';
+
+let hoverMarkEl: Element | null = null;
+
+function clearHoverMarkStyle(el: Element): void {
+  el.classList.remove(CHOY_CHART_HOVER_MARK_CLASS);
+  if (el instanceof SVGElement || el instanceof HTMLElement) {
+    el.style.removeProperty('filter');
+  }
+  const paints = [el, ...Array.from(el.querySelectorAll('path, circle, rect'))];
+  for (const paint of paints) {
+    if (!(paint instanceof SVGElement) && !(paint instanceof HTMLElement)) continue;
+    paint.style.removeProperty('stroke');
+    paint.style.removeProperty('stroke-width');
+    paint.style.removeProperty('paint-order');
+    paint.style.removeProperty('filter');
+  }
+}
+
+function resolveScatterGroup(el: Element): Element {
+  if (el.tagName.toLowerCase() === 'g' && el.hasAttribute('transform')) return el;
+  return el.closest('g[transform]') ?? el;
+}
+
+function applyScatterHoverMark(el: Element): void {
+  const g = resolveScatterGroup(el);
+  g.classList.add(CHOY_CHART_HOVER_MARK_CLASS);
+  // Emphasize the glyph inside the translated group — keep Unovis transform intact.
+  const paint = g.querySelector('path, circle, rect') ?? g;
+  if (paint instanceof SVGElement || paint instanceof HTMLElement) {
+    paint.style.setProperty('stroke', 'var(--choy-color-background)', 'important');
+    paint.style.setProperty('stroke-width', '4px', 'important');
+    paint.style.setProperty('paint-order', 'stroke fill', 'important');
+    paint.style.setProperty('filter', 'brightness(1.15)', 'important');
+  }
+  hoverMarkEl = g;
+}
+
+/**
+ * @param kind `scatter` uses a halo ring; `fill` only brightens (bars/pie).
+ */
+function applyHoverMarkEl(
+  el: Element | null | undefined,
+  kind: 'fill' | 'scatter' = 'fill',
+): void {
+  const target = el && kind === 'scatter' ? resolveScatterGroup(el) : el;
+  if (hoverMarkEl && hoverMarkEl !== target) {
+    clearHoverMarkStyle(hoverMarkEl);
+    hoverMarkEl = null;
+  }
+  if (!target) return;
+  if (kind === 'scatter') {
+    applyScatterHoverMark(target);
+    return;
+  }
+  target.classList.add(CHOY_CHART_HOVER_MARK_CLASS);
+  if (target instanceof SVGElement || target instanceof HTMLElement) {
+    target.style.setProperty('filter', 'brightness(1.22) saturate(1.12)', 'important');
+  }
+  hoverMarkEl = target;
+}
+
+function clearChartHover(): void {
+  if (hoverMarkEl) {
+    clearHoverMarkStyle(hoverMarkEl);
+    hoverMarkEl = null;
+  }
+  // Sweep any leftover hover marks if Unovis recreated nodes mid-hover.
+  const host = xyPlotHostRef.value;
+  if (!host) return;
+  for (const el of host.querySelectorAll(`.${CHOY_CHART_HOVER_MARK_CLASS}`)) {
+    clearHoverMarkStyle(el);
+  }
+}
+
+/** VisTooltip calls triggers as `(datum, index, nodes)`. */
+function highlightTooltipMark(
+  index: number | undefined,
+  nodes: ArrayLike<Element> | undefined,
+  kind: 'fill' | 'scatter' = 'fill',
+): void {
+  if (typeof index !== 'number' || !Number.isFinite(index) || !nodes) return;
+  const el = nodes[Math.round(index)];
+  applyHoverMarkEl(el instanceof Element ? el : null, kind);
+}
+
+function readDomDatum(el: Element): unknown {
+  return (el as Element & { __data__?: unknown }).__data__;
+}
+
+function scatterPointMatches(
+  d: unknown,
+  categoryIdx: number,
+  seriesIdx: number,
+): boolean {
+  if (!d || typeof d !== 'object') return false;
+  const row = d as XyRow & {
+    _point?: { pointIndex?: number; groupIndex?: number };
+  };
+  const point = row._point;
+  const pi =
+    typeof point?.pointIndex === 'number' && Number.isFinite(point.pointIndex)
+      ? Math.round(point.pointIndex)
+      : rowCategoryIndexHint(row);
+  const gi =
+    typeof point?.groupIndex === 'number' && Number.isFinite(point.groupIndex)
+      ? Math.round(point.groupIndex)
+      : 0;
+  return pi === categoryIdx && gi === seriesIdx;
+}
+
+/**
+ * Locate the Scatter vertex for a category/series so line-path tooltips can
+ * highlight the matching point without requiring a direct point hit.
+ */
+function findScatterPointEl(
+  root: Element | null | undefined,
+  categoryIdx: number,
+  seriesIdx: number,
+): Element | null {
+  if (!root) return null;
+  const raw = String(Scatter.selectors.point || '');
+  const className = raw.startsWith('.') ? raw.slice(1) : raw;
+  const escape =
+    typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+      ? CSS.escape
+      : (s: string) => s.replace(/[^a-zA-Z0-9_-]/g, '\\$&');
+  let nodes: Element[] = [];
+  if (className) {
+    try {
+      nodes = Array.from(root.querySelectorAll(`.${escape(className)}`));
+    } catch {
+      nodes = Array.from(root.querySelectorAll(`.${className}`));
+    }
+  }
+  // Also scan translated groups — selector class may be hashed / nested.
+  if (!nodes.length) {
+    nodes = Array.from(root.querySelectorAll('g[transform]'));
+  }
+  for (const node of nodes) {
+    if (scatterPointMatches(readDomDatum(node), categoryIdx, seriesIdx)) {
+      return node;
+    }
+  }
+  // Fallback when __data__ is unavailable: Unovis lays out series-major points.
+  const nCat = spec.value?.categories.length ?? 0;
+  const nSer = spec.value?.series.length ?? 0;
+  if (nCat > 0 && nSer > 0 && nodes.length >= nCat * nSer) {
+    const seriesMajor = seriesIdx * nCat + categoryIdx;
+    const categoryMajor = categoryIdx * nSer + seriesIdx;
+    return nodes[seriesMajor] ?? nodes[categoryMajor] ?? null;
+  }
+  return null;
+}
+
+function highlightScatterPointForTooltip(
+  categoryIdx: number | null,
+  seriesIdx: number | undefined,
+  root: Element | null | undefined,
+): void {
+  if (categoryIdx == null || seriesIdx == null) {
+    clearChartHover();
+    return;
+  }
+  applyHoverMarkEl(findScatterPointEl(root, categoryIdx, seriesIdx), 'scatter');
+}
+
+const xyPlotHostRef = ref<HTMLElement | null>(null);
+const lineHoverTipEl = ref<HTMLElement | null>(null);
+
+type LineHoverTip = { html: string; x: number; y: number };
+type LineHoverBand = { left: number; top: number; width: number; height: number };
+
+const lineHoverTip = ref<LineHoverTip | null>(null);
+const lineHoverBand = ref<LineHoverBand | null>(null);
+
+/** Fallback tip size before the floating node is measured. */
+const LINE_HOVER_TIP_FALLBACK = { width: 160, height: 56 };
+
+function clearLinePlotHover(): void {
+  clearChartHover();
+  lineHoverTip.value = null;
+  lineHoverBand.value = null;
+}
+
+function linePlotYDomain(): [number, number] {
+  const domain = xyYDomain.value;
+  if (domain) return domain;
+  const s = spec.value;
+  if (!s || s.kind === 'pie') return [0, 1];
+  let max = 0;
+  for (const series of s.series) {
+    for (const raw of series.values) {
+      const v = Number(raw);
+      if (Number.isFinite(v) && v > max) max = v;
+    }
+  }
+  return [0, max > 0 ? max : 1];
+}
+
+/**
+ * Full-plot line hover (Odoo-like category columns): tip + vertex highlight
+ * track the pointer anywhere over the SVG, not only on the thin stroke.
+ */
+function updateLinePlotHover(event: MouseEvent): void {
+  const host = xyPlotHostRef.value;
+  const current = spec.value;
+  if (!host || !current || current.kind !== 'line') {
+    clearLinePlotHover();
+    return;
+  }
+  const svg = host.querySelector('svg');
+  if (!svg) {
+    clearLinePlotHover();
+    return;
+  }
+  const svgRect = svg.getBoundingClientRect();
+  const hostRect = host.getBoundingClientRect();
+  if (svgRect.width <= 0 || svgRect.height <= 0) {
+    clearLinePlotHover();
+    return;
+  }
+  if (
+    event.clientX < svgRect.left ||
+    event.clientX > svgRect.right ||
+    event.clientY < svgRect.top ||
+    event.clientY > svgRect.bottom
+  ) {
+    clearLinePlotHover();
+    return;
+  }
+  const nCat = current.categories.length;
+  const relX = (event.clientX - svgRect.left) / svgRect.width;
+  const relY = (event.clientY - svgRect.top) / svgRect.height;
+  const categoryIdx = resolveLineHoverCategory(relX, nCat);
+  const values = current.series.map((series) => Number(series.values[categoryIdx]) || 0);
+  const seriesIdx =
+    current.series.length <= 1
+      ? 0
+      : resolveNearestLineSeriesByY(values, relY, linePlotYDomain());
+  const html = buildXyTooltipHtml(categoryIdx, seriesIdx);
+  if (!html) {
+    clearLinePlotHover();
+    return;
+  }
+  highlightScatterPointForTooltip(categoryIdx, seriesIdx, svg);
+  const bandWidth = svgRect.width / Math.max(1, nCat);
+  lineHoverBand.value = {
+    left: svgRect.left - hostRect.left + categoryIdx * bandWidth,
+    top: svgRect.top - hostRect.top,
+    width: bandWidth,
+    height: svgRect.height,
+  };
+  const cursorX = event.clientX - hostRect.left;
+  const cursorY = event.clientY - hostRect.top;
+  const measured = lineHoverTipEl.value?.getBoundingClientRect();
+  const tipSize = measured && measured.width > 0 && measured.height > 0
+    ? { width: measured.width, height: measured.height }
+    : LINE_HOVER_TIP_FALLBACK;
+  const placed = resolveChartFloatingTooltipPosition({
+    cursorX,
+    cursorY,
+    hostWidth: hostRect.width,
+    hostHeight: hostRect.height,
+    tipWidth: tipSize.width,
+    tipHeight: tipSize.height,
+  });
+  lineHoverTip.value = { html, x: placed.x, y: placed.y };
+  // Remeasure after mount/content change so the first paint near edges is accurate.
+  void nextTick(() => {
+    if (!lineHoverTip.value || lineHoverTip.value.html !== html) return;
+    const hostNow = xyPlotHostRef.value;
+    const tipNow = lineHoverTipEl.value;
+    if (!hostNow || !tipNow) return;
+    const hostNowRect = hostNow.getBoundingClientRect();
+    const tipNowRect = tipNow.getBoundingClientRect();
+    const again = resolveChartFloatingTooltipPosition({
+      cursorX,
+      cursorY,
+      hostWidth: hostNowRect.width,
+      hostHeight: hostNowRect.height,
+      tipWidth: tipNowRect.width,
+      tipHeight: tipNowRect.height,
+    });
+    lineHoverTip.value = { html, x: again.x, y: again.y };
+  });
+}
+
+function onXyPointerMove(event: MouseEvent): void {
+  if (spec.value?.kind === 'line') {
+    updateLinePlotHover(event);
+  }
+}
+
+function onXyPointerLeave(): void {
+  clearLinePlotHover();
+}
+
+watch(
+  () => spec.value?.kind,
+  () => {
+    clearLinePlotHover();
+  },
+);
+
 const groupedBarEvents = computed(() => ({
-  [GroupedBar.selectors.bar]: { click: onGroupedBarClick },
+  [GroupedBar.selectors.bar]: {
+    click: onGroupedBarClick,
+    mouseout: clearChartHover,
+  },
 }));
 const stackedBarEvents = computed(() => ({
-  [StackedBar.selectors.bar]: { click: onStackedBarClick },
+  [StackedBar.selectors.bar]: {
+    click: onStackedBarClick,
+    mouseout: clearChartHover,
+  },
 }));
 const lineEvents = computed(() => ({
   [Line.selectors.line]: { click: onLineClick },
 }));
 const donutEvents = computed(() => ({
-  [Donut.selectors.segment]: { click: onPieSegmentClick },
+  [Donut.selectors.segment]: {
+    click: onPieSegmentClick,
+    mouseout: clearChartHover,
+  },
+}));
+
+/**
+ * Odoo-like hover panel for the resolved category/series cell (rendered values).
+ */
+function buildXyTooltipHtml(
+  categoryIdx: number | null,
+  seriesIdx: number | undefined,
+): string | null {
+  const current = spec.value;
+  if (!current || current.kind === 'pie' || categoryIdx == null) return null;
+  const category = current.categories[categoryIdx];
+  if (category == null) return null;
+  let si = seriesIdx;
+  if (current.series.length === 1) si = 0;
+  if (si == null || si < 0 || si >= current.series.length) return null;
+  const series = current.series[si]!;
+  const color =
+    current.config[series.key]?.color || CHOY_CHART_DEFAULT_PALETTE[0] || '#888';
+  const multiOrStacked = current.series.length > 1 || !!current.stacked;
+  const label = multiOrStacked ? series.name : category;
+  const value = Number(series.values[categoryIdx]) || 0;
+  const valueText = formatChartTooltipValue(value, { percent: !!current.percent });
+  return formatChartTooltipHtml({
+    title: current.metricLabel || '',
+    rows: [{ color, label, valueText }],
+  });
+}
+
+function onStackedBarTooltip(
+  d:
+    | (XyRow & { stackIndex?: number; datum?: XyRow; index?: number })
+    | undefined,
+  index?: number,
+  nodes?: ArrayLike<Element>,
+): string | null {
+  if (!spec.value) {
+    clearChartHover();
+    return null;
+  }
+  // Tooltip reads the raw D3 datum (`{ datum, index, stackIndex }`); clicks get a mapped flatten.
+  const row = (d?.datum ?? d) as XyRow | undefined;
+  const stackIndex =
+    typeof d?.stackIndex === 'number'
+      ? d.stackIndex
+      : typeof (row as { stackIndex?: number } | undefined)?.stackIndex === 'number'
+        ? (row as { stackIndex?: number }).stackIndex
+        : undefined;
+  const categoryFromEvent =
+    typeof d?.index === 'number' && Number.isFinite(d.index) ? Math.round(d.index) : undefined;
+  const { categoryIdx, seriesIdx } = resolveStackedXyClickTarget(
+    row,
+    categoryFromEvent,
+    stackIndex,
+  );
+  const html = buildXyTooltipHtml(categoryIdx, seriesIdx);
+  if (html) highlightTooltipMark(index, nodes);
+  else clearChartHover();
+  return html;
+}
+
+/** Category index carried on an XY row (`index` from chartSpecToXyRows). */
+function rowCategoryIndexHint(
+  row: Record<string, string | number> | undefined,
+): number | null {
+  if (!row) return null;
+  const raw = row.index;
+  if (typeof raw === 'number' && Number.isFinite(raw)) return Math.round(raw);
+  if (typeof raw === 'string' && raw.trim() !== '') {
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed)) return Math.round(parsed);
+  }
+  return null;
+}
+
+function onGroupedBarTooltip(
+  d: XyRow | undefined,
+  flatIndex?: number,
+  nodes?: ArrayLike<Element>,
+): string | null {
+  if (!spec.value) {
+    clearChartHover();
+    return null;
+  }
+  const { categoryIdx, seriesIdx } = resolveGroupedXyClickTarget(
+    d,
+    flatIndex,
+    spec.value.series.length,
+  );
+  const html = buildXyTooltipHtml(categoryIdx, seriesIdx);
+  if (html) highlightTooltipMark(flatIndex, nodes);
+  else clearChartHover();
+  return html;
+}
+
+function onPieSegmentTooltip(
+  d: {
+    data?: { key?: string; name?: string; value?: number; color?: string };
+    index?: number;
+    key?: string;
+    name?: string;
+    value?: number;
+    color?: string;
+  },
+  index?: number,
+  nodes?: ArrayLike<Element>,
+): string | null {
+  const current = spec.value;
+  const slices = current?.slices;
+  if (!current || current.kind !== 'pie' || !slices?.length) {
+    clearChartHover();
+    return null;
+  }
+  const clickedKey = d?.data?.key ?? d?.key;
+  const clickedName = d?.data?.name ?? d?.name;
+  let idx =
+    clickedKey != null ? slices.findIndex((sl) => sl.key === clickedKey) : -1;
+  if (idx < 0 && clickedKey == null && clickedName != null) {
+    idx = slices.findIndex((sl) => sl.name === clickedName);
+  }
+  if (idx < 0) {
+    idx =
+      typeof d?.index === 'number' && Number.isFinite(d.index)
+        ? Math.round(d.index)
+        : -1;
+  }
+  if (idx < 0) {
+    clearChartHover();
+    return null;
+  }
+  const slice = slices[idx];
+  if (!slice) {
+    clearChartHover();
+    return null;
+  }
+  const color = current.config[slice.key]?.color || CHOY_CHART_DEFAULT_PALETTE[0] || '#888';
+  const total = slices.reduce((sum, sl) => sum + Math.max(0, Number(sl.value) || 0), 0);
+  const value = Number(slice.value) || 0;
+  const valueText = `${formatChartTooltipValue(value)} (${formatChartTooltipPiePercent(value, total)})`;
+  const html = formatChartTooltipHtml({
+    title: current.metricLabel || '',
+    rows: [{ color, label: slice.name, valueText }],
+  });
+  highlightTooltipMark(index, nodes);
+  return html;
+}
+
+const xyTooltipTriggers = computed(() => {
+  const current = spec.value;
+  if (!current || current.kind === 'pie' || current.kind === 'line') return {};
+  if (current.kind === 'bar' && current.stacked) {
+    return { [StackedBar.selectors.bar]: onStackedBarTooltip };
+  }
+  return { [GroupedBar.selectors.bar]: onGroupedBarTooltip };
+});
+
+const pieTooltipTriggers = computed(() => ({
+  [Donut.selectors.segment]: onPieSegmentTooltip,
 }));
 
 onMounted(() => {
+  const Observer = (globalThis as { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
+  const el = chartBodyEl();
+  if (Observer && el) {
+    chartBodyObserver = new Observer(() => {
+      syncPlotHeight();
+    });
+    chartBodyObserver.observe(el);
+    syncPlotHeight();
+  }
   if (!props.autoBootstrap) {
     initMetricOptions();
     return;
   }
   void bootstrap().catch((error) => props.onLoadError?.(error));
+});
+
+onBeforeUnmount(() => {
+  clearLinePlotHover();
+  chartBodyObserver?.disconnect();
+  chartBodyObserver = null;
 });
 
 defineExpose({
@@ -882,5 +1708,92 @@ defineExpose({
   rebuildFromSnapshot,
   boardBusy,
   controller,
+  plotHeight,
 });
 </script>
+
+<!-- Unovis Tooltip mounts beside the plot; unscoped so className matches. -->
+<style>
+/* Bar/pie hover mark (scatter uses a painted halo; no transform scale). */
+.choy-chart-view .choy-chart-mark--hover {
+  filter: brightness(1.22) saturate(1.12);
+}
+
+/* Solid pie: no donut track / segment hairline (Unovis defaults). */
+.choy-chart-view {
+  --vis-donut-segment-stroke-width: 0px;
+  --vis-donut-segment-stroke-color: transparent;
+  --vis-donut-background-color: transparent;
+}
+
+/*
+ * Shared tooltip chrome for VisTooltip (bar/pie) and the line floating tip.
+ * Unovis reads the --vis-tooltip-* vars; floating tip needs the same paint
+ * applied directly (it is not hosted by Unovis).
+ */
+.choy-chart-tooltip {
+  --vis-tooltip-background-color: var(--choy-color-background);
+  --vis-tooltip-border-color: var(--choy-color-border);
+  --vis-tooltip-text-color: var(--choy-color-foreground);
+  --vis-tooltip-padding: 0;
+  --vis-tooltip-border-radius: calc(var(--radius) - 2px);
+  --vis-tooltip-box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+  --vis-tooltip-backdrop-filter: none;
+
+  box-sizing: border-box;
+  min-width: max-content;
+  padding: 0;
+  color: var(--choy-color-foreground);
+  background-color: var(--choy-color-background);
+  border: 1px solid var(--choy-color-border);
+  border-radius: calc(var(--radius) - 2px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+}
+
+.choy-chart-tooltip__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 8rem;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.75rem;
+  line-height: 1.25;
+}
+
+.choy-chart-tooltip__title {
+  font-weight: 500;
+  color: var(--choy-color-muted-foreground);
+}
+
+.choy-chart-tooltip__row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--choy-color-foreground);
+}
+
+.choy-chart-tooltip__swatch {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  flex-shrink: 0;
+  border-radius: 2px;
+}
+
+.choy-chart-tooltip__label {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.choy-chart-tooltip__value {
+  flex: 0 0 auto;
+  margin-inline-start: 0.5rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--choy-color-foreground);
+}
+</style>

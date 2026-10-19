@@ -9,14 +9,28 @@ import {
   resolveChartAdapter,
 } from './chart/chartTypeAdapter';
 import {
+  accumulateChartSeries,
+  CHOY_CHART_MIN_PLOT_HEIGHT,
+  chartCategoryAxisIsTemporal,
   chartSpecToPieRows,
   chartSpecToXyRows,
+  formatChartTooltipHtml,
+  formatChartTooltipPiePercent,
+  formatChartTooltipValue,
+  resolveChartFloatingTooltipPosition,
   normalizeSeriesToPercent,
+  parseChartCategoryTime,
+  resolveChartPlotHeight,
+  resolveChartXDomain,
+  resolveStackedYDomain,
   resolveGroupedXyClickTarget,
   resolveClickClientX,
   resolveLineClickCategory,
+  resolveLineHoverCategory,
+  resolveNearestLineSeriesByY,
   resolveStackedXyClickTarget,
   sortChartCategories,
+  sortChartCategoriesByTime,
 } from './chartViewHelpers';
 
 test('toSeriesOut coerces non-finite values to 0', () => {
@@ -396,6 +410,21 @@ test('resolveLineClickCategory maps relative x to nearest category', () => {
   expect(resolveLineClickCategory(Number.NaN, 4)).toBe(0);
 });
 
+test('resolveLineHoverCategory uses equal-width category bands', () => {
+  expect(resolveLineHoverCategory(0.1, 2)).toBe(0);
+  expect(resolveLineHoverCategory(0.6, 2)).toBe(1);
+  expect(resolveLineHoverCategory(0.2, 3)).toBe(0);
+  expect(resolveLineHoverCategory(0.5, 3)).toBe(1);
+  expect(resolveLineHoverCategory(0.9, 3)).toBe(2);
+  expect(resolveLineHoverCategory(1, 3)).toBe(2);
+});
+
+test('resolveNearestLineSeriesByY picks closest series to pointer data-Y', () => {
+  expect(resolveNearestLineSeriesByY([10, 200], 0.1, [0, 250])).toBe(1);
+  expect(resolveNearestLineSeriesByY([10, 200], 0.95, [0, 250])).toBe(0);
+  expect(resolveNearestLineSeriesByY([42], 0.5, [0, 100])).toBe(0);
+});
+
 test('resolveClickClientX prefers changedTouches then clientX', () => {
   expect(resolveClickClientX({ clientX: 42 })).toBe(42);
   expect(resolveClickClientX({ clientX: Number.NaN })).toBeUndefined();
@@ -425,4 +454,148 @@ test('sortChartCategories coerces non-finite values to 0', () => {
   );
   expect(sorted.categories).toEqual(['A', 'B']);
   expect(sorted.seriesMatrix[0]!.data).toEqual([0, 1]);
+});
+
+test('resolveChartPlotHeight fills body minus legend reserve and respects min', () => {
+  expect(resolveChartPlotHeight(0)).toBe(CHOY_CHART_MIN_PLOT_HEIGHT);
+  expect(resolveChartPlotHeight(200)).toBe(CHOY_CHART_MIN_PLOT_HEIGHT);
+  expect(resolveChartPlotHeight(400)).toBe(360);
+  expect(resolveChartPlotHeight(400, { minHeight: 100, legendReserve: 50 })).toBe(350);
+});
+
+test('resolveChartXDomain pads integer indices so first/last categories are inset', () => {
+  expect(resolveChartXDomain(0)).toBeUndefined();
+  expect(resolveChartXDomain(-1)).toBeUndefined();
+  expect(resolveChartXDomain(1)).toEqual([-0.5, 0.5]);
+  expect(resolveChartXDomain(2)).toEqual([-0.5, 1.5]);
+  expect(resolveChartXDomain(4)).toEqual([-0.5, 3.5]);
+});
+
+test('resolveChartXDomain for line starts at index 0 like Odoo', () => {
+  expect(resolveChartXDomain(1, 'line')).toEqual([-0.5, 0.5]);
+  expect(resolveChartXDomain(2, 'line')).toEqual([0, 1]);
+  expect(resolveChartXDomain(4, 'line')).toEqual([0, 3]);
+});
+
+test('chartCategoryAxisIsTemporal detects first groupby granularity', () => {
+  expect(chartCategoryAxisIsTemporal([])).toBe(false);
+  expect(chartCategoryAxisIsTemporal(['TokenType'])).toBe(false);
+  expect(chartCategoryAxisIsTemporal(['CreatedAt:month'])).toBe(true);
+  expect(chartCategoryAxisIsTemporal([{ field: 'CreatedAt', granularity: 'day' }])).toBe(true);
+  expect(chartCategoryAxisIsTemporal([{ field: 'TokenType' }, { field: 'CreatedAt', granularity: 'week' }])).toBe(
+    false,
+  );
+  expect(chartCategoryAxisIsTemporal(['CreatedAt:month', 'Revoked'])).toBe(true);
+});
+
+test('parseChartCategoryTime understands ORM temporal labels', () => {
+  expect(parseChartCategoryTime('2025')).toBe(Date.UTC(2025, 0, 1));
+  expect(parseChartCategoryTime('2025-Q4')).toBe(Date.UTC(2025, 9, 1));
+  expect(parseChartCategoryTime('2025-11')).toBe(Date.UTC(2025, 10, 1));
+  expect(parseChartCategoryTime('2025-11-06')).toBe(Date.UTC(2025, 10, 6));
+  expect(typeof parseChartCategoryTime('2025-W01')).toBe('number');
+  expect(parseChartCategoryTime('not-a-date')).toBeUndefined();
+});
+
+test('sortChartCategoriesByTime orders ascending and reorders series', () => {
+  const sorted = sortChartCategoriesByTime(
+    ['2025-Q4', '2025-Q1', '2025-Q2'],
+    [
+      { name: 'A', data: [40, 10, 20] },
+      { name: 'B', data: [4, 1, 2] },
+    ],
+  );
+  expect(sorted.categories).toEqual(['2025-Q1', '2025-Q2', '2025-Q4']);
+  expect(sorted.seriesMatrix[0]!.data).toEqual([10, 20, 40]);
+  expect(sorted.seriesMatrix[1]!.data).toEqual([1, 2, 4]);
+});
+
+test('accumulateChartSeries builds running totals along categories', () => {
+  expect(
+    accumulateChartSeries(
+      ['a', 'b', 'c'],
+      [
+        { name: 'X', data: [1, 2, 3] },
+        { name: 'Y', data: [10, 0, 5] },
+      ],
+    ),
+  ).toEqual([
+    { name: 'X', data: [1, 3, 6] },
+    { name: 'Y', data: [10, 10, 15] },
+  ]);
+});
+
+test('resolveStackedYDomain uses column sums so stacks are not clipped', () => {
+  expect(
+    resolveStackedYDomain(
+      [
+        { a: 140, b: 20 },
+        { a: 100, b: 50 },
+      ],
+      ['a', 'b'],
+    )[1],
+  ).toBeGreaterThanOrEqual(160);
+  expect(resolveStackedYDomain([], ['a'])).toEqual([0, 1]);
+  expect(resolveStackedYDomain([{ a: 40, b: 60 }], ['a', 'b'], { percent: true })).toEqual([
+    0,
+    100,
+  ]);
+});
+
+test('formatChartTooltipValue uses locale digits and percent suffix', () => {
+  const plain = formatChartTooltipValue(1234.5, { locale: 'en-US' });
+  // QuickJS FE may lack Intl.NumberFormat; accept ungrouped digits there.
+  expect(plain === '1,234.5' || plain === '1234.5').toBe(true);
+  expect(formatChartTooltipValue(12.5, { locale: 'en-US', percent: true })).toMatch(/12\.5%$/);
+  expect(formatChartTooltipValue(Number.NaN, { locale: 'en-US' })).toBe('0');
+});
+
+test('formatChartTooltipPiePercent is share of positive total', () => {
+  expect(formatChartTooltipPiePercent(25, 100)).toBe('25.00%');
+  expect(formatChartTooltipPiePercent(1, 3)).toBe('33.33%');
+  expect(formatChartTooltipPiePercent(10, 0)).toBe('0.00%');
+  expect(formatChartTooltipPiePercent(-5, 100)).toBe('0.00%');
+});
+
+test('resolveChartFloatingTooltipPosition flips when near the right/top edges', () => {
+  expect(
+    resolveChartFloatingTooltipPosition({
+      cursorX: 20,
+      cursorY: 80,
+      hostWidth: 400,
+      hostHeight: 300,
+      tipWidth: 140,
+      tipHeight: 56,
+      gap: 12,
+    }),
+  ).toEqual({ x: 32, y: 12 });
+  const nearRight = resolveChartFloatingTooltipPosition({
+    cursorX: 380,
+    cursorY: 80,
+    hostWidth: 400,
+    hostHeight: 300,
+    tipWidth: 140,
+    tipHeight: 56,
+    gap: 12,
+  });
+  expect(nearRight.x).toBeLessThan(380 - 140);
+  expect(nearRight.x + 140).toBeLessThanOrEqual(400 - 12);
+});
+
+test('formatChartTooltipHtml renders title, swatch, label, value and escapes text', () => {
+  const html = formatChartTooltipHtml({
+    title: 'Count <x>',
+    rows: [
+      {
+        color: '#ff0000',
+        label: 'Series & "A"',
+        valueText: '12 (50.00%)',
+      },
+    ],
+  });
+  expect(html).toContain('choy-chart-tooltip__title');
+  expect(html).toContain('Count &lt;x&gt;');
+  expect(html).toContain('background-color:#ff0000');
+  expect(html).toContain('Series &amp; &quot;A&quot;');
+  expect(html).toContain('12 (50.00%)');
 });

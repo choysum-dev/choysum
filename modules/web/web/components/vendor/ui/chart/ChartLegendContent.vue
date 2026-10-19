@@ -5,11 +5,16 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed, inject, type Ref } from 'vue';
+import { cn, type ClassValue } from '../../../../lib/utils';
 import { CHOY_CHART_FALLBACK_COLOR, type ChartConfig } from './chartTypes';
 
 /**
  * Simple legend listing ChartConfig keys with color swatches.
  */
+const props = defineProps<{
+  class?: ClassValue;
+}>();
+
 const configRef = inject<Ref<ChartConfig> | undefined>('choyChartConfig', undefined);
 
 const items = computed(() => {
@@ -25,7 +30,7 @@ const items = computed(() => {
 <template>
   <div
     data-slot="chart-legend"
-    class="flex flex-wrap items-center justify-center gap-3 pt-1"
+    :class="cn('flex flex-wrap items-center justify-center gap-3 pt-1', props.class)"
   >
     <div
       v-for="item in items"
@@ -36,7 +41,7 @@ const items = computed(() => {
         class="inline-block size-2.5 shrink-0 rounded-[2px]"
         :style="{ backgroundColor: item.color }"
       />
-      <span class="text-muted-foreground">{{ item.label }}</span>
+      <span class="text-sm text-foreground/80">{{ item.label }}</span>
     </div>
   </div>
 </template>

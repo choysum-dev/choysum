@@ -108,6 +108,172 @@ export function sortChartCategories(
   };
 }
 
+const KNOWN_TEMPORAL_GRANS = new Set(['year', 'quarter', 'month', 'week', 'day']);
+
+/**
+ * True when the first groupby dimension is a temporal granularity
+ * (`CreatedAt:month` or `{ field, granularity: 'month' }`).
+ */
+export function chartCategoryAxisIsTemporal(groups: unknown): boolean {
+  const list = Array.isArray(groups) ? groups : groups != null ? [groups] : [];
+  const first = list[0];
+  if (first == null || first === '') return false;
+  if (typeof first === 'string') {
+    const idx = first.indexOf(':');
+    if (idx <= 0) return false;
+    const gran = first.slice(idx + 1).trim().toLowerCase();
+    return KNOWN_TEMPORAL_GRANS.has(gran);
+  }
+  if (typeof first === 'object') {
+    const g = first as { field?: unknown; granularity?: unknown };
+    const gran = String(g.granularity || '').trim().toLowerCase();
+    if (KNOWN_TEMPORAL_GRANS.has(gran)) return true;
+    const field = String(g.field || '');
+    const idx = field.indexOf(':');
+    if (idx > 0) {
+      const maybe = field.slice(idx + 1).trim().toLowerCase();
+      return KNOWN_TEMPORAL_GRANS.has(maybe);
+    }
+  }
+  return false;
+}
+
+/**
+ * Parse a chart category label/key into a sortable epoch ms.
+ * Supports ORM display labels (YYYY, YYYY-Qn, YYYY-MM, GGGG-Www, YYYY-MM-DD)
+ * and ISO / Date-parseable keys.
+ */
+export function parseChartCategoryTime(raw: string): number | undefined {
+  const s = String(raw || '').trim();
+  if (!s) return undefined;
+  // Composite group keys use `|`; sort by the first segment (category axis).
+  const head = s.includes('|') ? s.slice(0, s.indexOf('|')) : s;
+
+  let m = /^(\d{4})$/.exec(head);
+  if (m) return Date.UTC(Number(m[1]), 0, 1);
+
+  m = /^(\d{4})-Q([1-4])$/i.exec(head);
+  if (m) return Date.UTC(Number(m[1]), (Number(m[2]) - 1) * 3, 1);
+
+  m = /^(\d{4})-(\d{2})$/.exec(head);
+  if (m) {
+    const month = Number(m[2]);
+    if (month >= 1 && month <= 12) return Date.UTC(Number(m[1]), month - 1, 1);
+  }
+
+  m = /^(\d{4})-W(\d{2})$/i.exec(head);
+  if (m) {
+    // ISO week: Thursday of week 1 is in the ISO year; approximate via UTC.
+    const year = Number(m[1]);
+    const week = Number(m[2]);
+    if (week >= 1 && week <= 53) {
+      const jan4 = new Date(Date.UTC(year, 0, 4));
+      const day = jan4.getUTCDay() || 7;
+      const monday = new Date(jan4);
+      monday.setUTCDate(jan4.getUTCDate() - day + 1 + (week - 1) * 7);
+      return monday.getTime();
+    }
+  }
+
+  m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(head);
+  if (m) {
+    const month = Number(m[2]);
+    const day = Number(m[3]);
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return Date.UTC(Number(m[1]), month - 1, day);
+    }
+  }
+
+  const t = Date.parse(head);
+  return Number.isFinite(t) ? t : undefined;
+}
+
+function reorderChartSeries(
+  categories: string[],
+  seriesMatrix: ChoyChartSeries[],
+  order: number[],
+): { categories: string[]; seriesMatrix: ChoyChartSeries[]; order: number[] } {
+  return {
+    categories: order.map(i => categories[i]!),
+    seriesMatrix: seriesMatrix.map(s => ({
+      name: s.name,
+      data: order.map(i => toFiniteNumber(s.data?.[i])),
+    })),
+    order,
+  };
+}
+
+/**
+ * Ascending time order for category labels/keys. Unparsed labels keep relative
+ * order after parsed ones (stable).
+ */
+export function sortChartCategoriesByTime(
+  categories: string[],
+  seriesMatrix: ChoyChartSeries[],
+): { categories: string[]; seriesMatrix: ChoyChartSeries[]; order: number[] } {
+  if (categories.length === 0) {
+    return { categories: [], seriesMatrix: [], order: [] };
+  }
+  const times = categories.map(c => parseChartCategoryTime(c));
+  const order = categories
+    .map((_, idx) => idx)
+    .sort((a, b) => {
+      const ta = times[a];
+      const tb = times[b];
+      if (ta != null && tb != null) return ta - tb || a - b;
+      if (ta != null) return -1;
+      if (tb != null) return 1;
+      return a - b;
+    });
+  return reorderChartSeries(categories, seriesMatrix, order);
+}
+
+/**
+ * Running total along the category axis for each series (Odoo Cumulative).
+ */
+export function accumulateChartSeries(
+  categories: string[],
+  seriesMatrix: ChoyChartSeries[],
+): ChoyChartSeries[] {
+  return seriesMatrix.map(s => {
+    let run = 0;
+    return {
+      name: s.name,
+      data: categories.map((_, i) => {
+        run += toFiniteNumber(s.data?.[i]);
+        return run;
+      }),
+    };
+  });
+}
+
+/**
+ * Y domain for stacked charts. Unovis sizes the axis from each series max, which
+ * clips the stack total; this uses the per-category sum plus a small headroom.
+ */
+export function resolveStackedYDomain(
+  rows: ReadonlyArray<Record<string, string | number>>,
+  seriesKeys: readonly string[],
+  opts?: { percent?: boolean },
+): [number, number] {
+  if (opts?.percent) return [0, 100];
+  let max = 0;
+  for (const row of rows) {
+    let sum = 0;
+    for (const key of seriesKeys) {
+      const n = Number(row[key] ?? 0);
+      if (Number.isFinite(n) && n > 0) sum += n;
+    }
+    if (sum > max) max = sum;
+  }
+  if (max <= 0) return [0, 1];
+  const padded = max * 1.08;
+  const mag = 10 ** Math.floor(Math.log10(padded));
+  const step = mag >= 10 ? mag / 2 : mag;
+  const nice = Math.ceil(padded / step) * step;
+  return [0, nice];
+}
+
 /**
  * Flattens a ChoyChartSpec into Unovis XY row objects (`category` + series keys).
  */
@@ -219,6 +385,49 @@ export function resolveLineClickCategory(rel: number, count: number): number {
 }
 
 /**
+ * Equal-width category columns along the plot (Odoo graph hover bands).
+ * Prefer this for line hover tooltips; {@link resolveLineClickCategory} stays
+ * nearest-vertex for click.
+ */
+export function resolveLineHoverCategory(rel: number, count: number): number {
+  if (count <= 1) return 0;
+  if (!Number.isFinite(rel)) return 0;
+  const clamped = Math.min(0.999999, Math.max(0, rel));
+  return Math.min(count - 1, Math.floor(clamped * count));
+}
+
+/**
+ * Picks the series whose value at the category is closest to the pointer's
+ * data-Y (relY: 0 = plot top, 1 = plot bottom).
+ */
+export function resolveNearestLineSeriesByY(
+  seriesValuesAtCategory: number[],
+  relY: number,
+  yDomain: [number, number],
+): number {
+  const n = seriesValuesAtCategory.length;
+  if (n <= 1) return 0;
+  const y0 = Number(yDomain[0]);
+  const y1 = Number(yDomain[1]);
+  const lo = Number.isFinite(y0) ? y0 : 0;
+  const hi = Number.isFinite(y1) && y1 > lo ? y1 : lo + 1;
+  const clamped = Math.min(1, Math.max(0, Number(relY) || 0));
+  const dataY = lo + (hi - lo) * (1 - clamped);
+  let best = 0;
+  let bestDist = Infinity;
+  for (let i = 0; i < n; i++) {
+    const v = Number(seriesValuesAtCategory[i]);
+    const value = Number.isFinite(v) ? v : 0;
+    const dist = Math.abs(value - dataY);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = i;
+    }
+  }
+  return best;
+}
+
+/**
  * Client X for Unovis click events. Touch uses `changedTouches`; mouse/pointer
  * use `clientX` on the event itself.
  */
@@ -233,4 +442,189 @@ export function resolveClickClientX(event: {
   }
   const x = event.clientX;
   return typeof x === 'number' && Number.isFinite(x) ? x : undefined;
+}
+
+/** Default Unovis plot min height (px) when the chart body has not sized yet. */
+export const CHOY_CHART_MIN_PLOT_HEIGHT = 280;
+
+/** Space reserved below the plot for ChartLegendContent (px). */
+export const CHOY_CHART_LEGEND_RESERVE = 40;
+
+/**
+ * Soft cap on bar / group width (px). High enough that few categories stay
+ * chunky across a full-width plot; many categories still shrink by step size.
+ */
+export const CHOY_CHART_BAR_MAX_WIDTH = 280;
+
+/** Line stroke width (px). */
+export const CHOY_CHART_LINE_WIDTH = 2.5;
+
+/** Scatter marker diameter (px) at line vertices (large enough for stable hover). */
+export const CHOY_CHART_LINE_POINT_SIZE = 14;
+
+/**
+ * Extra px beyond the Unovis plot clip so line vertex markers at x=0 / x=n-1
+ * stay fully visible while the domain stays flush (Odoo-like).
+ */
+export const CHOY_CHART_LINE_CLIP_EXTEND = Math.ceil(CHOY_CHART_LINE_POINT_SIZE / 2) + 2;
+
+/** Area fill under line series (0–1); keep light so the stroke stays primary. */
+export const CHOY_CHART_LINE_AREA_OPACITY = 0.2;
+
+/** X-domain strategy for integer category indices. */
+export type ChartXDomainKind = 'bar' | 'line';
+
+/**
+ * X domain for integer category indices.
+ * - bar: half-step outer pad so categories sit in band centers
+ * - line: first index at 0 / last at n-1 (Odoo-style, flush to the axes)
+ * Returns undefined when there are no categories.
+ */
+export function resolveChartXDomain(
+  categoryCount: number,
+  kind: ChartXDomainKind = 'bar',
+): [number, number] | undefined {
+  const n = Math.floor(Number(categoryCount) || 0);
+  if (n <= 0) return undefined;
+  if (kind === 'line') {
+    if (n === 1) return [-0.5, 0.5];
+    return [0, n - 1];
+  }
+  return [-0.5, n - 0.5];
+}
+
+/**
+ * Plot height for VisXYContainer / VisSingleContainer: fill the chart body
+ * minus legend reserve, never below minHeight.
+ */
+export function resolveChartPlotHeight(
+  bodyHeight: number,
+  opts?: { minHeight?: number; legendReserve?: number },
+): number {
+  const minHeight = opts?.minHeight ?? CHOY_CHART_MIN_PLOT_HEIGHT;
+  const legendReserve = opts?.legendReserve ?? CHOY_CHART_LEGEND_RESERVE;
+  const usable = Math.floor(Number(bodyHeight) || 0) - legendReserve;
+  return Math.max(minHeight, usable);
+}
+
+/** One legend-colored value row inside a chart hover tooltip. */
+export type ChartTooltipRow = {
+  color: string;
+  label: string;
+  valueText: string;
+};
+
+/** Input for {@link formatChartTooltipHtml} (metric title + value rows). */
+export type ChartTooltipHtmlInput = {
+  title: string;
+  rows: ChartTooltipRow[];
+};
+
+/**
+ * Escapes text for insertion into Unovis tooltip HTML.
+ */
+function escapeChartTooltipText(raw: string): string {
+  return String(raw ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/**
+ * Formats a chart measure for tooltips with locale digits; percent stacks append `%`.
+ * Falls back to `String(n)` when `Intl.NumberFormat` is unavailable (e.g. FE QuickJS).
+ */
+export function formatChartTooltipValue(
+  n: number,
+  opts?: { percent?: boolean; locale?: string },
+): string {
+  const value = Number.isFinite(n) ? n : 0;
+  let formatted: string;
+  try {
+    const NumberFormatCtor = (
+      globalThis as { Intl?: { NumberFormat?: new (locales?: string) => { format: (v: number) => string } } }
+    ).Intl?.NumberFormat;
+    formatted =
+      typeof NumberFormatCtor === 'function'
+        ? new NumberFormatCtor(opts?.locale).format(value)
+        : String(value);
+  } catch {
+    formatted = String(value);
+  }
+  return opts?.percent ? `${formatted}%` : formatted;
+}
+
+/**
+ * Share of a pie slice as `xx.xx%` (of the positive total; empty pie → `0.00%`).
+ */
+export function formatChartTooltipPiePercent(value: number, total: number): string {
+  const v = Number.isFinite(value) ? Math.max(0, value) : 0;
+  const t = Number.isFinite(total) ? total : 0;
+  if (!(t > 0)) return '0.00%';
+  return `${((v / t) * 100).toFixed(2)}%`;
+}
+
+/**
+ * Places a floating chart tooltip near the cursor while keeping it inside the host.
+ * Prefers above-right; flips left/below when the preferred corner would overflow.
+ */
+export function resolveChartFloatingTooltipPosition(input: {
+  cursorX: number;
+  cursorY: number;
+  hostWidth: number;
+  hostHeight: number;
+  tipWidth: number;
+  tipHeight: number;
+  gap?: number;
+}): { x: number; y: number } {
+  const gap = Number.isFinite(input.gap as number) ? Number(input.gap) : 12;
+  const hostW = Math.max(0, Number(input.hostWidth) || 0);
+  const hostH = Math.max(0, Number(input.hostHeight) || 0);
+  const tipW = Math.max(0, Number(input.tipWidth) || 0);
+  const tipH = Math.max(0, Number(input.tipHeight) || 0);
+  const cx = Number(input.cursorX) || 0;
+  const cy = Number(input.cursorY) || 0;
+
+  let x = cx + gap;
+  if (x + tipW > hostW - gap) {
+    x = cx - gap - tipW;
+  }
+  x = Math.max(gap, Math.min(x, Math.max(gap, hostW - tipW - gap)));
+
+  let y = cy - gap - tipH;
+  if (y < gap) {
+    y = cy + gap;
+  }
+  y = Math.max(gap, Math.min(y, Math.max(gap, hostH - tipH - gap)));
+
+  return { x, y };
+}
+
+/**
+ * Builds compact HTML for Unovis VisTooltip (metric title + swatch/label/value rows).
+ */
+export function formatChartTooltipHtml(input: ChartTooltipHtmlInput): string {
+  const title = escapeChartTooltipText(input.title ?? '');
+  const rows = Array.isArray(input.rows) ? input.rows : [];
+  const rowHtml = rows
+    .map((row) => {
+      const color = escapeChartTooltipText(row.color || CHOY_CHART_FALLBACK_COLOR);
+      const label = escapeChartTooltipText(row.label ?? '');
+      const valueText = escapeChartTooltipText(row.valueText ?? '');
+      return (
+        `<div class="choy-chart-tooltip__row">` +
+        `<span class="choy-chart-tooltip__swatch" style="background-color:${color}"></span>` +
+        `<span class="choy-chart-tooltip__label">${label}</span>` +
+        `<span class="choy-chart-tooltip__value">${valueText}</span>` +
+        `</div>`
+      );
+    })
+    .join('');
+  return (
+    `<div class="choy-chart-tooltip__panel">` +
+    `<div class="choy-chart-tooltip__title">${title}</div>` +
+    rowHtml +
+    `</div>`
+  );
 }

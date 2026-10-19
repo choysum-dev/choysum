@@ -35,7 +35,9 @@ defineProps<{
       )
     "
   >
-    <SelectValue :placeholder="placeholder" />
+    <SelectValue :placeholder="placeholder">
+      <slot />
+    </SelectValue>
     <SelectIcon as-child>
       <ChevronDown class="size-4 opacity-50" />
     </SelectIcon>

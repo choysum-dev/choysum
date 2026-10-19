@@ -826,52 +826,52 @@ msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr "用户注册失败"
 
-#: web/components/layout/ChoyAppShell.vue:111 web/components/layout/ChoyAppShell.vue:97
+#: web/components/layout/ChoyAppShell.vue:107 web/components/layout/ChoyAppShell.vue:93
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Account"
 msgstr "账户"
 
-#: web/components/layout/ChoyAppShell.vue:127
+#: web/components/layout/ChoyAppShell.vue:123
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Dark"
 msgstr "深色"
 
-#: web/components/layout/ChoyAppShell.vue:59
+#: web/components/layout/ChoyAppShell.vue:58
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Language"
 msgstr "语言"
 
-#: web/components/layout/ChoyAppShell.vue:126
+#: web/components/layout/ChoyAppShell.vue:122
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Light"
 msgstr "浅色"
 
-#: web/components/layout/ChoyAppShell.vue:66
+#: web/components/layout/ChoyAppShell.vue:65
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Log Out"
 msgstr "退出登录"
 
-#: web/components/layout/ChoyAppShell.vue:47
+#: web/components/layout/ChoyAppShell.vue:46
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Profile"
 msgstr "个人资料"
 
-#: web/components/layout/ChoyAppShell.vue:50
+#: web/components/layout/ChoyAppShell.vue:49
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Settings"
 msgstr "设置"
 
-#: web/components/layout/ChoyAppShell.vue:128
+#: web/components/layout/ChoyAppShell.vue:124
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "System"
 msgstr "跟随系统"
 
-#: web/components/layout/ChoyAppShell.vue:53
+#: web/components/layout/ChoyAppShell.vue:52
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Theme"
 msgstr "主题"
 
-#: web/components/layout/ChoyAppShell.vue:14
+#: web/components/layout/ChoyAppShell.vue:13
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "User menu"
 msgstr "用户菜单"
@@ -896,52 +896,52 @@ msgctxt "web/components/layout/ChoyGuestShell"
 msgid "Sign up"
 msgstr "注册"
 
-#: web/components/layout/SwitchCompany.vue:101 web/components/layout/SwitchCompany.vue:56
+#: web/components/layout/SwitchCompany.vue:54 web/components/layout/SwitchCompany.vue:97
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Apply"
 msgstr "应用"
 
-#: web/components/layout/SwitchCompany.vue:41 web/components/layout/SwitchCompany.vue:86
+#: web/components/layout/SwitchCompany.vue:39 web/components/layout/SwitchCompany.vue:82
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Available Companies"
 msgstr "可用公司"
 
-#: web/components/layout/SwitchCompany.vue:333
+#: web/components/layout/SwitchCompany.vue:331
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Available companies must include the current company"
 msgstr "可选公司必须包含当前公司"
 
-#: web/components/layout/SwitchCompany.vue:280 web/components/layout/SwitchCompany.vue:283
+#: web/components/layout/SwitchCompany.vue:278 web/components/layout/SwitchCompany.vue:281
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Company"
 msgstr "公司"
 
-#: web/components/layout/SwitchCompany.vue:31 web/components/layout/SwitchCompany.vue:78
+#: web/components/layout/SwitchCompany.vue:29 web/components/layout/SwitchCompany.vue:74
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Current Company"
 msgstr "当前公司"
 
-#: web/components/layout/SwitchCompany.vue:338
+#: web/components/layout/SwitchCompany.vue:336
 msgctxt "web/components/layout/SwitchCompany"
 msgid "No changes to apply"
 msgstr "没有可应用的更改"
 
-#: web/components/layout/SwitchCompany.vue:336
+#: web/components/layout/SwitchCompany.vue:334
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Only one company is available; nothing to apply"
 msgstr "仅有一家可选公司，无需应用"
 
-#: web/components/layout/SwitchCompany.vue:331
+#: web/components/layout/SwitchCompany.vue:329
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Select a current company"
 msgstr "请选择当前公司"
 
-#: web/components/layout/SwitchCompany.vue:12 web/components/layout/SwitchCompany.vue:68
+#: web/components/layout/SwitchCompany.vue:10 web/components/layout/SwitchCompany.vue:64
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Switch company"
 msgstr "切换公司"
 
-#: web/components/layout/SwitchCompany.vue:297
+#: web/components/layout/SwitchCompany.vue:295
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Workspace"
 msgstr "工作区"
@@ -1301,6 +1301,11 @@ msgctxt "web/pages/SessionList"
 msgid "Session List"
 msgstr "会话列表"
 
+#: web/pages/TokenChart.vue:10
+msgctxt "web/pages/TokenChart"
+msgid "Token Chart"
+msgstr "令牌图表"
+
 #: web/pages/TokenKanban.vue:10
 msgctxt "web/pages/TokenKanban"
 msgid "Token Kanban"
@@ -1316,17 +1321,17 @@ msgctxt "web/pages/UserList"
 msgid "User List"
 msgstr "用户列表"
 
-#: web/route/routes.ts:237
+#: web/route/routes.ts:246
 msgctxt "web/route/routes"
 msgid "Create Field Rule"
 msgstr "创建字段规则"
 
-#: web/route/routes.ts:280
+#: web/route/routes.ts:289
 msgctxt "web/route/routes"
 msgid "Create Method Access"
 msgstr "创建方法访问"
 
-#: web/route/routes.ts:194
+#: web/route/routes.ts:203
 msgctxt "web/route/routes"
 msgid "Create Record Rule"
 msgstr "创建记录规则"
@@ -1346,7 +1351,7 @@ msgctxt "web/route/routes"
 msgid "Create Token"
 msgstr "新建令牌"
 
-#: web/route/routes.ts:323
+#: web/route/routes.ts:332
 msgctxt "web/route/routes"
 msgid "Create UI Resource Grant"
 msgstr "创建 UI 资源授权"
@@ -1356,12 +1361,12 @@ msgctxt "web/route/routes"
 msgid "Create User"
 msgstr "新建用户"
 
-#: web/route/routes.ts:223
+#: web/route/routes.ts:232
 msgctxt "web/route/routes"
 msgid "Field Rule Details"
 msgstr "字段规则详情"
 
-#: web/route/routes.ts:209
+#: web/route/routes.ts:218
 msgctxt "web/route/routes"
 msgid "Field Rule List"
 msgstr "字段规则列表"
@@ -1376,27 +1381,27 @@ msgctxt "web/route/routes"
 msgid "Logout"
 msgstr "退出登录"
 
-#: web/route/routes.ts:266
+#: web/route/routes.ts:275
 msgctxt "web/route/routes"
 msgid "Method Access Details"
 msgstr "方法访问详情"
 
-#: web/route/routes.ts:252
+#: web/route/routes.ts:261
 msgctxt "web/route/routes"
 msgid "Method Access List"
 msgstr "方法访问列表"
 
-#: web/route/routes.ts:180
+#: web/route/routes.ts:189
 msgctxt "web/route/routes"
 msgid "Record Rule Details"
 msgstr "记录规则详情"
 
-#: web/route/routes.ts:166
+#: web/route/routes.ts:175
 msgctxt "web/route/routes"
 msgid "Record Rule List"
 msgstr "记录规则列表"
 
-#: web/route/routes.ts:341
+#: web/route/routes.ts:350
 msgctxt "web/route/routes"
 msgid "Register"
 msgstr "注册"
@@ -1426,6 +1431,11 @@ msgctxt "web/route/routes"
 msgid "Token Board"
 msgstr "令牌看板"
 
+#: web/route/routes.ts:164
+msgctxt "web/route/routes"
+msgid "Token Chart"
+msgstr "令牌图表"
+
 #: web/route/routes.ts:137
 msgctxt "web/route/routes"
 msgid "Token Details"
@@ -1436,12 +1446,12 @@ msgctxt "web/route/routes"
 msgid "Token Management"
 msgstr "令牌管理"
 
-#: web/route/routes.ts:309
+#: web/route/routes.ts:318
 msgctxt "web/route/routes"
 msgid "UI Resource Grant Details"
 msgstr "UI 资源授权详情"
 
-#: web/route/routes.ts:295
+#: web/route/routes.ts:304
 msgctxt "web/route/routes"
 msgid "UI Resource Grant List"
 msgstr "UI 资源授权列表"
@@ -2081,47 +2091,92 @@ msgctxt "web/views/SessionListView"
 msgid "Session"
 msgstr "会话"
 
-#: web/views/TokenFormView.vue:38
+#: web/views/TokenChartView.vue:50
+msgctxt "web/views/TokenChartView"
+msgid "Chart View"
+msgstr "图表视图"
+
+#: web/views/TokenChartView.vue:43
+msgctxt "web/views/TokenChartView"
+msgid "Count"
+msgstr "计数"
+
+#: web/views/TokenChartView.vue:69 web/views/TokenChartView.vue:74
+msgctxt "web/views/TokenChartView"
+msgid "Failed to load chart"
+msgstr "图表加载失败"
+
+#: web/views/TokenChartView.vue:49
+msgctxt "web/views/TokenChartView"
+msgid "Kanban View"
+msgstr "看板视图"
+
+#: web/views/TokenChartView.vue:48
+msgctxt "web/views/TokenChartView"
+msgid "List View"
+msgstr "列表视图"
+
+#: web/views/TokenChartView.vue:11
+msgctxt "web/views/TokenChartView"
+msgid "New"
+msgstr "新建"
+
+#: web/views/TokenChartView.vue:56
+msgctxt "web/views/TokenChartView"
+msgid "Not Revoked"
+msgstr "未撤销"
+
+#: web/views/TokenChartView.vue:55
+msgctxt "web/views/TokenChartView"
+msgid "Revoked"
+msgstr "已撤销"
+
+#: web/views/TokenChartView.vue:17
+msgctxt "web/views/TokenChartView"
+msgid "View switcher"
+msgstr "视图切换"
+
+#: web/views/TokenFormView.vue:37
 msgctxt "web/views/TokenFormView"
 msgid "Copy Token"
 msgstr "复制令牌"
 
-#: web/views/TokenFormView.vue:38
+#: web/views/TokenFormView.vue:37
 msgctxt "web/views/TokenFormView"
 msgid "Create Token"
 msgstr "新建令牌"
 
-#: web/views/TokenFormView.vue:38
+#: web/views/TokenFormView.vue:37
 msgctxt "web/views/TokenFormView"
 msgid "Delete Token"
 msgstr "删除令牌"
 
-#: web/views/TokenFormView.vue:38
+#: web/views/TokenFormView.vue:37
 msgctxt "web/views/TokenFormView"
 msgid "Edit Token"
 msgstr "编辑令牌"
 
-#: web/views/TokenFormView.vue:6
+#: web/views/TokenFormView.vue:9
 msgctxt "web/views/TokenFormView"
 msgid "Select User"
 msgstr "选择用户"
 
-#: web/views/TokenFormView.vue:29
+#: web/views/TokenFormView.vue:33
 msgctxt "web/views/TokenFormView"
 msgid "System Information"
 msgstr "系统信息"
 
-#: web/views/TokenFormView.vue:38
+#: web/views/TokenFormView.vue:37
 msgctxt "web/views/TokenFormView"
 msgid "Token"
 msgstr "令牌"
 
-#: web/views/TokenFormView.vue:3
+#: web/views/TokenFormView.vue:6
 msgctxt "web/views/TokenFormView"
 msgid "Token Information"
 msgstr "令牌信息"
 
-#: web/views/TokenKanbanView.vue:52
+#: web/views/TokenKanbanView.vue:45
 msgctxt "web/views/TokenKanbanView"
 msgid "%s more"
 msgstr "还有 %s 条"
@@ -2131,32 +2186,37 @@ msgctxt "web/views/TokenKanbanView"
 msgid "All"
 msgstr "全部"
 
-#: web/views/TokenKanbanView.vue:38
+#: web/views/TokenKanbanView.vue:53
+msgctxt "web/views/TokenKanbanView"
+msgid "Chart View"
+msgstr "图表视图"
+
+#: web/views/TokenKanbanView.vue:31
 msgctxt "web/views/TokenKanbanView"
 msgid "Expires"
 msgstr "过期"
 
-#: web/views/TokenKanbanView.vue:67 web/views/TokenKanbanView.vue:72
+#: web/views/TokenKanbanView.vue:88 web/views/TokenKanbanView.vue:93
 msgctxt "web/views/TokenKanbanView"
 msgid "Failed to load kanban"
 msgstr "看板加载失败"
 
-#: web/views/TokenKanbanView.vue:77
+#: web/views/TokenKanbanView.vue:98
 msgctxt "web/views/TokenKanbanView"
 msgid "Failed to load more tokens"
 msgstr "加载更多令牌失败"
 
-#: web/views/TokenKanbanView.vue:23
+#: web/views/TokenKanbanView.vue:52
 msgctxt "web/views/TokenKanbanView"
 msgid "Kanban View"
 msgstr "看板视图"
 
-#: web/views/TokenKanbanView.vue:20
+#: web/views/TokenKanbanView.vue:51
 msgctxt "web/views/TokenKanbanView"
 msgid "List View"
 msgstr "列表视图"
 
-#: web/views/TokenKanbanView.vue:82
+#: web/views/TokenKanbanView.vue:103
 msgctxt "web/views/TokenKanbanView"
 msgid "Move failed; refreshed to recover"
 msgstr "移动失败；已刷新以恢复"
@@ -2166,22 +2226,22 @@ msgctxt "web/views/TokenKanbanView"
 msgid "New"
 msgstr "新建"
 
-#: web/views/TokenKanbanView.vue:47
+#: web/views/TokenKanbanView.vue:40
 msgctxt "web/views/TokenKanbanView"
 msgid "No tokens in this lane"
 msgstr "此列暂无令牌"
 
-#: web/views/TokenKanbanView.vue:60 web/views/TokenKanbanView.vue:62
+#: web/views/TokenKanbanView.vue:81 web/views/TokenKanbanView.vue:83
 msgctxt "web/views/TokenKanbanView"
 msgid "Not Revoked"
 msgstr "未撤销"
 
-#: web/views/TokenKanbanView.vue:59 web/views/TokenKanbanView.vue:61
+#: web/views/TokenKanbanView.vue:80 web/views/TokenKanbanView.vue:82
 msgctxt "web/views/TokenKanbanView"
 msgid "Revoked"
 msgstr "已撤销"
 
-#: web/views/TokenKanbanView.vue:41
+#: web/views/TokenKanbanView.vue:34
 msgctxt "web/views/TokenKanbanView"
 msgid "Revoked At"
 msgstr "撤销时间"
@@ -2190,6 +2250,11 @@ msgstr "撤销时间"
 msgctxt "web/views/TokenKanbanView"
 msgid "View switcher"
 msgstr "视图切换"
+
+#: web/views/TokenListView.vue:50
+msgctxt "web/views/TokenListView"
+msgid "Chart View"
+msgstr "图表视图"
 
 #: web/views/TokenListView.vue:42
 msgctxt "web/views/TokenListView"
@@ -2211,12 +2276,12 @@ msgctxt "web/views/TokenListView"
 msgid "Edit Token"
 msgstr "编辑令牌"
 
-#: web/views/TokenListView.vue:9
+#: web/views/TokenListView.vue:49
 msgctxt "web/views/TokenListView"
 msgid "Kanban View"
 msgstr "看板视图"
 
-#: web/views/TokenListView.vue:6
+#: web/views/TokenListView.vue:48
 msgctxt "web/views/TokenListView"
 msgid "List View"
 msgstr "列表视图"
@@ -2231,12 +2296,12 @@ msgctxt "web/views/TokenListView"
 msgid "View switcher"
 msgstr "视图切换"
 
-#: web/views/UserFormView.vue:57
+#: web/views/UserFormView.vue:59
 msgctxt "web/views/UserFormView"
 msgid "Accessible Companies"
 msgstr "可访问公司"
 
-#: web/views/UserFormView.vue:3
+#: web/views/UserFormView.vue:5
 msgctxt "web/views/UserFormView"
 msgid "Account Information"
 msgstr "账户信息"
@@ -2266,32 +2331,32 @@ msgctxt "web/views/UserFormView"
 msgid "Required"
 msgstr "必填"
 
-#: web/views/UserFormView.vue:63
+#: web/views/UserFormView.vue:65
 msgctxt "web/views/UserFormView"
 msgid "Roles"
 msgstr "角色"
 
-#: web/views/UserFormView.vue:57
+#: web/views/UserFormView.vue:59
 msgctxt "web/views/UserFormView"
 msgid "Select Company"
 msgstr "选择公司"
 
-#: web/views/UserFormView.vue:64
+#: web/views/UserFormView.vue:66
 msgctxt "web/views/UserFormView"
 msgid "Select Role"
 msgstr "选择角色"
 
-#: web/views/UserFormView.vue:33
+#: web/views/UserFormView.vue:35
 msgctxt "web/views/UserFormView"
 msgid "Select a time zone"
 msgstr "选择时区"
 
-#: web/views/UserFormView.vue:71
+#: web/views/UserFormView.vue:73
 msgctxt "web/views/UserFormView"
 msgid "Sessions"
 msgstr "会话"
 
-#: web/views/UserFormView.vue:80
+#: web/views/UserFormView.vue:82
 msgctxt "web/views/UserFormView"
 msgid "Tokens"
 msgstr "令牌"
