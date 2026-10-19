@@ -477,6 +477,19 @@ export function resolveXyPlotClientRect(svg: Element): {
 }
 
 /**
+ * Running tops for stacked line hover / stroke: each entry is the sum of
+ * series[0..i] at one category (Chart.js y.stacked line positions).
+ */
+export function stackSeriesTopsAtCategory(values: readonly number[]): number[] {
+  let run = 0;
+  return values.map((raw) => {
+    const v = Number(raw);
+    run += Number.isFinite(v) ? v : 0;
+    return run;
+  });
+}
+
+/**
  * Picks the series whose value at the category is closest to the pointer's
  * data-Y (relY: 0 = plot top, 1 = plot bottom).
  */

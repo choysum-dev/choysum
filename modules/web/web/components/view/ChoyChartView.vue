@@ -146,7 +146,7 @@ SPDX-License-Identifier: Apache-2.0
             </div>
           </slot>
 
-          <!-- Non-bar or single-series: hide stack (Odoo graph chrome). -->
+          <!-- Pie: hide stack. Bar needs 2+ series; line keeps stack for area fill (Odoo). -->
           <slot
             v-if="!stackedDisabled"
             name="stacked-switcher"
@@ -299,21 +299,21 @@ SPDX-License-Identifier: Apache-2.0
               />
               <template v-else-if="spec.kind === 'line'">
                 <!--
-                  Unovis Area always stacks when `y` is an array; Line does not.
-                  One Area per series keeps each fill under its own stroke.
+                  Odoo: stacked line → area fill (+ Unovis stacks when `y` is an array);
+                  unstacked → stroke only. Line/Scatter use stacked tops so strokes
+                  ride the fill ridges.
                 -->
                 <VisArea
-                  v-for="(yAcc, areaIdx) in xyYAccessors"
-                  :key="`choy-chart-area-${areaIdx}`"
+                  v-if="spec.stacked"
                   :x="xAccessor"
-                  :y="yAcc"
-                  :color="xyColors[areaIdx]"
+                  :y="xyYAccessors"
+                  :color="xyColors"
                   :curve-type="CurveType.MonotoneX"
                   :opacity="CHOY_CHART_LINE_AREA_OPACITY"
                 />
                 <VisLine
                   :x="xAccessor"
-                  :y="xyYAccessors"
+                  :y="linePlotYAccessors"
                   :color="xyColors"
                   :curve-type="CurveType.MonotoneX"
                   :line-width="CHOY_CHART_LINE_WIDTH"
@@ -321,7 +321,7 @@ SPDX-License-Identifier: Apache-2.0
                 />
                 <VisScatter
                   :x="xAccessor"
-                  :y="xyYAccessors"
+                  :y="linePlotYAccessors"
                   :color="xyColors"
                   :size="CHOY_CHART_LINE_POINT_SIZE"
                   stroke-color="var(--choy-color-background)"
@@ -556,6 +556,7 @@ import {
   rowCategoryIndex,
   sortChartCategories,
   sortChartCategoriesByTime,
+  stackSeriesTopsAtCategory,
   type ChoyChartItemClickPayload,
   type ChoyChartMetricOption
 } from './chartViewHelpers';
@@ -905,8 +906,11 @@ const metricLabel = computed(() => {
   return hit?.label || localMetric.value || 'Value';
 });
 
+/** Pie: no stack. Bar: need 2+ series. Line: always (area fill / Y stack, Odoo). */
 const stackedDisabled = computed(
-  () => localChartType.value !== 'bar' || seriesMatrix.value.length <= 1,
+  () =>
+    localChartType.value === 'pie' ||
+    (localChartType.value === 'bar' && seriesMatrix.value.length <= 1),
 );
 
 const sortDisabled = computed(() => localChartType.value === 'pie');
@@ -1002,10 +1006,11 @@ const xyClipPathExtend = computed(() =>
   spec.value?.kind === 'line' ? CHOY_CHART_LINE_CLIP_EXTEND : 2,
 );
 
-/** Stacked bar plots need a domain from the column sum; grouped/line keep Unovis auto-scale. */
+/** Stacked bar/line plots need a domain from the column sum; otherwise Unovis auto-scale. */
 const xyYDomain = computed<[number, number] | undefined>(() => {
   const s = spec.value;
-  if (!s || s.kind !== 'bar' || !s.stacked) return undefined;
+  if (!s || s.kind === 'pie' || !s.stacked) return undefined;
+  if (s.kind !== 'bar' && s.kind !== 'line') return undefined;
   return resolveStackedYDomain(
     xyRows.value,
     s.series.map((series) => series.key),
@@ -1016,6 +1021,23 @@ const xyYDomain = computed<[number, number] | undefined>(() => {
 const xyYAccessors = computed(() => {
   if (!spec.value) return [];
   return spec.value.series.map((s) => (d: Record<string, string | number>) => Number(d[s.key]) || 0);
+});
+
+/** Line stroke/points: stacked tops when stacked; raw values otherwise. */
+const linePlotYAccessors = computed(() => {
+  const s = spec.value;
+  if (!s || s.kind !== 'line') return [];
+  const keys = s.series.map((series) => series.key);
+  if (!s.stacked) {
+    return keys.map((key) => (d: Record<string, string | number>) => Number(d[key]) || 0);
+  }
+  return keys.map((_, seriesIdx) => (d: Record<string, string | number>) => {
+    let sum = 0;
+    for (let i = 0; i <= seriesIdx; i++) {
+      sum += Number(d[keys[i]!]) || 0;
+    }
+    return sum;
+  });
 });
 
 const xyColors = computed(() => {
@@ -1542,8 +1564,10 @@ function updateLinePlotHover(event: MouseEvent): void {
     relX,
     relY,
     categoryCount: nCat,
-    seriesValuesAtCategory: (idx) =>
-      current.series.map((series) => Number(series.values[idx]) || 0),
+    seriesValuesAtCategory: (idx) => {
+      const raw = current.series.map((series) => Number(series.values[idx]) || 0);
+      return current.stacked ? stackSeriesTopsAtCategory(raw) : raw;
+    },
     yDomain: linePlotYDomain(),
   });
   const html = buildXyTooltipHtml(categoryIdx, seriesIdx);
