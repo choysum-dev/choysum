@@ -70,8 +70,9 @@ describe('cn', () => {
 
     const outlineDestructive = tokens(cn(buttonVariants({ variant: 'outline-destructive' })));
     expect(outlineDestructive).toContain('text-destructive');
-    expect(outlineDestructive).toContain('border');
+    expect(outlineDestructive).toContain('border-destructive/40');
     expect(outlineDestructive).not.toContain('border-0');
+    expect(outlineDestructive).not.toContain('border-input');
 
     // Calendar nav: later bg-transparent replaces outline bg-background.
     const calendarNav = tokens(

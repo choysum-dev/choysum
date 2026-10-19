@@ -341,7 +341,8 @@ describe('ChoyChartView coverage', () => {
       ex as ChartExpose & { linePlotYDomain: () => [number, number] }
     ).linePlotYDomain();
     expect(lineUnstackedDomain[1]).toBeGreaterThan(0);
-    expect(lineUnstackedDomain[1]).toBeLessThanOrEqual(lineStackedDomain[1]);
+    // Fixture has multi-series column sums > max series, so unstacked max must drop.
+    expect(lineUnstackedDomain[1]).toBeLessThan(lineStackedDomain[1]);
     ex.toggleCumulative();
     await nextTick();
     mounted.unmount();

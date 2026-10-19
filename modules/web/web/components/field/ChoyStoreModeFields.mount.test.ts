@@ -393,9 +393,10 @@ describe('Choy store-mode field hosts', () => {
     const deleteBtn = w.q('[data-testid=choy-o2m-kanban-delete]');
     expect(deleteBtn).not.toBeNull();
     const deleteClass = String(deleteBtn?.getAttribute('class') ?? '');
-    // Ghost + destructive text (not solid destructive fill).
+    // Ghost + destructive hover tint (cn/twMerge drops ghost hover:bg-accent).
     expect(deleteClass).toContain('text-destructive');
-    expect(deleteClass).toContain('hover:bg-accent');
+    expect(deleteClass).toContain('hover:bg-destructive/10');
+    expect(deleteClass).not.toContain('hover:bg-accent');
     expect(deleteClass).not.toMatch(/(?:^|\s)bg-destructive(?:\s|$)/);
     const addTile = w.q('[data-testid=choy-o2m-kanban-add]');
     expect(addTile).not.toBeNull();
