@@ -14,9 +14,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/cdproto/network"
-	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/cdproto/storage"
 	"github.com/chromedp/chromedp"
 )
@@ -29,7 +29,14 @@ var emptyEvaluateJSON = "null"
 
 // pageEvaluate runs a chromedp Evaluate; tests may override to force errors.
 var pageEvaluate = func(ctx context.Context, expr string, out *bool) error {
-	return chromedp.Run(ctx, chromedp.Evaluate(expr, out))
+	v, err := chromedp.Run(ctx, chromedp.Evaluate[bool](expr))
+	if err != nil {
+		return err
+	}
+	if out != nil {
+		*out = v
+	}
+	return nil
 }
 
 // Page is a browser tab owned by a Session.
@@ -57,11 +64,9 @@ func (s *Session) NewPage() (*Page, error) {
 		return nil, err
 	}
 	// Drop cookies so a prior login cannot skip the login form on the next test.
-	_ = chromedp.Run(p.ctx, chromedp.ActionFunc(func(ctx context.Context) error {
-		return network.ClearBrowserCookies().Do(ctx)
-	}))
+	_, _ = chromedp.Call(p.ctx, network.ClearBrowserCookies, cdp.Empty{})
 	// Reset document between tests.
-	_ = chromedp.Run(p.ctx, chromedp.Navigate("about:blank"))
+	_ = chromedp.Do(p.ctx, chromedp.Navigate("about:blank"))
 	return p, nil
 }
 
@@ -84,8 +89,8 @@ func (p *Page) ClearOriginStorage(originURL string) error {
 	}
 	origin := u.Scheme + "://" + u.Host
 
-	var href string
-	if err := chromedp.Run(p.ctx, chromedp.Location(&href)); err != nil {
+	href, err := chromedp.Run(p.ctx, chromedp.Location())
+	if err != nil {
 		return fmt.Errorf("cdp: current location: %w", err)
 	}
 	curOrigin := ""
@@ -97,27 +102,32 @@ func (p *Page) ClearOriginStorage(originURL string) error {
 	}
 	if curOrigin == "" {
 		// about:blank / data: — open the target origin so sessionStorage clear applies there.
-		if err := chromedp.Run(p.ctx,
+		if err := chromedp.Do(p.ctx,
 			chromedp.Navigate(origin+"/"),
-			chromedp.WaitReady("body", chromedp.ByQuery),
+			chromedp.WaitReady(chromedp.CSS("body")),
 		); err != nil {
 			return fmt.Errorf("cdp: navigate for clearOriginStorage: %w", err)
 		}
 	}
 
-	return chromedp.Run(p.ctx,
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			return network.ClearBrowserCookies().Do(ctx)
+	return chromedp.Do(p.ctx,
+		chromedp.Func(func(ctx context.Context, t *chromedp.Target) error {
+			_, err := cdp.Call(ctx, t, network.ClearBrowserCookies, cdp.Empty{})
+			return err
 		}),
-		chromedp.ActionFunc(func(ctx context.Context) error {
+		chromedp.Func(func(ctx context.Context, t *chromedp.Target) error {
 			// CDP ClearDataForOrigin has no session_storage type; clear that via JS below.
-			return storage.ClearDataForOrigin(origin, "cookies,local_storage,indexeddb,cache_storage").Do(ctx)
+			_, err := cdp.Call(ctx, t, storage.ClearDataForOrigin, storage.ClearDataForOriginParams{
+				Origin:       origin,
+				StorageTypes: "cookies,local_storage,indexeddb,cache_storage",
+			})
+			return err
 		}),
-		chromedp.Evaluate(`(() => {
+		chromedp.Evaluate[chromedp.Void](`(() => {
   try { sessionStorage.clear(); } catch (e) {}
   try { localStorage.clear(); } catch (e) {}
   return true;
-})()`, nil),
+})()`),
 	)
 }
 
@@ -136,8 +146,8 @@ func (s *Session) ScreenshotCurrent(path string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	var buf []byte
-	if err := chromedp.Run(s.browserCtx, chromedp.FullScreenshot(&buf, 100)); err != nil {
+	buf, err := chromedp.Run(s.browserCtx, chromedp.FullScreenshot(100))
+	if err != nil {
 		return err
 	}
 	return os.WriteFile(path, buf, 0o644)
@@ -171,7 +181,7 @@ func (p *Page) Goto(url string, waitUntil string) error {
 	if err != nil {
 		return err
 	}
-	return chromedp.Run(p.ctx, actions...)
+	return chromedp.Do(p.ctx, actions...)
 }
 
 // Reload reloads the current document. waitUntil matches Goto.
@@ -183,20 +193,20 @@ func (p *Page) Reload(waitUntil string) error {
 	if err != nil {
 		return err
 	}
-	return chromedp.Run(p.ctx, actions...)
+	return chromedp.Do(p.ctx, actions...)
 }
 
-func waitUntilActions(waitUntil string, nav chromedp.Action) ([]chromedp.Action, error) {
+func waitUntilActions(waitUntil string, nav chromedp.Action[chromedp.Void]) ([]chromedp.Action[chromedp.Void], error) {
 	waitUntil = strings.ToLower(strings.TrimSpace(waitUntil))
 	if waitUntil == "" {
 		waitUntil = "load"
 	}
-	actions := []chromedp.Action{nav}
+	actions := []chromedp.Action[chromedp.Void]{nav}
 	switch waitUntil {
 	case "domcontentloaded":
-		actions = append(actions, chromedp.WaitReady("body", chromedp.ByQuery))
+		actions = append(actions, chromedp.WaitReady(chromedp.CSS("body")))
 	case "load", "networkidle":
-		actions = append(actions, chromedp.WaitReady("body", chromedp.ByQuery))
+		actions = append(actions, chromedp.WaitReady(chromedp.CSS("body")))
 		// Navigate/Reload already wait for the load event by default.
 	default:
 		return nil, fmt.Errorf("cdp: unsupported waitUntil %q", waitUntil)
@@ -219,7 +229,7 @@ func (p *Page) Click(css string) error {
   el.click();
   return true;
 })()`, jsonQuote(css))
-	return chromedp.Run(p.ctx, chromedp.Evaluate(script, nil))
+	return chromedp.Do(p.ctx, chromedp.Evaluate[chromedp.Void](script))
 }
 
 // Fill focuses and sets text so Vue v-model / Element Plus pick up the value.
@@ -244,7 +254,7 @@ func (p *Page) Fill(css string, text string) error {
   el.dispatchEvent(new Event('change', { bubbles: true }));
   return true;
 })()`, jsonQuote(css), jsonQuote(text))
-	return chromedp.Run(p.ctx, chromedp.Evaluate(script, nil))
+	return chromedp.Do(p.ctx, chromedp.Evaluate[chromedp.Void](script))
 }
 
 // Evaluate runs js in the page and returns a JSON string of the result.
@@ -254,10 +264,8 @@ func (p *Page) Evaluate(js string) (string, error) {
 	}
 	// Await then stringify so Promise-returning expressions serialize the resolved value.
 	expr := fmt.Sprintf(`Promise.resolve((function(){ return (%s); })()).then(v => JSON.stringify(v === undefined ? null : v))`, js)
-	var out string
-	if err := chromedp.Run(p.ctx, chromedp.Evaluate(expr, &out, func(p *runtime.EvaluateParams) *runtime.EvaluateParams {
-		return p.WithAwaitPromise(true)
-	})); err != nil {
+	out, err := chromedp.Run(p.ctx, chromedp.Evaluate[string](expr, chromedp.EvalAwaitPromise))
+	if err != nil {
 		return "", err
 	}
 	return normalizeEvaluateOut(out), nil
@@ -282,8 +290,8 @@ func (p *Page) Screenshot(path string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	var buf []byte
-	if err := chromedp.Run(p.ctx, chromedp.FullScreenshot(&buf, 100)); err != nil {
+	buf, err := chromedp.Run(p.ctx, chromedp.FullScreenshot(100))
+	if err != nil {
 		return err
 	}
 	return os.WriteFile(path, buf, 0o644)
@@ -331,9 +339,9 @@ func (p *Page) QueryCount(css string) (int, error) {
 	if p == nil {
 		return 0, fmt.Errorf("cdp: nil page")
 	}
-	var n int
 	js := fmt.Sprintf(`document.querySelectorAll(%s).length`, jsonQuote(css))
-	if err := chromedp.Run(p.ctx, chromedp.Evaluate(js, &n)); err != nil {
+	n, err := chromedp.Run(p.ctx, chromedp.Evaluate[int](js))
+	if err != nil {
 		return 0, err
 	}
 	return n, nil
@@ -352,8 +360,8 @@ func (p *Page) IsVisible(css string) (bool, error) {
   const r = el.getBoundingClientRect();
   return r.width > 0 && r.height > 0;
 })()`, jsonQuote(css))
-	var ok bool
-	if err := chromedp.Run(p.ctx, chromedp.Evaluate(js, &ok)); err != nil {
+	ok, err := chromedp.Run(p.ctx, chromedp.Evaluate[bool](js))
+	if err != nil {
 		return false, err
 	}
 	return ok, nil
@@ -371,8 +379,8 @@ func (p *Page) IsEnabled(css string) (bool, error) {
   if (el.getAttribute && el.getAttribute('aria-disabled') === 'true') return false;
   return true;
 })()`, jsonQuote(css))
-	var ok bool
-	if err := chromedp.Run(p.ctx, chromedp.Evaluate(js, &ok)); err != nil {
+	ok, err := chromedp.Run(p.ctx, chromedp.Evaluate[bool](js))
+	if err != nil {
 		return false, err
 	}
 	return ok, nil
@@ -383,8 +391,8 @@ func (p *Page) URL() (string, error) {
 	if p == nil {
 		return "", fmt.Errorf("cdp: nil page")
 	}
-	var href string
-	if err := chromedp.Run(p.ctx, chromedp.Location(&href)); err != nil {
+	href, err := chromedp.Run(p.ctx, chromedp.Location())
+	if err != nil {
 		return "", err
 	}
 	return href, nil
@@ -395,7 +403,8 @@ func (p *Page) EnsureDOM() error {
 	if p == nil {
 		return fmt.Errorf("cdp: nil page")
 	}
-	return chromedp.Run(p.ctx, dom.Enable())
+	_, err := chromedp.Call(p.ctx, dom.Enable, dom.EnableParams{})
+	return err
 }
 
 func jsonQuote(s string) string {

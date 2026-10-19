@@ -141,7 +141,7 @@ func startOnce(ctx context.Context, execPath string, headless bool) (s *Session,
 	// on first browser boot. A watcher still closes the session when parent ctx ends.
 	allocCtx, allocCancel := chromedp.NewExecAllocator(context.Background(), allocOpts...)
 	browserCtx, cancel := chromedp.NewContext(allocCtx)
-	if err = chromedp.Run(browserCtx, chromedp.Navigate("about:blank")); err != nil {
+	if err = chromedp.Do(browserCtx, chromedp.Navigate("about:blank")); err != nil {
 		cancel()
 		allocCancel()
 		return nil, fmt.Errorf("cdp: start browser (%s): %w", execPath, err)

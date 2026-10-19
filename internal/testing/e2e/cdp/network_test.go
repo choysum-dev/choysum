@@ -26,7 +26,7 @@ func TestHeaderValue(t *testing.T) {
 	if got := headerValue(nil, "content-type"); got != "" {
 		t.Fatalf("nil headers: %q", got)
 	}
-	h := map[string]interface{}{
+	h := network.Headers{
 		"Content-Type": "application/json",
 		"X-Other":      42,
 	}
@@ -61,27 +61,25 @@ func TestCoalesceResponseMeta(t *testing.T) {
 }
 
 func TestNetworkEventNilGuards(t *testing.T) {
-	if !networkRequestNil(nil) || !networkRequestNil(&network.EventRequestWillBeSent{}) {
+	if !networkRequestNil(network.EventRequestWillBeSent{}) {
 		t.Fatal("expected nil request guard")
 	}
-	if !networkResponseNil(nil) || !networkResponseNil(&network.EventResponseReceived{}) {
+	if !networkResponseNil(network.EventResponseReceived{}) {
 		t.Fatal("expected nil response guard")
 	}
 
 	var mu sync.Mutex
 	pending := map[network.RequestID]pendingReq{}
 	matched := map[network.RequestID]pendingResp{}
-	// Nil events return without mutating maps (covers ingest early returns).
-	ingestRequestWillBeSent(nil, &mu, pending)
-	ingestRequestWillBeSent(&network.EventRequestWillBeSent{}, &mu, pending)
-	ingestResponseReceived(nil, &mu, pending, matched, "GET", func(string, string, string) bool { return true }, func(network.RequestID) {})
-	ingestResponseReceived(&network.EventResponseReceived{}, &mu, pending, matched, "GET", func(string, string, string) bool { return true }, func(network.RequestID) {})
+	// Zero-value events return without mutating maps (covers ingest early returns).
+	ingestRequestWillBeSent(network.EventRequestWillBeSent{}, &mu, pending)
+	ingestResponseReceived(network.EventResponseReceived{}, &mu, pending, matched, "GET", func(string, string, string) bool { return true }, func(network.RequestID) {})
 	if len(pending) != 0 || len(matched) != 0 {
 		t.Fatalf("nil ingest mutated maps: pending=%v matched=%v", pending, matched)
 	}
 
 	id := network.RequestID("req-1")
-	ingestRequestWillBeSent(&network.EventRequestWillBeSent{
+	ingestRequestWillBeSent(network.EventRequestWillBeSent{
 		RequestID: id,
 		Request: &network.Request{
 			Method:  "POST",

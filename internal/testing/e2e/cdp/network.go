@@ -45,16 +45,11 @@ type pendingResp struct {
 
 // fetchResponseBody loads a CDP response body; tests may override.
 var fetchResponseBody = func(ctx context.Context, reqID network.RequestID) ([]byte, error) {
-	var body []byte
-	err := chromedp.Run(ctx, chromedp.ActionFunc(func(ctx context.Context) error {
-		b, err := network.GetResponseBody(reqID).Do(ctx)
-		if err != nil {
-			return err
-		}
-		body = b
-		return nil
-	}))
-	return body, err
+	res, err := chromedp.Call(ctx, network.GetResponseBody, network.GetResponseBodyParams{RequestID: reqID})
+	if err != nil {
+		return nil, err
+	}
+	return res.Body, nil
 }
 
 // EnableNetwork turns on CDP Network domain for the page.
@@ -62,7 +57,8 @@ func EnableNetwork(p *Page) error {
 	if p == nil {
 		return fmt.Errorf("cdp: nil page")
 	}
-	return chromedp.Run(p.ctx, network.Enable())
+	_, err := chromedp.Call(p.ctx, network.Enable, network.EnableParams{})
+	return err
 }
 
 // WaitForResponse waits until a response matching m arrives (or timeout).
@@ -132,16 +128,30 @@ func (p *Page) WaitForResponseContext(ctx context.Context, m ResponseMatch, time
 		go finishMatchedResponse(listenerCtx, &mu, matchedResp, pending, finishing, resultCh, reqID, resp, bodyGone, fetchResponseBody)
 	}
 
-	chromedp.ListenTarget(listenerCtx, func(ev interface{}) {
-		switch e := ev.(type) {
-		case *network.EventRequestWillBeSent:
-			ingestRequestWillBeSent(e, &mu, pending)
-		case *network.EventResponseReceived:
-			ingestResponseReceived(e, &mu, pending, matchedResp, methodWant, matches, tryFinish)
-		case *network.EventLoadingFinished:
-			tryFinish(e.RequestID)
+	go func() {
+		for ev, err := range chromedp.Events(listenerCtx, network.RequestWillBeSent) {
+			if err != nil {
+				return
+			}
+			ingestRequestWillBeSent(ev, &mu, pending)
 		}
-	})
+	}()
+	go func() {
+		for ev, err := range chromedp.Events(listenerCtx, network.ResponseReceived) {
+			if err != nil {
+				return
+			}
+			ingestResponseReceived(ev, &mu, pending, matchedResp, methodWant, matches, tryFinish)
+		}
+	}()
+	go func() {
+		for ev, err := range chromedp.Events(listenerCtx, network.LoadingFinished) {
+			if err != nil {
+				return
+			}
+			tryFinish(ev.RequestID)
+		}
+	}()
 
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
@@ -157,7 +167,7 @@ func (p *Page) WaitForResponseContext(ctx context.Context, m ResponseMatch, time
 	}
 }
 
-func ingestRequestWillBeSent(e *network.EventRequestWillBeSent, mu *sync.Mutex, pending map[network.RequestID]pendingReq) {
+func ingestRequestWillBeSent(e network.EventRequestWillBeSent, mu *sync.Mutex, pending map[network.RequestID]pendingReq) {
 	if networkRequestNil(e) {
 		return
 	}
@@ -172,7 +182,7 @@ func ingestRequestWillBeSent(e *network.EventRequestWillBeSent, mu *sync.Mutex, 
 }
 
 func ingestResponseReceived(
-	e *network.EventResponseReceived,
+	e network.EventResponseReceived,
 	mu *sync.Mutex,
 	pending map[network.RequestID]pendingReq,
 	matchedResp map[network.RequestID]pendingResp,
@@ -308,15 +318,15 @@ func coalesceResponseMeta(respURL, respCT string, pending pendingReq, hadPending
 	return url, ct, method
 }
 
-func networkRequestNil(e *network.EventRequestWillBeSent) bool {
-	return e == nil || e.Request == nil
+func networkRequestNil(e network.EventRequestWillBeSent) bool {
+	return e.Request == nil
 }
 
-func networkResponseNil(e *network.EventResponseReceived) bool {
-	return e == nil || e.Response == nil
+func networkResponseNil(e network.EventResponseReceived) bool {
+	return e.Response == nil
 }
 
-func headerValue(headers map[string]interface{}, name string) string {
+func headerValue(headers network.Headers, name string) string {
 	if headers == nil {
 		return ""
 	}
