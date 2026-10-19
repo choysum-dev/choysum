@@ -298,10 +298,16 @@ SPDX-License-Identifier: Apache-2.0
                 :events="stackedBarEvents"
               />
               <template v-else-if="spec.kind === 'line'">
+                <!--
+                  Unovis Area always stacks when `y` is an array; Line does not.
+                  One Area per series keeps each fill under its own stroke.
+                -->
                 <VisArea
+                  v-for="(yAcc, areaIdx) in xyYAccessors"
+                  :key="`choy-chart-area-${areaIdx}`"
                   :x="xAccessor"
-                  :y="xyYAccessors"
-                  :color="xyColors"
+                  :y="yAcc"
+                  :color="xyColors[areaIdx]"
                   :curve-type="CurveType.MonotoneX"
                   :opacity="CHOY_CHART_LINE_AREA_OPACITY"
                 />
@@ -806,7 +812,7 @@ watch(
   },
 );
 watch(localStacked, (v) => {
-  emit('stacked-change', v);
+  if (v !== props.stacked) emit('stacked-change', v);
 });
 watch(
   () => props.cumulative,
@@ -815,7 +821,7 @@ watch(
   },
 );
 watch(localCumulative, (v) => {
-  emit('cumulative-change', v);
+  if (v !== props.cumulative) emit('cumulative-change', v);
 });
 watch(
   () => props.sort,
@@ -934,7 +940,7 @@ const prepared = computed(() => {
   const percent =
     localStacked.value &&
     props.stackMode === 'percent' &&
-    localChartType.value !== 'pie' &&
+    localChartType.value === 'bar' &&
     matrix.length > 1;
   if (!sortDisabled.value && localSort.value !== 'none') {
     const sorted = sortChartCategories(cats, matrix, localSort.value);
