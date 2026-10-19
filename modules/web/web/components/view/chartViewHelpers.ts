@@ -304,7 +304,8 @@ export function chartSpecToPieRows(
   }));
 }
 
-function rowCategoryIndex(
+/** Category index carried on an XY row (`index` from chartSpecToXyRows). */
+export function rowCategoryIndex(
   row: Record<string, string | number> | undefined,
 ): number | null {
   if (!row) return null;
@@ -385,15 +386,94 @@ export function resolveLineClickCategory(rel: number, count: number): number {
 }
 
 /**
- * Equal-width category columns along the plot (Odoo graph hover bands).
- * Prefer this for line hover tooltips; {@link resolveLineClickCategory} stays
- * nearest-vertex for click.
+ * Equal-width category columns along a padded bar domain (band centers).
+ * For flush line domains prefer {@link resolveLineClickCategory} (nearest vertex).
  */
 export function resolveLineHoverCategory(rel: number, count: number): number {
   if (count <= 1) return 0;
   if (!Number.isFinite(rel)) return 0;
   const clamped = Math.min(0.999999, Math.max(0, rel));
   return Math.min(count - 1, Math.floor(clamped * count));
+}
+
+/**
+ * Hover band for a flush line domain (`[0, n-1]`): Voronoi column around vertex `i`.
+ * Coordinates are relative to the plot host (same space as the band overlay).
+ */
+export function resolveLineFlushHoverBand(input: {
+  categoryIdx: number;
+  categoryCount: number;
+  plotLeft: number;
+  plotTop: number;
+  plotWidth: number;
+  plotHeight: number;
+  hostLeft: number;
+  hostTop: number;
+}): { left: number; top: number; width: number; height: number } {
+  const n = Math.max(1, Math.floor(Number(input.categoryCount) || 0));
+  const idx = Math.min(n - 1, Math.max(0, Math.floor(Number(input.categoryIdx) || 0)));
+  const plotW = Math.max(0, Number(input.plotWidth) || 0);
+  const plotH = Math.max(0, Number(input.plotHeight) || 0);
+  let leftFrac = 0;
+  let rightFrac = 1;
+  if (n > 1) {
+    const center = idx / (n - 1);
+    const prev = idx === 0 ? 0 : (idx - 1) / (n - 1);
+    const next = idx === n - 1 ? 1 : (idx + 1) / (n - 1);
+    leftFrac = idx === 0 ? 0 : (prev + center) / 2;
+    rightFrac = idx === n - 1 ? 1 : (center + next) / 2;
+  }
+  return {
+    left: Number(input.plotLeft) - Number(input.hostLeft) + leftFrac * plotW,
+    top: Number(input.plotTop) - Number(input.hostTop),
+    width: Math.max(1, (rightFrac - leftFrac) * plotW),
+    height: plotH,
+  };
+}
+
+/**
+ * Resolve line hover category + nearest series from plot-relative pointer fractions.
+ * Uses nearest-vertex X mapping for flush line domains.
+ */
+export function resolveLinePlotHoverTarget(input: {
+  relX: number;
+  relY: number;
+  categoryCount: number;
+  seriesValuesAtCategory: (categoryIdx: number) => number[];
+  yDomain: [number, number];
+}): { categoryIdx: number; seriesIdx: number } {
+  const nCat = Math.max(0, Math.floor(Number(input.categoryCount) || 0));
+  const categoryIdx = resolveLineClickCategory(input.relX, nCat);
+  const values = input.seriesValuesAtCategory(categoryIdx);
+  const seriesIdx =
+    values.length <= 1 ? 0 : resolveNearestLineSeriesByY(values, input.relY, input.yDomain);
+  return { categoryIdx, seriesIdx };
+}
+
+/**
+ * Prefer the Unovis line/scatter geometry for the plot box; fall back to the SVG.
+ */
+export function resolveXyPlotClientRect(svg: Element): {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  right: number;
+  bottom: number;
+} {
+  const plotEl =
+    svg.querySelector('.line')?.closest('g') ||
+    svg.querySelector('.point')?.closest('g') ||
+    svg;
+  const rect = plotEl.getBoundingClientRect();
+  return {
+    left: rect.left,
+    top: rect.top,
+    width: rect.width,
+    height: rect.height,
+    right: rect.right,
+    bottom: rect.bottom,
+  };
 }
 
 /**
@@ -546,14 +626,71 @@ export type ChartTooltipHtmlInput = {
 };
 
 /**
- * Escapes text for insertion into Unovis tooltip HTML.
+ * Escapes text for insertion into Unovis / floating tooltip HTML
+ * (including single quotes used in attribute-like payloads).
  */
-function escapeChartTooltipText(raw: string): string {
+export function escapeChartTooltipText(raw: string): string {
   return String(raw ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/** Minimal XY chart tip input (category title + one or more series rows). */
+export type ChartXyTooltipSpec = {
+  categories: string[];
+  series: Array<{ key: string; name: string; values: number[] }>;
+  config: Record<string, { color?: string } | undefined>;
+  metricLabel?: string;
+  percent?: boolean;
+  palette?: string[];
+};
+
+/**
+ * Odoo-like XY tip HTML: title is the category; multi-series lists every series
+ * at that category. Returns null when the category/series set is empty.
+ */
+export function buildChartXyTooltipHtml(
+  current: ChartXyTooltipSpec,
+  categoryIdx: number | null,
+): string | null {
+  if (categoryIdx == null) return null;
+  const category = current.categories[categoryIdx];
+  if (category == null) return null;
+  const seriesList = current.series;
+  if (!seriesList.length) return null;
+  const palette = current.palette?.length ? current.palette : [CHOY_CHART_FALLBACK_COLOR];
+  const multi = seriesList.length > 1;
+  if (!multi) {
+    const series = seriesList[0]!;
+    const color = current.config[series.key]?.color || palette[0] || CHOY_CHART_FALLBACK_COLOR;
+    const value = Number(series.values[categoryIdx]) || 0;
+    return formatChartTooltipHtml({
+      title: category,
+      rows: [
+        {
+          color,
+          label: current.metricLabel || series.name,
+          valueText: formatChartTooltipValue(value, { percent: !!current.percent }),
+        },
+      ],
+    });
+  }
+  const rows = seriesList.map((series, idx) => {
+    const color =
+      current.config[series.key]?.color ||
+      palette[idx % palette.length] ||
+      CHOY_CHART_FALLBACK_COLOR;
+    const value = Number(series.values[categoryIdx]) || 0;
+    return {
+      color,
+      label: series.name,
+      valueText: formatChartTooltipValue(value, { percent: !!current.percent }),
+    };
+  });
+  return formatChartTooltipHtml({ title: category, rows });
 }
 
 /**

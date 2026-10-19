@@ -3,7 +3,6 @@
 
 import type { GroupRow } from '@/web/web/query/types';
 import type { ChoyChartSeries } from './chart/chartTypeAdapter';
-import { parseChartCategoryTime } from './chartViewHelpers';
 
 type ChartGroupLike =
   | GroupRow
@@ -42,38 +41,11 @@ function childGroups(row: ChartGroupLike): ChartGroupLike[] {
   return kids.filter((c) => isGroupRow(c));
 }
 
-/** Prefer raw group key (ISO bucket), then display label, for temporal ordering. */
-function groupTimeSortValue(row: ChartGroupLike): number | undefined {
-  const key = String((row as GroupRow).key ?? '');
-  const fromKey = parseChartCategoryTime(key);
-  if (fromKey != null) return fromKey;
-  return parseChartCategoryTime(groupLabel(row));
-}
-
-/**
- * When most category groups carry a parseable time key/label, sort ascending
- * so the X axis follows the timeline even if the snapshot order is shuffled.
- */
-function orderParentsForChart(parents: ChartGroupLike[]): ChartGroupLike[] {
-  if (parents.length <= 1) return parents.slice();
-  const timed = parents.map((p, idx) => ({ idx, t: groupTimeSortValue(p) }));
-  const parsed = timed.filter((x) => x.t != null).length;
-  if (parsed * 2 < parents.length) return parents.slice();
-  return timed
-    .slice()
-    .sort((a, b) => {
-      if (a.t != null && b.t != null) return a.t - b.t || a.idx - b.idx;
-      if (a.t != null) return -1;
-      if (b.t != null) return 1;
-      return a.idx - b.idx;
-    })
-    .map((x) => parents[x.idx]!);
-}
-
 /**
  * Map group rows from a chart controller snapshot into chart categories and
  * series. With nested children on category groups, each child label becomes a
  * series (Odoo-style second groupby). Otherwise a single metric series is used.
+ * Parent order follows the snapshot; temporal X-axis sorting lives in ChoyChartView.
  */
 export function groupRowsToChartSeries(
   rows: ReadonlyArray<ChartGroupLike>,
@@ -82,10 +54,8 @@ export function groupRowsToChartSeries(
   const depth = opts.groupDepth ?? 0;
   const alias = String(opts.metricAlias || 'count').trim() || 'count';
   const label = opts.metricLabel || alias;
-  const parents = orderParentsForChart(
-    rows.filter(
-      (r) => isGroupRow(r) && Number((r as GroupRow).depth ?? 0) === depth,
-    ),
+  const parents = rows.filter(
+    (r) => isGroupRow(r) && Number((r as GroupRow).depth ?? 0) === depth,
   );
 
   const nested = parents.some((p) => childGroups(p).length > 0);

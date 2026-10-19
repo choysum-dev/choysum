@@ -58,7 +58,12 @@ import {
 } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { resolveListRowRecordId } from './list_row_nav';
-import { resolveTokenViewKind, tokenViewPath, type TokenViewKind } from './token_view_nav';
+import {
+  ensureTokenViewGroups,
+  resolveTokenViewKind,
+  tokenViewPath,
+  type TokenViewKind,
+} from './token_view_nav';
 
 defineOptions({ name: 'TokenListView', inheritAttrs: false });
 const { _t, _lt } = createTranslate('auth', { scope: 'web/views/TokenListView' });
@@ -77,6 +82,8 @@ const props = withDefaults(
 );
 
 const store = resolvePageStore(props.store, 'TokenListView');
+// Clear Chart/Kanban groups on the shared store so List stays ungrouped.
+ensureTokenViewGroups(store, 'list');
 const { showHeader } = props;
 const tokenActions = defineModelActions('auth.Token', { entityTitle: _lt('Token') });
 const { hasAction } = usePermission();

@@ -14,12 +14,18 @@ import {
   chartCategoryAxisIsTemporal,
   chartSpecToPieRows,
   chartSpecToXyRows,
+  buildChartXyTooltipHtml,
+  escapeChartTooltipText,
   formatChartCompactNumber,
   formatChartTooltipHtml,
   formatChartTooltipPiePercent,
   formatChartTooltipValue,
   resolveChartBarLayout,
   resolveChartFloatingTooltipPosition,
+  resolveChartTooltipViewportSize,
+  resolveLineFlushHoverBand,
+  resolveLinePlotHoverTarget,
+  resolveXyPlotClientRect,
   normalizeSeriesToPercent,
   parseChartCategoryTime,
   resolveChartPlotHeight,
@@ -419,6 +425,157 @@ test('resolveLineHoverCategory uses equal-width category bands', () => {
   expect(resolveLineHoverCategory(0.5, 3)).toBe(1);
   expect(resolveLineHoverCategory(0.9, 3)).toBe(2);
   expect(resolveLineHoverCategory(1, 3)).toBe(2);
+  expect(resolveLineHoverCategory(0.5, 1)).toBe(0);
+  expect(resolveLineHoverCategory(Number.NaN, 3)).toBe(0);
+});
+
+test('resolveLineFlushHoverBand centers Voronoi columns on flush vertices', () => {
+  const mid = resolveLineFlushHoverBand({
+    categoryIdx: 1,
+    categoryCount: 3,
+    plotLeft: 100,
+    plotTop: 50,
+    plotWidth: 200,
+    plotHeight: 100,
+    hostLeft: 100,
+    hostTop: 50,
+  });
+  expect(mid.top).toBe(0);
+  expect(mid.height).toBe(100);
+  expect(mid.left).toBeGreaterThan(0);
+  expect(mid.left + mid.width).toBeLessThan(200);
+  const single = resolveLineFlushHoverBand({
+    categoryIdx: 0,
+    categoryCount: 1,
+    plotLeft: 10,
+    plotTop: 20,
+    plotWidth: 100,
+    plotHeight: 80,
+    hostLeft: 0,
+    hostTop: 0,
+  });
+  expect(single.left).toBe(10);
+  expect(single.width).toBe(100);
+});
+
+test('resolveLinePlotHoverTarget uses nearest vertex and series', () => {
+  const hit = resolveLinePlotHoverTarget({
+    relX: 1,
+    relY: 0.1,
+    categoryCount: 2,
+    seriesValuesAtCategory: (idx) => (idx === 0 ? [10, 200] : [5, 220]),
+    yDomain: [0, 250],
+  });
+  expect(hit.categoryIdx).toBe(1);
+  expect(hit.seriesIdx).toBe(1);
+  expect(
+    resolveLinePlotHoverTarget({
+      relX: 0,
+      relY: 0.5,
+      categoryCount: 1,
+      seriesValuesAtCategory: () => [42],
+      yDomain: [0, 100],
+    }),
+  ).toEqual({ categoryIdx: 0, seriesIdx: 0 });
+});
+
+test('resolveXyPlotClientRect prefers line group then falls back to svg', () => {
+  const svg = {
+    querySelector(sel: string) {
+      if (sel === '.line') {
+        return {
+          closest() {
+            return {
+              getBoundingClientRect: () => ({
+                left: 10,
+                top: 20,
+                width: 300,
+                height: 150,
+                right: 310,
+                bottom: 170,
+              }),
+            };
+          },
+        };
+      }
+      return null;
+    },
+    getBoundingClientRect: () => ({
+      left: 0,
+      top: 0,
+      width: 400,
+      height: 200,
+      right: 400,
+      bottom: 200,
+    }),
+  };
+  expect(resolveXyPlotClientRect(svg as unknown as Element).width).toBe(300);
+  const bare = {
+    querySelector: () => null,
+    getBoundingClientRect: () => ({
+      left: 1,
+      top: 2,
+      width: 3,
+      height: 4,
+      right: 4,
+      bottom: 6,
+    }),
+  };
+  expect(resolveXyPlotClientRect(bare as unknown as Element)).toEqual({
+    left: 1,
+    top: 2,
+    width: 3,
+    height: 4,
+    right: 4,
+    bottom: 6,
+  });
+});
+
+test('buildChartXyTooltipHtml uses category title and all series rows', () => {
+  const multi = buildChartXyTooltipHtml(
+    {
+      categories: ['access', 'refresh'],
+      series: [
+        { key: 'a', name: 'Open', values: [1, 2] },
+        { key: 'b', name: 'Done', values: [3, 4] },
+      ],
+      config: { a: { color: '#0f0' }, b: { color: '#00f' } },
+      metricLabel: 'Count',
+    },
+    0,
+  );
+  expect(multi).toContain('access');
+  expect(multi).toContain('Open');
+  expect(multi).toContain('Done');
+  expect(multi).not.toContain('>Count<');
+  const single = buildChartXyTooltipHtml(
+    {
+      categories: ['only'],
+      series: [{ key: 'a', name: 'Series', values: [9] }],
+      config: {},
+      metricLabel: 'Count',
+    },
+    0,
+  );
+  expect(single).toContain('only');
+  expect(single).toContain('Count');
+  expect(buildChartXyTooltipHtml({ categories: [], series: [], config: {} }, 0)).toBeNull();
+  expect(
+    buildChartXyTooltipHtml(
+      { categories: ['x'], series: [], config: {} },
+      0,
+    ),
+  ).toBeNull();
+});
+
+test('escapeChartTooltipText escapes quotes and brackets', () => {
+  expect(escapeChartTooltipText(`a<"'>`)).toBe('a&lt;&quot;&#39;&gt;');
+});
+
+test('resolveChartTooltipViewportSize falls back when inner size missing', () => {
+  const size = resolveChartTooltipViewportSize();
+  expect(size.width).toBeGreaterThan(0);
+  expect(size.height).toBeGreaterThan(0);
 });
 
 test('resolveNearestLineSeriesByY picks closest series to pointer data-Y', () => {
@@ -570,10 +727,54 @@ test('formatChartTooltipPiePercent is share of positive total', () => {
 });
 
 test('resolveChartBarLayout widens few-category bars', () => {
-  const two = resolveChartBarLayout(2);
-  const many = resolveChartBarLayout(12);
-  expect(two.barMaxWidth).toBeGreaterThanOrEqual(many.barMaxWidth);
-  expect(two.barPadding).toBeLessThan(many.barPadding);
+  expect(resolveChartBarLayout(2).barMaxWidth).toBe(360);
+  expect(resolveChartBarLayout(4).barMaxWidth).toBe(300);
+  expect(resolveChartBarLayout(8).barPadding).toBe(0.16);
+  expect(resolveChartBarLayout(12).barPadding).toBe(0.18);
+  expect(resolveChartBarLayout(0).barMaxWidth).toBe(360);
+});
+
+test('chartCategoryAxisIsTemporal reads object granularity and field:gran', () => {
+  expect(chartCategoryAxisIsTemporal([{ field: 'CreatedAt', granularity: 'month' }])).toBe(true);
+  expect(chartCategoryAxisIsTemporal([{ field: 'CreatedAt:week' }])).toBe(true);
+  expect(chartCategoryAxisIsTemporal([{ field: 'Name' }])).toBe(false);
+});
+
+test('sortChartCategoriesByTime covers empty and mixed parseable labels', () => {
+  expect(sortChartCategoriesByTime([], []).categories).toEqual([]);
+  const mixed = sortChartCategoriesByTime(
+    ['plain', '2024-01', '2024-06'],
+    [{ name: 'Count', data: [1, 2, 3] }],
+  );
+  expect(mixed.categories[0]).toBe('2024-01');
+  expect(mixed.categories.includes('plain')).toBe(true);
+  // Both unparseable → stable index order (a - b).
+  expect(
+    sortChartCategoriesByTime(['foo', 'bar'], [{ name: 'Count', data: [1, 2] }]).categories,
+  ).toEqual(['foo', 'bar']);
+});
+
+test('formatChartCompactNumber formats non-integers below 1k', () => {
+  expect(formatChartCompactNumber(12.5)).toBe('12.50');
+});
+
+test('formatChartTooltipValue catch and non-compact fallback paths', () => {
+  expect(formatChartTooltipValue(3, { percent: true, locale: 'en-US' })).toMatch(/%$/);
+  const plain = formatChartTooltipValue(42, { compact: false, locale: 'en-US' });
+  expect(plain === '42' || plain === '42.0').toBe(true);
+});
+
+test('resolveChartTooltipViewportSize uses fallback when sizes are invalid', () => {
+  const prevW = (globalThis as { innerWidth?: number }).innerWidth;
+  const prevH = (globalThis as { innerHeight?: number }).innerHeight;
+  try {
+    (globalThis as { innerWidth?: number }).innerWidth = 0;
+    (globalThis as { innerHeight?: number }).innerHeight = 0;
+    expect(resolveChartTooltipViewportSize()).toEqual({ width: 1024, height: 768 });
+  } finally {
+    (globalThis as { innerWidth?: number }).innerWidth = prevW;
+    (globalThis as { innerHeight?: number }).innerHeight = prevH;
+  }
 });
 
 test('resolveChartFloatingTooltipPosition flips when near the right/top edges', () => {
@@ -621,7 +822,7 @@ test('formatChartTooltipHtml renders title, swatch, label, value and escapes tex
     rows: [
       {
         color: '#ff0000',
-        label: 'Series & "A"',
+        label: `Series & "A"'`,
         valueText: '12 (50.00%)',
       },
     ],
@@ -629,6 +830,232 @@ test('formatChartTooltipHtml renders title, swatch, label, value and escapes tex
   expect(html).toContain('choy-chart-tooltip__title');
   expect(html).toContain('Count &lt;x&gt;');
   expect(html).toContain('background-color:#ff0000');
-  expect(html).toContain('Series &amp; &quot;A&quot;');
+  expect(html).toContain('Series &amp; &quot;A&quot;&#39;');
   expect(html).toContain('12 (50.00%)');
+});
+
+test('normalizeSeriesToPercent handles empty series, zeros, and remainder', () => {
+  expect(normalizeSeriesToPercent(['A'], [])).toEqual([]);
+  expect(
+    normalizeSeriesToPercent(
+      ['A', 'B'],
+      [
+        { name: 'X', data: [0, 0] },
+        { name: 'Y', data: [0, 0] },
+      ],
+    ),
+  ).toEqual([
+    { name: 'X', data: [0, 0] },
+    { name: 'Y', data: [0, 0] },
+  ]);
+  const pct = normalizeSeriesToPercent(
+    ['A'],
+    [
+      { name: 'X', data: [1] },
+      { name: 'Y', data: [2] },
+      { name: 'Z', data: [-5] },
+    ],
+  );
+  const sum = pct.reduce((s, row) => s + row.data[0]!, 0);
+  expect(Math.abs(sum - 100) < 0.01).toBe(true);
+});
+
+test('sortChartCategories none and empty preserve order', () => {
+  expect(sortChartCategories([], [], 'asc')).toEqual({
+    categories: [],
+    seriesMatrix: [],
+    order: [],
+  });
+  const none = sortChartCategories(
+    ['A', 'B'],
+    [{ name: 'X', data: [1, 2] }],
+    'none',
+  );
+  expect(none.order).toEqual([0, 1]);
+  expect(none.categories).toEqual(['A', 'B']);
+});
+
+test('chartCategoryAxisIsTemporal covers non-array and empty first', () => {
+  expect(chartCategoryAxisIsTemporal(null)).toBe(false);
+  expect(chartCategoryAxisIsTemporal('CreatedAt:day')).toBe(true);
+  expect(chartCategoryAxisIsTemporal([''])).toBe(false);
+  expect(chartCategoryAxisIsTemporal([{ granularity: 'hour' }])).toBe(false);
+  expect(chartCategoryAxisIsTemporal([{ field: 'CreatedAt:day' }])).toBe(true);
+});
+
+test('parseChartCategoryTime covers pipe head, bad month/week/day, ISO', () => {
+  expect(parseChartCategoryTime('')).toBeUndefined();
+  expect(parseChartCategoryTime('2024-01|extra')).toBe(Date.UTC(2024, 0, 1));
+  expect(parseChartCategoryTime('2024-13')).toBeUndefined();
+  expect(parseChartCategoryTime('2024-W00')).toBeUndefined();
+  expect(parseChartCategoryTime('2024-02-30')).toBe(Date.UTC(2024, 1, 30));
+  expect(typeof parseChartCategoryTime('2024-01-15T00:00:00Z')).toBe('number');
+});
+
+test('resolveGroupedXyClickTarget derives category from flat index', () => {
+  expect(resolveGroupedXyClickTarget(undefined, 3, 2)).toEqual({
+    categoryIdx: 1,
+    seriesIdx: 1,
+  });
+  expect(resolveGroupedXyClickTarget({ index: '2' }, 5, 2)).toEqual({
+    categoryIdx: 2,
+    seriesIdx: 1,
+  });
+  expect(resolveGroupedXyClickTarget({ index: 1 }, 0, 2)).toEqual({
+    categoryIdx: 1,
+    seriesIdx: undefined,
+  });
+  expect(resolveGroupedXyClickTarget({ index: 0 }, 0, 1)).toEqual({
+    categoryIdx: 0,
+    seriesIdx: 0,
+  });
+});
+
+test('resolveXyPlotClientRect prefers .point group when .line missing', () => {
+  const svg = {
+    querySelector(sel: string) {
+      if (sel === '.line') return null;
+      if (sel === '.point') {
+        return {
+          closest() {
+            return {
+              getBoundingClientRect: () => ({
+                left: 5,
+                top: 6,
+                width: 50,
+                height: 60,
+                right: 55,
+                bottom: 66,
+              }),
+            };
+          },
+        };
+      }
+      return null;
+    },
+    getBoundingClientRect: () => ({
+      left: 0,
+      top: 0,
+      width: 1,
+      height: 1,
+      right: 1,
+      bottom: 1,
+    }),
+  };
+  expect(resolveXyPlotClientRect(svg as unknown as Element)).toEqual({
+    left: 5,
+    top: 6,
+    width: 50,
+    height: 60,
+    right: 55,
+    bottom: 66,
+  });
+});
+
+test('chartSpecToPieRows and chartSpecToXyRows map spec shapes', () => {
+  const bar = barAdapter.build({
+    categories: ['A'],
+    seriesMatrix: [{ name: 'X', data: [3] }],
+    metricLabel: 'Count',
+    stacked: false,
+  });
+  expect(chartSpecToXyRows(bar)[0]).toMatchObject({ category: 'A', index: 0 });
+  const pie = pieAdapter.build({
+    categories: ['A', 'B'],
+    seriesMatrix: [{ name: 'X', data: [1, 2] }],
+    metricLabel: 'Count',
+    stacked: false,
+  });
+  expect(chartSpecToPieRows(pie).length).toBeGreaterThan(0);
+  expect(chartSpecToPieRows({ ...pie, slices: undefined } as any)).toEqual([]);
+});
+
+
+test('parseChartCategoryTime week branch returns monday epoch', () => {
+  const t = parseChartCategoryTime('2025-W01');
+  expect(typeof t).toBe('number');
+  expect(Number.isFinite(t!)).toBe(true);
+  expect(parseChartCategoryTime('2025-W53')).toBeTruthy();
+});
+
+test('resolveLineHoverCategory and row index null paths', () => {
+  expect(resolveLineHoverCategory(0.1, 1)).toBe(0);
+  expect(resolveLineHoverCategory(Number.NaN, 4)).toBe(0);
+  expect(resolveLineHoverCategory(0.5, 4)).toBe(2);
+  expect(resolveGroupedXyClickTarget({ index: 'x' }, undefined, 2)).toEqual({
+    categoryIdx: null,
+    seriesIdx: undefined,
+  });
+  expect(resolveGroupedXyClickTarget({ index: '  ' }, 1, 2).categoryIdx).not.toBeNull();
+});
+
+test('resolveChartBarLayout tiers for 3/5/9 categories', () => {
+  expect(resolveChartBarLayout(3).barMaxWidth).toBe(300);
+  expect(resolveChartBarLayout(5).barPadding).toBe(0.16);
+  expect(resolveChartBarLayout(9).barPadding).toBe(0.18);
+});
+
+test('buildChartXyTooltipHtml single-series uses metric label', () => {
+  const html = buildChartXyTooltipHtml(
+    {
+      categories: ['Cat'],
+      series: [{ key: 'a', name: 'Series', values: [12.5] }],
+      config: { a: { color: '#abc' } },
+      metricLabel: 'Amount',
+      percent: true,
+      palette: ['#111'],
+    },
+    0,
+  );
+  expect(html).toContain('Amount');
+  expect(html).toContain('%');
+});
+
+test('formatChartTooltipValue catch paths when Intl throws', () => {
+  const IntlRef = (globalThis as any).Intl;
+  try {
+    (globalThis as any).Intl = {
+      NumberFormat: function () {
+        throw new Error('boom');
+      },
+    };
+    expect(formatChartTooltipValue(3, { percent: true })).toBe('3%');
+    expect(formatChartTooltipValue(3, { compact: false })).toBe('3');
+  } finally {
+    (globalThis as any).Intl = IntlRef;
+  }
+});
+
+test('formatChartTooltipPiePercent edge totals', () => {
+  expect(formatChartTooltipPiePercent(Number.NaN, 10)).toBe('0.00%');
+  expect(formatChartTooltipPiePercent(5, Number.NaN)).toBe('0.00%');
+  expect(formatChartTooltipPiePercent(5, -1)).toBe('0.00%');
+});
+
+test('resolveChartFloatingTooltipPosition flips left when overflowing right', () => {
+  const pos = resolveChartFloatingTooltipPosition({
+    cursorX: 90,
+    cursorY: 10,
+    hostWidth: 100,
+    hostHeight: 100,
+    tipWidth: 40,
+    tipHeight: 20,
+    gap: 4,
+  });
+  expect(pos.x < 90).toBe(true);
+  expect(pos.y >= 4).toBe(true);
+});
+
+test('resolveChartTooltipViewportSize when globalThis missing sizes', () => {
+  const g = globalThis as { innerWidth?: number; innerHeight?: number };
+  const pw = g.innerWidth;
+  const ph = g.innerHeight;
+  try {
+    delete g.innerWidth;
+    delete g.innerHeight;
+    expect(resolveChartTooltipViewportSize()).toEqual({ width: 1024, height: 768 });
+  } finally {
+    g.innerWidth = pw;
+    g.innerHeight = ph;
+  }
 });

@@ -134,11 +134,13 @@ SPDX-License-Identifier: Apache-2.0
             :cumulative="localCumulative"
             :toggle="toggleCumulative"
           >
-            <div class="flex h-control items-center gap-2 text-sm leading-none text-foreground">
+            <div
+              class="flex h-control items-center gap-2 text-sm leading-none text-foreground"
+              data-testid="choy-chart-cumulative"
+            >
               <span>{{ _t('Cumulative') }}</span>
               <Switch
                 v-model="localCumulative"
-                data-testid="choy-chart-cumulative"
                 :aria-label="_t('Cumulative')"
               />
             </div>
@@ -152,11 +154,13 @@ SPDX-License-Identifier: Apache-2.0
             :disabled="stackedDisabled"
             :toggle="toggleStacked"
           >
-            <div class="flex h-control items-center gap-2 text-sm leading-none text-foreground">
+            <div
+              class="flex h-control items-center gap-2 text-sm leading-none text-foreground"
+              data-testid="choy-chart-stack"
+            >
               <span>{{ _t('Stack') }}</span>
               <Switch
                 v-model="localStacked"
-                data-testid="choy-chart-stack"
                 :aria-label="_t('Stack')"
               />
             </div>
@@ -353,6 +357,7 @@ SPDX-License-Identifier: Apache-2.0
             <!-- Odoo-like category column cue while line hover is active. -->
             <div
               v-if="spec.kind === 'line' && lineHoverBand"
+              data-testid="choy-chart-line-band"
               class="pointer-events-none absolute z-[1] bg-foreground/[0.04]"
               :style="{
                 left: `${lineHoverBand.left}px`,
@@ -523,6 +528,7 @@ import {
   chartCategoryAxisIsTemporal,
   chartSpecToPieRows,
   chartSpecToXyRows,
+  buildChartXyTooltipHtml,
   formatChartCompactNumber,
   formatChartTooltipHtml,
   formatChartTooltipPiePercent,
@@ -537,9 +543,11 @@ import {
   resolveGroupedXyClickTarget,
   resolveClickClientX,
   resolveLineClickCategory,
-  resolveLineHoverCategory,
-  resolveNearestLineSeriesByY,
+  resolveLineFlushHoverBand,
+  resolveLinePlotHoverTarget,
+  resolveXyPlotClientRect,
   resolveStackedXyClickTarget,
+  rowCategoryIndex,
   sortChartCategories,
   sortChartCategoriesByTime,
   type ChoyChartItemClickPayload,
@@ -715,6 +723,7 @@ function initMetricOptions(): void {
 }
 
 function rebuildFromSnapshot(): void {
+  clearLinePlotHover();
   const snap = controller.vm.result;
   const rows = snap?.kind === 'group' ? ((snap.rows as any[]) || []) : [];
   const metricLabel =
@@ -824,9 +833,7 @@ watch(
     }
     if (next !== localChartType.value) {
       localChartType.value = next;
-      if (next !== v) {
-        emit('chart-type-change', next);
-      }
+      emit('chart-type-change', next);
     }
   },
 );
@@ -1156,15 +1163,19 @@ function onLineClick(
   if (!rows.length) return;
   const ev = event as MouseEvent & TouchEvent;
   const target = (ev.currentTarget ?? ev.target) as Element | null;
+  // Minimal FE DOM may lack SVGSVGElement; treat tagName=svg as the plot root.
   const svg =
-    target instanceof SVGSVGElement
-      ? target
-      : target instanceof Element
-        ? target.closest('svg')
-        : null;
+    target instanceof Element
+      ? target.tagName?.toLowerCase() === 'svg'
+        ? target
+        : target.closest('svg')
+      : null;
   const clientX = resolveClickClientX(ev);
   if (!svg || clientX == null) return;
-  const rect = (target instanceof Element ? target : svg).getBoundingClientRect();
+  const rect =
+    target instanceof Element
+      ? target.getBoundingClientRect()
+      : (svg as Element).getBoundingClientRect();
   if (rect.width <= 0) return;
   const rel = (clientX - rect.left) / rect.width;
   const categoryIdx = resolveLineClickCategory(rel, rows.length);
@@ -1191,7 +1202,7 @@ function onPieSegmentClick(d: {
   const clickedName = d?.data?.name ?? d?.name;
   let idx =
     clickedKey != null ? slices.findIndex((sl) => sl.key === clickedKey) : -1;
-  if (idx < 0 && clickedKey == null && clickedName != null) {
+  if (idx < 0 && clickedName != null) {
     idx = slices.findIndex((sl) => sl.name === clickedName);
   }
   if (idx < 0) {
@@ -1228,14 +1239,18 @@ const CHOY_CHART_HOVER_MARK_CLASS = 'choy-chart-mark--hover';
 
 let hoverMarkEl: Element | null = null;
 
+function isStyledDomEl(el: Element): el is Element & { style: CSSStyleDeclaration } {
+  return typeof (el as { style?: unknown }).style === 'object' && (el as { style?: unknown }).style != null;
+}
+
 function clearHoverMarkStyle(el: Element): void {
   el.classList.remove(CHOY_CHART_HOVER_MARK_CLASS);
-  if (el instanceof SVGElement || el instanceof HTMLElement) {
+  if (isStyledDomEl(el)) {
     el.style.removeProperty('filter');
   }
   const paints = [el, ...Array.from(el.querySelectorAll('path, circle, rect'))];
   for (const paint of paints) {
-    if (!(paint instanceof SVGElement) && !(paint instanceof HTMLElement)) continue;
+    if (!isStyledDomEl(paint)) continue;
     paint.style.removeProperty('stroke');
     paint.style.removeProperty('stroke-width');
     paint.style.removeProperty('paint-order');
@@ -1245,7 +1260,12 @@ function clearHoverMarkStyle(el: Element): void {
 
 function resolveScatterGroup(el: Element): Element {
   if (el.tagName.toLowerCase() === 'g' && el.hasAttribute('transform')) return el;
-  return el.closest('g[transform]') ?? el;
+  // Minimal FE DOM may not support attribute selectors on closest().
+  try {
+    return el.closest('g[transform]') ?? el;
+  } catch {
+    return el;
+  }
 }
 
 function applyScatterHoverMark(el: Element): void {
@@ -1253,7 +1273,7 @@ function applyScatterHoverMark(el: Element): void {
   g.classList.add(CHOY_CHART_HOVER_MARK_CLASS);
   // Emphasize the glyph inside the translated group — keep Unovis transform intact.
   const paint = g.querySelector('path, circle, rect') ?? g;
-  if (paint instanceof SVGElement || paint instanceof HTMLElement) {
+  if (isStyledDomEl(paint)) {
     paint.style.setProperty('stroke', 'var(--choy-color-background)', 'important');
     paint.style.setProperty('stroke-width', '4px', 'important');
     paint.style.setProperty('paint-order', 'stroke fill', 'important');
@@ -1280,7 +1300,7 @@ function applyHoverMarkEl(
     return;
   }
   target.classList.add(CHOY_CHART_HOVER_MARK_CLASS);
-  if (target instanceof SVGElement || target instanceof HTMLElement) {
+  if (isStyledDomEl(target)) {
     target.style.setProperty('filter', 'brightness(1.22) saturate(1.12)', 'important');
   }
   hoverMarkEl = target;
@@ -1327,7 +1347,7 @@ function scatterPointMatches(
   const pi =
     typeof point?.pointIndex === 'number' && Number.isFinite(point.pointIndex)
       ? Math.round(point.pointIndex)
-      : rowCategoryIndexHint(row);
+      : rowCategoryIndex(row);
   const gi =
     typeof point?.groupIndex === 'number' && Number.isFinite(point.groupIndex)
       ? Math.round(point.groupIndex)
@@ -1360,8 +1380,13 @@ function findScatterPointEl(
     }
   }
   // Also scan translated groups — selector class may be hashed / nested.
+  // Minimal FE DOM may not support attribute selectors; ignore and fall through.
   if (!nodes.length) {
-    nodes = Array.from(root.querySelectorAll('g[transform]'));
+    try {
+      nodes = Array.from(root.querySelectorAll('g[transform]'));
+    } catch {
+      nodes = [];
+    }
   }
   for (const node of nodes) {
     if (scatterPointMatches(readDomDatum(node), categoryIdx, seriesIdx)) {
@@ -1486,44 +1511,45 @@ function updateLinePlotHover(event: MouseEvent): void {
     clearLinePlotHover();
     return;
   }
-  const svgRect = svg.getBoundingClientRect();
+  const plotRect = resolveXyPlotClientRect(svg);
   const hostRect = host.getBoundingClientRect();
-  if (svgRect.width <= 0 || svgRect.height <= 0) {
+  if (plotRect.width <= 0 || plotRect.height <= 0) {
     clearLinePlotHover();
     return;
   }
   if (
-    event.clientX < svgRect.left ||
-    event.clientX > svgRect.right ||
-    event.clientY < svgRect.top ||
-    event.clientY > svgRect.bottom
+    event.clientX < plotRect.left ||
+    event.clientX > plotRect.right ||
+    event.clientY < plotRect.top ||
+    event.clientY > plotRect.bottom
   ) {
     clearLinePlotHover();
     return;
   }
   const nCat = current.categories.length;
-  const relX = (event.clientX - svgRect.left) / svgRect.width;
-  const relY = (event.clientY - svgRect.top) / svgRect.height;
-  const categoryIdx = resolveLineHoverCategory(relX, nCat);
-  const values = current.series.map((series) => Number(series.values[categoryIdx]) || 0);
-  const seriesIdx =
-    current.series.length <= 1
-      ? 0
-      : resolveNearestLineSeriesByY(values, relY, linePlotYDomain());
+  const relX = (event.clientX - plotRect.left) / plotRect.width;
+  const relY = (event.clientY - plotRect.top) / plotRect.height;
+  const { categoryIdx, seriesIdx } = resolveLinePlotHoverTarget({
+    relX,
+    relY,
+    categoryCount: nCat,
+    seriesValuesAtCategory: (idx) =>
+      current.series.map((series) => Number(series.values[idx]) || 0),
+    yDomain: linePlotYDomain(),
+  });
   const html = buildXyTooltipHtml(categoryIdx, seriesIdx);
-  if (!html) {
-    clearLinePlotHover();
-    return;
-  }
   highlightScatterPointForTooltip(categoryIdx, seriesIdx, svg);
-  const bandWidth = svgRect.width / Math.max(1, nCat);
-  lineHoverBand.value = {
-    left: svgRect.left - hostRect.left + categoryIdx * bandWidth,
-    top: svgRect.top - hostRect.top,
-    width: bandWidth,
-    height: svgRect.height,
-  };
-  placeLineHoverTip(html, event.clientX, event.clientY);
+  lineHoverBand.value = resolveLineFlushHoverBand({
+    categoryIdx,
+    categoryCount: nCat,
+    plotLeft: plotRect.left,
+    plotTop: plotRect.top,
+    plotWidth: plotRect.width,
+    plotHeight: plotRect.height,
+    hostLeft: hostRect.left,
+    hostTop: hostRect.top,
+  });
+  if (html) placeLineHoverTip(html, event.clientX, event.clientY);
 }
 
 function onXyPointerMove(event: MouseEvent): void {
@@ -1567,49 +1593,26 @@ const donutEvents = computed(() => ({
 
 /**
  * Odoo-like hover panel: category title; multi-series shows every series at that category.
- * `seriesIdx` is kept for call-site highlight sync and ignored for row content when multi.
+ * `seriesIdx` is kept for call-site highlight sync; tip rows come from {@link buildChartXyTooltipHtml}.
  */
 function buildXyTooltipHtml(
   categoryIdx: number | null,
   seriesIdx: number | undefined,
 ): string | null {
-  const current = spec.value;
-  if (!current || current.kind === 'pie' || categoryIdx == null) return null;
-  const category = current.categories[categoryIdx];
-  if (category == null) return null;
-  const seriesList = current.series;
-  if (!seriesList.length) return null;
-  const multi = seriesList.length > 1;
-  if (!multi) {
-    const series = seriesList[0]!;
-    const color =
-      current.config[series.key]?.color || CHOY_CHART_DEFAULT_PALETTE[0] || '#888';
-    const value = Number(series.values[categoryIdx]) || 0;
-    return formatChartTooltipHtml({
-      title: category,
-      rows: [
-        {
-          color,
-          label: current.metricLabel || series.name,
-          valueText: formatChartTooltipValue(value, { percent: !!current.percent }),
-        },
-      ],
-    });
-  }
   void seriesIdx;
-  const rows = seriesList.map((series, idx) => {
-    const color =
-      current.config[series.key]?.color ||
-      CHOY_CHART_DEFAULT_PALETTE[idx % CHOY_CHART_DEFAULT_PALETTE.length] ||
-      '#888';
-    const value = Number(series.values[categoryIdx]) || 0;
-    return {
-      color,
-      label: series.name,
-      valueText: formatChartTooltipValue(value, { percent: !!current.percent }),
-    };
-  });
-  return formatChartTooltipHtml({ title: category, rows });
+  const current = spec.value;
+  if (!current || current.kind === 'pie') return null;
+  return buildChartXyTooltipHtml(
+    {
+      categories: current.categories,
+      series: current.series,
+      config: current.config,
+      metricLabel: current.metricLabel,
+      percent: current.percent,
+      palette: CHOY_CHART_DEFAULT_PALETTE,
+    },
+    categoryIdx,
+  );
 }
 
 function onStackedBarTooltip(
@@ -1642,20 +1645,6 @@ function onStackedBarTooltip(
   if (html) highlightTooltipMark(index, nodes);
   else clearChartHover();
   return html;
-}
-
-/** Category index carried on an XY row (`index` from chartSpecToXyRows). */
-function rowCategoryIndexHint(
-  row: Record<string, string | number> | undefined,
-): number | null {
-  if (!row) return null;
-  const raw = row.index;
-  if (typeof raw === 'number' && Number.isFinite(raw)) return Math.round(raw);
-  if (typeof raw === 'string' && raw.trim() !== '') {
-    const parsed = Number(raw);
-    if (Number.isFinite(parsed)) return Math.round(parsed);
-  }
-  return null;
 }
 
 function onGroupedBarTooltip(
@@ -1700,7 +1689,7 @@ function onPieSegmentTooltip(
   const clickedName = d?.data?.name ?? d?.name;
   let idx =
     clickedKey != null ? slices.findIndex((sl) => sl.key === clickedKey) : -1;
-  if (idx < 0 && clickedKey == null && clickedName != null) {
+  if (idx < 0 && clickedName != null) {
     idx = slices.findIndex((sl) => sl.name === clickedName);
   }
   if (idx < 0) {
@@ -1749,9 +1738,18 @@ const pieTooltipTriggers = computed(() => ({
   [Donut.selectors.segment]: onPieSegmentTooltip,
 }));
 
+function onViewportDismissLineHover(): void {
+  clearLinePlotHover();
+}
+
 onMounted(() => {
   if (typeof document !== 'undefined') {
     chartTooltipPortal.value = document.body;
+  }
+  if (typeof window !== 'undefined') {
+    // Fixed tip on body can linger across scroll/route without mouseleave.
+    window.addEventListener('scroll', onViewportDismissLineHover, true);
+    window.addEventListener('resize', onViewportDismissLineHover);
   }
   const Observer = (globalThis as { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
   const el = chartBodyEl();
@@ -1771,6 +1769,10 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   clearLinePlotHover();
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('scroll', onViewportDismissLineHover, true);
+    window.removeEventListener('resize', onViewportDismissLineHover);
+  }
   chartBodyObserver?.disconnect();
   chartBodyObserver = null;
 });
@@ -1782,6 +1784,41 @@ defineExpose({
   boardBusy,
   controller,
   plotHeight,
+  /** Test / debug hook: run the line-plot hover path with a synthetic pointer. */
+  onXyPointerMove,
+  clearLinePlotHover,
+  // FE unit coverage hooks (QuickJS host cannot drive Unovis pointer events).
+  selectChartType,
+  selectSort,
+  selectMetric,
+  toggleStacked,
+  toggleCumulative,
+  onMetricSelect,
+  onSearch,
+  onRefresh,
+  initMetricOptions,
+  syncPlotHeight,
+  xAccessor,
+  xTickFormat,
+  yTickFormat,
+  onLineClick,
+  onStackedBarClick,
+  onGroupedBarClick,
+  onPieSegmentClick,
+  onStackedBarTooltip,
+  onGroupedBarTooltip,
+  onPieSegmentTooltip,
+  applyHoverMarkEl,
+  clearChartHover,
+  highlightTooltipMark,
+  findScatterPointEl,
+  highlightScatterPointForTooltip,
+  placeLineHoverTip,
+  updateLinePlotHover,
+  onXyPointerLeave,
+  onViewportDismissLineHover,
+  linePlotYDomain,
+  normalizeDefaultGroups,
 });
 </script>
 

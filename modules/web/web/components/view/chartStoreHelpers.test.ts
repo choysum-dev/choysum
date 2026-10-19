@@ -112,7 +112,7 @@ describe('groupRowsToChartSeries', () => {
     ]);
   });
 
-  test('orders temporal category groups ascending by key/label', () => {
+  test('preserves snapshot order for temporal-looking keys (view sorts when axis is temporal)', () => {
     const { categories, seriesMatrix } = groupRowsToChartSeries(
       [
         { kind: 'group', depth: 0, key: '2025-10-01T00:00:00Z', label: '2025-Q4', count: 3 },
@@ -121,7 +121,47 @@ describe('groupRowsToChartSeries', () => {
       ],
       { metricAlias: 'count', metricLabel: 'Count' },
     );
-    expect(categories).toEqual(['2025-Q1', '2025-Q2', '2025-Q4']);
-    expect(seriesMatrix).toEqual([{ name: 'Count', data: [1, 2, 3] }]);
+    expect(categories).toEqual(['2025-Q4', '2025-Q1', '2025-Q2']);
+    expect(seriesMatrix).toEqual([{ name: 'Count', data: [3, 1, 2] }]);
+  });
+
+  test('coerces non-finite named metrics and blank alias to count', () => {
+    const { seriesMatrix } = groupRowsToChartSeries(
+      [
+        {
+          kind: 'group',
+          depth: 0,
+          key: 'x',
+          label: 'X',
+          metrics: { amount_sum: Number.NaN },
+        },
+      ],
+      { metricAlias: 'amount_sum', metricLabel: 'Amount' },
+    );
+    expect(seriesMatrix).toEqual([{ name: 'Amount', data: [0] }]);
+    const countFallback = groupRowsToChartSeries(
+      [{ kind: 'group', depth: 0, key: 'y', label: 'Y', count: 2 }],
+      { metricAlias: '   ', metricLabel: 'Count' },
+    );
+    expect(countFallback.seriesMatrix[0]!.data).toEqual([2]);
+  });
+
+  test('uses key when label missing and skips non-group children', () => {
+    const { categories, seriesMatrix } = groupRowsToChartSeries(
+      [
+        {
+          kind: 'group',
+          depth: 0,
+          key: 'only-key',
+          children: [
+            { kind: 'record', depth: 1, key: 'skip' } as any,
+            { kind: 'group', depth: 1, key: 'child-key', count: 4 },
+          ],
+        },
+      ],
+      { metricAlias: 'count', metricLabel: 'Count' },
+    );
+    expect(categories).toEqual(['only-key']);
+    expect(seriesMatrix).toEqual([{ name: 'child-key', data: [4] }]);
   });
 });

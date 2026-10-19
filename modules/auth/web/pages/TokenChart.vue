@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyPage :title="pageTitle" :store="tokenStore">
+  <ChoyPage :title="pageTitle" :store="tokenStore" fill-height>
     <TokenChartView />
   </ChoyPage>
 </template>
