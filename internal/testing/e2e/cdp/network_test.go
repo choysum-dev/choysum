@@ -123,6 +123,37 @@ func TestIngestResponseReceivedFinishedEarly(t *testing.T) {
 	}
 }
 
+func TestIngestResponseReceivedFilterClearsEarly(t *testing.T) {
+	var mu sync.Mutex
+	id := network.RequestID("filter-1")
+	pending := map[network.RequestID]pendingReq{id: {method: "GET", url: "http://x/asset.js"}}
+	matched := map[network.RequestID]pendingResp{}
+	finishedEarly := map[network.RequestID]struct{}{id: {}}
+	finished := 0
+	ingestResponseReceived(network.EventResponseReceived{
+		RequestID: id,
+		Response: &network.Response{
+			URL:     "http://x/asset.js",
+			Status:  200,
+			Headers: network.Headers{"content-type": "application/javascript"},
+		},
+	}, &mu, pending, matched, finishedEarly, "GET", func(string, string, string) bool { return false }, func(network.RequestID) {
+		finished++
+	})
+	if finished != 0 {
+		t.Fatalf("filtered response must not tryFinish, got %d", finished)
+	}
+	if _, ok := pending[id]; ok {
+		t.Fatal("expected pending cleared on filter mismatch")
+	}
+	if _, ok := finishedEarly[id]; ok {
+		t.Fatal("expected finishedEarly cleared on filter mismatch")
+	}
+	if _, ok := matched[id]; ok {
+		t.Fatal("filtered response must not enter matchedResp")
+	}
+}
+
 func TestFinishMatchedResponseBranches(t *testing.T) {
 	bodyGone := func(err error) bool {
 		return err != nil && strings.Contains(err.Error(), "No resource with given identifier")

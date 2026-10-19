@@ -64,9 +64,13 @@ func (s *Session) NewPage() (*Page, error) {
 		return nil, err
 	}
 	// Drop cookies so a prior login cannot skip the login form on the next test.
-	_, _ = chromedp.Call(p.ctx, network.ClearBrowserCookies, cdp.Empty{})
+	if _, err := chromedp.Call(p.ctx, network.ClearBrowserCookies, cdp.Empty{}); err != nil {
+		return nil, fmt.Errorf("cdp: new page: clear cookies: %w", err)
+	}
 	// Reset document between tests.
-	_ = chromedp.Do(p.ctx, chromedp.Navigate("about:blank"))
+	if err := chromedp.Do(p.ctx, chromedp.Navigate("about:blank")); err != nil {
+		return nil, fmt.Errorf("cdp: new page: reset document: %w", err)
+	}
 	return p, nil
 }
 

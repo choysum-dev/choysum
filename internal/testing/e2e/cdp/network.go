@@ -124,7 +124,11 @@ func (p *Page) WaitForResponseContext(ctx context.Context, m ResponseMatch, time
 		mu.Lock()
 		resp, ok := matchedResp[reqID]
 		if !ok {
-			finishedEarly[reqID] = struct{}{}
+			// Only remember IDs still awaiting a matched ResponseReceived;
+			// unrelated LoadingFinished must not grow finishedEarly unboundedly.
+			if _, waiting := pending[reqID]; waiting {
+				finishedEarly[reqID] = struct{}{}
+			}
 			mu.Unlock()
 			return
 		}
@@ -217,6 +221,10 @@ func ingestResponseReceived(
 	req.url = url
 	req.ct = ct
 	if !matches(req.method, url, ct) && !matches(req.method, req.url, ct) {
+		delete(pending, e.RequestID)
+		if finishedEarly != nil {
+			delete(finishedEarly, e.RequestID)
+		}
 		mu.Unlock()
 		return
 	}
