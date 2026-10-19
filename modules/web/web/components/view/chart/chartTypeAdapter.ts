@@ -152,7 +152,8 @@ export const lineAdapter: IChartTypeAdapter = {
       config: buildConfig(data.seriesMatrix, colors),
       categories: data.categories.slice(),
       series: toSeriesOut(data.seriesMatrix),
-      stacked: !!data.stacked && data.seriesMatrix.length > 1,
+      // Odoo: stacked line enables area fill (even for one series) and Y stacking when multi-series.
+      stacked: !!data.stacked,
       percent: !!data.percent,
       metricLabel: data.metricLabel,
     };

@@ -39,6 +39,7 @@ import {
   resolveStackedXyClickTarget,
   sortChartCategories,
   sortChartCategoriesByTime,
+  stackSeriesTopsAtCategory,
 } from './chartViewHelpers';
 
 test('toSeriesOut coerces non-finite values to 0', () => {
@@ -121,6 +122,16 @@ test('lineAdapter honors custom palette and empty series names', () => {
   expect(spec.series[0]!.name).toBe('Series 1');
   expect(spec.series[1]!.key).toBe('s1_1');
   expect(spec.config.s0_0?.color).toBe('var(--choy-chart-3)');
+});
+
+test('lineAdapter keeps stacked for a single series (area fill)', () => {
+  const spec = lineAdapter.build({
+    categories: ['A', 'B'],
+    seriesMatrix: [{ name: 'Count', data: [1, 2] }],
+    metricLabel: 'Count',
+    stacked: true,
+  });
+  expect(spec.stacked).toBe(true);
 });
 
 test('seriesKey avoids reserved row keys and slug collisions', () => {
@@ -548,6 +559,23 @@ test('buildChartXyTooltipHtml uses category title and all series rows', () => {
   expect(multi).toContain('Open');
   expect(multi).toContain('Done');
   expect(multi).not.toContain('>Count<');
+  expect(multi).not.toContain('Total');
+  const stacked = buildChartXyTooltipHtml(
+    {
+      categories: ['access'],
+      series: [
+        { key: 'a', name: 'Open', values: [9] },
+        { key: 'b', name: 'Done', values: [229] },
+      ],
+      config: { a: { color: '#0f0' }, b: { color: '#00f' } },
+      stacked: true,
+      totalLabel: '合计',
+    },
+    0,
+  );
+  expect(stacked).toContain('合计');
+  expect(stacked).toContain('238');
+  expect(stacked).toContain('swatch--empty');
   const single = buildChartXyTooltipHtml(
     {
       categories: ['only'],
@@ -582,6 +610,13 @@ test('resolveNearestLineSeriesByY picks closest series to pointer data-Y', () =>
   expect(resolveNearestLineSeriesByY([10, 200], 0.1, [0, 250])).toBe(1);
   expect(resolveNearestLineSeriesByY([10, 200], 0.95, [0, 250])).toBe(0);
   expect(resolveNearestLineSeriesByY([42], 0.5, [0, 100])).toBe(0);
+});
+
+test('stackSeriesTopsAtCategory builds running tops for stacked line hover', () => {
+  expect(stackSeriesTopsAtCategory([10, 20, 5])).toEqual([10, 30, 35]);
+  expect(stackSeriesTopsAtCategory([Number.NaN, 4])).toEqual([0, 4]);
+  const tops = stackSeriesTopsAtCategory([10, 200]);
+  expect(resolveNearestLineSeriesByY(tops, 0.1, [0, 250])).toBe(1);
 });
 
 test('resolveClickClientX prefers changedTouches then clientX', () => {

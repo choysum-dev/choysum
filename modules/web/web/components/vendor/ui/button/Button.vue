@@ -75,15 +75,16 @@ const nonButtonAttrs = computed(() => {
 });
 
 const variantClass: Record<ButtonVariant, string> = {
-  default: 'border-0 bg-primary text-primary-foreground hover:bg-primary/90',
-  secondary: 'border-0 bg-secondary text-secondary-foreground hover:bg-secondary/80',
-  // Keep `border` off the shared base: generated `.border-0` comes after `.border` and would hide the stroke.
+  default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+  secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+  // `border` wins over base `border-0` via cn/twMerge.
   outline: 'border border-input bg-background text-foreground shadow-xs hover:bg-accent hover:text-accent-foreground',
-  ghost: 'border-0 text-foreground hover:bg-accent hover:text-accent-foreground',
-  destructive: 'border-0 bg-destructive text-primary-foreground hover:bg-destructive/90',
+  ghost: 'text-foreground hover:bg-accent hover:text-accent-foreground',
+  destructive: 'bg-destructive text-primary-foreground hover:bg-destructive/90',
+  // Distinct chrome for danger actions that stay outline (List/Form delete).
   'outline-destructive':
     'border border-destructive/40 bg-background text-destructive shadow-xs hover:bg-destructive/10 hover:text-destructive',
-  link: 'border-0 text-primary underline-offset-4 hover:underline',
+  link: 'text-primary underline-offset-4 hover:underline',
 };
 
 const sizeClass: Record<ButtonSize, string> = {
@@ -100,7 +101,7 @@ const sizeClass: Record<ButtonSize, string> = {
 const classes = computed(() =>
   cn(
     'inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all',
-    'appearance-none outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
+    'appearance-none border-0 outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
     'disabled:pointer-events-none disabled:opacity-50',
     "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-current",
     variantClass[props.variant],

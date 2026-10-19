@@ -35,7 +35,8 @@
     "vue-sonner": "^2.0.0",
     "embla-carousel-vue": "^8.6.0",
     "vue-input-otp": "^0.3.0",
-    "vee-validate": "^4.15.0"
+    "vee-validate": "^4.15.0",
+    "tailwind-merge": "3.7.0"
   },
   "choysum": {
     "moduleName": "web",

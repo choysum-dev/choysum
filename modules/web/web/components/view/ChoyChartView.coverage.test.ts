@@ -327,15 +327,63 @@ describe('ChoyChartView coverage', () => {
     expect(ex.yTickFormat(50)).toContain('%');
     ex.selectSort('desc');
     ex.selectChartType('line');
-    // Percent + column-sum domain apply only to stacked bars, not line.
-    const lineDomain = (ex as ChartExpose & { linePlotYDomain: () => [number, number] }).linePlotYDomain();
-    expect(lineDomain[1]).toBeGreaterThan(0);
-    expect(lineDomain[1]).toBeLessThan(100);
+    // Percent stays bar-only; line stacked uses absolute column-sum domain.
     expect(ex.yTickFormat(50)).not.toContain('%');
-    // Stack toggle is disabled on line charts.
+    const lineStackedDomain = (
+      ex as ChartExpose & { linePlotYDomain: () => [number, number] }
+    ).linePlotYDomain();
+    // Nested Open+Done totals 30/category; single-series max is 25.
+    expect(lineStackedDomain[1]).toBeGreaterThan(25);
+    // Absolute column-sum domain (percent is bar-only); not a stale 0–100 scale.
+    expect(lineStackedDomain[1]).toBeLessThan(100);
+    // Line keeps Stack control (Odoo); toggle off → unstacked series max.
     ex.toggleStacked();
+    await nextTick();
+    const lineUnstackedDomain = (
+      ex as ChartExpose & { linePlotYDomain: () => [number, number] }
+    ).linePlotYDomain();
+    expect(lineUnstackedDomain[1]).toBeGreaterThan(0);
+    // Fixture has multi-series column sums > max series, so unstacked max must drop.
+    expect(lineUnstackedDomain[1]).toBeLessThan(lineStackedDomain[1]);
     ex.toggleCumulative();
     await nextTick();
+    mounted.unmount();
+  });
+
+  test('line stacked dual series uses column-sum Y domain (Token-like)', async () => {
+    const mounted = mountApp(ChoyChartView as any, {
+      props: {
+        store: makeStore(['TokenType', 'Revoked']),
+        autoBootstrap: false,
+        chartType: 'line',
+        stacked: true,
+        metrics: [{ alias: 'count', label: 'Count' }],
+      },
+    });
+    await flushPromises();
+    const ex = mounted.root as ChartExpose & { linePlotYDomain: () => [number, number] };
+    ex.controller.vm.result = nestedGroupResult;
+    ex.rebuildFromSnapshot();
+    await nextTick();
+    // Nested Open+Done: Jan 30 / Feb 30 → stacked domain above a single-series max (25).
+    const domain = ex.linePlotYDomain();
+    expect(domain[1]).toBeGreaterThan(25);
+    expect(mounted.q('[data-testid=choy-chart-stack]')).not.toBeNull();
+    // Unovis does not invoke y accessors in jsdom; exercise stacked tops for patch coverage.
+    const setup = mounted.setupState() as Record<string, any>;
+    const accessors = (setup.linePlotYAccessors?.value ?? setup.linePlotYAccessors) as Array<
+      (d: Record<string, string | number>) => number
+    >;
+    const rows = (setup.xyRows?.value ?? setup.xyRows) as Array<Record<string, string | number>>;
+    expect(accessors.length).toBeGreaterThan(1);
+    expect(rows.length).toBeGreaterThan(0);
+    const tops = accessors.map((fn) => fn(rows[0]!));
+    // First fixture row: Open=10, Done=20 → stacked tops 10 / 30.
+    expect(tops[0]).toBe(10);
+    expect(tops[1]).toBe(30);
+    ex.toggleStacked();
+    await nextTick();
+    expect(ex.linePlotYDomain()[1]).toBeLessThanOrEqual(domain[1]);
     mounted.unmount();
   });
 
