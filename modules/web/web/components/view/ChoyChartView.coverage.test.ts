@@ -367,6 +367,17 @@ describe('ChoyChartView coverage', () => {
     const domain = ex.linePlotYDomain();
     expect(domain[1]).toBeGreaterThan(25);
     expect(mounted.q('[data-testid=choy-chart-stack]')).not.toBeNull();
+    // Unovis does not invoke y accessors in jsdom; exercise stacked tops for patch coverage.
+    const setup = mounted.setupState() as Record<string, any>;
+    const accessors = (setup.linePlotYAccessors?.value ?? setup.linePlotYAccessors) as Array<
+      (d: Record<string, string | number>) => number
+    >;
+    const rows = (setup.xyRows?.value ?? setup.xyRows) as Array<Record<string, string | number>>;
+    expect(accessors.length).toBeGreaterThan(1);
+    expect(rows.length).toBeGreaterThan(0);
+    const tops = accessors.map((fn) => fn(rows[0]!));
+    expect(tops[0]).toBeGreaterThan(0);
+    expect(tops[1]).toBeGreaterThan(tops[0]!);
     ex.toggleStacked();
     await nextTick();
     expect(ex.linePlotYDomain()[1]).toBeLessThanOrEqual(domain[1]);
