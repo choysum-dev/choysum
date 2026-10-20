@@ -32,7 +32,7 @@ SPDX-License-Identifier: Apache-2.0
       :searchView="ChoySearchView"
       :action-ids="{}"
     >
-      <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
+      <ChoyTableColumn type="index" :vColumnProps="{ align: 'end' }" />
       <ChoyVarcharField :store="termStore" prop="Module" :readonly="true" />
       <ChoyVarcharField :store="termStore" prop="Lang" :readonly="true" />
       <ChoyVarcharField :store="termStore" prop="Scope" :readonly="true" />

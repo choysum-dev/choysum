@@ -33,13 +33,13 @@ const props = withDefaults(
     vColumnProps?: {
       width?: number | string; // Supports percentage and flex width semantics.
       minWidth?: number;
-      align?: 'left' | 'center' | 'right';
+      align?: 'start' | 'center' | 'end' | 'left' | 'right';
       fixed?: 'left' | 'right';
       sortable?: boolean;
     };
     width?: number | string; // Supports percentage and flex width semantics.
     minWidth?: number;
-    align?: 'left' | 'center' | 'right';
+    align?: 'start' | 'center' | 'end' | 'left' | 'right';
     fixed?: 'left' | 'right';
     sortable?: boolean;
   }>(),
@@ -246,7 +246,7 @@ function buildColumn(): Column {
       dataKey,
       title: title || '#',
       width,
-      align: 'right',
+      align: 'end',
       sortable: false,
       ...colProps,
       headerCellRenderer: headerVNode,

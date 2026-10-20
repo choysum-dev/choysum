@@ -6,7 +6,7 @@
  * and toView/fromView/rules helpers on scalar Choy* fields.
  */
 
-import { computed, h, ref } from 'vue';
+import { computed, h, nextTick, ref } from 'vue';
 
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import ChoyFieldBase from './ChoyFieldBase.vue';
@@ -74,10 +74,12 @@ function installFieldBaseStub(mode: 'edit' | 'display' | 'both' | 'rules' = 'bot
           },
         });
       };
-      const kids: any[] = [];
-      if (mode !== 'display') kids.push(slots.edit?.({ fieldValue, inputName: 'n', inputId: 'i' }));
-      if (mode !== 'edit') kids.push(slots.display?.({ fieldValue, inputName: 'n', inputId: 'i' }));
-      return () => h('div', { class: 'base' }, kids);
+      return () => {
+        const kids: any[] = [];
+        if (mode !== 'display') kids.push(slots.edit?.({ fieldValue, inputName: 'n', inputId: 'i' }));
+        if (mode !== 'edit') kids.push(slots.display?.({ fieldValue, inputName: 'n', inputId: 'i' }));
+        return h('div', { class: 'base' }, kids);
+      };
     },
   });
 }
@@ -349,6 +351,10 @@ describe('Choy native scalar field cells', () => {
     await flushPromises();
     expect(m.q('.choy-field-display-text')?.textContent).toBe('1');
     const input = m.q('input.choy-int-input') as HTMLInputElement;
+    setInputValue(input, '7abc');
+    await nextTick();
+    expect(binding.__value.value).toBe(1);
+    expect(input.value).toBe('1');
     setInputValue(input, '7');
     await flushPromises();
     expect(binding.__value.value).toBe(7);
@@ -402,6 +408,10 @@ describe('Choy native scalar field cells', () => {
     await flushPromises();
     expect(m.q('.choy-field-display-text')?.textContent).toBe('10');
     const input = m.q('input.choy-bigint-input') as HTMLInputElement;
+    setInputValue(input, '42xyz');
+    await nextTick();
+    expect(binding.__value.value).toBe('10');
+    expect(input.value).toBe('10');
     setInputValue(input, '42');
     await flushPromises();
     expect(binding.__value.value).toBe('42');
@@ -500,9 +510,15 @@ describe('Choy native scalar field cells', () => {
     await flushPromises();
     expect(m.q('.choy-field-display-text')?.textContent).toBe('1');
     const input = m.q('input.choy-number-input') as HTMLInputElement;
+    setInputValue(input, '1abc');
+    await nextTick();
+    expect(binding.__value.value).toBe(1);
+    expect(input.value).toBe('1');
     setInputValue(input, '');
     await flushPromises();
+    await nextTick();
     expect(binding.__value.value).toBeNull();
+    expect(m.q('.choy-number-display--empty')?.textContent || '').toContain('No content');
     input.dispatchEvent(new Event('blur', { bubbles: true }));
     await flushPromises();
     expect(binding.__value.value).toBeNull();

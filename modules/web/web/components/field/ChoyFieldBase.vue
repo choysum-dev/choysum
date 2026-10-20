@@ -208,18 +208,19 @@ SPDX-License-Identifier: Apache-2.0
     v-else-if="effectiveRenderMode === 'table' && columnVisible"
     :prop="String(binding.prop)"
     :label="resolvedLabel"
-    :vColumnProps="vColumnProps"
+    :vColumnProps="resolvedVColumnProps"
     v-slot="{ row, $index }"
   >
     <div
       class="choy-field-base__cell flex min-w-0 w-full items-center"
+      :class="cellJustifyClass"
       v-show="cellVisibleForRow(row)"
       :data-field="inputName"
       :data-row-key="guessRowKey(row)"
     >
       <div
         class="choy-field-base__cell-item flex min-w-0 w-full items-center leading-none"
-        :class="{ 'choy-field-base__cell-item--error': !!serverErrorForRow(row, $index) }"
+        :class="[{ 'choy-field-base__cell-item--error': !!serverErrorForRow(row, $index) }, cellJustifyClass]"
         :data-error="serverErrorForRow(row, $index) || undefined"
       >
         <template v-if="effectiveEditForRow(row)">
@@ -388,6 +389,8 @@ import { resolveFieldHelp } from '@/web/web/composables/resolveFieldHelp';
 import { FIELD_PRESENTATION_FIELDS_GET_ATTRS } from '@/web/web/stores/fieldsGet';
 import FieldTranslationsDialog from './ChoyFieldTranslationsDialog.vue';
 import FieldCompanyValuesDialog from './ChoyFieldCompanyValuesDialog.vue';
+import { defaultListColumnAlignForFieldType } from './numericFieldHelpers';
+import { dataTableColumnJustifyClass } from '@/web/web/components/internal/dataTableHelpers';
 
 /** Extra class merged onto the form field chrome root. */
 export type FormItemProps = {
@@ -444,6 +447,17 @@ const props = withDefaults(
 );
 
 const binding = props.binding;
+
+/** List columns: Number / Monetary family default to logical end unless caller sets align. */
+const resolvedVColumnProps = computed(() => {
+  const incoming = { ...(props.vColumnProps || {}) } as Record<string, unknown>;
+  if (incoming.align != null && String(incoming.align).trim() !== '') return incoming;
+  const align = defaultListColumnAlignForFieldType((binding.meta as { type?: unknown } | undefined)?.type);
+  if (!align) return incoming;
+  return { ...incoming, align };
+});
+
+const cellJustifyClass = computed(() => dataTableColumnJustifyClass(resolvedVColumnProps.value.align));
 
 const leafFieldName = computed(() => {
   const prop = String(binding.prop || '');

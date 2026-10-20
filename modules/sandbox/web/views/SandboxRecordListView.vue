@@ -25,7 +25,7 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
-    <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
+    <ChoyTableColumn type="index" :vColumnProps="{ align: 'end' }" />
 
     <ChoyCharField prop="NameChar" :store="store" :vColumnProps="{ minWidth: 120 }" />
     <ChoyVarcharField prop="Title" :store="store" :vColumnProps="{ minWidth: 160 }" />

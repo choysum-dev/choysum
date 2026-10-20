@@ -37,7 +37,17 @@ SPDX-License-Identifier: Apache-2.0
       />
     </template>
     <template #display="{ fieldValue }">
-      <span class="choy-field-display-text choy-field-display-text--numeric inline-block max-w-full truncate whitespace-nowrap text-foreground">{{ toDisplayText(fieldValue().value) }}</span>
+      <div
+        v-if="isEmptyDisplay(fieldValue().value) && showFormEmptyPlaceholder"
+        class="choy-bigint-display choy-bigint-display--empty text-sm text-muted-foreground text-end"
+      >
+        {{ emptyDisplayText }}
+      </div>
+      <span
+        v-else
+        class="choy-field-display-text choy-field-display-text--numeric inline-block max-w-full truncate whitespace-nowrap text-foreground text-end"
+        >{{ toDisplayText(fieldValue().value) }}</span
+      >
     </template>
   </ChoyFieldBase>
 </template>
@@ -53,6 +63,13 @@ import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFi
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
 import Input from '../vendor/ui/input/Input.vue';
 import { createTranslate } from '@/web/web/i18n';
+import { useI18nStore } from '@/web/web/stores/i18nStore';
+import {
+  formatGroupedNumericString,
+  isFormEmptyPlaceholderMode,
+  resolveNumericInputEl,
+  resyncControlledNumericRaw,
+} from './numericFieldHelpers';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyBigintField' });
 
@@ -138,6 +155,11 @@ const binding = (props.binding ??
     agg: props.agg,
   })) as UseField<T, V>;
 
+const showFormEmptyPlaceholder = computed(() =>
+  isFormEmptyPlaceholderMode(props.renderMode, binding.env?.isForm)
+);
+const emptyDisplayText = computed(() => _t('No content'));
+
 /* ---------------- Helpers ---------------- */
 function toBigInt(v: string | number | bigint | undefined): bigint | null {
   if (v === undefined || v === null) return null;
@@ -196,7 +218,15 @@ const fromView = (v: ViewType) => {
 
 function toDisplayText(v: any) {
   if (v == null || v === '') return '';
-  return typeof v === 'string' ? v : String(v);
+  const text = typeof v === 'string' ? v : String(v);
+  try {
+    return formatGroupedNumericString(text, useI18nStore().currentLocale?.numberFormat);
+  } catch {
+    return text;
+  }
+}
+function isEmptyDisplay(v: any): boolean {
+  return v == null || v === '';
 }
 
 /* ---------------- Buffered Commit Options ---------------- */
@@ -241,6 +271,7 @@ const ChoyBigintCell = defineComponent({
     });
 
     const editingRaw = ref<ViewType>(null);
+    const inputHost = ref<unknown>(null);
 
     watch(
       () => modelRef.value,
@@ -259,7 +290,10 @@ const ChoyBigintCell = defineComponent({
     );
 
     function onInput(raw: string) {
-      if (!/^[-]?\d*$/.test(raw)) return;
+      if (!/^[-]?\d*$/.test(raw)) {
+        resyncControlledNumericRaw(editingRaw, resolveNumericInputEl(inputHost.value));
+        return;
+      }
       editingRaw.value = raw;
       if (raw === '' || raw === '-') return;
       const bi = parseStrict(raw);
@@ -282,7 +316,8 @@ const ChoyBigintCell = defineComponent({
     return () =>
       h(Input, {
         ...attrs,
-        class: 'choy-bigint-input w-full',
+        ref: inputHost,
+        class: 'choy-bigint-input w-full text-end',
         type: 'text',
         modelValue: editingRaw.value ?? '',
         placeholder: props.placeholder,

@@ -21,7 +21,17 @@ SPDX-License-Identifier: Apache-2.0
         :aria-invalid="invalid ? 'true' : undefined" />
     </template>
     <template #display="{ fieldValue }">
-      <span class="choy-field-display-text choy-field-display-text--numeric truncate whitespace-nowrap text-foreground inline-block max-w-full text-right">{{ toDisplayText(fieldValue().value) }}</span>
+      <div
+        v-if="isEmptyDisplay(fieldValue().value) && showFormEmptyPlaceholder"
+        class="choy-number-display choy-number-display--empty text-sm text-muted-foreground text-end"
+      >
+        {{ emptyDisplayText }}
+      </div>
+      <span
+        v-else
+        class="choy-field-display-text choy-field-display-text--numeric truncate whitespace-nowrap text-foreground inline-block max-w-full text-end"
+        >{{ toDisplayText(fieldValue().value) }}</span
+      >
     </template>
   </ChoyFieldBase>
 </template>
@@ -38,6 +48,13 @@ import ChoyFieldBase from './ChoyFieldBase.vue';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
 import Input from '../vendor/ui/input/Input.vue';
 import { createTranslate } from '@/web/web/i18n';
+import { useI18nStore } from '@/web/web/stores/i18nStore';
+import {
+  formatGroupedNumericString,
+  isFormEmptyPlaceholderMode,
+  resolveNumericInputEl,
+  resyncControlledNumericRaw,
+} from './numericFieldHelpers';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyNumberField' });
 
@@ -81,11 +98,25 @@ const props = withDefaults(
 // Binding with agg forwarded to useField.
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
 
+const showFormEmptyPlaceholder = computed(() =>
+  isFormEmptyPlaceholderMode(props.renderMode, binding.env?.isForm)
+);
+const emptyDisplayText = computed(() => _t('No content'));
+
 const toView = (raw: any): FieldType => (raw === '' || raw == null ? null : typeof raw === 'number' && Number.isFinite(raw) ? raw : null);
 const fromView = (v: FieldType) => v as V;
 
 function toDisplayText(v: any) {
-  return v == null ? '' : String(v);
+  if (v == null) return '';
+  const text = String(v);
+  try {
+    return formatGroupedNumericString(text, useI18nStore().currentLocale?.numberFormat);
+  } catch {
+    return text;
+  }
+}
+function isEmptyDisplay(v: any): boolean {
+  return v == null || v === '';
 }
 
 function isIntermediateInput(s: string | null): boolean {
@@ -133,6 +164,7 @@ const ChoyNumberCell = defineComponent({
       },
     });
     const editingRaw = ref<string | null>(null);
+    const inputHost = ref<unknown>(null);
     watch(
       () => modelRef.value,
       nv => {
@@ -154,7 +186,10 @@ const ChoyNumberCell = defineComponent({
         buffer.setEditing(null);
         return;
       }
-      if (!/^[-]?\d*(\.\d*)?$/.test(raw)) return;
+      if (!/^[-]?\d*(\.\d*)?$/.test(raw)) {
+        resyncControlledNumericRaw(editingRaw, resolveNumericInputEl(inputHost.value));
+        return;
+      }
       editingRaw.value = raw;
       if (isIntermediateInput(raw)) return;
       const n = parseStrict(raw);
@@ -185,7 +220,8 @@ const ChoyNumberCell = defineComponent({
     return () =>
       h(Input, {
         ...attrs,
-        class: 'choy-number-input w-full text-right',
+        ref: inputHost,
+        class: 'choy-number-input w-full text-end',
         modelValue: editingRaw.value ?? '',
         placeholder: p.placeholder,
         inputmode: 'decimal',

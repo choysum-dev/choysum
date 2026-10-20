@@ -40,7 +40,7 @@ SPDX-License-Identifier: Apache-2.0
               :base-index="1"
               :virtualize="false"
             >
-              <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'right', width: 50 }" />
+              <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'end', width: 50 }" />
               <slot />
               <ChoyTableColumn :label="_t('Actions')" :width="60">
                 <template #default="{ $index }">
@@ -70,7 +70,7 @@ SPDX-License-Identifier: Apache-2.0
               :base-index="1"
               :virtualize="false"
             >
-              <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'right', width: 50 }" />
+              <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'end', width: 50 }" />
               <slot />
               <ChoyTableColumn :label="_t('Actions')" :width="60">
                 <template #default="{ $index }">
@@ -106,7 +106,7 @@ SPDX-License-Identifier: Apache-2.0
             :base-index="1"
             :virtualize="false"
           >
-            <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'right', width: 50 }" />
+            <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'end', width: 50 }" />
             <slot />
           </ChoyTableHost>
         </div>

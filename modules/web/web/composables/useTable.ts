@@ -10,7 +10,8 @@ export type Column = {
   title?: string;
   width?: number;
   minWidth?: number;
-  align?: 'left' | 'center' | 'right';
+  /** Logical `start`/`end` preferred; `left`/`right` kept as physical aliases. */
+  align?: 'start' | 'center' | 'end' | 'left' | 'right';
   fixed?: 'left' | 'right' | boolean;
   sortable?: boolean;
   headerCellRenderer?: (props?: any) => VNodeChild;

@@ -474,3 +474,14 @@ export function applyDataTableScrollToRow(opts: {
   );
 }
 
+/** Map column align meta to flex justify classes (logical end/start + legacy left/right). */
+export function dataTableColumnJustifyClass(align: unknown): string | undefined {
+  const a = String(align || '')
+    .trim()
+    .toLowerCase();
+  if (a === 'center') return 'justify-center';
+  if (a === 'end' || a === 'right') return 'justify-end';
+  if (a === 'start' || a === 'left') return 'justify-start';
+  return undefined;
+}
+

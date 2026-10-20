@@ -30,9 +30,19 @@ SPDX-License-Identifier: Apache-2.0
 
     <!-- Display: fixed scale pads; free decimals keep significant digits -->
     <template #display="{ fieldValue, record }">
-      <span class="choy-field-display-text choy-field-display-text--numeric truncate whitespace-nowrap text-foreground inline-block max-w-full text-right">{{
-        toDisplayText(resolveDisplayValue(fieldValue().value, record().value), () => resolveFixedScaleFrom(record().value))
-      }}</span>
+      <div
+        v-if="isEmptyDisplay(resolveDisplayValue(fieldValue().value, record().value)) && showFormEmptyPlaceholder"
+        class="choy-decimal-display choy-decimal-display--empty text-sm text-muted-foreground text-end"
+      >
+        {{ emptyDisplayText }}
+      </div>
+      <span
+        v-else
+        class="choy-field-display-text choy-field-display-text--numeric truncate whitespace-nowrap text-foreground inline-block max-w-full text-end"
+        >{{
+          toDisplayText(resolveDisplayValue(fieldValue().value, record().value), () => resolveFixedScaleFrom(record().value))
+        }}</span
+      >
     </template>
   </ChoyFieldBase>
 </template>
@@ -51,6 +61,11 @@ import Decimal, { isDecimal, toDecimalRounding, type DecimalRound } from '@/core
 import { createTranslate } from '@/web/web/i18n';
 import { useI18nStore, formatFixedDecimalString } from '@/web/web/stores/i18nStore';
 import { formatDecimalDisplayText, resolveDecimalEditScale, resolveDecimalCellScale } from './decimalHelpers';
+import {
+  isFormEmptyPlaceholderMode,
+  resolveNumericInputEl,
+  resyncControlledNumericRaw,
+} from './numericFieldHelpers';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyDecimalField' });
 
@@ -118,6 +133,11 @@ const props = withDefaults(
 
 // Binding, passing agg through to useField for aggregate registration
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
+
+const showFormEmptyPlaceholder = computed(() =>
+  isFormEmptyPlaceholderMode(props.renderMode, binding.env?.isForm)
+);
+const emptyDisplayText = computed(() => _t('No content'));
 
 /* ================== Dynamic scale registration (sibling field) ================== */
 const scaleFieldName = computed<string | undefined>(() => (binding.meta as any)?.scaleField as string | undefined);
@@ -293,6 +313,10 @@ const fromView = (v: ViewType) => {
 };
 
 // Display: pad only when a fixed scale is declared; otherwise significant digits.
+function isEmptyDisplay(v: any): boolean {
+  return v == null || v === '';
+}
+
 function toDisplayText(v: any, getFixedScale: () => number | undefined) {
   if (v == null || v === '') return '';
   const d = asDecimal(v);
@@ -347,6 +371,7 @@ const ChoyDecimalCell = defineComponent({
     });
 
     const editingRaw = ref<string | null>(null);
+    const inputHost = ref<unknown>(null);
     watch(
       () => modelRef.value,
       nv => {
@@ -379,7 +404,10 @@ const ChoyDecimalCell = defineComponent({
         buffer.setEditing(null);
         return;
       }
-      if (!/^[-]?\d*(\.\d*)?$/.test(raw)) return;
+      if (!/^[-]?\d*(\.\d*)?$/.test(raw)) {
+        resyncControlledNumericRaw(editingRaw, resolveNumericInputEl(inputHost.value));
+        return;
+      }
       editingRaw.value = raw;
       if (isIntermediateInput(raw)) return;
       const d = parseStrict(raw, currentScale());
@@ -414,7 +442,8 @@ const ChoyDecimalCell = defineComponent({
     return () =>
       h(Input, {
         ...attrs,
-        class: 'choy-decimal-input w-full text-right',
+        ref: inputHost,
+        class: 'choy-decimal-input w-full text-end',
         modelValue: editingRaw.value ?? '',
         placeholder: p.placeholder,
         inputmode: 'decimal',

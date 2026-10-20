@@ -37,7 +37,9 @@ SPDX-License-Identifier: Apache-2.0
           role="columnheader"
           class="flex min-h-list-header items-center gap-1 px-2 py-1 transition-colors"
           :class="[
-            isSelectColumn(header.column) ? 'cursor-pointer justify-center' : undefined,
+            isSelectColumn(header.column)
+              ? 'cursor-pointer justify-center'
+              : columnJustifyClass(header.column),
             columnHoverClass(header.column.id),
           ]"
           :data-col-hover="isColumnHovered(header.column.id) ? '' : undefined"
@@ -70,8 +72,11 @@ SPDX-License-Identifier: Apache-2.0
           <button
             v-else
             type="button"
-            class="flex flex-1 items-center gap-1 border-0 bg-transparent p-0 text-left text-sm font-medium text-muted-foreground hover:text-foreground"
-            :class="{ 'cursor-default': !header.column.getCanSort(), 'cursor-pointer': header.column.getCanSort() }"
+            class="flex flex-1 items-center gap-1 border-0 bg-transparent p-0 text-start text-sm font-medium text-muted-foreground hover:text-foreground"
+            :class="[
+              columnJustifyClass(header.column),
+              !header.column.getCanSort() ? 'cursor-default' : 'cursor-pointer',
+            ]"
             :disabled="!header.column.getCanSort()"
             @click="onHeaderClick(header.column.id, header.column.getCanSort())"
           >
@@ -163,7 +168,9 @@ SPDX-License-Identifier: Apache-2.0
               role="gridcell"
               class="flex min-h-list-row min-w-0 items-center overflow-hidden px-2 transition-colors"
               :class="[
-                isSelectColumn(cell.column) ? 'cursor-pointer justify-center' : undefined,
+                isSelectColumn(cell.column)
+                  ? 'cursor-pointer justify-center'
+                  : columnJustifyClass(cell.column),
                 columnHoverClass(cell.column.id),
               ]"
               :data-col-hover="isColumnHovered(cell.column.id) ? '' : undefined"
@@ -221,6 +228,7 @@ import {
   applyDataTableParentScroll,
   applyDataTableScrollToRow,
   compareDataTableValues,
+  dataTableColumnJustifyClass,
   dataTableIsGroupLikeRow,
   dataTableIsVirtualized,
   dataTableMaybeMeasure,
@@ -708,7 +716,7 @@ function onRowClick(event: MouseEvent, row: (typeof rows.value)[number] | undefi
 
 type TableColumnLike = {
   id: string;
-  columnDef?: { meta?: { selectColumn?: boolean } };
+  columnDef?: { meta?: { selectColumn?: boolean; align?: unknown } };
 };
 
 /** Built-in TanStack select column or List host `ChoyTableColumn type="selection"`. */
@@ -716,6 +724,10 @@ function isSelectColumn(column: TableColumnLike | undefined): boolean {
   if (!column) return false;
   if (column.id === '__select' || column.id === '__selection__') return true;
   return column.columnDef?.meta?.selectColumn === true;
+}
+
+function columnJustifyClass(column: TableColumnLike | undefined): string | undefined {
+  return dataTableColumnJustifyClass(column?.columnDef?.meta?.align);
 }
 
 type BodyRowLike = NonNullable<(typeof rows.value)[number]>;

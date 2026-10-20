@@ -6,6 +6,7 @@ import {
   applyDataTableScrollToRow,
   clampDataTableVirtualWindow,
   compareDataTableValues,
+  dataTableColumnJustifyClass,
   dataTableIsGroupLikeRow,
   dataTableIsVirtualized,
   dataTableMaybeMeasure,
@@ -432,4 +433,14 @@ describe('dataTableHelpers', () => {
     applyDataTableParentScroll(scroller, 9);
     expect(scroller.scrollTop).toBe(9);
   });
+});
+
+test('dataTableColumnJustifyClass maps logical and physical align values', () => {
+  expect(dataTableColumnJustifyClass('end')).toBe('justify-end');
+  expect(dataTableColumnJustifyClass('right')).toBe('justify-end');
+  expect(dataTableColumnJustifyClass('start')).toBe('justify-start');
+  expect(dataTableColumnJustifyClass('left')).toBe('justify-start');
+  expect(dataTableColumnJustifyClass('center')).toBe('justify-center');
+  expect(dataTableColumnJustifyClass(undefined)).toBeUndefined();
+  expect(dataTableColumnJustifyClass('')).toBeUndefined();
 });

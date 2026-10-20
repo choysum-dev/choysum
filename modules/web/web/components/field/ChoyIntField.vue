@@ -27,7 +27,17 @@ SPDX-License-Identifier: Apache-2.0
         :aria-invalid="invalid ? 'true' : undefined" />
     </template>
     <template #display="{ fieldValue }">
-      <span class="choy-field-display-text choy-field-display-text--numeric inline-block max-w-full truncate whitespace-nowrap text-foreground">{{ fieldValue().value == null ? '' : fieldValue().value }}</span>
+      <div
+        v-if="isEmptyDisplay(fieldValue().value) && showFormEmptyPlaceholder"
+        class="choy-int-display choy-int-display--empty text-sm text-muted-foreground text-end"
+      >
+        {{ emptyDisplayText }}
+      </div>
+      <span
+        v-else
+        class="choy-field-display-text choy-field-display-text--numeric inline-block max-w-full truncate whitespace-nowrap text-foreground text-end"
+        >{{ toDisplayText(fieldValue().value) }}</span
+      >
     </template>
   </ChoyFieldBase>
 </template>
@@ -44,6 +54,13 @@ import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFi
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
 import Input from '../vendor/ui/input/Input.vue';
 import { createTranslate } from '@/web/web/i18n';
+import { useI18nStore } from '@/web/web/stores/i18nStore';
+import {
+  formatGroupedNumericString,
+  isFormEmptyPlaceholderMode,
+  resolveNumericInputEl,
+  resyncControlledNumericRaw,
+} from './numericFieldHelpers';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyIntField' });
 
@@ -113,12 +130,30 @@ const binding = (props.binding ??
     agg: props.agg,
   })) as UseField<T, V>;
 
+const showFormEmptyPlaceholder = computed(() =>
+  isFormEmptyPlaceholderMode(props.renderMode, binding.env?.isForm)
+);
+const emptyDisplayText = computed(() => _t('No content'));
+
 const toView = (raw: any): ViewType => {
   if (raw == null || raw === '') return null;
   const n = Number(raw);
   return Number.isFinite(n) ? n : null;
 };
 const fromView = (v: ViewType) => v as unknown as V;
+
+function toDisplayText(v: any): string {
+  if (v == null || v === '') return '';
+  const text = String(v);
+  try {
+    return formatGroupedNumericString(text, useI18nStore().currentLocale?.numberFormat);
+  } catch {
+    return text;
+  }
+}
+function isEmptyDisplay(v: any): boolean {
+  return v == null || v === '';
+}
 
 function parseStrict(s: string): number | null {
   if (!/^[-]?\d+$/.test(s)) return null;
@@ -164,6 +199,7 @@ const ChoyIntCell = defineComponent({
     });
 
     const editingRaw = ref<string | null>(null);
+    const inputHost = ref<unknown>(null);
     watch(
       () => modelRef.value,
       nv => {
@@ -182,7 +218,10 @@ const ChoyIntCell = defineComponent({
     );
 
     function onInput(raw: string) {
-      if (!/^[-]?\d*$/.test(raw)) return;
+      if (!/^[-]?\d*$/.test(raw)) {
+        resyncControlledNumericRaw(editingRaw, resolveNumericInputEl(inputHost.value));
+        return;
+      }
       editingRaw.value = raw;
       if (raw === '' || raw === '-') return;
       const n = parseStrict(raw);
@@ -204,7 +243,8 @@ const ChoyIntCell = defineComponent({
     return () =>
       h(Input, {
         ...attrs,
-        class: 'choy-int-input w-full',
+        ref: inputHost,
+        class: 'choy-int-input w-full text-end',
         type: 'text',
         modelValue: editingRaw.value ?? '',
         placeholder: p.placeholder,
