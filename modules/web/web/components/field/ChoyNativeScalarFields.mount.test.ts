@@ -8,7 +8,8 @@
 
 import { computed, h, nextTick, ref } from 'vue';
 
-import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import { ChoyMessage } from '../../composables/useChoyMessage';
 import ChoyFieldBase from './ChoyFieldBase.vue';
 import ChoyBooleanField from './ChoyBooleanField.vue';
 import ChoyVarcharField from './ChoyVarcharField.vue';
@@ -241,6 +242,39 @@ describe('Choy native scalar field cells', () => {
     expect(await runRule(rules, 'ab')).toBeUndefined();
     rulesMount.unmount();
     m.unmount();
+  });
+
+  test('VarcharField copyable display toasts success after clipboard write', async () => {
+    installFieldBaseStub('display');
+    const writeText = fnRecorder(async () => undefined);
+    const g = globalThis as { navigator?: { clipboard?: { writeText?: unknown } } };
+    const prevNavigator = g.navigator;
+    g.navigator = { clipboard: { writeText } };
+    const origSuccess = ChoyMessage.success;
+    const success = fnRecorder(() => 0);
+    ChoyMessage.success = success as typeof ChoyMessage.success;
+
+    const m = mountApp(ChoyVarcharField as any, {
+      props: {
+        binding: makeBinding('SAMPLE'),
+        copyable: true,
+        renderMode: 'form',
+      },
+    });
+    await flushPromises();
+    const btn = m.q('.choy-varchar-copy-btn') as HTMLButtonElement | null;
+    expect(btn).toBeTruthy();
+    btn!.dispatchEvent(new Event('click', { bubbles: true }));
+    await flushPromises();
+    expect(writeText.calls.length).toBe(1);
+    expect(writeText.calls[0]?.[0]).toBe('SAMPLE');
+    expect(success.calls.length).toBe(1);
+    expect(String(success.calls[0]?.[0] ?? '')).toContain('Copied');
+
+    ChoyMessage.success = origSuccess;
+    g.navigator = prevNavigator;
+    m.unmount();
+    restoreSfc(ChoyFieldBase as any);
   });
 
   test('char trimTrailingSpaces strips pads for word count and commits trimmed value', async () => {

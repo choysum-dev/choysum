@@ -89,6 +89,7 @@ import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/us
 import Input from '../vendor/ui/input/Input.vue';
 import ChoyButton from '../layout/ChoyButton.vue';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
+import { ChoyMessage } from '../../composables/useChoyMessage';
 import { createTranslate } from '@/web/web/i18n';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyVarcharField' });
@@ -222,9 +223,14 @@ async function copyDisplayValue(v: ViewType): Promise<void> {
   const text = toDisplayText(v);
   if (!text) return;
   try {
-    await navigator.clipboard?.writeText?.(text);
+    const clipboard = globalThis.navigator?.clipboard;
+    if (!clipboard?.writeText) {
+      throw new Error('clipboard unavailable');
+    }
+    await clipboard.writeText(text);
+    ChoyMessage.success(_t('Copied'));
   } catch {
-    /* clipboard may be unavailable in restricted contexts */
+    ChoyMessage.error(_t('Copy failed'));
   }
 }
 
