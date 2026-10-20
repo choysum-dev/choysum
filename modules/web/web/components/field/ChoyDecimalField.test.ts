@@ -11,7 +11,7 @@ import Decimal from '@/core/utils/decimal';
 import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import ChoyDecimalField from './ChoyDecimalField.vue';
-import FieldBase from './FieldBase.vue';
+import ChoyFieldBase from './ChoyFieldBase.vue';
 import { useProvideViewScope } from '@/web/web/components/view/viewScopeKeys';
 
 function makeBinding(
@@ -43,8 +43,8 @@ function makeBinding(
 const lastBaseProps: { current: Record<string, unknown> | null } = { current: null };
 
 function installFieldBaseStub(mode: 'slots' | 'rules' = 'slots') {
-  stubSfc(FieldBase as any, {
-    name: 'FieldBase',
+  stubSfc(ChoyFieldBase as any, {
+    name: 'ChoyFieldBase',
     inheritAttrs: false,
     props: {
       binding: { type: Object, required: false },
@@ -96,7 +96,7 @@ function mountField(binding: any, props: Record<string, unknown> = {}, baseMode:
 
 describe('DecimalField mount wiring', () => {
   afterEach(() => {
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
   });
 
   test('pads display when meta.scale or props.scale is declared (mount wiring)', async () => {
@@ -105,7 +105,7 @@ describe('DecimalField mount wiring', () => {
     await flushPromises();
     expect(metaMount.q('.choy-field-display-text')?.textContent).toBe('0.0100');
     metaMount.unmount();
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
 
     const withProps = makeBinding({ Amount: new Decimal('1.2') });
     const propsMount = mountField(withProps, { readonly: true, scale: 2 });

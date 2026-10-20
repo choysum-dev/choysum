@@ -10,7 +10,7 @@ import { ChoyMessage } from '../../composables/useChoyMessage';
 
 import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import FieldBase from './FieldBase.vue';
+import ChoyFieldBase from './ChoyFieldBase.vue';
 import ImageField from './ChoyImageField.vue';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 
@@ -48,8 +48,8 @@ const messageErrors: string[] = [];
 const originalChoyMessageError = ChoyMessage.error;
 
 function installFieldBaseEditStub() {
-  stubSfc(FieldBase as any, {
-    name: 'FieldBase',
+  stubSfc(ChoyFieldBase as any, {
+    name: 'ChoyFieldBase',
     props: { binding: { type: Object, required: false } },
     setup(props: any, { slots }: any) {
       return () =>
@@ -94,8 +94,8 @@ function installChoyButtonStub() {
 }
 
 function installFieldBaseDisplayStub() {
-  stubSfc(FieldBase as any, {
-    name: 'FieldBase',
+  stubSfc(ChoyFieldBase as any, {
+    name: 'ChoyFieldBase',
     props: { binding: { type: Object, required: false } },
     setup(props: any, { slots }: any) {
       return () =>
@@ -141,7 +141,7 @@ async function pickFile(m: ReturnType<typeof mountApp>, file: File) {
 
 describe('ImageField mount wiring', () => {
   afterEach(() => {
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     restoreSfc(ChoyButton as any);
     ChoyMessage.error = originalChoyMessageError;
     messageErrors.length = 0;
@@ -238,12 +238,12 @@ describe('ImageField mount wiring', () => {
     await flushPromises();
     expect(m.q('.choy-image-current')).toBeTruthy();
     m.unmount();
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
 
     const aliasMount = mountField(makeBinding({ value: { objectId: '  alias-img  ', kind: 'set' } }));
     expect(aliasMount.q('.choy-image-current')).toBeTruthy();
     aliasMount.unmount();
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
 
     const previewMount = mountField(
       makeBinding({
@@ -278,7 +278,7 @@ describe('ImageField mount wiring', () => {
       const href = m.q('a')?.getAttribute('href') || m.q('img')?.getAttribute('src') || '';
       expect(href).toBe(c.expectHref);
       m.unmount();
-      restoreSfc(FieldBase as any);
+      restoreSfc(ChoyFieldBase as any);
     }
   });
 
@@ -286,12 +286,12 @@ describe('ImageField mount wiring', () => {
     const stringMount = mountField(makeBinding({ value: '  photo.png  ' }));
     expect(stringMount.q('.choy-image-current')).toBeTruthy();
     stringMount.unmount();
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
 
     const clearMount = mountField(makeBinding({ value: { kind: 'CLEAR' } }));
     expect(clearMount.q('.choy-image-current')).toBeFalsy();
     clearMount.unmount();
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
 
     const downloadMount = mountField(
       makeBinding({
@@ -372,7 +372,7 @@ describe('ImageField mount wiring', () => {
     await flushPromises();
     expect(m.text()).toMatch(/KB|B/);
     m.unmount();
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
 
     const empty = makeBinding();
     const emptyMount = mountField(empty);
@@ -540,7 +540,7 @@ describe('ImageField mount wiring', () => {
       await flushPromises();
     }
     m.unmount();
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     restoreSfc(ChoyButton as any);
 
     // multiple:false hits `return !hasAttachment(raw)` (patch line ~309).

@@ -6,7 +6,7 @@ import VueJsonPretty from 'vue-json-pretty';
 
 import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import FieldBase from './FieldBase.vue';
+import ChoyFieldBase from './ChoyFieldBase.vue';
 import JsonobjectField from './ChoyJsonField.vue';
 /* el-stubs-for-typecheck */
 const ElInput: any = { name: "ElInput" };
@@ -33,8 +33,8 @@ function makeBinding(
 }
 
 function installFieldBaseStub() {
-  stubSfc(FieldBase as any, {
-    name: 'FieldBase',
+  stubSfc(ChoyFieldBase as any, {
+    name: 'ChoyFieldBase',
     inheritAttrs: false,
     props: {
       binding: { type: Object, required: true },
@@ -105,7 +105,7 @@ function installElInputStub() {
 
 describe('JsonobjectField', () => {
   afterEach(() => {
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     restoreSfc(VueJsonPretty as any);
     restoreSfc(ElInput as any);
   });
@@ -323,11 +323,11 @@ describe('JsonobjectField', () => {
     await flushPromises();
     expect(binding.__value.value).toEqual([1, 2]);
     m.unmount();
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
 
     const captured: { current: any } = { current: null };
-    stubSfc(FieldBase as any, {
-      name: 'FieldBase',
+    stubSfc(ChoyFieldBase as any, {
+      name: 'ChoyFieldBase',
       inheritAttrs: false,
       props: {
         binding: { type: Object, required: true },

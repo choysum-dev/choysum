@@ -7,7 +7,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import type { UseField } from '@/web/web/composables/useField';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import FieldBase from './FieldBase.vue';
+import ChoyFieldBase from './ChoyFieldBase.vue';
 import ChoyManyToOneField from './ChoyManyToOneField.vue';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
@@ -162,8 +162,8 @@ function seedCreatePermission() {
 }
 
 function installStubs() {
-  stubSfc(FieldBase as any, {
-    name: 'FieldBase',
+  stubSfc(ChoyFieldBase as any, {
+    name: 'ChoyFieldBase',
     inheritAttrs: false,
     props: {
       binding: { type: Object, required: true },
@@ -271,7 +271,7 @@ describe('ChoyManyToOneField mount coverage', () => {
   });
 
   afterEach(() => {
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     restoreSfc(ChoyDialog as any);
     restoreSfc(ChoyDialogContent as any);
     restoreSfc(ChoyDialogTitle as any);

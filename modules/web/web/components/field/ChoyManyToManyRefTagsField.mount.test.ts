@@ -13,7 +13,7 @@ import { ChoyMessage } from '../../composables/useChoyMessage';
 import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import { replaceStoreFactory } from '@/web/web/stores/registry';
-import FieldBase from './FieldBase.vue';
+import ChoyFieldBase from './ChoyFieldBase.vue';
 import ChoyManyToManyRefTagsField from './ChoyManyToManyRefTagsField.vue';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
@@ -131,8 +131,8 @@ function relationStoreStub(overrides: Record<string, unknown> = {}) {
 const origWarn = ChoyMessage.warning;
 
 function installStubs() {
-  stubSfc(FieldBase as any, {
-    name: 'FieldBase',
+  stubSfc(ChoyFieldBase as any, {
+    name: 'ChoyFieldBase',
     inheritAttrs: false,
     props: {
       binding: { type: Object, required: true },
@@ -233,7 +233,7 @@ describe('ChoyManyToManyRefTagsField patch coverage', () => {
     console.warn = consoleWarn;
     restoreFactory?.();
     restoreFactory = undefined;
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     restoreSfc(ChoyDialog as any);
     restoreSfc(ChoyDialogContent as any);
     restoreSfc(ChoyDialogTitle as any);

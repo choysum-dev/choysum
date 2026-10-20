@@ -392,9 +392,9 @@ export type FormItemProps = {
 export type FieldStatePredicate<T, V> = (args: { record: T; value: V | null; env: FieldEnv }) => boolean;
 export type FieldStateExpr<T, V> = boolean | FieldStatePredicate<T, V>;
 
-defineOptions({ name: 'FieldBase' });
+defineOptions({ name: 'ChoyFieldBase' });
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/FieldBase' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyFieldBase' });
 
 const props = withDefaults(
   defineProps<{

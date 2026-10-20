@@ -35,14 +35,14 @@ import ChoyManyToManyRefTagsField from './ChoyManyToManyRefTagsField.vue';
 import ChoyManyToManyRefTreeField from './ChoyManyToManyRefTreeField.vue';
 import ChoyOneToManyField from './ChoyOneToManyField.vue';
 import ChoyOneToManyKanbanField from './ChoyOneToManyKanbanField.vue';
-import FieldBase from './FieldBase.vue';
+import ChoyFieldBase from './ChoyFieldBase.vue';
 
 const fakeStore = { modelName: 'auth.User', meta: { fields: {} } } as any;
 
 const STORE_FIELD_BASE_TEST_ID = 'store-field-base';
 
 function stubStoreFieldBase() {
-  stubSfc(FieldBase, {
+  stubSfc(ChoyFieldBase, {
     props: { binding: { type: Object, required: false }, label: String },
     setup: ((props: any) => {
       return () =>
@@ -68,7 +68,7 @@ function stubHost(Comp: Component, testId: string) {
 }
 
 function installFieldBaseEditStub() {
-  stubSfc(FieldBase as any, {
+  stubSfc(ChoyFieldBase as any, {
     props: { binding: { type: Object, required: false } },
     setup(p: any, { slots }: any) {
       const fieldValue = () => (p.binding as any).fieldRef();
@@ -116,7 +116,7 @@ function makeO2MKanbanBinding(items: Record<string, unknown>[]) {
 
 describe('Choy store-mode field hosts', () => {
   const stubs: any[] = [
-    FieldBase,
+    ChoyFieldBase,
     ListView,
     ChoyFormView,
     ChoyListView,
@@ -149,7 +149,7 @@ describe('Choy store-mode field hosts', () => {
     return wrapper;
   }
 
-  test('scalar fields bind FieldBase when store+prop set', async () => {
+  test('scalar fields bind ChoyFieldBase when store+prop set', async () => {
     const merged: any[] = [
       ChoyVarcharField,
       ChoyTextField,
@@ -177,7 +177,7 @@ describe('Choy store-mode field hosts', () => {
     o2mW.unmount();
   });
 
-  test('parallel numeric fields bind FieldBase when store+prop set', async () => {
+  test('parallel numeric fields bind ChoyFieldBase when store+prop set', async () => {
     const numeric: Array<[Component, string]> = [
       [ChoyIntField, 'Padding'],
       [ChoyBigintField, 'NextNumber'],
@@ -193,7 +193,7 @@ describe('Choy store-mode field hosts', () => {
     }
   });
 
-  test('DateField store mode binds FieldBase for the prop', async () => {
+  test('DateField store mode binds ChoyFieldBase for the prop', async () => {
     const w = await mountField(ChoyDateField, {
       store: fakeStore,
       prop: 'Date',
@@ -205,7 +205,7 @@ describe('Choy store-mode field hosts', () => {
   });
 
   test('ChoyBigintField edit input uses numeric inputmode', async () => {
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     const binding = makeFloatBinding(42);
     installFieldBaseEditStub();
     const w = mountApp(ChoyBigintField as any, {
@@ -215,12 +215,12 @@ describe('Choy store-mode field hosts', () => {
     const input = w.q('input') as HTMLInputElement | null;
     expect(input?.getAttribute('inputmode')).toBe('numeric');
     w.unmount();
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     stubStoreFieldBase();
   });
 
   test('ChoyNumberField commits buffered float edits on blur', async () => {
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     const binding = makeFloatBinding(1);
     installFieldBaseEditStub();
     const w = mountApp(ChoyNumberField as any, {
@@ -235,11 +235,11 @@ describe('Choy store-mode field hosts', () => {
     await flushPromises();
     expect(binding.fieldRef().value).toBe(3.5);
     w.unmount();
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     stubStoreFieldBase();
   });
 
-  test('parallel relation fields bind FieldBase when store+prop set', async () => {
+  test('parallel relation fields bind ChoyFieldBase when store+prop set', async () => {
     const relation: Array<[any, string]> = [
       [ChoyManyToOneField, 'CompanyId'],
       [ChoyManyToOneRefField, 'CurrencyId'],
@@ -365,7 +365,7 @@ describe('Choy store-mode field hosts', () => {
   });
 
   test('ChoyOneToManyKanbanField renders card title and subtitle from binding', async () => {
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     const binding = makeO2MKanbanBinding([
       { Id: '1', Name: 'Alpha', Email: 'n1' },
       { Name: '', Email: '' },
@@ -404,7 +404,7 @@ describe('Choy store-mode field hosts', () => {
     expect(addClass).toContain('bg-muted/30');
     expect(addClass).not.toContain('bg-primary');
     w.unmount();
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     stubStoreFieldBase();
   });
 

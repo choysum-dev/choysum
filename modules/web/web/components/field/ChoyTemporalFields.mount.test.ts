@@ -8,7 +8,7 @@
 import { computed, h, ref } from 'vue';
 
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import FieldBase from './FieldBase.vue';
+import ChoyFieldBase from './ChoyFieldBase.vue';
 import ChoyDateField from './ChoyDateField.vue';
 import ChoyDatetimeField from './ChoyDatetimeField.vue';
 import ChoyTimeField from './ChoyTimeField.vue';
@@ -32,8 +32,8 @@ function makeBinding(initial: unknown) {
 }
 
 function installFieldBaseStub(mode: 'edit' | 'display' | 'both' | 'rules' = 'both') {
-  stubSfc(FieldBase as any, {
-    name: 'FieldBase',
+  stubSfc(ChoyFieldBase as any, {
+    name: 'ChoyFieldBase',
     inheritAttrs: false,
     props: {
       binding: { type: Object, required: false },
@@ -80,7 +80,7 @@ function setPicker(el: HTMLInputElement, value: string) {
 
 describe('Choy temporal field cells', () => {
   afterEach(() => {
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     lastBaseProps.current = null;
   });
 
@@ -133,7 +133,7 @@ describe('Choy temporal field cells', () => {
     expect(ss.isValidValue(Date.parse('2024-01-01'))).toBe(true);
     expect(ss.isValidValue(new Date('invalid'))).toBe(false);
 
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     installFieldBaseStub('both');
     const editBinding = makeBinding(new Date(Date.UTC(2024, 5, 15)));
     const editMount = mountApp(ChoyDateField as any, {
@@ -156,7 +156,7 @@ describe('Choy temporal field cells', () => {
     expect((editBinding as any).__value.value).toBeNull();
     editMount.unmount();
 
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     installFieldBaseStub('rules');
     const rulesMount = mountApp(ChoyDateField as any, {
       props: { binding: makeBinding(null), renderMode: 'form' },
@@ -206,7 +206,7 @@ describe('Choy temporal field cells', () => {
     expect(fromView(new Date(2024, 0, 1, 8, 5, 6))).toMatch(/08:05:06/);
     expect(fromView(new Date('invalid'))).toBeNull();
 
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     installFieldBaseStub('rules');
     const rulesMount = mountApp(ChoyTimeField as any, {
       props: { binding: makeBinding(null), renderMode: 'form' },
@@ -261,7 +261,7 @@ describe('Choy temporal field cells', () => {
     expect(fromView(wall)).toMatch(/2024/);
     expect(fromView(new Date('invalid'))).toBeNull();
 
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     installFieldBaseStub('rules');
     const rulesMount = mountApp(ChoyDatetimeField as any, {
       props: { binding: makeBinding(null), renderMode: 'form' },

@@ -112,8 +112,8 @@ describe('SearchFilterGroup selection filter (T4.5)', () => {
           },
         },
         ElInput: stub('ElInput'),
-        FieldBase: {
-          name: 'FieldBase',
+        ChoyFieldBase: {
+          name: 'ChoyFieldBase',
           setup(_, { slots }) {
             return () =>
               h(

@@ -7,7 +7,7 @@ import { ChoyMessage } from '../../composables/useChoyMessage';
 import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import { replaceStoreFactory } from '@/web/web/stores/registry';
-import FieldBase from './FieldBase.vue';
+import ChoyFieldBase from './ChoyFieldBase.vue';
 import ChoyManyToManyField from './ChoyManyToManyField.vue';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
@@ -80,8 +80,8 @@ function makeBinding(opts?: {
 const origWarn = ChoyMessage.warning;
 
 function installStubs(mode: 'edit' | 'display' | 'both' = 'edit') {
-  stubSfc(FieldBase as any, {
-    name: 'FieldBase',
+  stubSfc(ChoyFieldBase as any, {
+    name: 'ChoyFieldBase',
     props: {
       binding: { type: Object, required: true },
       label: { type: String, default: undefined },
@@ -245,7 +245,7 @@ describe('ChoyManyToManyField mount coverage', () => {
     ChoyMessage.warning = origWarn;
     restoreFactory?.();
     restoreFactory = undefined;
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     restoreSfc(ChoyDialog as any);
     restoreSfc(ChoyDialogContent as any);
     restoreSfc(ChoyDialogTitle as any);
@@ -293,7 +293,7 @@ describe('ChoyManyToManyField mount coverage', () => {
   });
 
   test('display mode renders table without add actions', async () => {
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     installStubs('display');
     const { binding } = makeBinding({
       items: [{ Id: '1' }, { Id: '2' }],
@@ -463,7 +463,7 @@ describe('ChoyManyToManyField mount coverage', () => {
   });
 
   test('list-cell display shows count summary instead of table', async () => {
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     installStubs('display');
     const { binding } = makeBinding({
       items: [{ Id: 'a' }, { Id: 'b' }],

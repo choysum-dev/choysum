@@ -107,7 +107,7 @@ type VisibleRow = {
 
 /**
  * Checkbox tree for relation M2M pickers (lazy roots/children, check-strictly).
- * Not a public Choy* export — hosts wire FieldBase slots around the default slot.
+ * Not a public Choy* export — hosts wire ChoyFieldBase slots around the default slot.
  */
 const props = withDefaults(
   defineProps<{

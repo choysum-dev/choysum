@@ -189,7 +189,7 @@ describe('createLocalFormStore + ChoyFormView', () => {
     setActivePinia(createPinia());
   });
 
-  test('embedded create FormView seeds draft and FieldBase shows metadata label', async () => {
+  test('embedded create FormView seeds draft and ChoyFieldBase shows metadata label', async () => {
     const store = createLocalFormStore({
       fields: loginFields(),
       initialValues: { Username: 'admin' },
