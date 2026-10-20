@@ -94,6 +94,7 @@ export type {
 } from './stores/localFormStore';
 export { default as ChoyFormView } from './components/view/ChoyFormView.vue';
 export { default as ChoyListView } from './components/view/ChoyListView.vue';
+export type { RowEventPayload } from './components/view/listViewTypes';
 export { default as ChoyKanbanView } from './components/view/ChoyKanbanView.vue';
 export { default as ChoyChartView } from './components/view/ChoyChartView.vue';
 export { default as ChoySearchView } from './components/view/ChoySearchView.vue';
@@ -167,6 +168,18 @@ export {
 } from './components/view/kanbanStoreHelpers';
 export { useChoyKanbanStoreEngine } from './composables/useChoyKanbanStoreEngine';
 export type { ChoyKanbanStoreEngineOptions } from './composables/useChoyKanbanStoreEngine';
+export {
+  applyChoyViewRouteGroups,
+  resolveChoyViewRouteDefaultGroups,
+  resolveChoyViewRouteKind,
+  resolveChoyViewRoutePath,
+  useChoyViewRouteSwitch,
+} from './composables/useChoyViewRouteSwitch';
+export type {
+  ChoyViewRouteMeta,
+  UseChoyViewRouteSwitchOptions,
+  UseChoyViewRouteSwitchResult,
+} from './composables/useChoyViewRouteSwitch';
 export {
   availableChartTypes,
   resolveChartAdapter,

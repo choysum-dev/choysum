@@ -1,8 +1,6 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { resolveListRowRecordId } from './list_row_nav';
-
 /**
  * Status badge Tailwind classes for module kanban cards and op dialogs.
  */
@@ -221,27 +219,22 @@ export function createPlanDialogSessionGate() {
 export { createLaneSyncGate } from '@/web/web/components/view/kanbanStoreHelpers';
 
 /**
- * Navigable record id from a kanban card payload. Blank ids fail closed.
- * Shares scalar fail-closed rules with list row navigation.
- */
-export const resolveModuleKanbanCardId = resolveListRowRecordId;
-
-/**
- * Stable kanban card key: prefer fail-closed record id, then ModuleName, else lane+index.
+ * Stable kanban card key: prefer record Id, then ModuleName, else lane+index.
  */
 export function resolveModuleKanbanCardKey(
-  payload: unknown,
+  payload: Record<string, unknown>,
   laneKey: string,
   index: number,
 ): string {
-  const id = resolveListRowRecordId(payload);
+  const raw = payload.Id;
+  const id =
+    typeof raw === 'string'
+      ? raw.trim()
+      : typeof raw === 'number' && Number.isFinite(raw)
+        ? String(raw)
+        : '';
   if (id) return id;
-  if (payload && typeof payload === 'object') {
-    const bag = payload as { row?: unknown; ModuleName?: unknown };
-    const record =
-      bag.row && typeof bag.row === 'object' ? (bag.row as { ModuleName?: unknown }) : bag;
-    const name = record.ModuleName;
-    if (typeof name === 'string' && name.trim() !== '') return name.trim();
-  }
+  const name = payload.ModuleName;
+  if (typeof name === 'string' && name.trim() !== '') return name.trim();
   return `${laneKey}-${index}`;
 }

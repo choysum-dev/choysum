@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -816,6 +817,44 @@ func TestApplyFile_SuccessAndErrors(t *testing.T) {
 	if err := l.applyFile(context.Background(), owner, invalidPath); err == nil || !strings.Contains(err.Error(), "parse data file") {
 		t.Fatalf("expected parse error, got %v", err)
 	}
+}
+
+func TestTopoOrderOrCycleBatch_RecordIndexNumericTieBreak(t *testing.T) {
+	// Independent records must follow file order numerically. Stringifying
+	// recordIndex ("10" < "2") previously scrambled apply order past index 9.
+	const n = 12
+	records := make([]batchRecord, n)
+	dep := make([][]int, n)
+	adj := make([][]int, n)
+	indeg := make([]int, n)
+	for i := 0; i < n; i++ {
+		records[i] = batchRecord{
+			FileRel:     "data/bootstrap.json",
+			FilePath:    "/tmp/data/bootstrap.json",
+			RecordIndex: i,
+			Rec:         record{Module: "sandbox", Name: "r" + strconv.Itoa(i)},
+		}
+	}
+	order, err := topoOrderOrCycleBatch(records, dep, adj, indeg, nil)
+	if err != nil {
+		t.Fatalf("topoOrderOrCycleBatch() error = %v", err)
+	}
+	if len(order) != n {
+		t.Fatalf("expected order length %d, got %d", n, len(order))
+	}
+	for i, got := range order {
+		if got != i {
+			t.Fatalf("expected numeric file order %v, got %v", makeRange(n), order)
+		}
+	}
+}
+
+func makeRange(n int) []int {
+	out := make([]int, n)
+	for i := range out {
+		out[i] = i
+	}
+	return out
 }
 
 func TestTopoOrderOrCycle_AcyclicAndCycleFallback(t *testing.T) {

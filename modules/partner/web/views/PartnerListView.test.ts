@@ -20,10 +20,18 @@ test('PartnerListView.vue mounts under choysumMount and runs script setup', asyn
   ).toBe(true);
 
   // Exercise exposed row-click navigation (permission stub always allows).
-  const vm = wrapper.vm as { onRowClick?: (row: Record<string, unknown>) => void };
+  const vm = wrapper.vm as {
+    onRowClick?: (payload: {
+      row: { Id?: string };
+      rowIndex: number;
+      rowKey: undefined;
+      event: Event;
+    }) => void;
+  };
   expect(typeof vm.onRowClick).toBe('function');
-  vm.onRowClick?.({ Id: 'ptn-cover-1' });
-  vm.onRowClick?.({ Id: '' });
+  const click = new Event('click');
+  vm.onRowClick?.({ row: { Id: 'ptn-cover-1' }, rowIndex: 0, rowKey: undefined, event: click });
+  vm.onRowClick?.({ row: { Id: '' }, rowIndex: 0, rowKey: undefined, event: click });
   await flushPromises();
 
   wrapper.unmount();

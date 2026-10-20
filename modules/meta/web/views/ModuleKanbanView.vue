@@ -346,7 +346,6 @@ import {
   manifestSummaryText,
   moduleKanbanCardBadgeVariant,
   moduleStatusBadgeClass,
-  resolveModuleKanbanCardId,
   resolveModuleKanbanCardKey,
   resolveModuleKanbanLaneStatus,
   shouldShowModuleKanbanCardStatusBadge,
@@ -556,7 +555,7 @@ function recordField(card: ChoyKanbanCard, field: string): unknown {
 }
 
 function onCardClick(card: ChoyKanbanCard) {
-  const id = resolveModuleKanbanCardId(payloadOf(card));
+  const id = String(payloadOf(card).Id ?? '').trim();
   if (id) router.push(`/meta/modules/${id}`);
 }
 
