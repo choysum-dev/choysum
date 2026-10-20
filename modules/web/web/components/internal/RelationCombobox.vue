@@ -50,7 +50,7 @@ SPDX-License-Identifier: Apache-2.0
           <div ref="listParent" class="max-h-56 overflow-auto">
             <div
               v-if="searchError"
-              class="border-b border-border px-3 py-2 text-sm text-danger"
+              class="border-b border-border px-3 py-2 text-sm text-destructive"
               role="alert"
             >
               {{ searchError }}

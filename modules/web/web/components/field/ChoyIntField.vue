@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
     v-bind="$attrs"
   >
     <template #edit="{ fieldValue, inputId, describedBy, invalid}">
-      <OIntCell :field-value="fieldValue" :options="bufferOptions" :placeholder="placeholder" :nullable="nullable" :min="min" :max="max" v-bind="$attrs" :id="inputId"
+      <ChoyIntCell :field-value="fieldValue" :options="bufferOptions" :placeholder="placeholder" :nullable="nullable" :min="min" :max="max" v-bind="$attrs" :id="inputId"
         :aria-describedby="describedBy || undefined"
         :aria-invalid="invalid ? 'true' : undefined" />
     </template>
@@ -142,8 +142,8 @@ const bufferOptions = computed(() => ({
   equals: (a: FieldType, b: FieldType) => a === b,
 }));
 
-const OIntCell = defineComponent({
-  name: 'OIntCell',
+const ChoyIntCell = defineComponent({
+  name: 'ChoyIntCell',
   props: {
     fieldValue: { type: Function, required: true },
     options: { type: Object, required: true },

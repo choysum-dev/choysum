@@ -96,9 +96,9 @@ import { hasHandleField } from '@/web/web/composables/listRowEdit';
 import { LIST_HANDLE_API_KEY, useListHandleReorder } from '@/web/web/composables/useListHandleReorder';
 import { formatRelationCountSummary } from './relationCountSummary';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/OneToManyField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyOneToManyField' });
 
-defineOptions({ name: 'OneToManyField', inheritAttrs: false });
+defineOptions({ name: 'ChoyOneToManyField', inheritAttrs: false });
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 

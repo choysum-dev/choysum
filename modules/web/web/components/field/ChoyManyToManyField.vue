@@ -157,9 +157,9 @@ import { useProvidedOnchange } from '@/web/web/composables/useOnchange';
 import { createTranslate } from '@/web/web/i18n';
 import { formatRelationCountSummary } from './relationCountSummary';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/ManyToManyField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyManyToManyField' });
 
-defineOptions({ name: 'ManyToManyField', inheritAttrs: false });
+defineOptions({ name: 'ChoyManyToManyField', inheritAttrs: false });
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 
@@ -244,7 +244,7 @@ const relationStore = computed<WebModelStore<any> | undefined>(() => {
   try {
     return createStoreByModel(target);
   } catch (e) {
-    console.warn(`[OManyToManyField] Failed to create store for model '${target}'`, e);
+    console.warn(`[ChoyManyToManyField] Failed to create store for model '${target}'`, e);
     return undefined;
   }
 });

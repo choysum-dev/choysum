@@ -22,7 +22,7 @@ SPDX-License-Identifier: Apache-2.0
   >
     <!-- Form and inline editing: normalize and compare using the current record/row scale -->
     <template #edit="{ fieldValue, record, inputId, describedBy, invalid}">
-      <ODecimalCell :field-value="fieldValue" :options="makeBufferOptions(() => resolveEditScaleFrom(record().value))" :placeholder="placeholder" v-bind="$attrs" :id="inputId"
+      <ChoyDecimalCell :field-value="fieldValue" :options="makeBufferOptions(() => resolveEditScaleFrom(record().value))" :placeholder="placeholder" v-bind="$attrs" :id="inputId"
         :aria-describedby="describedBy || undefined"
         :aria-invalid="invalid ? 'true' : undefined" />
     </template>
@@ -50,10 +50,10 @@ import { createTranslate } from '@/web/web/i18n';
 import { useI18nStore, formatFixedDecimalString } from '@/web/web/stores/i18nStore';
 import { formatDecimalDisplayText, resolveDecimalEditScale, resolveDecimalCellScale } from './decimalHelpers';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/DecimalField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyDecimalField' });
 
 
-defineOptions({ name: 'DecimalField', inheritAttrs: false });
+defineOptions({ name: 'ChoyDecimalField', inheritAttrs: false });
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 
@@ -327,8 +327,8 @@ function makeBufferOptions(getScale: () => number) {
 }
 
 /* ================== Editable cell (uses dynamic scale) ================== */
-const ODecimalCell = defineComponent({
-  name: 'ODecimalCell',
+const ChoyDecimalCell = defineComponent({
+  name: 'ChoyDecimalCell',
   inheritAttrs: false,
   props: {
     fieldValue: { type: Function, required: true },

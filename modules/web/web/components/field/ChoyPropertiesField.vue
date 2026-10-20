@@ -333,12 +333,12 @@ async function reloadResolved() {
     const { skipped } = filterRenderablePropertyItems(list);
     for (const item of skipped) {
       // Historical dirty Definition types: skip without breaking the form.
-      console.warn(`[OPropertiesField] skipping unsupported property type '${item.type}' (${item.name})`);
+      console.warn(`[ChoyPropertiesField] skipping unsupported property type '${item.type}' (${item.name})`);
     }
     resolvedItems.value = list;
   } catch (e) {
     if (generation !== resolveGeneration) return;
-    console.warn('[OPropertiesField] ResolveProperties failed', e);
+    console.warn('[ChoyPropertiesField] ResolveProperties failed', e);
     resolvedItems.value = [];
   }
 }

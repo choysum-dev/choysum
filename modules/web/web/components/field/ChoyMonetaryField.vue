@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
     v-bind="$attrs"
   >
     <template #edit="{ fieldValue, record, inputId, describedBy, invalid}">
-      <OMonetaryCell :field-value="fieldValue" :options="makeBufferOptions(() => resolveScaleFrom(record().value))" :placeholder="placeholder" v-bind="$attrs" :id="inputId"
+      <ChoyMonetaryCell :field-value="fieldValue" :options="makeBufferOptions(() => resolveScaleFrom(record().value))" :placeholder="placeholder" v-bind="$attrs" :id="inputId"
         :aria-describedby="describedBy || undefined"
         :aria-invalid="invalid ? 'true' : undefined" />
     </template>
@@ -64,9 +64,9 @@ import {
   validateMonetaryValue
 } from './monetaryHelpers';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/MonetaryField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyMonetaryField' });
 
-defineOptions({ name: 'MonetaryField', inheritAttrs: false });
+defineOptions({ name: 'ChoyMonetaryField', inheritAttrs: false });
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 type ViewType = string | null;
@@ -217,8 +217,8 @@ function makeBufferOptions(getScale: () => number) {
   };
 }
 
-const OMonetaryCell = defineComponent({
-  name: 'OMonetaryCell',
+const ChoyMonetaryCell = defineComponent({
+  name: 'ChoyMonetaryCell',
   inheritAttrs: false,
   props: {
     fieldValue: { type: Function, required: true },

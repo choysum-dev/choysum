@@ -16,7 +16,7 @@ describe('SearchFilterGroup selection filter (T4.5)', () => {
 
   test('renders selection dropdown options from ensureFieldsGet', async () => {
     stubSfc(SelectionField, {
-      name: 'SelectionField',
+      name: 'ChoySelectionField',
       props: ['store', 'binding'],
       setup(props: any) {
         const opts = ref<Array<{ label: string; value: string }>>([]);

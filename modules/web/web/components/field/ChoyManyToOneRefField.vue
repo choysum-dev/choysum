@@ -124,11 +124,11 @@ import {
   type RelationOption,
 } from '@/web/web/components/internal/relationComboboxHelpers';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/ManyToOneRefField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyManyToOneRefField' });
 
 type OptionType = { value: V; label: string };
 
-defineOptions({ name: 'ManyToOneRefField', inheritAttrs: false });
+defineOptions({ name: 'ChoyManyToOneRefField', inheritAttrs: false });
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 

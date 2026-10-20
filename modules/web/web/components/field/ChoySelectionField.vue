@@ -47,7 +47,7 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display="{ fieldValue, record }">
-      <span class="choy-field-display-text inline-block max-w-full truncate whitespace-nowrap px-[11px] leading-8 text-foreground">{{ displayLabelFor(record, fieldValue().value) }}</span>
+      <span class="choy-field-display-text inline-block max-w-full truncate whitespace-nowrap text-foreground">{{ displayLabelFor(record, fieldValue().value) }}</span>
     </template>
   </ChoyFieldBase>
 </template>
@@ -65,9 +65,9 @@ import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useF
 import { createTranslate } from '@/web/web/i18n';
 import { FIELD_PRESENTATION_FIELDS_GET_ATTRS } from '@/web/web/stores/fieldsGet';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/SelectionField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoySelectionField' });
 
-defineOptions({ name: 'SelectionField', inheritAttrs: false });
+defineOptions({ name: 'ChoySelectionField', inheritAttrs: false });
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 

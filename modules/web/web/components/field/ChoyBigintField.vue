@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
     v-bind="$attrs"
   >
     <template #edit="{ fieldValue, inputId, describedBy, invalid}">
-      <OBigintCell
+      <ChoyBigintCell
         :field-value="fieldValue"
         :options="bufferOptions"
         :placeholder="placeholder"
@@ -217,8 +217,8 @@ const bufferOptions = computed(() => ({
 }));
 
 /* ---------------- Cell Component ---------------- */
-const OBigintCell = defineComponent({
-  name: 'OBigintCell',
+const ChoyBigintCell = defineComponent({
+  name: 'ChoyBigintCell',
   props: {
     fieldValue: { type: Function as PropType<() => { value: any }>, required: true },
     options: { type: Object as PropType<any>, required: true },

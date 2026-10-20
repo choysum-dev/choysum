@@ -200,9 +200,9 @@ import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import { createTranslate } from '@/web/web/i18n';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/OneToManyKanbanField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyOneToManyKanbanField' });
 
-defineOptions({ name: 'OneToManyKanbanField', inheritAttrs: false });
+defineOptions({ name: 'ChoyOneToManyKanbanField', inheritAttrs: false });
 
 type IsAny<TA> = 0 extends 1 & TA ? true : false;
 type DialogMode = 'create' | 'edit' | 'display';

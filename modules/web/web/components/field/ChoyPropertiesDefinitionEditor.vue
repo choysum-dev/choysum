@@ -17,10 +17,10 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyButton size="sm" :disabled="readonly || saving || loading" data-testid="choy-properties-definition-add" @click="onAdd">
         {{ _t('Add property') }}
       </ChoyButton>
-      <span v-if="loadError" class="text-[13px] text-danger" data-testid="choy-properties-definition-error">
+      <span v-if="loadError" class="text-[13px] text-destructive" data-testid="choy-properties-definition-error">
         {{ loadError }}
       </span>
-      <span v-else-if="saveError" class="text-[13px] text-danger" data-testid="choy-properties-definition-save-error">
+      <span v-else-if="saveError" class="text-[13px] text-destructive" data-testid="choy-properties-definition-save-error">
         {{ saveError }}
       </span>
     </div>

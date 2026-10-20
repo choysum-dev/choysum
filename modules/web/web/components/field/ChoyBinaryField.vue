@@ -127,7 +127,7 @@ SPDX-License-Identifier: Apache-2.0
           <AttachmentDescription v-if="toMetaText(fieldValue().value)">{{ toMetaText(fieldValue().value) }}</AttachmentDescription>
         </AttachmentContent>
       </Attachment>
-      <span v-else class="choy-field-display-empty inline-flex min-h-[34px] items-center text-muted-foreground">-</span>
+      <span v-else class="choy-field-display-empty inline-flex min-h-control items-center text-muted-foreground">-</span>
     </template>
   </ChoyFieldBase>
 </template>

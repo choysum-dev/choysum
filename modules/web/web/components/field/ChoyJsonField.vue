@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
     v-bind="$attrs"
   >
     <template #edit="{ fieldValue, inputId, describedBy, invalid}">
-      <OJsonCell
+      <ChoyJsonCell
         :field-value="fieldValue"
         :options="bufferOptions"
         :placeholder="effectivePlaceholder"
@@ -237,8 +237,8 @@ const bufferOptions = computed(() => ({
   equals: jsonEquals,
 }));
 
-const OJsonCell = defineComponent({
-  name: 'OJsonCell',
+const ChoyJsonCell = defineComponent({
+  name: 'ChoyJsonCell',
   inheritAttrs: false,
   props: {
     fieldValue: { type: Function, required: true },
@@ -361,7 +361,7 @@ const OJsonCell = defineComponent({
               'div',
               {
                 id: parseErrorId || undefined,
-                class: 'choy-json-err mt-1 text-xs text-danger',
+                class: 'choy-json-err mt-1 text-xs text-destructive',
                 role: 'alert',
               },
               parseError.value,

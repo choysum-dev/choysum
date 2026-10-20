@@ -124,11 +124,11 @@ import {
   type RelationOption,
 } from '@/web/web/components/internal/relationComboboxHelpers';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/ManyToOneField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyManyToOneField' });
 
 type RelationValue = Extract<V, { Id: any }>;
 
-defineOptions({ name: 'ManyToOneField', inheritAttrs: false });
+defineOptions({ name: 'ChoyManyToOneField', inheritAttrs: false });
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 

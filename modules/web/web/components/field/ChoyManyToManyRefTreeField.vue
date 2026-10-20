@@ -93,9 +93,9 @@ import { createTranslate } from '@/web/web/i18n';
 import { normalizeTreeRefId as normalizeRefId } from './treeRefId';
 import RelationTree from '@/web/web/components/internal/RelationTree.vue';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/ManyToManyRefTreeField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyManyToManyRefTreeField' });
 
-defineOptions({ name: 'ManyToManyRefTreeField', inheritAttrs: false });
+defineOptions({ name: 'ChoyManyToManyRefTreeField', inheritAttrs: false });
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 type ConditionLeaf = [field: string, op: string, value: unknown];
@@ -187,7 +187,7 @@ const relationStore = computed<WebModelStore<any> | undefined>(() => {
   try {
     return createStoreByModel(target);
   } catch (e) {
-    console.warn(`[OManyToManyRefTreeField] Failed to create store for model '${target}'`, e);
+    console.warn(`[ChoyManyToManyRefTreeField] Failed to create store for model '${target}'`, e);
     return undefined;
   }
 });
@@ -502,7 +502,7 @@ async function loadTreeRows() {
     treeData.value = roots;
     syncTreeCheckedKeys();
   } catch (e) {
-    console.warn('[OManyToManyRefTreeField] load tree rows failed', e);
+    console.warn('[ChoyManyToManyRefTreeField] load tree rows failed', e);
     treeData.value = [];
   } finally {
     if (version === loadVersion) {
@@ -533,7 +533,7 @@ async function loadTreeNode(node: any, resolve: (data: TreeNode[]) => void): Pro
     resolve(children);
     syncTreeCheckedKeys();
   } catch (e) {
-    console.warn('[OManyToManyRefTreeField] lazy load node children failed', e);
+    console.warn('[ChoyManyToManyRefTreeField] lazy load node children failed', e);
     data.children = [];
     data.__childrenLoaded = true;
     data.__leafKnown = true;

@@ -157,9 +157,9 @@ import {
   type RelationOption,
 } from '@/web/web/components/internal/relationComboboxHelpers';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/ManyToManyRefTagsField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyManyToManyRefTagsField' });
 
-defineOptions({ name: 'ManyToManyRefTagsField', inheritAttrs: false });
+defineOptions({ name: 'ChoyManyToManyRefTagsField', inheritAttrs: false });
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 
@@ -249,7 +249,7 @@ const relationStore = computed<WebModelStore<any> | undefined>(() => {
   try {
     return createStoreByModel(target);
   } catch (e) {
-    console.warn(`[OManyToManyRefTagsField] Failed to create store for model '${target}'`, e);
+    console.warn(`[ChoyManyToManyRefTagsField] Failed to create store for model '${target}'`, e);
     return undefined;
   }
 });
@@ -437,7 +437,7 @@ async function ensureHydrated(ids: string[]) {
     const rows = Array.isArray(records) ? records : [];
     for (const row of rows) upsertHydrated(row);
   } catch (e) {
-    console.warn('[OManyToManyRefTagsField] hydrate failed', e);
+    console.warn('[ChoyManyToManyRefTagsField] hydrate failed', e);
   } finally {
     for (const id of missing) hydratingIds.value.delete(id);
   }
@@ -496,7 +496,7 @@ async function relationSearch(keyword: string, opts: { limit: number }): Promise
     for (const row of searchRows.value) upsertHydrated(row);
     return mapNameSearchRows(searchRows.value);
   } catch (e) {
-    console.warn('[OManyToManyRefTagsField] search failed', e);
+    console.warn('[ChoyManyToManyRefTagsField] search failed', e);
     searchRows.value = [];
     return [];
   } finally {

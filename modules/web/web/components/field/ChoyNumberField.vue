@@ -15,7 +15,7 @@ SPDX-License-Identifier: Apache-2.0
     v-bind="$attrs"
   >
     <template #edit="{ fieldValue, inputId, describedBy, invalid}">
-      <ONumberCell :field-value="fieldValue" :options="bufferOptions" :placeholder="placeholder" :nullable="nullable" :min="min" :max="max" v-bind="$attrs" :id="inputId"
+      <ChoyNumberCell :field-value="fieldValue" :options="bufferOptions" :placeholder="placeholder" :nullable="nullable" :min="min" :max="max" v-bind="$attrs" :id="inputId"
         :aria-describedby="describedBy || undefined"
         :aria-invalid="invalid ? 'true' : undefined" />
     </template>
@@ -37,7 +37,7 @@ import ChoyFieldBase from './ChoyFieldBase.vue';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
 import { createTranslate } from '@/web/web/i18n';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/NumberField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyNumberField' });
 
 defineOptions({ name: 'ChoyNumberField' });
 
@@ -112,8 +112,8 @@ const bufferOptions = computed(() => ({
   equals: (a: number | null, b: number | null) => a === b,
 }));
 
-const ONumberCell = defineComponent({
-  name: 'ONumberCell',
+const ChoyNumberCell = defineComponent({
+  name: 'ChoyNumberCell',
   props: {
     fieldValue: { type: Function, required: true },
     options: { type: Object, required: true },

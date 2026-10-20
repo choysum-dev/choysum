@@ -22,7 +22,7 @@ SPDX-License-Identifier: Apache-2.0
   >
     <template #edit="{ fieldValue, inputName, inputId, describedBy, invalid}">
       <div class="flex w-full min-w-0 items-start gap-2">
-        <OBooleanCell
+        <ChoyBooleanCell
           v-bind="controlAttrs"
           :class="$slots.side ? 'mt-0.5 shrink-0' : undefined"
           :field-value="fieldValue"
@@ -68,7 +68,7 @@ import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/us
 import { createTranslate } from '@/web/web/i18n';
 import { computed, defineComponent, h, useAttrs } from 'vue';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/BooleanField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyBooleanField' });
 
 defineOptions({ name: 'ChoyBooleanField', inheritAttrs: false });
 
@@ -205,8 +205,8 @@ const bufferOptions = computed(() => ({
   equals: (a: FieldType, b: FieldType) => a === b,
 }));
 
-const OBooleanCell = defineComponent({
-  name: 'OBooleanCell',
+const ChoyBooleanCell = defineComponent({
+  name: 'ChoyBooleanCell',
   props: {
     fieldValue: { type: Function, required: true },
     options: { type: Object, required: true },
@@ -248,7 +248,7 @@ const OBooleanCell = defineComponent({
         {
           class: isCheckbox
             ? 'choy-bool-editor inline-flex items-center gap-2'
-            : 'choy-bool-editor inline-flex items-center gap-2 px-[11px]',
+            : 'choy-bool-editor inline-flex items-center gap-2',
         },
         [
           h('input', {

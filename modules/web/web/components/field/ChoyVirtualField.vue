@@ -58,7 +58,7 @@ if (props.debug) {
           : `${props.agg.agg}${props.agg.alias ? ':' + props.agg.alias : ''}`
         : 'none';
     // eslint-disable-next-line no-console
-    console.debug('[OVirtualField] registered', { field: props.prop, aggs: aggsDesc, extra: props.register });
+    console.debug('[ChoyVirtualField] registered', { field: props.prop, aggs: aggsDesc, extra: props.register });
   });
 }
 

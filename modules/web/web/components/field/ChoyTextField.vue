@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
     v-bind="$attrs"
   >
     <template #edit="{ fieldValue, inputId, describedBy, invalid}">
-      <OTextCell
+      <ChoyTextCell
         :field-value="fieldValue"
         :options="bufferOptions"
         :placeholder="placeholder"
@@ -37,7 +37,7 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display="{ fieldValue }">
-      <div class="choy-textfield-display whitespace-pre-wrap wrap-break-word px-[11px] text-foreground leading-8">{{ toDisplayText(fieldValue().value) }}</div>
+      <div class="choy-textfield-display whitespace-pre-wrap wrap-break-word text-foreground">{{ toDisplayText(fieldValue().value) }}</div>
     </template>
   </ChoyFieldBase>
 </template>
@@ -158,8 +158,8 @@ const bufferOptions = computed(() => ({
   equals: (a: string | null, b: string | null) => a === b,
 }));
 
-const OTextCell = defineComponent({
-  name: 'OTextCell',
+const ChoyTextCell = defineComponent({
+  name: 'ChoyTextCell',
   props: {
     fieldValue: { type: Function, required: true },
     options: { type: Object, required: true },

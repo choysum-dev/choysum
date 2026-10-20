@@ -591,7 +591,7 @@ const effectiveRenderMode = computed(() => {
 const showInlineError = computed(() => props.showInlineError === true);
 const preserveModeSlotForm = computed(() => props.preserveModeSlot === true);
 
-/* Derive INLINE-mode state from form logic without rendering ElFormItem */
+/* Derive INLINE-mode state from form logic without form chrome. */
 const visibleInline = computed(() => visibleForm.value); // Reuse visibleForm as the visibility gate
 const readonlyInline = computed(() => readonlyForm.value);
 const requiredInline = computed(() => requiredForm.value);

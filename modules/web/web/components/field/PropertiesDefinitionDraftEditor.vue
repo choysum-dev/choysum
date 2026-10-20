@@ -50,7 +50,7 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyButton>
       </div>
     </div>
-    <p v-if="error" class="text-sm text-danger">{{ error }}</p>
+    <p v-if="error" class="text-sm text-destructive">{{ error }}</p>
     <div class="flex flex-wrap gap-2">
       <ChoyButton size="sm" variant="outline" :disabled="disabled" @click="addRow">Add property</ChoyButton>
       <ChoyButton size="sm" :disabled="disabled" @click="onSave">Save definition</ChoyButton>

@@ -22,7 +22,7 @@ SPDX-License-Identifier: Apache-2.0
   >
     <!-- Reuse the slot-provided fieldValue for both form and row rendering. -->
     <template #edit="{ fieldValue, inputId, describedBy, invalid}">
-      <OVarCharCell
+      <ChoyVarcharCell
         :field-value="fieldValue"
         :options="bufferOptions"
         :placeholder="placeholder"
@@ -35,7 +35,7 @@ SPDX-License-Identifier: Apache-2.0
       />
     </template>
     <template #display="{ fieldValue }">
-      <span class="choy-field-display-text inline-block max-w-full truncate whitespace-nowrap px-[11px] leading-8 text-foreground">{{ toDisplayText(fieldValue().value) }}</span>
+      <span class="choy-field-display-text inline-block max-w-full truncate whitespace-nowrap text-foreground">{{ toDisplayText(fieldValue().value) }}</span>
     </template>
   </ChoyFieldBase>
 </template>
@@ -53,7 +53,7 @@ import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/us
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { createTranslate } from '@/web/web/i18n';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/VarCharField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyVarcharField' });
 
 defineOptions({ name: 'ChoyVarcharField' });
 
@@ -158,8 +158,8 @@ const bufferOptions = computed(() => ({
 /**
  * Internal cell component with per-cell buffering backed by ChoyFieldBase fieldValue.
  */
-const OVarCharCell = defineComponent({
-  name: 'OVarCharCell',
+const ChoyVarcharCell = defineComponent({
+  name: 'ChoyVarcharCell',
   props: {
     fieldValue: { type: Function, required: true }, // () => WritableComputedRef<ViewType>
     options: { type: Object, required: true },
