@@ -158,16 +158,43 @@ export var EditorContent = defineComponent({
   setup: function (props) {
     return function () {
       var ed = props.editor;
-      var domAttrs = ed && ed.view && ed.view.dom && ed.view.dom.attributes ? ed.view.dom.attributes : {};
-      return h('div', {
+      var data = {
         class: 'ProseMirror fe-stub-editor-content',
         contenteditable: 'true',
-        id: domAttrs.id,
-        name: domAttrs.name,
-        'aria-invalid': domAttrs['aria-invalid'],
-        'aria-required': domAttrs['aria-required'],
-        'aria-describedby': domAttrs['aria-describedby'],
-      });
+        ref: function (el) {
+          if (!ed || !ed.view || !el) return;
+          var prev = ed.view.dom;
+          // Stub mock stores attrs in a plain object; real Element uses NamedNodeMap.
+          var prevAttrs = prev && prev.nodeType !== 1 && prev.attributes ? prev.attributes : null;
+          if (prev && prev.nodeType === 1 && prev !== el) {
+            ['id', 'name', 'aria-invalid', 'aria-required', 'aria-describedby'].forEach(function (key) {
+              var v = prev.getAttribute(key);
+              if (v) el.setAttribute(key, v);
+            });
+          }
+          ed.view.dom = el;
+          if (prevAttrs) {
+            Object.keys(prevAttrs).forEach(function (key) {
+              el.setAttribute(key, prevAttrs[key]);
+            });
+          }
+        },
+      };
+      var dom = ed && ed.view ? ed.view.dom : null;
+      if (dom && dom.nodeType === 1) {
+        ['id', 'name', 'aria-invalid', 'aria-required', 'aria-describedby'].forEach(function (key) {
+          var v = dom.getAttribute(key);
+          if (v) data[key] = v;
+        });
+      } else if (dom && dom.attributes) {
+        var stubAttrs = dom.attributes;
+        if (stubAttrs.id) data.id = stubAttrs.id;
+        if (stubAttrs.name) data.name = stubAttrs.name;
+        if (stubAttrs['aria-invalid']) data['aria-invalid'] = stubAttrs['aria-invalid'];
+        if (stubAttrs['aria-required']) data['aria-required'] = stubAttrs['aria-required'];
+        if (stubAttrs['aria-describedby']) data['aria-describedby'] = stubAttrs['aria-describedby'];
+      }
+      return h('div', data);
     };
   },
 });

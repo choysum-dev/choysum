@@ -23,11 +23,11 @@ SPDX-License-Identifier: Apache-2.0
     <template #edit="{ fieldValue, inputId, inputName, describedBy, invalid, required }">
       <ChoyHtmlEditorCell
         :field-value="fieldValue"
-        :id="inputId"
-        :name="inputName"
-        :aria-describedby="describedBy || undefined"
-        :aria-invalid="invalid ? 'true' : undefined"
-        :aria-required="required ? 'true' : undefined"
+        :control-id="inputId"
+        :control-name="inputName"
+        :described-by="describedBy || undefined"
+        :invalid="!!invalid"
+        :required="!!required"
       />
     </template>
     <template #display="{ fieldValue }">
@@ -139,8 +139,13 @@ const ChoyHtmlEditorCell = defineComponent({
   inheritAttrs: false,
   props: {
     fieldValue: { type: Function, required: true },
+    controlId: { type: String, default: '' },
+    controlName: { type: String, default: '' },
+    describedBy: { type: String, default: '' },
+    invalid: { type: Boolean, default: false },
+    required: { type: Boolean, default: false },
   },
-  setup(cellProps, { attrs }) {
+  setup(cellProps) {
     const read = () => (cellProps.fieldValue as () => { value: ViewType })().value;
     const write = (next: ViewType) => {
       (cellProps.fieldValue as () => { value: ViewType })().value = next;
@@ -150,16 +155,11 @@ const ChoyHtmlEditorCell = defineComponent({
       const next: Record<string, string> = {
         class: 'choy-html-field__prose min-h-[6rem] px-3 py-2 text-sm outline-none',
       };
-      const id = attrs.id;
-      if (typeof id === 'string' && id) next.id = id;
-      const name = attrs.name;
-      if (typeof name === 'string' && name) next.name = name;
-      const invalid = attrs['aria-invalid'];
-      if (invalid != null && invalid !== false) next['aria-invalid'] = String(invalid);
-      const required = attrs['aria-required'];
-      if (required != null && required !== false) next['aria-required'] = String(required);
-      const describedBy = attrs['aria-describedby'];
-      if (typeof describedBy === 'string' && describedBy) next['aria-describedby'] = describedBy;
+      if (cellProps.controlId) next.id = cellProps.controlId;
+      if (cellProps.controlName) next.name = cellProps.controlName;
+      if (cellProps.invalid) next['aria-invalid'] = 'true';
+      if (cellProps.required) next['aria-required'] = 'true';
+      if (cellProps.describedBy) next['aria-describedby'] = cellProps.describedBy;
       return next;
     }
 
@@ -167,11 +167,11 @@ const ChoyHtmlEditorCell = defineComponent({
       const dom = (ed as { view?: { dom?: HTMLElement } } | null | undefined)?.view?.dom;
       if (!dom) return;
       const next = controlAttributes();
+      // Class stays on editorProps.attributes; rewriting it here would drop TipTap/ProseMirror roots.
       for (const key of ['id', 'name', 'aria-invalid', 'aria-required', 'aria-describedby'] as const) {
         if (next[key]) dom.setAttribute(key, next[key]!);
         else dom.removeAttribute(key);
       }
-      if (next.class) dom.setAttribute('class', next.class);
     }
 
     const editor = useEditor({
@@ -209,14 +209,15 @@ const ChoyHtmlEditorCell = defineComponent({
     );
 
     watch(
-      () => [
-        attrs.id,
-        attrs.name,
-        attrs['aria-invalid'],
-        attrs['aria-required'],
-        attrs['aria-describedby'],
-        editor.value,
-      ] as const,
+      () =>
+        [
+          cellProps.controlId,
+          cellProps.controlName,
+          cellProps.invalid,
+          cellProps.required,
+          cellProps.describedBy,
+          editor.value,
+        ] as const,
       () => applyControlAttributes(editor.value),
       { immediate: true },
     );

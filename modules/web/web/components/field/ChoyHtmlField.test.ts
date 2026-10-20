@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { computed, ref } from 'vue';
+import { computed, defineComponent, h, ref } from 'vue';
 import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import { createLocalFormStore } from '@/web/web/stores/localFormStore';
@@ -113,9 +113,10 @@ describe('ChoyHtmlField', () => {
       const buttons = toolbarButtons(m);
       expect(buttons.length).toBe(5);
       expect(m.q('.choy-html-field__edit')?.getAttribute('id')).toBeFalsy();
-      const prose = m.q('.fe-stub-editor-content') as HTMLElement | null;
-      expect(prose?.getAttribute('id')).toBe('body-html');
-      expect(prose?.getAttribute('aria-required')).toBe('true');
+      const stubDom = (tiptapVue as { __feStubLastEditor?: { view?: { dom?: HTMLElement } } }).__feStubLastEditor
+        ?.view?.dom;
+      expect(stubDom?.getAttribute('id') || (stubDom as HTMLElement | undefined)?.id).toBe('body-html');
+      expect(stubDom?.getAttribute('aria-required')).toBe('true');
       for (const button of buttons) {
         button.click();
         await flushPromises();
@@ -153,5 +154,49 @@ describe('ChoyHtmlField', () => {
       m.unmount();
       window.prompt = prevPrompt;
     }
+  });
+
+  test('tiptap stub binds view.dom to the mounted contenteditable', async () => {
+    let created = false;
+    const remountKey = ref(0);
+    const Probe = defineComponent({
+      name: 'TipTapStubProbe',
+      setup() {
+        const { useEditor, EditorContent } = tiptapVue as {
+          useEditor: (opts: Record<string, unknown>) => { value: any };
+          EditorContent: any;
+        };
+        const editor = useEditor({
+          content: '',
+          onCreate: () => {
+            created = true;
+          },
+        });
+        const ed = editor.value;
+        ed.view.dom.setAttribute('data-probe', '1');
+        expect(ed.view.dom.getAttribute('data-probe')).toBe('1');
+        ed.view.dom.removeAttribute('data-probe');
+        expect(ed.view.dom.getAttribute('data-probe')).toBe(null);
+        const noop = () => undefined;
+        ed.on('probe', noop);
+        ed.off('probe', noop);
+        ed.off('missing', noop);
+        return () => h(EditorContent, { editor: ed, key: remountKey.value });
+      },
+    });
+    const m = mountApp(Probe as any);
+    await flushPromises();
+    expect(created).toBe(true);
+    const stub = tiptapVue as { __feStubLastEditor?: { view?: { dom?: HTMLElement } } };
+    const live = stub.__feStubLastEditor?.view?.dom;
+    expect(live).toBeTruthy();
+    expect((live as HTMLElement).className || '').toContain('fe-stub-editor-content');
+    live!.setAttribute('aria-invalid', 'true');
+    expect(live!.getAttribute('aria-invalid')).toBe('true');
+    // Remount with a new vnode so the stub copies attrs from the previous real DOM node.
+    remountKey.value = 1;
+    await flushPromises();
+    expect(stub.__feStubLastEditor?.view?.dom?.getAttribute('aria-invalid')).toBe('true');
+    m.unmount();
   });
 });

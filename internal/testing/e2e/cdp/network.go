@@ -156,9 +156,7 @@ func (p *Page) WaitForResponseContext(ctx context.Context, m ResponseMatch, time
 				return
 			}
 			held := ingestRequestWillBeSent(ev, &mu, pending, heldResp)
-			if held != nil {
-				ingestResponseReceived(*held, &mu, pending, matchedResp, finishedEarly, heldResp, methodWant, matches, tryFinish)
-			}
+			replayHeldResponse(held, &mu, pending, matchedResp, finishedEarly, heldResp, methodWant, matches, tryFinish)
 		}
 	}()
 	go func() {
@@ -203,6 +201,25 @@ func noteFinishedEarlyIfPending(
 	if _, waiting := pending[reqID]; waiting {
 		finishedEarly[reqID] = struct{}{}
 	}
+}
+
+// replayHeldResponse re-runs ingestResponseReceived after RequestWillBeSent
+// released a previously held ResponseReceived (method filter unknown).
+func replayHeldResponse(
+	held *network.EventResponseReceived,
+	mu *sync.Mutex,
+	pending map[network.RequestID]pendingReq,
+	matchedResp map[network.RequestID]pendingResp,
+	finishedEarly map[network.RequestID]struct{},
+	heldResp map[network.RequestID]network.EventResponseReceived,
+	methodWant string,
+	matches func(method, url, ct string) bool,
+	tryFinish func(network.RequestID),
+) {
+	if held == nil {
+		return
+	}
+	ingestResponseReceived(*held, mu, pending, matchedResp, finishedEarly, heldResp, methodWant, matches, tryFinish)
 }
 
 func ingestRequestWillBeSent(
@@ -257,6 +274,9 @@ func ingestResponseReceived(
 		if heldResp != nil {
 			heldResp[e.RequestID] = e
 		}
+		// Keep a pending placeholder so LoadingFinished during the hold is
+		// recorded in finishedEarly; otherwise release never finishes.
+		pending[e.RequestID] = req
 		mu.Unlock()
 		return
 	}
