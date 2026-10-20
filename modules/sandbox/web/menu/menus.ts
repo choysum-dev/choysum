@@ -3,14 +3,15 @@
 
 import type { MenuItem } from '@/core/web/menu';
 import { defineMenu } from '@/core/web/resource';
-import { Boxes } from 'lucide-vue-next';
+import { FlaskConical } from 'lucide-vue-next';
 import { sandboxRecordsMenuTitle, sandboxRootMenuTitle } from './titles';
 
 export const sandboxMenus: MenuItem[] = [
   defineMenu('sandbox.menu.root', {
     title: sandboxRootMenuTitle,
     sequence: 90,
-    icon: Boxes,
+    // Lab flask: field playground / kitchen-sink experiments (distinct from meta's Boxes).
+    icon: FlaskConical,
     children: [
       defineMenu('sandbox.menu.records', {
         title: sandboxRecordsMenuTitle,

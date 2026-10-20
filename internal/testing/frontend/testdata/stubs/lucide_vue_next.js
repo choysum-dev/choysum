@@ -45,6 +45,7 @@ export const Download = icon('Download');
 export const EllipsisVertical = icon('EllipsisVertical');
 export const Equal = icon('Equal');
 export const FileText = icon('FileText');
+export const FlaskConical = icon('FlaskConical');
 export const FolderSync = icon('FolderSync');
 export const Funnel = icon('Funnel');
 export const GitBranch = icon('GitBranch');
