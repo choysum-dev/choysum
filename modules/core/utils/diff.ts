@@ -293,15 +293,17 @@ export function buildUpdatePayload(original: Plain, current: Plain, fieldsMeta?:
       continue;
     }
 
-    if (!rel) continue;
-
-    if (rel === 'ManyToOne') {
+    // ManyToOneRef: web fieldsMetadata often has type only (no relation: 'ManyToOne').
+    // Compare / submit string ids so display objects never enter the write patch.
+    if (fm?.type === 'ManyToOneRef' || rel === 'ManyToOne') {
       const oId = toId(original?.[key]);
       const cId = toId(current?.[key]);
       if (oId !== cId) payload[key] = cId ?? null;
-      processed.set(key, rel);
+      processed.set(key, 'ManyToOne');
       continue;
     }
+
+    if (!rel) continue;
 
     if (rel === 'OneToMany' || rel === 'ManyToMany') {
       const ops = diffArrayRelation(rel === 'OneToMany' ? 'o2m' : 'm2m', toArray(original?.[key]), toArray(current?.[key]));

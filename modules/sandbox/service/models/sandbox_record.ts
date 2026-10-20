@@ -110,6 +110,7 @@ export default class SandboxRecord extends BaseModel {
 
   @Field({
     type: 'monetary',
+    // Flat currencyField is accepted at runtime; public FieldOptions overload lags the decorator bag.
     // @ts-expect-error currencyField is validated against this model at Model() load
     currencyField: 'CurrencyId',
     string: _lt('Amount', { scope: 'sandbox.model.SandboxRecord.fields' }),

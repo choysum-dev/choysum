@@ -110,3 +110,26 @@ test('buildUpdatePayload keeps the first entry when duplicate link ids collide',
   // Duplicate original keys collapse to the first row; no update/delete for the collision alone.
   expect(payload.Lines).toBeUndefined();
 });
+
+test('buildUpdatePayload treats ManyToOneRef like ManyToOne string ids', () => {
+  const sameId = buildUpdatePayload(
+    { CurrencyId: 'C1' },
+    { CurrencyId: { Id: 'C1', DisplayName: '人民币' } },
+    { CurrencyId: { type: 'ManyToOneRef' } }
+  );
+  expect(sameId.CurrencyId).toBeUndefined();
+
+  const changed = buildUpdatePayload(
+    { CurrencyId: 'C1' },
+    { CurrencyId: { Id: 'C2', DisplayName: 'USD' } },
+    { CurrencyId: { type: 'ManyToOneRef' } }
+  );
+  expect(changed.CurrencyId).toBe('C2');
+
+  const cleared = buildUpdatePayload(
+    { CurrencyId: { Id: 'C1', DisplayName: '人民币' } },
+    { CurrencyId: null },
+    { CurrencyId: { type: 'ManyToOneRef' } }
+  );
+  expect(cleared.CurrencyId).toBeNull();
+});

@@ -70,6 +70,15 @@ test('stampMonetaryScalesForWrite browses currency digits and throws E1 when mis
   }
   expect(missingCurrencyErr.includes('currency required for monetary field Amount')).toBe(true);
 
+  // Display-only CurrencyId on the patch must fall back to current row FK for browse.
+  const fromCurrent = await stampMonetaryScalesForWrite(
+    meta,
+    { Amount: '1.239', CurrencyId: { DisplayName: '人民币' } } as any,
+    { CurrencyId: 'C9' } as any,
+    browser
+  );
+  expect((fromCurrent as any)[buildHiddenScaleAlias('Amount')]).toBe(2);
+
   // Writing only currency without amount still stamps when digits are available.
   const currencyOnly = await stampMonetaryScalesForWrite(meta, {
     CurrencyId: { Id: 'C1', DecimalDigits: 4 },
