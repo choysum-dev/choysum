@@ -7,7 +7,7 @@ import type { UseField } from '@/web/web/composables/useField';
 import { createFieldsGetHelpers } from '@/web/web/stores/fieldsGet';
 import type { WebFieldMetadata } from '@/web/web/stores/modelStore';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import FieldBase from './FieldBase.vue';
+import ChoyFieldBase from './ChoyFieldBase.vue';
 import SelectionField from './ChoySelectionField.vue';
 
 function makeBinding(opts: {
@@ -37,8 +37,8 @@ function makeBinding(opts: {
 }
 
 function installFieldBaseStub(slot: 'edit' | 'both' = 'edit') {
-  stubSfc(FieldBase as any, {
-    name: 'FieldBase',
+  stubSfc(ChoyFieldBase as any, {
+    name: 'ChoyFieldBase',
     props: ['binding'],
     setup(_: any, { slots }: any) {
       const editSlot = () =>
@@ -79,7 +79,7 @@ describe('SelectionField FieldsGet wiring', () => {
   };
 
   afterEach(() => {
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
   });
 
   test('edit onMounted calls ensureFieldsGet and shows loading', async () => {

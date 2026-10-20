@@ -7,7 +7,7 @@ import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import { ChoyMessage } from '../../composables/useChoyMessage';
 import BinaryField from './ChoyBinaryField.vue';
-import FieldBase from './FieldBase.vue';
+import ChoyFieldBase from './ChoyFieldBase.vue';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 
 function makeBinding(opts?: { value?: unknown }): any {
@@ -32,8 +32,8 @@ function makeBinding(opts?: { value?: unknown }): any {
 }
 
 function installFieldBaseEditStub() {
-  stubSfc(FieldBase as any, {
-    name: 'FieldBase',
+  stubSfc(ChoyFieldBase as any, {
+    name: 'ChoyFieldBase',
     props: { binding: { type: Object, required: false } },
     setup(props: any, { slots }: any) {
       return () =>
@@ -78,8 +78,8 @@ function installChoyButtonStub() {
 }
 
 function installFieldBaseDisplayStub() {
-  stubSfc(FieldBase as any, {
-    name: 'FieldBase',
+  stubSfc(ChoyFieldBase as any, {
+    name: 'ChoyFieldBase',
     props: { binding: { type: Object, required: false } },
     setup(props: any, { slots }: any) {
       return () =>
@@ -125,7 +125,7 @@ async function pickFile(m: ReturnType<typeof mountApp>, file: File) {
 
 describe('BinaryField normalize helpers', () => {
   afterEach(() => {
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     restoreSfc(ChoyButton as any);
   });
 
@@ -157,7 +157,7 @@ describe('BinaryField normalize helpers', () => {
     const objectMount = mountField(objectOnly);
     expect(objectMount.q('.choy-binary-current')).toBeTruthy();
     objectMount.unmount();
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
 
     const objectIdAlias = makeBinding({
       value: { objectId: '  alias-obj  ', kind: 'set' },
@@ -165,7 +165,7 @@ describe('BinaryField normalize helpers', () => {
     const aliasMount = mountField(objectIdAlias);
     expect(aliasMount.q('.choy-binary-current')).toBeTruthy();
     aliasMount.unmount();
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
 
     const downloadOnly = makeBinding({
       value: { downloadUrl: '  /files/only.bin  ', kind: 'set' },
@@ -195,7 +195,7 @@ describe('BinaryField normalize helpers', () => {
       await flushPromises();
       expect(m.q('a')?.getAttribute('href')).toBe(c.expectHref);
       m.unmount();
-      restoreSfc(FieldBase as any);
+      restoreSfc(ChoyFieldBase as any);
     }
   });
 
@@ -204,13 +204,13 @@ describe('BinaryField normalize helpers', () => {
     const stringMount = mountField(stringBinding);
     expect(stringMount.q('.choy-binary-current')).toBeTruthy();
     stringMount.unmount();
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
 
     const clearBinding = makeBinding({ value: { kind: 'clear' } });
     const clearMount = mountField(clearBinding);
     expect(clearMount.q('.choy-binary-current')).toBeFalsy();
     clearMount.unmount();
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
 
     const noopBinding = makeBinding({ value: { kind: 'noop' } });
     const noopMount = mountField(noopBinding);
@@ -368,7 +368,7 @@ describe('BinaryField normalize helpers', () => {
     expect(binding.fieldRef().value).toBeNull();
     expect(changed).toBe(1);
     m.unmount();
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     restoreSfc(ChoyButton as any);
 
     const single = makeBinding({ value: { fileName: 'one.bin', kind: 'set' } });
@@ -432,7 +432,7 @@ describe('BinaryField normalize helpers', () => {
     expect(binding.fieldRef().value?.fileName).toBe('ok.pdf');
     m.unmount();
     ChoyMessage.error = origError;
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     restoreSfc(ChoyButton as any);
   });
 });

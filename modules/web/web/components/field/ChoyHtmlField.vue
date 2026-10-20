@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <FieldBase
+  <ChoyFieldBase
     :binding="binding"
     :label="label"
     :rules="rules"
@@ -34,7 +34,7 @@ SPDX-License-Identifier: Apache-2.0
       <span v-if="plaintext" class="choy-field-display-text">{{ htmlToPlaintext(fieldValue().value) }}</span>
       <div v-else class="prose-choy" v-html="sanitizeHtmlForClient(fieldValue().value)" />
     </template>
-  </FieldBase>
+  </ChoyFieldBase>
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, string | null | undefined>, V = FieldPathType<T, P>">
@@ -48,7 +48,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import { useField } from '@/web/web/composables/useField';
 import type { NarrowAggProp, NonNumericAggFns, UseField } from '@/web/web/composables/useField';
-import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
+import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { htmlToPlaintext, normalizeHtmlForStore, resolveChoyHtmlLinkHref, sanitizeHtmlForClient } from './htmlHelpers';
 import { htmlEditorChain, htmlEditorSetContent } from './tiptapHtmlCommands';
 
@@ -132,7 +132,7 @@ function toggleLink(ed: Editor): void {
 }
 
 /**
- * TipTap editor bound to the FieldBase slot value. Mounted only in edit mode.
+ * TipTap editor bound to the ChoyFieldBase slot value. Mounted only in edit mode.
  */
 const ChoyHtmlEditorCell = defineComponent({
   name: 'ChoyHtmlEditorCell',

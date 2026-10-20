@@ -6,14 +6,14 @@ import type { ViewMode } from './viewScopeKeys';
 /** Open view-kind id; builtins and apps register via registerViewKind. */
 export type ViewKindId = string;
 
-/** How FieldBase / useField should lay out under this kind. */
+/** How ChoyFieldBase / useField should lay out under this kind. */
 export type FieldPresentation = 'form' | 'cell' | 'none';
 
 export type ViewKindDef = {
   id: ViewKindId;
   /** Default viewMode when the kind provides scope. */
   defaultMode?: ViewMode;
-  /** Field layout contract for useField / FieldBase. */
+  /** Field layout contract for useField / ChoyFieldBase. */
   fieldPresentation: FieldPresentation;
 };
 

@@ -10,7 +10,7 @@ import Decimal from '@/core/utils/decimal';
 
 import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import FieldBase from './FieldBase.vue';
+import ChoyFieldBase from './ChoyFieldBase.vue';
 import MonetaryField from './ChoyMonetaryField.vue';
 import { useProvideViewScope } from '@/web/web/components/view/viewScopeKeys';
 
@@ -43,8 +43,8 @@ function makeBinding(
 const lastBaseProps: { current: Record<string, unknown> | null } = { current: null };
 
 function installFieldBaseStub() {
-  stubSfc(FieldBase as any, {
-    name: 'FieldBase',
+  stubSfc(ChoyFieldBase as any, {
+    name: 'ChoyFieldBase',
     inheritAttrs: false,
     props: {
       binding: { type: Object, required: false },
@@ -97,7 +97,7 @@ function mountField(binding: any, props: Record<string, unknown> = {}) {
 
 describe('MonetaryField mount wiring', () => {
   afterEach(() => {
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
   });
 
   test('registers currency sibling fields and renders formatted display', async () => {
@@ -140,7 +140,7 @@ describe('MonetaryField mount wiring', () => {
     await nextTick();
     expect(nullable.__value.value).toBeNull();
     nullableMount.unmount();
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
 
     const required = makeBinding({
       Amount: new Decimal('1.25'),

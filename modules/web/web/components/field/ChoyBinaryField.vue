@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <FieldBase
+  <ChoyFieldBase
     :binding="binding"
     :label="label"
     :rules="rules"
@@ -129,7 +129,7 @@ SPDX-License-Identifier: Apache-2.0
       </Attachment>
       <span v-else class="choy-field-display-empty inline-flex min-h-[34px] items-center text-muted-foreground">-</span>
     </template>
-  </FieldBase>
+  </ChoyFieldBase>
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, any>, V = FieldPathType<T, P>">
@@ -138,7 +138,7 @@ import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField, NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
-import FieldBase, { type FieldStateExpr } from './FieldBase.vue';
+import ChoyFieldBase, { type FieldStateExpr } from './ChoyFieldBase.vue';
 import { createTranslate } from '@/web/web/i18n';
 import { computed } from 'vue';
 import { normalizeOptionalString } from '@/core/service/utils/normalization';

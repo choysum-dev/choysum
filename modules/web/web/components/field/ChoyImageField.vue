@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <FieldBase
+  <ChoyFieldBase
     :binding="binding"
     :label="label"
     :rules="rules"
@@ -157,7 +157,7 @@ SPDX-License-Identifier: Apache-2.0
         </AttachmentMedia>
       </Attachment>
     </template>
-  </FieldBase>
+  </ChoyFieldBase>
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, any>, V = FieldPathType<T, P>">
@@ -168,7 +168,7 @@ import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField, NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
 import { computed } from 'vue';
-import FieldBase, { type FieldStateExpr } from './FieldBase.vue';
+import ChoyFieldBase, { type FieldStateExpr } from './ChoyFieldBase.vue';
 import { createTranslate } from '@/web/web/i18n';
 import { resolveImageFieldLimitsFromSources, reportImageFieldValidation } from './imageFieldLimits';
 import { normalizeOptionalString } from '@/core/service/utils/normalization';

@@ -6,7 +6,7 @@ import { computed, defineComponent, h, inject, nextTick, ref } from 'vue';
 import type { UseField } from '@/web/web/composables/useField';
 import { LIST_HANDLE_API_KEY } from '@/web/web/composables/useListHandleReorder';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import FieldBase from './FieldBase.vue';
+import ChoyFieldBase from './ChoyFieldBase.vue';
 import ChoyOneToManyField from './ChoyOneToManyField.vue';
 import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
@@ -58,8 +58,8 @@ function makeBinding(opts: {
 const capturedHandleApi: { current: any } = { current: null };
 
 function installStubs() {
-  stubSfc(FieldBase as any, {
-    name: 'FieldBase',
+  stubSfc(ChoyFieldBase as any, {
+    name: 'ChoyFieldBase',
     props: { binding: { type: Object, required: true } },
     setup(props: any, { slots }: any) {
       return () =>
@@ -93,7 +93,7 @@ function installStubs() {
 
 describe('ChoyOneToManyField handle column', () => {
   afterEach(() => {
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     restoreSfc(ChoyTableColumn as any);
     restoreSfc(ChoyTableHost as any);
     restoreSfc(ChoyViewScope as any);
@@ -278,9 +278,9 @@ describe('ChoyOneToManyField handle column', () => {
     m.unmount();
 
     // Display mode covers tableHeightDisplay.
-    restoreSfc(FieldBase as any);
-    stubSfc(FieldBase as any, {
-      name: 'FieldBase',
+    restoreSfc(ChoyFieldBase as any);
+    stubSfc(ChoyFieldBase as any, {
+      name: 'ChoyFieldBase',
       props: { binding: { type: Object, required: true } },
       setup(_: any, { slots }: any) {
         return () => h('div', { class: 'field-base-stub' }, slots.display?.({}));
@@ -318,7 +318,7 @@ describe('ChoyOneToManyField handle column', () => {
     d.unmount();
 
     // ensureArrayInitialized when fieldRef is not an array.
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     installStubs();
     stubSfc(ChoyTableHost as any, {
       name: 'ChoyTableHost',
@@ -362,9 +362,9 @@ describe('ChoyOneToManyField handle column', () => {
   });
 
   test('list-cell display shows count summary instead of table', async () => {
-    restoreSfc(FieldBase as any);
-    stubSfc(FieldBase as any, {
-      name: 'FieldBase',
+    restoreSfc(ChoyFieldBase as any);
+    stubSfc(ChoyFieldBase as any, {
+      name: 'ChoyFieldBase',
       props: { binding: { type: Object, required: true } },
       setup(_: any, { slots }: any) {
         return () => h('div', { class: 'field-base-stub' }, slots.display?.({}));

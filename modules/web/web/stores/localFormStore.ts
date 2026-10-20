@@ -3,7 +3,7 @@
 
 /**
  * In-memory form store for pages with no ORM model (login/register drafts).
- * Satisfies the WebModelStore slice that useField / FieldBase / ChoyFormView
+ * Satisfies the WebModelStore slice that useField / ChoyFieldBase / ChoyFormView
  * read (storeId, fieldsMetadata, getFieldMeta). Does not call gRPC.
  */
 

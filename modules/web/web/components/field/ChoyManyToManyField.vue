@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <FieldBase
+  <ChoyFieldBase
     v-bind="$attrs"
     :binding="binding"
     :label="label"
@@ -111,7 +111,7 @@ SPDX-License-Identifier: Apache-2.0
         </div>
       </ChoyViewScope>
     </template>
-  </FieldBase>
+  </ChoyFieldBase>
 
   <ChoyDialog v-model:open="dialogVisible">
     <ChoyDialogContent class="choy-relation-picker-dialog" :style="{ width: typeof searchViewWidth === 'number' ? searchViewWidth + 'px' : searchViewWidth }">
@@ -145,7 +145,7 @@ import { ChoyMessage } from '../../composables/useChoyMessage';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType, ClientModel, QueryCondition } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
-import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
+import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
 import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 import { useField } from '@/web/web/composables/useField';

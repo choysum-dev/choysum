@@ -13,7 +13,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import type { UseField } from '@/web/web/composables/useField';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import FieldBase from './FieldBase.vue';
+import ChoyFieldBase from './ChoyFieldBase.vue';
 import ChoyManyToOneField from './ChoyManyToOneField.vue';
 import ChoyManyToOneRefField from './ChoyManyToOneRefField.vue';
 import ChoyManyToManyRefTagsField from './ChoyManyToManyRefTagsField.vue';
@@ -106,8 +106,8 @@ const RelationComboboxStub = defineComponent({
 });
 
 function installFieldBaseStub() {
-  stubSfc(FieldBase as any, {
-    name: 'FieldBase',
+  stubSfc(ChoyFieldBase as any, {
+    name: 'ChoyFieldBase',
     inheritAttrs: false,
     props: {
       binding: { type: Object, required: true },
@@ -184,7 +184,7 @@ describe('relation typeahead NameSearch / NameCreate', () => {
 
   afterEach(() => {
     ChoyMessage.error = origChoyMessageError;
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     restoreSfc(RelationCombobox as any);
   });
 

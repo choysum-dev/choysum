@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <FieldBase
+  <ChoyFieldBase
     :binding="binding"
     :label="label"
     :rules="mergedRules"
@@ -37,7 +37,7 @@ SPDX-License-Identifier: Apache-2.0
     <template #display="{ fieldValue }">
       <span class="choy-field-display-text inline-block max-w-full truncate whitespace-nowrap px-[11px] leading-8 text-foreground">{{ toDisplayText(fieldValue().value) }}</span>
     </template>
-  </FieldBase>
+  </ChoyFieldBase>
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, string | null | undefined>, V = FieldPathType<T, P>">
@@ -50,7 +50,7 @@ import type { UseField } from '@/web/web/composables/useField';
 // Non-numeric varchar aggregates are narrowed to count_distinct.
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
-import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
+import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { createTranslate } from '@/web/web/i18n';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/VarCharField' });
@@ -156,7 +156,7 @@ const bufferOptions = computed(() => ({
 }));
 
 /**
- * Internal cell component with per-cell buffering backed by FieldBase fieldValue.
+ * Internal cell component with per-cell buffering backed by ChoyFieldBase fieldValue.
  */
 const OVarCharCell = defineComponent({
   name: 'OVarCharCell',

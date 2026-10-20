@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <FieldBase
+  <ChoyFieldBase
     v-bind="$attrs"
     class="choy-statusbar-field mb-0 [&_.choy-field-base__label]:hidden"
     :binding="binding"
@@ -69,7 +69,7 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyButton>
       </div>
     </template>
-  </FieldBase>
+  </ChoyFieldBase>
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, string | null | undefined>, V extends string = FieldPathType<T, P>">
@@ -79,7 +79,7 @@ import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { WritableComputedRef } from 'vue';
 import { cn } from '@/web/web/lib/utils';
-import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
+import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import ChoyButton from '../layout/ChoyButton.vue';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';

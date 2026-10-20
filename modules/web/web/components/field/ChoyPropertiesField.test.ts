@@ -6,7 +6,7 @@ import { computed, h, nextTick, reactive, ref } from 'vue';
 import type { UseField } from '@/web/web/composables/useField';
 import type { ResolvedPropertyItem } from '@/core/service/orm/model/properties_types';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import FieldBase from './FieldBase.vue';
+import ChoyFieldBase from './ChoyFieldBase.vue';
 import PropertiesField from './ChoyPropertiesField.vue';
 
 function makeBinding(opts: {
@@ -51,8 +51,8 @@ function makeBinding(opts: {
 }
 
 function installFieldBaseStub() {
-  stubSfc(FieldBase as any, {
-    name: 'FieldBase',
+  stubSfc(ChoyFieldBase as any, {
+    name: 'ChoyFieldBase',
     inheritAttrs: false,
     props: {
       binding: { type: Object, required: true },
@@ -100,7 +100,7 @@ describe('PropertiesField', () => {
   });
 
   afterEach(() => {
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
   });
 
   async function mountField(props: Record<string, unknown>) {

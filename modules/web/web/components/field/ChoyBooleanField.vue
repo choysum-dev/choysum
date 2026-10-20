@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <FieldBase
+  <ChoyFieldBase
     v-bind="$attrs"
     :binding="binding"
     :label="label"
@@ -52,7 +52,7 @@ SPDX-License-Identifier: Apache-2.0
         {{ displayLabel(fieldValue().value) }}
       </span>
     </template>
-  </FieldBase>
+  </ChoyFieldBase>
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, boolean>, V = FieldPathType<T, P>">
@@ -63,7 +63,7 @@ import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 // Narrow aggregation types to count_distinct only.
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
-import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
+import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
 import { createTranslate } from '@/web/web/i18n';
 import { computed, defineComponent, h, useAttrs } from 'vue';

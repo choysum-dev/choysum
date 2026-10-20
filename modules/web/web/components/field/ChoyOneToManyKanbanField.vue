@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <FieldBase
+  <ChoyFieldBase
     v-bind="$attrs"
     :binding="binding"
     :label="label"
@@ -148,7 +148,7 @@ SPDX-License-Identifier: Apache-2.0
         </div>
       </ChoyViewScope>
     </template>
-  </FieldBase>
+  </ChoyFieldBase>
 
   <ChoyDialog v-model:open="dialogVisible">
     <ChoyDialogContent class="choy-relation-picker-dialog" :style="{ width: typeof dialogWidth === 'number' ? dialogWidth + 'px' : dialogWidth }">
@@ -187,7 +187,7 @@ import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType, ClientModel } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { deepClonePreserve } from '@/core/utils/clone';
-import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
+import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
 import {
   type FormChildSubmitApi,

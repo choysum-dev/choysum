@@ -352,7 +352,7 @@ const { lastOnchangeResult, fieldErrors, afterFlushHandler, reset: resetOnchange
 // =============================
 provide('field-errors', fieldErrors);
 
-// Client-side RuleItem validators registered by FieldBase (replaces el-form-item).
+// Client-side RuleItem validators registered by ChoyFieldBase (replaces el-form-item).
 const fieldClientValidators = new Map<string, () => Promise<string>>();
 provide(FIELD_CLIENT_VALIDATORS_KEY, fieldClientValidators);
 

@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <FieldBase
+  <ChoyFieldBase
     :binding="binding"
     :label="label"
     :rules="mergedRules"
@@ -35,7 +35,7 @@ SPDX-License-Identifier: Apache-2.0
         )
       }}</span>
     </template>
-  </FieldBase>
+  </ChoyFieldBase>
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, Decimal | null>, V = FieldPathType<T, P>">
@@ -45,7 +45,7 @@ import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField, AggProp } from '@/web/web/composables/useField';
-import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
+import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
 import Decimal from '@/core/utils/decimal';
 import { createTranslate } from '@/web/web/i18n';

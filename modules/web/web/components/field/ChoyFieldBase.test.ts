@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Mount wiring for FieldBase label/help/translate/company-values and list-editing-row-id gate.
+ * Mount wiring for ChoyFieldBase label/help/translate/company-values and list-editing-row-id gate.
  * Dialog child SFCs are stubbed; their own suites remain smoke until store-heavy mounts are green.
  */
 
@@ -13,7 +13,7 @@ import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
-import FieldBase from './FieldBase.vue';
+import ChoyFieldBase from './ChoyFieldBase.vue';
 import FieldCompanyValuesDialog from './ChoyFieldCompanyValuesDialog.vue';
 import FieldTranslationsDialog from './ChoyFieldTranslationsDialog.vue';
 
@@ -167,7 +167,7 @@ function mountBase(
 ) {
   installUiStubs();
   installDialogStubs(opts?.dialog);
-  return mountApp(FieldBase as any, {
+  return mountApp(ChoyFieldBase as any, {
     props,
     provide: opts?.provide,
     slots: opts?.slots || {
@@ -177,13 +177,13 @@ function mountBase(
   });
 }
 
-describe('FieldBase label and help', () => {
+describe('ChoyFieldBase label and help', () => {
   afterEach(() => {
     restoreAll();
   });
 
-  test('component options name is FieldBase (not legacy OFieldBase)', () => {
-    expect((FieldBase as any).name || (FieldBase as any).__name).toBe('FieldBase');
+  test('component options name is ChoyFieldBase (not legacy FieldBase)', () => {
+    expect((ChoyFieldBase as any).name || (ChoyFieldBase as any).__name).toBe('ChoyFieldBase');
   });
 
   test('omits props.label and shows meta string fallback', () => {
@@ -267,7 +267,7 @@ describe('FieldBase label and help', () => {
   });
 });
 
-describe('FieldBase FieldsGet readonly', () => {
+describe('ChoyFieldBase FieldsGet readonly', () => {
   afterEach(() => {
     restoreAll();
   });
@@ -296,7 +296,7 @@ describe('FieldBase FieldsGet readonly', () => {
   });
 });
 
-describe('FieldBase translate and company values actions', () => {
+describe('ChoyFieldBase translate and company values actions', () => {
   afterEach(() => {
     restoreAll();
   });
@@ -360,7 +360,7 @@ describe('FieldBase translate and company values actions', () => {
   });
 });
 
-describe('FieldBase list-editing-row-id gate', () => {
+describe('ChoyFieldBase list-editing-row-id gate', () => {
   afterEach(() => {
     restoreAll();
   });
@@ -380,7 +380,7 @@ describe('FieldBase list-editing-row-id gate', () => {
     installUiStubs();
     installDialogStubs();
     installOvColumnStub(row);
-    return mountApp(FieldBase as any, {
+    return mountApp(ChoyFieldBase as any, {
       props: {
         binding: makeBinding({ string: 'Name' }, { fieldPrefix: fieldPrefix ?? null }),
         renderMode: 'table',
@@ -405,7 +405,7 @@ describe('FieldBase list-editing-row-id gate', () => {
     installUiStubs();
     installDialogStubs();
     installOvColumnStub({ Id: 'row-1' });
-    const m = mountApp(FieldBase as any, {
+    const m = mountApp(ChoyFieldBase as any, {
       props: {
         binding: makeBinding({ string: 'Name' }),
         renderMode: 'table',
@@ -434,7 +434,7 @@ describe('FieldBase list-editing-row-id gate', () => {
     installUiStubs();
     installDialogStubs();
     installOvColumnStub({ Id: 'row-9' });
-    const m = mountApp(FieldBase as any, {
+    const m = mountApp(ChoyFieldBase as any, {
       props: {
         binding: makeBinding({ string: 'Name' }),
         renderMode: 'table',
@@ -461,7 +461,7 @@ describe('FieldBase list-editing-row-id gate', () => {
     const validators = new Map<string, () => Promise<string>>();
     const binding = makeBinding({ string: 'Name' });
     binding.__value.value = '';
-    const m = mountApp(FieldBase as any, {
+    const m = mountApp(ChoyFieldBase as any, {
       props: {
         binding,
         renderMode: 'form',
@@ -507,7 +507,7 @@ describe('FieldBase list-editing-row-id gate', () => {
     });
     const binding = makeBinding({ string: 'Name' });
     binding.__value.value = '';
-    const m = mountApp(FieldBase as any, {
+    const m = mountApp(ChoyFieldBase as any, {
       props: {
         binding,
         renderMode: 'form',
@@ -567,7 +567,7 @@ describe('FieldBase list-editing-row-id gate', () => {
       },
     ];
     const mountOne = (binding: any) =>
-      mountApp(FieldBase as any, {
+      mountApp(ChoyFieldBase as any, {
         props: { binding, renderMode: 'form', rules },
         provide: { [FIELD_CLIENT_VALIDATORS_KEY as any]: validators },
         slots: {
@@ -588,7 +588,7 @@ describe('FieldBase list-editing-row-id gate', () => {
   });
 });
 
-describe('FieldBase auto renderMode from fieldPresentation', () => {
+describe('ChoyFieldBase auto renderMode from fieldPresentation', () => {
   afterEach(() => {
     restoreAll();
   });
@@ -602,7 +602,7 @@ describe('FieldBase auto renderMode from fieldPresentation', () => {
         return () => h('div', { class: 'ov-column-stub' }, slots.default?.({ row: { Id: '1' }, $index: 0 }));
       },
     });
-    const m = mountApp(FieldBase as any, {
+    const m = mountApp(ChoyFieldBase as any, {
       props: {
         binding: makeBinding({ string: 'Name' }, { fieldPresentation: 'cell', isEditMode: false }),
         renderMode: 'auto',

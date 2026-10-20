@@ -9,7 +9,7 @@
 import { computed, h, ref } from 'vue';
 
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import FieldBase from './FieldBase.vue';
+import ChoyFieldBase from './ChoyFieldBase.vue';
 import ChoyBooleanField from './ChoyBooleanField.vue';
 import ChoyVarcharField from './ChoyVarcharField.vue';
 import ChoyTextField from './ChoyTextField.vue';
@@ -36,8 +36,8 @@ function makeBinding(initial: unknown, prop = 'Value') {
 }
 
 function installFieldBaseStub(mode: 'edit' | 'display' | 'both' | 'rules' = 'both') {
-  stubSfc(FieldBase as any, {
-    name: 'FieldBase',
+  stubSfc(ChoyFieldBase as any, {
+    name: 'ChoyFieldBase',
     inheritAttrs: false,
     props: {
       binding: { type: Object, required: false },
@@ -83,7 +83,7 @@ async function runRule(rules: any[], value: unknown): Promise<Error | undefined>
 
 describe('Choy native scalar field cells', () => {
   afterEach(() => {
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     lastBaseProps.current = null;
   });
 
@@ -148,7 +148,7 @@ describe('Choy native scalar field cells', () => {
     expect(fromView(true)).toBe(true);
     m.unmount();
 
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     installFieldBaseStub('both');
     const nullableBinding = makeBinding(null);
     const nullableMount = mountApp(ChoyBooleanField as any, {
@@ -202,7 +202,7 @@ describe('Choy native scalar field cells', () => {
     expect(toView(null)).toBeNull();
     expect(toView(12)).toBe('12');
 
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     installFieldBaseStub('rules');
     const rulesMount = mountApp(ChoyVarcharField as any, {
       props: { binding: makeBinding(null), maxLength: 2, nullable: false, renderMode: 'form' },
@@ -243,7 +243,7 @@ describe('Choy native scalar field cells', () => {
     expect(toView(null)).toBeNull();
     expect(toView(9)).toBe('9');
 
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     installFieldBaseStub('rules');
     const rulesMount = mountApp(ChoyTextField as any, {
       props: { binding: makeBinding(null), maxLength: 2, nullable: false, renderMode: 'form' },
@@ -295,7 +295,7 @@ describe('Choy native scalar field cells', () => {
     expect(toView('3')).toBe(3);
     expect(toView('x')).toBeNull();
 
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     installFieldBaseStub('rules');
     const rulesMount = mountApp(ChoyIntField as any, {
       props: { binding: makeBinding(null), min: 1, max: 5, nullable: false, renderMode: 'form' },
@@ -354,7 +354,7 @@ describe('Choy native scalar field cells', () => {
     expect(fromView(null)).toBeNull();
     expect(fromView('9')).toBe('9');
 
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     installFieldBaseStub('both');
     const numBinding = makeBinding(null);
     const numMount = mountApp(ChoyBigintField as any, {
@@ -382,7 +382,7 @@ describe('Choy native scalar field cells', () => {
     setInputValue(numMount.q('input.choy-bigint-input') as HTMLInputElement, '9007199254740993');
     await flushPromises();
 
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     installFieldBaseStub('rules');
     const rulesMount = mountApp(ChoyBigintField as any, {
       props: {
@@ -446,7 +446,7 @@ describe('Choy native scalar field cells', () => {
     expect(toView(2.5)).toBe(2.5);
     expect(toView('x')).toBeNull();
 
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     installFieldBaseStub('rules');
     const rulesMount = mountApp(ChoyNumberField as any, {
       props: { binding: makeBinding(null), min: 1, max: 5, nullable: false, renderMode: 'form' },

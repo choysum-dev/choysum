@@ -194,6 +194,11 @@ export type {
 } from './components/view/chartViewHelpers';
 export { groupRowsToChartSeries } from './components/view/chartStoreHelpers';
 
+export { default as ChoyFieldBase } from './components/field/ChoyFieldBase.vue';
+export type {
+  FieldStateExpr,
+  FormItemProps,
+} from './components/field/ChoyFieldBase.vue';
 export { default as ChoyVarcharField } from './components/field/ChoyVarcharField.vue';
 export { default as ChoyTextField } from './components/field/ChoyTextField.vue';
 export { default as ChoyIntField } from './components/field/ChoyIntField.vue';

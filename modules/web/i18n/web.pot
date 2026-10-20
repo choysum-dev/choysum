@@ -262,23 +262,23 @@ msgctxt "web/components/field/DecimalField"
 msgid "Total digits must not exceed %s"
 msgstr ""
 
-#: web/components/field/FieldBase.vue:182
-msgctxt "web/components/field/FieldBase"
+#: web/components/field/ChoyFieldBase.vue:182
+msgctxt "web/components/field/ChoyFieldBase"
 msgid "Company values"
 msgstr ""
 
-#: web/components/field/FieldBase.vue:182
-msgctxt "web/components/field/FieldBase"
+#: web/components/field/ChoyFieldBase.vue:182
+msgctxt "web/components/field/ChoyFieldBase"
 msgid "Company values: %s"
 msgstr ""
 
-#: web/components/field/FieldBase.vue:175
-msgctxt "web/components/field/FieldBase"
+#: web/components/field/ChoyFieldBase.vue:175
+msgctxt "web/components/field/ChoyFieldBase"
 msgid "Translate field"
 msgstr ""
 
-#: web/components/field/FieldBase.vue:175
-msgctxt "web/components/field/FieldBase"
+#: web/components/field/ChoyFieldBase.vue:175
+msgctxt "web/components/field/ChoyFieldBase"
 msgid "Translate: %s"
 msgstr ""
 

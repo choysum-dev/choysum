@@ -12,7 +12,7 @@ import { createFieldsGetHelpers } from '@/web/web/stores/fieldsGet';
 import type { WebFieldMetadata } from '@/web/web/stores/modelStore';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
-import FieldBase from './FieldBase.vue';
+import ChoyFieldBase from './ChoyFieldBase.vue';
 import ChoyStatusbarField from './ChoyStatusbarField.vue';
 
 function makeBinding(opts: {
@@ -67,8 +67,8 @@ function makeStore(meta: WebFieldMetadata = staticMeta) {
 const lastBaseProps: { current: Record<string, unknown> | null } = { current: null };
 
 function installFieldBaseStub(slot: 'edit' | 'display' | 'both' = 'edit') {
-  stubSfc(FieldBase as any, {
-    name: 'FieldBase',
+  stubSfc(ChoyFieldBase as any, {
+    name: 'ChoyFieldBase',
     props: ['binding', 'readonly', 'renderMode', 'rules', 'formItemProps', 'toView', 'fromView', 'label'],
     setup(p: any, { slots }: any) {
       lastBaseProps.current = p;
@@ -157,7 +157,7 @@ function optionValues(m: { qa: (s: string) => Element[] }) {
 
 describe('ChoyStatusbarField mount wiring', () => {
   afterEach(() => {
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     restoreSfc(ChoyButton as any);
   });
 
@@ -269,14 +269,14 @@ describe('ChoyStatusbarField mount wiring', () => {
     await flushPromises();
     expect(statusbarRoot(disabledMount)?.getAttribute('aria-disabled')).toBe('true');
     disabledMount.unmount();
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     restoreSfc(ChoyButton as any);
 
     const readonlyMount = mountStatusbar({ clickable: true, readonly: true }, binding);
     await flushPromises();
     expect(statusbarRoot(readonlyMount)?.getAttribute('aria-disabled')).toBe('true');
     readonlyMount.unmount();
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     restoreSfc(ChoyButton as any);
 
     const metaReadonly = {
@@ -298,7 +298,7 @@ describe('ChoyStatusbarField mount wiring', () => {
     await flushPromises();
     expect(optionValues(m).map((o) => o.value)).toEqual(['draft', 'done', 'confirmed']);
     m.unmount();
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     restoreSfc(ChoyButton as any);
 
     const { binding: selBinding } = makeBinding({ meta: staticMeta, store, value: 'draft' });

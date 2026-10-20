@@ -55,7 +55,7 @@ export function useListInlineEdit<T extends BaseModel>(opts: {
 
   const isEditing = computed(() => editingRowId.value != null);
 
-  // Row id gate for FieldBase; safe list-wide (edit UI still requires table form-root).
+  // Row id gate for ChoyFieldBase; safe list-wide (edit UI still requires table form-root).
   provide('list-editing-row-id', editingRowId);
 
   const formRoot = {

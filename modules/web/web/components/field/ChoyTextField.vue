@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <FieldBase
+  <ChoyFieldBase
     :binding="binding"
     :label="label"
     :rules="mergedRules"
@@ -39,7 +39,7 @@ SPDX-License-Identifier: Apache-2.0
     <template #display="{ fieldValue }">
       <div class="choy-textfield-display whitespace-pre-wrap wrap-break-word px-[11px] text-foreground leading-8">{{ toDisplayText(fieldValue().value) }}</div>
     </template>
-  </FieldBase>
+  </ChoyFieldBase>
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, string | null | undefined>, V = FieldPathType<T, P>">
@@ -52,7 +52,7 @@ import type { UseField } from '@/web/web/composables/useField';
 // Narrow aggregation types to count_distinct only.
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
-import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
+import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { createTranslate } from '@/web/web/i18n';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/TextField' });

@@ -9,7 +9,7 @@ import { computed, defineComponent, h, ref } from 'vue';
 
 import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import FieldBase from './FieldBase.vue';
+import ChoyFieldBase from './ChoyFieldBase.vue';
 import ChoyManyToManyRefTreeField from './ChoyManyToManyRefTreeField.vue';
 import RelationTree from '@/web/web/components/internal/RelationTree.vue';
 
@@ -58,8 +58,8 @@ function relationStoreStub(overrides: Record<string, unknown> = {}) {
 
 describe('ChoyManyToManyRefTreeField patch coverage', () => {
   beforeEach(() => {
-    stubSfc(FieldBase as any, {
-      name: 'FieldBase',
+    stubSfc(ChoyFieldBase as any, {
+      name: 'ChoyFieldBase',
       inheritAttrs: false,
       props: {
         binding: { type: Object, required: true },
@@ -82,7 +82,7 @@ describe('ChoyManyToManyRefTreeField patch coverage', () => {
   });
 
   afterEach(() => {
-    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyFieldBase as any);
     restoreSfc(RelationTree as any);
   });
 
