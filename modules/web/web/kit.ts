@@ -113,7 +113,6 @@ export {
   registerChoyViewSwitcherPreset,
   resolveChoyViewSwitcherOptions,
 } from './components/view/choyViewSwitcherPresets';
-export { default as ChoyFormItem } from './components/layout/ChoyFormItem.vue';
 export { default as ChoyPagination } from './components/view/ChoyPagination.vue';
 export { default as ChoyBreadcrumb } from './components/view/ChoyBreadcrumb.vue';
 export { default as ChoyViewScope } from './components/view/ChoyViewScope.vue';
@@ -195,7 +194,6 @@ export type {
 } from './components/view/chartViewHelpers';
 export { groupRowsToChartSeries } from './components/view/chartStoreHelpers';
 
-export { default as ChoyFieldBase } from './components/field/ChoyFieldBase.vue';
 export { default as ChoyVarcharField } from './components/field/ChoyVarcharField.vue';
 export { default as ChoyTextField } from './components/field/ChoyTextField.vue';
 export { default as ChoyIntField } from './components/field/ChoyIntField.vue';
@@ -226,14 +224,12 @@ export { default as ChoyVirtualField } from './components/field/ChoyVirtualField
 export { default as ChoyFieldTranslationsDialog } from './components/field/ChoyFieldTranslationsDialog.vue';
 export { default as ChoyFieldCompanyValuesDialog } from './components/field/ChoyFieldCompanyValuesDialog.vue';
 export {
-  choyFieldChromeDefaults,
   formatChoyMonetary,
   parseChoyNumber,
   resolveChoyFieldVisible,
   resolveChoyMonetaryPrecision,
   resolveChoyNumberDraftText,
   roundChoyDecimal,
-  type ChoyFieldChromeProps,
   type ChoySelectionOption,
 } from './components/field/fieldHelpers';
 export {

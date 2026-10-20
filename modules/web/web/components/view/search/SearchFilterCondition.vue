@@ -88,7 +88,6 @@ SPDX-License-Identifier: Apache-2.0
         :label="''"
         :rules="[]"
         :placeholder="valuePlaceholder"
-        :formItemProps="{ labelWidth: 0, style: { margin: 0, padding: 0 } }"
       />
       <span
         v-else-if="condition.field && isNullOperator(condition.operator)"
@@ -426,18 +425,18 @@ function onRemove() {
   min-width: 0;
 }
 
-.choy-search-filter__value-field :deep([data-slot='form-item']),
+.choy-search-filter__value-field :deep([data-slot='field']),
 .choy-search-filter__value-field :deep(.choy-field) {
   margin: 0;
   width: 100%;
 }
 
-.choy-search-filter__value-field :deep([data-slot='form-item'] > label),
+.choy-search-filter__value-field :deep(.choy-field-base__label-row),
 .choy-search-filter__value-field :deep(.choy-field > label) {
   display: none;
 }
 
-.choy-search-filter__value-field :deep([data-slot='form-item'] > div) {
+.choy-search-filter__value-field :deep([data-slot='field'] > div) {
   margin: 0;
   width: 100%;
 }

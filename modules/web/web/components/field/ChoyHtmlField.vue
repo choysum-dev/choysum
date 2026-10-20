@@ -4,178 +4,117 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyFieldBase
-    data-anchor="choy.html-field"
-    :class="props.class"
+  <FieldBase
+    :binding="binding"
     :label="label"
-    :help="help"
+    :rules="rules"
+    :formItemProps="formItemProps"
+    :vColumnProps="vColumnProps"
+    :toView="toView"
+    :fromView="fromView"
     :required="required"
     :readonly="readonly"
-    :disabled="disabled"
-    :error="error"
-    :name="name"
     :visible="visible"
+    :cellVisible="cellVisible"
+    :renderMode="renderMode"
+    :showInlineError="showInlineError"
+    v-bind="$attrs"
   >
-    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
-      <div
-        v-if="readonly || disabled"
-        :id="controlId"
-        class="choy-html-field__display rounded-md border border-border bg-muted/20 px-3 py-2 text-sm"
-        :aria-invalid="ariaInvalid"
-        :aria-required="ariaRequired"
-        :aria-describedby="ariaDescribedby"
-      >
-        <span v-if="plaintext">{{ displayPlain() }}</span>
-        <div v-else class="prose-choy" v-html="displayHtml()" />
-      </div>
-      <div
-        v-else
-        class="choy-html-field__edit overflow-hidden rounded-md border border-border bg-background"
-      >
-        <div
-          v-if="editor"
-          class="flex flex-wrap gap-1 border-b border-border bg-muted/30 px-2 py-1"
-          role="toolbar"
-        >
-          <button
-            type="button"
-            class="rounded px-2 py-0.5 text-xs font-semibold hover:bg-muted"
-            :class="{ 'bg-muted': editor.isActive('bold') }"
-            @click.prevent="htmlEditorChain(editor).focus().toggleBold().run()"
-          >
-            B
-          </button>
-          <button
-            type="button"
-            class="rounded px-2 py-0.5 text-xs italic hover:bg-muted"
-            :class="{ 'bg-muted': editor.isActive('italic') }"
-            @click.prevent="htmlEditorChain(editor).focus().toggleItalic().run()"
-          >
-            I
-          </button>
-          <button
-            type="button"
-            class="rounded px-2 py-0.5 text-xs hover:bg-muted"
-            :class="{ 'bg-muted': editor.isActive('bulletList') }"
-            @click.prevent="htmlEditorChain(editor).focus().toggleBulletList().run()"
-          >
-            •
-          </button>
-          <button
-            type="button"
-            class="rounded px-2 py-0.5 text-xs hover:bg-muted"
-            :class="{ 'bg-muted': editor.isActive('orderedList') }"
-            @click.prevent="htmlEditorChain(editor).focus().toggleOrderedList().run()"
-          >
-            1.
-          </button>
-          <button
-            type="button"
-            class="rounded px-2 py-0.5 text-xs hover:bg-muted"
-            :class="{ 'bg-muted': editor.isActive('link') }"
-            @click.prevent="toggleLink"
-          >
-            Link
-          </button>
-        </div>
-        <EditorContent
-          :editor="editor"
-          :id="controlId"
-          :aria-invalid="ariaInvalid"
-          :aria-required="ariaRequired"
-          :aria-describedby="ariaDescribedby"
-        />
-      </div>
+    <template #edit="{ fieldValue, inputId, inputName, describedBy, invalid, required }">
+      <ChoyHtmlEditorCell
+        :field-value="fieldValue"
+        :control-id="inputId"
+        :control-name="inputName"
+        :described-by="describedBy || undefined"
+        :invalid="!!invalid"
+        :required="!!required"
+      />
     </template>
-  </ChoyFieldBase>
+    <template #display="{ fieldValue }">
+      <span v-if="plaintext" class="choy-field-display-text">{{ htmlToPlaintext(fieldValue().value) }}</span>
+      <div v-else class="prose-choy" v-html="sanitizeHtmlForClient(fieldValue().value)" />
+    </template>
+  </FieldBase>
 </template>
 
-<script setup lang="ts">
-import { onBeforeUnmount, watch } from 'vue';
+<script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, string | null | undefined>, V = FieldPathType<T, P>">
+import type { RuleItem } from 'async-validator';
+import type { Editor } from '@tiptap/vue-3';
+import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
+import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { defineComponent, h, onBeforeUnmount, watch } from 'vue';
 import { EditorContent, useEditor } from '@tiptap/vue-3';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
-import type { ClassValue } from '../../lib/utils';
-import ChoyFieldBase from './ChoyFieldBase.vue';
-import {
-  choyFieldChromeDefaults,
-  type ChoyFieldChromeProps
-} from './fieldHelpers';
+import { useField } from '@/web/web/composables/useField';
+import type { NarrowAggProp, NonNumericAggFns, UseField } from '@/web/web/composables/useField';
+import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
 import { htmlToPlaintext, normalizeHtmlForStore, resolveChoyHtmlLinkHref, sanitizeHtmlForClient } from './htmlHelpers';
 import { htmlEditorChain, htmlEditorSetContent } from './tiptapHtmlCommands';
 
-/**
- * Rich-text field (TipTap + sanitize). Isolation: defineModel string | null.
- */
+defineOptions({ name: 'ChoyHtmlField', inheritAttrs: false });
+
+type IsAny<T> = 0 extends 1 & T ? true : false;
+type ViewType = string | null;
+
 const props = withDefaults(
-  defineProps<
-    ChoyFieldChromeProps & {
-      class?: ClassValue;
-      /** When true, show plaintext instead of sanitized HTML. */
-      plaintext?: boolean;
-    }
-  >(),
+  defineProps<{
+    store?: WebModelStore<T>;
+    prop?: P | (IsAny<T> extends true ? string : never);
+    agg?: NarrowAggProp<NonNumericAggFns>;
+    binding?: UseField<T, V>;
+
+    label?: string;
+    rules?: RuleItem[];
+    formItemProps?: Partial<FormItemProps>;
+    vColumnProps?: Record<string, unknown>;
+
+    required?: FieldStateExpr<T, V>;
+    readonly?: FieldStateExpr<T, V>;
+    visible?: FieldStateExpr<T, V>;
+    cellVisible?: FieldStateExpr<T, V>;
+
+    renderMode?: 'auto' | 'form' | 'table' | 'inline';
+    showInlineError?: boolean;
+    /** When true, display mode shows plaintext instead of sanitized HTML. */
+    plaintext?: boolean;
+  }>(),
   {
-    ...choyFieldChromeDefaults,
+    rules: () => [],
+    formItemProps: () => ({}),
+    vColumnProps: () => ({}),
+    renderMode: 'auto',
+    showInlineError: false,
     plaintext: false,
+    visible: true,
+    cellVisible: true,
+    readonly: false,
+    required: false,
   },
 );
 
-const model = defineModel<string | null>({ default: null });
+const binding = (props.binding ??
+  useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
 
-const editor = useEditor({
-  extensions: [
-    StarterKit,
-    Link.configure({
-      openOnClick: false,
-      autolink: true,
-      defaultProtocol: 'https',
-      protocols: ['http', 'https', 'mailto'],
-    }),
-  ],
-  content: '',
-  editable: !(props.disabled || props.readonly),
-  editorProps: {
-    attributes: {
-      class: 'choy-html-field__prose min-h-[6rem] px-3 py-2 text-sm outline-none',
+const toView = (raw: unknown): ViewType => (raw == null ? null : String(raw));
+const fromView = (v: ViewType) => v as unknown as V;
+
+function toolbarButton(label: string, active: boolean, onClick: () => void) {
+  return h(
+    'button',
+    {
+      type: 'button',
+      class: ['rounded px-2 py-0.5 text-xs hover:bg-muted', active ? 'bg-muted' : ''],
+      onClick: (e: Event) => {
+        e.preventDefault();
+        onClick();
+      },
     },
-  },
-  onUpdate: ({ editor: ed }) => {
-    model.value = normalizeHtmlForStore(ed.getHTML());
-  },
-});
+    label,
+  );
+}
 
-watch(
-  () => [model.value, editor.value] as const,
-  ([next]) => {
-    const ed = editor.value;
-    if (!ed) return;
-    const sanitized = next == null || next === '' ? '' : sanitizeHtmlForClient(next);
-    const current = ed.getHTML();
-    if (current === sanitized) return;
-    // TipTap serializes an empty doc as '<p></p>' while the model normalizes to null;
-    // skip the reset so clearing content does not move the caret. Use HTML, not
-    // getText(): hr-only docs also have empty text but must still reset.
-    if (!sanitized && current === '<p></p>') return;
-    htmlEditorSetContent(ed, sanitized, false);
-  },
-  { immediate: true },
-);
-
-watch(
-  () => [props.disabled, props.readonly] as const,
-  ([disabled, readonly]) => {
-    editor.value?.setEditable(!(disabled || readonly));
-  },
-);
-
-onBeforeUnmount(() => {
-  editor.value?.destroy();
-});
-
-function toggleLink(): void {
-  const ed = editor.value;
-  if (!ed) return;
+function toggleLink(ed: Editor): void {
   if (ed.isActive('link')) {
     htmlEditorChain(ed).focus().unsetLink().run();
     return;
@@ -183,8 +122,7 @@ function toggleLink(): void {
   const prev = ed.getAttributes('link').href as string | undefined;
   const href = typeof window !== 'undefined' ? window.prompt('URL', prev || 'https://') : null;
   if (href == null) return;
-  const trimmed = href.trim();
-  const resolved = resolveChoyHtmlLinkHref(trimmed);
+  const resolved = resolveChoyHtmlLinkHref(href.trim());
   if (resolved === null) {
     htmlEditorChain(ed).focus().unsetLink().run();
     return;
@@ -193,6 +131,127 @@ function toggleLink(): void {
   htmlEditorChain(ed).focus().extendMarkRange('link').setLink({ href: resolved }).run();
 }
 
-const displayPlain = () => htmlToPlaintext(model.value);
-const displayHtml = () => sanitizeHtmlForClient(model.value);
+/**
+ * TipTap editor bound to the FieldBase slot value. Mounted only in edit mode.
+ */
+const ChoyHtmlEditorCell = defineComponent({
+  name: 'ChoyHtmlEditorCell',
+  inheritAttrs: false,
+  props: {
+    fieldValue: { type: Function, required: true },
+    controlId: { type: String, default: '' },
+    controlName: { type: String, default: '' },
+    describedBy: { type: String, default: '' },
+    invalid: { type: Boolean, default: false },
+    required: { type: Boolean, default: false },
+  },
+  setup(cellProps) {
+    const read = () => (cellProps.fieldValue as () => { value: ViewType })().value;
+    const write = (next: ViewType) => {
+      (cellProps.fieldValue as () => { value: ViewType })().value = next;
+    };
+
+    function controlAttributes(): Record<string, string> {
+      const next: Record<string, string> = {
+        class: 'choy-html-field__prose min-h-[6rem] px-3 py-2 text-sm outline-none',
+      };
+      if (cellProps.controlId) next.id = cellProps.controlId;
+      if (cellProps.controlName) next.name = cellProps.controlName;
+      if (cellProps.invalid) next['aria-invalid'] = 'true';
+      if (cellProps.required) next['aria-required'] = 'true';
+      if (cellProps.describedBy) next['aria-describedby'] = cellProps.describedBy;
+      return next;
+    }
+
+    function applyControlAttributes(ed: unknown): void {
+      const dom = (ed as { view?: { dom?: HTMLElement } } | null | undefined)?.view?.dom;
+      if (!dom) return;
+      const next = controlAttributes();
+      // Class stays on editorProps.attributes; rewriting it here would drop TipTap/ProseMirror roots.
+      for (const key of ['id', 'name', 'aria-invalid', 'aria-required', 'aria-describedby'] as const) {
+        if (next[key]) dom.setAttribute(key, next[key]!);
+        else dom.removeAttribute(key);
+      }
+    }
+
+    const editor = useEditor({
+      extensions: [
+        StarterKit,
+        Link.configure({
+          openOnClick: false,
+          autolink: true,
+          defaultProtocol: 'https',
+          protocols: ['http', 'https', 'mailto'],
+        }),
+      ],
+      content: '',
+      editorProps: {
+        attributes: controlAttributes(),
+      },
+      onUpdate: ({ editor: ed }) => {
+        write(normalizeHtmlForStore(ed.getHTML()));
+      },
+    });
+
+    watch(
+      () => [read(), editor.value] as const,
+      ([next]) => {
+        const ed = editor.value;
+        if (!ed) return;
+        const sanitized = next == null || next === '' ? '' : sanitizeHtmlForClient(next);
+        const current = ed.getHTML();
+        if (current === sanitized) return;
+        // Empty docs serialize as '<p></p>' while the store normalizes to null.
+        if (!sanitized && current === '<p></p>') return;
+        htmlEditorSetContent(ed, sanitized, false);
+      },
+      { immediate: true },
+    );
+
+    watch(
+      () =>
+        [
+          cellProps.controlId,
+          cellProps.controlName,
+          cellProps.invalid,
+          cellProps.required,
+          cellProps.describedBy,
+          editor.value,
+        ] as const,
+      () => applyControlAttributes(editor.value),
+      { immediate: true },
+    );
+
+    onBeforeUnmount(() => {
+      editor.value?.destroy();
+    });
+
+    return () => {
+      const ed = editor.value;
+      return h(
+        'div',
+        { class: 'choy-html-field__edit overflow-hidden rounded-md border border-border bg-background' },
+        [
+          ed
+            ? h(
+                'div',
+                {
+                  class: 'flex flex-wrap gap-1 border-b border-border bg-muted/30 px-2 py-1',
+                  role: 'toolbar',
+                },
+                [
+                  toolbarButton('B', ed.isActive('bold'), () => htmlEditorChain(ed).focus().toggleBold().run()),
+                  toolbarButton('I', ed.isActive('italic'), () => htmlEditorChain(ed).focus().toggleItalic().run()),
+                  toolbarButton('•', ed.isActive('bulletList'), () => htmlEditorChain(ed).focus().toggleBulletList().run()),
+                  toolbarButton('1.', ed.isActive('orderedList'), () => htmlEditorChain(ed).focus().toggleOrderedList().run()),
+                  toolbarButton('Link', ed.isActive('link'), () => toggleLink(ed)),
+                ],
+              )
+            : null,
+          h(EditorContent, { editor: ed }),
+        ],
+      );
+    };
+  },
+});
 </script>

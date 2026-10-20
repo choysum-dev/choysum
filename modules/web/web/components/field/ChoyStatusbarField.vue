@@ -78,6 +78,7 @@ import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { WritableComputedRef } from 'vue';
+import { cn } from '@/web/web/lib/utils';
 import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
 import ChoyButton from '../layout/ChoyButton.vue';
 import { useField } from '@/web/web/composables/useField';
@@ -266,19 +267,9 @@ async function onSelect(getter: () => WritableComputedRef<string | null>, raw: s
   }
 }
 
-const mergedFormItemProps = computed(() => {
-  const extra = props.formItemProps ?? {};
-  const extraClass = (extra as { class?: unknown }).class;
-  const classes = ['choy-statusbar-form-item'];
-  if (extraClass != null && extraClass !== '') {
-    if (Array.isArray(extraClass)) classes.push(...extraClass.map(String));
-    else classes.push(String(extraClass));
-  }
-  return {
-    ...extra,
-    class: classes,
-  };
-});
+const mergedFormItemProps = computed(() => ({
+  class: cn('choy-statusbar-form-item', props.formItemProps?.class),
+}));
 
 const internalRule = {
   type: 'string',

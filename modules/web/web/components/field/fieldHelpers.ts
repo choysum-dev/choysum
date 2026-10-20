@@ -2,19 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Shared chrome props and number/monetary helpers for Choy field components.
+ * Shared selection and number/monetary helpers for Choy field components.
  */
-
-export type ChoyFieldChromeProps = {
-  label?: string;
-  help?: string;
-  required?: boolean;
-  readonly?: boolean;
-  disabled?: boolean;
-  error?: string;
-  name?: string;
-  visible?: boolean;
-};
 
 /**
  * Option row shared by selection and statusbar fields.
@@ -25,17 +14,6 @@ export type ChoySelectionOption = {
   value: string;
   label: string;
 };
-
-export const choyFieldChromeDefaults = {
-  label: '',
-  help: '',
-  required: false,
-  readonly: false,
-  disabled: false,
-  error: '',
-  name: '',
-  visible: true,
-} as const satisfies Required<ChoyFieldChromeProps>;
 
 /** Fields are visible unless `visible` is explicitly false. */
 export function resolveChoyFieldVisible(visible?: boolean): boolean {

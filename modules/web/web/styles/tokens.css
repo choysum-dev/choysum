@@ -155,7 +155,7 @@ html {
   --choy-list-header-height: 40px;
 
   /*
-   * Form field chrome (product ChoyFormItem / ChoyFieldBase).
+   * Form field chrome (FieldBase form branch).
    * Stack = label ↔ control ↔ message; group = field ↔ field (grid / FieldGroup).
    * Kit Field/FormItem keep their own gap-* defaults; product CSS overrides.
    */
