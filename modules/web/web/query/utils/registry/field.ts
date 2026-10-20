@@ -32,14 +32,20 @@ function getOrCreateRoot(storeId: StoreId): FieldNode {
 
 function mergePath(root: FieldNode, path: string[]): void {
   let node = root;
-  for (const seg of path) {
+  for (let i = 0; i < path.length; i++) {
+    const seg = path[i]!;
     if (!node.children) node.children = new Map();
     let child = node.children.get(seg);
     if (!child) {
       child = { name: seg, children: new Map(), refCount: 0 };
       node.children.set(seg, child);
     }
-    child.refCount++;
+    // Only the leaf counts as a registered selection path. Intermediate segments are
+    // structural; bumping them made collectPaths drop bare parents (e.g. CurrencyId)
+    // once CurrencyId.DisplayName / DecimalDigits were also registered.
+    if (i === path.length - 1) {
+      child.refCount++;
+    }
     node = child;
   }
 }
@@ -85,9 +91,10 @@ function collectPaths(node: FieldNode, prefix: string[] = []): string[] {
   if (!node.children || node.children.size === 0) return out;
   for (const [name, child] of node.children) {
     const next = [...prefix, name];
-    if (!child.children || child.children.size === 0) {
-      if (child.refCount > 0) out.push(next.join('.'));
-    } else {
+    // Emit this path when it was registered as a leaf, even if nested companions exist
+    // (ManyToOneRef FK must stay a scalar selection alongside CurrencyId.DecimalDigits).
+    if (child.refCount > 0) out.push(next.join('.'));
+    if (child.children && child.children.size > 0) {
       out.push(...collectPaths(child, next));
     }
   }

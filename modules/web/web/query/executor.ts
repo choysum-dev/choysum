@@ -21,6 +21,7 @@ type ExecutorStoreDeps = {
 /**
  * Hydrates ManyToOneRef fields in bulk.
  * Replaces string ids in the result set with { Id, DisplayName } objects.
+ * Used only by execute() browse/search (cross-app via createStoreByModel).
  */
 async function hydrateManyToOneRefs(store: WebModelStore<any>, items: any[], deps: ExecutorStoreDeps) {
   if (!items || items.length === 0) return;

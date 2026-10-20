@@ -49,6 +49,14 @@ test('monetaryHelpers currency resolution > reads path / sibling currency and di
   expect(readCurrencySymbol({ symbol: '  ' })).toBeUndefined();
   expect(resolveMonetaryScaleFromRecord({ CurrencyId: { DecimalDigits: 0 } }, 'CurrencyId', 'Amount')).toBe(0);
   expect(resolveMonetaryScaleFromRecord({}, 'CurrencyId', 'Amount', 5)).toBe(5);
+  expect(
+    resolveMonetaryScaleFromRecord(
+      { CurrencyId: { Id: 'c1', DecimalDigits: 2 } },
+      'CurrencyId',
+      'Amount'
+    )
+  ).toBe(2);
+  expect(resolveMonetaryScaleFromRecord({ Amount: '1' }, 'CurrencyId', 'Amount')).toBe(2);
 
   const boom = new Proxy(
     {},
@@ -311,12 +319,14 @@ test('monetaryHelpers aggregate display > builds currency sibling registration p
   expect(currencyFieldPaths('', 'CurrencyId')).toEqual([]);
   expect(currencyFieldPaths('Amount', 'CurrencyId')).toEqual([
     'CurrencyId',
+    'CurrencyId.DisplayName',
     'CurrencyId.DecimalDigits',
     'CurrencyId.Symbol',
     'CurrencyId.Code',
   ]);
   expect(currencyFieldPaths('line.Amount', ' CurrencyId ')).toEqual([
     'line.CurrencyId',
+    'line.CurrencyId.DisplayName',
     'line.CurrencyId.DecimalDigits',
     'line.CurrencyId.Symbol',
     'line.CurrencyId.Code',

@@ -108,6 +108,7 @@ describe('MonetaryField mount wiring', () => {
     const m = mountField(binding, { readonly: true });
     await flushPromises();
     expect(binding.__registered).toContain('CurrencyId');
+    expect(binding.__registered).toContain('CurrencyId.DisplayName');
     expect(binding.__registered).toContain('CurrencyId.DecimalDigits');
     expect((m.q('.choy-field-display-text')?.textContent || '').length).toBeGreaterThan(0);
 
@@ -166,6 +167,7 @@ describe('MonetaryField mount wiring', () => {
     setInput(input, 'abc');
     await nextTick();
     expect(new Decimal(binding.__value.value).toString()).toBe('1');
+    expect(input.value).toBe('1');
 
     setInput(input, '12.');
     await nextTick();
@@ -175,6 +177,27 @@ describe('MonetaryField mount wiring', () => {
     await flushPromises();
     expect(new Decimal(binding.__value.value).toString()).toBe('4.56');
     m.unmount();
+  });
+
+  test('display uses Currency.DecimalDigits and form empty shows No content', async () => {
+    const filled = makeBinding({
+      Amount: new Decimal('99.5'),
+      CurrencyId: { Id: 'C1', Code: 'CNY', Symbol: '¥', DecimalDigits: 2 },
+    });
+    const filledMount = mountField(filled, { readonly: true });
+    await flushPromises();
+    expect(filledMount.q('.choy-field-display-text')?.textContent || '').toContain('99.50');
+    filledMount.unmount();
+    restoreSfc(ChoyFieldBase as any);
+
+    const empty = makeBinding({
+      Amount: null,
+      CurrencyId: { DecimalDigits: 2 },
+    });
+    const emptyMount = mountField(empty, { readonly: true, renderMode: 'form' });
+    await flushPromises();
+    expect(emptyMount.q('.choy-monetary-display--empty')?.textContent || '').toContain('No content');
+    emptyMount.unmount();
   });
 
   test('commits trailing-dot on blur and rejects over-max input', async () => {

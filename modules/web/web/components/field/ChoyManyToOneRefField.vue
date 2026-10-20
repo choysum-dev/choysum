@@ -216,6 +216,7 @@ const binding = (props.binding ??
     prop: props.prop as P,
     agg: props.agg,
   })) as UseField<T, V>;
+binding.registerFields(`${binding.prop}.DisplayName`);
 
 // Resolve the relation store dynamically.
 const relationStore = computed(() => {
@@ -282,8 +283,17 @@ const isValueClickable = computed<boolean>(() => {
   return hasValueClickListener.value;
 });
 
+function labelFromRecord(item: any): string {
+  if (!item || typeof item !== 'object') return '';
+  for (const key of ['DisplayName', 'Name', 'Title', 'Code'] as const) {
+    const v = item[key];
+    if (v != null && String(v).trim()) return String(v);
+  }
+  return '';
+}
+
 function toOption(item: V): OptionType {
-  return { value: item, label: ((item as any)?.DisplayName as string) || '' };
+  return { value: item, label: labelFromRecord(item) };
 }
 
 function upsertOption(item?: V | null) {
@@ -293,8 +303,11 @@ function upsertOption(item?: V | null) {
 
   const idx = options.value.findIndex(o => (o.value as any).Id === (item as any).Id);
   const opt = toOption(item);
-  if (idx >= 0) options.value.splice(idx, 1, opt);
-  else options.value.unshift(opt);
+  // Replace the array so shallowRef watchers / display labels re-render.
+  const next = options.value.slice();
+  if (idx >= 0) next.splice(idx, 1, opt);
+  else next.unshift(opt);
+  options.value = next;
 }
 
 function comboboxId(val: any): string | null {
@@ -321,16 +334,26 @@ function selectedOptionFor(val: any): RelationOption | null {
 // Enhanced display-label resolution.
 function getDisplayLabel(val: any): string {
   if (!val) return '';
-  if (typeof val === 'object' && val.DisplayName) return val.DisplayName;
+  if (typeof val === 'object') {
+    const fromRecord = labelFromRecord(val);
+    if (fromRecord) return fromRecord;
+    const id = val.Id == null ? '' : String(val.Id).trim();
+    if (id) {
+      const opt = options.value.find(o => String((o.value as any)?.Id ?? '') === id);
+      if (opt?.label) return opt.label;
+    }
+    return '';
+  }
 
   // Handle bare id strings.
   if (typeof val === 'string') {
-    // First try the loaded option list.
-    const opt = options.value.find(o => (o.value as any).Id === val);
-    if (opt) return opt.label;
-
+    const id = val.trim();
+    if (!id) return '';
+    // Prefer a non-empty option label; empty labels must not hide the raw id.
+    const opt = options.value.find(o => String((o.value as any)?.Id ?? '') === id);
+    if (opt?.label) return opt.label;
     // Fall back to the raw id and let the watcher hydrate it asynchronously.
-    return val;
+    return id;
   }
 
   return '';
@@ -371,26 +394,37 @@ function onDisplayValueKeydown(val: any, event: KeyboardEvent) {
   emit('value-click', { id, item: resolveDisplayItem(val), label: getDisplayLabel(val), source: 'display', event });
 }
 
-// Watch bare id strings and hydrate their display names.
+// Cross-app: load DisplayName via relation store into local options only (do not rewrite draft).
 watch(
   () => {
     const val = binding.fieldRef().value;
     return val;
   },
   val => {
-    if (typeof val === 'string' && val && relationStore.value) {
-      // Load only when the display label has not been hydrated yet.
-      const label = getDisplayLabel(val);
-      if (label === val) {
-        // No display label is available yet, so fetch it now.
-        relationStore.value
-          .Browse(val)
-          .then((res: any) => {
-            if (res) upsertOption(res);
-          })
-          .catch(() => {});
-      }
+    if (!relationStore.value || !val) return;
+    const id =
+      typeof val === 'string'
+        ? val.trim()
+        : typeof val === 'object' && val
+          ? String((val as any).Id ?? '').trim()
+          : '';
+    if (!id) return;
+    // Skip when DisplayName is on the value, or options already have a non-empty label.
+    if (typeof val === 'object' && String((val as any).DisplayName ?? '').trim()) return;
+    const label = getDisplayLabel(val);
+    if (typeof val === 'string') {
+      // Bare id: getDisplayLabel falls back to the id itself until options hydrate.
+      if (label !== id) return;
+    } else if (label) {
+      return;
     }
+
+    relationStore.value
+      .Browse(id, ['Id', 'DisplayName'] as any)
+      .then((res: any) => {
+        if (res) upsertOption(res);
+      })
+      .catch(() => {});
   },
   { immediate: true }
 );
