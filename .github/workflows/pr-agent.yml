@@ -23,9 +23,8 @@ jobs:
     if: ${{ github.event.sender.type != 'Bot' }}
     runs-on: ubuntu-latest
     name: Run PR Agent
-    # Bound wall time: ai_timeout × model hops must not hold the shared
-    # concurrency group indefinitely when a provider is slow or rate-limited.
-    timeout-minutes: 40
+    # Bound wall time for the shared concurrency group; abandon slow runs.
+    timeout-minutes: 10
     steps:
       - name: PR Agent action step
         id: pragent
@@ -52,8 +51,9 @@ jobs:
           # the Gemini primary — accepted tradeoff; DeepSeek-only scoping is not
           # supported. https://api-docs.deepseek.com/zh-cn/guides/thinking_mode
           config.reasoning_effort: "none"
-          # DeepSeek fallback often needs longer than Gemini free-tier calls.
-          config.ai_timeout: "300"
+          # Per-call budget; keep well under job timeout-minutes so primary +
+          # one fallback hop can finish (or fail) before the job is killed.
+          config.ai_timeout: "120"
           # On timeout, hand off to fallback_models instead of replaying the same
           # primary for NUM_RETRIES × ai_timeout on the sole concurrency slot.
           config.retry_same_model_on_timeout: "false"
