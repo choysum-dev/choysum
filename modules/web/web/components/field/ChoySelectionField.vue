@@ -73,6 +73,7 @@ SPDX-License-Identifier: Apache-2.0
                 class="h-control border-0 bg-transparent px-0 shadow-none outline-hidden focus-visible:ring-0"
                 :placeholder="_t('Search…')"
                 :disabled="disabled || optionsLoading"
+                :display-value="(v) => displayLabelFor(record, v == null || v === '' ? null : String(v))"
               />
             </div>
             <ComboboxViewport>
