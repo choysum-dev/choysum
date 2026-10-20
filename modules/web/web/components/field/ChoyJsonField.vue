@@ -38,16 +38,25 @@ SPDX-License-Identifier: Apache-2.0
 
     <template #display="{ fieldValue }">
       <pre v-if="isTableLike" class="choy-json-display whitespace-pre-wrap wrap-break-word px-2 py-1 font-mono leading-snug">{{ displayString(fieldValue().value) }}</pre>
-      <div v-else-if="normalizeIncoming(fieldValue().value) == null" class="choy-json-display choy-json-display--empty min-h-[1.4em] px-2 py-1 font-mono" />
-      <VueJsonPretty
+      <div
+        v-else-if="normalizeIncoming(fieldValue().value) == null"
+        class="choy-json-display choy-json-display--empty min-h-[1.4em] rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground"
+      >
+        {{ _t('No content') }}
+      </div>
+      <div
         v-else
-        class="choy-json-pretty w-full wrap-break-word px-2 py-1 text-[13px] leading-snug"
-        :data="normalizeIncoming(fieldValue().value)!"
-        :deep="prettyDeep"
-        :show-length="true"
-        :show-line="true"
-        :collapsed-on-click-brackets="true"
-      />
+        class="choy-json-pretty-wrap overflow-hidden rounded-md border border-border bg-muted/20"
+      >
+        <VueJsonPretty
+          class="choy-json-pretty w-full wrap-break-word px-3 py-2 text-[13px] leading-snug"
+          :data="normalizeIncoming(fieldValue().value)!"
+          :deep="prettyDeep"
+          :show-length="true"
+          :show-line="true"
+          :collapsed-on-click-brackets="true"
+        />
+      </div>
     </template>
   </ChoyFieldBase>
 </template>
@@ -59,6 +68,7 @@ import type { RuleItem } from 'async-validator';
 import { ref, watch, computed, defineComponent, h } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
 import 'vue-json-pretty/lib/styles.css';
+import { Braces } from 'lucide-vue-next';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
@@ -315,6 +325,29 @@ const ChoyJsonCell = defineComponent({
       buffer.onBlur();
     }
 
+    function formatEditing(): void {
+      const raw = editingText.value;
+      if (raw.trim() === '') {
+        if (p.nullable) {
+          parseError.value = null;
+          editingText.value = '';
+          return;
+        }
+        parseError.value = _t('Cannot be empty');
+        return;
+      }
+      const parsed = tryParse(raw);
+      if (!parsed.ok) {
+        parseError.value = parsed.err || _t('Parse failed');
+        return;
+      }
+      parseError.value = null;
+      const canonical = stableStringify(parsed.val);
+      editingText.value = canonical;
+      textDirty.value = true;
+      buffer.setEditing(parsed.val);
+    }
+
     function callAttrListener(listener: unknown, event: Event) {
       if (typeof listener === 'function') {
         listener(event);
@@ -340,36 +373,76 @@ const ChoyJsonCell = defineComponent({
         .filter(Boolean)
         .join(' ');
       const formInvalid = rest['aria-invalid'] === true || rest['aria-invalid'] === 'true';
-      return h('div', {}, [
-        h('textarea', {
-          ...rest,
-          class: 'choy-json-input w-full font-mono',
-          placeholder: p.placeholder,
-          rows: 6,
-          value: editingText.value ?? '',
-          'aria-describedby': describedBy || undefined,
-          'aria-invalid': parseError.value || formInvalid ? 'true' : undefined,
-          onInput: (e: Event) => {
-            onInput((e.target as HTMLTextAreaElement).value);
-            callAttrListener(attrs.onInput, e);
-          },
-          onBlur: (e: Event) => {
-            onBlur();
-            callAttrListener(attrs.onBlur, e);
-          },
-        }),
-        parseError.value
-          ? h(
-              'div',
-              {
-                id: parseErrorId || undefined,
-                class: 'choy-json-err mt-1 text-xs text-destructive',
-                role: 'alert',
-              },
-              parseError.value,
-            )
-          : null,
-      ]);
+      const formatLabel = _t('Format');
+      return h(
+        'div',
+        {
+          class: [
+            'choy-json-cell choy-json-field__edit overflow-hidden rounded-md border bg-background',
+            parseError.value || formInvalid ? 'border-destructive' : 'border-border',
+          ],
+        },
+        [
+          h(
+            'div',
+            {
+              class:
+                'flex items-center justify-end gap-1 border-b border-border bg-muted/30 px-1.5 py-1',
+              role: 'toolbar',
+            },
+            [
+              h(
+                'button',
+                {
+                  type: 'button',
+                  class:
+                    'choy-json-format-btn inline-flex h-7 items-center gap-1 rounded px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground',
+                  title: formatLabel,
+                  'aria-label': formatLabel,
+                  onClick: (e: Event) => {
+                    e.preventDefault();
+                    formatEditing();
+                  },
+                },
+                [h(Braces, { class: 'size-3.5', 'aria-hidden': 'true' }), formatLabel],
+              ),
+            ],
+          ),
+          h('textarea', {
+            ...rest,
+            class:
+              'choy-json-input min-h-[8rem] w-full resize-y border-0 bg-transparent px-3 py-2 font-mono text-[13px] leading-snug text-foreground shadow-none outline-none placeholder:text-muted-foreground focus-visible:ring-0',
+            placeholder: p.placeholder,
+            rows: 6,
+            spellcheck: false,
+            autocapitalize: 'off',
+            autocomplete: 'off',
+            autocorrect: 'off',
+            value: editingText.value ?? '',
+            'aria-describedby': describedBy || undefined,
+            'aria-invalid': parseError.value || formInvalid ? 'true' : undefined,
+            onInput: (e: Event) => {
+              onInput((e.target as HTMLTextAreaElement).value);
+              callAttrListener(attrs.onInput, e);
+            },
+            onBlur: (e: Event) => {
+              onBlur();
+              callAttrListener(attrs.onBlur, e);
+            },
+          }),
+          parseError.value
+            ? h(
+                'div',
+                {
+                  id: parseErrorId || undefined,
+                  class: 'choy-json-err border-t border-border px-3 py-1.5 text-xs text-destructive',
+                  role: 'alert',
+                },
+                parseError.value,
+              )
+            : null,
+        ],
+      );
     };
   },
 });

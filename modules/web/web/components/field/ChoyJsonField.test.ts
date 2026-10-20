@@ -209,6 +209,39 @@ describe('JsonobjectField', () => {
     m.unmount();
   });
 
+  test('Format button pretty-prints valid JSON and keeps invalid text with error', async () => {
+    installFieldBaseStub();
+    installPrettyStub();
+    installElInputStub();
+    const binding = makeBinding(
+      { Payload: { b: 2, a: 1 } },
+      { isForm: true, isEditMode: true, viewMode: 'edit', fieldPrefix: null }
+    );
+    const m = mountApp(JsonobjectField as any, {
+      props: { binding, renderMode: 'form' },
+    });
+    await nextTick();
+    await flushPromises();
+    const textarea = m.q('.choy-json-input') as HTMLTextAreaElement;
+    textarea.value = '{"z":1,"a":2}';
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    await flushPromises();
+    (m.q('.choy-json-format-btn') as HTMLButtonElement).click();
+    await flushPromises();
+    expect(textarea.value).toContain('"a"');
+    expect(textarea.value).toContain('\n');
+    expect(m.q('.choy-json-err')).toBeFalsy();
+
+    textarea.value = '{not-json';
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    await flushPromises();
+    (m.q('.choy-json-format-btn') as HTMLButtonElement).click();
+    await flushPromises();
+    expect(textarea.value).toBe('{not-json');
+    expect(m.q('.choy-json-err')?.textContent || '').toBeTruthy();
+    m.unmount();
+  });
+
   test('edit textarea still forwards caller input listeners', async () => {
     installFieldBaseStub();
     installPrettyStub();

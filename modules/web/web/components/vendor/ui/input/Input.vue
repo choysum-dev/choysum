@@ -7,10 +7,17 @@ SPDX-License-Identifier: Apache-2.0
 import { computed } from 'vue';
 import { cn, type ClassValue } from '../../../../lib/utils';
 
-const props = defineProps<{
-  class?: ClassValue;
-  modelValue?: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    class?: ClassValue;
+    modelValue?: string;
+    /** Native input type (text, password, email, url, …). */
+    type?: string;
+  }>(),
+  {
+    type: 'text',
+  },
+);
 
 const emit = defineEmits<{
   'update:modelValue': [value: string];
@@ -36,6 +43,7 @@ function onInput(event: Event): void {
 <template>
   <input
     data-slot="input"
+    :type="type"
     :class="classes"
     :value="modelValue"
     v-bind="$attrs"

@@ -27,7 +27,7 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
 
-    <ChoyVarcharField prop="NameChar" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <ChoyCharField prop="NameChar" :store="store" :vColumnProps="{ minWidth: 120 }" />
     <ChoyVarcharField prop="Title" :store="store" :vColumnProps="{ minWidth: 160 }" />
     <ChoyVarcharField prop="Code" :store="store" :vColumnProps="{ minWidth: 100 }" />
     <ChoySelectionField prop="State" :store="store" :vColumnProps="{ minWidth: 100 }" />
@@ -50,6 +50,7 @@ import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import {
   ChoyBooleanField,
+  ChoyCharField,
   ChoyDatetimeField,
   ChoyIntField,
   ChoyListView,

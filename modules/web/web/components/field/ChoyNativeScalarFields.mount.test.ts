@@ -12,6 +12,7 @@ import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests_
 import ChoyFieldBase from './ChoyFieldBase.vue';
 import ChoyBooleanField from './ChoyBooleanField.vue';
 import ChoyVarcharField from './ChoyVarcharField.vue';
+import ChoyCharField from './ChoyCharField.vue';
 import ChoyTextField from './ChoyTextField.vue';
 import ChoyIntField from './ChoyIntField.vue';
 import ChoyBigintField from './ChoyBigintField.vue';
@@ -19,12 +20,12 @@ import ChoyNumberField from './ChoyNumberField.vue';
 
 const lastBaseProps: { current: Record<string, unknown> | null } = { current: null };
 
-function makeBinding(initial: unknown, prop = 'Value') {
+function makeBinding(initial: unknown, prop = 'Value', meta: Record<string, unknown> = {}) {
   const value = ref(initial);
   return {
     env: { isForm: true, isEditMode: true, viewMode: 'edit', fieldPrefix: null },
     prop,
-    meta: {} as any,
+    meta: meta as any,
     fieldRef: () => value as any,
     fieldRefOf: () => value as any,
     recordRef: () => computed(() => ({})) as any,
@@ -60,7 +61,19 @@ function installFieldBaseStub(mode: 'edit' | 'display' | 'both' | 'rules' = 'bot
       if (mode === 'rules') {
         return () => h('div', { class: 'rules', 'data-count': String((p.rules as any[])?.length || 0) });
       }
-      const fieldValue = () => (p.binding as any).fieldRef();
+      // Mirror FieldBase view transform so toView/fromView (e.g. char trimEnd) apply in stubs.
+      const fieldValue = () => {
+        const raw = (p.binding as any).fieldRef();
+        return computed({
+          get: () => {
+            const v = raw.value;
+            return typeof p.toView === 'function' ? p.toView(v) : v;
+          },
+          set: next => {
+            raw.value = typeof p.fromView === 'function' ? p.fromView(next) : next;
+          },
+        });
+      };
       const kids: any[] = [];
       if (mode !== 'display') kids.push(slots.edit?.({ fieldValue, inputName: 'n', inputId: 'i' }));
       if (mode !== 'edit') kids.push(slots.display?.({ fieldValue, inputName: 'n', inputId: 'i' }));
@@ -197,13 +210,17 @@ describe('Choy native scalar field cells', () => {
       },
     });
     await flushPromises();
-    expect(m.q('.choy-field-display-text')?.textContent).toBe('hi');
+    const display = m.q('.choy-field-display-text') as HTMLElement | null;
+    expect(display?.textContent).toBe('hi');
+    expect(display?.getAttribute('title')).toBe('hi');
+    expect(m.q('.choy-varchar-word-limit')?.textContent || '').toContain('2 / 4');
     const input = m.q('input.choy-varchar-input') as HTMLInputElement;
     expect(input?.id).toBe('i');
     setInputValue(input, '  abcdXX  ');
     input.dispatchEvent(new Event('blur', { bubbles: true }));
     await flushPromises();
     expect(binding.__value.value).toBe('abcd');
+    expect(m.q('.choy-varchar-word-limit')?.textContent || '').toContain('4 / 4');
 
     const toView = lastBaseProps.current?.toView as (v: unknown) => unknown;
     expect(toView(null)).toBeNull();
@@ -224,6 +241,52 @@ describe('Choy native scalar field cells', () => {
     m.unmount();
   });
 
+  test('char trimTrailingSpaces strips pads for word count and commits trimmed value', async () => {
+    installFieldBaseStub('both');
+    const padded = `Sample Char${' '.repeat(53)}`;
+    const binding = makeBinding(padded, 'NameChar', { type: 'char', size: 64 });
+    const m = mountApp(ChoyVarcharField as any, {
+      props: {
+        binding,
+        maxLength: 64,
+        trimTrailingSpaces: true,
+        bufferStrategy: 'live',
+        commitOnBlur: true,
+        renderMode: 'form',
+      },
+    });
+    await flushPromises();
+    expect(m.q('.choy-varchar-word-limit')?.textContent || '').toContain('11 / 64');
+    const input = m.q('input.choy-varchar-input') as HTMLInputElement;
+    input.dispatchEvent(new Event('blur', { bubbles: true }));
+    await flushPromises();
+    expect(binding.__value.value).toBe('Sample Char');
+
+    const wrap = mountApp(ChoyCharField as any, {
+      props: {
+        binding: makeBinding(`Hi${' '.repeat(10)}`, 'NameChar', { type: 'char', size: 64 }),
+        maxLength: 64,
+        renderMode: 'form',
+      },
+    });
+    await flushPromises();
+    expect(wrap.q('.choy-varchar-word-limit')?.textContent || '').toContain('2 / 64');
+    wrap.unmount();
+
+    const pwd = mountApp(ChoyVarcharField as any, {
+      props: {
+        binding: makeBinding('secret'),
+        widget: 'password',
+        renderMode: 'form',
+      },
+    });
+    await flushPromises();
+    const pwdInput = pwd.q('input.choy-varchar-input') as HTMLInputElement | null;
+    expect(pwdInput?.getAttribute('type') || pwdInput?.type).toBe('password');
+    pwd.unmount();
+    m.unmount();
+  });
+
   test('TextField edit/display, normalize, and rules', async () => {
     installFieldBaseStub('both');
     const binding = makeBinding('note');
@@ -236,15 +299,19 @@ describe('Choy native scalar field cells', () => {
         bufferStrategy: 'live',
         commitOnBlur: true,
         renderMode: 'form',
+        autosize: { minRows: 3, maxRows: 6 },
       },
     });
     await flushPromises();
     expect(m.q('.choy-textfield-display')?.textContent).toBe('note');
+    expect(m.q('.choy-textarea-word-limit')?.textContent || '').toContain('4 / 5');
     const ta = m.q('textarea.choy-textarea') as HTMLTextAreaElement;
+    expect(ta?.getAttribute('rows') || String(ta?.rows)).toBe('3');
     setInputValue(ta, '  helloXX  ');
     ta.dispatchEvent(new Event('blur', { bubbles: true }));
     await flushPromises();
     expect(binding.__value.value).toBe('hello');
+    expect(m.q('.choy-textarea-word-limit')?.textContent || '').toContain('5 / 5');
 
     const toView = lastBaseProps.current?.toView as (v: unknown) => unknown;
     expect(toView(null)).toBeNull();

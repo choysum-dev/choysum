@@ -78,6 +78,30 @@ describe('ChoyHtmlField', () => {
     m.unmount();
   });
 
+  test('empty html display shows compact placeholder instead of prose shell', async () => {
+    const m = mountApp(ChoyHtmlField as any, {
+      props: {
+        binding: makeBinding(null),
+        renderMode: 'form',
+      },
+    });
+    await flushPromises();
+    expect(m.q('.choy-html-field__empty')?.textContent || '').toContain('No content');
+    expect(m.q('.prose-choy')).toBeFalsy();
+    m.unmount();
+
+    const emptyMarkup = mountApp(ChoyHtmlField as any, {
+      props: {
+        binding: makeBinding('<p></p>'),
+        emptyText: 'Nothing here',
+        renderMode: 'form',
+      },
+    });
+    await flushPromises();
+    expect(emptyMarkup.q('.choy-html-field__empty')?.textContent || '').toContain('Nothing here');
+    emptyMarkup.unmount();
+  });
+
   test('store and prop resolve a binding without an explicit one', async () => {
     const store = createLocalFormStore({
       fields: [{ name: 'Body', label: 'Body', type: 'varchar' }],
@@ -94,11 +118,8 @@ describe('ChoyHtmlField', () => {
     m.unmount();
   });
 
-  test('edit mode writes toolbar changes and link prompts back to the binding', async () => {
+  test('edit mode writes toolbar changes and link popover back to the binding', async () => {
     const binding = makeBinding('<p>Hi</p>', true);
-    const prompts: Array<string | null> = ['https://example.com', 'javascript:alert(1)', '', null];
-    const prevPrompt = window.prompt;
-    window.prompt = () => (prompts.length ? prompts.shift()! : null);
     const m = mountApp(ChoyHtmlField as any, {
       props: {
         binding,
@@ -117,20 +138,33 @@ describe('ChoyHtmlField', () => {
         ?.view?.dom;
       expect(stubDom?.getAttribute('id') || (stubDom as HTMLElement | undefined)?.id).toBe('body-html');
       expect(stubDom?.getAttribute('aria-required')).toBe('true');
-      for (const button of buttons) {
+      for (const button of buttons.slice(0, 4)) {
         button.click();
         await flushPromises();
       }
       expect(buttons[0]?.className || '').toContain('bg-muted');
       expect(binding.__value.value || '').toContain('Hi');
-      for (const button of toolbarButtons(m)) {
-        button.click();
-        await flushPromises();
-      }
-      for (let i = 0; i < 3; i++) {
-        toolbarButtons(m)[4]?.click();
-        await flushPromises();
-      }
+
+      // Open link popover, reject javascript:, then apply https.
+      toolbarButtons(m)[4]?.click();
+      await flushPromises();
+      const linkInput = m.q('.choy-html-field__link-input') as HTMLInputElement | null;
+      expect(linkInput).toBeTruthy();
+      linkInput!.value = 'javascript:alert(1)';
+      linkInput!.dispatchEvent(new Event('input', { bubbles: true }));
+      await flushPromises();
+      const applyBtn = Array.from(m.q('.choy-html-field__link-popover')?.childNodes || []).find(
+        n => (n as HTMLElement).tagName === 'BUTTON' && String((n as HTMLElement).textContent || '').includes('Apply'),
+      ) as HTMLElement | undefined;
+      applyBtn?.click();
+      await flushPromises();
+      expect(m.q('[role="alert"]')?.textContent || '').toContain('Invalid URL');
+
+      linkInput!.value = 'https://example.com';
+      linkInput!.dispatchEvent(new Event('input', { bubbles: true }));
+      applyBtn?.click();
+      await flushPromises();
+      expect(m.q('.choy-html-field__link-popover')).toBeFalsy();
 
       const stub = tiptapVue as {
         __feStubEditorRef?: { value: unknown };
@@ -152,7 +186,6 @@ describe('ChoyHtmlField', () => {
       await flushPromises();
     } finally {
       m.unmount();
-      window.prompt = prevPrompt;
     }
   });
 

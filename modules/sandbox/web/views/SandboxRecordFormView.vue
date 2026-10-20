@@ -21,13 +21,13 @@ SPDX-License-Identifier: Apache-2.0
       <ChoySection :title="_t('Identity')">
         <ChoyGrid :cols="12">
           <ChoyCol :span="3">
-            <ChoyVarcharField :store="store" prop="NameChar" :rules="requiredRules" />
+            <ChoyCharField :store="store" prop="NameChar" :rules="requiredRules" />
           </ChoyCol>
           <ChoyCol :span="3">
             <ChoyVarcharField :store="store" prop="Title" :rules="requiredRules" />
           </ChoyCol>
           <ChoyCol :span="3">
-            <ChoyVarcharField :store="store" prop="Code" :rules="requiredRules" />
+            <ChoyVarcharField :store="store" prop="Code" :rules="requiredRules" :copyable="true" />
           </ChoyCol>
           <ChoyCol :span="3">
             <ChoyBooleanField :store="store" prop="IsActive" widget="switch" />
@@ -38,8 +38,8 @@ SPDX-License-Identifier: Apache-2.0
           <ChoyCol :span="3">
             <ChoySelectionField :store="store" prop="State" />
           </ChoyCol>
-          <ChoyCol :span="6">
-            <ChoyTextField :store="store" prop="Notes" />
+          <ChoyCol :span="12">
+            <ChoyTextField :store="store" prop="Notes" orientation="vertical" />
           </ChoyCol>
         </ChoyGrid>
       </ChoySection>
@@ -89,7 +89,7 @@ SPDX-License-Identifier: Apache-2.0
       <ChoySection :title="_t('Rich Content')">
         <ChoyGrid :cols="12">
           <ChoyCol :span="12">
-            <ChoyHtmlField :store="store" prop="BodyHtml" />
+            <ChoyHtmlField :store="store" prop="BodyHtml" orientation="vertical" />
           </ChoyCol>
           <ChoyCol :span="6">
             <ChoyBinaryField :store="store" prop="Attachment" />
@@ -248,6 +248,7 @@ import {
   ChoyBigintField,
   ChoyBinaryField,
   ChoyBooleanField,
+  ChoyCharField,
   ChoyCol,
   ChoyDateField,
   ChoyDatetimeField,

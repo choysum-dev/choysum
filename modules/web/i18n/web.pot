@@ -607,6 +607,61 @@ msgctxt "web/components/field/ChoyStatusbarField"
 msgid "Value must be a string"
 msgstr ""
 
+#: web/components/field/ChoyHtmlField.vue
+msgctxt "web/components/field/ChoyHtmlField"
+msgid "No content"
+msgstr ""
+
+#: web/components/field/ChoyHtmlField.vue
+msgctxt "web/components/field/ChoyHtmlField"
+msgid "Bold"
+msgstr ""
+
+#: web/components/field/ChoyHtmlField.vue
+msgctxt "web/components/field/ChoyHtmlField"
+msgid "Italic"
+msgstr ""
+
+#: web/components/field/ChoyHtmlField.vue
+msgctxt "web/components/field/ChoyHtmlField"
+msgid "Bullet list"
+msgstr ""
+
+#: web/components/field/ChoyHtmlField.vue
+msgctxt "web/components/field/ChoyHtmlField"
+msgid "Ordered list"
+msgstr ""
+
+#: web/components/field/ChoyHtmlField.vue
+msgctxt "web/components/field/ChoyHtmlField"
+msgid "Link"
+msgstr ""
+
+#: web/components/field/ChoyHtmlField.vue
+msgctxt "web/components/field/ChoyHtmlField"
+msgid "URL"
+msgstr ""
+
+#: web/components/field/ChoyHtmlField.vue
+msgctxt "web/components/field/ChoyHtmlField"
+msgid "Apply"
+msgstr ""
+
+#: web/components/field/ChoyHtmlField.vue
+msgctxt "web/components/field/ChoyHtmlField"
+msgid "Cancel"
+msgstr ""
+
+#: web/components/field/ChoyHtmlField.vue
+msgctxt "web/components/field/ChoyHtmlField"
+msgid "Invalid URL"
+msgstr ""
+
+#: web/components/field/ChoyTextField.vue
+msgctxt "web/components/field/ChoyTextField"
+msgid "No content"
+msgstr ""
+
 #: web/components/field/ChoyTextField.vue:163
 msgctxt "web/components/field/ChoyTextField"
 msgid "Cannot be empty"
@@ -635,6 +690,16 @@ msgstr ""
 #: web/components/field/ChoyVarcharField.vue:174
 msgctxt "web/components/field/ChoyVarcharField"
 msgid "Length must not exceed %s"
+msgstr ""
+
+#: web/components/field/ChoyVarcharField.vue
+msgctxt "web/components/field/ChoyVarcharField"
+msgid "No content"
+msgstr ""
+
+#: web/components/field/ChoyVarcharField.vue
+msgctxt "web/components/field/ChoyVarcharField"
+msgid "Copy"
 msgstr ""
 
 #: web/components/field/ChoyVarcharField.vue:169
@@ -777,6 +842,16 @@ msgstr ""
 #: web/components/field/ChoyJsonField.vue:80
 msgctxt "web/components/field/JsonobjectField"
 msgid "Enter a JSON object"
+msgstr ""
+
+#: web/components/field/ChoyJsonField.vue
+msgctxt "web/components/field/JsonobjectField"
+msgid "Format"
+msgstr ""
+
+#: web/components/field/ChoyJsonField.vue
+msgctxt "web/components/field/JsonobjectField"
+msgid "No content"
 msgstr ""
 
 #: web/components/field/ChoyJsonField.vue:147

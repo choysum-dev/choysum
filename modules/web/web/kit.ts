@@ -213,6 +213,7 @@ export type {
   FormItemProps,
 } from './components/field/ChoyFieldBase.vue';
 export { default as ChoyVarcharField } from './components/field/ChoyVarcharField.vue';
+export { default as ChoyCharField } from './components/field/ChoyCharField.vue';
 export { default as ChoyTextField } from './components/field/ChoyTextField.vue';
 export { default as ChoyIntField } from './components/field/ChoyIntField.vue';
 export { default as ChoyBigintField } from './components/field/ChoyBigintField.vue';
