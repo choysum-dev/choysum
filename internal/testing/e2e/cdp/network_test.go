@@ -42,21 +42,21 @@ func TestHeaderValue(t *testing.T) {
 }
 
 func TestCoalesceResponseMeta(t *testing.T) {
-	url, ct, method := coalesceResponseMeta("", "", pendingReq{url: "http://x/a", method: "POST", ct: "application/json"}, true, "GET")
+	url, ct, method := coalesceResponseMeta("", "", pendingReq{url: "http://x/a", method: "POST", ct: "application/json"}, true)
 	if url != "http://x/a" || ct != "application/json" || method != "POST" {
 		t.Fatalf("pending fallback: %q %q %q", url, ct, method)
 	}
-	url, ct, method = coalesceResponseMeta("http://x/b", "text/plain", pendingReq{}, false, "PUT")
-	if url != "http://x/b" || ct != "text/plain" || method != "PUT" {
-		t.Fatalf("no-pending: %q %q %q", url, ct, method)
+	url, ct, method = coalesceResponseMeta("http://x/b", "text/plain", pendingReq{}, false)
+	if url != "http://x/b" || ct != "text/plain" || method != "" {
+		t.Fatalf("no-pending keeps method unknown: %q %q %q", url, ct, method)
 	}
-	url, ct, method = coalesceResponseMeta("http://x/c", "TEXT/HTML", pendingReq{method: "GET"}, true, "POST")
+	url, ct, method = coalesceResponseMeta("http://x/c", "TEXT/HTML", pendingReq{method: "GET"}, true)
 	if url != "http://x/c" || ct != "text/html" || method != "GET" {
 		t.Fatalf("resp wins: %q %q %q", url, ct, method)
 	}
-	url, ct, method = coalesceResponseMeta("http://x/d", "application/json", pendingReq{}, true, "PATCH")
-	if method != "PATCH" {
-		t.Fatalf("empty pending method → methodWant: %q", method)
+	url, ct, method = coalesceResponseMeta("http://x/d", "application/json", pendingReq{}, true)
+	if method != "" {
+		t.Fatalf("empty pending method stays unknown: %q", method)
 	}
 }
 
@@ -71,22 +71,27 @@ func TestNetworkEventNilGuards(t *testing.T) {
 	var mu sync.Mutex
 	pending := map[network.RequestID]pendingReq{}
 	matched := map[network.RequestID]pendingResp{}
+	held := map[network.RequestID]network.EventResponseReceived{}
 	// Zero-value events return without mutating maps (covers ingest early returns).
-	ingestRequestWillBeSent(network.EventRequestWillBeSent{}, &mu, pending)
-	ingestResponseReceived(network.EventResponseReceived{}, &mu, pending, matched, nil, "GET", func(string, string, string) bool { return true }, func(network.RequestID) {})
-	if len(pending) != 0 || len(matched) != 0 {
-		t.Fatalf("nil ingest mutated maps: pending=%v matched=%v", pending, matched)
+	if ingestRequestWillBeSent(network.EventRequestWillBeSent{}, &mu, pending, held) != nil {
+		t.Fatal("nil request must not release a held response")
+	}
+	ingestResponseReceived(network.EventResponseReceived{}, &mu, pending, matched, nil, held, "GET", func(string, string, string) bool { return true }, func(network.RequestID) {})
+	if len(pending) != 0 || len(matched) != 0 || len(held) != 0 {
+		t.Fatalf("nil ingest mutated maps: pending=%v matched=%v held=%v", pending, matched, held)
 	}
 
 	id := network.RequestID("req-1")
-	ingestRequestWillBeSent(network.EventRequestWillBeSent{
+	if ingestRequestWillBeSent(network.EventRequestWillBeSent{
 		RequestID: id,
 		Request: &network.Request{
 			Method:  "POST",
 			URL:     "http://x/a",
 			Headers: network.Headers{"Content-Type": "application/json"},
 		},
-	}, &mu, pending)
+	}, &mu, pending, held) != nil {
+		t.Fatal("request without held response must return nil")
+	}
 	if pending[id].method != "POST" || pending[id].url != "http://x/a" || pending[id].ct != "application/json" {
 		t.Fatalf("pending=%v", pending[id])
 	}
@@ -111,11 +116,11 @@ func TestNoteFinishedEarlyIfPending(t *testing.T) {
 
 func TestIngestResponseReceivedFinishedEarly(t *testing.T) {
 	var mu sync.Mutex
-	pending := map[network.RequestID]pendingReq{}
-	matched := map[network.RequestID]pendingResp{}
-	finishedEarly := map[network.RequestID]struct{}{}
 	id := network.RequestID("early-1")
-	finishedEarly[id] = struct{}{}
+	pending := map[network.RequestID]pendingReq{id: {method: "GET", url: "http://x/api"}}
+	matched := map[network.RequestID]pendingResp{}
+	finishedEarly := map[network.RequestID]struct{}{id: {}}
+	held := map[network.RequestID]network.EventResponseReceived{}
 	finished := 0
 	ingestResponseReceived(network.EventResponseReceived{
 		RequestID: id,
@@ -126,7 +131,7 @@ func TestIngestResponseReceivedFinishedEarly(t *testing.T) {
 				"content-type": "application/json",
 			},
 		},
-	}, &mu, pending, matched, finishedEarly, "GET", func(string, string, string) bool { return true }, func(network.RequestID) {
+	}, &mu, pending, matched, finishedEarly, held, "GET", func(string, string, string) bool { return true }, func(network.RequestID) {
 		finished++
 	})
 	if finished != 1 {
@@ -140,12 +145,55 @@ func TestIngestResponseReceivedFinishedEarly(t *testing.T) {
 	}
 }
 
+func TestIngestResponseReceivedHoldsUntilRequestMethod(t *testing.T) {
+	var mu sync.Mutex
+	id := network.RequestID("hold-1")
+	pending := map[network.RequestID]pendingReq{}
+	matched := map[network.RequestID]pendingResp{}
+	held := map[network.RequestID]network.EventResponseReceived{}
+	finished := 0
+	ev := network.EventResponseReceived{
+		RequestID: id,
+		Response: &network.Response{
+			URL:     "http://x/api/get",
+			Status:  200,
+			Headers: network.Headers{"content-type": "text/plain"},
+		},
+	}
+	ingestResponseReceived(ev, &mu, pending, matched, nil, held, "POST",
+		func(method, url, ct string) bool { return method == "POST" && strings.Contains(url, "/api/get") },
+		func(network.RequestID) { finished++ })
+	if finished != 0 || len(matched) != 0 {
+		t.Fatalf("unknown method must hold, finished=%d matched=%v", finished, matched)
+	}
+	if _, ok := held[id]; !ok {
+		t.Fatal("expected held response")
+	}
+	released := ingestRequestWillBeSent(network.EventRequestWillBeSent{
+		RequestID: id,
+		Request:   &network.Request{Method: "GET", URL: "http://x/api/get"},
+	}, &mu, pending, held)
+	if released == nil {
+		t.Fatal("expected held response released after request")
+	}
+	ingestResponseReceived(*released, &mu, pending, matched, nil, held, "POST",
+		func(method, url, ct string) bool { return method == "POST" && strings.Contains(url, "/api/get") },
+		func(network.RequestID) { finished++ })
+	if finished != 0 || len(matched) != 0 {
+		t.Fatalf("GET must not match POST filter, finished=%d matched=%v", finished, matched)
+	}
+	if _, ok := held[id]; ok {
+		t.Fatal("mismatched held response must be cleared")
+	}
+}
+
 func TestIngestResponseReceivedFilterClearsEarly(t *testing.T) {
 	var mu sync.Mutex
 	id := network.RequestID("filter-1")
 	pending := map[network.RequestID]pendingReq{id: {method: "GET", url: "http://x/asset.js"}}
 	matched := map[network.RequestID]pendingResp{}
 	finishedEarly := map[network.RequestID]struct{}{id: {}}
+	held := map[network.RequestID]network.EventResponseReceived{}
 	finished := 0
 	ingestResponseReceived(network.EventResponseReceived{
 		RequestID: id,
@@ -154,7 +202,7 @@ func TestIngestResponseReceivedFilterClearsEarly(t *testing.T) {
 			Status:  200,
 			Headers: network.Headers{"content-type": "application/javascript"},
 		},
-	}, &mu, pending, matched, finishedEarly, "GET", func(string, string, string) bool { return false }, func(network.RequestID) {
+	}, &mu, pending, matched, finishedEarly, held, "GET", func(string, string, string) bool { return false }, func(network.RequestID) {
 		finished++
 	})
 	if finished != 0 {

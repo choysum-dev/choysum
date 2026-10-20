@@ -145,6 +145,35 @@ const ChoyHtmlEditorCell = defineComponent({
     const write = (next: ViewType) => {
       (cellProps.fieldValue as () => { value: ViewType })().value = next;
     };
+
+    function controlAttributes(): Record<string, string> {
+      const next: Record<string, string> = {
+        class: 'choy-html-field__prose min-h-[6rem] px-3 py-2 text-sm outline-none',
+      };
+      const id = attrs.id;
+      if (typeof id === 'string' && id) next.id = id;
+      const name = attrs.name;
+      if (typeof name === 'string' && name) next.name = name;
+      const invalid = attrs['aria-invalid'];
+      if (invalid != null && invalid !== false) next['aria-invalid'] = String(invalid);
+      const required = attrs['aria-required'];
+      if (required != null && required !== false) next['aria-required'] = String(required);
+      const describedBy = attrs['aria-describedby'];
+      if (typeof describedBy === 'string' && describedBy) next['aria-describedby'] = describedBy;
+      return next;
+    }
+
+    function applyControlAttributes(ed: unknown): void {
+      const dom = (ed as { view?: { dom?: HTMLElement } } | null | undefined)?.view?.dom;
+      if (!dom) return;
+      const next = controlAttributes();
+      for (const key of ['id', 'name', 'aria-invalid', 'aria-required', 'aria-describedby'] as const) {
+        if (next[key]) dom.setAttribute(key, next[key]!);
+        else dom.removeAttribute(key);
+      }
+      if (next.class) dom.setAttribute('class', next.class);
+    }
+
     const editor = useEditor({
       extensions: [
         StarterKit,
@@ -157,9 +186,7 @@ const ChoyHtmlEditorCell = defineComponent({
       ],
       content: '',
       editorProps: {
-        attributes: {
-          class: 'choy-html-field__prose min-h-[6rem] px-3 py-2 text-sm outline-none',
-        },
+        attributes: controlAttributes(),
       },
       onUpdate: ({ editor: ed }) => {
         write(normalizeHtmlForStore(ed.getHTML()));
@@ -178,6 +205,19 @@ const ChoyHtmlEditorCell = defineComponent({
         if (!sanitized && current === '<p></p>') return;
         htmlEditorSetContent(ed, sanitized, false);
       },
+      { immediate: true },
+    );
+
+    watch(
+      () => [
+        attrs.id,
+        attrs.name,
+        attrs['aria-invalid'],
+        attrs['aria-required'],
+        attrs['aria-describedby'],
+        editor.value,
+      ] as const,
+      () => applyControlAttributes(editor.value),
       { immediate: true },
     );
 
@@ -207,14 +247,7 @@ const ChoyHtmlEditorCell = defineComponent({
                 ],
               )
             : null,
-          h(EditorContent, {
-            editor: ed,
-            id: attrs.id as string | undefined,
-            name: attrs.name as string | undefined,
-            'aria-invalid': attrs['aria-invalid'],
-            'aria-required': attrs['aria-required'],
-            'aria-describedby': attrs['aria-describedby'],
-          }),
+          h(EditorContent, { editor: ed }),
         ],
       );
     };

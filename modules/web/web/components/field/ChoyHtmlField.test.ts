@@ -87,7 +87,10 @@ describe('ChoyHtmlField', () => {
       props: { store, prop: 'Body', renderMode: 'form' },
     });
     await flushPromises();
+    // store+prop mounts without throwing; value display needs a form draft host.
+    expect(m.q('[data-anchor="choy.field-base"]')).toBeTruthy();
     expect(m.text()).toContain('Body');
+    expect(store.getField('Body')).toBe('<p>Stored</p>');
     m.unmount();
   });
 
@@ -110,6 +113,9 @@ describe('ChoyHtmlField', () => {
       const buttons = toolbarButtons(m);
       expect(buttons.length).toBe(5);
       expect(m.q('.choy-html-field__edit')?.getAttribute('id')).toBeFalsy();
+      const prose = m.q('.fe-stub-editor-content') as HTMLElement | null;
+      expect(prose?.getAttribute('id')).toBe('body-html');
+      expect(prose?.getAttribute('aria-required')).toBe('true');
       for (const button of buttons) {
         button.click();
         await flushPromises();

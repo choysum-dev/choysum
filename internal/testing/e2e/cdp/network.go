@@ -97,7 +97,9 @@ func (p *Page) WaitForResponseContext(ctx context.Context, m ResponseMatch, time
 		if urlPart != "" && !strings.Contains(url, urlPart) {
 			return false
 		}
-		if methodWant != "" && method != "" && method != methodWant {
+		// Unknown method must not satisfy a method filter (avoids ResponseReceived
+		// racing ahead of RequestWillBeSent and inventing a match).
+		if methodWant != "" && method != methodWant {
 			return false
 		}
 		if ctPrefix != "" && ct != "" && !strings.HasPrefix(ct, ctPrefix) {
@@ -119,6 +121,10 @@ func (p *Page) WaitForResponseContext(ctx context.Context, m ResponseMatch, time
 	// populated matchedResp. Three Events iterators are not causally ordered, so
 	// tryFinish must tolerate that race (ListenTarget is gone in chromedp v0.21).
 	finishedEarly := map[network.RequestID]struct{}{}
+	// ResponseReceived can outrun RequestWillBeSent. When a method filter is set
+	// and the request method is still unknown, hold the response until the
+	// request event arrives so we never invent a match from methodWant.
+	heldResp := map[network.RequestID]network.EventResponseReceived{}
 
 	tryFinish := func(reqID network.RequestID) {
 		mu.Lock()
@@ -149,7 +155,10 @@ func (p *Page) WaitForResponseContext(ctx context.Context, m ResponseMatch, time
 			if err != nil {
 				return
 			}
-			ingestRequestWillBeSent(ev, &mu, pending)
+			held := ingestRequestWillBeSent(ev, &mu, pending, heldResp)
+			if held != nil {
+				ingestResponseReceived(*held, &mu, pending, matchedResp, finishedEarly, heldResp, methodWant, matches, tryFinish)
+			}
 		}
 	}()
 	go func() {
@@ -157,7 +166,7 @@ func (p *Page) WaitForResponseContext(ctx context.Context, m ResponseMatch, time
 			if err != nil {
 				return
 			}
-			ingestResponseReceived(ev, &mu, pending, matchedResp, finishedEarly, methodWant, matches, tryFinish)
+			ingestResponseReceived(ev, &mu, pending, matchedResp, finishedEarly, heldResp, methodWant, matches, tryFinish)
 		}
 	}()
 	go func() {
@@ -196,9 +205,14 @@ func noteFinishedEarlyIfPending(
 	}
 }
 
-func ingestRequestWillBeSent(e network.EventRequestWillBeSent, mu *sync.Mutex, pending map[network.RequestID]pendingReq) {
+func ingestRequestWillBeSent(
+	e network.EventRequestWillBeSent,
+	mu *sync.Mutex,
+	pending map[network.RequestID]pendingReq,
+	heldResp map[network.RequestID]network.EventResponseReceived,
+) *network.EventResponseReceived {
 	if networkRequestNil(e) {
-		return
+		return nil
 	}
 	ct := strings.ToLower(headerValue(e.Request.Headers, "content-type"))
 	mu.Lock()
@@ -207,7 +221,16 @@ func ingestRequestWillBeSent(e network.EventRequestWillBeSent, mu *sync.Mutex, p
 		url:    e.Request.URL,
 		ct:     ct,
 	}
+	var held *network.EventResponseReceived
+	if heldResp != nil {
+		if ev, ok := heldResp[e.RequestID]; ok {
+			delete(heldResp, e.RequestID)
+			cp := ev
+			held = &cp
+		}
+	}
 	mu.Unlock()
+	return held
 }
 
 func ingestResponseReceived(
@@ -216,6 +239,7 @@ func ingestResponseReceived(
 	pending map[network.RequestID]pendingReq,
 	matchedResp map[network.RequestID]pendingResp,
 	finishedEarly map[network.RequestID]struct{},
+	heldResp map[network.RequestID]network.EventResponseReceived,
 	methodWant string,
 	matches func(method, url, ct string) bool,
 	tryFinish func(network.RequestID),
@@ -225,10 +249,20 @@ func ingestResponseReceived(
 	}
 	mu.Lock()
 	req, ok := pending[e.RequestID]
-	url, ct, method := coalesceResponseMeta(e.Response.URL, headerValue(e.Response.Headers, "content-type"), req, ok, methodWant)
+	url, ct, method := coalesceResponseMeta(e.Response.URL, headerValue(e.Response.Headers, "content-type"), req, ok)
 	req.method = method
 	req.url = url
 	req.ct = ct
+	if methodWant != "" && method == "" {
+		if heldResp != nil {
+			heldResp[e.RequestID] = e
+		}
+		mu.Unlock()
+		return
+	}
+	if heldResp != nil {
+		delete(heldResp, e.RequestID)
+	}
 	if !matches(req.method, url, ct) && !matches(req.method, req.url, ct) {
 		delete(pending, e.RequestID)
 		if finishedEarly != nil {
@@ -337,12 +371,11 @@ func finishMatchedResponse(
 
 // coalesceResponseMeta fills URL/method/content-type when CDP omits fields or
 // ResponseReceived arrives without a prior RequestWillBeSent.
-func coalesceResponseMeta(respURL, respCT string, pending pendingReq, hadPending bool, methodWant string) (url, ct, method string) {
+func coalesceResponseMeta(respURL, respCT string, pending pendingReq, hadPending bool) (url, ct, method string) {
 	if !hadPending {
 		pending = pendingReq{
-			url:    respURL,
-			method: methodWant,
-			ct:     strings.ToLower(respCT),
+			url: respURL,
+			ct:  strings.ToLower(respCT),
 		}
 	}
 	url = respURL
@@ -353,10 +386,8 @@ func coalesceResponseMeta(respURL, respCT string, pending pendingReq, hadPending
 	if ct == "" {
 		ct = pending.ct
 	}
+	// Keep the observed request method only; never invent it from a filter.
 	method = pending.method
-	if method == "" {
-		method = methodWant
-	}
 	return url, ct, method
 }
 

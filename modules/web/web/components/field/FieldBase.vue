@@ -18,10 +18,11 @@ SPDX-License-Identifier: Apache-2.0
       v-if="resolvedLabel || effectiveHelp || requiredForm"
       class="choy-field-base__label-row flex items-center gap-1 font-normal text-muted-foreground"
     >
-      <FieldLabel :for="inputIdForm">
+      <FieldLabel v-if="resolvedLabel" :for="inputIdForm">
         {{ resolvedLabel }}
         <span v-if="requiredForm" class="text-destructive" aria-hidden="true">*</span>
       </FieldLabel>
+      <span v-else-if="requiredForm" class="text-destructive" aria-hidden="true">*</span>
       <TooltipProvider v-if="effectiveHelp">
         <Tooltip>
           <TooltipTrigger as-child>

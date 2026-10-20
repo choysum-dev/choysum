@@ -17,6 +17,28 @@ function createEditor(options) {
   var listeners = Object.create(null);
   var active = Object.create(null);
   var attrs = Object.create(null);
+  var dom = {
+    tagName: 'DIV',
+    attributes: Object.create(null),
+    setAttribute: function (name, value) {
+      this.attributes[name] = String(value);
+    },
+    removeAttribute: function (name) {
+      delete this.attributes[name];
+    },
+    getAttribute: function (name) {
+      return Object.prototype.hasOwnProperty.call(this.attributes, name)
+        ? this.attributes[name]
+        : null;
+    },
+  };
+  var initialAttrs =
+    options && options.editorProps && options.editorProps.attributes
+      ? options.editorProps.attributes
+      : {};
+  Object.keys(initialAttrs || {}).forEach(function (key) {
+    dom.setAttribute(key, initialAttrs[key]);
+  });
 
   function emit(event) {
     var list = listeners[event] || [];
@@ -63,6 +85,7 @@ function createEditor(options) {
   };
 
   var editor = {
+    view: { dom: dom },
     getHTML: function () {
       return html;
     },
@@ -115,9 +138,13 @@ export function useEditor(options) {
   __feStubLastEditor = ed;
   var editorRef = shallowRef(ed);
   __feStubEditorRef = editorRef;
+  if (options && typeof options.onCreate === 'function') {
+    options.onCreate({ editor: ed });
+  }
   onBeforeUnmount(function () {
     if (editorRef.value) editorRef.value.destroy();
     if (__feStubLastEditor === editorRef.value) __feStubLastEditor = null;
+    if (__feStubEditorRef === editorRef) __feStubEditorRef = null;
     editorRef.value = null;
   });
   return editorRef;
@@ -128,9 +155,19 @@ export var EditorContent = defineComponent({
   props: {
     editor: { default: null },
   },
-  setup: function () {
+  setup: function (props) {
     return function () {
-      return h('div', { class: 'ProseMirror fe-stub-editor-content', contenteditable: 'true' });
+      var ed = props.editor;
+      var domAttrs = ed && ed.view && ed.view.dom && ed.view.dom.attributes ? ed.view.dom.attributes : {};
+      return h('div', {
+        class: 'ProseMirror fe-stub-editor-content',
+        contenteditable: 'true',
+        id: domAttrs.id,
+        name: domAttrs.name,
+        'aria-invalid': domAttrs['aria-invalid'],
+        'aria-required': domAttrs['aria-required'],
+        'aria-describedby': domAttrs['aria-describedby'],
+      });
     };
   },
 });
