@@ -9,6 +9,7 @@ SPDX-License-Identifier: Apache-2.0
     :label="label"
     :rules="mergedRules"
     :formItemProps="formItemProps"
+    :orientation="orientation"
     :vColumnProps="vColumnProps"
     :toView="toView"
     :fromView="fromView"
@@ -52,10 +53,11 @@ import type { UseField } from '@/web/web/composables/useField';
 // Narrow aggregation types to count_distinct only.
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
+import Textarea from '../vendor/ui/textarea/Textarea.vue';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { createTranslate } from '@/web/web/i18n';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/TextField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyTextField' });
 
 defineOptions({ name: 'ChoyTextField' });
 
@@ -87,6 +89,7 @@ const props = withDefaults(
     cellVisible?: FieldStateExpr<T, V>;
 
     formItemProps?: Partial<FormItemProps>;
+    orientation?: 'horizontal' | 'vertical';
     vColumnProps?: {
       width?: number | string;
       minWidth?: number;
@@ -185,14 +188,14 @@ const ChoyTextCell = defineComponent({
     );
     const onBlur = () => buffer.onBlur();
     return () =>
-      h('textarea', {
+      h(Textarea, {
         ...attrs,
         class: 'choy-textarea w-full',
         placeholder: p.placeholder,
         rows: p.rows ?? 3,
         maxlength: p.maxlength,
-        value: buffer.editingValue.value ?? '',
-        onInput: (e: Event) => buffer.setEditing((e.target as HTMLTextAreaElement).value ?? ''),
+        modelValue: buffer.editingValue.value ?? '',
+        'onUpdate:modelValue': (v: string) => buffer.setEditing(v ?? ''),
         onBlur,
       });
   },

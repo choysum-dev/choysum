@@ -9,6 +9,7 @@ SPDX-License-Identifier: Apache-2.0
     :label="label"
     :rules="mergedRules"
     :formItemProps="formItemProps"
+    :orientation="orientation"
     :vColumnProps="vColumnProps"
     :toView="toView"
     :fromView="fromView"
@@ -48,7 +49,7 @@ import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/us
 import { createTranslate } from '@/web/web/i18n';
 dayjs.extend(customParseFormat);
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/DateField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyDateField' });
 
 defineOptions({ name: 'ChoyDateField' });
 
@@ -71,6 +72,7 @@ const props = withDefaults(
     cellVisible?: FieldStateExpr<T, V>;
     datePickerProps?: Record<string, unknown>;
     formItemProps?: Partial<FormItemProps>;
+    orientation?: 'horizontal' | 'vertical';
     vColumnProps?: Record<string, unknown>;
 
     bufferStrategy?: CommitStrategy;
@@ -218,6 +220,7 @@ const ChoyDateCell = defineComponent({
         ...attrs,
         ...(p.pickerProps || {}),
         class: 'choy-date-picker w-full',
+        placeholder: _t('Select date'),
         modelValue: value,
         'onUpdate:modelValue': (raw: string | null) => {
           buffer.setEditing(raw ? normalizeToDate(raw) : null);

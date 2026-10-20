@@ -192,11 +192,13 @@ html {
   }
 }
 
-/* Readonly form values: text, not fake inputs. */
+/* Readonly form values: text, not fake inputs; match label density (14px / sm). */
 .choy-field-display-text,
-.choy-textfield-display {
+.choy-textfield-display,
+.choy-bool-display {
   padding-inline: 0 !important;
-  line-height: 1.5 !important;
+  font-size: var(--choy-font-size-sm);
+  line-height: var(--choy-field-label-line-height) !important;
 }
 
 /*
@@ -206,6 +208,56 @@ html {
  */
 [data-slot='field'].choy-field-base {
   gap: var(--choy-field-stack-gap);
+}
+
+/* Vertical form chrome: stacked label above control (opt-in via orientation). */
+[data-slot='field'].choy-field-base[data-orientation='vertical'] {
+  gap: var(--choy-field-stack-gap);
+}
+
+/*
+ * Form: label | value as a 2-track CSS grid sized to the host ChoyCol
+ * (percentage of the field cell, not a fixed rem). Without a label row the
+ * content track spans the full cell.
+ */
+[data-slot='field'].choy-field-base[data-orientation='horizontal'] {
+  display: grid;
+  column-gap: var(--choy-field-label-control-gap);
+  row-gap: var(--choy-field-stack-gap);
+  /* Start — not center: FieldError below the control must not pull the label down. */
+  align-items: start;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+[data-slot='field'].choy-field-base[data-orientation='horizontal']:has(> .choy-field-base__label-row) {
+  grid-template-columns:
+    minmax(var(--choy-field-label-min), min(var(--choy-field-label-max), var(--choy-field-label-basis)))
+    minmax(0, 1fr);
+}
+
+[data-slot='field'].choy-field-base[data-orientation='horizontal'] .choy-field-base__label-row {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  min-height: var(--choy-control-height, 2rem);
+  justify-content: flex-start;
+  text-align: start;
+}
+
+[data-slot='field'].choy-field-base[data-orientation='horizontal'] .choy-field-base__content {
+  min-width: 0;
+  gap: var(--choy-field-stack-gap);
+}
+
+/* Single-line display/edit share control height so value centers with the label. */
+[data-slot='field'].choy-field-base[data-orientation='horizontal'] .choy-field-base__display-wrap {
+  display: flex;
+  min-height: var(--choy-control-height, 2rem);
+  align-items: center;
+}
+
+[data-slot='field'].choy-field-base[data-orientation='horizontal'] .choy-field-base__edit-wrap {
+  min-height: var(--choy-control-height, 2rem);
 }
 
 /* Field ↔ field rhythm for FieldGroup stacks (ChoyGrid default is gap-2). */
@@ -220,11 +272,17 @@ html {
   font-weight: 400;
 }
 
-/* Kit Label / FieldLabel keep text-sm / leading-none / font-medium; product wins. */
+/* Kit Label / FieldLabel keep text-sm / leading-none / font-medium; product wins.
+ * Keep label text w-fit so form-help sits immediately after the words (Odoo-like),
+ * not at the far edge of the fixed label column. */
 .choy-field-base__label-row [data-slot='field-label'] {
   font-size: inherit;
   line-height: inherit;
   font-weight: inherit;
+  width: auto;
+  max-width: 100%;
+  justify-content: flex-start;
+  text-align: start;
 }
 
 /* Error / description track the same density scale as labels. */

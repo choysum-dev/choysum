@@ -102,11 +102,9 @@ describe('Choy native scalar field cells', () => {
       },
     });
     await flushPromises();
-    const input = m.q('input.choy-bool-input') as HTMLInputElement;
+    const input = m.q('.choy-bool-input') as HTMLElement;
     expect(input).toBeTruthy();
-    const change = new Event('change', { bubbles: true });
-    Object.defineProperty(change, 'target', { value: { checked: false } });
-    input.dispatchEvent(change);
+    input.click();
     await flushPromises();
     expect(binding.__value.value).toBe(false);
 
@@ -131,7 +129,13 @@ describe('Choy native scalar field cells', () => {
       },
     });
     await flushPromises();
-    expect(m.q('input.choy-bool-input')).toBeTruthy();
+    expect(m.q('.choy-bool-input')).toBeTruthy();
+    const displayRoot = m.q('[data-testid=choy-bool-display]') as HTMLElement | null;
+    expect(displayRoot).toBeTruthy();
+    // Minimal DOM has no descendant selectors; walk display children.
+    const displayKids = Array.from(displayRoot?.childNodes || []) as Element[];
+    expect(displayKids.some(el => String(el.className || '').includes('choy-bool-input'))).toBe(true);
+    expect(displayKids.some(el => String(el.className || '').includes('choy-bool-display__text'))).toBe(false);
     const toView = lastBaseProps.current?.toView as (v: unknown) => unknown;
     const fromView = lastBaseProps.current?.fromView as (v: unknown) => unknown;
     expect(toView(true)).toBe(true);
@@ -154,6 +158,7 @@ describe('Choy native scalar field cells', () => {
     const nullableMount = mountApp(ChoyBooleanField as any, {
       props: {
         binding: nullableBinding,
+        widget: 'switch',
         nullAsFalse: false,
         nullable: true,
         bufferStrategy: 'live',
@@ -165,6 +170,8 @@ describe('Choy native scalar field cells', () => {
     expect(fromViewNullable(null)).toBeNull();
     expect(fromViewNullable(true)).toBe(true);
     expect(fromViewNullable(false)).toBe(false);
+    // Null + switch: display falls back to text (Switch has no indeterminate).
+    expect(nullableMount.q('.choy-bool-display__text')).toBeTruthy();
     const bss = nullableMount.setupState() as any;
     expect(typeof bss.toBool).toBe('function');
     expect(bss.toBool(true)).toBe(true);
@@ -191,7 +198,7 @@ describe('Choy native scalar field cells', () => {
     });
     await flushPromises();
     expect(m.q('.choy-field-display-text')?.textContent).toBe('hi');
-    const input = m.q('input.choy-input') as HTMLInputElement;
+    const input = m.q('input.choy-varchar-input') as HTMLInputElement;
     expect(input?.id).toBe('i');
     setInputValue(input, '  abcdXX  ');
     input.dispatchEvent(new Event('blur', { bubbles: true }));

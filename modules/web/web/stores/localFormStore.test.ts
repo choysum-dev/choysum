@@ -227,7 +227,7 @@ describe('createLocalFormStore + ChoyFormView', () => {
 
     expect(onActionError.calls.length).toBe(0);
     expect(wrapper.text()).toContain('Username');
-    const input = wrapper.q('input.choy-input') as HTMLInputElement | null;
+    const input = wrapper.q('input.choy-varchar-input') as HTMLInputElement | null;
     expect(input).toBeTruthy();
     expect(input!.value).toBe('admin');
 

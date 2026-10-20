@@ -9,6 +9,7 @@ SPDX-License-Identifier: Apache-2.0
     :label="label"
     :rules="mergedRules"
     :formItemProps="formItemProps"
+    :orientation="orientation"
     :vColumnProps="vColumnProps"
     :toView="toView"
     :fromView="fromView"
@@ -50,6 +51,7 @@ import type { UseField } from '@/web/web/composables/useField';
 // Non-numeric varchar aggregates are narrowed to count_distinct.
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
+import Input from '../vendor/ui/input/Input.vue';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { createTranslate } from '@/web/web/i18n';
 
@@ -82,6 +84,7 @@ const props = withDefaults(
     cellVisible?: FieldStateExpr<T, V>;
 
     formItemProps?: Partial<FormItemProps>;
+    orientation?: 'horizontal' | 'vertical';
     vColumnProps?: {
       width?: number | string;
       minWidth?: number;
@@ -190,13 +193,13 @@ const ChoyVarcharCell = defineComponent({
     }
 
     return () =>
-      h('input', {
+      h(Input, {
         ...attrs,
-        class: 'choy-input w-full',
+        class: 'choy-varchar-input w-full',
         placeholder: p.placeholder,
         maxlength: p.maxlength,
-        value: buffer.editingValue.value ?? '',
-        onInput: (e: Event) => buffer.setEditing((e.target as HTMLInputElement).value ?? ''),
+        modelValue: buffer.editingValue.value ?? '',
+        'onUpdate:modelValue': (v: string) => buffer.setEditing(v ?? ''),
         onBlur,
       });
   },

@@ -9,6 +9,7 @@ SPDX-License-Identifier: Apache-2.0
     :label="label"
     :rules="mergedRules"
     :formItemProps="formItemProps"
+    :orientation="orientation"
     :vColumnProps="vColumnProps"
     :toView="toView"
     :fromView="fromView"
@@ -26,7 +27,7 @@ SPDX-License-Identifier: Apache-2.0
         :aria-invalid="invalid ? 'true' : undefined" />
     </template>
     <template #display="{ fieldValue }">
-      <span class="choy-field-display-text inline-block max-w-full truncate whitespace-nowrap text-foreground">{{ fieldValue().value == null ? '' : fieldValue().value }}</span>
+      <span class="choy-field-display-text choy-field-display-text--numeric inline-block max-w-full truncate whitespace-nowrap text-foreground">{{ fieldValue().value == null ? '' : fieldValue().value }}</span>
     </template>
   </ChoyFieldBase>
 </template>
@@ -41,9 +42,10 @@ import type { UseField } from '@/web/web/composables/useField';
 import type { AggProp } from '@/web/web/composables/useField';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
+import Input from '../vendor/ui/input/Input.vue';
 import { createTranslate } from '@/web/web/i18n';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/IntField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyIntField' });
 
 defineOptions({ name: 'ChoyIntField' });
 
@@ -72,6 +74,7 @@ const props = withDefaults(
     cellVisible?: FieldStateExpr<T, V>;
 
     formItemProps?: Partial<FormItemProps>;
+    orientation?: 'horizontal' | 'vertical';
     vColumnProps?: Record<string, any>;
 
     bufferStrategy?: CommitStrategy;
@@ -199,14 +202,14 @@ const ChoyIntCell = defineComponent({
     }
 
     return () =>
-      h('input', {
+      h(Input, {
         ...attrs,
-        class: 'choy-input choy-int-input w-full',
+        class: 'choy-int-input w-full',
         type: 'text',
-        value: editingRaw.value ?? '',
+        modelValue: editingRaw.value ?? '',
         placeholder: p.placeholder,
         inputmode: 'numeric',
-        onInput: (e: Event) => onInput((e.target as HTMLInputElement).value),
+        'onUpdate:modelValue': (v: string) => onInput(v ?? ''),
         onBlur,
       });
   },

@@ -10,6 +10,7 @@ import { cn, type ClassValue } from '../../../../lib/utils';
 defineProps<{
   class?: ClassValue;
   placeholder?: string;
+  disabled?: boolean;
   /** Map the selected model value to the closed-state input text (e.g. field label). */
   displayValue?: (value: string) => string;
 }>();
@@ -19,11 +20,13 @@ defineProps<{
   <ComboboxInput
     data-slot="combobox-input"
     :placeholder="placeholder"
+    :disabled="disabled"
     :display-value="displayValue"
     :class="
       cn(
         'flex h-control w-full rounded-md border border-border bg-background px-3 py-1 text-sm text-foreground shadow-sm',
-        'placeholder:text-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'disabled:cursor-not-allowed disabled:opacity-50',
         $props.class,
       )
     "

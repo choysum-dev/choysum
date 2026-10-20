@@ -9,6 +9,7 @@ SPDX-License-Identifier: Apache-2.0
     :label="label"
     :rules="mergedRules"
     :formItemProps="formItemProps"
+    :orientation="orientation"
     :vColumnProps="vColumnProps"
     :toView="toView"
     :fromView="fromView"
@@ -41,6 +42,7 @@ import type { UseField } from '@/web/web/composables/useField';
 // Narrow aggregation types to count_distinct only.
 import type { NarrowAggProp, TemporalAggFns } from '@/web/web/composables/useField';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
+import DateTimePicker from '../internal/DateTimePicker.vue';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
@@ -54,7 +56,7 @@ import {
 } from '@/web/web/utils/datetime';
 dayjs.extend(customParseFormat);
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/DatetimeField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyDatetimeField' });
 
 defineOptions({ name: 'ChoyDatetimeField' });
 
@@ -77,6 +79,7 @@ const props = withDefaults(
     cellVisible?: FieldStateExpr<T, V>;
     datePickerProps?: Record<string, unknown>;
     formItemProps?: Partial<FormItemProps>;
+    orientation?: 'horizontal' | 'vertical';
     vColumnProps?: {
       width?: number | string;
       minWidth?: number;
@@ -172,8 +175,20 @@ const toDisplayText = (v: FieldType) => {
   return m.isValid() ? m.format(displayFormat.value) : '';
 };
 
-function normalizeToDate(v: any): FieldType {
-  return v instanceof Date ? (isNaN(v.getTime()) ? null : v) : v ? new Date(v) : null;
+function normalizeToDate(v: any, previous: FieldType = null): FieldType {
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+  // DateTimePicker emits YYYY-MM-DDTHH:mm; parse as local wall clock.
+  if (typeof v === 'string') {
+    const parsed = dayjs(v, 'YYYY-MM-DDTHH:mm', true);
+    if (!parsed.isValid()) return null;
+    const next = parsed.toDate();
+    // Keep sub-minute precision from the previous wall value when only date/time-of-day changes.
+    if (previous && !isNaN(previous.getTime())) {
+      next.setSeconds(previous.getSeconds(), previous.getMilliseconds());
+    }
+    return next;
+  }
+  return v ? new Date(v) : null;
 }
 
 function isValidValue(value: any): boolean {
@@ -229,22 +244,22 @@ const ChoyDatetimeCell = defineComponent({
     );
     return () => {
       const current = buffer.editingValue.value;
-      // datetime-local wants local wall clock without timezone suffix.
       const value =
         current instanceof Date && !isNaN(current.getTime())
           ? dayjs(current).format('YYYY-MM-DDTHH:mm')
-          : '';
-      return h('input', {
+          : null;
+      return h(DateTimePicker, {
         ...attrs,
         ...(p.pickerProps || {}),
-        type: 'datetime-local',
         class: 'choy-date-picker w-full',
-        value,
-        onInput: (e: Event) => {
-          const raw = (e.target as HTMLInputElement).value;
-          buffer.setEditing(raw ? normalizeToDate(raw) : null);
+        placeholder: _t('Select date and time'),
+        modelValue: value,
+        'onUpdate:modelValue': (raw: string | null) => {
+          const prev =
+            current instanceof Date && !isNaN(current.getTime()) ? current : null;
+          buffer.setEditing(raw ? normalizeToDate(raw, prev) : null);
+          buffer.onBlur();
         },
-        onBlur: () => buffer.onBlur(),
       });
     };
   },

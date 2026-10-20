@@ -146,37 +146,7 @@ msgctxt "web/components/chatter/ChoyChatterFollowerBar"
 msgid "Unfollow"
 msgstr "取消关注"
 
-#: web/components/field/ChoyBigintField.vue:254
-msgctxt "web/components/field/BigintField"
-msgid "Cannot be empty"
-msgstr "不能为空"
-
-#: web/components/field/ChoyBigintField.vue:269
-msgctxt "web/components/field/BigintField"
-msgid "Exceeds safe integer range"
-msgstr "超出安全整数范围"
-
-#: web/components/field/ChoyBigintField.vue:266
-msgctxt "web/components/field/BigintField"
-msgid "Must be a valid integer"
-msgstr "必须是有效整数"
-
-#: web/components/field/ChoyBigintField.vue:259
-msgctxt "web/components/field/BigintField"
-msgid "Must be an integer"
-msgstr "必须是整数"
-
-#: web/components/field/ChoyBigintField.vue:268
-msgctxt "web/components/field/BigintField"
-msgid "Must not be greater than %s"
-msgstr "不得大于 %s"
-
-#: web/components/field/ChoyBigintField.vue:267
-msgctxt "web/components/field/BigintField"
-msgid "Must not be less than %s"
-msgstr "不得小于 %s"
-
-#: web/components/field/ChoyBinaryField.vue:89
+#: web/components/field/ChoyBinaryField.vue:90
 msgctxt "web/components/field/BinaryField"
 msgid "Drop file here or click to upload"
 msgstr "拖放文件到此处，或点击上传"
@@ -186,95 +156,485 @@ msgctxt "web/components/field/BinaryField"
 msgid "Remove"
 msgstr "移除"
 
-#: web/components/field/ChoyBinaryField.vue:95
+#: web/components/field/ChoyBinaryField.vue:96
 msgctxt "web/components/field/BinaryField"
 msgid "Replace file"
 msgstr "替换文件"
 
-#: web/components/field/ChoyBinaryField.vue:221
+#: web/components/field/ChoyBinaryField.vue:222
 msgctxt "web/components/field/BinaryField"
 msgid "Selected file type is not allowed."
 msgstr "不允许所选文件类型。"
 
-#: web/components/field/ChoyBinaryField.vue:88
+#: web/components/field/ChoyBinaryField.vue:89
 msgctxt "web/components/field/BinaryField"
 msgid "Upload file"
 msgstr "上传文件"
 
-#: web/components/field/ChoyBooleanField.vue:232
+#: web/components/field/ChoyBigintField.vue:256
+msgctxt "web/components/field/ChoyBigintField"
+msgid "Cannot be empty"
+msgstr "不能为空"
+
+#: web/components/field/ChoyBigintField.vue:271
+msgctxt "web/components/field/ChoyBigintField"
+msgid "Exceeds safe integer range"
+msgstr "超出安全整数范围"
+
+#: web/components/field/ChoyBigintField.vue:268
+msgctxt "web/components/field/ChoyBigintField"
+msgid "Must be a valid integer"
+msgstr "必须是有效整数"
+
+#: web/components/field/ChoyBigintField.vue:261
+msgctxt "web/components/field/ChoyBigintField"
+msgid "Must be an integer"
+msgstr "必须是整数"
+
+#: web/components/field/ChoyBigintField.vue:270
+msgctxt "web/components/field/ChoyBigintField"
+msgid "Must not be greater than %s"
+msgstr "不能大于 %s"
+
+#: web/components/field/ChoyBigintField.vue:269
+msgctxt "web/components/field/ChoyBigintField"
+msgid "Must not be less than %s"
+msgstr "不能小于 %s"
+
+#: web/components/field/ChoyBooleanField.vue:256
 msgctxt "web/components/field/ChoyBooleanField"
 msgid "Clear"
 msgstr "清除"
 
-#: web/components/field/ChoyBooleanField.vue:132
+#: web/components/field/ChoyBooleanField.vue:135
 msgctxt "web/components/field/ChoyBooleanField"
 msgid "No"
 msgstr "否"
 
-#: web/components/field/ChoyBooleanField.vue:131
+#: web/components/field/ChoyBooleanField.vue:134
 msgctxt "web/components/field/ChoyBooleanField"
 msgid "Yes"
 msgstr "是"
 
-#: web/components/field/ChoyBooleanField.vue:133
+#: web/components/field/ChoyBooleanField.vue:136
 msgctxt "web/components/field/ChoyBooleanField"
 msgid "—"
 msgstr "—"
 
-#: web/components/field/ChoyDateField.vue:135
-msgctxt "web/components/field/DateField"
+#: web/components/field/ChoyDateField.vue:136
+msgctxt "web/components/field/ChoyDateField"
 msgid "Invalid date"
 msgstr "日期无效"
 
-#: web/components/field/ChoyDatetimeField.vue:155
-msgctxt "web/components/field/DatetimeField"
+#: web/components/field/ChoyDateField.vue:189
+msgctxt "web/components/field/ChoyDateField"
+msgid "Select date"
+msgstr "选择日期"
+
+#: web/components/field/ChoyDatetimeField.vue:169
+msgctxt "web/components/field/ChoyDatetimeField"
 msgid "Invalid date time"
 msgstr "日期时间无效"
 
-#: web/components/field/ChoyDecimalField.vue:434
+#: web/components/field/ChoyDatetimeField.vue:221
+msgctxt "web/components/field/ChoyDatetimeField"
+msgid "Select date and time"
+msgstr "选择日期和时间"
+
+#: web/components/field/ChoyDecimalField.vue:436
 msgctxt "web/components/field/ChoyDecimalField"
 msgid "Decimal places must not exceed %s"
 msgstr "小数位数不得超过 %s"
 
-#: web/components/field/ChoyDecimalField.vue:433
+#: web/components/field/ChoyDecimalField.vue:435
 msgctxt "web/components/field/ChoyDecimalField"
 msgid "Must be a valid number"
 msgstr "必须是有效数字"
 
-#: web/components/field/ChoyDecimalField.vue:438
+#: web/components/field/ChoyDecimalField.vue:440
 msgctxt "web/components/field/ChoyDecimalField"
 msgid "Must not be greater than %s"
 msgstr "不得大于 %s"
 
-#: web/components/field/ChoyDecimalField.vue:437
+#: web/components/field/ChoyDecimalField.vue:439
 msgctxt "web/components/field/ChoyDecimalField"
 msgid "Must not be less than %s"
 msgstr "不得小于 %s"
 
-#: web/components/field/ChoyDecimalField.vue:436
+#: web/components/field/ChoyDecimalField.vue:438
 msgctxt "web/components/field/ChoyDecimalField"
 msgid "Total digits must not exceed %s"
 msgstr "总位数不得超过 %s"
 
-#: web/components/field/ChoyFieldBase.vue:182
+#: web/components/field/ChoyFieldBase.vue:199
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Company values"
 msgstr "公司值"
 
-#: web/components/field/ChoyFieldBase.vue:182
+#: web/components/field/ChoyFieldBase.vue:199
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Company values: %s"
 msgstr "公司值：%s"
 
-#: web/components/field/ChoyFieldBase.vue:175
+#: web/components/field/ChoyFieldBase.vue:192
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Translate field"
 msgstr "翻译字段"
 
-#: web/components/field/ChoyFieldBase.vue:175
+#: web/components/field/ChoyFieldBase.vue:192
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Translate: %s"
 msgstr "翻译：%s"
+
+#: web/components/field/ChoyIntField.vue:188
+msgctxt "web/components/field/ChoyIntField"
+msgid "Cannot be empty"
+msgstr "不能为空"
+
+#: web/components/field/ChoyIntField.vue:191
+msgctxt "web/components/field/ChoyIntField"
+msgid "Must be an integer"
+msgstr "必须是整数"
+
+#: web/components/field/ChoyIntField.vue:194
+msgctxt "web/components/field/ChoyIntField"
+msgid "Range %s ~ %s"
+msgstr "范围 %s ~ %s"
+
+#: web/components/field/ChoyManyToManyField.vue:12 web/components/field/ChoyManyToManyField.vue:31
+msgctxt "web/components/field/ChoyManyToManyField"
+msgid "Actions"
+msgstr "操作"
+
+#: web/components/field/ChoyManyToManyField.vue:20 web/components/field/ChoyManyToManyField.vue:39
+msgctxt "web/components/field/ChoyManyToManyField"
+msgid "Add row"
+msgstr "添加行"
+
+#: web/components/field/ChoyManyToManyField.vue:66
+msgctxt "web/components/field/ChoyManyToManyField"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/components/field/ChoyManyToManyField.vue:14 web/components/field/ChoyManyToManyField.vue:33
+msgctxt "web/components/field/ChoyManyToManyField"
+msgid "Delete"
+msgstr "删除"
+
+#: web/components/field/ChoyManyToManyField.vue:67
+msgctxt "web/components/field/ChoyManyToManyField"
+msgid "OK"
+msgstr "确定"
+
+#: web/components/field/ChoyManyToManyField.vue:96
+msgctxt "web/components/field/ChoyManyToManyField"
+msgid "Select related items"
+msgstr "选择关联项"
+
+#: web/components/field/ChoyManyToManyField.vue:232
+msgctxt "web/components/field/ChoyManyToManyField"
+msgid "relationStore is unresolved; cannot open picker"
+msgstr "relationStore 未解析，无法打开选择器"
+
+#: web/components/field/ChoyManyToManyRefTagsField.vue:56
+msgctxt "web/components/field/ChoyManyToManyRefTagsField"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/components/field/ChoyManyToManyRefTagsField.vue:152
+msgctxt "web/components/field/ChoyManyToManyRefTagsField"
+msgid "Create \"%s\""
+msgstr "创建“%s”"
+
+#: web/components/field/ChoyManyToManyRefTagsField.vue:161
+msgctxt "web/components/field/ChoyManyToManyRefTagsField"
+msgid "Create failed"
+msgstr "创建失败"
+
+#: web/components/field/ChoyManyToManyRefTagsField.vue:43
+msgctxt "web/components/field/ChoyManyToManyRefTagsField"
+msgid "None"
+msgstr "无"
+
+#: web/components/field/ChoyManyToManyRefTagsField.vue:57
+msgctxt "web/components/field/ChoyManyToManyRefTagsField"
+msgid "OK"
+msgstr "确定"
+
+#: web/components/field/ChoyManyToManyRefTagsField.vue:109
+msgctxt "web/components/field/ChoyManyToManyRefTagsField"
+msgid "Please select..."
+msgstr "请选择…"
+
+#: web/components/field/ChoyManyToManyRefTagsField.vue:11
+msgctxt "web/components/field/ChoyManyToManyRefTagsField"
+msgid "Remove"
+msgstr "移除"
+
+#: web/components/field/ChoyManyToManyRefTagsField.vue:110
+msgctxt "web/components/field/ChoyManyToManyRefTagsField"
+msgid "Select related items"
+msgstr "选择关联项"
+
+#: web/components/field/ChoyManyToManyRefTagsField.vue:509
+msgctxt "web/components/field/ChoyManyToManyRefTagsField"
+msgid "relationStore is unresolved; cannot open picker"
+msgstr "relationStore 未解析，无法打开选择器"
+
+#: web/components/field/ChoyManyToManyRefTagsField.vue:505
+msgctxt "web/components/field/ChoyManyToManyRefTagsField"
+msgid "searchList is not configured; cannot open picker"
+msgstr "searchList 未配置，无法打开选择器"
+
+#: web/components/field/ChoyManyToManyRefTreeField.vue:97
+msgctxt "web/components/field/ChoyManyToManyRefTreeField"
+msgid "No data"
+msgstr "暂无数据"
+
+#: web/components/field/ChoyManyToOneField.vue:29
+msgctxt "web/components/field/ChoyManyToOneField"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/components/field/ChoyManyToOneField.vue:144
+msgctxt "web/components/field/ChoyManyToOneField"
+msgid "Create \"%s\""
+msgstr "创建“%s”"
+
+#: web/components/field/ChoyManyToOneField.vue:153
+msgctxt "web/components/field/ChoyManyToOneField"
+msgid "Create failed"
+msgstr "创建失败"
+
+#: web/components/field/ChoyManyToOneField.vue:30
+msgctxt "web/components/field/ChoyManyToOneField"
+msgid "OK"
+msgstr "确定"
+
+#: web/components/field/ChoyManyToOneField.vue:111
+msgctxt "web/components/field/ChoyManyToOneField"
+msgid "Please select..."
+msgstr "请选择…"
+
+#: web/components/field/ChoyManyToOneField.vue:112
+msgctxt "web/components/field/ChoyManyToOneField"
+msgid "Select record"
+msgstr "选择记录"
+
+#: web/components/field/ChoyManyToOneRefField.vue:29
+msgctxt "web/components/field/ChoyManyToOneRefField"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/components/field/ChoyManyToOneRefField.vue:158
+msgctxt "web/components/field/ChoyManyToOneRefField"
+msgid "Create \"%s\""
+msgstr "创建“%s”"
+
+#: web/components/field/ChoyManyToOneRefField.vue:167
+msgctxt "web/components/field/ChoyManyToOneRefField"
+msgid "Create failed"
+msgstr "创建失败"
+
+#: web/components/field/ChoyManyToOneRefField.vue:30
+msgctxt "web/components/field/ChoyManyToOneRefField"
+msgid "OK"
+msgstr "确定"
+
+#: web/components/field/ChoyManyToOneRefField.vue:112
+msgctxt "web/components/field/ChoyManyToOneRefField"
+msgid "Please select..."
+msgstr "请选择…"
+
+#: web/components/field/ChoyManyToOneRefField.vue:113
+msgctxt "web/components/field/ChoyManyToOneRefField"
+msgid "Select record"
+msgstr "选择记录"
+
+#: web/components/field/ChoyNumberField.vue:173
+msgctxt "web/components/field/ChoyNumberField"
+msgid "Value is required"
+msgstr "值为必填项"
+
+#: web/components/field/ChoyNumberField.vue:175
+msgctxt "web/components/field/ChoyNumberField"
+msgid "Value must be a number"
+msgstr "值必须为数字"
+
+#: web/components/field/ChoyNumberField.vue:176
+msgctxt "web/components/field/ChoyNumberField"
+msgid "Value must be at least %s"
+msgstr "值不得小于 %s"
+
+#: web/components/field/ChoyNumberField.vue:177
+msgctxt "web/components/field/ChoyNumberField"
+msgid "Value must be at most %s"
+msgstr "值不得大于 %s"
+
+#: web/components/field/ChoyOneToManyField.vue:11
+msgctxt "web/components/field/ChoyOneToManyField"
+msgid "Actions"
+msgstr "操作"
+
+#: web/components/field/ChoyOneToManyField.vue:19
+msgctxt "web/components/field/ChoyOneToManyField"
+msgid "Add row"
+msgstr "添加行"
+
+#: web/components/field/ChoyOneToManyField.vue:13
+msgctxt "web/components/field/ChoyOneToManyField"
+msgid "Delete"
+msgstr "删除"
+
+#: web/components/field/ChoyOneToManyKanbanField.vue:296
+msgctxt "web/components/field/ChoyOneToManyKanbanField"
+msgid "Are you sure you want to delete this record? This action cannot be undone."
+msgstr "确定要删除此记录吗？此操作无法撤销。"
+
+#: web/components/field/ChoyOneToManyKanbanField.vue:301 web/components/field/ChoyOneToManyKanbanField.vue:74
+msgctxt "web/components/field/ChoyOneToManyKanbanField"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/components/field/ChoyOneToManyKanbanField.vue:297
+msgctxt "web/components/field/ChoyOneToManyKanbanField"
+msgid "Confirm delete"
+msgstr "确认删除"
+
+#: web/components/field/ChoyOneToManyKanbanField.vue:25 web/components/field/ChoyOneToManyKanbanField.vue:300
+msgctxt "web/components/field/ChoyOneToManyKanbanField"
+msgid "Delete"
+msgstr "删除"
+
+#: web/components/field/ChoyOneToManyKanbanField.vue:22
+msgctxt "web/components/field/ChoyOneToManyKanbanField"
+msgid "Edit"
+msgstr "编辑"
+
+#: web/components/field/ChoyOneToManyKanbanField.vue:120
+msgctxt "web/components/field/ChoyOneToManyKanbanField"
+msgid "Edit record"
+msgstr "编辑记录"
+
+#: web/components/field/ChoyOneToManyKanbanField.vue:117
+msgctxt "web/components/field/ChoyOneToManyKanbanField"
+msgid "New"
+msgstr "新建"
+
+#: web/components/field/ChoyOneToManyKanbanField.vue:119
+msgctxt "web/components/field/ChoyOneToManyKanbanField"
+msgid "New record"
+msgstr "新建记录"
+
+#: web/components/field/ChoyOneToManyKanbanField.vue:118
+msgctxt "web/components/field/ChoyOneToManyKanbanField"
+msgid "No data"
+msgstr "暂无数据"
+
+#: web/components/field/ChoyOneToManyKanbanField.vue:72
+msgctxt "web/components/field/ChoyOneToManyKanbanField"
+msgid "Provide a child record editor via the formView prop."
+msgstr "请通过 formView 属性提供子记录编辑器。"
+
+#: web/components/field/ChoyOneToManyKanbanField.vue:75
+msgctxt "web/components/field/ChoyOneToManyKanbanField"
+msgid "Save"
+msgstr "保存"
+
+#: web/components/field/ChoyOneToManyKanbanField.vue:236
+msgctxt "web/components/field/ChoyOneToManyKanbanField"
+msgid "Untitled"
+msgstr "未命名"
+
+#: web/components/field/ChoyOneToManyKanbanField.vue:121
+msgctxt "web/components/field/ChoyOneToManyKanbanField"
+msgid "View record"
+msgstr "查看记录"
+
+#: web/components/field/ChoySelectionField.vue:13
+msgctxt "web/components/field/ChoySelectionField"
+msgid "Clear"
+msgstr "清除"
+
+#: web/components/field/ChoySelectionField.vue:343
+msgctxt "web/components/field/ChoySelectionField"
+msgid "Invalid option value: %s"
+msgstr "无效的选项值：%s"
+
+#: web/components/field/ChoySelectionField.vue:27
+msgctxt "web/components/field/ChoySelectionField"
+msgid "Loading…"
+msgstr "加载中…"
+
+#: web/components/field/ChoySelectionField.vue:30
+msgctxt "web/components/field/ChoySelectionField"
+msgid "No options"
+msgstr "无选项"
+
+#: web/components/field/ChoySelectionField.vue:80
+msgctxt "web/components/field/ChoySelectionField"
+msgid "Please select..."
+msgstr "请选择…"
+
+#: web/components/field/ChoySelectionField.vue:23
+msgctxt "web/components/field/ChoySelectionField"
+msgid "Search…"
+msgstr "搜索…"
+
+#: web/components/field/ChoySelectionField.vue:341
+msgctxt "web/components/field/ChoySelectionField"
+msgid "Value must be a string"
+msgstr "值必须为字符串"
+
+#: web/components/field/ChoyStatusbarField.vue:206
+msgctxt "web/components/field/ChoyStatusbarField"
+msgid "Invalid option value: %s"
+msgstr "无效选项值：%s"
+
+#: web/components/field/ChoyStatusbarField.vue:205
+msgctxt "web/components/field/ChoyStatusbarField"
+msgid "Value must be a string"
+msgstr "值必须是字符串"
+
+#: web/components/field/ChoyTextField.vue:163
+msgctxt "web/components/field/ChoyTextField"
+msgid "Cannot be empty"
+msgstr "不能为空"
+
+#: web/components/field/ChoyTextField.vue:168
+msgctxt "web/components/field/ChoyTextField"
+msgid "Length must not exceed %s"
+msgstr "长度不能超过 %s"
+
+#: web/components/field/ChoyTextField.vue:165
+msgctxt "web/components/field/ChoyTextField"
+msgid "Must be a string"
+msgstr "必须是字符串"
+
+#: web/components/field/ChoyTimeField.vue:137
+msgctxt "web/components/field/ChoyTimeField"
+msgid "Invalid time value"
+msgstr "时间值无效"
+
+#: web/components/field/ChoyTimeField.vue:192
+msgctxt "web/components/field/ChoyTimeField"
+msgid "Select time"
+msgstr "选择时间"
+
+#: web/components/field/ChoyVarcharField.vue:174
+msgctxt "web/components/field/ChoyVarcharField"
+msgid "Length must not exceed %s"
+msgstr "长度不得超过 %s"
+
+#: web/components/field/ChoyVarcharField.vue:169
+msgctxt "web/components/field/ChoyVarcharField"
+msgid "Value is required"
+msgstr "值为必填项"
+
+#: web/components/field/ChoyVarcharField.vue:171
+msgctxt "web/components/field/ChoyVarcharField"
+msgid "Value must be a string"
+msgstr "值必须为字符串"
 
 #: web/components/field/ChoyFieldCompanyValuesDialog.vue:16
 msgctxt "web/components/field/FieldCompanyValuesDialog"
@@ -351,7 +711,7 @@ msgctxt "web/components/field/FieldTranslationsDialog"
 msgid "Translations saved"
 msgstr "翻译已保存"
 
-#: web/components/field/ChoyImageField.vue:124
+#: web/components/field/ChoyImageField.vue:125
 msgctxt "web/components/field/ImageField"
 msgid "Drop image here or click to upload"
 msgstr "拖放图片到此处，或点击上传"
@@ -371,7 +731,7 @@ msgctxt "web/components/field/ImageField"
 msgid "Image width exceeds maximum (%s px)"
 msgstr "图片宽度超过上限（%s 像素）"
 
-#: web/components/field/ChoyImageField.vue:114
+#: web/components/field/ChoyImageField.vue:115
 msgctxt "web/components/field/ImageField"
 msgid "Only raster image files are supported."
 msgstr "仅支持栅格图片文件。"
@@ -381,310 +741,45 @@ msgctxt "web/components/field/ImageField"
 msgid "Remove"
 msgstr "移除"
 
-#: web/components/field/ChoyImageField.vue:130
+#: web/components/field/ChoyImageField.vue:131
 msgctxt "web/components/field/ImageField"
 msgid "Replace image"
 msgstr "替换图片"
 
-#: web/components/field/ChoyImageField.vue:123
+#: web/components/field/ChoyImageField.vue:124
 msgctxt "web/components/field/ImageField"
 msgid "Upload image"
 msgstr "上传图片"
 
-#: web/components/field/ChoyIntField.vue:186
-msgctxt "web/components/field/IntField"
-msgid "Cannot be empty"
-msgstr "不能为空"
-
-#: web/components/field/ChoyIntField.vue:189
-msgctxt "web/components/field/IntField"
-msgid "Must be an integer"
-msgstr "必须是整数"
-
-#: web/components/field/ChoyIntField.vue:192
-msgctxt "web/components/field/IntField"
-msgid "Range %s ~ %s"
-msgstr "范围 %s ~ %s"
-
-#: web/components/field/ChoyJsonField.vue:142 web/components/field/ChoyJsonField.vue:173
+#: web/components/field/ChoyJsonField.vue:143 web/components/field/ChoyJsonField.vue:174
 msgctxt "web/components/field/JsonobjectField"
 msgid "Arrays are not allowed"
 msgstr "不允许数组"
 
-#: web/components/field/ChoyJsonField.vue:170 web/components/field/ChoyJsonField.vue:244
+#: web/components/field/ChoyJsonField.vue:171 web/components/field/ChoyJsonField.vue:245
 msgctxt "web/components/field/JsonobjectField"
 msgid "Cannot be empty"
 msgstr "不能为空"
 
-#: web/components/field/ChoyJsonField.vue:79
+#: web/components/field/ChoyJsonField.vue:80
 msgctxt "web/components/field/JsonobjectField"
 msgid "Enter a JSON object"
 msgstr "请输入 JSON 对象"
 
-#: web/components/field/ChoyJsonField.vue:146
+#: web/components/field/ChoyJsonField.vue:147
 msgctxt "web/components/field/JsonobjectField"
 msgid "JSON parse failed"
 msgstr "JSON 解析失败"
 
-#: web/components/field/ChoyJsonField.vue:143 web/components/field/ChoyJsonField.vue:172
+#: web/components/field/ChoyJsonField.vue:144 web/components/field/ChoyJsonField.vue:173
 msgctxt "web/components/field/JsonobjectField"
 msgid "Must be an object"
 msgstr "必须是对象"
 
-#: web/components/field/ChoyJsonField.vue:251
+#: web/components/field/ChoyJsonField.vue:252
 msgctxt "web/components/field/JsonobjectField"
 msgid "Parse failed"
 msgstr "解析失败"
-
-#: web/components/field/ChoyManyToManyField.vue:12 web/components/field/ChoyManyToManyField.vue:31
-msgctxt "web/components/field/ChoyManyToManyField"
-msgid "Actions"
-msgstr "操作"
-
-#: web/components/field/ChoyManyToManyField.vue:20 web/components/field/ChoyManyToManyField.vue:39
-msgctxt "web/components/field/ChoyManyToManyField"
-msgid "Add row"
-msgstr "添加行"
-
-#: web/components/field/ChoyManyToManyField.vue:66
-msgctxt "web/components/field/ChoyManyToManyField"
-msgid "Cancel"
-msgstr "取消"
-
-#: web/components/field/ChoyManyToManyField.vue:14 web/components/field/ChoyManyToManyField.vue:33
-msgctxt "web/components/field/ChoyManyToManyField"
-msgid "Delete"
-msgstr "删除"
-
-#: web/components/field/ChoyManyToManyField.vue:67
-msgctxt "web/components/field/ChoyManyToManyField"
-msgid "OK"
-msgstr "确定"
-
-#: web/components/field/ChoyManyToManyField.vue:95
-msgctxt "web/components/field/ChoyManyToManyField"
-msgid "Select related items"
-msgstr "选择关联项"
-
-#: web/components/field/ChoyManyToManyField.vue:231
-msgctxt "web/components/field/ChoyManyToManyField"
-msgid "relationStore is unresolved; cannot open picker"
-msgstr "relationStore 未解析，无法打开选择器"
-
-#: web/components/field/ChoyManyToManyRefTagsField.vue:56
-msgctxt "web/components/field/ChoyManyToManyRefTagsField"
-msgid "Cancel"
-msgstr "取消"
-
-#: web/components/field/ChoyManyToManyRefTagsField.vue:151
-msgctxt "web/components/field/ChoyManyToManyRefTagsField"
-msgid "Create \"%s\""
-msgstr "创建“%s”"
-
-#: web/components/field/ChoyManyToManyRefTagsField.vue:160
-msgctxt "web/components/field/ChoyManyToManyRefTagsField"
-msgid "Create failed"
-msgstr "创建失败"
-
-#: web/components/field/ChoyManyToManyRefTagsField.vue:43
-msgctxt "web/components/field/ChoyManyToManyRefTagsField"
-msgid "None"
-msgstr "无"
-
-#: web/components/field/ChoyManyToManyRefTagsField.vue:57
-msgctxt "web/components/field/ChoyManyToManyRefTagsField"
-msgid "OK"
-msgstr "确定"
-
-#: web/components/field/ChoyManyToManyRefTagsField.vue:108
-msgctxt "web/components/field/ChoyManyToManyRefTagsField"
-msgid "Please select..."
-msgstr "请选择…"
-
-#: web/components/field/ChoyManyToManyRefTagsField.vue:11
-msgctxt "web/components/field/ChoyManyToManyRefTagsField"
-msgid "Remove"
-msgstr "移除"
-
-#: web/components/field/ChoyManyToManyRefTagsField.vue:109
-msgctxt "web/components/field/ChoyManyToManyRefTagsField"
-msgid "Select related items"
-msgstr "选择关联项"
-
-#: web/components/field/ChoyManyToManyRefTagsField.vue:508
-msgctxt "web/components/field/ChoyManyToManyRefTagsField"
-msgid "relationStore is unresolved; cannot open picker"
-msgstr "relationStore 未解析，无法打开选择器"
-
-#: web/components/field/ChoyManyToManyRefTagsField.vue:504
-msgctxt "web/components/field/ChoyManyToManyRefTagsField"
-msgid "searchList is not configured; cannot open picker"
-msgstr "searchList 未配置，无法打开选择器"
-
-#: web/components/field/ChoyManyToManyRefTreeField.vue:96
-msgctxt "web/components/field/ChoyManyToManyRefTreeField"
-msgid "No data"
-msgstr "暂无数据"
-
-#: web/components/field/ChoyManyToOneField.vue:29
-msgctxt "web/components/field/ChoyManyToOneField"
-msgid "Cancel"
-msgstr "取消"
-
-#: web/components/field/ChoyManyToOneField.vue:143
-msgctxt "web/components/field/ChoyManyToOneField"
-msgid "Create \"%s\""
-msgstr "创建“%s”"
-
-#: web/components/field/ChoyManyToOneField.vue:152
-msgctxt "web/components/field/ChoyManyToOneField"
-msgid "Create failed"
-msgstr "创建失败"
-
-#: web/components/field/ChoyManyToOneField.vue:30
-msgctxt "web/components/field/ChoyManyToOneField"
-msgid "OK"
-msgstr "确定"
-
-#: web/components/field/ChoyManyToOneField.vue:110
-msgctxt "web/components/field/ChoyManyToOneField"
-msgid "Please select..."
-msgstr "请选择…"
-
-#: web/components/field/ChoyManyToOneField.vue:111
-msgctxt "web/components/field/ChoyManyToOneField"
-msgid "Select record"
-msgstr "选择记录"
-
-#: web/components/field/ChoyManyToOneRefField.vue:29
-msgctxt "web/components/field/ChoyManyToOneRefField"
-msgid "Cancel"
-msgstr "取消"
-
-#: web/components/field/ChoyManyToOneRefField.vue:157
-msgctxt "web/components/field/ChoyManyToOneRefField"
-msgid "Create \"%s\""
-msgstr "创建“%s”"
-
-#: web/components/field/ChoyManyToOneRefField.vue:166
-msgctxt "web/components/field/ChoyManyToOneRefField"
-msgid "Create failed"
-msgstr "创建失败"
-
-#: web/components/field/ChoyManyToOneRefField.vue:30
-msgctxt "web/components/field/ChoyManyToOneRefField"
-msgid "OK"
-msgstr "确定"
-
-#: web/components/field/ChoyManyToOneRefField.vue:111
-msgctxt "web/components/field/ChoyManyToOneRefField"
-msgid "Please select..."
-msgstr "请选择…"
-
-#: web/components/field/ChoyManyToOneRefField.vue:112
-msgctxt "web/components/field/ChoyManyToOneRefField"
-msgid "Select record"
-msgstr "选择记录"
-
-#: web/components/field/ChoyNumberField.vue:171
-msgctxt "web/components/field/ChoyNumberField"
-msgid "Value is required"
-msgstr "值为必填项"
-
-#: web/components/field/ChoyNumberField.vue:173
-msgctxt "web/components/field/ChoyNumberField"
-msgid "Value must be a number"
-msgstr "值必须为数字"
-
-#: web/components/field/ChoyNumberField.vue:174
-msgctxt "web/components/field/ChoyNumberField"
-msgid "Value must be at least %s"
-msgstr "值不得小于 %s"
-
-#: web/components/field/ChoyNumberField.vue:175
-msgctxt "web/components/field/ChoyNumberField"
-msgid "Value must be at most %s"
-msgstr "值不得大于 %s"
-
-#: web/components/field/ChoyOneToManyField.vue:11
-msgctxt "web/components/field/ChoyOneToManyField"
-msgid "Actions"
-msgstr "操作"
-
-#: web/components/field/ChoyOneToManyField.vue:19
-msgctxt "web/components/field/ChoyOneToManyField"
-msgid "Add row"
-msgstr "添加行"
-
-#: web/components/field/ChoyOneToManyField.vue:13
-msgctxt "web/components/field/ChoyOneToManyField"
-msgid "Delete"
-msgstr "删除"
-
-#: web/components/field/ChoyOneToManyKanbanField.vue:295
-msgctxt "web/components/field/ChoyOneToManyKanbanField"
-msgid "Are you sure you want to delete this record? This action cannot be undone."
-msgstr "确定要删除此记录吗？此操作无法撤销。"
-
-#: web/components/field/ChoyOneToManyKanbanField.vue:300 web/components/field/ChoyOneToManyKanbanField.vue:74
-msgctxt "web/components/field/ChoyOneToManyKanbanField"
-msgid "Cancel"
-msgstr "取消"
-
-#: web/components/field/ChoyOneToManyKanbanField.vue:296
-msgctxt "web/components/field/ChoyOneToManyKanbanField"
-msgid "Confirm delete"
-msgstr "确认删除"
-
-#: web/components/field/ChoyOneToManyKanbanField.vue:25 web/components/field/ChoyOneToManyKanbanField.vue:299
-msgctxt "web/components/field/ChoyOneToManyKanbanField"
-msgid "Delete"
-msgstr "删除"
-
-#: web/components/field/ChoyOneToManyKanbanField.vue:22
-msgctxt "web/components/field/ChoyOneToManyKanbanField"
-msgid "Edit"
-msgstr "编辑"
-
-#: web/components/field/ChoyOneToManyKanbanField.vue:119
-msgctxt "web/components/field/ChoyOneToManyKanbanField"
-msgid "Edit record"
-msgstr "编辑记录"
-
-#: web/components/field/ChoyOneToManyKanbanField.vue:116
-msgctxt "web/components/field/ChoyOneToManyKanbanField"
-msgid "New"
-msgstr "新建"
-
-#: web/components/field/ChoyOneToManyKanbanField.vue:118
-msgctxt "web/components/field/ChoyOneToManyKanbanField"
-msgid "New record"
-msgstr "新建记录"
-
-#: web/components/field/ChoyOneToManyKanbanField.vue:117
-msgctxt "web/components/field/ChoyOneToManyKanbanField"
-msgid "No data"
-msgstr "暂无数据"
-
-#: web/components/field/ChoyOneToManyKanbanField.vue:72
-msgctxt "web/components/field/ChoyOneToManyKanbanField"
-msgid "Provide a child record editor via the formView prop."
-msgstr "请通过 formView 属性提供子记录编辑器。"
-
-#: web/components/field/ChoyOneToManyKanbanField.vue:75
-msgctxt "web/components/field/ChoyOneToManyKanbanField"
-msgid "Save"
-msgstr "保存"
-
-#: web/components/field/ChoyOneToManyKanbanField.vue:235
-msgctxt "web/components/field/ChoyOneToManyKanbanField"
-msgid "Untitled"
-msgstr "未命名"
-
-#: web/components/field/ChoyOneToManyKanbanField.vue:120
-msgctxt "web/components/field/ChoyOneToManyKanbanField"
-msgid "View record"
-msgstr "查看记录"
 
 #: web/components/field/ChoyPropertiesDefinitionEditor.vue:8
 msgctxt "web/components/field/PropertiesDefinitionEditor"
@@ -731,80 +826,20 @@ msgctxt "web/components/field/PropertiesDefinitionEditor"
 msgid "Selection JSON"
 msgstr "选择项 JSON"
 
-#: web/components/field/ChoyPropertiesField.vue:149
+#: web/components/field/ChoyPropertiesField.vue:150
 msgctxt "web/components/field/PropertiesField"
 msgid "%s properties"
 msgstr "%s 个属性"
 
-#: web/components/field/ChoyPropertiesField.vue:139
+#: web/components/field/ChoyPropertiesField.vue:140
 msgctxt "web/components/field/PropertiesField"
 msgid "No"
 msgstr "否"
 
-#: web/components/field/ChoyPropertiesField.vue:139
+#: web/components/field/ChoyPropertiesField.vue:140
 msgctxt "web/components/field/PropertiesField"
 msgid "Yes"
 msgstr "是"
-
-#: web/components/field/ChoySelectionField.vue:332
-msgctxt "web/components/field/ChoySelectionField"
-msgid "Invalid option value: %s"
-msgstr "无效的选项值：%s"
-
-#: web/components/field/ChoySelectionField.vue:69
-msgctxt "web/components/field/ChoySelectionField"
-msgid "Please select..."
-msgstr "请选择…"
-
-#: web/components/field/ChoySelectionField.vue:330
-msgctxt "web/components/field/ChoySelectionField"
-msgid "Value must be a string"
-msgstr "值必须为字符串"
-
-#: web/components/field/ChoyStatusbarField.vue:214
-msgctxt "web/components/field/StatusbarField"
-msgid "Invalid option value: %s"
-msgstr "无效的选项值：%s"
-
-#: web/components/field/ChoyStatusbarField.vue:213
-msgctxt "web/components/field/StatusbarField"
-msgid "Value must be a string"
-msgstr "值必须为字符串"
-
-#: web/components/field/ChoyTextField.vue:161
-msgctxt "web/components/field/TextField"
-msgid "Cannot be empty"
-msgstr "不能为空"
-
-#: web/components/field/ChoyTextField.vue:166
-msgctxt "web/components/field/TextField"
-msgid "Length must not exceed %s"
-msgstr "长度不得超过 %s"
-
-#: web/components/field/ChoyTextField.vue:163
-msgctxt "web/components/field/TextField"
-msgid "Must be a string"
-msgstr "必须为字符串"
-
-#: web/components/field/ChoyTimeField.vue:127
-msgctxt "web/components/field/TimeField"
-msgid "Invalid time value"
-msgstr "时间无效"
-
-#: web/components/field/ChoyVarcharField.vue:172
-msgctxt "web/components/field/ChoyVarcharField"
-msgid "Length must not exceed %s"
-msgstr "长度不得超过 %s"
-
-#: web/components/field/ChoyVarcharField.vue:167
-msgctxt "web/components/field/ChoyVarcharField"
-msgid "Value is required"
-msgstr "值为必填项"
-
-#: web/components/field/ChoyVarcharField.vue:169
-msgctxt "web/components/field/ChoyVarcharField"
-msgid "Value must be a string"
-msgstr "值必须为字符串"
 
 #: web/components/field/relationCountSummary.ts:14
 msgctxt "web/components/field/relationCountSummary@formatRelationCountSummary"
@@ -820,6 +855,96 @@ msgstr "%s 条记录"
 msgctxt "web/components/internal/ChoyTableHost"
 msgid "No data"
 msgstr "暂无数据"
+
+#: web/components/internal/DatePicker.vue:16 web/components/internal/DatePicker.vue:17 web/components/internal/DatePicker.vue:53
+msgctxt "web/components/internal/DatePicker"
+msgid "Clear"
+msgstr "清除"
+
+#: web/components/internal/DatePicker.vue:28
+msgctxt "web/components/internal/DatePicker"
+msgid "Next month"
+msgstr "下个月"
+
+#: web/components/internal/DatePicker.vue:24
+msgctxt "web/components/internal/DatePicker"
+msgid "Previous month"
+msgstr "上个月"
+
+#: web/components/internal/DatePicker.vue:74
+msgctxt "web/components/internal/DatePicker"
+msgid "Select date"
+msgstr "选择日期"
+
+#: web/components/internal/DatePicker.vue:54
+msgctxt "web/components/internal/DatePicker"
+msgid "Today"
+msgstr "今天"
+
+#: web/components/internal/DateTimePicker.vue:16 web/components/internal/DateTimePicker.vue:17 web/components/internal/DateTimePicker.vue:84
+msgctxt "web/components/internal/DateTimePicker"
+msgid "Clear"
+msgstr "清除"
+
+#: web/components/internal/DateTimePicker.vue:55
+msgctxt "web/components/internal/DateTimePicker"
+msgid "Hour"
+msgstr "时"
+
+#: web/components/internal/DateTimePicker.vue:67
+msgctxt "web/components/internal/DateTimePicker"
+msgid "Minute"
+msgstr "分"
+
+#: web/components/internal/DateTimePicker.vue:29
+msgctxt "web/components/internal/DateTimePicker"
+msgid "Next month"
+msgstr "下个月"
+
+#: web/components/internal/DateTimePicker.vue:87
+msgctxt "web/components/internal/DateTimePicker"
+msgid "Now"
+msgstr "此刻"
+
+#: web/components/internal/DateTimePicker.vue:25
+msgctxt "web/components/internal/DateTimePicker"
+msgid "Previous month"
+msgstr "上个月"
+
+#: web/components/internal/DateTimePicker.vue:82
+msgctxt "web/components/internal/DateTimePicker"
+msgid "Select date and time"
+msgstr "选择日期和时间"
+
+#: web/components/internal/TimePicker.vue:18 web/components/internal/TimePicker.vue:19 web/components/internal/TimePicker.vue:42
+msgctxt "web/components/internal/TimePicker"
+msgid "Clear"
+msgstr "清除"
+
+#: web/components/internal/TimePicker.vue:24
+msgctxt "web/components/internal/TimePicker"
+msgid "Hour"
+msgstr "时"
+
+#: web/components/internal/TimePicker.vue:29
+msgctxt "web/components/internal/TimePicker"
+msgid "Minute"
+msgstr "分"
+
+#: web/components/internal/TimePicker.vue:45
+msgctxt "web/components/internal/TimePicker"
+msgid "Now"
+msgstr "此刻"
+
+#: web/components/internal/TimePicker.vue:34
+msgctxt "web/components/internal/TimePicker"
+msgid "Second"
+msgstr "秒"
+
+#: web/components/internal/TimePicker.vue:52
+msgctxt "web/components/internal/TimePicker"
+msgid "Select time"
+msgstr "选择时间"
 
 #: web/components/layout/ChoyCommandPalette.vue:12 web/components/layout/ChoyCommandPalette.vue:8
 msgctxt "web/components/layout/ChoyCommandPalette"
@@ -911,27 +1036,32 @@ msgctxt "web/components/layout/Page"
 msgid "Loading..."
 msgstr "加载中..."
 
-#: web/components/view/ChoyChartView.vue:514
+#: web/components/view/ChoyChartView.vue:630
 msgctxt "web/components/view/ChartView"
 msgid "Bar"
 msgstr "柱状图"
 
-#: web/components/view/ChoyChartView.vue:69
+#: web/components/view/ChoyChartView.vue:100
 msgctxt "web/components/view/ChartView"
 msgid "Chart type"
 msgstr "图表类型"
 
-#: web/components/view/ChoyChartView.vue:236
+#: web/components/view/ChoyChartView.vue:273
 msgctxt "web/components/view/ChartView"
 msgid "Count"
 msgstr "计数"
 
-#: web/components/view/ChoyChartView.vue:515
+#: web/components/view/ChoyChartView.vue:70 web/components/view/ChoyChartView.vue:71
+msgctxt "web/components/view/ChartView"
+msgid "Cumulative"
+msgstr "累计"
+
+#: web/components/view/ChoyChartView.vue:631
 msgctxt "web/components/view/ChartView"
 msgid "Line"
 msgstr "折线图"
 
-#: web/components/view/ChoyChartView.vue:220 web/components/view/ChoyChartView.vue:51 web/components/view/ChoyChartView.vue:53
+#: web/components/view/ChoyChartView.vue:257 web/components/view/ChoyChartView.vue:53
 msgctxt "web/components/view/ChartView"
 msgid "Metric"
 msgstr "度量"
@@ -941,65 +1071,65 @@ msgctxt "web/components/view/ChartView"
 msgid "Metric selection"
 msgstr "度量选择"
 
-#: web/components/view/ChoyChartView.vue:157
+#: web/components/view/ChoyChartView.vue:192
 msgctxt "web/components/view/ChartView"
 msgid "New"
 msgstr "新建"
 
-#: web/components/view/ChoyChartView.vue:160
+#: web/components/view/ChoyChartView.vue:195
 msgctxt "web/components/view/ChartView"
 msgid "No data or grouping not configured"
 msgstr "暂无数据或未配置分组"
 
-#: web/components/view/ChoyChartView.vue:520
+#: web/components/view/ChoyChartView.vue:636
 msgctxt "web/components/view/ChartView"
 msgid "No sort"
 msgstr "不排序"
 
-#: web/components/view/ChoyChartView.vue:516
+#: web/components/view/ChoyChartView.vue:632
 msgctxt "web/components/view/ChartView"
 msgid "Pie"
 msgstr "饼图"
 
-#: web/components/view/ChoyChartView.vue:158
+#: web/components/view/ChoyChartView.vue:193
 msgctxt "web/components/view/ChartView"
 msgid "Refresh"
 msgstr "刷新"
 
-#: web/components/view/ChoyChartView.vue:138
+#: web/components/view/ChoyChartView.vue:182
 msgctxt "web/components/view/ChartView"
 msgid "Retry"
 msgstr "重试"
 
-#: web/components/view/ChoyChartView.vue:89
+#: web/components/view/ChoyChartView.vue:85
 msgctxt "web/components/view/ChartView"
 msgid "Sort"
 msgstr "排序"
 
-#: web/components/view/ChoyChartView.vue:521
+#: web/components/view/ChoyChartView.vue:637
 msgctxt "web/components/view/ChartView"
 msgid "Sort ascending"
 msgstr "升序"
 
-#: web/components/view/ChoyChartView.vue:522
+#: web/components/view/ChoyChartView.vue:638
 msgctxt "web/components/view/ChartView"
 msgid "Sort descending"
 msgstr "降序"
 
-#: web/components/view/ChoyChartView.vue:80
+#: web/components/view/ChoyChartView.vue:78 web/components/view/ChoyChartView.vue:79
 msgctxt "web/components/view/ChartView"
 msgid "Stack"
 msgstr "堆叠"
-
-#: web/components/view/ChoyChartView.vue
-msgctxt "web/components/view/ChartView"
-msgid "Cumulative"
-msgstr "累计"
 
 #: web/components/view/ChoyChartView.vue:5
 msgctxt "web/components/view/ChartView"
 msgid "System actions"
 msgstr "系统操作"
+
+#: web/components/view/ChoyChartView.vue:1196
+msgctxt "web/components/view/ChartView"
+msgid "Total"
+msgstr "合计"
 
 #: web/components/view/ChoyChartView.vue:5
 msgctxt "web/components/view/ChartView"
@@ -2085,6 +2215,74 @@ msgstr "详情"
 msgctxt "web/stores/breadcrumbStore"
 msgid "Page"
 msgstr "页面"
+
+#~ msgctxt "web/components/field/BigintField"
+#~ msgid "Cannot be empty"
+#~ msgstr "不能为空"
+
+#~ msgctxt "web/components/field/BigintField"
+#~ msgid "Exceeds safe integer range"
+#~ msgstr "超出安全整数范围"
+
+#~ msgctxt "web/components/field/BigintField"
+#~ msgid "Must be a valid integer"
+#~ msgstr "必须是有效整数"
+
+#~ msgctxt "web/components/field/BigintField"
+#~ msgid "Must be an integer"
+#~ msgstr "必须是整数"
+
+#~ msgctxt "web/components/field/BigintField"
+#~ msgid "Must not be greater than %s"
+#~ msgstr "不得大于 %s"
+
+#~ msgctxt "web/components/field/BigintField"
+#~ msgid "Must not be less than %s"
+#~ msgstr "不得小于 %s"
+
+#~ msgctxt "web/components/field/DateField"
+#~ msgid "Invalid date"
+#~ msgstr "日期无效"
+
+#~ msgctxt "web/components/field/DatetimeField"
+#~ msgid "Invalid date time"
+#~ msgstr "日期时间无效"
+
+#~ msgctxt "web/components/field/IntField"
+#~ msgid "Cannot be empty"
+#~ msgstr "不能为空"
+
+#~ msgctxt "web/components/field/IntField"
+#~ msgid "Must be an integer"
+#~ msgstr "必须是整数"
+
+#~ msgctxt "web/components/field/IntField"
+#~ msgid "Range %s ~ %s"
+#~ msgstr "范围 %s ~ %s"
+
+#~ msgctxt "web/components/field/StatusbarField"
+#~ msgid "Invalid option value: %s"
+#~ msgstr "无效的选项值：%s"
+
+#~ msgctxt "web/components/field/StatusbarField"
+#~ msgid "Value must be a string"
+#~ msgstr "值必须为字符串"
+
+#~ msgctxt "web/components/field/TextField"
+#~ msgid "Cannot be empty"
+#~ msgstr "不能为空"
+
+#~ msgctxt "web/components/field/TextField"
+#~ msgid "Length must not exceed %s"
+#~ msgstr "长度不得超过 %s"
+
+#~ msgctxt "web/components/field/TextField"
+#~ msgid "Must be a string"
+#~ msgstr "必须为字符串"
+
+#~ msgctxt "web/components/field/TimeField"
+#~ msgid "Invalid time value"
+#~ msgstr "时间无效"
 
 #~ msgctxt "web/components/view/ChartView"
 #~ msgid "Loading..."

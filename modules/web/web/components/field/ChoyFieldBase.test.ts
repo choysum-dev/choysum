@@ -653,10 +653,12 @@ describe('ChoyFieldBase auto renderMode from fieldPresentation', () => {
     const root = m.q('[data-anchor="choy.field-base"]') as HTMLElement | null;
     expect(root).toBeTruthy();
     expect(root?.getAttribute('data-slot')).toBe('field');
+    expect(root?.getAttribute('data-orientation')).toBe('horizontal');
     expect(root?.className || '').toContain('choy-field-base');
     expect(root?.className || '').toContain('extra-field');
     expect(m.q('[data-slot="form-item"]')).toBeFalsy();
     expect(m.q('.choy-form-item')).toBeFalsy();
+    expect(m.q('[data-slot="field-content"]')).toBeTruthy();
     const label = m.q('[data-slot="field-label"]') as HTMLLabelElement | null;
     expect(label?.getAttribute('for')).toBe('aria-field');
     const probe = m.q('input.aria-probe') as HTMLElement | null;
@@ -665,6 +667,27 @@ describe('ChoyFieldBase auto renderMode from fieldPresentation', () => {
     expect(probe?.getAttribute('data-describedby')).toBe('aria-field-help');
     const reserved = m.q('.choy-field-base__error-reserve');
     expect(reserved).toBeTruthy();
+    m.unmount();
+  });
+
+  test('form orientation prop switches data-orientation to vertical', async () => {
+    const m = mountBase(
+      {
+        binding: makeBinding({ string: 'Name' }),
+        renderMode: 'form',
+        orientation: 'vertical',
+      },
+      {
+        slots: {
+          edit: () => h('input', { class: 'orient-probe' }),
+          display: () => h('span'),
+        },
+      },
+    );
+    await flushPromises();
+    const root = m.q('[data-anchor="choy.field-base"]') as HTMLElement | null;
+    expect(root?.getAttribute('data-orientation')).toBe('vertical');
+    expect(m.q('input.orient-probe')).toBeTruthy();
     m.unmount();
   });
 });

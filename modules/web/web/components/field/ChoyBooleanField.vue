@@ -10,6 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     :label="label"
     :rules="rules"
     :formItemProps="formItemProps"
+    :orientation="orientation"
     :vColumnProps="vColumnProps"
     :toView="toView"
     :fromView="fromView"
@@ -48,9 +49,26 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display="{ fieldValue }">
-      <span class="choy-bool-display text-sm text-foreground" data-testid="choy-bool-display">
-        {{ displayLabel(fieldValue().value) }}
-      </span>
+      <div
+        class="choy-bool-display inline-flex min-h-control items-center gap-2"
+        data-testid="choy-bool-display"
+      >
+        <Switch
+          v-if="displayUsesSwitch(fieldValue().value)"
+          class="choy-bool-input"
+          :model-value="fieldValue().value === true"
+          disabled
+          tabindex="-1"
+        />
+        <Checkbox
+          v-else-if="displayUsesCheckbox(fieldValue().value)"
+          class="choy-bool-input"
+          :model-value="displayCheckboxModel(fieldValue().value)"
+          disabled
+          tabindex="-1"
+        />
+        <span v-else class="choy-bool-display__text text-foreground">{{ displayLabel(fieldValue().value) }}</span>
+      </div>
     </template>
   </ChoyFieldBase>
 </template>
@@ -65,6 +83,8 @@ import type { UseField } from '@/web/web/composables/useField';
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
+import Checkbox from '../vendor/ui/checkbox/Checkbox.vue';
+import Switch from '../vendor/ui/switch/Switch.vue';
 import { createTranslate } from '@/web/web/i18n';
 import { computed, defineComponent, h, useAttrs } from 'vue';
 
@@ -114,6 +134,7 @@ const props = withDefaults(
     cellVisible?: FieldStateExpr<T, V>;
 
     formItemProps?: Partial<FormItemProps>;
+    orientation?: 'horizontal' | 'vertical';
     vColumnProps?: {
       width?: number | string;
       minWidth?: number;
@@ -183,11 +204,24 @@ const fromView = (v: FieldType): V => {
   return (v == null ? null : !!v) as unknown as V;
 };
 
-/** Display mode: plain text — never a disabled input wall. */
+/** Text fallback when display cannot render a disabled control (e.g. null + switch). */
 function displayLabel(value: FieldType): string {
   if (value === true) return props.switchActiveText || props.checkboxLabel || _t('Yes');
   if (value === false) return props.switchInactiveText || _t('No');
   return _t('—');
+}
+
+function displayUsesSwitch(value: FieldType): boolean {
+  return props.widget !== 'checkbox' && value !== null;
+}
+
+function displayUsesCheckbox(value: FieldType): boolean {
+  return props.widget === 'checkbox';
+}
+
+function displayCheckboxModel(value: FieldType): boolean | 'indeterminate' {
+  if (value == null && props.nullable && !props.nullAsFalse) return 'indeterminate';
+  return value === true;
 }
 
 function toBool(v: boolean | string | number): boolean {
@@ -236,32 +270,40 @@ const ChoyBooleanCell = defineComponent({
       },
       p.options as any
     );
-    const setVal = (v: any) => buffer.setEditing(v === true);
+    const setVal = (v: boolean) => buffer.setEditing(v === true);
     const clearable = p.nullable && p.clearable && !p.nullAsFalse;
     return () => {
       const checked = buffer.editingValue.value === true;
       const indeterminate = buffer.editingValue.value === null && !(p.nullAsFalse || !p.nullable);
-      const isCheckbox = p.widget === 'checkbox';
-      const sideLabel = isCheckbox ? String(p.checkboxLabel || '').trim() : '';
+      const isCheckbox = p.widget === 'checkbox' || indeterminate;
+      const sideLabel = p.widget === 'checkbox' ? String(p.checkboxLabel || '').trim() : '';
+      const control = isCheckbox
+        ? h(Checkbox, {
+            ...(p.checkboxProps as any),
+            ...attrs,
+            class: 'choy-bool-input align-middle',
+            id: p.inputId,
+            modelValue: indeterminate ? 'indeterminate' : checked,
+            'onUpdate:modelValue': (v: boolean | 'indeterminate') => {
+              if (v === 'indeterminate') return;
+              setVal(v);
+            },
+          })
+        : h(Switch, {
+            ...(p.switchProps as any),
+            ...attrs,
+            class: 'choy-bool-input align-middle',
+            id: p.inputId,
+            modelValue: checked,
+            'onUpdate:modelValue': (v: boolean) => setVal(v),
+          });
       return h(
         'div',
         {
-          class: isCheckbox
-            ? 'choy-bool-editor inline-flex items-center gap-2'
-            : 'choy-bool-editor inline-flex items-center gap-2',
+          class: 'choy-bool-editor inline-flex items-center gap-2',
         },
         [
-          h('input', {
-            ...(isCheckbox ? (p.checkboxProps as any) : (p.switchProps as any)),
-            ...attrs,
-            type: 'checkbox',
-            class: 'choy-bool-input align-middle',
-            name: p.inputName,
-            id: p.inputId,
-            checked,
-            indeterminate,
-            onChange: (e: Event) => setVal((e.target as HTMLInputElement).checked),
-          }),
+          control,
           sideLabel
             ? h(
                 'label',
@@ -277,7 +319,7 @@ const ChoyBooleanCell = defineComponent({
                 'button',
                 {
                   type: 'button',
-                  class: 'choy-clear-btn p-0',
+                  class: 'choy-clear-btn p-0 text-sm text-foreground/70 hover:text-foreground',
                   onClick: () => {
                     if (buffer.editingValue.value !== null) {
                       buffer.setEditing(null);

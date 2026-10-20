@@ -8,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     :binding="binding"
     :label="label"
     :rules="mergedRules"
+    :orientation="orientation"
     :toView="toView"
     :fromView="fromView"
     :renderMode="renderMode"
@@ -35,6 +36,7 @@ import type { UseField } from '@/web/web/composables/useField';
 import type { AggProp } from '@/web/web/composables/useField';
 import ChoyFieldBase from './ChoyFieldBase.vue';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
+import Input from '../vendor/ui/input/Input.vue';
 import { createTranslate } from '@/web/web/i18n';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyNumberField' });
@@ -61,6 +63,7 @@ const props = withDefaults(
     commitOnBlur?: boolean;
     // Aggregate support.
     agg?: AggProp;
+    orientation?: 'horizontal' | 'vertical';
     renderMode?: 'auto' | 'form' | 'table' | 'inline';
     showInlineError?: boolean;
   }>(),
@@ -180,13 +183,13 @@ const ChoyNumberCell = defineComponent({
       buffer.onBlur();
     }
     return () =>
-      h('input', {
+      h(Input, {
         ...attrs,
-        class: 'choy-input choy-number-input text-right',
-        value: editingRaw.value ?? '',
+        class: 'choy-number-input w-full text-right',
+        modelValue: editingRaw.value ?? '',
         placeholder: p.placeholder,
         inputmode: 'decimal',
-        onInput: (e: Event) => onInput((e.target as HTMLInputElement).value),
+        'onUpdate:modelValue': (v: string) => onInput(v ?? ''),
         onBlur,
       });
   },

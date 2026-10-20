@@ -36,6 +36,24 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
+### 2026-10-20 — Combobox trigger / viewport split + item check
+
+- **Why kit (not Choy* only):** product hosts cannot import `reka-ui` directly;
+  sticky in-list search needs Content without a baked-in Viewport; selected-item
+  ✓ matches existing `SelectItem` kit contract (ItemIndicator + Check).
+- **ComboboxContent:** stop wrapping an inner Viewport; slot is free composition
+  (search chrome outside scroll + list Viewport).
+- **Added:** `ComboboxTrigger` (button trigger + a11y attrs), `ComboboxViewport`
+  (`max-h-60` scrollport), `ComboboxEmpty`; barrel exports.
+- **ComboboxItem:** absolute end check via `ComboboxItemIndicator` + `Check`
+  (shadcn Combobox / SelectItem parity; logical `pe`/`end`).
+- **Combobox / ComboboxInput:** forward `disabled` (and Input keeps
+  `displayValue`); heights stay `h-control*`.
+- **Product-only (not kit):** Selection search-icon row + clear control stay in
+  `ChoySelectionField`.
+- **Do not regress:** do not re-wrap Viewport inside Content; do not bake Field
+  search chrome into ComboboxInput defaults.
+
 ### 2026-10-19 — ChartLegendContent class prop + denser swatches
 
 - **ChartLegendContent:** accept optional `class` (merged via `cn`) so product

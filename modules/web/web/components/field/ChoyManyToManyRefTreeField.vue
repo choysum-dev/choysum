@@ -10,6 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     :label="label"
     :rules="rules"
     :formItemProps="formItemProps"
+    :orientation="orientation"
     :required="required"
     :readonly="readonly"
     :visible="visible"
@@ -120,6 +121,7 @@ const props = withDefaults(
     label?: string;
     rules?: RuleItem[];
     formItemProps?: Partial<FormItemProps>;
+    orientation?: 'horizontal' | 'vertical';
 
     targetModel?: string;
     childrenField?: string;

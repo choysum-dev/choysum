@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <Popover v-model:open="open">
-    <div class="flex w-full items-center gap-1">
+    <div class="relative w-full min-w-0">
       <PopoverTrigger as-child>
         <Button
           type="button"
@@ -18,91 +18,99 @@ SPDX-License-Identifier: Apache-2.0
           :aria-describedby="props['aria-describedby']"
           :class="
             cn(
-              'choy-date-picker w-full justify-start font-normal',
-              !displayText && 'text-foreground/50',
+              'choy-date-picker w-full min-w-0 justify-between font-normal',
+              !displayText && 'text-muted-foreground',
               props.class,
             )
           "
         >
-          <span>{{ displayText || placeholder }}</span>
+          <span class="min-w-0 flex-1 truncate text-start">{{ displayText || effectivePlaceholder }}</span>
+          <span class="inline-flex shrink-0 items-center gap-1">
+            <span v-if="showClear" class="size-3.5" aria-hidden="true" />
+            <Calendar class="size-4 opacity-50" aria-hidden="true" />
+          </span>
         </Button>
       </PopoverTrigger>
       <button
-        v-if="clearable && !!String(modelValue ?? '').trim() && !disabled"
+        v-if="showClear"
         type="button"
-        class="choy-date-picker__clear shrink-0 text-xs text-foreground/50 hover:text-foreground"
-        aria-label="Clear date"
+        class="choy-date-picker__clear absolute end-9 top-1/2 inline-flex -translate-y-1/2 text-foreground/50 hover:text-foreground"
+        :aria-label="_t('Clear')"
         data-testid="choy-date-picker-clear"
-        @click="onClear"
+        @click.stop.prevent="onClear"
       >
-        Clear
+        <X class="size-3.5" aria-hidden="true" />
       </button>
     </div>
-    <PopoverContent class="w-auto p-3" align="start">
-      <CalendarRoot
-        v-slot="{ weekDays, grid }"
-        v-model="calendarValue"
-        :min-value="datePickerMinValue"
-        :max-value="datePickerMaxValue"
-        class="choy-date-picker__calendar"
-      >
-        <CalendarHeader class="flex items-center justify-between gap-2 pb-2">
-          <CalendarPrev
-            aria-label="Previous month"
-            class="inline-flex size-8 items-center justify-center rounded-md border border-border hover:bg-muted"
-          >
-            <ChevronLeft class="size-4" />
-          </CalendarPrev>
-          <CalendarHeading class="text-sm font-medium" />
-          <CalendarNext
-            aria-label="Next month"
-            class="inline-flex size-8 items-center justify-center rounded-md border border-border hover:bg-muted"
-          >
-            <ChevronRight class="size-4" />
-          </CalendarNext>
-        </CalendarHeader>
-        <div class="flex flex-col gap-4">
-          <CalendarGrid
-            v-for="month in grid"
-            :key="month.value.toString()"
-            class="w-full border-collapse space-y-1"
-          >
-            <CalendarGridHead>
-              <CalendarGridRow class="flex">
-                <CalendarHeadCell
-                  v-for="day in weekDays"
-                  :key="day"
-                  class="w-8 rounded-md text-[0.7rem] font-normal text-foreground/60"
+    <PopoverContent class="w-auto p-0" align="start">
+      <div class="p-3">
+        <CalendarRoot
+          v-slot="{ weekDays, grid }"
+          v-model="calendarValue"
+          :locale="calendarLocale"
+          :min-value="datePickerMinValue"
+          :max-value="datePickerMaxValue"
+          class="choy-date-picker__calendar"
+        >
+          <CalendarHeader class="flex items-center justify-between gap-2 pb-2">
+            <CalendarPrev
+              :aria-label="_t('Previous month')"
+              class="inline-flex size-8 items-center justify-center rounded-md border border-border hover:bg-muted"
+            >
+              <ChevronLeft class="size-4" />
+            </CalendarPrev>
+            <CalendarHeading class="text-sm font-medium" />
+            <CalendarNext
+              :aria-label="_t('Next month')"
+              class="inline-flex size-8 items-center justify-center rounded-md border border-border hover:bg-muted"
+            >
+              <ChevronRight class="size-4" />
+            </CalendarNext>
+          </CalendarHeader>
+          <div class="flex flex-col gap-4">
+            <CalendarGrid
+              v-for="month in grid"
+              :key="month.value.toString()"
+              class="w-full border-collapse space-y-1"
+            >
+              <CalendarGridHead>
+                <CalendarGridRow class="flex">
+                  <CalendarHeadCell
+                    v-for="day in weekDays"
+                    :key="day"
+                    class="w-8 rounded-md text-[0.7rem] font-normal text-muted-foreground"
+                  >
+                    {{ day }}
+                  </CalendarHeadCell>
+                </CalendarGridRow>
+              </CalendarGridHead>
+              <CalendarGridBody>
+                <CalendarGridRow
+                  v-for="(weekDates, index) in month.rows"
+                  :key="`week-${index}`"
+                  class="flex w-full"
                 >
-                  {{ day }}
-                </CalendarHeadCell>
-              </CalendarGridRow>
-            </CalendarGridHead>
-            <CalendarGridBody>
-              <CalendarGridRow
-                v-for="(weekDates, index) in month.rows"
-                :key="`week-${index}`"
-                class="flex w-full"
-              >
-                <CalendarCell
-                  v-for="weekDate in weekDates"
-                  :key="weekDate.toString()"
-                  :date="weekDate"
-                  class="relative p-0 text-center text-sm"
-                >
-                  <CalendarCellTrigger
-                    :day="weekDate"
-                    :month="month.value"
-                    class="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted data-[selected]:bg-primary data-[selected]:text-primary-foreground data-[outside-view]:text-foreground/30"
-                  />
-                </CalendarCell>
-              </CalendarGridRow>
-            </CalendarGridBody>
-          </CalendarGrid>
-        </div>
-      </CalendarRoot>
-      <div class="mt-2 flex justify-end border-t border-border pt-2">
-        <Button type="button" variant="ghost" size="sm" @click="onToday">Today</Button>
+                  <CalendarCell
+                    v-for="weekDate in weekDates"
+                    :key="weekDate.toString()"
+                    :date="weekDate"
+                    class="relative p-0 text-center text-sm"
+                  >
+                    <CalendarCellTrigger
+                      :day="weekDate"
+                      :month="month.value"
+                      class="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted data-[selected]:bg-primary data-[selected]:text-primary-foreground data-[outside-view]:text-muted-foreground/50"
+                    />
+                  </CalendarCell>
+                </CalendarGridRow>
+              </CalendarGridBody>
+            </CalendarGrid>
+          </div>
+        </CalendarRoot>
+      </div>
+      <div class="flex items-center justify-between border-t border-border px-3 py-2">
+        <Button type="button" variant="ghost" size="sm" @click="onClear">{{ _t('Clear') }}</Button>
+        <Button type="button" variant="ghost" size="sm" @click="onToday">{{ _t('Today') }}</Button>
       </div>
     </PopoverContent>
   </Popover>
@@ -123,11 +131,13 @@ import {
   CalendarHeading,
   CalendarNext,
   CalendarPrev,
-  CalendarRoot
+  CalendarRoot,
 } from 'reka-ui';
-import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
+import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-vue-next';
 import { CalendarDate } from '@internationalized/date';
 import { cn, type ClassValue } from '../../lib/utils';
+import { createTranslate } from '@/web/web/i18n';
+import { useI18nStore } from '@/web/web/stores/i18nStore';
 import Button from '../vendor/ui/button/Button.vue';
 import Popover from '../vendor/ui/popover/Popover.vue';
 import PopoverContent from '../vendor/ui/popover/PopoverContent.vue';
@@ -136,8 +146,10 @@ import {
   clearDatePickerValue,
   formatDatePickerValue,
   parseDatePickerValue,
-  todayDatePickerValue
+  todayDatePickerValue,
 } from './datePickerHelpers';
+
+const { _t } = createTranslate('web', { scope: 'web/components/internal/DatePicker' });
 
 /** Matches formatDatePickerValue's supported YYYY-MM-DD year range. */
 const datePickerMinValue = new CalendarDate(1, 1, 1);
@@ -159,7 +171,7 @@ const props = withDefaults(
     'aria-describedby'?: string;
   }>(),
   {
-    placeholder: 'Pick a date',
+    placeholder: undefined,
     disabled: false,
     clearable: true,
   },
@@ -167,6 +179,20 @@ const props = withDefaults(
 
 const modelValue = defineModel<string | null>({ default: null });
 const open = ref(false);
+
+function resolveCalendarLocale(): string {
+  try {
+    return String(useI18nStore().localeCode || '').trim() || 'en';
+  } catch {
+    return 'en';
+  }
+}
+
+const calendarLocale = computed(() => resolveCalendarLocale());
+const effectivePlaceholder = computed(() => props.placeholder || _t('Select date'));
+const showClear = computed(
+  () => props.clearable && !!String(modelValue.value ?? '').trim() && !props.disabled,
+);
 
 const calendarValue = computed<DateValue | undefined>({
   get() {
@@ -199,6 +225,7 @@ const displayText = computed(() => {
 
 function onClear(): void {
   modelValue.value = clearDatePickerValue();
+  open.value = false;
 }
 
 function onToday(): void {

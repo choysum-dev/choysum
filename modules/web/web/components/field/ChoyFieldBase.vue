@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     v-if="effectiveRenderMode === 'form'"
     v-show="visibleForm"
     data-anchor="choy.field-base"
-    orientation="vertical"
+    :orientation="orientation"
     :class="formChromeClass"
     @focusout="onFieldFocusOut"
   >
@@ -40,71 +40,13 @@ SPDX-License-Identifier: Apache-2.0
         </Tooltip>
       </TooltipProvider>
     </div>
-    <FieldDescription v-if="effectiveHelp" :id="formHelpId" class="sr-only">
-      {{ effectiveHelp }}
-    </FieldDescription>
-    <div class="w-full min-w-0">
-    <template v-if="preserveModeSlotForm">
-      <div v-show="effectiveEditForm" class="choy-field-base__edit-wrap flex w-full items-center gap-0.5">
-        <div class="choy-field-base__edit-control min-w-0 flex-1">
-          <slot
-            name="edit"
-            :fieldValue="valueForm"
-            :record="recordForm"
-            :readonly="false"
-            :required="requiredForm"
-            :visible="visibleForm"
-            :inputName="inputName"
-            :inputId="inputIdForm"
-            :describedBy="formDescribedBy"
-            :invalid="formInvalid"
-            :onFieldChange="onchangeHandlers.onChange"
-            :triggerOnchange="onchangeHandlers.trigger"
-            :onchangeRunning="onchangeHandlers.running?.value"
-          />
-        </div>
-        <ChoyButton
-          v-if="showTranslateAction"
-          size="sm"
-          variant="ghost"
-          class="choy-field-base__translate-btn h-6 w-6 shrink-0 p-0 text-muted-foreground hover:text-primary focus:text-primary"
-          :aria-label="translateAriaLabel"
-          :title="translateAriaLabel"
-          @click="translationsOpen = true"
-        >
-          <Languages class="size-4" />
-        </ChoyButton>
-        <ChoyButton
-          v-if="showCompanyValuesAction"
-          size="sm"
-          variant="ghost"
-          class="choy-field-base__company-values-btn h-6 w-6 shrink-0 p-0 text-muted-foreground hover:text-primary focus:text-primary"
-          :aria-label="companyValuesAriaLabel"
-          :title="companyValuesAriaLabel"
-          @click="companyValuesOpen = true"
-        >
-          <Building2 class="size-4" />
-        </ChoyButton>
-      </div>
-      <div v-show="!effectiveEditForm">
-        <slot
-          name="display"
-          :fieldValue="valueForm"
-          :record="recordForm"
-          renderMode="form"
-          :readonly="true"
-          :required="false"
-          :visible="visibleForm"
-          :inputName="inputName"
-          :inputId="inputIdForm"
-          :triggerOnchange="onchangeHandlers.trigger"
-          :onchangeRunning="onchangeHandlers.running?.value"
-        />
-      </div>
-    </template>
-    <template v-else>
-      <template v-if="effectiveEditForm">
-        <div class="choy-field-base__edit-wrap flex w-full items-center gap-0.5">
+    <FieldContent class="choy-field-base__content min-w-0">
+      <FieldDescription v-if="effectiveHelp" :id="formHelpId" class="sr-only">
+        {{ effectiveHelp }}
+      </FieldDescription>
+      <div class="choy-field-base__body w-full min-w-0">
+      <template v-if="preserveModeSlotForm">
+        <div v-show="effectiveEditForm" class="choy-field-base__edit-wrap flex w-full items-center gap-0.5">
           <div class="choy-field-base__edit-control min-w-0 flex-1">
             <slot
               name="edit"
@@ -145,58 +87,120 @@ SPDX-License-Identifier: Apache-2.0
             <Building2 class="size-4" />
           </ChoyButton>
         </div>
+        <div v-show="!effectiveEditForm" class="choy-field-base__display-wrap">
+          <slot
+            name="display"
+            :fieldValue="valueForm"
+            :record="recordForm"
+            renderMode="form"
+            :readonly="true"
+            :required="false"
+            :visible="visibleForm"
+            :inputName="inputName"
+            :inputId="inputIdForm"
+            :triggerOnchange="onchangeHandlers.trigger"
+            :onchangeRunning="onchangeHandlers.running?.value"
+          />
+        </div>
       </template>
       <template v-else>
-        <slot
-          name="display"
-          :fieldValue="valueForm"
-          :record="recordForm"
-          renderMode="form"
-          :readonly="true"
-          :required="false"
-          :visible="visibleForm"
-          :inputName="inputName"
-          :inputId="inputIdForm"
-          :triggerOnchange="onchangeHandlers.trigger"
-          :onchangeRunning="onchangeHandlers.running?.value"
-        />
+        <template v-if="effectiveEditForm">
+          <div class="choy-field-base__edit-wrap flex w-full items-center gap-0.5">
+            <div class="choy-field-base__edit-control min-w-0 flex-1">
+              <slot
+                name="edit"
+                :fieldValue="valueForm"
+                :record="recordForm"
+                :readonly="false"
+                :required="requiredForm"
+                :visible="visibleForm"
+                :inputName="inputName"
+                :inputId="inputIdForm"
+                :describedBy="formDescribedBy"
+                :invalid="formInvalid"
+                :onFieldChange="onchangeHandlers.onChange"
+                :triggerOnchange="onchangeHandlers.trigger"
+                :onchangeRunning="onchangeHandlers.running?.value"
+              />
+            </div>
+            <ChoyButton
+              v-if="showTranslateAction"
+              size="sm"
+              variant="ghost"
+              class="choy-field-base__translate-btn h-6 w-6 shrink-0 p-0 text-muted-foreground hover:text-primary focus:text-primary"
+              :aria-label="translateAriaLabel"
+              :title="translateAriaLabel"
+              @click="translationsOpen = true"
+            >
+              <Languages class="size-4" />
+            </ChoyButton>
+            <ChoyButton
+              v-if="showCompanyValuesAction"
+              size="sm"
+              variant="ghost"
+              class="choy-field-base__company-values-btn h-6 w-6 shrink-0 p-0 text-muted-foreground hover:text-primary focus:text-primary"
+              :aria-label="companyValuesAriaLabel"
+              :title="companyValuesAriaLabel"
+              @click="companyValuesOpen = true"
+            >
+              <Building2 class="size-4" />
+            </ChoyButton>
+          </div>
+        </template>
+        <template v-else>
+          <div class="choy-field-base__display-wrap">
+            <slot
+              name="display"
+              :fieldValue="valueForm"
+              :record="recordForm"
+              renderMode="form"
+              :readonly="true"
+              :required="false"
+              :visible="visibleForm"
+              :inputName="inputName"
+              :inputId="inputIdForm"
+              :triggerOnchange="onchangeHandlers.trigger"
+              :onchangeRunning="onchangeHandlers.running?.value"
+            />
+          </div>
+        </template>
       </template>
-    </template>
-    <FieldTranslationsDialog
-      v-if="showTranslateAction"
-      v-model="translationsOpen"
-      :store="binding.store as any"
-      :record-id="panelRecordId"
-      :field-name="leafFieldName"
-      :field-label="resolvedLabel"
-      :max-length="panelMaxLength"
-      :draft-value="panelDraftValue"
-      @saved="onTranslationsSaved"
-    />
-    <FieldCompanyValuesDialog
-      v-if="showCompanyValuesAction"
-      v-model="companyValuesOpen"
-      :store="binding.store as any"
-      :record-id="panelRecordId"
-      :field-name="leafFieldName"
-      :field-label="resolvedLabel"
-      :field-type="companyValuesFieldType"
-      :max-length="panelMaxLength"
-      :draft-value="panelDraftValue"
-      @saved="onCompanyValuesSaved"
-    />
-    </div>
-    <FieldError v-if="displayError" :id="formErrorId">
-      {{ displayError }}
-    </FieldError>
-    <p
-      v-else-if="showInlineError"
-      class="choy-field-base__error-reserve invisible text-sm font-normal"
-      data-slot="field-error"
-      aria-hidden="true"
-    >
-      &nbsp;
-    </p>
+      <FieldTranslationsDialog
+        v-if="showTranslateAction"
+        v-model="translationsOpen"
+        :store="binding.store as any"
+        :record-id="panelRecordId"
+        :field-name="leafFieldName"
+        :field-label="resolvedLabel"
+        :max-length="panelMaxLength"
+        :draft-value="panelDraftValue"
+        @saved="onTranslationsSaved"
+      />
+      <FieldCompanyValuesDialog
+        v-if="showCompanyValuesAction"
+        v-model="companyValuesOpen"
+        :store="binding.store as any"
+        :record-id="panelRecordId"
+        :field-name="leafFieldName"
+        :field-label="resolvedLabel"
+        :field-type="companyValuesFieldType"
+        :max-length="panelMaxLength"
+        :draft-value="panelDraftValue"
+        @saved="onCompanyValuesSaved"
+      />
+      </div>
+      <FieldError v-if="displayError" :id="formErrorId">
+        {{ displayError }}
+      </FieldError>
+      <p
+        v-else-if="showInlineError"
+        class="choy-field-base__error-reserve invisible text-sm font-normal"
+        data-slot="field-error"
+        aria-hidden="true"
+      >
+        &nbsp;
+      </p>
+    </FieldContent>
   </Field>
 
   <!-- TABLE mode -->
@@ -373,6 +377,7 @@ import { CircleHelp, Languages, Building2 } from 'lucide-vue-next';
 import { cn, type ClassValue } from '@/web/web/lib/utils';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import Field from '@/web/web/components/vendor/ui/field/Field.vue';
+import FieldContent from '@/web/web/components/vendor/ui/field/FieldContent.vue';
 import FieldDescription from '@/web/web/components/vendor/ui/field/FieldDescription.vue';
 import FieldError from '@/web/web/components/vendor/ui/field/FieldError.vue';
 import FieldLabel from '@/web/web/components/vendor/ui/field/FieldLabel.vue';
@@ -388,6 +393,9 @@ import FieldCompanyValuesDialog from './ChoyFieldCompanyValuesDialog.vue';
 export type FormItemProps = {
   class?: ClassValue;
 };
+
+/** Form-mode label/control layout; ignored for table / inline. */
+export type FieldOrientation = 'horizontal' | 'vertical';
 
 export type FieldStatePredicate<T, V> = (args: { record: T; value: V | null; env: FieldEnv }) => boolean;
 export type FieldStateExpr<T, V> = boolean | FieldStatePredicate<T, V>;
@@ -405,6 +413,11 @@ const props = withDefaults(
     id?: string;
     formItemProps?: Partial<FormItemProps>;
     vColumnProps?: Record<string, unknown>;
+    /**
+     * Form chrome only: label | value (`horizontal`, default) or label above value (`vertical`).
+     * Table / inline modes ignore this.
+     */
+    orientation?: FieldOrientation;
     toView?: (raw: V) => View;
     fromView?: (v: View) => V;
     required?: FieldStateExpr<T, V>;
@@ -419,6 +432,7 @@ const props = withDefaults(
     rules: () => [],
     formItemProps: () => ({}),
     vColumnProps: () => ({}),
+    orientation: 'horizontal',
     visible: true,
     cellVisible: true,
     required: false,

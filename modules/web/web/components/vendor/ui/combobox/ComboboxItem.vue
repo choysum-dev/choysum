@@ -4,7 +4,8 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import { ComboboxItem } from 'reka-ui';
+import { Check } from 'lucide-vue-next';
+import { ComboboxItem, ComboboxItemIndicator } from 'reka-ui';
 import { cn, type ClassValue } from '../../../../lib/utils';
 
 defineProps<{
@@ -21,12 +22,22 @@ defineProps<{
     :disabled="disabled"
     :class="
       cn(
-        'relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none',
-        'data-[highlighted]:bg-muted data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+        'relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pe-8 ps-2 text-sm outline-none',
+        'data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground',
+        'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
         $props.class,
       )
     "
   >
-    <slot />
+    <span class="min-w-0 flex-1 truncate">
+      <slot />
+    </span>
+    <span
+      class="pointer-events-none absolute end-2 flex size-3.5 items-center justify-center"
+    >
+      <ComboboxItemIndicator>
+        <Check class="size-4" />
+      </ComboboxItemIndicator>
+    </span>
   </ComboboxItem>
 </template>

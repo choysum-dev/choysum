@@ -11,6 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     :label="label"
     :rules="mergedRules"
     :formItemProps="mergedFormItemProps"
+    :orientation="orientation"
     :vColumnProps="vColumnProps"
     :toView="toView"
     :fromView="fromView"
@@ -22,11 +23,13 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
   >
     <!-- Same chrome in edit + display so clickable works outside edit mode. -->
-    <template #edit="{ fieldValue, record }">
+    <template #edit="{ fieldValue, record, inputId, describedBy }">
       <div
         class="choy-statusbar-field flex min-h-control flex-wrap items-center gap-1"
         role="group"
         data-testid="choy-statusbar"
+        :id="inputId || undefined"
+        :aria-describedby="describedBy || undefined"
         :aria-disabled="!isInteractive || pending || undefined"
       >
         <ChoyButton
@@ -102,7 +105,7 @@ import {
   type StatusbarOption,
 } from './statusbarHelpers';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/StatusbarField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyStatusbarField' });
 
 defineOptions({ name: 'ChoyStatusbarField', inheritAttrs: false });
 
@@ -128,6 +131,7 @@ const props = withDefaults(
     selection?: string[];
 
     formItemProps?: Partial<FormItemProps>;
+    orientation?: 'horizontal' | 'vertical';
     vColumnProps?: Record<string, any>;
 
     required?: FieldStateExpr<T, V>;

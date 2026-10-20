@@ -10,6 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     :label="label"
     :rules="mergedRules"
     :formItemProps="formItemProps"
+    :orientation="orientation"
     :vColumnProps="vColumnProps"
     :toView="toView"
     :fromView="fromView"
@@ -20,30 +21,82 @@ SPDX-License-Identifier: Apache-2.0
     :renderMode="renderMode"
     :showInlineError="showInlineError"
   >
-    <!-- Shared form/row edit slot: derive options from fieldValue and record context -->
+    <!-- shadcn-vue Combobox: button trigger + search in list + check on selected. -->
     <template #edit="{ fieldValue, record, inputId, describedBy, invalid}">
-      <select
-        class="choy-selection-field w-full"
-        :value="fieldValue().value ?? ''"
-        :disabled="disabled || optionsLoading"
+      <div
+        class="choy-selection-field w-full min-w-0"
         :data-loading="optionsLoading ? 'true' : 'false'"
-        v-bind="selectProps"
-        :id="inputId"
-        :aria-describedby="describedBy || undefined"
-        :aria-invalid="invalid ? 'true' : undefined"
         :style="{ width: width || '100%' }"
-        @change="(e: Event) => onUpdate(fieldValue, (e.target as HTMLSelectElement).value || null)"
       >
-        <option v-if="clearable" value="">{{ effectivePlaceholder }}</option>
-        <option
-          v-for="opt in optionsFor(record)"
-          :key="opt.value"
-          :value="opt.value"
-          :disabled="opt.disabled"
+        <Combobox
+          class="w-full"
+          :model-value="fieldValue().value ?? undefined"
+          :disabled="disabled || optionsLoading"
+          @update:model-value="(v) => onUpdate(fieldValue, v ? String(v) : null)"
         >
-          {{ opt.label }}
-        </option>
-      </select>
+          <ComboboxAnchor class="w-full">
+            <ComboboxTrigger
+              :id="inputId"
+              class="w-full"
+              :disabled="disabled || optionsLoading"
+              :aria-describedby="describedBy || undefined"
+              :aria-invalid="invalid ? 'true' : undefined"
+            >
+              <span
+                class="min-w-0 flex-1 truncate text-start"
+                :class="fieldValue().value == null ? 'text-muted-foreground' : undefined"
+              >
+                {{ displayLabelFor(record, fieldValue().value) || effectivePlaceholder }}
+              </span>
+              <span class="inline-flex shrink-0 items-center gap-1">
+                <button
+                  v-if="clearable && fieldValue().value != null && !(disabled || optionsLoading)"
+                  type="button"
+                  class="choy-selection-field__clear inline-flex text-foreground/50 hover:text-foreground"
+                  :aria-label="_t('Clear')"
+                  data-testid="choy-selection-clear"
+                  @click.stop.prevent="onUpdate(fieldValue, null)"
+                >
+                  <X class="size-3.5" aria-hidden="true" />
+                </button>
+                <ChevronsUpDown class="size-4 opacity-50" aria-hidden="true" />
+              </span>
+            </ComboboxTrigger>
+          </ComboboxAnchor>
+          <ComboboxContent class="p-0">
+            <div
+              data-slot="combobox-input-wrapper"
+              class="flex h-control items-center gap-2 border-b border-border px-3"
+            >
+              <Search class="size-4 shrink-0 opacity-50" aria-hidden="true" />
+              <ComboboxInput
+                class="h-control border-0 bg-transparent px-0 shadow-none outline-hidden focus-visible:ring-0"
+                :placeholder="_t('Search…')"
+                :disabled="disabled || optionsLoading"
+              />
+            </div>
+            <ComboboxViewport>
+              <div
+                v-if="optionsLoading"
+                class="px-2 py-1.5 text-sm text-muted-foreground"
+              >
+                {{ _t('Loading…') }}
+              </div>
+              <template v-else>
+                <ComboboxEmpty>{{ _t('No options') }}</ComboboxEmpty>
+                <ComboboxItem
+                  v-for="opt in optionsFor(record)"
+                  :key="opt.value"
+                  :value="opt.value"
+                  :disabled="opt.disabled"
+                >
+                  {{ opt.label }}
+                </ComboboxItem>
+              </template>
+            </ComboboxViewport>
+          </ComboboxContent>
+        </Combobox>
+      </div>
     </template>
 
     <template #display="{ fieldValue, record }">
@@ -58,7 +111,16 @@ import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { WritableComputedRef } from 'vue';
+import { ChevronsUpDown, Search, X } from 'lucide-vue-next';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
+import Combobox from '../vendor/ui/combobox/Combobox.vue';
+import ComboboxAnchor from '../vendor/ui/combobox/ComboboxAnchor.vue';
+import ComboboxContent from '../vendor/ui/combobox/ComboboxContent.vue';
+import ComboboxEmpty from '../vendor/ui/combobox/ComboboxEmpty.vue';
+import ComboboxInput from '../vendor/ui/combobox/ComboboxInput.vue';
+import ComboboxItem from '../vendor/ui/combobox/ComboboxItem.vue';
+import ComboboxTrigger from '../vendor/ui/combobox/ComboboxTrigger.vue';
+import ComboboxViewport from '../vendor/ui/combobox/ComboboxViewport.vue';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
@@ -88,7 +150,9 @@ const props = withDefaults(
     disabled?: boolean;
 
     formItemProps?: Partial<FormItemProps>;
+    orientation?: 'horizontal' | 'vertical';
     vColumnProps?: Record<string, any>;
+    /** Kept for call-site compat; Combobox filtering is always on. */
     selectProps?: Record<string, unknown>;
     width?: string;
 

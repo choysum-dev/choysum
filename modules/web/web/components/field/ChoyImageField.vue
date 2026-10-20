@@ -9,6 +9,7 @@ SPDX-License-Identifier: Apache-2.0
     :label="label"
     :rules="rules"
     :formItemProps="formItemProps"
+    :orientation="orientation"
     :vColumnProps="vColumnProps"
     :toView="toView"
     :fromView="fromView"
@@ -217,6 +218,7 @@ const props = withDefaults(
     cellVisible?: FieldStateExpr<T, V>;
 
     formItemProps?: Record<string, unknown>;
+    orientation?: 'horizontal' | 'vertical';
     vColumnProps?: Record<string, unknown>;
     agg?: NarrowAggProp<NonNumericAggFns>;
     accept?: string;
