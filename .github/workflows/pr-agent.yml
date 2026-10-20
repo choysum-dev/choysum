@@ -23,6 +23,9 @@ jobs:
     if: ${{ github.event.sender.type != 'Bot' }}
     runs-on: ubuntu-latest
     name: Run PR Agent
+    # Bound wall time: ai_timeout × model hops must not hold the shared
+    # concurrency group indefinitely when a provider is slow or rate-limited.
+    timeout-minutes: 40
     steps:
       - name: PR Agent action step
         id: pragent
@@ -42,13 +45,18 @@ jobs:
           # Models not yet in PR-Agent's MAX_TOKENS table still need custom_model_*.
           config.custom_model_max_tokens: "100000"
           config.max_model_tokens: "100000"
-          # DeepSeek flash defaults to thinking mode; PR-Agent also injects
-          # reasoning_effort=medium (mapped to high). CoT can exhaust max_tokens
-          # and leave content empty (finish_reason=length). Disable thinking for
-          # short structured /improve JSON. See https://api-docs.deepseek.com/zh-cn/guides/thinking_mode
+          # PR-Agent has one global reasoning_effort (no per-fallback override).
+          # DeepSeek flash defaults to thinking; medium maps to high and CoT can
+          # exhaust max_tokens with empty content (finish_reason=length). none
+          # disables thinking for structured /improve JSON. Same value is sent to
+          # the Gemini primary — accepted tradeoff; DeepSeek-only scoping is not
+          # supported. https://api-docs.deepseek.com/zh-cn/guides/thinking_mode
           config.reasoning_effort: "none"
           # DeepSeek fallback often needs longer than Gemini free-tier calls.
           config.ai_timeout: "300"
+          # On timeout, hand off to fallback_models instead of replaying the same
+          # primary for NUM_RETRIES × ai_timeout on the sole concurrency slot.
+          config.retry_same_model_on_timeout: "false"
           # LiteLLM retries 429 with exponential backoff.
           NUM_RETRIES: "6"
           # Workflow env applies before .pr_agent.toml is on the default branch.
