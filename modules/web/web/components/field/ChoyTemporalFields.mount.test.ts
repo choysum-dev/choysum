@@ -240,7 +240,7 @@ describe('Choy temporal field cells', () => {
     });
     await flushPromises();
     expect(m.q('.choy-field-display-text')?.textContent).toBeTruthy();
-    // DatetimeField edit chrome is Popover + Calendar + time columns (not native datetime-local).
+    // DatetimeField edit chrome is Popover + Calendar + hour/minute/second columns.
     const trigger = m.q('[data-anchor="choy.internal.datetime-picker"]');
     expect(trigger).toBeTruthy();
     expect(trigger?.textContent || '').toMatch(/\d{4}-\d{2}-\d{2}/);
@@ -285,9 +285,12 @@ describe('Choy temporal field cells', () => {
       expect(dss.sameDate(d0, new Date(d0.getTime()))).toBe(true);
     }
     expect(typeof dss.normalizeToDate).toBe('function');
-    const normalized = dss.normalizeToDate('2024-08-02T11:00', new Date(2024, 7, 1, 10, 0, 33, 500));
-    expect(normalized).toBeInstanceOf(Date);
-    expect(normalized.getSeconds()).toBe(33);
+    const withSeconds = dss.normalizeToDate('2024-08-02T11:00:33');
+    expect(withSeconds).toBeInstanceOf(Date);
+    expect(withSeconds.getSeconds()).toBe(33);
+    const legacyMinute = dss.normalizeToDate('2024-08-02T11:00');
+    expect(legacyMinute).toBeInstanceOf(Date);
+    expect(legacyMinute.getSeconds()).toBe(0);
     rulesMount.unmount();
     m.unmount();
   });

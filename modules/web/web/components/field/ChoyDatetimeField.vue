@@ -175,18 +175,14 @@ const toDisplayText = (v: FieldType) => {
   return m.isValid() ? m.format(displayFormat.value) : '';
 };
 
-function normalizeToDate(v: any, previous: FieldType = null): FieldType {
+function normalizeToDate(v: any): FieldType {
   if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
-  // DateTimePicker emits YYYY-MM-DDTHH:mm; parse as local wall clock.
+  // DateTimePicker emits YYYY-MM-DDTHH:mm:ss (legacy YYYY-MM-DDTHH:mm also accepted).
   if (typeof v === 'string') {
-    const parsed = dayjs(v, 'YYYY-MM-DDTHH:mm', true);
+    let parsed = dayjs(v, 'YYYY-MM-DDTHH:mm:ss', true);
+    if (!parsed.isValid()) parsed = dayjs(v, 'YYYY-MM-DDTHH:mm', true);
     if (!parsed.isValid()) return null;
-    const next = parsed.toDate();
-    // Keep sub-minute precision from the previous wall value when only date/time-of-day changes.
-    if (previous && !isNaN(previous.getTime())) {
-      next.setSeconds(previous.getSeconds(), previous.getMilliseconds());
-    }
-    return next;
+    return parsed.toDate();
   }
   return v ? new Date(v) : null;
 }
@@ -246,7 +242,7 @@ const ChoyDatetimeCell = defineComponent({
       const current = buffer.editingValue.value;
       const value =
         current instanceof Date && !isNaN(current.getTime())
-          ? dayjs(current).format('YYYY-MM-DDTHH:mm')
+          ? dayjs(current).format('YYYY-MM-DDTHH:mm:ss')
           : null;
       return h(DateTimePicker, {
         ...attrs,
@@ -255,9 +251,7 @@ const ChoyDatetimeCell = defineComponent({
         placeholder: _t('Select date and time'),
         modelValue: value,
         'onUpdate:modelValue': (raw: string | null) => {
-          const prev =
-            current instanceof Date && !isNaN(current.getTime()) ? current : null;
-          buffer.setEditing(raw ? normalizeToDate(raw, prev) : null);
+          buffer.setEditing(raw ? normalizeToDate(raw) : null);
           buffer.onBlur();
         },
       });

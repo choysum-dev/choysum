@@ -143,7 +143,7 @@ SPDX-License-Identifier: Apache-2.0
           </div>
           <div
             ref="minuteListEl"
-            class="choy-datetime-picker__minutes flex max-h-[16.5rem] flex-col gap-0.5 overflow-y-auto ps-1"
+            class="choy-datetime-picker__minutes flex max-h-[16.5rem] flex-col gap-0.5 overflow-y-auto border-s border-border px-1"
             role="listbox"
             :aria-label="_t('Minute')"
           >
@@ -166,6 +166,33 @@ SPDX-License-Identifier: Apache-2.0
               @click="onSelectMinute(m)"
             >
               {{ String(m).padStart(2, '0') }}
+            </button>
+          </div>
+          <div
+            ref="secondListEl"
+            class="choy-datetime-picker__seconds flex max-h-[16.5rem] flex-col gap-0.5 overflow-y-auto border-s border-border ps-1"
+            role="listbox"
+            :aria-label="_t('Second')"
+          >
+            <button
+              v-for="s in seconds"
+              :key="`s-${s}`"
+              type="button"
+              role="option"
+              :aria-selected="s === selectedSecond"
+              :data-selected="s === selectedSecond ? 'true' : undefined"
+              :data-testid="s === selectedSecond ? 'choy-datetime-second-selected' : undefined"
+              :class="
+                cn(
+                  'inline-flex h-8 w-10 shrink-0 items-center justify-center rounded-md text-sm tabular-nums',
+                  s === selectedSecond
+                    ? 'bg-primary text-primary-foreground'
+                    : 'hover:bg-muted',
+                )
+              "
+              @click="onSelectSecond(s)"
+            >
+              {{ String(s).padStart(2, '0') }}
             </button>
           </div>
         </div>
@@ -236,10 +263,11 @@ const datePickerMaxValue = new CalendarDate(9999, 12, 31);
 
 const hours = Array.from({ length: 24 }, (_, i) => i);
 const minutes = Array.from({ length: 60 }, (_, i) => i);
+const seconds = Array.from({ length: 60 }, (_, i) => i);
 
 /**
- * L3 datetime picker: Popover + Calendar + hour/minute columns.
- * Model is YYYY-MM-DDTHH:mm string or null (local wall clock).
+ * L3 datetime picker: Popover + Calendar + hour/minute/second columns.
+ * Model is YYYY-MM-DDTHH:mm:ss string or null (local wall clock).
  */
 const props = withDefaults(
   defineProps<{
@@ -263,6 +291,7 @@ const modelValue = defineModel<string | null>({ default: null });
 const open = ref(false);
 const hourListEl = ref<HTMLElement | null>(null);
 const minuteListEl = ref<HTMLElement | null>(null);
+const secondListEl = ref<HTMLElement | null>(null);
 
 const effectivePlaceholder = computed(() => props.placeholder || _t('Select date and time'));
 const showClear = computed(
@@ -272,6 +301,7 @@ const parsed = computed(() => parseDateTimePickerValue(modelValue.value));
 
 const selectedHour = computed(() => parsed.value?.hour ?? 0);
 const selectedMinute = computed(() => parsed.value?.minute ?? 0);
+const selectedSecond = computed(() => parsed.value?.second ?? 0);
 
 const calendarValue = computed<DateValue | undefined>({
   get() {
@@ -302,10 +332,10 @@ const displayText = computed(() => {
 });
 
 function scrollSelectedIntoView(): void {
-  const hourBtn = hourListEl.value?.querySelector('[data-selected="true"]') as HTMLElement | null;
-  const minuteBtn = minuteListEl.value?.querySelector('[data-selected="true"]') as HTMLElement | null;
-  hourBtn?.scrollIntoView({ block: 'center' });
-  minuteBtn?.scrollIntoView({ block: 'center' });
+  for (const root of [hourListEl.value, minuteListEl.value, secondListEl.value]) {
+    const btn = root?.querySelector('[data-selected="true"]') as HTMLElement | null;
+    btn?.scrollIntoView({ block: 'center' });
+  }
 }
 
 function onSelectHour(hour: number): void {
@@ -315,6 +345,11 @@ function onSelectHour(hour: number): void {
 
 function onSelectMinute(minute: number): void {
   const next = withDateTimePickerTime(modelValue.value, { minute });
+  if (next) modelValue.value = next;
+}
+
+function onSelectSecond(second: number): void {
+  const next = withDateTimePickerTime(modelValue.value, { second });
   if (next) modelValue.value = next;
 }
 
