@@ -42,15 +42,18 @@ jobs:
           # Models not yet in PR-Agent's MAX_TOKENS table still need custom_model_*.
           config.custom_model_max_tokens: "100000"
           config.max_model_tokens: "100000"
-          config.ai_timeout: "180"
+          # DeepSeek flash defaults to thinking mode; PR-Agent also injects
+          # reasoning_effort=medium (mapped to high). CoT can exhaust max_tokens
+          # and leave content empty (finish_reason=length). Disable thinking for
+          # short structured /improve JSON. See https://api-docs.deepseek.com/zh-cn/guides/thinking_mode
+          config.reasoning_effort: "none"
+          # DeepSeek fallback often needs longer than Gemini free-tier calls.
+          config.ai_timeout: "300"
           # LiteLLM retries 429 with exponential backoff.
           NUM_RETRIES: "6"
           # Workflow env applies before .pr_agent.toml is on the default branch.
           pr_code_suggestions.parallel_calls: "false"
           pr_code_suggestions.max_number_of_calls: "3"
-          # Note: config.reasoning_effort is intentionally unset. PR-Agent v0.45.0 only
-          # forwards it for allowlisted ids (e.g. gemini-2.5-flash/pro), not for
-          # gemini-3.8-flash / deepseek-flash — so it would be a no-op here.
           # Auto review/describe/improve on open/reopen/ready_for_review.
           # Project-specific instructions live in .pr_agent.toml
           github_action_config.auto_review: "true"
