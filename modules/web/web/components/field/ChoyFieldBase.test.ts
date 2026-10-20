@@ -182,7 +182,7 @@ describe('ChoyFieldBase label and help', () => {
     restoreAll();
   });
 
-  test('component options name is ChoyFieldBase (not legacy OFieldBase)', () => {
+  test('component options name is ChoyFieldBase (not legacy FieldBase)', () => {
     expect((ChoyFieldBase as any).name || (ChoyFieldBase as any).__name).toBe('ChoyFieldBase');
   });
 

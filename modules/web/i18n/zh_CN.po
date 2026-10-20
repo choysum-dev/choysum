@@ -256,23 +256,23 @@ msgctxt "web/components/field/DecimalField"
 msgid "Total digits must not exceed %s"
 msgstr "总位数不得超过 %s"
 
-#: web/components/field/FieldBase.vue:182
-msgctxt "web/components/field/FieldBase"
+#: web/components/field/ChoyFieldBase.vue:182
+msgctxt "web/components/field/ChoyFieldBase"
 msgid "Company values"
 msgstr "公司值"
 
-#: web/components/field/FieldBase.vue:182
-msgctxt "web/components/field/FieldBase"
+#: web/components/field/ChoyFieldBase.vue:182
+msgctxt "web/components/field/ChoyFieldBase"
 msgid "Company values: %s"
 msgstr "公司值：%s"
 
-#: web/components/field/FieldBase.vue:175
-msgctxt "web/components/field/FieldBase"
+#: web/components/field/ChoyFieldBase.vue:175
+msgctxt "web/components/field/ChoyFieldBase"
 msgid "Translate field"
 msgstr "翻译字段"
 
-#: web/components/field/FieldBase.vue:175
-msgctxt "web/components/field/FieldBase"
+#: web/components/field/ChoyFieldBase.vue:175
+msgctxt "web/components/field/ChoyFieldBase"
 msgid "Translate: %s"
 msgstr "翻译：%s"
 
