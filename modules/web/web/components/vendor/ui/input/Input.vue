@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 import { computed } from 'vue';
 import { cn, type ClassValue } from '../../../../lib/utils';
 
+defineOptions({ inheritAttrs: false });
+
 const props = withDefaults(
   defineProps<{
     class?: ClassValue;

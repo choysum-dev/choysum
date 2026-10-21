@@ -11,6 +11,7 @@ defineProps<{
   class?: ClassValue;
   disabled?: boolean;
   id?: string;
+  name?: string;
   'aria-invalid'?: boolean | 'true' | 'false';
   'aria-required'?: boolean | 'true' | 'false';
   'aria-describedby'?: string;
@@ -21,6 +22,7 @@ defineProps<{
   <ComboboxTrigger
     data-slot="combobox-trigger"
     :id="id || undefined"
+    :name="name || undefined"
     :disabled="disabled"
     :aria-invalid="$props['aria-invalid']"
     :aria-required="$props['aria-required']"

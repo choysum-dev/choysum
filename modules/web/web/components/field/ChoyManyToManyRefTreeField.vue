@@ -18,9 +18,16 @@ SPDX-License-Identifier: Apache-2.0
     :renderMode="renderMode"
     :preserveModeSlot="true"
     :showInlineError="showInlineError"
+    :label-for-control="false"
   >
-    <template #edit>
-      <div class="w-full overflow-auto p-2" :style="treeBoxStyle">
+    <template #edit="{ inputId, labelId, describedBy }">
+      <div
+        class="w-full overflow-auto p-2"
+        :id="inputId || undefined"
+        :style="treeBoxStyle"
+        :aria-labelledby="labelId || undefined"
+        :aria-describedby="describedBy || undefined"
+      >
         <RelationTree
           ref="editTreeRef"
           class="min-h-[120px]"

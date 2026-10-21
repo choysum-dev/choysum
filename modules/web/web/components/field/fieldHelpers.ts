@@ -326,22 +326,45 @@ export type ChoyBinaryValue = {
   clientContentType?: string;
   displayName?: string;
   downloadUrl?: string;
+  previewUrl?: string;
+  mimeType?: string;
+  contentType?: string;
+  sizeBytes?: number;
+  attachmentBindingId?: string;
+  attachmentObjectId?: string;
+  bindingId?: string;
+  objectId?: string;
   file?: File;
+  descriptor?: Record<string, unknown>;
   /** Legacy plain-value shape still accepted for host-provided values. */
   name?: string;
   size?: number;
+  url?: string;
 } | null;
 
-/** Attachment envelope written by ChoyImageField (`previewUrl` is a blob/data URL). */
+/** Attachment envelope written by ChoyImageField (`previewUrl` is typically a data: URL from local pick). */
 export type ChoyImageValue = {
   kind?: 'set' | 'clear' | 'noop' | string;
   fileName?: string;
+  originalFileName?: string;
+  proposedFileName?: string;
+  proposedContentType?: string;
+  clientContentType?: string;
   previewUrl?: string;
   thumbnailUrl?: string;
   downloadUrl?: string;
   displayName?: string;
+  mimeType?: string;
+  contentType?: string;
+  sizeBytes?: number;
+  attachmentBindingId?: string;
+  attachmentObjectId?: string;
+  bindingId?: string;
+  objectId?: string;
   file?: File;
+  descriptor?: Record<string, unknown>;
   /** Legacy plain-value shape still accepted for host-provided values. */
   name?: string;
+  size?: number;
   url?: string;
 } | null;

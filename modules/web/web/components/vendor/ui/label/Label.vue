@@ -11,12 +11,14 @@ import { cn } from "../../../../lib/utils"
 defineProps<{
   class?: HTMLAttributes["class"]
   for?: string
+  id?: string
 }>()
 </script>
 
 <template>
   <Label
     data-slot="label"
+    :id="$props.id"
     :for="$props.for"
     :class="
       cn(

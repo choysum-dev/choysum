@@ -152,31 +152,6 @@ msgctxt "web/components/chatter/ChoyChatterFollowerBar"
 msgid "Unfollow"
 msgstr ""
 
-#: web/components/field/ChoyBinaryField.vue:90
-msgctxt "web/components/field/BinaryField"
-msgid "Drop file here or click to upload"
-msgstr ""
-
-#: web/components/field/ChoyBinaryField.vue:18
-msgctxt "web/components/field/BinaryField"
-msgid "Remove"
-msgstr ""
-
-#: web/components/field/ChoyBinaryField.vue:96
-msgctxt "web/components/field/BinaryField"
-msgid "Replace file"
-msgstr ""
-
-#: web/components/field/ChoyBinaryField.vue:222
-msgctxt "web/components/field/BinaryField"
-msgid "Selected file type is not allowed."
-msgstr ""
-
-#: web/components/field/ChoyBinaryField.vue:89
-msgctxt "web/components/field/BinaryField"
-msgid "Upload file"
-msgstr ""
-
 #: web/components/field/ChoyBigintField.vue:281
 msgctxt "web/components/field/ChoyBigintField"
 msgid "Cannot be empty"
@@ -210,6 +185,38 @@ msgstr ""
 #: web/components/field/ChoyBigintField.vue:107
 msgctxt "web/components/field/ChoyBigintField"
 msgid "No content"
+msgstr ""
+
+#: web/components/field/ChoyBinaryField.vue:99
+msgctxt "web/components/field/ChoyBinaryField"
+msgid "Drop file here or click to upload"
+msgstr ""
+
+#: web/components/field/ChoyBinaryField.vue:13
+#: web/components/field/ChoyBinaryField.vue:4
+msgctxt "web/components/field/ChoyBinaryField"
+msgid "Download"
+msgstr ""
+
+#: web/components/field/ChoyBinaryField.vue:13
+#: web/components/field/ChoyBinaryField.vue:4
+msgctxt "web/components/field/ChoyBinaryField"
+msgid "Remove"
+msgstr ""
+
+#: web/components/field/ChoyBinaryField.vue:101
+msgctxt "web/components/field/ChoyBinaryField"
+msgid "Replace file"
+msgstr ""
+
+#: web/components/field/ChoyBinaryField.vue:146
+msgctxt "web/components/field/ChoyBinaryField"
+msgid "Selected file type is not allowed."
+msgstr ""
+
+#: web/components/field/ChoyBinaryField.vue:97
+msgctxt "web/components/field/ChoyBinaryField"
+msgid "Upload file"
 msgstr ""
 
 #: web/components/field/ChoyBooleanField.vue:256
@@ -391,6 +398,58 @@ msgstr ""
 #: web/components/field/ChoyHtmlField.vue:97
 msgctxt "web/components/field/ChoyHtmlField"
 msgid "Write rich text…"
+msgstr ""
+
+#: web/components/field/ChoyImageField.vue:141
+msgctxt "web/components/field/ChoyImageField"
+msgid "Drop image here or click to upload"
+msgstr ""
+
+#: web/components/field/imageFieldLimits.ts:136
+msgctxt "web/components/field/ChoyImageField"
+msgid "Image exceeds maximum size (%s)"
+msgstr ""
+
+#: web/components/field/imageFieldLimits.ts:141
+msgctxt "web/components/field/ChoyImageField"
+msgid "Image height exceeds maximum (%s px)"
+msgstr ""
+
+#: web/components/field/ChoyImageField.vue:150
+msgctxt "web/components/field/ChoyImageField"
+msgid "Image preview"
+msgstr ""
+
+#: web/components/field/imageFieldLimits.ts:139
+msgctxt "web/components/field/ChoyImageField"
+msgid "Image width exceeds maximum (%s px)"
+msgstr ""
+
+#: web/components/field/ChoyImageField.vue:129
+msgctxt "web/components/field/ChoyImageField"
+msgid "Only raster image files are supported."
+msgstr ""
+
+#: web/components/field/ChoyImageField.vue:14
+#: web/components/field/ChoyImageField.vue:4
+msgctxt "web/components/field/ChoyImageField"
+msgid "Download"
+msgstr ""
+
+#: web/components/field/ChoyImageField.vue:14
+#: web/components/field/ChoyImageField.vue:4
+msgctxt "web/components/field/ChoyImageField"
+msgid "Remove"
+msgstr ""
+
+#: web/components/field/ChoyImageField.vue:143
+msgctxt "web/components/field/ChoyImageField"
+msgid "Replace image"
+msgstr ""
+
+#: web/components/field/ChoyImageField.vue:139
+msgctxt "web/components/field/ChoyImageField"
+msgid "Upload image"
 msgstr ""
 
 #: web/components/field/ChoyIntField.vue:218
@@ -938,46 +997,6 @@ msgctxt "web/components/field/FieldTranslationsDialog"
 msgid "Translations saved"
 msgstr ""
 
-#: web/components/field/ChoyImageField.vue:125
-msgctxt "web/components/field/ImageField"
-msgid "Drop image here or click to upload"
-msgstr ""
-
-#: web/components/field/imageFieldLimits.ts:136
-msgctxt "web/components/field/ImageField"
-msgid "Image exceeds maximum size (%s)"
-msgstr ""
-
-#: web/components/field/imageFieldLimits.ts:141
-msgctxt "web/components/field/ImageField"
-msgid "Image height exceeds maximum (%s px)"
-msgstr ""
-
-#: web/components/field/imageFieldLimits.ts:139
-msgctxt "web/components/field/ImageField"
-msgid "Image width exceeds maximum (%s px)"
-msgstr ""
-
-#: web/components/field/ChoyImageField.vue:115
-msgctxt "web/components/field/ImageField"
-msgid "Only raster image files are supported."
-msgstr ""
-
-#: web/components/field/ChoyImageField.vue:19
-msgctxt "web/components/field/ImageField"
-msgid "Remove"
-msgstr ""
-
-#: web/components/field/ChoyImageField.vue:131
-msgctxt "web/components/field/ImageField"
-msgid "Replace image"
-msgstr ""
-
-#: web/components/field/ChoyImageField.vue:124
-msgctxt "web/components/field/ImageField"
-msgid "Upload image"
-msgstr ""
-
 #: web/components/field/ChoyPropertiesDefinitionEditor.vue:8
 msgctxt "web/components/field/PropertiesDefinitionEditor"
 msgid "Add property"
@@ -1397,12 +1416,12 @@ msgctxt "web/components/view/FormView"
 msgid "Reset"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:297
+#: web/components/view/ChoyFormView.vue:300
 msgctxt "web/components/view/FormView"
 msgid "Save"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:297
+#: web/components/view/ChoyFormView.vue:300
 msgctxt "web/components/view/FormView"
 msgid "Saving..."
 msgstr ""

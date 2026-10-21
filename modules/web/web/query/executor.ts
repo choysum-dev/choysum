@@ -355,6 +355,7 @@ type AttachmentBatchDescribeItem = {
     fileName?: unknown;
     mimeType?: unknown;
     downloadUrl?: unknown;
+    sizeBytes?: unknown;
   };
   displayName?: unknown;
   previewUrl?: unknown;
@@ -422,6 +423,7 @@ async function enrichBinaryImageDescriptors(
       previewUrl?: string;
       mimeType?: string;
       downloadUrl?: string;
+      sizeBytes?: number;
     }
   >();
 
@@ -431,12 +433,22 @@ async function enrichBinaryImageDescriptors(
     const bindingId = normalizeIdText(item?.attachmentBindingId);
     if (!bindingId) continue;
 
-    const descriptorRaw = item?.descriptor;
+    const descriptorRaw = item?.descriptor as
+      | {
+          fileName?: unknown;
+          mimeType?: unknown;
+          downloadUrl?: unknown;
+          sizeBytes?: unknown;
+        }
+      | undefined;
     const fileName = normalizeIdText(descriptorRaw?.fileName);
     const mimeType = normalizeIdText(descriptorRaw?.mimeType);
     const downloadUrl = normalizeIdText(descriptorRaw?.downloadUrl);
     const displayName = normalizeIdText(item?.displayName) || fileName;
     const previewUrl = normalizeIdText(item?.previewUrl);
+    const sizeRaw = descriptorRaw?.sizeBytes;
+    const sizeNum = typeof sizeRaw === 'number' ? sizeRaw : Number(sizeRaw);
+    const sizeBytes = Number.isFinite(sizeNum) && sizeNum >= 0 ? sizeNum : undefined;
 
     describeByBindingId.set(bindingId, {
       fileName,
@@ -444,6 +456,7 @@ async function enrichBinaryImageDescriptors(
       previewUrl,
       mimeType,
       downloadUrl,
+      sizeBytes,
     });
   }
 
@@ -456,6 +469,14 @@ async function enrichBinaryImageDescriptors(
 
     if (!descriptor.displayName) {
       descriptor.displayName = described?.displayName || descriptor.fileName;
+    }
+
+    if (!descriptor.mimeType && described?.mimeType) {
+      descriptor.mimeType = described.mimeType;
+    }
+
+    if (descriptor.sizeBytes == null && described?.sizeBytes != null) {
+      descriptor.sizeBytes = described.sizeBytes;
     }
 
     if (descriptor.previewUrl) {

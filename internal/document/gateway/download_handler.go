@@ -14,10 +14,10 @@ import (
 	"github.com/choysum-dev/choysum/pkg/scope"
 )
 
-func resolveDownloadContent(ctx context.Context, bindingID string, principal map[string]any) (resolveDownloadContentResult, error) {
+func resolveDownloadContent(ctx context.Context, bindingID string) (resolveDownloadContentResult, error) {
+	// Principal comes from the authenticated session (outgoing auth context), not the wire body.
 	req := map[string]any{
 		"attachmentBindingId": strings.TrimSpace(bindingID),
-		"principal":           principal,
 	}
 
 	resp, err := callDocumentAttachmentBindingMethod(ctx, documentResolveDownloadContentMethod, map[string]any{"req": req})
@@ -91,8 +91,7 @@ func bindingContentHandler(w http.ResponseWriter, r *http.Request, runtimeScope 
 	}
 
 	rpcCtx := outgoingContextForAuthRPC(r.Context())
-	principal := buildUploadPrincipal(identity)
-	resolveResult, err := resolveDownloadContent(rpcCtx, bindingID, principal)
+	resolveResult, err := resolveDownloadContent(rpcCtx, bindingID)
 	if err != nil {
 		writeDocumentRPCError(r.Context(), runtimeScope, w, err)
 		return

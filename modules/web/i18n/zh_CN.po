@@ -146,31 +146,6 @@ msgctxt "web/components/chatter/ChoyChatterFollowerBar"
 msgid "Unfollow"
 msgstr "取消关注"
 
-#: web/components/field/ChoyBinaryField.vue:90
-msgctxt "web/components/field/BinaryField"
-msgid "Drop file here or click to upload"
-msgstr "拖放文件到此处，或点击上传"
-
-#: web/components/field/ChoyBinaryField.vue:18
-msgctxt "web/components/field/BinaryField"
-msgid "Remove"
-msgstr "移除"
-
-#: web/components/field/ChoyBinaryField.vue:96
-msgctxt "web/components/field/BinaryField"
-msgid "Replace file"
-msgstr "替换文件"
-
-#: web/components/field/ChoyBinaryField.vue:222
-msgctxt "web/components/field/BinaryField"
-msgid "Selected file type is not allowed."
-msgstr "不允许所选文件类型。"
-
-#: web/components/field/ChoyBinaryField.vue:89
-msgctxt "web/components/field/BinaryField"
-msgid "Upload file"
-msgstr "上传文件"
-
 #: web/components/field/ChoyBigintField.vue:281
 msgctxt "web/components/field/ChoyBigintField"
 msgid "Cannot be empty"
@@ -205,6 +180,36 @@ msgstr "不能小于 %s"
 msgctxt "web/components/field/ChoyBigintField"
 msgid "No content"
 msgstr "无内容"
+
+#: web/components/field/ChoyBinaryField.vue:99
+msgctxt "web/components/field/ChoyBinaryField"
+msgid "Drop file here or click to upload"
+msgstr "拖放文件到此处，或点击上传"
+
+#: web/components/field/ChoyBinaryField.vue:13 web/components/field/ChoyBinaryField.vue:4
+msgctxt "web/components/field/ChoyBinaryField"
+msgid "Download"
+msgstr "下载"
+
+#: web/components/field/ChoyBinaryField.vue:13 web/components/field/ChoyBinaryField.vue:4
+msgctxt "web/components/field/ChoyBinaryField"
+msgid "Remove"
+msgstr "移除"
+
+#: web/components/field/ChoyBinaryField.vue:101
+msgctxt "web/components/field/ChoyBinaryField"
+msgid "Replace file"
+msgstr "替换文件"
+
+#: web/components/field/ChoyBinaryField.vue:146
+msgctxt "web/components/field/ChoyBinaryField"
+msgid "Selected file type is not allowed."
+msgstr "不允许所选文件类型。"
+
+#: web/components/field/ChoyBinaryField.vue:97
+msgctxt "web/components/field/ChoyBinaryField"
+msgid "Upload file"
+msgstr "上传文件"
 
 #: web/components/field/ChoyBooleanField.vue:256
 msgctxt "web/components/field/ChoyBooleanField"
@@ -385,6 +390,56 @@ msgstr "撤销"
 msgctxt "web/components/field/ChoyHtmlField"
 msgid "Write rich text…"
 msgstr "输入富文本…"
+
+#: web/components/field/ChoyImageField.vue:141
+msgctxt "web/components/field/ChoyImageField"
+msgid "Drop image here or click to upload"
+msgstr "拖放图片到此处，或点击上传"
+
+#: web/components/field/imageFieldLimits.ts:136
+msgctxt "web/components/field/ChoyImageField"
+msgid "Image exceeds maximum size (%s)"
+msgstr "图片大小超过上限（%s）"
+
+#: web/components/field/imageFieldLimits.ts:141
+msgctxt "web/components/field/ChoyImageField"
+msgid "Image height exceeds maximum (%s px)"
+msgstr "图片高度超过上限（%s 像素）"
+
+#: web/components/field/ChoyImageField.vue:150
+msgctxt "web/components/field/ChoyImageField"
+msgid "Image preview"
+msgstr "图片预览"
+
+#: web/components/field/imageFieldLimits.ts:139
+msgctxt "web/components/field/ChoyImageField"
+msgid "Image width exceeds maximum (%s px)"
+msgstr "图片宽度超过上限（%s 像素）"
+
+#: web/components/field/ChoyImageField.vue:129
+msgctxt "web/components/field/ChoyImageField"
+msgid "Only raster image files are supported."
+msgstr "仅支持栅格图片文件。"
+
+#: web/components/field/ChoyImageField.vue:14 web/components/field/ChoyImageField.vue:4
+msgctxt "web/components/field/ChoyImageField"
+msgid "Download"
+msgstr "下载"
+
+#: web/components/field/ChoyImageField.vue:14 web/components/field/ChoyImageField.vue:4
+msgctxt "web/components/field/ChoyImageField"
+msgid "Remove"
+msgstr "移除"
+
+#: web/components/field/ChoyImageField.vue:143
+msgctxt "web/components/field/ChoyImageField"
+msgid "Replace image"
+msgstr "替换图片"
+
+#: web/components/field/ChoyImageField.vue:139
+msgctxt "web/components/field/ChoyImageField"
+msgid "Upload image"
+msgstr "上传图片"
 
 #: web/components/field/ChoyIntField.vue:218
 msgctxt "web/components/field/ChoyIntField"
@@ -921,46 +976,6 @@ msgctxt "web/components/field/FieldTranslationsDialog"
 msgid "Translations saved"
 msgstr "翻译已保存"
 
-#: web/components/field/ChoyImageField.vue:125
-msgctxt "web/components/field/ImageField"
-msgid "Drop image here or click to upload"
-msgstr "拖放图片到此处，或点击上传"
-
-#: web/components/field/imageFieldLimits.ts:136
-msgctxt "web/components/field/ImageField"
-msgid "Image exceeds maximum size (%s)"
-msgstr "图片大小超过上限（%s）"
-
-#: web/components/field/imageFieldLimits.ts:141
-msgctxt "web/components/field/ImageField"
-msgid "Image height exceeds maximum (%s px)"
-msgstr "图片高度超过上限（%s 像素）"
-
-#: web/components/field/imageFieldLimits.ts:139
-msgctxt "web/components/field/ImageField"
-msgid "Image width exceeds maximum (%s px)"
-msgstr "图片宽度超过上限（%s 像素）"
-
-#: web/components/field/ChoyImageField.vue:115
-msgctxt "web/components/field/ImageField"
-msgid "Only raster image files are supported."
-msgstr "仅支持栅格图片文件。"
-
-#: web/components/field/ChoyImageField.vue:19
-msgctxt "web/components/field/ImageField"
-msgid "Remove"
-msgstr "移除"
-
-#: web/components/field/ChoyImageField.vue:131
-msgctxt "web/components/field/ImageField"
-msgid "Replace image"
-msgstr "替换图片"
-
-#: web/components/field/ChoyImageField.vue:124
-msgctxt "web/components/field/ImageField"
-msgid "Upload image"
-msgstr "上传图片"
-
 #: web/components/field/ChoyPropertiesDefinitionEditor.vue:8
 msgctxt "web/components/field/PropertiesDefinitionEditor"
 msgid "Add property"
@@ -1371,12 +1386,12 @@ msgctxt "web/components/view/FormView"
 msgid "Reset"
 msgstr "重置"
 
-#: web/components/view/ChoyFormView.vue:297
+#: web/components/view/ChoyFormView.vue:300
 msgctxt "web/components/view/FormView"
 msgid "Save"
 msgstr "保存"
 
-#: web/components/view/ChoyFormView.vue:297
+#: web/components/view/ChoyFormView.vue:300
 msgctxt "web/components/view/FormView"
 msgid "Saving..."
 msgstr "保存中..."
@@ -2425,6 +2440,26 @@ msgstr "页面"
 #~ msgid "Must not be less than %s"
 #~ msgstr "不得小于 %s"
 
+#~ msgctxt "web/components/field/BinaryField"
+#~ msgid "Drop file here or click to upload"
+#~ msgstr "拖放文件到此处，或点击上传"
+
+#~ msgctxt "web/components/field/BinaryField"
+#~ msgid "Remove"
+#~ msgstr "移除"
+
+#~ msgctxt "web/components/field/BinaryField"
+#~ msgid "Replace file"
+#~ msgstr "替换文件"
+
+#~ msgctxt "web/components/field/BinaryField"
+#~ msgid "Selected file type is not allowed."
+#~ msgstr "不允许所选文件类型。"
+
+#~ msgctxt "web/components/field/BinaryField"
+#~ msgid "Upload file"
+#~ msgstr "上传文件"
+
 #~ msgctxt "web/components/field/DateField"
 #~ msgid "Invalid date"
 #~ msgstr "日期无效"
@@ -2432,6 +2467,38 @@ msgstr "页面"
 #~ msgctxt "web/components/field/DatetimeField"
 #~ msgid "Invalid date time"
 #~ msgstr "日期时间无效"
+
+#~ msgctxt "web/components/field/ImageField"
+#~ msgid "Drop image here or click to upload"
+#~ msgstr "拖放图片到此处，或点击上传"
+
+#~ msgctxt "web/components/field/ImageField"
+#~ msgid "Image exceeds maximum size (%s)"
+#~ msgstr "图片大小超过上限（%s）"
+
+#~ msgctxt "web/components/field/ImageField"
+#~ msgid "Image height exceeds maximum (%s px)"
+#~ msgstr "图片高度超过上限（%s 像素）"
+
+#~ msgctxt "web/components/field/ImageField"
+#~ msgid "Image width exceeds maximum (%s px)"
+#~ msgstr "图片宽度超过上限（%s 像素）"
+
+#~ msgctxt "web/components/field/ImageField"
+#~ msgid "Only raster image files are supported."
+#~ msgstr "仅支持栅格图片文件。"
+
+#~ msgctxt "web/components/field/ImageField"
+#~ msgid "Remove"
+#~ msgstr "移除"
+
+#~ msgctxt "web/components/field/ImageField"
+#~ msgid "Replace image"
+#~ msgstr "替换图片"
+
+#~ msgctxt "web/components/field/ImageField"
+#~ msgid "Upload image"
+#~ msgstr "上传图片"
 
 #~ msgctxt "web/components/field/IntField"
 #~ msgid "Cannot be empty"

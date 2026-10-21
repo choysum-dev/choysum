@@ -10,7 +10,7 @@ export type ImageFieldLimits = {
   maxHeight?: number;
 };
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/ImageField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyImageField' });
 
 export function resolveImageFieldLimits(meta: ImageFieldLimits | null | undefined): ImageFieldLimits {
   const out: ImageFieldLimits = {};
@@ -133,12 +133,12 @@ export async function validateImageFieldFile(
 
 export function imageFieldLimitErrorMessage(result: Extract<ImageFieldValidationResult, { ok: false }>): string {
   if (result.reason === 'fileTooLarge') {
-    return _t('Image exceeds maximum size (%s)', { scope: 'web/components/field/ImageField' }, result.detail);
+    return _t('Image exceeds maximum size (%s)', { scope: 'web/components/field/ChoyImageField' }, result.detail);
   }
   if (result.reason === 'widthTooLarge') {
-    return _t('Image width exceeds maximum (%s px)', { scope: 'web/components/field/ImageField' }, result.detail);
+    return _t('Image width exceeds maximum (%s px)', { scope: 'web/components/field/ChoyImageField' }, result.detail);
   }
-  return _t('Image height exceeds maximum (%s px)', { scope: 'web/components/field/ImageField' }, result.detail);
+  return _t('Image height exceeds maximum (%s px)', { scope: 'web/components/field/ChoyImageField' }, result.detail);
 }
 
 /**

@@ -212,6 +212,46 @@ describe('ChoyFieldBase label and help', () => {
     m.unmount();
   });
 
+  test('omits label for when labelForControl is false and exposes labelId', () => {
+    const m = mountBase(
+      { binding: makeBinding({ string: 'Body' }), renderMode: 'form', labelForControl: false },
+      {
+        slots: {
+          edit: (args: { inputId?: string; labelId?: string }) =>
+            h('div', {
+              id: args.inputId,
+              'aria-labelledby': args.labelId,
+              class: 'composite-probe',
+              tabindex: '-1',
+            }),
+          display: () => h('span'),
+        },
+      },
+    );
+    const label = m.q('[data-slot="field-label"]');
+    expect(label?.getAttribute('for')).toBeFalsy();
+    expect(label?.id).toBe('fld-AccessTokenId-label');
+    expect(m.q('.composite-probe')?.getAttribute('aria-labelledby')).toBe('fld-AccessTokenId-label');
+    m.unmount();
+  });
+
+  test('omits label for in readonly form display', () => {
+    const m = mountBase(
+      {
+        binding: makeBinding({ string: 'Line count' }, { isEditMode: false }),
+        renderMode: 'form',
+      },
+      {
+        slots: {
+          edit: () => h('input', { class: 'edit-probe' }),
+          display: () => h('span', { class: 'display-probe' }, '3'),
+        },
+      },
+    );
+    expect(m.q('[data-slot="field-label"]')?.getAttribute('for')).toBeFalsy();
+    m.unmount();
+  });
+
   test('lets explicit label override metadata', () => {
     const m = mountBase({
       binding: makeBinding({ string: 'Access Token ID' }),

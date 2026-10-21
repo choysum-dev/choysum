@@ -190,6 +190,7 @@ const bufferOptions = computed(() => ({
 
 const ChoyDateCell = defineComponent({
   name: 'ChoyDateCell',
+  inheritAttrs: false,
   props: {
     fieldValue: { type: Function as PropType<() => { value: any }>, required: true },
     options: { type: Object as PropType<any>, required: true },

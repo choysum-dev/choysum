@@ -19,9 +19,10 @@ SPDX-License-Identifier: Apache-2.0
     :cellVisible="cellVisible"
     :renderMode="renderMode"
     :showInlineError="showInlineError"
+    :label-for-control="false"
     v-bind="$attrs"
   >
-    <template #edit="{ fieldValue, inputId, describedBy, invalid }">
+    <template #edit="{ fieldValue, inputId, labelId, describedBy, invalid }">
       <ChoyJsonCell
         :field-value="fieldValue"
         :options="bufferOptions"
@@ -29,6 +30,7 @@ SPDX-License-Identifier: Apache-2.0
         :nullable="nullable"
         :allow-array="allowArray"
         :id="inputId"
+        :aria-labelledby="labelId || undefined"
         :aria-describedby="describedBy || undefined"
         :aria-invalid="invalid ? 'true' : undefined"
       />
@@ -375,16 +377,15 @@ const ChoyJsonCell = defineComponent({
     function ensureMounted() {
       if (cm || mounting || !hostEl.value) return;
       mounting = true;
-      const controlId = attrs.id != null && String(attrs.id) !== '' ? String(attrs.id) : '';
       const formDescribedBy = attrs['aria-describedby'] != null ? String(attrs['aria-describedby']) : '';
       const parent = hostEl.value as unknown as HTMLElement;
+      // Keep id/aria on the cell root (labelable association uses aria-labelledby, not label[for]).
       cm = mountJsonCodeMirror({
         parent,
         doc: editingText.value ?? '',
-        id: controlId || undefined,
         ariaDescribedBy: formDescribedBy || undefined,
         ariaInvalid: attrs['aria-invalid'] === true || attrs['aria-invalid'] === 'true',
-        translate: (msgid, ...args) => _t(msgid, ...(args as any[])),
+        translate: (msgid, ...args: unknown[]) => (_t as (...a: unknown[]) => string)(msgid, ...args),
         onUpdate: (text: string) => {
           onInput(text);
         },
@@ -414,13 +415,18 @@ const ChoyJsonCell = defineComponent({
         .join(' ');
       const formInvalid = attrs['aria-invalid'] === true || attrs['aria-invalid'] === 'true';
       const formatLabel = _t('Format');
+      const labelledBy = attrs['aria-labelledby'] != null ? String(attrs['aria-labelledby']) : '';
       return h(
         'div',
         {
+          id: controlId || undefined,
           class: [
             'choy-json-cell choy-json-field__edit overflow-hidden rounded-md border bg-background',
             parseError.value || formInvalid ? 'border-destructive' : 'border-border',
           ],
+          'aria-labelledby': labelledBy || undefined,
+          'aria-describedby': describedBy || undefined,
+          'aria-invalid': formInvalid || parseError.value ? 'true' : undefined,
         },
         [
           h(

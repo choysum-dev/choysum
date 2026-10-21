@@ -18,7 +18,7 @@ SPDX-License-Identifier: Apache-2.0
     :renderMode="renderMode"
     :showInlineError="showInlineError"
   >
-    <template #edit>
+    <template #edit="{ inputId, inputName, describedBy, invalid }">
       <div class="choy-m2m-tags w-full" @keydown="handleKeydown">
         <div class="mb-1.5 flex min-h-0 flex-wrap items-center gap-1.5">
           <template v-for="item in editChipItems" :key="item.id">
@@ -51,6 +51,8 @@ SPDX-License-Identifier: Apache-2.0
         <RelationCombobox
           v-model="addModel"
           class="choy-m2m-tags__select w-full"
+          :id="inputId"
+          :name="inputName"
           :search="relationSearch"
           :search-key="relationSearchKey"
           :clearable="false"
@@ -59,6 +61,8 @@ SPDX-License-Identifier: Apache-2.0
           :disabled="!relationStore"
           :search-more="Boolean(searchList)"
           :style="{ width: width || '100%' }"
+          :aria-describedby="describedBy || undefined"
+          :aria-invalid="invalid ? 'true' : undefined"
           @select="onComboboxSelect"
           @search-more="onSearchMore"
         />

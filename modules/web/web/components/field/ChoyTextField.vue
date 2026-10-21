@@ -222,6 +222,7 @@ function applyTextareaAutosize(el: HTMLTextAreaElement, minRows: number, maxRows
 
 const ChoyTextCell = defineComponent({
   name: 'ChoyTextCell',
+  inheritAttrs: false,
   props: {
     fieldValue: { type: Function, required: true },
     options: { type: Object, required: true },

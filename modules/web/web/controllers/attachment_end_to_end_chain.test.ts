@@ -102,7 +102,12 @@ describe('attachment end-to-end chain regression', () => {
       },
       normalizeDeps
     );
-    expect(createBlobPayload).toEqual({ Avatar: 'ao-create-blob' });
+    expect(createBlobPayload).toEqual({
+      Avatar: {
+        attachmentObjectId: 'ao-create-blob',
+        downloadDisposition: 'inline',
+      },
+    });
 
     const createFilePayload = await __normalizeAttachmentFieldsInPayloadForTest(
       store,
@@ -120,6 +125,7 @@ describe('attachment end-to-end chain regression', () => {
       Avatar: {
         attachmentObjectId: 'ao-create-file',
         displayFileName: 'avatar-create.png',
+        downloadDisposition: 'inline',
       },
     });
 
@@ -218,7 +224,12 @@ describe('attachment end-to-end chain regression', () => {
       },
       normalizeDeps
     );
-    expect(updateSetPayload).toEqual({ Avatar: 'ao-direct-set' });
+    expect(updateSetPayload).toEqual({
+      Avatar: {
+        attachmentObjectId: 'ao-direct-set',
+        downloadDisposition: 'inline',
+      },
+    });
 
     const updateFilePayload = await __normalizeAttachmentFieldsInPayloadForTest(
       store,
@@ -237,6 +248,7 @@ describe('attachment end-to-end chain regression', () => {
       Avatar: {
         attachmentObjectId: 'ao-update-file',
         displayFileName: 'avatar-update.png',
+        downloadDisposition: 'inline',
       },
     });
 

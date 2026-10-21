@@ -19,13 +19,21 @@ SPDX-License-Identifier: Apache-2.0
     :cellVisible="cellVisible"
     :renderMode="renderMode"
     :showInlineError="showInlineError"
+    :label-for-control="false"
     v-bind="$attrs"
   >
-    <template #edit="{ fieldValue }">
+    <template #edit="{ fieldValue, inputId, labelId, describedBy }">
       <div v-if="isTableLike" class="truncate text-[13px] text-foreground" data-testid="choy-properties-summary">
         {{ summaryText(fieldValue().value) }}
       </div>
-      <div v-else class="flex w-full flex-col gap-2" data-testid="choy-properties-form">
+      <div
+        v-else
+        class="flex w-full flex-col gap-2"
+        data-testid="choy-properties-form"
+        :id="inputId || undefined"
+        :aria-labelledby="labelId || undefined"
+        :aria-describedby="describedBy || undefined"
+      >
         <div v-if="!renderableItems.length" class="min-h-1" data-testid="choy-properties-empty" />
         <template v-for="item in renderableItems" :key="item.name">
           <dl

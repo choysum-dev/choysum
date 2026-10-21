@@ -21,15 +21,17 @@ SPDX-License-Identifier: Apache-2.0
     :cellVisible="cellVisible"
     :renderMode="renderMode"
     :showInlineError="showInlineError"
+    :label-for-control="false"
   >
     <!-- Same chrome in edit + display; interactivity follows isInteractive. -->
-    <template #edit="{ fieldValue, record, inputId, describedBy }">
+    <template #edit="{ fieldValue, record, inputId, labelId, describedBy }">
       <div
         class="choy-statusbar-field__control"
         role="radiogroup"
         data-testid="choy-statusbar"
         :data-clickable="isInteractive ? 'true' : undefined"
         :id="inputId || undefined"
+        :aria-labelledby="labelId || undefined"
         :aria-describedby="describedBy || undefined"
         :aria-disabled="!isInteractive || pending || undefined"
       >

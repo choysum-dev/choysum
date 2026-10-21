@@ -198,9 +198,23 @@ function resolveAttachmentDisplayFileName(raw: unknown): string | undefined {
   return fileLikeName;
 }
 
-function buildAttachmentWritePayload(raw: unknown, attachmentObjectId: string): string | Record<string, unknown> {
+function resolveAttachmentFieldType(store: WebModelStore<any>, fieldName: string): string | undefined {
+  const metas = (store as any)?.fieldsMetadata as Record<string, { type?: string }> | undefined;
+  const raw = metas?.[fieldName]?.type;
+  return typeof raw === 'string' ? raw.trim().toLowerCase() : undefined;
+}
+
+function buildAttachmentWritePayload(
+  raw: unknown,
+  attachmentObjectId: string,
+  fieldType?: string
+): string | Record<string, unknown> {
   const displayFileName = resolveAttachmentDisplayFileName(raw);
-  const downloadDisposition = isRecord(raw) ? normalizeAttachmentDownloadDisposition(raw.downloadDisposition) : undefined;
+  let downloadDisposition = isRecord(raw) ? normalizeAttachmentDownloadDisposition(raw.downloadDisposition) : undefined;
+  // Image fields render in <img>; default Bind disposition to inline when omitted.
+  if (!downloadDisposition && fieldType === 'image') {
+    downloadDisposition = 'inline';
+  }
 
   if (!displayFileName && !downloadDisposition) {
     return attachmentObjectId;
@@ -639,7 +653,11 @@ async function normalizeAttachmentFieldsInPayload(
       nextPayload[fieldName] = null;
       continue;
     }
-    nextPayload[fieldName] = buildAttachmentWritePayload(sourceValue, resolved.attachmentObjectId);
+    nextPayload[fieldName] = buildAttachmentWritePayload(
+      sourceValue,
+      resolved.attachmentObjectId,
+      resolveAttachmentFieldType(store, fieldName)
+    );
   }
 
   return nextPayload;

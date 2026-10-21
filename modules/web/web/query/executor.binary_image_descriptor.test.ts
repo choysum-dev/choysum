@@ -135,6 +135,7 @@ test('query executor binary/image descriptor decode > enriches descriptors by ca
                   fileName: 'cover.jpg',
                   mimeType: 'image/jpeg',
                   downloadUrl: '/_document/bindings/bind-cover/content',
+                  sizeBytes: 2048,
                 },
                 displayName: 'Cover Binding',
               },
@@ -152,11 +153,14 @@ test('query executor binary/image descriptor decode > enriches descriptors by ca
     fileName: 'avatar.png',
     displayName: 'Avatar Binding',
     previewUrl: '/_document/bindings/bind-avatar/content',
+    mimeType: 'image/png',
   });
   expect(rows[0]?.Cover).toMatchObject({
     attachmentBindingId: 'bind-cover',
     displayName: 'Cover Binding',
     previewUrl: '/_document/bindings/bind-cover/content',
+    mimeType: 'image/jpeg',
+    sizeBytes: 2048,
   });
 });
 

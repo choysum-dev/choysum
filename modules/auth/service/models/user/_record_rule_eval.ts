@@ -151,6 +151,44 @@ function isTrueCondition(cond: unknown): boolean {
   return false;
 }
 
+/** Leaf tuple `[field, op, value]` (not a domain list of terms). */
+function isConditionLeaf(cond: unknown): cond is UntypedQueryCondition {
+  return (
+    Array.isArray(cond) &&
+    cond.length === 3 &&
+    typeof cond[0] === 'string' &&
+    String(cond[0]).trim() !== '' &&
+    typeof cond[1] === 'string' &&
+    String(cond[1]).trim() !== ''
+  );
+}
+
+/**
+ * Coerce stored RoleRecordRule.Condition into repository tree shape.
+ * Legacy domain lists `[[field, op, val], ...]` become `{ And: [...] }` (or a single leaf).
+ */
+function coerceStoredRuleCondition(cond: unknown): UntypedQueryCondition | null {
+  if (isTrueCondition(cond)) return null;
+  if (isConditionLeaf(cond)) return cond;
+  if (Array.isArray(cond) && cond.length > 0) {
+    const parts: UntypedQueryCondition[] = [];
+    for (const term of cond) {
+      const next = coerceStoredRuleCondition(term);
+      if (next != null) parts.push(next);
+    }
+    if (parts.length === 0) return null;
+    if (parts.length === 1) return parts[0];
+    return { And: parts };
+  }
+  if (cond && typeof cond === 'object' && !Array.isArray(cond)) {
+    const keys = Object.keys(cond as object);
+    if (keys.length === 1 && (keys[0] === 'And' || keys[0] === 'Or')) {
+      return cond as UntypedQueryCondition;
+    }
+  }
+  return cond as UntypedQueryCondition;
+}
+
 function ruleAudienceScope(roleId: string, roleScopesById: Record<string, RoleScope>): RoleScope {
   if (!roleId) {
     // Everyone rules (RoleId null): no role-company gate; companyFilter stays orthogonal if added later.
@@ -172,12 +210,11 @@ function buildRuleExpr(
   const roleId = maybeId(rule?.RoleId) || '';
   const scope = ruleAudienceScope(roleId, roleScopesById);
   const gate = buildCompanyGateExpr(scope, companyGate);
-  const cond = rule?.Condition;
-  if (isTrueCondition(cond)) {
+  const cond = coerceStoredRuleCondition(rule?.Condition);
+  if (cond == null) {
     return gate; // null ⇒ unconstrained TRUE for this rule
   }
-  if (!gate) return cond ?? null;
-  if (cond == null) return gate;
+  if (!gate) return cond;
   return { And: [gate, cond] };
 }
 

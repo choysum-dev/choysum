@@ -15,15 +15,26 @@ import (
 type gzipResponseWriter struct {
 	io.Writer
 	http.ResponseWriter
-	statusCode int
+	statusCode  int
+	wroteHeader bool
 }
 
 func (w *gzipResponseWriter) WriteHeader(statusCode int) {
+	if w.wroteHeader {
+		return
+	}
+	w.wroteHeader = true
 	w.statusCode = statusCode
+	// Downstream handlers may set Content-Length for the uncompressed body.
+	// Gzip changes the wire size, so drop it and let the transport chunk.
+	w.ResponseWriter.Header().Del("Content-Length")
 	w.ResponseWriter.WriteHeader(statusCode)
 }
 
 func (w *gzipResponseWriter) Write(b []byte) (int, error) {
+	if !w.wroteHeader {
+		w.WriteHeader(http.StatusOK)
+	}
 	return w.Writer.Write(b)
 }
 
@@ -40,6 +51,13 @@ func NewGzipHandler(runtimeScope scope.Scope) *GzipHandler {
 
 func (h *GzipHandler) Handler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Document payload streams are already compressed media or large binaries;
+		// gzip would rewrite Content-Length and hurt <img>/fetch consumers.
+		if strings.HasPrefix(r.URL.Path, "/_document/") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		// Check whether the client supports gzip.
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 			next.ServeHTTP(w, r)
@@ -58,6 +76,8 @@ func (h *GzipHandler) Handler(next http.Handler) http.Handler {
 		// Set response headers.
 		w.Header().Set("Content-Encoding", "gzip")
 		w.Header().Set("Vary", "Accept-Encoding")
+		// Clear any premature Content-Length before the handler runs.
+		w.Header().Del("Content-Length")
 
 		// Create the gzip response writer.
 		gzipResponseWriter := &gzipResponseWriter{

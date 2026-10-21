@@ -148,6 +148,7 @@ const bufferOptions = computed(() => ({
 
 const ChoyNumberCell = defineComponent({
   name: 'ChoyNumberCell',
+  inheritAttrs: false,
   props: {
     fieldValue: { type: Function, required: true },
     options: { type: Object, required: true },

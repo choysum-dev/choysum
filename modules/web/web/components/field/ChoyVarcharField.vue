@@ -275,6 +275,7 @@ const bufferOptions = computed(() => ({
  */
 const ChoyVarcharCell = defineComponent({
   name: 'ChoyVarcharCell',
+  inheritAttrs: false,
   props: {
     fieldValue: { type: Function, required: true }, // () => WritableComputedRef<ViewType>
     options: { type: Object, required: true },

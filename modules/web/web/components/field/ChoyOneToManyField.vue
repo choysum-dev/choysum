@@ -17,15 +17,23 @@ SPDX-License-Identifier: Apache-2.0
     :cellVisible="cellVisible"
     :renderMode="renderMode"
     :showInlineError="showInlineError"
+    :label-for-control="false"
   >
-    <template #edit>
+    <template #edit="{ inputId, labelId, describedBy }">
       <span
         v-if="showCellSummary"
         class="truncate text-sm text-foreground"
         data-testid="choy-o2m-summary"
       >{{ cellSummaryText }}</span>
       <ChoyViewScope v-else :view-mode="binding.env.viewMode" :kind="'List'" :field-prefix="String(prop)">
-        <div class="w-full min-w-0" :style="{ height: tableHeightPxEdit }" tabindex="-1">
+        <div
+          class="w-full min-w-0"
+          :id="inputId || undefined"
+          :style="{ height: tableHeightPxEdit }"
+          tabindex="-1"
+          :aria-labelledby="labelId || undefined"
+          :aria-describedby="describedBy || undefined"
+        >
           <ChoyTableHost
             v-if="tableReady"
             ref="ovTableRef"

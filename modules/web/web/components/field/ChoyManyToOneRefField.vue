@@ -21,10 +21,11 @@ SPDX-License-Identifier: Apache-2.0
     :renderMode="renderMode"
     :showInlineError="showInlineError"
   >
-    <template #edit="{ fieldValue, record, inputId, describedBy, invalid}">
+    <template #edit="{ fieldValue, record, inputId, inputName, describedBy, invalid}">
       <div class="w-full" :style="{ width: width || '100%' }">
         <RelationCombobox
           :id="inputId"
+          :name="inputName"
           :aria-describedby="describedBy || undefined"
           :aria-invalid="invalid ? 'true' : undefined"
           :model-value="comboboxId(fieldValue().value)"

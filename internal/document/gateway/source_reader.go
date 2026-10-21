@@ -41,8 +41,7 @@ func ReadSourceRefBytes(ctx context.Context, runtimeScope scope.Scope, sourceRef
 
 func readBindingSourceBytes(ctx context.Context, runtimeScope scope.Scope, bindingID string, identity auth.Identity) ([]byte, error) {
 	rpcCtx := outgoingContextForAuthRPC(ctx)
-	principal := buildUploadPrincipal(identity)
-	resolveResult, err := resolveDownloadContent(rpcCtx, bindingID, principal)
+	resolveResult, err := resolveDownloadContent(rpcCtx, bindingID)
 	if err != nil {
 		return nil, err
 	}

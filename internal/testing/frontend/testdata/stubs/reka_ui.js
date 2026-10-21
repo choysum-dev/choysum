@@ -120,7 +120,28 @@ export const CheckboxRoot = defineComponent({
 export const ComboboxAnchor = stub('ComboboxAnchor');
 export const ComboboxContent = stub('ComboboxContent');
 export const ComboboxEmpty = stub('ComboboxEmpty');
-export const ComboboxInput = stub('ComboboxInput');
+/** Native input so id/name/a11y attrs land like production ComboboxInput. */
+export const ComboboxInput = defineComponent({
+  name: 'ComboboxInput',
+  inheritAttrs: false,
+  props: {
+    modelValue: { type: String, default: '' },
+    displayValue: { type: Function, default: undefined },
+    disabled: { type: Boolean, default: false },
+  },
+  emits: ['update:modelValue'],
+  setup(props, { attrs, emit }) {
+    return () =>
+      h('input', {
+        type: 'text',
+        'data-reka-stub': 'ComboboxInput',
+        ...attrs,
+        disabled: props.disabled || undefined,
+        value: props.modelValue ?? '',
+        onInput: (e) => emit('update:modelValue', e?.target?.value ?? ''),
+      });
+  },
+});
 export const ComboboxItem = stub('ComboboxItem');
 export const ComboboxItemIndicator = stub('ComboboxItemIndicator');
 export const ComboboxPortal = stub('ComboboxPortal');

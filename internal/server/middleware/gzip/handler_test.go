@@ -99,6 +99,7 @@ func TestGzipHandlerCompressesResponseWhenRequested(t *testing.T) {
 	request.Header.Set("Accept-Encoding", "br, gzip")
 
 	handler.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", "9999")
 		w.WriteHeader(http.StatusCreated)
 		_, _ = w.Write([]byte("compressed-response"))
 	})).ServeHTTP(recorder, request)
@@ -112,6 +113,9 @@ func TestGzipHandlerCompressesResponseWhenRequested(t *testing.T) {
 	if recorder.Header().Get("Vary") != "Accept-Encoding" {
 		t.Fatalf("Vary = %q, want Accept-Encoding", recorder.Header().Get("Vary"))
 	}
+	if got := recorder.Header().Get("Content-Length"); got != "" {
+		t.Fatalf("Content-Length = %q, want empty after gzip wrap", got)
+	}
 
 	gzReader, err := gzip.NewReader(bytes.NewReader(recorder.Body.Bytes()))
 	if err != nil {
@@ -124,5 +128,28 @@ func TestGzipHandlerCompressesResponseWhenRequested(t *testing.T) {
 	}
 	if string(decoded) != "compressed-response" {
 		t.Fatalf("decoded body = %q, want compressed-response", string(decoded))
+	}
+}
+
+func TestGzipHandlerSkipsDocumentPayloadPaths(t *testing.T) {
+	handler := NewGzipHandler(testHandlerScope())
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/_document/bindings/b1/content", nil)
+	request.Header.Set("Accept-Encoding", "gzip")
+
+	handler.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", "4")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("png!"))
+	})).ServeHTTP(recorder, request)
+
+	if recorder.Header().Get("Content-Encoding") != "" {
+		t.Fatalf("unexpected Content-Encoding for document payload: %q", recorder.Header().Get("Content-Encoding"))
+	}
+	if recorder.Header().Get("Content-Length") != "4" {
+		t.Fatalf("Content-Length = %q, want 4", recorder.Header().Get("Content-Length"))
+	}
+	if recorder.Body.String() != "png!" {
+		t.Fatalf("body = %q, want png!", recorder.Body.String())
 	}
 }

@@ -252,6 +252,7 @@ const bufferOptions = computed(() => ({
 /* ---------------- Cell Component ---------------- */
 const ChoyBigintCell = defineComponent({
   name: 'ChoyBigintCell',
+  inheritAttrs: false,
   props: {
     fieldValue: { type: Function as PropType<() => { value: any }>, required: true },
     options: { type: Object as PropType<any>, required: true },

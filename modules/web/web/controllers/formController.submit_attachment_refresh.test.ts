@@ -168,6 +168,7 @@ describe('formController submit attachment refresh', () => {
     expect(normalizedPatch?.Avatar).toEqual({
       attachmentObjectId: 'ao-new',
       displayFileName: 'avatar-original.jpg',
+      downloadDisposition: 'inline',
     });
   });
 

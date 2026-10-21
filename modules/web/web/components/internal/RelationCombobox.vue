@@ -16,6 +16,7 @@ SPDX-License-Identifier: Apache-2.0
       <ComboboxInput
         v-model="query"
         :id="id || undefined"
+        :name="name || undefined"
         :disabled="disabled"
         :aria-invalid="props['aria-invalid']"
         :aria-required="props['aria-required']"
@@ -153,6 +154,7 @@ const props = withDefaults(
     /** Show a "Search more…" footer action (host opens a dialog in PR5). */
     searchMore?: boolean;
     id?: string;
+    name?: string;
     'aria-invalid'?: boolean | 'true' | 'false';
     'aria-required'?: boolean | 'true' | 'false';
     'aria-describedby'?: string;

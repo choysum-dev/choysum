@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
   <ChoyFieldBase
     :binding="binding"
     :label="label"
-    :rules="rules"
+    :rules="mergedRules"
     :formItemProps="formItemProps"
     :orientation="orientation"
     :vColumnProps="vColumnProps"
@@ -21,114 +21,76 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
     v-bind="$attrs"
   >
-    <template #edit="{ fieldValue, onFieldChange }">
-      <div class="flex w-full max-w-[360px] flex-col items-start gap-3">
-        <Attachment
-          v-if="hasAttachment(fieldValue().value)"
-          class="choy-binary-current w-full max-w-full bg-muted"
-          state="done"
-        >
-          <AttachmentMedia variant="icon" aria-hidden="true" class="size-11 border border-primary-muted bg-primary-subtle text-primary">
-            <FileText class="size-4" />
-          </AttachmentMedia>
-          <AttachmentContent>
-            <AttachmentTitle :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</AttachmentTitle>
-            <AttachmentDescription v-if="toMetaText(fieldValue().value)">{{ toMetaText(fieldValue().value) }}</AttachmentDescription>
-            <AttachmentActions>
-              <label class="inline-flex">
-                <input
-                  type="file"
-                  class="sr-only"
-                  :accept="accept || undefined"
-                  :multiple="uploadMultiple"
-                  :disabled="uploadDisabled"
-                  @change="onNativeFileChange($event, fieldValue, onFieldChange)"
-                />
-                <ChoyButton size="sm" variant="link" class="p-0" :disabled="uploadDisabled" as="span">{{ replaceButtonText }}</ChoyButton>
-              </label>
-              <ChoyButton size="sm" variant="destructive" class="p-0" :disabled="uploadDisabled" @click="removeBinary(fieldValue, onFieldChange)">
-                {{ _t('Remove') }}
-              </ChoyButton>
-            </AttachmentActions>
-          </AttachmentContent>
-        </Attachment>
-        <label
-          v-else
-          class="choy-binary-upload box-border block w-full cursor-pointer"
-          @dragover.prevent="onUploadDragOver"
-          @drop.prevent="onNativeFileDrop($event, fieldValue, onFieldChange)"
-        >
-          <input
-            type="file"
-            class="sr-only"
-            :accept="accept || undefined"
-            :multiple="uploadMultiple"
-            :disabled="uploadDisabled"
-            @change="onNativeFileChange($event, fieldValue, onFieldChange)"
-          />
-          <Attachment
-            state="idle"
-            class="w-full max-w-full"
-            :class="{ 'choy-binary-upload--drag min-h-[126px] justify-center px-4 py-5 hover:border-primary hover:bg-primary-subtle': uploadDrag }"
+    <template #edit="{ fieldValue, inputId, inputName, onFieldChange }">
+      <ChoyAttachmentFieldChrome
+        mode="edit"
+        class="choy-binary-field"
+        compact
+        current-class="choy-binary-current"
+        upload-class="choy-binary-upload"
+        :has-value="hasAttachment(fieldValue().value)"
+        :title="toDisplayText(fieldValue().value)"
+        :meta="toAttachmentCompactMetaText(fieldValue().value)"
+        :tooltip="toAttachmentTooltipText(fieldValue().value)"
+        :open-href="resolveDownloadUrl(fieldValue().value)"
+        :download-file-name="resolveFileName(fieldValue().value)"
+        :input-id="inputId"
+        :input-name="inputName"
+        :accept="accept"
+        :drag="drag"
+        :disabled="disabled"
+        :busy="isUploadBusy(fieldValue().value)"
+        :attachment-state="editAttachmentState(fieldValue().value)"
+        :upload-label="uploadButtonText"
+        :drop-label="uploadDropLabel"
+        :replace-label="replaceButtonText"
+        :remove-label="_t('Remove')"
+        :open-label="_t('Download')"
+        @file="file => onPickedFile(file, fieldValue, onFieldChange)"
+        @remove="removeBinary(fieldValue, onFieldChange)"
+      >
+        <template #media>
+          <AttachmentMedia
+            variant="icon"
+            aria-hidden="true"
+            class="border-0 bg-transparent text-muted-foreground shadow-none"
+            :data-binary-icon="resolveBinaryMediaIconKind(fieldValue().value)"
           >
-            <template v-if="uploadDrag">
-              <Upload class="mx-auto mb-2.5 block size-5 text-primary" />
-              <div class="w-full text-center text-[13px] leading-normal text-muted-foreground">{{ uploadDropText }}</div>
-            </template>
-            <ChoyButton v-else size="sm" variant="link" class="p-0" as="span">{{ uploadButtonText }}</ChoyButton>
-          </Attachment>
-        </label>
-      </div>
+            <component :is="binaryMediaIcon(fieldValue().value)" class="size-4" />
+          </AttachmentMedia>
+        </template>
+      </ChoyAttachmentFieldChrome>
     </template>
     <template #display="{ fieldValue, renderMode: slotRenderMode }">
-      <Attachment
-        v-if="hasAttachment(fieldValue().value) && isTableRenderMode(slotRenderMode)"
-        size="sm"
-        class="max-w-[140px] border-transparent bg-transparent shadow-none"
-        state="done"
+      <ChoyAttachmentFieldChrome
+        mode="display"
+        class="choy-binary-field"
+        compact
+        :has-value="hasAttachment(fieldValue().value)"
+        :title="toDisplayText(fieldValue().value)"
+        :meta="isTableRenderMode(slotRenderMode) ? undefined : toAttachmentCompactMetaText(fieldValue().value)"
+        :tooltip="toAttachmentTooltipText(fieldValue().value)"
+        :open-href="resolveDownloadUrl(fieldValue().value)"
+        :download-file-name="resolveFileName(fieldValue().value)"
+        :table="isTableRenderMode(slotRenderMode)"
+        table-class="max-w-36"
+        :upload-label="uploadButtonText"
+        :drop-label="uploadDropLabel"
+        :replace-label="replaceButtonText"
+        :remove-label="_t('Remove')"
+        :open-label="_t('Download')"
       >
-        <AttachmentMedia variant="icon" aria-hidden="true" class="size-[30px] border border-primary-muted bg-primary-subtle text-primary">
-          <FileText class="size-4" />
-        </AttachmentMedia>
-        <AttachmentContent>
-          <AttachmentTitle :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</AttachmentTitle>
-        </AttachmentContent>
-      </Attachment>
-      <a
-        v-else-if="hasAttachment(fieldValue().value) && resolveDownloadUrl(fieldValue().value)"
-        class="choy-binary-display-card text-inherit no-underline"
-        :href="resolveDownloadUrl(fieldValue().value)"
-        target="_blank"
-        rel="noopener noreferrer"
-        @click.stop
-      >
-        <Attachment
-          class="choy-binary-display-card--interactive max-w-full cursor-pointer bg-muted transition-colors hover:border-primary-soft hover:bg-primary-subtle"
-          state="done"
-        >
-          <AttachmentMedia variant="icon" aria-hidden="true" class="size-11 border border-primary-muted bg-primary-subtle text-primary">
-            <FileText class="size-4" />
+        <template #media>
+          <AttachmentMedia
+            variant="icon"
+            aria-hidden="true"
+            class="border-0 bg-transparent text-muted-foreground shadow-none"
+            :data-binary-icon="resolveBinaryMediaIconKind(fieldValue().value)"
+          >
+            <component :is="binaryMediaIcon(fieldValue().value)" class="size-4" />
           </AttachmentMedia>
-          <AttachmentContent>
-            <AttachmentTitle :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</AttachmentTitle>
-            <AttachmentDescription v-if="toMetaText(fieldValue().value)">{{ toMetaText(fieldValue().value) }}</AttachmentDescription>
-          </AttachmentContent>
-        </Attachment>
-      </a>
-      <Attachment
-        v-else-if="hasAttachment(fieldValue().value)"
-        class="choy-binary-display-card max-w-full bg-muted"
-        state="done"
-      >
-        <AttachmentMedia variant="icon" aria-hidden="true" class="size-11 border border-primary-muted bg-primary-subtle text-primary">
-          <FileText class="size-4" />
-        </AttachmentMedia>
-        <AttachmentContent>
-          <AttachmentTitle :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</AttachmentTitle>
-          <AttachmentDescription v-if="toMetaText(fieldValue().value)">{{ toMetaText(fieldValue().value) }}</AttachmentDescription>
-        </AttachmentContent>
-      </Attachment>
-      <span v-else class="choy-field-display-empty inline-flex min-h-control items-center text-muted-foreground">-</span>
+        </template>
+      </ChoyAttachmentFieldChrome>
     </template>
   </ChoyFieldBase>
 </template>
@@ -139,21 +101,49 @@ import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField, NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
-import ChoyFieldBase, { type FieldStateExpr } from './ChoyFieldBase.vue';
+import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { createTranslate } from '@/web/web/i18n';
-import { computed } from 'vue';
+import { computed, inject, ref, type Ref } from 'vue';
 import { normalizeOptionalString } from '@/core/service/utils/normalization';
-import { FileText, Upload } from 'lucide-vue-next';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
-import { ChoyMessage } from '../../composables/useChoyMessage';
-import Attachment from '../vendor/ui/attachment/Attachment.vue';
-import AttachmentActions from '../vendor/ui/attachment/AttachmentActions.vue';
-import AttachmentContent from '../vendor/ui/attachment/AttachmentContent.vue';
-import AttachmentDescription from '../vendor/ui/attachment/AttachmentDescription.vue';
+import type { Component } from 'vue';
+import {
+  File,
+  FileArchive,
+  FileAudio,
+  FileCode,
+  FileSpreadsheet,
+  FileText,
+  FileVideo,
+  Image,
+} from 'lucide-vue-next';
 import AttachmentMedia from '../vendor/ui/attachment/AttachmentMedia.vue';
-import AttachmentTitle from '../vendor/ui/attachment/AttachmentTitle.vue';
+import ChoyAttachmentFieldChrome from './ChoyAttachmentFieldChrome.vue';
+import {
+  hasAttachment,
+  hasPendingLocalFile,
+  isAcceptAllowed,
+  isTableRenderMode,
+  resolveBinaryMediaIconKind,
+  resolveDownloadUrl,
+  resolveFileName,
+  toAttachmentCompactMetaText,
+  toAttachmentDisplayText,
+  toAttachmentTooltipText,
+  type BinaryMediaIconKind,
+} from './attachmentFieldHelpers';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/BinaryField' });
+const BINARY_MEDIA_ICONS: Record<BinaryMediaIconKind, Component> = {
+  image: Image,
+  pdf: FileText,
+  spreadsheet: FileSpreadsheet,
+  archive: FileArchive,
+  video: FileVideo,
+  audio: FileAudio,
+  code: FileCode,
+  file: File,
+};
+
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyBinaryField' });
 
 defineOptions({ name: 'ChoyBinaryField' });
 
@@ -161,18 +151,6 @@ type IsAny<T> = 0 extends 1 & T ? true : false;
 type ViewType = any;
 type ValueRefGetter = () => { value: any };
 type OnFieldChange = (() => Promise<void>) | undefined;
-type UploadPassthroughProps = {
-  drag?: boolean;
-  multiple?: boolean;
-  limit?: number;
-  disabled?: boolean;
-  showFileList?: boolean;
-  listType?: string;
-  onExceed?: (...args: any[]) => void;
-};
-type UploadRawFile = File;
-type UploadFile = { raw?: UploadRawFile | null; name?: string };
-type AttachmentLike = Record<string, any>;
 
 const props = withDefaults(
   defineProps<{
@@ -188,14 +166,16 @@ const props = withDefaults(
     visible?: FieldStateExpr<T, V>;
     cellVisible?: FieldStateExpr<T, V>;
 
-    formItemProps?: Record<string, unknown>;
+    formItemProps?: Partial<FormItemProps>;
     orientation?: 'horizontal' | 'vertical';
     vColumnProps?: Record<string, unknown>;
     agg?: NarrowAggProp<NonNumericAggFns>;
     accept?: string;
     uploadText?: string;
     uploadDropText?: string;
-    uploadProps?: UploadPassthroughProps;
+    /** Show dashed drop zone when empty (default true). */
+    drag?: boolean;
+    disabled?: boolean;
     renderMode?: 'auto' | 'form' | 'table' | 'inline';
     showInlineError?: boolean;
   }>(),
@@ -210,153 +190,84 @@ const props = withDefaults(
     accept: '',
     uploadText: '',
     uploadDropText: '',
-    uploadProps: () => ({ drag: true, showFileList: false }),
+    drag: true,
+    disabled: false,
     renderMode: 'auto',
     showInlineError: false,
   }
 );
 
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
+const fieldErrors = inject<Ref<Map<string, string>> | null>('field-errors', null);
+const formSubmitting = inject<Ref<boolean> | undefined>('form-submitting', undefined);
+
+const pickError = ref('');
+
+const pickErrorRule = {
+  validator: (_r: unknown, _value: unknown, cb: (error?: Error) => void) => {
+    if (pickError.value) return cb(new Error(pickError.value));
+    cb();
+  },
+} as RuleItem;
+
+const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), pickErrorRule]);
 
 const toView = (raw: any): ViewType => raw;
 const fromView = (v: ViewType) => v as unknown as V;
-const accept = (props.accept || '').trim();
+const accept = computed(() => (props.accept || '').trim());
 const uploadButtonText = computed(() => (props.uploadText || _t('Upload file')).trim() || _t('Upload file'));
-const uploadDropText = computed(() => (props.uploadDropText || _t('Drop file here or click to upload')).trim() || _t('Drop file here or click to upload'));
-const uploadConfig = (props.uploadProps || {}) as UploadPassthroughProps;
-const uploadMultiple = uploadConfig.multiple ?? false;
-const uploadDrag = uploadConfig.drag ?? true;
-const uploadShowFileList = uploadConfig.showFileList ?? false;
-const uploadDisabled = uploadConfig.disabled ?? false;
-const replaceButtonText = computed(() => (uploadMultiple ? uploadButtonText.value : _t('Replace file')));
+const uploadDropLabel = computed(
+  () => (props.uploadDropText || _t('Drop file here or click to upload')).trim() || _t('Drop file here or click to upload')
+);
+const replaceButtonText = computed(() => _t('Replace file'));
 
-function isAttachmentObject(raw: unknown): raw is AttachmentLike {
-  return !!raw && typeof raw === 'object' && !Array.isArray(raw);
+function toDisplayText(raw: any): string {
+  return toAttachmentDisplayText(raw, '[binary]');
 }
 
-function resolveDescriptor(raw: unknown): AttachmentLike | undefined {
-  if (!isAttachmentObject(raw)) return undefined;
-  const descriptor = raw.descriptor;
-  return descriptor && typeof descriptor === 'object' && !Array.isArray(descriptor) ? (descriptor as AttachmentLike) : undefined;
+function binaryMediaIcon(raw: unknown): Component {
+  return BINARY_MEDIA_ICONS[resolveBinaryMediaIconKind(raw)] ?? File;
 }
 
-function resolveBindingId(raw: unknown): string | undefined {
-  if (!isAttachmentObject(raw)) return undefined;
-  const descriptor = resolveDescriptor(raw);
-  return normalizeOptionalString(raw.attachmentBindingId ?? raw.bindingId ?? raw.Id ?? descriptor?.id);
+function fieldPropKey(): string {
+  return String(binding.prop || props.prop || '');
 }
 
-function resolveObjectId(raw: unknown): string | undefined {
-  if (!isAttachmentObject(raw)) return undefined;
-  const fromAttachmentObjectId = normalizeOptionalString(raw.attachmentObjectId);
-  if (fromAttachmentObjectId) return fromAttachmentObjectId;
-  return normalizeOptionalString(raw.objectId);
-}
-
-function resolveFileName(raw: unknown): string | undefined {
-  if (typeof raw === 'string') return normalizeOptionalString(raw);
-  if (!isAttachmentObject(raw)) return undefined;
-  const descriptor = resolveDescriptor(raw);
-  return normalizeOptionalString(raw.fileName ?? raw.displayName ?? raw.name ?? raw.originalFileName ?? descriptor?.fileName);
-}
-
-function resolveMimeType(raw: unknown): string | undefined {
-  if (!isAttachmentObject(raw)) return undefined;
-  const descriptor = resolveDescriptor(raw);
-  return normalizeOptionalString(raw.mimeType ?? raw.contentType ?? raw.clientContentType ?? raw.proposedContentType ?? descriptor?.mimeType);
-}
-
-function resolveSizeBytes(raw: unknown): number | undefined {
-  if (!isAttachmentObject(raw)) return undefined;
-  const descriptor = resolveDescriptor(raw);
-  const source = raw.sizeBytes ?? raw.size ?? raw.file?.size ?? descriptor?.sizeBytes;
-  const size = typeof source === 'number' ? source : Number(source);
-  return Number.isFinite(size) && size >= 0 ? size : undefined;
-}
-
-function resolveDownloadUrl(raw: unknown): string | undefined {
-  if (!isAttachmentObject(raw)) return undefined;
-  const descriptor = resolveDescriptor(raw);
-  const fromDownloadUrl = normalizeOptionalString(raw.downloadUrl);
-  if (fromDownloadUrl) return fromDownloadUrl;
-  const fromUrl = normalizeOptionalString(raw.url);
-  if (fromUrl) return fromUrl;
-  const fromPreviewUrl = normalizeOptionalString(raw.previewUrl);
-  if (fromPreviewUrl) return fromPreviewUrl;
-  const fromDescriptorDownload = normalizeOptionalString(descriptor?.downloadUrl);
-  if (fromDescriptorDownload) return fromDescriptorDownload;
-  return normalizeOptionalString(descriptor?.previewUrl);
-}
-
-function hasAttachment(raw: unknown): boolean {
-  if (raw == null) return false;
-  if (typeof raw === 'string') return !!normalizeOptionalString(raw);
-  if (isAttachmentObject(raw)) {
-    const kind = normalizeOptionalString(raw.kind)?.toLowerCase();
-    if (kind === 'noop' || kind === 'clear') return false;
-    return !!(resolveBindingId(raw) || resolveFileName(raw) || resolveObjectId(raw) || resolveDownloadUrl(raw) || raw.file);
+function setPickError(message: string): void {
+  pickError.value = message;
+  const key = fieldPropKey();
+  const map = fieldErrors?.value;
+  if (map && key) {
+    map.set(key, message);
   }
-  return true;
 }
 
-function shouldShowUploadTrigger(raw: unknown): boolean {
-  if (uploadMultiple) return true;
-  return !hasAttachment(raw);
-}
-
-function shouldUseDragMode(raw: unknown): boolean {
-  return uploadDrag && shouldShowUploadTrigger(raw);
-}
-
-function shouldShowNativeFileList(raw: unknown): boolean {
-  return uploadShowFileList && shouldShowUploadTrigger(raw);
-}
-
-function formatSize(sizeBytes: number | undefined): string | undefined {
-  if (sizeBytes == null) return undefined;
-  if (sizeBytes < 1024) return `${sizeBytes} B`;
-  const units = ['KB', 'MB', 'GB', 'TB'];
-  let value = sizeBytes / 1024;
-  let unitIndex = 0;
-  while (value >= 1024 && unitIndex < units.length - 1) {
-    value /= 1024;
-    unitIndex += 1;
+function clearPickError(): void {
+  pickError.value = '';
+  const key = fieldPropKey();
+  const map = fieldErrors?.value;
+  if (map && key) {
+    map.delete(key);
   }
-  const digits = value >= 10 ? 0 : 1;
-  return `${value.toFixed(digits)} ${units[unitIndex]}`;
 }
 
-function toMetaText(raw: unknown): string | undefined {
-  const mimeType = resolveMimeType(raw);
-  const sizeText = formatSize(resolveSizeBytes(raw));
-  const summary = [mimeType, sizeText].filter(Boolean).join(' · ');
-  return summary || undefined;
+function isUploadBusy(raw: unknown): boolean {
+  return !!formSubmitting?.value && hasPendingLocalFile(raw);
 }
 
-function isTableRenderMode(renderMode: unknown): boolean {
-  return renderMode === 'table';
+function editAttachmentState(raw: unknown): 'idle' | 'uploading' | 'error' | 'done' {
+  if (isUploadBusy(raw)) return 'uploading';
+  if (pickError.value && !hasAttachment(raw)) return 'error';
+  if (hasAttachment(raw)) return 'done';
+  return 'idle';
 }
 
-/** Enforce accept tokens beyond the native input hint (drag/drop and *.ext). */
-function isAcceptAllowed(file: File): boolean {
-  const name = String(file.name || '').toLowerCase();
-  const type = String(file.type || '').toLowerCase();
-  const tokens = accept.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
-  const restrictive = tokens.filter(t => t !== '*' && t !== '*/*');
-  if (!restrictive.length) return true;
-  return restrictive.some(token => {
-    if (token.startsWith('*.')) return name.endsWith(token.slice(1));
-    if (token.startsWith('.')) return name.endsWith(token);
-    if (token.endsWith('/*')) return type !== '' && type.startsWith(token.slice(0, -1));
-    return type === token;
-  });
-}
-
-async function applySelectedBinary(file: UploadRawFile, fieldValue: ValueRefGetter, onFieldChange?: OnFieldChange): Promise<void> {
-  if (!isAcceptAllowed(file)) {
-    ChoyMessage.error(_t('Selected file type is not allowed.'));
+async function applySelectedBinary(file: File, fieldValue: ValueRefGetter, onFieldChange?: OnFieldChange): Promise<void> {
+  if (!isAcceptAllowed(file, accept.value)) {
+    setPickError(_t('Selected file type is not allowed.'));
     return;
   }
+  clearPickError();
   const valueRef = fieldValue();
   const fileName = normalizeOptionalString(file.name);
   const contentType = normalizeOptionalString(file.type);
@@ -377,60 +288,16 @@ async function applySelectedBinary(file: UploadRawFile, fieldValue: ValueRefGett
   }
 }
 
-async function onUploadChange(uploadFile: UploadFile, fieldValue: ValueRefGetter, onFieldChange?: OnFieldChange): Promise<void> {
-  const rawFile = uploadFile.raw;
-  if (!rawFile) return;
-  await applySelectedBinary(rawFile, fieldValue, onFieldChange);
-}
-
-function createOnChange(fieldValue: ValueRefGetter, onFieldChange?: OnFieldChange) {
-  return async (uploadFile: UploadFile): Promise<void> => {
-    await onUploadChange(uploadFile, fieldValue, onFieldChange);
-  };
-}
-
-async function onNativeFileChange(ev: Event, fieldValue: ValueRefGetter, onFieldChange?: OnFieldChange): Promise<void> {
-  const input = ev.target as HTMLInputElement;
-  const file = input.files?.[0];
-  if (!file) return;
-  input.value = '';
-  await applySelectedBinary(file, fieldValue, onFieldChange);
-}
-
-function onUploadDragOver(ev: DragEvent): void {
-  if (uploadDisabled) return;
-  ev.dataTransfer && (ev.dataTransfer.dropEffect = 'copy');
-}
-
-async function onNativeFileDrop(
-  ev: DragEvent,
-  fieldValue: ValueRefGetter,
-  onFieldChange?: OnFieldChange,
-): Promise<void> {
-  if (uploadDisabled) return;
-  const file = ev.dataTransfer?.files?.[0];
-  if (!file) return;
+async function onPickedFile(file: File, fieldValue: ValueRefGetter, onFieldChange?: OnFieldChange): Promise<void> {
   await applySelectedBinary(file, fieldValue, onFieldChange);
 }
 
 async function removeBinary(fieldValue: ValueRefGetter, onFieldChange?: OnFieldChange): Promise<void> {
+  clearPickError();
   const valueRef = fieldValue();
   valueRef.value = null;
   if (typeof onFieldChange === 'function') {
     await onFieldChange();
   }
 }
-
-function toDisplayText(raw: any): string {
-  if (raw == null) return '';
-  const fileName = resolveFileName(raw);
-  if (fileName) return fileName;
-  const bindingId = resolveBindingId(raw);
-  if (bindingId) return bindingId;
-  if (typeof raw === 'object' && raw && !Array.isArray(raw)) {
-    return '[binary]';
-  }
-  return String(raw);
-}
 </script>
-

@@ -18,7 +18,7 @@ SPDX-License-Identifier: Apache-2.0
       v-if="resolvedLabel || effectiveHelp || requiredForm"
       class="choy-field-base__label-row flex items-center gap-1 font-normal text-muted-foreground"
     >
-      <FieldLabel v-if="resolvedLabel" :for="inputIdForm">
+      <FieldLabel v-if="resolvedLabel" :id="formLabelId" :for="labelHtmlFor || undefined">
         {{ resolvedLabel }}
         <span v-if="requiredForm" class="text-destructive" aria-hidden="true">*</span>
       </FieldLabel>
@@ -56,6 +56,7 @@ SPDX-License-Identifier: Apache-2.0
               :visible="visibleForm"
               :inputName="inputName"
               :inputId="inputIdForm"
+              :labelId="formLabelId"
               :describedBy="formDescribedBy"
               :invalid="formInvalid"
               :onFieldChange="onchangeHandlers.onChange"
@@ -86,7 +87,11 @@ SPDX-License-Identifier: Apache-2.0
             <Building2 class="size-4" />
           </ChoyButton>
         </div>
-        <div v-show="!effectiveEditForm" class="choy-field-base__display-wrap">
+        <div
+          v-show="!effectiveEditForm"
+          class="choy-field-base__display-wrap"
+          :aria-labelledby="resolvedLabel ? formLabelId : undefined"
+        >
           <slot
             name="display"
             :fieldValue="valueForm"
@@ -97,6 +102,7 @@ SPDX-License-Identifier: Apache-2.0
             :visible="visibleForm"
             :inputName="inputName"
             :inputId="inputIdForm"
+            :labelId="formLabelId"
             :triggerOnchange="onchangeHandlers.trigger"
             :onchangeRunning="onchangeHandlers.running?.value"
           />
@@ -115,6 +121,7 @@ SPDX-License-Identifier: Apache-2.0
                 :visible="visibleForm"
                 :inputName="inputName"
                 :inputId="inputIdForm"
+                :labelId="formLabelId"
                 :describedBy="formDescribedBy"
                 :invalid="formInvalid"
                 :onFieldChange="onchangeHandlers.onChange"
@@ -147,7 +154,7 @@ SPDX-License-Identifier: Apache-2.0
           </div>
         </template>
         <template v-else>
-          <div class="choy-field-base__display-wrap">
+          <div class="choy-field-base__display-wrap" :aria-labelledby="resolvedLabel ? formLabelId : undefined">
             <slot
               name="display"
               :fieldValue="valueForm"
@@ -158,6 +165,7 @@ SPDX-License-Identifier: Apache-2.0
               :visible="visibleForm"
               :inputName="inputName"
               :inputId="inputIdForm"
+              :labelId="formLabelId"
               :triggerOnchange="onchangeHandlers.trigger"
               :onchangeRunning="onchangeHandlers.running?.value"
             />
@@ -232,6 +240,7 @@ SPDX-License-Identifier: Apache-2.0
             :visible="cellVisibleForRow(row)"
             :inputName="inputName"
             :inputId="inputIdForRow(row)"
+            :labelId="`${inputIdForRow(row)}-label`"
             :onFieldChange="onchangeHandlers.onChange"
             :triggerOnchange="onchangeHandlers.trigger"
             :onchangeRunning="onchangeHandlers.running?.value"
@@ -248,6 +257,7 @@ SPDX-License-Identifier: Apache-2.0
             :visible="cellVisibleForRow(row)"
             :inputName="inputName"
             :inputId="inputIdForRow(row)"
+            :labelId="`${inputIdForRow(row)}-label`"
             :triggerOnchange="onchangeHandlers.trigger"
             :onchangeRunning="onchangeHandlers.running?.value"
           />
@@ -278,6 +288,7 @@ SPDX-License-Identifier: Apache-2.0
           :visible="visibleInline"
           :inputName="inputName"
           :inputId="inputIdForm"
+          :labelId="formLabelId"
           :onFieldChange="onchangeHandlers.onChange"
           :triggerOnchange="onchangeHandlers.trigger"
           :onchangeRunning="onchangeHandlers.running?.value"
@@ -294,6 +305,7 @@ SPDX-License-Identifier: Apache-2.0
           :visible="visibleInline"
           :inputName="inputName"
           :inputId="inputIdForm"
+          :labelId="formLabelId"
           :triggerOnchange="onchangeHandlers.trigger"
           :onchangeRunning="onchangeHandlers.running?.value"
         />
@@ -318,6 +330,7 @@ SPDX-License-Identifier: Apache-2.0
           :visible="visibleInline"
           :inputName="inputName"
           :inputId="inputIdForm"
+          :labelId="formLabelId"
           :onFieldChange="onchangeHandlers.onChange"
           :triggerOnchange="onchangeHandlers.trigger"
           :onchangeRunning="onchangeHandlers.running?.value"
@@ -334,6 +347,7 @@ SPDX-License-Identifier: Apache-2.0
           :visible="visibleInline"
           :inputName="inputName"
           :inputId="inputIdForm"
+          :labelId="formLabelId"
           :triggerOnchange="onchangeHandlers.trigger"
           :onchangeRunning="onchangeHandlers.running?.value"
         />
@@ -419,6 +433,12 @@ const props = withDefaults(
     rules?: RuleItem[];
     /** Explicit control id; otherwise `fld-${prop}`. Label `for` and slot `inputId` share this. */
     id?: string;
+    /**
+     * When true (default) and the form control is editable, FieldLabel uses `for=inputId`.
+     * Set false for composite / non-labelable controls (html, json, o2m, trees); use slot
+     * `labelId` with `aria-labelledby` on the control root instead.
+     */
+    labelForControl?: boolean;
     formItemProps?: Partial<FormItemProps>;
     vColumnProps?: Record<string, unknown>;
     /**
@@ -448,6 +468,7 @@ const props = withDefaults(
     renderMode: 'auto',
     preserveModeSlot: false,
     showInlineError: false,
+    labelForControl: true,
   }
 );
 
@@ -729,6 +750,8 @@ const inputIdForm = computed(() => {
   const explicit = typeof props.id === 'string' ? props.id.trim() : '';
   return explicit || `fld-${inputName.value}`;
 });
+/** Stable id on FieldLabel for aria-labelledby when `for` is omitted. */
+const formLabelId = computed(() => `${inputIdForm.value}-label`);
 const inputIdForRow = (row: T) => `${inputIdForm.value}-${guessRowKey(row)}`;
 
 /* View mapping for slot rendering */
@@ -791,6 +814,15 @@ const requiredForm = computed(() => {
   return evalFlag(props.required, recordForm().value, rawValueForm().value, false);
 });
 const effectiveEditForm = computed(() => binding.env.isEditMode && visibleForm.value && !readonlyForm.value);
+/**
+ * `for` only when an editable labelable control is expected to own `inputId`.
+ * Readonly form display and composite controls omit `for` (use `labelId` + aria-labelledby).
+ */
+const labelHtmlFor = computed(() => {
+  if (!props.labelForControl) return '';
+  if (!effectiveEditForm.value) return '';
+  return inputIdForm.value;
+});
 
 /* Column-level visibility control */
 const columnVisible = computed(() => (typeof props.visible === 'boolean' ? !!props.visible : true));
@@ -928,6 +960,7 @@ defineSlots<{
     visible: boolean;
     inputName: string | undefined;
     inputId: string | undefined;
+    labelId?: string;
     describedBy?: string;
     invalid?: boolean;
     onFieldChange: () => Promise<void>;
@@ -942,6 +975,7 @@ defineSlots<{
     required: boolean;
     visible: boolean;
     inputName: string | undefined;
+    labelId?: string;
     inputId: string | undefined;
     triggerOnchange: (fp?: string | string[]) => Promise<void>;
     onchangeRunning: boolean | undefined;

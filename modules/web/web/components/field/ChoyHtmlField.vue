@@ -19,13 +19,15 @@ SPDX-License-Identifier: Apache-2.0
     :cellVisible="cellVisible"
     :renderMode="renderMode"
     :showInlineError="showInlineError"
+    :label-for-control="false"
     v-bind="$attrs"
   >
-    <template #edit="{ fieldValue, inputId, inputName, describedBy, invalid, required }">
+    <template #edit="{ fieldValue, inputId, inputName, labelId, describedBy, invalid, required }">
       <ChoyHtmlEditorCell
         :field-value="fieldValue"
         :control-id="inputId"
         :control-name="inputName"
+        :label-id="labelId"
         :described-by="describedBy || undefined"
         :invalid="!!invalid"
         :required="!!required"
@@ -53,7 +55,6 @@ import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { computed, defineComponent, h, onBeforeUnmount, ref, watch, type Component } from 'vue';
 import { EditorContent, useEditor } from '@tiptap/vue-3';
 import StarterKit from '@tiptap/starter-kit';
-import Link from '@tiptap/extension-link';
 import {
   Bold,
   Italic,
@@ -154,6 +155,7 @@ const ChoyHtmlEditorCell = defineComponent({
     fieldValue: { type: Function, required: true },
     controlId: { type: String, default: '' },
     controlName: { type: String, default: '' },
+    labelId: { type: String, default: '' },
     describedBy: { type: String, default: '' },
     invalid: { type: Boolean, default: false },
     required: { type: Boolean, default: false },
@@ -233,6 +235,7 @@ const ChoyHtmlEditorCell = defineComponent({
       };
       if (cellProps.controlId) next.id = cellProps.controlId;
       if (cellProps.controlName) next.name = cellProps.controlName;
+      if (cellProps.labelId) next['aria-labelledby'] = cellProps.labelId;
       if (cellProps.invalid) next['aria-invalid'] = 'true';
       if (cellProps.required) next['aria-required'] = 'true';
       if (cellProps.describedBy) next['aria-describedby'] = cellProps.describedBy;
@@ -244,20 +247,29 @@ const ChoyHtmlEditorCell = defineComponent({
       if (!dom) return;
       const next = controlAttributes();
       // Class stays on editorProps.attributes; rewriting it here would drop TipTap/ProseMirror roots.
-      for (const key of ['id', 'name', 'aria-invalid', 'aria-required', 'aria-describedby'] as const) {
+      for (const key of [
+        'id',
+        'name',
+        'aria-labelledby',
+        'aria-invalid',
+        'aria-required',
+        'aria-describedby',
+      ] as const) {
         if (next[key]) dom.setAttribute(key, next[key]!);
         else dom.removeAttribute(key);
       }
     }
 
     const editor = useEditor({
+      // StarterKit includes Link; set openOnClick/autolink/protocols via StarterKit.link.
       extensions: [
-        StarterKit,
-        Link.configure({
-          openOnClick: false,
-          autolink: true,
-          defaultProtocol: 'https',
-          protocols: ['http', 'https', 'mailto'],
+        StarterKit.configure({
+          link: {
+            openOnClick: false,
+            autolink: true,
+            defaultProtocol: 'https',
+            protocols: ['http', 'https', 'mailto'],
+          },
         }),
       ],
       content: '',

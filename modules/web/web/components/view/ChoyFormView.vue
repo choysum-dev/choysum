@@ -449,6 +449,9 @@ const { submitting, handleSubmit, onNativeSubmit } = useFormViewSubmit({
   _t,
 });
 
+/** Binary/Image fields use this to show Attachment state=uploading during Prepare/PUT/Finalize. */
+provide('form-submitting', submitting);
+
 const overlayBusy = computed<boolean>(() => loading.value && !submitting.value);
 const controlsLocked = computed<boolean>(() => loading.value || submitting.value);
 const saveLabel = computed(() => (submitting.value ? _t('Saving...') : _t('Save')));
