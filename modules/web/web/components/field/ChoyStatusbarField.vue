@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <ChoyFieldBase
     v-bind="$attrs"
-    class="choy-statusbar-field mb-0 [&_.choy-field-base__label]:hidden"
+    class="choy-statusbar-field mb-0"
     :binding="binding"
     :label="label"
     :rules="mergedRules"
@@ -22,54 +22,60 @@ SPDX-License-Identifier: Apache-2.0
     :renderMode="renderMode"
     :showInlineError="showInlineError"
   >
-    <!-- Same chrome in edit + display so clickable works outside edit mode. -->
+    <!-- Same chrome in edit + display; interactivity follows isInteractive. -->
     <template #edit="{ fieldValue, record, inputId, describedBy }">
       <div
-        class="choy-statusbar-field flex min-h-control flex-wrap items-center gap-1"
-        role="group"
+        class="choy-statusbar-field__control"
+        role="radiogroup"
         data-testid="choy-statusbar"
+        :data-clickable="isInteractive ? 'true' : undefined"
         :id="inputId || undefined"
         :aria-describedby="describedBy || undefined"
         :aria-disabled="!isInteractive || pending || undefined"
       >
-        <ChoyButton
-          v-for="(opt, index) in optionsFor(record)"
-          :key="`${opt.value}-${index}`"
+        <button
+          v-for="item in ribbonItems(record, fieldValue().value)"
+          :key="item.opt.value"
           type="button"
-          size="sm"
-          class="choy-statusbar-opt h-control"
-          :data-value="opt.value"
-          :variant="normalizeSegmentedModelValue(fieldValue().value) === opt.value ? 'default' : 'outline'"
-          :disabled="!isInteractive || pending || opt.disabled"
-          :aria-pressed="normalizeSegmentedModelValue(fieldValue().value) === opt.value"
-          @click="onSelect(fieldValue, opt.value)"
+          role="radio"
+          class="choy-statusbar-opt"
+          :data-value="item.opt.value"
+          :data-selected="item.selected ? 'true' : undefined"
+          :data-stage="item.stage"
+          :data-edge="item.edge"
+          :aria-checked="item.selected ? 'true' : 'false'"
+          :disabled="pending || item.opt.disabled ? true : undefined"
+          @click="onSelect(fieldValue, item.opt.value)"
         >
-          {{ opt.label }}
-        </ChoyButton>
+          {{ item.opt.label }}
+        </button>
       </div>
     </template>
 
     <template #display="{ fieldValue, record }">
       <div
-        class="choy-statusbar-field flex min-h-control flex-wrap items-center gap-1"
-        role="group"
+        class="choy-statusbar-field__control"
+        role="radiogroup"
         data-testid="choy-statusbar"
+        :data-clickable="isInteractive ? 'true' : undefined"
         :aria-disabled="!isInteractive || pending || undefined"
       >
-        <ChoyButton
-          v-for="(opt, index) in optionsFor(record)"
-          :key="`${opt.value}-${index}`"
+        <button
+          v-for="item in ribbonItems(record, fieldValue().value)"
+          :key="item.opt.value"
           type="button"
-          size="sm"
-          class="choy-statusbar-opt h-control"
-          :data-value="opt.value"
-          :variant="normalizeSegmentedModelValue(fieldValue().value) === opt.value ? 'default' : 'outline'"
-          :disabled="!isInteractive || pending || opt.disabled"
-          :aria-pressed="normalizeSegmentedModelValue(fieldValue().value) === opt.value"
-          @click="onSelect(fieldValue, opt.value)"
+          role="radio"
+          class="choy-statusbar-opt"
+          :data-value="item.opt.value"
+          :data-selected="item.selected ? 'true' : undefined"
+          :data-stage="item.stage"
+          :data-edge="item.edge"
+          :aria-checked="item.selected ? 'true' : 'false'"
+          :disabled="pending || item.opt.disabled ? true : undefined"
+          @click="onSelect(fieldValue, item.opt.value)"
         >
-          {{ opt.label }}
-        </ChoyButton>
+          {{ item.opt.label }}
+        </button>
       </div>
     </template>
   </ChoyFieldBase>
@@ -83,7 +89,6 @@ import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { WritableComputedRef } from 'vue';
 import { cn } from '@/web/web/lib/utils';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
-import ChoyButton from '../layout/ChoyButton.vue';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
@@ -111,6 +116,9 @@ defineOptions({ name: 'ChoyStatusbarField', inheritAttrs: false });
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 
+type StatusbarStage = 'past' | 'current' | 'future';
+type StatusbarEdge = 'first' | 'middle' | 'last';
+
 const props = withDefaults(
   defineProps<{
     store?: WebModelStore<T>;
@@ -120,8 +128,13 @@ const props = withDefaults(
     label?: string;
     rules?: RuleItem[];
 
-    /** When true, allow writing the selection value. Default false. */
-    clickable?: boolean;
+    /**
+     * Write gate for stage clicks.
+     * null/omit: clickable in form edit mode.
+     * true: always when not readonly; false: never.
+     * (null default avoids Vue Boolean-prop coercing omit → false.)
+     */
+    clickable?: boolean | null;
     disabled?: boolean;
     /** Write gate before assigning fieldValue. */
     beforeChange?: StatusbarBeforeChange;
@@ -145,7 +158,7 @@ const props = withDefaults(
   }>(),
   {
     rules: () => [],
-    clickable: false,
+    clickable: null,
     disabled: false,
     formItemProps: () => ({}),
     vColumnProps: () => ({}),
@@ -213,9 +226,12 @@ const exprReadonly = computed(() => {
   return false;
 });
 
-const isInteractive = computed(
-  () => props.clickable && !props.disabled && !exprReadonly.value && !metaReadonly.value,
-);
+const isInteractive = computed(() => {
+  if (props.disabled || exprReadonly.value || metaReadonly.value) return false;
+  if (props.clickable === false) return false;
+  if (props.clickable === true) return true;
+  return binding.env?.isEditMode === true;
+});
 
 const whitelist = computed(() => resolveStatusbarWhitelist(props.statusbarVisible, props.selection));
 
@@ -240,6 +256,42 @@ function optionsFor(rowRef?: any): StatusbarOption[] {
     onchangeValues: filt?.values,
     onchangeDisabled: filt?.disabled,
   });
+}
+
+function isSelected(raw: unknown, value: string): boolean {
+  return normalizeSegmentedModelValue(raw) === value;
+}
+
+/** Index of the current value in options; -1 when missing (all stages render as future). */
+function currentIndexOf(options: StatusbarOption[], raw: unknown): number {
+  const v = normalizeSegmentedModelValue(raw);
+  if (!v) return -1;
+  return options.findIndex((o) => o.value === v);
+}
+
+function stageFor(index: number, currentIndex: number): StatusbarStage {
+  if (currentIndex < 0) return 'future';
+  if (index < currentIndex) return 'past';
+  if (index === currentIndex) return 'current';
+  return 'future';
+}
+
+function edgeFor(index: number, len: number): StatusbarEdge {
+  if (len <= 1 || index === 0) return 'first';
+  if (index === len - 1) return 'last';
+  return 'middle';
+}
+
+function ribbonItems(rowRef: unknown, raw: unknown) {
+  const options = optionsFor(rowRef);
+  const currentIndex = currentIndexOf(options, raw);
+  const len = options.length;
+  return options.map((opt, index) => ({
+    opt,
+    selected: isSelected(raw, opt.value),
+    stage: stageFor(index, currentIndex),
+    edge: edgeFor(index, len),
+  }));
 }
 
 function readFieldCurrent(): string | null {
@@ -288,4 +340,3 @@ const internalRule = {
 } as RuleItem;
 const mergedRules = computed<RuleItem[]>(() => [...(props.rules ?? []), internalRule]);
 </script>
-

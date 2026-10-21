@@ -28,9 +28,8 @@ SPDX-License-Identifier: Apache-2.0
           <TooltipTrigger as-child>
             <button
               type="button"
-              class="inline-flex text-muted-foreground hover:text-foreground"
+              class="inline-flex cursor-help text-muted-foreground hover:text-foreground"
               data-slot="form-help"
-              :title="effectiveHelp"
               :aria-label="helpAccessibleLabel"
             >
               <CircleHelp class="size-3.5" />
@@ -339,15 +338,21 @@ SPDX-License-Identifier: Apache-2.0
           :onchangeRunning="onchangeHandlers.running?.value"
         />
       </template>
-      <button
-        v-if="effectiveHelp"
-        type="button"
-        class="choy-field-base__help-btn m-0 inline-flex cursor-help items-center justify-center border-0 bg-transparent p-0 leading-none text-inherit focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        :aria-label="helpAccessibleLabel"
-        :title="effectiveHelp"
-      >
-        <CircleHelp class="size-3.5" />
-      </button>
+      <TooltipProvider v-if="effectiveHelp">
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <button
+              type="button"
+              class="choy-field-base__help-btn m-0 inline-flex cursor-help items-center justify-center border-0 bg-transparent p-0 leading-none text-muted-foreground hover:text-foreground focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              data-slot="form-help"
+              :aria-label="helpAccessibleLabel"
+            >
+              <CircleHelp class="size-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{{ effectiveHelp }}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </div>
     <p
       v-if="showInlineError"

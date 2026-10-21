@@ -243,7 +243,9 @@ describe('ChoyFieldBase label and help', () => {
     });
     const help = m.q('[data-slot="form-help"]') as HTMLElement | null;
     expect(help).toBeTruthy();
-    expect(help!.getAttribute('title')).toBe('Short unique code used in references');
+    // TooltipContent carries the tip; avoid native title (would double with the portal tip).
+    expect(help!.getAttribute('title')).toBeFalsy();
+    expect(help!.getAttribute('aria-label') || '').toContain('Short unique code used in references');
     m.unmount();
   });
 
@@ -256,13 +258,17 @@ describe('ChoyFieldBase label and help', () => {
     m.unmount();
   });
 
-  test('renders inline help tip beside the control', () => {
+  test('renders inline help tip beside the control with the same tip chrome as form', () => {
     const m = mountBase({
       binding: makeBinding({ string: 'Code', help: 'Inline help text' }),
       renderMode: 'inline',
     });
     expect(m.q('.choy-field-base__inline-wrap')).toBeTruthy();
-    expect(m.q('.choy-field-base__help-btn')?.getAttribute('title')).toBe('Inline help text');
+    const help = m.q('[data-slot="form-help"]') as HTMLElement | null;
+    expect(help).toBeTruthy();
+    expect(help!.className || '').toContain('choy-field-base__help-btn');
+    expect(help!.getAttribute('title')).toBeFalsy();
+    expect(help!.getAttribute('aria-label') || '').toContain('Inline help text');
     m.unmount();
   });
 });

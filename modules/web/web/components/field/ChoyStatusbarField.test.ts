@@ -11,7 +11,6 @@ import type { UseField } from '@/web/web/composables/useField';
 import { createFieldsGetHelpers } from '@/web/web/stores/fieldsGet';
 import type { WebFieldMetadata } from '@/web/web/stores/modelStore';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyFieldBase from './ChoyFieldBase.vue';
 import ChoyStatusbarField from './ChoyStatusbarField.vue';
 
@@ -92,38 +91,6 @@ function installFieldBaseStub(slot: 'edit' | 'display' | 'both' = 'edit') {
   });
 }
 
-function installChoyButtonStub() {
-  stubSfc(ChoyButton as any, {
-    name: 'ChoyButton',
-    props: {
-      disabled: Boolean,
-      variant: String,
-      size: String,
-      type: String,
-      class: [String, Array, Object],
-    },
-    emits: ['click'],
-    inheritAttrs: false,
-    setup(props: any, { emit, slots, attrs }: any) {
-      return () =>
-        h(
-          'button',
-          {
-            ...attrs,
-            type: 'button',
-            class: ['choy-statusbar-opt', props.class, attrs.class],
-            disabled: props.disabled || undefined,
-            'data-value': attrs['data-value'],
-            'data-disabled': props.disabled ? '1' : '0',
-            'aria-pressed': attrs['aria-pressed'],
-            onClick: (e: Event) => emit('click', e),
-          },
-          slots.default?.()
-        );
-    },
-  } as any);
-}
-
 function mountStatusbar(
   props: Record<string, unknown>,
   binding: UseField,
@@ -131,7 +98,6 @@ function mountStatusbar(
 ) {
   lastBaseProps.current = null;
   installFieldBaseStub(opts?.slot ?? 'edit');
-  installChoyButtonStub();
   return mountApp(ChoyStatusbarField as any, {
     props: {
       binding,
@@ -155,26 +121,130 @@ function optionValues(m: { qa: (s: string) => Element[] }) {
   });
 }
 
+function stageMap(m: { qa: (s: string) => Element[] }) {
+  return Object.fromEntries(
+    optionValues(m).map((o) => [o.value, o.el.getAttribute('data-stage') || '']),
+  );
+}
+
+function edgeMap(m: { qa: (s: string) => Element[] }) {
+  return Object.fromEntries(
+    optionValues(m).map((o) => [o.value, o.el.getAttribute('data-edge') || '']),
+  );
+}
+
 describe('ChoyStatusbarField mount wiring', () => {
   afterEach(() => {
     restoreSfc(ChoyFieldBase as any);
-    restoreSfc(ChoyButton as any);
   });
 
-  test('defaults to non-clickable and lists meta options', async () => {
+  test('display mode is non-clickable and lists ribbon options', async () => {
     const store = makeStore();
-    const { binding } = makeBinding({ meta: staticMeta, store });
+    const { binding } = makeBinding({ meta: staticMeta, store, isEditMode: false });
     const m = mountStatusbar({}, binding);
     await flushPromises();
     const root = statusbarRoot(m);
+    expect(root?.getAttribute('role')).toBe('radiogroup');
     expect(root?.getAttribute('aria-disabled')).toBe('true');
+    expect(root?.getAttribute('data-clickable')).toBeFalsy();
     expect(JSON.parse(JSON.stringify(optionValues(m).map((o) => o.value)))).toEqual([
       'draft',
       'confirmed',
       'done',
     ]);
     expect(optionValues(m).map((o) => o.text)).toEqual(['Draft', 'Confirmed', 'Done']);
-    expect(optionValues(m).every((o) => o.disabled)).toBe(true);
+    expect(optionValues(m).every((o) => o.disabled)).toBe(false);
+    const opts = optionValues(m);
+    expect(opts[0]?.el.getAttribute('data-selected')).toBe('true');
+    expect(opts[1]?.el.getAttribute('data-selected')).toBeFalsy();
+    m.unmount();
+  });
+
+  test('edit mode is clickable by default', async () => {
+    const store = makeStore();
+    const { binding, value } = makeBinding({ meta: staticMeta, store, value: 'draft', isEditMode: true });
+    const m = mountStatusbar({}, binding);
+    await flushPromises();
+    const root = statusbarRoot(m);
+    expect(root?.getAttribute('data-clickable')).toBe('true');
+    expect(root?.getAttribute('aria-disabled')).toBeFalsy();
+    expect(optionValues(m).every((o) => o.disabled)).toBe(false);
+    m.click('[data-value=done]');
+    await flushPromises();
+    expect(value.value).toBe('done');
+    m.unmount();
+  });
+
+  test('clickable false stays non-interactive even in edit mode', async () => {
+    const store = makeStore();
+    const { binding, value } = makeBinding({ meta: staticMeta, store, value: 'draft', isEditMode: true });
+    const m = mountStatusbar({ clickable: false }, binding);
+    await flushPromises();
+    expect(statusbarRoot(m)?.getAttribute('data-clickable')).toBeFalsy();
+    expect(statusbarRoot(m)?.getAttribute('aria-disabled')).toBe('true');
+    m.click('[data-value=done]');
+    await flushPromises();
+    expect(value.value).toBe('draft');
+    m.unmount();
+  });
+
+  test('marks selected when clickable true', async () => {
+    const store = makeStore();
+    const { binding } = makeBinding({ meta: staticMeta, store, value: 'confirmed', isEditMode: false });
+    const m = mountStatusbar({ clickable: true }, binding);
+    await flushPromises();
+    const root = statusbarRoot(m);
+    expect(root?.getAttribute('role')).toBe('radiogroup');
+    expect(root?.getAttribute('data-clickable')).toBe('true');
+    const opts = optionValues(m);
+    expect(opts.find((o) => o.value === 'confirmed')?.el.getAttribute('data-selected')).toBe('true');
+    expect(opts.find((o) => o.value === 'draft')?.el.getAttribute('data-selected')).toBeFalsy();
+    m.unmount();
+  });
+
+  test('assigns past/current/future stages and first/middle/last edges', async () => {
+    const store = makeStore();
+    const { binding } = makeBinding({ meta: staticMeta, store, value: 'confirmed', isEditMode: false });
+    const m = mountStatusbar({ clickable: true }, binding);
+    await flushPromises();
+    expect(stageMap(m)).toEqual({
+      draft: 'past',
+      confirmed: 'current',
+      done: 'future',
+    });
+    expect(edgeMap(m)).toEqual({
+      draft: 'first',
+      confirmed: 'middle',
+      done: 'last',
+    });
+    m.unmount();
+  });
+
+  test('all stages are future when current value is null', async () => {
+    const store = makeStore();
+    const { binding } = makeBinding({ meta: staticMeta, store, value: null, isEditMode: false });
+    const m = mountStatusbar({ clickable: true }, binding);
+    await flushPromises();
+    expect(stageMap(m)).toEqual({
+      draft: 'future',
+      confirmed: 'future',
+      done: 'future',
+    });
+    m.unmount();
+  });
+
+  test('fallback current value is current with prior options past', async () => {
+    const store = makeStore();
+    const { binding } = makeBinding({ meta: staticMeta, store, value: 'unknown', isEditMode: false });
+    const m = mountStatusbar({ clickable: true }, binding);
+    await flushPromises();
+    // unknown is appended as current fallback by resolveStatusbarOptions
+    expect(stageMap(m)).toEqual({
+      draft: 'past',
+      confirmed: 'past',
+      done: 'past',
+      unknown: 'current',
+    });
     m.unmount();
   });
 
@@ -270,14 +340,12 @@ describe('ChoyStatusbarField mount wiring', () => {
     expect(statusbarRoot(disabledMount)?.getAttribute('aria-disabled')).toBe('true');
     disabledMount.unmount();
     restoreSfc(ChoyFieldBase as any);
-    restoreSfc(ChoyButton as any);
 
     const readonlyMount = mountStatusbar({ clickable: true, readonly: true }, binding);
     await flushPromises();
     expect(statusbarRoot(readonlyMount)?.getAttribute('aria-disabled')).toBe('true');
     readonlyMount.unmount();
     restoreSfc(ChoyFieldBase as any);
-    restoreSfc(ChoyButton as any);
 
     const metaReadonly = {
       ...staticMeta,
@@ -299,7 +367,6 @@ describe('ChoyStatusbarField mount wiring', () => {
     expect(optionValues(m).map((o) => o.value)).toEqual(['draft', 'done', 'confirmed']);
     m.unmount();
     restoreSfc(ChoyFieldBase as any);
-    restoreSfc(ChoyButton as any);
 
     const { binding: selBinding } = makeBinding({ meta: staticMeta, store, value: 'draft' });
     const selMount = mountStatusbar({ selection: ['done', 'draft'] }, selBinding);
