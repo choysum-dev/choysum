@@ -131,6 +131,11 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 			TipTapStarterKit:    filepath.Join(stubDir, "tiptap_starter_kit.js"),
 			TipTapExtensionLink: filepath.Join(stubDir, "tiptap_extension_link.js"),
 			DOMPurify:           filepath.Join(stubDir, "dompurify.js"),
+			CodeMirror:          filepath.Join(stubDir, "codemirror.js"),
+			CodeMirrorView:      filepath.Join(stubDir, "codemirror_view.js"),
+			CodeMirrorState:     filepath.Join(stubDir, "codemirror_state.js"),
+			CodeMirrorLangJSON:  filepath.Join(stubDir, "codemirror_lang_json.js"),
+			CodeMirrorLint:      filepath.Join(stubDir, "codemirror_lint.js"),
 			UnovisVue:           filepath.Join(stubDir, "unovis_vue.js"),
 			UnovisTs:            filepath.Join(stubDir, "unovis_ts.js"),
 			RekaUI:              filepath.Join(stubDir, "reka_ui.js"),
@@ -140,7 +145,7 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 		plugins = append(plugins, api.Plugin{
 			Name: "choysum-fe-unit-package-stubs",
 			Setup: func(build api.PluginBuild) {
-				build.OnResolve(api.OnResolveOptions{Filter: `^(vue-router|@choysum/page-mount|@tiptap/vue-3|@tiptap/starter-kit|@tiptap/extension-link|dompurify|@unovis/vue|@unovis/ts|reka-ui|lucide-vue-next|vue-sonner)$`},
+				build.OnResolve(api.OnResolveOptions{Filter: `^(vue-router|@choysum/page-mount|@tiptap/vue-3|@tiptap/starter-kit|@tiptap/extension-link|dompurify|codemirror|@codemirror/view|@codemirror/state|@codemirror/lang-json|@codemirror/lint|@unovis/vue|@unovis/ts|reka-ui|lucide-vue-next|vue-sonner)$`},
 					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
 						// Filter and feUnitPackageStubPath must stay in sync; if they
 						// drifted, fall through instead of resolving to an empty path.

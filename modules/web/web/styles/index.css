@@ -451,6 +451,30 @@ a:hover {
   margin-block: 0.5rem;
 }
 
+.prose-choy blockquote,
+.choy-html-field__prose blockquote {
+  margin-block: 0.5rem;
+  padding-inline-start: 0.75rem;
+  border-inline-start: 3px solid var(--choy-color-border);
+  color: var(--choy-color-muted-foreground);
+}
+
+.prose-choy code,
+.choy-html-field__prose code {
+  border-radius: 0.25rem;
+  background: color-mix(in oklab, var(--choy-color-muted) 70%, transparent);
+  padding: 0.1em 0.35em;
+  font-size: 0.9em;
+}
+
+/* Json CodeMirror host: kill default CM focus ring clash with field chrome. */
+.choy-json-cm-host .cm-editor {
+  background: transparent;
+}
+.choy-json-cm-host .cm-scroller {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
 /* Icons follow surrounding text, including when a global svg color uses !important. */
 svg,
 .lucide {

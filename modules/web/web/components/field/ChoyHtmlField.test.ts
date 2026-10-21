@@ -132,21 +132,21 @@ describe('ChoyHtmlField', () => {
     try {
       await flushPromises();
       const buttons = toolbarButtons(m);
-      expect(buttons.length).toBe(5);
+      expect(buttons.length).toBeGreaterThanOrEqual(5);
       expect(m.q('.choy-html-field__edit')?.getAttribute('id')).toBeFalsy();
       const stubDom = (tiptapVue as { __feStubLastEditor?: { view?: { dom?: HTMLElement } } }).__feStubLastEditor
         ?.view?.dom;
       expect(stubDom?.getAttribute('id') || (stubDom as HTMLElement | undefined)?.id).toBe('body-html');
       expect(stubDom?.getAttribute('aria-required')).toBe('true');
-      for (const button of buttons.slice(0, 4)) {
-        button.click();
-        await flushPromises();
-      }
-      expect(buttons[0]?.className || '').toContain('bg-muted');
+      const bold = buttons.find(b => (b.getAttribute('aria-label') || '') === 'Bold');
+      bold?.click();
+      await flushPromises();
+      expect(bold?.className || '').toContain('bg-muted');
       expect(binding.__value.value || '').toContain('Hi');
 
       // Open link popover, reject javascript:, then apply https.
-      toolbarButtons(m)[4]?.click();
+      const linkBtn = toolbarButtons(m).find(b => (b.getAttribute('aria-label') || '') === 'Link');
+      linkBtn?.click();
       await flushPromises();
       const linkInput = m.q('.choy-html-field__link-input') as HTMLInputElement | null;
       expect(linkInput).toBeTruthy();

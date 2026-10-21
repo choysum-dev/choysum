@@ -32,7 +32,7 @@ SPDX-License-Identifier: Apache-2.0
           class="w-full"
           :model-value="fieldValue().value ?? undefined"
           :disabled="disabled || optionsLoading"
-          @update:model-value="(v) => onUpdate(fieldValue, v ? String(v) : null)"
+          @update:model-value="(v: unknown) => onUpdate(fieldValue, v ? String(v) : null)"
         >
           <ComboboxAnchor class="w-full">
             <ComboboxTrigger
@@ -73,7 +73,7 @@ SPDX-License-Identifier: Apache-2.0
                 class="h-control border-0 bg-transparent px-0 shadow-none outline-hidden focus-visible:ring-0"
                 :placeholder="_t('Search…')"
                 :disabled="disabled || optionsLoading"
-                :display-value="(v) => displayLabelFor(record, v == null || v === '' ? null : String(v))"
+                :display-value="(v: unknown) => displayLabelFor(record, v == null || v === '' ? null : String(v))"
               />
             </div>
             <ComboboxViewport>

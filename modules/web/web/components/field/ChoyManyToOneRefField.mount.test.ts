@@ -106,7 +106,8 @@ describe('ChoyManyToOneRefField display hydrate', () => {
     installStubs();
   });
   afterEach(() => {
-    restoreSfc();
+    restoreSfc(ChoyFieldBase as any);
+    restoreSfc(RelationCombobox as any);
   });
 
   test('bare currency id Browses relation store and shows DisplayName', async () => {

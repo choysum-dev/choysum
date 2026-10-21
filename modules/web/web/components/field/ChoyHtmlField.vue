@@ -29,6 +29,7 @@ SPDX-License-Identifier: Apache-2.0
         :described-by="describedBy || undefined"
         :invalid="!!invalid"
         :required="!!required"
+        :placeholder="editorPlaceholder"
       />
     </template>
     <template #display="{ fieldValue }">
@@ -53,12 +54,25 @@ import { computed, defineComponent, h, onBeforeUnmount, ref, watch, type Compone
 import { EditorContent, useEditor } from '@tiptap/vue-3';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
-import { Bold, Italic, Link2, List, ListOrdered } from 'lucide-vue-next';
+import {
+  Bold,
+  Italic,
+  Strikethrough,
+  Heading2,
+  Heading3,
+  List,
+  ListOrdered,
+  Quote,
+  Code,
+  Link2,
+  Undo2,
+  Redo2,
+} from 'lucide-vue-next';
 import { useField } from '@/web/web/composables/useField';
 import type { NarrowAggProp, NonNumericAggFns, UseField } from '@/web/web/composables/useField';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { htmlToPlaintext, normalizeHtmlForStore, resolveChoyHtmlLinkHref, sanitizeHtmlForClient } from './htmlHelpers';
-import { htmlEditorChain, htmlEditorSetContent } from './tiptapHtmlCommands';
+import { htmlEditorChain, htmlEditorIsActive, htmlEditorSetContent } from './tiptapHtmlCommands';
 import { createTranslate } from '@/web/web/i18n';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyHtmlField' });
@@ -92,6 +106,8 @@ const props = withDefaults(
     plaintext?: boolean;
     /** Display-mode placeholder when the HTML value is empty. */
     emptyText?: string;
+    /** Edit-mode placeholder when the document is empty. */
+    placeholder?: string;
   }>(),
   {
     rules: () => [],
@@ -104,6 +120,7 @@ const props = withDefaults(
     cellVisible: true,
     readonly: false,
     required: false,
+    placeholder: '',
   },
 );
 
@@ -122,6 +139,11 @@ const emptyDisplayText = computed(() => {
   return custom || _t('No content');
 });
 
+const editorPlaceholder = computed(() => {
+  const custom = props.placeholder != null ? String(props.placeholder).trim() : '';
+  return custom || _t('Write rich text…');
+});
+
 /**
  * TipTap editor bound to the ChoyFieldBase slot value. Mounted only in edit mode.
  */
@@ -135,6 +157,7 @@ const ChoyHtmlEditorCell = defineComponent({
     describedBy: { type: String, default: '' },
     invalid: { type: Boolean, default: false },
     required: { type: Boolean, default: false },
+    placeholder: { type: String, default: '' },
   },
   setup(cellProps) {
     const read = () => (cellProps.fieldValue as () => { value: ViewType })().value;
@@ -165,6 +188,13 @@ const ChoyHtmlEditorCell = defineComponent({
         },
         [h(icon, { class: 'size-3.5', 'aria-hidden': 'true' })],
       );
+    }
+
+    function toolbarSep() {
+      return h('span', {
+        class: 'mx-0.5 h-4 w-px shrink-0 bg-border',
+        'aria-hidden': 'true',
+      });
     }
 
     function openLinkPopover(ed: Editor): void {
@@ -199,7 +229,7 @@ const ChoyHtmlEditorCell = defineComponent({
 
     function controlAttributes(): Record<string, string> {
       const next: Record<string, string> = {
-        class: 'choy-html-field__prose min-h-[6rem] px-3 py-2 text-sm outline-none',
+        class: 'choy-html-field__prose prose-choy min-h-[8rem] px-3 py-2 text-sm outline-none',
       };
       if (cellProps.controlId) next.id = cellProps.controlId;
       if (cellProps.controlName) next.name = cellProps.controlName;
@@ -247,7 +277,6 @@ const ChoyHtmlEditorCell = defineComponent({
         const sanitized = next == null || next === '' ? '' : sanitizeHtmlForClient(next);
         const current = ed.getHTML();
         if (current === sanitized) return;
-        // Empty docs serialize as '<p></p>' while the store normalizes to null.
         if (!sanitized && current === '<p></p>') return;
         htmlEditorSetContent(ed, sanitized, false);
       },
@@ -262,6 +291,7 @@ const ChoyHtmlEditorCell = defineComponent({
           cellProps.invalid,
           cellProps.required,
           cellProps.describedBy,
+          cellProps.placeholder,
           editor.value,
         ] as const,
       () => applyControlAttributes(editor.value),
@@ -278,86 +308,130 @@ const ChoyHtmlEditorCell = defineComponent({
         ? h(
             'div',
             {
-              class: 'flex flex-wrap gap-1 border-b border-border bg-muted/30 px-2 py-1',
+              class: 'flex flex-wrap items-center gap-0.5 border-b border-border bg-muted/30 px-1.5 py-1',
               role: 'toolbar',
             },
             [
-              toolbarButton(Bold, _t('Bold'), ed.isActive('bold'), () =>
+              toolbarButton(Bold, _t('Bold'), htmlEditorIsActive(ed, 'bold'), () =>
                 htmlEditorChain(ed).focus().toggleBold().run(),
               ),
-              toolbarButton(Italic, _t('Italic'), ed.isActive('italic'), () =>
+              toolbarButton(Italic, _t('Italic'), htmlEditorIsActive(ed, 'italic'), () =>
                 htmlEditorChain(ed).focus().toggleItalic().run(),
               ),
-              toolbarButton(List, _t('Bullet list'), ed.isActive('bulletList'), () =>
+              toolbarButton(Strikethrough, _t('Strikethrough'), htmlEditorIsActive(ed, 'strike'), () =>
+                htmlEditorChain(ed).focus().toggleStrike().run(),
+              ),
+              toolbarButton(Code, _t('Inline code'), htmlEditorIsActive(ed, 'code'), () =>
+                htmlEditorChain(ed).focus().toggleCode().run(),
+              ),
+              toolbarSep(),
+              toolbarButton(Heading2, _t('Heading 2'), htmlEditorIsActive(ed, 'heading', { level: 2 }), () =>
+                htmlEditorChain(ed).focus().toggleHeading({ level: 2 }).run(),
+              ),
+              toolbarButton(Heading3, _t('Heading 3'), htmlEditorIsActive(ed, 'heading', { level: 3 }), () =>
+                htmlEditorChain(ed).focus().toggleHeading({ level: 3 }).run(),
+              ),
+              toolbarButton(Quote, _t('Blockquote'), htmlEditorIsActive(ed, 'blockquote'), () =>
+                htmlEditorChain(ed).focus().toggleBlockquote().run(),
+              ),
+              toolbarSep(),
+              toolbarButton(List, _t('Bullet list'), htmlEditorIsActive(ed, 'bulletList'), () =>
                 htmlEditorChain(ed).focus().toggleBulletList().run(),
               ),
-              toolbarButton(ListOrdered, _t('Ordered list'), ed.isActive('orderedList'), () =>
+              toolbarButton(ListOrdered, _t('Ordered list'), htmlEditorIsActive(ed, 'orderedList'), () =>
                 htmlEditorChain(ed).focus().toggleOrderedList().run(),
               ),
-              toolbarButton(Link2, _t('Link'), ed.isActive('link'), () => openLinkPopover(ed)),
+              toolbarButton(Link2, _t('Link'), htmlEditorIsActive(ed, 'link'), () => openLinkPopover(ed)),
+              toolbarSep(),
+              toolbarButton(Undo2, _t('Undo'), false, () => htmlEditorChain(ed).focus().undo().run()),
+              toolbarButton(Redo2, _t('Redo'), false, () => htmlEditorChain(ed).focus().redo().run()),
             ],
           )
         : null;
 
       const linkPanel =
         ed && linkOpen.value
-          ? h('div', { class: 'choy-html-field__link-popover flex flex-wrap items-center gap-2 border-b border-border bg-background px-2 py-1.5' }, [
-              h('input', {
-                class: 'choy-html-field__link-input min-w-[12rem] flex-1 rounded-md border border-border bg-background px-2 py-1 text-sm',
-                type: 'url',
-                value: linkHref.value,
-                placeholder: _t('URL'),
-                'aria-label': _t('URL'),
-                onInput: (e: Event) => {
-                  linkHref.value = (e.target as HTMLInputElement).value;
-                  linkError.value = null;
-                },
-                onKeydown: (e: KeyboardEvent) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    applyLink(ed);
-                  } else if (e.key === 'Escape') {
-                    e.preventDefault();
-                    linkOpen.value = false;
-                    linkError.value = null;
-                  }
-                },
-              }),
-              h(
-                'button',
-                {
-                  type: 'button',
-                  class: 'rounded px-2 py-0.5 text-xs bg-primary text-primary-foreground',
-                  onClick: (e: Event) => {
-                    e.preventDefault();
-                    applyLink(ed);
-                  },
-                },
-                _t('Apply'),
-              ),
-              h(
-                'button',
-                {
-                  type: 'button',
-                  class: 'rounded px-2 py-0.5 text-xs hover:bg-muted',
-                  onClick: (e: Event) => {
-                    e.preventDefault();
-                    linkOpen.value = false;
+          ? h(
+              'div',
+              {
+                class:
+                  'choy-html-field__link-popover flex flex-wrap items-center gap-2 border-b border-border bg-background px-2 py-1.5',
+              },
+              [
+                h('input', {
+                  class:
+                    'choy-html-field__link-input min-w-[12rem] flex-1 rounded-md border border-border bg-background px-2 py-1 text-sm',
+                  type: 'url',
+                  value: linkHref.value,
+                  placeholder: _t('URL'),
+                  'aria-label': _t('URL'),
+                  onInput: (e: Event) => {
+                    linkHref.value = (e.target as HTMLInputElement).value;
                     linkError.value = null;
                   },
-                },
-                _t('Cancel'),
-              ),
-              linkError.value
-                ? h('span', { class: 'basis-full text-xs text-destructive', role: 'alert' }, linkError.value)
-                : null,
-            ])
+                  onKeydown: (e: KeyboardEvent) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      applyLink(ed);
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault();
+                      linkOpen.value = false;
+                      linkError.value = null;
+                    }
+                  },
+                }),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    class: 'rounded px-2 py-0.5 text-xs bg-primary text-primary-foreground',
+                    onClick: (e: Event) => {
+                      e.preventDefault();
+                      applyLink(ed);
+                    },
+                  },
+                  _t('Apply'),
+                ),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    class: 'rounded px-2 py-0.5 text-xs hover:bg-muted',
+                    onClick: (e: Event) => {
+                      e.preventDefault();
+                      linkOpen.value = false;
+                      linkError.value = null;
+                    },
+                  },
+                  _t('Cancel'),
+                ),
+                linkError.value
+                  ? h('span', { class: 'basis-full text-xs text-destructive', role: 'alert' }, linkError.value)
+                  : null,
+              ],
+            )
           : null;
+
+      const empty = !ed || !!(ed as { isEmpty?: boolean }).isEmpty;
+      const body = h('div', { class: 'relative' }, [
+        empty && cellProps.placeholder
+          ? h(
+              'div',
+              {
+                class:
+                  'pointer-events-none absolute inset-x-3 top-2 z-[1] text-sm text-muted-foreground',
+                'aria-hidden': 'true',
+              },
+              cellProps.placeholder,
+            )
+          : null,
+        h(EditorContent, { editor: ed }),
+      ]);
 
       return h(
         'div',
         { class: 'choy-html-field__edit overflow-hidden rounded-md border border-border bg-background' },
-        [toolbar, linkPanel, h(EditorContent, { editor: ed })],
+        [toolbar, linkPanel, body],
       );
     };
   },

@@ -21,15 +21,13 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
     v-bind="$attrs"
   >
-    <template #edit="{ fieldValue, inputId, describedBy, invalid}">
+    <template #edit="{ fieldValue, inputId, describedBy, invalid }">
       <ChoyJsonCell
         :field-value="fieldValue"
         :options="bufferOptions"
         :placeholder="effectivePlaceholder"
-        :autosize="autosize"
         :nullable="nullable"
         :allow-array="allowArray"
-        v-bind="$attrs"
         :id="inputId"
         :aria-describedby="describedBy || undefined"
         :aria-invalid="invalid ? 'true' : undefined"
@@ -37,7 +35,11 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display="{ fieldValue }">
-      <pre v-if="isTableLike" class="choy-json-display whitespace-pre-wrap wrap-break-word px-2 py-1 font-mono leading-snug">{{ displayString(fieldValue().value) }}</pre>
+      <pre
+        v-if="isTableLike"
+        class="choy-json-display whitespace-pre-wrap wrap-break-word px-2 py-1 font-mono leading-snug"
+        >{{ displayString(fieldValue().value) }}</pre
+      >
       <div
         v-else-if="normalizeIncoming(fieldValue().value) == null"
         class="choy-json-display choy-json-display--empty min-h-[1.4em] rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground"
@@ -65,7 +67,7 @@ SPDX-License-Identifier: Apache-2.0
 import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { RuleItem } from 'async-validator';
-import { ref, watch, computed, defineComponent, h } from 'vue';
+import { ref, watch, computed, defineComponent, h, onBeforeUnmount, nextTick } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
 import 'vue-json-pretty/lib/styles.css';
 import { Braces } from 'lucide-vue-next';
@@ -74,8 +76,19 @@ import type { UseField } from '@/web/web/composables/useField';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
 import { createTranslate } from '@/web/web/i18n';
+import { mountJsonCodeMirror, type JsonCodeMirrorHandle } from './jsonCodeMirror';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/JsonobjectField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyJsonField' });
+
+// Keep lint tip msgids extractable (runtime translate() passes them dynamically).
+void [
+  _t('Invalid JSON'),
+  _t('Unexpected end of JSON'),
+  _t('Unexpected character after JSON (line %s, column %s)'),
+  _t('Unexpected character after JSON (position %s)'),
+  _t('Invalid JSON near line %s, column %s'),
+  _t('Invalid JSON at position %s'),
+];
 
 defineOptions({ name: 'ChoyJsonField' });
 
@@ -95,6 +108,7 @@ const props = withDefaults(
     nullable?: boolean;
     allowArray?: boolean;
     placeholder?: string;
+    /** @deprecated Ignored; CodeMirror sizes via CSS min-height. */
     autosize?: boolean | { minRows?: number; maxRows?: number };
     /** Collapse depth for form readonly vue-json-pretty tree. */
     prettyDeep?: number;
@@ -116,7 +130,6 @@ const props = withDefaults(
     bufferStrategy?: CommitStrategy;
     bufferIdleDelay?: number;
     commitOnBlur?: boolean;
-    // Added render mode and inline error support.
     renderMode?: 'auto' | 'form' | 'table' | 'inline';
     showInlineError?: boolean;
   }>(),
@@ -125,7 +138,6 @@ const props = withDefaults(
     nullable: true,
     allowArray: false,
     placeholder: '',
-    autosize: () => ({ minRows: 3, maxRows: 14 }),
     prettyDeep: 3,
     required: false,
     readonly: false,
@@ -138,12 +150,13 @@ const props = withDefaults(
     commitOnBlur: true,
     renderMode: 'auto',
     showInlineError: false,
-  }
+  },
 );
 
 const effectivePlaceholder = computed(() => props.placeholder || _t('Enter a JSON object'));
 
-const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
+const binding = (props.binding ??
+  useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
 
 const isTableLike = computed(() => {
   const mode = props.renderMode;
@@ -256,7 +269,6 @@ const ChoyJsonCell = defineComponent({
     fieldValue: { type: Function, required: true },
     options: { type: Object, required: true },
     placeholder: String,
-    autosize: [Boolean, Object],
     nullable: Boolean,
     allowArray: Boolean,
   },
@@ -271,24 +283,33 @@ const ChoyJsonCell = defineComponent({
     const editingText = ref<string>('');
     const textDirty = ref(false);
     const parseError = ref<string | null>(null);
-
-    watch(
-      () => modelRef.value,
-      v => {
-        if (textDirty.value) return;
-        const norm = normalizeIncoming(v);
-        if (v !== norm) modelRef.value = norm;
-        editingText.value = norm == null ? '' : stableStringify(norm);
-      },
-      { immediate: true }
-    );
+    const hostEl = ref<HTMLElement | null>(null);
+    let cm: JsonCodeMirrorHandle | null = null;
+    let mounting = false;
 
     const buffer = useBufferedCommit<JsonVal>(
       () => modelRef.value,
       v => {
         modelRef.value = v;
       },
-      p.options as any
+      p.options as any,
+    );
+
+    function syncFromModel(v: JsonVal) {
+      if (textDirty.value) return;
+      const norm = normalizeIncoming(v);
+      if (v !== norm) modelRef.value = norm;
+      const next = norm == null ? '' : stableStringify(norm);
+      editingText.value = next;
+      cm?.setDoc(next);
+    }
+
+    watch(
+      () => modelRef.value,
+      v => {
+        syncFromModel(v);
+      },
+      { immediate: true },
     );
 
     function onInput(v: string) {
@@ -296,6 +317,7 @@ const ChoyJsonCell = defineComponent({
       textDirty.value = true;
       parseError.value = null;
     }
+
     function onBlur() {
       const raw = editingText.value;
       if (raw.trim() === '') {
@@ -305,11 +327,10 @@ const ChoyJsonCell = defineComponent({
           textDirty.value = false;
           parseError.value = null;
           return;
-        } else {
-          parseError.value = _t('Cannot be empty');
-          buffer.onBlur();
-          return;
         }
+        parseError.value = _t('Cannot be empty');
+        buffer.onBlur();
+        return;
       }
       const parsed = tryParse(raw);
       if (!parsed.ok) {
@@ -321,16 +342,18 @@ const ChoyJsonCell = defineComponent({
       const canonical = stableStringify(parsed.val);
       editingText.value = canonical;
       textDirty.value = false;
+      cm?.setDoc(canonical);
       buffer.setEditing(parsed.val);
       buffer.onBlur();
     }
 
     function formatEditing(): void {
-      const raw = editingText.value;
+      const raw = cm ? cm.getDoc() : editingText.value;
       if (raw.trim() === '') {
         if (p.nullable) {
           parseError.value = null;
           editingText.value = '';
+          cm?.setDoc('');
           return;
         }
         parseError.value = _t('Cannot be empty');
@@ -345,34 +368,51 @@ const ChoyJsonCell = defineComponent({
       const canonical = stableStringify(parsed.val);
       editingText.value = canonical;
       textDirty.value = true;
+      cm?.setDoc(canonical);
       buffer.setEditing(parsed.val);
     }
 
-    function callAttrListener(listener: unknown, event: Event) {
-      if (typeof listener === 'function') {
-        listener(event);
-        return;
-      }
-      if (Array.isArray(listener)) {
-        for (const item of listener) {
-          if (typeof item === 'function') item(event);
-        }
-      }
+    function ensureMounted() {
+      if (cm || mounting || !hostEl.value) return;
+      mounting = true;
+      const controlId = attrs.id != null && String(attrs.id) !== '' ? String(attrs.id) : '';
+      const formDescribedBy = attrs['aria-describedby'] != null ? String(attrs['aria-describedby']) : '';
+      const parent = hostEl.value as unknown as HTMLElement;
+      cm = mountJsonCodeMirror({
+        parent,
+        doc: editingText.value ?? '',
+        id: controlId || undefined,
+        ariaDescribedBy: formDescribedBy || undefined,
+        ariaInvalid: attrs['aria-invalid'] === true || attrs['aria-invalid'] === 'true',
+        translate: (msgid, ...args) => _t(msgid, ...(args as any[])),
+        onUpdate: (text: string) => {
+          onInput(text);
+        },
+        onBlur: () => {
+          onBlur();
+        },
+      });
+      mounting = false;
     }
 
+    watch(hostEl, el => {
+      if (el) void nextTick(() => ensureMounted());
+    });
+
+    onBeforeUnmount(() => {
+      cm?.destroy();
+      cm = null;
+    });
+
     return () => {
-      const rest = { ...(attrs as Record<string, unknown>) };
-      delete rest.onInput;
-      delete rest.onBlur;
-      const controlId = rest.id != null && String(rest.id) !== '' ? String(rest.id) : '';
-      // Only synthesize an error id when the control has one; avoid duplicate hard-coded ids.
+      const controlId = attrs.id != null && String(attrs.id) !== '' ? String(attrs.id) : '';
       const parseErrorId = controlId ? `${controlId}-parse-error` : '';
-      const formDescribedBy = rest['aria-describedby'] != null ? String(rest['aria-describedby']) : '';
+      const formDescribedBy = attrs['aria-describedby'] != null ? String(attrs['aria-describedby']) : '';
       const describedBy = [formDescribedBy, parseError.value ? parseErrorId : '']
         .map(s => s.trim())
         .filter(Boolean)
         .join(' ');
-      const formInvalid = rest['aria-invalid'] === true || rest['aria-invalid'] === 'true';
+      const formInvalid = attrs['aria-invalid'] === true || attrs['aria-invalid'] === 'true';
       const formatLabel = _t('Format');
       return h(
         'div',
@@ -386,8 +426,7 @@ const ChoyJsonCell = defineComponent({
           h(
             'div',
             {
-              class:
-                'flex items-center justify-end gap-1 border-b border-border bg-muted/30 px-1.5 py-1',
+              class: 'flex items-center justify-end gap-1 border-b border-border bg-muted/30 px-1.5 py-1',
               role: 'toolbar',
             },
             [
@@ -408,27 +447,13 @@ const ChoyJsonCell = defineComponent({
               ),
             ],
           ),
-          h('textarea', {
-            ...rest,
-            class:
-              'choy-json-input min-h-[8rem] w-full resize-y border-0 bg-transparent px-3 py-2 font-mono text-[13px] leading-snug text-foreground shadow-none outline-none placeholder:text-muted-foreground focus-visible:ring-0',
-            placeholder: p.placeholder,
-            rows: 6,
-            spellcheck: false,
-            autocapitalize: 'off',
-            autocomplete: 'off',
-            autocorrect: 'off',
-            value: editingText.value ?? '',
+          h('div', {
+            class: 'choy-json-cm-host min-h-[8rem] w-full',
+            'data-placeholder': p.placeholder || '',
             'aria-describedby': describedBy || undefined,
-            'aria-invalid': parseError.value || formInvalid ? 'true' : undefined,
-            onInput: (e: Event) => {
-              onInput((e.target as HTMLTextAreaElement).value);
-              callAttrListener(attrs.onInput, e);
-            },
-            onBlur: (e: Event) => {
-              onBlur();
-              callAttrListener(attrs.onBlur, e);
-            },
+            ref: ((el: Element | null) => {
+              hostEl.value = el instanceof HTMLElement ? el : null;
+            }) as any,
           }),
           parseError.value
             ? h(
@@ -447,4 +472,3 @@ const ChoyJsonCell = defineComponent({
   },
 });
 </script>
-
