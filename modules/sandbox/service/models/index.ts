@@ -6,4 +6,3 @@ export { default as SandboxTag } from './sandbox_tag';
 export { default as SandboxRecordTag } from './sandbox_record_tag';
 export { default as SandboxLine } from './sandbox_line';
 export { default as SandboxRecord } from './sandbox_record';
-export { default as PropertyDefinition } from './property_definition';
