@@ -258,7 +258,7 @@ async function moduleStatusText(page: Page, moduleName: string) {
       .textContent()
       .catch(() => '')) || ''
   ).trim();
-  if (tagText && tagText !== '—') {
+  if (tagText) {
     return tagText;
   }
 

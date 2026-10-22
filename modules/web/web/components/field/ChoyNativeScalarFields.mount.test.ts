@@ -552,7 +552,7 @@ describe('Choy native scalar field cells', () => {
     await flushPromises();
     await nextTick();
     expect(binding.__value.value).toBeNull();
-    expect(m.q('.choy-number-display--empty')?.textContent || '').toContain('No content');
+    expect((m.q('.choy-number-display--empty')?.textContent || '').trim()).toBe('');
     input.dispatchEvent(new Event('blur', { bubbles: true }));
     await flushPromises();
     expect(binding.__value.value).toBeNull();

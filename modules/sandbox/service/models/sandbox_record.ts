@@ -322,6 +322,7 @@ export default class SandboxRecord extends BaseModel {
 
   @Compute<SandboxRecord>('PrimaryLineId', {
     deps: ['Lines.Id', 'Lines.Name', 'Lines.Sequence'],
+    store: false,
   })
   computePrimaryLineId() {
     const lines = [...(this.Lines || [])]

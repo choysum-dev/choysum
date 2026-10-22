@@ -189,3 +189,51 @@ test('createEntityBackedModelInstance deleteProperty with symbol delegates to Re
   // Symbol-keyed delete goes through Reflect.deleteProperty
   expect((instance as any)[sym]).toBeUndefined();
 });
+
+test('createEntityBackedModelInstance get/has resolve OneToMany from $rel$ alias', () => {
+  class Target {}
+  const meta = fakeMeta(Target, {
+    type: Target,
+    fields: new Map([
+      ['Lines', { type: 'OneToMany', relation: { targetModel: () => Target } }],
+      ['Name', { type: 'varchar' }],
+    ]),
+  });
+  const lines = [{ Id: 'l1' }, { Id: 'l2' }];
+  const instance = createEntityBackedModelInstance(meta as any, { $rel$Lines: lines });
+
+  expect((instance as any).Lines).toEqual(lines);
+  expect('Lines' in (instance as any)).toBe(true);
+  expect((instance as any).Name).toBeUndefined();
+});
+
+test('createEntityBackedModelInstance prefers plain object over $rel$ alias', () => {
+  class Target {}
+  const meta = fakeMeta(Target, {
+    type: Target,
+    fields: new Map([['Lines', { type: 'OneToMany', relation: { targetModel: () => Target } }]]),
+  });
+  const instance = createEntityBackedModelInstance(meta as any, {
+    Lines: [{ Id: 'direct' }],
+    $rel$Lines: [{ Id: 'alias' }],
+  });
+
+  expect((instance as any).Lines).toEqual([{ Id: 'direct' }]);
+});
+
+test('createEntityBackedModelInstance prefers $rel$ object over ManyToOne FK scalar', () => {
+  class Target {}
+  const meta = fakeMeta(Target, {
+    type: Target,
+    fields: new Map([
+      ['CategoryId', { type: 'ManyToOne', relation: { targetModel: () => Target }, column: { name: 'CategoryId' } }],
+    ]),
+  });
+  const instance = createEntityBackedModelInstance(meta as any, {
+    CategoryId: 'cat_fk',
+    $rel$CategoryId: { Id: 'cat_fk', Name: '启用分支', DisplayName: '启用分支' },
+  });
+
+  expect((instance as any).CategoryId).toEqual({ Id: 'cat_fk', Name: '启用分支', DisplayName: '启用分支' });
+  expect((instance as any).CategoryId.Name).toBe('启用分支');
+});

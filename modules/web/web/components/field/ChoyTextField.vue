@@ -88,7 +88,7 @@ const props = withDefaults(
     rows?: number;
     autosize?: boolean | { minRows?: number; maxRows?: number };
     showWordLimit?: boolean;
-    /** Form display placeholder when empty (defaults to "No content"). */
+    /** Form display placeholder when empty (defaults to blank). */
     emptyText?: string;
 
     required?: FieldStateExpr<T, V>;
@@ -148,8 +148,8 @@ const showFormEmptyPlaceholder = computed(() => {
 });
 
 const emptyDisplayText = computed(() => {
-  const custom = props.emptyText != null ? String(props.emptyText).trim() : '';
-  return custom || _t('No content');
+  if (props.emptyText != null) return String(props.emptyText);
+  return '';
 });
 
 const toView = (raw: any): ViewType => (raw == null ? null : String(raw));

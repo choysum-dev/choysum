@@ -86,7 +86,7 @@ describe('ChoyHtmlField', () => {
       },
     });
     await flushPromises();
-    expect(m.q('.choy-html-field__empty')?.textContent || '').toContain('No content');
+    expect((m.q('.choy-html-field__empty')?.textContent || '').trim()).toBe('');
     expect(m.q('.prose-choy')).toBeFalsy();
     m.unmount();
 

@@ -387,7 +387,7 @@ describe('ChoyOneToManyField handle column', () => {
     (emptyBinding.binding.env as any).isForm = false;
     const empty = mountApp(ChoyOneToManyField as any, { props: { binding: emptyBinding.binding } });
     await nextTick();
-    expect(empty.q('[data-testid="choy-o2m-summary"]')?.textContent).toBe('—');
+    expect((empty.q('[data-testid="choy-o2m-summary"]')?.textContent || '').trim()).toBe('');
     expect(empty.q('.ov-table-stub')).toBeNull();
     empty.unmount();
   });

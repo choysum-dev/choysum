@@ -101,7 +101,7 @@ const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebM
 const showFormEmptyPlaceholder = computed(() =>
   isFormEmptyPlaceholderMode(props.renderMode, binding.env?.isForm)
 );
-const emptyDisplayText = computed(() => _t('No content'));
+const emptyDisplayText = computed(() => '');
 
 const toView = (raw: any): FieldType => (raw === '' || raw == null ? null : typeof raw === 'number' && Number.isFinite(raw) ? raw : null);
 const fromView = (v: FieldType) => v as V;

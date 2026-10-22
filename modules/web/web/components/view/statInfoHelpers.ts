@@ -11,7 +11,7 @@ export function resolveStatDisplayValue(opts: {
 }): number | string {
   if (opts.value !== undefined && opts.value !== null) return opts.value;
   if (Array.isArray(opts.relationValue)) return opts.relationValue.length;
-  return opts.emptyValue ?? '—';
+  return opts.emptyValue ?? '';
 }
 
 /** True when a default-slot VNode tree has at least one meaningful child (D3 / D9). */

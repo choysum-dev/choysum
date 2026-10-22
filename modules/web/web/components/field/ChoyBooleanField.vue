@@ -208,7 +208,7 @@ const fromView = (v: FieldType): V => {
 function displayLabel(value: FieldType): string {
   if (value === true) return props.switchActiveText || props.checkboxLabel || _t('Yes');
   if (value === false) return props.switchInactiveText || _t('No');
-  return _t('—');
+  return '';
 }
 
 function displayUsesSwitch(value: FieldType): boolean {

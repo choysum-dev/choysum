@@ -27,8 +27,8 @@ export function formatFieldChangeSummary(
     return labels.action(name || kind);
   }
   const field = entry.field || labels.fieldFallback;
-  const oldValue = entry.oldValue == null || entry.oldValue === '' ? '—' : entry.oldValue;
-  const newValue = entry.newValue == null || entry.newValue === '' ? '—' : entry.newValue;
+  const oldValue = entry.oldValue == null || entry.oldValue === '' ? '' : entry.oldValue;
+  const newValue = entry.newValue == null || entry.newValue === '' ? '' : entry.newValue;
   return labels.changed(field, oldValue, newValue);
 }
 

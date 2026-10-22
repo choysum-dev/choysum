@@ -169,7 +169,7 @@ SPDX-License-Identifier: Apache-2.0
             <slot name="media" />
           </div>
         </div>
-        <span v-else class="choy-field-display-empty inline-flex min-h-control items-center text-muted-foreground">-</span>
+        <span v-else class="choy-field-display-empty inline-flex min-h-control items-center text-muted-foreground" />
       </template>
     </template>
 
@@ -331,7 +331,7 @@ SPDX-License-Identifier: Apache-2.0
             <AttachmentDescription v-if="meta" :class="compact ? 'truncate' : undefined">{{ meta }}</AttachmentDescription>
           </AttachmentContent>
         </Attachment>
-        <span v-else class="choy-field-display-empty inline-flex min-h-control items-center text-muted-foreground">-</span>
+        <span v-else class="choy-field-display-empty inline-flex min-h-control items-center text-muted-foreground" />
       </template>
     </template>
   </div>

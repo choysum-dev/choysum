@@ -120,7 +120,7 @@ const props = withDefaults(
     widget?: VarcharWidget;
     /** Form display: show a copy button next to non-empty values. */
     copyable?: boolean;
-    /** Form display placeholder when empty (defaults to "No content"). */
+    /** Form display placeholder when empty (defaults to blank). */
     emptyText?: string;
 
     required?: FieldStateExpr<T, V>;
@@ -194,8 +194,8 @@ const showFormEmptyPlaceholder = computed(() => {
 });
 
 const emptyDisplayText = computed(() => {
-  const custom = props.emptyText != null ? String(props.emptyText).trim() : '';
-  return custom || _t('No content');
+  if (props.emptyText != null) return String(props.emptyText);
+  return '';
 });
 
 const copyAriaLabel = computed(() => _t('Copy'));

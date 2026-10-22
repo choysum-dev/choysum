@@ -8,8 +8,18 @@ import type BaseModel from '../../orm/model/model';
 import Decimal, { decimalEqual, isDecimal, normalizeDecimalByMeta } from '@/core/utils/decimal';
 import { getRuntimeRepository } from '../runtime_repository_facade';
 import { createEntityBackedModelInstance, resolveInstanceHandler } from './handler_runtime';
+import { buildRelationAliasCandidates } from '../../orm/relation/relation_alias';
 import { asObjectRecord, hasOwnKey } from '../../../utils/object';
 import type { UnknownRecord } from '../../../utils/types';
+
+function readRelationAliasPresent(entity: UnknownRecord, fieldName: string): boolean {
+  for (const alias of buildRelationAliasCandidates(fieldName)) {
+    if (Object.prototype.hasOwnProperty.call(entity, alias) && entity[alias] !== undefined) {
+      return true;
+    }
+  }
+  return false;
+}
 
 // Notes:
 // - In preview mode, path prefetching is handled by the Onchange planner, so no IO happens here.
@@ -154,7 +164,59 @@ function normalizeDecimalFields(meta: ModelMetadata, entity: UnknownRecord) {
 /**
  * ComputeEngine evaluates compute fields for preview and persist flows.
  */
+function normalizeRequestedFieldSet(requestedFields?: Iterable<string>): Set<string> | undefined {
+  if (requestedFields == null) return undefined;
+  return new Set(
+    Array.from(requestedFields)
+      .map(field => String(field || '').trim())
+      .filter(Boolean)
+  );
+}
+
 export class ComputeEngine {
+  /**
+   * Injects related.store=false field values from related.path on a read result.
+   * Expects relation roots to already be present on the entity (plain key or `$rel$` alias).
+   */
+  static injectRelatedForRead(meta: ModelMetadata, entity: UnknownRecord, requestedFields?: Iterable<string>): void {
+    if (!meta.fields?.size) return;
+
+    const requested = normalizeRequestedFieldSet(requestedFields);
+    const wrapped = createEntityBackedModelInstance(meta, entity);
+
+    for (const [fieldName, fieldMeta] of meta.fields) {
+      if (!fieldMeta?.related || fieldMeta.related.store === true) continue;
+
+      const path = String(fieldMeta.related.path || '').trim();
+      if (!path) continue;
+      const parts = path
+        .split('.')
+        .map(part => part.trim())
+        .filter(Boolean);
+      if (parts.length < 2) continue;
+
+      // When the caller requested an explicit field list, still inject related fields whose
+      // path root was loaded (FK / `$rel$`), even if the related field name itself was omitted.
+      if (requested && !requested.has(fieldName)) {
+        const root = parts[0]!;
+        const rootLoaded =
+          Object.prototype.hasOwnProperty.call(entity, root) ||
+          readRelationAliasPresent(entity, root);
+        if (!rootLoaded) continue;
+      }
+
+      let cur: unknown = wrapped;
+      for (const seg of parts) {
+        if (cur == null || (typeof cur !== 'object' && typeof cur !== 'function')) {
+          cur = null;
+          break;
+        }
+        cur = (cur as UnknownRecord)[seg];
+      }
+      entity[fieldName] = cur === undefined ? null : cur;
+    }
+  }
+
   /**
    * Injects virtual compute-field values into a read result.
    */
@@ -167,14 +229,7 @@ export class ComputeEngine {
       normalizeDecimalFields(meta, entity);
     } catch {}
 
-    const requested =
-      requestedFields == null
-        ? undefined
-        : new Set(
-            Array.from(requestedFields)
-              .map(field => String(field || '').trim())
-              .filter(Boolean)
-          );
+    const requested = normalizeRequestedFieldSet(requestedFields);
 
     const targets = new Set<string>();
     if (!requested) {

@@ -46,7 +46,7 @@ SPDX-License-Identifier: Apache-2.0
         v-else-if="normalizeIncoming(fieldValue().value) == null"
         class="choy-json-display choy-json-display--empty min-h-[1.4em] rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground"
       >
-        {{ _t('No content') }}
+        
       </div>
       <div
         v-else

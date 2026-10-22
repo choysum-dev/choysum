@@ -133,7 +133,7 @@ const binding = (props.binding ??
 const showFormEmptyPlaceholder = computed(() =>
   isFormEmptyPlaceholderMode(props.renderMode, binding.env?.isForm)
 );
-const emptyDisplayText = computed(() => _t('No content'));
+const emptyDisplayText = computed(() => '');
 
 const toView = (raw: any): ViewType => {
   if (raw == null || raw === '') return null;

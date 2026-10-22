@@ -136,8 +136,8 @@ function isEmptyHtml(raw: unknown): boolean {
 }
 
 const emptyDisplayText = computed(() => {
-  const custom = props.emptyText != null ? String(props.emptyText).trim() : '';
-  return custom || _t('No content');
+  if (props.emptyText != null) return String(props.emptyText);
+  return '';
 });
 
 const editorPlaceholder = computed(() => {

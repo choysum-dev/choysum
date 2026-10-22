@@ -1580,3 +1580,91 @@ test('compute engine injectVirtualForRead keeps prefilled @SqlCompute value and 
 
   expect(entity.DisplayName).toBe('from-db');
 });
+
+test('compute engine injectRelatedForRead fills related.store=false from $rel$ path', () => {
+  class RelatedInjectModel extends BaseModel {
+    CategoryId?: { Id?: string; Name?: string };
+    CategoryName?: string;
+  }
+
+  const meta = {
+    type: RelatedInjectModel,
+    fields: new Map([
+      ['CategoryId', { type: 'ManyToOne', relation: { targetModel: () => RelatedInjectModel }, column: { name: 'CategoryId' } }],
+      ['CategoryName', { type: 'varchar', related: { path: 'CategoryId.Name', store: false } }],
+    ]),
+  } as any;
+
+  const entity: any = {
+    CategoryId: 'c1',
+    $rel$CategoryId: { Id: 'c1', Name: '启用分支', DisplayName: '启用分支' },
+  };
+  ComputeEngine.injectRelatedForRead(meta, entity, ['CategoryId'] as any);
+
+  expect(entity.CategoryName).toBe('启用分支');
+});
+
+test('compute engine injectRelatedForRead when only DisplayName loaded still needs Name in $rel$', () => {
+  class RelatedInjectModel extends BaseModel {
+    CategoryId?: { Id?: string; Name?: string; DisplayName?: string };
+    CategoryName?: string;
+  }
+
+  const meta = {
+    type: RelatedInjectModel,
+    fields: new Map([
+      ['CategoryId', { type: 'ManyToOne', relation: { targetModel: () => RelatedInjectModel }, column: { name: 'CategoryId' } }],
+      ['CategoryName', { type: 'varchar', related: { path: 'CategoryId.Name', store: false } }],
+    ]),
+  } as any;
+
+  const entity: any = {
+    CategoryId: 'c1',
+    $rel$CategoryId: { Id: 'c1', DisplayName: '启用分支' },
+  };
+  ComputeEngine.injectRelatedForRead(meta, entity);
+  expect(entity.CategoryName).toBeNull();
+});
+
+test('compute engine injectVirtualForRead sees OneToMany deps under $rel$ alias', () => {
+  class LineCountFromRelModel extends BaseModel {
+    Lines?: { Id?: string }[];
+    LineCount?: number;
+
+    computeLineCount() {
+      return (this.Lines || []).filter(line => !!line?.Id).length;
+    }
+  }
+
+  const meta = {
+    type: LineCountFromRelModel,
+    fields: new Map([
+      ['Lines', { type: 'OneToMany', relation: { targetModel: () => LineCountFromRelModel } }],
+      ['LineCount', { type: 'int' }],
+    ]),
+    computeHandlers: new Map([
+      [
+        'LineCount',
+        {
+          field: 'LineCount',
+          method: 'computeLineCount',
+          deps: ['Lines.Id'],
+          store: false,
+        },
+      ],
+    ]),
+    computeGraph: {
+      order: ['LineCount'],
+      virtualComputeFields: new Set(['LineCount']),
+      parsedDeps: new Map([['LineCount', [{ kind: 'path', root: 'Lines', path: ['Id'] }]]]),
+    },
+  } as any;
+
+  const entity: any = {
+    $rel$Lines: [{ Id: 'l1' }, { Id: 'l2' }],
+  };
+  ComputeEngine.injectVirtualForRead(meta, entity);
+
+  expect(entity.LineCount).toBe(2);
+  expect(entity.Lines).toBeUndefined();
+});

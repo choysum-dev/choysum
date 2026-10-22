@@ -482,7 +482,7 @@ describe('ChoyManyToManyField mount coverage', () => {
     (empty.binding.env as any).isForm = false;
     const em = mountField({ binding: empty.binding });
     await nextTick();
-    expect(em.q('[data-testid="choy-m2m-summary"]')?.textContent).toBe('—');
+    expect((em.q('[data-testid="choy-m2m-summary"]')?.textContent || '').trim()).toBe('');
     expect(em.q('.ov-table-stub')).toBeNull();
     em.unmount();
   });

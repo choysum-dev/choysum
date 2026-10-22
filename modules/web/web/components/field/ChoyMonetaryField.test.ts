@@ -179,7 +179,7 @@ describe('MonetaryField mount wiring', () => {
     m.unmount();
   });
 
-  test('display uses Currency.DecimalDigits and form empty shows No content', async () => {
+  test('display uses Currency.DecimalDigits and form empty stays blank', async () => {
     const filled = makeBinding({
       Amount: new Decimal('99.5'),
       CurrencyId: { Id: 'C1', Code: 'CNY', Symbol: '¥', DecimalDigits: 2 },
@@ -196,7 +196,7 @@ describe('MonetaryField mount wiring', () => {
     });
     const emptyMount = mountField(empty, { readonly: true, renderMode: 'form' });
     await flushPromises();
-    expect(emptyMount.q('.choy-monetary-display--empty')?.textContent || '').toContain('No content');
+    expect((emptyMount.q('.choy-monetary-display--empty')?.textContent || '').trim()).toBe('');
     emptyMount.unmount();
   });
 

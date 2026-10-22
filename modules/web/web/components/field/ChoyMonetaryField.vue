@@ -146,7 +146,7 @@ const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebM
 const showFormEmptyPlaceholder = computed(() =>
   isFormEmptyPlaceholderMode(props.renderMode, binding.env?.isForm)
 );
-const emptyDisplayText = computed(() => _t('No content'));
+const emptyDisplayText = computed(() => '');
 
 const currencyFieldName = computed<string | undefined>(() => {
   const raw = (binding.meta as any)?.currencyField as string | undefined;

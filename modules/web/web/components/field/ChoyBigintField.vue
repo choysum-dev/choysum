@@ -158,7 +158,7 @@ const binding = (props.binding ??
 const showFormEmptyPlaceholder = computed(() =>
   isFormEmptyPlaceholderMode(props.renderMode, binding.env?.isForm)
 );
-const emptyDisplayText = computed(() => _t('No content'));
+const emptyDisplayText = computed(() => '');
 
 /* ---------------- Helpers ---------------- */
 function toBigInt(v: string | number | bigint | undefined): bigint | null {

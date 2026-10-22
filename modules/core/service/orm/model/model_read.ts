@@ -298,6 +298,8 @@ export class ReadOperations {
     const requested = ReadOperations.normalizeRequestedReadFields(fields);
     for (const row of rows) {
       if (!row || typeof row !== 'object') continue;
+      // related.store=false first so @Compute handlers can read injected related leaves if needed.
+      ComputeEngine.injectRelatedForRead(meta, row, requested);
       ComputeEngine.injectVirtualForRead(meta, row, requested);
     }
   }

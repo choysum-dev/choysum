@@ -137,7 +137,7 @@ const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebM
 const showFormEmptyPlaceholder = computed(() =>
   isFormEmptyPlaceholderMode(props.renderMode, binding.env?.isForm)
 );
-const emptyDisplayText = computed(() => _t('No content'));
+const emptyDisplayText = computed(() => '');
 
 /* ================== Dynamic scale registration (sibling field) ================== */
 const scaleFieldName = computed<string | undefined>(() => (binding.meta as any)?.scaleField as string | undefined);
