@@ -67,6 +67,12 @@ func (m *moduleUninstaller) cleanModels() error {
 		componentIDs,
 	)
 
+	// Resolve seed table names before declarations are removed (E15).
+	seedSnapshots, err := snapshotModuleSeedRows(db.DB, m.module.Name)
+	if err != nil {
+		return err
+	}
+
 	// Remove declaration trees then rebuild effective projections (symmetric with Replace+Flush).
 	keys, err := modmeta.RemoveModuleDeclarations(db.DB, moduleID)
 	if err != nil {
@@ -103,10 +109,12 @@ func (m *moduleUninstaller) cleanModels() error {
 		return xfmt.Errorf("error deleting module dependency relations: %w", err)
 	}
 
-	// Physically delete MetaModelData registry rows for this module name (xml_id mappings).
-	// Soft-delete would leave (module, name) unique-index collisions that block reinstall
-	// (loader scoped First misses soft-deleted rows, then Create fails). Do not cascade-
-	// delete the business seed rows those mappings point at (V1).
+	// Hard-delete business seed rows pointed at by this module's MetaModelData (E15),
+	// then physically delete the registry rows. Soft-delete of mappings would leave
+	// (module, name) unique-index collisions that block reinstall.
+	if err := deleteSeedRowsForSnapshots(db.DB, seedSnapshots); err != nil {
+		return err
+	}
 	if db.Migrator().HasTable((&modmeta.ModelData{}).TableName()) {
 		if err := db.Unscoped().Where("module = ?", m.module.Name).Delete(&modmeta.ModelData{}).Error; err != nil {
 			return xfmt.Errorf("error deleting meta model data mappings: %w", err)
