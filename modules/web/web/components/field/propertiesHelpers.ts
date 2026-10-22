@@ -52,6 +52,11 @@ export function propertyDateFromInput(value: unknown): string | null {
   return `${s}T00:00:00Z`;
 }
 
+/** Display date as `YYYY-MM-DD` (same as native date input). */
+export function propertyDateToDisplay(raw: unknown): string {
+  return propertyDateToInput(raw);
+}
+
 /** Convert stored UTC datetime to a picker Date (user wall-clock carrier). */
 export function propertyDatetimeToPicker(
   raw: unknown,
@@ -72,6 +77,139 @@ export function propertyDatetimeFromPicker(
   const wall = value instanceof Date ? value : new Date(value as any);
   const utc = userWallDateToUtc(wall, tz);
   return utc ? formatUtcIso(utc, PROPERTY_DATETIME_STORAGE_FORMAT) : null;
+}
+
+/** Wall-clock `YYYY-MM-DDTHH:mm:ss` for DateTimePicker from stored UTC. */
+export function propertyDatetimeToPickerModel(
+  raw: unknown,
+  tz: string = getUserTimeZone(),
+): string | null {
+  const wall = propertyDatetimeToPicker(raw, tz);
+  if (!wall || Number.isNaN(wall.getTime())) return null;
+  const y = wall.getFullYear();
+  const m = String(wall.getMonth() + 1).padStart(2, '0');
+  const d = String(wall.getDate()).padStart(2, '0');
+  const hh = String(wall.getHours()).padStart(2, '0');
+  const mm = String(wall.getMinutes()).padStart(2, '0');
+  const ss = String(wall.getSeconds()).padStart(2, '0');
+  return `${y}-${m}-${d}T${hh}:${mm}:${ss}`;
+}
+
+/** DateTimePicker model → stored UTC ISO (null when cleared / invalid). */
+export function propertyDatetimeFromPickerModel(
+  value: unknown,
+  tz: string = getUserTimeZone(),
+): string | null {
+  if (value == null || value === '') return null;
+  if (value instanceof Date) return propertyDatetimeFromPicker(value, tz);
+  const s = String(value).trim();
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/.exec(s);
+  if (!m) return propertyDatetimeFromPicker(s, tz);
+  const wall = new Date(
+    Number(m[1]),
+    Number(m[2]) - 1,
+    Number(m[3]),
+    Number(m[4]),
+    Number(m[5]),
+    Number(m[6] || 0),
+  );
+  return propertyDatetimeFromPicker(wall, tz);
+}
+
+/** Display datetime as wall-clock `YYYY-MM-DD HH:mm:ss`. */
+export function propertyDatetimeToDisplay(
+  raw: unknown,
+  tz: string = getUserTimeZone(),
+): string {
+  const model = propertyDatetimeToPickerModel(raw, tz);
+  return model ? model.replace('T', ' ') : '';
+}
+
+/** Parse integer property input; rejects empty / non-integer strings. */
+export function propertyIntegerFromInput(raw: unknown): number | null {
+  if (raw == null || raw === '') return null;
+  const s = String(raw).trim();
+  if (!/^-?\d+$/.test(s)) return null;
+  const n = Number.parseInt(s, 10);
+  return Number.isSafeInteger(n) ? n : null;
+}
+
+/** Parse float property input; rejects empty / non-finite. */
+export function propertyFloatFromInput(raw: unknown): number | null {
+  if (raw == null || raw === '') return null;
+  const n = Number(String(raw).trim());
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Allow typing `-` before digits (do not commit yet). */
+export function isPropertyIntegerIntermediate(raw: string): boolean {
+  return raw === '' || raw === '-';
+}
+
+/** Allow typing trailing `.` / bare `-` before a complete float commits. */
+export function isPropertyFloatIntermediate(raw: string): boolean {
+  if (raw === '' || raw === '-' || raw === '.' || raw === '-.') return true;
+  return /^-?\d+\.$/.test(raw);
+}
+
+/** Char filter for integer property drafts (matches ChoyIntField). */
+export function isPropertyIntegerRawAllowed(raw: string): boolean {
+  return /^-?\d*$/.test(raw);
+}
+
+/** Char filter for float property drafts (matches ChoyNumberField). */
+export function isPropertyFloatRawAllowed(raw: string): boolean {
+  return /^-?\d*(\.\d*)?$/.test(raw);
+}
+
+/**
+ * Compact table/inline summary: up to `maxItems` formatted pairs, then a count remainder.
+ * Empty when nothing to show.
+ */
+export function formatPropertiesSummary(params: {
+  items: ResolvedPropertyItem[];
+  map: unknown;
+  formatPair: (item: ResolvedPropertyItem, displayValue: string) => string;
+  formatValue: (item: ResolvedPropertyItem, raw: unknown) => string;
+  moreLabel: (remaining: number) => string;
+  maxItems?: number;
+}): string {
+  const maxItems = params.maxItems ?? 2;
+  const valueMap = normalizePropertiesMap(params.map);
+  const pairs: string[] = [];
+  for (const item of params.items) {
+    if (!item?.name || !PROPERTIES_V1_TYPES.has(String(item.type))) continue;
+    if (!Object.prototype.hasOwnProperty.call(valueMap, item.name)) continue;
+    const display = params.formatValue(item, valueMap[item.name]);
+    if (display === '') continue;
+    pairs.push(params.formatPair(item, display));
+  }
+  if (!pairs.length) return '';
+  if (pairs.length <= maxItems) return pairs.join(' · ');
+  const head = pairs.slice(0, maxItems).join(' · ');
+  return `${head} · ${params.moreLabel(pairs.length - maxItems)}`;
+}
+
+/** Fingerprint scalar / Many2One-ish record fields for ResolveProperties watch (excludes `excludeKey`). */
+export function propertiesRecordWatchFingerprint(
+  record: unknown,
+  excludeKey: string,
+): string {
+  if (record == null || typeof record !== 'object' || Array.isArray(record)) return '';
+  const rec = record as Record<string, unknown>;
+  const parts: string[] = [];
+  for (const key of Object.keys(rec)) {
+    if (key === excludeKey) continue;
+    const v = rec[key];
+    if (v == null || typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
+      parts.push(`${key}=${String(v)}`);
+      continue;
+    }
+    if (typeof v === 'object' && !Array.isArray(v) && typeof (v as { Id?: unknown }).Id === 'string') {
+      parts.push(`${key}=${String((v as { Id: string }).Id)}`);
+    }
+  }
+  return parts.join('|');
 }
 
 /** Keep only V1-renderable items; unknown types are skipped (caller may warn). */

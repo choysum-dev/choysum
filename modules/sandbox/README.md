@@ -50,7 +50,7 @@ Terminology: `modules/sandbox/i18n/sandbox.pot` + `zh_CN.po`
 | binary | `Attachment` | `ChoyBinaryField` |
 | image | `Image` | `ChoyImageField` |
 | jsonobject | `JsonPayload` | `ChoyJsonField` |
-| properties | `Properties` (app-level) | `ChoyPropertiesField` |
+| properties | `Properties` (app-level; schema in `PropertyDefinition`) | `ChoyPropertiesField` |
 | ManyToOne | `CategoryId`, `PrimaryLineId` | `ChoyManyToOneField` |
 | ManyToOneRef | `CurrencyId`, `CompanyId`, `CategoryRefId` | `ChoyManyToOneRefField` |
 | ManyToMany | `Tags` | `ChoyManyToManyField` |

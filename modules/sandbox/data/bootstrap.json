@@ -57,6 +57,72 @@
       }
     },
     {
+      "name": "record_properties_app",
+      "model": "PropertyDefinition",
+      "values": {
+        "TargetModel": "SandboxRecord",
+        "PropertiesField": "Properties",
+        "ContainerModel": null,
+        "ContainerId": null,
+        "Definition": [
+          {
+            "name": "priority",
+            "type": "selection",
+            "string": "Priority",
+            "selection": [
+              ["low", "Low"],
+              ["normal", "Normal"],
+              ["high", "High"]
+            ],
+            "default": "normal"
+          },
+          {
+            "name": "external_code",
+            "type": "char",
+            "string": "External Code"
+          },
+          {
+            "name": "is_vip",
+            "type": "boolean",
+            "string": "VIP",
+            "default": false
+          },
+          {
+            "name": "qty_hint",
+            "type": "integer",
+            "string": "Qty Hint"
+          },
+          {
+            "name": "score",
+            "type": "float",
+            "string": "Score"
+          },
+          {
+            "name": "note",
+            "type": "text",
+            "string": "Note"
+          },
+          {
+            "name": "due_date",
+            "type": "date",
+            "string": "Due Date"
+          },
+          {
+            "name": "reviewed_at",
+            "type": "datetime",
+            "string": "Reviewed At"
+          },
+          {
+            "name": "locked_code",
+            "type": "char",
+            "string": "Locked Code",
+            "readonly": true,
+            "default": "RO"
+          }
+        ]
+      }
+    },
+    {
       "name": "record_sample",
       "model": "SandboxRecord",
       "values": {
@@ -75,6 +141,17 @@
         "State": "draft",
         "Progress": "draft",
         "JsonPayload": { "hello": "sandbox" },
+        "Properties": {
+          "priority": "high",
+          "external_code": "SBX-001",
+          "is_vip": true,
+          "qty_hint": 3,
+          "score": 9.5,
+          "note": "Kitchen-sink properties sample",
+          "due_date": "2026-12-31T00:00:00Z",
+          "reviewed_at": "2026-06-30T16:00:00.000Z",
+          "locked_code": "RO"
+        },
         "CurrencyId": { "ref": "base.currency_cny" },
         "CompanyId": { "ref": "base.company_main" },
         "CategoryId": { "ref": "sandbox.category_active" },

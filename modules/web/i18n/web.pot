@@ -998,63 +998,78 @@ msgid "Translations saved"
 msgstr ""
 
 #: web/components/field/ChoyPropertiesDefinitionEditor.vue:8
-msgctxt "web/components/field/PropertiesDefinitionEditor"
+msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
 msgid "Add property"
 msgstr ""
 
 #: web/components/field/ChoyPropertiesDefinitionEditor.vue:28
-msgctxt "web/components/field/PropertiesDefinitionEditor"
+msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
 msgid "Default"
 msgstr ""
 
 #: web/components/field/ChoyPropertiesDefinitionEditor.vue:27
-msgctxt "web/components/field/PropertiesDefinitionEditor"
+msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
 msgid "Label"
 msgstr ""
 
 #: web/components/field/ChoyPropertiesDefinitionEditor.vue:23
-msgctxt "web/components/field/PropertiesDefinitionEditor"
+msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
 msgid "Name"
 msgstr ""
 
 #: web/components/field/ChoyPropertiesDefinitionEditor.vue:19
-msgctxt "web/components/field/PropertiesDefinitionEditor"
+msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
 msgid "No properties defined"
 msgstr ""
 
 #: web/components/field/ChoyPropertiesDefinitionEditor.vue:133
 #: web/components/field/ChoyPropertiesDefinitionEditor.vue:82
-msgctxt "web/components/field/PropertiesDefinitionEditor"
+msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
 msgid "PropertyDefinition store is unavailable"
 msgstr ""
 
 #: web/components/field/ChoyPropertiesDefinitionEditor.vue:31
-msgctxt "web/components/field/PropertiesDefinitionEditor"
+msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
 msgid "Remove"
 msgstr ""
 
+#: web/components/field/ChoyPropertiesDefinitionEditor.vue:100
+msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+msgid "Readonly"
+msgstr ""
+
 #: web/components/field/ChoyPropertiesDefinitionEditor.vue:5
-msgctxt "web/components/field/PropertiesDefinitionEditor"
+msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
 msgid "Save"
 msgstr ""
 
 #: web/components/field/ChoyPropertiesDefinitionEditor.vue:30
-msgctxt "web/components/field/PropertiesDefinitionEditor"
+msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
 msgid "Selection JSON"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesField.vue:150
-msgctxt "web/components/field/PropertiesField"
-msgid "%s properties"
+#: web/components/field/ChoyPropertiesDefinitionEditor.vue:70
+msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+msgid "Type"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesField.vue:140
-msgctxt "web/components/field/PropertiesField"
+#: web/components/field/ChoyPropertiesField.vue
+msgctxt "web/components/field/ChoyPropertiesField"
+msgid "+%s more"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesField.vue
+msgctxt "web/components/field/ChoyPropertiesField"
 msgid "No"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesField.vue:140
-msgctxt "web/components/field/PropertiesField"
+#: web/components/field/ChoyPropertiesField.vue
+msgctxt "web/components/field/ChoyPropertiesField"
+msgid "No properties defined"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesField.vue
+msgctxt "web/components/field/ChoyPropertiesField"
 msgid "Yes"
 msgstr ""
 

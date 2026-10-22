@@ -977,62 +977,77 @@ msgid "Translations saved"
 msgstr "翻译已保存"
 
 #: web/components/field/ChoyPropertiesDefinitionEditor.vue:8
-msgctxt "web/components/field/PropertiesDefinitionEditor"
+msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
 msgid "Add property"
 msgstr "添加属性"
 
 #: web/components/field/ChoyPropertiesDefinitionEditor.vue:28
-msgctxt "web/components/field/PropertiesDefinitionEditor"
+msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
 msgid "Default"
 msgstr "默认"
 
 #: web/components/field/ChoyPropertiesDefinitionEditor.vue:27
-msgctxt "web/components/field/PropertiesDefinitionEditor"
+msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
 msgid "Label"
 msgstr "标签"
 
 #: web/components/field/ChoyPropertiesDefinitionEditor.vue:23
-msgctxt "web/components/field/PropertiesDefinitionEditor"
+msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
 msgid "Name"
 msgstr "名称"
 
 #: web/components/field/ChoyPropertiesDefinitionEditor.vue:19
-msgctxt "web/components/field/PropertiesDefinitionEditor"
+msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
 msgid "No properties defined"
 msgstr "未定义属性"
 
 #: web/components/field/ChoyPropertiesDefinitionEditor.vue:133 web/components/field/ChoyPropertiesDefinitionEditor.vue:82
-msgctxt "web/components/field/PropertiesDefinitionEditor"
+msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
 msgid "PropertyDefinition store is unavailable"
 msgstr "PropertyDefinition 存储不可用"
 
 #: web/components/field/ChoyPropertiesDefinitionEditor.vue:31
-msgctxt "web/components/field/PropertiesDefinitionEditor"
+msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
 msgid "Remove"
 msgstr "移除"
 
+#: web/components/field/ChoyPropertiesDefinitionEditor.vue:100
+msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+msgid "Readonly"
+msgstr "只读"
+
 #: web/components/field/ChoyPropertiesDefinitionEditor.vue:5
-msgctxt "web/components/field/PropertiesDefinitionEditor"
+msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
 msgid "Save"
 msgstr "保存"
 
 #: web/components/field/ChoyPropertiesDefinitionEditor.vue:30
-msgctxt "web/components/field/PropertiesDefinitionEditor"
+msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
 msgid "Selection JSON"
 msgstr "选择项 JSON"
 
-#: web/components/field/ChoyPropertiesField.vue:150
-msgctxt "web/components/field/PropertiesField"
-msgid "%s properties"
-msgstr "%s 个属性"
+#: web/components/field/ChoyPropertiesDefinitionEditor.vue:70
+msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+msgid "Type"
+msgstr "类型"
 
-#: web/components/field/ChoyPropertiesField.vue:140
-msgctxt "web/components/field/PropertiesField"
+#: web/components/field/ChoyPropertiesField.vue
+msgctxt "web/components/field/ChoyPropertiesField"
+msgid "+%s more"
+msgstr "+%s 项"
+
+#: web/components/field/ChoyPropertiesField.vue
+msgctxt "web/components/field/ChoyPropertiesField"
 msgid "No"
 msgstr "否"
 
-#: web/components/field/ChoyPropertiesField.vue:140
-msgctxt "web/components/field/PropertiesField"
+#: web/components/field/ChoyPropertiesField.vue
+msgctxt "web/components/field/ChoyPropertiesField"
+msgid "No properties defined"
+msgstr "暂无属性定义"
+
+#: web/components/field/ChoyPropertiesField.vue
+msgctxt "web/components/field/ChoyPropertiesField"
 msgid "Yes"
 msgstr "是"
 
