@@ -257,11 +257,19 @@ export function countSchemaMapIntersection(schemaNames: string[], map: unknown):
 /**
  * Build a full replace map for schema keys.
  * Non-V1 schema items keep previous values so a UI that cannot render them does not drop them.
+ * When `items` is empty (ResolveProperties still loading / failed), copy `previous` so a
+ * premature write cannot wipe the column to `{}`.
  */
 export function buildFullPropertiesMap(items: ResolvedPropertyItem[], previous: unknown): PropertiesMap {
   const prev = normalizePropertiesMap(previous);
   // null-prototype so schema names like "__proto__" become own data keys (matches BE write).
   const next: PropertiesMap = Object.create(null);
+  if (!items?.length) {
+    for (const key of Object.keys(prev)) {
+      next[key] = prev[key];
+    }
+    return next;
+  }
   for (const item of items) {
     if (!item?.name) continue;
     if (!PROPERTIES_V1_TYPES.has(String(item.type))) {
@@ -288,10 +296,11 @@ export function writePropertyValue(
   name: string,
   value: unknown,
 ): PropertiesMap {
-  const next = buildFullPropertiesMap(items, previous);
   if (!items.some(i => i.name === name && PROPERTIES_V1_TYPES.has(String(i.type)))) {
-    return next;
+    // Unknown / not-yet-resolved schema: leave the previous map untouched.
+    return buildFullPropertiesMap(items, previous);
   }
+  const next = buildFullPropertiesMap(items, previous);
   next[name] = value;
   return next;
 }

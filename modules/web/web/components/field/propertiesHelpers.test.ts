@@ -118,6 +118,15 @@ describe('propertiesHelpers', () => {
     expect(countSchemaMapIntersection([], next)).toBe(0);
   });
 
+  test('buildFullPropertiesMap copies previous when schema items are empty', () => {
+    const prev = { qty_hint: 3, due_date: '2026-12-31T00:00:00Z' };
+    const map = buildFullPropertiesMap([], prev);
+    expect(map).toEqual(prev);
+    expect(Object.getPrototypeOf(map)).toBe(null);
+    // Premature write before ResolveProperties must not wipe the column.
+    expect(writePropertyValue([], prev, 'qty_hint', 99)).toEqual(prev);
+  });
+
   test('buildFullPropertiesMap preserves previous values for unrenderable types', () => {
     const items = [
       { name: 'color', type: 'char', default: 'red' },

@@ -17,7 +17,26 @@ type DiffChange = {
 };
 
 export type RelationType = 'OneToMany' | 'ManyToMany' | 'ManyToOne';
-export type FieldsMeta = Record<string, { relation?: RelationType; type?: string }>;
+export type FieldsMeta = Record<
+  string,
+  { relation?: RelationType; type?: string; resolvedColumnType?: string }
+>;
+
+/** Properties / jsonobject columns are whole-map replace on write (not nested patches). */
+function isWholeMapReplaceFieldMeta(fm: { type?: string; resolvedColumnType?: string } | undefined): boolean {
+  if (!fm) return false;
+  const t = String(fm.type || '').toLowerCase();
+  const r = String(fm.resolvedColumnType || '').toLowerCase();
+  return t === 'properties' || r === 'properties' || t === 'jsonobject' || r === 'jsonobject';
+}
+
+function mergePlainMaps(original: unknown, current: unknown): Plain | unknown {
+  if (current === null || current === undefined) return current;
+  const oMap = asObjectRecord(original);
+  const cMap = asObjectRecord(current);
+  if (oMap && cMap) return { ...oMap, ...cMap };
+  return current;
+}
 
 /** Keys of a {@link RelationPatch} object payload. */
 export type RelationPatchKind = keyof RelationPatch<BaseModel>;
@@ -214,7 +233,12 @@ function diffArrayRelation(kind: 'o2m' | 'm2m', origArr: unknown[] = [], currArr
  * Diffs ordinary non-relation fields.
  * - Compare top-level Decimal values first to avoid microdiff blind spots.
  * ------------------------------------------------ */
-function diffNormalFields(original: Plain, current: Plain, relationKeys: Set<string>): Plain {
+function diffNormalFields(
+  original: Plain,
+  current: Plain,
+  relationKeys: Set<string>,
+  fieldsMeta?: FieldsMeta,
+): Plain {
   const out: Plain = {};
   const handledTopKeys = new Set<string>();
 
@@ -251,6 +275,25 @@ function diffNormalFields(original: Plain, current: Plain, relationKeys: Set<str
         out[topKey] = ob !== undefined ? ob : null;
         handledTopKeys.add(topKey);
         continue;
+      }
+      // properties / jsonobject (and any plain map column): never emit nested partial
+      // maps — BE treats these as whole-column replace. Without this, a single dirty
+      // key (e.g. Properties.qty_hint) wipes sibling keys on the server.
+      const oMap = asObjectRecord(oa);
+      const cMap = asObjectRecord(ob);
+      if (oMap && cMap && !Array.isArray(oa) && !Array.isArray(ob)) {
+        const looksM2O = (m: Plain) =>
+          typeof m.Id === 'string' &&
+          (Object.prototype.hasOwnProperty.call(m, 'DisplayName') ||
+            Object.prototype.hasOwnProperty.call(m, 'display_name'));
+        if (
+          isWholeMapReplaceFieldMeta(fieldsMeta?.[topKey]) ||
+          (!looksM2O(oMap) && !looksM2O(cMap))
+        ) {
+          out[topKey] = { ...oMap, ...cMap };
+          handledTopKeys.add(topKey);
+          continue;
+        }
       }
     }
 
@@ -338,9 +381,39 @@ export function buildUpdatePayload(original: Plain, current: Plain, fieldsMeta?:
     }
   }
 
-  // 3) Ordinary fields.
-  const relationKeys = new Set<string>([...processed.keys()]);
-  Object.assign(payload, diffNormalFields(original, current, relationKeys));
+  // 3) Properties / jsonobject: whole-column replace (BE validatePropertiesWrite).
+  // Nested microdiff would send `{ qty_hint: 30 }` only; the server then drops every
+  // other writable key. Always send original ∪ current so keys missing from a
+  // truncated draft are not wiped. Explicit nulls in current still win.
+  const wholeMapKeys = new Set<string>();
+  for (const key of allKeys) {
+    if (processed.has(key)) continue;
+    if (!isWholeMapReplaceFieldMeta(fieldsMeta?.[key])) continue;
+    wholeMapKeys.add(key);
+    const oVal = original?.[key];
+    const cVal = current?.[key];
+    if (equal(oVal ?? null, cVal ?? null)) continue;
+    if (cVal === undefined || cVal === null) {
+      payload[key] = null;
+      continue;
+    }
+    payload[key] = mergePlainMaps(oVal, cVal);
+  }
+
+  // 4) Ordinary fields (nested object diffs under properties/jsonobject also collapse).
+  const relationKeys = new Set<string>([...processed.keys(), ...wholeMapKeys]);
+  Object.assign(payload, diffNormalFields(original, current, relationKeys, fieldsMeta));
+
+  // 5) Safety net: if a whole-map field still looks like a nested partial patch, re-merge.
+  for (const key of allKeys) {
+    if (!isWholeMapReplaceFieldMeta(fieldsMeta?.[key])) continue;
+    if (!Object.prototype.hasOwnProperty.call(payload, key)) continue;
+    const patchVal = payload[key];
+    if (patchVal === null) continue;
+    const cVal = current?.[key];
+    if (cVal === null || cVal === undefined) continue;
+    payload[key] = mergePlainMaps(original?.[key], cVal);
+  }
 
   return payload;
 }

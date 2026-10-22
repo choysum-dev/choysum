@@ -133,3 +133,107 @@ test('buildUpdatePayload treats ManyToOneRef like ManyToOne string ids', () => {
   );
   expect(cleared.CurrencyId).toBeNull();
 });
+
+test('buildUpdatePayload sends full properties map on nested key change (PP4 replace)', () => {
+  const original = {
+    Properties: {
+      priority: 'high',
+      external_code: 'SBX-001',
+      qty_hint: 3,
+      score: 9.5,
+      note: 'Kitchen-sink properties sample',
+      locked_code: 'RO',
+    },
+  };
+  const current = {
+    Properties: {
+      priority: 'high',
+      external_code: 'SBX-001',
+      qty_hint: 30,
+      score: 9.5,
+      note: 'Kitchen-sink properties sample',
+      locked_code: 'RO',
+    },
+  };
+  const payload = buildUpdatePayload(original, current, {
+    Properties: { type: 'properties' },
+  });
+  expect(payload.Properties).toEqual(current.Properties);
+  expect(Object.keys(payload.Properties as object).sort()).toEqual([
+    'external_code',
+    'locked_code',
+    'note',
+    'priority',
+    'qty_hint',
+    'score',
+  ]);
+});
+
+test('buildUpdatePayload collapses nested properties microdiff even without fieldsMeta', () => {
+  // Simulates missing fieldsMetadata.type — still must not ship { qty_hint } alone.
+  const original = {
+    Properties: {
+      priority: 'high',
+      external_code: 'SBX-001',
+      qty_hint: 3,
+      due_date: '2026-12-31T00:00:00Z',
+    },
+  };
+  const current = {
+    Properties: {
+      priority: 'high',
+      external_code: 'SBX-001',
+      qty_hint: 999,
+      due_date: '2026-12-31T00:00:00Z',
+    },
+  };
+  const payload = buildUpdatePayload(original, current);
+  expect(payload.Properties).toEqual(current.Properties);
+});
+
+test('buildUpdatePayload merges original properties under a truncated draft map', () => {
+  const original = {
+    Properties: {
+      priority: 'high',
+      external_code: 'SBX-001',
+      qty_hint: 3,
+      score: 9.5,
+      due_date: '2026-12-31T00:00:00Z',
+      locked_code: 'RO',
+    },
+  };
+  // Draft lost keys (UI partial write); only qty_hint remains dirty-local.
+  const current = {
+    Properties: {
+      qty_hint: 999,
+    },
+  };
+  const payload = buildUpdatePayload(original, current, {
+    Properties: { type: 'properties' },
+  });
+  expect(payload.Properties).toEqual({
+    priority: 'high',
+    external_code: 'SBX-001',
+    qty_hint: 999,
+    score: 9.5,
+    due_date: '2026-12-31T00:00:00Z',
+    locked_code: 'RO',
+  });
+});
+
+test('buildUpdatePayload keeps explicit null clears when merging properties', () => {
+  const payload = buildUpdatePayload(
+    { Properties: { qty_hint: 3, due_date: '2026-12-31T00:00:00Z' } },
+    { Properties: { qty_hint: 3, due_date: null } },
+    { Properties: { type: 'properties' } }
+  );
+  expect(payload.Properties).toEqual({ qty_hint: 3, due_date: null });
+});
+
+test('buildUpdatePayload omits properties when the column is unchanged', () => {
+  const map = { qty_hint: 3, external_code: 'SBX-001' };
+  const payload = buildUpdatePayload({ Properties: map }, { Properties: { ...map } }, {
+    Properties: { type: 'properties' },
+  });
+  expect(payload.Properties).toBeUndefined();
+});
