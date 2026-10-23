@@ -518,13 +518,13 @@ function withSelections(plan: QueryPlan, storeId: string): QueryPlan {
 async function call(plan: QueryPlan, store: WebModelStore<any>): Promise<any> {
   switch (plan.kind) {
     case 'search': {
-      const { condition, fields, orderBy, limit, offset } = plan.params || {};
-      const options = { fields, orderBy, limit, offset };
+      const { condition, fields, orderBy, limit, offset, relationConditionSource } = plan.params || {};
+      const options = { fields, orderBy, limit, offset, relationConditionSource };
       return store.Search!(condition ?? [], options);
     }
     case 'count': {
-      const { condition } = plan.params || {};
-      return store.Count!(condition ?? []);
+      const { condition, relationConditionSource } = plan.params || {};
+      return store.Count!(condition ?? [], relationConditionSource ? { relationConditionSource } : undefined);
     }
     case 'readGroup': {
       const { groupby, condition, fields, orderBy, limit, offset } = plan.params || {};

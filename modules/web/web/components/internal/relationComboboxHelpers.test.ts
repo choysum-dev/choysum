@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  filterRelationOptions,
   findRelationOption,
   mapNameSearchRows,
   normalizeRelationQuery,
@@ -142,6 +143,22 @@ describe('relationComboboxHelpers', () => {
     };
     expect(resolveRelationSearchMemo(empty, 'xyzz', 'partner.Partner', 20)).toEqual([]);
     expect(resolveRelationSearchMemo(empty, 'abc', 'partner.Partner', 20)).toBeNull();
+  });
+
+  test('filterRelationOptions and upsert drop blank ids', () => {
+    expect(
+      filterRelationOptions([
+        { id: '', label: 'Please select...' },
+        { id: '  ', label: 'Blank' },
+        { id: 'a', label: 'A' },
+      ]),
+    ).toEqual([{ id: 'a', label: 'A' }]);
+    expect(
+      upsertRelationOption([{ id: '', label: 'Please select...' }, { id: 'a', label: 'A' }], {
+        id: '',
+        label: 'Please select...',
+      }),
+    ).toEqual([{ id: 'a', label: 'A' }]);
   });
 
   test('upserts and finds selected options', () => {

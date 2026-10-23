@@ -130,15 +130,17 @@ export function buildPlan(ctx: QueryContext): PlanBundle {
   }
 
   const s = ctx.queryState;
+  const relationConditionSource = ctx.options?.relationConditionSource;
   const params = {
     condition: mergeConditions(ctx),
     orderBy: s?.orderBy,
     limit: ctx.range?.limit,
     offset: ctx.range?.offset,
     fields: undefined,
+    relationConditionSource,
   };
   const main = { kind: 'search' as const, params, hash: stableHash(['s', ctx.model, params]) };
-  const countParams = { condition: params.condition };
+  const countParams = { condition: params.condition, relationConditionSource };
   const count = { kind: 'count' as const, params: countParams, hash: stableHash(['c', ctx.model, countParams]) };
   return { main, auxiliary: ctx.options?.skipCount ? [] : [count] };
 }

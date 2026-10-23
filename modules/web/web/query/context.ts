@@ -19,7 +19,12 @@ export interface QueryContext {
   // Range cursor info (for virtualization / partial fetch)
   range?: { offset: number; limit: number };
   // Execution options influencing plan construction (chart/full hierarchy etc.)
-  options?: { fullGroupHierarchy?: boolean; skipPagination?: boolean; skipCount?: boolean };
+  options?: {
+    fullGroupHierarchy?: boolean;
+    skipPagination?: boolean;
+    skipCount?: boolean;
+    relationConditionSource?: { model: string; field: string };
+  };
 }
 
 export interface BuildContextOverrides {
@@ -30,7 +35,12 @@ export interface BuildContextOverrides {
   recordId?: string;
   filters?: any;
   range?: { offset: number; limit: number };
-  options?: { fullGroupHierarchy?: boolean; skipPagination?: boolean; skipCount?: boolean };
+  options?: {
+    fullGroupHierarchy?: boolean;
+    skipPagination?: boolean;
+    skipCount?: boolean;
+    relationConditionSource?: { model: string; field: string };
+  };
 }
 
 // Derive model name strictly from store.storeId

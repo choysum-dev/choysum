@@ -348,9 +348,19 @@ export class ReadOperations {
     return rows;
   }
 
-  static async Count<T extends BaseModel>(ModelCtor: ModelCtor<T>, condition: QueryCondition<T> | [] = [], options?: SoftDeleteOptions): Promise<number> {
+  static async Count<T extends BaseModel>(
+    ModelCtor: ModelCtor<T>,
+    condition: QueryCondition<T> | [] = [],
+    options?: SoftDeleteOptions & Pick<SearchOptions<T>, 'relationConditionSource'>
+  ): Promise<number> {
+    const cond: QueryCondition<T> | [] = condition === undefined || condition === null ? [] : condition;
+    const merged = mergeCallerConditionWithRelationConditionSource(
+      ModelCtor as never,
+      cond as never,
+      options?.relationConditionSource
+    ) as QueryCondition<T> | [];
     const repository = ReadOperations.resolveRepository(ModelCtor, options);
-    return await repository.count(condition as QueryCondition<T>);
+    return await repository.count(merged as QueryCondition<T>);
   }
 
   /**

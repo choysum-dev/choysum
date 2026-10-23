@@ -116,21 +116,27 @@ export function resolveRelationSearchMemo(
   return null;
 }
 
+/** Drops blank ids so placeholder / empty shells never render as Combobox items. */
+export function filterRelationOptions(options: readonly RelationOption[]): RelationOption[] {
+  return options.filter((item) => String(item?.id ?? '').trim() !== '');
+}
+
 /** Merges a selected option into the list so the trigger keeps a label. */
 export function upsertRelationOption(
   options: readonly RelationOption[],
   selected: RelationOption | null | undefined,
 ): RelationOption[] {
+  const base = filterRelationOptions(options);
   const id = String(selected?.id ?? '').trim();
   if (!selected || !id) {
-    return [...options];
+    return base;
   }
   // Normalize so a padded id matches the trimmed ids used by findRelationOption.
   const normalized: RelationOption = { ...selected, id };
-  if (options.some((item) => item.id === id)) {
-    return options.map((item) => (item.id === id ? normalized : item));
+  if (base.some((item) => item.id === id)) {
+    return base.map((item) => (item.id === id ? normalized : item));
   }
-  return [normalized, ...options];
+  return [normalized, ...base];
 }
 
 /** Finds an option by id. */

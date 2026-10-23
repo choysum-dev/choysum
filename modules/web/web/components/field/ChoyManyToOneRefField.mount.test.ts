@@ -83,12 +83,14 @@ function installStubs() {
       pageSize: { type: Number, default: 20 },
       searchMore: { type: Boolean, default: false },
     },
-    setup(props: any) {
+    setup(props: any, { slots }: any) {
       return () =>
         h('div', {
           class: 'select-stub',
           'data-selected-label': String(props.selectedOption?.label ?? ''),
-        });
+        }, [
+          slots.footer?.(),
+        ]);
     },
   });
 }
@@ -159,6 +161,52 @@ describe('ChoyManyToOneRefField display hydrate', () => {
 
     expect(Browse.calls.length).toBe(0);
     expect(m.text()).not.toContain('X');
+    m.unmount();
+  });
+
+  test('NameCreate entry renders inside Combobox footer when allowCreate and keyword', async () => {
+    const auth = useAuthStore();
+    auth.identity = {
+      metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] },
+    } as any;
+    auth.permissionState = {
+      permStateVersion: 1,
+      byCompany: {
+        '*': { ui: { routes: [], menus: [], actions: ['base.action.currency_create'] } },
+      },
+    } as any;
+
+    const NameSearch = fnRecorder(async () => []);
+    const { binding } = makeBinding({
+      value: null,
+      meta: { type: 'ManyToOneRef', relationModel: 'base.Currency' },
+      relationStore: {
+        NameSearch,
+        NameCreate: async () => ({ Id: 'n1', DisplayName: 'New' }),
+        fullModelName: 'base.Currency',
+        storeId: 'base.Currency:1',
+      },
+    });
+
+    const m = mountApp(ChoyManyToOneRefField as any, {
+      props: {
+        binding,
+        renderMode: 'form',
+        allowCreate: true,
+        createActionId: 'base.action.currency_create',
+      },
+    });
+    await nextTick();
+
+    // Drive keyword via NameSearch so showNameCreateEntry becomes true.
+    const state = m.setupState() as { searchQuery?: string } | undefined;
+    state!.searchQuery = 'yen';
+    await nextTick();
+
+    const create = m.q('[data-testid="choy-m2o-name-create"]') as HTMLElement | null;
+    expect(create).toBeTruthy();
+    expect(create!.closest('.select-stub')).toBeTruthy();
+    expect((create!.textContent || '').includes('yen')).toBe(true);
     m.unmount();
   });
 });

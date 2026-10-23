@@ -245,6 +245,9 @@ export function createListController(store: WebModelStore<any>): IListController
         }
       }
 
+      const relationConditionSource = (store.state as any)?.queryState?.relationConditionSource as
+        | { model: string; field: string }
+        | undefined;
       const ctx = buildSearchOrGroupContext(store, {
         shape,
         filters: finalCondition,
@@ -259,6 +262,7 @@ export function createListController(store: WebModelStore<any>): IListController
                 orderBy: effectiveOverrides?.orderBy,
                 pagination: effectiveOverrides?.pagination as any,
               },
+        options: relationConditionSource ? { relationConditionSource } : undefined,
       });
 
       // Keep controlled pagination in sync with store state immediately.

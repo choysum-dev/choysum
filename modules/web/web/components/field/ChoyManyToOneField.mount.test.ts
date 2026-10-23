@@ -19,24 +19,53 @@ const searchExpose = {
   selectedItems: [] as any[],
 };
 
+const lastSearchViewProps = ref<Record<string, unknown> | null>(null);
+
 const SearchViewStub = defineComponent({
   name: 'SearchViewStub',
+  inheritAttrs: false,
+  props: {
+    hostPageTitle: { type: Boolean, default: true },
+    showSelectionColumn: { type: Boolean, default: true },
+    registerActionTarget: { type: Boolean, default: undefined },
+    showActions: { type: Boolean, default: true },
+    forcedCondition: { type: [Object, Array] as any, default: undefined },
+    relationConditionSource: { type: Object as any, default: undefined },
+  },
   emits: ['selection-change'],
-  setup(_, { emit, expose }) {
+  setup(props, { emit, expose }) {
     expose(searchExpose);
+    lastSearchViewProps.value = {
+      forcedCondition: props.forcedCondition,
+      relationConditionSource: props.relationConditionSource,
+      hostPageTitle: props.hostPageTitle,
+      showSelectionColumn: props.showSelectionColumn,
+    };
     return () =>
-      h('div', { class: 'search-view-stub', 'data-test': 'search-view' }, [
-        h('button', {
-          type: 'button',
-          'data-test': 'pick-row',
-          onClick: () => {
-            const row = { Id: 'row1', DisplayName: 'FromClick' };
-            searchExpose.selectedItem = row;
-            searchExpose.selectedItems = [row];
-            emit('selection-change', { rows: [row], ids: ['row1'] });
-          },
-        }),
-      ]);
+      h(
+        'div',
+        {
+          class: 'search-view-stub',
+          'data-test': 'search-view',
+          'data-host-page-title': props.hostPageTitle ? '1' : '0',
+          'data-show-selection-column': props.showSelectionColumn ? '1' : '0',
+          'data-register-action-target':
+            props.registerActionTarget === false ? '0' : props.registerActionTarget ? '1' : '',
+          'data-show-actions': props.showActions ? '1' : '0',
+        },
+        [
+          h('button', {
+            type: 'button',
+            'data-test': 'pick-row',
+            onClick: () => {
+              const row = { Id: 'row1', DisplayName: 'FromClick' };
+              searchExpose.selectedItem = row;
+              searchExpose.selectedItems = [row];
+              emit('selection-change', { rows: [row], ids: ['row1'] });
+            },
+          }),
+        ],
+      );
   },
 });
 
@@ -135,6 +164,7 @@ function makeBinding(opts?: {
   /** Row passed into #edit/#display slot (O2M line); defaults to root record. */
   slotRecord?: any;
   relationStore?: any;
+  store?: any;
 }): { binding: UseField; value: any; record: any } {
   const value = ref(opts?.value ?? null);
   const record = ref(opts?.record ?? { Id: '1' });
@@ -152,7 +182,7 @@ function makeBinding(opts?: {
     recordRef: () => computed(() => record.value) as any,
     registerFields: () => {},
     relationStore: opts?.relationStore,
-    store: undefined,
+    store: opts?.store,
     asView: () => ({ fieldValue: () => value }) as any,
     _slotRecord: opts?.slotRecord,
   } as any;
@@ -439,7 +469,12 @@ describe('ChoyManyToOneField mount coverage', () => {
     more!.click();
     await nextTick();
     expect(m.q('.dialog')?.getAttribute('data-open')).toBe('1');
-    expect(m.q('.search-view-stub')).toBeTruthy();
+    const stub = m.q('.search-view-stub') as HTMLElement | null;
+    expect(stub).toBeTruthy();
+    expect(stub!.getAttribute('data-host-page-title')).toBe('0');
+    expect(stub!.getAttribute('data-show-selection-column')).toBe('0');
+    expect(stub!.getAttribute('data-register-action-target')).toBe('0');
+    expect(stub!.getAttribute('data-show-actions')).toBe('0');
     expect((m.q('.dialog-title')?.textContent || '').includes('Find partner')).toBe(true);
 
     // Empty selection closes without writing.
@@ -495,6 +530,40 @@ describe('ChoyManyToOneField mount coverage', () => {
     more?.click();
     await nextTick();
     expect(m.q('.dialog')?.getAttribute('data-open')).toBe('0');
+    m.unmount();
+  });
+
+  test('openSearchDialog resets leftover keyword and appliedFilters on relationStore', async () => {
+    const relationStore = {
+      NameSearch: fnRecorder(async () => []),
+      fullModelName: 'partner.Partner',
+      state: {
+        queryState: {
+          kind: 'search',
+          keyword: '启用',
+          appliedFilters: [{ And: [['Name', 'ilike', 'x']] }],
+          appliedGroups: [['Code']],
+          defaultFilters: [{ name: 'Active', query: ['IsActive', '=', true], selected: true }],
+          userClearedDefaultFilters: true,
+          pagination: { limit: 50, offset: 100 },
+          orderBy: [{ field: 'Name', direction: 'asc' }],
+        },
+      },
+    };
+    const { binding } = makeBinding({ relationStore });
+    const m = mountField({ binding, searchView: SearchViewStub });
+    await nextTick();
+    m.click('[data-testid="choy-relation-search-more"]');
+    await nextTick();
+    const qs = relationStore.state.queryState as any;
+    expect(qs.keyword).toBeUndefined();
+    expect(qs.appliedFilters).toEqual([]);
+    expect(qs.appliedGroups).toEqual([]);
+    expect(qs.userClearedDefaultFilters).toBeUndefined();
+    expect(qs.pagination).toEqual({ limit: 50, offset: 0 });
+    expect(qs.defaultFilters).toEqual([{ name: 'Active', query: ['IsActive', '=', true], selected: true }]);
+    expect(qs.orderBy).toEqual([{ field: 'Name', direction: 'asc' }]);
+    expect(m.q('.dialog')?.getAttribute('data-open')).toBe('1');
     m.unmount();
   });
 
@@ -594,6 +663,7 @@ describe('ChoyManyToOneField mount coverage', () => {
     lastOnchangeResult.value = {
       condition: [{ field: 'Lines(id=L1).PartnerId', condition: ['Name', '=', 'Z'] }],
     };
+    lastSearchViewProps.value = null;
     const m = mountField({
       binding,
       searchView: SearchViewStub,
@@ -604,6 +674,34 @@ describe('ChoyManyToOneField mount coverage', () => {
     more.click();
     await nextTick();
     expect(m.q('.search-view-stub')).toBeTruthy();
+    expect(lastSearchViewProps.value?.forcedCondition).toEqual({
+      And: [{ Or: [['A', '=', 1]] }, ['Name', '=', 'Z']],
+    });
+    // Nested dotted prop: no relationConditionSource (same as NameSearch).
+    expect(lastSearchViewProps.value?.relationConditionSource).toBeUndefined();
+    m.unmount();
+  });
+
+  test('dialog passes relationConditionSource for top-level field props', async () => {
+    const { binding } = makeBinding({
+      prop: 'PartnerId',
+      record: { Id: 'root' },
+      relationStore: { NameSearch: fnRecorder(async () => []), fullModelName: 'partner.Partner' },
+    });
+    lastSearchViewProps.value = null;
+    const m = mountField({
+      binding,
+      searchView: SearchViewStub,
+      store: { fullModelName: 'sale.Order' },
+    });
+    await nextTick();
+    const more = m.q('[data-testid="choy-relation-search-more"]') as HTMLElement;
+    more.click();
+    await nextTick();
+    expect(lastSearchViewProps.value?.relationConditionSource).toEqual({
+      model: 'sale.Order',
+      field: 'PartnerId',
+    });
     m.unmount();
   });
 

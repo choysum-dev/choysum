@@ -87,11 +87,15 @@ SPDX-License-Identifier: Apache-2.0
             ref="searchViewRef"
             :store="relationStore"
             :show-actions="false"
+            :host-page-title="false"
+            :show-selection-column="false"
+            :register-action-target="false"
             :selection-mode="'single'"
             :click-to-select="true"
             :height-mode="'container'"
             :container-selector="'.choy-relation-picker-list'"
-            :condition="dialogEffectiveConditions"
+            :forced-condition="dialogEffectiveConditions"
+            :relation-condition-source="dialogRelationConditionSource"
             @selection-change="onDialogSelectionChange"
           />
         </ChoyViewScope>
@@ -103,6 +107,13 @@ SPDX-License-Identifier: Apache-2.0
     </ChoyDialogContent>
   </ChoyDialog>
 </template>
+
+<style scoped>
+  /* Wide List columns scroll inside the picker instead of clipping at the dialog edge. */
+  .choy-relation-picker-list :deep([data-anchor='choy.list.table']) {
+    overflow-x: auto;
+  }
+</style>
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, ClientModel<BaseModel> | null | undefined>, V = FieldPathType<T, P>">
 import { ref, computed, inject, Ref, getCurrentInstance } from 'vue';
@@ -117,6 +128,7 @@ import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFi
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import { buildRelationConditionSource } from '@/web/web/composables/relationalForField';
+import { resetRelationPickerQueryState } from '@/web/web/query/state';
 // Narrow aggregation types to count_distinct only.
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
 import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
@@ -496,6 +508,11 @@ const dialogEffectiveConditions = computed<QueryCondition<any> | []>(() => {
   return { And: parts } as any;
 });
 
+/** Same source as NameSearch so Search more List applies field meta `condition`. */
+const dialogRelationConditionSource = computed(() => {
+  return buildRelationConditionSource(props.store as any, binding.prop).relationConditionSource;
+});
+
 async function relationSearch(query: string, opts: { limit: number }, recordRef?: any): Promise<RelationOption[]> {
   searchQuery.value = query ?? '';
   const parts: QueryCondition<any>[] = [];
@@ -547,6 +564,7 @@ function onSearchMore(
 
 function openSearchDialog(target?: () => WritableComputedRef<V | null>, recordRef?: any) {
   if (!relationStore) return;
+  resetRelationPickerQueryState(relationStore as any);
   pendingTarget.value = target ?? null;
   dialogRowRef.value = recordRef ?? null;
   dialogVisible.value = true;

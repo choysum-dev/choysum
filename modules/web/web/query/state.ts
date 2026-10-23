@@ -36,6 +36,12 @@ export interface QueryState<T = any> {
   /** Forced condition merged with user conditions during execution. */
   forcedCondition?: QueryCondition<T>;
 
+  /**
+   * When set, Search/Count And the source field's meta `condition`
+   * (same as NameSearch `relationConditionSource`).
+   */
+  relationConditionSource?: { model: string; field: string };
+
   /** Applied UI filter groups. */
   appliedFilters: ConditionGroup[];
 
@@ -68,6 +74,7 @@ export function createEmptyQueryState<T = any>(kind: QueryKind = 'search'): Quer
   return {
     kind,
     forcedCondition: undefined,
+    relationConditionSource: undefined,
     appliedFilters: [],
     defaultFilters: [],
     keyword: undefined,
@@ -76,5 +83,41 @@ export function createEmptyQueryState<T = any>(kind: QueryKind = 'search'): Quer
     defaultGroups: [],
     pagination: { limit: 100, offset: 0 },
     orderBy: undefined,
+  };
+}
+
+type RelationPickerQueryStore = {
+  state?: { queryState?: QueryState | Record<string, unknown> };
+};
+
+/**
+ * Clear leftover user search UI on a relation picker's store before Search more opens.
+ * Drops keyword / applied filters & groups / page offset and clear-default flags.
+ * Keeps defaultFilters / defaultGroups / orderBy / keywordFields; List props re-apply
+ * forcedCondition and relationConditionSource on mount.
+ */
+export function resetRelationPickerQueryState(store: RelationPickerQueryStore | null | undefined): void {
+  const state = store?.state;
+  if (!state || typeof state !== 'object') return;
+  const qs = (state.queryState && typeof state.queryState === 'object' ? state.queryState : {}) as Record<
+    string,
+    unknown
+  >;
+  const prevPag = (qs.pagination && typeof qs.pagination === 'object' ? qs.pagination : {}) as PaginationState;
+  const limit = Number(prevPag.limit);
+  state.queryState = {
+    ...qs,
+    kind: 'search',
+    keyword: undefined,
+    appliedFilters: [],
+    appliedGroups: [],
+    forcedCondition: undefined,
+    relationConditionSource: undefined,
+    userClearedDefaultFilters: undefined,
+    userClearedDefaultGroups: undefined,
+    pagination: {
+      limit: Number.isFinite(limit) && limit > 0 ? limit : 100,
+      offset: 0,
+    },
   };
 }
