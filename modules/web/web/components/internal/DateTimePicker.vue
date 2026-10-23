@@ -100,7 +100,7 @@ SPDX-License-Identifier: Apache-2.0
                       <CalendarCellTrigger
                         :day="weekDate"
                         :month="month.value"
-                        class="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted data-[selected]:bg-primary data-[selected]:text-primary-foreground data-[outside-view]:text-muted-foreground/50"
+                        class="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted data-[selected]:bg-primary data-[selected]:text-primary-foreground data-[selected]:hover:bg-primary data-[selected]:hover:text-primary-foreground data-[selected]:focus:bg-primary data-[selected]:focus:text-primary-foreground [&[data-selected]:hover]:bg-primary data-[outside-view]:text-muted-foreground/50"
                       />
                     </CalendarCell>
                   </CalendarGridRow>

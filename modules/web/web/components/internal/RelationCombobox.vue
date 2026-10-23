@@ -124,7 +124,7 @@ SPDX-License-Identifier: Apache-2.0
         <button
           v-if="searchMore"
           type="button"
-          class="w-full border-t border-border px-2 py-1.5 text-left text-sm text-foreground hover:bg-accent hover:text-accent-foreground"
+          class="block w-full cursor-pointer select-none border-t border-border px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-muted focus:outline-none focus-visible:bg-muted"
           data-testid="choy-relation-search-more"
           @click="onSearchMore"
         >

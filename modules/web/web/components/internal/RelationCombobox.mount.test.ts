@@ -96,7 +96,10 @@ describe('RelationCombobox mount', () => {
     expect(bodyText()).toContain('Search more…');
 
     expect(document.body.querySelector('[data-testid="footer-slot"]')).toBeTruthy();
-    expect(document.body.querySelector('[data-testid="choy-relation-search-more"]')).toBeTruthy();
+    const more = document.body.querySelector('[data-testid="choy-relation-search-more"]') as HTMLElement | null;
+    expect(more).toBeTruthy();
+    // Action affordance: primary text like Create, not plain foreground like data rows.
+    expect(more!.className).toContain('text-primary');
 
     m.unmount();
   });
