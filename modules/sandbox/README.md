@@ -53,11 +53,12 @@ Terminology: `modules/sandbox/i18n/sandbox.pot` + `zh_CN.po`
 | properties | `Properties` (app-level; schema in `PropertyDefinition`) | `ChoyPropertiesField` |
 | ManyToOne | `CategoryId`, `PrimaryLineId` | `ChoyManyToOneField` |
 | ManyToOneRef | `CurrencyId`, `CompanyId`, `CategoryRefId` | `ChoyManyToOneRefField` |
-| ManyToMany | `Tags` | `ChoyManyToManyField` |
-| ManyToManyRef | `TagRefIds`, `CategoryPathIds` | Tags / Tree widgets |
+| ManyToMany | `Tags`, `TagChips`, `Categories` | List / Tags / Tree widgets |
+| ManyToManyRef | `TagRefIds`, `CategoryPathIds` | Ref Tags / Ref Tree widgets |
 | OneToMany | `Lines` | Table + Kanban widgets |
 
-Companion models: `SandboxCategory`, `SandboxTag`, `SandboxRecordTag`, `SandboxLine`.
+Companion models: `SandboxCategory`, `SandboxTag`, `SandboxRecordTag`,
+`SandboxRecordTagChip`, `SandboxRecordCategory`, `SandboxLine`.
 
 ## Depth checklist
 
@@ -68,7 +69,8 @@ Companion models: `SandboxCategory`, `SandboxTag`, `SandboxRecordTag`, `SandboxL
 - [ ] **relation condition** — `CategoryId` picker hides inactive categories
 - [ ] **related** — `CategoryName` tracks `CategoryId`
 - [ ] **Compute** — `LineCount` / `PrimaryLineId` update when lines change
-- [ ] **M2M Tags + Tree** — `TagRefIds` tags; `CategoryPathIds` tree checkboxes
+- [ ] **M2M list / Tags / Tree** — `Tags` list; `TagChips` chips; `Categories` tree
+- [ ] **M2MRef Tags + Tree** — `TagRefIds` chips; `CategoryPathIds` tree checkboxes
 - [ ] **O2M table + Kanban** — Lines tab; add/edit/remove in both widgets
 - [ ] **ViewSwitcher** — List ↔ Kanban (by State) ↔ Chart (State × IsActive)
 - [ ] **Form edit vs display** — save, leave edit mode, confirm display chrome

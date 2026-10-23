@@ -166,6 +166,31 @@ SPDX-License-Identifier: Apache-2.0
             </ChoyManyToManyField>
           </ChoyCol>
           <ChoyCol :span="12">
+            <ChoyManyToManyTagsField
+              :store="store"
+              prop="TagChips"
+              :search-list="SandboxTagListView"
+              :search-view-title="_t('Select Tag Chips')"
+              :tag-label-field="['Name', 'Code', 'Id']"
+            />
+          </ChoyCol>
+          <ChoyCol :span="12">
+            <ChoyManyToManyTreeField
+              :store="store"
+              prop="Categories"
+              :label="_t('Categories')"
+              :lazy="false"
+              :max-depth="0"
+              children-field="Children"
+              order-field="Code"
+              :root-condition="{
+                And: [['ParentId', 'is', null]],
+              }"
+              :default-expand-all="true"
+              :check-strictly="false"
+            />
+          </ChoyCol>
+          <ChoyCol :span="12">
             <ChoyManyToManyRefTagsField
               :store="store"
               prop="TagRefIds"
@@ -262,6 +287,8 @@ import {
   ChoyManyToManyField,
   ChoyManyToManyRefTagsField,
   ChoyManyToManyRefTreeField,
+  ChoyManyToManyTagsField,
+  ChoyManyToManyTreeField,
   ChoyManyToOneField,
   ChoyManyToOneRefField,
   ChoyMonetaryField,

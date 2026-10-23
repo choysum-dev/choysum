@@ -7,8 +7,11 @@ import type Company from '@/base/service/models/company';
 import { _lt } from '../i18n';
 import SandboxCategory from './sandbox_category';
 import SandboxLine from './sandbox_line';
+import SandboxRecordCategory from './sandbox_record_category';
 import SandboxRecordTag from './sandbox_record_tag';
+import SandboxRecordTagChip from './sandbox_record_tag_chip';
 import SandboxTag from './sandbox_tag';
+
 
 const RECORD_STATES = [
   { value: 'draft', label: 'Draft' },
@@ -270,6 +273,38 @@ export default class SandboxRecord extends BaseModel {
     string: _lt('Tags', { scope: 'sandbox.model.SandboxRecord.fields' }),
   })
   Tags?: SandboxTag[];
+
+  @Field({
+    type: 'ManyToMany',
+    relation: {
+      joinModel: () => SandboxRecordTagChip,
+      targetModel: () => SandboxTag,
+      joinField: 'RecordId',
+      inverseJoinField: 'TagId',
+    },
+    condition: ['IsActive', '=', true],
+    string: _lt('Tag Chips', { scope: 'sandbox.model.SandboxRecord.fields' }),
+    help: _lt('Same-app ManyToMany bound with the Tags widget in Form.', {
+      scope: 'sandbox.model.SandboxRecord.fields',
+    }),
+  })
+  TagChips?: SandboxTag[];
+
+  @Field({
+    type: 'ManyToMany',
+    relation: {
+      joinModel: () => SandboxRecordCategory,
+      targetModel: () => SandboxCategory,
+      joinField: 'RecordId',
+      inverseJoinField: 'CategoryId',
+    },
+    condition: ['IsActive', '=', true],
+    string: _lt('Categories', { scope: 'sandbox.model.SandboxRecord.fields' }),
+    help: _lt('Same-app ManyToMany bound with the Tree widget in Form.', {
+      scope: 'sandbox.model.SandboxRecord.fields',
+    }),
+  })
+  Categories?: SandboxCategory[];
 
   @Field<SandboxTag>({
     type: 'ManyToManyRef',
