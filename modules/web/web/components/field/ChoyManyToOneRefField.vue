@@ -72,26 +72,31 @@ SPDX-License-Identifier: Apache-2.0
   </ChoyFieldBase>
 
   <ChoyDialog v-model:open="dialogVisible">
-    <ChoyDialogContent class="choy-relation-picker-dialog" :style="{ width: typeof searchViewWidth === 'number' ? searchViewWidth + 'px' : searchViewWidth }">
-      <ChoyDialogTitle>{{ effectiveSearchViewTitle }}</ChoyDialogTitle>
-      <ChoyViewScope view-mode="display" :kind="'List'">
-      <component
-        v-if="dialogVisible && searchView && relationStore"
-        :is="searchView"
-        ref="searchViewRef"
-        :store="relationStore"
-        :show-actions="false"
-        :selection-mode="'single'"
-        :click-to-select="true"
-        :height-mode="'viewport'"
-        :viewportGap="250"
-        :condition="dialogEffectiveConditions"
-        style="margin-top: -10px"
-      />
-    </ChoyViewScope>
-      <div class="dialog-footer">
-        <ChoyButton @click="dialogVisible = false">{{ _t('Cancel') }}</ChoyButton>
-        <ChoyButton @click="confirmPick">{{ _t('OK') }}</ChoyButton>
+    <ChoyDialogContent
+      class="choy-relation-picker-dialog flex max-h-[min(85vh,40rem)] w-[min(90vw,56rem)] max-w-[min(90vw,56rem)] flex-col gap-3 overflow-hidden"
+      :style="{ width: typeof searchViewWidth === 'number' ? searchViewWidth + 'px' : searchViewWidth }"
+    >
+      <ChoyDialogTitle class="shrink-0">{{ effectiveSearchViewTitle }}</ChoyDialogTitle>
+      <div class="choy-relation-picker-list min-h-0 flex-1 overflow-hidden">
+        <ChoyViewScope view-mode="display" :kind="'List'">
+          <component
+            v-if="dialogVisible && searchView && relationStore"
+            :is="searchView"
+            ref="searchViewRef"
+            :store="relationStore"
+            :show-actions="false"
+            :selection-mode="'single'"
+            :click-to-select="true"
+            :height-mode="'container'"
+            :container-selector="'.choy-relation-picker-list'"
+            :condition="dialogEffectiveConditions"
+            @selection-change="onDialogSelectionChange"
+          />
+        </ChoyViewScope>
+      </div>
+      <div class="mt-1 flex shrink-0 justify-end gap-2">
+        <ChoyButton type="button" variant="outline" @click="dialogVisible = false">{{ _t('Cancel') }}</ChoyButton>
+        <ChoyButton type="button" @click="confirmPick">{{ _t('OK') }}</ChoyButton>
       </div>
     </ChoyDialogContent>
   </ChoyDialog>
@@ -664,6 +669,13 @@ async function confirmPick() {
   } finally {
     dialogVisible.value = false;
   }
+}
+
+/** Click-to-select in Search more: apply the row and close (OK remains a fallback). */
+function onDialogSelectionChange(payload: { rows?: unknown[]; ids?: string[] }) {
+  const ids = Array.isArray(payload?.ids) ? payload.ids : [];
+  if (!ids.length) return;
+  void confirmPick();
 }
 </script>
 

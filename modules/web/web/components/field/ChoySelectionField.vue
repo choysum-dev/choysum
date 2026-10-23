@@ -65,16 +65,17 @@ SPDX-License-Identifier: Apache-2.0
             </ComboboxTrigger>
           </ComboboxAnchor>
           <ComboboxContent class="p-0">
+            <!-- Short lists: skip panel search (ERP Selection). Longer lists: bare filter row. -->
             <div
+              v-if="optionsFor(record).length > 8"
               data-slot="combobox-input-wrapper"
               class="flex h-control items-center gap-2 border-b border-border px-3"
             >
               <Search class="size-4 shrink-0 opacity-50" aria-hidden="true" />
               <ComboboxInput
-                class="h-control border-0 bg-transparent px-0 shadow-none outline-hidden focus-visible:ring-0"
+                variant="bare"
                 :placeholder="_t('Search…')"
                 :disabled="disabled || optionsLoading"
-                :display-value="(v: unknown) => displayLabelFor(record, v == null || v === '' ? null : String(v))"
               />
             </div>
             <ComboboxViewport>

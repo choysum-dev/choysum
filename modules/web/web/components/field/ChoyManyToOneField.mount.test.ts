@@ -21,9 +21,22 @@ const searchExpose = {
 
 const SearchViewStub = defineComponent({
   name: 'SearchViewStub',
-  setup(_, { expose }) {
+  emits: ['selection-change'],
+  setup(_, { emit, expose }) {
     expose(searchExpose);
-    return () => h('div', { class: 'search-view-stub', 'data-test': 'search-view' });
+    return () =>
+      h('div', { class: 'search-view-stub', 'data-test': 'search-view' }, [
+        h('button', {
+          type: 'button',
+          'data-test': 'pick-row',
+          onClick: () => {
+            const row = { Id: 'row1', DisplayName: 'FromClick' };
+            searchExpose.selectedItem = row;
+            searchExpose.selectedItems = [row];
+            emit('selection-change', { rows: [row], ids: ['row1'] });
+          },
+        }),
+      ]);
   },
 });
 
@@ -42,7 +55,7 @@ const RelationComboboxStub = defineComponent({
     disabled: { type: Boolean, default: false },
   },
   emits: ['update:modelValue', 'select', 'search-more', 'search-error'],
-  setup(props: any, { emit }: any) {
+  setup(props: any, { emit, slots }: any) {
     const lastOptions = ref<any[]>([]);
     return () =>
       h(
@@ -97,6 +110,7 @@ const RelationComboboxStub = defineComponent({
               // Mimic combobox close clearing the typeahead keyword on the host.
             },
           }),
+          slots.footer?.(),
           props.searchMore
             ? h(
                 'button',
@@ -453,6 +467,22 @@ describe('ChoyManyToOneField mount coverage', () => {
     await nextTick();
     m.click('[data-test="dialog-cancel"]');
     await nextTick();
+    expect(m.q('.dialog')?.getAttribute('data-open')).toBe('0');
+    m.unmount();
+  });
+
+  test('search dialog click-to-select applies row and closes', async () => {
+    const { binding, value } = makeBinding({
+      relationStore: { NameSearch: fnRecorder(async () => []), fullModelName: 'partner.Partner' },
+    });
+    const m = mountField({ binding, searchView: SearchViewStub });
+    await nextTick();
+    m.click('[data-testid="choy-relation-search-more"]');
+    await nextTick();
+    expect(m.q('.dialog')?.getAttribute('data-open')).toBe('1');
+    m.click('[data-test="pick-row"]');
+    await nextTick();
+    expect(value.value).toEqual({ Id: 'row1', DisplayName: 'FromClick' });
     expect(m.q('.dialog')?.getAttribute('data-open')).toBe('0');
     m.unmount();
   });

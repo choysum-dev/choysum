@@ -18,7 +18,7 @@ SPDX-License-Identifier: Apache-2.0
           :aria-describedby="props['aria-describedby']"
           :class="
             cn(
-              'choy-time-picker w-full min-w-0 justify-between font-normal',
+              'choy-time-picker w-full min-w-0 justify-between bg-transparent font-normal',
               !displayText && 'text-muted-foreground',
               props.class,
             )
@@ -44,7 +44,7 @@ SPDX-License-Identifier: Apache-2.0
         <X class="size-3.5" aria-hidden="true" />
       </button>
     </div>
-    <PopoverContent class="w-auto p-0" align="start">
+    <PopoverContent class="w-auto p-0" align="start" :side-offset="0">
       <div class="flex gap-1 px-2 py-3" data-slot="time-picker-columns">
         <div
           ref="hourListEl"
@@ -234,3 +234,10 @@ watch(
   },
 );
 </script>
+
+<!-- Keep the same thin border-ring as focused Input / Combobox while the panel is open. -->
+<style>
+  .choy-time-picker[data-state='open'] {
+    border-color: var(--color-ring);
+  }
+</style>

@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { cn, type ClassValue } from '../../../../lib/utils';
+import { cn, controlFocusRing, type ClassValue } from '../../../../lib/utils';
 
 const props = defineProps<{
   class?: ClassValue;
@@ -18,8 +18,9 @@ const emit = defineEmits<{
 
 const classes = computed(() =>
   cn(
-    'flex min-h-[5rem] w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm',
-    'placeholder:text-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+    'flex min-h-[5rem] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground shadow-xs',
+    'placeholder:text-muted-foreground',
+    controlFocusRing,
     'disabled:cursor-not-allowed disabled:opacity-50',
     props.class,
   ),

@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { ComboboxTrigger } from 'reka-ui';
-import { cn, type ClassValue } from '../../../../lib/utils';
+import { cn, controlFocusRing, type ClassValue } from '../../../../lib/utils';
 
 defineProps<{
   class?: ClassValue;
@@ -29,8 +29,9 @@ defineProps<{
     :aria-describedby="$props['aria-describedby']"
     :class="
       cn(
-        'flex h-control w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-2 text-sm font-normal shadow-xs',
-        'placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'flex h-control w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-1 text-sm font-normal shadow-xs',
+        'placeholder:text-muted-foreground',
+        controlFocusRing,
         'disabled:cursor-not-allowed disabled:opacity-50',
         'aria-invalid:border-destructive aria-invalid:ring-destructive/20',
         $props.class,
@@ -40,3 +41,10 @@ defineProps<{
     <slot />
   </ComboboxTrigger>
 </template>
+
+<!-- Keep the same thin border-ring as focused Input / M2O while the portaled list holds focus. -->
+<style>
+  [data-slot='combobox-trigger'][data-state='open'] {
+    border-color: var(--color-ring);
+  }
+</style>

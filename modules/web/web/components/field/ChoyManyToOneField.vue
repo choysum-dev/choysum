@@ -38,19 +38,21 @@ SPDX-License-Identifier: Apache-2.0
           :search-more="Boolean(searchView)"
           @select="(opt) => onComboboxSelect(fieldValue, opt)"
           @search-more="(q) => onSearchMore(fieldValue, record, q)"
-        />
-        <div
-          v-if="showNameCreateEntry"
-          class="choy-m2o__more choy-m2o__more--clickable block w-full cursor-pointer select-none bg-transparent px-3 py-1.5 text-primary transition-colors hover:bg-muted active:bg-muted focus:outline-none focus-visible:rounded-sm focus-visible:shadow-[inset_0_0_0_2px_var(--choy-color-primary-muted)]"
-          role="button"
-          tabindex="0"
-          data-testid="choy-m2o-name-create"
-          @click.stop="onNameCreate(fieldValue)"
-          @keydown.enter.stop="onNameCreate(fieldValue)"
-          @keydown.space.prevent.stop="onNameCreate(fieldValue)"
         >
-          {{ nameCreateLabel }}
-        </div>
+          <template v-if="showNameCreateEntry" #footer>
+            <div
+              class="block w-full cursor-pointer select-none px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-muted focus:outline-none focus-visible:bg-muted"
+              role="button"
+              tabindex="0"
+              data-testid="choy-m2o-name-create"
+              @click.stop="onNameCreate(fieldValue)"
+              @keydown.enter.stop="onNameCreate(fieldValue)"
+              @keydown.space.prevent.stop="onNameCreate(fieldValue)"
+            >
+              {{ nameCreateLabel }}
+            </div>
+          </template>
+        </RelationCombobox>
       </div>
     </template>
     <template #display="{ fieldValue }">
@@ -72,26 +74,31 @@ SPDX-License-Identifier: Apache-2.0
   </ChoyFieldBase>
 
   <ChoyDialog v-model:open="dialogVisible">
-    <ChoyDialogContent class="choy-relation-picker-dialog" :style="{ width: typeof searchViewWidth === 'number' ? searchViewWidth + 'px' : searchViewWidth }">
-      <ChoyDialogTitle>{{ effectiveSearchViewTitle }}</ChoyDialogTitle>
-      <ChoyViewScope view-mode="display" :kind="'List'">
-      <component
-        v-if="dialogVisible && searchView && relationStore"
-        :is="searchView"
-        ref="searchViewRef"
-        :store="relationStore"
-        :show-actions="false"
-        :selection-mode="'single'"
-        :click-to-select="true"
-        :height-mode="'viewport'"
-        :viewportGap="250"
-        :condition="dialogEffectiveConditions"
-        style="margin-top: -10px"
-      />
-    </ChoyViewScope>
-      <div class="dialog-footer">
-        <ChoyButton @click="dialogVisible = false">{{ _t('Cancel') }}</ChoyButton>
-        <ChoyButton @click="confirmPick">{{ _t('OK') }}</ChoyButton>
+    <ChoyDialogContent
+      class="choy-relation-picker-dialog flex max-h-[min(85vh,40rem)] w-[min(90vw,56rem)] max-w-[min(90vw,56rem)] flex-col gap-3 overflow-hidden"
+      :style="{ width: typeof searchViewWidth === 'number' ? searchViewWidth + 'px' : searchViewWidth }"
+    >
+      <ChoyDialogTitle class="shrink-0">{{ effectiveSearchViewTitle }}</ChoyDialogTitle>
+      <div class="choy-relation-picker-list min-h-0 flex-1 overflow-hidden">
+        <ChoyViewScope view-mode="display" :kind="'List'">
+          <component
+            v-if="dialogVisible && searchView && relationStore"
+            :is="searchView"
+            ref="searchViewRef"
+            :store="relationStore"
+            :show-actions="false"
+            :selection-mode="'single'"
+            :click-to-select="true"
+            :height-mode="'container'"
+            :container-selector="'.choy-relation-picker-list'"
+            :condition="dialogEffectiveConditions"
+            @selection-change="onDialogSelectionChange"
+          />
+        </ChoyViewScope>
+      </div>
+      <div class="mt-1 flex shrink-0 justify-end gap-2">
+        <ChoyButton type="button" variant="outline" @click="dialogVisible = false">{{ _t('Cancel') }}</ChoyButton>
+        <ChoyButton type="button" @click="confirmPick">{{ _t('OK') }}</ChoyButton>
       </div>
     </ChoyDialogContent>
   </ChoyDialog>
@@ -157,11 +164,11 @@ const props = withDefaults(
     searchViewTitle?: string;
     searchViewWidth?: string | number;
 
-    /** Quick-create via NameCreate (PR-P2-M1). Default false (opt-in); gated by create UI action. */
+    /** Quick-create via NameCreate. Default false (opt-in); gated by create UI action. */
     allowCreate?: boolean;
     /** Target model write field for NameCreate; omit → BE uses Name. */
     nameField?: string;
-    /** Override create UI action id; '' skips ACL (see namecreate-design D6). */
+    /** Override create UI action id; '' skips ACL. */
     createActionId?: string;
 
     required?: FieldStateExpr<T, V>;
@@ -550,6 +557,13 @@ async function confirmPick() {
   } finally {
     dialogVisible.value = false;
   }
+}
+
+/** Click-to-select in Search more: apply the row and close (OK remains a fallback). */
+function onDialogSelectionChange(payload: { rows?: unknown[]; ids?: string[] }) {
+  const ids = Array.isArray(payload?.ids) ? payload.ids : [];
+  if (!ids.length) return;
+  void confirmPick();
 }
 </script>
 
