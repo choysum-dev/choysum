@@ -101,12 +101,15 @@ describe('RelationCombobox mount', () => {
     m.unmount();
   });
 
-  test('reopen keeps prior options instead of flashing Searching…', async () => {
+  test('reopen keeps prior options and skips a second NameSearch', async () => {
     let resolveSearch: ((rows: any[]) => void) | null = null;
-    const search = () =>
-      new Promise<any[]>((resolve) => {
+    let calls = 0;
+    const search = () => {
+      calls += 1;
+      return new Promise<any[]>((resolve) => {
         resolveSearch = resolve;
       });
+    };
 
     const m = mountApp(RelationCombobox as any, {
       props: {
@@ -124,6 +127,7 @@ describe('RelationCombobox mount', () => {
     await flushPromises();
     await nextTick();
     expect(String(document.body.textContent || '')).toContain('Cached');
+    expect(calls).toBe(1);
 
     state!.open = false;
     await nextTick();
@@ -135,6 +139,8 @@ describe('RelationCombobox mount', () => {
     const bodyText = String(document.body.textContent || '');
     expect(bodyText).toContain('Cached');
     expect(bodyText).not.toContain('Searching…');
+    // Identical rpcQuery + searchKey → memoized, no second RPC.
+    expect(calls).toBe(1);
     m.unmount();
   });
 

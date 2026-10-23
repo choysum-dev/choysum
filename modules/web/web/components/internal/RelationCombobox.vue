@@ -153,11 +153,14 @@ import { cn, controlFocusRing, type ClassValue } from '../../lib/utils';
 import { createTranslate } from '@/web/web/i18n';
 import {
   findRelationOption,
+  normalizeRelationPageSize,
   normalizeRelationQuery,
+  resolveRelationSearchMemo,
   runRelationNameSearch,
   upsertRelationOption,
   type RelationNameSearchFn,
-  type RelationOption
+  type RelationOption,
+  type RelationSearchMemo,
 } from './relationComboboxHelpers';
 
 /**
@@ -295,6 +298,8 @@ const totalSize = computed(() => virtualizer.value.getTotalSize());
  */
 const searchIdentity = computed(() => props.searchKey ?? '');
 
+/** Skip identical NameSearch RPCs (reopen / trim) when searchKey encodes domain. */
+let previousSearch: RelationSearchMemo | null = null;
 let searchSeq = 0;
 watch(
   [() => open.value, rpcQuery, searchIdentity, () => props.pageSize],
@@ -304,6 +309,24 @@ watch(
     }
     const seq = ++searchSeq;
     clearSearchError();
+    const keyword = normalizeRelationQuery(String(q ?? ''));
+    const cached = resolveRelationSearchMemo(
+      previousSearch,
+      keyword,
+      searchIdentity.value,
+      props.pageSize,
+    );
+    if (cached) {
+      options.value = cached;
+      loading.value = false;
+      if (modelValue.value) {
+        const found = findRelationOption(cached, modelValue.value);
+        if (found) {
+          pinnedSelected.value = found;
+        }
+      }
+      return;
+    }
     // Empty list: show Searching immediately (avoids a No matches flash during debounce).
     // Cached options: keep them on screen and refresh silently after debounce.
     if (options.value.length === 0) {
@@ -326,10 +349,16 @@ watch(
       return;
     }
     try {
-      const results = await runRelationNameSearch(props.search, String(q ?? ''), props.pageSize);
+      const results = await runRelationNameSearch(props.search, keyword, props.pageSize);
       if (seq !== searchSeq) {
         return;
       }
+      previousSearch = {
+        name: keyword,
+        searchKey: searchIdentity.value,
+        pageSize: normalizeRelationPageSize(props.pageSize),
+        records: results,
+      };
       options.value = results;
       if (listParent.value) {
         listParent.value.scrollTop = 0;
@@ -369,6 +398,7 @@ watch(
 // must not keep stale options or a stale pinned label.
 watch(searchIdentity, () => {
   options.value = [];
+  previousSearch = null;
   pinnedSelected.value = props.selectedOption ?? null;
   clearSearchError();
   // While open, the search watcher already re-queries with the new target;

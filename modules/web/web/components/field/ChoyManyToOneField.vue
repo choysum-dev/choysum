@@ -233,9 +233,6 @@ const fromView = (v: V | null) => (v ?? null) as any;
 const searchQuery = ref('');
 const isSearching = computed(() => trimSearchKeyword(searchQuery.value).length > 0);
 const vm = getCurrentInstance();
-const relationSearchKey = computed(
-  () => `${(relationStore as any)?.storeId || relationStore?.fullModelName || ''}:${String(binding.prop)}`
-);
 
 const { hasAction } = usePermission();
 const showNameCreateEntry = computed(() =>
@@ -336,6 +333,22 @@ function toArray<T>(v: T | T[] | undefined | null): T[] {
 }
 
 const externalConditions = computed<QueryCondition<any>[]>(() => toArray(props.condition));
+
+/** Include domain fingerprints so RelationCombobox memo does not reuse a wrong NameSearch page. */
+const relationSearchKey = computed(() => {
+  const store =
+    (relationStore as any)?.storeId || relationStore?.fullModelName || '';
+  let domainKey = '';
+  try {
+    domainKey = JSON.stringify({
+      c: externalConditions.value,
+      o: lastOnchangeResult.value?.condition ?? null,
+    });
+  } catch {
+    domainKey = '';
+  }
+  return `${store}:${String(binding.prop)}:${domainKey}`;
+});
 
 // Read the root record through the injected form-root only.
 const rootRecord = computed<any>(() => binding.recordRef().value as any);
