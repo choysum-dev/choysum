@@ -7,6 +7,7 @@ import SandboxRecord from './SandboxRecord.vue';
 import SandboxRecordList from './SandboxRecordList.vue';
 import SandboxRecordKanban from './SandboxRecordKanban.vue';
 import SandboxRecordChart from './SandboxRecordChart.vue';
+import SandboxTag from './SandboxTag.vue';
 import { sandboxMenus } from '../menu/menus';
 
 const pages: Array<[string, any, string]> = [
@@ -14,6 +15,7 @@ const pages: Array<[string, any, string]> = [
   ['SandboxRecordKanban', SandboxRecordKanban, '/sandbox/records/kanban'],
   ['SandboxRecordChart', SandboxRecordChart, '/sandbox/records/chart'],
   ['SandboxRecord', SandboxRecord, '/sandbox/records/1'],
+  ['SandboxTag', SandboxTag, '/sandbox/tags/new'],
 ];
 
 test('sandbox page mount: every ChoyPage host mounts under choysumMount', async () => {

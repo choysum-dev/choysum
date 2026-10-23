@@ -520,15 +520,13 @@ msgid "Unexpected end of JSON"
 msgstr ""
 
 #: web/components/field/ChoyManyToManyField.vue:12
-#: web/components/field/ChoyManyToManyField.vue:31
 msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Actions"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyField.vue:20
-#: web/components/field/ChoyManyToManyField.vue:39
+#: web/components/field/ChoyManyToManyField.vue:27
 msgctxt "web/components/field/ChoyManyToManyField"
-msgid "Add row"
+msgid "Add a line…"
 msgstr ""
 
 #: web/components/field/ChoyManyToManyField.vue:66
@@ -537,9 +535,18 @@ msgid "Cancel"
 msgstr ""
 
 #: web/components/field/ChoyManyToManyField.vue:14
-#: web/components/field/ChoyManyToManyField.vue:33
 msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Delete"
+msgstr ""
+
+#: web/components/field/ChoyManyToManyField.vue:106
+msgctxt "web/components/field/ChoyManyToManyField"
+msgid "No related records"
+msgstr ""
+
+#: web/components/field/ChoyManyToManyField.vue:48
+msgctxt "web/components/field/ChoyManyToManyField"
+msgid "None"
 msgstr ""
 
 #: web/components/field/ChoyManyToManyField.vue:67
@@ -547,14 +554,24 @@ msgctxt "web/components/field/ChoyManyToManyField"
 msgid "OK"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyField.vue:96
+#: web/components/field/ChoyManyToManyField.vue:29
+msgctxt "web/components/field/ChoyManyToManyField"
+msgid "Picker is not configured"
+msgstr ""
+
+#: web/components/field/ChoyManyToManyField.vue:105
 msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Select related items"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyField.vue:232
+#: web/components/field/ChoyManyToManyField.vue:259
 msgctxt "web/components/field/ChoyManyToManyField"
 msgid "relationStore is unresolved; cannot open picker"
+msgstr ""
+
+#: web/components/field/ChoyManyToManyField.vue:255
+msgctxt "web/components/field/ChoyManyToManyField"
+msgid "searchList is not configured; cannot open picker"
 msgstr ""
 
 #: web/components/field/ChoyManyToManyRefTagsField.vue:56
@@ -612,62 +629,117 @@ msgctxt "web/components/field/ChoyManyToManyRefTreeField"
 msgid "No data"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneField.vue:32
+#: web/components/field/ChoyManyToManyTagsField.vue:58
+msgctxt "web/components/field/ChoyManyToManyTagsField"
+msgid "Cancel"
+msgstr ""
+
+#: web/components/field/ChoyManyToManyTagsField.vue:158
+msgctxt "web/components/field/ChoyManyToManyTagsField"
+msgid "Create \"%s\""
+msgstr ""
+
+#: web/components/field/ChoyManyToManyTagsField.vue:167
+msgctxt "web/components/field/ChoyManyToManyTagsField"
+msgid "Create failed"
+msgstr ""
+
+#: web/components/field/ChoyManyToManyTagsField.vue:43
+msgctxt "web/components/field/ChoyManyToManyTagsField"
+msgid "None"
+msgstr ""
+
+#: web/components/field/ChoyManyToManyTagsField.vue:59
+msgctxt "web/components/field/ChoyManyToManyTagsField"
+msgid "OK"
+msgstr ""
+
+#: web/components/field/ChoyManyToManyTagsField.vue:115
+msgctxt "web/components/field/ChoyManyToManyTagsField"
+msgid "Please select..."
+msgstr ""
+
+#: web/components/field/ChoyManyToManyTagsField.vue:11
+msgctxt "web/components/field/ChoyManyToManyTagsField"
+msgid "Remove"
+msgstr ""
+
+#: web/components/field/ChoyManyToManyTagsField.vue:116
+msgctxt "web/components/field/ChoyManyToManyTagsField"
+msgid "Select related items"
+msgstr ""
+
+#: web/components/field/ChoyManyToManyTagsField.vue:561
+msgctxt "web/components/field/ChoyManyToManyTagsField"
+msgid "relationStore is unresolved; cannot open picker"
+msgstr ""
+
+#: web/components/field/ChoyManyToManyTagsField.vue:557
+msgctxt "web/components/field/ChoyManyToManyTagsField"
+msgid "searchList is not configured; cannot open picker"
+msgstr ""
+
+#: web/components/field/ChoyManyToManyTreeField.vue:98
+msgctxt "web/components/field/ChoyManyToManyTreeField"
+msgid "No data"
+msgstr ""
+
+#: web/components/field/ChoyManyToOneField.vue:34
 msgctxt "web/components/field/ChoyManyToOneField"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneField.vue:144
+#: web/components/field/ChoyManyToOneField.vue:142
 msgctxt "web/components/field/ChoyManyToOneField"
 msgid "Create \"%s\""
 msgstr ""
 
-#: web/components/field/ChoyManyToOneField.vue:153
+#: web/components/field/ChoyManyToOneField.vue:151
 msgctxt "web/components/field/ChoyManyToOneField"
 msgid "Create failed"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneField.vue:33
+#: web/components/field/ChoyManyToOneField.vue:35
 msgctxt "web/components/field/ChoyManyToOneField"
 msgid "OK"
-msgstr ""
-
-#: web/components/field/ChoyManyToOneField.vue:111
-msgctxt "web/components/field/ChoyManyToOneField"
-msgid "Please select..."
 msgstr ""
 
 #: web/components/field/ChoyManyToOneField.vue:112
 msgctxt "web/components/field/ChoyManyToOneField"
+msgid "Please select..."
+msgstr ""
+
+#: web/components/field/ChoyManyToOneField.vue:113
+msgctxt "web/components/field/ChoyManyToOneField"
 msgid "Select record"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneRefField.vue:29
+#: web/components/field/ChoyManyToOneRefField.vue:34
 msgctxt "web/components/field/ChoyManyToOneRefField"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneRefField.vue:159
+#: web/components/field/ChoyManyToOneRefField.vue:157
 msgctxt "web/components/field/ChoyManyToOneRefField"
 msgid "Create \"%s\""
 msgstr ""
 
-#: web/components/field/ChoyManyToOneRefField.vue:168
+#: web/components/field/ChoyManyToOneRefField.vue:166
 msgctxt "web/components/field/ChoyManyToOneRefField"
 msgid "Create failed"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneRefField.vue:30
+#: web/components/field/ChoyManyToOneRefField.vue:35
 msgctxt "web/components/field/ChoyManyToOneRefField"
 msgid "OK"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneRefField.vue:112
+#: web/components/field/ChoyManyToOneRefField.vue:113
 msgctxt "web/components/field/ChoyManyToOneRefField"
 msgid "Please select..."
 msgstr ""
 
-#: web/components/field/ChoyManyToOneRefField.vue:113
+#: web/components/field/ChoyManyToOneRefField.vue:114
 msgctxt "web/components/field/ChoyManyToOneRefField"
 msgid "Select record"
 msgstr ""
@@ -861,12 +933,12 @@ msgctxt "web/components/field/ChoySelectionField"
 msgid "Invalid option value: %s"
 msgstr ""
 
-#: web/components/field/ChoySelectionField.vue:27
+#: web/components/field/ChoySelectionField.vue:28
 msgctxt "web/components/field/ChoySelectionField"
 msgid "Loading…"
 msgstr ""
 
-#: web/components/field/ChoySelectionField.vue:30
+#: web/components/field/ChoySelectionField.vue:31
 msgctxt "web/components/field/ChoySelectionField"
 msgid "No options"
 msgstr ""
@@ -876,7 +948,7 @@ msgctxt "web/components/field/ChoySelectionField"
 msgid "Please select..."
 msgstr ""
 
-#: web/components/field/ChoySelectionField.vue:23
+#: web/components/field/ChoySelectionField.vue:24
 msgctxt "web/components/field/ChoySelectionField"
 msgid "Search…"
 msgstr ""
@@ -1036,7 +1108,7 @@ msgctxt "web/components/field/relationCountSummary@formatRelationCountSummary"
 msgid "%s records"
 msgstr ""
 
-#: web/components/internal/ChoyTableHost.vue:14
+#: web/components/internal/ChoyTableHost.vue:27
 msgctxt "web/components/internal/ChoyTableHost"
 msgid "No data"
 msgstr ""
@@ -1108,32 +1180,32 @@ msgctxt "web/components/internal/DateTimePicker"
 msgid "Select date and time"
 msgstr ""
 
-#: web/components/internal/RelationCombobox.vue:96
+#: web/components/internal/RelationCombobox.vue:105
 msgctxt "web/components/internal/RelationCombobox"
 msgid "Clear"
 msgstr ""
 
-#: web/components/internal/RelationCombobox.vue:98
+#: web/components/internal/RelationCombobox.vue:107
 msgctxt "web/components/internal/RelationCombobox"
 msgid "No matches"
 msgstr ""
 
-#: web/components/internal/RelationCombobox.vue:100
+#: web/components/internal/RelationCombobox.vue:109
 msgctxt "web/components/internal/RelationCombobox"
 msgid "Search failed. Please retry."
 msgstr ""
 
-#: web/components/internal/RelationCombobox.vue:99
+#: web/components/internal/RelationCombobox.vue:108
 msgctxt "web/components/internal/RelationCombobox"
 msgid "Search more…"
 msgstr ""
 
-#: web/components/internal/RelationCombobox.vue:97
+#: web/components/internal/RelationCombobox.vue:106
 msgctxt "web/components/internal/RelationCombobox"
 msgid "Searching…"
 msgstr ""
 
-#: web/components/internal/RelationCombobox.vue:94
+#: web/components/internal/RelationCombobox.vue:103
 msgctxt "web/components/internal/RelationCombobox"
 msgid "Search…"
 msgstr ""
@@ -1523,22 +1595,22 @@ msgctxt "web/components/view/ListView"
 msgid "Discard"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:240
+#: web/components/view/ChoyListView.vue:273
 msgctxt "web/components/view/ListView"
 msgid "Editing was discarded because the row is no longer visible."
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:570
+#: web/components/view/ChoyListView.vue:603
 msgctxt "web/components/view/ListView"
 msgid "Failed to load list"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:309
+#: web/components/view/ChoyListView.vue:342
 msgctxt "web/components/view/ListView"
 msgid "Failed to refresh after reorder"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:309
+#: web/components/view/ChoyListView.vue:342
 msgctxt "web/components/view/ListView"
 msgid "Failed to reorder rows"
 msgstr ""

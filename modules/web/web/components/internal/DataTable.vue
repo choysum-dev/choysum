@@ -198,9 +198,9 @@ SPDX-License-Identifier: Apache-2.0
         v-if="showEmpty && !rows.length"
         role="row"
         aria-rowindex="2"
-        class="flex h-full items-center justify-center text-sm text-foreground/50"
+        class="flex h-full min-h-[7.5rem] w-full items-center justify-center text-sm text-foreground/50"
       >
-        <div role="gridcell">
+        <div role="gridcell" class="w-full max-w-full">
           <slot name="empty">No data</slot>
         </div>
       </div>

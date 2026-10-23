@@ -25,9 +25,7 @@ import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type SandboxTag from '@/sandbox/service/models/sandbox_tag';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
-import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
-import { createTranslate } from '@/web/web/i18n';
 import {
   ChoyBooleanField,
   ChoyListView,
@@ -35,18 +33,16 @@ import {
   ChoyTableColumn,
   ChoyVarcharField,
 } from '@/web';
+import { sandboxTagActions } from './sandbox_tag_actions';
 
 defineOptions({ name: 'SandboxTagListView', inheritAttrs: true });
-const { _lt } = createTranslate('sandbox', { scope: 'web/views/SandboxTagListView' });
 
 const props = defineProps<{
   store?: WebModelStore<SandboxTag>;
 }>();
 const store = resolvePageStore(props.store, 'SandboxTagListView');
 
-const tagActions = defineModelActions('sandbox.SandboxTag', {
-  entityTitle: _lt('Sandbox Tag'),
-});
+const tagActions = sandboxTagActions;
 const { hasAction } = usePermission();
 
 const { listRef, expose } = useListViewExpose<SandboxTag>();

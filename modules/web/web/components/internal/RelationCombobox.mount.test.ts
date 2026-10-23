@@ -2,10 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { h, nextTick } from 'vue';
-import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
+import { flushPromises, mountApp, restoreSfc } from '@/web/web/__tests__/mountApp';
 import RelationCombobox from './RelationCombobox.vue';
 
 describe('RelationCombobox mount', () => {
+  beforeEach(() => {
+    // Other field suites stub RelationCombobox; always restore the real SFC here.
+    restoreSfc(RelationCombobox as any);
+  });
+
   test('clear control is an icon button with translated aria-label inside the input', async () => {
     const m = mountApp(RelationCombobox as any, {
       props: {

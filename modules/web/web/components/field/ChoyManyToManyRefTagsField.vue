@@ -135,11 +135,12 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, string[]>, V = FieldPathType<T, P>">
-import { computed, ref, shallowRef, type Component, inject, Ref, watch, onBeforeUnmount, getCurrentInstance, nextTick } from 'vue';
+import { computed, ref, shallowRef, type Component, inject, provide, Ref, watch, onBeforeUnmount, getCurrentInstance, nextTick } from 'vue';
 import { X } from 'lucide-vue-next';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { ChoyMessage } from '../../composables/useChoyMessage';
+import { RELATION_PICKER_CLOSE_KEY } from '@/web/web/components/field/relationPickerContext';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType, QueryCondition } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
@@ -261,6 +262,9 @@ const relationStore = computed<WebModelStore<any> | undefined>(() => {
 });
 
 const dialogVisible = ref(false);
+provide(RELATION_PICKER_CLOSE_KEY, () => {
+  dialogVisible.value = false;
+});
 const searchViewRef = ref<SelectionExpose<any> | null>(null);
 const loading = ref(false);
 const hydratedCache = ref<Record<string, any>>({});

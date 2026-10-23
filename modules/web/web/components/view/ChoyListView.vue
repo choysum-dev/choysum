@@ -224,8 +224,9 @@ SPDX-License-Identifier: Apache-2.0
           <slot />
           <template #empty>
             <slot name="empty">
-              <ChoyEmpty class="w-full" :description="_t('No data')">
-                <template v-if="resolvedCreateAction && canCreate" #actions>
+              <ChoyEmpty class="w-full !gap-3 !p-4 md:!p-6" :description="_t('No data')">
+                <!-- Picker embeds set registerActionTarget=false; hide New so Create does not leave a dirty host form. -->
+                <template v-if="showActions && resolvedCreateAction && canCreate" #actions>
                   <ChoyButton type="button" size="default" variant="default" @click="handleCreate">
                     <Plus class="size-4" aria-hidden="true" />
                     {{ _t('New') }}
@@ -415,7 +416,10 @@ const props = withDefaults(
 );
 
 const store = resolvePageStore(props.store, 'ListView');
-const resolvedCreateAction = useResolvedCreateAction(() => props.createAction);
+// Relation pickers set registerActionTarget=false; do not inherit the host page's Create route.
+const resolvedCreateAction = useResolvedCreateAction(() => props.createAction, {
+  enabled: () => props.registerActionTarget !== false,
+});
 const { pageTitle, pageTitleId, pageTitleActionsIo } = useHostPageTitleInView(
   () => Boolean(props.showHeader && props.hostPageTitle),
 );

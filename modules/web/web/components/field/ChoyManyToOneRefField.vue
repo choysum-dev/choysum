@@ -79,7 +79,7 @@ SPDX-License-Identifier: Apache-2.0
       :style="{ width: typeof searchViewWidth === 'number' ? searchViewWidth + 'px' : searchViewWidth }"
     >
       <ChoyDialogTitle class="shrink-0">{{ effectiveSearchViewTitle }}</ChoyDialogTitle>
-      <div class="choy-relation-picker-list min-h-0 flex-1 overflow-hidden">
+      <div class="choy-relation-picker-list min-h-[16rem] flex-1 overflow-hidden">
         <ChoyViewScope view-mode="display" :kind="'List'">
           <component
             v-if="dialogVisible && searchView && relationStore"
@@ -116,10 +116,11 @@ SPDX-License-Identifier: Apache-2.0
 </style>
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, string | null | undefined>, V = FieldPathType<T, P>">
-import { ref, shallowRef, computed, inject, Ref, watch, getCurrentInstance } from 'vue';
+import { ref, shallowRef, computed, inject, provide, Ref, watch, getCurrentInstance } from 'vue';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { ChoyMessage } from '../../composables/useChoyMessage';
+import { RELATION_PICKER_CLOSE_KEY } from '@/web/web/components/field/relationPickerContext';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType, ClientModel, QueryCondition } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
@@ -605,6 +606,9 @@ function pickOnchangeConditions(rowRef?: any): QueryCondition<any>[] {
 }
 
 const dialogVisible = ref(false);
+provide(RELATION_PICKER_CLOSE_KEY, () => {
+  dialogVisible.value = false;
+});
 const searchViewRef = ref<SelectionExpose<any> | null>(null);
 const pendingTarget = ref<null | (() => WritableComputedRef<V | null>)>(null);
 const dialogRowRef = ref<any | null>(null);

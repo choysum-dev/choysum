@@ -434,25 +434,30 @@ export function useField<T = any, P extends string = string, V = any>(opts: {
       ensureArray();
       const arr = fieldRefImpl.value as unknown as Item[];
       const pos = typeof index === 'number' && index >= 0 ? Math.min(index, arr.length) : arr.length;
-      arr.splice(pos, 0, item);
-      fieldRefImpl.value = arr as unknown as V;
+      // New array identity so List/DataTable hosts re-render (in-place splice + same
+      // ref is invisible to TanStack when the parent only passes the array through).
+      const next = arr.slice() as Item[];
+      next.splice(pos, 0, item);
+      fieldRefImpl.value = next as unknown as V;
     }
 
     function removeItemAt(index: number) {
       const arr = fieldRefImpl.value as unknown as Item[];
       if (!Array.isArray(arr)) return;
       if (index < 0 || index >= arr.length) return;
-      arr.splice(index, 1);
-      fieldRefImpl.value = arr as unknown as V;
+      const next = arr.slice() as Item[];
+      next.splice(index, 1);
+      fieldRefImpl.value = next as unknown as V;
     }
 
     function moveItem(from: number, to: number) {
       const arr = fieldRefImpl.value as unknown as Item[];
       if (!Array.isArray(arr)) return;
       if (from < 0 || from >= arr.length || to < 0 || to >= arr.length) return;
-      const [it] = arr.splice(from, 1);
-      arr.splice(to, 0, it);
-      fieldRefImpl.value = arr as unknown as V;
+      const next = arr.slice() as Item[];
+      const [it] = next.splice(from, 1);
+      next.splice(to, 0, it!);
+      fieldRefImpl.value = next as unknown as V;
     }
 
     function clearItems() {
@@ -575,22 +580,28 @@ export function useStandaloneField<V, T = any>(opts: {
 
     const insertItem = (item: Item, index?: number) => {
       const arr = ensureArray();
-      if (index == null || index < 0 || index > arr.length) arr.push(item);
-      else arr.splice(index, 0, item);
+      const next = arr.slice() as Item[];
+      if (index == null || index < 0 || index > next.length) next.push(item);
+      else next.splice(index, 0, item);
+      (fieldRefImpl as WritableComputedRef<any>).value = next;
     };
     const removeItemAt = (index: number) => {
       const arr = ensureArray();
-      if (index >= 0 && index < arr.length) arr.splice(index, 1);
+      if (index < 0 || index >= arr.length) return;
+      const next = arr.slice() as Item[];
+      next.splice(index, 1);
+      (fieldRefImpl as WritableComputedRef<any>).value = next;
     };
     const moveItem = (from: number, to: number) => {
       const arr = ensureArray();
       if (from === to || from < 0 || from >= arr.length || to < 0 || to >= arr.length) return;
-      const [it] = arr.splice(from, 1);
-      arr.splice(to, 0, it);
+      const next = arr.slice() as Item[];
+      const [it] = next.splice(from, 1);
+      next.splice(to, 0, it!);
+      (fieldRefImpl as WritableComputedRef<any>).value = next;
     };
     const clearItems = () => {
-      const arr = ensureArray();
-      arr.splice(0, arr.length);
+      (fieldRefImpl as WritableComputedRef<any>).value = [] as Item[];
     };
 
     return {

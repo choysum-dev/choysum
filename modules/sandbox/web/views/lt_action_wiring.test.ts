@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { sandboxRecordActions, sandboxRecordOpenDetailAction } from './sandbox_record_actions';
+import { sandboxTagActions } from './sandbox_tag_actions';
 
 test('sandbox view action wiring: shared sandbox_record_actions yields CRUD ids', () => {
   expect(sandboxRecordActions.create).toBe('sandbox.action.sandbox_record_create');
@@ -12,4 +13,11 @@ test('sandbox view action wiring: shared sandbox_record_actions yields CRUD ids'
 
 test('sandbox view action wiring: shared sandbox_record_actions yields open_detail id', () => {
   expect(sandboxRecordOpenDetailAction).toBe('sandbox.action.sandbox_record_open_detail');
+});
+
+test('sandbox view action wiring: shared sandbox_tag_actions yields CRUD ids', () => {
+  expect(sandboxTagActions.create).toBe('sandbox.action.sandbox_tag_create');
+  expect(sandboxTagActions.edit).toBe('sandbox.action.sandbox_tag_edit');
+  expect(sandboxTagActions.copy).toBe('sandbox.action.sandbox_tag_copy');
+  expect(sandboxTagActions.delete).toBe('sandbox.action.sandbox_tag_delete');
 });

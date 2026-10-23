@@ -229,6 +229,8 @@ export { default as ChoyTimeField } from './components/field/ChoyTimeField.vue';
 export { default as ChoyManyToOneField } from './components/field/ChoyManyToOneField.vue';
 export { default as ChoyManyToOneRefField } from './components/field/ChoyManyToOneRefField.vue';
 export { default as ChoyManyToManyField } from './components/field/ChoyManyToManyField.vue';
+export { default as ChoyManyToManyTagsField } from './components/field/ChoyManyToManyTagsField.vue';
+export { default as ChoyManyToManyTreeField } from './components/field/ChoyManyToManyTreeField.vue';
 export { default as ChoyManyToManyRefTagsField } from './components/field/ChoyManyToManyRefTagsField.vue';
 export { default as ChoyManyToManyRefTreeField } from './components/field/ChoyManyToManyRefTreeField.vue';
 export { default as ChoyOneToManyField } from './components/field/ChoyOneToManyField.vue';
