@@ -78,7 +78,7 @@ func TestBuildBackendBundlesToDir_FieldDefaultOwnerAndEnsureError(t *testing.T) 
 		t.Fatalf("expected BundleInject error, got %v", err)
 	}
 
-	entryFilePath := filepath.Join(distBundlesDir, "__choysum_bundles_entry.ts")
+	entryFilePath := filepath.Join(distBundlesDir, "_choysum_entry", "__choysum_bundles_entry.ts")
 	entryRaw, readErr := os.ReadFile(entryFilePath)
 	if readErr != nil {
 		t.Fatalf("entry should be written before Ensure: %v", readErr)

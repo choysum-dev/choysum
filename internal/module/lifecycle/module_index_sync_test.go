@@ -311,7 +311,7 @@ func TestModuleManagerBuildBackendBundlesToDirWritesModuleBasedEntryImports(t *t
 		t.Fatalf("buildBackendBundlesToDir() unexpected error = %v", err)
 	}
 
-	entryFilePath := filepath.Join(distBundlesDir, "__choysum_bundles_entry.ts")
+	entryFilePath := filepath.Join(distBundlesDir, "_choysum_entry", "__choysum_bundles_entry.ts")
 	entryRaw, readErr := os.ReadFile(entryFilePath)
 	if readErr != nil {
 		t.Fatalf("read bundles entry file %q: %v", entryFilePath, readErr)
