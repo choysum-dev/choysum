@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import { Check } from 'lucide-vue-next';
+import { Check, Minus } from 'lucide-vue-next';
 import { CheckboxIndicator, CheckboxRoot } from 'reka-ui';
 import { computed } from 'vue';
 import { cn, type ClassValue } from '../../../../lib/utils';
@@ -21,6 +21,7 @@ const props = defineProps<{
 const checked = defineModel<boolean | 'indeterminate'>({ default: false });
 
 const on = computed(() => checked.value === true || checked.value === 'indeterminate');
+const isIndeterminate = computed(() => checked.value === 'indeterminate');
 </script>
 
 <template>
@@ -45,7 +46,8 @@ const on = computed(() => checked.value === true || checked.value === 'indetermi
     "
   >
     <CheckboxIndicator class="flex items-center justify-center text-current">
-      <Check class="size-3.5 shrink-0" />
+      <Minus v-if="isIndeterminate" class="size-3.5 shrink-0" />
+      <Check v-else class="size-3.5 shrink-0" />
     </CheckboxIndicator>
   </CheckboxRoot>
 </template>

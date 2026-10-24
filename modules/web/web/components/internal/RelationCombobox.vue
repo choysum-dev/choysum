@@ -10,9 +10,9 @@ SPDX-License-Identifier: Apache-2.0
     data-anchor="choy.internal.relation-combobox"
     :disabled="disabled"
     :ignore-filter="true"
-    :class="cn('choy-relation-combobox relative w-full', props.class)"
+    :class="cn('choy-relation-combobox relative w-full', isPlainChrome && 'min-w-[8rem] flex-1', props.class)"
   >
-    <ComboboxAnchor class="relative w-full">
+    <ComboboxAnchor ref="anchorRef" :class="cn('relative w-full', isPlainChrome && 'min-w-[8rem] flex-1')">
       <ComboboxInput
         v-model="query"
         :id="id || undefined"
@@ -21,19 +21,11 @@ SPDX-License-Identifier: Apache-2.0
         :aria-invalid="props['aria-invalid']"
         :aria-required="props['aria-required']"
         :aria-describedby="props['aria-describedby']"
-        :display-value="() => selected?.label ?? ''"
-        :placeholder="selected?.label || effectivePlaceholder"
-        :class="
-          cn(
-            'flex h-control w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm font-normal text-foreground shadow-xs',
-            'placeholder:text-muted-foreground',
-            controlFocusRing,
-            showClear && 'pr-8',
-            disabled && 'cursor-not-allowed opacity-50',
-            'aria-invalid:border-destructive aria-invalid:ring-destructive/20',
-          )
-        "
+        :display-value="() => (isPlainChrome ? '' : selected?.label ?? '')"
+        :placeholder="isPlainChrome ? effectivePlaceholder : selected?.label || effectivePlaceholder"
+        :class="inputClass"
         @focus="onInputFocus"
+        @click="onInputClick"
         @input="onQueryInput"
       />
       <button
@@ -54,7 +46,8 @@ SPDX-License-Identifier: Apache-2.0
         position="popper"
         :class="
           cn(
-            'z-50 w-[var(--reka-combobox-trigger-width)] origin-(--reka-combobox-content-transform-origin) overflow-hidden rounded-md border border-border bg-popover p-0 text-popover-foreground shadow-md',
+            // Prefer trigger width; fall back so plain-chrome flex anchors never get a 0-width panel.
+            'z-50 min-w-[12rem] w-[var(--reka-combobox-trigger-width,100%)] origin-(--reka-combobox-content-transform-origin) overflow-hidden rounded-md border border-border bg-popover p-0 text-popover-foreground shadow-md',
             // Fade only (no zoom) so reopen does not flash scale.
             'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
             'data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
@@ -189,6 +182,11 @@ const props = withDefaults(
     selectedOption?: RelationOption | null;
     /** Show a Search more footer action (host opens a dialog). */
     searchMore?: boolean;
+    /**
+     * `default`: standalone bordered control.
+     * `plain`: borderless input for hosts that own the chrome (e.g. M2M tags shell).
+     */
+    chrome?: 'default' | 'plain';
     id?: string;
     name?: string;
     'aria-invalid'?: boolean | 'true' | 'false';
@@ -204,8 +202,11 @@ const props = withDefaults(
     debounce: 150,
     selectedOption: null,
     searchMore: true,
+    chrome: 'default',
   },
 );
+
+const isPlainChrome = computed(() => props.chrome === 'plain');
 
 defineSlots<{
   footer?: () => unknown;
@@ -214,6 +215,25 @@ defineSlots<{
 const modelValue = defineModel<string | null>({ default: null });
 const open = ref(false);
 const query = ref('');
+const anchorRef = ref<{ $el?: HTMLElement } | HTMLElement | null>(null);
+
+/**
+ * Focus the typeahead input and open the panel (M2M tag shells after chip add /
+ * shell click). Calling focus alone is a no-op when the input already has focus,
+ * so open must be set explicitly for continuous add.
+ */
+function focusInput(): void {
+  if (props.disabled) {
+    return;
+  }
+  const root = (anchorRef.value as any)?.$el ?? anchorRef.value;
+  const el = root instanceof HTMLElement ? root : null;
+  const input = el?.querySelector?.('input') as HTMLInputElement | null | undefined;
+  input?.focus();
+  open.value = true;
+}
+
+defineExpose({ focusInput });
 /**
  * Odoo AutoComplete useInput: NameSearch uses the input only after the user edits.
  * Focus/open with an unchanged selection still shows the label in the box, but RPC
@@ -246,6 +266,22 @@ const searchMoreLabel = computed(() => _t('Search more…'));
 const searchFailedLabel = computed(() => _t('Search failed. Please retry.'));
 const showClear = computed(
   () => Boolean(props.clearable && modelValue.value && !props.disabled),
+);
+
+const inputClass = computed(() =>
+  cn(
+    'w-full bg-transparent text-sm font-normal text-foreground',
+    'placeholder:text-muted-foreground',
+    props.disabled && 'cursor-not-allowed opacity-50',
+    'aria-invalid:border-destructive aria-invalid:ring-destructive/20',
+    isPlainChrome.value
+      ? 'h-7 min-h-0 min-w-[8rem] flex-1 border-0 px-1 py-0 shadow-none outline-none focus-visible:ring-0'
+      : cn(
+          'flex h-control rounded-md border border-input px-3 py-1 shadow-xs',
+          controlFocusRing,
+          showClear.value && 'pr-8',
+        ),
+  ),
 );
 
 function clearSearchError(): void {
@@ -409,13 +445,19 @@ watch(searchIdentity, () => {
   }
 });
 
-watch(modelValue, (rawId) => {
+watch(modelValue, (rawId, prevId) => {
   const id = String(rawId ?? '').trim();
+  const prev = String(prevId ?? '').trim();
   if (!id) {
     pinnedSelected.value = null;
-    emit('select', null);
-    if (open.value) {
-      open.value = false;
+    // Only treat a real clear as a select(null). Combobox may re-emit empty while
+    // opening with an already-null model (plain chrome hosts); closing then would
+    // make the panel look like it never opened.
+    if (prev) {
+      emit('select', null);
+      if (open.value) {
+        open.value = false;
+      }
     }
     return;
   }
@@ -485,6 +527,18 @@ function onInputFocus(ev: FocusEvent): void {
       el.select?.();
     });
   }
+}
+
+/**
+ * Combobox may toggle `open` closed on the same click that focused the input
+ * (focus sets open=true, then the click toggles it back). Force open while the
+ * input is the activation target so TagChips / plain chrome hosts can open.
+ */
+function onInputClick(): void {
+  if (props.disabled) {
+    return;
+  }
+  open.value = true;
 }
 
 function onSearchMore(): void {

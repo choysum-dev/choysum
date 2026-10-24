@@ -47,7 +47,7 @@ SPDX-License-Identifier: Apache-2.0
           <Checkbox
             v-if="showCheckbox"
             class="choy-relation-tree__checkbox"
-            :model-value="checkedSet.has(row.key)"
+            :model-value="checkboxDisplayState(row.data)"
             :disabled="checkboxDisabled"
             @update:model-value="(v) => onCheckboxChange(row, v === true)"
             @click.stop
@@ -105,9 +105,15 @@ type VisibleRow = {
   loadingChildren: boolean;
 };
 
+type CheckboxDisplayState = boolean | 'indeterminate';
+
 /**
- * Checkbox tree for relation M2M pickers (lazy roots/children, check-strictly).
- * Not a public Choy* export — hosts wire ChoyFieldBase slots around the default slot.
+ * Checkbox tree for relation M2M pickers (lazy roots/children).
+ *
+ * `checkedSet` is the stored selection (what getCheckedKeys returns).
+ * When checkStrictly=false: checking a node cascades down into descendants
+ * (writes those ids). Upward parent state is display-only (checked / half)
+ * and never invents a parent id into checkedSet.
  */
 const props = withDefaults(
   defineProps<{
@@ -142,7 +148,10 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-  check: [data: any, info: { checkedKeys: string[]; checkedNodes: any[] }];
+  check: [
+    data: any,
+    info: { checkedKeys: string[]; checkedNodes: any[]; halfCheckedKeys: string[] },
+  ];
   'node-click': [data: any, node: RelationTreeNodeProxy, treeNode: null, event: MouseEvent];
 }>();
 
@@ -152,6 +161,7 @@ const isLeafKey = computed(() => String(props.props?.isLeaf || '__leafKnown'));
 const keyField = computed(() => String(props.nodeKey || '__id'));
 
 const expandedSet = reactive(new Set<string>());
+/** Explicit selection written by the host / user (M2M values). */
 const checkedSet = reactive(new Set<string>());
 const loadingChildKeys = reactive(new Set<string>());
 /** Children injected by lazy `load` when the host has not written them onto `data` yet. */
@@ -191,6 +201,52 @@ function collectKeys(nodes: any[] | undefined, out: string[]): void {
     const k = nodeKeyOf(n);
     if (k) out.push(k);
     collectKeys(childrenOf(n), out);
+  }
+}
+
+/**
+ * Display checkbox state for a node.
+ * Strict mode: only explicit checkedSet.
+ * Non-strict: derive parent checked / indeterminate from loaded children without
+ * adding parent keys to checkedSet.
+ */
+function checkboxDisplayState(data: any): CheckboxDisplayState {
+  const key = nodeKeyOf(data);
+  if (!key) return false;
+  if (props.checkStrictly) {
+    return checkedSet.has(key);
+  }
+  if (checkedSet.has(key)) return true;
+
+  const kids = childrenOf(data);
+  if (!Array.isArray(kids) || kids.length === 0) {
+    return false;
+  }
+
+  let anyOn = false;
+  let allOn = true;
+  for (const child of kids) {
+    const state = checkboxDisplayState(child);
+    if (state === true) {
+      anyOn = true;
+    } else if (state === 'indeterminate') {
+      anyOn = true;
+      allOn = false;
+    } else {
+      allOn = false;
+    }
+  }
+  if (allOn && anyOn) return true;
+  if (anyOn) return 'indeterminate';
+  return false;
+}
+
+function collectHalfCheckedKeys(nodes: any[] | undefined, out: string[]): void {
+  if (!Array.isArray(nodes)) return;
+  for (const n of nodes) {
+    const k = nodeKeyOf(n);
+    if (k && checkboxDisplayState(n) === 'indeterminate') out.push(k);
+    collectHalfCheckedKeys(childrenOf(n), out);
   }
 }
 
@@ -320,6 +376,7 @@ function onRowClick(row: VisibleRow, event: MouseEvent): void {
 function emitCheck(data: any): void {
   const checkedKeys = Array.from(checkedSet);
   const checkedNodes: any[] = [];
+  const halfCheckedKeys: string[] = [];
   const walk = (nodes: any[] | undefined) => {
     if (!Array.isArray(nodes)) return;
     for (const n of nodes) {
@@ -329,7 +386,10 @@ function emitCheck(data: any): void {
     }
   };
   walk(props.data);
-  emit('check', data, { checkedKeys, checkedNodes });
+  if (!props.checkStrictly) {
+    collectHalfCheckedKeys(props.data, halfCheckedKeys);
+  }
+  emit('check', data, { checkedKeys, checkedNodes, halfCheckedKeys });
 }
 
 function onCheckboxChange(row: VisibleRow, checked: boolean): void {
@@ -337,7 +397,8 @@ function onCheckboxChange(row: VisibleRow, checked: boolean): void {
   if (checked) checkedSet.add(row.key);
   else checkedSet.delete(row.key);
 
-  // checkStrictly=false would cascade; relation fields use strict mode.
+  // Non-strict: cascade down into loaded descendants (writes those ids).
+  // Upward parent appearance is derived in checkboxDisplayState only.
   if (!props.checkStrictly) {
     const kids = childrenOf(row.data) || [];
     const cascade = (nodes: any[]) => {
@@ -362,13 +423,55 @@ function setCheckedKeys(keys: string[] | null | undefined, _leafOnly?: boolean):
   }
 }
 
-function getCheckedKeys(_leafOnly?: boolean): string[] {
-  return Array.from(checkedSet);
+function isLeafNode(data: any): boolean {
+  const kids = childrenOf(data);
+  if (Array.isArray(kids) && kids.length > 0) return false;
+  return isLeafOf(data);
+}
+
+function getCheckedKeys(leafOnly?: boolean): string[] {
+  if (!leafOnly) return Array.from(checkedSet);
+  const leaves: string[] = [];
+  const walk = (nodes: any[] | undefined) => {
+    if (!Array.isArray(nodes)) return;
+    for (const n of nodes) {
+      const k = nodeKeyOf(n);
+      if (k && checkedSet.has(k) && isLeafNode(n)) leaves.push(k);
+      walk(childrenOf(n));
+    }
+  };
+  walk(props.data);
+  // Keys not found in the current tree still count as leaves (e.g. unloaded).
+  for (const k of checkedSet) {
+    if (!leaves.includes(k)) {
+      let found = false;
+      const find = (nodes: any[] | undefined) => {
+        if (!Array.isArray(nodes) || found) return;
+        for (const n of nodes) {
+          if (nodeKeyOf(n) === k) {
+            found = true;
+            return;
+          }
+          find(childrenOf(n));
+        }
+      };
+      find(props.data);
+      if (!found) leaves.push(k);
+    }
+  }
+  return leaves;
+}
+
+function getHalfCheckedKeys(): string[] {
+  if (props.checkStrictly) return [];
+  const out: string[] = [];
+  collectHalfCheckedKeys(props.data, out);
+  return out;
 }
 
 defineExpose({
   setCheckedKeys,
   getCheckedKeys,
+  getHalfCheckedKeys,
 });
 </script>
-

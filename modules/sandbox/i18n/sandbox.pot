@@ -7,12 +7,12 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: service/models/sandbox_category.ts:50
+#: service/models/sandbox_category.ts:51
 msgctxt "sandbox.model.SandboxCategory.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/sandbox_category.ts:41
+#: service/models/sandbox_category.ts:42
 msgctxt "sandbox.model.SandboxCategory.fields"
 msgid "Children"
 msgstr ""
@@ -57,214 +57,244 @@ msgctxt "sandbox.model.SandboxLine.fields"
 msgid "State"
 msgstr ""
 
-#: service/models/sandbox_record.ts:123
+#: service/models/sandbox_record.ts:127
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/sandbox_record.ts:115
+#: service/models/sandbox_record.ts:119
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Amount"
 msgstr ""
 
-#: service/models/sandbox_record.ts:202
+#: service/models/sandbox_record.ts:206
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "App-level properties container (no parent definition field)."
 msgstr ""
 
-#: service/models/sandbox_record.ts:183
+#: service/models/sandbox_record.ts:187
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Attachment"
 msgstr ""
 
-#: service/models/sandbox_record.ts:84
+#: service/models/sandbox_record.ts:87
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Bigint Value"
 msgstr ""
 
-#: service/models/sandbox_record.ts:70
+#: service/models/sandbox_record.ts:73
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Body HTML"
 msgstr ""
 
-#: service/models/sandbox_record.ts:236
+#: service/models/sandbox_record.ts:302
+msgctxt "sandbox.model.SandboxRecord.fields"
+msgid "Categories"
+msgstr ""
+
+#: service/models/sandbox_record.ts:240
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Category"
 msgstr ""
 
-#: service/models/sandbox_record.ts:247
+#: service/models/sandbox_record.ts:251
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Category Name"
 msgstr ""
 
-#: service/models/sandbox_record.ts:283
+#: service/models/sandbox_record.ts:320
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Category Path"
 msgstr ""
 
-#: service/models/sandbox_record.ts:256
+#: service/models/sandbox_record.ts:260
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Category Ref"
 msgstr ""
 
-#: service/models/sandbox_record.ts:30
+#: service/models/sandbox_record.ts:33
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Char Name"
 msgstr ""
 
-#: service/models/sandbox_record.ts:56
+#: service/models/sandbox_record.ts:59
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Code"
 msgstr ""
 
-#: service/models/sandbox_record.ts:226
+#: service/models/sandbox_record.ts:230
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Company"
 msgstr ""
 
-#: service/models/sandbox_record.ts:213
+#: service/models/sandbox_record.ts:217
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Company Note"
 msgstr ""
 
-#: service/models/sandbox_record.ts:300
+#: service/models/sandbox_record.ts:337
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Computed from Lines; not edited by hand."
 msgstr ""
 
-#: service/models/sandbox_record.ts:316
+#: service/models/sandbox_record.ts:353
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Computed: first line by Sequence then Id."
 msgstr ""
 
-#: service/models/sandbox_record.ts:107
+#: service/models/sandbox_record.ts:110
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Currency"
 msgstr ""
 
-#: service/models/sandbox_record.ts:139
+#: service/models/sandbox_record.ts:143
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Date Value"
 msgstr ""
 
-#: service/models/sandbox_record.ts:145
+#: service/models/sandbox_record.ts:149
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Datetime Value"
 msgstr ""
 
-#: service/models/sandbox_record.ts:97
+#: service/models/sandbox_record.ts:100
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Decimal Value"
 msgstr ""
 
-#: service/models/sandbox_record.ts:31
+#: service/models/sandbox_record.ts:34
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Dedicated char column (not varchar) for FieldsGet/Search coverage."
 msgstr ""
 
-#: service/models/sandbox_record.ts:237
+#: service/models/sandbox_record.ts:241
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Domain restricts to active categories only."
 msgstr ""
 
-#: service/models/sandbox_record.ts:189
+#: service/models/sandbox_record.ts:193
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Image"
 msgstr ""
 
-#: service/models/sandbox_record.ts:78
+#: service/models/sandbox_record.ts:81
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Int Value"
 msgstr ""
 
-#: service/models/sandbox_record.ts:195
+#: service/models/sandbox_record.ts:199
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "JSON Payload"
 msgstr ""
 
-#: service/models/sandbox_record.ts:299
+#: service/models/sandbox_record.ts:336
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Line Count"
 msgstr ""
 
-#: service/models/sandbox_record.ts:293
+#: service/models/sandbox_record.ts:330
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Lines"
 msgstr ""
 
-#: service/models/sandbox_record.ts:284
+#: service/models/sandbox_record.ts:321
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "ManyToManyRef bound with the tree widget in Form."
 msgstr ""
 
-#: service/models/sandbox_record.ts:64
+#: service/models/sandbox_record.ts:67
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Notes"
 msgstr ""
 
-#: service/models/sandbox_record.ts:90
+#: service/models/sandbox_record.ts:93
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Number Value"
 msgstr ""
 
-#: service/models/sandbox_record.ts:214
+#: service/models/sandbox_record.ts:218
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Per-company varchar; open Company Values from the field chrome."
 msgstr ""
 
-#: service/models/sandbox_record.ts:315
+#: service/models/sandbox_record.ts:352
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Primary Line"
 msgstr ""
 
-#: service/models/sandbox_record.ts:173
+#: service/models/sandbox_record.ts:177
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Progress"
 msgstr ""
 
-#: service/models/sandbox_record.ts:201
+#: service/models/sandbox_record.ts:205
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Properties"
 msgstr ""
 
-#: service/models/sandbox_record.ts:174
+#: service/models/sandbox_record.ts:178
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Same selection options as State; Form binds ChoyStatusbarField."
 msgstr ""
 
-#: service/models/sandbox_record.ts:132
+#: service/models/sandbox_record.ts:287
+msgctxt "sandbox.model.SandboxRecord.fields"
+msgid "Same-app ManyToMany bound with the Tags widget in Form."
+msgstr ""
+
+#: service/models/sandbox_record.ts:303
+msgctxt "sandbox.model.SandboxRecord.fields"
+msgid "Same-app ManyToMany bound with the Tree widget in Form."
+msgstr ""
+
+#: service/models/sandbox_record.ts:136
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Sequence"
 msgstr ""
 
-#: service/models/sandbox_record.ts:163
+#: service/models/sandbox_record.ts:167
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "State"
 msgstr ""
 
-#: service/models/sandbox_record.ts:276
+#: service/models/sandbox_record.ts:286
+msgctxt "sandbox.model.SandboxRecord.fields"
+msgid "Tag Chips"
+msgstr ""
+
+#: service/models/sandbox_record.ts:312
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Tag Refs"
 msgstr ""
 
-#: service/models/sandbox_record.ts:269
+#: service/models/sandbox_record.ts:273
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Tags"
 msgstr ""
 
-#: service/models/sandbox_record.ts:151
+#: service/models/sandbox_record.ts:155
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Time Value"
 msgstr ""
 
-#: service/models/sandbox_record.ts:43
+#: service/models/sandbox_record.ts:46
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Title"
 msgstr ""
 
-#: service/models/sandbox_record.ts:44
+#: service/models/sandbox_record.ts:47
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Translatable varchar; use the translation action on the field."
+msgstr ""
+
+#: service/models/sandbox_record_category.ts:28
+msgctxt "sandbox.model.SandboxRecordCategory.fields"
+msgid "Category"
+msgstr ""
+
+#: service/models/sandbox_record_category.ts:18
+msgctxt "sandbox.model.SandboxRecordCategory.fields"
+msgid "Record"
 msgstr ""
 
 #: service/models/sandbox_record_tag.ts:18
@@ -274,6 +304,16 @@ msgstr ""
 
 #: service/models/sandbox_record_tag.ts:29
 msgctxt "sandbox.model.SandboxRecordTag.fields"
+msgid "Tag"
+msgstr ""
+
+#: service/models/sandbox_record_tag_chip.ts:18
+msgctxt "sandbox.model.SandboxRecordTagChip.fields"
+msgid "Record"
+msgstr ""
+
+#: service/models/sandbox_record_tag_chip.ts:29
+msgctxt "sandbox.model.SandboxRecordTagChip.fields"
 msgid "Tag"
 msgstr ""
 
@@ -317,29 +357,39 @@ msgctxt "web/pages/SandboxRecordList"
 msgid "Field Kitchen Sink"
 msgstr ""
 
-#: web/route/routes.ts:74
+#: web/route/routes.ts:82
 msgctxt "web/route/routes"
 msgid "New Sandbox Record"
 msgstr ""
 
-#: web/route/routes.ts:44
+#: web/route/routes.ts:112
+msgctxt "web/route/routes"
+msgid "New Sandbox Tag"
+msgstr ""
+
+#: web/route/routes.ts:61
 msgctxt "web/route/routes"
 msgid "Sandbox Record Chart"
 msgstr ""
 
-#: web/route/routes.ts:59
+#: web/route/routes.ts:97
 msgctxt "web/route/routes"
 msgid "Sandbox Record Detail"
 msgstr ""
 
-#: web/route/routes.ts:29
+#: web/route/routes.ts:41
 msgctxt "web/route/routes"
 msgid "Sandbox Record Kanban"
 msgstr ""
 
-#: web/route/routes.ts:14
+#: web/route/routes.ts:21
 msgctxt "web/route/routes"
 msgid "Sandbox Record List"
+msgstr ""
+
+#: web/route/routes.ts:126
+msgctxt "web/route/routes"
+msgid "Sandbox Tag Detail"
 msgstr ""
 
 #: web/views/SandboxCategoryListView.vue:25
@@ -377,28 +427,28 @@ msgctxt "web/views/SandboxLineFormView"
 msgid "Required"
 msgstr ""
 
-#: web/views/SandboxRecordChartView.vue:47
+#: web/views/SandboxRecordChartView.vue:43
 msgctxt "web/views/SandboxRecordChartView"
 msgid "Chart View"
 msgstr ""
 
-#: web/views/SandboxRecordChartView.vue:41
+#: web/views/SandboxRecordChartView.vue:37
 msgctxt "web/views/SandboxRecordChartView"
 msgid "Count"
 msgstr ""
 
-#: web/views/SandboxRecordChartView.vue:59
-#: web/views/SandboxRecordChartView.vue:64
+#: web/views/SandboxRecordChartView.vue:51
+#: web/views/SandboxRecordChartView.vue:56
 msgctxt "web/views/SandboxRecordChartView"
 msgid "Failed to load chart"
 msgstr ""
 
-#: web/views/SandboxRecordChartView.vue:46
+#: web/views/SandboxRecordChartView.vue:42
 msgctxt "web/views/SandboxRecordChartView"
 msgid "Kanban View"
 msgstr ""
 
-#: web/views/SandboxRecordChartView.vue:45
+#: web/views/SandboxRecordChartView.vue:41
 msgctxt "web/views/SandboxRecordChartView"
 msgid "List View"
 msgstr ""
@@ -413,12 +463,17 @@ msgctxt "web/views/SandboxRecordChartView"
 msgid "View switcher"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:153
+#: web/views/SandboxRecordFormView.vue:161
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Add Line"
 msgstr ""
 
 #: web/views/SandboxRecordFormView.vue:136
+msgctxt "web/views/SandboxRecordFormView"
+msgid "Categories"
+msgstr ""
+
+#: web/views/SandboxRecordFormView.vue:144
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Category Path"
 msgstr ""
@@ -443,7 +498,7 @@ msgctxt "web/views/SandboxRecordFormView"
 msgid "Depth"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:153
+#: web/views/SandboxRecordFormView.vue:161
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Edit Line"
 msgstr ""
@@ -458,17 +513,17 @@ msgctxt "web/views/SandboxRecordFormView"
 msgid "Identity"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:152
+#: web/views/SandboxRecordFormView.vue:160
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Lines (kanban)"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:144
+#: web/views/SandboxRecordFormView.vue:152
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Lines (table)"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:153
+#: web/views/SandboxRecordFormView.vue:161
 msgctxt "web/views/SandboxRecordFormView"
 msgid "New Line"
 msgstr ""
@@ -478,7 +533,7 @@ msgctxt "web/views/SandboxRecordFormView"
 msgid "Numbers"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:158
+#: web/views/SandboxRecordFormView.vue:166
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Qty"
 msgstr ""
@@ -488,7 +543,7 @@ msgctxt "web/views/SandboxRecordFormView"
 msgid "Relations"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:53
+#: web/views/SandboxRecordFormView.vue:56
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Required"
 msgstr ""
@@ -525,6 +580,11 @@ msgstr ""
 
 #: web/views/SandboxRecordFormView.vue:133
 msgctxt "web/views/SandboxRecordFormView"
+msgid "Select Tag Chips"
+msgstr ""
+
+#: web/views/SandboxRecordFormView.vue:141
+msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Tag Refs"
 msgstr ""
 
@@ -538,12 +598,12 @@ msgctxt "web/views/SandboxRecordFormView"
 msgid "Temporal"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:156
+#: web/views/SandboxRecordFormView.vue:164
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Unnamed Line"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:153
+#: web/views/SandboxRecordFormView.vue:161
 msgctxt "web/views/SandboxRecordFormView"
 msgid "View Line"
 msgstr ""
@@ -554,7 +614,7 @@ msgid "%s more"
 msgstr ""
 
 #: web/views/SandboxRecordKanbanView.vue:12
-#: web/views/SandboxRecordKanbanView.vue:57
+#: web/views/SandboxRecordKanbanView.vue:53
 msgctxt "web/views/SandboxRecordKanbanView"
 msgid "All"
 msgstr ""
@@ -564,33 +624,33 @@ msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Category"
 msgstr ""
 
-#: web/views/SandboxRecordKanbanView.vue:47
+#: web/views/SandboxRecordKanbanView.vue:43
 msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Chart View"
 msgstr ""
 
-#: web/views/SandboxRecordKanbanView.vue:56
+#: web/views/SandboxRecordKanbanView.vue:52
 msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Done"
 msgstr ""
 
-#: web/views/SandboxRecordKanbanView.vue:54
+#: web/views/SandboxRecordKanbanView.vue:50
 msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Draft"
 msgstr ""
 
-#: web/views/SandboxRecordKanbanView.vue:126
-#: web/views/SandboxRecordKanbanView.vue:131
+#: web/views/SandboxRecordKanbanView.vue:118
+#: web/views/SandboxRecordKanbanView.vue:123
 msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Failed to load kanban"
 msgstr ""
 
-#: web/views/SandboxRecordKanbanView.vue:136
+#: web/views/SandboxRecordKanbanView.vue:128
 msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Failed to load more"
 msgstr ""
 
-#: web/views/SandboxRecordKanbanView.vue:141
+#: web/views/SandboxRecordKanbanView.vue:133
 msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Failed to move card"
 msgstr ""
@@ -600,12 +660,12 @@ msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Inactive"
 msgstr ""
 
-#: web/views/SandboxRecordKanbanView.vue:46
+#: web/views/SandboxRecordKanbanView.vue:42
 msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Kanban View"
 msgstr ""
 
-#: web/views/SandboxRecordKanbanView.vue:45
+#: web/views/SandboxRecordKanbanView.vue:41
 msgctxt "web/views/SandboxRecordKanbanView"
 msgid "List View"
 msgstr ""
@@ -620,7 +680,7 @@ msgctxt "web/views/SandboxRecordKanbanView"
 msgid "No records in this lane"
 msgstr ""
 
-#: web/views/SandboxRecordKanbanView.vue:55
+#: web/views/SandboxRecordKanbanView.vue:51
 msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Open"
 msgstr ""
@@ -630,7 +690,7 @@ msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Seq"
 msgstr ""
 
-#: web/views/SandboxRecordKanbanView.vue:88
+#: web/views/SandboxRecordKanbanView.vue:84
 msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Untitled"
 msgstr ""
@@ -645,17 +705,17 @@ msgctxt "web/views/SandboxRecordListView"
 msgid "Category"
 msgstr ""
 
-#: web/views/SandboxRecordListView.vue:58
+#: web/views/SandboxRecordListView.vue:51
 msgctxt "web/views/SandboxRecordListView"
 msgid "Chart View"
 msgstr ""
 
-#: web/views/SandboxRecordListView.vue:57
+#: web/views/SandboxRecordListView.vue:50
 msgctxt "web/views/SandboxRecordListView"
 msgid "Kanban View"
 msgstr ""
 
-#: web/views/SandboxRecordListView.vue:56
+#: web/views/SandboxRecordListView.vue:49
 msgctxt "web/views/SandboxRecordListView"
 msgid "List View"
 msgstr ""
@@ -670,28 +730,38 @@ msgctxt "web/views/SandboxRecordListView"
 msgid "View switcher"
 msgstr ""
 
-#: web/views/SandboxTagListView.vue:25
-msgctxt "web/views/SandboxTagListView"
+#: web/views/sandbox_tag_actions.ts:10
+msgctxt "web/views/SandboxTagFormView"
 msgid "Copy Sandbox Tag"
 msgstr ""
 
-#: web/views/SandboxTagListView.vue:25
-msgctxt "web/views/SandboxTagListView"
+#: web/views/sandbox_tag_actions.ts:10
+msgctxt "web/views/SandboxTagFormView"
 msgid "Create Sandbox Tag"
 msgstr ""
 
-#: web/views/SandboxTagListView.vue:25
-msgctxt "web/views/SandboxTagListView"
+#: web/views/sandbox_tag_actions.ts:10
+msgctxt "web/views/SandboxTagFormView"
 msgid "Delete Sandbox Tag"
 msgstr ""
 
-#: web/views/SandboxTagListView.vue:25
-msgctxt "web/views/SandboxTagListView"
+#: web/views/sandbox_tag_actions.ts:10
+msgctxt "web/views/SandboxTagFormView"
 msgid "Edit Sandbox Tag"
 msgstr ""
 
-#: web/views/SandboxTagListView.vue:26
-msgctxt "web/views/SandboxTagListView"
+#: web/views/SandboxTagFormView.vue:22
+msgctxt "web/views/SandboxTagFormView"
+msgid "Required"
+msgstr ""
+
+#: web/views/sandbox_tag_actions.ts:11
+msgctxt "web/views/SandboxTagFormView"
 msgid "Sandbox Tag"
+msgstr ""
+
+#: web/views/SandboxTagFormView.vue:8
+msgctxt "web/views/SandboxTagFormView"
+msgid "Tag"
 msgstr ""
 

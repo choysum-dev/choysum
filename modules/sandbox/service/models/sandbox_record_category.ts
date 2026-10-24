@@ -7,7 +7,7 @@ import SandboxCategory from './sandbox_category';
 import SandboxRecord from './sandbox_record';
 
 /** Join row for SandboxRecord ↔ SandboxCategory ManyToMany (Tree widget). */
-@Model('SandboxRecordCategory')
+@Model('SandboxRecordCategory', { softDelete: false })
 export default class SandboxRecordCategory extends BaseModel {
   @Field({
     type: 'ManyToOne',
@@ -25,7 +25,6 @@ export default class SandboxRecordCategory extends BaseModel {
     notNull: true,
     index: true,
     uniqueIndex: 'uidx_sandbox_record_category',
-    condition: ['IsActive', '=', true],
     string: _lt('Category', { scope: 'sandbox.model.SandboxRecordCategory.fields' }),
   })
   CategoryId: SandboxCategory;

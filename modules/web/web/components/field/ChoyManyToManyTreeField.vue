@@ -22,7 +22,7 @@ SPDX-License-Identifier: Apache-2.0
   >
     <template #edit="{ inputId, labelId, describedBy }">
       <div
-        class="w-full overflow-auto p-2"
+        class="w-full overflow-auto"
         :id="inputId || undefined"
         :style="treeBoxStyle"
         :aria-labelledby="labelId || undefined"
@@ -30,7 +30,6 @@ SPDX-License-Identifier: Apache-2.0
       >
         <RelationTree
           ref="editTreeRef"
-          class="min-h-[120px]"
           node-key="__id"
           :data="treeData"
           :props="treeProps"
@@ -57,10 +56,9 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display>
-      <div class="w-full overflow-auto p-2 [&_.choy-relation-tree__checkbox]:cursor-default" :style="treeBoxStyle" @click.capture="onDisplayTreeClickCapture">
+      <div class="w-full overflow-auto [&_.choy-relation-tree__checkbox]:cursor-default" :style="treeBoxStyle" @click.capture="onDisplayTreeClickCapture">
         <RelationTree
           ref="displayTreeRef"
-          class="min-h-[120px]"
           node-key="__id"
           :data="treeData"
           :props="treeProps"
@@ -100,6 +98,7 @@ import type { UseField } from '@/web/web/composables/useField';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import { createTranslate } from '@/web/web/i18n';
 import { normalizeTreeRefId as normalizeRefId } from './treeRefId';
+import { resolveTreeBoxStyle, type TreeBoxHeight } from './treeBoxHeight';
 import RelationTree from '@/web/web/components/internal/RelationTree.vue';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyManyToManyTreeField' });
@@ -146,7 +145,8 @@ const props = withDefaults(
     defaultExpandAll?: boolean;
     expandOnClickNode?: boolean;
     emptyText?: string;
-    treeHeight?: number | string;
+    /** Fixed px height, `'auto'` (content-sized), or a CSS length string. Default `'auto'`. */
+    treeHeight?: TreeBoxHeight;
 
     condition?: AnyQueryCondition | AnyQueryCondition[];
 
@@ -174,7 +174,7 @@ const props = withDefaults(
     defaultExpandAll: false,
     expandOnClickNode: true,
     emptyText: '',
-    treeHeight: 360,
+    treeHeight: 'auto',
     condition: undefined,
     required: false,
     readonly: false,
@@ -215,10 +215,7 @@ const treeProps = {
   isLeaf: '__leafKnown',
 } as const;
 
-const treeBoxStyle = computed(() => {
-  const h = typeof props.treeHeight === 'number' ? `${props.treeHeight}px` : String(props.treeHeight || '360px');
-  return { height: h };
-});
+const treeBoxStyle = computed(() => resolveTreeBoxStyle(props.treeHeight));
 
 const labelFields = computed<string[]>(() => {
   const raw = props.labelField;
@@ -377,9 +374,11 @@ async function fetchRawChildrenByParentIds(parentIds: string[]): Promise<Map<str
     And: [['Id', 'in', ids]],
   } as any;
 
+  // Same field condition source as root load so @Field({ condition }) applies to nested Children too.
   const childSearchOptions = {
     fields: parentQueryFields.value as any,
     limit: Math.max(perRequestLimit.value, ids.length),
+    ...buildRelationConditionSource(props.store as any, binding.prop),
   } as any;
 
   const rows = await store.Search(childSearchCondition, childSearchOptions);
@@ -532,13 +531,25 @@ async function loadTreeRows() {
     const roots = responseRows.map(row => toNodeRow(row, 1)).filter(Boolean) as TreeNode[];
     sortNodes(roots);
 
-    if (!props.lazy) {
-      await preloadTreeByLayers(roots);
-    }
-
+    // Paint roots before nested Children preload so a hung/slow child Search
+    // does not leave the tree stuck on Loading… with no nodes.
     if (version !== loadVersion) return;
     treeData.value = roots;
+    loading.value = false;
     syncTreeCheckedKeys();
+
+    if (!props.lazy) {
+      try {
+        await preloadTreeByLayers(roots);
+        if (version !== loadVersion) return;
+        // Children mutate `roots` in place; reassign so RelationTree deep-watches refresh.
+        treeData.value = roots.slice();
+        syncTreeCheckedKeys();
+      } catch (preloadErr) {
+        // Keep roots even when nested Children preload fails (empty tree is worse UX).
+        console.warn('[ChoyManyToManyTreeField] preload tree children failed', preloadErr);
+      }
+    }
   } catch (e) {
     console.warn('[ChoyManyToManyTreeField] load tree rows failed', e);
     treeData.value = [];

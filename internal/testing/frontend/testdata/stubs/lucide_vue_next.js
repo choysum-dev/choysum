@@ -73,6 +73,7 @@ export const List = icon('List');
 export const ListOrdered = icon('ListOrdered');
 export const Loader2 = icon('Loader2');
 export const Menu = icon('Menu');
+export const Minus = icon('Minus');
 export const Monitor = icon('Monitor');
 export const Moon = icon('Moon');
 export const MoreHorizontal = icon('MoreHorizontal');

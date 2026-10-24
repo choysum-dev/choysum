@@ -38,6 +38,7 @@ export default class SandboxCategory extends BaseModel {
   @Field({
     type: 'OneToMany',
     relation: { targetModel: () => SandboxCategory, inverseField: 'ParentId' },
+    condition: ['IsActive', '=', true],
     string: _lt('Children', { scope: 'sandbox.model.SandboxCategory.fields' }),
   })
   Children?: SandboxCategory[];

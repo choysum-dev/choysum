@@ -1,12 +1,12 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
-#: service/models/sandbox_category.ts:50
+#: service/models/sandbox_category.ts:51
 msgctxt "sandbox.model.SandboxCategory.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/sandbox_category.ts:41
+#: service/models/sandbox_category.ts:42
 msgctxt "sandbox.model.SandboxCategory.fields"
 msgid "Children"
 msgstr "子分类"
@@ -51,215 +51,245 @@ msgctxt "sandbox.model.SandboxLine.fields"
 msgid "State"
 msgstr "状态"
 
-#: service/models/sandbox_record.ts:123
+#: service/models/sandbox_record.ts:127
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/sandbox_record.ts:115
+#: service/models/sandbox_record.ts:119
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Amount"
 msgstr "金额"
 
-#: service/models/sandbox_record.ts:202
+#: service/models/sandbox_record.ts:206
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "App-level properties container (no parent definition field)."
 msgstr "应用级属性容器（无父级定义字段）。"
 
-#: service/models/sandbox_record.ts:183
+#: service/models/sandbox_record.ts:187
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Attachment"
 msgstr "附件"
 
-#: service/models/sandbox_record.ts:84
+#: service/models/sandbox_record.ts:87
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Bigint Value"
 msgstr "大整数值"
 
-#: service/models/sandbox_record.ts:70
+#: service/models/sandbox_record.ts:73
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Body HTML"
 msgstr "正文 HTML"
 
-#: service/models/sandbox_record.ts:236
+#: service/models/sandbox_record.ts:302
+msgctxt "sandbox.model.SandboxRecord.fields"
+msgid "Categories"
+msgstr "分类集合"
+
+#: service/models/sandbox_record.ts:240
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Category"
 msgstr "分类"
 
-#: service/models/sandbox_record.ts:247
+#: service/models/sandbox_record.ts:251
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Category Name"
 msgstr "分类名称"
 
-#: service/models/sandbox_record.ts:283
+#: service/models/sandbox_record.ts:320
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Category Path"
 msgstr "分类路径"
 
-#: service/models/sandbox_record.ts:256
+#: service/models/sandbox_record.ts:260
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Category Ref"
 msgstr "分类引用"
 
-#: service/models/sandbox_record.ts:30
+#: service/models/sandbox_record.ts:33
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Char Name"
 msgstr "字符名称"
 
-#: service/models/sandbox_record.ts:56
+#: service/models/sandbox_record.ts:59
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Code"
 msgstr "编码"
 
-#: service/models/sandbox_record.ts:226
+#: service/models/sandbox_record.ts:230
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Company"
 msgstr "公司"
 
-#: service/models/sandbox_record.ts:213
+#: service/models/sandbox_record.ts:217
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Company Note"
 msgstr "公司备注"
 
-#: service/models/sandbox_record.ts:300
+#: service/models/sandbox_record.ts:337
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Computed from Lines; not edited by hand."
 msgstr "由明细行计算得出，不可手工编辑。"
 
-#: service/models/sandbox_record.ts:316
+#: service/models/sandbox_record.ts:353
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Computed: first line by Sequence then Id."
 msgstr "计算字段：按序号再按 Id 取第一条明细。"
 
-#: service/models/sandbox_record.ts:107
+#: service/models/sandbox_record.ts:110
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Currency"
 msgstr "币种"
 
-#: service/models/sandbox_record.ts:139
+#: service/models/sandbox_record.ts:143
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Date Value"
 msgstr "日期"
 
-#: service/models/sandbox_record.ts:145
+#: service/models/sandbox_record.ts:149
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Datetime Value"
 msgstr "日期时间"
 
-#: service/models/sandbox_record.ts:97
+#: service/models/sandbox_record.ts:100
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Decimal Value"
 msgstr "小数值"
 
-#: service/models/sandbox_record.ts:31
+#: service/models/sandbox_record.ts:34
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Dedicated char column (not varchar) for FieldsGet/Search coverage."
 msgstr "独立 char 列（非 varchar），用于 FieldsGet/Search 覆盖。"
 
-#: service/models/sandbox_record.ts:237
+#: service/models/sandbox_record.ts:241
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Domain restricts to active categories only."
 msgstr "域条件仅包含启用的分类。"
 
-#: service/models/sandbox_record.ts:189
+#: service/models/sandbox_record.ts:193
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Image"
 msgstr "图片"
 
-#: service/models/sandbox_record.ts:78
+#: service/models/sandbox_record.ts:81
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Int Value"
 msgstr "整数值"
 
-#: service/models/sandbox_record.ts:195
+#: service/models/sandbox_record.ts:199
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "JSON Payload"
 msgstr "JSON 载荷"
 
-#: service/models/sandbox_record.ts:299
+#: service/models/sandbox_record.ts:336
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Line Count"
 msgstr "明细行数"
 
-#: service/models/sandbox_record.ts:293
+#: service/models/sandbox_record.ts:330
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Lines"
 msgstr "明细行"
 
-#: service/models/sandbox_record.ts:284
+#: service/models/sandbox_record.ts:321
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "ManyToManyRef bound with the tree widget in Form."
 msgstr "表单中使用树形控件绑定的 ManyToManyRef。"
 
-#: service/models/sandbox_record.ts:64
+#: service/models/sandbox_record.ts:67
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Notes"
 msgstr "备注"
 
-#: service/models/sandbox_record.ts:90
+#: service/models/sandbox_record.ts:93
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Number Value"
 msgstr "浮点数值"
 
-#: service/models/sandbox_record.ts:214
+#: service/models/sandbox_record.ts:218
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Per-company varchar; open Company Values from the field chrome."
 msgstr "按公司存储的 varchar；可从字段控件打开公司值。"
 
-#: service/models/sandbox_record.ts:315
+#: service/models/sandbox_record.ts:352
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Primary Line"
 msgstr "主明细行"
 
-#: service/models/sandbox_record.ts:173
+#: service/models/sandbox_record.ts:177
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Progress"
 msgstr "进度"
 
-#: service/models/sandbox_record.ts:201
+#: service/models/sandbox_record.ts:205
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Properties"
 msgstr "属性"
 
-#: service/models/sandbox_record.ts:174
+#: service/models/sandbox_record.ts:178
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Same selection options as State; Form binds ChoyStatusbarField."
 msgstr "与状态相同的选项；表单绑定状态条字段。"
 
-#: service/models/sandbox_record.ts:132
+#: service/models/sandbox_record.ts:287
+msgctxt "sandbox.model.SandboxRecord.fields"
+msgid "Same-app ManyToMany bound with the Tags widget in Form."
+msgstr "同应用 ManyToMany，表单中使用标签控件绑定。"
+
+#: service/models/sandbox_record.ts:303
+msgctxt "sandbox.model.SandboxRecord.fields"
+msgid "Same-app ManyToMany bound with the Tree widget in Form."
+msgstr "同应用 ManyToMany，表单中使用树形控件绑定。"
+
+#: service/models/sandbox_record.ts:136
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Sequence"
 msgstr "序号"
 
-#: service/models/sandbox_record.ts:163
+#: service/models/sandbox_record.ts:167
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "State"
 msgstr "状态"
 
-#: service/models/sandbox_record.ts:276
+#: service/models/sandbox_record.ts:286
+msgctxt "sandbox.model.SandboxRecord.fields"
+msgid "Tag Chips"
+msgstr "标签芯片"
+
+#: service/models/sandbox_record.ts:312
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Tag Refs"
 msgstr "标签引用"
 
-#: service/models/sandbox_record.ts:269
+#: service/models/sandbox_record.ts:273
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Tags"
 msgstr "标签"
 
-#: service/models/sandbox_record.ts:151
+#: service/models/sandbox_record.ts:155
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Time Value"
 msgstr "时间"
 
-#: service/models/sandbox_record.ts:43
+#: service/models/sandbox_record.ts:46
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Title"
 msgstr "标题"
 
-#: service/models/sandbox_record.ts:44
+#: service/models/sandbox_record.ts:47
 msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Translatable varchar; use the translation action on the field."
 msgstr "可翻译 varchar；请使用字段上的翻译操作。"
+
+#: service/models/sandbox_record_category.ts:28
+msgctxt "sandbox.model.SandboxRecordCategory.fields"
+msgid "Category"
+msgstr "分类"
+
+#: service/models/sandbox_record_category.ts:18
+msgctxt "sandbox.model.SandboxRecordCategory.fields"
+msgid "Record"
+msgstr "记录"
 
 #: service/models/sandbox_record_tag.ts:18
 msgctxt "sandbox.model.SandboxRecordTag.fields"
@@ -268,6 +298,16 @@ msgstr "记录"
 
 #: service/models/sandbox_record_tag.ts:29
 msgctxt "sandbox.model.SandboxRecordTag.fields"
+msgid "Tag"
+msgstr "标签"
+
+#: service/models/sandbox_record_tag_chip.ts:18
+msgctxt "sandbox.model.SandboxRecordTagChip.fields"
+msgid "Record"
+msgstr "记录"
+
+#: service/models/sandbox_record_tag_chip.ts:29
+msgctxt "sandbox.model.SandboxRecordTagChip.fields"
 msgid "Tag"
 msgstr "标签"
 
@@ -311,30 +351,40 @@ msgctxt "web/pages/SandboxRecordList"
 msgid "Field Kitchen Sink"
 msgstr "字段试验场"
 
-#: web/route/routes.ts:74
+#: web/route/routes.ts:82
 msgctxt "web/route/routes"
 msgid "New Sandbox Record"
 msgstr "新建沙箱记录"
 
-#: web/route/routes.ts:44
+#: web/route/routes.ts:112
+msgctxt "web/route/routes"
+msgid "New Sandbox Tag"
+msgstr "新建沙箱标签"
+
+#: web/route/routes.ts:61
 msgctxt "web/route/routes"
 msgid "Sandbox Record Chart"
 msgstr "沙箱记录图表"
 
-#: web/route/routes.ts:59
+#: web/route/routes.ts:97
 msgctxt "web/route/routes"
 msgid "Sandbox Record Detail"
 msgstr "沙箱记录详情"
 
-#: web/route/routes.ts:29
+#: web/route/routes.ts:41
 msgctxt "web/route/routes"
 msgid "Sandbox Record Kanban"
 msgstr "沙箱记录看板"
 
-#: web/route/routes.ts:14
+#: web/route/routes.ts:21
 msgctxt "web/route/routes"
 msgid "Sandbox Record List"
 msgstr "沙箱记录列表"
+
+#: web/route/routes.ts:126
+msgctxt "web/route/routes"
+msgid "Sandbox Tag Detail"
+msgstr "沙箱标签详情"
 
 #: web/views/SandboxCategoryListView.vue:25
 msgctxt "web/views/SandboxCategoryListView"
@@ -371,27 +421,27 @@ msgctxt "web/views/SandboxLineFormView"
 msgid "Required"
 msgstr "必填"
 
-#: web/views/SandboxRecordChartView.vue:47
+#: web/views/SandboxRecordChartView.vue:43
 msgctxt "web/views/SandboxRecordChartView"
 msgid "Chart View"
 msgstr "图表视图"
 
-#: web/views/SandboxRecordChartView.vue:41
+#: web/views/SandboxRecordChartView.vue:37
 msgctxt "web/views/SandboxRecordChartView"
 msgid "Count"
 msgstr "数量"
 
-#: web/views/SandboxRecordChartView.vue:59 web/views/SandboxRecordChartView.vue:64
+#: web/views/SandboxRecordChartView.vue:51 web/views/SandboxRecordChartView.vue:56
 msgctxt "web/views/SandboxRecordChartView"
 msgid "Failed to load chart"
 msgstr "加载图表失败"
 
-#: web/views/SandboxRecordChartView.vue:46
+#: web/views/SandboxRecordChartView.vue:42
 msgctxt "web/views/SandboxRecordChartView"
 msgid "Kanban View"
 msgstr "看板视图"
 
-#: web/views/SandboxRecordChartView.vue:45
+#: web/views/SandboxRecordChartView.vue:41
 msgctxt "web/views/SandboxRecordChartView"
 msgid "List View"
 msgstr "列表视图"
@@ -406,12 +456,17 @@ msgctxt "web/views/SandboxRecordChartView"
 msgid "View switcher"
 msgstr "视图切换"
 
-#: web/views/SandboxRecordFormView.vue:153
+#: web/views/SandboxRecordFormView.vue:161
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Add Line"
 msgstr "添加明细"
 
 #: web/views/SandboxRecordFormView.vue:136
+msgctxt "web/views/SandboxRecordFormView"
+msgid "Categories"
+msgstr "分类集合"
+
+#: web/views/SandboxRecordFormView.vue:144
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Category Path"
 msgstr "分类路径"
@@ -436,7 +491,7 @@ msgctxt "web/views/SandboxRecordFormView"
 msgid "Depth"
 msgstr "深度选项"
 
-#: web/views/SandboxRecordFormView.vue:153
+#: web/views/SandboxRecordFormView.vue:161
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Edit Line"
 msgstr "编辑明细"
@@ -451,17 +506,17 @@ msgctxt "web/views/SandboxRecordFormView"
 msgid "Identity"
 msgstr "基本信息"
 
-#: web/views/SandboxRecordFormView.vue:152
+#: web/views/SandboxRecordFormView.vue:160
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Lines (kanban)"
 msgstr "明细行（看板）"
 
-#: web/views/SandboxRecordFormView.vue:144
+#: web/views/SandboxRecordFormView.vue:152
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Lines (table)"
 msgstr "明细行（表格）"
 
-#: web/views/SandboxRecordFormView.vue:153
+#: web/views/SandboxRecordFormView.vue:161
 msgctxt "web/views/SandboxRecordFormView"
 msgid "New Line"
 msgstr "新建明细"
@@ -471,7 +526,7 @@ msgctxt "web/views/SandboxRecordFormView"
 msgid "Numbers"
 msgstr "数值"
 
-#: web/views/SandboxRecordFormView.vue:158
+#: web/views/SandboxRecordFormView.vue:166
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Qty"
 msgstr "数量"
@@ -481,7 +536,7 @@ msgctxt "web/views/SandboxRecordFormView"
 msgid "Relations"
 msgstr "关联"
 
-#: web/views/SandboxRecordFormView.vue:53
+#: web/views/SandboxRecordFormView.vue:56
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Required"
 msgstr "必填"
@@ -518,6 +573,11 @@ msgstr "选择币种"
 
 #: web/views/SandboxRecordFormView.vue:133
 msgctxt "web/views/SandboxRecordFormView"
+msgid "Select Tag Chips"
+msgstr "选择标签芯片"
+
+#: web/views/SandboxRecordFormView.vue:141
+msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Tag Refs"
 msgstr "选择标签引用"
 
@@ -531,12 +591,12 @@ msgctxt "web/views/SandboxRecordFormView"
 msgid "Temporal"
 msgstr "时间"
 
-#: web/views/SandboxRecordFormView.vue:156
+#: web/views/SandboxRecordFormView.vue:164
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Unnamed Line"
 msgstr "未命名明细"
 
-#: web/views/SandboxRecordFormView.vue:153
+#: web/views/SandboxRecordFormView.vue:161
 msgctxt "web/views/SandboxRecordFormView"
 msgid "View Line"
 msgstr "查看明细"
@@ -546,7 +606,7 @@ msgctxt "web/views/SandboxRecordKanbanView"
 msgid "%s more"
 msgstr "还有 %s 条"
 
-#: web/views/SandboxRecordKanbanView.vue:12 web/views/SandboxRecordKanbanView.vue:57
+#: web/views/SandboxRecordKanbanView.vue:12 web/views/SandboxRecordKanbanView.vue:53
 msgctxt "web/views/SandboxRecordKanbanView"
 msgid "All"
 msgstr "全部"
@@ -556,32 +616,32 @@ msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Category"
 msgstr "分类"
 
-#: web/views/SandboxRecordKanbanView.vue:47
+#: web/views/SandboxRecordKanbanView.vue:43
 msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Chart View"
 msgstr "图表视图"
 
-#: web/views/SandboxRecordKanbanView.vue:56
+#: web/views/SandboxRecordKanbanView.vue:52
 msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Done"
 msgstr "完成"
 
-#: web/views/SandboxRecordKanbanView.vue:54
+#: web/views/SandboxRecordKanbanView.vue:50
 msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Draft"
 msgstr "草稿"
 
-#: web/views/SandboxRecordKanbanView.vue:126 web/views/SandboxRecordKanbanView.vue:131
+#: web/views/SandboxRecordKanbanView.vue:118 web/views/SandboxRecordKanbanView.vue:123
 msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Failed to load kanban"
 msgstr "加载看板失败"
 
-#: web/views/SandboxRecordKanbanView.vue:136
+#: web/views/SandboxRecordKanbanView.vue:128
 msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Failed to load more"
 msgstr "加载更多失败"
 
-#: web/views/SandboxRecordKanbanView.vue:141
+#: web/views/SandboxRecordKanbanView.vue:133
 msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Failed to move card"
 msgstr "移动卡片失败"
@@ -591,12 +651,12 @@ msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Inactive"
 msgstr "未启用"
 
-#: web/views/SandboxRecordKanbanView.vue:46
+#: web/views/SandboxRecordKanbanView.vue:42
 msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Kanban View"
 msgstr "看板视图"
 
-#: web/views/SandboxRecordKanbanView.vue:45
+#: web/views/SandboxRecordKanbanView.vue:41
 msgctxt "web/views/SandboxRecordKanbanView"
 msgid "List View"
 msgstr "列表视图"
@@ -611,7 +671,7 @@ msgctxt "web/views/SandboxRecordKanbanView"
 msgid "No records in this lane"
 msgstr "此泳道暂无记录"
 
-#: web/views/SandboxRecordKanbanView.vue:55
+#: web/views/SandboxRecordKanbanView.vue:51
 msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Open"
 msgstr "打开"
@@ -621,7 +681,7 @@ msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Seq"
 msgstr "序号"
 
-#: web/views/SandboxRecordKanbanView.vue:88
+#: web/views/SandboxRecordKanbanView.vue:84
 msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Untitled"
 msgstr "未命名"
@@ -636,17 +696,17 @@ msgctxt "web/views/SandboxRecordListView"
 msgid "Category"
 msgstr "分类"
 
-#: web/views/SandboxRecordListView.vue:58
+#: web/views/SandboxRecordListView.vue:51
 msgctxt "web/views/SandboxRecordListView"
 msgid "Chart View"
 msgstr "图表视图"
 
-#: web/views/SandboxRecordListView.vue:57
+#: web/views/SandboxRecordListView.vue:50
 msgctxt "web/views/SandboxRecordListView"
 msgid "Kanban View"
 msgstr "看板视图"
 
-#: web/views/SandboxRecordListView.vue:56
+#: web/views/SandboxRecordListView.vue:49
 msgctxt "web/views/SandboxRecordListView"
 msgid "List View"
 msgstr "列表视图"
@@ -661,27 +721,57 @@ msgctxt "web/views/SandboxRecordListView"
 msgid "View switcher"
 msgstr "视图切换"
 
-#: web/views/SandboxTagListView.vue:25
-msgctxt "web/views/SandboxTagListView"
+#: web/views/sandbox_tag_actions.ts:10
+msgctxt "web/views/SandboxTagFormView"
 msgid "Copy Sandbox Tag"
 msgstr "复制沙箱标签"
 
-#: web/views/SandboxTagListView.vue:25
-msgctxt "web/views/SandboxTagListView"
+#: web/views/sandbox_tag_actions.ts:10
+msgctxt "web/views/SandboxTagFormView"
 msgid "Create Sandbox Tag"
 msgstr "创建沙箱标签"
 
-#: web/views/SandboxTagListView.vue:25
-msgctxt "web/views/SandboxTagListView"
+#: web/views/sandbox_tag_actions.ts:10
+msgctxt "web/views/SandboxTagFormView"
 msgid "Delete Sandbox Tag"
 msgstr "删除沙箱标签"
 
-#: web/views/SandboxTagListView.vue:25
-msgctxt "web/views/SandboxTagListView"
+#: web/views/sandbox_tag_actions.ts:10
+msgctxt "web/views/SandboxTagFormView"
 msgid "Edit Sandbox Tag"
 msgstr "编辑沙箱标签"
 
-#: web/views/SandboxTagListView.vue:26
-msgctxt "web/views/SandboxTagListView"
+#: web/views/SandboxTagFormView.vue:22
+msgctxt "web/views/SandboxTagFormView"
+msgid "Required"
+msgstr "必填"
+
+#: web/views/sandbox_tag_actions.ts:11
+msgctxt "web/views/SandboxTagFormView"
 msgid "Sandbox Tag"
 msgstr "沙箱标签"
+
+#: web/views/SandboxTagFormView.vue:8
+msgctxt "web/views/SandboxTagFormView"
+msgid "Tag"
+msgstr "标签"
+
+#~ msgctxt "web/views/SandboxTagListView"
+#~ msgid "Copy Sandbox Tag"
+#~ msgstr "复制沙箱标签"
+
+#~ msgctxt "web/views/SandboxTagListView"
+#~ msgid "Create Sandbox Tag"
+#~ msgstr "创建沙箱标签"
+
+#~ msgctxt "web/views/SandboxTagListView"
+#~ msgid "Delete Sandbox Tag"
+#~ msgstr "删除沙箱标签"
+
+#~ msgctxt "web/views/SandboxTagListView"
+#~ msgid "Edit Sandbox Tag"
+#~ msgstr "编辑沙箱标签"
+
+#~ msgctxt "web/views/SandboxTagListView"
+#~ msgid "Sandbox Tag"
+#~ msgstr "沙箱标签"

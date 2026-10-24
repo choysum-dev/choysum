@@ -39,6 +39,7 @@ const RelationComboboxStub = defineComponent({
     modelValue: { type: [String, null] as any, default: null },
     search: { type: Function, default: undefined },
     searchKey: { type: String, default: '' },
+    chrome: { type: String, default: 'default' },
     clearable: { type: Boolean, default: true },
     placeholder: { type: String, default: '' },
     pageSize: { type: Number, default: 20 },
@@ -46,7 +47,8 @@ const RelationComboboxStub = defineComponent({
     disabled: { type: Boolean, default: false },
   },
   emits: ['update:modelValue', 'select', 'search-more', 'search-error'],
-  setup(props: any, { emit }: any) {
+  setup(props: any, { emit, expose }: any) {
+    expose({ focusInput: () => {} });
     return () =>
       h(
         'div',
@@ -54,6 +56,8 @@ const RelationComboboxStub = defineComponent({
           class: 'select-stub',
           'data-model': String(props.modelValue ?? ''),
           'data-disabled': props.disabled ? '1' : '0',
+          'data-search-key': String(props.searchKey ?? ''),
+          'data-chrome': String(props.chrome ?? 'default'),
         },
         [
           h('button', {
@@ -268,6 +272,53 @@ describe('ChoyManyToManyRefTagsField patch coverage', () => {
     const chips = Array.from(m.el.querySelectorAll('.choy-m2m-tags__chip') || []);
     expect(chips.length).toBeGreaterThanOrEqual(1);
     expect(m.text()).toMatch(/\+/);
+    expect(m.q('[data-testid="choy-m2m-tags-shell"]')).toBeTruthy();
+    expect(m.q('[data-anchor="choy.badge"]') || m.q('[data-slot="badge"]')).toBeTruthy();
+    expect(m.q('.select-stub')?.getAttribute('data-chrome')).toBe('plain');
+    m.unmount();
+  });
+
+  test('relationSearch excludes selected ids and searchKey tracks selection', async () => {
+    const NameSearch = fnRecorder(async () => [
+      { Id: 'a', DisplayName: 'Alpha' },
+      { Id: 'b', DisplayName: 'Beta' },
+      { Id: 'c', DisplayName: 'Gamma' },
+    ]);
+    const binding = makeBinding({
+      items: ['a'],
+      relationStore: relationStoreStub({
+        NameSearch,
+        Search: fnRecorder(async () => [{ Id: 'a', DisplayName: 'Alpha' }]),
+        storeId: 'exclude-store',
+      }),
+    });
+    const m = mountField({ binding, searchList: SearchListStub });
+    await flushPromises();
+    const ss = m.setupState() as any;
+    const keyBefore = ss.relationSearchKey as string;
+    expect(keyBefore).toContain('a');
+
+    const opts = await ss.relationSearch('', { limit: 20 });
+    await flushPromises();
+    expect(NameSearch.calls.length).toBe(1);
+    expect(opts.map((o: any) => o.id)).toEqual(['b', 'c']);
+
+    ss.onSelectedIdsChange(['a', 'b']);
+    await flushPromises();
+    const keyAfter = ss.relationSearchKey as string;
+    expect(keyAfter).not.toBe(keyBefore);
+    expect(keyAfter).toContain('a');
+    expect(keyAfter).toContain('b');
+
+    NameSearch.mockClear();
+    NameSearch.mockImplementation(async () => [
+      { Id: 'a', DisplayName: 'Alpha' },
+      { Id: 'b', DisplayName: 'Beta' },
+      { Id: 'c', DisplayName: 'Gamma' },
+    ]);
+    const opts2 = await ss.relationSearch('', { limit: 20 });
+    await flushPromises();
+    expect(opts2.map((o: any) => o.id)).toEqual(['c']);
     m.unmount();
   });
 

@@ -66,14 +66,44 @@ function toArray(value: unknown): unknown[] {
 }
 
 const isArrayPath = (p: (string | number)[]) => p.some(x => typeof x === 'number');
+/** Client / transport keys that must never enter a relation write patch. */
+const CLIENT_ONLY_KEYS = new Set(['__cid', '__rowKey', '__choysum_plain']);
+/** Display-only keys form widgets keep on lean M2M link rows. */
+const M2M_DISPLAY_ONLY_KEYS = new Set(['DisplayName', 'display_name']);
+
 const stripClientKeys = (o: unknown): unknown => {
   const record = asObjectRecord(o);
   if (!record) return o;
-  const { __cid, __rowKey, ...rest } = record;
-  void __cid;
-  void __rowKey;
-  return rest;
+  const out: Plain = {};
+  for (const [k, v] of Object.entries(record)) {
+    if (CLIENT_ONLY_KEYS.has(k)) continue;
+    out[k] = v;
+  }
+  return out;
 };
+
+/**
+ * M2M form rows are often lean (Id + DisplayName) or ClientModel plains with
+ * schema keys filled as null, while the loaded original had full target columns.
+ * Null / omitted keys mean "unchanged link", not "set field to null".
+ * Only non-null fields present on the current row participate in the update patch.
+ */
+function objectPatchM2mLink(orig: Plain, curr: Plain): Plain {
+  const patch: Plain = {};
+  for (const k of Object.keys(curr ?? {})) {
+    if (k === 'Id' || CLIENT_ONLY_KEYS.has(k) || M2M_DISPLAY_ONLY_KEYS.has(k)) continue;
+    const oa = (orig ?? {})[k];
+    const ob = (curr ?? {})[k];
+    // Sparse / plain ClientModel rows fill unused columns with null — ignore those.
+    if (ob === null || ob === undefined) continue;
+    if (isDecimalCandidate(oa) || isDecimalCandidate(ob)) {
+      if (!decimalEqual(oa, ob)) patch[k] = ob;
+      continue;
+    }
+    if (!equal(oa, ob)) patch[k] = ob;
+  }
+  return patch;
+}
 
 // NEW: Detects values that may participate in Decimal-aware comparisons.
 function isDecimalCandidate(v: unknown): boolean {
@@ -211,7 +241,8 @@ function diffArrayRelation(kind: 'o2m' | 'm2m', origArr: unknown[] = [], currArr
     const a = { ...(asObjectRecord(oById.get(id)) ?? { Id: id }), Id: id } as Plain;
     const b = { ...(asObjectRecord(cById.get(id)) ?? { Id: id }), Id: id } as Plain;
     if (equal(a, b)) continue;
-    const rawPatch = objectPatch(a, b);
+    // M2M: lean link rows must not null-clear omitted target columns (IsActive, audit, …).
+    const rawPatch = kind === 'm2m' ? objectPatchM2mLink(a, b) : objectPatch(a, b);
     const patch = normalizePatchForRelationUpdate(a, b, rawPatch);
     if (Object.keys(patch).length) {
       const sanitized = asObjectRecord(stripClientKeys(patch)) ?? {};
@@ -346,14 +377,26 @@ export function buildUpdatePayload(original: Plain, current: Plain, fieldsMeta?:
       continue;
     }
 
-    if (!rel) continue;
-
-    if (rel === 'OneToMany' || rel === 'ManyToMany') {
-      const ops = diffArrayRelation(rel === 'OneToMany' ? 'o2m' : 'm2m', toArray(original?.[key]), toArray(current?.[key]));
+    // ManyToMany / OneToMany: codegen web meta is often `{ type }` without `relation`.
+    // Mis-diffing M2M as O2M drops Id-only link adds (no create/delete patch).
+    const arrayRel: RelationType | undefined =
+      fm?.type === 'ManyToMany' || rel === 'ManyToMany'
+        ? 'ManyToMany'
+        : fm?.type === 'OneToMany' || rel === 'OneToMany'
+          ? 'OneToMany'
+          : undefined;
+    if (arrayRel === 'OneToMany' || arrayRel === 'ManyToMany') {
+      const ops = diffArrayRelation(
+        arrayRel === 'OneToMany' ? 'o2m' : 'm2m',
+        toArray(original?.[key]),
+        toArray(current?.[key]),
+      );
       if (ops) payload[key] = ops;
-      processed.set(key, rel);
+      processed.set(key, arrayRel);
       continue;
     }
+
+    if (!rel) continue;
   }
 
   // 2) Infer undeclared relation-like keys.

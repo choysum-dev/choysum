@@ -7,7 +7,7 @@ import SandboxRecord from './sandbox_record';
 import SandboxTag from './sandbox_tag';
 
 /** Join row for SandboxRecord ↔ SandboxTag ManyToMany. */
-@Model('SandboxRecordTag')
+@Model('SandboxRecordTag', { softDelete: false })
 export default class SandboxRecordTag extends BaseModel {
   @Field({
     type: 'ManyToOne',

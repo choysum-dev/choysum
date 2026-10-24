@@ -38,14 +38,17 @@ function matchesCondition(row: Record<string, unknown>, condition: unknown): boo
   return false;
 }
 
-function createJoinRepoMock(seedRows: JoinRow[]) {
-  const rows = seedRows.map(row => ({ ...row }));
+function createJoinRepoMock(seedRows: Array<JoinRow & { DeletedAt?: Date | string | null }>) {
+  const rows = seedRows.map(row => ({ ...row })) as Array<JoinRow & { DeletedAt?: Date | string | null }>;
   const createCalls: Array<Record<string, any>[]> = [];
   const deleteCalls: unknown[] = [];
+  const updateCalls: Array<{ vals: Record<string, any>; condition: unknown }> = [];
 
   const originalSearch = Repository.prototype.search;
   const originalDelete = Repository.prototype.delete;
   const originalCreate = Repository.prototype.create;
+  const originalUpdate = Repository.prototype.update;
+  const originalWithDeleted = Repository.prototype.withDeleted;
 
   Repository.prototype.search = async function (this: Repository, condition: unknown) {
     return rows.filter(row => matchesCondition(row, condition)).map(row => ({ ...row }));
@@ -73,14 +76,31 @@ function createJoinRepoMock(seedRows: JoinRow[]) {
     return values.map((_, idx) => `j-created-${idx + 1}`);
   } as unknown as Repository['create'];
 
+  Repository.prototype.update = async function (vals: Record<string, any>, condition: unknown) {
+    updateCalls.push({ vals: { ...vals }, condition });
+    for (const row of rows) {
+      if (!matchesCondition(row, condition)) continue;
+      Object.assign(row, vals);
+    }
+    return [{ Id: 'updated' }];
+  } as unknown as Repository['update'];
+
+  // Keep withDeleted returning a repo that still hits the mocked prototypes.
+  Repository.prototype.withDeleted = function (this: Repository) {
+    return originalWithDeleted.call(this);
+  };
+
   return {
     rows,
     createCalls,
     deleteCalls,
+    updateCalls,
     restore() {
       Repository.prototype.search = originalSearch;
       Repository.prototype.delete = originalDelete;
       Repository.prototype.create = originalCreate;
+      Repository.prototype.update = originalUpdate;
+      Repository.prototype.withDeleted = originalWithDeleted;
     },
   };
 }
@@ -522,6 +542,82 @@ test('many-to-many processor batch create skips already-related ids before creat
     expect(ManyToManyTarget.createCalls).toEqual([{ Name: 'fresh-tag' }]);
     expect(joinStore.createCalls.length).toBe(1);
     expect(joinStore.createCalls[0]).toEqual([{ OwnerId: 'p1', TagId: 'NEW-TARGET-1' }]);
+  } finally {
+    joinStore.restore();
+  }
+});
+
+test('many-to-many processor batch create skips existing links when join FK is a hydrated object', async () => {
+  resetTargetCalls();
+  RepositoryFactory.setRepository(targetCtor, { search: async () => [] } as unknown as Repository);
+
+  // Search may return ManyToOne FKs as `{ Id }` rather than bare strings.
+  const joinStore = createJoinRepoMock([{ Id: 'j1', OwnerId: 'p1', TagId: 't1' }]);
+  const seededSearch = Repository.prototype.search;
+  Repository.prototype.search = (async () => [
+    { Id: 'j1', OwnerId: 'p1', TagId: { Id: 't1', DisplayName: 'Alpha' } },
+  ]) as typeof seededSearch;
+
+  try {
+    const processor = new ManyToManyProcessor(parentCtor);
+    const result = await processor.batchProcessRelationUpdate(
+      ['p1'],
+      [
+        {
+          type: 'ManyToMany',
+          fieldName: 'Tags',
+          joinModel: joinCtor,
+          targetModel: targetCtor,
+          joinField: 'OwnerId',
+          inverseJoinField: 'TagId',
+          operations: {
+            create: [{ Id: 't1' }, { Id: 't2' }],
+          },
+        } as unknown as Parameters<ManyToManyProcessor['batchProcessRelationUpdate']>[1][number],
+      ]
+    );
+
+    expect(result.errors).toEqual([]);
+    expect(joinStore.createCalls.length).toBe(1);
+    expect(joinStore.createCalls[0]).toEqual([{ OwnerId: 'p1', TagId: 't2' }]);
+  } finally {
+    joinStore.restore();
+  }
+});
+
+test('many-to-many processor batch create restores soft-deleted join rows instead of inserting', async () => {
+  resetTargetCalls();
+  RepositoryFactory.setRepository(targetCtor, { search: async () => [] } as unknown as Repository);
+
+  const joinStore = createJoinRepoMock([
+    { Id: 'j1', OwnerId: 'p1', TagId: 't1', DeletedAt: new Date('2026-10-24T03:00:00.000Z') },
+  ]);
+
+  try {
+    const processor = new ManyToManyProcessor(parentCtor);
+    const result = await processor.batchProcessRelationUpdate(
+      ['p1'],
+      [
+        {
+          type: 'ManyToMany',
+          fieldName: 'Tags',
+          joinModel: joinCtor,
+          targetModel: targetCtor,
+          joinField: 'OwnerId',
+          inverseJoinField: 'TagId',
+          operations: {
+            create: [{ Id: 't1' }, { Id: 't2' }],
+          },
+        } as unknown as Parameters<ManyToManyProcessor['batchProcessRelationUpdate']>[1][number],
+      ]
+    );
+
+    expect(result.errors).toEqual([]);
+    expect(joinStore.updateCalls.length).toBe(1);
+    expect(joinStore.updateCalls[0]?.vals).toEqual({ DeletedAt: null });
+    expect(joinStore.rows.find(r => r.Id === 'j1')?.DeletedAt).toBeNull();
+    expect(joinStore.createCalls.length).toBe(1);
+    expect(joinStore.createCalls[0]).toEqual([{ OwnerId: 'p1', TagId: 't2' }]);
   } finally {
     joinStore.restore();
   }

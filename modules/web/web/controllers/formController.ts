@@ -7,6 +7,7 @@
 
 import { reactive, toRaw, provide } from 'vue';
 import { buildUpdatePayload } from '@/core/utils/diff';
+import { buildDiffFieldsMeta } from '@/web/web/composables/useOnchange';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import { buildBrowseContext } from '@/web/web/query/context';
@@ -900,7 +901,8 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
         }
 
         const original = toRaw(vm.original);
-        const fieldsMeta = (store as any)?.fieldsMetadata;
+        // Normalize like onchange: codegen meta has type + relationModel, not relation.
+        const fieldsMeta = buildDiffFieldsMeta(store as any);
         const draftForDiff = await preNormalizeDraftForDiff(
           store,
           payload,

@@ -62,6 +62,31 @@ describe('RelationCombobox mount', () => {
     m.unmount();
   });
 
+  test('focus then click keeps the panel open (plain chrome / TagChips)', async () => {
+    const m = mountApp(RelationCombobox as any, {
+      props: {
+        modelValue: null,
+        chrome: 'plain',
+        search: async () => [{ id: 't1', label: 'Alpha', raw: { Id: 't1', DisplayName: 'Alpha' } }],
+        searchKey: 'sandbox.SandboxTag',
+        debounce: 0,
+      },
+    });
+    await nextTick();
+    const input = m.q('input') as HTMLInputElement | null;
+    expect(input).toBeTruthy();
+    const state = m.setupState() as { open?: boolean } | undefined;
+    input!.dispatchEvent(new Event('focus', { bubbles: true }));
+    await nextTick();
+    // Simulate Combobox toggling closed on the activating click after focus opened.
+    state!.open = false;
+    input!.dispatchEvent(new Event('click', { bubbles: true }));
+    await nextTick();
+    await flushPromises();
+    expect(state?.open).toBe(true);
+    m.unmount();
+  });
+
   test('open panel shows translated empty, searching, and search-more copy', async () => {
     let resolveSearch: ((rows: any[]) => void) | null = null;
     const search = () =>
@@ -236,6 +261,41 @@ describe('RelationCombobox mount', () => {
     await flushPromises();
     await nextTick();
     expect(String(document.body.textContent || '')).toContain('Search failed. Please retry.');
+    m.unmount();
+  });
+
+  test('focusInput reopens the panel after a pick closes it', async () => {
+    const m = mountApp(RelationCombobox as any, {
+      props: {
+        modelValue: null,
+        search: async () => [{ Id: 't1', DisplayName: 'Alpha' }],
+        searchKey: 'demo.Tag',
+        chrome: 'plain',
+        clearable: false,
+        debounce: 0,
+      },
+    });
+    await nextTick();
+    const state = m.setupState() as {
+      open?: boolean;
+      modelValue?: string | null;
+      focusInput?: () => void;
+    };
+    state.open = true;
+    await flushPromises();
+    expect(state.open).toBe(true);
+
+    // Selecting an option closes the panel (modelValue watcher).
+    state.modelValue = 't1';
+    await nextTick();
+    expect(state.open).toBe(false);
+
+    // Host clears the add model and calls focusInput — input may already be focused.
+    state.modelValue = null;
+    await nextTick();
+    state.focusInput?.();
+    await nextTick();
+    expect(state.open).toBe(true);
     m.unmount();
   });
 });

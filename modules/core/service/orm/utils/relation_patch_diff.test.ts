@@ -20,6 +20,122 @@ test('buildUpdatePayload stringifies numeric relation ids in m2m create/delete p
   });
 });
 
+test('buildUpdatePayload m2m link add works with codegen type-only fieldsMeta', () => {
+  // Web store fieldsMetadata: type only (no relation: 'ManyToMany').
+  const original = {
+    TagChips: [{ Id: 'a', DisplayName: 'Alpha' }],
+  };
+  const current = {
+    TagChips: [
+      { Id: 'a', DisplayName: 'Alpha' },
+      { Id: 'g', DisplayName: 'Gamma' },
+    ],
+  };
+  const payload = buildUpdatePayload(original, current, {
+    TagChips: { type: 'ManyToMany' },
+  });
+
+  expect(payload.TagChips).toEqual({
+    create: [{ Id: 'g' }],
+  });
+});
+
+test('buildUpdatePayload m2m lean link row does not null-clear omitted target fields', () => {
+  // Form tags widgets rewrite selection to Id/DisplayName; original Search rows carry
+  // IsActive / audit columns. Omitting those keys must not emit update:{ IsActive: null }.
+  const original = {
+    TagChips: [
+      {
+        Id: 'keep',
+        DisplayName: 'Gamma',
+        IsActive: true,
+        CreatedAt: '2026-01-01T00:00:00Z',
+        CreatedUid: 'u1',
+        UpdatedAt: '2026-01-02T00:00:00Z',
+        UpdatedUid: 'u1',
+        DeletedAt: null,
+        DeletedUid: null,
+      },
+      { Id: 'drop', DisplayName: 'Alpha', IsActive: true },
+    ],
+  };
+  const current = {
+    TagChips: [{ Id: 'keep', DisplayName: 'Gamma', __choysum_plain: true }],
+  };
+  const payload = buildUpdatePayload(original, current, {
+    TagChips: { type: 'ManyToMany' },
+  });
+
+  expect(payload.TagChips).toEqual({
+    delete: [{ Id: 'drop' }],
+  });
+});
+
+test('buildUpdatePayload m2m ClientModel null columns do not clear required target fields', () => {
+  // toPlainObject / ClientModel often materializes every column as null on lean rows.
+  const original = {
+    TagChips: [
+      {
+        Id: 'keep',
+        DisplayName: 'Beta',
+        IsActive: true,
+        CreatedAt: '2026-01-01T00:00:00Z',
+        CreatedUid: 'u1',
+        UpdatedAt: '2026-01-02T00:00:00Z',
+        UpdatedUid: 'u1',
+        DeletedAt: null,
+        DeletedUid: null,
+      },
+      { Id: 'drop', DisplayName: 'Alpha', IsActive: true },
+    ],
+  };
+  const current = {
+    TagChips: [
+      {
+        Id: 'keep',
+        DisplayName: 'Beta',
+        IsActive: null,
+        CreatedAt: null,
+        CreatedUid: null,
+        UpdatedAt: null,
+        UpdatedUid: null,
+        DeletedAt: null,
+        DeletedUid: null,
+        __choysum_plain: true,
+      },
+    ],
+  };
+  const payload = buildUpdatePayload(original, current, {
+    TagChips: { type: 'ManyToMany' },
+  });
+
+  expect(payload.TagChips).toEqual({
+    delete: [{ Id: 'drop' }],
+  });
+});
+
+test('buildUpdatePayload m2m still updates target fields present on the current row', () => {
+  const payload = buildUpdatePayload(
+    { Tags: [{ Id: 't1', Name: 'old', IsActive: true }] },
+    { Tags: [{ Id: 't1', Name: 'new', IsActive: true }] },
+    { Tags: { relation: 'ManyToMany' } },
+  );
+  expect(payload.Tags).toEqual({
+    update: [{ Id: 't1', Name: 'new' }],
+  });
+});
+
+test('buildUpdatePayload o2m with type-only fieldsMeta still updates children', () => {
+  const payload = buildUpdatePayload(
+    { Lines: [{ Id: '10', Name: 'a' }] },
+    { Lines: [{ Id: '10', Name: 'b' }] },
+    { Lines: { type: 'OneToMany' } },
+  );
+  expect(payload.Lines).toEqual({
+    update: [{ Id: '10', Name: 'b' }],
+  });
+});
+
 test('buildUpdatePayload stringifies numeric relation ids in o2m update patches', () => {
   const original = {
     Lines: [{ Id: 10, Name: 'a' }],

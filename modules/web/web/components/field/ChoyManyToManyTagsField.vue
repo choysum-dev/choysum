@@ -20,7 +20,17 @@ SPDX-License-Identifier: Apache-2.0
   >
     <template #edit="{ inputId, inputName, describedBy, invalid }">
       <div class="choy-m2m-tags w-full" @keydown="handleKeydown">
-        <div class="mb-1.5 flex min-h-0 flex-wrap items-center gap-1.5">
+        <div
+          class="choy-m2m-tags__shell flex min-h-control w-full flex-wrap items-center gap-1 rounded-md border border-input bg-transparent px-2 py-1 shadow-xs"
+          :class="[
+            controlFocusWithinRing,
+            invalid ? 'border-destructive ring-destructive/20' : undefined,
+            !relationStore ? 'opacity-50' : undefined,
+          ]"
+          :style="{ width: width || '100%' }"
+          data-testid="choy-m2m-tags-shell"
+          @click="onShellClick"
+        >
           <template v-for="item in editChipItems" :key="item.id">
             <span class="choy-m2m-tags__chip inline-flex items-center">
               <slot
@@ -30,42 +40,46 @@ SPDX-License-Identifier: Apache-2.0
                 :removable="tagClosable"
                 :clickable="false"
               >
-                <span class="choy-m2m-tags__tag inline-flex items-center gap-1 rounded-sm border border-border bg-muted px-2 py-0.5 text-sm text-foreground transition-colors">
+                <ChoyBadge variant="secondary" class="choy-m2m-tags__tag gap-1 pr-1 font-normal">
                   {{ item.label }}
                   <button
                     v-if="tagClosable"
                     type="button"
-                    class="inline-flex size-3.5 shrink-0 cursor-pointer items-center justify-center appearance-none border-0 bg-transparent p-0 text-inherit"
+                    class="inline-flex size-3.5 shrink-0 cursor-pointer items-center justify-center appearance-none border-0 bg-transparent p-0 text-inherit opacity-70 hover:opacity-100"
                     :aria-label="_t('Remove')"
                     data-testid="choy-m2m-tag-remove"
                     @click.stop="removeChip(item.id)"
                   >
                     <X class="size-3" />
                   </button>
-                </span>
+                </ChoyBadge>
               </slot>
             </span>
           </template>
-          <span v-if="hiddenCount > 0" class="choy-m2m-tags__tag inline-flex items-center gap-1 rounded-sm border border-border bg-muted px-2 py-0.5 text-sm text-foreground transition-colors">+{{ hiddenCount }}</span>
+          <ChoyBadge v-if="hiddenCount > 0" variant="secondary" class="choy-m2m-tags__tag font-normal">
+            +{{ hiddenCount }}
+          </ChoyBadge>
+          <RelationCombobox
+            ref="comboboxRef"
+            v-model="addModel"
+            class="choy-m2m-tags__select min-w-[8rem] flex-1"
+            chrome="plain"
+            :id="inputId"
+            :name="inputName"
+            :search="relationSearch"
+            :search-key="relationSearchKey"
+            :clearable="false"
+            :placeholder="effectivePlaceholder"
+            :page-size="suggestLimit"
+            :disabled="!relationStore"
+            :search-more="Boolean(searchList)"
+            :aria-describedby="describedBy || undefined"
+            :aria-invalid="invalid ? 'true' : undefined"
+            @click.stop
+            @select="onComboboxSelect"
+            @search-more="onSearchMore"
+          />
         </div>
-        <RelationCombobox
-          v-model="addModel"
-          class="choy-m2m-tags__select w-full"
-          :id="inputId"
-          :name="inputName"
-          :search="relationSearch"
-          :search-key="relationSearchKey"
-          :clearable="false"
-          :placeholder="effectivePlaceholder"
-          :page-size="suggestLimit"
-          :disabled="!relationStore"
-          :search-more="Boolean(searchList)"
-          :style="{ width: width || '100%' }"
-          :aria-describedby="describedBy || undefined"
-          :aria-invalid="invalid ? 'true' : undefined"
-          @select="onComboboxSelect"
-          @search-more="onSearchMore"
-        />
         <div class="flex items-center justify-end gap-2 py-1.5">
           <slot name="suffix" />
           <div
@@ -97,11 +111,20 @@ SPDX-License-Identifier: Apache-2.0
               @keydown="onDisplayTagKeydown(item, $event)"
             >
               <slot name="tag" :item="item.record" :label="item.label" :removable="false" :clickable="isTagClickable">
-                <span class="choy-m2m-tags__tag inline-flex items-center gap-1 rounded-sm border border-border bg-muted px-2 py-0.5 text-sm text-foreground transition-colors" :class="{ 'choy-m2m-tags__tag--primary border-primary bg-primary/10 text-primary group-hover:border-primary group-hover:bg-primary/15': isTagClickable }">{{ item.label }}</span>
+                <ChoyBadge
+                  :variant="isTagClickable ? 'default' : 'secondary'"
+                  class="choy-m2m-tags__tag font-normal"
+                  :class="{
+                    'choy-m2m-tags__tag--primary border-primary bg-primary/10 text-primary group-hover:border-primary group-hover:bg-primary/15':
+                      isTagClickable,
+                  }"
+                >{{ item.label }}</ChoyBadge>
               </slot>
             </span>
           </template>
-          <span v-if="hiddenCount > 0" class="choy-m2m-tags__tag inline-flex items-center gap-1 rounded-sm border border-border bg-muted px-2 py-0.5 text-sm text-foreground transition-colors">+{{ hiddenCount }}</span>
+          <ChoyBadge v-if="hiddenCount > 0" variant="secondary" class="choy-m2m-tags__tag font-normal">
+            +{{ hiddenCount }}
+          </ChoyBadge>
         </template>
         <slot v-else name="empty">
           <span class="choy-m2m-tags__empty text-sm text-muted-foreground">{{ _t('None') }}</span>
@@ -153,6 +176,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, ref, shallowRef, type Component, inject, provide, Ref, watch, onBeforeUnmount, getCurrentInstance, nextTick } from 'vue';
 import { X } from 'lucide-vue-next';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
+import ChoyBadge from '@/web/web/components/layout/ChoyBadge.vue';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { ChoyMessage } from '../../composables/useChoyMessage';
 import { RELATION_PICKER_CLOSE_KEY } from '@/web/web/components/field/relationPickerContext';
@@ -168,6 +192,7 @@ import type { SelectionExpose } from '@/web/web/components/view/listViewTypes';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import { registerFieldPath, unregisterFieldPath, pathsToFieldSelection, ensureRootId } from '@/web/web/query/utils/registry/field';
 import { createTranslate } from '@/web/web/i18n';
+import { controlFocusWithinRing } from '@/web/web/lib/utils';
 import type { TagClickPayload } from '@/web/web/components/field/manyToManyTagsTypes';
 import { shouldShowNameCreateEntry } from '@/web/web/components/field/nameCreateVisibility';
 import { runNameCreateQuickCreate, trimSearchKeyword } from '@/web/web/components/field/nameCreateQuickCreate';
@@ -294,10 +319,18 @@ const searchRows = shallowRef<any[]>([]);
 const searchKeyword = ref('');
 const dropdownVisible = ref(false);
 const addModel = ref<string | null>(null);
+const comboboxRef = ref<{ focusInput?: () => void } | null>(null);
 const vm = getCurrentInstance();
-const relationSearchKey = computed(
-  () => `${relationStore.value?.storeId || relationStore.value?.fullModelName || ''}:${String(binding.prop)}`
-);
+
+function focusComboboxInput() {
+  comboboxRef.value?.focusInput?.();
+}
+
+function onShellClick(event: MouseEvent) {
+  const target = event.target as HTMLElement | null;
+  if (target?.closest?.('[data-testid="choy-m2m-tag-remove"]')) return;
+  focusComboboxInput();
+}
 
 const hasKeyword = computed(() => trimSearchKeyword(searchKeyword.value).length > 0);
 const { hasAction } = usePermission();
@@ -404,6 +437,15 @@ function upsertHydrated(row: any) {
 const selectedIds = computed<string[]>(() => {
   return (getItems() || []).map(extractId).filter(Boolean).map(String);
 });
+
+/** Include selected ids so RelationCombobox does not reuse a page that still lists picks. */
+const selectedIdsFingerprint = computed(() =>
+  [...selectedIds.value].map(String).sort().join(','),
+);
+const relationSearchKey = computed(
+  () =>
+    `${relationStore.value?.storeId || relationStore.value?.fullModelName || ''}:${String(binding.prop)}:${selectedIdsFingerprint.value}`,
+);
 
 const recordsById = computed<Record<string, any>>(() => {
   const map: Record<string, any> = { ...hydratedCache.value };
@@ -555,7 +597,8 @@ async function relationSearch(keyword: string, opts: { limit: number }): Promise
     const rows = Array.isArray(records) ? records : [];
     searchRows.value = rows.map(x => ({ ...(x || {}) }));
     for (const row of searchRows.value) upsertHydrated(row);
-    return mapNameSearchRows(searchRows.value);
+    const picked = new Set(selectedIds.value.map(String));
+    return mapNameSearchRows(searchRows.value).filter(opt => !picked.has(String(opt.id)));
   } catch (e) {
     console.warn('[ChoyManyToManyTagsField] search failed', e);
     searchRows.value = [];
@@ -578,6 +621,7 @@ function onComboboxSelect(opt: RelationOption | null) {
   }
   void nextTick(() => {
     addModel.value = null;
+    focusComboboxInput();
   });
 }
 

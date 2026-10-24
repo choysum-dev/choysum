@@ -316,6 +316,7 @@ export default class SandboxRecord extends BaseModel {
   @Field<SandboxCategory>({
     type: 'ManyToManyRef',
     relation: { targetModel: 'sandbox.SandboxCategory' },
+    condition: ['IsActive', '=', true],
     string: _lt('Category Path', { scope: 'sandbox.model.SandboxRecord.fields' }),
     help: _lt('ManyToManyRef bound with the tree widget in Form.', {
       scope: 'sandbox.model.SandboxRecord.fields',

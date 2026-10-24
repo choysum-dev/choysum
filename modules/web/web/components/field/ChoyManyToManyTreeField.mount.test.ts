@@ -137,6 +137,35 @@ describe('ChoyManyToManyTreeField patch coverage', () => {
     m.unmount();
   });
 
+  test('child preload Search passes relationConditionSource from host field', async () => {
+    const Search = fnRecorder(async (_cond: unknown, opts?: any) => {
+      if (opts?.fields?.includes?.('Children') || opts?.fields?.includes?.('Childs')) {
+        return [{ Id: 'root', Children: [{ Id: 'child', Name: 'Child', Code: 'C' }] }];
+      }
+      return [{ Id: 'root', Name: 'Root', Code: 'R', Sequence: 1 }];
+    });
+    const hostStore = { fullModelName: 'demo.Record', storeId: 'host-1' };
+    const binding = makeBinding({
+      items: [],
+      relationStore: relationStoreStub({ Search }),
+    });
+    const m = mountApp(ChoyManyToManyTreeField as any, {
+      props: {
+        binding,
+        store: hostStore,
+        renderMode: 'form',
+        lazy: false,
+        childrenField: 'Children',
+        rootCondition: ['ParentId', 'is', null],
+      },
+    });
+    await flushPromises();
+    const withSource = Search.calls.filter((c: any[]) => c[1]?.relationConditionSource);
+    expect(withSource.length).toBeGreaterThanOrEqual(1);
+    expect(withSource.some((c: any[]) => c[1]?.relationConditionSource?.field === 'CategoryIds')).toBe(true);
+    m.unmount();
+  });
+
   test('checkbox closest skips expand and stops display capture', async () => {
     const binding = makeBinding({
       items: ['c1'],
