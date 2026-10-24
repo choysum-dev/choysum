@@ -5,9 +5,11 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <div
+    data-anchor="choy.internal.table-host"
+    :data-has-footer="hasFooter ? '' : undefined"
     :class="
       cn(
-        'flex w-full min-h-0 flex-col',
+        'choy-table-host flex w-full min-h-0 flex-col',
         sizeToContent ? undefined : 'overflow-hidden',
         !sizeToContent && !tableHeight && 'h-full',
         props.class,
@@ -202,6 +204,8 @@ const dataTableClass = computed(() =>
   ),
 );
 
+const hasFooter = computed(() => (props.footerHeight ?? 0) > 0);
+
 /** Empty overlay covers the body only (below header), not the column header row. */
 const emptyOverlayStyle = computed(() => ({
   top: `${props.headerHeight ?? CHOY_LIST_HEADER_HEIGHT}px`,
@@ -299,3 +303,10 @@ defineExpose({
   },
 });
 </script>
+
+<style scoped>
+/* Footer owns the separator; suppress the last body row border-b to avoid a double rule. */
+.choy-table-host[data-has-footer] :deep(.choy-data-table__body [role='row']:last-child) {
+  border-bottom-width: 0;
+}
+</style>
