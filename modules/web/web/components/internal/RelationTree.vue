@@ -475,3 +475,12 @@ defineExpose({
   getHalfCheckedKeys,
 });
 </script>
+
+<style scoped>
+/* First visible row matches the form label band (control height). */
+.choy-relation-tree__list > .choy-relation-tree__item:first-child > .choy-relation-tree__row {
+  min-height: var(--choy-control-height, 2rem);
+  padding-top: 0;
+  padding-bottom: 0;
+}
+</style>
