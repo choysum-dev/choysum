@@ -8,7 +8,7 @@ require (
 	github.com/bufbuild/protocompile v0.14.1
 	github.com/buke/quickjs-go v0.7.7
 	github.com/buke/typescript-go-internal/v7 v7.0.2
-	github.com/chromedp/cdproto v0.158.0
+	github.com/chromedp/cdproto v0.158.4
 	github.com/chromedp/chromedp v0.21.0
 	github.com/ettle/strcase v0.2.0
 	github.com/evanw/esbuild v0.28.2
@@ -26,7 +26,7 @@ require (
 	github.com/orandin/slog-gorm v1.4.0
 	github.com/otiai10/copy v1.14.1
 	github.com/rs/xid v1.6.0
-	github.com/shopspring/decimal v1.5.0
+	github.com/shopspring/decimal v1.6.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/tailscale/hujson v0.0.0-20260727124030-b80ff77dac4f
@@ -42,7 +42,7 @@ require (
 	golang.org/x/crypto v0.58.0
 	golang.org/x/exp/errors v0.0.0-20260824195058-e88cd73687aa
 	golang.org/x/mod v0.42.0
-	golang.org/x/net v0.60.0
+	golang.org/x/net v0.61.0
 	golang.org/x/sync v0.24.0
 	golang.org/x/term v0.47.0
 	golang.org/x/text v0.43.0
