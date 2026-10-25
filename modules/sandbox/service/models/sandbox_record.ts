@@ -310,8 +310,21 @@ export default class SandboxRecord extends BaseModel {
     type: 'ManyToManyRef',
     relation: { targetModel: 'sandbox.SandboxTag' },
     string: _lt('Tag Refs', { scope: 'sandbox.model.SandboxRecord.fields' }),
+    help: _lt('ManyToManyRef bound with the Tags widget in Form.', {
+      scope: 'sandbox.model.SandboxRecord.fields',
+    }),
   })
   TagRefIds?: string[];
+
+  @Field<SandboxTag>({
+    type: 'ManyToManyRef',
+    relation: { targetModel: 'sandbox.SandboxTag' },
+    string: _lt('Tag Ref Table', { scope: 'sandbox.model.SandboxRecord.fields' }),
+    help: _lt('ManyToManyRef bound with the list/table widget in Form.', {
+      scope: 'sandbox.model.SandboxRecord.fields',
+    }),
+  })
+  TagTableRefIds?: string[];
 
   @Field<SandboxCategory>({
     type: 'ManyToManyRef',

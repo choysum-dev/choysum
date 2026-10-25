@@ -322,7 +322,7 @@ describe('ChoyManyToManyRefTagsField patch coverage', () => {
     m.unmount();
   });
 
-  test('Search more opens picker; missing searchList/relationStore warn', async () => {
+  test('Search more opens picker; missing relationStore stays closed without Toast', async () => {
     const binding = makeBinding({
       items: [],
       relationStore: relationStoreStub({ storeId: 's1' }),
@@ -340,7 +340,7 @@ describe('ChoyManyToManyRefTagsField patch coverage', () => {
     const noStore = makeBinding({
       items: [],
       relationStore: undefined,
-      meta: { type: 'ManyToMany' },
+      meta: { type: 'ManyToManyRef' },
     });
     const m2 = mountField({ binding: noStore, searchList: SearchListStub });
     await flushPromises();
@@ -348,7 +348,8 @@ describe('ChoyManyToManyRefTagsField patch coverage', () => {
     expect(more2).toBeTruthy();
     more2!.click();
     await nextTick();
-    expect(msgWarn.calls.length).toBe(1);
+    expect(msgWarn.calls.length).toBe(0);
+    expect(m2.q('.dialog')?.getAttribute('data-open')).toBe('0');
     m2.unmount();
   });
 
@@ -743,7 +744,7 @@ describe('ChoyManyToManyRefTagsField patch coverage', () => {
     m2.unmount();
   });
 
-  test('openPicker warns without searchList; confirmPicker paths', async () => {
+  test('openPicker no-ops without searchList; confirmPicker paths', async () => {
     const Search = fnRecorder(async () => []);
     const binding = makeBinding({
       items: ['exist'],
@@ -758,7 +759,8 @@ describe('ChoyManyToManyRefTagsField patch coverage', () => {
     const m0 = mountField({ binding: makeBinding({ items: [], relationStore: relationStoreStub() }) });
     const ss0 = m0.setupState() as any;
     ss0.openPicker();
-    expect(msgWarn.calls.length).toBe(1);
+    expect(msgWarn.calls.length).toBe(0);
+    expect(m0.q('.dialog')?.getAttribute('data-open')).toBe('0');
     m0.unmount();
 
     const m = mountField(

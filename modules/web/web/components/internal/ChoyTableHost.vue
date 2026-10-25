@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
   <div
     data-anchor="choy.internal.table-host"
     :data-has-footer="hasFooter ? '' : undefined"
+    :data-empty="isEmpty ? '' : undefined"
     :class="
       cn(
         'choy-table-host flex w-full min-h-0 flex-col',
@@ -56,17 +57,19 @@ SPDX-License-Identifier: Apache-2.0
           </slot>
         </template>
       </DataTable>
-      <!-- Content-sized embeds: body has no flex height; overlay sits below the header. -->
+      <!--
+        Content-sized embeds: in-flow empty so the host grows (absolute overlay does not
+        expand the parent and gets clipped by the outer overflow-hidden M2M frame).
+        Skip when a footer strip is present — Add a line is the empty affordance.
+      -->
       <div
-        v-if="sizeToContent && !rowsArray.length"
-        class="pointer-events-none absolute inset-x-0 bottom-0 z-[1] flex items-center justify-center overflow-auto"
-        :style="emptyOverlayStyle"
+        v-if="sizeToContent && isEmpty && !hasFooter"
+        class="w-full"
+        data-testid="choy-table-host-empty"
       >
-        <div class="pointer-events-auto max-h-full w-full">
-          <slot name="empty">
-            <div class="p-6 text-center text-muted-foreground">{{ _t('No data') }}</div>
-          </slot>
-        </div>
+        <slot name="empty">
+          <div class="p-6 text-center text-muted-foreground">{{ _t('No data') }}</div>
+        </slot>
       </div>
     </div>
 
@@ -205,12 +208,7 @@ const dataTableClass = computed(() =>
 );
 
 const hasFooter = computed(() => (props.footerHeight ?? 0) > 0);
-
-/** Empty overlay covers the body only (below header), not the column header row. */
-const emptyOverlayStyle = computed(() => ({
-  top: `${props.headerHeight ?? CHOY_LIST_HEADER_HEIGHT}px`,
-  minHeight: `${Math.max(48, (props.rowHeight ?? CHOY_LIST_ROW_HEIGHT) * 2)}px`,
-}));
+const isEmpty = computed(() => rowsArray.value.length === 0);
 
 /**
  * Fallback body estimate for standalone mounts; flex hosts size via h-full.
@@ -307,6 +305,10 @@ defineExpose({
 <style scoped>
 /* Footer owns the separator; suppress the last body row border-b to avoid a double rule. */
 .choy-table-host[data-has-footer] :deep(.choy-data-table__body [role='row']:last-child) {
+  border-bottom-width: 0;
+}
+/* Empty + footer: header border-b + footer border-t sit flush — keep a single rule. */
+.choy-table-host[data-has-footer][data-empty] :deep(.choy-data-table__header) {
   border-bottom-width: 0;
 }
 </style>

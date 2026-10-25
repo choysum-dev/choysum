@@ -157,7 +157,6 @@ SPDX-License-Identifier: Apache-2.0
             <ChoyManyToManyField
               :store="store"
               prop="Tags"
-              label=""
               :search-list="SandboxTagListView"
               :search-view-title="_t('Select Tags')"
             >
@@ -166,11 +165,37 @@ SPDX-License-Identifier: Apache-2.0
             </ChoyManyToManyField>
           </ChoyCol>
           <ChoyCol :span="12">
+            <!--
+              ManyToManyRef is string[] on the parent, so TagTableRefIds.Name is not a FieldPath.
+              Nested columns bind via field-prefix + row; type the column store as the target model.
+            -->
+            <ChoyManyToManyRefField
+              :store="store"
+              prop="TagTableRefIds"
+              :search-list="SandboxTagListView"
+              :search-view-title="_t('Select Tag Ref Table')"
+            >
+              <template #default="{ refStore }">
+                <ChoyVarcharField :store="(refStore as WebModelStore<SandboxTag> | undefined)" prop="Name" />
+                <ChoyVarcharField :store="(refStore as WebModelStore<SandboxTag> | undefined)" prop="Code" />
+              </template>
+            </ChoyManyToManyRefField>
+          </ChoyCol>
+          <ChoyCol :span="12">
             <ChoyManyToManyTagsField
               :store="store"
               prop="TagChips"
               :search-list="SandboxTagListView"
               :search-view-title="_t('Select Tag Chips')"
+              :tag-label-field="['Name', 'Code', 'Id']"
+            />
+          </ChoyCol>
+          <ChoyCol :span="12">
+            <ChoyManyToManyRefTagsField
+              :store="store"
+              prop="TagRefIds"
+              :search-list="SandboxTagListView"
+              :search-view-title="_t('Select Tag Refs')"
               :tag-label-field="['Name', 'Code', 'Id']"
             />
           </ChoyCol>
@@ -188,15 +213,6 @@ SPDX-License-Identifier: Apache-2.0
               }"
               :default-expand-all="true"
               :check-strictly="false"
-            />
-          </ChoyCol>
-          <ChoyCol :span="12">
-            <ChoyManyToManyRefTagsField
-              :store="store"
-              prop="TagRefIds"
-              :search-list="SandboxTagListView"
-              :search-view-title="_t('Select Tag Refs')"
-              :tag-label-field="['Name', 'Code', 'Id']"
             />
           </ChoyCol>
           <ChoyCol :span="12">
@@ -219,7 +235,7 @@ SPDX-License-Identifier: Apache-2.0
 
       <ChoyTabs v-model="linesTab" class="mt-8">
         <ChoyTab :label="_t('Lines (table)')" value="lines-table">
-          <ChoyOneToManyField :store="store" prop="Lines" label="">
+          <ChoyOneToManyField :store="store" prop="Lines" hide-label>
             <ChoyVarcharField :store="store" prop="Lines.Name" />
             <ChoyIntField :store="store" prop="Lines.Quantity" />
             <ChoySelectionField :store="store" prop="Lines.State" />
@@ -230,7 +246,7 @@ SPDX-License-Identifier: Apache-2.0
           <ChoyOneToManyKanbanField
             :store="store"
             prop="Lines"
-            label=""
+            hide-label
             :default-record="defaultLineRecord"
             :form-view="SandboxLineFormView"
             :create-dialog-title="_t('New Line')"
@@ -261,6 +277,7 @@ import type { RouteLocationRaw } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type SandboxRecord from '@/sandbox/service/models/sandbox_record';
 import type SandboxLine from '@/sandbox/service/models/sandbox_line';
+import type SandboxTag from '@/sandbox/service/models/sandbox_tag';
 import CompanyListView from '@/base/web/views/CompanyListView.vue';
 import CurrencyListView from '@/base/web/views/CurrencyListView.vue';
 import SandboxCategoryListView from './SandboxCategoryListView.vue';
@@ -285,6 +302,7 @@ import {
   ChoyIntField,
   ChoyJsonField,
   ChoyManyToManyField,
+  ChoyManyToManyRefField,
   ChoyManyToManyRefTagsField,
   ChoyManyToManyRefTreeField,
   ChoyManyToManyTagsField,

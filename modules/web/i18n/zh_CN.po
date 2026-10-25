@@ -266,22 +266,22 @@ msgctxt "web/components/field/ChoyDecimalField"
 msgid "Total digits must not exceed %s"
 msgstr "总位数不得超过 %s"
 
-#: web/components/field/ChoyFieldBase.vue:219
+#: web/components/field/ChoyFieldBase.vue:228
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Company values"
 msgstr "公司值"
 
-#: web/components/field/ChoyFieldBase.vue:219
+#: web/components/field/ChoyFieldBase.vue:228
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Company values: %s"
 msgstr "公司值：%s"
 
-#: web/components/field/ChoyFieldBase.vue:212
+#: web/components/field/ChoyFieldBase.vue:221
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Translate field"
 msgstr "翻译字段"
 
-#: web/components/field/ChoyFieldBase.vue:212
+#: web/components/field/ChoyFieldBase.vue:221
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Translate: %s"
 msgstr "翻译：%s"
@@ -506,12 +506,12 @@ msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Actions"
 msgstr "操作"
 
-#: web/components/field/ChoyManyToManyField.vue:27
+#: web/components/field/ChoyManyToManyField.vue:22
 msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Add a line…"
 msgstr "添加一行…"
 
-#: web/components/field/ChoyManyToManyField.vue:66
+#: web/components/field/ChoyManyToManyField.vue:58
 msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Cancel"
 msgstr "取消"
@@ -521,147 +521,162 @@ msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Delete"
 msgstr "删除"
 
-#: web/components/field/ChoyManyToManyField.vue:106
-msgctxt "web/components/field/ChoyManyToManyField"
-msgid "No related records"
-msgstr "暂无关联记录"
-
-#: web/components/field/ChoyManyToManyField.vue:48
-msgctxt "web/components/field/ChoyManyToManyField"
-msgid "None"
-msgstr "无"
-
-#: web/components/field/ChoyManyToManyField.vue:67
+#: web/components/field/ChoyManyToManyField.vue:59
 msgctxt "web/components/field/ChoyManyToManyField"
 msgid "OK"
 msgstr "确定"
 
-#: web/components/field/ChoyManyToManyField.vue:29
+#: web/components/field/ChoyManyToManyField.vue:24
 msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Picker is not configured"
 msgstr "未配置选择器"
 
-#: web/components/field/ChoyManyToManyField.vue:105
+#: web/components/field/ChoyManyToManyField.vue:111
 msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Select related items"
 msgstr "选择关联项"
 
-#: web/components/field/ChoyManyToManyField.vue:259
+#: web/components/field/ChoyManyToManyField.vue:267
 msgctxt "web/components/field/ChoyManyToManyField"
 msgid "relationStore is unresolved; cannot open picker"
 msgstr "relationStore 未解析，无法打开选择器"
 
-#: web/components/field/ChoyManyToManyField.vue:255
+#: web/components/field/ChoyManyToManyField.vue:263
 msgctxt "web/components/field/ChoyManyToManyField"
 msgid "searchList is not configured; cannot open picker"
 msgstr "searchList 未配置，无法打开选择器"
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:56
+#: web/components/field/ChoyManyToManyRefField.vue:12
+msgctxt "web/components/field/ChoyManyToManyRefField"
+msgid "Actions"
+msgstr "操作"
+
+#: web/components/field/ChoyManyToManyRefField.vue:22
+msgctxt "web/components/field/ChoyManyToManyRefField"
+msgid "Add a line…"
+msgstr "添加一行…"
+
+#: web/components/field/ChoyManyToManyRefField.vue:58
+msgctxt "web/components/field/ChoyManyToManyRefField"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/components/field/ChoyManyToManyRefField.vue:14
+msgctxt "web/components/field/ChoyManyToManyRefField"
+msgid "Delete"
+msgstr "删除"
+
+#: web/components/field/ChoyManyToManyRefField.vue:59
+msgctxt "web/components/field/ChoyManyToManyRefField"
+msgid "OK"
+msgstr "确定"
+
+#: web/components/field/ChoyManyToManyRefField.vue:24
+msgctxt "web/components/field/ChoyManyToManyRefField"
+msgid "Picker is not configured"
+msgstr "未配置选择器"
+
+#: web/components/field/ChoyManyToManyRefField.vue:126
+msgctxt "web/components/field/ChoyManyToManyRefField"
+msgid "Select related items"
+msgstr "选择关联项"
+
+#: web/components/field/ChoyManyToManyRefField.vue:392
+msgctxt "web/components/field/ChoyManyToManyRefField"
+msgid "relationStore is unresolved; cannot open picker"
+msgstr "relationStore 未解析，无法打开选择器"
+
+#: web/components/field/ChoyManyToManyRefField.vue:388
+msgctxt "web/components/field/ChoyManyToManyRefField"
+msgid "searchList is not configured; cannot open picker"
+msgstr "searchList 未配置，无法打开选择器"
+
+#: web/components/field/ChoyManyToManyRefTagsField.vue:67
 msgctxt "web/components/field/ChoyManyToManyRefTagsField"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:152
+#: web/components/field/ChoyManyToManyRefTagsField.vue:171
 msgctxt "web/components/field/ChoyManyToManyRefTagsField"
 msgid "Create \"%s\""
 msgstr "创建“%s”"
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:161
+#: web/components/field/ChoyManyToManyRefTagsField.vue:180
 msgctxt "web/components/field/ChoyManyToManyRefTagsField"
 msgid "Create failed"
 msgstr "创建失败"
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:43
-msgctxt "web/components/field/ChoyManyToManyRefTagsField"
-msgid "None"
-msgstr "无"
-
-#: web/components/field/ChoyManyToManyRefTagsField.vue:57
+#: web/components/field/ChoyManyToManyRefTagsField.vue:68
 msgctxt "web/components/field/ChoyManyToManyRefTagsField"
 msgid "OK"
 msgstr "确定"
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:109
+#: web/components/field/ChoyManyToManyRefTagsField.vue:117
 msgctxt "web/components/field/ChoyManyToManyRefTagsField"
 msgid "Please select..."
 msgstr "请选择…"
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:11
+#: web/components/field/ChoyManyToManyRefTagsField.vue:15
 msgctxt "web/components/field/ChoyManyToManyRefTagsField"
 msgid "Remove"
 msgstr "移除"
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:110
+#: web/components/field/ChoyManyToManyRefTagsField.vue:118
 msgctxt "web/components/field/ChoyManyToManyRefTagsField"
 msgid "Select related items"
 msgstr "选择关联项"
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:509
-msgctxt "web/components/field/ChoyManyToManyRefTagsField"
-msgid "relationStore is unresolved; cannot open picker"
-msgstr "relationStore 未解析，无法打开选择器"
-
-#: web/components/field/ChoyManyToManyRefTagsField.vue:505
-msgctxt "web/components/field/ChoyManyToManyRefTagsField"
-msgid "searchList is not configured; cannot open picker"
-msgstr "searchList 未配置，无法打开选择器"
-
-#: web/components/field/ChoyManyToManyRefTreeField.vue:97
+#: web/components/field/ChoyManyToManyRefTreeField.vue:100
 msgctxt "web/components/field/ChoyManyToManyRefTreeField"
 msgid "No data"
 msgstr "暂无数据"
 
-#: web/components/field/ChoyManyToManyTagsField.vue:58
+#: web/components/field/ChoyManyToManyTagsField.vue:67
 msgctxt "web/components/field/ChoyManyToManyTagsField"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/field/ChoyManyToManyTagsField.vue:158
+#: web/components/field/ChoyManyToManyTagsField.vue:172
 msgctxt "web/components/field/ChoyManyToManyTagsField"
 msgid "Create \"%s\""
 msgstr "创建“%s”"
 
-#: web/components/field/ChoyManyToManyTagsField.vue:167
+#: web/components/field/ChoyManyToManyTagsField.vue:181
 msgctxt "web/components/field/ChoyManyToManyTagsField"
 msgid "Create failed"
 msgstr "创建失败"
 
-#: web/components/field/ChoyManyToManyTagsField.vue:43
-msgctxt "web/components/field/ChoyManyToManyTagsField"
-msgid "None"
-msgstr "无"
-
-#: web/components/field/ChoyManyToManyTagsField.vue:59
+#: web/components/field/ChoyManyToManyTagsField.vue:68
 msgctxt "web/components/field/ChoyManyToManyTagsField"
 msgid "OK"
 msgstr "确定"
 
-#: web/components/field/ChoyManyToManyTagsField.vue:115
+#: web/components/field/ChoyManyToManyTagsField.vue:118
 msgctxt "web/components/field/ChoyManyToManyTagsField"
 msgid "Please select..."
 msgstr "请选择…"
 
-#: web/components/field/ChoyManyToManyTagsField.vue:11
+#: web/components/field/ChoyManyToManyTagsField.vue:15
 msgctxt "web/components/field/ChoyManyToManyTagsField"
 msgid "Remove"
 msgstr "移除"
 
-#: web/components/field/ChoyManyToManyTagsField.vue:116
+#: web/components/field/ChoyManyToManyTagsField.vue:119
 msgctxt "web/components/field/ChoyManyToManyTagsField"
 msgid "Select related items"
 msgstr "选择关联项"
 
-#: web/components/field/ChoyManyToManyTagsField.vue:561
+#: web/components/field/ChoyManyToManyTagsField.vue:586
 msgctxt "web/components/field/ChoyManyToManyTagsField"
 msgid "relationStore is unresolved; cannot open picker"
 msgstr "relationStore 未解析，无法打开选择器"
 
-#: web/components/field/ChoyManyToManyTagsField.vue:557
+#: web/components/field/ChoyManyToManyTagsField.vue:582
 msgctxt "web/components/field/ChoyManyToManyTagsField"
 msgid "searchList is not configured; cannot open picker"
 msgstr "searchList 未配置，无法打开选择器"
 
-#: web/components/field/ChoyManyToManyTreeField.vue:98
+#: web/components/field/ChoyManyToManyTreeField.vue:100
 msgctxt "web/components/field/ChoyManyToManyTreeField"
 msgid "No data"
 msgstr "暂无数据"
@@ -671,12 +686,12 @@ msgctxt "web/components/field/ChoyManyToOneField"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/field/ChoyManyToOneField.vue:142
+#: web/components/field/ChoyManyToOneField.vue:143
 msgctxt "web/components/field/ChoyManyToOneField"
 msgid "Create \"%s\""
 msgstr "创建“%s”"
 
-#: web/components/field/ChoyManyToOneField.vue:151
+#: web/components/field/ChoyManyToOneField.vue:152
 msgctxt "web/components/field/ChoyManyToOneField"
 msgid "Create failed"
 msgstr "创建失败"
@@ -686,12 +701,12 @@ msgctxt "web/components/field/ChoyManyToOneField"
 msgid "OK"
 msgstr "确定"
 
-#: web/components/field/ChoyManyToOneField.vue:112
+#: web/components/field/ChoyManyToOneField.vue:113
 msgctxt "web/components/field/ChoyManyToOneField"
 msgid "Please select..."
 msgstr "请选择…"
 
-#: web/components/field/ChoyManyToOneField.vue:113
+#: web/components/field/ChoyManyToOneField.vue:114
 msgctxt "web/components/field/ChoyManyToOneField"
 msgid "Select record"
 msgstr "选择记录"
@@ -701,12 +716,12 @@ msgctxt "web/components/field/ChoyManyToOneRefField"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/field/ChoyManyToOneRefField.vue:157
+#: web/components/field/ChoyManyToOneRefField.vue:158
 msgctxt "web/components/field/ChoyManyToOneRefField"
 msgid "Create \"%s\""
 msgstr "创建“%s”"
 
-#: web/components/field/ChoyManyToOneRefField.vue:166
+#: web/components/field/ChoyManyToOneRefField.vue:167
 msgctxt "web/components/field/ChoyManyToOneRefField"
 msgid "Create failed"
 msgstr "创建失败"
@@ -716,12 +731,12 @@ msgctxt "web/components/field/ChoyManyToOneRefField"
 msgid "OK"
 msgstr "确定"
 
-#: web/components/field/ChoyManyToOneRefField.vue:113
+#: web/components/field/ChoyManyToOneRefField.vue:114
 msgctxt "web/components/field/ChoyManyToOneRefField"
 msgid "Please select..."
 msgstr "请选择…"
 
-#: web/components/field/ChoyManyToOneRefField.vue:114
+#: web/components/field/ChoyManyToOneRefField.vue:115
 msgctxt "web/components/field/ChoyManyToOneRefField"
 msgid "Select record"
 msgstr "选择记录"
@@ -751,7 +766,7 @@ msgctxt "web/components/field/ChoyOneToManyField"
 msgid "Actions"
 msgstr "操作"
 
-#: web/components/field/ChoyOneToManyField.vue:19
+#: web/components/field/ChoyOneToManyField.vue:21
 msgctxt "web/components/field/ChoyOneToManyField"
 msgid "Add row"
 msgstr "添加行"
@@ -761,22 +776,22 @@ msgctxt "web/components/field/ChoyOneToManyField"
 msgid "Delete"
 msgstr "删除"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:296
+#: web/components/field/ChoyOneToManyKanbanField.vue:301
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Are you sure you want to delete this record? This action cannot be undone."
 msgstr "确定要删除此记录吗？此操作无法撤销。"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:301 web/components/field/ChoyOneToManyKanbanField.vue:74
+#: web/components/field/ChoyOneToManyKanbanField.vue:306 web/components/field/ChoyOneToManyKanbanField.vue:74
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:297
+#: web/components/field/ChoyOneToManyKanbanField.vue:302
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Confirm delete"
 msgstr "确认删除"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:25 web/components/field/ChoyOneToManyKanbanField.vue:300
+#: web/components/field/ChoyOneToManyKanbanField.vue:25 web/components/field/ChoyOneToManyKanbanField.vue:305
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Delete"
 msgstr "删除"
@@ -786,22 +801,22 @@ msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Edit"
 msgstr "编辑"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:120
+#: web/components/field/ChoyOneToManyKanbanField.vue:125
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Edit record"
 msgstr "编辑记录"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:117
+#: web/components/field/ChoyOneToManyKanbanField.vue:122
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "New"
 msgstr "新建"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:119
+#: web/components/field/ChoyOneToManyKanbanField.vue:124
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "New record"
 msgstr "新建记录"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:118
+#: web/components/field/ChoyOneToManyKanbanField.vue:123
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "No data"
 msgstr "暂无数据"
@@ -816,12 +831,12 @@ msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Save"
 msgstr "保存"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:236
+#: web/components/field/ChoyOneToManyKanbanField.vue:241
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Untitled"
 msgstr "未命名"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:121
+#: web/components/field/ChoyOneToManyKanbanField.vue:126
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "View record"
 msgstr "查看记录"
@@ -1086,7 +1101,7 @@ msgctxt "web/components/field/relationCountSummary@formatRelationCountSummary"
 msgid "%s records"
 msgstr "%s 条记录"
 
-#: web/components/internal/ChoyTableHost.vue:27
+#: web/components/internal/ChoyTableHost.vue:26 web/components/internal/ChoyTableHost.vue:37
 msgctxt "web/components/internal/ChoyTableHost"
 msgid "No data"
 msgstr "暂无数据"
@@ -1156,32 +1171,32 @@ msgctxt "web/components/internal/DateTimePicker"
 msgid "Select date and time"
 msgstr "选择日期和时间"
 
-#: web/components/internal/RelationCombobox.vue:105
+#: web/components/internal/RelationCombobox.vue:132
 msgctxt "web/components/internal/RelationCombobox"
 msgid "Clear"
 msgstr "清除"
 
-#: web/components/internal/RelationCombobox.vue:107
+#: web/components/internal/RelationCombobox.vue:134
 msgctxt "web/components/internal/RelationCombobox"
 msgid "No matches"
 msgstr "无匹配项"
 
-#: web/components/internal/RelationCombobox.vue:109
+#: web/components/internal/RelationCombobox.vue:136
 msgctxt "web/components/internal/RelationCombobox"
 msgid "Search failed. Please retry."
 msgstr "搜索失败，请重试。"
 
-#: web/components/internal/RelationCombobox.vue:108
+#: web/components/internal/RelationCombobox.vue:135
 msgctxt "web/components/internal/RelationCombobox"
 msgid "Search more…"
 msgstr "搜索更多…"
 
-#: web/components/internal/RelationCombobox.vue:106
+#: web/components/internal/RelationCombobox.vue:133
 msgctxt "web/components/internal/RelationCombobox"
 msgid "Searching…"
 msgstr "搜索中…"
 
-#: web/components/internal/RelationCombobox.vue:103
+#: web/components/internal/RelationCombobox.vue:130
 msgctxt "web/components/internal/RelationCombobox"
 msgid "Search…"
 msgstr "搜索…"
@@ -1561,27 +1576,27 @@ msgctxt "web/components/view/ListView"
 msgid "Discard"
 msgstr "放弃"
 
-#: web/components/view/ChoyListView.vue:273
+#: web/components/view/ChoyListView.vue:276
 msgctxt "web/components/view/ListView"
 msgid "Editing was discarded because the row is no longer visible."
 msgstr "该行已不可见，编辑已放弃。"
 
-#: web/components/view/ChoyListView.vue:603
+#: web/components/view/ChoyListView.vue:606
 msgctxt "web/components/view/ListView"
 msgid "Failed to load list"
 msgstr "列表加载失败"
 
-#: web/components/view/ChoyListView.vue:342
+#: web/components/view/ChoyListView.vue:345
 msgctxt "web/components/view/ListView"
 msgid "Failed to refresh after reorder"
 msgstr "重排后刷新失败"
 
-#: web/components/view/ChoyListView.vue:342
+#: web/components/view/ChoyListView.vue:345
 msgctxt "web/components/view/ListView"
 msgid "Failed to reorder rows"
 msgstr "行重排失败"
 
-#: web/components/view/ChoyListView.vue:111 web/components/view/ChoyListView.vue:21
+#: web/components/view/ChoyListView.vue:112 web/components/view/ChoyListView.vue:21
 msgctxt "web/components/view/ListView"
 msgid "New"
 msgstr "新建"
@@ -2557,6 +2572,30 @@ msgstr "页面"
 #~ msgctxt "web/components/field/ChoyManyToManyField"
 #~ msgid "Add row"
 #~ msgstr "添加行"
+
+#~ msgctxt "web/components/field/ChoyManyToManyField"
+#~ msgid "No related records"
+#~ msgstr "暂无关联记录"
+
+#~ msgctxt "web/components/field/ChoyManyToManyField"
+#~ msgid "None"
+#~ msgstr "无"
+
+#~ msgctxt "web/components/field/ChoyManyToManyRefTagsField"
+#~ msgid "None"
+#~ msgstr "无"
+
+#~ msgctxt "web/components/field/ChoyManyToManyRefTagsField"
+#~ msgid "relationStore is unresolved; cannot open picker"
+#~ msgstr "relationStore 未解析，无法打开选择器"
+
+#~ msgctxt "web/components/field/ChoyManyToManyRefTagsField"
+#~ msgid "searchList is not configured; cannot open picker"
+#~ msgstr "searchList 未配置，无法打开选择器"
+
+#~ msgctxt "web/components/field/ChoyManyToManyTagsField"
+#~ msgid "None"
+#~ msgstr "无"
 
 #~ msgctxt "web/components/field/ChoyMonetaryField"
 #~ msgid "No content"

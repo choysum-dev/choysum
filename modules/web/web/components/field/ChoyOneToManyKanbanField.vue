@@ -11,12 +11,14 @@ SPDX-License-Identifier: Apache-2.0
     :rules="rules"
     :formItemProps="formItemProps"
     :orientation="orientation"
+    :hide-label="hideLabel"
     :required="required"
     :readonly="readonly"
     :visible="visible"
     :cellVisible="cellVisible"
     :renderMode="renderMode"
     :showInlineError="showInlineError"
+    :label-for-control="false"
   >
     <template #edit>
       <ChoyViewScope :view-mode="binding.env.viewMode" :kind="'Kanban'" :field-prefix="String(prop)">
@@ -218,7 +220,10 @@ const props = withDefaults(
     label?: string;
     rules?: RuleItem[];
     formItemProps?: Partial<FormItemProps>;
+    /** Subtable default: label above the kanban block (full width). */
     orientation?: 'horizontal' | 'vertical';
+    /** Hide label row when Section/Tab already titles the block. Prefer over `label=""`. */
+    hideLabel?: boolean;
     defaultRecord?: Record<string, any> | (() => Record<string, any>);
 
     required?: FieldStateExpr<T, V>;
@@ -254,6 +259,8 @@ const props = withDefaults(
   {
     rules: () => [],
     formItemProps: () => ({}),
+    orientation: 'vertical',
+    hideLabel: false,
     defaultRecord: () => ({}),
     required: false,
     readonly: false,

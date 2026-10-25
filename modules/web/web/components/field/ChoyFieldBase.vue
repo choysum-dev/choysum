@@ -15,7 +15,7 @@ SPDX-License-Identifier: Apache-2.0
     @focusout="onFieldFocusOut"
   >
     <div
-      v-if="resolvedLabel || effectiveHelp || requiredForm"
+      v-if="showLabelRow"
       class="choy-field-base__label-row flex items-center gap-1 font-normal text-muted-foreground"
     >
       <FieldLabel v-if="resolvedLabel" :id="formLabelId" :for="labelHtmlFor || undefined">
@@ -446,6 +446,13 @@ const props = withDefaults(
      * Table / inline modes ignore this.
      */
     orientation?: FieldOrientation;
+    /**
+     * Hide the form label row (title, required asterisk, help tooltip).
+     * Prefer this over `label=""` when a Section/Tab already titles the block —
+     * empty `label` only clears the text and can leave a lone help icon.
+     * Help remains available via the sr-only FieldDescription when present.
+     */
+    hideLabel?: boolean;
     toView?: (raw: V) => View;
     fromView?: (v: View) => V;
     required?: FieldStateExpr<T, V>;
@@ -461,6 +468,7 @@ const props = withDefaults(
     formItemProps: () => ({}),
     vColumnProps: () => ({}),
     orientation: 'horizontal',
+    hideLabel: false,
     visible: true,
     cellVisible: true,
     required: false,
@@ -508,6 +516,7 @@ const effectiveFieldMeta = computed(() => {
 });
 
 const resolvedLabel = computed(() => {
+  if (props.hideLabel) return '';
   const prop = String(binding.prop || '');
   const leaf = leafFieldName.value;
   return resolveFieldLabel({
@@ -813,6 +822,12 @@ const requiredForm = computed(() => {
   if (metaRequired.value) return true;
   return evalFlag(props.required, recordForm().value, rawValueForm().value, false);
 });
+
+/** Form label chrome (title / * / help tip). Off when hideLabel. */
+const showLabelRow = computed(
+  () => !props.hideLabel && Boolean(resolvedLabel.value || effectiveHelp.value || requiredForm.value)
+);
+
 const effectiveEditForm = computed(() => binding.env.isEditMode && visibleForm.value && !readonlyForm.value);
 /**
  * `for` only when an editable labelable control is expected to own `inputId`.

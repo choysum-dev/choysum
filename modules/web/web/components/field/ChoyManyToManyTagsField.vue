@@ -126,9 +126,7 @@ SPDX-License-Identifier: Apache-2.0
             +{{ hiddenCount }}
           </ChoyBadge>
         </template>
-        <slot v-else name="empty">
-          <span class="choy-m2m-tags__empty text-sm text-muted-foreground">{{ _t('None') }}</span>
-        </slot>
+        <slot v-else name="empty" />
       </div>
     </template>
   </ChoyFieldBase>

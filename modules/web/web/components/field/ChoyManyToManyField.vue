@@ -11,6 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     :rules="rules"
     :formItemProps="formItemProps"
     :orientation="orientation"
+    :hide-label="hideLabel"
     :required="required"
     :readonly="readonly"
     :visible="visible"
@@ -70,11 +71,6 @@ SPDX-License-Identifier: Apache-2.0
                 </ChoyButton>
               </template>
             </ChoyTableColumn>
-            <template #empty>
-              <p class="px-3 py-2 text-sm text-muted-foreground" data-testid="choy-m2m-empty">
-                {{ emptyEditText }}
-              </p>
-            </template>
             <template #footer>
               <div class="flex h-full items-center px-3">
                 <ChoyButton
@@ -123,11 +119,8 @@ SPDX-License-Identifier: Apache-2.0
           >
             <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'end', width: 44 }" />
             <slot />
-            <template #empty>
-              <p class="px-3 py-2 text-sm text-muted-foreground" data-testid="choy-m2m-empty">
-                {{ _t('None') }}
-              </p>
-            </template>
+            <!-- Header-only empty: suppress host default "No data". -->
+            <template #empty />
           </ChoyTableHost>
         </div>
       </ChoyViewScope>
@@ -217,7 +210,10 @@ const props = withDefaults(
     label?: string;
     rules?: RuleItem[];
     formItemProps?: Partial<FormItemProps>;
+    /** Subtable default: label above the list (full width). */
     orientation?: 'horizontal' | 'vertical';
+    /** Hide label row when Section/Tab already titles the block. Prefer over `label=""`. */
+    hideLabel?: boolean;
 
     showIndex?: boolean;
     rowHeightEdit?: number; // Row height in edit mode.
@@ -251,6 +247,8 @@ const props = withDefaults(
   {
     rules: () => [],
     formItemProps: () => ({}),
+    orientation: 'vertical',
+    hideLabel: false,
     showIndex: true,
     rowHeightEdit: CHOY_LIST_ROW_HEIGHT,
     rowHeightDisplay: CHOY_LIST_ROW_HEIGHT,
@@ -279,7 +277,6 @@ const props = withDefaults(
 );
 
 const effectiveSearchViewTitle = computed(() => props.searchViewTitle || _t('Select related items'));
-const emptyEditText = computed(() => _t('No related records'));
 /** Footer strip for Add a line inside the table frame (edit mode). */
 const addLineFooterHeight = 36;
 

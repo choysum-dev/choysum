@@ -11,6 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     :rules="rules"
     :formItemProps="formItemProps"
     :orientation="orientation"
+    :hide-label="hideLabel"
     :required="required"
     :readonly="readonly"
     :visible="visible"
@@ -54,6 +55,8 @@ SPDX-License-Identifier: Apache-2.0
                 <ChoyButton size="sm" variant="destructive" @click="onRemove($index)">{{ _t('Delete') }}</ChoyButton>
               </template>
             </ChoyTableColumn>
+            <!-- Header-only empty: Add row below is the empty affordance. -->
+            <template #empty />
           </ChoyTableHost>
         </div>
         <div class="flex items-center ps-[60px] py-1.5">
@@ -82,6 +85,8 @@ SPDX-License-Identifier: Apache-2.0
           >
             <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'end', width: 50 }" />
             <slot />
+            <!-- Header-only empty: suppress host default "No data". -->
+            <template #empty />
           </ChoyTableHost>
         </div>
       </ChoyViewScope>
@@ -119,7 +124,10 @@ const props = withDefaults(
     label?: string;
     rules?: RuleItem[];
     formItemProps?: Partial<FormItemProps>;
+    /** Subtable default: label above the list (full width). */
     orientation?: 'horizontal' | 'vertical';
+    /** Hide label row when Section/Tab already titles the block. Prefer over `label=""`. */
+    hideLabel?: boolean;
     showIndex?: boolean;
     defaultRecord?: Record<string, any> | (() => Record<string, any>);
 
@@ -149,6 +157,8 @@ const props = withDefaults(
   {
     rules: () => [],
     formItemProps: () => ({}),
+    orientation: 'vertical',
+    hideLabel: false,
     showIndex: true,
 
     rowHeightEdit: 60,

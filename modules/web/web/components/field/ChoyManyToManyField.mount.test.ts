@@ -350,12 +350,13 @@ describe('ChoyManyToManyField mount coverage', () => {
     await nextTick();
     expect(m.q('.ov-table-stub')).toBeTruthy();
     expect(m.q('.ov-table-stub')?.getAttribute('data-rows')).toBe('0');
-    expect(m.q('[data-testid="choy-m2m-empty"]')).toBeTruthy();
+    // Display empty keeps column headers only (no body "None" / "No data").
+    expect(m.q('[data-testid="choy-m2m-empty"]')).toBeFalsy();
     expect(m.q('[data-test="add-row"]')).toBeFalsy();
     m.unmount();
   });
 
-  test('empty edit still mounts table host for field registration; shows empty + add line', async () => {
+  test('empty edit still mounts table host for field registration; footer Add-line is the empty affordance', async () => {
     const { binding } = makeBinding({
       items: [],
       relationStore: { fullModelName: 'demo.Tag' },
@@ -363,9 +364,10 @@ describe('ChoyManyToManyField mount coverage', () => {
     const m = mountField({ binding, searchList: SearchListStub });
     await nextTick();
     // Host mounts with 0 rows so nested column fields can register before Browse.
+    // Edit mode skips body empty text when footer Add-line is present (avoids clip under footer).
     expect(m.q('.ov-table-stub')).toBeTruthy();
     expect(m.q('.ov-table-stub')?.getAttribute('data-rows')).toBe('0');
-    expect(m.q('[data-testid="choy-m2m-empty"]')).toBeTruthy();
+    expect(m.q('[data-testid="choy-m2m-empty"]')).toBeFalsy();
     expect(m.q('[data-test="add-row"]')).toBeTruthy();
     m.unmount();
 

@@ -126,36 +126,49 @@ SPDX-License-Identifier: Apache-2.0
             +{{ hiddenCount }}
           </ChoyBadge>
         </template>
-        <slot v-else name="empty">
-          <span class="choy-m2m-tags__empty text-sm text-muted-foreground">{{ _t('None') }}</span>
-        </slot>
+        <slot v-else name="empty" />
       </div>
     </template>
   </ChoyFieldBase>
 
   <ChoyDialog v-model:open="dialogVisible">
-    <ChoyDialogContent class="choy-relation-picker-dialog" :style="{ width: typeof searchViewWidth === 'number' ? searchViewWidth + 'px' : searchViewWidth }">
-      <ChoyDialogTitle>{{ effectiveSearchViewTitle }}</ChoyDialogTitle>
-      <ChoyViewScope view-mode="display">
-      <component
-        v-if="dialogVisible && searchList && relationStore"
-        :is="searchList"
-        ref="searchViewRef"
-        :store="relationStore"
-        :show-actions="false"
-        :click-to-select="true"
-        :height-mode="'auto'"
-        :forced-condition="effectiveConditions"
-        style="margin-top: -10px"
-      />
-    </ChoyViewScope>
-      <div class="dialog-footer">
-        <ChoyButton @click="dialogVisible = false">{{ _t('Cancel') }}</ChoyButton>
-        <ChoyButton @click="confirmPicker">{{ _t('OK') }}</ChoyButton>
+    <ChoyDialogContent
+      class="choy-relation-picker-dialog flex max-h-[min(85vh,40rem)] w-[min(90vw,56rem)] max-w-[min(90vw,56rem)] flex-col gap-3 overflow-hidden"
+      :style="{ width: typeof searchViewWidth === 'number' ? searchViewWidth + 'px' : searchViewWidth }"
+    >
+      <ChoyDialogTitle class="shrink-0">{{ effectiveSearchViewTitle }}</ChoyDialogTitle>
+      <div class="choy-relation-picker-list min-h-[16rem] flex-1 overflow-hidden">
+        <ChoyViewScope view-mode="display" :kind="'List'">
+          <component
+            v-if="dialogVisible && searchList && relationStore"
+            :is="searchList"
+            ref="searchViewRef"
+            :store="relationStore"
+            :show-actions="false"
+            :host-page-title="false"
+            :register-action-target="false"
+            :selection-mode="'multiple'"
+            :click-to-select="true"
+            :height-mode="'container'"
+            :container-selector="'.choy-relation-picker-list'"
+            :forced-condition="effectiveConditions"
+            :relation-condition-source="dialogRelationConditionSource"
+          />
+        </ChoyViewScope>
+      </div>
+      <div class="mt-1 flex shrink-0 justify-end gap-2">
+        <ChoyButton type="button" variant="outline" @click="dialogVisible = false">{{ _t('Cancel') }}</ChoyButton>
+        <ChoyButton type="button" @click="confirmPicker">{{ _t('OK') }}</ChoyButton>
       </div>
     </ChoyDialogContent>
   </ChoyDialog>
 </template>
+
+<style scoped>
+  .choy-relation-picker-list :deep([data-anchor='choy.list.table']) {
+    overflow-x: auto;
+  }
+</style>
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, string[]>, V = FieldPathType<T, P>">
 import { computed, ref, shallowRef, type Component, inject, provide, Ref, watch, onBeforeUnmount, getCurrentInstance, nextTick } from 'vue';
@@ -187,6 +200,11 @@ import {
   mapNameSearchRows,
   type RelationOption,
 } from '@/web/web/components/internal/relationComboboxHelpers';
+import {
+  buildM2MEffectiveCondition,
+  resetM2MPickerQueryState,
+  unwrapListSelectionRecords,
+} from './manyToManyRelationHelpers';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyManyToManyRefTagsField' });
 
@@ -438,19 +456,6 @@ function removeChip(id: string) {
 
 const lastOnchangeResult = inject<Ref<any | null>>('lastOnchangeResult', ref(null));
 
-function toArray<T>(v: T | T[] | undefined | null): T[] {
-  if (v == null) return [];
-  return Array.isArray(v) ? v : [v];
-}
-
-const excludePicked = computed<QueryCondition<any> | undefined>(() => {
-  const ids = selectedIds.value;
-  if (!ids.length) return undefined;
-  return ['Id', 'not in', ids] as unknown as QueryCondition<any>;
-});
-
-const externalConditions = computed<QueryCondition<any>[]>(() => toArray(props.condition));
-
 const fieldName = computed(() => String(binding.prop));
 const onchangeConditions = computed<QueryCondition<any>[]>(() => {
   const raw = lastOnchangeResult.value?.condition || [];
@@ -460,13 +465,16 @@ const onchangeConditions = computed<QueryCondition<any>[]>(() => {
     .filter(Boolean);
 });
 
-const effectiveConditions = computed<QueryCondition<any> | []>(() => {
-  const parts: QueryCondition<any>[] = [];
-  if (excludePicked.value) parts.push(excludePicked.value);
-  parts.push(...externalConditions.value, ...onchangeConditions.value);
-  if (parts.length === 0) return [] as any;
-  if (parts.length === 1) return parts[0];
-  return { And: parts } as any;
+const effectiveConditions = computed<QueryCondition<any> | []>(() =>
+  buildM2MEffectiveCondition({
+    selectedIds: selectedIds.value,
+    external: props.condition as any,
+    onchangeParts: onchangeConditions.value,
+  })
+);
+
+const dialogRelationConditionSource = computed(() => {
+  return buildRelationConditionSource(props.store as any, binding.prop).relationConditionSource;
 });
 
 const remoteFields = computed<string[]>(() => Array.from(new Set(['Id', ...labelFields.value])));
@@ -685,35 +693,24 @@ function onSelectedIdsChange(values: any[]) {
 
 function openPicker() {
   emit('picker-open');
-  if (!props.searchList) {
-    ChoyMessage.warning(_t('searchList is not configured; cannot open picker'));
-    return;
-  }
-  if (!relationStore.value) {
-    ChoyMessage.warning(_t('relationStore is unresolved; cannot open picker'));
-    return;
-  }
+  // Search-more is gated by searchList; missing picker config stays silent (no Toast).
+  if (!props.searchList || !relationStore.value) return;
+  resetM2MPickerQueryState(relationStore.value as any);
   dialogVisible.value = true;
 }
 
 async function confirmPicker() {
+  // Snapshot before closing — dialog v-if unmounts the list and drops the expose.
+  const expose = searchViewRef.value as any;
+  const selected = unwrapListSelectionRecords(expose?.selectedItems).slice();
   try {
-    const expose = searchViewRef.value as any;
-    const unwrap = (v: any) => (v && typeof v === 'object' && 'value' in v ? v.value : v);
-    const picked = unwrap(expose?.selectedItems) as any[] | undefined;
-    const toRecord = (x: any) =>
-      x && typeof x === 'object' && x.kind === 'record' && x.payload ? x.payload : x && typeof x === 'object' && x.type === 'record' && x.record ? x.record : x;
-    const selected: any[] = Array.isArray(picked) ? picked.map(toRecord) : [];
     for (const row of selected) upsertHydrated(row);
 
     const ids = selected
       .map(x => extractId(x))
       .filter(Boolean)
       .map(String);
-    if (!ids.length) {
-      dialogVisible.value = false;
-      return;
-    }
+    if (!ids.length) return;
 
     const prevIds = selectedIds.value;
     const prev = new Set(prevIds);

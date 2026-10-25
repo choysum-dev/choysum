@@ -24,6 +24,14 @@ test('sandbox.SandboxRecord Categories is ManyToMany targeting SandboxCategory',
   expect(field?.condition).toEqual(['IsActive', '=', true]);
 });
 
+test('sandbox.SandboxRecord TagTableRefIds is ManyToManyRef targeting SandboxTag', () => {
+  const meta = MetadataStorage.instance.getModelMetadata(SandboxRecord as any);
+  const field = meta?.fields?.get('TagTableRefIds');
+  expect(field?.type).toBe('ManyToManyRef');
+  const target = String((field as any)?.relation?.targetModel ?? (field as any)?.relationModel ?? '');
+  expect(target).toMatch(/SandboxTag/);
+});
+
 test('sandbox M2M join models disable soft delete', () => {
   for (const ctor of [SandboxRecordTag, SandboxRecordTagChip, SandboxRecordCategory]) {
     const meta = MetadataStorage.instance.getModelMetadata(ctor as any);
