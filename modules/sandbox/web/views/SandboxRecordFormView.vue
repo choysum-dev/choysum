@@ -18,6 +18,14 @@ SPDX-License-Identifier: Apache-2.0
     <div data-anchor="choy.form.sheet" class="min-h-full">
       <ChoyStatusbarField :store="store" prop="Progress" class="mb-4" />
 
+      <p class="mb-4 text-xs text-muted-foreground" data-testid="sandbox-onchange-hint">
+        {{
+          _t(
+            'Onchange demos: toggle Active (Category/Tags domain), change State (Progress + selection), set Currency (Amount), pick Category (CompanyNote). Line Quantity clamps to 1…999.',
+          )
+        }}
+      </p>
+
       <ChoySection :title="_t('Identity')">
         <ChoyGrid :cols="12">
           <ChoyCol :span="3">

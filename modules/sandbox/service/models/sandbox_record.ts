@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Compute, Decimal, Field, Model } from '@/core/service';
+import { Onchange } from '@/core/service/api/onchange';
 import type Currency from '@/base/service/models/currency';
 import type Company from '@/base/service/models/company';
 import { _lt } from '../i18n';
@@ -12,12 +13,16 @@ import SandboxRecordTag from './sandbox_record_tag';
 import SandboxRecordTagChip from './sandbox_record_tag_chip';
 import SandboxTag from './sandbox_tag';
 
-
 const RECORD_STATES = [
   { value: 'draft', label: 'Draft' },
   { value: 'open', label: 'Open' },
   { value: 'done', label: 'Done' },
 ] as const;
+
+const RECORD_STATE_VALUES = RECORD_STATES.map(s => s.value);
+
+/** CompanyNote prefix written by CategoryId onchange (cleared only when still matching). */
+const CATEGORY_NOTE_PREFIX = 'Category: ';
 
 /**
  * Kitchen-sink record covering every ORM FieldType plus depth options
@@ -108,6 +113,9 @@ export default class SandboxRecord extends BaseModel {
     size: 20,
     index: true,
     string: _lt('Currency', { scope: 'sandbox.model.SandboxRecord.fields' }),
+    help: _lt('Onchange: clearing currency clears Amount; setting currency with empty Amount sets 10.', {
+      scope: 'sandbox.model.SandboxRecord.fields',
+    }),
   })
   CurrencyId?: string;
 
@@ -117,6 +125,9 @@ export default class SandboxRecord extends BaseModel {
     // @ts-expect-error currencyField is validated against this model at Model() load
     currencyField: 'CurrencyId',
     string: _lt('Amount', { scope: 'sandbox.model.SandboxRecord.fields' }),
+    help: _lt('Onchange with Currency: cleared when currency is empty; defaults to 10 when currency is set and amount is empty.', {
+      scope: 'sandbox.model.SandboxRecord.fields',
+    }),
   })
   Amount?: Decimal;
 
@@ -125,6 +136,9 @@ export default class SandboxRecord extends BaseModel {
     notNull: true,
     default: () => true,
     string: _lt('Active', { scope: 'sandbox.model.SandboxRecord.fields' }),
+    help: _lt('Onchange: toggles Category/Tags domain; inactive widens pickers to include inactive rows.', {
+      scope: 'sandbox.model.SandboxRecord.fields',
+    }),
   })
   IsActive: boolean;
 
@@ -165,6 +179,9 @@ export default class SandboxRecord extends BaseModel {
     default: () => 'draft',
     index: true,
     string: _lt('State', { scope: 'sandbox.model.SandboxRecord.fields' }),
+    help: _lt('Onchange: copies into Progress and narrows Progress selection options.', {
+      scope: 'sandbox.model.SandboxRecord.fields',
+    }),
   })
   State: string;
 
@@ -215,7 +232,7 @@ export default class SandboxRecord extends BaseModel {
     size: 200,
     companyDependent: true,
     string: _lt('Company Note', { scope: 'sandbox.model.SandboxRecord.fields' }),
-    help: _lt('Per-company varchar; open Company Values from the field chrome.', {
+    help: _lt('Per-company varchar; Category onchange may write "Category: …" here for hand tests.', {
       scope: 'sandbox.model.SandboxRecord.fields',
     }),
   })
@@ -238,7 +255,7 @@ export default class SandboxRecord extends BaseModel {
     condition: ['IsActive', '=', true],
     index: true,
     string: _lt('Category', { scope: 'sandbox.model.SandboxRecord.fields' }),
-    help: _lt('Domain restricts to active categories only.', {
+    help: _lt('Static domain is active-only; IsActive onchange can widen it. Category onchange writes CompanyNote.', {
       scope: 'sandbox.model.SandboxRecord.fields',
     }),
   })
@@ -385,4 +402,99 @@ export default class SandboxRecord extends BaseModel {
       });
     return lines[0];
   }
+
+  // --- kitchen-sink @Onchange demos (value / condition / selection / messages) ---
+
+  /**
+   * Narrow or widen Category/Tags pickers from Active; warn when inactive.
+   */
+  @Onchange<SandboxRecord>('IsActive')
+  OnchangeIsActive() {
+    const activeOnly = this.IsActive !== false;
+    const domain = activeOnly
+      ? (['IsActive', '=', true] as const)
+      : (['IsActive', 'in', [true, false]] as const);
+    const fields = ['CategoryId', 'CategoryRefId', 'Tags', 'TagChips', 'Categories'] as const;
+    return {
+      condition: fields.map(field => ({ field, condition: [...domain] })),
+      // Onchange messages must be plain strings (engine drops non-string message values).
+      ...(activeOnly
+        ? {}
+        : {
+            messages: [
+              {
+                level: 'warn' as const,
+                message: 'Inactive record: Category/Tags pickers also include inactive rows.',
+              },
+            ],
+          }),
+    };
+  }
+
+  /**
+   * Mirror State into Progress and filter Progress options by workflow stage.
+   */
+  @Onchange<SandboxRecord>('State')
+  OnchangeState() {
+    const state = String(this.State || 'draft');
+    this.Progress = state;
+
+    let progressSelection: string[] = [...RECORD_STATE_VALUES];
+    let messages: Array<{ level: 'warn'; message: string }> | undefined;
+    if (state === 'draft') {
+      progressSelection = ['draft', 'open'];
+    } else if (state === 'open') {
+      progressSelection = ['draft', 'open', 'done'];
+    } else if (state === 'done') {
+      progressSelection = ['done'];
+      messages = [
+        {
+          level: 'warn',
+          message: 'Record marked done; Progress is locked to done.',
+        },
+      ];
+    }
+
+    return {
+      selection: [{ field: 'Progress', selection: progressSelection }],
+      ...(messages ? { messages } : {}),
+    };
+  }
+
+  /**
+   * Clear Amount when currency is cleared; seed Amount when currency is set and Amount empty.
+   */
+  @Onchange<SandboxRecord>('CurrencyId')
+  OnchangeCurrencyId() {
+    const currency = String(this.CurrencyId || '').trim();
+    if (!currency) {
+      (this as { Amount?: Decimal | null }).Amount = null;
+      return;
+    }
+    if (isEmptyAmount(this.Amount)) {
+      this.Amount = new Decimal('10');
+    }
+  }
+
+  /**
+   * Write CompanyNote from Category.Name; clear only when note still matches the prefix.
+   */
+  @Onchange<SandboxRecord>('CategoryId', { reads: ['CategoryId.Name'] })
+  OnchangeCategoryId() {
+    const cat = this.CategoryId as { Name?: unknown } | null | undefined;
+    const name = cat && cat.Name != null ? String(cat.Name).trim() : '';
+    const note = String(this.CompanyNote || '');
+    if (!name) {
+      if (note.startsWith(CATEGORY_NOTE_PREFIX)) {
+        this.CompanyNote = undefined;
+      }
+      return;
+    }
+    this.CompanyNote = `${CATEGORY_NOTE_PREFIX}${name}`;
+  }
+}
+
+function isEmptyAmount(amount: unknown): boolean {
+  if (amount == null || amount === '') return true;
+  return String(amount).trim() === '';
 }

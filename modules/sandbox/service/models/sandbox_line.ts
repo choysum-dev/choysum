@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
+import { Onchange } from '@/core/service/api/onchange';
 import { _lt } from '../i18n';
 import SandboxRecord from './sandbox_record';
 
@@ -36,6 +37,9 @@ export default class SandboxLine extends BaseModel {
     notNull: true,
     default: () => 1,
     string: _lt('Quantity', { scope: 'sandbox.model.SandboxLine.fields' }),
+    help: _lt('Onchange clamps Quantity to 1…999 and warns when adjusted.', {
+      scope: 'sandbox.model.SandboxLine.fields',
+    }),
   })
   Quantity: number;
 
@@ -58,4 +62,37 @@ export default class SandboxLine extends BaseModel {
     string: _lt('Sequence', { scope: 'sandbox.model.SandboxLine.fields' }),
   })
   Sequence: number;
+
+  /**
+   * Keep Quantity in 1…999 for kitchen-sink onchange demos.
+   */
+  @Onchange<SandboxLine>('Quantity')
+  OnchangeQuantity() {
+    const raw = Number(this.Quantity);
+    const qty = Number.isFinite(raw) ? Math.trunc(raw) : 1;
+    if (qty < 1) {
+      this.Quantity = 1;
+      return {
+        messages: [
+          {
+            level: 'warn' as const,
+            // Plain string: onchange engine only keeps string messages.
+            message: 'Quantity must be at least 1; reset to 1.',
+          },
+        ],
+      };
+    }
+    if (qty > 999) {
+      this.Quantity = 999;
+      return {
+        messages: [
+          {
+            level: 'warn' as const,
+            message: 'Quantity capped at 999.',
+          },
+        ],
+      };
+    }
+    this.Quantity = qty;
+  }
 }
