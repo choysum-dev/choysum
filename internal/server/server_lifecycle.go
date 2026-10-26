@@ -76,12 +76,15 @@ func (s *GRPCWebServer) start(reload bool) error {
 
 func (s *GRPCWebServer) stop(reload bool) error {
 	s.ready.Store(false)
-	s.stopHTTPRuntime()
+
+	// Stop producers first (bounded wait for in-flight task workers), then drain transports.
+	s.stopTaskRuntime()
+	s.stopHTTPRuntime(reload)
+	s.stopGRPCTransport(reload)
+
 	if err := s.clearWatchRegistrations(); err != nil {
 		return err
 	}
-
-	s.stopTaskRuntime()
 
 	if err := s.unregisterAllServices(); err != nil {
 		return err
@@ -91,17 +94,10 @@ func (s *GRPCWebServer) stop(reload bool) error {
 		return err
 	}
 
-	// if !reload && s.compileExecutor != nil {
-	// 	if err := s.compileExecutor.Stop(); err != nil {
-	// 		return xfmt.Errorf("Failed to stop compile executor: %w", err)
-	// 	}
-	// }
-
 	if err := s.stopAuthRuntime(); err != nil {
 		return err
 	}
 
-	s.stopGRPCTransport()
 	s.stopTelemetryRuntime()
 
 	if reload {

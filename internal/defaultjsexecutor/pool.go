@@ -261,12 +261,7 @@ func (p *pool) rollbackWarmupThreads(threads []*thread) {
 		}
 	}
 
-	for _, t := range threads {
-		if t == nil {
-			continue
-		}
-		t.stop()
-	}
+	stopThreadsParallel(threads)
 }
 
 // stop shuts down the thread pool and all threads.
@@ -282,9 +277,9 @@ func (p *pool) stop() error {
 		}
 		p.controlMu.Unlock()
 
-		for _, t := range threads {
-			t.stop()
-		}
+		// Wait for thread Close in parallel; each Close still runs on that
+		// thread's LockOSThread goroutine via actionStop.
+		stopThreadsParallel(threads)
 
 		if atomic.LoadUint32(&p.cleanupStarted) == 1 {
 			<-p.cleanupDone
@@ -305,6 +300,21 @@ func (p *pool) stop() error {
 
 	<-p.stopDone
 	return nil
+}
+
+func stopThreadsParallel(threads []*thread) {
+	var wg sync.WaitGroup
+	for _, t := range threads {
+		if t == nil {
+			continue
+		}
+		wg.Add(1)
+		go func(th *thread) {
+			defer wg.Done()
+			th.stop()
+		}(t)
+	}
+	wg.Wait()
 }
 
 // addThreadToList adds a thread ID to the round-robin list using copy-on-write.

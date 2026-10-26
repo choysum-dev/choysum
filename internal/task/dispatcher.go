@@ -42,11 +42,16 @@ type Dispatcher struct {
 	wakeSub      bus.Subscription
 	sema         chan struct{}
 	interval     time.Duration
-	appMu        sync.Mutex
-	appInFly     map[string]int
-	readyMu      sync.Mutex
-	readySet     map[string]struct{}
-	readyQ       []Job
+	// pollCtx is a dispatcher-owned child of the runtime context used for queue polls.
+	// Stop cancels it so a blocked ListReady/TryClaim cannot hang wg.Wait without
+	// canceling the shared runtime scope (HTTP handlers / in-flight jobs keep theirs).
+	pollCtx    context.Context
+	pollCancel context.CancelFunc
+	appMu      sync.Mutex
+	appInFly   map[string]int
+	readyMu    sync.Mutex
+	readySet   map[string]struct{}
+	readyQ     []Job
 }
 
 const internalKeyHeader = "x-choysum-internal-key"
@@ -73,6 +78,11 @@ func NewDispatcher(runtimeScope scope.Scope, dialer client.ServiceDialer) *Dispa
 func NewDispatcherWithRuntime(runtimeScope scope.Scope, dialer client.ServiceDialer, runtime taskcontract.Runtime) *Dispatcher {
 	opts := runtimeOptionsFromScope(runtimeScope)
 	runtime = runtimeWithDefaultTaskRuntimeDeps(runtimeScope, runtime)
+	parent := context.Background()
+	if runtimeScope != nil && runtimeScope.Context() != nil {
+		parent = runtimeScope.Context()
+	}
+	pollCtx, pollCancel := context.WithCancel(parent)
 	return &Dispatcher{
 		runtimeScope: runtimeScope,
 		runtimeOpts:  opts,
@@ -83,6 +93,8 @@ func NewDispatcherWithRuntime(runtimeScope scope.Scope, dialer client.ServiceDia
 		wakeCh:       make(chan struct{}, 1),
 		sema:         make(chan struct{}, opts.dispatchMaxConcurrency),
 		interval:     opts.dispatchPollInterval,
+		pollCtx:      pollCtx,
+		pollCancel:   pollCancel,
 		appInFly:     map[string]int{},
 		readySet:     map[string]struct{}{},
 	}
@@ -108,7 +120,11 @@ func (d *Dispatcher) Start() {
 	}
 	d.wg.Add(1)
 	go d.loop()
-	go d.pollOnce("startup")
+	d.wg.Add(1)
+	go func() {
+		defer d.wg.Done()
+		d.pollOnce("startup")
+	}()
 }
 
 func (d *Dispatcher) publishWakeup(source string) {
@@ -128,21 +144,36 @@ func (d *Dispatcher) Stop() {
 	}
 	d.stopOnce.Do(func() {
 		close(d.stopCh)
+		if d.pollCancel != nil {
+			d.pollCancel()
+		}
 	})
 	if d.wakeSub != nil {
 		_ = d.wakeSub.Close()
 		d.wakeSub = nil
 	}
-	d.wg.Wait()
+	if waitWaitGroup(&d.wg, stopWaitTimeout) {
+		return
+	}
+	if d.runtimeScope != nil && d.runtimeScope.Logger() != nil {
+		d.runtimeScope.Logger().Warn("task dispatcher stop timed out waiting for in-flight work",
+			"timeout", stopWaitTimeout.String())
+	}
 }
 
 func (d *Dispatcher) loop() {
 	defer d.wg.Done()
+	ctx := context.Background()
+	if d.runtimeScope != nil && d.runtimeScope.Context() != nil {
+		ctx = d.runtimeScope.Context()
+	}
 	ticker := time.NewTicker(d.interval)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-d.stopCh:
+			return
+		case <-ctx.Done():
 			return
 		case <-d.wakeCh:
 			d.pollOnce("wake")
@@ -170,9 +201,15 @@ func (d *Dispatcher) pollOnce(source string) {
 	if d.runtimeScope == nil || d.queue == nil {
 		return
 	}
-	ctx := d.runtimeScope.Context()
+	if d.isStopped() {
+		return
+	}
+	ctx := d.pollCtx
 	if ctx == nil {
-		ctx = context.Background()
+		ctx = d.runtimeScope.Context()
+		if ctx == nil {
+			ctx = context.Background()
+		}
 	}
 	now := time.Now().UTC()
 
@@ -190,7 +227,12 @@ func (d *Dispatcher) pollOnce(source string) {
 	}
 	queueJobs, err := d.queue.ListReady(ctx, now, pollLimit)
 	if err != nil {
-		d.runtimeScope.Logger().Warn("task dispatch poll failed", "error", err)
+		if !isExpectedPollShutdownError(ctx, err) {
+			d.runtimeScope.Logger().Warn("task dispatch poll failed", "error", err)
+		}
+		return
+	}
+	if d.isStopped() {
 		return
 	}
 	jobs := make([]Job, 0, len(queueJobs))
@@ -212,7 +254,14 @@ func (d *Dispatcher) pollOnce(source string) {
 	if len(selected) == 0 {
 		return
 	}
+	d.claimAndRunReady(ctx, selected, now)
+}
+
+func (d *Dispatcher) claimAndRunReady(ctx context.Context, selected []Job, now time.Time) {
 	for _, job := range selected {
+		if d.isStopped() {
+			return
+		}
 		if !d.reserveAppSlot(job.TargetApp) {
 			continue
 		}
@@ -925,4 +974,23 @@ func (d *Dispatcher) emitMetric(name string, fields map[string]any) {
 	}
 	fields["metric"] = name
 	RecordMetric(name, fields)
+}
+
+func (d *Dispatcher) isStopped() bool {
+	if d == nil {
+		return true
+	}
+	select {
+	case <-d.stopCh:
+		return true
+	default:
+		return false
+	}
+}
+
+// isExpectedPollShutdownError reports whether a poll error is the normal result of
+// process context cancellation during shutdown. Cancellation is suppressed only when
+// the runtime context itself is done, so independent store cancel errors still warn.
+func isExpectedPollShutdownError(ctx context.Context, err error) bool {
+	return ctx != nil && ctx.Err() != nil && errors.Is(err, context.Canceled)
 }

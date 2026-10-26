@@ -55,6 +55,104 @@ func TestPool_NewPoolAndStartStop(t *testing.T) {
 	}
 }
 
+type concurrentCloseEngine struct {
+	entered  chan struct{}
+	release  chan struct{}
+	active   *int32
+	maxActive *int32
+	completed *int32
+}
+
+func (e *concurrentCloseEngine) Load(_ []*jsengine.JsScript) error { return nil }
+
+func (e *concurrentCloseEngine) Execute(_ context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+	return &jsengine.JsResponse{Id: req.Id, Context: map[string]interface{}{}}, nil
+}
+
+func (e *concurrentCloseEngine) Close() error {
+	cur := atomic.AddInt32(e.active, 1)
+	for {
+		prev := atomic.LoadInt32(e.maxActive)
+		if cur <= prev || atomic.CompareAndSwapInt32(e.maxActive, prev, cur) {
+			break
+		}
+	}
+	select {
+	case e.entered <- struct{}{}:
+	default:
+	}
+	<-e.release
+	atomic.AddInt32(e.active, -1)
+	atomic.AddInt32(e.completed, 1)
+	return nil
+}
+
+// TestPool_StopWaitsForThreadCloseInParallel ensures pool stop closes warm threads
+// concurrently (all Closes overlap) rather than serially.
+func TestPool_StopWaitsForThreadCloseInParallel(t *testing.T) {
+	const threads = 4
+	var active, maxActive, completed int32
+	entered := make(chan struct{}, threads)
+	release := make(chan struct{})
+	exec := &JsExecutor{
+		engineFactory: func() (JsEngine, error) {
+			return &concurrentCloseEngine{
+				entered:   entered,
+				release:   release,
+				active:    &active,
+				maxActive: &maxActive,
+				completed: &completed,
+			}, nil
+		},
+		options: &JsExecutorOption{
+			minPoolSize: threads,
+			maxPoolSize: threads,
+			queueSize:   2,
+		},
+	}
+	p := newPool(exec)
+	if err := p.start(); err != nil {
+		t.Fatalf("pool start failed: %v", err)
+	}
+
+	stopErr := make(chan error, 1)
+	go func() {
+		stopErr <- p.stop()
+	}()
+
+	for i := 0; i < threads; i++ {
+		select {
+		case <-entered:
+		case <-time.After(2 * time.Second):
+			t.Fatalf("timed out waiting for Close entry %d/%d", i+1, threads)
+		}
+	}
+	if got := atomic.LoadInt32(&maxActive); got < threads {
+		t.Fatalf("max concurrent Close calls = %d, want %d", got, threads)
+	}
+	select {
+	case err := <-stopErr:
+		t.Fatalf("pool stop returned while Close calls were still blocked: %v", err)
+	default:
+	}
+	if got := atomic.LoadInt32(&completed); got != 0 {
+		t.Fatalf("completed Close calls = %d while still blocked, want 0", got)
+	}
+	close(release)
+
+	select {
+	case err := <-stopErr:
+		if err != nil {
+			t.Fatalf("pool stop failed: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("pool stop did not return after releasing Close calls")
+	}
+	if got := atomic.LoadInt32(&completed); got != threads {
+		t.Fatalf("completed Close calls = %d, want %d", got, threads)
+	}
+}
+
 // TestPool_CreateThreadAndSelect tests thread creation and selection.
 func TestPool_CreateThreadAndSelect(t *testing.T) {
 	exec := &JsExecutor{
