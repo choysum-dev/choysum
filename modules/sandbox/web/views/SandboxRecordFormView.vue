@@ -15,19 +15,27 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     v-on="$attrs"
   >
-    <div data-anchor="choy.form.sheet" class="min-h-full">
-      <ChoyStatusbarField :store="store" prop="Progress" class="mb-4" />
-
-      <p class="mb-4 text-xs text-muted-foreground" data-testid="sandbox-onchange-hint">
-        {{
-          _t(
-            'Onchange: Active/State warn → toast; State disables Progress statusbar clicks (options stay visible); Currency/Category rewrite values; negative Int Value → field error; Line Quantity silently clamps to 1…999 (no toast).',
-          )
-        }}
-      </p>
+    <!--
+      Sheet tip chrome + ChoySection `divided` for phase breaks (padless sections,
+      not nested cards). Avoid stacking flex gap with divided mt-* (double rhythm).
+    -->
+    <div data-anchor="choy.form.sheet" class="flex min-h-full flex-col">
+      <div class="mb-8 flex flex-col gap-3">
+        <ChoyStatusbarField :store="store" prop="Progress" />
+        <aside
+          class="rounded-md border border-border bg-muted/40 px-3.5 py-2.5 text-xs leading-relaxed text-muted-foreground"
+          data-testid="sandbox-onchange-hint"
+        >
+          {{
+            _t(
+              'Onchange: Active/State warn → toast; State disables Progress statusbar clicks (options stay visible); Currency/Category rewrite values; negative Int Value → field error; Line Quantity silently clamps to 1…999 (no toast).',
+            )
+          }}
+        </aside>
+      </div>
 
       <ChoySection :title="_t('Identity')">
-        <ChoyGrid :cols="12">
+        <ChoyGrid :cols="12" gap="lg">
           <ChoyCol :span="3">
             <ChoyCharField :store="store" prop="NameChar" :rules="requiredRules" />
           </ChoyCol>
@@ -52,8 +60,8 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyGrid>
       </ChoySection>
 
-      <ChoySection :title="_t('Numbers')">
-        <ChoyGrid :cols="12">
+      <ChoySection :title="_t('Numbers')" divided>
+        <ChoyGrid :cols="12" gap="lg">
           <ChoyCol :span="3">
             <ChoyIntField :store="store" prop="IntValue" />
           </ChoyCol>
@@ -80,8 +88,8 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyGrid>
       </ChoySection>
 
-      <ChoySection :title="_t('Temporal')">
-        <ChoyGrid :cols="12">
+      <ChoySection :title="_t('Temporal')" divided>
+        <ChoyGrid :cols="12" gap="lg">
           <ChoyCol :span="4">
             <ChoyDateField :store="store" prop="DateValue" />
           </ChoyCol>
@@ -94,8 +102,8 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyGrid>
       </ChoySection>
 
-      <ChoySection :title="_t('Rich Content')">
-        <ChoyGrid :cols="12">
+      <ChoySection :title="_t('Rich Content')" divided>
+        <ChoyGrid :cols="12" gap="lg">
           <ChoyCol :span="12">
             <ChoyHtmlField :store="store" prop="BodyHtml" orientation="vertical" />
           </ChoyCol>
@@ -114,8 +122,8 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyGrid>
       </ChoySection>
 
-      <ChoySection :title="_t('Depth')">
-        <ChoyGrid :cols="12">
+      <ChoySection :title="_t('Depth')" divided>
+        <ChoyGrid :cols="12" gap="lg">
           <ChoyCol :span="6">
             <ChoyVarcharField :store="store" prop="CompanyNote" />
           </ChoyCol>
@@ -141,8 +149,8 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyGrid>
       </ChoySection>
 
-      <ChoySection :title="_t('Relations')">
-        <ChoyGrid :cols="12">
+      <ChoySection :title="_t('Relations')" divided>
+        <ChoyGrid :cols="12" gap="lg">
           <ChoyCol :span="6">
             <ChoyManyToOneField
               :store="store"
@@ -241,45 +249,48 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyGrid>
       </ChoySection>
 
-      <SandboxLinesVirtTools :store="store" />
-
-      <ChoyTabs v-model="linesTab" class="mt-8">
-        <!-- force-mount: both panes register Lines.* so save returnFields stay complete. -->
-        <ChoyTab :label="_t('Lines (table)')" value="lines-table" force-mount>
-          <ChoyOneToManyField :store="store" prop="Lines" hide-label>
-            <ChoyVarcharField :store="store" prop="Lines.Name" />
-            <ChoyIntField :store="store" prop="Lines.Quantity" />
-            <ChoySelectionField :store="store" prop="Lines.State" />
-            <ChoyIntField :store="store" prop="Lines.Sequence" />
-          </ChoyOneToManyField>
-        </ChoyTab>
-        <ChoyTab :label="_t('Lines (kanban)')" value="lines-kanban" force-mount>
-          <ChoyOneToManyKanbanField
-            :store="store"
-            prop="Lines"
-            hide-label
-            card-title-field="Name"
-            card-subtitle-field=""
-            :fields="['Quantity', 'State']"
-            :default-record="defaultLineRecord"
-            :form-view="SandboxLineFormView"
-            :create-dialog-title="_t('New Line')"
-            :edit-dialog-title="_t('Edit Line')"
-            :display-dialog-title="_t('View Line')"
-          >
-            <template #card="{ item }">
-              <div class="flex flex-col gap-1 text-xs">
-                <div class="truncate text-sm font-medium">{{ item?.Name || _t('Unnamed Line') }}</div>
-                <div class="text-muted-foreground">
-                  {{ _t('Qty') }} {{ item?.Quantity ?? 0 }}
-                  <span class="text-muted-foreground/60"> · </span>
-                  {{ item?.State || '—' }}
-                </div>
-              </div>
-            </template>
-          </ChoyOneToManyKanbanField>
-        </ChoyTab>
-      </ChoyTabs>
+      <ChoySection :title="_t('Lines')" divided>
+        <div class="flex flex-col gap-4">
+          <SandboxLinesVirtTools :store="store" />
+          <ChoyTabs v-model="linesTab">
+            <!-- force-mount: both panes register Lines.* so save returnFields stay complete. -->
+            <ChoyTab :label="_t('Lines (table)')" value="lines-table" force-mount>
+              <ChoyOneToManyField :store="store" prop="Lines" hide-label>
+                <ChoyVarcharField :store="store" prop="Lines.Name" />
+                <ChoyIntField :store="store" prop="Lines.Quantity" />
+                <ChoySelectionField :store="store" prop="Lines.State" />
+                <ChoyIntField :store="store" prop="Lines.Sequence" />
+              </ChoyOneToManyField>
+            </ChoyTab>
+            <ChoyTab :label="_t('Lines (kanban)')" value="lines-kanban" force-mount>
+              <ChoyOneToManyKanbanField
+                :store="store"
+                prop="Lines"
+                hide-label
+                card-title-field="Name"
+                card-subtitle-field=""
+                :fields="['Quantity', 'State']"
+                :default-record="defaultLineRecord"
+                :form-view="SandboxLineFormView"
+                :create-dialog-title="_t('New Line')"
+                :edit-dialog-title="_t('Edit Line')"
+                :display-dialog-title="_t('View Line')"
+              >
+                <template #card="{ item }">
+                  <div class="flex flex-col gap-1 text-xs">
+                    <div class="truncate text-sm font-medium">{{ item?.Name || _t('Unnamed Line') }}</div>
+                    <div class="text-muted-foreground">
+                      {{ _t('Qty') }} {{ item?.Quantity ?? 0 }}
+                      <span class="text-muted-foreground/60"> · </span>
+                      {{ item?.State || '—' }}
+                    </div>
+                  </div>
+                </template>
+              </ChoyOneToManyKanbanField>
+            </ChoyTab>
+          </ChoyTabs>
+        </div>
+      </ChoySection>
     </div>
   </ChoyFormView>
 </template>
