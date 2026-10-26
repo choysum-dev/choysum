@@ -76,9 +76,6 @@ describe('FormView reloads when route identity changes', () => {
       plugins: [createPinia(), router, NoopLoading],
       on: opts?.on,
       stubs: {
-        ElButton: true,
-        ElIcon: true,
-        ElForm: true,
         Breadcrumb: true,
         ChoyViewContainer: true,
       },

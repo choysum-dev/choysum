@@ -3,7 +3,7 @@
 
 import { h, nextTick, reactive, unref } from 'vue';
 
-import { flushPromises, fnRecorder, mountApp, stub, stubSfc, restoreSfc } from '@/web/web/__tests__/mountApp';
+import { flushPromises, fnRecorder, mountApp, stubSfc, restoreSfc } from '@/web/web/__tests__/mountApp';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import SearchFilterCondition from './SearchFilterCondition.vue';
 
@@ -99,12 +99,6 @@ function restoreFieldStubs() {
   restoreSfc(ChoyButton as any);
 }
 
-const epStubs = {
-  ElSelect: stub('ElSelect'),
-  ElOption: stub('ElOption'),
-  ElButton: stub('ElButton'),
-  ElInput: stub('ElInput'),
-};
 
 function installChoyButtonStub() {
   stubSfc(ChoyButton as any, {
@@ -175,7 +169,6 @@ describe('SearchFilterCondition', () => {
         onUpdateCondition,
         onRemoveCondition,
       },
-      stubs: epStubs,
     });
     return { ...m, onUpdateCondition, onRemoveCondition, store };
   }

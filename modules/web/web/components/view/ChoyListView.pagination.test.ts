@@ -23,18 +23,18 @@ function makeStore(pagination: { limit: number; offset: number }, total = 100) {
         appliedFilters: [],
         appliedGroups: [],
         keywordFields: [],
-        pagination: { ...pagination },
+        pagination: { ...pagination }
       },
       result: { total },
       selection: [],
       planCache: new Map(),
-      orderBy: undefined,
+      orderBy: undefined
     },
     setContext: () => {},
     getContext: () => ({}),
     withContext: async (_c: any, fn: any) => fn(),
     Search: fnRecorder(async () => []),
-    UpdateById: fnRecorder(async () => ({})),
+    UpdateById: fnRecorder(async () => ({}))
   } as any;
 }
 
@@ -44,25 +44,25 @@ describe('ListView pagination models', () => {
       name: 'ChoyTableHost',
       setup(_p: any, { slots }: any) {
         return () => h('div', { 'data-stub': 'ChoyTableHost' }, [slots.default?.(), slots.empty?.()]);
-      },
+      }
     });
     stubSfc(ChoyTableColumn, {
       name: 'ChoyTableColumn',
-      setup: () => () => h('div', { 'data-stub': 'ChoyTableColumn' }),
+      setup: () => () => h('div', { 'data-stub': 'ChoyTableColumn' })
     });
     stubSfc(ChoyPagination, {
       name: 'ChoyPagination',
-      setup: () => () => h('div', { 'data-stub': 'Pagination' }),
+      setup: () => () => h('div', { 'data-stub': 'Pagination' })
     });
     stubSfc(ListInlineEditScope, {
       name: 'ListInlineEditScope',
       setup(_p: any, { slots }: any) {
         return () => h('div', { 'data-stub': 'inline-scope' }, slots.default?.());
-      },
+      }
     });
     stubSfc(ChoySearchView as any, {
       name: 'ChoySearchView',
-      setup: () => () => h('div', { 'data-stub': 'ChoySearchView' }),
+      setup: () => () => h('div', { 'data-stub': 'ChoySearchView' })
     });
   });
 
@@ -85,7 +85,7 @@ describe('ListView pagination models', () => {
         // Keep ChoyPagination out of the tree (host crash under FE-QJS); drive exposed models.
         showPaginate: false,
         refreshAction: false,
-        deleteAction: false,
+        deleteAction: false
       },
       plugins,
       on: {
@@ -93,11 +93,10 @@ describe('ListView pagination models', () => {
           paginateEvents.push({ ...payload });
           store.state.queryState.pagination = {
             limit: payload.pageSize,
-            offset: Math.max(0, (payload.page - 1) * payload.pageSize),
+            offset: Math.max(0, (payload.page - 1) * payload.pageSize)
           };
-        },
-      },
-      stubs: { ElButton: true, ElIcon: true },
+        }
+      }
     });
     await flushPromises();
 
@@ -149,10 +148,9 @@ describe('ListView pagination models', () => {
         searchView: markRaw(ChoySearchView),
         showPaginate: false,
         refreshAction: false,
-        deleteAction: false,
+        deleteAction: false
       },
-      plugins,
-      stubs: { ElButton: true, ElIcon: true },
+      plugins
     });
     await flushPromises();
     expect((mounted.root as { canMountPagination: boolean }).canMountPagination).toBe(false);

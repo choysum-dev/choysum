@@ -18,7 +18,7 @@ SPDX-License-Identifier: Apache-2.0
       )
     "
   >
-    <div v-if="$slots.header" data-slot="view-header" class="shrink-0">
+    <div v-if="regionHasContent('header')" data-slot="view-header" class="shrink-0">
       <slot name="header" />
     </div>
     <div
@@ -28,20 +28,31 @@ SPDX-License-Identifier: Apache-2.0
     >
       <slot />
     </div>
-    <div v-if="$slots.footer" data-slot="view-footer" class="shrink-0">
+    <div v-if="regionHasContent('footer')" data-slot="view-footer" class="shrink-0">
       <slot name="footer" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { useSlots } from 'vue';
 import { cn, type ClassValue } from '../../lib/utils';
+import { slotHasContent } from './statInfoHelpers';
 
 defineOptions({ name: 'ChoyViewContainer' });
 
 const props = defineProps<{
   class?: ClassValue;
 }>();
+
+const slots = useSlots();
+
+/** Skip empty / comment-only header|footer so flex gap does not leave blank bands. */
+function regionHasContent(name: 'header' | 'footer'): boolean {
+  const raw = slots[name]?.();
+  if (raw == null) return false;
+  return slotHasContent(Array.isArray(raw) ? raw : [raw]);
+}
 
 /** True when a class token is a full (both-axis) Tailwind `gap-*` utility. */
 function isFullGapToken(token: string): boolean {

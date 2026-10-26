@@ -82,14 +82,6 @@ describe('StatInfo', () => {
     const { unmount, q } = mountApp(ChoyStatInfo as any, {
       props: { value: 1, label: 'Users', icon: IconStub },
       ...withRouter(),
-      stubs: {
-        ElIcon: {
-          name: 'ElIcon',
-          setup(_p: any, { slots }: any) {
-            return () => h('i', { class: 'el-icon-stub' }, slots.default?.());
-          },
-        },
-      },
     });
     expect(q('.choy-stat-info__icon')).toBeTruthy();
     expect(q('.icon-stub')).toBeTruthy();

@@ -57,9 +57,6 @@ describe('FormView handleCopy awaits beginCreate', () => {
       plugins: [...plugins, NoopLoading],
       on: extra?.on,
       stubs: {
-        ElButton: true,
-        ElIcon: true,
-        ElForm: true,
         Breadcrumb: true,
       },
     });

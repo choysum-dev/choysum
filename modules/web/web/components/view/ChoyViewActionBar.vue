@@ -31,6 +31,7 @@ SPDX-License-Identifier: Apache-2.0
       <!-- Keep the first thirds-grid column even when actions are empty so center/right do not shift. -->
       <div
         v-if="$slots['system-actions'] || $slots['user-actions'] || props.layout === 'thirds'"
+        data-slot="view-action-bar-leading"
         :class="
           cn(
             'flex min-w-0 flex-nowrap items-center gap-3',
