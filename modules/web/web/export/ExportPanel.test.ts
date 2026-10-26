@@ -1,16 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { createApp, h, type Component } from 'vue';
-
-function stub(name: string): Component {
-  return {
-    name,
-    setup(_, { slots }) {
-      return () => h('div', { 'data-stub': name }, slots.default?.());
-    },
-  };
-}
+import { createApp } from 'vue';
 
 test('ExportPanel smoke: mounts with minimal props', async () => {
   const { default: Comp } = await import('./ExportPanel.vue');
@@ -22,21 +13,6 @@ test('ExportPanel smoke: mounts with minimal props', async () => {
     modelValue: false,
     defaultFields: ['Name'],
   });
-  for (const name of [
-    'ElDialog',
-    'ElCollapse',
-    'ElCollapseItem',
-    'ElSelect',
-    'ElOption',
-    'ElButton',
-    'ElInput',
-    'ElCheckbox',
-    'ElTree',
-    'ElAlert',
-    'ElResult',
-  ]) {
-    app.component(name, stub(name));
-  }
 
   const el = document.createElement('div');
   app.mount(el);

@@ -5,6 +5,12 @@
  * Pure height math for useAdaptiveHeight (unit-tested without Vue lifecycle).
  */
 
+/** ChoyDialog content surface (reka DialogContent). */
+export const CHOY_DIALOG_CONTENT_SELECTOR = '[data-slot="dialog-content"]';
+
+/** Optional footer band inside dialog content; subtracted in container mode. */
+export const CHOY_DIALOG_FOOTER_SELECTOR = '[data-slot="dialog-footer"]';
+
 export type AdaptiveHeightMathOptions = {
   viewportGap: number;
   minViewportHeight: number;
@@ -13,6 +19,12 @@ export type AdaptiveHeightMathOptions = {
   containerSelector?: string;
 };
 
+/** Nearest Choy dialog content host, or null when not nested in a dialog. */
+export function closestChoyDialogContent(el: Element | null | undefined): HTMLElement | null {
+  if (!el) return null;
+  return (el.closest(CHOY_DIALOG_CONTENT_SELECTOR) as HTMLElement | null) ?? null;
+}
+
 /** Container mode: fill from wrap top to container bottom, minus dialog footer + pad. */
 export function computeContainerAdaptiveHeight(
   wrapRectTop: number,
@@ -20,8 +32,8 @@ export function computeContainerAdaptiveHeight(
   opts: Pick<AdaptiveHeightMathOptions, 'minContainerHeight' | 'containerPadding'>,
 ): number {
   const crect = container.getBoundingClientRect();
-  const dialog = container.closest('.el-dialog') as HTMLElement | null;
-  const footer = dialog?.querySelector('.el-dialog__footer') as HTMLElement | null;
+  const dialog = closestChoyDialogContent(container) || container;
+  const footer = dialog.querySelector(CHOY_DIALOG_FOOTER_SELECTOR) as HTMLElement | null;
   const footerH = footer ? footer.getBoundingClientRect().height : 0;
   const pad = opts.containerPadding ?? 0;
   const h = Math.floor(crect.bottom - wrapRectTop - footerH - pad);
@@ -105,7 +117,7 @@ export function collectAdaptiveHeightObserveTargets(
   opts: { mode?: AdaptiveHeightObserveMode; containerSelector?: string },
 ): HTMLElement[] {
   if (!wrap || opts.mode === 'none') return [];
-  const autoContainer = wrap.closest('.el-dialog__body') as HTMLElement | null;
+  const autoContainer = closestChoyDialogContent(wrap);
   const shellScroll = wrap.closest('[data-testid="choy-shell-scroll"]') as HTMLElement | null;
   const need =
     opts.mode === 'container' || (opts.mode === 'auto' && !!autoContainer) || !!shellScroll;

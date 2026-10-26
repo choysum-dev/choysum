@@ -61,7 +61,7 @@ SPDX-License-Identifier: Apache-2.0
         <div v-else-if="importError" role="alert" class="mt-3">{{ importError }}</div>
       </section>
 
-      <div class="mt-4 flex justify-end gap-2">
+      <div class="mt-4 flex justify-end gap-2" data-slot="dialog-footer">
         <ChoyButton size="sm" variant="outline" :disabled="busy" @click="visible = false">{{ cancelLabel }}</ChoyButton>
         <ChoyButton
           v-if="step === 0"

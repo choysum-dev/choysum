@@ -55,8 +55,6 @@ test('web shell _lt bindings: mounts FormView so detailsTitle _lt runs', async (
     props: { store: fakeStore },
     plugins: [i18n],
     stubs: {
-      'el-button': stub('el-button'),
-      'el-icon': stub('el-icon'),
       Page: stub('Page'),
       Breadcrumb: stub('Breadcrumb'),
     },

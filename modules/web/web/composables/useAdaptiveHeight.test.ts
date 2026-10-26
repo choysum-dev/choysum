@@ -152,15 +152,12 @@ describe('useAdaptiveHeight', () => {
     shell.remove();
   });
 
-  test('container mode uses dialog body when present', async () => {
+  test('container mode uses Choy dialog content when present', async () => {
     let api: ReturnType<typeof useAdaptiveHeight> | null = null;
-    const dialog = document.createElement('div');
-    dialog.className = 'el-dialog';
-    const body = document.createElement('div');
-    body.className = 'el-dialog__body';
-    body.getBoundingClientRect = () => rect({ top: 40, bottom: 440 });
-    dialog.appendChild(body);
-    document.body.appendChild(dialog);
+    const content = document.createElement('div');
+    content.setAttribute('data-slot', 'dialog-content');
+    content.getBoundingClientRect = () => rect({ top: 40, bottom: 440 });
+    document.body.appendChild(content);
 
     const Host = defineComponent({
       setup() {
@@ -176,7 +173,7 @@ describe('useAdaptiveHeight', () => {
               if (!el) return;
               el.getBoundingClientRect = () => rect({ top: 80 });
               el.closest = ((sel: string) => {
-                if (sel === '.el-dialog__body') return body;
+                if (sel === '[data-slot="dialog-content"]') return content;
                 return null;
               }) as typeof el.closest;
               elRef.value = el as Element;
@@ -188,19 +185,17 @@ describe('useAdaptiveHeight', () => {
     await flushFrames();
     expect(api!.height.value).toBeGreaterThanOrEqual(100);
     m.unmount();
-    dialog.remove();
+    content.remove();
     await nextTick();
   });
 
   test('auto mode picks container inside dialog and honors containerSelector', async () => {
     let api: ReturnType<typeof useAdaptiveHeight> | null = null;
-    const dialog = document.createElement('div');
-    dialog.className = 'el-dialog';
-    const body = document.createElement('div');
-    body.className = 'el-dialog__body custom-container';
-    body.getBoundingClientRect = () => rect({ top: 20, bottom: 420 });
-    dialog.appendChild(body);
-    document.body.appendChild(dialog);
+    const content = document.createElement('div');
+    content.setAttribute('data-slot', 'dialog-content');
+    content.className = 'custom-container';
+    content.getBoundingClientRect = () => rect({ top: 20, bottom: 420 });
+    document.body.appendChild(content);
 
     const Host = defineComponent({
       setup() {
@@ -217,7 +212,9 @@ describe('useAdaptiveHeight', () => {
               if (!el) return;
               el.getBoundingClientRect = () => rect({ top: 60 });
               el.closest = ((sel: string) => {
-                if (sel === '.el-dialog__body' || sel === '.custom-container') return body;
+                if (sel === '[data-slot="dialog-content"]' || sel === '.custom-container') {
+                  return content;
+                }
                 return null;
               }) as typeof el.closest;
               elRef.value = el as Element;
@@ -233,7 +230,7 @@ describe('useAdaptiveHeight', () => {
     await flushFrames(2);
     expect(api!.height.value).toBeGreaterThanOrEqual(80);
     m.unmount();
-    dialog.remove();
+    content.remove();
   });
 
   test('container mode without resolvable container falls back to viewport', async () => {

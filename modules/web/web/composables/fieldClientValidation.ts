@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Client-side RuleItem evaluation for ChoyFieldBase after el-form-item removal.
+ * Client-side RuleItem evaluation for ChoyFieldBase.
  * FormView collects registered validators and blocks submit on the first failure.
  */
 

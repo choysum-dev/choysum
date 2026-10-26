@@ -150,18 +150,16 @@ describe('adaptiveHeightMath', () => {
 
   test('computeContainerAdaptiveHeight subtracts dialog footer', () => {
     const dialog = document.createElement('div');
-    dialog.className = 'el-dialog';
-    const body = document.createElement('div');
-    body.className = 'el-dialog__body';
-    body.getBoundingClientRect = () => rect({ top: 50, bottom: 450 });
+    dialog.setAttribute('data-slot', 'dialog-content');
+    dialog.getBoundingClientRect = () => rect({ top: 50, bottom: 450 });
     const footer = document.createElement('div');
-    footer.className = 'el-dialog__footer';
+    footer.setAttribute('data-slot', 'dialog-footer');
     footer.getBoundingClientRect = () => rect({ height: 40, top: 450, bottom: 490 });
-    dialog.appendChild(body);
     dialog.appendChild(footer);
-    body.closest = ((sel: string) => (sel === '.el-dialog' ? dialog : null)) as typeof body.closest;
+    dialog.closest = ((sel: string) =>
+      sel === '[data-slot="dialog-content"]' ? dialog : null) as typeof dialog.closest;
     expect(
-      computeContainerAdaptiveHeight(80, body, { minContainerHeight: 160, containerPadding: 8 }),
+      computeContainerAdaptiveHeight(80, dialog, { minContainerHeight: 160, containerPadding: 8 }),
     ).toBe(322); // 450 - 80 - 40 - 8
   });
 
@@ -186,12 +184,13 @@ describe('adaptiveHeightMath', () => {
       footer,
     ]);
 
-    const body = document.createElement('div');
-    body.className = 'el-dialog__body custom-container';
-    document.body.appendChild(body);
+    const content = document.createElement('div');
+    content.setAttribute('data-slot', 'dialog-content');
+    content.className = 'custom-container';
+    document.body.appendChild(content);
     const wrapDialog = document.createElement('div');
     wrapDialog.closest = ((sel: string) => {
-      if (sel === '.el-dialog__body' || sel === '.custom-container') return body;
+      if (sel === '[data-slot="dialog-content"]' || sel === '.custom-container') return content;
       return null;
     }) as typeof wrapDialog.closest;
     expect(
@@ -199,13 +198,13 @@ describe('adaptiveHeightMath', () => {
         mode: 'auto',
         containerSelector: '.custom-container',
       }),
-    ).toEqual([body]);
+    ).toEqual([content]);
 
     const wrapParent = document.createElement('div');
     const parent = document.createElement('div');
     parent.appendChild(wrapParent);
     wrapParent.closest = (() => null) as typeof wrapParent.closest;
     expect(collectAdaptiveHeightObserveTargets(wrapParent, { mode: 'container' })).toEqual([parent]);
-    body.remove();
+    content.remove();
   });
 });
