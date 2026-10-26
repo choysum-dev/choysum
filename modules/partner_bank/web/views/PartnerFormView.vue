@@ -9,7 +9,7 @@ SPDX-License-Identifier: Apache-2.0
       <div data-region="partner-bank-panel">
         <ChoyOneToManyKanbanField
           :store="store"
-          prop="BankAccounts"
+          :prop="'BankAccounts' as any"
           label=""
           :default-record="defaultBankAccountRecord"
           :editable="canEditBankAccounts()"
@@ -106,8 +106,9 @@ export default defineComponent({
     ChoyBadge,
     ChoyButton,
     ChoyTab,
-    ChoyOneToManyField,
-    ChoyOneToManyKanbanField,
+    // Generic SFCs are not Options-API component-typed; cast for registration.
+    ChoyOneToManyField: ChoyOneToManyField as any,
+    ChoyOneToManyKanbanField: ChoyOneToManyKanbanField as any,
     PartnerBankAccountFormView,
   },
   /**

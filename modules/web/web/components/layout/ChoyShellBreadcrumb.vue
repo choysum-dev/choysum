@@ -26,7 +26,7 @@ import { useMenu } from '../../composables/useMenu'
  */
 defineOptions({ name: 'ChoyShellBreadcrumb' })
 
-let items: ComputedRef<ChoyBreadcrumbItem[]> = computed(() => [])
+let items!: ComputedRef<ChoyBreadcrumbItem[]>
 
 try {
   const store = useBreadcrumbStore()

@@ -523,12 +523,12 @@ msgctxt "web/views/SandboxRecordChartView"
 msgid "View switcher"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:159
+#: web/views/SandboxRecordFormView.vue:165
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Categories"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:164
+#: web/views/SandboxRecordFormView.vue:170
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Category Path"
 msgstr ""
@@ -548,12 +548,12 @@ msgctxt "web/views/SandboxRecordFormView"
 msgid "Delete Sandbox Record"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:102
+#: web/views/SandboxRecordFormView.vue:108
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Depth"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:184
+#: web/views/SandboxRecordFormView.vue:191
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Edit Line"
 msgstr ""
@@ -563,42 +563,47 @@ msgctxt "web/views/SandboxRecordFormView"
 msgid "Edit Sandbox Record"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:19
+#: web/views/SandboxRecordFormView.vue:25
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Identity"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:183
+#: web/views/SandboxRecordFormView.vue:177
+msgctxt "web/views/SandboxRecordFormView"
+msgid "Lines"
+msgstr ""
+
+#: web/views/SandboxRecordFormView.vue:190
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Lines (kanban)"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:175
+#: web/views/SandboxRecordFormView.vue:182
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Lines (table)"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:184
+#: web/views/SandboxRecordFormView.vue:191
 msgctxt "web/views/SandboxRecordFormView"
 msgid "New Line"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:45
+#: web/views/SandboxRecordFormView.vue:51
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Numbers"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:13
+#: web/views/SandboxRecordFormView.vue:17
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Onchange: Active/State warn → toast; State disables Progress statusbar clicks (options stay visible); Currency/Category rewrite values; negative Int Value → field error; Line Quantity silently clamps to 1…999 (no toast)."
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:189
+#: web/views/SandboxRecordFormView.vue:196
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Qty"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:124
+#: web/views/SandboxRecordFormView.vue:130
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Relations"
 msgstr ""
@@ -608,7 +613,7 @@ msgctxt "web/views/SandboxRecordFormView"
 msgid "Required"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:82
+#: web/views/SandboxRecordFormView.vue:88
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Rich Content"
 msgstr ""
@@ -618,57 +623,57 @@ msgctxt "web/views/SandboxRecordFormView"
 msgid "Sandbox Record"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:127
+#: web/views/SandboxRecordFormView.vue:133
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Category"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:132
+#: web/views/SandboxRecordFormView.vue:138
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Category Ref"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:108
+#: web/views/SandboxRecordFormView.vue:114
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Company"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:60
+#: web/views/SandboxRecordFormView.vue:66
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Currency"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:153
+#: web/views/SandboxRecordFormView.vue:159
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Tag Chips"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:145
+#: web/views/SandboxRecordFormView.vue:151
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Tag Ref Table"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:156
+#: web/views/SandboxRecordFormView.vue:162
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Tag Refs"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:135
+#: web/views/SandboxRecordFormView.vue:141
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Tags"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:68
+#: web/views/SandboxRecordFormView.vue:74
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Temporal"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:187
+#: web/views/SandboxRecordFormView.vue:194
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Unnamed Line"
 msgstr ""
 
-#: web/views/SandboxRecordFormView.vue:184
+#: web/views/SandboxRecordFormView.vue:191
 msgctxt "web/views/SandboxRecordFormView"
 msgid "View Line"
 msgstr ""

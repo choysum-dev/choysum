@@ -73,17 +73,39 @@ export function sanitizeHtmlForClient(html: string | null | undefined, deps?: Sa
   // dompurify's default export is a factory without `sanitize` when no DOM is
   // present (QuickJS/SSR); strip tags instead of crashing or returning raw markup.
   if (typeof purify.sanitize !== 'function') {
-    // No DOM → DOMPurify cannot run. `>?` keeps stripping unterminated
-    // tags (`<img src=x onerror=…`) so no active `<` can survive.
-    return raw.replace(/<[^>]*>?/g, '');
+    // No DOM → DOMPurify cannot run; strip tags to plaintext-safe text.
+    return stripTagsFallback(raw);
   }
   ensureDomPurifyHooks(purify);
   try {
     return purify.sanitize(raw, purifyConfig);
   } catch {
     // Misconfigured hooks / DOMPurify failure must not leave active markup.
-    return raw.replace(/<[^>]*>?/g, '');
+    return stripTagsFallback(raw);
   }
+}
+
+/**
+ * Strip markup when DOMPurify is unavailable.
+ * Index-scan (not a regex replace) so nested leftovers like `<scr<script>ipt>`
+ * and unterminated tags cannot survive, without CodeQL incomplete-sanitizer hits.
+ */
+function stripTagsFallback(raw: string): string {
+  let out = '';
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i];
+    if (ch !== '<') {
+      out += ch;
+      continue;
+    }
+    const end = raw.indexOf('>', i + 1);
+    if (end === -1) {
+      // Unterminated tag: drop the rest (no active `<` may survive).
+      break;
+    }
+    i = end;
+  }
+  return out;
 }
 
 /** Strip tags for list / search plaintext projection. Prefer DOM textContent. */

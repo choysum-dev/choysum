@@ -218,7 +218,8 @@ export function formatChoyMonetary(
       trimmed &&
       /e/i.test(trimmed) &&
       Number.isFinite(numeric) &&
-      /^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i.test(trimmed)
+      // Unambiguous decimal/exponent form (avoid `\d+\.?\d*` ReDoS backtracking).
+      /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(trimmed)
     ) {
       // Require a successful literal expansion so forms like `9007199254740993.e0`
       // (expandable) and unexpandable e-text cannot pass via String(numeric)===itself.

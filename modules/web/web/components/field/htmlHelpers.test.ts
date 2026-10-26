@@ -139,7 +139,19 @@ describe('htmlHelpers', () => {
       value: {
         createElement: () => ({
           set innerHTML(html: string) {
-            stored = String(html).replace(/<[^>]+>/g, '');
+            // Test stub: project markup to text without a regex sanitizer.
+            const src = String(html);
+            let out = '';
+            for (let i = 0; i < src.length; i++) {
+              if (src[i] === '<') {
+                const end = src.indexOf('>', i + 1);
+                if (end === -1) break;
+                i = end;
+                continue;
+              }
+              out += src[i];
+            }
+            stored = out;
           },
           get textContent() {
             return stored;

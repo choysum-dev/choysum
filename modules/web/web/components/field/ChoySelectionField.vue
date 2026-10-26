@@ -42,6 +42,7 @@ SPDX-License-Identifier: Apache-2.0
               :disabled="disabled || optionsLoading"
               :aria-describedby="describedBy || undefined"
               :aria-invalid="invalid ? 'true' : undefined"
+              v-bind="triggerSelectProps"
             >
               <span
                 class="min-w-0 flex-1 truncate text-start"
@@ -188,6 +189,18 @@ const props = withDefaults(
 );
 
 const effectivePlaceholder = computed(() => props.placeholder || _t('Please select...'));
+
+/** Forward legacy `selectProps` (e.g. data-testid) onto the Combobox trigger. */
+const triggerSelectProps = computed(() => {
+  const raw = props.selectProps || {};
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (value === undefined) continue;
+    // Vue attribute names: keep data-*/aria-* as-is; leave others untouched.
+    out[key] = value;
+  }
+  return out;
+});
 
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
 

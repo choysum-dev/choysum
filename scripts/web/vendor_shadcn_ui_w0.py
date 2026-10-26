@@ -134,13 +134,10 @@ def rewrite_lucide_block(text: str) -> str:
 
 def rewrite_file(path: Path, dest_file: Path, family: str) -> str:
     text = path.read_text(encoding="utf-8")
-    # Depth from dest_file to web/: vendor/ui/<family>/file → 4 levels to web/
-    # modules/web/web/components/vendor/ui/<family>/X → lib is web/lib → depth 5 from family file
-    rel_to_ui = dest_file.relative_to(DEST)
-    depth_to_web = 2 + len(rel_to_ui.parts)  # components/vendor + ui parts... wait
     # dest: modules/web/web/components/vendor/ui/<family>/File.vue
     # lib:  modules/web/web/lib/utils.ts
     # from File.vue: ../../../../lib/utils (ui→vendor→components→web) = 4
+    rel_to_ui = dest_file.relative_to(DEST)
     depth = 3 + (len(rel_to_ui.parts) - 1)  # family file: parts=(family,file) → depth 4
 
     text = text.replace("@/lib/utils", rel_utils(depth))

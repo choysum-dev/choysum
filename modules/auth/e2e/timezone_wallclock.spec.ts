@@ -30,29 +30,31 @@ async function setUserTimezoneViaPreferences(p: Page, iana: string) {
   const dialog = p.locator('.choy-preferences-dialog');
   await expect(dialog).toBeVisible({ timeout: 15_000 });
 
+  // ChoySelectionField is a Combobox trigger (not a native <select>).
+  const trigger = dialog.locator('[data-testid="preferences-timezone"]');
+  await expect(trigger).toBeVisible({ timeout: 15_000 });
+  await trigger.click();
+  const option = p.getByRole('option', { name: new RegExp(`^${iana.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) });
+  // Fall back to substring match when the option label differs from the IANA value.
+  const optionLoose = p.getByRole('option', { name: iana });
+  if (await option.count()) {
+    await option.first().click();
+  } else {
+    await expect(optionLoose.first()).toBeVisible({ timeout: 10_000 });
+    await optionLoose.first().click();
+  }
   await expect
     .poll(
       async () =>
-        p.evaluate(async (want: string) => {
-          const select = document.querySelector(
-            '.choy-preferences-dialog [data-testid="preferences-timezone"]'
-          ) as HTMLSelectElement | null;
-          if (!select) return false;
-          const values = Array.from(select.options).map(opt => String(opt.value || ''));
-          if (!values.includes(want)) return false;
-          if (select.value !== want) {
-            select.value = want;
-            select.dispatchEvent(new Event('input', { bubbles: true }));
-            select.dispatchEvent(new Event('change', { bubbles: true }));
-          }
-          // Let Vue flush watchers that may reset the draft before declaring success.
-          await new Promise(resolve => setTimeout(resolve, 0));
-          if (select.value !== want) return false;
-          // Confirm the draft settles across a later tick before Save.
-          await new Promise(resolve => setTimeout(resolve, 50));
-          return select.value === want;
+        p.evaluate(want => {
+          const el = document.querySelector(
+            '.choy-preferences-dialog [data-testid="preferences-timezone"]',
+          ) as HTMLElement | null;
+          if (!el) return false;
+          const text = String(el.textContent || '').trim();
+          return text === want || text.includes(want);
         }, iana),
-      { timeout: 15_000 }
+      { timeout: 15_000 },
     )
     .toBe(true);
 

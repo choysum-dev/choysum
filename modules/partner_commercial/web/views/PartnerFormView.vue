@@ -102,8 +102,9 @@ export default defineComponent({
     ChoyBadge,
     ChoyButton,
     ChoyTab,
-    ChoyOneToManyField,
-    ChoyOneToManyKanbanField,
+    // Generic SFCs are not Options-API component-typed; cast for registration.
+    ChoyOneToManyField: ChoyOneToManyField as any,
+    ChoyOneToManyKanbanField: ChoyOneToManyKanbanField as any,
     PartnerIdentifierFormView,
   },
   /**

@@ -300,11 +300,13 @@ defineOptions({ name: 'ChoyOneToManyKanbanField', inheritAttrs: false });
 type IsAny<TA> = 0 extends 1 & TA ? true : false;
 type DialogMode = 'create' | 'edit' | 'display';
 /** One O2M row in the kanban board / `#card` slot (element of relation array `V`). */
-type KanbanRow = V extends readonly (infer U)[] | (infer U)[]
-  ? U
-  : IsAny<V> extends true
-    ? any
-    : Record<string, unknown>;
+type KanbanRow = [V] extends [never]
+  ? Record<string, unknown>
+  : NonNullable<V> extends readonly (infer U)[] | (infer U)[]
+    ? U
+    : IsAny<V> extends true
+      ? any
+      : Record<string, unknown>;
 const FORM_CHILD_SUBMIT_API_REGISTER_KEY = 'form-child-submit-api-register';
 const FORM_EMBEDDED_CONTEXT_KEY = 'form-embedded-context';
 
