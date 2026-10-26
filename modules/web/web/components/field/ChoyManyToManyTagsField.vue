@@ -399,7 +399,7 @@ function defineHiddenRowKey(obj: any, key: string, val?: any) {
       Object.defineProperty(obj, key, {
         value: String(val ?? Math.random().toString(36).slice(2)),
         enumerable: false,
-        configurable: false,
+        configurable: true,
         writable: true,
       });
       return;
@@ -410,7 +410,7 @@ function defineHiddenRowKey(obj: any, key: string, val?: any) {
       Object.defineProperty(obj, key, {
         value: String(v ?? Math.random().toString(36).slice(2)),
         enumerable: false,
-        configurable: false,
+        configurable: true,
         writable: true,
       });
     }
@@ -433,7 +433,10 @@ function upsertHydrated(row: any) {
 }
 
 const selectedIds = computed<string[]>(() => {
-  return (getItems() || []).map(extractId).filter(Boolean).map(String);
+  return (getItems() || [])
+    .map(extractId)
+    .filter((id): id is string => typeof id === 'string' && id !== '')
+    .map(String);
 });
 
 /** Include selected ids so RelationCombobox does not reuse a page that still lists picks. */
@@ -548,6 +551,7 @@ function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+/** Escapes label text and wraps keyword hits for the suggestion slot. */
 function highlightSuggestion(label: string): string {
   const raw = String(label || '');
   const keyword = String(searchKeyword.value || '').trim();

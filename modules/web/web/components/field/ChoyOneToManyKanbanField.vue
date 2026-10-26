@@ -441,7 +441,9 @@ const kanbanReorder = useListHandleReorder({
   enabled: sortableEnabled,
   handleField: props.handleField,
   onReorder: rows => {
-    (binding.fieldRef() as { value: any }).value = rows.slice();
+    const ref = binding.fieldRef?.() as { value: any } | undefined;
+    if (!ref) return;
+    ref.value = rows.slice();
   },
 });
 

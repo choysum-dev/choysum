@@ -435,6 +435,34 @@ func TestScheduleLeaseConflictRetryExhaustedClearsBudget(t *testing.T) {
 	srv.hotreload.clearLeaseRetry(file) // nil-map / missing key no-op path after delete
 }
 
+
+func TestScheduleLeaseConflictRetryCapsBackoffShift(t *testing.T) {
+	prevBase, prevMax := hotreloadLeaseRetryBase, hotreloadLeaseRetryMax
+	hotreloadLeaseRetryBase = 5 * time.Millisecond
+	hotreloadLeaseRetryMax = 8
+	t.Cleanup(func() {
+		hotreloadLeaseRetryBase = prevBase
+		hotreloadLeaseRetryMax = prevMax
+	})
+
+	runtimeScope := newRichServerTestScope(t)
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{queue: make(chan string, 8)},
+	}
+	file := filepath.Join(t.TempDir(), "shift.ts")
+	// Drive attempt high enough that shift clamps at 4 (attempt-1 > 4).
+	for i := 0; i < 6; i++ {
+		srv.scheduleLeaseConflictRetry(file)
+	}
+	// Drain at least one enqueue to prove scheduling still works under the clamp.
+	select {
+	case <-srv.hotreloadQueue():
+	case <-time.After(800 * time.Millisecond):
+		t.Fatal("timed out waiting for clamped-backoff retry enqueue")
+	}
+}
+
 func TestScheduleLeaseConflictRetryNoopWhenDisabled(t *testing.T) {
 	prevBase, prevMax := hotreloadLeaseRetryBase, hotreloadLeaseRetryMax
 	hotreloadLeaseRetryBase = 0

@@ -368,3 +368,43 @@ test('buildUpdatePayload omits properties when the column is unchanged', () => {
   });
   expect(payload.Properties).toBeUndefined();
 });
+
+test('buildUpdatePayload treats jsonobject via resolvedColumnType as whole-map replace', () => {
+  const payload = buildUpdatePayload(
+    { Meta: { a: 1, b: 2 } },
+    { Meta: { a: 9 } },
+    { Meta: { resolvedColumnType: 'jsonobject' } },
+  );
+  expect(payload.Meta).toEqual({ a: 9, b: 2 });
+});
+
+test('buildUpdatePayload clears whole-map column when current is null', () => {
+  const payload = buildUpdatePayload(
+    { Properties: { a: 1 } },
+    { Properties: null },
+    { Properties: { type: 'properties' } },
+  );
+  expect(payload.Properties).toBeNull();
+});
+
+test('buildUpdatePayload m2m link update compares Decimal-like values', () => {
+  const payload = buildUpdatePayload(
+    { Tags: [{ Id: 't1', Weight: { $bigdecimal: '1.0' } }] },
+    { Tags: [{ Id: 't1', Weight: { $bigdecimal: '2.0' }, Name: 'x' }] },
+    { Tags: { relation: 'ManyToMany' } },
+  );
+  expect(payload.Tags).toEqual({
+    update: [{ Id: 't1', Weight: { $bigdecimal: '2.0' }, Name: 'x' }],
+  });
+});
+
+test('buildUpdatePayload strips __choysum_plain from m2m update patches', () => {
+  const payload = buildUpdatePayload(
+    { Tags: [{ Id: 't1', Name: 'old' }] },
+    { Tags: [{ Id: 't1', Name: 'new', __choysum_plain: true }] },
+    { Tags: { type: 'ManyToMany' } },
+  );
+  expect(payload.Tags).toEqual({
+    update: [{ Id: 't1', Name: 'new' }],
+  });
+});

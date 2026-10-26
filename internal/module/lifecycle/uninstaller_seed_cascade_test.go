@@ -537,3 +537,83 @@ func TestHardDeleteSeedRowSavepointRollbackOnError(t *testing.T) {
 		t.Fatalf("tx after savepoint rollback: %v", err)
 	}
 }
+
+type namedDialector struct {
+	gorm.Dialector
+	name string
+}
+
+func (d namedDialector) Name() string { return d.name }
+
+func TestDialectNeedsDeleteSavepointNamed(t *testing.T) {
+	t.Parallel()
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	orig := db.Dialector
+	t.Cleanup(func() { db.Dialector = orig })
+
+	db.Dialector = namedDialector{Dialector: orig, name: "postgres"}
+	if !dialectNeedsDeleteSavepoint(db) {
+		t.Fatal("postgres dialector must need savepoints")
+	}
+	db.Dialector = namedDialector{Dialector: orig, name: "mysql"}
+	if !dialectNeedsDeleteSavepoint(db) {
+		t.Fatal("mysql dialector must need savepoints")
+	}
+	db.Dialector = namedDialector{Dialector: orig, name: "sqlite"}
+	if dialectNeedsDeleteSavepoint(db) {
+		t.Fatal("sqlite named dialector must not need savepoints")
+	}
+}
+
+func TestReleaseSeedDeleteSavepointDialectBranches(t *testing.T) {
+	t.Parallel()
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	orig := db.Dialector
+
+	releaseWithName := func(name, sp string) {
+		t.Helper()
+		tx := db.Begin()
+		if tx.Error != nil {
+			t.Fatalf("begin (%s): %v", name, tx.Error)
+		}
+		defer func() { _ = tx.Rollback() }()
+		tx.Dialector = orig
+		if err := tx.SavePoint(sp).Error; err != nil {
+			t.Fatalf("savepoint (%s): %v", name, err)
+		}
+		tx.Dialector = namedDialector{Dialector: orig, name: name}
+		if err := releaseSeedDeleteSavepoint(tx, sp); err != nil {
+			t.Fatalf("release (%s): %v", name, err)
+		}
+	}
+
+	releaseWithName("postgres", "sp_rel_pg")
+	releaseWithName("mysql", "sp_rel_my")
+	releaseWithName("custom", "sp_rel_cu")
+}
+
+func TestHardDeleteSeedRowSavepointCreateFailure(t *testing.T) {
+	t.Parallel()
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("db.DB(): %v", err)
+	}
+	if err := sqlDB.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	err = hardDeleteSeedRow(db, seedRowSnapshot{TableName: "demo_x", ResID: "r1"}, true, 9)
+	if err == nil {
+		t.Fatal("expected savepoint/delete failure on closed db")
+	}
+}
+
+func TestDialectNeedsDeleteSavepointNilDB(t *testing.T) {
+	t.Parallel()
+	if dialectNeedsDeleteSavepoint(nil) {
+		t.Fatal("nil db must be false")
+	}
+}

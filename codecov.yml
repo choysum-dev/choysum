@@ -34,3 +34,7 @@ ignore:
   - "modules/*/web/components/vendor/ui/**/*.vue"
   # Frontend unit stubs (Codemirror / TipTap stand-ins), not product code.
   - "internal/testing/frontend/testdata/stubs/**"
+  # Sandbox kitchen-sink view shells: page_mount smoke covers wiring; fill/clear
+  # helpers need a full form host and are demo-only.
+  - "modules/sandbox/web/views/SandboxLinesVirtTools.vue"
+  - "modules/sandbox/web/views/SandboxRecordChartView.vue"

@@ -153,3 +153,57 @@ func TestGzipHandlerSkipsDocumentPayloadPaths(t *testing.T) {
 		t.Fatalf("body = %q, want png!", recorder.Body.String())
 	}
 }
+
+func TestGzipResponseWriterWriteHeaderIsIdempotent(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	buffer := bytes.NewBuffer(nil)
+	writer := &gzipResponseWriter{Writer: buffer, ResponseWriter: recorder, statusCode: http.StatusOK}
+	writer.Header().Set("Content-Length", "12")
+
+	writer.WriteHeader(http.StatusCreated)
+	writer.WriteHeader(http.StatusAccepted) // second call must no-op
+	if writer.statusCode != http.StatusCreated {
+		t.Fatalf("statusCode = %d, want %d after second WriteHeader", writer.statusCode, http.StatusCreated)
+	}
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("recorder status = %d, want %d", recorder.Code, http.StatusCreated)
+	}
+	if got := writer.Header().Get("Content-Length"); got != "" {
+		t.Fatalf("Content-Length = %q, want empty after gzip WriteHeader", got)
+	}
+}
+
+func TestGzipHandlerSkipsDocumentUploadPaths(t *testing.T) {
+	handler := NewGzipHandler(testHandlerScope())
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPut, "/_document/uploads/up_1", nil)
+	request.Header.Set("Accept-Encoding", "gzip")
+
+	handler.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", "3")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("bin"))
+	})).ServeHTTP(recorder, request)
+
+	if recorder.Header().Get("Content-Encoding") != "" {
+		t.Fatalf("unexpected Content-Encoding for upload path: %q", recorder.Header().Get("Content-Encoding"))
+	}
+	if recorder.Body.String() != "bin" {
+		t.Fatalf("body = %q, want bin", recorder.Body.String())
+	}
+}
+
+func TestGzipResponseWriterWriteAutoWriteHeader(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	buffer := bytes.NewBuffer(nil)
+	writer := &gzipResponseWriter{Writer: buffer, ResponseWriter: recorder, statusCode: http.StatusOK}
+	if _, err := writer.Write([]byte("auto")); err != nil {
+		t.Fatalf("Write() error: %v", err)
+	}
+	if !writer.wroteHeader || writer.statusCode != http.StatusOK {
+		t.Fatalf("wroteHeader=%v status=%d, want auto 200", writer.wroteHeader, writer.statusCode)
+	}
+	if buffer.String() != "auto" {
+		t.Fatalf("buffer = %q, want auto", buffer.String())
+	}
+}
