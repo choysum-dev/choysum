@@ -24,9 +24,11 @@ runs:
       uses: actions/cache@v6
       with:
         path: .choysum/tmp/cli-testing/cache/pkg
-        key: ${{ runner.os }}-cli-pkg-v6-${{ hashFiles('go.mod', 'go.sum', 'modules/*/package.json', 'modules/tsconfig.json') }}
+        # v7: invalidate poisoned v6 entries that could miss newly pinned types
+        # (e.g. @codemirror/state|lint) while still matching the same hashFiles key.
+        key: ${{ runner.os }}-cli-pkg-v7-${{ hashFiles('go.mod', 'go.sum', 'modules/*/package.json', 'modules/tsconfig.json') }}
         restore-keys: |
-          ${{ runner.os }}-cli-pkg-v6-
+          ${{ runner.os }}-cli-pkg-v7-
 
     - name: Link ~/.choysum/pkg to CLI testing pkg cache
       shell: bash

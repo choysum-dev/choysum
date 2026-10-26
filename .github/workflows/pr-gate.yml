@@ -353,7 +353,10 @@ jobs:
 
       - name: Run module typecheck
         run: |
+          # type-fetch here: build-cli warm cannot refresh an already-published
+          # Actions cache key, so shards must fill any missing types locally.
           CHOYSUM_BIN="$(pwd)/.choysum/tmp/choysum"
+          "$CHOYSUM_BIN" type-fetch ${{ matrix.module }}
           "$CHOYSUM_BIN" test typecheck ${{ matrix.module }}
 
   typecheck-all:
