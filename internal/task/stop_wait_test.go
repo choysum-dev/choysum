@@ -93,3 +93,67 @@ func TestDispatcherStop_TimesOutWaitingForInFlightWork(t *testing.T) {
 		t.Fatalf("expected timeout WARN, got logs: %s", buf.String())
 	}
 }
+
+func TestSchedulerStop_NilReceiver(t *testing.T) {
+	var s *Scheduler
+	s.Stop()
+}
+
+func TestSchedulerStop_TimesOutWaitingForInFlightWork(t *testing.T) {
+	prev := stopWaitTimeout
+	stopWaitTimeout = 40 * time.Millisecond
+	t.Cleanup(func() { stopWaitTimeout = prev })
+
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	scheduler := NewSchedulerWithRuntime(
+		&testScope{ctx: context.Background(), logger: logger, cfg: &config.Config{Task: config.NewDefaultTaskConfig()}},
+		taskcontract.Runtime{
+			Queue: cancelAwareTaskQueue{},
+			Store: cancelAwareScheduleStore{},
+		},
+	)
+	scheduler.interval = time.Hour
+	scheduler.Start()
+	scheduler.wg.Add(1)
+
+	start := time.Now()
+	scheduler.Stop()
+	elapsed := time.Since(start)
+	if elapsed < 30*time.Millisecond {
+		t.Fatalf("Stop returned too quickly (%v); expected stopWaitTimeout", elapsed)
+	}
+	if elapsed > time.Second {
+		t.Fatalf("Stop hung too long: %v", elapsed)
+	}
+	if !strings.Contains(buf.String(), "task scheduler stop timed out waiting for in-flight work") {
+		t.Fatalf("expected timeout WARN, got logs: %s", buf.String())
+	}
+}
+
+func TestGarbageCollectorStop_TimesOutWaitingForInFlightWork(t *testing.T) {
+	prev := stopWaitTimeout
+	stopWaitTimeout = 40 * time.Millisecond
+	t.Cleanup(func() { stopWaitTimeout = prev })
+
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	cfg := &config.Config{Task: config.NewDefaultTaskConfig()}
+	cfg.Task.Retention.GCIntervalMs = 3600000
+	gc := NewGarbageCollector(&testScope{ctx: context.Background(), logger: logger, cfg: cfg})
+	gc.Start()
+	gc.wg.Add(1)
+
+	start := time.Now()
+	gc.Stop()
+	elapsed := time.Since(start)
+	if elapsed < 30*time.Millisecond {
+		t.Fatalf("Stop returned too quickly (%v); expected stopWaitTimeout", elapsed)
+	}
+	if elapsed > time.Second {
+		t.Fatalf("Stop hung too long: %v", elapsed)
+	}
+	if !strings.Contains(buf.String(), "task garbage collector stop timed out waiting for in-flight work") {
+		t.Fatalf("expected timeout WARN, got logs: %s", buf.String())
+	}
+}
