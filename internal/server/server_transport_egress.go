@@ -57,8 +57,14 @@ func (s *GRPCWebServer) stopGRPCTransport(reload bool) {
 			select {
 			case <-done:
 			case <-time.After(2 * time.Second):
-				s.server.Stop()
-				<-done
+				// Stop in a goroutine: grpc-go may hold server.mu across handlersWG.Wait
+				// inside GracefulStop, so a synchronous Stop can block forever.
+				go s.server.Stop()
+				select {
+				case <-done:
+				case <-time.After(2 * time.Second):
+					// Hung handlers / GracefulStop mutex; abandon waiting so process exit continues.
+				}
 			}
 		}
 		s.server = nil

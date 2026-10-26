@@ -55,31 +55,54 @@ func TestPool_NewPoolAndStartStop(t *testing.T) {
 	}
 }
 
-type slowCloseEngine struct {
-	delay time.Duration
+type concurrentCloseEngine struct {
+	entered  chan struct{}
+	release  chan struct{}
+	active   *int32
+	maxActive *int32
+	completed *int32
 }
 
-func (e *slowCloseEngine) Load(_ []*jsengine.JsScript) error { return nil }
+func (e *concurrentCloseEngine) Load(_ []*jsengine.JsScript) error { return nil }
 
-func (e *slowCloseEngine) Execute(_ context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+func (e *concurrentCloseEngine) Execute(_ context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
 	return &jsengine.JsResponse{Id: req.Id, Context: map[string]interface{}{}}, nil
 }
 
-func (e *slowCloseEngine) Close() error {
-	time.Sleep(e.delay)
+func (e *concurrentCloseEngine) Close() error {
+	atomic.AddInt32(e.completed, 1)
+	cur := atomic.AddInt32(e.active, 1)
+	for {
+		prev := atomic.LoadInt32(e.maxActive)
+		if cur <= prev || atomic.CompareAndSwapInt32(e.maxActive, prev, cur) {
+			break
+		}
+	}
+	select {
+	case e.entered <- struct{}{}:
+	default:
+	}
+	<-e.release
+	atomic.AddInt32(e.active, -1)
 	return nil
 }
 
-// TestPool_StopWaitsForThreadCloseInParallel ensures pool stop wall time is closer
-// to one Close duration than N serial Closes when multiple threads are warm.
+// TestPool_StopWaitsForThreadCloseInParallel ensures pool stop closes warm threads
+// concurrently (all Closes overlap) rather than serially.
 func TestPool_StopWaitsForThreadCloseInParallel(t *testing.T) {
-	const (
-		threads = 4
-		delay   = 80 * time.Millisecond
-	)
+	const threads = 4
+	var active, maxActive, completed int32
+	entered := make(chan struct{}, threads)
+	release := make(chan struct{})
 	exec := &JsExecutor{
 		engineFactory: func() (JsEngine, error) {
-			return &slowCloseEngine{delay: delay}, nil
+			return &concurrentCloseEngine{
+				entered:   entered,
+				release:   release,
+				active:    &active,
+				maxActive: &maxActive,
+				completed: &completed,
+			}, nil
 		},
 		options: &JsExecutorOption{
 			minPoolSize: threads,
@@ -92,18 +115,33 @@ func TestPool_StopWaitsForThreadCloseInParallel(t *testing.T) {
 		t.Fatalf("pool start failed: %v", err)
 	}
 
-	start := time.Now()
-	if err := p.stop(); err != nil {
-		t.Fatalf("pool stop failed: %v", err)
-	}
-	elapsed := time.Since(start)
+	stopErr := make(chan error, 1)
+	go func() {
+		stopErr <- p.stop()
+	}()
 
-	// Serial would be ~threads*delay; parallel should finish near one delay.
-	if elapsed >= time.Duration(threads)*delay-20*time.Millisecond {
-		t.Fatalf("pool stop took %v, want parallel close much faster than serial %v", elapsed, time.Duration(threads)*delay)
+	for i := 0; i < threads; i++ {
+		select {
+		case <-entered:
+		case <-time.After(2 * time.Second):
+			t.Fatalf("timed out waiting for Close entry %d/%d", i+1, threads)
+		}
 	}
-	if elapsed < delay/2 {
-		t.Fatalf("pool stop took %v, expected at least roughly one close delay (%v)", elapsed, delay)
+	if got := atomic.LoadInt32(&maxActive); got < threads {
+		t.Fatalf("max concurrent Close calls = %d, want %d", got, threads)
+	}
+	close(release)
+
+	select {
+	case err := <-stopErr:
+		if err != nil {
+			t.Fatalf("pool stop failed: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("pool stop did not return after releasing Close calls")
+	}
+	if got := atomic.LoadInt32(&completed); got != threads {
+		t.Fatalf("completed Close calls = %d, want %d", got, threads)
 	}
 }
 
