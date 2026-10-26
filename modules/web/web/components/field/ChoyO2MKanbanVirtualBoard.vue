@@ -165,14 +165,24 @@ onBeforeUnmount(() => {
   resizeObserver = null;
 });
 
+function scheduleVirtualMeasure(): void {
+  if (!virtualized.value) return;
+  virtualizer.value.measure();
+  void Promise.resolve().then(() => {
+    if (virtualized.value) virtualizer.value.measure();
+  });
+}
+
 watch(
   () => [props.items.length, cols.value, virtualized.value] as const,
   () => {
-    if (virtualized.value) {
-      virtualizer.value.measure();
-    }
+    scheduleVirtualMeasure();
   },
 );
+
+watch(virtualized, (on) => {
+  if (on) scheduleVirtualMeasure();
+});
 
 defineExpose({
   measureElement,

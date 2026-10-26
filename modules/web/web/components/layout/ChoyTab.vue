@@ -80,6 +80,16 @@ onMounted(() => {
   ownsRegistration.value = tryRegister(props.value);
 });
 
+// forceMount panes start as `hidden`; notify layout consumers when they become visible
+// so embedded virtual tables/boards remasure scrollports (ResizeObserver alone can miss).
+watch(isActive, (active, wasActive) => {
+  if (!props.forceMount || !active || wasActive) return;
+  void Promise.resolve().then(() => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new Event('resize'));
+  });
+});
+
 // Retry when the shared registry changes: a conflicting tab may release the
 // target value (refused register or collided rename) without props.value changing.
 watch(

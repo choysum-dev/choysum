@@ -209,7 +209,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts" generic="T extends Record<string, unknown>">
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import {
   FlexRender,
   getCoreRowModel,
@@ -548,6 +548,72 @@ const virtualizer = useVirtualizer({
   overscan: 8,
 });
 
+/**
+ * Embedded O2M/M2M tables often flip virtualize on after layout (capped height) or
+ * leave `display:none` force-mounted tabs. Remeasure after paint so the first
+ * window is not empty until the user scrolls.
+ */
+function scheduleVirtualMeasure(): void {
+  if (!isVirtualized.value) return;
+  dataTableMaybeMeasure(true, virtualizer.value);
+  void nextTick(() => {
+    dataTableMaybeMeasure(isVirtualized.value, virtualizer.value);
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => {
+        dataTableMaybeMeasure(isVirtualized.value, virtualizer.value);
+      });
+    }
+  });
+}
+
+let scrollParentObserver: ResizeObserver | null = null;
+
+function bindScrollParentObserver(el: HTMLElement | null): void {
+  scrollParentObserver?.disconnect();
+  scrollParentObserver = null;
+  if (!el || typeof ResizeObserver === 'undefined') return;
+  scrollParentObserver = new ResizeObserver(() => {
+    if (isVirtualized.value) {
+      dataTableMaybeMeasure(true, virtualizer.value);
+    }
+  });
+  scrollParentObserver.observe(el);
+}
+
+watch(parentRef, (el) => {
+  bindScrollParentObserver(el);
+  if (el && isVirtualized.value) {
+    scheduleVirtualMeasure();
+  }
+});
+
+watch(isVirtualized, (on) => {
+  if (on) {
+    scheduleVirtualMeasure();
+  }
+});
+
+watch(
+  () => props.height,
+  () => {
+    if (isVirtualized.value) {
+      scheduleVirtualMeasure();
+    }
+  },
+);
+
+onMounted(() => {
+  bindScrollParentObserver(parentRef.value);
+  if (isVirtualized.value) {
+    scheduleVirtualMeasure();
+  }
+});
+
+onBeforeUnmount(() => {
+  scrollParentObserver?.disconnect();
+  scrollParentObserver = null;
+});
+
 // Cached heights win over `estimateSize`; drop them when the estimate changes.
 watch(
   () => props.estimateSize,
@@ -564,7 +630,9 @@ watch(
     if (parentRef.value) {
       parentRef.value.scrollTop = 0;
     }
-    dataTableMaybeMeasure(isVirtualized.value, virtualizer.value);
+    if (isVirtualized.value) {
+      scheduleVirtualMeasure();
+    }
   },
 );
 
