@@ -51,13 +51,15 @@ import { type SupportedLocale } from '../../stores/i18nStore/types';
 
 defineOptions({ name: 'ChoyShellLocaleMenu' });
 
-let tLayout: (key: string) => string = (key) => key;
-try {
-  const i18n = useI18n({ useScope: 'global' });
-  tLayout = (key) => String(i18n.t(key));
-} catch {
-  tLayout = (key) => key;
+function resolveLayoutT(): (key: string) => string {
+  try {
+    const i18n = useI18n({ useScope: 'global' });
+    return (key) => String(i18n.t(key));
+  } catch {
+    return (key) => key;
+  }
 }
+const tLayout = resolveLayoutT();
 
 let i18nStore: ReturnType<typeof useI18nStore> | null = null;
 try {
