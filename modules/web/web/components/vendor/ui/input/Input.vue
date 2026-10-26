@@ -45,10 +45,10 @@ function onInput(event: Event): void {
 <template>
   <input
     data-slot="input"
-    :type="type"
     :class="classes"
     :value="modelValue"
     v-bind="$attrs"
+    :type="type"
     @input="onInput"
   />
 </template>

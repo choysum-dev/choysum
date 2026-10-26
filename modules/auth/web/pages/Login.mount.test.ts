@@ -66,6 +66,15 @@ test('Login.vue mounts under choysumMount and runs script setup', async () => {
   const { wrapper } = await mountLogin();
   expect(fieldInput(wrapper, '.login-username').exists()).toBe(true);
   expect(fieldInput(wrapper, '.login-password').exists()).toBe(true);
+  // choysum minimal DOM: no descendant selectors — walk from the field hosts.
+  const usernameHost = wrapper.find('.login-username').element as HTMLElement;
+  const passwordHost = wrapper.find('.login-password').element as HTMLElement;
+  const usernameField = usernameHost.querySelector('[data-slot=field]');
+  const passwordField = passwordHost.querySelector('[data-slot=field]');
+  expect(usernameField?.getAttribute('data-orientation')).toBe('vertical');
+  expect(passwordField?.getAttribute('data-orientation')).toBe('vertical');
+  const passwordInput = fieldInput(wrapper, '.login-password').element as HTMLInputElement;
+  expect(passwordInput.getAttribute('type') || passwordInput.type).toBe('password');
   // Required rules must not paint until blur or submit.
   expect(wrapper.text().includes('Enter username')).toBe(false);
   expect(wrapper.text().includes('Enter password')).toBe(false);
