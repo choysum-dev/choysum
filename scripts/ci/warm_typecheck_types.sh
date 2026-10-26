@@ -84,3 +84,16 @@ if [[ ! -s "$node_bridge" ]]; then
   exit 1
 fi
 echo "Node typeRoots bridge OK ($node_bridge)"
+
+# Spot-check packages that recently poisoned the shared pkg cache when absent.
+for needle in \
+  'esm.sh_@codemirror_state@' \
+  'esm.sh_@codemirror_lint@'
+do
+  if ! compgen -G "${types_dir}/${needle}*" > /dev/null; then
+    echo "error: missing type-fetch artifact matching ${needle}* under $types_dir" >&2
+    ls -la "$types_dir"/esm.sh_@codemirror_* 2>/dev/null || true
+    exit 1
+  fi
+done
+echo "CodeMirror type-fetch artifacts OK"

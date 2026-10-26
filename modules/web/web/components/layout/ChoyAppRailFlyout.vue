@@ -22,7 +22,7 @@ const props = defineProps<{
   /** App root: same item list as ChoySidebarNav. Nested nodes pass `mode="flat"`. */
   root: MenuItem
   labelOf: (item: MenuItem) => string
-  leafSelect: (item: MenuItem) => void
+  leafSelect?: (item: MenuItem) => void
   /**
    * Keep the rail flyout hover-intent alive on portaled nested SubContent
    * (DOM leave from L1 would otherwise close the menu before L2 is entered).
@@ -62,7 +62,7 @@ function onSubLeave() {
 }
 
 function onLeaf(item: MenuItem) {
-  props.leafSelect(item)
+  props.leafSelect?.(item)
 }
 </script>
 

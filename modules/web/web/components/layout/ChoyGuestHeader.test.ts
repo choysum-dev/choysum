@@ -62,10 +62,20 @@ describe('ChoyGuestHeader', () => {
     home.dispatchEvent(ctrlClick);
     await flushPromises();
     expect(homes).toEqual([]);
+    expect(ctrlClick.defaultPrevented).toBe(false);
 
-    home.click();
+    const plainClick = new Event('click', { bubbles: true, cancelable: true }) as MouseEvent;
+    Object.assign(plainClick, {
+      button: 0,
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      altKey: false,
+    });
+    home.dispatchEvent(plainClick);
     await flushPromises();
     expect(homes).toEqual([1]);
+    expect(plainClick.defaultPrevented).toBe(true);
     mounted.unmount();
   });
 });

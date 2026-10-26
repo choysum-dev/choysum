@@ -47,9 +47,14 @@ describe('ChoyPageTitleActions', () => {
     });
     await flushPromises();
     expect(mounted.q('.choy-page__title-actions')).not.toBeNull();
-    expect(mounted.q('[data-testid=title-io-menu]')).not.toBeNull();
-    expect(mounted.q('[data-testid=overflow-item]')).not.toBeNull();
-    expect(mounted.q('[data-testid=inline-action]')?.textContent).toBe('New');
+    const ioMenu = mounted.q('[data-testid=title-io-menu]') as HTMLElement | null;
+    expect(ioMenu).not.toBeNull();
+    expect(ioMenu!.querySelector('[data-testid=overflow-item]')).not.toBeNull();
+    const inline = mounted.q('[data-testid=inline-action]') as HTMLElement | null;
+    expect(inline?.textContent).toBe('New');
+    // Default slot stays beside the IO menu, not inside its overflow slot.
+    expect(inline?.parentElement === ioMenu).toBe(false);
+    expect(inline?.parentElement?.className || '').toContain('choy-page__title-actions');
     mounted.unmount();
   });
 });

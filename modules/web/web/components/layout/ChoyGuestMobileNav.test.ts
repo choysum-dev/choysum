@@ -114,16 +114,14 @@ describe('ChoyGuestMobileNav', () => {
     const trigger = mounted.q('[data-testid=choy-guest-mobile-nav]') as HTMLButtonElement;
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
 
-    // Drive the local open ref through the component instance (v-model stub is display-only).
-    const ss = mounted.setupState() as { open: { value: boolean } };
-    if (ss?.open) {
-      ss.open.value = true;
-      await nextTick();
-      expect(trigger.getAttribute('aria-expanded')).toBe('true');
-      expect(mounted.q('[data-testid=guest-mobile-popover]')?.getAttribute('data-open')).toBe(
-        'true',
-      );
-    }
+    // setupState unwraps refs; assign the boolean to open the panel.
+    const state = mounted.setupState() as { open?: boolean } | undefined;
+    expect(state).toBeTruthy();
+    expect(typeof state!.open).toBe('boolean');
+    state!.open = true;
+    await nextTick();
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    expect(mounted.q('[data-testid=guest-mobile-popover]')?.getAttribute('data-open')).toBe('true');
 
     const home = mounted.q('[data-testid=choy-guest-mobile-nav-home]') as HTMLElement;
     const ctrlClick = new Event('click', { bubbles: true, cancelable: true }) as MouseEvent;
@@ -137,15 +135,23 @@ describe('ChoyGuestMobileNav', () => {
     home.dispatchEvent(ctrlClick);
     await flushPromises();
     expect(selects).toEqual([]);
-    if (ss?.open) expect(ss.open.value).toBe(true);
+    expect(ctrlClick.defaultPrevented).toBe(false);
+    expect(state!.open).toBe(true);
 
-    home.click();
+    const plainClick = new Event('click', { bubbles: true, cancelable: true }) as MouseEvent;
+    Object.assign(plainClick, {
+      button: 0,
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      altKey: false,
+    });
+    home.dispatchEvent(plainClick);
     await flushPromises();
     expect(selects).toEqual(['home']);
-    if (ss?.open) {
-      expect(ss.open.value).toBe(false);
-      expect(trigger.getAttribute('aria-expanded')).toBe('false');
-    }
+    expect(plainClick.defaultPrevented).toBe(true);
+    expect(state!.open).toBe(false);
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
     mounted.unmount();
   });
 });
