@@ -36,6 +36,19 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
+### 2026-10-26 — Input `type` wins over `$attrs`
+
+- **Why kit (not Choy* only):** `Input` declares `type` (default `text`) with
+  `inheritAttrs: false`, then binds `v-bind="$attrs"` onto the native
+  `<input>`. When `:type` was listed *before* `$attrs`, a leftover attrs
+  `type` (e.g. fallthrough from field hosts) silently overrode the prop, so
+  callers that set `type="password"` could still render as plaintext. Product
+  CSS/`class` cannot fix attribute merge order.
+- **input/Input.vue:** bind `:type="type"` after `v-bind="$attrs"` so the
+  declared prop always wins.
+- **Do not regress:** keep `:type` after `$attrs`; do not bake product field
+  chrome into Input defaults.
+
 ### 2026-10-26 — Sonner richColors level tokens
 
 - **Why kit (not App-only CSS):** Toaster already binds `--normal-*` to theme
