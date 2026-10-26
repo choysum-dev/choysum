@@ -287,9 +287,9 @@ watch(useFlyout, (enabled) => {
                   <ChoyAppRailFlyout
                     :root="app"
                     :label-of="labelOf"
-                    :on-leaf-select="onFlyoutLeaf"
-                    :on-hover-enter="() => onFlyoutHoverEnter(app)"
-                    :on-hover-leave="() => onFlyoutHoverLeave(app)"
+                    :leaf-select="onFlyoutLeaf"
+                    :hover-enter="() => onFlyoutHoverEnter(app)"
+                    :hover-leave="() => onFlyoutHoverLeave(app)"
                   />
                 </DropdownMenuContent>
               </DropdownMenu>

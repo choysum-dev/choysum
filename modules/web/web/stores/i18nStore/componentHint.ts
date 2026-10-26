@@ -5,7 +5,7 @@
  * D11: component hint from Scope path heuristics (no DB field).
  * Examples:
  *   web/pages/Login@title → web/pages/Login
- *   web/components/layout/OHeader@brand → web/components/layout/OHeader
+ *   web/components/layout/ChoyAppHeader@brand → web/components/layout/ChoyAppHeader
  *   game.rescue → game.rescue
  */
 export function componentHintFromScope(scope: string): string {

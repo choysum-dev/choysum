@@ -22,13 +22,13 @@ const props = defineProps<{
   /** App root: same item list as ChoySidebarNav. Nested nodes pass `mode="flat"`. */
   root: MenuItem
   labelOf: (item: MenuItem) => string
-  onLeafSelect: (item: MenuItem) => void
+  leafSelect: (item: MenuItem) => void
   /**
    * Keep the rail flyout hover-intent alive on portaled nested SubContent
    * (DOM leave from L1 would otherwise close the menu before L2 is entered).
    */
-  onHoverEnter?: () => void
-  onHoverLeave?: () => void
+  hoverEnter?: () => void
+  hoverLeave?: () => void
   /** grouped = top-level app flyout; flat = submenu of a branch item's children. */
   mode?: 'grouped' | 'flat'
 }>()
@@ -52,6 +52,18 @@ function itemKey(item: MenuItem): string {
 function isBranch(item: MenuItem): boolean {
   return visibleMenuChildren(item).length > 0
 }
+
+function onSubEnter() {
+  props.hoverEnter?.()
+}
+
+function onSubLeave() {
+  props.hoverLeave?.()
+}
+
+function onLeaf(item: MenuItem) {
+  props.leafSelect(item)
+}
 </script>
 
 <template>
@@ -66,16 +78,16 @@ function isBranch(item: MenuItem): boolean {
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent
               data-testid="choy-shell-app-rail-flyout-sub-content"
-              @mouseenter="onHoverEnter?.()"
-              @mouseleave="onHoverLeave?.()"
+              @mouseenter="onSubEnter"
+              @mouseleave="onSubLeave"
             >
               <ChoyAppRailFlyout
                 :root="item"
                 mode="flat"
                 :label-of="labelOf"
-                :on-leaf-select="onLeafSelect"
-                :on-hover-enter="onHoverEnter"
-                :on-hover-leave="onHoverLeave"
+                :leaf-select="leafSelect"
+                :hover-enter="hoverEnter"
+                :hover-leave="hoverLeave"
               />
             </DropdownMenuSubContent>
           </DropdownMenuSub>
@@ -83,7 +95,7 @@ function isBranch(item: MenuItem): boolean {
             v-else
             :disabled="!!item.disabled"
             data-testid="choy-shell-app-rail-flyout-leaf"
-            @select="onLeafSelect(item)"
+            @select="onLeaf(item)"
           >
             {{ labelOf(item) }}
           </DropdownMenuItem>
@@ -99,16 +111,16 @@ function isBranch(item: MenuItem): boolean {
         </DropdownMenuSubTrigger>
         <DropdownMenuSubContent
           data-testid="choy-shell-app-rail-flyout-sub-content"
-          @mouseenter="onHoverEnter?.()"
-          @mouseleave="onHoverLeave?.()"
+          @mouseenter="onSubEnter"
+          @mouseleave="onSubLeave"
         >
           <ChoyAppRailFlyout
             :root="item"
             mode="flat"
             :label-of="labelOf"
-            :on-leaf-select="onLeafSelect"
-            :on-hover-enter="onHoverEnter"
-            :on-hover-leave="onHoverLeave"
+            :leaf-select="leafSelect"
+            :hover-enter="hoverEnter"
+            :hover-leave="hoverLeave"
           />
         </DropdownMenuSubContent>
       </DropdownMenuSub>
@@ -116,7 +128,7 @@ function isBranch(item: MenuItem): boolean {
         v-else
         :disabled="!!item.disabled"
         data-testid="choy-shell-app-rail-flyout-leaf"
-        @select="onLeafSelect(item)"
+        @select="onLeaf(item)"
       >
         {{ labelOf(item) }}
       </DropdownMenuItem>
