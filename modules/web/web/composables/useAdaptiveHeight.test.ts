@@ -158,6 +158,9 @@ describe('useAdaptiveHeight', () => {
     content.setAttribute('data-slot', 'dialog-content');
     content.getBoundingClientRect = () => rect({ top: 40, bottom: 440 });
     document.body.appendChild(content);
+    // Keep viewport fallback below the dialog-derived height (440 - 80 = 360).
+    const prev = window.innerHeight;
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 200 });
 
     const Host = defineComponent({
       setup() {
@@ -183,9 +186,10 @@ describe('useAdaptiveHeight', () => {
     });
     const m = mountApp(Host);
     await flushFrames();
-    expect(api!.height.value).toBeGreaterThanOrEqual(100);
+    expect(api!.height.value).toBe(360);
     m.unmount();
     content.remove();
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: prev });
     await nextTick();
   });
 
@@ -196,6 +200,9 @@ describe('useAdaptiveHeight', () => {
     content.className = 'custom-container';
     content.getBoundingClientRect = () => rect({ top: 20, bottom: 420 });
     document.body.appendChild(content);
+    // Keep viewport fallback below the dialog-derived height (420 - 60 = 360).
+    const prev = window.innerHeight;
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 200 });
 
     const Host = defineComponent({
       setup() {
@@ -224,13 +231,14 @@ describe('useAdaptiveHeight', () => {
     });
     const m = mountApp(Host);
     await flushFrames();
-    expect(api!.height.value).toBeGreaterThanOrEqual(80);
+    expect(api!.height.value).toBe(360);
     api!.recompute();
     api!.recompute();
     await flushFrames(2);
-    expect(api!.height.value).toBeGreaterThanOrEqual(80);
+    expect(api!.height.value).toBe(360);
     m.unmount();
     content.remove();
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: prev });
   });
 
   test('container mode without resolvable container falls back to viewport', async () => {

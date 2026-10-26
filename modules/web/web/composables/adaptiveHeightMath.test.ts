@@ -152,15 +152,36 @@ describe('adaptiveHeightMath', () => {
     const dialog = document.createElement('div');
     dialog.setAttribute('data-slot', 'dialog-content');
     dialog.getBoundingClientRect = () => rect({ top: 50, bottom: 450 });
+    // Inner wrap is the measured container; footer is a sibling under dialog-content.
+    const inner = document.createElement('div');
+    inner.getBoundingClientRect = () => rect({ top: 50, bottom: 450 });
     const footer = document.createElement('div');
     footer.setAttribute('data-slot', 'dialog-footer');
     footer.getBoundingClientRect = () => rect({ height: 40, top: 450, bottom: 490 });
+    // Nested dialog footer must not be subtracted for the outer container.
+    const nested = document.createElement('div');
+    nested.setAttribute('data-slot', 'dialog-content');
+    const nestedFooter = document.createElement('div');
+    nestedFooter.setAttribute('data-slot', 'dialog-footer');
+    nestedFooter.getBoundingClientRect = () => rect({ height: 99, top: 0, bottom: 99 });
+    nested.appendChild(nestedFooter);
+    dialog.appendChild(inner);
     dialog.appendChild(footer);
-    dialog.closest = ((sel: string) =>
-      sel === '[data-slot="dialog-content"]' ? dialog : null) as typeof dialog.closest;
+    dialog.appendChild(nested);
+
+    const stubClosest = (owner: HTMLElement, target: HTMLElement) => {
+      owner.closest = ((sel: string) =>
+        sel === '[data-slot="dialog-content"]' ? target : null) as typeof owner.closest;
+    };
+    stubClosest(dialog, dialog);
+    stubClosest(inner, dialog);
+    stubClosest(footer, dialog);
+    stubClosest(nested, nested);
+    stubClosest(nestedFooter, nested);
+
     expect(
-      computeContainerAdaptiveHeight(80, dialog, { minContainerHeight: 160, containerPadding: 8 }),
-    ).toBe(322); // 450 - 80 - 40 - 8
+      computeContainerAdaptiveHeight(80, inner, { minContainerHeight: 160, containerPadding: 8 }),
+    ).toBe(322); // 450 - 80 - 40 - 8 (outer footer only)
   });
 
   test('collectAdaptiveHeightObserveTargets covers shell, dialog, and none', () => {

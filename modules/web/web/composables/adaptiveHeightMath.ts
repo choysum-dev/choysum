@@ -25,6 +25,17 @@ export function closestChoyDialogContent(el: Element | null | undefined): HTMLEl
   return (el.closest(CHOY_DIALOG_CONTENT_SELECTOR) as HTMLElement | null) ?? null;
 }
 
+/**
+ * Footer owned by this dialog content (skips footers nested in an inner dialog-content).
+ */
+export function dialogFooterFor(dialog: HTMLElement): HTMLElement | null {
+  const candidates = Array.from(dialog.querySelectorAll(CHOY_DIALOG_FOOTER_SELECTOR));
+  for (const el of candidates) {
+    if (closestChoyDialogContent(el) === dialog) return el as HTMLElement;
+  }
+  return null;
+}
+
 /** Container mode: fill from wrap top to container bottom, minus dialog footer + pad. */
 export function computeContainerAdaptiveHeight(
   wrapRectTop: number,
@@ -33,7 +44,7 @@ export function computeContainerAdaptiveHeight(
 ): number {
   const crect = container.getBoundingClientRect();
   const dialog = closestChoyDialogContent(container) || container;
-  const footer = dialog.querySelector(CHOY_DIALOG_FOOTER_SELECTOR) as HTMLElement | null;
+  const footer = dialogFooterFor(dialog);
   const footerH = footer ? footer.getBoundingClientRect().height : 0;
   const pad = opts.containerPadding ?? 0;
   const h = Math.floor(crect.bottom - wrapRectTop - footerH - pad);
