@@ -59,6 +59,7 @@ export const Heading3 = icon('Heading3');
 export const FolderSync = icon('FolderSync');
 export const Funnel = icon('Funnel');
 export const GitBranch = icon('GitBranch');
+export const GripVertical = icon('GripVertical');
 export const History = icon('History');
 export const House = icon('House');
 export const Image = icon('Image');

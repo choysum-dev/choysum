@@ -779,44 +779,49 @@ msgctxt "web/components/field/ChoyNumberField"
 msgid "Value must be at most %s"
 msgstr ""
 
-#: web/components/field/ChoyOneToManyField.vue:11
+#: web/components/field/ChoyOneToManyField.vue:12
 msgctxt "web/components/field/ChoyOneToManyField"
 msgid "Actions"
 msgstr ""
 
-#: web/components/field/ChoyOneToManyField.vue:21
+#: web/components/field/ChoyOneToManyField.vue:22
 msgctxt "web/components/field/ChoyOneToManyField"
-msgid "Add row"
+msgid "Add a line…"
 msgstr ""
 
-#: web/components/field/ChoyOneToManyField.vue:13
+#: web/components/field/ChoyOneToManyField.vue:14
 msgctxt "web/components/field/ChoyOneToManyField"
 msgid "Delete"
 msgstr ""
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:301
+#: web/components/field/ChoyOneToManyKanbanField.vue:122
+msgctxt "web/components/field/ChoyOneToManyKanbanField"
+msgid "Add a line…"
+msgstr ""
+
+#: web/components/field/ChoyOneToManyKanbanField.vue:306
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Are you sure you want to delete this record? This action cannot be undone."
 msgstr ""
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:306
-#: web/components/field/ChoyOneToManyKanbanField.vue:74
+#: web/components/field/ChoyOneToManyKanbanField.vue:311
+#: web/components/field/ChoyOneToManyKanbanField.vue:80
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:302
+#: web/components/field/ChoyOneToManyKanbanField.vue:307
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Confirm delete"
 msgstr ""
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:25
-#: web/components/field/ChoyOneToManyKanbanField.vue:305
+#: web/components/field/ChoyOneToManyKanbanField.vue:26
+#: web/components/field/ChoyOneToManyKanbanField.vue:310
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Delete"
 msgstr ""
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:22
+#: web/components/field/ChoyOneToManyKanbanField.vue:23
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Edit"
 msgstr ""
@@ -824,11 +829,6 @@ msgstr ""
 #: web/components/field/ChoyOneToManyKanbanField.vue:125
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Edit record"
-msgstr ""
-
-#: web/components/field/ChoyOneToManyKanbanField.vue:122
-msgctxt "web/components/field/ChoyOneToManyKanbanField"
-msgid "New"
 msgstr ""
 
 #: web/components/field/ChoyOneToManyKanbanField.vue:124
@@ -841,17 +841,17 @@ msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "No data"
 msgstr ""
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:72
+#: web/components/field/ChoyOneToManyKanbanField.vue:77
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Provide a child record editor via the formView prop."
 msgstr ""
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:75
+#: web/components/field/ChoyOneToManyKanbanField.vue:81
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Save"
 msgstr ""
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:241
+#: web/components/field/ChoyOneToManyKanbanField.vue:246
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Untitled"
 msgstr ""

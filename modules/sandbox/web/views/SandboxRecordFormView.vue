@@ -234,7 +234,8 @@ SPDX-License-Identifier: Apache-2.0
       </ChoySection>
 
       <ChoyTabs v-model="linesTab" class="mt-8">
-        <ChoyTab :label="_t('Lines (table)')" value="lines-table">
+        <!-- force-mount: both panes register Lines.* so save returnFields stay complete. -->
+        <ChoyTab :label="_t('Lines (table)')" value="lines-table" force-mount>
           <ChoyOneToManyField :store="store" prop="Lines" hide-label>
             <ChoyVarcharField :store="store" prop="Lines.Name" />
             <ChoyIntField :store="store" prop="Lines.Quantity" />
@@ -242,17 +243,19 @@ SPDX-License-Identifier: Apache-2.0
             <ChoyIntField :store="store" prop="Lines.Sequence" />
           </ChoyOneToManyField>
         </ChoyTab>
-        <ChoyTab :label="_t('Lines (kanban)')" value="lines-kanban">
+        <ChoyTab :label="_t('Lines (kanban)')" value="lines-kanban" force-mount>
           <ChoyOneToManyKanbanField
             :store="store"
             prop="Lines"
             hide-label
+            card-title-field="Name"
+            card-subtitle-field=""
+            :fields="['Quantity', 'State']"
             :default-record="defaultLineRecord"
             :form-view="SandboxLineFormView"
             :create-dialog-title="_t('New Line')"
             :edit-dialog-title="_t('Edit Line')"
             :display-dialog-title="_t('View Line')"
-            :add-button-text="_t('Add Line')"
           >
             <template #card="{ item }">
               <div class="flex flex-col gap-1 text-xs">

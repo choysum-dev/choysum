@@ -95,6 +95,20 @@ function resolveStoreFieldMeta(store: { getFieldMeta?: (name: string) => Monetar
   return store.fieldsMetadata?.[fieldName];
 }
 
+/** Drop select-only / deny-write / declarative readonly keys from a write payload. */
+function omitReadonlyWriteFields(
+  values: Record<string, unknown>,
+  store: { getFieldMeta?: (name: string) => { isReadonly?: boolean } | undefined; fieldsMetadata?: Record<string, { isReadonly?: boolean }> }
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...values };
+  for (const key of Object.keys(out)) {
+    if (!key || key.startsWith('__')) continue;
+    const meta = resolveStoreFieldMeta(store as any, key) as { isReadonly?: boolean } | undefined;
+    if (meta?.isReadonly === true) delete out[key];
+  }
+  return out;
+}
+
 function setByPath(obj: any, path: string, value: any) {
   const parts = path.split('.').filter(Boolean);
   let cur = obj;
@@ -856,8 +870,9 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
       const returnFields = ensureRootId(pathsToFieldSelection(rawPaths));
 
       if (vm.mode === 'create') {
-        const createPayload = { ...(payload || {}) } as Record<string, unknown>;
+        let createPayload = { ...(payload || {}) } as Record<string, unknown>;
         await (store as any).ensureFieldsGet?.().catch(() => undefined);
+        createPayload = omitReadonlyWriteFields(createPayload, store as any);
         attachMonetaryCurrencyCompanions(createPayload, createPayload, name => resolveStoreFieldMeta(store as any, name), createPayload);
         const normalizedPayload = await normalizeAttachmentFieldsInPayload(
           store,
@@ -901,6 +916,8 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
         }
 
         const original = toRaw(vm.original);
+        // FieldsGet overlay must load before diff so select-only computes get isReadonly.
+        await (store as any).ensureFieldsGet?.().catch(() => undefined);
         // Normalize like onchange: codegen meta has type + relationModel, not relation.
         const fieldsMeta = buildDiffFieldsMeta(store as any);
         const draftForDiff = await preNormalizeDraftForDiff(
@@ -913,9 +930,8 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
           },
           attachmentDeps
         );
-        const patch = buildUpdatePayload(original || {}, draftForDiff || {}, fieldsMeta) as Record<string, unknown>;
-        // Prefer FieldsGet-merged meta so currencyField is present even when static codegen omitted it.
-        await (store as any).ensureFieldsGet?.().catch(() => undefined);
+        let patch = buildUpdatePayload(original || {}, draftForDiff || {}, fieldsMeta) as Record<string, unknown>;
+        patch = omitReadonlyWriteFields(patch, store as any);
         attachMonetaryCurrencyCompanions(
           patch,
           draftForDiff || {},

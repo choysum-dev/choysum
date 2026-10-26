@@ -3,6 +3,21 @@
 
 import { buildUpdatePayload } from '@/core/utils/diff';
 
+test('buildUpdatePayload omits isReadonly fields (select-only / deny-write)', () => {
+  const payload = buildUpdatePayload(
+    { Name: 'A', LineCount: 2, PrimaryLineId: 'l1' },
+    { Name: 'B', LineCount: 1, PrimaryLineId: 'l2' },
+    {
+      Name: { type: 'varchar' },
+      LineCount: { type: 'int', isReadonly: true },
+      PrimaryLineId: { type: 'ManyToOne', relation: 'ManyToOne', isReadonly: true },
+    }
+  );
+  expect(payload.Name).toBe('B');
+  expect(payload).not.toHaveProperty('LineCount');
+  expect(payload).not.toHaveProperty('PrimaryLineId');
+});
+
 test('buildUpdatePayload stringifies numeric relation ids in m2m create/delete patches', () => {
   const original = {
     Tags: [{ Id: 1 }, { Id: 2 }],

@@ -318,15 +318,13 @@ export class UpdateOperations {
     values = (await applyInverseWriteback(meta, values as UnknownRecord)) as Partial<Updateable<T>>;
 
     // 1) Strip compute fields so callers cannot write compute fields directly.
+    // Include select-only (store:false / virtual): leaving them in the payload only
+    // trips platform_write_to_select_field after Form dirty-diff / client compute.
     if (meta.computeGraph?.computeFields?.size) {
       const cleaned: UnknownRecord = { ...(values as UnknownRecord) };
-      const virtualComputeFields = meta.computeGraph?.virtualComputeFields || new Set<string>();
       let removed = 0;
       meta.computeGraph.computeFields.forEach((f: string) => {
         if (f in cleaned) {
-          const handler = meta.computeHandlers?.get(f);
-          const isVirtual = virtualComputeFields.has(f) || handler?.store === false;
-          if (isVirtual) return;
           delete cleaned[f];
           removed++;
         }
@@ -544,15 +542,20 @@ export class UpdateOperations {
 
         await recomputeModelMetadata(meta, entityObj, baseSeed, 'persist');
 
-        // Write back compute changes, including decimal scale fields.
+        // Write back persisted compute changes only (select-only / store:false stay out of SQL).
         const followUp: UnknownRecord = {};
+        const persistedCompute = g2.persistedComputeFields;
+        const virtualCompute = g2.virtualComputeFields || new Set<string>();
         for (const f of affectedCompute) {
+          if (virtualCompute.has(f)) continue;
+          if (persistedCompute && !persistedCompute.has(f)) continue;
+          if (meta.computeHandlers?.get(f)?.store === false) continue;
           if (f in entityObj && entityObj[f] !== oldSnap[f]) {
             followUp[f] = entityObj[f];
           }
         }
         if (Object.keys(followUp).length) {
-          addScaleForUpdates(affectedCompute, entityObj, followUp);
+          addScaleForUpdates(new Set(Object.keys(followUp)), entityObj, followUp);
           await runWithValidationBypass(repository, async () => {
             await repository.update(followUp, ['Id', '=', entityId]);
           });

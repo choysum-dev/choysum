@@ -202,12 +202,12 @@ describe('ChoyOneToManyField handle column', () => {
     m.unmount();
   });
 
-  test('Add row / Delete / display height and defaultRecord hydrate keys', async () => {
+  test('Add a line / Delete / display height and defaultRecord hydrate keys', async () => {
     installStubs();
     const scrollToRow = fnRecorder();
     stubSfc(ChoyTableHost as any, {
       name: 'ChoyTableHost',
-      props: { data: Array, tableHeight: Number },
+      props: { data: Array, tableHeight: [Number, String] },
       setup(props: any, { slots, expose }: any) {
         capturedHandleApi.current = inject(LIST_HANDLE_API_KEY, null);
         expose({ scrollToRow });
@@ -216,10 +216,11 @@ describe('ChoyOneToManyField handle column', () => {
             'div',
             {
               class: 'ov-table-stub',
-              'data-height': String(props.tableHeight ?? ''),
+              'data-height': props.tableHeight == null ? '' : String(props.tableHeight),
               'data-rows': String((props.data || []).length),
+              'data-footer': slots.footer ? '1' : '0',
             },
-            slots.default?.()
+            [slots.default?.(), slots.footer?.()]
           );
       },
     });
@@ -258,6 +259,7 @@ describe('ChoyOneToManyField handle column', () => {
       props: {
         binding,
         showHandle: false,
+        confirmOnRemove: false,
         defaultRecord: () => ({ Name: 'new', __rowKey: 'seed-new' }),
         minTableHeight: 80,
         maxTableHeight: 400,
@@ -272,8 +274,10 @@ describe('ChoyOneToManyField handle column', () => {
     expect((insertItem.calls[0]?.[0] as { Name?: string } | undefined)?.Name).toBe('new');
     expect(Object.prototype.propertyIsEnumerable.call(insertItem.calls[0]?.[0], '__rowKey')).toBe(false);
     expect(scrollToRow.calls.length).toBe(1);
+    expect(m.q('.ov-table-stub')?.getAttribute('data-footer')).toBe('1');
+    expect(m.q('[data-testid="choy-o2m-add-row"]')).toBeTruthy();
 
-    ss.onRemove(0);
+    await ss.onRemove(0);
     expect(removeItemAt.calls.length).toBe(1);
     m.unmount();
 
@@ -314,7 +318,8 @@ describe('ChoyOneToManyField handle column', () => {
     });
     await nextTick();
     expect(d.q('.ov-table-stub')?.getAttribute('data-rows')).toBe('2');
-    expect(d.q('.ov-table-stub')?.getAttribute('data-height')).toBeTruthy();
+    // minTableHeight floors short tables; 2×40 body + 40 header → 120.
+    expect(d.q('.ov-table-stub')?.getAttribute('data-height')).toBe('120');
     d.unmount();
 
     // ensureArrayInitialized when fieldRef is not an array.

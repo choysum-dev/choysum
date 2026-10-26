@@ -11,16 +11,18 @@ SPDX-License-Identifier: Apache-2.0
     v-else-if="ownsRegistration"
     data-anchor="choy.tab"
     :value="registeredValue"
-    :class="props.class"
+    :force-mount="forceMount"
+    :class="contentClass"
   >
-    <slot v-if="isActive" />
+    <!-- forceMount keeps inactive panes mounted so Form returnFields stay registered. -->
+    <slot v-if="isActive || forceMount" />
   </TabsContent>
 </template>
 
 <script setup lang="ts">
 import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import TabsContent from '../vendor/ui/tabs/TabsContent.vue';
-import type { ClassValue } from '../../lib/utils';
+import { cn, type ClassValue } from '../../lib/utils';
 import { ChoyTabsContextKey } from './choyTabsContext';
 
 /**
@@ -32,10 +34,16 @@ const props = withDefaults(
     value: string;
     label?: string;
     disabled?: boolean;
+    /**
+     * Keep pane content mounted while inactive (hidden). Use when sibling tabs
+     * share Form field registration (e.g. O2M table + kanban for the same prop).
+     */
+    forceMount?: boolean;
   }>(),
   {
     label: '',
     disabled: false,
+    forceMount: false,
   },
 );
 
@@ -45,6 +53,9 @@ const registeredValue = ref(props.value);
 const isActive = computed(() => !!ctx && ctx.activeValue.value === registeredValue.value);
 /** False when register was refused (duplicate value); skip unregister/patch. */
 const ownsRegistration = ref(false);
+const contentClass = computed(() =>
+  cn(props.class, props.forceMount && !isActive.value ? 'hidden' : undefined)
+);
 
 function resolveLabel(): string {
   if (props.label) {

@@ -2612,6 +2612,8 @@ test('UpdateOperations.Update strips computed input and runs collection-prefetch
 
     meta.computeGraph = {
       computeFields: new Set<string>(['Total']),
+      persistedComputeFields: new Set<string>(['Total']),
+      virtualComputeFields: new Set<string>(),
       fastReverseDeps: new Map<string, string[]>([
         ['Name', ['Total']],
         ['Lines', ['Total']],
@@ -2699,6 +2701,118 @@ test('UpdateOperations.Update strips computed input and runs collection-prefetch
   } finally {
     meta.fields = new Map(snapshotFields);
     meta.computeGraph = originalComputeGraph;
+    RelationFactory.prepareForUpdate = originalPrepareForUpdate;
+    (UpdateOperations as any).resolveRepository = originalResolveRepository;
+    RepositoryFactory.getRepository = originalGetRepository;
+    RelationFactory.batchProcessToManyRelations = originalBatchProcess;
+    ComputeCascadeEngine.collectUpstreamInverseFields = originalCollectUpstreamInverseFields;
+    ComputeEngine.recompute = originalRecompute;
+    ComputeCascadeEngine.triggerUpstream = originalTriggerUpstream;
+    ComputeCascadeEngine.triggerDownstream = originalTriggerDownstream;
+  }
+});
+
+test('UpdateOperations.Update does not follow-up-write select-only compute fields after O2M touch', async () => {
+  class UpdateVirtualChildModel {}
+
+  const originalPrepareForUpdate = RelationFactory.prepareForUpdate;
+  const originalResolveRepository = (UpdateOperations as any).resolveRepository;
+  const originalGetRepository = RepositoryFactory.getRepository;
+  const originalBatchProcess = RelationFactory.batchProcessToManyRelations;
+  const originalCollectUpstreamInverseFields = ComputeCascadeEngine.collectUpstreamInverseFields;
+  const originalRecompute = ComputeEngine.recompute;
+  const originalTriggerUpstream = ComputeCascadeEngine.triggerUpstream;
+  const originalTriggerDownstream = ComputeCascadeEngine.triggerDownstream;
+
+  const meta = MetadataStorage.instance.getModelMetadata(ModelInternalPublicBridge as any) as any;
+  const snapshotFields = new Map(meta.fields);
+  const originalComputeGraph = meta.computeGraph;
+  const originalComputeHandlers = meta.computeHandlers;
+  const updateCalls: any[] = [];
+
+  try {
+    meta.fields.set('Lines', { type: 'OneToMany', relation: { targetModel: () => UpdateVirtualChildModel, inverseField: 'ParentId' } });
+    meta.fields.set('LineCount', { type: 'int' });
+    meta.fields.set('PrimaryLineId', { type: 'ManyToOne', relation: { targetModel: () => UpdateVirtualChildModel } });
+    meta.computeHandlers = new Map([
+      ['LineCount', { field: 'LineCount', store: false }],
+      ['PrimaryLineId', { field: 'PrimaryLineId', store: false }],
+    ]);
+    meta.computeGraph = {
+      computeFields: new Set<string>(['LineCount', 'PrimaryLineId']),
+      persistedComputeFields: new Set<string>(),
+      virtualComputeFields: new Set<string>(['LineCount', 'PrimaryLineId']),
+      fastReverseDeps: new Map<string, string[]>([['Lines', ['LineCount', 'PrimaryLineId']]]),
+      computeScalarDeps: new Map<string, Set<string>>(),
+      computeCollectionPathDeps: new Map<string, Array<{ collection: string; chain: string[] }>>([
+        ['LineCount', [{ collection: 'Lines', chain: ['Id'] }]],
+        ['PrimaryLineId', [{ collection: 'Lines', chain: ['Id'] }]],
+      ]),
+    } as any;
+
+    RelationFactory.prepareForUpdate = (async (_ModelCtor: any, values: any) => {
+      const processedValue = { ...values };
+      delete processedValue.Lines;
+      return {
+        processedValue,
+        relations: {
+          oneToManyRelations: [{}],
+          manyToManyRelations: [],
+          touchedCollections: new Set<string>(['Lines']),
+        },
+      };
+    }) as any;
+
+    (UpdateOperations as any).resolveRepository = (() => ({
+      count: async () => 1,
+      search: async () => [
+        {
+          Id: 'ROW-VIRT',
+          UpdatedAt: new Date('2024-01-01T00:00:00.000Z'),
+          Name: 'before',
+          LineCount: 2,
+          PrimaryLineId: 'L-OLD',
+        },
+      ],
+      update: async (vals: any, cond: any) => {
+        updateCalls.push({ vals: { ...vals }, cond });
+      },
+      withValidationBypass: async (fn: () => Promise<any>) => await fn(),
+    })) as any;
+
+    RepositoryFactory.getRepository = ((ctor: any) => {
+      if (ctor === UpdateVirtualChildModel) {
+        return {
+          search: async () => [{ Id: 'L-1' }],
+        } as any;
+      }
+      throw new Error('unexpected child repository');
+    }) as any;
+
+    RelationFactory.batchProcessToManyRelations = (async () => [{ errors: [] }]) as any;
+    ComputeCascadeEngine.collectUpstreamInverseFields = (() => ['ParentId']) as any;
+    // Simulate a buggy/legacy recompute that still mutates virtual fields; follow-up must not persist them.
+    ComputeEngine.recompute = (async (_meta: any, entity: any, changed: Set<string>) => {
+      entity.LineCount = 1;
+      entity.PrimaryLineId = 'L-1';
+      changed.add('LineCount');
+      changed.add('PrimaryLineId');
+    }) as any;
+    ComputeCascadeEngine.triggerUpstream = (async () => {}) as any;
+    ComputeCascadeEngine.triggerDownstream = (async () => {}) as any;
+
+    await UpdateOperations.Update(ModelInternalPublicBridge as any, ['Id', '=', 'ROW-VIRT'] as any, {
+      Name: 'after',
+      Lines: { delete: ['L-GONE'] },
+    } as any);
+
+    expect(updateCalls.length).toBe(1);
+    expect(updateCalls[0]?.vals).toEqual({ Name: 'after' });
+    expect(updateCalls.some((c: any) => 'LineCount' in (c.vals || {}) || 'PrimaryLineId' in (c.vals || {}))).toBe(false);
+  } finally {
+    meta.fields = new Map(snapshotFields);
+    meta.computeGraph = originalComputeGraph;
+    meta.computeHandlers = originalComputeHandlers;
     RelationFactory.prepareForUpdate = originalPrepareForUpdate;
     (UpdateOperations as any).resolveRepository = originalResolveRepository;
     RepositoryFactory.getRepository = originalGetRepository;

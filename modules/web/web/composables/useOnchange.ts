@@ -89,34 +89,28 @@ export function normalizeDiffRelation(type: string | undefined): RelationType | 
   }
 }
 
-type DiffFieldsMeta = Record<string, { relation?: RelationType; type?: string }>;
-
-const diffFieldsMetaCache = new WeakMap<
-  WebModelStore<any>,
-  {
-    source: Record<string, WebFieldMetadata | undefined>;
-    normalized: DiffFieldsMeta;
-  }
->();
+type DiffFieldsMeta = Record<string, { relation?: RelationType; type?: string; isReadonly?: boolean }>;
 
 export function buildDiffFieldsMeta(store: WebModelStore<any>): DiffFieldsMeta {
   const raw = ((store as any).fieldsMetadata || {}) as Record<string, WebFieldMetadata | undefined>;
-  const cached = diffFieldsMetaCache.get(store);
-  if (cached && cached.source === raw) {
-    return cached.normalized;
-  }
+  // Prefer FieldsGet-merged meta so select-only / deny-write isReadonly reaches the update diff.
+  const resolveMeta =
+    typeof (store as any).getFieldMeta === 'function'
+      ? (name: string) => ((store as any).getFieldMeta(name) as WebFieldMetadata | undefined) || raw[name]
+      : (name: string) => raw[name];
 
   const normalized: DiffFieldsMeta = {};
-  for (const [fieldName, meta] of Object.entries(raw)) {
-    const typed = meta as WebFieldMetadata | undefined;
+  for (const fieldName of Object.keys(raw)) {
+    const typed = resolveMeta(fieldName) as WebFieldMetadata | undefined;
+    if (!typed) continue;
     const view = getFieldMetadataView(typed);
     normalized[fieldName] = {
       type: typed?.type,
       relation: view.isRelation ? normalizeDiffRelation(typed?.type) : undefined,
+      ...(typed?.isReadonly === true ? { isReadonly: true } : {}),
     };
   }
 
-  diffFieldsMetaCache.set(store, { source: raw, normalized });
   return normalized;
 }
 

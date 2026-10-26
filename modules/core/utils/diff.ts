@@ -19,7 +19,7 @@ type DiffChange = {
 export type RelationType = 'OneToMany' | 'ManyToMany' | 'ManyToOne';
 export type FieldsMeta = Record<
   string,
-  { relation?: RelationType; type?: string; resolvedColumnType?: string }
+  { relation?: RelationType; type?: string; resolvedColumnType?: string; isReadonly?: boolean }
 >;
 
 /** Properties / jsonobject columns are whole-map replace on write (not nested patches). */
@@ -351,10 +351,16 @@ export function buildUpdatePayload(original: Plain, current: Plain, fieldsMeta?:
   const allKeys = new Set<string>([...Object.keys(original ?? {}), ...Object.keys(current ?? {})]);
 
   const processed = new Map<string, RelationType | 'ManyToManyRef'>();
+  /** Select-only / deny-write / declarative readonly — client compute may dirty these. */
+  const readonlyKeys = new Set<string>();
 
   // 1) Relation fields explicitly declared in metadata.
   for (const key of allKeys) {
     const fm = fieldsMeta?.[key];
+    if (fm?.isReadonly === true) {
+      readonlyKeys.add(key);
+      continue;
+    }
     const rel = fm?.relation as RelationType | undefined;
 
     // ManyToManyRef: send ID lists and compare them after dedupe and sorting.
@@ -401,7 +407,7 @@ export function buildUpdatePayload(original: Plain, current: Plain, fieldsMeta?:
 
   // 2) Infer undeclared relation-like keys.
   for (const key of allKeys) {
-    if (processed.has(key)) continue;
+    if (processed.has(key) || readonlyKeys.has(key)) continue;
     if (fieldsMeta?.[key]?.relation) continue;
 
     const oVal = original?.[key];
@@ -430,7 +436,7 @@ export function buildUpdatePayload(original: Plain, current: Plain, fieldsMeta?:
   // truncated draft are not wiped. Explicit nulls in current still win.
   const wholeMapKeys = new Set<string>();
   for (const key of allKeys) {
-    if (processed.has(key)) continue;
+    if (processed.has(key) || readonlyKeys.has(key)) continue;
     if (!isWholeMapReplaceFieldMeta(fieldsMeta?.[key])) continue;
     wholeMapKeys.add(key);
     const oVal = original?.[key];
@@ -444,7 +450,7 @@ export function buildUpdatePayload(original: Plain, current: Plain, fieldsMeta?:
   }
 
   // 4) Ordinary fields (nested object diffs under properties/jsonobject also collapse).
-  const relationKeys = new Set<string>([...processed.keys(), ...wholeMapKeys]);
+  const relationKeys = new Set<string>([...processed.keys(), ...wholeMapKeys, ...readonlyKeys]);
   Object.assign(payload, diffNormalFields(original, current, relationKeys, fieldsMeta));
 
   // 5) Safety net: if a whole-map field still looks like a nested partial patch, re-merge.

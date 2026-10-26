@@ -72,6 +72,10 @@ type hotreloadState struct {
 
 	dropped   atomic.Uint64
 	coalesced atomic.Uint64
+
+	// leaseRetries tracks per-file automatic requeues after LEASE_CONFLICT.
+	leaseRetryMu sync.Mutex
+	leaseRetries map[string]int
 }
 
 func (s *GRPCWebServer) hotreloadWatcher() *fsnotify.Watcher {
@@ -210,6 +214,26 @@ func (h *hotreloadState) droppedCount() uint64 {
 
 func (h *hotreloadState) coalescedCount() uint64 {
 	return h.coalesced.Load()
+}
+
+// nextLeaseRetry increments and returns the 1-based retry attempt for path.
+func (h *hotreloadState) nextLeaseRetry(path string) int {
+	h.leaseRetryMu.Lock()
+	defer h.leaseRetryMu.Unlock()
+	if h.leaseRetries == nil {
+		h.leaseRetries = make(map[string]int)
+	}
+	h.leaseRetries[path]++
+	return h.leaseRetries[path]
+}
+
+func (h *hotreloadState) clearLeaseRetry(path string) {
+	h.leaseRetryMu.Lock()
+	defer h.leaseRetryMu.Unlock()
+	if h.leaseRetries == nil {
+		return
+	}
+	delete(h.leaseRetries, path)
 }
 
 func (h *hotreloadState) ensureLifecycle() error {

@@ -7,6 +7,7 @@ import {
   clearGlobalRequestContextProvider,
   getCurrentRequestContext,
 } from '../../../rpc/context';
+import { Compute } from '../decorator/compute';
 import { Field } from '../decorator/field';
 import { Model } from '../decorator/model';
 import { MetadataStorage } from '../metadata/storage';
@@ -82,6 +83,20 @@ class FieldsGetWidget extends BaseModel {
 
   @Field({ type: 'varchar', size: 64, string: 'External Id', readonly: true })
   ExternalId!: string;
+}
+
+@Model('FieldsGetSelectOnly', { application: 'demo' })
+class FieldsGetSelectOnly extends BaseModel {
+  @Field({ type: 'varchar', size: 40, string: 'Name' })
+  Name!: string;
+
+  @Field({ type: 'int', string: 'Line Count' })
+  LineCount?: number;
+
+  @Compute<FieldsGetSelectOnly>('LineCount', { deps: ['Name'], store: false })
+  computeLineCount() {
+    return String(this.Name || '').length;
+  }
 }
 
 test('FieldsGet returns readable fields with translated string (T1.1)', async () => {
@@ -365,6 +380,27 @@ test('FieldsGet marks declarative readonly fields as isReadonly (PR-P2-F2)', asy
     // Declarative readonly still forces isReadonly even when attributes omit it.
     const projected = await FieldsGetWidget.FieldsGet(['ExternalId'], ['type']);
     expect(projected.ExternalId).toEqual({ type: 'varchar', isReadonly: true });
+  } finally {
+    resetTestState();
+  }
+});
+
+test('FieldsGet marks store:false Compute fields as isReadonly (select-only)', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'en_US' });
+  setTestI18nBridge({ t: () => '' });
+  RepositoryFactory.setRepository(FieldsGetSelectOnly as any, {
+    getDenyReadFields: async () => ({ denyReadFields: [] }),
+    getDenyWriteFields: async () => ({ denyWriteFields: [] }),
+  } as any);
+
+  try {
+    const out = await FieldsGetSelectOnly.FieldsGet(['Name', 'LineCount'], ['type', 'string', 'isReadonly']);
+    expect(out.Name?.isReadonly).toBeUndefined();
+    expect(out.LineCount).toEqual({ type: 'int', string: 'Line Count', isReadonly: true });
+
+    const projected = await FieldsGetSelectOnly.FieldsGet(['LineCount'], ['type']);
+    expect(projected.LineCount).toEqual({ type: 'int', isReadonly: true });
   } finally {
     resetTestState();
   }

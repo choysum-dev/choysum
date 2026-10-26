@@ -346,6 +346,7 @@ export default class SandboxRecord extends BaseModel {
 
   @Field({
     type: 'int',
+    readonly: true,
     string: _lt('Line Count', { scope: 'sandbox.model.SandboxRecord.fields' }),
     help: _lt('Computed from Lines; not edited by hand.', {
       scope: 'sandbox.model.SandboxRecord.fields',
@@ -362,6 +363,7 @@ export default class SandboxRecord extends BaseModel {
     type: 'ManyToOne',
     relation: { targetModel: () => SandboxLine },
     index: true,
+    readonly: true,
     string: _lt('Primary Line', { scope: 'sandbox.model.SandboxRecord.fields' }),
     help: _lt('Computed: first line by Sequence then Id.', {
       scope: 'sandbox.model.SandboxRecord.fields',

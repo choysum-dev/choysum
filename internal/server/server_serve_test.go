@@ -248,6 +248,10 @@ func TestServerServeContinuesOnWatchHandlerFailure(t *testing.T) {
 }
 
 func TestServerServeContinuesOnModuleLeaseConflict(t *testing.T) {
+	prevMax := hotreloadLeaseRetryMax
+	hotreloadLeaseRetryMax = 0
+	t.Cleanup(func() { hotreloadLeaseRetryMax = prevMax })
+
 	runtimeScope := &noSessionServerScope{serverTestScope: newRichServerTestScope(t)}
 	runtimeScope.cfg.Auth.Enabled = false
 	assignEphemeralServerPort(t, runtimeScope.cfg)

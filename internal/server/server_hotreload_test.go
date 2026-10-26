@@ -256,6 +256,9 @@ func TestShouldIgnoreWatchPath(t *testing.T) {
 		{filepath.Join("modules", "myweb", "web", "styles", "choy-tailwind.generated.css"), false},
 		{filepath.Join("modules", "web", "web", "components", "field", "Foo.vue"), false},
 		{filepath.Join("modules", "partner", "web", "views", "PartnerFormView.vue"), false},
+		{filepath.Join("modules", "web", "web", "components", "field", "ChoyOneToManyKanbanField.mount.test.ts"), true},
+		{filepath.Join("modules", "core", "service", "orm", "model", "model_update.test.ts"), true},
+		{filepath.Join("modules", "web", "web", "components", "field", "Foo.spec.tsx"), true},
 		{filepath.Join("tmp", "other.tmp"), false},
 		{filepath.Join("styles", ".choy-tailwind-x.tmp.bak"), false},
 	}
@@ -317,6 +320,10 @@ func TestEnqueueWatchEventIgnoresChoyTailwindArtifacts(t *testing.T) {
 }
 
 func TestHandleWatchedFileChangeDefersOnLeaseConflict(t *testing.T) {
+	prevMax := hotreloadLeaseRetryMax
+	hotreloadLeaseRetryMax = 0
+	t.Cleanup(func() { hotreloadLeaseRetryMax = prevMax })
+
 	runtimeScope := newRichServerTestScope(t)
 	root := t.TempDir()
 	changedFile := filepath.Join(root, "handler.ts")
@@ -347,6 +354,47 @@ func TestHandleWatchedFileChangeDefersOnLeaseConflict(t *testing.T) {
 	}
 	if !strings.Contains(progress.String(), "Deferred (module busy)") {
 		t.Fatalf("progress = %q, want deferred marker", progress.String())
+	}
+}
+
+func TestScheduleLeaseConflictRetryRequeuesFile(t *testing.T) {
+	prevBase, prevMax := hotreloadLeaseRetryBase, hotreloadLeaseRetryMax
+	hotreloadLeaseRetryBase = 20 * time.Millisecond
+	hotreloadLeaseRetryMax = 2
+	t.Cleanup(func() {
+		hotreloadLeaseRetryBase = prevBase
+		hotreloadLeaseRetryMax = prevMax
+	})
+
+	runtimeScope := newRichServerTestScope(t)
+	root := t.TempDir()
+	changedFile := filepath.Join(root, "retry.ts")
+	if err := os.WriteFile(changedFile, []byte("export {}"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{queue: make(chan string, 2)},
+	}
+	srv.hotreload.storeWatchTargets([]registeredWatchTarget{{
+		serviceName: "web",
+		moduleName:  "web",
+		root:        root,
+	}})
+
+	resolvedFile, err := resolveWatchPath(changedFile)
+	if err != nil {
+		t.Fatalf("resolveWatchPath() error = %v", err)
+	}
+	srv.scheduleLeaseConflictRetry(resolvedFile)
+
+	select {
+	case event := <-srv.hotreloadQueue():
+		if !strings.HasPrefix(event, resolvedFile) {
+			t.Fatalf("retry event = %q, want prefix %q", event, resolvedFile)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("timed out waiting for lease-conflict retry enqueue")
 	}
 }
 

@@ -126,7 +126,12 @@ export async function updateModelInstance<T extends BaseModel>(instance: T, opti
           const collChanged = new Set<string>(relations.touchedCollections);
           await recomputeModelMetadata(meta, instanceState as UnknownRecord, collChanged, 'persist');
           const followUp: UnknownRecord = {};
+          const persistedCompute = meta.computeGraph.persistedComputeFields;
+          const virtualCompute = meta.computeGraph.virtualComputeFields || new Set<string>();
           for (const changedField of collChanged) {
+            if (virtualCompute.has(changedField)) continue;
+            if (persistedCompute && !persistedCompute.has(changedField)) continue;
+            if (meta.computeHandlers?.get(changedField)?.store === false) continue;
             if (changedField in instanceState && instanceState[changedField] !== currentEntities[0][changedField]) {
               followUp[changedField] = instanceState[changedField];
             }

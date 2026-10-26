@@ -16,7 +16,7 @@ const LINE_STATES = [
 export default class SandboxLine extends BaseModel {
   @Field({
     type: 'ManyToOne',
-    relation: { targetModel: () => SandboxRecord },
+    relation: { targetModel: () => SandboxRecord, onDelete: 'CASCADE' },
     notNull: true,
     index: true,
     string: _lt('Record', { scope: 'sandbox.model.SandboxLine.fields' }),

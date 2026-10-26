@@ -312,6 +312,51 @@ test('compute engine persist only recomputes persisted compute fields', async ()
   expect(changed.has('VirtualValue')).toBe(false);
 });
 
+test('compute engine persist mode skips all fields when persistedComputeFields is empty', async () => {
+  const entity: any = { Trigger: 1, LineCount: 2 };
+  const changed = new Set<string>(['Trigger', 'Lines']);
+
+  await ComputeEngine.recompute(
+    {
+      modelName: 'VirtualOnlyModel',
+      fields: new Map([
+        ['Trigger', { type: 'int', column: {} }],
+        ['Lines', { type: 'OneToMany', relation: {} }],
+        [
+          'LineCount',
+          {
+            type: 'int',
+            column: {
+              compute: {
+                expr: () => 0,
+                deps: ['Lines'],
+                store: false,
+              },
+            },
+          },
+        ],
+      ]),
+      computeGraph: {
+        computeFields: new Set(['LineCount']),
+        persistedComputeFields: new Set(),
+        virtualComputeFields: new Set(['LineCount']),
+        fastReverseDeps: new Map([
+          ['Trigger', ['LineCount']],
+          ['Lines', ['LineCount']],
+        ]),
+        orderIndex: new Map([['LineCount', 0]]),
+        computePathDeps: new Map(),
+      },
+    } as any,
+    entity,
+    changed,
+    'persist'
+  );
+
+  expect(entity.LineCount).toBe(2);
+  expect(changed.has('LineCount')).toBe(false);
+});
+
 test('compute engine executes compute expression without runAs wrapper', async () => {
   const entity: any = { Trigger: 1, SecureValue: '' };
   const changed = new Set<string>(['Trigger']);

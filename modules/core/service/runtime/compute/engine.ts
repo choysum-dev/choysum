@@ -303,7 +303,9 @@ export class ComputeEngine {
     const toRecompute = this.collectTriggers(g, baseChanged);
     if (mode === 'persist') {
       const persisted = g.persistedComputeFields;
-      if (persisted && persisted.size > 0) {
+      // Empty persisted set means nothing is column-backed — do not keep virtual/select-only
+      // fields in the persist subset (they have no DB write target and trip write validation).
+      if (persisted) {
         for (const field of [...toRecompute]) {
           if (!persisted.has(field)) {
             toRecompute.delete(field);
