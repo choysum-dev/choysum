@@ -55,6 +55,58 @@ func TestPool_NewPoolAndStartStop(t *testing.T) {
 	}
 }
 
+type slowCloseEngine struct {
+	delay time.Duration
+}
+
+func (e *slowCloseEngine) Load(_ []*jsengine.JsScript) error { return nil }
+
+func (e *slowCloseEngine) Execute(_ context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+	return &jsengine.JsResponse{Id: req.Id, Context: map[string]interface{}{}}, nil
+}
+
+func (e *slowCloseEngine) Close() error {
+	time.Sleep(e.delay)
+	return nil
+}
+
+// TestPool_StopWaitsForThreadCloseInParallel ensures pool stop wall time is closer
+// to one Close duration than N serial Closes when multiple threads are warm.
+func TestPool_StopWaitsForThreadCloseInParallel(t *testing.T) {
+	const (
+		threads = 4
+		delay   = 80 * time.Millisecond
+	)
+	exec := &JsExecutor{
+		engineFactory: func() (JsEngine, error) {
+			return &slowCloseEngine{delay: delay}, nil
+		},
+		options: &JsExecutorOption{
+			minPoolSize: threads,
+			maxPoolSize: threads,
+			queueSize:   2,
+		},
+	}
+	p := newPool(exec)
+	if err := p.start(); err != nil {
+		t.Fatalf("pool start failed: %v", err)
+	}
+
+	start := time.Now()
+	if err := p.stop(); err != nil {
+		t.Fatalf("pool stop failed: %v", err)
+	}
+	elapsed := time.Since(start)
+
+	// Serial would be ~threads*delay; parallel should finish near one delay.
+	if elapsed >= time.Duration(threads)*delay-20*time.Millisecond {
+		t.Fatalf("pool stop took %v, want parallel close much faster than serial %v", elapsed, time.Duration(threads)*delay)
+	}
+	if elapsed < delay/2 {
+		t.Fatalf("pool stop took %v, expected at least roughly one close delay (%v)", elapsed, delay)
+	}
+}
+
 // TestPool_CreateThreadAndSelect tests thread creation and selection.
 func TestPool_CreateThreadAndSelect(t *testing.T) {
 	exec := &JsExecutor{

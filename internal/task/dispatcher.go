@@ -138,11 +138,17 @@ func (d *Dispatcher) Stop() {
 
 func (d *Dispatcher) loop() {
 	defer d.wg.Done()
+	ctx := context.Background()
+	if d.runtimeScope != nil && d.runtimeScope.Context() != nil {
+		ctx = d.runtimeScope.Context()
+	}
 	ticker := time.NewTicker(d.interval)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-d.stopCh:
+			return
+		case <-ctx.Done():
 			return
 		case <-d.wakeCh:
 			d.pollOnce("wake")
@@ -190,7 +196,9 @@ func (d *Dispatcher) pollOnce(source string) {
 	}
 	queueJobs, err := d.queue.ListReady(ctx, now, pollLimit)
 	if err != nil {
-		d.runtimeScope.Logger().Warn("task dispatch poll failed", "error", err)
+		if !isExpectedPollShutdownError(err) {
+			d.runtimeScope.Logger().Warn("task dispatch poll failed", "error", err)
+		}
 		return
 	}
 	jobs := make([]Job, 0, len(queueJobs))
@@ -925,4 +933,10 @@ func (d *Dispatcher) emitMetric(name string, fields map[string]any) {
 	}
 	fields["metric"] = name
 	RecordMetric(name, fields)
+}
+
+// isExpectedPollShutdownError reports whether a poll error is the normal result of
+// process context cancellation during shutdown.
+func isExpectedPollShutdownError(err error) bool {
+	return errors.Is(err, context.Canceled)
 }

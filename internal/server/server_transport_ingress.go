@@ -16,6 +16,10 @@ import (
 
 func (s *GRPCWebServer) startHTTPServer(h http.Handler, suppressListeningLog bool) error {
 	opts := s.resolvedRuntimeOptions()
+	var baseCtx context.Context
+	if s.runtimeScope != nil {
+		baseCtx = s.runtimeScope.Context()
+	}
 	serverHandle, err := transport.StartHTTPServer(h, transport.HTTPServerOptions{
 		Address:              s.address.Addr,
 		ExistingListener:     s.listener,
@@ -25,6 +29,7 @@ func (s *GRPCWebServer) startHTTPServer(h http.Handler, suppressListeningLog boo
 		TLSKeyFile:           opts.tlsKeyFile,
 		SuppressListeningLog: suppressListeningLog,
 		Logger:               s.runtimeScope.Logger(),
+		BaseContext:          baseCtx,
 	})
 	if err != nil {
 		return err
@@ -38,7 +43,8 @@ func (s *GRPCWebServer) stopHTTPRuntime() {
 	if s.httpServer == nil {
 		return
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// Short drain: process BaseContext cancel should already end long-lived streams.
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	if err := s.httpServer.Shutdown(ctx); err != nil {
 		// Best-effort: on failure, force close.

@@ -72,11 +72,17 @@ func (s *Scheduler) Stop() {
 
 func (s *Scheduler) loop() {
 	defer s.wg.Done()
+	ctx := context.Background()
+	if s.runtimeScope != nil && s.runtimeScope.Context() != nil {
+		ctx = s.runtimeScope.Context()
+	}
 	ticker := time.NewTicker(s.interval)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-s.stopCh:
+			return
+		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			s.tick()
@@ -96,7 +102,9 @@ func (s *Scheduler) tick() {
 
 	schedules, err := s.store.ListDue(ctx, now, 50)
 	if err != nil {
-		s.runtimeScope.Logger().Warn("task schedule poll failed", "error", err)
+		if !isExpectedPollShutdownError(err) {
+			s.runtimeScope.Logger().Warn("task schedule poll failed", "error", err)
+		}
 		return
 	}
 

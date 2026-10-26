@@ -4,6 +4,8 @@
 package server
 
 import (
+	"time"
+
 	"github.com/choysum-dev/choysum/internal/server/transport"
 	xfmt "golang.org/x/exp/errors/fmt"
 	"google.golang.org/grpc"
@@ -43,7 +45,17 @@ func (s *GRPCWebServer) assembleGRPCServer(opts runtimeOptions) {
 
 func (s *GRPCWebServer) stopGRPCTransport() {
 	if s.server != nil {
-		s.server.GracefulStop()
+		done := make(chan struct{})
+		go func(srv *grpc.Server) {
+			srv.GracefulStop()
+			close(done)
+		}(s.server)
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+			s.server.Stop()
+			<-done
+		}
 		s.server = nil
 	}
 

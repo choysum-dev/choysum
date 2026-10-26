@@ -4,6 +4,7 @@
 package transport
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net"
@@ -28,6 +29,9 @@ type HTTPServerOptions struct {
 	TLSKeyFile           string
 	SuppressListeningLog bool
 	Logger               *slog.Logger
+	// BaseContext is the process lifetime context used as http.Server.BaseContext.
+	// When canceled (e.g. Ctrl+C), in-flight request contexts are canceled too.
+	BaseContext context.Context
 }
 
 func StartHTTPServer(handler http.Handler, opts HTTPServerOptions) (*HTTPServerHandle, error) {
@@ -41,6 +45,12 @@ func StartHTTPServer(handler http.Handler, opts HTTPServerOptions) (*HTTPServerH
 	}
 
 	httpServer := &http.Server{Handler: handler}
+	if opts.BaseContext != nil {
+		base := opts.BaseContext
+		httpServer.BaseContext = func(net.Listener) context.Context {
+			return base
+		}
+	}
 	logger := opts.Logger
 	if logger == nil {
 		logger = slog.Default()
