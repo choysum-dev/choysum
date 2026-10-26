@@ -297,6 +297,26 @@ type DialogMode = 'create' | 'edit' | 'display';
 const FORM_CHILD_SUBMIT_API_REGISTER_KEY = 'form-child-submit-api-register';
 const FORM_EMBEDDED_CONTEXT_KEY = 'form-embedded-context';
 
+// Untyped slots collapse `#card` item to `{}` in consumers (e.g. SandboxRecordFormView).
+// Row payloads are relation ClientModels; keep `any` to match board/emit typing.
+defineSlots<{
+  card(props: {
+    item: any;
+    index: number;
+    open: () => void;
+    edit: () => void;
+    remove: () => void;
+    editable: boolean;
+    removable: boolean;
+  }): unknown;
+  toolbar(props: {
+    items: any[];
+    add: () => void;
+    editable: boolean;
+  }): unknown;
+  empty(): unknown;
+}>();
+
 const props = withDefaults(
   defineProps<{
     store?: WebModelStore<T>;
