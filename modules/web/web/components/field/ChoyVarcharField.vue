@@ -118,6 +118,11 @@ const props = withDefaults(
     placeholder?: string;
     showWordLimit?: boolean;
     widget?: VarcharWidget;
+    /**
+     * HTML input type alias for `widget` (`password` | `email` | `url` | `text`).
+     * Prefer `widget` in new call sites; `type` is kept so auth forms and attrs keep working.
+     */
+    type?: VarcharWidget;
     /** Form display: show a copy button next to non-empty values. */
     copyable?: boolean;
     /** Form display placeholder when empty (defaults to blank). */
@@ -181,8 +186,17 @@ const shouldTrimTrailing = computed(() => {
 });
 
 const inputType = computed(() => {
-  const w = props.widget || 'text';
-  if (w === 'password' || w === 'email' || w === 'url') return w;
+  const widget = props.widget ?? 'text';
+  const typeAlias = props.type;
+  // Non-text type= (auth forms) must win over the widget default 'text'.
+  // Explicit widget=password|email|url still wins when set.
+  if (
+    (typeAlias === 'password' || typeAlias === 'email' || typeAlias === 'url') &&
+    widget === 'text'
+  ) {
+    return typeAlias;
+  }
+  if (widget === 'password' || widget === 'email' || widget === 'url') return widget;
   return 'text';
 });
 
