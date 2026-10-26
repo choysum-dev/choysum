@@ -150,7 +150,9 @@ describe('PropertiesField', () => {
     const noRpc = makeBinding({ ResolveProperties: false, map: {} });
     const noRpcWrap = await mountField({ binding: noRpc, renderMode: 'form' });
     try {
-      expect(noRpcWrap.q('[data-testid="choy-properties-empty"]')).toBeTruthy();
+      const empty = noRpcWrap.q('[data-testid="choy-properties-empty"]');
+      expect(empty).toBeTruthy();
+      expect((empty!.textContent || '').trim()).toMatch(/No properties defined/);
     } finally {
       noRpcWrap.unmount();
     }
@@ -215,10 +217,135 @@ describe('PropertiesField', () => {
       expect(readonlyVals.length).toBe(2);
       expect(readonlyVals[0]?.textContent).toBe('A');
       expect(readonlyVals[1]?.textContent).toBe('Yes');
+      expect(readonlyVals[0]?.className || '').toMatch(/muted/);
       const qty = mounted.q('#choy-properties-Properties-qty') as HTMLInputElement | null;
       expect(qty).toBeTruthy();
       expect(qty!.getAttribute('disabled')).toBeNull();
-      expect(qty!.className).toContain('choy-input');
+      expect(qty!.getAttribute('data-slot')).toBe('input');
+    } finally {
+      mounted.unmount();
+    }
+  });
+
+  test('table renderMode shows compact value summary', async () => {
+    const ResolveProperties = fnRecorder(async () => [
+      { name: 'code', type: 'char', string: 'Code', value: 'A1' },
+      { name: 'qty', type: 'integer', string: 'Qty', value: 2 },
+      { name: 'note', type: 'text', string: 'Note', value: 'x' },
+    ] as ResolvedPropertyItem[]);
+    const binding = makeBinding({
+      map: { code: 'A1', qty: 2, note: 'x' },
+      ResolveProperties,
+      isForm: false,
+    });
+    const mounted = await mountField({ binding, renderMode: 'table' });
+    try {
+      const summary = mounted.q('[data-testid="choy-properties-summary"]');
+      expect(summary).toBeTruthy();
+      const text = summary!.textContent || '';
+      expect(text).toMatch(/Code:\s*A1/);
+      expect(text).toMatch(/Qty:\s*2/);
+      expect(text).toMatch(/\+1 more/);
+      expect(mounted.q('[data-testid="choy-properties-form"]')).toBeNull();
+      expect(mounted.q('#choy-properties-Properties-code')).toBeNull();
+    } finally {
+      mounted.unmount();
+    }
+  });
+
+  test('display formats date/datetime and selection labels', async () => {
+    const ResolveProperties = fnRecorder(async () => [
+      { name: 'day', type: 'date', string: 'Day', value: '2024-01-02T00:00:00Z' },
+      { name: 'when', type: 'datetime', string: 'When', value: '2024-06-30T16:00:00.000Z' },
+      {
+        name: 'prio',
+        type: 'selection',
+        string: 'Priority',
+        value: 'high',
+        selection: [
+          ['low', 'Low'],
+          ['high', 'High'],
+        ],
+      },
+    ] as ResolvedPropertyItem[]);
+    const binding = makeBinding({
+      map: {
+        day: '2024-01-02T00:00:00Z',
+        when: '2024-06-30T16:00:00.000Z',
+        prio: 'high',
+      },
+      ResolveProperties,
+    });
+    const mounted = await mountField({ binding, renderMode: 'form' });
+    try {
+      const displayRoot = mounted.el.querySelector('.choy-properties-form--display') as HTMLElement | null;
+      expect(displayRoot).toBeTruthy();
+      const valueOf = (name: string) => {
+        const row = Array.from(displayRoot!.querySelectorAll('[data-name]')).find(
+          el => el.getAttribute('data-name') === name,
+        ) as HTMLElement | undefined;
+        expect(row).toBeTruthy();
+        return (row!.querySelector('.choy-properties-item__value') as HTMLElement | null)?.textContent || '';
+      };
+      expect(valueOf('day')).toBe('2024-01-02');
+      expect(valueOf('when')).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+      expect(valueOf('prio')).toBe('High');
+    } finally {
+      mounted.unmount();
+    }
+  });
+
+  test('integer write rejects decimal keystrokes; float keeps intermediate dot', async () => {
+    const ResolveProperties = fnRecorder(async () => [
+      { name: 'qty', type: 'integer', value: 2 },
+      { name: 'score', type: 'float', value: 1 },
+    ] as ResolvedPropertyItem[]);
+    const binding = makeBinding({ map: { qty: 2, score: 1 }, ResolveProperties });
+    const mounted = await mountField({ binding, renderMode: 'form' });
+    try {
+      const qty = mounted.q('#choy-properties-Properties-qty') as HTMLInputElement | null;
+      expect(qty?.getAttribute('type') || 'text').toBe('text');
+      setControlValue(mounted.el, '#choy-properties-Properties-qty', '3.5');
+      await nextTick();
+      expect(binding.__value.value.qty).toBe(2);
+      expect(qty!.value).toBe('2');
+      setControlValue(mounted.el, '#choy-properties-Properties-qty', '4');
+      await nextTick();
+      expect(binding.__value.value.qty).toBe(4);
+
+      setControlValue(mounted.el, '#choy-properties-Properties-score', '3.');
+      await nextTick();
+      const score = mounted.q('#choy-properties-Properties-score') as HTMLInputElement | null;
+      expect(score?.value).toBe('3.');
+      expect(binding.__value.value.score).toBe(1);
+      setControlValue(mounted.el, '#choy-properties-Properties-score', '3.5');
+      await nextTick();
+      expect(binding.__value.value.score).toBe(3.5);
+    } finally {
+      mounted.unmount();
+    }
+  });
+
+  test('numeric inputs resync DOM when letters are typed', async () => {
+    const ResolveProperties = fnRecorder(async () => [
+      { name: 'qty', type: 'integer', value: 4 },
+      { name: 'score', type: 'float', value: 1.5 },
+    ] as ResolvedPropertyItem[]);
+    const binding = makeBinding({ map: { qty: 4, score: 1.5 }, ResolveProperties });
+    const mounted = await mountField({ binding, renderMode: 'form' });
+    try {
+      const qty = mounted.q('#choy-properties-Properties-qty') as HTMLInputElement | null;
+      const score = mounted.q('#choy-properties-Properties-score') as HTMLInputElement | null;
+      expect(qty).toBeTruthy();
+      expect(score).toBeTruthy();
+      setControlValue(mounted.el, '#choy-properties-Properties-qty', 'a111');
+      await nextTick();
+      expect(qty!.value).toBe('4');
+      expect(binding.__value.value.qty).toBe(4);
+      setControlValue(mounted.el, '#choy-properties-Properties-score', 'd333.22');
+      await nextTick();
+      expect(score!.value).toBe('1.5');
+      expect(binding.__value.value.score).toBe(1.5);
     } finally {
       mounted.unmount();
     }

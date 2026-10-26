@@ -9,6 +9,7 @@ SPDX-License-Identifier: Apache-2.0
     :label="label"
     :rules="mergedRules"
     :formItemProps="formItemProps"
+    :orientation="orientation"
     :vColumnProps="vColumnProps"
     :toView="toView"
     :fromView="fromView"
@@ -21,19 +22,29 @@ SPDX-License-Identifier: Apache-2.0
     v-bind="$attrs"
   >
     <template #edit="{ fieldValue, record, inputId, describedBy, invalid}">
-      <OMonetaryCell :field-value="fieldValue" :options="makeBufferOptions(() => resolveScaleFrom(record().value))" :placeholder="placeholder" v-bind="$attrs" :id="inputId"
+      <ChoyMonetaryCell :field-value="fieldValue" :options="makeBufferOptions(() => resolveScaleFrom(record().value))" :placeholder="placeholder" v-bind="$attrs" :id="inputId"
         :aria-describedby="describedBy || undefined"
         :aria-invalid="invalid ? 'true' : undefined" />
     </template>
 
     <template #display="{ fieldValue, record }">
-      <span class="choy-field-display-text choy-field-display-text--numeric truncate whitespace-nowrap text-foreground inline-block max-w-full text-right">{{
-        toDisplayText(
-          resolveDisplayValue(fieldValue().value, record().value),
-          () => resolveScaleFrom(record().value),
-          record().value
-        )
-      }}</span>
+      <div
+        v-if="isEmptyDisplay(resolveDisplayValue(fieldValue().value, record().value)) && showFormEmptyPlaceholder"
+        class="choy-monetary-display choy-monetary-display--empty text-sm text-muted-foreground text-end"
+      >
+        {{ emptyDisplayText }}
+      </div>
+      <span
+        v-else
+        class="choy-field-display-text choy-field-display-text--numeric truncate whitespace-nowrap text-foreground inline-block max-w-full text-end"
+        >{{
+          toDisplayText(
+            resolveDisplayValue(fieldValue().value, record().value),
+            () => resolveScaleFrom(record().value),
+            record().value
+          )
+        }}</span
+      >
     </template>
   </ChoyFieldBase>
 </template>
@@ -47,6 +58,7 @@ import { useField } from '@/web/web/composables/useField';
 import type { UseField, AggProp } from '@/web/web/composables/useField';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
+import Input from '../vendor/ui/input/Input.vue';
 import Decimal from '@/core/utils/decimal';
 import { createTranslate } from '@/web/web/i18n';
 import { useI18nStore, formatFixedDecimalString, formatCurrencyFromConfig } from '@/web/web/stores/i18nStore';
@@ -63,10 +75,15 @@ import {
   resolveMonetaryScaleFromRecord,
   validateMonetaryValue
 } from './monetaryHelpers';
+import {
+  isFormEmptyPlaceholderMode,
+  resolveNumericInputEl,
+  resyncControlledNumericRaw,
+} from './numericFieldHelpers';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/MonetaryField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyMonetaryField' });
 
-defineOptions({ name: 'MonetaryField', inheritAttrs: false });
+defineOptions({ name: 'ChoyMonetaryField', inheritAttrs: false });
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 type ViewType = string | null;
@@ -90,6 +107,7 @@ const props = withDefaults(
     cellVisible?: FieldStateExpr<T, V>;
     placeholder?: string;
     formItemProps?: Partial<FormItemProps>;
+    orientation?: 'horizontal' | 'vertical';
     vColumnProps?: {
       width?: number | string;
       minWidth?: number;
@@ -125,6 +143,11 @@ const props = withDefaults(
 
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
 
+const showFormEmptyPlaceholder = computed(() =>
+  isFormEmptyPlaceholderMode(props.renderMode, binding.env?.isForm)
+);
+const emptyDisplayText = computed(() => '');
+
 const currencyFieldName = computed<string | undefined>(() => {
   const raw = (binding.meta as any)?.currencyField as string | undefined;
   const trimmed = typeof raw === 'string' ? raw.trim() : '';
@@ -144,11 +167,16 @@ const effectivePrecision = computed<number>(() => metaPrecision.value ?? props.p
 const effectiveRound = computed<Decimal.Rounding>(() => props.roundingMode);
 
 function resolveScaleFrom(obj: any): number {
-  return resolveMonetaryScaleFromRecord(obj, currencyFieldName.value, String(binding.prop), props.scale ?? 6);
+  // Prefer Currency.DecimalDigits; fall back to props.scale, else ISO-style 2.
+  return resolveMonetaryScaleFromRecord(obj, currencyFieldName.value, String(binding.prop), props.scale ?? 2);
 }
 
 function resolveDisplayValue(raw: any, obj: any): any {
   return resolveAggregateDisplayValue(raw, obj, { bindingProp: String(binding.prop || ''), agg: props.agg });
+}
+
+function isEmptyDisplay(v: any): boolean {
+  return v == null || v === '';
 }
 
 const minD = computed<Decimal | null>(() => (props.min === undefined ? null : asMonetaryDecimal(props.min)));
@@ -217,8 +245,8 @@ function makeBufferOptions(getScale: () => number) {
   };
 }
 
-const OMonetaryCell = defineComponent({
-  name: 'OMonetaryCell',
+const ChoyMonetaryCell = defineComponent({
+  name: 'ChoyMonetaryCell',
   inheritAttrs: false,
   props: {
     fieldValue: { type: Function, required: true },
@@ -234,6 +262,7 @@ const OMonetaryCell = defineComponent({
     });
 
     const editingRaw = ref<string | null>(null);
+    const inputHost = ref<unknown>(null);
     watch(
       () => modelRef.value,
       nv => {
@@ -259,10 +288,10 @@ const OMonetaryCell = defineComponent({
     function currentScale(): number {
       try {
         const n = (p.options as any).getScale();
-        // getScale already applies props.scale as fallback; reject out-of-range results.
+        // getScale already applies Currency.DecimalDigits / props.scale / 2 fallback.
         if (typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= 18) return n;
       } catch {}
-      return 6;
+      return 2;
     }
 
     function bounds() {
@@ -276,9 +305,13 @@ const OMonetaryCell = defineComponent({
         return;
       }
       if (raw === '' && !props.nullable) {
+        resyncControlledNumericRaw(editingRaw, resolveNumericInputEl(inputHost.value));
         return;
       }
-      if (!/^[-]?\d*(\.\d*)?$/.test(raw)) return;
+      if (!/^[-]?\d*(\.\d*)?$/.test(raw)) {
+        resyncControlledNumericRaw(editingRaw, resolveNumericInputEl(inputHost.value));
+        return;
+      }
       editingRaw.value = raw;
       if (isIntermediateMonetaryInput(raw)) return;
       const d = parseStrictMonetary(raw, currentScale(), bounds());
@@ -311,13 +344,14 @@ const OMonetaryCell = defineComponent({
     }
 
     return () =>
-      h('input', {
+      h(Input, {
         ...attrs,
-        class: 'choy-input choy-monetary-input w-full text-right',
-        value: editingRaw.value ?? '',
+        ref: inputHost,
+        class: 'choy-monetary-input w-full text-end',
+        modelValue: editingRaw.value ?? '',
         placeholder: p.placeholder,
         inputmode: 'decimal',
-        onInput: (e: Event) => onInput((e.target as HTMLInputElement).value),
+        'onUpdate:modelValue': (v: string) => onInput(v ?? ''),
         onBlur,
       });
   },

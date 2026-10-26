@@ -20,10 +20,10 @@ describe('statInfoHelpers', () => {
     expect(resolveStatDisplayValue({ relationValue: [] })).toBe(0);
   });
 
-  test('falls back to em dash (not 0) when unloaded', () => {
-    expect(resolveStatDisplayValue({})).toBe('—');
-    expect(resolveStatDisplayValue({ relationValue: null })).toBe('—');
-    expect(resolveStatDisplayValue({ value: null })).toBe('—');
+  test('falls back to blank (not 0) when unloaded', () => {
+    expect(resolveStatDisplayValue({})).toBe('');
+    expect(resolveStatDisplayValue({ relationValue: null })).toBe('');
+    expect(resolveStatDisplayValue({ value: null })).toBe('');
     expect(resolveStatDisplayValue({ emptyValue: 0 })).toBe(0);
   });
 
@@ -133,7 +133,7 @@ describe('StatInfo', () => {
     b.unmount();
   });
 
-  test('shows em dash when relation is not an array', async () => {
+  test('shows blank when relation is not an array', async () => {
     const Host = defineComponent({
       setup() {
         provide('form-root', { draft: { Users: undefined } });
@@ -148,7 +148,7 @@ describe('StatInfo', () => {
     const { plugins } = buildPageMountGlobal({ router: { push } });
     const { unmount, q } = mountApp(Host, { plugins });
     await flushPromises();
-    expect(q('.choy-stat-info__value')?.textContent).toBe('—');
+    expect((q('.choy-stat-info__value')?.textContent || '').trim()).toBe('');
     unmount();
   });
 

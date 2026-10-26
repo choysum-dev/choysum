@@ -95,7 +95,10 @@ type CrudService<C extends ModelConstructor> = {
     ): Promise<Array<ClientModel<Projected<Row<C>, F>>>>;
     (condition?: QueryCondition<Row<C>> | [], options?: SearchOptions<Row<C>>): Promise<Array<ClientModel<Row<C>>>>;
   };
-  Count: (condition?: QueryCondition<Row<C>> | [], options?: SoftDeleteOptions) => Promise<number>;
+  Count: (
+    condition?: QueryCondition<Row<C>> | [],
+    options?: SoftDeleteOptions & Pick<SearchOptions<Row<C>>, 'relationConditionSource'>
+  ) => Promise<number>;
   Update: {
     <F extends FieldSelection<Row<C>>>(
       condition: QueryCondition<Row<C>>,

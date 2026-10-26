@@ -198,7 +198,7 @@ export function validateRelationShapeFields(meta: ModelMetadata, input: SelectRe
   });
 }
 
-export function validateDecimalFields(meta: ModelMetadata, input: SelectResult): void {
+export function validateDecimalFields(meta: ModelMetadata, input: SelectResult, mode: ValidationMode = 'update'): void {
   const inputRecord = asObjectRecord(input);
   if (!inputRecord) return;
 
@@ -212,9 +212,16 @@ export function validateDecimalFields(meta: ModelMetadata, input: SelectResult):
     let metaForNormalize = fieldMeta;
     if (fieldMeta.type === 'monetary') {
       // Prefer scale stamped by stampMonetaryScalesForWrite (hidden alias / currency digits).
-      const scale = resolveDecimalScaleForWrite({ ...fieldMeta, name: fieldName }, input);
-      if (typeof scale === 'number') {
-        metaForNormalize = { column: { ...(fieldMeta.column || {}), scale, round: 'ROUND_HALF_UP' } } as typeof fieldMeta;
+      try {
+        const scale = resolveDecimalScaleForWrite({ ...fieldMeta, name: fieldName }, input);
+        if (typeof scale === 'number') {
+          metaForNormalize = { column: { ...(fieldMeta.column || {}), scale, round: 'ROUND_HALF_UP' } } as typeof fieldMeta;
+        }
+      } catch (err) {
+        // Onchange preview drafts often carry CurrencyId as a bare Id (no DecimalDigits yet).
+        // Write paths stamp/browse before validate; preview soft-skips rather than blocking the UI.
+        if (mode === 'preview') return;
+        throw err;
       }
     }
 
@@ -251,6 +258,6 @@ export function validateFields(
   if (enabledRules.has('int')) validateIntFields(meta, input);
   if (enabledRules.has('selection')) validateSelectionFields(meta, input);
   if (enabledRules.has('required')) validateRequiredFields(meta, input, mode);
-  if (enabledRules.has('decimal')) validateDecimalFields(meta, input);
+  if (enabledRules.has('decimal')) validateDecimalFields(meta, input, mode);
   if (enabledRules.has('relationShape')) validateRelationShapeFields(meta, input);
 }

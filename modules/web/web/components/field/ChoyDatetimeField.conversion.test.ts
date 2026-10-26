@@ -40,3 +40,44 @@ test('DatetimeField conversion contract > pads short fractional seconds like Dat
   expect(wall!.getMilliseconds()).toBe(100);
 });
 
+test('DatetimeField normalizeToDate accepts numeric epoch via Date ctor fallback', async () => {
+  const { h } = await import('vue');
+  const { flushPromises, mountApp, restoreSfc, stubSfc } = await import('@/web/web/__tests__/mountApp');
+  const DatetimeField = (await import('./ChoyDatetimeField.vue')).default;
+  const ChoyFieldBase = (await import('./ChoyFieldBase.vue')).default;
+  stubSfc(ChoyFieldBase as any, {
+    name: 'ChoyFieldBase',
+    props: { binding: { type: Object, required: false }, rules: { type: Array, default: () => [] } },
+    setup(props: any, { slots }: any) {
+      return () =>
+        h('div', slots.edit?.({
+          fieldValue: () => (props.binding as any)?.fieldRef?.() ?? null,
+          onFieldChange: async () => {},
+        }));
+    },
+  });
+  const { computed, ref } = await import('vue');
+  const value = ref(null);
+  const binding = {
+    env: { isForm: true, isEditMode: true, viewMode: 'edit', fieldPrefix: null },
+    prop: 'At',
+    meta: {} as any,
+    fieldRef: () => value as any,
+    fieldRefOf: () => value as any,
+    recordRef: () => computed(() => ({ Id: '1' })) as any,
+    registerFields: () => {},
+    store: undefined,
+    asView: () => ({ fieldValue: () => value }) as any,
+  };
+  const m = mountApp(DatetimeField as any, { props: { binding, renderMode: 'form' } });
+  await flushPromises();
+  const ss = m.setupState() as any;
+  const ms = Date.UTC(2024, 0, 15, 12, 0, 0);
+  const got = ss.normalizeToDate?.(ms);
+  expect(got instanceof Date).toBe(true);
+  expect(got.getTime()).toBe(ms);
+  expect(ss.normalizeToDate?.(0)).toBeNull();
+  m.unmount();
+  restoreSfc(ChoyFieldBase as any);
+});
+

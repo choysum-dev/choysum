@@ -59,19 +59,44 @@ async function afterSubmit() {
   for (let i = 0; i < 8; i++) await flushPromises();
 }
 
-function queryIn(wrapper: { find: (sel: string) => any }, rootSelector: string, tag: string): HTMLElement | null {
+function queryIn(wrapper: { find: (sel: string) => any }, rootSelector: string, sel: string): HTMLElement | null {
   const root = wrapper.find(rootSelector);
   if (!root.exists()) return null;
   const el = root.element as HTMLElement;
-  return typeof el.querySelector === 'function' ? (el.querySelector(tag) as HTMLElement | null) : null;
+  return typeof el.querySelector === 'function' ? (el.querySelector(sel) as HTMLElement | null) : null;
 }
 
-function checkTerms(wrapper: { find: (sel: string) => any }) {
-  const terms = queryIn(wrapper, '[data-testid="register-terms"]', 'input') as HTMLInputElement | null;
-  expect(!!terms).toBe(true);
-  terms!.checked = true;
-  terms!.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
-  terms!.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+/**
+ * Toggle AgreeTerms via the kit checkbox (Reka CheckboxRoot button, not a native <input>).
+ * Minimal DOM only supports simple selectors (#id / .class / tag / [attr=value]).
+ */
+async function checkTerms(wrapper: { find: (sel: string) => any }) {
+  const terms = wrapper.find('[data-testid="register-terms"]');
+  expect(terms.exists()).toBe(true);
+  const root = terms.element as HTMLElement;
+  const box =
+    (root.querySelector('#fld-AgreeTerms') as HTMLElement | null) ||
+    (root.querySelector('.choy-bool-input') as HTMLElement | null);
+  expect(!!box).toBe(true);
+  if (typeof (box as { click?: () => void }).click === 'function') {
+    (box as { click: () => void }).click();
+  } else {
+    box!.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+  }
+  await flushPromises();
+}
+
+/** Submit control — not the first <button> (kit checkbox is also a button). */
+function findSubmitButton(wrapper: { find: (sel: string) => any }): HTMLButtonElement | null {
+  const card = wrapper.find('.register-card');
+  if (!card.exists()) return null;
+  const root = card.element as HTMLElement;
+  const buttons = typeof root.querySelectorAll === 'function' ? root.querySelectorAll('button') : [];
+  for (let i = 0; i < buttons.length; i++) {
+    const btn = buttons[i] as HTMLButtonElement;
+    if (btn.getAttribute('type') === 'submit') return btn;
+  }
+  return null;
 }
 
 test('Register.vue mounts under choysumMount', async () => {
@@ -136,7 +161,7 @@ test('Register.vue: confirm mismatch does not register', async () => {
   await fillField(wrapper, '.register-email', 'alice@example.com');
   await fillField(wrapper, '.register-password', 'secret1');
   await fillField(wrapper, '.register-confirm', 'other99');
-  checkTerms(wrapper);
+  await checkTerms(wrapper);
   submitForm(wrapper);
   await afterSubmit();
   expect(wrapper.text().includes('Passwords do not match')).toBe(true);
@@ -150,7 +175,7 @@ test('Register.vue: unchecked terms keeps submit disabled and does not register'
   await fillField(wrapper, '.register-email', 'alice@example.com');
   await fillField(wrapper, '.register-password', 'secret1');
   await fillField(wrapper, '.register-confirm', 'secret1');
-  const submit = queryIn(wrapper, '.register-card', 'button') as HTMLButtonElement | null;
+  const submit = findSubmitButton(wrapper);
   expect(!!submit).toBe(true);
   expect(submit!.disabled).toBe(true);
   expect(replaces).toEqual([]);
@@ -163,8 +188,7 @@ test('Register.vue: valid submit registers and redirects', async () => {
   await fillField(wrapper, '.register-email', 'alice@example.com');
   await fillField(wrapper, '.register-password', 'secret1');
   await fillField(wrapper, '.register-confirm', 'secret1');
-  checkTerms(wrapper);
-  await flushPromises();
+  await checkTerms(wrapper);
   submitForm(wrapper);
   await afterSubmit();
   expect(wrapper.text().includes('Passwords do not match')).toBe(false);

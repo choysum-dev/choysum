@@ -36,8 +36,8 @@ import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
-import { resolveListRowRecordId } from './list_row_nav';
 import { ChoyDatetimeField, ChoyListView, ChoyManyToOneField, ChoySearchView, ChoyTableColumn, ChoyVarcharField} from '@/web';
+import type { RowEventPayload } from '@/web';
 
 defineOptions({ name: 'CompanyListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/CompanyListView' });
@@ -51,8 +51,8 @@ const companyActions = defineModelActions('base.Company', { entityTitle: _lt('Co
 const { hasAction } = usePermission();
 const router = useRouter();
 
-function onRowClick(row: Record<string, unknown>) {
-  const id = resolveListRowRecordId(row);
+function onRowClick(payload: RowEventPayload) {
+  const id = String(payload.row?.Id ?? '').trim();
   if (id) router.push(`/base/companies/${id}`);
 }
 

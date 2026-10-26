@@ -224,8 +224,9 @@ SPDX-License-Identifier: Apache-2.0
           <slot />
           <template #empty>
             <slot name="empty">
-              <ChoyEmpty class="w-full" :description="_t('No data')">
-                <template v-if="resolvedCreateAction && canCreate" #actions>
+              <ChoyEmpty class="w-full !gap-3 !p-4 md:!p-6" :description="_t('No data')">
+                <!-- Picker embeds set registerActionTarget=false; hide New so Create does not leave a dirty host form. -->
+                <template v-if="showActions && resolvedCreateAction && canCreate" #actions>
                   <ChoyButton type="button" size="default" variant="default" @click="handleCreate">
                     <Plus class="size-4" aria-hidden="true" />
                     {{ _t('New') }}
@@ -244,7 +245,18 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts" generic="T extends BaseModel">
 import type { ConditionGroup, QueryUpdatePayload } from '@/web/web/query/types';
 import { ChoyMessage } from '../../composables/useChoyMessage';
-import { computed, onMounted, onBeforeUnmount, provide, ref, nextTick, watch, markRaw, toRaw, useSlots } from 'vue';
+import {
+  computed,
+  onMounted,
+  onBeforeUnmount,
+  provide,
+  ref,
+  nextTick,
+  watch,
+  markRaw,
+  toRaw,
+  useSlots,
+} from 'vue';
 import { useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
 import type { ClientModel, BaseModel, QueryCondition, OrderBy } from '@/core/rpc';
@@ -260,7 +272,7 @@ import {
   sameListPaginateState,
 } from './listPaginationAdapter';
 import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
-import { useTableSelection } from '@/web/web/composables/useTable';
+import { LIST_SHOW_SELECTION_COLUMN_KEY, useTableSelection } from '@/web/web/composables/useTable';
 import { CHOY_LIST_HEADER_HEIGHT, CHOY_LIST_ROW_HEIGHT } from '@/web/web/composables/listDensity';
 // Search view type: must accept store and emit query-update
 import type { Component } from 'vue';
@@ -334,6 +346,13 @@ const props = withDefaults(
     hasAction?: (actionId: string | undefined) => boolean;
     selectionMode?: 'multiple' | 'single';
     clickToSelect?: boolean;
+    /**
+     * When false, do not host the page title / IO menu in the list chrome
+     * (Search more dialogs still show search + pager).
+     */
+    hostPageTitle?: boolean;
+    /** When false, skip registering type="selection" columns (click-to-select pickers). */
+    showSelectionColumn?: boolean;
     heightMode?: 'auto' | 'viewport' | 'container';
     containerSelector?: string;
 
@@ -347,6 +366,12 @@ const props = withDefaults(
 
     /* Controlled forced condition: always AND with user search conditions, or act as the only condition; dynamic changes trigger re-apply */
     forcedCondition?: QueryCondition<T> | QueryCondition<T>[];
+
+    /**
+     * When set, List Search/Count And the source field's meta `condition`
+     * (same option as NameSearch `relationConditionSource`).
+     */
+    relationConditionSource?: { model: string; field: string };
 
     /** Opt-in S2 row inline edit (click record row → draft → Save/Discard). */
     editable?: boolean;
@@ -371,6 +396,8 @@ const props = withDefaults(
     deleteAction: true,
     selectionMode: 'multiple',
     clickToSelect: false,
+    hostPageTitle: true,
+    showSelectionColumn: true,
     heightMode: 'auto',
     containerSelector: '',
     orderBy: undefined,
@@ -379,6 +406,7 @@ const props = withDefaults(
     showPaginate: true,
 
     forcedCondition: undefined,
+    relationConditionSource: undefined,
     editable: false,
     handleField: 'Sequence',
     showHandle: true,
@@ -388,8 +416,17 @@ const props = withDefaults(
 );
 
 const store = resolvePageStore(props.store, 'ListView');
-const resolvedCreateAction = useResolvedCreateAction(() => props.createAction);
-const { pageTitle, pageTitleId, pageTitleActionsIo } = useHostPageTitleInView(() => props.showHeader);
+// Relation pickers set registerActionTarget=false; do not inherit the host page's Create route.
+const resolvedCreateAction = useResolvedCreateAction(() => props.createAction, {
+  enabled: () => props.registerActionTarget !== false,
+});
+const { pageTitle, pageTitleId, pageTitleActionsIo } = useHostPageTitleInView(
+  () => Boolean(props.showHeader && props.hostPageTitle),
+);
+provide(
+  LIST_SHOW_SELECTION_COLUMN_KEY,
+  computed(() => props.showSelectionColumn !== false),
+);
 const slots = useSlots();
 
 const emit = defineEmits<{
@@ -1041,10 +1078,46 @@ window.addEventListener('pageshow', pageShowHandler);
 // Latest search payload (keyword / appliedFilters / appliedGroups)
 const lastSearchPayload = ref<QueryUpdatePayload<T> | null>(null);
 
+// Persist relationConditionSource so listController can pass it on Search/Count.
+watch(
+  () => props.relationConditionSource,
+  v => {
+    (store.state as any).queryState = {
+      ...(store.state as any).queryState,
+      relationConditionSource: v,
+    };
+  },
+  { immediate: true }
+);
+
 // Watch dynamic forcedCondition changes; do not merge them in the view layer, let the controller handle them
 watch(
   () => props.forcedCondition,
   () => {
+    const base = lastSearchPayload.value;
+    controller
+      .apply({
+        forcedCondition: props.forcedCondition as any,
+        appliedFilters: (base?.appliedFilters || []) as any,
+        keyword: base?.keyword,
+        keywordFields: props.keywordFields || undefined,
+        appliedGroups: base?.appliedGroups as any,
+      })
+      .then(afterLayoutRecompute)
+      .catch(() => {});
+  },
+  { flush: 'post' }
+);
+
+// Re-apply when relationConditionSource changes after the first load.
+watch(
+  () => props.relationConditionSource,
+  (next, prev) => {
+    if (!firstApplied.value) return;
+    if (next === prev) return;
+    const same =
+      next?.model === prev?.model && next?.field === prev?.field;
+    if (same) return;
     const base = lastSearchPayload.value;
     controller
       .apply({

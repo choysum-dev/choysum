@@ -12,7 +12,6 @@ import {
   moduleKanbanCardBadgeVariant,
   moduleStatusBadgeClass,
   moduleStatusBadgeVariant,
-  resolveModuleKanbanCardId,
   resolveModuleKanbanCardKey,
   resolveModuleKanbanLaneStatus,
   shouldRecoverStaleKanbanSearch,
@@ -118,17 +117,11 @@ test('shouldRecoverStaleKanbanSearch: only when stale and idle', () => {
   expect(shouldRecoverStaleKanbanSearch({ completedSeq: 1, latestSeq: 2, inFlight: 1 })).toBe(false);
 });
 
-test('captureDialogFocusTarget / resolveModuleKanbanCardId', () => {
+test('captureDialogFocusTarget', () => {
   expect(captureDialogFocusTarget({ activeElement: null } as any)).toBeNull();
   expect(captureDialogFocusTarget({ activeElement: {} } as any)).toBeNull();
   const el = { focus() {} } as unknown as HTMLElement;
   expect(captureDialogFocusTarget({ activeElement: el } as any)).toBe(el);
-  expect(resolveModuleKanbanCardId({ Id: '  m1  ' })).toBe('m1');
-  expect(resolveModuleKanbanCardId({ Id: 9 })).toBe('9');
-  expect(resolveModuleKanbanCardId(null)).toBe('');
-  expect(resolveModuleKanbanCardId({})).toBe('');
-  expect(resolveModuleKanbanCardId({ Id: { nested: true } })).toBe('');
-  expect(resolveModuleKanbanCardId({ Id: Number.NaN })).toBe('');
 });
 
 test('createPlanDialogSessionGate: ignore superseded plan responses', () => {
@@ -205,12 +198,12 @@ test('shouldShowModuleKanbanCardStatusBadge: hide when lane matches status', () 
 
 test('resolveModuleKanbanCardKey: fail-closed id then ModuleName then synthetic', () => {
   expect(resolveModuleKanbanCardKey({ Id: '  m1  ' }, 'lane', 0)).toBe('m1');
+  expect(resolveModuleKanbanCardKey({ Id: 9 }, 'lane', 0)).toBe('9');
   expect(resolveModuleKanbanCardKey({ Id: { nested: true }, ModuleName: ' core ' }, 'lane', 2)).toBe(
     'core',
   );
-  // ModuleName on a { row } wrapper must unwrap like Id resolution.
-  expect(resolveModuleKanbanCardKey({ row: { ModuleName: ' wrapped ' } }, 'lane', 4)).toBe('wrapped');
   expect(resolveModuleKanbanCardKey({ Id: Number.NaN }, 'lane', 3)).toBe('lane-3');
+  expect(resolveModuleKanbanCardKey({ ModuleName: ' wrapped ' }, 'lane', 4)).toBe('wrapped');
   expect(resolveModuleKanbanCardKey({}, 'installed', 1)).toBe('installed-1');
 });
 

@@ -6,6 +6,7 @@ import {
   applyDataTableScrollToRow,
   clampDataTableVirtualWindow,
   compareDataTableValues,
+  dataTableColumnJustifyClass,
   dataTableIsGroupLikeRow,
   dataTableIsVirtualized,
   dataTableMaybeMeasure,
@@ -15,6 +16,8 @@ import {
   dataTableSelectionIdsEqual,
   dataTableShouldMeasureRow,
   dataTableVirtualizerCount,
+  embeddedTableWantsVirtualLayout,
+  resolveEmbeddedTableVirtualize,
   decodeDataTableRowKey,
   encodeDataTableRowKey,
   mapDataTableBodyRows,
@@ -267,6 +270,36 @@ describe('dataTableHelpers', () => {
     expect(resolveDataTableEstimateSize(-1, 28)).toBe(28);
   });
 
+  test('embedded auto virtualize only when height is capped', () => {
+    expect(
+      embeddedTableWantsVirtualLayout({ virtualize: 'auto', tableHeight: undefined }),
+    ).toBe(false);
+    expect(embeddedTableWantsVirtualLayout({ virtualize: 'auto', tableHeight: 360 })).toBe(true);
+    expect(embeddedTableWantsVirtualLayout({ virtualize: true, tableHeight: undefined })).toBe(true);
+    expect(embeddedTableWantsVirtualLayout({ virtualize: false, tableHeight: 360 })).toBe(false);
+    expect(
+      resolveEmbeddedTableVirtualize({
+        virtualize: 'auto',
+        tableHeight: undefined,
+        rowCount: 20,
+      }),
+    ).toBe(false);
+    expect(
+      resolveEmbeddedTableVirtualize({
+        virtualize: 'auto',
+        tableHeight: 360,
+        rowCount: 20,
+      }),
+    ).toBe(true);
+    expect(
+      resolveEmbeddedTableVirtualize({
+        virtualize: 'auto',
+        tableHeight: 360,
+        rowCount: 0,
+      }),
+    ).toBe(false);
+  });
+
   test('dataTable virtualization helpers cover on and off paths', () => {
     expect(dataTableIsVirtualized(undefined, 0)).toBe(false);
     expect(dataTableIsVirtualized(undefined, 2)).toBe(true);
@@ -432,4 +465,14 @@ describe('dataTableHelpers', () => {
     applyDataTableParentScroll(scroller, 9);
     expect(scroller.scrollTop).toBe(9);
   });
+});
+
+test('dataTableColumnJustifyClass maps logical and physical align values', () => {
+  expect(dataTableColumnJustifyClass('end')).toBe('justify-end');
+  expect(dataTableColumnJustifyClass('right')).toBe('justify-end');
+  expect(dataTableColumnJustifyClass('start')).toBe('justify-start');
+  expect(dataTableColumnJustifyClass('left')).toBe('justify-start');
+  expect(dataTableColumnJustifyClass('center')).toBe('justify-center');
+  expect(dataTableColumnJustifyClass(undefined)).toBeUndefined();
+  expect(dataTableColumnJustifyClass('')).toBeUndefined();
 });

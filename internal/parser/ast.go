@@ -707,9 +707,11 @@ func tsgoPropertyName(ctx *tsgoImportExportCtx, nameNode *tsast.Node) string {
 	if ctx == nil || nameNode == nil {
 		return ""
 	}
-	name := strings.TrimSpace(ctx.nodeText(nameNode))
+	// Prefer identifier/literal Text() so leading line comments attached ahead of a
+	// property name are not folded into the key (nodeText can include those comments).
+	name := strings.TrimSpace(nameNode.Text())
 	if name == "" {
-		name = strings.TrimSpace(nameNode.Text())
+		name = strings.TrimSpace(ctx.nodeText(nameNode))
 	}
 	if len(name) >= 2 {
 		if (strings.HasPrefix(name, "\"") && strings.HasSuffix(name, "\"")) || (strings.HasPrefix(name, "'") && strings.HasSuffix(name, "'")) {

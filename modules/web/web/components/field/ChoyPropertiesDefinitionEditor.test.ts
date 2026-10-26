@@ -191,7 +191,44 @@ describe('ChoyPropertiesDefinitionEditor', () => {
       const el = mounted.q('[data-testid="choy-properties-definition-selection"]') as HTMLTextAreaElement | null;
       expect(el).toBeTruthy();
       expect(el!.tagName).toBe('TEXTAREA');
+      expect(el!.getAttribute('data-slot')).toBe('textarea');
       expect(el!.value).toMatch(/low/);
+    } finally {
+      mounted.unmount();
+    }
+  });
+
+  test('Save surfaces invalid selection JSON without calling Update', async () => {
+    const Search = fnRecorder(async () => [
+      {
+        Id: 'sel-bad',
+        Definition: [{ name: 'prio', type: 'selection', selection: [['low', 'Low']] }],
+      },
+    ]);
+    const UpdateById = fnRecorder(async () => ({}));
+    const store = {
+      Search,
+      UpdateById,
+      Create: fnRecorder(async () => ({})),
+    } as any;
+
+    const mounted = mountApp(ChoyPropertiesDefinitionEditor as any, {
+      props: {
+        application: 'partner',
+        targetModel: 'Partner',
+        propertiesField: 'PartnerProperties',
+        store,
+      },
+    });
+    try {
+      await flushPromises();
+      setInputValue(mounted.el, '[data-testid="choy-properties-definition-selection"]', 'not-json');
+      mounted.click('[data-testid="choy-properties-definition-save"]');
+      await flushPromises();
+      const err = mounted.q('[data-testid="choy-properties-definition-save-error"]');
+      expect(err).toBeTruthy();
+      expect(err!.textContent || '').toMatch(/invalid JSON/);
+      expect(UpdateById.calls.length).toBe(0);
     } finally {
       mounted.unmount();
     }

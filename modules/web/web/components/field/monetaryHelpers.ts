@@ -52,8 +52,21 @@ export function resolveMonetaryScaleFromRecord(
   fallbackScale = 2
 ): number {
   try {
-    const digits = readCurrencyDigits(resolveCurrencyValue(obj, currencyFieldName, bindingProp));
+    const currency = resolveCurrencyValue(obj, currencyFieldName, bindingProp);
+    const digits = readCurrencyDigits(currency);
     if (digits != null) return digits;
+    // When the currency M2O is still an id, DecimalDigits may live on the nested path.
+    const s = typeof currencyFieldName === 'string' ? currencyFieldName.trim() : '';
+    if (s && obj && typeof obj === 'object') {
+      const segs = String(bindingProp).split('.').filter(Boolean);
+      if (segs.length) {
+        segs[segs.length - 1] = s;
+        const viaPath = Number(getByPath(obj, `${segs.join('.')}.DecimalDigits`));
+        if (Number.isInteger(viaPath) && viaPath >= 0 && viaPath <= 18) return viaPath;
+      }
+      const sibling = Number((obj as Record<string, unknown>)[`${s}.DecimalDigits`]);
+      if (Number.isInteger(sibling) && sibling >= 0 && sibling <= 18) return sibling;
+    }
   } catch {
     /* ignore */
   }
@@ -284,5 +297,7 @@ export function currencyFieldPaths(bindingProp: string, currencyFieldName: strin
   if (!segs.length) return [];
   segs[segs.length - 1] = s;
   const base = segs.join('.');
-  return [base, `${base}.DecimalDigits`, `${base}.Symbol`, `${base}.Code`];
+  // DisplayName must be selected with currency siblings so form Update/Create return
+  // payloads keep a label when CurrencyId is returned as a nested object.
+  return [base, `${base}.DisplayName`, `${base}.DecimalDigits`, `${base}.Symbol`, `${base}.Code`];
 }

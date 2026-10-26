@@ -11,8 +11,14 @@ type HtmlEditorChain = {
   focus: (position?: unknown, options?: { scrollIntoView?: boolean }) => HtmlEditorChain;
   toggleBold: () => HtmlEditorChain;
   toggleItalic: () => HtmlEditorChain;
+  toggleStrike: () => HtmlEditorChain;
+  toggleHeading: (attrs: { level: number }) => HtmlEditorChain;
   toggleBulletList: () => HtmlEditorChain;
   toggleOrderedList: () => HtmlEditorChain;
+  toggleBlockquote: () => HtmlEditorChain;
+  toggleCode: () => HtmlEditorChain;
+  undo: () => HtmlEditorChain;
+  redo: () => HtmlEditorChain;
   unsetLink: () => HtmlEditorChain;
   extendMarkRange: (typeOrName: string) => HtmlEditorChain;
   setLink: (attributes: { href: string }) => HtmlEditorChain;
@@ -27,4 +33,8 @@ export function htmlEditorSetContent(editor: Editor, content: string, emitUpdate
   return (
     editor.commands as unknown as { setContent: (c: string, emit?: boolean) => boolean }
   ).setContent(content, emitUpdate);
+}
+
+export function htmlEditorIsActive(editor: Editor, name: string, attrs?: Record<string, unknown>): boolean {
+  return editor.isActive(name, attrs as any);
 }

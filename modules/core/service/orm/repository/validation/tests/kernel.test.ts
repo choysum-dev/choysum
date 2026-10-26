@@ -83,6 +83,16 @@ test('repository kernel validation quantizes monetary using stamped currency dig
 
   // Empty / missing monetary values are skipped.
   expect(() => validateFields(meta, { Amount: '' }, { rules: ['decimal'] })).not.toThrow();
+
+  // Update/create still require a resolvable currency scale.
+  expect(() => validateFields(meta, { Amount: '1.23', CurrencyId: 'C1' }, { mode: 'update', rules: ['decimal'] })).toThrow(
+    /currency required/
+  );
+
+  // Onchange preview soft-skips when CurrencyId is a bare Id without DecimalDigits.
+  expect(() =>
+    validateFields(meta, { Amount: '1.23', CurrencyId: 'C1' }, { mode: 'preview', rules: ['decimal'] })
+  ).not.toThrow();
 });
 
 test('repository kernel validation stamps monetary scale when column metadata is absent', () => {

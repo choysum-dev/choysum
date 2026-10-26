@@ -140,6 +140,11 @@ describe('DecimalField mount wiring', () => {
     const m = mountField(binding);
     await flushPromises();
     const input = m.q('input.choy-decimal-input') as HTMLInputElement;
+    setInput(input, '1abc');
+    await nextTick();
+    expect(new Decimal(binding.__value.value).toString()).toBe('1');
+    expect(input.value).toBe('1');
+
     setInput(input, '1.234567890123456789');
     await flushPromises();
     expect(new Decimal(binding.__value.value).toString()).toBe('1.234567890123456789');

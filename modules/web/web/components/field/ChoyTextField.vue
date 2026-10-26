@@ -9,6 +9,7 @@ SPDX-License-Identifier: Apache-2.0
     :label="label"
     :rules="mergedRules"
     :formItemProps="formItemProps"
+    :orientation="orientation"
     :vColumnProps="vColumnProps"
     :toView="toView"
     :fromView="fromView"
@@ -21,7 +22,7 @@ SPDX-License-Identifier: Apache-2.0
     v-bind="$attrs"
   >
     <template #edit="{ fieldValue, inputId, describedBy, invalid}">
-      <OTextCell
+      <ChoyTextCell
         :field-value="fieldValue"
         :options="bufferOptions"
         :placeholder="placeholder"
@@ -37,7 +38,13 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display="{ fieldValue }">
-      <div class="choy-textfield-display whitespace-pre-wrap wrap-break-word px-[11px] text-foreground leading-8">{{ toDisplayText(fieldValue().value) }}</div>
+      <div
+        v-if="isEmptyDisplay(fieldValue().value) && showFormEmptyPlaceholder"
+        class="choy-textfield-display choy-textfield-display--empty text-sm text-muted-foreground"
+      >
+        {{ emptyDisplayText }}
+      </div>
+      <div v-else class="choy-textfield-display whitespace-pre-wrap wrap-break-word text-foreground">{{ toDisplayText(fieldValue().value) }}</div>
     </template>
   </ChoyFieldBase>
 </template>
@@ -52,10 +59,11 @@ import type { UseField } from '@/web/web/composables/useField';
 // Narrow aggregation types to count_distinct only.
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
+import Textarea from '../vendor/ui/textarea/Textarea.vue';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { createTranslate } from '@/web/web/i18n';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/TextField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyTextField' });
 
 defineOptions({ name: 'ChoyTextField' });
 
@@ -80,6 +88,8 @@ const props = withDefaults(
     rows?: number;
     autosize?: boolean | { minRows?: number; maxRows?: number };
     showWordLimit?: boolean;
+    /** Form display placeholder when empty (defaults to blank). */
+    emptyText?: string;
 
     required?: FieldStateExpr<T, V>;
     readonly?: FieldStateExpr<T, V>;
@@ -87,6 +97,7 @@ const props = withDefaults(
     cellVisible?: FieldStateExpr<T, V>;
 
     formItemProps?: Partial<FormItemProps>;
+    orientation?: 'horizontal' | 'vertical';
     vColumnProps?: {
       width?: number | string;
       minWidth?: number;
@@ -129,9 +140,24 @@ const props = withDefaults(
 
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
 
+const showFormEmptyPlaceholder = computed(() => {
+  const mode = props.renderMode;
+  if (mode === 'table' || mode === 'inline') return false;
+  if (mode === 'form') return true;
+  return binding.env?.isForm !== false;
+});
+
+const emptyDisplayText = computed(() => {
+  if (props.emptyText != null) return String(props.emptyText);
+  return '';
+});
+
 const toView = (raw: any): ViewType => (raw == null ? null : String(raw));
 const fromView = (v: ViewType) => v as unknown as V;
 const toDisplayText = (v: ViewType) => (v == null ? '' : String(v));
+function isEmptyDisplay(v: ViewType): boolean {
+  return toDisplayText(v) === '';
+}
 
 function strLen(s: string) {
   return Array.from(s).length;
@@ -158,8 +184,45 @@ const bufferOptions = computed(() => ({
   equals: (a: string | null, b: string | null) => a === b,
 }));
 
-const OTextCell = defineComponent({
-  name: 'OTextCell',
+type AutosizeOpts = boolean | { minRows?: number; maxRows?: number };
+
+function resolveAutosizeBounds(autosize: AutosizeOpts | undefined, rows: number): {
+  enabled: boolean;
+  minRows: number;
+  maxRows: number;
+} {
+  const baseRows = rows > 0 ? rows : 3;
+  if (autosize === false || autosize == null) {
+    return { enabled: false, minRows: baseRows, maxRows: baseRows };
+  }
+  if (autosize === true) {
+    return { enabled: true, minRows: baseRows, maxRows: Math.max(baseRows, 20) };
+  }
+  const minRows = autosize.minRows != null && autosize.minRows > 0 ? autosize.minRows : baseRows;
+  const maxRows =
+    autosize.maxRows != null && autosize.maxRows > 0 ? Math.max(minRows, autosize.maxRows) : Math.max(minRows, 20);
+  return { enabled: true, minRows, maxRows };
+}
+
+function applyTextareaAutosize(el: HTMLTextAreaElement, minRows: number, maxRows: number): void {
+  const style = typeof getComputedStyle === 'function' ? getComputedStyle(el) : null;
+  const lineHeight = style ? parseFloat(style.lineHeight) : NaN;
+  const paddingTop = style ? parseFloat(style.paddingTop) : 0;
+  const paddingBottom = style ? parseFloat(style.paddingBottom) : 0;
+  const lh = Number.isFinite(lineHeight) && lineHeight > 0 ? lineHeight : 20;
+  const pad =
+    (Number.isFinite(paddingTop) ? paddingTop : 0) + (Number.isFinite(paddingBottom) ? paddingBottom : 0);
+  const minH = lh * minRows + pad;
+  const maxH = lh * maxRows + pad;
+  el.style.height = 'auto';
+  const next = Math.min(maxH, Math.max(minH, el.scrollHeight));
+  el.style.height = `${next}px`;
+  el.style.overflowY = el.scrollHeight > maxH + 1 ? 'auto' : 'hidden';
+}
+
+const ChoyTextCell = defineComponent({
+  name: 'ChoyTextCell',
+  inheritAttrs: false,
   props: {
     fieldValue: { type: Function, required: true },
     options: { type: Object, required: true },
@@ -184,17 +247,77 @@ const OTextCell = defineComponent({
       p.options as any
     );
     const onBlur = () => buffer.onBlur();
-    return () =>
-      h('textarea', {
+    let taEl: HTMLTextAreaElement | null = null;
+
+    function bindTextareaEl(el: unknown) {
+      if (el == null) {
+        taEl = null;
+        return;
+      }
+      if ((el as HTMLElement).tagName === 'TEXTAREA') {
+        taEl = el as HTMLTextAreaElement;
+        return;
+      }
+      const root = (el as { $el?: HTMLElement }).$el ?? (el as HTMLElement);
+      taEl =
+        root?.tagName === 'TEXTAREA'
+          ? (root as HTMLTextAreaElement)
+          : ((root as HTMLElement | null)?.querySelector?.('textarea') as HTMLTextAreaElement | null) ?? null;
+    }
+
+    function syncAutosize() {
+      if (!taEl) return;
+      const bounds = resolveAutosizeBounds(p.autosize as AutosizeOpts | undefined, p.rows ?? 3);
+      if (!bounds.enabled) {
+        taEl.style.height = '';
+        taEl.style.overflowY = '';
+        return;
+      }
+      applyTextareaAutosize(taEl, bounds.minRows, bounds.maxRows);
+    }
+
+    return () => {
+      const text = buffer.editingValue.value ?? '';
+      const max =
+        p.maxlength == null || p.maxlength === '' ? undefined : Number(p.maxlength);
+      const showLimit = !!p.showWordLimit && max != null && Number.isFinite(max) && max > 0;
+      const bounds = resolveAutosizeBounds(p.autosize as AutosizeOpts | undefined, p.rows ?? 3);
+      const baseClass = showLimit ? 'choy-textarea w-full pb-6' : 'choy-textarea w-full';
+      const textarea = h(Textarea, {
         ...attrs,
-        class: 'choy-textarea w-full',
+        class: bounds.enabled ? `${baseClass} resize-none` : baseClass,
         placeholder: p.placeholder,
-        rows: p.rows ?? 3,
+        rows: bounds.minRows,
         maxlength: p.maxlength,
-        value: buffer.editingValue.value ?? '',
-        onInput: (e: Event) => buffer.setEditing((e.target as HTMLTextAreaElement).value ?? ''),
+        modelValue: text,
+        'onUpdate:modelValue': (v: string) => {
+          buffer.setEditing(v ?? '');
+          queueMicrotask(syncAutosize);
+        },
         onBlur,
+        onVnodeMounted: (vnode: { el?: unknown }) => {
+          bindTextareaEl(vnode.el);
+          queueMicrotask(syncAutosize);
+        },
+        onVnodeUpdated: (vnode: { el?: unknown }) => {
+          bindTextareaEl(vnode.el);
+          queueMicrotask(syncAutosize);
+        },
       });
+      if (!showLimit) return textarea;
+      return h('div', { class: 'choy-textarea-wrap relative w-full' }, [
+        textarea,
+        h(
+          'span',
+          {
+            class:
+              'choy-textarea-word-limit pointer-events-none absolute bottom-2 end-2 text-xs tabular-nums text-muted-foreground',
+            'aria-hidden': 'true',
+          },
+          `${strLen(text)} / ${max}`,
+        ),
+      ]);
+    };
   },
 });
 

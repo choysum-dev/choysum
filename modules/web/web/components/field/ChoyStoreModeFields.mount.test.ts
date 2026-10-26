@@ -31,6 +31,7 @@ import ChoyVirtualField from './ChoyVirtualField.vue';
 import ChoyManyToOneField from './ChoyManyToOneField.vue';
 import ChoyManyToOneRefField from './ChoyManyToOneRefField.vue';
 import ChoyManyToManyField from './ChoyManyToManyField.vue';
+import ChoyManyToManyRefField from './ChoyManyToManyRefField.vue';
 import ChoyManyToManyRefTagsField from './ChoyManyToManyRefTagsField.vue';
 import ChoyManyToManyRefTreeField from './ChoyManyToManyRefTreeField.vue';
 import ChoyOneToManyField from './ChoyOneToManyField.vue';
@@ -244,6 +245,7 @@ describe('Choy store-mode field hosts', () => {
       [ChoyManyToOneField, 'CompanyId'],
       [ChoyManyToOneRefField, 'CurrencyId'],
       [ChoyManyToManyField, 'RoleIds'],
+      [ChoyManyToManyRefField, 'TagTableRefIds'],
       [ChoyManyToManyRefTagsField, 'TagIds'],
       [ChoyManyToManyRefTreeField, 'CategoryIds'],
       [ChoyOneToManyKanbanField, 'Contacts'],

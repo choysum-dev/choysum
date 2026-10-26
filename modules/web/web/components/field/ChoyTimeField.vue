@@ -9,6 +9,7 @@ SPDX-License-Identifier: Apache-2.0
     :label="label"
     :rules="mergedRules"
     :formItemProps="formItemProps"
+    :orientation="orientation"
     :vColumnProps="vColumnProps"
     :toView="toView"
     :fromView="fromView"
@@ -41,13 +42,14 @@ import type { UseField } from '@/web/web/composables/useField';
 // Temporal fields only support the narrowed count_distinct aggregate.
 import type { NarrowAggProp, TemporalAggFns } from '@/web/web/composables/useField';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
+import TimePicker from '../internal/TimePicker.vue';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
 import { createTranslate } from '@/web/web/i18n';
 dayjs.extend(customParseFormat);
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/TimeField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyTimeField' });
 
 defineOptions({ name: 'ChoyTimeField' });
 
@@ -70,6 +72,7 @@ const props = withDefaults(
     cellVisible?: FieldStateExpr<T, V>;
     timePickerProps?: Record<string, unknown>;
     formItemProps?: Partial<FormItemProps>;
+    orientation?: 'horizontal' | 'vertical';
     vColumnProps?: Record<string, unknown>;
 
     bufferStrategy?: CommitStrategy;
@@ -145,7 +148,15 @@ const toDisplayText = (v: FieldType) => {
 };
 
 function normalizeToDate(v: any): FieldType {
-  return v instanceof Date ? (isNaN(v.getTime()) ? null : v) : v ? new Date(v) : null;
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+  // TimePicker emits HH:mm:ss (or HH:mm); parse as local wall clock on a carrier day.
+  if (typeof v === 'string') {
+    const parsed = dayjs(v, 'HH:mm:ss', true);
+    if (parsed.isValid()) return parsed.toDate();
+    const short = dayjs(v, 'HH:mm', true);
+    return short.isValid() ? short.toDate() : null;
+  }
+  return v ? new Date(v) : null;
 }
 
 function isValidValue(value: any): boolean {
@@ -180,6 +191,7 @@ const bufferOptions = computed(() => ({
 
 const ChoyTimeCell = defineComponent({
   name: 'ChoyTimeCell',
+  inheritAttrs: false,
   props: {
     fieldValue: { type: Function as PropType<() => { value: any }>, required: true },
     options: { type: Object as PropType<any>, required: true },
@@ -207,19 +219,17 @@ const ChoyTimeCell = defineComponent({
       const value =
         current instanceof Date && !isNaN(current.getTime())
           ? dayjs(current).format('HH:mm:ss')
-          : '';
-      return h('input', {
+          : null;
+      return h(TimePicker, {
         ...attrs,
         ...(p.pickerProps || {}),
-        type: 'time',
-        step: 1,
         class: 'choy-time-picker w-full',
-        value,
-        onInput: (e: Event) => {
-          const raw = (e.target as HTMLInputElement).value;
+        placeholder: _t('Select time'),
+        modelValue: value,
+        'onUpdate:modelValue': (raw: string | null) => {
           buffer.setEditing(raw ? normalizeToDate(raw) : null);
+          buffer.onBlur();
         },
-        onBlur: () => buffer.onBlur(),
       });
     };
   },

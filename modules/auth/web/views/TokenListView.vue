@@ -39,7 +39,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRouter } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type Token from '@/auth/service/models/token';
 import { useListViewExpose } from '@/web/web/composables/useListView';
@@ -54,22 +54,16 @@ import {
   ChoyTableColumn,
   ChoyVarcharField,
   ChoyViewSwitcher,
+  useChoyViewRouteSwitch,
   type ChoyViewSwitcherOption,
+  type RowEventPayload,
 } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
-import { resolveListRowRecordId } from './list_row_nav';
-import {
-  ensureTokenViewGroups,
-  resolveTokenViewKind,
-  tokenViewPath,
-  type TokenViewKind,
-} from './token_view_nav';
 
 defineOptions({ name: 'TokenListView', inheritAttrs: false });
 const { _t, _lt } = createTranslate('auth', { scope: 'web/views/TokenListView' });
 
 const router = useRouter();
-const route = useRoute();
 
 const props = withDefaults(
   defineProps<{
@@ -82,13 +76,10 @@ const props = withDefaults(
 );
 
 const store = resolvePageStore(props.store, 'TokenListView');
-// Clear Chart/Kanban groups on the shared store so List stays ungrouped.
-ensureTokenViewGroups(store, 'list');
+const { active: activeView, selectView: onViewSelect } = useChoyViewRouteSwitch({ store });
 const { showHeader } = props;
 const tokenActions = defineModelActions('auth.Token', { entityTitle: _lt('Token') });
 const { hasAction } = usePermission();
-
-const activeView = computed(() => resolveTokenViewKind(String(route.path || '')));
 
 const viewSwitcherOptions = computed<ChoyViewSwitcherOption[]>(() => [
   { value: 'list', label: _t('List View') },
@@ -96,13 +87,9 @@ const viewSwitcherOptions = computed<ChoyViewSwitcherOption[]>(() => [
   { value: 'chart', label: _t('Chart View') },
 ]);
 
-function onRowClick(row: Record<string, unknown>) {
-  const id = resolveListRowRecordId(row);
+function onRowClick(payload: RowEventPayload) {
+  const id = String(payload.row?.Id ?? '').trim();
   if (id) router.push(`/auth/tokens/${id}`);
-}
-
-function onViewSelect(value: string) {
-  router.push(tokenViewPath(value as TokenViewKind));
 }
 
 const { listRef, expose } = useListViewExpose<Token>();

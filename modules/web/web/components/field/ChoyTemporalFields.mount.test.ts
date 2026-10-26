@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Mount coverage for Date/Datetime/Time native picker cells and conversion helpers.
+ * Mount coverage for Date/Datetime/Time picker cells and conversion helpers.
  */
 
 import { computed, h, ref } from 'vue';
@@ -69,13 +69,6 @@ async function runRule(rules: any[], value: unknown): Promise<Error | undefined>
   return await new Promise(resolve => {
     rule.validator({}, value, (e?: Error) => resolve(e));
   });
-}
-
-function setPicker(el: HTMLInputElement, value: string) {
-  const ev = new Event('input', { bubbles: true });
-  Object.defineProperty(ev, 'target', { value: { value } });
-  el.dispatchEvent(ev);
-  el.dispatchEvent(new Event('blur', { bubbles: true }));
 }
 
 describe('Choy temporal field cells', () => {
@@ -187,11 +180,15 @@ describe('Choy temporal field cells', () => {
     });
     await flushPromises();
     expect(m.q('.choy-field-display-text')?.textContent || '').toMatch(/14/);
-    const input = m.q('input.choy-time-picker') as HTMLInputElement;
-    expect(input).toBeTruthy();
-    expect(input.getAttribute('type')).toBe('time');
-    setPicker(input, '09:15:30');
+    // TimeField edit chrome is Popover + hour/minute/second columns (not native <input type="time">).
+    const trigger = m.q('[data-anchor="choy.internal.time-picker"]');
+    expect(trigger).toBeTruthy();
+    expect(trigger?.textContent || '').toMatch(/14:30/);
+    const clearBtn = m.q('[data-testid="choy-time-picker-clear"]');
+    expect(clearBtn).toBeTruthy();
+    clearBtn!.dispatchEvent(new Event('click', { bubbles: true }));
     await flushPromises();
+    expect((binding as any).__value.value).toBeNull();
 
     const toView = lastBaseProps.current?.toView as (v: unknown) => unknown;
     const fromView = lastBaseProps.current?.fromView as (v: unknown) => unknown;
@@ -224,6 +221,8 @@ describe('Choy temporal field cells', () => {
       expect(tss.sameTime(t0, new Date(t0.getTime()))).toBe(true);
       expect(tss.sameTime(t0, null)).toBe(false);
     }
+    expect(typeof tss.normalizeToDate).toBe('function');
+    expect(tss.normalizeToDate('09:15:30')).toBeInstanceOf(Date);
     rulesMount.unmount();
     m.unmount();
   });
@@ -241,11 +240,15 @@ describe('Choy temporal field cells', () => {
     });
     await flushPromises();
     expect(m.q('.choy-field-display-text')?.textContent).toBeTruthy();
-    const input = m.q('input.choy-date-picker') as HTMLInputElement;
-    expect(input).toBeTruthy();
-    expect(input.getAttribute('type')).toBe('datetime-local');
-    setPicker(input, '2024-07-01T10:15');
+    // DatetimeField edit chrome is Popover + Calendar + hour/minute/second columns.
+    const trigger = m.q('[data-anchor="choy.internal.datetime-picker"]');
+    expect(trigger).toBeTruthy();
+    expect(trigger?.textContent || '').toMatch(/\d{4}-\d{2}-\d{2}/);
+    const clearBtn = m.q('[data-testid="choy-datetime-picker-clear"]');
+    expect(clearBtn).toBeTruthy();
+    clearBtn!.dispatchEvent(new Event('click', { bubbles: true }));
     await flushPromises();
+    expect((binding as any).__value.value).toBeNull();
 
     const toView = lastBaseProps.current?.toView as (v: unknown) => unknown;
     const fromView = lastBaseProps.current?.fromView as (v: unknown) => unknown;
@@ -281,10 +284,43 @@ describe('Choy temporal field cells', () => {
       const d0 = new Date('2024-01-02T03:04:05.000Z');
       expect(dss.sameDate(d0, new Date(d0.getTime()))).toBe(true);
     }
-    // Drive modelRef setter via live commit on the datetime-local input.
-    setPicker(m.q('input.choy-date-picker') as HTMLInputElement, '2024-08-02T11:00');
-    await flushPromises();
+    expect(typeof dss.normalizeToDate).toBe('function');
+    const withSeconds = dss.normalizeToDate('2024-08-02T11:00:33');
+    expect(withSeconds).toBeInstanceOf(Date);
+    expect(withSeconds.getSeconds()).toBe(33);
+    const legacyMinute = dss.normalizeToDate('2024-08-02T11:00');
+    expect(legacyMinute).toBeInstanceOf(Date);
+    expect(legacyMinute.getSeconds()).toBe(0);
     rulesMount.unmount();
+    m.unmount();
+  });
+
+  // FW12: sample real ChoyFieldBase chrome (no Base stub) for Date.
+  test('DateField real-chrome mounts FieldBase and date control', async () => {
+    const value = ref('2024-01-02');
+    const binding = {
+      env: {
+        isForm: true,
+        fieldPresentation: 'form',
+        isEditMode: true,
+        viewMode: 'edit',
+        fieldPrefix: null,
+      },
+      prop: 'When',
+      meta: { string: 'When', type: 'date' },
+      fieldRef: () => value as any,
+      fieldRefOf: () => value as any,
+      recordRef: () => computed(() => ({ Id: '1' })) as any,
+      registerFields: () => {},
+      store: {},
+      asView: () => ({ fieldValue: () => value }) as any,
+    };
+    const m = mountApp(ChoyDateField as any, {
+      props: { binding, label: 'When', renderMode: 'form' },
+    });
+    await flushPromises();
+    expect(m.q('[data-anchor="choy.field-base"]')).toBeTruthy();
+    expect(m.q('[data-testid="choy-date-field"]') || m.q('.choy-date-field') || m.q('button')).toBeTruthy();
     m.unmount();
   });
 });

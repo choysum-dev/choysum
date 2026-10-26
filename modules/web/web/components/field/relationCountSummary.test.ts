@@ -8,10 +8,10 @@ function fakeT(msg: string, ...args: unknown[]): string {
   return args.reduce<string>((s, a) => s.replace('%s', String(a)), msg);
 }
 
-test('formatRelationCountSummary: empty uses em-dash', () => {
-  expect(formatRelationCountSummary(0, fakeT)).toBe('—');
-  expect(formatRelationCountSummary(-1, fakeT)).toBe('—');
-  expect(formatRelationCountSummary(Number.NaN, fakeT)).toBe('—');
+test('formatRelationCountSummary: empty is blank', () => {
+  expect(formatRelationCountSummary(0, fakeT)).toBe('');
+  expect(formatRelationCountSummary(-1, fakeT)).toBe('');
+  expect(formatRelationCountSummary(Number.NaN, fakeT)).toBe('');
 });
 
 test('formatRelationCountSummary: singular and plural', () => {

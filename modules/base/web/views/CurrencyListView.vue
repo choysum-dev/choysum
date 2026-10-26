@@ -33,8 +33,8 @@ import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
-import { resolveListRowRecordId } from './list_row_nav';
 import { ChoyBooleanField, ChoyDecimalField, ChoyListView, ChoySearchView, ChoyTableColumn, ChoyVarcharField, ChoyIntField} from '@/web';
+import type { RowEventPayload } from '@/web';
 
 defineOptions({ name: 'CurrencyListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/CurrencyListView' });
@@ -43,8 +43,8 @@ const store = resolvePageStore(props.store, 'CurrencyListView');
 const currencyActions = defineModelActions('base.Currency', { entityTitle: _lt('Currency') });
 const { hasAction } = usePermission();
 const router = useRouter();
-function onRowClick(row: Record<string, unknown>) {
-  const id = resolveListRowRecordId(row);
+function onRowClick(payload: RowEventPayload) {
+  const id = String(payload.row?.Id ?? '').trim();
   if (id) router.push(`/base/currencies/${id}`);
 }
 const { listRef, expose } = useListViewExpose<Currency>();

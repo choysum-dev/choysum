@@ -343,6 +343,39 @@ export function resolveDataTableEstimateSize(
     : fallback;
 }
 
+/**
+ * Embedded O2M/M2M tables: `auto` turns on virtualization only when the field
+ * has capped height (`tableHeight` set) so short lists stay content-sized.
+ */
+export type EmbeddedTableVirtualizeMode = boolean | 'auto';
+
+/**
+ * Whether the host should use the fixed-height / scrollport layout (vs content-sized).
+ * Independent of row count so empty Lists keep their chrome.
+ */
+export function embeddedTableWantsVirtualLayout(opts: {
+  virtualize: EmbeddedTableVirtualizeMode | undefined;
+  tableHeight: number | null | undefined;
+}): boolean {
+  if (opts.virtualize === false) return false;
+  if (opts.virtualize === 'auto') {
+    const h = opts.tableHeight;
+    return h != null && Number.isFinite(h) && h > 0;
+  }
+  return true;
+}
+
+/** Resolve host virtualize mode to a boolean for DataTable (needs rows). */
+export function resolveEmbeddedTableVirtualize(opts: {
+  virtualize: EmbeddedTableVirtualizeMode | undefined;
+  tableHeight: number | null | undefined;
+  rowCount: number;
+}): boolean {
+  const n = Math.max(0, Math.floor(Number(opts.rowCount) || 0));
+  if (n <= 0) return false;
+  return embeddedTableWantsVirtualLayout(opts);
+}
+
 /** Virtualize when the host left it on and at least one row is present. */
 export function dataTableIsVirtualized(virtualize: boolean | undefined, rowCount: number): boolean {
   return virtualize !== false && rowCount > 0;
@@ -472,5 +505,16 @@ export function applyDataTableScrollToRow(opts: {
       estimateSize: resolveDataTableEstimateSize(opts.estimateSize, 32),
     }),
   );
+}
+
+/** Map column align meta to flex justify classes (logical end/start + legacy left/right). */
+export function dataTableColumnJustifyClass(align: unknown): string | undefined {
+  const a = String(align || '')
+    .trim()
+    .toLowerCase();
+  if (a === 'center') return 'justify-center';
+  if (a === 'end' || a === 'right') return 'justify-end';
+  if (a === 'start' || a === 'left') return 'justify-start';
+  return undefined;
 }
 

@@ -78,81 +78,51 @@ test('base.country: repository update passes current row into constraint context
   expect(String((updated as any).Name).startsWith('country_after_ok_')).toBe(true);
 });
 
-test('base.country: repository update rejects writes to select-only fields', async () => {
+test('base.country: repository update strips select-only compute fields instead of rejecting', async () => {
+  const name = uid('country_select_field');
   const created = await Country.Create(
     {
-      Name: uid('country_select_field'),
+      Name: name,
       Code: countryCode8(),
       ZipRequired: false,
       StateRequired: false,
       IsActive: true,
     } as any,
-    ['Id'] as any
+    ['Id', 'Name', 'DisplayName'] as any
   );
 
-  let error: unknown;
-  try {
-    await Country.UpdateById(
-      String((created as any).Id),
-      {
-        DisplayName: 'forbidden_display_name',
-      } as any,
-      ['Id', 'DisplayName'] as any
-    );
-  } catch (err) {
-    error = err;
-  }
+  // DisplayName is SqlCompute: Update strips compute fields before repository write
+  // so Form dirty-diff cannot trip platform_write_to_select_field.
+  const updated = await Country.UpdateById(
+    String((created as any).Id),
+    {
+      DisplayName: 'forbidden_display_name',
+    } as any,
+    ['Id', 'Name', 'DisplayName'] as any
+  );
 
-  expect(error instanceof ChoysumError).toBe(true);
-  const repositoryError = error as ChoysumError;
-  expect(repositoryError.domain).toBe('core.repository');
-  expect(repositoryError.code).toBe('validation_failed');
-  expect(repositoryError.grpcCode).toBe(GrpcCode.InvalidArgument);
-  expect(repositoryError.metadata.mode).toBe('update');
-  expect(repositoryError.metadata.field).toBe('DisplayName');
-  expect(repositoryError.metadata.issueCode).toBe('platform_write_to_select_field');
-  expect(repositoryError.metadata.fields).toBe('DisplayName');
-  expect(repositoryError.metadata.fieldCount).toBe('1');
-
-  const fieldIssues = JSON.parse(repositoryError.metadata.fieldIssues || '{}') as Record<string, any[]>;
-  expect(Array.isArray(fieldIssues.DisplayName)).toBe(true);
-  expect(fieldIssues.DisplayName?.[0]?.scope).toBe('platform');
-  expect(fieldIssues.DisplayName?.[0]?.code).toBe('platform_write_to_select_field');
-
-  expect((repositoryError as any).cause instanceof ValidationPipelineError).toBe(true);
-  const pipelineError = (repositoryError as any).cause as ValidationPipelineError;
-  expect(pipelineError.issues.length).toBe(1);
-  expect(pipelineError.issues[0]?.scope).toBe('platform');
-  expect(pipelineError.issues[0]?.field).toBe('DisplayName');
-  expect(pipelineError.issues[0]?.code).toBe('platform_write_to_select_field');
+  expect(String((updated as any).DisplayName)).not.toBe('forbidden_display_name');
+  expect(String((updated as any).DisplayName)).toBe(name);
 });
 
-test('base.country: repository create rejects writes to select-only fields by default', async () => {
-  let error: unknown;
-  try {
-    await Country.Create(
-      {
-        Name: uid('country_create_select_deny'),
-        Code: countryCode8(),
-        DisplayName: 'forbidden_create_display_name',
-        ZipRequired: false,
-        StateRequired: false,
-        IsActive: true,
-      } as any,
-      ['Id'] as any
-    );
-  } catch (err) {
-    error = err;
-  }
+test('base.country: repository create strips select-only compute fields by default', async () => {
+  const name = uid('country_create_select_deny');
+  // DisplayName SqlCompute is stripped before repository create (same as Update).
+  const created = await Country.Create(
+    {
+      Name: name,
+      Code: countryCode8(),
+      DisplayName: 'forbidden_create_display_name',
+      ZipRequired: false,
+      StateRequired: false,
+      IsActive: true,
+    } as any,
+    ['Id', 'Name', 'DisplayName'] as any
+  );
 
-  expect(error instanceof ChoysumError).toBe(true);
-  const repositoryError = error as ChoysumError;
-  expect(repositoryError.domain).toBe('core.repository');
-  expect(repositoryError.code).toBe('validation_failed');
-  expect(repositoryError.grpcCode).toBe(GrpcCode.InvalidArgument);
-  expect(repositoryError.metadata.mode).toBe('create');
-  expect(repositoryError.metadata.field).toBe('DisplayName');
-  expect(repositoryError.metadata.issueCode).toBe('platform_write_to_select_field');
+  expect(Boolean((created as any).Id)).toBe(true);
+  expect(String((created as any).DisplayName)).not.toBe('forbidden_create_display_name');
+  expect(String((created as any).DisplayName)).toBe(name);
 });
 
 test('base.country: repository create accepts select-only field via context whitelist', async () => {
@@ -181,10 +151,10 @@ test('base.country: repository create accepts select-only field via context whit
   expect(Boolean((created as any).Id)).toBe(true);
 });
 
-test('base.country: model-specific create whitelist overrides global whitelist', async () => {
-  let error: unknown;
-
-  await withModelContext(
+test('base.country: model-specific create whitelist does not reintroduce stripped compute fields', async () => {
+  const name = uid('country_create_select_model_override');
+  // Empty model whitelist used to deny DisplayName; compute strip now drops it first.
+  const created = await withModelContext(
     {
       validation: {
         platformCreateWriteWhitelist: ['DisplayName'],
@@ -193,31 +163,23 @@ test('base.country: model-specific create whitelist overrides global whitelist',
         },
       },
     } as any,
-    async () => {
-      try {
-        await Country.Create(
-          {
-            Name: uid('country_create_select_model_override'),
-            Code: countryCode8(),
-            DisplayName: 'should_be_denied_by_model_override',
-            ZipRequired: false,
-            StateRequired: false,
-            IsActive: true,
-          } as any,
-          ['Id'] as any
-        );
-      } catch (err) {
-        error = err;
-      }
-    }
+    async () =>
+      Country.Create(
+        {
+          Name: name,
+          Code: countryCode8(),
+          DisplayName: 'should_be_denied_by_model_override',
+          ZipRequired: false,
+          StateRequired: false,
+          IsActive: true,
+        } as any,
+        ['Id', 'Name', 'DisplayName'] as any
+      )
   );
 
-  expect(error instanceof ChoysumError).toBe(true);
-  const repositoryError = error as ChoysumError;
-  expect(repositoryError.domain).toBe('core.repository');
-  expect(repositoryError.code).toBe('validation_failed');
-  expect(repositoryError.metadata.mode).toBe('create');
-  expect(repositoryError.metadata.issueCode).toBe('platform_write_to_select_field');
+  expect(Boolean((created as any).Id)).toBe(true);
+  expect(String((created as any).DisplayName)).not.toBe('should_be_denied_by_model_override');
+  expect(String((created as any).DisplayName)).toBe(name);
 });
 
 test('base.country: repository create rejects unknown fields when platform unknown guard is enabled', async () => {
@@ -257,7 +219,7 @@ test('base.country: repository create rejects unknown fields when platform unkno
   expect(repositoryError.metadata.issueCode).toBe('platform_unknown_field');
 });
 
-test('base.country: repository create writes whitelist audit into request context', async () => {
+test('base.country: repository create whitelist audit skips stripped compute fields', async () => {
   (globalThis as any).__choysumValidationAudit = { version: 1, platformCreateWhitelistHits: [] };
 
   const auditHits = await withModelContext(
@@ -287,18 +249,16 @@ test('base.country: repository create writes whitelist audit into request contex
         return localHits;
       }
 
-      const globalHits = ((globalThis as any).__choysumValidationAudit?.platformCreateWhitelistHits || []) as Array<Record<string, unknown>>;
+      const globalHits = ((globalThis as any).__choysumValidationAudit?.platformCreateWhitelistHits || []) as Array<
+        Record<string, unknown>
+      >;
       return globalHits;
     }
   );
 
+  // DisplayName is stripped as SqlCompute before platform whitelist auditing runs.
   expect(Array.isArray(auditHits)).toBe(true);
-  expect(auditHits.length).toBe(1);
-  expect(auditHits[0]?.version).toBe(1);
-  expect(auditHits[0]?.source === 'request_context' || auditHits[0]?.source === 'global_fallback').toBe(true);
-  expect(auditHits[0]?.model).toBe('base.Country');
-  expect(auditHits[0]?.mode).toBe('create');
-  expect(auditHits[0]?.fields).toEqual(['DisplayName']);
+  expect(auditHits.length).toBe(0);
 });
 
 test('base.country: repository create accepts select-only field via global whitelist when no model-specific override', async () => {
@@ -325,20 +285,21 @@ test('base.country: repository create accepts select-only field via global white
   expect(Boolean((created as any).Id)).toBe(true);
 });
 
-test('base.country: repository update still rejects select-only field even with create whitelist configured', async () => {
+test('base.country: repository update strips select-only compute even with create whitelist configured', async () => {
+  const name = uid('country_update_select_create_whitelist_only');
   const created = await Country.Create(
     {
-      Name: uid('country_update_select_create_whitelist_only'),
+      Name: name,
       Code: countryCode8(),
       ZipRequired: false,
       StateRequired: false,
       IsActive: true,
     } as any,
-    ['Id'] as any
+    ['Id', 'Name', 'DisplayName'] as any
   );
 
-  let error: unknown;
-  await withModelContext(
+  // Create whitelist does not reintroduce compute fields on Update; strip still applies.
+  const updated = await withModelContext(
     {
       validation: {
         platformCreateWriteWhitelistByModel: {
@@ -346,27 +307,18 @@ test('base.country: repository update still rejects select-only field even with 
         },
       },
     } as any,
-    async () => {
-      try {
-        await Country.UpdateById(
-          String((created as any).Id),
-          {
-            DisplayName: 'still_forbidden_on_update',
-          } as any,
-          ['Id', 'DisplayName'] as any
-        );
-      } catch (err) {
-        error = err;
-      }
-    }
+    async () =>
+      Country.UpdateById(
+        String((created as any).Id),
+        {
+          DisplayName: 'still_forbidden_on_update',
+        } as any,
+        ['Id', 'Name', 'DisplayName'] as any
+      )
   );
 
-  expect(error instanceof ChoysumError).toBe(true);
-  const repositoryError = error as ChoysumError;
-  expect(repositoryError.domain).toBe('core.repository');
-  expect(repositoryError.code).toBe('validation_failed');
-  expect(repositoryError.metadata.mode).toBe('update');
-  expect(repositoryError.metadata.issueCode).toBe('platform_write_to_select_field');
+  expect(String((updated as any).DisplayName)).not.toBe('still_forbidden_on_update');
+  expect(String((updated as any).DisplayName)).toBe(name);
 });
 
 test('base.country: repository create ignores unknown fields when platform unknown guard is disabled', async () => {

@@ -10,6 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     :label="label"
     :rules="rules"
     :formItemProps="formItemProps"
+    :orientation="orientation"
     :vColumnProps="vColumnProps"
     :toView="toView"
     :fromView="fromView"
@@ -20,10 +21,11 @@ SPDX-License-Identifier: Apache-2.0
     :renderMode="renderMode"
     :showInlineError="showInlineError"
   >
-    <template #edit="{ fieldValue, record, inputId, describedBy, invalid}">
+    <template #edit="{ fieldValue, record, inputId, inputName, describedBy, invalid}">
       <div class="w-full" :style="{ width: width || '100%' }">
         <RelationCombobox
           :id="inputId"
+          :name="inputName"
           :aria-describedby="describedBy || undefined"
           :aria-invalid="invalid ? 'true' : undefined"
           :model-value="comboboxId(fieldValue().value)"
@@ -36,19 +38,21 @@ SPDX-License-Identifier: Apache-2.0
           :search-more="Boolean(searchView)"
           @select="(opt) => onComboboxSelect(fieldValue, opt)"
           @search-more="(q) => onSearchMore(fieldValue, record, q)"
-        />
-        <div
-          v-if="showNameCreateEntry"
-          class="choy-m2o__more choy-m2o__more--clickable block w-full cursor-pointer select-none bg-transparent px-3 py-1.5 text-primary transition-colors hover:bg-muted active:bg-muted focus:outline-none focus-visible:rounded-sm focus-visible:shadow-[inset_0_0_0_2px_var(--choy-color-primary-muted)]"
-          role="button"
-          tabindex="0"
-          data-testid="choy-m2o-name-create"
-          @click.stop="onNameCreate(fieldValue)"
-          @keydown.enter.stop="onNameCreate(fieldValue)"
-          @keydown.space.prevent.stop="onNameCreate(fieldValue)"
         >
-          {{ nameCreateLabel }}
-        </div>
+          <template v-if="showNameCreateEntry" #footer>
+            <div
+              class="block w-full cursor-pointer select-none px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-muted focus:outline-none focus-visible:bg-muted"
+              role="button"
+              tabindex="0"
+              data-testid="choy-m2o-name-create"
+              @click.stop="onNameCreate(fieldValue)"
+              @keydown.enter.stop="onNameCreate(fieldValue)"
+              @keydown.space.prevent.stop="onNameCreate(fieldValue)"
+            >
+              {{ nameCreateLabel }}
+            </div>
+          </template>
+        </RelationCombobox>
       </div>
     </template>
     <template #display="{ fieldValue }">
@@ -70,36 +74,53 @@ SPDX-License-Identifier: Apache-2.0
   </ChoyFieldBase>
 
   <ChoyDialog v-model:open="dialogVisible">
-    <ChoyDialogContent class="choy-relation-picker-dialog" :style="{ width: typeof searchViewWidth === 'number' ? searchViewWidth + 'px' : searchViewWidth }">
-      <ChoyDialogTitle>{{ effectiveSearchViewTitle }}</ChoyDialogTitle>
-      <ChoyViewScope view-mode="display" :kind="'List'">
-      <component
-        v-if="dialogVisible && searchView && relationStore"
-        :is="searchView"
-        ref="searchViewRef"
-        :store="relationStore"
-        :show-actions="false"
-        :selection-mode="'single'"
-        :click-to-select="true"
-        :height-mode="'viewport'"
-        :viewportGap="250"
-        :condition="dialogEffectiveConditions"
-        style="margin-top: -10px"
-      />
-    </ChoyViewScope>
-      <div class="dialog-footer">
-        <ChoyButton @click="dialogVisible = false">{{ _t('Cancel') }}</ChoyButton>
-        <ChoyButton @click="confirmPick">{{ _t('OK') }}</ChoyButton>
+    <ChoyDialogContent
+      class="choy-relation-picker-dialog flex max-h-[min(85vh,40rem)] w-[min(90vw,56rem)] max-w-[min(90vw,56rem)] flex-col gap-3 overflow-hidden"
+      :style="{ width: typeof searchViewWidth === 'number' ? searchViewWidth + 'px' : searchViewWidth }"
+    >
+      <ChoyDialogTitle class="shrink-0">{{ effectiveSearchViewTitle }}</ChoyDialogTitle>
+      <div class="choy-relation-picker-list min-h-[16rem] flex-1 overflow-hidden">
+        <ChoyViewScope view-mode="display" :kind="'List'">
+          <component
+            v-if="dialogVisible && searchView && relationStore"
+            :is="searchView"
+            ref="searchViewRef"
+            :store="relationStore"
+            :show-actions="false"
+            :host-page-title="false"
+            :show-selection-column="false"
+            :register-action-target="false"
+            :selection-mode="'single'"
+            :click-to-select="true"
+            :height-mode="'container'"
+            :container-selector="'.choy-relation-picker-list'"
+            :forced-condition="dialogEffectiveConditions"
+            :relation-condition-source="dialogRelationConditionSource"
+            @selection-change="onDialogSelectionChange"
+          />
+        </ChoyViewScope>
+      </div>
+      <div class="mt-1 flex shrink-0 justify-end gap-2">
+        <ChoyButton type="button" variant="outline" @click="dialogVisible = false">{{ _t('Cancel') }}</ChoyButton>
+        <ChoyButton type="button" @click="confirmPick">{{ _t('OK') }}</ChoyButton>
       </div>
     </ChoyDialogContent>
   </ChoyDialog>
 </template>
 
+<style scoped>
+  /* Wide List columns scroll inside the picker instead of clipping at the dialog edge. */
+  .choy-relation-picker-list :deep([data-anchor='choy.list.table']) {
+    overflow-x: auto;
+  }
+</style>
+
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, string | null | undefined>, V = FieldPathType<T, P>">
-import { ref, shallowRef, computed, inject, Ref, watch, getCurrentInstance } from 'vue';
+import { ref, shallowRef, computed, inject, provide, Ref, watch, getCurrentInstance } from 'vue';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { ChoyMessage } from '../../composables/useChoyMessage';
+import { RELATION_PICKER_CLOSE_KEY } from '@/web/web/components/field/relationPickerContext';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType, ClientModel, QueryCondition } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
@@ -110,6 +131,7 @@ import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
 import { buildRelationConditionSource } from '@/web/web/composables/relationalForField';
+import { resetRelationPickerQueryState } from '@/web/web/query/state';
 import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
 import type { SelectionExpose } from '@/web/web/components/view/listViewTypes';
 import { useProvidedOnchange } from '@/web/web/composables/useOnchange';
@@ -124,11 +146,11 @@ import {
   type RelationOption,
 } from '@/web/web/components/internal/relationComboboxHelpers';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/ManyToOneRefField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyManyToOneRefField' });
 
 type OptionType = { value: V; label: string };
 
-defineOptions({ name: 'ManyToOneRefField', inheritAttrs: false });
+defineOptions({ name: 'ChoyManyToOneRefField', inheritAttrs: false });
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 
@@ -147,6 +169,7 @@ const props = withDefaults(
     placeholder?: string;
     pageSize?: number;
     formItemProps?: Partial<FormItemProps>;
+    orientation?: 'horizontal' | 'vertical';
     vColumnProps?: Record<string, any>;
     selectProps?: Record<string, unknown>;
     width?: string;
@@ -154,11 +177,11 @@ const props = withDefaults(
     searchViewTitle?: string;
     searchViewWidth?: string | number;
 
-    /** Quick-create via NameCreate (PR-P2-M1). Default false (opt-in); gated by create UI action. */
+    /** Quick-create via NameCreate. Default false (opt-in); gated by create UI action. */
     allowCreate?: boolean;
     /** Target model write field for NameCreate; omit → BE uses Name. */
     nameField?: string;
-    /** Override create UI action id; '' skips ACL (see namecreate-design D6). */
+    /** Override create UI action id; '' skips ACL. */
     createActionId?: string;
 
     required?: FieldStateExpr<T, V>;
@@ -214,6 +237,7 @@ const binding = (props.binding ??
     prop: props.prop as P,
     agg: props.agg,
   })) as UseField<T, V>;
+binding.registerFields(`${binding.prop}.DisplayName`);
 
 // Resolve the relation store dynamically.
 const relationStore = computed(() => {
@@ -224,7 +248,7 @@ const relationStore = computed(() => {
     try {
       return createStoreByModel(target);
     } catch (e) {
-      console.warn(`[ManyToOneRefField] Failed to create store for model '${target}'`, e);
+      console.warn(`[ChoyManyToOneRefField] Failed to create store for model '${target}'`, e);
     }
   }
   return undefined;
@@ -237,9 +261,6 @@ const options = shallowRef<OptionType[]>([]);
 const searchQuery = ref('');
 const isSearching = computed(() => trimSearchKeyword(searchQuery.value).length > 0);
 const vm = getCurrentInstance();
-const relationSearchKey = computed(
-  () => `${relationStore.value?.storeId || relationStore.value?.fullModelName || ''}:${String(binding.prop)}`
-);
 
 const { hasAction } = usePermission();
 const showNameCreateEntry = computed(() =>
@@ -280,8 +301,17 @@ const isValueClickable = computed<boolean>(() => {
   return hasValueClickListener.value;
 });
 
+function labelFromRecord(item: any): string {
+  if (!item || typeof item !== 'object') return '';
+  for (const key of ['DisplayName', 'Name', 'Title', 'Code'] as const) {
+    const v = item[key];
+    if (v != null && String(v).trim()) return String(v);
+  }
+  return '';
+}
+
 function toOption(item: V): OptionType {
-  return { value: item, label: ((item as any)?.DisplayName as string) || '' };
+  return { value: item, label: labelFromRecord(item) };
 }
 
 function upsertOption(item?: V | null) {
@@ -291,8 +321,11 @@ function upsertOption(item?: V | null) {
 
   const idx = options.value.findIndex(o => (o.value as any).Id === (item as any).Id);
   const opt = toOption(item);
-  if (idx >= 0) options.value.splice(idx, 1, opt);
-  else options.value.unshift(opt);
+  // Replace the array so shallowRef watchers / display labels re-render.
+  const next = options.value.slice();
+  if (idx >= 0) next.splice(idx, 1, opt);
+  else next.unshift(opt);
+  options.value = next;
 }
 
 function comboboxId(val: any): string | null {
@@ -319,16 +352,26 @@ function selectedOptionFor(val: any): RelationOption | null {
 // Enhanced display-label resolution.
 function getDisplayLabel(val: any): string {
   if (!val) return '';
-  if (typeof val === 'object' && val.DisplayName) return val.DisplayName;
+  if (typeof val === 'object') {
+    const fromRecord = labelFromRecord(val);
+    if (fromRecord) return fromRecord;
+    const id = val.Id == null ? '' : String(val.Id).trim();
+    if (id) {
+      const opt = options.value.find(o => String((o.value as any)?.Id ?? '') === id);
+      if (opt?.label) return opt.label;
+    }
+    return '';
+  }
 
   // Handle bare id strings.
   if (typeof val === 'string') {
-    // First try the loaded option list.
-    const opt = options.value.find(o => (o.value as any).Id === val);
-    if (opt) return opt.label;
-
+    const id = val.trim();
+    if (!id) return '';
+    // Prefer a non-empty option label; empty labels must not hide the raw id.
+    const opt = options.value.find(o => String((o.value as any)?.Id ?? '') === id);
+    if (opt?.label) return opt.label;
     // Fall back to the raw id and let the watcher hydrate it asynchronously.
-    return val;
+    return id;
   }
 
   return '';
@@ -369,26 +412,37 @@ function onDisplayValueKeydown(val: any, event: KeyboardEvent) {
   emit('value-click', { id, item: resolveDisplayItem(val), label: getDisplayLabel(val), source: 'display', event });
 }
 
-// Watch bare id strings and hydrate their display names.
+// Cross-app: load DisplayName via relation store into local options only (do not rewrite draft).
 watch(
   () => {
     const val = binding.fieldRef().value;
     return val;
   },
   val => {
-    if (typeof val === 'string' && val && relationStore.value) {
-      // Load only when the display label has not been hydrated yet.
-      const label = getDisplayLabel(val);
-      if (label === val) {
-        // No display label is available yet, so fetch it now.
-        relationStore.value
-          .Browse(val)
-          .then((res: any) => {
-            if (res) upsertOption(res);
-          })
-          .catch(() => {});
-      }
+    if (!relationStore.value || !val) return;
+    const id =
+      typeof val === 'string'
+        ? val.trim()
+        : typeof val === 'object' && val
+          ? String((val as any).Id ?? '').trim()
+          : '';
+    if (!id) return;
+    // Skip when DisplayName is on the value, or options already have a non-empty label.
+    if (typeof val === 'object' && String((val as any).DisplayName ?? '').trim()) return;
+    const label = getDisplayLabel(val);
+    if (typeof val === 'string') {
+      // Bare id: getDisplayLabel falls back to the id itself until options hydrate.
+      if (label !== id) return;
+    } else if (label) {
+      return;
     }
+
+    relationStore.value
+      .Browse(id, ['Id', 'DisplayName'] as any)
+      .then((res: any) => {
+        if (res) upsertOption(res);
+      })
+      .catch(() => {});
   },
   { immediate: true }
 );
@@ -402,6 +456,22 @@ function toArray<T>(v: T | T[] | undefined | null): T[] {
 }
 
 const externalConditions = computed<QueryCondition<any>[]>(() => toArray(props.condition));
+
+/** Include domain fingerprints so RelationCombobox memo does not reuse a wrong NameSearch page. */
+const relationSearchKey = computed(() => {
+  const store = relationStore.value?.storeId || relationStore.value?.fullModelName || '';
+  let domainKey = '';
+  try {
+    domainKey = JSON.stringify({
+      c: externalConditions.value,
+      o: lastOnchangeResult.value?.condition ?? null,
+    });
+  } catch {
+    domainKey = '';
+  }
+  return `${store}:${String(binding.prop)}:${domainKey}`;
+});
+
 const rootRecord = computed<any>(() => binding.recordRef().value as any);
 
 const baseField = computed(() => String(binding.prop));
@@ -536,6 +606,9 @@ function pickOnchangeConditions(rowRef?: any): QueryCondition<any>[] {
 }
 
 const dialogVisible = ref(false);
+provide(RELATION_PICKER_CLOSE_KEY, () => {
+  dialogVisible.value = false;
+});
 const searchViewRef = ref<SelectionExpose<any> | null>(null);
 const pendingTarget = ref<null | (() => WritableComputedRef<V | null>)>(null);
 const dialogRowRef = ref<any | null>(null);
@@ -545,6 +618,11 @@ const dialogEffectiveConditions = computed<QueryCondition<any> | []>(() => {
   if (parts.length === 0) return [] as any;
   if (parts.length === 1) return parts[0] as any;
   return { And: parts } as any;
+});
+
+/** Same source as NameSearch so Search more List applies field meta `condition`. */
+const dialogRelationConditionSource = computed(() => {
+  return buildRelationConditionSource(props.store as any, binding.prop).relationConditionSource;
 });
 
 async function relationSearch(query: string, opts: { limit: number }, recordRef?: any): Promise<RelationOption[]> {
@@ -603,6 +681,7 @@ function onSearchMore(
 
 function openSearchDialog(target?: () => WritableComputedRef<V | null>, recordRef?: any) {
   if (!relationStore.value) return;
+  resetRelationPickerQueryState(relationStore.value as any);
   pendingTarget.value = target ?? null;
   dialogRowRef.value = recordRef ?? null;
   dialogVisible.value = true;
@@ -627,6 +706,13 @@ async function confirmPick() {
   } finally {
     dialogVisible.value = false;
   }
+}
+
+/** Click-to-select in Search more: apply the row and close (OK remains a fallback). */
+function onDialogSelectionChange(payload: { rows?: unknown[]; ids?: string[] }) {
+  const ids = Array.isArray(payload?.ids) ? payload.ids : [];
+  if (!ids.length) return;
+  void confirmPick();
 }
 </script>
 

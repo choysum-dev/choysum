@@ -233,9 +233,11 @@ func tsgoPropertyName(ctx *tsParseCtx, nameNode *tsast.Node) string {
 	if ctx == nil || nameNode == nil {
 		return ""
 	}
-	name := strings.TrimSpace(ctx.NodeText(nameNode))
+	// Prefer identifier/literal Text() so leading line comments ahead of a property
+	// name are not folded into the key (NodeText can include those comments).
+	name := strings.TrimSpace(nameNode.Text())
 	if name == "" {
-		name = strings.TrimSpace(nameNode.Text())
+		name = strings.TrimSpace(ctx.NodeText(nameNode))
 	}
 	if value, err := parseJSStringLiteral(name); err == nil {
 		name = value

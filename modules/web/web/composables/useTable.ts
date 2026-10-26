@@ -1,7 +1,21 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { provide, inject, ref, shallowRef, isRef, type Ref, type VNodeChild } from 'vue';
+import {
+  provide,
+  inject,
+  ref,
+  shallowRef,
+  isRef,
+  type ComputedRef,
+  type InjectionKey,
+  type Ref,
+  type VNodeChild,
+} from 'vue';
+
+/** When false, ChoyTableColumn type="selection" does not register (relation picker lists). */
+export const LIST_SHOW_SELECTION_COLUMN_KEY: InjectionKey<ComputedRef<boolean> | Ref<boolean> | boolean> =
+  Symbol.for('choysum.listShowSelectionColumn');
 
 /** Column definition registered by ChoyTableColumn for ChoyTableHost / DataTable. */
 export type Column = {
@@ -10,7 +24,8 @@ export type Column = {
   title?: string;
   width?: number;
   minWidth?: number;
-  align?: 'left' | 'center' | 'right';
+  /** Logical `start`/`end` preferred; `left`/`right` kept as physical aliases. */
+  align?: 'start' | 'center' | 'end' | 'left' | 'right';
   fixed?: 'left' | 'right' | boolean;
   sortable?: boolean;
   headerCellRenderer?: (props?: any) => VNodeChild;

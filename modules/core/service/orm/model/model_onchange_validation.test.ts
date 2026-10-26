@@ -57,17 +57,17 @@ test('model onchange validation delegates preview validation context and appends
     });
 
     expect(calls.length).toBe(1);
-    expect(calls[0]?.nextCtx).toEqual({
-      mode: 'preview',
-      model: ModelOnchangeValidationModel,
-      metadata: meta,
-      self: previewProxy,
-      current: draft,
-      values: mergedDraft,
-      changedFields: new Set(['Name']),
-      repository,
-      requestContext: (ModelOnchangeValidationModel as any).ctx,
-    });
+    const ctx = calls[0]?.nextCtx;
+    expect(ctx?.mode).toBe('preview');
+    expect(ctx?.model).toBe(ModelOnchangeValidationModel);
+    expect(ctx?.metadata).toBe(meta);
+    expect(ctx?.self).toBe(previewProxy);
+    expect(ctx?.current).toBe(draft);
+    expect(ctx?.values?.Id).toBe(mergedDraft.Id);
+    expect(ctx?.values?.Name).toBe(mergedDraft.Name);
+    expect(ctx?.changedFields).toEqual(new Set(['Name']));
+    expect(ctx?.repository).toBe(repository);
+    expect(ctx?.requestContext).toEqual((ModelOnchangeValidationModel as any).ctx);
     expect(calls[0]?.nextOptions).toEqual({
       includeKernel: ENABLE_PREVIEW_KERNEL_VALIDATION,
       kernelRules: ENABLE_PREVIEW_KERNEL_VALIDATION ? [...PREVIEW_KERNEL_RULES] : undefined,

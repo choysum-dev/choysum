@@ -1,0 +1,1355 @@
+{
+  "records": [
+    {
+      "name": "category_root",
+      "model": "SandboxCategory",
+      "values": {
+        "Name": "根分类",
+        "Code": "ROOT",
+        "IsActive": true
+      }
+    },
+    {
+      "name": "category_active",
+      "model": "SandboxCategory",
+      "values": {
+        "Name": "启用分支",
+        "Code": "ACTIVE",
+        "ParentId": {
+          "ref": "sandbox.category_root"
+        },
+        "IsActive": true
+      }
+    },
+    {
+      "name": "category_inactive",
+      "model": "SandboxCategory",
+      "values": {
+        "Name": "停用分支",
+        "Code": "INACTIVE",
+        "ParentId": {
+          "ref": "sandbox.category_root"
+        },
+        "IsActive": false
+      }
+    },
+    {
+      "name": "tag_alpha",
+      "model": "SandboxTag",
+      "values": {
+        "Name": "阿尔法",
+        "Code": "ALPHA",
+        "IsActive": true
+      }
+    },
+    {
+      "name": "tag_beta",
+      "model": "SandboxTag",
+      "values": {
+        "Name": "贝塔",
+        "Code": "BETA",
+        "IsActive": true
+      }
+    },
+    {
+      "name": "tag_gamma",
+      "model": "SandboxTag",
+      "values": {
+        "Name": "伽马",
+        "Code": "GAMMA",
+        "IsActive": true
+      }
+    },
+    {
+      "name": "record_properties_app",
+      "model": "PropertyDefinition",
+      "values": {
+        "TargetModel": "SandboxRecord",
+        "PropertiesField": "Properties",
+        "ContainerModel": null,
+        "ContainerId": null,
+        "Definition": [
+          {
+            "name": "priority",
+            "type": "selection",
+            "string": "Priority",
+            "selection": [
+              [
+                "low",
+                "Low"
+              ],
+              [
+                "normal",
+                "Normal"
+              ],
+              [
+                "high",
+                "High"
+              ]
+            ],
+            "default": "normal"
+          },
+          {
+            "name": "external_code",
+            "type": "char",
+            "string": "External Code"
+          },
+          {
+            "name": "is_vip",
+            "type": "boolean",
+            "string": "VIP",
+            "default": false
+          },
+          {
+            "name": "qty_hint",
+            "type": "integer",
+            "string": "Qty Hint"
+          },
+          {
+            "name": "score",
+            "type": "float",
+            "string": "Score"
+          },
+          {
+            "name": "note",
+            "type": "text",
+            "string": "Note"
+          },
+          {
+            "name": "due_date",
+            "type": "date",
+            "string": "Due Date"
+          },
+          {
+            "name": "reviewed_at",
+            "type": "datetime",
+            "string": "Reviewed At"
+          },
+          {
+            "name": "locked_code",
+            "type": "char",
+            "string": "Locked Code",
+            "readonly": true,
+            "default": "RO"
+          }
+        ]
+      }
+    },
+    {
+      "name": "record_sample",
+      "model": "SandboxRecord",
+      "values": {
+        "NameChar": "Sample Char",
+        "Title": {
+          "en_US": "Kitchen-sink Sample",
+          "zh_CN": "试验场主示例"
+        },
+        "Code": "SAMPLE",
+        "Notes": {
+          "en_US": "Primary kitchen-sink row with O2M lines; Code SAMPLE is stable for upgrades.",
+          "zh_CN": "带明细行的主试验场记录；Code 固定为 SAMPLE 以保证升级幂等。"
+        },
+        "IntValue": 42,
+        "NumberValue": 3.14,
+        "DecimalValue": "12.3456",
+        "IsActive": true,
+        "Sequence": 10,
+        "State": "draft",
+        "Progress": "draft",
+        "JsonPayload": {
+          "hello": "sandbox"
+        },
+        "Properties": {
+          "priority": "high",
+          "external_code": "SBX-001",
+          "is_vip": true,
+          "qty_hint": 3,
+          "score": 9.5,
+          "note": "Kitchen-sink properties sample",
+          "due_date": "2026-12-31T00:00:00Z",
+          "reviewed_at": "2026-06-30T16:00:00.000Z",
+          "locked_code": "RO"
+        },
+        "CurrencyId": {
+          "ref": "base.currency_cny"
+        },
+        "CompanyId": {
+          "ref": "base.company_main"
+        },
+        "CategoryId": {
+          "ref": "sandbox.category_active"
+        },
+        "Amount": "99.50"
+      }
+    },
+    {
+      "name": "record_01",
+      "model": "SandboxRecord",
+      "values": {
+        "NameChar": "记录-01",
+        "Title": {
+          "en_US": "Sample Record 01",
+          "zh_CN": "示例记录 01"
+        },
+        "Code": "SAMPLE-01",
+        "Notes": {
+          "en_US": "Draft kitchen-sink row for hand testing.",
+          "zh_CN": "用于手测的草稿试验场记录。"
+        },
+        "IntValue": 1,
+        "NumberValue": 1.1,
+        "DecimalValue": "1.1000",
+        "IsActive": true,
+        "Sequence": 10,
+        "State": "draft",
+        "Progress": "draft",
+        "JsonPayload": {
+          "n": 1
+        },
+        "CurrencyId": {
+          "ref": "base.currency_cny"
+        },
+        "CompanyId": {
+          "ref": "base.company_main"
+        },
+        "CategoryId": {
+          "ref": "sandbox.category_active"
+        },
+        "Amount": "10.00"
+      }
+    },
+    {
+      "name": "record_02",
+      "model": "SandboxRecord",
+      "values": {
+        "NameChar": "记录-02",
+        "Title": {
+          "en_US": "Sample Record 02",
+          "zh_CN": "示例记录 02"
+        },
+        "Code": "SAMPLE-02",
+        "Notes": {
+          "en_US": "Open kitchen-sink row for hand testing.",
+          "zh_CN": "用于手测的打开状态试验场记录。"
+        },
+        "IntValue": 2,
+        "NumberValue": 2.2,
+        "DecimalValue": "2.2000",
+        "IsActive": true,
+        "Sequence": 20,
+        "State": "open",
+        "Progress": "open",
+        "JsonPayload": {
+          "n": 2
+        },
+        "CurrencyId": {
+          "ref": "base.currency_cny"
+        },
+        "CompanyId": {
+          "ref": "base.company_main"
+        },
+        "CategoryId": {
+          "ref": "sandbox.category_active"
+        },
+        "Amount": "20.00"
+      }
+    },
+    {
+      "name": "record_03",
+      "model": "SandboxRecord",
+      "values": {
+        "NameChar": "记录-03",
+        "Title": {
+          "en_US": "Sample Record 03",
+          "zh_CN": "示例记录 03"
+        },
+        "Code": "SAMPLE-03",
+        "Notes": {
+          "en_US": "Done kitchen-sink row for hand testing.",
+          "zh_CN": "用于手测的完成状态试验场记录。"
+        },
+        "IntValue": 3,
+        "NumberValue": 3.3,
+        "DecimalValue": "3.3000",
+        "IsActive": true,
+        "Sequence": 30,
+        "State": "done",
+        "Progress": "done",
+        "JsonPayload": {
+          "n": 3
+        },
+        "CurrencyId": {
+          "ref": "base.currency_cny"
+        },
+        "CompanyId": {
+          "ref": "base.company_main"
+        },
+        "CategoryId": {
+          "ref": "sandbox.category_active"
+        },
+        "Amount": "30.00"
+      }
+    },
+    {
+      "name": "record_04",
+      "model": "SandboxRecord",
+      "values": {
+        "NameChar": "记录-04",
+        "Title": {
+          "en_US": "Sample Record 04",
+          "zh_CN": "示例记录 04"
+        },
+        "Code": "SAMPLE-04",
+        "Notes": {
+          "en_US": "Inactive open row for kanban/filter tests.",
+          "zh_CN": "用于看板/筛选手测的停用打开记录。"
+        },
+        "IntValue": 4,
+        "NumberValue": 4.4,
+        "DecimalValue": "4.4000",
+        "IsActive": false,
+        "Sequence": 40,
+        "State": "open",
+        "Progress": "open",
+        "JsonPayload": {
+          "n": 4
+        },
+        "CurrencyId": {
+          "ref": "base.currency_cny"
+        },
+        "CompanyId": {
+          "ref": "base.company_main"
+        },
+        "CategoryId": {
+          "ref": "sandbox.category_active"
+        },
+        "Amount": "40.00"
+      }
+    },
+    {
+      "name": "record_05",
+      "model": "SandboxRecord",
+      "values": {
+        "NameChar": "记录-05",
+        "Title": {
+          "en_US": "Sample Record 05",
+          "zh_CN": "示例记录 05"
+        },
+        "Code": "SAMPLE-05",
+        "Notes": {
+          "en_US": "Draft row without category for relation tests.",
+          "zh_CN": "无分类的草稿记录，用于关联手测。"
+        },
+        "IntValue": 5,
+        "NumberValue": 5.5,
+        "DecimalValue": "5.5000",
+        "IsActive": true,
+        "Sequence": 50,
+        "State": "draft",
+        "Progress": "draft",
+        "JsonPayload": {
+          "n": 5
+        },
+        "CurrencyId": {
+          "ref": "base.currency_cny"
+        },
+        "CompanyId": {
+          "ref": "base.company_main"
+        },
+        "Amount": "50.00"
+      }
+    },
+    {
+      "name": "record_06",
+      "model": "SandboxRecord",
+      "values": {
+        "NameChar": "记录-06",
+        "Title": {
+          "en_US": "Sample Record 06",
+          "zh_CN": "示例记录 06"
+        },
+        "Code": "SAMPLE-06",
+        "Notes": {
+          "en_US": "Open row with monetary amount coverage.",
+          "zh_CN": "打开状态记录，覆盖货币金额。"
+        },
+        "IntValue": 6,
+        "NumberValue": 6.6,
+        "DecimalValue": "6.6000",
+        "IsActive": true,
+        "Sequence": 60,
+        "State": "open",
+        "Progress": "open",
+        "JsonPayload": {
+          "n": 6,
+          "kind": "monetary"
+        },
+        "CurrencyId": {
+          "ref": "base.currency_cny"
+        },
+        "CompanyId": {
+          "ref": "base.company_main"
+        },
+        "CategoryId": {
+          "ref": "sandbox.category_active"
+        },
+        "Amount": "66.60"
+      }
+    },
+    {
+      "name": "record_07",
+      "model": "SandboxRecord",
+      "values": {
+        "NameChar": "记录-07",
+        "Title": {
+          "en_US": "Sample Record 07",
+          "zh_CN": "示例记录 07"
+        },
+        "Code": "SAMPLE-07",
+        "Notes": {
+          "en_US": "Done inactive row for chart grouping.",
+          "zh_CN": "完成且停用，用于图表分组手测。"
+        },
+        "IntValue": 7,
+        "NumberValue": 7.7,
+        "DecimalValue": "7.7000",
+        "IsActive": false,
+        "Sequence": 70,
+        "State": "done",
+        "Progress": "done",
+        "JsonPayload": {
+          "n": 7
+        },
+        "CurrencyId": {
+          "ref": "base.currency_cny"
+        },
+        "CompanyId": {
+          "ref": "base.company_main"
+        },
+        "CategoryId": {
+          "ref": "sandbox.category_active"
+        },
+        "Amount": "70.00"
+      }
+    },
+    {
+      "name": "record_08",
+      "model": "SandboxRecord",
+      "values": {
+        "NameChar": "记录-08",
+        "Title": {
+          "en_US": "Sample Record 08",
+          "zh_CN": "示例记录 08"
+        },
+        "Code": "SAMPLE-08",
+        "Notes": {
+          "en_US": "Draft row with larger sequence.",
+          "zh_CN": "序号较大的草稿记录。"
+        },
+        "IntValue": 8,
+        "NumberValue": 8.8,
+        "DecimalValue": "8.8000",
+        "IsActive": true,
+        "Sequence": 80,
+        "State": "draft",
+        "Progress": "draft",
+        "JsonPayload": {
+          "n": 8
+        },
+        "CurrencyId": {
+          "ref": "base.currency_cny"
+        },
+        "CompanyId": {
+          "ref": "base.company_main"
+        },
+        "CategoryId": {
+          "ref": "sandbox.category_active"
+        },
+        "Amount": "80.00"
+      }
+    },
+    {
+      "name": "record_09",
+      "model": "SandboxRecord",
+      "values": {
+        "NameChar": "记录-09",
+        "Title": {
+          "en_US": "Sample Record 09",
+          "zh_CN": "示例记录 09"
+        },
+        "Code": "SAMPLE-09",
+        "Notes": {
+          "en_US": "Open row for tag and line coverage.",
+          "zh_CN": "打开状态记录，覆盖标签与明细。"
+        },
+        "IntValue": 9,
+        "NumberValue": 9.9,
+        "DecimalValue": "9.9000",
+        "IsActive": true,
+        "Sequence": 90,
+        "State": "open",
+        "Progress": "open",
+        "JsonPayload": {
+          "n": 9
+        },
+        "CurrencyId": {
+          "ref": "base.currency_cny"
+        },
+        "CompanyId": {
+          "ref": "base.company_main"
+        },
+        "CategoryId": {
+          "ref": "sandbox.category_active"
+        },
+        "Amount": "90.00"
+      }
+    },
+    {
+      "name": "record_10",
+      "model": "SandboxRecord",
+      "values": {
+        "NameChar": "记录-10",
+        "Title": {
+          "en_US": "Sample Record 10",
+          "zh_CN": "示例记录 10"
+        },
+        "Code": "SAMPLE-10",
+        "Notes": {
+          "en_US": "Done row closing the ten-record seed set.",
+          "zh_CN": "完成状态记录，凑满十条种子数据。"
+        },
+        "IntValue": 10,
+        "NumberValue": 10.1,
+        "DecimalValue": "10.1000",
+        "IsActive": true,
+        "Sequence": 100,
+        "State": "done",
+        "Progress": "done",
+        "JsonPayload": {
+          "n": 10
+        },
+        "CurrencyId": {
+          "ref": "base.currency_cny"
+        },
+        "CompanyId": {
+          "ref": "base.company_main"
+        },
+        "CategoryId": {
+          "ref": "sandbox.category_active"
+        },
+        "Amount": "100.00"
+      }
+    },
+    {
+      "name": "line_sample_1",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_sample"
+        },
+        "Name": "明细 A1",
+        "Quantity": 1,
+        "State": "todo",
+        "Sequence": 10
+      }
+    },
+    {
+      "name": "line_sample_2",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_sample"
+        },
+        "Name": "明细 A2",
+        "Quantity": 2,
+        "State": "doing",
+        "Sequence": 20
+      }
+    },
+    {
+      "name": "line_02_a",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_02"
+        },
+        "Name": "明细 B1",
+        "Quantity": 2,
+        "State": "doing",
+        "Sequence": 10
+      }
+    },
+    {
+      "name": "line_02_b",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_02"
+        },
+        "Name": "明细 B2",
+        "Quantity": 3,
+        "State": "todo",
+        "Sequence": 20
+      }
+    },
+    {
+      "name": "line_06_a",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_06"
+        },
+        "Name": "明细 F1",
+        "Quantity": 6,
+        "State": "doing",
+        "Sequence": 10
+      }
+    },
+    {
+      "name": "line_09_a",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_09"
+        },
+        "Name": "明细 I1",
+        "Quantity": 9,
+        "State": "done",
+        "Sequence": 10
+      }
+    },
+    {
+      "name": "line_10_a",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_10"
+        },
+        "Name": "明细 J1",
+        "Quantity": 10,
+        "State": "done",
+        "Sequence": 10
+      }
+    },
+    {
+      "name": "record_o2m_virtualize",
+      "model": "SandboxRecord",
+      "values": {
+        "NameChar": "Virt Lines",
+        "Title": {
+          "en_US": "O2M Virtualize Hand Test",
+          "zh_CN": "O2M 虚拟化手测"
+        },
+        "Code": "VIRT-LINES",
+        "Notes": {
+          "en_US": "Long Lines seed (≥48) for embedded table/kanban virtualize. Compare with SAMPLE (2 lines).",
+          "zh_CN": "长明细种子（≥48）用于嵌入表格/看板虚拟化；对照 SAMPLE（2 行）。"
+        },
+        "IntValue": 48,
+        "NumberValue": 48.0,
+        "DecimalValue": "48.0000",
+        "IsActive": true,
+        "Sequence": 200,
+        "State": "draft",
+        "Progress": "draft",
+        "JsonPayload": {
+          "virt": true
+        },
+        "CurrencyId": {
+          "ref": "base.currency_cny"
+        },
+        "CompanyId": {
+          "ref": "base.company_main"
+        },
+        "CategoryId": {
+          "ref": "sandbox.category_active"
+        },
+        "Amount": "48.00"
+      }
+    },
+    {
+      "name": "line_virt_01",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 01",
+        "Quantity": 2,
+        "State": "todo",
+        "Sequence": 10
+      }
+    },
+    {
+      "name": "line_virt_02",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 02",
+        "Quantity": 3,
+        "State": "doing",
+        "Sequence": 20
+      }
+    },
+    {
+      "name": "line_virt_03",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 03",
+        "Quantity": 4,
+        "State": "done",
+        "Sequence": 30
+      }
+    },
+    {
+      "name": "line_virt_04",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 04",
+        "Quantity": 5,
+        "State": "todo",
+        "Sequence": 40
+      }
+    },
+    {
+      "name": "line_virt_05",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 05",
+        "Quantity": 6,
+        "State": "doing",
+        "Sequence": 50
+      }
+    },
+    {
+      "name": "line_virt_06",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 06",
+        "Quantity": 7,
+        "State": "done",
+        "Sequence": 60
+      }
+    },
+    {
+      "name": "line_virt_07",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 07",
+        "Quantity": 8,
+        "State": "todo",
+        "Sequence": 70
+      }
+    },
+    {
+      "name": "line_virt_08",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 08",
+        "Quantity": 9,
+        "State": "doing",
+        "Sequence": 80
+      }
+    },
+    {
+      "name": "line_virt_09",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 09",
+        "Quantity": 1,
+        "State": "done",
+        "Sequence": 90
+      }
+    },
+    {
+      "name": "line_virt_10",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 10",
+        "Quantity": 2,
+        "State": "todo",
+        "Sequence": 100
+      }
+    },
+    {
+      "name": "line_virt_11",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 11",
+        "Quantity": 3,
+        "State": "doing",
+        "Sequence": 110
+      }
+    },
+    {
+      "name": "line_virt_12",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 12",
+        "Quantity": 4,
+        "State": "done",
+        "Sequence": 120
+      }
+    },
+    {
+      "name": "line_virt_13",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 13",
+        "Quantity": 5,
+        "State": "todo",
+        "Sequence": 130
+      }
+    },
+    {
+      "name": "line_virt_14",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 14",
+        "Quantity": 6,
+        "State": "doing",
+        "Sequence": 140
+      }
+    },
+    {
+      "name": "line_virt_15",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 15",
+        "Quantity": 7,
+        "State": "done",
+        "Sequence": 150
+      }
+    },
+    {
+      "name": "line_virt_16",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 16",
+        "Quantity": 8,
+        "State": "todo",
+        "Sequence": 160
+      }
+    },
+    {
+      "name": "line_virt_17",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 17",
+        "Quantity": 9,
+        "State": "doing",
+        "Sequence": 170
+      }
+    },
+    {
+      "name": "line_virt_18",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 18",
+        "Quantity": 1,
+        "State": "done",
+        "Sequence": 180
+      }
+    },
+    {
+      "name": "line_virt_19",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 19",
+        "Quantity": 2,
+        "State": "todo",
+        "Sequence": 190
+      }
+    },
+    {
+      "name": "line_virt_20",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 20",
+        "Quantity": 3,
+        "State": "doing",
+        "Sequence": 200
+      }
+    },
+    {
+      "name": "line_virt_21",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 21",
+        "Quantity": 4,
+        "State": "done",
+        "Sequence": 210
+      }
+    },
+    {
+      "name": "line_virt_22",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 22",
+        "Quantity": 5,
+        "State": "todo",
+        "Sequence": 220
+      }
+    },
+    {
+      "name": "line_virt_23",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 23",
+        "Quantity": 6,
+        "State": "doing",
+        "Sequence": 230
+      }
+    },
+    {
+      "name": "line_virt_24",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 24",
+        "Quantity": 7,
+        "State": "done",
+        "Sequence": 240
+      }
+    },
+    {
+      "name": "line_virt_25",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 25",
+        "Quantity": 8,
+        "State": "todo",
+        "Sequence": 250
+      }
+    },
+    {
+      "name": "line_virt_26",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 26",
+        "Quantity": 9,
+        "State": "doing",
+        "Sequence": 260
+      }
+    },
+    {
+      "name": "line_virt_27",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 27",
+        "Quantity": 1,
+        "State": "done",
+        "Sequence": 270
+      }
+    },
+    {
+      "name": "line_virt_28",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 28",
+        "Quantity": 2,
+        "State": "todo",
+        "Sequence": 280
+      }
+    },
+    {
+      "name": "line_virt_29",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 29",
+        "Quantity": 3,
+        "State": "doing",
+        "Sequence": 290
+      }
+    },
+    {
+      "name": "line_virt_30",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 30",
+        "Quantity": 4,
+        "State": "done",
+        "Sequence": 300
+      }
+    },
+    {
+      "name": "line_virt_31",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 31",
+        "Quantity": 5,
+        "State": "todo",
+        "Sequence": 310
+      }
+    },
+    {
+      "name": "line_virt_32",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 32",
+        "Quantity": 6,
+        "State": "doing",
+        "Sequence": 320
+      }
+    },
+    {
+      "name": "line_virt_33",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 33",
+        "Quantity": 7,
+        "State": "done",
+        "Sequence": 330
+      }
+    },
+    {
+      "name": "line_virt_34",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 34",
+        "Quantity": 8,
+        "State": "todo",
+        "Sequence": 340
+      }
+    },
+    {
+      "name": "line_virt_35",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 35",
+        "Quantity": 9,
+        "State": "doing",
+        "Sequence": 350
+      }
+    },
+    {
+      "name": "line_virt_36",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 36",
+        "Quantity": 1,
+        "State": "done",
+        "Sequence": 360
+      }
+    },
+    {
+      "name": "line_virt_37",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 37",
+        "Quantity": 2,
+        "State": "todo",
+        "Sequence": 370
+      }
+    },
+    {
+      "name": "line_virt_38",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 38",
+        "Quantity": 3,
+        "State": "doing",
+        "Sequence": 380
+      }
+    },
+    {
+      "name": "line_virt_39",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 39",
+        "Quantity": 4,
+        "State": "done",
+        "Sequence": 390
+      }
+    },
+    {
+      "name": "line_virt_40",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 40",
+        "Quantity": 5,
+        "State": "todo",
+        "Sequence": 400
+      }
+    },
+    {
+      "name": "line_virt_41",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 41",
+        "Quantity": 6,
+        "State": "doing",
+        "Sequence": 410
+      }
+    },
+    {
+      "name": "line_virt_42",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 42",
+        "Quantity": 7,
+        "State": "done",
+        "Sequence": 420
+      }
+    },
+    {
+      "name": "line_virt_43",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 43",
+        "Quantity": 8,
+        "State": "todo",
+        "Sequence": 430
+      }
+    },
+    {
+      "name": "line_virt_44",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 44",
+        "Quantity": 9,
+        "State": "doing",
+        "Sequence": 440
+      }
+    },
+    {
+      "name": "line_virt_45",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 45",
+        "Quantity": 1,
+        "State": "done",
+        "Sequence": 450
+      }
+    },
+    {
+      "name": "line_virt_46",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 46",
+        "Quantity": 2,
+        "State": "todo",
+        "Sequence": 460
+      }
+    },
+    {
+      "name": "line_virt_47",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 47",
+        "Quantity": 3,
+        "State": "doing",
+        "Sequence": 470
+      }
+    },
+    {
+      "name": "line_virt_48",
+      "model": "SandboxLine",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_o2m_virtualize"
+        },
+        "Name": "Virt seed 48",
+        "Quantity": 4,
+        "State": "done",
+        "Sequence": 480
+      }
+    },
+    {
+      "name": "record_tag_alpha",
+      "model": "SandboxRecordTag",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_sample"
+        },
+        "TagId": {
+          "ref": "sandbox.tag_alpha"
+        }
+      }
+    },
+    {
+      "name": "record_tag_02_alpha",
+      "model": "SandboxRecordTag",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_02"
+        },
+        "TagId": {
+          "ref": "sandbox.tag_alpha"
+        }
+      }
+    },
+    {
+      "name": "record_tag_06_beta",
+      "model": "SandboxRecordTag",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_06"
+        },
+        "TagId": {
+          "ref": "sandbox.tag_beta"
+        }
+      }
+    },
+    {
+      "name": "record_tag_09_gamma",
+      "model": "SandboxRecordTag",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_09"
+        },
+        "TagId": {
+          "ref": "sandbox.tag_gamma"
+        }
+      }
+    },
+    {
+      "name": "record_tag_10_alpha",
+      "model": "SandboxRecordTag",
+      "values": {
+        "RecordId": {
+          "ref": "sandbox.record_10"
+        },
+        "TagId": {
+          "ref": "sandbox.tag_alpha"
+        }
+      }
+    }
+  ]
+}

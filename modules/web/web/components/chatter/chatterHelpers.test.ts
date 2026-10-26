@@ -119,7 +119,7 @@ test('formatFieldChangeSummary normalizes empty values', () => {
       },
       labels,
     ),
-  ).toBe('Name:—->—');
+  ).toBe('Name:->');
   expect(
     formatFieldChangeSummary(
       {
@@ -149,7 +149,7 @@ test('formatFieldChangeSummary normalizes empty values', () => {
       },
       labels,
     ),
-  ).toBe('Status:open->—');
+  ).toBe('Status:open->');
   expect(
     formatFieldChangeSummary(
       {
@@ -164,7 +164,7 @@ test('formatFieldChangeSummary normalizes empty values', () => {
       },
       labels,
     ),
-  ).toBe('Field:—->done');
+  ).toBe('Field:->done');
   expect(
     formatFieldChangeSummary(
       {

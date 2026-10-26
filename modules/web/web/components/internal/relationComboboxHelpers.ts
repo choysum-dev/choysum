@@ -76,21 +76,67 @@ export async function runRelationNameSearch(
   return Array.isArray(rows) ? mapNameSearchRows(rows).slice(0, limit) : [];
 }
 
+/** Last successful NameSearch payload (Odoo Many2XAutocomplete previousSearch). */
+export type RelationSearchMemo = {
+  name: string;
+  searchKey: string;
+  pageSize: number;
+  records: RelationOption[];
+};
+
+export function normalizeRelationPageSize(pageSize: number | null | undefined): number {
+  return Number.isFinite(pageSize) ? Math.max(1, Math.floor(pageSize as number)) : 20;
+}
+
+/**
+ * Reuse the previous NameSearch when name + searchKey + pageSize match.
+ * When the previous hit was empty and the new name extends that prefix, return []
+ * without another RPC (same idea as Odoo empty-result short-circuit).
+ */
+export function resolveRelationSearchMemo(
+  memo: RelationSearchMemo | null | undefined,
+  query: string | null | undefined,
+  searchKey: string,
+  pageSize: number | null | undefined,
+): RelationOption[] | null {
+  if (!memo) {
+    return null;
+  }
+  const name = normalizeRelationQuery(query);
+  const limit = normalizeRelationPageSize(pageSize);
+  if (memo.searchKey !== searchKey || memo.pageSize !== limit) {
+    return null;
+  }
+  if (memo.name === name) {
+    return memo.records;
+  }
+  if (!memo.records.length && name.startsWith(memo.name)) {
+    return [];
+  }
+  return null;
+}
+
+/** Drops blank ids so placeholder / empty shells never render as Combobox items. */
+export function filterRelationOptions(options: readonly RelationOption[]): RelationOption[] {
+  return options.filter((item) => String(item?.id ?? '').trim() !== '');
+}
+
 /** Merges a selected option into the list so the trigger keeps a label. */
 export function upsertRelationOption(
   options: readonly RelationOption[],
   selected: RelationOption | null | undefined,
 ): RelationOption[] {
+  const base = filterRelationOptions(options);
   const id = String(selected?.id ?? '').trim();
   if (!selected || !id) {
-    return [...options];
+    return base;
   }
   // Normalize so a padded id matches the trimmed ids used by findRelationOption.
   const normalized: RelationOption = { ...selected, id };
-  if (options.some((item) => item.id === id)) {
-    return options.map((item) => (item.id === id ? normalized : item));
+  if (base.some((item) => item.id === id)) {
+    return base.map((item) => (item.id === id ? normalized : item));
   }
-  return [normalized, ...options];
+  return [normalized, ...base];
 }
 
 /** Finds an option by id. */

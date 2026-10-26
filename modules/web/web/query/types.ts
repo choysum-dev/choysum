@@ -54,6 +54,8 @@ export interface AttachmentFieldDescriptor {
   fileName?: string;
   displayName?: string;
   previewUrl?: string;
+  mimeType?: string;
+  sizeBytes?: number;
 }
 
 export interface RecordRow {

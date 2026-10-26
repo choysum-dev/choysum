@@ -7,6 +7,7 @@
 
 import { reactive, toRaw, provide } from 'vue';
 import { buildUpdatePayload } from '@/core/utils/diff';
+import { buildDiffFieldsMeta } from '@/web/web/composables/useOnchange';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import { buildBrowseContext } from '@/web/web/query/context';
@@ -29,6 +30,83 @@ function clone<T>(v: T): T {
   } catch {
     return v;
   }
+}
+
+/** Extract ManyToOne / ManyToOneRef id from string or `{ Id }` display object. */
+function relationIdOf(value: unknown): string | null {
+  if (value == null || value === '') return null;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed || null;
+  }
+  if (typeof value === 'object' && value) {
+    const id = (value as { Id?: unknown }).Id;
+    if (typeof id === 'string' && id.trim()) return id.trim();
+    if (typeof id === 'number' && Number.isFinite(id)) return String(id);
+  }
+  return null;
+}
+
+type MonetaryFieldMeta = { type?: string; currencyField?: string };
+
+/**
+ * When a monetary field is in the write payload, ensure its currencyField companion is a
+ * resolvable string id. Prefer payload, then draft, then original — so a display-only
+ * CurrencyId ({ DisplayName } without Id) that diff turned into null cannot clear the FK
+ * and trip scale-stamp E1.
+ */
+function attachMonetaryCurrencyCompanions(
+  payload: Record<string, unknown>,
+  draft: Record<string, unknown>,
+  resolveMeta: (fieldName: string) => MonetaryFieldMeta | undefined,
+  original?: Record<string, unknown>
+): void {
+  if (!payload || typeof resolveMeta !== 'function') return;
+  for (const [fieldName, value] of Object.entries(payload)) {
+    if (value == null || value === '') continue;
+    const fm = resolveMeta(fieldName);
+    if (!fm || fm.type !== 'monetary') continue;
+    const currencyField = typeof fm.currencyField === 'string' ? fm.currencyField.trim() : '';
+    if (!currencyField) continue;
+    const existingId = relationIdOf(payload[currencyField]);
+    if (existingId) {
+      payload[currencyField] = existingId;
+      continue;
+    }
+    const fromDraft = relationIdOf(draft?.[currencyField]);
+    if (fromDraft) {
+      payload[currencyField] = fromDraft;
+      continue;
+    }
+    const fromOriginal = relationIdOf(original?.[currencyField]);
+    if (fromOriginal) payload[currencyField] = fromOriginal;
+  }
+}
+
+function resolveStoreFieldMeta(store: { getFieldMeta?: (name: string) => MonetaryFieldMeta | undefined; fieldsMetadata?: Record<string, MonetaryFieldMeta> }, fieldName: string): MonetaryFieldMeta | undefined {
+  try {
+    if (typeof store.getFieldMeta === 'function') {
+      const merged = store.getFieldMeta(fieldName);
+      if (merged) return merged;
+    }
+  } catch {
+    /* ignore */
+  }
+  return store.fieldsMetadata?.[fieldName];
+}
+
+/** Drop select-only / deny-write / declarative readonly keys from a write payload. */
+function omitReadonlyWriteFields(
+  values: Record<string, unknown>,
+  store: { getFieldMeta?: (name: string) => { isReadonly?: boolean } | undefined; fieldsMetadata?: Record<string, { isReadonly?: boolean }> }
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...values };
+  for (const key of Object.keys(out)) {
+    if (!key || key.startsWith('__')) continue;
+    const meta = resolveStoreFieldMeta(store as any, key) as { isReadonly?: boolean } | undefined;
+    if (meta?.isReadonly === true) delete out[key];
+  }
+  return out;
 }
 
 function setByPath(obj: any, path: string, value: any) {
@@ -135,9 +213,23 @@ function resolveAttachmentDisplayFileName(raw: unknown): string | undefined {
   return fileLikeName;
 }
 
-function buildAttachmentWritePayload(raw: unknown, attachmentObjectId: string): string | Record<string, unknown> {
+function resolveAttachmentFieldType(store: WebModelStore<any>, fieldName: string): string | undefined {
+  const metas = (store as any)?.fieldsMetadata as Record<string, { type?: string }> | undefined;
+  const raw = metas?.[fieldName]?.type;
+  return typeof raw === 'string' ? raw.trim().toLowerCase() : undefined;
+}
+
+function buildAttachmentWritePayload(
+  raw: unknown,
+  attachmentObjectId: string,
+  fieldType?: string
+): string | Record<string, unknown> {
   const displayFileName = resolveAttachmentDisplayFileName(raw);
-  const downloadDisposition = isRecord(raw) ? normalizeAttachmentDownloadDisposition(raw.downloadDisposition) : undefined;
+  let downloadDisposition = isRecord(raw) ? normalizeAttachmentDownloadDisposition(raw.downloadDisposition) : undefined;
+  // Image fields render in <img>; default Bind disposition to inline when omitted.
+  if (!downloadDisposition && fieldType === 'image') {
+    downloadDisposition = 'inline';
+  }
 
   if (!displayFileName && !downloadDisposition) {
     return attachmentObjectId;
@@ -576,7 +668,11 @@ async function normalizeAttachmentFieldsInPayload(
       nextPayload[fieldName] = null;
       continue;
     }
-    nextPayload[fieldName] = buildAttachmentWritePayload(sourceValue, resolved.attachmentObjectId);
+    nextPayload[fieldName] = buildAttachmentWritePayload(
+      sourceValue,
+      resolved.attachmentObjectId,
+      resolveAttachmentFieldType(store, fieldName)
+    );
   }
 
   return nextPayload;
@@ -774,9 +870,13 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
       const returnFields = ensureRootId(pathsToFieldSelection(rawPaths));
 
       if (vm.mode === 'create') {
+        let createPayload = { ...(payload || {}) } as Record<string, unknown>;
+        await (store as any).ensureFieldsGet?.().catch(() => undefined);
+        createPayload = omitReadonlyWriteFields(createPayload, store as any);
+        attachMonetaryCurrencyCompanions(createPayload, createPayload, name => resolveStoreFieldMeta(store as any, name), undefined);
         const normalizedPayload = await normalizeAttachmentFieldsInPayload(
           store,
-          payload,
+          createPayload,
           {
             operation: 'create',
             ownerModel,
@@ -816,7 +916,10 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
         }
 
         const original = toRaw(vm.original);
-        const fieldsMeta = (store as any)?.fieldsMetadata;
+        // FieldsGet overlay must load before diff so select-only computes get isReadonly.
+        await (store as any).ensureFieldsGet?.().catch(() => undefined);
+        // Normalize like onchange: codegen meta has type + relationModel, not relation.
+        const fieldsMeta = buildDiffFieldsMeta(store as any);
         const draftForDiff = await preNormalizeDraftForDiff(
           store,
           payload,
@@ -827,7 +930,14 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
           },
           attachmentDeps
         );
-        const patch = buildUpdatePayload(original || {}, draftForDiff || {}, fieldsMeta) as Record<string, unknown>;
+        let patch = buildUpdatePayload(original || {}, draftForDiff || {}, fieldsMeta) as Record<string, unknown>;
+        patch = omitReadonlyWriteFields(patch, store as any);
+        attachMonetaryCurrencyCompanions(
+          patch,
+          draftForDiff || {},
+          name => resolveStoreFieldMeta(store as any, name),
+          (original || {}) as Record<string, unknown>
+        );
         const normalizedPatch = await normalizeAttachmentFieldsInPayload(
           store,
           patch,
@@ -848,6 +958,7 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
 
         if (updateRes && typeof updateRes === 'object') {
           // Merge updated fields into original and draft state.
+          // ManyToOneRef bare ids keep their labels via field-local Browse/options (cross-app).
           const updated = { ...original, ...updateRes };
           vm.original = clone(updated);
           vm.draft = clone(updated);
@@ -951,3 +1062,4 @@ export type FormController = ReturnType<typeof createFormController>;
 export const __resolveAttachmentFieldValueForTest = resolveAttachmentFieldValue;
 export const __normalizeAttachmentFieldsInPayloadForTest = normalizeAttachmentFieldsInPayload;
 export const __looksLikeUploadEnvelopeForTest = looksLikeUploadEnvelope;
+export const __attachMonetaryCurrencyCompanionsForTest = attachMonetaryCurrencyCompanions;

@@ -19,11 +19,40 @@ const searchExpose = {
   selectedItems: [] as any[],
 };
 
+type CapturedSearchListProps = {
+  hostPageTitle?: boolean;
+  selectionMode?: string;
+  forcedCondition?: unknown;
+  relationConditionSource?: { model: string; field: string };
+};
+
+const lastSearchListProps = ref<CapturedSearchListProps | null>(null);
+
 const SearchListStub = defineComponent({
   name: 'SearchListStub',
-  setup(_, { expose }) {
+  inheritAttrs: false,
+  props: {
+    hostPageTitle: { type: Boolean, default: true },
+    showSelectionColumn: { type: Boolean, default: true },
+    selectionMode: { type: String, default: 'multiple' },
+    forcedCondition: { type: [Object, Array] as any, default: undefined },
+    relationConditionSource: { type: Object as any, default: undefined },
+  },
+  setup(props, { expose }) {
     expose(searchExpose);
-    return () => h('div', { class: 'search-list-stub', 'data-test': 'search-list' });
+    lastSearchListProps.value = {
+      hostPageTitle: props.hostPageTitle,
+      selectionMode: props.selectionMode,
+      forcedCondition: props.forcedCondition,
+      relationConditionSource: props.relationConditionSource,
+    };
+    return () =>
+      h('div', {
+        class: 'search-list-stub',
+        'data-test': 'search-list',
+        'data-host-page-title': props.hostPageTitle ? '1' : '0',
+        'data-selection-mode': String(props.selectionMode || ''),
+      });
   },
 });
 
@@ -137,7 +166,7 @@ function installStubs(mode: 'edit' | 'display' | 'both' = 'edit') {
       size: { type: String, default: undefined },
     },
     emits: ['click'],
-    setup(props: any, { emit, slots }: any) {
+    setup(props: any, { emit, slots, attrs }: any) {
       return () => {
         const kids = slots.default?.() || [];
         let text = '';
@@ -145,18 +174,20 @@ function installStubs(mode: 'edit' | 'display' | 'both' = 'edit') {
           if (typeof k === 'string' || typeof k === 'number') text += String(k);
           else if (k && typeof k.children === 'string') text += k.children;
         }
-        const lower = text.toLowerCase();
-        let testId = 'btn';
+        const aria = String(attrs['aria-label'] || attrs.ariaLabel || '');
+        const lower = `${text} ${aria}`.toLowerCase();
+        let testId = String(attrs['data-testid'] || 'btn');
         if (/ok|确定/.test(lower)) testId = 'dialog-ok';
         else if (/cancel|取消/.test(lower)) testId = 'dialog-cancel';
-        else if (/delete|删除/.test(lower)) testId = 'row-delete';
-        else if (/add|添加/.test(lower)) testId = 'add-row';
+        else if (/delete|删除|remove/.test(lower) || testId === 'choy-m2m-row-remove') testId = 'row-delete';
+        else if (/add|添加|line/.test(lower) || testId === 'choy-m2m-add-row') testId = 'add-row';
         return h(
           'button',
           {
             type: 'button',
             class: 'btn',
             'data-test': testId,
+            'data-testid': attrs['data-testid'] || testId,
             'data-variant': props.variant || '',
             onClick: (e: Event) => emit('click', e),
           },
@@ -178,9 +209,11 @@ function installStubs(mode: 'edit' | 'display' | 'both' = 'edit') {
       rowKey: { type: String, default: undefined },
       rowHeight: { type: Number, default: undefined },
       headerHeight: { type: Number, default: undefined },
+      footerHeight: { type: Number, default: undefined },
       tableHeight: { type: Number, default: undefined },
       store: { type: Object, default: undefined },
       baseIndex: { type: Number, default: undefined },
+      virtualize: { type: Boolean, default: true },
     },
     setup(props: any, { slots, expose }: any) {
       const scrollToRow = fnRecorder();
@@ -192,6 +225,7 @@ function installStubs(mode: 'edit' | 'display' | 'both' = 'edit') {
             class: 'ov-table-stub',
             'data-rows': String((props.data || []).length),
             'data-height': String(props.tableHeight ?? ''),
+            'data-footer': String(props.footerHeight ?? ''),
           },
           [
             slots.default?.(),
@@ -203,6 +237,10 @@ function installStubs(mode: 'edit' | 'display' | 'both' = 'edit') {
                   : []),
               ])
             ),
+            !(props.data || []).length ? slots.empty?.() : null,
+            props.footerHeight
+              ? h('div', { class: 'ov-footer-stub', 'data-testid': 'choy-m2m-table-footer' }, slots.footer?.())
+              : null,
           ]
         );
     },
@@ -307,19 +345,85 @@ describe('ChoyManyToManyField mount coverage', () => {
     m.unmount();
   });
 
+  test('display mode mounts host with 0 rows so nested columns can register before Browse', async () => {
+    restoreSfc(ChoyFieldBase as any);
+    installStubs('display');
+    const { binding } = makeBinding({
+      items: [],
+      isEditMode: false,
+      relationStore: { fullModelName: 'demo.Tag' },
+    });
+    const m = mountField({ binding, searchList: SearchListStub });
+    await nextTick();
+    expect(m.q('.ov-table-stub')).toBeTruthy();
+    expect(m.q('.ov-table-stub')?.getAttribute('data-rows')).toBe('0');
+    // Display empty keeps column headers only (no body "None" / "No data").
+    expect(m.q('[data-testid="choy-m2m-empty"]')).toBeFalsy();
+    expect(m.q('[data-test="add-row"]')).toBeFalsy();
+    m.unmount();
+  });
+
+  test('empty edit still mounts table host for field registration; footer Add-line is the empty affordance', async () => {
+    const { binding } = makeBinding({
+      items: [],
+      relationStore: { fullModelName: 'demo.Tag' },
+    });
+    const m = mountField({ binding, searchList: SearchListStub });
+    await nextTick();
+    // Host mounts with 0 rows so nested column fields can register before Browse.
+    // Edit mode skips body empty text when footer Add-line is present (avoids clip under footer).
+    expect(m.q('.ov-table-stub')).toBeTruthy();
+    expect(m.q('.ov-table-stub')?.getAttribute('data-rows')).toBe('0');
+    expect(m.q('[data-testid="choy-m2m-empty"]')).toBeFalsy();
+    expect(m.q('[data-test="add-row"]')).toBeTruthy();
+    m.unmount();
+
+    const m2 = mountField({
+      binding: makeBinding({ items: [], relationStore: { fullModelName: 'demo.Tag' } }).binding,
+    });
+    await nextTick();
+    expect(m2.q('[data-testid="choy-m2m-add-unavailable"]')).toBeTruthy();
+    expect(m2.q('[data-test="add-row"]')).toBeFalsy();
+    m2.unmount();
+  });
+
+  test('row remove uses ghost icon control', async () => {
+    const { binding } = makeBinding({
+      items: [{ Id: 'a' }],
+      relationStore: { fullModelName: 'demo.Tag' },
+    });
+    const m = mountField({ binding, searchList: SearchListStub });
+    await nextTick();
+    const del = m.q('[data-test="row-delete"]') as HTMLElement | null;
+    expect(del).toBeTruthy();
+    expect(del!.getAttribute('data-variant')).toBe('ghost');
+    m.unmount();
+  });
+
   test('openPicker warns without relationStore and opens dialog when resolved', async () => {
     const missing = makeBinding({ items: [], relationStore: undefined, meta: { type: 'ManyToMany' } });
     const m1 = mountField({ binding: missing.binding, searchList: SearchListStub });
     await nextTick();
     m1.click('[data-test="add-row"]');
     await nextTick();
-    expect(msgWarn.calls.length).toBe(1);
+    expect(msgWarn.calls.length).toBe(0);
     expect(m1.q('.dialog')?.getAttribute('data-open')).toBe('0');
     m1.unmount();
 
+    const relationStore = {
+      fullModelName: 'demo.Tag',
+      state: {
+        queryState: {
+          keyword: 'stale',
+          appliedFilters: [{ And: [['Name', 'ilike', 'x']] }],
+          pagination: { limit: 40, offset: 80 },
+        },
+      },
+    };
+    lastSearchListProps.value = null;
     const { binding } = makeBinding({
       items: [{ Id: 'keep' }],
-      relationStore: { fullModelName: 'demo.Tag' },
+      relationStore,
     });
     const m2 = mountField({
       binding,
@@ -327,13 +431,29 @@ describe('ChoyManyToManyField mount coverage', () => {
       searchViewTitle: 'Pick tags',
       searchViewWidth: 800,
       condition: ['Active', '=', true],
+      store: { fullModelName: 'sale.Order' },
     });
     await nextTick();
     m2.click('[data-test="add-row"]');
     await nextTick();
     expect(m2.q('.dialog')?.getAttribute('data-open')).toBe('1');
     expect(m2.q('.search-list-stub')).toBeTruthy();
+    expect(m2.q('.search-list-stub')?.getAttribute('data-host-page-title')).toBe('0');
+    expect(m2.q('.search-list-stub')?.getAttribute('data-selection-mode')).toBe('multiple');
     expect((m2.q('.dialog-title')?.textContent || '').includes('Pick tags')).toBe(true);
+    expect(relationStore.state.queryState.keyword).toBeUndefined();
+    expect(relationStore.state.queryState.appliedFilters).toEqual([]);
+    expect(relationStore.state.queryState.pagination).toEqual({ limit: 40, offset: 0 });
+    expect((lastSearchListProps.value as CapturedSearchListProps | null)?.relationConditionSource).toEqual({
+      model: 'sale.Order',
+      field: 'TagIds',
+    });
+    expect((lastSearchListProps.value as CapturedSearchListProps | null)?.forcedCondition).toEqual({
+      And: [
+        ['Id', 'not in', ['keep']],
+        ['Active', '=', true],
+      ],
+    });
     m2.click('[data-test="dialog-cancel"]');
     await nextTick();
     expect(m2.q('.dialog')?.getAttribute('data-open')).toBe('0');
@@ -454,7 +574,7 @@ describe('ChoyManyToManyField mount coverage', () => {
       await nextTick();
       m.click('[data-test="add-row"]');
       await nextTick();
-      expect(msgWarn.calls.length).toBe(1);
+      expect(msgWarn.calls.length).toBe(0);
       expect(m.q('.dialog')?.getAttribute('data-open')).toBe('0');
       m.unmount();
     } finally {
@@ -482,7 +602,7 @@ describe('ChoyManyToManyField mount coverage', () => {
     (empty.binding.env as any).isForm = false;
     const em = mountField({ binding: empty.binding });
     await nextTick();
-    expect(em.q('[data-testid="choy-m2m-summary"]')?.textContent).toBe('—');
+    expect((em.q('[data-testid="choy-m2m-summary"]')?.textContent || '').trim()).toBe('');
     expect(em.q('.ov-table-stub')).toBeNull();
     em.unmount();
   });

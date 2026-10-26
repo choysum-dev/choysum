@@ -1,18 +1,18 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { resolveListRowRecordId } from '@/base/web/views/list_row_nav';
+import type { RowEventPayload } from '@/web';
 
 /**
  * Build the partner detail path for a list row-click when the actor may open it.
- * Accepts a raw row or `{ row }` wrapper; blank ids and denied access fail closed.
+ * Blank ids and denied access fail closed.
  */
 export function resolvePartnerDetailPath(
-  payload: unknown,
+  payload: RowEventPayload,
   canOpenDetail: boolean,
 ): string | null {
   if (!canOpenDetail) return null;
-  const id = resolveListRowRecordId(payload);
+  const id = String(payload.row?.Id ?? '').trim();
   return id ? `/partner/partners/${id}` : null;
 }
 
@@ -20,7 +20,7 @@ export function resolvePartnerDetailPath(
  * Navigate to partner detail when the row resolves to a path.
  */
 export function navigatePartnerDetail(
-  payload: unknown,
+  payload: RowEventPayload,
   canOpenDetail: boolean,
   push: (path: string) => unknown,
 ): boolean {

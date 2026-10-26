@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -816,6 +817,64 @@ func TestApplyFile_SuccessAndErrors(t *testing.T) {
 	if err := l.applyFile(context.Background(), owner, invalidPath); err == nil || !strings.Contains(err.Error(), "parse data file") {
 		t.Fatalf("expected parse error, got %v", err)
 	}
+}
+
+func TestTopoOrderOrCycleBatch_RecordIndexNumericTieBreak(t *testing.T) {
+	// Independent records must follow file order numerically. Stringifying
+	// recordIndex ("10" < "2") previously scrambled apply order past index 9.
+	const n = 12
+	records := make([]batchRecord, n)
+	dep := make([][]int, n)
+	adj := make([][]int, n)
+	indeg := make([]int, n)
+	for i := 0; i < n; i++ {
+		records[i] = batchRecord{
+			FileRel:     "data/bootstrap.json",
+			FilePath:    "/tmp/data/bootstrap.json",
+			RecordIndex: i,
+			Rec:         record{Module: "sandbox", Name: "r" + strconv.Itoa(i)},
+		}
+	}
+	order, err := topoOrderOrCycleBatch(records, dep, adj, indeg, nil)
+	if err != nil {
+		t.Fatalf("topoOrderOrCycleBatch() error = %v", err)
+	}
+	if len(order) != n {
+		t.Fatalf("expected order length %d, got %d", n, len(order))
+	}
+	for i, got := range order {
+		if got != i {
+			t.Fatalf("expected numeric file order %v, got %v", makeRange(n), order)
+		}
+	}
+}
+
+func TestTopoOrderOrCycleBatch_FileAndNameTieBreak(t *testing.T) {
+	// Cover less(): different FileRel, and same file+index with name order.
+	records := []batchRecord{
+		{FileRel: "b.json", FilePath: "/tmp/b.json", RecordIndex: 0, Rec: record{Module: "m", Name: "z"}},
+		{FileRel: "a.json", FilePath: "/tmp/a.json", RecordIndex: 0, Rec: record{Module: "m", Name: "z"}},
+		{FileRel: "a.json", FilePath: "/tmp/a.json", RecordIndex: 0, Rec: record{Module: "m", Name: "a"}},
+	}
+	dep := make([][]int, 3)
+	adj := make([][]int, 3)
+	indeg := make([]int, 3)
+	order, err := topoOrderOrCycleBatch(records, dep, adj, indeg, nil)
+	if err != nil {
+		t.Fatalf("topoOrderOrCycleBatch() error = %v", err)
+	}
+	want := []int{2, 1, 0} // a.json/a, a.json/z, b.json/z
+	if len(order) != 3 || order[0] != want[0] || order[1] != want[1] || order[2] != want[2] {
+		t.Fatalf("order = %v, want %v", order, want)
+	}
+}
+
+func makeRange(n int) []int {
+	out := make([]int, n)
+	for i := range out {
+		out[i] = i
+	}
+	return out
 }
 
 func TestTopoOrderOrCycle_AcyclicAndCycleFallback(t *testing.T) {

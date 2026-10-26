@@ -415,13 +415,20 @@ export class EntityConverter {
   private static executePlan(plan: CompiledPlan, row: ObjectRecord): ObjectRecord {
     const out: ObjectRecord = {};
 
-    // ManyToOne relations may sometimes carry only the scalar foreign key on the transport layer,
-    // such as ParentId='xxx', while $rel$ParentId is empty. Fall back to the scalar value so null does not overwrite it.
-    const scalarRelationFallback = (op: Extract<FieldOp, { kind: 'relation' }>): unknown => {
-      if (op.cardinality !== 'one') return undefined;
-      const scalar = row[op.key];
-      if (scalar === undefined || scalar === null) return undefined;
-      return op.childPlan ? { Id: scalar } : scalar;
+    // Prefer `$rel$` preloads. When `$rel$` is missing/null, a non-array object on the field
+    // key is already the related record (e.g. virtual @Compute inject) — do not wrap as
+    // `{ Id: object }`. Bare scalar ids still become `{ Id: scalar }` when a childPlan exists.
+    const resolveToOneRelation = (op: Extract<FieldOp, { kind: 'relation' }>): unknown => {
+      const pre = this.getPreloadedRelationValue(row, op.key);
+      if (pre != null) return pre;
+
+      const direct = row[op.key];
+      if (direct === undefined || direct === null) {
+        // Explicit null `$rel$` with no scalar id → null; absent both → undefined (omit).
+        return pre === null ? null : undefined;
+      }
+      if (typeof direct === 'object' && !Array.isArray(direct)) return direct;
+      return op.childPlan ? { Id: direct } : direct;
     };
 
     // JSON-safe fast path: copy only scalar values and recursively execute JSON-safe child plans without normalization.
@@ -432,23 +439,19 @@ export class EntityConverter {
           const v = row[op.key];
           if (v !== undefined) out[op.key] = v;
         } else {
-          // Relations: read from the $rel$ alias first, then fall back to the field name itself.
-          let pre = this.getPreloadedRelationValue(row, op.key);
           if (op.cardinality === 'one') {
-            const fallback = scalarRelationFallback(op);
-            if (pre === undefined) {
-              if (fallback !== undefined) out[op.key] = fallback;
-              continue;
-            }
+            const pre = resolveToOneRelation(op);
+            if (pre === undefined) continue;
 
             if (!op.childPlan || pre == null || typeof pre !== 'object') {
-              out[op.key] = pre == null && fallback !== undefined ? fallback : pre;
+              out[op.key] = pre;
             } else {
               out[op.key] = this.executePlan(op.childPlan, pre as unknown as ObjectRecord);
             }
             continue;
           }
 
+          const pre = this.getPreloadedRelationValue(row, op.key);
           const manyRaw = this.normalizeToManyRelationValue(pre !== undefined ? pre : row[op.key]);
           if (manyRaw === undefined) continue;
 
@@ -478,22 +481,19 @@ export class EntityConverter {
         continue;
       }
 
-      const pre = this.getPreloadedRelationValue(row, op.key);
       if (op.cardinality === 'one') {
-        const fallback = scalarRelationFallback(op);
-        if (pre === undefined) {
-          if (fallback !== undefined) out[op.key] = fallback;
-          continue;
-        }
+        const pre = resolveToOneRelation(op);
+        if (pre === undefined) continue;
 
         if (!op.childPlan) {
-          out[op.key] = pre == null && fallback !== undefined ? fallback : normalizeValueForTransport(pre);
+          out[op.key] = normalizeValueForTransport(pre);
         } else if (pre == null || typeof pre !== 'object') {
-          out[op.key] = pre == null && fallback !== undefined ? fallback : pre;
+          out[op.key] = pre;
         } else {
           out[op.key] = this.executePlan(op.childPlan, pre as unknown as ObjectRecord);
         }
       } else {
+        const pre = this.getPreloadedRelationValue(row, op.key);
         const manyRaw = this.normalizeToManyRelationValue(pre !== undefined ? pre : row[op.key]);
         if (manyRaw === undefined) continue;
         if (!op.childPlan) {

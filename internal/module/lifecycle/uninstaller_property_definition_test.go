@@ -257,6 +257,13 @@ func TestIsMissingSQLTableError(t *testing.T) {
 	if isMissingSQLTableError(errors.New("database is locked")) {
 		t.Fatal("unrelated errors must be false")
 	}
+	// Column/constraint missing must not be treated as missing table.
+	if isMissingSQLTableError(errors.New(`column "name" does not exist`)) {
+		t.Fatal("column missing must be false")
+	}
+	if isMissingSQLTableError(errors.New(`constraint "fk_x" of relation "demo" does not exist`)) {
+		t.Fatal("missing constraint must not be treated as missing table")
+	}
 }
 
 func TestPropertyDefinitionTableExists(t *testing.T) {

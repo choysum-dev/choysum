@@ -65,6 +65,32 @@ function createEditor(options) {
       active.orderedList = !active.orderedList;
       return chainApi;
     },
+    toggleStrike: function () {
+      active.strike = !active.strike;
+      return chainApi;
+    },
+    toggleHeading: function (opts) {
+      var level = opts && opts.level != null ? opts.level : 2;
+      var key = 'heading';
+      active[key] = !active[key];
+      attrs.heading = { level: level };
+      active['heading:' + level] = !!active[key];
+      return chainApi;
+    },
+    toggleBlockquote: function () {
+      active.blockquote = !active.blockquote;
+      return chainApi;
+    },
+    toggleCode: function () {
+      active.code = !active.code;
+      return chainApi;
+    },
+    undo: function () {
+      return chainApi;
+    },
+    redo: function () {
+      return chainApi;
+    },
     unsetLink: function () {
       active.link = false;
       attrs.link = {};
@@ -86,10 +112,20 @@ function createEditor(options) {
 
   var editor = {
     view: { dom: dom },
+    get isEmpty() {
+      var t = String(html || '')
+        .replace(/<p><\/p>/g, '')
+        .replace(/<p><br><\/p>/g, '')
+        .trim();
+      return !t;
+    },
     getHTML: function () {
       return html;
     },
-    isActive: function (name) {
+    isActive: function (name, opts) {
+      if (name === 'heading' && opts && opts.level != null) {
+        return !!active['heading:' + opts.level];
+      }
       return !!active[name];
     },
     getAttributes: function (name) {

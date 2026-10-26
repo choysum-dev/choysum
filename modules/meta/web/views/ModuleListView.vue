@@ -102,7 +102,7 @@ import {
   ChoyVirtualField,
   type ChoyViewSwitcherOption,
 } from '@/web';
-import { resolveListRowRecordId } from './list_row_nav';
+import type { RowEventPayload } from '@/web';
 import { moduleStatusBadgeVariant } from './module_kanban_chrome';
 
 defineOptions({ name: 'ModuleListView', inheritAttrs: false });
@@ -163,8 +163,8 @@ watch(
   },
 );
 
-function onRowClick(row: Record<string, unknown>) {
-  const id = resolveListRowRecordId(row);
+function onRowClick(payload: RowEventPayload) {
+  const id = String(payload.row?.Id ?? '').trim();
   if (id) router.push(`/meta/modules/${id}`);
 }
 

@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { ChevronDown } from 'lucide-vue-next';
 import { SelectIcon, SelectTrigger, SelectValue } from 'reka-ui';
-import { cn, type ClassValue } from '../../../../lib/utils';
+import { cn, controlFocusRing, type ClassValue } from '../../../../lib/utils';
 
 defineProps<{
   class?: ClassValue;
@@ -29,8 +29,9 @@ defineProps<{
     :aria-describedby="$props['aria-describedby']"
     :class="
       cn(
-        'flex h-control w-full items-center justify-between rounded-md border border-border bg-background px-3 py-2 text-sm',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+        'flex h-control w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground shadow-xs',
+        controlFocusRing,
+        'disabled:cursor-not-allowed disabled:opacity-50',
         $props.class,
       )
     "

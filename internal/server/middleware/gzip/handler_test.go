@@ -99,6 +99,7 @@ func TestGzipHandlerCompressesResponseWhenRequested(t *testing.T) {
 	request.Header.Set("Accept-Encoding", "br, gzip")
 
 	handler.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", "9999")
 		w.WriteHeader(http.StatusCreated)
 		_, _ = w.Write([]byte("compressed-response"))
 	})).ServeHTTP(recorder, request)
@@ -112,6 +113,9 @@ func TestGzipHandlerCompressesResponseWhenRequested(t *testing.T) {
 	if recorder.Header().Get("Vary") != "Accept-Encoding" {
 		t.Fatalf("Vary = %q, want Accept-Encoding", recorder.Header().Get("Vary"))
 	}
+	if got := recorder.Header().Get("Content-Length"); got != "" {
+		t.Fatalf("Content-Length = %q, want empty after gzip wrap", got)
+	}
 
 	gzReader, err := gzip.NewReader(bytes.NewReader(recorder.Body.Bytes()))
 	if err != nil {
@@ -124,5 +128,96 @@ func TestGzipHandlerCompressesResponseWhenRequested(t *testing.T) {
 	}
 	if string(decoded) != "compressed-response" {
 		t.Fatalf("decoded body = %q, want compressed-response", string(decoded))
+	}
+}
+
+func TestGzipHandlerSkipsDocumentPayloadPaths(t *testing.T) {
+	handler := NewGzipHandler(testHandlerScope())
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/_document/bindings/b1/content", nil)
+	request.Header.Set("Accept-Encoding", "gzip")
+
+	handler.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", "4")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("png!"))
+	})).ServeHTTP(recorder, request)
+
+	if recorder.Header().Get("Content-Encoding") != "" {
+		t.Fatalf("unexpected Content-Encoding for document payload: %q", recorder.Header().Get("Content-Encoding"))
+	}
+	if recorder.Header().Get("Content-Length") != "4" {
+		t.Fatalf("Content-Length = %q, want 4", recorder.Header().Get("Content-Length"))
+	}
+	if recorder.Body.String() != "png!" {
+		t.Fatalf("body = %q, want png!", recorder.Body.String())
+	}
+}
+
+func TestGzipHandlerCleansDocumentTraversalBeforeBypass(t *testing.T) {
+	handler := NewGzipHandler(testHandlerScope())
+	// /_document/../api cleans to /api — must gzip (bypass only for real /_document/).
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/_document/../api", nil)
+	request.Header.Set("Accept-Encoding", "gzip")
+	handler.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("api-body"))
+	})).ServeHTTP(recorder, request)
+	if recorder.Header().Get("Content-Encoding") != "gzip" {
+		t.Fatalf("Content-Encoding = %q, want gzip after path.Clean leaves /api", recorder.Header().Get("Content-Encoding"))
+	}
+}
+
+func TestGzipResponseWriterWriteHeaderIsIdempotent(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	buffer := bytes.NewBuffer(nil)
+	writer := &gzipResponseWriter{Writer: buffer, ResponseWriter: recorder, statusCode: http.StatusOK}
+	writer.Header().Set("Content-Length", "12")
+
+	writer.WriteHeader(http.StatusCreated)
+	writer.WriteHeader(http.StatusAccepted) // second call must no-op
+	if writer.statusCode != http.StatusCreated {
+		t.Fatalf("statusCode = %d, want %d after second WriteHeader", writer.statusCode, http.StatusCreated)
+	}
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("recorder status = %d, want %d", recorder.Code, http.StatusCreated)
+	}
+	if got := writer.Header().Get("Content-Length"); got != "" {
+		t.Fatalf("Content-Length = %q, want empty after gzip WriteHeader", got)
+	}
+}
+
+func TestGzipHandlerSkipsDocumentUploadPaths(t *testing.T) {
+	handler := NewGzipHandler(testHandlerScope())
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPut, "/_document/uploads/up_1", nil)
+	request.Header.Set("Accept-Encoding", "gzip")
+
+	handler.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", "3")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("bin"))
+	})).ServeHTTP(recorder, request)
+
+	if recorder.Header().Get("Content-Encoding") != "" {
+		t.Fatalf("unexpected Content-Encoding for upload path: %q", recorder.Header().Get("Content-Encoding"))
+	}
+	if recorder.Body.String() != "bin" {
+		t.Fatalf("body = %q, want bin", recorder.Body.String())
+	}
+}
+
+func TestGzipResponseWriterWriteAutoWriteHeader(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	buffer := bytes.NewBuffer(nil)
+	writer := &gzipResponseWriter{Writer: buffer, ResponseWriter: recorder, statusCode: http.StatusOK}
+	if _, err := writer.Write([]byte("auto")); err != nil {
+		t.Fatalf("Write() error: %v", err)
+	}
+	if !writer.wroteHeader || writer.statusCode != http.StatusOK {
+		t.Fatalf("wroteHeader=%v status=%d, want auto 200", writer.wroteHeader, writer.statusCode)
+	}
+	if buffer.String() != "auto" {
+		t.Fatalf("buffer = %q, want auto", buffer.String())
 	}
 }

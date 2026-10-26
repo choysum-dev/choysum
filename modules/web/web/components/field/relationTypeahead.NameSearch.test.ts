@@ -83,7 +83,7 @@ const RelationComboboxStub = defineComponent({
     searchMore: { type: Boolean, default: true },
   },
   emits: ['update:modelValue', 'select', 'search-more'],
-  setup(props: any) {
+  setup(props: any, { slots }: any) {
     return () =>
       h('div', { class: 'select-stub' }, [
         h('button', {
@@ -101,6 +101,7 @@ const RelationComboboxStub = defineComponent({
           'data-test': 'trigger-remote-empty',
           onClick: () => props.search?.('', { limit: props.pageSize }),
         }),
+        slots.footer?.(),
       ]);
   },
 });

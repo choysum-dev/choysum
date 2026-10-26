@@ -10,15 +10,15 @@ SPDX-License-Identifier: Apache-2.0
     v-if="effectiveRenderMode === 'form'"
     v-show="visibleForm"
     data-anchor="choy.field-base"
-    orientation="vertical"
+    :orientation="orientation"
     :class="formChromeClass"
     @focusout="onFieldFocusOut"
   >
     <div
-      v-if="resolvedLabel || effectiveHelp || requiredForm"
+      v-if="showLabelRow"
       class="choy-field-base__label-row flex items-center gap-1 font-normal text-muted-foreground"
     >
-      <FieldLabel v-if="resolvedLabel" :for="inputIdForm">
+      <FieldLabel v-if="resolvedLabel" :id="formLabelId" :for="labelHtmlFor || undefined">
         {{ resolvedLabel }}
         <span v-if="requiredForm" class="text-destructive" aria-hidden="true">*</span>
       </FieldLabel>
@@ -28,9 +28,8 @@ SPDX-License-Identifier: Apache-2.0
           <TooltipTrigger as-child>
             <button
               type="button"
-              class="inline-flex text-muted-foreground hover:text-foreground"
+              class="inline-flex cursor-help text-muted-foreground hover:text-foreground"
               data-slot="form-help"
-              :title="effectiveHelp"
               :aria-label="helpAccessibleLabel"
             >
               <CircleHelp class="size-3.5" />
@@ -40,71 +39,13 @@ SPDX-License-Identifier: Apache-2.0
         </Tooltip>
       </TooltipProvider>
     </div>
-    <FieldDescription v-if="effectiveHelp" :id="formHelpId" class="sr-only">
-      {{ effectiveHelp }}
-    </FieldDescription>
-    <div class="w-full min-w-0">
-    <template v-if="preserveModeSlotForm">
-      <div v-show="effectiveEditForm" class="choy-field-base__edit-wrap flex w-full items-center gap-0.5">
-        <div class="choy-field-base__edit-control min-w-0 flex-1">
-          <slot
-            name="edit"
-            :fieldValue="valueForm"
-            :record="recordForm"
-            :readonly="false"
-            :required="requiredForm"
-            :visible="visibleForm"
-            :inputName="inputName"
-            :inputId="inputIdForm"
-            :describedBy="formDescribedBy"
-            :invalid="formInvalid"
-            :onFieldChange="onchangeHandlers.onChange"
-            :triggerOnchange="onchangeHandlers.trigger"
-            :onchangeRunning="onchangeHandlers.running?.value"
-          />
-        </div>
-        <ChoyButton
-          v-if="showTranslateAction"
-          size="sm"
-          variant="ghost"
-          class="choy-field-base__translate-btn h-6 w-6 shrink-0 p-0 text-muted-foreground hover:text-primary focus:text-primary"
-          :aria-label="translateAriaLabel"
-          :title="translateAriaLabel"
-          @click="translationsOpen = true"
-        >
-          <Languages class="size-4" />
-        </ChoyButton>
-        <ChoyButton
-          v-if="showCompanyValuesAction"
-          size="sm"
-          variant="ghost"
-          class="choy-field-base__company-values-btn h-6 w-6 shrink-0 p-0 text-muted-foreground hover:text-primary focus:text-primary"
-          :aria-label="companyValuesAriaLabel"
-          :title="companyValuesAriaLabel"
-          @click="companyValuesOpen = true"
-        >
-          <Building2 class="size-4" />
-        </ChoyButton>
-      </div>
-      <div v-show="!effectiveEditForm">
-        <slot
-          name="display"
-          :fieldValue="valueForm"
-          :record="recordForm"
-          renderMode="form"
-          :readonly="true"
-          :required="false"
-          :visible="visibleForm"
-          :inputName="inputName"
-          :inputId="inputIdForm"
-          :triggerOnchange="onchangeHandlers.trigger"
-          :onchangeRunning="onchangeHandlers.running?.value"
-        />
-      </div>
-    </template>
-    <template v-else>
-      <template v-if="effectiveEditForm">
-        <div class="choy-field-base__edit-wrap flex w-full items-center gap-0.5">
+    <FieldContent class="choy-field-base__content min-w-0">
+      <FieldDescription v-if="effectiveHelp" :id="formHelpId" class="sr-only">
+        {{ effectiveHelp }}
+      </FieldDescription>
+      <div class="choy-field-base__body w-full min-w-0">
+      <template v-if="preserveModeSlotForm">
+        <div v-show="effectiveEditForm" class="choy-field-base__edit-wrap flex w-full items-center gap-0.5">
           <div class="choy-field-base__edit-control min-w-0 flex-1">
             <slot
               name="edit"
@@ -115,6 +56,7 @@ SPDX-License-Identifier: Apache-2.0
               :visible="visibleForm"
               :inputName="inputName"
               :inputId="inputIdForm"
+              :labelId="formLabelId"
               :describedBy="formDescribedBy"
               :invalid="formInvalid"
               :onFieldChange="onchangeHandlers.onChange"
@@ -145,58 +87,127 @@ SPDX-License-Identifier: Apache-2.0
             <Building2 class="size-4" />
           </ChoyButton>
         </div>
+        <div
+          v-show="!effectiveEditForm"
+          class="choy-field-base__display-wrap"
+          :aria-labelledby="resolvedLabel ? formLabelId : undefined"
+        >
+          <slot
+            name="display"
+            :fieldValue="valueForm"
+            :record="recordForm"
+            renderMode="form"
+            :readonly="true"
+            :required="false"
+            :visible="visibleForm"
+            :inputName="inputName"
+            :inputId="inputIdForm"
+            :labelId="formLabelId"
+            :triggerOnchange="onchangeHandlers.trigger"
+            :onchangeRunning="onchangeHandlers.running?.value"
+          />
+        </div>
       </template>
       <template v-else>
-        <slot
-          name="display"
-          :fieldValue="valueForm"
-          :record="recordForm"
-          renderMode="form"
-          :readonly="true"
-          :required="false"
-          :visible="visibleForm"
-          :inputName="inputName"
-          :inputId="inputIdForm"
-          :triggerOnchange="onchangeHandlers.trigger"
-          :onchangeRunning="onchangeHandlers.running?.value"
-        />
+        <template v-if="effectiveEditForm">
+          <div class="choy-field-base__edit-wrap flex w-full items-center gap-0.5">
+            <div class="choy-field-base__edit-control min-w-0 flex-1">
+              <slot
+                name="edit"
+                :fieldValue="valueForm"
+                :record="recordForm"
+                :readonly="false"
+                :required="requiredForm"
+                :visible="visibleForm"
+                :inputName="inputName"
+                :inputId="inputIdForm"
+                :labelId="formLabelId"
+                :describedBy="formDescribedBy"
+                :invalid="formInvalid"
+                :onFieldChange="onchangeHandlers.onChange"
+                :triggerOnchange="onchangeHandlers.trigger"
+                :onchangeRunning="onchangeHandlers.running?.value"
+              />
+            </div>
+            <ChoyButton
+              v-if="showTranslateAction"
+              size="sm"
+              variant="ghost"
+              class="choy-field-base__translate-btn h-6 w-6 shrink-0 p-0 text-muted-foreground hover:text-primary focus:text-primary"
+              :aria-label="translateAriaLabel"
+              :title="translateAriaLabel"
+              @click="translationsOpen = true"
+            >
+              <Languages class="size-4" />
+            </ChoyButton>
+            <ChoyButton
+              v-if="showCompanyValuesAction"
+              size="sm"
+              variant="ghost"
+              class="choy-field-base__company-values-btn h-6 w-6 shrink-0 p-0 text-muted-foreground hover:text-primary focus:text-primary"
+              :aria-label="companyValuesAriaLabel"
+              :title="companyValuesAriaLabel"
+              @click="companyValuesOpen = true"
+            >
+              <Building2 class="size-4" />
+            </ChoyButton>
+          </div>
+        </template>
+        <template v-else>
+          <div class="choy-field-base__display-wrap" :aria-labelledby="resolvedLabel ? formLabelId : undefined">
+            <slot
+              name="display"
+              :fieldValue="valueForm"
+              :record="recordForm"
+              renderMode="form"
+              :readonly="true"
+              :required="false"
+              :visible="visibleForm"
+              :inputName="inputName"
+              :inputId="inputIdForm"
+              :labelId="formLabelId"
+              :triggerOnchange="onchangeHandlers.trigger"
+              :onchangeRunning="onchangeHandlers.running?.value"
+            />
+          </div>
+        </template>
       </template>
-    </template>
-    <FieldTranslationsDialog
-      v-if="showTranslateAction"
-      v-model="translationsOpen"
-      :store="binding.store as any"
-      :record-id="panelRecordId"
-      :field-name="leafFieldName"
-      :field-label="resolvedLabel"
-      :max-length="panelMaxLength"
-      :draft-value="panelDraftValue"
-      @saved="onTranslationsSaved"
-    />
-    <FieldCompanyValuesDialog
-      v-if="showCompanyValuesAction"
-      v-model="companyValuesOpen"
-      :store="binding.store as any"
-      :record-id="panelRecordId"
-      :field-name="leafFieldName"
-      :field-label="resolvedLabel"
-      :field-type="companyValuesFieldType"
-      :max-length="panelMaxLength"
-      :draft-value="panelDraftValue"
-      @saved="onCompanyValuesSaved"
-    />
-    </div>
-    <FieldError v-if="displayError" :id="formErrorId">
-      {{ displayError }}
-    </FieldError>
-    <p
-      v-else-if="showInlineError"
-      class="choy-field-base__error-reserve invisible text-sm font-normal"
-      data-slot="field-error"
-      aria-hidden="true"
-    >
-      &nbsp;
-    </p>
+      <FieldTranslationsDialog
+        v-if="showTranslateAction"
+        v-model="translationsOpen"
+        :store="binding.store as any"
+        :record-id="panelRecordId"
+        :field-name="leafFieldName"
+        :field-label="resolvedLabel"
+        :max-length="panelMaxLength"
+        :draft-value="panelDraftValue"
+        @saved="onTranslationsSaved"
+      />
+      <FieldCompanyValuesDialog
+        v-if="showCompanyValuesAction"
+        v-model="companyValuesOpen"
+        :store="binding.store as any"
+        :record-id="panelRecordId"
+        :field-name="leafFieldName"
+        :field-label="resolvedLabel"
+        :field-type="companyValuesFieldType"
+        :max-length="panelMaxLength"
+        :draft-value="panelDraftValue"
+        @saved="onCompanyValuesSaved"
+      />
+      </div>
+      <FieldError v-if="displayError" :id="formErrorId">
+        {{ displayError }}
+      </FieldError>
+      <p
+        v-else-if="showInlineError"
+        class="choy-field-base__error-reserve invisible text-sm font-normal"
+        data-slot="field-error"
+        aria-hidden="true"
+      >
+        &nbsp;
+      </p>
+    </FieldContent>
   </Field>
 
   <!-- TABLE mode -->
@@ -204,20 +215,26 @@ SPDX-License-Identifier: Apache-2.0
     v-else-if="effectiveRenderMode === 'table' && columnVisible"
     :prop="String(binding.prop)"
     :label="resolvedLabel"
-    :vColumnProps="vColumnProps"
+    :vColumnProps="resolvedVColumnProps"
     v-slot="{ row, $index }"
   >
     <div
       class="choy-field-base__cell flex min-w-0 w-full items-center"
+      :class="cellJustifyClass"
       v-show="cellVisibleForRow(row)"
       :data-field="inputName"
       :data-row-key="guessRowKey(row)"
     >
       <div
         class="choy-field-base__cell-item flex min-w-0 w-full items-center leading-none"
-        :class="{ 'choy-field-base__cell-item--error': !!serverErrorForRow(row, $index) }"
+        :class="[{ 'choy-field-base__cell-item--error': !!serverErrorForRow(row, $index) }, cellJustifyClass]"
         :data-error="serverErrorForRow(row, $index) || undefined"
       >
+        <span
+          v-if="serverErrorForRow(row, $index)"
+          :id="`${inputIdForRow(row)}-error`"
+          class="sr-only"
+        >{{ serverErrorForRow(row, $index) }}</span>
         <template v-if="effectiveEditForRow(row)">
           <slot
             name="edit"
@@ -228,6 +245,9 @@ SPDX-License-Identifier: Apache-2.0
             :visible="cellVisibleForRow(row)"
             :inputName="inputName"
             :inputId="inputIdForRow(row)"
+            :labelId="`${inputIdForRow(row)}-label`"
+            :describedBy="describedByForRow(row, $index)"
+            :invalid="!!serverErrorForRow(row, $index)"
             :onFieldChange="onchangeHandlers.onChange"
             :triggerOnchange="onchangeHandlers.trigger"
             :onchangeRunning="onchangeHandlers.running?.value"
@@ -244,6 +264,7 @@ SPDX-License-Identifier: Apache-2.0
             :visible="cellVisibleForRow(row)"
             :inputName="inputName"
             :inputId="inputIdForRow(row)"
+            :labelId="`${inputIdForRow(row)}-label`"
             :triggerOnchange="onchangeHandlers.trigger"
             :onchangeRunning="onchangeHandlers.running?.value"
           />
@@ -274,6 +295,9 @@ SPDX-License-Identifier: Apache-2.0
           :visible="visibleInline"
           :inputName="inputName"
           :inputId="inputIdForm"
+          :labelId="formLabelId"
+          :describedBy="formDescribedBy"
+          :invalid="formInvalid"
           :onFieldChange="onchangeHandlers.onChange"
           :triggerOnchange="onchangeHandlers.trigger"
           :onchangeRunning="onchangeHandlers.running?.value"
@@ -290,6 +314,7 @@ SPDX-License-Identifier: Apache-2.0
           :visible="visibleInline"
           :inputName="inputName"
           :inputId="inputIdForm"
+          :labelId="formLabelId"
           :triggerOnchange="onchangeHandlers.trigger"
           :onchangeRunning="onchangeHandlers.running?.value"
         />
@@ -314,6 +339,9 @@ SPDX-License-Identifier: Apache-2.0
           :visible="visibleInline"
           :inputName="inputName"
           :inputId="inputIdForm"
+          :labelId="formLabelId"
+          :describedBy="formDescribedBy"
+          :invalid="formInvalid"
           :onFieldChange="onchangeHandlers.onChange"
           :triggerOnchange="onchangeHandlers.trigger"
           :onchangeRunning="onchangeHandlers.running?.value"
@@ -330,22 +358,30 @@ SPDX-License-Identifier: Apache-2.0
           :visible="visibleInline"
           :inputName="inputName"
           :inputId="inputIdForm"
+          :labelId="formLabelId"
           :triggerOnchange="onchangeHandlers.trigger"
           :onchangeRunning="onchangeHandlers.running?.value"
         />
       </template>
-      <button
-        v-if="effectiveHelp"
-        type="button"
-        class="choy-field-base__help-btn m-0 inline-flex cursor-help items-center justify-center border-0 bg-transparent p-0 leading-none text-inherit focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        :aria-label="helpAccessibleLabel"
-        :title="effectiveHelp"
-      >
-        <CircleHelp class="size-3.5" />
-      </button>
+      <TooltipProvider v-if="effectiveHelp">
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <button
+              type="button"
+              class="choy-field-base__help-btn m-0 inline-flex cursor-help items-center justify-center border-0 bg-transparent p-0 leading-none text-muted-foreground hover:text-foreground focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              data-slot="form-help"
+              :aria-label="helpAccessibleLabel"
+            >
+              <CircleHelp class="size-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{{ effectiveHelp }}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </div>
     <p
       v-if="showInlineError"
+      :id="formErrorId"
       class="choy-field-base__error mt-0 min-h-4 w-full whitespace-normal pb-2 text-sm font-normal leading-4 text-destructive"
       data-slot="field-error"
       :class="{ invisible: !displayError }"
@@ -373,6 +409,7 @@ import { CircleHelp, Languages, Building2 } from 'lucide-vue-next';
 import { cn, type ClassValue } from '@/web/web/lib/utils';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import Field from '@/web/web/components/vendor/ui/field/Field.vue';
+import FieldContent from '@/web/web/components/vendor/ui/field/FieldContent.vue';
 import FieldDescription from '@/web/web/components/vendor/ui/field/FieldDescription.vue';
 import FieldError from '@/web/web/components/vendor/ui/field/FieldError.vue';
 import FieldLabel from '@/web/web/components/vendor/ui/field/FieldLabel.vue';
@@ -383,11 +420,16 @@ import { resolveFieldHelp } from '@/web/web/composables/resolveFieldHelp';
 import { FIELD_PRESENTATION_FIELDS_GET_ATTRS } from '@/web/web/stores/fieldsGet';
 import FieldTranslationsDialog from './ChoyFieldTranslationsDialog.vue';
 import FieldCompanyValuesDialog from './ChoyFieldCompanyValuesDialog.vue';
+import { defaultListColumnAlignForFieldType } from './numericFieldHelpers';
+import { dataTableColumnJustifyClass } from '@/web/web/components/internal/dataTableHelpers';
 
 /** Extra class merged onto the form field chrome root. */
 export type FormItemProps = {
   class?: ClassValue;
 };
+
+/** Form-mode label/control layout; ignored for table / inline. */
+export type FieldOrientation = 'horizontal' | 'vertical';
 
 export type FieldStatePredicate<T, V> = (args: { record: T; value: V | null; env: FieldEnv }) => boolean;
 export type FieldStateExpr<T, V> = boolean | FieldStatePredicate<T, V>;
@@ -403,8 +445,26 @@ const props = withDefaults(
     rules?: RuleItem[];
     /** Explicit control id; otherwise `fld-${prop}`. Label `for` and slot `inputId` share this. */
     id?: string;
+    /**
+     * When true (default) and the form control is editable, FieldLabel uses `for=inputId`.
+     * Set false for composite / non-labelable controls (html, json, o2m, trees); use slot
+     * `labelId` with `aria-labelledby` on the control root instead.
+     */
+    labelForControl?: boolean;
     formItemProps?: Partial<FormItemProps>;
     vColumnProps?: Record<string, unknown>;
+    /**
+     * Form chrome only: label | value (`horizontal`, default) or label above value (`vertical`).
+     * Table / inline modes ignore this.
+     */
+    orientation?: FieldOrientation;
+    /**
+     * Hide the form label row (title, required asterisk, help tooltip).
+     * Prefer this over `label=""` when a Section/Tab already titles the block —
+     * empty `label` only clears the text and can leave a lone help icon.
+     * Help remains available via the sr-only FieldDescription when present.
+     */
+    hideLabel?: boolean;
     toView?: (raw: V) => View;
     fromView?: (v: View) => V;
     required?: FieldStateExpr<T, V>;
@@ -419,6 +479,8 @@ const props = withDefaults(
     rules: () => [],
     formItemProps: () => ({}),
     vColumnProps: () => ({}),
+    orientation: 'horizontal',
+    hideLabel: false,
     visible: true,
     cellVisible: true,
     required: false,
@@ -426,10 +488,22 @@ const props = withDefaults(
     renderMode: 'auto',
     preserveModeSlot: false,
     showInlineError: false,
+    labelForControl: true,
   }
 );
 
 const binding = props.binding;
+
+/** List columns: Number / Monetary family default to logical end unless caller sets align. */
+const resolvedVColumnProps = computed(() => {
+  const incoming = { ...(props.vColumnProps || {}) } as Record<string, unknown>;
+  if (incoming.align != null && String(incoming.align).trim() !== '') return incoming;
+  const align = defaultListColumnAlignForFieldType((binding.meta as { type?: unknown } | undefined)?.type);
+  if (!align) return incoming;
+  return { ...incoming, align };
+});
+
+const cellJustifyClass = computed(() => dataTableColumnJustifyClass(resolvedVColumnProps.value.align));
 
 const leafFieldName = computed(() => {
   const prop = String(binding.prop || '');
@@ -454,6 +528,7 @@ const effectiveFieldMeta = computed(() => {
 });
 
 const resolvedLabel = computed(() => {
+  if (props.hideLabel) return '';
   const prop = String(binding.prop || '');
   const leaf = leafFieldName.value;
   return resolveFieldLabel({
@@ -591,7 +666,7 @@ const effectiveRenderMode = computed(() => {
 const showInlineError = computed(() => props.showInlineError === true);
 const preserveModeSlotForm = computed(() => props.preserveModeSlot === true);
 
-/* Derive INLINE-mode state from form logic without rendering ElFormItem */
+/* Derive INLINE-mode state from form logic without form chrome. */
 const visibleInline = computed(() => visibleForm.value); // Reuse visibleForm as the visibility gate
 const readonlyInline = computed(() => readonlyForm.value);
 const requiredInline = computed(() => requiredForm.value);
@@ -696,7 +771,14 @@ const inputIdForm = computed(() => {
   const explicit = typeof props.id === 'string' ? props.id.trim() : '';
   return explicit || `fld-${inputName.value}`;
 });
+/** Stable id on FieldLabel for aria-labelledby when `for` is omitted. */
+const formLabelId = computed(() => `${inputIdForm.value}-label`);
 const inputIdForRow = (row: T) => `${inputIdForm.value}-${guessRowKey(row)}`;
+/** Table edit: wire control to the cell sr-only error node when present. */
+function describedByForRow(row: T, rowIndex?: number): string | undefined {
+  if (!serverErrorForRow(row, rowIndex)) return undefined;
+  return `${inputIdForRow(row)}-error`;
+}
 
 /* View mapping for slot rendering */
 const viewBinding =
@@ -757,7 +839,22 @@ const requiredForm = computed(() => {
   if (metaRequired.value) return true;
   return evalFlag(props.required, recordForm().value, rawValueForm().value, false);
 });
+
+/** Form label chrome (title / * / help tip). Off when hideLabel. */
+const showLabelRow = computed(
+  () => !props.hideLabel && Boolean(resolvedLabel.value || effectiveHelp.value || requiredForm.value)
+);
+
 const effectiveEditForm = computed(() => binding.env.isEditMode && visibleForm.value && !readonlyForm.value);
+/**
+ * `for` only when an editable labelable control is expected to own `inputId`.
+ * Readonly form display and composite controls omit `for` (use `labelId` + aria-labelledby).
+ */
+const labelHtmlFor = computed(() => {
+  if (!props.labelForControl) return '';
+  if (!effectiveEditForm.value) return '';
+  return inputIdForm.value;
+});
 
 /* Column-level visibility control */
 const columnVisible = computed(() => (typeof props.visible === 'boolean' ? !!props.visible : true));
@@ -895,6 +992,7 @@ defineSlots<{
     visible: boolean;
     inputName: string | undefined;
     inputId: string | undefined;
+    labelId?: string;
     describedBy?: string;
     invalid?: boolean;
     onFieldChange: () => Promise<void>;
@@ -909,6 +1007,7 @@ defineSlots<{
     required: boolean;
     visible: boolean;
     inputName: string | undefined;
+    labelId?: string;
     inputId: string | undefined;
     triggerOnchange: (fp?: string | string[]) => Promise<void>;
     onchangeRunning: boolean | undefined;

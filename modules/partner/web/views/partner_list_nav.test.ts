@@ -2,32 +2,34 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { navigatePartnerDetail, resolvePartnerDetailPath } from './partner_list_nav';
+import type { RowEventPayload } from '@/web';
 
-test('resolvePartnerDetailPath: builds path from a raw row when allowed', () => {
-  expect(resolvePartnerDetailPath({ Id: '  ptn-1  ' }, true)).toBe('/partner/partners/ptn-1');
-});
+function rowPayload(id: unknown): RowEventPayload {
+  return {
+    row: { Id: id } as RowEventPayload['row'],
+    rowIndex: 0,
+    rowKey: undefined,
+    event: new Event('click'),
+  };
+}
 
-test('resolvePartnerDetailPath: unwraps { row } payloads', () => {
-  expect(resolvePartnerDetailPath({ row: { Id: 'ptn-9' }, index: 0 }, true)).toBe(
-    '/partner/partners/ptn-9',
-  );
+test('resolvePartnerDetailPath: builds path when allowed', () => {
+  expect(resolvePartnerDetailPath(rowPayload('  ptn-1  '), true)).toBe('/partner/partners/ptn-1');
 });
 
 test('resolvePartnerDetailPath: denies or blank id fail closed', () => {
-  expect(resolvePartnerDetailPath({ Id: 'ptn-1' }, false)).toBeNull();
-  expect(resolvePartnerDetailPath({ Id: '   ' }, true)).toBeNull();
-  expect(resolvePartnerDetailPath({}, true)).toBeNull();
-  expect(resolvePartnerDetailPath(null, true)).toBeNull();
+  expect(resolvePartnerDetailPath(rowPayload('ptn-1'), false)).toBeNull();
+  expect(resolvePartnerDetailPath(rowPayload('   '), true)).toBeNull();
+  expect(resolvePartnerDetailPath(rowPayload(undefined), true)).toBeNull();
 });
 
 test('navigatePartnerDetail: pushes when allowed and skips otherwise', () => {
-  const pushes: string[] = [];
+  const pushed: string[] = [];
   const push = (path: string) => {
-    pushes.push(path);
+    pushed.push(path);
   };
-  expect(navigatePartnerDetail({ Id: 'ptn-2' }, true, push)).toBe(true);
-  expect(pushes).toEqual(['/partner/partners/ptn-2']);
-  expect(navigatePartnerDetail({ Id: 'ptn-2' }, false, push)).toBe(false);
-  expect(navigatePartnerDetail({ Id: '' }, true, push)).toBe(false);
-  expect(pushes).toEqual(['/partner/partners/ptn-2']);
+  expect(navigatePartnerDetail(rowPayload('ptn-2'), true, push)).toBe(true);
+  expect(pushed).toEqual(['/partner/partners/ptn-2']);
+  expect(navigatePartnerDetail(rowPayload('ptn-2'), false, push)).toBe(false);
+  expect(navigatePartnerDetail(rowPayload(''), true, push)).toBe(false);
 });

@@ -253,7 +253,8 @@ test('model read search and count normalize empty conditions and honor onlyDelet
     expect(searchCalls[0]?.condition).toEqual([]);
     expect(searchCalls[0]?.options).toEqual({ onlyDeleted: true, fields: ['Name'] });
     expect(countCalls.length).toBe(1);
-    expect(countCalls[0]?.condition).toEqual(null);
+    // Count normalizes null/undefined to [] before hitting the repository.
+    expect(countCalls[0]?.condition).toEqual([]);
     expect(rows).toEqual([{ Id: 'OD-1', Name: 'archived' }]);
     expect(total).toBe(9);
   } finally {

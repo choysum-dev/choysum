@@ -5,43 +5,75 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <div
-    :class="cn('flex w-full min-h-0 flex-col', !tableHeight && 'h-full', props.class)"
-    :style="{ height: tableHeight ? `${tableHeight}px` : undefined }"
+    data-anchor="choy.internal.table-host"
+    :data-has-footer="hasFooter ? '' : undefined"
+    :data-empty="isEmpty ? '' : undefined"
+    :class="
+      cn(
+        'choy-table-host flex w-full min-h-0 flex-col',
+        sizeToContent ? undefined : 'overflow-hidden',
+        !sizeToContent && !tableHeight && 'h-full',
+        props.class,
+      )
+    "
+    :style="hostRootStyle"
   >
     <!-- Hidden slot used only for ChoyTableColumn registration. -->
     <div class="hidden" aria-hidden="true">
       <slot />
     </div>
 
-    <div class="relative min-h-0 flex-1 overflow-hidden">
+    <div
+      class="relative min-h-0"
+      :class="
+        sizeToContent
+          ? tableHeight
+            ? 'overflow-auto'
+            : 'overflow-visible'
+          : 'flex-1 overflow-hidden'
+      "
+    >
       <DataTable
         ref="dataTableRef"
-        class="h-full"
+        :class="dataTableClass"
         :columns="columnDefs"
         :data="rowsAsRecords"
         :row-id="resolveRowId"
-        :height="bodyHeight"
+        :height="dataTableHeight"
         :estimate-size="rowHeight"
-        :virtualize="virtualize"
+        :virtualize="isVirtualized"
         :enable-row-selection="false"
         :row-selection="selectedRowIds"
         :enable-sorting="true"
-        :show-empty="false"
+        :show-empty="!sizeToContent"
         sorting-mode="server"
         @row-click="onDataTableRowClick"
         @sort-change="onSortChange"
-      />
-      <div v-if="!rowsArray.length" class="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <!-- Overlay is non-interactive so it does not steal table clicks; CTAs re-enable pointer events. -->
-        <div class="pointer-events-auto">
+      >
+        <!-- Fixed-height hosts: empty lives in the body so it never covers the header. -->
+        <template v-if="!sizeToContent" #empty>
           <slot name="empty">
             <div class="p-6 text-center text-muted-foreground">{{ _t('No data') }}</div>
           </slot>
-        </div>
+        </template>
+      </DataTable>
+      <!--
+        Content-sized embeds: in-flow empty so the host grows (absolute overlay does not
+        expand the parent and gets clipped by the outer overflow-hidden M2M frame).
+        Skip when a footer strip is present — Add a line is the empty affordance.
+      -->
+      <div
+        v-if="sizeToContent && isEmpty && !hasFooter"
+        class="w-full"
+        data-testid="choy-table-host-empty"
+      >
+        <slot name="empty">
+          <div class="p-6 text-center text-muted-foreground">{{ _t('No data') }}</div>
+        </slot>
       </div>
     </div>
 
-    <div v-if="footerHeight" class="border-t border-border" :style="{ height: `${footerHeight}px` }">
+    <div v-if="footerHeight" class="shrink-0 border-t border-border" :style="{ height: `${footerHeight}px` }">
       <slot name="footer" />
     </div>
   </div>
@@ -60,7 +92,12 @@ import { cn, type ClassValue } from '@/web/web/lib/utils';
 import { CHOY_LIST_HEADER_HEIGHT, CHOY_LIST_ROW_HEIGHT } from '@/web/web/composables/listDensity';
 import DataTable from './DataTable.vue';
 import { columnsToColumnDefs } from './columnAdapter';
-import type { DataTableRowId } from './dataTableHelpers';
+import {
+  embeddedTableWantsVirtualLayout,
+  resolveEmbeddedTableVirtualize,
+  type DataTableRowId,
+  type EmbeddedTableVirtualizeMode,
+} from './dataTableHelpers';
 import type { RowEventHandlerParams } from '@/web/web/components/view/listViewTypes';
 
 const { _t } = createTranslate('web', { scope: 'web/components/internal/ChoyTableHost' });
@@ -75,8 +112,17 @@ const props = withDefaults(
     headerHeight?: number;
     tableHeight?: number;
     footerHeight?: number;
-    /** When false, skip TanStack virtualizer (embedded M2M/O2M form tables). */
-    virtualize?: boolean;
+    /**
+     * `true` — always virtualize when rows exist (List).
+     * `false` — content-sized, no virtualizer.
+     * `auto` — virtualize only when `tableHeight` is capped (embedded O2M/M2M).
+     */
+    virtualize?: EmbeddedTableVirtualizeMode;
+    /**
+     * When true, drop DataTable's own border/radius so an outer host frame
+     * (e.g. M2M edit chrome) owns the outline without double borders.
+     */
+    frameless?: boolean;
     selectionApi?: ReturnType<typeof useTableSelection>;
     baseIndex?: number | Ref<number>;
     store?: any;
@@ -87,6 +133,7 @@ const props = withDefaults(
     headerHeight: CHOY_LIST_HEADER_HEIGHT,
     footerHeight: 0,
     virtualize: true,
+    frameless: false,
   },
 );
 
@@ -96,6 +143,12 @@ const emit = defineEmits<{
   (e: 'row-dblclick', payload: RowEventHandlerParams): void;
   (e: 'selection-change', rows: any[]): void;
   (e: 'sort-change', payload: { field: string; direction?: 'asc' | 'desc' }): void;
+}>();
+
+defineSlots<{
+  default?: () => any;
+  empty?: () => any;
+  footer?: () => any;
 }>();
 
 const dataTableRef = ref<{ scrollToRow?: (index: number, align?: string) => void } | null>(null);
@@ -147,15 +200,67 @@ const columnsToUse = computed<Column[]>(() => {
 
 const columnDefs = computed(() => columnsToColumnDefs(columnsToUse.value));
 
-/** Fallback body estimate for standalone mounts; flex hosts size via h-full. */
+/** Fixed scrollport layout (List, or capped embedded `auto`). */
+const wantsVirtualLayout = computed(() =>
+  embeddedTableWantsVirtualLayout({
+    virtualize: props.virtualize,
+    tableHeight: props.tableHeight,
+  }),
+);
+
+/** Resolved virtualize flag passed to DataTable (handles `auto` for embeds). */
+const isVirtualized = computed(() =>
+  resolveEmbeddedTableVirtualize({
+    virtualize: props.virtualize,
+    tableHeight: props.tableHeight,
+    rowCount: rowsArray.value.length,
+  }),
+);
+
+/**
+ * Non-virtual embedded tables size to their rows (maxHeight caps long lists).
+ * Fixed-height + h-full DataTable is what created one-row scrollbars.
+ */
+const sizeToContent = computed(() => !wantsVirtualLayout.value);
+
+const hostRootStyle = computed(() => {
+  const total = props.tableHeight;
+  if (total == null || !Number.isFinite(total)) return undefined;
+  if (sizeToContent.value) return { maxHeight: `${total}px` };
+  return { height: `${total}px` };
+});
+
+const dataTableClass = computed(() =>
+  cn(
+    !sizeToContent.value && 'h-full',
+    props.frameless && 'rounded-none border-0',
+    // Content-sized embeds: do not keep a body scrollport that paints a gutter for one row.
+    sizeToContent.value && '[&_.choy-data-table__body]:!overflow-y-visible',
+  ),
+);
+
+const hasFooter = computed(() => (props.footerHeight ?? 0) > 0);
+const isEmpty = computed(() => rowsArray.value.length === 0);
+
+/**
+ * Fallback body estimate for standalone mounts; flex hosts size via h-full.
+ * Embedded non-virtual tables omit a fixed DataTable height so rows define size.
+ * When footerHeight is set, tableHeight is the full outer size (header + body + footer).
+ */
 const bodyHeight = computed(() => {
   const total = props.tableHeight;
   if (total == null || !Number.isFinite(total)) {
     return 280;
   }
   const header = props.headerHeight ?? CHOY_LIST_HEADER_HEIGHT;
-  return Math.max(80, total - header);
+  const footer = Math.max(0, props.footerHeight ?? 0);
+  const body = Math.max(0, total - header - footer);
+  if (!wantsVirtualLayout.value) return body;
+  return Math.max(80, body);
 });
+
+/** 0 → DataTable skips fixed root height (prop default 280 would otherwise win over undefined). */
+const dataTableHeight = computed(() => (sizeToContent.value ? 0 : bodyHeight.value));
 
 const syntheticKeys = new WeakMap<object, string>();
 let syntheticSeq = 0;
@@ -188,7 +293,7 @@ function resolveRowId(row: Record<string, unknown>): DataTableRowId {
 
 const selectedItems = computed(() => {
   const set = props.selectionApi?.selected.value ?? new Set<string | number>();
-  return (rowsArray.value || []).filter((r) => set.has(keyOf(r)));
+  return (rowsArray.value || []).filter(r => set.has(keyOf(r)));
 });
 
 /** Mirror host selection into DataTable row state for selected-row chrome (no built-in select column). */
@@ -208,7 +313,7 @@ function onDataTableRowClick(row: Record<string, unknown>): void {
     rowData: row,
     rowIndex: rowIndex >= 0 ? rowIndex : 0,
     rowKey: keyOf(row),
-  });
+  } as RowEventHandlerParams);
 }
 
 function onSortChange(payload: { field: string; direction?: 'asc' | 'desc' }): void {
@@ -229,3 +334,13 @@ defineExpose({
 });
 </script>
 
+<style scoped>
+/* Footer owns the separator; suppress the last body row border-b to avoid a double rule. */
+.choy-table-host[data-has-footer] :deep(.choy-data-table__body [role='row']:last-child) {
+  border-bottom-width: 0;
+}
+/* Empty + footer: header border-b + footer border-t sit flush — keep a single rule. */
+.choy-table-host[data-has-footer][data-empty] :deep(.choy-data-table__header) {
+  border-bottom-width: 0;
+}
+</style>

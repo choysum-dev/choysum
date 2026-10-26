@@ -17,6 +17,35 @@ const rows: Row[] = [
 ];
 
 describe('DataTable chrome', () => {
+  test('column meta.align end applies justify-end on header and body cells', async () => {
+    const numericColumns: ColumnDef<Row, unknown>[] = [
+      {
+        accessorKey: 'Name',
+        header: 'Amount',
+        cell: (ctx) => String(ctx.getValue() ?? ''),
+        meta: { align: 'end' },
+      },
+    ];
+    const mounted = mountApp(DataTable as any, {
+      props: {
+        columns: numericColumns,
+        data: rows,
+        height: 120,
+        virtualize: false,
+        enableRowSelection: false,
+      },
+    });
+    await flushPromises();
+    const header = mounted.q('[role=columnheader]');
+    expect(header?.className || '').toContain('justify-end');
+    const headerBtn = header?.querySelector('button');
+    expect(headerBtn?.className || '').toContain('justify-end');
+    const cells = mounted.qa('[role=gridcell]');
+    expect(cells.length).toBeGreaterThan(0);
+    expect(cells.every((el) => (el.className || '').includes('justify-end'))).toBe(true);
+    mounted.unmount();
+  });
+
   test('selected rows expose data-state and keep dense header/body classes', async () => {
     const mounted = mountApp(DataTable as any, {
       props: {

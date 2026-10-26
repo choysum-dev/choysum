@@ -43,7 +43,7 @@ SPDX-License-Identifier: Apache-2.0
       <template v-if="showHeader" #header-right>
         <ChoyViewSwitcher
           :aria-label="_t('View switcher')"
-          active="chart"
+          :active="activeView"
           :options="viewSwitcherOptions"
           @select="onViewSelect"
         />
@@ -64,18 +64,13 @@ import {
   ChoySearchView,
   ChoyViewSwitcher,
   ChoyVirtualField,
+  useChoyViewRouteSwitch,
   type ChoyViewSwitcherOption,
 } from '@/web';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
 import type { GroupBySpec } from '@/web/web/query/types';
-import {
-  ensureTokenViewGroups,
-  formatTokenRevokedChartLabel,
-  tokenViewDefaultGroups,
-  tokenViewPath,
-  type TokenViewKind,
-} from './token_view_nav';
+import { formatTokenRevokedChartLabel } from './token_chart_labels';
 
 defineOptions({ name: 'TokenChartView' });
 const { _t } = createTranslate('auth', { scope: 'web/views/TokenChartView' });
@@ -87,14 +82,14 @@ const store = resolvePageStore(props.store, 'TokenChartView');
 const { showHeader } = props;
 const { hasAction } = usePermission();
 
-// Correct shared-store groups before ChoyChartView bootstraps (parent setup first).
-ensureTokenViewGroups(store, 'chart');
+const { active: activeView, defaultGroups: routeGroups, selectView: onViewSelect } =
+  useChoyViewRouteSwitch({ store });
 
 /**
  * Category = TokenType, series = Revoked (nested children via fullGroupHierarchy).
  * Demonstrates stackable multi-series ChartView on real Token data.
  */
-const defaultGroups = tokenViewDefaultGroups('chart') as GroupBySpec<Token>[];
+const defaultGroups = routeGroups.value as GroupBySpec<Token>[];
 
 const chartMetrics = computed(() => [{ alias: 'count', label: _t('Count') }]);
 
@@ -111,10 +106,6 @@ function formatChartLabel(label: string): string {
     revoked: _t('Revoked'),
     notRevoked: _t('Not Revoked'),
   });
-}
-
-function onViewSelect(value: string) {
-  router.push(tokenViewPath(value as TokenViewKind));
 }
 
 function onCreate() {

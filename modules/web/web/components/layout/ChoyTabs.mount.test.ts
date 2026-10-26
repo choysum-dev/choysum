@@ -53,6 +53,41 @@ describe('ChoyTabs mount', () => {
     mounted.unmount();
   });
 
+  test('forceMount keeps inactive pane content mounted but hidden', async () => {
+    const selected = ref('a');
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h(
+            ChoyTabs as any,
+            {
+              modelValue: selected.value,
+              'onUpdate:modelValue': (value: string) => {
+                selected.value = value;
+              },
+              defaultValue: 'a',
+            },
+            {
+              default: () => [
+                h(ChoyTab, { value: 'a', label: 'Alpha', forceMount: true }, { default: () => 'PANEL-A' }),
+                h(ChoyTab, { value: 'b', label: 'Beta', forceMount: true }, { default: () => 'PANEL-B' }),
+              ],
+            },
+          );
+      },
+    });
+    const mounted = mountApp(Host as any);
+    await flushPromises();
+    await nextTick();
+    expect(mounted.text()).toContain('PANEL-A');
+    expect(mounted.text()).toContain('PANEL-B');
+    const panes = mounted.qa('[data-anchor="choy.tab"]');
+    const inactive = panes.find(el => String(el.className || '').split(/\s+/).includes('hidden'));
+    expect(inactive).toBeTruthy();
+    expect(inactive?.textContent || '').toContain('PANEL-B');
+    mounted.unmount();
+  });
+
   test('uncontrolled ChoyTabs still renders the default panel', async () => {
     const Host = defineComponent({
       setup() {

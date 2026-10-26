@@ -43,7 +43,7 @@ SPDX-License-Identifier: Apache-2.0
       <template v-if="showHeader" #header-right>
         <ChoyViewSwitcher
           :aria-label="_t('View switcher')"
-          active="kanban"
+          :active="activeView"
           :options="viewSwitcherOptions"
           @select="onViewSelect"
         />
@@ -104,6 +104,7 @@ import {
   ChoySearchView,
   ChoyViewSwitcher,
   ChoyVirtualField,
+  useChoyViewRouteSwitch,
   type ChoyKanbanCard,
   type ChoyKanbanLane,
   type ChoyViewSwitcherOption,
@@ -112,19 +113,12 @@ import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
 import type { GroupBySpec, Lane } from '@/web/web/query/types';
 import {
-  resolveTokenDetailId,
   resolveTokenKanbanCardId,
   resolveTokenKanbanRowPayload,
   resolveTokenMoveRecordId,
   resolveTokenUsernameLabel,
   type TokenKanbanRow
 } from './token_kanban_nav';
-import {
-  ensureTokenViewGroups,
-  tokenViewDefaultGroups,
-  tokenViewPath,
-  type TokenViewKind,
-} from './token_view_nav';
 
 defineOptions({ name: 'TokenKanbanView' });
 const { _t } = createTranslate('auth', { scope: 'web/views/TokenKanbanView' });
@@ -133,11 +127,11 @@ const props = withDefaults(defineProps<{ store?: WebModelStore<Token>; showHeade
 const store = resolvePageStore(props.store, 'TokenKanbanView');
 const { showHeader } = props;
 
-// Correct shared-store groups before Kanban bootstraps (parent setup first).
-ensureTokenViewGroups(store, 'kanban');
+const { active: activeView, defaultGroups: routeGroups, selectView: onViewSelect } =
+  useChoyViewRouteSwitch({ store });
 
 /** Board lanes follow revoked state (List shows the same column); clearable like Module. */
-const defaultGroups = tokenViewDefaultGroups('kanban') as GroupBySpec<Token>[];
+const defaultGroups = routeGroups.value as GroupBySpec<Token>[];
 
 const router = useRouter();
 
@@ -146,10 +140,6 @@ const viewSwitcherOptions = computed<ChoyViewSwitcherOption[]>(() => [
   { value: 'kanban', label: _t('Kanban View') },
   { value: 'chart', label: _t('Chart View') },
 ]);
-
-function onViewSelect(value: string) {
-  router.push(tokenViewPath(value as TokenViewKind));
-}
 
 function rowToCard(row: unknown, index: number, laneKey: string): ChoyKanbanCard {
   const payload = resolveTokenKanbanRowPayload(row as TokenKanbanRow);
@@ -203,7 +193,7 @@ function onCreate() {
 }
 
 function openDetailFromCard(card: ChoyKanbanCard) {
-  const id = resolveTokenDetailId(card.payload as Record<string, unknown> | undefined);
+  const id = String(card.payload?.Id ?? '').trim();
   if (id) router.push(`/auth/tokens/${id}`);
 }
 

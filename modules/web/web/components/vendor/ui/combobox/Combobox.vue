@@ -10,6 +10,7 @@ import { cn, type ClassValue } from '../../../../lib/utils';
 withDefaults(
   defineProps<{
     class?: ClassValue;
+    disabled?: boolean;
     /** Disable built-in item filtering (caller filters the list). */
     ignoreFilter?: boolean;
     /** Open the list when the input receives focus. */
@@ -18,6 +19,7 @@ withDefaults(
     openOnClick?: boolean;
   }>(),
   {
+    disabled: false,
     ignoreFilter: false,
     openOnFocus: false,
     openOnClick: false,
@@ -33,6 +35,7 @@ const open = defineModel<boolean>('open', { default: false });
     v-model="modelValue"
     v-model:open="open"
     data-slot="combobox"
+    :disabled="disabled"
     :ignore-filter="ignoreFilter"
     :open-on-focus="openOnFocus"
     :open-on-click="openOnClick"

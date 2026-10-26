@@ -3,11 +3,51 @@
 
 import type { ModelMetadata } from '../../orm/metadata/model';
 import type BaseModel from '../../orm/model/model';
+import { buildRelationAliasCandidates } from '../../orm/relation/relation_alias';
 import { asObjectRecord } from '../../../utils/object';
 import type { UnknownRecord } from '../../../utils/types';
 
 function modelLabel(meta: ModelMetadata): string {
   return String(meta.fullModelName || meta.modelName || meta.className || meta.type?.name || 'Unknown');
+}
+
+function isOrmRelationFieldMeta(fm: unknown): boolean {
+  const fieldMeta = asObjectRecord(fm);
+  if (!fieldMeta?.relation) return false;
+  const type = fieldMeta.type;
+  return type === 'ManyToOne' || type === 'OneToMany' || type === 'ManyToMany';
+}
+
+/** Parse JSON-string relation payloads the same way EntityConverter does for $rel$ aliases. */
+function parseJsonRelationValue(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  const s = value.trim();
+  if (!s) return value;
+  const first = s[0];
+  if (first !== '[' && first !== '{') return value;
+  try {
+    return JSON.parse(s);
+  } catch {
+    return value;
+  }
+}
+
+/**
+ * Read a preloaded relation from `$rel$…` aliases when the plain field key is absent.
+ * Browse/Search leave collection relations under `$rel$Lines` until transport rematerializes them;
+ * virtual @Compute handlers still read `this.Lines` via this proxy.
+ */
+function readPreloadedRelation(meta: ModelMetadata, entityRecord: UnknownRecord, fieldName: string): unknown {
+  const fieldMeta = meta.fields?.get?.(fieldName);
+  if (!isOrmRelationFieldMeta(fieldMeta)) return undefined;
+
+  for (const alias of buildRelationAliasCandidates(fieldName)) {
+    if (!Object.prototype.hasOwnProperty.call(entityRecord, alias)) continue;
+    const raw = entityRecord[alias];
+    if (raw === undefined) continue;
+    return parseJsonRelationValue(raw);
+  }
+  return undefined;
 }
 
 export function resolveInstanceHandler(meta: ModelMetadata, field: string, methodName: string, decoratorName: string): (this: unknown) => unknown {
@@ -32,8 +72,21 @@ export function createEntityBackedModelInstance(meta: ModelMetadata, entity: Unk
 
   return new Proxy(target, {
     get(_target, key, receiver) {
-      if (typeof key === 'string' && Object.prototype.hasOwnProperty.call(entityRecord, key)) {
-        return entityRecord[key];
+      if (typeof key === 'string') {
+        const preloaded = readPreloadedRelation(meta, entityRecord, key);
+        const hasDirect = Object.prototype.hasOwnProperty.call(entityRecord, key);
+        if (hasDirect) {
+          const direct = entityRecord[key];
+          // ManyToOne rows keep the FK scalar on the field key and the object under `$rel$`.
+          // Prefer the preloaded object so related/compute paths like CategoryId.Name resolve.
+          const directIsFkScalar =
+            typeof direct === 'string' || typeof direct === 'number' || typeof direct === 'bigint';
+          if (preloaded != null && directIsFkScalar) {
+            return preloaded;
+          }
+          return direct;
+        }
+        if (preloaded !== undefined) return preloaded;
       }
       return Reflect.get(target, key, receiver);
     },
@@ -63,8 +116,13 @@ export function createEntityBackedModelInstance(meta: ModelMetadata, entity: Unk
     },
 
     has(_target, key) {
-      if (typeof key === 'string' && Object.prototype.hasOwnProperty.call(entityRecord, key)) {
-        return true;
+      if (typeof key === 'string') {
+        if (Object.prototype.hasOwnProperty.call(entityRecord, key)) {
+          return true;
+        }
+        if (readPreloadedRelation(meta, entityRecord, key) !== undefined) {
+          return true;
+        }
       }
       return Reflect.has(target, key);
     },
@@ -76,13 +134,24 @@ export function createEntityBackedModelInstance(meta: ModelMetadata, entity: Unk
     },
 
     getOwnPropertyDescriptor(_target, key) {
-      if (typeof key === 'string' && Object.prototype.hasOwnProperty.call(entityRecord, key)) {
-        return {
-          configurable: true,
-          enumerable: true,
-          writable: true,
-          value: entityRecord[key],
-        };
+      if (typeof key === 'string') {
+        if (Object.prototype.hasOwnProperty.call(entityRecord, key)) {
+          return {
+            configurable: true,
+            enumerable: true,
+            writable: true,
+            value: entityRecord[key],
+          };
+        }
+        const preloaded = readPreloadedRelation(meta, entityRecord, key);
+        if (preloaded !== undefined) {
+          return {
+            configurable: true,
+            enumerable: true,
+            writable: true,
+            value: preloaded,
+          };
+        }
       }
       return Reflect.getOwnPropertyDescriptor(target, key);
     },

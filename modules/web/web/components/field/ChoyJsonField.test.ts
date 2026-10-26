@@ -7,10 +7,7 @@ import VueJsonPretty from 'vue-json-pretty';
 import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import ChoyFieldBase from './ChoyFieldBase.vue';
-import JsonobjectField from './ChoyJsonField.vue';
-/* el-stubs-for-typecheck */
-const ElInput: any = { name: "ElInput" };
-
+import ChoyJsonField from './ChoyJsonField.vue';
 
 function makeBinding(
   record: Record<string, unknown>,
@@ -56,7 +53,12 @@ function installFieldBaseStub() {
       const record = () => (p.binding as any).recordRef();
       return () =>
         h('div', { class: 'field-base-stub' }, [
-          slots.edit?.({ fieldValue, record, inputId: 'fld-Payload' }),
+          slots.edit?.({
+            fieldValue,
+            record,
+            inputId: 'fld-Payload',
+            labelId: 'fld-Payload-label',
+          }),
           slots.display?.({ fieldValue, record }),
         ]);
     },
@@ -80,42 +82,21 @@ function installPrettyStub() {
   });
 }
 
-function installElInputStub() {
-  stubSfc(ElInput as any, {
-    name: 'ElInput',
-    props: {
-      modelValue: { type: [String, Number], default: '' },
-      type: String,
-      placeholder: String,
-      autosize: [Boolean, Object],
-    },
-    emits: ['update:modelValue', 'blur'],
-    setup(props: any, { emit }: any) {
-      return () =>
-        h('textarea', {
-          class: 'choy-json-input',
-          value: props.modelValue,
-          placeholder: props.placeholder,
-          onInput: (e: Event) => emit('update:modelValue', (e.target as HTMLTextAreaElement).value),
-          onBlur: () => emit('blur'),
-        });
-    },
-  });
+function jsonCm(m: { q: (s: string) => Element | null }) {
+  return m.q('[data-testid=choy-json-cm]') as HTMLTextAreaElement | null;
 }
 
-describe('JsonobjectField', () => {
+describe('ChoyJsonField', () => {
   afterEach(() => {
     restoreSfc(ChoyFieldBase as any);
     restoreSfc(VueJsonPretty as any);
-    restoreSfc(ElInput as any);
   });
 
   test('form display uses vue-json-pretty for object values', async () => {
     installFieldBaseStub();
     installPrettyStub();
-    installElInputStub();
     const binding = makeBinding({ Payload: { b: 2, a: 1 } });
-    const m = mountApp(JsonobjectField as any, {
+    const m = mountApp(ChoyJsonField as any, {
       props: { binding, renderMode: 'form' },
     });
     await nextTick();
@@ -130,10 +111,9 @@ describe('JsonobjectField', () => {
   test('table/inline display uses compact plaintext', async () => {
     installFieldBaseStub();
     installPrettyStub();
-    installElInputStub();
     const binding = makeBinding({ Payload: { hello: 'world' } });
     for (const renderMode of ['table', 'inline'] as const) {
-      const m = mountApp(JsonobjectField as any, {
+      const m = mountApp(ChoyJsonField as any, {
         props: { binding, renderMode },
       });
       await nextTick();
@@ -146,10 +126,9 @@ describe('JsonobjectField', () => {
   test('auto renderMode follows isForm for compact vs pretty', async () => {
     installFieldBaseStub();
     installPrettyStub();
-    installElInputStub();
 
     const listBinding = makeBinding({ Payload: { k: 1 } }, { isForm: false });
-    const listMount = mountApp(JsonobjectField as any, {
+    const listMount = mountApp(ChoyJsonField as any, {
       props: { binding: listBinding, renderMode: 'auto' },
     });
     await nextTick();
@@ -158,7 +137,7 @@ describe('JsonobjectField', () => {
     listMount.unmount();
 
     const formBinding = makeBinding({ Payload: { k: 1 } }, { isForm: true });
-    const formMount = mountApp(JsonobjectField as any, {
+    const formMount = mountApp(ChoyJsonField as any, {
       props: { binding: formBinding, renderMode: 'auto' },
     });
     await nextTick();
@@ -167,7 +146,7 @@ describe('JsonobjectField', () => {
 
     const noEnvBinding = makeBinding({ Payload: { k: 1 } });
     (noEnvBinding as any).env = undefined;
-    const noEnvMount = mountApp(JsonobjectField as any, {
+    const noEnvMount = mountApp(ChoyJsonField as any, {
       props: { binding: noEnvBinding, renderMode: 'auto' },
     });
     await nextTick();
@@ -178,9 +157,8 @@ describe('JsonobjectField', () => {
   test('null form display stays empty without pretty tree', async () => {
     installFieldBaseStub();
     installPrettyStub();
-    installElInputStub();
     const binding = makeBinding({ Payload: null });
-    const m = mountApp(JsonobjectField as any, {
+    const m = mountApp(ChoyJsonField as any, {
       props: { binding, renderMode: 'form' },
     });
     await nextTick();
@@ -189,62 +167,69 @@ describe('JsonobjectField', () => {
     m.unmount();
   });
 
-  test('edit mode still mounts textarea cell', async () => {
+  test('edit mode mounts CodeMirror host with control id', async () => {
     installFieldBaseStub();
     installPrettyStub();
-    installElInputStub();
     const binding = makeBinding(
       { Payload: { x: 1 } },
       { isForm: true, isEditMode: true, viewMode: 'edit', fieldPrefix: null }
     );
-    const m = mountApp(JsonobjectField as any, {
+    const m = mountApp(ChoyJsonField as any, {
       props: { binding, renderMode: 'form' },
     });
     await nextTick();
     await flushPromises();
-    const textarea = m.q('.choy-json-input') as HTMLTextAreaElement | null;
-    expect(textarea).toBeTruthy();
-    expect(textarea?.id).toBe('fld-Payload');
-    expect(textarea?.closest('div')?.id).not.toBe('fld-Payload');
+    const cell = m.q('.choy-json-cell') as HTMLElement | null;
+    expect(cell).toBeTruthy();
+    expect(cell?.id).toBe('fld-Payload');
+    expect(cell?.getAttribute('aria-labelledby')).toBe('fld-Payload-label');
+    expect(jsonCm(m)).toBeTruthy();
+    expect(m.q('.choy-json-cm-host')).toBeTruthy();
+    expect(m.q('.choy-json-format-btn')).toBeTruthy();
     m.unmount();
   });
 
-  test('edit textarea still forwards caller input listeners', async () => {
+  test('Format button pretty-prints valid JSON and keeps invalid text with error', async () => {
     installFieldBaseStub();
     installPrettyStub();
-    installElInputStub();
     const binding = makeBinding(
-      { Payload: { x: 1 } },
+      { Payload: { b: 2, a: 1 } },
       { isForm: true, isEditMode: true, viewMode: 'edit', fieldPrefix: null }
     );
-    let forwarded = 0;
-    const m = mountApp(JsonobjectField as any, {
+    const m = mountApp(ChoyJsonField as any, {
       props: { binding, renderMode: 'form' },
-      on: {
-        onInput: () => {
-          forwarded += 1;
-        },
-      },
     });
     await nextTick();
     await flushPromises();
-    const textarea = m.q('.choy-json-input') as HTMLTextAreaElement;
-    textarea.value = '{"y":2}';
-    textarea.dispatchEvent(new Event('input'));
+    const ta = jsonCm(m)!;
+    ta.value = '{"z":1,"a":2}';
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
     await flushPromises();
-    expect(forwarded).toBe(1);
+    (m.q('.choy-json-format-btn') as HTMLButtonElement).click();
+    await flushPromises();
+    expect(ta.value).toContain('"a"');
+    expect(ta.value).toContain('\n');
+    expect(m.q('.choy-json-err')).toBeFalsy();
+
+    ta.value = '{not-json';
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+    await flushPromises();
+    (m.q('.choy-json-format-btn') as HTMLButtonElement).click();
+    await flushPromises();
+    expect(ta.value).toBe('{not-json');
+    expect(m.q('.choy-json-err')?.textContent || '').toBeTruthy();
+    expect(m.q('.choy-json-err')?.className || '').toContain('text-destructive');
     m.unmount();
   });
 
-  test('edit textarea commits valid JSON, rejects invalid, and clears nullable', async () => {
+  test('edit CodeMirror commits valid JSON, rejects invalid, and clears nullable', async () => {
     installFieldBaseStub();
     installPrettyStub();
-    installElInputStub();
     const binding = makeBinding(
       { Payload: { a: 1 } },
       { isForm: true, isEditMode: true, viewMode: 'edit', fieldPrefix: null }
     );
-    const m = mountApp(JsonobjectField as any, {
+    const m = mountApp(ChoyJsonField as any, {
       props: {
         binding,
         renderMode: 'form',
@@ -256,7 +241,7 @@ describe('JsonobjectField', () => {
     });
     await nextTick();
     await flushPromises();
-    const ta = m.q('.choy-json-input') as HTMLTextAreaElement;
+    const ta = jsonCm(m)!;
     expect(ta).toBeTruthy();
 
     ta.value = '{"z":2,"a":1}';
@@ -271,10 +256,8 @@ describe('JsonobjectField', () => {
     await flushPromises();
     const errEl = m.q('.choy-json-err') as HTMLElement | null;
     expect(errEl).toBeTruthy();
-    expect(ta.getAttribute('aria-invalid')).toBe('true');
-    const errId = errEl?.id || '';
-    expect(errId).toBeTruthy();
-    expect(ta.getAttribute('aria-describedby') || '').toContain(errId);
+    expect(errEl?.className || '').toContain('text-destructive');
+    expect(m.q('.choy-json-field__edit')?.className || '').toContain('border-destructive');
 
     ta.value = '[1]';
     ta.dispatchEvent(new Event('input', { bubbles: true }));
@@ -293,12 +276,11 @@ describe('JsonobjectField', () => {
   test('edit non-nullable empty and toView/fromView/rules helpers', async () => {
     installFieldBaseStub();
     installPrettyStub();
-    installElInputStub();
     const binding = makeBinding(
       { Payload: { a: 1 } },
       { isForm: true, isEditMode: true, viewMode: 'edit', fieldPrefix: null }
     );
-    const m = mountApp(JsonobjectField as any, {
+    const m = mountApp(ChoyJsonField as any, {
       props: {
         binding,
         renderMode: 'form',
@@ -310,7 +292,7 @@ describe('JsonobjectField', () => {
     });
     await nextTick();
     await flushPromises();
-    const ta = m.q('.choy-json-input') as HTMLTextAreaElement;
+    const ta = jsonCm(m)!;
     ta.value = '';
     ta.dispatchEvent(new Event('input', { bubbles: true }));
     ta.dispatchEvent(new Event('blur', { bubbles: true }));
@@ -350,7 +332,7 @@ describe('JsonobjectField', () => {
       },
     });
     installPrettyStub();
-    const rulesMount = mountApp(JsonobjectField as any, {
+    const rulesMount = mountApp(ChoyJsonField as any, {
       props: {
         binding: makeBinding({ Payload: null }),
         renderMode: 'form',
@@ -381,15 +363,15 @@ describe('JsonobjectField', () => {
     expect(await run({ a: 1 })).toBeUndefined();
     rulesMount.unmount();
   });
+
   test('setupState covers stableStringify, normalizeIncoming, and jsonEquals edges', async () => {
     installFieldBaseStub();
     installPrettyStub();
-    installElInputStub();
     const binding = makeBinding(
       { Payload: { a: 1 } },
       { isForm: true, isEditMode: true, viewMode: 'edit', fieldPrefix: null }
     );
-    const m = mountApp(JsonobjectField as any, {
+    const m = mountApp(ChoyJsonField as any, {
       props: { binding, renderMode: 'form', allowArray: true, nullable: true },
     });
     await nextTick();
@@ -422,5 +404,4 @@ describe('JsonobjectField', () => {
     expect(ss.jsonEquals(circular, circular2)).toBe(false);
     m.unmount();
   });
-
 });

@@ -8,8 +8,14 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { h, onMounted, onBeforeUnmount, useSlots, watch, inject } from 'vue';
-import { useTableUseColumnRegistry, useTableUseBuildContext, setTableColumnMeta, type Column } from '@/web/web/composables/useTable';
+import { h, onMounted, onBeforeUnmount, useSlots, watch, inject, toValue, computed } from 'vue';
+import {
+  LIST_SHOW_SELECTION_COLUMN_KEY,
+  useTableUseColumnRegistry,
+  useTableUseBuildContext,
+  setTableColumnMeta,
+  type Column,
+} from '@/web/web/composables/useTable';
 import type { TableColumnMeta } from '@/web/web/composables/useTable';
 import { LIST_HANDLE_API_KEY, type ListHandleReorderApi } from '@/web/web/composables/useListHandleReorder';
 import {
@@ -33,13 +39,13 @@ const props = withDefaults(
     vColumnProps?: {
       width?: number | string; // Supports percentage and flex width semantics.
       minWidth?: number;
-      align?: 'left' | 'center' | 'right';
+      align?: 'start' | 'center' | 'end' | 'left' | 'right';
       fixed?: 'left' | 'right';
       sortable?: boolean;
     };
     width?: number | string; // Supports percentage and flex width semantics.
     minWidth?: number;
-    align?: 'left' | 'center' | 'right';
+    align?: 'start' | 'center' | 'end' | 'left' | 'right';
     fixed?: 'left' | 'right';
     sortable?: boolean;
   }>(),
@@ -53,17 +59,20 @@ const slots = useSlots();
 const reg = useTableUseColumnRegistry();
 const ctx = useTableUseBuildContext();
 const handleApi = inject<ListHandleReorderApi | null>(LIST_HANDLE_API_KEY, null);
+const showSelectionColumn = computed(() => {
+  const flag = inject(LIST_SHOW_SELECTION_COLUMN_KEY, true);
+  return toValue(flag) !== false;
+});
 
 let currentCol: Column | null = null;
 let stableKey = props.colKey || props.dataKey || props.prop || genKey();
 
-onMounted(() => registerOrReplace());
-onBeforeUnmount(() => {
+function unregisterCurrent(): void {
   if (!reg || !currentCol) return;
   const i = reg.columns.value.indexOf(currentCol);
   if (i >= 0) reg.columns.value.splice(i, 1);
   currentCol = null;
-});
+}
 
 /**
  * Primitive snapshot so inline `:vColumnProps="{ ... }"` in a parent slot
@@ -87,6 +96,16 @@ function columnPropSignature(): string {
 }
 
 let lastSignature = '';
+
+onMounted(() => registerOrReplace());
+onBeforeUnmount(() => {
+  unregisterCurrent();
+});
+
+watch(showSelectionColumn, () => {
+  lastSignature = '';
+  registerOrReplace();
+});
 
 watch(columnPropSignature, (signature) => {
   onTableColumnSignatureChange(signature, lastSignature, registerOrReplace);
@@ -148,6 +167,12 @@ function getByPath(obj: any, path?: string) {
 
 function registerOrReplace() {
   if (!reg) return;
+  // Relation Search more: click-to-select without a leading checkbox column.
+  if (props.type === 'selection' && !showSelectionColumn.value) {
+    unregisterCurrent();
+    lastSignature = '';
+    return;
+  }
   const signature = columnPropSignature();
   if (skipTableColumnReregister(!!currentCol, signature, lastSignature)) return;
   lastSignature = signature;
@@ -246,7 +271,7 @@ function buildColumn(): Column {
       dataKey,
       title: title || '#',
       width,
-      align: 'right',
+      align: 'end',
       sortable: false,
       ...colProps,
       headerCellRenderer: headerVNode,

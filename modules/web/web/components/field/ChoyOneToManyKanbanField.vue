@@ -10,112 +10,174 @@ SPDX-License-Identifier: Apache-2.0
     :label="label"
     :rules="rules"
     :formItemProps="formItemProps"
+    :orientation="orientation"
+    :hide-label="hideLabel"
     :required="required"
     :readonly="readonly"
     :visible="visible"
     :cellVisible="cellVisible"
     :renderMode="renderMode"
     :showInlineError="showInlineError"
+    :label-for-control="false"
   >
-    <template #edit>
-      <ChoyViewScope :view-mode="binding.env.viewMode" :kind="'Kanban'" :field-prefix="String(prop)">
-        <div class="flex w-full min-w-0 flex-col gap-2.5">
+    <template #edit="{ inputId, labelId, describedBy, invalid }">
+      <span
+        v-if="showCellSummary"
+        class="truncate text-sm text-foreground"
+        data-testid="choy-o2m-kanban-summary"
+      >{{ cellSummaryText }}</span>
+      <ChoyViewScope v-else :view-mode="binding.env.viewMode" :kind="'Kanban'" :field-prefix="String(prop)">
+        <div
+          class="flex w-full min-w-0 flex-col gap-2"
+          :id="inputId || undefined"
+          tabindex="-1"
+          :aria-labelledby="labelId || undefined"
+          :aria-describedby="describedBy || undefined"
+          :aria-invalid="invalid ? 'true' : undefined"
+        >
           <div v-if="showToolbar" class="flex items-center justify-start">
             <slot name="toolbar" :items="getItems()" :add="handleAddItem" :editable="editable">
-              <ChoyButton v-if="editable && showToolbarAdd" size="sm" variant="link" @click="handleAddItem">{{ effectiveAddButtonText }}</ChoyButton>
+              <ChoyButton
+                v-if="editable && showToolbarAdd"
+                type="button"
+                size="sm"
+                variant="link"
+                class="h-auto px-0"
+                @click="handleAddItem"
+              >{{ effectiveAddButtonText }}</ChoyButton>
             </slot>
           </div>
 
-          <div
-            class="grid w-full min-w-0 overflow-auto p-0.5 [grid-template-columns:repeat(auto-fill,minmax(var(--kanban-min-card-width),1fr))] gap-[var(--kanban-gap)]"
-            data-testid="choy-o2m-kanban-board"
-            :style="boardStyle"
+          <ChoyO2MKanbanVirtualBoard
+            :items="kanbanItems"
+            :min-card-width="minCardWidth"
+            :gap="gap"
+            :max-height="maxHeight"
+            :virtualize="boardVirtualize"
+            :item-key="kanbanItemKey"
           >
-            <template v-if="getItems().length > 0">
+            <template #card="{ item, index }">
               <div
-                v-for="(item, index) in getItems()"
-                :key="String(readRowKeySeed(item) ?? index)"
-                class="choy-o2m-kanban-card cursor-pointer rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40"
+                class="choy-o2m-kanban-card group/card relative cursor-pointer rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40"
+                :class="{ 'opacity-60': sortableEnabled && kanbanReorder.draggingIndex.value === index }"
                 data-testid="choy-o2m-kanban-card"
+                role="button"
+                tabindex="0"
+                :aria-label="resolveCardTitle(item)"
                 @click="handleCardClick(index, false)"
+                @keydown.enter.prevent="handleCardClick(index, false)"
+                @dragover="sortableEnabled ? kanbanReorder.onDragOver(index, $event) : undefined"
+                @drop="sortableEnabled ? kanbanReorder.onDrop(index, $event) : undefined"
               >
-                <slot
-                  name="card"
-                  :item="item"
-                  :index="index"
-                  :open="() => handleCardClick(index, false)"
-                  :edit="() => handleEditItem(index)"
-                  :remove="() => handleRemoveItem(index)"
-                  :editable="editable"
-                  :removable="removable"
+                <!-- Host chrome outside #card: drag handle + hover delete. -->
+                <button
+                  v-if="sortableEnabled"
+                  type="button"
+                  class="absolute left-1 top-1.5 z-10 inline-flex size-7 cursor-grab items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover/card:opacity-100 group-focus-within/card:opacity-100 active:cursor-grabbing"
+                  :aria-label="_t('Reorder')"
+                  data-testid="choy-o2m-kanban-handle"
+                  draggable="true"
+                  @click.stop
+                  @dragstart="onKanbanDragStart(index, $event)"
+                  @dragend="kanbanReorder.onDragEnd()"
                 >
-                  <div class="text-sm font-medium leading-snug text-foreground">{{ resolveCardTitle(item) }}</div>
-                  <div
-                    v-if="resolveCardSubtitle(item)"
-                    class="mt-1 truncate text-xs text-muted-foreground"
+                  <GripVertical class="size-3.5" aria-hidden="true" />
+                </button>
+                <ChoyButton
+                  v-if="removable"
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  class="absolute right-1.5 top-1.5 z-10 size-7 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover/card:opacity-100 group-focus-within/card:opacity-100"
+                  :aria-label="_t('Delete')"
+                  data-testid="choy-o2m-kanban-delete"
+                  @click.stop="handleRemoveItem(index)"
+                >
+                  <Trash2 class="size-3.5" aria-hidden="true" />
+                </ChoyButton>
+                <div
+                  :class="[
+                    'min-w-0',
+                    removable || sortableEnabled ? 'pr-8' : '',
+                    sortableEnabled ? 'pl-7' : '',
+                  ]"
+                >
+                  <slot
+                    name="card"
+                    :item="item"
+                    :index="index"
+                    :open="() => handleCardClick(index, false)"
+                    :edit="() => handleEditItem(index)"
+                    :remove="() => handleRemoveItem(index)"
+                    :editable="editable"
+                    :removable="removable"
                   >
-                    {{ resolveCardSubtitle(item) }}
-                  </div>
-                  <div class="mt-2 flex items-center gap-1" v-if="editable || removable" @click.stop>
-                    <ChoyButton
-                      v-if="editable"
-                      size="sm"
-                      variant="ghost"
-                      data-testid="choy-o2m-kanban-edit"
-                      @click="handleEditItem(index)"
+                    <div class="text-sm font-medium leading-snug text-foreground">{{ resolveCardTitle(item) }}</div>
+                    <div
+                      v-if="resolveCardSubtitle(item)"
+                      class="mt-1 truncate text-xs text-muted-foreground"
                     >
-                      {{ _t('Edit') }}
-                    </ChoyButton>
-                    <ChoyButton
-                      v-if="removable"
-                      size="sm"
-                      variant="ghost"
-                      class="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      data-testid="choy-o2m-kanban-delete"
-                      @click="handleRemoveItem(index)"
-                    >
-                      {{ _t('Delete') }}
-                    </ChoyButton>
-                  </div>
-                </slot>
+                      {{ resolveCardSubtitle(item) }}
+                    </div>
+                  </slot>
+                </div>
               </div>
             </template>
 
-            <div
-              v-else
-              class="col-span-full flex min-h-[90px] items-center justify-center rounded-md border border-dashed border-border text-[13px] text-muted-foreground"
-            >
-              <slot name="empty">{{ effectiveEmptyText }}</slot>
-            </div>
+            <template v-if="!editable" #empty>
+              <div
+                class="col-span-full flex min-h-[72px] items-center justify-center rounded-md border border-dashed border-border text-sm text-muted-foreground"
+              >
+                <slot name="empty">{{ effectiveEmptyText }}</slot>
+              </div>
+            </template>
 
-            <div
-              v-if="editable"
-              class="flex min-h-24 cursor-pointer select-none items-center justify-center rounded-md border border-dashed border-border bg-muted/30 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-              data-testid="choy-o2m-kanban-add"
-              @click="handleAddItem"
-            >
-              <span>{{ effectiveAddButtonText }}</span>
-            </div>
-          </div>
+            <template v-if="editable" #trailing>
+              <div
+                class="flex min-h-[72px] cursor-pointer select-none items-center justify-center rounded-md border border-dashed border-border bg-muted/30 text-sm text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                data-testid="choy-o2m-kanban-add"
+                role="button"
+                tabindex="0"
+                @click="handleAddItem"
+                @keydown.enter.prevent="handleAddItem"
+              >
+                <span>{{ effectiveAddButtonText }}</span>
+              </div>
+            </template>
+          </ChoyO2MKanbanVirtualBoard>
         </div>
       </ChoyViewScope>
     </template>
 
-    <template #display>
-      <ChoyViewScope view-mode="display" :kind="'Kanban'" :field-prefix="String(prop)">
-        <div class="flex w-full min-w-0 flex-col gap-2.5">
-          <div
-            class="grid w-full min-w-0 overflow-auto p-0.5 [grid-template-columns:repeat(auto-fill,minmax(var(--kanban-min-card-width),1fr))] gap-[var(--kanban-gap)]"
-            data-testid="choy-o2m-kanban-board"
-            :style="boardStyle"
+    <template #display="{ inputId, labelId }">
+      <span
+        v-if="showCellSummary"
+        class="truncate text-sm text-foreground"
+        data-testid="choy-o2m-kanban-summary"
+      >{{ cellSummaryText }}</span>
+      <ChoyViewScope v-else view-mode="display" :kind="'Kanban'" :field-prefix="String(prop)">
+        <div
+          class="flex w-full min-w-0 flex-col gap-2"
+          :id="inputId || undefined"
+          :aria-labelledby="labelId || undefined"
+        >
+          <ChoyO2MKanbanVirtualBoard
+            :items="kanbanItems"
+            :min-card-width="minCardWidth"
+            :gap="gap"
+            :max-height="maxHeight"
+            :virtualize="boardVirtualize"
+            :item-key="kanbanItemKey"
           >
-            <template v-if="getItems().length > 0">
+            <template #card="{ item, index }">
               <div
-                v-for="(item, index) in getItems()"
-                :key="String(readRowKeySeed(item) ?? index)"
-                class="choy-o2m-kanban-card cursor-pointer rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40"
+                class="choy-o2m-kanban-card cursor-default rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/30"
                 data-testid="choy-o2m-kanban-card"
+                role="button"
+                tabindex="0"
+                :aria-label="resolveCardTitle(item)"
                 @click="handleCardClick(index, true)"
+                @keydown.enter.prevent="handleCardClick(index, true)"
               >
                 <slot
                   name="card"
@@ -138,56 +200,79 @@ SPDX-License-Identifier: Apache-2.0
               </div>
             </template>
 
-            <div
-              v-else
-              class="col-span-full flex min-h-[90px] items-center justify-center rounded-md border border-dashed border-border text-[13px] text-muted-foreground"
-            >
-              <slot name="empty">{{ effectiveEmptyText }}</slot>
-            </div>
-          </div>
+            <template v-if="$slots.empty" #empty>
+              <div
+                class="col-span-full flex min-h-[72px] items-center justify-center rounded-md border border-dashed border-border text-sm text-muted-foreground"
+              >
+                <slot name="empty" />
+              </div>
+            </template>
+          </ChoyO2MKanbanVirtualBoard>
         </div>
       </ChoyViewScope>
     </template>
   </ChoyFieldBase>
 
   <ChoyDialog v-model:open="dialogVisible">
-    <ChoyDialogContent class="choy-relation-picker-dialog" :style="{ width: typeof dialogWidth === 'number' ? dialogWidth + 'px' : dialogWidth }">
-      <ChoyDialogTitle>{{ dialogTitleText }}</ChoyDialogTitle>
-      <component
-      v-if="formView"
-      :is="formView"
-      ref="dialogFormRef"
-      :key="dialogFormKey"
-      :store="dialogStore"
-      :view-mode="dialogFormMode"
-      :resolve-record-id-from-route="false"
-      :initial-values="dialogDraft"
-      :show-header="false"
-      :show-actions="false"
-      :show-messages="false"
-      :submit-handler="dialogFormSubmitHandler"
-      v-bind="formViewProps"
-    />
-    <div v-else class="rounded-lg border border-dashed border-border p-[18px] text-[13px] text-muted-foreground">{{ _t('Provide a child record editor via the formView prop.') }}</div>
-      <div class="dialog-footer">
-        <ChoyButton @click="handleDialogCancel">{{ _t('Cancel') }}</ChoyButton>
-        <ChoyButton v-if="dialogMode !== 'display'" @click="handleDialogSubmit">{{ _t('Save') }}</ChoyButton>
+    <ChoyDialogContent
+      class="choy-relation-picker-dialog flex max-h-[min(85vh,40rem)] w-[min(90vw,48rem)] max-w-[min(90vw,48rem)] flex-col gap-3 overflow-hidden"
+      :style="{ width: typeof dialogWidth === 'number' ? dialogWidth + 'px' : dialogWidth }"
+    >
+      <ChoyDialogTitle class="shrink-0">{{ dialogTitleText }}</ChoyDialogTitle>
+      <div class="min-h-0 flex-1 overflow-auto">
+        <component
+          v-if="formView"
+          :is="formView"
+          ref="dialogFormRef"
+          :key="dialogFormKey"
+          :store="dialogStore"
+          :view-mode="dialogFormMode"
+          :resolve-record-id-from-route="false"
+          :initial-values="dialogDraft"
+          :show-header="false"
+          :show-actions="false"
+          :show-messages="false"
+          :submit-handler="dialogFormSubmitHandler"
+          v-bind="formViewProps"
+        />
+        <div
+          v-else
+          class="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground"
+        >{{ _t('Provide a child record editor via the formView prop.') }}</div>
+      </div>
+      <div class="flex shrink-0 items-center justify-between gap-2">
+        <div class="min-w-0">
+          <ChoyButton
+            v-if="dialogMode === 'edit' && removable"
+            type="button"
+            variant="ghost"
+            class="text-destructive hover:bg-destructive/10 hover:text-destructive"
+            data-testid="choy-o2m-kanban-dialog-delete"
+            @click="handleDialogRemove"
+          >{{ _t('Delete') }}</ChoyButton>
+        </div>
+        <div class="flex shrink-0 justify-end gap-2">
+          <ChoyButton type="button" variant="outline" @click="handleDialogCancel">{{ _t('Cancel') }}</ChoyButton>
+          <ChoyButton v-if="dialogMode !== 'display'" type="button" @click="handleDialogSubmit">{{ _t('Save') }}</ChoyButton>
+        </div>
       </div>
     </ChoyDialogContent>
   </ChoyDialog>
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, ClientModel<BaseModel>[]>, V = FieldPathType<T, P>">
-import { computed, ref, watch, onMounted, provide, useSlots, type Component } from 'vue';
+import { computed, ref, watch, onMounted, provide, useSlots, nextTick, type Component } from 'vue';
+import { GripVertical, Trash2 } from 'lucide-vue-next';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
-import { ChoyMessage } from '../../composables/useChoyMessage';
-import { confirmChoyAction, confirmChoyChoice } from '../../composables/confirmChoyAction';
+import { confirmChoyAction } from '../../composables/confirmChoyAction';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType, ClientModel } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { deepClonePreserve } from '@/core/utils/clone';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
+import ChoyO2MKanbanVirtualBoard from './ChoyO2MKanbanVirtualBoard.vue';
+import type { O2MKanbanVirtualizeMode } from './o2mKanbanVirtualHelpers';
 import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
 import {
   type FormChildSubmitApi,
@@ -199,10 +284,13 @@ import {
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import { createTranslate } from '@/web/web/i18n';
+import { hasHandleField } from '@/web/web/composables/listRowEdit';
+import { useListHandleReorder } from '@/web/web/composables/useListHandleReorder';
+import { formatRelationCountSummary } from './relationCountSummary';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/OneToManyKanbanField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyOneToManyKanbanField' });
 
-defineOptions({ name: 'OneToManyKanbanField', inheritAttrs: false });
+defineOptions({ name: 'ChoyOneToManyKanbanField', inheritAttrs: false });
 
 type IsAny<TA> = 0 extends 1 & TA ? true : false;
 type DialogMode = 'create' | 'edit' | 'display';
@@ -217,6 +305,10 @@ const props = withDefaults(
     label?: string;
     rules?: RuleItem[];
     formItemProps?: Partial<FormItemProps>;
+    /** Subtable default: label above the kanban block (full width). */
+    orientation?: 'horizontal' | 'vertical';
+    /** Hide label row when Section/Tab already titles the block. Prefer over `label=""`. */
+    hideLabel?: boolean;
     defaultRecord?: Record<string, any> | (() => Record<string, any>);
 
     required?: FieldStateExpr<T, V>;
@@ -229,6 +321,12 @@ const props = withDefaults(
 
     cardTitleField?: string;
     cardSubtitleField?: string;
+    /**
+     * Extra child field names (or `Prop.Child` paths) to include in Form returnFields.
+     * Needed when a custom `#card` slot reads columns that are not title/subtitle — Tabs
+     * unmount inactive panes, so the sibling O2M table fields are not registered on save.
+     */
+    fields?: string[];
     addButtonText?: string;
     showToolbarAdd?: boolean;
     formView?: Component;
@@ -238,11 +336,17 @@ const props = withDefaults(
     minCardWidth?: number;
     gap?: number;
     maxHeight?: number;
+    /** Board virtualize mode; default `auto` (≥40 cards). */
+    boardVirtualize?: O2MKanbanVirtualizeMode;
 
     editable?: boolean;
     removable?: boolean;
     previewInDisplay?: boolean;
     confirmOnRemove?: boolean;
+    /** Sequence field for card drag reorder; default Sequence. */
+    handleField?: string;
+    /** Show drag handle when relation metadata includes handleField. */
+    showHandle?: boolean;
 
     dialogWidth?: string | number;
     createDialogTitle?: string;
@@ -252,6 +356,8 @@ const props = withDefaults(
   {
     rules: () => [],
     formItemProps: () => ({}),
+    orientation: 'vertical',
+    hideLabel: false,
     defaultRecord: () => ({}),
     required: false,
     readonly: false,
@@ -262,20 +368,24 @@ const props = withDefaults(
 
     cardTitleField: 'Name',
     cardSubtitleField: 'Email',
+    fields: () => [],
     addButtonText: '',
     showToolbarAdd: false,
     formView: undefined,
     formViewProps: () => ({}),
     emptyText: '',
 
-    minCardWidth: 240,
-    gap: 12,
+    minCardWidth: 220,
+    gap: 10,
     maxHeight: 480,
+    boardVirtualize: 'auto',
 
     editable: true,
     removable: true,
     previewInDisplay: true,
     confirmOnRemove: true,
+    handleField: 'Sequence',
+    showHandle: true,
 
     dialogWidth: '760px',
     createDialogTitle: '',
@@ -292,23 +402,86 @@ const emit = defineEmits<{
   (e: 'save-request', payload: { mode: 'create' | 'edit'; index: number; item: any }): void;
 }>();
 
-const effectiveAddButtonText = computed(() => props.addButtonText || _t('New'));
+const effectiveAddButtonText = computed(() => props.addButtonText || _t('Add a line…'));
 const effectiveEmptyText = computed(() => props.emptyText || _t('No data'));
 const effectiveCreateDialogTitle = computed(() => props.createDialogTitle || _t('New record'));
 const effectiveEditDialogTitle = computed(() => props.editDialogTitle || _t('Edit record'));
 const effectiveDisplayDialogTitle = computed(() => props.displayDialogTitle || _t('View record'));
 
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
+
+/** Register nested O2M columns so Create/Update returnFields keep card data after save. */
+function resolveKanbanReturnFieldPaths(): string[] {
+  const prefix = String(binding.prop || props.prop || '').trim();
+  if (!prefix) return [];
+  const out = new Set<string>([`${prefix}.DisplayName`]);
+  const title = String(props.cardTitleField || '').trim();
+  const subtitle = String(props.cardSubtitleField || '').trim();
+  if (title) out.add(`${prefix}.${title}`);
+  if (subtitle) out.add(`${prefix}.${subtitle}`);
+  for (const raw of props.fields || []) {
+    const name = String(raw || '').trim();
+    if (!name) continue;
+    out.add(name.includes('.') ? name : `${prefix}.${name}`);
+  }
+  return [...out];
+}
+binding.registerFields(resolveKanbanReturnFieldPaths());
+
 const { getItems, insertItem, removeItemAt } = binding.asMutableArray<any>();
 const dialogStore = computed<WebModelStore<any>>(() => (binding.relationStore as WebModelStore<any>) || (props.store as WebModelStore<any>));
 const slots = useSlots();
 
-const boardStyle = computed(() => ({
-  '--kanban-min-card-width': `${props.minCardWidth}px`,
-  '--kanban-gap': `${props.gap}px`,
-  maxHeight: `${props.maxHeight}px`,
-}));
+const showHandleColumn = computed(
+  () => props.showHandle !== false && hasHandleField(binding.relationStore, props.handleField)
+);
+const sortableEnabled = computed(() => showHandleColumn.value && props.editable && binding.env.isEditMode);
+const kanbanReorder = useListHandleReorder({
+  rows: () => getItems(),
+  enabled: sortableEnabled,
+  handleField: props.handleField,
+  onReorder: rows => {
+    const ref = binding.fieldRef?.() as { value: any } | undefined;
+    if (!ref) return;
+    ref.value = rows.slice();
+  },
+});
+
+// Keep Sequence in returnFields when drag reorder is available.
+if (props.handleField) {
+  binding.registerFields(`${String(binding.prop)}.${props.handleField}`);
+}
+
+const itemCount = computed(() => getItems()?.length ?? 0);
+/** Explicit length dep so the board refreshes when the collection is replaced. */
+const kanbanItems = computed(() => {
+  const items = getItems() || [];
+  void items.length;
+  return items;
+});
+// List/Kanban cells: count summary instead of embedding a full nested board.
+const showCellSummary = computed(() => binding.env?.isForm === false);
+const cellSummaryText = computed(() => formatRelationCountSummary(itemCount.value, _t));
+
 const showToolbar = computed(() => Boolean(slots.toolbar) || (props.editable && props.showToolbarAdd));
+
+function kanbanItemKey(item: unknown, index: number): string {
+  return String(readRowKeySeed(item) ?? index);
+}
+
+/** Snapshot drag image from the card node so virtual recycle does not blank it. */
+function onKanbanDragStart(index: number, event: DragEvent) {
+  kanbanReorder.onDragStart(index, event);
+  const handle = event.currentTarget;
+  const card =
+    handle instanceof HTMLElement ? handle.closest('[data-testid=choy-o2m-kanban-card]') : null;
+  if (card instanceof HTMLElement && event.dataTransfer) {
+    const rect = card.getBoundingClientRect();
+    const offsetX = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
+    const offsetY = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
+    event.dataTransfer.setDragImage(card, offsetX, offsetY);
+  }
+}
 
 const dialogVisible = ref(false);
 const dialogMode = ref<DialogMode>('create');
@@ -456,10 +629,10 @@ function handleEditItem(index: number) {
   openDialog('edit', index, item);
 }
 
-async function handleRemoveItem(index: number) {
-  if (!props.removable) return;
+async function handleRemoveItem(index: number): Promise<boolean> {
+  if (!props.removable) return false;
   const item = getItems()[index];
-  if (!item) return;
+  if (!item) return false;
 
   const doRemove = async () => {
     emit('remove-request', { index, item });
@@ -468,24 +641,47 @@ async function handleRemoveItem(index: number) {
 
   if (!props.confirmOnRemove) {
     await doRemove();
-    return;
+    return true;
   }
 
-  await confirmChoyAction(
-    _t('Are you sure you want to delete this record? This action cannot be undone.'),
-    _t('Confirm delete'),
-    {
-      confirmText: _t('Delete'),
-      cancelText: _t('Cancel'),
-      destructive: true,
-    }
-  )
-    .then(doRemove)
-    .catch(() => {});
+  try {
+    await confirmChoyAction(
+      _t('Are you sure you want to delete this record? This action cannot be undone.'),
+      _t('Confirm delete'),
+      {
+        confirmText: _t('Delete'),
+        cancelText: _t('Cancel'),
+        destructive: true,
+      }
+    );
+    await doRemove();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function handleDialogCancel() {
   dialogVisible.value = false;
+}
+
+async function handleDialogRemove() {
+  if (dialogMode.value !== 'edit' || !props.removable) return;
+  const index = dialogIndex.value;
+  if (index < 0) return;
+  const item = getItems()[index];
+  if (!item) return;
+
+  // Close the edit Dialog before confirm: Dialog + AlertDialog both stack at
+  // z-50 with modal focus traps; opening confirm underneath freezes the page.
+  const reopenDraft = deepClonePreserve((dialogDraft.value || item) as Record<string, any>);
+  dialogVisible.value = false;
+  await nextTick();
+
+  const removed = await handleRemoveItem(index);
+  if (!removed) {
+    openDialog('edit', index, reopenDraft);
+  }
 }
 
 const dialogFormSubmitHandler: FormSubmitHandler<any> = async (ctx: FormSubmitHandlerContext<any>) => {

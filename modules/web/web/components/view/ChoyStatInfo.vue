@@ -49,13 +49,13 @@ const props = withDefaults(
     disabled?: boolean;
     /** When false, the button is not rendered (D9). */
     visible?: boolean;
-    /** Shown when neither `value` nor a relation array is available. Default em dash. */
+    /** Shown when neither `value` nor a relation array is available. Default blank. */
     emptyValue?: number | string;
   }>(),
   {
     disabled: false,
     visible: true,
-    emptyValue: '—',
+    emptyValue: '',
   }
 );
 

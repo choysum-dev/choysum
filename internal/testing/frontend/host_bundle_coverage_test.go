@@ -42,6 +42,11 @@ func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 		TipTapStarterKit:    "tiptap-starter",
 		TipTapExtensionLink: "tiptap-link",
 		DOMPurify:           "dompurify",
+		CodeMirror:          "codemirror",
+		CodeMirrorView:      "cm-view",
+		CodeMirrorState:     "cm-state",
+		CodeMirrorLangJSON:  "cm-json",
+		CodeMirrorLint:      "cm-lint",
 		UnovisVue:           "unovis-vue",
 		UnovisTs:            "unovis-ts",
 		RekaUI:              "reka-ui",
@@ -59,6 +64,11 @@ func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 		{"@tiptap/starter-kit", "tiptap-starter", true},
 		{"@tiptap/extension-link", "tiptap-link", true},
 		{"dompurify", "dompurify", true},
+		{"codemirror", "codemirror", true},
+		{"@codemirror/view", "cm-view", true},
+		{"@codemirror/state", "cm-state", true},
+		{"@codemirror/lang-json", "cm-json", true},
+		{"@codemirror/lint", "cm-lint", true},
 		{"@unovis/vue", "unovis-vue", true},
 		{"@unovis/ts", "unovis-ts", true},
 		{"reka-ui", "reka-ui", true},
@@ -210,7 +220,7 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 			OnDispose:      func(func()) {},
 			OnResolve: func(o api.OnResolveOptions, cb func(api.OnResolveArgs) (api.OnResolveResult, error)) {
 				switch o.Filter {
-				case `^(vue-router|@choysum/page-mount|@tiptap/vue-3|@tiptap/starter-kit|@tiptap/extension-link|dompurify|@unovis/vue|@unovis/ts|reka-ui|lucide-vue-next|vue-sonner)$`:
+				case `^(vue-router|@choysum/page-mount|@tiptap/vue-3|@tiptap/starter-kit|@tiptap/extension-link|dompurify|codemirror|@codemirror/view|@codemirror/state|@codemirror/lang-json|@codemirror/lint|@unovis/vue|@unovis/ts|reka-ui|lucide-vue-next|vue-sonner)$`:
 					pkgCB = cb
 				case `(?:^|/)(?:OPage|Page)\.vue$`:
 					pageCB = cb

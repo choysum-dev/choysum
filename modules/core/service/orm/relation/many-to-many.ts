@@ -312,31 +312,17 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
         const createOps = classifiedOps.create;
         if (createOps.size > 0) {
           for (const [parentId, items] of createOps.entries()) {
-            // Filter out relations that already exist.
-            const idsWithId = items.map(it => this.extractId(it)).filter(Boolean) as string[];
-            let existingSet = new Set<string>();
-            if (idsWithId.length > 0) {
-              const condition: UntypedQueryCondition =
-                idsWithId.length === 1
-                  ? {
-                      And: [[joinField, '=', parentId] as UntypedQueryCondition, [inverseJoinField, '=', idsWithId[0]] as UntypedQueryCondition],
-                    }
-                  : {
-                      And: [[joinField, '=', parentId] as UntypedQueryCondition, [inverseJoinField, 'in', idsWithId] as UntypedQueryCondition],
-                    };
-              const existing = await joinRepo.search(condition);
-              existingSet = new Set(existing.map(r => this.toStringId(r[inverseJoinField])).filter((id): id is string => id !== null));
-            }
-            const toCreate = items.filter(it => {
-              const id = this.extractId(it);
-              return !id || !existingSet.has(id);
-            });
-
-            if (toCreate.length > 0) {
-              const processedResults = await this.processReplaceItems(joinRepo, targetRepo, targetModel, parentId, joinField, inverseJoinField, toCreate);
-              allSuccessIds.push(...processedResults.successIds);
-              allErrors.push(...processedResults.errors);
-            }
+            const processedResults = await this.processReplaceItems(
+              joinRepo,
+              targetRepo,
+              targetModel,
+              parentId,
+              joinField,
+              inverseJoinField,
+              items,
+            );
+            allSuccessIds.push(...processedResults.successIds);
+            allErrors.push(...processedResults.errors);
           }
         }
 
@@ -416,40 +402,100 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
     affectedIds: string[],
     errors: Error[]
   ): Promise<void> {
-    const joinRecords: ObjectRecord[] = [];
+    const result = await this.processReplaceItems(
+      joinRepo,
+      targetRepo,
+      targetModel,
+      parentId,
+      joinField,
+      inverseJoinField,
+      items,
+    );
+    affectedIds.push(...result.successIds);
+    errors.push(...result.errors);
+  }
 
-    for (const item of items) {
-      try {
-        let targetId: string;
+  /** Soft-deleted join rows still occupy composite unique indexes; treat DeletedAt as set. */
+  private isSoftDeletedJoin(row: ObjectRecord): boolean {
+    const deletedAt = (row as { DeletedAt?: Date | string | number | null }).DeletedAt;
+    if (deletedAt == null || deletedAt === '') return false;
+    if (deletedAt instanceof Date) return !Number.isNaN(deletedAt.getTime());
+    return true;
+  }
 
-        if (typeof item === 'string') {
-          targetId = item;
-        } else if (this.extractId(item)) {
-          targetId = this.extractId(item)!;
-        } else {
-          const itemObj = this.ensureObject(item);
-          targetId = await createRelationModel(targetModel, itemObj);
-          if (!targetId) throw new Error('Failed to create target entity');
-        }
+  /**
+   * Link parent↔target join rows: skip alive links, restore soft-deleted rows
+   * (unique index still holds them), and insert only missing pairs.
+   */
+  private async upsertJoinLinks(
+    joinRepo: Repository,
+    parentId: string,
+    joinField: string,
+    inverseJoinField: string,
+    targetIds: string[],
+  ): Promise<{ linkedIds: string[]; errors: Error[] }> {
+    const linkedIds: string[] = [];
+    const errors: Error[] = [];
+    const uniqueIds = Array.from(new Set(targetIds.map(id => String(id || '').trim()).filter(Boolean)));
+    if (!uniqueIds.length) return { linkedIds, errors };
 
-        joinRecords.push({
-          [joinField]: parentId,
-          [inverseJoinField]: targetId,
-        });
+    const condition: UntypedQueryCondition =
+      uniqueIds.length === 1
+        ? {
+            And: [[joinField, '=', parentId] as UntypedQueryCondition, [inverseJoinField, '=', uniqueIds[0]] as UntypedQueryCondition],
+          }
+        : {
+            And: [[joinField, '=', parentId] as UntypedQueryCondition, [inverseJoinField, 'in', uniqueIds] as UntypedQueryCondition],
+          };
 
-        affectedIds.push(targetId);
-      } catch (e) {
-        errors.push(e instanceof Error ? e : new Error(`Failed to process relation item: ${String(e)}`));
+    let existingRows: ObjectRecord[] = [];
+    try {
+      existingRows = (await joinRepo.withDeleted().search(condition)) as ObjectRecord[];
+    } catch (e) {
+      errors.push(e instanceof Error ? e : new Error(String(e)));
+      return { linkedIds, errors };
+    }
+
+    const alive = new Set<string>();
+    const softDeletedByTarget = new Map<string, ObjectRecord>();
+    for (const row of existingRows) {
+      const tid = this.extractId(row[inverseJoinField]);
+      if (!tid) continue;
+      if (this.isSoftDeletedJoin(row)) {
+        if (!softDeletedByTarget.has(tid)) softDeletedByTarget.set(tid, row);
+      } else {
+        alive.add(tid);
       }
     }
 
-    if (joinRecords.length > 0) {
+    for (const [tid, row] of softDeletedByTarget.entries()) {
+      if (alive.has(tid)) continue;
       try {
-        await joinRepo.create(joinRecords);
+        const rowId = this.extractId(row.Id);
+        const restoreCondition: UntypedQueryCondition = rowId
+          ? (['Id', '=', rowId] as UntypedQueryCondition)
+          : ({
+              And: [[joinField, '=', parentId] as UntypedQueryCondition, [inverseJoinField, '=', tid] as UntypedQueryCondition],
+            } as UntypedQueryCondition);
+        await joinRepo.withDeleted().update({ DeletedAt: null }, restoreCondition);
+        alive.add(tid);
+        linkedIds.push(tid);
+      } catch (e) {
+        errors.push(e instanceof Error ? e : new Error(String(e)));
+      }
+    }
+
+    const toCreate = uniqueIds.filter(id => !alive.has(id));
+    if (toCreate.length > 0) {
+      try {
+        await joinRepo.create(toCreate.map(tid => ({ [joinField]: parentId, [inverseJoinField]: tid })));
+        linkedIds.push(...toCreate);
       } catch (e) {
         errors.push(e instanceof Error ? e : new Error(`Failed to create join records in batch: ${String(e)}`));
       }
     }
+
+    return { linkedIds, errors };
   }
 
   /**
@@ -470,7 +516,9 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
 
     if (!newItems || newItems.length === 0) {
       await joinRepo.delete([joinField, '=', parentId]);
-      const existingTargetIds = existingRecords.map(r => this.toStringId(r[inverseJoinField])).filter((id): id is string => id !== null);
+      const existingTargetIds = existingRecords
+        .map(r => this.extractId(r[inverseJoinField]))
+        .filter((id): id is string => id !== null);
       return {
         existingRecords,
         existingTargetIds,
@@ -478,20 +526,24 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
       };
     }
 
-    const existingTargetIds = existingRecords.map(r => this.toStringId(r[inverseJoinField])).filter((id): id is string => id !== null);
+    const existingTargetIds = existingRecords
+      .map(r => this.extractId(r[inverseJoinField]))
+      .filter((id): id is string => id !== null);
     const newTargetIds = new Set(newItems.map(item => this.extractId(item)).filter(Boolean));
 
     const recordsToRemove = existingRecords.filter(record => {
-      const targetId = this.toStringId(record[inverseJoinField]);
+      const targetId = this.extractId(record[inverseJoinField]);
       return !targetId || !newTargetIds.has(targetId);
     });
 
     if (recordsToRemove.length > 0) {
       if (recordsToRemove.length < existingRecords.length / 2) {
-        const recordIds = recordsToRemove.map(r => this.toStringId(r.Id)).filter((id): id is string => id !== null);
+        const recordIds = recordsToRemove.map(r => this.extractId(r.Id)).filter((id): id is string => id !== null);
         await joinRepo.delete(['Id', 'in', recordIds]);
       } else {
-        const targetIdsToRemove = recordsToRemove.map(r => this.toStringId(r[inverseJoinField])).filter((id): id is string => id !== null);
+        const targetIdsToRemove = recordsToRemove
+          .map(r => this.extractId(r[inverseJoinField]))
+          .filter((id): id is string => id !== null);
         await joinRepo.delete({
           And: [
             [joinField, '=', parentId],
@@ -527,8 +579,8 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
     for (const parentId of parentIds) resultMap.set(parentId, { existingIds: new Set(), removedIds: [] });
 
     for (const record of existingRecords) {
-      const parentId = this.toStringId(record[joinField]);
-      const targetId = this.toStringId(record[inverseJoinField]);
+      const parentId = this.extractId(record[joinField]);
+      const targetId = this.extractId(record[inverseJoinField]);
       if (parentId && targetId && resultMap.has(parentId)) {
         resultMap.get(parentId)!.existingIds.add(targetId);
       }
@@ -599,7 +651,8 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
   ): Promise<{ successIds: string[]; errors: Error[] }> {
     const successIds: string[] = [];
     const errors: Error[] = [];
-    const joinRecords: ObjectRecord[] = [];
+    const targetIds: string[] = [];
+    const seen = new Set<string>();
 
     for (const item of items) {
       try {
@@ -615,23 +668,18 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
           if (!targetId) throw new Error('Failed to create target entity');
         }
 
-        joinRecords.push({
-          [joinField]: parentId,
-          [inverseJoinField]: targetId,
-        });
-
-        successIds.push(targetId);
+        if (seen.has(targetId)) continue;
+        seen.add(targetId);
+        targetIds.push(targetId);
       } catch (e) {
         errors.push(e instanceof Error ? e : new Error(String(e)));
       }
     }
 
-    if (joinRecords.length > 0) {
-      try {
-        await joinRepo.create(joinRecords);
-      } catch (e) {
-        errors.push(e instanceof Error ? e : new Error(`Failed to create join records in batch: ${String(e)}`));
-      }
+    if (targetIds.length > 0) {
+      const linked = await this.upsertJoinLinks(joinRepo, parentId, joinField, inverseJoinField, targetIds);
+      successIds.push(...linked.linkedIds);
+      errors.push(...linked.errors);
     }
 
     return { successIds, errors };

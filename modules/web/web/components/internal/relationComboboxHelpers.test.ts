@@ -2,12 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  filterRelationOptions,
   findRelationOption,
   mapNameSearchRows,
   normalizeRelationQuery,
+  resolveRelationSearchMemo,
   runRelationNameSearch,
   upsertRelationOption,
   type RelationOption,
+  type RelationSearchMemo,
 } from './relationComboboxHelpers';
 
 describe('relationComboboxHelpers', () => {
@@ -119,6 +122,43 @@ describe('relationComboboxHelpers', () => {
     expect(raw).toEqual([
       { id: 'r1', label: 'Raw', raw: { Id: 'r1', DisplayName: 'Raw' } },
     ]);
+  });
+
+  test('resolveRelationSearchMemo reuses identical NameSearch and empty prefixes', () => {
+    const memo: RelationSearchMemo = {
+      name: '',
+      searchKey: 'partner.Partner',
+      pageSize: 20,
+      records: [{ id: 'a', label: 'A' }],
+    };
+    expect(resolveRelationSearchMemo(memo, '', 'partner.Partner', 20)).toEqual(memo.records);
+    expect(resolveRelationSearchMemo(memo, '', 'other', 20)).toBeNull();
+    expect(resolveRelationSearchMemo(memo, 'a', 'partner.Partner', 20)).toBeNull();
+
+    const empty: RelationSearchMemo = {
+      name: 'xyz',
+      searchKey: 'partner.Partner',
+      pageSize: 20,
+      records: [],
+    };
+    expect(resolveRelationSearchMemo(empty, 'xyzz', 'partner.Partner', 20)).toEqual([]);
+    expect(resolveRelationSearchMemo(empty, 'abc', 'partner.Partner', 20)).toBeNull();
+  });
+
+  test('filterRelationOptions and upsert drop blank ids', () => {
+    expect(
+      filterRelationOptions([
+        { id: '', label: 'Please select...' },
+        { id: '  ', label: 'Blank' },
+        { id: 'a', label: 'A' },
+      ]),
+    ).toEqual([{ id: 'a', label: 'A' }]);
+    expect(
+      upsertRelationOption([{ id: '', label: 'Please select...' }, { id: 'a', label: 'A' }], {
+        id: '',
+        label: 'Please select...',
+      }),
+    ).toEqual([{ id: 'a', label: 'A' }]);
   });
 
   test('upserts and finds selected options', () => {

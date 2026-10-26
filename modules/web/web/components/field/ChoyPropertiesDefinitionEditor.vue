@@ -4,7 +4,11 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div class="flex w-full flex-col gap-2" data-testid="choy-properties-definition-editor">
+  <div
+    data-anchor="choy.properties-definition-editor"
+    class="choy-properties-definition-editor flex w-full flex-col gap-3"
+    data-testid="choy-properties-definition-editor"
+  >
     <div class="flex flex-wrap items-center gap-2">
       <ChoyButton
         size="sm"
@@ -14,74 +18,107 @@ SPDX-License-Identifier: Apache-2.0
       >
         {{ _t('Save') }}
       </ChoyButton>
-      <ChoyButton size="sm" :disabled="readonly || saving || loading" data-testid="choy-properties-definition-add" @click="onAdd">
+      <ChoyButton
+        size="sm"
+        variant="outline"
+        :disabled="readonly || saving || loading"
+        data-testid="choy-properties-definition-add"
+        @click="onAdd"
+      >
         {{ _t('Add property') }}
       </ChoyButton>
-      <span v-if="loadError" class="text-[13px] text-danger" data-testid="choy-properties-definition-error">
+      <span
+        v-if="loadError"
+        class="text-sm text-destructive"
+        data-testid="choy-properties-definition-error"
+      >
         {{ loadError }}
       </span>
-      <span v-else-if="saveError" class="text-[13px] text-danger" data-testid="choy-properties-definition-save-error">
+      <span
+        v-else-if="saveError"
+        class="text-sm text-destructive"
+        data-testid="choy-properties-definition-save-error"
+      >
         {{ saveError }}
       </span>
     </div>
 
-    <div v-if="!drafts.length" class="text-[13px] text-muted-foreground" data-testid="choy-properties-definition-empty">
+    <div
+      v-if="!drafts.length"
+      class="text-sm text-muted-foreground"
+      data-testid="choy-properties-definition-empty"
+    >
       {{ _t('No properties defined') }}
     </div>
 
     <div
       v-for="(item, index) in drafts"
       :key="index"
-      class="grid grid-cols-[minmax(80px,1fr)_110px_minmax(80px,1fr)_minmax(80px,1fr)_auto_minmax(120px,1.4fr)_auto] items-start gap-1.5"
+      class="grid gap-2 rounded-md border border-border p-3 sm:grid-cols-2"
       :data-index="index"
     >
-      <input
+      <Input
         v-model="item.name"
-        size="small"
+        class="w-full"
         :disabled="readonly"
         :placeholder="_t('Name')"
         data-testid="choy-properties-definition-name"
       />
-      <select v-model="item.type" size="small" :disabled="readonly" data-testid="choy-properties-definition-type">
-        <option v-for="t in typeOptions" :key="t" :label="t" :value="t" />
-      </select>
-      <input
+      <Select v-model="item.type" :disabled="readonly">
+        <SelectTrigger
+          class="w-full"
+          :placeholder="_t('Type')"
+          data-testid="choy-properties-definition-type"
+        />
+        <SelectContent>
+          <SelectItem v-for="t in typeOptions" :key="t" :value="t">
+            {{ t }}
+          </SelectItem>
+        </SelectContent>
+      </Select>
+      <Input
         v-model="item.string"
-        size="small"
+        class="w-full"
         :disabled="readonly"
         :placeholder="_t('Label')"
         data-testid="choy-properties-definition-string"
       />
-      <input
+      <Input
         v-model="item.default"
-        size="small"
+        class="w-full"
         :disabled="readonly"
         :placeholder="_t('Default')"
         data-testid="choy-properties-definition-default"
       />
-      <input type="checkbox"
-        v-model="item.readonly"
-        size="small"
-        :disabled="readonly"
-        data-testid="choy-properties-definition-readonly"
-      />
-      <textarea
+      <label class="flex items-center gap-2 text-sm sm:col-span-2">
+        <Checkbox
+          :model-value="item.readonly"
+          :disabled="readonly"
+          data-testid="choy-properties-definition-readonly"
+          @update:model-value="item.readonly = $event === true"
+        />
+        {{ _t('Readonly') }}
+      </label>
+      <Textarea
         v-if="item.type === 'selection'"
         v-model="item.selectionText"
-        class="min-h-[4.5em] w-full resize-y font-[inherit]"
-        rows="3"
+        class="font-mono text-xs sm:col-span-2"
+        :rows="3"
         :disabled="readonly"
         :placeholder="_t('Selection JSON')"
         data-testid="choy-properties-definition-selection"
-      ></textarea>      <ChoyButton
-        size="sm"
-        variant="destructive"
-        :disabled="readonly"
-        data-testid="choy-properties-definition-remove"
-        @click="onRemove(index)"
-      >
-        {{ _t('Remove') }}
-      </ChoyButton>
+      />
+      <div class="sm:col-span-2">
+        <ChoyButton
+          size="sm"
+          variant="destructive"
+          :disabled="readonly"
+          data-testid="choy-properties-definition-remove"
+          @click="onRemove(index)"
+        >
+          {{ _t('Remove') }}
+        </ChoyButton>
+      </div>
     </div>
   </div>
 </template>
@@ -92,18 +129,25 @@ import { createTranslate } from '@/web/web/i18n';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import Checkbox from '../vendor/ui/checkbox/Checkbox.vue';
+import Input from '../vendor/ui/input/Input.vue';
+import Textarea from '../vendor/ui/textarea/Textarea.vue';
+import Select from '../vendor/ui/select/Select.vue';
+import SelectContent from '../vendor/ui/select/SelectContent.vue';
+import SelectItem from '../vendor/ui/select/SelectItem.vue';
+import SelectTrigger from '../vendor/ui/select/SelectTrigger.vue';
 import {
   PROPERTY_DEFINITION_V1_TYPE_OPTIONS,
   buildDefinitionScopeCondition,
   definitionItemsToDrafts,
   draftsToDefinitionItems,
   emptyDraftItem,
-  type DefinitionEditorDraftItem
+  type DefinitionEditorDraftItem,
 } from './propertiesDefinitionHelpers';
 
 defineOptions({ name: 'ChoyPropertiesDefinitionEditor' });
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/PropertiesDefinitionEditor' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyPropertiesDefinitionEditor' });
 
 const props = withDefaults(
   defineProps<{
@@ -121,7 +165,7 @@ const props = withDefaults(
     containerId: null,
     readonly: false,
     store: null,
-  }
+  },
 );
 
 const emit = defineEmits<{
@@ -141,7 +185,7 @@ const canSave = computed(
   () =>
     Boolean(String(props.application || '').trim()) &&
     Boolean(String(props.targetModel || '').trim()) &&
-    Boolean(String(props.propertiesField || '').trim())
+    Boolean(String(props.propertiesField || '').trim()),
 );
 
 function resolveStore(): WebModelStore<any> | null {
@@ -182,7 +226,10 @@ async function reload() {
     });
     const rows = await (store as any).Search(
       { And },
-      { fields: ['Id', 'Definition', 'TargetModel', 'PropertiesField', 'ContainerModel', 'ContainerId'], limit: 1 }
+      {
+        fields: ['Id', 'Definition', 'TargetModel', 'PropertiesField', 'ContainerModel', 'ContainerId'],
+        limit: 1,
+      },
     );
     if (seq !== reloadSeq) return;
     const row = Array.isArray(rows) && rows[0] ? rows[0] : null;
@@ -271,9 +318,8 @@ watch(
   () => {
     void reload();
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 defineExpose({ reload, drafts, definitionId });
 </script>
-

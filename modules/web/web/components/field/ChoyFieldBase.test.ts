@@ -212,6 +212,46 @@ describe('ChoyFieldBase label and help', () => {
     m.unmount();
   });
 
+  test('omits label for when labelForControl is false and exposes labelId', () => {
+    const m = mountBase(
+      { binding: makeBinding({ string: 'Body' }), renderMode: 'form', labelForControl: false },
+      {
+        slots: {
+          edit: (args: { inputId?: string; labelId?: string }) =>
+            h('div', {
+              id: args.inputId,
+              'aria-labelledby': args.labelId,
+              class: 'composite-probe',
+              tabindex: '-1',
+            }),
+          display: () => h('span'),
+        },
+      },
+    );
+    const label = m.q('[data-slot="field-label"]');
+    expect(label?.getAttribute('for')).toBeFalsy();
+    expect(label?.id).toBe('fld-AccessTokenId-label');
+    expect(m.q('.composite-probe')?.getAttribute('aria-labelledby')).toBe('fld-AccessTokenId-label');
+    m.unmount();
+  });
+
+  test('omits label for in readonly form display', () => {
+    const m = mountBase(
+      {
+        binding: makeBinding({ string: 'Line count' }, { isEditMode: false }),
+        renderMode: 'form',
+      },
+      {
+        slots: {
+          edit: () => h('input', { class: 'edit-probe' }),
+          display: () => h('span', { class: 'display-probe' }, '3'),
+        },
+      },
+    );
+    expect(m.q('[data-slot="field-label"]')?.getAttribute('for')).toBeFalsy();
+    m.unmount();
+  });
+
   test('lets explicit label override metadata', () => {
     const m = mountBase({
       binding: makeBinding({ string: 'Access Token ID' }),
@@ -243,7 +283,9 @@ describe('ChoyFieldBase label and help', () => {
     });
     const help = m.q('[data-slot="form-help"]') as HTMLElement | null;
     expect(help).toBeTruthy();
-    expect(help!.getAttribute('title')).toBe('Short unique code used in references');
+    // TooltipContent carries the tip; avoid native title (would double with the portal tip).
+    expect(help!.getAttribute('title')).toBeFalsy();
+    expect(help!.getAttribute('aria-label') || '').toContain('Short unique code used in references');
     m.unmount();
   });
 
@@ -256,13 +298,17 @@ describe('ChoyFieldBase label and help', () => {
     m.unmount();
   });
 
-  test('renders inline help tip beside the control', () => {
+  test('renders inline help tip beside the control with the same tip chrome as form', () => {
     const m = mountBase({
       binding: makeBinding({ string: 'Code', help: 'Inline help text' }),
       renderMode: 'inline',
     });
     expect(m.q('.choy-field-base__inline-wrap')).toBeTruthy();
-    expect(m.q('.choy-field-base__help-btn')?.getAttribute('title')).toBe('Inline help text');
+    const help = m.q('[data-slot="form-help"]') as HTMLElement | null;
+    expect(help).toBeTruthy();
+    expect(help!.className || '').toContain('choy-field-base__help-btn');
+    expect(help!.getAttribute('title')).toBeFalsy();
+    expect(help!.getAttribute('aria-label') || '').toContain('Inline help text');
     m.unmount();
   });
 });
@@ -653,10 +699,12 @@ describe('ChoyFieldBase auto renderMode from fieldPresentation', () => {
     const root = m.q('[data-anchor="choy.field-base"]') as HTMLElement | null;
     expect(root).toBeTruthy();
     expect(root?.getAttribute('data-slot')).toBe('field');
+    expect(root?.getAttribute('data-orientation')).toBe('horizontal');
     expect(root?.className || '').toContain('choy-field-base');
     expect(root?.className || '').toContain('extra-field');
     expect(m.q('[data-slot="form-item"]')).toBeFalsy();
     expect(m.q('.choy-form-item')).toBeFalsy();
+    expect(m.q('[data-slot="field-content"]')).toBeTruthy();
     const label = m.q('[data-slot="field-label"]') as HTMLLabelElement | null;
     expect(label?.getAttribute('for')).toBe('aria-field');
     const probe = m.q('input.aria-probe') as HTMLElement | null;
@@ -665,6 +713,27 @@ describe('ChoyFieldBase auto renderMode from fieldPresentation', () => {
     expect(probe?.getAttribute('data-describedby')).toBe('aria-field-help');
     const reserved = m.q('.choy-field-base__error-reserve');
     expect(reserved).toBeTruthy();
+    m.unmount();
+  });
+
+  test('form orientation prop switches data-orientation to vertical', async () => {
+    const m = mountBase(
+      {
+        binding: makeBinding({ string: 'Name' }),
+        renderMode: 'form',
+        orientation: 'vertical',
+      },
+      {
+        slots: {
+          edit: () => h('input', { class: 'orient-probe' }),
+          display: () => h('span'),
+        },
+      },
+    );
+    await flushPromises();
+    const root = m.q('[data-anchor="choy.field-base"]') as HTMLElement | null;
+    expect(root?.getAttribute('data-orientation')).toBe('vertical');
+    expect(m.q('input.orient-probe')).toBeTruthy();
     m.unmount();
   });
 });

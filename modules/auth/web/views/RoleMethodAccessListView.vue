@@ -36,8 +36,8 @@ import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { ChoyDatetimeField, ChoyListView, ChoyManyToOneField, ChoySearchView, ChoySelectionField, ChoyTableColumn, ChoyVarcharField, ChoyManyToOneRefField} from '@/web';
+import type { RowEventPayload } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
-import { resolveListRowRecordId } from './list_row_nav';
 
 defineOptions({ name: 'RoleMethodAccessListView', inheritAttrs: true });
 const { _lt } = createTranslate('auth', { scope: 'web/views/RoleMethodAccessListView' });
@@ -63,8 +63,8 @@ const { hasAction } = usePermission();
 /**
  * Open the clicked method-access row in detail view.
  */
-function onRowClick(row: Record<string, unknown>) {
-  const id = resolveListRowRecordId(row);
+function onRowClick(payload: RowEventPayload) {
+  const id = String(payload.row?.Id ?? '').trim();
   if (id) router.push(`/auth/method-accesses/${id}`);
 }
 

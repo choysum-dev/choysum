@@ -51,19 +51,14 @@ function installFieldBaseStub(slot: 'edit' | 'both' = 'edit') {
   });
 }
 
-function valuedOptions(root: Element): HTMLOptionElement[] {
-  // Minimal DOM rejects descendant selectors; walk the select's children.
-  const sel = root.querySelector('select.choy-selection-field') as HTMLSelectElement | null;
-  if (!sel) return [];
-  return Array.from(sel.childNodes || []).filter(node => {
-    const el = node as HTMLOptionElement;
-    return String(el.tagName || '').toLowerCase() === 'option' && el.value !== '';
-  }) as HTMLOptionElement[];
+function valuedOptions(setupState: () => any, record?: unknown): Array<{ value: string; label: string; disabled: boolean }> {
+  const fn = setupState()?.optionsFor as ((row?: unknown) => Array<{ value: string; label: string; disabled: boolean }>) | undefined;
+  if (typeof fn !== 'function') return [];
+  return fn(record).filter(o => o.value !== '');
 }
 
-function isDisabled(el: Element | null): boolean {
-  if (!el) return false;
-  return el.getAttribute('disabled') != null || (el as HTMLSelectElement).disabled === true;
+function isDisabled(opt: { disabled?: boolean } | null | undefined): boolean {
+  return !!opt?.disabled;
 }
 
 describe('SelectionField FieldsGet wiring', () => {
@@ -136,12 +131,12 @@ describe('SelectionField FieldsGet wiring', () => {
     await nextTick();
     expect(ensureCalls.length).toBe(1);
     expect(ensureCalls[0]![0]).toEqual(['Status']);
-    expect(m.q('select.choy-selection-field')?.getAttribute('data-loading')).toBe('true');
+    expect(m.q('.choy-selection-field')?.getAttribute('data-loading')).toBe('true');
 
     resolveEnsure();
     await flushPromises();
     await nextTick();
-    expect(m.q('select.choy-selection-field')?.getAttribute('data-loading')).toBe('false');
+    expect(m.q('.choy-selection-field')?.getAttribute('data-loading')).toBe('false');
     expect(FieldsGet.calls.length).toBe(1);
     expect(helpers.getFieldMeta('Status')?.selection?.[0]?.label).toBe('启用');
     m.unmount();
@@ -208,10 +203,10 @@ describe('SelectionField FieldsGet wiring', () => {
 
     await flushPromises();
     await nextTick();
-    const opts = valuedOptions(m.el);
+    const opts = valuedOptions(() => m.setupState());
     expect(opts).toHaveLength(1);
     expect(opts[0]!.value).toBe('archived');
-    expect((opts[0]!.textContent || '').trim()).toBe('归档');
+    expect(opts[0]!.label).toBe('归档');
     m.unmount();
   });
 
@@ -250,9 +245,9 @@ describe('SelectionField FieldsGet wiring', () => {
     await flushPromises();
     await nextTick();
     expect(FieldsGet.calls.length).toBeGreaterThan(0);
-    const opts = valuedOptions(m.el);
+    const opts = valuedOptions(() => m.setupState());
     expect(opts.length).toBe(2);
-    expect((opts[0]!.textContent || '').trim()).toBe('启用');
+    expect(opts[0]!.label).toBe('启用');
     m.unmount();
   });
 
@@ -288,10 +283,40 @@ describe('SelectionField FieldsGet wiring', () => {
 
     await flushPromises();
     await nextTick();
-    const opts = valuedOptions(m.el);
+    const opts = valuedOptions(() => m.setupState());
     expect(opts.map(o => o.value)).toEqual(['archived', 'draft']);
-    expect((opts[0]!.textContent || '').trim()).toBe('归档');
+    expect(opts[0]!.label).toBe('归档');
     expect(isDisabled(opts[1]!)).toBe(true);
+    m.unmount();
+  });
+
+  // FW12: sample real ChoyFieldBase chrome (no Base stub) + Combobox.
+  test('SelectionField real-chrome mounts FieldBase and combobox trigger', async () => {
+    const value = ref<string | null>('active');
+    const binding = {
+      env: {
+        isForm: true,
+        fieldPresentation: 'form',
+        isEditMode: true,
+        viewMode: 'edit',
+        fieldPrefix: null,
+      },
+      prop: 'Status',
+      meta: staticMeta,
+      fieldRef: () => value as any,
+      fieldRefOf: () => value as any,
+      recordRef: () => computed(() => ({ Id: '1', Status: 'active' })) as any,
+      registerFields: () => {},
+      store: { fieldsMetadata: { Status: staticMeta } },
+      asView: () => ({ fieldValue: () => value }) as any,
+    };
+    const m = mountApp(SelectionField as any, {
+      props: { binding, label: 'Status', renderMode: 'form' },
+    });
+    await flushPromises();
+    await nextTick();
+    expect(m.q('[data-anchor="choy.field-base"]')).toBeTruthy();
+    expect(m.q('[data-slot="combobox-trigger"]') || m.q('button')).toBeTruthy();
     m.unmount();
   });
 });

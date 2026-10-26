@@ -43,6 +43,7 @@ import {
   ChoySearchView,
   ChoyTableColumn,
   ChoyVarcharField,  ChoyIntField, ChoyManyToOneRefField} from '@/web';
+import type { RowEventPayload } from '@/web';
 import { partnerActions, partnerOpenDetailAction } from './partner_actions';
 import { navigatePartnerDetail } from './partner_list_nav';
 
@@ -69,8 +70,8 @@ const { hasAction } = usePermission();
 /**
  * Opens the clicked partner row when the actor has detail access.
  */
-function onRowClick(row: Record<string, unknown>) {
-  navigatePartnerDetail(row, hasAction(partnerOpenDetailAction), (path) => router.push(path));
+function onRowClick(payload: RowEventPayload) {
+  navigatePartnerDetail(payload, hasAction(partnerOpenDetailAction), (path) => router.push(path));
 }
 
 const { listRef, expose } = useListViewExpose<Partner>();

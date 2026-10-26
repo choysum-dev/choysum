@@ -56,7 +56,7 @@ SPDX-License-Identifier: Apache-2.0
         <div v-if="loading" class="flex justify-center p-3">
           <ChoySpinner :label="_t('Loading...')" />
         </div>
-        <div v-else-if="error" class="p-3 text-sm text-danger">{{ error }}</div>
+        <div v-else-if="error" class="p-3 text-sm text-destructive">{{ error }}</div>
         <ChoyEmpty
           v-else-if="rows.length === 0"
           class="w-full border-none p-3"

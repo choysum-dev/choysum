@@ -36,8 +36,8 @@ import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
-import { resolveListRowRecordId } from './list_row_nav';
 import { ChoyBooleanField, ChoyDecimalField, ChoyListView, ChoySearchView, ChoyTableColumn, ChoyVarcharField, ChoyManyToOneField} from '@/web';
+import type { RowEventPayload } from '@/web';
 
 defineOptions({ name: 'UoMListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/UoMListView' });
@@ -46,8 +46,8 @@ const store = resolvePageStore(props.store, 'UoMListView');
 const uomActions = defineModelActions('base.UoM', { entityTitle: _lt('Unit of Measure') });
 const { hasAction } = usePermission();
 const router = useRouter();
-function onRowClick(row: Record<string, unknown>) {
-  const id = resolveListRowRecordId(row);
+function onRowClick(payload: RowEventPayload) {
+  const id = String(payload.row?.Id ?? '').trim();
   if (id) router.push(`/base/uoms/${id}`);
 }
 const { listRef, expose } = useListViewExpose<UoM>();

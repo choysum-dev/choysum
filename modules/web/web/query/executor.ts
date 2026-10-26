@@ -21,6 +21,7 @@ type ExecutorStoreDeps = {
 /**
  * Hydrates ManyToOneRef fields in bulk.
  * Replaces string ids in the result set with { Id, DisplayName } objects.
+ * Used only by execute() browse/search (cross-app via createStoreByModel).
  */
 async function hydrateManyToOneRefs(store: WebModelStore<any>, items: any[], deps: ExecutorStoreDeps) {
   if (!items || items.length === 0) return;
@@ -354,6 +355,7 @@ type AttachmentBatchDescribeItem = {
     fileName?: unknown;
     mimeType?: unknown;
     downloadUrl?: unknown;
+    sizeBytes?: unknown;
   };
   displayName?: unknown;
   previewUrl?: unknown;
@@ -421,6 +423,7 @@ async function enrichBinaryImageDescriptors(
       previewUrl?: string;
       mimeType?: string;
       downloadUrl?: string;
+      sizeBytes?: number;
     }
   >();
 
@@ -430,12 +433,22 @@ async function enrichBinaryImageDescriptors(
     const bindingId = normalizeIdText(item?.attachmentBindingId);
     if (!bindingId) continue;
 
-    const descriptorRaw = item?.descriptor;
+    const descriptorRaw = item?.descriptor as
+      | {
+          fileName?: unknown;
+          mimeType?: unknown;
+          downloadUrl?: unknown;
+          sizeBytes?: unknown;
+        }
+      | undefined;
     const fileName = normalizeIdText(descriptorRaw?.fileName);
     const mimeType = normalizeIdText(descriptorRaw?.mimeType);
     const downloadUrl = normalizeIdText(descriptorRaw?.downloadUrl);
     const displayName = normalizeIdText(item?.displayName) || fileName;
     const previewUrl = normalizeIdText(item?.previewUrl);
+    const sizeRaw = descriptorRaw?.sizeBytes;
+    const sizeNum = typeof sizeRaw === 'number' ? sizeRaw : Number(sizeRaw);
+    const sizeBytes = Number.isFinite(sizeNum) && sizeNum >= 0 ? sizeNum : undefined;
 
     describeByBindingId.set(bindingId, {
       fileName,
@@ -443,6 +456,7 @@ async function enrichBinaryImageDescriptors(
       previewUrl,
       mimeType,
       downloadUrl,
+      sizeBytes,
     });
   }
 
@@ -455,6 +469,14 @@ async function enrichBinaryImageDescriptors(
 
     if (!descriptor.displayName) {
       descriptor.displayName = described?.displayName || descriptor.fileName;
+    }
+
+    if (!descriptor.mimeType && described?.mimeType) {
+      descriptor.mimeType = described.mimeType;
+    }
+
+    if (descriptor.sizeBytes == null && described?.sizeBytes != null) {
+      descriptor.sizeBytes = described.sizeBytes;
     }
 
     if (descriptor.previewUrl) {
@@ -496,13 +518,13 @@ function withSelections(plan: QueryPlan, storeId: string): QueryPlan {
 async function call(plan: QueryPlan, store: WebModelStore<any>): Promise<any> {
   switch (plan.kind) {
     case 'search': {
-      const { condition, fields, orderBy, limit, offset } = plan.params || {};
-      const options = { fields, orderBy, limit, offset };
+      const { condition, fields, orderBy, limit, offset, relationConditionSource } = plan.params || {};
+      const options = { fields, orderBy, limit, offset, relationConditionSource };
       return store.Search!(condition ?? [], options);
     }
     case 'count': {
-      const { condition } = plan.params || {};
-      return store.Count!(condition ?? []);
+      const { condition, relationConditionSource } = plan.params || {};
+      return store.Count!(condition ?? [], relationConditionSource ? { relationConditionSource } : undefined);
     }
     case 'readGroup': {
       const { groupby, condition, fields, orderBy, limit, offset } = plan.params || {};

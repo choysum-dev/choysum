@@ -37,7 +37,9 @@ SPDX-License-Identifier: Apache-2.0
           role="columnheader"
           class="flex min-h-list-header items-center gap-1 px-2 py-1 transition-colors"
           :class="[
-            isSelectColumn(header.column) ? 'cursor-pointer justify-center' : undefined,
+            isSelectColumn(header.column)
+              ? 'cursor-pointer justify-center'
+              : columnJustifyClass(header.column),
             columnHoverClass(header.column.id),
           ]"
           :data-col-hover="isColumnHovered(header.column.id) ? '' : undefined"
@@ -70,8 +72,11 @@ SPDX-License-Identifier: Apache-2.0
           <button
             v-else
             type="button"
-            class="flex flex-1 items-center gap-1 border-0 bg-transparent p-0 text-left text-sm font-medium text-muted-foreground hover:text-foreground"
-            :class="{ 'cursor-default': !header.column.getCanSort(), 'cursor-pointer': header.column.getCanSort() }"
+            class="flex flex-1 items-center gap-1 border-0 bg-transparent p-0 text-start text-sm font-medium text-muted-foreground hover:text-foreground"
+            :class="[
+              columnJustifyClass(header.column),
+              !header.column.getCanSort() ? 'cursor-default' : 'cursor-pointer',
+            ]"
             :disabled="!header.column.getCanSort()"
             @click="onHeaderClick(header.column.id, header.column.getCanSort())"
           >
@@ -163,7 +168,9 @@ SPDX-License-Identifier: Apache-2.0
               role="gridcell"
               class="flex min-h-list-row min-w-0 items-center overflow-hidden px-2 transition-colors"
               :class="[
-                isSelectColumn(cell.column) ? 'cursor-pointer justify-center' : undefined,
+                isSelectColumn(cell.column)
+                  ? 'cursor-pointer justify-center'
+                  : columnJustifyClass(cell.column),
                 columnHoverClass(cell.column.id),
               ]"
               :data-col-hover="isColumnHovered(cell.column.id) ? '' : undefined"
@@ -191,9 +198,9 @@ SPDX-License-Identifier: Apache-2.0
         v-if="showEmpty && !rows.length"
         role="row"
         aria-rowindex="2"
-        class="flex h-full items-center justify-center text-sm text-foreground/50"
+        class="flex h-full min-h-[7.5rem] w-full items-center justify-center text-sm text-foreground/50"
       >
-        <div role="gridcell">
+        <div role="gridcell" class="w-full max-w-full">
           <slot name="empty">No data</slot>
         </div>
       </div>
@@ -202,7 +209,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts" generic="T extends Record<string, unknown>">
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import {
   FlexRender,
   getCoreRowModel,
@@ -221,6 +228,7 @@ import {
   applyDataTableParentScroll,
   applyDataTableScrollToRow,
   compareDataTableValues,
+  dataTableColumnJustifyClass,
   dataTableIsGroupLikeRow,
   dataTableIsVirtualized,
   dataTableMaybeMeasure,
@@ -319,6 +327,11 @@ const emit = defineEmits<{
   'update:rowSelection': [ids: DataTableRowId[]];
   'row-click': [row: T];
   'sort-change': [payload: { field: string; direction?: 'asc' | 'desc' }];
+}>();
+
+defineSlots<{
+  empty?: () => any;
+  default?: () => any;
 }>();
 
 /** True when the host class tree requests `h-full` (string / array / object forms). */
@@ -540,6 +553,72 @@ const virtualizer = useVirtualizer({
   overscan: 8,
 });
 
+/**
+ * Embedded O2M/M2M tables often flip virtualize on after layout (capped height) or
+ * leave `display:none` force-mounted tabs. Remeasure after paint so the first
+ * window is not empty until the user scrolls.
+ */
+function scheduleVirtualMeasure(): void {
+  if (!isVirtualized.value) return;
+  dataTableMaybeMeasure(true, virtualizer.value);
+  void nextTick(() => {
+    dataTableMaybeMeasure(isVirtualized.value, virtualizer.value);
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => {
+        dataTableMaybeMeasure(isVirtualized.value, virtualizer.value);
+      });
+    }
+  });
+}
+
+let scrollParentObserver: ResizeObserver | null = null;
+
+function bindScrollParentObserver(el: HTMLElement | null): void {
+  scrollParentObserver?.disconnect();
+  scrollParentObserver = null;
+  if (!el || typeof ResizeObserver === 'undefined') return;
+  scrollParentObserver = new ResizeObserver(() => {
+    if (isVirtualized.value) {
+      dataTableMaybeMeasure(true, virtualizer.value);
+    }
+  });
+  scrollParentObserver.observe(el);
+}
+
+watch(parentRef, (el) => {
+  bindScrollParentObserver(el as HTMLElement | null);
+  if (el && isVirtualized.value) {
+    scheduleVirtualMeasure();
+  }
+});
+
+watch(isVirtualized, (on) => {
+  if (on) {
+    scheduleVirtualMeasure();
+  }
+});
+
+watch(
+  () => props.height,
+  () => {
+    if (isVirtualized.value) {
+      scheduleVirtualMeasure();
+    }
+  },
+);
+
+onMounted(() => {
+  bindScrollParentObserver(parentRef.value as HTMLElement | null);
+  if (isVirtualized.value) {
+    scheduleVirtualMeasure();
+  }
+});
+
+onBeforeUnmount(() => {
+  scrollParentObserver?.disconnect();
+  scrollParentObserver = null;
+});
+
 // Cached heights win over `estimateSize`; drop them when the estimate changes.
 watch(
   () => props.estimateSize,
@@ -556,7 +635,9 @@ watch(
     if (parentRef.value) {
       parentRef.value.scrollTop = 0;
     }
-    dataTableMaybeMeasure(isVirtualized.value, virtualizer.value);
+    if (isVirtualized.value) {
+      scheduleVirtualMeasure();
+    }
   },
 );
 
@@ -708,7 +789,7 @@ function onRowClick(event: MouseEvent, row: (typeof rows.value)[number] | undefi
 
 type TableColumnLike = {
   id: string;
-  columnDef?: { meta?: { selectColumn?: boolean } };
+  columnDef?: { meta?: { selectColumn?: boolean; align?: unknown } };
 };
 
 /** Built-in TanStack select column or List host `ChoyTableColumn type="selection"`. */
@@ -716,6 +797,10 @@ function isSelectColumn(column: TableColumnLike | undefined): boolean {
   if (!column) return false;
   if (column.id === '__select' || column.id === '__selection__') return true;
   return column.columnDef?.meta?.selectColumn === true;
+}
+
+function columnJustifyClass(column: TableColumnLike | undefined): string | undefined {
+  return dataTableColumnJustifyClass(column?.columnDef?.meta?.align);
 }
 
 type BodyRowLike = NonNullable<(typeof rows.value)[number]>;

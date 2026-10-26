@@ -7,8 +7,9 @@ SPDX-License-Identifier: Apache-2.0
   <ChoyFieldBase
     :binding="binding"
     :label="label"
-    :rules="rules"
+    :rules="mergedRules"
     :formItemProps="formItemProps"
+    :orientation="orientation"
     :vColumnProps="vColumnProps"
     :toView="toView"
     :fromView="fromView"
@@ -20,168 +21,175 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
     v-bind="$attrs"
   >
-    <template #edit="{ fieldValue, onFieldChange }">
-      <div class="flex w-full max-w-[360px] flex-col items-start gap-3">
-        <Attachment
-          v-if="hasAttachment(fieldValue().value)"
-          class="choy-image-current w-full max-w-full bg-muted"
-          state="done"
-        >
-          <AttachmentMedia variant="image" class="size-12 overflow-hidden border border-border">
+    <template #edit="{ fieldValue, inputId, inputName, describedBy, invalid, onFieldChange }">
+      <ChoyAttachmentFieldChrome
+        mode="edit"
+        class="choy-image-field"
+        presentation="image"
+        image-click-action="download"
+        current-class="choy-image-current"
+        upload-class="choy-image-upload"
+        :width="width"
+        :height="height"
+        :fit="fit"
+        :radius="radius"
+        :natural-width="thumbNatural?.width"
+        :natural-height="thumbNatural?.height"
+        :has-value="hasAttachment(fieldValue().value)"
+        :title="toDisplayText(fieldValue().value)"
+        :open-href="resolveLinkHref(fieldValue().value)"
+        :download-file-name="resolveFileName(fieldValue().value)"
+        :input-id="inputId"
+        :input-name="inputName"
+        :described-by="describedBy"
+        :invalid="invalid"
+        :accept="accept"
+        :drag="drag"
+        :disabled="disabled"
+        :busy="isUploadBusy(fieldValue().value)"
+        :attachment-state="editAttachmentState(fieldValue().value)"
+        :upload-label="uploadButtonText"
+        :drop-label="uploadDropLabel"
+        :replace-label="replaceButtonText"
+        :remove-label="_t('Remove')"
+        :open-label="_t('Download')"
+        @file="file => onPickedFile(file, fieldValue, onFieldChange)"
+        @remove="removeImage(fieldValue, onFieldChange)"
+      >
+        <template #media>
+          <AttachmentMedia variant="image" class="choy-image-avatar__media size-full overflow-hidden">
             <img
-              v-if="resolvePreviewUrl(fieldValue().value)"
-              class="choy-image-current__preview size-full object-cover"
-              :src="resolvePreviewUrl(fieldValue().value)"
-              alt="image preview"
+              v-if="previewSrc(fieldValue().value)"
+              class="choy-image-current__preview size-full"
+              :class="fit === 'cover' ? 'object-cover' : 'object-contain'"
+              :src="previewSrc(fieldValue().value)"
+              :alt="previewAlt(fieldValue().value)"
+              @load="onThumbLoad"
+              @error="onPreviewError(fieldValue().value)"
             />
-            <Picture v-else class="size-4 text-muted-foreground" />
+            <Picture v-else class="size-6 text-muted-foreground" />
           </AttachmentMedia>
-          <AttachmentContent>
-            <AttachmentTitle :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</AttachmentTitle>
-            <AttachmentDescription v-if="toMetaText(fieldValue().value)">{{ toMetaText(fieldValue().value) }}</AttachmentDescription>
-            <AttachmentActions>
-              <label class="inline-flex">
-                <input
-                  type="file"
-                  class="sr-only"
-                  :accept="accept"
-                  :multiple="uploadMultiple"
-                  :disabled="uploadDisabled"
-                  @change="onNativeFileChange($event, fieldValue, onFieldChange)"
-                />
-                <ChoyButton size="sm" variant="link" class="p-0" :disabled="uploadDisabled" as="span">{{ replaceButtonText }}</ChoyButton>
-              </label>
-              <ChoyButton size="sm" variant="destructive" class="p-0" :disabled="uploadDisabled" @click="removeImage(fieldValue, onFieldChange)">
-                {{ _t('Remove') }}
-              </ChoyButton>
-            </AttachmentActions>
-          </AttachmentContent>
-        </Attachment>
-        <label
-          v-else
-          class="choy-image-upload box-border block w-full cursor-pointer"
-          @dragover.prevent="onUploadDragOver"
-          @drop.prevent="onNativeFileDrop($event, fieldValue, onFieldChange)"
-        >
-          <input
-            type="file"
-            class="sr-only"
-            :accept="accept"
-            :multiple="uploadMultiple"
-            :disabled="uploadDisabled"
-            @change="onNativeFileChange($event, fieldValue, onFieldChange)"
-          />
-          <Attachment
-            state="idle"
-            class="w-full max-w-full"
-            :class="{ 'choy-image-upload--drag min-h-[126px] justify-center px-4 py-5 hover:border-primary hover:bg-primary-subtle': uploadDrag }"
-          >
-            <template v-if="uploadDrag">
-              <Upload class="mx-auto mb-2.5 block size-5 text-primary" />
-              <div class="w-full text-center text-[13px] leading-normal text-muted-foreground">{{ uploadDropText }}</div>
-            </template>
-            <ChoyButton v-else size="sm" variant="link" class="p-0" as="span">{{ uploadButtonText }}</ChoyButton>
-          </Attachment>
-        </label>
-      </div>
+        </template>
+      </ChoyAttachmentFieldChrome>
     </template>
     <template #display="{ fieldValue, renderMode: slotRenderMode }">
-      <Attachment
-        v-if="hasAttachment(fieldValue().value) && isTableRenderMode(slotRenderMode)"
-        size="sm"
-        class="max-w-[124px] border-transparent bg-transparent shadow-none"
-        state="done"
+      <ChoyAttachmentFieldChrome
+        mode="display"
+        class="choy-image-field"
+        :presentation="isTableRenderMode(slotRenderMode) ? 'file' : 'image'"
+        :image-click-action="isTableRenderMode(slotRenderMode) ? 'download' : 'preview'"
+        :width="width"
+        :height="height"
+        :fit="isTableRenderMode(slotRenderMode) ? 'cover' : fit"
+        :radius="isTableRenderMode(slotRenderMode) ? 'md' : radius"
+        :natural-width="isTableRenderMode(slotRenderMode) ? undefined : thumbNatural?.width"
+        :natural-height="isTableRenderMode(slotRenderMode) ? undefined : thumbNatural?.height"
+        :has-value="hasAttachment(fieldValue().value)"
+        :title="toDisplayText(fieldValue().value)"
+        :meta="isTableRenderMode(slotRenderMode) ? toAttachmentMetaText(fieldValue().value) : undefined"
+        :open-href="resolveLinkHref(fieldValue().value)"
+        :download-file-name="resolveFileName(fieldValue().value)"
+        :table="isTableRenderMode(slotRenderMode)"
+        table-class="max-w-32"
+        :upload-label="uploadButtonText"
+        :drop-label="uploadDropLabel"
+        :replace-label="replaceButtonText"
+        :remove-label="_t('Remove')"
+        :open-label="_t('Download')"
+        :preview-label="_t('Image preview')"
+        @preview="openImagePreview(fieldValue().value)"
       >
-        <AttachmentMedia variant="image" class="size-8 overflow-hidden border border-border">
-          <img
-            v-if="resolvePreviewUrl(fieldValue().value)"
-            class="size-full object-cover"
-            :src="resolvePreviewUrl(fieldValue().value)"
-            alt="image preview"
-          />
-          <Picture v-else class="size-4 text-muted-foreground" />
-        </AttachmentMedia>
-        <AttachmentContent>
-          <AttachmentTitle :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</AttachmentTitle>
-        </AttachmentContent>
-      </Attachment>
-      <a
-        v-else-if="hasAttachment(fieldValue().value) && resolveLinkHref(fieldValue().value)"
-        class="choy-image-display-card text-inherit no-underline"
-        :href="resolveLinkHref(fieldValue().value)"
-        target="_blank"
-        rel="noopener noreferrer"
-        @click.stop
-      >
-        <Attachment
-          class="choy-image-display-card--interactive max-w-full cursor-pointer bg-muted transition-colors hover:border-primary-soft hover:bg-primary-subtle"
-          state="done"
-        >
-          <AttachmentMedia variant="image" class="size-9 overflow-hidden border border-border">
+        <template #media>
+          <AttachmentMedia
+            variant="image"
+            :class="
+              isTableRenderMode(slotRenderMode)
+                ? 'size-8 overflow-hidden rounded-md border border-border'
+                : 'choy-image-avatar__media size-full overflow-hidden'
+            "
+          >
             <img
-              v-if="resolvePreviewUrl(fieldValue().value)"
-              class="size-full object-cover"
-              :src="resolvePreviewUrl(fieldValue().value)"
-              alt="image preview"
+              v-if="previewSrc(fieldValue().value)"
+              class="choy-image-current__preview size-full"
+              :class="isTableRenderMode(slotRenderMode) || fit === 'cover' ? 'object-cover' : 'object-contain'"
+              :src="previewSrc(fieldValue().value)"
+              :alt="previewAlt(fieldValue().value)"
+              @load="onThumbLoad"
+              @error="onPreviewError(fieldValue().value)"
             />
             <Picture v-else class="size-4 text-muted-foreground" />
           </AttachmentMedia>
-          <AttachmentContent>
-            <AttachmentTitle :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</AttachmentTitle>
-            <AttachmentDescription v-if="toMetaText(fieldValue().value)">{{ toMetaText(fieldValue().value) }}</AttachmentDescription>
-          </AttachmentContent>
-        </Attachment>
-      </a>
-      <Attachment
-        v-else-if="hasAttachment(fieldValue().value)"
-        class="choy-image-display-card max-w-full bg-muted"
-        state="done"
-      >
-        <AttachmentMedia variant="image" class="size-9 overflow-hidden border border-border">
-          <img
-            v-if="resolvePreviewUrl(fieldValue().value)"
-            class="size-full object-cover"
-            :src="resolvePreviewUrl(fieldValue().value)"
-            alt="image preview"
-          />
-          <Picture v-else class="size-4 text-muted-foreground" />
-        </AttachmentMedia>
-        <AttachmentContent>
-          <AttachmentTitle :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</AttachmentTitle>
-          <AttachmentDescription v-if="toMetaText(fieldValue().value)">{{ toMetaText(fieldValue().value) }}</AttachmentDescription>
-        </AttachmentContent>
-      </Attachment>
-      <Attachment v-else size="sm" state="idle" aria-hidden="true" class="border-transparent bg-transparent shadow-none">
-        <AttachmentMedia variant="icon" aria-hidden="true" class="size-9 border border-dashed border-border bg-muted text-muted-foreground">
-          <Picture class="size-4" />
-        </AttachmentMedia>
-      </Attachment>
+        </template>
+      </ChoyAttachmentFieldChrome>
     </template>
   </ChoyFieldBase>
+
+  <ChoyDialog v-model:open="previewDialogOpen">
+    <ChoyDialogContent
+      class="choy-image-preview-dialog !block !h-fit !w-fit !max-w-none !gap-0 !border-0 !bg-transparent !p-0 !shadow-none"
+      :aria-label="previewDialogTitle"
+      @open-auto-focus.prevent
+    >
+      <!--
+        Size the inner shell: DialogContent portals to body and does not forward
+        style attrs onto the panel, so parent scoped CSS / :style on Content are unreliable.
+      -->
+      <div
+        class="choy-image-preview-dialog__shell relative overflow-hidden rounded-lg border border-border bg-background shadow-lg"
+        :style="previewDialogShellStyle"
+      >
+        <img
+          v-if="previewDialogSrc"
+          ref="previewImgRef"
+          class="choy-image-preview-dialog__img block"
+          :src="previewDialogSrc"
+          :alt="previewDialogAlt"
+          :style="previewDialogImgStyle"
+          @load="onPreviewDialogImgLoad"
+        />
+      </div>
+    </ChoyDialogContent>
+  </ChoyDialog>
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, any>, V = FieldPathType<T, P>">
 import type { RuleItem } from 'async-validator';
-import { ChoyMessage } from '../../composables/useChoyMessage';
 import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField, NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
-import { computed } from 'vue';
-import ChoyFieldBase, { type FieldStateExpr } from './ChoyFieldBase.vue';
+import { computed, inject, nextTick, ref, watch, type Ref } from 'vue';
+import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { createTranslate } from '@/web/web/i18n';
-import { resolveImageFieldLimitsFromSources, reportImageFieldValidation } from './imageFieldLimits';
+import {
+  resolveImageFieldLimitsFromSources,
+  validateImageFieldFile,
+  imageFieldLimitErrorMessage,
+} from './imageFieldLimits';
 import { normalizeOptionalString } from '@/core/service/utils/normalization';
-import { Image as Picture, Upload } from 'lucide-vue-next';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
-import Attachment from '../vendor/ui/attachment/Attachment.vue';
-import AttachmentActions from '../vendor/ui/attachment/AttachmentActions.vue';
-import AttachmentContent from '../vendor/ui/attachment/AttachmentContent.vue';
-import AttachmentDescription from '../vendor/ui/attachment/AttachmentDescription.vue';
+import { Image as Picture } from 'lucide-vue-next';
 import AttachmentMedia from '../vendor/ui/attachment/AttachmentMedia.vue';
-import AttachmentTitle from '../vendor/ui/attachment/AttachmentTitle.vue';
+import ChoyAttachmentFieldChrome from './ChoyAttachmentFieldChrome.vue';
+import { ChoyDialog, ChoyDialogContent } from '@/web/web/components/layout/choyDialog';
+import {
+  hasAttachment,
+  hasPendingLocalFile,
+  isTableRenderMode,
+  resolveDownloadUrl,
+  resolveFileName,
+  resolvePreviewUrl,
+  toAttachmentDisplayText,
+  toAttachmentMetaText,
+  type ImageAvatarFit,
+  type ImageAvatarRadius,
+} from './attachmentFieldHelpers';
+import {
+  fetchAuthenticatedPreviewAsDataUrl,
+  isInternalDocumentBindingContentUrl,
+} from './attachmentPreviewAuth';
+import { resolveImagePreviewDialogSize } from './imagePreviewDialogSize';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/ImageField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyImageField' });
 
 defineOptions({ name: 'ChoyImageField' });
 
@@ -189,18 +197,6 @@ type IsAny<T> = 0 extends 1 & T ? true : false;
 type ViewType = any;
 type ValueRefGetter = () => { value: any };
 type OnFieldChange = (() => Promise<void>) | undefined;
-type UploadPassthroughProps = {
-  drag?: boolean;
-  multiple?: boolean;
-  limit?: number;
-  disabled?: boolean;
-  showFileList?: boolean;
-  listType?: string;
-  onExceed?: (...args: any[]) => void;
-};
-type UploadRawFile = File;
-type UploadFile = { raw?: UploadRawFile | null; name?: string };
-type AttachmentLike = Record<string, any>;
 
 const props = withDefaults(
   defineProps<{
@@ -216,13 +212,27 @@ const props = withDefaults(
     visible?: FieldStateExpr<T, V>;
     cellVisible?: FieldStateExpr<T, V>;
 
-    formItemProps?: Record<string, unknown>;
+    formItemProps?: Partial<FormItemProps>;
+    orientation?: 'horizontal' | 'vertical';
     vColumnProps?: Record<string, unknown>;
     agg?: NarrowAggProp<NonNumericAggFns>;
     accept?: string;
     uploadText?: string;
     uploadDropText?: string;
-    uploadProps?: UploadPassthroughProps;
+    /** Show dashed drop zone when empty (default true). */
+    drag?: boolean;
+    disabled?: boolean;
+    /** Form avatar box width (px number or CSS length). Default 112. For contain, max width. */
+    width?: number | string;
+    /** Form avatar box height (px number or CSS length). For contain, max height. */
+    height?: number | string;
+    /**
+     * Form thumbnail fit. Default contain (preserve ratio). Table cells always use cover.
+     * cover = crop to fixed box (avatar-style).
+     */
+    fit?: ImageAvatarFit;
+    /** Form thumbnail corner radius. Default md. Table cells use md. */
+    radius?: ImageAvatarRadius;
     renderMode?: 'auto' | 'form' | 'table' | 'inline';
     showInlineError?: boolean;
   }>(),
@@ -237,13 +247,113 @@ const props = withDefaults(
     accept: 'image/*',
     uploadText: '',
     uploadDropText: '',
-    uploadProps: () => ({ drag: true, showFileList: false }),
+    drag: true,
+    disabled: false,
+    width: undefined,
+    height: undefined,
+    fit: 'contain',
+    radius: 'md',
     renderMode: 'auto',
     showInlineError: false,
   }
 );
 
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
+const fieldErrors = inject<Ref<Map<string, string>> | null>('field-errors', null);
+const formSubmitting = inject<Ref<boolean> | undefined>('form-submitting', undefined);
+
+const pickError = ref('');
+/** Preview URLs that failed to load — fall back to Picture icon. */
+const brokenPreviewUrls = ref(new Set<string>());
+/** Source preview URL → authenticated data: URL (CSP-safe for <img>). */
+const authPreviewBySource = ref(new Map<string, string>());
+/** Internal URLs that already failed authenticated fetch — do not retry. */
+const authPreviewFailed = ref(new Set<string>());
+
+/** Form thumbnail intrinsic size for contain layout. */
+const thumbNatural = ref<{ width: number; height: number } | null>(null);
+
+const previewDialogOpen = ref(false);
+const previewDialogSrc = ref('');
+const previewDialogAlt = ref('');
+const previewDialogNatural = ref<{ width: number; height: number } | null>(null);
+const previewImgRef = ref<HTMLImageElement | null>(null);
+/** DialogContent default padding (!p-2) on each side. */
+const PREVIEW_DIALOG_PAD_PX = 16;
+const previewDialogTitle = computed(() => previewDialogAlt.value || _t('Image preview'));
+
+function resolvePreviewBoxSize(): { width: number; height: number } | null {
+  const natural = previewDialogNatural.value;
+  if (!natural) return null;
+  const viewportW = typeof window !== 'undefined' ? window.innerWidth : 1280;
+  const viewportH = typeof window !== 'undefined' ? window.innerHeight : 720;
+  return resolveImagePreviewDialogSize(natural.width, natural.height, viewportW, viewportH);
+}
+
+const previewDialogImgStyle = computed(() => {
+  const size = resolvePreviewBoxSize();
+  if (!size) {
+    return { maxWidth: 'min(92vw, 56rem)', maxHeight: 'min(85vh, 48rem)', width: 'auto', height: 'auto' };
+  }
+  return { width: `${size.width}px`, height: `${size.height}px` };
+});
+
+/** Inline shell size — Dialog portals to body, so parent scoped CSS cannot size it. */
+const previewDialogShellStyle = computed(() => {
+  const size = resolvePreviewBoxSize();
+  const base: Record<string, string> = {
+    display: 'block',
+    width: 'fit-content',
+    height: 'fit-content',
+    maxWidth: 'min(92vw, 56rem)',
+    maxHeight: 'min(90vh, 56rem)',
+    padding: '0.5rem',
+    gap: '0',
+  };
+  if (!size) return base;
+  return {
+    ...base,
+    width: `${size.width + PREVIEW_DIALOG_PAD_PX}px`,
+    height: `${size.height + PREVIEW_DIALOG_PAD_PX}px`,
+  };
+});
+
+function applyPreviewNaturalSize(img: HTMLImageElement | null | undefined): void {
+  const width = Number(img?.naturalWidth || 0);
+  const height = Number(img?.naturalHeight || 0);
+  if (width > 0 && height > 0) {
+    previewDialogNatural.value = { width, height };
+  }
+}
+
+function onPreviewDialogImgLoad(ev: Event): void {
+  applyPreviewNaturalSize(ev.target as HTMLImageElement | null);
+}
+
+function onThumbLoad(ev: Event): void {
+  const img = ev.target as HTMLImageElement | null;
+  const width = Number(img?.naturalWidth || 0);
+  const height = Number(img?.naturalHeight || 0);
+  if (width > 0 && height > 0) {
+    thumbNatural.value = { width, height };
+  }
+}
+
+watch(previewDialogOpen, async open => {
+  if (!open) return;
+  await nextTick();
+  // Cached images may skip @load; read natural size once the img is mounted.
+  applyPreviewNaturalSize(previewImgRef.value as HTMLImageElement | null);
+});
+
+const pickErrorRule = {
+  validator: (_r: unknown, _value: unknown, cb: (error?: Error) => void) => {
+    if (pickError.value) return cb(new Error(pickError.value));
+    cb();
+  },
+} as RuleItem;
+
+const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), pickErrorRule]);
 
 function resolveFieldLimits() {
   return resolveImageFieldLimitsFromSources({
@@ -265,83 +375,136 @@ const RASTER_IMAGE_TYPES = new Set([
 ]);
 const RASTER_IMAGE_EXT_RE = /\.(png|jpe?g|gif|webp|bmp|avif)$/i;
 
-function isRasterImage(file: UploadRawFile): boolean {
+function isRasterImage(file: File): boolean {
   const type = String(file.type || '').toLowerCase();
   if (type && type !== 'application/octet-stream') return RASTER_IMAGE_TYPES.has(type);
   return RASTER_IMAGE_EXT_RE.test(String(file.name || ''));
 }
 
-async function validateSelectedImageFile(file: UploadRawFile): Promise<boolean> {
+async function validateSelectedImageFile(file: File): Promise<string | undefined> {
   if (!isRasterImage(file)) {
-    ChoyMessage.error(_t('Only raster image files are supported.'));
-    return false;
+    return _t('Only raster image files are supported.');
   }
-  return reportImageFieldValidation(file, resolveFieldLimits(), message => ChoyMessage.error(message));
+  const result = await validateImageFieldFile(file, resolveFieldLimits());
+  if (result.ok) return undefined;
+  return imageFieldLimitErrorMessage(result);
 }
 
 const toView = (raw: any): ViewType => raw;
 const fromView = (v: ViewType) => v as unknown as V;
-const accept = (props.accept || 'image/*').trim() || 'image/*';
+const accept = computed(() => (props.accept || 'image/*').trim() || 'image/*');
 const uploadButtonText = computed(() => (props.uploadText || _t('Upload image')).trim() || _t('Upload image'));
-const uploadDropText = computed(() => (props.uploadDropText || _t('Drop image here or click to upload')).trim() || _t('Drop image here or click to upload'));
-const uploadConfig = (props.uploadProps || {}) as UploadPassthroughProps;
-const uploadMultiple = uploadConfig.multiple ?? false;
-const uploadDrag = uploadConfig.drag ?? true;
-const uploadShowFileList = uploadConfig.showFileList ?? false;
-const uploadDisabled = uploadConfig.disabled ?? false;
-const replaceButtonText = computed(() => (uploadMultiple ? uploadButtonText.value : _t('Replace image')));
+const uploadDropLabel = computed(
+  () => (props.uploadDropText || _t('Drop image here or click to upload')).trim() || _t('Drop image here or click to upload')
+);
+const replaceButtonText = computed(() => _t('Replace image'));
 
-function isAttachmentObject(raw: unknown): raw is AttachmentLike {
-  return !!raw && typeof raw === 'object' && !Array.isArray(raw);
+function toDisplayText(raw: any): string {
+  return toAttachmentDisplayText(raw, '[image]');
 }
 
-function resolveDescriptor(raw: unknown): AttachmentLike | undefined {
-  if (!isAttachmentObject(raw)) return undefined;
-  const descriptor = raw.descriptor;
-  return descriptor && typeof descriptor === 'object' && !Array.isArray(descriptor) ? (descriptor as AttachmentLike) : undefined;
+function previewAlt(raw: unknown): string {
+  return resolveFileName(raw) || _t('Image preview');
 }
 
-function resolveBindingId(raw: unknown): string | undefined {
-  if (!isAttachmentObject(raw)) return undefined;
-  const descriptor = resolveDescriptor(raw);
-  return normalizeOptionalString(raw.attachmentBindingId ?? raw.bindingId ?? raw.Id ?? descriptor?.id);
+function resolveLinkHref(raw: unknown): string | undefined {
+  return resolveDownloadUrl(raw) ?? resolvePreviewUrl(raw);
 }
 
-function resolveObjectId(raw: unknown): string | undefined {
-  if (!isAttachmentObject(raw)) return undefined;
-  const fromAttachmentObjectId = normalizeOptionalString(raw.attachmentObjectId);
-  if (fromAttachmentObjectId) return fromAttachmentObjectId;
-  return normalizeOptionalString(raw.objectId);
+function previewSrc(raw: unknown): string | undefined {
+  const url = resolvePreviewUrl(raw);
+  if (!url) return undefined;
+  if (brokenPreviewUrls.value.has(url)) return undefined;
+  const authed = authPreviewBySource.value.get(url);
+  if (authed) return authed;
+  return url;
 }
 
-function resolveFileName(raw: unknown): string | undefined {
-  if (typeof raw === 'string') return normalizeOptionalString(raw);
-  if (!isAttachmentObject(raw)) return undefined;
-  const descriptor = resolveDescriptor(raw);
-  return normalizeOptionalString(raw.fileName ?? raw.displayName ?? raw.name ?? raw.originalFileName ?? descriptor?.fileName);
+function markPreviewBroken(url: string): void {
+  const next = new Set(brokenPreviewUrls.value);
+  next.add(url);
+  brokenPreviewUrls.value = next;
 }
 
-function resolveMimeType(raw: unknown): string | undefined {
-  if (!isAttachmentObject(raw)) return undefined;
-  const descriptor = resolveDescriptor(raw);
-  return normalizeOptionalString(raw.mimeType ?? raw.contentType ?? raw.clientContentType ?? raw.proposedContentType ?? descriptor?.mimeType);
+async function onPreviewError(raw: unknown): Promise<void> {
+  const url = resolvePreviewUrl(raw);
+  if (!url) return;
+  if (authPreviewBySource.value.has(url)) {
+    markPreviewBroken(url);
+    return;
+  }
+  if (isInternalDocumentBindingContentUrl(url) && !authPreviewFailed.value.has(url)) {
+    const dataUrl = await fetchAuthenticatedPreviewAsDataUrl(url);
+    if (dataUrl) {
+      const next = new Map(authPreviewBySource.value);
+      next.set(url, dataUrl);
+      authPreviewBySource.value = next;
+      return;
+    }
+    const failed = new Set(authPreviewFailed.value);
+    failed.add(url);
+    authPreviewFailed.value = failed;
+  }
+  markPreviewBroken(url);
 }
 
-function resolveSizeBytes(raw: unknown): number | undefined {
-  if (!isAttachmentObject(raw)) return undefined;
-  const descriptor = resolveDescriptor(raw);
-  const source = raw.sizeBytes ?? raw.size ?? raw.file?.size ?? descriptor?.sizeBytes;
-  const size = typeof source === 'number' ? source : Number(source);
-  return Number.isFinite(size) && size >= 0 ? size : undefined;
+async function openImagePreview(raw: unknown): Promise<void> {
+  const url = resolvePreviewUrl(raw);
+  if (!url) return;
+
+  let src = previewSrc(raw);
+  if (!src && isInternalDocumentBindingContentUrl(url) && !authPreviewFailed.value.has(url)) {
+    const dataUrl = await fetchAuthenticatedPreviewAsDataUrl(url);
+    if (dataUrl) {
+      const next = new Map(authPreviewBySource.value);
+      next.set(url, dataUrl);
+      authPreviewBySource.value = next;
+      src = dataUrl;
+    } else {
+      const failed = new Set(authPreviewFailed.value);
+      failed.add(url);
+      authPreviewFailed.value = failed;
+    }
+  }
+  if (!src) return;
+
+  previewDialogNatural.value = null;
+  previewDialogSrc.value = src;
+  previewDialogAlt.value = previewAlt(raw);
+  previewDialogOpen.value = true;
 }
 
-function revokeBlobPreview(raw: unknown): void {
-  const preview = resolvePreviewUrl(raw);
-  if (!preview || !preview.startsWith('blob:')) return;
-  if (typeof URL === 'undefined' || typeof URL.revokeObjectURL !== 'function') return;
-  try {
-    URL.revokeObjectURL(preview);
-  } catch {}
+function fieldPropKey(): string {
+  return String(binding.prop || props.prop || '');
+}
+
+function setPickError(message: string): void {
+  pickError.value = message;
+  const key = fieldPropKey();
+  const map = fieldErrors?.value;
+  if (map && key) {
+    map.set(key, message);
+  }
+}
+
+function clearPickError(): void {
+  pickError.value = '';
+  const key = fieldPropKey();
+  const map = fieldErrors?.value;
+  if (map && key) {
+    map.delete(key);
+  }
+}
+
+function isUploadBusy(raw: unknown): boolean {
+  return !!formSubmitting?.value && hasPendingLocalFile(raw);
+}
+
+function editAttachmentState(raw: unknown): 'idle' | 'uploading' | 'error' | 'done' {
+  if (isUploadBusy(raw)) return 'uploading';
+  if (pickError.value && !hasAttachment(raw)) return 'error';
+  if (hasAttachment(raw)) return 'done';
+  return 'idle';
 }
 
 async function createLocalPreview(file: Blob): Promise<string | undefined> {
@@ -361,97 +524,15 @@ async function createLocalPreview(file: Blob): Promise<string | undefined> {
   });
 }
 
-function hasAttachment(raw: unknown): boolean {
-  if (raw == null) return false;
-  if (typeof raw === 'string') return !!normalizeOptionalString(raw);
-  if (isAttachmentObject(raw)) {
-    const kind = normalizeOptionalString(raw.kind)?.toLowerCase();
-    if (kind === 'noop' || kind === 'clear') return false;
-    return !!(resolveBindingId(raw) || resolveFileName(raw) || resolveObjectId(raw) || resolvePreviewUrl(raw) || resolveDownloadUrl(raw) || raw.file);
-  }
-  return true;
-}
-
-function shouldShowUploadTrigger(raw: unknown): boolean {
-  if (uploadMultiple) return true;
-  return !hasAttachment(raw);
-}
-
-function shouldUseDragMode(raw: unknown): boolean {
-  return uploadDrag && shouldShowUploadTrigger(raw);
-}
-
-function shouldShowNativeFileList(raw: unknown): boolean {
-  return uploadShowFileList && shouldShowUploadTrigger(raw);
-}
-
-function formatSize(sizeBytes: number | undefined): string | undefined {
-  if (sizeBytes == null) return undefined;
-  if (sizeBytes < 1024) return `${sizeBytes} B`;
-  const units = ['KB', 'MB', 'GB', 'TB'];
-  let value = sizeBytes / 1024;
-  let unitIndex = 0;
-  while (value >= 1024 && unitIndex < units.length - 1) {
-    value /= 1024;
-    unitIndex += 1;
-  }
-  const digits = value >= 10 ? 0 : 1;
-  return `${value.toFixed(digits)} ${units[unitIndex]}`;
-}
-
-function resolveDownloadUrl(raw: unknown): string | undefined {
-  if (!isAttachmentObject(raw)) return undefined;
-  const descriptor = resolveDescriptor(raw);
-  const fromDownloadUrl = normalizeOptionalString(raw.downloadUrl);
-  if (fromDownloadUrl) return fromDownloadUrl;
-  const fromUrl = normalizeOptionalString(raw.url);
-  if (fromUrl) return fromUrl;
-  const fromPreviewUrl = normalizeOptionalString(raw.previewUrl);
-  if (fromPreviewUrl) return fromPreviewUrl;
-  const fromThumbnailUrl = normalizeOptionalString(raw.thumbnailUrl);
-  if (fromThumbnailUrl) return fromThumbnailUrl;
-  const fromDescriptorDownload = normalizeOptionalString(descriptor?.downloadUrl);
-  if (fromDescriptorDownload) return fromDescriptorDownload;
-  return normalizeOptionalString(descriptor?.previewUrl);
-}
-
-function resolvePreviewUrl(raw: unknown): string | undefined {
-  if (!isAttachmentObject(raw)) return undefined;
-  const descriptor = resolveDescriptor(raw);
-  const fromPreviewUrl = normalizeOptionalString(raw.previewUrl);
-  if (fromPreviewUrl) return fromPreviewUrl;
-  const fromUrl = normalizeOptionalString(raw.url);
-  if (fromUrl) return fromUrl;
-  const fromThumbnailUrl = normalizeOptionalString(raw.thumbnailUrl);
-  if (fromThumbnailUrl) return fromThumbnailUrl;
-  const fromDownloadUrl = normalizeOptionalString(raw.downloadUrl);
-  if (fromDownloadUrl) return fromDownloadUrl;
-  const fromDescriptorPreview = normalizeOptionalString(descriptor?.previewUrl);
-  if (fromDescriptorPreview) return fromDescriptorPreview;
-  return normalizeOptionalString(descriptor?.downloadUrl);
-}
-
-function resolveLinkHref(raw: unknown): string | undefined {
-  return resolveDownloadUrl(raw) ?? resolvePreviewUrl(raw);
-}
-
-function isTableRenderMode(renderMode: unknown): boolean {
-  return renderMode === 'table';
-}
-
-function toMetaText(raw: unknown): string | undefined {
-  const mimeType = resolveMimeType(raw);
-  const sizeText = formatSize(resolveSizeBytes(raw));
-  const summary = [mimeType, sizeText].filter(Boolean).join(' · ');
-  return summary || undefined;
-}
-
-async function applySelectedImage(file: UploadRawFile, fieldValue: ValueRefGetter, onFieldChange?: OnFieldChange): Promise<void> {
-  if (!(await validateSelectedImageFile(file))) {
+async function applySelectedImage(file: File, fieldValue: ValueRefGetter, onFieldChange?: OnFieldChange): Promise<void> {
+  const err = await validateSelectedImageFile(file);
+  if (err) {
+    setPickError(err);
     return;
   }
+  clearPickError();
+  thumbNatural.value = null;
   const valueRef = fieldValue();
-  // Local previews are data: URLs; any blob: URL in the value is host-owned and must not be revoked here.
   const previewUrl = await createLocalPreview(file);
   const fileName = normalizeOptionalString(file.name);
   const contentType = normalizeOptionalString(file.type);
@@ -466,6 +547,8 @@ async function applySelectedImage(file: UploadRawFile, fieldValue: ValueRefGette
     clientContentType: contentType,
     previewUrl,
     displayName: fileName,
+    // Image fields are embedded in <img>; bind for inline content disposition.
+    downloadDisposition: 'inline',
   };
 
   if (typeof onFieldChange === 'function') {
@@ -473,61 +556,48 @@ async function applySelectedImage(file: UploadRawFile, fieldValue: ValueRefGette
   }
 }
 
-async function onUploadChange(uploadFile: UploadFile, fieldValue: ValueRefGetter, onFieldChange?: OnFieldChange): Promise<void> {
-  const rawFile = uploadFile.raw;
-  if (!rawFile) return;
-  await applySelectedImage(rawFile, fieldValue, onFieldChange);
-}
-
-function createOnChange(fieldValue: ValueRefGetter, onFieldChange?: OnFieldChange) {
-  return async (uploadFile: UploadFile): Promise<void> => {
-    await onUploadChange(uploadFile, fieldValue, onFieldChange);
-  };
-}
-
-async function onNativeFileChange(ev: Event, fieldValue: ValueRefGetter, onFieldChange?: OnFieldChange): Promise<void> {
-  const input = ev.target as HTMLInputElement;
-  const file = input.files?.[0];
-  if (!file) return;
-  await applySelectedImage(file, fieldValue, onFieldChange);
-  input.value = '';
-}
-
-function onUploadDragOver(ev: DragEvent): void {
-  if (uploadDisabled) return;
-  ev.dataTransfer && (ev.dataTransfer.dropEffect = 'copy');
-}
-
-async function onNativeFileDrop(
-  ev: DragEvent,
-  fieldValue: ValueRefGetter,
-  onFieldChange?: OnFieldChange,
-): Promise<void> {
-  if (uploadDisabled) return;
-  const file = ev.dataTransfer?.files?.[0];
-  if (!file) return;
+async function onPickedFile(file: File, fieldValue: ValueRefGetter, onFieldChange?: OnFieldChange): Promise<void> {
   await applySelectedImage(file, fieldValue, onFieldChange);
 }
 
 async function removeImage(fieldValue: ValueRefGetter, onFieldChange?: OnFieldChange): Promise<void> {
+  clearPickError();
+  thumbNatural.value = null;
   const valueRef = fieldValue();
-  // Do not revoke blob: previews — createLocalPreview uses data: URLs; blob: values are host-owned.
   valueRef.value = null;
   if (typeof onFieldChange === 'function') {
     await onFieldChange();
   }
 }
-
-function toDisplayText(raw: any): string {
-  if (raw == null) return '';
-  const fileName = resolveFileName(raw);
-  if (fileName) return fileName;
-  const bindingId = resolveBindingId(raw);
-  if (bindingId) return bindingId;
-  if (typeof raw === 'object' && raw && !Array.isArray(raw)) {
-    return '[image]';
-  }
-  return String(raw);
-}
 </script>
 
+<!-- Unscoped: DialogContent teleports to body; parent scoped/:deep selectors never match. -->
+<style>
+.choy-image-preview-dialog.choy-image-preview-dialog {
+  display: block !important;
+  width: fit-content !important;
+  height: fit-content !important;
+  max-width: none !important;
+  max-height: none !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  border-width: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.choy-image-preview-dialog__shell {
+  box-sizing: border-box;
+}
+
+.choy-image-preview-dialog__img {
+  display: block;
+  vertical-align: top;
+  object-fit: contain;
+}
+
+/* Keep the kit close control visible over the transparent outer panel. */
+.choy-image-preview-dialog > button {
+  z-index: 2;
+}
+</style>

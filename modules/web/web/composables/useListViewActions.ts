@@ -1,13 +1,14 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { ref, type ComputedRef, type Ref } from 'vue';
+import { inject, nextTick, ref, type ComputedRef, type Ref } from 'vue';
 import type { RouteLocationRaw, Router } from 'vue-router';
 import { ChoyMessage } from './useChoyMessage';
 import { confirmChoyAction } from './confirmChoyAction';
 import type { BaseModel, QueryCondition } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { createListController } from '@/web/web/controllers/listController';
+import { RELATION_PICKER_CLOSE_KEY } from '@/web/web/components/field/relationPickerContext';
 
 type ListController = ReturnType<typeof createListController>;
 
@@ -28,6 +29,8 @@ export type UseListViewActionsOpts<T extends BaseModel> = {
 
 export function useListViewActions<T extends BaseModel>(opts: UseListViewActionsOpts<T>) {
   const deleteLoading = ref(false);
+  // Search-more / Add-line hosts provide this so Create is not trapped under the picker dialog.
+  const closeRelationPicker = inject(RELATION_PICKER_CLOSE_KEY, undefined);
 
   async function handleRefresh() {
     const ok = await opts.emitCancelable('before-refresh');
@@ -49,6 +52,8 @@ export function useListViewActions<T extends BaseModel>(opts: UseListViewActions
   async function handleCreate() {
     if (!opts.resolvedCreateAction.value) return;
     try {
+      closeRelationPicker?.();
+      await nextTick();
       await opts.router.push(opts.resolvedCreateAction.value);
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));

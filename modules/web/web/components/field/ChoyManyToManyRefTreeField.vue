@@ -10,6 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     :label="label"
     :rules="rules"
     :formItemProps="formItemProps"
+    :orientation="orientation"
     :required="required"
     :readonly="readonly"
     :visible="visible"
@@ -17,12 +18,19 @@ SPDX-License-Identifier: Apache-2.0
     :renderMode="renderMode"
     :preserveModeSlot="true"
     :showInlineError="showInlineError"
+    :label-for-control="false"
   >
-    <template #edit>
-      <div class="w-full overflow-auto p-2" :style="treeBoxStyle">
+    <template #edit="{ inputId, labelId, describedBy, invalid }">
+      <div
+        class="w-full overflow-auto"
+        :id="inputId || undefined"
+        :style="treeBoxStyle"
+        :aria-labelledby="labelId || undefined"
+        :aria-describedby="describedBy || undefined"
+        :aria-invalid="invalid ? 'true' : undefined"
+      >
         <RelationTree
           ref="editTreeRef"
-          class="min-h-[120px]"
           node-key="__id"
           :data="treeData"
           :props="treeProps"
@@ -49,10 +57,9 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display>
-      <div class="w-full overflow-auto p-2 [&_.choy-relation-tree__checkbox]:cursor-default" :style="treeBoxStyle" @click.capture="onDisplayTreeClickCapture">
+      <div class="w-full overflow-auto [&_.choy-relation-tree__checkbox]:cursor-default" :style="treeBoxStyle" @click.capture="onDisplayTreeClickCapture">
         <RelationTree
           ref="displayTreeRef"
-          class="min-h-[120px]"
           node-key="__id"
           :data="treeData"
           :props="treeProps"
@@ -84,6 +91,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, ref, watch, inject, type Ref } from 'vue';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
+import { buildRelationConditionSource } from '@/web/web/composables/relationalForField';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { useField } from '@/web/web/composables/useField';
@@ -91,11 +99,12 @@ import type { UseField } from '@/web/web/composables/useField';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import { createTranslate } from '@/web/web/i18n';
 import { normalizeTreeRefId as normalizeRefId } from './treeRefId';
+import { resolveTreeBoxStyle, type TreeBoxHeight } from './treeBoxHeight';
 import RelationTree from '@/web/web/components/internal/RelationTree.vue';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/ManyToManyRefTreeField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyManyToManyRefTreeField' });
 
-defineOptions({ name: 'ManyToManyRefTreeField', inheritAttrs: false });
+defineOptions({ name: 'ChoyManyToManyRefTreeField', inheritAttrs: false });
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 type ConditionLeaf = [field: string, op: string, value: unknown];
@@ -120,6 +129,7 @@ const props = withDefaults(
     label?: string;
     rules?: RuleItem[];
     formItemProps?: Partial<FormItemProps>;
+    orientation?: 'horizontal' | 'vertical';
 
     targetModel?: string;
     childrenField?: string;
@@ -136,7 +146,8 @@ const props = withDefaults(
     defaultExpandAll?: boolean;
     expandOnClickNode?: boolean;
     emptyText?: string;
-    treeHeight?: number | string;
+    /** Fixed px height, `'auto'` (content-sized), or a CSS length string. Default `'auto'`. */
+    treeHeight?: TreeBoxHeight;
 
     condition?: AnyQueryCondition | AnyQueryCondition[];
 
@@ -164,7 +175,7 @@ const props = withDefaults(
     defaultExpandAll: false,
     expandOnClickNode: true,
     emptyText: '',
-    treeHeight: 360,
+    treeHeight: 'auto',
     condition: undefined,
     required: false,
     readonly: false,
@@ -187,7 +198,7 @@ const relationStore = computed<WebModelStore<any> | undefined>(() => {
   try {
     return createStoreByModel(target);
   } catch (e) {
-    console.warn(`[OManyToManyRefTreeField] Failed to create store for model '${target}'`, e);
+    console.warn(`[ChoyManyToManyRefTreeField] Failed to create store for model '${target}'`, e);
     return undefined;
   }
 });
@@ -205,10 +216,7 @@ const treeProps = {
   isLeaf: '__leafKnown',
 } as const;
 
-const treeBoxStyle = computed(() => {
-  const h = typeof props.treeHeight === 'number' ? `${props.treeHeight}px` : String(props.treeHeight || '360px');
-  return { height: h };
-});
+const treeBoxStyle = computed(() => resolveTreeBoxStyle(props.treeHeight));
 
 const labelFields = computed<string[]>(() => {
   const raw = props.labelField;
@@ -367,9 +375,11 @@ async function fetchRawChildrenByParentIds(parentIds: string[]): Promise<Map<str
     And: [['Id', 'in', ids]],
   } as any;
 
+  // Same field condition source as root load so @Field({ condition }) applies to nested Children too.
   const childSearchOptions = {
     fields: parentQueryFields.value as any,
     limit: Math.max(perRequestLimit.value, ids.length),
+    ...buildRelationConditionSource(props.store as any, binding.prop),
   } as any;
 
   const rows = await store.Search(childSearchCondition, childSearchOptions);
@@ -485,6 +495,7 @@ async function loadTreeRows() {
     const rootSearchOptions = {
       fields: baseLoadFields.value as any,
       limit: perRequestLimit.value,
+      ...buildRelationConditionSource(props.store as any, binding.prop),
     } as any;
 
     const rows = await store.Search(effectiveRootCondition.value as any, rootSearchOptions);
@@ -494,15 +505,25 @@ async function loadTreeRows() {
     const roots = responseRows.map(row => toNodeRow(row, 1)).filter(Boolean) as TreeNode[];
     sortNodes(roots);
 
-    if (!props.lazy) {
-      await preloadTreeByLayers(roots);
-    }
-
+    // Paint roots before nested Children preload so a hung/slow child Search
+    // does not leave the tree stuck on Loading… with no nodes.
     if (version !== loadVersion) return;
     treeData.value = roots;
+    loading.value = false;
     syncTreeCheckedKeys();
+
+    if (!props.lazy) {
+      try {
+        await preloadTreeByLayers(roots);
+        if (version !== loadVersion) return;
+        treeData.value = roots.slice();
+        syncTreeCheckedKeys();
+      } catch (preloadErr) {
+        console.warn('[ChoyManyToManyRefTreeField] preload tree children failed', preloadErr);
+      }
+    }
   } catch (e) {
-    console.warn('[OManyToManyRefTreeField] load tree rows failed', e);
+    console.warn('[ChoyManyToManyRefTreeField] load tree rows failed', e);
     treeData.value = [];
   } finally {
     if (version === loadVersion) {
@@ -533,7 +554,7 @@ async function loadTreeNode(node: any, resolve: (data: TreeNode[]) => void): Pro
     resolve(children);
     syncTreeCheckedKeys();
   } catch (e) {
-    console.warn('[OManyToManyRefTreeField] lazy load node children failed', e);
+    console.warn('[ChoyManyToManyRefTreeField] lazy load node children failed', e);
     data.children = [];
     data.__childrenLoaded = true;
     data.__leafKnown = true;

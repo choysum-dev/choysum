@@ -22,6 +22,11 @@ type feUnitStubPaths struct {
 	TipTapStarterKit    string
 	TipTapExtensionLink string
 	DOMPurify           string
+	CodeMirror          string
+	CodeMirrorView      string
+	CodeMirrorState     string
+	CodeMirrorLangJSON  string
+	CodeMirrorLint      string
 	UnovisVue           string
 	UnovisTs            string
 	RekaUI              string
@@ -43,6 +48,16 @@ func feUnitPackageStubPath(importPath string, stubs feUnitStubPaths) (string, bo
 		return stubs.TipTapExtensionLink, true
 	case "dompurify":
 		return stubs.DOMPurify, true
+	case "codemirror":
+		return stubs.CodeMirror, true
+	case "@codemirror/view":
+		return stubs.CodeMirrorView, true
+	case "@codemirror/state":
+		return stubs.CodeMirrorState, true
+	case "@codemirror/lang-json":
+		return stubs.CodeMirrorLangJSON, true
+	case "@codemirror/lint":
+		return stubs.CodeMirrorLint, true
 	case "@unovis/vue":
 		return stubs.UnovisVue, true
 	case "@unovis/ts":

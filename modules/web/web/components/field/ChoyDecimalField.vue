@@ -9,6 +9,7 @@ SPDX-License-Identifier: Apache-2.0
     :label="label"
     :rules="mergedRules"
     :formItemProps="formItemProps"
+    :orientation="orientation"
     :vColumnProps="vColumnProps"
     :toView="toView"
     :fromView="fromView"
@@ -22,16 +23,26 @@ SPDX-License-Identifier: Apache-2.0
   >
     <!-- Form and inline editing: normalize and compare using the current record/row scale -->
     <template #edit="{ fieldValue, record, inputId, describedBy, invalid}">
-      <ODecimalCell :field-value="fieldValue" :options="makeBufferOptions(() => resolveEditScaleFrom(record().value))" :placeholder="placeholder" v-bind="$attrs" :id="inputId"
+      <ChoyDecimalCell :field-value="fieldValue" :options="makeBufferOptions(() => resolveEditScaleFrom(record().value))" :placeholder="placeholder" v-bind="$attrs" :id="inputId"
         :aria-describedby="describedBy || undefined"
         :aria-invalid="invalid ? 'true' : undefined" />
     </template>
 
     <!-- Display: fixed scale pads; free decimals keep significant digits -->
     <template #display="{ fieldValue, record }">
-      <span class="choy-field-display-text choy-field-display-text--numeric truncate whitespace-nowrap text-foreground inline-block max-w-full text-right">{{
-        toDisplayText(resolveDisplayValue(fieldValue().value, record().value), () => resolveFixedScaleFrom(record().value))
-      }}</span>
+      <div
+        v-if="isEmptyDisplay(resolveDisplayValue(fieldValue().value, record().value)) && showFormEmptyPlaceholder"
+        class="choy-decimal-display choy-decimal-display--empty text-sm text-muted-foreground text-end"
+      >
+        {{ emptyDisplayText }}
+      </div>
+      <span
+        v-else
+        class="choy-field-display-text choy-field-display-text--numeric truncate whitespace-nowrap text-foreground inline-block max-w-full text-end"
+        >{{
+          toDisplayText(resolveDisplayValue(fieldValue().value, record().value), () => resolveFixedScaleFrom(record().value))
+        }}</span
+      >
     </template>
   </ChoyFieldBase>
 </template>
@@ -45,15 +56,21 @@ import { useField } from '@/web/web/composables/useField';
 import type { UseField, AggProp } from '@/web/web/composables/useField';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
+import Input from '../vendor/ui/input/Input.vue';
 import Decimal, { isDecimal, toDecimalRounding, type DecimalRound } from '@/core/utils/decimal';
 import { createTranslate } from '@/web/web/i18n';
 import { useI18nStore, formatFixedDecimalString } from '@/web/web/stores/i18nStore';
 import { formatDecimalDisplayText, resolveDecimalEditScale, resolveDecimalCellScale } from './decimalHelpers';
+import {
+  isFormEmptyPlaceholderMode,
+  resolveNumericInputEl,
+  resyncControlledNumericRaw,
+} from './numericFieldHelpers';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/DecimalField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyDecimalField' });
 
 
-defineOptions({ name: 'DecimalField', inheritAttrs: false });
+defineOptions({ name: 'ChoyDecimalField', inheritAttrs: false });
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 
@@ -78,6 +95,7 @@ const props = withDefaults(
     cellVisible?: FieldStateExpr<T, V>;
     placeholder?: string;
     formItemProps?: Partial<FormItemProps>;
+    orientation?: 'horizontal' | 'vertical';
     vColumnProps?: {
       width?: number | string;
       minWidth?: number;
@@ -115,6 +133,11 @@ const props = withDefaults(
 
 // Binding, passing agg through to useField for aggregate registration
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
+
+const showFormEmptyPlaceholder = computed(() =>
+  isFormEmptyPlaceholderMode(props.renderMode, binding.env?.isForm)
+);
+const emptyDisplayText = computed(() => '');
 
 /* ================== Dynamic scale registration (sibling field) ================== */
 const scaleFieldName = computed<string | undefined>(() => (binding.meta as any)?.scaleField as string | undefined);
@@ -290,6 +313,10 @@ const fromView = (v: ViewType) => {
 };
 
 // Display: pad only when a fixed scale is declared; otherwise significant digits.
+function isEmptyDisplay(v: any): boolean {
+  return v == null || v === '';
+}
+
 function toDisplayText(v: any, getFixedScale: () => number | undefined) {
   if (v == null || v === '') return '';
   const d = asDecimal(v);
@@ -327,8 +354,8 @@ function makeBufferOptions(getScale: () => number) {
 }
 
 /* ================== Editable cell (uses dynamic scale) ================== */
-const ODecimalCell = defineComponent({
-  name: 'ODecimalCell',
+const ChoyDecimalCell = defineComponent({
+  name: 'ChoyDecimalCell',
   inheritAttrs: false,
   props: {
     fieldValue: { type: Function, required: true },
@@ -344,6 +371,7 @@ const ODecimalCell = defineComponent({
     });
 
     const editingRaw = ref<string | null>(null);
+    const inputHost = ref<unknown>(null);
     watch(
       () => modelRef.value,
       nv => {
@@ -376,7 +404,10 @@ const ODecimalCell = defineComponent({
         buffer.setEditing(null);
         return;
       }
-      if (!/^[-]?\d*(\.\d*)?$/.test(raw)) return;
+      if (!/^[-]?\d*(\.\d*)?$/.test(raw)) {
+        resyncControlledNumericRaw(editingRaw, resolveNumericInputEl(inputHost.value));
+        return;
+      }
       editingRaw.value = raw;
       if (isIntermediateInput(raw)) return;
       const d = parseStrict(raw, currentScale());
@@ -409,13 +440,14 @@ const ODecimalCell = defineComponent({
     }
 
     return () =>
-      h('input', {
+      h(Input, {
         ...attrs,
-        class: 'choy-input choy-decimal-input w-full text-right',
-        value: editingRaw.value ?? '',
+        ref: inputHost,
+        class: 'choy-decimal-input w-full text-end',
+        modelValue: editingRaw.value ?? '',
         placeholder: p.placeholder,
         inputmode: 'decimal',
-        onInput: (e: Event) => onInput((e.target as HTMLInputElement).value),
+        'onUpdate:modelValue': (v: string) => onInput(v ?? ''),
         onBlur,
       });
   },

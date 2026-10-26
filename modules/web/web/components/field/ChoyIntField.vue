@@ -9,6 +9,7 @@ SPDX-License-Identifier: Apache-2.0
     :label="label"
     :rules="mergedRules"
     :formItemProps="formItemProps"
+    :orientation="orientation"
     :vColumnProps="vColumnProps"
     :toView="toView"
     :fromView="fromView"
@@ -21,12 +22,22 @@ SPDX-License-Identifier: Apache-2.0
     v-bind="$attrs"
   >
     <template #edit="{ fieldValue, inputId, describedBy, invalid}">
-      <OIntCell :field-value="fieldValue" :options="bufferOptions" :placeholder="placeholder" :nullable="nullable" :min="min" :max="max" v-bind="$attrs" :id="inputId"
+      <ChoyIntCell :field-value="fieldValue" :options="bufferOptions" :placeholder="placeholder" :nullable="nullable" :min="min" :max="max" v-bind="$attrs" :id="inputId"
         :aria-describedby="describedBy || undefined"
         :aria-invalid="invalid ? 'true' : undefined" />
     </template>
     <template #display="{ fieldValue }">
-      <span class="choy-field-display-text inline-block max-w-full truncate whitespace-nowrap text-foreground">{{ fieldValue().value == null ? '' : fieldValue().value }}</span>
+      <div
+        v-if="isEmptyDisplay(fieldValue().value) && showFormEmptyPlaceholder"
+        class="choy-int-display choy-int-display--empty text-sm text-muted-foreground text-end"
+      >
+        {{ emptyDisplayText }}
+      </div>
+      <span
+        v-else
+        class="choy-field-display-text choy-field-display-text--numeric inline-block max-w-full truncate whitespace-nowrap text-foreground text-end"
+        >{{ toDisplayText(fieldValue().value) }}</span
+      >
     </template>
   </ChoyFieldBase>
 </template>
@@ -41,9 +52,17 @@ import type { UseField } from '@/web/web/composables/useField';
 import type { AggProp } from '@/web/web/composables/useField';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
+import Input from '../vendor/ui/input/Input.vue';
 import { createTranslate } from '@/web/web/i18n';
+import { useI18nStore } from '@/web/web/stores/i18nStore';
+import {
+  formatGroupedNumericString,
+  isFormEmptyPlaceholderMode,
+  resolveNumericInputEl,
+  resyncControlledNumericRaw,
+} from './numericFieldHelpers';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/IntField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyIntField' });
 
 defineOptions({ name: 'ChoyIntField' });
 
@@ -72,6 +91,7 @@ const props = withDefaults(
     cellVisible?: FieldStateExpr<T, V>;
 
     formItemProps?: Partial<FormItemProps>;
+    orientation?: 'horizontal' | 'vertical';
     vColumnProps?: Record<string, any>;
 
     bufferStrategy?: CommitStrategy;
@@ -110,12 +130,30 @@ const binding = (props.binding ??
     agg: props.agg,
   })) as UseField<T, V>;
 
+const showFormEmptyPlaceholder = computed(() =>
+  isFormEmptyPlaceholderMode(props.renderMode, binding.env?.isForm)
+);
+const emptyDisplayText = computed(() => '');
+
 const toView = (raw: any): ViewType => {
   if (raw == null || raw === '') return null;
   const n = Number(raw);
   return Number.isFinite(n) ? n : null;
 };
 const fromView = (v: ViewType) => v as unknown as V;
+
+function toDisplayText(v: any): string {
+  if (v == null || v === '') return '';
+  const text = String(v);
+  try {
+    return formatGroupedNumericString(text, useI18nStore().currentLocale?.numberFormat);
+  } catch {
+    return text;
+  }
+}
+function isEmptyDisplay(v: any): boolean {
+  return v == null || v === '';
+}
 
 function parseStrict(s: string): number | null {
   if (!/^[-]?\d+$/.test(s)) return null;
@@ -142,8 +180,9 @@ const bufferOptions = computed(() => ({
   equals: (a: FieldType, b: FieldType) => a === b,
 }));
 
-const OIntCell = defineComponent({
-  name: 'OIntCell',
+const ChoyIntCell = defineComponent({
+  name: 'ChoyIntCell',
+  inheritAttrs: false,
   props: {
     fieldValue: { type: Function, required: true },
     options: { type: Object, required: true },
@@ -161,6 +200,7 @@ const OIntCell = defineComponent({
     });
 
     const editingRaw = ref<string | null>(null);
+    const inputHost = ref<unknown>(null);
     watch(
       () => modelRef.value,
       nv => {
@@ -179,7 +219,10 @@ const OIntCell = defineComponent({
     );
 
     function onInput(raw: string) {
-      if (!/^[-]?\d*$/.test(raw)) return;
+      if (!/^[-]?\d*$/.test(raw)) {
+        resyncControlledNumericRaw(editingRaw, resolveNumericInputEl(inputHost.value));
+        return;
+      }
       editingRaw.value = raw;
       if (raw === '' || raw === '-') return;
       const n = parseStrict(raw);
@@ -199,14 +242,15 @@ const OIntCell = defineComponent({
     }
 
     return () =>
-      h('input', {
+      h(Input, {
         ...attrs,
-        class: 'choy-input choy-int-input w-full',
+        ref: inputHost,
+        class: 'choy-int-input w-full text-end',
         type: 'text',
-        value: editingRaw.value ?? '',
+        modelValue: editingRaw.value ?? '',
         placeholder: p.placeholder,
         inputmode: 'numeric',
-        onInput: (e: Event) => onInput((e.target as HTMLInputElement).value),
+        'onUpdate:modelValue': (v: string) => onInput(v ?? ''),
         onBlur,
       });
   },

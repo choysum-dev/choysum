@@ -37,7 +37,6 @@ func uploadHandler(w http.ResponseWriter, r *http.Request, runtimeScope scope.Sc
 		return
 	}
 	rpcCtx := outgoingContextForAuthRPC(r.Context())
-	principal := buildUploadPrincipal(identity)
 	contentType := normalizeContentType(r.Header.Get("Content-Type"))
 
 	requestMeta := map[string]any{}
@@ -48,7 +47,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request, runtimeScope scope.Sc
 		requestMeta["contentLength"] = r.ContentLength
 	}
 
-	authorizeResult, err := authorizeUploadPut(rpcCtx, uploadID, principal, requestMeta)
+	authorizeResult, err := authorizeUploadPut(rpcCtx, uploadID, requestMeta)
 	if err != nil {
 		writeDocumentRPCError(r.Context(), runtimeScope, w, err)
 		return
@@ -83,7 +82,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request, runtimeScope scope.Sc
 		return
 	}
 
-	if err := commitUploadPut(rpcCtx, uploadID, principal, receipt); err != nil {
+	if err := commitUploadPut(rpcCtx, uploadID, receipt); err != nil {
 		writeDocumentRPCError(r.Context(), runtimeScope, w, err)
 		return
 	}
@@ -91,29 +90,10 @@ func uploadHandler(w http.ResponseWriter, r *http.Request, runtimeScope scope.Sc
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func buildUploadPrincipal(identity auth.Identity) map[string]any {
-	activeCompanyID := activeCompanyIDFromIdentity(identity)
-	principal := map[string]any{
-		"userId":          strings.TrimSpace(identity.GetUserID()),
-		"activeCompanyId": activeCompanyID,
-	}
-
-	companyIDs := enabledCompanyIDsFromIdentity(identity, activeCompanyID)
-	if len(companyIDs) > 0 {
-		enabled := make([]any, 0, len(companyIDs))
-		for _, companyID := range companyIDs {
-			enabled = append(enabled, companyID)
-		}
-		principal["enabledCompanyIds"] = enabled
-	}
-
-	return principal
-}
-
-func authorizeUploadPut(ctx context.Context, uploadID string, principal map[string]any, requestMeta map[string]any) (authorizeUploadPutResult, error) {
+func authorizeUploadPut(ctx context.Context, uploadID string, requestMeta map[string]any) (authorizeUploadPutResult, error) {
+	// Principal comes from the authenticated session (outgoing auth context), not the wire body.
 	req := map[string]any{
-		"uploadId":  strings.TrimSpace(uploadID),
-		"principal": principal,
+		"uploadId": strings.TrimSpace(uploadID),
 	}
 	if len(requestMeta) > 0 {
 		req["requestMeta"] = requestMeta
@@ -145,7 +125,7 @@ func authorizeUploadPut(ctx context.Context, uploadID string, principal map[stri
 	}, nil
 }
 
-func commitUploadPut(ctx context.Context, uploadID string, principal map[string]any, receipt payloadPutReceipt) error {
+func commitUploadPut(ctx context.Context, uploadID string, receipt payloadPutReceipt) error {
 	payloadReceipt := map[string]any{
 		"payloadId":      receipt.payloadID,
 		"sizeBytes":      receipt.sizeBytes,
@@ -157,7 +137,6 @@ func commitUploadPut(ctx context.Context, uploadID string, principal map[string]
 
 	req := map[string]any{
 		"uploadId":       strings.TrimSpace(uploadID),
-		"principal":      principal,
 		"payloadReceipt": payloadReceipt,
 	}
 

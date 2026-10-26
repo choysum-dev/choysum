@@ -5,12 +5,21 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { cn, type ClassValue } from '../../../../lib/utils';
+import { cn, controlFocusRing, type ClassValue } from '../../../../lib/utils';
 
-const props = defineProps<{
-  class?: ClassValue;
-  modelValue?: string;
-}>();
+defineOptions({ inheritAttrs: false });
+
+const props = withDefaults(
+  defineProps<{
+    class?: ClassValue;
+    modelValue?: string;
+    /** Native input type (text, password, email, url, …). */
+    type?: string;
+  }>(),
+  {
+    type: 'text',
+  },
+);
 
 const emit = defineEmits<{
   'update:modelValue': [value: string];
@@ -19,8 +28,8 @@ const emit = defineEmits<{
 const classes = computed(() =>
   cn(
     'flex h-control w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-sm text-foreground shadow-xs',
-    'placeholder:text-muted-foreground outline-none transition-[color,box-shadow]',
-    'focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50',
+    'placeholder:text-muted-foreground',
+    controlFocusRing,
     'aria-invalid:border-destructive aria-invalid:ring-destructive/20',
     'disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50',
     props.class,
@@ -36,6 +45,7 @@ function onInput(event: Event): void {
 <template>
   <input
     data-slot="input"
+    :type="type"
     :class="classes"
     :value="modelValue"
     v-bind="$attrs"
