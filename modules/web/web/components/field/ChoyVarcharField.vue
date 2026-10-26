@@ -156,7 +156,7 @@ const props = withDefaults(
     trimOnBlur: 'none',
     placeholder: '',
     showWordLimit: true,
-    // Leave widget unset so `type="password"` (auth forms) is not masked by a 'text' default.
+    widget: 'text',
     copyable: false,
 
     required: false,
@@ -186,9 +186,17 @@ const shouldTrimTrailing = computed(() => {
 });
 
 const inputType = computed(() => {
-  // Prefer explicit widget; otherwise honor type= (Login/Register); default text.
-  const w = props.widget ?? props.type ?? 'text';
-  if (w === 'password' || w === 'email' || w === 'url') return w;
+  const widget = props.widget ?? 'text';
+  const typeAlias = props.type;
+  // Non-text type= (auth forms) must win over the widget default 'text'.
+  // Explicit widget=password|email|url still wins when set.
+  if (
+    (typeAlias === 'password' || typeAlias === 'email' || typeAlias === 'url') &&
+    widget === 'text'
+  ) {
+    return typeAlias;
+  }
+  if (widget === 'password' || widget === 'email' || widget === 'url') return widget;
   return 'text';
 });
 
