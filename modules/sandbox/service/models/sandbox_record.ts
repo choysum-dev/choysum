@@ -84,6 +84,9 @@ export default class SandboxRecord extends BaseModel {
     type: 'int',
     default: () => 0,
     string: _lt('Int Value', { scope: 'sandbox.model.SandboxRecord.fields' }),
+    help: _lt('Onchange: negative values raise a field error (inline; can block save).', {
+      scope: 'sandbox.model.SandboxRecord.fields',
+    }),
   })
   IntValue?: number;
 
@@ -179,7 +182,7 @@ export default class SandboxRecord extends BaseModel {
     default: () => 'draft',
     index: true,
     string: _lt('State', { scope: 'sandbox.model.SandboxRecord.fields' }),
-    help: _lt('Onchange: copies into Progress and narrows Progress selection options.', {
+    help: _lt('Onchange: copies into Progress and disables invalid Progress options.', {
       scope: 'sandbox.model.SandboxRecord.fields',
     }),
   })
@@ -432,21 +435,21 @@ export default class SandboxRecord extends BaseModel {
   }
 
   /**
-   * Mirror State into Progress and filter Progress options by workflow stage.
+   * Mirror State into Progress; keep full Progress options and disable invalid clicks.
    */
   @Onchange<SandboxRecord>('State')
   OnchangeState() {
     const state = String(this.State || 'draft');
     this.Progress = state;
 
-    let progressSelection: string[] = [...RECORD_STATE_VALUES];
+    const all = [...RECORD_STATE_VALUES];
+    let disabled: string[] = [];
     let messages: Array<{ level: 'warn'; message: string }> | undefined;
     if (state === 'draft') {
-      progressSelection = ['draft', 'open'];
-    } else if (state === 'open') {
-      progressSelection = ['draft', 'open', 'done'];
+      // Draft cannot jump to terminal done in one click.
+      disabled = ['done'];
     } else if (state === 'done') {
-      progressSelection = ['done'];
+      disabled = all.filter(v => v !== 'done');
       messages = [
         {
           level: 'warn',
@@ -456,7 +459,13 @@ export default class SandboxRecord extends BaseModel {
     }
 
     return {
-      selection: [{ field: 'Progress', selection: progressSelection }],
+      selection: [
+        {
+          field: 'Progress',
+          selection: all,
+          ...(disabled.length ? { disabled } : {}),
+        },
+      ],
       ...(messages ? { messages } : {}),
     };
   }
@@ -491,6 +500,25 @@ export default class SandboxRecord extends BaseModel {
       return;
     }
     this.CompanyNote = `${CATEGORY_NOTE_PREFIX}${name}`;
+  }
+
+  /**
+   * Field-scoped hard error for kitchen-sink (inline fieldErrors; skips value patch).
+   */
+  @Onchange<SandboxRecord>('IntValue')
+  OnchangeIntValue() {
+    const n = Number(this.IntValue);
+    if (Number.isFinite(n) && n < 0) {
+      return {
+        messages: [
+          {
+            level: 'error' as const,
+            field: 'IntValue' as const,
+            message: 'Int Value must be zero or positive.',
+          },
+        ],
+      };
+    }
   }
 }
 

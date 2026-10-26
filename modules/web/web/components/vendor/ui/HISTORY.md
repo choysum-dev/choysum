@@ -36,6 +36,20 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
+### 2026-10-26 — Sonner richColors level tokens
+
+- **Why kit (not App-only CSS):** Toaster already binds `--normal-*` to theme
+  tokens in this SFC; level vars (`--success|info|warning|error-*`) belong on
+  the same host so vue-sonner `richColors` paints with choy tokens after a
+  refresh. Product host (`App.vue`) still opts in with `rich-colors` /
+  `close-button` (kit defaults mirror that so other mounts stay consistent).
+- **Sonner.vue:** default `richColors` / `closeButton` / `position=bottom-right`;
+  style map for level CSS vars; `choy-sonner` class + unscoped rules so
+  `[data-type]` chrome uses `--choy-color-*` / `--destructive` (sonner inline
+  richColors styles need override).
+- **Do not regress:** keep level token binding on the kit Toaster host; do not
+  bake unrelated product toast copy/layout into this SFC.
+
 ### 2026-10-20 — Combobox trigger / viewport split + item check
 
 - **Why kit (not Choy* only):** product hosts cannot import `reka-ui` directly;

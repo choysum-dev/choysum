@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <div class="choy-app h-full w-full overflow-hidden bg-background text-foreground">
     <router-view />
-    <Toaster />
+    <Toaster rich-colors close-button />
     <ChoyConfirmHost />
   </div>
 </template>

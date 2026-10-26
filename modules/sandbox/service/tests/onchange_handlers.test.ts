@@ -39,7 +39,8 @@ test('SandboxRecord Onchange IsActive=false widens domain and warns', async () =
   expect(result.messages?.some(m => String(m.message || '').includes('Inactive'))).toBe(true);
 });
 
-test('SandboxRecord Onchange State syncs Progress and narrows Progress selection', async () => {
+test('SandboxRecord Onchange State syncs Progress and disables invalid options', async () => {
+  const all = ['draft', 'open', 'done'];
   const draft = await SandboxRecord.Onchange(
     {
       Id: 'onchange-state-draft',
@@ -49,21 +50,23 @@ test('SandboxRecord Onchange State syncs Progress and narrows Progress selection
     ['State'],
   );
   expect(draft.value?.Progress).toBe('draft');
-  expect(draft.selection).toEqual([{ field: 'Progress', selection: ['draft', 'open'] }]);
+  expect(draft.selection).toEqual([{ field: 'Progress', selection: all, disabled: ['done'] }]);
 
   const open = await SandboxRecord.Onchange(
     { Id: 'onchange-state-open', State: 'open', Progress: 'draft' },
     ['State'],
   );
   expect(open.value?.Progress).toBe('open');
-  expect(open.selection).toEqual([{ field: 'Progress', selection: ['draft', 'open', 'done'] }]);
+  expect(open.selection).toEqual([{ field: 'Progress', selection: all }]);
 
   const done = await SandboxRecord.Onchange(
     { Id: 'onchange-state-done', State: 'done', Progress: 'open' },
     ['State'],
   );
   expect(done.value?.Progress).toBe('done');
-  expect(done.selection).toEqual([{ field: 'Progress', selection: ['done'] }]);
+  expect(done.selection).toEqual([
+    { field: 'Progress', selection: all, disabled: ['draft', 'open'] },
+  ]);
   expect(done.messages?.some(m => String(m.message || '').includes('done'))).toBe(true);
 });
 
@@ -131,7 +134,7 @@ test('SandboxRecord Onchange CategoryId writes CompanyNote from Name', async () 
   expect(keepHandEdit.value?.CompanyNote).toBeUndefined();
 });
 
-test('SandboxLine Onchange Quantity clamps below 1 and above 999', async () => {
+test('SandboxLine Onchange Quantity clamps silently without messages', async () => {
   const low = await SandboxLine.Onchange(
     {
       Id: 'onchange-qty-low',
@@ -143,7 +146,7 @@ test('SandboxLine Onchange Quantity clamps below 1 and above 999', async () => {
     ['Quantity'],
   );
   expect(low.value?.Quantity).toBe(1);
-  expect((low.messages || []).length > 0).toBe(true);
+  expect(low.messages || []).toEqual([]);
 
   const high = await SandboxLine.Onchange(
     {
@@ -156,7 +159,7 @@ test('SandboxLine Onchange Quantity clamps below 1 and above 999', async () => {
     ['Quantity'],
   );
   expect(high.value?.Quantity).toBe(999);
-  expect((high.messages || []).length > 0).toBe(true);
+  expect(high.messages || []).toEqual([]);
 
   const ok = await SandboxLine.Onchange(
     {
@@ -167,6 +170,29 @@ test('SandboxLine Onchange Quantity clamps below 1 and above 999', async () => {
       Sequence: 10,
     },
     ['Quantity'],
+  );
+  expect(ok.messages || []).toEqual([]);
+});
+
+test('SandboxRecord Onchange IntValue negative returns field-scoped error', async () => {
+  const bad = await SandboxRecord.Onchange(
+    {
+      Id: 'onchange-int-neg',
+      IntValue: -3,
+    },
+    ['IntValue'],
+  );
+  expect(bad.messages?.length).toBe(1);
+  expect(bad.messages?.[0]?.level).toBe('error');
+  expect(bad.messages?.[0]?.field).toBe('IntValue');
+  expect(String(bad.messages?.[0]?.message || '')).toContain('positive');
+
+  const ok = await SandboxRecord.Onchange(
+    {
+      Id: 'onchange-int-ok',
+      IntValue: 2,
+    },
+    ['IntValue'],
   );
   expect(ok.messages || []).toEqual([]);
 });

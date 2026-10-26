@@ -37,7 +37,7 @@ export default class SandboxLine extends BaseModel {
     notNull: true,
     default: () => 1,
     string: _lt('Quantity', { scope: 'sandbox.model.SandboxLine.fields' }),
-    help: _lt('Onchange clamps Quantity to 1…999 and warns when adjusted.', {
+    help: _lt('Onchange silently clamps Quantity to 1…999 (no toast).', {
       scope: 'sandbox.model.SandboxLine.fields',
     }),
   })
@@ -64,7 +64,7 @@ export default class SandboxLine extends BaseModel {
   Sequence: number;
 
   /**
-   * Keep Quantity in 1…999 for kitchen-sink onchange demos.
+   * Silently clamp Quantity to 1…999 (correction without notification).
    */
   @Onchange<SandboxLine>('Quantity')
   OnchangeQuantity() {
@@ -72,26 +72,11 @@ export default class SandboxLine extends BaseModel {
     const qty = Number.isFinite(raw) ? Math.trunc(raw) : 1;
     if (qty < 1) {
       this.Quantity = 1;
-      return {
-        messages: [
-          {
-            level: 'warn' as const,
-            // Plain string: onchange engine only keeps string messages.
-            message: 'Quantity must be at least 1; reset to 1.',
-          },
-        ],
-      };
+      return;
     }
     if (qty > 999) {
       this.Quantity = 999;
-      return {
-        messages: [
-          {
-            level: 'warn' as const,
-            message: 'Quantity capped at 999.',
-          },
-        ],
-      };
+      return;
     }
     this.Quantity = qty;
   }
