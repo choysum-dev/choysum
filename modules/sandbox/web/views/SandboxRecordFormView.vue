@@ -34,7 +34,8 @@ SPDX-License-Identifier: Apache-2.0
         </aside>
       </div>
 
-      <ChoySection :title="_t('Identity')">
+      <!-- divided for title trailing rule; mt-0 so tip mb-8 is not doubled. -->
+      <ChoySection :title="_t('Identity')" divided class="mt-0">
         <ChoyGrid :cols="12" gap="lg">
           <ChoyCol :span="3">
             <ChoyCharField :store="store" prop="NameChar" :rules="requiredRules" />
