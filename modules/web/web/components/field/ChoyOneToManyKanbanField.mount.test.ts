@@ -93,6 +93,25 @@ describe('ChoyOneToManyKanbanField mount coverage', () => {
     restoreSfc(ChoyDialogTitle as any);
   });
 
+  test('long edit board marks virtualized when card count hits auto threshold', async () => {
+    installStubs('edit');
+    const items = Array.from({ length: 40 }, (_, i) => ({
+      Id: String(i + 1),
+      Name: `Card ${i + 1}`,
+    }));
+    const { binding } = makeBinding({ items });
+    const m = mountApp(ChoyOneToManyKanbanField as any, {
+      props: { binding, cardTitleField: 'Name', cardSubtitleField: '' },
+    });
+    await nextTick();
+    const board = m.q('[data-testid="choy-o2m-kanban-board"]');
+    expect(board).toBeTruthy();
+    expect(board?.getAttribute('data-virtualized')).toBe('true');
+    expect(m.q('[data-testid="choy-o2m-kanban-virtual-spacer"]')).toBeTruthy();
+    expect(m.q('[data-testid="choy-o2m-kanban-add"]')).toBeTruthy();
+    m.unmount();
+  });
+
   test('edit board mounts cards and add tile without empty No-data body', async () => {
     installStubs('edit');
     const { binding } = makeBinding({ items: [{ Id: '1', Name: 'Alpha' }] });

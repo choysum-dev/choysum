@@ -233,6 +233,8 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyGrid>
       </ChoySection>
 
+      <SandboxLinesVirtTools :store="store" />
+
       <ChoyTabs v-model="linesTab" class="mt-8">
         <!-- force-mount: both panes register Lines.* so save returnFields stay complete. -->
         <ChoyTab :label="_t('Lines (table)')" value="lines-table" force-mount>
@@ -286,6 +288,7 @@ import CurrencyListView from '@/base/web/views/CurrencyListView.vue';
 import SandboxCategoryListView from './SandboxCategoryListView.vue';
 import SandboxTagListView from './SandboxTagListView.vue';
 import SandboxLineFormView from './SandboxLineFormView.vue';
+import SandboxLinesVirtTools from './SandboxLinesVirtTools.vue';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';

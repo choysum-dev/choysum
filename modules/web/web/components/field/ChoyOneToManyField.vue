@@ -45,7 +45,7 @@ SPDX-License-Identifier: Apache-2.0
             :table-height="tableHeightEdit"
             :store="store"
             :base-index="1"
-            :virtualize="false"
+            :virtualize="'auto'"
             :frameless="true"
           >
             <ChoyTableColumn
@@ -106,7 +106,7 @@ SPDX-License-Identifier: Apache-2.0
             :table-height="tableHeightDisplay"
             :store="store"
             :base-index="1"
-            :virtualize="false"
+            :virtualize="'auto'"
             :frameless="true"
           >
             <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'end', width: 44 }" />

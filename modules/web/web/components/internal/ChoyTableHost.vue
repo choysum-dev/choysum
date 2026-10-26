@@ -41,7 +41,7 @@ SPDX-License-Identifier: Apache-2.0
         :row-id="resolveRowId"
         :height="dataTableHeight"
         :estimate-size="rowHeight"
-        :virtualize="virtualize"
+        :virtualize="isVirtualized"
         :enable-row-selection="false"
         :row-selection="selectedRowIds"
         :enable-sorting="true"
@@ -92,7 +92,12 @@ import { cn, type ClassValue } from '@/web/web/lib/utils';
 import { CHOY_LIST_HEADER_HEIGHT, CHOY_LIST_ROW_HEIGHT } from '@/web/web/composables/listDensity';
 import DataTable from './DataTable.vue';
 import { columnsToColumnDefs } from './columnAdapter';
-import type { DataTableRowId } from './dataTableHelpers';
+import {
+  embeddedTableWantsVirtualLayout,
+  resolveEmbeddedTableVirtualize,
+  type DataTableRowId,
+  type EmbeddedTableVirtualizeMode,
+} from './dataTableHelpers';
 import type { RowEventHandlerParams } from '@/web/web/components/view/listViewTypes';
 
 const { _t } = createTranslate('web', { scope: 'web/components/internal/ChoyTableHost' });
@@ -107,8 +112,12 @@ const props = withDefaults(
     headerHeight?: number;
     tableHeight?: number;
     footerHeight?: number;
-    /** When false, skip TanStack virtualizer (embedded M2M/O2M form tables). */
-    virtualize?: boolean;
+    /**
+     * `true` — always virtualize when rows exist (List).
+     * `false` — content-sized, no virtualizer.
+     * `auto` — virtualize only when `tableHeight` is capped (embedded O2M/M2M).
+     */
+    virtualize?: EmbeddedTableVirtualizeMode;
     /**
      * When true, drop DataTable's own border/radius so an outer host frame
      * (e.g. M2M edit chrome) owns the outline without double borders.
@@ -185,11 +194,28 @@ const columnsToUse = computed<Column[]>(() => {
 
 const columnDefs = computed(() => columnsToColumnDefs(columnsToUse.value));
 
+/** Fixed scrollport layout (List, or capped embedded `auto`). */
+const wantsVirtualLayout = computed(() =>
+  embeddedTableWantsVirtualLayout({
+    virtualize: props.virtualize,
+    tableHeight: props.tableHeight,
+  }),
+);
+
+/** Resolved virtualize flag passed to DataTable (handles `auto` for embeds). */
+const isVirtualized = computed(() =>
+  resolveEmbeddedTableVirtualize({
+    virtualize: props.virtualize,
+    tableHeight: props.tableHeight,
+    rowCount: rowsArray.value.length,
+  }),
+);
+
 /**
  * Non-virtual embedded tables size to their rows (maxHeight caps long lists).
  * Fixed-height + h-full DataTable is what created one-row scrollbars.
  */
-const sizeToContent = computed(() => props.virtualize === false);
+const sizeToContent = computed(() => !wantsVirtualLayout.value);
 
 const hostRootStyle = computed(() => {
   const total = props.tableHeight;
@@ -223,7 +249,7 @@ const bodyHeight = computed(() => {
   const header = props.headerHeight ?? CHOY_LIST_HEADER_HEIGHT;
   const footer = Math.max(0, props.footerHeight ?? 0);
   const body = Math.max(0, total - header - footer);
-  if (props.virtualize === false) return body;
+  if (!wantsVirtualLayout.value) return body;
   return Math.max(80, body);
 });
 

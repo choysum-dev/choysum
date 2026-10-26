@@ -41,15 +41,16 @@ SPDX-License-Identifier: Apache-2.0
             </slot>
           </div>
 
-          <div
-            class="grid w-full min-w-0 overflow-auto p-0.5 [grid-template-columns:repeat(auto-fill,minmax(var(--kanban-min-card-width),1fr))] gap-[var(--kanban-gap)]"
-            data-testid="choy-o2m-kanban-board"
-            :style="boardStyle"
+          <ChoyO2MKanbanVirtualBoard
+            :items="kanbanItems"
+            :min-card-width="minCardWidth"
+            :gap="gap"
+            :max-height="maxHeight"
+            :virtualize="boardVirtualize"
+            :item-key="kanbanItemKey"
           >
-            <template v-if="getItems().length > 0">
+            <template #card="{ item, index }">
               <div
-                v-for="(item, index) in getItems()"
-                :key="String(readRowKeySeed(item) ?? index)"
                 class="choy-o2m-kanban-card group/card relative cursor-pointer rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40"
                 :class="{ 'opacity-60': sortableEnabled && kanbanReorder.draggingIndex.value === index }"
                 data-testid="choy-o2m-kanban-card"
@@ -68,7 +69,7 @@ SPDX-License-Identifier: Apache-2.0
                   data-testid="choy-o2m-kanban-handle"
                   draggable="true"
                   @click.stop
-                  @dragstart="kanbanReorder.onDragStart(index, $event)"
+                  @dragstart="onKanbanDragStart(index, $event)"
                   @dragend="kanbanReorder.onDragEnd()"
                 >
                   <GripVertical class="size-3.5" aria-hidden="true" />
@@ -114,26 +115,27 @@ SPDX-License-Identifier: Apache-2.0
               </div>
             </template>
 
-            <!-- Edit empty: Add tile is the affordance (no body "No data"). -->
-            <div
-              v-else-if="!editable"
-              class="col-span-full flex min-h-[72px] items-center justify-center rounded-md border border-dashed border-border text-sm text-muted-foreground"
-            >
-              <slot name="empty">{{ effectiveEmptyText }}</slot>
-            </div>
+            <template v-if="!editable" #empty>
+              <div
+                class="col-span-full flex min-h-[72px] items-center justify-center rounded-md border border-dashed border-border text-sm text-muted-foreground"
+              >
+                <slot name="empty">{{ effectiveEmptyText }}</slot>
+              </div>
+            </template>
 
-            <div
-              v-if="editable"
-              class="flex min-h-[72px] cursor-pointer select-none items-center justify-center rounded-md border border-dashed border-border bg-muted/30 text-sm text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-              data-testid="choy-o2m-kanban-add"
-              role="button"
-              tabindex="0"
-              @click="handleAddItem"
-              @keydown.enter.prevent="handleAddItem"
-            >
-              <span>{{ effectiveAddButtonText }}</span>
-            </div>
-          </div>
+            <template v-if="editable" #trailing>
+              <div
+                class="flex min-h-[72px] cursor-pointer select-none items-center justify-center rounded-md border border-dashed border-border bg-muted/30 text-sm text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                data-testid="choy-o2m-kanban-add"
+                role="button"
+                tabindex="0"
+                @click="handleAddItem"
+                @keydown.enter.prevent="handleAddItem"
+              >
+                <span>{{ effectiveAddButtonText }}</span>
+              </div>
+            </template>
+          </ChoyO2MKanbanVirtualBoard>
         </div>
       </ChoyViewScope>
     </template>
@@ -146,15 +148,16 @@ SPDX-License-Identifier: Apache-2.0
       >{{ cellSummaryText }}</span>
       <ChoyViewScope v-else view-mode="display" :kind="'Kanban'" :field-prefix="String(prop)">
         <div class="flex w-full min-w-0 flex-col gap-2">
-          <div
-            class="grid w-full min-w-0 overflow-auto p-0.5 [grid-template-columns:repeat(auto-fill,minmax(var(--kanban-min-card-width),1fr))] gap-[var(--kanban-gap)]"
-            data-testid="choy-o2m-kanban-board"
-            :style="boardStyle"
+          <ChoyO2MKanbanVirtualBoard
+            :items="kanbanItems"
+            :min-card-width="minCardWidth"
+            :gap="gap"
+            :max-height="maxHeight"
+            :virtualize="boardVirtualize"
+            :item-key="kanbanItemKey"
           >
-            <template v-if="getItems().length > 0">
+            <template #card="{ item, index }">
               <div
-                v-for="(item, index) in getItems()"
-                :key="String(readRowKeySeed(item) ?? index)"
                 class="choy-o2m-kanban-card cursor-default rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/30"
                 data-testid="choy-o2m-kanban-card"
                 tabindex="0"
@@ -182,14 +185,14 @@ SPDX-License-Identifier: Apache-2.0
               </div>
             </template>
 
-            <!-- Display empty: blank by default; callers may override via #empty. -->
-            <div
-              v-else-if="$slots.empty"
-              class="col-span-full flex min-h-[72px] items-center justify-center rounded-md border border-dashed border-border text-sm text-muted-foreground"
-            >
-              <slot name="empty" />
-            </div>
-          </div>
+            <template v-if="$slots.empty" #empty>
+              <div
+                class="col-span-full flex min-h-[72px] items-center justify-center rounded-md border border-dashed border-border text-sm text-muted-foreground"
+              >
+                <slot name="empty" />
+              </div>
+            </template>
+          </ChoyO2MKanbanVirtualBoard>
         </div>
       </ChoyViewScope>
     </template>
@@ -253,6 +256,8 @@ import type { BaseModel, FieldPath, FieldPathType, ClientModel } from '@/core/rp
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { deepClonePreserve } from '@/core/utils/clone';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
+import ChoyO2MKanbanVirtualBoard from './ChoyO2MKanbanVirtualBoard.vue';
+import type { O2MKanbanVirtualizeMode } from './o2mKanbanVirtualHelpers';
 import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
 import {
   type FormChildSubmitApi,
@@ -316,6 +321,8 @@ const props = withDefaults(
     minCardWidth?: number;
     gap?: number;
     maxHeight?: number;
+    /** Board virtualize mode; default `auto` (≥40 cards). */
+    boardVirtualize?: O2MKanbanVirtualizeMode;
 
     editable?: boolean;
     removable?: boolean;
@@ -356,6 +363,7 @@ const props = withDefaults(
     minCardWidth: 220,
     gap: 10,
     maxHeight: 480,
+    boardVirtualize: 'auto',
 
     editable: true,
     removable: true,
@@ -428,16 +436,35 @@ if (props.handleField) {
 }
 
 const itemCount = computed(() => getItems()?.length ?? 0);
+/** Explicit length dep so the board refreshes when the collection is replaced. */
+const kanbanItems = computed(() => {
+  const items = getItems() || [];
+  void items.length;
+  return items;
+});
 // List/Kanban cells: count summary instead of embedding a full nested board.
 const showCellSummary = computed(() => binding.env?.isForm === false);
 const cellSummaryText = computed(() => formatRelationCountSummary(itemCount.value, _t));
 
-const boardStyle = computed(() => ({
-  '--kanban-min-card-width': `${props.minCardWidth}px`,
-  '--kanban-gap': `${props.gap}px`,
-  maxHeight: `${props.maxHeight}px`,
-}));
 const showToolbar = computed(() => Boolean(slots.toolbar) || (props.editable && props.showToolbarAdd));
+
+function kanbanItemKey(item: unknown, index: number): string {
+  return String(readRowKeySeed(item) ?? index);
+}
+
+/** Snapshot drag image from the card node so virtual recycle does not blank it. */
+function onKanbanDragStart(index: number, event: DragEvent) {
+  kanbanReorder.onDragStart(index, event);
+  const handle = event.currentTarget;
+  const card =
+    handle instanceof HTMLElement ? handle.closest('[data-testid=choy-o2m-kanban-card]') : null;
+  if (card instanceof HTMLElement && event.dataTransfer) {
+    const rect = card.getBoundingClientRect();
+    const offsetX = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
+    const offsetY = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
+    event.dataTransfer.setDragImage(card, offsetX, offsetY);
+  }
+}
 
 const dialogVisible = ref(false);
 const dialogMode = ref<DialogMode>('create');
