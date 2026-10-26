@@ -46,7 +46,7 @@ async function setUserTimezoneViaPreferences(p: Page, iana: string) {
   await expect
     .poll(
       async () =>
-        p.evaluate(want => {
+        p.evaluate((want: string) => {
           const el = document.querySelector(
             '.choy-preferences-dialog [data-testid="preferences-timezone"]',
           ) as HTMLElement | null;
