@@ -38,8 +38,8 @@ func (s *GRPCWebServer) applyStartupRecoveryPlan(plan startupRecoveryPlan, reloa
 		result.proxyCleared = true
 	}
 	if plan.clearTransport {
-		s.stopHTTPRuntime()
-		s.stopGRPCTransport()
+		s.stopHTTPRuntime(reload)
+		s.stopGRPCTransport(reload)
 		s.listener = nil
 		result.transportCleared = true
 	}

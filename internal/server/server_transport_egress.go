@@ -43,18 +43,23 @@ func (s *GRPCWebServer) assembleGRPCServer(opts runtimeOptions) {
 	s.server = transport.NewGRPCServer(s.grpcServerOptions())
 }
 
-func (s *GRPCWebServer) stopGRPCTransport() {
+func (s *GRPCWebServer) stopGRPCTransport(reload bool) {
 	if s.server != nil {
-		done := make(chan struct{})
-		go func(srv *grpc.Server) {
-			srv.GracefulStop()
-			close(done)
-		}(s.server)
-		select {
-		case <-done:
-		case <-time.After(2 * time.Second):
-			s.server.Stop()
-			<-done
+		if reload {
+			// Hot reload keeps process context live; wait for in-flight RPCs like before.
+			s.server.GracefulStop()
+		} else {
+			done := make(chan struct{})
+			go func(srv *grpc.Server) {
+				srv.GracefulStop()
+				close(done)
+			}(s.server)
+			select {
+			case <-done:
+			case <-time.After(2 * time.Second):
+				s.server.Stop()
+				<-done
+			}
 		}
 		s.server = nil
 	}

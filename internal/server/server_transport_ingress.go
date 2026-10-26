@@ -39,12 +39,17 @@ func (s *GRPCWebServer) startHTTPServer(h http.Handler, suppressListeningLog boo
 	return nil
 }
 
-func (s *GRPCWebServer) stopHTTPRuntime() {
+func (s *GRPCWebServer) stopHTTPRuntime(reload bool) {
 	if s.httpServer == nil {
 		return
 	}
-	// Short drain: process BaseContext cancel should already end long-lived streams.
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	// Process stop: BaseContext cancel should already end long-lived streams, so keep a short
+	// fallback. Hot reload keeps the process context live, so allow the prior longer drain.
+	drain := 2 * time.Second
+	if reload {
+		drain = 10 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), drain)
 	defer cancel()
 	if err := s.httpServer.Shutdown(ctx); err != nil {
 		// Best-effort: on failure, force close.

@@ -79,8 +79,8 @@ func (s *GRPCWebServer) stop(reload bool) error {
 
 	// Stop producers first so task polls do not keep running during HTTP drain.
 	s.stopTaskRuntime()
-	s.stopHTTPRuntime()
-	s.stopGRPCTransport()
+	s.stopHTTPRuntime(reload)
+	s.stopGRPCTransport(reload)
 
 	if err := s.clearWatchRegistrations(); err != nil {
 		return err

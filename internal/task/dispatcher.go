@@ -108,7 +108,11 @@ func (d *Dispatcher) Start() {
 	}
 	d.wg.Add(1)
 	go d.loop()
-	go d.pollOnce("startup")
+	d.wg.Add(1)
+	go func() {
+		defer d.wg.Done()
+		d.pollOnce("startup")
+	}()
 }
 
 func (d *Dispatcher) publishWakeup(source string) {
@@ -176,6 +180,9 @@ func (d *Dispatcher) pollOnce(source string) {
 	if d.runtimeScope == nil || d.queue == nil {
 		return
 	}
+	if d.isStopped() {
+		return
+	}
 	ctx := d.runtimeScope.Context()
 	if ctx == nil {
 		ctx = context.Background()
@@ -196,9 +203,12 @@ func (d *Dispatcher) pollOnce(source string) {
 	}
 	queueJobs, err := d.queue.ListReady(ctx, now, pollLimit)
 	if err != nil {
-		if !isExpectedPollShutdownError(err) {
+		if !isExpectedPollShutdownError(ctx, err) {
 			d.runtimeScope.Logger().Warn("task dispatch poll failed", "error", err)
 		}
+		return
+	}
+	if d.isStopped() {
 		return
 	}
 	jobs := make([]Job, 0, len(queueJobs))
@@ -221,6 +231,9 @@ func (d *Dispatcher) pollOnce(source string) {
 		return
 	}
 	for _, job := range selected {
+		if d.isStopped() {
+			return
+		}
 		if !d.reserveAppSlot(job.TargetApp) {
 			continue
 		}
@@ -935,8 +948,21 @@ func (d *Dispatcher) emitMetric(name string, fields map[string]any) {
 	RecordMetric(name, fields)
 }
 
+func (d *Dispatcher) isStopped() bool {
+	if d == nil {
+		return true
+	}
+	select {
+	case <-d.stopCh:
+		return true
+	default:
+		return false
+	}
+}
+
 // isExpectedPollShutdownError reports whether a poll error is the normal result of
-// process context cancellation during shutdown.
-func isExpectedPollShutdownError(err error) bool {
-	return errors.Is(err, context.Canceled)
+// process context cancellation during shutdown. Cancellation is suppressed only when
+// the runtime context itself is done, so independent store cancel errors still warn.
+func isExpectedPollShutdownError(ctx context.Context, err error) bool {
+	return ctx != nil && ctx.Err() != nil && errors.Is(err, context.Canceled)
 }

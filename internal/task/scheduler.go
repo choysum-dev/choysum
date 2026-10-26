@@ -102,7 +102,7 @@ func (s *Scheduler) tick() {
 
 	schedules, err := s.store.ListDue(ctx, now, 50)
 	if err != nil {
-		if !isExpectedPollShutdownError(err) {
+		if !isExpectedPollShutdownError(ctx, err) {
 			s.runtimeScope.Logger().Warn("task schedule poll failed", "error", err)
 		}
 		return
