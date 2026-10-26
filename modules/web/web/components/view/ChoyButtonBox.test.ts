@@ -42,6 +42,12 @@ describe('ChoyButtonBox', () => {
     await flushPromises();
     expect(mounted.q('.choy-button-box')).not.toBeNull();
     expect(mounted.q('[data-testid=action]')?.textContent).toBe('Go');
+
+    // Content → empty must tear down the flex shell again (v-if remount).
+    show.value = false;
+    await nextTick();
+    await flushPromises();
+    expect(mounted.q('.choy-button-box')).toBeNull();
     mounted.unmount();
   });
 });

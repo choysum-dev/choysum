@@ -42,15 +42,17 @@ describe('ChoyViewActionBar', () => {
     });
     await flushPromises();
     const bar = mounted.q('[data-slot=view-action-bar]') as HTMLElement | null;
-    expect(bar?.getAttribute('data-layout')).toBe('thirds');
+    expect(bar).not.toBeNull();
+    expect(bar!.getAttribute('data-layout')).toBe('thirds');
     const leading = mounted.q('[data-slot=view-action-bar-leading]') as HTMLElement | null;
     expect(leading).not.toBeNull();
-    expect(leading?.querySelector('[data-testid=mid]')).toBeNull();
+    expect(leading!.querySelector('[data-testid=mid]')).toBeNull();
     expect(mounted.q('[data-testid=mid]')?.textContent).toBe('M');
     // Leading is the first toolbar child so center stays in column 2.
-    const kids = Array.from(bar?.children || []) as HTMLElement[];
-    expect(kids[0]?.getAttribute('data-slot')).toBe('view-action-bar-leading');
-    expect(kids[0]).toBe(leading);
+    const first = bar!.children[0] as HTMLElement | undefined;
+    expect(first).toBeTruthy();
+    expect(first!.getAttribute('data-slot')).toBe('view-action-bar-leading');
+    expect(first).toBe(leading!);
     mounted.unmount();
   });
 

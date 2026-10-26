@@ -41,14 +41,18 @@ describe('ChoyViewBusyHost', () => {
     expect(overlay).not.toBeNull();
     expect(overlay?.querySelector('[data-testid=choy-spinner]')).not.toBeNull();
 
-    // Teleport lands on document.body; query via host tree first, then body for the live region.
-    const status =
-      mounted.q('[data-slot=view-busy-status]') ||
-      (document.body.querySelector('[data-slot=view-busy-status]') as Element | null);
-    expect(status).not.toBeNull();
-    expect(status?.getAttribute('role')).toBe('status');
-    expect((status?.textContent || '').trim()).toBe('Saving…');
+    // Teleport lands on document.body; require exactly one live region (no leaked stubs).
+    const statuses = Array.from(
+      document.body.querySelectorAll('[data-slot=view-busy-status]'),
+    );
+    expect(statuses.length).toBe(1);
+    const status = statuses[0]!;
+    expect(status.getAttribute('role')).toBe('status');
+    expect((status.textContent || '').trim()).toBe('Saving…');
     mounted.unmount();
-    expect(document.body.querySelector('[data-slot=view-busy-status]')).toBeNull();
+    expect(
+      Array.from(document.body.querySelectorAll('[data-slot=view-busy-status]'))
+        .length,
+    ).toBe(0);
   });
 });
