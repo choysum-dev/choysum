@@ -399,7 +399,7 @@ describe('ChoyManyToManyField mount coverage', () => {
     await nextTick();
     m1.click('[data-test="add-row"]');
     await nextTick();
-    expect(msgWarn.calls.length).toBe(1);
+    expect(msgWarn.calls.length).toBe(0);
     expect(m1.q('.dialog')?.getAttribute('data-open')).toBe('0');
     m1.unmount();
 
@@ -567,7 +567,7 @@ describe('ChoyManyToManyField mount coverage', () => {
       await nextTick();
       m.click('[data-test="add-row"]');
       await nextTick();
-      expect(msgWarn.calls.length).toBe(1);
+      expect(msgWarn.calls.length).toBe(0);
       expect(m.q('.dialog')?.getAttribute('data-open')).toBe('0');
       m.unmount();
     } finally {

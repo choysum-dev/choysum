@@ -230,6 +230,11 @@ SPDX-License-Identifier: Apache-2.0
         :class="[{ 'choy-field-base__cell-item--error': !!serverErrorForRow(row, $index) }, cellJustifyClass]"
         :data-error="serverErrorForRow(row, $index) || undefined"
       >
+        <span
+          v-if="serverErrorForRow(row, $index)"
+          :id="`${inputIdForRow(row)}-error`"
+          class="sr-only"
+        >{{ serverErrorForRow(row, $index) }}</span>
         <template v-if="effectiveEditForRow(row)">
           <slot
             name="edit"
@@ -241,6 +246,8 @@ SPDX-License-Identifier: Apache-2.0
             :inputName="inputName"
             :inputId="inputIdForRow(row)"
             :labelId="`${inputIdForRow(row)}-label`"
+            :describedBy="describedByForRow(row, $index)"
+            :invalid="!!serverErrorForRow(row, $index)"
             :onFieldChange="onchangeHandlers.onChange"
             :triggerOnchange="onchangeHandlers.trigger"
             :onchangeRunning="onchangeHandlers.running?.value"
@@ -289,6 +296,8 @@ SPDX-License-Identifier: Apache-2.0
           :inputName="inputName"
           :inputId="inputIdForm"
           :labelId="formLabelId"
+          :describedBy="formDescribedBy"
+          :invalid="formInvalid"
           :onFieldChange="onchangeHandlers.onChange"
           :triggerOnchange="onchangeHandlers.trigger"
           :onchangeRunning="onchangeHandlers.running?.value"
@@ -331,6 +340,8 @@ SPDX-License-Identifier: Apache-2.0
           :inputName="inputName"
           :inputId="inputIdForm"
           :labelId="formLabelId"
+          :describedBy="formDescribedBy"
+          :invalid="formInvalid"
           :onFieldChange="onchangeHandlers.onChange"
           :triggerOnchange="onchangeHandlers.trigger"
           :onchangeRunning="onchangeHandlers.running?.value"
@@ -370,6 +381,7 @@ SPDX-License-Identifier: Apache-2.0
     </div>
     <p
       v-if="showInlineError"
+      :id="formErrorId"
       class="choy-field-base__error mt-0 min-h-4 w-full whitespace-normal pb-2 text-sm font-normal leading-4 text-destructive"
       data-slot="field-error"
       :class="{ invisible: !displayError }"
@@ -762,6 +774,11 @@ const inputIdForm = computed(() => {
 /** Stable id on FieldLabel for aria-labelledby when `for` is omitted. */
 const formLabelId = computed(() => `${inputIdForm.value}-label`);
 const inputIdForRow = (row: T) => `${inputIdForm.value}-${guessRowKey(row)}`;
+/** Table edit: wire control to the cell sr-only error node when present. */
+function describedByForRow(row: T, rowIndex?: number): string | undefined {
+  if (!serverErrorForRow(row, rowIndex)) return undefined;
+  return `${inputIdForRow(row)}-error`;
+}
 
 /* View mapping for slot rendering */
 const viewBinding =

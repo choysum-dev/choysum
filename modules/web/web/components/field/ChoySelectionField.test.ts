@@ -289,4 +289,34 @@ describe('SelectionField FieldsGet wiring', () => {
     expect(isDisabled(opts[1]!)).toBe(true);
     m.unmount();
   });
+
+  // FW12: sample real ChoyFieldBase chrome (no Base stub) + Combobox.
+  test('SelectionField real-chrome mounts FieldBase and combobox trigger', async () => {
+    const value = ref<string | null>('active');
+    const binding = {
+      env: {
+        isForm: true,
+        fieldPresentation: 'form',
+        isEditMode: true,
+        viewMode: 'edit',
+        fieldPrefix: null,
+      },
+      prop: 'Status',
+      meta: staticMeta,
+      fieldRef: () => value as any,
+      fieldRefOf: () => value as any,
+      recordRef: () => computed(() => ({ Id: '1', Status: 'active' })) as any,
+      registerFields: () => {},
+      store: { fieldsMetadata: { Status: staticMeta } },
+      asView: () => ({ fieldValue: () => value }) as any,
+    };
+    const m = mountApp(SelectionField as any, {
+      props: { binding, label: 'Status', renderMode: 'form' },
+    });
+    await flushPromises();
+    await nextTick();
+    expect(m.q('[data-anchor="choy.field-base"]')).toBeTruthy();
+    expect(m.q('[data-slot="combobox-trigger"]') || m.q('button')).toBeTruthy();
+    m.unmount();
+  });
 });

@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
     :label-for-control="false"
   >
     <!-- Edit mode. -->
-    <template #edit="{ inputId, labelId, describedBy }">
+    <template #edit="{ inputId, labelId, describedBy, invalid }">
       <span
         v-if="showCellSummary"
         class="truncate text-sm text-foreground"
@@ -39,6 +39,7 @@ SPDX-License-Identifier: Apache-2.0
           tabindex="-1"
           :aria-labelledby="labelId || undefined"
           :aria-describedby="describedBy || undefined"
+          :aria-invalid="invalid ? 'true' : undefined"
         >
           <!-- Mount with 0 rows too so nested columns register before Form Browse. -->
           <ChoyTableHost
@@ -182,7 +183,6 @@ import {
 import { Trash2 } from 'lucide-vue-next';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
-import { ChoyMessage } from '../../composables/useChoyMessage';
 import { RELATION_PICKER_CLOSE_KEY } from '@/web/web/components/field/relationPickerContext';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType, QueryCondition } from '@/core/rpc';
@@ -552,14 +552,8 @@ onBeforeUnmount(() => {
 });
 
 function openPicker() {
-  if (!props.searchList) {
-    ChoyMessage.warning(_t('searchList is not configured; cannot open picker'));
-    return;
-  }
-  if (!relationStore.value) {
-    ChoyMessage.warning(_t('relationStore is unresolved; cannot open picker'));
-    return;
-  }
+  // Footer already shows "Picker is not configured"; stay silent (no Toast).
+  if (!props.searchList || !relationStore.value) return;
   resetM2MPickerQueryState(relationStore.value as any);
   dialogVisible.value = true;
 }

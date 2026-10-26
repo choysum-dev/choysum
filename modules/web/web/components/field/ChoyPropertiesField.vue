@@ -22,7 +22,7 @@ SPDX-License-Identifier: Apache-2.0
     :label-for-control="false"
     v-bind="$attrs"
   >
-    <template #edit="{ fieldValue, inputId, labelId, describedBy }">
+    <template #edit="{ fieldValue, inputId, labelId, describedBy, invalid }">
       <div v-if="isTableLike" class="truncate text-[13px] text-foreground" data-testid="choy-properties-summary">
         {{ summaryText(fieldValue().value) }}
       </div>
@@ -33,6 +33,7 @@ SPDX-License-Identifier: Apache-2.0
         :id="inputId || undefined"
         :aria-labelledby="labelId || undefined"
         :aria-describedby="describedBy || undefined"
+        :aria-invalid="invalid ? 'true' : undefined"
       >
         <slot v-if="!renderableItems.length" name="empty">
           <p class="m-0 text-sm text-muted-foreground" data-testid="choy-properties-empty">

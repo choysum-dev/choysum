@@ -750,14 +750,8 @@ function appendRecords(rows: any[]) {
 
 function openPicker() {
   emit('picker-open');
-  if (!props.searchList) {
-    ChoyMessage.warning(_t('searchList is not configured; cannot open picker'));
-    return;
-  }
-  if (!relationStore.value) {
-    ChoyMessage.warning(_t('relationStore is unresolved; cannot open picker'));
-    return;
-  }
+  // Search-more gated by searchList; missing picker config stays silent (no Toast).
+  if (!props.searchList || !relationStore.value) return;
   resetM2MPickerQueryState(relationStore.value as any);
   dialogVisible.value = true;
 }

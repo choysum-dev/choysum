@@ -105,15 +105,7 @@ describe('ChoyOneToManyField handle column', () => {
     installStubs();
     const { binding } = makeBinding({});
     const m = mountApp(ChoyOneToManyField as any, {
-      props: { binding, showHandle: true },
-      stubs: {
-        'el-button': defineComponent({
-          name: 'ElButtonStub',
-          setup(_, { slots }) {
-            return () => h('button', {}, slots.default?.());
-          },
-        }),
-      },
+      props: { binding, showHandle: true }
     });
     await nextTick();
     expect(m.q('.ov-column-handle')).toBeTruthy();
@@ -124,30 +116,14 @@ describe('ChoyOneToManyField handle column', () => {
     installStubs();
     const noMeta = makeBinding({ sequenceMeta: false });
     const w1 = mountApp(ChoyOneToManyField as any, {
-      props: { binding: noMeta.binding, showHandle: true },
-      stubs: {
-        'el-button': defineComponent({
-          name: 'ElButtonStub',
-          setup(_, { slots }) {
-            return () => h('button', {}, slots.default?.());
-          },
-        }),
-      },
+      props: { binding: noMeta.binding, showHandle: true }
     });
     expect(w1.q('.ov-column-handle')).toBeFalsy();
     w1.unmount();
 
     const withMeta = makeBinding({});
     const w2 = mountApp(ChoyOneToManyField as any, {
-      props: { binding: withMeta.binding, showHandle: false },
-      stubs: {
-        'el-button': defineComponent({
-          name: 'ElButtonStub',
-          setup(_, { slots }) {
-            return () => h('button', {}, slots.default?.());
-          },
-        }),
-      },
+      props: { binding: withMeta.binding, showHandle: false }
     });
     expect(w2.q('.ov-column-handle')).toBeFalsy();
     w2.unmount();
@@ -158,15 +134,7 @@ describe('ChoyOneToManyField handle column', () => {
     capturedHandleApi.current = null;
     const { binding, fieldValue } = makeBinding({});
     const m = mountApp(ChoyOneToManyField as any, {
-      props: { binding, showHandle: true },
-      stubs: {
-        'el-button': defineComponent({
-          name: 'ElButtonStub',
-          setup(_, { slots }) {
-            return () => h('button', {}, slots.default?.());
-          },
-        }),
-      },
+      props: { binding, showHandle: true }
     });
     await nextTick();
     await flushPromises();
@@ -187,15 +155,7 @@ describe('ChoyOneToManyField handle column', () => {
     installStubs();
     const { binding } = makeBinding({});
     const m = mountApp(ChoyOneToManyField as any, {
-      props: { binding, showHandle: true, handleField: 'Sequence' },
-      stubs: {
-        'el-button': defineComponent({
-          name: 'ElButtonStub',
-          setup(_, { slots }) {
-            return () => h('button', {}, slots.default?.());
-          },
-        }),
-      },
+      props: { binding, showHandle: true, handleField: 'Sequence' }
     });
     await nextTick();
     expect(m.q('.ov-column-handle')).toBeTruthy();

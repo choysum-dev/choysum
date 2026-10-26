@@ -20,14 +20,21 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
     :label-for-control="false"
   >
-    <template #edit>
+    <template #edit="{ inputId, labelId, describedBy, invalid }">
       <span
         v-if="showCellSummary"
         class="truncate text-sm text-foreground"
         data-testid="choy-o2m-kanban-summary"
       >{{ cellSummaryText }}</span>
       <ChoyViewScope v-else :view-mode="binding.env.viewMode" :kind="'Kanban'" :field-prefix="String(prop)">
-        <div class="flex w-full min-w-0 flex-col gap-2">
+        <div
+          class="flex w-full min-w-0 flex-col gap-2"
+          :id="inputId || undefined"
+          tabindex="-1"
+          :aria-labelledby="labelId || undefined"
+          :aria-describedby="describedBy || undefined"
+          :aria-invalid="invalid ? 'true' : undefined"
+        >
           <div v-if="showToolbar" class="flex items-center justify-start">
             <slot name="toolbar" :items="getItems()" :add="handleAddItem" :editable="editable">
               <ChoyButton
@@ -54,7 +61,9 @@ SPDX-License-Identifier: Apache-2.0
                 class="choy-o2m-kanban-card group/card relative cursor-pointer rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40"
                 :class="{ 'opacity-60': sortableEnabled && kanbanReorder.draggingIndex.value === index }"
                 data-testid="choy-o2m-kanban-card"
+                role="button"
                 tabindex="0"
+                :aria-label="resolveCardTitle(item)"
                 @click="handleCardClick(index, false)"
                 @keydown.enter.prevent="handleCardClick(index, false)"
                 @dragover="sortableEnabled ? kanbanReorder.onDragOver(index, $event) : undefined"
@@ -140,14 +149,18 @@ SPDX-License-Identifier: Apache-2.0
       </ChoyViewScope>
     </template>
 
-    <template #display>
+    <template #display="{ inputId, labelId }">
       <span
         v-if="showCellSummary"
         class="truncate text-sm text-foreground"
         data-testid="choy-o2m-kanban-summary"
       >{{ cellSummaryText }}</span>
       <ChoyViewScope v-else view-mode="display" :kind="'Kanban'" :field-prefix="String(prop)">
-        <div class="flex w-full min-w-0 flex-col gap-2">
+        <div
+          class="flex w-full min-w-0 flex-col gap-2"
+          :id="inputId || undefined"
+          :aria-labelledby="labelId || undefined"
+        >
           <ChoyO2MKanbanVirtualBoard
             :items="kanbanItems"
             :min-card-width="minCardWidth"
@@ -160,7 +173,9 @@ SPDX-License-Identifier: Apache-2.0
               <div
                 class="choy-o2m-kanban-card cursor-default rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/30"
                 data-testid="choy-o2m-kanban-card"
+                role="button"
                 tabindex="0"
+                :aria-label="resolveCardTitle(item)"
                 @click="handleCardClick(index, true)"
                 @keydown.enter.prevent="handleCardClick(index, true)"
               >

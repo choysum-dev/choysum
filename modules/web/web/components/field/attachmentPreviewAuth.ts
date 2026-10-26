@@ -137,11 +137,11 @@ function triggerBlobDownload(blob: Blob, fileName?: string): boolean {
   const objectUrl = URL.createObjectURL(blob);
   try {
     const anchor = document.createElement('a');
-    anchor.href = objectUrl;
+    // setAttribute: QuickJS/jsdom stubs may not mirror .href/.download to attributes.
+    anchor.setAttribute('href', objectUrl);
     const name = normalizeOptionalString(fileName);
-    if (name) anchor.download = name;
-    else anchor.download = 'download';
-    anchor.rel = 'noopener';
+    anchor.setAttribute('download', name || 'download');
+    anchor.setAttribute('rel', 'noopener');
     anchor.style.display = 'none';
     document.body.appendChild(anchor);
     anchor.click();
@@ -165,11 +165,11 @@ function triggerHrefDownload(rawUrl: string, fileName?: string): boolean {
 
   try {
     const anchor = document.createElement('a');
-    anchor.href = href;
+    anchor.setAttribute('href', href);
     const name = normalizeOptionalString(fileName);
-    if (name) anchor.download = name;
-    else anchor.download = '';
-    anchor.rel = 'noopener';
+    if (name) anchor.setAttribute('download', name);
+    else anchor.setAttribute('download', '');
+    anchor.setAttribute('rel', 'noopener');
     anchor.style.display = 'none';
     document.body.appendChild(anchor);
     anchor.click();

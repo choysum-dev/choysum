@@ -63,6 +63,8 @@ SPDX-License-Identifier: Apache-2.0
                       class="sr-only"
                       :id="inputId || undefined"
                       :name="inputName || undefined"
+            :aria-describedby="describedBy || undefined"
+            :aria-invalid="invalid ? 'true' : undefined"
                       :accept="acceptAttr"
                       :disabled="actionsDisabled"
                       @change="onFileInputChange"
@@ -110,6 +112,8 @@ SPDX-License-Identifier: Apache-2.0
             class="sr-only"
             :id="inputId || undefined"
             :name="inputName || undefined"
+            :aria-describedby="describedBy || undefined"
+            :aria-invalid="invalid ? 'true' : undefined"
             :accept="acceptAttr"
             :disabled="actionsDisabled"
             @change="onFileInputChange"
@@ -212,6 +216,8 @@ SPDX-License-Identifier: Apache-2.0
                   class="sr-only"
                   :id="inputId || undefined"
                   :name="inputName || undefined"
+            :aria-describedby="describedBy || undefined"
+            :aria-invalid="invalid ? 'true' : undefined"
                   :accept="acceptAttr"
                   :disabled="actionsDisabled"
                   @change="onFileInputChange"
@@ -243,6 +249,8 @@ SPDX-License-Identifier: Apache-2.0
             class="sr-only"
             :id="inputId || undefined"
             :name="inputName || undefined"
+            :aria-describedby="describedBy || undefined"
+            :aria-invalid="invalid ? 'true' : undefined"
             :accept="acceptAttr"
             :disabled="actionsDisabled"
             @change="onFileInputChange"
@@ -398,6 +406,10 @@ const props = withDefaults(
     inputId?: string;
     /** Native name for autofill / form association. */
     inputName?: string;
+    /** Field help/error ids for the hidden file input. */
+    describedBy?: string;
+    /** When true, marks the file input aria-invalid. */
+    invalid?: boolean;
     accept?: string;
     drag?: boolean;
     disabled?: boolean;
@@ -432,6 +444,8 @@ const props = withDefaults(
     tooltip: undefined,
     inputId: undefined,
     inputName: undefined,
+    describedBy: undefined,
+    invalid: false,
     accept: '',
     drag: true,
     disabled: false,

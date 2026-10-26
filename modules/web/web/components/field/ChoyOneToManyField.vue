@@ -20,7 +20,7 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
     :label-for-control="false"
   >
-    <template #edit="{ inputId, labelId, describedBy }">
+    <template #edit="{ inputId, labelId, describedBy, invalid }">
       <span
         v-if="showCellSummary"
         class="truncate text-sm text-foreground"
@@ -33,6 +33,7 @@ SPDX-License-Identifier: Apache-2.0
           tabindex="-1"
           :aria-labelledby="labelId || undefined"
           :aria-describedby="describedBy || undefined"
+          :aria-invalid="invalid ? 'true' : undefined"
         >
           <!-- Always mount Host (incl. 0 rows) so nested columns register before Browse. -->
           <ChoyTableHost

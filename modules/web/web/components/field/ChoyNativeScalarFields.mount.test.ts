@@ -585,4 +585,42 @@ describe('Choy native scalar field cells', () => {
     rulesMount.unmount();
     m.unmount();
   });
+
+  // FW12: sample real ChoyFieldBase chrome (no Base stub) + L2 Input.
+  test('VarcharField real-chrome wires label for and input id', async () => {
+    const value = ref('hello');
+    const binding = {
+      env: {
+        isForm: true,
+        fieldPresentation: 'form',
+        isEditMode: true,
+        viewMode: 'edit',
+        fieldPrefix: null,
+      },
+      prop: 'Name',
+      meta: { string: 'Name', type: 'varchar', help: 'Name help' },
+      fieldRef: () => value as any,
+      fieldRefOf: () => value as any,
+      recordRef: () => computed(() => ({ Id: '1' })) as any,
+      registerFields: () => {},
+      store: {},
+      asView: () => ({ fieldValue: () => value }) as any,
+    };
+    const m = mountApp(ChoyVarcharField as any, {
+      props: { binding, label: 'Name', renderMode: 'form' },
+    });
+    await flushPromises();
+    expect(m.q('[data-anchor="choy.field-base"]')).toBeTruthy();
+    const input = m.q('input.choy-varchar-input') as HTMLInputElement | null;
+    expect(input).toBeTruthy();
+    expect(input?.id).toBeTruthy();
+    expect(input?.getAttribute('aria-describedby') || '').toContain(`${input!.id}-help`);
+    const label = m.q('label');
+    expect(label?.getAttribute('for')).toBe(input?.id);
+    setInputValue(input!, 'world');
+    input!.dispatchEvent(new Event('blur', { bubbles: true }));
+    await flushPromises();
+    expect(value.value).toBe('world');
+    m.unmount();
+  });
 });

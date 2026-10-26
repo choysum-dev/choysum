@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
     v-bind="$attrs"
   >
-    <template #edit="{ fieldValue, inputId, inputName, onFieldChange }">
+    <template #edit="{ fieldValue, inputId, inputName, describedBy, invalid, onFieldChange }">
       <ChoyAttachmentFieldChrome
         mode="edit"
         class="choy-binary-field"
@@ -36,6 +36,8 @@ SPDX-License-Identifier: Apache-2.0
         :download-file-name="resolveFileName(fieldValue().value)"
         :input-id="inputId"
         :input-name="inputName"
+        :described-by="describedBy"
+        :invalid="invalid"
         :accept="accept"
         :drag="drag"
         :disabled="disabled"

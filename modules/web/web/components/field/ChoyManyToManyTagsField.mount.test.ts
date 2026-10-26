@@ -351,7 +351,7 @@ describe('ChoyManyToManyTagsField patch coverage', () => {
     expect(more2).toBeTruthy();
     more2!.click();
     await nextTick();
-    expect(msgWarn.calls.length).toBe(1);
+    expect(msgWarn.calls.length).toBe(0);
     m2.unmount();
   });
 
@@ -761,7 +761,7 @@ describe('ChoyManyToManyTagsField patch coverage', () => {
     const m0 = mountField({ binding: makeBinding({ items: [], relationStore: relationStoreStub() }) });
     const ss0 = m0.setupState() as any;
     ss0.openPicker();
-    expect(msgWarn.calls.length).toBe(1);
+    expect(msgWarn.calls.length).toBe(0);
     m0.unmount();
 
     const m = mountField(

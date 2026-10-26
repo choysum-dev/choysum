@@ -294,4 +294,33 @@ describe('Choy temporal field cells', () => {
     rulesMount.unmount();
     m.unmount();
   });
+
+  // FW12: sample real ChoyFieldBase chrome (no Base stub) for Date.
+  test('DateField real-chrome mounts FieldBase and date control', async () => {
+    const value = ref('2024-01-02');
+    const binding = {
+      env: {
+        isForm: true,
+        fieldPresentation: 'form',
+        isEditMode: true,
+        viewMode: 'edit',
+        fieldPrefix: null,
+      },
+      prop: 'When',
+      meta: { string: 'When', type: 'date' },
+      fieldRef: () => value as any,
+      fieldRefOf: () => value as any,
+      recordRef: () => computed(() => ({ Id: '1' })) as any,
+      registerFields: () => {},
+      store: {},
+      asView: () => ({ fieldValue: () => value }) as any,
+    };
+    const m = mountApp(ChoyDateField as any, {
+      props: { binding, label: 'When', renderMode: 'form' },
+    });
+    await flushPromises();
+    expect(m.q('[data-anchor="choy.field-base"]')).toBeTruthy();
+    expect(m.q('[data-testid="choy-date-field"]') || m.q('.choy-date-field') || m.q('button')).toBeTruthy();
+    m.unmount();
+  });
 });

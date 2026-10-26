@@ -91,8 +91,21 @@ export function normalizeDiffRelation(type: string | undefined): RelationType | 
 
 type DiffFieldsMeta = Record<string, { relation?: RelationType; type?: string; isReadonly?: boolean }>;
 
+const diffFieldsMetaCache = new WeakMap<
+  WebModelStore<any>,
+  {
+    source: Record<string, WebFieldMetadata | undefined>;
+    normalized: DiffFieldsMeta;
+  }
+>();
+
 export function buildDiffFieldsMeta(store: WebModelStore<any>): DiffFieldsMeta {
   const raw = ((store as any).fieldsMetadata || {}) as Record<string, WebFieldMetadata | undefined>;
+  const cached = diffFieldsMetaCache.get(store);
+  if (cached && cached.source === raw) {
+    return cached.normalized;
+  }
+
   // Prefer FieldsGet-merged meta so select-only / deny-write isReadonly reaches the update diff.
   const resolveMeta =
     typeof (store as any).getFieldMeta === 'function'
@@ -111,6 +124,7 @@ export function buildDiffFieldsMeta(store: WebModelStore<any>): DiffFieldsMeta {
     };
   }
 
+  diffFieldsMetaCache.set(store, { source: raw, normalized });
   return normalized;
 }
 

@@ -24,7 +24,7 @@ SPDX-License-Identifier: Apache-2.0
     :label-for-control="false"
   >
     <!-- Same chrome in edit + display; interactivity follows isInteractive. -->
-    <template #edit="{ fieldValue, record, inputId, labelId, describedBy }">
+    <template #edit="{ fieldValue, record, inputId, labelId, describedBy, invalid }">
       <div
         class="choy-statusbar-field__control"
         role="radiogroup"
@@ -33,6 +33,7 @@ SPDX-License-Identifier: Apache-2.0
         :id="inputId || undefined"
         :aria-labelledby="labelId || undefined"
         :aria-describedby="describedBy || undefined"
+        :aria-invalid="invalid ? 'true' : undefined"
         :aria-disabled="!isInteractive || pending || undefined"
       >
         <button
@@ -54,12 +55,14 @@ SPDX-License-Identifier: Apache-2.0
       </div>
     </template>
 
-    <template #display="{ fieldValue, record }">
+    <template #display="{ fieldValue, record, inputId, labelId }">
       <div
         class="choy-statusbar-field__control"
         role="radiogroup"
         data-testid="choy-statusbar"
         :data-clickable="isInteractive ? 'true' : undefined"
+        :id="inputId || undefined"
+        :aria-labelledby="labelId || undefined"
         :aria-disabled="!isInteractive || pending || undefined"
       >
         <button

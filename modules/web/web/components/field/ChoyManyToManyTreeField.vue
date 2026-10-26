@@ -20,13 +20,14 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
     :label-for-control="false"
   >
-    <template #edit="{ inputId, labelId, describedBy }">
+    <template #edit="{ inputId, labelId, describedBy, invalid }">
       <div
         class="w-full overflow-auto"
         :id="inputId || undefined"
         :style="treeBoxStyle"
         :aria-labelledby="labelId || undefined"
         :aria-describedby="describedBy || undefined"
+        :aria-invalid="invalid ? 'true' : undefined"
       >
         <RelationTree
           ref="editTreeRef"
