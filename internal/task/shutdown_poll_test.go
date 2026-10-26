@@ -213,6 +213,88 @@ func TestSchedulerLoop_ExitsOnContextCancel(t *testing.T) {
 	}
 }
 
+func TestDispatcherIsStopped_NilReceiver(t *testing.T) {
+	var d *Dispatcher
+	if !d.isStopped() {
+		t.Fatal("expected nil dispatcher to report stopped")
+	}
+}
+
+func TestDispatcherPollOnce_ReturnsWhenAlreadyStopped(t *testing.T) {
+	dispatcher := NewDispatcherWithRuntime(
+		&testScope{
+			ctx:    context.Background(),
+			logger: slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)),
+			cfg:    &config.Config{Task: config.NewDefaultTaskConfig()},
+		},
+		nil,
+		taskcontract.Runtime{Queue: cancelAwareTaskQueue{}},
+	)
+	close(dispatcher.stopCh)
+	dispatcher.pollOnce("poll")
+}
+
+func TestDispatcherPollOnce_NilPollCtxFallsBackToScopeContext(t *testing.T) {
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	dispatcher := NewDispatcherWithRuntime(
+		&testScope{ctx: context.Background(), logger: logger, cfg: &config.Config{Task: config.NewDefaultTaskConfig()}},
+		nil,
+		taskcontract.Runtime{Queue: cancelAwareTaskQueue{listReadyErr: errTestPoll}},
+	)
+	dispatcher.pollCtx = nil
+	dispatcher.pollOnce("poll")
+	if !strings.Contains(buf.String(), "task dispatch poll failed") {
+		t.Fatalf("expected WARN via scope context fallback, got logs: %s", buf.String())
+	}
+}
+
+func TestDispatcherPollOnce_NilPollCtxAndNilScopeContextUsesBackground(t *testing.T) {
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	dispatcher := NewDispatcherWithRuntime(
+		&testScope{ctx: nil, logger: logger, cfg: &config.Config{Task: config.NewDefaultTaskConfig()}},
+		nil,
+		taskcontract.Runtime{Queue: cancelAwareTaskQueue{listReadyErr: errTestPoll}},
+	)
+	dispatcher.pollCtx = nil
+	dispatcher.pollOnce("poll")
+	if !strings.Contains(buf.String(), "task dispatch poll failed") {
+		t.Fatalf("expected WARN via background context fallback, got logs: %s", buf.String())
+	}
+}
+
+func TestDispatcherClaimAndRunReady_ReturnsWhenStopped(t *testing.T) {
+	queue := &countingClaimQueue{}
+	dispatcher := NewDispatcherWithRuntime(
+		&testScope{
+			ctx:    context.Background(),
+			logger: slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)),
+			cfg:    &config.Config{Task: config.NewDefaultTaskConfig()},
+		},
+		nil,
+		taskcontract.Runtime{Queue: queue},
+	)
+	close(dispatcher.stopCh)
+	dispatcher.claimAndRunReady(context.Background(), []Job{{
+		Id:        "job-1",
+		TargetApp: "auth",
+	}}, time.Now().UTC())
+	if queue.claims != 0 {
+		t.Fatalf("TryClaim calls = %d, want 0 when dispatcher is already stopped", queue.claims)
+	}
+}
+
+type countingClaimQueue struct {
+	stubTaskQueue
+	claims int
+}
+
+func (q *countingClaimQueue) TryClaim(context.Context, string, time.Time) (bool, error) {
+	q.claims++
+	return true, nil
+}
+
 var errTestPoll = errString("poll boom")
 
 type errString string

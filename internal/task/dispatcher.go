@@ -248,6 +248,10 @@ func (d *Dispatcher) pollOnce(source string) {
 	if len(selected) == 0 {
 		return
 	}
+	d.claimAndRunReady(ctx, selected, now)
+}
+
+func (d *Dispatcher) claimAndRunReady(ctx context.Context, selected []Job, now time.Time) {
 	for _, job := range selected {
 		if d.isStopped() {
 			return

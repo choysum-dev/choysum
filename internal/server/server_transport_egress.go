@@ -43,29 +43,18 @@ func (s *GRPCWebServer) assembleGRPCServer(opts runtimeOptions) {
 	s.server = transport.NewGRPCServer(s.grpcServerOptions())
 }
 
+type grpcServerStopper interface {
+	GracefulStop()
+	Stop()
+}
+
 func (s *GRPCWebServer) stopGRPCTransport(reload bool) {
 	if s.server != nil {
 		if reload {
 			// Hot reload keeps process context live; wait for in-flight RPCs like before.
 			s.server.GracefulStop()
 		} else {
-			done := make(chan struct{})
-			go func(srv *grpc.Server) {
-				srv.GracefulStop()
-				close(done)
-			}(s.server)
-			select {
-			case <-done:
-			case <-time.After(2 * time.Second):
-				// Stop in a goroutine: grpc-go may hold server.mu across handlersWG.Wait
-				// inside GracefulStop, so a synchronous Stop can block forever.
-				go s.server.Stop()
-				select {
-				case <-done:
-				case <-time.After(2 * time.Second):
-					// Hung handlers / GracefulStop mutex; abandon waiting so process exit continues.
-				}
-			}
+			stopGRPCServerWithTimeout(s.server, 2*time.Second, 2*time.Second)
 		}
 		s.server = nil
 	}
@@ -73,6 +62,30 @@ func (s *GRPCWebServer) stopGRPCTransport(reload bool) {
 	if s.grpcClientPool != nil {
 		s.grpcClientPool.CloseAll()
 		s.grpcClientPool = nil
+	}
+}
+
+// stopGRPCServerWithTimeout waits for GracefulStop up to gracefulTimeout, then
+// calls Stop asynchronously and waits up to forceWait more. If both waiters
+// expire, it returns so process exit can continue (grpc-go may hold server.mu
+// across handlersWG.Wait inside GracefulStop).
+func stopGRPCServerWithTimeout(srv grpcServerStopper, gracefulTimeout, forceWait time.Duration) {
+	if srv == nil {
+		return
+	}
+	done := make(chan struct{})
+	go func() {
+		srv.GracefulStop()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(gracefulTimeout):
+		go srv.Stop()
+		select {
+		case <-done:
+		case <-time.After(forceWait):
+		}
 	}
 }
 
