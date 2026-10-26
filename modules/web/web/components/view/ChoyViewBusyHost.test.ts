@@ -19,7 +19,7 @@ describe('ChoyViewBusyHost', () => {
     expect(host?.hasAttribute('inert')).toBe(false);
     expect(mounted.q('[data-testid=body]')?.textContent).toBe('ok');
     expect(mounted.q('[data-slot=view-busy-overlay]')).toBeNull();
-    expect(document.body.querySelector('[data-slot=view-busy-status]')).toBeNull();
+    expect(mounted.q('[data-slot=view-busy-status]')).toBeNull();
     mounted.unmount();
   });
 
@@ -36,8 +36,15 @@ describe('ChoyViewBusyHost', () => {
     expect(host?.hasAttribute('inert')).toBe(true);
     expect(host?.className || '').toContain('pointer-events-none');
     expect(host?.className || '').toContain('min-h-40');
-    expect(mounted.q('[data-slot=view-busy-overlay]')).not.toBeNull();
-    const status = document.body.querySelector('[data-slot=view-busy-status]');
+
+    const overlay = mounted.q('[data-slot=view-busy-overlay]') as HTMLElement | null;
+    expect(overlay).not.toBeNull();
+    expect(overlay?.querySelector('[data-testid=choy-spinner]')).not.toBeNull();
+
+    // Teleport lands on document.body; query via host tree first, then body for the live region.
+    const status =
+      mounted.q('[data-slot=view-busy-status]') ||
+      (document.body.querySelector('[data-slot=view-busy-status]') as Element | null);
     expect(status).not.toBeNull();
     expect(status?.getAttribute('role')).toBe('status');
     expect((status?.textContent || '').trim()).toBe('Saving…');

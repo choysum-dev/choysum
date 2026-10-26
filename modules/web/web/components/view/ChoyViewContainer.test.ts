@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { h } from 'vue';
+import { Comment, Text, h } from 'vue';
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import ChoyViewContainer from './ChoyViewContainer.vue';
 
@@ -48,13 +48,27 @@ describe('ChoyViewContainer', () => {
   });
 
   test('omits header/footer wrappers when those slots are empty', async () => {
-    const mounted = mountApp(ChoyViewContainer as any, {
+    const omitted = mountApp(ChoyViewContainer as any, {
       slots: { default: () => h('div', { 'data-testid': 'body' }, 'only') },
     });
     await flushPromises();
-    expect(mounted.q('[data-slot=view-header]')).toBeNull();
-    expect(mounted.q('[data-slot=view-footer]')).toBeNull();
-    expect(mounted.q('[data-testid=body]')?.textContent).toBe('only');
-    mounted.unmount();
+    expect(omitted.q('[data-slot=view-header]')).toBeNull();
+    expect(omitted.q('[data-slot=view-footer]')).toBeNull();
+    expect(omitted.q('[data-testid=body]')?.textContent).toBe('only');
+    omitted.unmount();
+
+    // Explicit empty / comment / whitespace slots must not leave blank flex bands.
+    const emptyProvided = mountApp(ChoyViewContainer as any, {
+      slots: {
+        header: () => null,
+        footer: () => [h(Comment, 'x'), h(Text, '   ')],
+        default: () => h('div', { 'data-testid': 'body' }, 'body'),
+      },
+    });
+    await flushPromises();
+    expect(emptyProvided.q('[data-slot=view-header]')).toBeNull();
+    expect(emptyProvided.q('[data-slot=view-footer]')).toBeNull();
+    expect(emptyProvided.q('[data-testid=body]')?.textContent).toBe('body');
+    emptyProvided.unmount();
   });
 });

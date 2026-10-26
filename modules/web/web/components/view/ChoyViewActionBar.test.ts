@@ -24,8 +24,7 @@ describe('ChoyViewActionBar', () => {
     expect(mounted.q('[data-testid=choy-view-action-bar-host]')).not.toBeNull();
     const bar = mounted.q('[data-slot=view-action-bar]') as HTMLElement | null;
     expect(bar?.getAttribute('data-layout')).toBe('split');
-    expect(bar?.className || '').toContain('flex');
-    expect(bar?.className || '').toContain('pb-2');
+    expect(mounted.q('[data-slot=view-action-bar-leading]')).not.toBeNull();
     expect(mounted.q('[data-testid=sys]')?.textContent).toBe('S');
     expect(mounted.q('[data-testid=usr]')?.textContent).toBe('U');
     expect(mounted.q('[data-testid=center]')).not.toBeNull();
@@ -44,13 +43,14 @@ describe('ChoyViewActionBar', () => {
     await flushPromises();
     const bar = mounted.q('[data-slot=view-action-bar]') as HTMLElement | null;
     expect(bar?.getAttribute('data-layout')).toBe('thirds');
-    expect(bar?.className || '').toContain('grid-cols-');
+    const leading = mounted.q('[data-slot=view-action-bar-leading]') as HTMLElement | null;
+    expect(leading).not.toBeNull();
+    expect(leading?.querySelector('[data-testid=mid]')).toBeNull();
     expect(mounted.q('[data-testid=mid]')?.textContent).toBe('M');
-    // Leading column is present as an empty flex shell so center/right stay aligned.
-    const leading = Array.from(bar?.children || []).find((el) =>
-      String((el as HTMLElement).className || '').includes('min-w-0'),
-    );
-    expect(leading).toBeTruthy();
+    // Leading is the first toolbar child so center stays in column 2.
+    const kids = Array.from(bar?.children || []) as HTMLElement[];
+    expect(kids[0]?.getAttribute('data-slot')).toBe('view-action-bar-leading');
+    expect(kids[0]).toBe(leading);
     mounted.unmount();
   });
 
@@ -61,7 +61,8 @@ describe('ChoyViewActionBar', () => {
     await flushPromises();
     const bar = mounted.q('[data-slot=view-action-bar]') as HTMLElement | null;
     expect(bar?.className || '').toContain('border-b-0');
-    expect(bar?.className || '').not.toContain('pb-2');
+    // Hairline air (pb-2) is only added when the bottom border is present.
+    expect(` ${bar?.className || ''} `).not.toContain(' pb-2 ');
     mounted.unmount();
   });
 });
