@@ -304,4 +304,36 @@ describe('ChoyBinaryField', () => {
     expect(ss.pickError).toBe('');
     m.unmount();
   });
+
+  test('pickErrorRule and field-errors map sync', async () => {
+    const binding = makeBinding({ value: null, prop: 'Doc' });
+    const errMap = ref(new Map<string, string>());
+    installFieldBaseEditStub();
+    installChoyButtonStub();
+    const m = mountApp(BinaryField as any, {
+      props: { binding, renderMode: 'form', drag: false, accept: '.pdf' },
+      provide: { 'field-errors': errMap },
+    });
+    await flushPromises();
+    const ss = m.setupState() as any;
+    await ss.applySelectedBinary(new File([new Uint8Array([1])], 'no.txt', { type: 'text/plain' }), () => binding.fieldRef());
+    expect(errMap.value.get('Doc')).toMatch(/not allowed|不允许/i);
+    let ruleErr: Error | undefined;
+    ss.pickErrorRule.validator(null, null, (e?: Error) => {
+      ruleErr = e;
+    });
+    expect(ruleErr).toBeTruthy();
+    await ss.applySelectedBinary(
+      new File([new Uint8Array([1])], 'ok.pdf', { type: 'application/pdf' }),
+      () => binding.fieldRef(),
+      async () => {}
+    );
+    expect(errMap.value.has('Doc')).toBe(false);
+    ruleErr = undefined;
+    ss.pickErrorRule.validator(null, null, (e?: Error) => {
+      ruleErr = e;
+    });
+    expect(ruleErr).toBeUndefined();
+    m.unmount();
+  });
 });

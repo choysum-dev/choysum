@@ -535,6 +535,10 @@ func TestScheduleLeaseConflictRetryAbortsOnContextCancel(t *testing.T) {
 		t.Fatalf("unexpected retry event after cancel: %q", event)
 	case <-time.After(80 * time.Millisecond):
 	}
+	if got := srv.hotreload.nextLeaseRetry(file); got != 1 {
+		t.Fatalf("after cancel abort, nextLeaseRetry = %d, want 1 (budget cleared)", got)
+	}
+	srv.hotreload.clearLeaseRetry(file)
 }
 
 func TestScheduleLeaseConflictRetryAbortsWhenCanceledAfterTimer(t *testing.T) {

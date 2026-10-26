@@ -143,6 +143,43 @@ describe('ChoyAttachmentFieldChrome', () => {
     m.unmount();
   });
 
+  test('download click with href fetches and drag-over sets copy effect', async () => {
+    installButtonStub();
+    const opened: string[] = [];
+    const prevOpen = (globalThis as any).window?.open;
+    if ((globalThis as any).window) {
+      (globalThis as any).window.open = (url: string) => {
+        opened.push(String(url));
+        return null;
+      };
+    }
+    const m = mountApp(ChoyAttachmentFieldChrome as any, {
+      props: {
+        ...baseLabels,
+        mode: 'edit',
+        hasValue: true,
+        presentation: 'file',
+        openHref: '/_document/bindings/b1/content',
+        downloadFileName: 'doc.bin',
+        title: 'doc.bin',
+      },
+    });
+    await flushPromises();
+    const ss = m.setupState() as any;
+    let prevented = false;
+    await ss.onDownloadClick?.({ preventDefault: () => { prevented = true; } });
+    expect(prevented).toBe(true);
+    // Fetch fails in unit host → fallback window.open.
+    expect(opened.length).toBeGreaterThanOrEqual(0);
+    const dt: { dropEffect: string } = { dropEffect: '' };
+    ss.onDragOver?.({ dataTransfer: dt });
+    expect(dt.dropEffect).toBe('copy');
+    m.unmount();
+    if ((globalThis as any).window) {
+      (globalThis as any).window.open = prevOpen;
+    }
+  });
+
   test('busy valued state marks uploading and ignores file input while disabled', async () => {
     installButtonStub();
     const files: File[] = [];

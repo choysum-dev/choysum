@@ -263,10 +263,12 @@ func (s *GRPCWebServer) scheduleLeaseConflictRetry(file string) {
 		select {
 		case <-timer.C:
 		case <-done:
+			s.hotreload.clearLeaseRetry(file)
 			return
 		}
 		// Re-check after the timer: context may have canceled while we waited.
 		if !hotreloadRetryStillActive(done) {
+			s.hotreload.clearLeaseRetry(file)
 			return
 		}
 		if !s.enqueueWatchEvent(file) {
