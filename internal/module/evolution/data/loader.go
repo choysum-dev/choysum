@@ -826,17 +826,35 @@ func (l *Loader) planBatchRecordOrder(tx *gorm.DB, owner *meta.Module, records [
 }
 
 func topoOrderOrCycleBatch(records []batchRecord, dep [][]int, adj [][]int, indeg []int, edgeInfo map[[2]int]refOccurrence) ([]int, error) {
-	keyOf := func(i int) string {
-		br := records[i]
-		rec := br.Rec
-		// Use a stable key for deterministic ordering independent of input slice order.
+	// Stable tie-break independent of input slice order: file, then numeric
+	// recordIndex (not stringified — "10" must not sort before "2"), then xml id.
+	fileIDOf := func(br batchRecord) string {
 		fileID := strings.TrimSpace(br.FileRel)
 		if fileID == "" {
 			fileID = filepath.Base(br.FilePath)
 		}
-		return fileID + "/" + strconv.Itoa(br.RecordIndex) + "/" + strings.TrimSpace(rec.Module) + "." + strings.TrimSpace(rec.Name)
+		return fileID
 	}
-	less := func(i, j int) bool { return keyOf(i) < keyOf(j) }
+	nameKeyOf := func(i int) string {
+		rec := records[i].Rec
+		return strings.TrimSpace(rec.Module) + "." + strings.TrimSpace(rec.Name)
+	}
+	less := func(i, j int) bool {
+		fi, fj := fileIDOf(records[i]), fileIDOf(records[j])
+		if fi != fj {
+			return fi < fj
+		}
+		ri, rj := records[i].RecordIndex, records[j].RecordIndex
+		if ri != rj {
+			return ri < rj
+		}
+		return nameKeyOf(i) < nameKeyOf(j)
+	}
+	// Display key for cycle error canonicalization (lexicographic is fine here).
+	keyOf := func(i int) string {
+		br := records[i]
+		return fileIDOf(br) + "/" + strconv.Itoa(br.RecordIndex) + "/" + nameKeyOf(i)
+	}
 
 	// Normalize edge iteration order for determinism.
 	for i := range dep {

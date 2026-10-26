@@ -1,0 +1,32 @@
+<!--
+SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+SPDX-License-Identifier: Apache-2.0
+-->
+
+<script setup lang="ts">
+import type { HTMLAttributes } from "vue"
+import { cn } from "../../../../lib/utils"
+import { Label } from "../label"
+
+const props = defineProps<{
+  class?: HTMLAttributes["class"]
+  for?: string
+  id?: string
+}>()
+</script>
+
+<template>
+  <Label
+    data-slot="field-label"
+    :id="props.id"
+    :for="props.for"
+    :class="cn(
+      'group/field-label peer/field-label flex w-fit items-center gap-2 leading-none group-data-[disabled=true]/field:opacity-50',
+      'has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:flex-col has-[>[data-slot=field]]:rounded-md has-[>[data-slot=field]]:border [&>*]:data-[slot=field]:p-4',
+      'has-data-[state=checked]:bg-primary/5 has-data-[state=checked]:border-primary dark:has-data-[state=checked]:bg-primary/10',
+      props.class,
+    )"
+  >
+    <slot />
+  </Label>
+</template>

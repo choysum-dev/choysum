@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OFormView
+  <ChoyFormView
     v-bind="{ store, recordId, initialValues, viewMode, showHeader, createAction }"
     :action-ids="{ create: partnerActions.create, edit: partnerActions.edit, copy: partnerActions.copy, delete: partnerActions.delete }"
     :has-action="hasAction"
@@ -12,19 +12,16 @@ SPDX-License-Identifier: Apache-2.0
   >
     <div data-region="partner-detail-root">
       <div data-region="partner-primary-form">
-        <el-card shadow="never" class="pfv-card" data-region="partner-section-basic">
-          <template #header>
-            <div class="pfv-card__header"><span>{{ _t('Basic Information') }}</span></div>
-          </template>
-          <el-row :gutter="12">
-            <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OVarCharField :store="store" prop="Name" :rules="requiredRules" />
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OVarCharField :store="store" prop="Code" :rules="requiredRules" />
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OManyToOneRefField
+        <ChoyCard :title="_t('Basic Information')" class="mb-3.5" data-region="partner-section-basic">
+          <ChoyGrid :cols="12">
+            <ChoyCol :span="3">
+              <ChoyVarcharField :store="store" prop="Name" :rules="requiredRules" />
+            </ChoyCol>
+            <ChoyCol :span="3">
+              <ChoyVarcharField :store="store" prop="Code" :rules="requiredRules" />
+            </ChoyCol>
+            <ChoyCol :span="3">
+              <ChoyManyToOneRefField
                 :store="store"
                 prop="CompanyId"
                 :searchView="CompanyListView"
@@ -32,114 +29,124 @@ SPDX-License-Identifier: Apache-2.0
                 :rules="requiredRules"
                 @value-click="onCompanyValueClick"
               />
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OBooleanField :store="store" prop="IsCompany" widget="switch" />
-            </el-col>
-          </el-row>
-          <el-row :gutter="12">
-            <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OBooleanField :store="store" prop="IsActive" widget="switch" />
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <ODateTimeField :store="store" prop="CreatedAt" />
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <ODateTimeField :store="store" prop="UpdatedAt" />
-            </el-col>
-          </el-row>
-        </el-card>
+            </ChoyCol>
+            <ChoyCol :span="3">
+              <ChoyBooleanField :store="store" prop="IsCompany" widget="switch" />
+            </ChoyCol>
+          </ChoyGrid>
+          <ChoyGrid :cols="12">
+            <ChoyCol :span="3">
+              <ChoyBooleanField :store="store" prop="IsActive" widget="switch" />
+            </ChoyCol>
+            <ChoyCol :span="3">
+              <ChoyDatetimeField :store="store" prop="CreatedAt" />
+            </ChoyCol>
+            <ChoyCol :span="3">
+              <ChoyDatetimeField :store="store" prop="UpdatedAt" />
+            </ChoyCol>
+          </ChoyGrid>
+        </ChoyCard>
 
-        <el-card shadow="never" class="pfv-card" data-region="partner-section-commercial-basics">
-          <template #header>
-            <div class="pfv-card__header"><span>{{ _t('Commercial Basics') }}</span></div>
-          </template>
-          <el-row :gutter="12">
-            <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OIntField :store="store" prop="CustomerRank" />
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OIntField :store="store" prop="SupplierRank" />
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OManyToOneRefField :store="store" prop="LanguageId" :searchView="LanguageListView" :search-view-title="_t('Select Language')" />
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OManyToOneRefField :store="store" prop="CurrencyId" :searchView="CurrencyListView" :search-view-title="_t('Select Currency')" />
-            </el-col>
-          </el-row>
-          <el-row :gutter="12">
-            <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OManyToOneRefField :store="store" prop="CountryId" :searchView="CountryListView" :search-view-title="_t('Select Country')" />
-            </el-col>
-          </el-row>
-        </el-card>
+        <ChoyCard :title="_t('Commercial Basics')" class="mb-3.5" data-region="partner-section-commercial-basics">
+          <ChoyGrid :cols="12">
+            <ChoyCol :span="3">
+              <ChoyIntField :store="store" prop="CustomerRank" />
+            </ChoyCol>
+            <ChoyCol :span="3">
+              <ChoyIntField :store="store" prop="SupplierRank" />
+            </ChoyCol>
+            <ChoyCol :span="3">
+              <ChoyManyToOneRefField
+                :store="store"
+                prop="LanguageId"
+                :searchView="LanguageListView"
+                :search-view-title="_t('Select Language')"
+              />
+            </ChoyCol>
+            <ChoyCol :span="3">
+              <ChoyManyToOneRefField
+                :store="store"
+                prop="CurrencyId"
+                :searchView="CurrencyListView"
+                :search-view-title="_t('Select Currency')"
+              />
+            </ChoyCol>
+          </ChoyGrid>
+          <ChoyGrid :cols="12">
+            <ChoyCol :span="3">
+              <ChoyManyToOneRefField
+                :store="store"
+                prop="CountryId"
+                :searchView="CountryListView"
+                :search-view-title="_t('Select Country')"
+              />
+            </ChoyCol>
+          </ChoyGrid>
+        </ChoyCard>
 
-        <el-card shadow="never" class="pfv-card" data-region="partner-section-contact-channel">
-          <template #header>
-            <div class="pfv-card__header"><span>{{ _t('Contact Details') }}</span></div>
-          </template>
-          <el-row :gutter="12">
-            <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OVarCharField :store="store" prop="Email" />
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OVarCharField :store="store" prop="Phone" />
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OVarCharField :store="store" prop="Mobile" />
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OVarCharField :store="store" prop="Reference" />
-            </el-col>
-          </el-row>
-        </el-card>
+        <ChoyCard :title="_t('Contact Details')" class="mb-3.5" data-region="partner-section-contact-channel">
+          <ChoyGrid :cols="12">
+            <ChoyCol :span="3">
+              <ChoyVarcharField :store="store" prop="Email" />
+            </ChoyCol>
+            <ChoyCol :span="3">
+              <ChoyVarcharField :store="store" prop="Phone" />
+            </ChoyCol>
+            <ChoyCol :span="3">
+              <ChoyVarcharField :store="store" prop="Mobile" />
+            </ChoyCol>
+            <ChoyCol :span="3">
+              <ChoyVarcharField :store="store" prop="Reference" />
+            </ChoyCol>
+          </ChoyGrid>
+        </ChoyCard>
 
-        <el-card shadow="never" class="pfv-card" data-region="partner-section-default-entry">
-          <template #header>
-            <div class="pfv-card__header"><span>{{ _t('Default Entries') }}</span></div>
-          </template>
-          <el-row :gutter="12">
-            <el-col :xs="24" :sm="12" :md="8" :lg="8">
-              <OManyToOneField :store="store" prop="DefaultContactId" :readonly="true" @value-click="onDefaultContactValueClick">
-                <OVarCharField :store="store" prop="DefaultContactId.Name" />
-              </OManyToOneField>
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8" :lg="8">
-              <OManyToOneField
+        <ChoyCard :title="_t('Default Entries')" class="mb-3.5" data-region="partner-section-default-entry">
+          <ChoyGrid :cols="12">
+            <ChoyCol :span="4">
+              <ChoyManyToOneField
+                :store="store"
+                prop="DefaultContactId"
+                :readonly="true"
+                @value-click="onDefaultContactValueClick"
+              >
+                <ChoyVarcharField :store="store" prop="DefaultContactId.Name" />
+              </ChoyManyToOneField>
+            </ChoyCol>
+            <ChoyCol :span="4">
+              <ChoyManyToOneField
                 :store="store"
                 prop="DefaultBillingAddressId"
                 :readonly="true"
                 @value-click="onDefaultBillingAddressValueClick"
               >
-                <OVarCharField :store="store" prop="DefaultBillingAddressId.Name" />
-              </OManyToOneField>
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8" :lg="8">
-              <OManyToOneField
+                <ChoyVarcharField :store="store" prop="DefaultBillingAddressId.Name" />
+              </ChoyManyToOneField>
+            </ChoyCol>
+            <ChoyCol :span="4">
+              <ChoyManyToOneField
                 :store="store"
                 prop="DefaultShippingAddressId"
                 :readonly="true"
                 @value-click="onDefaultShippingAddressValueClick"
               >
-                <OVarCharField :store="store" prop="DefaultShippingAddressId.Name" />
-              </OManyToOneField>
-            </el-col>
-          </el-row>
-        </el-card>
+                <ChoyVarcharField :store="store" prop="DefaultShippingAddressId.Name" />
+              </ChoyManyToOneField>
+            </ChoyCol>
+          </ChoyGrid>
+        </ChoyCard>
       </div>
 
-      <el-card shadow="never" class="pfv-card" data-region="partner-detail-tabs">
-        <template #header>
-          <div class="pfv-card__header">
-            <span>{{ _t('Related Data') }}</span>
-            <div data-slot="partner-detail-tab-list" style="display: none"></div>
-          </div>
-        </template>
-        <el-tabs v-model="activeTab" type="card" class="pfv-tabs" data-slot="partner-detail-tab-panels">
-          <el-tab-pane :label="_t('Contacts and Addresses')" name="contacts" data-region="partner-tab-contacts">
+      <ChoyCard :title="_t('Related Data')" class="mb-3.5" data-region="partner-detail-tabs">
+        <ChoyTabs
+          v-model="activeTab"
+          class="mt-0"
+          :data-anchor="PARTNER_DETAIL_TAB_PANELS_ANCHOR"
+          default-value="contacts"
+        >
+          <ChoyTab value="contacts" :label="_t('Contacts and Addresses')" data-region="partner-tab-contacts">
             <div data-region="partner-panel-contacts">
-              <OOneToManyKanbanField
+              <ChoyOneToManyKanbanField
                 :store="store"
                 prop="Contacts"
                 label=""
@@ -153,33 +160,56 @@ SPDX-License-Identifier: Apache-2.0
                 :display-dialog-title="_t('View Contact')"
               >
                 <template #card="{ item, editable, removable, edit, remove }">
-                  <div class="pfv-contact-card">
-                    <div class="pfv-contact-card__title-row">
-                      <div class="pfv-contact-card__title">{{ item?.Name || _t('Unnamed Contact') }}</div>
-                      <div class="pfv-contact-card__flags">
-                        <el-tag v-if="item?.IsDefault" size="small" type="success">{{ _t('Default') }}</el-tag>
-                        <el-tag v-if="item?.IsActive === false" size="small" type="info">{{ _t('Inactive') }}</el-tag>
+                  <div class="flex h-full min-h-0 flex-col gap-1.5">
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="truncate text-sm font-medium text-foreground">{{ item?.Name || _t('Unnamed Contact') }}</div>
+                      <div class="inline-flex shrink-0 gap-1">
+                        <ChoyBadge
+                          v-if="item?.IsDefault"
+                          variant="secondary"
+                          class="px-1.5 py-0 text-[10px] font-normal"
+                        >
+                          {{ _t('Default') }}
+                        </ChoyBadge>
+                        <ChoyBadge
+                          v-if="item?.IsActive === false"
+                          variant="outline"
+                          class="px-1.5 py-0 text-[10px] font-normal"
+                        >
+                          {{ _t('Inactive') }}
+                        </ChoyBadge>
                       </div>
                     </div>
-                    <div class="pfv-contact-card__meta">{{ _t('Role') }}: {{ getContactRoleLabel(item?.ContactRole) }}</div>
-                    <div class="pfv-contact-card__meta">{{ _t('Address Type') }}: {{ getAddressTypeLabel(item?.AddressType) }}</div>
-                    <div v-if="item?.Email" class="pfv-contact-card__line">{{ _t('Email') }}: {{ item.Email }}</div>
-                    <div v-if="item?.Phone" class="pfv-contact-card__line">{{ _t('Phone') }}: {{ item.Phone }}</div>
-                    <div v-if="editable || removable" class="pfv-contact-card__actions">
-                      <el-button v-if="editable" type="primary" text size="small" @click.stop="edit">{{ _t('Edit') }}</el-button>
-                      <el-button v-if="removable" type="danger" text size="small" @click.stop="remove">{{ _t('Delete') }}</el-button>
+                    <div class="truncate text-xs text-muted-foreground">
+                      {{ _t('Role') }} {{ getContactRoleLabel(item?.ContactRole) }}
+                      <span class="text-muted-foreground/60"> · </span>
+                      {{ _t('Address Type') }} {{ getAddressTypeLabel(item?.AddressType) }}
+                    </div>
+                    <div v-if="item?.Email" class="truncate text-xs text-muted-foreground">{{ _t('Email') }} {{ item.Email }}</div>
+                    <div v-if="item?.Phone" class="truncate text-xs text-muted-foreground">{{ _t('Phone') }} {{ item.Phone }}</div>
+                    <div v-if="editable || removable" class="mt-auto inline-flex gap-1 pt-1">
+                      <ChoyButton v-if="editable" variant="ghost" size="sm" @click.stop="edit">{{ _t('Edit') }}</ChoyButton>
+                      <ChoyButton
+                        v-if="removable"
+                        variant="ghost"
+                        size="sm"
+                        class="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        @click.stop="remove"
+                      >
+                        {{ _t('Delete') }}
+                      </ChoyButton>
                     </div>
                   </div>
                 </template>
-              </OOneToManyKanbanField>
+              </ChoyOneToManyKanbanField>
             </div>
-          </el-tab-pane>
-        </el-tabs>
-      </el-card>
+          </ChoyTab>
+        </ChoyTabs>
+      </ChoyCard>
 
-      <OChatter v-if="recordId" model="partner.Partner" :res-id="recordId" />
+      <ChoyChatter v-if="props.recordId" :key="props.recordId" bind-store model="partner.Partner" :res-id="props.recordId" />
     </div>
-  </OFormView>
+  </ChoyFormView>
 </template>
 
 <script setup lang="ts">
@@ -190,32 +220,39 @@ import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type Partner from '@/partner/service/models/partner';
 import type Company from '@/base/service/models/company';
 import type Address from '@/base/service/models/address';
-import { ElCard, ElRow, ElCol, ElTabs, ElTabPane } from 'element-plus';
-import OFormView from '@/web/web/components/view/OFormView.vue';
-import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
-import OIntField from '@/web/web/components/field/OIntField.vue';
-import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
-import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
-import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
 import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
-import OManyToOneRefField from '@/web/web/components/field/OManyToOneRefField.vue';
-import type { ValueClickPayload as ManyToOneRefValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
-import OOneToManyKanbanField from '@/web/web/components/field/OOneToManyKanbanField.vue';
-import OChatter from '@/web/web/components/chatter/OChatter.vue';
 import CompanyListView from '@/base/web/views/CompanyListView.vue';
 import LanguageListView from '@/base/web/views/LanguageListView.vue';
 import CurrencyListView from '@/base/web/views/CurrencyListView.vue';
 import CountryListView from '@/base/web/views/CountryListView.vue';
 import PartnerContactFormView from '@/partner/web/views/PartnerContactFormView.vue';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { usePermission } from '@/auth/web/composables/usePermission';
-import { ElButton, ElTag } from 'element-plus';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
+import {
+  ChoyBadge,
+  ChoyBooleanField,
+  ChoyButton,
+  ChoyCard,
+  ChoyChatter,
+  ChoyCol,
+  ChoyDatetimeField,
+  ChoyFormView,
+  ChoyGrid,
+  ChoyIntField,
+  ChoyManyToOneField,
+  ChoyManyToOneRefField,
+  ChoyOneToManyKanbanField,
+  ChoyTab,
+  ChoyTabs,
+  ChoyVarcharField,
+  PARTNER_DETAIL_TAB_PANELS_ANCHOR,
+  type ChoyViewMode as ViewMode
+} from '@/web';
 import { partnerActions } from './partner_actions';
 
 defineOptions({ name: 'PartnerFormView', inheritAttrs: true });
-const { _t, _lt } = createTranslate('partner', { scope: 'web/views/PartnerFormView' });
+const { _t } = createTranslate('partner', { scope: 'web/views/PartnerFormView' });
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 
 /**
@@ -307,7 +344,7 @@ function getContactRoleLabel(value?: string) {
 /**
  * Opens the selected company record from the partner form.
  */
-function onCompanyValueClick(payload: ManyToOneRefValueClickPayload<Company>) {
+function onCompanyValueClick(payload: ManyToOneValueClickPayload<Company>) {
   const id = String(payload?.id || '').trim();
   if (!id) return;
   void router.push({ name: 'CompanyDetail', params: { id } });
@@ -341,56 +378,3 @@ function onDefaultShippingAddressValueClick(payload: ManyToOneValueClickPayload<
 }
 </script>
 
-<style scoped>
-.pfv-card {
-  margin-bottom: 14px;
-}
-
-.pfv-card__header {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-.pfv-tabs {
-  --el-tabs-header-height: 42px;
-}
-
-.pfv-contact-card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  height: 100%;
-  min-height: 0;
-}
-
-.pfv-contact-card__title-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
-
-.pfv-contact-card__title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-.pfv-contact-card__flags {
-  display: inline-flex;
-  gap: 6px;
-}
-
-.pfv-contact-card__meta,
-.pfv-contact-card__line {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-
-.pfv-contact-card__actions {
-  margin-top: auto;
-  padding-top: 4px;
-  display: inline-flex;
-  gap: 4px;
-}
-</style>

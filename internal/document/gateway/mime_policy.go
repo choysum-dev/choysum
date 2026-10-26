@@ -115,5 +115,14 @@ func sanitizeFilename(fileName string) string {
 	if clean == "" {
 		return ""
 	}
-	return clean
+	// filename= must stay ASCII; non-ASCII is carried by filename*=UTF-8''.
+	var b strings.Builder
+	b.Grow(len(clean))
+	for _, r := range clean {
+		if r < 0x20 || r > 0x7e {
+			continue
+		}
+		b.WriteRune(r)
+	}
+	return strings.TrimSpace(b.String())
 }

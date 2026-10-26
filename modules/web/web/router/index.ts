@@ -11,7 +11,7 @@ import 'nprogress/nprogress.css';
 import type { ComposerLike } from '../i18n';
 import { resolveDocumentTitle } from './documentTitle';
 
-export { resolveDocumentTitle } from './documentTitle';
+export { resolveDocumentTitle, resolveRoutePageTitle } from './documentTitle';
 
 // Configure navigation progress feedback.
 NProgress.configure({ showSpinner: false });

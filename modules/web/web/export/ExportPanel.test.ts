@@ -1,16 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { createApp, h, type Component } from 'vue';
-
-function stub(name: string): Component {
-  return {
-    name,
-    setup(_, { slots }) {
-      return () => h('div', { 'data-stub': name }, slots.default?.());
-    },
-  };
-}
+import { createApp } from 'vue';
+import { flushPromises } from '@/web/web/__tests__/mountApp';
 
 test('ExportPanel smoke: mounts with minimal props', async () => {
   const { default: Comp } = await import('./ExportPanel.vue');
@@ -19,27 +11,20 @@ test('ExportPanel smoke: mounts with minimal props', async () => {
   const app = createApp(Comp, {
     model: 'partner.Partner',
     companyId: 'c1',
-    modelValue: false,
+    modelValue: true,
     defaultFields: ['Name'],
   });
-  for (const name of [
-    'ElDialog',
-    'ElCollapse',
-    'ElCollapseItem',
-    'ElSelect',
-    'ElOption',
-    'ElButton',
-    'ElInput',
-    'ElCheckbox',
-    'ElTree',
-    'ElAlert',
-    'ElResult',
-  ]) {
-    app.component(name, stub(name));
-  }
 
   const el = document.createElement('div');
+  document.body.appendChild(el);
   app.mount(el);
-  expect(el.isConnected || el.childNodes.length >= 0).toBe(true);
+  await flushPromises();
+  const content =
+    el.querySelector('[data-slot="dialog-content"]') ||
+    document.body.querySelector('[data-slot="dialog-content"]');
+  expect(content).not.toBeNull();
+  expect(content!.querySelector('[data-slot="dialog-footer"]')).not.toBeNull();
+  expect((content!.textContent || '').includes('Export')).toBe(true);
   app.unmount();
+  el.remove();
 });

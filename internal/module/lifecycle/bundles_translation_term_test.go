@@ -187,6 +187,44 @@ func TestBuildBackendBundlesToDir_SuccessfulWrite(t *testing.T) {
 	}
 }
 
+func TestBuildBackendBundlesToDir_EntryDirCreateError(t *testing.T) {
+	modulesPath := t.TempDir()
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
+		t.Fatalf("auto migrate: %v", err)
+	}
+	modPath := filepath.Join(modulesPath, "core")
+	if err := os.MkdirAll(filepath.Join(modPath, "service"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(modPath, "service", "index.ts"), []byte("export {}\n"), 0o644); err != nil {
+		t.Fatalf("write entry: %v", err)
+	}
+	if err := db.Create(&meta.Module{
+		Name:              "core",
+		ApplicationStr:    "core",
+		Status:            meta.Installed,
+		ServiceEntryPoint: "service/index.ts",
+		Path:              modPath,
+	}).Error; err != nil {
+		t.Fatalf("seed module: %v", err)
+	}
+
+	blocker := filepath.Join(t.TempDir(), "not-a-dir")
+	if err := os.WriteFile(blocker, []byte("x"), 0o644); err != nil {
+		t.Fatalf("write blocker: %v", err)
+	}
+	distBundlesDir := filepath.Join(blocker, "dist")
+
+	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	manager := NewModuleManager(runtimeScope, nil)
+	manager.bootstrapOnce.Do(func() {})
+	err := manager.buildBackendBundlesToDir(context.Background(), distBundlesDir, nil)
+	if err == nil || !strings.Contains(err.Error(), "create bundles entry dir") {
+		t.Fatalf("err = %v, want create bundles entry dir", err)
+	}
+}
+
 func TestBuildBackendBundlesToDir_EmptyEntryOnlyStillInjectsTranslationTerm(t *testing.T) {
 	t.Parallel()
 	modulesPath := t.TempDir()

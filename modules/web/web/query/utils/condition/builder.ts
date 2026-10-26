@@ -28,7 +28,7 @@ export type BuildKeywordConditionOptions = ResolveKeywordFieldsOptions & {
 /**
  * Converts a condition group into a backend query condition recursively.
  *
- * Datetime filter values must already be UTC wire (ISO) from ODatetimeField.fromView;
+ * Datetime filter values must already be UTC wire (ISO) from DatetimeField.fromView;
  * this builder does not apply a second timezone conversion.
  */
 function groupToExpr(node: ConditionGroup): QueryCondition<any> | null {

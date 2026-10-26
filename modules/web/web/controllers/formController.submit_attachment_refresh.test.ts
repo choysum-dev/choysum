@@ -168,6 +168,7 @@ describe('formController submit attachment refresh', () => {
     expect(normalizedPatch?.Avatar).toEqual({
       attachmentObjectId: 'ao-new',
       displayFileName: 'avatar-original.jpg',
+      downloadDisposition: 'inline',
     });
   });
 
@@ -185,6 +186,43 @@ describe('formController submit attachment refresh', () => {
     expect(executeMock.calls.length).toBe(0);
     expect((controller.vm.original as any)?.Avatar).toBe('bind-old');
     expect((controller.vm.original as any)?.Username).toBe('root');
+  });
+
+  test('UpdateById patch includes ManyToMany link creates from type-only fieldsMetadata', async () => {
+    const store = newStore(
+      {
+        Id: 'r1',
+        TagChips: [{ Id: 'g', DisplayName: 'Gamma' }],
+      },
+      {
+        TagChips: { type: 'ManyToMany' },
+        Username: { type: 'varchar' },
+      }
+    );
+    const controller = createFormController(store, deps);
+
+    controller.vm.mode = 'edit';
+    controller.vm.original = {
+      Id: 'r1',
+      TagChips: [{ Id: 'a', DisplayName: 'Alpha' }],
+      Username: 'admin',
+    } as any;
+    controller.vm.draft = {
+      Id: 'r1',
+      TagChips: [
+        { Id: 'a', DisplayName: 'Alpha' },
+        { Id: 'g', DisplayName: 'Gamma' },
+      ],
+      Username: 'admin',
+    } as any;
+
+    await controller.submit();
+
+    expect(store.UpdateById.calls.length).toBe(1);
+    const patch = store.UpdateById.calls[0]?.[1] as Record<string, unknown>;
+    expect(patch?.TagChips).toEqual({
+      create: [{ Id: 'g' }],
+    });
   });
 
   test('handoff falls back to updated record when post-submit refresh returns no payload', async () => {

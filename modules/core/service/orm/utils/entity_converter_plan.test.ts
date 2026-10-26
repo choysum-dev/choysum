@@ -85,6 +85,20 @@ test('EntityConverter many2one fallback returns {Id} when relation payload is ab
   expect((outNullRel as any).OwnerId).toEqual({ Id: 'owner_2' });
 });
 
+test('EntityConverter many2one uses object on field key without wrapping as {Id: object}', () => {
+  // Virtual @Compute inject writes the related record onto OwnerId (no $rel$ alias).
+  const row = {
+    Id: 'row_2b',
+    OwnerId: { Id: 'owner_obj', Name: 'Owner Label', DisplayName: 'Owner Label' },
+  } as any;
+  const out = EntityConverter.entityToPlainObject(EntityConverterPlanModel as any, row, ['Id', 'OwnerId'] as any);
+  const owner = (out as any).OwnerId;
+  expect(typeof owner?.Id).toBe('string');
+  expect(owner.Id).toBe('owner_obj');
+  expect(owner.Name).toBe('Owner Label');
+  expect(owner.DisplayName).toBe('Owner Label');
+});
+
 test('EntityConverter to-many normalization handles null payload and primitive items', () => {
   const rowNull = {
     Id: 'row_4',

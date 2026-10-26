@@ -750,6 +750,11 @@ export function Field(
     const existingCompute = prev?.computeHandlers?.get(name);
     const existingSqlCompute = prev?.sqlComputeHandlers?.get(name);
 
+    // Virtual fields must not keep column metadata: repository SELECT uses field.column
+    // as the physical-column signal (see isRepositorySelectableScalarField).
+    if (normalizedRelated && normalizedRelated.store !== true) {
+      delete meta.column;
+    }
     if (existingCompute?.store === false || !!existingSqlCompute) {
       delete meta.column;
     }

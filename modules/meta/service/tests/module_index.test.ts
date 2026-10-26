@@ -3,6 +3,7 @@
 
 import {
   assertSearchCondition,
+  resolveSearchCondition,
   DEFAULT_MODULE_INDEX_SEARCH,
   toText,
   toComparableValue,
@@ -52,6 +53,28 @@ describe('assertSearchCondition', () => {
   it('rejects null / non-object conditions', () => {
     expect(() => assertSearchCondition(null as any)).toThrow(/required/);
     expect(() => assertSearchCondition(42 as any)).toThrow(/array or object/);
+  });
+});
+
+describe('resolveSearchCondition', () => {
+  it('maps omitted and empty payloads to DEFAULT_MODULE_INDEX_SEARCH', () => {
+    expect(resolveSearchCondition(undefined)).toBe(DEFAULT_MODULE_INDEX_SEARCH);
+    expect(resolveSearchCondition(null)).toBe(DEFAULT_MODULE_INDEX_SEARCH);
+    expect(resolveSearchCondition([])).toBe(DEFAULT_MODULE_INDEX_SEARCH);
+    expect(resolveSearchCondition({})).toBe(DEFAULT_MODULE_INDEX_SEARCH);
+    expect(resolveSearchCondition(Object.create(null))).toBe(DEFAULT_MODULE_INDEX_SEARCH);
+  });
+  it('keeps a non-empty array or object condition', () => {
+    const arr = ['ModuleName', '=', 'auth'];
+    expect(resolveSearchCondition(arr)).toBe(arr);
+    const obj = { ModuleName: 'auth' };
+    expect(resolveSearchCondition(obj)).toBe(obj);
+  });
+  it('does not treat keyless class instances as empty filters', () => {
+    expect(() => resolveSearchCondition(new Date())).toThrow(/must not be empty/);
+  });
+  it('still rejects non-object conditions', () => {
+    expect(() => resolveSearchCondition(42 as any)).toThrow(/array or object/);
   });
 });
 

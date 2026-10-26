@@ -54,6 +54,8 @@ export interface AttachmentFieldDescriptor {
   fileName?: string;
   displayName?: string;
   previewUrl?: string;
+  mimeType?: string;
+  sizeBytes?: number;
 }
 
 export interface RecordRow {
@@ -190,6 +192,8 @@ export interface IListController extends IBrowseViewController {
   fetchGroupRecords(key: string, pagination?: PaginationState, options?: { skipCount?: boolean }): Promise<RecordRow[] | null>;
   loadMoreGroupRecords(key: string): Promise<void>;
   loadMoreGroupChildren(key: string): Promise<void>;
+  /** Remaining leaf rows for a group after fetch/load-more (Search total − loaded). */
+  getGroupRecordRemain(key: string): number | undefined;
   bootstrapDefaults?(defaultFilter?: any, defaultGroups?: any): void;
 }
 

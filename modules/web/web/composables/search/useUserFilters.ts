@@ -3,8 +3,9 @@
 
 import { computed, inject, ref, type InjectionKey, type Ref } from 'vue';
 import { createStoreByModel as defaultCreateStoreByModel } from '@/web/web/stores/registry';
-import type { NamedFilter } from '@/web/web/query/types';
+import type { GroupBySpec, NamedFilter } from '@/web/web/query/types';
 import { filtersToQuery as defaultFiltersToQuery } from '@/web/web/query/utils/condition/builder';
+import { normalizeGroupby } from '@/web/web/query/utils/grouping/normalize';
 import { actorUserId as defaultActorUserId } from './actorUserId';
 import {
   mergeUserFilterDefaults,
@@ -22,6 +23,46 @@ export type UserFavoriteItem = UserFilterRow & {
   createUid: string;
   canDelete: boolean;
 };
+
+export type UserFavoriteMenuItem = {
+  id: string;
+  name: string;
+  shared: boolean;
+  isDefault: boolean;
+  canDelete: boolean;
+  filter: unknown;
+  groups: GroupBySpec[];
+};
+
+function normalizeFavoriteGroups(raw: unknown): GroupBySpec[] {
+  if (raw == null || raw === '') return [];
+  // jsonobject columns may decode empty as {} (not []); only arrays / field specs are grouping.
+  if (typeof raw === 'object' && !Array.isArray(raw) && typeof (raw as { field?: unknown }).field !== 'string') {
+    return [];
+  }
+  // normalizeGroupby already wraps a lone field spec; keep arrays as-is.
+  const list = Array.isArray(raw) ? raw : [raw];
+  return normalizeGroupby(list as GroupBySpec[]) as GroupBySpec[];
+}
+
+/** Best-effort message string from Error / RPC payloads (avoid `[object Object]`). */
+function errorMessage(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (e != null && typeof e === 'object' && typeof (e as { message?: unknown }).message === 'string') {
+    return String((e as { message: string }).message);
+  }
+  return String(e);
+}
+
+/** True when a UserFilter RPC failed because GroupBy / group_by is not on the schema yet. */
+function isMissingGroupByColumn(e: unknown): boolean {
+  const msg = errorMessage(e);
+  // SQL/driver phrasing, plus SelectCtx field resolution: field(UserFilter.GroupBy) not found.
+  return (
+    (/group_?by/i.test(msg) && /(does not exist|unknown|no such|undefined column)/i.test(msg)) ||
+    /field\([^)]*\.group_?by\)\s+not found/i.test(msg)
+  );
+}
 
 export type UserFiltersDeps = {
   createStoreByModel?: typeof defaultCreateStoreByModel;
@@ -49,6 +90,8 @@ export function useUserFilters(params: {
   filtersRef: Ref<any[]>;
   keywordRef?: Ref<string>;
   applyNamedFilter: (nf: NamedFilter) => void;
+  /** Current list grouping to persist with Favorites (GroupBySpec[]). */
+  getAppliedGroups?: () => Array<GroupBySpec<any>> | undefined;
   codeDefaults?: () => NamedFilter[] | NamedFilter | undefined;
   /** Current route path (normalized to ScopeKey). */
   scopeKey?: () => string;
@@ -64,6 +107,9 @@ export function useUserFilters(params: {
   const loading = ref(false);
   const loadError = ref<string | null>(null);
   let loadGeneration = 0;
+  // After the first missing-column error, skip GroupBy so a pre-migration schema
+  // does not pay a failed RPC on every favorites load / save.
+  let groupByColumnSupported = true;
 
   const application = computed(() => String((store as any)?.application || '').trim());
   const modelName = computed(() => String((store as any)?.modelName || '').trim());
@@ -96,33 +142,79 @@ export function useUserFilters(params: {
       const me = resolveActorUserId();
       const scope = currentScopeKey();
       const uf = userFilterStore() as any;
-      const rows = (await uf.Search(
-        {
-          And: [
-            ['Application', '=', app],
-            ['ModelName', '=', model],
-            ['ScopeKey', '=', scope],
-            {
-              Or: me
-                ? [
-                    ['UserId', '=', me],
-                    ['UserId', '=', null],
-                  ]
-                : [['UserId', '=', null]],
-            },
-          ],
-        },
-        {
-          fields: ['Id', 'Name', 'ScopeKey', 'Condition', 'IsDefault', 'UserId', 'CreatedUid', 'UpdatedAt', 'CreatedAt'],
-          orderBy: { field: 'Name', order: 'asc' },
+      const condition = {
+        And: [
+          ['Application', '=', app],
+          ['ModelName', '=', model],
+          ['ScopeKey', '=', scope],
+          {
+            Or: me
+              ? [
+                  ['UserId', '=', me],
+                  ['UserId', '=', null],
+                ]
+              : [['UserId', '=', null]],
+          },
+        ],
+      };
+      const fieldsWithoutGroupBy = [
+        'Id',
+        'Name',
+        'ScopeKey',
+        'Condition',
+        'IsDefault',
+        'UserId',
+        'CreatedUid',
+        'UpdatedAt',
+        'CreatedAt',
+      ];
+      const fieldsWithGroupBy = [
+        'Id',
+        'Name',
+        'ScopeKey',
+        'Condition',
+        'GroupBy',
+        'IsDefault',
+        'UserId',
+        'CreatedUid',
+        'UpdatedAt',
+        'CreatedAt',
+      ];
+      const orderBy = { field: 'Name', order: 'asc' as const };
+      // Prefer GroupBy when the column exists; fall back after failed upgrades /
+      // mixed FE–BE where web_user_filter.group_by is not migrated yet.
+      let rows: UserFilterRow[];
+      if (groupByColumnSupported) {
+        try {
+          rows = (await uf.Search(condition, {
+            fields: fieldsWithGroupBy,
+            orderBy,
+          })) as UserFilterRow[];
+        } catch (e) {
+          if (!isMissingGroupByColumn(e)) throw e;
+          groupByColumnSupported = false;
+          try {
+            rows = (await uf.Search(condition, {
+              fields: fieldsWithoutGroupBy,
+              orderBy,
+            })) as UserFilterRow[];
+          } catch {
+            // Prefer the original schema error over a secondary fallback failure.
+            throw e;
+          }
         }
-      )) as UserFilterRow[];
+      } else {
+        rows = (await uf.Search(condition, {
+          fields: fieldsWithoutGroupBy,
+          orderBy,
+        })) as UserFilterRow[];
+      }
 
       if (gen !== loadGeneration) return;
 
       favorites.value = (rows || [])
         .filter(r => r && r.Id && r.Name)
-        .map(r => {
+        .map((r): UserFavoriteItem => {
           const createUid = String(r.CreatedUid || '').trim();
           const ownerId = resolveUserFilterUserId(r.UserId);
           const shared = !ownerId;
@@ -130,6 +222,7 @@ export function useUserFilters(params: {
             ...r,
             Id: String(r.Id),
             Name: String(r.Name),
+            GroupBy: normalizeFavoriteGroups(r.GroupBy),
             shared,
             createUid,
             // Private: owner; shared: creator only.
@@ -158,7 +251,7 @@ export function useUserFilters(params: {
     })
   );
 
-  const favoriteMenuItems = computed(() =>
+  const favoriteMenuItems = computed<UserFavoriteMenuItem[]>(() =>
     favorites.value.map(f => ({
       id: f.Id,
       name: f.Name,
@@ -166,6 +259,7 @@ export function useUserFilters(params: {
       isDefault: !!f.IsDefault,
       canDelete: !!f.canDelete,
       filter: f.Condition ?? {},
+      groups: normalizeFavoriteGroups(f.GroupBy),
     }))
   );
 
@@ -183,7 +277,12 @@ export function useUserFilters(params: {
     const keyword = keywordRef?.value?.trim() || undefined;
     const fieldsMeta = (store as any)?.fieldsMetadata as Record<string, any> | undefined;
     const keywordFields = ((store as any)?.state?.queryState?.keywordFields || undefined) as string[] | undefined;
-    const condition = runFiltersToQuery(conditionGroups as any, keyword, keywordFields, fieldsMeta) ?? {};
+    // filtersToQuery returns [] when there are no conditions; persist {} so jsonobject
+    // stays object-shaped and apply can treat empty favorites as groupby-only.
+    const rawCondition = runFiltersToQuery(conditionGroups as any, keyword, keywordFields, fieldsMeta);
+    const condition =
+      rawCondition == null || (Array.isArray(rawCondition) && rawCondition.length === 0) ? {} : rawCondition;
+    const groups = normalizeFavoriteGroups(params.getAppliedGroups?.() ?? []);
 
     const me = resolveActorUserId();
     const uf = userFilterStore() as any;
@@ -195,6 +294,7 @@ export function useUserFilters(params: {
       Application: app,
       ModelName: model,
       Condition: condition,
+      GroupBy: groups,
       IsDefault: !!opts.isDefault,
     };
     if (opts.shared) {
@@ -202,7 +302,43 @@ export function useUserFilters(params: {
     } else if (me) {
       values.UserId = me;
     }
-    const created = await uf.Create(values, ['Id', 'Name', 'ScopeKey', 'Condition', 'IsDefault', 'UserId', 'CreatedUid']);
+    const createFieldsWithGroupBy = [
+      'Id',
+      'Name',
+      'ScopeKey',
+      'Condition',
+      'GroupBy',
+      'IsDefault',
+      'UserId',
+      'CreatedUid',
+    ];
+    const createFieldsWithoutGroupBy = [
+      'Id',
+      'Name',
+      'ScopeKey',
+      'Condition',
+      'IsDefault',
+      'UserId',
+      'CreatedUid',
+    ];
+    let created: any;
+    let groupByPersisted = groupByColumnSupported;
+    if (groupByColumnSupported) {
+      try {
+        created = await uf.Create(values, createFieldsWithGroupBy);
+      } catch (e) {
+        if (!isMissingGroupByColumn(e)) throw e;
+        groupByColumnSupported = false;
+        groupByPersisted = false;
+        // Schema not migrated yet: persist Condition only so Favorites still save.
+        delete values.GroupBy;
+        created = await uf.Create(values, createFieldsWithoutGroupBy);
+      }
+    } else {
+      groupByPersisted = false;
+      delete values.GroupBy;
+      created = await uf.Create(values, createFieldsWithoutGroupBy);
+    }
     await load();
     const createUid = String((created as UserFilterRow)?.CreatedUid || me || '').trim();
     const shared = !resolveUserFilterUserId((created as any).UserId);
@@ -210,6 +346,10 @@ export function useUserFilters(params: {
       ...(created as any),
       Id: String((created as any).Id),
       Name: String((created as any).Name || name),
+      // When GroupBy was dropped for the schema fallback, do not advertise unpersisted groups.
+      GroupBy: normalizeFavoriteGroups(
+        (created as any).GroupBy ?? (groupByPersisted ? groups : [])
+      ),
       shared,
       createUid,
       canDelete: true,

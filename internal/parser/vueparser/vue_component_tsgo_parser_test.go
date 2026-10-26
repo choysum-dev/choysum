@@ -117,3 +117,17 @@ export default defineComponent({
 		t.Fatalf("unexpected quoted-name component property: %#v", component)
 	}
 }
+
+func TestTSGoPropertyNameEmptyTextFallsBackToNodeText(t *testing.T) {
+	ctx, err := parseTSGoCtx(nil, filepath.Join(t.TempDir(), "empty_name.ts"), "export default {}\n")
+	if err != nil {
+		t.Fatalf("parseTSGoCtx: %v", err)
+	}
+	factory := tsast.NewNodeFactory(tsast.NodeFactoryHooks{})
+	if got := tsgoPropertyName(ctx, factory.NewIdentifier("")); got != "" {
+		t.Fatalf("tsgoPropertyName(empty ident) = %q, want empty", got)
+	}
+	if got := tsgoPropertyName(nil, factory.NewIdentifier("x")); got != "" {
+		t.Fatalf("tsgoPropertyName(nil ctx) = %q, want empty", got)
+	}
+}

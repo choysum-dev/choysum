@@ -589,3 +589,78 @@ test('persistLanguagePreference: no-ops when language lookup throws', async () =
   await actions.persistLanguagePreference('en_US');
   expect(mockState._recorders.UpdateById.calls.length).toBe(0);
 });
+
+test('initAuth: hydrates currentUser from Browse after recovering persisted tokens', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.shouldRefreshToken.value = false;
+  mockHelpers.updateTokenIdentity = () => {
+    mockState.identity.value = { userId: 'usr_1', tokenId: 'tok_1' } as any;
+    return true;
+  };
+  mockState._recorders.Browse.resolve({
+    Id: 'usr_1',
+    Username: 'admin',
+    Email: 'admin@example.com',
+  });
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    createLanguageStore: () => ({
+      Browse: async () => null,
+      Search: async () => [],
+    }),
+    importI18nStore: async () => ({
+      useI18nStore: () => ({
+        setUiKey: async () => undefined,
+        setDisplayOverrides: () => undefined,
+      }),
+      langToUiKey: (lang: string) => lang,
+    }),
+  });
+
+  await actions.ensureAuthReady();
+
+  expect(mockState.initialized.value).toBe(true);
+  expect(mockState._recorders.Browse.calls.length).toBe(1);
+  expect((mockState.currentUser.value as any)?.Username).toBe('admin');
+});
+
+test('initAuth: keeps session when profile Browse fails', async () => {
+  const prevWarn = console.warn;
+  console.warn = () => {};
+  try {
+    const mockState = buildMockState();
+    const mockHelpers = buildMockHelpers();
+    mockState.tokens.value = {
+      accessToken: 'access',
+      refreshToken: 'refresh',
+      expiresAt: Date.now() + 3600_000,
+    };
+    mockState.shouldRefreshToken.value = false;
+    mockHelpers.updateTokenIdentity = () => {
+      mockState.identity.value = { userId: 'usr_1', tokenId: 'tok_1' } as any;
+      return true;
+    };
+    mockState._recorders.Browse.reject(new Error('browse down'));
+
+    const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+      isClient: true,
+      clearAuthStorage: () => {},
+    });
+
+    await actions.ensureAuthReady();
+
+    expect(mockState.initialized.value).toBe(true);
+    expect(mockState.tokens.value?.refreshToken).toBe('refresh');
+    expect(mockState.currentUser.value).toBeNull();
+    expect(mockHelpers._recorders.resetAuthState.calls.length).toBe(0);
+  } finally {
+    console.warn = prevWarn;
+  }
+});

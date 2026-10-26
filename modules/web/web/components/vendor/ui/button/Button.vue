@@ -1,0 +1,137 @@
+<!--
+SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+SPDX-License-Identifier: Apache-2.0
+-->
+
+<script setup lang="ts">
+import { computed, useAttrs } from 'vue';
+import { cn, controlFocusRing, type ClassValue } from '../../../../lib/utils';
+
+type ButtonVariant =
+  | 'default'
+  | 'secondary'
+  | 'outline'
+  | 'outline-destructive'
+  | 'ghost'
+  | 'destructive'
+  | 'link';
+type ButtonSize = 'default' | 'sm' | 'lg' | 'icon' | 'xs' | 'icon-xs' | 'icon-sm' | 'icon-lg';
+
+defineOptions({ inheritAttrs: false });
+
+const props = withDefaults(
+  defineProps<{
+    variant?: ButtonVariant;
+    size?: ButtonSize;
+    as?: string;
+    class?: ClassValue;
+    disabled?: boolean;
+    type?: 'button' | 'submit' | 'reset';
+  }>(),
+  {
+    variant: 'default',
+    size: 'default',
+    as: 'button',
+    type: 'button',
+  },
+);
+
+// Parent @click is an emit listener on this component (not a fallthrough attr) when
+// the root is another Vue component; re-emit from the native host click.
+const emit = defineEmits(['click']);
+
+function handleClick(event: Event) {
+  if (props.disabled) {
+    // Non-<button> hosts still navigate unless default is cancelled, and must not
+    // bubble to ancestor handlers the way a native disabled button would not.
+    // `as` may be a component whose `click` emit passes a non-DOM payload.
+    const e = event as Partial<Event> | undefined;
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    return;
+  }
+  emit('click', event);
+}
+
+const attrs = useAttrs();
+
+/** Non-button hosts: drop navigation targets when disabled; add noopener for _blank. */
+const nonButtonAttrs = computed(() => {
+  const rest: Record<string, unknown> = { ...attrs };
+  if (props.disabled) {
+    delete rest.href;
+    delete rest.to;
+    delete rest.target;
+    delete rest.rel;
+    return { ...rest, 'aria-disabled': true, tabindex: -1 };
+  }
+  if (rest.target === '_blank') {
+    const currentRel = String(rest.rel ?? '').trim();
+    if (!/\bnoopener\b/i.test(currentRel)) {
+      rest.rel = currentRel ? `${currentRel} noopener` : 'noopener noreferrer';
+    }
+  }
+  return rest;
+});
+
+const variantClass: Record<ButtonVariant, string> = {
+  default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+  secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+  // `border` wins over base `border-0` via cn/twMerge.
+  outline: 'border border-input bg-background text-foreground shadow-xs hover:bg-accent hover:text-accent-foreground',
+  ghost: 'text-foreground hover:bg-accent hover:text-accent-foreground',
+  destructive: 'bg-destructive text-primary-foreground hover:bg-destructive/90',
+  // Distinct chrome for danger actions that stay outline (List/Form delete).
+  'outline-destructive':
+    'border border-destructive/40 bg-background text-destructive shadow-xs hover:bg-destructive/10 hover:text-destructive',
+  link: 'text-primary underline-offset-4 hover:underline',
+};
+
+const sizeClass: Record<ButtonSize, string> = {
+  default: 'h-control px-4 py-2',
+  sm: 'h-control-sm rounded-md px-3 text-xs',
+  lg: 'h-control-lg rounded-md px-6',
+  icon: 'size-control',
+  xs: 'h-control-sm gap-1 rounded-md px-2 text-xs',
+  'icon-xs': 'size-control rounded-md',
+  'icon-sm': 'size-control',
+  'icon-lg': 'size-control',
+};
+
+const classes = computed(() =>
+  cn(
+    'inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all',
+    'appearance-none border-0',
+    controlFocusRing,
+    'disabled:pointer-events-none disabled:opacity-50',
+    "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-current",
+    variantClass[props.variant],
+    sizeClass[props.size],
+    props.class,
+  ),
+);
+</script>
+
+<template>
+  <button
+    v-if="as === 'button'"
+    v-bind="$attrs"
+    data-slot="button"
+    :class="classes"
+    :disabled="disabled"
+    :type="type"
+    @click="handleClick"
+  >
+    <slot />
+  </button>
+  <component
+    :is="as"
+    v-else
+    v-bind="nonButtonAttrs"
+    data-slot="button"
+    :class="[classes, disabled ? 'pointer-events-none opacity-50' : '']"
+    @click="handleClick"
+  >
+    <slot />
+  </component>
+</template>

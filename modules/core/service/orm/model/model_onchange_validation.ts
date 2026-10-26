@@ -10,6 +10,8 @@ import type { KernelValidationRule } from '../repository/validation';
 import type BaseModel from './model';
 import { getModelRepository } from './model_internal_facade';
 import { appendModelOnchangeValidationIssues } from './model_onchange_postprocess';
+import { stampMonetaryScalesForWrite } from '../repository/projection/monetary_scale';
+import type { SelectResult } from '../repository/types';
 import type { ObjectRecord } from '../../../utils/types';
 
 export function buildPreviewValidationOptions(includeKernel: boolean): {
@@ -39,6 +41,17 @@ export async function applyModelOnchangePreviewValidation(params: {
 
   try {
     const repository = getModelRepository(ModelCtor);
+    // Mirror write: stamp Currency.DecimalDigits onto hidden aliases before decimal kernel rules.
+    // Preview drafts often have CurrencyId as a bare Id / display object without inline digits.
+    let valuesForValidate = { ...(mergedDraft as ObjectRecord) } as Partial<BaseModel> & ObjectRecord;
+    try {
+      valuesForValidate = (await stampMonetaryScalesForWrite(meta, valuesForValidate as SelectResult, draft as SelectResult)) as Partial<
+        BaseModel
+      > &
+        ObjectRecord;
+    } catch {
+      // Decimal kernel soft-skips unresolved monetary scale in preview mode.
+    }
     const issues = await validateRuntimeIssues(
       {
         mode: 'preview',
@@ -46,7 +59,7 @@ export async function applyModelOnchangePreviewValidation(params: {
         metadata: meta,
         self: previewProxy as unknown as BaseModel,
         current: draft as Partial<BaseModel> & ObjectRecord,
-        values: mergedDraft as Partial<BaseModel> & ObjectRecord,
+        values: valuesForValidate,
         changedFields: new Set(changedFields),
         repository,
         requestContext: ModelCtor.ctx,

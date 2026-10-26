@@ -12,7 +12,6 @@ export default {
     collapse: 'Collapse Sidebar',
     expand: 'Expand Sidebar',
     toggle: 'Toggle Sidebar',
-    home: 'Home',
     dashboard: 'Dashboard',
     menu: 'Menu',
   },
@@ -24,8 +23,10 @@ export default {
     settings: 'Settings',
     notifications: 'Notifications',
     languages: 'Languages',
-    darkMode: 'Dark Mode',
-    lightMode: 'Light Mode',
+    theme: 'Theme',
+    darkMode: 'Dark',
+    lightMode: 'Light',
+    autoMode: 'Auto',
     search: 'Search...',
   },
 
@@ -34,11 +35,6 @@ export default {
     copyright: '© {year} Choysum. All rights reserved.',
     version: 'Version {version}',
     powered: 'Powered by Choysum',
-  },
-
-  // Breadcrumb.
-  breadcrumb: {
-    home: 'Home',
   },
 
   // Page states.

@@ -283,8 +283,11 @@ function projectAttributes(meta: FieldsGetFieldMeta, attributes: string[] | unde
  * - Filters deny-read fields (D11).
  * - Deny-write fields remain visible with `isReadonly: true` (P5).
  * - Declarative `@Field({ readonly: true })` also forces `isReadonly` (PR-P2-F2).
+ * - Select-only computes (`store: false` / virtual / SQL without column) force `isReadonly`
+ *   so Form update patches omit them (matches repository `platform_write_to_select_field`).
  * - Unknown `fields` names are omitted.
- * - `attributes` narrows keys but always keeps `type`; deny-write / declarative readonly always force `isReadonly`.
+ * - `attributes` narrows keys but always keeps `type`; deny-write / declarative readonly /
+ *   select-only always force `isReadonly`.
  */
 export async function fieldsGetModels(
   ModelCtor: ModelFieldsGetCtor,
@@ -299,6 +302,9 @@ export async function fieldsGetModels(
 
   const denyRead = await resolveDenyReadFields(ModelCtor);
   const denyWrite = await resolveDenyWriteFields(ModelCtor);
+  const computeHandlers = modelMeta.computeHandlers;
+  const sqlComputeHandlers = modelMeta.sqlComputeHandlers;
+  const virtualComputeFields = modelMeta.computeGraph?.virtualComputeFields;
   const application = String(modelMeta.application || 'application').trim() || 'application';
   const modelName = String(modelMeta.modelName || modelMeta.name || ModelCtor.name || 'Model').trim();
   const fallbackScope = `${application}.model.${modelName}.fields`;
@@ -326,7 +332,13 @@ export async function fieldsGetModels(
     const field = allFields.get(name);
     if (!field) continue;
     const meta = projectAttributes(buildFieldMeta(ModelCtor, field, application, fallbackScope), attrList);
-    if (denyWrite.has(name) || field.readonly === true) {
+    const computeHandler = computeHandlers?.get(name);
+    const sqlComputeHandler = sqlComputeHandlers?.get(name);
+    const isSelectOnlyCompute =
+      Boolean(virtualComputeFields?.has(name)) ||
+      computeHandler?.store === false ||
+      (Boolean(sqlComputeHandler) && !field.column);
+    if (denyWrite.has(name) || field.readonly === true || isSelectOnlyCompute) {
       meta.isReadonly = true;
     }
     result[name] = meta;

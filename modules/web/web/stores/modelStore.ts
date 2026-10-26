@@ -92,7 +92,10 @@ type StoreNameCreate<T extends BaseModel> = <F extends FieldSelection<T> | undef
   values?: Partial<Insertable<T>>,
   options?: Omit<NameCreateOptions<T>, 'returnFields'> & { returnFields?: F }
 ) => Promise<ClientModel<RowOrProjected<T, F>>>;
-type StoreCount<T extends BaseModel> = (condition?: QueryCondition<T> | [], options?: SoftDeleteOptions) => Promise<number>;
+type StoreCount<T extends BaseModel> = (
+  condition?: QueryCondition<T> | [],
+  options?: SoftDeleteOptions & Pick<SearchOptions<T>, 'relationConditionSource'>
+) => Promise<number>;
 type StoreSearch<T extends BaseModel> = <F extends FieldSelection<T> | undefined = undefined>(
   condition?: QueryCondition<T> | [],
   options?: Omit<SearchOptions<T>, 'fields'> & { fields?: F }

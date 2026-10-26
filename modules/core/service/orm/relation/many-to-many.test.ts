@@ -38,14 +38,17 @@ function matchesCondition(row: Record<string, unknown>, condition: unknown): boo
   return false;
 }
 
-function createJoinRepoMock(seedRows: JoinRow[]) {
-  const rows = seedRows.map(row => ({ ...row }));
+function createJoinRepoMock(seedRows: Array<JoinRow & { DeletedAt?: Date | string | null }>) {
+  const rows = seedRows.map(row => ({ ...row })) as Array<JoinRow & { DeletedAt?: Date | string | null }>;
   const createCalls: Array<Record<string, any>[]> = [];
   const deleteCalls: unknown[] = [];
+  const updateCalls: Array<{ vals: Record<string, any>; condition: unknown }> = [];
 
   const originalSearch = Repository.prototype.search;
   const originalDelete = Repository.prototype.delete;
   const originalCreate = Repository.prototype.create;
+  const originalUpdate = Repository.prototype.update;
+  const originalWithDeleted = Repository.prototype.withDeleted;
 
   Repository.prototype.search = async function (this: Repository, condition: unknown) {
     return rows.filter(row => matchesCondition(row, condition)).map(row => ({ ...row }));
@@ -73,14 +76,31 @@ function createJoinRepoMock(seedRows: JoinRow[]) {
     return values.map((_, idx) => `j-created-${idx + 1}`);
   } as unknown as Repository['create'];
 
+  Repository.prototype.update = async function (vals: Record<string, any>, condition: unknown) {
+    updateCalls.push({ vals: { ...vals }, condition });
+    for (const row of rows) {
+      if (!matchesCondition(row, condition)) continue;
+      Object.assign(row, vals);
+    }
+    return [{ Id: 'updated' }];
+  } as unknown as Repository['update'];
+
+  // Keep withDeleted returning a repo that still hits the mocked prototypes.
+  Repository.prototype.withDeleted = function (this: Repository) {
+    return originalWithDeleted.call(this);
+  };
+
   return {
     rows,
     createCalls,
     deleteCalls,
+    updateCalls,
     restore() {
       Repository.prototype.search = originalSearch;
       Repository.prototype.delete = originalDelete;
       Repository.prototype.create = originalCreate;
+      Repository.prototype.update = originalUpdate;
+      Repository.prototype.withDeleted = originalWithDeleted;
     },
   };
 }
@@ -527,6 +547,82 @@ test('many-to-many processor batch create skips already-related ids before creat
   }
 });
 
+test('many-to-many processor batch create skips existing links when join FK is a hydrated object', async () => {
+  resetTargetCalls();
+  RepositoryFactory.setRepository(targetCtor, { search: async () => [] } as unknown as Repository);
+
+  // Search may return ManyToOne FKs as `{ Id }` rather than bare strings.
+  const joinStore = createJoinRepoMock([{ Id: 'j1', OwnerId: 'p1', TagId: 't1' }]);
+  const seededSearch = Repository.prototype.search;
+  Repository.prototype.search = (async () => [
+    { Id: 'j1', OwnerId: 'p1', TagId: { Id: 't1', DisplayName: 'Alpha' } },
+  ]) as typeof seededSearch;
+
+  try {
+    const processor = new ManyToManyProcessor(parentCtor);
+    const result = await processor.batchProcessRelationUpdate(
+      ['p1'],
+      [
+        {
+          type: 'ManyToMany',
+          fieldName: 'Tags',
+          joinModel: joinCtor,
+          targetModel: targetCtor,
+          joinField: 'OwnerId',
+          inverseJoinField: 'TagId',
+          operations: {
+            create: [{ Id: 't1' }, { Id: 't2' }],
+          },
+        } as unknown as Parameters<ManyToManyProcessor['batchProcessRelationUpdate']>[1][number],
+      ]
+    );
+
+    expect(result.errors).toEqual([]);
+    expect(joinStore.createCalls.length).toBe(1);
+    expect(joinStore.createCalls[0]).toEqual([{ OwnerId: 'p1', TagId: 't2' }]);
+  } finally {
+    joinStore.restore();
+  }
+});
+
+test('many-to-many processor batch create restores soft-deleted join rows instead of inserting', async () => {
+  resetTargetCalls();
+  RepositoryFactory.setRepository(targetCtor, { search: async () => [] } as unknown as Repository);
+
+  const joinStore = createJoinRepoMock([
+    { Id: 'j1', OwnerId: 'p1', TagId: 't1', DeletedAt: new Date('2026-10-24T03:00:00.000Z') },
+  ]);
+
+  try {
+    const processor = new ManyToManyProcessor(parentCtor);
+    const result = await processor.batchProcessRelationUpdate(
+      ['p1'],
+      [
+        {
+          type: 'ManyToMany',
+          fieldName: 'Tags',
+          joinModel: joinCtor,
+          targetModel: targetCtor,
+          joinField: 'OwnerId',
+          inverseJoinField: 'TagId',
+          operations: {
+            create: [{ Id: 't1' }, { Id: 't2' }],
+          },
+        } as unknown as Parameters<ManyToManyProcessor['batchProcessRelationUpdate']>[1][number],
+      ]
+    );
+
+    expect(result.errors).toEqual([]);
+    expect(joinStore.updateCalls.length).toBe(1);
+    expect(joinStore.updateCalls[0]?.vals).toEqual({ DeletedAt: null });
+    expect(joinStore.rows.find(r => r.Id === 'j1')?.DeletedAt).toBeNull();
+    expect(joinStore.createCalls.length).toBe(1);
+    expect(joinStore.createCalls[0]).toEqual([{ OwnerId: 'p1', TagId: 't2' }]);
+  } finally {
+    joinStore.restore();
+  }
+});
+
 test('many-to-many processor wraps top-level process errors into relation result', async () => {
   resetTargetCalls();
   const originalGetModelMetadata = MetadataStorage.instance.getModelMetadata;
@@ -626,7 +722,8 @@ test('many-to-many processor create records join-table create failure as relatio
       },
     } as unknown as Parameters<ManyToManyProcessor['processRelationUpdate']>[1]);
 
-    expect(result.entityIds).toEqual(['t1']);
+    // Join insert failed: target was resolved but the link did not land.
+    expect(result.entityIds).toEqual([]);
     expect(result.errors.length).toBe(1);
     expect(String(result.errors[0]?.message || '').includes('join create failed')).toBe(true);
   } finally {
@@ -1261,13 +1358,19 @@ test('many-to-many processor helper methods cover empty and fallback branches', 
     const meta = MetadataStorage.instance.getModelMetadata(joinCtor as any);
     const joinRepo = new Repository(meta);
 
+    // t1 is already linked: skip (not reported as a new link); join create is not attempted.
     const first = await processor.processReplaceItems(joinRepo, {}, targetCtor, 'p1', 'OwnerId', 'TagId', ['t1']);
-    expect(first.successIds).toEqual(['t1']);
-    expect(first.errors.length).toBe(1);
-    expect(String(first.errors[0]?.message || '')).toContain('join create non-error');
+    expect(first.successIds).toEqual([]);
+    expect(first.errors).toEqual([]);
+
+    // Force a join-create failure on a missing target id.
+    const joinFail = await processor.processReplaceItems(joinRepo, {}, targetCtor, 'p1', 'OwnerId', 'TagId', ['t-missing']);
+    expect(joinFail.successIds).toEqual([]);
+    expect(joinFail.errors.length).toBe(1);
+    expect(String(joinFail.errors[0]?.message || '')).toContain('join create non-error');
 
     const second = await processor.processReplaceItems(joinRepo, {}, targetCtor, 'p1', 'OwnerId', 'TagId', [{ Id: 't1' }, { Name: 'x' }]);
-    expect(second.successIds).toEqual(['t1']);
+    expect(second.successIds).toEqual([]);
     expect(second.errors.length).toBe(1);
     expect(String(second.errors[0]?.message || '')).toContain('target create non-error');
 
@@ -1351,7 +1454,8 @@ test('many-to-many processor processRelationUpdate create wraps non-error item a
       },
     } as unknown as Parameters<ManyToManyProcessor['processRelationUpdate']>[1]);
 
-    expect(result.entityIds).toEqual(['t1']);
+    // Target create failed for {Name:'x'}; join create failed for 't1' so neither is linked.
+    expect(result.entityIds).toEqual([]);
     expect(result.errors.length).toBe(2);
     expect(result.errors.some(error => String(error.message || '').includes('Failed to create target entity'))).toBe(true);
     expect(result.errors.some(error => String(error.message || '').includes('join create string failure'))).toBe(true);
@@ -1563,7 +1667,8 @@ test('many-to-many processor private processReplaceItems covers empty-id and err
     const joinRepo = new Repository(meta);
     const result = await processor.processReplaceItems(joinRepo, {}, targetCtor, 'p1', 'OwnerId', 'TagId', [{ Name: 'x' }, 't1']);
 
-    expect(result.successIds).toEqual(['t1']);
+    // Join insert failed for 't1': resolved targets are not reported as linked.
+    expect(result.successIds).toEqual([]);
     expect(result.errors.length).toBe(2);
     expect(result.errors.some(error => String(error.message || '').includes('Failed to create target entity'))).toBe(true);
     expect(result.errors.some(error => String(error.message || '').includes('batch join create error object'))).toBe(true);
@@ -2044,7 +2149,7 @@ test('many-to-many processor createRelations wraps non-error throw into per-item
 
     expect(affectedIds).toEqual([]);
     expect(errors.length).toBe(1);
-    expect(String(errors[0]?.message || '')).toContain('Failed to process relation item: create relation non-error');
+    expect(String(errors[0]?.message || '')).toContain('create relation non-error');
   } finally {
     ManyToManyTarget.Create = originalCreate;
     joinStore.restore();

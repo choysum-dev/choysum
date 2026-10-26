@@ -10,6 +10,7 @@ require (
 	github.com/buke/typescript-go-internal/v7 v7.0.2
 	github.com/chromedp/cdproto v0.158.4
 	github.com/chromedp/chromedp v0.21.0
+	github.com/dhamidi/tailwind-go v0.4.0
 	github.com/ettle/strcase v0.2.0
 	github.com/evanw/esbuild v0.28.2
 	github.com/fsnotify/fsnotify v1.10.1

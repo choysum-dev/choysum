@@ -7,8 +7,10 @@
 export default {
   activity: 'Activity',
   post: 'Post',
+  posting: 'Posting…',
   follow: 'Follow',
   unfollow: 'Unfollow',
+  follower: '%d follower',
   followers: '%d followers',
   writeComment: 'Write a comment...',
   loadingActivity: 'Loading activity...',

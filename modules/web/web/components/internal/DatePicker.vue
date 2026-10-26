@@ -1,0 +1,251 @@
+<!--
+SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+SPDX-License-Identifier: Apache-2.0
+-->
+
+<template>
+  <Popover v-model:open="open">
+    <div class="relative w-full min-w-0">
+      <PopoverTrigger as-child>
+        <Button
+          type="button"
+          variant="outline"
+          data-anchor="choy.internal.date-picker"
+          :id="id || undefined"
+          :disabled="disabled"
+          :aria-invalid="props['aria-invalid']"
+          :aria-required="props['aria-required']"
+          :aria-describedby="props['aria-describedby']"
+          :class="
+            cn(
+              'choy-date-picker w-full min-w-0 justify-between bg-transparent font-normal',
+              !displayText && 'text-muted-foreground',
+              props.class,
+            )
+          "
+        >
+          <span class="min-w-0 flex-1 truncate text-start">{{ displayText || effectivePlaceholder }}</span>
+          <span class="inline-flex shrink-0 items-center gap-1">
+            <span v-if="showClear" class="size-3.5" aria-hidden="true" />
+            <Calendar class="size-4 opacity-50" aria-hidden="true" />
+          </span>
+        </Button>
+      </PopoverTrigger>
+      <button
+        v-if="showClear"
+        type="button"
+        class="choy-date-picker__clear absolute end-9 top-1/2 inline-flex -translate-y-1/2 text-foreground/50 hover:text-foreground"
+        :aria-label="_t('Clear')"
+        data-testid="choy-date-picker-clear"
+        @click.stop.prevent="onClear"
+      >
+        <X class="size-3.5" aria-hidden="true" />
+      </button>
+    </div>
+    <PopoverContent class="w-auto p-0" align="start" :side-offset="0">
+      <div class="p-3">
+        <CalendarRoot
+          v-slot="{ weekDays, grid }"
+          v-model="calendarValue"
+          :locale="calendarLocale"
+          :min-value="datePickerMinValue"
+          :max-value="datePickerMaxValue"
+          class="choy-date-picker__calendar"
+        >
+          <CalendarHeader class="flex items-center justify-between gap-2 pb-2">
+            <CalendarPrev
+              :aria-label="_t('Previous month')"
+              class="inline-flex size-8 items-center justify-center rounded-md border border-border hover:bg-muted"
+            >
+              <ChevronLeft class="size-4" />
+            </CalendarPrev>
+            <CalendarHeading class="text-sm font-medium" />
+            <CalendarNext
+              :aria-label="_t('Next month')"
+              class="inline-flex size-8 items-center justify-center rounded-md border border-border hover:bg-muted"
+            >
+              <ChevronRight class="size-4" />
+            </CalendarNext>
+          </CalendarHeader>
+          <div class="flex flex-col gap-4">
+            <CalendarGrid
+              v-for="month in grid"
+              :key="month.value.toString()"
+              class="w-full border-collapse space-y-1"
+            >
+              <CalendarGridHead>
+                <CalendarGridRow class="flex">
+                  <CalendarHeadCell
+                    v-for="day in weekDays"
+                    :key="day"
+                    class="w-8 rounded-md text-[0.7rem] font-normal text-muted-foreground"
+                  >
+                    {{ day }}
+                  </CalendarHeadCell>
+                </CalendarGridRow>
+              </CalendarGridHead>
+              <CalendarGridBody>
+                <CalendarGridRow
+                  v-for="(weekDates, index) in month.rows"
+                  :key="`week-${index}`"
+                  class="flex w-full"
+                >
+                  <CalendarCell
+                    v-for="weekDate in weekDates"
+                    :key="weekDate.toString()"
+                    :date="weekDate"
+                    class="relative p-0 text-center text-sm"
+                  >
+                    <CalendarCellTrigger
+                      :day="weekDate"
+                      :month="month.value"
+                      class="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted data-[selected]:bg-primary data-[selected]:text-primary-foreground data-[selected]:hover:bg-primary data-[selected]:hover:text-primary-foreground data-[selected]:focus:bg-primary data-[selected]:focus:text-primary-foreground [&[data-selected]:hover]:bg-primary data-[outside-view]:text-muted-foreground/50"
+                    />
+                  </CalendarCell>
+                </CalendarGridRow>
+              </CalendarGridBody>
+            </CalendarGrid>
+          </div>
+        </CalendarRoot>
+      </div>
+      <div class="flex items-center justify-between border-t border-border px-3 py-2">
+        <Button type="button" variant="ghost" size="sm" @click="onClear">{{ _t('Clear') }}</Button>
+        <Button type="button" variant="ghost" size="sm" @click="onToday">{{ _t('Today') }}</Button>
+      </div>
+    </PopoverContent>
+  </Popover>
+</template>
+
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue';
+import type { DateValue } from 'reka-ui';
+import {
+  CalendarCell,
+  CalendarCellTrigger,
+  CalendarGrid,
+  CalendarGridBody,
+  CalendarGridHead,
+  CalendarGridRow,
+  CalendarHeadCell,
+  CalendarHeader,
+  CalendarHeading,
+  CalendarNext,
+  CalendarPrev,
+  CalendarRoot,
+} from 'reka-ui';
+import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-vue-next';
+import { CalendarDate } from '@internationalized/date';
+import { cn, type ClassValue } from '../../lib/utils';
+import { createTranslate } from '@/web/web/i18n';
+import { useI18nStore } from '@/web/web/stores/i18nStore';
+import Button from '../vendor/ui/button/Button.vue';
+import Popover from '../vendor/ui/popover/Popover.vue';
+import PopoverContent from '../vendor/ui/popover/PopoverContent.vue';
+import PopoverTrigger from '../vendor/ui/popover/PopoverTrigger.vue';
+import {
+  clearDatePickerValue,
+  formatDatePickerValue,
+  parseDatePickerValue,
+  todayDatePickerValue,
+} from './datePickerHelpers';
+
+const { _t } = createTranslate('web', { scope: 'web/components/internal/DatePicker' });
+
+/** Matches formatDatePickerValue's supported YYYY-MM-DD year range. */
+const datePickerMinValue = new CalendarDate(1, 1, 1);
+const datePickerMaxValue = new CalendarDate(9999, 12, 31);
+
+/**
+ * L3 date picker: Popover + Reka Calendar primitives (same surface as vendor/ui/calendar).
+ * Model is YYYY-MM-DD string or null. Not a public Choy* export.
+ */
+const props = withDefaults(
+  defineProps<{
+    class?: ClassValue;
+    placeholder?: string;
+    disabled?: boolean;
+    clearable?: boolean;
+    id?: string;
+    'aria-invalid'?: boolean | 'true' | 'false';
+    'aria-required'?: boolean | 'true' | 'false';
+    'aria-describedby'?: string;
+  }>(),
+  {
+    placeholder: undefined,
+    disabled: false,
+    clearable: true,
+  },
+);
+
+const modelValue = defineModel<string | null>({ default: null });
+const open = ref(false);
+
+function resolveCalendarLocale(): string {
+  try {
+    return String(useI18nStore().localeCode || '').trim() || 'en';
+  } catch {
+    return 'en';
+  }
+}
+
+const calendarLocale = computed(() => resolveCalendarLocale());
+const effectivePlaceholder = computed(() => props.placeholder || _t('Select date'));
+const showClear = computed(
+  () => props.clearable && !!String(modelValue.value ?? '').trim() && !props.disabled,
+);
+
+const calendarValue = computed<DateValue | undefined>({
+  get() {
+    return parseDatePickerValue(modelValue.value) ?? undefined;
+  },
+  set(next) {
+    if (!next) {
+      modelValue.value = clearDatePickerValue();
+      return;
+    }
+    const formatted = formatDatePickerValue(next);
+    // Out-of-range years make formatDatePickerValue return ''; keep the previous
+    // value instead of silently clearing a valid selection.
+    if (!formatted) {
+      return;
+    }
+    modelValue.value = formatted;
+    open.value = false;
+  },
+});
+
+const displayText = computed(() => {
+  const parsed = parseDatePickerValue(modelValue.value);
+  if (parsed) {
+    return formatDatePickerValue(parsed);
+  }
+  // Keep host-provided non-canonical values visible instead of rendering an empty field.
+  return String(modelValue.value ?? '').trim();
+});
+
+function onClear(): void {
+  modelValue.value = clearDatePickerValue();
+  open.value = false;
+}
+
+function onToday(): void {
+  // Route through the validated setter so an out-of-range result can never clear the model.
+  calendarValue.value = todayDatePickerValue();
+}
+
+watch(
+  () => props.disabled,
+  (disabled) => {
+    if (disabled) {
+      open.value = false;
+    }
+  },
+);
+</script>
+
+<!-- Keep the same thin border-ring as focused Input / Combobox while the panel is open. -->
+<style>
+  .choy-date-picker[data-state='open'] {
+    border-color: var(--color-ring);
+  }
+</style>

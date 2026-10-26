@@ -10,7 +10,13 @@ test('ModuleList.vue mounts under choysumMount and runs script setup', async () 
     global: buildPageMountGlobal({ route: { path: '/meta/modules', fullPath: '/meta/modules' } }),
   });
   await flushPromises();
-  expect(wrapper.find('[data-testid="fe-stub-opage"]').exists() || wrapper.find('[data-testid="fe-stub-child-view"]').exists()).toBe(true);
-  expect(wrapper.text().includes('Module List') || wrapper.find('[data-testid="fe-stub-opage"]').exists()).toBe(true);
+  expect(wrapper.find('[data-anchor="choy.page"]').exists() || wrapper.find('[data-testid="fe-stub-opage"]').exists() || wrapper.find('[data-testid="fe-stub-choy-page"]').exists() || wrapper.find('[data-testid="fe-stub-child-view"]').exists()).toBe(true);
+  expect(
+    wrapper.text().includes('Module Board') ||
+      wrapper.text().includes('Module List') ||
+      wrapper.find('[data-testid="fe-stub-opage"]').exists() ||
+      wrapper.find('[data-testid="fe-stub-choy-page"]').exists() ||
+      wrapper.find('[data-testid="fe-stub-child-view"]').exists(),
+  ).toBe(true);
   wrapper.unmount();
 });

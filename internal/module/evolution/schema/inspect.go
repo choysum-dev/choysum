@@ -102,10 +102,19 @@ var (
 )
 
 func defaultGetIndexes(db *gorm.DB, table string) ([]gorm.Index, error) {
-	if db != nil && db.Dialector != nil && db.Dialector.Name() == "sqlite" {
-		// GORM's sqlite GetIndexes scans index_info.name into string and fails when
-		// SQLite returns NULL (expression / rowid index columns). Use a NULL-safe path.
-		return sqliteGetIndexes(db, table)
+	if db != nil && db.Dialector != nil {
+		switch strings.ToLower(strings.TrimSpace(db.Dialector.Name())) {
+		case "sqlite":
+			// GORM's sqlite GetIndexes scans index_info.name into string and fails when
+			// SQLite returns NULL (expression / rowid index columns). Use a NULL-safe path.
+			return sqliteGetIndexes(db, table)
+		case "postgres", "postgresql":
+			// GORM's postgres GetIndexes excludes constraint-backed indexes
+			// (`AND con.oid IS NULL`), so UNIQUE CONSTRAINT / PK indexes such as
+			// uni_auth_user_username never appear and Unique:true fields plan as
+			// guarded add_index on every upgrade of a non-empty table.
+			return postgresGetIndexes(db, table)
+		}
 	}
 	return db.Migrator().GetIndexes(table)
 }
@@ -151,12 +160,113 @@ func sqliteGetIndexes(db *gorm.DB, table string) ([]gorm.Index, error) {
 				cols = append(cols, c)
 			}
 		}
+		// Prefer the unique flag from pragma_index_list; also treat origin "u"
+		// (UNIQUE constraint) and "pk" as unique so a failed/zero bool scan cannot
+		// hide sqlite_autoindex_* constraints and spuriously plan guarded add_index.
+		origin := strings.ToLower(strings.TrimSpace(row.Origin))
+		unique := row.Unique || origin == "u" || origin == "pk"
 		out = append(out, &gormmigrator.Index{
 			TableName:       table,
 			NameValue:       name,
 			ColumnList:      cols,
-			PrimaryKeyValue: sql.NullBool{Bool: row.Origin == "pk", Valid: true},
-			UniqueValue:     sql.NullBool{Bool: row.Unique, Valid: true},
+			PrimaryKeyValue: sql.NullBool{Bool: origin == "pk", Valid: true},
+			UniqueValue:     sql.NullBool{Bool: unique, Valid: true},
+		})
+	}
+	return out, nil
+}
+
+// Overridable Postgres index scanner (tests inject failures and synthetic rows).
+var postgresIndexScan = func(db *gorm.DB, table string, dest any) error {
+	// Include constraint-backed UNIQUE/PK indexes that GORM's GetIndexes omits.
+	// Column order follows indkey; only the first indnkeyatts entries are key
+	// columns (INCLUDE columns follow and must not affect uniqueness matching).
+	// Expression key columns use attnum 0 and would be dropped by the attribute
+	// join, shortening ColumnList — skip any index that has such a key column.
+	const sql = `
+SELECT
+	ci.relname AS index_name,
+	i.indisunique AS is_unique,
+	i.indisprimary AS is_primary,
+	a.attname AS column_name,
+	k.ord AS column_ord
+FROM pg_index i
+	JOIN pg_class ct ON ct.oid = i.indrelid
+	JOIN pg_class ci ON ci.oid = i.indexrelid
+	JOIN pg_namespace n ON n.oid = ct.relnamespace
+	JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord) ON true
+	JOIN pg_attribute a ON a.attrelid = ct.oid AND a.attnum = k.attnum
+WHERE ct.relkind = 'r'
+	AND i.indisvalid
+	AND ct.relname = ?
+	AND n.nspname = current_schema()
+	AND a.attnum > 0
+	AND NOT a.attisdropped
+	AND k.ord <= i.indnkeyatts
+	AND NOT EXISTS (
+		SELECT 1
+		FROM unnest(i.indkey) WITH ORDINALITY AS ke(attnum, ord)
+		WHERE ke.attnum = 0 AND ke.ord <= i.indnkeyatts
+	)
+ORDER BY ci.relname, k.ord`
+	return db.Raw(sql, table).Scan(dest).Error
+}
+
+type postgresIndexRow struct {
+	IndexName  string `gorm:"column:index_name"`
+	IsUnique   bool   `gorm:"column:is_unique"`
+	IsPrimary  bool   `gorm:"column:is_primary"`
+	ColumnName string `gorm:"column:column_name"`
+	ColumnOrd  int    `gorm:"column:column_ord"`
+}
+
+func postgresGetIndexes(db *gorm.DB, table string) ([]gorm.Index, error) {
+	table = strings.TrimSpace(table)
+	if db == nil {
+		return nil, fmt.Errorf("db is nil")
+	}
+	if table == "" {
+		return nil, nil
+	}
+	var rows []postgresIndexRow
+	if err := postgresIndexScan(db, table, &rows); err != nil {
+		return nil, err
+	}
+	type agg struct {
+		unique  bool
+		primary bool
+		cols    []string
+	}
+	order := make([]string, 0)
+	byName := map[string]*agg{}
+	for _, row := range rows {
+		name := strings.TrimSpace(row.IndexName)
+		if name == "" {
+			continue
+		}
+		a := byName[name]
+		if a == nil {
+			a = &agg{unique: row.IsUnique, primary: row.IsPrimary}
+			byName[name] = a
+			order = append(order, name)
+		} else {
+			a.unique = a.unique || row.IsUnique
+			a.primary = a.primary || row.IsPrimary
+		}
+		col := strings.TrimSpace(row.ColumnName)
+		if col != "" {
+			a.cols = append(a.cols, col)
+		}
+	}
+	out := make([]gorm.Index, 0, len(order))
+	for _, name := range order {
+		a := byName[name]
+		out = append(out, &gormmigrator.Index{
+			TableName:       table,
+			NameValue:       name,
+			ColumnList:      append([]string(nil), a.cols...),
+			PrimaryKeyValue: sql.NullBool{Bool: a.primary, Valid: true},
+			UniqueValue:     sql.NullBool{Bool: a.unique || a.primary, Valid: true},
 		})
 	}
 	return out, nil

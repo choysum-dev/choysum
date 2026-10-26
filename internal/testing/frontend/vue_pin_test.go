@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/choysum-dev/choysum/internal/esmresolver"
 	"github.com/choysum-dev/choysum/pkg/jsengine/scripts/choysummount"
 )
 
@@ -62,5 +63,174 @@ console.log(ref, defineStore, createPinia, createI18n);
 		if ref != want {
 			t.Fatalf("bundle references %q, want only %s", ref, want)
 		}
+	}
+}
+
+func TestVueHostBareImportPinsIncludesWebExactPeers(t *testing.T) {
+	repoRoot, err := filepath.Abs("../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pins, err := vueHostBareImportPins(repoRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := esmresolver.ExactPinsFromPackageJSON(filepath.Join(repoRoot, "modules", "web"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(want) == 0 {
+		t.Fatal("expected exact pins in modules/web/package.json")
+	}
+	if want["vue"] == "" {
+		t.Fatal("modules/web must declare exact vue (kit SSOT)")
+	}
+	if pins["vue"] != want["vue"] {
+		t.Fatalf("vue pin = %q want kit package.json %q", pins["vue"], want["vue"])
+	}
+	if pins["@vue/runtime-core"] != want["vue"] {
+		t.Fatalf("@vue/* must follow kit vue %q, got %q", want["vue"], pins["@vue/runtime-core"])
+	}
+	for name, ver := range want {
+		if choysummount.IsHostVueRuntimePackage(name) {
+			continue
+		}
+		if pins[name] != ver {
+			t.Fatalf("pin %q = %q want %q from package.json", name, pins[name], ver)
+		}
+	}
+}
+
+func TestVueHostBareImportPinsFallbackAndHostVueWins(t *testing.T) {
+	empty, err := vueHostBareImportPins(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantFallback := choysummount.VueBareImportPins()
+	if len(empty) != len(wantFallback) {
+		t.Fatalf("missing web package.json => fallback vue pins only, got %#v want %#v", empty, wantFallback)
+	}
+	for name, ver := range wantFallback {
+		if empty[name] != ver {
+			t.Fatalf("fallback pin %q = %q want %q (got %#v)", name, empty[name], ver, empty)
+		}
+	}
+
+	root := t.TempDir()
+	webRoot := filepath.Join(root, "modules", "web")
+	if err := os.MkdirAll(webRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	pkg := `{
+  "peerDependencies": {
+    "vue": "9.9.9",
+    "@tanstack/vue-table": "8.21.3",
+    "@vue/test-utils": "2.4.6"
+  }
+}`
+	if err := os.WriteFile(filepath.Join(webRoot, "package.json"), []byte(pkg), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	pins, err := vueHostBareImportPins(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pins["vue"] != "9.9.9" {
+		t.Fatalf("modules/web exact vue is SSOT, got %q", pins["vue"])
+	}
+	if pins["@vue/runtime-core"] != "9.9.9" {
+		t.Fatalf("@vue/* must follow kit vue, got %#v", pins)
+	}
+	if pins["@tanstack/vue-table"] != "8.21.3" {
+		t.Fatalf("expected peer pin, got %#v", pins)
+	}
+	if pins["@vue/test-utils"] != "2.4.6" {
+		t.Fatalf("non-host @vue/* must keep exact pin, got %#v", pins)
+	}
+
+	if err := os.WriteFile(filepath.Join(webRoot, "package.json"), []byte("{"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := vueHostBareImportPins(root); err == nil || !strings.Contains(err.Error(), "exact pins") {
+		t.Fatalf("expected exact pins error, got %v", err)
+	}
+
+	// Passes ExactPinsFromPackageJSON but fails IsExactVuePin (surplus core).
+	if err := os.WriteFile(filepath.Join(webRoot, "package.json"), []byte(`{"peerDependencies":{"vue":"3.5.38.4"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := vueHostBareImportPins(root); err == nil || !strings.Contains(err.Error(), "not a valid exact pin") {
+		t.Fatalf("expected invalid exact vue pin error, got %v", err)
+	}
+
+	// Range-only vue is filtered by ExactPinsFromPackageJSON; package.json present ⇒ hard fail.
+	if err := os.WriteFile(filepath.Join(webRoot, "package.json"), []byte(`{"peerDependencies":{"vue":"^3.5.35"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := vueHostBareImportPins(root); err == nil || !strings.Contains(err.Error(), "has no exact vue pin") {
+		t.Fatalf("expected missing exact vue pin error, got %v", err)
+	}
+
+	// Restore a valid web pin, then break modules/core so core ExactPins errors.
+	if err := os.WriteFile(filepath.Join(webRoot, "package.json"), []byte(`{"peerDependencies":{"vue":"3.5.13"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	coreRoot := filepath.Join(root, "modules", "core")
+	if err := os.MkdirAll(coreRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(coreRoot, "package.json"), []byte(`{`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := vueHostBareImportPins(root); err == nil || !strings.Contains(err.Error(), "modules/core") {
+		t.Fatalf("expected modules/core exact pins error, got %v", err)
+	}
+
+	// Valid core+web; host vue runtime keys from core must be skipped (continue path).
+	if err := os.WriteFile(filepath.Join(coreRoot, "package.json"), []byte(`{"dependencies":{"vue":"3.5.13","local-core":"1.0.0"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	pins, err = vueHostBareImportPins(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pins["local-core"] != "1.0.0" {
+		t.Fatalf("expected non-vue core pin, got %#v", pins)
+	}
+	if pins["vue"] != "3.5.13" {
+		t.Fatalf("web vue pin must win, got %#v", pins)
+	}
+}
+
+func TestBuildFrontendVueHostBundleExactPinsError(t *testing.T) {
+	root := t.TempDir()
+	webRoot := filepath.Join(root, "modules", "web")
+	if err := os.MkdirAll(webRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(webRoot, "package.json"), []byte("{"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	entry := filepath.Join(root, "entry.js")
+	if err := os.WriteFile(entry, []byte("export {}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	prev := resolveChoysumMountSourcePath
+	mount := filepath.Join(t.TempDir(), "choysummount.js")
+	if err := os.WriteFile(mount, []byte("export {}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	resolveChoysumMountSourcePath = func() (string, error) { return mount, nil }
+	t.Cleanup(func() { resolveChoysumMountSourcePath = prev })
+
+	_, err := BuildFrontendVueHostBundle(VueHostBundleOptions{
+		RepoRoot:              root,
+		EntryPath:             entry,
+		CacheDir:              t.TempDir(),
+		Outfile:               filepath.Join(t.TempDir(), "out.js"),
+		DisableDefaultFEStubs: true,
+	})
+	if err == nil || !strings.Contains(err.Error(), "exact pins") {
+		t.Fatalf("expected exact pins error from host bundle, got %v", err)
 	}
 }

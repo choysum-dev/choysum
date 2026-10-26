@@ -4,18 +4,18 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage :store="sessionStore">
+  <ChoyPage :store="sessionStore">
     <SessionFormView />
-  </OPage>
+  </ChoyPage>
 </template>
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
 import { createStoreByModel } from '@/web/web/stores/registry';
-import OPage from '@/web/web/components/page/OPage.vue';
 import SessionFormView from '@/auth/web/views/SessionFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type Session from '@/auth/service/models/session';
+import { ChoyPage } from '@/web';
 
 const route = useRoute();
 const sessionStore = createStoreByModel<typeof Session>('auth.Session', {

@@ -6,28 +6,28 @@ import { ref, computed, shallowRef } from 'vue';
 import { isClient } from '@vueuse/core';
 import dayjs from 'dayjs';
 import { SUPPORTED_LOCALES } from './locales';
-import { DEFAULT_ACTIVE_UI_KEYS } from './active_ui_keys';
+import { DEFAULT_ACTIVE_UI_KEYS } from './activeUiKeys';
 import { SupportedLocale, DateTimeFormatType } from './types';
 import { detectBestUiKey, updateDocumentDirection, formatDateTime, formatNumber, formatCurrency, getDateTimeFormats, getNumberFormats } from './utils';
-import { loadElementLocale, loadDayjsLocale, loadVueI18nMessages } from './loader';
+import { loadDayjsLocale, loadVueI18nMessages } from './loader';
 import { uiKeyToLang, langToUiKey } from './lang';
-import { fetchWebTranslations, type TerminologyLoadResult } from './terminology_loader';
-import { afterLocaleChange } from './locale_remount';
+import { fetchWebTranslations, type TerminologyLoadResult } from './terminologyLoader';
+import { afterLocaleChange } from './localeRemount';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import {
   resolveFormatConfig,
   type DisplayFormatOverrides,
   type LanguageFormatOverlay,
-} from './language_format';
+} from './languageFormat';
 
 // Re-export types for external consumers.
 export * from './types';
 export { SUPPORTED_LOCALES } from './locales';
 export { uiKeyToLang, langToUiKey } from './lang';
-export { fetchWebTranslations } from './terminology_loader';
+export { fetchWebTranslations } from './terminologyLoader';
 
-export { componentHintFromScope } from './component_hint';
-export { afterLocaleChange, resolveLocaleRemountMode, softLocaleRemount } from './locale_remount';
+export { componentHintFromScope } from './componentHint';
+export { afterLocaleChange, resolveLocaleRemountMode, softLocaleRemount } from './localeRemount';
 export {
   resolveFormatConfig,
   formatNumberFromConfig,
@@ -37,9 +37,9 @@ export {
   applyGrouping,
   type DisplayFormatOverrides,
   type LanguageFormatOverlay,
-} from './language_format';
+} from './languageFormat';
 
-export type { TerminologyLoadResult } from './terminology_loader';
+export type { TerminologyLoadResult } from './terminologyLoader';
 export type { SupportedLocale };
 
 /**
@@ -106,7 +106,6 @@ export const useI18nStore = defineStore(
           ...(resolved.currencySymbolPosition ? { position: resolved.currencySymbolPosition } : {}),
           ...(resolved.currencySymbolSpacing != null ? { spacing: resolved.currencySymbolSpacing } : {}),
         },
-        elementLocale: loadedLocales.value[code] || null,
       };
     });
 
@@ -127,16 +126,12 @@ export const useI18nStore = defineStore(
       try {
         // Load resources on demand when they are not cached yet.
         if (!loadedLocales.value[locale]) {
-          // Load the Element Plus locale bundle.
-          const elementLocaleData = await loadElementLocale(locale);
-
-          // Load the DayJS locale bundle.
           await loadDayjsLocale(locale);
 
-          // Cache loaded resources.
+          // Cache that dayjs locale resources were loaded for this UI key.
           loadedLocales.value = {
             ...loadedLocales.value,
-            [locale]: elementLocaleData,
+            [locale]: true,
           };
         }
 
@@ -394,8 +389,8 @@ export const useI18nStore = defineStore(
 
       // During SSR, preload only the default locale.
       if (!isClient && localeCode.value === 'en') {
-        const enLocale = await loadElementLocale('en');
-        loadedLocales.value = { en: enLocale };
+        await loadDayjsLocale('en');
+        loadedLocales.value = { en: true };
         return;
       }
 

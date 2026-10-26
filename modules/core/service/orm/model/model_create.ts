@@ -206,12 +206,9 @@ export class CreateOperations {
     if (!meta.computeGraph?.computeFields?.size) return value;
 
     const cleaned: UnknownRecord = { ...(value as UnknownRecord) };
-    const virtualComputeFields = meta.computeGraph?.virtualComputeFields || new Set<string>();
+    // Drop stored and select-only (store:false / virtual) computes — neither is client-writable.
     meta.computeGraph.computeFields.forEach((f: string) => {
-      if (!(f in cleaned)) return;
-      const handler = meta.computeHandlers?.get(f);
-      const isVirtual = virtualComputeFields.has(f) || handler?.store === false;
-      if (!isVirtual) delete cleaned[f];
+      if (f in cleaned) delete cleaned[f];
     });
     return cleaned as Partial<Insertable<T>>;
   }
@@ -363,7 +360,12 @@ export class CreateOperations {
 
                 const updates: UnknownRecord = {};
                 let changed = false;
+                const persistedCompute = meta.computeGraph?.persistedComputeFields;
+                const virtualCompute = meta.computeGraph?.virtualComputeFields || new Set<string>();
                 affectedCompute.forEach(k => {
+                  if (virtualCompute.has(k)) return;
+                  if (persistedCompute && !persistedCompute.has(k)) return;
+                  if (meta.computeHandlers?.get(k)?.store === false) return;
                   if (parentEntity[k] !== oldSnapshot[k]) {
                     updates[k] = parentEntity[k];
                     changed = true;

@@ -17,7 +17,26 @@ type DiffChange = {
 };
 
 export type RelationType = 'OneToMany' | 'ManyToMany' | 'ManyToOne';
-export type FieldsMeta = Record<string, { relation?: RelationType; type?: string }>;
+export type FieldsMeta = Record<
+  string,
+  { relation?: RelationType; type?: string; resolvedColumnType?: string; isReadonly?: boolean }
+>;
+
+/** Properties / jsonobject columns are whole-map replace on write (not nested patches). */
+function isWholeMapReplaceFieldMeta(fm: { type?: string; resolvedColumnType?: string } | undefined): boolean {
+  if (!fm) return false;
+  const t = String(fm.type || '').toLowerCase();
+  const r = String(fm.resolvedColumnType || '').toLowerCase();
+  return t === 'properties' || r === 'properties' || t === 'jsonobject' || r === 'jsonobject';
+}
+
+function mergePlainMaps(original: unknown, current: unknown): Plain | unknown {
+  if (current === null || current === undefined) return current;
+  const oMap = asObjectRecord(original);
+  const cMap = asObjectRecord(current);
+  if (oMap && cMap) return { ...oMap, ...cMap };
+  return current;
+}
 
 /** Keys of a {@link RelationPatch} object payload. */
 export type RelationPatchKind = keyof RelationPatch<BaseModel>;
@@ -47,14 +66,44 @@ function toArray(value: unknown): unknown[] {
 }
 
 const isArrayPath = (p: (string | number)[]) => p.some(x => typeof x === 'number');
+/** Client / transport keys that must never enter a relation write patch. */
+const CLIENT_ONLY_KEYS = new Set(['__cid', '__rowKey', '__choysum_plain']);
+/** Display-only keys form widgets keep on lean M2M link rows. */
+const M2M_DISPLAY_ONLY_KEYS = new Set(['DisplayName', 'display_name']);
+
 const stripClientKeys = (o: unknown): unknown => {
   const record = asObjectRecord(o);
   if (!record) return o;
-  const { __cid, __rowKey, ...rest } = record;
-  void __cid;
-  void __rowKey;
-  return rest;
+  const out: Plain = {};
+  for (const [k, v] of Object.entries(record)) {
+    if (CLIENT_ONLY_KEYS.has(k)) continue;
+    out[k] = v;
+  }
+  return out;
 };
+
+/**
+ * M2M form rows are often lean (Id + DisplayName) or ClientModel plains with
+ * schema keys filled as null, while the loaded original had full target columns.
+ * Null / omitted keys mean "unchanged link", not "set field to null".
+ * Only non-null fields present on the current row participate in the update patch.
+ */
+function objectPatchM2mLink(orig: Plain, curr: Plain): Plain {
+  const patch: Plain = {};
+  for (const k of Object.keys(curr ?? {})) {
+    if (k === 'Id' || CLIENT_ONLY_KEYS.has(k) || M2M_DISPLAY_ONLY_KEYS.has(k)) continue;
+    const oa = (orig ?? {})[k];
+    const ob = (curr ?? {})[k];
+    // Sparse / plain ClientModel rows fill unused columns with null — ignore those.
+    if (ob === null || ob === undefined) continue;
+    if (isDecimalCandidate(oa) || isDecimalCandidate(ob)) {
+      if (!decimalEqual(oa, ob)) patch[k] = ob;
+      continue;
+    }
+    if (!equal(oa, ob)) patch[k] = ob;
+  }
+  return patch;
+}
 
 // NEW: Detects values that may participate in Decimal-aware comparisons.
 function isDecimalCandidate(v: unknown): boolean {
@@ -192,7 +241,8 @@ function diffArrayRelation(kind: 'o2m' | 'm2m', origArr: unknown[] = [], currArr
     const a = { ...(asObjectRecord(oById.get(id)) ?? { Id: id }), Id: id } as Plain;
     const b = { ...(asObjectRecord(cById.get(id)) ?? { Id: id }), Id: id } as Plain;
     if (equal(a, b)) continue;
-    const rawPatch = objectPatch(a, b);
+    // M2M: lean link rows must not null-clear omitted target columns (IsActive, audit, …).
+    const rawPatch = kind === 'm2m' ? objectPatchM2mLink(a, b) : objectPatch(a, b);
     const patch = normalizePatchForRelationUpdate(a, b, rawPatch);
     if (Object.keys(patch).length) {
       const sanitized = asObjectRecord(stripClientKeys(patch)) ?? {};
@@ -214,7 +264,12 @@ function diffArrayRelation(kind: 'o2m' | 'm2m', origArr: unknown[] = [], currArr
  * Diffs ordinary non-relation fields.
  * - Compare top-level Decimal values first to avoid microdiff blind spots.
  * ------------------------------------------------ */
-function diffNormalFields(original: Plain, current: Plain, relationKeys: Set<string>): Plain {
+function diffNormalFields(
+  original: Plain,
+  current: Plain,
+  relationKeys: Set<string>,
+  fieldsMeta?: FieldsMeta,
+): Plain {
   const out: Plain = {};
   const handledTopKeys = new Set<string>();
 
@@ -252,6 +307,25 @@ function diffNormalFields(original: Plain, current: Plain, relationKeys: Set<str
         handledTopKeys.add(topKey);
         continue;
       }
+      // properties / jsonobject (and any plain map column): never emit nested partial
+      // maps — BE treats these as whole-column replace. Without this, a single dirty
+      // key (e.g. Properties.qty_hint) wipes sibling keys on the server.
+      const oMap = asObjectRecord(oa);
+      const cMap = asObjectRecord(ob);
+      if (oMap && cMap && !Array.isArray(oa) && !Array.isArray(ob)) {
+        const looksM2O = (m: Plain) =>
+          typeof m.Id === 'string' &&
+          (Object.prototype.hasOwnProperty.call(m, 'DisplayName') ||
+            Object.prototype.hasOwnProperty.call(m, 'display_name'));
+        if (
+          isWholeMapReplaceFieldMeta(fieldsMeta?.[topKey]) ||
+          (!looksM2O(oMap) && !looksM2O(cMap))
+        ) {
+          out[topKey] = { ...oMap, ...cMap };
+          handledTopKeys.add(topKey);
+          continue;
+        }
+      }
     }
 
     if (c.path.length === 1 && (topKey === 'Id' || topKey === '__cid' || topKey === '__rowKey')) continue;
@@ -277,10 +351,16 @@ export function buildUpdatePayload(original: Plain, current: Plain, fieldsMeta?:
   const allKeys = new Set<string>([...Object.keys(original ?? {}), ...Object.keys(current ?? {})]);
 
   const processed = new Map<string, RelationType | 'ManyToManyRef'>();
+  /** Select-only / deny-write / declarative readonly — client compute may dirty these. */
+  const readonlyKeys = new Set<string>();
 
   // 1) Relation fields explicitly declared in metadata.
   for (const key of allKeys) {
     const fm = fieldsMeta?.[key];
+    if (fm?.isReadonly === true) {
+      readonlyKeys.add(key);
+      continue;
+    }
     const rel = fm?.relation as RelationType | undefined;
 
     // ManyToManyRef: send ID lists and compare them after dedupe and sorting.
@@ -293,27 +373,41 @@ export function buildUpdatePayload(original: Plain, current: Plain, fieldsMeta?:
       continue;
     }
 
-    if (!rel) continue;
-
-    if (rel === 'ManyToOne') {
+    // ManyToOneRef: web fieldsMetadata often has type only (no relation: 'ManyToOne').
+    // Compare / submit string ids so display objects never enter the write patch.
+    if (fm?.type === 'ManyToOneRef' || rel === 'ManyToOne') {
       const oId = toId(original?.[key]);
       const cId = toId(current?.[key]);
       if (oId !== cId) payload[key] = cId ?? null;
-      processed.set(key, rel);
+      processed.set(key, 'ManyToOne');
       continue;
     }
 
-    if (rel === 'OneToMany' || rel === 'ManyToMany') {
-      const ops = diffArrayRelation(rel === 'OneToMany' ? 'o2m' : 'm2m', toArray(original?.[key]), toArray(current?.[key]));
+    // ManyToMany / OneToMany: codegen web meta is often `{ type }` without `relation`.
+    // Mis-diffing M2M as O2M drops Id-only link adds (no create/delete patch).
+    const arrayRel: RelationType | undefined =
+      fm?.type === 'ManyToMany' || rel === 'ManyToMany'
+        ? 'ManyToMany'
+        : fm?.type === 'OneToMany' || rel === 'OneToMany'
+          ? 'OneToMany'
+          : undefined;
+    if (arrayRel === 'OneToMany' || arrayRel === 'ManyToMany') {
+      const ops = diffArrayRelation(
+        arrayRel === 'OneToMany' ? 'o2m' : 'm2m',
+        toArray(original?.[key]),
+        toArray(current?.[key]),
+      );
       if (ops) payload[key] = ops;
-      processed.set(key, rel);
+      processed.set(key, arrayRel);
       continue;
     }
+
+    if (!rel) continue;
   }
 
   // 2) Infer undeclared relation-like keys.
   for (const key of allKeys) {
-    if (processed.has(key)) continue;
+    if (processed.has(key) || readonlyKeys.has(key)) continue;
     if (fieldsMeta?.[key]?.relation) continue;
 
     const oVal = original?.[key];
@@ -336,9 +430,39 @@ export function buildUpdatePayload(original: Plain, current: Plain, fieldsMeta?:
     }
   }
 
-  // 3) Ordinary fields.
-  const relationKeys = new Set<string>([...processed.keys()]);
-  Object.assign(payload, diffNormalFields(original, current, relationKeys));
+  // 3) Properties / jsonobject: whole-column replace (BE validatePropertiesWrite).
+  // Nested microdiff would send `{ qty_hint: 30 }` only; the server then drops every
+  // other writable key. Always send original ∪ current so keys missing from a
+  // truncated draft are not wiped. Explicit nulls in current still win.
+  const wholeMapKeys = new Set<string>();
+  for (const key of allKeys) {
+    if (processed.has(key) || readonlyKeys.has(key)) continue;
+    if (!isWholeMapReplaceFieldMeta(fieldsMeta?.[key])) continue;
+    wholeMapKeys.add(key);
+    const oVal = original?.[key];
+    const cVal = current?.[key];
+    if (equal(oVal ?? null, cVal ?? null)) continue;
+    if (cVal === undefined || cVal === null) {
+      payload[key] = null;
+      continue;
+    }
+    payload[key] = mergePlainMaps(oVal, cVal);
+  }
+
+  // 4) Ordinary fields (nested object diffs under properties/jsonobject also collapse).
+  const relationKeys = new Set<string>([...processed.keys(), ...wholeMapKeys, ...readonlyKeys]);
+  Object.assign(payload, diffNormalFields(original, current, relationKeys, fieldsMeta));
+
+  // 5) Safety net: if a whole-map field still looks like a nested partial patch, re-merge.
+  for (const key of allKeys) {
+    if (!isWholeMapReplaceFieldMeta(fieldsMeta?.[key])) continue;
+    if (!Object.prototype.hasOwnProperty.call(payload, key)) continue;
+    const patchVal = payload[key];
+    if (patchVal === null) continue;
+    const cVal = current?.[key];
+    if (cVal === null || cVal === undefined) continue;
+    payload[key] = mergePlainMaps(original?.[key], cVal);
+  }
 
   return payload;
 }

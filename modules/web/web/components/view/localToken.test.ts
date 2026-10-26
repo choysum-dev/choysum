@@ -8,11 +8,11 @@ afterEach(() => {
 });
 
 test('nextLocalToken > uses randomUUID when available', () => {
-  const token = nextLocalToken('o-form-view', {
+  const token = nextLocalToken('choy-form-view', {
     randomUUID: () => 'uuid-123',
   });
 
-  expect(token).toBe('o-form-view:uuid-123');
+  expect(token).toBe('choy-form-view:uuid-123');
 });
 
 test('nextLocalToken > falls back to time and incrementing counter when randomUUID is unavailable', () => {

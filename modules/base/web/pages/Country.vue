@@ -4,18 +4,18 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage :store="countryStore">
+  <ChoyPage :store="countryStore">
     <CountryFormView />
-  </OPage>
+  </ChoyPage>
 </template>
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
 import { createStoreByModel } from '@/web/web/stores/registry';
-import OPage from '@/web/web/components/page/OPage.vue';
 import CountryFormView from '../views/CountryFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type Country from '@/base/service/models/country';
+import { ChoyPage } from '@/web';
 
 defineOptions({ name: 'CountryPage' });
 

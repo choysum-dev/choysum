@@ -37,7 +37,9 @@ export function resolveMonetaryScaleFromPayload(
     throw monetaryCurrencyRequiredError(fieldName || 'unknown');
   }
 
-  const currencyVal = inputRecord[currencyField] !== undefined ? inputRecord[currencyField] : currentRecord[currencyField];
+  // Prefer input currency when it yields digits or a resolvable Id; otherwise fall back to
+  // current so a half-formed display object (e.g. { DisplayName }) cannot block the DB FK.
+  const currencyVal = pickUsableCurrencyValue(inputRecord[currencyField], currentRecord[currencyField]);
   const digitsFromObj = readDecimalDigitsFromCurrencyValue(currencyVal);
   if (digitsFromObj != null) {
     return { scale: digitsFromObj, currencyId: normalizeCurrencyRefId(currencyVal), needsBrowse: false };
@@ -48,6 +50,19 @@ export function resolveMonetaryScaleFromPayload(
     throw monetaryCurrencyRequiredError(fieldName || currencyField);
   }
   return { currencyId, needsBrowse: true };
+}
+
+function isUsableCurrencyValue(value: unknown): boolean {
+  if (value === undefined) return false;
+  return readDecimalDigitsFromCurrencyValue(value) != null || normalizeCurrencyRefId(value) != null;
+}
+
+function pickUsableCurrencyValue(fromInput: unknown, fromCurrent: unknown): unknown {
+  if (isUsableCurrencyValue(fromInput)) return fromInput;
+  if (isUsableCurrencyValue(fromCurrent)) return fromCurrent;
+  // Preserve prior preference: when input key is present but unusable, still surface it
+  // for the final E1 path only if current is also unusable (caller throws on empty id).
+  return fromInput !== undefined ? fromInput : fromCurrent;
 }
 
 export function resolveMonetaryScaleForWrite(fm: FieldMetadata | undefined, input: unknown, current?: unknown): number {

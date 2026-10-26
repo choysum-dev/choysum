@@ -12,6 +12,7 @@ export * from './useSearchGrouping';
 export * from './useUserFilters';
 export * from './userFilterDefaults';
 export * from './defaultFavoriteName';
+export * from './mergeFavoriteGroups';
 export * from './scopeKey';
 export * from './trySetupHook';
-export * from './oSearchNavContext';
+export * from './searchNavContext';

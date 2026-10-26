@@ -194,12 +194,6 @@ service AttachmentBinding {
 	rpc ResolveDownloadContent (AttachmentBinding_ResolveDownloadContent_Req) returns (AttachmentBinding_ResolveDownloadContent_Resp) {}
 }
 
-message PrincipalContext {
-	string userId = 1;
-	string activeCompanyId = 2;
-	repeated string enabledCompanyIds = 3;
-}
-
 message RequestMeta {
 	string contentType = 1;
 	int64 contentLength = 2;
@@ -208,8 +202,7 @@ message RequestMeta {
 
 message AuthorizeUploadPutReq {
 	string uploadId = 1;
-	PrincipalContext principal = 2;
-	RequestMeta requestMeta = 3;
+	RequestMeta requestMeta = 2;
 }
 
 message AuthorizeUploadPutResp {
@@ -230,8 +223,7 @@ message PayloadReceipt {
 
 message CommitUploadPutReq {
 	string uploadId = 1;
-	PrincipalContext principal = 2;
-	PayloadReceipt payloadReceipt = 3;
+	PayloadReceipt payloadReceipt = 2;
 }
 
 message CommitUploadPutResp {
@@ -258,7 +250,6 @@ message AttachmentContent_CommitUploadPut_Resp {
 
 message ResolveDownloadContentReq {
 	string attachmentBindingId = 1;
-	PrincipalContext principal = 2;
 }
 
 message ResolveDownloadContentResp {
@@ -714,15 +705,8 @@ func TestDocumentGatewayUploadHandlerPersistsUploadedPayload(t *testing.T) {
 	if got := normalizeOptionalText(authorizeReq["uploadId"]); got != uploadID {
 		t.Fatalf("authorize uploadId = %q, want %q", got, uploadID)
 	}
-	principal := asRecord(authorizeReq["principal"])
-	if principal == nil {
-		t.Fatal("authorize principal should not be nil")
-	}
-	if got := normalizeOptionalText(principal["userId"]); got != "u1" {
-		t.Fatalf("principal.userId = %q, want u1", got)
-	}
-	if got := normalizeOptionalText(principal["activeCompanyId"]); got != "c1" {
-		t.Fatalf("principal.activeCompanyId = %q, want c1", got)
+	if _, hasPrincipal := authorizeReq["principal"]; hasPrincipal {
+		t.Fatal("authorize req must not carry wire principal; identity comes from session")
 	}
 	requestMeta := asRecord(authorizeReq["requestMeta"])
 	if requestMeta == nil {
@@ -941,15 +925,8 @@ func TestDocumentGatewayDownloadHandlerReturnsBindingContent(t *testing.T) {
 			if got := normalizeOptionalText(resolveReq["attachmentBindingId"]); got != bindingID {
 				t.Fatalf("resolve attachmentBindingId = %q, want %q", got, bindingID)
 			}
-			principal := asRecord(resolveReq["principal"])
-			if principal == nil {
-				t.Fatal("resolve principal should not be nil")
-			}
-			if got := normalizeOptionalText(principal["userId"]); got != "u1" {
-				t.Fatalf("resolve principal.userId = %q, want u1", got)
-			}
-			if got := normalizeOptionalText(principal["activeCompanyId"]); got != "c1" {
-				t.Fatalf("resolve principal.activeCompanyId = %q, want c1", got)
+			if _, hasPrincipal := resolveReq["principal"]; hasPrincipal {
+				t.Fatal("resolve req must not carry wire principal; identity comes from session")
 			}
 
 			if authz := docFixture.resolveMetadata.Get("authorization"); len(authz) == 0 || authz[0] != "Bearer download-allow-token" {

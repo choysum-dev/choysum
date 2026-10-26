@@ -3,11 +3,13 @@
 
 import {
   cloneFilter,
+  countFilterLeaves,
   createCondition,
   createFilter,
   deepCloneFilter,
   genId,
   isCondition,
+  isConditionComplete,
   isGroup,
   normalizeFilters,
   toFilters,
@@ -82,6 +84,17 @@ test('filter structures helpers: toFilters converts named filters and groups', (
   expect(toFilters(groupWithQuery)[0]).toBe(groupWithQuery);
 });
 
+test('filter structures helpers: isConditionComplete requires value when operator needs one', () => {
+  expect(isConditionComplete({ field: 'Name', operator: '=', value: 'x' })).toBe(true);
+  expect(isConditionComplete({ field: 'Name', operator: '=', value: '' })).toBe(false);
+  expect(isConditionComplete({ field: 'Name', operator: '=', value: '   ' })).toBe(false);
+  expect(isConditionComplete({ field: '', operator: '=', value: 'x' })).toBe(false);
+  expect(isConditionComplete({ field: 'Active', operator: 'is', value: null })).toBe(true);
+  expect(isConditionComplete({ field: 'PartnerId', operator: '=', value: { Id: 'p1' } })).toBe(true);
+  expect(isConditionComplete({ field: 'PartnerId', operator: '=', value: { Id: '' } })).toBe(false);
+  expect(isConditionComplete({ field: 'PartnerId', operator: 'in', value: [] })).toBe(false);
+});
+
 test('filter structures helpers: normalizeFilters drops incomplete nodes and empty groups', () => {
   const raw = [
     {
@@ -90,6 +103,7 @@ test('filter structures helpers: normalizeFilters drops incomplete nodes and emp
       name: 'N',
       children: [
         { id: 'c1', field: '', operator: '=', value: 1 },
+        { id: 'c1b', field: 'Name', operator: '=', value: '' },
         { id: 'c2', field: 'Name', operator: '=', value: 'ok' },
         {
           id: 'g2',
@@ -106,9 +120,22 @@ test('filter structures helpers: normalizeFilters drops incomplete nodes and emp
   expect(out).toHaveLength(1);
   expect(out[0].logic).toBe('Or');
   expect(out[0].name).toBe('N');
-  expect(out[0].children).toHaveLength(2);
+  // Empty value kept for external filters; incomplete field dropped.
+  expect(out[0].children).toHaveLength(3);
   expect((out[0].children[0] as any).field).toBe('Name');
-  expect(isGroup(out[0].children[1])).toBe(true);
+  expect((out[0].children[0] as any).value).toBe('');
+  expect((out[0].children[1] as any).field).toBe('Name');
+  expect(isGroup(out[0].children[2])).toBe(true);
+
+  const leaves = countFilterLeaves({
+    id: 'g',
+    logic: 'And',
+    children: [
+      { id: 'a', field: 'Name', operator: '=', value: 'ok' },
+      { id: 'b', field: 'Name', operator: '=', value: '' },
+    ],
+  } as any);
+  expect(leaves).toEqual({ complete: 1, incomplete: 1 });
 });
 
 test('filter structures helpers: deepCloneFilter preserves name and handles missing children', () => {
@@ -129,12 +156,15 @@ test('filter structures helpers: deepCloneFilter preserves name and handles miss
 test('filter structures helpers: toFilters skips null query and blank name, throws on invalid query shapes', () => {
   expect(toFilters({ name: 'NullQ', query: null } as any)).toEqual([]);
   expect(toFilters({ name: '', query: ['A', '=', 1] } as any)).toEqual([]);
+  // Empty queries (groupby-only favorites / filtersToQuery []) apply as no-op chips.
+  expect(toFilters({ name: 'EmptyArr', query: [] } as any)).toEqual([]);
+  expect(toFilters({ name: 'EmptyObj', query: {} } as any)).toEqual([]);
+  expect(toFilters({ name: 'EmptyAnd', query: { And: [] } } as any)).toEqual([]);
+  expect(toFilters({ name: 'EmptyOr', query: { Or: [] } } as any)).toEqual([]);
 
   for (const bad of [
     { name: 'BadArr', query: ['only', 'two'] },
     { name: 'Str', query: 'nope' },
-    { name: 'EmptyAnd', query: { And: [] } },
-    { name: 'EmptyOr', query: { Or: [] } },
     { name: 'JunkParts', query: { And: [null, 'x', { foo: 1 }] } },
     { name: 'NonStringLeaf', query: [1, '=', 2] },
     { name: 'NonStringOp', query: ['A', 1, 2] },

@@ -14,7 +14,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/choysum-dev/choysum/internal/logger"
+	"github.com/choysum-dev/choysum/pkg/oerrors"
 	"github.com/fsnotify/fsnotify"
+	xfmt "golang.org/x/exp/errors/fmt"
 )
 
 func TestServerHotreloadLifecycleRecreatesWatcherForReuse(t *testing.T) {
@@ -236,6 +239,379 @@ func TestServerRegisterWatchDirAndDispatchWatchHandlerResolvesSymlinks(t *testin
 	}
 	if firstCall.module != "demo" || firstCall.file != resolvedChangedFile {
 		t.Fatalf("unexpected symlink watch callback: %#v", firstCall)
+	}
+}
+
+func TestShouldIgnoreWatchPath(t *testing.T) {
+	cases := []struct {
+		path string
+		want bool
+	}{
+		{filepath.Join("modules", "web", "web", "styles", "choy-tailwind.generated.css"), true},
+		{filepath.Join("modules", "web", "web", "styles", ".choy-tailwind-2477883981.tmp"), true},
+		{filepath.Join("modules", "docs", "choy-tailwind.generated.css"), false},
+		{filepath.Join("modules", "docs", ".choy-tailwind-fixture.tmp"), false},
+		{filepath.Join("modules", "partner", "web", "web", "styles", "choy-tailwind.generated.css"), false},
+		{filepath.Join("modules", "partner", "web", "web", "styles", ".choy-tailwind-1.tmp"), false},
+		{filepath.Join("modules", "myweb", "web", "styles", "choy-tailwind.generated.css"), false},
+		{filepath.Join("modules", "web", "web", "components", "field", "Foo.vue"), false},
+		{filepath.Join("modules", "partner", "web", "views", "PartnerFormView.vue"), false},
+		{filepath.Join("modules", "web", "web", "components", "field", "ChoyOneToManyKanbanField.mount.test.ts"), true},
+		{filepath.Join("modules", "core", "service", "orm", "model", "model_update.test.ts"), true},
+		{filepath.Join("modules", "web", "web", "components", "field", "Foo.spec.tsx"), true},
+		{filepath.Join("tmp", "other.tmp"), false},
+		{filepath.Join("styles", ".choy-tailwind-x.tmp.bak"), false},
+	}
+	for _, tc := range cases {
+		if got := shouldIgnoreWatchPath(tc.path); got != tc.want {
+			t.Fatalf("shouldIgnoreWatchPath(%q) = %v, want %v", tc.path, got, tc.want)
+		}
+	}
+}
+
+func TestIsModuleLeaseConflict(t *testing.T) {
+	leaseErr := oerrors.New("meta.lock", "LEASE_CONFLICT", "lease is busy").WithMetadata("retry_after_ms", "60000")
+	if !isModuleLeaseConflict(leaseErr) {
+		t.Fatal("expected raw LEASE_CONFLICT to match")
+	}
+	if !isModuleLeaseConflict(xfmt.Errorf("error running watch handler: %w", leaseErr)) {
+		t.Fatal("expected wrapped LEASE_CONFLICT to match")
+	}
+	if isModuleLeaseConflict(errors.New("watch failed")) {
+		t.Fatal("expected plain error not to match")
+	}
+	if isModuleLeaseConflict(oerrors.New("meta.lock", "OTHER", "nope")) {
+		t.Fatal("expected other meta.lock codes not to match")
+	}
+}
+
+func TestEnqueueWatchEventIgnoresChoyTailwindArtifacts(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	srv := &GRPCWebServer{runtimeScope: runtimeScope, hotreload: hotreloadState{queue: make(chan string, 2)}}
+	root := t.TempDir()
+	styles := filepath.Join(root, "modules", "web", "web", "styles")
+	if err := os.MkdirAll(styles, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	generated := filepath.Join(styles, "choy-tailwind.generated.css")
+	tmp := filepath.Join(styles, ".choy-tailwind-deadbeef.tmp")
+	source := filepath.Join(styles, "theme.css")
+	for _, path := range []string{generated, tmp, source} {
+		if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
+			t.Fatalf("WriteFile(%s) error = %v", path, err)
+		}
+	}
+
+	if srv.enqueueWatchEvent(generated) {
+		t.Fatal("expected generated CSS watch event to be ignored")
+	}
+	if srv.enqueueWatchEvent(tmp) {
+		t.Fatal("expected Tailwind tmp watch event to be ignored")
+	}
+	if !srv.enqueueWatchEvent(source) {
+		t.Fatal("expected non-generated CSS watch event to enqueue")
+	}
+	select {
+	case <-srv.hotreloadQueue():
+	default:
+		t.Fatal("expected source watch event to remain queued")
+	}
+	assertHotreloadCounters(t, srv, 0, 0, "ignored generated artifacts must not count as drops/coalesces")
+}
+
+func TestHandleWatchedFileChangeDefersOnLeaseConflict(t *testing.T) {
+	prevMax := hotreloadLeaseRetryMax
+	hotreloadLeaseRetryMax = 0
+	t.Cleanup(func() { hotreloadLeaseRetryMax = prevMax })
+
+	runtimeScope := newRichServerTestScope(t)
+	root := t.TempDir()
+	changedFile := filepath.Join(root, "handler.ts")
+	if err := os.WriteFile(changedFile, []byte("export {}"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	leaseErr := oerrors.New("meta.lock", "LEASE_CONFLICT", "lease is busy").WithMetadata("retry_after_ms", "60000")
+	tracked := &fakeWatchedService{
+		name:      "web",
+		watchDirs: []string{root},
+		watchErr:  xfmt.Errorf("error running watch handler: %w", leaseErr),
+	}
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{watcher: mustNewWatcher(t), queue: make(chan string, 1)},
+	}
+	srv.hotreload.storeWatchTargets(srv.buildRegisteredWatchTargets(tracked.watchPlans(), tracked.watchCallback))
+
+	var progress bytes.Buffer
+	srv.hotreload.progressLine = logger.NewProgressLine(&progress)
+
+	err := srv.handleWatchedFileChange(changedFile)
+	if !isModuleLeaseConflict(err) {
+		t.Fatalf("handleWatchedFileChange() error = %v, want LEASE_CONFLICT", err)
+	}
+	if tracked.callCount() != 1 {
+		t.Fatalf("watch handler calls = %d, want 1", tracked.callCount())
+	}
+	if !strings.Contains(progress.String(), "Deferred (module busy)") {
+		t.Fatalf("progress = %q, want deferred marker", progress.String())
+	}
+}
+
+func TestScheduleLeaseConflictRetryRequeuesFile(t *testing.T) {
+	prevBase, prevMax := hotreloadLeaseRetryBase, hotreloadLeaseRetryMax
+	hotreloadLeaseRetryBase = 20 * time.Millisecond
+	hotreloadLeaseRetryMax = 2
+	t.Cleanup(func() {
+		hotreloadLeaseRetryBase = prevBase
+		hotreloadLeaseRetryMax = prevMax
+	})
+
+	runtimeScope := newRichServerTestScope(t)
+	root := t.TempDir()
+	changedFile := filepath.Join(root, "retry.ts")
+	if err := os.WriteFile(changedFile, []byte("export {}"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{queue: make(chan string, 2)},
+	}
+	srv.hotreload.storeWatchTargets([]registeredWatchTarget{{
+		serviceName: "web",
+		moduleName:  "web",
+		root:        root,
+	}})
+
+	resolvedFile, err := resolveWatchPath(changedFile)
+	if err != nil {
+		t.Fatalf("resolveWatchPath() error = %v", err)
+	}
+	srv.scheduleLeaseConflictRetry(resolvedFile)
+
+	select {
+	case event := <-srv.hotreloadQueue():
+		if !strings.HasPrefix(event, resolvedFile) {
+			t.Fatalf("retry event = %q, want prefix %q", event, resolvedFile)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("timed out waiting for lease-conflict retry enqueue")
+	}
+}
+
+
+func TestScheduleLeaseConflictRetryExhaustedClearsBudget(t *testing.T) {
+	prevBase, prevMax := hotreloadLeaseRetryBase, hotreloadLeaseRetryMax
+	hotreloadLeaseRetryBase = 5 * time.Millisecond
+	hotreloadLeaseRetryMax = 1
+	t.Cleanup(func() {
+		hotreloadLeaseRetryBase = prevBase
+		hotreloadLeaseRetryMax = prevMax
+	})
+
+	runtimeScope := newRichServerTestScope(t)
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{queue: make(chan string, 2)},
+	}
+	file := filepath.Join(t.TempDir(), "exhaust.ts")
+	// First schedule consumes the only retry slot and eventually enqueues.
+	srv.scheduleLeaseConflictRetry(file)
+	select {
+	case <-srv.hotreloadQueue():
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("timed out waiting for first retry enqueue")
+	}
+	// Second schedule exceeds max and clears the map entry without enqueueing.
+	srv.scheduleLeaseConflictRetry(file)
+	select {
+	case event := <-srv.hotreloadQueue():
+		t.Fatalf("unexpected retry event after exhaustion: %q", event)
+	case <-time.After(80 * time.Millisecond):
+	}
+	if got := srv.hotreload.nextLeaseRetry(file); got != 1 {
+		t.Fatalf("after clear, nextLeaseRetry = %d, want 1", got)
+	}
+	srv.hotreload.clearLeaseRetry(file)
+	srv.hotreload.clearLeaseRetry(file) // nil-map / missing key no-op path after delete
+}
+
+
+func TestScheduleLeaseConflictRetryCapsBackoffShift(t *testing.T) {
+	prevBase, prevMax := hotreloadLeaseRetryBase, hotreloadLeaseRetryMax
+	hotreloadLeaseRetryBase = 5 * time.Millisecond
+	hotreloadLeaseRetryMax = 8
+	t.Cleanup(func() {
+		hotreloadLeaseRetryBase = prevBase
+		hotreloadLeaseRetryMax = prevMax
+	})
+
+	runtimeScope := newRichServerTestScope(t)
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{queue: make(chan string, 8)},
+	}
+	file := filepath.Join(t.TempDir(), "shift.ts")
+	// Drive attempt high enough that shift clamps at 4 (attempt-1 > 4).
+	for i := 0; i < 6; i++ {
+		srv.scheduleLeaseConflictRetry(file)
+	}
+	// Drain at least one enqueue to prove scheduling still works under the clamp.
+	select {
+	case <-srv.hotreloadQueue():
+	case <-time.After(800 * time.Millisecond):
+		t.Fatal("timed out waiting for clamped-backoff retry enqueue")
+	}
+}
+
+func TestHotreloadRetryStillActive(t *testing.T) {
+	// Not parallel: shares hotreloadForceRetryInactive with retry scheduling tests.
+	hotreloadForceRetryInactive.Store(false)
+	if !hotreloadRetryStillActive(nil) {
+		t.Fatal("nil done must stay active")
+	}
+	// Background().Done() is nil; use a live cancelable context for the select/default path.
+	live, stopLive := context.WithCancel(context.Background())
+	t.Cleanup(stopLive)
+	if !hotreloadRetryStillActive(live.Done()) {
+		t.Fatal("live cancelable done must stay active")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if hotreloadRetryStillActive(ctx.Done()) {
+		t.Fatal("canceled done must be inactive")
+	}
+	hotreloadForceRetryInactive.Store(true)
+	t.Cleanup(func() { hotreloadForceRetryInactive.Store(false) })
+	if hotreloadRetryStillActive(nil) {
+		t.Fatal("force-inactive must win over nil done")
+	}
+}
+
+func TestScheduleLeaseConflictRetryClearsBudgetWhenEnqueueDropped(t *testing.T) {
+	prevBase, prevMax := hotreloadLeaseRetryBase, hotreloadLeaseRetryMax
+	hotreloadLeaseRetryBase = 5 * time.Millisecond
+	hotreloadLeaseRetryMax = 3
+	t.Cleanup(func() {
+		hotreloadLeaseRetryBase = prevBase
+		hotreloadLeaseRetryMax = prevMax
+	})
+
+	runtimeScope := newRichServerTestScope(t)
+	// Capacity 0 so enqueueWatchEvent always drops.
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{queue: make(chan string)},
+	}
+	file := filepath.Join(t.TempDir(), "dropped.ts")
+	srv.scheduleLeaseConflictRetry(file)
+	time.Sleep(40 * time.Millisecond)
+	if got := srv.hotreload.nextLeaseRetry(file); got != 1 {
+		t.Fatalf("after dropped enqueue, nextLeaseRetry = %d, want 1 (budget cleared)", got)
+	}
+	srv.hotreload.clearLeaseRetry(file)
+}
+
+func TestScheduleLeaseConflictRetryAbortsOnContextCancel(t *testing.T) {
+	prevBase, prevMax := hotreloadLeaseRetryBase, hotreloadLeaseRetryMax
+	hotreloadLeaseRetryBase = 200 * time.Millisecond
+	hotreloadLeaseRetryMax = 3
+	t.Cleanup(func() {
+		hotreloadLeaseRetryBase = prevBase
+		hotreloadLeaseRetryMax = prevMax
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	runtimeScope := newRichServerTestScope(t)
+	runtimeScope.ctx = ctx
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{queue: make(chan string, 2)},
+	}
+	file := filepath.Join(t.TempDir(), "cancel.ts")
+	srv.scheduleLeaseConflictRetry(file)
+	cancel()
+	select {
+	case event := <-srv.hotreloadQueue():
+		t.Fatalf("unexpected retry event after cancel: %q", event)
+	case <-time.After(80 * time.Millisecond):
+	}
+	if got := srv.hotreload.nextLeaseRetry(file); got != 1 {
+		t.Fatalf("after cancel abort, nextLeaseRetry = %d, want 1 (budget cleared)", got)
+	}
+	srv.hotreload.clearLeaseRetry(file)
+}
+
+func TestScheduleLeaseConflictRetryAbortsWhenCanceledAfterTimer(t *testing.T) {
+	prevBase, prevMax := hotreloadLeaseRetryBase, hotreloadLeaseRetryMax
+	hotreloadLeaseRetryBase = 5 * time.Millisecond
+	hotreloadLeaseRetryMax = 3
+	hotreloadForceRetryInactive.Store(true)
+	t.Cleanup(func() {
+		hotreloadLeaseRetryBase = prevBase
+		hotreloadLeaseRetryMax = prevMax
+		hotreloadForceRetryInactive.Store(false)
+	})
+
+	runtimeScope := newRichServerTestScope(t)
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{queue: make(chan string, 2)},
+	}
+	file := filepath.Join(t.TempDir(), "after-timer.ts")
+	srv.scheduleLeaseConflictRetry(file)
+	select {
+	case event := <-srv.hotreloadQueue():
+		t.Fatalf("unexpected retry event after post-timer inactive: %q", event)
+	case <-time.After(80 * time.Millisecond):
+	}
+}
+
+func TestScheduleLeaseConflictRetryNoopWhenDisabled(t *testing.T) {
+	prevBase, prevMax := hotreloadLeaseRetryBase, hotreloadLeaseRetryMax
+	hotreloadLeaseRetryBase = 0
+	hotreloadLeaseRetryMax = 2
+	t.Cleanup(func() {
+		hotreloadLeaseRetryBase = prevBase
+		hotreloadLeaseRetryMax = prevMax
+	})
+	srv := &GRPCWebServer{hotreload: hotreloadState{queue: make(chan string, 1)}}
+	srv.scheduleLeaseConflictRetry("x.ts")
+	srv.scheduleLeaseConflictRetry("")
+	var nilSrv *GRPCWebServer
+	nilSrv.scheduleLeaseConflictRetry("x.ts")
+	select {
+	case event := <-srv.hotreloadQueue():
+		t.Fatalf("unexpected event: %q", event)
+	default:
+	}
+}
+
+func TestHandleWatchedFileChangeIgnoresGeneratedArtifact(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	root := t.TempDir()
+	generated := filepath.Join(root, "modules", "web", "web", "styles", "choy-tailwind.generated.css")
+	if err := os.MkdirAll(filepath.Dir(generated), 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	if err := os.WriteFile(generated, []byte("css"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	tracked := &fakeWatchedService{
+		name:      "web",
+		watchDirs: []string{root},
+		watchErr:  errors.New("should not run"),
+	}
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{watcher: mustNewWatcher(t), queue: make(chan string, 1)},
+	}
+	srv.hotreload.storeWatchTargets(srv.buildRegisteredWatchTargets(tracked.watchPlans(), tracked.watchCallback))
+
+	if err := srv.handleWatchedFileChange(generated); err != nil {
+		t.Fatalf("handleWatchedFileChange() error = %v, want nil for generated artifact", err)
+	}
+	if tracked.callCount() != 0 {
+		t.Fatalf("watch handler calls = %d, want 0", tracked.callCount())
 	}
 }
 

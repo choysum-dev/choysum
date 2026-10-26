@@ -196,6 +196,23 @@ test('resolveMonetaryScaleFromPayload / ForWrite / FromRow cover S1 and E1 branc
     needsBrowse: true,
   });
 
+  // Half-formed display object must not block a usable current FK.
+  expect(
+    resolveMonetaryScaleFromPayload(fm, { CurrencyId: { DisplayName: '人民币' } }, { CurrencyId: 'C1' })
+  ).toEqual({ currencyId: 'C1', needsBrowse: true });
+
+  expect(
+    resolveMonetaryScaleFromPayload(
+      fm,
+      { CurrencyId: { DisplayName: '人民币' } },
+      { CurrencyId: { Id: 'C2', DecimalDigits: 2 } }
+    )
+  ).toEqual({ scale: 2, currencyId: 'C2', needsBrowse: false });
+
+  expect(() =>
+    resolveMonetaryScaleFromPayload(fm, { CurrencyId: { DisplayName: '人民币' } }, { CurrencyId: { DisplayName: 'x' } })
+  ).toThrow(/currency required/);
+
   expect(() => resolveMonetaryScaleFromPayload(fm, {})).toThrow(/currency required/);
   expect(() =>
     resolveMonetaryScaleFromPayload({ type: 'monetary', name: 'Amount', column: {} } as any, { Amount: 1 })

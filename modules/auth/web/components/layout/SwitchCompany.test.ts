@@ -1,0 +1,118 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+import {
+  isActiveCompanyEnabledLocked,
+  syncCompanyDraftsFromJwt,
+  toggleEnabledCompanyId,
+} from './o_switch_company_draft';
+import { pickAlternativeCompanyOptionValue } from './switch_company_option_pick';
+
+test('pickAlternativeCompanyOptionValue: keeps current when it is already a valid alternative', () => {
+  expect(pickAlternativeCompanyOptionValue(['c1', 'c2'], 'c2', 'c1')).toBe('c2');
+});
+
+test('pickAlternativeCompanyOptionValue: picks another option when current matches active', () => {
+  expect(pickAlternativeCompanyOptionValue(['c1', 'c2'], 'c1', 'c1')).toBe('c2');
+});
+
+test('pickAlternativeCompanyOptionValue: returns empty when no alternative exists', () => {
+  expect(pickAlternativeCompanyOptionValue(['c1'], 'c1', 'c1')).toBe('');
+  expect(pickAlternativeCompanyOptionValue([], '', 'c1')).toBe('');
+});
+
+test('pickAlternativeCompanyOptionValue: ignores current when the active company is unknown', () => {
+  // An empty active (JWT read failed) must not be treated as a valid alternative.
+  expect(pickAlternativeCompanyOptionValue(['c1', 'c2'], 'c1', '')).toBe('c2');
+});
+
+test('pickAlternativeCompanyOptionValue: ignores current when it is absent from the values snapshot', () => {
+  // Callers must pass current + values from one snapshot; a stray current must not
+  // be reused, and the pick must still come from the provided values list.
+  expect(pickAlternativeCompanyOptionValue(['c1', 'c2'], 'c9', 'c1')).toBe('c2');
+  expect(pickAlternativeCompanyOptionValue(['c1'], 'c9', 'c1')).toBe('');
+});
+
+test('SwitchCompany draft guard: ignores JWT sync while panel is open', () => {
+  const applied: Array<{ active: string; enabled: string[] }> = [];
+  syncCompanyDraftsFromJwt({
+    panelVisible: true,
+    activeCompanyId: 'c2',
+    enabledCompanyIds: ['c2'],
+    apply: (active, enabled) => applied.push({ active, enabled }),
+  });
+  expect(applied.length).toBe(0);
+});
+
+test('SwitchCompany draft guard: syncs drafts from JWT when panel is closed', () => {
+  const applied: Array<{ active: string; enabled: string[] }> = [];
+  syncCompanyDraftsFromJwt({
+    panelVisible: false,
+    activeCompanyId: 'c2',
+    enabledCompanyIds: ['c1', 'c2'],
+    apply: (active, enabled) => applied.push({ active, enabled }),
+  });
+  expect(applied).toEqual([{ active: 'c2', enabled: ['c1', 'c2'] }]);
+});
+
+test('isActiveCompanyEnabledLocked: locks only the draft active company', () => {
+  expect(isActiveCompanyEnabledLocked('c1', 'c1')).toBe(true);
+  expect(isActiveCompanyEnabledLocked('c2', 'c1')).toBe(false);
+  expect(isActiveCompanyEnabledLocked('c1', '')).toBe(false);
+  expect(isActiveCompanyEnabledLocked('  c1  ', 'c1')).toBe(true);
+});
+
+test('toggleEnabledCompanyId: checks a company into the enabled draft', () => {
+  expect(
+    toggleEnabledCompanyId({
+      companyId: 'c2',
+      on: true,
+      draftActiveCompanyId: 'c1',
+      draftEnabledCompanyIds: ['c1'],
+    }),
+  ).toEqual(['c1', 'c2']);
+});
+
+test('toggleEnabledCompanyId: unchecks a non-active company', () => {
+  expect(
+    toggleEnabledCompanyId({
+      companyId: 'c2',
+      on: false,
+      draftActiveCompanyId: 'c1',
+      draftEnabledCompanyIds: ['c1', 'c2'],
+    }),
+  ).toEqual(['c1']);
+});
+
+test('toggleEnabledCompanyId: refuses to uncheck the active company', () => {
+  expect(
+    toggleEnabledCompanyId({
+      companyId: 'c1',
+      on: false,
+      draftActiveCompanyId: 'c1',
+      draftEnabledCompanyIds: ['c1', 'c2'],
+    }),
+  ).toEqual(['c1', 'c2']);
+});
+
+test('toggleEnabledCompanyId: indeterminate is treated as unchecked when not locked', () => {
+  expect(
+    toggleEnabledCompanyId({
+      companyId: 'c2',
+      on: 'indeterminate',
+      draftActiveCompanyId: 'c1',
+      draftEnabledCompanyIds: ['c1', 'c2'],
+    }),
+  ).toEqual(['c1']);
+});
+
+test('toggleEnabledCompanyId: ensures active stays in enabled after check', () => {
+  expect(
+    toggleEnabledCompanyId({
+      companyId: 'c2',
+      on: true,
+      draftActiveCompanyId: 'c1',
+      draftEnabledCompanyIds: [],
+    }),
+  ).toEqual(['c1', 'c2']);
+});

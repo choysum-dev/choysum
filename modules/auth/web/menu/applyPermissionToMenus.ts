@@ -46,6 +46,17 @@ function applyToItem(item: MenuItem, state: PermissionState | null | undefined, 
     }
   }
 
+  // Snapshot not loaded: keep declared visibility so default-land DFS can see leaves.
+  if (state == null) {
+    item.hidden = baseHidden;
+    item.disabled = baseDisabled;
+    if (!item.hidden && !item.path && Array.isArray(item.children) && item.children.length > 0) {
+      const allHidden = item.children.every((c) => !!c.hidden);
+      if (allHidden) item.hidden = true;
+    }
+    return;
+  }
+
   const allowed = canMenu(item.id, state, ctx);
   const mode = meta.permissionMode ?? 'hide';
 

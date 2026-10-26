@@ -6,7 +6,7 @@ import smoke from '../../../auth/e2e/fixtures/smoke.json';
 import companyChild from '../../e2e/fixtures/company_child.json';
 import * as lang from '@/web/web/stores/i18nStore/lang';
 import * as utils from '@/web/web/stores/i18nStore/utils';
-import * as languageFormat from '@/web/web/stores/i18nStore/language_format';
+import * as languageFormat from '@/web/web/stores/i18nStore/languageFormat';
 
 test('bootstrap.json has POSIX languages and no Locale entity', () => {
   const data = bootstrap as { records: Array<{ name: string; model: string; values: Record<string, unknown> }> };

@@ -1,58 +1,61 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { h, computed } from 'vue';
-import { storeToRefs } from 'pinia';
-import { useRouter } from 'vue-router';
-import { ElMenu, ElSubMenu, ElMenuItem, ElIcon, ElEmpty } from 'element-plus';
-import { QuestionFilled } from '@element-plus/icons-vue';
-import { BookmarkBorderOutlined } from '@vicons/material';
-import { useI18n } from 'vue-i18n';
-import { useMenuStore } from '../stores/menuStore';
-import type { MenuItem } from '@/core/web/menu';
-import { translateTerm, createTranslate } from '../i18n';
+import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useMenuStore } from '../stores/menuStore'
+import type { MenuItem } from '@/core/web/menu'
 
-const { _t: _tMenu } = createTranslate('web', { scope: 'web/composables/useMenu' });
+const ANCESTRY_HOP_CAP = 64
 
 /**
- * Provides menu navigation helpers and render utilities backed by the menu store.
+ * Menu navigation helpers and group expand state for Sidebar* nav.
+ * Branch nodes toggle Collapsible only (no navigate). Manual expands use
+ * sibling accordion; active-menu ancestry always stays open via isExpanded.
  */
 export function useMenu() {
-  const router = useRouter();
-  const composer = useI18n({ useScope: 'global' });
-
-  const menuStore = useMenuStore();
-  const { activeMenu, activeApp } = storeToRefs(menuStore);
+  const router = useRouter()
+  const menuStore = useMenuStore()
+  menuStore.bindRouteFromInjection()
+  // Prefer store proxy reads over storeToRefs: setup-store computeds are not always
+  // present on the object returned by storeToRefs during early shell mount.
+  const activeMenu = computed(() => menuStore.activeMenu)
+  const activeApp = computed(() => menuStore.activeApp)
+  // Manual expand/collapse for groups without an active descendant.
+  const openedSubMenus = ref(new Set<string>())
 
   /**
    * Navigates to a menu item or menu id.
+   * Resolves folders to the first navigable leaf (L1 / breadcrumb). L2 folders
+   * do not call this — they only toggle Collapsible.
    */
   async function navigateTo(menuIdOrItem: string | MenuItem): Promise<boolean> {
-    const menuItem = typeof menuIdOrItem === 'string' ? menuStore.getMenu(menuIdOrItem) : menuIdOrItem;
+    const menuItem = typeof menuIdOrItem === 'string' ? menuStore.getMenu(menuIdOrItem) : menuIdOrItem
     if (!menuItem) {
-      console.warn('Menu item does not exist');
-      return false;
+      console.warn('Menu item does not exist')
+      return false
     }
 
-    const targetMenuItem = menuStore.findFirstNavigableMenu(menuItem);
+    const targetMenuItem = menuStore.findFirstNavigableMenu(menuItem)
     if (!targetMenuItem || !targetMenuItem.path) {
-      console.warn('Menu item has no navigable path');
-      return false;
+      console.warn('Menu item has no navigable path')
+      return false
     }
 
-    menuStore.setActiveMenu(targetMenuItem);
+    menuStore.setActiveMenu(targetMenuItem)
+    pruneOpenedToAncestry(targetMenuItem)
 
     try {
       if (targetMenuItem.externalLink) {
-        const target = getExternalTarget(targetMenuItem.openMode);
-        window.open(targetMenuItem.path, target);
+        const target = getExternalTarget(targetMenuItem.openMode)
+        window.open(targetMenuItem.path, target)
       } else {
-        await router.push(targetMenuItem.path);
+        await router.push(targetMenuItem.path)
       }
-      return true;
+      return true
     } catch (error) {
-      console.error('Menu navigation failed:', error);
-      return false;
+      console.error('Menu navigation failed:', error)
+      return false
     }
   }
 
@@ -62,236 +65,114 @@ export function useMenu() {
   function getExternalTarget(openMode?: string): string {
     switch (openMode) {
       case 'window':
-        return '_blank';
+        return '_blank'
       case 'parent':
-        return '_parent';
+        return '_parent'
       case 'top':
-        return '_top';
+        return '_top'
       default:
-        return '_self';
+        return '_self'
     }
   }
 
   /**
-   * Reports whether a submenu should be expanded for the active menu.
+   * Collects folder ids on the path from `menu` up to the app root.
+   * Empty-string ids are kept so pathless folders still ancestry-expand.
+   */
+  function ancestryFolderIds(menu: MenuItem | null | undefined): Set<string> {
+    const ids = new Set<string>()
+    let current: MenuItem | null | undefined = menu
+    let hops = 0
+    while (current && hops < ANCESTRY_HOP_CAP) {
+      hops += 1
+      if (current.__parent) {
+        ids.add(current.__parent.id ?? '')
+      }
+      current = current.__parent || null
+    }
+    return ids
+  }
+
+  /**
+   * True when `menuId` is under `ancestorId` in the menu tree.
+   */
+  function isUnderAncestor(menuId: string, ancestorId: string): boolean {
+    if (!menuId || !ancestorId || menuId === ancestorId) return false
+    let current: MenuItem | null | undefined = menuStore.getMenu(menuId)
+    let hops = 0
+    while (current && hops < ANCESTRY_HOP_CAP) {
+      hops += 1
+      if (current.__parent?.id === ancestorId) return true
+      current = current.__parent || null
+    }
+    return false
+  }
+
+  /**
+   * Drops manual expands that are not ancestors of the active leaf.
+   */
+  function pruneOpenedToAncestry(leaf: MenuItem) {
+    const keep = ancestryFolderIds(leaf)
+    const next = new Set<string>()
+    for (const id of openedSubMenus.value) {
+      if (keep.has(id)) next.add(id)
+    }
+    openedSubMenus.value = next
+  }
+
+  /**
+   * Reports whether a submenu should be expanded (manual toggle or active ancestry).
    */
   function isExpanded(menuId: string): boolean {
-    const currentActiveMenu = activeMenu.value;
-    if (!currentActiveMenu) return false;
+    if (openedSubMenus.value.has(menuId)) return true
 
-    let current: MenuItem | null = currentActiveMenu;
-    while (current) {
-      if (current.__parent?.id === menuId) {
-        return true;
-      }
-      current = current.__parent || null;
-    }
-    return false;
+    const currentActiveMenu = activeMenu.value
+    if (!currentActiveMenu) return false
+
+    return ancestryFolderIds(currentActiveMenu).has(menuId)
   }
 
   /**
-   * Renders a menu icon node, optionally falling back to a default icon.
+   * Opens a folder and closes manually opened siblings (and their subtrees).
+   * Active-menu ancestry remains visible via isExpanded even if removed here.
    */
-  const renderIcon = (icon: any, useDefault = false, defaultIcon: any = QuestionFilled) => {
-    if (!icon && useDefault) {
-      return h(ElIcon, {}, () => h(defaultIcon));
-    } else if (!icon) {
-      return null;
-    }
-    return h(ElIcon, {}, () => h(icon));
-  };
+  function openSubMenu(key: string) {
+    if (!key) return
+    const item = menuStore.getMenu(key)
+    const parent = item?.__parent
+    const siblingIds = new Set(
+      (parent?.children || [])
+        .map((c) => c.id || '')
+        .filter((id) => !!id && id !== key),
+    )
 
-  /**
-   * Renders a menu tree into Element Plus menu items.
-   */
-  const renderMenuItems = (
-    menuItems: MenuItem[],
-    options: {
-      onItemClick?: (item: MenuItem) => void;
-      onItemSelect?: (key: string, item: MenuItem) => void;
-      onSubMenuOpen?: (key: string) => void;
-      onSubMenuClose?: (key: string) => void;
-      defaultIcon?: any;
-      useDefaultIcon?: boolean;
-    } = {}
-  ) => {
-    const {
-      onItemClick = item => navigateTo(item),
-      onItemSelect,
-      onSubMenuOpen,
-      onSubMenuClose,
-      defaultIcon = BookmarkBorderOutlined,
-      useDefaultIcon = false,
-    } = options;
-
-    return menuItems
-      .filter(item => !item.hidden)
-      .map(item => {
-        const hasChildren = item.children && item.children.length > 0;
-        const isActive = activeMenu.value?.id === item.id;
-        const props = {
-          index: item.id || '',
-          key: item.id || item.path,
-          disabled: item.disabled,
-        };
-
-        if (hasChildren) {
-          return h(
-            ElSubMenu,
-            {
-              ...props,
-              class: { 'is-expanded': isExpanded(item.id) },
-              onOpen: () => onSubMenuOpen?.(item.id || ''),
-              onClose: () => onSubMenuClose?.(item.id || ''),
-            },
-            {
-              title: () => [
-                renderIcon(item.icon, useDefaultIcon, defaultIcon),
-                h('span', {}, translateTerm(composer, item.titleText, item.title)),
-              ],
-              default: () => renderMenuItems(item.children || [], options),
-            }
-          );
+    const next = new Set<string>()
+    for (const id of openedSubMenus.value) {
+      if (siblingIds.has(id)) continue
+      let underSibling = false
+      for (const siblingId of siblingIds) {
+        if (isUnderAncestor(id, siblingId)) {
+          underSibling = true
+          break
         }
-
-        return h(
-          ElMenuItem,
-          {
-            ...props,
-            class: { 'is-active': isActive },
-            onClick: () => onItemClick(item),
-            onSelect: () => onItemSelect?.(item.id || '', item),
-          },
-          {
-            default: () => [
-              renderIcon(item.icon, useDefaultIcon, defaultIcon),
-              h('span', {}, translateTerm(composer, item.titleText, item.title)),
-            ],
-          }
-        );
-      });
-  };
-
-  /**
-   * Returns the menu items for the currently active application.
-   */
-  const appMenuItems = computed(() => {
-    return activeApp.value?.children || [];
-  });
-
-  /**
-   * Renders a complete menu widget from store or provided items.
-   */
-  const renderMenu = (
-    options: {
-      items?: MenuItem[];
-      defaultActive?: string;
-      uniqueOpened?: boolean;
-      className?: string;
-      onItemClick?: (item: MenuItem) => void;
-      onItemSelect?: (key: string, item: MenuItem) => void;
-      onSubMenuOpen?: (key: string) => void;
-      onSubMenuClose?: (key: string) => void;
-      defaultIcon?: any;
-      useDefaultIcon?: boolean;
-      emptyText?: string;
-      menuProps?: Record<string, any>;
-    } = {}
-  ) => {
-    const {
-      defaultActive = activeMenu.value?.id,
-      uniqueOpened = true,
-      className = '',
-      onItemClick,
-      onItemSelect,
-      onSubMenuOpen,
-      onSubMenuClose,
-      defaultIcon,
-      useDefaultIcon = false,
-      emptyText = _tMenu('No menus available'),
-      menuProps = {},
-    } = options;
-
-    const displayItems = computed(() => {
-      if (options.items) return options.items;
-      if (activeApp.value && appMenuItems.value.length) {
-        return appMenuItems.value;
       }
-      return menuStore.getMenus();
-    });
-
-    if (!displayItems.value.length) {
-      return h(ElEmpty, { description: emptyText });
+      if (underSibling) continue
+      next.add(id)
     }
+    next.add(key)
+    openedSubMenus.value = next
+  }
 
-    return h(
-      ElMenu,
-      {
-        defaultActive,
-        collapse: false,
-        collapseTransition: false,
-        uniqueOpened,
-        class: className ? `o-menu ${className}` : 'o-menu',
-        ...menuProps,
-      },
-      {
-        default: () =>
-          renderMenuItems(displayItems.value, {
-            onItemClick,
-            onItemSelect,
-            onSubMenuOpen,
-            onSubMenuClose,
-            defaultIcon,
-            useDefaultIcon,
-          }),
-      }
-    );
-  };
-
-  /**
-   * Renders the application drawer menu.
-   */
-  const renderAppDrawerMenu = (
-    options: {
-      onItemClick?: (item: MenuItem) => void;
-      className?: string;
-    } = {}
-  ) => {
-    const { onItemClick, className = 'o-app-menu' } = options;
-    return renderMenu({
-      items: menuStore.getMenus(),
-      defaultActive: activeMenu.value?.id,
-      className,
-      uniqueOpened: true,
-      onItemClick: onItemClick || (item => navigateTo(item)),
-    });
-  };
-
-  /**
-   * Renders the sidebar menu for the current application.
-   */
-  const renderSidebarMenu = (
-    options: {
-      onItemClick?: (item: MenuItem) => void;
-      onSubMenuOpen?: (key: string) => void;
-      onSubMenuClose?: (key: string) => void;
-      useDefaultIcon?: boolean;
-      uniqueOpened?: boolean;
-      defaultIcon?: any;
-    } = {}
-  ) => {
-    const { uniqueOpened = false, onItemClick, onSubMenuOpen, onSubMenuClose, useDefaultIcon = true, defaultIcon = BookmarkBorderOutlined } = options;
-
-    return renderMenu({
-      defaultActive: activeMenu.value?.id,
-      uniqueOpened,
-      onItemClick: onItemClick || (item => navigateTo(item)),
-      onSubMenuOpen,
-      onSubMenuClose,
-      useDefaultIcon,
-      defaultIcon,
-    });
-  };
+  function closeSubMenu(key: string) {
+    if (!key || !openedSubMenus.value.has(key)) return
+    const next = new Set(openedSubMenus.value)
+    next.delete(key)
+    // Drop nested manual expands under this folder.
+    for (const id of openedSubMenus.value) {
+      if (isUnderAncestor(id, key)) next.delete(id)
+    }
+    openedSubMenus.value = next
+  }
 
   return {
     activeMenu,
@@ -299,13 +180,9 @@ export function useMenu() {
 
     navigateTo,
     isExpanded,
+    openSubMenu,
+    closeSubMenu,
     setActiveMenu: menuStore.setActiveMenu,
-
-    renderIcon,
-    renderMenuItems,
-    renderMenu,
-    renderAppDrawerMenu,
-    renderSidebarMenu,
 
     hasMenu: menuStore.hasMenu,
     getMenu: menuStore.getMenu,
@@ -313,5 +190,5 @@ export function useMenu() {
     getMenuChildren: menuStore.getMenuChildren,
     getMenuParent: menuStore.getMenuParent,
     getMenus: menuStore.getMenus,
-  };
+  }
 }

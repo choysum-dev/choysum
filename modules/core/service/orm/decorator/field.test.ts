@@ -369,12 +369,20 @@ test('Field decorator registers flat storage hints and related metadata', () => 
       size: 128,
     } as any)
     PartnerName!: string;
+
+    @Field({
+      type: 'varchar',
+      related: { path: 'PartnerId.Name', store: false },
+      size: 128,
+    } as any)
+    PartnerNameVirtual!: string;
   }
 
   const metadata = MetadataStorage.instance.getModelMetadata(FlatFieldModel as any);
   const nameMeta = metadata.fields.get('Name') as any;
   const amountMeta = metadata.fields.get('Amount') as any;
   const partnerNameMeta = metadata.fields.get('PartnerName') as any;
+  const partnerNameVirtualMeta = metadata.fields.get('PartnerNameVirtual') as any;
 
   expect(nameMeta?.storageHints).toEqual({
     required: true,
@@ -388,10 +396,19 @@ test('Field decorator registers flat storage hints and related metadata', () => 
   expect(amountMeta?.column?.scale).toBe(4);
 
   expect(partnerNameMeta?.storageHints).toEqual({ size: 128 });
+  expect(partnerNameMeta?.column).toEqual({ size: 128 });
   expect(partnerNameMeta?.related).toEqual({
     path: 'PartnerId.Name',
     store: true,
     deps: ['PartnerId', 'PartnerId.Name'],
+  });
+
+  // related.store=false is virtualRuntime: keep related + size hints, drop column so SELECT skips it.
+  expect(partnerNameVirtualMeta?.storageHints).toEqual({ size: 128 });
+  expect(partnerNameVirtualMeta?.column).toBeUndefined();
+  expect(partnerNameVirtualMeta?.related).toEqual({
+    path: 'PartnerId.Name',
+    store: false,
   });
 });
 

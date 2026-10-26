@@ -181,6 +181,7 @@ export default class MetaUiResource extends BaseModel {
             from meta_ui_resource c
             where ${selfTypeRef} = 'MENU'
               and c.parent_id = ${selfIdRef}
+              and c.deleted_at is null
 
             union all
 
@@ -205,6 +206,7 @@ export default class MetaUiResource extends BaseModel {
             join meta_ui_resource r on r.id = mr.route_ui_resource_id
             where ${selfTypeRef} = 'MENU'
               and mr.menu_ui_resource_id = ${selfIdRef}
+              and r.deleted_at is null
 
             union all
 
@@ -229,6 +231,7 @@ export default class MetaUiResource extends BaseModel {
             join meta_ui_resource a on a.id = ra.action_ui_resource_id
             where ${selfTypeRef} = 'ROUTE'
               and ra.route_ui_resource_id = ${selfIdRef}
+              and a.deleted_at is null
 
             order by seq asc, name asc
           ) as child_row
@@ -263,6 +266,7 @@ export default class MetaUiResource extends BaseModel {
           from meta_ui_resource c
           where ${selfTypeRef} = 'MENU'
             and c.parent_id = ${selfIdRef}
+            and c.deleted_at is null
 
           union all
 
@@ -287,6 +291,7 @@ export default class MetaUiResource extends BaseModel {
           join meta_ui_resource r on r.id = mr.route_ui_resource_id
           where ${selfTypeRef} = 'MENU'
             and mr.menu_ui_resource_id = ${selfIdRef}
+            and r.deleted_at is null
 
           union all
 
@@ -311,6 +316,7 @@ export default class MetaUiResource extends BaseModel {
           join meta_ui_resource a on a.id = ra.action_ui_resource_id
           where ${selfTypeRef} = 'ROUTE'
             and ra.route_ui_resource_id = ${selfIdRef}
+            and a.deleted_at is null
         ) as child_row
       )
     `;

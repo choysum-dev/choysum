@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/antchfx/htmlquery"
 	"github.com/choysum-dev/choysum/internal/esbplugins"
@@ -31,12 +32,22 @@ import (
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/internal/vueplugin"
 	"github.com/choysum-dev/choysum/pkg/config"
+	"github.com/choysum-dev/choysum/pkg/jsengine/scripts/choysummount"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/evanw/esbuild/pkg/api"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+)
+
+// Merged script asserts: component keys inside `components: { ... }`, not template markup or values.
+var (
+	// First key (`{ Key`) or later key (`, Key`); values like `Foo: SidebarProvider` do not match.
+	mergedComponentsSidebarProviderRe = regexp.MustCompile(`components:\s*\{(?:\s*|[^}]*,\s*)SidebarProvider\s*[,}]`)
+	mergedComponentsChoyGuestHeaderRe = regexp.MustCompile(`components:\s*\{(?:\s*|[^}]*,\s*)ChoyGuestHeader\s*[,}]`)
+	mergedComponentsChoyAppHeaderRe   = regexp.MustCompile(`components:\s*\{(?:\s*|[^}]*,\s*)ChoyAppHeader\s*[,}]`)
+	mergedComponentsXpathRe           = regexp.MustCompile(`components:\s*\{(?:\s*|[^}]*,\s*)Xpath\s*[,}]`)
 )
 
 type testScope struct {
@@ -81,7 +92,7 @@ func (e *testScope) Session() *scope.Session {
 	return &scope.Session{DB: e.db}
 }
 func (e *testScope) WithContext(ctx context.Context) scope.Scope {
-	return &testScope{ctx: ctx, cfg: e.cfg, db: e.db}
+	return &testScope{ctx: ctx, cfg: e.cfg, db: e.db, log: e.log}
 }
 func (e *testScope) Context() context.Context { return e.ctx }
 func (e *testScope) Logger() *slog.Logger {
@@ -653,6 +664,207 @@ import { QuestionFilled } from '@element-plus/icons-vue';
 	}
 }
 
+func TestStripJSQuotedSpans(t *testing.T) {
+	cases := []struct {
+		in, want string
+	}{
+		{"", ""},
+		{`_t('Select Company')`, `_t( )`},
+		{`_t("Select Company")`, `_t( )`},
+		{"_t(`Select Company`)", `_t( )`},
+		{`CompanyListView`, `CompanyListView`},
+		{`foo + 'bar' + Company`, `foo +   + Company`},
+		{`'a\'b' + Company`, `  + Company`},
+		{"`'unclosed", " "},
+		{"'\\", " "},
+		{"`prefix ${CompanyListView.name} suffix`", "${CompanyListView.name}"},
+		{"`nested ${foo({ bar: 1 })}`", "${foo({ bar: 1 })}"},
+		{"`a\\nb ${Name}`", "${Name}"},
+		{"`${a\\nb}`", "${a\\nb}"},
+		{"`${fn('}') + CompanyListView.name}`", "${fn('}') + CompanyListView.name}"},
+		{"`${fn(\"}\")}`", "${fn(\"}\")}"},
+		{"`${fn(`}`)}`", "${fn(`}`)}"},
+		{"`trailing $`", " "},
+		{"`trailing $x`", " "},
+		{"`${fn('\\` ", "${fn('\\` "},
+		{"`${fn('unclosed`", "${fn('unclosed`"},
+	}
+	for _, tc := range cases {
+		if got := stripJSQuotedSpans(tc.in); got != tc.want {
+			t.Fatalf("stripJSQuotedSpans(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestSkipJSQuotedSpan(t *testing.T) {
+	if got := skipJSQuotedSpan("", 0); got != 0 {
+		t.Fatalf("skipJSQuotedSpan(empty) = %d, want 0", got)
+	}
+	if got := skipJSQuotedSpan("'", 1); got != 1 {
+		t.Fatalf("skipJSQuotedSpan past end = %d, want 1", got)
+	}
+	if got := skipJSQuotedSpan("'abc", 0); got != 4 {
+		t.Fatalf("skipJSQuotedSpan(unclosed) = %d, want 4", got)
+	}
+	if got := skipJSQuotedSpan("'a\\'b'", 0); got != 6 {
+		t.Fatalf("skipJSQuotedSpan(escaped) = %d, want 6", got)
+	}
+	if got := skipJSQuotedSpan("'\\", 0); got != 2 {
+		t.Fatalf("skipJSQuotedSpan(trailing slash) = %d, want 2", got)
+	}
+}
+
+func TestGetTemplateImportComponents_IgnoresIdentifierInsideStringLiteral(t *testing.T) {
+	testRuntimeScope := newTestScope()
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+
+	parentPath := "/virtual/modules/partner/web/views/PartnerFormView.vue"
+	parentSFC := `<template>
+  <div :title="_t('Select Company')" />
+</template>
+<script setup lang="ts">
+import Company from '@/base/service/models/company';
+const _t = (s: string) => s;
+void Company;
+</script>`
+
+	parentParsed, err := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/partner"}).Parse(map[string]string{"@": "/virtual/modules"}, parentPath, parentSFC)
+	if err != nil {
+		t.Fatalf("parse parent failed: %v", err)
+	}
+	if parentParsed.Imports["Company"] == nil || parentParsed.Imports["Company"].IsTypeOnly {
+		t.Fatalf("expected Company to be a value import for this case, got %#v", parentParsed.Imports["Company"])
+	}
+
+	imports, err := b.getTemplateImportComponents(parentParsed)
+	if err != nil {
+		t.Fatalf("getTemplateImportComponents failed: %v", err)
+	}
+	if _, ok := imports["Company"]; ok {
+		t.Fatalf("Company mentioned only inside a string literal must not be treated as a template component, got %+v", imports)
+	}
+}
+
+func TestGetTemplateImportComponents_KeepsTemplateLiteralInterpolation(t *testing.T) {
+	testRuntimeScope := newTestScope()
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+
+	parentPath := "/virtual/modules/partner/web/views/PartnerFormView.vue"
+	parentSFC := "<template>\n  <div :is=\"`${CompanyListView.name}`\" />\n</template>\n<script setup lang=\"ts\">\nimport CompanyListView from '@/base/web/views/CompanyListView.vue';\n</script>"
+
+	parentParsed, err := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/partner"}).Parse(map[string]string{"@": "/virtual/modules"}, parentPath, parentSFC)
+	if err != nil {
+		t.Fatalf("parse parent failed: %v", err)
+	}
+	imports, err := b.getTemplateImportComponents(parentParsed)
+	if err != nil {
+		t.Fatalf("getTemplateImportComponents failed: %v", err)
+	}
+	if _, ok := imports["CompanyListView"]; !ok {
+		t.Fatalf("CompanyListView used in a template interpolation must be collected, got %+v", imports)
+	}
+}
+
+func TestGetTemplateImportComponents_SkipsTypeOnlyAndStringLiteralNameHits(t *testing.T) {
+	testRuntimeScope := newTestScope()
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+
+	parentPath := "/virtual/modules/partner/web/views/PartnerFormView.vue"
+	parentSFC := `<template>
+  <div>
+    <CompanyListView />
+    <ChoyManyToOneRefField
+      :searchView="CompanyListView"
+      :search-view-title="_t('Select Company')"
+      @value-click="onCompanyValueClick"
+    />
+  </div>
+</template>
+<script setup lang="ts">
+import type Company from '@/base/service/models/company';
+import CompanyListView from '@/base/web/views/CompanyListView.vue';
+import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
+function onCompanyValueClick(_payload: ManyToOneValueClickPayload<Company>) {}
+const _t = (s: string) => s;
+</script>`
+
+	parentParsed, err := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/partner"}).Parse(map[string]string{"@": "/virtual/modules"}, parentPath, parentSFC)
+	if err != nil {
+		t.Fatalf("parse parent failed: %v", err)
+	}
+	if parentParsed.Imports["Company"] == nil || !parentParsed.Imports["Company"].IsTypeOnly {
+		t.Fatalf("expected Company to be parsed as type-only import, got %#v", parentParsed.Imports["Company"])
+	}
+
+	imports, err := b.getTemplateImportComponents(parentParsed)
+	if err != nil {
+		t.Fatalf("getTemplateImportComponents failed: %v", err)
+	}
+	if _, ok := imports["Company"]; ok {
+		t.Fatalf("type-only Company must not be promoted to xpath components, got %+v", imports)
+	}
+	if _, ok := imports["CompanyListView"]; !ok {
+		t.Fatalf("expected CompanyListView to remain a template component, got %+v", imports)
+	}
+}
+
+func TestGetScriptNode_DoesNotAppendTypeOnlyServiceModelImports(t *testing.T) {
+	testRuntimeScope := newTestScope()
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+
+	childPath := "/virtual/modules/partner_bank/web/views/PartnerFormView.vue"
+	parentPath := "/virtual/modules/partner/web/views/PartnerFormView.vue"
+
+	childSFC := `<template>
+  <Xpath expr="//div[@data-region='partner-panel']" position="inside" />
+</template>
+<script lang="ts" _name="PartnerFormView">
+import { defineComponent } from 'vue';
+import { Xpath } from '@/core/web';
+import PartnerFormView from '@/partner/web/views/PartnerFormView.vue';
+
+export default defineComponent({
+  extends: PartnerFormView,
+  components: { Xpath },
+});
+</script>`
+
+	parentSFC := `<template>
+  <div data-region="partner-panel">
+    <CompanyListView />
+    <span :title="_t('Select Company')" />
+  </div>
+</template>
+<script setup lang="ts">
+import type Company from '@/base/service/models/company';
+import CompanyListView from '@/base/web/views/CompanyListView.vue';
+const _t = (s: string) => s;
+void 0 as unknown as Company;
+</script>`
+
+	childParsed := parseVueResult(t, testRuntimeScope, childPath, childSFC)
+	parentParsed, err := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/partner"}).Parse(map[string]string{"@": "/virtual/modules"}, parentPath, parentSFC)
+	if err != nil {
+		t.Fatalf("parse parent failed: %v", err)
+	}
+
+	scriptNode, err := b.getScriptNode(childParsed, parentParsed)
+	if err != nil {
+		t.Fatalf("getScriptNode failed: %v", err)
+	}
+	content := htmlquery.InnerText(scriptNode)
+
+	if strings.Contains(content, "service/models/company") {
+		t.Fatalf("xpath merge must not append type-only service model import, got:\n%s", content)
+	}
+	if !strings.Contains(content, "CompanyListView") {
+		t.Fatalf("expected CompanyListView to be merged into xpath child, got:\n%s", content)
+	}
+	if strings.Contains(content, "components: { Xpath }") || strings.Contains(content, "components: {Xpath}") {
+		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
+	}
+}
+
 func TestGetScriptNode_AppendsScriptSetupParentTemplateIconImports(t *testing.T) {
 	testRuntimeScope := newTestScope()
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
@@ -703,25 +915,50 @@ import { QuestionFilled } from '@element-plus/icons-vue';
 	}
 }
 
-func TestGetScriptNode_AppendsQuestionFilledImport_ForRealAuthOHeader(t *testing.T) {
+func TestMergedComponentsRegexes_MatchMidObjectKeys(t *testing.T) {
+	if !mergedComponentsSidebarProviderRe.MatchString("components: { SidebarProvider }") {
+		t.Fatal("expected SidebarProvider regex to match a first-object key")
+	}
+	if !mergedComponentsSidebarProviderRe.MatchString("components: { Foo, SidebarProvider }") {
+		t.Fatal("expected SidebarProvider regex to match a mid-object key")
+	}
+	if !mergedComponentsSidebarProviderRe.MatchString("components: { Foo, SidebarProvider, Bar }") {
+		t.Fatal("expected SidebarProvider regex to match a middle key among three")
+	}
+	if !mergedComponentsXpathRe.MatchString("components: {\n  Foo,\n  Xpath\n}") {
+		t.Fatal("expected Xpath regex to match a mid-object key")
+	}
+	if mergedComponentsXpathRe.MatchString("components: { Foo, SidebarProvider }") {
+		t.Fatal("expected Xpath regex not to match when Xpath is absent")
+	}
+	if mergedComponentsSidebarProviderRe.MatchString("components: { Foo: SidebarProvider }") {
+		t.Fatal("expected SidebarProvider regex not to match a value reference")
+	}
+	// Value after a prior entry must not match either (key-vs-value guard).
+	if mergedComponentsSidebarProviderRe.MatchString("components: { Foo: Bar, Baz: SidebarProvider }") {
+		t.Fatal("expected SidebarProvider regex not to match a later entry's value reference")
+	}
+}
+
+func TestGetScriptNode_InjectsParentLayout_ForRealAuthChoyAppShell(t *testing.T) {
 	testRuntimeScope := newTestScope()
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	childPath := "/virtual/modules/auth/web/components/layout/OHeader.vue"
-	parentPath := "/virtual/modules/web/web/components/layout/OHeader.vue"
+	childPath := "/virtual/modules/auth/web/components/layout/ChoyAppShell.vue"
+	parentPath := "/virtual/modules/web/web/components/layout/ChoyAppShell.vue"
 
 	repoRoot, err := findRepoRootFromWD()
 	if err != nil {
 		t.Fatalf("locate repo root failed: %v", err)
 	}
 
-	childContent, err := os.ReadFile(filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "OHeader.vue"))
+	childContent, err := os.ReadFile(filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "ChoyAppShell.vue"))
 	if err != nil {
-		t.Fatalf("read child OHeader failed: %v", err)
+		t.Fatalf("read child ChoyAppShell failed: %v", err)
 	}
-	parentContent, err := os.ReadFile(filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "OHeader.vue"))
+	parentContent, err := os.ReadFile(filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "ChoyAppShell.vue"))
 	if err != nil {
-		t.Fatalf("read parent OHeader failed: %v", err)
+		t.Fatalf("read parent ChoyAppShell failed: %v", err)
 	}
 
 	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/auth"})
@@ -729,11 +966,11 @@ func TestGetScriptNode_AppendsQuestionFilledImport_ForRealAuthOHeader(t *testing
 
 	childParsed, err := p.Parse(alias, childPath, string(childContent))
 	if err != nil {
-		t.Fatalf("parse child OHeader failed: %v", err)
+		t.Fatalf("parse child ChoyAppShell failed: %v", err)
 	}
 	parentParsed, err := p.Parse(alias, parentPath, string(parentContent))
 	if err != nil {
-		t.Fatalf("parse parent OHeader failed: %v", err)
+		t.Fatalf("parse parent ChoyAppShell failed: %v", err)
 	}
 
 	if childParsed == nil || childParsed.VueComponent == nil {
@@ -750,20 +987,78 @@ func TestGetScriptNode_AppendsQuestionFilledImport_ForRealAuthOHeader(t *testing
 		t.Fatalf("getScriptNode failed: %v", err)
 	}
 	content := htmlquery.InnerText(scriptNode)
-	var firstComp any
-	if len(childParsed.VueComponentsPropertys) > 0 && childParsed.VueComponentsPropertys[0] != nil {
-		firstComp = *childParsed.VueComponentsPropertys[0]
-	}
 
-	if !strings.Contains(content, "QuestionFilled") {
-		t.Fatalf("expected merged script to include QuestionFilled component, firstComp=%#v imports=%+v got:\n%s", firstComp, childParsed.Imports, content)
+	if !mergedComponentsSidebarProviderRe.MatchString(content) {
+		t.Fatalf("expected merged script to register SidebarProvider from parent, got:\n%s", content)
 	}
-	if !strings.Contains(content, "icons-vue") {
-		t.Fatalf("expected merged script to include icons-vue import for QuestionFilled, got:\n%s", content)
+	if mergedComponentsXpathRe.MatchString(content) {
+		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
 	}
 }
 
-func TestGetScriptNode_AppendsQuestionFilledImport_WithRelativeModulesPath(t *testing.T) {
+func TestGetScriptNode_InjectsParentLayout_ForRealAuthChoyGuestShell(t *testing.T) {
+	testRuntimeScope := newTestScope()
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+
+	childPath := "/virtual/modules/auth/web/components/layout/ChoyGuestShell.vue"
+	parentPath := "/virtual/modules/web/web/components/layout/ChoyGuestShell.vue"
+
+	repoRoot, err := findRepoRootFromWD()
+	if err != nil {
+		t.Fatalf("locate repo root failed: %v", err)
+	}
+
+	childContent, err := os.ReadFile(filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "ChoyGuestShell.vue"))
+	if err != nil {
+		t.Fatalf("read child ChoyGuestShell failed: %v", err)
+	}
+	parentContent, err := os.ReadFile(filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "ChoyGuestShell.vue"))
+	if err != nil {
+		t.Fatalf("read parent ChoyGuestShell failed: %v", err)
+	}
+
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/auth"})
+	alias := map[string]string{"@": "/virtual/modules"}
+
+	childParsed, err := p.Parse(alias, childPath, string(childContent))
+	if err != nil {
+		t.Fatalf("parse child ChoyGuestShell failed: %v", err)
+	}
+	parentParsed, err := p.Parse(alias, parentPath, string(parentContent))
+	if err != nil {
+		t.Fatalf("parse parent ChoyGuestShell failed: %v", err)
+	}
+
+	if childParsed == nil || childParsed.VueComponent == nil {
+		t.Fatalf("expected child VueComponent")
+	}
+	if parentParsed == nil || parentParsed.VueComponent == nil {
+		t.Fatalf("expected parent VueComponent")
+	}
+
+	childParsed.VueComponent.Extends = parentPath
+
+	scriptNode, err := b.getScriptNode(childParsed, parentParsed)
+	if err != nil {
+		t.Fatalf("getScriptNode failed: %v", err)
+	}
+	content := htmlquery.InnerText(scriptNode)
+
+	if !mergedComponentsChoyGuestHeaderRe.MatchString(content) {
+		t.Fatalf("expected merged script to register ChoyGuestHeader from parent, got:\n%s", content)
+	}
+	if mergedComponentsChoyAppHeaderRe.MatchString(content) {
+		t.Fatalf("expected guest merged script not to register ChoyAppHeader, got:\n%s", content)
+	}
+	if mergedComponentsSidebarProviderRe.MatchString(content) {
+		t.Fatalf("expected guest merged script not to register SidebarProvider, got:\n%s", content)
+	}
+	if mergedComponentsXpathRe.MatchString(content) {
+		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
+	}
+}
+
+func TestGetScriptNode_InjectsParentLayout_WithRelativeModulesPath(t *testing.T) {
 	repoRoot, err := findRepoRootFromWD()
 	if err != nil {
 		t.Fatalf("locate repo root failed: %v", err)
@@ -775,16 +1070,16 @@ func TestGetScriptNode_AppendsQuestionFilledImport_WithRelativeModulesPath(t *te
 	}
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	childPath := filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "OHeader.vue")
-	parentPath := filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "OHeader.vue")
+	childPath := filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "ChoyAppShell.vue")
+	parentPath := filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "ChoyAppShell.vue")
 
 	childContent, err := os.ReadFile(childPath)
 	if err != nil {
-		t.Fatalf("read child OHeader failed: %v", err)
+		t.Fatalf("read child ChoyAppShell failed: %v", err)
 	}
 	parentContent, err := os.ReadFile(parentPath)
 	if err != nil {
-		t.Fatalf("read parent OHeader failed: %v", err)
+		t.Fatalf("read parent ChoyAppShell failed: %v", err)
 	}
 
 	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: filepath.Join(repoRoot, "modules", "auth")})
@@ -792,11 +1087,11 @@ func TestGetScriptNode_AppendsQuestionFilledImport_WithRelativeModulesPath(t *te
 
 	childParsed, err := p.Parse(alias, childPath, string(childContent))
 	if err != nil {
-		t.Fatalf("parse child OHeader failed: %v", err)
+		t.Fatalf("parse child ChoyAppShell failed: %v", err)
 	}
 	parentParsed, err := p.Parse(alias, parentPath, string(parentContent))
 	if err != nil {
-		t.Fatalf("parse parent OHeader failed: %v", err)
+		t.Fatalf("parse parent ChoyAppShell failed: %v", err)
 	}
 
 	if childParsed == nil || childParsed.VueComponent == nil {
@@ -810,15 +1105,15 @@ func TestGetScriptNode_AppendsQuestionFilledImport_WithRelativeModulesPath(t *te
 	}
 	content := htmlquery.InnerText(scriptNode)
 
-	if !strings.Contains(content, "QuestionFilled") {
-		t.Fatalf("expected merged script to include QuestionFilled component, got:\n%s", content)
+	if !mergedComponentsSidebarProviderRe.MatchString(content) {
+		t.Fatalf("expected merged script to register SidebarProvider from parent, got:\n%s", content)
 	}
-	if !strings.Contains(content, "icons-vue") {
-		t.Fatalf("expected merged script to include icons-vue import for QuestionFilled, got:\n%s", content)
+	if mergedComponentsXpathRe.MatchString(content) {
+		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
 	}
 }
 
-func TestGetScriptNode_AppendsQuestionFilledImport_ResolvesAliasViaTsconfig(t *testing.T) {
+func TestGetScriptNode_InjectsParentLayout_ResolvesAliasViaTsconfig(t *testing.T) {
 	repoRoot, err := findRepoRootFromWD()
 	if err != nil {
 		t.Fatalf("locate repo root failed: %v", err)
@@ -830,16 +1125,16 @@ func TestGetScriptNode_AppendsQuestionFilledImport_ResolvesAliasViaTsconfig(t *t
 	}
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	childPath := filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "OHeader.vue")
-	parentPath := filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "OHeader.vue")
+	childPath := filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "ChoyAppShell.vue")
+	parentPath := filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "ChoyAppShell.vue")
 
 	childContent, err := os.ReadFile(childPath)
 	if err != nil {
-		t.Fatalf("read child OHeader failed: %v", err)
+		t.Fatalf("read child ChoyAppShell failed: %v", err)
 	}
 	parentContent, err := os.ReadFile(parentPath)
 	if err != nil {
-		t.Fatalf("read parent OHeader failed: %v", err)
+		t.Fatalf("read parent ChoyAppShell failed: %v", err)
 	}
 
 	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: filepath.Join(repoRoot, "modules", "auth")})
@@ -848,11 +1143,11 @@ func TestGetScriptNode_AppendsQuestionFilledImport_ResolvesAliasViaTsconfig(t *t
 	// '@/core/web' using ParseTsconfigPathAlias + ApplyPathAlias.
 	childParsed, err := p.Parse(map[string]string{}, childPath, string(childContent))
 	if err != nil {
-		t.Fatalf("parse child OHeader failed: %v", err)
+		t.Fatalf("parse child ChoyAppShell failed: %v", err)
 	}
 	parentParsed, err := p.Parse(map[string]string{}, parentPath, string(parentContent))
 	if err != nil {
-		t.Fatalf("parse parent OHeader failed: %v", err)
+		t.Fatalf("parse parent ChoyAppShell failed: %v", err)
 	}
 
 	if childParsed == nil || childParsed.VueComponent == nil {
@@ -866,15 +1161,15 @@ func TestGetScriptNode_AppendsQuestionFilledImport_ResolvesAliasViaTsconfig(t *t
 	}
 	content := htmlquery.InnerText(scriptNode)
 
-	if !strings.Contains(content, "QuestionFilled") {
-		t.Fatalf("expected merged script to include QuestionFilled component, got:\n%s", content)
+	if !mergedComponentsSidebarProviderRe.MatchString(content) {
+		t.Fatalf("expected merged script to register SidebarProvider from parent, got:\n%s", content)
 	}
-	if !strings.Contains(content, "icons-vue") {
-		t.Fatalf("expected merged script to include icons-vue import for QuestionFilled, got:\n%s", content)
+	if mergedComponentsXpathRe.MatchString(content) {
+		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
 	}
 }
 
-func TestGetScriptNode_AppendsQuestionFilledImport_WithRuntimeTsconfigAliasMap(t *testing.T) {
+func TestGetScriptNode_InjectsParentLayout_WithRuntimeTsconfigAliasMap(t *testing.T) {
 	repoRoot, err := findRepoRootFromWD()
 	if err != nil {
 		t.Fatalf("locate repo root failed: %v", err)
@@ -886,16 +1181,16 @@ func TestGetScriptNode_AppendsQuestionFilledImport_WithRuntimeTsconfigAliasMap(t
 	}
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	childPath := filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "OHeader.vue")
-	parentPath := filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "OHeader.vue")
+	childPath := filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "ChoyAppShell.vue")
+	parentPath := filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "ChoyAppShell.vue")
 
 	childContent, err := os.ReadFile(childPath)
 	if err != nil {
-		t.Fatalf("read child OHeader failed: %v", err)
+		t.Fatalf("read child ChoyAppShell failed: %v", err)
 	}
 	parentContent, err := os.ReadFile(parentPath)
 	if err != nil {
-		t.Fatalf("read parent OHeader failed: %v", err)
+		t.Fatalf("read parent ChoyAppShell failed: %v", err)
 	}
 
 	tsconfigPath := filepath.Join(repoRoot, "modules", "tsconfig.json")
@@ -911,11 +1206,11 @@ func TestGetScriptNode_AppendsQuestionFilledImport_WithRuntimeTsconfigAliasMap(t
 	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: filepath.Join(repoRoot, "modules", "auth")})
 	childParsed, err := p.Parse(pathAlias, childPath, string(childContent))
 	if err != nil {
-		t.Fatalf("parse child OHeader failed: %v", err)
+		t.Fatalf("parse child ChoyAppShell failed: %v", err)
 	}
 	parentParsed, err := p.Parse(pathAlias, parentPath, string(parentContent))
 	if err != nil {
-		t.Fatalf("parse parent OHeader failed: %v", err)
+		t.Fatalf("parse parent ChoyAppShell failed: %v", err)
 	}
 
 	if childParsed == nil || childParsed.VueComponent == nil {
@@ -929,15 +1224,15 @@ func TestGetScriptNode_AppendsQuestionFilledImport_WithRuntimeTsconfigAliasMap(t
 	}
 	content := htmlquery.InnerText(scriptNode)
 
-	if !strings.Contains(content, "QuestionFilled") {
-		t.Fatalf("expected merged script to include QuestionFilled component, got:\n%s", content)
+	if !mergedComponentsSidebarProviderRe.MatchString(content) {
+		t.Fatalf("expected merged script to register SidebarProvider from parent, got:\n%s", content)
 	}
-	if !strings.Contains(content, "icons-vue") {
-		t.Fatalf("expected merged script to include icons-vue import for QuestionFilled, got:\n%s", content)
+	if mergedComponentsXpathRe.MatchString(content) {
+		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
 	}
 }
 
-func TestUpdateComponent_InjectsQuestionFilled_ForRealAuthOHeader(t *testing.T) {
+func TestUpdateComponent_MergesAuthChoyAppShellIntoWeb(t *testing.T) {
 	repoRoot, err := findRepoRootFromWD()
 	if err != nil {
 		t.Fatalf("locate repo root failed: %v", err)
@@ -968,16 +1263,16 @@ func TestUpdateComponent_InjectsQuestionFilled_ForRealAuthOHeader(t *testing.T) 
 		t.Fatalf("parse tsconfig alias failed: %v", err)
 	}
 
-	childPath := filepath.Join(modulesPath, "auth", "web", "components", "layout", "OHeader.vue")
-	parentPath := filepath.Join(modulesPath, "web", "web", "components", "layout", "OHeader.vue")
+	childPath := filepath.Join(modulesPath, "auth", "web", "components", "layout", "ChoyAppShell.vue")
+	parentPath := filepath.Join(modulesPath, "web", "web", "components", "layout", "ChoyAppShell.vue")
 
 	childContentBytes, err := os.ReadFile(childPath)
 	if err != nil {
-		t.Fatalf("read child OHeader failed: %v", err)
+		t.Fatalf("read child ChoyAppShell failed: %v", err)
 	}
 	parentContentBytes, err := os.ReadFile(parentPath)
 	if err != nil {
-		t.Fatalf("read parent OHeader failed: %v", err)
+		t.Fatalf("read parent ChoyAppShell failed: %v", err)
 	}
 
 	childContent := vueplugin.ResolveVueStylePath(string(childContentBytes), childPath, pathAlias)
@@ -985,11 +1280,11 @@ func TestUpdateComponent_InjectsQuestionFilled_ForRealAuthOHeader(t *testing.T) 
 
 	childParsed, err := b.parser.Parse(pathAlias, childPath, childContent)
 	if err != nil {
-		t.Fatalf("parse child OHeader failed: %v", err)
+		t.Fatalf("parse child ChoyAppShell failed: %v", err)
 	}
 	parentParsed, err := b.parser.Parse(pathAlias, parentPath, parentContent)
 	if err != nil {
-		t.Fatalf("parse parent OHeader failed: %v", err)
+		t.Fatalf("parse parent ChoyAppShell failed: %v", err)
 	}
 
 	buildResult := withParserResults(&module.BuildResult{}, childParsed, parentParsed)
@@ -997,35 +1292,99 @@ func TestUpdateComponent_InjectsQuestionFilled_ForRealAuthOHeader(t *testing.T) 
 		t.Fatalf("updateComponent failed: %v", err)
 	}
 
-	if childParsed.RawScriptNode == nil {
-		t.Fatal("expected child raw script node after update")
+	if childParsed.Content == "" {
+		t.Fatal("expected merged child content after update")
 	}
-	scriptText := htmlquery.InnerText(childParsed.RawScriptNode)
-	if !strings.Contains(scriptText, "QuestionFilled") {
-		t.Fatalf("expected merged child script to include QuestionFilled, got:\n%s", scriptText)
+	if !strings.Contains(childParsed.Content, "auth-user-menu-trigger") {
+		t.Fatalf("expected merged content to keep auth user menu testid, got:\n%s", childParsed.Content)
 	}
-	if !strings.Contains(scriptText, "icons-vue") {
-		t.Fatalf("expected merged child script to include icons-vue import, got:\n%s", scriptText)
+	// Child Xpath expr uses single quotes; double-quoted markup comes from the parent shell.
+	if !strings.Contains(childParsed.Content, `data-anchor="choy.shell.header-actions"`) {
+		t.Fatalf("expected merged content to include the parent shell header-actions anchor, got:\n%s", childParsed.Content)
 	}
-
-	foundQuestionFilledComp := false
-	componentNames := make([]string, 0, len(childParsed.VueComponentsPropertys))
-	for _, node := range childParsed.VueComponentsPropertys {
-		if node == nil {
-			continue
-		}
-		componentNames = append(componentNames, strings.TrimSpace(node.ValueText))
-		if strings.TrimSpace(node.Name) == "QuestionFilled" || strings.TrimSpace(node.ValueText) == "QuestionFilled" {
-			foundQuestionFilledComp = true
-			break
-		}
-	}
-	if !foundQuestionFilledComp {
-		t.Fatalf("expected merged child components to include QuestionFilled, got names=%v script:\n%s", componentNames, scriptText)
+	if !mergedComponentsSidebarProviderRe.MatchString(childParsed.Content) {
+		t.Fatalf("expected merged script to register SidebarProvider from parent, got:\n%s", childParsed.Content)
 	}
 }
 
-func TestPrebuildUpdatePrebuildResult_RealAuthOHeaderContainsInjectedQuestionFilled(t *testing.T) {
+func TestUpdateComponent_MergesAuthChoyGuestShellIntoWeb(t *testing.T) {
+	repoRoot, err := findRepoRootFromWD()
+	if err != nil {
+		t.Fatalf("locate repo root failed: %v", err)
+	}
+
+	modulesPath := filepath.Join(repoRoot, "modules")
+	choysumHome := isolatedChoysumHome(t)
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	testRuntimeScope.cfg.ModulesPath = modulesPath
+	testRuntimeScope.cfg.DefaultChoysumPath = choysumHome
+	if err := testRuntimeScope.db.AutoMigrate(&meta.Component{}); err != nil {
+		t.Fatalf("auto migrate components failed: %v", err)
+	}
+	mod := &meta.Module{Path: filepath.Join(modulesPath, "auth")}
+	b := &WebModuleBuilder{
+		runtimeScope: testRuntimeScope,
+		module:       mod,
+		parser:       defaultparser.NewVueParser(testRuntimeScope, mod),
+	}
+
+	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
+	if err := esmresolver.UpdateTsconfigPaths(tsconfigPath, nil); err != nil {
+		t.Fatalf("ensure modules tsconfig failed: %v", err)
+	}
+
+	pathAlias, err := parser.ParseTsconfigPathAlias(&api.BuildOptions{Tsconfig: tsconfigPath})
+	if err != nil {
+		t.Fatalf("parse tsconfig alias failed: %v", err)
+	}
+
+	childPath := filepath.Join(modulesPath, "auth", "web", "components", "layout", "ChoyGuestShell.vue")
+	parentPath := filepath.Join(modulesPath, "web", "web", "components", "layout", "ChoyGuestShell.vue")
+
+	childContentBytes, err := os.ReadFile(childPath)
+	if err != nil {
+		t.Fatalf("read child ChoyGuestShell failed: %v", err)
+	}
+	parentContentBytes, err := os.ReadFile(parentPath)
+	if err != nil {
+		t.Fatalf("read parent ChoyGuestShell failed: %v", err)
+	}
+
+	childContent := vueplugin.ResolveVueStylePath(string(childContentBytes), childPath, pathAlias)
+	parentContent := vueplugin.ResolveVueStylePath(string(parentContentBytes), parentPath, pathAlias)
+
+	childParsed, err := b.parser.Parse(pathAlias, childPath, childContent)
+	if err != nil {
+		t.Fatalf("parse child ChoyGuestShell failed: %v", err)
+	}
+	parentParsed, err := b.parser.Parse(pathAlias, parentPath, parentContent)
+	if err != nil {
+		t.Fatalf("parse parent ChoyGuestShell failed: %v", err)
+	}
+
+	buildResult := withParserResults(&module.BuildResult{}, childParsed, parentParsed)
+	if err := b.updateComponent(buildResult, pathAlias, childPath); err != nil {
+		t.Fatalf("updateComponent failed: %v", err)
+	}
+
+	if childParsed.Content == "" {
+		t.Fatal("expected merged child content after update")
+	}
+	if !strings.Contains(childParsed.Content, "choy-shell-login") {
+		t.Fatalf("expected merged content to keep guest login testid, got:\n%s", childParsed.Content)
+	}
+	if !strings.Contains(childParsed.Content, `data-anchor="choy.shell.header-actions"`) {
+		t.Fatalf("expected merged content to include the parent shell header-actions anchor, got:\n%s", childParsed.Content)
+	}
+	if !mergedComponentsChoyGuestHeaderRe.MatchString(childParsed.Content) {
+		t.Fatalf("expected merged script to register ChoyGuestHeader from parent, got:\n%s", childParsed.Content)
+	}
+	if mergedComponentsSidebarProviderRe.MatchString(childParsed.Content) {
+		t.Fatalf("expected guest merged script not to register SidebarProvider, got:\n%s", childParsed.Content)
+	}
+}
+
+func TestPrebuildUpdatePrebuildResult_RealAuthChoyAppShellMerges(t *testing.T) {
 	repoRoot, err := findRepoRootFromWD()
 	if err != nil {
 		t.Fatalf("locate repo root failed: %v", err)
@@ -1046,6 +1405,10 @@ func TestPrebuildUpdatePrebuildResult_RealAuthOHeaderContainsInjectedQuestionFil
 
 	moduleRef := &meta.Module{Name: "auth", Path: filepath.Join(modulesPath, "auth")}
 	entryPoint := filepath.Join(modulesPath, "auth", "web", "index.ts")
+	// Kit CSS is gitignored; gallery/dogfood pages import it via the web barrel.
+	if _, err := EnsureChoyTailwindCSS(modulesPath); err != nil {
+		t.Fatalf("EnsureChoyTailwindCSS: %v", err)
+	}
 	builder, ok := NewWebBuilder(testRuntimeScope, nil, moduleRef, entryPoint).(*WebModuleBuilder)
 	if !ok {
 		t.Fatal("expected NewWebBuilder to return *WebModuleBuilder")
@@ -1057,7 +1420,7 @@ func TestPrebuildUpdatePrebuildResult_RealAuthOHeaderContainsInjectedQuestionFil
 		t.Fatalf("prebuild failed: %v", err)
 	}
 
-	childPath := filepath.Join(modulesPath, "auth", "web", "components", "layout", "OHeader.vue")
+	childPath := filepath.Join(modulesPath, "auth", "web", "components", "layout", "ChoyAppShell.vue")
 	var beforeChild *parser.ParserResult
 	for _, r := range parserResultsOf(prebuildResult) {
 		if r != nil && r.Path == childPath {
@@ -1087,10 +1450,17 @@ func TestPrebuildUpdatePrebuildResult_RealAuthOHeaderContainsInjectedQuestionFil
 		t.Fatalf("expected merged content for %s", childPath)
 	}
 
-	if !strings.Contains(childResult.Content, "QuestionFilled") {
-		t.Fatalf("expected merged content to include QuestionFilled, got:\n%s", childResult.Content)
+	if !strings.Contains(childResult.Content, "auth-user-menu-trigger") {
+		t.Fatalf("expected merged content to keep auth user menu testid, got:\n%s", childResult.Content)
 	}
-	if strings.Contains(childResult.Content, "components: {\n    Xpath,") || strings.Contains(childResult.Content, "components: { Xpath") {
+	// Child Xpath expr uses single quotes; double-quoted markup comes from the parent shell.
+	if !strings.Contains(childResult.Content, `data-anchor="choy.shell.header-actions"`) {
+		t.Fatalf("expected merged content to include the parent shell header-actions anchor, got:\n%s", childResult.Content)
+	}
+	if !mergedComponentsSidebarProviderRe.MatchString(childResult.Content) {
+		t.Fatalf("expected merged script to register SidebarProvider from parent, got:\n%s", childResult.Content)
+	}
+	if mergedComponentsXpathRe.MatchString(childResult.Content) {
 		t.Fatalf("expected xpath placeholder to be replaced in merged content, got:\n%s", childResult.Content)
 	}
 }
@@ -3206,15 +3576,15 @@ func TestExtractUiResources_MenuAndRoutePreserveBaselineDefaultRoles(t *testing.
 
 	pr := &parser.ParserResult{UiResourceDecls: []*parser.UiResourceDecl{
 		{
-			ID:           "web.menu.home",
+			ID:           "web.menu.sample",
 			Type:         parser.UiResourceTypeMenu,
-			Path:         "/home",
+			Path:         "/sample",
 			DefaultRoles: []string{"base.user"},
 		},
 		{
-			ID:           "web.route.home",
+			ID:           "web.route.sample",
 			Type:         parser.UiResourceTypeRoute,
-			Path:         "home",
+			Path:         "sample",
 			DefaultRoles: []string{"base.user"},
 		},
 	}}
@@ -3238,11 +3608,11 @@ func TestExtractUiResources_MenuAndRoutePreserveBaselineDefaultRoles(t *testing.
 		defaultRolesByName[resource.Name] = parseJSONStrings(resource.DefaultRoles)
 	}
 
-	if !slices.Equal(defaultRolesByName["web.menu.home"], []string{"base.user"}) {
-		t.Fatalf("unexpected menu defaultRoles: %v", defaultRolesByName["web.menu.home"])
+	if !slices.Equal(defaultRolesByName["web.menu.sample"], []string{"base.user"}) {
+		t.Fatalf("unexpected menu defaultRoles: %v", defaultRolesByName["web.menu.sample"])
 	}
-	if !slices.Equal(defaultRolesByName["web.route.home"], []string{"base.user"}) {
-		t.Fatalf("unexpected route defaultRoles: %v", defaultRolesByName["web.route.home"])
+	if !slices.Equal(defaultRolesByName["web.route.sample"], []string{"base.user"}) {
+		t.Fatalf("unexpected route defaultRoles: %v", defaultRolesByName["web.route.sample"])
 	}
 
 	menuRoutes, routeActions, err := extractUiResourceRelations(resources, []*parser.ParserResult{pr})
@@ -3255,7 +3625,7 @@ func TestExtractUiResources_MenuAndRoutePreserveBaselineDefaultRoles(t *testing.
 	if len(menuRoutes) != 1 {
 		t.Fatalf("expected 1 menu_route relation, got %d", len(menuRoutes))
 	}
-	if menuRoutes[0].MenuName != "web.menu.home" || menuRoutes[0].RouteName != "web.route.home" {
+	if menuRoutes[0].MenuName != "web.menu.sample" || menuRoutes[0].RouteName != "web.route.sample" {
 		t.Fatalf("unexpected menu_route relation: %#v", menuRoutes[0])
 	}
 }
@@ -4595,6 +4965,160 @@ func TestBuildPipelineHelpers(t *testing.T) {
 	})
 }
 
+func TestBuildCtx_ChoyTailwindHook(t *testing.T) {
+	t.Run("logs successful generate when web kit present", func(t *testing.T) {
+		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+		if err := testRuntimeScope.db.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
+			t.Fatalf("auto migrate failed: %v", err)
+		}
+		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, testRuntimeScope, "export const answer = 42\n")
+		if err := testRuntimeScope.db.Create(&meta.Module{
+			BaseModel:     meta.BaseModel{Id: sql.NullString{String: "installed_auth_tw", Valid: true}},
+			Name:          "auth",
+			Status:        meta.Installed,
+			WebEntryPoint: entryPoint,
+		}).Error; err != nil {
+			t.Fatalf("seed installed module failed: %v", err)
+		}
+
+		modulesPath := filepath.Join(t.TempDir(), "modules")
+		choyWeb := filepath.Join(modulesPath, "web", "web")
+		styles := filepath.Join(choyWeb, "styles")
+		pages := filepath.Join(choyWeb, "pages")
+		for _, dir := range []string{styles, pages} {
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := os.WriteFile(filepath.Join(styles, "theme.css"), []byte(`@theme { --color-primary: red; }`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(pages, "Gallery.vue"), []byte(`<div class="flex"></div>`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		var logBuf bytes.Buffer
+		testRuntimeScope.log = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+
+		builder := &WebModuleBuilder{
+			runtimeScope: testRuntimeScope,
+			runtimeOptions: runtimeOptions{
+				modulesPath:        modulesPath,
+				distPath:           filepath.Join(t.TempDir(), "dist"),
+				defaultChoysumPath: filepath.Join(t.TempDir(), ".choysum"),
+				webBaseURL:         "/web/",
+			},
+			module:         moduleRef,
+			entryPoint:     entryPoint,
+			parser:         defaultparser.NewVueParser(testRuntimeScope, moduleRef),
+			prebuildPlugin: &buildTestPlugin{parserResults: []*parser.ParserResult{{Path: entryPoint, RawContent: "export const answer = 42", Content: "export const answer = 42"}}},
+			buildPlugin:    &buildTestPlugin{},
+			publishDist:    false,
+		}
+		if _, err := builder.BuildCtx(context.Background()); err != nil {
+			t.Fatalf("BuildCtx: %v", err)
+		}
+		if !strings.Contains(logBuf.String(), "Choy kit Tailwind generated") {
+			t.Fatalf("expected tailwind generate log, got %q", logBuf.String())
+		}
+		if _, err := os.Stat(filepath.Join(styles, "choy-tailwind.generated.css")); err != nil {
+			t.Fatalf("expected generated css: %v", err)
+		}
+	})
+
+	t.Run("warns when generate exceeds soft budget", func(t *testing.T) {
+		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+		if err := testRuntimeScope.db.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
+			t.Fatalf("auto migrate failed: %v", err)
+		}
+		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, testRuntimeScope, "export const answer = 42\n")
+		if err := testRuntimeScope.db.Create(&meta.Module{
+			BaseModel:     meta.BaseModel{Id: sql.NullString{String: "installed_auth_tw_budget", Valid: true}},
+			Name:          "auth",
+			Status:        meta.Installed,
+			WebEntryPoint: entryPoint,
+		}).Error; err != nil {
+			t.Fatalf("seed installed module failed: %v", err)
+		}
+
+		prev := ensureChoyTailwindCSS
+		t.Cleanup(func() { ensureChoyTailwindCSS = prev })
+		ensureChoyTailwindCSS = func(string) (*ChoyTailwindGenerateResult, error) {
+			return &ChoyTailwindGenerateResult{
+				Duration:       ChoyTailwindBudget + time.Millisecond,
+				CandidateCount: 1,
+				OutputPath:     "styles/choy-tailwind.generated.css",
+			}, nil
+		}
+
+		var logBuf bytes.Buffer
+		testRuntimeScope.log = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+
+		builder := &WebModuleBuilder{
+			runtimeScope: testRuntimeScope,
+			runtimeOptions: runtimeOptions{
+				modulesPath:        filepath.Join(t.TempDir(), "modules"),
+				distPath:           filepath.Join(t.TempDir(), "dist"),
+				defaultChoysumPath: filepath.Join(t.TempDir(), ".choysum"),
+				webBaseURL:         "/web/",
+			},
+			module:         moduleRef,
+			entryPoint:     entryPoint,
+			parser:         defaultparser.NewVueParser(testRuntimeScope, moduleRef),
+			prebuildPlugin: &buildTestPlugin{parserResults: []*parser.ParserResult{{Path: entryPoint, RawContent: "export const answer = 42", Content: "export const answer = 42"}}},
+			buildPlugin:    &buildTestPlugin{},
+			publishDist:    false,
+		}
+		if _, err := builder.BuildCtx(context.Background()); err != nil {
+			t.Fatalf("BuildCtx: %v", err)
+		}
+		logs := logBuf.String()
+		if !strings.Contains(logs, "Choy kit Tailwind generation exceeded soft budget") {
+			t.Fatalf("expected soft-budget warn log, got %q", logs)
+		}
+		if !strings.Contains(logs, "Choy kit Tailwind generated") {
+			t.Fatalf("expected tailwind generate info log, got %q", logs)
+		}
+	})
+
+	t.Run("wraps generate errors", func(t *testing.T) {
+		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, testRuntimeScope, "export const answer = 42\n")
+
+		modulesPath := filepath.Join(t.TempDir(), "modules")
+		styles := filepath.Join(modulesPath, "web", "web", "styles")
+		if err := os.MkdirAll(styles, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(styles, "theme.css"), []byte(`@theme { --color-primary: red; }`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		// Directory at the generated CSS path forces rename failure without chmod.
+		if err := os.Mkdir(filepath.Join(styles, "choy-tailwind.generated.css"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		builder := &WebModuleBuilder{
+			runtimeScope: testRuntimeScope,
+			runtimeOptions: runtimeOptions{
+				modulesPath:        modulesPath,
+				distPath:           filepath.Join(t.TempDir(), "dist"),
+				defaultChoysumPath: filepath.Join(t.TempDir(), ".choysum"),
+				webBaseURL:         "/web/",
+			},
+			module:         moduleRef,
+			entryPoint:     entryPoint,
+			parser:         defaultparser.NewVueParser(testRuntimeScope, moduleRef),
+			prebuildPlugin: &buildTestPlugin{parserResults: []*parser.ParserResult{{Path: entryPoint, RawContent: "export const answer = 42", Content: "export const answer = 42"}}},
+			buildPlugin:    &buildTestPlugin{},
+		}
+		_, err := builder.BuildCtx(context.Background())
+		if err == nil || !strings.Contains(err.Error(), "Error generating Choy kit Tailwind CSS") {
+			t.Fatalf("expected wrapped tailwind error, got %v", err)
+		}
+	})
+}
+
 func TestBuildCtx_WrapsStageErrors(t *testing.T) {
 	t.Run("wraps prebuild errors", func(t *testing.T) {
 		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
@@ -5060,4 +5584,340 @@ func TestPersistModuleUiResourcesDeleteErrors(t *testing.T) {
 			t.Fatal("expected delete route action relations error")
 		}
 	})
+}
+
+func TestBuildOptionsExactPinsFromPackageJSON(t *testing.T) {
+	t.Run("applies exact pins on prebuild and build", func(t *testing.T) {
+		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+		if err := testRuntimeScope.db.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
+			t.Fatalf("auto migrate failed: %v", err)
+		}
+		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, testRuntimeScope, "export const answer = 42\n")
+		pkg := `{"peerDependencies":{"@tanstack/vue-table":"8.21.3","reka-ui":"2.10.4"}}`
+		if err := os.WriteFile(filepath.Join(moduleRef.Path, "package.json"), []byte(pkg), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		plugin := &buildTestPlugin{}
+		builder := &WebModuleBuilder{
+			runtimeScope:   testRuntimeScope,
+			module:         moduleRef,
+			entryPoint:     entryPoint,
+			prebuildPlugin: plugin,
+			buildPlugin:    plugin,
+		}
+		var logBuf bytes.Buffer
+		testRuntimeScope.log = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+		for _, prebuild := range []bool{true, false} {
+			opts := builder.buildOptions(prebuild)
+			if opts == nil || len(opts.Plugins) == 0 {
+				t.Fatalf("prebuild=%v: expected plugins from exact pins path", prebuild)
+			}
+		}
+		if strings.Contains(logBuf.String(), "exact peer pins from package.json unavailable") {
+			t.Fatalf("expected package.json pins to be read, got warn %q", logBuf.String())
+		}
+	})
+
+	t.Run("warns when package.json pins are unreadable", func(t *testing.T) {
+		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+		if err := testRuntimeScope.db.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
+			t.Fatalf("auto migrate failed: %v", err)
+		}
+		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, testRuntimeScope, "export const answer = 42\n")
+		if err := os.Mkdir(filepath.Join(moduleRef.Path, "package.json"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		var logBuf bytes.Buffer
+		testRuntimeScope.log = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+		plugin := &buildTestPlugin{}
+		builder := &WebModuleBuilder{
+			runtimeScope:   testRuntimeScope,
+			module:         moduleRef,
+			entryPoint:     entryPoint,
+			prebuildPlugin: plugin,
+			buildPlugin:    plugin,
+		}
+		for _, prebuild := range []bool{true, false} {
+			_ = builder.buildOptions(prebuild)
+		}
+		if !strings.Contains(logBuf.String(), "exact peer pins from package.json unavailable") {
+			t.Fatalf("expected pin warn log, got %q", logBuf.String())
+		}
+	})
+}
+
+func TestAppendExactPinsFromPackageJSONNilReceiver(t *testing.T) {
+	opts := []esmresolver.Option{esmresolver.WithTarget("es2020")}
+	var nilBuilder *WebModuleBuilder
+	got := nilBuilder.appendExactPinsFromPackageJSON(opts)
+	if len(got) != len(opts) {
+		t.Fatalf("nil receiver must return opts unchanged, got %d", len(got))
+	}
+	empty := &WebModuleBuilder{}
+	got = empty.appendExactPinsFromPackageJSON(opts)
+	if len(got) != len(opts) {
+		t.Fatalf("nil module must return opts unchanged, got %d", len(got))
+	}
+	blankPath := &WebModuleBuilder{module: &meta.Module{Name: "partner", Path: "  "}}
+	got = blankPath.appendExactPinsFromPackageJSON(opts)
+	if len(got) != len(opts) {
+		t.Fatalf("blank module path must return opts unchanged, got %d", len(got))
+	}
+}
+
+func TestAppendExactPinsFromPackageJSONSkipsVue(t *testing.T) {
+	root := t.TempDir()
+	domain := filepath.Join(root, "partner")
+	if err := os.MkdirAll(domain, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(domain, "package.json"), []byte(`{"dependencies":{"vue":"3.5.13"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	builder := &WebModuleBuilder{module: &meta.Module{Name: "partner", Path: domain}}
+	opts := builder.appendExactPinsFromPackageJSON(nil)
+	if len(opts) != 1 {
+		t.Fatalf("host vue pins must always apply, got %d opts", len(opts))
+	}
+	r := esmresolver.New(opts...)
+	// No sibling modules/web ⇒ fallback const; domain exact vue must not win.
+	if got := r.BareImportPin("vue"); got != choysummount.VuePackageVersion {
+		t.Fatalf("vue pin = %q want fallback %q (domain vue must not win)", got, choysummount.VuePackageVersion)
+	}
+	if got := r.BareImportPin("@vue/runtime-core"); got != choysummount.VuePackageVersion {
+		t.Fatalf("@vue/runtime-core pin = %q want %q", got, choysummount.VuePackageVersion)
+	}
+	if err := os.WriteFile(filepath.Join(domain, "package.json"), []byte(`{"dependencies":{"vue":"3.5.13","local-only":"1.2.3"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	opts = builder.appendExactPinsFromPackageJSON(nil)
+	if len(opts) != 1 {
+		t.Fatalf("non-vue exact pins must still apply, got %d", len(opts))
+	}
+	r = esmresolver.New(opts...)
+	if r.BareImportPin("local-only") != "1.2.3" {
+		t.Fatalf("expected local-only pin, got %q", r.BareImportPin("local-only"))
+	}
+	if r.BareImportPin("vue") != choysummount.VuePackageVersion {
+		t.Fatalf("fallback vue must still win over domain, got %q", r.BareImportPin("vue"))
+	}
+}
+
+func TestAppendExactPinsFromPackageJSONKitVueIsSSOT(t *testing.T) {
+	root := t.TempDir()
+	domain := filepath.Join(root, "partner")
+	kit := filepath.Join(root, "web")
+	for _, dir := range []string{domain, kit} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(kit, "package.json"), []byte(`{"peerDependencies":{"vue":"3.9.9","reka-ui":"2.10.4","@vue/test-utils":"2.4.6"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(domain, "package.json"), []byte(`{"dependencies":{"vue":"1.0.0","local-only":"1.2.3","@vue/test-utils":"2.4.0","@vue/runtime-dom":"1.0.0"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	builder := &WebModuleBuilder{module: &meta.Module{Name: "partner", Path: domain}}
+	opts := builder.appendExactPinsFromPackageJSON(nil)
+	r := esmresolver.New(opts...)
+	if got := r.BareImportPin("vue"); got != "3.9.9" {
+		t.Fatalf("kit modules/web exact vue is SSOT, got %q", got)
+	}
+	if got := r.BareImportPin("@vue/runtime-dom"); got != "3.9.9" {
+		t.Fatalf("domain @vue/runtime-dom must not override host vue, got %q", got)
+	}
+	// Non-host @vue/* keeps nearest-module-wins (domain overrides kit).
+	if got := r.BareImportPin("@vue/test-utils"); got != "2.4.0" {
+		t.Fatalf("@vue/test-utils should not be host-skipped, got %q", got)
+	}
+	if r.BareImportPin("reka-ui") != "2.10.4" || r.BareImportPin("local-only") != "1.2.3" {
+		t.Fatalf("other exact pins missing: reka=%q local=%q", r.BareImportPin("reka-ui"), r.BareImportPin("local-only"))
+	}
+}
+
+func TestAppendExactPinsFromPackageJSONVueSourceWarn(t *testing.T) {
+	root := t.TempDir()
+	domain := filepath.Join(root, "partner")
+	kit := filepath.Join(root, "web")
+	for _, dir := range []string{domain, kit} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// kit package.json as a directory → ExactPinsFromPackageJSON error on vueSource.
+	if err := os.Mkdir(filepath.Join(kit, "package.json"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(domain, "package.json"), []byte(`{"dependencies":{"local-only":"1.2.3"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var logBuf bytes.Buffer
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	testRuntimeScope.log = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	builder := &WebModuleBuilder{
+		runtimeScope: testRuntimeScope,
+		module:       &meta.Module{Name: "partner", Path: domain},
+	}
+	opts := builder.appendExactPinsFromPackageJSON(nil)
+	r := esmresolver.New(opts...)
+	if got := r.BareImportPin("vue"); got != choysummount.VuePackageVersion {
+		t.Fatalf("unreadable kit ⇒ fallback vue, got %q", got)
+	}
+	if r.BareImportPin("local-only") != "1.2.3" {
+		t.Fatalf("domain pins must still apply, got %q", r.BareImportPin("local-only"))
+	}
+	if !strings.Contains(logBuf.String(), "exact peer pins from package.json unavailable") {
+		t.Fatalf("expected vueSource warn, got %q", logBuf.String())
+	}
+	// Cached read: unavailable must appear once for the kit path (not duplicated by mergePins).
+	if strings.Count(logBuf.String(), "exact peer pins from package.json unavailable") != 1 {
+		t.Fatalf("expected a single unavailable warn (pin cache), got %q", logBuf.String())
+	}
+	if strings.Contains(logBuf.String(), "no exact vue pin in package.json") {
+		t.Fatalf("unreadable package.json must not emit missing-pin warn, got %q", logBuf.String())
+	}
+}
+
+func TestAppendExactPinsFromPackageJSONWebModuleIsKitHost(t *testing.T) {
+	root := t.TempDir()
+	web := filepath.Join(root, "web")
+	if err := os.MkdirAll(web, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(web, "package.json"), []byte(`{"peerDependencies":{"vue":"3.8.8","reka-ui":"2.10.4"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	builder := &WebModuleBuilder{module: &meta.Module{Name: "web", Path: web}}
+	opts := builder.appendExactPinsFromPackageJSON(nil)
+	r := esmresolver.New(opts...)
+	if got := r.BareImportPin("vue"); got != "3.8.8" {
+		t.Fatalf("building kit host must use its own exact vue, got %q", got)
+	}
+	if got := r.BareImportPin("reka-ui"); got != "2.10.4" {
+		t.Fatalf("reka-ui pin = %q", got)
+	}
+}
+
+func TestAppendExactPinsFromPackageJSONNoExactVueWarn(t *testing.T) {
+	root := t.TempDir()
+	domain := filepath.Join(root, "partner")
+	kit := filepath.Join(root, "web")
+	for _, dir := range []string{domain, kit} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(kit, "package.json"), []byte(`{"peerDependencies":{"vue":"^3.5.35","reka-ui":"2.10.4"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(domain, "package.json"), []byte(`{"dependencies":{"local-only":"1.2.3"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var logBuf bytes.Buffer
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	testRuntimeScope.log = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	builder := &WebModuleBuilder{
+		runtimeScope: testRuntimeScope,
+		module:       &meta.Module{Name: "partner", Path: domain},
+	}
+	opts := builder.appendExactPinsFromPackageJSON(nil)
+	r := esmresolver.New(opts...)
+	if got := r.BareImportPin("vue"); got != choysummount.VuePackageVersion {
+		t.Fatalf("range vue ⇒ fallback, got %q", got)
+	}
+	if !strings.Contains(logBuf.String(), "no exact vue pin in package.json; using fallback") {
+		t.Fatalf("expected fallback warn, got %q", logBuf.String())
+	}
+	if r.BareImportPin("reka-ui") != "2.10.4" {
+		t.Fatalf("reka-ui must still pin, got %q", r.BareImportPin("reka-ui"))
+	}
+}
+
+func TestAppendExactPinsFromPackageJSONRejectedKitVueWarn(t *testing.T) {
+	root := t.TempDir()
+	domain := filepath.Join(root, "partner")
+	kit := filepath.Join(root, "web")
+	for _, dir := range []string{domain, kit} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// "3.5.38.4" passes ExactPinsFromPackageJSON but fails exactVuePin.
+	if err := os.WriteFile(filepath.Join(kit, "package.json"), []byte(`{"peerDependencies":{"vue":"3.5.38.4","reka-ui":"2.10.4"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(domain, "package.json"), []byte(`{"dependencies":{"local-only":"1.2.3"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var logBuf bytes.Buffer
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	testRuntimeScope.log = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	builder := &WebModuleBuilder{
+		runtimeScope: testRuntimeScope,
+		module:       &meta.Module{Name: "partner", Path: domain},
+	}
+	opts := builder.appendExactPinsFromPackageJSON(nil)
+	r := esmresolver.New(opts...)
+	if got := r.BareImportPin("vue"); got != choysummount.VuePackageVersion {
+		t.Fatalf("rejected kit vue ⇒ fallback, got %q", got)
+	}
+	if !strings.Contains(logBuf.String(), "kit exact vue rejected by host pin validator; using fallback") {
+		t.Fatalf("expected rejection warn, got %q", logBuf.String())
+	}
+	if !strings.Contains(logBuf.String(), "3.5.38.4") {
+		t.Fatalf("warn should include declared version, got %q", logBuf.String())
+	}
+}
+
+func TestAppendExactPinsFromPackageJSONMergesKitHost(t *testing.T) {
+	root := t.TempDir()
+	domain := filepath.Join(root, "partner")
+	kit := filepath.Join(root, "web")
+	for _, dir := range []string{domain, kit} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(kit, "package.json"), []byte(`{"peerDependencies":{"reka-ui":"2.10.4","shared":"1.0.0"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(domain, "package.json"), []byte(`{"dependencies":{"shared":"9.9.9","local-only":"1.2.3"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var logBuf bytes.Buffer
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	testRuntimeScope.log = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	builder := &WebModuleBuilder{
+		runtimeScope: testRuntimeScope,
+		module:       &meta.Module{Name: "partner", Path: domain},
+	}
+	opts := builder.appendExactPinsFromPackageJSON(nil)
+	if len(opts) != 1 {
+		t.Fatalf("expected one WithBareImportPins option from kit+own merge, got %d", len(opts))
+	}
+	if !strings.Contains(logBuf.String(), "conflicting exact pins") || !strings.Contains(logBuf.String(), "shared") {
+		t.Fatalf("expected conflict warn for shared pin, got %q", logBuf.String())
+	}
+	// Trailing separator on module path must still resolve sibling modules/web.
+	builder.module.Path = domain + string(os.PathSeparator)
+	opts = builder.appendExactPinsFromPackageJSON(nil)
+	if len(opts) != 1 {
+		t.Fatalf("trailing-separator module path must still merge kit pins, got %d", len(opts))
+	}
+	// Whitespace-padded paths must TrimSpace before Clean/I/O.
+	builder.module.Path = "  " + domain + "  "
+	opts = builder.appendExactPinsFromPackageJSON(nil)
+	if len(opts) != 1 {
+		t.Fatalf("whitespace-padded module path must still merge kit pins, got %d", len(opts))
+	}
+	// Domain-only empty pins still pick up kit host pins.
+	if err := os.WriteFile(filepath.Join(domain, "package.json"), []byte(`{"dependencies":{}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	builder.module.Path = domain
+	opts = builder.appendExactPinsFromPackageJSON(nil)
+	if len(opts) != 1 {
+		t.Fatalf("kit host pins alone must still produce an option, got %d", len(opts))
+	}
 }

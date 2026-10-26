@@ -29,5 +29,17 @@ declare module 'vue-router' {
      * pageTitle remains the English fallback for legacy consumers.
      */
     pageTitleText?: TermReference;
+
+    /**
+     * Multi-view management: active kind for this route (list / kanban / chart / …).
+     * Consumed by useChoyViewRouteSwitch.
+     */
+    viewKind?: string;
+
+    /** Default store appliedGroups for this management view. */
+    defaultGroups?: string[];
+
+    /** Absolute paths keyed by view kind for ViewSwitcher sibling navigation. */
+    viewPaths?: Record<string, string>;
   }
 }

@@ -140,6 +140,92 @@ export function buildSelectionTree(meta: ModelMetadata, fields: unknown[], optio
       return false;
     };
 
+    const mergeRelatedPath = (parts: string[]): void => {
+      if (parts.length < 2) return;
+      const root = parts[0]!;
+      const leafParts = parts.slice(1);
+      const rootMeta = currentMeta.fields.get(root) as FieldMetadata | undefined;
+      if (!rootMeta || !isOrmRelationField(rootMeta) || rootMeta.type !== 'ManyToOne' || !rootMeta.relation) {
+        fail(
+          `related.path root must be ManyToOne: ${toPathLabel(pathPrefix, parts.join('.'))} (model=${modelLabel(currentMeta)})`
+        );
+        return;
+      }
+      if (!rootMeta.column) {
+        fail(`Selection relation field is missing column metadata: ${toPathLabel(pathPrefix, root)} (model=${modelLabel(currentMeta)})`);
+        return;
+      }
+
+      // FK scalar participates in SELECT alongside `$rel$` JSON.
+      if (isRepositorySelectableScalarField(currentMeta, root, rootMeta)) {
+        node.columns.add(root);
+      }
+
+      const relation = rootMeta.relation as ManyToOneMetadata<BaseModel>;
+      if (!relation?.targetModel) {
+        fail(`Selection relation field is missing targetModel: ${toPathLabel(pathPrefix, root)} (model=${modelLabel(currentMeta)})`);
+        return;
+      }
+      const targetMeta = MetadataStorage.instance.getModelMetadata(relation.targetModel());
+
+      let entry = node.relations.get(root);
+      if (!entry) {
+        entry = {
+          node: { columns: new Set<string>(), relations: new Map() },
+          fieldType: 'ManyToOne',
+          relation,
+        };
+        node.relations.set(root, entry);
+      }
+
+      if (leafParts.length === 1) {
+        const leaf = leafParts[0]!;
+        if (!targetMeta.fields.has(leaf)) {
+          fail(
+            `related.path leaf does not exist: ${toPathLabel(pathPrefix, parts.join('.'))} (model=${modelLabel(targetMeta)})`
+          );
+          return;
+        }
+        entry.node.columns.add(leaf);
+        if (!entry.node.columns.has('Id')) entry.node.columns.add('Id');
+        return;
+      }
+
+      // Multi-hop: nest remaining path under the child selection node via a synthetic related expand.
+      const nestedRoot = leafParts[0]!;
+      const nestedRest = leafParts.slice(1);
+      const nestedMeta = targetMeta.fields.get(nestedRoot) as FieldMetadata | undefined;
+      if (!nestedMeta || !isOrmRelationField(nestedMeta) || nestedMeta.type !== 'ManyToOne' || !nestedMeta.relation) {
+        fail(
+          `related.path segment must be ManyToOne: ${toPathLabel(pathPrefix, parts.join('.'))} (model=${modelLabel(targetMeta)})`
+        );
+        return;
+      }
+      const nestedRelation = nestedMeta.relation as ManyToOneMetadata<BaseModel>;
+      if (!nestedRelation?.targetModel) {
+        fail(`Selection relation field is missing targetModel: ${toPathLabel(pathPrefix, `${root}.${nestedRoot}`)}`);
+        return;
+      }
+      let nestedEntry = entry.node.relations.get(nestedRoot);
+      if (!nestedEntry) {
+        nestedEntry = {
+          node: { columns: new Set<string>(), relations: new Map() },
+          fieldType: 'ManyToOne',
+          relation: nestedRelation,
+        };
+        entry.node.relations.set(nestedRoot, nestedEntry);
+      }
+      if (isRepositorySelectableScalarField(targetMeta, nestedRoot, nestedMeta)) {
+        entry.node.columns.add(nestedRoot);
+      }
+      if (nestedRest.length === 1) {
+        nestedEntry.node.columns.add(nestedRest[0]!);
+        if (!nestedEntry.node.columns.has('Id')) nestedEntry.node.columns.add('Id');
+      } else if (nestedRest.length > 1) {
+        fail(`related.path deeper than two hops is not supported in selection expand: ${toPathLabel(pathPrefix, parts.join('.'))}`);
+      }
+    };
+
     for (const field of currentFields) {
       let relationKey: string | undefined;
       let subFields: unknown[] = [];
@@ -148,6 +234,16 @@ export function buildSelectionTree(meta: ModelMetadata, fields: unknown[], optio
         if (field === '*') {
           const scalars = getScalarFields(currentMeta);
           scalars.forEach(value => node.columns.add(value));
+          // Virtual related fields are not selectable scalars; still expand their paths so Browse can inject.
+          for (const [name, fm] of currentMeta.fields) {
+            if (fm?.related && fm.related.store !== true && typeof fm.related.path === 'string') {
+              const parts = fm.related.path
+                .split('.')
+                .map(part => part.trim())
+                .filter(Boolean);
+              if (parts.length >= 2) mergeRelatedPath(parts);
+            }
+          }
           continue;
         }
 
@@ -156,6 +252,19 @@ export function buildSelectionTree(meta: ModelMetadata, fields: unknown[], optio
           fail(`Selection field does not exist: ${toPathLabel(pathPrefix, field)} (model=${modelLabel(currentMeta)})`);
           continue;
         }
+
+        // related.store=false: no physical column; expand path so leaf values load under `$rel$`.
+        if (fieldMeta.related && fieldMeta.related.store !== true && typeof fieldMeta.related.path === 'string') {
+          const parts = fieldMeta.related.path
+            .split('.')
+            .map(part => part.trim())
+            .filter(Boolean);
+          if (parts.length >= 2) {
+            mergeRelatedPath(parts);
+            continue;
+          }
+        }
+
         if (isRepositorySelectableScalarField(currentMeta, field, fieldMeta) && !isAttachmentBackedBinaryImageField(currentMeta, fieldMeta)) {
           node.columns.add(field);
         }
@@ -229,6 +338,14 @@ export function buildSelectionTree(meta: ModelMetadata, fields: unknown[], optio
         const childFields = !subFields || subFields.length === 0 ? getScalarFields(targetMeta) : subFields;
         const childNode = parseNode(targetMeta, childFields, relationPath);
         if (!childNode.columns.size) childNode.columns.add('Id');
+        // Merge with any prior related.path expand (e.g. CategoryName → CategoryId.Name).
+        const prior = node.relations.get(relationKey);
+        if (prior) {
+          prior.node.columns.forEach(col => childNode.columns.add(col));
+          for (const [nestedKey, nestedEntry] of prior.node.relations) {
+            if (!childNode.relations.has(nestedKey)) childNode.relations.set(nestedKey, nestedEntry);
+          }
+        }
         node.relations.set(relationKey, { node: childNode, fieldType: 'ManyToOne', relation });
         continue;
       }
@@ -262,6 +379,21 @@ export function buildSelectionTree(meta: ModelMetadata, fields: unknown[], optio
       }
 
       fail(`Selection relation type is not supported yet: ${relationPath} (model=${modelLabel(currentMeta)})`);
+    }
+
+    // Pull in related.store=false leaves for ManyToOne roots already in this selection
+    // (e.g. CategoryId.DisplayName is selected → also load Name for CategoryName).
+    for (const [, fm] of currentMeta.fields) {
+      if (!fm?.related || fm.related.store === true || typeof fm.related.path !== 'string') continue;
+      const parts = fm.related.path
+        .split('.')
+        .map(part => part.trim())
+        .filter(Boolean);
+      if (parts.length < 2) continue;
+      const root = parts[0]!;
+      if (node.relations.has(root) || node.columns.has(root)) {
+        mergeRelatedPath(parts);
+      }
     }
 
     return node;

@@ -15,12 +15,13 @@ const fakeStore = {
   withContext: () => undefined,
 };
 
-test('web shell _lt bindings: pins TermReference titles on web menus and routes', () => {
-  const homeTitle = createTranslate('web', { scope: 'web/menu/menus' })._lt('Home');
-  const root = menus[0] as { title?: string; titleText?: unknown };
-  expect(root.title).toBe('Home');
-  expect(root.titleText).toEqual(homeTitle);
+test('web shell _lt bindings: web module ships empty menu baseline after Home retirement', () => {
+  expect(menus).toEqual([]);
   expect(routes.length).toBeGreaterThan(0);
+  const guest = routes.find((r) => r.name === 'GuestLayout') as { children?: Array<{ name?: string }> } | undefined;
+  expect(guest?.children?.some((r) => r.name === 'Error')).toBe(true);
+  expect(routes.some((r) => r.name === 'Home')).toBe(false);
+  expect(guest?.children?.some((r) => r.name === 'Home')).toBe(false);
 });
 
 test('web shell _lt bindings: breadcrumbStore push preserves TermReference titles', async () => {
@@ -38,9 +39,9 @@ test('web shell _lt bindings: breadcrumbStore push preserves TermReference title
   expect(store.breadcrumbStack[1]?.titleText).toEqual(expectedDetails);
 });
 
-test('web shell _lt bindings: mounts OFormView so detailsTitle _lt runs', async () => {
+test('web shell _lt bindings: mounts FormView so detailsTitle _lt runs', async () => {
   // Full /new create-success breadcrumb wiring is covered by form/breadcrumb suites;
-  // this pin keeps the OFormView module + detailsTitle _lt import graph exercised under QJS.
+  // this pin keeps the FormView module + detailsTitle _lt import graph exercised under QJS.
   setActivePinia(createPinia());
   const i18n = createI18n({
     legacy: false,
@@ -49,15 +50,13 @@ test('web shell _lt bindings: mounts OFormView so detailsTitle _lt runs', async 
     fallbackWarn: false,
     messages: { en: {} },
   });
-  const mod = await import('../components/view/OFormView.vue');
+  const mod = await import('../components/view/ChoyFormView.vue');
   const handle = mountApp(mod.default as any, {
     props: { store: fakeStore },
     plugins: [i18n],
     stubs: {
-      'el-button': stub('el-button'),
-      'el-icon': stub('el-icon'),
-      OPage: stub('OPage'),
-      OBreadcrumb: stub('OBreadcrumb'),
+      Page: stub('Page'),
+      Breadcrumb: stub('Breadcrumb'),
     },
   });
   expect(handle.root).toBeTruthy();

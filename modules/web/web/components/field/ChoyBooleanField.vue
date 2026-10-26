@@ -1,0 +1,340 @@
+<!--
+SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+SPDX-License-Identifier: Apache-2.0
+-->
+
+<template>
+  <ChoyFieldBase
+    v-bind="$attrs"
+    :binding="binding"
+    :label="label"
+    :rules="rules"
+    :formItemProps="formItemProps"
+    :orientation="orientation"
+    :vColumnProps="vColumnProps"
+    :toView="toView"
+    :fromView="fromView"
+    :required="required"
+    :readonly="readonly"
+    :visible="visible"
+    :cellVisible="cellVisible"
+    :renderMode="renderMode"
+    :showInlineError="showInlineError"
+  >
+    <template #edit="{ fieldValue, inputName, inputId, describedBy, invalid}">
+      <div class="flex w-full min-w-0 items-start gap-2">
+        <ChoyBooleanCell
+          v-bind="controlAttrs"
+          :class="$slots.side ? 'mt-0.5 shrink-0' : undefined"
+          :field-value="fieldValue"
+          :options="bufferOptions"
+          :widget="widget"
+          :nullable="nullable"
+          :clearable="clearable"
+          :null-as-false="nullAsFalse"
+          :switch-active-text="switchActiveText"
+          :switch-inactive-text="switchInactiveText"
+          :checkbox-label="checkboxLabel"
+          :switch-props="switchProps"
+          :checkbox-props="checkboxProps"
+          :input-name="inputName"
+          :input-id="inputId"
+          :aria-describedby="describedBy || undefined"
+          :aria-invalid="invalid ? 'true' : undefined"
+        />
+        <div v-if="$slots.side" class="min-w-0 flex-1 text-sm leading-5">
+          <slot name="side" />
+        </div>
+      </div>
+    </template>
+
+    <template #display="{ fieldValue }">
+      <div
+        class="choy-bool-display inline-flex min-h-control items-center gap-2"
+        data-testid="choy-bool-display"
+      >
+        <Switch
+          v-if="displayUsesSwitch(fieldValue().value)"
+          class="choy-bool-input"
+          :model-value="fieldValue().value === true"
+          disabled
+          tabindex="-1"
+        />
+        <Checkbox
+          v-else-if="displayUsesCheckbox(fieldValue().value)"
+          class="choy-bool-input"
+          :model-value="displayCheckboxModel(fieldValue().value)"
+          disabled
+          tabindex="-1"
+        />
+        <span v-else class="choy-bool-display__text text-foreground">{{ displayLabel(fieldValue().value) }}</span>
+      </div>
+    </template>
+  </ChoyFieldBase>
+</template>
+
+<script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, boolean>, V = FieldPathType<T, P>">
+import type { RuleItem } from 'async-validator';
+import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
+import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { useField } from '@/web/web/composables/useField';
+import type { UseField } from '@/web/web/composables/useField';
+// Narrow aggregation types to count_distinct only.
+import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
+import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
+import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
+import Checkbox from '../vendor/ui/checkbox/Checkbox.vue';
+import Switch from '../vendor/ui/switch/Switch.vue';
+import { createTranslate } from '@/web/web/i18n';
+import { computed, defineComponent, h, useAttrs } from 'vue';
+
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyBooleanField' });
+
+defineOptions({ name: 'ChoyBooleanField', inheritAttrs: false });
+
+defineSlots<{
+  side?: () => unknown;
+}>();
+
+const rawAttrs = useAttrs();
+const controlAttrs = computed(() => {
+  const out: Record<string, unknown> = {};
+  for (const key of Object.keys(rawAttrs)) {
+    if (key === 'class' || key === 'style') continue;
+    out[key] = (rawAttrs as Record<string, unknown>)[key];
+  }
+  return out;
+});
+
+type IsAny<T> = 0 extends 1 & T ? true : false;
+
+type FieldType = boolean | null;
+type WidgetType = 'switch' | 'checkbox';
+
+const props = withDefaults(
+  defineProps<{
+    store?: WebModelStore<T>;
+    prop?: P | (IsAny<T> extends true ? string : never);
+    binding?: UseField<T, V>;
+    label?: string;
+    rules?: RuleItem[];
+
+    widget?: WidgetType;
+    nullable?: boolean;
+    clearable?: boolean;
+    nullAsFalse?: boolean;
+
+    switchActiveText?: string;
+    switchInactiveText?: string;
+    checkboxLabel?: string;
+
+    required?: FieldStateExpr<T, V>;
+    readonly?: FieldStateExpr<T, V>;
+    visible?: FieldStateExpr<T, V>;
+    cellVisible?: FieldStateExpr<T, V>;
+
+    formItemProps?: Partial<FormItemProps>;
+    orientation?: 'horizontal' | 'vertical';
+    vColumnProps?: {
+      width?: number | string;
+      minWidth?: number;
+      align?: 'left' | 'center' | 'right';
+      fixed?: 'left' | 'right';
+      sortable?: boolean;
+    };
+    switchProps?: Record<string, unknown>;
+    checkboxProps?: Record<string, unknown>;
+
+    bufferStrategy?: CommitStrategy;
+    bufferIdleDelay?: number;
+    commitOnBlur?: boolean;
+    // Only count_distinct is supported.
+    agg?: NarrowAggProp<NonNumericAggFns>;
+    // Added render mode and inline error support.
+    renderMode?: 'auto' | 'form' | 'table' | 'inline';
+    showInlineError?: boolean;
+  }>(),
+  {
+    rules: () => [],
+    widget: 'switch',
+    nullable: false,
+    clearable: false,
+    nullAsFalse: false,
+    switchActiveText: '',
+    switchInactiveText: '',
+    checkboxLabel: '',
+    formItemProps: () => ({}),
+    vColumnProps: () => ({}),
+    switchProps: () => ({}),
+    checkboxProps: () => ({}),
+    required: false,
+    readonly: false,
+    visible: true,
+    cellVisible: true,
+    bufferStrategy: 'idle',
+    bufferIdleDelay: 160,
+    commitOnBlur: true,
+    renderMode: 'auto',
+    showInlineError: false,
+  }
+);
+
+const binding = (props.binding ??
+  useField<T, P, V>({
+    store: props.store as WebModelStore<T>,
+    prop: props.prop as P,
+    // Forward agg to useField.
+    agg: props.agg,
+  })) as UseField<T, V>;
+
+const toView = (raw: any): FieldType => {
+  if (raw === true || raw === false) return raw;
+  if (raw == null) return null;
+  if (typeof raw === 'number') return raw === 1 ? true : raw === 0 ? false : null;
+  if (typeof raw === 'string') {
+    const s = raw.trim().toLowerCase();
+    if (['true', '1', 'yes', 'y'].includes(s)) return true;
+    if (['false', '0', 'no', 'n'].includes(s)) return false;
+    return null;
+  }
+  return null;
+};
+const fromView = (v: FieldType): V => {
+  if (props.nullAsFalse) return !!v as unknown as V;
+  return (v == null ? null : !!v) as unknown as V;
+};
+
+/** Text fallback when display cannot render a disabled control (e.g. null + switch). */
+function displayLabel(value: FieldType): string {
+  if (value === true) return props.switchActiveText || props.checkboxLabel || _t('Yes');
+  if (value === false) return props.switchInactiveText || _t('No');
+  return '';
+}
+
+function displayUsesSwitch(value: FieldType): boolean {
+  return props.widget !== 'checkbox' && value !== null;
+}
+
+function displayUsesCheckbox(value: FieldType): boolean {
+  return props.widget === 'checkbox';
+}
+
+function displayCheckboxModel(value: FieldType): boolean | 'indeterminate' {
+  if (value == null && props.nullable && !props.nullAsFalse) return 'indeterminate';
+  return value === true;
+}
+
+function toBool(v: boolean | string | number): boolean {
+  return v === true || v === 'true' || v === 1;
+}
+
+const bufferOptions = computed(() => ({
+  strategy: props.bufferStrategy!,
+  idleDelay: props.bufferIdleDelay,
+  commitOnBlur: props.commitOnBlur,
+  normalize: (v: FieldType) => {
+    if (v == null && props.nullable && !props.nullAsFalse) return null;
+    return v === true ? true : v === false ? false : props.nullAsFalse ? false : null;
+  },
+  equals: (a: FieldType, b: FieldType) => a === b,
+}));
+
+const ChoyBooleanCell = defineComponent({
+  name: 'ChoyBooleanCell',
+  props: {
+    fieldValue: { type: Function, required: true },
+    options: { type: Object, required: true },
+    widget: String,
+    nullable: Boolean,
+    clearable: Boolean,
+    nullAsFalse: Boolean,
+    switchActiveText: String,
+    switchInactiveText: String,
+    checkboxLabel: String,
+    switchProps: Object,
+    checkboxProps: Object,
+    inputName: String,
+    inputId: String,
+  },
+  setup(p, { attrs }) {
+    const modelRef = computed<FieldType>({
+      get: () => (p.fieldValue as any)().value,
+      set: v => {
+        (p.fieldValue as any)().value = v as any;
+      },
+    });
+    const buffer = useBufferedCommit<FieldType>(
+      () => modelRef.value,
+      v => {
+        modelRef.value = v;
+      },
+      p.options as any
+    );
+    const setVal = (v: boolean) => buffer.setEditing(v === true);
+    const clearable = p.nullable && p.clearable && !p.nullAsFalse;
+    return () => {
+      const checked = buffer.editingValue.value === true;
+      const indeterminate = buffer.editingValue.value === null && !(p.nullAsFalse || !p.nullable);
+      const isCheckbox = p.widget === 'checkbox' || indeterminate;
+      const sideLabel = p.widget === 'checkbox' ? String(p.checkboxLabel || '').trim() : '';
+      const control = isCheckbox
+        ? h(Checkbox, {
+            ...(p.checkboxProps as any),
+            ...attrs,
+            class: 'choy-bool-input align-middle',
+            id: p.inputId,
+            modelValue: indeterminate ? 'indeterminate' : checked,
+            'onUpdate:modelValue': (v: boolean | 'indeterminate') => {
+              if (v === 'indeterminate') return;
+              setVal(v);
+            },
+          })
+        : h(Switch, {
+            ...(p.switchProps as any),
+            ...attrs,
+            class: 'choy-bool-input align-middle',
+            id: p.inputId,
+            modelValue: checked,
+            'onUpdate:modelValue': (v: boolean) => setVal(v),
+          });
+      return h(
+        'div',
+        {
+          class: 'choy-bool-editor inline-flex items-center gap-2',
+        },
+        [
+          control,
+          sideLabel
+            ? h(
+                'label',
+                {
+                  for: p.inputId || undefined,
+                  class: 'choy-bool-label cursor-pointer text-sm leading-none text-foreground',
+                },
+                sideLabel,
+              )
+            : null,
+          clearable
+            ? h(
+                'button',
+                {
+                  type: 'button',
+                  class: 'choy-clear-btn p-0 text-sm text-foreground/70 hover:text-foreground',
+                  onClick: () => {
+                    if (buffer.editingValue.value !== null) {
+                      buffer.setEditing(null);
+                      buffer.onBlur();
+                    }
+                  },
+                },
+                // Clear control keeps its own text; side label is the field caption.
+                sideLabel ? _t('Clear') : p.checkboxLabel || _t('Clear'),
+              )
+            : null,
+        ],
+      );
+    };
+  },
+});
+</script>
+

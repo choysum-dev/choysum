@@ -67,6 +67,12 @@ func (m *moduleUninstaller) cleanModels() error {
 		componentIDs,
 	)
 
+	// Resolve seed table names before declarations are removed (E15).
+	seedSnapshots, err := snapshotModuleSeedRows(db.DB, m.module.Name)
+	if err != nil {
+		return err
+	}
+
 	// Remove declaration trees then rebuild effective projections (symmetric with Replace+Flush).
 	keys, err := modmeta.RemoveModuleDeclarations(db.DB, moduleID)
 	if err != nil {
@@ -103,10 +109,12 @@ func (m *moduleUninstaller) cleanModels() error {
 		return xfmt.Errorf("error deleting module dependency relations: %w", err)
 	}
 
-	// Physically delete MetaModelData registry rows for this module name (xml_id mappings).
-	// Soft-delete would leave (module, name) unique-index collisions that block reinstall
-	// (loader scoped First misses soft-deleted rows, then Create fails). Do not cascade-
-	// delete the business seed rows those mappings point at (V1).
+	// Hard-delete business seed rows pointed at by this module's MetaModelData (E15),
+	// then physically delete the registry rows. Soft-delete of mappings would leave
+	// (module, name) unique-index collisions that block reinstall.
+	if err := deleteSeedRowsForSnapshots(db.DB, seedSnapshots); err != nil {
+		return err
+	}
 	if db.Migrator().HasTable((&modmeta.ModelData{}).TableName()) {
 		if err := db.Unscoped().Where("module = ?", m.module.Name).Delete(&modmeta.ModelData{}).Error; err != nil {
 			return xfmt.Errorf("error deleting meta model data mappings: %w", err)
@@ -299,15 +307,27 @@ func propertyDefinitionTableExists(db *gorm.DB, table string) (bool, error) {
 }
 
 // isMissingSQLTableError reports dialect-specific "table does not exist" probe failures.
+// Intentionally narrow: do not match generic "does not exist" (columns/constraints).
 func isMissingSQLTableError(err error) bool {
 	if err == nil {
 		return false
 	}
 	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "no such table") ||
-		strings.Contains(msg, "doesn't exist") ||
-		strings.Contains(msg, "does not exist") ||
-		strings.Contains(msg, "unknown table")
+	if strings.Contains(msg, "no such table") || strings.Contains(msg, "unknown table") {
+		return true
+	}
+	// MySQL 1146: Table 'db.t' doesn't exist
+	if strings.Contains(msg, "table") && strings.Contains(msg, "doesn't exist") {
+		return true
+	}
+	// Postgres 42P01: relation "t" does not exist.
+	// Require the quoted-relation form and skip constraint messages such as
+	// constraint "fk" of relation "t" does not exist.
+	if strings.Contains(msg, `relation "`) && strings.Contains(msg, "does not exist") &&
+		!strings.Contains(msg, "constraint") {
+		return true
+	}
+	return false
 }
 
 // purgePropertyDefinitionsForGoneModels deletes PropertyDefinition rows whose

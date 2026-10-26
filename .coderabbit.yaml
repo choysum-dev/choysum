@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+# SPDX-License-Identifier: LGPL-3.0-or-later
+#
+# CodeRabbit repository configuration.
+# Docs: https://docs.coderabbit.ai/getting-started/yaml-configuration
+# Auto-review: https://docs.coderabbit.ai/configuration/auto-review
+# Path filters: patterns with ! are excluded from review (and sparse checkout).
+
+language: "en-US"
+
+reviews:
+  # Default is only the repo default branch (main). Allow stacked / integration
+  # bases such as feat/choy-ui-kit. ".*" matches every target branch; main stays
+  # included either way.
+  auto_review:
+    enabled: true
+    base_branches:
+      - ".*"
+
+  # Vendored L2 SFCs only (shadcn-vue hand-adapted). Hand-written helpers
+  # (useToast.ts, index.ts) stay in review. Module-agnostic for web cutover.
+  path_filters:
+    - "!modules/*/web/components/vendor/ui/**/*.vue"

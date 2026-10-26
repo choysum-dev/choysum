@@ -42,6 +42,7 @@ var walkTypecheckInputsDir = filepath.WalkDir
 
 // Test hooks for otherwise unreachable OS edge cases.
 var (
+	osStat               = os.Stat
 	osGetwd              = os.Getwd
 	osTempDir            = os.TempDir
 	nativeCheck          = gonative.Check
@@ -216,6 +217,18 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 		return errNoTypecheckInputs
 	}
 
+	// Fail fast on domain kit-import bans before type-asset preparation.
+	webDir := filepath.Join(modulesRoot, app, "web")
+	if st, err := osStat(webDir); err == nil {
+		if st.IsDir() {
+			if err := policy.AssertNoForbiddenUiImports(modulesRoot, app); err != nil {
+				return xfmt.Errorf("typecheck: %w", err)
+			}
+		}
+	} else if !os.IsNotExist(err) {
+		return xfmt.Errorf("typecheck: stat web dir: %w", err)
+	}
+
 	warnedMissingTypeAssets, err := warnMissingTypeAssetsPrecheck(opts.Stderr, modulesRoot, app)
 	if err != nil {
 		return err
@@ -225,7 +238,7 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 	}
 
 	serviceDir := filepath.Join(modulesRoot, app, "service")
-	if st, err := os.Stat(serviceDir); err == nil && st.IsDir() {
+	if st, err := osStat(serviceDir); err == nil && st.IsDir() {
 		if err := policy.CheckServiceImportBoundaryOnDisk(
 			modulesRoot,
 			app,

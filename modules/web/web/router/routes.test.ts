@@ -1,33 +1,58 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { createTranslate } from '@/web/web/i18n';
 import { menus } from '../menu/menus';
 import routes from './routes';
+import { MODULE_BOARD_PATH } from './resolveDefaultLandPath';
+import { createPinia, setActivePinia } from 'pinia';
+import { createMenuPlugin } from '@/core/web/menu';
 
-const homeRouteTitle = createTranslate('web', { scope: 'web/route/routes' })._lt('Home');
-const homeMenuTitle = createTranslate('web', { scope: 'web/menu/menus' })._lt('Home');
+test('web routes: root sends guests to login; catch-all uses default land path', () => {
+  setActivePinia(createPinia());
+  createMenuPlugin().install({
+    config: { globalProperties: {} },
+    provide() {},
+  } as any);
+  const root = routes.find(route => route.name === 'Root') as any;
+  expect(root).toBeTruthy();
+  expect(typeof root.redirect).toBe('function');
+  // Unauthenticated (default pinia auth) → guest login, not land path.
+  expect(root.redirect()).toEqual({ name: 'login' });
 
-test('web home resource declarations: declares home as a protected route resource', () => {
-  const layoutRoute = routes.find(route => route.name === 'Layout') as any;
-  const homeRoute = layoutRoute?.children?.find((route: any) => route.name === 'Home');
-
-  expect(homeRoute).toBeTruthy();
-  expect(homeRoute.meta?.resourceId).toBe('web.route.home');
-  expect(homeRoute.meta?.pageTitle).toBe('Home');
-  expect(homeRoute.meta?.pageTitleText).toEqual(homeRouteTitle);
-  expect(homeRoute.meta?.requiresAuth).toBe(true);
-  expect(homeRoute.meta?.routeSequence).toBe(1);
+  const catchAll = routes.find(route => route.name === 'CatchAll') as any;
+  expect(typeof catchAll.redirect).toBe('function');
+  // Unknown path → Module Board.
+  expect(catchAll.redirect({ path: '/unknown-xyz' })).toBe(MODULE_BOARD_PATH);
+  // Land path that rematches catch-all → Error (loop guard).
+  expect(catchAll.redirect({ path: MODULE_BOARD_PATH })).toEqual({
+    name: 'Error',
+    params: { code: '404' },
+  });
 });
 
-test('web home resource declarations: declares home as a menu resource', () => {
-  const homeMenu = menus[0] as any;
+test('web routes: registers Error page under GuestLayout and no Home route/menu', () => {
+  const guest = routes.find(route => route.name === 'GuestLayout') as any;
+  const error = guest?.children?.find((route: any) => route.name === 'Error');
+  expect(error).toBeTruthy();
+  expect(error.path).toBe('error/:code(\\d+)');
+  expect(error.meta?.requiresAuth).toBe(false);
+  expect(error.meta?.isAuthPage).toBeUndefined();
 
-  expect(homeMenu.id).toBe('web.menu.home');
-  expect(homeMenu.title).toBe('Home');
-  expect(homeMenu.titleText).toEqual(homeMenuTitle);
-  expect(homeMenu.path).toBe('/home');
-  expect(homeMenu.order).toBe(1);
-  expect(homeMenu.meta?.resourceId).toBe('web.menu.home');
+  const home = guest?.children?.find((route: any) => route.name === 'Home');
+  expect(home).toBeUndefined();
+  expect(menus).toEqual([]);
 });
 
+test('web routes: GuestLayout and AppLayout use separate shells with expected chrome props', () => {
+  const appLayout = routes.find(route => route.name === 'AppLayout') as any;
+  expect(appLayout?.props?.showSidebar).toBe(true);
+  expect(appLayout?.props?.showFooter).toBe(true);
+  expect(appLayout?.props?.showHeader).toBe(true);
+  expect(String(appLayout?.component?.toString?.() ?? appLayout?.component)).toContain('ChoyAppShell');
+
+  const guest = routes.find(route => route.name === 'GuestLayout') as any;
+  expect(guest?.props?.showFooter).toBe(true);
+  expect(guest?.props?.showHeader).toBe(true);
+  expect(guest?.props?.showSidebar).toBeUndefined();
+  expect(String(guest?.component?.toString?.() ?? guest?.component)).toContain('ChoyGuestShell');
+});

@@ -1,0 +1,520 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+/**
+ * Pure helpers for the L3 DataTable engine (sorting + row selection).
+ * The Vue SFC owns TanStack Table / virtualizer wiring.
+ */
+
+export type DataTableRowId = string | number;
+
+export type DataTableSortDir = 'asc' | 'desc';
+
+/** Row original may use `kind` (current) or legacy `type`. */
+export function dataTableRowKind(row: { original?: unknown } | null | undefined): string | undefined {
+  const o = row?.original as { kind?: unknown; type?: unknown } | undefined;
+  if (!o) return undefined;
+  const k = o.kind ?? o.type;
+  return k == null || k === '' ? undefined : String(k);
+}
+
+/** Group header or "load more" rows span the full grid (see main OVTable RowMerge). */
+export function dataTableIsGroupLikeRow(row: { original?: unknown } | null | undefined): boolean {
+  const k = dataTableRowKind(row);
+  return k === 'group' || k === 'more';
+}
+
+export type DataTableSortState = {
+  id: string;
+  desc: boolean;
+} | null;
+
+/** Toggles column sort: none → asc → desc → none. */
+export function nextDataTableSort(
+  current: DataTableSortState,
+  columnId: string,
+): DataTableSortState {
+  if (!current || current.id !== columnId) {
+    return { id: columnId, desc: false };
+  }
+  if (!current.desc) {
+    return { id: columnId, desc: true };
+  }
+  return null;
+}
+
+/** Server-mode header click: same cycle as nextDataTableSort, plus emit payload. */
+export function nextServerDataTableSort(
+  current: DataTableSortState,
+  columnId: string,
+): {
+  sorting: { id: string; desc: boolean }[];
+  field: string;
+  direction?: DataTableSortDir;
+} {
+  const next = nextDataTableSort(current, columnId);
+  return {
+    field: columnId,
+    sorting: next ? [{ id: next.id, desc: next.desc }] : [],
+    direction: next ? (next.desc ? 'desc' : 'asc') : undefined,
+  };
+}
+
+/** Lexicographic / numeric compare for a single accessor. */
+export function compareDataTableValues(a: unknown, b: unknown): number {
+  if (a == null && b == null) {
+    return 0;
+  }
+  if (a == null) {
+    return -1;
+  }
+  if (b == null) {
+    return 1;
+  }
+  // Coerce Dates to epoch millis so mixed Date/number columns compare numerically;
+  // an invalid Date yields NaN and keeps the NaN ordering below.
+  const left = a instanceof Date ? a.getTime() : a;
+  const right = b instanceof Date ? b.getTime() : b;
+  if (typeof left === 'number' && typeof right === 'number') {
+    if (Number.isNaN(left) || Number.isNaN(right)) {
+      return Number.isNaN(left) === Number.isNaN(right) ? 0 : Number.isNaN(left) ? 1 : -1;
+    }
+    return left < right ? -1 : left > right ? 1 : 0;
+  }
+  // localeCompare options are ignored by runtimes without ICU (e.g. QuickJS), so order
+  // numeric-looking strings explicitly before falling back to a locale-aware compare.
+  const leftText = String(left);
+  const rightText = String(right);
+  const leftNumber = Number(leftText);
+  const rightNumber = Number(rightText);
+  if (
+    leftText.trim() !== '' &&
+    rightText.trim() !== '' &&
+    Number.isFinite(leftNumber) &&
+    Number.isFinite(rightNumber)
+  ) {
+    if (leftNumber < rightNumber) {
+      return -1;
+    }
+    if (leftNumber > rightNumber) {
+      return 1;
+    }
+    if (leftText === rightText) {
+      return 0;
+    }
+    // Distinct integers beyond Number.MAX_SAFE_INTEGER collapse into one double
+    // (e.g. '9007199254740993' vs '9007199254740992'); order them textually.
+    return leftText.localeCompare(rightText, undefined, { numeric: true, sensitivity: 'base' });
+  }
+  return leftText.localeCompare(rightText, undefined, { numeric: true, sensitivity: 'base' });
+}
+
+/** Stable sort of rows by a column accessor and direction. */
+export function sortDataTableRows<T>(
+  rows: readonly T[],
+  accessor: (row: T) => unknown,
+  dir: DataTableSortDir,
+): T[] {
+  const factor = dir === 'desc' ? -1 : 1;
+  return [...rows].sort((left, right) => factor * compareDataTableValues(accessor(left), accessor(right)));
+}
+
+/** Toggle a row id in a selection set (returns a new Set). */
+export function toggleDataTableSelection(
+  selected: ReadonlySet<DataTableRowId>,
+  id: DataTableRowId,
+): Set<DataTableRowId> {
+  const next = new Set(selected);
+  if (next.has(id)) {
+    next.delete(id);
+  } else {
+    next.add(id);
+  }
+  return next;
+}
+
+/** Select or clear every id in `ids`. */
+export function setDataTableSelectionAll(
+  ids: readonly DataTableRowId[],
+  selectAll: boolean,
+): Set<DataTableRowId> {
+  return selectAll ? new Set(ids) : new Set();
+}
+
+/** Clamp virtual window start/end against a row count. */
+export function clampDataTableVirtualWindow(
+  start: number,
+  end: number,
+  rowCount: number,
+): { start: number; end: number } {
+  const toIndex = (value: number): number => (Number.isFinite(value) ? Math.floor(value) : 0);
+  const safeCount = Math.max(0, toIndex(rowCount));
+  const safeStart = Math.min(Math.max(0, toIndex(start)), safeCount);
+  const safeEnd = Math.min(Math.max(safeStart, toIndex(end)), safeCount);
+  return { start: safeStart, end: safeEnd };
+}
+
+/**
+ * TanStack row keys are strings; encode the original id type so `42` and `'42'`
+ * stay distinct in selection state. String ids are trimmed so padded controlled
+ * ids match `resolveDataTableRowId` keys.
+ */
+export function normalizeDataTableRowId(id: DataTableRowId): DataTableRowId | null {
+  if (typeof id === 'string') {
+    const trimmed = id.trim();
+    return trimmed === '' ? null : trimmed;
+  }
+  return Number.isFinite(id) ? id : null;
+}
+
+export function encodeDataTableRowKey(id: DataTableRowId): string {
+  const normalized = normalizeDataTableRowId(id);
+  if (normalized === null) {
+    // Non-finite numbers cannot round-trip through `n:` (decode would not yield a number).
+    return `s:${String(id).trim()}`;
+  }
+  return typeof normalized === 'number' ? `n:${normalized}` : `s:${normalized}`;
+}
+
+/** Decodes an internal TanStack key produced by encodeDataTableRowKey. */
+export function decodeDataTableRowKey(key: string): DataTableRowId {
+  if (key.startsWith('n:')) {
+    const raw = key.slice(2).trim();
+    // `Number('')` is 0, which would silently decode a malformed key to row 0.
+    const n = raw === '' ? Number.NaN : Number(raw);
+    if (Number.isFinite(n)) {
+      return n;
+    }
+  }
+  if (key.startsWith('s:')) {
+    return key.slice(2);
+  }
+  return key;
+}
+
+function isUsableDataTableRowId(value: unknown): value is DataTableRowId {
+  if (typeof value === 'string') {
+    return value.trim() !== '';
+  }
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+/**
+ * Resolves a stable row id for TanStack.
+ * Prefers an explicit rowId fn, then `Id`, then `id`. Throws when none are usable
+ * (empty-string keys would collide across rows).
+ */
+export function resolveDataTableRowId<T extends Record<string, unknown>>(
+  row: T,
+  rowId?: (row: T) => DataTableRowId,
+): DataTableRowId {
+  if (rowId) {
+    const value = rowId(row);
+    if (!isUsableDataTableRowId(value)) {
+      throw new Error('DataTable rowId() returned an empty id');
+    }
+    return typeof value === 'string' ? value.trim() : value;
+  }
+  const raw = [(row as { Id?: unknown }).Id, (row as { id?: unknown }).id].find(isUsableDataTableRowId);
+  if (raw === undefined) {
+    throw new Error('DataTable: provide rowId when rows lack Id/id');
+  }
+  return typeof raw === 'string' ? raw.trim() : raw;
+}
+
+/** Maps TanStack string selection keys back to original DataTableRowId values. */
+export function mapDataTableSelectionKeys(
+  keys: readonly string[],
+  registry: ReadonlyMap<string, DataTableRowId>,
+): DataTableRowId[] {
+  return keys.map((key) => {
+    const known = registry.get(key);
+    if (known !== undefined) {
+      return known;
+    }
+    // Decode the internal key so `n:`/`s:` never leak into public selection ids.
+    return decodeDataTableRowKey(key);
+  });
+}
+
+/**
+ * Keeps only selected keys that are still present after a data swap.
+ * Returns null when the selection is already clean (no write needed).
+ */
+export function pruneDataTableSelection(
+  selection: Readonly<Record<string, boolean>>,
+  presentKeys: ReadonlySet<string>,
+): Record<string, boolean> | null {
+  const pruned: Record<string, boolean> = {};
+  for (const [key, isSelected] of Object.entries(selection)) {
+    if (isSelected && presentKeys.has(key)) {
+      pruned[key] = true;
+    }
+  }
+  const prevKeys = Object.keys(selection);
+  const nextKeys = Object.keys(pruned);
+  const unchanged =
+    prevKeys.length === nextKeys.length && nextKeys.every((key) => selection[key] === true);
+  // All-false TanStack leftovers have nothing selected — skip a no-op `{}` write.
+  const hadSelected = prevKeys.some((key) => selection[key] === true);
+  if (unchanged || !hadSelected) {
+    return null;
+  }
+  return pruned;
+}
+
+/** Set-equality of selection ids using typed TanStack keys (dedupes duplicates). */
+export function dataTableSelectionIdsEqual(
+  left: readonly DataTableRowId[],
+  right: readonly DataTableRowId[],
+): boolean {
+  const toKeys = (ids: readonly DataTableRowId[]): Set<string> => {
+    const keys = new Set<string>();
+    for (const id of ids) {
+      // Blank / non-finite ids encode to `s:` / `s:NaN` and must not match real string ids.
+      if (normalizeDataTableRowId(id) === null) {
+        continue;
+      }
+      keys.add(encodeDataTableRowKey(id));
+    }
+    return keys;
+  };
+  const leftKeys = toKeys(left);
+  const rightKeys = toKeys(right);
+  if (leftKeys.size !== rightKeys.size) {
+    return false;
+  }
+  for (const key of leftKeys) {
+    if (!rightKeys.has(key)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Merges controlled ids that are off the current page with the visible selection.
+ * Preserves parent-owned ids across data swaps while reflecting on-page toggles.
+ */
+export function mergeDataTableControlledSelection(
+  controlled: readonly DataTableRowId[],
+  visibleSelected: readonly DataTableRowId[],
+  presentKeys: ReadonlySet<string>,
+): DataTableRowId[] {
+  const kept: DataTableRowId[] = [];
+  const seen = new Set<string>();
+  for (const raw of controlled) {
+    // Blank / non-finite ids can never match a page key; keeping them would leak ghosts forever.
+    const id = normalizeDataTableRowId(raw);
+    if (id === null) {
+      continue;
+    }
+    const key = encodeDataTableRowKey(id);
+    if (presentKeys.has(key) || seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    // Emit the normalized id so host state matches the trimmed keys used elsewhere.
+    kept.push(id);
+  }
+  const out = [...kept];
+  for (const raw of visibleSelected) {
+    const id = normalizeDataTableRowId(raw);
+    if (id === null) {
+      continue;
+    }
+    const key = encodeDataTableRowKey(id);
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    out.push(id);
+  }
+  return out;
+}
+
+/** Virtual row estimate: positive finite sizes win; otherwise comfortable control height. */
+export function resolveDataTableEstimateSize(
+  estimateSize: number | undefined | null,
+  fallback = 32,
+): number {
+  return Number.isFinite(estimateSize as number) && (estimateSize as number) > 0
+    ? Number(estimateSize)
+    : fallback;
+}
+
+/**
+ * Embedded O2M/M2M tables: `auto` turns on virtualization only when the field
+ * has capped height (`tableHeight` set) so short lists stay content-sized.
+ */
+export type EmbeddedTableVirtualizeMode = boolean | 'auto';
+
+/**
+ * Whether the host should use the fixed-height / scrollport layout (vs content-sized).
+ * Independent of row count so empty Lists keep their chrome.
+ */
+export function embeddedTableWantsVirtualLayout(opts: {
+  virtualize: EmbeddedTableVirtualizeMode | undefined;
+  tableHeight: number | null | undefined;
+}): boolean {
+  if (opts.virtualize === false) return false;
+  if (opts.virtualize === 'auto') {
+    const h = opts.tableHeight;
+    return h != null && Number.isFinite(h) && h > 0;
+  }
+  return true;
+}
+
+/** Resolve host virtualize mode to a boolean for DataTable (needs rows). */
+export function resolveEmbeddedTableVirtualize(opts: {
+  virtualize: EmbeddedTableVirtualizeMode | undefined;
+  tableHeight: number | null | undefined;
+  rowCount: number;
+}): boolean {
+  const n = Math.max(0, Math.floor(Number(opts.rowCount) || 0));
+  if (n <= 0) return false;
+  return embeddedTableWantsVirtualLayout(opts);
+}
+
+/** Virtualize when the host left it on and at least one row is present. */
+export function dataTableIsVirtualized(virtualize: boolean | undefined, rowCount: number): boolean {
+  return virtualize !== false && rowCount > 0;
+}
+
+export function dataTableVirtualizerCount(virtualized: boolean, rowCount: number): number {
+  return virtualized ? rowCount : 0;
+}
+
+export function dataTableScrollElement(
+  virtualized: boolean,
+  parent: Element | null,
+): Element | null {
+  return virtualized ? parent : null;
+}
+
+export function dataTableShouldMeasureRow(el: Element | null, virtualized: boolean): boolean {
+  return !!el && virtualized;
+}
+
+export function dataTableMaybeMeasure(
+  virtualized: boolean,
+  virtualizer: { measure?: () => void } | null | undefined,
+): void {
+  if (virtualized) {
+    virtualizer?.measure?.();
+  }
+}
+
+export function dataTableMeasureRow(
+  el: Element | null,
+  virtualized: boolean,
+  virtualizer: { measureElement?: (node: Element) => void } | null | undefined,
+): void {
+  if (dataTableShouldMeasureRow(el, virtualized)) {
+    virtualizer?.measureElement?.(el as Element);
+  }
+}
+
+export function dataTableNonVirtualScrollTop(opts: {
+  index: number;
+  align?: 'start' | 'center' | 'end' | 'auto';
+  row?: { offsetTop: number; offsetHeight: number } | null;
+  viewHeight: number;
+  estimateSize: number;
+}): number {
+  const row = opts.row;
+  if (row) {
+    const top = row.offsetTop;
+    const rowHeight = row.offsetHeight;
+    const view = opts.viewHeight;
+    if (opts.align === 'end') {
+      return Math.max(0, top + rowHeight - view);
+    }
+    if (opts.align === 'center') {
+      return Math.max(0, top - (view - rowHeight) / 2);
+    }
+    return Math.max(0, top);
+  }
+  return Math.max(0, opts.index * opts.estimateSize);
+}
+
+export function mapDataTableBodyRows<T extends { id: unknown }>(opts: {
+  virtualized: boolean;
+  rows: readonly T[];
+  virtualItems: readonly { index: number; key: unknown; start: number }[];
+}): Array<{ key: unknown; index: number; start: number | undefined; row: T | undefined }> {
+  if (opts.virtualized && opts.virtualItems.length) {
+    return opts.virtualItems.map((virtualRow) => ({
+      key: opts.rows[virtualRow.index]?.id ?? virtualRow.key,
+      index: virtualRow.index,
+      start: virtualRow.start,
+      row: opts.rows[virtualRow.index],
+    }));
+  }
+  return opts.rows.map((row, index) => ({
+    key: row.id,
+    index,
+    start: undefined,
+    row,
+  }));
+}
+
+export function applyDataTableParentScroll(
+  parent: { scrollTop: number } | null | undefined,
+  top: number,
+): void {
+  if (parent) {
+    parent.scrollTop = top;
+  }
+}
+
+export function applyDataTableScrollToRow(opts: {
+  index: number;
+  align?: 'start' | 'center' | 'end' | 'auto';
+  virtualized: boolean;
+  parent: {
+    querySelector: (sel: string) => { offsetTop: number; offsetHeight: number } | null;
+    clientHeight: number;
+  } | null;
+  estimateSize: number | undefined | null;
+  virtualizer: {
+    scrollToIndex?: (
+      index: number,
+      opts?: { align?: 'start' | 'center' | 'end' | 'auto' },
+    ) => void;
+  } | null;
+  setScrollTop: (top: number) => void;
+}): void {
+  if (!Number.isFinite(opts.index) || opts.index < 0) {
+    return;
+  }
+  if (opts.virtualized) {
+    opts.virtualizer?.scrollToIndex?.(opts.index, { align: opts.align ?? 'auto' });
+    return;
+  }
+  if (!opts.parent) {
+    return;
+  }
+  const row = opts.parent.querySelector(`[data-index="${opts.index}"]`);
+  opts.setScrollTop(
+    dataTableNonVirtualScrollTop({
+      index: opts.index,
+      align: opts.align,
+      row,
+      viewHeight: opts.parent.clientHeight,
+      estimateSize: resolveDataTableEstimateSize(opts.estimateSize, 32),
+    }),
+  );
+}
+
+/** Map column align meta to flex justify classes (logical end/start + legacy left/right). */
+export function dataTableColumnJustifyClass(align: unknown): string | undefined {
+  const a = String(align || '')
+    .trim()
+    .toLowerCase();
+  if (a === 'center') return 'justify-center';
+  if (a === 'end' || a === 'right') return 'justify-end';
+  if (a === 'start' || a === 'left') return 'justify-start';
+  return undefined;
+}
+

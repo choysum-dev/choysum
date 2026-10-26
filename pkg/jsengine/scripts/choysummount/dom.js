@@ -206,6 +206,21 @@
 
   Object.defineProperty(Element.prototype, 'value', {
     get: function () {
+      var tag = String(this.tagName || '').toLowerCase();
+      if (tag === 'select') {
+        var opts = this.options || [];
+        for (var i = 0; i < opts.length; i++) {
+          if (opts[i].selected) {
+            var ov = opts[i]._formValue !== undefined ? opts[i]._formValue : opts[i].getAttribute('value');
+            return ov == null ? '' : String(ov);
+          }
+        }
+        if (opts.length) {
+          var first = opts[0]._formValue !== undefined ? opts[0]._formValue : opts[0].getAttribute('value');
+          return first == null ? '' : String(first);
+        }
+        return '';
+      }
       if (this._formValue !== undefined) return this._formValue;
       var attr = this.getAttribute('value');
       return attr == null ? '' : attr;
@@ -213,6 +228,20 @@
     set: function (v) {
       this._formValue = String(v == null ? '' : v);
       this.attrs.value = this._formValue;
+      var tag = String(this.tagName || '').toLowerCase();
+      if (tag === 'select') {
+        var opts = this.options || [];
+        var matched = false;
+        for (var i = 0; i < opts.length; i++) {
+          var ov = opts[i]._formValue !== undefined ? opts[i]._formValue : opts[i].getAttribute('value');
+          var sel = String(ov == null ? '' : ov) === this._formValue;
+          opts[i].selected = sel;
+          if (sel) matched = true;
+        }
+        if (!matched && opts.length && this._formValue === '') {
+          opts[0].selected = true;
+        }
+      }
     },
   });
 
@@ -225,6 +254,80 @@
       this._checked = !!v;
       if (this._checked) this.attrs.checked = '';
       else delete this.attrs.checked;
+    },
+  });
+
+  // Reflect boolean IDL so Vue `key in el` uses patchDOMProp and getAttribute stays in sync.
+  Object.defineProperty(Element.prototype, 'disabled', {
+    get: function () {
+      if (this._disabled !== undefined) return !!this._disabled;
+      return this.hasAttribute('disabled');
+    },
+    set: function (v) {
+      this._disabled = !!v;
+      if (this._disabled) this.attrs.disabled = '';
+      else delete this.attrs.disabled;
+    },
+  });
+
+  Object.defineProperty(Element.prototype, 'selected', {
+    get: function () {
+      if (this._selected !== undefined) return !!this._selected;
+      return this.hasAttribute('selected');
+    },
+    set: function (v) {
+      this._selected = !!v;
+      if (this._selected) this.attrs.selected = '';
+      else delete this.attrs.selected;
+    },
+  });
+
+  // HTMLSelectElement.options — Vue v-model select uses Array.prototype.filter.call(el.options, …).
+  Object.defineProperty(Element.prototype, 'options', {
+    get: function () {
+      var tag = String(this.tagName || '').toLowerCase();
+      if (tag !== 'select') return undefined;
+      var out = [];
+      for (var i = 0; i < this._children.length; i++) {
+        var c = this._children[i];
+        if (c && c.nodeType === NODE_ELEMENT && String(c.tagName || '').toLowerCase() === 'option') {
+          out.push(c);
+        }
+      }
+      return out;
+    },
+  });
+
+  Object.defineProperty(Element.prototype, 'selectedIndex', {
+    get: function () {
+      var opts = this.options;
+      if (!opts) return -1;
+      for (var i = 0; i < opts.length; i++) {
+        if (opts[i].selected) return i;
+      }
+      return opts.length ? 0 : -1;
+    },
+    set: function (idx) {
+      var opts = this.options;
+      if (!opts) return;
+      var n = Number(idx);
+      for (var i = 0; i < opts.length; i++) {
+        opts[i].selected = i === n;
+      }
+      if (n >= 0 && n < opts.length) {
+        this.value = opts[n].value;
+      }
+    },
+  });
+
+  Object.defineProperty(Element.prototype, 'multiple', {
+    get: function () {
+      return this.hasAttribute('multiple') || this._multiple === true;
+    },
+    set: function (v) {
+      this._multiple = !!v;
+      if (this._multiple) this.attrs.multiple = '';
+      else delete this.attrs.multiple;
     },
   });
 

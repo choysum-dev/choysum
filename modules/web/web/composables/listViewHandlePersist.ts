@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Pure helpers for OListView handle reorder persistence and inline-edit discard.
+ * Pure helpers for ListView handle reorder persistence and inline-edit discard.
  */
 
 import { isListRecordRow, listRecordId, unwrapListRecord } from '@/web/web/composables/listRowEdit';

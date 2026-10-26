@@ -1,0 +1,95 @@
+<!--
+SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+SPDX-License-Identifier: Apache-2.0
+-->
+
+<template>
+  <button
+    v-if="visible"
+    type="button"
+    class="choy-stat-info inline-flex items-center gap-2 min-w-[72px] px-2.5 py-1.5 m-0 border border-border rounded-md bg-background text-foreground leading-tight text-left cursor-pointer transition-[background-color,border-color] duration-150 ease-in-out hover:enabled:bg-muted disabled:opacity-55 disabled:cursor-not-allowed"
+    :class="{ 'is-disabled opacity-55 cursor-not-allowed': disabled }"
+    :disabled="disabled"
+    v-bind="$attrs"
+    @click="onClick"
+  >
+    <span v-if="resolvedIcon" class="choy-stat-info__icon inline-flex text-lg text-muted-foreground">
+      <component :is="resolvedIcon" />
+    </span>
+    <span class="choy-stat-info__body flex min-w-0 flex-col gap-0.5">
+      <span class="choy-stat-info__value text-base font-semibold text-foreground">{{ displayValue }}</span>
+      <span class="choy-stat-info__label whitespace-nowrap text-xs text-muted-foreground">{{ label }}</span>
+    </span>
+  </button>
+</template>
+
+<script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, any>">
+import { computed, markRaw, toRaw, type Component } from 'vue';
+import { useRouter, type RouteLocationRaw } from 'vue-router';
+import type { BaseModel, FieldPath } from '@/core/rpc';
+import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { useField } from '@/web/web/composables/useField';
+import { resolveStatDisplayValue } from '@/web/web/components/view/statInfoHelpers';
+
+defineOptions({ name: 'ChoyStatInfo', inheritAttrs: false });
+
+type IsAny<T> = 0 extends 1 & T ? true : false;
+
+const props = withDefaults(
+  defineProps<{
+    /** Explicit value; preferred over relation length (D7). */
+    value?: number | string | null;
+    store?: WebModelStore<T>;
+    prop?: P | (IsAny<T> extends true ? string : never);
+    /** Button caption (i18n-ready). */
+    label: string;
+    icon?: Component | object;
+    /** When set, click also `router.push(to)` after emit (D8). */
+    to?: RouteLocationRaw;
+    disabled?: boolean;
+    /** When false, the button is not rendered (D9). */
+    visible?: boolean;
+    /** Shown when neither `value` nor a relation array is available. Default blank. */
+    emptyValue?: number | string;
+  }>(),
+  {
+    disabled: false,
+    visible: true,
+    emptyValue: '',
+  }
+);
+
+const emit = defineEmits<{
+  (e: 'click', event: MouseEvent): void;
+}>();
+
+const router = useRouter();
+
+// Avoid Vue "component made reactive" warn when a Component is passed as icon prop.
+const resolvedIcon = computed(() => {
+  const icon = props.icon;
+  return icon ? markRaw(toRaw(icon as object)) : null;
+});
+
+// Optional relation binding for Array.length; never auto-registers into form fields (D7).
+const relationBinding =
+  props.store != null && props.prop != null
+    ? useField<T, string, unknown>({ store: props.store, prop: String(props.prop), autoRegister: false })
+    : null;
+
+const displayValue = computed(() =>
+  resolveStatDisplayValue({
+    value: props.value,
+    relationValue: relationBinding ? relationBinding.fieldRef().value : undefined,
+    emptyValue: props.emptyValue,
+  })
+);
+
+function onClick(event: MouseEvent) {
+  if (props.disabled) return;
+  emit('click', event);
+  if (props.to != null) {
+    void router?.push(props.to);
+  }
+}
+</script>

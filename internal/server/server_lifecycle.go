@@ -26,7 +26,28 @@ func (s *GRPCWebServer) serve() error {
 			return nil
 		case file := <-s.hotreloadQueue():
 			if err := s.handleQueuedWatchEvent(file); err != nil {
-				return err
+				// Never tear down the server on a watch reload failure — the
+				// operator can fix the module and save again. LEASE_CONFLICT is
+				// already soft-failed with a defer message in the dispatch path;
+				// other upgrade/build errors still reach here after ✗ logging.
+				if isModuleLeaseConflict(err) {
+					if s.runtimeScope != nil {
+						s.runtimeScope.Logger().Warn(
+							"watch reload deferred: module management lease busy",
+							"event", file,
+							"error", err,
+						)
+					}
+					continue
+				}
+				if s.runtimeScope != nil {
+					s.runtimeScope.Logger().Error(
+						"watch reload failed; server keeps running",
+						"event", file,
+						"error", err,
+					)
+				}
+				continue
 			}
 		}
 	}

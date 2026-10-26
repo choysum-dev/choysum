@@ -28,6 +28,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/parser/vueparser"
 	"github.com/choysum-dev/choysum/internal/parser/vueparser/vuesfchtmlparser"
 	"github.com/choysum-dev/choysum/internal/vueplugin"
+	"github.com/choysum-dev/choysum/pkg/jsengine/scripts/choysummount"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -116,6 +117,24 @@ func (b *WebModuleBuilder) BuildCtx(ctx context.Context) (*module.BuildResult, e
 	}
 	restore := b.bindRuntimeState(ctx)
 	defer restore()
+
+	if res, err := ensureChoyTailwindCSS(b.resolvedRuntimeOptions().modulesPath); err != nil {
+		return nil, xfmt.Errorf("Error generating Choy kit Tailwind CSS: %w", err)
+	} else if res != nil && b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
+		if res.Duration > ChoyTailwindBudget {
+			b.runtimeScope.Logger().Warn(
+				"Choy kit Tailwind generation exceeded soft budget",
+				"duration", res.Duration.String(),
+				"budget", ChoyTailwindBudget.String(),
+			)
+		}
+		b.runtimeScope.Logger().Info(
+			"Choy kit Tailwind generated",
+			"duration", res.Duration.String(),
+			"candidates", res.CandidateCount,
+			"output", res.OutputPath,
+		)
+	}
 
 	// 1. prebuild for parse original model extends
 	prebuildResult, err := b.prebuild()
@@ -575,6 +594,13 @@ func (b *WebModuleBuilder) getTemplateImportComponents(extendsResult *parser.Par
 
 	// Iterate through all imported components
 	for importName, importInfo := range extendsResult.Imports {
+		if importInfo == nil || importInfo.IsTypeOnly {
+			// Type-only imports have no runtime value; never promote them into
+			// the child components map / value imports (that can pull service ORM
+			// into the browser bundle).
+			continue
+		}
+
 		found := templateUsesImportAsTag(extendsResult.RawTemplateNode, importName)
 
 		if found {
@@ -671,7 +697,9 @@ func templateUsesImportInDynamicBinding(root *html.Node, importName string) bool
 					continue
 				}
 
-				if identPattern.MatchString(value) {
+				// Ignore matches inside string literals so `_t('Select Company')`
+				// does not treat a type-named import `Company` as a component.
+				if identPattern.MatchString(stripJSQuotedSpans(value)) {
 					return true
 				}
 			}
@@ -687,6 +715,104 @@ func templateUsesImportInDynamicBinding(root *html.Node, importName string) bool
 	}
 
 	return walk(root)
+}
+
+// stripJSQuotedSpans removes '…' / "…" / `…` spans (with basic backslash escapes)
+// so identifier scans do not hit string contents. Template-literal ${…} expressions
+// are kept, because they are code rather than literal text.
+func stripJSQuotedSpans(value string) string {
+	if value == "" {
+		return value
+	}
+	var b strings.Builder
+	b.Grow(len(value))
+	for i := 0; i < len(value); {
+		c := value[i]
+		if c != '\'' && c != '"' && c != '`' {
+			b.WriteByte(c)
+			i++
+			continue
+		}
+		quote := c
+		i++
+		if quote == '`' {
+			wroteExpr := false
+			for i < len(value) {
+				if value[i] == '\\' && i+1 < len(value) {
+					i += 2
+					continue
+				}
+				if value[i] == '`' {
+					i++
+					break
+				}
+				if value[i] == '$' && i+1 < len(value) && value[i+1] == '{' {
+					start := i
+					i += 2
+					depth := 1
+					for i < len(value) && depth > 0 {
+						if value[i] == '\\' && i+1 < len(value) {
+							i += 2
+							continue
+						}
+						// A brace inside a string, such as ${fn('}')}, is not a delimiter.
+						if value[i] == '\'' || value[i] == '"' || value[i] == '`' {
+							i = skipJSQuotedSpan(value, i)
+							continue
+						}
+						switch value[i] {
+						case '{':
+							depth++
+						case '}':
+							depth--
+						}
+						i++
+					}
+					b.WriteString(value[start:i])
+					wroteExpr = true
+					continue
+				}
+				i++
+			}
+			if !wroteExpr {
+				b.WriteByte(' ')
+			}
+			continue
+		}
+		for i < len(value) {
+			if value[i] == '\\' && i+1 < len(value) {
+				i += 2
+				continue
+			}
+			if value[i] == quote {
+				i++
+				break
+			}
+			i++
+		}
+		b.WriteByte(' ')
+	}
+	return b.String()
+}
+
+// skipJSQuotedSpan advances past a quote that starts at i, including its closer.
+func skipJSQuotedSpan(value string, i int) int {
+	if i >= len(value) {
+		return i
+	}
+	quote := value[i]
+	i++
+	for i < len(value) {
+		if value[i] == '\\' && i+1 < len(value) {
+			i += 2
+			continue
+		}
+		if value[i] == quote {
+			return i + 1
+		}
+		i++
+	}
+	return i
 }
 
 func (b *WebModuleBuilder) getScriptNode(result *parser.ParserResult, extendsResult *parser.ParserResult) (*html.Node, error) {
@@ -2235,6 +2361,7 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 			esmresolver.WithModuleName(b.module.Name),
 			esmresolver.WithApplicationName(b.module.ApplicationStr),
 		}
+		webResolverOpts = b.appendExactPinsFromPackageJSON(webResolverOpts)
 		if b.runtimeScope != nil {
 			webResolverOpts = append(webResolverOpts, esmresolver.WithLogger(b.runtimeScope.Logger()))
 		}
@@ -2253,6 +2380,7 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 			esmresolver.WithModuleName(b.module.Name),
 			esmresolver.WithApplicationName(b.module.ApplicationStr),
 		}
+		webResolverOpts = b.appendExactPinsFromPackageJSON(webResolverOpts)
 		if b.runtimeScope != nil {
 			webResolverOpts = append(webResolverOpts, esmresolver.WithLogger(b.runtimeScope.Logger()))
 		}
@@ -2264,6 +2392,97 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 	}
 
 	return &buildOptions
+}
+
+func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Option) []esmresolver.Option {
+	if b == nil || b.module == nil || strings.TrimSpace(b.module.Path) == "" {
+		return opts
+	}
+	modulePath := filepath.Clean(strings.TrimSpace(b.module.Path))
+	kitHost := filepath.Join(filepath.Dir(modulePath), "web")
+
+	// Vue SSOT: exact "vue" from modules/web/package.json (kit host). Domain
+	// modules cannot override. Fallback: generated VuePackageVersion
+	// (go generate ./pkg/jsengine/scripts/choysummount/...).
+	vueSource := modulePath
+	if kitHost != modulePath {
+		vueSource = kitHost
+	}
+
+	pinCache := map[string]struct {
+		pins map[string]string
+		err  error
+	}{}
+	readPins := func(modPath, logName string) (map[string]string, error) {
+		if e, ok := pinCache[modPath]; ok {
+			return e.pins, e.err
+		}
+		got, err := esmresolver.ExactPinsFromPackageJSON(modPath)
+		if err != nil {
+			if b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
+				b.runtimeScope.Logger().Warn("exact peer pins from package.json unavailable", "module", logName, "error", err)
+			}
+			got = nil
+		}
+		pinCache[modPath] = struct {
+			pins map[string]string
+			err  error
+		}{got, err}
+		return got, err
+	}
+
+	vueVer := choysummount.VuePackageVersion
+	kitPins, kitErr := readPins(vueSource, vueSource)
+	if v := kitPins["vue"]; v != "" {
+		vueVer = v
+	} else if kitErr == nil && b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
+		// Parsed successfully (or missing file → nil,nil) but no exact vue.
+		// Only warn when package.json is present so missing kit dirs stay quiet.
+		if _, statErr := os.Stat(filepath.Join(vueSource, "package.json")); statErr == nil {
+			b.runtimeScope.Logger().Warn("no exact vue pin in package.json; using fallback", "module", vueSource, "fallback", vueVer)
+		}
+	}
+	pins := choysummount.VueBareImportPinsFor(vueVer)
+	// Reuse the exported validator so this stays in sync with the rule the
+	// FE host path (vueHostBareImportPins) also relies on.
+	if !choysummount.IsExactVuePin(vueVer) &&
+		b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
+		b.runtimeScope.Logger().Warn(
+			"kit exact vue rejected by host pin validator; using fallback",
+			"module", vueSource, "declared", vueVer, "fallback", pins["vue"],
+		)
+	}
+
+	mergePins := func(modPath, logName string) {
+		got, _ := readPins(modPath, logName)
+		for name, ver := range got {
+			// Only host-owned Vue runtime packages come from the kit SSOT
+			// (see choysummount.VueBareImportPinsFor); never let a module
+			// override them. Other @vue/* names keep nearest-module-wins.
+			if choysummount.IsHostVueRuntimePackage(name) {
+				continue
+			}
+			if prev, ok := pins[name]; ok && prev != ver &&
+				b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
+				b.runtimeScope.Logger().Warn(
+					"conflicting exact pins; nearest module wins",
+					"module", logName, "package", name, "version", ver, "overridden", prev,
+				)
+			}
+			pins[name] = ver
+		}
+	}
+	// Core first (lowest precedence) so kit-host / module pins win on conflict.
+	corePath := filepath.Join(filepath.Dir(modulePath), "core")
+	if corePath != modulePath && corePath != kitHost {
+		mergePins(corePath, corePath)
+	}
+	if kitHost != modulePath {
+		mergePins(kitHost, kitHost)
+	}
+	mergePins(modulePath, b.module.Name)
+	opts = append(opts, esmresolver.WithBareImportPins(pins))
+	return opts
 }
 
 func (b *WebModuleBuilder) entryPointImports() []string {

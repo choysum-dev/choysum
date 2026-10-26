@@ -2,16 +2,22 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ref, type Ref } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ChoyMessage } from '../composables/useChoyMessage';
+import { confirmChoyAction, confirmChoyChoice } from '../composables/confirmChoyAction';
 import type { OnchangeFlushPayload } from '@/web/web/composables/useOnchange';
 import { createTranslate } from '@/web/web/i18n';
 
 const { _t } = createTranslate('web', { scope: 'web/composables/useOnchangeAggregation' });
 
 /**
- * useOnchangeAggregation
- * Encapsulates merging condition/selection from onchange responses,
- * field-level error tracking with alias expansion, and global messaging.
+ * Merge onchange condition/selection, map field errors, and surface global messages.
+ *
+ * Message delivery contract (Odoo-like notification + field hard errors):
+ * - `blocking` → confirm dialog
+ * - `error` + `field` → `fieldErrors` (inline; can block save) — not toast
+ * - `warn` / `info` (with or without `field`) → toast via ChoyMessage
+ * - `error` without `field` → toast
+ * Do not write warn/info into `fieldErrors` (would look like errors and block save).
  */
 export function useOnchangeAggregation(options?: { showMessages?: boolean }) {
   const showMessages = options?.showMessages ?? true;
@@ -135,25 +141,24 @@ export function useOnchangeAggregation(options?: { showMessages?: boolean }) {
       for (const { key, msg } of newPairs) fieldErrors.value.set(key, msg);
     }
 
-    // 5) Global messages
+    // 5) Global toast / dialog (warn/info always; error only when not field-scoped)
     if (!msgs.length || !showMessages) return;
 
     const blockingMsg = msgs.find((m: any) => m.blocking);
     if (blockingMsg) {
       try {
-        await ElMessageBox.confirm(blockingMsg.message, blockingMsg.title || _t('Notice'), {
-          confirmButtonText: _t('Continue'),
-          cancelButtonText: _t('Cancel'),
-          type: blockingMsg.level === 'error' ? 'error' : 'warning',
+        await confirmChoyAction(blockingMsg.message, blockingMsg.title || _t('Notice'), {
+          confirmText: _t('Continue'),
+          cancelText: _t('Cancel'),
           distinguishCancelAndClose: true,
-          closeOnClickModal: false,
         });
       } catch (action) {
-        if (action === 'cancel') ElMessage.info(_t('Operation cancelled'));
+        if (action === 'cancel') ChoyMessage.info(_t('Operation cancelled'));
       }
       return;
     }
 
+    // Prefer unscoped error, else first warn/info. Field may enrich toast text only.
     const firstMsg =
       msgs.find((m: any) => !m.blocking && m.level === 'error' && !m.field) ||
       msgs.find((m: any) => !m.blocking && m.level === 'warn') ||
@@ -162,9 +167,9 @@ export function useOnchangeAggregation(options?: { showMessages?: boolean }) {
     if (firstMsg) {
       const text = firstMsg.field ? `${firstMsg.field}: ${firstMsg.message}` : firstMsg.message;
       const typeMap = {
-        error: () => ElMessage.error({ message: text, duration: 5000, showClose: true, grouping: true }),
-        warn: () => ElMessage.warning({ message: text, duration: 3000, showClose: true, grouping: true }),
-        info: () => ElMessage.info({ message: text, duration: 2000, showClose: true, grouping: true }),
+        error: () => ChoyMessage.error(text, { duration: 5000 }),
+        warn: () => ChoyMessage.warning(text, { duration: 3000 }),
+        info: () => ChoyMessage.info(text, { duration: 2000 }),
       } as const;
       // @ts-expect-error index signature constrained to known keys
       typeMap[firstMsg.level]?.();

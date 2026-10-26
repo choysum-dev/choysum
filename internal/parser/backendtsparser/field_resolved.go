@@ -683,6 +683,19 @@ func buildFieldResolvedSpec(field *meta.Field, binding *resolvedFieldBehaviorBin
 		spec.Structural.CheckConstraint = strings.TrimSpace(v)
 	}
 
+	// Flat companions (same rules as backendplugin SetFieldMeta) so meta_raw_field /
+	// web fieldsMetadata receive currencyField / scaleField for codegen and FieldsGet.
+	if v, ok := options["scaleField"].(string); ok {
+		if trimmed := strings.TrimSpace(v); trimmed != "" {
+			field.ScaleField = trimmed
+		}
+	}
+	if v, ok := options["currencyField"].(string); ok {
+		if trimmed := strings.TrimSpace(v); trimmed != "" {
+			field.CurrencyField = trimmed
+		}
+	}
+
 	storeValue := true
 	storeSource := "default"
 	if spec.Behavior.SqlCompute != nil {

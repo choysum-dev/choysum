@@ -7,7 +7,65 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
+
+	"github.com/choysum-dev/choysum/pkg/oerrors"
 )
+
+// choyTailwindGeneratedCSSName matches the kit Tailwind emit basename under
+// modules/web/web/styles. Kept in sync with web build's generated CSS name.
+const choyTailwindGeneratedCSSName = "choy-tailwind.generated.css"
+
+// hotreloadLeaseRetryBase is the first backoff after module_management LEASE_CONFLICT.
+// CLI upgrade / overlapping hotreload hold the lease briefly; waiting the full
+// 60s TTL (retry_after_ms) would strand deferred module saves.
+var hotreloadLeaseRetryBase = 500 * time.Millisecond
+
+// hotreloadLeaseRetryMax caps automatic requeues after LEASE_CONFLICT.
+// Zero disables retries (tests that only assert the defer path).
+var hotreloadLeaseRetryMax = 8
+
+// shouldIgnoreWatchPath reports paths that must not trigger module Upgrade.
+// Kit Tailwind atomic writes (.choy-tailwind-*.tmp → choy-tailwind.generated.css)
+// run during install/web_build inside a watched module tree; upgrading on those
+// events races the module_management lease and must be skipped.
+// Unit/FE test sources are also ignored: they do not need a module Upgrade and
+// often fire right after a product-file save, colliding with the same lease.
+func shouldIgnoreWatchPath(path string) bool {
+	base := filepath.Base(path)
+	lowerBase := strings.ToLower(base)
+	switch {
+	case strings.HasSuffix(lowerBase, ".test.ts"),
+		strings.HasSuffix(lowerBase, ".test.tsx"),
+		strings.HasSuffix(lowerBase, ".test.js"),
+		strings.HasSuffix(lowerBase, ".test.jsx"),
+		strings.HasSuffix(lowerBase, ".spec.ts"),
+		strings.HasSuffix(lowerBase, ".spec.tsx"),
+		strings.HasSuffix(lowerBase, ".spec.js"),
+		strings.HasSuffix(lowerBase, ".spec.jsx"):
+		return true
+	}
+
+	dir := filepath.ToSlash(filepath.Dir(path))
+	// Kit Tailwind output only. Another module's web/web/styles tree, or a
+	// directory that merely ends in the same letters, must still reload.
+	const kitStyles = "modules/web/web/styles"
+	if dir != kitStyles && !strings.HasSuffix(dir, "/"+kitStyles) {
+		return false
+	}
+	if base == choyTailwindGeneratedCSSName {
+		return true
+	}
+	if strings.HasPrefix(base, ".choy-tailwind-") && strings.HasSuffix(base, ".tmp") {
+		return true
+	}
+	return false
+}
+
+// isModuleLeaseConflict reports meta.lock LEASE_CONFLICT through wrapped errors.
+func isModuleLeaseConflict(err error) bool {
+	return oerrors.Is(err, "meta.lock", "LEASE_CONFLICT")
+}
 
 // resolveWatchPath canonicalizes symlinked watch roots and event paths while
 // still tolerating missing leaf paths from remove/rename events.

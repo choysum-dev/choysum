@@ -48,46 +48,6 @@ func cloneOutgoingMetadata(md metadata.MD) metadata.MD {
 	return out
 }
 
-func enabledCompanyIDsFromIdentity(identity auth.Identity, activeCompanyID string) []string {
-	out := []string{}
-	seen := map[string]struct{}{}
-	add := func(v string) {
-		t := strings.TrimSpace(v)
-		if t == "" {
-			return
-		}
-		if _, exists := seen[t]; exists {
-			return
-		}
-		seen[t] = struct{}{}
-		out = append(out, t)
-	}
-
-	if identity != nil {
-		metadata := identity.GetMetadata()
-		if metadata != nil {
-			switch vv := metadata["enabledCompanyIds"].(type) {
-			case []string:
-				for _, item := range vv {
-					add(item)
-				}
-			case []any:
-				for _, item := range vv {
-					add(normalizeOptionalText(item))
-				}
-			}
-			if activeCompanyID == "" {
-				if v, ok := metadata["activeCompanyId"].(string); ok {
-					activeCompanyID = v
-				}
-			}
-		}
-	}
-
-	add(activeCompanyID)
-	return out
-}
-
 func normalizeOptionalText(value any) string {
 	if value == nil {
 		return ""

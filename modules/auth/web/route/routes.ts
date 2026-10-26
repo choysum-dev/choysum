@@ -7,6 +7,13 @@ import { createTranslate } from '@/web/web/i18n';
 
 const { _lt } = createTranslate('auth', { scope: 'web/route/routes' });
 
+/** Sibling paths for Token list / kanban / chart ViewSwitcher. */
+const tokenViewPaths = {
+  list: '/auth/tokens',
+  kanban: '/auth/tokens/kanban',
+  chart: '/auth/tokens/chart',
+} as const;
+
 /**
  * Auth-only routes that do not require the main application layout.
  */
@@ -19,7 +26,6 @@ export const authRoutes: RouteRecordRaw[] = [
     component: () => import('../pages/Login.vue'),
     meta: {
       requiresAuth: false,
-      isAuthPage: true,
     },
   }),
 
@@ -31,7 +37,6 @@ export const authRoutes: RouteRecordRaw[] = [
     component: () => import('../pages/Logout.vue'),
     meta: {
       requiresAuth: false,
-      isAuthPage: true,
     },
   }),
 ];
@@ -132,7 +137,12 @@ export const appRoutes: RouteRecordRaw[] = [
     name: 'TokenList',
     component: () => import('../pages/TokenList.vue'),
     actions: ['auth.action.token_create', 'auth.action.token_edit', 'auth.action.token_delete', 'auth.action.token_copy'],
-    meta: { requiresAuth: true },
+    meta: {
+      requiresAuth: true,
+      viewKind: 'list',
+      defaultGroups: [],
+      viewPaths: { ...tokenViewPaths },
+    },
   }),
   defineRoute('auth.route.token_detail', {
     sequence: 20,
@@ -159,7 +169,26 @@ export const appRoutes: RouteRecordRaw[] = [
     name: 'TokenKanban',
     component: () => import('../pages/TokenKanban.vue'),
     actions: ['auth.action.token_create', 'auth.action.token_edit', 'auth.action.token_delete', 'auth.action.token_copy'],
-    meta: { requiresAuth: true },
+    meta: {
+      requiresAuth: true,
+      viewKind: 'kanban',
+      defaultGroups: ['Revoked'],
+      viewPaths: { ...tokenViewPaths },
+    },
+  }),
+  defineRoute('auth.route.token_chart', {
+    sequence: 50,
+    title: _lt('Token Chart'),
+    path: 'auth/tokens/chart',
+    name: 'TokenChart',
+    component: () => import('../pages/TokenChart.vue'),
+    actions: ['auth.action.token_create', 'auth.action.token_edit', 'auth.action.token_delete', 'auth.action.token_copy'],
+    meta: {
+      requiresAuth: true,
+      viewKind: 'chart',
+      defaultGroups: ['TokenType', 'Revoked'],
+      viewPaths: { ...tokenViewPaths },
+    },
   }),
 
   // Access Rules (PR-C-5): flat paths under /auth/* — no /auth/access-rules prefix.
@@ -346,7 +375,6 @@ if (import.meta.env.CHOYSUM_ENABLE_REGISTRATION !== false) {
       component: () => import('../pages/Register.vue'),
       meta: {
         requiresAuth: false,
-        isAuthPage: true,
       },
     })
   );

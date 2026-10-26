@@ -15,6 +15,7 @@ test('core/service entrypoint export surface stays limited to modeling DSL primi
     'MessageThreadModel',
     'Model',
     'PolymorphicRecordModel',
+    'PropertyDefinitionBaseModel',
     'Search',
     'SqlCompute',
     'dial',

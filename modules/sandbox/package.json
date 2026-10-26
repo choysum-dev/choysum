@@ -1,0 +1,39 @@
+{
+  "name": "@choysum-dev/sandbox",
+  "version": "0.0.0-20260626031438",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/choysum-dev/choysum.git"
+  },
+  "description": "Opt-in field and view kitchen sink for local hand testing",
+  "license": "Apache-2.0",
+  "author": "Choysum Team",
+  "type": "module",
+  "main": "index.ts",
+  "peerDependencies": {
+    "vue": "^3.5.35",
+    "vue-router": "^5.1.0"
+  },
+  "choysum": {
+    "moduleName": "sandbox",
+    "application": "sandbox",
+    "category": "Sandbox",
+    "depends": [
+      "core",
+      "base",
+      "auth",
+      "document"
+    ],
+    "cli": ">=0.0.0-0 <0.0.0",
+    "entryPoints": {
+      "service": "./service/index.ts",
+      "web": "./web/index.ts"
+    },
+    "data": [
+      "data/bootstrap.json"
+    ]
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

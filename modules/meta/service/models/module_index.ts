@@ -23,7 +23,7 @@ import {
   extractGroupedModuleNames,
   assertOriginType,
   originTypeOrAll,
-  assertSearchCondition,
+  resolveSearchCondition,
   DEFAULT_MODULE_INDEX_SEARCH,
   parseSortSpecs,
   projectFields,
@@ -170,10 +170,13 @@ export default class MetaModuleIndex extends BaseModel {
 
   @SqlCompute<MetaModuleIndex>('InstalledStatus')
   sqlInstalledStatus() {
+    // Correlate via ModuleName (not a raw table.col) so Search/ReadGroup share one path.
+    // ReadGroup projects this expression before GROUP BY — PG rejects correlated
+    // subqueries that reference ungrouped outer columns (SQLSTATE 42803).
     const moduleStatus = this.$sql
       .selectFrom('meta_module as m')
       .select('m.status')
-      .whereRef('m.name', '=', this.$sql.col('meta_module_index', 'module_name'))
+      .whereRef('m.name', '=', this.$sql.field('ModuleName'))
       .limit(1);
     return sql<string>`coalesce((${moduleStatus}), 'uninstalled')`;
   }
@@ -190,7 +193,7 @@ export default class MetaModuleIndex extends BaseModel {
     return this.$sql
       .selectFrom('meta_module as m')
       .select('m.version')
-      .whereRef('m.name', '=', this.$sql.col('meta_module_index', 'module_name'))
+      .whereRef('m.name', '=', this.$sql.field('ModuleName'))
       .limit(1);
   }
 
@@ -199,7 +202,7 @@ export default class MetaModuleIndex extends BaseModel {
     condition: QueryCondition<RowOf<C>> | [] = DEFAULT_MODULE_INDEX_SEARCH as QueryCondition<RowOf<C>>,
     options?: Omit<SearchOptions<RowOf<C>>, 'fields'> & { fields?: F }
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
-    const normalized = assertSearchCondition(condition);
+    const normalized = resolveSearchCondition(condition);
     const rawOptions = { ...(options || {}) } as Record<string, unknown>;
     const requestedFields = normalizeFields(rawOptions.fields);
     const sortSpecs = parseSortSpecs(rawOptions.orderBy);
@@ -313,7 +316,7 @@ export default class MetaModuleIndex extends BaseModel {
     condition: QueryCondition<RowOf<C>> | [] = DEFAULT_MODULE_INDEX_SEARCH as QueryCondition<RowOf<C>>,
     options?: SoftDeleteOptions
   ): Promise<number> {
-    const normalized = assertSearchCondition(condition);
+    const normalized = resolveSearchCondition(condition);
     const readGroupCountOptions: Record<string, unknown> = {
       groupby: 'ModuleName',
       condition: normalized,

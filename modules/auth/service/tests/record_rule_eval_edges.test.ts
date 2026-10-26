@@ -270,6 +270,39 @@ test('P2-2 eval edges: mismatched rule scopes skipped', async () => {
   }
 });
 
+test('P2-2 eval edges: legacy domain-list Condition coerces to grant expr', async () => {
+  resetRequestContext();
+  const modelId = await resolveModelId('auth', 'CompanyScopedResource');
+  const roleId = uid('role');
+  const origSearch = (RoleRecordRule as any).Search;
+  // Stored shape historically used a bare Odoo-style domain list (not { And: [...] }).
+  (RoleRecordRule as any).Search = async () => [
+    {
+      RoleId: { Id: roleId },
+      Kind: 'grant',
+      Condition: [['Name', '=', 'legacy']],
+      MetaModelId: modelId,
+      MetaApplicationId: null,
+    },
+  ];
+
+  try {
+    const env = await evaluateRecordRuleCondition({
+      appName: 'auth',
+      modelName: 'CompanyScopedResource',
+      hasCompany: false,
+      opValue: 'read',
+      roleIds: [roleId],
+      roleScopesById: { [roleId]: { global: true, companies: [] } },
+    });
+    expect(env.kind).toBe('expr');
+    expect((env as any).expr).toEqual(['Name', '=', 'legacy']);
+    expect(String((env as any).reason || '')).toBe('grant_domain');
+  } finally {
+    (RoleRecordRule as any).Search = origSearch;
+  }
+});
+
 test('P2-2 eval edges: company-isolated model without ownership field fail-closes gate', async () => {
   resetRequestContext();
   const modelId = await resolveModelId('auth', 'CompanyScopedResource');

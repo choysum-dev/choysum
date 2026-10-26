@@ -336,11 +336,11 @@ test('updateModelInstance handles relation processing and follow-up compute pers
     expect(relationPrepareCalls).toBe(1);
     expect(batchCalls).toBe(1);
     expect(searchCalls[0]).toEqual({ fields: ['Id', 'UpdatedAt', 'ParentId'] });
-    expect(updateCalls.length).toBe(2);
-    expect(bypassCalls).toBe(2);
+    // Follow-up compute SQL write only for persisted computes; harness has no
+    // persistedComputeFields entry for Total, so only the base update runs.
+    expect(updateCalls.length).toBe(1);
+    expect(bypassCalls).toBe(1);
     expect(updateCalls[0].condition?.And?.[0]).toEqual(['Id', '=', 'MI-8']);
-    expect(updateCalls[1].condition).toEqual(['Id', '=', 'MI-8']);
-    expect(updateCalls[1].values.Total).toBe(20);
     expect(resetCalls).toEqual({ changed: 2, relation: 2 });
   } finally {
     RepositoryFactory.getRepository = originalGetRepository;

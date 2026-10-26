@@ -246,6 +246,14 @@ func WithBareImportPins(pins map[string]string) Option {
 	}
 }
 
+// BareImportPin returns the configured exact pin for pkg, or "" if none.
+func (r *Resolver) BareImportPin(pkg string) string {
+	if r == nil || len(r.barePins) == 0 {
+		return ""
+	}
+	return r.barePins[strings.TrimSpace(pkg)]
+}
+
 // isExactPinVersion reports whether ver is an exact pin (not a range, dist-tag,
 // or wildcard). Accepts forms like "3.5.38", "v3.5.38", and "3.5.38-beta.1".
 func isExactPinVersion(ver string) bool {

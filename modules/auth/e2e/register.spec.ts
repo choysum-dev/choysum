@@ -49,21 +49,27 @@ async function runRegisterOnce(baseURL: string): Promise<void> {
   await page.getByPlaceholder(/^Enter password$|^请输入密码$/).fill(password);
   await page.getByPlaceholder(/Re-enter password|请再次输入密码/i).fill(password);
 
-  await page.evaluate(() => {
-    const input = document.querySelector(
-      'label.el-checkbox input.el-checkbox__original, .el-checkbox input[type="checkbox"]'
-    ) as HTMLInputElement | null;
-    if (!input) throw new Error('register: terms checkbox not found');
-    if (!input.checked) input.click();
-    if (!input.checked) {
-      input.checked = true;
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-  });
-  await expect(
-    page.locator('label.el-checkbox input.el-checkbox__original, .el-checkbox input[type="checkbox"]')
-  ).toBeChecked({ timeout: 10_000 });
+  // Kit checkbox is Reka CheckboxRoot (button), not a native <input type="checkbox">.
+  const terms = page.locator(
+    '[data-testid="register-terms"] #fld-AgreeTerms, [data-testid="register-terms"] [data-slot="checkbox"]',
+  );
+  await expect(terms.first()).toBeVisible({ timeout: 10_000 });
+  await terms.first().click();
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(() => {
+          const el = document.querySelector(
+            '[data-testid="register-terms"] #fld-AgreeTerms, [data-testid="register-terms"] [data-slot="checkbox"]',
+          ) as HTMLElement | null;
+          if (!el) return false;
+          const aria = el.getAttribute('aria-checked');
+          const data = el.getAttribute('data-state');
+          return aria === 'true' || data === 'checked';
+        }),
+      { timeout: 10_000 },
+    )
+    .toBe(true);
 
   const submit = page.getByRole('button', { name: /Create Account|创建账户/ });
   await expect(submit).toBeEnabled({ timeout: 10_000 });
