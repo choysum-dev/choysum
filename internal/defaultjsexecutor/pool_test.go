@@ -70,7 +70,6 @@ func (e *concurrentCloseEngine) Execute(_ context.Context, req *jsengine.JsReque
 }
 
 func (e *concurrentCloseEngine) Close() error {
-	atomic.AddInt32(e.completed, 1)
 	cur := atomic.AddInt32(e.active, 1)
 	for {
 		prev := atomic.LoadInt32(e.maxActive)
@@ -84,6 +83,7 @@ func (e *concurrentCloseEngine) Close() error {
 	}
 	<-e.release
 	atomic.AddInt32(e.active, -1)
+	atomic.AddInt32(e.completed, 1)
 	return nil
 }
 
@@ -129,6 +129,14 @@ func TestPool_StopWaitsForThreadCloseInParallel(t *testing.T) {
 	}
 	if got := atomic.LoadInt32(&maxActive); got < threads {
 		t.Fatalf("max concurrent Close calls = %d, want %d", got, threads)
+	}
+	select {
+	case err := <-stopErr:
+		t.Fatalf("pool stop returned while Close calls were still blocked: %v", err)
+	default:
+	}
+	if got := atomic.LoadInt32(&completed); got != 0 {
+		t.Fatalf("completed Close calls = %d while still blocked, want 0", got)
 	}
 	close(release)
 

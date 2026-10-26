@@ -42,11 +42,16 @@ type Dispatcher struct {
 	wakeSub      bus.Subscription
 	sema         chan struct{}
 	interval     time.Duration
-	appMu        sync.Mutex
-	appInFly     map[string]int
-	readyMu      sync.Mutex
-	readySet     map[string]struct{}
-	readyQ       []Job
+	// pollCtx is a dispatcher-owned child of the runtime context used for queue polls.
+	// Stop cancels it so a blocked ListReady/TryClaim cannot hang wg.Wait without
+	// canceling the shared runtime scope (HTTP handlers / in-flight jobs keep theirs).
+	pollCtx    context.Context
+	pollCancel context.CancelFunc
+	appMu      sync.Mutex
+	appInFly   map[string]int
+	readyMu    sync.Mutex
+	readySet   map[string]struct{}
+	readyQ     []Job
 }
 
 const internalKeyHeader = "x-choysum-internal-key"
@@ -73,6 +78,11 @@ func NewDispatcher(runtimeScope scope.Scope, dialer client.ServiceDialer) *Dispa
 func NewDispatcherWithRuntime(runtimeScope scope.Scope, dialer client.ServiceDialer, runtime taskcontract.Runtime) *Dispatcher {
 	opts := runtimeOptionsFromScope(runtimeScope)
 	runtime = runtimeWithDefaultTaskRuntimeDeps(runtimeScope, runtime)
+	parent := context.Background()
+	if runtimeScope != nil && runtimeScope.Context() != nil {
+		parent = runtimeScope.Context()
+	}
+	pollCtx, pollCancel := context.WithCancel(parent)
 	return &Dispatcher{
 		runtimeScope: runtimeScope,
 		runtimeOpts:  opts,
@@ -83,6 +93,8 @@ func NewDispatcherWithRuntime(runtimeScope scope.Scope, dialer client.ServiceDia
 		wakeCh:       make(chan struct{}, 1),
 		sema:         make(chan struct{}, opts.dispatchMaxConcurrency),
 		interval:     opts.dispatchPollInterval,
+		pollCtx:      pollCtx,
+		pollCancel:   pollCancel,
 		appInFly:     map[string]int{},
 		readySet:     map[string]struct{}{},
 	}
@@ -132,6 +144,9 @@ func (d *Dispatcher) Stop() {
 	}
 	d.stopOnce.Do(func() {
 		close(d.stopCh)
+		if d.pollCancel != nil {
+			d.pollCancel()
+		}
 	})
 	if d.wakeSub != nil {
 		_ = d.wakeSub.Close()
@@ -183,9 +198,12 @@ func (d *Dispatcher) pollOnce(source string) {
 	if d.isStopped() {
 		return
 	}
-	ctx := d.runtimeScope.Context()
+	ctx := d.pollCtx
 	if ctx == nil {
-		ctx = context.Background()
+		ctx = d.runtimeScope.Context()
+		if ctx == nil {
+			ctx = context.Background()
+		}
 	}
 	now := time.Now().UTC()
 
