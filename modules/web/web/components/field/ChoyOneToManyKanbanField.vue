@@ -36,7 +36,12 @@ SPDX-License-Identifier: Apache-2.0
           :aria-invalid="invalid ? 'true' : undefined"
         >
           <div v-if="showToolbar" class="flex items-center justify-start">
-            <slot name="toolbar" :items="getItems()" :add="handleAddItem" :editable="editable">
+            <slot
+              name="toolbar"
+              :items="asKanbanRows(getItems())"
+              :add="handleAddItem"
+              :editable="editable"
+            >
               <ChoyButton
                 v-if="editable && showToolbarAdd"
                 type="button"
@@ -104,7 +109,7 @@ SPDX-License-Identifier: Apache-2.0
                 >
                   <slot
                     name="card"
-                    :item="item"
+                    :item="asKanbanRow(item)"
                     :index="index"
                     :open="() => handleCardClick(index, false)"
                     :edit="() => handleEditItem(index)"
@@ -181,11 +186,11 @@ SPDX-License-Identifier: Apache-2.0
               >
                 <slot
                   name="card"
-                  :item="item"
+                  :item="asKanbanRow(item)"
                   :index="index"
                   :open="() => handleCardClick(index, true)"
                   :edit="() => {}"
-                  :remove="() => {}"
+                  :remove="noopRemove"
                   :editable="false"
                   :removable="false"
                 >
@@ -294,8 +299,49 @@ defineOptions({ name: 'ChoyOneToManyKanbanField', inheritAttrs: false });
 
 type IsAny<TA> = 0 extends 1 & TA ? true : false;
 type DialogMode = 'create' | 'edit' | 'display';
+/** One O2M row in the kanban board / `#card` slot (element of relation array `V`). */
+type KanbanRow = V extends readonly (infer U)[] | (infer U)[]
+  ? U
+  : IsAny<V> extends true
+    ? any
+    : Record<string, unknown>;
 const FORM_CHILD_SUBMIT_API_REGISTER_KEY = 'form-child-submit-api-register';
 const FORM_EMBEDDED_CONTEXT_KEY = 'form-embedded-context';
+
+// Untyped slots collapse `#card` item to `{}` in consumers (e.g. SandboxRecordFormView).
+// Must match `<slot name="card|toolbar|empty" …>` bindings below.
+defineSlots<{
+  card(props: {
+    item: KanbanRow;
+    index: number;
+    open: () => void;
+    edit: () => void;
+    /** Resolves true when the row was removed; false when blocked or cancelled. */
+    remove: () => void | Promise<boolean>;
+    editable: boolean;
+    removable: boolean;
+  }): unknown;
+  toolbar(props: {
+    items: KanbanRow[];
+    add: () => void;
+    editable: boolean;
+  }): unknown;
+  empty(): unknown;
+}>();
+
+/** Board items are loosely typed; narrow for slot consumers / defineSlots checks. */
+function asKanbanRow(item: unknown): KanbanRow {
+  return item as KanbanRow;
+}
+
+function asKanbanRows(items: unknown): KanbanRow[] {
+  return (Array.isArray(items) ? items : []) as KanbanRow[];
+}
+
+/** Display-mode stub: removal is disabled; keeps `#card` remove typing honest. */
+function noopRemove(): Promise<boolean> {
+  return Promise.resolve(false);
+}
 
 const props = withDefaults(
   defineProps<{
