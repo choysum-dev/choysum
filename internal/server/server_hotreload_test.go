@@ -463,6 +463,105 @@ func TestScheduleLeaseConflictRetryCapsBackoffShift(t *testing.T) {
 	}
 }
 
+func TestHotreloadRetryStillActive(t *testing.T) {
+	// Not parallel: shares hotreloadForceRetryInactive with retry scheduling tests.
+	hotreloadForceRetryInactive.Store(false)
+	if !hotreloadRetryStillActive(nil) {
+		t.Fatal("nil done must stay active")
+	}
+	// Background().Done() is nil; use a live cancelable context for the select/default path.
+	live, stopLive := context.WithCancel(context.Background())
+	t.Cleanup(stopLive)
+	if !hotreloadRetryStillActive(live.Done()) {
+		t.Fatal("live cancelable done must stay active")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if hotreloadRetryStillActive(ctx.Done()) {
+		t.Fatal("canceled done must be inactive")
+	}
+	hotreloadForceRetryInactive.Store(true)
+	t.Cleanup(func() { hotreloadForceRetryInactive.Store(false) })
+	if hotreloadRetryStillActive(nil) {
+		t.Fatal("force-inactive must win over nil done")
+	}
+}
+
+func TestScheduleLeaseConflictRetryClearsBudgetWhenEnqueueDropped(t *testing.T) {
+	prevBase, prevMax := hotreloadLeaseRetryBase, hotreloadLeaseRetryMax
+	hotreloadLeaseRetryBase = 5 * time.Millisecond
+	hotreloadLeaseRetryMax = 3
+	t.Cleanup(func() {
+		hotreloadLeaseRetryBase = prevBase
+		hotreloadLeaseRetryMax = prevMax
+	})
+
+	runtimeScope := newRichServerTestScope(t)
+	// Capacity 0 so enqueueWatchEvent always drops.
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{queue: make(chan string)},
+	}
+	file := filepath.Join(t.TempDir(), "dropped.ts")
+	srv.scheduleLeaseConflictRetry(file)
+	time.Sleep(40 * time.Millisecond)
+	if got := srv.hotreload.nextLeaseRetry(file); got != 1 {
+		t.Fatalf("after dropped enqueue, nextLeaseRetry = %d, want 1 (budget cleared)", got)
+	}
+	srv.hotreload.clearLeaseRetry(file)
+}
+
+func TestScheduleLeaseConflictRetryAbortsOnContextCancel(t *testing.T) {
+	prevBase, prevMax := hotreloadLeaseRetryBase, hotreloadLeaseRetryMax
+	hotreloadLeaseRetryBase = 200 * time.Millisecond
+	hotreloadLeaseRetryMax = 3
+	t.Cleanup(func() {
+		hotreloadLeaseRetryBase = prevBase
+		hotreloadLeaseRetryMax = prevMax
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	runtimeScope := newRichServerTestScope(t)
+	runtimeScope.ctx = ctx
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{queue: make(chan string, 2)},
+	}
+	file := filepath.Join(t.TempDir(), "cancel.ts")
+	srv.scheduleLeaseConflictRetry(file)
+	cancel()
+	select {
+	case event := <-srv.hotreloadQueue():
+		t.Fatalf("unexpected retry event after cancel: %q", event)
+	case <-time.After(80 * time.Millisecond):
+	}
+}
+
+func TestScheduleLeaseConflictRetryAbortsWhenCanceledAfterTimer(t *testing.T) {
+	prevBase, prevMax := hotreloadLeaseRetryBase, hotreloadLeaseRetryMax
+	hotreloadLeaseRetryBase = 5 * time.Millisecond
+	hotreloadLeaseRetryMax = 3
+	hotreloadForceRetryInactive.Store(true)
+	t.Cleanup(func() {
+		hotreloadLeaseRetryBase = prevBase
+		hotreloadLeaseRetryMax = prevMax
+		hotreloadForceRetryInactive.Store(false)
+	})
+
+	runtimeScope := newRichServerTestScope(t)
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{queue: make(chan string, 2)},
+	}
+	file := filepath.Join(t.TempDir(), "after-timer.ts")
+	srv.scheduleLeaseConflictRetry(file)
+	select {
+	case event := <-srv.hotreloadQueue():
+		t.Fatalf("unexpected retry event after post-timer inactive: %q", event)
+	case <-time.After(80 * time.Millisecond):
+	}
+}
+
 func TestScheduleLeaseConflictRetryNoopWhenDisabled(t *testing.T) {
 	prevBase, prevMax := hotreloadLeaseRetryBase, hotreloadLeaseRetryMax
 	hotreloadLeaseRetryBase = 0

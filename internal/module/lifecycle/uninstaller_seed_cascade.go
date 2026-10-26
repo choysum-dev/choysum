@@ -7,11 +7,26 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"sync/atomic"
 
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	xfmt "golang.org/x/exp/errors/fmt"
 	"gorm.io/gorm"
+)
+
+// seedSavepointSeq makes SAVEPOINT names unique across multi-pass retries.
+var seedSavepointSeq atomic.Int64
+
+// Test hooks for savepoint create / rollback / release failure paths.
+var (
+	seedSavepointCreate = func(db *gorm.DB, name string) error {
+		return db.SavePoint(name).Error
+	}
+	seedSavepointRollback = func(db *gorm.DB, name string) error {
+		return db.RollbackTo(name).Error
+	}
+	releaseSeedDeleteSavepointFn = releaseSeedDeleteSavepoint
 )
 
 // seedRowSnapshot is one MetaModelData row with its physical table resolved
@@ -145,14 +160,8 @@ func deleteSeedRowsForSnapshots(db *gorm.DB, snapshots []seedRowSnapshot) error 
 			next = append(next, snap)
 		}
 
-		if len(next) == 0 {
-			return nil
-		}
 		if !progressed {
 			sample := next[0]
-			if lastErr == nil {
-				lastErr = xfmt.Errorf("unknown delete failure")
-			}
 			return xfmt.Errorf(
 				"error cascade-deleting seed rows for module %s (stuck on %s.%s table=%s res_id=%s): %w",
 				sample.Module, sample.Module, sample.Name, sample.TableName, sample.ResID, lastErr,
@@ -182,9 +191,9 @@ func hardDeleteSeedRow(db *gorm.DB, snap seedRowSnapshot, useSavepoint bool, att
 
 	spName := ""
 	if useSavepoint {
-		// Unique per attempt: ResID alone can collide across xml_ids / multi-pass retries.
-		spName = "sp_seed_" + strconv.Itoa(attempt)
-		if err := db.SavePoint(spName).Error; err != nil {
+		// Monotonic id keeps names unique across passes (attempt alone resets each pass).
+		spName = "sp_seed_" + strconv.Itoa(attempt) + "_" + strconv.FormatInt(seedSavepointSeq.Add(1), 10)
+		if err := seedSavepointCreate(db, spName); err != nil {
 			return xfmt.Errorf("savepoint %s: %w", spName, err)
 		}
 	}
@@ -193,17 +202,17 @@ func hardDeleteSeedRow(db *gorm.DB, snap seedRowSnapshot, useSavepoint bool, att
 	res := db.Exec("DELETE FROM "+snap.TableName+" WHERE id = ?", snap.ResID)
 	if res.Error != nil {
 		if useSavepoint {
-			if rbErr := db.RollbackTo(spName).Error; rbErr != nil {
+			if rbErr := seedSavepointRollback(db, spName); rbErr != nil {
 				return xfmt.Errorf("delete %s id=%s: %w (rollback savepoint: %v)", snap.TableName, snap.ResID, res.Error, rbErr)
 			}
 			// Postgres keeps the savepoint after ROLLBACK TO; release so a later
 			// pass can recreate the same name for this res_id.
-			_ = releaseSeedDeleteSavepoint(db, spName)
+			_ = releaseSeedDeleteSavepointFn(db, spName)
 		}
 		return res.Error
 	}
 	if useSavepoint {
-		if err := releaseSeedDeleteSavepoint(db, spName); err != nil {
+		if err := releaseSeedDeleteSavepointFn(db, spName); err != nil {
 			return xfmt.Errorf("release savepoint %s after delete %s id=%s: %w", spName, snap.TableName, snap.ResID, err)
 		}
 	}

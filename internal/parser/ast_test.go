@@ -245,6 +245,11 @@ func TestParseTSTreeAndTSGoHelperFunctions(t *testing.T) {
 	if got := tsgoPropertyName(nil, nameNode); got != "" {
 		t.Fatalf("tsgoPropertyName(nil ctx) = %q, want empty", got)
 	}
+	// Empty Text() falls back to nodeText (may also be empty).
+	emptyFactory := tsast.NewNodeFactory(tsast.NodeFactoryHooks{})
+	if got := tsgoPropertyName(ctx, emptyFactory.NewIdentifier("")); got != "" {
+		t.Fatalf("tsgoPropertyName(empty ident) = %q, want empty", got)
+	}
 
 	defaultModule, defaultRef := parser.ConvertReferenceWithModuleSpec("User")
 	if filepath.Base(defaultModule) != "sample" || defaultRef != "default" {

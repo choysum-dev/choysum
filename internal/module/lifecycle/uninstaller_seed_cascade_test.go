@@ -5,6 +5,7 @@ package lifecycle
 
 import (
 	"database/sql"
+	"errors"
 	"strings"
 	"testing"
 
@@ -615,5 +616,151 @@ func TestDialectNeedsDeleteSavepointNilDB(t *testing.T) {
 	t.Parallel()
 	if dialectNeedsDeleteSavepoint(nil) {
 		t.Fatal("nil db must be false")
+	}
+}
+
+func TestSnapshotModuleSeedRowsMissingMetaTable(t *testing.T) {
+	t.Parallel()
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.Migrator().DropTable(&modmeta.ModelData{}); err != nil {
+		t.Fatalf("drop meta model data: %v", err)
+	}
+	snaps, err := snapshotModuleSeedRows(db, "demo")
+	if err != nil || snaps != nil {
+		t.Fatalf("missing table: snaps=%v err=%v", snaps, err)
+	}
+}
+
+func TestSnapshotModuleSeedRowsFindError(t *testing.T) {
+	t.Parallel()
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	const cb = "test_seed_cascade_find_fail"
+	if err := db.Callback().Query().Before("gorm:query").Register(cb, func(tx *gorm.DB) {
+		_ = tx.AddError(errors.New("forced find boom"))
+	}); err != nil {
+		t.Fatalf("register callback: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Callback().Query().Remove(cb) })
+	_, err := snapshotModuleSeedRows(db, "demo")
+	if err == nil || !strings.Contains(err.Error(), "error listing meta model data") {
+		t.Fatalf("err = %v, want listing error", err)
+	}
+}
+
+func TestResolveSeedTableNameLoadAndLookupErrors(t *testing.T) {
+	t.Parallel()
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+
+	emptyViaApp := ensureEffectiveSeedModel(t, db, "demo", "EmptyViaApp", "")
+	_ = emptyViaApp
+	if _, err := resolveSeedTableName(db, &modmeta.ModelData{
+		Module: "demo", Name: "empty_app", Application: "demo", ModelName: "EmptyViaApp", ModelId: "",
+	}); err == nil || !strings.Contains(err.Error(), "empty model_table") {
+		t.Fatalf("app+name empty model_table err = %v", err)
+	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("db.DB(): %v", err)
+	}
+	if err := sqlDB.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	if _, err := resolveSeedTableName(db, &modmeta.ModelData{
+		Module: "demo", Name: "x", ModelId: "some-id",
+	}); err == nil || !strings.Contains(err.Error(), "error loading meta_model") {
+		t.Fatalf("load-by-id err = %v", err)
+	}
+	if _, err := resolveSeedTableName(db, &modmeta.ModelData{
+		Module: "demo", Name: "y", Application: "demo", ModelName: "EmptyViaApp", ModelId: "",
+	}); err == nil || !strings.Contains(err.Error(), "error looking up meta_model") {
+		t.Fatalf("lookup-by-app err = %v", err)
+	}
+}
+
+func TestDeleteSeedRowsForSnapshotsMultiPassFK(t *testing.T) {
+	t.Parallel()
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.Exec("PRAGMA foreign_keys = ON").Error; err != nil {
+		t.Fatalf("pragma: %v", err)
+	}
+	parentTable := "demo_seed_parent"
+	childTable := "demo_seed_child"
+	if err := db.Exec(`CREATE TABLE ` + parentTable + ` (id TEXT PRIMARY KEY)`).Error; err != nil {
+		t.Fatalf("create parent: %v", err)
+	}
+	if err := db.Exec(`CREATE TABLE ` + childTable + ` (id TEXT PRIMARY KEY, parent_id TEXT NOT NULL REFERENCES ` + parentTable + `(id))`).Error; err != nil {
+		t.Fatalf("create child: %v", err)
+	}
+	parentID := xid.New().String()
+	childID := xid.New().String()
+	if err := db.Exec(`INSERT INTO `+parentTable+`(id) VALUES (?)`, parentID).Error; err != nil {
+		t.Fatalf("insert parent: %v", err)
+	}
+	if err := db.Exec(`INSERT INTO `+childTable+`(id, parent_id) VALUES (?, ?)`, childID, parentID).Error; err != nil {
+		t.Fatalf("insert child: %v", err)
+	}
+
+	snaps := []seedRowSnapshot{
+		{Module: "demo", Name: "parent", ResID: parentID, TableName: parentTable},
+		{Module: "demo", Name: "child", ResID: childID, TableName: childTable},
+	}
+	if err := deleteSeedRowsForSnapshots(db, snaps); err != nil {
+		t.Fatalf("cascade multi-pass: %v", err)
+	}
+	var n int
+	if err := db.Raw(`SELECT COUNT(*) FROM ` + parentTable).Scan(&n).Error; err != nil || n != 0 {
+		t.Fatalf("parent rows=%d err=%v", n, err)
+	}
+	if err := db.Raw(`SELECT COUNT(*) FROM ` + childTable).Scan(&n).Error; err != nil || n != 0 {
+		t.Fatalf("child rows=%d err=%v", n, err)
+	}
+}
+
+func TestHardDeleteSeedRowSavepointHookFailures(t *testing.T) {
+	t.Parallel()
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	table := "demo_seed_hook"
+	if err := db.Exec(`CREATE TABLE ` + table + ` (id TEXT PRIMARY KEY)`).Error; err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	id := xid.New().String()
+	if err := db.Exec(`INSERT INTO `+table+`(id) VALUES (?)`, id).Error; err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	prevCreate, prevRollback, prevRelease := seedSavepointCreate, seedSavepointRollback, releaseSeedDeleteSavepointFn
+	t.Cleanup(func() {
+		seedSavepointCreate = prevCreate
+		seedSavepointRollback = prevRollback
+		releaseSeedDeleteSavepointFn = prevRelease
+	})
+
+	tx := db.Begin()
+	if tx.Error != nil {
+		t.Fatalf("begin: %v", tx.Error)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	seedSavepointCreate = func(*gorm.DB, string) error { return errors.New("sp create boom") }
+	if err := hardDeleteSeedRow(tx, seedRowSnapshot{TableName: table, ResID: id}, true, 0); err == nil || !strings.Contains(err.Error(), "savepoint") {
+		t.Fatalf("create fail err = %v", err)
+	}
+
+	seedSavepointCreate = prevCreate
+	seedSavepointRollback = func(*gorm.DB, string) error { return errors.New("sp rollback boom") }
+	if err := hardDeleteSeedRow(tx, seedRowSnapshot{TableName: "missing_seed_tbl", ResID: id}, true, 1); err == nil || !strings.Contains(err.Error(), "rollback savepoint") {
+		t.Fatalf("rollback fail err = %v", err)
+	}
+
+	seedSavepointRollback = prevRollback
+	releaseSeedDeleteSavepointFn = func(*gorm.DB, string) error { return errors.New("sp release boom") }
+	if err := hardDeleteSeedRow(tx, seedRowSnapshot{TableName: table, ResID: id}, true, 2); err == nil || !strings.Contains(err.Error(), "release savepoint") {
+		t.Fatalf("release fail err = %v", err)
 	}
 }

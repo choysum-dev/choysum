@@ -13,6 +13,45 @@ import (
 	"github.com/choysum-dev/choysum/pkg/meta"
 )
 
+func TestBuildFieldResolvedSpec_ScaleAndCurrencyField(t *testing.T) {
+	field := &meta.Field{
+		Name: "Amount",
+		Decorators: []*meta.Decorator{{
+			Name: "Field",
+			Arguments: []*meta.Argument{{
+				Type:  "ObjectLiteral",
+				Value: `{"type":"Decimal","scaleField":" Scale ","currencyField":" CurrencyId "}`,
+			}},
+		}},
+	}
+	if _, err := buildFieldResolvedSpec(field, nil, nil, "demo", "demo.scope", nil); err != nil {
+		t.Fatalf("buildFieldResolvedSpec: %v", err)
+	}
+	if field.ScaleField != "Scale" {
+		t.Fatalf("ScaleField=%q want Scale", field.ScaleField)
+	}
+	if field.CurrencyField != "CurrencyId" {
+		t.Fatalf("CurrencyField=%q want CurrencyId", field.CurrencyField)
+	}
+	// Whitespace-only companions must not overwrite.
+	blank := &meta.Field{
+		Name: "Amount",
+		Decorators: []*meta.Decorator{{
+			Name: "Field",
+			Arguments: []*meta.Argument{{
+				Type:  "ObjectLiteral",
+				Value: `{"type":"Decimal","scaleField":"  ","currencyField":"  "}`,
+			}},
+		}},
+	}
+	if _, err := buildFieldResolvedSpec(blank, nil, nil, "demo", "demo.scope", nil); err != nil {
+		t.Fatalf("blank companions: %v", err)
+	}
+	if blank.ScaleField != "" || blank.CurrencyField != "" {
+		t.Fatalf("blank companions must stay empty, got scale=%q currency=%q", blank.ScaleField, blank.CurrencyField)
+	}
+}
+
 func TestParseSandboxAmountCurrencyField(t *testing.T) {
 	_, thisFile, _, _ := runtime.Caller(0)
 	root := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "../../.."))

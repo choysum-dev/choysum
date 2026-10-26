@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	logutil "github.com/choysum-dev/choysum/internal/logger"
@@ -264,17 +265,39 @@ func (s *GRPCWebServer) scheduleLeaseConflictRetry(file string) {
 		case <-done:
 			return
 		}
-		if done != nil {
-			select {
-			case <-done:
-				return
-			default:
-			}
+		// Re-check after the timer: context may have canceled while we waited.
+		if !hotreloadRetryStillActive(done) {
+			return
 		}
-		if s.enqueueWatchEvent(file) && s.runtimeScope != nil {
+		if !s.enqueueWatchEvent(file) {
+			// Dropped enqueue must not leave a stale retry budget entry.
+			s.hotreload.clearLeaseRetry(file)
+			return
+		}
+		if s.runtimeScope != nil {
 			s.runtimeScope.Logger().Info("watch reload retry enqueued after lease conflict", "file", file, "attempt", attempt)
 		}
 	}()
+}
+
+// hotreloadForceRetryInactive forces the post-timer still-active check to fail (tests).
+var hotreloadForceRetryInactive atomic.Bool
+
+// hotreloadRetryStillActive is false when the runtime context was canceled
+// between the retry timer firing and enqueue.
+func hotreloadRetryStillActive(done <-chan struct{}) bool {
+	if hotreloadForceRetryInactive.Load() {
+		return false
+	}
+	if done == nil {
+		return true
+	}
+	select {
+	case <-done:
+		return false
+	default:
+		return true
+	}
 }
 
 func (s *GRPCWebServer) handleQueuedWatchEvent(eventInfo string) error {

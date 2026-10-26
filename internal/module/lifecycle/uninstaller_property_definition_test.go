@@ -261,6 +261,9 @@ func TestIsMissingSQLTableError(t *testing.T) {
 	if isMissingSQLTableError(errors.New(`column "name" does not exist`)) {
 		t.Fatal("column missing must be false")
 	}
+	if isMissingSQLTableError(errors.New(`constraint "fk_x" of relation "demo" does not exist`)) {
+		t.Fatal("missing constraint must not be treated as missing table")
+	}
 }
 
 func TestPropertyDefinitionTableExists(t *testing.T) {

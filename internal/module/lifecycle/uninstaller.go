@@ -320,8 +320,11 @@ func isMissingSQLTableError(err error) bool {
 	if strings.Contains(msg, "table") && strings.Contains(msg, "doesn't exist") {
 		return true
 	}
-	// Postgres 42P01: relation "t" does not exist (not column "t" does not exist)
-	if strings.Contains(msg, "relation") && strings.Contains(msg, "does not exist") {
+	// Postgres 42P01: relation "t" does not exist.
+	// Require the quoted-relation form and skip constraint messages such as
+	// constraint "fk" of relation "t" does not exist.
+	if strings.Contains(msg, `relation "`) && strings.Contains(msg, "does not exist") &&
+		!strings.Contains(msg, "constraint") {
 		return true
 	}
 	return false

@@ -849,6 +849,26 @@ func TestTopoOrderOrCycleBatch_RecordIndexNumericTieBreak(t *testing.T) {
 	}
 }
 
+func TestTopoOrderOrCycleBatch_FileAndNameTieBreak(t *testing.T) {
+	// Cover less(): different FileRel, and same file+index with name order.
+	records := []batchRecord{
+		{FileRel: "b.json", FilePath: "/tmp/b.json", RecordIndex: 0, Rec: record{Module: "m", Name: "z"}},
+		{FileRel: "a.json", FilePath: "/tmp/a.json", RecordIndex: 0, Rec: record{Module: "m", Name: "z"}},
+		{FileRel: "a.json", FilePath: "/tmp/a.json", RecordIndex: 0, Rec: record{Module: "m", Name: "a"}},
+	}
+	dep := make([][]int, 3)
+	adj := make([][]int, 3)
+	indeg := make([]int, 3)
+	order, err := topoOrderOrCycleBatch(records, dep, adj, indeg, nil)
+	if err != nil {
+		t.Fatalf("topoOrderOrCycleBatch() error = %v", err)
+	}
+	want := []int{2, 1, 0} // a.json/a, a.json/z, b.json/z
+	if len(order) != 3 || order[0] != want[0] || order[1] != want[1] || order[2] != want[2] {
+		t.Fatalf("order = %v, want %v", order, want)
+	}
+}
+
 func makeRange(n int) []int {
 	out := make([]int, n)
 	for i := range out {

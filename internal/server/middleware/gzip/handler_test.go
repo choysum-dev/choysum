@@ -154,6 +154,20 @@ func TestGzipHandlerSkipsDocumentPayloadPaths(t *testing.T) {
 	}
 }
 
+func TestGzipHandlerCleansDocumentTraversalBeforeBypass(t *testing.T) {
+	handler := NewGzipHandler(testHandlerScope())
+	// /_document/../api cleans to /api — must gzip (bypass only for real /_document/).
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/_document/../api", nil)
+	request.Header.Set("Accept-Encoding", "gzip")
+	handler.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("api-body"))
+	})).ServeHTTP(recorder, request)
+	if recorder.Header().Get("Content-Encoding") != "gzip" {
+		t.Fatalf("Content-Encoding = %q, want gzip after path.Clean leaves /api", recorder.Header().Get("Content-Encoding"))
+	}
+}
+
 func TestGzipResponseWriterWriteHeaderIsIdempotent(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	buffer := bytes.NewBuffer(nil)

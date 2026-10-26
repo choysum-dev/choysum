@@ -7,6 +7,7 @@ import (
 	"compress/gzip"
 	"io"
 	"net/http"
+	"path"
 	"strings"
 
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -53,7 +54,8 @@ func (h *GzipHandler) Handler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Document payload streams are already compressed media or large binaries;
 		// gzip would rewrite Content-Length and hurt <img>/fetch consumers.
-		if strings.HasPrefix(r.URL.Path, "/_document/") {
+		cleanedPath := path.Clean("/" + strings.TrimPrefix(r.URL.Path, "/"))
+		if strings.HasPrefix(cleanedPath, "/_document/") {
 			next.ServeHTTP(w, r)
 			return
 		}
