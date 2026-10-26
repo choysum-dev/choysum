@@ -5,7 +5,7 @@ import { nextTick, h, onMounted, ref } from 'vue';
 
 import { createFieldsGetHelpers, FIELD_PRESENTATION_FIELDS_GET_ATTRS } from '@/web/web/stores/fieldsGet';
 import type { WebFieldMetadata } from '@/web/web/stores/modelStore';
-import { flushPromises, fnRecorder, mountApp, stub, stubSfc, restoreSfc } from '@/web/web/__tests__/mountApp';
+import { flushPromises, fnRecorder, mountApp, stubSfc, restoreSfc } from '@/web/web/__tests__/mountApp';
 import SearchFilterGroup from './SearchFilterGroup.vue';
 import SelectionField from '@/web/web/components/field/ChoySelectionField.vue';
 
@@ -94,24 +94,6 @@ describe('SearchFilterGroup selection filter (T4.5)', () => {
         onRemoveCondition: noop,
       },
       stubs: {
-        ElRadioGroup: stub('ElRadioGroup'),
-        ElRadio: stub('ElRadio'),
-        ElButton: stub('ElButton'),
-        ElDivider: stub('ElDivider'),
-        ElSelect: {
-          name: 'ElSelect',
-          setup(_, { slots }) {
-            return () => h('div', { class: 'el-select' }, slots.default?.());
-          },
-        },
-        ElOption: {
-          name: 'ElOption',
-          props: ['label', 'value'],
-          setup(props: any) {
-            return () => h('div', { class: 'opt', 'data-label': props.label, 'data-value': props.value });
-          },
-        },
-        ElInput: stub('ElInput'),
         ChoyFieldBase: {
           name: 'ChoyFieldBase',
           setup(_, { slots }) {

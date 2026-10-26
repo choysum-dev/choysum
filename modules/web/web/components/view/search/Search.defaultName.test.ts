@@ -100,7 +100,7 @@ function installEpStubs() {
   stubSfc(Popover as any, {
     name: 'Popover',
     setup(_: any, { slots }: any) {
-      return () => h('div', { class: 'el-popover' }, slots.default?.());
+      return () => h('div', { class: 'choy-popover-stub' }, slots.default?.());
     },
   });
   stubSfc(PopoverTrigger as any, {

@@ -24,17 +24,17 @@ function makeStore(search?: ReturnType<typeof fnRecorder>) {
         appliedFilters: [],
         appliedGroups: [],
         keywordFields: [],
-        pagination: { limit: 20, offset: 0 },
+        pagination: { limit: 20, offset: 0 }
       },
       result: { total: 0 },
       selection: [],
       planCache: new Map(),
-      orderBy: undefined,
+      orderBy: undefined
     },
     setContext: () => {},
     getContext: () => ({}),
     withContext: async (_c: any, fn: any) => fn(),
-    Search: search || (async () => []),
+    Search: search || (async () => [])
   } as any;
 }
 
@@ -43,30 +43,30 @@ function stubListChrome() {
     name: 'ChoyViewContainer',
     setup(_p: any, { slots }: any) {
       return () => h('div', { class: 'ovc' }, [slots.header?.(), slots.fields?.(), slots.default?.()]);
-    },
+    }
   });
   stubSfc(ListInlineEditScope, {
     name: 'ListInlineEditScope',
     setup(_p: any, { slots }: any) {
       return () => h('div', { class: 'inline-edit-scope' }, slots.default?.());
-    },
+    }
   });
   stubSfc(ChoyTableHost, {
     name: 'ChoyTableHost',
-    setup: () => () => h('div', { 'data-stub': 'ChoyTableHost' }),
+    setup: () => () => h('div', { 'data-stub': 'ChoyTableHost' })
   });
   stubSfc(ChoyTableColumn, {
     name: 'ChoyTableColumn',
-    setup: () => () => null,
+    setup: () => () => null
   });
   stubSfc(ChoyPagination, {
     name: 'ChoyPagination',
-    setup: () => () => h('div', { 'data-stub': 'Pagination' }),
+    setup: () => () => h('div', { 'data-stub': 'Pagination' })
   });
   // Keep SearchView identity for shouldDeferViewFirstFrame; render a silent stub.
   stubSfc(ChoySearchView, {
     name: 'ChoySearchView',
-    setup: () => () => h('div', { 'data-stub': 'SearchView' }),
+    setup: () => () => h('div', { 'data-stub': 'SearchView' })
   });
 }
 
@@ -98,10 +98,9 @@ describe('ListView first-frame load', () => {
         searchView: ChoySearchView,
         showPaginate: false,
         refreshAction: false,
-        deleteAction: false,
+        deleteAction: false
       },
-      plugins,
-      stubs: { ElButton: true, ElIcon: true },
+      plugins
     });
     await flushPromises();
     expect(search.calls.length).toBe(0);
@@ -113,7 +112,7 @@ describe('ListView first-frame load', () => {
     const SearchStub = markRaw(
       defineComponent({
         name: 'SearchStub',
-        setup: () => () => h('div', { class: 'custom-search' }),
+        setup: () => () => h('div', { class: 'custom-search' })
       })
     );
     const { plugins } = buildPageMountGlobal();
@@ -123,10 +122,9 @@ describe('ListView first-frame load', () => {
         searchView: SearchStub,
         showPaginate: false,
         refreshAction: false,
-        deleteAction: false,
+        deleteAction: false
       },
-      plugins,
-      stubs: { ElButton: true, ElIcon: true },
+      plugins
     });
     await flushPromises();
     expect(search.calls.length).toBeGreaterThan(0);
@@ -141,10 +139,9 @@ describe('ListView first-frame load', () => {
         store: makeStore(search),
         showPaginate: false,
         refreshAction: false,
-        deleteAction: false,
+        deleteAction: false
       },
-      plugins,
-      stubs: { ElButton: true, ElIcon: true },
+      plugins
     });
     await flushPromises();
     expect(search.calls.length).toBeGreaterThan(0);

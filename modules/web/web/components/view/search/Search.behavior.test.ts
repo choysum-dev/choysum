@@ -131,7 +131,7 @@ function installEpStubs() {
     emits: ['update:open'],
     setup(_: any, { slots }: any) {
       // Always show trigger + content so menu actions are clickable in unit tests.
-      return () => h('div', { class: 'el-popover' }, slots.default?.());
+      return () => h('div', { class: 'choy-popover-stub' }, slots.default?.());
     },
   });
   stubSfc(PopoverContent as any, {

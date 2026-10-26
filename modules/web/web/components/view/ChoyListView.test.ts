@@ -29,19 +29,19 @@ function makeStore(extra?: Record<string, unknown>) {
         appliedFilters: [],
         appliedGroups: [],
         keywordFields: [],
-        pagination: { limit: 20, offset: 0 },
+        pagination: { limit: 20, offset: 0 }
       },
       result: { total: 0 },
       selection: [],
       planCache: new Map(),
-      orderBy: undefined,
+      orderBy: undefined
     },
     setContext: () => {},
     getContext: () => ({}),
     withContext: async (_c: any, fn: any) => fn(),
     Search: async () => [],
     UpdateById: fnRecorder(async () => ({})),
-    ...extra,
+    ...extra
   } as any;
 }
 
@@ -51,21 +51,21 @@ function stubListChrome() {
     emits: ['row-click', 'selection-change', 'sort-change'],
     setup(_p: any, { slots }: any) {
       return () => h('div', { 'data-stub': 'ChoyTableHost' }, [slots.default?.(), slots.empty?.()]);
-    },
+    }
   });
   stubSfc(ChoyTableColumn, {
     name: 'ChoyTableColumn',
-    setup: () => () => h('div', { 'data-stub': 'ChoyTableColumn' }),
+    setup: () => () => h('div', { 'data-stub': 'ChoyTableColumn' })
   });
   stubSfc(ChoyPagination, {
     name: 'ChoyPagination',
-    setup: () => () => h('div', { 'data-stub': 'Pagination' }),
+    setup: () => () => h('div', { 'data-stub': 'Pagination' })
   });
   stubSfc(ListInlineEditScope, {
     name: 'ListInlineEditScope',
     setup(_p: any, { slots }: any) {
       return () => h('div', { 'data-stub': 'inline-scope' }, slots.default?.());
-    },
+    }
   });
 }
 
@@ -94,10 +94,9 @@ describe('ListView', () => {
         showHandle: true,
         showPaginate: false,
         refreshAction: false,
-        deleteAction: false,
+        deleteAction: false
       },
-      plugins,
-      stubs: { ElButton: true, ElIcon: true },
+      plugins
     });
     await flushPromises();
     expect(root).toBeTruthy();
@@ -113,10 +112,9 @@ describe('ListView', () => {
         store: makeStore(),
         showPaginate: false,
         refreshAction: false,
-        deleteAction: false,
+        deleteAction: false
       },
-      plugins,
-      stubs: { ElButton: true, ElIcon: true },
+      plugins
     });
     await flushPromises();
     expect(typeof root.load).toBe('function');
@@ -132,10 +130,9 @@ describe('ListView', () => {
         store: makeStore(),
         showPaginate: false,
         refreshAction: false,
-        deleteAction: true,
+        deleteAction: true
       },
-      plugins,
-      stubs: { ElButton: true, ElIcon: true },
+      plugins
     });
     await flushPromises();
     expect(typeof root.onSelectionChange).toBe('function');
@@ -161,7 +158,7 @@ describe('ListView', () => {
       setup(_, { slots }) {
         ctx = providePageContext({ store });
         return () => h('div', slots.default?.());
-      },
+      }
     });
     const { plugins } = buildPageMountGlobal();
     const { unmount } = mountApp(Host, {
@@ -173,10 +170,9 @@ describe('ListView', () => {
             showActions: false,
             showPaginate: false,
             refreshAction: false,
-            deleteAction: false,
-          }),
-      },
-      stubs: { ElButton: true, ElIcon: true },
+            deleteAction: false
+          })
+      }
     });
     await flushPromises();
     const target = ctx!.actionTarget.value;

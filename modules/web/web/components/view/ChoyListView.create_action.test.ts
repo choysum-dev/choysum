@@ -3,8 +3,6 @@
 
 /**
  * ListView create-action under QJS.
- * KanbanView paints New via ElButton mount stubs; ListView often yields an empty
- * mount root even with ChoyTableHost/VColumn stubSfc'd (inline-edit scope / first-frame).
  * Prefer New-button clicks when painted; otherwise keep progressive density on
  * empty createAction + mounted expose surface.
  */
@@ -134,7 +132,6 @@ describe('ListView create action', () => {
         showPaginate: false,
       },
       plugins,
-      stubs: { ElIcon: true },
     });
     await flushPromises();
 
@@ -168,7 +165,6 @@ describe('ListView create action', () => {
       },
       plugins,
       on: { onActionError },
-      stubs: { ElIcon: true },
     });
     await flushPromises();
 
@@ -198,7 +194,6 @@ describe('ListView create action', () => {
         showPaginate: false,
       },
       plugins,
-      stubs: { ElIcon: true },
     });
     await flushPromises();
     expect(findNewButton(el)).toBeFalsy();
