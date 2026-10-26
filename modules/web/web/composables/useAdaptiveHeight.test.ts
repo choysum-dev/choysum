@@ -152,15 +152,15 @@ describe('useAdaptiveHeight', () => {
     shell.remove();
   });
 
-  test('container mode uses dialog body when present', async () => {
+  test('container mode uses Choy dialog content when present', async () => {
     let api: ReturnType<typeof useAdaptiveHeight> | null = null;
-    const dialog = document.createElement('div');
-    dialog.className = 'el-dialog';
-    const body = document.createElement('div');
-    body.className = 'el-dialog__body';
-    body.getBoundingClientRect = () => rect({ top: 40, bottom: 440 });
-    dialog.appendChild(body);
-    document.body.appendChild(dialog);
+    const content = document.createElement('div');
+    content.setAttribute('data-slot', 'dialog-content');
+    content.getBoundingClientRect = () => rect({ top: 40, bottom: 440 });
+    document.body.appendChild(content);
+    // Keep viewport fallback below the dialog-derived height (440 - 80 = 360).
+    const prev = window.innerHeight;
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 200 });
 
     const Host = defineComponent({
       setup() {
@@ -176,7 +176,7 @@ describe('useAdaptiveHeight', () => {
               if (!el) return;
               el.getBoundingClientRect = () => rect({ top: 80 });
               el.closest = ((sel: string) => {
-                if (sel === '.el-dialog__body') return body;
+                if (sel === '[data-slot="dialog-content"]') return content;
                 return null;
               }) as typeof el.closest;
               elRef.value = el as Element;
@@ -186,21 +186,23 @@ describe('useAdaptiveHeight', () => {
     });
     const m = mountApp(Host);
     await flushFrames();
-    expect(api!.height.value).toBeGreaterThanOrEqual(100);
+    expect(api!.height.value).toBe(360);
     m.unmount();
-    dialog.remove();
+    content.remove();
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: prev });
     await nextTick();
   });
 
   test('auto mode picks container inside dialog and honors containerSelector', async () => {
     let api: ReturnType<typeof useAdaptiveHeight> | null = null;
-    const dialog = document.createElement('div');
-    dialog.className = 'el-dialog';
-    const body = document.createElement('div');
-    body.className = 'el-dialog__body custom-container';
-    body.getBoundingClientRect = () => rect({ top: 20, bottom: 420 });
-    dialog.appendChild(body);
-    document.body.appendChild(dialog);
+    const content = document.createElement('div');
+    content.setAttribute('data-slot', 'dialog-content');
+    content.className = 'custom-container';
+    content.getBoundingClientRect = () => rect({ top: 20, bottom: 420 });
+    document.body.appendChild(content);
+    // Keep viewport fallback below the dialog-derived height (420 - 60 = 360).
+    const prev = window.innerHeight;
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 200 });
 
     const Host = defineComponent({
       setup() {
@@ -217,7 +219,9 @@ describe('useAdaptiveHeight', () => {
               if (!el) return;
               el.getBoundingClientRect = () => rect({ top: 60 });
               el.closest = ((sel: string) => {
-                if (sel === '.el-dialog__body' || sel === '.custom-container') return body;
+                if (sel === '[data-slot="dialog-content"]' || sel === '.custom-container') {
+                  return content;
+                }
                 return null;
               }) as typeof el.closest;
               elRef.value = el as Element;
@@ -227,13 +231,14 @@ describe('useAdaptiveHeight', () => {
     });
     const m = mountApp(Host);
     await flushFrames();
-    expect(api!.height.value).toBeGreaterThanOrEqual(80);
+    expect(api!.height.value).toBe(360);
     api!.recompute();
     api!.recompute();
     await flushFrames(2);
-    expect(api!.height.value).toBeGreaterThanOrEqual(80);
+    expect(api!.height.value).toBe(360);
     m.unmount();
-    dialog.remove();
+    content.remove();
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: prev });
   });
 
   test('container mode without resolvable container falls back to viewport', async () => {

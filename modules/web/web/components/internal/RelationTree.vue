@@ -85,7 +85,7 @@ export type RelationTreeLoadFn = (
   resolve: (children: any[]) => void,
 ) => void | Promise<void>;
 
-/** Minimal el-tree-like node surface used by relation tree fields. */
+/** Lazy tree node surface used by relation tree fields. */
 export type RelationTreeNodeProxy = {
   level: number;
   data: any;

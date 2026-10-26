@@ -3,6 +3,7 @@
 
 import { computed, onBeforeUnmount, onMounted, onActivated, ref, type Ref } from 'vue';
 import {
+  closestChoyDialogContent,
   collectAdaptiveHeightObserveTargets,
   computeContainerAdaptiveHeight,
   computeViewportAdaptiveHeight,
@@ -22,8 +23,8 @@ export interface AdaptiveHeightOptions {
 /**
  * useAdaptiveHeight
  * Computes content height from either the viewport or a container with requestAnimationFrame throttling.
- * - auto: use container mode inside .el-dialog__body, otherwise viewport mode
- * - container: compute height from the resolved container and subtract the dialog footer when present
+ * - auto: use container mode inside ChoyDialog content (`data-slot=dialog-content`), otherwise viewport
+ * - container: compute height from the resolved container and subtract `data-slot=dialog-footer` when present
  * - viewport: fill to AppShell scroll canvas (above footer) when nested there;
  *   otherwise distance to the viewport bottom minus viewportGap
  * - none: leave height untouched
@@ -51,7 +52,7 @@ export function useAdaptiveHeight(wrapRef: Ref<Element | null>, opts: AdaptiveHe
     const requested = options.mode ?? 'auto';
     if (requested === 'none') return 'viewport'; // Placeholder; callers skip computation later.
     if (requested !== 'auto') return requested as any;
-    if (wrap && wrap.closest('.el-dialog__body')) return 'container';
+    if (wrap && closestChoyDialogContent(wrap)) return 'container';
     return 'viewport';
   }
 
@@ -70,7 +71,8 @@ export function useAdaptiveHeight(wrapRef: Ref<Element | null>, opts: AdaptiveHe
       const bySelector = options.containerSelector
         ? (wrap.closest(options.containerSelector) as HTMLElement) || (document.querySelector(options.containerSelector) as HTMLElement)
         : null;
-      containerEl = bySelector || (wrap.closest('.el-dialog__body') as HTMLElement) || wrap.parentElement;
+      containerEl =
+        bySelector || closestChoyDialogContent(wrap) || wrap.parentElement;
       if (containerEl) {
         height.value = computeContainerAdaptiveHeight(rect.top, containerEl, options);
         return;

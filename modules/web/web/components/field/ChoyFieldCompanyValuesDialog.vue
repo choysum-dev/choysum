@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
           </div>
         </form>
       </div>
-      <div class="dialog-footer">
+      <div class="dialog-footer" data-slot="dialog-footer">
         <ChoyButton type="button" variant="outline" @click="visible = false">{{ _t('Cancel') }}</ChoyButton>
         <ChoyButton type="button" :disabled="saving" @click="handleSave">
           {{ _t('Save company values') }}

@@ -11,7 +11,7 @@ test('partner detail tab-panels xpath uses pointed data-anchor', () => {
   expect(PARTNER_DETAIL_TAB_PANELS_XPATH).toBe(
     "//*[@data-anchor='partner.detail.tab-panels']",
   );
-  // Must not target legacy el-tabs / data-slot contracts.
+  // Keep partner detail tab panels on Choy tabs, not Element Plus tab markup.
   expect(PARTNER_DETAIL_TAB_PANELS_XPATH.includes('el-tabs')).toBe(false);
   expect(PARTNER_DETAIL_TAB_PANELS_XPATH.includes('data-slot')).toBe(false);
 });

@@ -53,7 +53,7 @@ SPDX-License-Identifier: Apache-2.0
         <div v-else-if="exportError" role="alert" class="mt-1">{{ exportError }}</div>
       </div>
 
-      <div class="export-panel-footer">
+      <div class="export-panel-footer" data-slot="dialog-footer">
         <ChoyButton size="sm" variant="outline" :disabled="busy" @click="visible = false">{{ cancelLabel }}</ChoyButton>
         <ChoyButton v-if="!exportDone" size="sm" variant="outline" :disabled="busy" @click="runPreview">{{ previewActionLabel }}</ChoyButton>
         <ChoyButton v-if="!exportDone" size="sm" variant="default" :disabled="busy" @click="commitExport">{{ exportActionLabel }}</ChoyButton>
