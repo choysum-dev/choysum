@@ -368,3 +368,172 @@ func TestModuleUninstallerCascadeThenReinstallUniqueCode(t *testing.T) {
 		t.Fatalf("recreate mapping: %v", err)
 	}
 }
+
+func TestSnapshotModuleSeedRowsEdgeCases(t *testing.T) {
+	t.Parallel()
+	if snaps, err := snapshotModuleSeedRows(nil, "demo"); err != nil || snaps != nil {
+		t.Fatalf("nil db: snaps=%v err=%v", snaps, err)
+	}
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	if snaps, err := snapshotModuleSeedRows(db, "  "); err != nil || snaps != nil {
+		t.Fatalf("empty module: snaps=%v err=%v", snaps, err)
+	}
+	if snaps, err := snapshotModuleSeedRows(db, "no_such_module"); err != nil || len(snaps) != 0 {
+		t.Fatalf("no mappings: snaps=%v err=%v", snaps, err)
+	}
+
+	seed := seedCleanModelsFixture(t, db)
+	businessTable := "demo_seed_snap"
+	if err := db.Exec(`CREATE TABLE ` + businessTable + ` (id TEXT PRIMARY KEY)`).Error; err != nil {
+		t.Fatalf("create table: %v", err)
+	}
+	modelID := ensureEffectiveSeedModel(t, db, "demo", "SnapItem", businessTable)
+	resID := xid.New().String()
+	if err := db.Create(&modmeta.ModelData{
+		Module: seed.module.Name, Name: "with_empty_resid", Application: "demo", ModelName: "SnapItem", ModelId: modelID, ResID: "  ",
+	}).Error; err != nil {
+		t.Fatalf("create empty resid mapping: %v", err)
+	}
+	if err := db.Create(&modmeta.ModelData{
+		Module: seed.module.Name, Name: "ok_row", Application: "demo", ModelName: "SnapItem", ModelId: modelID, ResID: resID,
+	}).Error; err != nil {
+		t.Fatalf("create ok mapping: %v", err)
+	}
+	snaps, err := snapshotModuleSeedRows(db, seed.module.Name)
+	if err != nil {
+		t.Fatalf("snapshot: %v", err)
+	}
+	if len(snaps) != 1 || snaps[0].ResID != resID || snaps[0].TableName != businessTable {
+		t.Fatalf("snaps = %+v, want one row for %s", snaps, resID)
+	}
+}
+
+func TestSnapshotModuleSeedRowsUnsafeTable(t *testing.T) {
+	t.Parallel()
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	seed := seedCleanModelsFixture(t, db)
+	modelID := ensureEffectiveSeedModel(t, db, "demo", "BadTable", "123bad")
+	if err := db.Create(&modmeta.ModelData{
+		Module: seed.module.Name, Name: "unsafe", Application: "demo", ModelName: "BadTable", ModelId: modelID, ResID: xid.New().String(),
+	}).Error; err != nil {
+		t.Fatalf("create mapping: %v", err)
+	}
+	_, err := snapshotModuleSeedRows(db, seed.module.Name)
+	if err == nil || !strings.Contains(err.Error(), "unsafe model_table") {
+		t.Fatalf("err = %v, want unsafe model_table", err)
+	}
+}
+
+func TestResolveSeedTableNameFallbacks(t *testing.T) {
+	t.Parallel()
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	if _, err := resolveSeedTableName(db, nil); err == nil || !strings.Contains(err.Error(), "nil model data") {
+		t.Fatalf("nil mapping err = %v", err)
+	}
+
+	table := "demo_resolve_by_app"
+	if err := db.Exec(`CREATE TABLE ` + table + ` (id TEXT PRIMARY KEY)`).Error; err != nil {
+		t.Fatalf("create table: %v", err)
+	}
+	_ = ensureEffectiveSeedModel(t, db, "demo", "ResolveByApp", table)
+
+	got, err := resolveSeedTableName(db, &modmeta.ModelData{
+		Module: "demo", Name: "x", Application: "demo", ModelName: "ResolveByApp", ModelId: "",
+	})
+	if err != nil || got != table {
+		t.Fatalf("app+name resolve = %q err=%v, want %s", got, err, table)
+	}
+
+	emptyID := ensureEffectiveSeedModel(t, db, "demo", "EmptyTableModel", "")
+	if _, err := resolveSeedTableName(db, &modmeta.ModelData{
+		Module: "demo", Name: "empty_tbl", ModelId: emptyID,
+	}); err == nil || !strings.Contains(err.Error(), "empty model_table") {
+		t.Fatalf("empty model_table err = %v", err)
+	}
+}
+
+func TestDialectNeedsDeleteSavepoint(t *testing.T) {
+	t.Parallel()
+	if dialectNeedsDeleteSavepoint(nil) {
+		t.Fatal("nil db must be false")
+	}
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	if dialectNeedsDeleteSavepoint(db) {
+		t.Fatal("sqlite must not require savepoints")
+	}
+}
+
+func TestHardDeleteSeedRowWithSavepoint(t *testing.T) {
+	t.Parallel()
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	table := "demo_seed_sp"
+	if err := db.Exec(`CREATE TABLE ` + table + ` (id TEXT PRIMARY KEY, name TEXT)`).Error; err != nil {
+		t.Fatalf("create table: %v", err)
+	}
+	id := xid.New().String()
+	if err := db.Exec(`INSERT INTO `+table+`(id, name) VALUES (?, ?)`, id, "a").Error; err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	tx := db.Begin()
+	if tx.Error != nil {
+		t.Fatalf("begin: %v", tx.Error)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	snap := seedRowSnapshot{Module: "demo", Name: "row", ResID: id, TableName: table}
+	if err := hardDeleteSeedRow(tx, snap, true, 0); err != nil {
+		t.Fatalf("hardDelete with savepoint: %v", err)
+	}
+	if err := hardDeleteSeedRow(tx, seedRowSnapshot{TableName: "1bad", ResID: id}, true, 1); err == nil || !strings.Contains(err.Error(), "unsafe") {
+		t.Fatalf("unsafe table err = %v", err)
+	}
+	// Missing row still succeeds (0 rows); savepoint release path still runs.
+	if err := hardDeleteSeedRow(tx, seedRowSnapshot{Module: "demo", Name: "gone", ResID: xid.New().String(), TableName: table}, true, 2); err != nil {
+		t.Fatalf("delete missing id: %v", err)
+	}
+	if err := releaseSeedDeleteSavepoint(nil, "sp_x"); err == nil {
+		t.Fatal("nil db release must fail")
+	}
+	if err := releaseSeedDeleteSavepoint(tx, "1bad"); err == nil {
+		t.Fatal("unsafe savepoint name must fail")
+	}
+}
+
+func TestDeleteSeedRowsForSnapshotsNilAndEmpty(t *testing.T) {
+	t.Parallel()
+	if err := deleteSeedRowsForSnapshots(nil, nil); err != nil {
+		t.Fatalf("nil: %v", err)
+	}
+	runtimeScope := newLifecycleCommitTestScope(t)
+	if err := deleteSeedRowsForSnapshots(runtimeScope.Session().DB, nil); err != nil {
+		t.Fatalf("empty snaps: %v", err)
+	}
+}
+
+func TestHardDeleteSeedRowSavepointRollbackOnError(t *testing.T) {
+	t.Parallel()
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	tx := db.Begin()
+	if tx.Error != nil {
+		t.Fatalf("begin: %v", tx.Error)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	err := hardDeleteSeedRow(tx, seedRowSnapshot{
+		Module: "demo", Name: "x", ResID: "r1", TableName: "table_that_does_not_exist",
+	}, true, 3)
+	if err == nil {
+		t.Fatal("expected missing-table delete error")
+	}
+	// Transaction must still be usable after savepoint rollback.
+	if err := tx.Exec(`SELECT 1`).Error; err != nil {
+		t.Fatalf("tx after savepoint rollback: %v", err)
+	}
+}

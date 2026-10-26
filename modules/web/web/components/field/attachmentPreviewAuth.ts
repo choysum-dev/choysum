@@ -76,9 +76,13 @@ async function blobToDataUrl(blob: Blob): Promise<string | undefined> {
   try {
     if (typeof blob.arrayBuffer === 'function' && typeof btoa === 'function') {
       const bytes = new Uint8Array(await blob.arrayBuffer());
+      const CHUNK = 0x8000;
       let binary = '';
-      for (let i = 0; i < bytes.length; i += 1) {
-        binary += String.fromCharCode(bytes[i]!);
+      for (let i = 0; i < bytes.length; i += CHUNK) {
+        binary += String.fromCharCode.apply(
+          null,
+          bytes.subarray(i, i + CHUNK) as unknown as number[],
+        );
       }
       const mime = normalizeOptionalString(blob.type) || 'application/octet-stream';
       return `data:${mime};base64,${btoa(binary)}`;

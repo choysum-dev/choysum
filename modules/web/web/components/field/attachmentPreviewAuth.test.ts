@@ -64,6 +64,27 @@ test('fetchAuthenticatedPreviewAsDataUrl: loads with Bearer and returns data url
   expect(dataUrl).toMatch(/^data:image\/png;base64,/);
 });
 
+test('fetchAuthenticatedPreviewAsDataUrl: chunks large blobs when converting to data url', async () => {
+  setTokenProvider({
+    getToken: async () => 'preview-token',
+    refreshToken: async () => true,
+    shouldRefreshToken: async () => false,
+  });
+
+  // Larger than the 0x8000 chunk size used by blobToDataUrl.
+  const bytes = new Uint8Array(0x8000 + 17);
+  bytes.fill(0x61);
+  (globalThis as any).fetch = async () => ({
+    ok: true,
+    headers: { get: () => 'application/octet-stream' },
+    blob: async () => new Blob([bytes], { type: 'application/octet-stream' }),
+  });
+
+  const dataUrl = await fetchAuthenticatedPreviewAsDataUrl('/_document/bindings/b1/content');
+  expect(dataUrl).toMatch(/^data:application\/octet-stream;base64,/);
+  expect((dataUrl || '').length).toBeGreaterThan(100);
+});
+
 test('fetchAuthenticatedPreviewAsDataUrl: returns undefined on non-ok response', async () => {
   setTokenProvider({
     getToken: async () => 'preview-token',

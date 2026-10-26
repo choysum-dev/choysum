@@ -873,7 +873,7 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
         let createPayload = { ...(payload || {}) } as Record<string, unknown>;
         await (store as any).ensureFieldsGet?.().catch(() => undefined);
         createPayload = omitReadonlyWriteFields(createPayload, store as any);
-        attachMonetaryCurrencyCompanions(createPayload, createPayload, name => resolveStoreFieldMeta(store as any, name), createPayload);
+        attachMonetaryCurrencyCompanions(createPayload, createPayload, name => resolveStoreFieldMeta(store as any, name), undefined);
         const normalizedPayload = await normalizeAttachmentFieldsInPayload(
           store,
           createPayload,

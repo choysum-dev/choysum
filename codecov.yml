@@ -32,3 +32,5 @@ ignore:
   # Vendored L2 SFCs only (shadcn-vue hand-adapted). Module-agnostic so ignore
   # survives choy_ui → web cutover; hand-written helpers stay coverage-eligible.
   - "modules/*/web/components/vendor/ui/**/*.vue"
+  # Frontend unit stubs (Codemirror / TipTap stand-ins), not product code.
+  - "internal/testing/frontend/testdata/stubs/**"

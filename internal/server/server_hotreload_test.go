@@ -398,6 +398,63 @@ func TestScheduleLeaseConflictRetryRequeuesFile(t *testing.T) {
 	}
 }
 
+
+func TestScheduleLeaseConflictRetryExhaustedClearsBudget(t *testing.T) {
+	prevBase, prevMax := hotreloadLeaseRetryBase, hotreloadLeaseRetryMax
+	hotreloadLeaseRetryBase = 5 * time.Millisecond
+	hotreloadLeaseRetryMax = 1
+	t.Cleanup(func() {
+		hotreloadLeaseRetryBase = prevBase
+		hotreloadLeaseRetryMax = prevMax
+	})
+
+	runtimeScope := newRichServerTestScope(t)
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{queue: make(chan string, 2)},
+	}
+	file := filepath.Join(t.TempDir(), "exhaust.ts")
+	// First schedule consumes the only retry slot and eventually enqueues.
+	srv.scheduleLeaseConflictRetry(file)
+	select {
+	case <-srv.hotreloadQueue():
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("timed out waiting for first retry enqueue")
+	}
+	// Second schedule exceeds max and clears the map entry without enqueueing.
+	srv.scheduleLeaseConflictRetry(file)
+	select {
+	case event := <-srv.hotreloadQueue():
+		t.Fatalf("unexpected retry event after exhaustion: %q", event)
+	case <-time.After(80 * time.Millisecond):
+	}
+	if got := srv.hotreload.nextLeaseRetry(file); got != 1 {
+		t.Fatalf("after clear, nextLeaseRetry = %d, want 1", got)
+	}
+	srv.hotreload.clearLeaseRetry(file)
+	srv.hotreload.clearLeaseRetry(file) // nil-map / missing key no-op path after delete
+}
+
+func TestScheduleLeaseConflictRetryNoopWhenDisabled(t *testing.T) {
+	prevBase, prevMax := hotreloadLeaseRetryBase, hotreloadLeaseRetryMax
+	hotreloadLeaseRetryBase = 0
+	hotreloadLeaseRetryMax = 2
+	t.Cleanup(func() {
+		hotreloadLeaseRetryBase = prevBase
+		hotreloadLeaseRetryMax = prevMax
+	})
+	srv := &GRPCWebServer{hotreload: hotreloadState{queue: make(chan string, 1)}}
+	srv.scheduleLeaseConflictRetry("x.ts")
+	srv.scheduleLeaseConflictRetry("")
+	var nilSrv *GRPCWebServer
+	nilSrv.scheduleLeaseConflictRetry("x.ts")
+	select {
+	case event := <-srv.hotreloadQueue():
+		t.Fatalf("unexpected event: %q", event)
+	default:
+	}
+}
+
 func TestHandleWatchedFileChangeIgnoresGeneratedArtifact(t *testing.T) {
 	runtimeScope := newRichServerTestScope(t)
 	root := t.TempDir()

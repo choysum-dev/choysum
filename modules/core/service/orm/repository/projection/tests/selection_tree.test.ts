@@ -116,6 +116,42 @@ test('repository selection tree expands related.store=false path into ManyToOne 
   );
 });
 
+test('repository selection tree fails fast when related.path leaf is missing on target', () => {
+  class DemoModel {}
+  class CategoryModel {}
+
+  const categoryMeta = {
+    type: CategoryModel,
+    fields: new Map([['Name', { column: { name: 'Name' } }]]),
+  } as any;
+
+  const demoMeta = {
+    type: DemoModel,
+    fields: new Map([
+      [
+        'CategoryId',
+        { type: 'ManyToOne', column: { name: 'CategoryId' }, relation: { targetModel: () => CategoryModel } },
+      ],
+      [
+        'CategoryTypo',
+        { type: 'varchar', related: { path: 'CategoryId.Nmae', store: false } },
+      ],
+    ]),
+  } as any;
+
+  withFakeMetadata(
+    new Map([
+      [DemoModel, demoMeta],
+      [CategoryModel, categoryMeta],
+    ]),
+    () => {
+      expect(() => buildSelectionTree(demoMeta, ['CategoryTypo'] as any, { strict: true })).toThrow(
+        'related.path leaf does not exist'
+      );
+    }
+  );
+});
+
 test('repository selection tree expands shorthand relations to child scalar fields and preserves Id fallback', () => {
   class DemoModel {}
   class OwnerModel {}

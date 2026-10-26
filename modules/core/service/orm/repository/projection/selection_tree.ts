@@ -179,7 +179,14 @@ export function buildSelectionTree(meta: ModelMetadata, fields: unknown[], optio
       }
 
       if (leafParts.length === 1) {
-        entry.node.columns.add(leafParts[0]!);
+        const leaf = leafParts[0]!;
+        if (!targetMeta.fields.has(leaf)) {
+          fail(
+            `related.path leaf does not exist: ${toPathLabel(pathPrefix, parts.join('.'))} (model=${modelLabel(targetMeta)})`
+          );
+          return;
+        }
+        entry.node.columns.add(leaf);
         if (!entry.node.columns.has('Id')) entry.node.columns.add('Id');
         return;
       }
