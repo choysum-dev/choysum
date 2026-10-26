@@ -26,52 +26,54 @@ import { useMenu } from '../../composables/useMenu'
  */
 defineOptions({ name: 'ChoyShellBreadcrumb' })
 
-let items!: ComputedRef<ChoyBreadcrumbItem[]>
-
-try {
-  const store = useBreadcrumbStore()
-  let composer: { t: (...args: any[]) => unknown } | null = null
+function buildBreadcrumbItems(): ComputedRef<ChoyBreadcrumbItem[]> {
   try {
-    composer = useI18n({ useScope: 'global' }) as any
-  } catch {
-    composer = null
-  }
+    const store = useBreadcrumbStore()
+    let composer: { t: (...args: any[]) => unknown } | null = null
+    try {
+      composer = useI18n({ useScope: 'global' }) as any
+    } catch {
+      composer = null
+    }
 
-  let menuApi: ReturnType<typeof useMenu> | null = null
-  try {
-    menuApi = useMenu()
-  } catch {
-    menuApi = null
-  }
+    let menuApi: ReturnType<typeof useMenu> | null = null
+    try {
+      menuApi = useMenu()
+    } catch {
+      menuApi = null
+    }
 
-  function onAppSelect(menuId: string | undefined) {
-    if (!menuId || !menuApi) return
-    void menuApi.navigateTo(menuId)
-  }
+    function onAppSelect(menuId: string | undefined) {
+      if (!menuId || !menuApi) return
+      void menuApi.navigateTo(menuId)
+    }
 
-  items = computed(() => {
-    const stack = store.breadcrumbStack || []
-    return stack.map((entry, index) => {
-      const label = composer
-        ? String(translateTerm(composer, entry.titleText, entry.title) || entry.title || '')
-        : String(entry.title || '')
-      const isLast = index === stack.length - 1
-      if (isLast || !entry.clickable) {
-        return { label }
-      }
-      if (entry.kind === 'app') {
+    return computed(() => {
+      const stack = store.breadcrumbStack || []
+      return stack.map((entry, index) => {
+        const label = composer
+          ? String(translateTerm(composer, entry.titleText, entry.title) || entry.title || '')
+          : String(entry.title || '')
+        const isLast = index === stack.length - 1
+        if (isLast || !entry.clickable) {
+          return { label }
+        }
+        if (entry.kind === 'app') {
+          return {
+            label,
+            onSelect: () => onAppSelect(entry.menuId),
+          }
+        }
         return {
           label,
-          onSelect: () => onAppSelect(entry.menuId),
+          to: entry.path || undefined,
         }
-      }
-      return {
-        label,
-        to: entry.path || undefined,
-      }
+      })
     })
-  })
-} catch {
-  items = computed(() => [])
+  } catch {
+    return computed(() => [])
+  }
 }
+
+const items = buildBreadcrumbItems()
 </script>
