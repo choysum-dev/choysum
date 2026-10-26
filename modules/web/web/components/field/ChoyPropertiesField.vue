@@ -71,7 +71,7 @@ SPDX-License-Identifier: Apache-2.0
             />
             <Input
               v-else-if="item.type === 'integer' || item.type === 'float'"
-              :ref="(el) => setNumberInputHost(item.name, el)"
+              :ref="(el: unknown) => setNumberInputHost(item.name, el)"
               class="w-full text-end"
               :id="controlId(item)"
               type="text"

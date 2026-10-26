@@ -32,10 +32,10 @@ func ensureEffectiveSeedModel(t *testing.T, db *gorm.DB, application, name, mode
 
 func TestIsSafeSQLIdent(t *testing.T) {
 	t.Parallel()
-	if isSafeSQLIdent("") || isSafeSQLIdent("a;drop") || isSafeSQLIdent("a b") {
+	if isSafeSQLIdent("") || isSafeSQLIdent("a;drop") || isSafeSQLIdent("a b") || isSafeSQLIdent("123table") {
 		t.Fatal("expected unsafe idents to be rejected")
 	}
-	if !isSafeSQLIdent("demo_seed_row") || !isSafeSQLIdent("SandboxCategory") {
+	if !isSafeSQLIdent("demo_seed_row") || !isSafeSQLIdent("SandboxCategory") || !isSafeSQLIdent("_private") {
 		t.Fatal("expected safe idents to be accepted")
 	}
 }

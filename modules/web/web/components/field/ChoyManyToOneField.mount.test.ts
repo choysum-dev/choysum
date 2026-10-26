@@ -19,7 +19,14 @@ const searchExpose = {
   selectedItems: [] as any[],
 };
 
-const lastSearchViewProps = ref<Record<string, unknown> | null>(null);
+type CapturedSearchViewProps = {
+  hostPageTitle?: boolean;
+  showSelectionColumn?: boolean;
+  forcedCondition?: unknown;
+  relationConditionSource?: { model: string; field: string };
+};
+
+const lastSearchViewProps = ref<CapturedSearchViewProps | null>(null);
 
 const SearchViewStub = defineComponent({
   name: 'SearchViewStub',
@@ -674,11 +681,11 @@ describe('ChoyManyToOneField mount coverage', () => {
     more.click();
     await nextTick();
     expect(m.q('.search-view-stub')).toBeTruthy();
-    expect(lastSearchViewProps.value?.forcedCondition).toEqual({
+    expect((lastSearchViewProps.value as CapturedSearchViewProps | null)?.forcedCondition).toEqual({
       And: [{ Or: [['A', '=', 1]] }, ['Name', '=', 'Z']],
     });
     // Nested dotted prop: no relationConditionSource (same as NameSearch).
-    expect(lastSearchViewProps.value?.relationConditionSource).toBeUndefined();
+    expect((lastSearchViewProps.value as CapturedSearchViewProps | null)?.relationConditionSource).toBeUndefined();
     m.unmount();
   });
 
@@ -698,7 +705,7 @@ describe('ChoyManyToOneField mount coverage', () => {
     const more = m.q('[data-testid="choy-relation-search-more"]') as HTMLElement;
     more.click();
     await nextTick();
-    expect(lastSearchViewProps.value?.relationConditionSource).toEqual({
+    expect((lastSearchViewProps.value as CapturedSearchViewProps | null)?.relationConditionSource).toEqual({
       model: 'sale.Order',
       field: 'PartnerId',
     });

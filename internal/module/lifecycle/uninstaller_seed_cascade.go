@@ -7,7 +7,6 @@ import (
 	"errors"
 	"strconv"
 	"strings"
-	"unicode"
 
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -183,11 +182,8 @@ func hardDeleteSeedRow(db *gorm.DB, snap seedRowSnapshot, useSavepoint bool, att
 
 	spName := ""
 	if useSavepoint {
-		// xid res_id is already a safe SQL ident; keep the savepoint name short.
-		spName = "sp_seed_" + snap.ResID
-		if !isSafeSQLIdent(spName) {
-			spName = "sp_seed_" + strconv.Itoa(attempt)
-		}
+		// Unique per attempt: ResID alone can collide across xml_ids / multi-pass retries.
+		spName = "sp_seed_" + strconv.Itoa(attempt)
 		if err := db.SavePoint(spName).Error; err != nil {
 			return xfmt.Errorf("savepoint %s: %w", spName, err)
 		}
@@ -228,13 +224,20 @@ func releaseSeedDeleteSavepoint(db *gorm.DB, name string) error {
 	}
 }
 
-// isSafeSQLIdent reports whether s is a plain SQL identifier (letters, digits, _).
+// isSafeSQLIdent reports whether s is a plain unquoted SQL identifier:
+// [A-Za-z_][A-Za-z0-9_]*.
 func isSafeSQLIdent(s string) bool {
 	if s == "" {
 		return false
 	}
-	for _, r := range s {
-		if r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r) {
+	for i, r := range s {
+		if i == 0 {
+			if r != '_' && (r < 'A' || r > 'Z') && (r < 'a' || r > 'z') {
+				return false
+			}
+			continue
+		}
+		if r == '_' || (r >= '0' && r <= '9') || (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') {
 			continue
 		}
 		return false

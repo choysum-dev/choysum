@@ -307,15 +307,24 @@ func propertyDefinitionTableExists(db *gorm.DB, table string) (bool, error) {
 }
 
 // isMissingSQLTableError reports dialect-specific "table does not exist" probe failures.
+// Intentionally narrow: do not match generic "does not exist" (columns/constraints).
 func isMissingSQLTableError(err error) bool {
 	if err == nil {
 		return false
 	}
 	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "no such table") ||
-		strings.Contains(msg, "doesn't exist") ||
-		strings.Contains(msg, "does not exist") ||
-		strings.Contains(msg, "unknown table")
+	if strings.Contains(msg, "no such table") || strings.Contains(msg, "unknown table") {
+		return true
+	}
+	// MySQL 1146: Table 'db.t' doesn't exist
+	if strings.Contains(msg, "table") && strings.Contains(msg, "doesn't exist") {
+		return true
+	}
+	// Postgres 42P01: relation "t" does not exist (not column "t" does not exist)
+	if strings.Contains(msg, "relation") && strings.Contains(msg, "does not exist") {
+		return true
+	}
+	return false
 }
 
 // purgePropertyDefinitionsForGoneModels deletes PropertyDefinition rows whose

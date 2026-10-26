@@ -156,7 +156,7 @@ onMounted(() => {
   const el = boardRef.value;
   if (typeof ResizeObserver !== 'undefined' && el) {
     resizeObserver = new ResizeObserver(() => syncBoardWidth());
-    resizeObserver.observe(el);
+    resizeObserver.observe(el as unknown as Element);
   }
 });
 

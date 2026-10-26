@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ref, computed, unref, isRef } from 'vue';
-import type { ListViewLoadExpose, SelectionExpose } from '@/web/web/components/view/listViewTypes';
+import type { ListViewLoadExpose } from '@/web/web/components/view/listViewTypes';
 
 /**
  * Read a child ListView selection expose.
@@ -10,7 +10,7 @@ import type { ListViewLoadExpose, SelectionExpose } from '@/web/web/components/v
  * auto-unwrapped public proxy can cache a stale empty array and break Search-more OK.
  */
 function readExposedSelection<T>(
-  inst: (SelectionExpose<T> & ListViewLoadExpose) | null | undefined,
+  inst: unknown,
   key: 'selectedItems' | 'selectedItem',
 ): unknown {
   if (!inst) return undefined;
@@ -26,7 +26,7 @@ function readExposedSelection<T>(
  */
 export function useListViewExpose<T>() {
   // Create the ref bound to <ListView ref="listRef">.
-  const listRef = ref<(SelectionExpose<T> & ListViewLoadExpose) | null>(null);
+  const listRef = ref<unknown>(null);
 
   const selectedItems = computed<T[]>(() => {
     const v = readExposedSelection<T>(listRef.value, 'selectedItems');
@@ -39,7 +39,7 @@ export function useListViewExpose<T>() {
 
   // Return both the ref and the object intended for defineExpose.
   function refresh() {
-    return listRef.value?.load?.();
+    return (listRef.value as ListViewLoadExpose | null | undefined)?.load?.();
   }
 
   return {

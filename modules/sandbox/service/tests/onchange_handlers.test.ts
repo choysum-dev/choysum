@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import type { OnchangeResult } from '@/core/service/runtime/onchange/types';
 import SandboxLine from '@/sandbox/service/models/sandbox_line';
 import SandboxRecord from '@/sandbox/service/models/sandbox_record';
 
@@ -41,28 +42,28 @@ test('SandboxRecord Onchange IsActive=false widens domain and warns', async () =
 
 test('SandboxRecord Onchange State syncs Progress and disables invalid options', async () => {
   const all = ['draft', 'open', 'done'];
-  const draft = await SandboxRecord.Onchange(
+  const draft = (await SandboxRecord.Onchange(
     {
       Id: 'onchange-state-draft',
       State: 'draft',
       Progress: 'done',
     },
     ['State'],
-  );
+  )) as OnchangeResult<SandboxRecord>;
   expect(draft.value?.Progress).toBe('draft');
   expect(draft.selection).toEqual([{ field: 'Progress', selection: all, disabled: ['done'] }]);
 
-  const open = await SandboxRecord.Onchange(
+  const open = (await SandboxRecord.Onchange(
     { Id: 'onchange-state-open', State: 'open', Progress: 'draft' },
     ['State'],
-  );
+  )) as OnchangeResult<SandboxRecord>;
   expect(open.value?.Progress).toBe('open');
   expect(open.selection).toEqual([{ field: 'Progress', selection: all }]);
 
-  const done = await SandboxRecord.Onchange(
+  const done = (await SandboxRecord.Onchange(
     { Id: 'onchange-state-done', State: 'done', Progress: 'open' },
     ['State'],
-  );
+  )) as OnchangeResult<SandboxRecord>;
   expect(done.value?.Progress).toBe('done');
   expect(done.selection).toEqual([
     { field: 'Progress', selection: all, disabled: ['draft', 'open'] },
@@ -71,71 +72,71 @@ test('SandboxRecord Onchange State syncs Progress and disables invalid options',
 });
 
 test('SandboxRecord Onchange CurrencyId clears or seeds Amount', async () => {
-  const cleared = await SandboxRecord.Onchange(
+  const cleared = (await SandboxRecord.Onchange(
     {
       Id: 'onchange-currency-clear',
       CurrencyId: '',
       Amount: '99.50',
     },
     ['CurrencyId'],
-  );
+  )) as OnchangeResult<SandboxRecord>;
   expect(cleared.value?.Amount == null).toBe(true);
 
-  const seeded = await SandboxRecord.Onchange(
+  const seeded = (await SandboxRecord.Onchange(
     {
       Id: 'onchange-currency-seed',
       CurrencyId: 'CNY',
       Amount: null,
     },
     ['CurrencyId'],
-  );
+  )) as OnchangeResult<SandboxRecord>;
   expect(String(seeded.value?.Amount ?? '')).toBe('10');
 
-  const kept = await SandboxRecord.Onchange(
+  const kept = (await SandboxRecord.Onchange(
     {
       Id: 'onchange-currency-keep',
       CurrencyId: 'CNY',
       Amount: '42.00',
     },
     ['CurrencyId'],
-  );
+  )) as OnchangeResult<SandboxRecord>;
   expect(kept.value?.Amount).toBeUndefined();
 });
 
 test('SandboxRecord Onchange CategoryId writes CompanyNote from Name', async () => {
-  const set = await SandboxRecord.Onchange(
+  const set = (await SandboxRecord.Onchange(
     {
       Id: 'onchange-cat-set',
       CategoryId: { Id: 'cat-1', Name: 'Active Root' },
       CompanyNote: 'hand-edited',
     },
     ['CategoryId'],
-  );
+  )) as OnchangeResult<SandboxRecord>;
   expect(set.value?.CompanyNote).toBe('Category: Active Root');
 
-  const cleared = await SandboxRecord.Onchange(
+  const cleared = (await SandboxRecord.Onchange(
     {
       Id: 'onchange-cat-clear',
       CategoryId: null,
       CompanyNote: 'Category: Active Root',
     },
     ['CategoryId'],
-  );
+  )) as OnchangeResult<SandboxRecord>;
   expect(cleared.value?.CompanyNote == null).toBe(true);
 
-  const keepHandEdit = await SandboxRecord.Onchange(
+  const keepHandEdit = (await SandboxRecord.Onchange(
     {
       Id: 'onchange-cat-keep',
       CategoryId: null,
       CompanyNote: 'hand-edited note',
     },
     ['CategoryId'],
-  );
+  )) as OnchangeResult<SandboxRecord>;
   expect(keepHandEdit.value?.CompanyNote).toBeUndefined();
 });
 
 test('SandboxLine Onchange Quantity clamps silently without messages', async () => {
-  const low = await SandboxLine.Onchange(
+  const low = (await SandboxLine.Onchange(
     {
       Id: 'onchange-qty-low',
       Name: 'L',
@@ -144,11 +145,11 @@ test('SandboxLine Onchange Quantity clamps silently without messages', async () 
       Sequence: 10,
     },
     ['Quantity'],
-  );
+  )) as OnchangeResult<SandboxLine>;
   expect(low.value?.Quantity).toBe(1);
   expect(low.messages || []).toEqual([]);
 
-  const high = await SandboxLine.Onchange(
+  const high = (await SandboxLine.Onchange(
     {
       Id: 'onchange-qty-high',
       Name: 'L',
@@ -157,7 +158,7 @@ test('SandboxLine Onchange Quantity clamps silently without messages', async () 
       Sequence: 10,
     },
     ['Quantity'],
-  );
+  )) as OnchangeResult<SandboxLine>;
   expect(high.value?.Quantity).toBe(999);
   expect(high.messages || []).toEqual([]);
 
@@ -175,13 +176,13 @@ test('SandboxLine Onchange Quantity clamps silently without messages', async () 
 });
 
 test('SandboxRecord Onchange IntValue negative returns field-scoped error', async () => {
-  const bad = await SandboxRecord.Onchange(
+  const bad = (await SandboxRecord.Onchange(
     {
       Id: 'onchange-int-neg',
       IntValue: -3,
     },
     ['IntValue'],
-  );
+  )) as OnchangeResult<SandboxRecord>;
   expect(bad.messages?.length).toBe(1);
   expect(bad.messages?.[0]?.level).toBe('error');
   expect(bad.messages?.[0]?.field).toBe('IntValue');

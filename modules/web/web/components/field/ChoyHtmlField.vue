@@ -54,6 +54,7 @@ import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { computed, defineComponent, h, onBeforeUnmount, ref, watch, type Component } from 'vue';
 import { EditorContent, useEditor } from '@tiptap/vue-3';
+import Link from '@tiptap/extension-link';
 import StarterKit from '@tiptap/starter-kit';
 import {
   Bold,
@@ -261,15 +262,13 @@ const ChoyHtmlEditorCell = defineComponent({
     }
 
     const editor = useEditor({
-      // StarterKit includes Link; set openOnClick/autolink/protocols via StarterKit.link.
       extensions: [
-        StarterKit.configure({
-          link: {
-            openOnClick: false,
-            autolink: true,
-            defaultProtocol: 'https',
-            protocols: ['http', 'https', 'mailto'],
-          },
+        StarterKit,
+        Link.configure({
+          openOnClick: false,
+          autolink: true,
+          defaultProtocol: 'https',
+          protocols: ['http', 'https', 'mailto'],
         }),
       ],
       content: '',

@@ -329,6 +329,11 @@ const emit = defineEmits<{
   'sort-change': [payload: { field: string; direction?: 'asc' | 'desc' }];
 }>();
 
+defineSlots<{
+  empty?: () => any;
+  default?: () => any;
+}>();
+
 /** True when the host class tree requests `h-full` (string / array / object forms). */
 function classTreeHasToken(cls: ClassValue | undefined, token: string): boolean {
   return cn(cls)
@@ -581,7 +586,7 @@ function bindScrollParentObserver(el: HTMLElement | null): void {
 }
 
 watch(parentRef, (el) => {
-  bindScrollParentObserver(el);
+  bindScrollParentObserver(el as HTMLElement | null);
   if (el && isVirtualized.value) {
     scheduleVirtualMeasure();
   }
@@ -603,7 +608,7 @@ watch(
 );
 
 onMounted(() => {
-  bindScrollParentObserver(parentRef.value);
+  bindScrollParentObserver(parentRef.value as HTMLElement | null);
   if (isVirtualized.value) {
     scheduleVirtualMeasure();
   }

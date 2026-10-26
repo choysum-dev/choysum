@@ -343,7 +343,7 @@ watch(previewDialogOpen, async open => {
   if (!open) return;
   await nextTick();
   // Cached images may skip @load; read natural size once the img is mounted.
-  applyPreviewNaturalSize(previewImgRef.value);
+  applyPreviewNaturalSize(previewImgRef.value as HTMLImageElement | null);
 });
 
 const pickErrorRule = {

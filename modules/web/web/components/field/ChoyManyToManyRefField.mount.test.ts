@@ -19,7 +19,14 @@ const searchExpose = {
   selectedItems: [] as any[],
 };
 
-const lastSearchListProps = ref<Record<string, unknown> | null>(null);
+type CapturedSearchListProps = {
+  hostPageTitle?: boolean;
+  selectionMode?: string;
+  forcedCondition?: unknown;
+  relationConditionSource?: { model: string; field: string };
+};
+
+const lastSearchListProps = ref<CapturedSearchListProps | null>(null);
 
 const SearchListStub = defineComponent({
   name: 'SearchListStub',
@@ -398,11 +405,11 @@ describe('ChoyManyToManyRefField mount coverage', () => {
     expect(relationStore.state.queryState.keyword).toBeUndefined();
     expect(relationStore.state.queryState.appliedFilters).toEqual([]);
     expect(relationStore.state.queryState.pagination).toEqual({ limit: 40, offset: 0 });
-    expect(lastSearchListProps.value?.relationConditionSource).toEqual({
+    expect((lastSearchListProps.value as CapturedSearchListProps | null)?.relationConditionSource).toEqual({
       model: 'sale.Order',
       field: 'TagRefIds',
     });
-    expect(lastSearchListProps.value?.forcedCondition).toEqual({
+    expect((lastSearchListProps.value as CapturedSearchListProps | null)?.forcedCondition).toEqual({
       And: [
         ['Id', 'not in', ['keep']],
         ['Active', '=', true],

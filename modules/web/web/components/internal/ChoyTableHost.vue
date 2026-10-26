@@ -145,6 +145,12 @@ const emit = defineEmits<{
   (e: 'sort-change', payload: { field: string; direction?: 'asc' | 'desc' }): void;
 }>();
 
+defineSlots<{
+  default?: () => any;
+  empty?: () => any;
+  footer?: () => any;
+}>();
+
 const dataTableRef = ref<{ scrollToRow?: (index: number, align?: string) => void } | null>(null);
 
 const rowsArray = computed<any[]>(() => {

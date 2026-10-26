@@ -88,7 +88,7 @@ describe('RelationCombobox mount', () => {
   });
 
   test('open panel shows translated empty, searching, and search-more copy', async () => {
-    let resolveSearch: ((rows: any[]) => void) | null = null;
+    let resolveSearch: ((rows: any[]) => void) | undefined;
     const search = () =>
       new Promise<any[]>((resolve) => {
         resolveSearch = resolve;
@@ -135,7 +135,7 @@ describe('RelationCombobox mount', () => {
   });
 
   test('reopen keeps prior options and skips a second NameSearch', async () => {
-    let resolveSearch: ((rows: any[]) => void) | null = null;
+    let resolveSearch: ((rows: any[]) => void) | undefined;
     let calls = 0;
     const search = () => {
       calls += 1;
@@ -164,7 +164,7 @@ describe('RelationCombobox mount', () => {
 
     state!.open = false;
     await nextTick();
-    resolveSearch = null;
+    resolveSearch = undefined;
     state!.open = true;
     await nextTick();
     await flushPromises();
