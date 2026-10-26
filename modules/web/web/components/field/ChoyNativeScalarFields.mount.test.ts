@@ -320,6 +320,19 @@ describe('Choy native scalar field cells', () => {
     const pwdInput = pwd.q('input.choy-varchar-input') as HTMLInputElement | null;
     expect(pwdInput?.getAttribute('type') || pwdInput?.type).toBe('password');
     pwd.unmount();
+
+    // Historical auth call sites pass type= instead of widget=.
+    const pwdViaType = mountApp(ChoyVarcharField as any, {
+      props: {
+        binding: makeBinding('secret'),
+        type: 'password',
+        renderMode: 'form',
+      },
+    });
+    await flushPromises();
+    const pwdViaTypeInput = pwdViaType.q('input.choy-varchar-input') as HTMLInputElement | null;
+    expect(pwdViaTypeInput?.getAttribute('type') || pwdViaTypeInput?.type).toBe('password');
+    pwdViaType.unmount();
     m.unmount();
   });
 
