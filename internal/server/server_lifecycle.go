@@ -77,7 +77,7 @@ func (s *GRPCWebServer) start(reload bool) error {
 func (s *GRPCWebServer) stop(reload bool) error {
 	s.ready.Store(false)
 
-	// Stop producers first so task polls do not keep running during HTTP drain.
+	// Stop producers first (bounded wait for in-flight task workers), then drain transports.
 	s.stopTaskRuntime()
 	s.stopHTTPRuntime(reload)
 	s.stopGRPCTransport(reload)

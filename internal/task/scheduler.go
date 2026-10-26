@@ -66,8 +66,17 @@ func (s *Scheduler) Start() {
 }
 
 func (s *Scheduler) Stop() {
+	if s == nil {
+		return
+	}
 	close(s.stopCh)
-	s.wg.Wait()
+	if waitWaitGroup(&s.wg, stopWaitTimeout) {
+		return
+	}
+	if s.runtimeScope != nil && s.runtimeScope.Logger() != nil {
+		s.runtimeScope.Logger().Warn("task scheduler stop timed out waiting for in-flight work",
+			"timeout", stopWaitTimeout.String())
+	}
 }
 
 func (s *Scheduler) loop() {

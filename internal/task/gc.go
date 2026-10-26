@@ -58,7 +58,13 @@ func (g *GarbageCollector) Stop() {
 		return
 	}
 	close(g.stopCh)
-	g.wg.Wait()
+	if waitWaitGroup(&g.wg, stopWaitTimeout) {
+		return
+	}
+	if g.runtimeScope != nil && g.runtimeScope.Logger() != nil {
+		g.runtimeScope.Logger().Warn("task garbage collector stop timed out waiting for in-flight work",
+			"timeout", stopWaitTimeout.String())
+	}
 }
 
 func (g *GarbageCollector) loop() {

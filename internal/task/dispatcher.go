@@ -152,7 +152,13 @@ func (d *Dispatcher) Stop() {
 		_ = d.wakeSub.Close()
 		d.wakeSub = nil
 	}
-	d.wg.Wait()
+	if waitWaitGroup(&d.wg, stopWaitTimeout) {
+		return
+	}
+	if d.runtimeScope != nil && d.runtimeScope.Logger() != nil {
+		d.runtimeScope.Logger().Warn("task dispatcher stop timed out waiting for in-flight work",
+			"timeout", stopWaitTimeout.String())
+	}
 }
 
 func (d *Dispatcher) loop() {
