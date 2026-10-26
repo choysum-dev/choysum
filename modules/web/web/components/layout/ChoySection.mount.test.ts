@@ -66,4 +66,26 @@ describe('ChoySection mount', () => {
     expect(mounted.q('[data-slot=field-legend]')?.className || '').toContain('sr-only');
     mounted.unmount();
   });
+
+  test('divided without title still renders a full-width rule', async () => {
+    const mounted = mountApp(ChoySection as any, {
+      props: {
+        divided: true,
+      },
+      slots: {
+        header: () => h('div', { 'data-testid': 'custom-header' }, 'Custom'),
+        default: () => h('div', { 'data-testid': 'section-body' }, 'Fields'),
+      },
+    });
+    await flushPromises();
+    const root = mounted.q('[data-testid=choy-section]') as HTMLElement | null;
+    expect(root?.hasAttribute('data-divided')).toBe(true);
+    expect(mounted.q('[data-slot=choy-section-title]')).toBeNull();
+    const rule = mounted.q('[data-slot=choy-section-rule]') as HTMLElement | null;
+    expect(rule).not.toBeNull();
+    expect(rule?.className || '').toContain('w-full');
+    expect(rule?.getAttribute('aria-hidden')).toBe('true');
+    expect(mounted.q('[data-testid=custom-header]')).not.toBeNull();
+    mounted.unmount();
+  });
 });

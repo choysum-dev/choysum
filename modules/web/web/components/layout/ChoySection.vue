@@ -32,6 +32,13 @@ SPDX-License-Identifier: Apache-2.0
         aria-hidden="true"
       />
     </div>
+    <!-- Divided + #header / no title: no title row, so keep a full-width rule. -->
+    <div
+      v-else-if="divided"
+      data-slot="choy-section-rule"
+      class="h-px w-full bg-border"
+      aria-hidden="true"
+    />
     <FieldSet class="min-w-0 gap-4">
       <FieldLegend
         v-if="title && !$slots.header"
@@ -76,7 +83,10 @@ const props = withDefaults(
     class?: ClassValue;
     title?: string;
     description?: string;
-    /** Draw a trailing hairline after the title (with a gap before the rule). */
+    /**
+     * Draw a hairline for phase breaks: trailing after the title when present,
+     * otherwise a full-width rule (#header / untitled).
+     */
     divided?: boolean;
   }>(),
   {
