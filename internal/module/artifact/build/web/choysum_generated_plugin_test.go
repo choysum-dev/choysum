@@ -205,6 +205,32 @@ func TestPathUnderRoot(t *testing.T) {
 	}
 }
 
+func TestIsUnsafeChoysumGeneratedRel(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		rel  string
+		want bool
+	}{
+		{".", true},
+		{"..", true},
+		{".." + string(filepath.Separator) + "x", true},
+		{string(filepath.Separator) + "etc" + string(filepath.Separator) + "passwd", true},
+		{"styles/choy-tailwind.generated.css", false},
+		{"styles", false},
+	}
+	if filepath.IsAbs("/abs") {
+		cases = append(cases, struct {
+			rel  string
+			want bool
+		}{"/abs", true})
+	}
+	for _, tc := range cases {
+		if got := isUnsafeChoysumGeneratedRel(tc.rel); got != tc.want {
+			t.Fatalf("isUnsafeChoysumGeneratedRel(%q)=%v want %v", tc.rel, got, tc.want)
+		}
+	}
+}
+
 func TestPathUnderRootRelError(t *testing.T) {
 	t.Cleanup(func() { filepathRel = filepath.Rel })
 	filepathRel = func(basepath, targpath string) (string, error) {

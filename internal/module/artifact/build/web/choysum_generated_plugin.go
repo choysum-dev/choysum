@@ -28,7 +28,7 @@ func choysumGeneratedPlugin(defaultChoysumPath string) api.Plugin {
 				}
 				rel := strings.TrimPrefix(args.Path, ChoyGeneratedImportPrefix)
 				rel = filepath.Clean(filepath.FromSlash(rel))
-				if rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+				if isUnsafeChoysumGeneratedRel(rel) {
 					return api.OnResolveResult{}, fmt.Errorf("@choysum/generated path escapes generated root: %s", args.Path)
 				}
 				generatedRoot := filepath.Join(root, "generated")
@@ -43,6 +43,17 @@ func choysumGeneratedPlugin(defaultChoysumPath string) api.Plugin {
 			})
 		},
 	}
+}
+
+// isUnsafeChoysumGeneratedRel reports import relatives that must not be joined
+// onto <defaultChoysumPath>/generated. Includes "." / ".." traversal, absolute
+// paths, and current-drive-rooted forms (e.g. `\etc\passwd` on Windows where
+// filepath.IsAbs is false).
+func isUnsafeChoysumGeneratedRel(rel string) bool {
+	return rel == "." || rel == ".." ||
+		strings.HasPrefix(rel, ".."+string(filepath.Separator)) ||
+		filepath.IsAbs(rel) ||
+		strings.HasPrefix(rel, string(filepath.Separator))
 }
 
 // pathUnderRoot reports whether candidate stays inside root after Clean.
