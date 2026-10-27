@@ -72,13 +72,41 @@ func moduleOperationStepMessage(op plan.OpType) string {
 	}
 }
 
-func moduleOperationStepLogLevel(step string) slog.Level {
+// Soft steps (hooks/scripts/origin_resolve) only surface at Info when they
+// took meaningful wall time and were not skipped; hard steps always Info.
+const moduleOperationStepInfoMinDuration = 100 * time.Millisecond
+
+func extrasIndicateSkipped(extra []any) bool {
+	for i := 0; i+1 < len(extra); i += 2 {
+		key, ok := extra[i].(string)
+		if !ok || key != "skipped" {
+			continue
+		}
+		if skipped, ok := extra[i+1].(bool); ok && skipped {
+			return true
+		}
+	}
+	return false
+}
+
+func moduleOperationStepIsSoft(step string) bool {
+	step = strings.TrimSpace(step)
+	if step == moduleStepOriginResolve {
+		return true
+	}
+	return strings.HasPrefix(step, "hook.") || strings.HasPrefix(step, "scripts.")
+}
+
+func moduleOperationStepLogLevel(step string, duration time.Duration, extra ...any) slog.Level {
 	step = strings.TrimSpace(step)
 	switch step {
-	case moduleStepBuild, moduleStepSchema, moduleStepBaseEntityMigrate, moduleStepWebBuild, moduleStepOriginResolve:
+	case moduleStepBuild, moduleStepSchema, moduleStepWebBuild:
 		return slog.LevelInfo
 	}
-	if strings.HasPrefix(step, "hook.") || strings.HasPrefix(step, "scripts.") {
+	if moduleOperationStepIsSoft(step) {
+		if extrasIndicateSkipped(extra) || duration < moduleOperationStepInfoMinDuration {
+			return slog.LevelDebug
+		}
 		return slog.LevelInfo
 	}
 	return slog.LevelDebug
@@ -113,7 +141,8 @@ func logModuleOperationStep(runtimeScope scope.Scope, opCtx *opContext, op plan.
 		ctx, opid = ensureOpIDInContext(ctx)
 	}
 	logger := moduleOpLogger(runtimeScope.Logger(), opid, op, strings.TrimSpace(moduleName))
-	logger.Log(ctx, moduleOperationStepLogLevel(step), moduleOperationStepMessage(op), moduleOperationStepInfoAttrs(step, time.Since(started), extra...)...)
+	duration := time.Since(started)
+	logger.Log(ctx, moduleOperationStepLogLevel(step, duration, extra...), moduleOperationStepMessage(op), moduleOperationStepInfoAttrs(step, duration, extra...)...)
 }
 
 func (m *moduleUpgrader) logUpgradeStep(moduleName string, step string, started time.Time, extra ...any) {

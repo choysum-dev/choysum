@@ -283,14 +283,20 @@ func (m *modelMigrator) logPlan(plan SchemaPlan) {
 			manual++
 		}
 	}
-	m.runtimeScope.Logger().Info("schema plan",
+	attrs := []any{
 		"module", plan.Module,
 		"ops", len(plan.Ops),
 		"auto", auto,
 		"guarded", guarded,
 		"manual", manual,
 		"leftover", len(plan.Leftover),
-	)
+	}
+	// Empty plans are noise at default Info; leftover or ops stay visible.
+	if len(plan.Ops) == 0 && len(plan.Leftover) == 0 {
+		m.runtimeScope.Logger().Debug("schema plan", attrs...)
+		return
+	}
+	m.runtimeScope.Logger().Info("schema plan", attrs...)
 }
 
 // warnDropAfterLeftovers logs when leftover columns were marked dropAfter for this toVersion

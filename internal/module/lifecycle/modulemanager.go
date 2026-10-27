@@ -658,7 +658,7 @@ func (m *ModuleManager) migrateBaseModule() error {
 	if err := modmeta.EnsureEffectiveAppNameUniqueIndex(m.runtimeScope.Session().DB); err != nil {
 		return xfmt.Errorf("ensure effective app/name unique index: %w", err)
 	}
-	m.runtimeScope.Logger().Info("base module entity migration completed", "step", moduleStepBaseEntityMigrate, "duration_ms", time.Since(started).Milliseconds())
+	m.runtimeScope.Logger().Debug("base module entity migration completed", "step", moduleStepBaseEntityMigrate, "duration_ms", time.Since(started).Milliseconds())
 	return nil
 }
 
@@ -1506,12 +1506,7 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 					clearSpinnerState()
 					return err
 				}
-				logger.Info(
-					"module operation finalizing phase end module completed",
-					"step", "phase_end",
-					"phase_module", moduleName,
-					"duration_ms", time.Since(modulePhaseEndStarted).Milliseconds(),
-				)
+				logFinalizingPhaseEndModule(logger, moduleName, time.Since(modulePhaseEndStarted))
 			}
 		}
 		phaseEndDuration := time.Since(phaseEndStarted)
@@ -1930,12 +1925,7 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 					clearSpinnerState()
 					return rollbackUpgradeOrigin(err)
 				}
-				logger.Info(
-					"module operation finalizing phase end module completed",
-					"step", "phase_end",
-					"phase_module", strings.TrimSpace(moduleName),
-					"duration_ms", time.Since(modulePhaseEndStarted).Milliseconds(),
-				)
+				logFinalizingPhaseEndModule(logger, strings.TrimSpace(moduleName), time.Since(modulePhaseEndStarted))
 			}
 		}
 		phaseEndDuration := time.Since(phaseEndStarted)

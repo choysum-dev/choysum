@@ -23,16 +23,23 @@ func LogModuleCommitTxHold(logger *slog.Logger, op string, caller string, starte
 	if caller == "" {
 		caller = "unknown"
 	}
+	duration := time.Since(started)
 	attrs := []any{
 		"op", op,
 		"caller", caller,
-		"duration_ms", time.Since(started).Milliseconds(),
+		"duration_ms", duration.Milliseconds(),
 	}
 	msg := op + " commit transaction hold completed"
 	if err != nil {
 		attrs = append(attrs, "error", err.Error())
+		logger.Info(msg, attrs...)
+		return
 	}
-	logger.Info(msg, attrs...)
+	if duration >= moduleOperationStepInfoMinDuration {
+		logger.Info(msg, attrs...)
+		return
+	}
+	logger.Debug(msg, attrs...)
 }
 
 // LogInstallOuterTxHold records install Commit / legacy outer Required hold time.

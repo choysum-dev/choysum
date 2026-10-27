@@ -16,7 +16,7 @@ func TestLogModuleCommitTxHoldEmitsDuration(t *testing.T) {
 	var logBuf bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
-	LogModuleCommitTxHold(logger, "upgrade", "module_commit", time.Now().Add(-42*time.Millisecond), nil)
+	LogModuleCommitTxHold(logger, "upgrade", "module_commit", time.Now().Add(-150*time.Millisecond), nil)
 
 	logs := logBuf.String()
 	for _, want := range []string{
@@ -28,6 +28,27 @@ func TestLogModuleCommitTxHoldEmitsDuration(t *testing.T) {
 		if !strings.Contains(logs, want) {
 			t.Fatalf("expected %s in logs, got %q", want, logs)
 		}
+	}
+}
+
+func TestLogModuleCommitTxHoldShortHoldIsDebug(t *testing.T) {
+	t.Parallel()
+	var infoBuf bytes.Buffer
+	infoLogger := slog.New(slog.NewJSONHandler(&infoBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	LogModuleCommitTxHold(infoLogger, "upgrade", "module_commit", time.Now().Add(-42*time.Millisecond), nil)
+	if infoBuf.Len() != 0 {
+		t.Fatalf("short hold must stay Debug at Info level, got %q", infoBuf.String())
+	}
+
+	var debugBuf bytes.Buffer
+	debugLogger := slog.New(slog.NewJSONHandler(&debugBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	LogModuleCommitTxHold(debugLogger, "upgrade", "module_commit", time.Now().Add(-42*time.Millisecond), nil)
+	logs := debugBuf.String()
+	if !strings.Contains(logs, `"level":"DEBUG"`) {
+		t.Fatalf("expected DEBUG short hold, got %q", logs)
+	}
+	if !strings.Contains(logs, `"msg":"upgrade commit transaction hold completed"`) {
+		t.Fatalf("expected hold message, got %q", logs)
 	}
 }
 
@@ -45,6 +66,9 @@ func TestLogModuleCommitTxHoldIncludesError(t *testing.T) {
 	if !strings.Contains(logs, `"error":"boom"`) {
 		t.Fatalf("expected error attr, got %q", logs)
 	}
+	if !strings.Contains(logs, `"level":"INFO"`) {
+		t.Fatalf("error hold must stay Info, got %q", logs)
+	}
 }
 
 func TestLogInstallOuterTxHoldEmitsDuration(t *testing.T) {
@@ -52,7 +76,7 @@ func TestLogInstallOuterTxHoldEmitsDuration(t *testing.T) {
 	var logBuf bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
-	LogInstallOuterTxHold(logger, "bootstrap", time.Now().Add(-42*time.Millisecond), nil)
+	LogInstallOuterTxHold(logger, "bootstrap", time.Now().Add(-150*time.Millisecond), nil)
 
 	logs := logBuf.String()
 	for _, want := range []string{

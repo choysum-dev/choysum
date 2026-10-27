@@ -134,3 +134,45 @@ func TestLogFinalizingPhaseEnd(t *testing.T) {
 		}
 	})
 }
+
+func TestLogFinalizingPhaseEndModule(t *testing.T) {
+	t.Parallel()
+	t.Run("nil logger", func(t *testing.T) {
+		logFinalizingPhaseEndModule(nil, "web", time.Second)
+	})
+
+	t.Run("info when at least one second", func(t *testing.T) {
+		var buf bytes.Buffer
+		logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+		logFinalizingPhaseEndModule(logger, "auth", time.Second)
+
+		logs := buf.String()
+		if !strings.Contains(logs, `"level":"INFO"`) {
+			t.Fatalf("expected INFO, got %q", logs)
+		}
+		for _, want := range []string{
+			`"msg":"module operation finalizing phase end module completed"`,
+			`"phase_module":"auth"`,
+			`"step":"phase_end"`,
+			`"duration_ms":1000`,
+		} {
+			if !strings.Contains(logs, want) {
+				t.Fatalf("expected %q in %q", want, logs)
+			}
+		}
+	})
+
+	t.Run("debug when under one second", func(t *testing.T) {
+		var buf bytes.Buffer
+		logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+		logFinalizingPhaseEndModule(logger, "web", 10*time.Millisecond)
+
+		logs := buf.String()
+		if !strings.Contains(logs, `"level":"DEBUG"`) {
+			t.Fatalf("expected DEBUG, got %q", logs)
+		}
+		if !strings.Contains(logs, `"phase_module":"web"`) {
+			t.Fatalf("expected phase_module in %q", logs)
+		}
+	})
+}

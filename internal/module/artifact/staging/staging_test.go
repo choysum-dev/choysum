@@ -4,7 +4,9 @@
 package staging
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -608,4 +610,46 @@ func TestAnomalousRuntimeAPICommitTarget(t *testing.T) {
 			t.Fatalf("anomalousRuntimeAPICommitTarget(%q)=%v, want %v", tc.target, got, tc.want)
 		}
 	}
+}
+
+func TestLogDirStagingCommit_Level(t *testing.T) {
+	t.Parallel()
+
+	t.Run("normal commit is debug", func(t *testing.T) {
+		var buf bytes.Buffer
+		logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+		logDirStagingCommit(&DirStaging{
+			TargetDir:  filepath.Join("tmp", "choysum", "dist", "bundles"),
+			StagingDir: filepath.Join("tmp", "staging", "bundles"),
+			BackupDir:  filepath.Join("tmp", "choysum", "dist", "bundles.old"),
+			HadTarget:  true,
+			logger:     logger,
+		})
+		logs := buf.String()
+		if !strings.Contains(logs, `"level":"DEBUG"`) {
+			t.Fatalf("expected DEBUG staging commit, got %q", logs)
+		}
+		if !strings.Contains(logs, `"msg":"staging dir commit"`) {
+			t.Fatalf("expected staging dir commit message, got %q", logs)
+		}
+	})
+
+	t.Run("anomalous target still warns", func(t *testing.T) {
+		var buf bytes.Buffer
+		logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+		logDirStagingCommit(&DirStaging{
+			TargetDir:  filepath.Join("tmp", "choysum", "api"),
+			StagingDir: filepath.Join("tmp", "staging", "api"),
+			BackupDir:  filepath.Join("tmp", "choysum", "api.old"),
+			HadTarget:  true,
+			logger:     logger,
+		})
+		logs := buf.String()
+		if !strings.Contains(logs, `"level":"WARN"`) {
+			t.Fatalf("expected WARN for anomalous target, got %q", logs)
+		}
+		if strings.Contains(logs, `"level":"INFO"`) {
+			t.Fatalf("normal commit path must not emit Info, got %q", logs)
+		}
+	})
 }
