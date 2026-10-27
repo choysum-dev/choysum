@@ -63,7 +63,6 @@ func TestGrpcServerOptionsIncludesAccessLogInterceptors(t *testing.T) {
 	runtimeScope := newRichServerTestScope(t)
 	runtimeScope.cfg.Log = config.NewDefaultLogConfig()
 	runtimeScope.cfg.Log.Access = true
-	runtimeScope.cfg.Log.AccessSlowMs = 0 // unset → keep default 1000
 	runtimeScope.cfg.Auth.Enabled = true
 	var buf bytes.Buffer
 	runtimeScope.logger = slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
@@ -74,13 +73,21 @@ func TestGrpcServerOptionsIncludesAccessLogInterceptors(t *testing.T) {
 	}
 	accessOpts, _ := srv.accessLogConfig()
 	if !accessOpts.Access || accessOpts.SlowMs != 1000 {
-		t.Fatalf("accessLogConfig = %#v, want Access=true SlowMs=1000", accessOpts)
+		t.Fatalf("accessLogConfig = %#v, want Access=true SlowMs=1000 (default)", accessOpts)
 	}
 	runtimeScope.cfg.Log.AccessSlowMs = 2500
 	if got, _ := srv.accessLogConfig(); got.SlowMs != 2500 {
 		t.Fatalf("AccessSlowMs override = %#v, want SlowMs=2500", got)
 	}
 	runtimeScope.cfg.Log.AccessSlowMs = 0
+	if got, _ := srv.accessLogConfig(); got.SlowMs != 0 {
+		t.Fatalf("AccessSlowMs 0 should disable slow-WARN, got %#v", got)
+	}
+	runtimeScope.cfg.Log.AccessSlowMs = -1
+	if got, _ := srv.accessLogConfig(); got.SlowMs != 0 {
+		t.Fatalf("AccessSlowMs < 0 should disable slow-WARN, got %#v", got)
+	}
+	runtimeScope.cfg.Log.AccessSlowMs = 1000
 
 	opts := srv.grpcServerOptions()
 	if len(opts.UnaryInterceptors) < 2 {

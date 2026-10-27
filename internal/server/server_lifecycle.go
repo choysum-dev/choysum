@@ -20,9 +20,11 @@ func (s *GRPCWebServer) accessLogConfig() (accesslog.Options, *slog.Logger) {
 		logger = s.runtimeScope.Logger()
 		if logCfg := scope.LogConfigFromScope(s.runtimeScope); logCfg != nil {
 			opts.Access = logCfg.Access
-			// Keep the 1000ms default when AccessSlowMs is unset (0). Callers that
-			// need slow-WARN disabled set AccessSlowMs via Options directly in tests.
-			if logCfg.AccessSlowMs > 0 {
+			// Honor AccessSlowMs as loaded: NewDefaultLogConfig / YAML omit keep 1000;
+			// explicit 0 (or negative) disables slow-WARN per config.sample.yaml.
+			if logCfg.AccessSlowMs < 0 {
+				opts.SlowMs = 0
+			} else {
 				opts.SlowMs = logCfg.AccessSlowMs
 			}
 		}
