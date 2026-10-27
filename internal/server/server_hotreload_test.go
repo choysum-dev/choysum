@@ -1741,6 +1741,39 @@ func TestHandleWatchedModuleUpgradeEmptyModuleName(t *testing.T) {
 	}
 }
 
+func TestHandleWatchedModuleUpgradePropagatesQuietProgress(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	line := logger.NewProgressLine(&bytes.Buffer{})
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{progressLine: line},
+	}
+	prev := hotreloadModuleUpgrade
+	var gotCtx context.Context
+	hotreloadModuleUpgrade = func(_ *GRPCWebServer, ctx context.Context, moduleName string) error {
+		gotCtx = ctx
+		if moduleName != "web" {
+			t.Fatalf("moduleName = %q, want web", moduleName)
+		}
+		return errors.New("forced upgrade stop")
+	}
+	t.Cleanup(func() { hotreloadModuleUpgrade = prev })
+
+	err := srv.handleWatchedModuleUpgrade("web", "/tmp/x.ts")
+	if err == nil || !strings.Contains(err.Error(), "forced upgrade stop") {
+		t.Fatalf("handleWatchedModuleUpgrade() error = %v", err)
+	}
+	if gotCtx == nil {
+		t.Fatal("expected upgrade context to be captured")
+	}
+	if !logger.QuietProgressFromContext(gotCtx) {
+		t.Fatal("expected QuietProgress on nested upgrade context")
+	}
+	if logger.ProgressLineFromContext(gotCtx) != line {
+		t.Fatal("expected ProgressLine on nested upgrade context")
+	}
+}
+
 func TestDispatchWatchHandlerResolvedNoRuntimeScope(t *testing.T) {
 	srv := &GRPCWebServer{hotreload: hotreloadState{}}
 	_, err := srv.dispatchWatchHandlerResolved("/some/file.ts")

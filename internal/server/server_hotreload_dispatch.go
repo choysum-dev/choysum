@@ -105,12 +105,18 @@ func (s *GRPCWebServer) handleWatchedModuleUpgrade(moduleName string, file strin
 		ctx = context.Background()
 	}
 	ctx = hotreloadUpgradeContext(ctx, line)
-	moduleLifecycle := lifecycle.NewService(s.runtimeScope.WithContext(ctx), s.jsExecutor)
-	if err := moduleLifecycle.Upgrade(ctx, lifecycle.UpgradeRequest{Input: moduleName}); err != nil {
+	if err := hotreloadModuleUpgrade(s, ctx, moduleName); err != nil {
 		return xfmt.Errorf("error running watch handler: %w", err)
 	}
 	s.runtimeScope.Logger().Debug("watch module upgraded", "module", moduleName, "file", file)
 	return nil
+}
+
+// hotreloadModuleUpgrade runs nested lifecycle Upgrade for a watched module.
+// Tests may stub it to observe the QuietProgress context.
+var hotreloadModuleUpgrade = func(s *GRPCWebServer, ctx context.Context, moduleName string) error {
+	moduleLifecycle := lifecycle.NewService(s.runtimeScope.WithContext(ctx), s.jsExecutor)
+	return moduleLifecycle.Upgrade(ctx, lifecycle.UpgradeRequest{Input: moduleName})
 }
 
 func (s *GRPCWebServer) handleWatchedFileChange(file string) error {

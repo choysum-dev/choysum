@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	logutil "github.com/choysum-dev/choysum/internal/logger"
@@ -117,6 +118,32 @@ func TestInstallModuleSetsResolvingModulesSpinnerBeforePrepare(t *testing.T) {
 	}
 	if captured != "solo_spinner: resolving modules" {
 		t.Fatalf("spinner during prepare = %q, want resolving modules", captured)
+	}
+}
+
+func TestInstallModuleRejectsEmptyPreparedRoot(t *testing.T) {
+	t.Parallel()
+	prev := prepareInstallModules
+	prepareInstallModules = func(context.Context, scope.Scope, string, ...Option) (*PrefetchedInstall, error) {
+		return &PrefetchedInstall{RootName: "  "}, nil
+	}
+	t.Cleanup(func() { prepareInstallModules = prev })
+
+	line := logutil.NewProgressLine(&bytes.Buffer{})
+	ticker := logutil.NewProgressTicker(line, logutil.ProgressTickerOptions{})
+	defer ticker.Stop()
+	ticker.SetMessage("outer: installing batch")
+	ctx := logutil.WithProgressLine(context.Background(), line)
+	ctx = logutil.WithProgressTicker(ctx, ticker)
+
+	err := InstallModule(ctx, newModuleIndexSyncScope(t.TempDir(), newModuleIndexSyncDB(t)), nil, InstallModuleRequest{
+		Input: "solo_empty_root",
+	})
+	if err == nil || !strings.Contains(err.Error(), "prepared install root is empty") {
+		t.Fatalf("InstallModule() error = %v, want empty root", err)
+	}
+	if got := ticker.Message(); got != "outer: installing batch" {
+		t.Fatalf("caller spinner after empty root = %q, want restored", got)
 	}
 }
 

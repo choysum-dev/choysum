@@ -25,8 +25,11 @@ type InstallModuleRequest struct {
 
 // PrepareInstall materializes the install closure outside any install commit TX.
 func PrepareInstall(ctx context.Context, runtimeScope scope.Scope, input string, opts ...Option) (*PrefetchedInstall, error) {
-	return PrefetchInstallModules(ctx, runtimeScope, input, opts...)
+	return prepareInstallModules(ctx, runtimeScope, input, opts...)
 }
+
+// prepareInstallModules is PrefetchInstallModules; tests may stub prepare failures.
+var prepareInstallModules = PrefetchInstallModules
 
 // ensureInstallPrepareProgressTicker reuses or creates a ProgressTicker when a
 // ProgressLine is already on ctx so PrepareInstall can show resolve progress
@@ -96,7 +99,7 @@ func InstallModule(ctx context.Context, runtimeScope scope.Scope, jsExecutor jse
 		}
 	}
 
-	prepared, err := PrepareInstall(opCtx, runtimeScope, input, opts...)
+	prepared, err := prepareInstallModules(opCtx, runtimeScope, input, opts...)
 	if err != nil {
 		restoreCallerPrepareSpinner()
 		return err

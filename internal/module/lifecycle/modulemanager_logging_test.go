@@ -108,10 +108,7 @@ func TestModuleOperationPlanAndCompletedMessages(t *testing.T) {
 
 func TestModuleOperationCompletedInfoAttrsOnlyDuration(t *testing.T) {
 	t.Parallel()
-	attrs := attrsToMap(t, moduleOperationCompletedInfoAttrs(moduleplan.Plan{
-		ModuleOrder:  []string{"core"},
-		AffectedApps: []string{"auth", "base", "task"},
-	}, 24591*time.Millisecond))
+	attrs := attrsToMap(t, moduleOperationCompletedInfoAttrs(24591*time.Millisecond))
 
 	if got := attrs["duration_ms"]; got != int64(24591) {
 		t.Fatalf("duration_ms = %#v, want 24591", got)

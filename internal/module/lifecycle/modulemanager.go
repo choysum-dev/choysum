@@ -919,8 +919,7 @@ func moduleOperationPlanDebugAttrs(opPlan plan.Plan) []any {
 	}
 }
 
-func moduleOperationCompletedInfoAttrs(opPlan plan.Plan, duration time.Duration) []any {
-	_ = opPlan
+func moduleOperationCompletedInfoAttrs(duration time.Duration) []any {
 	return []any{
 		"duration_ms", duration.Milliseconds(),
 	}
@@ -1700,7 +1699,7 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			"index_refresh_duration_ms", indexRefreshDuration.Milliseconds(),
 			"index_sync_duration_ms", indexSyncDuration.Milliseconds(),
 		)
-		userLogger.Log(stageCtx, logutil.ProgressBoundaryLogLevel(stageCtx), moduleOperationCompletedMessage(plan.OpInstall), moduleOperationCompletedInfoAttrs(opPlan, time.Since(started))...)
+		userLogger.Log(stageCtx, logutil.ProgressBoundaryLogLevel(stageCtx), moduleOperationCompletedMessage(plan.OpInstall), moduleOperationCompletedInfoAttrs(time.Since(started))...)
 		return nil
 	})
 }
@@ -1851,7 +1850,7 @@ func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
 			return err
 		}
 		clearSpinnerState()
-		userLogger.Log(stageCtx, logutil.ProgressBoundaryLogLevel(stageCtx), moduleOperationCompletedMessage(opPlan.Op), moduleOperationCompletedInfoAttrs(opPlan, time.Since(started))...)
+		userLogger.Log(stageCtx, logutil.ProgressBoundaryLogLevel(stageCtx), moduleOperationCompletedMessage(opPlan.Op), moduleOperationCompletedInfoAttrs(time.Since(started))...)
 		return nil
 	})
 }
@@ -2107,7 +2106,7 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 		logger.Debug("module operation finalizing timings",
 			"phase_end_duration_ms", phaseEndDuration.Milliseconds(),
 		)
-		userLogger.Log(stageCtx, logutil.ProgressBoundaryLogLevel(stageCtx), moduleOperationCompletedMessage(opPlan.Op), moduleOperationCompletedInfoAttrs(opPlan, time.Since(started))...)
+		userLogger.Log(stageCtx, logutil.ProgressBoundaryLogLevel(stageCtx), moduleOperationCompletedMessage(opPlan.Op), moduleOperationCompletedInfoAttrs(time.Since(started))...)
 		return nil
 	})
 }
