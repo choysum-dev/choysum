@@ -5,6 +5,7 @@ package lifecycle
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"strings"
@@ -160,22 +161,21 @@ func TestLogModuleCommitTxHoldDefaultOpAndCaller(t *testing.T) {
 
 func mustParseLogDurationMs(t *testing.T, logs string) int64 {
 	t.Helper()
-	const key = `"duration_ms":`
-	idx := strings.Index(logs, key)
-	if idx < 0 {
-		t.Fatalf("duration_ms missing in %q", logs)
+	for _, line := range strings.Split(logs, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		var payload struct {
+			DurationMs int64 `json:"duration_ms"`
+		}
+		if err := json.Unmarshal([]byte(line), &payload); err != nil {
+			t.Fatalf("unmarshal log line %q: %v", line, err)
+		}
+		if payload.DurationMs > 0 || strings.Contains(line, `"duration_ms"`) {
+			return payload.DurationMs
+		}
 	}
-	rest := logs[idx+len(key):]
-	end := 0
-	for end < len(rest) && rest[end] >= '0' && rest[end] <= '9' {
-		end++
-	}
-	if end == 0 {
-		t.Fatalf("duration_ms value missing in %q", logs)
-	}
-	var n int64
-	for i := 0; i < end; i++ {
-		n = n*10 + int64(rest[i]-'0')
-	}
-	return n
+	t.Fatalf("duration_ms missing in %q", logs)
+	return 0
 }

@@ -50,6 +50,8 @@ func (h *prefetchLogCapture) levelsFor(msg string) []slog.Level {
 type countingPrefetchOriginCoordinator struct {
 	modules map[string]*meta.Module
 	fetches []string
+	// onFetch is invoked before each ResolveInstallModule lookup (tests may capture spinner state).
+	onFetch func(input string)
 }
 
 func (c *countingPrefetchOriginCoordinator) Peek(_ context.Context, input string) (*meta.Module, error) {
@@ -58,6 +60,9 @@ func (c *countingPrefetchOriginCoordinator) Peek(_ context.Context, input string
 
 func (c *countingPrefetchOriginCoordinator) ResolveInstallModule(_ context.Context, input string) (*meta.Module, error) {
 	c.fetches = append(c.fetches, input)
+	if c.onFetch != nil {
+		c.onFetch(input)
+	}
 	return c.lookup(input), nil
 }
 

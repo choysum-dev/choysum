@@ -40,6 +40,18 @@ func TestProgressDetailLogLevel_QuietAndDefault(t *testing.T) {
 	}
 }
 
+func TestProgressDetailLogLevel_TTYProgressLine(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	stubConsoleTerminalWriter(t, true)
+	line := NewProgressLine(&bytes.Buffer{})
+	if !line.IsTTY() {
+		t.Fatal("expected TTY ProgressLine")
+	}
+	if got := ProgressDetailLogLevel(WithProgressLine(context.Background(), line)); got != slog.LevelDebug {
+		t.Fatalf("TTY detail level = %v, want Debug", got)
+	}
+}
+
 func TestProgressBoundaryLogLevel(t *testing.T) {
 	t.Parallel()
 	if got := ProgressBoundaryLogLevel(context.Background()); got != slog.LevelInfo {

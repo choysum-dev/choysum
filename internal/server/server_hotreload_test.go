@@ -398,7 +398,6 @@ func TestScheduleLeaseConflictRetryRequeuesFile(t *testing.T) {
 	}
 }
 
-
 func TestScheduleLeaseConflictRetryExhaustedClearsBudget(t *testing.T) {
 	prevBase, prevMax := hotreloadLeaseRetryBase, hotreloadLeaseRetryMax
 	hotreloadLeaseRetryBase = 5 * time.Millisecond
@@ -434,7 +433,6 @@ func TestScheduleLeaseConflictRetryExhaustedClearsBudget(t *testing.T) {
 	srv.hotreload.clearLeaseRetry(file)
 	srv.hotreload.clearLeaseRetry(file) // nil-map / missing key no-op path after delete
 }
-
 
 func TestScheduleLeaseConflictRetryCapsBackoffShift(t *testing.T) {
 	prevBase, prevMax := hotreloadLeaseRetryBase, hotreloadLeaseRetryMax
@@ -1708,6 +1706,19 @@ func TestHandleWatchedModuleUpgradeNilScope(t *testing.T) {
 	err := srv.handleWatchedModuleUpgrade("web", "/some/file.ts")
 	if err == nil {
 		t.Fatal("expected error from handleWatchedModuleUpgrade with nil runtimeScope")
+	}
+}
+
+func TestHandleWatchedModuleUpgradeAppliesQuietProgress(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{},
+	}
+	// Empty module fails inside Upgrade after QuietProgress is attached.
+	err := srv.handleWatchedModuleUpgrade("  ", "/tmp/x.ts")
+	if err == nil {
+		t.Fatal("expected upgrade error")
 	}
 }
 

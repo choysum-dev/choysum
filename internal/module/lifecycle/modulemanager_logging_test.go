@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"log/slog"
 	"strings"
 	"sync/atomic"
@@ -20,6 +21,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/module/evolution/scripts"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	moduleplan "github.com/choysum-dev/choysum/internal/module/plan"
+	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	statepkg "github.com/choysum-dev/choysum/pkg/state"
 	"gorm.io/gorm"
@@ -73,18 +75,6 @@ func attrsToMap(t *testing.T, attrs []any) map[string]any {
 		result[key] = attrs[i+1]
 	}
 	return result
-}
-
-func TestModuleOperationPlanInfoAttrsAreEmpty(t *testing.T) {
-	t.Parallel()
-	attrs := moduleOperationPlanInfoAttrs(moduleplan.Plan{
-		ModuleOrder:         []string{"core"},
-		AffectedApps:        []string{"auth", "base", "task"},
-		NeedsGlobalWebBuild: true,
-	})
-	if len(attrs) != 0 {
-		t.Fatalf("plan Info attrs must be empty (module comes from user logger), got %#v", attrs)
-	}
 }
 
 func TestModuleOperationPlanDebugAttrsIncludesOpsDetails(t *testing.T) {
@@ -876,6 +866,9 @@ func TestModuleStepSpinnerMessage(t *testing.T) {
 	if got := moduleStepSpinnerMessage("web", moduleStepPrepare); got != "" {
 		t.Fatalf("micro-step must be empty, got %q", got)
 	}
+	if got := moduleStepSpinnerMessage("  ", moduleStepSchema); got != "unknown: updating database schema" {
+		t.Fatalf("empty module=%q", got)
+	}
 }
 
 func TestBindOpStepSpinner(t *testing.T) {
@@ -889,7 +882,146 @@ func TestBindOpStepSpinner(t *testing.T) {
 	if got != "sandbox: updating database schema" {
 		t.Fatalf("got %q", got)
 	}
+	bindOpStepSpinner(nil, func(stage, message string) {})
+	bindOpStepSpinner(opCtx, nil)
 }
+
+func TestModuleUserLoggerFallbacks(t *testing.T) {
+	t.Parallel()
+	if got := moduleUserLogger(nil, ""); got == nil {
+		t.Fatal("expected default logger")
+	}
+	if got := moduleUserLogger(nil, "  "); got == nil {
+		t.Fatal("expected default logger for blank module")
+	}
+	base := slog.New(slog.NewTextHandler(io.Discard, nil))
+	if got := moduleUserLogger(base, "auth"); got == nil {
+		t.Fatal("expected with-module logger")
+	}
+}
+
+func TestInstallHeartbeatStageLabel(t *testing.T) {
+	t.Parallel()
+	cases := map[string]string{
+		"planning":                 "Planning module operation",
+		"pipeline.app_stage":       "Preparing app builds",
+		"pipeline.app_build":       "Building app backend",
+		"pipeline.app_generate":    "Generating app APIs",
+		"pipeline.bundles_build":   "Building shared backend bundles",
+		"pipeline.web_build":       "Building shared web assets",
+		"finalizing.phase_end":     "Finalizing",
+		"finalizing.index_refresh": "Refreshing module index",
+		"finalizing.index_sync":    "Syncing module index",
+		"module.step":              "Module step",
+		"":                         "",
+		"custom_stage.detail":      "Custom stage detail",
+	}
+	for in, want := range cases {
+		if got := installHeartbeatStageLabel(in); got != want {
+			t.Fatalf("installHeartbeatStageLabel(%q)=%q want %q", in, got, want)
+		}
+	}
+}
+
+func TestHandleUninstallModuleProgress(t *testing.T) {
+	t.Parallel()
+	stages := map[string]string{}
+	set := func(stage, message string) { stages[stage] = message }
+
+	if !handleUninstallModuleProgress(pipeline.ProgressEvent{
+		Stage: pipeline.ProgressStageModuleUninstallStarted, Module: "partner", Current: 1, Total: 2,
+	}, set) {
+		t.Fatal("expected handled")
+	}
+	if stages["uninstalling.modules"] != "partner: uninstalling module (1/2)" {
+		t.Fatalf("got %q", stages["uninstalling.modules"])
+	}
+	if !handleUninstallModuleProgress(pipeline.ProgressEvent{
+		Stage: pipeline.ProgressStageModuleUninstallStarted, Module: "partner",
+	}, set) {
+		t.Fatal("expected handled")
+	}
+	if stages["uninstalling.modules"] != "partner: uninstalling module" {
+		t.Fatalf("got %q", stages["uninstalling.modules"])
+	}
+	if !handleUninstallModuleProgress(pipeline.ProgressEvent{
+		Stage: pipeline.ProgressStageModuleUninstallFailed, Module: "partner", Current: 1, Total: 2,
+	}, set) {
+		t.Fatal("expected handled")
+	}
+	if stages["uninstalling.modules"] != "partner: module uninstall failed (1/2)" {
+		t.Fatalf("got %q", stages["uninstalling.modules"])
+	}
+	if !handleUninstallModuleProgress(pipeline.ProgressEvent{
+		Stage: pipeline.ProgressStageModuleUninstallFailed, Module: "  ",
+	}, set) {
+		t.Fatal("expected handled")
+	}
+	if stages["uninstalling.modules"] != "unknown: module uninstall failed" {
+		t.Fatalf("got %q", stages["uninstalling.modules"])
+	}
+	if handleUninstallModuleProgress(pipeline.ProgressEvent{Stage: pipeline.ProgressStageWebBuildStarted}, set) {
+		t.Fatal("expected unhandled")
+	}
+}
+
+func TestModuleInstallProgressSpinnerMessage(t *testing.T) {
+	t.Parallel()
+	got := moduleInstallProgressSpinnerMessage(pipeline.ModuleInstallProgress{
+		Module:  "auth",
+		Current: 2,
+		Total:   5,
+		Stage:   pipeline.ModuleInstallProgressStageStarted,
+	}, 5)
+	if got != "auth: installing module (2/5)" {
+		t.Fatalf("started=%q", got)
+	}
+	got = moduleInstallProgressSpinnerMessage(pipeline.ModuleInstallProgress{
+		Module:  "auth",
+		Current: 2,
+		Total:   5,
+		Stage:   pipeline.ModuleInstallProgressStageFailed,
+	}, 5)
+	if got != "auth: module install failed (2/5)" {
+		t.Fatalf("failed=%q", got)
+	}
+	got = moduleInstallProgressSpinnerMessage(pipeline.ModuleInstallProgress{
+		Stage:   pipeline.ModuleInstallProgressStageFailed,
+		Current: 1,
+		Total:   1,
+	}, 1)
+	if got != "unknown: module install failed (1/1)" {
+		t.Fatalf("empty module=%q", got)
+	}
+}
+
+func TestRestoreJSExecutorScripts(t *testing.T) {
+	t.Parallel()
+	restoreJSExecutorScripts(nil, nil, nil)
+
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	exec := &failingReloadScriptExecutor{err: errors.New("reload boom")}
+	restoreJSExecutorScripts(logger, exec, nil)
+	if !strings.Contains(buf.String(), "failed to restore js executor scripts") {
+		t.Fatalf("expected warn log, got %q", buf.String())
+	}
+	if !exec.setCalled {
+		t.Fatal("expected SetJsScripts")
+	}
+}
+
+type failingReloadScriptExecutor struct {
+	err       error
+	setCalled bool
+}
+
+func (e *failingReloadScriptExecutor) Execute(context.Context, *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+	return &jsengine.JsResponse{}, nil
+}
+func (e *failingReloadScriptExecutor) GetJsScripts() []*jsengine.JsScript { return nil }
+func (e *failingReloadScriptExecutor) SetJsScripts([]*jsengine.JsScript)  { e.setCalled = true }
+func (e *failingReloadScriptExecutor) Reload(...*jsengine.JsScript) error { return e.err }
 
 func TestHandleUpgradeEnsureProgress(t *testing.T) {
 	t.Parallel()

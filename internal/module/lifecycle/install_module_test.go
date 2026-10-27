@@ -8,10 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"path/filepath"
-	"strings"
-	"sync"
 	"testing"
-	"time"
 
 	logutil "github.com/choysum-dev/choysum/internal/logger"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
@@ -86,8 +83,17 @@ func TestInstallModuleSetsResolvingModulesSpinnerBeforePrepare(t *testing.T) {
 		Path:       filepath.Join(modulesPath, "solo_spinner"),
 		DependsStr: dependsRaw,
 	}
+	line := logutil.NewProgressLine(&bytes.Buffer{})
+	ticker := logutil.NewProgressTicker(line, logutil.ProgressTickerOptions{})
+	defer ticker.Stop()
+	var captured string
 	origin := &countingPrefetchOriginCoordinator{
 		modules: map[string]*meta.Module{"solo_spinner": mod},
+		onFetch: func(string) {
+			if captured == "" {
+				captured = ticker.Message()
+			}
+		},
 	}
 	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
 	locker := &moduleIndexSyncTestLocker{}
@@ -96,22 +102,6 @@ func TestInstallModuleSetsResolvingModulesSpinnerBeforePrepare(t *testing.T) {
 		WithOriginCoordinatorFactory(func(scope.Scope) OriginCoordinator { return origin }),
 	}
 
-	line := logutil.NewProgressLine(&bytes.Buffer{})
-	var seenMu sync.Mutex
-	var seen []string
-	ticker := logutil.NewProgressTicker(line, logutil.ProgressTickerOptions{
-		Interval: time.Millisecond,
-		OnTick: func(_ time.Time, message string) {
-			message = strings.TrimSpace(message)
-			if message == "" {
-				return
-			}
-			seenMu.Lock()
-			seen = append(seen, message)
-			seenMu.Unlock()
-		},
-	})
-	defer ticker.Stop()
 	ctx := logutil.WithProgressLine(context.Background(), line)
 	ctx = logutil.WithProgressTicker(ctx, ticker)
 
@@ -125,28 +115,55 @@ func TestInstallModuleSetsResolvingModulesSpinnerBeforePrepare(t *testing.T) {
 	if len(origin.fetches) == 0 || origin.fetches[0] != "solo_spinner" {
 		t.Fatalf("fetches=%v", origin.fetches)
 	}
+	if captured != "solo_spinner: resolving modules" {
+		t.Fatalf("spinner during prepare = %q, want resolving modules", captured)
+	}
+}
 
-	deadline := time.Now().Add(500 * time.Millisecond)
-	for {
-		seenMu.Lock()
-		found := false
-		for _, msg := range seen {
-			if msg == "solo_spinner: resolving modules" {
-				found = true
-				break
-			}
-		}
-		seenMu.Unlock()
-		if found {
-			break
-		}
-		if time.Now().After(deadline) {
-			seenMu.Lock()
-			got := append([]string(nil), seen...)
-			seenMu.Unlock()
-			t.Fatalf("expected resolving modules spinner, seen=%v", got)
-		}
-		time.Sleep(5 * time.Millisecond)
+func TestEnsureInstallPrepareProgressTickerNilContext(t *testing.T) {
+	t.Parallel()
+	gotCtx, ticker, owns := ensureInstallPrepareProgressTicker(nil)
+	if gotCtx == nil || ticker != nil || owns {
+		t.Fatalf("nil ctx: gotCtx=%v ticker=%v owns=%v", gotCtx != nil, ticker != nil, owns)
+	}
+}
+
+func TestInstallModuleOwnsPrepareTickerWhenOnlyProgressLine(t *testing.T) {
+	t.Parallel()
+	modulesPath := t.TempDir()
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
+		t.Fatalf("auto migrate: %v", err)
+	}
+	dependsRaw, err := json.Marshal([]string{})
+	if err != nil {
+		t.Fatalf("marshal depends: %v", err)
+	}
+	mod := &meta.Module{
+		Name:       "solo_owned_ticker",
+		Version:    "1.0.0",
+		Path:       filepath.Join(modulesPath, "solo_owned_ticker"),
+		DependsStr: dependsRaw,
+	}
+	origin := &countingPrefetchOriginCoordinator{
+		modules: map[string]*meta.Module{"solo_owned_ticker": mod},
+	}
+	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	locker := &moduleIndexSyncTestLocker{}
+	// ProgressLine without ticker → InstallModule owns prepare ticker (Stop deferred).
+	ctx := logutil.WithProgressLine(context.Background(), logutil.NewProgressLine(&bytes.Buffer{}))
+	err = InstallModule(ctx, runtimeScope, nil, InstallModuleRequest{
+		Input:        "solo_owned_ticker",
+		SkipWebShell: true,
+	}, []Option{
+		WithLockerFactory(func(scope.Scope) statepkg.Locker { return locker }),
+		WithOriginCoordinatorFactory(func(scope.Scope) OriginCoordinator { return origin }),
+	}...)
+	if err == nil {
+		t.Fatal("expected InstallModule to fail without executor/full install")
+	}
+	if len(origin.fetches) == 0 {
+		t.Fatal("expected prefetch fetch")
 	}
 }
 
