@@ -74,6 +74,10 @@ func InstallModule(ctx context.Context, runtimeScope scope.Scope, jsExecutor jse
 
 	opCtx := WithOperationOptions(ctx, OperationOptions{WithDemo: req.WithDemo, SkipWebShell: req.SkipWebShell})
 	opCtx, prepareTicker, ownsPrepareTicker := ensureInstallPrepareProgressTicker(opCtx)
+	previousPrepareMessage := ""
+	if prepareTicker != nil && !ownsPrepareTicker {
+		previousPrepareMessage = prepareTicker.Message()
+	}
 	if ownsPrepareTicker {
 		defer func() {
 			prepareTicker.Clear()
@@ -81,14 +85,27 @@ func InstallModule(ctx context.Context, runtimeScope scope.Scope, jsExecutor jse
 		}()
 	}
 	setInstallResolvingModulesSpinner(prepareTicker, input)
+	restoreCallerPrepareSpinner := func() {
+		if prepareTicker == nil || ownsPrepareTicker {
+			return
+		}
+		if strings.TrimSpace(previousPrepareMessage) == "" {
+			prepareTicker.Clear()
+		} else {
+			prepareTicker.SetMessage(previousPrepareMessage)
+		}
+	}
 
 	prepared, err := PrepareInstall(opCtx, runtimeScope, input, opts...)
 	if err != nil {
+		restoreCallerPrepareSpinner()
 		return err
 	}
 	if prepared == nil || strings.TrimSpace(prepared.RootName) == "" {
+		restoreCallerPrepareSpinner()
 		return xfmt.Errorf("prepared install root is empty")
 	}
+	restoreCallerPrepareSpinner()
 
 	installCtx := WithPrefetchedInstallModules(opCtx, prepared.Modules)
 	installScope := runtimeScope.WithContext(installCtx)

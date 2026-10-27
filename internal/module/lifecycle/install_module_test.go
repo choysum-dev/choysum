@@ -120,6 +120,49 @@ func TestInstallModuleSetsResolvingModulesSpinnerBeforePrepare(t *testing.T) {
 	}
 }
 
+func TestInstallModuleRestoresCallerOwnedPrepareSpinnerOnPrepareFailure(t *testing.T) {
+	t.Parallel()
+	modulesPath := t.TempDir()
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
+		t.Fatalf("auto migrate: %v", err)
+	}
+
+	line := logutil.NewProgressLine(&bytes.Buffer{})
+	ticker := logutil.NewProgressTicker(line, logutil.ProgressTickerOptions{})
+	defer ticker.Stop()
+	ticker.SetMessage("outer: installing batch")
+	var duringPrepare string
+	origin := &countingPrefetchOriginCoordinator{
+		modules: map[string]*meta.Module{},
+		onFetch: func(string) {
+			if duringPrepare == "" {
+				duringPrepare = ticker.Message()
+			}
+		},
+	}
+	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	ctx := logutil.WithProgressLine(context.Background(), line)
+	ctx = logutil.WithProgressTicker(ctx, ticker)
+
+	err := InstallModule(ctx, runtimeScope, nil, InstallModuleRequest{
+		Input:        "missing_prepare",
+		SkipWebShell: true,
+	}, []Option{
+		WithLockerFactory(func(scope.Scope) statepkg.Locker { return &moduleIndexSyncTestLocker{} }),
+		WithOriginCoordinatorFactory(func(scope.Scope) OriginCoordinator { return origin }),
+	}...)
+	if err == nil {
+		t.Fatal("expected prepare failure for missing module")
+	}
+	if duringPrepare != "missing_prepare: resolving modules" {
+		t.Fatalf("spinner during prepare = %q, want resolving modules", duringPrepare)
+	}
+	if got := ticker.Message(); got != "outer: installing batch" {
+		t.Fatalf("caller spinner after prepare failure = %q, want restored outer message", got)
+	}
+}
+
 func TestEnsureInstallPrepareProgressTickerNilContext(t *testing.T) {
 	t.Parallel()
 	gotCtx, ticker, owns := ensureInstallPrepareProgressTicker(nil)
