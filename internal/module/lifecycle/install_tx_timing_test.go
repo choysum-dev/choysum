@@ -35,6 +35,22 @@ func TestLogModuleCommitTxHoldEmitsDuration(t *testing.T) {
 	}
 }
 
+func TestLogModuleCommitTxHoldAtInfoThreshold(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+
+	logModuleCommitTxHold(logger, "upgrade", "module_commit", moduleCommitTxHoldInfoMinDuration, nil)
+
+	logs := buf.String()
+	if !strings.Contains(logs, `"level":"INFO"`) {
+		t.Fatalf("threshold hold must log at Info, got %q", logs)
+	}
+	if ms := mustParseLogDurationMs(t, logs); ms != moduleCommitTxHoldInfoMinDuration.Milliseconds() {
+		t.Fatalf("duration_ms=%d, want %d", ms, moduleCommitTxHoldInfoMinDuration.Milliseconds())
+	}
+}
+
 func TestLogModuleCommitTxHoldShortHoldIsDebug(t *testing.T) {
 	t.Parallel()
 	short := moduleCommitTxHoldInfoMinDuration / 2
@@ -91,6 +107,7 @@ func TestLogInstallOuterTxHoldEmitsDuration(t *testing.T) {
 	logs := logBuf.String()
 	for _, want := range []string{
 		`"msg":"install commit transaction hold completed"`,
+		`"op":"install"`,
 		`"caller":"bootstrap"`,
 	} {
 		if !strings.Contains(logs, want) {

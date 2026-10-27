@@ -351,6 +351,7 @@ func TestModuleOperationStepLogLevel(t *testing.T) {
 		{name: "hook skipped debug", step: "hook.pre_upgrade", duration: time.Second, extra: []any{"skipped", true, "reason", "same_version"}, want: slog.LevelDebug},
 		{name: "scripts skipped debug", step: "scripts.validate", duration: time.Second, extra: []any{"skipped", true}, want: slog.LevelDebug},
 		{name: "hook fast debug", step: "hook.pre_init", duration: 40 * time.Millisecond, want: slog.LevelDebug},
+		{name: "hook threshold info", step: "hook.pre_init", duration: moduleOperationStepInfoMinDuration, want: slog.LevelInfo},
 		{name: "scripts slow info", step: "scripts.pre", duration: 150 * time.Millisecond, want: slog.LevelInfo},
 		{name: "origin_resolve fast debug", step: moduleStepOriginResolve, duration: 0, want: slog.LevelDebug},
 		{name: "origin_resolve slow info", step: moduleStepOriginResolve, duration: 120 * time.Millisecond, want: slog.LevelInfo},
