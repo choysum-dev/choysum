@@ -26,11 +26,14 @@ import (
 	"github.com/choysum-dev/choysum/internal/server/transport"
 	"github.com/choysum-dev/choysum/internal/testing/jsexecutortest"
 	"github.com/choysum-dev/choysum/pkg/auth"
+	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	taskcontract "github.com/choysum-dev/choysum/pkg/task"
 	"github.com/choysum-dev/choysum/pkg/trace"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/resolver"
+	"google.golang.org/grpc/status"
 )
 
 func TestServerHelpers(t *testing.T) {
@@ -56,6 +59,67 @@ func TestServerHelpers(t *testing.T) {
 	}
 }
 
+func TestGrpcServerOptionsIncludesAccessLogInterceptors(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	runtimeScope.cfg.Log = config.NewDefaultLogConfig()
+	runtimeScope.cfg.Log.Access = true
+	runtimeScope.cfg.Auth.Enabled = true
+	var buf bytes.Buffer
+	runtimeScope.logger = slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+	srv := &GRPCWebServer{
+		runtimeScope:  runtimeScope,
+		authenticator: &fakeAuthenticator{}, // rejects missing metadata as Unauthenticated
+	}
+	accessOpts, _ := srv.accessLogConfig()
+	if !accessOpts.Access || accessOpts.SlowMs != 1000 {
+		t.Fatalf("accessLogConfig = %#v, want Access=true SlowMs=1000 (default)", accessOpts)
+	}
+	runtimeScope.cfg.Log.AccessSlowMs = 2500
+	if got, _ := srv.accessLogConfig(); got.SlowMs != 2500 {
+		t.Fatalf("AccessSlowMs override = %#v, want SlowMs=2500", got)
+	}
+	runtimeScope.cfg.Log.AccessSlowMs = 0
+	if got, _ := srv.accessLogConfig(); got.SlowMs != 0 {
+		t.Fatalf("AccessSlowMs 0 should disable slow-WARN, got %#v", got)
+	}
+	runtimeScope.cfg.Log.AccessSlowMs = -1
+	if got, _ := srv.accessLogConfig(); got.SlowMs != 0 {
+		t.Fatalf("AccessSlowMs < 0 should disable slow-WARN, got %#v", got)
+	}
+	runtimeScope.cfg.Log.AccessSlowMs = 1000
+
+	opts := srv.grpcServerOptions()
+	if len(opts.UnaryInterceptors) < 2 {
+		t.Fatalf("expected access + auth unary interceptors, got %d", len(opts.UnaryInterceptors))
+	}
+	if len(opts.StreamInterceptors) < 2 {
+		t.Fatalf("expected access + auth stream interceptors, got %d", len(opts.StreamInterceptors))
+	}
+
+	// Invoke the real assembled chain (access outermost). Missing metadata makes
+	// auth return Unauthenticated; access must still emit the failure line.
+	handler := grpc.UnaryHandler(func(context.Context, any) (any, error) {
+		t.Fatal("handler must not run when auth rejects the call")
+		return nil, nil
+	})
+	for i := len(opts.UnaryInterceptors) - 1; i >= 0; i-- {
+		interceptor := opts.UnaryInterceptors[i]
+		next := handler
+		handler = func(ctx context.Context, req any) (any, error) {
+			return interceptor(ctx, req, &grpc.UnaryServerInfo{FullMethod: "/probe.Svc/Call"}, next)
+		}
+	}
+	_, err := handler(context.Background(), nil)
+	if status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("chained call error = %v, want Unauthenticated", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, `"code":"Unauthenticated"`) || !strings.Contains(out, `"method":"/probe.Svc/Call"`) {
+		t.Fatalf("access outermost should log auth failures via assembled chain: %s", out)
+	}
+}
+
 func TestServerMoreInterceptorsAndTelemetry(t *testing.T) {
 	runtimeScope := newRichServerTestScope(t)
 	runtimeScope.cfg.Auth.Enabled = false
@@ -65,25 +129,24 @@ func TestServerMoreInterceptorsAndTelemetry(t *testing.T) {
 		return handler(ctx, req)
 	})
 	unary := []grpc.UnaryServerInterceptor{baseUnary}
-	authResult := srv.setupAuthInterceptors(&serverOpts, &unary)
+	stream, authResult := srv.setupAuthInterceptors(&unary)
 	assertAuthRuntimeSetupResult(t, authResult, false, false, false, false, "auth-disabled setup")
-	if len(serverOpts) != 0 || len(unary) != 1 {
-		t.Fatalf("expected auth-disabled setup to be a no-op, got opts=%d unary=%d", len(serverOpts), len(unary))
+	if stream != nil || len(unary) != 1 {
+		t.Fatalf("expected auth-disabled setup to be a no-op, got stream=%v unary=%d", stream != nil, len(unary))
 	}
 
 	runtimeScope.cfg.Auth.Enabled = true
 	runtimeScope.cfg.Auth.Type = "missing"
 	executor := jsexecutortest.NewUninitializedExecutor()
 	srv.jsExecutor = executor
-	serverOpts = nil
 	unary = []grpc.UnaryServerInterceptor{baseUnary}
-	authResult = srv.setupAuthInterceptors(&serverOpts, &unary)
+	stream, authResult = srv.setupAuthInterceptors(&unary)
 	assertAuthRuntimeSetupResult(t, authResult, true, false, true, true, "auth setup error path")
 	if srv.jsExecutor != executor {
 		t.Fatal("expected setupAuthInterceptors error path to leave js executor ownership unchanged")
 	}
-	if srv.authenticator != nil || len(serverOpts) != 0 || len(unary) != 1 {
-		t.Fatalf("expected setupAuthInterceptors error path to leave grpc auth state unchanged, got authenticator=%v opts=%d unary=%d", srv.authenticator != nil, len(serverOpts), len(unary))
+	if srv.authenticator != nil || stream != nil || len(unary) != 1 {
+		t.Fatalf("expected setupAuthInterceptors error path to leave grpc auth state unchanged, got authenticator=%v stream=%v unary=%d", srv.authenticator != nil, stream != nil, len(unary))
 	}
 
 	runtimeScope.cfg.Auth.Type = "jwt"
@@ -92,13 +155,13 @@ func TestServerMoreInterceptorsAndTelemetry(t *testing.T) {
 	runtimeScope.cfg.Auth.JWT.PublicKeyFile = filepath.Join(keyDir, "public.pem")
 	runtimeScope.cfg.Auth.JWT.RevokeStore = "memory"
 	runtimeScope.cfg.Auth.JWT.IdentityCache.Enabled = false
-	serverOpts = nil
 	unary = []grpc.UnaryServerInterceptor{baseUnary}
-	authResult = srv.setupAuthInterceptors(&serverOpts, &unary)
+	stream, authResult = srv.setupAuthInterceptors(&unary)
 	assertAuthRuntimeSetupResult(t, authResult, true, true, false, false, "auth setup success path")
-	if srv.authenticator == nil || len(serverOpts) != 1 || len(unary) != 2 {
-		t.Fatalf("expected auth interceptors to be installed, got authenticator=%v opts=%d unary=%d", srv.authenticator != nil, len(serverOpts), len(unary))
+	if srv.authenticator == nil || stream == nil || len(unary) != 2 {
+		t.Fatalf("expected auth interceptors to be installed, got authenticator=%v stream=%v unary=%d", srv.authenticator != nil, stream != nil, len(unary))
 	}
+	_ = serverOpts
 
 	tel := fakeTelemetry{}
 	srv.telemetry = tel

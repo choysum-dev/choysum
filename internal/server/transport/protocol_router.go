@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/choysum-dev/choysum/internal/server/middleware/accesslog"
 	"github.com/choysum-dev/choysum/internal/server/middleware/auth/httpauth"
 	gzipmiddleware "github.com/choysum-dev/choysum/internal/server/middleware/gzip"
 	"github.com/choysum-dev/choysum/internal/server/middleware/security/cspmiddleware"
@@ -19,17 +20,19 @@ import (
 )
 
 type ProtocolRouterOptions struct {
-	RuntimeScope    scope.Scope
-	Mux             *http.ServeMux
-	GRPCServer      *grpc.Server
-	GRPCWebProxy    *grpcweb.WrappedGrpcServer
-	GRPCClientPool  *GRPCClientPool
-	Authenticator   auth.Authenticator
-	CSPEnabled      bool
-	CSRFEnabled     bool
-	AuthEnabled     bool
-	HTTPAuthEnabled bool
-	EnableGzip      bool
+	RuntimeScope     scope.Scope
+	Mux              *http.ServeMux
+	GRPCServer       *grpc.Server
+	GRPCWebProxy     *grpcweb.WrappedGrpcServer
+	GRPCClientPool   *GRPCClientPool
+	Authenticator    auth.Authenticator
+	CSPEnabled       bool
+	CSRFEnabled      bool
+	AuthEnabled      bool
+	HTTPAuthEnabled  bool
+	EnableGzip       bool
+	AccessLogEnabled bool
+	AccessSlowMs     int
 }
 
 func NewProtocolRouter(opts ProtocolRouterOptions) http.Handler {
@@ -59,6 +62,13 @@ func NewProtocolRouter(opts ProtocolRouterOptions) http.Handler {
 
 	if opts.Authenticator != nil && opts.AuthEnabled && opts.HTTPAuthEnabled {
 		httpHandler = httpauth.AuthHandlerFromConfig(opts.RuntimeScope, opts.Authenticator)(httpHandler)
+	}
+
+	// Access log wraps auth so it sees auth failures and still receives the
+	// authenticated user via ObserveIdentity into the capture slot.
+	if opts.RuntimeScope != nil {
+		accessOpts := accesslog.Options{Access: opts.AccessLogEnabled, SlowMs: opts.AccessSlowMs}
+		httpHandler = accesslog.Middleware(accessOpts, opts.RuntimeScope.Logger())(httpHandler)
 	}
 
 	if opts.EnableGzip {

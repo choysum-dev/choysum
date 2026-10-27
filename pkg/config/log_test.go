@@ -10,4 +10,10 @@ func TestNewDefaultLogConfig(t *testing.T) {
 	if cfg.Format != "" || cfg.Level != "info" {
 		t.Fatalf("unexpected log defaults: %#v", cfg)
 	}
+	if cfg.Access {
+		t.Fatalf("Access default = true, want false")
+	}
+	if cfg.AccessSlowMs != 1000 {
+		t.Fatalf("AccessSlowMs = %d, want 1000", cfg.AccessSlowMs)
+	}
 }

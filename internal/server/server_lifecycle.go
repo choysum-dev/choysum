@@ -4,10 +4,33 @@
 package server
 
 import (
+	"log/slog"
+
+	"github.com/choysum-dev/choysum/internal/server/middleware/accesslog"
 	"github.com/choysum-dev/choysum/internal/server/transport"
+	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
 	"google.golang.org/grpc"
 )
+
+func (s *GRPCWebServer) accessLogConfig() (accesslog.Options, *slog.Logger) {
+	opts := accesslog.Options{SlowMs: 1000}
+	var logger *slog.Logger
+	if s != nil && s.runtimeScope != nil {
+		logger = s.runtimeScope.Logger()
+		if logCfg := scope.LogConfigFromScope(s.runtimeScope); logCfg != nil {
+			opts.Access = logCfg.Access
+			// Honor AccessSlowMs as loaded: NewDefaultLogConfig / YAML omit keep 1000;
+			// explicit 0 (or negative) disables slow-WARN per config.sample.yaml.
+			if logCfg.AccessSlowMs < 0 {
+				opts.SlowMs = 0
+			} else {
+				opts.SlowMs = logCfg.AccessSlowMs
+			}
+		}
+	}
+	return opts, logger
+}
 
 func (s *GRPCWebServer) serve() error {
 	if err := s.startHotreloadLifecycle(); err != nil {
@@ -58,15 +81,31 @@ func (s *GRPCWebServer) grpcServerOptions() transport.GRPCServerOptions {
 
 	s.ensureTelemetry(&serverOpts)
 
+	accessOpts, accessLogger := s.accessLogConfig()
 	unaryInterceptors := s.baseUnaryInterceptors()
-	serverOpts, unaryInterceptors = s.applyAuthGRPCInterceptors(serverOpts, unaryInterceptors)
+
+	// Auth first, then prepend access so access stays outermost and still sees
+	// unauthenticated failures (auth would otherwise short-circuit them).
+	var authStream grpc.StreamServerInterceptor
+	unaryInterceptors, authStream = s.applyAuthGRPCInterceptors(unaryInterceptors)
+	unaryInterceptors = append(
+		[]grpc.UnaryServerInterceptor{accesslog.UnaryInterceptor(accessOpts, accessLogger)},
+		unaryInterceptors...,
+	)
+	streamInterceptors := []grpc.StreamServerInterceptor{
+		accesslog.StreamInterceptor(accessOpts, accessLogger),
+	}
+	if authStream != nil {
+		streamInterceptors = append(streamInterceptors, authStream)
+	}
 	unaryInterceptors = append(unaryInterceptors, s.taskRuntimeUnaryInterceptors()...)
 
 	return transport.GRPCServerOptions{
-		MaxRecvMsgSize:    flagMaxCallRecvMsgSize,
-		MaxSendMsgSize:    flagMaxCallSendMsgSize,
-		ServerOptions:     serverOpts,
-		UnaryInterceptors: unaryInterceptors,
+		MaxRecvMsgSize:     flagMaxCallRecvMsgSize,
+		MaxSendMsgSize:     flagMaxCallSendMsgSize,
+		ServerOptions:      serverOpts,
+		UnaryInterceptors:  unaryInterceptors,
+		StreamInterceptors: streamInterceptors,
 	}
 }
 

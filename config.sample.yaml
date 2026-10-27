@@ -24,6 +24,8 @@ default_choysum_path: ./.choysum
 # log:
 #   format: devslog
 #   level: info
+#   access: false          # when true, successful RPC/HTTP requests log at INFO
+#   accessSlowMs: 1000     # successful requests slower than this WARN; 0 disables
 # compile:
 #   minify: false
 #   sourcemap: true

@@ -34,6 +34,7 @@ var runExit = os.Exit
 var runRuntimeScopeFactory = cliruntime.NewScopeForRun
 
 func newRunCmd() *cobra.Command {
+	var accessLog bool
 	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "Run Choysum Application",
@@ -45,6 +46,9 @@ func newRunCmd() *cobra.Command {
 			loadedConfig, runErr := loadRunConfig(cfgPath)
 			if runErr != nil {
 				runErr.exit()
+			}
+			if accessLog {
+				applyRunAccessLogFlag(&loadedConfig)
 			}
 			if runErr := validateRunConfig(&loadedConfig.scopeInput); runErr != nil {
 				runErr.exit()
@@ -89,6 +93,7 @@ func newRunCmd() *cobra.Command {
 			}
 		},
 	}
+	cmd.Flags().BoolVar(&accessLog, "access-log", false, "enable INFO logging of successful RPC/HTTP requests (sets log.access=true)")
 	return cmd
 }
 
@@ -255,6 +260,25 @@ type runDBRuntimeOptions = cliruntime.RunDBOptions
 type runLoadedConfig struct {
 	scopeInput cliruntime.RunScopeInput
 	logConfig  *config.LogConfig
+}
+
+// applyRunAccessLogFlag turns on access logging for both the logger config and
+// the FactoryInput LogConfig that the server reads via scope.LogConfigFromScope.
+func applyRunAccessLogFlag(loaded *runLoadedConfig) {
+	if loaded == nil {
+		return
+	}
+	if loaded.logConfig == nil {
+		loaded.logConfig = config.NewDefaultLogConfig()
+	}
+	loaded.logConfig.Access = true
+	if opts := loaded.scopeInput.ConfigOptions(); opts != nil {
+		if opts.Log == nil {
+			opts.Log = cliruntime.CloneLogConfig(loaded.logConfig)
+		} else {
+			opts.Log.Access = true
+		}
+	}
 }
 
 func resolveRunStartupOptions(scopeInput *cliruntime.RunScopeInput) *runError {

@@ -855,6 +855,106 @@ db:
 	})
 }
 
+func TestRunCmdRegistersAccessLogFlag(t *testing.T) {
+	cmd := newRunCmd()
+	flag := cmd.Flags().Lookup("access-log")
+	if flag == nil {
+		t.Fatal("expected --access-log flag on run command")
+	}
+	if flag.DefValue != "false" {
+		t.Fatalf("access-log default = %q, want false", flag.DefValue)
+	}
+}
+
+func TestApplyRunAccessLogFlagUpdatesScopeInput(t *testing.T) {
+	cfg := &config.Config{
+		Log:    &config.LogConfig{Level: "info", Access: false, AccessSlowMs: 1000},
+		Server: config.NewDefaultServerConfig(),
+		Db:     config.NewDefaultDbConfig(),
+	}
+	opts := cliruntime.NewScopeInputConfigOptions(snapshot.New(cfg))
+	loaded := runLoadedConfig{
+		scopeInput: cliruntime.NewRunScopeInput(opts, cliruntime.Options{}, cliruntime.NewRunServerOptions(cfg.Server), cliruntime.NewRunDBOptions(cfg)),
+		logConfig:  cliruntime.CloneLogConfig(cfg.Log),
+	}
+	applyRunAccessLogFlag(&loaded)
+	if !loaded.logConfig.Access {
+		t.Fatal("logConfig.Access = false, want true")
+	}
+	if got := loaded.scopeInput.LogConfig(); got == nil || !got.Access {
+		t.Fatalf("scope LogConfig.Access = %#v, want Access=true", got)
+	}
+}
+
+func TestApplyRunAccessLogFlagEdgeCases(t *testing.T) {
+	applyRunAccessLogFlag(nil)
+
+	cfg := &config.Config{
+		Log:    &config.LogConfig{Level: "info", Access: false},
+		Server: config.NewDefaultServerConfig(),
+		Db:     config.NewDefaultDbConfig(),
+	}
+	opts := cliruntime.NewScopeInputConfigOptions(snapshot.New(cfg))
+	opts.Log = nil
+	loaded := runLoadedConfig{
+		scopeInput: cliruntime.NewRunScopeInput(opts, cliruntime.Options{}, cliruntime.NewRunServerOptions(cfg.Server), cliruntime.NewRunDBOptions(cfg)),
+		logConfig:  nil,
+	}
+	applyRunAccessLogFlag(&loaded)
+	if loaded.logConfig == nil || !loaded.logConfig.Access {
+		t.Fatalf("nil logConfig should become default with Access: %#v", loaded.logConfig)
+	}
+	if got := loaded.scopeInput.LogConfig(); got == nil || !got.Access {
+		t.Fatalf("nil opts.Log should be cloned with Access: %#v", got)
+	}
+
+	cmd := newRunCmd()
+	flag := cmd.Flags().Lookup("access-log")
+	if flag == nil || !strings.Contains(flag.Usage, "sets log.access=true") {
+		t.Fatalf("unexpected flag usage: %#v", flag)
+	}
+}
+
+func TestRunCommandAccessLogFlagAppliesToScope(t *testing.T) {
+	configPath, _, _ := writeTempInitializedRunConfig(t, false)
+	stub := &runCommandStubServer{serveErr: context.Canceled}
+
+	var sawAccess bool
+	originalScopeFactory := runRuntimeScopeFactory
+	runRuntimeScopeFactory = func(input cliruntime.RunScopeInput, logCfg *config.LogConfig) (scope.Scope, error) {
+		if logCfg != nil && logCfg.Access {
+			sawAccess = true
+		}
+		if got := input.LogConfig(); got != nil && got.Access {
+			sawAccess = true
+		}
+		return &commandTestScope{}, nil
+	}
+	t.Cleanup(func() { runRuntimeScopeFactory = originalScopeFactory })
+
+	originalFactory := runServerFactory
+	runServerFactory = func(scope.Scope, ...defaultserver.Option) server.Server { return stub }
+	t.Cleanup(func() { runServerFactory = originalFactory })
+
+	originalExit := runExit
+	runExit = func(code int) { panic(runExitPanic{code: code}) }
+	t.Cleanup(func() { runExit = originalExit })
+
+	cmd := newRunCmd()
+	cmd.Flags().String("config", "", "")
+	_ = cmd.Flags().Set("config", configPath)
+	_ = cmd.Flags().Set("access-log", "true")
+	_, recovered := captureStderrWithPanic(t, func() { cmd.Run(cmd, nil) })
+	if recovered != nil {
+		if _, ok := recovered.(runExitPanic); !ok {
+			panic(recovered)
+		}
+	}
+	if !sawAccess {
+		t.Fatal("--access-log should set log.access=true before scope factory")
+	}
+}
+
 func TestCloneRunLogConfig(t *testing.T) {
 	t.Run("nil returns default", func(t *testing.T) {
 		got := cliruntime.CloneLogConfig(nil)

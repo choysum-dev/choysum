@@ -48,22 +48,23 @@ func (r authRuntimeSetupResult) logFields() []any {
 	return fields
 }
 
-func (s *GRPCWebServer) applyAuthGRPCInterceptors(serverOpts []grpc.ServerOption, unaryInterceptors []grpc.UnaryServerInterceptor) ([]grpc.ServerOption, []grpc.UnaryServerInterceptor) {
+func (s *GRPCWebServer) applyAuthGRPCInterceptors(unaryInterceptors []grpc.UnaryServerInterceptor) (unary []grpc.UnaryServerInterceptor, stream grpc.StreamServerInterceptor) {
+	unary = unaryInterceptors
 	if s.authenticator == nil {
-		return serverOpts, unaryInterceptors
+		return unary, nil
 	}
-	unaryInterceptors = append(
+	unary = append(
 		[]grpc.UnaryServerInterceptor{grpcauth.AuthInterceptorFromConfig(s.runtimeScope, s.authenticator)},
-		unaryInterceptors...,
+		unary...,
 	)
-	serverOpts = append(serverOpts, grpc.StreamInterceptor(grpcauth.StreamInterceptorFromConfig(s.runtimeScope, s.authenticator)))
-	return serverOpts, unaryInterceptors
+	return unary, grpcauth.StreamInterceptorFromConfig(s.runtimeScope, s.authenticator)
 }
 
-func (s *GRPCWebServer) setupAuthInterceptors(serverOpts *[]grpc.ServerOption, unaryInterceptors *[]grpc.UnaryServerInterceptor) authRuntimeSetupResult {
+func (s *GRPCWebServer) setupAuthInterceptors(unaryInterceptors *[]grpc.UnaryServerInterceptor) (grpc.StreamServerInterceptor, authRuntimeSetupResult) {
 	result := s.startAuthRuntime(s.resolvedRuntimeOptions())
-	*serverOpts, *unaryInterceptors = s.applyAuthGRPCInterceptors(*serverOpts, *unaryInterceptors)
-	return result
+	var stream grpc.StreamServerInterceptor
+	*unaryInterceptors, stream = s.applyAuthGRPCInterceptors(*unaryInterceptors)
+	return stream, result
 }
 
 func (s *GRPCWebServer) stopAuthRuntime() error {

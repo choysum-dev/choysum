@@ -4,12 +4,16 @@
 package config
 
 type LogConfig struct {
-	Format string `mapstructure:"format"`
-	Level  string `mapstructure:"level"`
+	Format       string `mapstructure:"format"`
+	Level        string `mapstructure:"level"`
+	Access       bool   `mapstructure:"access"`
+	AccessSlowMs int    `mapstructure:"accessSlowMs"`
 }
 
 func NewDefaultLogConfig() *LogConfig {
 	return &LogConfig{
-		Level: "info",
+		Level:        "info",
+		Access:       false,
+		AccessSlowMs: 1000,
 	}
 }
