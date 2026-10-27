@@ -237,7 +237,11 @@ func isChoyTailwindGeneratedKitPath(path string) bool {
 		return false
 	}
 	slash := filepath.ToSlash(path)
-	if strings.Contains(slash, "/generated/styles/") || strings.HasPrefix(slash, "generated/styles/") {
+	// Workspace emit: <defaultChoysumPath>/generated/styles/<name>.
+	// Require a path suffix (not a loose Contains) and skip anything under
+	// modules/ so a hand-authored file there stays a real digest input.
+	if hasKitHostStylesSuffix(slash, "generated/styles/"+choyTailwindGeneratedCSSName) &&
+		!isUnderModulesPath(slash) {
 		return true
 	}
 	// Legacy in-module emit: only "<module>/web/styles/<name>" of the web kit
@@ -246,6 +250,10 @@ func isChoyTailwindGeneratedKitPath(path string) bool {
 	// invalidate digests during cutover cleanups.
 	return hasKitHostStylesSuffix(slash, "web/web/styles/"+choyTailwindGeneratedCSSName) ||
 		hasKitHostStylesSuffix(slash, "choy_ui/web/styles/"+choyTailwindGeneratedCSSName)
+}
+
+func isUnderModulesPath(slash string) bool {
+	return strings.Contains(slash, "/modules/") || strings.HasPrefix(slash, "modules/")
 }
 
 func hasKitHostStylesSuffix(slash, suffix string) bool {

@@ -57,14 +57,21 @@ func isChoyTailwindGeneratedWatchPath(path string) bool {
 		return false
 	}
 	slash := filepath.ToSlash(filepath.Clean(path))
-	// Current emit: .../generated/styles/choy-tailwind.generated.css (+ atomic tmp)
-	if strings.Contains(slash, "/generated/styles/") {
+	// Current emit: <defaultChoysumPath>/generated/styles/... (+ atomic tmp).
+	// Match absolute and relative forms; skip modules/ so hand-authored trees
+	// under a module still trigger hot reload.
+	if (strings.Contains(slash, "/generated/styles/") || strings.HasPrefix(slash, "generated/styles/")) &&
+		!isUnderModulesWatchPath(slash) {
 		return true
 	}
 	// Legacy in-module emit (and leftover files during cutover).
 	const kitStyles = "modules/web/web/styles"
 	dir := filepath.ToSlash(filepath.Dir(path))
 	return dir == kitStyles || strings.HasSuffix(dir, "/"+kitStyles)
+}
+
+func isUnderModulesWatchPath(slash string) bool {
+	return strings.Contains(slash, "/modules/") || strings.HasPrefix(slash, "modules/")
 }
 
 // isModuleLeaseConflict reports meta.lock LEASE_CONFLICT through wrapped errors.

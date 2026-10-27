@@ -4,6 +4,7 @@
 package webmodulebuilder
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -20,15 +21,32 @@ func choysumGeneratedPlugin(defaultChoysumPath string) api.Plugin {
 		Setup: func(build api.PluginBuild) {
 			build.OnResolve(api.OnResolveOptions{Filter: `^@choysum/generated/`}, func(args api.OnResolveArgs) (api.OnResolveResult, error) {
 				if root == "" || root == "." {
-					return api.OnResolveResult{}, nil
+					return api.OnResolveResult{}, fmt.Errorf("@choysum/generated import requires defaultChoysumPath")
 				}
 				rel := strings.TrimPrefix(args.Path, ChoyGeneratedImportPrefix)
-				rel = filepath.FromSlash(rel)
+				rel = filepath.Clean(filepath.FromSlash(rel))
+				if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+					return api.OnResolveResult{}, fmt.Errorf("@choysum/generated path escapes generated root: %s", args.Path)
+				}
+				generatedRoot := filepath.Join(root, "generated")
+				resolved := filepath.Join(generatedRoot, rel)
+				if under, err := pathUnderRoot(generatedRoot, resolved); err != nil || !under {
+					return api.OnResolveResult{}, fmt.Errorf("@choysum/generated path escapes generated root: %s", args.Path)
+				}
 				return api.OnResolveResult{
-					Path:      filepath.Join(root, "generated", rel),
+					Path:      resolved,
 					Namespace: "file",
 				}, nil
 			})
 		},
 	}
+}
+
+// pathUnderRoot reports whether candidate stays inside root after Clean.
+func pathUnderRoot(root, candidate string) (bool, error) {
+	rel, err := filepath.Rel(filepath.Clean(root), filepath.Clean(candidate))
+	if err != nil {
+		return false, err
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)), nil
 }

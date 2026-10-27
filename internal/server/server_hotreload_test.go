@@ -251,6 +251,8 @@ func TestShouldIgnoreWatchPath(t *testing.T) {
 		{filepath.Join("modules", "web", "web", "styles", ".choy-tailwind-2477883981.tmp"), true},
 		{filepath.Join(".choysum", "generated", "styles", "choy-tailwind.generated.css"), true},
 		{filepath.Join(".choysum", "generated", "styles", ".choy-tailwind-deadbeef.tmp"), true},
+		{filepath.Join("generated", "styles", "choy-tailwind.generated.css"), true},
+		{filepath.Join("modules", "foo", "web", "generated", "styles", "choy-tailwind.generated.css"), false},
 		{filepath.Join("modules", "docs", "choy-tailwind.generated.css"), false},
 		{filepath.Join("modules", "docs", ".choy-tailwind-fixture.tmp"), false},
 		{filepath.Join("modules", "partner", "web", "web", "styles", "choy-tailwind.generated.css"), false},

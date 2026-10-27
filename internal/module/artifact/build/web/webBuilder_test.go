@@ -1407,7 +1407,8 @@ func TestPrebuildUpdatePrebuildResult_RealAuthChoyAppShellMerges(t *testing.T) {
 	moduleRef := &meta.Module{Name: "auth", Path: filepath.Join(modulesPath, "auth")}
 	entryPoint := filepath.Join(modulesPath, "auth", "web", "index.ts")
 	// Kit CSS is gitignored; gallery/dogfood pages import it via the web barrel.
-	if _, err := EnsureChoyTailwindCSS(modulesPath, filepath.Join(t.TempDir(), ".choysum")); err != nil {
+	// Emit under choysumHome so @choysum/generated resolves to the same root the builder uses.
+	if _, err := EnsureChoyTailwindCSS(modulesPath, choysumHome); err != nil {
 		t.Fatalf("EnsureChoyTailwindCSS: %v", err)
 	}
 	builder, ok := NewWebBuilder(testRuntimeScope, nil, moduleRef, entryPoint).(*WebModuleBuilder)
