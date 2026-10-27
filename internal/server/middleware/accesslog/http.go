@@ -98,3 +98,12 @@ func (r *statusRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 func (r *statusRecorder) Unwrap() http.ResponseWriter {
 	return r.ResponseWriter
 }
+
+// Push forwards to the underlying ResponseWriter when it implements http.Pusher.
+func (r *statusRecorder) Push(target string, opts *http.PushOptions) error {
+	p, ok := r.ResponseWriter.(http.Pusher)
+	if !ok {
+		return http.ErrNotSupported
+	}
+	return p.Push(target, opts)
+}

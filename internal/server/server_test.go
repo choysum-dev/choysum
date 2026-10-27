@@ -22,7 +22,6 @@ import (
 	_ "github.com/choysum-dev/choysum/internal/defaultengine"
 	_ "github.com/choysum-dev/choysum/internal/defaultjsexecutor"
 	_ "github.com/choysum-dev/choysum/internal/jwtauth"
-	"github.com/choysum-dev/choysum/internal/server/middleware/accesslog"
 	"github.com/choysum-dev/choysum/internal/server/runplan"
 	"github.com/choysum-dev/choysum/internal/server/transport"
 	"github.com/choysum-dev/choysum/internal/testing/jsexecutortest"
@@ -65,8 +64,14 @@ func TestGrpcServerOptionsIncludesAccessLogInterceptors(t *testing.T) {
 	runtimeScope.cfg.Log = config.NewDefaultLogConfig()
 	runtimeScope.cfg.Log.Access = true
 	runtimeScope.cfg.Log.AccessSlowMs = 0 // unset → keep default 1000
-	runtimeScope.cfg.Auth.Enabled = false
-	srv := &GRPCWebServer{runtimeScope: runtimeScope}
+	runtimeScope.cfg.Auth.Enabled = true
+	var buf bytes.Buffer
+	runtimeScope.logger = slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+	srv := &GRPCWebServer{
+		runtimeScope:  runtimeScope,
+		authenticator: &fakeAuthenticator{}, // rejects missing metadata as Unauthenticated
+	}
 	accessOpts, _ := srv.accessLogConfig()
 	if !accessOpts.Access || accessOpts.SlowMs != 1000 {
 		t.Fatalf("accessLogConfig = %#v, want Access=true SlowMs=1000", accessOpts)
@@ -76,23 +81,35 @@ func TestGrpcServerOptionsIncludesAccessLogInterceptors(t *testing.T) {
 		t.Fatalf("AccessSlowMs override = %#v, want SlowMs=2500", got)
 	}
 	runtimeScope.cfg.Log.AccessSlowMs = 0
+
 	opts := srv.grpcServerOptions()
-	if len(opts.UnaryInterceptors) < 1 {
-		t.Fatal("expected access log unary interceptor")
+	if len(opts.UnaryInterceptors) < 2 {
+		t.Fatalf("expected access + auth unary interceptors, got %d", len(opts.UnaryInterceptors))
 	}
-	if len(opts.StreamInterceptors) != 1 {
-		t.Fatalf("without auth, want exactly 1 stream interceptor (access), got %d", len(opts.StreamInterceptors))
+	if len(opts.StreamInterceptors) < 2 {
+		t.Fatalf("expected access + auth stream interceptors, got %d", len(opts.StreamInterceptors))
 	}
-	// Access must be outermost: first unary interceptor logs an unauthenticated failure.
-	var buf bytes.Buffer
-	logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	accessOnly := accesslog.UnaryInterceptor(accesslog.Options{Access: true}, logger)
-	_, _ = accessOnly(context.Background(), nil, &grpc.UnaryServerInfo{FullMethod: "/probe"},
-		func(context.Context, any) (any, error) {
-			return nil, status.Error(codes.Unauthenticated, "nope")
-		})
-	if !strings.Contains(buf.String(), `"code":"Unauthenticated"`) {
-		t.Fatalf("outer access interceptor should log auth failures: %s", buf.String())
+
+	// Invoke the real assembled chain (access outermost). Missing metadata makes
+	// auth return Unauthenticated; access must still emit the failure line.
+	handler := grpc.UnaryHandler(func(context.Context, any) (any, error) {
+		t.Fatal("handler must not run when auth rejects the call")
+		return nil, nil
+	})
+	for i := len(opts.UnaryInterceptors) - 1; i >= 0; i-- {
+		interceptor := opts.UnaryInterceptors[i]
+		next := handler
+		handler = func(ctx context.Context, req any) (any, error) {
+			return interceptor(ctx, req, &grpc.UnaryServerInfo{FullMethod: "/probe.Svc/Call"}, next)
+		}
+	}
+	_, err := handler(context.Background(), nil)
+	if status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("chained call error = %v, want Unauthenticated", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, `"code":"Unauthenticated"`) || !strings.Contains(out, `"method":"/probe.Svc/Call"`) {
+		t.Fatalf("access outermost should log auth failures via assembled chain: %s", out)
 	}
 }
 

@@ -6,6 +6,7 @@ package accesslog
 import (
 	"context"
 	"strings"
+	"sync"
 
 	"github.com/choysum-dev/choysum/pkg/auth"
 )
@@ -13,6 +14,7 @@ import (
 type identityCaptureKey struct{}
 
 type identityCapture struct {
+	mu     sync.Mutex
 	userID string
 }
 
@@ -34,12 +36,18 @@ func ObserveIdentity(ctx context.Context, identity auth.Identity) {
 	if cap == nil || identity == nil || !identity.IsValid() {
 		return
 	}
-	cap.userID = strings.TrimSpace(identity.GetUserID())
+	userID := strings.TrimSpace(identity.GetUserID())
+	cap.mu.Lock()
+	cap.userID = userID
+	cap.mu.Unlock()
 }
 
 func observedUserID(ctx context.Context) string {
 	if cap := identityCaptureFrom(ctx); cap != nil {
-		return cap.userID
+		cap.mu.Lock()
+		userID := cap.userID
+		cap.mu.Unlock()
+		return userID
 	}
 	if id := auth.IdentityFromContext(ctx); id != nil && id.IsValid() {
 		return strings.TrimSpace(id.GetUserID())

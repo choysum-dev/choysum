@@ -149,12 +149,14 @@ func TestHTTPMiddlewareNilRequest(t *testing.T) {
 	h.ServeHTTP(httptest.NewRecorder(), nil)
 }
 
-func TestStatusRecorderFlushHijackUnwrap(t *testing.T) {
+func TestStatusRecorderFlushHijackUnwrapPush(t *testing.T) {
 	t.Parallel()
 	flushCalled := false
-	inner := &flushHijackWriter{
+	pushCalled := false
+	inner := &flushHijackPushWriter{
 		ResponseRecorder: httptest.NewRecorder(),
 		onFlush:          func() { flushCalled = true },
+		onPush:           func() { pushCalled = true },
 	}
 	rec := &statusRecorder{ResponseWriter: inner, status: http.StatusOK}
 	rec.Flush()
@@ -168,6 +170,12 @@ func TestStatusRecorderFlushHijackUnwrap(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected Hijack error from stub")
 	}
+	if err := rec.Push("/x.js", nil); err != nil {
+		t.Fatalf("Push forward: %v", err)
+	}
+	if !pushCalled {
+		t.Fatal("Push should forward")
+	}
 
 	plain := &statusRecorder{ResponseWriter: httptest.NewRecorder(), status: http.StatusOK}
 	plain.Flush() // no-op without Flusher
@@ -175,7 +183,9 @@ func TestStatusRecorderFlushHijackUnwrap(t *testing.T) {
 	if !errors.Is(err, http.ErrNotSupported) {
 		t.Fatalf("Hijack without Hijacker: %v", err)
 	}
-	_ = plain.WriteHeader
+	if err := plain.Push("/x.js", nil); !errors.Is(err, http.ErrNotSupported) {
+		t.Fatalf("Push without Pusher: %v", err)
+	}
 	n, err := plain.Write([]byte("hi"))
 	if err != nil || n != 2 || plain.status != http.StatusOK {
 		t.Fatalf("Write without prior header: n=%d err=%v status=%d", n, err, plain.status)
@@ -186,20 +196,28 @@ func TestStatusRecorderFlushHijackUnwrap(t *testing.T) {
 	}
 }
 
-type flushHijackWriter struct {
+type flushHijackPushWriter struct {
 	*httptest.ResponseRecorder
 	onFlush func()
+	onPush  func()
 }
 
-func (f *flushHijackWriter) Flush() {
+func (f *flushHijackPushWriter) Flush() {
 	if f.onFlush != nil {
 		f.onFlush()
 	}
 	f.ResponseRecorder.Flush()
 }
 
-func (f *flushHijackWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+func (f *flushHijackPushWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return nil, nil, errors.New("hijack stub")
+}
+
+func (f *flushHijackPushWriter) Push(string, *http.PushOptions) error {
+	if f.onPush != nil {
+		f.onPush()
+	}
+	return nil
 }
 
 func TestStreamAccessStartEnd(t *testing.T) {
