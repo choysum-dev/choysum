@@ -12,15 +12,29 @@ function choysumDb(): ChoysumDb | undefined {
   return (globalThis as { $choysum?: { db?: ChoysumDb } }).$choysum?.db;
 }
 
+/** True only for missing auth_role_inheritance table or deleted_at column — not generic "does not exist". */
 function isMissingRelationError(err: unknown): boolean {
   const msg = String(err instanceof Error ? err.message : err).toLowerCase();
-  return (
+
+  // Table missing (sqlite / mysql / mssql / postgres relation name).
+  if (
     msg.includes('no such table') ||
-    msg.includes('no such column') ||
-    msg.includes('does not exist') ||
-    msg.includes("doesn't exist") ||
     msg.includes('unknown table') ||
-    msg.includes('invalid object name')
+    msg.includes('invalid object name') ||
+    (msg.includes('auth_role_inheritance') &&
+      (msg.includes('does not exist') || msg.includes("doesn't exist")))
+  ) {
+    return true;
+  }
+
+  // deleted_at column missing — require the column name so unrelated "does not exist" is not swallowed.
+  if (!msg.includes('deleted_at')) return false;
+  return (
+    msg.includes('no such column') ||
+    msg.includes('unknown column') ||
+    msg.includes('invalid column name') ||
+    msg.includes('does not exist') ||
+    msg.includes("doesn't exist")
   );
 }
 

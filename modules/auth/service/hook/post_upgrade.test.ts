@@ -214,8 +214,74 @@ test('AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance: ignores missing 
     },
   };
   try {
-    await AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance();
+    let threw: unknown;
+    try {
+      await AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance();
+    } catch (err) {
+      threw = err;
+    }
     expect(executed).toBe(1);
+    expect(threw).toBeUndefined();
+  } finally {
+    (globalThis as any).$choysum = prev;
+  }
+});
+
+test('AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance: ignores missing deleted_at (mysql/mssql)', async () => {
+  for (const message of [
+    "Unknown column 'deleted_at' in 'where clause'",
+    "Invalid column name 'deleted_at'",
+  ]) {
+    let executed = 0;
+    const prev = (globalThis as any).$choysum;
+    (globalThis as any).$choysum = {
+      ...(prev || {}),
+      db: {
+        dialectName: 'mysql',
+        execute: async () => {
+          executed += 1;
+          throw new Error(message);
+        },
+      },
+    };
+    try {
+      let threw: unknown;
+      try {
+        await AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance();
+      } catch (err) {
+        threw = err;
+      }
+      expect(executed).toBe(1);
+      expect(threw).toBeUndefined();
+    } finally {
+      (globalThis as any).$choysum = prev;
+    }
+  }
+});
+
+test('AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance: does not swallow unrelated does-not-exist', async () => {
+  let executed = 0;
+  const prev = (globalThis as any).$choysum;
+  (globalThis as any).$choysum = {
+    ...(prev || {}),
+    db: {
+      dialectName: 'postgres',
+      execute: async () => {
+        executed += 1;
+        throw new Error('role "upgrade_runner" does not exist');
+      },
+    },
+  };
+  try {
+    let threw: unknown;
+    try {
+      await AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance();
+    } catch (err) {
+      threw = err;
+    }
+    expect(executed).toBe(1);
+    expect(threw instanceof Error).toBe(true);
+    expect(String((threw as Error).message)).toContain('does not exist');
   } finally {
     (globalThis as any).$choysum = prev;
   }
@@ -240,4 +306,5 @@ test('AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance: runs on mssql', 
   }
   expect(calls.length).toBe(1);
   expect(calls[0].sql).toContain('DELETE FROM auth_role_inheritance');
+  expect(calls[0].sql).toContain('deleted_at IS NOT NULL');
 });
