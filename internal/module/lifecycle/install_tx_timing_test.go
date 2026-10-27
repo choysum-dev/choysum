@@ -85,8 +85,8 @@ func TestLogInstallOuterTxHoldEmitsDuration(t *testing.T) {
 	var logBuf bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
-	// Public wrapper still uses wall clock; pin via started far enough past the Info floor.
-	LogInstallOuterTxHold(logger, "bootstrap", time.Now().Add(-moduleCommitTxHoldInfoMinDuration*2), nil)
+	// Deterministic duration path (same helper LogInstallOuterTxHold wraps).
+	logModuleCommitTxHold(logger, "install", "bootstrap", 150*time.Millisecond, nil)
 
 	logs := logBuf.String()
 	for _, want := range []string{
@@ -97,8 +97,26 @@ func TestLogInstallOuterTxHoldEmitsDuration(t *testing.T) {
 			t.Fatalf("expected %s in logs, got %q", want, logs)
 		}
 	}
-	if ms := mustParseLogDurationMs(t, logs); ms < moduleCommitTxHoldInfoMinDuration.Milliseconds() {
-		t.Fatalf("duration_ms=%d, want >= %d", ms, moduleCommitTxHoldInfoMinDuration.Milliseconds())
+	if ms := mustParseLogDurationMs(t, logs); ms != 150 {
+		t.Fatalf("duration_ms=%d, want 150", ms)
+	}
+}
+
+func TestLogInstallOuterTxHoldDelegatesToModuleHold(t *testing.T) {
+	t.Parallel()
+	var logBuf bytes.Buffer
+	// Debug so the public wrapper smoke check is not coupled to the Info duration floor.
+	logger := slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	LogInstallOuterTxHold(logger, "cli-wrap", time.Now(), nil)
+	logs := logBuf.String()
+	if !strings.Contains(logs, `"msg":"install commit transaction hold completed"`) {
+		t.Fatalf("expected install hold message, got %q", logs)
+	}
+	if !strings.Contains(logs, `"caller":"cli-wrap"`) {
+		t.Fatalf("expected caller, got %q", logs)
+	}
+	if !strings.Contains(logs, `"op":"install"`) {
+		t.Fatalf("expected install op, got %q", logs)
 	}
 }
 

@@ -319,8 +319,8 @@ func TestLogModuleOperationStep_HookSubstepAttrs(t *testing.T) {
 	}
 
 	step := moduleStepHook(hooks.PhasePreUpgrade)
-	// Start at "now" so elapsed stays well under the soft Info floor without
-	// depending on a narrow wall-clock margin that scheduling jitter can blow past.
+	// Attribute coverage only; level selection is covered by TestModuleOperationStepLogLevel
+	// with fixed durations (wall-clock here can still cross the soft Info floor under load).
 	logModuleOperationStep(testScope, &opContext{opid: "op-hook-1"}, moduleplan.OpUpgrade, "partner", step, time.Now())
 
 	logs := logBuf.String()
@@ -329,7 +329,6 @@ func TestLogModuleOperationStep_HookSubstepAttrs(t *testing.T) {
 		`"opid":"op-hook-1"`,
 		`"step":"hook.pre_upgrade"`,
 		`"duration_ms":`,
-		`"level":"DEBUG"`,
 	} {
 		if !strings.Contains(logs, want) {
 			t.Fatalf("expected logs to contain %q, got %q", want, logs)
