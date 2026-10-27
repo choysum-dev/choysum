@@ -675,6 +675,49 @@ test('many-to-many processor hard-deletes stale DeletedAt rows when join softDel
   }
 });
 
+test('many-to-many processor skips insert when hard-delete of stale DeletedAt row fails', async () => {
+  resetTargetCalls();
+  RepositoryFactory.setRepository(targetCtor, { search: async () => [] } as unknown as Repository);
+
+  const joinStore = createJoinRepoMock([
+    { Id: 'j1', OwnerId: 'p1', TagId: 't1', DeletedAt: new Date('2026-10-24T03:00:00.000Z') },
+  ]);
+  const originalDelete = Repository.prototype.delete;
+  Repository.prototype.delete = async function () {
+    throw new Error('stale join delete failed');
+  } as unknown as Repository['delete'];
+
+  try {
+    const processor = new ManyToManyProcessor(parentCtor);
+    const result = await processor.batchProcessRelationUpdate(
+      ['p1'],
+      [
+        {
+          type: 'ManyToMany',
+          fieldName: 'Tags',
+          joinModel: joinHardCtor,
+          targetModel: targetCtor,
+          joinField: 'OwnerId',
+          inverseJoinField: 'TagId',
+          operations: {
+            create: [{ Id: 't1' }, { Id: 't2' }],
+          },
+        } as unknown as Parameters<ManyToManyProcessor['batchProcessRelationUpdate']>[1][number],
+      ]
+    );
+
+    expect(result.errors.length).toBe(1);
+    expect(String(result.errors[0]?.error?.message || '').includes('stale join delete failed')).toBe(true);
+    expect(joinStore.rows.find(r => r.Id === 'j1')).toBeDefined();
+    expect(joinStore.createCalls.length).toBe(1);
+    expect(joinStore.createCalls[0]).toEqual([{ OwnerId: 'p1', TagId: 't2' }]);
+    expect(result.success.map(item => item.entityId)).toEqual(['t2']);
+  } finally {
+    Repository.prototype.delete = originalDelete;
+    joinStore.restore();
+  }
+});
+
 test('many-to-many processor wraps top-level process errors into relation result', async () => {
   resetTargetCalls();
   const originalGetModelMetadata = MetadataStorage.instance.getModelMetadata;
