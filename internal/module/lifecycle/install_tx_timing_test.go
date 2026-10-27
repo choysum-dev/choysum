@@ -146,6 +146,26 @@ func TestLogModuleCommitTxHoldZeroStartedNoOp(t *testing.T) {
 	}
 }
 
+func TestLogModuleCommitTxHoldNilLoggerNoOp(t *testing.T) {
+	t.Parallel()
+	LogModuleCommitTxHold(nil, "upgrade", "module_commit", time.Now(), nil)
+	logModuleCommitTxHold(nil, "upgrade", "module_commit", time.Millisecond, nil)
+}
+
+func TestLogModuleCommitTxHoldDefaultOpAndCaller(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	logModuleCommitTxHold(logger, "  ", " \t ", 10*time.Millisecond, nil)
+	logs := buf.String()
+	if !strings.Contains(logs, `"op":"module"`) {
+		t.Fatalf("expected default op=module, got %q", logs)
+	}
+	if !strings.Contains(logs, `"caller":"unknown"`) {
+		t.Fatalf("expected default caller=unknown, got %q", logs)
+	}
+}
+
 func mustParseLogDurationMs(t *testing.T, logs string) int64 {
 	t.Helper()
 	var rec struct {
