@@ -663,6 +663,7 @@ test('many-to-many processor hard-deletes stale DeletedAt rows when join softDel
     expect(result.errors).toEqual([]);
     expect(joinStore.updateCalls.length).toBe(0);
     expect(joinStore.deleteCalls.length).toBe(1);
+    expect(joinStore.deleteCalls[0]).toEqual(['Id', '=', 'j1']);
     expect(joinStore.rows.find(r => r.Id === 'j1')).toBeUndefined();
     expect(joinStore.createCalls.length).toBe(1);
     expect(joinStore.createCalls[0]).toEqual([

@@ -93,9 +93,9 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
     try {
       const { joinModel, targetModel, joinField, inverseJoinField, operations } = operation;
 
-      // Join-table repository.
-      const meta = MetadataStorage.instance.getModelMetadata(joinModel);
-      const joinRepo = new Repository(meta);
+      // Join-table repository (softDelete policy comes from join model, not parent).
+      const joinMeta = MetadataStorage.instance.getModelMetadata(joinModel);
+      const joinRepo = new Repository(joinMeta);
 
       // Target-entity repository for relation existence checks and similar reads.
       const targetRepo = RepositoryFactory.getRepository(targetModel);
@@ -125,7 +125,7 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
             newItemsToCreate,
             affectedIds,
             errors,
-            repositorySoftDeleteEnabled(meta),
+            repositorySoftDeleteEnabled(joinMeta),
           );
         }
 
@@ -165,7 +165,7 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
             newItemsToCreate,
             affectedIds,
             errors,
-            repositorySoftDeleteEnabled(meta),
+            repositorySoftDeleteEnabled(joinMeta),
           );
         }
 
@@ -208,7 +208,7 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
           relationOps.create,
           affectedIds,
           errors,
-          repositorySoftDeleteEnabled(meta),
+          repositorySoftDeleteEnabled(joinMeta),
         );
       }
 
@@ -281,8 +281,8 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
         const { config, parentMap } = group;
         const { joinModel, targetModel, joinField, inverseJoinField } = config;
 
-        const meta = MetadataStorage.instance.getModelMetadata(joinModel);
-        const joinRepo = new Repository(meta);
+        const joinMeta = MetadataStorage.instance.getModelMetadata(joinModel);
+        const joinRepo = new Repository(joinMeta);
         const targetRepo = RepositoryFactory.getRepository(targetModel);
 
         const classifiedOps = this.classifyOperations(parentMap);
@@ -311,7 +311,7 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
                 joinField,
                 inverseJoinField,
                 itemsToCreate,
-                repositorySoftDeleteEnabled(meta),
+                repositorySoftDeleteEnabled(joinMeta),
               );
               allSuccessIds.push(...processedResults.successIds);
               allErrors.push(...processedResults.errors);
@@ -363,7 +363,7 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
               joinField,
               inverseJoinField,
               items,
-              repositorySoftDeleteEnabled(meta),
+              repositorySoftDeleteEnabled(joinMeta),
             );
             allSuccessIds.push(...processedResults.successIds);
             allErrors.push(...processedResults.errors);
@@ -509,6 +509,7 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
 
     const alive = new Set<string>();
     const softDeletedByTarget = new Map<string, ObjectRecord>();
+    const staleCleanupFailed = new Set<string>();
     for (const row of existingRows) {
       const tid = this.extractId(row[inverseJoinField]);
       if (!tid) continue;
@@ -537,11 +538,13 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
           await joinRepo.delete(rowCondition);
         }
       } catch (e) {
+        staleCleanupFailed.add(tid);
         errors.push(e instanceof Error ? e : new Error(String(e)));
       }
     }
 
-    const toCreate = uniqueIds.filter(id => !alive.has(id));
+    // Skip targets whose stale-row cleanup failed to avoid unique-index conflicts on insert.
+    const toCreate = uniqueIds.filter(id => !alive.has(id) && !staleCleanupFailed.has(id));
     if (toCreate.length > 0) {
       try {
         await joinRepo.create(toCreate.map(tid => ({ [joinField]: parentId, [inverseJoinField]: tid })));
