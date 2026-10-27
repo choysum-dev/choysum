@@ -10,11 +10,11 @@ import AuthzMutationModel from '../mixins/authz_mutation_model';
  * RoleInheritance links a parent role to a child role so effective permissions
  * can be expanded through inheritance.
  *
- * Also used as ManyToMany joinModel (Role↔Role). Soft delete stays enabled (default)
- * so inheritance edits remain reversible via soft-delete + restore; a pure-link
- * alternative would set softDelete: false after purging any DeletedAt rows.
+ * Also used as ManyToMany joinModel (Role↔Role). Pure Parent/Child FK pair:
+ * softDelete false so unlink physically removes the edge. Post-upgrade purge
+ * clears any historical soft-deleted rows before they could reappear as live links.
  */
-@Model('RoleInheritance')
+@Model('RoleInheritance', { softDelete: false })
 export default class RoleInheritance extends AuthzMutationModel {
   /**
    * Parent role that contributes permissions to the child role.

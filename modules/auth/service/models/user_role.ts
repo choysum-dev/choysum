@@ -15,8 +15,8 @@ import type Company from '@/base/service/models/company';
 /**
  * UserRole assigns a role to a user, optionally within one company scope.
  *
- * Also used as ManyToMany joinModel (User↔Role). Soft delete stays enabled (default):
- * this is an association entity with company scope and direct CRUD, not a pure FK link.
+ * Also used as ManyToMany joinModel (User↔Role). Keep soft delete (default true):
+ * company-scoped grant with direct CRUD — association entity, not a pure FK link.
  * M2M re-link restores soft-deleted rows when unique indexes still hold them.
  */
 @Model('UserRole', { companyField: 'CompanyId' })
