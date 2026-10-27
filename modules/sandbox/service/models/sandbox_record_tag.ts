@@ -6,7 +6,10 @@ import { _lt } from '../i18n';
 import SandboxRecord from './sandbox_record';
 import SandboxTag from './sandbox_tag';
 
-/** Join row for SandboxRecord ↔ SandboxTag ManyToMany. */
+/**
+ * Join row for SandboxRecord ↔ SandboxTag ManyToMany.
+ * Pure FK-pair link: softDelete false so unlink physically removes the row.
+ */
 @Model('SandboxRecordTag', { softDelete: false })
 export default class SandboxRecordTag extends BaseModel {
   @Field({

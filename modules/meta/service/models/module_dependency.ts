@@ -5,6 +5,12 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { _lt } from '../i18n';
 import MetaModule from './module';
 
+/**
+ * Registry edge Module → DependModule (GORM many2many mirror; autoMigrate false).
+ * Soft delete stays enabled (default) for the TS model; module uninstall still
+ * physically DELETEs these rows. Prefer softDelete: false only with a DeletedAt purge
+ * so soft-deleted edges cannot reappear as live M2M links.
+ */
 @Model('MetaModuleDependency', {
   tableName: 'meta_module_dependencies',
   autoMigrate: false,

@@ -37,6 +37,10 @@ export type OneToManyMetadata<T extends BaseModel> = {
 
 /**
  * Metadata for a ManyToMany relation field.
+ *
+ * `joinModel` is wiring only: which model stores the link rows. It does not choose
+ * that model's softDelete policy — set softDelete on the join @Model by lifecycle
+ * (pure FK link → usually false; association entity → may soft-delete).
  */
 export type ManyToManyMetadata<TJoin extends BaseModel, TTarget extends BaseModel> = {
   joinModel: () => ModelCtor<TJoin>;
@@ -194,6 +198,10 @@ type FlatOneToManyRelationOption<TTarget extends BaseModel> = {
 
 type FlatManyToManyRelationOption<TJoin extends BaseModel, TTarget extends BaseModel> = {
   targetModel: () => ModelCtor<TTarget>;
+  /**
+   * Join row model. SoftDelete is declared on that @Model (not inferred from this usage).
+   * Pure FK-pair links usually use softDelete: false; richer association rows may soft-delete.
+   */
   joinModel: () => ModelCtor<TJoin>;
   /** FK on the join row that points to the host (same KeysOfType as ManyToManyMetadata). */
   joinField: KeysOfType<TJoin, BaseModel>;
@@ -433,7 +441,10 @@ export type FlatOneToManyFieldOptions<TTarget extends BaseModel = BaseModel> = {
   FlatNoDecimalOptions &
   FlatNoPropertiesDefinitionOption;
 
-/** ManyToMany flat options (ctor targetModel; condition typed against target field names). */
+/**
+ * ManyToMany flat options (ctor targetModel; condition typed against target field names).
+ * Join softDelete follows the join model's own @Model options — see FlatManyToManyRelationOption.joinModel.
+ */
 export type FlatManyToManyFieldOptions<TJoin extends BaseModel = BaseModel, TTarget extends BaseModel = BaseModel> = {
   type: 'ManyToMany';
   relation: FlatManyToManyRelationOption<TJoin, TTarget>;

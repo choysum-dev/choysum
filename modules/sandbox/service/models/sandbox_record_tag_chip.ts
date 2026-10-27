@@ -6,7 +6,10 @@ import { _lt } from '../i18n';
 import SandboxRecord from './sandbox_record';
 import SandboxTag from './sandbox_tag';
 
-/** Join row for SandboxRecord ↔ SandboxTag chips ManyToMany (Tags widget). */
+/**
+ * Join row for SandboxRecord ↔ SandboxTag chips ManyToMany (Tags widget).
+ * Pure FK-pair link: softDelete false so unlink physically removes the row.
+ */
 @Model('SandboxRecordTagChip', { softDelete: false })
 export default class SandboxRecordTagChip extends BaseModel {
   @Field({
