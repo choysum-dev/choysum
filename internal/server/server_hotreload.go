@@ -13,7 +13,7 @@ import (
 )
 
 // choyTailwindGeneratedCSSName matches the kit Tailwind emit basename under
-// modules/web/web/styles. Kept in sync with web build's generated CSS name.
+// <default_choysum_path>/generated/styles. Kept in sync with web build.
 const choyTailwindGeneratedCSSName = "choy-tailwind.generated.css"
 
 // hotreloadLeaseRetryBase is the first backoff after module_management LEASE_CONFLICT.
@@ -26,9 +26,9 @@ var hotreloadLeaseRetryBase = 500 * time.Millisecond
 var hotreloadLeaseRetryMax = 8
 
 // shouldIgnoreWatchPath reports paths that must not trigger module Upgrade.
-// Kit Tailwind atomic writes (.choy-tailwind-*.tmp → choy-tailwind.generated.css)
-// run during install/web_build inside a watched module tree; upgrading on those
-// events races the module_management lease and must be skipped.
+// Kit Tailwind atomic writes under generated/styles (and legacy modules kit
+// styles leftovers) run during install/web_build; upgrading on those events
+// races the module_management lease and must be skipped.
 // Unit/FE test sources are also ignored: they do not need a module Upgrade and
 // often fire right after a product-file save, colliding with the same lease.
 func shouldIgnoreWatchPath(path string) bool {
@@ -46,20 +46,25 @@ func shouldIgnoreWatchPath(path string) bool {
 		return true
 	}
 
-	dir := filepath.ToSlash(filepath.Dir(path))
-	// Kit Tailwind output only. Another module's web/web/styles tree, or a
-	// directory that merely ends in the same letters, must still reload.
-	const kitStyles = "modules/web/web/styles"
-	if dir != kitStyles && !strings.HasSuffix(dir, "/"+kitStyles) {
+	return isChoyTailwindGeneratedWatchPath(path)
+}
+
+func isChoyTailwindGeneratedWatchPath(path string) bool {
+	base := filepath.Base(path)
+	isTmp := strings.HasPrefix(base, ".choy-tailwind-") && strings.HasSuffix(base, ".tmp")
+	isCSS := base == choyTailwindGeneratedCSSName
+	if !isTmp && !isCSS {
 		return false
 	}
-	if base == choyTailwindGeneratedCSSName {
+	slash := filepath.ToSlash(filepath.Clean(path))
+	// Current emit: .../generated/styles/choy-tailwind.generated.css (+ atomic tmp)
+	if strings.Contains(slash, "/generated/styles/") {
 		return true
 	}
-	if strings.HasPrefix(base, ".choy-tailwind-") && strings.HasSuffix(base, ".tmp") {
-		return true
-	}
-	return false
+	// Legacy in-module emit (and leftover files during cutover).
+	const kitStyles = "modules/web/web/styles"
+	dir := filepath.ToSlash(filepath.Dir(path))
+	return dir == kitStyles || strings.HasSuffix(dir, "/"+kitStyles)
 }
 
 // isModuleLeaseConflict reports meta.lock LEASE_CONFLICT through wrapped errors.

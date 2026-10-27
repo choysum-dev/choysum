@@ -231,14 +231,17 @@ func hashWebSourceTreeOpts(h io.Writer, root string, skipBuildDirs bool) error {
 }
 
 // isChoyTailwindGeneratedKitPath reports whether path is the kit's generated
-// utilities CSS under a kit host styles/ tree (not a same-named file elsewhere).
+// utilities CSS (workspace generated/styles or legacy kit host styles/).
 func isChoyTailwindGeneratedKitPath(path string) bool {
 	if filepath.Base(path) != choyTailwindGeneratedCSSName {
 		return false
 	}
 	slash := filepath.ToSlash(path)
-	// Only "<module>/web/styles/<name>" of the web kit host is derived
-	// output; require a directory boundary so modules like "myweb" are not matched.
+	if strings.Contains(slash, "/generated/styles/") || strings.HasPrefix(slash, "generated/styles/") {
+		return true
+	}
+	// Legacy in-module emit: only "<module>/web/styles/<name>" of the web kit
+	// host; require a directory boundary so modules like "myweb" are not matched.
 	// Legacy choy_ui paths stay recognized so leftover generated files do not
 	// invalidate digests during cutover cleanups.
 	return hasKitHostStylesSuffix(slash, "web/web/styles/"+choyTailwindGeneratedCSSName) ||

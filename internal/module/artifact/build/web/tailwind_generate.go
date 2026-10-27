@@ -23,6 +23,13 @@ const ChoyTailwindBudget = 500 * time.Millisecond
 
 const choyTailwindGeneratedCSSName = "choy-tailwind.generated.css"
 
+// ChoyGeneratedImportPrefix is the stable import prefix for workspace-generated
+// assets under <default_choysum_path>/generated/.
+const ChoyGeneratedImportPrefix = "@choysum/generated/"
+
+// ChoyTailwindGeneratedImportPath is the app.ts import for kit Tailwind CSS.
+const ChoyTailwindGeneratedImportPath = ChoyGeneratedImportPrefix + "styles/" + choyTailwindGeneratedCSSName
+
 // choyGalleryRootSelector is retained for CSS scoping unit helpers/tests only.
 // Cutover product builds emit unscoped theme+utilities for the main bundle.
 const choyGalleryRootSelector = ".choy-gallery-root"
@@ -738,13 +745,31 @@ func indexCSSBlockEnd(css string) int {
 	return -1
 }
 
-// GenerateChoyTailwindForModule scans a Choy kit module root and writes generated CSS.
+// ChoyTailwindGeneratedCSSPath returns
+// <defaultChoysumPath>/generated/styles/choy-tailwind.generated.css.
+func ChoyTailwindGeneratedCSSPath(defaultChoysumPath string) (string, error) {
+	root := strings.TrimSpace(defaultChoysumPath)
+	if root == "" {
+		return "", fmt.Errorf("defaultChoysumPath is required for Choy Tailwind output")
+	}
+	if abs, err := filepath.Abs(root); err == nil {
+		root = abs
+	}
+	root = filepath.Clean(root)
+	if root == "." || root == string(filepath.Separator) {
+		return "", fmt.Errorf("defaultChoysumPath must be a non-root directory")
+	}
+	return filepath.Join(root, "generated", "styles", choyTailwindGeneratedCSSName), nil
+}
+
+// GenerateChoyTailwindForModule scans a Choy kit module root and writes generated CSS
+// under <defaultChoysumPath>/generated/styles/.
 // Emits unscoped FullCSS (theme + preflight + utilities + PropertiesCSS) for the
 // product main bundle. When moduleRoot lives under a modules/ directory, candidates
 // match TailwindInputDigest (kit + every sibling module web/ tree); isolated temp
 // kit roots stay kit-only.
-func GenerateChoyTailwindForModule(moduleRoot string) (*ChoyTailwindGenerateResult, error) {
-	return generateChoyTailwindForModule(moduleRoot, modulesPathForKitRoot(moduleRoot))
+func GenerateChoyTailwindForModule(moduleRoot, defaultChoysumPath string) (*ChoyTailwindGenerateResult, error) {
+	return generateChoyTailwindForModule(moduleRoot, modulesPathForKitRoot(moduleRoot), defaultChoysumPath)
 }
 
 // modulesPathForKitRoot returns the parent modules directory for product scans.
@@ -774,12 +799,12 @@ func modulesPathForKitRoot(moduleRoot string) string {
 	return ""
 }
 
-func generateChoyTailwindForModule(moduleRoot, modulesPath string) (*ChoyTailwindGenerateResult, error) {
+func generateChoyTailwindForModule(moduleRoot, modulesPath, defaultChoysumPath string) (*ChoyTailwindGenerateResult, error) {
 	moduleRoot = strings.TrimSpace(moduleRoot)
 	if moduleRoot == "" {
 		return nil, fmt.Errorf("choy kit module root is empty")
 	}
-	// Keep dialect/output on the same kit root the product scan and
+	// Keep dialect on the same kit root the product scan and
 	// TailwindInputDigest resolve (modules/web), so hashes converge.
 	if mp := strings.TrimSpace(modulesPath); mp != "" {
 		resolved, err := resolveChoyKitModuleRoot(mp)
@@ -817,6 +842,11 @@ func generateChoyTailwindForModule(moduleRoot, modulesPath string) (*ChoyTailwin
 		return nil, fmt.Errorf("generated Tailwind CSS for %s is empty; refusing to write an unstyled kit", moduleRoot)
 	}
 
+	outPath, err := ChoyTailwindGeneratedCSSPath(defaultChoysumPath)
+	if err != nil {
+		return nil, err
+	}
+
 	// Header omits wall-clock duration so identical inputs rewrite a stable file.
 	// Duration is returned on ChoyTailwindGenerateResult for gates.
 	header := fmt.Sprintf(
@@ -826,10 +856,10 @@ func generateChoyTailwindForModule(moduleRoot, modulesPath string) (*ChoyTailwin
 			" */\n",
 		dialectHash[:12], contentHash[:12], choyTailwindGoModuleVersion(), len(candidates),
 	)
-	outPath := filepath.Join(webRoot, "styles", choyTailwindGeneratedCSSName)
 	if err := writeFileAtomicIfChanged(outPath, header+css); err != nil {
 		return nil, err
 	}
+	removeLegacyChoyTailwindGeneratedCSS(moduleRoot)
 	return &ChoyTailwindGenerateResult{
 		CSS:            css,
 		Duration:       dur,
@@ -838,6 +868,13 @@ func generateChoyTailwindForModule(moduleRoot, modulesPath string) (*ChoyTailwin
 		ContentHash:    contentHash,
 		OutputPath:     outPath,
 	}, nil
+}
+
+// removeLegacyChoyTailwindGeneratedCSS drops the old in-module emit so leftover
+// files do not confuse operators after the DefaultChoysumPath cutover.
+func removeLegacyChoyTailwindGeneratedCSS(moduleRoot string) {
+	legacy := filepath.Join(moduleRoot, "web", "styles", choyTailwindGeneratedCSSName)
+	_ = os.Remove(legacy)
 }
 
 func writeFileAtomicIfChanged(path, content string) error {
@@ -906,11 +943,12 @@ var (
 	atomicWriteRename = os.Rename
 )
 
-// EnsureChoyTailwindCSS finds the Choy kit under modulesPath and regenerates CSS.
+// EnsureChoyTailwindCSS finds the Choy kit under modulesPath and regenerates CSS
+// under <defaultChoysumPath>/generated/styles/.
 // Kit host is modules/web when styles/theme.css is present.
 // Candidate scan covers the kit surface plus every other module web/ tree.
 // No-op when the web kit root does not own a dialect file.
-func EnsureChoyTailwindCSS(modulesPath string) (*ChoyTailwindGenerateResult, error) {
+func EnsureChoyTailwindCSS(modulesPath, defaultChoysumPath string) (*ChoyTailwindGenerateResult, error) {
 	modulesPath = strings.TrimSpace(modulesPath)
 	if modulesPath == "" {
 		return nil, nil
@@ -922,7 +960,7 @@ func EnsureChoyTailwindCSS(modulesPath string) (*ChoyTailwindGenerateResult, err
 	if root == "" {
 		return nil, nil
 	}
-	return generateChoyTailwindForModule(root, modulesPath)
+	return generateChoyTailwindForModule(root, modulesPath, defaultChoysumPath)
 }
 
 // resolveChoyKitModuleRoot returns the module root that owns Choy styles/theme.css.

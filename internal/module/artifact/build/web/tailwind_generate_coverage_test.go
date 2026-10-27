@@ -154,20 +154,20 @@ func TestGenerateChoyTailwindForModuleRejectsEmptyCSS(t *testing.T) {
 	generateTailwindCSS = func(string, []string) (string, time.Duration, error) {
 		return "   \n", 0, nil
 	}
-	_, err := GenerateChoyTailwindForModule(root)
+	_, err := GenerateChoyTailwindForModule(root, testChoysumHome(t))
 	if err == nil || !strings.Contains(err.Error(), "empty") {
 		t.Fatalf("expected empty CSS error, got %v", err)
 	}
 }
 
 func TestGenerateChoyTailwindForModuleErrorsAndStableWrite(t *testing.T) {
-	if _, err := GenerateChoyTailwindForModule(""); err == nil {
+	if _, err := GenerateChoyTailwindForModule("", testChoysumHome(t)); err == nil {
 		t.Fatal("expected error for empty module root")
 	}
-	if _, err := GenerateChoyTailwindForModule("   "); err == nil {
+	if _, err := GenerateChoyTailwindForModule("   ", testChoysumHome(t)); err == nil {
 		t.Fatal("expected error for whitespace module root")
 	}
-	if _, err := GenerateChoyTailwindForModule(t.TempDir()); err == nil {
+	if _, err := GenerateChoyTailwindForModule(t.TempDir(), testChoysumHome(t)); err == nil {
 		t.Fatal("expected error when theme.css missing")
 	}
 
@@ -188,7 +188,8 @@ func TestGenerateChoyTailwindForModuleErrorsAndStableWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res1, err := GenerateChoyTailwindForModule(root)
+	home := testChoysumHome(t)
+	res1, err := GenerateChoyTailwindForModule(root, home)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +198,7 @@ func TestGenerateChoyTailwindForModuleErrorsAndStableWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res2, err := GenerateChoyTailwindForModule(root)
+	res2, err := GenerateChoyTailwindForModule(root, home)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -337,7 +338,7 @@ func TestScanTailwindCandidatesStatPermissionError(t *testing.T) {
 }
 
 func TestEnsureChoyTailwindCSSEmptyAndStatError(t *testing.T) {
-	res, err := EnsureChoyTailwindCSS("")
+	res, err := EnsureChoyTailwindCSS("", testChoysumHome(t))
 	if err != nil || res != nil {
 		t.Fatalf("empty modulesPath => nil,nil got %#v %v", res, err)
 	}
@@ -355,7 +356,7 @@ func TestEnsureChoyTailwindCSSEmptyAndStatError(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chmod(styles, 0o755) })
-	_, err = EnsureChoyTailwindCSS(root)
+	_, err = EnsureChoyTailwindCSS(root, testChoysumHome(t))
 	_ = os.Chmod(styles, 0o755)
 	if err == nil {
 		t.Skip("permission-denied stat not observed on this runner (e.g. running as root)")
@@ -372,12 +373,17 @@ func TestGenerateChoyTailwindForModuleWriteFailure(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(styles, "theme.css"), []byte(`@theme { --color-primary: red; }`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	// Make the output path a directory so the final rename fails regardless
-	// of runner privileges (unlike chmod, which root bypasses).
-	if err := os.Mkdir(filepath.Join(styles, choyTailwindGeneratedCSSName), 0o755); err != nil {
+	home := testChoysumHome(t)
+	outPath, err := ChoyTailwindGeneratedCSSPath(home)
+	if err != nil {
 		t.Fatal(err)
 	}
-	_, err := GenerateChoyTailwindForModule(root)
+	// Make the output path a directory so the final rename fails regardless
+	// of runner privileges (unlike chmod, which root bypasses).
+	if err := os.MkdirAll(outPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	_, err = GenerateChoyTailwindForModule(root, home)
 	if err == nil {
 		t.Fatal("expected write failure when output path is a directory")
 	}
@@ -409,7 +415,7 @@ func TestGenerateChoyTailwindForModuleScanFailure(t *testing.T) {
 		_ = os.Chmod(bad, 0o644)
 		t.Skip("mode 000 vue still readable on this runner (e.g. root)")
 	}
-	_, err := GenerateChoyTailwindForModule(root)
+	_, err := GenerateChoyTailwindForModule(root, testChoysumHome(t))
 	_ = os.Chmod(bad, 0o644)
 	if err == nil {
 		t.Fatal("expected scan failure for unreadable vue")
@@ -698,7 +704,7 @@ func TestEnsureChoyTailwindCSSWebNotDir(t *testing.T) {
 	if err := os.WriteFile(web, []byte("not a dir"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	res, err := EnsureChoyTailwindCSS(root)
+	res, err := EnsureChoyTailwindCSS(root, testChoysumHome(t))
 	if err != nil || res != nil {
 		t.Fatalf("web file => nil,nil got %#v %v", res, err)
 	}
@@ -711,7 +717,7 @@ func TestEnsureChoyTailwindCSSWebStatError(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chmod(parent, 0o755) })
-	_, err := EnsureChoyTailwindCSS(root)
+	_, err := EnsureChoyTailwindCSS(root, testChoysumHome(t))
 	_ = os.Chmod(parent, 0o755)
 	if err == nil {
 		t.Skip("permission-denied web stat not observed on this runner (e.g. running as root)")
@@ -731,7 +737,7 @@ func TestGenerateChoyTailwindForModulePropagatesGenerateError(t *testing.T) {
 		choyLoadCSS = func(eng *tw.Engine, css []byte) error { return eng.LoadCSS(css) }
 	})
 	choyLoadCSS = func(*tw.Engine, []byte) error { return os.ErrInvalid }
-	if _, err := GenerateChoyTailwindForModule(root); err == nil {
+	if _, err := GenerateChoyTailwindForModule(root, testChoysumHome(t)); err == nil {
 		t.Fatal("expected generate error from LoadCSS failure")
 	}
 }
@@ -785,7 +791,7 @@ func TestEnsureChoyTailwindCSSIncompleteKit(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Product web without a Choy dialect is not a kit host (dual-stack stub).
-	res, err := EnsureChoyTailwindCSS(root)
+	res, err := EnsureChoyTailwindCSS(root, testChoysumHome(t))
 	if err != nil || res != nil {
 		t.Fatalf("incomplete web without dialect => nil,nil got %#v %v", res, err)
 	}
@@ -794,7 +800,7 @@ func TestEnsureChoyTailwindCSSIncompleteKit(t *testing.T) {
 	if err := os.MkdirAll(kitUI, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	_, err = EnsureChoyTailwindCSS(root)
+	_, err = EnsureChoyTailwindCSS(root, testChoysumHome(t))
 	if err == nil || !strings.Contains(err.Error(), "dialect") {
 		t.Fatalf("kit tree without dialect must fail, got %v", err)
 	}

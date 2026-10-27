@@ -1407,7 +1407,7 @@ func TestPrebuildUpdatePrebuildResult_RealAuthChoyAppShellMerges(t *testing.T) {
 	moduleRef := &meta.Module{Name: "auth", Path: filepath.Join(modulesPath, "auth")}
 	entryPoint := filepath.Join(modulesPath, "auth", "web", "index.ts")
 	// Kit CSS is gitignored; gallery/dogfood pages import it via the web barrel.
-	if _, err := EnsureChoyTailwindCSS(modulesPath); err != nil {
+	if _, err := EnsureChoyTailwindCSS(modulesPath, filepath.Join(t.TempDir(), ".choysum")); err != nil {
 		t.Fatalf("EnsureChoyTailwindCSS: %v", err)
 	}
 	builder, ok := NewWebBuilder(testRuntimeScope, nil, moduleRef, entryPoint).(*WebModuleBuilder)
@@ -5001,12 +5001,13 @@ func TestBuildCtx_ChoyTailwindHook(t *testing.T) {
 		var logBuf bytes.Buffer
 		testRuntimeScope.log = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
+		choysumHome := filepath.Join(t.TempDir(), ".choysum")
 		builder := &WebModuleBuilder{
 			runtimeScope: testRuntimeScope,
 			runtimeOptions: runtimeOptions{
 				modulesPath:        modulesPath,
 				distPath:           filepath.Join(t.TempDir(), "dist"),
-				defaultChoysumPath: filepath.Join(t.TempDir(), ".choysum"),
+				defaultChoysumPath: choysumHome,
 				webBaseURL:         "/web/",
 			},
 			module:         moduleRef,
@@ -5022,8 +5023,12 @@ func TestBuildCtx_ChoyTailwindHook(t *testing.T) {
 		if !strings.Contains(logBuf.String(), "Choy kit Tailwind generated") {
 			t.Fatalf("expected tailwind generate log, got %q", logBuf.String())
 		}
-		if _, err := os.Stat(filepath.Join(styles, "choy-tailwind.generated.css")); err != nil {
-			t.Fatalf("expected generated css: %v", err)
+		outPath, err := ChoyTailwindGeneratedCSSPath(choysumHome)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := os.Stat(outPath); err != nil {
+			t.Fatalf("expected generated css at %s: %v", outPath, err)
 		}
 	})
 
@@ -5044,11 +5049,11 @@ func TestBuildCtx_ChoyTailwindHook(t *testing.T) {
 
 		prev := ensureChoyTailwindCSS
 		t.Cleanup(func() { ensureChoyTailwindCSS = prev })
-		ensureChoyTailwindCSS = func(string) (*ChoyTailwindGenerateResult, error) {
+		ensureChoyTailwindCSS = func(string, string) (*ChoyTailwindGenerateResult, error) {
 			return &ChoyTailwindGenerateResult{
 				Duration:       time.Millisecond,
 				CandidateCount: 1,
-				OutputPath:     "styles/choy-tailwind.generated.css",
+				OutputPath:     "generated/styles/choy-tailwind.generated.css",
 			}, nil
 		}
 
@@ -5096,11 +5101,11 @@ func TestBuildCtx_ChoyTailwindHook(t *testing.T) {
 
 		prev := ensureChoyTailwindCSS
 		t.Cleanup(func() { ensureChoyTailwindCSS = prev })
-		ensureChoyTailwindCSS = func(string) (*ChoyTailwindGenerateResult, error) {
+		ensureChoyTailwindCSS = func(string, string) (*ChoyTailwindGenerateResult, error) {
 			return &ChoyTailwindGenerateResult{
 				Duration:       ChoyTailwindBudget + time.Millisecond,
 				CandidateCount: 1,
-				OutputPath:     "styles/choy-tailwind.generated.css",
+				OutputPath:     "generated/styles/choy-tailwind.generated.css",
 			}, nil
 		}
 
@@ -5146,8 +5151,13 @@ func TestBuildCtx_ChoyTailwindHook(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(styles, "theme.css"), []byte(`@theme { --color-primary: red; }`), 0o644); err != nil {
 			t.Fatal(err)
 		}
+		choysumHome := filepath.Join(t.TempDir(), ".choysum")
+		outPath, err := ChoyTailwindGeneratedCSSPath(choysumHome)
+		if err != nil {
+			t.Fatal(err)
+		}
 		// Directory at the generated CSS path forces rename failure without chmod.
-		if err := os.Mkdir(filepath.Join(styles, "choy-tailwind.generated.css"), 0o755); err != nil {
+		if err := os.MkdirAll(outPath, 0o755); err != nil {
 			t.Fatal(err)
 		}
 
@@ -5156,7 +5166,7 @@ func TestBuildCtx_ChoyTailwindHook(t *testing.T) {
 			runtimeOptions: runtimeOptions{
 				modulesPath:        modulesPath,
 				distPath:           filepath.Join(t.TempDir(), "dist"),
-				defaultChoysumPath: filepath.Join(t.TempDir(), ".choysum"),
+				defaultChoysumPath: choysumHome,
 				webBaseURL:         "/web/",
 			},
 			module:         moduleRef,
@@ -5165,7 +5175,7 @@ func TestBuildCtx_ChoyTailwindHook(t *testing.T) {
 			prebuildPlugin: &buildTestPlugin{parserResults: []*parser.ParserResult{{Path: entryPoint, RawContent: "export const answer = 42", Content: "export const answer = 42"}}},
 			buildPlugin:    &buildTestPlugin{},
 		}
-		_, err := builder.BuildCtx(context.Background())
+		_, err = builder.BuildCtx(context.Background())
 		if err == nil || !strings.Contains(err.Error(), "Error generating Choy kit Tailwind CSS") {
 			t.Fatalf("expected wrapped tailwind error, got %v", err)
 		}
