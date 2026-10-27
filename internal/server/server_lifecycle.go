@@ -4,10 +4,26 @@
 package server
 
 import (
+	"log/slog"
+
+	"github.com/choysum-dev/choysum/internal/server/middleware/accesslog"
 	"github.com/choysum-dev/choysum/internal/server/transport"
+	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
 	"google.golang.org/grpc"
 )
+
+func (s *GRPCWebServer) accessLogConfig() (accesslog.Options, *slog.Logger) {
+	opts := accesslog.Options{SlowMs: 1000}
+	var logger *slog.Logger
+	if s != nil && s.runtimeScope != nil {
+		logger = s.runtimeScope.Logger()
+		if logCfg := scope.LogConfigFromScope(s.runtimeScope); logCfg != nil {
+			opts = accesslog.OptionsFromLogConfig(logCfg.Access, logCfg.AccessSlowMs)
+		}
+	}
+	return opts, logger
+}
 
 func (s *GRPCWebServer) serve() error {
 	if err := s.startHotreloadLifecycle(); err != nil {
@@ -58,15 +74,29 @@ func (s *GRPCWebServer) grpcServerOptions() transport.GRPCServerOptions {
 
 	s.ensureTelemetry(&serverOpts)
 
+	accessOpts, accessLogger := s.accessLogConfig()
 	unaryInterceptors := s.baseUnaryInterceptors()
-	serverOpts, unaryInterceptors = s.applyAuthGRPCInterceptors(serverOpts, unaryInterceptors)
+	unaryInterceptors = append(
+		[]grpc.UnaryServerInterceptor{accesslog.UnaryInterceptor(accessOpts, accessLogger)},
+		unaryInterceptors...,
+	)
+	streamInterceptors := []grpc.StreamServerInterceptor{
+		accesslog.StreamInterceptor(accessOpts, accessLogger),
+	}
+
+	var authStream grpc.StreamServerInterceptor
+	unaryInterceptors, authStream = s.applyAuthGRPCInterceptors(unaryInterceptors)
+	if authStream != nil {
+		streamInterceptors = append(streamInterceptors, authStream)
+	}
 	unaryInterceptors = append(unaryInterceptors, s.taskRuntimeUnaryInterceptors()...)
 
 	return transport.GRPCServerOptions{
-		MaxRecvMsgSize:    flagMaxCallRecvMsgSize,
-		MaxSendMsgSize:    flagMaxCallSendMsgSize,
-		ServerOptions:     serverOpts,
-		UnaryInterceptors: unaryInterceptors,
+		MaxRecvMsgSize:     flagMaxCallRecvMsgSize,
+		MaxSendMsgSize:     flagMaxCallSendMsgSize,
+		ServerOptions:      serverOpts,
+		UnaryInterceptors:  unaryInterceptors,
+		StreamInterceptors: streamInterceptors,
 	}
 }
 

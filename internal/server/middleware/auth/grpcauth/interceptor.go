@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/choysum-dev/choysum/internal/server/middleware/accesslog"
 	middleware "github.com/choysum-dev/choysum/internal/server/middleware/auth"
 	"github.com/choysum-dev/choysum/pkg/auth"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -233,6 +234,7 @@ func (i *AuthInterceptor) UnaryInterceptor() grpc.UnaryServerInterceptor {
 		// Write identity and request access token into trusted context (Go-only).
 		newCtx := auth.ContextWithIdentity(ctx, identity)
 		newCtx = auth.ContextWithAccessToken(newCtx, token)
+		accesslog.ObserveIdentity(newCtx, identity)
 
 		// Call the next handler.
 		return handler(newCtx, req)
@@ -283,6 +285,7 @@ func (i *AuthInterceptor) StreamInterceptor() grpc.StreamServerInterceptor {
 		// Create a new context carrying identity and the request access token (Go-only).
 		newCtx := auth.ContextWithIdentity(ctx, identity)
 		newCtx = auth.ContextWithAccessToken(newCtx, token)
+		accesslog.ObserveIdentity(newCtx, identity)
 
 		// Wrap the stream with the new context.
 		wrappedStream := WrapServerStream(ss, newCtx)

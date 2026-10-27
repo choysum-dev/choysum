@@ -92,17 +92,20 @@ func (s *GRPCWebServer) newProtocolRouter() http.Handler {
 
 func (s *GRPCWebServer) protocolRouterOptions() transport.ProtocolRouterOptions {
 	opts := s.resolvedRuntimeOptions()
+	accessOpts, _ := s.accessLogConfig()
 	return transport.ProtocolRouterOptions{
-		RuntimeScope:    s.runtimeScope,
-		Mux:             s.mux,
-		GRPCServer:      s.server,
-		GRPCWebProxy:    s.proxy,
-		GRPCClientPool:  s.grpcClientPool,
-		Authenticator:   s.authenticator,
-		CSPEnabled:      opts.cspEnabled,
-		CSRFEnabled:     opts.csrfEnabled,
-		AuthEnabled:     opts.authEnabled,
-		HTTPAuthEnabled: opts.httpAuthEnabled,
-		EnableGzip:      opts.enableGzip,
+		RuntimeScope:     s.runtimeScope,
+		Mux:              s.mux,
+		GRPCServer:       s.server,
+		GRPCWebProxy:     s.proxy,
+		GRPCClientPool:   s.grpcClientPool,
+		Authenticator:    s.authenticator,
+		CSPEnabled:       opts.cspEnabled,
+		CSRFEnabled:      opts.csrfEnabled,
+		AuthEnabled:      opts.authEnabled,
+		HTTPAuthEnabled:  opts.httpAuthEnabled,
+		EnableGzip:       opts.enableGzip,
+		AccessLogEnabled: accessOpts.Access,
+		AccessSlowMs:     accessOpts.SlowMs,
 	}
 }

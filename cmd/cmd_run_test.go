@@ -855,6 +855,37 @@ db:
 	})
 }
 
+func TestRunCmdRegistersAccessLogFlag(t *testing.T) {
+	cmd := newRunCmd()
+	flag := cmd.Flags().Lookup("access-log")
+	if flag == nil {
+		t.Fatal("expected --access-log flag on run command")
+	}
+	if flag.DefValue != "false" {
+		t.Fatalf("access-log default = %q, want false", flag.DefValue)
+	}
+}
+
+func TestApplyRunAccessLogFlagUpdatesScopeInput(t *testing.T) {
+	cfg := &config.Config{
+		Log:    &config.LogConfig{Level: "info", Access: false, AccessSlowMs: 1000},
+		Server: config.NewDefaultServerConfig(),
+		Db:     config.NewDefaultDbConfig(),
+	}
+	opts := cliruntime.NewScopeInputConfigOptions(snapshot.New(cfg))
+	loaded := runLoadedConfig{
+		scopeInput: cliruntime.NewRunScopeInput(opts, cliruntime.Options{}, cliruntime.NewRunServerOptions(cfg.Server), cliruntime.NewRunDBOptions(cfg)),
+		logConfig:  cliruntime.CloneLogConfig(cfg.Log),
+	}
+	applyRunAccessLogFlag(&loaded)
+	if !loaded.logConfig.Access {
+		t.Fatal("logConfig.Access = false, want true")
+	}
+	if got := loaded.scopeInput.LogConfig(); got == nil || !got.Access {
+		t.Fatalf("scope LogConfig.Access = %#v, want Access=true", got)
+	}
+}
+
 func TestCloneRunLogConfig(t *testing.T) {
 	t.Run("nil returns default", func(t *testing.T) {
 		got := cliruntime.CloneLogConfig(nil)

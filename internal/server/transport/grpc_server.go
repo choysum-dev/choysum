@@ -6,14 +6,15 @@ package transport
 import "google.golang.org/grpc"
 
 type GRPCServerOptions struct {
-	MaxRecvMsgSize    int
-	MaxSendMsgSize    int
-	ServerOptions     []grpc.ServerOption
-	UnaryInterceptors []grpc.UnaryServerInterceptor
+	MaxRecvMsgSize     int
+	MaxSendMsgSize     int
+	ServerOptions      []grpc.ServerOption
+	UnaryInterceptors  []grpc.UnaryServerInterceptor
+	StreamInterceptors []grpc.StreamServerInterceptor
 }
 
 func NewGRPCServer(opts GRPCServerOptions) *grpc.Server {
-	serverOpts := make([]grpc.ServerOption, 0, len(opts.ServerOptions)+3)
+	serverOpts := make([]grpc.ServerOption, 0, len(opts.ServerOptions)+4)
 	if opts.MaxRecvMsgSize > 0 {
 		serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(opts.MaxRecvMsgSize))
 	}
@@ -23,6 +24,9 @@ func NewGRPCServer(opts GRPCServerOptions) *grpc.Server {
 	serverOpts = append(serverOpts, opts.ServerOptions...)
 	if len(opts.UnaryInterceptors) > 0 {
 		serverOpts = append(serverOpts, grpc.ChainUnaryInterceptor(opts.UnaryInterceptors...))
+	}
+	if len(opts.StreamInterceptors) > 0 {
+		serverOpts = append(serverOpts, grpc.ChainStreamInterceptor(opts.StreamInterceptors...))
 	}
 	return grpc.NewServer(serverOpts...)
 }

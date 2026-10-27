@@ -26,6 +26,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/server/transport"
 	"github.com/choysum-dev/choysum/internal/testing/jsexecutortest"
 	"github.com/choysum-dev/choysum/pkg/auth"
+	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	taskcontract "github.com/choysum-dev/choysum/pkg/task"
 	"github.com/choysum-dev/choysum/pkg/trace"
@@ -56,6 +57,20 @@ func TestServerHelpers(t *testing.T) {
 	}
 }
 
+func TestGrpcServerOptionsIncludesAccessLogInterceptors(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	runtimeScope.cfg.Log = config.NewDefaultLogConfig()
+	runtimeScope.cfg.Log.Access = true
+	srv := &GRPCWebServer{runtimeScope: runtimeScope}
+	opts := srv.grpcServerOptions()
+	if len(opts.UnaryInterceptors) < 1 {
+		t.Fatal("expected access log unary interceptor")
+	}
+	if len(opts.StreamInterceptors) < 1 {
+		t.Fatal("expected access log stream interceptor")
+	}
+}
+
 func TestServerMoreInterceptorsAndTelemetry(t *testing.T) {
 	runtimeScope := newRichServerTestScope(t)
 	runtimeScope.cfg.Auth.Enabled = false
@@ -65,25 +80,24 @@ func TestServerMoreInterceptorsAndTelemetry(t *testing.T) {
 		return handler(ctx, req)
 	})
 	unary := []grpc.UnaryServerInterceptor{baseUnary}
-	authResult := srv.setupAuthInterceptors(&serverOpts, &unary)
+	stream, authResult := srv.setupAuthInterceptors(&unary)
 	assertAuthRuntimeSetupResult(t, authResult, false, false, false, false, "auth-disabled setup")
-	if len(serverOpts) != 0 || len(unary) != 1 {
-		t.Fatalf("expected auth-disabled setup to be a no-op, got opts=%d unary=%d", len(serverOpts), len(unary))
+	if stream != nil || len(unary) != 1 {
+		t.Fatalf("expected auth-disabled setup to be a no-op, got stream=%v unary=%d", stream != nil, len(unary))
 	}
 
 	runtimeScope.cfg.Auth.Enabled = true
 	runtimeScope.cfg.Auth.Type = "missing"
 	executor := jsexecutortest.NewUninitializedExecutor()
 	srv.jsExecutor = executor
-	serverOpts = nil
 	unary = []grpc.UnaryServerInterceptor{baseUnary}
-	authResult = srv.setupAuthInterceptors(&serverOpts, &unary)
+	stream, authResult = srv.setupAuthInterceptors(&unary)
 	assertAuthRuntimeSetupResult(t, authResult, true, false, true, true, "auth setup error path")
 	if srv.jsExecutor != executor {
 		t.Fatal("expected setupAuthInterceptors error path to leave js executor ownership unchanged")
 	}
-	if srv.authenticator != nil || len(serverOpts) != 0 || len(unary) != 1 {
-		t.Fatalf("expected setupAuthInterceptors error path to leave grpc auth state unchanged, got authenticator=%v opts=%d unary=%d", srv.authenticator != nil, len(serverOpts), len(unary))
+	if srv.authenticator != nil || stream != nil || len(unary) != 1 {
+		t.Fatalf("expected setupAuthInterceptors error path to leave grpc auth state unchanged, got authenticator=%v stream=%v unary=%d", srv.authenticator != nil, stream != nil, len(unary))
 	}
 
 	runtimeScope.cfg.Auth.Type = "jwt"
@@ -92,13 +106,13 @@ func TestServerMoreInterceptorsAndTelemetry(t *testing.T) {
 	runtimeScope.cfg.Auth.JWT.PublicKeyFile = filepath.Join(keyDir, "public.pem")
 	runtimeScope.cfg.Auth.JWT.RevokeStore = "memory"
 	runtimeScope.cfg.Auth.JWT.IdentityCache.Enabled = false
-	serverOpts = nil
 	unary = []grpc.UnaryServerInterceptor{baseUnary}
-	authResult = srv.setupAuthInterceptors(&serverOpts, &unary)
+	stream, authResult = srv.setupAuthInterceptors(&unary)
 	assertAuthRuntimeSetupResult(t, authResult, true, true, false, false, "auth setup success path")
-	if srv.authenticator == nil || len(serverOpts) != 1 || len(unary) != 2 {
-		t.Fatalf("expected auth interceptors to be installed, got authenticator=%v opts=%d unary=%d", srv.authenticator != nil, len(serverOpts), len(unary))
+	if srv.authenticator == nil || stream == nil || len(unary) != 2 {
+		t.Fatalf("expected auth interceptors to be installed, got authenticator=%v stream=%v unary=%d", srv.authenticator != nil, stream != nil, len(unary))
 	}
+	_ = serverOpts
 
 	tel := fakeTelemetry{}
 	srv.telemetry = tel
