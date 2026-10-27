@@ -172,7 +172,7 @@ test('AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance: no-ops without d
   }
 });
 
-test('AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance: rethrows execute failures', async () => {
+test('AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance: rethrows real execute failures', async () => {
   let executed = 0;
   const prev = (globalThis as any).$choysum;
   (globalThis as any).$choysum = {
@@ -181,7 +181,7 @@ test('AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance: rethrows execute
       dialectName: 'postgres',
       execute: async () => {
         executed += 1;
-        throw new Error('missing table');
+        throw new Error('permission denied');
       },
     },
   };
@@ -194,19 +194,40 @@ test('AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance: rethrows execute
     }
     expect(executed).toBe(1);
     expect(threw instanceof Error).toBe(true);
-    expect(String((threw as Error).message)).toContain('missing table');
+    expect(String((threw as Error).message)).toContain('permission denied');
   } finally {
     (globalThis as any).$choysum = prev;
   }
 });
 
-test('AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance: unknown dialect executes nothing', async () => {
+test('AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance: ignores missing table', async () => {
+  let executed = 0;
+  const prev = (globalThis as any).$choysum;
+  (globalThis as any).$choysum = {
+    ...(prev || {}),
+    db: {
+      dialectName: 'sqlite',
+      execute: async () => {
+        executed += 1;
+        throw new Error('no such table: auth_role_inheritance');
+      },
+    },
+  };
+  try {
+    await AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance();
+    expect(executed).toBe(1);
+  } finally {
+    (globalThis as any).$choysum = prev;
+  }
+});
+
+test('AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance: runs on mssql', async () => {
   const calls: Array<{ sql: string; params: string }> = [];
   const prev = (globalThis as any).$choysum;
   (globalThis as any).$choysum = {
     ...(prev || {}),
     db: {
-      dialectName: 'oracle',
+      dialectName: 'mssql',
       execute: async (sql: string, params: string) => {
         calls.push({ sql, params });
       },
@@ -217,5 +238,6 @@ test('AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance: unknown dialect 
   } finally {
     (globalThis as any).$choysum = prev;
   }
-  expect(calls.length).toBe(0);
+  expect(calls.length).toBe(1);
+  expect(calls[0].sql).toContain('DELETE FROM auth_role_inheritance');
 });

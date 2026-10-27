@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { HookPostUpgrade } from '@/core/service/api/model';
+import { HookPostUpgrade, HookPreUpgrade } from '@/core/service/api/model';
 
 type ChoysumDb = {
   dialectName?: string;
@@ -10,6 +10,18 @@ type ChoysumDb = {
 
 function choysumDb(): ChoysumDb | undefined {
   return (globalThis as { $choysum?: { db?: ChoysumDb } }).$choysum?.db;
+}
+
+function isMissingRelationError(err: unknown): boolean {
+  const msg = String(err instanceof Error ? err.message : err).toLowerCase();
+  return (
+    msg.includes('no such table') ||
+    msg.includes('no such column') ||
+    msg.includes('does not exist') ||
+    msg.includes("doesn't exist") ||
+    msg.includes('unknown table') ||
+    msg.includes('invalid object name')
+  );
 }
 
 /**
@@ -56,17 +68,22 @@ export class AuthUserLanguageHooks {
 /**
  * RoleInheritance is softDelete: false (pure FK link). Physically remove any
  * historical soft-deleted edges so they cannot reappear as live M2M links.
+ *
+ * Runs on pre_upgrade (required phase) so failures abort the upgrade. Missing
+ * table/column is ignored for installs that never had this relation.
  */
 export class AuthRoleInheritanceHooks {
-  @HookPostUpgrade()
+  @HookPreUpgrade()
   static async purgeSoftDeletedRoleInheritance(): Promise<void> {
     const db = choysumDb();
-    if (!db?.execute || !db.dialectName) return;
-    const dialect = String(db.dialectName).trim().toLowerCase();
-    if (dialect !== 'sqlite' && dialect !== 'postgres' && dialect !== 'mysql') return;
+    if (!db?.execute) return;
+    // Portable DELETE — no dialect-specific SQL. Covers sqlite/postgres/mysql/mssql.
     const sql = `DELETE FROM auth_role_inheritance WHERE deleted_at IS NOT NULL`;
-    // Post-upgrade runs after schema ensure; fail the upgrade if purge cannot run so
-    // soft-deleted edges cannot reappear as live links under softDelete: false.
-    await db.execute(sql, '[]');
+    try {
+      await db.execute(sql, '[]');
+    } catch (err) {
+      if (isMissingRelationError(err)) return;
+      throw err;
+    }
   }
 }

@@ -12,5 +12,5 @@ test('RoleInheritance pure-link join disables soft delete', () => {
 
 test('UserRole association join keeps soft delete enabled', () => {
   const meta = MetadataStorage.instance.getModelMetadata(UserRole as any);
-  expect(meta?.softDelete).not.toBe(false);
+  expect(meta?.softDelete ?? true).toBe(true);
 });
