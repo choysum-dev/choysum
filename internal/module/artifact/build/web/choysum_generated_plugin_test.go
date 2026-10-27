@@ -136,6 +136,7 @@ func TestChoysumGeneratedPluginRejectsEmptyRel(t *testing.T) {
 	for _, spec := range []string{
 		`@choysum/generated/`,
 		`@choysum/generated/.`,
+		`@choysum/generated//etc/passwd`,
 	} {
 		result := api.Build(api.BuildOptions{
 			Stdin: &api.StdinOptions{

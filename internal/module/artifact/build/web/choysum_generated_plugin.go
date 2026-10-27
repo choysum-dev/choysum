@@ -28,7 +28,7 @@ func choysumGeneratedPlugin(defaultChoysumPath string) api.Plugin {
 				}
 				rel := strings.TrimPrefix(args.Path, ChoyGeneratedImportPrefix)
 				rel = filepath.Clean(filepath.FromSlash(rel))
-				if rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				if rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
 					return api.OnResolveResult{}, fmt.Errorf("@choysum/generated path escapes generated root: %s", args.Path)
 				}
 				generatedRoot := filepath.Join(root, "generated")

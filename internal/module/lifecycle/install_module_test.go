@@ -122,7 +122,8 @@ func TestInstallModuleSetsResolvingModulesSpinnerBeforePrepare(t *testing.T) {
 }
 
 func TestInstallModuleRejectsEmptyPreparedRoot(t *testing.T) {
-	t.Parallel()
+	// Not parallel: stubs package-level prepareInstallModules and would race
+	// other InstallModule tests that expect real prefetch (fetches).
 	prev := prepareInstallModules
 	prepareInstallModules = func(context.Context, scope.Scope, string, ...Option) (*PrefetchedInstall, error) {
 		return &PrefetchedInstall{RootName: "  "}, nil
