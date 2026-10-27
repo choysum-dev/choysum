@@ -1711,7 +1711,11 @@ func TestHandleWatchedModuleUpgradeNilScope(t *testing.T) {
 
 func TestHotreloadUpgradeContextAppliesQuietProgress(t *testing.T) {
 	t.Parallel()
-	ctx := hotreloadUpgradeContext(context.Background(), nil)
+	ctx := hotreloadUpgradeContext(nil, nil)
+	if ctx == nil || !logger.QuietProgressFromContext(ctx) {
+		t.Fatal("expected QuietProgress on nil ctx fallback")
+	}
+	ctx = hotreloadUpgradeContext(context.Background(), nil)
 	if !logger.QuietProgressFromContext(ctx) {
 		t.Fatal("expected QuietProgress on hotreload upgrade context")
 	}

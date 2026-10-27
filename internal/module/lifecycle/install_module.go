@@ -75,7 +75,10 @@ func InstallModule(ctx context.Context, runtimeScope scope.Scope, jsExecutor jse
 	opCtx := WithOperationOptions(ctx, OperationOptions{WithDemo: req.WithDemo, SkipWebShell: req.SkipWebShell})
 	opCtx, prepareTicker, ownsPrepareTicker := ensureInstallPrepareProgressTicker(opCtx)
 	if ownsPrepareTicker {
-		defer prepareTicker.Stop()
+		defer func() {
+			prepareTicker.Clear()
+			prepareTicker.Stop()
+		}()
 	}
 	setInstallResolvingModulesSpinner(prepareTicker, input)
 
