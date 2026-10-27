@@ -249,6 +249,12 @@ func TestShouldIgnoreWatchPath(t *testing.T) {
 	}{
 		{filepath.Join("modules", "web", "web", "styles", "choy-tailwind.generated.css"), true},
 		{filepath.Join("modules", "web", "web", "styles", ".choy-tailwind-2477883981.tmp"), true},
+		{filepath.Join(".choysum", "generated", "styles", "choy-tailwind.generated.css"), true},
+		{filepath.Join(".choysum", "generated", "styles", ".choy-tailwind-deadbeef.tmp"), true},
+		{filepath.Join("work", "modules", "choysum", ".choysum", "generated", "styles", "choy-tailwind.generated.css"), true},
+		{filepath.Join("generated", "styles", "choy-tailwind.generated.css"), true},
+		{filepath.Join("custom", "home", "generated", "styles", "choy-tailwind.generated.css"), true},
+		{filepath.Join("modules", "foo", "web", "generated", "styles", "choy-tailwind.generated.css"), false},
 		{filepath.Join("modules", "docs", "choy-tailwind.generated.css"), false},
 		{filepath.Join("modules", "docs", ".choy-tailwind-fixture.tmp"), false},
 		{filepath.Join("modules", "partner", "web", "web", "styles", "choy-tailwind.generated.css"), false},
@@ -587,7 +593,7 @@ func TestScheduleLeaseConflictRetryNoopWhenDisabled(t *testing.T) {
 func TestHandleWatchedFileChangeIgnoresGeneratedArtifact(t *testing.T) {
 	runtimeScope := newRichServerTestScope(t)
 	root := t.TempDir()
-	generated := filepath.Join(root, "modules", "web", "web", "styles", "choy-tailwind.generated.css")
+	generated := filepath.Join(root, ".choysum", "generated", "styles", "choy-tailwind.generated.css")
 	if err := os.MkdirAll(filepath.Dir(generated), 0o755); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}

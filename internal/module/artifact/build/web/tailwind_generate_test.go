@@ -13,6 +13,11 @@ import (
 	"time"
 )
 
+func testChoysumHome(t *testing.T) string {
+	t.Helper()
+	return filepath.Join(t.TempDir(), ".choysum")
+}
+
 func TestScanTailwindCandidatesExtractsClasses(t *testing.T) {
 	dir := t.TempDir()
 	vuePath := filepath.Join(dir, "Sample.vue")
@@ -101,7 +106,8 @@ func TestGenerateChoyTailwindForModuleWritesFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := GenerateChoyTailwindForModule(root)
+	home := testChoysumHome(t)
+	res, err := GenerateChoyTailwindForModule(root, home)
 	if err != nil {
 		t.Fatalf("GenerateChoyTailwindForModule: %v", err)
 	}
@@ -113,6 +119,13 @@ func TestGenerateChoyTailwindForModuleWritesFile(t *testing.T) {
 	}
 	if res.Duration > ChoyTailwindBudget {
 		t.Fatalf("module generate %v exceeds budget %v", res.Duration, ChoyTailwindBudget)
+	}
+	wantOut, err := ChoyTailwindGeneratedCSSPath(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.OutputPath != wantOut {
+		t.Fatalf("OutputPath = %q, want %q", res.OutputPath, wantOut)
 	}
 	data, err := os.ReadFile(res.OutputPath)
 	if err != nil {
@@ -148,17 +161,59 @@ func TestGenerateChoyTailwindForModuleWritesFile(t *testing.T) {
 	}
 
 	// Stability: same inputs → same content hash.
-	res2, err := GenerateChoyTailwindForModule(root)
+	res2, err := GenerateChoyTailwindForModule(root, home)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if res.ContentHash != res2.ContentHash || res.DialectHash != res2.DialectHash {
 		t.Fatalf("hashes unstable: %#v vs %#v", res, res2)
 	}
+
+	// Legacy kit emit with generate header is removed after cutover write.
+	legacy := filepath.Join(styles, choyTailwindGeneratedCSSName)
+	if err := os.WriteFile(legacy, []byte(choyTailwindGeneratedHeaderPrefix+" leftover\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := GenerateChoyTailwindForModule(root, home); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(legacy); !os.IsNotExist(err) {
+		t.Fatalf("expected legacy generated CSS removed, stat err=%v", err)
+	}
+
+	// Hand-authored same-named file must not be deleted.
+	hand := []byte("/* hand authored */\n.body{}\n")
+	if err := os.WriteFile(legacy, hand, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := GenerateChoyTailwindForModule(root, home); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(legacy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(hand) {
+		t.Fatalf("hand-authored legacy CSS was modified: %q", got)
+	}
+}
+
+func TestGenerateChoyTailwindForModuleRejectsInvalidChoysumHome(t *testing.T) {
+	root := t.TempDir()
+	styles := filepath.Join(root, "web", "styles")
+	if err := os.MkdirAll(styles, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(styles, "theme.css"), []byte(`@theme { --color-primary: red; }`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := GenerateChoyTailwindForModule(root, string(filepath.Separator)); err == nil {
+		t.Fatal("expected invalid defaultChoysumPath error")
+	}
 }
 
 func TestEnsureChoyTailwindCSSNoopWhenMissing(t *testing.T) {
-	res, err := EnsureChoyTailwindCSS(t.TempDir())
+	res, err := EnsureChoyTailwindCSS(t.TempDir(), testChoysumHome(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -210,7 +265,7 @@ func TestEnsureChoyTailwindCSSRunsForRepoModule(t *testing.T) {
 		t.Fatalf("CopyFS: %v", err)
 	}
 	start := time.Now()
-	res, err := EnsureChoyTailwindCSS(tmpModules)
+	res, err := EnsureChoyTailwindCSS(tmpModules, testChoysumHome(t))
 	if err != nil {
 		t.Fatalf("EnsureChoyTailwindCSS: %v", err)
 	}
@@ -263,7 +318,7 @@ func TestEnsureChoyTailwindCSSScansDomainModules(t *testing.T) {
 	write("web/web/styles/theme.css", `@theme { --color-primary: var(--choy-color-primary); }`)
 	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
 	write("partner/web/pages/Home.vue", `<div class="underline"></div>`)
-	res, err := EnsureChoyTailwindCSS(modules)
+	res, err := EnsureChoyTailwindCSS(modules, testChoysumHome(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -312,7 +367,7 @@ func TestEnsureChoyTailwindCSSSkipsDomainSpecFiles(t *testing.T) {
 	// test/spec files, otherwise a stray utility leaks globally onto EP pages.
 	write("partner/web/pages/Home.spec.ts", `export const c = "spec-only-leak"`)
 	write("partner/web/__tests__/Helper.ts", `export const c = "tests-dir-leak"`)
-	res, err := EnsureChoyTailwindCSS(modules)
+	res, err := EnsureChoyTailwindCSS(modules, testChoysumHome(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -339,7 +394,7 @@ func TestEnsureChoyTailwindCSSRejectsDirectoryThemePath(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(styles, "theme.css"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	_, err := EnsureChoyTailwindCSS(root)
+	_, err := EnsureChoyTailwindCSS(root, testChoysumHome(t))
 	if err == nil || !strings.Contains(err.Error(), "directory") {
 		t.Fatalf("expected directory dialect error, got %v", err)
 	}
@@ -646,7 +701,7 @@ func TestModulesPathForKitRoot(t *testing.T) {
 }
 
 func TestGenerateChoyTailwindForModuleResolveError(t *testing.T) {
-	_, err := generateChoyTailwindForModule(t.TempDir(), "modules\x00root")
+	_, err := generateChoyTailwindForModule(t.TempDir(), "modules\x00root", testChoysumHome(t))
 	if err == nil {
 		t.Fatal("expected resolveChoyKitModuleRoot error for NUL modulesPath")
 	}
@@ -671,7 +726,8 @@ func TestGenerateChoyTailwindForModuleMatchesProductDigest(t *testing.T) {
 	// Stray legacy kit tree must not divert generate away from web.
 	write("choy_ui/web/styles/theme.css", `@theme { --color-primary: blue; }`)
 
-	res, err := GenerateChoyTailwindForModule(filepath.Join(modules, "web"))
+	home := testChoysumHome(t)
+	res, err := GenerateChoyTailwindForModule(filepath.Join(modules, "web"), home)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -685,8 +741,12 @@ func TestGenerateChoyTailwindForModuleMatchesProductDigest(t *testing.T) {
 	if res.DialectHash != dialectHash {
 		t.Fatalf("Generate via web root must use web dialect hash %q, got %q", dialectHash, res.DialectHash)
 	}
-	if !strings.HasSuffix(filepath.ToSlash(res.OutputPath), "/web/web/styles/"+choyTailwindGeneratedCSSName) {
-		t.Fatalf("output must land under web kit, got %s", res.OutputPath)
+	wantOut, err := ChoyTailwindGeneratedCSSPath(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.OutputPath != wantOut {
+		t.Fatalf("output must land under DefaultChoysumPath/generated/styles, got %s want %s", res.OutputPath, wantOut)
 	}
 	data, err := os.ReadFile(res.OutputPath)
 	if err != nil {
@@ -711,7 +771,7 @@ func TestGenerateChoyTailwindForModuleMatchesProductDigest(t *testing.T) {
 	cwrite("web/web/styles/theme.css", `@theme { --color-primary: var(--choy-color-primary); }`)
 	cwrite("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
 	cwrite("partner/web/pages/Home.vue", `<div class="overline"></div>`)
-	cres, err := GenerateChoyTailwindForModule(filepath.Join(customParent, "web"))
+	cres, err := GenerateChoyTailwindForModule(filepath.Join(customParent, "web"), testChoysumHome(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -926,7 +986,6 @@ func TestScanChoyProductTailwindCandidatesDomainThemeCSSNotKitFiltered(t *testin
 	}
 }
 
-
 func TestIndexCSSOpenBracePartials(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -977,9 +1036,14 @@ type twFakeFileInfo struct {
 	isDir bool
 }
 
-func (f twFakeFileInfo) Name() string       { return f.name }
-func (f twFakeFileInfo) Size() int64        { return 0 }
-func (f twFakeFileInfo) Mode() os.FileMode  { if f.isDir { return os.ModeDir }; return 0 }
+func (f twFakeFileInfo) Name() string { return f.name }
+func (f twFakeFileInfo) Size() int64  { return 0 }
+func (f twFakeFileInfo) Mode() os.FileMode {
+	if f.isDir {
+		return os.ModeDir
+	}
+	return 0
+}
 func (f twFakeFileInfo) ModTime() time.Time { return time.Time{} }
 func (f twFakeFileInfo) IsDir() bool        { return f.isDir }
 func (f twFakeFileInfo) Sys() any           { return nil }
@@ -989,9 +1053,14 @@ type twFakeDirEntry struct {
 	isDir bool
 }
 
-func (e twFakeDirEntry) Name() string               { return e.name }
-func (e twFakeDirEntry) IsDir() bool                { return e.isDir }
-func (e twFakeDirEntry) Type() os.FileMode          { if e.isDir { return os.ModeDir }; return 0 }
+func (e twFakeDirEntry) Name() string { return e.name }
+func (e twFakeDirEntry) IsDir() bool  { return e.isDir }
+func (e twFakeDirEntry) Type() os.FileMode {
+	if e.isDir {
+		return os.ModeDir
+	}
+	return 0
+}
 func (e twFakeDirEntry) Info() (os.FileInfo, error) { return twFakeFileInfo{e.name, e.isDir}, nil }
 
 // resolveChoyKitModuleRoot uses os.Stat, so an empty modules dir yields no kit.
@@ -1261,7 +1330,7 @@ func TestScanChoyProductTailwindCandidatesIncludesDomain(t *testing.T) {
 	write("web/web/components/view/OFormView.vue", `<div class="ep-product-only"></div>`)
 	write("partner/web/pages/Home.vue", `<div class="domain-kit-util gap-3 shared-util"></div>`)
 	write("auth/web/pages/Login.vue", `<div class="auth-only-util"></div>`)
-	write("empty/package.json", `{}`) // no web/
+	write("empty/package.json", `{}`)  // no web/
 	write("notdir/web", `i-am-a-file`) // web path is a file
 	if err := os.MkdirAll(filepath.Join(modules, ".hidden", "web"), 0o755); err != nil {
 		t.Fatal(err)

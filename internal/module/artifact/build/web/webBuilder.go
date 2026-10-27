@@ -119,7 +119,8 @@ func (b *WebModuleBuilder) BuildCtx(ctx context.Context) (*module.BuildResult, e
 	restore := b.bindRuntimeState(ctx)
 	defer restore()
 
-	if res, err := ensureChoyTailwindCSS(b.resolvedRuntimeOptions().modulesPath); err != nil {
+	runtimeOpts := b.resolvedRuntimeOptions()
+	if res, err := ensureChoyTailwindCSS(runtimeOpts.modulesPath, runtimeOpts.defaultChoysumPath); err != nil {
 		return nil, xfmt.Errorf("Error generating Choy kit Tailwind CSS: %w", err)
 	} else if res != nil && b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
 		if res.Duration > ChoyTailwindBudget {
@@ -2357,8 +2358,8 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 
 	if prebuild {
 		basePlugins := b.prebuildPlugin.DefinePlugins(b.runtimeScope, b.jsExecutor, b.module, esbOpts...)
-		// Prepend the ESM resolver so bare imports are intercepted before
-		// other plugins process them.
+		// Prepend generated-alias then ESM resolver so @choysum/generated/* and
+		// bare imports are intercepted before other plugins process them.
 		webResolverOpts := []esmresolver.Option{
 			esmresolver.WithCacheDir(runtimeOptions.defaultChoysumPath),
 			esmresolver.WithModulePath(b.module.Path),
@@ -2372,12 +2373,18 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 		if upstream := strings.TrimSpace(runtimeOptions.esmUpstreamURL); upstream != "" {
 			webResolverOpts = append(webResolverOpts, esmresolver.WithUpstream(upstream))
 		}
-		buildOptions.Plugins = append([]api.Plugin{esmresolver.New(webResolverOpts...).Plugin()}, basePlugins...)
+		buildOptions.Plugins = append(
+			[]api.Plugin{
+				choysumGeneratedPlugin(runtimeOptions.defaultChoysumPath),
+				esmresolver.New(webResolverOpts...).Plugin(),
+			},
+			basePlugins...,
+		)
 		buildOptions.Write = false
 	} else {
 		basePlugins := b.buildPlugin.DefinePlugins(b.runtimeScope, b.jsExecutor, b.module, esbOpts...)
-		// Prepend the ESM resolver so bare imports are intercepted before
-		// other plugins process them.
+		// Prepend generated-alias then ESM resolver so @choysum/generated/* and
+		// bare imports are intercepted before other plugins process them.
 		webResolverOpts := []esmresolver.Option{
 			esmresolver.WithCacheDir(runtimeOptions.defaultChoysumPath),
 			esmresolver.WithModulePath(b.module.Path),
@@ -2391,7 +2398,13 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 		if upstream := strings.TrimSpace(runtimeOptions.esmUpstreamURL); upstream != "" {
 			webResolverOpts = append(webResolverOpts, esmresolver.WithUpstream(upstream))
 		}
-		buildOptions.Plugins = append([]api.Plugin{esmresolver.New(webResolverOpts...).Plugin()}, basePlugins...)
+		buildOptions.Plugins = append(
+			[]api.Plugin{
+				choysumGeneratedPlugin(runtimeOptions.defaultChoysumPath),
+				esmresolver.New(webResolverOpts...).Plugin(),
+			},
+			basePlugins...,
+		)
 		buildOptions.Write = false
 	}
 

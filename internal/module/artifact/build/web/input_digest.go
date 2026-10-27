@@ -231,18 +231,41 @@ func hashWebSourceTreeOpts(h io.Writer, root string, skipBuildDirs bool) error {
 }
 
 // isChoyTailwindGeneratedKitPath reports whether path is the kit's generated
-// utilities CSS under a kit host styles/ tree (not a same-named file elsewhere).
+// utilities CSS (workspace generated/styles or legacy kit host styles/).
 func isChoyTailwindGeneratedKitPath(path string) bool {
 	if filepath.Base(path) != choyTailwindGeneratedCSSName {
 		return false
 	}
 	slash := filepath.ToSlash(path)
-	// Only "<module>/web/styles/<name>" of the web kit host is derived
-	// output; require a directory boundary so modules like "myweb" are not matched.
+	// Workspace emit: <defaultChoysumPath>/generated/styles/<name>.
+	if isWorkspaceGeneratedStylesDigestPath(slash) {
+		return true
+	}
+	// Legacy in-module emit: only "<module>/web/styles/<name>" of the web kit
+	// host; require a directory boundary so modules like "myweb" are not matched.
 	// Legacy choy_ui paths stay recognized so leftover generated files do not
 	// invalidate digests during cutover cleanups.
 	return hasKitHostStylesSuffix(slash, "web/web/styles/"+choyTailwindGeneratedCSSName) ||
 		hasKitHostStylesSuffix(slash, "choy_ui/web/styles/"+choyTailwindGeneratedCSSName)
+}
+
+// isWorkspaceGeneratedStylesDigestPath matches kit CSS under DefaultChoysumPath.
+// Prefer the default `.choysum/generated/styles/` layout (including when that
+// home sits under a path containing `/modules/`), accept relative
+// `generated/styles/`, and for other custom homes exclude module source trees.
+func isWorkspaceGeneratedStylesDigestPath(slash string) bool {
+	if !hasKitHostStylesSuffix(slash, "generated/styles/"+choyTailwindGeneratedCSSName) {
+		return false
+	}
+	if strings.Contains(slash, "/.choysum/") || strings.HasPrefix(slash, ".choysum/") ||
+		strings.HasPrefix(slash, "generated/styles/") {
+		return true
+	}
+	return !isUnderModulesPath(slash)
+}
+
+func isUnderModulesPath(slash string) bool {
+	return strings.Contains(slash, "/modules/") || strings.HasPrefix(slash, "modules/")
 }
 
 func hasKitHostStylesSuffix(slash, suffix string) bool {

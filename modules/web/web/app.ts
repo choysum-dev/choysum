@@ -13,7 +13,7 @@ import App from './App.vue';
 import './styles/tokens.css';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import 'vue-sonner/style.css';
-import './styles/choy-tailwind.generated.css';
+import '@choysum/generated/styles/choy-tailwind.generated.css';
 import './styles/tw-animate.css';
 import './styles/index.css';
 
