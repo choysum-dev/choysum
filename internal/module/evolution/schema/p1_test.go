@@ -1214,6 +1214,9 @@ func TestLogPlan_LevelByContent(t *testing.T) {
 		if !strings.Contains(logs, `"level":"DEBUG"`) {
 			t.Fatalf("expected DEBUG empty plan, got %q", logs)
 		}
+		if strings.Contains(logs, `"level":"INFO"`) {
+			t.Fatalf("empty schema plan must not emit Info, got %q", logs)
+		}
 		if !strings.Contains(logs, `"msg":"schema plan"`) {
 			t.Fatalf("expected schema plan message, got %q", logs)
 		}

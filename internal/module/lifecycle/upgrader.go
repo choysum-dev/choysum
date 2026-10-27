@@ -73,7 +73,9 @@ func moduleOperationStepMessage(op plan.OpType) string {
 }
 
 // Soft steps (hooks/scripts/origin_resolve) only surface at Info when they
-// took meaningful wall time and were not skipped; hard steps always Info.
+// took meaningful wall time and were not skipped. Applies to install, upgrade,
+// and uninstall via the shared step logger. Only build/schema/web_build are
+// always Info; other steps (including base_entity_migrate) stay Debug.
 const moduleOperationStepInfoMinDuration = 100 * time.Millisecond
 
 func extrasIndicateSkipped(extra []any) bool {

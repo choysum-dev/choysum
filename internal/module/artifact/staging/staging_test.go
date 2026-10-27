@@ -629,6 +629,9 @@ func TestLogDirStagingCommit_Level(t *testing.T) {
 		if !strings.Contains(logs, `"level":"DEBUG"`) {
 			t.Fatalf("expected DEBUG staging commit, got %q", logs)
 		}
+		if strings.Contains(logs, `"level":"INFO"`) {
+			t.Fatalf("normal staging commit must not emit Info, got %q", logs)
+		}
 		if !strings.Contains(logs, `"msg":"staging dir commit"`) {
 			t.Fatalf("expected staging dir commit message, got %q", logs)
 		}
