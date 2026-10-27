@@ -17,7 +17,7 @@ type identityCapture struct {
 }
 
 // ContextWithIdentityCapture attaches a mutable slot so auth middleware can
-// report the authenticated user to an outer access-log interceptor.
+// report the authenticated user to an outer access-log interceptor/middleware.
 func ContextWithIdentityCapture(ctx context.Context) context.Context {
 	if ctx == nil {
 		ctx = context.Background()

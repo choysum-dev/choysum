@@ -4,13 +4,16 @@
 package accesslog
 
 import (
+	"bufio"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"time"
 )
 
 // Middleware logs finished non-gRPC HTTP requests for the mux chain.
+// It installs an identity capture slot so inner auth can call ObserveIdentity.
 func Middleware(opts Options, logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		if next == nil {
@@ -29,6 +32,8 @@ func Middleware(opts Options, logger *slog.Logger) func(http.Handler) http.Handl
 				next.ServeHTTP(w, r)
 				return
 			}
+			ctx := ContextWithIdentityCapture(r.Context())
+			r = r.WithContext(ctx)
 			rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 			started := time.Now()
 			next.ServeHTTP(rec, r)
@@ -37,7 +42,6 @@ func Middleware(opts Options, logger *slog.Logger) func(http.Handler) http.Handl
 			if !decision.Log {
 				return
 			}
-			ctx := r.Context()
 			LogRequest(ctx, logger, Record{
 				Protocol: "http",
 				Method:   r.Method,
@@ -72,4 +76,25 @@ func (r *statusRecorder) Write(b []byte) (int, error) {
 		r.WriteHeader(http.StatusOK)
 	}
 	return r.ResponseWriter.Write(b)
+}
+
+// Flush forwards to the underlying ResponseWriter when it implements http.Flusher.
+func (r *statusRecorder) Flush() {
+	if f, ok := r.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+// Hijack forwards to the underlying ResponseWriter when it implements http.Hijacker.
+func (r *statusRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	h, ok := r.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, http.ErrNotSupported
+	}
+	return h.Hijack()
+}
+
+// Unwrap exposes the underlying ResponseWriter for http.ResponseController.
+func (r *statusRecorder) Unwrap() http.ResponseWriter {
+	return r.ResponseWriter
 }

@@ -13,6 +13,8 @@ import (
 )
 
 // StreamInterceptor logs stream establish/end boundaries per Options.
+// Start lines omit user (auth runs inside); end lines include the captured user.
+// Client cancel after start is logged at Debug so start/end pairs stay balanced.
 func StreamInterceptor(opts Options, logger *slog.Logger) grpc.StreamServerInterceptor {
 	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		ctx := ContextWithIdentityCapture(ss.Context())
@@ -27,50 +29,31 @@ func StreamInterceptor(opts Options, logger *slog.Logger) grpc.StreamServerInter
 				Method:   method,
 				Code:     codes.OK.String(),
 				Duration: 0,
-				User:     observedUserID(ctx),
 				Stream:   "start",
-				Level:    slog.LevelInfo,
+				Level:    slog.LevelDebug,
 			})
 		}
 		started := time.Now()
 		err := handler(srv, wrapped)
 		duration := time.Since(started)
 		code := CodeFromError(err)
-		if code == codes.Canceled {
-			return err
-		}
 		decision := ClassifyGRPC(opts, code, duration)
-		if opts.Access {
-			level := slog.LevelInfo
-			if code != codes.OK {
-				level = grpcFailureLevel(code)
-			} else if decision.Slow {
-				level = slog.LevelWarn
-			}
-			LogRequest(ctx, logger, Record{
-				Protocol: "grpc",
-				Method:   method,
-				Code:     code.String(),
-				Duration: duration,
-				User:     observedUserID(ctx),
-				Slow:     decision.Slow,
-				Stream:   "end",
-				Level:    level,
-			})
+		if !decision.Log && code == codes.Canceled && opts.Access {
+			decision = Decision{Log: true, Level: slog.LevelDebug}
+		}
+		if !decision.Log {
 			return err
 		}
-		if decision.Log {
-			LogRequest(ctx, logger, Record{
-				Protocol: "grpc",
-				Method:   method,
-				Code:     code.String(),
-				Duration: duration,
-				User:     observedUserID(ctx),
-				Slow:     decision.Slow,
-				Stream:   "end",
-				Level:    decision.Level,
-			})
-		}
+		LogRequest(ctx, logger, Record{
+			Protocol: "grpc",
+			Method:   method,
+			Code:     code.String(),
+			Duration: duration,
+			User:     observedUserID(ctx),
+			Slow:     decision.Slow,
+			Stream:   "end",
+			Level:    decision.Level,
+		})
 		return err
 	}
 }
@@ -80,6 +63,6 @@ type streamContextWrapper struct {
 	ctx context.Context
 }
 
-func (w *streamContextWrapper) Context() context.Context {
-	return w.ctx
+func (s *streamContextWrapper) Context() context.Context {
+	return s.ctx
 }

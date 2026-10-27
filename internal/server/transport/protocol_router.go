@@ -60,14 +60,15 @@ func NewProtocolRouter(opts ProtocolRouterOptions) http.Handler {
 		opts.RuntimeScope.Logger().Debug("csrf protection enabled")
 	}
 
-	// Access log sits inside auth so the request context carries identity when present.
+	if opts.Authenticator != nil && opts.AuthEnabled && opts.HTTPAuthEnabled {
+		httpHandler = httpauth.AuthHandlerFromConfig(opts.RuntimeScope, opts.Authenticator)(httpHandler)
+	}
+
+	// Access log wraps auth so it sees auth failures and still receives the
+	// authenticated user via ObserveIdentity into the capture slot.
 	if opts.RuntimeScope != nil {
 		accessOpts := accesslog.Options{Access: opts.AccessLogEnabled, SlowMs: opts.AccessSlowMs}
 		httpHandler = accesslog.Middleware(accessOpts, opts.RuntimeScope.Logger())(httpHandler)
-	}
-
-	if opts.Authenticator != nil && opts.AuthEnabled && opts.HTTPAuthEnabled {
-		httpHandler = httpauth.AuthHandlerFromConfig(opts.RuntimeScope, opts.Authenticator)(httpHandler)
 	}
 
 	if opts.EnableGzip {

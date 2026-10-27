@@ -93,7 +93,7 @@ func newRunCmd() *cobra.Command {
 			}
 		},
 	}
-	cmd.Flags().BoolVar(&accessLog, "access-log", false, "log successful RPC/HTTP requests at INFO (overrides log.access)")
+	cmd.Flags().BoolVar(&accessLog, "access-log", false, "enable INFO logging of successful RPC/HTTP requests (sets log.access=true)")
 	return cmd
 }
 

@@ -22,6 +22,7 @@ import (
 	_ "github.com/choysum-dev/choysum/internal/defaultengine"
 	_ "github.com/choysum-dev/choysum/internal/defaultjsexecutor"
 	_ "github.com/choysum-dev/choysum/internal/jwtauth"
+	"github.com/choysum-dev/choysum/internal/server/middleware/accesslog"
 	"github.com/choysum-dev/choysum/internal/server/runplan"
 	"github.com/choysum-dev/choysum/internal/server/transport"
 	"github.com/choysum-dev/choysum/internal/testing/jsexecutortest"
@@ -31,7 +32,9 @@ import (
 	taskcontract "github.com/choysum-dev/choysum/pkg/task"
 	"github.com/choysum-dev/choysum/pkg/trace"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/resolver"
+	"google.golang.org/grpc/status"
 )
 
 func TestServerHelpers(t *testing.T) {
@@ -61,13 +64,35 @@ func TestGrpcServerOptionsIncludesAccessLogInterceptors(t *testing.T) {
 	runtimeScope := newRichServerTestScope(t)
 	runtimeScope.cfg.Log = config.NewDefaultLogConfig()
 	runtimeScope.cfg.Log.Access = true
+	runtimeScope.cfg.Log.AccessSlowMs = 0 // unset → keep default 1000
+	runtimeScope.cfg.Auth.Enabled = false
 	srv := &GRPCWebServer{runtimeScope: runtimeScope}
+	accessOpts, _ := srv.accessLogConfig()
+	if !accessOpts.Access || accessOpts.SlowMs != 1000 {
+		t.Fatalf("accessLogConfig = %#v, want Access=true SlowMs=1000", accessOpts)
+	}
+	runtimeScope.cfg.Log.AccessSlowMs = 2500
+	if got, _ := srv.accessLogConfig(); got.SlowMs != 2500 {
+		t.Fatalf("AccessSlowMs override = %#v, want SlowMs=2500", got)
+	}
+	runtimeScope.cfg.Log.AccessSlowMs = 0
 	opts := srv.grpcServerOptions()
 	if len(opts.UnaryInterceptors) < 1 {
 		t.Fatal("expected access log unary interceptor")
 	}
-	if len(opts.StreamInterceptors) < 1 {
-		t.Fatal("expected access log stream interceptor")
+	if len(opts.StreamInterceptors) != 1 {
+		t.Fatalf("without auth, want exactly 1 stream interceptor (access), got %d", len(opts.StreamInterceptors))
+	}
+	// Access must be outermost: first unary interceptor logs an unauthenticated failure.
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	accessOnly := accesslog.UnaryInterceptor(accesslog.Options{Access: true}, logger)
+	_, _ = accessOnly(context.Background(), nil, &grpc.UnaryServerInfo{FullMethod: "/probe"},
+		func(context.Context, any) (any, error) {
+			return nil, status.Error(codes.Unauthenticated, "nope")
+		})
+	if !strings.Contains(buf.String(), `"code":"Unauthenticated"`) {
+		t.Fatalf("outer access interceptor should log auth failures: %s", buf.String())
 	}
 }
 

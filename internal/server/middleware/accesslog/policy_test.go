@@ -31,7 +31,10 @@ func TestClassifyGRPC(t *testing.T) {
 		{name: "ok slow access prefers warn", opts: optsAccess, code: codes.OK, duration: 1500 * time.Millisecond, wantLog: true, wantLvl: slog.LevelWarn, wantSlow: true},
 		{name: "canceled", opts: optsAccess, code: codes.Canceled, duration: time.Second},
 		{name: "permission denied", opts: optsQuiet, code: codes.PermissionDenied, duration: time.Millisecond, wantLog: true, wantLvl: slog.LevelWarn},
+		{name: "not found", opts: optsQuiet, code: codes.NotFound, duration: time.Millisecond, wantLog: true, wantLvl: slog.LevelWarn},
 		{name: "internal", opts: optsQuiet, code: codes.Internal, duration: time.Millisecond, wantLog: true, wantLvl: slog.LevelError},
+		{name: "unavailable", opts: optsQuiet, code: codes.Unavailable, duration: time.Millisecond, wantLog: true, wantLvl: slog.LevelError},
+		{name: "default warn", opts: optsQuiet, code: codes.Code(99), duration: time.Millisecond, wantLog: true, wantLvl: slog.LevelWarn},
 		{name: "slow disabled", opts: Options{Access: false, SlowMs: 0}, code: codes.OK, duration: 5 * time.Second},
 	}
 	for _, tc := range tests {
@@ -53,6 +56,9 @@ func TestClassifyHTTP(t *testing.T) {
 	if got := ClassifyHTTP(Options{}, 200, 10*time.Millisecond); got.Log {
 		t.Fatalf("200 quiet should not log: %#v", got)
 	}
+	if got := ClassifyHTTP(opts, 301, 10*time.Millisecond); !got.Log || got.Level != slog.LevelInfo {
+		t.Fatalf("301 access = %#v", got)
+	}
 	if got := ClassifyHTTP(opts, 404, time.Millisecond); !got.Log || got.Level != slog.LevelWarn {
 		t.Fatalf("404 = %#v", got)
 	}
@@ -61,6 +67,9 @@ func TestClassifyHTTP(t *testing.T) {
 	}
 	if got := ClassifyHTTP(Options{SlowMs: 100}, 200, 200*time.Millisecond); !got.Slow || got.Level != slog.LevelWarn {
 		t.Fatalf("slow 200 = %#v", got)
+	}
+	if got := ClassifyHTTP(opts, 100, time.Millisecond); got.Log {
+		t.Fatalf("1xx should not log: %#v", got)
 	}
 }
 
@@ -71,11 +80,14 @@ func TestShouldSkipHTTP(t *testing.T) {
 		"/healthz":             true,
 		"/readyz":              true,
 		"/web/assets/chunk.js": true,
+		"/web/assets/x":        true,
 		"/web/sandbox/records": false,
 		"/favicon.ico":         true,
-		"/web/app.js":          true,
+		"/web/app.js":          false,
+		"/api/missing.png":     false,
 		"/api/v1/thing":        false,
 		"/web/assets/x.js?v=1": true,
+		"  /health  ":          true,
 		"":                     true,
 	}
 	for path, want := range cases {

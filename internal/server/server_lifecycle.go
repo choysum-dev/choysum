@@ -19,7 +19,12 @@ func (s *GRPCWebServer) accessLogConfig() (accesslog.Options, *slog.Logger) {
 	if s != nil && s.runtimeScope != nil {
 		logger = s.runtimeScope.Logger()
 		if logCfg := scope.LogConfigFromScope(s.runtimeScope); logCfg != nil {
-			opts = accesslog.OptionsFromLogConfig(logCfg.Access, logCfg.AccessSlowMs)
+			opts.Access = logCfg.Access
+			// Keep the 1000ms default when AccessSlowMs is unset (0). Callers that
+			// need slow-WARN disabled set AccessSlowMs via Options directly in tests.
+			if logCfg.AccessSlowMs > 0 {
+				opts.SlowMs = logCfg.AccessSlowMs
+			}
 		}
 	}
 	return opts, logger
@@ -76,6 +81,11 @@ func (s *GRPCWebServer) grpcServerOptions() transport.GRPCServerOptions {
 
 	accessOpts, accessLogger := s.accessLogConfig()
 	unaryInterceptors := s.baseUnaryInterceptors()
+
+	// Auth first, then prepend access so access stays outermost and still sees
+	// unauthenticated failures (auth would otherwise short-circuit them).
+	var authStream grpc.StreamServerInterceptor
+	unaryInterceptors, authStream = s.applyAuthGRPCInterceptors(unaryInterceptors)
 	unaryInterceptors = append(
 		[]grpc.UnaryServerInterceptor{accesslog.UnaryInterceptor(accessOpts, accessLogger)},
 		unaryInterceptors...,
@@ -83,9 +93,6 @@ func (s *GRPCWebServer) grpcServerOptions() transport.GRPCServerOptions {
 	streamInterceptors := []grpc.StreamServerInterceptor{
 		accesslog.StreamInterceptor(accessOpts, accessLogger),
 	}
-
-	var authStream grpc.StreamServerInterceptor
-	unaryInterceptors, authStream = s.applyAuthGRPCInterceptors(unaryInterceptors)
 	if authStream != nil {
 		streamInterceptors = append(streamInterceptors, authStream)
 	}

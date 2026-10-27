@@ -5,7 +5,6 @@ package accesslog
 
 import (
 	"log/slog"
-	"path"
 	"strings"
 	"time"
 
@@ -87,13 +86,8 @@ func CodeFromError(err error) codes.Code {
 	return codes.Unknown
 }
 
-var staticExts = map[string]struct{}{
-	".js": {}, ".css": {}, ".map": {}, ".ico": {},
-	".woff": {}, ".woff2": {}, ".ttf": {},
-	".png": {}, ".jpg": {}, ".jpeg": {}, ".svg": {}, ".webp": {},
-}
-
 // ShouldSkipHTTP reports paths that never emit access logs.
+// Static skips are limited to /web/assets/* and /favicon.ico (not global extensions).
 func ShouldSkipHTTP(rawPath string) bool {
 	p := strings.TrimSpace(rawPath)
 	if p == "" {
@@ -103,13 +97,8 @@ func ShouldSkipHTTP(rawPath string) bool {
 		p = p[:i]
 	}
 	switch p {
-	case "/health", "/healthz", "/readyz":
+	case "/health", "/healthz", "/readyz", "/favicon.ico":
 		return true
 	}
-	if strings.HasPrefix(p, "/web/assets/") {
-		return true
-	}
-	ext := strings.ToLower(path.Ext(p))
-	_, ok := staticExts[ext]
-	return ok
+	return strings.HasPrefix(p, "/web/assets/")
 }

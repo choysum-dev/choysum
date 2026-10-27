@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/choysum-dev/choysum/internal/server/middleware/accesslog"
 	middleware "github.com/choysum-dev/choysum/internal/server/middleware/auth"
 	"github.com/choysum-dev/choysum/pkg/auth"
 	"github.com/choysum-dev/choysum/pkg/auth/autherrors"
@@ -98,6 +99,7 @@ func (h *AuthHandler) Handler(next http.Handler) http.Handler {
 		// Write the identity and request access token into trusted context (Go-only).
 		ctx := auth.ContextWithIdentity(r.Context(), identity)
 		ctx = auth.ContextWithAccessToken(ctx, token)
+		accesslog.ObserveIdentity(ctx, identity)
 		r = r.WithContext(ctx)
 
 		// Call the next handler.

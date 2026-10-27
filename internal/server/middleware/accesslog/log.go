@@ -22,13 +22,13 @@ type Record struct {
 	Level    slog.Level
 }
 
-// LogRequest emits a single structured access line when decision.Log is true.
+// LogRequest emits a single structured access line when the caller decides to log.
 func LogRequest(ctx context.Context, logger *slog.Logger, rec Record) {
-	if logger == nil || ctx == nil {
-		ctx = context.Background()
-	}
 	if logger == nil {
 		return
+	}
+	if ctx == nil {
+		ctx = context.Background()
 	}
 	attrs := []any{
 		"protocol", rec.Protocol,
