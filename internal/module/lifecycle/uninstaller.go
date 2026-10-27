@@ -101,7 +101,8 @@ func (m *moduleUninstaller) cleanModels() error {
 		return xfmt.Errorf("error deleting UI resources: %w", err)
 	}
 
-	// many2many join rows should be physically removed to avoid stale relations.
+	// Registry many2many edges are always physically removed on uninstall (stale graph).
+	// Independent of the TS MetaModuleDependency softDelete setting used for ORM reads/writes.
 	if err := db.Exec(
 		"DELETE FROM meta_module_dependencies WHERE module_id = ? OR depend_module_id = ?",
 		moduleID, moduleID,

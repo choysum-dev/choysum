@@ -46,6 +46,16 @@ class ApplicationModelPool {
 export interface ModelOptions {
   tableName?: string;
   orderBy?: ModelDecoratorOrderBy | ModelDecoratorOrderBy[];
+  /**
+   * When true (default), repository delete sets DeletedAt and reads hide soft-deleted rows.
+   * When false, delete is physical (hardDelete).
+   *
+   * Soft-delete is a model lifecycle choice, not implied by ManyToMany `joinModel` usage.
+   * Pure FK-pair link tables usually set `false` (unlink = row gone). Association entities
+   * that carry scope, audit, or independent CRUD may keep soft delete; M2M re-link restores
+   * matching soft-deleted join rows. When softDelete is false, re-link physically removes
+   * any leftover DeletedAt rows before inserting fresh links.
+   */
   softDelete?: boolean;
   // Only parentField is configurable; ParentPath remains fixed.
   parentField?: string;

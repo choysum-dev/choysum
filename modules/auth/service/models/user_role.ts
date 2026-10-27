@@ -14,6 +14,10 @@ import type Company from '@/base/service/models/company';
 
 /**
  * UserRole assigns a role to a user, optionally within one company scope.
+ *
+ * Also used as ManyToMany joinModel (User↔Role). Keep soft delete (default true):
+ * company-scoped grant with direct CRUD — association entity, not a pure FK link.
+ * M2M re-link restores matching soft-deleted join rows (clears DeletedAt).
  */
 @Model('UserRole', { companyField: 'CompanyId' })
 export default class UserRole extends AuthzMutationModel {

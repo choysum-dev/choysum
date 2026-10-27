@@ -188,6 +188,10 @@ export interface ModelMetadata {
   fields: Map<string, FieldMetadata>;
   services: Map<string, ServiceMetadata>;
   orderBy?: ModelOrderBy | ModelOrderBy[];
+  /**
+   * Soft-delete lifecycle for this model (default true at @Model).
+   * Independent of whether the model is referenced as ManyToMany joinModel.
+   */
   softDelete?: boolean;
 
   /**

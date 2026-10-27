@@ -180,6 +180,7 @@ async function handleRepositorySoftDeleteCascade(params: RepositoryDeleteSoftDel
     }
   }
 
+  // ManyToMany join cleanup follows the join model's own softDelete (not forced hard-delete).
   for (const [, fieldMeta] of params.meta.fields) {
     if (fieldMeta.type !== 'ManyToMany') continue;
 

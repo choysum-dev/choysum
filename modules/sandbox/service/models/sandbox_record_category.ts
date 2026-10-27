@@ -6,7 +6,10 @@ import { _lt } from '../i18n';
 import SandboxCategory from './sandbox_category';
 import SandboxRecord from './sandbox_record';
 
-/** Join row for SandboxRecord ↔ SandboxCategory ManyToMany (Tree widget). */
+/**
+ * Join row for SandboxRecord ↔ SandboxCategory ManyToMany (Tree widget).
+ * Pure FK-pair link: softDelete false so unlink physically removes the row.
+ */
 @Model('SandboxRecordCategory', { softDelete: false })
 export default class SandboxRecordCategory extends BaseModel {
   @Field({
