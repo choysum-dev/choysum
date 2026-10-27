@@ -74,6 +74,18 @@ func (s *GRPCWebServer) dispatchWatchTarget(target registeredWatchTarget, file s
 	return nil
 }
 
+// hotreloadUpgradeContext attaches ProgressLine (when present) and QuietProgress
+// so nested lifecycle Upgrade demotes detail/boundary Info under the watch spinner.
+func hotreloadUpgradeContext(ctx context.Context, line *logutil.ProgressLine) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if line != nil {
+		ctx = logutil.WithProgressLine(ctx, line)
+	}
+	return logutil.WithQuietProgress(ctx)
+}
+
 func (s *GRPCWebServer) handleWatchedModuleUpgrade(moduleName string, file string) error {
 	if s == nil {
 		return xfmt.Errorf("handleWatchedModuleUpgrade called on nil receiver")
@@ -92,11 +104,7 @@ func (s *GRPCWebServer) handleWatchedModuleUpgrade(moduleName string, file strin
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	if line != nil {
-		ctx = logutil.WithProgressLine(ctx, line)
-	}
-	// Nested upgrade: ProgressLine owns UX; demote lifecycle/pipeline Info detail.
-	ctx = logutil.WithQuietProgress(ctx)
+	ctx = hotreloadUpgradeContext(ctx, line)
 	moduleLifecycle := lifecycle.NewService(s.runtimeScope.WithContext(ctx), s.jsExecutor)
 	if err := moduleLifecycle.Upgrade(ctx, lifecycle.UpgradeRequest{Input: moduleName}); err != nil {
 		return xfmt.Errorf("error running watch handler: %w", err)

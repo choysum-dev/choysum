@@ -1709,13 +1709,28 @@ func TestHandleWatchedModuleUpgradeNilScope(t *testing.T) {
 	}
 }
 
-func TestHandleWatchedModuleUpgradeAppliesQuietProgress(t *testing.T) {
+func TestHotreloadUpgradeContextAppliesQuietProgress(t *testing.T) {
+	t.Parallel()
+	ctx := hotreloadUpgradeContext(context.Background(), nil)
+	if !logger.QuietProgressFromContext(ctx) {
+		t.Fatal("expected QuietProgress on hotreload upgrade context")
+	}
+	line := logger.NewProgressLine(&bytes.Buffer{})
+	ctx = hotreloadUpgradeContext(context.Background(), line)
+	if !logger.QuietProgressFromContext(ctx) {
+		t.Fatal("expected QuietProgress with ProgressLine")
+	}
+	if logger.ProgressLineFromContext(ctx) != line {
+		t.Fatal("expected ProgressLine attached")
+	}
+}
+
+func TestHandleWatchedModuleUpgradeEmptyModuleName(t *testing.T) {
 	runtimeScope := newRichServerTestScope(t)
 	srv := &GRPCWebServer{
 		runtimeScope: runtimeScope,
 		hotreload:    hotreloadState{},
 	}
-	// Empty module fails inside Upgrade after QuietProgress is attached.
 	err := srv.handleWatchedModuleUpgrade("  ", "/tmp/x.ts")
 	if err == nil {
 		t.Fatal("expected upgrade error")
