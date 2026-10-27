@@ -315,11 +315,13 @@ func TestLogModuleOperationStep_HookSubstepAttrs(t *testing.T) {
 	var logBuf bytes.Buffer
 	testScope := &testLogScope{
 		ctx:    context.Background(),
-		logger: slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo})),
+		logger: slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug})),
 	}
 
 	step := moduleStepHook(hooks.PhasePreUpgrade)
-	logModuleOperationStep(testScope, &opContext{opid: "op-hook-1"}, moduleplan.OpUpgrade, "partner", step, time.Now().Add(-40*time.Millisecond))
+	// Attribute coverage only; level selection is covered by TestModuleOperationStepLogLevel
+	// with fixed durations (wall-clock here can still cross the soft Info floor under load).
+	logModuleOperationStep(testScope, &opContext{opid: "op-hook-1"}, moduleplan.OpUpgrade, "partner", step, time.Now())
 
 	logs := logBuf.String()
 	for _, want := range []string{
@@ -332,26 +334,37 @@ func TestLogModuleOperationStep_HookSubstepAttrs(t *testing.T) {
 			t.Fatalf("expected logs to contain %q, got %q", want, logs)
 		}
 	}
-	if moduleOperationStepLogLevel("hook.pre_init") != slog.LevelInfo {
-		t.Fatal("hook.* should log at Info")
+}
+
+func TestModuleOperationStepLogLevel(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name     string
+		step     string
+		duration time.Duration
+		extra    []any
+		want     slog.Level
+	}{
+		{name: "build always info", step: moduleStepBuild, duration: 0, want: slog.LevelInfo},
+		{name: "schema always info", step: moduleStepSchema, duration: time.Millisecond, want: slog.LevelInfo},
+		{name: "web_build always info", step: moduleStepWebBuild, duration: 0, want: slog.LevelInfo},
+		{name: "hook skipped debug", step: "hook.pre_upgrade", duration: time.Second, extra: []any{"skipped", true, "reason", "same_version"}, want: slog.LevelDebug},
+		{name: "scripts skipped debug", step: "scripts.validate", duration: time.Second, extra: []any{"skipped", true}, want: slog.LevelDebug},
+		{name: "hook fast debug", step: "hook.pre_init", duration: 40 * time.Millisecond, want: slog.LevelDebug},
+		{name: "hook threshold info", step: "hook.pre_init", duration: moduleOperationStepInfoMinDuration, want: slog.LevelInfo},
+		{name: "scripts slow info", step: "scripts.pre", duration: 150 * time.Millisecond, want: slog.LevelInfo},
+		{name: "origin_resolve fast debug", step: moduleStepOriginResolve, duration: 0, want: slog.LevelDebug},
+		{name: "origin_resolve slow info", step: moduleStepOriginResolve, duration: 120 * time.Millisecond, want: slog.LevelInfo},
+		{name: "base_entity_migrate debug", step: moduleStepBaseEntityMigrate, duration: time.Second, want: slog.LevelDebug},
+		{name: "data stays debug", step: moduleStepData, duration: time.Second, want: slog.LevelDebug},
 	}
-	if moduleOperationStepLogLevel("scripts.pre") != slog.LevelInfo {
-		t.Fatal("scripts.* should log at Info")
-	}
-	if moduleOperationStepLogLevel("scripts.validate") != slog.LevelInfo {
-		t.Fatal("scripts.validate should log at Info via scripts. prefix")
-	}
-	if moduleOperationStepLogLevel(moduleStepWebBuild) != slog.LevelInfo {
-		t.Fatal("web_build should log at Info")
-	}
-	if moduleOperationStepLogLevel(moduleStepBaseEntityMigrate) != slog.LevelInfo {
-		t.Fatal("base_entity_migrate should log at Info")
-	}
-	if moduleOperationStepLogLevel(moduleStepOriginResolve) != slog.LevelInfo {
-		t.Fatal("origin_resolve should log at Info")
-	}
-	if moduleOperationStepLogLevel(moduleStepData) != slog.LevelDebug {
-		t.Fatal("data step stays Debug")
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if got := moduleOperationStepLogLevel(tc.step, tc.duration, tc.extra...); got != tc.want {
+				t.Fatalf("level=%v want %v", got, tc.want)
+			}
+		})
 	}
 }
 

@@ -35,15 +35,36 @@ func logSemanticMetricsSummary(logger *slog.Logger, opid string) {
 	logger.Debug("lifecycle semantic program metrics", attrs...)
 }
 
+// phaseEndInfoMinDuration is the wall-time floor for PhaseEnd logs at Info.
+const phaseEndInfoMinDuration = time.Second
+
 // logFinalizingPhaseEnd logs aggregate PhaseEnd duration; Info when >=1s, else Debug.
 func logFinalizingPhaseEnd(logger *slog.Logger, phaseEndDuration time.Duration) {
 	if logger == nil {
 		return
 	}
 	attrs := []any{"step", moduleStepPhaseEnd, "duration_ms", phaseEndDuration.Milliseconds()}
-	if phaseEndDuration >= time.Second {
+	if phaseEndDuration >= phaseEndInfoMinDuration {
 		logger.Info("module operation finalizing phase end completed", attrs...)
 		return
 	}
 	logger.Debug("module operation finalizing phase end completed", attrs...)
+}
+
+// logFinalizingPhaseEndModule logs one module's PhaseEnd script run; Info when >=1s.
+func logFinalizingPhaseEndModule(logger *slog.Logger, phaseModule string, duration time.Duration) {
+	if logger == nil {
+		return
+	}
+	attrs := []any{
+		"step", moduleStepPhaseEnd,
+		"phase_module", phaseModule,
+		"duration_ms", duration.Milliseconds(),
+	}
+	msg := "module operation finalizing phase end module completed"
+	if duration >= phaseEndInfoMinDuration {
+		logger.Info(msg, attrs...)
+		return
+	}
+	logger.Debug(msg, attrs...)
 }

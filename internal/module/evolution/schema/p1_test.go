@@ -4,8 +4,11 @@
 package schema
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"strings"
 	"testing"
 
@@ -1195,6 +1198,67 @@ func TestLogPlan_CountsSafety(t *testing.T) {
 	m.logPlan(SchemaPlan{Module: "sales", Ops: []PlanOp{
 		{Safety: SafetyAuto}, {Safety: SafetyGuarded}, {Safety: SafetyManual}, {Safety: SafetyClass("other")},
 	}})
+}
+
+func TestLogPlan_LevelByContent(t *testing.T) {
+	t.Parallel()
+
+	t.Run("empty plan is debug", func(t *testing.T) {
+		var buf bytes.Buffer
+		runtimeScope := &schemaTestScope{
+			ctx:    context.Background(),
+			logger: slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})),
+		}
+		newModelMigrator(runtimeScope, &meta.Module{Name: "core"}, nil).logPlan(SchemaPlan{Module: "core"})
+		logs := buf.String()
+		if !strings.Contains(logs, `"level":"DEBUG"`) {
+			t.Fatalf("expected DEBUG empty plan, got %q", logs)
+		}
+		if strings.Contains(logs, `"level":"INFO"`) {
+			t.Fatalf("empty schema plan must not emit Info, got %q", logs)
+		}
+		if !strings.Contains(logs, `"msg":"schema plan"`) {
+			t.Fatalf("expected schema plan message, got %q", logs)
+		}
+	})
+
+	t.Run("leftover keeps info", func(t *testing.T) {
+		var buf bytes.Buffer
+		runtimeScope := &schemaTestScope{
+			ctx:    context.Background(),
+			logger: slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo})),
+		}
+		newModelMigrator(runtimeScope, &meta.Module{Name: "web"}, nil).logPlan(SchemaPlan{
+			Module:   "web",
+			Leftover: []Leftover{{Kind: LeftoverColumn, Table: "web_page", Name: "legacy"}},
+		})
+		logs := buf.String()
+		if !strings.Contains(logs, `"level":"INFO"`) {
+			t.Fatalf("expected INFO leftover plan, got %q", logs)
+		}
+		if !strings.Contains(logs, `"leftover":1`) {
+			t.Fatalf("expected leftover count, got %q", logs)
+		}
+	})
+
+	t.Run("ops keep info", func(t *testing.T) {
+		var buf bytes.Buffer
+		runtimeScope := &schemaTestScope{
+			ctx:    context.Background(),
+			logger: slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo})),
+		}
+		newModelMigrator(runtimeScope, &meta.Module{Name: "auth"}, nil).logPlan(SchemaPlan{
+			Module: "auth",
+			Ops:    []PlanOp{{Safety: SafetyAuto}},
+		})
+		logs := buf.String()
+		if !strings.Contains(logs, `"level":"INFO"`) {
+			t.Fatalf("expected INFO ops plan, got %q", logs)
+		}
+		if !strings.Contains(logs, `"ops":1`) {
+			t.Fatalf("expected ops count, got %q", logs)
+		}
+	})
 }
 
 func TestApplyTableCheckConstraints_Coverage(t *testing.T) {

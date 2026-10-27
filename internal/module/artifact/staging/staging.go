@@ -246,8 +246,8 @@ func logDirStagingCommit(s *DirStaging) {
 		"backup", s.BackupDir,
 		"had_target", s.HadTarget,
 	}
-	// Info so a normal `go run . run` repro surfaces every commit target without raising log level.
-	logger.Info("staging dir commit", attrs...)
+	// Debug: default Info stays quiet; raise log level when debugging staging paths.
+	logger.Debug("staging dir commit", attrs...)
 	if anomalousRuntimeAPICommitTarget(s.TargetDir) {
 		logger.Warn("staging dir commit target looks anomalous for runtime api layout", attrs...)
 	}

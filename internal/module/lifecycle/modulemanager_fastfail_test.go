@@ -4,8 +4,10 @@
 package lifecycle
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 	"testing"
 
@@ -128,6 +130,8 @@ func TestModuleManagerMigrateBaseModuleSucceedsWithValidDB(t *testing.T) {
 	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	var logBuf bytes.Buffer
+	runtimeScope.logger = slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	manager := NewModuleManager(runtimeScope, nil)
 	manager.bootstrapOnce.Do(func() {})
 
@@ -137,6 +141,23 @@ func TestModuleManagerMigrateBaseModuleSucceedsWithValidDB(t *testing.T) {
 	// Second call must be idempotent.
 	if err := manager.migrateBaseModule(); err != nil {
 		t.Fatalf("second migrateBaseModule() error = %v", err)
+	}
+
+	logs := logBuf.String()
+	completed := `"msg":"base module entity migration completed"`
+	if !strings.Contains(logs, completed) {
+		t.Fatalf("expected migrate completion log, got %q", logs)
+	}
+	for _, line := range strings.Split(logs, "\n") {
+		if !strings.Contains(line, completed) {
+			continue
+		}
+		if !strings.Contains(line, `"level":"DEBUG"`) {
+			t.Fatalf("migrate completion must be DEBUG, got %q", line)
+		}
+		if strings.Contains(line, `"level":"INFO"`) {
+			t.Fatalf("migrate completion must not be INFO, got %q", line)
+		}
 	}
 }
 
