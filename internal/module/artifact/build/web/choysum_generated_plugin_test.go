@@ -4,6 +4,7 @@
 package webmodulebuilder
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,6 +41,7 @@ func TestChoysumGeneratedPluginResolvesImport(t *testing.T) {
 		Platform: api.PlatformBrowser,
 		LogLevel: api.LogLevelSilent,
 		Metafile: true,
+		AbsPaths: api.MetafileAbsPath,
 	})
 	if len(result.Errors) > 0 {
 		t.Fatalf("build errors: %v", result.Errors)
@@ -124,10 +126,102 @@ func TestChoysumGeneratedPluginRejectsTraversal(t *testing.T) {
 	}
 }
 
+func TestChoysumGeneratedPluginRejectsEmptyRel(t *testing.T) {
+	t.Parallel()
+	home := filepath.Join(t.TempDir(), ".choysum")
+	if err := os.MkdirAll(filepath.Join(home, "generated"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, spec := range []string{
+		`@choysum/generated/`,
+		`@choysum/generated/.`,
+	} {
+		result := api.Build(api.BuildOptions{
+			Stdin: &api.StdinOptions{
+				Contents:   `import "` + spec + `"; export default 1;`,
+				ResolveDir: t.TempDir(),
+				Sourcefile: "entry.ts",
+				Loader:     api.LoaderTS,
+			},
+			Bundle:   true,
+			Write:    false,
+			Plugins:  []api.Plugin{choysumGeneratedPlugin(home)},
+			Format:   api.FormatESModule,
+			Platform: api.PlatformBrowser,
+			LogLevel: api.LogLevelSilent,
+		})
+		if len(result.Errors) == 0 {
+			t.Fatalf("expected error for %q", spec)
+		}
+		if !strings.Contains(fmtErrors(result.Errors), "escapes generated root") {
+			t.Fatalf("%q: unexpected errors: %s", spec, fmtErrors(result.Errors))
+		}
+	}
+}
+
+func TestChoysumGeneratedPluginRejectsPathUnderRootFailure(t *testing.T) {
+	t.Cleanup(func() { filepathRel = filepath.Rel })
+	filepathRel = func(basepath, targpath string) (string, error) {
+		return "..", nil
+	}
+	home := filepath.Join(t.TempDir(), ".choysum")
+	if err := os.MkdirAll(filepath.Join(home, "generated", "styles"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	result := api.Build(api.BuildOptions{
+		Stdin: &api.StdinOptions{
+			Contents:   `import "` + ChoyTailwindGeneratedImportPath + `"; export default 1;`,
+			ResolveDir: t.TempDir(),
+			Sourcefile: "entry.ts",
+			Loader:     api.LoaderTS,
+		},
+		Bundle:   true,
+		Write:    false,
+		Plugins:  []api.Plugin{choysumGeneratedPlugin(home)},
+		Format:   api.FormatESModule,
+		Platform: api.PlatformBrowser,
+		LogLevel: api.LogLevelSilent,
+	})
+	if len(result.Errors) == 0 {
+		t.Fatal("expected pathUnderRoot rejection")
+	}
+	if !strings.Contains(fmtErrors(result.Errors), "escapes generated root") {
+		t.Fatalf("unexpected errors: %s", fmtErrors(result.Errors))
+	}
+}
+
+func TestPathUnderRoot(t *testing.T) {
+	t.Parallel()
+	root := filepath.Join(t.TempDir(), "generated")
+	under, err := pathUnderRoot(root, filepath.Join(root, "styles", "x.css"))
+	if err != nil || !under {
+		t.Fatalf("expected under, under=%v err=%v", under, err)
+	}
+	under, err = pathUnderRoot(root, filepath.Join(t.TempDir(), "outside.css"))
+	if err != nil || under {
+		t.Fatalf("expected escape, under=%v err=%v", under, err)
+	}
+}
+
+func TestPathUnderRootRelError(t *testing.T) {
+	t.Cleanup(func() { filepathRel = filepath.Rel })
+	filepathRel = func(basepath, targpath string) (string, error) {
+		return "", errors.New("forced rel error")
+	}
+	under, err := pathUnderRoot(t.TempDir(), t.TempDir())
+	if err == nil || under {
+		t.Fatalf("expected rel error, under=%v err=%v", under, err)
+	}
+}
+
 func TestChoyTailwindGeneratedCSSPath(t *testing.T) {
 	t.Parallel()
 	if _, err := ChoyTailwindGeneratedCSSPath(""); err == nil {
 		t.Fatal("expected empty path error")
+	}
+	if _, err := ChoyTailwindGeneratedCSSPath(string(filepath.Separator)); err == nil {
+		t.Fatal("expected root directory error")
 	}
 	got, err := ChoyTailwindGeneratedCSSPath(filepath.Join(t.TempDir(), ".choysum"))
 	if err != nil {

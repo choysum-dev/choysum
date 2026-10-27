@@ -58,16 +58,29 @@ func isChoyTailwindGeneratedWatchPath(path string) bool {
 	}
 	slash := filepath.ToSlash(filepath.Clean(path))
 	// Current emit: <defaultChoysumPath>/generated/styles/... (+ atomic tmp).
-	// Match absolute and relative forms; skip modules/ so hand-authored trees
-	// under a module still trigger hot reload.
-	if (strings.Contains(slash, "/generated/styles/") || strings.HasPrefix(slash, "generated/styles/")) &&
-		!isUnderModulesWatchPath(slash) {
+	if isWorkspaceGeneratedStylesWatchPath(slash) {
 		return true
 	}
 	// Legacy in-module emit (and leftover files during cutover).
 	const kitStyles = "modules/web/web/styles"
 	dir := filepath.ToSlash(filepath.Dir(path))
 	return dir == kitStyles || strings.HasSuffix(dir, "/"+kitStyles)
+}
+
+// isWorkspaceGeneratedStylesWatchPath matches DefaultChoysumPath emit layouts.
+// Prefer `.choysum/generated/styles/` (works even when the home path contains a
+// `/modules/` segment), accept relative `generated/styles/`, and for other
+// custom homes ignore only non-module trees.
+func isWorkspaceGeneratedStylesWatchPath(slash string) bool {
+	if !(strings.Contains(slash, "/generated/styles/") || strings.HasPrefix(slash, "generated/styles/")) {
+		return false
+	}
+	if strings.Contains(slash, "/.choysum/generated/styles/") ||
+		strings.HasPrefix(slash, ".choysum/generated/styles/") ||
+		strings.HasPrefix(slash, "generated/styles/") {
+		return true
+	}
+	return !isUnderModulesWatchPath(slash)
 }
 
 func isUnderModulesWatchPath(slash string) bool {

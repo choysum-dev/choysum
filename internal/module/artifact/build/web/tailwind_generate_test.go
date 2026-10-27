@@ -168,6 +168,48 @@ func TestGenerateChoyTailwindForModuleWritesFile(t *testing.T) {
 	if res.ContentHash != res2.ContentHash || res.DialectHash != res2.DialectHash {
 		t.Fatalf("hashes unstable: %#v vs %#v", res, res2)
 	}
+
+	// Legacy kit emit with generate header is removed after cutover write.
+	legacy := filepath.Join(styles, choyTailwindGeneratedCSSName)
+	if err := os.WriteFile(legacy, []byte(choyTailwindGeneratedHeaderPrefix+" leftover\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := GenerateChoyTailwindForModule(root, home); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(legacy); !os.IsNotExist(err) {
+		t.Fatalf("expected legacy generated CSS removed, stat err=%v", err)
+	}
+
+	// Hand-authored same-named file must not be deleted.
+	hand := []byte("/* hand authored */\n.body{}\n")
+	if err := os.WriteFile(legacy, hand, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := GenerateChoyTailwindForModule(root, home); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(legacy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(hand) {
+		t.Fatalf("hand-authored legacy CSS was modified: %q", got)
+	}
+}
+
+func TestGenerateChoyTailwindForModuleRejectsInvalidChoysumHome(t *testing.T) {
+	root := t.TempDir()
+	styles := filepath.Join(root, "web", "styles")
+	if err := os.MkdirAll(styles, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(styles, "theme.css"), []byte(`@theme { --color-primary: red; }`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := GenerateChoyTailwindForModule(root, string(filepath.Separator)); err == nil {
+		t.Fatal("expected invalid defaultChoysumPath error")
+	}
 }
 
 func TestEnsureChoyTailwindCSSNoopWhenMissing(t *testing.T) {

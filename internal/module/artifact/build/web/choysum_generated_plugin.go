@@ -11,6 +11,9 @@ import (
 	"github.com/evanw/esbuild/pkg/api"
 )
 
+// filepathRel is filepath.Rel; tests replace it to cover Rel failures.
+var filepathRel = filepath.Rel
+
 // choysumGeneratedPlugin maps @choysum/generated/<rel> imports onto
 // <defaultChoysumPath>/generated/<rel> so kit CSS and other workspace
 // generated assets resolve outside modules/.
@@ -25,7 +28,7 @@ func choysumGeneratedPlugin(defaultChoysumPath string) api.Plugin {
 				}
 				rel := strings.TrimPrefix(args.Path, ChoyGeneratedImportPrefix)
 				rel = filepath.Clean(filepath.FromSlash(rel))
-				if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				if rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 					return api.OnResolveResult{}, fmt.Errorf("@choysum/generated path escapes generated root: %s", args.Path)
 				}
 				generatedRoot := filepath.Join(root, "generated")
@@ -44,7 +47,7 @@ func choysumGeneratedPlugin(defaultChoysumPath string) api.Plugin {
 
 // pathUnderRoot reports whether candidate stays inside root after Clean.
 func pathUnderRoot(root, candidate string) (bool, error) {
-	rel, err := filepath.Rel(filepath.Clean(root), filepath.Clean(candidate))
+	rel, err := filepathRel(filepath.Clean(root), filepath.Clean(candidate))
 	if err != nil {
 		return false, err
 	}
