@@ -53,7 +53,8 @@ export interface ModelOptions {
    * Soft-delete is a model lifecycle choice, not implied by ManyToMany `joinModel` usage.
    * Pure FK-pair link tables usually set `false` (unlink = row gone). Association entities
    * that carry scope, audit, or independent CRUD may keep soft delete; M2M re-link restores
-   * soft-deleted join rows when unique indexes still hold them.
+   * matching soft-deleted join rows. Switching a join model to `false` requires purging any
+   * existing DeletedAt rows first, or re-link may revive them.
    */
   softDelete?: boolean;
   // Only parentField is configurable; ParentPath remains fixed.

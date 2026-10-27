@@ -416,8 +416,8 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
   }
 
   /**
-   * Soft-deleted join rows still occupy composite unique indexes; treat DeletedAt as set.
-   * Soft-delete on join models is a supported lifecycle (association entities), not a temporary path.
+   * Treat DeletedAt as set when present. Soft-delete on join models is a supported
+   * lifecycle (association entities), not a temporary path.
    */
   private isSoftDeletedJoin(row: ObjectRecord): boolean {
     const deletedAt = (row as { DeletedAt?: Date | string | number | null }).DeletedAt;
@@ -427,9 +427,10 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
   }
 
   /**
-   * Link parent↔target join rows: skip alive links, restore soft-deleted join rows
-   * when the join model uses softDelete (unique index still holds them), and insert
-   * only missing pairs. Pure hard-delete joins skip the restore branch naturally.
+   * Link parent↔target join rows: skip alive links, restore matching soft-deleted join
+   * rows (clear DeletedAt; does not consult softDelete metadata), and insert only
+   * missing pairs. Switching a join model to softDelete: false requires purging
+   * DeletedAt rows first so this restore path cannot revive them.
    */
   private async upsertJoinLinks(
     joinRepo: Repository,

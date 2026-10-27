@@ -65,11 +65,8 @@ export class AuthRoleInheritanceHooks {
     const dialect = String(db.dialectName).trim().toLowerCase();
     if (dialect !== 'sqlite' && dialect !== 'postgres' && dialect !== 'mysql') return;
     const sql = `DELETE FROM auth_role_inheritance WHERE deleted_at IS NOT NULL`;
-    try {
-      await db.execute(sql, '[]');
-    } catch (err) {
-      // Table or column may be absent on fresh installs before schema ensure.
-      console.warn('[auth] RoleInheritance soft-delete purge failed', err);
-    }
+    // Post-upgrade runs after schema ensure; fail the upgrade if purge cannot run so
+    // soft-deleted edges cannot reappear as live links under softDelete: false.
+    await db.execute(sql, '[]');
   }
 }
