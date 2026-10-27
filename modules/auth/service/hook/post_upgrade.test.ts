@@ -166,7 +166,37 @@ test('AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance: no-ops without d
   const prev = (globalThis as any).$choysum;
   (globalThis as any).$choysum = { ...(prev || {}), db: undefined };
   try {
-    await AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance();
+    let threw: unknown;
+    try {
+      await AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance();
+    } catch (err) {
+      threw = err;
+    }
+    expect(threw).toBeUndefined();
+  } finally {
+    (globalThis as any).$choysum = prev;
+  }
+});
+
+test('AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance: no-ops when execute missing', async () => {
+  let executed = 0;
+  const prev = (globalThis as any).$choysum;
+  (globalThis as any).$choysum = {
+    ...(prev || {}),
+    db: {
+      dialectName: 'sqlite',
+      // no execute
+    },
+  };
+  try {
+    let threw: unknown;
+    try {
+      await AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance();
+    } catch (err) {
+      threw = err;
+    }
+    expect(executed).toBe(0);
+    expect(threw).toBeUndefined();
   } finally {
     (globalThis as any).$choysum = prev;
   }
@@ -282,6 +312,34 @@ test('AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance: does not swallow
     expect(executed).toBe(1);
     expect(threw instanceof Error).toBe(true);
     expect(String((threw as Error).message)).toContain('does not exist');
+  } finally {
+    (globalThis as any).$choysum = prev;
+  }
+});
+
+test('AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance: does not swallow unrelated missing table', async () => {
+  let executed = 0;
+  const prev = (globalThis as any).$choysum;
+  (globalThis as any).$choysum = {
+    ...(prev || {}),
+    db: {
+      dialectName: 'sqlite',
+      execute: async () => {
+        executed += 1;
+        throw new Error('no such table: auth_user');
+      },
+    },
+  };
+  try {
+    let threw: unknown;
+    try {
+      await AuthRoleInheritanceHooks.purgeSoftDeletedRoleInheritance();
+    } catch (err) {
+      threw = err;
+    }
+    expect(executed).toBe(1);
+    expect(threw instanceof Error).toBe(true);
+    expect(String((threw as Error).message)).toContain('auth_user');
   } finally {
     (globalThis as any).$choysum = prev;
   }

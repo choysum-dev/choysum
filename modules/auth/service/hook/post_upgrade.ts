@@ -12,17 +12,18 @@ function choysumDb(): ChoysumDb | undefined {
   return (globalThis as { $choysum?: { db?: ChoysumDb } }).$choysum?.db;
 }
 
-/** True only for missing auth_role_inheritance table or deleted_at column — not generic "does not exist". */
+/** True only for missing auth_role_inheritance table or deleted_at column — not unrelated absences. */
 function isMissingRelationError(err: unknown): boolean {
   const msg = String(err instanceof Error ? err.message : err).toLowerCase();
 
-  // Table missing (sqlite / mysql / mssql / postgres relation name).
+  // Table missing — require the target table name in every branch.
   if (
-    msg.includes('no such table') ||
-    msg.includes('unknown table') ||
-    msg.includes('invalid object name') ||
-    (msg.includes('auth_role_inheritance') &&
-      (msg.includes('does not exist') || msg.includes("doesn't exist")))
+    msg.includes('auth_role_inheritance') &&
+    (msg.includes('no such table') ||
+      msg.includes('unknown table') ||
+      msg.includes('invalid object name') ||
+      msg.includes('does not exist') ||
+      msg.includes("doesn't exist"))
   ) {
     return true;
   }
@@ -91,12 +92,15 @@ export class AuthRoleInheritanceHooks {
   static async purgeSoftDeletedRoleInheritance(): Promise<void> {
     const db = choysumDb();
     if (!db?.execute) return;
-    // Portable DELETE — no dialect-specific SQL. Covers sqlite/postgres/mysql/mssql.
+    // Portable DELETE for a small role-edge table (not a high-volume scan target).
     const sql = `DELETE FROM auth_role_inheritance WHERE deleted_at IS NOT NULL`;
     try {
       await db.execute(sql, '[]');
     } catch (err) {
-      if (isMissingRelationError(err)) return;
+      if (isMissingRelationError(err)) {
+        console.info('[auth] RoleInheritance purge skipped: relation/column absent', err);
+        return;
+      }
       throw err;
     }
   }
