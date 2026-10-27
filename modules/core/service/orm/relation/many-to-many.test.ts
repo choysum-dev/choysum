@@ -148,6 +148,15 @@ class ManyToManyJoin extends BaseModel {
   TagId?: string;
 }
 
+@Model('test.ManyToManyJoinHard', { softDelete: false })
+class ManyToManyJoinHard extends BaseModel {
+  @Field({ type: 'varchar', size: 64 })
+  OwnerId?: string;
+
+  @Field({ type: 'varchar', size: 64 })
+  TagId?: string;
+}
+
 @Model('test.ManyToManyPrepareParent')
 class ManyToManyPrepareParent extends BaseModel {
   @Field({ type: 'varchar', size: 64 })
@@ -168,6 +177,7 @@ class ManyToManyPrepareParent extends BaseModel {
 const parentCtor = ManyToManyParent as unknown as ModelCtor<ManyToManyParent>;
 const targetCtor = ManyToManyTarget as unknown as ModelCtor<ManyToManyTarget>;
 const joinCtor = ManyToManyJoin as unknown as ModelCtor<ManyToManyJoin>;
+const joinHardCtor = ManyToManyJoinHard as unknown as ModelCtor<ManyToManyJoinHard>;
 const prepareParentCtor = ManyToManyPrepareParent as unknown as ModelCtor<ManyToManyPrepareParent>;
 
 function resetTargetCalls() {
@@ -618,6 +628,47 @@ test('many-to-many processor batch create restores soft-deleted join rows instea
     expect(joinStore.rows.find(r => r.Id === 'j1')?.DeletedAt).toBeNull();
     expect(joinStore.createCalls.length).toBe(1);
     expect(joinStore.createCalls[0]).toEqual([{ OwnerId: 'p1', TagId: 't2' }]);
+  } finally {
+    joinStore.restore();
+  }
+});
+
+test('many-to-many processor hard-deletes stale DeletedAt rows when join softDelete is false', async () => {
+  resetTargetCalls();
+  RepositoryFactory.setRepository(targetCtor, { search: async () => [] } as unknown as Repository);
+
+  const joinStore = createJoinRepoMock([
+    { Id: 'j1', OwnerId: 'p1', TagId: 't1', DeletedAt: new Date('2026-10-24T03:00:00.000Z') },
+  ]);
+
+  try {
+    const processor = new ManyToManyProcessor(parentCtor);
+    const result = await processor.batchProcessRelationUpdate(
+      ['p1'],
+      [
+        {
+          type: 'ManyToMany',
+          fieldName: 'Tags',
+          joinModel: joinHardCtor,
+          targetModel: targetCtor,
+          joinField: 'OwnerId',
+          inverseJoinField: 'TagId',
+          operations: {
+            create: [{ Id: 't1' }, { Id: 't2' }],
+          },
+        } as unknown as Parameters<ManyToManyProcessor['batchProcessRelationUpdate']>[1][number],
+      ]
+    );
+
+    expect(result.errors).toEqual([]);
+    expect(joinStore.updateCalls.length).toBe(0);
+    expect(joinStore.deleteCalls.length).toBe(1);
+    expect(joinStore.rows.find(r => r.Id === 'j1')).toBeUndefined();
+    expect(joinStore.createCalls.length).toBe(1);
+    expect(joinStore.createCalls[0]).toEqual([
+      { OwnerId: 'p1', TagId: 't1' },
+      { OwnerId: 'p1', TagId: 't2' },
+    ]);
   } finally {
     joinStore.restore();
   }

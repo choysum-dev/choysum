@@ -9,6 +9,7 @@ import { RepositoryFactory } from '../repository/repository_factory';
 import { RelationProcessor } from './processor';
 import { PreparedManyToManyOp, PrepareResult, RelationProcessingResult, ExtractedRelations, BatchProcessingResult } from './types';
 import { UntypedQueryCondition, RelationPatch } from '../repository/types';
+import { repositorySoftDeleteEnabled } from '../repository/query/condition_layer';
 import { createRelationModel, updateRelationModelById } from './relation_model_service_facade';
 import type { ObjectRecord } from '../../../utils/types';
 
@@ -114,7 +115,18 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
         });
 
         if (newItemsToCreate.length > 0) {
-          await this.createRelations(joinRepo, targetRepo, targetModel, parentId, joinField, inverseJoinField, newItemsToCreate, affectedIds, errors);
+          await this.createRelations(
+            joinRepo,
+            targetRepo,
+            targetModel,
+            parentId,
+            joinField,
+            inverseJoinField,
+            newItemsToCreate,
+            affectedIds,
+            errors,
+            repositorySoftDeleteEnabled(meta),
+          );
         }
 
         // Existing retained IDs also count as successful processing.
@@ -143,7 +155,18 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
         });
 
         if (newItemsToCreate.length > 0) {
-          await this.createRelations(joinRepo, targetRepo, targetModel, parentId, joinField, inverseJoinField, newItemsToCreate, affectedIds, errors);
+          await this.createRelations(
+            joinRepo,
+            targetRepo,
+            targetModel,
+            parentId,
+            joinField,
+            inverseJoinField,
+            newItemsToCreate,
+            affectedIds,
+            errors,
+            repositorySoftDeleteEnabled(meta),
+          );
         }
 
         affectedIds.push(...diffResult.existingTargetIds);
@@ -175,7 +198,18 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
 
       // create
       if (relationOps.create) {
-        await this.createRelations(joinRepo, targetRepo, targetModel, parentId, joinField, inverseJoinField, relationOps.create, affectedIds, errors);
+        await this.createRelations(
+          joinRepo,
+          targetRepo,
+          targetModel,
+          parentId,
+          joinField,
+          inverseJoinField,
+          relationOps.create,
+          affectedIds,
+          errors,
+          repositorySoftDeleteEnabled(meta),
+        );
       }
 
       // Update only the target entity, using UpdateById so compute and validation still run.
@@ -269,7 +303,16 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
             });
 
             if (itemsToCreate.length > 0) {
-              const processedResults = await this.processReplaceItems(joinRepo, targetRepo, targetModel, parentId, joinField, inverseJoinField, itemsToCreate);
+              const processedResults = await this.processReplaceItems(
+                joinRepo,
+                targetRepo,
+                targetModel,
+                parentId,
+                joinField,
+                inverseJoinField,
+                itemsToCreate,
+                repositorySoftDeleteEnabled(meta),
+              );
               allSuccessIds.push(...processedResults.successIds);
               allErrors.push(...processedResults.errors);
             }
@@ -320,6 +363,7 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
               joinField,
               inverseJoinField,
               items,
+              repositorySoftDeleteEnabled(meta),
             );
             allSuccessIds.push(...processedResults.successIds);
             allErrors.push(...processedResults.errors);
@@ -400,7 +444,8 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
     inverseJoinField: string,
     items: unknown[],
     affectedIds: string[],
-    errors: Error[]
+    errors: Error[],
+    joinSoftDeleteEnabled: boolean,
   ): Promise<void> {
     const result = await this.processReplaceItems(
       joinRepo,
@@ -410,6 +455,7 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
       joinField,
       inverseJoinField,
       items,
+      joinSoftDeleteEnabled,
     );
     affectedIds.push(...result.successIds);
     errors.push(...result.errors);
@@ -427,10 +473,9 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
   }
 
   /**
-   * Link parent↔target join rows: skip alive links, restore matching soft-deleted join
-   * rows (clear DeletedAt; does not consult softDelete metadata), and insert only
-   * missing pairs. Switching a join model to softDelete: false requires purging
-   * DeletedAt rows first so this restore path cannot revive them.
+   * Link parent↔target join rows: skip alive links; for softDelete joins restore
+   * matching DeletedAt rows, otherwise physically remove stale DeletedAt rows and
+   * insert fresh pairs; insert only missing pairs.
    */
   private async upsertJoinLinks(
     joinRepo: Repository,
@@ -438,6 +483,7 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
     joinField: string,
     inverseJoinField: string,
     targetIds: string[],
+    joinSoftDeleteEnabled: boolean,
   ): Promise<{ linkedIds: string[]; errors: Error[] }> {
     const linkedIds: string[] = [];
     const errors: Error[] = [];
@@ -477,14 +523,19 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
       if (alive.has(tid)) continue;
       try {
         const rowId = this.extractId(row.Id);
-        const restoreCondition: UntypedQueryCondition = rowId
+        const rowCondition: UntypedQueryCondition = rowId
           ? (['Id', '=', rowId] as UntypedQueryCondition)
           : ({
               And: [[joinField, '=', parentId] as UntypedQueryCondition, [inverseJoinField, '=', tid] as UntypedQueryCondition],
             } as UntypedQueryCondition);
-        await joinRepo.withDeleted().update({ DeletedAt: null }, restoreCondition);
-        alive.add(tid);
-        linkedIds.push(tid);
+        if (joinSoftDeleteEnabled) {
+          await joinRepo.withDeleted().update({ DeletedAt: null }, rowCondition);
+          alive.add(tid);
+          linkedIds.push(tid);
+        } else {
+          // softDelete: false — drop stale DeletedAt rows so a fresh insert can replace them.
+          await joinRepo.delete(rowCondition);
+        }
       } catch (e) {
         errors.push(e instanceof Error ? e : new Error(String(e)));
       }
@@ -652,7 +703,8 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
     parentId: string,
     joinField: string,
     inverseJoinField: string,
-    items: unknown[]
+    items: unknown[],
+    joinSoftDeleteEnabled: boolean,
   ): Promise<{ successIds: string[]; errors: Error[] }> {
     const successIds: string[] = [];
     const errors: Error[] = [];
@@ -682,7 +734,14 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
     }
 
     if (targetIds.length > 0) {
-      const linked = await this.upsertJoinLinks(joinRepo, parentId, joinField, inverseJoinField, targetIds);
+      const linked = await this.upsertJoinLinks(
+        joinRepo,
+        parentId,
+        joinField,
+        inverseJoinField,
+        targetIds,
+        joinSoftDeleteEnabled,
+      );
       successIds.push(...linked.linkedIds);
       errors.push(...linked.errors);
     }
