@@ -116,7 +116,8 @@ func (s *GRPCWebServer) finishApplicationModeStartup(result applicationModeStart
 			s.runtimeScope.Logger().Info("js executor started", result.startupLogFields()...)
 		} else {
 			result.JSRuntimeDurationMs = time.Since(startedAt).Milliseconds()
-			s.runtimeScope.Logger().Info("js executor reloaded", result.startupLogFields()...)
+			// Reload is nested under hotreload / recovery; cold start keeps Info.
+			s.runtimeScope.Logger().Debug("js executor reloaded", result.startupLogFields()...)
 		}
 	}
 	result.JSRuntimeActivated = true

@@ -343,6 +343,9 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 		return nil, xfmt.Errorf("error preparing schema migrator: %w", err)
 	}
 	schemaStarted := time.Now()
+	if m.ctx != nil {
+		m.ctx.reportStepStart(m.module.Name, moduleStepSchema)
+	}
 	if err := migrator.Migrate(); err != nil {
 		return nil, xfmt.Errorf("error migrating module: %w", err)
 	}
@@ -353,6 +356,9 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 		applyCtx = context.Background()
 	}
 	dataStarted := time.Now()
+	if m.ctx != nil {
+		m.ctx.reportStepStart(m.module.Name, moduleStepData)
+	}
 	if err := applyInitdata(applyCtx, m.runtimeScope, m.module, importpkg.CallerLifecycle, m.ctx != nil && m.ctx.withDemo); err != nil {
 		return nil, xfmt.Errorf("error applying data for module %s: %w", m.module.Name, err)
 	}
@@ -523,6 +529,9 @@ func runInstallHookPhase(
 		name = module.Name
 	}
 	started := time.Now()
+	if opCtx != nil {
+		opCtx.reportStepStart(name, moduleStepHook(phase))
+	}
 	if err := hookRunner.RunPhase(runtimeScope.Context(), phase, hooks.RunOptions{
 		Scripts:              hookScripts,
 		ReuseExecutorScripts: installerReuseExecutorScripts(jsExec),

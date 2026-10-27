@@ -398,7 +398,6 @@ func TestScheduleLeaseConflictRetryRequeuesFile(t *testing.T) {
 	}
 }
 
-
 func TestScheduleLeaseConflictRetryExhaustedClearsBudget(t *testing.T) {
 	prevBase, prevMax := hotreloadLeaseRetryBase, hotreloadLeaseRetryMax
 	hotreloadLeaseRetryBase = 5 * time.Millisecond
@@ -434,7 +433,6 @@ func TestScheduleLeaseConflictRetryExhaustedClearsBudget(t *testing.T) {
 	srv.hotreload.clearLeaseRetry(file)
 	srv.hotreload.clearLeaseRetry(file) // nil-map / missing key no-op path after delete
 }
-
 
 func TestScheduleLeaseConflictRetryCapsBackoffShift(t *testing.T) {
 	prevBase, prevMax := hotreloadLeaseRetryBase, hotreloadLeaseRetryMax
@@ -1708,6 +1706,71 @@ func TestHandleWatchedModuleUpgradeNilScope(t *testing.T) {
 	err := srv.handleWatchedModuleUpgrade("web", "/some/file.ts")
 	if err == nil {
 		t.Fatal("expected error from handleWatchedModuleUpgrade with nil runtimeScope")
+	}
+}
+
+func TestHotreloadUpgradeContextAppliesQuietProgress(t *testing.T) {
+	t.Parallel()
+	ctx := hotreloadUpgradeContext(nil, nil)
+	if ctx == nil || !logger.QuietProgressFromContext(ctx) {
+		t.Fatal("expected QuietProgress on nil ctx fallback")
+	}
+	ctx = hotreloadUpgradeContext(context.Background(), nil)
+	if !logger.QuietProgressFromContext(ctx) {
+		t.Fatal("expected QuietProgress on hotreload upgrade context")
+	}
+	line := logger.NewProgressLine(&bytes.Buffer{})
+	ctx = hotreloadUpgradeContext(context.Background(), line)
+	if !logger.QuietProgressFromContext(ctx) {
+		t.Fatal("expected QuietProgress with ProgressLine")
+	}
+	if logger.ProgressLineFromContext(ctx) != line {
+		t.Fatal("expected ProgressLine attached")
+	}
+}
+
+func TestHandleWatchedModuleUpgradeEmptyModuleName(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{},
+	}
+	err := srv.handleWatchedModuleUpgrade("  ", "/tmp/x.ts")
+	if err == nil {
+		t.Fatal("expected upgrade error")
+	}
+}
+
+func TestHandleWatchedModuleUpgradePropagatesQuietProgress(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	line := logger.NewProgressLine(&bytes.Buffer{})
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{progressLine: line},
+	}
+	prev := hotreloadModuleUpgrade
+	var gotCtx context.Context
+	hotreloadModuleUpgrade = func(_ *GRPCWebServer, ctx context.Context, moduleName string) error {
+		gotCtx = ctx
+		if moduleName != "web" {
+			t.Fatalf("moduleName = %q, want web", moduleName)
+		}
+		return errors.New("forced upgrade stop")
+	}
+	t.Cleanup(func() { hotreloadModuleUpgrade = prev })
+
+	err := srv.handleWatchedModuleUpgrade("web", "/tmp/x.ts")
+	if err == nil || !strings.Contains(err.Error(), "forced upgrade stop") {
+		t.Fatalf("handleWatchedModuleUpgrade() error = %v", err)
+	}
+	if gotCtx == nil {
+		t.Fatal("expected upgrade context to be captured")
+	}
+	if !logger.QuietProgressFromContext(gotCtx) {
+		t.Fatal("expected QuietProgress on nested upgrade context")
+	}
+	if logger.ProgressLineFromContext(gotCtx) != line {
+		t.Fatal("expected ProgressLine on nested upgrade context")
 	}
 }
 

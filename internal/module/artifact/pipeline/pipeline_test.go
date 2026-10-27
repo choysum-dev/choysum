@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/distmanifest"
+	logutil "github.com/choysum-dev/choysum/internal/logger"
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
 	planner "github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -483,6 +484,42 @@ func TestExecuteInfoLogsSummarizeAppStageAndHideManifestCommit(t *testing.T) {
 		t.Fatalf("expected app stage summary record in logs, got %q", logs)
 	}
 }
+
+func TestExecuteQuietProgressDemotesDetailInfo(t *testing.T) {
+	root := &meta.Module{Name: "core"}
+	var logBuf bytes.Buffer
+	ctx := logutil.WithQuietProgress(staging.WithTmpRoot(context.Background(), t.TempDir()))
+
+	err := Execute(ctx, planner.Plan{
+		Op:          planner.OpUpgrade,
+		ModuleOrder: []string{"core"},
+	}, root, Callbacks{
+		Logger:                 slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo})),
+		ResolveInstalledModule: func(name string) (*meta.Module, error) { return root, nil },
+		Upgrade:                func(module *meta.Module) error { return nil },
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+			return "", ModulesAppTargets{}, nil
+		},
+		DistManifestTarget: func() (string, error) { return filepath.Join(t.TempDir(), distmanifest.DistManifestFileName), nil },
+		WriteDistManifest: func(ctx context.Context, distManifestStagingPath string) error {
+			return os.WriteFile(distManifestStagingPath, []byte(`{}`), 0o644)
+		},
+	})
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+	logs := logBuf.String()
+	for _, noise := range []string{
+		`"msg":"module upgraded"`,
+		`"msg":"pipeline module stage started"`,
+		`"msg":"pipeline module stage completed"`,
+	} {
+		if strings.Contains(logs, noise) {
+			t.Fatalf("quiet progress must demote %s at Info, got %q", noise, logs)
+		}
+	}
+}
+
 func TestExecuteInstallGeneratesWebApplicationModules(t *testing.T) {
 	rootDir := t.TempDir()
 	modulesRoot := filepath.Join(rootDir, "modules")

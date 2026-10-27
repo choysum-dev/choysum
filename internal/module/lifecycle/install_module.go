@@ -5,8 +5,11 @@ package lifecycle
 
 import (
 	"context"
+	"fmt"
 	"strings"
+	"time"
 
+	logutil "github.com/choysum-dev/choysum/internal/logger"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -22,7 +25,40 @@ type InstallModuleRequest struct {
 
 // PrepareInstall materializes the install closure outside any install commit TX.
 func PrepareInstall(ctx context.Context, runtimeScope scope.Scope, input string, opts ...Option) (*PrefetchedInstall, error) {
-	return PrefetchInstallModules(ctx, runtimeScope, input, opts...)
+	return prepareInstallModules(ctx, runtimeScope, input, opts...)
+}
+
+// prepareInstallModules is PrefetchInstallModules; tests may stub prepare failures.
+var prepareInstallModules = PrefetchInstallModules
+
+// ensureInstallPrepareProgressTicker reuses or creates a ProgressTicker when a
+// ProgressLine is already on ctx so PrepareInstall can show resolve progress
+// before ModuleManager.Install owns the spinner.
+func ensureInstallPrepareProgressTicker(ctx context.Context) (context.Context, *logutil.ProgressTicker, bool) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ticker := logutil.ProgressTickerFromContext(ctx)
+	if ticker != nil {
+		return ctx, ticker, false
+	}
+	line := logutil.ProgressLineFromContext(ctx)
+	if line == nil {
+		return ctx, nil, false
+	}
+	ticker = logutil.NewProgressTicker(line, logutil.ProgressTickerOptions{Interval: 120 * time.Millisecond})
+	return logutil.WithProgressTicker(ctx, ticker), ticker, true
+}
+
+func setInstallResolvingModulesSpinner(ticker *logutil.ProgressTicker, input string) {
+	if ticker == nil {
+		return
+	}
+	input = strings.TrimSpace(input)
+	if input == "" {
+		input = "unknown"
+	}
+	ticker.SetMessage(fmt.Sprintf("%s: resolving modules", input))
 }
 
 // InstallModule is the shared production entry for bootstrap and CLI install:
@@ -40,13 +76,39 @@ func InstallModule(ctx context.Context, runtimeScope scope.Scope, jsExecutor jse
 	}
 
 	opCtx := WithOperationOptions(ctx, OperationOptions{WithDemo: req.WithDemo, SkipWebShell: req.SkipWebShell})
-	prepared, err := PrepareInstall(opCtx, runtimeScope, input, opts...)
+	opCtx, prepareTicker, ownsPrepareTicker := ensureInstallPrepareProgressTicker(opCtx)
+	previousPrepareMessage := ""
+	if prepareTicker != nil && !ownsPrepareTicker {
+		previousPrepareMessage = prepareTicker.Message()
+	}
+	if ownsPrepareTicker {
+		defer func() {
+			prepareTicker.Clear()
+			prepareTicker.Stop()
+		}()
+	}
+	setInstallResolvingModulesSpinner(prepareTicker, input)
+	restoreCallerPrepareSpinner := func() {
+		if prepareTicker == nil || ownsPrepareTicker {
+			return
+		}
+		if strings.TrimSpace(previousPrepareMessage) == "" {
+			prepareTicker.Clear()
+		} else {
+			prepareTicker.SetMessage(previousPrepareMessage)
+		}
+	}
+
+	prepared, err := prepareInstallModules(opCtx, runtimeScope, input, opts...)
 	if err != nil {
+		restoreCallerPrepareSpinner()
 		return err
 	}
 	if prepared == nil || strings.TrimSpace(prepared.RootName) == "" {
+		restoreCallerPrepareSpinner()
 		return xfmt.Errorf("prepared install root is empty")
 	}
+	restoreCallerPrepareSpinner()
 
 	installCtx := WithPrefetchedInstallModules(opCtx, prepared.Modules)
 	installScope := runtimeScope.WithContext(installCtx)

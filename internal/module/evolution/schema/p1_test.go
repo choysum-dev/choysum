@@ -1222,26 +1222,29 @@ func TestLogPlan_LevelByContent(t *testing.T) {
 		}
 	})
 
-	t.Run("leftover keeps info", func(t *testing.T) {
+	t.Run("leftover only is debug", func(t *testing.T) {
 		var buf bytes.Buffer
 		runtimeScope := &schemaTestScope{
 			ctx:    context.Background(),
-			logger: slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo})),
+			logger: slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})),
 		}
 		newModelMigrator(runtimeScope, &meta.Module{Name: "web"}, nil).logPlan(SchemaPlan{
 			Module:   "web",
 			Leftover: []Leftover{{Kind: LeftoverColumn, Table: "web_page", Name: "legacy"}},
 		})
 		logs := buf.String()
-		if !strings.Contains(logs, `"level":"INFO"`) {
-			t.Fatalf("expected INFO leftover plan, got %q", logs)
+		if !strings.Contains(logs, `"level":"DEBUG"`) {
+			t.Fatalf("expected DEBUG leftover-only plan, got %q", logs)
+		}
+		if strings.Contains(logs, `"level":"INFO"`) {
+			t.Fatalf("leftover-only schema plan must not emit Info, got %q", logs)
 		}
 		if !strings.Contains(logs, `"leftover":1`) {
 			t.Fatalf("expected leftover count, got %q", logs)
 		}
 	})
 
-	t.Run("ops keep info", func(t *testing.T) {
+	t.Run("auto-only ops are debug", func(t *testing.T) {
 		var buf bytes.Buffer
 		runtimeScope := &schemaTestScope{
 			ctx:    context.Background(),
@@ -1251,12 +1254,52 @@ func TestLogPlan_LevelByContent(t *testing.T) {
 			Module: "auth",
 			Ops:    []PlanOp{{Safety: SafetyAuto}},
 		})
+		if logs := buf.String(); logs != "" {
+			t.Fatalf("pure-auto schema changes must not emit Info, got %q", logs)
+		}
+	})
+
+	t.Run("auto-only details stay debug", func(t *testing.T) {
+		var buf bytes.Buffer
+		runtimeScope := &schemaTestScope{
+			ctx:    context.Background(),
+			logger: slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})),
+		}
+		newModelMigrator(runtimeScope, &meta.Module{Name: "auth"}, nil).logPlan(SchemaPlan{
+			Module: "auth",
+			Ops:    []PlanOp{{Safety: SafetyAuto}},
+		})
+		logs := buf.String()
+		if !strings.Contains(logs, `"msg":"schema changes"`) || !strings.Contains(logs, `"level":"DEBUG"`) {
+			t.Fatalf("expected DEBUG schema changes, got %q", logs)
+		}
+		if !strings.Contains(logs, `"msg":"schema plan details"`) {
+			t.Fatalf("expected schema plan details at Debug, got %q", logs)
+		}
+		if !strings.Contains(logs, `"auto":1`) {
+			t.Fatalf("expected auto count in details, got %q", logs)
+		}
+	})
+
+	t.Run("guarded ops keep info", func(t *testing.T) {
+		var buf bytes.Buffer
+		runtimeScope := &schemaTestScope{
+			ctx:    context.Background(),
+			logger: slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo})),
+		}
+		newModelMigrator(runtimeScope, &meta.Module{Name: "auth"}, nil).logPlan(SchemaPlan{
+			Module: "auth",
+			Ops:    []PlanOp{{Safety: SafetyAuto}, {Safety: SafetyGuarded}},
+		})
 		logs := buf.String()
 		if !strings.Contains(logs, `"level":"INFO"`) {
-			t.Fatalf("expected INFO ops plan, got %q", logs)
+			t.Fatalf("expected INFO for guarded schema changes, got %q", logs)
 		}
-		if !strings.Contains(logs, `"ops":1`) {
-			t.Fatalf("expected ops count, got %q", logs)
+		if !strings.Contains(logs, `"msg":"schema changes"`) {
+			t.Fatalf("expected schema changes message, got %q", logs)
+		}
+		if !strings.Contains(logs, `"ops":2`) || !strings.Contains(logs, `"guarded":1`) {
+			t.Fatalf("expected ops/guarded counts, got %q", logs)
 		}
 	})
 }

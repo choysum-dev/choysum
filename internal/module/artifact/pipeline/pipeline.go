@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	logutil "github.com/choysum-dev/choysum/internal/logger"
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
 	planner "github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -228,6 +229,8 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.Module, cb Callb
 		}
 		logger.Log(ctx, level, msg, normalizeLogAttrs(attrs)...)
 	}
+	// Progress detail rows demote under QuietProgress or TTY ProgressLine.
+	detailLevel := logutil.ProgressDetailLogLevel(ctx)
 	emitProgress := func(event ProgressEvent) {
 		if cb.OnProgress == nil {
 			return
@@ -253,7 +256,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.Module, cb Callb
 		if len(infoModules) > 0 {
 			attrs = append(attrs, "modules", infoModules)
 		}
-		logStep(slog.LevelInfo, "pipeline module stage started", attrs...)
+		logStep(detailLevel, "pipeline module stage started", attrs...)
 		return time.Now()
 	}
 	logModuleStageCompleted := func(started time.Time) {
@@ -265,7 +268,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.Module, cb Callb
 			attrs = append(attrs, "modules", infoModules)
 		}
 		attrs = append(attrs, "duration", time.Since(started))
-		logStep(slog.LevelInfo, "pipeline module stage completed", attrs...)
+		logStep(detailLevel, "pipeline module stage completed", attrs...)
 	}
 
 	// generateModulesForApp stages and commits api outputs (proto/web/service/runtimeProto) for a single app.
@@ -455,7 +458,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.Module, cb Callb
 			if len(infoApps) > 0 {
 				attrs = append(attrs, "apps", infoApps)
 			}
-			logStep(slog.LevelInfo, "pipeline app stage started", attrs...)
+			logStep(detailLevel, "pipeline app stage started", attrs...)
 			emitProgress(ProgressEvent{Stage: ProgressStageAppStageStarted, Total: appsCount})
 		}
 
@@ -707,7 +710,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.Module, cb Callb
 				attrs = append(attrs, "apps", infoApps)
 			}
 			attrs = append(attrs, "duration", time.Since(appStageStarted))
-			logStep(slog.LevelInfo, "pipeline app stage completed", attrs...)
+			logStep(detailLevel, "pipeline app stage completed", attrs...)
 			emitProgress(ProgressEvent{Stage: ProgressStageAppStageCompleted, Total: appsCount, Duration: time.Since(appStageStarted)})
 		}
 
@@ -782,7 +785,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.Module, cb Callb
 				return err
 			}
 			emitProgress(ProgressEvent{Stage: ProgressStageBundlesBuildCompleted, Duration: time.Since(bundlesBuildStarted)})
-			logStep(slog.LevelInfo, "pipeline bundles built", "duration", time.Since(bundlesBuildStarted))
+			logStep(detailLevel, "pipeline bundles built", "duration", time.Since(bundlesBuildStarted))
 
 			bundlesCommitStarted := time.Now()
 			if err := bundlesStage.CommitKeepBackup(); err != nil {
@@ -893,7 +896,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.Module, cb Callb
 			}
 			webDigest = dig
 			if skip {
-				logStep(slog.LevelInfo, "pipeline web build skipped", "step", "web_build_skipped", "digest", dig)
+				logStep(detailLevel, "pipeline web build skipped", "step", "web_build_skipped", "digest", dig)
 				if err := commitManifest(); err != nil {
 					rollbackCommitted()
 					return err
@@ -921,7 +924,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.Module, cb Callb
 			return err
 		}
 		emitProgress(ProgressEvent{Stage: ProgressStageWebBuildCompleted, Duration: time.Since(webBuildStarted)})
-		logStep(slog.LevelInfo, "pipeline web built", "step", "web_build", "duration_ms", time.Since(webBuildStarted).Milliseconds())
+		logStep(detailLevel, "pipeline web built", "step", "web_build", "duration_ms", time.Since(webBuildStarted).Milliseconds())
 
 		webCommitStarted := time.Now()
 		if err := webStage.CommitKeepBackup(); err != nil {
@@ -1007,7 +1010,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.Module, cb Callb
 				return err
 			}
 			installDuration := time.Since(installStarted)
-			logStep(slog.LevelInfo, "module installed",
+			logStep(detailLevel, "module installed",
 				"installed_module", mod.Name,
 				"duration_ms", installDuration.Milliseconds(),
 			)
@@ -1125,12 +1128,12 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.Module, cb Callb
 					return err
 				}
 				emitProgress(ProgressEvent{Stage: ProgressStageModuleInstallCompleted, Current: index + 1, Total: len(plan.EnsureOrder), Module: moduleName, Duration: time.Since(installStarted)})
-				logStep(slog.LevelInfo, "ensure module installed",
+				logStep(detailLevel, "ensure module installed",
 					"installed_module", mod.Name,
 					"duration_ms", time.Since(installStarted).Milliseconds(),
 				)
 			}
-			logStep(slog.LevelInfo, "upgrade ensure order completed", "duration_ms", time.Since(ensureStarted).Milliseconds(), "count", len(plan.EnsureOrder))
+			logStep(detailLevel, "upgrade ensure order completed", "duration_ms", time.Since(ensureStarted).Milliseconds(), "count", len(plan.EnsureOrder))
 		}
 		moduleStageStarted := logModuleStageStarted()
 		totalModules := len(plan.ModuleOrder)
@@ -1162,7 +1165,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.Module, cb Callb
 				return err
 			}
 			emitProgress(ProgressEvent{Stage: ProgressStageModuleUpgradeCompleted, Current: index + 1, Total: totalModules, Module: moduleName, Duration: time.Since(upgradeStarted)})
-			logStep(slog.LevelInfo, "module upgraded",
+			logStep(detailLevel, "module upgraded",
 				"module", mod.Name,
 				"duration_ms", time.Since(upgradeStarted).Milliseconds(),
 			)

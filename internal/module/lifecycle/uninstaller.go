@@ -390,6 +390,9 @@ func (m *moduleUninstaller) uninstall() error {
 		return xfmt.Errorf("error preparing hooks for module %s: %w", m.module.Name, err)
 	} else if hookRunner != nil {
 		m.hookRunner = hookRunner
+		if m.ctx != nil {
+			m.ctx.reportStepStart(m.module.Name, moduleStepHook(hooks.PhasePreUninstall))
+		}
 		if err := m.runUninstallHookPhase(hookRunner, hooks.PhasePreUninstall, "pre_uninstall"); err != nil {
 			return err
 		}
@@ -420,6 +423,9 @@ func (m *moduleUninstaller) uninstall() error {
 
 func (m *moduleUninstaller) commitUninstall() error {
 	cleanupStarted := time.Now()
+	if m.ctx != nil {
+		m.ctx.reportStepStart(m.module.Name, moduleStepCleanup)
+	}
 	if err := m.cleanModels(); err != nil {
 		return xfmt.Errorf("error cleaning models: %w", err)
 	}
@@ -435,6 +441,9 @@ func (m *moduleUninstaller) finalizeUninstall() error {
 	hookRunner, err := m.resolveUninstallHookRunner()
 	if err != nil {
 		return err
+	}
+	if m.ctx != nil {
+		m.ctx.reportStepStart(nameOrEmpty(m.module), moduleStepHook(hooks.PhasePostUninstall))
 	}
 	if err := m.runUninstallHookPhase(hookRunner, hooks.PhasePostUninstall, "post_uninstall"); err != nil {
 		return err

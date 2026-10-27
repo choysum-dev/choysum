@@ -6,18 +6,52 @@ package lifecycle
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"path/filepath"
+	"sync"
 	"testing"
 
+	logutil "github.com/choysum-dev/choysum/internal/logger"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	statepkg "github.com/choysum-dev/choysum/pkg/state"
 )
 
+type prefetchLogCapture struct {
+	mu      sync.Mutex
+	records []slog.Record
+}
+
+func (h *prefetchLogCapture) Enabled(context.Context, slog.Level) bool { return true }
+
+func (h *prefetchLogCapture) Handle(_ context.Context, r slog.Record) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.records = append(h.records, r.Clone())
+	return nil
+}
+
+func (h *prefetchLogCapture) WithAttrs([]slog.Attr) slog.Handler { return h }
+func (h *prefetchLogCapture) WithGroup(string) slog.Handler      { return h }
+
+func (h *prefetchLogCapture) levelsFor(msg string) []slog.Level {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	var levels []slog.Level
+	for _, r := range h.records {
+		if r.Message == msg {
+			levels = append(levels, r.Level)
+		}
+	}
+	return levels
+}
+
 type countingPrefetchOriginCoordinator struct {
 	modules map[string]*meta.Module
 	fetches []string
+	// onFetch is invoked before each ResolveInstallModule lookup (tests may capture spinner state).
+	onFetch func(input string)
 }
 
 func (c *countingPrefetchOriginCoordinator) Peek(_ context.Context, input string) (*meta.Module, error) {
@@ -26,6 +60,9 @@ func (c *countingPrefetchOriginCoordinator) Peek(_ context.Context, input string
 
 func (c *countingPrefetchOriginCoordinator) ResolveInstallModule(_ context.Context, input string) (*meta.Module, error) {
 	c.fetches = append(c.fetches, input)
+	if c.onFetch != nil {
+		c.onFetch(input)
+	}
 	return c.lookup(input), nil
 }
 
@@ -122,6 +159,73 @@ func TestPrefetchInstallModulesThenResolveUsesCache(t *testing.T) {
 	if _, err := manager.resolveInstallModuleFromOrigin(ctx, "missing"); err == nil {
 		t.Fatal("expected error for module missing from prefetch cache")
 	}
+}
+
+func TestPrefetchInstallModulesLogLevelUsesProgressDetailChannel(t *testing.T) {
+	t.Parallel()
+	modulesPath := t.TempDir()
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
+		t.Fatalf("auto migrate: %v", err)
+	}
+
+	dependsRaw, err := json.Marshal([]string{})
+	if err != nil {
+		t.Fatalf("marshal depends: %v", err)
+	}
+	mod := &meta.Module{
+		Name:       "solo",
+		Version:    "1.0.0",
+		Path:       filepath.Join(modulesPath, "solo"),
+		DependsStr: dependsRaw,
+	}
+	origin := &countingPrefetchOriginCoordinator{
+		modules: map[string]*meta.Module{"solo": mod},
+	}
+	locker := &moduleIndexSyncTestLocker{}
+
+	t.Run("default context stays Info", func(t *testing.T) {
+		capture := &prefetchLogCapture{}
+		runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+		runtimeScope.logger = slog.New(capture)
+		manager := NewModuleManager(
+			runtimeScope,
+			&moduleManagerNoopScriptExecutor{},
+			WithLockerFactory(func(scope.Scope) statepkg.Locker { return locker }),
+			WithOriginCoordinatorFactory(func(scope.Scope) OriginCoordinator { return origin }),
+		)
+		manager.bootstrapOnce.Do(func() {})
+
+		if _, err := manager.PrefetchInstallModules(context.Background(), "solo"); err != nil {
+			t.Fatalf("PrefetchInstallModules() error = %v", err)
+		}
+		levels := capture.levelsFor("install modules prefetched")
+		if len(levels) != 1 || levels[0] != slog.LevelInfo {
+			t.Fatalf("levels=%v, want [Info]", levels)
+		}
+	})
+
+	t.Run("quiet progress demotes to Debug", func(t *testing.T) {
+		capture := &prefetchLogCapture{}
+		runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+		runtimeScope.logger = slog.New(capture)
+		manager := NewModuleManager(
+			runtimeScope,
+			&moduleManagerNoopScriptExecutor{},
+			WithLockerFactory(func(scope.Scope) statepkg.Locker { return locker }),
+			WithOriginCoordinatorFactory(func(scope.Scope) OriginCoordinator { return origin }),
+		)
+		manager.bootstrapOnce.Do(func() {})
+
+		ctx := logutil.WithQuietProgress(context.Background())
+		if _, err := manager.PrefetchInstallModules(ctx, "solo"); err != nil {
+			t.Fatalf("PrefetchInstallModules() error = %v", err)
+		}
+		levels := capture.levelsFor("install modules prefetched")
+		if len(levels) != 1 || levels[0] != slog.LevelDebug {
+			t.Fatalf("levels=%v, want [Debug]", levels)
+		}
+	})
 }
 
 func TestPrefetchInstallContextHelpers(t *testing.T) {

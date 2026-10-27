@@ -6,6 +6,7 @@ package lifecycle
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"strings"
 	"testing"
@@ -15,65 +16,46 @@ import (
 func TestLogModuleCommitTxHoldEmitsDuration(t *testing.T) {
 	t.Parallel()
 	var logBuf bytes.Buffer
-	logger := slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	logger := slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
 	logModuleCommitTxHold(logger, "upgrade", "module_commit", 150*time.Millisecond, nil)
 
 	logs := logBuf.String()
 	for _, want := range []string{
 		`"msg":"upgrade commit transaction hold completed"`,
-		`"op":"upgrade"`,
 		`"caller":"module_commit"`,
+		`"op":"upgrade"`,
 	} {
 		if !strings.Contains(logs, want) {
 			t.Fatalf("expected %s in logs, got %q", want, logs)
 		}
 	}
-	ms := mustParseLogDurationMs(t, logs)
-	if ms != 150 {
+	if !strings.Contains(logs, `"level":"DEBUG"`) {
+		t.Fatalf("successful hold must be Debug, got %q", logs)
+	}
+	if ms := mustParseLogDurationMs(t, logs); ms != 150 {
 		t.Fatalf("duration_ms=%d, want 150", ms)
 	}
 }
 
-func TestLogModuleCommitTxHoldAtInfoThreshold(t *testing.T) {
+func TestLogModuleCommitTxHoldSuccessIsDebug(t *testing.T) {
 	t.Parallel()
-	var buf bytes.Buffer
-	logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo}))
-
-	logModuleCommitTxHold(logger, "upgrade", "module_commit", moduleCommitTxHoldInfoMinDuration, nil)
-
-	logs := buf.String()
-	if !strings.Contains(logs, `"level":"INFO"`) {
-		t.Fatalf("threshold hold must log at Info, got %q", logs)
-	}
-	if ms := mustParseLogDurationMs(t, logs); ms != moduleCommitTxHoldInfoMinDuration.Milliseconds() {
-		t.Fatalf("duration_ms=%d, want %d", ms, moduleCommitTxHoldInfoMinDuration.Milliseconds())
-	}
-}
-
-func TestLogModuleCommitTxHoldShortHoldIsDebug(t *testing.T) {
-	t.Parallel()
-	short := moduleCommitTxHoldInfoMinDuration / 2
-
 	var infoBuf bytes.Buffer
 	infoLogger := slog.New(slog.NewJSONHandler(&infoBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
-	logModuleCommitTxHold(infoLogger, "upgrade", "module_commit", short, nil)
-	if infoBuf.Len() != 0 {
-		t.Fatalf("short hold must stay Debug at Info level, got %q", infoBuf.String())
+	logModuleCommitTxHold(infoLogger, "upgrade", "module_commit", 500*time.Millisecond, nil)
+	if logs := infoBuf.String(); logs != "" {
+		t.Fatalf("successful hold must not emit at Info, got %q", logs)
 	}
 
 	var debugBuf bytes.Buffer
 	debugLogger := slog.New(slog.NewJSONHandler(&debugBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	logModuleCommitTxHold(debugLogger, "upgrade", "module_commit", short, nil)
+	logModuleCommitTxHold(debugLogger, "upgrade", "module_commit", 500*time.Millisecond, nil)
 	logs := debugBuf.String()
 	if !strings.Contains(logs, `"level":"DEBUG"`) {
-		t.Fatalf("expected DEBUG short hold, got %q", logs)
+		t.Fatalf("expected DEBUG hold log, got %q", logs)
 	}
-	if !strings.Contains(logs, `"msg":"upgrade commit transaction hold completed"`) {
-		t.Fatalf("expected hold message, got %q", logs)
-	}
-	if ms := mustParseLogDurationMs(t, logs); ms != short.Milliseconds() {
-		t.Fatalf("duration_ms=%d, want %d", ms, short.Milliseconds())
+	if ms := mustParseLogDurationMs(t, logs); ms != 500 {
+		t.Fatalf("duration_ms=%d, want 500", ms)
 	}
 }
 
@@ -81,25 +63,26 @@ func TestLogModuleCommitTxHoldIncludesError(t *testing.T) {
 	t.Parallel()
 	var logBuf bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	errSample := errors.New("commit failed")
 
 	logModuleCommitTxHold(logger, "uninstall", "module_commit", 10*time.Millisecond, errSample)
 
 	logs := logBuf.String()
-	if !strings.Contains(logs, `"op":"uninstall"`) {
-		t.Fatalf("expected uninstall op, got %q", logs)
-	}
-	if !strings.Contains(logs, `"error":"boom"`) {
-		t.Fatalf("expected error attr, got %q", logs)
-	}
-	if !strings.Contains(logs, `"level":"INFO"`) {
-		t.Fatalf("error hold must stay Info, got %q", logs)
+	for _, want := range []string{
+		`"level":"INFO"`,
+		`"msg":"uninstall commit transaction hold completed"`,
+		`"error":"commit failed"`,
+	} {
+		if !strings.Contains(logs, want) {
+			t.Fatalf("expected %s in logs, got %q", want, logs)
+		}
 	}
 }
 
 func TestLogInstallOuterTxHoldEmitsDuration(t *testing.T) {
 	t.Parallel()
 	var logBuf bytes.Buffer
-	logger := slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	logger := slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
 	// Deterministic duration path (same helper LogInstallOuterTxHold wraps).
 	logModuleCommitTxHold(logger, "install", "bootstrap", 150*time.Millisecond, nil)
@@ -122,18 +105,16 @@ func TestLogInstallOuterTxHoldEmitsDuration(t *testing.T) {
 func TestLogInstallOuterTxHoldDelegatesToModuleHold(t *testing.T) {
 	t.Parallel()
 	var logBuf bytes.Buffer
-	// Debug so the public wrapper smoke check is not coupled to the Info duration floor.
 	logger := slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
 	LogInstallOuterTxHold(logger, "cli-wrap", time.Now(), nil)
+
 	logs := logBuf.String()
 	if !strings.Contains(logs, `"msg":"install commit transaction hold completed"`) {
 		t.Fatalf("expected install hold message, got %q", logs)
 	}
 	if !strings.Contains(logs, `"caller":"cli-wrap"`) {
-		t.Fatalf("expected caller, got %q", logs)
-	}
-	if !strings.Contains(logs, `"op":"install"`) {
-		t.Fatalf("expected install op, got %q", logs)
+		t.Fatalf("expected caller=cli-wrap, got %q", logs)
 	}
 }
 
@@ -141,25 +122,23 @@ func TestLogInstallOuterTxHoldIncludesError(t *testing.T) {
 	t.Parallel()
 	var logBuf bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	errSample := errors.New("outer failed")
 
 	LogInstallOuterTxHold(logger, "cli", time.Now().Add(-10*time.Millisecond), errSample)
 
 	logs := logBuf.String()
-	if !strings.Contains(logs, `"caller":"cli"`) {
-		t.Fatalf("expected cli caller, got %q", logs)
-	}
-	if !strings.Contains(logs, `"error":"boom"`) {
+	if !strings.Contains(logs, `"error":"outer failed"`) {
 		t.Fatalf("expected error attr, got %q", logs)
 	}
 }
 
 func TestLogModuleCommitTxHoldZeroStartedNoOp(t *testing.T) {
 	t.Parallel()
-	var buf bytes.Buffer
-	logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	var logBuf bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	LogModuleCommitTxHold(logger, "upgrade", "module_commit", time.Time{}, nil)
-	if buf.Len() != 0 {
-		t.Fatalf("zero started must no-op, got %q", buf.String())
+	if logs := logBuf.String(); logs != "" {
+		t.Fatalf("zero started must no-op, got %q", logs)
 	}
 }
 
@@ -175,31 +154,28 @@ func TestLogModuleCommitTxHoldDefaultOpAndCaller(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	logModuleCommitTxHold(logger, "  ", " \t ", 10*time.Millisecond, nil)
 	logs := buf.String()
-	if !strings.Contains(logs, `"op":"module"`) {
-		t.Fatalf("expected default op=module, got %q", logs)
-	}
-	if !strings.Contains(logs, `"caller":"unknown"`) {
-		t.Fatalf("expected default caller=unknown, got %q", logs)
+	if !strings.Contains(logs, `"op":"module"`) || !strings.Contains(logs, `"caller":"unknown"`) {
+		t.Fatalf("expected default op/caller, got %q", logs)
 	}
 }
 
 func mustParseLogDurationMs(t *testing.T, logs string) int64 {
 	t.Helper()
-	var rec struct {
-		DurationMs int64 `json:"duration_ms"`
+	for _, line := range strings.Split(logs, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		var payload struct {
+			DurationMs int64 `json:"duration_ms"`
+		}
+		if err := json.Unmarshal([]byte(line), &payload); err != nil {
+			t.Fatalf("unmarshal log line %q: %v", line, err)
+		}
+		if payload.DurationMs > 0 || strings.Contains(line, `"duration_ms"`) {
+			return payload.DurationMs
+		}
 	}
-	line := strings.TrimSpace(logs)
-	if i := strings.IndexByte(line, '\n'); i >= 0 {
-		line = line[:i]
-	}
-	if err := json.Unmarshal([]byte(line), &rec); err != nil {
-		t.Fatalf("parse log JSON: %v from %q", err, logs)
-	}
-	return rec.DurationMs
+	t.Fatalf("duration_ms missing in %q", logs)
+	return 0
 }
-
-var errSample = errString("boom")
-
-type errString string
-
-func (e errString) Error() string { return string(e) }

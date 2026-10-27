@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	logutil "github.com/choysum-dev/choysum/internal/logger"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
 	"github.com/choysum-dev/choysum/internal/module/evolution/hooks"
@@ -73,9 +74,14 @@ func moduleOperationStepMessage(op plan.OpType) string {
 }
 
 // Soft steps (hooks/scripts/origin_resolve) only surface at Info when they
-// took meaningful wall time and were not skipped. Applies to install, upgrade,
-// and uninstall via the shared step logger. Only build/schema/web_build are
-// always Info; other steps (including base_entity_migrate) stay Debug.
+// took meaningful wall time and were not skipped (non-TTY / no QuietProgress).
+// Hard steps (build/schema/web_build) default to Info. applyProgressChannelStepLevel
+// then demotes any Info step to Debug when a TTY ProgressLine or QuietProgress
+// owns the timeline. Other steps (including base_entity_migrate) stay Debug.
+//
+// Dual-channel UX: ProgressLine/spinner is the user-visible timeline; Info is
+// for operation boundaries, schema DDL, and failures (plus slow steps when
+// there is no interactive progress channel).
 const moduleOperationStepInfoMinDuration = 100 * time.Millisecond
 
 func extrasIndicateSkipped(extra []any) bool {
@@ -114,6 +120,20 @@ func moduleOperationStepLogLevel(step string, duration time.Duration, extra ...a
 	return slog.LevelDebug
 }
 
+// applyProgressChannelStepLevel demotes Info step rows when progress UX owns
+// the timeline (QuietProgress or interactive TTY ProgressLine), including soft
+// slow steps and hard steps. Non-TTY keeps the base Info decision.
+func applyProgressChannelStepLevel(ctx context.Context, step string, level slog.Level) slog.Level {
+	if level < slog.LevelInfo {
+		return level
+	}
+	_ = step
+	if logutil.QuietProgressFromContext(ctx) {
+		return slog.LevelDebug
+	}
+	return logutil.ProgressDetailLogLevel(ctx)
+}
+
 func moduleStepHook(phase hooks.Phase) string {
 	return "hook." + string(phase)
 }
@@ -144,7 +164,8 @@ func logModuleOperationStep(runtimeScope scope.Scope, opCtx *opContext, op plan.
 	}
 	logger := moduleOpLogger(runtimeScope.Logger(), opid, op, strings.TrimSpace(moduleName))
 	duration := time.Since(started)
-	logger.Log(ctx, moduleOperationStepLogLevel(step, duration, extra...), moduleOperationStepMessage(op), moduleOperationStepInfoAttrs(step, duration, extra...)...)
+	level := applyProgressChannelStepLevel(ctx, step, moduleOperationStepLogLevel(step, duration, extra...))
+	logger.Log(ctx, level, moduleOperationStepMessage(op), moduleOperationStepInfoAttrs(step, duration, extra...)...)
 }
 
 func (m *moduleUpgrader) logUpgradeStep(moduleName string, step string, started time.Time, extra ...any) {
@@ -168,12 +189,18 @@ func (m *moduleUpgrader) upgrade() error {
 	}
 	prepareStarted := time.Now()
 	reuseExec := reuseExecutorScriptsEnabled(m.moduleManager)
+	if m.ctx != nil {
+		m.ctx.reportStepStart(m.module.Name, moduleStepHook(hooks.PhasePreUpgrade))
+	}
 	if err := m.runUpgradeHookPhase(hooks.PhasePreUpgrade, m.module, fromVersion, nil, reuseExec, "pre_upgrade"); err != nil {
 		return err
 	}
 
 	// Resolve target module version from origin without mutating origin binding during upgrade.
 	resolveStarted := time.Now()
+	if m.ctx != nil {
+		m.ctx.reportStepStart(m.module.Name, moduleStepOriginResolve)
+	}
 	target, err := resolveUpgradeModuleFromOriginFn(m.moduleManager, m.runtimeScope.Context(), m.module.Name)
 	if err != nil {
 		return xfmt.Errorf("error resolving module %s from origin: %w", m.module.Name, err)
@@ -198,6 +225,9 @@ func (m *moduleUpgrader) upgrade() error {
 	if installer.builder != nil {
 		if split, ok := installer.builder.(module.SplitBuilder); ok {
 			buildStarted := time.Now()
+			if m.ctx != nil {
+				m.ctx.reportStepStart(target.Name, moduleStepBuild)
+			}
 			result, err := split.BuildWithoutPersist()
 			if err != nil {
 				return xfmt.Errorf("error building module %s: %w", target.Name, err)
@@ -328,6 +358,9 @@ func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion s
 		return nil, xfmt.Errorf("error preparing schema migrator for module %s: %w", target.Name, err)
 	}
 	schemaMigrationStarted := time.Now()
+	if m.ctx != nil {
+		m.ctx.reportStepStart(target.Name, moduleStepSchema)
+	}
 	if err := migrator.Migrate(); err != nil {
 		return nil, xfmt.Errorf("error migrating module %s: %w", target.Name, err)
 	}
@@ -338,6 +371,9 @@ func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion s
 		applyCtx = context.Background()
 	}
 	dataApplyStarted := time.Now()
+	if m.ctx != nil {
+		m.ctx.reportStepStart(target.Name, moduleStepData)
+	}
 	if err := applyInitdata(applyCtx, m.runtimeScope, target, importpkg.CallerLifecycle, m.ctx != nil && m.ctx.withDemo); err != nil {
 		return nil, xfmt.Errorf("error applying data for module %s: %w", target.Name, err)
 	}
@@ -377,6 +413,9 @@ func (m *moduleUpgrader) finalizeUpgrade(target *meta.Module, fromVersion string
 		return err
 	}
 
+	if m.ctx != nil {
+		m.ctx.reportStepStart(target.Name, moduleStepHook(hooks.PhasePostUpgrade))
+	}
 	if err := m.runUpgradeHookPhase(hooks.PhasePostUpgrade, target, fromVersion, buildResult, reuseExec, "post_upgrade"); err != nil {
 		return err
 	}
