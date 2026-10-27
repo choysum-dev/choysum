@@ -37,6 +37,9 @@ func ObserveIdentity(ctx context.Context, identity auth.Identity) {
 		return
 	}
 	userID := strings.TrimSpace(identity.GetUserID())
+	if userID == "" {
+		return
+	}
 	cap.mu.Lock()
 	cap.userID = userID
 	cap.mu.Unlock()

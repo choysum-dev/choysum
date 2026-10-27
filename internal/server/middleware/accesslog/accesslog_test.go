@@ -242,6 +242,9 @@ func TestStreamAccessStartEnd(t *testing.T) {
 	if !strings.Contains(out, `"user":"s1"`) {
 		t.Fatalf("expected end user: %s", out)
 	}
+	if strings.Count(out, `"level":"INFO"`) < 2 {
+		t.Fatalf("start/end should both be INFO when Access is on: %s", out)
+	}
 }
 
 func TestStreamCanceledLogsEnd(t *testing.T) {
@@ -262,6 +265,9 @@ func TestStreamCanceledLogsEnd(t *testing.T) {
 	}
 	if !strings.Contains(out, `"code":"Canceled"`) {
 		t.Fatalf("expected Canceled code: %s", out)
+	}
+	if strings.Count(out, `"level":"INFO"`) < 2 {
+		t.Fatalf("canceled start/end should both be INFO when Access is on: %s", out)
 	}
 }
 
@@ -327,6 +333,10 @@ func TestIdentityCaptureHelpers(t *testing.T) {
 	ObserveIdentity(ctx, testIdentity{userID: "skip", valid: false})
 	if got := observedUserID(ctx); got != "bob" {
 		t.Fatalf("invalid identity must not overwrite: %q", got)
+	}
+	ObserveIdentity(ctx, testIdentity{userID: "   ", valid: true})
+	if got := observedUserID(ctx); got != "bob" {
+		t.Fatalf("empty user id must not overwrite: %q", got)
 	}
 }
 
