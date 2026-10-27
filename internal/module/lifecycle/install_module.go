@@ -5,8 +5,11 @@ package lifecycle
 
 import (
 	"context"
+	"fmt"
 	"strings"
+	"time"
 
+	logutil "github.com/choysum-dev/choysum/internal/logger"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -25,6 +28,36 @@ func PrepareInstall(ctx context.Context, runtimeScope scope.Scope, input string,
 	return PrefetchInstallModules(ctx, runtimeScope, input, opts...)
 }
 
+// ensureInstallPrepareProgressTicker reuses or creates a ProgressTicker when a
+// ProgressLine is already on ctx so PrepareInstall can show resolve progress
+// before ModuleManager.Install owns the spinner.
+func ensureInstallPrepareProgressTicker(ctx context.Context) (context.Context, *logutil.ProgressTicker, bool) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ticker := logutil.ProgressTickerFromContext(ctx)
+	if ticker != nil {
+		return ctx, ticker, false
+	}
+	line := logutil.ProgressLineFromContext(ctx)
+	if line == nil {
+		return ctx, nil, false
+	}
+	ticker = logutil.NewProgressTicker(line, logutil.ProgressTickerOptions{Interval: 120 * time.Millisecond})
+	return logutil.WithProgressTicker(ctx, ticker), ticker, true
+}
+
+func setInstallResolvingModulesSpinner(ticker *logutil.ProgressTicker, input string) {
+	if ticker == nil {
+		return
+	}
+	input = strings.TrimSpace(input)
+	if input == "" {
+		input = "unknown"
+	}
+	ticker.SetMessage(fmt.Sprintf("%s: resolving modules", input))
+}
+
 // InstallModule is the shared production entry for bootstrap and CLI install:
 // Prepare (prefetch) then Install (per-module short commit TX + pipeline finalize).
 func InstallModule(ctx context.Context, runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, req InstallModuleRequest, opts ...Option) error {
@@ -40,6 +73,12 @@ func InstallModule(ctx context.Context, runtimeScope scope.Scope, jsExecutor jse
 	}
 
 	opCtx := WithOperationOptions(ctx, OperationOptions{WithDemo: req.WithDemo, SkipWebShell: req.SkipWebShell})
+	opCtx, prepareTicker, ownsPrepareTicker := ensureInstallPrepareProgressTicker(opCtx)
+	if ownsPrepareTicker {
+		defer prepareTicker.Stop()
+	}
+	setInstallResolvingModulesSpinner(prepareTicker, input)
+
 	prepared, err := PrepareInstall(opCtx, runtimeScope, input, opts...)
 	if err != nil {
 		return err

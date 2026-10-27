@@ -215,6 +215,16 @@ func (p *ProgressTicker) SetMessage(message string) {
 	}
 }
 
+// Message returns the current spinner message (empty after Clear).
+func (p *ProgressTicker) Message() string {
+	if p == nil {
+		return ""
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.message
+}
+
 // Clear removes the current message so the background ticker no longer redraws.
 func (p *ProgressTicker) Clear() {
 	if p == nil {

@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	logutil "github.com/choysum-dev/choysum/internal/logger"
 	"github.com/choysum-dev/choysum/internal/module/artifact/pipeline"
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
 	"github.com/choysum-dev/choysum/internal/module/evolution/hooks"
@@ -74,55 +75,48 @@ func attrsToMap(t *testing.T, attrs []any) map[string]any {
 	return result
 }
 
-func TestModuleOperationPlanInfoAttrsIncludesSmallNameLists(t *testing.T) {
+func TestModuleOperationPlanInfoAttrsAreEmpty(t *testing.T) {
 	t.Parallel()
-	attrs := attrsToMap(t, moduleOperationPlanInfoAttrs(moduleplan.Plan{
+	attrs := moduleOperationPlanInfoAttrs(moduleplan.Plan{
 		ModuleOrder:         []string{"core"},
 		AffectedApps:        []string{"auth", "base", "task"},
 		NeedsGlobalWebBuild: true,
-	}))
-
-	if got := attrs["modules_count"]; got != 1 {
-		t.Fatalf("modules_count = %#v, want 1", got)
+	})
+	if len(attrs) != 0 {
+		t.Fatalf("plan Info attrs must be empty (module comes from user logger), got %#v", attrs)
 	}
-	if got := attrs["apps_count"]; got != 3 {
-		t.Fatalf("apps_count = %#v, want 3", got)
+}
+
+func TestModuleOperationPlanDebugAttrsIncludesOpsDetails(t *testing.T) {
+	t.Parallel()
+	attrs := attrsToMap(t, moduleOperationPlanDebugAttrs(moduleplan.Plan{
+		ModuleOrder:         []string{"partner"},
+		EnsureOrder:         []string{"auth", "web"},
+		AffectedApps:        []string{"partner"},
+		NeedsGlobalWebBuild: true,
+	}))
+	if got := attrs["ensure_count"]; got != 2 {
+		t.Fatalf("ensure_count=%#v, want 2", got)
 	}
 	if got := attrs["needs_global_web_build"]; got != true {
-		t.Fatalf("needs_global_web_build = %#v, want true", got)
-	}
-	modules, ok := attrs["modules"].([]string)
-	if !ok || len(modules) != 1 || modules[0] != "core" {
-		t.Fatalf("modules = %#v, want [core]", attrs["modules"])
-	}
-	apps, ok := attrs["apps"].([]string)
-	if !ok || len(apps) != 3 || apps[0] != "auth" || apps[1] != "base" || apps[2] != "task" {
-		t.Fatalf("apps = %#v, want [auth base task]", attrs["apps"])
+		t.Fatalf("needs_global_web_build=%#v, want true", got)
 	}
 }
 
-func TestModuleOperationPlanInfoAttrsOmitsLargeOrAmbiguousNameLists(t *testing.T) {
+func TestModuleOperationPlanAndCompletedMessages(t *testing.T) {
 	t.Parallel()
-	attrs := attrsToMap(t, moduleOperationPlanInfoAttrs(moduleplan.Plan{
-		ModuleOrder:  []string{"m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9"},
-		AffectedApps: []string{"auth", "", "auth"},
-	}))
-
-	if _, ok := attrs["modules"]; ok {
-		t.Fatalf("expected large module list to stay out of info attrs, got %#v", attrs["modules"])
+	if got := moduleOperationPlanMessage(moduleplan.OpInstall); got != "installing" {
+		t.Fatalf("install plan msg=%q", got)
 	}
-	if _, ok := attrs["apps"]; ok {
-		t.Fatalf("expected ambiguous app list to stay out of info attrs, got %#v", attrs["apps"])
+	if got := moduleOperationCompletedMessage(moduleplan.OpUpgrade); got != "upgraded" {
+		t.Fatalf("upgrade completed msg=%q", got)
 	}
-	if got := attrs["modules_count"]; got != 9 {
-		t.Fatalf("modules_count = %#v, want 9", got)
-	}
-	if got := attrs["apps_count"]; got != 3 {
-		t.Fatalf("apps_count = %#v, want 3", got)
+	if got := moduleOperationCompletedMessage(moduleplan.OpUninstall); got != "uninstalled" {
+		t.Fatalf("uninstall completed msg=%q", got)
 	}
 }
 
-func TestModuleOperationCompletedInfoAttrsIncludesSmallNameLists(t *testing.T) {
+func TestModuleOperationCompletedInfoAttrsOnlyDuration(t *testing.T) {
 	t.Parallel()
 	attrs := attrsToMap(t, moduleOperationCompletedInfoAttrs(moduleplan.Plan{
 		ModuleOrder:  []string{"core"},
@@ -132,43 +126,22 @@ func TestModuleOperationCompletedInfoAttrsIncludesSmallNameLists(t *testing.T) {
 	if got := attrs["duration_ms"]; got != int64(24591) {
 		t.Fatalf("duration_ms = %#v, want 24591", got)
 	}
-	if got := attrs["modules_count"]; got != 1 {
-		t.Fatalf("modules_count = %#v, want 1", got)
-	}
-	if got := attrs["apps_count"]; got != 3 {
-		t.Fatalf("apps_count = %#v, want 3", got)
-	}
-	modules, ok := attrs["modules"].([]string)
-	if !ok || len(modules) != 1 || modules[0] != "core" {
-		t.Fatalf("modules = %#v, want [core]", attrs["modules"])
-	}
-	apps, ok := attrs["apps"].([]string)
-	if !ok || len(apps) != 3 || apps[0] != "auth" || apps[1] != "base" || apps[2] != "task" {
-		t.Fatalf("apps = %#v, want [auth base task]", attrs["apps"])
+	if len(attrs) != 1 {
+		t.Fatalf("completed Info attrs must only include duration_ms, got %#v", attrs)
 	}
 }
 
-func TestModuleOperationCompletedInfoAttrsOmitsLargeOrAmbiguousNameLists(t *testing.T) {
+func TestModuleUserLoggerOmitsOpID(t *testing.T) {
 	t.Parallel()
-	attrs := attrsToMap(t, moduleOperationCompletedInfoAttrs(moduleplan.Plan{
-		ModuleOrder:  []string{"m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9"},
-		AffectedApps: []string{"auth", "", "auth"},
-	}, 2*time.Second))
-
-	if got := attrs["duration_ms"]; got != int64(2000) {
-		t.Fatalf("duration_ms = %#v, want 2000", got)
+	var buf bytes.Buffer
+	base := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	moduleUserLogger(base, "web").Info("upgrading")
+	logs := buf.String()
+	if !strings.Contains(logs, `"module":"web"`) {
+		t.Fatalf("expected module attr, got %q", logs)
 	}
-	if _, ok := attrs["modules"]; ok {
-		t.Fatalf("expected large module list to stay out of completed info attrs, got %#v", attrs["modules"])
-	}
-	if _, ok := attrs["apps"]; ok {
-		t.Fatalf("expected ambiguous app list to stay out of completed info attrs, got %#v", attrs["apps"])
-	}
-	if got := attrs["modules_count"]; got != 9 {
-		t.Fatalf("modules_count = %#v, want 9", got)
-	}
-	if got := attrs["apps_count"]; got != 3 {
-		t.Fatalf("apps_count = %#v, want 3", got)
+	if strings.Contains(logs, `"opid"`) || strings.Contains(logs, `"op"`) {
+		t.Fatalf("user logger must not carry opid/op, got %q", logs)
 	}
 }
 
@@ -365,6 +338,52 @@ func TestModuleOperationStepLogLevel(t *testing.T) {
 				t.Fatalf("level=%v want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestApplyProgressChannelStepLevel(t *testing.T) {
+	t.Parallel()
+	base := context.Background()
+	quiet := logutil.WithQuietProgress(base)
+
+	if got := applyProgressChannelStepLevel(base, moduleStepBuild, slog.LevelInfo); got != slog.LevelInfo {
+		t.Fatalf("CLI build Info = %v, want Info", got)
+	}
+	if got := applyProgressChannelStepLevel(quiet, moduleStepBuild, slog.LevelInfo); got != slog.LevelDebug {
+		t.Fatalf("quiet build = %v, want Debug", got)
+	}
+	if got := applyProgressChannelStepLevel(quiet, "hook.pre_init", slog.LevelInfo); got != slog.LevelDebug {
+		t.Fatalf("quiet soft Info = %v, want Debug", got)
+	}
+	if got := applyProgressChannelStepLevel(base, "hook.pre_init", slog.LevelInfo); got != slog.LevelInfo {
+		t.Fatalf("CLI soft Info = %v, want Info", got)
+	}
+	if got := applyProgressChannelStepLevel(quiet, moduleStepBuild, slog.LevelDebug); got != slog.LevelDebug {
+		t.Fatalf("already Debug must stay Debug, got %v", got)
+	}
+}
+
+func TestLogModuleOperationStepQuietDemotesHardStep(t *testing.T) {
+	t.Parallel()
+	var logBuf bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	quietCtx := logutil.WithQuietProgress(context.Background())
+	testScope := &testLogScope{ctx: quietCtx, logger: logger}
+
+	logModuleOperationStep(testScope, &opContext{opid: "op-quiet-1"}, moduleplan.OpUpgrade, "web", moduleStepBuild, time.Now())
+
+	if logs := logBuf.String(); logs != "" {
+		t.Fatalf("quiet hard step must not emit Info, got %q", logs)
+	}
+}
+
+func TestLogFinalizingPhaseEndQuietDemotes(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	logFinalizingPhaseEnd(logutil.WithQuietProgress(context.Background()), logger, time.Second)
+	if logs := buf.String(); logs != "" {
+		t.Fatalf("quiet phase_end must not emit Info, got %q", logs)
 	}
 }
 
@@ -840,6 +859,38 @@ func TestReleaseLeaseWithContextFallback_FallbackExpectedErrorsSkipWarn(t *testi
 	}
 }
 
+func TestModuleStepSpinnerMessage(t *testing.T) {
+	t.Parallel()
+	if got := moduleStepSpinnerMessage("auth", moduleStepSchema); got != "auth: updating database schema" {
+		t.Fatalf("schema=%q", got)
+	}
+	if got := moduleStepSpinnerMessage("auth", moduleStepHook(hooks.PhasePostUpgrade)); got != "auth: running post-upgrade hooks" {
+		t.Fatalf("post_upgrade=%q", got)
+	}
+	if got := moduleStepSpinnerMessage("partner", moduleStepHook(hooks.PhasePreUninstall)); got != "partner: running pre-uninstall hooks" {
+		t.Fatalf("pre_uninstall=%q", got)
+	}
+	if got := moduleStepSpinnerMessage("partner", moduleStepCleanup); got != "partner: cleaning module data" {
+		t.Fatalf("cleanup=%q", got)
+	}
+	if got := moduleStepSpinnerMessage("web", moduleStepPrepare); got != "" {
+		t.Fatalf("micro-step must be empty, got %q", got)
+	}
+}
+
+func TestBindOpStepSpinner(t *testing.T) {
+	t.Parallel()
+	var got string
+	opCtx := newOpContext()
+	bindOpStepSpinner(opCtx, func(stage, message string) {
+		got = message
+	})
+	opCtx.reportStepStart("sandbox", moduleStepSchema)
+	if got != "sandbox: updating database schema" {
+		t.Fatalf("got %q", got)
+	}
+}
+
 func TestHandleUpgradeEnsureProgress(t *testing.T) {
 	t.Parallel()
 	stages := make(map[string]string)
@@ -863,7 +914,7 @@ func TestHandleUpgradeEnsureProgress(t *testing.T) {
 		if !ok {
 			t.Fatal("expected handled")
 		}
-		if msg := stages["upgrading.ensure"]; msg != "web: ensuring modules (1/2)" {
+		if msg := stages["upgrading.ensure"]; msg != "web: installing required module (1/2)" {
 			t.Fatalf("message=%q", msg)
 		}
 	})
@@ -876,7 +927,7 @@ func TestHandleUpgradeEnsureProgress(t *testing.T) {
 		if !ok {
 			t.Fatal("expected handled")
 		}
-		if msg := stages["upgrading.ensure"]; msg != "unknown: ensuring module" {
+		if msg := stages["upgrading.ensure"]; msg != "unknown: installing required module" {
 			t.Fatalf("message=%q", msg)
 		}
 	})
@@ -889,7 +940,7 @@ func TestHandleUpgradeEnsureProgress(t *testing.T) {
 			Current: 2,
 			Total:   3,
 		}, setSpinnerStage)
-		if !ok || stages["upgrading.ensure"] != "auth: failed ensuring module (2/3)" {
+		if !ok || stages["upgrading.ensure"] != "auth: failed installing required module (2/3)" {
 			t.Fatalf("ok=%v msg=%q", ok, stages["upgrading.ensure"])
 		}
 		clearStages()
@@ -897,7 +948,7 @@ func TestHandleUpgradeEnsureProgress(t *testing.T) {
 			Stage:  pipeline.ProgressStageModuleInstallFailed,
 			Module: "auth",
 		}, setSpinnerStage)
-		if !ok || stages["upgrading.ensure"] != "auth: failed ensuring module" {
+		if !ok || stages["upgrading.ensure"] != "auth: failed installing required module" {
 			t.Fatalf("ok=%v msg=%q", ok, stages["upgrading.ensure"])
 		}
 	})
@@ -910,7 +961,7 @@ func TestHandleUpgradeEnsureProgress(t *testing.T) {
 			Current: 1,
 			Total:   1,
 		}, setSpinnerStage)
-		if stages["upgrading.modules"] != "partner: upgrading modules (1/1)" {
+		if stages["upgrading.modules"] != "partner: upgrading module (1/1)" {
 			t.Fatalf("message=%q", stages["upgrading.modules"])
 		}
 		clearStages()
@@ -928,7 +979,7 @@ func TestHandleUpgradeEnsureProgress(t *testing.T) {
 			Current: 1,
 			Total:   2,
 		}, setSpinnerStage)
-		if stages["upgrading.modules"] != "partner: failed upgrading module (1/2)" {
+		if stages["upgrading.modules"] != "partner: module upgrade failed (1/2)" {
 			t.Fatalf("message=%q", stages["upgrading.modules"])
 		}
 		clearStages()
@@ -936,7 +987,7 @@ func TestHandleUpgradeEnsureProgress(t *testing.T) {
 			Stage:  pipeline.ProgressStageModuleUpgradeFailed,
 			Module: "partner",
 		}, setSpinnerStage)
-		if stages["upgrading.modules"] != "partner: failed upgrading module" {
+		if stages["upgrading.modules"] != "partner: module upgrade failed" {
 			t.Fatalf("message=%q", stages["upgrading.modules"])
 		}
 	})
@@ -966,11 +1017,11 @@ func TestHandlePipelineSharedProgress(t *testing.T) {
 		ok := handlePipelineSharedProgress(pipeline.ProgressEvent{
 			Stage: pipeline.ProgressStageAppStageStarted,
 			Total: 3,
-		}, "base", 5, setSpinnerStage)
+		}, moduleplan.OpUpgrade, "base", 5, setSpinnerStage)
 		if !ok {
 			t.Fatal("expected handled")
 		}
-		if msg := stages["pipeline.app_stage"]; !strings.Contains(msg, "base: building application artifacts (3 apps)") {
+		if msg := stages["pipeline.app_stage"]; msg != "base: preparing 3 app build(s)" {
 			t.Fatalf("unexpected message: %q", msg)
 		}
 	})
@@ -982,11 +1033,11 @@ func TestHandlePipelineSharedProgress(t *testing.T) {
 		ok := handlePipelineSharedProgress(pipeline.ProgressEvent{
 			Stage: pipeline.ProgressStageAppStageStarted,
 			Total: 0,
-		}, "base", 4, setSpinnerStage)
+		}, moduleplan.OpInstall, "base", 4, setSpinnerStage)
 		if !ok {
 			t.Fatal("expected handled")
 		}
-		if msg := stages["pipeline.app_stage"]; !strings.Contains(msg, "4 apps") {
+		if msg := stages["pipeline.app_stage"]; msg != "base: preparing 4 app build(s)" {
 			t.Fatalf("unexpected message: %q", msg)
 		}
 	})
@@ -1000,11 +1051,11 @@ func TestHandlePipelineSharedProgress(t *testing.T) {
 			App:     "crm",
 			Current: 2,
 			Total:   5,
-		}, "base", 3, setSpinnerStage)
+		}, moduleplan.OpUpgrade, "base", 3, setSpinnerStage)
 		if !ok {
 			t.Fatal("expected handled")
 		}
-		if msg := stages["pipeline.app_build"]; !strings.Contains(msg, "crm: building backend app artifacts (2/5)") {
+		if msg := stages["pipeline.app_build"]; msg != "crm: building app backend (2/5)" {
 			t.Fatalf("unexpected message: %q", msg)
 		}
 	})
@@ -1016,11 +1067,11 @@ func TestHandlePipelineSharedProgress(t *testing.T) {
 		ok := handlePipelineSharedProgress(pipeline.ProgressEvent{
 			Stage: pipeline.ProgressStageAppBuildStarted,
 			App:   "crm",
-		}, "base", 3, setSpinnerStage)
+		}, moduleplan.OpUpgrade, "base", 3, setSpinnerStage)
 		if !ok {
 			t.Fatal("expected handled")
 		}
-		if msg := stages["pipeline.app_build"]; msg != "crm: building backend app artifacts" {
+		if msg := stages["pipeline.app_build"]; msg != "crm: building app backend" {
 			t.Fatalf("unexpected message: %q", msg)
 		}
 	})
@@ -1031,11 +1082,11 @@ func TestHandlePipelineSharedProgress(t *testing.T) {
 		}
 		ok := handlePipelineSharedProgress(pipeline.ProgressEvent{
 			Stage: pipeline.ProgressStageAppBuildStarted,
-		}, "base", 3, setSpinnerStage)
+		}, moduleplan.OpUpgrade, "base", 3, setSpinnerStage)
 		if !ok {
 			t.Fatal("expected handled")
 		}
-		if msg := stages["pipeline.app_build"]; !strings.Contains(msg, "unknown: building backend app artifacts") {
+		if msg := stages["pipeline.app_build"]; msg != "unknown: building app backend" {
 			t.Fatalf("unexpected message: %q", msg)
 		}
 	})
@@ -1049,11 +1100,11 @@ func TestHandlePipelineSharedProgress(t *testing.T) {
 			App:     "crm",
 			Current: 1,
 			Total:   3,
-		}, "base", 3, setSpinnerStage)
+		}, moduleplan.OpUpgrade, "base", 3, setSpinnerStage)
 		if !ok {
 			t.Fatal("expected handled")
 		}
-		if msg := stages["pipeline.app_generate"]; !strings.Contains(msg, "crm: generating app modules (1/3)") {
+		if msg := stages["pipeline.app_generate"]; msg != "crm: generating app APIs (1/3)" {
 			t.Fatalf("unexpected message: %q", msg)
 		}
 	})
@@ -1065,11 +1116,11 @@ func TestHandlePipelineSharedProgress(t *testing.T) {
 		ok := handlePipelineSharedProgress(pipeline.ProgressEvent{
 			Stage: pipeline.ProgressStageAppGenerateStarted,
 			App:   "crm",
-		}, "base", 3, setSpinnerStage)
+		}, moduleplan.OpUpgrade, "base", 3, setSpinnerStage)
 		if !ok {
 			t.Fatal("expected handled")
 		}
-		if msg := stages["pipeline.app_generate"]; msg != "crm: generating app modules" {
+		if msg := stages["pipeline.app_generate"]; msg != "crm: generating app APIs" {
 			t.Fatalf("unexpected message: %q", msg)
 		}
 	})
@@ -1080,11 +1131,11 @@ func TestHandlePipelineSharedProgress(t *testing.T) {
 		}
 		ok := handlePipelineSharedProgress(pipeline.ProgressEvent{
 			Stage: pipeline.ProgressStageBundlesBuildStarted,
-		}, "base", 7, setSpinnerStage)
+		}, moduleplan.OpUpgrade, "base", 7, setSpinnerStage)
 		if !ok {
 			t.Fatal("expected handled")
 		}
-		if msg := stages["pipeline.bundles_build"]; !strings.Contains(msg, "apps=7") {
+		if msg := stages["pipeline.bundles_build"]; msg != "base: building shared backend bundles" {
 			t.Fatalf("unexpected message: %q", msg)
 		}
 	})
@@ -1095,11 +1146,11 @@ func TestHandlePipelineSharedProgress(t *testing.T) {
 		}
 		ok := handlePipelineSharedProgress(pipeline.ProgressEvent{
 			Stage: pipeline.ProgressStageWebBuildStarted,
-		}, "base", 2, setSpinnerStage)
+		}, moduleplan.OpUpgrade, "base", 2, setSpinnerStage)
 		if !ok {
 			t.Fatal("expected handled")
 		}
-		if msg := stages["pipeline.web_build"]; !strings.Contains(msg, "apps=2") {
+		if msg := stages["pipeline.web_build"]; msg != "base: building shared web assets" {
 			t.Fatalf("unexpected message: %q", msg)
 		}
 	})
@@ -1110,12 +1161,104 @@ func TestHandlePipelineSharedProgress(t *testing.T) {
 		}
 		ok := handlePipelineSharedProgress(pipeline.ProgressEvent{
 			Stage: pipeline.ProgressStageAppStageCompleted,
-		}, "base", 3, setSpinnerStage)
+		}, moduleplan.OpUpgrade, "base", 3, setSpinnerStage)
 		if ok {
 			t.Fatal("expected unhandled for non-shared stage")
 		}
 		if len(stages) != 0 {
 			t.Fatalf("expected no stage updates, got %#v", stages)
+		}
+	})
+
+	t.Run("uninstall shared stages use rebuild lexicon", func(t *testing.T) {
+		cases := []struct {
+			name  string
+			event pipeline.ProgressEvent
+			root  string
+			apps  int
+			stage string
+			want  string
+		}{
+			{
+				name:  "app stage",
+				event: pipeline.ProgressEvent{Stage: pipeline.ProgressStageAppStageStarted, Total: 2},
+				root:  "partner",
+				apps:  2,
+				stage: "pipeline.app_stage",
+				want:  "partner: updating 2 app(s)",
+			},
+			{
+				name: "app build with progress",
+				event: pipeline.ProgressEvent{
+					Stage:   pipeline.ProgressStageAppBuildStarted,
+					App:     "crm",
+					Current: 1,
+					Total:   2,
+				},
+				root:  "partner",
+				apps:  2,
+				stage: "pipeline.app_build",
+				want:  "crm: rebuilding app backend (1/2)",
+			},
+			{
+				name:  "app build without progress",
+				event: pipeline.ProgressEvent{Stage: pipeline.ProgressStageAppBuildStarted, App: "crm"},
+				root:  "partner",
+				apps:  2,
+				stage: "pipeline.app_build",
+				want:  "crm: rebuilding app backend",
+			},
+			{
+				name: "app generate with progress",
+				event: pipeline.ProgressEvent{
+					Stage:   pipeline.ProgressStageAppGenerateStarted,
+					App:     "crm",
+					Current: 1,
+					Total:   2,
+				},
+				root:  "partner",
+				apps:  2,
+				stage: "pipeline.app_generate",
+				want:  "crm: regenerating app APIs (1/2)",
+			},
+			{
+				name:  "app generate without progress",
+				event: pipeline.ProgressEvent{Stage: pipeline.ProgressStageAppGenerateStarted, App: "crm"},
+				root:  "partner",
+				apps:  2,
+				stage: "pipeline.app_generate",
+				want:  "crm: regenerating app APIs",
+			},
+			{
+				name:  "bundles",
+				event: pipeline.ProgressEvent{Stage: pipeline.ProgressStageBundlesBuildStarted},
+				root:  "partner",
+				apps:  2,
+				stage: "pipeline.bundles_build",
+				want:  "partner: rebuilding shared backend bundles",
+			},
+			{
+				name:  "web",
+				event: pipeline.ProgressEvent{Stage: pipeline.ProgressStageWebBuildStarted},
+				root:  "partner",
+				apps:  2,
+				stage: "pipeline.web_build",
+				want:  "partner: rebuilding shared web assets",
+			},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				for k := range stages {
+					delete(stages, k)
+				}
+				ok := handlePipelineSharedProgress(tc.event, moduleplan.OpUninstall, tc.root, tc.apps, setSpinnerStage)
+				if !ok {
+					t.Fatal("expected handled")
+				}
+				if msg := stages[tc.stage]; msg != tc.want {
+					t.Fatalf("unexpected message: %q want %q", msg, tc.want)
+				}
+			})
 		}
 	})
 }

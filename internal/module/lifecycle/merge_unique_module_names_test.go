@@ -31,9 +31,9 @@ func TestMergeUniqueModuleNames(t *testing.T) {
 	}
 }
 
-func TestModuleOperationPlanInfoAttrsIncludesEnsure(t *testing.T) {
+func TestModuleOperationPlanDebugAttrsIncludesEnsure(t *testing.T) {
 	t.Parallel()
-	attrs := attrsToMap(t, moduleOperationPlanInfoAttrs(moduleplan.Plan{
+	attrs := attrsToMap(t, moduleOperationPlanDebugAttrs(moduleplan.Plan{
 		ModuleOrder:         []string{"partner"},
 		EnsureOrder:         []string{"auth", "web"},
 		AffectedApps:        []string{"partner"},

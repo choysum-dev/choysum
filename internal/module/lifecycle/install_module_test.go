@@ -4,16 +4,151 @@
 package lifecycle
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
+	"time"
 
+	logutil "github.com/choysum-dev/choysum/internal/logger"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	statepkg "github.com/choysum-dev/choysum/pkg/state"
 )
+
+func TestEnsureInstallPrepareProgressTicker(t *testing.T) {
+	t.Parallel()
+
+	t.Run("no progress line leaves ctx unchanged", func(t *testing.T) {
+		ctx := context.Background()
+		gotCtx, ticker, owns := ensureInstallPrepareProgressTicker(ctx)
+		if gotCtx != ctx || ticker != nil || owns {
+			t.Fatalf("ctx=%v ticker=%v owns=%v", gotCtx != ctx, ticker != nil, owns)
+		}
+	})
+
+	t.Run("creates ticker when ProgressLine present", func(t *testing.T) {
+		line := logutil.NewProgressLine(&bytes.Buffer{})
+		ctx := logutil.WithProgressLine(context.Background(), line)
+		gotCtx, ticker, owns := ensureInstallPrepareProgressTicker(ctx)
+		if ticker == nil || !owns {
+			t.Fatalf("ticker=%v owns=%v", ticker != nil, owns)
+		}
+		if logutil.ProgressTickerFromContext(gotCtx) != ticker {
+			t.Fatal("expected ticker stored on context")
+		}
+		ticker.Stop()
+	})
+
+	t.Run("reuses existing ticker", func(t *testing.T) {
+		existing := logutil.NewProgressTicker(nil, logutil.ProgressTickerOptions{})
+		ctx := logutil.WithProgressTicker(context.Background(), existing)
+		gotCtx, ticker, owns := ensureInstallPrepareProgressTicker(ctx)
+		if gotCtx != ctx || ticker != existing || owns {
+			t.Fatalf("reuse failed: sameCtx=%v tickerMatch=%v owns=%v", gotCtx == ctx, ticker == existing, owns)
+		}
+	})
+}
+
+func TestSetInstallResolvingModulesSpinner(t *testing.T) {
+	t.Parallel()
+	ticker := logutil.NewProgressTicker(nil, logutil.ProgressTickerOptions{})
+	setInstallResolvingModulesSpinner(ticker, "partner")
+	if got := ticker.Message(); got != "partner: resolving modules" {
+		t.Fatalf("message=%q", got)
+	}
+	setInstallResolvingModulesSpinner(ticker, "  ")
+	if got := ticker.Message(); got != "unknown: resolving modules" {
+		t.Fatalf("empty input message=%q", got)
+	}
+	setInstallResolvingModulesSpinner(nil, "partner") // no panic
+}
+
+func TestInstallModuleSetsResolvingModulesSpinnerBeforePrepare(t *testing.T) {
+	t.Parallel()
+	modulesPath := t.TempDir()
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
+		t.Fatalf("auto migrate: %v", err)
+	}
+
+	dependsRaw, err := json.Marshal([]string{})
+	if err != nil {
+		t.Fatalf("marshal depends: %v", err)
+	}
+	mod := &meta.Module{
+		Name:       "solo_spinner",
+		Version:    "1.0.0",
+		Path:       filepath.Join(modulesPath, "solo_spinner"),
+		DependsStr: dependsRaw,
+	}
+	origin := &countingPrefetchOriginCoordinator{
+		modules: map[string]*meta.Module{"solo_spinner": mod},
+	}
+	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	locker := &moduleIndexSyncTestLocker{}
+	opts := []Option{
+		WithLockerFactory(func(scope.Scope) statepkg.Locker { return locker }),
+		WithOriginCoordinatorFactory(func(scope.Scope) OriginCoordinator { return origin }),
+	}
+
+	line := logutil.NewProgressLine(&bytes.Buffer{})
+	var seenMu sync.Mutex
+	var seen []string
+	ticker := logutil.NewProgressTicker(line, logutil.ProgressTickerOptions{
+		Interval: time.Millisecond,
+		OnTick: func(_ time.Time, message string) {
+			message = strings.TrimSpace(message)
+			if message == "" {
+				return
+			}
+			seenMu.Lock()
+			seen = append(seen, message)
+			seenMu.Unlock()
+		},
+	})
+	defer ticker.Stop()
+	ctx := logutil.WithProgressLine(context.Background(), line)
+	ctx = logutil.WithProgressTicker(ctx, ticker)
+
+	err = InstallModule(ctx, runtimeScope, nil, InstallModuleRequest{
+		Input:        "solo_spinner",
+		SkipWebShell: true,
+	}, opts...)
+	if err == nil {
+		t.Fatal("expected InstallModule to fail without executor/full install")
+	}
+	if len(origin.fetches) == 0 || origin.fetches[0] != "solo_spinner" {
+		t.Fatalf("fetches=%v", origin.fetches)
+	}
+
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for {
+		seenMu.Lock()
+		found := false
+		for _, msg := range seen {
+			if msg == "solo_spinner: resolving modules" {
+				found = true
+				break
+			}
+		}
+		seenMu.Unlock()
+		if found {
+			break
+		}
+		if time.Now().After(deadline) {
+			seenMu.Lock()
+			got := append([]string(nil), seen...)
+			seenMu.Unlock()
+			t.Fatalf("expected resolving modules spinner, seen=%v", got)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
 
 func TestPrepareInstallAliasesPrefetchInstallModules(t *testing.T) {
 	t.Parallel()

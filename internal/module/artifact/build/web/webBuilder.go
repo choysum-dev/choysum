@@ -21,6 +21,7 @@ import (
 	internalwebplugin "github.com/choysum-dev/choysum/internal/esbplugins/webplugin"
 	"github.com/choysum-dev/choysum/internal/esbplugins/webprebuildplugin"
 	"github.com/choysum-dev/choysum/internal/esmresolver"
+	logutil "github.com/choysum-dev/choysum/internal/logger"
 	modulegenerator "github.com/choysum-dev/choysum/internal/module/artifact/generate"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
@@ -128,7 +129,10 @@ func (b *WebModuleBuilder) BuildCtx(ctx context.Context) (*module.BuildResult, e
 				"budget", ChoyTailwindBudget.String(),
 			)
 		}
-		b.runtimeScope.Logger().Info(
+		// TTY/QuietProgress: spinner owns progress; keep this as Debug there.
+		b.runtimeScope.Logger().Log(
+			ctx,
+			logutil.ProgressDetailLogLevel(ctx),
 			"Choy kit Tailwind generated",
 			"duration", res.Duration.String(),
 			"candidates", res.CandidateCount,

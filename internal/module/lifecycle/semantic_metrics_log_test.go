@@ -5,6 +5,7 @@ package lifecycle
 
 import (
 	"bytes"
+	"context"
 	"log/slog"
 	"strings"
 	"testing"
@@ -97,13 +98,13 @@ func TestLogSemanticMetricsSummary(t *testing.T) {
 func TestLogFinalizingPhaseEnd(t *testing.T) {
 	t.Parallel()
 	t.Run("nil logger", func(t *testing.T) {
-		logFinalizingPhaseEnd(nil, time.Second)
+		logFinalizingPhaseEnd(context.Background(), nil, time.Second)
 	})
 
 	t.Run("info when at least one second", func(t *testing.T) {
 		var buf bytes.Buffer
 		logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
-		logFinalizingPhaseEnd(logger, time.Second)
+		logFinalizingPhaseEnd(context.Background(), logger, time.Second)
 
 		logs := buf.String()
 		if !strings.Contains(logs, `"level":"INFO"`) {
@@ -123,7 +124,7 @@ func TestLogFinalizingPhaseEnd(t *testing.T) {
 	t.Run("debug when under one second", func(t *testing.T) {
 		var buf bytes.Buffer
 		logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
-		logFinalizingPhaseEnd(logger, 250*time.Millisecond)
+		logFinalizingPhaseEnd(context.Background(), logger, 250*time.Millisecond)
 
 		logs := buf.String()
 		if !strings.Contains(logs, `"level":"DEBUG"`) {
@@ -138,13 +139,13 @@ func TestLogFinalizingPhaseEnd(t *testing.T) {
 func TestLogFinalizingPhaseEndModule(t *testing.T) {
 	t.Parallel()
 	t.Run("nil logger", func(t *testing.T) {
-		logFinalizingPhaseEndModule(nil, "web", time.Second)
+		logFinalizingPhaseEndModule(context.Background(), nil, "web", time.Second)
 	})
 
 	t.Run("info when at least one second", func(t *testing.T) {
 		var buf bytes.Buffer
 		logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
-		logFinalizingPhaseEndModule(logger, "auth", time.Second)
+		logFinalizingPhaseEndModule(context.Background(), logger, "auth", time.Second)
 
 		logs := buf.String()
 		if !strings.Contains(logs, `"level":"INFO"`) {
@@ -165,7 +166,7 @@ func TestLogFinalizingPhaseEndModule(t *testing.T) {
 	t.Run("debug when under one second", func(t *testing.T) {
 		var buf bytes.Buffer
 		logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
-		logFinalizingPhaseEndModule(logger, "web", 10*time.Millisecond)
+		logFinalizingPhaseEndModule(context.Background(), logger, "web", 10*time.Millisecond)
 
 		logs := buf.String()
 		if !strings.Contains(logs, `"level":"DEBUG"`) {

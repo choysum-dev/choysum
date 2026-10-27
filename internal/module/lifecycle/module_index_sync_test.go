@@ -1390,7 +1390,7 @@ func TestModuleManagerUpgradeCoreUsesListInstalledApps(t *testing.T) {
 
 	var logBuf bytes.Buffer
 	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
-	runtimeScope.logger = slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	runtimeScope.logger = slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	runtimeScope.cfg.DistPath = distPath
 	runtimeScope.cfg.TmpPath = tmpPath
 	runtimeScope.cfg.DefaultChoysumPath = defaultChoysumPath
@@ -1430,10 +1430,19 @@ func TestModuleManagerUpgradeCoreUsesListInstalledApps(t *testing.T) {
 	_ = manager.Upgrade(context.Background(), "core")
 
 	logs := logBuf.String()
-	if !strings.Contains(logs, `"msg":"module operation plan"`) {
-		t.Fatalf("expected module operation plan log, got %q", logs)
+	if !strings.Contains(logs, `"msg":"upgrading"`) {
+		t.Fatalf("expected upgrading plan log, got %q", logs)
+	}
+	if strings.Contains(logs, `"opid"`) && strings.Contains(logs, `"msg":"upgrading"`) {
+		// Boundary line must not carry opid; allow opid on other Debug/Info rows.
+		for _, line := range strings.Split(logs, "\n") {
+			if strings.Contains(line, `"msg":"upgrading"`) && strings.Contains(line, `"opid"`) {
+				t.Fatalf("upgrading boundary must omit opid, got %q", line)
+			}
+		}
 	}
 	// listInstalledApps sorts apps; web must be present (old NonWeb helper excluded it).
+	// App lists live on the Debug plan-details row.
 	if !strings.Contains(logs, `"apps":["core","web"]`) && !strings.Contains(logs, `"apps":["web","core"]`) {
 		t.Fatalf("expected plan apps to include web via listInstalledApps, got %q", logs)
 	}

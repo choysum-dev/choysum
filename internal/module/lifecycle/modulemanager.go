@@ -29,6 +29,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/module/artifact/pipeline"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
+	"github.com/choysum-dev/choysum/internal/module/evolution/hooks"
 	"github.com/choysum-dev/choysum/internal/module/evolution/schema"
 	"github.com/choysum-dev/choysum/internal/module/evolution/scripts"
 	moduleorigin "github.com/choysum-dev/choysum/internal/module/origin"
@@ -791,6 +792,19 @@ func moduleOpLogger(logger *slog.Logger, opid string, op plan.OpType, moduleName
 	return logger.With(attrs...)
 }
 
+// moduleUserLogger is the console-facing boundary logger: module name only
+// (no opid/op). Use for upgrading/upgraded style messages.
+func moduleUserLogger(logger *slog.Logger, moduleName string) *slog.Logger {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	moduleName = strings.TrimSpace(moduleName)
+	if moduleName == "" {
+		return logger
+	}
+	return logger.With("module", moduleName)
+}
+
 const moduleOpInfoNameListLimit = 8
 
 type installSpinnerStateData struct {
@@ -854,38 +868,98 @@ func mergeUniqueModuleNames(parts ...[]string) []string {
 	return out
 }
 
+func moduleOperationPlanMessage(op plan.OpType) string {
+	switch op {
+	case plan.OpInstall:
+		return "installing"
+	case plan.OpUninstall:
+		return "uninstalling"
+	default:
+		return "upgrading"
+	}
+}
+
+func moduleOperationCompletedMessage(op plan.OpType) string {
+	switch op {
+	case plan.OpInstall:
+		return "installed"
+	case plan.OpUninstall:
+		return "uninstalled"
+	default:
+		return "upgraded"
+	}
+}
+
+// moduleOperationPlanInfoAttrs are user-facing plan boundary fields.
+// Module name comes from moduleUserLogger; ensure/apps stay on Debug details.
 func moduleOperationPlanInfoAttrs(opPlan plan.Plan) []any {
-	attrs := []any{
+	_ = opPlan
+	return nil
+}
+
+func moduleOperationPlanDebugAttrs(opPlan plan.Plan) []any {
+	return []any{
+		"modules", opPlan.ModuleOrder,
 		"modules_count", len(opPlan.ModuleOrder),
+		"ensure", opPlan.EnsureOrder,
+		"apps", opPlan.AffectedApps,
 		"ensure_count", len(opPlan.EnsureOrder),
 		"apps_count", len(opPlan.AffectedApps),
 		"needs_global_web_build", opPlan.NeedsGlobalWebBuild,
 	}
-	if modules := summarizeModuleOpInfoNames(opPlan.ModuleOrder); len(modules) > 0 {
-		attrs = append(attrs, "modules", modules)
-	}
-	if ensure := summarizeModuleOpInfoNames(opPlan.EnsureOrder); len(ensure) > 0 {
-		attrs = append(attrs, "ensure", ensure)
-	}
-	if apps := summarizeModuleOpInfoNames(opPlan.AffectedApps); len(apps) > 0 {
-		attrs = append(attrs, "apps", apps)
-	}
-	return attrs
 }
 
 func moduleOperationCompletedInfoAttrs(opPlan plan.Plan, duration time.Duration) []any {
-	attrs := []any{
+	_ = opPlan
+	return []any{
 		"duration_ms", duration.Milliseconds(),
-		"modules_count", len(opPlan.ModuleOrder),
-		"apps_count", len(opPlan.AffectedApps),
 	}
-	if modules := summarizeModuleOpInfoNames(opPlan.ModuleOrder); len(modules) > 0 {
-		attrs = append(attrs, "modules", modules)
+}
+
+// moduleStepSpinnerMessage maps long lifecycle steps to short spinner copy.
+// Unknown steps return empty so micro-steps do not thrash the line.
+func moduleStepSpinnerMessage(moduleName, step string) string {
+	moduleName = strings.TrimSpace(moduleName)
+	if moduleName == "" {
+		moduleName = "unknown"
 	}
-	if apps := summarizeModuleOpInfoNames(opPlan.AffectedApps); len(apps) > 0 {
-		attrs = append(attrs, "apps", apps)
+	switch strings.TrimSpace(step) {
+	case moduleStepSchema:
+		return fmt.Sprintf("%s: updating database schema", moduleName)
+	case moduleStepBuild:
+		return fmt.Sprintf("%s: building module artifacts", moduleName)
+	case moduleStepData:
+		return fmt.Sprintf("%s: loading module data", moduleName)
+	case moduleStepOriginResolve:
+		return fmt.Sprintf("%s: resolving module source", moduleName)
+	case moduleStepHook(hooks.PhasePreUpgrade):
+		return fmt.Sprintf("%s: running pre-upgrade hooks", moduleName)
+	case moduleStepHook(hooks.PhasePostUpgrade):
+		return fmt.Sprintf("%s: running post-upgrade hooks", moduleName)
+	case moduleStepHook(hooks.PhasePreInit):
+		return fmt.Sprintf("%s: running pre-init hooks", moduleName)
+	case moduleStepHook(hooks.PhasePostInit):
+		return fmt.Sprintf("%s: running post-init hooks", moduleName)
+	case moduleStepHook(hooks.PhasePreUninstall):
+		return fmt.Sprintf("%s: running pre-uninstall hooks", moduleName)
+	case moduleStepHook(hooks.PhasePostUninstall):
+		return fmt.Sprintf("%s: running post-uninstall hooks", moduleName)
+	case moduleStepCleanup:
+		return fmt.Sprintf("%s: cleaning module data", moduleName)
+	default:
+		return ""
 	}
-	return attrs
+}
+
+func bindOpStepSpinner(opCtx *opContext, setSpinnerStage func(stage, message string)) {
+	if opCtx == nil || setSpinnerStage == nil {
+		return
+	}
+	opCtx.onStepStart = func(moduleName, step string) {
+		if msg := moduleStepSpinnerMessage(moduleName, step); msg != "" {
+			setSpinnerStage("module.step", msg)
+		}
+	}
 }
 
 // handleUpgradeEnsureProgress maps ensure/upgrade module progress events to spinner stages.
@@ -901,31 +975,31 @@ func handleUpgradeEnsureProgress(
 	switch event.Stage {
 	case pipeline.ProgressStageModuleInstallStarted:
 		if event.Total > 0 && event.Current > 0 {
-			setSpinnerStage("upgrading.ensure", fmt.Sprintf("%s: ensuring modules (%d/%d)", moduleName, event.Current, event.Total))
+			setSpinnerStage("upgrading.ensure", fmt.Sprintf("%s: installing required module (%d/%d)", moduleName, event.Current, event.Total))
 			return true
 		}
-		setSpinnerStage("upgrading.ensure", fmt.Sprintf("%s: ensuring module", moduleName))
+		setSpinnerStage("upgrading.ensure", fmt.Sprintf("%s: installing required module", moduleName))
 		return true
 	case pipeline.ProgressStageModuleInstallFailed:
 		if event.Total > 0 && event.Current > 0 {
-			setSpinnerStage("upgrading.ensure", fmt.Sprintf("%s: failed ensuring module (%d/%d)", moduleName, event.Current, event.Total))
+			setSpinnerStage("upgrading.ensure", fmt.Sprintf("%s: failed installing required module (%d/%d)", moduleName, event.Current, event.Total))
 			return true
 		}
-		setSpinnerStage("upgrading.ensure", fmt.Sprintf("%s: failed ensuring module", moduleName))
+		setSpinnerStage("upgrading.ensure", fmt.Sprintf("%s: failed installing required module", moduleName))
 		return true
 	case pipeline.ProgressStageModuleUpgradeStarted:
 		if event.Total > 0 && event.Current > 0 {
-			setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: upgrading modules (%d/%d)", moduleName, event.Current, event.Total))
+			setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: upgrading module (%d/%d)", moduleName, event.Current, event.Total))
 			return true
 		}
 		setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: upgrading module", moduleName))
 		return true
 	case pipeline.ProgressStageModuleUpgradeFailed:
 		if event.Total > 0 && event.Current > 0 {
-			setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: failed upgrading module (%d/%d)", moduleName, event.Current, event.Total))
+			setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: module upgrade failed (%d/%d)", moduleName, event.Current, event.Total))
 			return true
 		}
-		setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: failed upgrading module", moduleName))
+		setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: module upgrade failed", moduleName))
 		return true
 	default:
 		return false
@@ -934,6 +1008,7 @@ func handleUpgradeEnsureProgress(
 
 func handlePipelineSharedProgress(
 	event pipeline.ProgressEvent,
+	op plan.OpType,
 	rootModuleName string,
 	affectedAppsCount int,
 	setSpinnerStage func(stage, message string),
@@ -942,6 +1017,7 @@ func handlePipelineSharedProgress(
 	if appName == "" {
 		appName = "unknown"
 	}
+	uninstall := op == plan.OpUninstall
 
 	switch event.Stage {
 	case pipeline.ProgressStageAppStageStarted:
@@ -949,27 +1025,55 @@ func handlePipelineSharedProgress(
 		if totalApps < 1 {
 			totalApps = affectedAppsCount
 		}
-		setSpinnerStage("pipeline.app_stage", fmt.Sprintf("%s: building application artifacts (%d apps)", rootModuleName, totalApps))
+		if uninstall {
+			setSpinnerStage("pipeline.app_stage", fmt.Sprintf("%s: updating %d app(s)", rootModuleName, totalApps))
+		} else {
+			setSpinnerStage("pipeline.app_stage", fmt.Sprintf("%s: preparing %d app build(s)", rootModuleName, totalApps))
+		}
 		return true
 	case pipeline.ProgressStageAppBuildStarted:
-		if event.Total > 0 && event.Current > 0 {
-			setSpinnerStage("pipeline.app_build", fmt.Sprintf("%s: building backend app artifacts (%d/%d)", appName, event.Current, event.Total))
+		if uninstall {
+			if event.Total > 0 && event.Current > 0 {
+				setSpinnerStage("pipeline.app_build", fmt.Sprintf("%s: rebuilding app backend (%d/%d)", appName, event.Current, event.Total))
+				return true
+			}
+			setSpinnerStage("pipeline.app_build", fmt.Sprintf("%s: rebuilding app backend", appName))
 			return true
 		}
-		setSpinnerStage("pipeline.app_build", fmt.Sprintf("%s: building backend app artifacts", appName))
+		if event.Total > 0 && event.Current > 0 {
+			setSpinnerStage("pipeline.app_build", fmt.Sprintf("%s: building app backend (%d/%d)", appName, event.Current, event.Total))
+			return true
+		}
+		setSpinnerStage("pipeline.app_build", fmt.Sprintf("%s: building app backend", appName))
 		return true
 	case pipeline.ProgressStageAppGenerateStarted:
-		if event.Total > 0 && event.Current > 0 {
-			setSpinnerStage("pipeline.app_generate", fmt.Sprintf("%s: generating app modules (%d/%d)", appName, event.Current, event.Total))
+		if uninstall {
+			if event.Total > 0 && event.Current > 0 {
+				setSpinnerStage("pipeline.app_generate", fmt.Sprintf("%s: regenerating app APIs (%d/%d)", appName, event.Current, event.Total))
+				return true
+			}
+			setSpinnerStage("pipeline.app_generate", fmt.Sprintf("%s: regenerating app APIs", appName))
 			return true
 		}
-		setSpinnerStage("pipeline.app_generate", fmt.Sprintf("%s: generating app modules", appName))
+		if event.Total > 0 && event.Current > 0 {
+			setSpinnerStage("pipeline.app_generate", fmt.Sprintf("%s: generating app APIs (%d/%d)", appName, event.Current, event.Total))
+			return true
+		}
+		setSpinnerStage("pipeline.app_generate", fmt.Sprintf("%s: generating app APIs", appName))
 		return true
 	case pipeline.ProgressStageBundlesBuildStarted:
-		setSpinnerStage("pipeline.bundles_build", fmt.Sprintf("building backend bundles (global, apps=%d)", affectedAppsCount))
+		if uninstall {
+			setSpinnerStage("pipeline.bundles_build", fmt.Sprintf("%s: rebuilding shared backend bundles", rootModuleName))
+		} else {
+			setSpinnerStage("pipeline.bundles_build", fmt.Sprintf("%s: building shared backend bundles", rootModuleName))
+		}
 		return true
 	case pipeline.ProgressStageWebBuildStarted:
-		setSpinnerStage("pipeline.web_build", fmt.Sprintf("building global web assets (global, apps=%d)", affectedAppsCount))
+		if uninstall {
+			setSpinnerStage("pipeline.web_build", fmt.Sprintf("%s: rebuilding shared web assets", rootModuleName))
+		} else {
+			setSpinnerStage("pipeline.web_build", fmt.Sprintf("%s: building shared web assets", rootModuleName))
+		}
 		return true
 	default:
 		return false
@@ -1163,6 +1267,7 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 		if rootModuleName == "" {
 			rootModuleName = "unknown"
 		}
+		userLogger := moduleUserLogger(m.runtimeScope.Logger(), rootModuleName)
 		moduleInstallProgressLine := logutil.ProgressLineFromContext(stageCtx)
 		isInteractiveTTY := moduleInstallProgressLine != nil && moduleInstallProgressLine.IsTTY()
 		totalInstallModules := 0
@@ -1204,21 +1309,23 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			case "planning":
 				return "Planning module operation"
 			case "pipeline.app_stage":
-				return "Building application artifacts"
+				return "Preparing app builds"
 			case "pipeline.app_build":
-				return "Building backend app artifacts"
+				return "Building app backend"
 			case "pipeline.app_generate":
-				return "Generating app modules"
+				return "Generating app APIs"
 			case "pipeline.bundles_build":
-				return "Building backend bundles (global)"
+				return "Building shared backend bundles"
 			case "pipeline.web_build":
-				return "Building global web assets (global)"
+				return "Building shared web assets"
 			case "finalizing.phase_end":
-				return "Finalizing phase end"
+				return "Finalizing"
 			case "finalizing.index_refresh":
 				return "Refreshing module index"
 			case "finalizing.index_sync":
 				return "Syncing module index"
+			case "module.step":
+				return "Module step"
 			default:
 				stage := strings.ReplaceAll(strings.TrimSpace(rawStage), ".", " ")
 				stage = strings.ReplaceAll(stage, "_", " ")
@@ -1318,6 +1425,7 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			installSpinnerState.mu.Unlock()
 			spinnerTicker.SetMessage(message)
 		}
+		bindOpStepSpinner(opCtx, setSpinnerStage)
 		clearSpinnerState := func() {
 			installSpinnerState.mu.Lock()
 			installSpinnerState.data = installSpinnerStateData{}
@@ -1341,7 +1449,8 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 		}
 		started := time.Now()
 		planningStarted := time.Now()
-		logger.Info("module operation planning started")
+		// Start/progress boundaries demote under TTY ProgressLine; completion stays Info.
+		userLogger.Log(stageCtx, logutil.ProgressDetailLogLevel(stageCtx), "planning")
 		setSpinnerStage("planning", planningSpinnerMessage(plan.BuildPlanProgress{Step: "waiting_plan_result"}))
 		installSpinnerState.mu.Lock()
 		installSpinnerState.data.planningStep = "waiting_plan_result"
@@ -1364,8 +1473,8 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			return err
 		}
 		planningDuration := time.Since(planningStarted)
-		logger.Info("module operation plan", append(moduleOperationPlanInfoAttrs(opPlan), "duration_ms", planningDuration.Milliseconds())...)
-		logger.Debug("module operation plan details", "modules", opPlan.ModuleOrder, "apps", opPlan.AffectedApps)
+		userLogger.Log(stageCtx, logutil.ProgressDetailLogLevel(stageCtx), moduleOperationPlanMessage(plan.OpInstall))
+		logger.Debug("module operation plan details", append(moduleOperationPlanDebugAttrs(opPlan), "duration_ms", planningDuration.Milliseconds())...)
 		totalInstallModules = len(opPlan.ModuleOrder)
 		isBundleMode := strings.EqualFold(strings.TrimSpace(runtimeOpts.compileBundleMode), "bundle")
 		var bundlesTargetFn func() (string, error)
@@ -1390,7 +1499,7 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 		err = pipeline.Execute(stageCtx, opPlan, rootModule, pipeline.Callbacks{
 			Logger: logger,
 			OnProgress: func(event pipeline.ProgressEvent) {
-				_ = handlePipelineSharedProgress(event, rootModuleName, len(opPlan.AffectedApps), setSpinnerStage)
+				_ = handlePipelineSharedProgress(event, plan.OpInstall, rootModuleName, len(opPlan.AffectedApps), setSpinnerStage)
 			},
 			OnInstallProgress: func(progress pipeline.ModuleInstallProgress) {
 				if totalInstallModules == 0 {
@@ -1406,9 +1515,9 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 				installSpinnerState.data.totalModules = totalInstallModules
 				installSpinnerState.mu.Unlock()
 
-				message := fmt.Sprintf("%s: installing modules (%d/%d)", moduleName, progress.Current, totalInstallModules)
+				message := fmt.Sprintf("%s: installing module (%d/%d)", moduleName, progress.Current, totalInstallModules)
 				if progress.Stage == pipeline.ModuleInstallProgressStageFailed {
-					message = fmt.Sprintf("%s: failed installing module (%d/%d)", moduleName, progress.Current, totalInstallModules)
+					message = fmt.Sprintf("%s: module install failed (%d/%d)", moduleName, progress.Current, totalInstallModules)
 				}
 				switch progress.Stage {
 				case pipeline.ModuleInstallProgressStageStarted, pipeline.ModuleInstallProgressStageFailed:
@@ -1470,14 +1579,14 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			return err
 		}
 
-		logger.Info("module operation finalizing started")
+		userLogger.Log(stageCtx, logutil.ProgressDetailLogLevel(stageCtx), "finalizing")
 		finalizingStarted := time.Now()
 
 		phaseEndModules := phaseEndCandidates(plan.OpInstall, opPlan.ModuleOrder, nil, opCtx)
 		totalFinalizingModules := len(phaseEndModules)
 		setSpinnerStage(
 			"finalizing.phase_end",
-			fmt.Sprintf("%s: finalizing phase end (%d modules)", rootModuleName, totalFinalizingModules),
+			fmt.Sprintf("%s: finalizing (%d modules)", rootModuleName, totalFinalizingModules),
 		)
 		phaseEndStarted := time.Now()
 		for i, name := range phaseEndModules {
@@ -1487,7 +1596,7 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			installSpinnerState.data.currentIndex = i + 1
 			installSpinnerState.data.totalModules = totalFinalizingModules
 			installSpinnerState.mu.Unlock()
-			setSpinnerMessage(fmt.Sprintf("%s: finalizing phase end (%d/%d)", moduleName, i+1, totalFinalizingModules))
+			setSpinnerMessage(fmt.Sprintf("%s: finalizing (%d/%d)", moduleName, i+1, totalFinalizingModules))
 			mod, err := m.Load(name)
 			if err != nil {
 				clearSpinnerState()
@@ -1506,13 +1615,13 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 					clearSpinnerState()
 					return err
 				}
-				logFinalizingPhaseEndModule(logger, moduleName, time.Since(modulePhaseEndStarted))
+				logFinalizingPhaseEndModule(stageCtx, logger, moduleName, time.Since(modulePhaseEndStarted))
 			}
 		}
 		phaseEndDuration := time.Since(phaseEndStarted)
-		logFinalizingPhaseEnd(logger, phaseEndDuration)
+		logFinalizingPhaseEnd(stageCtx, logger, phaseEndDuration)
 
-		setSpinnerStage("finalizing.index_refresh", fmt.Sprintf("%s: finalizing index refresh", rootModuleName))
+		setSpinnerStage("finalizing.index_refresh", fmt.Sprintf("%s: refreshing module index", rootModuleName))
 		indexRefreshStarted := time.Now()
 		if err := m.refreshModuleIndexForLocalModules(ctx, opPlan.ModuleOrder); err != nil {
 			clearSpinnerState()
@@ -1521,7 +1630,7 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 		indexRefreshDuration := time.Since(indexRefreshStarted)
 		logger.Debug("module operation finalizing index refresh completed", "step", "index_refresh", "duration_ms", indexRefreshDuration.Milliseconds())
 
-		setSpinnerStage("finalizing.index_sync", fmt.Sprintf("%s: finalizing index sync", rootModuleName))
+		setSpinnerStage("finalizing.index_sync", fmt.Sprintf("%s: syncing module index", rootModuleName))
 		indexSyncStarted := time.Now()
 		if err := m.syncModuleIndexAfterInstall(ctx, logger, opPlan.ModuleOrder); err != nil {
 			clearSpinnerState()
@@ -1532,13 +1641,13 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 		clearSpinnerState()
 
 		finalizingDuration := time.Since(finalizingStarted)
-		completedAttrs := append(moduleOperationCompletedInfoAttrs(opPlan, time.Since(started)),
+		logger.Debug("module operation finalizing timings",
 			"finalizing_duration_ms", finalizingDuration.Milliseconds(),
 			"phase_end_duration_ms", phaseEndDuration.Milliseconds(),
 			"index_refresh_duration_ms", indexRefreshDuration.Milliseconds(),
 			"index_sync_duration_ms", indexSyncDuration.Milliseconds(),
 		)
-		logger.Info("module operation completed", completedAttrs...)
+		userLogger.Log(stageCtx, logutil.ProgressBoundaryLogLevel(stageCtx), moduleOperationCompletedMessage(plan.OpInstall), moduleOperationCompletedInfoAttrs(opPlan, time.Since(started))...)
 		return nil
 	})
 }
@@ -1576,24 +1685,6 @@ func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
 		}, opid); err != nil {
 			return err
 		}
-		planningStarted := time.Now()
-		plan, err := plan.BuildPlan(ctx, plan.OpUninstall, mod, m, planBuildOptionsFromContext(ctx)...)
-		if err != nil {
-			return err
-		}
-		planningDuration := time.Since(planningStarted)
-		logger := moduleOpLogger(m.runtimeScope.Logger(), opid, plan.Op, mod.Name)
-		if m.jsExecutor != nil {
-			previousExecutorScripts := m.jsExecutor.GetJsScripts()
-			defer func() {
-				m.jsExecutor.SetJsScripts(previousExecutorScripts)
-				if err := m.jsExecutor.Reload(previousExecutorScripts...); err != nil {
-					logger.Warn("failed to restore js executor scripts", "error", err)
-				}
-			}()
-		}
-		logger.Info("module operation plan", append(moduleOperationPlanInfoAttrs(plan), "duration_ms", planningDuration.Milliseconds())...)
-		logger.Debug("module operation plan details", "modules", plan.ModuleOrder, "apps", plan.AffectedApps)
 		rootModuleName := strings.TrimSpace(mod.Name)
 		if rootModuleName == "" {
 			rootModuleName = "unknown"
@@ -1616,9 +1707,31 @@ func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
 			}
 			spinnerTicker.SetMessage(message)
 		}
+		bindOpStepSpinner(opCtx, setSpinnerStage)
 		clearSpinnerState := func() {
 			spinnerTicker.Clear()
 		}
+		planningStarted := time.Now()
+		setSpinnerStage("planning", fmt.Sprintf("%s: planning", rootModuleName))
+		plan, err := plan.BuildPlan(ctx, plan.OpUninstall, mod, m, planBuildOptionsFromContext(ctx)...)
+		clearSpinnerState()
+		if err != nil {
+			return err
+		}
+		planningDuration := time.Since(planningStarted)
+		logger := moduleOpLogger(m.runtimeScope.Logger(), opid, plan.Op, mod.Name)
+		userLogger := moduleUserLogger(m.runtimeScope.Logger(), rootModuleName)
+		if m.jsExecutor != nil {
+			previousExecutorScripts := m.jsExecutor.GetJsScripts()
+			defer func() {
+				m.jsExecutor.SetJsScripts(previousExecutorScripts)
+				if err := m.jsExecutor.Reload(previousExecutorScripts...); err != nil {
+					logger.Warn("failed to restore js executor scripts", "error", err)
+				}
+			}()
+		}
+		userLogger.Log(stageCtx, logutil.ProgressDetailLogLevel(stageCtx), moduleOperationPlanMessage(plan.Op))
+		logger.Debug("module operation plan details", append(moduleOperationPlanDebugAttrs(plan), "duration_ms", planningDuration.Milliseconds())...)
 		isBundleMode := strings.EqualFold(strings.TrimSpace(runtimeOpts.compileBundleMode), "bundle")
 		var bundlesTargetFn func() (string, error)
 		var buildBundlesFn func(stageCtx context.Context, distBundlesStagingDir string, affectedProtoStaging map[string]string) error
@@ -1641,18 +1754,18 @@ func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
 				switch event.Stage {
 				case pipeline.ProgressStageModuleUninstallStarted:
 					if event.Total > 0 && event.Current > 0 {
-						setSpinnerStage("uninstalling.modules", fmt.Sprintf("%s: uninstalling modules (%d/%d)", moduleName, event.Current, event.Total))
+						setSpinnerStage("uninstalling.modules", fmt.Sprintf("%s: uninstalling module (%d/%d)", moduleName, event.Current, event.Total))
 						return
 					}
 					setSpinnerStage("uninstalling.modules", fmt.Sprintf("%s: uninstalling module", moduleName))
 				case pipeline.ProgressStageModuleUninstallFailed:
 					if event.Total > 0 && event.Current > 0 {
-						setSpinnerStage("uninstalling.modules", fmt.Sprintf("%s: failed uninstalling module (%d/%d)", moduleName, event.Current, event.Total))
+						setSpinnerStage("uninstalling.modules", fmt.Sprintf("%s: module uninstall failed (%d/%d)", moduleName, event.Current, event.Total))
 						return
 					}
-					setSpinnerStage("uninstalling.modules", fmt.Sprintf("%s: failed uninstalling module", moduleName))
+					setSpinnerStage("uninstalling.modules", fmt.Sprintf("%s: module uninstall failed", moduleName))
 				default:
-					_ = handlePipelineSharedProgress(event, rootModuleName, len(plan.AffectedApps), setSpinnerStage)
+					_ = handlePipelineSharedProgress(event, plan.Op, rootModuleName, len(plan.AffectedApps), setSpinnerStage)
 				}
 			},
 			ResolveInstalledModule: m.Load,
@@ -1703,7 +1816,7 @@ func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
 			return err
 		}
 		clearSpinnerState()
-		logger.Info("module operation completed", moduleOperationCompletedInfoAttrs(plan, time.Since(started))...)
+		userLogger.Log(stageCtx, logutil.ProgressBoundaryLogLevel(stageCtx), moduleOperationCompletedMessage(plan.Op), moduleOperationCompletedInfoAttrs(plan, time.Since(started))...)
 		return nil
 	})
 }
@@ -1783,33 +1896,6 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 		}, opid); err != nil {
 			return rollbackUpgradeOrigin(err)
 		}
-		planningStarted := time.Now()
-		plan, err := plan.BuildPlan(ctx, plan.OpUpgrade, mod, m, planBuildOptionsFromContext(ctx)...)
-		if err != nil {
-			return rollbackUpgradeOrigin(err)
-		}
-		if meta.IsCoreModule(mod.Name) {
-			apps, err := m.listInstalledApps(ctx)
-			if err != nil {
-				return rollbackUpgradeOrigin(err)
-			}
-			if len(apps) > 0 {
-				plan.AffectedApps = apps
-			}
-		}
-		planningDuration := time.Since(planningStarted)
-		logger := moduleOpLogger(m.runtimeScope.Logger(), opid, plan.Op, mod.Name)
-		if m.jsExecutor != nil {
-			previousExecutorScripts := m.jsExecutor.GetJsScripts()
-			defer func() {
-				m.jsExecutor.SetJsScripts(previousExecutorScripts)
-				if err := m.jsExecutor.Reload(previousExecutorScripts...); err != nil {
-					logger.Warn("failed to restore js executor scripts", "error", err)
-				}
-			}()
-		}
-		logger.Info("module operation plan", append(moduleOperationPlanInfoAttrs(plan), "duration_ms", planningDuration.Milliseconds())...)
-		logger.Debug("module operation plan details", "modules", plan.ModuleOrder, "apps", plan.AffectedApps)
 		rootModuleName := strings.TrimSpace(mod.Name)
 		if rootModuleName == "" {
 			rootModuleName = "unknown"
@@ -1832,9 +1918,42 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 			}
 			spinnerTicker.SetMessage(message)
 		}
+		bindOpStepSpinner(opCtx, setSpinnerStage)
 		clearSpinnerState := func() {
 			spinnerTicker.Clear()
 		}
+		planningStarted := time.Now()
+		setSpinnerStage("planning", fmt.Sprintf("%s: planning", rootModuleName))
+		plan, err := plan.BuildPlan(ctx, plan.OpUpgrade, mod, m, planBuildOptionsFromContext(ctx)...)
+		if err != nil {
+			clearSpinnerState()
+			return rollbackUpgradeOrigin(err)
+		}
+		if meta.IsCoreModule(mod.Name) {
+			apps, err := m.listInstalledApps(ctx)
+			if err != nil {
+				clearSpinnerState()
+				return rollbackUpgradeOrigin(err)
+			}
+			if len(apps) > 0 {
+				plan.AffectedApps = apps
+			}
+		}
+		clearSpinnerState()
+		planningDuration := time.Since(planningStarted)
+		logger := moduleOpLogger(m.runtimeScope.Logger(), opid, plan.Op, mod.Name)
+		userLogger := moduleUserLogger(m.runtimeScope.Logger(), rootModuleName)
+		if m.jsExecutor != nil {
+			previousExecutorScripts := m.jsExecutor.GetJsScripts()
+			defer func() {
+				m.jsExecutor.SetJsScripts(previousExecutorScripts)
+				if err := m.jsExecutor.Reload(previousExecutorScripts...); err != nil {
+					logger.Warn("failed to restore js executor scripts", "error", err)
+				}
+			}()
+		}
+		userLogger.Log(stageCtx, logutil.ProgressDetailLogLevel(stageCtx), moduleOperationPlanMessage(plan.Op))
+		logger.Debug("module operation plan details", append(moduleOperationPlanDebugAttrs(plan), "duration_ms", planningDuration.Milliseconds())...)
 		isBundleMode := strings.EqualFold(strings.TrimSpace(runtimeOpts.compileBundleMode), "bundle")
 		var bundlesTargetFn func() (string, error)
 		var buildBundlesFn func(stageCtx context.Context, distBundlesStagingDir string, affectedProtoStaging map[string]string) error
@@ -1853,7 +1972,7 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 				if handleUpgradeEnsureProgress(event, setSpinnerStage) {
 					return
 				}
-				_ = handlePipelineSharedProgress(event, rootModuleName, len(plan.AffectedApps), setSpinnerStage)
+				_ = handlePipelineSharedProgress(event, plan.Op, rootModuleName, len(plan.AffectedApps), setSpinnerStage)
 			},
 			ResolveInstallModuleFromOrigin: m.resolveInstallModuleFromOrigin,
 			ResolveInstalledModule:         m.Load,
@@ -1906,10 +2025,20 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 		// PhaseEnd only for upgraded targets plus EnsureOrder modules newly installed
 		// in this op (already-installed shell deps are skipped).
 		finalizeModules := phaseEndCandidates(plan.Op, plan.ModuleOrder, plan.EnsureOrder, opCtx)
+		totalFinalizingModules := len(finalizeModules)
+		setSpinnerStage(
+			"finalizing.phase_end",
+			fmt.Sprintf("%s: finalizing (%d modules)", rootModuleName, totalFinalizingModules),
+		)
 		phaseEndStarted := time.Now()
-		for _, moduleName := range finalizeModules {
+		for i, moduleName := range finalizeModules {
+			setSpinnerStage(
+				"finalizing.phase_end",
+				fmt.Sprintf("%s: finalizing (%d/%d)", strings.TrimSpace(moduleName), i+1, totalFinalizingModules),
+			)
 			mod, err := m.Load(moduleName)
 			if err != nil {
+				clearSpinnerState()
 				return rollbackUpgradeOrigin(err)
 			}
 			if mod == nil {
@@ -1925,24 +2054,28 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 					clearSpinnerState()
 					return rollbackUpgradeOrigin(err)
 				}
-				logFinalizingPhaseEndModule(logger, strings.TrimSpace(moduleName), time.Since(modulePhaseEndStarted))
+				logFinalizingPhaseEndModule(stageCtx, logger, strings.TrimSpace(moduleName), time.Since(modulePhaseEndStarted))
 			}
 		}
 		phaseEndDuration := time.Since(phaseEndStarted)
-		logFinalizingPhaseEnd(logger, phaseEndDuration)
+		logFinalizingPhaseEnd(stageCtx, logger, phaseEndDuration)
+		setSpinnerStage("finalizing.index_refresh", fmt.Sprintf("%s: refreshing module index", rootModuleName))
 		// Index refresh still covers EnsureOrder ∪ ModuleOrder so newly ensured shells stay indexed.
 		indexModules := mergeUniqueModuleNames(plan.EnsureOrder, plan.ModuleOrder)
 		if err := m.refreshModuleIndexForLocalModules(ctx, indexModules); err != nil {
+			clearSpinnerState()
 			return rollbackUpgradeOrigin(err)
 		}
+		clearSpinnerState()
 		if originSwitch != nil {
 			if err := originSwitch.Commit(); err != nil {
 				return xfmt.Errorf("upgrade succeeded but origin cleanup failed: %w", err)
 			}
 		}
-		logger.Info("module operation completed", append(moduleOperationCompletedInfoAttrs(plan, time.Since(started)),
+		logger.Debug("module operation finalizing timings",
 			"phase_end_duration_ms", phaseEndDuration.Milliseconds(),
-		)...)
+		)
+		userLogger.Log(stageCtx, logutil.ProgressBoundaryLogLevel(stageCtx), moduleOperationCompletedMessage(plan.Op), moduleOperationCompletedInfoAttrs(plan, time.Since(started))...)
 		return nil
 	})
 }

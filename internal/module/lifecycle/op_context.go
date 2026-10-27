@@ -19,6 +19,9 @@ type opContext struct {
 
 	schemaIntents schema.IntentBag
 
+	// onStepStart updates interactive spinner text for long module steps.
+	onStepStart func(moduleName, step string)
+
 	installStack []string
 	installing   map[string]bool
 	installDone  map[string]bool
@@ -34,6 +37,13 @@ type opContext struct {
 	upgradeDone  map[string]bool
 	// upgradeTouched records modules that performed real upgrade work.
 	upgradeTouched map[string]bool
+}
+
+func (c *opContext) reportStepStart(moduleName, step string) {
+	if c == nil || c.onStepStart == nil {
+		return
+	}
+	c.onStepStart(strings.TrimSpace(moduleName), strings.TrimSpace(step))
 }
 
 func newOpContext() *opContext {

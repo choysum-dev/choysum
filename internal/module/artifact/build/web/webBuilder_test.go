@@ -24,6 +24,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/esbplugins"
 	defaultesbplugins "github.com/choysum-dev/choysum/internal/esbplugins/webprebuildplugin"
 	"github.com/choysum-dev/choysum/internal/esmresolver"
+	logutil "github.com/choysum-dev/choysum/internal/logger"
 	modulegenerator "github.com/choysum-dev/choysum/internal/module/artifact/generate"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
@@ -5023,6 +5024,58 @@ func TestBuildCtx_ChoyTailwindHook(t *testing.T) {
 		}
 		if _, err := os.Stat(filepath.Join(styles, "choy-tailwind.generated.css")); err != nil {
 			t.Fatalf("expected generated css: %v", err)
+		}
+	})
+
+	t.Run("quiet progress demotes generate info", func(t *testing.T) {
+		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+		if err := testRuntimeScope.db.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
+			t.Fatalf("auto migrate failed: %v", err)
+		}
+		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, testRuntimeScope, "export const answer = 42\n")
+		if err := testRuntimeScope.db.Create(&meta.Module{
+			BaseModel:     meta.BaseModel{Id: sql.NullString{String: "installed_auth_tw_quiet", Valid: true}},
+			Name:          "auth",
+			Status:        meta.Installed,
+			WebEntryPoint: entryPoint,
+		}).Error; err != nil {
+			t.Fatalf("seed installed module failed: %v", err)
+		}
+
+		prev := ensureChoyTailwindCSS
+		t.Cleanup(func() { ensureChoyTailwindCSS = prev })
+		ensureChoyTailwindCSS = func(string) (*ChoyTailwindGenerateResult, error) {
+			return &ChoyTailwindGenerateResult{
+				Duration:       time.Millisecond,
+				CandidateCount: 1,
+				OutputPath:     "styles/choy-tailwind.generated.css",
+			}, nil
+		}
+
+		var logBuf bytes.Buffer
+		testRuntimeScope.log = slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+
+		builder := &WebModuleBuilder{
+			runtimeScope: testRuntimeScope,
+			runtimeOptions: runtimeOptions{
+				modulesPath:        filepath.Join(t.TempDir(), "modules"),
+				distPath:           filepath.Join(t.TempDir(), "dist"),
+				defaultChoysumPath: filepath.Join(t.TempDir(), ".choysum"),
+				webBaseURL:         "/web/",
+			},
+			module:         moduleRef,
+			entryPoint:     entryPoint,
+			parser:         defaultparser.NewVueParser(testRuntimeScope, moduleRef),
+			prebuildPlugin: &buildTestPlugin{parserResults: []*parser.ParserResult{{Path: entryPoint, RawContent: "export const answer = 42", Content: "export const answer = 42"}}},
+			buildPlugin:    &buildTestPlugin{},
+			publishDist:    false,
+		}
+		ctx := logutil.WithQuietProgress(context.Background())
+		if _, err := builder.BuildCtx(ctx); err != nil {
+			t.Fatalf("BuildCtx: %v", err)
+		}
+		if logs := logBuf.String(); strings.Contains(logs, "Choy kit Tailwind generated") {
+			t.Fatalf("quiet progress must demote Tailwind Info, got %q", logs)
 		}
 	})
 

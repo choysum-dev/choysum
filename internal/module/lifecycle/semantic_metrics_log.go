@@ -4,9 +4,11 @@
 package lifecycle
 
 import (
+	"context"
 	"log/slog"
 	"time"
 
+	logutil "github.com/choysum-dev/choysum/internal/logger"
 	"github.com/choysum-dev/choysum/internal/parser/backendtsparser"
 )
 
@@ -38,21 +40,23 @@ func logSemanticMetricsSummary(logger *slog.Logger, opid string) {
 // phaseEndInfoMinDuration is the wall-time floor for PhaseEnd logs at Info.
 const phaseEndInfoMinDuration = time.Second
 
-// logFinalizingPhaseEnd logs aggregate PhaseEnd duration; Info when >=1s, else Debug.
-func logFinalizingPhaseEnd(logger *slog.Logger, phaseEndDuration time.Duration) {
+// logFinalizingPhaseEnd logs aggregate PhaseEnd duration; Info when >=1s
+// (demoted under QuietProgress), else Debug.
+func logFinalizingPhaseEnd(ctx context.Context, logger *slog.Logger, phaseEndDuration time.Duration) {
 	if logger == nil {
 		return
 	}
 	attrs := []any{"step", moduleStepPhaseEnd, "duration_ms", phaseEndDuration.Milliseconds()}
 	if phaseEndDuration >= phaseEndInfoMinDuration {
-		logger.Info("module operation finalizing phase end completed", attrs...)
+		logger.Log(ctx, logutil.ProgressBoundaryLogLevel(ctx), "module operation finalizing phase end completed", attrs...)
 		return
 	}
 	logger.Debug("module operation finalizing phase end completed", attrs...)
 }
 
-// logFinalizingPhaseEndModule logs one module's PhaseEnd script run; Info when >=1s.
-func logFinalizingPhaseEndModule(logger *slog.Logger, phaseModule string, duration time.Duration) {
+// logFinalizingPhaseEndModule logs one module's PhaseEnd script run; Info when >=1s
+// (demoted under QuietProgress), else Debug.
+func logFinalizingPhaseEndModule(ctx context.Context, logger *slog.Logger, phaseModule string, duration time.Duration) {
 	if logger == nil {
 		return
 	}
@@ -63,7 +67,7 @@ func logFinalizingPhaseEndModule(logger *slog.Logger, phaseModule string, durati
 	}
 	msg := "module operation finalizing phase end module completed"
 	if duration >= phaseEndInfoMinDuration {
-		logger.Info(msg, attrs...)
+		logger.Log(ctx, logutil.ProgressBoundaryLogLevel(ctx), msg, attrs...)
 		return
 	}
 	logger.Debug(msg, attrs...)

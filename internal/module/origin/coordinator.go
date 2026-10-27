@@ -500,5 +500,5 @@ func (c *Coordinator) logResolveInstallOutcome(parsed ParsedInput, resolvedOrigi
 		}
 		return
 	}
-	c.runtimeScope.Logger().Info("origin install resolve succeeded", attrs...)
+	c.runtimeScope.Logger().Debug("origin install resolve succeeded", attrs...)
 }

@@ -95,6 +95,8 @@ func (s *GRPCWebServer) handleWatchedModuleUpgrade(moduleName string, file strin
 	if line != nil {
 		ctx = logutil.WithProgressLine(ctx, line)
 	}
+	// Nested upgrade: ProgressLine owns UX; demote lifecycle/pipeline Info detail.
+	ctx = logutil.WithQuietProgress(ctx)
 	moduleLifecycle := lifecycle.NewService(s.runtimeScope.WithContext(ctx), s.jsExecutor)
 	if err := moduleLifecycle.Upgrade(ctx, lifecycle.UpgradeRequest{Input: moduleName}); err != nil {
 		return xfmt.Errorf("error running watch handler: %w", err)

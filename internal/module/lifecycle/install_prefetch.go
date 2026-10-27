@@ -7,6 +7,7 @@ import (
 	"context"
 	"strings"
 
+	logutil "github.com/choysum-dev/choysum/internal/logger"
 	"github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -129,7 +130,7 @@ func (m *ModuleManager) PrefetchInstallModules(ctx context.Context, input string
 	}
 
 	if logger := m.runtimeScope.Logger(); logger != nil {
-		logger.Info("install modules prefetched",
+		logger.Log(ctx, logutil.ProgressDetailLogLevel(ctx), "install modules prefetched",
 			"root", rootName,
 			"modules_count", len(opPlan.ModuleOrder),
 		)
