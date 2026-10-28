@@ -11,7 +11,7 @@ import (
 
 // LogModuleCommitTxHold records how long a per-module Commit Required
 // transaction was held (install / upgrade / uninstall). Successful holds stay
-// Debug (ops metric); failures stay Info.
+// Debug (ops metric); failures log at Error.
 func LogModuleCommitTxHold(logger *slog.Logger, op string, caller string, started time.Time, err error) {
 	if logger == nil || started.IsZero() {
 		return
@@ -36,13 +36,14 @@ func logModuleCommitTxHold(logger *slog.Logger, op string, caller string, durati
 		"caller", caller,
 		"duration_ms", duration.Milliseconds(),
 	}
-	msg := op + " commit transaction hold completed"
 	if err != nil {
-		attrs = append(attrs, "error", err.Error())
-		logger.Info(msg, attrs...)
+		// Pass the error value (not err.Error()) so console/devslog/json
+		// ReplaceAttr can expand xfmt / QuickJS frames into a stack trace.
+		attrs = append(attrs, "error", err)
+		logger.Error(op+" commit transaction hold failed", attrs...)
 		return
 	}
-	logger.Debug(msg, attrs...)
+	logger.Debug(op+" commit transaction hold completed", attrs...)
 }
 
 // LogInstallOuterTxHold records install Commit / legacy outer Required hold time.
