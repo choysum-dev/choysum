@@ -332,32 +332,32 @@ msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Translatable varchar; use the translation action on the field."
 msgstr ""
 
-#: service/models/sandbox_record_category.ts:28
+#: service/models/sandbox_record_category.ts:31
 msgctxt "sandbox.model.SandboxRecordCategory.fields"
 msgid "Category"
 msgstr ""
 
-#: service/models/sandbox_record_category.ts:18
+#: service/models/sandbox_record_category.ts:21
 msgctxt "sandbox.model.SandboxRecordCategory.fields"
 msgid "Record"
 msgstr ""
 
-#: service/models/sandbox_record_tag.ts:18
+#: service/models/sandbox_record_tag.ts:21
 msgctxt "sandbox.model.SandboxRecordTag.fields"
 msgid "Record"
 msgstr ""
 
-#: service/models/sandbox_record_tag.ts:29
+#: service/models/sandbox_record_tag.ts:32
 msgctxt "sandbox.model.SandboxRecordTag.fields"
 msgid "Tag"
 msgstr ""
 
-#: service/models/sandbox_record_tag_chip.ts:18
+#: service/models/sandbox_record_tag_chip.ts:21
 msgctxt "sandbox.model.SandboxRecordTagChip.fields"
 msgid "Record"
 msgstr ""
 
-#: service/models/sandbox_record_tag_chip.ts:29
+#: service/models/sandbox_record_tag_chip.ts:32
 msgctxt "sandbox.model.SandboxRecordTagChip.fields"
 msgid "Tag"
 msgstr ""
@@ -377,9 +377,19 @@ msgctxt "sandbox.model.SandboxTag.fields"
 msgid "Name"
 msgstr ""
 
+#: web/menu/titles.ts:10
+msgctxt "web/menu/titles"
+msgid "Configuration"
+msgstr ""
+
 #: web/menu/titles.ts:9
 msgctxt "web/menu/titles"
 msgid "Field Kitchen Sink"
+msgstr ""
+
+#: web/menu/titles.ts:11
+msgctxt "web/menu/titles"
+msgid "Record Properties"
 msgstr ""
 
 #: web/menu/titles.ts:8
@@ -410,6 +420,11 @@ msgstr ""
 #: web/route/routes.ts:112
 msgctxt "web/route/routes"
 msgid "New Sandbox Tag"
+msgstr ""
+
+#: web/route/routes.ts:142
+msgctxt "web/route/routes"
+msgid "Record Properties"
 msgstr ""
 
 #: web/route/routes.ts:61
@@ -798,6 +813,11 @@ msgstr ""
 #: web/views/SandboxRecordListView.vue:4
 msgctxt "web/views/SandboxRecordListView"
 msgid "View switcher"
+msgstr ""
+
+#: web/views/SandboxRecordPropertiesDefinitionView.vue:5
+msgctxt "web/views/SandboxRecordPropertiesDefinitionView"
+msgid "Edit the app-level schema for SandboxRecord.Properties. Labels support multiple languages; use Translate next to each label (and selection options) before Save."
 msgstr ""
 
 #: web/views/sandbox_tag_actions.ts:10

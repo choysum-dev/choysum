@@ -326,32 +326,32 @@ msgctxt "sandbox.model.SandboxRecord.fields"
 msgid "Translatable varchar; use the translation action on the field."
 msgstr "可翻译 varchar；请使用字段上的翻译操作。"
 
-#: service/models/sandbox_record_category.ts:28
+#: service/models/sandbox_record_category.ts:31
 msgctxt "sandbox.model.SandboxRecordCategory.fields"
 msgid "Category"
 msgstr "分类"
 
-#: service/models/sandbox_record_category.ts:18
+#: service/models/sandbox_record_category.ts:21
 msgctxt "sandbox.model.SandboxRecordCategory.fields"
 msgid "Record"
 msgstr "记录"
 
-#: service/models/sandbox_record_tag.ts:18
+#: service/models/sandbox_record_tag.ts:21
 msgctxt "sandbox.model.SandboxRecordTag.fields"
 msgid "Record"
 msgstr "记录"
 
-#: service/models/sandbox_record_tag.ts:29
+#: service/models/sandbox_record_tag.ts:32
 msgctxt "sandbox.model.SandboxRecordTag.fields"
 msgid "Tag"
 msgstr "标签"
 
-#: service/models/sandbox_record_tag_chip.ts:18
+#: service/models/sandbox_record_tag_chip.ts:21
 msgctxt "sandbox.model.SandboxRecordTagChip.fields"
 msgid "Record"
 msgstr "记录"
 
-#: service/models/sandbox_record_tag_chip.ts:29
+#: service/models/sandbox_record_tag_chip.ts:32
 msgctxt "sandbox.model.SandboxRecordTagChip.fields"
 msgid "Tag"
 msgstr "标签"
@@ -371,10 +371,20 @@ msgctxt "sandbox.model.SandboxTag.fields"
 msgid "Name"
 msgstr "名称"
 
+#: web/menu/titles.ts:10
+msgctxt "web/menu/titles"
+msgid "Configuration"
+msgstr "配置"
+
 #: web/menu/titles.ts:9
 msgctxt "web/menu/titles"
 msgid "Field Kitchen Sink"
 msgstr "字段试验场"
+
+#: web/menu/titles.ts:11
+msgctxt "web/menu/titles"
+msgid "Record Properties"
+msgstr "记录属性"
 
 #: web/menu/titles.ts:8
 msgctxt "web/menu/titles"
@@ -405,6 +415,11 @@ msgstr "新建沙箱记录"
 msgctxt "web/route/routes"
 msgid "New Sandbox Tag"
 msgstr "新建沙箱标签"
+
+#: web/route/routes.ts:142
+msgctxt "web/route/routes"
+msgid "Record Properties"
+msgstr "记录属性"
 
 #: web/route/routes.ts:61
 msgctxt "web/route/routes"
@@ -790,6 +805,11 @@ msgstr "打开沙箱记录详情"
 msgctxt "web/views/SandboxRecordListView"
 msgid "View switcher"
 msgstr "视图切换"
+
+#: web/views/SandboxRecordPropertiesDefinitionView.vue:5
+msgctxt "web/views/SandboxRecordPropertiesDefinitionView"
+msgid "Edit the app-level schema for SandboxRecord.Properties. Labels support multiple languages; use Translate next to each label (and selection options) before Save."
+msgstr "编辑 SandboxRecord.Properties 的应用级 schema。标签支持多语言；请在保存前使用每项标签（及选项）旁的「翻译」。"
 
 #: web/views/sandbox_tag_actions.ts:10
 msgctxt "web/views/SandboxTagFormView"

@@ -85,3 +85,9 @@ test('sandbox resource wiring: list/kanban/chart routes expose view switcher met
     viewPaths,
   });
 });
+
+test('sandbox resource wiring: record properties configuration route', () => {
+  const byName = Object.fromEntries(sandboxRoutes.map(route => [String(route.name), route]));
+  expect(byName.SandboxRecordProperties?.path).toBe('sandbox/configuration/record-properties');
+  expect(byName.SandboxRecordProperties?.meta).toMatchObject({ requiresAuth: true });
+});

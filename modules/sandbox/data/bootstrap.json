@@ -72,63 +72,54 @@
           {
             "name": "priority",
             "type": "selection",
-            "string": "Priority",
+            "string": { "en_US": "Priority", "zh_CN": "优先级" },
             "selection": [
-              [
-                "low",
-                "Low"
-              ],
-              [
-                "normal",
-                "Normal"
-              ],
-              [
-                "high",
-                "High"
-              ]
+              ["low", { "en_US": "Low", "zh_CN": "低" }],
+              ["normal", { "en_US": "Normal", "zh_CN": "普通" }],
+              ["high", { "en_US": "High", "zh_CN": "高" }]
             ],
             "default": "normal"
           },
           {
             "name": "external_code",
             "type": "char",
-            "string": "External Code"
+            "string": { "en_US": "External Code", "zh_CN": "外部编码" }
           },
           {
             "name": "is_vip",
             "type": "boolean",
-            "string": "VIP",
+            "string": { "en_US": "VIP", "zh_CN": "VIP" },
             "default": false
           },
           {
             "name": "qty_hint",
             "type": "integer",
-            "string": "Qty Hint"
+            "string": { "en_US": "Qty Hint", "zh_CN": "数量提示" }
           },
           {
             "name": "score",
             "type": "float",
-            "string": "Score"
+            "string": { "en_US": "Score", "zh_CN": "分数" }
           },
           {
             "name": "note",
             "type": "text",
-            "string": "Note"
+            "string": { "en_US": "Note", "zh_CN": "备注" }
           },
           {
             "name": "due_date",
             "type": "date",
-            "string": "Due Date"
+            "string": { "en_US": "Due Date", "zh_CN": "截止日期" }
           },
           {
             "name": "reviewed_at",
             "type": "datetime",
-            "string": "Reviewed At"
+            "string": { "en_US": "Reviewed At", "zh_CN": "审核时间" }
           },
           {
             "name": "locked_code",
             "type": "char",
-            "string": "Locked Code",
+            "string": { "en_US": "Locked Code", "zh_CN": "锁定编码" },
             "readonly": true,
             "default": "RO"
           }

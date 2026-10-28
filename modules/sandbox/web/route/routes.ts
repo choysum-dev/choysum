@@ -135,4 +135,14 @@ export const sandboxRoutes: RouteRecordRaw[] = [
     ],
     meta: { requiresAuth: true },
   }),
+  // App-level PropertyDefinition editor for SandboxRecord.Properties (label i18n UX).
+  // Write ACL comes from platform PropertyDefinition logical packs (auth RMA/RFR).
+  defineRoute('sandbox.route.record_properties', {
+    sequence: 80,
+    title: _lt('Record Properties'),
+    path: 'sandbox/configuration/record-properties',
+    name: 'SandboxRecordProperties',
+    component: () => import('../pages/SandboxRecordProperties.vue'),
+    meta: { requiresAuth: true },
+  }),
 ];

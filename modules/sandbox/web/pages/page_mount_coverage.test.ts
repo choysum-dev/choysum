@@ -8,6 +8,7 @@ import SandboxRecordList from './SandboxRecordList.vue';
 import SandboxRecordKanban from './SandboxRecordKanban.vue';
 import SandboxRecordChart from './SandboxRecordChart.vue';
 import SandboxTag from './SandboxTag.vue';
+import SandboxRecordProperties from './SandboxRecordProperties.vue';
 import { sandboxMenus } from '../menu/menus';
 
 const pages: Array<[string, any, string]> = [
@@ -16,6 +17,7 @@ const pages: Array<[string, any, string]> = [
   ['SandboxRecordChart', SandboxRecordChart, '/sandbox/records/chart'],
   ['SandboxRecord', SandboxRecord, '/sandbox/records/1'],
   ['SandboxTag', SandboxTag, '/sandbox/tags/new'],
+  ['SandboxRecordProperties', SandboxRecordProperties, '/sandbox/configuration/record-properties'],
 ];
 
 test('sandbox page mount: every ChoyPage host mounts under choysumMount', async () => {
@@ -45,4 +47,9 @@ test('sandbox menus: root declares an icon and leaves stay text-only', () => {
   expect(sandboxMenus.length).toBeGreaterThan(0);
   expect(sandboxMenus[0]!.icon).toBeTruthy();
   expect(sandboxMenus[0]!.children?.every(child => child.icon == null)).toBe(true);
+  const configuration = sandboxMenus[0]!.children?.find(child => child.id === 'sandbox.menu.configuration');
+  expect(configuration?.path).toBeFalsy();
+  expect(configuration?.children?.some(child => child.path === '/sandbox/configuration/record-properties')).toBe(
+    true,
+  );
 });
