@@ -9,6 +9,9 @@ import {
 } from '../repository/projection/translated_field_codec';
 import type { PropertyItemDefinition, PropertyLabel } from './properties_types';
 
+/** Re-export for web/UI callers (avoid deep `@/core/service/orm/repository/projection/*` imports). */
+export { TRANSLATED_BASE_LANG };
+
 function hasOwn(map: object, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(map, key);
 }

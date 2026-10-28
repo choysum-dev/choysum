@@ -28,6 +28,7 @@ export {
   type ResolvedPropertyItem,
 } from './properties_types';
 export {
+  TRANSLATED_BASE_LANG,
   mergePropertyLabelWrite,
   mergeSelectionLabelsWrite,
   translatePropertyDefinitionItems,

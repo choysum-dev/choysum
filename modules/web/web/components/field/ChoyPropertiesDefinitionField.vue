@@ -104,7 +104,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, unknown[] | null | undefined>, V = FieldPathType<T, P>">
 import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
 import type { PropertyItemDefinition } from '@/core/service/orm/model/properties_types';
-import { TRANSLATED_BASE_LANG } from '@/core/service/orm/repository/projection/translated_field_codec';
+import { TRANSLATED_BASE_LANG } from '@/core/service/orm/model/properties_label_i18n';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { RuleItem } from 'async-validator';
 import { computed, defineComponent, h, ref, watch, type WritableComputedRef } from 'vue';
@@ -549,8 +549,10 @@ function onDialogSaved(item: DefinitionEditorDraftItem) {
   try {
     commitDrafts(next);
   } catch {
-    // keep dialog closed; error shown on field
+    // Keep dialog open so the user can fix invalid input without retyping.
+    return;
   }
+  dialogOpen.value = false;
   dialogIndex.value = null;
   dialogItem.value = null;
 }

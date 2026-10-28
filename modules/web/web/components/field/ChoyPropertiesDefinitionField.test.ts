@@ -368,4 +368,151 @@ describe('ChoyPropertiesDefinitionField', () => {
       mounted.unmount();
     }
   });
+
+  test('commitDrafts failure keeps dialog open (onDialogSaved catch return)', async () => {
+    // Invalid selection JSON → draftsToDefinitionItems throws inside commitDrafts.
+    stubSfc(ChoyPropertiesDefinitionItemDialog as any, {
+      name: 'ChoyPropertiesDefinitionItemDialog',
+      props: {
+        modelValue: Boolean,
+        item: Object,
+        readonly: Boolean,
+        title: String,
+      },
+      emits: ['update:modelValue', 'saved', 'closed'],
+      setup(props: any, { emit }: any) {
+        return () =>
+          props.modelValue
+            ? h('div', { 'data-testid': 'choy-properties-definition-item-dialog-stub' }, [
+                h(
+                  'button',
+                  {
+                    'data-testid': 'stub-item-save-bad',
+                    onClick: () =>
+                      emit('saved', {
+                        name: 'bad_sel',
+                        type: 'selection',
+                        string: 'Bad',
+                        stringMap: { en_US: 'Bad' },
+                        help: '',
+                        helpMap: {},
+                        default: '',
+                        readonly: false,
+                        selectionText: '',
+                        selectionLabelMaps: {},
+                      }),
+                  },
+                  'save-bad',
+                ),
+              ])
+            : null;
+      },
+    } as any);
+
+    const binding = makeBinding({ definition: [], isEditMode: true });
+    const mounted = mountApp(ChoyPropertiesDefinitionField as any, {
+      props: { binding },
+    });
+    try {
+      await flushPromises();
+      mounted.click('[data-testid="choy-properties-definition-add"]');
+      await nextTick();
+      expect(mounted.q('[data-testid="choy-properties-definition-item-dialog-stub"]')).toBeTruthy();
+      mounted.click('[data-testid="stub-item-save-bad"]');
+      await nextTick();
+      await flushPromises();
+      // Dialog stays open; writeError surfaces the validation message.
+      expect(mounted.q('[data-testid="choy-properties-definition-item-dialog-stub"]')).toBeTruthy();
+      expect(mounted.q('[data-testid="choy-properties-definition-write-error"]')?.textContent || '').toMatch(
+        /selection/,
+      );
+      expect((binding.__value.value as any[]).length).toBe(0);
+    } finally {
+      mounted.unmount();
+      installItemDialogStub();
+    }
+  });
+
+  test('openRow readonly in display mode opens dialog with View', async () => {
+    const binding = makeBinding({
+      definition: [{ name: 'tax_id', type: 'char', string: { en_US: 'Tax' } }],
+      isEditMode: false,
+    });
+    stubSfc(ChoyPropertiesDefinitionItemDialog as any, {
+      name: 'ChoyPropertiesDefinitionItemDialog',
+      props: {
+        modelValue: Boolean,
+        item: Object,
+        readonly: Boolean,
+        title: String,
+      },
+      emits: ['update:modelValue', 'saved', 'closed'],
+      setup(props: any) {
+        return () =>
+          props.modelValue
+            ? h('div', {
+                'data-testid': 'choy-properties-definition-item-dialog-stub',
+                'data-readonly': props.readonly ? '1' : '0',
+              })
+            : null;
+      },
+    } as any);
+
+    const mounted = mountApp(ChoyPropertiesDefinitionField as any, {
+      props: { binding },
+    });
+    try {
+      await flushPromises();
+      // Row click opens as readonly when canMutate is false (display mode).
+      mounted.click('[data-testid="choy-properties-definition-row"]');
+      await nextTick();
+      const stub = mounted.q('[data-testid="choy-properties-definition-item-dialog-stub"]');
+      expect(stub).toBeTruthy();
+      expect(stub?.getAttribute('data-readonly')).toBe('1');
+    } finally {
+      mounted.unmount();
+      installItemDialogStub();
+    }
+  });
+
+  test('openRow edit path and remove keep selection drafts intact', async () => {
+    const binding = makeBinding({
+      definition: [
+        {
+          name: 'prio',
+          type: 'selection',
+          string: { en_US: 'Priority' },
+          selection: [
+            ['low', 'Low'],
+            ['high', 'High'],
+          ],
+        },
+        { name: 'code', type: 'char', string: { en_US: 'Code' } },
+      ],
+      isEditMode: true,
+    });
+    const mounted = mountApp(ChoyPropertiesDefinitionField as any, {
+      props: { binding },
+    });
+    try {
+      await flushPromises();
+      expect(mounted.el.textContent || '').toMatch(/prio/);
+      expect(mounted.el.textContent || '').toMatch(/selection/);
+      mounted.click('[data-testid="choy-properties-definition-open"]');
+      await nextTick();
+      expect(mounted.q('[data-testid="choy-properties-definition-item-dialog-stub"]')).toBeTruthy();
+
+      const removeBtns = mounted.el.querySelectorAll(
+        '[data-testid="choy-properties-definition-remove"]',
+      );
+      (removeBtns[0] as HTMLButtonElement).click();
+      await nextTick();
+      await flushPromises();
+      const next = binding.__value.value as any[];
+      expect(next.length).toBe(1);
+      expect(next[0].name).toBe('code');
+    } finally {
+      mounted.unmount();
+    }
+  });
 });

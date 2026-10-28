@@ -2,10 +2,25 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { ColumnDef } from '@tanstack/vue-table';
+import { ref } from 'vue';
+
 import { flushPromises, fnRecorder, mountApp } from '@/web/web/__tests__/mountApp';
+import { LIST_HANDLE_API_KEY } from '@/web/web/composables/useListHandleReorder';
 import DataTable from './DataTable.vue';
 
 type Row = { Id: string; Name: string };
+
+function mockHandleApi(opts?: { enabled?: boolean; dragging?: number | null; over?: number | null }) {
+  return {
+    enabled: ref(opts?.enabled ?? true),
+    draggingIndex: ref<number | null>(opts?.dragging ?? null),
+    overIndex: ref<number | null>(opts?.over ?? null),
+    onDragStart: fnRecorder(),
+    onDragOver: fnRecorder(),
+    onDrop: fnRecorder(async () => undefined),
+    onDragEnd: fnRecorder(),
+  };
+}
 
 const columns: ColumnDef<Row, unknown>[] = [
   { accessorKey: 'Name', header: 'Name', cell: (ctx) => String(ctx.getValue() ?? '') },
@@ -261,6 +276,141 @@ describe('DataTable chrome', () => {
     expect(chevrons).toBeGreaterThan(0);
     expect(mounted.text()).not.toContain('↑');
     expect(mounted.text()).not.toContain('↓');
+    mounted.unmount();
+  });
+
+  test('handle reorder helpers skip without api / when disabled / for group rows', async () => {
+    const noApi = mountApp(DataTable as any, {
+      props: {
+        columns,
+        data: rows,
+        height: 120,
+        virtualize: false,
+        enableRowSelection: false,
+      },
+    });
+    await flushPromises();
+    const noApiState = noApi.setupState() as {
+      handleReorderActive?: () => boolean;
+      handleRowClass?: (item: { index: number; row?: unknown }) => string | undefined;
+      onHandleRowDragOver?: (item: { index: number; row?: unknown }, event: DragEvent) => void;
+      onHandleRowDrop?: (item: { index: number; row?: unknown }, event: DragEvent) => void;
+    };
+    expect(noApiState.handleReorderActive?.()).toBe(false);
+    expect(noApiState.handleRowClass?.({ index: 0 })).toBeUndefined();
+    const idleEvent = { preventDefault: fnRecorder() } as unknown as DragEvent;
+    noApiState.onHandleRowDragOver?.({ index: 0 }, idleEvent);
+    noApiState.onHandleRowDrop?.({ index: 0 }, idleEvent);
+    noApi.unmount();
+
+    const handleApi = mockHandleApi({ enabled: false, dragging: 0, over: 1 });
+    const disabled = mountApp(DataTable as any, {
+      props: {
+        columns,
+        data: rows,
+        height: 120,
+        virtualize: false,
+        enableRowSelection: false,
+      },
+      provide: { [LIST_HANDLE_API_KEY]: handleApi },
+    });
+    await flushPromises();
+    const disabledState = disabled.setupState() as {
+      handleReorderActive?: () => boolean;
+      handleRowClass?: (item: { index: number; row?: unknown }) => string | undefined;
+      onHandleRowDragOver?: (item: { index: number; row?: unknown }, event: DragEvent) => void;
+      onHandleRowDrop?: (item: { index: number; row?: unknown }, event: DragEvent) => void;
+    };
+    expect(disabledState.handleReorderActive?.()).toBe(false);
+    expect(disabledState.handleRowClass?.({ index: 1 })).toBeUndefined();
+    disabledState.onHandleRowDragOver?.({ index: 1 }, idleEvent);
+    disabledState.onHandleRowDrop?.({ index: 1 }, idleEvent);
+    expect(handleApi.onDragOver.calls.length).toBe(0);
+    expect(handleApi.onDrop.calls.length).toBe(0);
+    disabled.unmount();
+
+    const activeApi = mockHandleApi({ enabled: true, dragging: 0, over: 1 });
+    const withGroups = mountApp(DataTable as any, {
+      props: {
+        columns,
+        data: [
+          { kind: 'group', key: 'g1', label: 'G', count: 1 },
+          { Id: '1', Name: 'alpha' },
+        ],
+        height: 120,
+        virtualize: false,
+        enableRowSelection: false,
+        rowId: (row: { key?: string; Id?: string }) => row.key || row.Id || '',
+      },
+      provide: { [LIST_HANDLE_API_KEY]: activeApi },
+    });
+    await flushPromises();
+    const groupState = withGroups.setupState() as {
+      handleRowClass?: (item: { index: number; row?: unknown }) => string | undefined;
+      onHandleRowDragOver?: (item: { index: number; row?: unknown }, event: DragEvent) => void;
+      onHandleRowDrop?: (item: { index: number; row?: unknown }, event: DragEvent) => void;
+      rows?: Array<{ original?: unknown }>;
+    };
+    const groupRow = groupState.rows?.[0];
+    expect(groupState.handleRowClass?.({ index: 0, row: groupRow })).toBeUndefined();
+    groupState.onHandleRowDragOver?.({ index: 0, row: groupRow }, idleEvent);
+    groupState.onHandleRowDrop?.({ index: 0, row: groupRow }, idleEvent);
+    expect(activeApi.onDragOver.calls.length).toBe(0);
+    expect(activeApi.onDrop.calls.length).toBe(0);
+    withGroups.unmount();
+  });
+
+  test('handle reorder helpers paint drag chrome and forward dragover/drop', async () => {
+    const handleApi = mockHandleApi({ enabled: true, dragging: 0, over: 1 });
+    const mounted = mountApp(DataTable as any, {
+      props: {
+        columns,
+        data: rows,
+        height: 120,
+        virtualize: false,
+        enableRowSelection: false,
+      },
+      provide: { [LIST_HANDLE_API_KEY]: handleApi },
+    });
+    await flushPromises();
+    const state = mounted.setupState() as {
+      handleReorderActive?: () => boolean;
+      handleRowClass?: (item: { index: number; row?: unknown }) => string | undefined;
+      onHandleRowDragOver?: (item: { index: number; row?: unknown }, event: DragEvent) => void;
+      onHandleRowDrop?: (item: { index: number; row?: unknown }, event: DragEvent) => void;
+      rows?: unknown[];
+    };
+    expect(state.handleReorderActive?.()).toBe(true);
+    expect(state.handleRowClass?.({ index: 0, row: state.rows?.[0] })).toBe('opacity-60');
+    expect(state.handleRowClass?.({ index: 1, row: state.rows?.[1] })).toBe(
+      'bg-accent/40 ring-1 ring-inset ring-primary/30'
+    );
+    expect(state.handleRowClass?.({ index: 2, row: state.rows?.[0] })).toBeUndefined();
+
+    handleApi.draggingIndex.value = null;
+    expect(state.handleRowClass?.({ index: 1, row: state.rows?.[1] })).toBeUndefined();
+    handleApi.draggingIndex.value = 0;
+    handleApi.overIndex.value = 0;
+    expect(state.handleRowClass?.({ index: 0, row: state.rows?.[0] })).toBe('opacity-60');
+
+    const event = { preventDefault: fnRecorder() } as unknown as DragEvent;
+    state.onHandleRowDragOver?.({ index: 1, row: state.rows?.[1] }, event);
+    expect(handleApi.onDragOver.calls.length).toBe(1);
+    expect(handleApi.onDragOver.calls[0]?.[0]).toBe(1);
+    expect(handleApi.onDragOver.calls[0]?.[1]).toBe(event);
+
+    state.onHandleRowDrop?.({ index: 1, row: state.rows?.[1] }, event);
+    expect(handleApi.onDrop.calls.length).toBe(1);
+    expect(handleApi.onDrop.calls[0]?.[0]).toBe(1);
+    expect(handleApi.onDrop.calls[0]?.[1]).toBe(event);
+
+    // DOM path: row dragover/drop also forward into handleApi.
+    const bodyRows = mounted.qa('[data-index]');
+    expect(bodyRows.length).toBe(2);
+    bodyRows[1]!.dispatchEvent(new Event('dragover', { bubbles: true }));
+    bodyRows[1]!.dispatchEvent(new Event('drop', { bubbles: true }));
+    expect(handleApi.onDragOver.calls.length).toBeGreaterThan(1);
+    expect(handleApi.onDrop.calls.length).toBeGreaterThan(1);
     mounted.unmount();
   });
 });

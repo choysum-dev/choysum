@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  TRANSLATED_BASE_LANG,
   mergePropertyLabelWrite,
   mergeSelectionLabelsWrite,
   parsePropertyLabelMap,
   unwrapPropertyLabel,
 } from '@/core/service/orm/model/properties_label_i18n';
-import { TRANSLATED_BASE_LANG } from '@/core/service/orm/repository/projection/translated_field_codec';
 import { PROPERTIES_V1_TYPES, type PropertyItemDefinition, type PropertyLabel } from '@/core/service/orm/model/properties_types';
 
 import { normalizeSelectionOptions } from './propertiesHelpers';

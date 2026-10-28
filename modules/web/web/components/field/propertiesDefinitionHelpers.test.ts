@@ -372,4 +372,103 @@ describe('propertiesDefinitionHelpers', () => {
       ['ContainerId', '=', null],
     ]);
   });
+
+  test('selectionRowsFromDraft falls back to selectionLabelMaps on JSON parse failure', () => {
+    const draft = emptyDraftItem();
+    draft.type = 'selection';
+    draft.selectionText = '{not-json';
+    draft.selectionLabelMaps = {
+      low: { en_US: 'Low', zh_CN: '低' },
+      high: { en_US: 'High' },
+    };
+    const rows = selectionRowsFromDraft(draft);
+    expect(rows.map(r => r.value).sort()).toEqual(['high', 'low']);
+    expect(rows.find(r => r.value === 'low')?.label).toBe('Low');
+  });
+
+  test('selectionRowsFromDraft empty selectionText yields empty rows', () => {
+    const draft = emptyDraftItem();
+    draft.type = 'selection';
+    draft.selectionText = '';
+    expect(selectionRowsFromDraft(draft)).toEqual([]);
+  });
+
+  test('syncDraftLabelsForLang tolerates invalid selectionText JSON', () => {
+    const draft = emptyDraftItem();
+    draft.type = 'selection';
+    draft.selectionText = 'not-json';
+    draft.selectionLabelMaps = { a: { en_US: 'A', zh_CN: '甲' } };
+    syncDraftLabelsForLang(draft, 'zh_CN');
+    expect(draft.selectionText).toBe(JSON.stringify([['a', '甲']]));
+  });
+
+  test('applyDraftCurrentLangToMaps returns early on invalid / empty selection JSON', () => {
+    const draft = emptyDraftItem();
+    draft.type = 'selection';
+    draft.selectionLabelMaps = { a: { en_US: 'A' } };
+
+    draft.selectionText = '';
+    applyDraftCurrentLangToMaps(draft, 'en_US');
+    expect(draft.selectionLabelMaps).toEqual({ a: { en_US: 'A' } });
+
+    draft.selectionText = '{broken';
+    applyDraftCurrentLangToMaps(draft, 'en_US');
+    expect(draft.selectionLabelMaps).toEqual({ a: { en_US: 'A' } });
+
+    draft.selectionText = '[]';
+    applyDraftCurrentLangToMaps(draft, 'en_US');
+    expect(draft.selectionLabelMaps).toEqual({ a: { en_US: 'A' } });
+  });
+
+  test('writeSelectionRowsToDraft / syncDraftLabelsForLang tolerate stringify failures', () => {
+    const draft = emptyDraftItem();
+    draft.type = 'selection';
+    draft.selectionText = JSON.stringify([['a', 'A']]);
+    draft.selectionLabelMaps = { a: { en_US: 'A' } };
+
+    const origStringify = JSON.stringify;
+    try {
+      (JSON as any).stringify = () => {
+        throw new Error('stringify boom');
+      };
+      writeSelectionRowsToDraft(draft, [{ value: 'b', label: 'B' }], 'en_US');
+      expect(draft.selectionText).toBe('');
+      expect(draft.selectionLabelMaps.b).toEqual({ en_US: 'B' });
+
+      draft.selectionLabelMaps = { c: { en_US: 'C' } };
+      draft.selectionText = 'not-json';
+      syncDraftLabelsForLang(draft, 'en_US');
+      expect(draft.selectionText).toBe('');
+    } finally {
+      JSON.stringify = origStringify;
+    }
+  });
+
+  test('draftsToDefinitionItems omits help when map values are blank whitespace', () => {
+    const items = draftsToDefinitionItems(
+      [
+        {
+          ...emptyDraftItem(),
+          name: 'x',
+          type: 'char',
+          help: '   ',
+          helpMap: { en_US: '  ', zh_CN: '' },
+        },
+      ],
+      'en_US',
+    );
+    expect(items[0]!.help).toBeUndefined();
+  });
+
+  test('syncDraftLabelsForLang no-ops selection for non-selection types', () => {
+    const draft = emptyDraftItem();
+    draft.type = 'char';
+    draft.stringMap = { en_US: 'Label' };
+    draft.helpMap = { en_US: 'Help' };
+    draft.selectionText = 'should-stay';
+    syncDraftLabelsForLang(draft, '');
+    expect(draft.string).toBe('Label');
+    expect(draft.help).toBe('Help');
+    expect(draft.selectionText).toBe('should-stay');
+  });
 });

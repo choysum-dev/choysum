@@ -49,7 +49,7 @@ import ChoyInput from '@/web/web/components/vendor/ui/input/Input.vue';
 import { ChoyMessage } from '../../composables/useChoyMessage';
 import { createTranslate } from '@/web/web/i18n';
 import { createStoreByModel } from '@/web/web/stores/registry';
-import { TRANSLATED_BASE_LANG } from '@/core/service/orm/repository/projection/translated_field_codec';
+import { TRANSLATED_BASE_LANG } from '@/core/service/orm/model/properties_label_i18n';
 
 defineOptions({ name: 'ChoyPropertyLabelTranslationsDialog' });
 

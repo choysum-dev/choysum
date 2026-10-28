@@ -153,7 +153,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, ref, watch } from 'vue';
 import { getActivePinia } from 'pinia';
 import { Languages } from 'lucide-vue-next';
-import { TRANSLATED_BASE_LANG } from '@/core/service/orm/repository/projection/translated_field_codec';
+import { TRANSLATED_BASE_LANG } from '@/core/service/orm/model/properties_label_i18n';
 import { createTranslate } from '@/web/web/i18n';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
@@ -334,8 +334,8 @@ function onConfirm() {
     return;
   }
   applyDraftCurrentLangToMaps(item, editorLang());
+  // Parent closes on successful commit; keep open when commitDrafts fails so edits are not lost.
   emit('saved', cloneDraft(item));
-  visible.value = false;
 }
 
 watch(
