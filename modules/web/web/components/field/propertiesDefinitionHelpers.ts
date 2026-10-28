@@ -115,7 +115,8 @@ function asLabelMap(value: unknown): Record<string, string> {
   return parsePropertyLabelMap(value) || {};
 }
 
-function selectionRawLabel(opt: unknown): unknown {
+/** Resolve a selection option's raw label (tuple / object / other → undefined). */
+export function selectionRawLabel(opt: unknown): unknown {
   if (Array.isArray(opt)) return opt[1] ?? opt[0];
   if (opt && typeof opt === 'object' && !Array.isArray(opt)) {
     return (opt as { label?: unknown }).label ?? (opt as { value?: unknown }).value;
@@ -247,10 +248,8 @@ export function draftsToDefinitionItems(
   previousItems?: PropertyItemDefinition[] | null,
 ): PropertyItemDefinition[] {
   const code = String(lang || '').trim() || TRANSLATED_BASE_LANG;
-  const prevByName = new Map<string, PropertyItemDefinition>();
-  for (const prev of previousItems || []) {
-    if (prev?.name) prevByName.set(prev.name, prev);
-  }
+  // previousItems kept for call-site compatibility; draft maps are the merge base.
+  void previousItems;
   const out: PropertyItemDefinition[] = [];
   const seenNames = new Set<string>();
   for (const draft of drafts || []) {
@@ -265,19 +264,19 @@ export function draftsToDefinitionItems(
     if (!PROPERTIES_V1_TYPES.has(type)) {
       throw new Error(`unsupported property type '${type}' (${name})`);
     }
-    const previous = prevByName.get(name);
     const item: PropertyItemDefinition = { name, type };
     const label = String(draft.string || '').trim();
     draft.string = label;
     if (label || Object.keys(draft.stringMap).length) {
-      item.string = mergePropertyLabelWrite(previous?.string ?? draft.stringMap, label, code);
+      // Draft maps are the source of truth (translate dialog writes here).
+      item.string = mergePropertyLabelWrite(draft.stringMap, label, code);
     }
     const help = String(draft.help || '').trim();
     draft.help = help;
     const helpHasContent =
       !!help || Object.values(draft.helpMap || {}).some(v => String(v || '').trim() !== '');
     if (helpHasContent) {
-      item.help = mergePropertyLabelWrite(previous?.help ?? draft.helpMap, help, code);
+      item.help = mergePropertyLabelWrite(draft.helpMap, help, code);
     }
     if (draft.readonly) item.readonly = true;
     const defRaw = String(draft.default ?? '');
@@ -305,7 +304,10 @@ export function draftsToDefinitionItems(
       if (item.default != null && !options.some(o => o.value === String(item.default))) {
         throw new Error(`selection property '${name}' default is not one of the options`);
       }
-      item.selection = mergeSelectionLabelsWrite(previous?.selection, options, code);
+      const previousSelection = Object.entries(draft.selectionLabelMaps || {}).map(
+        ([value, map]) => [value, map] as [string, PropertyLabel],
+      );
+      item.selection = mergeSelectionLabelsWrite(previousSelection, options, code);
     }
     out.push(item);
   }

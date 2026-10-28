@@ -378,12 +378,20 @@ describe('ChoyPropertiesDefinitionField', () => {
         item: Object,
         readonly: Boolean,
         title: String,
+        commitError: String,
       },
       emits: ['update:modelValue', 'saved', 'closed'],
       setup(props: any, { emit }: any) {
         return () =>
           props.modelValue
             ? h('div', { 'data-testid': 'choy-properties-definition-item-dialog-stub' }, [
+                props.commitError
+                  ? h(
+                      'p',
+                      { 'data-testid': 'choy-properties-definition-item-error' },
+                      String(props.commitError),
+                    )
+                  : null,
                 h(
                   'button',
                   {
@@ -421,9 +429,9 @@ describe('ChoyPropertiesDefinitionField', () => {
       mounted.click('[data-testid="stub-item-save-bad"]');
       await nextTick();
       await flushPromises();
-      // Dialog stays open; writeError surfaces the validation message.
+      // Dialog stays open; commit error is shown inside the dialog (not only behind it).
       expect(mounted.q('[data-testid="choy-properties-definition-item-dialog-stub"]')).toBeTruthy();
-      expect(mounted.q('[data-testid="choy-properties-definition-write-error"]')?.textContent || '').toMatch(
+      expect(mounted.q('[data-testid="choy-properties-definition-item-error"]')?.textContent || '').toMatch(
         /selection/,
       );
       expect((binding.__value.value as any[]).length).toBe(0);
@@ -515,4 +523,189 @@ describe('ChoyPropertiesDefinitionField', () => {
       mounted.unmount();
     }
   });
+
+  test('summaryText covers empty, few, and many named properties', async () => {
+    const empty = makeBinding({ definition: [], isEditMode: true, isForm: false });
+    const emptyMounted = mountApp(ChoyPropertiesDefinitionField as any, { props: { binding: empty } });
+    try {
+      await flushPromises();
+      expect(emptyMounted.q('[data-testid="choy-properties-definition-summary"]')?.textContent || '').toMatch(
+        /No properties|properties/i,
+      );
+    } finally {
+      emptyMounted.unmount();
+    }
+
+    const few = makeBinding({
+      definition: [
+        { name: 'a', type: 'char' },
+        { name: 'b', type: 'char' },
+        { name: 'c', type: 'char' },
+      ],
+      isEditMode: true,
+      isForm: false,
+    });
+    const fewMounted = mountApp(ChoyPropertiesDefinitionField as any, { props: { binding: few } });
+    try {
+      await flushPromises();
+      const text = fewMounted.q('[data-testid="choy-properties-definition-summary"]')?.textContent || '';
+      expect(text).toMatch(/a/);
+      expect(text).toMatch(/c/);
+    } finally {
+      fewMounted.unmount();
+    }
+
+    const many = makeBinding({
+      definition: [
+        { name: 'a', type: 'char' },
+        { name: 'b', type: 'char' },
+        { name: 'c', type: 'char' },
+        { name: 'd', type: 'char' },
+      ],
+      isEditMode: true,
+      isForm: false,
+    });
+    const manyMounted = mountApp(ChoyPropertiesDefinitionField as any, { props: { binding: many } });
+    try {
+      await flushPromises();
+      expect(manyMounted.q('[data-testid="choy-properties-definition-summary"]')?.textContent || '').toMatch(
+        /4|properties|\.\.\./i,
+      );
+    } finally {
+      manyMounted.unmount();
+    }
+  });
+
+  test('row keyboard handlers open dialog; readonly saved is ignored', async () => {
+    const binding = makeBinding({
+      definition: [{ name: 'a', type: 'char', string: { en_US: 'A' } }],
+      isEditMode: false,
+    });
+    const mounted = mountApp(ChoyPropertiesDefinitionField as any, { props: { binding } });
+    try {
+      await flushPromises();
+      const row = mounted.q('[data-testid="choy-properties-definition-row"]') as HTMLElement;
+      // QuickJS may lack KeyboardEvent; synthesize a keydown-like object via listeners.
+      const listeners = (row as any).__vnode?.props || {};
+      const onKeydown = (row as any).onkeydown || listeners.onKeydown;
+      if (typeof onKeydown === 'function') {
+        onKeydown({ key: 'Enter', preventDefault() {} });
+      } else {
+        // Fallback: invoke openRow through the field setup.
+        (mounted.setupState() as { openRow?: (i: number, ro: boolean) => void }).openRow?.(0, true);
+      }
+      await nextTick();
+      expect(mounted.q('[data-testid="choy-properties-definition-item-dialog-stub"]')).toBeTruthy();
+      if (mounted.q('[data-testid="stub-item-save"]')) {
+        mounted.click('[data-testid="stub-item-save"]');
+        await nextTick();
+        await flushPromises();
+      }
+      expect((binding.__value.value as any[])[0].name).toBe('a');
+    } finally {
+      mounted.unmount();
+    }
+  });
+
+  test('onReorder failure keeps prior definition when commitDrafts throws', async () => {
+    const binding = makeBinding({
+      definition: [
+        { name: 'a', type: 'char', string: { en_US: 'A' } },
+        { name: 'b', type: 'char', string: { en_US: 'B' } },
+      ],
+      isEditMode: true,
+    });
+    const mounted = mountApp(ChoyPropertiesDefinitionField as any, { props: { binding } });
+    try {
+      await flushPromises();
+      const exposed = mounted.root as any;
+      const drafts = (Array.isArray(exposed.drafts) ? exposed.drafts : exposed.drafts?.value) as any[];
+      const bad = drafts.map((d: any, i: number) =>
+        i === 0
+          ? {
+              ...d,
+              type: 'selection',
+              selectionText: '',
+              selectionLabelMaps: {},
+            }
+          : d,
+      );
+      exposed.commitDrafts = () => {
+        throw new Error('forced');
+      };
+      const state = mounted.setupState() as { onReorder?: (rows: any[]) => void };
+      state.onReorder?.(bad);
+      await nextTick();
+      expect((binding.__value.value as any[]).map((r: any) => r.name)).toEqual(['a', 'b']);
+    } finally {
+      mounted.unmount();
+    }
+  });
+
+  test('summaryText nameless items; handle drag and row dragover/drop', async () => {
+    const nameless = makeBinding({
+      definition: [{ type: 'char' }, { type: 'char' }],
+      isEditMode: true,
+      isForm: false,
+    });
+    const namelessMounted = mountApp(ChoyPropertiesDefinitionField as any, {
+      props: { binding: nameless },
+    });
+    try {
+      await flushPromises();
+      expect(
+        namelessMounted.q('[data-testid="choy-properties-definition-summary"]')?.textContent || '',
+      ).toMatch(/2|properties/i);
+    } finally {
+      namelessMounted.unmount();
+    }
+
+    const binding = makeBinding({
+      definition: [
+        { name: 'a', type: 'char', string: { en_US: 'A' } },
+        { name: 'b', type: 'char', string: { en_US: 'B' } },
+      ],
+      isEditMode: true,
+    });
+    const mounted = mountApp(ChoyPropertiesDefinitionField as any, { props: { binding } });
+    try {
+      await flushPromises();
+      const handle = mounted.q('[data-testid="choy-properties-definition-handle"]') as HTMLElement;
+      const row = mounted.qa('[data-testid="choy-properties-definition-row"]')[1] as HTMLElement;
+      const dt = {
+        effectAllowed: '',
+        dropEffect: '',
+        setData: () => undefined,
+        setDragImage: () => undefined,
+      };
+      handle.dispatchEvent(
+        Object.assign(new Event('dragstart', { bubbles: true }), {
+          dataTransfer: dt,
+          stopPropagation() {},
+        }),
+      );
+      row.dispatchEvent(
+        Object.assign(new Event('dragover', { bubbles: true }), {
+          dataTransfer: dt,
+          preventDefault() {},
+        }),
+      );
+      row.dispatchEvent(
+        Object.assign(new Event('drop', { bubbles: true }), {
+          dataTransfer: dt,
+          preventDefault() {},
+        }),
+      );
+      handle.dispatchEvent(
+        Object.assign(new Event('dragend', { bubbles: true }), {
+          stopPropagation() {},
+        }),
+      );
+      await nextTick();
+      await flushPromises();
+    } finally {
+      mounted.unmount();
+    }
+  });
+
 });

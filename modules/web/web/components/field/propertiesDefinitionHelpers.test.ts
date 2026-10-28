@@ -8,6 +8,7 @@ import {
   definitionItemsToDrafts,
   draftsToDefinitionItems,
   emptyDraftItem,
+  selectionRawLabel,
   selectionRowsFromDraft,
   syncDraftLabelsForLang,
   writeSelectionRowsToDraft,
@@ -20,6 +21,15 @@ describe('propertiesDefinitionHelpers', () => {
     expect(emptyDraftItem().stringMap).toEqual({});
     expect(emptyDraftItem().help).toBe('');
     expect(emptyDraftItem().helpMap).toEqual({});
+  });
+
+  test('selectionRawLabel covers tuple, object, and scalar fallback', () => {
+    expect(selectionRawLabel(['a', 'A'])).toBe('A');
+    expect(selectionRawLabel(['a'])).toBe('a');
+    expect(selectionRawLabel({ value: 'a', label: 'A' })).toBe('A');
+    expect(selectionRawLabel({ value: 'a' })).toBe('a');
+    expect(selectionRawLabel('scalar')).toBeUndefined();
+    expect(selectionRawLabel(null)).toBeUndefined();
   });
 
   test('definitionItemsToDrafts unwraps lang maps for the requested lang', () => {
@@ -123,6 +133,50 @@ describe('propertiesDefinitionHelpers', () => {
       ['a', { en_US: 'A', zh_CN: '甲级' }],
       ['b', { en_US: 'B', zh_CN: '乙' }],
     ]);
+  });
+
+  test('draftsToDefinitionItems keeps translate-dialog maps even when previous exists', () => {
+    const previous = [
+      {
+        name: 'tax_id',
+        type: 'char',
+        string: { en_US: 'Tax', zh_CN: '税号' },
+        help: { en_US: 'Help', zh_CN: '帮助' },
+      },
+    ];
+    const drafts = definitionItemsToDrafts(previous, 'en_US');
+    drafts[0]!.stringMap = { en_US: 'Tax', zh_CN: '税号', ja_JP: '税' };
+    drafts[0]!.helpMap = { en_US: 'Help', zh_CN: '帮助', ja_JP: 'ヘルプ' };
+    // Drop zh_CN from string map (user cleared it in translate dialog).
+    delete drafts[0]!.stringMap.zh_CN;
+    const items = draftsToDefinitionItems(drafts, 'en_US', previous as any);
+    expect(items[0]!.string).toEqual({ en_US: 'Tax', ja_JP: '税' });
+    expect(items[0]!.help).toEqual({ en_US: 'Help', zh_CN: '帮助', ja_JP: 'ヘルプ' });
+  });
+
+  test('draftsToDefinitionItems selection labels follow draft maps after value rename', () => {
+    const drafts = [
+      {
+        ...emptyDraftItem(),
+        name: 'prio',
+        type: 'selection',
+        string: 'Priority',
+        stringMap: { en_US: 'Priority' },
+        selectionText: JSON.stringify([['hi', 'High']]),
+        selectionLabelMaps: {
+          hi: { en_US: 'High', zh_CN: '高' },
+        },
+      },
+    ];
+    const items = draftsToDefinitionItems(drafts, 'en_US', [
+      {
+        name: 'prio',
+        type: 'selection',
+        string: { en_US: 'Priority' },
+        selection: [['high', { en_US: 'High', zh_CN: '高' }]],
+      },
+    ] as any);
+    expect(items[0]!.selection).toEqual([['hi', { en_US: 'High', zh_CN: '高' }]]);
   });
 
   test('definitionItemsToDrafts / draftsToDefinitionItems round-trip', () => {

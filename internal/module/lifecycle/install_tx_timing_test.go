@@ -86,9 +86,13 @@ func TestLogModuleCommitTxHoldPassesErrorValueForStack(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{
 		Level: slog.LevelError,
 		ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
-			if a.Key == "error" && a.Value.Kind() == slog.KindAny {
-				if _, ok := a.Value.Any().(error); !ok {
-					t.Fatalf("error attr must remain an error value, got %#v", a.Value.Any())
+			if a.Key == "error" {
+				if a.Value.Kind() != slog.KindAny {
+					t.Fatalf("error attr must remain KindAny for stack expansion, got kind=%v", a.Value.Kind())
+				}
+				errVal, ok := a.Value.Any().(error)
+				if !ok || errVal == nil || !strings.Contains(errVal.Error(), "commit failed") {
+					t.Fatalf("error attr must remain the original error value, got %#v", a.Value.Any())
 				}
 			}
 			return a

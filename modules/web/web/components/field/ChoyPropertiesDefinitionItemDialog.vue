@@ -118,11 +118,11 @@ SPDX-License-Identifier: Apache-2.0
           </div>
         </div>
         <p
-          v-if="formError"
+          v-if="formError || commitError"
           class="mt-3 text-sm text-destructive"
           data-testid="choy-properties-definition-item-error"
         >
-          {{ formError }}
+          {{ formError || commitError }}
         </p>
       </div>
       <div class="flex shrink-0 justify-end gap-2">
@@ -191,11 +191,14 @@ const props = withDefaults(
     readonly?: boolean;
     /** Dialog title override (defaults from item name). */
     title?: string;
+    /** Parent commitDrafts error shown while dialog stays open after a failed save. */
+    commitError?: string;
   }>(),
   {
     item: null,
     readonly: false,
     title: '',
+    commitError: '',
   },
 );
 

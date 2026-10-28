@@ -163,9 +163,9 @@ const handleReorder = useListHandleReorder({
   onReorder: next => emitRows(next as SelectionDraftRow[]),
 });
 
-function rowKey(row: SelectionDraftRow, index: number): string {
-  const value = String(row.value || '').trim();
-  return value ? `${value}-${index}` : `new-${index}`;
+function rowKey(_row: SelectionDraftRow, index: number): string {
+  // Index-only: value is editable; including it remounts inputs on every keystroke.
+  return `row-${index}`;
 }
 
 function emitRows(next: SelectionDraftRow[]) {
@@ -220,5 +220,5 @@ function onRowDrop(index: number, event: DragEvent) {
   void handleReorder.onDrop(index, event);
 }
 
-defineExpose({ handleReorder });
+defineExpose({ handleReorder, selectionRowDragClass, onHandleDragStart, onRowDragOver, onRowDrop });
 </script>

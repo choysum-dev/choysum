@@ -138,8 +138,16 @@ export function createFieldsGetHelpers(
   const inflight = new Map<string, Promise<Record<string, WebFieldMetadata>>>();
   /** Per-lang overlay written after successful ensures (for getFieldMeta). */
   const overlayByLang = new Map<string, Record<string, WebFieldMetadata>>();
+  /**
+   * Attribute coverage per lang|field. Overlay reuse is only safe when every
+   * requested attribute was included in a prior successful fetch for that field.
+   * `"*"` means a whole-attribute (omitted attrs) fetch covered the field.
+   */
+  const overlayAttrsByField = new Map<string, Set<string>>();
   /** Bumped so Vue computeds that call getFieldMeta / getFieldsGetTranslatedString re-run. */
   const overlayVersion = shallowRef(0);
+  /** Invalidates in-flight RPC completions after clearFieldsGetCache. */
+  let cacheGeneration = 0;
   /** lang|attrs → pending microtask-coalesced ensures. */
   const coalesceByLangAttrs = new Map<string, CoalesceBucket>();
 
@@ -147,17 +155,54 @@ export function createFieldsGetHelpers(
     overlayVersion.value += 1;
   };
 
+  const fieldAttrKey = (lang: string, name: string) => `${lang}|${name}`;
+
+  const recordOverlayAttrs = (
+    lang: string,
+    fieldNames: string[],
+    attributes: string[] | undefined
+  ) => {
+    const attrs = !attributes || attributes.length === 0 ? ['*'] : attributes.map(a => String(a || '').trim()).filter(Boolean);
+    for (const name of fieldNames) {
+      const key = fieldAttrKey(lang, name);
+      const set = overlayAttrsByField.get(key) || new Set<string>();
+      for (const attr of attrs) set.add(attr);
+      overlayAttrsByField.set(key, set);
+    }
+  };
+
+  const overlayCoversAttrs = (lang: string, names: string[], attributes?: string[]): boolean => {
+    const want =
+      !attributes || attributes.length === 0
+        ? ['*']
+        : attributes.map(a => String(a || '').trim()).filter(Boolean);
+    return names.every(name => {
+      const have = overlayAttrsByField.get(fieldAttrKey(lang, name));
+      if (!have) return false;
+      if (have.has('*')) return true;
+      if (want.includes('*')) return false;
+      return want.every(attr => have.has(attr));
+    });
+  };
+
   const clearFieldsGetCache = () => {
+    cacheGeneration += 1;
     responseCache.clear();
     inflight.clear();
     overlayByLang.clear();
+    overlayAttrsByField.clear();
     coalesceByLangAttrs.clear();
     bumpOverlay();
   };
 
-  const mergeOverlay = (lang: string, slice: Record<string, WebFieldMetadata>) => {
+  const mergeOverlay = (
+    lang: string,
+    slice: Record<string, WebFieldMetadata>,
+    attributes: string[] | undefined
+  ) => {
     const prev = overlayByLang.get(lang) || {};
     overlayByLang.set(lang, { ...prev, ...slice });
+    recordOverlayAttrs(lang, Object.keys(slice), attributes);
     bumpOverlay();
   };
 
@@ -175,13 +220,16 @@ export function createFieldsGetHelpers(
 
     const rpcFields = bucket.wantAll ? undefined : [...bucket.fieldSet].sort();
     const rpcKey = buildCacheKey(lang, rpcFields, bucket.attributes);
+    const generationAtStart = cacheGeneration;
 
     const resolveWaiters = (slice: Record<string, WebFieldMetadata>) => {
       for (const waiter of bucket.waiters) {
         let value = responseCache.get(waiter.cacheKey);
         if (!value) {
           value = waiter.wantAll ? slice : pickFieldSlice(slice, waiter.names);
-          responseCache.set(waiter.cacheKey, value);
+          if (generationAtStart === cacheGeneration) {
+            responseCache.set(waiter.cacheKey, value);
+          }
         }
         waiter.resolve(value);
       }
@@ -198,9 +246,13 @@ export function createFieldsGetHelpers(
       pendingExact ||
       (async () => {
         const slice = (await host.FieldsGet(rpcFields, bucket.attributes)) || {};
-        responseCache.set(rpcKey, slice);
-        mergeOverlay(lang, slice);
-        inflight.delete(rpcKey);
+        if (generationAtStart === cacheGeneration) {
+          responseCache.set(rpcKey, slice);
+          mergeOverlay(lang, slice, bucket.attributes);
+          inflight.delete(rpcKey);
+        } else {
+          inflight.delete(rpcKey);
+        }
         return slice;
       })().catch(err => {
         inflight.delete(rpcKey);
@@ -233,8 +285,13 @@ export function createFieldsGetHelpers(
     const wantAll = wantsAllFields(fields);
     const names = wantAll ? [] : normalizeFieldNames(fields);
 
-    // Specific-field ensure: reuse overlay from a prior coalesced / broader fetch.
-    if (!wantAll && names.length > 0 && overlayHasFields(lang, names)) {
+    // Specific-field ensure: reuse overlay only when field names AND attrs are covered.
+    if (
+      !wantAll &&
+      names.length > 0 &&
+      overlayHasFields(lang, names) &&
+      overlayCoversAttrs(lang, names, attributes)
+    ) {
       const fromOverlay = sliceFromOverlay(lang, names);
       responseCache.set(key, fromOverlay);
       return fromOverlay;

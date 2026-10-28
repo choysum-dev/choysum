@@ -365,6 +365,29 @@ func TestShouldSkipManyToOneForeignKey(t *testing.T) {
 		}
 	})
 
+	t.Run("getManyToOneKeys propagates shouldSkip ResolvedSpec errors", func(t *testing.T) {
+		runtimeScope := newSchemaTestScope(t)
+		target := &meta.Model{Name: "Line", Path: "sandbox/line.ts", ModelTable: "sandbox_line"}
+		bad := &meta.Field{
+			Name:           "OwnerId",
+			ModuleSpecPath: "sandbox/line",
+			ResolvedSpec:   `{not-json`,
+			Decorators: []*meta.Decorator{
+				{Name: "Field", Arguments: []*meta.Argument{{Type: "ObjectLiteral", Value: `{"type":"ManyToOne"}`}}},
+			},
+		}
+		source := &meta.Model{
+			Name:       "Record",
+			Path:       "sandbox/record.ts",
+			ModelTable: "sandbox_record",
+			Fields:     []*meta.Field{bad},
+		}
+		_, err := newForeignKeyMigrator(runtimeScope, nil, []*meta.Model{source, target}).(*foreignKeyMigrator).getManyToOneKeys()
+		if err == nil || !strings.Contains(err.Error(), "error unmarshal field resolved spec for OwnerId") {
+			t.Fatalf("expected getManyToOneKeys to propagate skipErr, got %v", err)
+		}
+	})
+
 	t.Run("ResolvedSpec ShouldCreateColumn true/false", func(t *testing.T) {
 		stored := &meta.Field{Name: "OwnerId"}
 		if err := stored.SetResolvedSpec(&meta.FieldResolvedSpec{

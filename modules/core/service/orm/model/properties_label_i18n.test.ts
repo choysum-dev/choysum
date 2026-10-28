@@ -68,6 +68,8 @@ test('normalizePropertyLabelForStorage keeps string and cleans maps', () => {
   });
   expect(() => normalizePropertyLabelForStorage({ 'zh-CN': 'x' })).toThrow(/terminology code/);
   expect(() => normalizePropertyLabelForStorage({ en_US: { nested: 1 } as any })).toThrow(/must be a string/);
+  expect(() => normalizePropertyLabelForStorage(['not-a-map'] as any)).toThrow(/string or lang map/);
+  expect(() => normalizePropertyLabelForStorage(12 as any)).toThrow(/string or lang map/);
 });
 
 test('mergePropertyLabelWrite preserves other langs and seeds en_US', () => {
@@ -133,6 +135,7 @@ test('normalizeSelectionLabelsForStorage keeps tuple vs object shape and null la
         ['high', { en_US: 'High', zh_CN: '高' }],
         { value: 'low', label: null },
         { value: 'mid' },
+        ['solo'],
       ],
       'priority'
     )
@@ -140,11 +143,13 @@ test('normalizeSelectionLabelsForStorage keeps tuple vs object shape and null la
     ['high', { en_US: 'High', zh_CN: '高' }],
     { value: 'low', label: 'low' },
     { value: 'mid', label: 'mid' },
+    ['solo', 'solo'],
   ]);
   expect(() => normalizeSelectionLabelsForStorage(null, 'priority')).toThrow(/selection options are invalid/);
   expect(() => normalizeSelectionLabelsForStorage([{ label: 'x' }], 'priority')).toThrow(
     /selection options are invalid/
   );
+  expect(() => normalizeSelectionLabelsForStorage([42], 'priority')).toThrow(/selection options are invalid/);
 });
 
 test('translatePropertyDefinitionItems unwraps string, help, and selection labels', () => {
@@ -158,8 +163,14 @@ test('translatePropertyDefinitionItems unwraps string, help, and selection label
         selection: [
           ['high', { en_US: 'High', zh_CN: '高' }],
           { value: 'low', label: { en_US: 'Low', zh_CN: '低' } },
+          'passthrough-invalid' as any,
+          [1 as any, 'non-string-value'],
         ],
         default: 'high',
+      },
+      {
+        name: 'code',
+        type: 'char',
       },
     ],
     'zh_CN'
@@ -170,7 +181,14 @@ test('translatePropertyDefinitionItems unwraps string, help, and selection label
   expect(items[0].selection).toEqual([
     ['high', '高'],
     { value: 'low', label: '低' },
+    'passthrough-invalid',
+    [1, 'non-string-value'],
   ]);
+  expect(items[1].name).toBe('code');
+  expect(Object.prototype.hasOwnProperty.call(items[1], 'string')).toBe(false);
+
+  expect(translatePropertyDefinitionItems([], '')).toEqual([]);
+  expect(translatePropertyDefinitionItems(null as any, '  ')).toEqual([]);
 });
 
 test('assertValidPropertyDefinitionItems accepts lang-map labels and help', () => {

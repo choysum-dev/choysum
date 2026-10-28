@@ -273,10 +273,15 @@ describe('createFieldsGetHelpers', () => {
     expect(FieldsGet.calls.length).toBe(1);
 
     FieldsGet.calls.length = 0;
-    // Different attribute set → different cache key, but overlay already has Name.
-    const slice = await helpers.ensureFieldsGet(['Name'], ['string', 'help']);
+    // Same attrs covered by overlay → no re-RPC.
+    const sameAttrs = await helpers.ensureFieldsGet(['Name'], ['string']);
     expect(FieldsGet.calls.length).toBe(0);
-    expect(slice.Name?.string).toBe('label:Name');
+    expect(sameAttrs.Name?.string).toBe('label:Name');
+
+    // Broader attrs are not covered by the prior string-only fetch → re-RPC.
+    const broader = await helpers.ensureFieldsGet(['Name'], ['string', 'help']);
+    expect(FieldsGet.calls.length).toBe(1);
+    expect(broader.Name?.string).toBe('label:Name');
   });
 
   test('clearFieldsGetCache mid-flight drops waiters; subsequent ensure re-RPCs', async () => {
@@ -311,13 +316,37 @@ describe('createFieldsGetHelpers', () => {
     await Promise.resolve();
     expect(FieldsGet.calls.length).toBe(1);
 
-    release({ Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: '旧' } });
-    await Promise.race([first.then(() => 'ok', () => 'err'), Promise.resolve('cleared')]);
-
     release2({ Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: '新' } });
     const slice = await second;
+    // Stale completion must not overwrite the newer overlay/cache.
+    release({ Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: '旧' } });
+    await Promise.race([first.then(() => 'ok', () => 'err'), Promise.resolve('cleared')]);
     expect(slice.Name?.string).toBe('新');
     expect(helpers.getFieldsGetTranslatedString('Name')).toBe('新');
+  });
+
+  test('flush resolves waiters from an exact rpcKey cache hit', async () => {
+    const FieldsGet = asyncFnRecorder(async () => ({
+      Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: '名称' },
+    }));
+    const helpers = createFieldsGetHelpers(
+      makeHost({ Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'Name' } }, FieldsGet),
+      { getLang: () => 'zh_CN' }
+    );
+    // Prime the exact lang|fields|attrs cache entry.
+    await helpers.ensureFieldsGet(['Name'], ['string']);
+    expect(FieldsGet.calls.length).toBe(1);
+
+    // Clear only the coalesce bookkeeping by starting concurrent ensures that share attrs
+    // after the responseCache still holds the rpcKey (do not clearFieldsGetCache).
+    FieldsGet.calls.length = 0;
+    const [a, b] = await Promise.all([
+      helpers.ensureFieldsGet(['Name'], ['string']),
+      helpers.ensureFieldsGet(['Name'], ['string']),
+    ]);
+    expect(FieldsGet.calls.length).toBe(0);
+    expect(a.Name?.string).toBe('名称');
+    expect(b.Name?.string).toBe('名称');
   });
 
   test('attributes cache hit returns same slice without re-RPC', async () => {

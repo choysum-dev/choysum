@@ -27,9 +27,11 @@ const definitionStore = createStoreByModel('sandbox.PropertyDefinition', {
   scopeManager: useScopeManager().menuScopeManager,
 });
 
+// Leave scope empty on New: bootstrap already seeds SandboxRecord.Properties;
+// prefilling that scope causes a duplicate-scope error on save.
 const initialValues: Record<string, unknown> = {
-  TargetModel: 'SandboxRecord',
-  PropertiesField: 'Properties',
+  TargetModel: null,
+  PropertiesField: null,
   ContainerModel: null,
   ContainerId: null,
   Definition: [],

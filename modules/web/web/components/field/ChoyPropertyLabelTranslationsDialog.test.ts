@@ -270,4 +270,26 @@ describe('ChoyPropertyLabelTranslationsDialog', () => {
     expect(labels.indexOf('French')).toBeLessThan(labels.indexOf('German'));
     m.unmount();
   });
+
+  test('save after load failure still emits empty en_US base key', async () => {
+    const badTranslations = new Proxy(
+      {},
+      {
+        ownKeys() {
+          throw new Error('spread boom');
+        },
+        getOwnPropertyDescriptor() {
+          throw new Error('spread boom');
+        },
+      },
+    );
+    const onSaved = fnRecorder();
+    const m = mountDialog({ translations: badTranslations as any }, { onSaved });
+    await flushPromises();
+    expect(m.qa(INPUT_SEL).length).toBe(0);
+    m.click('[data-testid="choy-property-label-translations-save"]');
+    await nextTick();
+    expect(onSaved.calls[0]?.[0]).toEqual({ en_US: '' });
+    m.unmount();
+  });
 });

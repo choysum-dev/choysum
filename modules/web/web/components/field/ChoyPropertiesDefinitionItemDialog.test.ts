@@ -349,7 +349,7 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
     m.click('[data-testid="choy-properties-definition-item-save"]');
     await flushPromises();
     expect(onSaved.calls.length).toBe(1);
-    expect(onSaved.calls[0][0].name).toBe('tax_id');
+    expect((onSaved.calls[0][0] as DefinitionEditorDraftItem).name).toBe('tax_id');
     expect(onUpdate.calls.some((c: any[]) => c[0] === false)).toBe(false);
     expect(m.q('[data-testid="choy-properties-definition-item-dialog"]')).toBeTruthy();
     m.unmount();
@@ -510,7 +510,7 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
     await flushPromises();
     m.click('[data-testid="choy-properties-definition-item-save"]');
     await flushPromises();
-    expect(onSaved.calls[0][0].readonly).toBe(true);
+    expect((onSaved.calls[0][0] as DefinitionEditorDraftItem).readonly).toBe(true);
     m.unmount();
   });
 

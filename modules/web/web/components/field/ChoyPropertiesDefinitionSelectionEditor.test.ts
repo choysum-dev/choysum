@@ -145,4 +145,111 @@ describe('ChoyPropertiesDefinitionSelectionEditor', () => {
     ]);
     mounted.unmount();
   });
+
+  test('selectionRowDragClass and row drag helpers', async () => {
+    const mounted = mountEditor([
+      { value: 'a', label: 'A' },
+      { value: 'b', label: 'B' },
+    ]);
+    await nextTick();
+    const state = mounted.setupState() as {
+      selectionRowDragClass?: (index: number) => Record<string, boolean>;
+      onHandleDragStart?: (index: number, event: DragEvent) => void;
+      onRowDragOver?: (index: number, event: DragEvent) => void;
+      onRowDrop?: (index: number, event: DragEvent) => void;
+      handleReorder?: {
+        draggingIndex: { value: number | null };
+        overIndex: { value: number | null };
+      };
+    };
+    expect(state.selectionRowDragClass?.(0)).toEqual({
+      'opacity-60': false,
+      'bg-accent/40 ring-1 ring-inset ring-primary/30': false,
+    });
+    state.handleReorder!.draggingIndex.value = 0;
+    state.handleReorder!.overIndex.value = 1;
+    expect(state.selectionRowDragClass?.(0)?.['opacity-60']).toBe(true);
+    expect(state.selectionRowDragClass?.(1)?.['bg-accent/40 ring-1 ring-inset ring-primary/30']).toBe(true);
+
+    const preventDefault = () => undefined;
+    const stopPropagation = () => undefined;
+    const setData = () => undefined;
+    const setDragImage = () => undefined;
+    state.onHandleDragStart?.(0, {
+      preventDefault,
+      stopPropagation,
+      dataTransfer: { effectAllowed: '', setData, setDragImage },
+    } as unknown as DragEvent);
+    state.onRowDragOver?.(1, { preventDefault } as unknown as DragEvent);
+    state.onRowDrop?.(1, { preventDefault } as unknown as DragEvent);
+    await nextTick();
+    mounted.unmount();
+
+    const readonly = mountEditor([{ value: 'x', label: 'X' }], { readonly: true });
+    await nextTick();
+    const ro = readonly.setupState() as {
+      selectionRowDragClass?: (index: number) => Record<string, boolean>;
+    };
+    expect(ro.selectionRowDragClass?.(0)).toEqual({});
+    readonly.unmount();
+  });
+
+  test('null modelValue renders empty state', async () => {
+    const mounted = mountEditor(null as any);
+    await nextTick();
+    expect(mounted.q('[data-testid="choy-properties-definition-selection-empty"]')).toBeTruthy();
+    mounted.unmount();
+  });
+
+  test('typing value/label inputs emits updated rows', async () => {
+    const mounted = mountEditor([{ value: 'a', label: 'A' }]);
+    await nextTick();
+    const valueInput = mounted.q(
+      '[data-testid="choy-properties-definition-selection-value"]',
+    ) as HTMLInputElement;
+    const labelInput = mounted.q(
+      '[data-testid="choy-properties-definition-selection-label"]',
+    ) as HTMLInputElement;
+    expect(valueInput).toBeTruthy();
+    expect(labelInput).toBeTruthy();
+    valueInput.value = 'ab';
+    valueInput.dispatchEvent(new Event('input', { bubbles: true }));
+    await nextTick();
+    labelInput.value = 'AB';
+    labelInput.dispatchEvent(new Event('input', { bubbles: true }));
+    await nextTick();
+    expect((mounted.props as any).modelValue[0].value).toBe('ab');
+    expect((mounted.props as any).modelValue[0].label).toBe('AB');
+
+    // DOM dragover/drop on the row
+    const row = mounted.q('[data-testid="choy-properties-definition-selection-row"]') as HTMLElement;
+    const handle = mounted.q(
+      '[data-testid="choy-properties-definition-selection-handle"]',
+    ) as HTMLElement;
+    const dt = {
+      effectAllowed: '',
+      setData: () => undefined,
+      setDragImage: () => undefined,
+    };
+    handle.dispatchEvent(
+      Object.assign(new Event('dragstart', { bubbles: true }), {
+        dataTransfer: dt,
+        stopPropagation() {},
+      }),
+    );
+    row.dispatchEvent(
+      Object.assign(new Event('dragover', { bubbles: true }), {
+        preventDefault() {},
+        dataTransfer: dt,
+      }),
+    );
+    row.dispatchEvent(
+      Object.assign(new Event('drop', { bubbles: true }), {
+        preventDefault() {},
+        dataTransfer: dt,
+      }),
+    );
+    await nextTick();
+    mounted.unmount();
+  });
 });

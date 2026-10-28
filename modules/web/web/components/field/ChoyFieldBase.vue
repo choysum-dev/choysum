@@ -570,7 +570,11 @@ function ensurePresentationFieldsGet() {
   const store = modelStore.value;
   const leaf = leafFieldName.value;
   if (!store?.ensureFieldsGet || !leaf) return;
-  void store.ensureFieldsGet([leaf], [...FIELD_PRESENTATION_FIELDS_GET_ATTRS]);
+  void store
+    .ensureFieldsGet([leaf], [...FIELD_PRESENTATION_FIELDS_GET_ATTRS])
+    .catch(() => {
+      // Presentation overlay is best-effort; static meta remains in effect.
+    });
 }
 
 onMounted(() => {

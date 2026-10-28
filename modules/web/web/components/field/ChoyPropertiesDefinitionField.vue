@@ -97,6 +97,7 @@ SPDX-License-Identifier: Apache-2.0
     v-model="dialogOpen"
     :item="dialogItem"
     :readonly="dialogReadonly"
+    :commit-error="writeError"
     @saved="onDialogSaved"
   />
 </template>
