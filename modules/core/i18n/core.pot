@@ -7,27 +7,27 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: service/orm/model/model.ts:430
+#: service/orm/model/model.ts:455
 msgctxt "core.model.BaseModel.fields"
 msgid "Created At"
 msgstr ""
 
-#: service/orm/model/model.ts:466
+#: service/orm/model/model.ts:491
 msgctxt "core.model.BaseModel.fields"
 msgid "Created By"
 msgstr ""
 
-#: service/orm/model/model.ts:452
+#: service/orm/model/model.ts:477
 msgctxt "core.model.BaseModel.fields"
 msgid "Deleted At"
 msgstr ""
 
-#: service/orm/model/model.ts:494
+#: service/orm/model/model.ts:519
 msgctxt "core.model.BaseModel.fields"
 msgid "Deleted By"
 msgstr ""
 
-#: service/orm/model/model.ts:408
+#: service/orm/model/model.ts:433
 msgctxt "core.model.BaseModel.fields"
 msgid "Display Name"
 msgstr ""
@@ -37,48 +37,73 @@ msgctxt "core.model.BaseModel.fields"
 msgid "Parent Path"
 msgstr ""
 
-#: service/orm/model/model.ts:441
+#: service/orm/model/model.ts:466
 msgctxt "core.model.BaseModel.fields"
 msgid "Updated At"
 msgstr ""
 
-#: service/orm/model/model.ts:480
+#: service/orm/model/model.ts:505
 msgctxt "core.model.BaseModel.fields"
 msgid "Updated By"
 msgstr ""
 
-#: service/orm/model/model.ts:287
+#: service/orm/model/property_definition_base_model.ts:216
+msgctxt "core.model.PropertyDefinition.fields"
+msgid "Container Id"
+msgstr ""
+
+#: service/orm/model/property_definition_base_model.ts:207
+msgctxt "core.model.PropertyDefinition.fields"
+msgid "Container Model"
+msgstr ""
+
+#: service/orm/model/property_definition_base_model.ts:224
+msgctxt "core.model.PropertyDefinition.fields"
+msgid "Definition"
+msgstr ""
+
+#: service/orm/model/property_definition_base_model.ts:199
+msgctxt "core.model.PropertyDefinition.fields"
+msgid "Properties Field"
+msgstr ""
+
+#: service/orm/model/property_definition_base_model.ts:190
+msgctxt "core.model.PropertyDefinition.fields"
+msgid "Target Model"
+msgstr ""
+
+#: service/orm/model/model.ts:308
 msgctxt "service/orm/model/model"
 msgid "current company is required"
 msgstr ""
 
-#: service/orm/model/model.ts:276
+#: service/orm/model/model.ts:297
 msgctxt "service/orm/model/model"
 msgid "current user is required"
 msgstr ""
 
-#: service/orm/model/model_instance.ts:189
+#: service/orm/model/model_instance.ts:197
 msgctxt "service/orm/model/model_instance"
 msgid "Delete failed: Record with Id %s not found or could not be deleted"
 msgstr ""
 
-#: service/orm/model/model_instance.ts:226
-#: service/orm/model/model_instance.ts:89
+#: service/orm/model/model_instance.ts:238
+#: service/orm/model/model_instance.ts:92
 msgctxt "service/orm/model/model_instance"
 msgid "Record with Id %s no longer exists"
 msgstr ""
 
-#: service/orm/model/model_read.ts:318
+#: service/orm/model/model_read.ts:324
 msgctxt "service/orm/model/model_read"
 msgid "%s not found"
 msgstr ""
 
-#: service/orm/model/model_soft_delete_scope.ts:29
+#: service/orm/model/model_soft_delete_scope.ts:23
 msgctxt "service/orm/model/model_soft_delete_scope"
 msgid "withDeleted and onlyDeleted cannot both be true"
 msgstr ""
 
-#: service/orm/model/model_update.ts:664
+#: service/orm/model/model_update.ts:667
 msgctxt "service/orm/model/model_update"
 msgid "Update failed: Record %s not found."
 msgstr ""
@@ -155,32 +180,32 @@ msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "failed to fetch record rule condition"
 msgstr ""
 
-#: service/orm/repository/authz/record_rule_helpers.ts:203
+#: service/orm/repository/authz/record_rule_helpers.ts:214
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "invalid JSON in record rule condition"
 msgstr ""
 
-#: service/orm/repository/authz/record_rule_helpers.ts:228
+#: service/orm/repository/authz/record_rule_helpers.ts:239
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "invalid record rule condition shape (type=%s, isArray=%s, preview=%s)"
 msgstr ""
 
-#: service/orm/repository/authz/record_rule_helpers.ts:154
+#: service/orm/repository/authz/record_rule_helpers.ts:165
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "missing ctx.activeCompanyId for $companyId token"
 msgstr ""
 
-#: service/orm/repository/authz/record_rule_helpers.ts:166
+#: service/orm/repository/authz/record_rule_helpers.ts:177
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "missing ctx.enabledCompanyIds for $companyIds token"
 msgstr ""
 
-#: service/orm/repository/authz/record_rule_helpers.ts:252
+#: service/orm/repository/authz/record_rule_helpers.ts:263
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "missing identity.userId for $userId token"
 msgstr ""
 
-#: service/orm/repository/authz/record_rule_helpers.ts:266
+#: service/orm/repository/authz/record_rule_helpers.ts:277
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "unknown token in record rule condition"
 msgstr ""
@@ -211,7 +236,7 @@ msgctxt "service/orm/repository/validation/kernel"
 msgid "Field \"%s\" is required"
 msgstr ""
 
-#: service/orm/repository/validation/kernel.ts:224
+#: service/orm/repository/validation/kernel.ts:231
 msgctxt "service/orm/repository/validation/kernel"
 msgid "Field \"%s\" must be a valid decimal that satisfies the precision and scale limits"
 msgstr ""

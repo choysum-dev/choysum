@@ -241,7 +241,9 @@ export { default as ChoyImageField } from './components/field/ChoyImageField.vue
 export { default as ChoyHtmlField } from './components/field/ChoyHtmlField.vue';
 export { default as ChoyJsonField } from './components/field/ChoyJsonField.vue';
 export { default as ChoyPropertiesField } from './components/field/ChoyPropertiesField.vue';
-export { default as ChoyPropertiesDefinitionEditor } from './components/field/ChoyPropertiesDefinitionEditor.vue';
+export { default as ChoyPropertiesDefinitionField } from './components/field/ChoyPropertiesDefinitionField.vue';
+export { default as ChoyPropertiesDefinitionItemDialog } from './components/field/ChoyPropertiesDefinitionItemDialog.vue';
+export { default as ChoyPropertiesDefinitionSelectionEditor } from './components/field/ChoyPropertiesDefinitionSelectionEditor.vue';
 export { default as ChoyVirtualField } from './components/field/ChoyVirtualField.vue';
 export { default as ChoyFieldTranslationsDialog } from './components/field/ChoyFieldTranslationsDialog.vue';
 export { default as ChoyFieldCompanyValuesDialog } from './components/field/ChoyFieldCompanyValuesDialog.vue';

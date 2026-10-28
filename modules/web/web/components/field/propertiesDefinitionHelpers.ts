@@ -23,11 +23,74 @@ export type DefinitionEditorDraftItem = {
   stringMap: Record<string, string>;
   default: string;
   readonly: boolean;
-  /** Selection JSON with current-language labels for the textarea. */
+  /** Selection options bridge: JSON tuples of [value, current-lang label] for the list editor. */
   selectionText: string;
-  /** Option value → label lang map (survives current-lang textarea edits via merge). */
+  /** Option value → label lang map (survives current-lang list edits via merge). */
   selectionLabelMaps: Record<string, Record<string, string>>;
 };
+
+/** One selection option row in the definition list editor (O2M-like). */
+export type SelectionDraftRow = {
+  value: string;
+  label: string;
+};
+
+/** Parse draft.selectionText into editable list rows (may include blank values while typing). */
+export function selectionRowsFromDraft(draft: DefinitionEditorDraftItem): SelectionDraftRow[] {
+  try {
+    const parsed = draft.selectionText ? JSON.parse(draft.selectionText) : [];
+    return normalizeSelectionOptions(parsed).map(o => ({
+      value: o.value,
+      label: String(o.label ?? ''),
+    }));
+  } catch {
+    return Object.keys(draft.selectionLabelMaps || {}).map(value => ({
+      value,
+      label: unwrapPropertyLabel(draft.selectionLabelMaps[value] || {}, TRANSLATED_BASE_LANG) || value,
+    }));
+  }
+}
+
+/**
+ * Write list-editor rows back onto the draft.
+ * Preserves lang maps across value renames by index when possible.
+ */
+export function writeSelectionRowsToDraft(
+  draft: DefinitionEditorDraftItem,
+  rows: SelectionDraftRow[],
+  lang: string = TRANSLATED_BASE_LANG,
+): void {
+  const code = String(lang || '').trim() || TRANSLATED_BASE_LANG;
+  const prevRows = selectionRowsFromDraft(draft);
+  const prevMaps: Record<string, Record<string, string>> = {};
+  for (const [k, v] of Object.entries(draft.selectionLabelMaps || {})) {
+    prevMaps[k] = { ...(v || {}) };
+  }
+  const cleaned = (rows || []).map(r => ({
+    value: String(r?.value ?? '').trim(),
+    label: String(r?.label ?? ''),
+  }));
+  const nextMaps: Record<string, Record<string, string>> = {};
+  const usedPrev = new Set<string>();
+  for (let i = 0; i < cleaned.length; i++) {
+    const row = cleaned[i]!;
+    if (!row.value) continue;
+    const oldValue = String(prevRows[i]?.value || '').trim();
+    let base = prevMaps[row.value];
+    if (!base && oldValue && oldValue !== row.value && !usedPrev.has(oldValue)) {
+      base = prevMaps[oldValue];
+      usedPrev.add(oldValue);
+    }
+    nextMaps[row.value] = asLabelMap(mergePropertyLabelWrite(base || {}, row.label, code));
+  }
+  draft.selectionLabelMaps = nextMaps;
+  const display = cleaned.map(r => [r.value, r.label || r.value] as [string, string]);
+  try {
+    draft.selectionText = display.length ? JSON.stringify(display) : '';
+  } catch {
+    draft.selectionText = '';
+  }
+}
 
 export function emptyDraftItem(): DefinitionEditorDraftItem {
   return {
@@ -216,7 +279,7 @@ export function draftsToDefinitionItems(
       if (!Array.isArray(parsed) || !parsed.length) {
         throw new Error(`selection property '${name}' requires a non-empty selection array`);
       }
-      const options = normalizeSelectionOptions(parsed);
+      const options = normalizeSelectionOptions(parsed).filter(o => String(o.value || '').trim() !== '');
       if (!options.length) {
         throw new Error(`selection property '${name}' has no usable options`);
       }

@@ -1,27 +1,27 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
-#: service/orm/model/model.ts:430
+#: service/orm/model/model.ts:455
 msgctxt "core.model.BaseModel.fields"
 msgid "Created At"
 msgstr "创建时间"
 
-#: service/orm/model/model.ts:466
+#: service/orm/model/model.ts:491
 msgctxt "core.model.BaseModel.fields"
 msgid "Created By"
 msgstr "创建人"
 
-#: service/orm/model/model.ts:452
+#: service/orm/model/model.ts:477
 msgctxt "core.model.BaseModel.fields"
 msgid "Deleted At"
 msgstr "删除时间"
 
-#: service/orm/model/model.ts:494
+#: service/orm/model/model.ts:519
 msgctxt "core.model.BaseModel.fields"
 msgid "Deleted By"
 msgstr "删除人"
 
-#: service/orm/model/model.ts:408
+#: service/orm/model/model.ts:433
 msgctxt "core.model.BaseModel.fields"
 msgid "Display Name"
 msgstr "显示名称"
@@ -31,47 +31,72 @@ msgctxt "core.model.BaseModel.fields"
 msgid "Parent Path"
 msgstr "父级路径"
 
-#: service/orm/model/model.ts:441
+#: service/orm/model/model.ts:466
 msgctxt "core.model.BaseModel.fields"
 msgid "Updated At"
 msgstr "更新时间"
 
-#: service/orm/model/model.ts:480
+#: service/orm/model/model.ts:505
 msgctxt "core.model.BaseModel.fields"
 msgid "Updated By"
 msgstr "更新人"
 
-#: service/orm/model/model.ts:287
+#: service/orm/model/property_definition_base_model.ts:216
+msgctxt "core.model.PropertyDefinition.fields"
+msgid "Container Id"
+msgstr "容器 ID"
+
+#: service/orm/model/property_definition_base_model.ts:207
+msgctxt "core.model.PropertyDefinition.fields"
+msgid "Container Model"
+msgstr "容器模型"
+
+#: service/orm/model/property_definition_base_model.ts:224
+msgctxt "core.model.PropertyDefinition.fields"
+msgid "Definition"
+msgstr "定义"
+
+#: service/orm/model/property_definition_base_model.ts:199
+msgctxt "core.model.PropertyDefinition.fields"
+msgid "Properties Field"
+msgstr "属性字段"
+
+#: service/orm/model/property_definition_base_model.ts:190
+msgctxt "core.model.PropertyDefinition.fields"
+msgid "Target Model"
+msgstr "目标模型"
+
+#: service/orm/model/model.ts:308
 msgctxt "service/orm/model/model"
 msgid "current company is required"
 msgstr "需要当前公司"
 
-#: service/orm/model/model.ts:276
+#: service/orm/model/model.ts:297
 msgctxt "service/orm/model/model"
 msgid "current user is required"
 msgstr "需要当前用户"
 
-#: service/orm/model/model_instance.ts:189
+#: service/orm/model/model_instance.ts:197
 msgctxt "service/orm/model/model_instance"
 msgid "Delete failed: Record with Id %s not found or could not be deleted"
 msgstr "删除失败：未找到 Id 为 %s 的记录，或无法删除"
 
-#: service/orm/model/model_instance.ts:226 service/orm/model/model_instance.ts:89
+#: service/orm/model/model_instance.ts:238 service/orm/model/model_instance.ts:92
 msgctxt "service/orm/model/model_instance"
 msgid "Record with Id %s no longer exists"
 msgstr "Id 为 %s 的记录已不存在"
 
-#: service/orm/model/model_read.ts:318
+#: service/orm/model/model_read.ts:324
 msgctxt "service/orm/model/model_read"
 msgid "%s not found"
 msgstr "未找到 %s"
 
-#: service/orm/model/model_soft_delete_scope.ts:29
+#: service/orm/model/model_soft_delete_scope.ts:23
 msgctxt "service/orm/model/model_soft_delete_scope"
 msgid "withDeleted and onlyDeleted cannot both be true"
 msgstr "withDeleted 与 onlyDeleted 不能同时为 true"
 
-#: service/orm/model/model_update.ts:664
+#: service/orm/model/model_update.ts:667
 msgctxt "service/orm/model/model_update"
 msgid "Update failed: Record %s not found."
 msgstr "更新失败：未找到记录 %s。"
@@ -146,32 +171,32 @@ msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "failed to fetch record rule condition"
 msgstr "获取记录规则条件失败"
 
-#: service/orm/repository/authz/record_rule_helpers.ts:203
+#: service/orm/repository/authz/record_rule_helpers.ts:214
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "invalid JSON in record rule condition"
 msgstr "记录规则条件中的 JSON 无效"
 
-#: service/orm/repository/authz/record_rule_helpers.ts:228
+#: service/orm/repository/authz/record_rule_helpers.ts:239
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "invalid record rule condition shape (type=%s, isArray=%s, preview=%s)"
 msgstr "记录规则条件形状无效（type=%s, isArray=%s, preview=%s）"
 
-#: service/orm/repository/authz/record_rule_helpers.ts:154
+#: service/orm/repository/authz/record_rule_helpers.ts:165
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "missing ctx.activeCompanyId for $companyId token"
 msgstr "$companyId 令牌缺少 ctx.activeCompanyId"
 
-#: service/orm/repository/authz/record_rule_helpers.ts:166
+#: service/orm/repository/authz/record_rule_helpers.ts:177
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "missing ctx.enabledCompanyIds for $companyIds token"
 msgstr "$companyIds 令牌缺少 ctx.enabledCompanyIds"
 
-#: service/orm/repository/authz/record_rule_helpers.ts:252
+#: service/orm/repository/authz/record_rule_helpers.ts:263
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "missing identity.userId for $userId token"
 msgstr "$userId 令牌缺少 identity.userId"
 
-#: service/orm/repository/authz/record_rule_helpers.ts:266
+#: service/orm/repository/authz/record_rule_helpers.ts:277
 msgctxt "service/orm/repository/authz/record_rule_helpers"
 msgid "unknown token in record rule condition"
 msgstr "记录规则条件中存在未知令牌"
@@ -201,7 +226,7 @@ msgctxt "service/orm/repository/validation/kernel"
 msgid "Field \"%s\" is required"
 msgstr "字段 \"%s\" 为必填"
 
-#: service/orm/repository/validation/kernel.ts:224
+#: service/orm/repository/validation/kernel.ts:231
 msgctxt "service/orm/repository/validation/kernel"
 msgid "Field \"%s\" must be a valid decimal that satisfies the precision and scale limits"
 msgstr "字段 \"%s\" 必须是满足精度与小数位限制的有效小数"
@@ -290,3 +315,4 @@ msgstr "意外错误"
 msgctxt "web/rpc/errors"
 msgid "Unknown API error"
 msgstr "未知 API 错误"
+

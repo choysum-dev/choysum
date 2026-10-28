@@ -30,8 +30,8 @@ test('sandbox route titles: list route pins pageTitleText', () => {
   expect(list.meta?.pageTitleText).toEqual(listRouteTitle);
 });
 
-test('sandbox route titles: record properties configuration pins pageTitleText', () => {
-  const route = sandboxRoutes.find(r => r.name === 'SandboxRecordProperties') as any;
+test('sandbox route titles: PropertyDefinition list pins pageTitleText', () => {
+  const route = sandboxRoutes.find(r => r.name === 'SandboxPropertyDefinitionList') as any;
   expect(route).toBeTruthy();
   expect(route.meta?.pageTitle).toBe('Record Properties');
   expect(route.meta?.pageTitleText).toEqual(recordPropertiesRouteTitle);

@@ -848,74 +848,172 @@ msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "View record"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:8
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
-msgid "Add property"
+#: web/components/field/ChoyPropertiesDefinitionField.vue:279
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
+msgid "%s properties"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:38
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
-msgid "Default"
+#: web/components/field/ChoyPropertiesDefinitionField.vue:281
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
+msgid "%s properties (%s, …)"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:183
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:193
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:33
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+#: web/components/field/ChoyPropertiesDefinitionField.vue:9
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
+msgid "Add a line…"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionField.vue:16
+#: web/components/field/ChoyPropertiesDefinitionField.vue:9
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
+msgid "Edit"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionField.vue:16
+#: web/components/field/ChoyPropertiesDefinitionField.vue:9
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Label"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:23
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+#: web/components/field/ChoyPropertiesDefinitionField.vue:16
+#: web/components/field/ChoyPropertiesDefinitionField.vue:9
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Name"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:19
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+#: web/components/field/ChoyPropertiesDefinitionField.vue:275
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
+msgid "No properties"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionField.vue:16
+#: web/components/field/ChoyPropertiesDefinitionField.vue:9
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "No properties defined"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:126
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:221
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
-msgid "PropertyDefinition store is unavailable"
-msgstr ""
-
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:41
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
-msgid "Readonly"
-msgstr ""
-
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:51
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+#: web/components/field/ChoyPropertiesDefinitionField.vue:16
+#: web/components/field/ChoyPropertiesDefinitionField.vue:9
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Remove"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:5
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
-msgid "Save"
+#: web/components/field/ChoyPropertiesDefinitionField.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
+msgid "Reorder"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:43
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
-msgid "Selection JSON"
-msgstr ""
-
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:35
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
-msgid "Translate"
-msgstr ""
-
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:46
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
-msgid "Translate %s"
-msgstr ""
-
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:25
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+#: web/components/field/ChoyPropertiesDefinitionField.vue:16
+#: web/components/field/ChoyPropertiesDefinitionField.vue:9
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Type"
 msgstr ""
 
+#: web/components/field/ChoyPropertiesDefinitionField.vue:16
+#: web/components/field/ChoyPropertiesDefinitionField.vue:9
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
+msgid "View"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Cancel"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Default"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Edit property: %s"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Label"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Name"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Name is required"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "New property"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Property"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Property: %s"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Readonly"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Save"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Translate label"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Type"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
+msgid "Add a line…"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
+msgid "Delete"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
+msgid "Label"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
+msgid "No options"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
+msgid "Reorder"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
+msgid "Translate option"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
+msgid "Value"
+msgstr ""
 #: web/components/field/ChoyPropertiesField.vue:243
 msgctxt "web/components/field/ChoyPropertiesField"
 msgid "+%s more"

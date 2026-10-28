@@ -62,15 +62,39 @@ describe('ChoyTableColumn handle type', () => {
     const preventDefault = fnRecorder();
     const stopPropagation = fnRecorder();
     const setData = fnRecorder();
+    const setDragImage = fnRecorder();
     const cell = col.cellRenderer({ rowData: { Id: '1' }, rowIndex: 0 });
     expect(cell.props.class).toContain('choy-list-handle');
     expect(cell.props.draggable).toBe('true');
 
-    cell.props.onDragstart({ preventDefault, stopPropagation, dataTransfer: { effectAllowed: '', setData } });
-    expect(handleApi.draggingIndex.value).toBe(0);
+    const handleEl = document.createElement('span');
+    const rowEl = document.createElement('div');
+    rowEl.setAttribute('role', 'row');
+    rowEl.appendChild(handleEl);
+    document.body.appendChild(rowEl);
+    Object.defineProperty(rowEl, 'getBoundingClientRect', {
+      value: () => ({ left: 0, top: 0, width: 80, height: 24 }),
+    });
+    try {
+      cell.props.onDragstart({
+        preventDefault,
+        stopPropagation,
+        clientX: 4,
+        clientY: 6,
+        currentTarget: handleEl,
+        dataTransfer: { effectAllowed: '', setData, setDragImage },
+      });
+      expect(handleApi.draggingIndex.value).toBe(0);
+      expect(handleApi.overIndex.value).toBe(0);
+      expect(setDragImage.calls.length).toBe(1);
+      expect(setDragImage.calls[0]?.[0]).toBe(rowEl);
+    } finally {
+      rowEl.remove();
+    }
 
     cell.props.onDragover({ preventDefault, stopPropagation, dataTransfer: { dropEffect: '' } });
     expect(preventDefault.calls.length).toBeGreaterThan(0);
+    expect(handleApi.overIndex.value).toBe(0);
 
     cell.props.onDrop({ preventDefault, stopPropagation });
     await nextTick();

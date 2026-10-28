@@ -1,0 +1,299 @@
+<!--
+SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+SPDX-License-Identifier: Apache-2.0
+-->
+
+<template>
+  <ChoyDialog v-model:open="visible">
+    <ChoyDialogContent
+      class="choy-properties-definition-item-dialog flex max-h-[min(85vh,40rem)] w-[min(90vw,40rem)] max-w-[min(90vw,40rem)] flex-col gap-3 overflow-hidden"
+      data-testid="choy-properties-definition-item-dialog"
+      @open-auto-focus.prevent
+    >
+      <ChoyDialogTitle class="shrink-0">{{ dialogTitle }}</ChoyDialogTitle>
+      <div v-if="local" class="min-h-0 flex-1 overflow-auto">
+        <div class="grid gap-3 sm:grid-cols-2">
+          <Input
+            v-model="local.name"
+            class="w-full"
+            :disabled="readonly"
+            :placeholder="_t('Name')"
+            data-testid="choy-properties-definition-name"
+          />
+          <Select v-model="local.type" :disabled="readonly">
+            <SelectTrigger
+              class="w-full"
+              :placeholder="_t('Type')"
+              data-testid="choy-properties-definition-type"
+            />
+            <SelectContent>
+              <SelectItem v-for="t in typeOptions" :key="t" :value="t">
+                {{ t }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <div class="flex min-w-0 items-center gap-1 sm:col-span-2">
+            <Input
+              v-model="local.string"
+              class="min-w-0 flex-1"
+              :disabled="readonly"
+              :placeholder="_t('Label')"
+              data-testid="choy-properties-definition-string"
+            />
+            <ChoyButton
+              v-if="!readonly"
+              type="button"
+              size="icon"
+              variant="ghost"
+              class="size-8 shrink-0 text-muted-foreground hover:text-foreground"
+              :aria-label="_t('Translate label')"
+              :title="_t('Translate label')"
+              data-testid="choy-properties-definition-translate-string"
+              @click="openStringTranslate"
+            >
+              <Languages class="size-4" aria-hidden="true" />
+            </ChoyButton>
+          </div>
+          <Input
+            v-model="local.default"
+            class="w-full sm:col-span-2"
+            :disabled="readonly"
+            :placeholder="_t('Default')"
+            data-testid="choy-properties-definition-default"
+          />
+          <label class="flex items-center gap-2 text-sm sm:col-span-2">
+            <Checkbox
+              :model-value="local.readonly"
+              :disabled="readonly"
+              data-testid="choy-properties-definition-readonly"
+              @update:model-value="local.readonly = $event === true"
+            />
+            {{ _t('Readonly') }}
+          </label>
+          <div v-if="local.type === 'selection'" class="sm:col-span-2">
+            <ChoyPropertiesDefinitionSelectionEditor
+              :model-value="selectionRows"
+              :readonly="readonly"
+              @update:model-value="onSelectionRowsUpdate"
+              @translate="openSelectionTranslate"
+            />
+          </div>
+        </div>
+        <p
+          v-if="formError"
+          class="mt-3 text-sm text-destructive"
+          data-testid="choy-properties-definition-item-error"
+        >
+          {{ formError }}
+        </p>
+      </div>
+      <div class="flex shrink-0 justify-end gap-2">
+        <ChoyButton type="button" variant="outline" data-testid="choy-properties-definition-item-cancel" @click="onCancel">
+          {{ _t('Cancel') }}
+        </ChoyButton>
+        <ChoyButton
+          v-if="!readonly"
+          type="button"
+          data-testid="choy-properties-definition-item-save"
+          @click="onConfirm"
+        >
+          {{ _t('Save') }}
+        </ChoyButton>
+      </div>
+    </ChoyDialogContent>
+  </ChoyDialog>
+
+  <ChoyPropertyLabelTranslationsDialog
+    v-model="translateOpen"
+    :label-title="translateTitle"
+    :translations="translateMap"
+    @saved="onTranslateSaved"
+  />
+</template>
+
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue';
+import { getActivePinia } from 'pinia';
+import { Languages } from 'lucide-vue-next';
+import { TRANSLATED_BASE_LANG } from '@/core/service/orm/repository/projection/translated_field_codec';
+import { createTranslate } from '@/web/web/i18n';
+import { useI18nStore } from '@/web/web/stores/i18nStore';
+import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
+import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import Checkbox from '../vendor/ui/checkbox/Checkbox.vue';
+import Input from '../vendor/ui/input/Input.vue';
+import Select from '../vendor/ui/select/Select.vue';
+import SelectContent from '../vendor/ui/select/SelectContent.vue';
+import SelectItem from '../vendor/ui/select/SelectItem.vue';
+import SelectTrigger from '../vendor/ui/select/SelectTrigger.vue';
+import ChoyPropertyLabelTranslationsDialog from './ChoyPropertyLabelTranslationsDialog.vue';
+import ChoyPropertiesDefinitionSelectionEditor from './ChoyPropertiesDefinitionSelectionEditor.vue';
+import {
+  PROPERTY_DEFINITION_V1_TYPE_OPTIONS,
+  applyDraftCurrentLangToMaps,
+  emptyDraftItem,
+  selectionRowsFromDraft,
+  syncDraftLabelsForLang,
+  writeSelectionRowsToDraft,
+  type DefinitionEditorDraftItem,
+  type SelectionDraftRow,
+} from './propertiesDefinitionHelpers';
+
+defineOptions({ name: 'ChoyPropertiesDefinitionItemDialog' });
+
+const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyPropertiesDefinitionItemDialog' });
+
+const props = withDefaults(
+  defineProps<{
+    modelValue: boolean;
+    /** Draft row to edit; cloned into local state while open. */
+    item?: DefinitionEditorDraftItem | null;
+    readonly?: boolean;
+    /** Dialog title override (defaults from item name). */
+    title?: string;
+  }>(),
+  {
+    item: null,
+    readonly: false,
+    title: '',
+  },
+);
+
+const emit = defineEmits<{
+  'update:modelValue': [boolean];
+  saved: [item: DefinitionEditorDraftItem];
+  closed: [];
+}>();
+
+const typeOptions = PROPERTY_DEFINITION_V1_TYPE_OPTIONS;
+const local = ref<DefinitionEditorDraftItem | null>(null);
+const formError = ref('');
+
+const translateOpen = ref(false);
+const translateTitle = ref('');
+const translateMap = ref<Record<string, string>>({});
+type TranslateTarget = { kind: 'string' } | { kind: 'selection'; value: string };
+const translateTarget = ref<TranslateTarget | null>(null);
+
+const visible = computed({
+  get: () => props.modelValue,
+  set: v => emit('update:modelValue', v),
+});
+
+const dialogTitle = computed(() => {
+  const override = String(props.title || '').trim();
+  if (override) return override;
+  const name = String(local.value?.name || props.item?.name || '').trim();
+  if (props.readonly) {
+    return name ? _t('Property: %s', name) : _t('Property');
+  }
+  return name ? _t('Edit property: %s', name) : _t('New property');
+});
+
+const selectionRows = computed((): SelectionDraftRow[] => {
+  const item = local.value;
+  if (!item || item.type !== 'selection') return [];
+  return selectionRowsFromDraft(item);
+});
+
+function editorLang(): string {
+  if (!getActivePinia()) return TRANSLATED_BASE_LANG;
+  try {
+    const lang = String(useI18nStore().terminologyLang || '').trim();
+    return lang || TRANSLATED_BASE_LANG;
+  } catch {
+    return TRANSLATED_BASE_LANG;
+  }
+}
+
+function cloneDraft(src: DefinitionEditorDraftItem | null | undefined): DefinitionEditorDraftItem {
+  const base = src ? { ...src } : emptyDraftItem();
+  return {
+    ...base,
+    stringMap: { ...(base.stringMap || {}) },
+    selectionLabelMaps: Object.fromEntries(
+      Object.entries(base.selectionLabelMaps || {}).map(([k, v]) => [k, { ...(v || {}) }]),
+    ),
+  };
+}
+
+function onSelectionRowsUpdate(rows: SelectionDraftRow[]) {
+  const item = local.value;
+  if (!item || props.readonly) return;
+  writeSelectionRowsToDraft(item, rows, editorLang());
+}
+
+function openStringTranslate() {
+  const item = local.value;
+  if (!item || props.readonly) return;
+  applyDraftCurrentLangToMaps(item, editorLang());
+  translateTarget.value = { kind: 'string' };
+  translateTitle.value = item.name || _t('Label');
+  translateMap.value = { ...item.stringMap };
+  translateOpen.value = true;
+}
+
+function openSelectionTranslate(value: string) {
+  const item = local.value;
+  const opt = String(value || '').trim();
+  if (!item || props.readonly || !opt) return;
+  applyDraftCurrentLangToMaps(item, editorLang());
+  translateTarget.value = { kind: 'selection', value: opt };
+  translateTitle.value = `${item.name || _t('Label')}.${opt}`;
+  translateMap.value = { ...(item.selectionLabelMaps[opt] || {}) };
+  translateOpen.value = true;
+}
+
+function onTranslateSaved(next: Record<string, string>) {
+  const target = translateTarget.value;
+  const item = local.value;
+  if (!target || !item) return;
+  if (target.kind === 'string') {
+    item.stringMap = { ...next };
+    syncDraftLabelsForLang(item, editorLang());
+  } else {
+    item.selectionLabelMaps = {
+      ...item.selectionLabelMaps,
+      [target.value]: { ...next },
+    };
+    syncDraftLabelsForLang(item, editorLang());
+  }
+  translateTarget.value = null;
+}
+
+function onCancel() {
+  visible.value = false;
+}
+
+function onConfirm() {
+  formError.value = '';
+  const item = local.value;
+  if (!item || props.readonly) return;
+  const name = String(item.name || '').trim();
+  if (!name) {
+    formError.value = _t('Name is required');
+    return;
+  }
+  applyDraftCurrentLangToMaps(item, editorLang());
+  emit('saved', cloneDraft(item));
+  visible.value = false;
+}
+
+watch(
+  () => props.modelValue,
+  (open, wasOpen) => {
+    if (open && !wasOpen) {
+      formError.value = '';
+      local.value = cloneDraft(props.item);
+      syncDraftLabelsForLang(local.value, editorLang());
+    }
+    if (!open && wasOpen) {
+      local.value = null;
+      translateOpen.value = false;
+      translateTarget.value = null;
+      emit('closed');
+    }
+  },
+  { immediate: true },
+);
+</script>

@@ -826,71 +826,165 @@ msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "View record"
 msgstr "查看记录"
 
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:8
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
-msgid "Add property"
-msgstr "添加属性"
+#: web/components/field/ChoyPropertiesDefinitionField.vue:279
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
+msgid "%s properties"
+msgstr "%s 个属性"
 
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:38
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
-msgid "Default"
-msgstr "默认"
+#: web/components/field/ChoyPropertiesDefinitionField.vue:281
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
+msgid "%s properties (%s, …)"
+msgstr "%s 个属性（%s，…）"
 
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:183 web/components/field/ChoyPropertiesDefinitionEditor.vue:193 web/components/field/ChoyPropertiesDefinitionEditor.vue:33
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+#: web/components/field/ChoyPropertiesDefinitionField.vue:9
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
+msgid "Add a line…"
+msgstr "添加一行…"
+
+#: web/components/field/ChoyPropertiesDefinitionField.vue:16 web/components/field/ChoyPropertiesDefinitionField.vue:9
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
+msgid "Edit"
+msgstr "编辑"
+
+#: web/components/field/ChoyPropertiesDefinitionField.vue:16 web/components/field/ChoyPropertiesDefinitionField.vue:9
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Label"
 msgstr "标签"
 
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:23
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+#: web/components/field/ChoyPropertiesDefinitionField.vue:16 web/components/field/ChoyPropertiesDefinitionField.vue:9
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Name"
 msgstr "名称"
 
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:19
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+#: web/components/field/ChoyPropertiesDefinitionField.vue:275
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
+msgid "No properties"
+msgstr "无属性"
+
+#: web/components/field/ChoyPropertiesDefinitionField.vue:16 web/components/field/ChoyPropertiesDefinitionField.vue:9
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "No properties defined"
-msgstr "未定义属性"
+msgstr "尚未定义属性"
 
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:126 web/components/field/ChoyPropertiesDefinitionEditor.vue:221
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
-msgid "PropertyDefinition store is unavailable"
-msgstr "PropertyDefinition 存储不可用"
-
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:41
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
-msgid "Readonly"
-msgstr "只读"
-
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:51
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+#: web/components/field/ChoyPropertiesDefinitionField.vue:16 web/components/field/ChoyPropertiesDefinitionField.vue:9
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Remove"
 msgstr "移除"
 
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:5
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
-msgid "Save"
-msgstr "保存"
+#: web/components/field/ChoyPropertiesDefinitionField.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
+msgid "Reorder"
+msgstr "调整顺序"
 
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:43
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
-msgid "Selection JSON"
-msgstr "选择项 JSON"
-
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:35
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
-msgid "Translate"
-msgstr "翻译"
-
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:46
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
-msgid "Translate %s"
-msgstr "翻译 %s"
-
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:25
-msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+#: web/components/field/ChoyPropertiesDefinitionField.vue:16 web/components/field/ChoyPropertiesDefinitionField.vue:9
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Type"
 msgstr "类型"
 
+#: web/components/field/ChoyPropertiesDefinitionField.vue:16 web/components/field/ChoyPropertiesDefinitionField.vue:9
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
+msgid "View"
+msgstr "查看"
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Default"
+msgstr "默认值"
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Edit property: %s"
+msgstr "编辑属性：%s"
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Label"
+msgstr "标签"
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Name"
+msgstr "名称"
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Name is required"
+msgstr "名称为必填项"
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "New property"
+msgstr "新建属性"
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Property"
+msgstr "属性"
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Property: %s"
+msgstr "属性：%s"
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Readonly"
+msgstr "只读"
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Save"
+msgstr "保存"
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Translate label"
+msgstr "翻译标签"
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Type"
+msgstr "类型"
+
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
+msgid "Add a line…"
+msgstr "添加一行…"
+
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
+msgid "Delete"
+msgstr "删除"
+
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
+msgid "Label"
+msgstr "标签"
+
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
+msgid "No options"
+msgstr "暂无选项"
+
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
+msgid "Reorder"
+msgstr "调整顺序"
+
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
+msgid "Translate option"
+msgstr "翻译选项"
+
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
+msgid "Value"
+msgstr "值"
 #: web/components/field/ChoyPropertiesField.vue:243
 msgctxt "web/components/field/ChoyPropertiesField"
 msgid "+%s more"
@@ -2666,6 +2760,70 @@ msgstr "页面"
 #~ msgid "New"
 #~ msgstr "新建"
 
+#~ msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+#~ msgid "Add property"
+#~ msgstr "添加属性"
+
+#~ msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+#~ msgid "Default"
+#~ msgstr "默认"
+
+#~ msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+#~ msgid "Label"
+#~ msgstr "标签"
+
+#~ msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+#~ msgid "Name"
+#~ msgstr "名称"
+
+#~ msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+#~ msgid "No properties defined"
+#~ msgstr "未定义属性"
+
+#~ msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+#~ msgid "PropertyDefinition store is unavailable"
+#~ msgstr "PropertyDefinition 存储不可用"
+
+#~ msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+#~ msgid "Readonly"
+#~ msgstr "只读"
+
+#~ msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+#~ msgid "Remove"
+#~ msgstr "移除"
+
+#~ msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+#~ msgid "Save"
+#~ msgstr "保存"
+
+#~ msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+#~ msgid "Selection JSON"
+#~ msgstr "选择项 JSON"
+
+#~ msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+#~ msgid "Translate"
+#~ msgstr "翻译"
+
+#~ msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+#~ msgid "Translate %s"
+#~ msgstr "翻译 %s"
+
+#~ msgctxt "web/components/field/ChoyPropertiesDefinitionEditor"
+#~ msgid "Type"
+#~ msgstr "类型"
+
+#~ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
+#~ msgid "Add property"
+#~ msgstr "添加属性"
+
+#~ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
+#~ msgid "Translate label"
+#~ msgstr "翻译标签"
+
+#~ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+#~ msgid "Translate"
+#~ msgstr "翻译"
+
 #~ msgctxt "web/components/field/ChoyTextField"
 #~ msgid "No content"
 #~ msgstr "无内容"
@@ -2889,3 +3047,4 @@ msgstr "页面"
 #~ msgctxt "web/composables/useMenu"
 #~ msgid "No menus available"
 #~ msgstr "暂无可用菜单"
+

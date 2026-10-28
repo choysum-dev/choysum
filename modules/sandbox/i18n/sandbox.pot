@@ -397,6 +397,11 @@ msgctxt "web/menu/titles"
 msgid "Sandbox"
 msgstr ""
 
+#: web/pages/SandboxPropertyDefinitionList.vue:11
+msgctxt "web/pages/SandboxPropertyDefinitionList"
+msgid "Record Properties"
+msgstr ""
+
 #: web/pages/SandboxRecordChart.vue:12
 msgctxt "web/pages/SandboxRecordChart"
 msgid "Sandbox Record Chart"
@@ -412,6 +417,11 @@ msgctxt "web/pages/SandboxRecordList"
 msgid "Field Kitchen Sink"
 msgstr ""
 
+#: web/route/routes.ts:156
+msgctxt "web/route/routes"
+msgid "New Property Definition"
+msgstr ""
+
 #: web/route/routes.ts:82
 msgctxt "web/route/routes"
 msgid "New Sandbox Record"
@@ -420,6 +430,11 @@ msgstr ""
 #: web/route/routes.ts:112
 msgctxt "web/route/routes"
 msgid "New Sandbox Tag"
+msgstr ""
+
+#: web/route/routes.ts:170
+msgctxt "web/route/routes"
+msgid "Property Definition"
 msgstr ""
 
 #: web/route/routes.ts:142
@@ -500,6 +515,101 @@ msgstr ""
 #: web/views/SandboxLinesVirtTools.vue:4
 msgctxt "web/views/SandboxLinesVirtTools"
 msgid "Short Lines stay content-sized. Open VIRT-LINES or fill rows to exercise capped table / kanban virtualize (not saved until you Save)."
+msgstr ""
+
+#: web/views/SandboxPropertyDefinitionFormView.vue:90
+msgctxt "web/views/SandboxPropertyDefinitionFormView"
+msgid "Container Id"
+msgstr ""
+
+#: web/views/SandboxPropertyDefinitionFormView.vue:83
+msgctxt "web/views/SandboxPropertyDefinitionFormView"
+msgid "Container Model"
+msgstr ""
+
+#: web/views/SandboxPropertyDefinitionFormView.vue:70
+msgctxt "web/views/SandboxPropertyDefinitionFormView"
+msgid "Container scope"
+msgstr ""
+
+#: web/views/sandbox_property_definition_actions.ts:10
+msgctxt "web/views/SandboxPropertyDefinitionFormView"
+msgid "Copy Property Definition"
+msgstr ""
+
+#: web/views/sandbox_property_definition_actions.ts:10
+msgctxt "web/views/SandboxPropertyDefinitionFormView"
+msgid "Create Property Definition"
+msgstr ""
+
+#: web/views/SandboxPropertyDefinitionFormView.vue:23
+msgctxt "web/views/SandboxPropertyDefinitionFormView"
+msgid "Definition"
+msgstr ""
+
+#: web/views/sandbox_property_definition_actions.ts:10
+msgctxt "web/views/SandboxPropertyDefinitionFormView"
+msgid "Delete Property Definition"
+msgstr ""
+
+#: web/views/sandbox_property_definition_actions.ts:10
+msgctxt "web/views/SandboxPropertyDefinitionFormView"
+msgid "Edit Property Definition"
+msgstr ""
+
+#: web/views/SandboxPropertyDefinitionFormView.vue:73
+msgctxt "web/views/SandboxPropertyDefinitionFormView"
+msgid "Optional parent container for record-scoped definitions. Leave empty for app-level properties (e.g. SandboxRecord.Properties)."
+msgstr ""
+
+#: web/views/SandboxPropertyDefinitionFormView.vue:15
+msgctxt "web/views/SandboxPropertyDefinitionFormView"
+msgid "Properties Field"
+msgstr ""
+
+#: web/views/sandbox_property_definition_actions.ts:11
+msgctxt "web/views/SandboxPropertyDefinitionFormView"
+msgid "Property Definition"
+msgstr ""
+
+#: web/views/SandboxPropertyDefinitionFormView.vue:21
+msgctxt "web/views/SandboxPropertyDefinitionFormView"
+msgid "Required"
+msgstr ""
+
+#: web/views/SandboxPropertyDefinitionFormView.vue:9
+msgctxt "web/views/SandboxPropertyDefinitionFormView"
+msgid "Scope"
+msgstr ""
+
+#: web/views/SandboxPropertyDefinitionFormView.vue:12
+msgctxt "web/views/SandboxPropertyDefinitionFormView"
+msgid "Target Model"
+msgstr ""
+
+#: web/views/SandboxPropertyDefinitionListView.vue:11
+msgctxt "web/views/SandboxPropertyDefinitionListView"
+msgid "Container Id"
+msgstr ""
+
+#: web/views/SandboxPropertyDefinitionListView.vue:10
+msgctxt "web/views/SandboxPropertyDefinitionListView"
+msgid "Container Model"
+msgstr ""
+
+#: web/views/SandboxPropertyDefinitionListView.vue:12
+msgctxt "web/views/SandboxPropertyDefinitionListView"
+msgid "Definition"
+msgstr ""
+
+#: web/views/SandboxPropertyDefinitionListView.vue:9
+msgctxt "web/views/SandboxPropertyDefinitionListView"
+msgid "Properties Field"
+msgstr ""
+
+#: web/views/SandboxPropertyDefinitionListView.vue:8
+msgctxt "web/views/SandboxPropertyDefinitionListView"
+msgid "Target Model"
 msgstr ""
 
 #: web/views/SandboxRecordChartView.vue:43
@@ -813,11 +923,6 @@ msgstr ""
 #: web/views/SandboxRecordListView.vue:4
 msgctxt "web/views/SandboxRecordListView"
 msgid "View switcher"
-msgstr ""
-
-#: web/views/SandboxRecordPropertiesDefinitionView.vue:5
-msgctxt "web/views/SandboxRecordPropertiesDefinitionView"
-msgid "Edit the app-level schema for SandboxRecord.Properties. Labels support multiple languages; use Translate next to each label (and selection options) before Save."
 msgstr ""
 
 #: web/views/sandbox_tag_actions.ts:10

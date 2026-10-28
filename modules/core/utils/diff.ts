@@ -32,6 +32,9 @@ function isWholeMapReplaceFieldMeta(fm: { type?: string; resolvedColumnType?: st
 
 function mergePlainMaps(original: unknown, current: unknown): Plain | unknown {
   if (current === null || current === undefined) return current;
+  // jsonobject may store a JSON array (e.g. PropertyDefinition.Definition).
+  // Spreading arrays into a plain object yields {0:…,1:…} and breaks BE Array.isArray checks.
+  if (Array.isArray(current) || Array.isArray(original)) return current;
   const oMap = asObjectRecord(original);
   const cMap = asObjectRecord(current);
   if (oMap && cMap) return { ...oMap, ...cMap };
@@ -409,6 +412,8 @@ export function buildUpdatePayload(original: Plain, current: Plain, fieldsMeta?:
   for (const key of allKeys) {
     if (processed.has(key) || readonlyKeys.has(key)) continue;
     if (fieldsMeta?.[key]?.relation) continue;
+    // jsonobject / properties may hold JSON arrays; never treat them as o2m.
+    if (isWholeMapReplaceFieldMeta(fieldsMeta?.[key])) continue;
 
     const oVal = original?.[key];
     const cVal = current?.[key];

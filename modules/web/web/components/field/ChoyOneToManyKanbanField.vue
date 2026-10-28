@@ -64,7 +64,7 @@ SPDX-License-Identifier: Apache-2.0
             <template #card="{ item, index }">
               <div
                 class="choy-o2m-kanban-card group/card relative cursor-pointer rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40"
-                :class="{ 'opacity-60': sortableEnabled && kanbanReorder.draggingIndex.value === index }"
+                :class="kanbanCardDragClass(index)"
                 data-testid="choy-o2m-kanban-card"
                 role="button"
                 tabindex="0"
@@ -290,7 +290,10 @@ import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import { createTranslate } from '@/web/web/i18n';
 import { hasHandleField } from '@/web/web/composables/listRowEdit';
-import { useListHandleReorder } from '@/web/web/composables/useListHandleReorder';
+import {
+  setHtml5DragImage,
+  useListHandleReorder,
+} from '@/web/web/composables/useListHandleReorder';
 import { formatRelationCountSummary } from './relationCountSummary';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyOneToManyKanbanField' });
@@ -517,18 +520,24 @@ function kanbanItemKey(item: unknown, index: number): string {
   return String(readRowKeySeed(item) ?? index);
 }
 
+function kanbanCardDragClass(index: number): Record<string, boolean> {
+  if (!sortableEnabled.value) return {};
+  const dragging = kanbanReorder.draggingIndex.value;
+  const over = kanbanReorder.overIndex.value;
+  return {
+    'opacity-60': dragging === index,
+    'bg-accent/40 ring-1 ring-inset ring-primary/30':
+      dragging != null && over === index && over !== dragging,
+  };
+}
+
 /** Snapshot drag image from the card node so virtual recycle does not blank it. */
 function onKanbanDragStart(index: number, event: DragEvent) {
   kanbanReorder.onDragStart(index, event);
   const handle = event.currentTarget;
   const card =
     handle instanceof HTMLElement ? handle.closest('[data-testid=choy-o2m-kanban-card]') : null;
-  if (card instanceof HTMLElement && event.dataTransfer) {
-    const rect = card.getBoundingClientRect();
-    const offsetX = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
-    const offsetY = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
-    event.dataTransfer.setDragImage(card, offsetX, offsetY);
-  }
+  if (card instanceof HTMLElement) setHtml5DragImage(card, event);
 }
 
 const dialogVisible = ref(false);

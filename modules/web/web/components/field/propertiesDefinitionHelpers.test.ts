@@ -8,7 +8,9 @@ import {
   definitionItemsToDrafts,
   draftsToDefinitionItems,
   emptyDraftItem,
+  selectionRowsFromDraft,
   syncDraftLabelsForLang,
+  writeSelectionRowsToDraft,
 } from './propertiesDefinitionHelpers';
 
 describe('propertiesDefinitionHelpers', () => {
@@ -261,6 +263,40 @@ describe('propertiesDefinitionHelpers', () => {
     draft.string = '优先';
     applyDraftCurrentLangToMaps(draft, 'zh_CN');
     expect(draft.stringMap).toEqual({ en_US: 'Priority', zh_CN: '优先' });
+  });
+
+  test('selectionRowsFromDraft / writeSelectionRowsToDraft keep maps across value rename', () => {
+    const draft = emptyDraftItem();
+    draft.type = 'selection';
+    draft.selectionText = JSON.stringify([
+      ['low', '低'],
+      ['normal', '普通'],
+    ]);
+    draft.selectionLabelMaps = {
+      low: { en_US: 'Low', zh_CN: '低' },
+      normal: { en_US: 'Normal', zh_CN: '普通' },
+    };
+    expect(selectionRowsFromDraft(draft)).toEqual([
+      { value: 'low', label: '低' },
+      { value: 'normal', label: '普通' },
+    ]);
+    writeSelectionRowsToDraft(
+      draft,
+      [
+        { value: 'lo', label: '低' },
+        { value: 'normal', label: '普通' },
+        { value: '', label: '' },
+      ],
+      'zh_CN',
+    );
+    expect(draft.selectionLabelMaps.lo).toEqual({ en_US: 'Low', zh_CN: '低' });
+    expect(draft.selectionLabelMaps.low).toBeUndefined();
+    expect(draft.selectionLabelMaps.normal).toEqual({ en_US: 'Normal', zh_CN: '普通' });
+    expect(JSON.parse(draft.selectionText)).toEqual([
+      ['lo', '低'],
+      ['normal', '普通'],
+      ['', ''],
+    ]);
   });
 
   test('buildDefinitionScopeCondition', () => {

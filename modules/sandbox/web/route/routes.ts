@@ -135,14 +135,48 @@ export const sandboxRoutes: RouteRecordRaw[] = [
     ],
     meta: { requiresAuth: true },
   }),
-  // App-level PropertyDefinition editor for SandboxRecord.Properties (label i18n UX).
+  // PropertyDefinition List → Form (Definition edited via ChoyPropertiesDefinitionField).
   // Write ACL comes from platform PropertyDefinition logical packs (auth RMA/RFR).
-  defineRoute('sandbox.route.record_properties', {
+  defineRoute('sandbox.route.property_definition_list', {
     sequence: 80,
     title: _lt('Record Properties'),
     path: 'sandbox/configuration/record-properties',
-    name: 'SandboxRecordProperties',
-    component: () => import('../pages/SandboxRecordProperties.vue'),
+    name: 'SandboxPropertyDefinitionList',
+    component: () => import('../pages/SandboxPropertyDefinitionList.vue'),
+    actions: [
+      'sandbox.action.property_definition_create',
+      'sandbox.action.property_definition_edit',
+      'sandbox.action.property_definition_delete',
+      'sandbox.action.property_definition_copy',
+    ],
+    meta: { requiresAuth: true },
+  }),
+  defineRoute('sandbox.route.property_definition_create', {
+    sequence: 81,
+    title: _lt('New Property Definition'),
+    path: 'sandbox/configuration/record-properties/new',
+    name: 'SandboxPropertyDefinitionCreate',
+    component: () => import('../pages/SandboxPropertyDefinition.vue'),
+    actions: [
+      'sandbox.action.property_definition_create',
+      'sandbox.action.property_definition_edit',
+      'sandbox.action.property_definition_delete',
+      'sandbox.action.property_definition_copy',
+    ],
+    meta: { requiresAuth: true },
+  }),
+  defineRoute('sandbox.route.property_definition_detail', {
+    sequence: 82,
+    title: _lt('Property Definition'),
+    path: 'sandbox/configuration/record-properties/:id',
+    name: 'SandboxPropertyDefinitionDetail',
+    component: () => import('../pages/SandboxPropertyDefinition.vue'),
+    actions: [
+      'sandbox.action.property_definition_create',
+      'sandbox.action.property_definition_edit',
+      'sandbox.action.property_definition_delete',
+      'sandbox.action.property_definition_copy',
+    ],
     meta: { requiresAuth: true },
   }),
 ];

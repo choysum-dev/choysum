@@ -125,6 +125,19 @@ test('FE buildUpdatePayload properties / jsonobject whole-map replace', () => {
     { Properties: { type: 'properties' } },
   );
   expect(scalar.Properties).toBe('not-a-map');
+
+  // jsonobject array (PropertyDefinition.Definition): whole-array replace, never {0:…,1:…}.
+  const defOriginal = {
+    Definition: [{ name: 'external_code', type: 'char', string: { zh_CN: '外部编码' } }],
+  };
+  const defCurrent = {
+    Definition: [{ name: 'external_code', type: 'char', string: { zh_CN: '外部' } }],
+  };
+  const defPayload = buildUpdatePayload(defOriginal, defCurrent, {
+    Definition: { type: 'jsonobject' },
+  });
+  expect(Array.isArray(defPayload.Definition)).toBe(true);
+  expect(defPayload.Definition).toEqual(defCurrent.Definition);
 });
 
 test('FE buildUpdatePayload collapses nested map microdiff without fieldsMeta', () => {
