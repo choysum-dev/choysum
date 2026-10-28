@@ -250,6 +250,14 @@ describe('propertiesDefinitionHelpers', () => {
     );
   });
 
+  test('draftsToDefinitionItems does not mutate caller drafts when validation throws', () => {
+    const first = { ...emptyDraftItem(), name: 'ok', type: 'char', string: '  Label  ', stringMap: {} };
+    const second = { ...emptyDraftItem(), name: 'ok', type: 'char', string: 'Dup', stringMap: {} };
+    expect(() => draftsToDefinitionItems([first, second], 'en_US')).toThrow(/duplicate/);
+    expect(first.stringMap).toEqual({});
+    expect(first.string).toBe('  Label  ');
+  });
+
   test('draftsToDefinitionItems rejects bad selection and unsupported types', () => {
     expect(() =>
       draftsToDefinitionItems([{ ...emptyDraftItem(), name: 's', type: 'selection', selectionText: '' }], 'en_US'),

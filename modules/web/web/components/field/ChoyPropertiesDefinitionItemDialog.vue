@@ -303,11 +303,14 @@ function onTranslateSaved(next: Record<string, string>) {
     item.helpMap = { ...next };
     syncDraftLabelsForLang(item, editorLang());
   } else {
+    // Keep in-progress rows (e.g. blank values) across the map→selectionText rebuild.
+    const pendingRows = selectionRowsFromDraft(item);
     item.selectionLabelMaps = {
       ...item.selectionLabelMaps,
       [target.value]: { ...next },
     };
     syncDraftLabelsForLang(item, editorLang());
+    writeSelectionRowsToDraft(item, pendingRows, editorLang());
   }
   translateTarget.value = null;
 }

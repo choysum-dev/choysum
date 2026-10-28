@@ -108,7 +108,7 @@ import type { PropertyItemDefinition } from '@/core/service/orm/model/properties
 import { TRANSLATED_BASE_LANG } from '@/core/service/orm/model/properties_label_i18n';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { RuleItem } from 'async-validator';
-import { computed, defineComponent, h, ref, watch, type WritableComputedRef } from 'vue';
+import { computed, defineComponent, h, nextTick, ref, watch, type WritableComputedRef } from 'vue';
 import { getActivePinia } from 'pinia';
 import { GripVertical } from 'lucide-vue-next';
 import { useField } from '@/web/web/composables/useField';
@@ -497,11 +497,15 @@ function commitDrafts(next: DefinitionEditorDraftItem[]) {
   drafts.value = working;
   previousItems.value = definition;
   const fieldRef = binding.fieldRef() as WritableComputedRef<any> | { value: any };
+  // Hold until the next tick so the deep fieldRef watcher does not re-sync
+  // (and clear writeError) before Vue flushes the write.
   syncingFromWrite = true;
   try {
     fieldRef.value = definition;
   } finally {
-    syncingFromWrite = false;
+    void nextTick(() => {
+      syncingFromWrite = false;
+    });
   }
 }
 

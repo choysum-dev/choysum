@@ -292,7 +292,9 @@ export function draftsToDefinitionItems(
   void previousItems;
   const out: PropertyItemDefinition[] = [];
   const seenNames = new Set<string>();
-  for (const draft of drafts || []) {
+  for (const source of drafts || []) {
+    // Clone so a mid-loop throw does not leave caller's drafts partially mutated.
+    const draft = cloneDraftItem(source);
     applyDraftCurrentLangToMaps(draft, code);
     const name = String(draft.name || '').trim();
     if (!name) continue;
