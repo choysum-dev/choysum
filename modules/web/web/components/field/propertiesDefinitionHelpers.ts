@@ -134,6 +134,20 @@ export function emptyDraftItem(): DefinitionEditorDraftItem {
   };
 }
 
+/** Deep-clone draft maps so failed commits do not partially mutate caller state. */
+export function cloneDraftItem(src: DefinitionEditorDraftItem | null | undefined): DefinitionEditorDraftItem {
+  const base = src ? { ...src } : emptyDraftItem();
+  return {
+    ...base,
+    stringMap: { ...(base.stringMap || {}) },
+    helpMap: { ...(base.helpMap || {}) },
+    selectionLabelMaps: Object.fromEntries(
+      Object.entries(base.selectionLabelMaps || {}).map(([k, v]) => [k, { ...(v || {}) }]),
+    ),
+    selectionRowMapKeys: [...(base.selectionRowMapKeys || [])],
+  };
+}
+
 function asLabelMap(value: unknown): Record<string, string> {
   return parsePropertyLabelMap(value) || {};
 }

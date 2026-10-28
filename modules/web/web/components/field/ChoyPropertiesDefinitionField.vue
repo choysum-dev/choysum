@@ -123,6 +123,7 @@ import { createTranslate } from '@/web/web/i18n';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
 import ChoyPropertiesDefinitionItemDialog from './ChoyPropertiesDefinitionItemDialog.vue';
 import {
+  cloneDraftItem,
   definitionItemsToDrafts,
   draftsToDefinitionItems,
   emptyDraftItem,
@@ -484,14 +485,16 @@ function syncDraftsFromRaw(raw: unknown) {
 
 function commitDrafts(next: DefinitionEditorDraftItem[]) {
   writeError.value = '';
+  // Clone so a failed draftsToDefinitionItems leave caller's drafts unmutated.
+  const working = next.map(d => cloneDraftItem(d));
   let definition: PropertyItemDefinition[];
   try {
-    definition = draftsToDefinitionItems(next, editorLang(), previousItems.value);
+    definition = draftsToDefinitionItems(working, editorLang(), previousItems.value);
   } catch (e) {
     writeError.value = e instanceof Error ? e.message : String(e);
     throw e;
   }
-  drafts.value = next;
+  drafts.value = working;
   previousItems.value = definition;
   const fieldRef = binding.fieldRef() as WritableComputedRef<any> | { value: any };
   syncingFromWrite = true;

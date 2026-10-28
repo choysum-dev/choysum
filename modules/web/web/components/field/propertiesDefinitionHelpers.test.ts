@@ -66,6 +66,7 @@ describe('propertiesDefinitionHelpers', () => {
         readonly: false,
         selectionText: '',
         selectionLabelMaps: {},
+        selectionRowMapKeys: [],
       },
       {
         name: 'sel',
@@ -84,6 +85,7 @@ describe('propertiesDefinitionHelpers', () => {
           a: { en_US: 'A', zh_CN: '甲' },
           b: { en_US: 'B' },
         },
+        selectionRowMapKeys: ['a', 'b'],
       },
     ]);
   });

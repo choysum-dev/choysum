@@ -171,6 +171,7 @@ import ChoyPropertiesDefinitionSelectionEditor from './ChoyPropertiesDefinitionS
 import {
   PROPERTY_DEFINITION_V1_TYPE_OPTIONS,
   applyDraftCurrentLangToMaps,
+  cloneDraftItem,
   emptyDraftItem,
   selectionRowsFromDraft,
   syncDraftLabelsForLang,
@@ -254,19 +255,6 @@ function editorLang(): string {
   }
 }
 
-function cloneDraft(src: DefinitionEditorDraftItem | null | undefined): DefinitionEditorDraftItem {
-  const base = src ? { ...src } : emptyDraftItem();
-  return {
-    ...base,
-    stringMap: { ...(base.stringMap || {}) },
-    helpMap: { ...(base.helpMap || {}) },
-    selectionLabelMaps: Object.fromEntries(
-      Object.entries(base.selectionLabelMaps || {}).map(([k, v]) => [k, { ...(v || {}) }]),
-    ),
-    selectionRowMapKeys: [...(base.selectionRowMapKeys || [])],
-  };
-}
-
 function onSelectionRowsUpdate(rows: SelectionDraftRow[]) {
   const item = local.value;
   if (!item || props.readonly) return;
@@ -337,9 +325,14 @@ function onConfirm() {
     formError.value = _t('Name is required');
     return;
   }
-  applyDraftCurrentLangToMaps(item, editorLang());
+  try {
+    applyDraftCurrentLangToMaps(item, editorLang());
+  } catch (e) {
+    formError.value = e instanceof Error ? e.message : String(e);
+    return;
+  }
   // Parent closes on successful commit; keep open when commitDrafts fails so edits are not lost.
-  emit('saved', cloneDraft(item));
+  emit('saved', cloneDraftItem(item));
 }
 
 watch(
@@ -347,7 +340,7 @@ watch(
   (open, wasOpen) => {
     if (open && !wasOpen) {
       formError.value = '';
-      local.value = cloneDraft(props.item);
+      local.value = cloneDraftItem(props.item);
       syncDraftLabelsForLang(local.value, editorLang());
     }
     if (!open && wasOpen) {
