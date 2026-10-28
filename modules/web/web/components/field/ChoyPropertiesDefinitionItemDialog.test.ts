@@ -376,6 +376,23 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
     m.unmount();
   });
 
+  test('Save trims name onto the draft before emit', async () => {
+    const onSaved = fnRecorder();
+    const m = mountDialog(
+      { item: draft({ name: '  padded_name  ', string: 'P', stringMap: { en_US: 'P' } }) },
+      { onSaved },
+    );
+    try {
+      await flushPromises();
+      m.click('[data-testid="choy-properties-definition-item-save"]');
+      await flushPromises();
+      expect(onSaved.calls.length).toBe(1);
+      expect((onSaved.calls[0][0] as DefinitionEditorDraftItem).name).toBe('padded_name');
+    } finally {
+      m.unmount();
+    }
+  });
+
   test('Cancel closes dialog', async () => {
     const onUpdate = fnRecorder();
     const onClosed = fnRecorder();

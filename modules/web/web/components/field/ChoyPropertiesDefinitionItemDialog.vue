@@ -325,6 +325,7 @@ function onConfirm() {
     formError.value = _t('Name is required');
     return;
   }
+  item.name = name;
   try {
     applyDraftCurrentLangToMaps(item, editorLang());
   } catch (e) {
