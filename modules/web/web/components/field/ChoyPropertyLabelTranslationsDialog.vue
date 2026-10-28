@@ -92,6 +92,8 @@ const dialogTitle = computed(() => {
 
 const loading = ref(false);
 const rows = ref<TranslationRow[]>([]);
+/** Bumped on each load / close so a late GetActiveLanguages cannot overwrite a newer open. */
+let loadGeneration = 0;
 
 function formatLanguageLabel(name: unknown, code: string): string {
   const display = String(name ?? '').trim();
@@ -99,6 +101,7 @@ function formatLanguageLabel(name: unknown, code: string): string {
 }
 
 async function loadRows() {
+  const gen = ++loadGeneration;
   loading.value = true;
   try {
     const current = props.translations && typeof props.translations === 'object' ? { ...props.translations } : {};
@@ -109,6 +112,7 @@ async function loadRows() {
     } catch {
       list = [];
     }
+    if (gen !== loadGeneration) return;
     const byCode = new Map<string, TranslationRow>();
     for (const lang of Array.isArray(list) ? list : []) {
       const code = String(lang?.Code || '').trim();
@@ -141,10 +145,11 @@ async function loadRows() {
     });
     rows.value = ordered;
   } catch (err: any) {
+    if (gen !== loadGeneration) return;
     ChoyMessage.error(String(err?.message || err || _t('Failed to load translations')));
     rows.value = [];
   } finally {
-    loading.value = false;
+    if (gen === loadGeneration) loading.value = false;
   }
 }
 
@@ -152,7 +157,13 @@ watch(
   () => props.modelValue,
   (open, wasOpen) => {
     if (open && !wasOpen) void loadRows();
-    if (!open && wasOpen) emit('closed');
+    if (!open && wasOpen) {
+      // Invalidate in-flight loads from this opening.
+      loadGeneration += 1;
+      rows.value = [];
+      loading.value = false;
+      emit('closed');
+    }
   },
   { immediate: true },
 );

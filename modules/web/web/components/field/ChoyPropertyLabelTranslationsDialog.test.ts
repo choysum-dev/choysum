@@ -200,6 +200,48 @@ describe('ChoyPropertyLabelTranslationsDialog', () => {
     m.unmount();
   });
 
+  test('ignores stale loadRows from a previous opening', async () => {
+    let releaseFirst!: () => void;
+    const firstGate = new Promise<void>(resolve => {
+      releaseFirst = resolve;
+    });
+    let calls = 0;
+    getActiveLanguages.mockImplementation(async () => {
+      calls += 1;
+      if (calls === 1) await firstGate;
+      return DEFAULT_LANGS.map(r => ({ ...r }));
+    });
+
+    const m = mountApp(PropertyLabelTranslationsDialog as any, {
+      reactiveProps: true,
+      props: {
+        modelValue: true,
+        translations: { en_US: 'First' },
+        'onUpdate:modelValue': (v: boolean) => {
+          (m.props as any).modelValue = v;
+        },
+      },
+      plugins: [pinia],
+    });
+    await flushPromises();
+    expect(m.qa(INPUT_SEL).length).toBe(0);
+
+    (m.props as any).modelValue = false;
+    await nextTick();
+    await flushPromises();
+
+    (m.props as any).translations = { en_US: 'Second', zh_CN: '第二' };
+    (m.props as any).modelValue = true;
+    await flushPromises();
+    expect((m.qa(INPUT_SEL) as HTMLInputElement[])[0]?.value).toBe('Second');
+
+    releaseFirst();
+    await flushPromises();
+    expect((m.qa(INPUT_SEL) as HTMLInputElement[])[0]?.value).toBe('Second');
+    expect((m.qa(INPUT_SEL) as HTMLInputElement[])[1]?.value).toBe('第二');
+    m.unmount();
+  });
+
   test('Cancel closes; closed emit', async () => {
     const onUpdate = fnRecorder();
     const onClosed = fnRecorder();

@@ -527,6 +527,47 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
     }
   });
 
+  test('selection translate keeps newly saved label (not stale pending row label)', async () => {
+    const onSaved = fnRecorder();
+    const m = mountDialog(
+      {
+        item: draft({
+          name: 'prio',
+          type: 'selection',
+          string: 'Priority',
+          stringMap: { en_US: 'Priority' },
+          selectionText: JSON.stringify([
+            ['low', 'Low'],
+            ['', ''],
+          ]),
+          selectionLabelMaps: { low: { en_US: 'Low' } },
+          selectionRowMapKeys: ['low', ''],
+        }),
+      },
+      { onSaved },
+    );
+    try {
+      await flushPromises();
+      m.click('[data-testid="stub-selection-translate"]');
+      await flushPromises();
+      m.click('[data-testid="stub-translate-save-selection"]');
+      await flushPromises();
+      const editorRows =
+        (lastSelectionProps?.modelValue as Array<{ value: string; label: string }> | undefined) || [];
+      const low = editorRows.find(r => r && r.value === 'low');
+      expect(low?.label).toBe('S-en');
+      m.click('[data-testid="choy-properties-definition-item-save"]');
+      await flushPromises();
+      expect(onSaved.calls.length).toBe(1);
+      const saved = onSaved.calls[0][0] as DefinitionEditorDraftItem;
+      expect(saved.selectionLabelMaps.low).toEqual({ en_US: 'S-en', zh_CN: 'S-zh' });
+      const rows = JSON.parse(String(saved.selectionText || '[]')) as Array<[string, string]>;
+      expect(rows.find(r => r[0] === 'low')?.[1]).toBe('S-en');
+    } finally {
+      m.unmount();
+    }
+  });
+
   test('readonly skips translate controls and selection mutate', async () => {
     const m = mountDialog({
       readonly: true,

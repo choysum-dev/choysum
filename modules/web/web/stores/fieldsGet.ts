@@ -123,6 +123,8 @@ type CoalesceBucket = {
   fieldSet: Set<string>;
   wantAll: boolean;
   waiters: CoalesceWaiter[];
+  /** cacheGeneration when the bucket was queued (invalidate writes after clear). */
+  generation: number;
   /** Shared promise for callers that join after flush started. */
   inflight?: Promise<Record<string, WebFieldMetadata>>;
 };
@@ -227,7 +229,9 @@ export function createFieldsGetHelpers(
 
     const rpcFields = bucket.wantAll ? undefined : [...bucket.fieldSet].sort();
     const rpcKey = buildCacheKey(lang, rpcFields, bucket.attributes);
-    const generationAtStart = cacheGeneration;
+    // Use the generation from queue time — a clear before this flush bumps
+    // cacheGeneration, and capturing here would treat the stale RPC as fresh.
+    const generationAtStart = bucket.generation;
 
     const resolveWaiters = (slice: Record<string, WebFieldMetadata>) => {
       for (const waiter of bucket.waiters) {
@@ -337,6 +341,7 @@ export function createFieldsGetHelpers(
         fieldSet: new Set<string>(),
         wantAll: false,
         waiters: [],
+        generation: cacheGeneration,
       };
       coalesceByLangAttrs.set(bucketKey, bucket);
       queueMicrotask(() => {

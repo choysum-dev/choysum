@@ -153,7 +153,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, ref, watch } from 'vue';
 import { getActivePinia } from 'pinia';
 import { Languages } from 'lucide-vue-next';
-import { TRANSLATED_BASE_LANG } from '@/core/service/orm/model/properties_label_i18n';
+import { TRANSLATED_BASE_LANG, unwrapPropertyLabel } from '@/core/service/orm/model/properties_label_i18n';
 import { createTranslate } from '@/web/web/i18n';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
@@ -304,13 +304,19 @@ function onTranslateSaved(next: Record<string, string>) {
     syncDraftLabelsForLang(item, editorLang());
   } else {
     // Keep in-progress rows (e.g. blank values) across the map→selectionText rebuild.
+    // Refresh the translated option's label so writeSelectionRowsToDraft does not
+    // merge the stale pending label over the just-saved map.
     const pendingRows = selectionRowsFromDraft(item);
     item.selectionLabelMaps = {
       ...item.selectionLabelMaps,
       [target.value]: { ...next },
     };
-    syncDraftLabelsForLang(item, editorLang());
-    writeSelectionRowsToDraft(item, pendingRows, editorLang());
+    const lang = editorLang();
+    const freshLabel = unwrapPropertyLabel(next, lang);
+    const restored = pendingRows.map(row =>
+      String(row.value || '').trim() === target.value ? { ...row, label: freshLabel } : row,
+    );
+    writeSelectionRowsToDraft(item, restored, lang);
   }
   translateTarget.value = null;
 }

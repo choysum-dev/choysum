@@ -340,6 +340,16 @@ describe('createFieldsGetHelpers', () => {
     const slice = await first;
     expect(slice.Name?.string).toBe('名称');
     expect(FieldsGet.calls.length).toBe(1);
+    // Stale RPC must not land in the post-clear cache/overlay (bucket generation).
+    expect(helpers.getFieldsGetTranslatedString('Name')).toBeUndefined();
+
+    FieldsGet.mockImplementation(async () => ({
+      Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: '新' },
+    }));
+    const second = await helpers.ensureFieldsGet(['Name'], ['string']);
+    expect(FieldsGet.calls.length).toBe(2);
+    expect(second.Name?.string).toBe('新');
+    expect(helpers.getFieldsGetTranslatedString('Name')).toBe('新');
   });
 
   test('concurrent ensures with an exact cached key make no RPC', async () => {
