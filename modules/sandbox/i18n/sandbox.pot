@@ -517,19 +517,14 @@ msgctxt "web/views/SandboxLinesVirtTools"
 msgid "Short Lines stay content-sized. Open VIRT-LINES or fill rows to exercise capped table / kanban virtualize (not saved until you Save)."
 msgstr ""
 
-#: web/views/SandboxPropertyDefinitionFormView.vue:90
+#: web/views/SandboxPropertyDefinitionFormView.vue:21
 msgctxt "web/views/SandboxPropertyDefinitionFormView"
 msgid "Container Id"
 msgstr ""
 
-#: web/views/SandboxPropertyDefinitionFormView.vue:83
+#: web/views/SandboxPropertyDefinitionFormView.vue:18
 msgctxt "web/views/SandboxPropertyDefinitionFormView"
 msgid "Container Model"
-msgstr ""
-
-#: web/views/SandboxPropertyDefinitionFormView.vue:70
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Container scope"
 msgstr ""
 
 #: web/views/sandbox_property_definition_actions.ts:10
@@ -542,7 +537,7 @@ msgctxt "web/views/SandboxPropertyDefinitionFormView"
 msgid "Create Property Definition"
 msgstr ""
 
-#: web/views/SandboxPropertyDefinitionFormView.vue:23
+#: web/views/SandboxPropertyDefinitionFormView.vue:26
 msgctxt "web/views/SandboxPropertyDefinitionFormView"
 msgid "Definition"
 msgstr ""
@@ -555,11 +550,6 @@ msgstr ""
 #: web/views/sandbox_property_definition_actions.ts:10
 msgctxt "web/views/SandboxPropertyDefinitionFormView"
 msgid "Edit Property Definition"
-msgstr ""
-
-#: web/views/SandboxPropertyDefinitionFormView.vue:73
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Optional parent container for record-scoped definitions. Leave empty for app-level properties (e.g. SandboxRecord.Properties)."
 msgstr ""
 
 #: web/views/SandboxPropertyDefinitionFormView.vue:15

@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
   <ChoyFieldBase
     :binding="binding"
     :label="label"
+    :help="help"
     :rules="mergedRules"
     :formItemProps="formItemProps"
     :orientation="orientation"
@@ -108,6 +109,8 @@ const props = withDefaults(
     binding?: UseField<T, V>;
 
     label?: string;
+    /** Explicit help tip; preferred over FieldsGet / meta.help when set. */
+    help?: string;
     rules?: RuleItem[];
 
     maxLength?: number;

@@ -511,20 +511,15 @@ msgctxt "web/views/SandboxLinesVirtTools"
 msgid "Short Lines stay content-sized. Open VIRT-LINES or fill rows to exercise capped table / kanban virtualize (not saved until you Save)."
 msgstr "短 Lines 保持内容高度。打开 VIRT-LINES 或填充行以练习封顶表格 / kanban 虚拟化（保存前不落库）。"
 
-#: web/views/SandboxPropertyDefinitionFormView.vue:90
+#: web/views/SandboxPropertyDefinitionFormView.vue:21
 msgctxt "web/views/SandboxPropertyDefinitionFormView"
 msgid "Container Id"
 msgstr "容器 ID"
 
-#: web/views/SandboxPropertyDefinitionFormView.vue:83
+#: web/views/SandboxPropertyDefinitionFormView.vue:18
 msgctxt "web/views/SandboxPropertyDefinitionFormView"
 msgid "Container Model"
 msgstr "容器模型"
-
-#: web/views/SandboxPropertyDefinitionFormView.vue:70
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Container scope"
-msgstr "容器作用域"
 
 #: web/views/sandbox_property_definition_actions.ts:10
 msgctxt "web/views/SandboxPropertyDefinitionFormView"
@@ -536,7 +531,7 @@ msgctxt "web/views/SandboxPropertyDefinitionFormView"
 msgid "Create Property Definition"
 msgstr "创建属性定义"
 
-#: web/views/SandboxPropertyDefinitionFormView.vue:23
+#: web/views/SandboxPropertyDefinitionFormView.vue:26
 msgctxt "web/views/SandboxPropertyDefinitionFormView"
 msgid "Definition"
 msgstr "定义"
@@ -550,11 +545,6 @@ msgstr "删除属性定义"
 msgctxt "web/views/SandboxPropertyDefinitionFormView"
 msgid "Edit Property Definition"
 msgstr "编辑属性定义"
-
-#: web/views/SandboxPropertyDefinitionFormView.vue:73
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Optional parent container for record-scoped definitions. Leave empty for app-level properties (e.g. SandboxRecord.Properties)."
-msgstr "可选的父级容器，用于记录级定义。应用级属性（如 SandboxRecord.Properties）请留空。"
 
 #: web/views/SandboxPropertyDefinitionFormView.vue:15
 msgctxt "web/views/SandboxPropertyDefinitionFormView"
@@ -959,6 +949,30 @@ msgstr "标签"
 #~ msgid "Per-company varchar; open Company Values from the field chrome."
 #~ msgstr "按公司存储的 varchar；可从字段控件打开公司值。"
 
+#~ msgctxt "web/views/SandboxPropertyDefinitionFormView"
+#~ msgid "Container scope"
+#~ msgstr "容器作用域"
+
+#~ msgctxt "web/views/SandboxPropertyDefinitionFormView"
+#~ msgid "Leave empty for app-level scope; set to the parent model short name for record-scoped definitions."
+#~ msgstr "应用级作用域请留空；记录级定义则填写父模型短名。"
+
+#~ msgctxt "web/views/SandboxPropertyDefinitionFormView"
+#~ msgid "Leave empty for app-level scope; set with Container Model to bind this definition to one parent record."
+#~ msgstr "应用级作用域请留空；与「容器模型」一起填写以绑定到一条父记录。"
+
+#~ msgctxt "web/views/SandboxPropertyDefinitionFormView"
+#~ msgid "Model that owns the properties column (e.g. SandboxRecord)."
+#~ msgstr "拥有属性列的业务模型（例如 SandboxRecord）。"
+
+#~ msgctxt "web/views/SandboxPropertyDefinitionFormView"
+#~ msgid "Name of the properties field on the target model (e.g. Properties)."
+#~ msgstr "目标模型上的属性字段名（例如 Properties）。"
+
+#~ msgctxt "web/views/SandboxPropertyDefinitionFormView"
+#~ msgid "Optional parent container for record-scoped definitions. Leave empty for app-level properties (e.g. SandboxRecord.Properties)."
+#~ msgstr "可选的父级容器，用于记录级定义。应用级属性（如 SandboxRecord.Properties）请留空。"
+
 #~ msgctxt "web/views/SandboxRecordFormView"
 #~ msgid "Add Line"
 #~ msgstr "添加明细"
@@ -986,4 +1000,3 @@ msgstr "标签"
 #~ msgctxt "web/views/SandboxTagListView"
 #~ msgid "Sandbox Tag"
 #~ msgstr "沙箱标签"
-

@@ -5,6 +5,10 @@
  * Store-level FieldsGet cache helpers (design D7).
  *
  * Cache key: lang + sorted(fields) + sorted(attributes). No draft (D9).
+ *
+ * Concurrent ensureFieldsGet calls that share the same lang+attributes are
+ * coalesced into one RPC (union of field names) so a form with N ChoyFieldBase
+ * mounts does not fire N FieldsGet round-trips.
  */
 
 import { shallowRef } from 'vue';
@@ -82,6 +86,47 @@ function resolveLang(getLang?: () => string): string {
   }
 }
 
+function normalizeFieldNames(fields?: string[]): string[] {
+  if (!fields || fields.length === 0) return [];
+  return [...new Set(fields.map(v => String(v || '').trim()).filter(Boolean))];
+}
+
+/** True when caller asked for the whole model (empty / omitted fields list). */
+function wantsAllFields(fields?: string[]): boolean {
+  return !fields || fields.length === 0 || normalizeFieldNames(fields).length === 0;
+}
+
+function pickFieldSlice(
+  slice: Record<string, WebFieldMetadata>,
+  names: string[]
+): Record<string, WebFieldMetadata> {
+  const out: Record<string, WebFieldMetadata> = {};
+  for (const name of names) {
+    if (Object.prototype.hasOwnProperty.call(slice, name)) {
+      out[name] = slice[name]!;
+    }
+  }
+  return out;
+}
+
+type CoalesceWaiter = {
+  resolve: (value: Record<string, WebFieldMetadata>) => void;
+  reject: (reason?: unknown) => void;
+  /** Normalized field names; empty means whole-model request. */
+  names: string[];
+  wantAll: boolean;
+  cacheKey: string;
+};
+
+type CoalesceBucket = {
+  attributes: string[] | undefined;
+  fieldSet: Set<string>;
+  wantAll: boolean;
+  waiters: CoalesceWaiter[];
+  /** Shared promise for callers that join after flush started. */
+  inflight?: Promise<Record<string, WebFieldMetadata>>;
+};
+
 /**
  * Attach ensureFieldsGet / getFieldMeta helpers to a model store host.
  */
@@ -95,6 +140,8 @@ export function createFieldsGetHelpers(
   const overlayByLang = new Map<string, Record<string, WebFieldMetadata>>();
   /** Bumped so Vue computeds that call getFieldMeta / getFieldsGetTranslatedString re-run. */
   const overlayVersion = shallowRef(0);
+  /** lang|attrs → pending microtask-coalesced ensures. */
+  const coalesceByLangAttrs = new Map<string, CoalesceBucket>();
 
   const bumpOverlay = () => {
     overlayVersion.value += 1;
@@ -104,6 +151,7 @@ export function createFieldsGetHelpers(
     responseCache.clear();
     inflight.clear();
     overlayByLang.clear();
+    coalesceByLangAttrs.clear();
     bumpOverlay();
   };
 
@@ -111,6 +159,64 @@ export function createFieldsGetHelpers(
     const prev = overlayByLang.get(lang) || {};
     overlayByLang.set(lang, { ...prev, ...slice });
     bumpOverlay();
+  };
+
+  const overlayHasFields = (lang: string, names: string[]): boolean => {
+    const overlay = overlayByLang.get(lang) || {};
+    return names.every(name => Object.prototype.hasOwnProperty.call(overlay, name));
+  };
+
+  const sliceFromOverlay = (lang: string, names: string[]): Record<string, WebFieldMetadata> => {
+    return pickFieldSlice(overlayByLang.get(lang) || {}, names);
+  };
+
+  const flushCoalesceBucket = (bucketKey: string, lang: string, bucket: CoalesceBucket) => {
+    coalesceByLangAttrs.delete(bucketKey);
+
+    const rpcFields = bucket.wantAll ? undefined : [...bucket.fieldSet].sort();
+    const rpcKey = buildCacheKey(lang, rpcFields, bucket.attributes);
+
+    const resolveWaiters = (slice: Record<string, WebFieldMetadata>) => {
+      for (const waiter of bucket.waiters) {
+        let value = responseCache.get(waiter.cacheKey);
+        if (!value) {
+          value = waiter.wantAll ? slice : pickFieldSlice(slice, waiter.names);
+          responseCache.set(waiter.cacheKey, value);
+        }
+        waiter.resolve(value);
+      }
+    };
+
+    const cached = responseCache.get(rpcKey);
+    if (cached) {
+      resolveWaiters(cached);
+      return;
+    }
+
+    const pendingExact = inflight.get(rpcKey);
+    const request =
+      pendingExact ||
+      (async () => {
+        const slice = (await host.FieldsGet(rpcFields, bucket.attributes)) || {};
+        responseCache.set(rpcKey, slice);
+        mergeOverlay(lang, slice);
+        inflight.delete(rpcKey);
+        return slice;
+      })().catch(err => {
+        inflight.delete(rpcKey);
+        throw err;
+      });
+
+    if (!pendingExact) {
+      inflight.set(rpcKey, request);
+    }
+    bucket.inflight = request;
+
+    void request.then(resolveWaiters).catch(err => {
+      for (const waiter of bucket.waiters) {
+        waiter.reject(err);
+      }
+    });
   };
 
   const ensureFieldsGet = async (
@@ -123,24 +229,57 @@ export function createFieldsGetHelpers(
     if (cached) {
       return cached;
     }
+
+    const wantAll = wantsAllFields(fields);
+    const names = wantAll ? [] : normalizeFieldNames(fields);
+
+    // Specific-field ensure: reuse overlay from a prior coalesced / broader fetch.
+    if (!wantAll && names.length > 0 && overlayHasFields(lang, names)) {
+      const fromOverlay = sliceFromOverlay(lang, names);
+      responseCache.set(key, fromOverlay);
+      return fromOverlay;
+    }
+
     const pending = inflight.get(key);
     if (pending) {
       return pending;
     }
 
-    const request = (async () => {
-      const slice = (await host.FieldsGet(fields, attributes)) || {};
-      responseCache.set(key, slice);
-      mergeOverlay(lang, slice);
-      inflight.delete(key);
-      return slice;
-    })().catch(err => {
-      inflight.delete(key);
-      throw err;
-    });
+    // Coalesce concurrent ensures that share lang + attributes into one RPC.
+    const attrsPart = sortedKeyPart(attributes);
+    const bucketKey = `${lang}|${attrsPart}`;
+    let bucket = coalesceByLangAttrs.get(bucketKey);
+    if (!bucket) {
+      bucket = {
+        attributes: attributes ? [...attributes] : undefined,
+        fieldSet: new Set<string>(),
+        wantAll: false,
+        waiters: [],
+      };
+      coalesceByLangAttrs.set(bucketKey, bucket);
+      queueMicrotask(() => {
+        const current = coalesceByLangAttrs.get(bucketKey);
+        if (!current) return;
+        flushCoalesceBucket(bucketKey, lang, current);
+      });
+    }
 
-    inflight.set(key, request);
-    return request;
+    if (wantAll) {
+      bucket.wantAll = true;
+      bucket.fieldSet.clear();
+    } else if (!bucket.wantAll) {
+      for (const name of names) bucket.fieldSet.add(name);
+    }
+
+    return new Promise<Record<string, WebFieldMetadata>>((resolve, reject) => {
+      bucket!.waiters.push({
+        resolve,
+        reject,
+        names,
+        wantAll,
+        cacheKey: key,
+      });
+    });
   };
 
   const getFieldMeta = (name: string): WebFieldMetadata | undefined => {

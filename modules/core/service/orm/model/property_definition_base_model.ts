@@ -188,6 +188,9 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     notNull: true,
     index: true,
     string: _lt('Target Model', { scope: 'core.model.PropertyDefinition.fields' }),
+    help: _lt('Model that owns the properties column (e.g. SandboxRecord).', {
+      scope: 'core.model.PropertyDefinition.fields',
+    }),
   })
   TargetModel!: string;
 
@@ -197,6 +200,9 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     notNull: true,
     index: true,
     string: _lt('Properties Field', { scope: 'core.model.PropertyDefinition.fields' }),
+    help: _lt('Name of the properties field on the target model (e.g. Properties).', {
+      scope: 'core.model.PropertyDefinition.fields',
+    }),
   })
   PropertiesField!: string;
 
@@ -205,6 +211,10 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     type: 'varchar',
     size: 255,
     string: _lt('Container Model', { scope: 'core.model.PropertyDefinition.fields' }),
+    help: _lt(
+      'Leave empty for app-level scope; set to the parent model short name for record-scoped definitions.',
+      { scope: 'core.model.PropertyDefinition.fields' },
+    ),
   })
   ContainerModel?: string | null;
 
@@ -214,6 +224,10 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     size: 64,
     index: true,
     string: _lt('Container Id', { scope: 'core.model.PropertyDefinition.fields' }),
+    help: _lt(
+      'Leave empty for app-level scope; set with Container Model to bind this definition to one parent record.',
+      { scope: 'core.model.PropertyDefinition.fields' },
+    ),
   })
   ContainerId?: string | null;
 

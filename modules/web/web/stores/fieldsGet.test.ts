@@ -43,6 +43,53 @@ describe('createFieldsGetHelpers', () => {
     expect(FieldsGet.calls.length).toBe(1);
   });
 
+  test('coalesces concurrent ensures with different fields into one FieldsGet RPC', async () => {
+    const FieldsGet = asyncFnRecorder(async (fields?: string[]) => {
+      const names = fields && fields.length ? fields : ['TargetModel', 'PropertiesField', 'ContainerModel'];
+      const out: Record<string, WebFieldMetadata> = {};
+      for (const name of names) {
+        out[name] = {
+          id: name,
+          type: 'varchar',
+          typeAnnotation: 'string',
+          help: `help:${name}`,
+        };
+      }
+      return out;
+    });
+    const helpers = createFieldsGetHelpers(
+      makeHost(
+        {
+          TargetModel: { id: '1', type: 'varchar', typeAnnotation: 'string' },
+          PropertiesField: { id: '2', type: 'varchar', typeAnnotation: 'string' },
+          ContainerModel: { id: '3', type: 'varchar', typeAnnotation: 'string' },
+        },
+        FieldsGet
+      ),
+      { getLang: () => 'zh_CN' }
+    );
+
+    const attrs = [...FIELD_PRESENTATION_FIELDS_GET_ATTRS];
+    const [a, b, c] = await Promise.all([
+      helpers.ensureFieldsGet(['TargetModel'], attrs),
+      helpers.ensureFieldsGet(['PropertiesField'], attrs),
+      helpers.ensureFieldsGet(['ContainerModel'], attrs),
+    ]);
+
+    expect(FieldsGet.calls.length).toBe(1);
+    const requested = (FieldsGet.calls[0]?.[0] as string[] | undefined) || [];
+    expect([...requested].sort()).toEqual(['ContainerModel', 'PropertiesField', 'TargetModel']);
+    expect(a.TargetModel?.help).toBe('help:TargetModel');
+    expect(b.PropertiesField?.help).toBe('help:PropertiesField');
+    expect(c.ContainerModel?.help).toBe('help:ContainerModel');
+    expect(helpers.getFieldsGetTranslatedHelp('TargetModel')).toBe('help:TargetModel');
+
+    // Later ensure for an already-overlaid field must not re-RPC.
+    FieldsGet.calls.length = 0;
+    await helpers.ensureFieldsGet(['PropertiesField'], attrs);
+    expect(FieldsGet.calls.length).toBe(0);
+  });
+
   test('re-RPCs after lang change or clearFieldsGetCache (T1.6)', async () => {
     let fieldsGetImpl: FieldsGetHost['FieldsGet'] = async (_fields?: string[], _attrs?: string[]) => ({
       Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: '名称' },
