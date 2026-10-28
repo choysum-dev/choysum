@@ -403,6 +403,43 @@ describe('ChoyPropertiesDefinitionField', () => {
     }
   });
 
+  test('stale edit index surfaces writeError and keeps dialog open', async () => {
+    const binding = makeBinding({
+      definition: [
+        { name: 'a', type: 'char', string: { en_US: 'A' } },
+        { name: 'b', type: 'char', string: { en_US: 'B' } },
+      ],
+      isEditMode: true,
+    });
+    const mounted = mountApp(ChoyPropertiesDefinitionField as any, {
+      props: { binding },
+    });
+    try {
+      await flushPromises();
+      const openBtns = mounted.el.querySelectorAll('[data-testid="choy-properties-definition-open"]');
+      expect(openBtns.length).toBe(2);
+      (openBtns[1] as HTMLElement).click();
+      await nextTick();
+      expect(mounted.q('[data-testid="choy-properties-definition-item-dialog-stub"]')).toBeTruthy();
+      // Remove the first row so dialogIndex 1 is now out of range.
+      const removeBtns = mounted.el.querySelectorAll('[data-testid="choy-properties-definition-remove"]');
+      (removeBtns[0] as HTMLElement).click();
+      await nextTick();
+      await flushPromises();
+      expect((binding.__value.value as any[]).map((r: any) => r.name)).toEqual(['b']);
+      mounted.click('[data-testid="stub-item-save"]');
+      await nextTick();
+      await flushPromises();
+      expect(mounted.q('[data-testid="choy-properties-definition-item-dialog-stub"]')).toBeTruthy();
+      expect(mounted.q('[data-testid="choy-properties-definition-write-error"]')?.textContent || '').toMatch(
+        /changed while editing/i,
+      );
+      expect((binding.__value.value as any[]).map((r: any) => r.name)).toEqual(['b']);
+    } finally {
+      mounted.unmount();
+    }
+  });
+
   test('commitDrafts failure keeps dialog open (onDialogSaved catch return)', async () => {
     // Invalid selection JSON → draftsToDefinitionItems throws inside commitDrafts.
     stubSfc(ChoyPropertiesDefinitionItemDialog as any, {

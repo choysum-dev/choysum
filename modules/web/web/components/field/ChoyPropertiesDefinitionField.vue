@@ -558,7 +558,10 @@ function onDialogSaved(item: DefinitionEditorDraftItem) {
   } else {
     const index = dialogIndex.value;
     // Stale index (row removed/reordered while dialog open): keep dialog open.
-    if (index == null || index < 0 || index >= next.length) return;
+    if (index == null || index < 0 || index >= next.length) {
+      writeError.value = _t('This row was changed while editing; please reopen it.');
+      return;
+    }
     next[index] = item;
   }
   try {

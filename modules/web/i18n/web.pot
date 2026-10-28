@@ -892,6 +892,11 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "No properties defined"
 msgstr ""
 
+#: web/components/field/ChoyPropertiesDefinitionField.vue
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
+msgid "This row was changed while editing; please reopen it."
+msgstr ""
+
 #: web/components/field/ChoyPropertiesDefinitionField.vue:16
 #: web/components/field/ChoyPropertiesDefinitionField.vue:9
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
