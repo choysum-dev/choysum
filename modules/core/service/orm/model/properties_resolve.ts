@@ -7,7 +7,9 @@ import { asObjectRecord } from '../../../utils/object';
 import type { ObjectRecord } from '../../../utils/types';
 import type BaseModel from './model';
 import type { ModelCtor } from './types';
+import { resolveTranslatedFieldLang } from '../repository/projection/translated_field_codec';
 import { lookupPropertyDefinitionModel } from './properties_lookup';
+import { translatePropertyDefinitionItems } from './properties_label_i18n';
 import {
   filterReadablePropertyDefinitionItems,
   normalizePropertiesMap,
@@ -153,7 +155,9 @@ export async function resolveProperties(
     items = await loadDefinitionItems(application, targetModel, fieldName, 'parent', containerModel, containerId);
   }
 
-  return items.map(item => {
+  // Expand Definition label lang maps for the request language; do not cache translated items.
+  const localized = translatePropertyDefinitionItems(items, resolveTranslatedFieldLang());
+  return localized.map(item => {
     const resolved: ResolvedPropertyItem = { ...item };
     if (Object.prototype.hasOwnProperty.call(valueMap, item.name)) {
       resolved.value = valueMap[item.name];

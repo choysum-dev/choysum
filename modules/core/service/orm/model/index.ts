@@ -24,8 +24,15 @@ export {
   normalizePropertiesMap,
   isPlainPropertiesMap,
   type PropertyItemDefinition,
+  type PropertyLabel,
   type ResolvedPropertyItem,
 } from './properties_types';
+export {
+  mergePropertyLabelWrite,
+  mergeSelectionLabelsWrite,
+  translatePropertyDefinitionItems,
+  unwrapPropertyLabel,
+} from './properties_label_i18n';
 export {
   lookupPropertyDefinitionModel,
   __setLookupPropertyDefinitionModelForTest,
