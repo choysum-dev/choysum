@@ -8,7 +8,7 @@ import {
   type FieldsGetRpcLike,
 } from './fieldsGet';
 import type { WebFieldMetadata } from './modelStore';
-import { asyncFnRecorder } from '@/web/web/__tests__/mountApp';
+import { asyncFnRecorder, syncFnRecorder } from '@/web/web/__tests__/mountApp';
 
 function makeHost(
   fieldsMetadata: Record<string, WebFieldMetadata>,
@@ -442,16 +442,17 @@ describe('createFieldsGetHelpers', () => {
 
   test('sync FieldsGet throw does not permanently poison inflight', async () => {
     let syncThrow = true;
-    const FieldsGet = asyncFnRecorder((() => {
+    // syncFnRecorder rethrows synchronously; asyncFnRecorder would wrap into reject.
+    const FieldsGet = syncFnRecorder(() => {
       if (syncThrow) {
         throw new Error('sync boom');
       }
-      return Promise.resolve({
+      return {
         Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'ok' },
-      });
-    }) as any);
+      };
+    });
     const helpers = createFieldsGetHelpers(
-      makeHost({ Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'Name' } }, FieldsGet),
+      makeHost({ Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'Name' } }, FieldsGet as any),
       { getLang: () => 'zh_CN' }
     );
 
@@ -464,6 +465,59 @@ describe('createFieldsGetHelpers', () => {
     const ok = await helpers.ensureFieldsGet(['Name'], ['string']);
     expect(FieldsGet.calls.length).toBe(1);
     expect(ok.Name?.string).toBe('ok');
+  });
+
+  test('mergeOverlay preserves prior field attrs across narrower projections', async () => {
+    let releaseFull!: () => void;
+    let releaseNarrow!: () => void;
+    const gateFull = new Promise<void>(resolve => {
+      releaseFull = resolve;
+    });
+    const gateNarrow = new Promise<void>(resolve => {
+      releaseNarrow = resolve;
+    });
+    const FieldsGet = asyncFnRecorder(async (_fields?: string[], attributes?: string[]) => {
+      const attrs = attributes || [];
+      if (attrs.length === 0) {
+        await gateFull;
+        return {
+          Amount: {
+            id: '1',
+            type: 'float',
+            typeAnnotation: 'float',
+            string: 'Amount',
+            currencyField: 'CurrencyId',
+          },
+        };
+      }
+      await gateNarrow;
+      return {
+        Amount: { id: '1', type: 'float', typeAnnotation: 'float', string: '金额' },
+      };
+    });
+    const helpers = createFieldsGetHelpers(
+      makeHost(
+        { Amount: { id: '1', type: 'float', typeAnnotation: 'float', string: 'Amount' } },
+        FieldsGet
+      ),
+      { getLang: () => 'zh_CN' }
+    );
+
+    // Different attr buckets → two RPCs. Complete full slice first, then presentation.
+    const fullP = helpers.ensureFieldsGet(['Amount']);
+    const narrowP = helpers.ensureFieldsGet(['Amount'], ['string']);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(FieldsGet.calls.length).toBe(2);
+
+    releaseFull();
+    await fullP;
+    releaseNarrow();
+    await narrowP;
+
+    const meta = helpers.getFieldMeta('Amount');
+    expect(meta?.string).toBe('金额');
+    expect((meta as any)?.currencyField).toBe('CurrencyId');
   });
 
   test('resolveLang falls back when getLang throws or returns blank', async () => {

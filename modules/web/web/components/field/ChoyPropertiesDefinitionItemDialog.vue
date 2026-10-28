@@ -263,6 +263,7 @@ function cloneDraft(src: DefinitionEditorDraftItem | null | undefined): Definiti
     selectionLabelMaps: Object.fromEntries(
       Object.entries(base.selectionLabelMaps || {}).map(([k, v]) => [k, { ...(v || {}) }]),
     ),
+    selectionRowMapKeys: [...(base.selectionRowMapKeys || [])],
   };
 }
 

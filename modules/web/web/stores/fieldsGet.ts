@@ -202,7 +202,13 @@ export function createFieldsGetHelpers(
     attributes: string[] | undefined
   ) => {
     const prev = overlayByLang.get(lang) || {};
-    overlayByLang.set(lang, { ...prev, ...slice });
+    // Per-field shallow merge so a narrower attr projection cannot drop keys
+    // already present (e.g. currencyField) while wildcard coverage stays set.
+    const merged: Record<string, WebFieldMetadata> = { ...prev };
+    for (const [name, metadata] of Object.entries(slice)) {
+      merged[name] = { ...(prev[name] || {}), ...metadata };
+    }
+    overlayByLang.set(lang, merged);
     recordOverlayAttrs(lang, Object.keys(slice), attributes);
     bumpOverlay();
   };

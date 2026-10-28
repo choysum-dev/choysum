@@ -362,6 +362,7 @@ describe('propertiesDefinitionHelpers', () => {
       low: { en_US: 'Low', zh_CN: '低' },
       normal: { en_US: 'Normal', zh_CN: '普通' },
     };
+    draft.selectionRowMapKeys = ['low', 'normal'];
     expect(selectionRowsFromDraft(draft)).toEqual([
       { value: 'low', label: '低' },
       { value: 'normal', label: '普通' },
@@ -383,6 +384,23 @@ describe('propertiesDefinitionHelpers', () => {
       ['normal', '普通'],
       ['', ''],
     ]);
+  });
+
+  test('writeSelectionRowsToDraft keeps maps across clear-and-retype of Value', () => {
+    const draft = emptyDraftItem();
+    draft.type = 'selection';
+    draft.selectionText = JSON.stringify([['low', '低']]);
+    draft.selectionLabelMaps = { low: { en_US: 'Low', zh_CN: '低' } };
+    draft.selectionRowMapKeys = ['low'];
+
+    writeSelectionRowsToDraft(draft, [{ value: '', label: '低' }], 'zh_CN');
+    expect(draft.selectionLabelMaps.low).toEqual({ en_US: 'Low', zh_CN: '低' });
+    expect(draft.selectionRowMapKeys).toEqual(['low']);
+
+    writeSelectionRowsToDraft(draft, [{ value: 'lo', label: '低' }], 'zh_CN');
+    expect(draft.selectionLabelMaps.lo).toEqual({ en_US: 'Low', zh_CN: '低' });
+    expect(draft.selectionLabelMaps.low).toBeUndefined();
+    expect(draft.selectionRowMapKeys).toEqual(['lo']);
   });
 
   test('buildDefinitionScopeCondition', () => {

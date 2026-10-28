@@ -31,6 +31,11 @@ export type DefinitionEditorDraftItem = {
   selectionText: string;
   /** Option value → label lang map (survives current-lang list edits via merge). */
   selectionLabelMaps: Record<string, Record<string, string>>;
+  /**
+   * Parallel to selection rows: last non-blank option value per index.
+   * Keeps label-map identity across clear-and-retype in the Value input.
+   */
+  selectionRowMapKeys?: string[];
 };
 
 /** One selection option row in the definition list editor (O2M-like). */
@@ -57,7 +62,8 @@ export function selectionRowsFromDraft(draft: DefinitionEditorDraftItem): Select
 
 /**
  * Write list-editor rows back onto the draft.
- * Preserves lang maps across value renames by index when possible.
+ * Preserves lang maps across value renames by index when possible, including
+ * clear-and-retype (blank intermediate updates keep the prior map key).
  */
 export function writeSelectionRowsToDraft(
   draft: DefinitionEditorDraftItem,
@@ -70,17 +76,32 @@ export function writeSelectionRowsToDraft(
   for (const [k, v] of Object.entries(draft.selectionLabelMaps || {})) {
     prevMaps[k] = { ...(v || {}) };
   }
+  const prevKeys = Array.isArray(draft.selectionRowMapKeys) ? draft.selectionRowMapKeys : [];
   const cleaned = (rows || []).map(r => ({
     value: String(r?.value ?? '').trim(),
     label: String(r?.label ?? ''),
   }));
   const nextMaps: Record<string, Record<string, string>> = {};
+  const nextKeys: string[] = [];
   const usedPrev = new Set<string>();
   for (let i = 0; i < cleaned.length; i++) {
     const row = cleaned[i]!;
-    if (!row.value) continue;
     const oldValue = String(prevRows[i]?.value || '').trim();
+    // Prior non-blank map key for this index (survives blank intermediate updates).
+    const prevKey = String(prevKeys[i] || oldValue || '').trim();
+    nextKeys.push(row.value || prevKey);
+    if (!row.value) {
+      if (prevKey && prevMaps[prevKey] && !usedPrev.has(prevKey)) {
+        nextMaps[prevKey] = { ...prevMaps[prevKey] };
+        usedPrev.add(prevKey);
+      }
+      continue;
+    }
     let base = prevMaps[row.value];
+    if (!base && prevKey && prevKey !== row.value && !usedPrev.has(prevKey)) {
+      base = prevMaps[prevKey];
+      usedPrev.add(prevKey);
+    }
     if (!base && oldValue && oldValue !== row.value && !usedPrev.has(oldValue)) {
       base = prevMaps[oldValue];
       usedPrev.add(oldValue);
@@ -88,6 +109,7 @@ export function writeSelectionRowsToDraft(
     nextMaps[row.value] = asLabelMap(mergePropertyLabelWrite(base || {}, row.label, code));
   }
   draft.selectionLabelMaps = nextMaps;
+  draft.selectionRowMapKeys = nextKeys;
   const display = cleaned.map(r => [r.value, r.label || r.value] as [string, string]);
   try {
     draft.selectionText = display.length ? JSON.stringify(display) : '';
@@ -108,6 +130,7 @@ export function emptyDraftItem(): DefinitionEditorDraftItem {
     readonly: false,
     selectionText: '',
     selectionLabelMaps: {},
+    selectionRowMapKeys: [],
   };
 }
 
@@ -210,6 +233,7 @@ export function definitionItemsToDrafts(
     const helpMap = asLabelMap(item.help);
     const selectionLabelMaps: Record<string, Record<string, string>> = {};
     let selectionText = '';
+    let selectionRowMapKeys: string[] = [];
     if (Array.isArray(item.selection)) {
       const display: Array<[string, string]> = [];
       for (const opt of item.selection) {
@@ -219,6 +243,7 @@ export function definitionItemsToDrafts(
         selectionLabelMaps[value] = map;
         display.push([value, unwrapPropertyLabel(map, code) || value]);
       }
+      selectionRowMapKeys = display.map(([value]) => value);
       try {
         selectionText = display.length ? JSON.stringify(display) : '';
       } catch {
@@ -236,6 +261,7 @@ export function definitionItemsToDrafts(
       readonly: item.readonly === true,
       selectionText,
       selectionLabelMaps,
+      selectionRowMapKeys,
     });
   }
   return out;
