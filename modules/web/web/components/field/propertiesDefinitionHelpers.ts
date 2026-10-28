@@ -1,7 +1,14 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { PROPERTIES_V1_TYPES, type PropertyItemDefinition } from '@/core/service/orm/model/properties_types';
+import {
+  mergePropertyLabelWrite,
+  mergeSelectionLabelsWrite,
+  parsePropertyLabelMap,
+  unwrapPropertyLabel,
+} from '@/core/service/orm/model/properties_label_i18n';
+import { TRANSLATED_BASE_LANG } from '@/core/service/orm/repository/projection/translated_field_codec';
+import { PROPERTIES_V1_TYPES, type PropertyItemDefinition, type PropertyLabel } from '@/core/service/orm/model/properties_types';
 
 import { normalizeSelectionOptions } from './propertiesHelpers';
 
@@ -10,10 +17,16 @@ export const PROPERTY_DEFINITION_V1_TYPE_OPTIONS = [...PROPERTIES_V1_TYPES].sort
 export type DefinitionEditorDraftItem = {
   name: string;
   type: string;
+  /** Current-language label shown in the main input. */
   string: string;
+  /** Full label lang map (source of truth for Save / translate dialog). */
+  stringMap: Record<string, string>;
   default: string;
   readonly: boolean;
+  /** Selection JSON with current-language labels for the textarea. */
   selectionText: string;
+  /** Option value → label lang map (survives current-lang textarea edits via merge). */
+  selectionLabelMaps: Record<string, Record<string, string>>;
 };
 
 export function emptyDraftItem(): DefinitionEditorDraftItem {
@@ -21,25 +34,119 @@ export function emptyDraftItem(): DefinitionEditorDraftItem {
     name: '',
     type: 'char',
     string: '',
+    stringMap: {},
     default: '',
     readonly: false,
     selectionText: '',
+    selectionLabelMaps: {},
   };
 }
 
-export function definitionItemsToDrafts(items: unknown): DefinitionEditorDraftItem[] {
+function asLabelMap(value: unknown): Record<string, string> {
+  return parsePropertyLabelMap(value) || {};
+}
+
+function selectionRawLabel(opt: unknown): unknown {
+  if (Array.isArray(opt)) return opt[1] ?? opt[0];
+  if (opt && typeof opt === 'object' && !Array.isArray(opt)) {
+    return (opt as { label?: unknown }).label ?? (opt as { value?: unknown }).value;
+  }
+  return undefined;
+}
+
+function selectionRawValue(opt: unknown): string | null {
+  if (Array.isArray(opt) && typeof opt[0] === 'string') return opt[0];
+  if (opt && typeof opt === 'object' && !Array.isArray(opt) && typeof (opt as { value?: unknown }).value === 'string') {
+    return String((opt as { value: string }).value);
+  }
+  return null;
+}
+
+/** Sync the current-lang `string` / selectionText views from stored maps. */
+export function syncDraftLabelsForLang(draft: DefinitionEditorDraftItem, lang: string): void {
+  const code = String(lang || '').trim() || TRANSLATED_BASE_LANG;
+  draft.string = unwrapPropertyLabel(draft.stringMap, code);
+  if (draft.type !== 'selection') return;
+  const options = normalizeSelectionOptions(
+    (() => {
+      try {
+        return draft.selectionText ? JSON.parse(draft.selectionText) : [];
+      } catch {
+        return [];
+      }
+    })(),
+  );
+  const values = options.length
+    ? options.map(o => o.value)
+    : Object.keys(draft.selectionLabelMaps);
+  const display = values.map(value => {
+    const map = draft.selectionLabelMaps[value] || {};
+    return [value, unwrapPropertyLabel(map, code) || value] as [string, string];
+  });
+  try {
+    draft.selectionText = display.length ? JSON.stringify(display) : '';
+  } catch {
+    draft.selectionText = '';
+  }
+}
+
+/** Apply the current-lang UI fields into the draft maps (before Save / before opening translate dialog). */
+export function applyDraftCurrentLangToMaps(draft: DefinitionEditorDraftItem, lang: string): void {
+  const code = String(lang || '').trim() || TRANSLATED_BASE_LANG;
+  draft.string = String(draft.string || '').trim();
+  draft.stringMap = asLabelMap(mergePropertyLabelWrite(draft.stringMap, draft.string, code));
+  if (draft.type !== 'selection') return;
+  const text = String(draft.selectionText || '').trim();
+  if (!text) return;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return;
+  }
+  const options = normalizeSelectionOptions(parsed);
+  if (!options.length) return;
+  const merged = mergeSelectionLabelsWrite(
+    Object.entries(draft.selectionLabelMaps).map(([value, labelMap]) => [value, labelMap] as [string, PropertyLabel]),
+    options,
+    code,
+  );
+  const nextMaps: Record<string, Record<string, string>> = {};
+  for (const opt of merged || []) {
+    const value = selectionRawValue(opt);
+    if (value == null) continue;
+    nextMaps[value] = asLabelMap(selectionRawLabel(opt));
+  }
+  draft.selectionLabelMaps = nextMaps;
+}
+
+export function definitionItemsToDrafts(
+  items: unknown,
+  lang: string = TRANSLATED_BASE_LANG,
+): DefinitionEditorDraftItem[] {
   if (!Array.isArray(items)) return [];
+  const code = String(lang || '').trim() || TRANSLATED_BASE_LANG;
   const out: DefinitionEditorDraftItem[] = [];
   for (const raw of items) {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) continue;
     const item = raw as Record<string, unknown>;
     const name = String(item.name || '').trim();
     if (!name) continue;
-    const type = String(item.type || 'char');
+    const type = String(item.type || 'char') || 'char';
+    const stringMap = asLabelMap(item.string);
+    const selectionLabelMaps: Record<string, Record<string, string>> = {};
     let selectionText = '';
     if (Array.isArray(item.selection)) {
+      const display: Array<[string, string]> = [];
+      for (const opt of item.selection) {
+        const value = selectionRawValue(opt);
+        if (value == null) continue;
+        const map = asLabelMap(selectionRawLabel(opt));
+        selectionLabelMaps[value] = map;
+        display.push([value, unwrapPropertyLabel(map, code) || value]);
+      }
       try {
-        selectionText = JSON.stringify(item.selection);
+        selectionText = display.length ? JSON.stringify(display) : '';
       } catch {
         selectionText = '';
       }
@@ -47,10 +154,12 @@ export function definitionItemsToDrafts(items: unknown): DefinitionEditorDraftIt
     out.push({
       name,
       type,
-      string: item.string == null ? '' : String(item.string),
+      string: unwrapPropertyLabel(stringMap, code),
+      stringMap,
       default: item.default == null ? '' : String(item.default),
       readonly: item.readonly === true,
       selectionText,
+      selectionLabelMaps,
     });
   }
   return out;
@@ -59,10 +168,18 @@ export function definitionItemsToDrafts(items: unknown): DefinitionEditorDraftIt
 /** Build Definition payload for Create/Update. Invalid selection JSON → throws. */
 export function draftsToDefinitionItems(
   drafts: DefinitionEditorDraftItem[] | null | undefined,
+  lang: string = TRANSLATED_BASE_LANG,
+  previousItems?: PropertyItemDefinition[] | null,
 ): PropertyItemDefinition[] {
+  const code = String(lang || '').trim() || TRANSLATED_BASE_LANG;
+  const prevByName = new Map<string, PropertyItemDefinition>();
+  for (const prev of previousItems || []) {
+    if (prev?.name) prevByName.set(prev.name, prev);
+  }
   const out: PropertyItemDefinition[] = [];
   const seenNames = new Set<string>();
   for (const draft of drafts || []) {
+    applyDraftCurrentLangToMaps(draft, code);
     const name = String(draft.name || '').trim();
     if (!name) continue;
     if (seenNames.has(name)) {
@@ -73,9 +190,13 @@ export function draftsToDefinitionItems(
     if (!PROPERTIES_V1_TYPES.has(type)) {
       throw new Error(`unsupported property type '${type}' (${name})`);
     }
+    const previous = prevByName.get(name);
     const item: PropertyItemDefinition = { name, type };
     const label = String(draft.string || '').trim();
-    if (label) item.string = label;
+    draft.string = label;
+    if (label || Object.keys(draft.stringMap).length) {
+      item.string = mergePropertyLabelWrite(previous?.string ?? draft.stringMap, label, code);
+    }
     if (draft.readonly) item.readonly = true;
     const defRaw = String(draft.default ?? '');
     if (defRaw.trim() !== '') {
@@ -102,8 +223,7 @@ export function draftsToDefinitionItems(
       if (item.default != null && !options.some(o => o.value === String(item.default))) {
         throw new Error(`selection property '${name}' default is not one of the options`);
       }
-      // Persist only usable options so malformed entries are not stored.
-      item.selection = options.map(o => [o.value, o.label]) as PropertyItemDefinition['selection'];
+      item.selection = mergeSelectionLabelsWrite(previous?.selection, options, code);
     }
     out.push(item);
   }
@@ -140,13 +260,17 @@ export function buildDefinitionScopeCondition(opts: {
   const targetModel = String(opts.targetModel || '').trim();
   const propertiesField = String(opts.propertiesField || '').trim();
   const containerModel =
-    opts.containerModel == null || opts.containerModel === '' ? null : String(opts.containerModel);
+    opts.containerModel == null || String(opts.containerModel).trim() === ''
+      ? null
+      : String(opts.containerModel).trim();
   const containerId =
-    opts.containerId == null || opts.containerId === '' ? null : String(opts.containerId);
+    opts.containerId == null || String(opts.containerId).trim() === ''
+      ? null
+      : String(opts.containerId).trim();
   return [
     ['TargetModel', '=', targetModel],
     ['PropertiesField', '=', propertiesField],
-    containerModel == null ? ['ContainerModel', '=', null] : ['ContainerModel', '=', containerModel],
-    containerId == null ? ['ContainerId', '=', null] : ['ContainerId', '=', containerId],
+    ['ContainerModel', '=', containerModel],
+    ['ContainerId', '=', containerId],
   ];
 }

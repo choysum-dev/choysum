@@ -76,13 +76,24 @@ SPDX-License-Identifier: Apache-2.0
           </SelectItem>
         </SelectContent>
       </Select>
-      <Input
-        v-model="item.string"
-        class="w-full"
-        :disabled="readonly"
-        :placeholder="_t('Label')"
-        data-testid="choy-properties-definition-string"
-      />
+      <div class="flex min-w-0 items-center gap-2">
+        <Input
+          v-model="item.string"
+          class="min-w-0 flex-1"
+          :disabled="readonly"
+          :placeholder="_t('Label')"
+          data-testid="choy-properties-definition-string"
+        />
+        <ChoyButton
+          size="sm"
+          variant="outline"
+          :disabled="readonly"
+          data-testid="choy-properties-definition-translate-string"
+          @click="openStringTranslate(index)"
+        >
+          {{ _t('Translate') }}
+        </ChoyButton>
+      </div>
       <Input
         v-model="item.default"
         class="w-full"
@@ -108,6 +119,19 @@ SPDX-License-Identifier: Apache-2.0
         :placeholder="_t('Selection JSON')"
         data-testid="choy-properties-definition-selection"
       />
+      <div v-if="item.type === 'selection'" class="flex flex-wrap gap-2 sm:col-span-2">
+        <ChoyButton
+          v-for="opt in selectionOptionValues(item)"
+          :key="opt"
+          size="sm"
+          variant="outline"
+          :disabled="readonly"
+          :data-testid="`choy-properties-definition-translate-option-${opt}`"
+          @click="openSelectionTranslate(index, opt)"
+        >
+          {{ _t('Translate %s', opt) }}
+        </ChoyButton>
+      </div>
       <div class="sm:col-span-2">
         <ChoyButton
           size="sm"
@@ -120,13 +144,24 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyButton>
       </div>
     </div>
+
+    <ChoyPropertyLabelTranslationsDialog
+      v-model="translateOpen"
+      :label-title="translateTitle"
+      :translations="translateMap"
+      @saved="onTranslateSaved"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { getActivePinia } from 'pinia';
+import type { PropertyItemDefinition } from '@/core/service/orm/model/properties_types';
+import { TRANSLATED_BASE_LANG } from '@/core/service/orm/repository/projection/translated_field_codec';
 import { createTranslate } from '@/web/web/i18n';
 import { createStoreByModel } from '@/web/web/stores/registry';
+import { useI18nStore } from '@/web/web/stores/i18nStore';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import Checkbox from '../vendor/ui/checkbox/Checkbox.vue';
@@ -136,12 +171,16 @@ import Select from '../vendor/ui/select/Select.vue';
 import SelectContent from '../vendor/ui/select/SelectContent.vue';
 import SelectItem from '../vendor/ui/select/SelectItem.vue';
 import SelectTrigger from '../vendor/ui/select/SelectTrigger.vue';
+import ChoyPropertyLabelTranslationsDialog from './ChoyPropertyLabelTranslationsDialog.vue';
+import { normalizeSelectionOptions } from './propertiesHelpers';
 import {
   PROPERTY_DEFINITION_V1_TYPE_OPTIONS,
+  applyDraftCurrentLangToMaps,
   buildDefinitionScopeCondition,
   definitionItemsToDrafts,
   draftsToDefinitionItems,
   emptyDraftItem,
+  syncDraftLabelsForLang,
   type DefinitionEditorDraftItem,
 } from './propertiesDefinitionHelpers';
 
@@ -174,6 +213,7 @@ const emit = defineEmits<{
 
 const typeOptions = PROPERTY_DEFINITION_V1_TYPE_OPTIONS;
 const drafts = ref<DefinitionEditorDraftItem[]>([]);
+const previousItems = ref<PropertyItemDefinition[]>([]);
 const definitionId = ref<string | null>(null);
 const loading = ref(false);
 const saving = ref(false);
@@ -181,12 +221,39 @@ const loadError = ref('');
 const saveError = ref('');
 let reloadSeq = 0;
 
+const translateOpen = ref(false);
+const translateTitle = ref('');
+const translateMap = ref<Record<string, string>>({});
+type TranslateTarget =
+  | { kind: 'string'; index: number }
+  | { kind: 'selection'; index: number; value: string };
+const translateTarget = ref<TranslateTarget | null>(null);
+
 const canSave = computed(
   () =>
     Boolean(String(props.application || '').trim()) &&
     Boolean(String(props.targetModel || '').trim()) &&
     Boolean(String(props.propertiesField || '').trim()),
 );
+
+function editorLang(): string {
+  if (!getActivePinia()) return TRANSLATED_BASE_LANG;
+  try {
+    const lang = String(useI18nStore().terminologyLang || '').trim();
+    return lang || TRANSLATED_BASE_LANG;
+  } catch {
+    return TRANSLATED_BASE_LANG;
+  }
+}
+
+function selectionOptionValues(item: DefinitionEditorDraftItem): string[] {
+  try {
+    const parsed = item.selectionText ? JSON.parse(item.selectionText) : [];
+    return normalizeSelectionOptions(parsed).map(o => o.value);
+  } catch {
+    return Object.keys(item.selectionLabelMaps || {});
+  }
+}
 
 function resolveStore(): WebModelStore<any> | null {
   if (props.store) return props.store;
@@ -206,6 +273,7 @@ async function reload() {
   saveError.value = '';
   definitionId.value = null;
   drafts.value = [];
+  previousItems.value = [];
   if (!canSave.value) return;
 
   const store = resolveStore();
@@ -235,9 +303,12 @@ async function reload() {
     const row = Array.isArray(rows) && rows[0] ? rows[0] : null;
     if (row) {
       definitionId.value = String(row.Id || '').trim() || null;
-      drafts.value = definitionItemsToDrafts(row.Definition);
+      const raw = Array.isArray(row.Definition) ? (row.Definition as PropertyItemDefinition[]) : [];
+      previousItems.value = raw;
+      drafts.value = definitionItemsToDrafts(raw, editorLang());
     } else {
       definitionId.value = null;
+      previousItems.value = [];
       drafts.value = [];
     }
   } catch (e) {
@@ -260,6 +331,44 @@ function onRemove(index: number) {
   drafts.value = drafts.value.filter((_, i) => i !== index);
 }
 
+function openStringTranslate(index: number) {
+  const item = drafts.value[index];
+  if (!item || props.readonly) return;
+  applyDraftCurrentLangToMaps(item, editorLang());
+  translateTarget.value = { kind: 'string', index };
+  translateTitle.value = item.name || _t('Label');
+  translateMap.value = { ...item.stringMap };
+  translateOpen.value = true;
+}
+
+function openSelectionTranslate(index: number, value: string) {
+  const item = drafts.value[index];
+  if (!item || props.readonly) return;
+  applyDraftCurrentLangToMaps(item, editorLang());
+  translateTarget.value = { kind: 'selection', index, value };
+  translateTitle.value = `${item.name || _t('Label')}.${value}`;
+  translateMap.value = { ...(item.selectionLabelMaps[value] || {}) };
+  translateOpen.value = true;
+}
+
+function onTranslateSaved(next: Record<string, string>) {
+  const target = translateTarget.value;
+  if (!target) return;
+  const item = drafts.value[target.index];
+  if (!item) return;
+  if (target.kind === 'string') {
+    item.stringMap = { ...next };
+    syncDraftLabelsForLang(item, editorLang());
+  } else {
+    item.selectionLabelMaps = {
+      ...item.selectionLabelMaps,
+      [target.value]: { ...next },
+    };
+    syncDraftLabelsForLang(item, editorLang());
+  }
+  translateTarget.value = null;
+}
+
 async function onSave() {
   saveError.value = '';
   if (props.readonly || loading.value || saving.value || !canSave.value) return;
@@ -271,7 +380,7 @@ async function onSave() {
 
   let definition: unknown[];
   try {
-    definition = draftsToDefinitionItems(drafts.value);
+    definition = draftsToDefinitionItems(drafts.value, editorLang(), previousItems.value);
   } catch (e) {
     saveError.value = e instanceof Error ? e.message : String(e);
     return;
@@ -314,6 +423,7 @@ watch(
     props.containerModel,
     props.containerId,
     props.store,
+    editorLang(),
   ],
   () => {
     void reload();
@@ -321,5 +431,5 @@ watch(
   { immediate: true },
 );
 
-defineExpose({ reload, drafts, definitionId });
+defineExpose({ reload, drafts, definitionId, previousItems });
 </script>

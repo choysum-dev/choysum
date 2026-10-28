@@ -114,7 +114,7 @@ SPDX-License-Identifier: Apache-2.0
                   :key="opt.value"
                   :value="opt.value"
                 >
-                  {{ translateText(opt.label) }}
+                  {{ opt.label }}
                 </SelectItem>
               </SelectContent>
             </Select>
@@ -169,7 +169,9 @@ import { computed, ref, watch, type WritableComputedRef } from 'vue';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
+import { getActivePinia } from 'pinia';
 import { createTranslate } from '@/web/web/i18n';
+import { useI18nStore } from '@/web/web/stores/i18nStore';
 import Input from '../vendor/ui/input/Input.vue';
 import Textarea from '../vendor/ui/textarea/Textarea.vue';
 import Switch from '../vendor/ui/switch/Switch.vue';
@@ -205,6 +207,12 @@ import {
 const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyPropertiesField' });
 
 defineOptions({ name: 'ChoyPropertiesField' });
+
+/** Request-lang fingerprint for Resolve; empty when Pinia is unavailable (unit stubs). */
+function currentTerminologyLang(): string {
+  if (!getActivePinia()) return '';
+  return String(useI18nStore().terminologyLang || '').trim();
+}
 
 defineSlots<{
   /** Optional empty-state chrome (e.g. link to a definition editor). */
@@ -290,14 +298,10 @@ function setNumberInputHost(name: string, el: unknown) {
   else numberInputHosts.delete(name);
 }
 
-/** Schema / selection labels are msgid-shaped; missing catalog entries fall back to the source string. */
-function translateText(text: unknown): string {
-  const s = String(text ?? '').trim();
-  return s ? _t(s) : '';
-}
-
+/** ResolveProperties already unwraps Definition labels for the request lang — display as-is. */
 function itemLabel(item: ResolvedPropertyItem): string {
-  return translateText(item.string || item.name) || String(item.name);
+  const s = item.string == null ? '' : String(item.string).trim();
+  return s || String(item.name);
 }
 
 function controlId(item: ResolvedPropertyItem): string {
@@ -385,7 +389,7 @@ function displayItemValue(map: unknown, item: ResolvedPropertyItem): string {
   if (item.type === 'boolean') return v === true ? _t('Yes') : _t('No');
   if (item.type === 'selection') {
     const opt = selectionOptions(item).find(o => o.value === v);
-    return translateText(opt?.label ?? v);
+    return String(opt?.label ?? v);
   }
   if (item.type === 'date') return propertyDateToDisplay(v);
   if (item.type === 'datetime') return propertyDatetimeToDisplay(v);
@@ -528,6 +532,8 @@ watch(
       isTableLike.value,
       JSON.stringify(map ?? null),
       propertiesRecordWatchFingerprint(rec, name),
+      // Re-resolve when UI terminology lang changes (labels come from Resolve, not FE _t).
+      currentTerminologyLang(),
     ] as const;
   },
   () => {
