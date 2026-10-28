@@ -191,7 +191,8 @@ export function createFieldsGetHelpers(
     inflight.clear();
     overlayByLang.clear();
     overlayAttrsByField.clear();
-    coalesceByLangAttrs.clear();
+    // Keep queued coalesce buckets so their microtask flush can still settle
+    // waiters under the new cacheGeneration (clearing would leave them pending).
     bumpOverlay();
   };
 
@@ -240,28 +241,22 @@ export function createFieldsGetHelpers(
     const pendingExact = inflight.get(rpcKey);
     let request = pendingExact;
     if (!request) {
-      // Assign after the IIFE starts so cleanup can identity-check this promise
-      // without reading a const during its own initializer (TS2454).
-      let ownedRequest: Promise<Record<string, unknown>> | null = null;
       const created = (async () => {
-        try {
-          const slice = (await host.FieldsGet(rpcFields, bucket.attributes)) || {};
-          if (generationAtStart === cacheGeneration) {
-            responseCache.set(rpcKey, slice);
-            mergeOverlay(lang, slice, bucket.attributes);
-          }
-          return slice;
-        } finally {
-          // Only clear this request — a newer ensure may have reused the same rpcKey
-          // after clearFieldsGetCache bumped the generation.
-          if (ownedRequest && inflight.get(rpcKey) === ownedRequest) {
-            inflight.delete(rpcKey);
-          }
+        const slice = (await host.FieldsGet(rpcFields, bucket.attributes)) || {};
+        if (generationAtStart === cacheGeneration) {
+          responseCache.set(rpcKey, slice);
+          mergeOverlay(lang, slice, bucket.attributes);
         }
+        return slice;
       })();
-      ownedRequest = created;
       request = created;
       inflight.set(rpcKey, request);
+      // Attach after inflight.set so a sync throw from FieldsGet cannot leave a
+      // rejected promise stuck under this key (finally would run before set).
+      const cleanup = () => {
+        if (inflight.get(rpcKey) === created) inflight.delete(rpcKey);
+      };
+      void created.then(cleanup, cleanup);
     }
     bucket.inflight = request;
 

@@ -325,6 +325,23 @@ describe('createFieldsGetHelpers', () => {
     expect(helpers.getFieldsGetTranslatedString('Name')).toBe('新');
   });
 
+  test('clearFieldsGetCache before coalesce flush still settles waiters', async () => {
+    const FieldsGet = asyncFnRecorder(async () => ({
+      Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: '名称' },
+    }));
+    const helpers = createFieldsGetHelpers(
+      makeHost({ Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'Name' } }, FieldsGet),
+      { getLang: () => 'zh_CN' }
+    );
+
+    // Same-tick clear before the coalesce microtask — waiters must not hang.
+    const first = helpers.ensureFieldsGet(['Name'], ['string']);
+    helpers.clearFieldsGetCache();
+    const slice = await first;
+    expect(slice.Name?.string).toBe('名称');
+    expect(FieldsGet.calls.length).toBe(1);
+  });
+
   test('concurrent ensures with an exact cached key make no RPC', async () => {
     const FieldsGet = asyncFnRecorder(async () => ({
       Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: '名称' },
@@ -417,6 +434,32 @@ describe('createFieldsGetHelpers', () => {
     FieldsGet.mockImplementation(async () => ({
       Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'ok' },
     }));
+    FieldsGet.calls.length = 0;
+    const ok = await helpers.ensureFieldsGet(['Name'], ['string']);
+    expect(FieldsGet.calls.length).toBe(1);
+    expect(ok.Name?.string).toBe('ok');
+  });
+
+  test('sync FieldsGet throw does not permanently poison inflight', async () => {
+    let syncThrow = true;
+    const FieldsGet = asyncFnRecorder((() => {
+      if (syncThrow) {
+        throw new Error('sync boom');
+      }
+      return Promise.resolve({
+        Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'ok' },
+      });
+    }) as any);
+    const helpers = createFieldsGetHelpers(
+      makeHost({ Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'Name' } }, FieldsGet),
+      { getLang: () => 'zh_CN' }
+    );
+
+    const failed = await Promise.allSettled([helpers.ensureFieldsGet(['Name'], ['string'])]);
+    expect(failed[0]?.status).toBe('rejected');
+    expect(String((failed[0] as PromiseRejectedResult).reason?.message || '')).toMatch(/sync boom/);
+
+    syncThrow = false;
     FieldsGet.calls.length = 0;
     const ok = await helpers.ensureFieldsGet(['Name'], ['string']);
     expect(FieldsGet.calls.length).toBe(1);

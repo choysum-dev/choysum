@@ -640,17 +640,13 @@ describe('ChoyPropertiesDefinitionField', () => {
     const mounted = mountApp(ChoyPropertiesDefinitionField as any, { props: { binding } });
     try {
       await flushPromises();
-      const state = mounted.setupState() as { writeError?: { value: string } | string };
-      if (state.writeError && typeof state.writeError === 'object' && 'value' in state.writeError) {
-        state.writeError.value = 'stale';
-      }
+      // setupState unwraps refs; assign through the proxy so the underlying ref updates.
+      const state = mounted.setupState() as { writeError: string };
+      state.writeError = 'stale';
+      expect(state.writeError).toBe('stale');
       mounted.click('[data-testid="choy-properties-definition-open"]');
       await nextTick();
-      const err =
-        state.writeError && typeof state.writeError === 'object' && 'value' in state.writeError
-          ? state.writeError.value
-          : state.writeError;
-      expect(err).toBe('');
+      expect(state.writeError).toBe('');
     } finally {
       mounted.unmount();
     }
