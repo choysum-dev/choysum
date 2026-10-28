@@ -135,8 +135,8 @@ describe('ChoyPropertiesDefinitionSelectionEditor', () => {
       dropEffect: '',
       setData: () => undefined,
     };
-    api.onDragStart(0, { preventDefault() {}, dataTransfer: dt } as DragEvent);
-    await api.onDrop(2, { preventDefault() {}, dataTransfer: dt } as DragEvent);
+    api.onDragStart(0, { preventDefault() {}, dataTransfer: dt } as unknown as DragEvent);
+    await api.onDrop(2, { preventDefault() {}, dataTransfer: dt } as unknown as DragEvent);
     await nextTick();
     expect((mounted.props as any).modelValue.map((r: SelectionDraftRow) => r.value)).toEqual([
       'normal',

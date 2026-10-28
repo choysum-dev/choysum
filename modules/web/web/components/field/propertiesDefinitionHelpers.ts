@@ -21,6 +21,10 @@ export type DefinitionEditorDraftItem = {
   string: string;
   /** Full label lang map (source of truth for Save / translate dialog). */
   stringMap: Record<string, string>;
+  /** Current-language help tip shown in the Help input. */
+  help: string;
+  /** Full help lang map (source of truth for Save / translate dialog). */
+  helpMap: Record<string, string>;
   default: string;
   readonly: boolean;
   /** Selection options bridge: JSON tuples of [value, current-lang label] for the list editor. */
@@ -98,6 +102,8 @@ export function emptyDraftItem(): DefinitionEditorDraftItem {
     type: 'char',
     string: '',
     stringMap: {},
+    help: '',
+    helpMap: {},
     default: '',
     readonly: false,
     selectionText: '',
@@ -125,10 +131,11 @@ function selectionRawValue(opt: unknown): string | null {
   return null;
 }
 
-/** Sync the current-lang `string` / selectionText views from stored maps. */
+/** Sync the current-lang `string` / `help` / selectionText views from stored maps. */
 export function syncDraftLabelsForLang(draft: DefinitionEditorDraftItem, lang: string): void {
   const code = String(lang || '').trim() || TRANSLATED_BASE_LANG;
   draft.string = unwrapPropertyLabel(draft.stringMap, code);
+  draft.help = unwrapPropertyLabel(draft.helpMap, code);
   if (draft.type !== 'selection') return;
   const options = normalizeSelectionOptions(
     (() => {
@@ -158,6 +165,8 @@ export function applyDraftCurrentLangToMaps(draft: DefinitionEditorDraftItem, la
   const code = String(lang || '').trim() || TRANSLATED_BASE_LANG;
   draft.string = String(draft.string || '').trim();
   draft.stringMap = asLabelMap(mergePropertyLabelWrite(draft.stringMap, draft.string, code));
+  draft.help = String(draft.help || '').trim();
+  draft.helpMap = asLabelMap(mergePropertyLabelWrite(draft.helpMap, draft.help, code));
   if (draft.type !== 'selection') return;
   const text = String(draft.selectionText || '').trim();
   if (!text) return;
@@ -197,6 +206,7 @@ export function definitionItemsToDrafts(
     if (!name) continue;
     const type = String(item.type || 'char') || 'char';
     const stringMap = asLabelMap(item.string);
+    const helpMap = asLabelMap(item.help);
     const selectionLabelMaps: Record<string, Record<string, string>> = {};
     let selectionText = '';
     if (Array.isArray(item.selection)) {
@@ -219,6 +229,8 @@ export function definitionItemsToDrafts(
       type,
       string: unwrapPropertyLabel(stringMap, code),
       stringMap,
+      help: unwrapPropertyLabel(helpMap, code),
+      helpMap,
       default: item.default == null ? '' : String(item.default),
       readonly: item.readonly === true,
       selectionText,
@@ -259,6 +271,13 @@ export function draftsToDefinitionItems(
     draft.string = label;
     if (label || Object.keys(draft.stringMap).length) {
       item.string = mergePropertyLabelWrite(previous?.string ?? draft.stringMap, label, code);
+    }
+    const help = String(draft.help || '').trim();
+    draft.help = help;
+    const helpHasContent =
+      !!help || Object.values(draft.helpMap || {}).some(v => String(v || '').trim() !== '');
+    if (helpHasContent) {
+      item.help = mergePropertyLabelWrite(previous?.help ?? draft.helpMap, help, code);
     }
     if (draft.readonly) item.readonly = true;
     const defRaw = String(draft.default ?? '');

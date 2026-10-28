@@ -164,7 +164,7 @@ export function mergeSelectionLabelsWrite(
 }
 
 /**
- * Expand item `string` / selection labels to the request language.
+ * Expand item `string` / `help` / selection labels to the request language.
  * Returns a new array; does not mutate input. Selection values are unchanged.
  */
 export function translatePropertyDefinitionItems(
@@ -176,6 +176,9 @@ export function translatePropertyDefinitionItems(
     const next: PropertyItemDefinition = { ...item };
     if (Object.prototype.hasOwnProperty.call(item, 'string')) {
       next.string = unwrapPropertyLabel(item.string, code);
+    }
+    if (Object.prototype.hasOwnProperty.call(item, 'help')) {
+      next.help = unwrapPropertyLabel(item.help, code);
     }
     if (Array.isArray(item.selection)) {
       next.selection = item.selection.map(opt => {

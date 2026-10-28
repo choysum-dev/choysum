@@ -266,22 +266,22 @@ msgctxt "web/components/field/ChoyDecimalField"
 msgid "Total digits must not exceed %s"
 msgstr "总位数不得超过 %s"
 
-#: web/components/field/ChoyFieldBase.vue:228
+#: web/components/field/ChoyFieldBase.vue:247
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Company values"
 msgstr "公司值"
 
-#: web/components/field/ChoyFieldBase.vue:228
+#: web/components/field/ChoyFieldBase.vue:247
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Company values: %s"
 msgstr "公司值：%s"
 
-#: web/components/field/ChoyFieldBase.vue:221
+#: web/components/field/ChoyFieldBase.vue:240
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Translate field"
 msgstr "翻译字段"
 
-#: web/components/field/ChoyFieldBase.vue:221
+#: web/components/field/ChoyFieldBase.vue:240
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Translate: %s"
 msgstr "翻译：%s"
@@ -761,42 +761,42 @@ msgctxt "web/components/field/ChoyOneToManyField"
 msgid "Delete"
 msgstr "删除"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:186
+#: web/components/field/ChoyOneToManyKanbanField.vue:189
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Add a line…"
 msgstr "添加一行…"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:429
+#: web/components/field/ChoyOneToManyKanbanField.vue:438
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Are you sure you want to delete this record? This action cannot be undone."
 msgstr "确定要删除此记录吗？此操作无法撤销。"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:434 web/components/field/ChoyOneToManyKanbanField.vue:93
+#: web/components/field/ChoyOneToManyKanbanField.vue:443 web/components/field/ChoyOneToManyKanbanField.vue:93
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:430
+#: web/components/field/ChoyOneToManyKanbanField.vue:439
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Confirm delete"
 msgstr "确认删除"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:20 web/components/field/ChoyOneToManyKanbanField.vue:433 web/components/field/ChoyOneToManyKanbanField.vue:90
+#: web/components/field/ChoyOneToManyKanbanField.vue:20 web/components/field/ChoyOneToManyKanbanField.vue:442 web/components/field/ChoyOneToManyKanbanField.vue:90
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Delete"
 msgstr "删除"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:189
+#: web/components/field/ChoyOneToManyKanbanField.vue:192
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Edit record"
 msgstr "编辑记录"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:188
+#: web/components/field/ChoyOneToManyKanbanField.vue:191
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "New record"
 msgstr "新建记录"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:187
+#: web/components/field/ChoyOneToManyKanbanField.vue:190
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "No data"
 msgstr "暂无数据"
@@ -816,22 +816,22 @@ msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Save"
 msgstr "保存"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:368
+#: web/components/field/ChoyOneToManyKanbanField.vue:377
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Untitled"
 msgstr "未命名"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:190
+#: web/components/field/ChoyOneToManyKanbanField.vue:193
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "View record"
 msgstr "查看记录"
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:279
+#: web/components/field/ChoyPropertiesDefinitionField.vue:369
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "%s properties"
 msgstr "%s 个属性"
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:281
+#: web/components/field/ChoyPropertiesDefinitionField.vue:371
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "%s properties (%s, …)"
 msgstr "%s 个属性（%s，…）"
@@ -856,7 +856,7 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Name"
 msgstr "名称"
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:275
+#: web/components/field/ChoyPropertiesDefinitionField.vue:365
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "No properties"
 msgstr "无属性"
@@ -871,7 +871,7 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Remove"
 msgstr "移除"
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue
+#: web/components/field/ChoyPropertiesDefinitionField.vue:16 web/components/field/ChoyPropertiesDefinitionField.vue:9
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Reorder"
 msgstr "调整顺序"
@@ -886,121 +886,137 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "View"
 msgstr "查看"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:59
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:41
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Default"
 msgstr "默认值"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:84
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Edit property: %s"
 msgstr "编辑属性：%s"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:136 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:32
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Help"
+msgstr "帮助"
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:126 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:147 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:23
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Label"
 msgstr "标签"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:8
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Name"
 msgstr "名称"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:182
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Name is required"
 msgstr "名称为必填项"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:84
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "New property"
 msgstr "新建属性"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:82
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Property"
 msgstr "属性"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:82
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Property: %s"
 msgstr "属性：%s"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:46
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Readonly"
 msgstr "只读"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:62
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Save"
 msgstr "保存"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:49
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Selection"
+msgstr "选项"
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:35
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Translate help"
+msgstr "翻译帮助"
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:26
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Translate label"
 msgstr "翻译标签"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:12
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Type"
 msgstr "类型"
 
-#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue:47
 msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
 msgid "Add a line…"
 msgstr "添加一行…"
 
-#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue:37
 msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
 msgid "Delete"
 msgstr "删除"
 
-#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue:9
 msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
 msgid "Label"
 msgstr "标签"
 
-#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue:16
 msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
 msgid "No options"
 msgstr "暂无选项"
 
-#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue:21
 msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
 msgid "Reorder"
 msgstr "调整顺序"
 
-#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue:31
 msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
 msgid "Translate option"
 msgstr "翻译选项"
 
-#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue:8
 msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
 msgid "Value"
 msgstr "值"
-#: web/components/field/ChoyPropertiesField.vue:243
+
+#: web/components/field/ChoyPropertiesField.vue:292
 msgctxt "web/components/field/ChoyPropertiesField"
 msgid "+%s more"
 msgstr "+%s 项"
 
-#: web/components/field/ChoyPropertiesField.vue:227
+#: web/components/field/ChoyPropertiesField.vue:276
 msgctxt "web/components/field/ChoyPropertiesField"
 msgid "No"
 msgstr "否"
 
-#: web/components/field/ChoyPropertiesField.vue:10 web/components/field/ChoyPropertiesField.vue:46
+#: web/components/field/ChoyPropertiesField.vue:10 web/components/field/ChoyPropertiesField.vue:54
 msgctxt "web/components/field/ChoyPropertiesField"
 msgid "No properties defined"
 msgstr "暂无属性定义"
 
-#: web/components/field/ChoyPropertiesField.vue:227
+#: web/components/field/ChoyPropertiesField.vue:276
 msgctxt "web/components/field/ChoyPropertiesField"
 msgid "Yes"
 msgstr "是"
@@ -1075,32 +1091,32 @@ msgctxt "web/components/field/ChoyTimeField"
 msgid "Select time"
 msgstr "选择时间"
 
-#: web/components/field/ChoyVarcharField.vue:168
+#: web/components/field/ChoyVarcharField.vue:170
 msgctxt "web/components/field/ChoyVarcharField"
 msgid "Copied"
 msgstr "已复制"
 
-#: web/components/field/ChoyVarcharField.vue:138
+#: web/components/field/ChoyVarcharField.vue:140
 msgctxt "web/components/field/ChoyVarcharField"
 msgid "Copy"
 msgstr "复制"
 
-#: web/components/field/ChoyVarcharField.vue:170
+#: web/components/field/ChoyVarcharField.vue:172
 msgctxt "web/components/field/ChoyVarcharField"
 msgid "Copy failed"
 msgstr "复制失败"
 
-#: web/components/field/ChoyVarcharField.vue:294
+#: web/components/field/ChoyVarcharField.vue:296
 msgctxt "web/components/field/ChoyVarcharField"
 msgid "Length must not exceed %s"
 msgstr "长度不得超过 %s"
 
-#: web/components/field/ChoyVarcharField.vue:288
+#: web/components/field/ChoyVarcharField.vue:290
 msgctxt "web/components/field/ChoyVarcharField"
 msgid "Value is required"
 msgstr "值为必填项"
 
-#: web/components/field/ChoyVarcharField.vue:290
+#: web/components/field/ChoyVarcharField.vue:292
 msgctxt "web/components/field/ChoyVarcharField"
 msgid "Value must be a string"
 msgstr "值必须为字符串"

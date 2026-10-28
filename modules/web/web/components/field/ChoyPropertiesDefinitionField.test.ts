@@ -137,6 +137,8 @@ function installItemDialogStub() {
                       type: 'char',
                       string: 'From Dialog',
                       stringMap: { en_US: 'From Dialog' },
+                      help: '',
+                      helpMap: {},
                       default: '',
                       readonly: false,
                       selectionText: '',

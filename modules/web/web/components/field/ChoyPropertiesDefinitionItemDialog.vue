@@ -13,54 +13,91 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyDialogTitle class="shrink-0">{{ dialogTitle }}</ChoyDialogTitle>
       <div v-if="local" class="min-h-0 flex-1 overflow-auto">
         <div class="grid gap-3 sm:grid-cols-2">
-          <Input
-            v-model="local.name"
-            class="w-full"
-            :disabled="readonly"
-            :placeholder="_t('Name')"
-            data-testid="choy-properties-definition-name"
-          />
-          <Select v-model="local.type" :disabled="readonly">
-            <SelectTrigger
-              class="w-full"
-              :placeholder="_t('Type')"
-              data-testid="choy-properties-definition-type"
-            />
-            <SelectContent>
-              <SelectItem v-for="t in typeOptions" :key="t" :value="t">
-                {{ t }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          <div class="flex min-w-0 items-center gap-1 sm:col-span-2">
+          <div class="grid gap-1.5">
+            <FieldLabel :for="nameInputId">{{ _t('Name') }}</FieldLabel>
             <Input
-              v-model="local.string"
-              class="min-w-0 flex-1"
+              :id="nameInputId"
+              v-model="local.name"
+              class="w-full"
               :disabled="readonly"
-              :placeholder="_t('Label')"
-              data-testid="choy-properties-definition-string"
+              data-testid="choy-properties-definition-name"
             />
-            <ChoyButton
-              v-if="!readonly"
-              type="button"
-              size="icon"
-              variant="ghost"
-              class="size-8 shrink-0 text-muted-foreground hover:text-foreground"
-              :aria-label="_t('Translate label')"
-              :title="_t('Translate label')"
-              data-testid="choy-properties-definition-translate-string"
-              @click="openStringTranslate"
-            >
-              <Languages class="size-4" aria-hidden="true" />
-            </ChoyButton>
           </div>
-          <Input
-            v-model="local.default"
-            class="w-full sm:col-span-2"
-            :disabled="readonly"
-            :placeholder="_t('Default')"
-            data-testid="choy-properties-definition-default"
-          />
+          <div class="grid gap-1.5">
+            <FieldLabel :for="typeInputId">{{ _t('Type') }}</FieldLabel>
+            <Select v-model="local.type" :disabled="readonly">
+              <SelectTrigger
+                :id="typeInputId"
+                class="w-full"
+                data-testid="choy-properties-definition-type"
+              />
+              <SelectContent>
+                <SelectItem v-for="t in typeOptions" :key="t" :value="t">
+                  {{ t }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div class="grid gap-1.5 sm:col-span-2">
+            <FieldLabel :for="labelInputId">{{ _t('Label') }}</FieldLabel>
+            <div class="flex min-w-0 items-center gap-1">
+              <Input
+                :id="labelInputId"
+                v-model="local.string"
+                class="min-w-0 flex-1"
+                :disabled="readonly"
+                data-testid="choy-properties-definition-string"
+              />
+              <ChoyButton
+                v-if="!readonly"
+                type="button"
+                size="icon"
+                variant="ghost"
+                class="size-8 shrink-0 text-muted-foreground hover:text-foreground"
+                :aria-label="_t('Translate label')"
+                :title="_t('Translate label')"
+                data-testid="choy-properties-definition-translate-string"
+                @click="openStringTranslate"
+              >
+                <Languages class="size-4" aria-hidden="true" />
+              </ChoyButton>
+            </div>
+          </div>
+          <div class="grid gap-1.5 sm:col-span-2">
+            <FieldLabel :for="helpInputId">{{ _t('Help') }}</FieldLabel>
+            <div class="flex min-w-0 items-start gap-1">
+              <Textarea
+                :id="helpInputId"
+                v-model="local.help"
+                class="min-h-[4.5em] min-w-0 flex-1"
+                :disabled="readonly"
+                data-testid="choy-properties-definition-help"
+              />
+              <ChoyButton
+                v-if="!readonly"
+                type="button"
+                size="icon"
+                variant="ghost"
+                class="mt-0.5 size-8 shrink-0 text-muted-foreground hover:text-foreground"
+                :aria-label="_t('Translate help')"
+                :title="_t('Translate help')"
+                data-testid="choy-properties-definition-translate-help"
+                @click="openHelpTranslate"
+              >
+                <Languages class="size-4" aria-hidden="true" />
+              </ChoyButton>
+            </div>
+          </div>
+          <div class="grid gap-1.5 sm:col-span-2">
+            <FieldLabel :for="defaultInputId">{{ _t('Default') }}</FieldLabel>
+            <Input
+              :id="defaultInputId"
+              v-model="local.default"
+              class="w-full"
+              :disabled="readonly"
+              data-testid="choy-properties-definition-default"
+            />
+          </div>
           <label class="flex items-center gap-2 text-sm sm:col-span-2">
             <Checkbox
               :model-value="local.readonly"
@@ -70,7 +107,8 @@ SPDX-License-Identifier: Apache-2.0
             />
             {{ _t('Readonly') }}
           </label>
-          <div v-if="local.type === 'selection'" class="sm:col-span-2">
+          <div v-if="local.type === 'selection'" class="grid gap-1.5 sm:col-span-2">
+            <FieldLabel>{{ _t('Selection') }}</FieldLabel>
             <ChoyPropertiesDefinitionSelectionEditor
               :model-value="selectionRows"
               :readonly="readonly"
@@ -121,7 +159,9 @@ import { useI18nStore } from '@/web/web/stores/i18nStore';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import Checkbox from '../vendor/ui/checkbox/Checkbox.vue';
+import FieldLabel from '../vendor/ui/field/FieldLabel.vue';
 import Input from '../vendor/ui/input/Input.vue';
+import Textarea from '../vendor/ui/textarea/Textarea.vue';
 import Select from '../vendor/ui/select/Select.vue';
 import SelectContent from '../vendor/ui/select/SelectContent.vue';
 import SelectItem from '../vendor/ui/select/SelectItem.vue';
@@ -168,11 +208,16 @@ const emit = defineEmits<{
 const typeOptions = PROPERTY_DEFINITION_V1_TYPE_OPTIONS;
 const local = ref<DefinitionEditorDraftItem | null>(null);
 const formError = ref('');
+const nameInputId = 'choy-properties-definition-name';
+const typeInputId = 'choy-properties-definition-type';
+const labelInputId = 'choy-properties-definition-label';
+const helpInputId = 'choy-properties-definition-help';
+const defaultInputId = 'choy-properties-definition-default';
 
 const translateOpen = ref(false);
 const translateTitle = ref('');
 const translateMap = ref<Record<string, string>>({});
-type TranslateTarget = { kind: 'string' } | { kind: 'selection'; value: string };
+type TranslateTarget = { kind: 'string' } | { kind: 'help' } | { kind: 'selection'; value: string };
 const translateTarget = ref<TranslateTarget | null>(null);
 
 const visible = computed({
@@ -211,6 +256,7 @@ function cloneDraft(src: DefinitionEditorDraftItem | null | undefined): Definiti
   return {
     ...base,
     stringMap: { ...(base.stringMap || {}) },
+    helpMap: { ...(base.helpMap || {}) },
     selectionLabelMaps: Object.fromEntries(
       Object.entries(base.selectionLabelMaps || {}).map(([k, v]) => [k, { ...(v || {}) }]),
     ),
@@ -233,6 +279,16 @@ function openStringTranslate() {
   translateOpen.value = true;
 }
 
+function openHelpTranslate() {
+  const item = local.value;
+  if (!item || props.readonly) return;
+  applyDraftCurrentLangToMaps(item, editorLang());
+  translateTarget.value = { kind: 'help' };
+  translateTitle.value = item.name ? `${item.name} · ${_t('Help')}` : _t('Help');
+  translateMap.value = { ...item.helpMap };
+  translateOpen.value = true;
+}
+
 function openSelectionTranslate(value: string) {
   const item = local.value;
   const opt = String(value || '').trim();
@@ -250,6 +306,9 @@ function onTranslateSaved(next: Record<string, string>) {
   if (!target || !item) return;
   if (target.kind === 'string') {
     item.stringMap = { ...next };
+    syncDraftLabelsForLang(item, editorLang());
+  } else if (target.kind === 'help') {
+    item.helpMap = { ...next };
     syncDraftLabelsForLang(item, editorLang());
   } else {
     item.selectionLabelMaps = {

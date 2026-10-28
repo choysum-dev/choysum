@@ -73,13 +73,14 @@ test('mergeSelectionLabelsWrite merges by option value', () => {
   ]);
 });
 
-test('translatePropertyDefinitionItems unwraps string and selection labels only', () => {
+test('translatePropertyDefinitionItems unwraps string, help, and selection labels', () => {
   const items = translatePropertyDefinitionItems(
     [
       {
         name: 'priority',
         type: 'selection',
         string: { en_US: 'Priority', zh_CN: '优先级' },
+        help: { en_US: 'Record urgency', zh_CN: '记录紧急程度' },
         selection: [
           ['high', { en_US: 'High', zh_CN: '高' }],
           { value: 'low', label: { en_US: 'Low', zh_CN: '低' } },
@@ -90,6 +91,7 @@ test('translatePropertyDefinitionItems unwraps string and selection labels only'
     'zh_CN'
   );
   expect(items[0].string).toBe('优先级');
+  expect(items[0].help).toBe('记录紧急程度');
   expect(items[0].default).toBe('high');
   expect(items[0].selection).toEqual([
     ['high', '高'],
@@ -97,12 +99,13 @@ test('translatePropertyDefinitionItems unwraps string and selection labels only'
   ]);
 });
 
-test('assertValidPropertyDefinitionItems accepts lang-map labels', () => {
+test('assertValidPropertyDefinitionItems accepts lang-map labels and help', () => {
   const out = assertValidPropertyDefinitionItems([
     {
       name: 'priority',
       type: 'selection',
       string: { en_US: 'Priority', zh_CN: '优先级' },
+      help: { en_US: 'Record urgency', zh_CN: '记录紧急程度' },
       selection: [['high', { en_US: 'High', zh_CN: '高' }]],
       default: 'high',
     },
@@ -110,15 +113,24 @@ test('assertValidPropertyDefinitionItems accepts lang-map labels', () => {
       name: 'code',
       type: 'char',
       string: 'External Code',
+      help: 'Short unique code used in references',
     },
   ]);
   expect(out[0].string).toEqual({ en_US: 'Priority', zh_CN: '优先级' });
+  expect(out[0].help).toEqual({ en_US: 'Record urgency', zh_CN: '记录紧急程度' });
   expect(out[0].selection).toEqual([['high', { en_US: 'High', zh_CN: '高' }]]);
   expect(out[1].string).toBe('External Code');
+  expect(out[1].help).toBe('Short unique code used in references');
 });
 
 test('assertValidPropertyDefinitionItems rejects invalid label maps', () => {
   expect(() =>
     assertValidPropertyDefinitionItems([{ name: 'x', type: 'char', string: { en_US: { bad: 1 } as any } }])
+  ).toThrow(/must be a string/);
+});
+
+test('assertValidPropertyDefinitionItems rejects invalid help maps', () => {
+  expect(() =>
+    assertValidPropertyDefinitionItems([{ name: 'x', type: 'char', help: { en_US: { bad: 1 } as any } }])
   ).toThrow(/must be a string/);
 });

@@ -295,6 +295,30 @@ describe('PropertiesField', () => {
     }
   });
 
+  test('shows form-help tip only for items with help', async () => {
+    const ResolveProperties = fnRecorder(async () => [
+      { name: 'prio', type: 'selection', string: 'Priority', help: 'Record urgency', value: 'high', selection: [['high', 'High']] },
+      { name: 'code', type: 'char', string: 'Code', value: 'A1' },
+    ] as ResolvedPropertyItem[]);
+    const binding = makeBinding({
+      map: { prio: 'high', code: 'A1' },
+      ResolveProperties,
+    });
+    const mounted = await mountField({ binding, renderMode: 'form' });
+    try {
+      const prioRow = mounted.el.querySelector('[data-name="prio"]') as HTMLElement | null;
+      const codeRow = mounted.el.querySelector('[data-name="code"]') as HTMLElement | null;
+      expect(prioRow).toBeTruthy();
+      expect(codeRow).toBeTruthy();
+      const prioHelp = prioRow!.querySelector('[data-slot="form-help"]') as HTMLElement | null;
+      expect(prioHelp).toBeTruthy();
+      expect(prioHelp!.getAttribute('aria-label') || '').toContain('Record urgency');
+      expect(codeRow!.querySelector('[data-slot="form-help"]')).toBeFalsy();
+    } finally {
+      mounted.unmount();
+    }
+  });
+
   test('integer write rejects decimal keystrokes; float keeps intermediate dot', async () => {
     const ResolveProperties = fnRecorder(async () => [
       { name: 'qty', type: 'integer', value: 2 },

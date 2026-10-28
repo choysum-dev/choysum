@@ -18,6 +18,8 @@ describe('propertiesDefinitionHelpers', () => {
     expect(PROPERTY_DEFINITION_V1_TYPE_OPTIONS).toContain('char');
     expect(emptyDraftItem().type).toBe('char');
     expect(emptyDraftItem().stringMap).toEqual({});
+    expect(emptyDraftItem().help).toBe('');
+    expect(emptyDraftItem().helpMap).toEqual({});
   });
 
   test('definitionItemsToDrafts unwraps lang maps for the requested lang', () => {
@@ -33,6 +35,7 @@ describe('propertiesDefinitionHelpers', () => {
           name: 'sel',
           type: 'selection',
           string: { en_US: 'Priority', zh_CN: '优先级' },
+          help: { en_US: 'Record urgency', zh_CN: '记录紧急程度' },
           selection: [
             ['a', { en_US: 'A', zh_CN: '甲' }],
             { value: 'b', label: 'B' },
@@ -47,6 +50,8 @@ describe('propertiesDefinitionHelpers', () => {
         type: 'char',
         string: '',
         stringMap: {},
+        help: '',
+        helpMap: {},
         default: '',
         readonly: false,
         selectionText: '',
@@ -57,6 +62,8 @@ describe('propertiesDefinitionHelpers', () => {
         type: 'selection',
         string: '优先级',
         stringMap: { en_US: 'Priority', zh_CN: '优先级' },
+        help: '记录紧急程度',
+        helpMap: { en_US: 'Record urgency', zh_CN: '记录紧急程度' },
         default: '',
         readonly: false,
         selectionText: JSON.stringify([
@@ -256,13 +263,38 @@ describe('propertiesDefinitionHelpers', () => {
     draft.name = 'prio';
     draft.type = 'selection';
     draft.stringMap = { en_US: 'Priority', zh_CN: '优先级' };
+    draft.helpMap = { en_US: 'Record urgency', zh_CN: '记录紧急程度' };
     draft.selectionLabelMaps = { high: { en_US: 'High', zh_CN: '高' } };
     syncDraftLabelsForLang(draft, 'zh_CN');
     expect(draft.string).toBe('优先级');
+    expect(draft.help).toBe('记录紧急程度');
     expect(draft.selectionText).toBe(JSON.stringify([['high', '高']]));
     draft.string = '优先';
+    draft.help = '紧急程度';
     applyDraftCurrentLangToMaps(draft, 'zh_CN');
     expect(draft.stringMap).toEqual({ en_US: 'Priority', zh_CN: '优先' });
+    expect(draft.helpMap).toEqual({ en_US: 'Record urgency', zh_CN: '紧急程度' });
+  });
+
+  test('draftsToDefinitionItems writes help lang maps and omits blank help', () => {
+    const withHelp = draftsToDefinitionItems(
+      [
+        {
+          ...emptyDraftItem(),
+          name: 'code',
+          type: 'char',
+          help: '外部编码',
+          helpMap: { en_US: 'External reference code', zh_CN: '旧' },
+        },
+      ],
+      'zh_CN',
+    );
+    expect(withHelp[0]!.help).toEqual({
+      en_US: 'External reference code',
+      zh_CN: '外部编码',
+    });
+    const blank = draftsToDefinitionItems([{ ...emptyDraftItem(), name: 'x', type: 'char' }], 'en_US');
+    expect(blank[0]!.help).toBeUndefined();
   });
 
   test('selectionRowsFromDraft / writeSelectionRowsToDraft keep maps across value rename', () => {

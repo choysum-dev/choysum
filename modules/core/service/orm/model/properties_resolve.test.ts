@@ -147,6 +147,7 @@ test('properties resolve: unwraps Definition label lang maps by request lang', a
           name: 'priority',
           type: 'selection',
           string: { en_US: 'Priority', zh_CN: '优先级' },
+          help: { en_US: 'Record urgency', zh_CN: '记录紧急程度' },
           selection: [
             ['high', { en_US: 'High', zh_CN: '高' }],
             ['low', 'Low'],
@@ -161,6 +162,7 @@ test('properties resolve: unwraps Definition label lang maps by request lang', a
   try {
     const items = await resolveProperties(Pp1Partner as any, { PartnerProperties: { priority: 'high' } }, 'PartnerProperties');
     expect(items[0]?.string).toBe('优先级');
+    expect(items[0]?.help).toBe('记录紧急程度');
     expect(items[0]?.selection).toEqual([
       ['high', '高'],
       ['low', 'Low'],

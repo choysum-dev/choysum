@@ -22,6 +22,8 @@ export type PropertyItemDefinition = {
   name: string;
   type: string;
   string?: PropertyLabel;
+  /** Field tip (plain string ≡ `{ en_US: s }` or lang map); shown next to the item label. */
+  help?: PropertyLabel;
   default?: unknown;
   readonly?: boolean;
   selection?: Array<{ value: string; label?: PropertyLabel } | [string, PropertyLabel]>;
@@ -147,6 +149,19 @@ export function assertValidPropertyDefinitionItems(raw: unknown): PropertyItemDe
           err instanceof Error
             ? err.message
             : `PropertyDefinition.Definition item "${name}" string label is invalid`
+        );
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(rec, 'help')) {
+      try {
+        const help = normalizePropertyLabelForStorage(rec.help, `${name}.help`);
+        if (help === undefined) delete normalized.help;
+        else normalized.help = help;
+      } catch (err) {
+        throw new Error(
+          err instanceof Error
+            ? err.message
+            : `PropertyDefinition.Definition item "${name}" help is invalid`
         );
       }
     }

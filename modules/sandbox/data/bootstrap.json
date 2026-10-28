@@ -73,6 +73,10 @@
             "name": "priority",
             "type": "selection",
             "string": { "en_US": "Priority", "zh_CN": "优先级" },
+            "help": {
+              "en_US": "How urgently this record should be handled.",
+              "zh_CN": "该记录需要处理的紧急程度。"
+            },
             "selection": [
               ["low", { "en_US": "Low", "zh_CN": "低" }],
               ["normal", { "en_US": "Normal", "zh_CN": "普通" }],
@@ -83,12 +87,20 @@
           {
             "name": "external_code",
             "type": "char",
-            "string": { "en_US": "External Code", "zh_CN": "外部编码" }
+            "string": { "en_US": "External Code", "zh_CN": "外部编码" },
+            "help": {
+              "en_US": "Short code used to reference this record in external systems.",
+              "zh_CN": "用于在外部系统中引用本记录的短编码。"
+            }
           },
           {
             "name": "is_vip",
             "type": "boolean",
             "string": { "en_US": "VIP", "zh_CN": "VIP" },
+            "help": {
+              "en_US": "Mark the record as VIP for preferential handling.",
+              "zh_CN": "标记为 VIP，以便优先处理。"
+            },
             "default": false
           },
           {
@@ -120,6 +132,10 @@
             "name": "locked_code",
             "type": "char",
             "string": { "en_US": "Locked Code", "zh_CN": "锁定编码" },
+            "help": {
+              "en_US": "Read-only lock token assigned when the record is sealed.",
+              "zh_CN": "记录锁定后分配的只读锁定码。"
+            },
             "readonly": true,
             "default": "RO"
           }

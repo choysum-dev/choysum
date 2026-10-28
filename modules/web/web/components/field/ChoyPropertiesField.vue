@@ -48,7 +48,10 @@ SPDX-License-Identifier: Apache-2.0
             :data-type="item.type"
             data-readonly="1"
           >
-            <dt class="text-[13px] font-normal text-muted-foreground">{{ itemLabel(item) }}</dt>
+            <dt class="inline-flex min-w-0 items-center gap-0.5 text-[13px] font-normal text-muted-foreground">
+              <span class="min-w-0 truncate">{{ itemLabel(item) }}</span>
+              <PropertyItemHelpTip :item="item" />
+            </dt>
             <dd
               class="m-0 truncate text-sm text-muted-foreground"
               data-testid="choy-properties-readonly-value"
@@ -61,7 +64,12 @@ SPDX-License-Identifier: Apache-2.0
             :data-type="item.type"
             data-readonly="0"
           >
-            <label class="text-[13px] text-foreground" :for="controlId(item)">{{ itemLabel(item) }}</label>
+            <div class="inline-flex min-w-0 items-center gap-0.5">
+              <label class="min-w-0 truncate text-[13px] text-foreground" :for="controlId(item)">{{
+                itemLabel(item)
+              }}</label>
+              <PropertyItemHelpTip :item="item" />
+            </div>
             <Switch
               v-if="item.type === 'boolean'"
               class="justify-self-start"
@@ -150,7 +158,10 @@ SPDX-License-Identifier: Apache-2.0
           class="choy-properties-item choy-properties-item--display grid grid-cols-[minmax(4.5rem,7.5rem)_minmax(0,1fr)] items-center gap-x-2 gap-y-1"
           :data-name="item.name"
         >
-          <span class="text-[13px] text-muted-foreground">{{ itemLabel(item) }}</span>
+          <div class="inline-flex min-w-0 items-center gap-0.5 text-[13px] text-muted-foreground">
+            <span class="min-w-0 truncate">{{ itemLabel(item) }}</span>
+            <PropertyItemHelpTip :item="item" />
+          </div>
           <span class="choy-properties-item__value truncate text-sm text-foreground">{{
             displayItemValue(fieldValue().value, item)
           }}</span>
@@ -165,13 +176,15 @@ import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
 import type { ResolvedPropertyItem } from '@/core/service/orm/model/properties_types';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { RuleItem } from 'async-validator';
-import { computed, ref, watch, type WritableComputedRef } from 'vue';
+import { computed, defineComponent, h, ref, watch, type WritableComputedRef } from 'vue';
+import { CircleHelp } from 'lucide-vue-next';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { getActivePinia } from 'pinia';
 import { createTranslate } from '@/web/web/i18n';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/web/web/components/vendor/ui/tooltip';
 import Input from '../vendor/ui/input/Input.vue';
 import Textarea from '../vendor/ui/textarea/Textarea.vue';
 import Switch from '../vendor/ui/switch/Switch.vue';
@@ -207,6 +220,53 @@ import {
 const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyPropertiesField' });
 
 defineOptions({ name: 'ChoyPropertiesField' });
+
+function propertyItemHelpText(item: ResolvedPropertyItem | null | undefined): string {
+  return String(item?.help ?? '').trim();
+}
+
+/** CircleHelp tip beside a property item label (same chrome as ChoyFieldBase form-help). */
+const PropertyItemHelpTip = defineComponent({
+  name: 'PropertyItemHelpTip',
+  props: {
+    item: { type: Object as () => ResolvedPropertyItem, required: true },
+  },
+  setup(props) {
+    const help = computed(() => propertyItemHelpText(props.item));
+    const ariaLabel = computed(() => {
+      const label = String(props.item?.string ?? props.item?.name ?? '').trim();
+      return label ? `${label}: ${help.value}` : help.value;
+    });
+    return () => {
+      if (!help.value) return null;
+      return h(TooltipProvider, null, {
+        default: () =>
+          h(Tooltip, null, {
+            default: () => [
+              h(
+                TooltipTrigger,
+                { asChild: true },
+                {
+                  default: () =>
+                    h(
+                      'button',
+                      {
+                        type: 'button',
+                        class: 'inline-flex shrink-0 cursor-help text-muted-foreground hover:text-foreground',
+                        'data-slot': 'form-help',
+                        'aria-label': ariaLabel.value,
+                      },
+                      [h(CircleHelp, { class: 'size-3.5', 'aria-hidden': 'true' })],
+                    ),
+                },
+              ),
+              h(TooltipContent, null, { default: () => help.value }),
+            ],
+          }),
+      });
+    };
+  },
+});
 
 /** Request-lang fingerprint for Resolve; empty when Pinia is unavailable (unit stubs). */
 function currentTerminologyLang(): string {
