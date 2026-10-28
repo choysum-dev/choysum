@@ -434,6 +434,25 @@ describe('propertiesDefinitionHelpers', () => {
     expect(cloneDraftItem(null).type).toBe('char');
   });
 
+  test('definitionItemsToDrafts clears selectionText when JSON.stringify throws', () => {
+    const orig = JSON.stringify;
+    try {
+      (JSON as any).stringify = () => {
+        throw new Error('stringify boom');
+      };
+      const drafts = definitionItemsToDrafts(
+        [{ name: 'sel', type: 'selection', selection: [['a', { en_US: 'A' }]] }],
+        'en_US',
+      );
+      expect(drafts).toHaveLength(1);
+      expect(drafts[0]!.selectionText).toBe('');
+      expect(drafts[0]!.selectionLabelMaps.a).toEqual({ en_US: 'A' });
+      expect(drafts[0]!.selectionRowMapKeys).toEqual(['a']);
+    } finally {
+      (JSON as any).stringify = orig;
+    }
+  });
+
   test('buildDefinitionScopeCondition', () => {
     expect(
       buildDefinitionScopeCondition({
