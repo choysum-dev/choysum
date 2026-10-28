@@ -5,6 +5,7 @@ import {
   PROPERTY_DEFINITION_V1_TYPE_OPTIONS,
   applyDraftCurrentLangToMaps,
   buildDefinitionScopeCondition,
+  cloneDraftItem,
   definitionItemsToDrafts,
   draftsToDefinitionItems,
   emptyDraftItem,
@@ -403,6 +404,34 @@ describe('propertiesDefinitionHelpers', () => {
     expect(draft.selectionLabelMaps.lo).toEqual({ en_US: 'Low', zh_CN: '低' });
     expect(draft.selectionLabelMaps.low).toBeUndefined();
     expect(draft.selectionRowMapKeys).toEqual(['lo']);
+  });
+
+  test('writeSelectionRowsToDraft falls back to previous row value when map key misses', () => {
+    const draft = emptyDraftItem();
+    draft.type = 'selection';
+    draft.selectionText = JSON.stringify([['old', '旧']]);
+    draft.selectionLabelMaps = { old: { en_US: 'Old', zh_CN: '旧' } };
+    // Stale/wrong map key so rename must recover via prevRows[i].value.
+    draft.selectionRowMapKeys = ['missing'];
+
+    writeSelectionRowsToDraft(draft, [{ value: 'new', label: '旧' }], 'zh_CN');
+    expect(draft.selectionLabelMaps.new).toEqual({ en_US: 'Old', zh_CN: '旧' });
+    expect(draft.selectionLabelMaps.old).toBeUndefined();
+    expect(draft.selectionRowMapKeys).toEqual(['new']);
+  });
+
+  test('cloneDraftItem copies nested maps and map keys', () => {
+    const src = emptyDraftItem();
+    src.name = 'n';
+    src.stringMap = { en_US: 'N' };
+    src.helpMap = { en_US: 'H' };
+    src.selectionLabelMaps = { a: { en_US: 'A' } };
+    src.selectionRowMapKeys = ['a'];
+    const copy = cloneDraftItem(src);
+    expect(copy).toEqual(src);
+    expect(copy.stringMap).not.toBe(src.stringMap);
+    expect(copy.selectionLabelMaps.a).not.toBe(src.selectionLabelMaps.a);
+    expect(cloneDraftItem(null).type).toBe('char');
   });
 
   test('buildDefinitionScopeCondition', () => {

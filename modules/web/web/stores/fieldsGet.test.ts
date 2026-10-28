@@ -407,6 +407,27 @@ describe('createFieldsGetHelpers', () => {
     expect(helpers.getFieldsGetTranslatedHelp('Name')).toBe('帮助');
   });
 
+  test('incomplete specific-field slice is not cached under the waiter key', async () => {
+    let round = 0;
+    const FieldsGet = asyncFnRecorder(async () => {
+      round += 1;
+      if (round === 1) return {};
+      return {
+        Ghost: { id: '9', type: 'varchar', typeAnnotation: 'string', string: '幽灵' },
+      };
+    });
+    const helpers = createFieldsGetHelpers(makeHost({}, FieldsGet), { getLang: () => 'zh_CN' });
+
+    const first = await helpers.ensureFieldsGet(['Ghost'], ['string']);
+    expect(first.Ghost).toBeUndefined();
+    expect(FieldsGet.calls.length).toBe(1);
+
+    // Must re-RPC: empty incomplete result must not poison responseCache.
+    const second = await helpers.ensureFieldsGet(['Ghost'], ['string']);
+    expect(FieldsGet.calls.length).toBe(2);
+    expect(second.Ghost?.string).toBe('幽灵');
+  });
+
   test('reject path propagates FieldsGet failure to all coalesced waiters', async () => {
     const FieldsGet = asyncFnRecorder(async () => {
       throw new Error('fieldsget boom');

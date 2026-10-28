@@ -341,6 +341,27 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
     m.unmount();
   });
 
+  test('Save surfaces applyDraftCurrentLangToMaps failures as formError', async () => {
+    const onSaved = fnRecorder();
+    const i18n = useI18nStore();
+    Object.defineProperty(i18n, 'terminologyLang', {
+      configurable: true,
+      get: () => 'zh-CN',
+    });
+    const m = mountDialog({ item: draft({ name: 'tax_id', string: 'Tax', stringMap: { en_US: 'Tax' } }) }, { onSaved });
+    try {
+      await flushPromises();
+      m.click('[data-testid="choy-properties-definition-item-save"]');
+      await flushPromises();
+      expect(onSaved.calls.length).toBe(0);
+      const err = m.q('[data-testid="choy-properties-definition-item-error"]');
+      expect(err).toBeTruthy();
+      expect(String(err?.textContent || '')).toMatch(/terminology|locale|language/i);
+    } finally {
+      m.unmount();
+    }
+  });
+
   test('Save emits saved and does not close itself', async () => {
     const onSaved = fnRecorder();
     const onUpdate = fnRecorder();

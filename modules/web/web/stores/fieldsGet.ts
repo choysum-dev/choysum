@@ -234,7 +234,11 @@ export function createFieldsGetHelpers(
         let value = responseCache.get(waiter.cacheKey);
         if (!value) {
           value = waiter.wantAll ? slice : pickFieldSlice(slice, waiter.names);
-          if (generationAtStart === cacheGeneration) {
+          // Do not cache incomplete specific-field slices (unknown/missing names),
+          // or a later ensure for the same key would keep returning {}.
+          const complete =
+            waiter.wantAll || waiter.names.every(n => Object.prototype.hasOwnProperty.call(value!, n));
+          if (complete && generationAtStart === cacheGeneration) {
             responseCache.set(waiter.cacheKey, value);
           }
         }
@@ -250,7 +254,13 @@ export function createFieldsGetHelpers(
       const created = (async () => {
         const slice = (await host.FieldsGet(rpcFields, bucket.attributes)) || {};
         if (generationAtStart === cacheGeneration) {
-          responseCache.set(rpcKey, slice);
+          const rpcComplete =
+            bucket.wantAll ||
+            !rpcFields ||
+            rpcFields.every(n => Object.prototype.hasOwnProperty.call(slice, n));
+          if (rpcComplete) {
+            responseCache.set(rpcKey, slice);
+          }
           mergeOverlay(lang, slice, bucket.attributes);
         }
         return slice;
