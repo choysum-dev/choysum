@@ -235,31 +235,32 @@ export function createFieldsGetHelpers(
       }
     };
 
-    const cached = responseCache.get(rpcKey);
-    if (cached) {
-      resolveWaiters(cached);
-      return;
-    }
-
+    // Exact-key hits are handled in ensureFieldsGet before coalesce. Broader
+    // rpcKey reuse goes through overlay / responseCache on the ensure path.
     const pendingExact = inflight.get(rpcKey);
-    const request =
-      pendingExact ||
-      (async () => {
-        const slice = (await host.FieldsGet(rpcFields, bucket.attributes)) || {};
-        if (generationAtStart === cacheGeneration) {
-          responseCache.set(rpcKey, slice);
-          mergeOverlay(lang, slice, bucket.attributes);
-          inflight.delete(rpcKey);
-        } else {
-          inflight.delete(rpcKey);
+    let request = pendingExact;
+    if (!request) {
+      // Assign after the IIFE starts so cleanup can identity-check this promise
+      // without reading a const during its own initializer (TS2454).
+      let ownedRequest: Promise<Record<string, unknown>> | null = null;
+      const created = (async () => {
+        try {
+          const slice = (await host.FieldsGet(rpcFields, bucket.attributes)) || {};
+          if (generationAtStart === cacheGeneration) {
+            responseCache.set(rpcKey, slice);
+            mergeOverlay(lang, slice, bucket.attributes);
+          }
+          return slice;
+        } finally {
+          // Only clear this request — a newer ensure may have reused the same rpcKey
+          // after clearFieldsGetCache bumped the generation.
+          if (ownedRequest && inflight.get(rpcKey) === ownedRequest) {
+            inflight.delete(rpcKey);
+          }
         }
-        return slice;
-      })().catch(err => {
-        inflight.delete(rpcKey);
-        throw err;
-      });
-
-    if (!pendingExact) {
+      })();
+      ownedRequest = created;
+      request = created;
       inflight.set(rpcKey, request);
     }
     bucket.inflight = request;

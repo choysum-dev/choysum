@@ -1,11 +1,14 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { createPinia, setActivePinia } from 'pinia';
 import { computed, h, nextTick, reactive, ref } from 'vue';
 
+import { TRANSLATED_BASE_LANG } from '@/core/service/orm/model/properties_label_i18n';
 import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import { useI18nStore } from '@/web/web/stores/i18nStore';
 import ChoyFieldBase from './ChoyFieldBase.vue';
 import ChoyPropertiesDefinitionField from './ChoyPropertiesDefinitionField.vue';
 import ChoyPropertiesDefinitionItemDialog from './ChoyPropertiesDefinitionItemDialog.vue';
@@ -585,25 +588,107 @@ describe('ChoyPropertiesDefinitionField', () => {
     try {
       await flushPromises();
       const row = mounted.q('[data-testid="choy-properties-definition-row"]') as HTMLElement;
-      // QuickJS may lack KeyboardEvent; synthesize a keydown-like object via listeners.
-      const listeners = (row as any).__vnode?.props || {};
-      const onKeydown = (row as any).onkeydown || listeners.onKeydown;
-      if (typeof onKeydown === 'function') {
-        onKeydown({ key: 'Enter', preventDefault() {} });
-      } else {
-        // Fallback: invoke openRow through the field setup.
-        (mounted.setupState() as { openRow?: (i: number, ro: boolean) => void }).openRow?.(0, true);
-      }
+      // QuickJS has no KeyboardEvent; attach key onto a cancelable Event (Kanban pattern).
+      const enter = new Event('keydown', { bubbles: true, cancelable: true });
+      Object.defineProperty(enter, 'key', { value: 'Enter' });
+      row.dispatchEvent(enter);
       await nextTick();
       expect(mounted.q('[data-testid="choy-properties-definition-item-dialog-stub"]')).toBeTruthy();
-      if (mounted.q('[data-testid="stub-item-save"]')) {
-        mounted.click('[data-testid="stub-item-save"]');
-        await nextTick();
-        await flushPromises();
-      }
+
+      mounted.click('[data-testid="stub-item-close"]');
+      await nextTick();
+      const space = new Event('keydown', { bubbles: true, cancelable: true });
+      Object.defineProperty(space, 'key', { value: ' ' });
+      row.dispatchEvent(space);
+      await nextTick();
+      expect(mounted.q('[data-testid="choy-properties-definition-item-dialog-stub"]')).toBeTruthy();
+
+      expect(mounted.q('[data-testid="stub-item-save"]')).toBeTruthy();
+      mounted.click('[data-testid="stub-item-save"]');
+      await nextTick();
+      await flushPromises();
       expect((binding.__value.value as any[])[0].name).toBe('a');
     } finally {
       mounted.unmount();
+    }
+  });
+
+  test('edit existing row save replaces item at index', async () => {
+    const binding = makeBinding({
+      definition: [{ name: 'a', type: 'char', string: { en_US: 'A' } }],
+      isEditMode: true,
+    });
+    const mounted = mountApp(ChoyPropertiesDefinitionField as any, { props: { binding } });
+    try {
+      await flushPromises();
+      mounted.click('[data-testid="choy-properties-definition-open"]');
+      await nextTick();
+      mounted.click('[data-testid="stub-item-save"]');
+      await nextTick();
+      await flushPromises();
+      expect((binding.__value.value as any[])[0].name).toBe('from_dialog');
+    } finally {
+      mounted.unmount();
+    }
+  });
+
+  test('opening a dialog clears a stale writeError', async () => {
+    const binding = makeBinding({
+      definition: [{ name: 'a', type: 'char', string: { en_US: 'A' } }],
+      isEditMode: true,
+    });
+    const mounted = mountApp(ChoyPropertiesDefinitionField as any, { props: { binding } });
+    try {
+      await flushPromises();
+      const state = mounted.setupState() as { writeError?: { value: string } | string };
+      if (state.writeError && typeof state.writeError === 'object' && 'value' in state.writeError) {
+        state.writeError.value = 'stale';
+      }
+      mounted.click('[data-testid="choy-properties-definition-open"]');
+      await nextTick();
+      const err =
+        state.writeError && typeof state.writeError === 'object' && 'value' in state.writeError
+          ? state.writeError.value
+          : state.writeError;
+      expect(err).toBe('');
+    } finally {
+      mounted.unmount();
+    }
+  });
+
+  test('editorLang reads i18n store and falls back on empty or throw', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const i18n = useI18nStore();
+    i18n.localeCode = 'zh-CN';
+
+    const binding = makeBinding({
+      definition: [{ name: 'a', type: 'char', string: { en_US: 'A' } }],
+      isEditMode: true,
+    });
+    const mounted = mountApp(ChoyPropertiesDefinitionField as any, { props: { binding } });
+    try {
+      await flushPromises();
+      const state = mounted.setupState() as { editorLang?: () => string };
+      expect(typeof state.editorLang).toBe('function');
+      expect(state.editorLang?.()).toBe('zh_CN');
+
+      Object.defineProperty(i18n, 'terminologyLang', {
+        configurable: true,
+        get: () => '   ',
+      });
+      expect(state.editorLang?.()).toBe(TRANSLATED_BASE_LANG);
+
+      Object.defineProperty(i18n, 'terminologyLang', {
+        configurable: true,
+        get: () => {
+          throw new Error('forced');
+        },
+      });
+      expect(state.editorLang?.()).toBe(TRANSLATED_BASE_LANG);
+    } finally {
+      mounted.unmount();
+      setActivePinia(undefined as any);
     }
   });
 

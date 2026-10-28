@@ -325,7 +325,7 @@ describe('createFieldsGetHelpers', () => {
     expect(helpers.getFieldsGetTranslatedString('Name')).toBe('新');
   });
 
-  test('flush resolves waiters from an exact rpcKey cache hit', async () => {
+  test('concurrent ensures with an exact cached key make no RPC', async () => {
     const FieldsGet = asyncFnRecorder(async () => ({
       Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: '名称' },
     }));
@@ -333,18 +333,43 @@ describe('createFieldsGetHelpers', () => {
       makeHost({ Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'Name' } }, FieldsGet),
       { getLang: () => 'zh_CN' }
     );
-    // Prime the exact lang|fields|attrs cache entry.
     await helpers.ensureFieldsGet(['Name'], ['string']);
     expect(FieldsGet.calls.length).toBe(1);
 
-    // Clear only the coalesce bookkeeping by starting concurrent ensures that share attrs
-    // after the responseCache still holds the rpcKey (do not clearFieldsGetCache).
+    // The exact responseCache key remains populated, so both ensures return before coalescing.
     FieldsGet.calls.length = 0;
     const [a, b] = await Promise.all([
       helpers.ensureFieldsGet(['Name'], ['string']),
       helpers.ensureFieldsGet(['Name'], ['string']),
     ]);
     expect(FieldsGet.calls.length).toBe(0);
+    expect(a.Name?.string).toBe('名称');
+    expect(b.Name?.string).toBe('名称');
+  });
+
+  test('in-flight exact-key ensure reuses the pending promise', async () => {
+    let release!: (v: Record<string, any>) => void;
+    const gate = new Promise<Record<string, any>>(resolve => {
+      release = resolve;
+    });
+    const FieldsGet = asyncFnRecorder(async () => gate);
+    const helpers = createFieldsGetHelpers(
+      makeHost({ Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'Name' } }, FieldsGet),
+      { getLang: () => 'zh_CN' }
+    );
+
+    const first = helpers.ensureFieldsGet(['Name'], ['string']);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(FieldsGet.calls.length).toBe(1);
+
+    // Same cache key while RPC is pending → share inflight promise (no second RPC).
+    const second = helpers.ensureFieldsGet(['Name'], ['string']);
+    await Promise.resolve();
+    expect(FieldsGet.calls.length).toBe(1);
+
+    release({ Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: '名称' } });
+    const [a, b] = await Promise.all([first, second]);
     expect(a.Name?.string).toBe('名称');
     expect(b.Name?.string).toBe('名称');
   });

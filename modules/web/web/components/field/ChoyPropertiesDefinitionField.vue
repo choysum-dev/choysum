@@ -504,6 +504,7 @@ function commitDrafts(next: DefinitionEditorDraftItem[]) {
 
 function onAdd() {
   if (!canMutate.value) return;
+  writeError.value = '';
   dialogReadonly.value = false;
   dialogIndex.value = drafts.value.length;
   dialogItem.value = emptyDraftItem();
@@ -531,6 +532,7 @@ function onReorder(rows: DefinitionEditorDraftItem[]) {
 function openRow(index: number, asReadonly: boolean) {
   const item = drafts.value[index];
   if (!item) return;
+  writeError.value = '';
   dialogReadonly.value = asReadonly || !canMutate.value;
   dialogIndex.value = index;
   dialogItem.value = item;

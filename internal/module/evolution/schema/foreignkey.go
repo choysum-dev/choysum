@@ -11,7 +11,6 @@ import (
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/ettle/strcase"
-	xfmt "golang.org/x/exp/errors/fmt"
 )
 
 // ForeignKeyInfo describes a foreign key relationship.
@@ -284,7 +283,7 @@ func (m *foreignKeyMigrator) createForeignKeys(foreignKeys []ForeignKeyInfo) err
 		// Create the new foreign key.
 		createSQL := builder.BuildForeignKeySQL(fk)
 		if err := db.Exec(createSQL).Error; err != nil {
-			return xfmt.Errorf(
+			return fmt.Errorf(
 				"create foreign key failed: table=%s column=%s refer=%s.%s: %w",
 				fk.TableName,
 				fk.ColumnName,

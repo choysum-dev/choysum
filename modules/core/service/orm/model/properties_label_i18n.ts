@@ -99,7 +99,7 @@ export function mergePropertyLabelWrite(
   return normalizePropertyLabelForStorage(next, 'string') ?? current;
 }
 
-function selectionOptionValue(opt: unknown): string | null {
+export function selectionOptionValue(opt: unknown): string | null {
   if (Array.isArray(opt) && typeof opt[0] === 'string') return opt[0];
   if (opt && typeof opt === 'object' && !Array.isArray(opt) && typeof (opt as { value?: unknown }).value === 'string') {
     return String((opt as { value: string }).value);
@@ -107,7 +107,7 @@ function selectionOptionValue(opt: unknown): string | null {
   return null;
 }
 
-function selectionOptionLabel(opt: unknown): unknown {
+export function selectionOptionLabel(opt: unknown): unknown {
   if (Array.isArray(opt)) return opt[1] ?? opt[0];
   if (opt && typeof opt === 'object' && !Array.isArray(opt)) {
     return (opt as { label?: unknown }).label ?? (opt as { value?: unknown }).value;

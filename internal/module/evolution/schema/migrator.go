@@ -8,7 +8,6 @@ import (
 
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
-	xfmt "golang.org/x/exp/errors/fmt"
 )
 
 type Migrator interface {
@@ -83,10 +82,10 @@ type migrator struct {
 
 func (m *migrator) Migrate() error {
 	if err := m.modelMigrator.MigrateSchema(); err != nil {
-		return xfmt.Errorf("migrate schema: %w", err)
+		return fmt.Errorf("migrate schema: %w", err)
 	}
 	if err := m.foreignKeyMigrator.MigrateForeignKeys(); err != nil {
-		return xfmt.Errorf("migrate foreign keys: %w", err)
+		return fmt.Errorf("migrate foreign keys: %w", err)
 	}
 	return nil
 }
