@@ -460,6 +460,8 @@ const writeError = ref('');
 const dialogOpen = ref(false);
 const dialogReadonly = ref(false);
 const dialogIndex = ref<number | null>(null);
+/** True when the open dialog is creating a new row (not editing by index). */
+const dialogIsNew = ref(false);
 const dialogItem = ref<DefinitionEditorDraftItem | null>(null);
 
 /** Suppress draft re-sync while we write back from local drafts. */
@@ -513,7 +515,8 @@ function onAdd() {
   if (!canMutate.value) return;
   writeError.value = '';
   dialogReadonly.value = false;
-  dialogIndex.value = drafts.value.length;
+  dialogIsNew.value = true;
+  dialogIndex.value = null;
   dialogItem.value = emptyDraftItem();
   dialogOpen.value = true;
 }
@@ -541,6 +544,7 @@ function openRow(index: number, asReadonly: boolean) {
   if (!item) return;
   writeError.value = '';
   dialogReadonly.value = asReadonly || !canMutate.value;
+  dialogIsNew.value = false;
   dialogIndex.value = index;
   dialogItem.value = item;
   dialogOpen.value = true;
@@ -548,12 +552,13 @@ function openRow(index: number, asReadonly: boolean) {
 
 function onDialogSaved(item: DefinitionEditorDraftItem) {
   if (dialogReadonly.value) return;
-  const index = dialogIndex.value;
-  if (index == null || index < 0) return;
   const next = [...drafts.value];
-  if (index >= next.length) {
+  if (dialogIsNew.value) {
     next.push(item);
   } else {
+    const index = dialogIndex.value;
+    // Stale index (row removed/reordered while dialog open): keep dialog open.
+    if (index == null || index < 0 || index >= next.length) return;
     next[index] = item;
   }
   try {
@@ -563,6 +568,7 @@ function onDialogSaved(item: DefinitionEditorDraftItem) {
     return;
   }
   dialogOpen.value = false;
+  dialogIsNew.value = false;
   dialogIndex.value = null;
   dialogItem.value = null;
 }

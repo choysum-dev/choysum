@@ -271,7 +271,7 @@ describe('ChoyPropertyLabelTranslationsDialog', () => {
     m.unmount();
   });
 
-  test('save after load failure still emits empty en_US base key', async () => {
+  test('save after load failure closes without wiping translations', async () => {
     const badTranslations = new Proxy(
       {},
       {
@@ -287,9 +287,11 @@ describe('ChoyPropertyLabelTranslationsDialog', () => {
     const m = mountDialog({ translations: badTranslations as any }, { onSaved });
     await flushPromises();
     expect(m.qa(INPUT_SEL).length).toBe(0);
+    const saveBtn = m.q('[data-testid="choy-property-label-translations-save"]') as HTMLButtonElement | null;
+    expect(saveBtn?.disabled).toBe(true);
     m.click('[data-testid="choy-property-label-translations-save"]');
     await nextTick();
-    expect(onSaved.calls[0]?.[0]).toEqual({ en_US: '' });
+    expect(onSaved.calls.length).toBe(0);
     m.unmount();
   });
 });

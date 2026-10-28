@@ -33,7 +33,12 @@ SPDX-License-Identifier: Apache-2.0
       </div>
       <div class="mt-4 flex justify-end gap-2">
         <ChoyButton type="button" variant="outline" @click="visible = false">{{ _t('Cancel') }}</ChoyButton>
-        <ChoyButton type="button" data-testid="choy-property-label-translations-save" @click="handleSave">
+        <ChoyButton
+          type="button"
+          data-testid="choy-property-label-translations-save"
+          :disabled="loading || rows.length === 0"
+          @click="handleSave"
+        >
           {{ _t('Save translations') }}
         </ChoyButton>
       </div>
@@ -153,6 +158,12 @@ watch(
 );
 
 function handleSave() {
+  // Load failure / still loading leaves rows empty — closing without emit
+  // avoids wiping the caller's existing label map with { en_US: '' }.
+  if (loading.value || rows.value.length === 0) {
+    visible.value = false;
+    return;
+  }
   const next: Record<string, string> = {};
   for (const row of rows.value) {
     const value = String(row.value ?? '');

@@ -276,11 +276,24 @@ export function createFieldsGetHelpers(
     }
     bucket.inflight = request;
 
-    void request.then(resolveWaiters).catch(err => {
-      for (const waiter of bucket.waiters) {
-        waiter.reject(err);
-      }
-    });
+    // Separate settle paths so a throw inside resolveWaiters cannot be
+    // mistaken for an RPC failure and reject waiters that already resolved.
+    void request.then(
+      slice => {
+        try {
+          resolveWaiters(slice);
+        } catch (err) {
+          for (const waiter of bucket.waiters) {
+            waiter.reject(err);
+          }
+        }
+      },
+      err => {
+        for (const waiter of bucket.waiters) {
+          waiter.reject(err);
+        }
+      },
+    );
   };
 
   const ensureFieldsGet = async (

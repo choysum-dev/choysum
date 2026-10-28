@@ -372,6 +372,37 @@ describe('ChoyPropertiesDefinitionField', () => {
     }
   });
 
+  test('new-item dialog appends even if rows shrink while open', async () => {
+    const binding = makeBinding({
+      definition: [{ name: 'tax_id', type: 'char', string: { en_US: 'Tax' } }],
+      isEditMode: true,
+    });
+    const mounted = mountApp(ChoyPropertiesDefinitionField as any, {
+      props: { binding },
+    });
+    try {
+      await flushPromises();
+      mounted.click('[data-testid="choy-properties-definition-add"]');
+      await nextTick();
+      expect(mounted.q('[data-testid="choy-properties-definition-item-dialog-stub"]')).toBeTruthy();
+      // Remove the existing row while the add dialog is still open.
+      const removeBtns = mounted.el.querySelectorAll('[data-testid="choy-properties-definition-remove"]');
+      expect(removeBtns.length).toBe(1);
+      (removeBtns[0] as HTMLElement).click();
+      await nextTick();
+      await flushPromises();
+      expect((binding.__value.value as any[]).length).toBe(0);
+      mounted.click('[data-testid="stub-item-save"]');
+      await nextTick();
+      await flushPromises();
+      const saved = binding.__value.value as any[];
+      expect(saved.length).toBe(1);
+      expect(saved[0]?.name).toBe('from_dialog');
+    } finally {
+      mounted.unmount();
+    }
+  });
+
   test('commitDrafts failure keeps dialog open (onDialogSaved catch return)', async () => {
     // Invalid selection JSON → draftsToDefinitionItems throws inside commitDrafts.
     stubSfc(ChoyPropertiesDefinitionItemDialog as any, {
