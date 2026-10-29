@@ -443,7 +443,7 @@ const props = withDefaults(
     binding: UseField<T, V>;
     label?: string;
     /**
-     * Explicit help tip (translated). When set, wins over FieldsGet / meta.help so
+     * Explicit help tip (translated). When non-empty, wins over FieldsGet / meta.help so
      * form views can guarantee form-help without waiting on FieldsGet overlay.
      */
     help?: string;

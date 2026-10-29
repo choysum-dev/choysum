@@ -313,7 +313,12 @@ function buildColumn(): Column {
             title: disabled ? '' : 'Drag to reorder',
             onDragstart: (e: DragEvent) => {
               e.stopPropagation();
-              api?.onDragStart(rowIndex, e);
+              // No API / disabled: cancel the drag; do not set a drag image.
+              if (!api?.enabled?.value) {
+                e.preventDefault();
+                return;
+              }
+              api.onDragStart(rowIndex, e);
               setListHandleDragImage(e);
             },
             onDragover: (e: DragEvent) => {

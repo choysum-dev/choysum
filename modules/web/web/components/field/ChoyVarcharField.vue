@@ -109,7 +109,7 @@ const props = withDefaults(
     binding?: UseField<T, V>;
 
     label?: string;
-    /** Explicit help tip; preferred over FieldsGet / meta.help when set. */
+    /** Explicit help tip; preferred over FieldsGet / meta.help when non-empty. */
     help?: string;
     rules?: RuleItem[];
 

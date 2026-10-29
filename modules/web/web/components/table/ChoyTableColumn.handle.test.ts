@@ -134,10 +134,50 @@ describe('ChoyTableColumn handle type', () => {
     expect(cell.props.title).toBe('');
 
     const preventDefault = fnRecorder();
-    cell.props.onDragstart({ preventDefault, stopPropagation: fnRecorder(), dataTransfer: { setData: fnRecorder() } });
+    const setDragImage = fnRecorder();
+    cell.props.onDragstart({
+      preventDefault,
+      stopPropagation: fnRecorder(),
+      dataTransfer: { setData: fnRecorder(), setDragImage },
+    });
     expect(preventDefault.calls.length).toBeGreaterThan(0);
     expect(handleApi.draggingIndex.value).toBeNull();
+    expect(setDragImage.calls.length).toBe(0);
     unmount();
+  });
+
+  test('skips drag image when handle reorder api is missing', async () => {
+    let registry: ColumnRegistry | null = null;
+    const Host = defineComponent({
+      setup() {
+        registry = useTableProvideColumnRegistry();
+        useTableProvideBuildContext({ getRows: () => [{ Id: '1' }], baseIndex: ref(1) });
+        // Intentionally do not provide LIST_HANDLE_API_KEY.
+        return () =>
+          h(ChoyTableColumn, {
+            type: 'handle',
+            colKey: '__handle__',
+            vColumnProps: { width: 36, align: 'center' },
+          });
+      },
+    });
+    const mounted = mountApp(Host);
+    await nextTick();
+    await flushPromises();
+    const col = registry!.columns.value[0] as any;
+    const cell = col.cellRenderer({ rowData: { Id: '1' }, rowIndex: 0 });
+    expect(cell.props.draggable).toBe('false');
+    const preventDefault = fnRecorder();
+    const setDragImage = fnRecorder();
+    cell.props.onDragstart({
+      preventDefault,
+      stopPropagation: fnRecorder(),
+      currentTarget: document.createElement('span'),
+      dataTransfer: { setData: fnRecorder(), setDragImage },
+    });
+    expect(preventDefault.calls.length).toBeGreaterThan(0);
+    expect(setDragImage.calls.length).toBe(0);
+    mounted.unmount();
   });
 
   test('skips re-registration when the column signature is unchanged', async () => {
