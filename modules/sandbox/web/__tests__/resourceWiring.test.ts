@@ -85,3 +85,13 @@ test('sandbox resource wiring: list/kanban/chart routes expose view switcher met
     viewPaths,
   });
 });
+
+test('sandbox resource wiring: PropertyDefinition List→Form routes', () => {
+  const byName = Object.fromEntries(sandboxRoutes.map(route => [String(route.name), route]));
+  expect(byName.SandboxPropertyDefinitionList?.path).toBe('sandbox/configuration/record-properties');
+  expect(byName.SandboxPropertyDefinitionCreate?.path).toBe('sandbox/configuration/record-properties/new');
+  expect(byName.SandboxPropertyDefinitionDetail?.path).toBe('sandbox/configuration/record-properties/:id');
+  expect(byName.SandboxPropertyDefinitionList?.meta).toMatchObject({ requiresAuth: true });
+  expect(byName.SandboxPropertyDefinitionCreate?.meta).toMatchObject({ requiresAuth: true });
+  expect(byName.SandboxPropertyDefinitionDetail?.meta).toMatchObject({ requiresAuth: true });
+});

@@ -3,6 +3,7 @@
 
 import { Field } from '../decorator/field';
 import { raiseDomainError } from '@/core/service/error';
+import { _lt } from '@/core/service/i18n_binder';
 import { MetadataStorage } from '../metadata/storage';
 import BaseModel from './model';
 import { registerLogicalModelName } from './logical_model_registry';
@@ -181,22 +182,61 @@ async function ensureDefinitionUniqueIndex(ctor: ModelCtor<PropertyDefinitionBas
  * `@Model('PropertyDefinition') export default class PropertyDefinition extends PropertyDefinitionBaseModel {}`
  */
 export default class PropertyDefinitionBaseModel extends BaseModel {
-  @Field({ type: 'varchar', size: 255, notNull: true, index: true })
+  @Field({
+    type: 'varchar',
+    size: 255,
+    notNull: true,
+    index: true,
+    string: _lt('Target Model', { scope: 'core.model.PropertyDefinition.fields' }),
+    help: _lt('Model that owns the properties column (e.g. SandboxRecord).', {
+      scope: 'core.model.PropertyDefinition.fields',
+    }),
+  })
   TargetModel!: string;
 
-  @Field({ type: 'varchar', size: 255, notNull: true, index: true })
+  @Field({
+    type: 'varchar',
+    size: 255,
+    notNull: true,
+    index: true,
+    string: _lt('Properties Field', { scope: 'core.model.PropertyDefinition.fields' }),
+    help: _lt('Name of the properties field on the target model (e.g. Properties).', {
+      scope: 'core.model.PropertyDefinition.fields',
+    }),
+  })
   PropertiesField!: string;
 
   /** Parent model short name; empty for App-level container. */
-  @Field({ type: 'varchar', size: 255 })
+  @Field({
+    type: 'varchar',
+    size: 255,
+    string: _lt('Container Model', { scope: 'core.model.PropertyDefinition.fields' }),
+    help: _lt(
+      'Leave empty for app-level scope; set to the parent model short name for record-scoped definitions.',
+      { scope: 'core.model.PropertyDefinition.fields' },
+    ),
+  })
   ContainerModel?: string | null;
 
   /** Parent record id; null for App-level container. */
-  @Field({ type: 'varchar', size: 64, index: true })
+  @Field({
+    type: 'varchar',
+    size: 64,
+    index: true,
+    string: _lt('Container Id', { scope: 'core.model.PropertyDefinition.fields' }),
+    help: _lt(
+      'Leave empty for app-level scope; set with Container Model to bind this definition to one parent record.',
+      { scope: 'core.model.PropertyDefinition.fields' },
+    ),
+  })
   ContainerId?: string | null;
 
   /** Property item schema array (stored as JSON; physical jsonobject). */
-  @Field({ type: 'jsonobject', notNull: true })
+  @Field({
+    type: 'jsonobject',
+    notNull: true,
+    string: _lt('Definition', { scope: 'core.model.PropertyDefinition.fields' }),
+  })
   Definition!: unknown[];
 
   static override async Create<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(

@@ -3,6 +3,10 @@
 
 import { Model } from '../decorator/model';
 import { Field } from '../decorator/field';
+import {
+  clearGlobalRequestContextProvider,
+  setGlobalRequestContextProvider,
+} from '../../../rpc/context';
 import BaseModel from './model';
 import PropertyDefinitionBaseModel from './property_definition_base_model';
 import {
@@ -128,6 +132,46 @@ test('properties resolve: App-level merges schema ⊕ value', async () => {
     expect(viaModel[0]?.name).toBe('tax_id');
     expect(viaModel[0]?.value).toBe('T2');
   } finally {
+    __clearLookupPropertyDefinitionModelForTest();
+  }
+});
+
+test('properties resolve: unwraps Definition label lang maps by request lang', async () => {
+  installDefinitionRows([
+    {
+      TargetModel: 'Pp1Partner',
+      PropertiesField: 'PartnerProperties',
+      ContainerId: null,
+      Definition: [
+        {
+          name: 'priority',
+          type: 'selection',
+          string: { en_US: 'Priority', zh_CN: '优先级' },
+          help: { en_US: 'Record urgency', zh_CN: '记录紧急程度' },
+          selection: [
+            ['high', { en_US: 'High', zh_CN: '高' }],
+            ['low', 'Low'],
+          ],
+          default: 'high',
+        },
+        { name: 'code', type: 'char', string: 'External Code' },
+      ],
+    },
+  ]);
+  setGlobalRequestContextProvider({ lang: 'zh_CN' });
+  try {
+    const items = await resolveProperties(Pp1Partner as any, { PartnerProperties: { priority: 'high' } }, 'PartnerProperties');
+    expect(items[0]?.string).toBe('优先级');
+    expect(items[0]?.help).toBe('记录紧急程度');
+    expect(items[0]?.selection).toEqual([
+      ['high', '高'],
+      ['low', 'Low'],
+    ]);
+    expect(items[0]?.value).toBe('high');
+    expect(items[0]?.default).toBe('high');
+    expect(items[1]?.string).toBe('External Code');
+  } finally {
+    clearGlobalRequestContextProvider();
     __clearLookupPropertyDefinitionModelForTest();
   }
 });

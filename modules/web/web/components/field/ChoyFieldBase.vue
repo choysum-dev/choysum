@@ -442,6 +442,11 @@ const props = withDefaults(
   defineProps<{
     binding: UseField<T, V>;
     label?: string;
+    /**
+     * Explicit help tip (translated). When non-empty, wins over FieldsGet / meta.help so
+     * form views can guarantee form-help without waiting on FieldsGet overlay.
+     */
+    help?: string;
     rules?: RuleItem[];
     /** Explicit control id; otherwise `fld-${prop}`. Label `for` and slot `inputId` share this. */
     id?: string;
@@ -541,6 +546,8 @@ const resolvedLabel = computed(() => {
 });
 
 const effectiveHelp = computed(() => {
+  const propHelp = String(props.help || '').trim();
+  if (propHelp) return propHelp;
   const leaf = leafFieldName.value;
   return resolveFieldHelp({
     meta: effectiveFieldMeta.value as { help?: string; helpText?: TermReference } | undefined,
@@ -556,14 +563,30 @@ const helpAccessibleLabel = computed(() => {
   return label ? `${label}: ${help}` : help;
 });
 
-onMounted(() => {
-  // Edit mode: ensure ACL/presentation overlay so deny-write → isReadonly is visible (T5.3).
-  if (!binding.env.isEditMode) return;
+function ensurePresentationFieldsGet() {
+  // Presentation overlay (string/help + ACL isReadonly). Run in display and edit:
+  // ClientModel static meta may omit help; FieldsGet is the source for form-help tips.
+  // Also re-run when switching display → edit so deny-write → isReadonly is visible.
   const store = modelStore.value;
   const leaf = leafFieldName.value;
   if (!store?.ensureFieldsGet || !leaf) return;
-  void store.ensureFieldsGet([leaf], [...FIELD_PRESENTATION_FIELDS_GET_ATTRS]);
+  void store
+    .ensureFieldsGet([leaf], [...FIELD_PRESENTATION_FIELDS_GET_ATTRS])
+    .catch(() => {
+      // Presentation overlay is best-effort; static meta remains in effect.
+    });
+}
+
+onMounted(() => {
+  ensurePresentationFieldsGet();
 });
+
+watch(
+  () => binding.env.isEditMode,
+  (editing) => {
+    if (editing) ensurePresentationFieldsGet();
+  }
+);
 
 const translationsOpen = ref(false);
 const companyValuesOpen = ref(false);

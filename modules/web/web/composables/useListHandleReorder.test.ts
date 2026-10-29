@@ -2,7 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ref } from 'vue';
-import { useListHandleReorder } from '@/web/web/composables/useListHandleReorder';
+import {
+  setHtml5DragImage,
+  setListHandleDragImage,
+  useListHandleReorder,
+} from '@/web/web/composables/useListHandleReorder';
 import { asyncFnRecorder, fnRecorder } from '@/web/web/__tests__/mountApp';
 
 function dragEvent(partial?: Partial<DragEvent> & { throwTransfer?: boolean }): DragEvent {
@@ -10,6 +14,7 @@ function dragEvent(partial?: Partial<DragEvent> & { throwTransfer?: boolean }): 
     effectAllowed: '',
     dropEffect: '',
     setData: fnRecorder(),
+    setDragImage: fnRecorder(),
   };
   if (partial?.throwTransfer) {
     Object.defineProperty(transfer, 'effectAllowed', {
@@ -64,14 +69,17 @@ describe('useListHandleReorder', () => {
     const start = dragEvent();
     api.onDragStart(0, start);
     expect(api.draggingIndex.value).toBe(0);
+    expect(api.overIndex.value).toBe(0);
     expect((start.dataTransfer!.setData as any).calls.length).toBe(1);
 
     const over = dragEvent();
     api.onDragOver(2, over);
     expect((over.preventDefault as any).calls.length).toBe(1);
+    expect(api.overIndex.value).toBe(2);
 
     const drop = dragEvent();
     await api.onDrop(2, drop);
+    expect(api.overIndex.value).toBeNull();
     expect(onReorder.calls.length).toBe(1);
     const [nextRows, changed] = onReorder.calls[0] as [any[], any[]];
     expect(nextRows.map((r: any) => r.payload.Id)).toEqual(['b', 'c', 'a']);
@@ -84,6 +92,70 @@ describe('useListHandleReorder', () => {
 
     api.onDragEnd();
     expect(api.draggingIndex.value).toBeNull();
+    expect(api.overIndex.value).toBeNull();
+  });
+
+  test('overIndex clears on dragEnd without drop', () => {
+    const enabled = ref(true);
+    const api = useListHandleReorder({
+      rows: () => [
+        { Id: '1', Sequence: 1 },
+        { Id: '2', Sequence: 2 },
+      ],
+      enabled,
+      onReorder: fnRecorder(),
+    });
+    api.onDragStart(0, dragEvent());
+    api.onDragOver(1, dragEvent());
+    expect(api.overIndex.value).toBe(1);
+    api.onDragEnd();
+    expect(api.draggingIndex.value).toBeNull();
+    expect(api.overIndex.value).toBeNull();
+  });
+
+  test('setHtml5DragImage / setListHandleDragImage tolerate missing transfer', () => {
+    const el = document.createElement('div');
+    el.setAttribute('role', 'row');
+    const handle = document.createElement('span');
+    el.appendChild(handle);
+    document.body.appendChild(el);
+    try {
+      expect(() => setHtml5DragImage(el, { clientX: 0, clientY: 0 } as DragEvent)).not.toThrow();
+      const setDragImage = fnRecorder();
+      const e = {
+        clientX: 10,
+        clientY: 12,
+        currentTarget: handle,
+        dataTransfer: { setDragImage },
+      } as unknown as DragEvent;
+      Object.defineProperty(el, 'getBoundingClientRect', {
+        value: () => ({ left: 0, top: 0, width: 100, height: 40 }),
+      });
+      setHtml5DragImage(el, e);
+      expect(setDragImage.calls.length).toBe(1);
+      expect(setDragImage.calls[0]).toEqual([el, 10, 12]);
+
+      const setDragImage2 = fnRecorder();
+      setListHandleDragImage({
+        clientX: 5,
+        clientY: 6,
+        currentTarget: handle,
+        dataTransfer: { setDragImage: setDragImage2 },
+      } as unknown as DragEvent);
+      expect(setDragImage2.calls.length).toBe(1);
+      expect(setDragImage2.calls[0]?.[0]).toBe(el);
+
+      // No matching ancestor → no-op.
+      const orphan = document.createElement('span');
+      expect(() =>
+        setListHandleDragImage({
+          currentTarget: orphan,
+          dataTransfer: { setDragImage: fnRecorder() },
+        } as unknown as DragEvent),
+      ).not.toThrow();
+    } finally {
+      el.remove();
+    }
   });
 
   test('no-ops when drop index equals drag index or out of range', async () => {

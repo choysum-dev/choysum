@@ -250,11 +250,285 @@ func TestForeignKeyMigratorRuntimePaths(t *testing.T) {
 		fkMigrator := newForeignKeyMigrator(runtimeScope, nil, nil).(*foreignKeyMigrator)
 		fks := []ForeignKeyInfo{{TableName: "sales_order", ColumnName: "owner_id", ReferTableName: "sales_user", ReferColumnName: "id", OnDelete: "CASCADE"}}
 
-		if err := fkMigrator.createForeignKeys(fks); err == nil || !strings.Contains(err.Error(), "create foreign key failed") {
+		err := fkMigrator.createForeignKeys(fks)
+		if err == nil || !strings.Contains(err.Error(), "create foreign key failed") {
 			t.Fatalf("expected create foreign key error, got %v", err)
+		}
+		for _, want := range []string{
+			"table=sales_order",
+			"column=owner_id",
+			"refer=sales_user.id",
+		} {
+			if !strings.Contains(err.Error(), want) {
+				t.Fatalf("expected %q in error, got %v", want, err)
+			}
 		}
 		if err := fkMigrator.MigrateForeignKeys(); err != nil {
 			t.Fatalf("MigrateForeignKeys() with no keys error = %v", err)
 		}
 	})
+
+	t.Run("skips non-stored compute many-to-one via ResolvedSpec", func(t *testing.T) {
+		runtimeScope := newSchemaTestScope(t)
+		target := &meta.Model{Name: "Line", Path: "sandbox/line.ts", ModelTable: "sandbox_line"}
+		stored := newRelationField("OwnerId", "sandbox/line", `{"type":"ManyToOne"}`)
+		virtual := newRelationField("PrimaryLineId", "sandbox/line", `{"type":"ManyToOne","index":true,"readonly":true}`)
+		if err := virtual.SetResolvedSpec(&meta.FieldResolvedSpec{
+			FieldName: "PrimaryLineId",
+			Structural: meta.FieldStructuralSpec{
+				Name:      "PrimaryLineId",
+				FieldType: "ManyToOne",
+			},
+			Migration: meta.FieldMigrationDecision{
+				StorageKind:        "virtualRuntime",
+				ShouldCreateColumn: false,
+				ReasonCode:         "COMPUTE_STORE_FALSE",
+			},
+		}); err != nil {
+			t.Fatalf("SetResolvedSpec: %v", err)
+		}
+		source := &meta.Model{
+			Name:       "Record",
+			Path:       "sandbox/record.ts",
+			ModelTable: "sandbox_record",
+			Fields:     []*meta.Field{stored, virtual},
+		}
+
+		keys, err := newForeignKeyMigrator(runtimeScope, nil, []*meta.Model{source, target}).(*foreignKeyMigrator).getManyToOneKeys()
+		if err != nil {
+			t.Fatalf("getManyToOneKeys() error = %v", err)
+		}
+		if len(keys) != 1 || keys[0].ColumnName != "owner_id" {
+			t.Fatalf("expected only stored owner_id FK, got %#v", keys)
+		}
+	})
+
+	t.Run("skips non-stored compute many-to-one via Compute decorator fallback", func(t *testing.T) {
+		runtimeScope := newSchemaTestScope(t)
+		target := &meta.Model{Name: "Line", Path: "sandbox/line.ts", ModelTable: "sandbox_line"}
+		virtual := &meta.Field{
+			Name:           "PrimaryLineId",
+			ModuleSpecPath: "sandbox/line",
+			Decorators: []*meta.Decorator{
+				{
+					Name:      "Field",
+					Arguments: []*meta.Argument{{Type: "ObjectLiteral", Value: `{"type":"ManyToOne"}`}},
+				},
+				{
+					Name: "Compute",
+					Arguments: []*meta.Argument{
+						{Type: "StringLiteral", Value: "PrimaryLineId"},
+						{Type: "ObjectLiteral", Value: `{"deps":["Lines.Id"],"store":false}`},
+					},
+				},
+			},
+		}
+		source := &meta.Model{
+			Name:       "Record",
+			Path:       "sandbox/record.ts",
+			ModelTable: "sandbox_record",
+			Fields:     []*meta.Field{virtual},
+		}
+
+		keys, err := newForeignKeyMigrator(runtimeScope, nil, []*meta.Model{source, target}).(*foreignKeyMigrator).getManyToOneKeys()
+		if err != nil {
+			t.Fatalf("getManyToOneKeys() error = %v", err)
+		}
+		if len(keys) != 0 {
+			t.Fatalf("expected no FK for store:false Compute, got %#v", keys)
+		}
+	})
+}
+
+func TestShouldSkipManyToOneForeignKey(t *testing.T) {
+	t.Parallel()
+
+	t.Run("select option skips without consulting field", func(t *testing.T) {
+		skip, err := shouldSkipManyToOneForeignKey(nil, map[string]interface{}{"select": "expr"})
+		if err != nil || !skip {
+			t.Fatalf("expected skip for select, got skip=%v err=%v", skip, err)
+		}
+	})
+
+	t.Run("nil field without select does not skip", func(t *testing.T) {
+		skip, err := shouldSkipManyToOneForeignKey(nil, map[string]interface{}{})
+		if err != nil || skip {
+			t.Fatalf("expected no skip for nil field, got skip=%v err=%v", skip, err)
+		}
+	})
+
+	t.Run("GetResolvedSpec error wraps field name", func(t *testing.T) {
+		field := &meta.Field{Name: "OwnerId", ResolvedSpec: `{not-json`}
+		_, err := shouldSkipManyToOneForeignKey(field, map[string]interface{}{})
+		if err == nil || !strings.Contains(err.Error(), "error unmarshal field resolved spec for OwnerId") {
+			t.Fatalf("expected resolved-spec unwrap error, got %v", err)
+		}
+	})
+
+	t.Run("getManyToOneKeys propagates shouldSkip ResolvedSpec errors", func(t *testing.T) {
+		runtimeScope := newSchemaTestScope(t)
+		target := &meta.Model{Name: "Line", Path: "sandbox/line.ts", ModelTable: "sandbox_line"}
+		bad := &meta.Field{
+			Name:           "OwnerId",
+			ModuleSpecPath: "sandbox/line",
+			ResolvedSpec:   `{not-json`,
+			Decorators: []*meta.Decorator{
+				{Name: "Field", Arguments: []*meta.Argument{{Type: "ObjectLiteral", Value: `{"type":"ManyToOne"}`}}},
+			},
+		}
+		source := &meta.Model{
+			Name:       "Record",
+			Path:       "sandbox/record.ts",
+			ModelTable: "sandbox_record",
+			Fields:     []*meta.Field{bad},
+		}
+		_, err := newForeignKeyMigrator(runtimeScope, nil, []*meta.Model{source, target}).(*foreignKeyMigrator).getManyToOneKeys()
+		if err == nil || !strings.Contains(err.Error(), "error unmarshal field resolved spec for OwnerId") {
+			t.Fatalf("expected getManyToOneKeys to propagate skipErr, got %v", err)
+		}
+	})
+
+	t.Run("ResolvedSpec ShouldCreateColumn true/false", func(t *testing.T) {
+		stored := &meta.Field{Name: "OwnerId"}
+		if err := stored.SetResolvedSpec(&meta.FieldResolvedSpec{
+			FieldName: "OwnerId",
+			Migration: meta.FieldMigrationDecision{ShouldCreateColumn: true},
+		}); err != nil {
+			t.Fatalf("SetResolvedSpec: %v", err)
+		}
+		skip, err := shouldSkipManyToOneForeignKey(stored, nil)
+		if err != nil || skip {
+			t.Fatalf("expected keep stored column FK, got skip=%v err=%v", skip, err)
+		}
+
+		virtual := &meta.Field{Name: "PrimaryLineId"}
+		if err := virtual.SetResolvedSpec(&meta.FieldResolvedSpec{
+			FieldName: "PrimaryLineId",
+			Migration: meta.FieldMigrationDecision{ShouldCreateColumn: false, ReasonCode: "COMPUTE_STORE_FALSE"},
+		}); err != nil {
+			t.Fatalf("SetResolvedSpec: %v", err)
+		}
+		skip, err = shouldSkipManyToOneForeignKey(virtual, nil)
+		if err != nil || !skip {
+			t.Fatalf("expected skip virtual column, got skip=%v err=%v", skip, err)
+		}
+	})
+
+	t.Run("falls back to Compute decorator when ResolvedSpec absent", func(t *testing.T) {
+		virtual := &meta.Field{
+			Name: "PrimaryLineId",
+			Decorators: []*meta.Decorator{{
+				Name: "Compute",
+				Arguments: []*meta.Argument{
+					{Type: "ObjectLiteral", Value: `{"store":false}`},
+				},
+			}},
+		}
+		skip, err := shouldSkipManyToOneForeignKey(virtual, map[string]interface{}{})
+		if err != nil || !skip {
+			t.Fatalf("expected skip via Compute store:false, got skip=%v err=%v", skip, err)
+		}
+	})
+}
+
+func TestFieldHasNonStoredComputeDecorator(t *testing.T) {
+	t.Parallel()
+
+	if fieldHasNonStoredComputeDecorator(nil) {
+		t.Fatal("nil field must be false")
+	}
+
+	cases := []struct {
+		name  string
+		field *meta.Field
+		want  bool
+	}{
+		{
+			name:  "empty decorators",
+			field: &meta.Field{Name: "X"},
+			want:  false,
+		},
+		{
+			name: "nil decorator skipped",
+			field: &meta.Field{
+				Name:       "X",
+				Decorators: []*meta.Decorator{nil},
+			},
+			want: false,
+		},
+		{
+			name: "non-Compute decorator ignored",
+			field: &meta.Field{
+				Name: "X",
+				Decorators: []*meta.Decorator{{
+					Name:      "Field",
+					Arguments: []*meta.Argument{{Type: "ObjectLiteral", Value: `{"store":false}`}},
+				}},
+			},
+			want: false,
+		},
+		{
+			name: "Compute store true does not skip",
+			field: &meta.Field{
+				Name: "X",
+				Decorators: []*meta.Decorator{{
+					Name: "Compute",
+					Arguments: []*meta.Argument{
+						{Type: "ObjectLiteral", Value: `{"store":true}`},
+					},
+				}},
+			},
+			want: false,
+		},
+		{
+			name: "Compute store false skips",
+			field: &meta.Field{
+				Name: "X",
+				Decorators: []*meta.Decorator{{
+					Name: "Compute",
+					Arguments: []*meta.Argument{
+						{Type: "StringLiteral", Value: "fn"},
+						{Type: "ObjectLiteral", Value: `{"deps":["A"],"store":false}`},
+					},
+				}},
+			},
+			want: true,
+		},
+		{
+			name: "invalid Compute JSON ignored",
+			field: &meta.Field{
+				Name: "X",
+				Decorators: []*meta.Decorator{{
+					Name: "Compute",
+					Arguments: []*meta.Argument{
+						{Type: "ObjectLiteral", Value: `{bad`},
+					},
+				}},
+			},
+			want: false,
+		},
+		{
+			name: "empty ObjectLiteral value ignored",
+			field: &meta.Field{
+				Name: "X",
+				Decorators: []*meta.Decorator{{
+					Name: "Compute",
+					Arguments: []*meta.Argument{
+						nil,
+						{Type: "ObjectLiteral", Value: ""},
+						{Type: "StringLiteral", Value: `{"store":false}`},
+					},
+				}},
+			},
+			want: false,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := fieldHasNonStoredComputeDecorator(tc.field); got != tc.want {
+				t.Fatalf("got %v, want %v", got, tc.want)
+			}
+		})
+	}
 }

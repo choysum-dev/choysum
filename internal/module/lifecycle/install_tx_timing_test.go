@@ -69,13 +69,39 @@ func TestLogModuleCommitTxHoldIncludesError(t *testing.T) {
 
 	logs := logBuf.String()
 	for _, want := range []string{
-		`"level":"INFO"`,
-		`"msg":"uninstall commit transaction hold completed"`,
+		`"level":"ERROR"`,
+		`"msg":"uninstall commit transaction hold failed"`,
 		`"error":"commit failed"`,
 	} {
 		if !strings.Contains(logs, want) {
 			t.Fatalf("expected %s in logs, got %q", want, logs)
 		}
+	}
+}
+
+func TestLogModuleCommitTxHoldPassesErrorValueForStack(t *testing.T) {
+	t.Parallel()
+	var logBuf bytes.Buffer
+	// Capture attrs via a thin handler so we can assert the error is not stringified.
+	logger := slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{
+		Level: slog.LevelError,
+		ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
+			if a.Key == "error" {
+				if a.Value.Kind() != slog.KindAny {
+					t.Fatalf("error attr must remain KindAny for stack expansion, got kind=%v", a.Value.Kind())
+				}
+				errVal, ok := a.Value.Any().(error)
+				if !ok || errVal == nil || !strings.Contains(errVal.Error(), "commit failed") {
+					t.Fatalf("error attr must remain the original error value, got %#v", a.Value.Any())
+				}
+			}
+			return a
+		},
+	}))
+	errSample := errors.New("commit failed")
+	logModuleCommitTxHold(logger, "install", "module_commit", 10*time.Millisecond, errSample)
+	if !strings.Contains(logBuf.String(), "commit failed") {
+		t.Fatalf("expected error text in logs, got %q", logBuf.String())
 	}
 }
 
@@ -127,6 +153,9 @@ func TestLogInstallOuterTxHoldIncludesError(t *testing.T) {
 	LogInstallOuterTxHold(logger, "cli", time.Now().Add(-10*time.Millisecond), errSample)
 
 	logs := logBuf.String()
+	if !strings.Contains(logs, `"level":"ERROR"`) {
+		t.Fatalf("expected ERROR level, got %q", logs)
+	}
 	if !strings.Contains(logs, `"error":"outer failed"`) {
 		t.Fatalf("expected error attr, got %q", logs)
 	}

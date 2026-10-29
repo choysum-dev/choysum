@@ -17,7 +17,11 @@ import {
   type Column,
 } from '@/web/web/composables/useTable';
 import type { TableColumnMeta } from '@/web/web/composables/useTable';
-import { LIST_HANDLE_API_KEY, type ListHandleReorderApi } from '@/web/web/composables/useListHandleReorder';
+import {
+  LIST_HANDLE_API_KEY,
+  setListHandleDragImage,
+  type ListHandleReorderApi,
+} from '@/web/web/composables/useListHandleReorder';
 import {
   onTableColumnSignatureChange,
   skipTableColumnReregister,
@@ -309,7 +313,13 @@ function buildColumn(): Column {
             title: disabled ? '' : 'Drag to reorder',
             onDragstart: (e: DragEvent) => {
               e.stopPropagation();
-              api?.onDragStart(rowIndex, e);
+              // No API / disabled: cancel the drag; do not set a drag image.
+              if (!api || !api.enabled.value) {
+                e.preventDefault();
+                return;
+              }
+              api.onDragStart(rowIndex, e);
+              setListHandleDragImage(e);
             },
             onDragover: (e: DragEvent) => {
               e.stopPropagation();

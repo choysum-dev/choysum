@@ -8,7 +8,7 @@ import {
   type FieldsGetRpcLike,
 } from './fieldsGet';
 import type { WebFieldMetadata } from './modelStore';
-import { asyncFnRecorder } from '@/web/web/__tests__/mountApp';
+import { asyncFnRecorder, syncFnRecorder } from '@/web/web/__tests__/mountApp';
 
 function makeHost(
   fieldsMetadata: Record<string, WebFieldMetadata>,
@@ -41,6 +41,53 @@ describe('createFieldsGetHelpers', () => {
     ]);
     expect(a).toBe(b);
     expect(FieldsGet.calls.length).toBe(1);
+  });
+
+  test('coalesces concurrent ensures with different fields into one FieldsGet RPC', async () => {
+    const FieldsGet = asyncFnRecorder(async (fields?: string[]) => {
+      const names = fields && fields.length ? fields : ['TargetModel', 'PropertiesField', 'ContainerModel'];
+      const out: Record<string, WebFieldMetadata> = {};
+      for (const name of names) {
+        out[name] = {
+          id: name,
+          type: 'varchar',
+          typeAnnotation: 'string',
+          help: `help:${name}`,
+        };
+      }
+      return out;
+    });
+    const helpers = createFieldsGetHelpers(
+      makeHost(
+        {
+          TargetModel: { id: '1', type: 'varchar', typeAnnotation: 'string' },
+          PropertiesField: { id: '2', type: 'varchar', typeAnnotation: 'string' },
+          ContainerModel: { id: '3', type: 'varchar', typeAnnotation: 'string' },
+        },
+        FieldsGet
+      ),
+      { getLang: () => 'zh_CN' }
+    );
+
+    const attrs = [...FIELD_PRESENTATION_FIELDS_GET_ATTRS];
+    const [a, b, c] = await Promise.all([
+      helpers.ensureFieldsGet(['TargetModel'], attrs),
+      helpers.ensureFieldsGet(['PropertiesField'], attrs),
+      helpers.ensureFieldsGet(['ContainerModel'], attrs),
+    ]);
+
+    expect(FieldsGet.calls.length).toBe(1);
+    const requested = (FieldsGet.calls[0]?.[0] as string[] | undefined) || [];
+    expect([...requested].sort()).toEqual(['ContainerModel', 'PropertiesField', 'TargetModel']);
+    expect(a.TargetModel?.help).toBe('help:TargetModel');
+    expect(b.PropertiesField?.help).toBe('help:PropertiesField');
+    expect(c.ContainerModel?.help).toBe('help:ContainerModel');
+    expect(helpers.getFieldsGetTranslatedHelp('TargetModel')).toBe('help:TargetModel');
+
+    // Later ensure for an already-overlaid field must not re-RPC.
+    FieldsGet.calls.length = 0;
+    await helpers.ensureFieldsGet(['PropertiesField'], attrs);
+    expect(FieldsGet.calls.length).toBe(0);
   });
 
   test('re-RPCs after lang change or clearFieldsGetCache (T1.6)', async () => {
@@ -166,5 +213,403 @@ describe('createFieldsGetHelpers', () => {
     await helpers.ensureFieldsGet(['Code']);
     expect(helpers.getFieldsGetTranslatedHelp('Code')).toBeUndefined();
     expect(helpers.getFieldsGetTranslatedHelp('   ')).toBeUndefined();
+  });
+
+  test('wantAll fields coalesces empty/omit names into one whole-model FieldsGet', async () => {
+    const FieldsGet = asyncFnRecorder(async (fields?: string[]) => {
+      expect(fields).toBeUndefined();
+      return {
+        Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: '名称' },
+        Code: { id: '2', type: 'varchar', typeAnnotation: 'string', string: '编码' },
+      };
+    });
+    const helpers = createFieldsGetHelpers(
+      makeHost(
+        {
+          Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'Name' },
+          Code: { id: '2', type: 'varchar', typeAnnotation: 'string', string: 'Code' },
+        },
+        FieldsGet
+      ),
+      { getLang: () => 'zh_CN' }
+    );
+
+    const [a, b] = await Promise.all([
+      helpers.ensureFieldsGet(undefined, ['string']),
+      helpers.ensureFieldsGet([], ['string']),
+      helpers.ensureFieldsGet(['  ', ''], ['string']),
+    ]);
+    expect(FieldsGet.calls.length).toBe(1);
+    expect(a.Name?.string).toBe('名称');
+    expect(b.Code?.string).toBe('编码');
+  });
+
+  test('overlay satisfaction skips RPC for already-fetched fields', async () => {
+    const FieldsGet = asyncFnRecorder(async (fields?: string[]) => {
+      const names = fields && fields.length ? fields : ['Name', 'Code'];
+      const out: Record<string, WebFieldMetadata> = {};
+      for (const name of names) {
+        out[name] = {
+          id: name,
+          type: 'varchar',
+          typeAnnotation: 'string',
+          string: `label:${name}`,
+        };
+      }
+      return out;
+    });
+    const helpers = createFieldsGetHelpers(
+      makeHost(
+        {
+          Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'Name' },
+          Code: { id: '2', type: 'varchar', typeAnnotation: 'string', string: 'Code' },
+        },
+        FieldsGet
+      ),
+      { getLang: () => 'zh_CN' }
+    );
+
+    await helpers.ensureFieldsGet(['Name', 'Code'], ['string']);
+    expect(FieldsGet.calls.length).toBe(1);
+
+    FieldsGet.calls.length = 0;
+    // Same attrs covered by overlay → no re-RPC.
+    const sameAttrs = await helpers.ensureFieldsGet(['Name'], ['string']);
+    expect(FieldsGet.calls.length).toBe(0);
+    expect(sameAttrs.Name?.string).toBe('label:Name');
+
+    // Broader attrs are not covered by the prior string-only fetch → re-RPC.
+    const broader = await helpers.ensureFieldsGet(['Name'], ['string', 'help']);
+    expect(FieldsGet.calls.length).toBe(1);
+    expect(broader.Name?.string).toBe('label:Name');
+  });
+
+  test('clearFieldsGetCache mid-flight drops waiters; subsequent ensure re-RPCs', async () => {
+    let release!: (v: Record<string, WebFieldMetadata>) => void;
+    const gate = new Promise<Record<string, WebFieldMetadata>>(resolve => {
+      release = resolve;
+    });
+    const FieldsGet = asyncFnRecorder(async () => gate);
+    const helpers = createFieldsGetHelpers(
+      makeHost({ Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'Name' } }, FieldsGet),
+      { getLang: () => 'zh_CN' }
+    );
+
+    const first = helpers.ensureFieldsGet(['Name'], ['string']);
+    // Let the coalesce microtask schedule the RPC.
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(FieldsGet.calls.length).toBe(1);
+
+    helpers.clearFieldsGetCache();
+
+    // Start a fresh ensure while the abandoned RPC is still pending so it cannot
+    // refill the cache before the second request is scheduled.
+    FieldsGet.calls.length = 0;
+    let release2!: (v: Record<string, WebFieldMetadata>) => void;
+    const gate2 = new Promise<Record<string, WebFieldMetadata>>(resolve => {
+      release2 = resolve;
+    });
+    FieldsGet.mockImplementation(async () => gate2);
+    const second = helpers.ensureFieldsGet(['Name'], ['string']);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(FieldsGet.calls.length).toBe(1);
+
+    release2({ Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: '新' } });
+    const slice = await second;
+    // Stale completion must not overwrite the newer overlay/cache.
+    release({ Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: '旧' } });
+    await Promise.race([first.then(() => 'ok', () => 'err'), Promise.resolve('cleared')]);
+    expect(slice.Name?.string).toBe('新');
+    expect(helpers.getFieldsGetTranslatedString('Name')).toBe('新');
+  });
+
+  test('clearFieldsGetCache before coalesce flush still settles waiters', async () => {
+    const FieldsGet = asyncFnRecorder(async () => ({
+      Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: '名称' },
+    }));
+    const helpers = createFieldsGetHelpers(
+      makeHost({ Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'Name' } }, FieldsGet),
+      { getLang: () => 'zh_CN' }
+    );
+
+    // Same-tick clear before the coalesce microtask — waiters must not hang.
+    const first = helpers.ensureFieldsGet(['Name'], ['string']);
+    helpers.clearFieldsGetCache();
+    const slice = await first;
+    expect(slice.Name?.string).toBe('名称');
+    expect(FieldsGet.calls.length).toBe(1);
+    // Stale RPC must not land in the post-clear cache/overlay (bucket generation).
+    expect(helpers.getFieldsGetTranslatedString('Name')).toBeUndefined();
+
+    FieldsGet.mockImplementation(async () => ({
+      Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: '新' },
+    }));
+    const second = await helpers.ensureFieldsGet(['Name'], ['string']);
+    expect(FieldsGet.calls.length).toBe(2);
+    expect(second.Name?.string).toBe('新');
+    expect(helpers.getFieldsGetTranslatedString('Name')).toBe('新');
+  });
+
+  test('concurrent ensures with an exact cached key make no RPC', async () => {
+    const FieldsGet = asyncFnRecorder(async () => ({
+      Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: '名称' },
+    }));
+    const helpers = createFieldsGetHelpers(
+      makeHost({ Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'Name' } }, FieldsGet),
+      { getLang: () => 'zh_CN' }
+    );
+    await helpers.ensureFieldsGet(['Name'], ['string']);
+    expect(FieldsGet.calls.length).toBe(1);
+
+    // The exact responseCache key remains populated, so both ensures return before coalescing.
+    FieldsGet.calls.length = 0;
+    const [a, b] = await Promise.all([
+      helpers.ensureFieldsGet(['Name'], ['string']),
+      helpers.ensureFieldsGet(['Name'], ['string']),
+    ]);
+    expect(FieldsGet.calls.length).toBe(0);
+    expect(a.Name?.string).toBe('名称');
+    expect(b.Name?.string).toBe('名称');
+  });
+
+  test('in-flight exact-key ensure reuses the pending promise', async () => {
+    let release!: (v: Record<string, any>) => void;
+    const gate = new Promise<Record<string, any>>(resolve => {
+      release = resolve;
+    });
+    const FieldsGet = asyncFnRecorder(async () => gate);
+    const helpers = createFieldsGetHelpers(
+      makeHost({ Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'Name' } }, FieldsGet),
+      { getLang: () => 'zh_CN' }
+    );
+
+    const first = helpers.ensureFieldsGet(['Name'], ['string']);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(FieldsGet.calls.length).toBe(1);
+
+    // Same cache key while RPC is pending → share inflight promise (no second RPC).
+    const second = helpers.ensureFieldsGet(['Name'], ['string']);
+    await Promise.resolve();
+    expect(FieldsGet.calls.length).toBe(1);
+
+    release({ Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: '名称' } });
+    const [a, b] = await Promise.all([first, second]);
+    expect(a.Name?.string).toBe('名称');
+    expect(b.Name?.string).toBe('名称');
+  });
+
+  test('attributes cache hit returns same slice without re-RPC', async () => {
+    const FieldsGet = asyncFnRecorder(async () => ({
+      Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: '名称', help: '帮助' },
+    }));
+    const helpers = createFieldsGetHelpers(
+      makeHost({ Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'Name' } }, FieldsGet),
+      { getLang: () => 'zh_CN' }
+    );
+    const attrs = ['string', 'help'];
+    const first = await helpers.ensureFieldsGet(['Name'], attrs);
+    const second = await helpers.ensureFieldsGet(['Name'], attrs);
+    expect(first).toBe(second);
+    expect(FieldsGet.calls.length).toBe(1);
+    expect(helpers.getFieldsGetTranslatedHelp('Name')).toBe('帮助');
+  });
+
+  test('incomplete specific-field slice is not cached under the waiter key', async () => {
+    let round = 0;
+    const FieldsGet = asyncFnRecorder(async () => {
+      round += 1;
+      if (round === 1) return {};
+      return {
+        Ghost: { id: '9', type: 'varchar', typeAnnotation: 'string', string: '幽灵' },
+      };
+    });
+    const helpers = createFieldsGetHelpers(makeHost({}, FieldsGet), { getLang: () => 'zh_CN' });
+
+    const first = await helpers.ensureFieldsGet(['Ghost'], ['string']);
+    expect(first.Ghost).toBeUndefined();
+    expect(FieldsGet.calls.length).toBe(1);
+
+    // Must re-RPC: empty incomplete result must not poison responseCache.
+    const second = await helpers.ensureFieldsGet(['Ghost'], ['string']);
+    expect(FieldsGet.calls.length).toBe(2);
+    expect(second.Ghost?.string).toBe('幽灵');
+  });
+
+  test('resolveWaiters throw rejects coalesced waiters without treating it as RPC failure alone', async () => {
+    const FieldsGet = asyncFnRecorder(async () => {
+      // Non-enumerable so mergeOverlay's Object.entries succeeds; pickFieldSlice
+      // still sees the own key via hasOwnProperty and throws on access.
+      // Coalesce two waiters so rpcKey ≠ waiter.cacheKey (otherwise the full
+      // RPC slice is served from responseCache and pickFieldSlice is skipped).
+      const slice: Record<string, any> = {
+        Code: { id: '2', type: 'varchar', typeAnnotation: 'string', string: 'Code' },
+      };
+      Object.defineProperty(slice, 'Name', {
+        enumerable: false,
+        configurable: true,
+        get() {
+          throw new Error('slice boom');
+        },
+      });
+      return slice;
+    });
+    const helpers = createFieldsGetHelpers(
+      makeHost(
+        {
+          Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'Name' },
+          Code: { id: '2', type: 'varchar', typeAnnotation: 'string', string: 'Code' },
+        },
+        FieldsGet,
+      ),
+      { getLang: () => 'zh_CN' },
+    );
+    const settled = await Promise.allSettled([
+      helpers.ensureFieldsGet(['Name'], ['string']),
+      helpers.ensureFieldsGet(['Code'], ['string']),
+    ]);
+    expect(FieldsGet.calls.length).toBe(1);
+    const rejected = settled.filter(r => r.status === 'rejected') as PromiseRejectedResult[];
+    expect(rejected.length).toBeGreaterThan(0);
+    expect(rejected.some(r => String(r.reason?.message || '').includes('slice boom'))).toBe(true);
+  });
+
+  test('reject path propagates FieldsGet failure to all coalesced waiters', async () => {
+    const FieldsGet = asyncFnRecorder(async () => {
+      throw new Error('fieldsget boom');
+    });
+    const helpers = createFieldsGetHelpers(
+      makeHost(
+        {
+          Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'Name' },
+          Code: { id: '2', type: 'varchar', typeAnnotation: 'string', string: 'Code' },
+        },
+        FieldsGet
+      ),
+      { getLang: () => 'zh_CN' }
+    );
+
+    const results = await Promise.allSettled([
+      helpers.ensureFieldsGet(['Name'], ['string']),
+      helpers.ensureFieldsGet(['Code'], ['string']),
+    ]);
+    expect(FieldsGet.calls.length).toBe(1);
+    expect(results.every(r => r.status === 'rejected')).toBe(true);
+    expect((results[0] as PromiseRejectedResult).reason?.message).toMatch(/fieldsget boom/);
+
+    // After reject, a later ensure must re-RPC (inflight cleared).
+    FieldsGet.mockImplementation(async () => ({
+      Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'ok' },
+    }));
+    FieldsGet.calls.length = 0;
+    const ok = await helpers.ensureFieldsGet(['Name'], ['string']);
+    expect(FieldsGet.calls.length).toBe(1);
+    expect(ok.Name?.string).toBe('ok');
+  });
+
+  test('sync FieldsGet throw does not permanently poison inflight', async () => {
+    let syncThrow = true;
+    // syncFnRecorder rethrows synchronously; asyncFnRecorder would wrap into reject.
+    const FieldsGet = syncFnRecorder(() => {
+      if (syncThrow) {
+        throw new Error('sync boom');
+      }
+      return {
+        Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'ok' },
+      };
+    });
+    const helpers = createFieldsGetHelpers(
+      makeHost({ Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'Name' } }, FieldsGet as any),
+      { getLang: () => 'zh_CN' }
+    );
+
+    const failed = await Promise.allSettled([helpers.ensureFieldsGet(['Name'], ['string'])]);
+    expect(failed[0]?.status).toBe('rejected');
+    expect(String((failed[0] as PromiseRejectedResult).reason?.message || '')).toMatch(/sync boom/);
+
+    syncThrow = false;
+    FieldsGet.calls.length = 0;
+    const ok = await helpers.ensureFieldsGet(['Name'], ['string']);
+    expect(FieldsGet.calls.length).toBe(1);
+    expect(ok.Name?.string).toBe('ok');
+  });
+
+  test('mergeOverlay preserves prior field attrs across narrower projections', async () => {
+    let releaseFull!: () => void;
+    let releaseNarrow!: () => void;
+    const gateFull = new Promise<void>(resolve => {
+      releaseFull = resolve;
+    });
+    const gateNarrow = new Promise<void>(resolve => {
+      releaseNarrow = resolve;
+    });
+    const FieldsGet = asyncFnRecorder(async (_fields?: string[], attributes?: string[]) => {
+      const attrs = attributes || [];
+      if (attrs.length === 0) {
+        await gateFull;
+        return {
+          Amount: {
+            id: '1',
+            type: 'float',
+            typeAnnotation: 'float',
+            string: 'Amount',
+            currencyField: 'CurrencyId',
+          },
+        };
+      }
+      await gateNarrow;
+      return {
+        Amount: { id: '1', type: 'float', typeAnnotation: 'float', string: '金额' },
+      };
+    });
+    const helpers = createFieldsGetHelpers(
+      makeHost(
+        { Amount: { id: '1', type: 'float', typeAnnotation: 'float', string: 'Amount' } },
+        FieldsGet
+      ),
+      { getLang: () => 'zh_CN' }
+    );
+
+    // Different attr buckets → two RPCs. Complete full slice first, then presentation.
+    const fullP = helpers.ensureFieldsGet(['Amount']);
+    const narrowP = helpers.ensureFieldsGet(['Amount'], ['string']);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(FieldsGet.calls.length).toBe(2);
+
+    releaseFull();
+    await fullP;
+    releaseNarrow();
+    await narrowP;
+
+    const meta = helpers.getFieldMeta('Amount');
+    expect(meta?.string).toBe('金额');
+    expect((meta as any)?.currencyField).toBe('CurrencyId');
+  });
+
+  test('resolveLang falls back when getLang throws or returns blank', async () => {
+    const FieldsGet = asyncFnRecorder(async () => ({
+      Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'Name' },
+    }));
+    const helpersThrow = createFieldsGetHelpers(
+      makeHost({ Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'N' } }, FieldsGet),
+      {
+        getLang: () => {
+          throw new Error('lang boom');
+        },
+      }
+    );
+    await helpersThrow.ensureFieldsGet(['Name']);
+    expect(helpersThrow.getFieldsGetTranslatedString('Name')).toBe('Name');
+
+    FieldsGet.calls.length = 0;
+    const helpersBlank = createFieldsGetHelpers(
+      makeHost({ Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'N' } }, FieldsGet),
+      { getLang: () => '   ' }
+    );
+    await helpersBlank.ensureFieldsGet(['Name']);
+    expect(FieldsGet.calls.length).toBe(1);
   });
 });

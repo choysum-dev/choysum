@@ -289,6 +289,19 @@ describe('ChoyFieldBase label and help', () => {
     m.unmount();
   });
 
+  test('prefers explicit help prop over meta.help', () => {
+    const m = mountBase({
+      binding: makeBinding({ string: 'Code', help: 'From meta' }),
+      help: 'From prop',
+      renderMode: 'form',
+    });
+    const help = m.q('[data-slot="form-help"]') as HTMLElement | null;
+    expect(help).toBeTruthy();
+    expect(help!.getAttribute('aria-label') || '').toContain('From prop');
+    expect(help!.getAttribute('aria-label') || '').not.toContain('From meta');
+    m.unmount();
+  });
+
   test('omits help tip when help is blank', () => {
     const m = mountBase({
       binding: makeBinding({ string: 'Code', help: '   ' }),

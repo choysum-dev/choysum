@@ -134,6 +134,7 @@ SPDX-License-Identifier: Apache-2.0
             item.start != null ? 'absolute left-0' : undefined,
             rowIsSelected(item.row) ? 'bg-muted hover:bg-muted' : undefined,
             dataTableIsGroupLikeRow(item.row) ? 'bg-muted/30' : undefined,
+            handleRowClass(item),
           ]"
           :style="{
             gridTemplateColumns: gridTemplate,
@@ -143,6 +144,8 @@ SPDX-License-Identifier: Apache-2.0
           }"
           @click="onRowClick($event, item.row)"
           @keydown="onRowKeydown($event, item.row)"
+          @dragover="onHandleRowDragOver(item, $event)"
+          @drop="onHandleRowDrop(item, $event)"
         >
           <!-- Group / more rows: one full-width cell (main OVTable RowMerge). -->
           <div
@@ -209,7 +212,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts" generic="T extends Record<string, unknown>">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import {
   FlexRender,
   getCoreRowModel,
@@ -222,6 +225,10 @@ import {
 import { useVirtualizer } from '@tanstack/vue-virtual';
 import { ChevronDown, ChevronUp } from 'lucide-vue-next';
 import { CHOY_LIST_ROW_HEIGHT } from '../../composables/listDensity';
+import {
+  LIST_HANDLE_API_KEY,
+  type ListHandleReorderApi,
+} from '../../composables/useListHandleReorder';
 import { cn, type ClassValue } from '../../lib/utils';
 import Checkbox from '../vendor/ui/checkbox/Checkbox.vue';
 import {
@@ -250,6 +257,9 @@ import {
   resolveDataTableRowId,
   type DataTableRowId
 } from './dataTableHelpers';
+
+/** Optional list/O2M handle reorder API (absent when the host has no handle column). */
+const handleApi = inject<ListHandleReorderApi | null>(LIST_HANDLE_API_KEY, null);
 
 /**
  * L3 virtual data table (TanStack Table + virtualizer).
@@ -785,6 +795,39 @@ function onRowClick(event: MouseEvent, row: (typeof rows.value)[number] | undefi
     return;
   }
   emit('row-click', row.original);
+}
+
+function handleReorderActive(): boolean {
+  return Boolean(handleApi?.enabled?.value);
+}
+
+/** Source / drop-target chrome while a list handle drag is in progress. */
+function handleRowClass(item: { index: number; row?: (typeof rows.value)[number] }): string | undefined {
+  if (!handleReorderActive() || dataTableIsGroupLikeRow(item.row)) return undefined;
+  const dragging = handleApi?.draggingIndex?.value;
+  const over = handleApi?.overIndex?.value;
+  if (dragging == null) return undefined;
+  if (dragging === item.index) return 'opacity-60';
+  if (over === item.index && over !== dragging) {
+    return 'bg-accent/40 ring-1 ring-inset ring-primary/30';
+  }
+  return undefined;
+}
+
+function onHandleRowDragOver(
+  item: { index: number; row?: (typeof rows.value)[number] },
+  event: DragEvent,
+): void {
+  if (!handleReorderActive() || dataTableIsGroupLikeRow(item.row)) return;
+  handleApi?.onDragOver(item.index, event);
+}
+
+function onHandleRowDrop(
+  item: { index: number; row?: (typeof rows.value)[number] },
+  event: DragEvent,
+): void {
+  if (!handleReorderActive() || dataTableIsGroupLikeRow(item.row)) return;
+  void handleApi?.onDrop(item.index, event);
 }
 
 type TableColumnLike = {

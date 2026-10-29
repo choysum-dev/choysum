@@ -10,9 +10,59 @@ import { renumberSequence } from '@/web/web/composables/listRowEdit';
 
 export const LIST_HANDLE_API_KEY = Symbol('list-handle-api');
 
+/** data-testid values that identify a drag-image source row/card. */
+const LIST_HANDLE_DRAG_IMAGE_TEST_IDS = new Set([
+  'choy-o2m-kanban-card',
+  'choy-properties-definition-row',
+  'choy-properties-definition-selection-row',
+]);
+
+/**
+ * Snapshot `target` as the HTML5 drag ghost (Kanban / list handle shared offset math).
+ * No-ops when dataTransfer is missing; never throws.
+ */
+export function setHtml5DragImage(target: Element, event: DragEvent): void {
+  const dt = event.dataTransfer;
+  if (!dt || !(target instanceof HTMLElement)) return;
+  try {
+    const rect = target.getBoundingClientRect();
+    const offsetX = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
+    const offsetY = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
+    dt.setDragImage(target, offsetX, offsetY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** True for list/kanban/definition row containers used as drag ghosts. */
+export function isListHandleDragImageSource(el: Element): boolean {
+  if (el.getAttribute('role') === 'row') return true;
+  const testId = el.getAttribute('data-testid');
+  return !!testId && LIST_HANDLE_DRAG_IMAGE_TEST_IDS.has(testId);
+}
+
+/**
+ * Walk ancestors from the drag handle to the nearest row/card and set the drag image.
+ * Avoids compound CSS selectors so minimal/test DOMs without full `closest` still work.
+ */
+export function setListHandleDragImage(event: DragEvent): void {
+  const start = event.currentTarget;
+  if (!(start instanceof Element)) return;
+  let node: Element | null = start;
+  while (node) {
+    if (isListHandleDragImageSource(node)) {
+      setHtml5DragImage(node, event);
+      return;
+    }
+    node = node.parentElement;
+  }
+}
+
 export type ListHandleReorderApi = {
   enabled: Ref<boolean>;
   draggingIndex: Ref<number | null>;
+  /** Row currently hovered as the drop target while dragging (null when idle). */
+  overIndex: Ref<number | null>;
   onDragStart: (index: number, event: DragEvent) => void;
   onDragOver: (index: number, event: DragEvent) => void;
   onDrop: (index: number, event: DragEvent) => void | Promise<void>;
@@ -30,7 +80,13 @@ export function useListHandleReorder<T extends Record<string, any>>(opts: {
   onReorder: (rows: T[], changed: ReturnType<typeof renumberSequence<Record<string, any>>>) => void | Promise<void>;
 }): ListHandleReorderApi {
   const draggingIndex = ref<number | null>(null);
+  const overIndex = ref<number | null>(null);
   const recordOf = (row: T) => opts.getRecord?.(row) ?? (row as Record<string, any>);
+
+  function clearDragState() {
+    draggingIndex.value = null;
+    overIndex.value = null;
+  }
 
   function onDragStart(index: number, event: DragEvent) {
     if (!opts.enabled.value) {
@@ -38,6 +94,7 @@ export function useListHandleReorder<T extends Record<string, any>>(opts: {
       return;
     }
     draggingIndex.value = index;
+    overIndex.value = index;
     try {
       event.dataTransfer!.effectAllowed = 'move';
       event.dataTransfer!.setData('text/plain', String(index));
@@ -49,6 +106,7 @@ export function useListHandleReorder<T extends Record<string, any>>(opts: {
   function onDragOver(index: number, event: DragEvent) {
     if (!opts.enabled.value || draggingIndex.value == null) return;
     event.preventDefault();
+    overIndex.value = index;
     try {
       event.dataTransfer!.dropEffect = 'move';
     } catch {
@@ -58,9 +116,12 @@ export function useListHandleReorder<T extends Record<string, any>>(opts: {
 
   async function onDrop(index: number, event: DragEvent) {
     event.preventDefault();
-    if (!opts.enabled.value) return;
+    if (!opts.enabled.value) {
+      clearDragState();
+      return;
+    }
     const from = draggingIndex.value;
-    draggingIndex.value = null;
+    clearDragState();
     if (from == null || from === index) return;
 
     const rows = opts.rows().slice();
@@ -85,12 +146,13 @@ export function useListHandleReorder<T extends Record<string, any>>(opts: {
   }
 
   function onDragEnd() {
-    draggingIndex.value = null;
+    clearDragState();
   }
 
   return {
     enabled: opts.enabled,
     draggingIndex,
+    overIndex,
     onDragStart,
     onDragOver,
     onDrop,

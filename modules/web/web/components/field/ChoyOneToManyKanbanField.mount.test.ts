@@ -256,4 +256,93 @@ describe('ChoyOneToManyKanbanField mount coverage', () => {
     expect(removeItemAt.calls.length).toBe(1);
     m.unmount();
   });
+
+  test('kanbanCardDragClass paints overIndex ring; dragstart sets HTML5 drag image', async () => {
+    installStubs('edit');
+    const { binding } = makeBinding({
+      items: [
+        { Id: '1', Name: 'Alpha', Sequence: 1 },
+        { Id: '2', Name: 'Beta', Sequence: 2 },
+      ],
+    });
+    binding.relationStore = {
+      fieldsMetadata: { Sequence: { type: 'int' } },
+    } as any;
+    const m = mountApp(ChoyOneToManyKanbanField as any, {
+      props: { binding, cardTitleField: 'Name', cardSubtitleField: '' },
+    });
+    await nextTick();
+    await flushPromises();
+
+    const state = m.setupState() as {
+      kanbanCardDragClass?: (index: number) => Record<string, boolean>;
+      kanbanReorder?: {
+        draggingIndex: { value: number | null };
+        overIndex: { value: number | null };
+      };
+      sortableEnabled?: boolean;
+    };
+    expect(state.sortableEnabled).toBe(true);
+    expect(state.kanbanCardDragClass?.(0)).toEqual({
+      'opacity-60': false,
+      'bg-accent/40 ring-1 ring-inset ring-primary/30': false,
+    });
+
+    state.kanbanReorder!.draggingIndex.value = 0;
+    state.kanbanReorder!.overIndex.value = 1;
+    expect(state.kanbanCardDragClass?.(0)).toEqual({
+      'opacity-60': true,
+      'bg-accent/40 ring-1 ring-inset ring-primary/30': false,
+    });
+    expect(state.kanbanCardDragClass?.(1)).toEqual({
+      'opacity-60': false,
+      'bg-accent/40 ring-1 ring-inset ring-primary/30': true,
+    });
+
+    const handle = m.q('[data-testid="choy-o2m-kanban-handle"]') as HTMLElement | null;
+    const card = m.q('[data-testid="choy-o2m-kanban-card"]') as HTMLElement | null;
+    expect(handle).toBeTruthy();
+    expect(card).toBeTruthy();
+    Object.defineProperty(card, 'getBoundingClientRect', {
+      value: () => ({ left: 10, top: 20, width: 120, height: 80, right: 130, bottom: 100, x: 10, y: 20, toJSON: () => ({}) }),
+    });
+    const setData = fnRecorder();
+    const setDragImage = fnRecorder();
+    const onKanbanDragStart = (m.setupState() as { onKanbanDragStart?: (index: number, event: DragEvent) => void })
+      .onKanbanDragStart;
+    expect(typeof onKanbanDragStart).toBe('function');
+    onKanbanDragStart!(0, {
+      preventDefault: fnRecorder(),
+      stopPropagation: fnRecorder(),
+      clientX: 40,
+      clientY: 50,
+      currentTarget: handle,
+      dataTransfer: { effectAllowed: '', setData, setDragImage },
+    } as unknown as DragEvent);
+    await nextTick();
+    expect(setDragImage.calls.length).toBe(1);
+    expect(setDragImage.calls[0]?.[0]).toBe(card);
+    expect(state.kanbanReorder!.draggingIndex.value).toBe(0);
+
+    // Non-sortable (showHandle=false) returns empty class map.
+    m.unmount();
+    const hidden = makeBinding({
+      items: [
+        { Id: '1', Name: 'Alpha', Sequence: 1 },
+        { Id: '2', Name: 'Beta', Sequence: 2 },
+      ],
+    });
+    hidden.binding.relationStore = {
+      fieldsMetadata: { Sequence: { type: 'int' } },
+    } as any;
+    const hm = mountApp(ChoyOneToManyKanbanField as any, {
+      props: { binding: hidden.binding, showHandle: false },
+    });
+    await nextTick();
+    const hiddenState = hm.setupState() as {
+      kanbanCardDragClass?: (index: number) => Record<string, boolean>;
+    };
+    expect(hiddenState.kanbanCardDragClass?.(0)).toEqual({});
+    hm.unmount();
+  });
 });

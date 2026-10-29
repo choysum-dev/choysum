@@ -139,6 +139,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, ref } from 'vue';
 import { useVirtualizer } from '@tanstack/vue-virtual';
 import { MoreHorizontal } from 'lucide-vue-next';
+import { setHtml5DragImage } from '@/web/web/composables/useListHandleReorder';
 import ChoyButton from '../layout/ChoyButton.vue';
 import DropdownMenu from '../vendor/ui/dropdown-menu/DropdownMenu.vue';
 import DropdownMenuContent from '../vendor/ui/dropdown-menu/DropdownMenuContent.vue';
@@ -233,16 +234,9 @@ function onCardDragStart(event: DragEvent, card: ChoyKanbanCard | undefined): vo
   event.dataTransfer.setData(CHOY_KANBAN_LANE_DRAG_MIME, encoded);
   event.dataTransfer.setData('text/plain', card.id);
   event.dataTransfer.effectAllowed = 'move';
-  // Use the card node itself: off-screen / removed ghosts often fail in Chromium
-  // and fall back to a tiny default icon. The browser snapshots at dragstart, so
-  // later virtual recycle of the source node does not blank the drag image.
+  // Card node itself: off-screen ghosts often fail in Chromium; browser snapshots at dragstart.
   const el = event.currentTarget;
-  if (el instanceof HTMLElement) {
-    const rect = el.getBoundingClientRect();
-    const offsetX = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
-    const offsetY = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
-    event.dataTransfer.setDragImage(el, offsetX, offsetY);
-  }
+  if (el instanceof HTMLElement) setHtml5DragImage(el, event);
 }
 
 function moveToLabel(label: string): string {

@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { normalizePropertyLabelForStorage, normalizeSelectionLabelsForStorage } from './properties_label_i18n';
+
 /** V1 property item types (PP7). */
 export const PROPERTIES_V1_TYPES = new Set([
   'boolean',
@@ -13,13 +15,18 @@ export const PROPERTIES_V1_TYPES = new Set([
   'selection',
 ]);
 
+/** Definition item label: plain string (≡ `{ en_US: s }`) or lang map. */
+export type PropertyLabel = string | Record<string, string>;
+
 export type PropertyItemDefinition = {
   name: string;
   type: string;
-  string?: string;
+  string?: PropertyLabel;
+  /** Field tip (plain string ≡ `{ en_US: s }` or lang map); shown next to the item label. */
+  help?: PropertyLabel;
   default?: unknown;
   readonly?: boolean;
-  selection?: Array<{ value: string; label?: string } | [string, string]>;
+  selection?: Array<{ value: string; label?: PropertyLabel } | [string, PropertyLabel]>;
   [key: string]: unknown;
 };
 
@@ -132,6 +139,32 @@ export function assertValidPropertyDefinitionItems(raw: unknown): PropertyItemDe
       );
     }
     const normalized = { ...rec, name, type } as PropertyItemDefinition;
+    if (Object.prototype.hasOwnProperty.call(rec, 'string')) {
+      try {
+        const label = normalizePropertyLabelForStorage(rec.string, `${name}.string`);
+        if (label === undefined) delete normalized.string;
+        else normalized.string = label;
+      } catch (err) {
+        throw new Error(
+          err instanceof Error
+            ? err.message
+            : `PropertyDefinition.Definition item "${name}" string label is invalid`
+        );
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(rec, 'help')) {
+      try {
+        const help = normalizePropertyLabelForStorage(rec.help, `${name}.help`);
+        if (help === undefined) delete normalized.help;
+        else normalized.help = help;
+      } catch (err) {
+        throw new Error(
+          err instanceof Error
+            ? err.message
+            : `PropertyDefinition.Definition item "${name}" help is invalid`
+        );
+      }
+    }
     if (type === 'selection') {
       const values = selectionOptionValues(rec.selection);
       if (values.length === 0) {
@@ -141,7 +174,15 @@ export function assertValidPropertyDefinitionItems(raw: unknown): PropertyItemDe
       if (values.length !== (rec.selection as unknown[]).length) {
         throw new Error(`PropertyDefinition.Definition item "${name}" selection options are invalid`);
       }
-      normalized.selection = rec.selection as PropertyItemDefinition['selection'];
+      try {
+        normalized.selection = normalizeSelectionLabelsForStorage(rec.selection, name);
+      } catch (err) {
+        throw new Error(
+          err instanceof Error
+            ? err.message
+            : `PropertyDefinition.Definition item "${name}" selection options are invalid`
+        );
+      }
     }
     if (Object.prototype.hasOwnProperty.call(rec, 'default') && !propertyValueMatchesType(normalized, rec.default)) {
       throw new Error(`PropertyDefinition.Definition item "${name}" default does not match type "${type}"`);

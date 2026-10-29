@@ -7,3 +7,5 @@ const { _lt } = createTranslate('sandbox', { scope: 'web/menu/titles' });
 
 export const sandboxRootMenuTitle = _lt('Sandbox');
 export const sandboxRecordsMenuTitle = _lt('Field Kitchen Sink');
+export const sandboxConfigurationMenuTitle = _lt('Configuration');
+export const sandboxRecordPropertiesMenuTitle = _lt('Record Properties');

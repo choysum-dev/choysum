@@ -98,8 +98,11 @@ func (m *foreignKeyMigrator) getManyToOneKeys() ([]ForeignKeyInfo, error) {
 					continue
 				}
 
-				// Treat fields with a select clause as virtual and skip FK creation.
-				if _, hasSelect := opts["select"]; hasSelect {
+				skip, skipErr := shouldSkipManyToOneForeignKey(field, opts)
+				if skipErr != nil {
+					return nil, skipErr
+				}
+				if skip {
 					continue
 				}
 
@@ -137,6 +140,51 @@ func (m *foreignKeyMigrator) getManyToOneKeys() ([]ForeignKeyInfo, error) {
 		}
 	}
 	return foreignKeys, nil
+}
+
+// shouldSkipManyToOneForeignKey skips virtual / non-column ManyToOne fields.
+// Prefer ResolvedSpec.Migration.ShouldCreateColumn (COMPUTE_STORE_FALSE, related,
+// sqlCompute, …); also skip @Field({ select }) and bare @Compute({ store: false })
+// when ResolvedSpec is absent.
+func shouldSkipManyToOneForeignKey(field *meta.Field, opts map[string]interface{}) (bool, error) {
+	if _, hasSelect := opts["select"]; hasSelect {
+		return true, nil
+	}
+	if field == nil {
+		return false, nil
+	}
+	resolved, err := field.GetResolvedSpec()
+	if err != nil {
+		return false, fmt.Errorf("error unmarshal field resolved spec for %s: %w", field.Name, err)
+	}
+	if resolved != nil {
+		return !resolved.Migration.ShouldCreateColumn, nil
+	}
+	return fieldHasNonStoredComputeDecorator(field), nil
+}
+
+func fieldHasNonStoredComputeDecorator(field *meta.Field) bool {
+	if field == nil {
+		return false
+	}
+	for _, decorator := range field.Decorators {
+		if decorator == nil || decorator.Name != "Compute" {
+			continue
+		}
+		for _, arg := range decorator.Arguments {
+			if arg == nil || arg.Type != "ObjectLiteral" || arg.Value == "" {
+				continue
+			}
+			var computeOpts map[string]interface{}
+			if err := json.Unmarshal([]byte(arg.Value), &computeOpts); err != nil {
+				continue
+			}
+			if store, ok := computeOpts["store"].(bool); ok && !store {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (m *foreignKeyMigrator) resolveTargetModelByPath(targetModelPath string) (*meta.Model, error) {
@@ -235,7 +283,14 @@ func (m *foreignKeyMigrator) createForeignKeys(foreignKeys []ForeignKeyInfo) err
 		// Create the new foreign key.
 		createSQL := builder.BuildForeignKeySQL(fk)
 		if err := db.Exec(createSQL).Error; err != nil {
-			return fmt.Errorf("create foreign key failed: %v", err)
+			return fmt.Errorf(
+				"create foreign key failed: table=%s column=%s refer=%s.%s: %w",
+				fk.TableName,
+				fk.ColumnName,
+				fk.ReferTableName,
+				fk.ReferColumnName,
+				err,
+			)
 		}
 	}
 

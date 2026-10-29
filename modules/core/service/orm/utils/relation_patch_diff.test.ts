@@ -378,6 +378,27 @@ test('buildUpdatePayload treats jsonobject via resolvedColumnType as whole-map r
   expect(payload.Meta).toEqual({ a: 9, b: 2 });
 });
 
+test('buildUpdatePayload keeps jsonobject array columns as arrays (not o2m / numeric-key maps)', () => {
+  const original = {
+    Definition: [
+      { name: 'external_code', type: 'char', string: { en_US: 'External Code', zh_CN: '外部编码' } },
+      { name: 'is_vip', type: 'boolean', string: { en_US: 'VIP', zh_CN: 'VIP' } },
+    ],
+  };
+  const current = {
+    Definition: [
+      { name: 'external_code', type: 'char', string: { en_US: 'External Code', zh_CN: '外部' } },
+      { name: 'is_vip', type: 'boolean', string: { en_US: 'VIP', zh_CN: 'VIP' } },
+    ],
+  };
+  const payload = buildUpdatePayload(original, current, {
+    Definition: { type: 'jsonobject' },
+  });
+  expect(Array.isArray(payload.Definition)).toBe(true);
+  expect(payload.Definition).toEqual(current.Definition);
+  expect((payload.Definition as object | undefined)?.constructor).toBe(Array);
+});
+
 test('buildUpdatePayload clears whole-map column when current is null', () => {
   const payload = buildUpdatePayload(
     { Properties: { a: 1 } },
