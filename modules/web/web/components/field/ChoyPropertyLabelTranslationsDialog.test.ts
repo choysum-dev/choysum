@@ -326,14 +326,37 @@ describe('ChoyPropertyLabelTranslationsDialog', () => {
       },
     );
     const onSaved = fnRecorder();
-    const m = mountDialog({ translations: badTranslations as any }, { onSaved });
+    const onUpdate = fnRecorder();
+    const m = mountDialog(
+      { translations: badTranslations as any },
+      { onSaved, 'onUpdate:modelValue': onUpdate },
+    );
     await flushPromises();
     expect(m.qa(INPUT_SEL).length).toBe(0);
     const saveBtn = m.q('[data-testid="choy-property-label-translations-save"]') as HTMLButtonElement | null;
     expect(saveBtn?.disabled).toBe(true);
-    m.click('[data-testid="choy-property-label-translations-save"]');
+    // Disabled button may not fire DOM click; exercise the empty-rows guard directly.
+    const ss = m.setupState() as { handleSave?: () => void };
+    ss.handleSave?.();
     await nextTick();
     expect(onSaved.calls.length).toBe(0);
+    expect(onUpdate.calls.some(args => args[0] === false)).toBeTruthy();
+    m.unmount();
+  });
+
+  test('save seeds empty en_US when rows omit the base language', async () => {
+    const onSaved = fnRecorder();
+    const m = mountDialog({ translations: { zh_CN: '你好' } }, { onSaved });
+    await flushPromises();
+    const ss = m.setupState() as {
+      rows?: { value: Array<{ code: string; label: string; value: string }> };
+      handleSave?: () => void;
+    };
+    // Force a rows list that has no en_US so handleSave's base-key seed runs.
+    ss.rows!.value = [{ code: 'zh_CN', label: 'Chinese', value: '你好' }];
+    ss.handleSave?.();
+    await nextTick();
+    expect(onSaved.calls[0]?.[0]).toEqual({ zh_CN: '你好', en_US: '' });
     m.unmount();
   });
 });

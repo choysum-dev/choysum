@@ -440,6 +440,77 @@ describe('ChoyPropertiesDefinitionField', () => {
     }
   });
 
+  test('reorder while edit open blocks save when original name no longer matches', async () => {
+    const binding = makeBinding({
+      definition: [
+        { name: 'a', type: 'char', string: { en_US: 'A' } },
+        { name: 'b', type: 'char', string: { en_US: 'B' } },
+      ],
+      isEditMode: true,
+    });
+    const mounted = mountApp(ChoyPropertiesDefinitionField as any, {
+      props: { binding },
+    });
+    try {
+      await flushPromises();
+      const openBtns = mounted.el.querySelectorAll('[data-testid="choy-properties-definition-open"]');
+      (openBtns[0] as HTMLElement).click();
+      await nextTick();
+      expect(mounted.q('[data-testid="choy-properties-definition-item-dialog-stub"]')).toBeTruthy();
+      const state = mounted.setupState() as {
+        onReorder?: (rows: any[]) => void;
+        drafts?: any[];
+      };
+      const drafts = Array.isArray(state.drafts) ? state.drafts : [];
+      expect(drafts.length).toBe(2);
+      state.onReorder?.([drafts[1], drafts[0]]);
+      await nextTick();
+      await flushPromises();
+      mounted.click('[data-testid="stub-item-save"]');
+      await nextTick();
+      await flushPromises();
+      expect(mounted.q('[data-testid="choy-properties-definition-item-dialog-stub"]')).toBeTruthy();
+      expect(mounted.q('[data-testid="choy-properties-definition-write-error"]')?.textContent || '').toMatch(
+        /changed while editing/i,
+      );
+      expect((binding.__value.value as any[]).map((r: any) => r.name)).toEqual(['b', 'a']);
+    } finally {
+      mounted.unmount();
+    }
+  });
+
+  test('external definition change closes open edit dialog', async () => {
+    const binding = makeBinding({
+      definition: [
+        { name: 'a', type: 'char', string: { en_US: 'A' } },
+        { name: 'b', type: 'char', string: { en_US: 'B' } },
+      ],
+      isEditMode: true,
+    });
+    const mounted = mountApp(ChoyPropertiesDefinitionField as any, {
+      props: { binding },
+    });
+    try {
+      await flushPromises();
+      const openBtns = mounted.el.querySelectorAll('[data-testid="choy-properties-definition-open"]');
+      (openBtns[0] as HTMLElement).click();
+      await nextTick();
+      expect(mounted.q('[data-testid="choy-properties-definition-item-dialog-stub"]')).toBeTruthy();
+      binding.__value.value = [
+        { name: 'b', type: 'char', string: { en_US: 'B' } },
+        { name: 'a', type: 'char', string: { en_US: 'A' } },
+      ];
+      await nextTick();
+      await flushPromises();
+      expect(mounted.q('[data-testid="choy-properties-definition-item-dialog-stub"]')).toBeFalsy();
+      expect(mounted.q('[data-testid="choy-properties-definition-write-error"]')?.textContent || '').toMatch(
+        /changed while editing/i,
+      );
+    } finally {
+      mounted.unmount();
+    }
+  });
+
   test('commitDrafts failure keeps dialog open (onDialogSaved catch return)', async () => {
     // Invalid selection JSON → draftsToDefinitionItems throws inside commitDrafts.
     stubSfc(ChoyPropertiesDefinitionItemDialog as any, {

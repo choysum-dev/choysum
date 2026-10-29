@@ -462,6 +462,8 @@ const dialogReadonly = ref(false);
 const dialogIndex = ref<number | null>(null);
 /** True when the open dialog is creating a new row (not editing by index). */
 const dialogIsNew = ref(false);
+/** Name of the row opened for edit; detects reorder while the dialog is open. */
+const dialogOriginalName = ref<string | null>(null);
 const dialogItem = ref<DefinitionEditorDraftItem | null>(null);
 
 /** Suppress draft re-sync while we write back from local drafts. */
@@ -480,9 +482,21 @@ function summaryText(raw: unknown): string {
 
 function syncDraftsFromRaw(raw: unknown) {
   const items = toView(raw);
+  // External field updates replace drafts; an open edit dialog's dialogIndex may
+  // then target a different row. Close it (new-item dialogs stay open).
+  const editWasInvalidated = dialogOpen.value && !dialogIsNew.value && !dialogReadonly.value;
+  if (editWasInvalidated) {
+    dialogOpen.value = false;
+    dialogIsNew.value = false;
+    dialogIndex.value = null;
+    dialogOriginalName.value = null;
+    dialogItem.value = null;
+  }
   previousItems.value = items;
   drafts.value = definitionItemsToDrafts(items, editorLang());
-  writeError.value = '';
+  writeError.value = editWasInvalidated
+    ? _t('This row was changed while editing; please reopen it.')
+    : '';
 }
 
 function commitDrafts(next: DefinitionEditorDraftItem[]) {
@@ -517,6 +531,7 @@ function onAdd() {
   dialogReadonly.value = false;
   dialogIsNew.value = true;
   dialogIndex.value = null;
+  dialogOriginalName.value = null;
   dialogItem.value = emptyDraftItem();
   dialogOpen.value = true;
 }
@@ -546,6 +561,7 @@ function openRow(index: number, asReadonly: boolean) {
   dialogReadonly.value = asReadonly || !canMutate.value;
   dialogIsNew.value = false;
   dialogIndex.value = index;
+  dialogOriginalName.value = String(item.name || '');
   dialogItem.value = item;
   dialogOpen.value = true;
 }
@@ -562,6 +578,10 @@ function onDialogSaved(item: DefinitionEditorDraftItem) {
       writeError.value = _t('This row was changed while editing; please reopen it.');
       return;
     }
+    if (dialogOriginalName.value != null && next[index]?.name !== dialogOriginalName.value) {
+      writeError.value = _t('This row was changed while editing; please reopen it.');
+      return;
+    }
     next[index] = item;
   }
   try {
@@ -573,6 +593,7 @@ function onDialogSaved(item: DefinitionEditorDraftItem) {
   dialogOpen.value = false;
   dialogIsNew.value = false;
   dialogIndex.value = null;
+  dialogOriginalName.value = null;
   dialogItem.value = null;
 }
 

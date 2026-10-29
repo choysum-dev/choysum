@@ -438,6 +438,44 @@ describe('createFieldsGetHelpers', () => {
     expect(second.Ghost?.string).toBe('幽灵');
   });
 
+  test('resolveWaiters throw rejects coalesced waiters without treating it as RPC failure alone', async () => {
+    const FieldsGet = asyncFnRecorder(async () => {
+      // Non-enumerable so mergeOverlay's Object.entries succeeds; pickFieldSlice
+      // still sees the own key via hasOwnProperty and throws on access.
+      // Coalesce two waiters so rpcKey ≠ waiter.cacheKey (otherwise the full
+      // RPC slice is served from responseCache and pickFieldSlice is skipped).
+      const slice: Record<string, any> = {
+        Code: { id: '2', type: 'varchar', typeAnnotation: 'string', string: 'Code' },
+      };
+      Object.defineProperty(slice, 'Name', {
+        enumerable: false,
+        configurable: true,
+        get() {
+          throw new Error('slice boom');
+        },
+      });
+      return slice;
+    });
+    const helpers = createFieldsGetHelpers(
+      makeHost(
+        {
+          Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: 'Name' },
+          Code: { id: '2', type: 'varchar', typeAnnotation: 'string', string: 'Code' },
+        },
+        FieldsGet,
+      ),
+      { getLang: () => 'zh_CN' },
+    );
+    const settled = await Promise.allSettled([
+      helpers.ensureFieldsGet(['Name'], ['string']),
+      helpers.ensureFieldsGet(['Code'], ['string']),
+    ]);
+    expect(FieldsGet.calls.length).toBe(1);
+    const rejected = settled.filter(r => r.status === 'rejected') as PromiseRejectedResult[];
+    expect(rejected.length).toBeGreaterThan(0);
+    expect(rejected.some(r => String(r.reason?.message || '').includes('slice boom'))).toBe(true);
+  });
+
   test('reject path propagates FieldsGet failure to all coalesced waiters', async () => {
     const FieldsGet = asyncFnRecorder(async () => {
       throw new Error('fieldsget boom');
