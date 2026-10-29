@@ -349,11 +349,17 @@ describe('ChoyPropertyLabelTranslationsDialog', () => {
     const m = mountDialog({ translations: { zh_CN: '你好' } }, { onSaved });
     await flushPromises();
     const ss = m.setupState() as {
-      rows?: { value: Array<{ code: string; label: string; value: string }> };
+      rows?: Array<{ code: string; label: string; value: string }> | { value: Array<{ code: string; label: string; value: string }> };
       handleSave?: () => void;
     };
-    // Force a rows list that has no en_US so handleSave's base-key seed runs.
-    ss.rows!.value = [{ code: 'zh_CN', label: 'Chinese', value: '你好' }];
+    // Mutate the live rows array (ref may be unwrapped on setupState).
+    const rows = Array.isArray((ss.rows as { value?: unknown } | undefined)?.value)
+      ? (ss.rows as { value: Array<{ code: string; label: string; value: string }> }).value
+      : (ss.rows as Array<{ code: string; label: string; value: string }>);
+    const baseIdx = rows.findIndex(r => r.code === 'en_US');
+    expect(baseIdx).toBeGreaterThanOrEqual(0);
+    rows.splice(baseIdx, 1);
+    expect(rows.some(r => r.code === 'en_US')).toBe(false);
     ss.handleSave?.();
     await nextTick();
     expect(onSaved.calls[0]?.[0]).toEqual({ zh_CN: '你好', en_US: '' });

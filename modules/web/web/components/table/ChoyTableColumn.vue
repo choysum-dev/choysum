@@ -314,7 +314,7 @@ function buildColumn(): Column {
             onDragstart: (e: DragEvent) => {
               e.stopPropagation();
               // No API / disabled: cancel the drag; do not set a drag image.
-              if (!api?.enabled?.value) {
+              if (!api || !api.enabled.value) {
                 e.preventDefault();
                 return;
               }
