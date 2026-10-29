@@ -4,7 +4,6 @@
 package store
 
 import (
-	"sort"
 	"strings"
 	"sync"
 
@@ -17,9 +16,7 @@ type Registry struct {
 	mu           sync.RWMutex
 	runtimeScope scope.Scope
 	stores       map[string]*TermStore
-	moduleToApp  map[string]string
-	// hostAppsCache is a sorted list of non-core host applications. nil means dirty.
-	hostAppsCache []string
+	moduleToApp map[string]string
 }
 
 // NewRegistry creates a registry bound to a runtime scope (shared DB).
@@ -41,7 +38,6 @@ func (r *Registry) StoreFor(application string) *TermStore {
 	}
 	s := NewTermStore(r.runtimeScope, application)
 	r.stores[application] = s
-	r.hostAppsCache = nil
 	return s
 }
 
@@ -58,86 +54,17 @@ func (r *Registry) ExistingStore(application string) (*TermStore, bool) {
 }
 
 // Lookup resolves the module's application, then looks up in that store's cache.
-// Framework module "core" is hosted in each real application's table (Scheme A);
-// Lookup probes host app stores until a hit (terms are identical across hosts).
+// Framework module "core" uses StoreFor("core") (Scheme B).
 func (r *Registry) Lookup(module, lang, scopeKey, src, kind string) (string, bool) {
 	module = strings.TrimSpace(module)
 	if module == "core" {
-		return r.lookupFrameworkModule(module, lang, scopeKey, src, kind)
+		return r.StoreFor("core").Lookup(module, lang, scopeKey, src, kind)
 	}
 	app, ok := r.ApplicationForModule(module)
-	if !ok || app == "" || app == "core" {
+	if !ok || app == "" {
 		return "", false
 	}
 	return r.StoreFor(app).Lookup(module, lang, scopeKey, src, kind)
-}
-
-func (r *Registry) lookupFrameworkModule(module, lang, scopeKey, src, kind string) (string, bool) {
-	apps := r.listHostApplications()
-	for _, app := range apps {
-		if val, ok := r.StoreFor(app).Lookup(module, lang, scopeKey, src, kind); ok {
-			return val, true
-		}
-	}
-	return "", false
-}
-
-func (r *Registry) listHostApplications() []string {
-	r.mu.RLock()
-	if r.hostAppsCache != nil {
-		out := append([]string(nil), r.hostAppsCache...)
-		r.mu.RUnlock()
-		return out
-	}
-	r.mu.RUnlock()
-
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if r.hostAppsCache != nil {
-		return append([]string(nil), r.hostAppsCache...)
-	}
-
-	seen := map[string]struct{}{}
-	for _, app := range r.moduleToApp {
-		app = strings.TrimSpace(app)
-		if app == "" || app == "core" {
-			continue
-		}
-		seen[app] = struct{}{}
-	}
-	for app := range r.stores {
-		app = strings.TrimSpace(app)
-		if app == "" || app == "core" {
-			continue
-		}
-		seen[app] = struct{}{}
-	}
-
-	// Prefer in-memory hosts for hot Lookup paths. Fall back to Module only
-	// when the registry has not observed any host application yet.
-	if len(seen) == 0 && r.runtimeScope != nil && r.runtimeScope.Session() != nil {
-		session := r.runtimeScope.Session()
-		if session.Migrator().HasTable((&meta.Module{}).TableName()) {
-			var modules []meta.Module
-			if err := session.Where("status = ?", meta.Installed).Find(&modules).Error; err == nil {
-				for _, mod := range modules {
-					app := strings.TrimSpace(mod.ApplicationStr)
-					if app == "" || app == "core" {
-						continue
-					}
-					seen[app] = struct{}{}
-				}
-			}
-		}
-	}
-
-	out := make([]string, 0, len(seen))
-	for app := range seen {
-		out = append(out, app)
-	}
-	sort.Strings(out)
-	r.hostAppsCache = append([]string(nil), out...)
-	return append([]string(nil), out...)
 }
 
 // ApplicationForModule returns the ApplicationStr for a module name.
@@ -174,7 +101,6 @@ func (r *Registry) RememberModuleApplication(module, application string) {
 	}
 	r.mu.Lock()
 	r.moduleToApp[module] = application
-	r.hostAppsCache = nil
 	r.mu.Unlock()
 }
 

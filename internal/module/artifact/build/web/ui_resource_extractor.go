@@ -48,6 +48,7 @@ const (
 	uiRuleMenuPathNoRoute            = "UI_VAL_006"
 	uiRuleRouteActionTargetInvalid   = "UI_VAL_007"
 	uiRuleMenuPathAmbiguousRoute     = "UI_VAL_008"
+	uiRuleMenuPathDuplicateMenus     = "UI_VAL_009"
 )
 
 func collectFinalUiResourceDecls(parseResults []*parser.ParserResult) (*collectedUiDecls, error) {
@@ -352,6 +353,8 @@ func buildUiResourceRelations(decls *collectedUiDecls, uiResources []*meta.UiRes
 	menuRoutes := make([]uiResourceMenuRouteRef, 0)
 	routeActions := make([]uiResourceRouteActionRef, 0)
 	seenMenuRoutes := make(map[string]bool)
+	// meta_ui_resource_menu_route.route_ui_resource_id is unique: one route → one menu.
+	menuByRouteName := make(map[string]string)
 	seenRouteActions := make(map[string]bool)
 
 	for _, id := range decls.orderedIDs {
@@ -387,12 +390,23 @@ func buildUiResourceRelations(decls *collectedUiDecls, uiResources []*meta.UiRes
 					"keep only one ROUTE with the same normalized path, or change the menu path so MENU -> ROUTE inference is unambiguous",
 				)
 			}
-			key := id + "/" + routeNames[0]
+			routeName := routeNames[0]
+			if prevMenu, exists := menuByRouteName[routeName]; exists && prevMenu != id {
+				return nil, nil, newUiRuleError(
+					uiRuleMenuPathDuplicateMenus,
+					decl,
+					id,
+					fmt.Sprintf("menus %q and %q both map to route %q (path %q); route_ui_resource_id must be unique", prevMenu, id, routeName, path),
+					"keep a single MENU leaf per route path (e.g. only web.menu.terminology_core for /web/terminology/core)",
+				)
+			}
+			key := id + "/" + routeName
 			if seenMenuRoutes[key] {
 				continue
 			}
 			seenMenuRoutes[key] = true
-			menuRoutes = append(menuRoutes, uiResourceMenuRouteRef{MenuName: id, RouteName: routeNames[0]})
+			menuByRouteName[routeName] = id
+			menuRoutes = append(menuRoutes, uiResourceMenuRouteRef{MenuName: id, RouteName: routeName})
 		case parser.UiResourceTypeRoute:
 			resource := resourceByName[id]
 			if resource == nil || resource.Type != meta.UiResourceTypeRoute {

@@ -274,22 +274,22 @@ msgctxt "web/components/field/ChoyDecimalField"
 msgid "Total digits must not exceed %s"
 msgstr ""
 
-#: web/components/field/ChoyFieldBase.vue:247
+#: web/components/field/ChoyFieldBase.vue:251
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Company values"
 msgstr ""
 
-#: web/components/field/ChoyFieldBase.vue:247
+#: web/components/field/ChoyFieldBase.vue:251
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Company values: %s"
 msgstr ""
 
-#: web/components/field/ChoyFieldBase.vue:240
+#: web/components/field/ChoyFieldBase.vue:244
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Translate field"
 msgstr ""
 
-#: web/components/field/ChoyFieldBase.vue:240
+#: web/components/field/ChoyFieldBase.vue:244
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Translate: %s"
 msgstr ""
@@ -848,12 +848,12 @@ msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "View record"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:369
+#: web/components/field/ChoyPropertiesDefinitionField.vue:374
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "%s properties"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:371
+#: web/components/field/ChoyPropertiesDefinitionField.vue:376
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "%s properties (%s, …)"
 msgstr ""
@@ -881,7 +881,7 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Name"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:365
+#: web/components/field/ChoyPropertiesDefinitionField.vue:370
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "No properties"
 msgstr ""
@@ -890,11 +890,6 @@ msgstr ""
 #: web/components/field/ChoyPropertiesDefinitionField.vue:9
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "No properties defined"
-msgstr ""
-
-#: web/components/field/ChoyPropertiesDefinitionField.vue
-msgctxt "web/components/field/ChoyPropertiesDefinitionField"
-msgid "This row was changed while editing; please reopen it."
 msgstr ""
 
 #: web/components/field/ChoyPropertiesDefinitionField.vue:16
@@ -907,6 +902,13 @@ msgstr ""
 #: web/components/field/ChoyPropertiesDefinitionField.vue:9
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Reorder"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionField.vue:394
+#: web/components/field/ChoyPropertiesDefinitionField.vue:474
+#: web/components/field/ChoyPropertiesDefinitionField.vue:478
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
+msgid "This row was changed while editing; please reopen it."
 msgstr ""
 
 #: web/components/field/ChoyPropertiesDefinitionField.vue:16
@@ -931,19 +933,19 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Default"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:84
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:88
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Edit property: %s"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:136
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:128
 #: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:32
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Help"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:126
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:147
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:118
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:139
 #: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:23
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Label"
@@ -954,22 +956,22 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Name"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:182
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:183
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Name is required"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:84
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:88
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "New property"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:82
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:86
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Property"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:82
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:86
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Property: %s"
 msgstr ""
@@ -1245,7 +1247,7 @@ msgctxt "web/components/field/PropertyLabelTranslationsDialog"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:96
+#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:101
 msgctxt "web/components/field/PropertyLabelTranslationsDialog"
 msgid "Failed to load translations"
 msgstr ""
@@ -2514,6 +2516,87 @@ msgctxt "web/import/ImportPanel"
 msgid "Upload a UTF-8 CSV. Map columns to importable fields from the catalog."
 msgstr ""
 
+#: web/menu/menus.ts:18
+msgctxt "web/menu/menus"
+msgid "Settings"
+msgstr ""
+
+#: web/menu/menus.ts:30
+#: web/menu/menus.ts:43
+msgctxt "web/menu/menus"
+msgid "Translations"
+msgstr ""
+
+#: web/menu/menus.ts:25
+msgctxt "web/menu/menus"
+msgid "core"
+msgstr ""
+
+#: web/menu/menus.ts:38
+msgctxt "web/menu/menus"
+msgid "web"
+msgstr ""
+
+#: web/pages/TranslationTermList.vue:0
+msgctxt "web/pages/TranslationTermList"
+msgid "Translations: %s"
+msgstr ""
+
+#: web/components/terminology/TerminologyExportMenu.vue:0
+msgctxt "web/components/terminology/TerminologyExportMenu"
+msgid "Download PO"
+msgstr ""
+
+#: web/components/terminology/TerminologyExportMenu.vue:0
+msgctxt "web/components/terminology/TerminologyExportMenu"
+msgid "Downloading…"
+msgstr ""
+
+#: web/components/terminology/TerminologyExportMenu.vue:0
+msgctxt "web/components/terminology/TerminologyExportMenu"
+msgid "Export PO"
+msgstr ""
+
+#: web/components/terminology/TerminologyExportMenu.vue:0
+msgctxt "web/components/terminology/TerminologyExportMenu"
+msgid "Loading modules…"
+msgstr ""
+
+#: web/components/terminology/TerminologyExportMenu.vue:0
+msgctxt "web/components/terminology/TerminologyExportMenu"
+msgid "Module"
+msgstr ""
+
+#: web/components/terminology/TerminologyExportMenu.vue:0
+msgctxt "web/components/terminology/TerminologyExportMenu"
+msgid "No modules"
+msgstr ""
+
+#: web/components/terminology/TerminologyExportMenu.vue:0
+msgctxt "web/components/terminology/TerminologyExportMenu"
+msgid "PO download failed"
+msgstr ""
+
+#: web/route/terminologyRoutes.ts:0
+msgctxt "web/route/terminologyRoutes"
+msgid "Translations"
+msgstr ""
+
+#: web/route/terminologyRoutes.ts:0
+msgctxt "web/route/terminologyRoutes"
+msgid "Translation Details"
+msgstr ""
+
+#: web/views/TranslationTermFormView.vue:0
+msgctxt "web/views/TranslationTermFormView"
+msgid "Edit Translation Term"
+msgstr ""
+
+#: web/views/TranslationTermFormView.vue:0
+msgctxt "web/views/TranslationTermFormView"
+msgid "Term"
+msgstr ""
+
 #: web/pages/ErrorView.vue:71
 msgctxt "web/pages/ErrorView"
 msgid "Access denied"
@@ -2595,37 +2678,6 @@ msgstr ""
 #: web/pages/ErrorView.vue:59
 msgctxt "web/pages/ErrorView"
 msgid "You do not have permission to access this page"
-msgstr ""
-
-#: web/pages/TerminologyEditor.vue:4
-#: web/pages/TerminologyEditor.vue:5
-msgctxt "web/pages/TerminologyEditor"
-msgid "Application"
-msgstr ""
-
-#: web/pages/TerminologyEditor.vue:10
-msgctxt "web/pages/TerminologyEditor"
-msgid "Download PO"
-msgstr ""
-
-#: web/pages/TerminologyEditor.vue:8
-msgctxt "web/pages/TerminologyEditor"
-msgid "Module (required for PO)"
-msgstr ""
-
-#: web/pages/TerminologyEditor.vue:126
-msgctxt "web/pages/TerminologyEditor"
-msgid "PO download failed"
-msgstr ""
-
-#: web/pages/TerminologyEditor.vue:24
-msgctxt "web/pages/TerminologyEditor"
-msgid "Select an application to edit terminology"
-msgstr ""
-
-#: web/pages/TerminologyEditor.vue:103
-msgctxt "web/pages/TerminologyEditor"
-msgid "TranslationTerm store is not available for this application"
 msgstr ""
 
 #: web/query/utils/filter/operators.ts:29

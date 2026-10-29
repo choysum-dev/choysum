@@ -26,14 +26,18 @@ export function useBreadcrumb() {
 
   /**
    * Navigates to a breadcrumb target when the item is clickable.
-   * App crumbs use navigateTo(app) (first navigable leaf); others use path.
+   * App / pathless folder crumbs use navigateTo(menuId); others use path.
    */
   async function navigateTo(crumb: BreadcrumbItem, index: number): Promise<void> {
     if (!crumb.clickable) return;
 
     try {
-      if (crumb.kind === 'app' && crumb.menuId && menuApi) {
-        await menuApi.navigateTo(crumb.menuId);
+      const viaMenu =
+        crumb.menuId &&
+        menuApi &&
+        (crumb.kind === 'app' || (crumb.kind === 'folder' && !crumb.path));
+      if (viaMenu) {
+        await menuApi!.navigateTo(crumb.menuId!);
         return;
       }
 

@@ -64,7 +64,6 @@ func validLang(lang string) bool {
 	return langcode.Valid(lang)
 }
 
-// frameworkModuleName is hosted in each real app's translation_term table (Scheme A).
 const frameworkModuleName = "core"
 
 func moduleBelongsToApp(modules []string, module string) bool {
@@ -81,8 +80,8 @@ func moduleBelongsToApp(modules []string, module string) bool {
 }
 
 // installedModulesByApp returns ApplicationStr → installed module names.
-// Application "core" is skipped (no core.I18n). Framework module "core" is
-// appended to every host app so GetTranslations returns Module=core terms.
+// Scheme B: includes application "core" with ["core"] when the core module is
+// installed; host apps list only their own modules (no appended "core").
 func installedModulesByApp(runtimeScope scope.Scope) (map[string][]string, error) {
 	out := map[string][]string{}
 	if runtimeScope == nil || runtimeScope.Session() == nil {
@@ -99,14 +98,10 @@ func installedModulesByApp(runtimeScope scope.Scope) (map[string][]string, error
 	}
 
 	seen := map[string]map[string]struct{}{}
-	frameworkInstalled := false
 	for _, mod := range modules {
 		app := strings.TrimSpace(mod.ApplicationStr)
 		name := strings.TrimSpace(mod.Name)
-		if name == frameworkModuleName {
-			frameworkInstalled = true
-		}
-		if app == "" || app == frameworkModuleName || name == "" {
+		if app == "" || name == "" {
 			continue
 		}
 		if seen[app] == nil {
@@ -119,12 +114,6 @@ func installedModulesByApp(runtimeScope scope.Scope) (map[string][]string, error
 		out[app] = append(out[app], name)
 	}
 	for app := range out {
-		if frameworkInstalled {
-			if _, ok := seen[app][frameworkModuleName]; !ok {
-				seen[app][frameworkModuleName] = struct{}{}
-				out[app] = append(out[app], frameworkModuleName)
-			}
-		}
 		sort.Strings(out[app])
 	}
 	return out, nil

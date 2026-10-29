@@ -17,7 +17,7 @@ const (
 
 	// SourcePackaged is set when the term comes from module PO import.
 	SourcePackaged = "packaged"
-	// SourceOverride is set when the term was edited via Terminology Editor.
+	// SourceOverride is set when the term Value was edited online (standard List/Form).
 	SourceOverride = "override"
 
 	coreApplication = "core"
@@ -76,7 +76,7 @@ func TranslationTermTableName(application string) string {
 // Production installs rely on TranslationTerm MetaModel AutoMigrate only.
 func MigrateTranslationTermTable(runtimeScope scope.Scope, application string) error {
 	application = strings.TrimSpace(application)
-	if application == "" || application == coreApplication {
+	if application == "" {
 		return nil
 	}
 	if !ValidApplicationIdentifier(application) {

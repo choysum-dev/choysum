@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { createMenuPlugin, type Menu } from '@/core/web/menu';
+import { createMenuPlugin } from '@/core/web/menu';
 import { menus } from './menus';
 
 export function createAppMenu() {

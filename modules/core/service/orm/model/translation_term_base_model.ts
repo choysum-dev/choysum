@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Field } from '../decorator/field';
+import { _lt } from '@/core/service/i18n_binder';
 import { MetadataStorage } from '../metadata/storage';
 import { raiseDomainError } from '@/core/service/error';
 import { withRecordRuleAndFieldRuleBypass } from '../repository/authz';
@@ -62,6 +63,7 @@ export type ImportPackagedResp = {
 
 const KIND_LITERAL = 'literal';
 const SOURCE_PACKAGED = 'packaged';
+const SOURCE_OVERRIDE = 'override';
 
 /** First 8 bytes hex of sha256(nil) — matches Go store.EmptyTermHash. */
 const EMPTY_TERM_HASH = 'e3b0c44298fc1c14';
@@ -299,32 +301,89 @@ export function __normalizeSourceForTest(source: string | null | undefined): str
  *
  * Unique key: (Module, Lang, Scope, Src, Kind). `GetTranslations` serves Gateway catalog reads.
  */
+function applyOverrideSourceWhenValueEdited(values: Record<string, unknown>): void {
+  if (!Object.prototype.hasOwnProperty.call(values, 'Value')) {
+    return;
+  }
+  const source = normalizeSource(values.Source as string | null | undefined);
+  if (source === SOURCE_PACKAGED) {
+    values.Source = SOURCE_OVERRIDE;
+  }
+}
+
 export default class TranslationTermBaseModel extends BaseModel {
-  @Field({ type: 'varchar', size: 255, notNull: true, index: true })
+  @Field({
+    type: 'varchar',
+    size: 255,
+    notNull: true,
+    index: true,
+    string: _lt('Application', { scope: 'core.model.TranslationTerm.fields' }),
+  })
   Application!: string;
 
-  @Field({ type: 'varchar', size: 255, notNull: true, index: true })
+  @Field({
+    type: 'varchar',
+    size: 255,
+    notNull: true,
+    index: true,
+    string: _lt('Module', { scope: 'core.model.TranslationTerm.fields' }),
+  })
   Module!: string;
 
-  @Field({ type: 'varchar', size: 32, notNull: true, index: true })
+  @Field({
+    type: 'varchar',
+    size: 32,
+    notNull: true,
+    index: true,
+    string: _lt('Language', { scope: 'core.model.TranslationTerm.fields' }),
+  })
   Lang!: string;
 
-  @Field({ type: 'varchar', size: 512, notNull: true, index: true })
+  @Field({
+    type: 'varchar',
+    size: 512,
+    notNull: true,
+    index: true,
+    string: _lt('Scope', { scope: 'core.model.TranslationTerm.fields' }),
+  })
   Scope!: string;
 
-  @Field({ type: 'text', notNull: true })
+  @Field({
+    type: 'text',
+    notNull: true,
+    string: _lt('Source text', { scope: 'core.model.TranslationTerm.fields' }),
+  })
   Src!: string;
 
-  @Field({ type: 'text' })
+  @Field({
+    type: 'text',
+    string: _lt('Translation', { scope: 'core.model.TranslationTerm.fields' }),
+  })
   Value!: string;
 
-  @Field({ type: 'varchar', size: 64, notNull: true, index: true, default: KIND_LITERAL })
+  @Field({
+    type: 'varchar',
+    size: 64,
+    notNull: true,
+    index: true,
+    default: KIND_LITERAL,
+    string: _lt('Kind', { scope: 'core.model.TranslationTerm.fields' }),
+  })
   Kind!: string;
 
-  @Field({ type: 'varchar', size: 32, notNull: true, default: SOURCE_PACKAGED })
+  @Field({
+    type: 'varchar',
+    size: 32,
+    notNull: true,
+    default: SOURCE_PACKAGED,
+    string: _lt('Source', { scope: 'core.model.TranslationTerm.fields' }),
+  })
   Source!: string;
 
-  @Field({ type: 'text' })
+  @Field({
+    type: 'text',
+    string: _lt('Comments', { scope: 'core.model.TranslationTerm.fields' }),
+  })
   Comments!: string;
 
   /**
@@ -341,7 +400,7 @@ export default class TranslationTermBaseModel extends BaseModel {
       fail('TRANSLATION_TERM_LANG_REQUIRED', 'lang is required');
     }
     const application = String(storeMeta(this)?.application || '').trim();
-    if (!application || application === 'core') {
+    if (!application) {
       const hash = EMPTY_TERM_HASH;
       const clientHash = String(req?.hash ?? '').trim();
       return {
@@ -425,8 +484,8 @@ export default class TranslationTermBaseModel extends BaseModel {
     req: ImportPackagedReq
   ): Promise<ImportPackagedResp> {
     const application = String(storeMeta(this)?.application || '').trim();
-    if (!application || application === 'core') {
-      fail('TRANSLATION_TERM_IMPORT_APP', 'ImportPackaged requires a non-core application host');
+    if (!application) {
+      fail('TRANSLATION_TERM_IMPORT_APP', 'ImportPackaged requires an application host');
     }
     const module = String(req?.module ?? '').trim();
     const lang = String(req?.lang ?? '').trim();
@@ -484,7 +543,9 @@ export default class TranslationTermBaseModel extends BaseModel {
       fields: ['Module'],
       limit: 0,
     });
-    const out = await super.Update<C, F>(condition, values, returnFields, options);
+    const patch = { ...(values as Record<string, unknown>) };
+    applyOverrideSourceWhenValueEdited(patch);
+    const out = await super.Update<C, F>(condition, patch as Partial<Updateable<RowOf<C>>>, returnFields, options);
     invalidateTerminologyModules(application, [
       ...modulesFromPayloads(values),
       ...modulesFromRows(before),
@@ -511,7 +572,9 @@ export default class TranslationTermBaseModel extends BaseModel {
         /* Browse may fail if row gone; still attempt update */
       }
     }
-    const out = await super.UpdateById<C, F>(id, values, returnFields, options);
+    const patch = { ...(values as Record<string, unknown>) };
+    applyOverrideSourceWhenValueEdited(patch);
+    const out = await super.UpdateById<C, F>(id, patch as Partial<Updateable<RowOf<C>>>, returnFields, options);
     invalidateTerminologyModules(application, [module, ...modulesFromRows(out)]);
     return out;
   }

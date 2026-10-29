@@ -172,12 +172,12 @@ msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Write"
 msgstr ""
 
-#: service/models/role_inheritance.ts:33
+#: service/models/role_inheritance.ts:36
 msgctxt "auth.model.RoleInheritance.fields"
 msgid "Child Role"
 msgstr ""
 
-#: service/models/role_inheritance.ts:22
+#: service/models/role_inheritance.ts:25
 msgctxt "auth.model.RoleInheritance.fields"
 msgid "Parent Role"
 msgstr ""
@@ -562,22 +562,22 @@ msgctxt "auth.model.User.fields"
 msgid "Username"
 msgstr ""
 
-#: service/models/user_role.ts:51
+#: service/models/user_role.ts:55
 msgctxt "auth.model.UserRole.fields"
 msgid "Company"
 msgstr ""
 
-#: service/models/user_role.ts:52
+#: service/models/user_role.ts:56
 msgctxt "auth.model.UserRole.fields"
 msgid "Leave empty to grant the role in every company the user can access."
 msgstr ""
 
-#: service/models/user_role.ts:38
+#: service/models/user_role.ts:42
 msgctxt "auth.model.UserRole.fields"
 msgid "Role"
 msgstr ""
 
-#: service/models/user_role.ts:27
+#: service/models/user_role.ts:31
 msgctxt "auth.model.UserRole.fields"
 msgid "User"
 msgstr ""
@@ -1019,54 +1019,64 @@ msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Using current session language"
 msgstr ""
 
-#: web/menu/menus.ts:18
+#: web/menu/menus.ts:27
 msgctxt "web/menu/menus"
 msgid "Access Control"
 msgstr ""
 
-#: web/menu/menus.ts:34
+#: web/menu/menus.ts:43
 msgctxt "web/menu/menus"
 msgid "Access Rules"
 msgstr ""
 
-#: web/menu/menus.ts:43
+#: web/menu/menus.ts:52
 msgctxt "web/menu/menus"
 msgid "Field Rules"
 msgstr ""
 
-#: web/menu/menus.ts:48
+#: web/menu/menus.ts:57
 msgctxt "web/menu/menus"
 msgid "Method Access"
 msgstr ""
 
-#: web/menu/menus.ts:38
+#: web/menu/menus.ts:47
 msgctxt "web/menu/menus"
 msgid "Record Rules"
 msgstr ""
 
-#: web/menu/menus.ts:28
+#: web/menu/menus.ts:37
 msgctxt "web/menu/menus"
 msgid "Role List"
 msgstr ""
 
-#: web/menu/menus.ts:60
+#: web/menu/menus.ts:69
 msgctxt "web/menu/menus"
 msgid "Session List"
 msgstr ""
 
-#: web/menu/menus.ts:65
+#: web/menu/menus.ts:74
 msgctxt "web/menu/menus"
 msgid "Token List"
 msgstr ""
 
-#: web/menu/menus.ts:53
+#: web/menu/menus.ts:62
 msgctxt "web/menu/menus"
 msgid "UI Resource Grants"
 msgstr ""
 
-#: web/menu/menus.ts:23
+#: web/menu/menus.ts:32
 msgctxt "web/menu/menus"
 msgid "User List"
+msgstr ""
+
+#: web/menu/menus.ts:25
+msgctxt "web/menu/menus"
+msgid "Translations"
+msgstr ""
+
+#: web/menu/menus.ts:18
+msgctxt "web/menu/menus"
+msgid "auth"
 msgstr ""
 
 #: web/pages/Login.vue:9
@@ -1355,147 +1365,147 @@ msgctxt "web/pages/UserList"
 msgid "User List"
 msgstr ""
 
-#: web/route/routes.ts:246
+#: web/route/routes.ts:268
 msgctxt "web/route/routes"
 msgid "Create Field Rule"
 msgstr ""
 
-#: web/route/routes.ts:289
+#: web/route/routes.ts:311
 msgctxt "web/route/routes"
 msgid "Create Method Access"
 msgstr ""
 
-#: web/route/routes.ts:203
+#: web/route/routes.ts:225
 msgctxt "web/route/routes"
 msgid "Create Record Rule"
 msgstr ""
 
-#: web/route/routes.ts:90
+#: web/route/routes.ts:97
 msgctxt "web/route/routes"
 msgid "Create Role"
 msgstr ""
 
-#: web/route/routes.ts:117
+#: web/route/routes.ts:124
 msgctxt "web/route/routes"
 msgid "Create Session"
 msgstr ""
 
-#: web/route/routes.ts:146
+#: web/route/routes.ts:158
 msgctxt "web/route/routes"
 msgid "Create Token"
 msgstr ""
 
-#: web/route/routes.ts:332
+#: web/route/routes.ts:354
 msgctxt "web/route/routes"
 msgid "Create UI Resource Grant"
 msgstr ""
 
-#: web/route/routes.ts:61
+#: web/route/routes.ts:68
 msgctxt "web/route/routes"
 msgid "Create User"
 msgstr ""
 
-#: web/route/routes.ts:232
+#: web/route/routes.ts:254
 msgctxt "web/route/routes"
 msgid "Field Rule Details"
 msgstr ""
 
-#: web/route/routes.ts:218
+#: web/route/routes.ts:240
 msgctxt "web/route/routes"
 msgid "Field Rule List"
 msgstr ""
 
-#: web/route/routes.ts:16
+#: web/route/routes.ts:23
 msgctxt "web/route/routes"
 msgid "Login"
 msgstr ""
 
-#: web/route/routes.ts:27
+#: web/route/routes.ts:34
 msgctxt "web/route/routes"
 msgid "Logout"
 msgstr ""
 
-#: web/route/routes.ts:275
+#: web/route/routes.ts:297
 msgctxt "web/route/routes"
 msgid "Method Access Details"
 msgstr ""
 
-#: web/route/routes.ts:261
+#: web/route/routes.ts:283
 msgctxt "web/route/routes"
 msgid "Method Access List"
 msgstr ""
 
-#: web/route/routes.ts:189
+#: web/route/routes.ts:211
 msgctxt "web/route/routes"
 msgid "Record Rule Details"
 msgstr ""
 
-#: web/route/routes.ts:175
+#: web/route/routes.ts:197
 msgctxt "web/route/routes"
 msgid "Record Rule List"
 msgstr ""
 
-#: web/route/routes.ts:350
+#: web/route/routes.ts:372
 msgctxt "web/route/routes"
 msgid "Register"
 msgstr ""
 
-#: web/route/routes.ts:81
+#: web/route/routes.ts:88
 msgctxt "web/route/routes"
 msgid "Role Details"
 msgstr ""
 
-#: web/route/routes.ts:72
+#: web/route/routes.ts:79
 msgctxt "web/route/routes"
 msgid "Role Management"
 msgstr ""
 
-#: web/route/routes.ts:108
+#: web/route/routes.ts:115
 msgctxt "web/route/routes"
 msgid "Session Details"
 msgstr ""
 
-#: web/route/routes.ts:99
+#: web/route/routes.ts:106
 msgctxt "web/route/routes"
 msgid "Session Management"
 msgstr ""
 
-#: web/route/routes.ts:155
+#: web/route/routes.ts:167
 msgctxt "web/route/routes"
 msgid "Token Board"
 msgstr ""
 
-#: web/route/routes.ts:164
+#: web/route/routes.ts:181
 msgctxt "web/route/routes"
 msgid "Token Chart"
 msgstr ""
 
-#: web/route/routes.ts:137
+#: web/route/routes.ts:149
 msgctxt "web/route/routes"
 msgid "Token Details"
 msgstr ""
 
-#: web/route/routes.ts:128
+#: web/route/routes.ts:135
 msgctxt "web/route/routes"
 msgid "Token Management"
 msgstr ""
 
-#: web/route/routes.ts:318
+#: web/route/routes.ts:340
 msgctxt "web/route/routes"
 msgid "UI Resource Grant Details"
 msgstr ""
 
-#: web/route/routes.ts:304
+#: web/route/routes.ts:326
 msgctxt "web/route/routes"
 msgid "UI Resource Grant List"
 msgstr ""
 
-#: web/route/routes.ts:52
+#: web/route/routes.ts:59
 msgctxt "web/route/routes"
 msgid "User Details"
 msgstr ""
 
-#: web/route/routes.ts:43
+#: web/route/routes.ts:50
 msgctxt "web/route/routes"
 msgid "User List"
 msgstr ""
@@ -2132,28 +2142,28 @@ msgctxt "web/views/SessionListView"
 msgid "Session"
 msgstr ""
 
-#: web/views/TokenChartView.vue:50
+#: web/views/TokenChartView.vue:47
 msgctxt "web/views/TokenChartView"
 msgid "Chart View"
 msgstr ""
 
-#: web/views/TokenChartView.vue:43
+#: web/views/TokenChartView.vue:40
 msgctxt "web/views/TokenChartView"
 msgid "Count"
 msgstr ""
 
-#: web/views/TokenChartView.vue:69
-#: web/views/TokenChartView.vue:74
+#: web/views/TokenChartView.vue:62
+#: web/views/TokenChartView.vue:67
 msgctxt "web/views/TokenChartView"
 msgid "Failed to load chart"
 msgstr ""
 
-#: web/views/TokenChartView.vue:49
+#: web/views/TokenChartView.vue:46
 msgctxt "web/views/TokenChartView"
 msgid "Kanban View"
 msgstr ""
 
-#: web/views/TokenChartView.vue:48
+#: web/views/TokenChartView.vue:45
 msgctxt "web/views/TokenChartView"
 msgid "List View"
 msgstr ""
@@ -2163,12 +2173,12 @@ msgctxt "web/views/TokenChartView"
 msgid "New"
 msgstr ""
 
-#: web/views/TokenChartView.vue:56
+#: web/views/TokenChartView.vue:53
 msgctxt "web/views/TokenChartView"
 msgid "Not Revoked"
 msgstr ""
 
-#: web/views/TokenChartView.vue:55
+#: web/views/TokenChartView.vue:52
 msgctxt "web/views/TokenChartView"
 msgid "Revoked"
 msgstr ""
@@ -2228,7 +2238,7 @@ msgctxt "web/views/TokenKanbanView"
 msgid "All"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:53
+#: web/views/TokenKanbanView.vue:47
 msgctxt "web/views/TokenKanbanView"
 msgid "Chart View"
 msgstr ""
@@ -2238,28 +2248,28 @@ msgctxt "web/views/TokenKanbanView"
 msgid "Expires"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:88
-#: web/views/TokenKanbanView.vue:93
+#: web/views/TokenKanbanView.vue:78
+#: web/views/TokenKanbanView.vue:83
 msgctxt "web/views/TokenKanbanView"
 msgid "Failed to load kanban"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:98
+#: web/views/TokenKanbanView.vue:88
 msgctxt "web/views/TokenKanbanView"
 msgid "Failed to load more tokens"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:52
+#: web/views/TokenKanbanView.vue:46
 msgctxt "web/views/TokenKanbanView"
 msgid "Kanban View"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:51
+#: web/views/TokenKanbanView.vue:45
 msgctxt "web/views/TokenKanbanView"
 msgid "List View"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:103
+#: web/views/TokenKanbanView.vue:93
 msgctxt "web/views/TokenKanbanView"
 msgid "Move failed; refreshed to recover"
 msgstr ""
@@ -2274,14 +2284,14 @@ msgctxt "web/views/TokenKanbanView"
 msgid "No tokens in this lane"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:81
-#: web/views/TokenKanbanView.vue:83
+#: web/views/TokenKanbanView.vue:71
+#: web/views/TokenKanbanView.vue:73
 msgctxt "web/views/TokenKanbanView"
 msgid "Not Revoked"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:80
-#: web/views/TokenKanbanView.vue:82
+#: web/views/TokenKanbanView.vue:70
+#: web/views/TokenKanbanView.vue:72
 msgctxt "web/views/TokenKanbanView"
 msgid "Revoked"
 msgstr ""
@@ -2296,7 +2306,7 @@ msgctxt "web/views/TokenKanbanView"
 msgid "View switcher"
 msgstr ""
 
-#: web/views/TokenListView.vue:50
+#: web/views/TokenListView.vue:48
 msgctxt "web/views/TokenListView"
 msgid "Chart View"
 msgstr ""
@@ -2321,12 +2331,12 @@ msgctxt "web/views/TokenListView"
 msgid "Edit Token"
 msgstr ""
 
-#: web/views/TokenListView.vue:49
+#: web/views/TokenListView.vue:47
 msgctxt "web/views/TokenListView"
 msgid "Kanban View"
 msgstr ""
 
-#: web/views/TokenListView.vue:48
+#: web/views/TokenListView.vue:46
 msgctxt "web/views/TokenListView"
 msgid "List View"
 msgstr ""

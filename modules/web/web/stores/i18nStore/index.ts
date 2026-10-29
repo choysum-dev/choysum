@@ -279,7 +279,7 @@ export const useI18nStore = defineStore(
 
     /**
      * Reload terminology for the current (or given) locale from Gateway and
-     * refresh lastTerminologyLoad for vue-i18n merge (post Terminology Editor save).
+     * refresh lastTerminologyLoad for vue-i18n merge (post terminology form save).
      */
     async function reloadTerminology(locale?: string): Promise<TerminologyLoadResult | null> {
       const targetLocale = String(locale || localeCode.value || '').trim();

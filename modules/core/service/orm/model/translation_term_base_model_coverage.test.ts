@@ -79,15 +79,22 @@ test('GetTranslations rejects missing lang and softDelete models', async () => {
   await expectRejects(TtSoftTerm.GetTranslations({ lang: 'zh_CN' }), 'TRANSLATION_TERM_SOFT_DELETE');
 });
 
-test('GetTranslations core/empty application returns empty stable hash', async () => {
-  const empty = await TtCoreTerm.GetTranslations({ lang: 'en_US' });
-  expect(empty.hash).toBe('e3b0c44298fc1c14');
-  expect(empty.unchanged).toBe(false);
-  expect(empty.terms_by_module).toEqual({});
-
-  const match = await TtCoreTerm.GetTranslations({ lang: 'en_US', hash: 'e3b0c44298fc1c14' });
-  expect(match.unchanged).toBe(true);
-  expect(match.terms_by_module).toEqual({});
+test('GetTranslations core application reads catalog like host apps', async () => {
+  __resetTranslationTermUniqueIndexTablesForTest();
+  const restore = installSearch(TtCoreTerm, [
+    { Module: 'core', Scope: 'ui', Src: 'Hi', Value: '你好', Kind: 'literal', Source: 'packaged' },
+  ]);
+  const originalChoysum = (globalThis as any).$choysum;
+  (globalThis as any).$choysum = { db: { dialectName: 'sqlite', execute: async () => undefined } };
+  try {
+    const out = await TtCoreTerm.GetTranslations({ lang: 'zh_CN', module_names: ['core'] });
+    expect(out.terms_by_module!).toEqual({ core: { ui: { Hi: '你好' } } });
+    expect(out.hash).not.toBe('e3b0c44298fc1c14');
+  } finally {
+    (globalThis as any).$choysum = originalChoysum;
+    restore();
+    __resetTranslationTermUniqueIndexTablesForTest();
+  }
 });
 
 test('GetTranslations hashes language-wide and filters module_names', async () => {

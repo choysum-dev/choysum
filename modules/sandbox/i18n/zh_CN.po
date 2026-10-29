@@ -371,6 +371,16 @@ msgctxt "sandbox.model.SandboxTag.fields"
 msgid "Name"
 msgstr "名称"
 
+#: web/menu/menus.ts:27
+msgctxt "web/menu/menus"
+msgid "Translations"
+msgstr "翻译"
+
+#: web/menu/menus.ts:20
+msgctxt "web/menu/menus"
+msgid "sandbox"
+msgstr ""
+
 #: web/menu/titles.ts:10
 msgctxt "web/menu/titles"
 msgid "Configuration"

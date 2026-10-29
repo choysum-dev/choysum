@@ -108,7 +108,7 @@ describe('breadcrumbStore L1+L2 trail', () => {
     mounted.unmount();
   });
 
-  test('pushBreadcrumb preserves L1+L2 root when trimming long stacks', () => {
+  test('pushBreadcrumb preserves menu-root prefix when trimming long stacks', () => {
     const pinia = createPinia();
     setActivePinia(pinia);
     const store = useBreadcrumbStore();
@@ -122,10 +122,18 @@ describe('breadcrumbStore L1+L2 trail', () => {
         menuId: 'app',
       },
       {
+        title: 'Folder',
+        path: '',
+        clickable: true,
+        timestamp: 2,
+        kind: 'folder',
+        menuId: 'folder',
+      },
+      {
         title: 'Leaf',
         path: '/leaf',
         clickable: true,
-        timestamp: 2,
+        timestamp: 3,
         kind: 'menu',
         menuId: 'leaf',
       },
@@ -133,11 +141,11 @@ describe('breadcrumbStore L1+L2 trail', () => {
     for (let i = 0; i < 12; i++) {
       store.pushBreadcrumb(`P${i}`, `/leaf/p${i}`);
     }
-    expect(store.breadcrumbStack[0]?.kind).toBe('app');
-    expect(store.breadcrumbStack[1]?.kind).toBe('menu');
+    expect(store.breadcrumbStack.map((i) => i.kind).slice(0, 3)).toEqual(['app', 'folder', 'menu']);
     expect(store.breadcrumbStack.length).toBeLessThanOrEqual(10);
     expect(store.breadcrumbStack[0]?.title).toBe('App');
-    expect(store.breadcrumbStack[1]?.title).toBe('Leaf');
+    expect(store.breadcrumbStack[1]?.title).toBe('Folder');
+    expect(store.breadcrumbStack[2]?.title).toBe('Leaf');
   });
 
   test('clearBreadcrumb empties stack and ids', () => {

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  getIntermediateAncestors,
   getMenuBasePath,
   getMenuId,
   getPageTitle,
@@ -26,6 +27,25 @@ test('breadcrumb_helpers getMenuId prefers id then path then name', () => {
   expect(getMenuId({ path: '/a/b' })).toBe('-a-b');
   expect(getMenuId({ name: 'Named' })).toBe('Named');
   expect(getMenuId({})).toBe('unknown-menu');
+});
+
+test('breadcrumb_helpers getIntermediateAncestors returns folders between app and leaf', () => {
+  const settings = { id: 'web.menu.settings', title: 'Settings' };
+  const core = { id: 'web.menu.settings_app_core', title: 'core', __parent: settings };
+  const leaf = {
+    id: 'web.menu.terminology_core',
+    title: 'Translations',
+    path: '/web/terminology/core',
+    __parent: core,
+  };
+  expect(getIntermediateAncestors(leaf, settings).map((m) => m.id)).toEqual([
+    'web.menu.settings_app_core',
+  ]);
+  expect(getIntermediateAncestors(leaf, null)).toEqual([]);
+  expect(getIntermediateAncestors(core, settings)).toEqual([]);
+
+  const direct = { id: 'currency', title: 'Currency', path: '/base/currencies', __parent: settings };
+  expect(getIntermediateAncestors(direct, settings)).toEqual([]);
 });
 
 test('breadcrumb_helpers getMenuBasePath falls back to the current route path', () => {

@@ -39,6 +39,52 @@ test('MenuManager: tracks nested menus by id, path, parent and export shape', ()
   expect(exported[0]?.children?.map(item => item.id)).toEqual(['child-a', 'child-b']);
 });
 
+test('MenuManager: queues children until parent is registered', () => {
+  const manager = new MenuManager();
+
+  manager.addMenu('web.menu.settings', {
+    id: 'auth.menu.settings_app',
+    title: 'auth',
+    order: 20,
+    children: [
+      {
+        id: 'auth.menu.terminology',
+        title: 'Translations',
+        path: '/web/terminology/auth',
+        order: 10,
+      },
+    ],
+  });
+  expect(manager.getMenu('auth.menu.settings_app')).toBeUndefined();
+
+  manager.addMenu({
+    id: 'web.menu.settings',
+    title: 'Settings',
+    order: 110,
+    children: [
+      {
+        id: 'web.menu.settings_app_core',
+        title: 'core',
+        order: 10,
+        children: [
+          {
+            id: 'web.menu.terminology_core',
+            title: 'Translations',
+            path: '/web/terminology/core',
+            order: 10,
+          },
+        ],
+      },
+    ],
+  });
+
+  expect(manager.getMenu('auth.menu.terminology')?.path).toBe('/web/terminology/auth');
+  expect(manager.getMenuChildren('web.menu.settings').map((item) => item.id).sort()).toEqual([
+    'auth.menu.settings_app',
+    'web.menu.settings_app_core',
+  ]);
+});
+
 test('MenuManager: replaces paths and removes descendants recursively', () => {
   const manager = new MenuManager();
 

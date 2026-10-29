@@ -13,6 +13,22 @@ const { _lt } = createTranslate('auth', { scope: 'web/menu/menus' });
  *
  * Keep menu visibility concerns separate from route registration.
  */
+/** Settings → auth → Translations when auth is installed. */
+export const authSettingsAppMenu: MenuItem = defineMenu('auth.menu.settings_app', {
+  title: _lt('auth'),
+  sequence: 20,
+  parentMenu: 'web.menu.settings',
+  defaultRoles: ['sys.admin'],
+  children: [
+    defineMenu('auth.menu.terminology', {
+      title: _lt('Translations'),
+      path: '/web/terminology/auth',
+      sequence: 10,
+      defaultRoles: ['sys.admin'],
+    }),
+  ],
+});
+
 export const authMenus: MenuItem[] = [
   defineMenu('auth.menu.root', {
     title: _lt('Access Control'),

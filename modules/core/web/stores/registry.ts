@@ -56,7 +56,7 @@ export function getStoreFactory(modelName: string): StoreFactory | undefined {
 
 /**
  * Returns registered model names (e.g. `web.TranslationTerm`).
- * Used by Terminology Editor to list apps without MetaApplication ACL.
+ * Lists registered model names (e.g. for tooling / diagnostics).
  */
 export function listRegisteredModelNames(): string[] {
   return [...storeFactoryRegistry.keys()];

@@ -6,6 +6,26 @@ import { defineMenu } from '@/core/web/resource';
 import { partnerListMenuTitle, partnerRootMenuTitle } from './titles';
 import { Users } from 'lucide-vue-next';
 
+import { createTranslate } from '@/web/web/i18n';
+
+const { _lt } = createTranslate('partner', { scope: 'web/menu/menus' });
+
+/** Settings → partner → Translations when partner is installed. */
+export const partnerSettingsAppMenu: MenuItem = defineMenu('partner.menu.settings_app', {
+  title: _lt('partner'),
+  sequence: 60,
+  parentMenu: 'web.menu.settings',
+  defaultRoles: ['sys.admin'],
+  children: [
+    defineMenu('partner.menu.terminology', {
+      title: _lt('Translations'),
+      path: '/web/terminology/partner',
+      sequence: 10,
+      defaultRoles: ['sys.admin'],
+    }),
+  ],
+});
+
 /**
  * Menu tree registered by the partner module.
  */

@@ -47,49 +47,94 @@ msgctxt "core.model.BaseModel.fields"
 msgid "Updated By"
 msgstr ""
 
-#: service/orm/model/property_definition_base_model.ts
+#: service/orm/model/property_definition_base_model.ts:226
 msgctxt "core.model.PropertyDefinition.fields"
 msgid "Container Id"
 msgstr ""
 
-#: service/orm/model/property_definition_base_model.ts
+#: service/orm/model/property_definition_base_model.ts:213
 msgctxt "core.model.PropertyDefinition.fields"
 msgid "Container Model"
 msgstr ""
 
-#: service/orm/model/property_definition_base_model.ts
+#: service/orm/model/property_definition_base_model.ts:238
 msgctxt "core.model.PropertyDefinition.fields"
 msgid "Definition"
 msgstr ""
 
-#: service/orm/model/property_definition_base_model.ts
+#: service/orm/model/property_definition_base_model.ts:214
 msgctxt "core.model.PropertyDefinition.fields"
 msgid "Leave empty for app-level scope; set to the parent model short name for record-scoped definitions."
 msgstr ""
 
-#: service/orm/model/property_definition_base_model.ts
+#: service/orm/model/property_definition_base_model.ts:227
 msgctxt "core.model.PropertyDefinition.fields"
 msgid "Leave empty for app-level scope; set with Container Model to bind this definition to one parent record."
 msgstr ""
 
-#: service/orm/model/property_definition_base_model.ts
+#: service/orm/model/property_definition_base_model.ts:191
 msgctxt "core.model.PropertyDefinition.fields"
 msgid "Model that owns the properties column (e.g. SandboxRecord)."
 msgstr ""
 
-#: service/orm/model/property_definition_base_model.ts
+#: service/orm/model/property_definition_base_model.ts:203
 msgctxt "core.model.PropertyDefinition.fields"
 msgid "Name of the properties field on the target model (e.g. Properties)."
 msgstr ""
 
-#: service/orm/model/property_definition_base_model.ts
+#: service/orm/model/property_definition_base_model.ts:202
 msgctxt "core.model.PropertyDefinition.fields"
 msgid "Properties Field"
 msgstr ""
 
-#: service/orm/model/property_definition_base_model.ts
+#: service/orm/model/property_definition_base_model.ts:190
 msgctxt "core.model.PropertyDefinition.fields"
 msgid "Target Model"
+msgstr ""
+
+#: service/orm/model/translation_term_base_model.ts:320
+msgctxt "core.model.TranslationTerm.fields"
+msgid "Application"
+msgstr ""
+
+#: service/orm/model/translation_term_base_model.ts:385
+msgctxt "core.model.TranslationTerm.fields"
+msgid "Comments"
+msgstr ""
+
+#: service/orm/model/translation_term_base_model.ts:370
+msgctxt "core.model.TranslationTerm.fields"
+msgid "Kind"
+msgstr ""
+
+#: service/orm/model/translation_term_base_model.ts:338
+msgctxt "core.model.TranslationTerm.fields"
+msgid "Language"
+msgstr ""
+
+#: service/orm/model/translation_term_base_model.ts:329
+msgctxt "core.model.TranslationTerm.fields"
+msgid "Module"
+msgstr ""
+
+#: service/orm/model/translation_term_base_model.ts:347
+msgctxt "core.model.TranslationTerm.fields"
+msgid "Scope"
+msgstr ""
+
+#: service/orm/model/translation_term_base_model.ts:379
+msgctxt "core.model.TranslationTerm.fields"
+msgid "Source"
+msgstr ""
+
+#: service/orm/model/translation_term_base_model.ts:354
+msgctxt "core.model.TranslationTerm.fields"
+msgid "Source text"
+msgstr ""
+
+#: service/orm/model/translation_term_base_model.ts:360
+msgctxt "core.model.TranslationTerm.fields"
+msgid "Translation"
 msgstr ""
 
 #: service/orm/model/model.ts:308

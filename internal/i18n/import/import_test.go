@@ -531,16 +531,23 @@ msgstr "新的"
 	}
 }
 
-func TestUpsertPackagedTermsSkipsCoreAndImportModuleI18nDir(t *testing.T) {
+func TestUpsertPackagedTermsCoreAndImportModuleI18nDir(t *testing.T) {
 	rs := newTestScope(t)
 	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
 		t.Fatal(err)
 	}
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "core"); err != nil {
+		t.Fatal(err)
+	}
 	reg := store.NewRegistry(rs)
 
-	stats, err := i18nimport.UpsertPackagedTerms(rs, reg, "core", "auth", "zh_CN", []byte(`msgid "x"`))
-	if err != nil || stats == nil || stats.Upserted != 0 {
-		t.Fatalf("core skip stats=%#v err=%v", stats, err)
+	stats, err := i18nimport.UpsertPackagedTerms(rs, reg, "core", "core", "zh_CN", []byte(`
+msgctxt "a@b"
+msgid "Hello"
+msgstr "你好"
+`))
+	if err != nil || stats == nil || stats.Upserted != 1 {
+		t.Fatalf("core upsert stats=%#v err=%v", stats, err)
 	}
 
 	root := t.TempDir()
@@ -620,7 +627,7 @@ msgstr "新值"
 func TestDeleteModuleTermsNoops(t *testing.T) {
 	rs := newTestScope(t)
 	reg := store.NewRegistry(rs)
-	if err := i18nimport.DeleteModuleTerms(rs, reg, "core", "auth"); err != nil {
+	if err := i18nimport.DeleteModuleTerms(rs, reg, "core", ""); err != nil {
 		t.Fatal(err)
 	}
 	if err := i18nimport.DeleteModuleTerms(rs, reg, "", "auth"); err != nil {

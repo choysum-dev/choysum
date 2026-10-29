@@ -2546,6 +2546,27 @@ func TestExtractUiResourceRelations_InfersMenuRouteAndRouteActions(t *testing.T)
 	}
 }
 
+func TestExtractUiResourceRelations_RejectsTwoMenusMappingToSameRoute(t *testing.T) {
+	module := &meta.Module{Name: "web"}
+	pr := &parser.ParserResult{UiResourceDecls: []*parser.UiResourceDecl{
+		{ID: "base.menu.terminology_core", Type: parser.UiResourceTypeMenu, Path: "/web/terminology/core"},
+		{ID: "web.menu.terminology_core", Type: parser.UiResourceTypeMenu, Path: "/web/terminology/core"},
+		{ID: "web.route.terminology_core_list", Type: parser.UiResourceTypeRoute, Path: "/web/terminology/core"},
+	}}
+
+	resources, _, err := extractUiResources(module, []*parser.ParserResult{pr})
+	if err != nil {
+		t.Fatalf("extract ui resources failed: %v", err)
+	}
+	_, _, err = extractUiResourceRelations(resources, []*parser.ParserResult{pr})
+	if err == nil {
+		t.Fatal("expected UI_VAL_009 when two menus share one route path")
+	}
+	if !strings.Contains(err.Error(), "[UI_VAL_009]") {
+		t.Fatalf("expected UI_VAL_009 in error, got: %v", err)
+	}
+}
+
 func TestPersistModuleUiResources_PersistsUiResourceRelations(t *testing.T) {
 	testRuntimeScope := newTestScopeWithDB(t)
 	tenv, ok := testRuntimeScope.(*testScope)
@@ -4194,6 +4215,21 @@ func TestReplaceUiResourceRelationsReplacesAndDedupesRows(t *testing.T) {
 		RouteUiResourceId: sql.NullString{String: "other_1", Valid: true},
 	}).Error; err != nil {
 		t.Fatalf("seed menu route relation: %v", err)
+	}
+	// Leftover link from a menu outside the module id set onto route_1 — must be
+	// cleared before insert (unique route_ui_resource_id).
+	if err := testRuntimeScope.db.Create(&meta.UiResource{
+		BaseModel: meta.BaseModel{Id: sql.NullString{String: "menu_foreign", Valid: true}},
+		Name:      "foreign.menu.home",
+		Type:      meta.UiResourceTypeMenu,
+	}).Error; err != nil {
+		t.Fatalf("seed foreign menu: %v", err)
+	}
+	if err := testRuntimeScope.db.Create(&meta.UiResourceMenuRoute{
+		MenuUiResourceId:  sql.NullString{String: "menu_foreign", Valid: true},
+		RouteUiResourceId: sql.NullString{String: "route_1", Valid: true},
+	}).Error; err != nil {
+		t.Fatalf("seed foreign menu route on route_1: %v", err)
 	}
 	if err := testRuntimeScope.db.Create(&meta.UiResourceRouteAction{
 		RouteUiResourceId:  sql.NullString{String: "route_1", Valid: true},

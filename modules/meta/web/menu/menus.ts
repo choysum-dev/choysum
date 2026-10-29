@@ -8,6 +8,22 @@ import { Boxes } from 'lucide-vue-next';
 
 const { _lt } = createTranslate('meta', { scope: 'web/menu/menus' });
 
+/** Settings → meta → Translations when meta is installed. */
+export const metaSettingsAppMenu: MenuItem = defineMenu('meta.menu.settings_app', {
+  title: _lt('meta'),
+  sequence: 50,
+  parentMenu: 'web.menu.settings',
+  defaultRoles: ['sys.admin'],
+  children: [
+    defineMenu('meta.menu.terminology', {
+      title: _lt('Translations'),
+      path: '/web/terminology/meta',
+      sequence: 10,
+      defaultRoles: ['sys.admin'],
+    }),
+  ],
+});
+
 export const metaMenus: MenuItem[] = [
   defineMenu('meta.menu.root', {
     title: _lt('Module Management'),

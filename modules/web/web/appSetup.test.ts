@@ -22,7 +22,7 @@ function pluginNames(app: ReturnType<typeof makeApp>): string[] {
 test('setupApp > registers plugins and exposes browser i18n globals', () => {
   const registerGlobalDirectives = fnRecorder();
   const exposeBrowserI18nOnWindow = fnRecorder();
-  const createAppRouter = fnRecorder(() => ({ name: 'router' }));
+  const createAppRouter = fnRecorder(() => ({ name: 'router', addRoute: () => undefined }));
   const createAppMenu = fnRecorder(() => ({ name: 'menu' }));
   const applyTheme = fnRecorder(() => ({ theme: 'dark', density: 'compact', dark: true }));
   const createTerminologyCatalogMerger = fnRecorder(() => fnRecorder());
@@ -120,7 +120,7 @@ test('setupApp > skips browser i18n expose without window', () => {
     exposeBrowserI18nOnWindow: exposeBrowserI18nOnWindow as any,
     notifyComposerMessagesChanged,
     trackComposerMessageRevision: ((v: unknown) => v) as any,
-    createAppRouter: (() => ({})) as any,
+    createAppRouter: (() => ({ addRoute: () => undefined })) as any,
     createAppMenu: (() => ({})) as any,
     baseUrl: '/',
     hasWindow: () => false,
@@ -165,7 +165,7 @@ test('setupApp > resolves user timezone from auth store', () => {
     exposeBrowserI18nOnWindow: fnRecorder() as any,
     notifyComposerMessagesChanged,
     trackComposerMessageRevision: ((v: unknown) => v) as any,
-    createAppRouter: (() => ({})) as any,
+    createAppRouter: (() => ({ addRoute: () => undefined })) as any,
     createAppMenu: (() => ({})) as any,
     baseUrl: '/',
     hasWindow: () => false,
@@ -212,7 +212,7 @@ test('setupApp > falls back to identity timezone and swallows auth lookup failur
     exposeBrowserI18nOnWindow: fnRecorder() as any,
     notifyComposerMessagesChanged,
     trackComposerMessageRevision: ((v: unknown) => v) as any,
-    createAppRouter: (() => ({})) as any,
+    createAppRouter: (() => ({ addRoute: () => undefined })) as any,
     createAppMenu: (() => ({})) as any,
     baseUrl: '/',
     hasWindow: () => false,
@@ -254,7 +254,7 @@ function baseDeps(overrides: Partial<SetupAppDeps> & Record<string, unknown> = {
     exposeBrowserI18nOnWindow: fnRecorder() as any,
     notifyComposerMessagesChanged,
     trackComposerMessageRevision: ((v: unknown) => v) as any,
-    createAppRouter: (() => ({})) as any,
+    createAppRouter: (() => ({ addRoute: () => undefined })) as any,
     createAppMenu: (() => ({})) as any,
     applyChoyThemePreference: (() => ({ theme: 'light', density: 'comfortable', dark: false })) as any,
     readChoyThemePreference: (() => ({ theme: 'light', density: 'comfortable' })) as any,
@@ -494,7 +494,7 @@ test('setupApp > uses production defaults for omitted deps', () => {
     })) as any,
     createTerminologyCatalogMerger: (() => fnRecorder()) as any,
     exposeBrowserI18nOnWindow: exposeBrowserI18nOnWindow as any,
-    createAppRouter: (() => ({})) as any,
+    createAppRouter: (() => ({ addRoute: () => undefined })) as any,
     createAppMenu: (() => ({})) as any,
   });
 

@@ -44,6 +44,6 @@ as `() => _t(...)`; no coercible lazy translation objects exist.
 Language switch (D9 / S6): default `location.reload`. Soft remount is experimental
 (`choysum.web.i18n.remountMode=remount`) and only clears menu/global scoped stores.
 
-Optional admin PO download: `GET /web/i18n/po?lang=&application=` (Terminology Editor).
+Optional admin PO download: `GET /web/i18n/po?lang=&application=&module=` (terminology List page).
 
 The handwritten pack under `web/web/i18n/source` is the English msgid baseline for soft UI keys. Terminology authority is this PO tree via Gateway (`_t` / `_lt`).

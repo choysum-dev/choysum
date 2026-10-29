@@ -13,8 +13,9 @@ import (
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
-// BundleInjectAppModels materializes C2 inject sources for each distinct non-core
-// application represented by modules. The caller applies returned Effects.
+// BundleInjectAppModels materializes C2 inject sources for each distinct
+// application represented by modules (core only for TranslationTerm). The caller
+// applies returned Effects.
 func BundleInjectAppModels(sess *Session, modules []*meta.Module) (Effects, error) {
 	var out Effects
 	if sess == nil {
@@ -56,7 +57,7 @@ func bundleSpec(sess *Session, spec *Spec, modules []*meta.Module) (Effects, err
 			continue
 		}
 		app := strings.TrimSpace(mod.ApplicationStr)
-		if app == "" || app == "core" {
+		if app == "" || (app == "core" && spec.ModelName != "TranslationTerm") {
 			continue
 		}
 		if strings.TrimSpace(mod.Path) == "" {

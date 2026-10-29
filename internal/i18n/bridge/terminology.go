@@ -134,7 +134,7 @@ func invalidateModuleFunc(reg *store.Registry) func(ctx *quickjs.Context, this *
 		}
 		application := strings.TrimSpace(args[0].String())
 		module := strings.TrimSpace(args[1].String())
-		if application == "" || application == "core" || module == "" {
+		if application == "" || module == "" {
 			return ctx.Bool(false)
 		}
 		ts, ok := reg.ExistingStore(application)
@@ -185,7 +185,7 @@ func performUpsertPackagedTerms(ctx *quickjs.Context, jse *quickjsengine.Quickjs
 	if err != nil {
 		return ctx.NewError(err)
 	}
-	if application == "" || application == "core" || module == "" || lang == "" {
+	if application == "" || module == "" || lang == "" {
 		return ctx.NewError(fmt.Errorf("upsertPackagedTerms: application, module, and lang are required"))
 	}
 

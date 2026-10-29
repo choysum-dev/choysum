@@ -11,6 +11,26 @@ import {
   sandboxRootMenuTitle,
 } from './titles';
 
+import { createTranslate } from '@/web/web/i18n';
+
+const { _lt } = createTranslate('sandbox', { scope: 'web/menu/menus' });
+
+/** Settings → sandbox → Translations when sandbox is installed. */
+export const sandboxSettingsAppMenu: MenuItem = defineMenu('sandbox.menu.settings_app', {
+  title: _lt('sandbox'),
+  sequence: 110,
+  parentMenu: 'web.menu.settings',
+  defaultRoles: ['sys.admin'],
+  children: [
+    defineMenu('sandbox.menu.terminology', {
+      title: _lt('Translations'),
+      path: '/web/terminology/sandbox',
+      sequence: 10,
+      defaultRoles: ['sys.admin'],
+    }),
+  ],
+});
+
 export const sandboxMenus: MenuItem[] = [
   defineMenu('sandbox.menu.root', {
     title: sandboxRootMenuTitle,

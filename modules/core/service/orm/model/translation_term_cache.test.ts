@@ -40,12 +40,11 @@ test('getChoysumI18nBridge reads global', () => {
   }
 });
 
-test('invalidateTerminologyModule early-returns for empty/core and missing bridge method', () => {
+test('invalidateTerminologyModule early-returns for empty app/module and missing bridge method', () => {
   const root = globalThis as any;
   const prev = root.$choysum;
   try {
     expect(() => invalidateTerminologyModule('', 'auth')).not.toThrow();
-    expect(() => invalidateTerminologyModule('core', 'auth')).not.toThrow();
     expect(() => invalidateTerminologyModule('auth', '')).not.toThrow();
     root.$choysum = { i18n: {} };
     expect(() => invalidateTerminologyModule('auth', 'auth')).not.toThrow();
@@ -149,11 +148,6 @@ async function expectRejects(promise: Promise<unknown>, code: string) {
 }
 
 test('ImportPackaged validates host application and args', async () => {
-  await expectRejects(
-    TtCoreInvTerm.ImportPackaged({ module: 'auth', lang: 'zh_CN', poText: 'x' }),
-    'TRANSLATION_TERM_IMPORT_APP'
-  );
-
   const meta = MetadataStorage.instance.getModelMetadata(TtInvTerm as any) as any;
   const prevApp = meta.application;
   meta.application = '';

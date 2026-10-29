@@ -63,7 +63,7 @@ func UpsertPackagedTerms(runtimeScope scope.Scope, reg *store.Registry, applicat
 	lang = strings.TrimSpace(lang)
 	stats := &ImportStats{Lang: lang}
 
-	if application == "" || application == "core" || module == "" || lang == "" {
+	if application == "" || module == "" || lang == "" {
 		return stats, nil
 	}
 	if runtimeScope == nil || runtimeScope.Session() == nil {
@@ -172,11 +172,7 @@ func UpsertPackagedTerms(runtimeScope scope.Scope, reg *store.Registry, applicat
 	}
 
 	if reg != nil {
-		// Framework module "core" is hosted in every real app table; never pin
-		// module→application to a single host (breaks multi-app GetTranslations).
-		if module != "core" {
-			reg.RememberModuleApplication(module, application)
-		}
+		reg.RememberModuleApplication(module, application)
 		ts := reg.StoreFor(application)
 		ts.InvalidateModule(module)
 		if affectedLangs == nil {
@@ -363,7 +359,7 @@ func ImportModuleI18nDir(runtimeScope scope.Scope, reg *store.Registry, applicat
 func DeleteModuleTerms(runtimeScope scope.Scope, reg *store.Registry, application, module string) error {
 	application = strings.TrimSpace(application)
 	module = strings.TrimSpace(module)
-	if application == "" || application == "core" || module == "" {
+	if application == "" || module == "" {
 		return nil
 	}
 	if runtimeScope == nil || runtimeScope.Session() == nil {

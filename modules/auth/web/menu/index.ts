@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { authMenus } from './menus';
+import { authMenus, authSettingsAppMenu } from './menus';
 import type { ChoysumWebApp } from '@/core/web/application';
 
 /**
@@ -12,4 +12,6 @@ export function setupAppMenu(app: ChoysumWebApp) {
   for (const item of authMenus) {
     menu.addMenu(item);
   }
+  // Parent Settings is registered by web; only appears when auth web is installed.
+  menu.addMenu('web.menu.settings', authSettingsAppMenu);
 }

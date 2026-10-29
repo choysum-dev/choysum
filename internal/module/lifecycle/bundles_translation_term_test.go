@@ -26,8 +26,11 @@ func TestPickTranslationTermOwnerModule_EmptyEntryAllowed(t *testing.T) {
 	if owner == nil || owner.Name != "web" {
 		t.Fatalf("expected empty-entry web owner, got %#v", owner)
 	}
-	if pickTranslationTermOwnerModule("core", mods) != nil {
-		t.Fatal("core must not pick an owner")
+	coreMods := []*meta.Module{
+		{Name: "core", Path: "/m/core", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"},
+	}
+	if owner := pickTranslationTermOwnerModule("core", coreMods); owner == nil || owner.Name != "core" {
+		t.Fatalf("core should pick owner, got %#v", owner)
 	}
 
 	both := []*meta.Module{
@@ -65,12 +68,12 @@ func TestAppendTranslationTermOwnersFromInstalled_EmptyEntryApp(t *testing.T) {
 			order = append(order, m.ApplicationStr)
 		}
 	}
-	if !apps["auth"] || !apps["web"] || !apps["base"] || apps["core"] || apps["ghost"] {
-		t.Fatalf("expected auth+web+base only, got %#v", got)
+	if !apps["auth"] || !apps["web"] || !apps["base"] || !apps["core"] || apps["ghost"] {
+		t.Fatalf("expected auth+web+base+core, got %#v", got)
 	}
-	// Appended Ensure-only apps follow installed order (web then base).
-	if len(order) < 2 || order[0] != "web" || order[1] != "base" {
-		t.Fatalf("expected stable append order web,base; got %#v", order)
+	// Appended Ensure-only apps follow installed order (web then base; core from installed).
+	if len(order) < 3 || order[0] != "web" || order[1] != "core" || order[2] != "base" {
+		t.Fatalf("expected stable append order web,core,base; got %#v", order)
 	}
 }
 

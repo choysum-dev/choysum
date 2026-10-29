@@ -58,7 +58,7 @@ const warmLanguageMaxAttempts = 5
 // discarded while leaving an incomplete cache.
 func (s *TermStore) WarmLanguage(lang string) error {
 	lang = strings.TrimSpace(lang)
-	if lang == "" || s.application == "" || s.application == "core" {
+	if lang == "" || s.application == "" {
 		return nil
 	}
 	if s.runtimeScope == nil || s.runtimeScope.Session() == nil {

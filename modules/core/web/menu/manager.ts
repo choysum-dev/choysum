@@ -8,6 +8,8 @@ export class MenuManager implements Menu {
   private menuIdMap = new Map<string, MenuItem>();
   private menuPathMap = new Map<string, MenuItem>();
   private rootMenus = ref<MenuItem[]>([]);
+  /** Cross-module children may register before their parent (web entry import order). */
+  private pendingByParent = new Map<string, MenuItem[]>();
 
   constructor() {
     this.rootMenus.value = [];
@@ -31,6 +33,13 @@ export class MenuManager implements Menu {
       return this;
     }
 
+    if (parentId !== null && !this.menuIdMap.has(parentId)) {
+      const queue = this.pendingByParent.get(parentId) ?? [];
+      queue.push(menu);
+      this.pendingByParent.set(parentId, queue);
+      return this;
+    }
+
     const parentMenu = parentId ? this.menuIdMap.get(parentId) : null;
     const menuItem: MenuItem = this.processMenuItemForReactivity(menu, parentMenu);
 
@@ -51,13 +60,20 @@ export class MenuManager implements Menu {
         }
         parent.children.push(menuItem);
         this.sortMenus(parent.children);
-      } else {
-        console.warn(`Parent menu "${parentId}" does not exist`);
-        return this;
       }
     }
 
+    this.flushPendingChildren(menu.id);
     return this;
+  }
+
+  private flushPendingChildren(parentId: string): void {
+    const pending = this.pendingByParent.get(parentId);
+    if (!pending || pending.length === 0) return;
+    this.pendingByParent.delete(parentId);
+    for (const child of pending) {
+      this.addMenuInternal(parentId, child);
+    }
   }
 
   private processMenuItemForReactivity(menu: MenuItem, parent: MenuItem | null = null): MenuItem {

@@ -1076,12 +1076,12 @@ msgctxt "web/menu/menus"
 msgid "Master Data"
 msgstr ""
 
-#: web/menu/menus.ts:34
+#: web/menu/menus.ts:49
 msgctxt "web/menu/menus"
 msgid "Sequence Idempotency Record"
 msgstr ""
 
-#: web/menu/menus.ts:33
+#: web/menu/menus.ts:48
 msgctxt "web/menu/menus"
 msgid "Sequence Management"
 msgstr ""
@@ -1091,19 +1091,24 @@ msgctxt "web/menu/menus"
 msgid "State Management"
 msgstr ""
 
-#: web/menu/menus.ts:27
-msgctxt "web/menu/menus"
-msgid "Terminology Editor"
-msgstr ""
-
-#: web/menu/menus.ts:36
+#: web/menu/menus.ts:51
 msgctxt "web/menu/menus"
 msgid "Unit of Measure"
 msgstr ""
 
-#: web/menu/menus.ts:35
+#: web/menu/menus.ts:50
 msgctxt "web/menu/menus"
 msgid "Unit of Measure Category"
+msgstr ""
+
+#: web/menu/menus.ts:19
+msgctxt "web/menu/menus"
+msgid "Translations"
+msgstr ""
+
+#: web/menu/menus.ts:13
+msgctxt "web/menu/menus"
+msgid "base"
 msgstr ""
 
 #: web/pages/AddressList.vue:13
@@ -1256,7 +1261,7 @@ msgctxt "web/route/routes"
 msgid "Create Exchange Rate"
 msgstr ""
 
-#: web/route/routes.ts:323
+#: web/route/routes.ts:431
 msgctxt "web/route/routes"
 msgid "Create Idempotency Record"
 msgstr ""
@@ -1266,22 +1271,22 @@ msgctxt "web/route/routes"
 msgid "Create Language"
 msgstr ""
 
-#: web/route/routes.ts:283
+#: web/route/routes.ts:391
 msgctxt "web/route/routes"
 msgid "Create Sequence"
 msgstr ""
 
-#: web/route/routes.ts:358
+#: web/route/routes.ts:466
 msgctxt "web/route/routes"
 msgid "Create State"
 msgstr ""
 
-#: web/route/routes.ts:388
+#: web/route/routes.ts:496
 msgctxt "web/route/routes"
 msgid "Create Unit of Measure"
 msgstr ""
 
-#: web/route/routes.ts:418
+#: web/route/routes.ts:526
 msgctxt "web/route/routes"
 msgid "Create Unit of Measure Category"
 msgstr ""
@@ -1306,7 +1311,7 @@ msgctxt "web/route/routes"
 msgid "Exchange Rate List"
 msgstr ""
 
-#: web/route/routes.ts:309
+#: web/route/routes.ts:417
 msgctxt "web/route/routes"
 msgid "Idempotency Record Details"
 msgstr ""
@@ -1321,52 +1326,47 @@ msgctxt "web/route/routes"
 msgid "Language List"
 msgstr ""
 
-#: web/route/routes.ts:274
+#: web/route/routes.ts:382
 msgctxt "web/route/routes"
 msgid "Sequence Details"
 msgstr ""
 
-#: web/route/routes.ts:295
+#: web/route/routes.ts:403
 msgctxt "web/route/routes"
 msgid "Sequence Idempotency Record"
 msgstr ""
 
-#: web/route/routes.ts:265
+#: web/route/routes.ts:373
 msgctxt "web/route/routes"
 msgid "Sequence List"
 msgstr ""
 
-#: web/route/routes.ts:349
+#: web/route/routes.ts:457
 msgctxt "web/route/routes"
 msgid "State Details"
 msgstr ""
 
-#: web/route/routes.ts:340
+#: web/route/routes.ts:448
 msgctxt "web/route/routes"
 msgid "State List"
 msgstr ""
 
-#: web/route/routes.ts:250
-msgctxt "web/route/routes"
-msgid "Terminology Editor"
-msgstr ""
-
-#: web/route/routes.ts:400
+#: web/route/routes.ts:508
 msgctxt "web/route/routes"
 msgid "Unit of Measure Category"
 msgstr ""
 
-#: web/route/routes.ts:409
+#: web/route/routes.ts:517
 msgctxt "web/route/routes"
 msgid "Unit of Measure Category Details"
 msgstr ""
 
-#: web/route/routes.ts:379
+#: web/route/routes.ts:487
 msgctxt "web/route/routes"
 msgid "Unit of Measure Details"
 msgstr ""
 
-#: web/route/routes.ts:370
+#: web/route/routes.ts:478
 msgctxt "web/route/routes"
 msgid "Unit of Measure List"
 msgstr ""
@@ -1581,52 +1581,52 @@ msgctxt "web/views/CityListView"
 msgid "Edit City"
 msgstr ""
 
-#: web/views/CompanyFormView.vue:3
+#: web/views/CompanyFormView.vue:6
 msgctxt "web/views/CompanyFormView"
 msgid "Basic Information"
 msgstr ""
 
-#: web/views/CompanyFormView.vue:38
+#: web/views/CompanyFormView.vue:47
 msgctxt "web/views/CompanyFormView"
 msgid "Company"
 msgstr ""
 
-#: web/views/CompanyFormView.vue:38
+#: web/views/CompanyFormView.vue:47
 msgctxt "web/views/CompanyFormView"
 msgid "Copy Company"
 msgstr ""
 
-#: web/views/CompanyFormView.vue:38
+#: web/views/CompanyFormView.vue:47
 msgctxt "web/views/CompanyFormView"
 msgid "Create Company"
 msgstr ""
 
-#: web/views/CompanyFormView.vue:38
+#: web/views/CompanyFormView.vue:47
 msgctxt "web/views/CompanyFormView"
 msgid "Delete Company"
 msgstr ""
 
-#: web/views/CompanyFormView.vue:38
+#: web/views/CompanyFormView.vue:47
 msgctxt "web/views/CompanyFormView"
 msgid "Edit Company"
 msgstr ""
 
-#: web/views/CompanyFormView.vue:21
+#: web/views/CompanyFormView.vue:30
 msgctxt "web/views/CompanyFormView"
 msgid "Required"
 msgstr ""
 
-#: web/views/CompanyFormView.vue:20
+#: web/views/CompanyFormView.vue:23
 msgctxt "web/views/CompanyFormView"
 msgid "Select Currency"
 msgstr ""
 
-#: web/views/CompanyFormView.vue:25
+#: web/views/CompanyFormView.vue:28
 msgctxt "web/views/CompanyFormView"
 msgid "Select Parent Company"
 msgstr ""
 
-#: web/views/CompanyFormView.vue:17
+#: web/views/CompanyFormView.vue:20
 msgctxt "web/views/CompanyFormView"
 msgid "Select a time zone"
 msgstr ""

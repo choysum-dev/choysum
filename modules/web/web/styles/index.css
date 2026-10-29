@@ -44,6 +44,16 @@ html {
 }
 
 /*
+ * Outline buttons (variant uses border-input): primary-tinted hover chrome.
+ * Product override — keeps vendor/ui outline classes untouched. Skips
+ * outline-destructive (border-destructive/*, not border-input).
+ */
+[data-slot='button'].border-input:hover:not(:disabled) {
+  border-color: var(--choy-color-outline-hover-border);
+  background-color: var(--choy-color-outline-hover-bg);
+}
+
+/*
  * Product-wide thin scrollbars (Form / List / shell / popovers).
  * Stay in @layer base so utilities like .scrollbar-none can still hide tracks.
  */

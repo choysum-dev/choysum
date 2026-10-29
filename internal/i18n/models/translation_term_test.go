@@ -90,14 +90,14 @@ func TestMigrateTranslationTermTableRejectsUnsafeApplication(t *testing.T) {
 	}
 }
 
-func TestMigrateTranslationTermTableSkipsCoreAndEmpty(t *testing.T) {
+func TestMigrateTranslationTermTableSkipsEmpty(t *testing.T) {
 	rs := newTestScope(t)
 
 	if err := MigrateTranslationTermTable(rs, "core"); err != nil {
 		t.Fatalf("MigrateTranslationTermTable(core): %v", err)
 	}
-	if rs.Session().Migrator().HasTable("core_translation_term") {
-		t.Fatal("expected no core_translation_term table")
+	if !rs.Session().Migrator().HasTable("core_translation_term") {
+		t.Fatal("expected core_translation_term table")
 	}
 
 	if err := MigrateTranslationTermTable(rs, ""); err != nil {
