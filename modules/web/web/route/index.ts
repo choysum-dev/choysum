@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { Router } from 'vue-router';
-import { terminologyRoutes } from './terminologyRoutes';
+import { terminologyListComponent, terminologyRoutes } from './terminologyRoutes';
 
 /** Register Settings → {app} → Translations pages under the authenticated shell layout. */
 export function registerTerminologyRoutes(router: Router): void {
@@ -11,4 +11,4 @@ export function registerTerminologyRoutes(router: Router): void {
   }
 }
 
-export { terminologyRoutes };
+export { terminologyListComponent, terminologyRoutes };

@@ -4,6 +4,7 @@
 import { RouteRecordRaw } from 'vue-router';
 import { defineRoute } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
+import { terminologyListComponent } from '@/web/web/route';
 
 const { _lt } = createTranslate('meta', { scope: 'web/route/routes' });
 
@@ -50,5 +51,14 @@ export const metaRoutes: RouteRecordRaw[] = [
     actions: ['meta.action.module_index_edit', 'meta.action.module_index_delete', 'meta.action.module_index_copy'],
     requires: [{ model: 'meta.MetaModuleIndex' }, { model: 'meta.MetaModule' }],
     meta: { requiresAuth: true },
+  }),
+  defineRoute('meta.route.terminology_list', {
+    sequence: 40,
+    title: _lt('Translations'),
+    path: 'web/terminology/meta',
+    name: 'TranslationTermList_meta',
+    component: terminologyListComponent,
+    defaultRoles: ['sys.admin'],
+    meta: { requiresAuth: true, terminologyApplication: 'meta' },
   }),
 ];

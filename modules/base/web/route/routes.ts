@@ -4,6 +4,7 @@
 import { RouteRecordRaw } from 'vue-router';
 import { defineRoute } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
+import { terminologyListComponent } from '@/web/web/route';
 
 const { _lt } = createTranslate('base', { scope: 'web/route/routes' });
 
@@ -426,4 +427,13 @@ export const baseRoutes: RouteRecordRaw[] = [
   ...stateRoutes,
   ...uomRoutes,
   ...uomCategoryRoutes,
+  defineRoute('base.route.terminology_list', {
+    sequence: 40,
+    title: _lt('Translations'),
+    path: 'web/terminology/base',
+    name: 'TranslationTermList_base',
+    component: terminologyListComponent,
+    defaultRoles: ['sys.admin'],
+    meta: { requiresAuth: true, terminologyApplication: 'base' },
+  }),
 ];

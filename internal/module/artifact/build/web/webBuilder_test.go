@@ -2551,7 +2551,7 @@ func TestExtractUiResourceRelations_RejectsTwoMenusMappingToSameRoute(t *testing
 	pr := &parser.ParserResult{UiResourceDecls: []*parser.UiResourceDecl{
 		{ID: "base.menu.terminology_core", Type: parser.UiResourceTypeMenu, Path: "/web/terminology/core"},
 		{ID: "web.menu.terminology_core", Type: parser.UiResourceTypeMenu, Path: "/web/terminology/core"},
-		{ID: "web.route.terminology_core_list", Type: parser.UiResourceTypeRoute, Path: "/web/terminology/core"},
+		{ID: "core.route.terminology_list", Type: parser.UiResourceTypeRoute, Path: "/web/terminology/core"},
 	}}
 
 	resources, _, err := extractUiResources(module, []*parser.ParserResult{pr})
