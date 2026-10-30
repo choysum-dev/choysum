@@ -191,6 +191,17 @@ test('MenuManager: removeMenu clears pending queue for that id', () => {
   expect(manager.getMenu('late.child')).toBeUndefined();
 });
 
+test('MenuManager: clearMenus recursively drops nested pending queues', () => {
+  const manager = new MenuManager();
+  manager.addMenu('parent.a', { id: 'child.b', title: 'B' });
+  manager.addMenu('child.b', { id: 'grand.c', title: 'C', path: '/c' });
+  manager.clearMenus();
+  manager.addMenu({ id: 'parent.a', title: 'A' });
+  manager.addMenu({ id: 'child.b', title: 'B2' });
+  expect(manager.getMenu('grand.c')).toBeUndefined();
+  expect(manager.getMenu('child.b')?.title).toBe('B2');
+});
+
 test('MenuManager: multiple pending children flush in order when parent arrives', () => {
   const manager = new MenuManager();
   manager.addMenu('parent.x', { id: 'child.1', title: 'One', path: '/1', order: 20 });

@@ -627,6 +627,12 @@ export default class TranslationTermBaseModel extends BaseModel {
     }
     if (existingRow) {
       applyOverrideSourceWhenValueEdited(patch, [existingRow]);
+    } else if (
+      Object.prototype.hasOwnProperty.call(patch, 'Value') &&
+      !Object.prototype.hasOwnProperty.call(patch, 'Source')
+    ) {
+      // Without the prior row we cannot decide packaged→override; refuse the Value edit.
+      throw new Error('translation term Value update requires a readable existing row');
     }
     const out = await super.UpdateById<C, F>(id, patch as Partial<Updateable<RowOf<C>>>, returnFields, options);
     if (!module) {

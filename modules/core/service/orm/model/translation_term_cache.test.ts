@@ -401,7 +401,39 @@ test(
 );
 
 test(
-  'UpdateById continues when Browse throws',
+  'UpdateById rejects Value edit when Browse throws without existing row',
+  withInvalidateSpy(async calls => {
+    const BaseModel = Object.getPrototypeOf(TranslationTermBaseModel.prototype)
+      .constructor as typeof TranslationTermBaseModel;
+    const originalBrowse = TtInvTerm.Browse;
+    const originalUpdateById = BaseModel.UpdateById;
+    let updated = false;
+    TtInvTerm.Browse = (async () => {
+      throw new Error('gone');
+    }) as any;
+    BaseModel.UpdateById = (async () => {
+      updated = true;
+      return { Module: 'fromOut' };
+    }) as any;
+    try {
+      let err: unknown;
+      try {
+        await TtInvTerm.UpdateById('1', { Value: '新' } as any);
+      } catch (e) {
+        err = e;
+      }
+      expect(String(err ?? '')).toMatch(/readable existing row/);
+      expect(updated).toBe(false);
+      expect(calls).toEqual([]);
+    } finally {
+      TtInvTerm.Browse = originalBrowse;
+      BaseModel.UpdateById = originalUpdateById;
+    }
+  })
+);
+
+test(
+  'UpdateById continues when Browse throws if Source is explicit',
   withInvalidateSpy(async calls => {
     const BaseModel = Object.getPrototypeOf(TranslationTermBaseModel.prototype)
       .constructor as typeof TranslationTermBaseModel;
@@ -412,7 +444,7 @@ test(
     }) as any;
     BaseModel.UpdateById = (async () => ({ Module: 'fromOut' })) as any;
     try {
-      await TtInvTerm.UpdateById('1', { Value: '新' } as any);
+      await TtInvTerm.UpdateById('1', { Value: '新', Source: 'override' } as any);
       expect(calls).toEqual([['ttinv', 'fromOut']]);
     } finally {
       TtInvTerm.Browse = originalBrowse;

@@ -1913,6 +1913,21 @@ func (b *WebModuleBuilder) deleteUiResourceRelationsByIDs(resourceIDs []string) 
 	return nil
 }
 
+// deleteMenuRoutesForRouteIDs removes MENU→ROUTE rows for the given route ids.
+// Used before re-insert so soft-deleted ghosts and cross-module links cannot violate uniqueness.
+func deleteMenuRoutesForRouteIDs(sess *scope.Session, routeIDs []string) error {
+	if sess == nil || len(routeIDs) == 0 {
+		return nil
+	}
+	if result := sess.Unscoped().Where("route_ui_resource_id IN ?", routeIDs).Delete(&meta.UiResourceMenuRoute{}); result.Error != nil {
+		return result.Error
+	}
+	return nil
+}
+
+// Overridable in tests to force the replaceUiResourceRelations error path.
+var deleteMenuRoutesForRouteIDsFn = deleteMenuRoutesForRouteIDs
+
 func (b *WebModuleBuilder) replaceUiResourceRelations(moduleResourceIDs []string, menuRoutes []uiResourceMenuRouteRef, routeActions []uiResourceRouteActionRef) error {
 	if err := b.deleteUiResourceRelationsByIDs(moduleResourceIDs); err != nil {
 		return err
@@ -1979,13 +1994,8 @@ func (b *WebModuleBuilder) replaceUiResourceRelations(moduleResourceIDs []string
 	}
 	// Clear any leftover MENU→ROUTE rows for these routes (including soft-deleted
 	// ghosts or links from menus outside this module_id set) before insert.
-	if len(routeIDsToReplace) > 0 {
-		if result := b.runtimeScope.Session().
-			Unscoped().
-			Where("route_ui_resource_id IN ?", routeIDsToReplace).
-			Delete(&meta.UiResourceMenuRoute{}); result.Error != nil {
-			return result.Error
-		}
+	if err := deleteMenuRoutesForRouteIDsFn(b.runtimeScope.Session(), routeIDsToReplace); err != nil {
+		return err
 	}
 
 	routeActionRows := make([]*meta.UiResourceRouteAction, 0, len(routeActions))

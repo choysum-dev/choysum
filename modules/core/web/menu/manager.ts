@@ -78,7 +78,13 @@ export class MenuManager implements Menu {
 
   /** Drop queued children waiting on a parent that will never register (or was removed). */
   private clearPendingForParent(parentId: string): void {
+    const pending = this.pendingByParent.get(parentId);
     this.pendingByParent.delete(parentId);
+    if (!pending) return;
+    // Nested queues under those pending children would otherwise stay forever.
+    for (const child of pending) {
+      if (child?.id) this.clearPendingForParent(child.id);
+    }
   }
 
   private processMenuItemForReactivity(menu: MenuItem, parent: MenuItem | null = null): MenuItem {
@@ -207,10 +213,12 @@ export class MenuManager implements Menu {
   }
 
   clearMenus(): Menu {
+    for (const parentId of [...this.pendingByParent.keys()]) {
+      this.clearPendingForParent(parentId);
+    }
     this.menuIdMap.clear();
     this.menuPathMap.clear();
     this.rootMenus.value = [];
-    this.pendingByParent.clear();
     return this;
   }
 

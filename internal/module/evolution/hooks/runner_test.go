@@ -287,9 +287,15 @@ func TestRunnerBuildScriptsAndContexts(t *testing.T) {
 	if script := runner.buildHookWrapperScript("", "", false); script == nil {
 		t.Fatalf("expected generic hook wrapper script when module info is missing")
 	}
+	runner.module = nil
+	if script := runner.buildHookWrapperScript("core", "base", true); script != nil {
+		t.Fatalf("expected nil hook wrapper when runner.module is nil, got %#v", script)
+	}
+	if script := (*Runner)(nil).buildHookWrapperScript("core", "base", true); script != nil {
+		t.Fatalf("expected nil hook wrapper when runner is nil, got %#v", script)
+	}
 
-	runner.module.Name = "base"
-	runner.module.ApplicationStr = "core"
+	runner.module = &meta.Module{Name: "base", ApplicationStr: "core", Version: "1.0.0"}
 	ctx := auth.ContextWithIdentity(context.Background(), fakeIdentity{userID: "u-1"})
 	jsCtx := runner.buildJsContext(ctx, RunOptions{FromVersion: "0.9.0"})
 	identity, ok := jsCtx.payload["identity"].(map[string]any)
@@ -559,6 +565,28 @@ func TestRunnerRunPhaseExecutionPaths(t *testing.T) {
 		err := runner.RunPhase(context.Background(), PhasePreInit, RunOptions{Scripts: []*jsengine.JsScript{{FileName: "provided.js", Content: ""}}})
 		if err == nil || !strings.Contains(err.Error(), "HOOK_UNSUPPORTED") {
 			t.Fatalf("expected required hook error, got %v", err)
+		}
+	})
+
+	t.Run("prepends seeded wrapper for module-scoped Scripts", func(t *testing.T) {
+		testRuntimeScope := newHooksTestScope(t)
+		var loaded []string
+		engine := &hooksSelectiveEngine{execute: func(_ context.Context, req *jsengine.JsRequest, scripts []*jsengine.JsScript) (*jsengine.JsResponse, error) {
+			for _, script := range scripts {
+				loaded = append(loaded, script.FileName)
+			}
+			return &jsengine.JsResponse{Id: req.Id}, nil
+		}}
+		executor := newHooksTestExecutorWithEngine(t, testRuntimeScope, engine)
+		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: executor, module: &meta.Module{Name: "base", ApplicationStr: "core"}}
+		err := runner.RunPhase(context.Background(), PhasePostInit, RunOptions{
+			Scripts: []*jsengine.JsScript{{FileName: "provided.js", Content: "1"}},
+		})
+		if err != nil {
+			t.Fatalf("RunPhase() error = %v", err)
+		}
+		if !reflect.DeepEqual(loaded, []string{"hook_wrapper.js", "provided.js"}) {
+			t.Fatalf("expected prepended seeded wrapper, got %#v", loaded)
 		}
 	})
 }

@@ -134,6 +134,7 @@ async function loadModules() {
     const metaModuleStore = createStoreByModel('meta.MetaModule');
     const rows = await metaModuleStore.Search(installedModulesSearchCondition(app) as any, {
       fields: ['Name'],
+      limit: 0,
       orderBy: [{ field: 'Name', direction: 'asc' }],
     } as any);
     if (generation !== loadGeneration || application.value !== app) return;
