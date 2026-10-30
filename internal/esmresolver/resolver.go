@@ -47,11 +47,6 @@ const maxResolverDownloadBytes int64 = 50 * 1024 * 1024
 // DefaultTarget is the esm.sh ?target= value used when WithTarget is omitted.
 const DefaultTarget = "es2022"
 
-// legacyTargetFallback is tried (cache then network) when DefaultTarget downloads
-// fail with a retryable/5xx error. Lets CI reuse a warm es2020 pkg/esm cache while
-// the CDN cannot mint new es2022 builds.
-const legacyTargetFallback = "es2020"
-
 const (
 	vueI18nBareSpecifier = "vue-i18n"
 	vueI18nProdEntryPath = "dist/vue-i18n.esm-browser.prod.js"
@@ -460,7 +455,7 @@ func (r *Resolver) Plugin() api.Plugin {
 					if metrics != nil {
 						metrics.Downloads.Add(1)
 					}
-					content, dlErr := r.downloadWithTargetFallback(url)
+					content, dlErr := r.downloadWithRetry(url)
 					if metrics != nil {
 						metrics.DownloadDurationMs.Add(time.Since(downloadStart).Milliseconds())
 					}
@@ -1131,99 +1126,9 @@ func (r *Resolver) downloadWithRetry(url string) (string, error) {
 	return "", lastErr
 }
 
-// downloadWithTargetFallback fetches url, and on retryable failure when the
-// active target is DefaultTarget, retries the legacyTargetFallback equivalent
-// (preferring an existing cache entry so CI warm es2020 trees still work).
-func (r *Resolver) downloadWithTargetFallback(requestURL string) (string, error) {
-	// One shot first: when the CDN cannot mint DefaultTarget builds, full
-	// retry only burns wall clock before the legacy fallback.
-	content, err := r.download(requestURL)
-	if err == nil {
-		return content, nil
-	}
-	if !isRetryable(err) {
-		return "", err
-	}
-	if strings.TrimSpace(r.target) != DefaultTarget {
-		return r.downloadWithRetry(requestURL)
-	}
-	fallbackURL, ok := rewriteESMTargetURL(requestURL, DefaultTarget, legacyTargetFallback)
-	if !ok || fallbackURL == requestURL {
-		return r.downloadWithRetry(requestURL)
-	}
-	if body, hit := r.readLegacyFallback(fallbackURL); hit {
-		return body, nil
-	}
-	if r.offline {
-		return "", err
-	}
-	fallbackContent, fallbackErr := r.downloadWithRetry(fallbackURL)
-	if fallbackErr != nil {
-		return "", err
-	}
-	if writeErr := r.writeCache(r.cacheFileForURL(fallbackURL), []byte(fallbackContent)); writeErr != nil && r.logger != nil {
-		r.logger.Warn("esm resolver: failed to write fallback cache", "file", r.cacheFileForURL(fallbackURL), "error", writeErr)
-	}
-	return rewriteESMTargetInContent(fallbackContent, legacyTargetFallback, DefaultTarget), nil
-}
-
-func (r *Resolver) readLegacyFallback(fallbackURL string) (string, bool) {
-	candidates := []string{fallbackURL}
-	if u, err := url.Parse(fallbackURL); err == nil && u.RawQuery != "" {
-		u.RawQuery = ""
-		candidates = append(candidates, u.String())
-	}
-	for _, candidate := range candidates {
-		if cached, hit := r.readCache(r.cacheFileForURL(candidate)); hit {
-			return rewriteESMTargetInContent(cached, legacyTargetFallback, DefaultTarget), true
-		}
-	}
-	return "", false
-}
-
 func (r *Resolver) cacheFileForURL(rawURL string) string {
 	key := sha256Hex(rawURL)
 	return filepath.Join(r.codeCacheDir(), key[:2], key[2:])
-}
-
-// rewriteESMTargetURL swaps esm.sh target query values and /{target}/ path
-// segments. Returns ok=false when neither form is present.
-func rewriteESMTargetURL(raw, from, to string) (string, bool) {
-	from, to = strings.TrimSpace(from), strings.TrimSpace(to)
-	if from == "" || to == "" || from == to {
-		return raw, false
-	}
-	u, err := url.Parse(raw)
-	if err != nil {
-		return raw, false
-	}
-	changed := false
-	q := u.Query()
-	if q.Get("target") == from {
-		q.Set("target", to)
-		u.RawQuery = q.Encode()
-		changed = true
-	}
-	fromSeg, toSeg := "/" + from + "/", "/" + to + "/"
-	if strings.Contains(u.Path, fromSeg) {
-		u.Path = strings.ReplaceAll(u.Path, fromSeg, toSeg)
-		u.RawPath = ""
-		changed = true
-	}
-	if !changed {
-		return raw, false
-	}
-	return u.String(), true
-}
-
-func rewriteESMTargetInContent(content, from, to string) string {
-	from, to = strings.TrimSpace(from), strings.TrimSpace(to)
-	if from == "" || to == "" || from == to || content == "" {
-		return content
-	}
-	out := strings.ReplaceAll(content, "target="+from, "target="+to)
-	out = strings.ReplaceAll(out, "/"+from+"/", "/"+to+"/")
-	return out
 }
 
 func (r *Resolver) download(url string) (string, error) {

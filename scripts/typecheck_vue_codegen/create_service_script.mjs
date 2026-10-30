@@ -54,7 +54,7 @@ export function createServiceScript(fileName, source, options = {}) {
 
   const compilerOptions = options.compilerOptions ?? {
     strict: true,
-    target: ts.ScriptTarget.ES2020,
+    target: ts.ScriptTarget.ES2022,
     module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.Bundler,
     jsx: ts.JsxEmit.Preserve,

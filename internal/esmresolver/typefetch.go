@@ -2225,8 +2225,8 @@ func defaultModulesTsconfig() map[string]interface{} {
 			"strict":                       true,
 			"strictPropertyInitialization": false,
 			"target":                       "ES2022",
-			// Keep assignment-based class fields (ES2020/esbuild default) so bumping
-			// target to ES2022 does not flip define semantics for existing modules.
+			// Keep assignment-based class fields (TypeScript/esbuild default) so
+			// ES2022 target does not flip define semantics for existing modules.
 			"useDefineForClassFields": false,
 			// Pull @types/node via type-fetch typeRoots (no root node_modules).
 			"types": []string{"node"},
