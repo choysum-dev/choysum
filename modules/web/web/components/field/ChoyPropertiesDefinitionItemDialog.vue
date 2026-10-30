@@ -201,7 +201,7 @@ SPDX-License-Identifier: Apache-2.0
             size="default"
             variant="outline"
             data-testid="choy-properties-definition-item-cancel"
-            @click="onFormCancel"
+            @click="onFooterCancel"
           >
             {{ _t('Close') }}
           </ChoyButton>
@@ -212,7 +212,7 @@ SPDX-License-Identifier: Apache-2.0
             size="default"
             variant="outline"
             data-testid="choy-properties-definition-item-cancel"
-            @click="onFormCancel"
+            @click="onFooterCancel"
           >
             {{ _t('Cancel') }}
           </ChoyButton>
@@ -305,7 +305,10 @@ const emit = defineEmits<{
   closed: [];
 }>();
 
-const formViewRef = ref<{ submit?: () => Promise<unknown> } | null>(null);
+const formViewRef = ref<{
+  submit?: () => Promise<unknown>;
+  cancel?: () => void | Promise<void>;
+} | null>(null);
 const local = ref<DefinitionEditorDraftItem | null>(null);
 const formStore = shallowRef<LocalFormStore | null>(null);
 const formInitialValues = shallowRef<Record<string, unknown>>({});
@@ -474,8 +477,21 @@ function mergeFormIntoDraft(item: DefinitionEditorDraftItem) {
   item.readonly = data.Readonly === true;
 }
 
+/** FormView cancelHandler: close after dirty confirmation (or when footer skips FormView). */
 function onFormCancel() {
   visible.value = false;
+}
+
+/**
+ * Footer Cancel/Close. Edit mode routes through FormView.cancel so dirty
+ * confirmation runs; readonly Close has nothing to discard.
+ */
+async function onFooterCancel() {
+  if (!props.readonly && formViewRef.value?.cancel) {
+    await formViewRef.value.cancel();
+    return;
+  }
+  onFormCancel();
 }
 
 function onRequestEdit() {

@@ -230,4 +230,37 @@ describe('FormView native form submit', () => {
       ChoyMessage.error = origError;
     }
   });
+
+  test('cancelHandler runs via exposed cancel()', async () => {
+    const cancelHandler = fnRecorder(async () => {});
+    const { router } = createFeStubRouter({
+      route: { name: 'login', path: '/web/login', fullPath: '/web/login', params: {}, query: {}, meta: {} },
+    });
+    const wrapper = mountApp(FormView as any, {
+      props: {
+        store: loginStore(),
+        viewMode: 'create',
+        embedded: true,
+        showHeader: false,
+        showActions: false,
+        showMessages: false,
+        resolveRecordIdFromRoute: false,
+        initialValues: { Username: 'admin' },
+        cancelHandler,
+      },
+      plugins: [createPinia(), router, NoopLoading],
+      slots: {
+        default: () => h(SlotSubmit()),
+      },
+    });
+    try {
+      await flushPromises();
+      expect(typeof wrapper.root.cancel).toBe('function');
+      await wrapper.root.cancel();
+      await flushPromises();
+      expect(cancelHandler.calls.length).toBe(1);
+    } finally {
+      wrapper.unmount();
+    }
+  });
 });

@@ -518,6 +518,8 @@ onBeforeUnmount(() => {
 
 defineExpose({
   submit: handleSubmit,
+  /** Runs dirty confirmation, then cancelHandler / route back / display reload. */
+  cancel: handleCancel,
   refresh: handleRefresh,
   reset: handleReset,
   copy: handleCopy,

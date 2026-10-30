@@ -123,9 +123,10 @@ function installItemDialogStub() {
       modelValue: Boolean,
       item: Object,
       readonly: Boolean,
+      canEdit: Boolean,
       title: String,
     },
-    emits: ['update:modelValue', 'saved', 'closed'],
+    emits: ['update:modelValue', 'saved', 'closed', 'edit'],
     setup(props: any, { emit }: any) {
       return () =>
         props.modelValue
@@ -149,6 +150,14 @@ function installItemDialogStub() {
                     }),
                 },
                 'save',
+              ),
+              h(
+                'button',
+                {
+                  'data-testid': 'stub-item-edit',
+                  onClick: () => emit('edit'),
+                },
+                'edit',
               ),
               h(
                 'button',
@@ -605,6 +614,48 @@ describe('ChoyPropertiesDefinitionField', () => {
     } finally {
       mounted.unmount();
       installItemDialogStub();
+    }
+  });
+
+  test('onDialogEdit promotes when canMutate; no-ops when display-only', async () => {
+    const binding = makeBinding({
+      definition: [{ name: 'tax_id', type: 'char', string: { en_US: 'Tax' } }],
+      isEditMode: true,
+    });
+    const mounted = mountApp(ChoyPropertiesDefinitionField as any, {
+      props: { binding },
+    });
+    try {
+      await flushPromises();
+      mounted.click('[data-testid="choy-properties-definition-row"]');
+      await nextTick();
+      expect(mounted.q('[data-testid="choy-properties-definition-item-dialog-stub"]')).toBeTruthy();
+      mounted.click('[data-testid="stub-item-edit"]');
+      await nextTick();
+      expect(mounted.q('[data-testid="choy-properties-definition-item-dialog-stub"]')).toBeTruthy();
+    } finally {
+      mounted.unmount();
+    }
+
+    // Early return: canMutate is false in display mode.
+    const displayBinding = makeBinding({
+      definition: [{ name: 'tax_id', type: 'char', string: { en_US: 'Tax' } }],
+      isEditMode: false,
+    });
+    const displayMounted = mountApp(ChoyPropertiesDefinitionField as any, {
+      props: { binding: displayBinding },
+    });
+    try {
+      await flushPromises();
+      displayMounted.click('[data-testid="choy-properties-definition-row"]');
+      await nextTick();
+      displayMounted.click('[data-testid="stub-item-edit"]');
+      await nextTick();
+      expect(
+        displayMounted.q('[data-testid="choy-properties-definition-item-dialog-stub"]'),
+      ).toBeTruthy();
+    } finally {
+      displayMounted.unmount();
     }
   });
 
