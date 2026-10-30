@@ -2201,7 +2201,7 @@ func ensureModulesTsconfig(tsconfigPath string) error {
 			"allowImportingTsExtensions":   true,
 			"allowJs":                      true,
 			"experimentalDecorators":       true,
-			"lib":                          []string{"ES2020", "DOM", "DOM.Iterable"},
+			"lib":                          []string{"ES2022", "DOM", "DOM.Iterable"},
 			"module":                       "ESNext",
 			"moduleResolution":             "bundler",
 			"noEmit":                       true,
@@ -2209,7 +2209,7 @@ func ensureModulesTsconfig(tsconfigPath string) error {
 			"skipLibCheck":                 true,
 			"strict":                       true,
 			"strictPropertyInitialization": false,
-			"target":                       "ES2020",
+			"target":                       "ES2022",
 			// Pull @types/node via type-fetch typeRoots (no root node_modules).
 			// Provides require/process and the Array.at compatibility polyfill.
 			"types": []string{"node"},

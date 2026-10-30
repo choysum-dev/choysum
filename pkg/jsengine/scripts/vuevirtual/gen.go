@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/choysum-dev/choysum/internal/esmresolver"
@@ -64,14 +65,7 @@ func main() {
 			"path": "path-browserify",
 		},
 		Plugins: []api.Plugin{
-			esmresolver.New(
-				esmresolver.WithCacheDir(cacheDir),
-				esmresolver.WithTarget("es2020"),
-				// language-core entry with ?target= alone 500s on esm.sh;
-				// &bundle returns a working re-export.
-				esmresolver.WithExtraQuery("bundle"),
-				esmresolver.WithModulePath("."),
-			).Plugin(),
+			esmresolver.New(vuevirtualResolverOpts(cacheDir)...).Plugin(),
 		},
 		Write: true,
 	})
@@ -93,4 +87,19 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Printf("vuevirtual: built %s (%d bytes)\n", outFile, info.Size())
+}
+
+func vuevirtualResolverOpts(cacheDir string) []esmresolver.Option {
+	opts := []esmresolver.Option{
+		esmresolver.WithCacheDir(cacheDir),
+		esmresolver.WithTarget("es2022"),
+		// language-core entry with ?target= alone 500s on esm.sh;
+		// &bundle returns a working re-export.
+		esmresolver.WithExtraQuery("bundle"),
+		esmresolver.WithModulePath("."),
+	}
+	if u := strings.TrimSpace(os.Getenv("CHOYSUM_ESM_UPSTREAM")); u != "" {
+		opts = append(opts, esmresolver.WithUpstream(u))
+	}
+	return opts
 }

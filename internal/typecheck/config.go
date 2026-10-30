@@ -51,7 +51,7 @@ func BuildCompilerOptions(modulesPath, repoRoot string) (*core.CompilerOptions, 
 	types := resolveCompilerTypes(modulesPath, typeRoots)
 
 	opts := &core.CompilerOptions{
-		Target:                           core.ScriptTargetES2020,
+		Target:                           core.ScriptTargetES2022,
 		Module:                           core.ModuleKindESNext,
 		ModuleResolution:                 core.ModuleResolutionKindBundler,
 		Jsx:                              core.JsxEmitPreserve,
@@ -64,7 +64,7 @@ func BuildCompilerOptions(modulesPath, repoRoot string) (*core.CompilerOptions, 
 		AllowImportingTsExtensions:       core.TSTrue,
 		SkipLibCheck:                     core.TSTrue,
 		NoEmit:                           core.TSTrue,
-		Lib:                              []string{"es2020", "dom", "dom.iterable"},
+		Lib:                              []string{"es2022", "dom", "dom.iterable"},
 		Paths:                            pathsMap,
 		PathsBasePath:                    filepath.ToSlash(pathsBase),
 		TypeRoots:                        typeRoots,

@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
+	"strings"
 	"time"
 
 	"github.com/choysum-dev/choysum/internal/esmresolver"
@@ -66,11 +66,7 @@ func main() {
 		// interop wrappers can resolve safely without overriding a host shim.
 		Banner: map[string]string{"js": "if(typeof require==='undefined'){globalThis.require=function(m){return null;};}"},
 		Plugins: []api.Plugin{
-			esmresolver.New(
-				esmresolver.WithCacheDir(cacheDir),
-				esmresolver.WithTarget("es2020"),
-				esmresolver.WithModulePath("."),
-			).Plugin(),
+			esmresolver.New(vuesfcResolverOpts(cacheDir)...).Plugin(),
 		},
 		Write: true,
 	})
@@ -87,4 +83,16 @@ func main() {
 	}
 
 	fmt.Println("vuesfc: built dist/index.js")
+}
+
+func vuesfcResolverOpts(cacheDir string) []esmresolver.Option {
+	opts := []esmresolver.Option{
+		esmresolver.WithCacheDir(cacheDir),
+		esmresolver.WithTarget("es2022"),
+		esmresolver.WithModulePath("."),
+	}
+	if u := strings.TrimSpace(os.Getenv("CHOYSUM_ESM_UPSTREAM")); u != "" {
+		opts = append(opts, esmresolver.WithUpstream(u))
+	}
+	return opts
 }

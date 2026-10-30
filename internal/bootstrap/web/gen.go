@@ -239,7 +239,7 @@ func buildBootstrapDist(cacheDir, bootstrapDir string) error {
 		Write:             true,
 		EntryNames:        "[dir]/[name]-[hash]",
 		Platform:          api.PlatformBrowser,
-		Target:            api.ES2020,
+		Target:            api.ES2022,
 		Loader: map[string]api.Loader{
 			".png":  api.LoaderFile,
 			".svg":  api.LoaderFile,
@@ -248,11 +248,7 @@ func buildBootstrapDist(cacheDir, bootstrapDir string) error {
 			".sass": api.LoaderCSS,
 		},
 		Plugins: []api.Plugin{
-			esmresolver.New(
-				esmresolver.WithCacheDir(cacheDir),
-				esmresolver.WithTarget("es2020"),
-				esmresolver.WithModulePath(bootstrapDir),
-			).Plugin(),
+			esmresolver.New(bootstrapESMResolverOpts(cacheDir, bootstrapDir)...).Plugin(),
 			vueplugin.NewPlugin(
 				vueplugin.WithJsExecutor(executor),
 				vueplugin.WithIndexHtmlOptions(vueplugin.IndexHtmlOptions{
@@ -334,4 +330,16 @@ func resolveCacheDir() string {
 		os.Exit(1)
 	}
 	return filepath.Join(home, ".choysum")
+}
+
+func bootstrapESMResolverOpts(cacheDir, bootstrapDir string) []esmresolver.Option {
+	opts := []esmresolver.Option{
+		esmresolver.WithCacheDir(cacheDir),
+		esmresolver.WithTarget("es2022"),
+		esmresolver.WithModulePath(bootstrapDir),
+	}
+	if u := strings.TrimSpace(os.Getenv("CHOYSUM_ESM_UPSTREAM")); u != "" {
+		opts = append(opts, esmresolver.WithUpstream(u))
+	}
+	return opts
 }

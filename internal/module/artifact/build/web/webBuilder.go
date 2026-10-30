@@ -2341,7 +2341,7 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 			".css":  api.LoaderCSS,
 			".svg":  api.LoaderFile,
 		},
-		Target:     api.ES2020,
+		Target:     api.ES2022,
 		Platform:   api.PlatformBrowser,
 		Format:     api.FormatESModule,
 		Bundle:     true,

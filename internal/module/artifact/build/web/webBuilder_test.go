@@ -282,7 +282,7 @@ func setupBuildPipelineTestFiles(t *testing.T, testRuntimeScope *testScope, entr
 	}
 	if err := os.WriteFile(filepath.Join(modulesPath, "tsconfig.json"), []byte(`{
 	"compilerOptions": {
-		"target": "ES2020",
+		"target": "ES2022",
 		"module": "ESNext",
 		"moduleResolution": "bundler"
 	}
@@ -3114,7 +3114,7 @@ func TestWebBuilder_IntegratesCrossFileDuplicateModelActionsFromVue(t *testing.T
 
 	mustWrite(filepath.Join(modulesPath, "tsconfig.json"), `{
 	"compilerOptions": {
-		"target": "ES2020",
+		"target": "ES2022",
 		"module": "ESNext",
 		"moduleResolution": "bundler",
 		"baseUrl": ".",
@@ -3237,7 +3237,7 @@ func TestWebBuilder_IntegratesCrossFileConflictingRouteActionsFromVueFailsUIVal0
 
 	mustWrite(filepath.Join(modulesPath, "tsconfig.json"), `{
 	"compilerOptions": {
-		"target": "ES2020",
+		"target": "ES2022",
 		"module": "ESNext",
 		"moduleResolution": "bundler",
 		"baseUrl": ".",
@@ -5894,7 +5894,7 @@ func TestBuildOptionsExactPinsFromPackageJSON(t *testing.T) {
 }
 
 func TestAppendExactPinsFromPackageJSONNilReceiver(t *testing.T) {
-	opts := []esmresolver.Option{esmresolver.WithTarget("es2020")}
+	opts := []esmresolver.Option{esmresolver.WithTarget("es2022")}
 	var nilBuilder *WebModuleBuilder
 	got := nilBuilder.appendExactPinsFromPackageJSON(opts)
 	if len(got) != len(opts) {

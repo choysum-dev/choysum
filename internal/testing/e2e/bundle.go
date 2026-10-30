@@ -190,13 +190,16 @@ func BuildE2EBundle(opts E2EBundleOptions) (*E2EBundleResult, error) {
 
 	esmOpts := []esmresolver.Option{
 		esmresolver.WithCacheDir(cacheDir),
-		esmresolver.WithTarget("es2020"),
+		esmresolver.WithTarget("es2022"),
 		esmresolver.WithModulePath(repoRoot),
 	}
 	if pins, pinErr := e2eExactPinsWithoutVue(repoRoot); pinErr != nil {
 		return nil, xfmt.Errorf("e2e bundle: exact pins from modules/web/package.json: %w", pinErr)
 	} else if len(pins) > 0 {
 		esmOpts = append(esmOpts, esmresolver.WithBareImportPins(pins))
+	}
+	if u := strings.TrimSpace(os.Getenv("CHOYSUM_ESM_UPSTREAM")); u != "" {
+		esmOpts = append(esmOpts, esmresolver.WithUpstream(u))
 	}
 	plugins = append(plugins, esmresolver.New(esmOpts...).Plugin())
 
@@ -212,7 +215,7 @@ func BuildE2EBundle(opts E2EBundleOptions) (*E2EBundleResult, error) {
 		Outfile:       outfile,
 		Platform:      api.PlatformNeutral,
 		Format:        api.FormatIIFE,
-		Target:        api.ES2020,
+		Target:        api.ES2022,
 		LogLevel:      api.LogLevelWarning,
 		AbsWorkingDir: absWorkingDir,
 		Alias:         alias,

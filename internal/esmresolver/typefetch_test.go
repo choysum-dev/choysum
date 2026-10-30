@@ -824,7 +824,7 @@ func TestUpdateTsconfigPaths(t *testing.T) {
 	// Write initial tsconfig.
 	initial := `{
   "compilerOptions": {
-    "target": "ES2020",
+    "target": "ES2022",
     "paths": {
       "@/*": ["./*"]
     }
@@ -1540,7 +1540,7 @@ func TestTypePkgNameFromURL(t *testing.T) {
 		{"https://esm.sh/kysely@0.27.6/dist/index.d.ts", "kysely@0.27.6/dist/index.d.ts"},
 		{"https://esm.sh/@scope/pkg@1.0.0/index.d.ts", "@scope/pkg@1.0.0/index.d.ts"},
 		{"https://esm.sh/vue", "vue"},
-		{"https://esm.sh/vue?target=es2020", "vue"},
+		{"https://esm.sh/vue?target=es2022", "vue"},
 	}
 	for _, tt := range tests {
 		got := typePkgNameFromURL(tt.url)

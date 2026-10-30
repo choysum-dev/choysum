@@ -122,7 +122,7 @@ func WithCacheDir(dir string) Option {
 	}
 }
 
-// WithTarget sets the esm.sh target parameter (e.g. "deno", "es2020").
+// WithTarget sets the esm.sh target parameter (e.g. "deno", "es2022").
 func WithTarget(target string) Option {
 	return func(r *Resolver) {
 		if target != "" {
@@ -133,7 +133,7 @@ func WithTarget(target string) Option {
 
 // WithExtraQuery appends additional query parameters to bare-import esm.sh URLs
 // after target=. For example WithExtraQuery("bundle") yields
-// ?target=es2020&bundle. Empty segments are ignored. Multiple WithExtraQuery
+// ?target=es2022&bundle. Empty segments are ignored. Multiple WithExtraQuery
 // options compose (append) rather than replace.
 func WithExtraQuery(params ...string) Option {
 	return func(r *Resolver) {
@@ -308,7 +308,7 @@ func WithRetryBackoff(fn func(attempt int) time.Duration) Option {
 func New(opts ...Option) *Resolver {
 	r := &Resolver{
 		upstream: "https://esm.sh",
-		target:   "es2020",
+		target:   "es2022",
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -325,7 +325,7 @@ func (r *Resolver) ensureDefaults() {
 		r.upstream = "https://esm.sh"
 	}
 	if strings.TrimSpace(r.target) == "" {
-		r.target = "es2020"
+		r.target = "es2022"
 	}
 	if r.client == nil {
 		r.client = &http.Client{Timeout: 30 * time.Second}
@@ -622,7 +622,7 @@ func (r *Resolver) applyBareImportPin(specifier string) string {
 }
 
 // applyBareImportPinToAbsPath rewrites esm.sh absolute paths like
-// /vue@^3.0.0?target=es2020 when the package is pinned. Leading esm.sh
+// /vue@^3.0.0?target=es2022 when the package is pinned. Leading esm.sh
 // routing prefixes (/v135, /stable, /npm) are preserved but skipped when
 // matching the package name so range pins still apply.
 func (r *Resolver) applyBareImportPinToAbsPath(path string) string {

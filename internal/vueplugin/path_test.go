@@ -292,7 +292,7 @@ func TestParseTsconfigPathAliasWithoutPaths(t *testing.T) {
 	buildOptions := &api.BuildOptions{
 		TsconfigRaw: `{
             "compilerOptions": {
-                "target": "ES2020",
+                "target": "ES2022",
                 "module": "ESNext"
             }
         }`,

@@ -207,7 +207,7 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 		// other plugins process them.
 		resolverOpts := []esmresolver.Option{
 			esmresolver.WithCacheDir(runtimeOptions.defaultChoysumPath),
-			esmresolver.WithTarget("es2020"),
+			esmresolver.WithTarget("es2022"),
 			esmresolver.WithModulePath(b.module.Path),
 			esmresolver.WithModuleName(b.module.Name),
 			esmresolver.WithApplicationName(b.module.ApplicationStr),
@@ -227,7 +227,7 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 		// other plugins process them.
 		resolverOpts := []esmresolver.Option{
 			esmresolver.WithCacheDir(runtimeOptions.defaultChoysumPath),
-			esmresolver.WithTarget("es2020"),
+			esmresolver.WithTarget("es2022"),
 			esmresolver.WithModulePath(b.module.Path),
 			esmresolver.WithModuleName(b.module.Name),
 			esmresolver.WithApplicationName(b.module.ApplicationStr),
