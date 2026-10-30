@@ -9,7 +9,7 @@ SPDX-License-Identifier: Apache-2.0
     v-bind="$attrs"
     :store="store"
     :searchView="ChoySearchView"
-    create-action="/sandbox/configuration/record-properties/new"
+    :create-action="createPath"
     :action-ids="{
       create: propertyDefinitionActions.create,
       delete: propertyDefinitionActions.delete,
@@ -53,6 +53,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { useListViewExpose } from '@/web/web/composables/useListView';
@@ -67,24 +68,31 @@ import {
   ChoyVarcharField,
   type RowEventPayload,
 } from '@/web';
-import { sandboxPropertyDefinitionActions } from './sandbox_property_definition_actions';
+import { propertyDefinitionActions } from './property_definition_actions';
 
-defineOptions({ name: 'SandboxPropertyDefinitionListView', inheritAttrs: true });
-const { _t } = createTranslate('sandbox', { scope: 'web/views/SandboxPropertyDefinitionListView' });
+defineOptions({ name: 'PropertyDefinitionListView', inheritAttrs: true });
+const { _t } = createTranslate('web', { scope: 'web/views/PropertyDefinitionListView' });
 
 const router = useRouter();
 
 const props = defineProps<{
   store?: WebModelStore<any>;
+  application: string;
 }>();
-const store = resolvePageStore(props.store, 'SandboxPropertyDefinitionListView');
 
-const propertyDefinitionActions = sandboxPropertyDefinitionActions;
+const application = computed(() => String(props.application || '').trim());
+const store = resolvePageStore(props.store, 'PropertyDefinitionListView');
+const createPath = computed(() => {
+  const app = application.value;
+  return app ? `/web/property-definitions/${app}/new` : '';
+});
+
 const { hasAction } = usePermission();
 
 function onRowClick(payload: RowEventPayload) {
   const id = String(payload.row?.Id ?? '').trim();
-  if (id) router.push(`/sandbox/configuration/record-properties/${id}`);
+  const app = application.value;
+  if (id && app) router.push(`/web/property-definitions/${app}/${id}`);
 }
 
 const { listRef, expose } = useListViewExpose<any>();

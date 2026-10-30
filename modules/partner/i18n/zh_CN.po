@@ -271,6 +271,11 @@ msgctxt "web/menu/menus"
 msgid "Partner Management"
 msgstr "伙伴管理"
 
+#: web/menu/menus.ts:27
+msgctxt "web/menu/menus"
+msgid "Record Properties"
+msgstr "记录属性"
+
 #: web/menu/menus.ts:21
 msgctxt "web/menu/menus"
 msgid "Translations"
@@ -305,6 +310,11 @@ msgstr "伙伴详情"
 msgctxt "web/route/routes"
 msgid "Partner List"
 msgstr "伙伴列表"
+
+#: web/route/routes.ts:59
+msgctxt "web/route/routes"
+msgid "Record Properties"
+msgstr "记录属性"
 
 #: web/route/routes.ts:50
 msgctxt "web/route/routes"

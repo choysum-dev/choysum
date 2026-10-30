@@ -223,6 +223,7 @@ describe('ChoyPropertiesDefinitionField', () => {
       await flushPromises();
       expect(displayMounted.q('[data-testid="choy-properties-definition-add"]')).toBeFalsy();
       expect(displayMounted.q('[data-testid="choy-properties-definition-display"]')).toBeTruthy();
+      expect(displayMounted.q('[data-testid="choy-properties-definition-remove"]')).toBeFalsy();
     } finally {
       displayMounted.unmount();
     }
@@ -416,9 +417,9 @@ describe('ChoyPropertiesDefinitionField', () => {
     });
     try {
       await flushPromises();
-      const openBtns = mounted.el.querySelectorAll('[data-testid="choy-properties-definition-open"]');
-      expect(openBtns.length).toBe(2);
-      (openBtns[1] as HTMLElement).click();
+      const rows = mounted.el.querySelectorAll('[data-testid="choy-properties-definition-row"]');
+      expect(rows.length).toBe(2);
+      (rows[1] as HTMLElement).click();
       await nextTick();
       expect(mounted.q('[data-testid="choy-properties-definition-item-dialog-stub"]')).toBeTruthy();
       // Remove the first row so dialogIndex 1 is now out of range.
@@ -453,8 +454,8 @@ describe('ChoyPropertiesDefinitionField', () => {
     });
     try {
       await flushPromises();
-      const openBtns = mounted.el.querySelectorAll('[data-testid="choy-properties-definition-open"]');
-      (openBtns[0] as HTMLElement).click();
+      const rows = mounted.el.querySelectorAll('[data-testid="choy-properties-definition-row"]');
+      (rows[0] as HTMLElement).click();
       await nextTick();
       expect(mounted.q('[data-testid="choy-properties-definition-item-dialog-stub"]')).toBeTruthy();
       const state = mounted.setupState() as {
@@ -492,8 +493,8 @@ describe('ChoyPropertiesDefinitionField', () => {
     });
     try {
       await flushPromises();
-      const openBtns = mounted.el.querySelectorAll('[data-testid="choy-properties-definition-open"]');
-      (openBtns[0] as HTMLElement).click();
+      const rows = mounted.el.querySelectorAll('[data-testid="choy-properties-definition-row"]');
+      (rows[0] as HTMLElement).click();
       await nextTick();
       expect(mounted.q('[data-testid="choy-properties-definition-item-dialog-stub"]')).toBeTruthy();
       binding.__value.value = [
@@ -583,7 +584,7 @@ describe('ChoyPropertiesDefinitionField', () => {
     }
   });
 
-  test('openRow readonly in display mode opens dialog with View', async () => {
+  test('openRow readonly in display mode has no View column and opens dialog via row click', async () => {
     const binding = makeBinding({
       definition: [{ name: 'tax_id', type: 'char', string: { en_US: 'Tax' } }],
       isEditMode: false,
@@ -613,6 +614,7 @@ describe('ChoyPropertiesDefinitionField', () => {
     });
     try {
       await flushPromises();
+      expect(mounted.q('[data-testid="choy-properties-definition-remove"]')).toBeFalsy();
       // Row click opens as readonly when canMutate is false (display mode).
       mounted.click('[data-testid="choy-properties-definition-row"]');
       await nextTick();
@@ -648,7 +650,7 @@ describe('ChoyPropertiesDefinitionField', () => {
       await flushPromises();
       expect(mounted.el.textContent || '').toMatch(/prio/);
       expect(mounted.el.textContent || '').toMatch(/selection/);
-      mounted.click('[data-testid="choy-properties-definition-open"]');
+      mounted.click('[data-testid="choy-properties-definition-row"]');
       await nextTick();
       expect(mounted.q('[data-testid="choy-properties-definition-item-dialog-stub"]')).toBeTruthy();
 
@@ -760,7 +762,7 @@ describe('ChoyPropertiesDefinitionField', () => {
     const mounted = mountApp(ChoyPropertiesDefinitionField as any, { props: { binding } });
     try {
       await flushPromises();
-      mounted.click('[data-testid="choy-properties-definition-open"]');
+      mounted.click('[data-testid="choy-properties-definition-row"]');
       await nextTick();
       mounted.click('[data-testid="stub-item-save"]');
       await nextTick();
@@ -783,7 +785,7 @@ describe('ChoyPropertiesDefinitionField', () => {
       const state = mounted.setupState() as { writeError: string };
       state.writeError = 'stale';
       expect(state.writeError).toBe('stale');
-      mounted.click('[data-testid="choy-properties-definition-open"]');
+      mounted.click('[data-testid="choy-properties-definition-row"]');
       await nextTick();
       expect(state.writeError).toBe('');
     } finally {

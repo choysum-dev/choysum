@@ -826,12 +826,12 @@ msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "View record"
 msgstr "查看记录"
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:374
+#: web/components/field/ChoyPropertiesDefinitionField.vue:375
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "%s properties"
 msgstr "%s 个属性"
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:376
+#: web/components/field/ChoyPropertiesDefinitionField.vue:377
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "%s properties (%s, …)"
 msgstr "%s 个属性（%s，…）"
@@ -856,7 +856,7 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Name"
 msgstr "名称"
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:370
+#: web/components/field/ChoyPropertiesDefinitionField.vue:371
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "No properties"
 msgstr "无属性"
@@ -876,7 +876,7 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Reorder"
 msgstr "调整顺序"
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:394 web/components/field/ChoyPropertiesDefinitionField.vue:474 web/components/field/ChoyPropertiesDefinitionField.vue:478
+#: web/components/field/ChoyPropertiesDefinitionField.vue:395 web/components/field/ChoyPropertiesDefinitionField.vue:482 web/components/field/ChoyPropertiesDefinitionField.vue:486
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "This row was changed while editing; please reopen it."
 msgstr "该行在编辑期间已变更，请重新打开。"
@@ -891,92 +891,117 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "View"
 msgstr "查看"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:59
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:74
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Apply"
+msgstr "应用"
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:71
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:41
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:66
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Close"
+msgstr "关闭"
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:42
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Constraints"
+msgstr "约束"
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:145
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Default"
 msgstr "默认值"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:88
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:63
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Edit"
+msgstr "编辑"
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:95
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Edit property: %s"
 msgstr "编辑属性：%s"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:128 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:32
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:144 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:182
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Help"
 msgstr "帮助"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:118 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:139 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:23
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:16
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Identity"
+msgstr "标识"
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:143 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:171 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:194
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Label"
 msgstr "标签"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:8
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:136
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Name"
 msgstr "名称"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:183
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:268
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Name is required"
 msgstr "名称为必填项"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:88
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:95
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "New property"
 msgstr "新建属性"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:86
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:24
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Presentation"
+msgstr "展示"
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:93
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Property"
 msgstr "属性"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:86
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:93
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Property: %s"
 msgstr "属性：%s"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:46
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:146 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:46
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Readonly"
 msgstr "只读"
-
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:62
-msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
-msgid "Save"
-msgstr "保存"
 
 #: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:49
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Selection"
 msgstr "选项"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:35
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:34
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Translate help"
 msgstr "翻译帮助"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:26
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:28
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Translate label"
 msgstr "翻译标签"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:12
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:139
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Type"
 msgstr "类型"
 
-#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue:47
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue:49
 msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
 msgid "Add a line…"
 msgstr "添加一行…"
 
-#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue:37
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue:39
 msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
 msgid "Delete"
 msgstr "删除"
@@ -996,7 +1021,7 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
 msgid "Reorder"
 msgstr "调整顺序"
 
-#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue:31
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue:33
 msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
 msgid "Translate option"
 msgstr "翻译选项"
@@ -1491,7 +1516,7 @@ msgctxt "web/components/terminology/TerminologyExportMenu"
 msgid "No modules"
 msgstr "无模块"
 
-#: web/components/terminology/TerminologyExportMenu.vue:123
+#: web/components/terminology/TerminologyExportMenu.vue:131
 msgctxt "web/components/terminology/TerminologyExportMenu"
 msgid "PO download failed"
 msgstr "PO 下载失败"
@@ -1646,12 +1671,12 @@ msgctxt "web/components/view/FormView"
 msgid "Reset"
 msgstr "重置"
 
-#: web/components/view/ChoyFormView.vue:300
+#: web/components/view/ChoyFormView.vue:311
 msgctxt "web/components/view/FormView"
 msgid "Save"
 msgstr "保存"
 
-#: web/components/view/ChoyFormView.vue:300
+#: web/components/view/ChoyFormView.vue:311
 msgctxt "web/components/view/FormView"
 msgid "Saving..."
 msgstr "保存中..."
@@ -2221,22 +2246,22 @@ msgctxt "web/composables/search/useSearch"
 msgid "Not configured"
 msgstr "未配置"
 
-#: web/composables/useFormViewLifecycle.ts:97
+#: web/composables/useFormViewLifecycle.ts:102
 msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/composables/useFormViewLifecycle.ts:96
+#: web/composables/useFormViewLifecycle.ts:101
 msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
 msgid "Discard"
 msgstr "放弃"
 
-#: web/composables/useFormViewLifecycle.ts:95
+#: web/composables/useFormViewLifecycle.ts:100
 msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
 msgid "Unsaved changes"
 msgstr "未保存的更改"
 
-#: web/composables/useFormViewLifecycle.ts:95
+#: web/composables/useFormViewLifecycle.ts:100
 msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
 msgid "You have unsaved changes. Discard them?"
 msgstr "有未保存的更改。要放弃吗？"
@@ -2486,22 +2511,27 @@ msgctxt "web/import/ImportPanel"
 msgid "Upload a UTF-8 CSV. Map columns to importable fields from the catalog."
 msgstr "上传 UTF-8 CSV。将列映射到目录中的可导入字段。"
 
-#: web/menu/menus.ts:18
+#: web/menu/menus.ts:50
+msgctxt "web/menu/menus"
+msgid "Record Properties"
+msgstr "记录属性"
+
+#: web/menu/menus.ts:19
 msgctxt "web/menu/menus"
 msgid "Settings"
 msgstr "设置"
 
-#: web/menu/menus.ts:30 web/menu/menus.ts:43
+#: web/menu/menus.ts:31 web/menu/menus.ts:44
 msgctxt "web/menu/menus"
 msgid "Translations"
 msgstr "翻译"
 
-#: web/menu/menus.ts:25
+#: web/menu/menus.ts:26
 msgctxt "web/menu/menus"
 msgid "core"
 msgstr "core"
 
-#: web/menu/menus.ts:38
+#: web/menu/menus.ts:39
 msgctxt "web/menu/menus"
 msgid "web"
 msgstr "web"
@@ -2586,6 +2616,11 @@ msgctxt "web/pages/ErrorView"
 msgid "You do not have permission to access this page"
 msgstr "您没有权限访问此页面"
 
+#: web/pages/property_definition_list_page.ts:38
+msgctxt "web/pages/PropertyDefinitionList"
+msgid "Record Properties: %s"
+msgstr "记录属性：%s"
+
 #: web/pages/terminology_list_page.ts:36
 msgctxt "web/pages/TranslationTermList"
 msgid "Translations: %s"
@@ -2661,6 +2696,21 @@ msgctxt "web/query/utils/filter/operators"
 msgid "Not in"
 msgstr "不属于"
 
+#: web/route/propertyDefinitionRoutes.ts:47
+msgctxt "web/route/propertyDefinitionRoutes"
+msgid "New Property Definition"
+msgstr "新建属性定义"
+
+#: web/route/propertyDefinitionRoutes.ts:62
+msgctxt "web/route/propertyDefinitionRoutes"
+msgid "Property Definition"
+msgstr "属性定义"
+
+#: web/route/propertyDefinitionRoutes.ts:31
+msgctxt "web/route/propertyDefinitionRoutes"
+msgid "Record Properties"
+msgstr "记录属性"
+
 #: web/route/terminologyRoutes.ts:43
 msgctxt "web/route/terminologyRoutes"
 msgid "Translation Details"
@@ -2680,6 +2730,91 @@ msgstr "详情"
 msgctxt "web/stores/breadcrumbStore"
 msgid "Page"
 msgstr "页面"
+
+#: web/views/PropertyDefinitionFormView.vue:21
+msgctxt "web/views/PropertyDefinitionFormView"
+msgid "Container Id"
+msgstr "容器 ID"
+
+#: web/views/PropertyDefinitionFormView.vue:18
+msgctxt "web/views/PropertyDefinitionFormView"
+msgid "Container Model"
+msgstr "容器模型"
+
+#: web/views/property_definition_actions.ts:14
+msgctxt "web/views/PropertyDefinitionFormView"
+msgid "Copy Property Definition"
+msgstr "复制属性定义"
+
+#: web/views/property_definition_actions.ts:14
+msgctxt "web/views/PropertyDefinitionFormView"
+msgid "Create Property Definition"
+msgstr "创建属性定义"
+
+#: web/views/PropertyDefinitionFormView.vue:26
+msgctxt "web/views/PropertyDefinitionFormView"
+msgid "Definition"
+msgstr "定义"
+
+#: web/views/property_definition_actions.ts:14
+msgctxt "web/views/PropertyDefinitionFormView"
+msgid "Delete Property Definition"
+msgstr "删除属性定义"
+
+#: web/views/property_definition_actions.ts:14
+msgctxt "web/views/PropertyDefinitionFormView"
+msgid "Edit Property Definition"
+msgstr "编辑属性定义"
+
+#: web/views/PropertyDefinitionFormView.vue:15
+msgctxt "web/views/PropertyDefinitionFormView"
+msgid "Properties Field"
+msgstr "属性字段"
+
+#: web/views/property_definition_actions.ts:15
+msgctxt "web/views/PropertyDefinitionFormView"
+msgid "Property Definition"
+msgstr "属性定义"
+
+#: web/views/PropertyDefinitionFormView.vue:21
+msgctxt "web/views/PropertyDefinitionFormView"
+msgid "Required"
+msgstr "必填"
+
+#: web/views/PropertyDefinitionFormView.vue:9
+msgctxt "web/views/PropertyDefinitionFormView"
+msgid "Scope"
+msgstr "作用域"
+
+#: web/views/PropertyDefinitionFormView.vue:12
+msgctxt "web/views/PropertyDefinitionFormView"
+msgid "Target Model"
+msgstr "目标模型"
+
+#: web/views/PropertyDefinitionListView.vue:11
+msgctxt "web/views/PropertyDefinitionListView"
+msgid "Container Id"
+msgstr "容器 ID"
+
+#: web/views/PropertyDefinitionListView.vue:10
+msgctxt "web/views/PropertyDefinitionListView"
+msgid "Container Model"
+msgstr "容器模型"
+
+#: web/views/PropertyDefinitionListView.vue:12
+msgctxt "web/views/PropertyDefinitionListView"
+msgid "Definition"
+msgstr "定义"
+
+#: web/views/PropertyDefinitionListView.vue:9
+msgctxt "web/views/PropertyDefinitionListView"
+msgid "Properties Field"
+msgstr "属性字段"
+
+#: web/views/PropertyDefinitionListView.vue:8
+msgctxt "web/views/PropertyDefinitionListView"
+msgid "Target Model"
+msgstr "目标模型"
 
 #: web/views/TranslationTermFormView.vue:35
 msgctxt "web/views/TranslationTermFormView"
@@ -2892,8 +3027,20 @@ msgstr "词条"
 #~ msgstr "翻译标签"
 
 #~ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+#~ msgid "No"
+#~ msgstr "否"
+
+#~ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+#~ msgid "Save"
+#~ msgstr "保存"
+
+#~ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 #~ msgid "Translate"
 #~ msgstr "翻译"
+
+#~ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+#~ msgid "Yes"
+#~ msgstr "是"
 
 #~ msgctxt "web/components/field/ChoyTextField"
 #~ msgid "No content"

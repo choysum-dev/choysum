@@ -4,7 +4,7 @@
 import { RouteRecordRaw } from 'vue-router';
 import { defineRoute } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
-import { terminologyListComponent } from '@/web/web/route';
+import { propertyDefinitionListComponent, terminologyListComponent } from '@/web/web/route';
 
 const { _lt } = createTranslate('auth', { scope: 'web/route/routes' });
 
@@ -373,6 +373,15 @@ export const appRoutes: RouteRecordRaw[] = [
     component: terminologyListComponent,
     defaultRoles: ['sys.admin'],
     meta: { requiresAuth: true, terminologyApplication: 'auth' },
+  }),
+  defineRoute('auth.route.property_definition_list', {
+    sequence: 50,
+    title: _lt('Record Properties'),
+    path: 'web/property-definitions/auth',
+    name: 'PropertyDefinitionList_auth',
+    component: propertyDefinitionListComponent,
+    defaultRoles: ['sys.admin'],
+    meta: { requiresAuth: true, propertyDefinitionApplication: 'auth' },
   }),
 ];
 

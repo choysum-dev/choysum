@@ -8,9 +8,7 @@ import SandboxRecordList from './SandboxRecordList.vue';
 import SandboxRecordKanban from './SandboxRecordKanban.vue';
 import SandboxRecordChart from './SandboxRecordChart.vue';
 import SandboxTag from './SandboxTag.vue';
-import SandboxPropertyDefinitionList from './SandboxPropertyDefinitionList.vue';
-import SandboxPropertyDefinition from './SandboxPropertyDefinition.vue';
-import { sandboxMenus } from '../menu/menus';
+import { sandboxMenus, sandboxSettingsAppMenu } from '../menu/menus';
 
 const pages: Array<[string, any, string]> = [
   ['SandboxRecordList', SandboxRecordList, '/sandbox/records'],
@@ -18,8 +16,6 @@ const pages: Array<[string, any, string]> = [
   ['SandboxRecordChart', SandboxRecordChart, '/sandbox/records/chart'],
   ['SandboxRecord', SandboxRecord, '/sandbox/records/1'],
   ['SandboxTag', SandboxTag, '/sandbox/tags/new'],
-  ['SandboxPropertyDefinitionList', SandboxPropertyDefinitionList, '/sandbox/configuration/record-properties'],
-  ['SandboxPropertyDefinition', SandboxPropertyDefinition, '/sandbox/configuration/record-properties/new'],
 ];
 
 test('sandbox page mount: every ChoyPage host mounts under choysumMount', async () => {
@@ -49,9 +45,15 @@ test('sandbox menus: root declares an icon and leaves stay text-only', () => {
   expect(sandboxMenus.length).toBeGreaterThan(0);
   expect(sandboxMenus[0]!.icon).toBeTruthy();
   expect(sandboxMenus[0]!.children?.every(child => child.icon == null)).toBe(true);
-  const configuration = sandboxMenus[0]!.children?.find(child => child.id === 'sandbox.menu.configuration');
-  expect(configuration?.path).toBeFalsy();
-  expect(configuration?.children?.some(child => child.path === '/sandbox/configuration/record-properties')).toBe(
-    true,
+  expect(sandboxMenus[0]!.children?.some(child => child.id === 'sandbox.menu.configuration')).toBe(
+    false
   );
+});
+
+test('sandbox Settings menu links Record Properties to the shared web path', () => {
+  expect(
+    sandboxSettingsAppMenu.children?.some(
+      child => child.path === '/web/property-definitions/sandbox'
+    )
+  ).toBe(true);
 });

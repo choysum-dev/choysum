@@ -1146,25 +1146,30 @@ msgctxt "service/models/ui_resource"
 msgid "Cycle detected: %s cannot be assigned under one of its descendants"
 msgstr "检测到循环：%s 不能挂到其子孙节点下"
 
-#: web/menu/menus.ts:34
+#: web/menu/menus.ts:40
 msgctxt "web/menu/menus"
 msgid "Module Board"
 msgstr "模块看板"
 
-#: web/menu/menus.ts:40
+#: web/menu/menus.ts:46
 msgctxt "web/menu/menus"
 msgid "Module List"
 msgstr "模块列表"
 
-#: web/menu/menus.ts:29
+#: web/menu/menus.ts:35
 msgctxt "web/menu/menus"
 msgid "Module Management"
 msgstr "模块管理"
 
-#: web/menu/menus.ts:46
+#: web/menu/menus.ts:52
 msgctxt "web/menu/menus"
 msgid "Operation History"
 msgstr "操作历史"
+
+#: web/menu/menus.ts:25
+msgctxt "web/menu/menus"
+msgid "Record Properties"
+msgstr "记录属性"
 
 #: web/menu/menus.ts:19
 msgctxt "web/menu/menus"
@@ -1210,6 +1215,11 @@ msgstr "模块管理"
 msgctxt "web/route/routes"
 msgid "Operation History"
 msgstr "操作历史"
+
+#: web/route/routes.ts:66
+msgctxt "web/route/routes"
+msgid "Record Properties"
+msgstr "记录属性"
 
 #: web/route/routes.ts:57
 msgctxt "web/route/routes"

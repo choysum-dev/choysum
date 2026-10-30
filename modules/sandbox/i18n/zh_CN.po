@@ -371,40 +371,30 @@ msgctxt "sandbox.model.SandboxTag.fields"
 msgid "Name"
 msgstr "名称"
 
-#: web/menu/menus.ts:26
+#: web/menu/menus.ts:27
+msgctxt "web/menu/menus"
+msgid "Record Properties"
+msgstr "记录属性"
+
+#: web/menu/menus.ts:21
 msgctxt "web/menu/menus"
 msgid "Translations"
 msgstr "翻译"
 
-#: web/menu/menus.ts:20
+#: web/menu/menus.ts:15
 msgctxt "web/menu/menus"
 msgid "sandbox"
 msgstr "sandbox"
-
-#: web/menu/titles.ts:10
-msgctxt "web/menu/titles"
-msgid "Configuration"
-msgstr "配置"
 
 #: web/menu/titles.ts:9
 msgctxt "web/menu/titles"
 msgid "Field Kitchen Sink"
 msgstr "字段试验场"
 
-#: web/menu/titles.ts:11
-msgctxt "web/menu/titles"
-msgid "Record Properties"
-msgstr "记录属性"
-
 #: web/menu/titles.ts:8
 msgctxt "web/menu/titles"
 msgid "Sandbox"
 msgstr "沙箱"
-
-#: web/pages/SandboxPropertyDefinitionList.vue:11
-msgctxt "web/pages/SandboxPropertyDefinitionList"
-msgid "Record Properties"
-msgstr "记录属性"
 
 #: web/pages/SandboxRecordChart.vue:12
 msgctxt "web/pages/SandboxRecordChart"
@@ -421,11 +411,6 @@ msgctxt "web/pages/SandboxRecordList"
 msgid "Field Kitchen Sink"
 msgstr "字段试验场"
 
-#: web/route/routes.ts:157
-msgctxt "web/route/routes"
-msgid "New Property Definition"
-msgstr "新建属性定义"
-
 #: web/route/routes.ts:83
 msgctxt "web/route/routes"
 msgid "New Sandbox Record"
@@ -436,12 +421,7 @@ msgctxt "web/route/routes"
 msgid "New Sandbox Tag"
 msgstr "新建沙箱标签"
 
-#: web/route/routes.ts:171
-msgctxt "web/route/routes"
-msgid "Property Definition"
-msgstr "属性定义"
-
-#: web/route/routes.ts:143
+#: web/route/routes.ts:150
 msgctxt "web/route/routes"
 msgid "Record Properties"
 msgstr "记录属性"
@@ -471,7 +451,7 @@ msgctxt "web/route/routes"
 msgid "Sandbox Tag Detail"
 msgstr "沙箱标签详情"
 
-#: web/route/routes.ts:185
+#: web/route/routes.ts:141
 msgctxt "web/route/routes"
 msgid "Translations"
 msgstr "翻译"
@@ -525,91 +505,6 @@ msgstr "填充 20 行"
 msgctxt "web/views/SandboxLinesVirtTools"
 msgid "Short Lines stay content-sized. Open VIRT-LINES or fill rows to exercise capped table / kanban virtualize (not saved until you Save)."
 msgstr "短 Lines 保持内容高度。打开 VIRT-LINES 或填充行以练习封顶表格 / kanban 虚拟化（保存前不落库）。"
-
-#: web/views/SandboxPropertyDefinitionFormView.vue:21
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Container Id"
-msgstr "容器 ID"
-
-#: web/views/SandboxPropertyDefinitionFormView.vue:18
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Container Model"
-msgstr "容器模型"
-
-#: web/views/sandbox_property_definition_actions.ts:10
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Copy Property Definition"
-msgstr "复制属性定义"
-
-#: web/views/sandbox_property_definition_actions.ts:10
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Create Property Definition"
-msgstr "创建属性定义"
-
-#: web/views/SandboxPropertyDefinitionFormView.vue:26
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Definition"
-msgstr "定义"
-
-#: web/views/sandbox_property_definition_actions.ts:10
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Delete Property Definition"
-msgstr "删除属性定义"
-
-#: web/views/sandbox_property_definition_actions.ts:10
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Edit Property Definition"
-msgstr "编辑属性定义"
-
-#: web/views/SandboxPropertyDefinitionFormView.vue:15
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Properties Field"
-msgstr "属性字段"
-
-#: web/views/sandbox_property_definition_actions.ts:11
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Property Definition"
-msgstr "属性定义"
-
-#: web/views/SandboxPropertyDefinitionFormView.vue:21
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Required"
-msgstr "必填"
-
-#: web/views/SandboxPropertyDefinitionFormView.vue:9
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Scope"
-msgstr "作用域"
-
-#: web/views/SandboxPropertyDefinitionFormView.vue:12
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Target Model"
-msgstr "目标模型"
-
-#: web/views/SandboxPropertyDefinitionListView.vue:11
-msgctxt "web/views/SandboxPropertyDefinitionListView"
-msgid "Container Id"
-msgstr "容器 ID"
-
-#: web/views/SandboxPropertyDefinitionListView.vue:10
-msgctxt "web/views/SandboxPropertyDefinitionListView"
-msgid "Container Model"
-msgstr "容器模型"
-
-#: web/views/SandboxPropertyDefinitionListView.vue:12
-msgctxt "web/views/SandboxPropertyDefinitionListView"
-msgid "Definition"
-msgstr "定义"
-
-#: web/views/SandboxPropertyDefinitionListView.vue:9
-msgctxt "web/views/SandboxPropertyDefinitionListView"
-msgid "Properties Field"
-msgstr "属性字段"
-
-#: web/views/SandboxPropertyDefinitionListView.vue:8
-msgctxt "web/views/SandboxPropertyDefinitionListView"
-msgid "Target Model"
-msgstr "目标模型"
 
 #: web/views/SandboxRecordChartView.vue:43
 msgctxt "web/views/SandboxRecordChartView"
@@ -964,9 +859,57 @@ msgstr "标签"
 #~ msgid "Per-company varchar; open Company Values from the field chrome."
 #~ msgstr "按公司存储的 varchar；可从字段控件打开公司值。"
 
+#~ msgctxt "web/menu/titles"
+#~ msgid "Configuration"
+#~ msgstr "配置"
+
+#~ msgctxt "web/menu/titles"
+#~ msgid "Record Properties"
+#~ msgstr "记录属性"
+
+#~ msgctxt "web/pages/SandboxPropertyDefinitionList"
+#~ msgid "Record Properties"
+#~ msgstr "记录属性"
+
+#~ msgctxt "web/route/routes"
+#~ msgid "New Property Definition"
+#~ msgstr "新建属性定义"
+
+#~ msgctxt "web/route/routes"
+#~ msgid "Property Definition"
+#~ msgstr "属性定义"
+
+#~ msgctxt "web/views/SandboxPropertyDefinitionFormView"
+#~ msgid "Container Id"
+#~ msgstr "容器 ID"
+
+#~ msgctxt "web/views/SandboxPropertyDefinitionFormView"
+#~ msgid "Container Model"
+#~ msgstr "容器模型"
+
 #~ msgctxt "web/views/SandboxPropertyDefinitionFormView"
 #~ msgid "Container scope"
 #~ msgstr "容器作用域"
+
+#~ msgctxt "web/views/SandboxPropertyDefinitionFormView"
+#~ msgid "Copy Property Definition"
+#~ msgstr "复制属性定义"
+
+#~ msgctxt "web/views/SandboxPropertyDefinitionFormView"
+#~ msgid "Create Property Definition"
+#~ msgstr "创建属性定义"
+
+#~ msgctxt "web/views/SandboxPropertyDefinitionFormView"
+#~ msgid "Definition"
+#~ msgstr "定义"
+
+#~ msgctxt "web/views/SandboxPropertyDefinitionFormView"
+#~ msgid "Delete Property Definition"
+#~ msgstr "删除属性定义"
+
+#~ msgctxt "web/views/SandboxPropertyDefinitionFormView"
+#~ msgid "Edit Property Definition"
+#~ msgstr "编辑属性定义"
 
 #~ msgctxt "web/views/SandboxPropertyDefinitionFormView"
 #~ msgid "Leave empty for app-level scope; set to the parent model short name for record-scoped definitions."
@@ -987,6 +930,46 @@ msgstr "标签"
 #~ msgctxt "web/views/SandboxPropertyDefinitionFormView"
 #~ msgid "Optional parent container for record-scoped definitions. Leave empty for app-level properties (e.g. SandboxRecord.Properties)."
 #~ msgstr "可选的父级容器，用于记录级定义。应用级属性（如 SandboxRecord.Properties）请留空。"
+
+#~ msgctxt "web/views/SandboxPropertyDefinitionFormView"
+#~ msgid "Properties Field"
+#~ msgstr "属性字段"
+
+#~ msgctxt "web/views/SandboxPropertyDefinitionFormView"
+#~ msgid "Property Definition"
+#~ msgstr "属性定义"
+
+#~ msgctxt "web/views/SandboxPropertyDefinitionFormView"
+#~ msgid "Required"
+#~ msgstr "必填"
+
+#~ msgctxt "web/views/SandboxPropertyDefinitionFormView"
+#~ msgid "Scope"
+#~ msgstr "作用域"
+
+#~ msgctxt "web/views/SandboxPropertyDefinitionFormView"
+#~ msgid "Target Model"
+#~ msgstr "目标模型"
+
+#~ msgctxt "web/views/SandboxPropertyDefinitionListView"
+#~ msgid "Container Id"
+#~ msgstr "容器 ID"
+
+#~ msgctxt "web/views/SandboxPropertyDefinitionListView"
+#~ msgid "Container Model"
+#~ msgstr "容器模型"
+
+#~ msgctxt "web/views/SandboxPropertyDefinitionListView"
+#~ msgid "Definition"
+#~ msgstr "定义"
+
+#~ msgctxt "web/views/SandboxPropertyDefinitionListView"
+#~ msgid "Properties Field"
+#~ msgstr "属性字段"
+
+#~ msgctxt "web/views/SandboxPropertyDefinitionListView"
+#~ msgid "Target Model"
+#~ msgstr "目标模型"
 
 #~ msgctxt "web/views/SandboxRecordFormView"
 #~ msgid "Add Line"

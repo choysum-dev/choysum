@@ -86,12 +86,14 @@ test('sandbox resource wiring: list/kanban/chart routes expose view switcher met
   });
 });
 
-test('sandbox resource wiring: PropertyDefinition List→Form routes', () => {
+test('sandbox resource wiring: PropertyDefinition list uses shared web host path', () => {
   const byName = Object.fromEntries(sandboxRoutes.map(route => [String(route.name), route]));
-  expect(byName.SandboxPropertyDefinitionList?.path).toBe('sandbox/configuration/record-properties');
-  expect(byName.SandboxPropertyDefinitionCreate?.path).toBe('sandbox/configuration/record-properties/new');
-  expect(byName.SandboxPropertyDefinitionDetail?.path).toBe('sandbox/configuration/record-properties/:id');
-  expect(byName.SandboxPropertyDefinitionList?.meta).toMatchObject({ requiresAuth: true });
-  expect(byName.SandboxPropertyDefinitionCreate?.meta).toMatchObject({ requiresAuth: true });
-  expect(byName.SandboxPropertyDefinitionDetail?.meta).toMatchObject({ requiresAuth: true });
+  expect(byName.PropertyDefinitionList_sandbox?.path).toBe('web/property-definitions/sandbox');
+  expect(byName.PropertyDefinitionList_sandbox?.meta).toMatchObject({
+    requiresAuth: true,
+    propertyDefinitionApplication: 'sandbox',
+  });
+  expect(byName.SandboxPropertyDefinitionList).toBeUndefined();
+  expect(byName.SandboxPropertyDefinitionCreate).toBeUndefined();
+  expect(byName.SandboxPropertyDefinitionDetail).toBeUndefined();
 });

@@ -1,0 +1,48 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+import { effectScope } from 'vue';
+import { usePropertyDefinitionListPage } from './property_definition_list_page';
+
+test('usePropertyDefinitionListPage binds store from meta application and clears when empty', () => {
+  const created: Array<{ model: string; storeId: string }> = [];
+  const route: any = {
+    fullPath: '/web/property-definitions/auth',
+    path: '/web/property-definitions/auth',
+    params: {},
+    meta: { propertyDefinitionApplication: 'auth' },
+  };
+  const scope = effectScope();
+  const api = scope.run(() =>
+    usePropertyDefinitionListPage({
+      route,
+      scopeManager: { id: 'menu' },
+      createStore: ((model: string, opts?: any) => {
+        created.push({ model, storeId: String(opts?.storeId || '') });
+        return { model } as any;
+      }) as any,
+      translate: (msgid, arg) => `${msgid}:${arg}`,
+    })
+  )!;
+
+  expect(api.application.value).toBe('auth');
+  expect(api.pageTitle.value).toContain('auth');
+  expect(created).toEqual([
+    { model: 'auth.PropertyDefinition', storeId: 'PropertyDefinition_auth' },
+  ]);
+  expect(api.definitionStore.value).toEqual({ model: 'auth.PropertyDefinition' });
+
+  scope.stop();
+  const emptyScope = effectScope();
+  const empty = emptyScope.run(() =>
+    usePropertyDefinitionListPage({
+      route: { fullPath: '/settings', path: '/settings', params: {}, meta: {} } as any,
+      scopeManager: {},
+      createStore: (() => ({})) as any,
+      translate: (msgid, arg) => `${msgid}:${arg}`,
+    })
+  )!;
+  expect(empty.application.value).toBe('');
+  expect(empty.definitionStore.value).toBeNull();
+  emptyScope.stop();
+});

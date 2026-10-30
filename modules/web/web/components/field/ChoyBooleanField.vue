@@ -67,7 +67,18 @@ SPDX-License-Identifier: Apache-2.0
           disabled
           tabindex="-1"
         />
-        <span v-else class="choy-bool-display__text text-foreground">{{ displayLabel(fieldValue().value) }}</span>
+        <span
+          v-if="displayUsesCheckbox(fieldValue().value) && String(checkboxLabel || '').trim()"
+          class="choy-bool-display__label text-sm leading-none text-foreground"
+        >
+          {{ checkboxLabel }}
+        </span>
+        <span
+          v-else-if="!displayUsesSwitch(fieldValue().value) && !displayUsesCheckbox(fieldValue().value)"
+          class="choy-bool-display__text text-foreground"
+        >
+          {{ displayLabel(fieldValue().value) }}
+        </span>
       </div>
     </template>
   </ChoyFieldBase>

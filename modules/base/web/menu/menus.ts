@@ -21,6 +21,12 @@ export const baseSettingsAppMenu: MenuItem = defineMenu('base.menu.settings_app'
       sequence: 10,
       defaultRoles: ['sys.admin'],
     }),
+    defineMenu('base.menu.property_definitions', {
+      title: _lt('Record Properties'),
+      path: '/web/property-definitions/base',
+      sequence: 20,
+      defaultRoles: ['sys.admin'],
+    }),
   ],
 });
 

@@ -74,6 +74,7 @@ type MountOpts = {
   viewMode?: ViewMode;
   onAfterInit?: () => void;
   watchIdentity?: boolean;
+  cancelHandler?: () => void | Promise<void>;
 };
 
 function mountLifecycle(opts: MountOpts = {}) {
@@ -127,6 +128,7 @@ function mountLifecycle(opts: MountOpts = {}) {
         emitCancelable,
         emit,
         _t: (k: string) => k,
+        cancelHandler: opts.cancelHandler,
       });
       if (opts.watchIdentity !== false) {
         api.watchFormIdentity(opts.onAfterInit);
@@ -325,6 +327,23 @@ describe('useFormViewLifecycle', () => {
     m.api().handleEdit();
     expect(m.onchangeCtrl.reset.calls.length).toBe(1);
     expect(m.emit.calls.some(c => c[0] === 'mode-change' && (c[1] as any)?.mode === 'edit')).toBe(true);
+    m.unmount();
+  });
+
+  test('handleCancel prefers cancelHandler over router.back', async () => {
+    const cancelHandler = fnRecorder(async () => {});
+    const m = mountLifecycle({
+      watchIdentity: false,
+      resolveRecordIdFromRoute: false,
+      viewMode: 'create',
+      identity: { viewMode: 'create', recordId: undefined },
+      cancelHandler,
+    });
+    const back = fnRecorder(async () => {});
+    m.router.back = back as any;
+    await m.api().handleCancel();
+    expect(cancelHandler.calls.length).toBe(1);
+    expect(back.calls.length).toBe(0);
     m.unmount();
   });
 

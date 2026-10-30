@@ -848,12 +848,12 @@ msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "View record"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:374
+#: web/components/field/ChoyPropertiesDefinitionField.vue:375
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "%s properties"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:376
+#: web/components/field/ChoyPropertiesDefinitionField.vue:377
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "%s properties (%s, …)"
 msgstr ""
@@ -881,7 +881,7 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Name"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:370
+#: web/components/field/ChoyPropertiesDefinitionField.vue:371
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "No properties"
 msgstr ""
@@ -904,9 +904,9 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Reorder"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:394
-#: web/components/field/ChoyPropertiesDefinitionField.vue:474
-#: web/components/field/ChoyPropertiesDefinitionField.vue:478
+#: web/components/field/ChoyPropertiesDefinitionField.vue:395
+#: web/components/field/ChoyPropertiesDefinitionField.vue:482
+#: web/components/field/ChoyPropertiesDefinitionField.vue:486
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "This row was changed while editing; please reopen it."
 msgstr ""
@@ -923,67 +923,93 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "View"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:59
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:74
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Apply"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:71
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:41
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:66
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Close"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:42
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Constraints"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:145
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Default"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:88
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:63
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Edit"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:95
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Edit property: %s"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:128
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:32
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:144
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:182
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Help"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:118
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:139
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:23
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:16
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Identity"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:143
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:171
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:194
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Label"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:8
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:136
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Name"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:183
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:268
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Name is required"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:88
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:95
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "New property"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:86
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:24
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Presentation"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:93
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Property"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:86
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:93
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Property: %s"
 msgstr ""
 
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:146
 #: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:46
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Readonly"
-msgstr ""
-
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:62
-msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
-msgid "Save"
 msgstr ""
 
 #: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:49
@@ -991,27 +1017,27 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Selection"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:35
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:34
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Translate help"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:26
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:28
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Translate label"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:12
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:139
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Type"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue:47
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue:49
 msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
 msgid "Add a line…"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue:37
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue:39
 msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
 msgid "Delete"
 msgstr ""
@@ -1031,7 +1057,7 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
 msgid "Reorder"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue:31
+#: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue:33
 msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"
 msgid "Translate option"
 msgstr ""
@@ -1534,7 +1560,7 @@ msgctxt "web/components/terminology/TerminologyExportMenu"
 msgid "No modules"
 msgstr ""
 
-#: web/components/terminology/TerminologyExportMenu.vue:123
+#: web/components/terminology/TerminologyExportMenu.vue:131
 msgctxt "web/components/terminology/TerminologyExportMenu"
 msgid "PO download failed"
 msgstr ""
@@ -1692,12 +1718,12 @@ msgctxt "web/components/view/FormView"
 msgid "Reset"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:300
+#: web/components/view/ChoyFormView.vue:311
 msgctxt "web/components/view/FormView"
 msgid "Save"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:300
+#: web/components/view/ChoyFormView.vue:311
 msgctxt "web/components/view/FormView"
 msgid "Saving..."
 msgstr ""
@@ -2283,22 +2309,22 @@ msgctxt "web/composables/search/useSearch"
 msgid "Not configured"
 msgstr ""
 
-#: web/composables/useFormViewLifecycle.ts:97
+#: web/composables/useFormViewLifecycle.ts:102
 msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
 msgid "Cancel"
 msgstr ""
 
-#: web/composables/useFormViewLifecycle.ts:96
+#: web/composables/useFormViewLifecycle.ts:101
 msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
 msgid "Discard"
 msgstr ""
 
-#: web/composables/useFormViewLifecycle.ts:95
+#: web/composables/useFormViewLifecycle.ts:100
 msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
 msgid "Unsaved changes"
 msgstr ""
 
-#: web/composables/useFormViewLifecycle.ts:95
+#: web/composables/useFormViewLifecycle.ts:100
 msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
 msgid "You have unsaved changes. Discard them?"
 msgstr ""
@@ -2552,23 +2578,28 @@ msgctxt "web/import/ImportPanel"
 msgid "Upload a UTF-8 CSV. Map columns to importable fields from the catalog."
 msgstr ""
 
-#: web/menu/menus.ts:18
+#: web/menu/menus.ts:50
+msgctxt "web/menu/menus"
+msgid "Record Properties"
+msgstr ""
+
+#: web/menu/menus.ts:19
 msgctxt "web/menu/menus"
 msgid "Settings"
 msgstr ""
 
-#: web/menu/menus.ts:30
-#: web/menu/menus.ts:43
+#: web/menu/menus.ts:31
+#: web/menu/menus.ts:44
 msgctxt "web/menu/menus"
 msgid "Translations"
 msgstr ""
 
-#: web/menu/menus.ts:25
+#: web/menu/menus.ts:26
 msgctxt "web/menu/menus"
 msgid "core"
 msgstr ""
 
-#: web/menu/menus.ts:38
+#: web/menu/menus.ts:39
 msgctxt "web/menu/menus"
 msgid "web"
 msgstr ""
@@ -2654,6 +2685,11 @@ msgstr ""
 #: web/pages/ErrorView.vue:59
 msgctxt "web/pages/ErrorView"
 msgid "You do not have permission to access this page"
+msgstr ""
+
+#: web/pages/property_definition_list_page.ts:38
+msgctxt "web/pages/PropertyDefinitionList"
+msgid "Record Properties: %s"
 msgstr ""
 
 #: web/pages/terminology_list_page.ts:36
@@ -2745,6 +2781,21 @@ msgctxt "web/query/utils/filter/operators"
 msgid "Not in"
 msgstr ""
 
+#: web/route/propertyDefinitionRoutes.ts:47
+msgctxt "web/route/propertyDefinitionRoutes"
+msgid "New Property Definition"
+msgstr ""
+
+#: web/route/propertyDefinitionRoutes.ts:62
+msgctxt "web/route/propertyDefinitionRoutes"
+msgid "Property Definition"
+msgstr ""
+
+#: web/route/propertyDefinitionRoutes.ts:31
+msgctxt "web/route/propertyDefinitionRoutes"
+msgid "Record Properties"
+msgstr ""
+
 #: web/route/terminologyRoutes.ts:43
 msgctxt "web/route/terminologyRoutes"
 msgid "Translation Details"
@@ -2764,6 +2815,91 @@ msgstr ""
 #: web/stores/breadcrumbStore/index.ts:19
 msgctxt "web/stores/breadcrumbStore"
 msgid "Page"
+msgstr ""
+
+#: web/views/PropertyDefinitionFormView.vue:21
+msgctxt "web/views/PropertyDefinitionFormView"
+msgid "Container Id"
+msgstr ""
+
+#: web/views/PropertyDefinitionFormView.vue:18
+msgctxt "web/views/PropertyDefinitionFormView"
+msgid "Container Model"
+msgstr ""
+
+#: web/views/property_definition_actions.ts:14
+msgctxt "web/views/PropertyDefinitionFormView"
+msgid "Copy Property Definition"
+msgstr ""
+
+#: web/views/property_definition_actions.ts:14
+msgctxt "web/views/PropertyDefinitionFormView"
+msgid "Create Property Definition"
+msgstr ""
+
+#: web/views/PropertyDefinitionFormView.vue:26
+msgctxt "web/views/PropertyDefinitionFormView"
+msgid "Definition"
+msgstr ""
+
+#: web/views/property_definition_actions.ts:14
+msgctxt "web/views/PropertyDefinitionFormView"
+msgid "Delete Property Definition"
+msgstr ""
+
+#: web/views/property_definition_actions.ts:14
+msgctxt "web/views/PropertyDefinitionFormView"
+msgid "Edit Property Definition"
+msgstr ""
+
+#: web/views/PropertyDefinitionFormView.vue:15
+msgctxt "web/views/PropertyDefinitionFormView"
+msgid "Properties Field"
+msgstr ""
+
+#: web/views/property_definition_actions.ts:15
+msgctxt "web/views/PropertyDefinitionFormView"
+msgid "Property Definition"
+msgstr ""
+
+#: web/views/PropertyDefinitionFormView.vue:21
+msgctxt "web/views/PropertyDefinitionFormView"
+msgid "Required"
+msgstr ""
+
+#: web/views/PropertyDefinitionFormView.vue:9
+msgctxt "web/views/PropertyDefinitionFormView"
+msgid "Scope"
+msgstr ""
+
+#: web/views/PropertyDefinitionFormView.vue:12
+msgctxt "web/views/PropertyDefinitionFormView"
+msgid "Target Model"
+msgstr ""
+
+#: web/views/PropertyDefinitionListView.vue:11
+msgctxt "web/views/PropertyDefinitionListView"
+msgid "Container Id"
+msgstr ""
+
+#: web/views/PropertyDefinitionListView.vue:10
+msgctxt "web/views/PropertyDefinitionListView"
+msgid "Container Model"
+msgstr ""
+
+#: web/views/PropertyDefinitionListView.vue:12
+msgctxt "web/views/PropertyDefinitionListView"
+msgid "Definition"
+msgstr ""
+
+#: web/views/PropertyDefinitionListView.vue:9
+msgctxt "web/views/PropertyDefinitionListView"
+msgid "Properties Field"
+msgstr ""
+
+#: web/views/PropertyDefinitionListView.vue:8
+msgctxt "web/views/PropertyDefinitionListView"
+msgid "Target Model"
 msgstr ""
 
 #: web/views/TranslationTermFormView.vue:35

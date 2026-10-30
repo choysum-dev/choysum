@@ -991,42 +991,47 @@ msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Using current session language"
 msgstr "当前使用会话语言"
 
-#: web/menu/menus.ts:34
+#: web/menu/menus.ts:40
 msgctxt "web/menu/menus"
 msgid "Access Control"
 msgstr "访问控制"
 
-#: web/menu/menus.ts:50
+#: web/menu/menus.ts:56
 msgctxt "web/menu/menus"
 msgid "Access Rules"
 msgstr "授权规则"
 
-#: web/menu/menus.ts:59
+#: web/menu/menus.ts:65
 msgctxt "web/menu/menus"
 msgid "Field Rules"
 msgstr "字段规则"
 
-#: web/menu/menus.ts:64
+#: web/menu/menus.ts:70
 msgctxt "web/menu/menus"
 msgid "Method Access"
 msgstr "方法访问"
 
-#: web/menu/menus.ts:54
+#: web/menu/menus.ts:30
+msgctxt "web/menu/menus"
+msgid "Record Properties"
+msgstr "记录属性"
+
+#: web/menu/menus.ts:60
 msgctxt "web/menu/menus"
 msgid "Record Rules"
 msgstr "记录规则"
 
-#: web/menu/menus.ts:44
+#: web/menu/menus.ts:50
 msgctxt "web/menu/menus"
 msgid "Role List"
 msgstr "角色列表"
 
-#: web/menu/menus.ts:76
+#: web/menu/menus.ts:82
 msgctxt "web/menu/menus"
 msgid "Session List"
 msgstr "会话列表"
 
-#: web/menu/menus.ts:81
+#: web/menu/menus.ts:87
 msgctxt "web/menu/menus"
 msgid "Token List"
 msgstr "令牌列表"
@@ -1036,12 +1041,12 @@ msgctxt "web/menu/menus"
 msgid "Translations"
 msgstr "翻译"
 
-#: web/menu/menus.ts:69
+#: web/menu/menus.ts:75
 msgctxt "web/menu/menus"
 msgid "UI Resource Grants"
 msgstr "UI 资源授权"
 
-#: web/menu/menus.ts:39
+#: web/menu/menus.ts:45
 msgctxt "web/menu/menus"
 msgid "User List"
 msgstr "用户列表"
@@ -1401,6 +1406,11 @@ msgctxt "web/route/routes"
 msgid "Method Access List"
 msgstr "方法访问列表"
 
+#: web/route/routes.ts:379
+msgctxt "web/route/routes"
+msgid "Record Properties"
+msgstr "记录属性"
+
 #: web/route/routes.ts:212
 msgctxt "web/route/routes"
 msgid "Record Rule Details"
@@ -1411,7 +1421,7 @@ msgctxt "web/route/routes"
 msgid "Record Rule List"
 msgstr "记录规则列表"
 
-#: web/route/routes.ts:383
+#: web/route/routes.ts:392
 msgctxt "web/route/routes"
 msgid "Register"
 msgstr "注册"

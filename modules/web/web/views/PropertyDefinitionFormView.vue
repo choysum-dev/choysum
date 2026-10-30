@@ -74,15 +74,16 @@ import {
   ChoyVarcharField,
   type ChoyViewMode as ViewMode,
 } from '@/web';
-import { sandboxPropertyDefinitionActions } from './sandbox_property_definition_actions';
+import { propertyDefinitionActions } from './property_definition_actions';
 
-defineOptions({ name: 'SandboxPropertyDefinitionFormView', inheritAttrs: true });
-const { _t } = createTranslate('sandbox', { scope: 'web/views/SandboxPropertyDefinitionFormView' });
+defineOptions({ name: 'PropertyDefinitionFormView', inheritAttrs: true });
+const { _t } = createTranslate('web', { scope: 'web/views/PropertyDefinitionFormView' });
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 
 const props = withDefaults(
   defineProps<{
     store?: WebModelStore<any>;
+    application: string;
     recordId?: string;
     initialValues?: Record<string, unknown>;
     viewMode?: ViewMode;
@@ -92,11 +93,10 @@ const props = withDefaults(
   {
     showHeader: true,
     createAction: undefined,
-  },
+  }
 );
 
-const propertyDefinitionActions = sandboxPropertyDefinitionActions;
 const { hasAction } = usePermission();
-const store = resolvePageStore(props.store, 'SandboxPropertyDefinitionFormView');
+const store = resolvePageStore(props.store, 'PropertyDefinitionFormView');
 const { recordId, initialValues, viewMode, showHeader, createAction } = props;
 </script>

@@ -52,8 +52,6 @@ SPDX-License-Identifier: Apache-2.0
           :name-header="_t('Name')"
           :type-header="_t('Type')"
           :label-header="_t('Label')"
-          :edit-text="_t('Edit')"
-          :view-text="_t('View')"
           :remove-text="_t('Remove')"
           :reorder-text="_t('Reorder')"
           :index-header="'#'"
@@ -80,8 +78,6 @@ SPDX-License-Identifier: Apache-2.0
           :name-header="_t('Name')"
           :type-header="_t('Type')"
           :label-header="_t('Label')"
-          :edit-text="_t('Edit')"
-          :view-text="_t('View')"
           :remove-text="_t('Remove')"
           :reorder-text="_t('Reorder')"
           :index-header="'#'"
@@ -97,8 +93,10 @@ SPDX-License-Identifier: Apache-2.0
     v-model="dialogOpen"
     :item="dialogItem"
     :readonly="dialogReadonly"
+    :can-edit="canMutate"
     :commit-error="writeError"
     @saved="onDialogSaved"
+    @edit="onDialogEdit"
   />
 </template>
 
@@ -110,7 +108,7 @@ import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { RuleItem } from 'async-validator';
 import { computed, defineComponent, h, nextTick, ref, watch, type WritableComputedRef } from 'vue';
 import { getActivePinia } from 'pinia';
-import { GripVertical } from 'lucide-vue-next';
+import { GripVertical, Trash2 } from 'lucide-vue-next';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import {
@@ -144,8 +142,6 @@ const DefinitionLinesTable = defineComponent({
     nameHeader: { type: String, required: true },
     typeHeader: { type: String, required: true },
     labelHeader: { type: String, required: true },
-    editText: { type: String, required: true },
-    viewText: { type: String, required: true },
     removeText: { type: String, required: true },
     reorderText: { type: String, default: 'Reorder' },
     /** Index column header (O2M-style "#"). */
@@ -183,11 +179,12 @@ const DefinitionLinesTable = defineComponent({
           h('th', { class: 'whitespace-nowrap px-3 py-1.5 font-medium' }, props.nameHeader),
           h('th', { class: 'whitespace-nowrap px-3 py-1.5 font-medium' }, props.typeHeader),
           h('th', { class: 'min-w-[10rem] px-3 py-1.5 font-medium' }, props.labelHeader),
-          h('th', { class: 'whitespace-nowrap px-3 py-1.5 font-medium' }),
+          // Actions (Edit/Remove) only in edit mode; display mode has no View column.
+          props.canMutate ? h('th', { class: 'whitespace-nowrap px-3 py-1.5 font-medium' }) : null,
         ]),
       ]);
 
-      const colCount = props.canMutate ? 6 : 5;
+      const colCount = props.canMutate ? 6 : 4;
       const dragging = handleReorder.draggingIndex.value;
       const over = handleReorder.overIndex.value;
 
@@ -300,42 +297,31 @@ const DefinitionLinesTable = defineComponent({
                     },
                     item.string || '—',
                   ),
-                  h(
-                    'td',
-                    {
-                      class: 'whitespace-nowrap px-3 py-1.5',
-                      onClick: (e: Event) => e.stopPropagation(),
-                    },
-                    [
-                      h('div', { class: 'flex items-center gap-0.5' }, [
-                        h(
-                          ChoyButton,
-                          {
-                            size: 'sm',
-                            variant: 'ghost',
-                            class: 'h-7 px-2',
-                            'data-testid': 'choy-properties-definition-open',
-                            onClick: () => emit('open', index, !props.canMutate),
-                          },
-                          () => (props.canMutate ? props.editText : props.viewText),
-                        ),
-                        props.canMutate
-                          ? h(
-                              ChoyButton,
-                              {
-                                size: 'sm',
-                                variant: 'ghost',
-                                class:
-                                  'h-7 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive',
-                                'data-testid': 'choy-properties-definition-remove',
-                                onClick: () => emit('remove', index),
-                              },
-                              () => props.removeText,
-                            )
-                          : null,
-                      ]),
-                    ],
-                  ),
+                  props.canMutate
+                    ? h(
+                        'td',
+                        {
+                          class: 'w-11 whitespace-nowrap px-1 py-1.5 text-center',
+                          onClick: (e: Event) => e.stopPropagation(),
+                        },
+                        [
+                          h(
+                            ChoyButton,
+                            {
+                              type: 'button',
+                              size: 'icon',
+                              variant: 'ghost',
+                              class: 'size-7 text-muted-foreground hover:text-destructive',
+                              'aria-label': props.removeText,
+                              title: props.removeText,
+                              'data-testid': 'choy-properties-definition-remove',
+                              onClick: () => emit('remove', index),
+                            },
+                            () => h(Trash2, { class: 'size-3.5', 'aria-hidden': 'true' }),
+                          ),
+                        ],
+                      )
+                    : null,
                 ],
               ),
             );
@@ -564,6 +550,13 @@ function openRow(index: number, asReadonly: boolean) {
   dialogOriginalName.value = String(item.name || '');
   dialogItem.value = item;
   dialogOpen.value = true;
+}
+
+/** Promote a readonly preview to edit when the parent form can mutate. */
+function onDialogEdit() {
+  if (!canMutate.value || !dialogOpen.value) return;
+  writeError.value = '';
+  dialogReadonly.value = false;
 }
 
 function onDialogSaved(item: DefinitionEditorDraftItem) {
