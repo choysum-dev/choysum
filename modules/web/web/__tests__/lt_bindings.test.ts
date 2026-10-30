@@ -15,8 +15,13 @@ const fakeStore = {
   withContext: () => undefined,
 };
 
-test('web shell _lt bindings: web module ships empty menu baseline after Home retirement', () => {
-  expect(menus).toEqual([]);
+test('web shell _lt bindings: Settings → {app} → Translations mount; no Home menu/route', () => {
+  expect(menus).toHaveLength(1);
+  expect(menus[0]?.id).toBe('web.menu.settings');
+  expect(menus[0]?.children?.map((c) => c.id)).toEqual([
+    'web.menu.settings_app_core',
+    'web.menu.settings_app_web',
+  ]);
   expect(routes.length).toBeGreaterThan(0);
   const guest = routes.find((r) => r.name === 'GuestLayout') as { children?: Array<{ name?: string }> } | undefined;
   expect(guest?.children?.some((r) => r.name === 'Error')).toBe(true);

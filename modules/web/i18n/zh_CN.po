@@ -266,22 +266,22 @@ msgctxt "web/components/field/ChoyDecimalField"
 msgid "Total digits must not exceed %s"
 msgstr "总位数不得超过 %s"
 
-#: web/components/field/ChoyFieldBase.vue:247
+#: web/components/field/ChoyFieldBase.vue:251
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Company values"
 msgstr "公司值"
 
-#: web/components/field/ChoyFieldBase.vue:247
+#: web/components/field/ChoyFieldBase.vue:251
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Company values: %s"
 msgstr "公司值：%s"
 
-#: web/components/field/ChoyFieldBase.vue:240
+#: web/components/field/ChoyFieldBase.vue:244
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Translate field"
 msgstr "翻译字段"
 
-#: web/components/field/ChoyFieldBase.vue:240
+#: web/components/field/ChoyFieldBase.vue:244
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Translate: %s"
 msgstr "翻译：%s"
@@ -826,12 +826,12 @@ msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "View record"
 msgstr "查看记录"
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:369
+#: web/components/field/ChoyPropertiesDefinitionField.vue:374
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "%s properties"
 msgstr "%s 个属性"
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:371
+#: web/components/field/ChoyPropertiesDefinitionField.vue:376
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "%s properties (%s, …)"
 msgstr "%s 个属性（%s，…）"
@@ -856,15 +856,10 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Name"
 msgstr "名称"
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:365
+#: web/components/field/ChoyPropertiesDefinitionField.vue:370
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "No properties"
 msgstr "无属性"
-
-#: web/components/field/ChoyPropertiesDefinitionField.vue
-msgctxt "web/components/field/ChoyPropertiesDefinitionField"
-msgid "This row was changed while editing; please reopen it."
-msgstr "该行在编辑期间已变更，请重新打开。"
 
 #: web/components/field/ChoyPropertiesDefinitionField.vue:16 web/components/field/ChoyPropertiesDefinitionField.vue:9
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
@@ -880,6 +875,11 @@ msgstr "移除"
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Reorder"
 msgstr "调整顺序"
+
+#: web/components/field/ChoyPropertiesDefinitionField.vue:394 web/components/field/ChoyPropertiesDefinitionField.vue:474 web/components/field/ChoyPropertiesDefinitionField.vue:478
+msgctxt "web/components/field/ChoyPropertiesDefinitionField"
+msgid "This row was changed while editing; please reopen it."
+msgstr "该行在编辑期间已变更，请重新打开。"
 
 #: web/components/field/ChoyPropertiesDefinitionField.vue:16 web/components/field/ChoyPropertiesDefinitionField.vue:9
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
@@ -901,17 +901,17 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Default"
 msgstr "默认值"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:84
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:88
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Edit property: %s"
 msgstr "编辑属性：%s"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:136 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:32
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:128 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:32
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Help"
 msgstr "帮助"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:126 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:147 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:23
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:118 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:139 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:23
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Label"
 msgstr "标签"
@@ -921,22 +921,22 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Name"
 msgstr "名称"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:182
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:183
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Name is required"
 msgstr "名称为必填项"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:84
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:88
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "New property"
 msgstr "新建属性"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:82
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:86
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Property"
 msgstr "属性"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:82
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:86
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Property: %s"
 msgstr "属性：%s"
@@ -1211,7 +1211,7 @@ msgctxt "web/components/field/PropertyLabelTranslationsDialog"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:96
+#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:101
 msgctxt "web/components/field/PropertyLabelTranslationsDialog"
 msgid "Failed to load translations"
 msgstr "加载翻译失败"
@@ -1460,6 +1460,41 @@ msgstr "暂无可用菜单"
 msgctxt "web/components/layout/Page"
 msgid "Loading..."
 msgstr "加载中..."
+
+#: web/components/terminology/TerminologyExportMenu.vue:29
+msgctxt "web/components/terminology/TerminologyExportMenu"
+msgid "Download PO"
+msgstr "下载 PO"
+
+#: web/components/terminology/TerminologyExportMenu.vue:29
+msgctxt "web/components/terminology/TerminologyExportMenu"
+msgid "Downloading…"
+msgstr "下载中…"
+
+#: web/components/terminology/TerminologyExportMenu.vue:4 web/components/terminology/TerminologyExportMenu.vue:5
+msgctxt "web/components/terminology/TerminologyExportMenu"
+msgid "Export PO"
+msgstr "导出 PO"
+
+#: web/components/terminology/TerminologyExportMenu.vue:12
+msgctxt "web/components/terminology/TerminologyExportMenu"
+msgid "Loading modules…"
+msgstr "加载模块中…"
+
+#: web/components/terminology/TerminologyExportMenu.vue:10
+msgctxt "web/components/terminology/TerminologyExportMenu"
+msgid "Module"
+msgstr "模块"
+
+#: web/components/terminology/TerminologyExportMenu.vue:15
+msgctxt "web/components/terminology/TerminologyExportMenu"
+msgid "No modules"
+msgstr "无模块"
+
+#: web/components/terminology/TerminologyExportMenu.vue:123
+msgctxt "web/components/terminology/TerminologyExportMenu"
+msgid "PO download failed"
+msgstr "PO 下载失败"
 
 #: web/components/view/ChoyChartView.vue:630
 msgctxt "web/components/view/ChartView"
@@ -2451,6 +2486,26 @@ msgctxt "web/import/ImportPanel"
 msgid "Upload a UTF-8 CSV. Map columns to importable fields from the catalog."
 msgstr "上传 UTF-8 CSV。将列映射到目录中的可导入字段。"
 
+#: web/menu/menus.ts:18
+msgctxt "web/menu/menus"
+msgid "Settings"
+msgstr "设置"
+
+#: web/menu/menus.ts:30 web/menu/menus.ts:43
+msgctxt "web/menu/menus"
+msgid "Translations"
+msgstr "翻译"
+
+#: web/menu/menus.ts:25
+msgctxt "web/menu/menus"
+msgid "core"
+msgstr "core"
+
+#: web/menu/menus.ts:38
+msgctxt "web/menu/menus"
+msgid "web"
+msgstr "web"
+
 #: web/pages/ErrorView.vue:71
 msgctxt "web/pages/ErrorView"
 msgid "Access denied"
@@ -2531,35 +2586,10 @@ msgctxt "web/pages/ErrorView"
 msgid "You do not have permission to access this page"
 msgstr "您没有权限访问此页面"
 
-#: web/pages/TerminologyEditor.vue:4 web/pages/TerminologyEditor.vue:5
-msgctxt "web/pages/TerminologyEditor"
-msgid "Application"
-msgstr "应用"
-
-#: web/pages/TerminologyEditor.vue:10
-msgctxt "web/pages/TerminologyEditor"
-msgid "Download PO"
-msgstr "下载 PO"
-
-#: web/pages/TerminologyEditor.vue:8
-msgctxt "web/pages/TerminologyEditor"
-msgid "Module (required for PO)"
-msgstr "模块（下载 PO 必填）"
-
-#: web/pages/TerminologyEditor.vue:126
-msgctxt "web/pages/TerminologyEditor"
-msgid "PO download failed"
-msgstr "PO 下载失败"
-
-#: web/pages/TerminologyEditor.vue:24
-msgctxt "web/pages/TerminologyEditor"
-msgid "Select an application to edit terminology"
-msgstr "请选择应用以编辑术语"
-
-#: web/pages/TerminologyEditor.vue:103
-msgctxt "web/pages/TerminologyEditor"
-msgid "TranslationTerm store is not available for this application"
-msgstr "该应用不可用 TranslationTerm 存储"
+#: web/pages/terminology_list_page.ts:36
+msgctxt "web/pages/TranslationTermList"
+msgid "Translations: %s"
+msgstr "翻译：%s"
 
 #: web/query/utils/filter/operators.ts:29 web/query/utils/filter/operators.ts:68
 msgctxt "web/query/utils/filter/operators"
@@ -2631,15 +2661,35 @@ msgctxt "web/query/utils/filter/operators"
 msgid "Not in"
 msgstr "不属于"
 
-#: web/stores/breadcrumbStore/index.ts:18
+#: web/route/terminologyRoutes.ts:43
+msgctxt "web/route/terminologyRoutes"
+msgid "Translation Details"
+msgstr "翻译详情"
+
+#: web/route/terminologyRoutes.ts:25 web/route/terminologyRoutes.ts:34
+msgctxt "web/route/terminologyRoutes"
+msgid "Translations"
+msgstr "翻译"
+
+#: web/stores/breadcrumbStore/index.ts:20
 msgctxt "web/stores/breadcrumbStore"
 msgid "Details"
 msgstr "详情"
 
-#: web/stores/breadcrumbStore/index.ts:17
+#: web/stores/breadcrumbStore/index.ts:19
 msgctxt "web/stores/breadcrumbStore"
 msgid "Page"
 msgstr "页面"
+
+#: web/views/TranslationTermFormView.vue:35
+msgctxt "web/views/TranslationTermFormView"
+msgid "Edit Translation Term"
+msgstr "编辑术语"
+
+#: web/views/TranslationTermFormView.vue:4
+msgctxt "web/views/TranslationTermFormView"
+msgid "Term"
+msgstr "词条"
 
 #~ msgctxt "web/components/field/BigintField"
 #~ msgid "Cannot be empty"
@@ -3069,3 +3119,30 @@ msgstr "页面"
 #~ msgid "No menus available"
 #~ msgstr "暂无可用菜单"
 
+#~ msgctxt "web/pages/TerminologyEditor"
+#~ msgid "Application"
+#~ msgstr "应用"
+
+#~ msgctxt "web/pages/TerminologyEditor"
+#~ msgid "Download PO"
+#~ msgstr "下载 PO"
+
+#~ msgctxt "web/pages/TerminologyEditor"
+#~ msgid "Module (required for PO)"
+#~ msgstr "模块（下载 PO 必填）"
+
+#~ msgctxt "web/pages/TerminologyEditor"
+#~ msgid "PO download failed"
+#~ msgstr "PO 下载失败"
+
+#~ msgctxt "web/pages/TerminologyEditor"
+#~ msgid "Select an application to edit terminology"
+#~ msgstr "请选择应用以编辑术语"
+
+#~ msgctxt "web/pages/TerminologyEditor"
+#~ msgid "TranslationTerm store is not available for this application"
+#~ msgstr "该应用不可用 TranslationTerm 存储"
+
+#~ msgctxt "web/pages/terminology_list_page@pageTitle"
+#~ msgid "Translations: %s"
+#~ msgstr "翻译：%s"

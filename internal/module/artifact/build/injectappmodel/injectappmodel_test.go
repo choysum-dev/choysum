@@ -830,7 +830,7 @@ func TestInjectAppModels_ClearsPathsOnPartialFailure(t *testing.T) {
 	}
 }
 
-func TestDecideSkipsCore(t *testing.T) {
+func TestDecideSkipsCoreExceptTranslationTerm(t *testing.T) {
 	mod := &meta.Module{
 		Name: "core", Path: "/virtual/modules/core",
 		ApplicationStr: "core", ServiceEntryPoint: "service/index.ts",
@@ -839,10 +839,13 @@ func TestDecideSkipsCore(t *testing.T) {
 	if _, err := InjectAppModels(sess, nil); err != nil {
 		t.Fatalf("inject: %v", err)
 	}
-	for _, name := range []string{"TranslationTerm", "FieldDefault", "AppSetting", "PropertyDefinition"} {
+	for _, name := range []string{"FieldDefault", "AppSetting", "PropertyDefinition"} {
 		if plan := sess.Plan(name); plan.NeedInject || plan.SupersedeInject {
 			t.Fatalf("%s should skip core, got %+v", name, plan)
 		}
+	}
+	if plan := sess.Plan("TranslationTerm"); !plan.NeedInject {
+		t.Fatalf("TranslationTerm should inject on core, got %+v", plan)
 	}
 }
 

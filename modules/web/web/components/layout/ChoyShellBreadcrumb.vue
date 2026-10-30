@@ -18,11 +18,12 @@ import { useI18n } from 'vue-i18n'
 import ChoyBreadcrumb, { type ChoyBreadcrumbItem } from '../view/ChoyBreadcrumb.vue'
 import { translateTerm } from '../../i18n'
 import { useBreadcrumbStore } from '../../stores/breadcrumbStore'
+import { isMenuNavigatedCrumb } from '../../stores/breadcrumbStore/breadcrumb_helpers'
 import { useMenu } from '../../composables/useMenu'
 
 /**
- * Product-shell header trail from breadcrumbStore (L1 app + L2 leaf + pages).
- * L1 app crumbs call navigateTo(app) for app-home; menu/page crumbs use RouterLink.
+ * Product-shell header trail from breadcrumbStore (app + folders + leaf + pages).
+ * App / pathless folder crumbs call navigateTo(menuId); menu/page crumbs use RouterLink.
  */
 defineOptions({ name: 'ChoyShellBreadcrumb' })
 
@@ -43,7 +44,7 @@ function buildBreadcrumbItems(): ComputedRef<ChoyBreadcrumbItem[]> {
       menuApi = null
     }
 
-    function onAppSelect(menuId: string | undefined) {
+    function onMenuSelect(menuId: string | undefined) {
       if (!menuId || !menuApi) return
       void menuApi.navigateTo(menuId)
     }
@@ -58,10 +59,10 @@ function buildBreadcrumbItems(): ComputedRef<ChoyBreadcrumbItem[]> {
         if (isLast || !entry.clickable) {
           return { label }
         }
-        if (entry.kind === 'app') {
+        if (isMenuNavigatedCrumb(entry)) {
           return {
             label,
-            onSelect: () => onAppSelect(entry.menuId),
+            onSelect: () => onMenuSelect(entry.menuId),
           }
         }
         return {

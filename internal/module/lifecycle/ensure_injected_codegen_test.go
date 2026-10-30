@@ -33,7 +33,13 @@ func TestEnsureInjectedAppModelsForCodegenEarlyReturns(t *testing.T) {
 	if err := manager.ensureInjectedAppModelsForCodegen(context.Background(), nil); err != nil {
 		t.Fatalf("nil mod: %v", err)
 	}
-	if err := manager.ensureInjectedAppModelsForCodegen(context.Background(), &meta.Module{ApplicationStr: "core"}); err != nil {
+	if err := db.Create(&meta.Model{
+		Name: "TranslationTerm", Path: "/virtual/core/TranslationTerm",
+		Application: "core", Abstract: false,
+	}).Error; err != nil {
+		t.Fatalf("seed core TranslationTerm: %v", err)
+	}
+	if err := manager.ensureInjectedAppModelsForCodegen(context.Background(), &meta.Module{ApplicationStr: "core", Name: "core"}); err != nil {
 		t.Fatalf("core app: %v", err)
 	}
 	if err := manager.ensureInjectedAppModelsForCodegen(context.Background(), &meta.Module{ApplicationStr: "  "}); err != nil {

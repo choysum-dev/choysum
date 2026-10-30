@@ -1913,6 +1913,21 @@ func (b *WebModuleBuilder) deleteUiResourceRelationsByIDs(resourceIDs []string) 
 	return nil
 }
 
+// deleteMenuRoutesForRouteIDs removes MENU→ROUTE rows for the given route ids.
+// Used before re-insert so soft-deleted ghosts and cross-module links cannot violate uniqueness.
+func deleteMenuRoutesForRouteIDs(sess *scope.Session, routeIDs []string) error {
+	if sess == nil || len(routeIDs) == 0 {
+		return nil
+	}
+	if result := sess.Unscoped().Where("route_ui_resource_id IN ?", routeIDs).Delete(&meta.UiResourceMenuRoute{}); result.Error != nil {
+		return result.Error
+	}
+	return nil
+}
+
+// Overridable in tests to force the replaceUiResourceRelations error path.
+var deleteMenuRoutesForRouteIDsFn = deleteMenuRoutesForRouteIDs
+
 func (b *WebModuleBuilder) replaceUiResourceRelations(moduleResourceIDs []string, menuRoutes []uiResourceMenuRouteRef, routeActions []uiResourceRouteActionRef) error {
 	if err := b.deleteUiResourceRelationsByIDs(moduleResourceIDs); err != nil {
 		return err
@@ -1945,6 +1960,8 @@ func (b *WebModuleBuilder) replaceUiResourceRelations(moduleResourceIDs []string
 
 	menuRouteRows := make([]*meta.UiResourceMenuRoute, 0, len(menuRoutes))
 	seenMenuRoutes := make(map[string]bool, len(menuRoutes))
+	seenRouteIDs := make(map[string]bool, len(menuRoutes))
+	routeIDsToReplace := make([]string, 0, len(menuRoutes))
 	for _, ref := range menuRoutes {
 		menuName := strings.TrimSpace(ref.MenuName)
 		routeName := strings.TrimSpace(ref.RouteName)
@@ -1963,11 +1980,22 @@ func (b *WebModuleBuilder) replaceUiResourceRelations(moduleResourceIDs []string
 		if seenMenuRoutes[key] {
 			continue
 		}
+		// DB enforces unique(route_ui_resource_id); keep the first MENU→ROUTE winner.
+		if seenRouteIDs[routeID] {
+			continue
+		}
 		seenMenuRoutes[key] = true
+		seenRouteIDs[routeID] = true
+		routeIDsToReplace = append(routeIDsToReplace, routeID)
 		menuRouteRows = append(menuRouteRows, &meta.UiResourceMenuRoute{
 			MenuUiResourceId:  sql.NullString{String: menuID, Valid: true},
 			RouteUiResourceId: sql.NullString{String: routeID, Valid: true},
 		})
+	}
+	// Clear any leftover MENU→ROUTE rows for these routes (including soft-deleted
+	// ghosts or links from menus outside this module_id set) before insert.
+	if err := deleteMenuRoutesForRouteIDsFn(b.runtimeScope.Session(), routeIDsToReplace); err != nil {
+		return err
 	}
 
 	routeActionRows := make([]*meta.UiResourceRouteAction, 0, len(routeActions))

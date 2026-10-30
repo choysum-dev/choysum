@@ -7,9 +7,11 @@ import { useRouter } from 'vue-router';
 import { isTermReference, type TermReference } from '@/core/service/i18n';
 import { createTranslate, type TextSource } from '../../i18n';
 import {
+  getIntermediateAncestors,
   getMenuBasePath,
   getMenuId,
   getPageTitle as resolvePageTitle,
+  isMenuNavigatedCrumb,
   resolveAppRoot,
 } from './breadcrumb_helpers';
 
@@ -17,10 +19,10 @@ const { _lt } = createTranslate('web', { scope: 'web/stores/breadcrumbStore' });
 const pageFallback = _lt('Page');
 const detailsFallback = _lt('Details');
 
-/** Max trail length including the L1+L2 root prefix. */
+/** Max trail length including the menu-root prefix (app + folders + leaf). */
 const MAX_STACK = 10;
 
-export type BreadcrumbKind = 'app' | 'menu' | 'page';
+export type BreadcrumbKind = 'app' | 'folder' | 'menu' | 'page';
 
 export interface BreadcrumbItem {
   title: string;
@@ -28,15 +30,15 @@ export interface BreadcrumbItem {
   path: string;
   clickable: boolean;
   timestamp: number;
-  /** app = L1; menu = L2 leaf; page = deeper route segment. */
+  /** app = root; folder = pathless intermediate; menu = leaf; page = deeper segment. */
   kind: BreadcrumbKind;
-  /** Menu id for app / leaf segments (used by app-home navigation). */
+  /** Menu id for app / folder / leaf segments (used by menu navigation). */
   menuId?: string;
 }
 
 /**
  * Breadcrumb store that tracks route-driven navigation history.
- * Stack shape: [L1 app?, L2 leaf, ...pages].
+ * Stack shape: [app?, ...folders, leaf, ...pages].
  */
 export const useBreadcrumbStore = defineStore('breadcrumb', () => {
   const breadcrumbStack = ref<BreadcrumbItem[]>([]);
@@ -131,7 +133,7 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
   }
 
   /**
-   * Rebuilds or extends the stack for the active L2 leaf and current route.
+   * Rebuilds or extends the stack for the active leaf (and ancestor folders) and current route.
    */
   function syncStackToActiveMenu(activeMenu: any, route: any, activeApp: any | null) {
     const leafId = getMenuId(activeMenu);
@@ -181,21 +183,37 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
     });
   }
 
+  /** Count of non-page crumbs (app + intermediate folders + leaf). */
   function rootPrefixLength(): number {
-    if (!breadcrumbStack.value.length) return 0;
-    if (breadcrumbStack.value[0]?.kind === 'app') {
-      return Math.min(2, breadcrumbStack.value.length);
+    let i = 0;
+    while (i < breadcrumbStack.value.length && breadcrumbStack.value[i]?.kind !== 'page') {
+      i += 1;
     }
-    return 1;
+    return i;
   }
 
   function trimStackPreservingRoot() {
     if (breadcrumbStack.value.length <= MAX_STACK) return;
+    const stack = breadcrumbStack.value;
     const prefix = rootPrefixLength();
-    // prefix is 0–2 and MAX_STACK is 10, so keepTail stays positive.
+    // Deep menu roots can fill MAX_STACK; keep app + leaf + newest pages, drop folders.
+    if (prefix >= MAX_STACK) {
+      const root = stack.slice(0, prefix);
+      const app = root.find((item) => item.kind === 'app');
+      const leaf = [...root].reverse().find((item) => item.kind === 'menu');
+      const kept: BreadcrumbItem[] = [];
+      if (app) kept.push(app);
+      if (leaf && leaf !== app) kept.push(leaf);
+      const pages = stack.slice(prefix);
+      const room = Math.max(0, MAX_STACK - kept.length);
+      kept.push(...pages.slice(-room));
+      breadcrumbStack.value = kept.slice(0, MAX_STACK);
+      applyClickableFlags();
+      return;
+    }
     const keepTail = MAX_STACK - prefix;
-    const head = breadcrumbStack.value.slice(0, prefix);
-    const tail = breadcrumbStack.value.slice(-keepTail);
+    const head = stack.slice(0, prefix);
+    const tail = stack.slice(-keepTail);
     breadcrumbStack.value = [...head, ...tail];
     applyClickableFlags();
   }
@@ -207,8 +225,60 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
     applyClickableFlags();
   }
 
+  function buildMenuRootItems(
+    app: any | null,
+    leaf: any,
+    leafPath: string,
+    leafSource: TextSource,
+    now: number,
+  ): BreadcrumbItem[] {
+    const leafId = getMenuId(leaf);
+    const leafItem: BreadcrumbItem = {
+      ...normalizeTitle(leafSource),
+      path: leafPath,
+      clickable: false,
+      timestamp: now,
+      kind: 'menu',
+      menuId: leafId,
+    };
+
+    const appId = app ? getMenuId(app) : null;
+    if (!app || !appId || appId === leafId) {
+      return [leafItem];
+    }
+
+    const appSource = app.titleText || app.title || pageFallback;
+    const items: BreadcrumbItem[] = [
+      {
+        ...normalizeTitle(appSource),
+        path: '',
+        clickable: false,
+        timestamp: now,
+        kind: 'app',
+        menuId: appId,
+      },
+    ];
+
+    for (const folder of getIntermediateAncestors(leaf, app)) {
+      const folderId = getMenuId(folder);
+      if (!folderId || folderId === appId || folderId === leafId) continue;
+      const folderSource = folder.titleText || folder.title || pageFallback;
+      items.push({
+        ...normalizeTitle(folderSource),
+        path: folder.path || '',
+        clickable: false,
+        timestamp: now,
+        kind: 'folder',
+        menuId: folderId,
+      });
+    }
+
+    items.push(leafItem);
+    return items;
+  }
+
   /**
-   * Full reset: [app?, leaf].
+   * Full reset: [app?, ...folders, leaf].
    */
   function resetBreadcrumbToAppAndLeaf(
     app: any | null,
@@ -220,38 +290,12 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
     const appId = app ? getMenuId(app) : null;
     currentMenuId.value = leafId;
     currentAppId.value = appId;
-
-    const now = Date.now();
-    const leafItem: BreadcrumbItem = {
-      ...normalizeTitle(leafSource),
-      path: leafPath,
-      clickable: false,
-      timestamp: now,
-      kind: 'menu',
-      menuId: leafId,
-    };
-
-    if (app && appId && appId !== leafId) {
-      const appSource = app.titleText || app.title || pageFallback;
-      breadcrumbStack.value = [
-        {
-          ...normalizeTitle(appSource),
-          path: '',
-          clickable: false,
-          timestamp: now,
-          kind: 'app',
-          menuId: appId,
-        },
-        leafItem,
-      ];
-    } else {
-      breadcrumbStack.value = [leafItem];
-    }
+    breadcrumbStack.value = buildMenuRootItems(app, leaf, leafPath, leafSource, Date.now());
     applyClickableFlags();
   }
 
   /**
-   * Same L1 app, different L2 leaf: keep the app segment, replace the rest.
+   * Same L1 app, different leaf: keep the app segment when possible, rebuild folders + leaf.
    */
   function replaceLeafUnderApp(
     app: any,
@@ -265,37 +309,18 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
     currentAppId.value = appId;
 
     const now = Date.now();
-    const appSource = app.titleText || app.title || pageFallback;
+    const items = buildMenuRootItems(app, leaf, leafPath, leafSource, now);
     const prevApp = breadcrumbStack.value[0];
-    const appItem: BreadcrumbItem =
-      prevApp?.kind === 'app' && prevApp.menuId === appId
-        ? {
-            ...prevApp,
-            ...normalizeTitle(appSource),
-            menuId: appId,
-            kind: 'app',
-            path: '',
-          }
-        : {
-            ...normalizeTitle(appSource),
-            path: '',
-            clickable: false,
-            timestamp: now,
-            kind: 'app',
-            menuId: appId,
-          };
-
-    breadcrumbStack.value = [
-      appItem,
-      {
-        ...normalizeTitle(leafSource),
-        path: leafPath,
-        clickable: false,
-        timestamp: now,
-        kind: 'menu',
-        menuId: leafId,
-      },
-    ];
+    if (prevApp?.kind === 'app' && prevApp.menuId === appId && items[0]?.kind === 'app') {
+      items[0] = {
+        ...prevApp,
+        ...normalizeTitle(app.titleText || app.title || pageFallback),
+        menuId: appId,
+        kind: 'app',
+        path: '',
+      };
+    }
+    breadcrumbStack.value = items;
     applyClickableFlags();
   }
 
@@ -322,7 +347,10 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
    * Pushes a new page segment or truncates to an existing path.
    */
   function pushBreadcrumb(title: TextSource, path: string) {
-    const existingIndex = breadcrumbStack.value.findIndex((item) => item.path === path && item.path !== '');
+    // Skip pathless folders/app crumbs; folders with a path must not steal page truncate.
+    const existingIndex = breadcrumbStack.value.findIndex(
+      (item) => item.path === path && item.path !== '' && item.kind !== 'folder',
+    );
 
     if (existingIndex > -1) {
       breadcrumbStack.value = breadcrumbStack.value.slice(0, existingIndex + 1);
@@ -350,8 +378,10 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
     }
 
     const targetItem = breadcrumbStack.value[index];
-    // App crumbs navigate via menuApi; do not truncate the trail here.
-    if (targetItem.kind === 'app') return null;
+    // App / pathless folder crumbs navigate via menuApi; do not truncate here.
+    if (isMenuNavigatedCrumb(targetItem)) {
+      return null;
+    }
 
     breadcrumbStack.value = breadcrumbStack.value.slice(0, index + 1);
     applyClickableFlags();

@@ -208,15 +208,15 @@ func TestPerformUpsertPackagedTermsBranches(t *testing.T) {
 		t.Fatal("expected error for non-string poText")
 	}
 
-	coreApp := performUpsertPackagedTerms(engine.Ctx, engine, provider, reg, []*quickjs.Value{
-		engine.Ctx.String("core"),
+	emptyApp := performUpsertPackagedTerms(engine.Ctx, engine, provider, reg, []*quickjs.Value{
+		engine.Ctx.String("  "),
 		engine.Ctx.String("auth"),
 		engine.Ctx.String("zh_CN"),
 		engine.Ctx.String("x"),
 	}, deps)
-	defer coreApp.Free()
-	if !coreApp.IsError() {
-		t.Fatal("expected error for core application")
+	defer emptyApp.Free()
+	if !emptyApp.IsError() {
+		t.Fatal("expected error for empty application")
 	}
 
 	nilSessionProvider := jsengine.ScopeProvider(func(ctx context.Context) scope.Scope {

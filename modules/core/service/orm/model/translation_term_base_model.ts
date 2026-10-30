@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Field } from '../decorator/field';
+import { _lt } from '@/core/service/i18n_binder';
 import { MetadataStorage } from '../metadata/storage';
 import { raiseDomainError } from '@/core/service/error';
 import { withRecordRuleAndFieldRuleBypass } from '../repository/authz';
@@ -62,6 +63,7 @@ export type ImportPackagedResp = {
 
 const KIND_LITERAL = 'literal';
 const SOURCE_PACKAGED = 'packaged';
+const SOURCE_OVERRIDE = 'override';
 
 /** First 8 bytes hex of sha256(nil) — matches Go store.EmptyTermHash. */
 const EMPTY_TERM_HASH = 'e3b0c44298fc1c14';
@@ -299,32 +301,132 @@ export function __normalizeSourceForTest(source: string | null | undefined): str
  *
  * Unique key: (Module, Lang, Scope, Src, Kind). `GetTranslations` serves Gateway catalog reads.
  */
+/**
+ * When Value changes on a packaged term, mark Source=override (one-way).
+ * No-op saves that echo the same Value leave Source alone so PO re-import can refresh.
+ */
+function applyOverrideSourceWhenValueEdited(
+  values: Record<string, unknown>,
+  existingRows: Array<{ Value?: unknown; Source?: unknown }> = []
+): void {
+  if (!Object.prototype.hasOwnProperty.call(values, 'Value')) {
+    return;
+  }
+  // Explicit Source in the patch wins (PO re-import / programmatic reset).
+  if (Object.prototype.hasOwnProperty.call(values, 'Source') && existingRows.length > 0) {
+    return;
+  }
+  const next = String(values.Value ?? '');
+  if (existingRows.length > 1) {
+    // Shared patch: only mark override when every matched row is packaged and changes.
+    // Mixed packaged/non-packaged matches cannot share a safe Source value — leave alone.
+    const hasNonPackaged = existingRows.some(
+      row => normalizeSource(row.Source as string | null | undefined) !== SOURCE_PACKAGED
+    );
+    if (hasNonPackaged) {
+      return;
+    }
+    if (existingRows.every(row => next !== String(row.Value ?? ''))) {
+      values.Source = SOURCE_OVERRIDE;
+    }
+    return;
+  }
+  let shouldOverride = false;
+  for (const row of existingRows) {
+    if (normalizeSource(row.Source as string | null | undefined) !== SOURCE_PACKAGED) {
+      continue;
+    }
+    if (next !== String(row.Value ?? '')) {
+      shouldOverride = true;
+      break;
+    }
+  }
+  if (shouldOverride) {
+    values.Source = SOURCE_OVERRIDE;
+  }
+}
+
+/** Test-only: override-on-value-edit Source flip rules. */
+export function __applyOverrideSourceWhenValueEditedForTest(
+  values: Record<string, unknown>,
+  existingRows?: Array<{ Value?: unknown; Source?: unknown }>
+): void {
+  applyOverrideSourceWhenValueEdited(values, existingRows);
+}
+
 export default class TranslationTermBaseModel extends BaseModel {
-  @Field({ type: 'varchar', size: 255, notNull: true, index: true })
+  @Field({
+    type: 'varchar',
+    size: 255,
+    notNull: true,
+    index: true,
+    string: _lt('Application', { scope: 'core.model.TranslationTerm.fields' }),
+  })
   Application!: string;
 
-  @Field({ type: 'varchar', size: 255, notNull: true, index: true })
+  @Field({
+    type: 'varchar',
+    size: 255,
+    notNull: true,
+    index: true,
+    string: _lt('Module', { scope: 'core.model.TranslationTerm.fields' }),
+  })
   Module!: string;
 
-  @Field({ type: 'varchar', size: 32, notNull: true, index: true })
+  @Field({
+    type: 'varchar',
+    size: 32,
+    notNull: true,
+    index: true,
+    string: _lt('Language', { scope: 'core.model.TranslationTerm.fields' }),
+  })
   Lang!: string;
 
-  @Field({ type: 'varchar', size: 512, notNull: true, index: true })
+  @Field({
+    type: 'varchar',
+    size: 512,
+    notNull: true,
+    index: true,
+    string: _lt('Scope', { scope: 'core.model.TranslationTerm.fields' }),
+  })
   Scope!: string;
 
-  @Field({ type: 'text', notNull: true })
+  @Field({
+    type: 'text',
+    notNull: true,
+    string: _lt('Source text', { scope: 'core.model.TranslationTerm.fields' }),
+  })
   Src!: string;
 
-  @Field({ type: 'text' })
+  @Field({
+    type: 'text',
+    string: _lt('Translation', { scope: 'core.model.TranslationTerm.fields' }),
+  })
   Value!: string;
 
-  @Field({ type: 'varchar', size: 64, notNull: true, index: true, default: KIND_LITERAL })
+  @Field({
+    type: 'varchar',
+    size: 64,
+    notNull: true,
+    index: true,
+    default: KIND_LITERAL,
+    string: _lt('Kind', { scope: 'core.model.TranslationTerm.fields' }),
+  })
   Kind!: string;
 
-  @Field({ type: 'varchar', size: 32, notNull: true, default: SOURCE_PACKAGED })
+  @Field({
+    type: 'varchar',
+    size: 32,
+    notNull: true,
+    default: SOURCE_PACKAGED,
+    string: _lt('Source', { scope: 'core.model.TranslationTerm.fields' }),
+  })
   Source!: string;
 
-  @Field({ type: 'text' })
+  @Field({
+    type: 'text',
+    string: _lt('Comments', { scope: 'core.model.TranslationTerm.fields' }),
+  })
   Comments!: string;
 
   /**
@@ -341,7 +443,7 @@ export default class TranslationTermBaseModel extends BaseModel {
       fail('TRANSLATION_TERM_LANG_REQUIRED', 'lang is required');
     }
     const application = String(storeMeta(this)?.application || '').trim();
-    if (!application || application === 'core') {
+    if (!application) {
       const hash = EMPTY_TERM_HASH;
       const clientHash = String(req?.hash ?? '').trim();
       return {
@@ -425,8 +527,8 @@ export default class TranslationTermBaseModel extends BaseModel {
     req: ImportPackagedReq
   ): Promise<ImportPackagedResp> {
     const application = String(storeMeta(this)?.application || '').trim();
-    if (!application || application === 'core') {
-      fail('TRANSLATION_TERM_IMPORT_APP', 'ImportPackaged requires a non-core application host');
+    if (!application) {
+      fail('TRANSLATION_TERM_IMPORT_APP', 'ImportPackaged requires an application host');
     }
     const module = String(req?.module ?? '').trim();
     const lang = String(req?.lang ?? '').trim();
@@ -480,11 +582,14 @@ export default class TranslationTermBaseModel extends BaseModel {
   ): Promise<Array<PartialOrProjected<RowOf<C>, F>>> {
     const self = asTermCtor(this);
     const application = hostApplication(this);
+    // limit: 0 is unbounded — Search only applies LIMIT when options.limit is truthy.
     const before = await self.Search(condition as QueryCondition<TranslationTermBaseModel>, {
-      fields: ['Module'],
+      fields: ['Module', 'Value', 'Source'],
       limit: 0,
     });
-    const out = await super.Update<C, F>(condition, values, returnFields, options);
+    const patch = { ...(values as Record<string, unknown>) };
+    applyOverrideSourceWhenValueEdited(patch, before as Array<{ Value?: unknown; Source?: unknown }>);
+    const out = await super.Update<C, F>(condition, patch as Partial<Updateable<RowOf<C>>>, returnFields, options);
     invalidateTerminologyModules(application, [
       ...modulesFromPayloads(values),
       ...modulesFromRows(before),
@@ -502,16 +607,41 @@ export default class TranslationTermBaseModel extends BaseModel {
   ): Promise<PartialOrProjected<RowOf<C>, F>> {
     const self = asTermCtor(this);
     const application = hostApplication(this);
-    let module = String((values as Record<string, unknown>).Module ?? '').trim();
-    if (!module) {
+    const patch = { ...(values as Record<string, unknown>) };
+    let module = String(patch.Module ?? '').trim();
+    let existingRow: { Module?: unknown; Value?: unknown; Source?: unknown } | null = null;
+    // Browse when Module is missing (cache invalidation) or Value is edited (override Source).
+    const needsBrowse = !module || Object.prototype.hasOwnProperty.call(patch, 'Value');
+    if (needsBrowse) {
       try {
-        const existing = await self.Browse(id, ['Module']);
-        module = String(existing?.Module ?? '').trim();
+        existingRow = (await self.Browse(id, ['Module', 'Value', 'Source'])) as {
+          Module?: unknown;
+          Value?: unknown;
+          Source?: unknown;
+        };
+        if (!module) {
+          module = String(existingRow?.Module ?? '').trim();
+        }
       } catch {
         /* Browse may fail if row gone; still attempt update */
       }
     }
-    const out = await super.UpdateById<C, F>(id, values, returnFields, options);
+    if (existingRow) {
+      applyOverrideSourceWhenValueEdited(patch, [existingRow]);
+    } else if (
+      Object.prototype.hasOwnProperty.call(patch, 'Value') &&
+      !Object.prototype.hasOwnProperty.call(patch, 'Source')
+    ) {
+      // Without the prior row we cannot decide packaged→override; refuse the Value edit.
+      fail(
+        'TRANSLATION_TERM_VALUE_UPDATE_NO_ROW',
+        'translation term Value update requires a readable existing row'
+      );
+    }
+    const out = await super.UpdateById<C, F>(id, patch as Partial<Updateable<RowOf<C>>>, returnFields, options);
+    if (!module) {
+      module = String((out as { Module?: unknown } | null | undefined)?.Module ?? '').trim();
+    }
     invalidateTerminologyModules(application, [module, ...modulesFromRows(out)]);
     return out;
   }

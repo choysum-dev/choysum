@@ -8,6 +8,22 @@ import { Building2 } from 'lucide-vue-next';
 
 const { _lt } = createTranslate('base', { scope: 'web/menu/menus' });
 
+/** Settings → base → Translations when base is installed. */
+export const baseSettingsAppMenu: MenuItem = defineMenu('base.menu.settings_app', {
+  title: _lt('base'),
+  sequence: 30,
+  parentMenu: 'web.menu.settings',
+  defaultRoles: ['sys.admin'],
+  children: [
+    defineMenu('base.menu.terminology_base', {
+      title: _lt('Translations'),
+      path: '/web/terminology/base',
+      sequence: 10,
+      defaultRoles: ['sys.admin'],
+    }),
+  ],
+});
+
 export const baseMenus: MenuItem[] = [
   defineMenu('base.menu.root', {
     title: _lt('Master Data'),
@@ -23,13 +39,6 @@ export const baseMenus: MenuItem[] = [
       defineMenu('base.menu.currency', { title: _lt('Currency Management'), path: '/base/currencies', sequence: 70 }),
       defineMenu('base.menu.exchange_rate', { title: _lt('Exchange Rate Management'), path: '/base/exchange-rates', sequence: 80 }),
       defineMenu('base.menu.language', { title: _lt('Language Management'), path: '/base/languages', sequence: 90 }),
-      defineMenu('base.menu.terminology', {
-        title: _lt('Terminology Editor'),
-        path: '/base/terminology',
-        sequence: 95,
-        // Role-gated only; see base.route.terminology_editor comment.
-        defaultRoles: ['terminology.editor'],
-      }),
       defineMenu('base.menu.sequence', { title: _lt('Sequence Management'), path: '/base/sequences', sequence: 110 }),
       defineMenu('base.menu.sequence_idempotency', { title: _lt('Sequence Idempotency Record'), path: '/base/sequence-idempotencies', sequence: 120 }),
       defineMenu('base.menu.uom_category', { title: _lt('Unit of Measure Category'), path: '/base/uom-categories', sequence: 130 }),

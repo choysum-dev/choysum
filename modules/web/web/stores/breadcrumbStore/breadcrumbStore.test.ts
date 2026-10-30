@@ -30,6 +30,23 @@ function installMenus() {
     title: 'Auth',
     children: [{ id: 'users', title: 'Users', path: '/auth/users' }],
   } as any);
+  menuPlugin.manager.addMenu({
+    id: 'web.menu.settings',
+    title: 'Settings',
+    children: [
+      {
+        id: 'web.menu.settings_app_core',
+        title: 'core',
+        children: [
+          {
+            id: 'web.menu.terminology_core',
+            title: 'Translations',
+            path: '/web/terminology/core',
+          },
+        ],
+      },
+    ],
+  } as any);
   return menuPlugin;
 }
 
@@ -108,7 +125,7 @@ describe('breadcrumbStore L1+L2 trail', () => {
     mounted.unmount();
   });
 
-  test('pushBreadcrumb preserves L1+L2 root when trimming long stacks', () => {
+  test('pushBreadcrumb preserves menu-root prefix when trimming long stacks', () => {
     const pinia = createPinia();
     setActivePinia(pinia);
     const store = useBreadcrumbStore();
@@ -122,10 +139,18 @@ describe('breadcrumbStore L1+L2 trail', () => {
         menuId: 'app',
       },
       {
+        title: 'Folder',
+        path: '',
+        clickable: true,
+        timestamp: 2,
+        kind: 'folder',
+        menuId: 'folder',
+      },
+      {
         title: 'Leaf',
         path: '/leaf',
         clickable: true,
-        timestamp: 2,
+        timestamp: 3,
         kind: 'menu',
         menuId: 'leaf',
       },
@@ -133,11 +158,52 @@ describe('breadcrumbStore L1+L2 trail', () => {
     for (let i = 0; i < 12; i++) {
       store.pushBreadcrumb(`P${i}`, `/leaf/p${i}`);
     }
-    expect(store.breadcrumbStack[0]?.kind).toBe('app');
-    expect(store.breadcrumbStack[1]?.kind).toBe('menu');
+    expect(store.breadcrumbStack.map((i) => i.kind).slice(0, 3)).toEqual(['app', 'folder', 'menu']);
     expect(store.breadcrumbStack.length).toBeLessThanOrEqual(10);
     expect(store.breadcrumbStack[0]?.title).toBe('App');
-    expect(store.breadcrumbStack[1]?.title).toBe('Leaf');
+    expect(store.breadcrumbStack[1]?.title).toBe('Folder');
+    expect(store.breadcrumbStack[2]?.title).toBe('Leaf');
+  });
+
+  test('trimStackPreservingRoot keeps app+leaf+page when folder root fills MAX_STACK', () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const store = useBreadcrumbStore();
+    const root: Array<{
+      title: string;
+      path: string;
+      clickable: boolean;
+      timestamp: number;
+      kind: 'app' | 'folder' | 'menu';
+      menuId: string;
+    }> = [
+      { title: 'App', path: '', clickable: true, timestamp: 1, kind: 'app', menuId: 'app' },
+    ];
+    for (let i = 0; i < 9; i++) {
+      root.push({
+        title: `F${i}`,
+        path: '',
+        clickable: true,
+        timestamp: 2 + i,
+        kind: 'folder',
+        menuId: `f${i}`,
+      });
+    }
+    root.push({
+      title: 'Leaf',
+      path: '/deep',
+      clickable: true,
+      timestamp: 20,
+      kind: 'menu',
+      menuId: 'leaf',
+    });
+    expect(root.length).toBeGreaterThanOrEqual(10);
+    store.breadcrumbStack = root as any;
+    store.pushBreadcrumb('Details', '/deep/1');
+    expect(store.breadcrumbStack.length).toBeLessThanOrEqual(10);
+    expect(store.breadcrumbStack.some((i) => i.kind === 'app')).toBe(true);
+    expect(store.breadcrumbStack.some((i) => i.kind === 'menu' && i.path === '/deep')).toBe(true);
+    expect(store.breadcrumbStack[store.breadcrumbStack.length - 1]?.path).toBe('/deep/1');
   });
 
   test('clearBreadcrumb empties stack and ids', () => {
@@ -466,6 +532,55 @@ describe('breadcrumbStore L1+L2 trail', () => {
     expect(store.navigateToBreadcrumb(0)).toBeNull();
     expect(store.breadcrumbStack.map((i) => i.kind)).toEqual(beforeAppNav);
 
+    store.resetBreadcrumb('settings', 'Settings', '');
+    if (store.breadcrumbStack[0]) {
+      store.breadcrumbStack[0].kind = 'app';
+      store.breadcrumbStack[0].path = '';
+      store.breadcrumbStack[0].menuId = 'web.menu.settings';
+    }
+    store.breadcrumbStack.splice(1, 0, {
+      title: 'core',
+      path: '',
+      clickable: true,
+      timestamp: Date.now(),
+      kind: 'folder',
+      menuId: 'web.menu.settings_app_core',
+    } as any);
+    store.pushBreadcrumb('Translations', '/web/terminology/core');
+    const beforeFolderNav = store.breadcrumbStack.length;
+    expect(store.navigateToBreadcrumb(1)).toBeNull();
+    expect(store.breadcrumbStack.length).toBe(beforeFolderNav);
+
+    // Folder crumbs that share a path must not steal page truncate on pushBreadcrumb.
+    store.breadcrumbStack = [
+      {
+        title: 'Settings',
+        path: '',
+        clickable: true,
+        timestamp: 1,
+        kind: 'app',
+        menuId: 'web.menu.settings',
+      },
+      {
+        title: 'Folder',
+        path: '/web/terminology/core',
+        clickable: true,
+        timestamp: 2,
+        kind: 'folder',
+        menuId: 'folder.with.path',
+      },
+      {
+        title: 'Translations',
+        path: '/web/terminology/core',
+        clickable: false,
+        timestamp: 3,
+        kind: 'menu',
+        menuId: 'web.menu.terminology_core',
+      },
+    ] as any;
+    store.pushBreadcrumb('Translations', '/web/terminology/core');
+    expect(store.breadcrumbStack.map((i) => i.kind)).toEqual(['app', 'folder', 'menu']);
+
     mounted.unmount();
   });
 
@@ -493,6 +608,39 @@ describe('breadcrumbStore L1+L2 trail', () => {
     await router.push({ path: '/orphan', meta: {} });
     await flushPromises();
     expect(store.breadcrumbStack.length).toBe(0);
+    mounted.unmount();
+  });
+
+  test('syncStackToActiveMenu inserts pathless folder crumbs between app and leaf', async () => {
+    const menuPlugin = installMenus();
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: {
+        path: '/web/terminology/core',
+        fullPath: '/web/terminology/core',
+        meta: {},
+      },
+    });
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+    const Host = defineComponent({
+      setup() {
+        useMenuStore().bindRouteFromInjection();
+        useBreadcrumbStore();
+        return () => h('div');
+      },
+    });
+    const mounted = mountApp(Host as any, { plugins: [menuPlugin, pinia, router, i18n] });
+    await flushPromises();
+    const leaf = menuPlugin.manager.getMenu('web.menu.terminology_core');
+    expect(leaf).toBeTruthy();
+    useMenuStore().setActiveMenu(leaf as any);
+    await router.push({ path: '/web/terminology/core', meta: {} });
+    await flushPromises();
+    const store = useBreadcrumbStore();
+    expect(store.breadcrumbStack.map((i) => i.kind)).toEqual(['app', 'folder', 'menu']);
+    expect(store.breadcrumbStack[1]?.menuId).toBe('web.menu.settings_app_core');
+    expect(store.breadcrumbStack[1]?.path).toBe('');
     mounted.unmount();
   });
 

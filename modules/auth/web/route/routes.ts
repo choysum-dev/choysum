@@ -4,6 +4,7 @@
 import { RouteRecordRaw } from 'vue-router';
 import { defineRoute } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
+import { terminologyListComponent } from '@/web/web/route';
 
 const { _lt } = createTranslate('auth', { scope: 'web/route/routes' });
 
@@ -362,6 +363,16 @@ export const appRoutes: RouteRecordRaw[] = [
       'auth.action.role_ui_resource_copy',
     ],
     meta: { requiresAuth: true },
+  }),
+
+  defineRoute('auth.route.terminology_list', {
+    sequence: 40,
+    title: _lt('Translations'),
+    path: 'web/terminology/auth',
+    name: 'TranslationTermList_auth',
+    component: terminologyListComponent,
+    defaultRoles: ['sys.admin'],
+    meta: { requiresAuth: true, terminologyApplication: 'auth' },
   }),
 ];
 

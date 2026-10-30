@@ -105,6 +105,17 @@ html {
   --choy-color-primary-soft: color-mix(in oklab, var(--choy-color-primary) 55%, white);
   --choy-color-primary-muted: color-mix(in oklab, var(--choy-color-primary) 35%, white);
   --choy-color-primary-subtle: color-mix(in oklab, var(--choy-color-primary) 12%, white);
+  /* Outline button hover: light primary hint (see index.css); keep below solid CTA. */
+  --choy-color-outline-hover-border: color-mix(
+    in oklab,
+    var(--choy-color-primary) 30%,
+    var(--choy-color-border)
+  );
+  --choy-color-outline-hover-bg: color-mix(
+    in oklab,
+    var(--choy-color-primary) 5%,
+    var(--choy-color-accent)
+  );
   --choy-color-success-subtle: color-mix(in oklab, var(--choy-color-success) 12%, white);
   --choy-color-warning-subtle: color-mix(in oklab, var(--choy-color-warning) 12%, white);
   --choy-color-danger-subtle: color-mix(in oklab, var(--choy-color-danger) 12%, white);

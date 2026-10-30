@@ -28,7 +28,7 @@ export function getChoysumI18nBridge(): ChoysumI18nBridge | undefined {
 export function invalidateTerminologyModule(application: string, module: string): void {
   const app = String(application || '').trim();
   const mod = String(module || '').trim();
-  if (!app || app === 'core' || !mod) return;
+  if (!app || !mod) return;
   const bridge = getChoysumI18nBridge();
   if (!bridge || typeof bridge.invalidateModule !== 'function') return;
   try {

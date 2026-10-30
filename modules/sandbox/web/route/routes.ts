@@ -4,6 +4,7 @@
 import type { RouteRecordRaw } from 'vue-router';
 import { defineRoute } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
+import { terminologyListComponent } from '@/web/web/route';
 
 const { _lt } = createTranslate('sandbox', { scope: 'web/route/routes' });
 
@@ -178,5 +179,14 @@ export const sandboxRoutes: RouteRecordRaw[] = [
       'sandbox.action.property_definition_copy',
     ],
     meta: { requiresAuth: true },
+  }),
+  defineRoute('sandbox.route.terminology_list', {
+    sequence: 40,
+    title: _lt('Translations'),
+    path: 'web/terminology/sandbox',
+    name: 'TranslationTermList_sandbox',
+    component: terminologyListComponent,
+    defaultRoles: ['sys.admin'],
+    meta: { requiresAuth: true, terminologyApplication: 'sandbox' },
   }),
 ];

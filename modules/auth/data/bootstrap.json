@@ -35,41 +35,11 @@
         "Name": "Terminology Editor",
         "Code": "terminology.editor",
         "Description": {
-          "en_US": "Edit terminology and download PO via TranslationTerm Search/Browse/Update/Count",
-          "zh_CN": "可通过 TranslationTerm Search/Browse/Update/Count 编辑术语并下载 PO"
+          "en_US": "Reserved for future non-admin terminology editors (platform terms stay sys.admin-only)",
+          "zh_CN": "预留给未来的非管理员术语编辑角色（平台词仍仅 sys.admin）"
         },
         "IsActive": true,
         "IsSystem": true
-      }
-    },
-    {
-      "name": "rma_terminology_editor_tt_logical",
-      "model": "RoleMethodAccess",
-      "values": {
-        "RoleId": {
-          "ref": "auth.role_terminology_editor"
-        },
-        "MetaApplicationId": null,
-        "MetaModelId": null,
-        "MetaServiceId": null,
-        "LogicalModelName": "TranslationTerm",
-        "LogicalMethods": ["Search", "Browse", "Update", "Count"],
-        "Mode": "allow"
-      }
-    },
-    {
-      "name": "rfr_terminology_editor_tt_logical",
-      "model": "RoleFieldRule",
-      "values": {
-        "RoleId": {
-          "ref": "auth.role_terminology_editor"
-        },
-        "MetaApplicationId": null,
-        "MetaModelId": null,
-        "MetaFieldId": null,
-        "LogicalModelName": "TranslationTerm",
-        "PermRead": "allow",
-        "PermWrite": "allow"
       }
     },
     {

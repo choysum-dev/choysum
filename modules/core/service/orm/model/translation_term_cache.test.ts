@@ -40,12 +40,11 @@ test('getChoysumI18nBridge reads global', () => {
   }
 });
 
-test('invalidateTerminologyModule early-returns for empty/core and missing bridge method', () => {
+test('invalidateTerminologyModule early-returns for empty app/module and missing bridge method', () => {
   const root = globalThis as any;
   const prev = root.$choysum;
   try {
     expect(() => invalidateTerminologyModule('', 'auth')).not.toThrow();
-    expect(() => invalidateTerminologyModule('core', 'auth')).not.toThrow();
     expect(() => invalidateTerminologyModule('auth', '')).not.toThrow();
     root.$choysum = { i18n: {} };
     expect(() => invalidateTerminologyModule('auth', 'auth')).not.toThrow();
@@ -149,11 +148,6 @@ async function expectRejects(promise: Promise<unknown>, code: string) {
 }
 
 test('ImportPackaged validates host application and args', async () => {
-  await expectRejects(
-    TtCoreInvTerm.ImportPackaged({ module: 'auth', lang: 'zh_CN', poText: 'x' }),
-    'TRANSLATION_TERM_IMPORT_APP'
-  );
-
   const meta = MetadataStorage.instance.getModelMetadata(TtInvTerm as any) as any;
   const prevApp = meta.application;
   meta.application = '';
@@ -344,8 +338,41 @@ test(
     }) as any;
     BaseModel.UpdateById = (async () => ({ Id: '1' })) as any;
     try {
-      await TtInvTerm.UpdateById('1', { Module: 'direct', Value: '新' } as any);
+      // No Value edit → no override Browse; Module from payload is enough to invalidate.
+      await TtInvTerm.UpdateById('1', { Module: 'direct', Kind: 'literal' } as any);
       expect(browsed).toBe(false);
+      expect(calls).toEqual([['ttinv', 'direct']]);
+    } finally {
+      TtInvTerm.Browse = originalBrowse;
+      BaseModel.UpdateById = originalUpdateById;
+    }
+  })
+);
+
+test(
+  'UpdateById Browses for Value override even when Module is in payload',
+  withInvalidateSpy(async calls => {
+    const BaseModel = Object.getPrototypeOf(TranslationTermBaseModel.prototype)
+      .constructor as typeof TranslationTermBaseModel;
+    const originalBrowse = TtInvTerm.Browse;
+    const originalUpdateById = BaseModel.UpdateById;
+    let browsed = false;
+    let receivedPatch: Record<string, unknown> | null = null;
+    TtInvTerm.Browse = (async () => {
+      browsed = true;
+      return { Module: 'ignored', Value: 'old', Source: 'packaged' };
+    }) as any;
+    BaseModel.UpdateById = (async (_id: string, values: Record<string, unknown>) => {
+      receivedPatch = values;
+      return { Id: '1' };
+    }) as any;
+    try {
+      await TtInvTerm.UpdateById('1', { Module: 'direct', Value: '新' } as any);
+      expect(browsed).toBe(true);
+      if (!receivedPatch) {
+        throw new Error('expected UpdateById patch');
+      }
+      expect(String(receivedPatch['Source'] ?? '')).toBe('override');
       expect(calls).toEqual([['ttinv', 'direct']]);
     } finally {
       TtInvTerm.Browse = originalBrowse;
@@ -374,7 +401,39 @@ test(
 );
 
 test(
-  'UpdateById continues when Browse throws',
+  'UpdateById rejects Value edit when Browse throws without existing row',
+  withInvalidateSpy(async calls => {
+    const BaseModel = Object.getPrototypeOf(TranslationTermBaseModel.prototype)
+      .constructor as typeof TranslationTermBaseModel;
+    const originalBrowse = TtInvTerm.Browse;
+    const originalUpdateById = BaseModel.UpdateById;
+    let updated = false;
+    TtInvTerm.Browse = (async () => {
+      throw new Error('gone');
+    }) as any;
+    BaseModel.UpdateById = (async () => {
+      updated = true;
+      return { Module: 'fromOut' };
+    }) as any;
+    try {
+      let err: unknown;
+      try {
+        await TtInvTerm.UpdateById('1', { Value: '新' } as any);
+      } catch (e) {
+        err = e;
+      }
+      expect(String(err ?? '')).toMatch(/readable existing row/);
+      expect(updated).toBe(false);
+      expect(calls).toEqual([]);
+    } finally {
+      TtInvTerm.Browse = originalBrowse;
+      BaseModel.UpdateById = originalUpdateById;
+    }
+  })
+);
+
+test(
+  'UpdateById continues when Browse throws if Source is explicit',
   withInvalidateSpy(async calls => {
     const BaseModel = Object.getPrototypeOf(TranslationTermBaseModel.prototype)
       .constructor as typeof TranslationTermBaseModel;
@@ -385,7 +444,7 @@ test(
     }) as any;
     BaseModel.UpdateById = (async () => ({ Module: 'fromOut' })) as any;
     try {
-      await TtInvTerm.UpdateById('1', { Value: '新' } as any);
+      await TtInvTerm.UpdateById('1', { Value: '新', Source: 'override' } as any);
       expect(calls).toEqual([['ttinv', 'fromOut']]);
     } finally {
       TtInvTerm.Browse = originalBrowse;

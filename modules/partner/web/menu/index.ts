@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { partnerMenus } from './menus';
+import { partnerMenus, partnerSettingsAppMenu } from './menus';
 import type { ChoysumWebApp } from '@/core/web/application';
 
 /**
@@ -12,6 +12,7 @@ export function setupAppMenu(app: ChoysumWebApp) {
   for (const item of partnerMenus) {
     menu.addMenu(item);
   }
+  menu.addMenu('web.menu.settings', partnerSettingsAppMenu);
 }
 
 /**

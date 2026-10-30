@@ -82,80 +82,17 @@ func TestImportModuleTerminology_importError(t *testing.T) {
 	}
 }
 
-func TestImportModuleTerminology_frameworkImportErrorAfterModule(t *testing.T) {
-	t.Cleanup(func() { importpkg.SetRun(runner.Run) })
-	calls := 0
-	importpkg.SetRun(func(_ context.Context, _ scope.Scope, spec importpkg.Spec) (importpkg.Report, error) {
-		calls++
-		if spec.Module == "demo" {
-			return importpkg.Report{Profile: importpkg.ProfileTerminology}, nil
-		}
-		return importpkg.Report{}, errors.New("forced framework terminology failure")
-	})
-
-	rs := newI18nTestScope(t)
-	modulesPath := t.TempDir()
-	demoRoot := filepath.Join(modulesPath, "demo")
-	coreRoot := filepath.Join(modulesPath, "core")
-	for _, dir := range []string{filepath.Join(demoRoot, "i18n"), filepath.Join(coreRoot, "i18n")} {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			t.Fatal(err)
-		}
-	}
-	po := []byte(`
-msgctxt "web/a@title"
-msgid "Hello"
-msgstr "你好"
-`)
-	if err := os.WriteFile(filepath.Join(demoRoot, "i18n", "zh_CN.po"), po, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(coreRoot, "i18n", "zh_CN.po"), po, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	mod := &meta.Module{Name: "demo", ApplicationStr: "auth", Path: demoRoot}
-	err := importModuleTerminology(rs, mod, modulesPath)
-	if err == nil || !strings.Contains(err.Error(), "import framework terminology into auth") {
-		t.Fatalf("error = %v, want framework import failure", err)
-	}
-	if calls < 2 {
-		t.Fatalf("calls = %d, want module then framework import", calls)
-	}
-}
-
-func TestImportFrameworkTerminology_importError(t *testing.T) {
+func TestImportModuleTerminology_coreImportError(t *testing.T) {
 	t.Cleanup(func() { importpkg.SetRun(runner.Run) })
 	importpkg.SetRun(func(_ context.Context, _ scope.Scope, _ importpkg.Spec) (importpkg.Report, error) {
-		return importpkg.Report{}, errors.New("forced framework terminology failure")
+		return importpkg.Report{}, errors.New("forced core terminology failure")
 	})
 
 	rs := newI18nTestScope(t)
-	modulesPath := t.TempDir()
-	coreRoot := filepath.Join(modulesPath, "core")
-	if err := os.MkdirAll(filepath.Join(coreRoot, "i18n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	err := importFrameworkTerminology(rs, "auth", modulesPath, &meta.Module{Name: "core", Path: coreRoot})
-	if err == nil || !strings.Contains(err.Error(), "import framework terminology into auth") {
-		t.Fatalf("error = %v, want framework import failure", err)
-	}
-}
-
-func TestImportFrameworkTerminologyIntoAllApps_listError(t *testing.T) {
-	t.Parallel()
-	rs := newI18nTestScope(t)
-	if err := rs.Session().Migrator().AutoMigrate(&meta.Module{}); err != nil {
-		t.Fatal(err)
-	}
-	if err := rs.Session().Exec("DROP TABLE meta_module").Error; err != nil {
-		t.Fatal(err)
-	}
-	if err := rs.Session().Exec(`CREATE TABLE meta_module (id TEXT PRIMARY KEY, name TEXT)`).Error; err != nil {
-		t.Fatal(err)
-	}
-	err := importFrameworkTerminologyIntoAllApps(rs, t.TempDir(), &meta.Module{Name: "core", ApplicationStr: "core"})
-	if err == nil || !strings.Contains(err.Error(), "list host applications") {
-		t.Fatalf("error = %v, want list hosts failure", err)
+	mod := &meta.Module{Name: "core", ApplicationStr: "core", Path: t.TempDir()}
+	err := importModuleTerminology(rs, mod, "")
+	if err == nil || !strings.Contains(err.Error(), "import terminology for module core") {
+		t.Fatalf("error = %v, want wrapped core import failure", err)
 	}
 }
 

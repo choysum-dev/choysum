@@ -4,6 +4,7 @@
 import type { RouteRecordRaw } from 'vue-router';
 import { defineRoute } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
+import { terminologyListComponent } from '@/web/web/route';
 
 const { _lt } = createTranslate('partner', { scope: 'web/route/routes' });
 
@@ -43,5 +44,14 @@ export const partnerRoutes: RouteRecordRaw[] = [
     component: () => import('../pages/Partner.vue'),
     actions: ['partner.action.partner_create', 'partner.action.partner_edit', 'partner.action.partner_delete', 'partner.action.partner_copy'],
     meta: { requiresAuth: true },
+  }),
+  defineRoute('partner.route.terminology_list', {
+    sequence: 40,
+    title: _lt('Translations'),
+    path: 'web/terminology/partner',
+    name: 'TranslationTermList_partner',
+    component: terminologyListComponent,
+    defaultRoles: ['sys.admin'],
+    meta: { requiresAuth: true, terminologyApplication: 'partner' },
   }),
 ];

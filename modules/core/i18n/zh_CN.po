@@ -41,50 +41,95 @@ msgctxt "core.model.BaseModel.fields"
 msgid "Updated By"
 msgstr "更新人"
 
-#: service/orm/model/property_definition_base_model.ts
+#: service/orm/model/property_definition_base_model.ts:226
 msgctxt "core.model.PropertyDefinition.fields"
 msgid "Container Id"
 msgstr "容器 ID"
 
-#: service/orm/model/property_definition_base_model.ts
+#: service/orm/model/property_definition_base_model.ts:213
 msgctxt "core.model.PropertyDefinition.fields"
 msgid "Container Model"
 msgstr "容器模型"
 
-#: service/orm/model/property_definition_base_model.ts
+#: service/orm/model/property_definition_base_model.ts:238
 msgctxt "core.model.PropertyDefinition.fields"
 msgid "Definition"
 msgstr "定义"
 
-#: service/orm/model/property_definition_base_model.ts
+#: service/orm/model/property_definition_base_model.ts:214
 msgctxt "core.model.PropertyDefinition.fields"
 msgid "Leave empty for app-level scope; set to the parent model short name for record-scoped definitions."
 msgstr "应用级作用域请留空；记录级定义则填写父模型短名。"
 
-#: service/orm/model/property_definition_base_model.ts
+#: service/orm/model/property_definition_base_model.ts:227
 msgctxt "core.model.PropertyDefinition.fields"
 msgid "Leave empty for app-level scope; set with Container Model to bind this definition to one parent record."
 msgstr "应用级作用域请留空；与「容器模型」一起填写以绑定到一条父记录。"
 
-#: service/orm/model/property_definition_base_model.ts
+#: service/orm/model/property_definition_base_model.ts:191
 msgctxt "core.model.PropertyDefinition.fields"
 msgid "Model that owns the properties column (e.g. SandboxRecord)."
 msgstr "拥有属性列的业务模型（例如 SandboxRecord）。"
 
-#: service/orm/model/property_definition_base_model.ts
+#: service/orm/model/property_definition_base_model.ts:203
 msgctxt "core.model.PropertyDefinition.fields"
 msgid "Name of the properties field on the target model (e.g. Properties)."
 msgstr "目标模型上的属性字段名（例如 Properties）。"
 
-#: service/orm/model/property_definition_base_model.ts
+#: service/orm/model/property_definition_base_model.ts:202
 msgctxt "core.model.PropertyDefinition.fields"
 msgid "Properties Field"
 msgstr "属性字段"
 
-#: service/orm/model/property_definition_base_model.ts
+#: service/orm/model/property_definition_base_model.ts:190
 msgctxt "core.model.PropertyDefinition.fields"
 msgid "Target Model"
 msgstr "目标模型"
+
+#: service/orm/model/translation_term_base_model.ts:320
+msgctxt "core.model.TranslationTerm.fields"
+msgid "Application"
+msgstr "应用"
+
+#: service/orm/model/translation_term_base_model.ts:385
+msgctxt "core.model.TranslationTerm.fields"
+msgid "Comments"
+msgstr "注释"
+
+#: service/orm/model/translation_term_base_model.ts:370
+msgctxt "core.model.TranslationTerm.fields"
+msgid "Kind"
+msgstr "类型"
+
+#: service/orm/model/translation_term_base_model.ts:338
+msgctxt "core.model.TranslationTerm.fields"
+msgid "Language"
+msgstr "语言"
+
+#: service/orm/model/translation_term_base_model.ts:329
+msgctxt "core.model.TranslationTerm.fields"
+msgid "Module"
+msgstr "模块"
+
+#: service/orm/model/translation_term_base_model.ts:347
+msgctxt "core.model.TranslationTerm.fields"
+msgid "Scope"
+msgstr "作用域"
+
+#: service/orm/model/translation_term_base_model.ts:379
+msgctxt "core.model.TranslationTerm.fields"
+msgid "Source"
+msgstr "来源"
+
+#: service/orm/model/translation_term_base_model.ts:354
+msgctxt "core.model.TranslationTerm.fields"
+msgid "Source text"
+msgstr "源文"
+
+#: service/orm/model/translation_term_base_model.ts:360
+msgctxt "core.model.TranslationTerm.fields"
+msgid "Translation"
+msgstr "译文"
 
 #: service/orm/model/model.ts:308
 msgctxt "service/orm/model/model"
@@ -335,4 +380,3 @@ msgstr "意外错误"
 msgctxt "web/rpc/errors"
 msgid "Unknown API error"
 msgstr "未知 API 错误"
-

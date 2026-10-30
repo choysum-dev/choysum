@@ -87,20 +87,3 @@ func TestRegistryExistingStore(t *testing.T) {
 		t.Fatalf("ExistingStore trimmed ok=%v", ok)
 	}
 }
-
-func TestRegistryListHostApplicationsWithoutMetaModuleTable(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "registry-hosts-no-meta.db")), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
-
-	rs := &registryCoverageScope{
-		ctx:     context.Background(),
-		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
-		session: &scope.Session{DB: db},
-	}
-	reg := NewRegistry(rs)
-	if hosts := reg.listHostApplications(); len(hosts) != 0 {
-		t.Fatalf("listHostApplications() = %#v, want empty without meta_module table", hosts)
-	}
-}

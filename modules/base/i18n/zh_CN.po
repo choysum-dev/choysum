@@ -1021,80 +1021,85 @@ msgctxt "service/models/uom"
 msgid "Rounding must be greater than 0"
 msgstr "Rounding 必须大于 0"
 
-#: web/menu/menus.ts:18
+#: web/menu/menus.ts:34
 msgctxt "web/menu/menus"
 msgid "Address Management"
 msgstr "地址管理"
 
-#: web/menu/menus.ts:19
+#: web/menu/menus.ts:35
 msgctxt "web/menu/menus"
 msgid "Bank Management"
 msgstr "银行管理"
 
-#: web/menu/menus.ts:22
+#: web/menu/menus.ts:38
 msgctxt "web/menu/menus"
 msgid "City Management"
 msgstr "城市管理"
 
-#: web/menu/menus.ts:17
+#: web/menu/menus.ts:33
 msgctxt "web/menu/menus"
 msgid "Company Management"
 msgstr "公司管理"
 
-#: web/menu/menus.ts:20
+#: web/menu/menus.ts:36
 msgctxt "web/menu/menus"
 msgid "Country Management"
 msgstr "国家/地区管理"
 
-#: web/menu/menus.ts:23
+#: web/menu/menus.ts:39
 msgctxt "web/menu/menus"
 msgid "Currency Management"
 msgstr "币种管理"
 
-#: web/menu/menus.ts:24
+#: web/menu/menus.ts:40
 msgctxt "web/menu/menus"
 msgid "Exchange Rate Management"
 msgstr "汇率管理"
 
-#: web/menu/menus.ts:25
+#: web/menu/menus.ts:41
 msgctxt "web/menu/menus"
 msgid "Language Management"
 msgstr "语言管理"
 
-#: web/menu/menus.ts:13
+#: web/menu/menus.ts:29
 msgctxt "web/menu/menus"
 msgid "Master Data"
 msgstr "基础数据"
 
-#: web/menu/menus.ts:34
+#: web/menu/menus.ts:43
 msgctxt "web/menu/menus"
 msgid "Sequence Idempotency Record"
 msgstr "序列幂等记录"
 
-#: web/menu/menus.ts:33
+#: web/menu/menus.ts:42
 msgctxt "web/menu/menus"
 msgid "Sequence Management"
 msgstr "序列管理"
 
-#: web/menu/menus.ts:21
+#: web/menu/menus.ts:37
 msgctxt "web/menu/menus"
 msgid "State Management"
 msgstr "州/省管理"
 
-#: web/menu/menus.ts:27
+#: web/menu/menus.ts:19
 msgctxt "web/menu/menus"
-msgid "Terminology Editor"
-msgstr "术语编辑器"
+msgid "Translations"
+msgstr "翻译"
 
-#: web/menu/menus.ts:36
+#: web/menu/menus.ts:45
 msgctxt "web/menu/menus"
 msgid "Unit of Measure"
 msgstr "计量单位"
 
-#: web/menu/menus.ts:35
+#: web/menu/menus.ts:44
 msgctxt "web/menu/menus"
 msgid "Unit of Measure Category"
 msgstr "计量单位类别"
+
+#: web/menu/menus.ts:13
+msgctxt "web/menu/menus"
+msgid "base"
+msgstr "base"
 
 #: web/pages/AddressList.vue:13
 msgctxt "web/pages/AddressList"
@@ -1161,202 +1166,202 @@ msgctxt "web/pages/UoMList"
 msgid "Unit of Measure List"
 msgstr "计量单位列表"
 
-#: web/route/routes.ts:52
+#: web/route/routes.ts:53
 msgctxt "web/route/routes"
 msgid "Address Details"
 msgstr "地址详情"
 
-#: web/route/routes.ts:43
+#: web/route/routes.ts:44
 msgctxt "web/route/routes"
 msgid "Address List"
 msgstr "地址列表"
 
-#: web/route/routes.ts:82
+#: web/route/routes.ts:83
 msgctxt "web/route/routes"
 msgid "Bank Details"
 msgstr "银行详情"
 
-#: web/route/routes.ts:73
+#: web/route/routes.ts:74
 msgctxt "web/route/routes"
 msgid "Bank List"
 msgstr "银行列表"
 
-#: web/route/routes.ts:112
+#: web/route/routes.ts:113
 msgctxt "web/route/routes"
 msgid "City Details"
 msgstr "城市详情"
 
-#: web/route/routes.ts:103
+#: web/route/routes.ts:104
 msgctxt "web/route/routes"
 msgid "City List"
 msgstr "城市列表"
 
-#: web/route/routes.ts:22
+#: web/route/routes.ts:23
 msgctxt "web/route/routes"
 msgid "Company Details"
 msgstr "公司详情"
 
-#: web/route/routes.ts:13
+#: web/route/routes.ts:14
 msgctxt "web/route/routes"
 msgid "Company List"
 msgstr "公司列表"
 
-#: web/route/routes.ts:142
+#: web/route/routes.ts:143
 msgctxt "web/route/routes"
 msgid "Country Details"
 msgstr "国家/地区详情"
 
-#: web/route/routes.ts:133
+#: web/route/routes.ts:134
 msgctxt "web/route/routes"
 msgid "Country List"
 msgstr "国家/地区列表"
 
-#: web/route/routes.ts:61
+#: web/route/routes.ts:62
 msgctxt "web/route/routes"
 msgid "Create Address"
 msgstr "新建地址"
 
-#: web/route/routes.ts:91
+#: web/route/routes.ts:92
 msgctxt "web/route/routes"
 msgid "Create Bank"
 msgstr "新建银行"
 
-#: web/route/routes.ts:121
+#: web/route/routes.ts:122
 msgctxt "web/route/routes"
 msgid "Create City"
 msgstr "新建城市"
 
-#: web/route/routes.ts:31
+#: web/route/routes.ts:32
 msgctxt "web/route/routes"
 msgid "Create Company"
 msgstr "新建公司"
 
-#: web/route/routes.ts:151
+#: web/route/routes.ts:152
 msgctxt "web/route/routes"
 msgid "Create Country"
 msgstr "新建国家/地区"
 
-#: web/route/routes.ts:181
+#: web/route/routes.ts:182
 msgctxt "web/route/routes"
 msgid "Create Currency"
 msgstr "新建币种"
 
-#: web/route/routes.ts:211
+#: web/route/routes.ts:212
 msgctxt "web/route/routes"
 msgid "Create Exchange Rate"
 msgstr "新建汇率"
 
-#: web/route/routes.ts:323
+#: web/route/routes.ts:312
 msgctxt "web/route/routes"
 msgid "Create Idempotency Record"
 msgstr "新建幂等记录"
 
-#: web/route/routes.ts:241
+#: web/route/routes.ts:242
 msgctxt "web/route/routes"
 msgid "Create Language"
 msgstr "新建语言"
 
-#: web/route/routes.ts:283
+#: web/route/routes.ts:272
 msgctxt "web/route/routes"
 msgid "Create Sequence"
 msgstr "新建序列"
 
-#: web/route/routes.ts:358
+#: web/route/routes.ts:347
 msgctxt "web/route/routes"
 msgid "Create State"
 msgstr "新建州/省"
 
-#: web/route/routes.ts:388
+#: web/route/routes.ts:377
 msgctxt "web/route/routes"
 msgid "Create Unit of Measure"
 msgstr "新建计量单位"
 
-#: web/route/routes.ts:418
+#: web/route/routes.ts:407
 msgctxt "web/route/routes"
 msgid "Create Unit of Measure Category"
 msgstr "新建计量单位类别"
 
-#: web/route/routes.ts:172
+#: web/route/routes.ts:173
 msgctxt "web/route/routes"
 msgid "Currency Details"
 msgstr "币种详情"
 
-#: web/route/routes.ts:163
+#: web/route/routes.ts:164
 msgctxt "web/route/routes"
 msgid "Currency List"
 msgstr "币种列表"
 
-#: web/route/routes.ts:202
+#: web/route/routes.ts:203
 msgctxt "web/route/routes"
 msgid "Exchange Rate Details"
 msgstr "汇率详情"
 
-#: web/route/routes.ts:193
+#: web/route/routes.ts:194
 msgctxt "web/route/routes"
 msgid "Exchange Rate List"
 msgstr "汇率列表"
 
-#: web/route/routes.ts:309
+#: web/route/routes.ts:298
 msgctxt "web/route/routes"
 msgid "Idempotency Record Details"
 msgstr "幂等记录详情"
 
-#: web/route/routes.ts:232
+#: web/route/routes.ts:233
 msgctxt "web/route/routes"
 msgid "Language Details"
 msgstr "语言详情"
 
-#: web/route/routes.ts:223
+#: web/route/routes.ts:224
 msgctxt "web/route/routes"
 msgid "Language List"
 msgstr "语言列表"
 
-#: web/route/routes.ts:274
+#: web/route/routes.ts:263
 msgctxt "web/route/routes"
 msgid "Sequence Details"
 msgstr "序列详情"
 
-#: web/route/routes.ts:295
+#: web/route/routes.ts:284
 msgctxt "web/route/routes"
 msgid "Sequence Idempotency Record"
 msgstr "序列幂等记录"
 
-#: web/route/routes.ts:265
+#: web/route/routes.ts:254
 msgctxt "web/route/routes"
 msgid "Sequence List"
 msgstr "序列列表"
 
-#: web/route/routes.ts:349
+#: web/route/routes.ts:338
 msgctxt "web/route/routes"
 msgid "State Details"
 msgstr "州/省详情"
 
-#: web/route/routes.ts:340
+#: web/route/routes.ts:329
 msgctxt "web/route/routes"
 msgid "State List"
 msgstr "州/省列表"
 
-#: web/route/routes.ts:250
+#: web/route/routes.ts:432
 msgctxt "web/route/routes"
-msgid "Terminology Editor"
-msgstr "术语编辑器"
+msgid "Translations"
+msgstr "翻译"
 
-#: web/route/routes.ts:400
+#: web/route/routes.ts:389
 msgctxt "web/route/routes"
 msgid "Unit of Measure Category"
 msgstr "计量单位类别"
 
-#: web/route/routes.ts:409
+#: web/route/routes.ts:398
 msgctxt "web/route/routes"
 msgid "Unit of Measure Category Details"
 msgstr "计量单位类别详情"
 
-#: web/route/routes.ts:379
+#: web/route/routes.ts:368
 msgctxt "web/route/routes"
 msgid "Unit of Measure Details"
 msgstr "计量单位详情"
 
-#: web/route/routes.ts:370
+#: web/route/routes.ts:359
 msgctxt "web/route/routes"
 msgid "Unit of Measure List"
 msgstr "计量单位列表"
@@ -1571,52 +1576,52 @@ msgctxt "web/views/CityListView"
 msgid "Edit City"
 msgstr "编辑城市"
 
-#: web/views/CompanyFormView.vue:3
+#: web/views/CompanyFormView.vue:6
 msgctxt "web/views/CompanyFormView"
 msgid "Basic Information"
 msgstr "基本信息"
 
-#: web/views/CompanyFormView.vue:38
+#: web/views/CompanyFormView.vue:47
 msgctxt "web/views/CompanyFormView"
 msgid "Company"
 msgstr "公司"
 
-#: web/views/CompanyFormView.vue:38
+#: web/views/CompanyFormView.vue:47
 msgctxt "web/views/CompanyFormView"
 msgid "Copy Company"
 msgstr "复制公司"
 
-#: web/views/CompanyFormView.vue:38
+#: web/views/CompanyFormView.vue:47
 msgctxt "web/views/CompanyFormView"
 msgid "Create Company"
 msgstr "新建公司"
 
-#: web/views/CompanyFormView.vue:38
+#: web/views/CompanyFormView.vue:47
 msgctxt "web/views/CompanyFormView"
 msgid "Delete Company"
 msgstr "删除公司"
 
-#: web/views/CompanyFormView.vue:38
+#: web/views/CompanyFormView.vue:47
 msgctxt "web/views/CompanyFormView"
 msgid "Edit Company"
 msgstr "编辑公司"
 
-#: web/views/CompanyFormView.vue:21
+#: web/views/CompanyFormView.vue:30
 msgctxt "web/views/CompanyFormView"
 msgid "Required"
 msgstr "必填"
 
-#: web/views/CompanyFormView.vue:20
+#: web/views/CompanyFormView.vue:23
 msgctxt "web/views/CompanyFormView"
 msgid "Select Currency"
 msgstr "选择币种"
 
-#: web/views/CompanyFormView.vue:25
+#: web/views/CompanyFormView.vue:28
 msgctxt "web/views/CompanyFormView"
 msgid "Select Parent Company"
 msgstr "选择上级公司"
 
-#: web/views/CompanyFormView.vue:17
+#: web/views/CompanyFormView.vue:20
 msgctxt "web/views/CompanyFormView"
 msgid "Select a time zone"
 msgstr "选择时区"
@@ -2229,3 +2234,11 @@ msgstr "计量单位"
 #~ msgctxt "base.model.Company.fields"
 #~ msgid "Shown in the app sidebar header; empty uses the product logo."
 #~ msgstr "显示在应用侧栏顶部；为空时使用产品 Logo。"
+
+#~ msgctxt "web/menu/menus"
+#~ msgid "Terminology Editor"
+#~ msgstr "术语编辑器"
+
+#~ msgctxt "web/route/routes"
+#~ msgid "Terminology Editor"
+#~ msgstr "术语编辑器"

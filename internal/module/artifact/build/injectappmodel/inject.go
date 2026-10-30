@@ -116,8 +116,8 @@ func decidePlan(spec *Spec, sess *Session, prebuildResults []*parser.ParserResul
 		}
 		return plan, nil
 	}
-	if strings.TrimSpace(mod.ApplicationStr) == "" ||
-		strings.TrimSpace(mod.ApplicationStr) == "core" {
+	appStr := strings.TrimSpace(mod.ApplicationStr)
+	if appStr == "" || (appStr == "core" && spec.ModelName != "TranslationTerm") {
 		return plan, nil
 	}
 	if strings.TrimSpace(mod.Path) == "" {
@@ -130,7 +130,7 @@ func decidePlan(spec *Spec, sess *Session, prebuildResults []*parser.ParserResul
 		return plan, nil
 	}
 
-	app := strings.TrimSpace(mod.ApplicationStr)
+	app := appStr
 	local := modelsIn(spec, prebuildResults, mod.Path)
 	localHand := handwrittenModels(spec, local)
 	if len(localHand) > 1 {
@@ -255,10 +255,13 @@ func ValidateInjectAppModels(sess *Session, buildResults []*parser.ParserResult)
 		return nil
 	}
 	app := strings.TrimSpace(mod.ApplicationStr)
-	if app == "" || app == "core" {
+	if app == "" {
 		return nil
 	}
 	for _, spec := range sess.Registry().specsList() {
+		if app == "core" && spec.ModelName != "TranslationTerm" {
+			continue
+		}
 		models := modelsIn(spec, buildResults, mod.Path)
 		if len(models) <= 1 {
 			continue

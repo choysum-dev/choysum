@@ -97,7 +97,7 @@ func (m *ModuleManager) ensureInjectedAppModelsForCodegen(ctx context.Context, m
 		return nil
 	}
 	app := strings.TrimSpace(mod.ApplicationStr)
-	if app == "" || app == "core" {
+	if app == "" {
 		return nil
 	}
 	select {

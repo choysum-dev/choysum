@@ -649,12 +649,12 @@ msgctxt "meta.model.MetaModule.fields"
 msgid "Web Entry Point"
 msgstr ""
 
-#: service/models/module_dependency.ts:19
+#: service/models/module_dependency.ts:25
 msgctxt "meta.model.MetaModuleDependency.fields"
 msgid "Dependent Module"
 msgstr ""
 
-#: service/models/module_dependency.ts:13
+#: service/models/module_dependency.ts:19
 msgctxt "meta.model.MetaModuleDependency.fields"
 msgid "Module"
 msgstr ""
@@ -1155,24 +1155,34 @@ msgctxt "service/models/ui_resource"
 msgid "Cycle detected: %s cannot be assigned under one of its descendants"
 msgstr ""
 
-#: web/menu/menus.ts:18
+#: web/menu/menus.ts:34
 msgctxt "web/menu/menus"
 msgid "Module Board"
 msgstr ""
 
-#: web/menu/menus.ts:24
+#: web/menu/menus.ts:40
 msgctxt "web/menu/menus"
 msgid "Module List"
 msgstr ""
 
-#: web/menu/menus.ts:13
+#: web/menu/menus.ts:29
 msgctxt "web/menu/menus"
 msgid "Module Management"
 msgstr ""
 
-#: web/menu/menus.ts:30
+#: web/menu/menus.ts:46
 msgctxt "web/menu/menus"
 msgid "Operation History"
+msgstr ""
+
+#: web/menu/menus.ts:19
+msgctxt "web/menu/menus"
+msgid "Translations"
+msgstr ""
+
+#: web/menu/menus.ts:13
+msgctxt "web/menu/menus"
+msgid "meta"
 msgstr ""
 
 #: web/pages/ModuleHistory.vue:12
@@ -1190,24 +1200,29 @@ msgctxt "web/pages/ModuleListTable"
 msgid "Module List"
 msgstr ""
 
-#: web/route/routes.ts:46
+#: web/route/routes.ts:47
 msgctxt "web/route/routes"
 msgid "Module Detail"
 msgstr ""
 
-#: web/route/routes.ts:26
+#: web/route/routes.ts:27
 msgctxt "web/route/routes"
 msgid "Module List"
 msgstr ""
 
-#: web/route/routes.ts:16
+#: web/route/routes.ts:17
 msgctxt "web/route/routes"
 msgid "Module Management"
 msgstr ""
 
-#: web/route/routes.ts:36
+#: web/route/routes.ts:37
 msgctxt "web/route/routes"
 msgid "Operation History"
+msgstr ""
+
+#: web/route/routes.ts:57
+msgctxt "web/route/routes"
+msgid "Translations"
 msgstr ""
 
 #: web/views/ModuleDetailView.vue:3
@@ -1250,7 +1265,7 @@ msgctxt "web/views/ModuleDetailView"
 msgid "Timestamps"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:103
+#: web/views/ModuleKanbanView.vue:96
 msgctxt "web/views/ModuleKanbanView"
 msgid "Affected Modules"
 msgstr ""
@@ -1261,22 +1276,22 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "All"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:127
+#: web/views/ModuleKanbanView.vue:120
 msgctxt "web/views/ModuleKanbanView"
 msgid "Blockers"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:38
+#: web/views/ModuleKanbanView.vue:221
 msgctxt "web/views/ModuleKanbanView"
 msgid "Board View"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:264
+#: web/views/ModuleKanbanView.vue:272
 msgctxt "web/views/ModuleKanbanView"
 msgid "Broken"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:187
+#: web/views/ModuleKanbanView.vue:180
 msgctxt "web/views/ModuleKanbanView"
 msgid "Cancel"
 msgstr ""
@@ -1286,47 +1301,47 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Completed"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:189
+#: web/views/ModuleKanbanView.vue:182
 msgctxt "web/views/ModuleKanbanView"
 msgid "Confirm"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:99
+#: web/views/ModuleKanbanView.vue:92
 msgctxt "web/views/ModuleKanbanView"
 msgid "Confirm the impact of this operation"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:263
+#: web/views/ModuleKanbanView.vue:271
 msgctxt "web/views/ModuleKanbanView"
 msgid "Disabled"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:267
+#: web/views/ModuleKanbanView.vue:275
 msgctxt "web/views/ModuleKanbanView"
 msgid "Dispatching"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:181
+#: web/views/ModuleKanbanView.vue:174
 msgctxt "web/views/ModuleKanbanView"
 msgid "Do not refresh; status updates automatically."
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:191
+#: web/views/ModuleKanbanView.vue:184
 msgctxt "web/views/ModuleKanbanView"
 msgid "Done"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:170
+#: web/views/ModuleKanbanView.vue:163
 msgctxt "web/views/ModuleKanbanView"
 msgid "Error:"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:154
+#: web/views/ModuleKanbanView.vue:147
 msgctxt "web/views/ModuleKanbanView"
 msgid "Execution Status"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:266
+#: web/views/ModuleKanbanView.vue:274
 msgctxt "web/views/ModuleKanbanView"
 msgid "Failed"
 msgstr ""
@@ -1342,22 +1357,22 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Failed to load kanban"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:302
+#: web/views/ModuleKanbanView.vue:310
 msgctxt "web/views/ModuleKanbanView"
 msgid "Failed to load plan"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:166
+#: web/views/ModuleKanbanView.vue:159
 msgctxt "web/views/ModuleKanbanView"
 msgid "Failure Kind:"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:140
+#: web/views/ModuleKanbanView.vue:133
 msgctxt "web/views/ModuleKanbanView"
 msgid "Include demo data"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:65
+#: web/views/ModuleKanbanView.vue:58
 msgctxt "web/views/ModuleKanbanView"
 msgid "Install"
 msgstr ""
@@ -1368,7 +1383,7 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Install Module"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:261
+#: web/views/ModuleKanbanView.vue:269
 msgctxt "web/views/ModuleKanbanView"
 msgid "Installed"
 msgstr ""
@@ -1378,17 +1393,17 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Job is still running in the background; refresh later"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:41
+#: web/views/ModuleKanbanView.vue:224
 msgctxt "web/views/ModuleKanbanView"
 msgid "List View"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:78
+#: web/views/ModuleKanbanView.vue:71
 msgctxt "web/views/ModuleKanbanView"
 msgid "No modules"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:262
+#: web/views/ModuleKanbanView.vue:270
 msgctxt "web/views/ModuleKanbanView"
 msgid "Not Installed"
 msgstr ""
@@ -1408,37 +1423,37 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Operation Succeeded"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:149
+#: web/views/ModuleKanbanView.vue:142
 msgctxt "web/views/ModuleKanbanView"
 msgid "Operation in progress, please wait"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:330
+#: web/views/ModuleKanbanView.vue:338
 msgctxt "web/views/ModuleKanbanView"
 msgid "Operation request failed"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:268
+#: web/views/ModuleKanbanView.vue:276
 msgctxt "web/views/ModuleKanbanView"
 msgid "Queued"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:174
+#: web/views/ModuleKanbanView.vue:167
 msgctxt "web/views/ModuleKanbanView"
 msgid "Reload:"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:96
+#: web/views/ModuleKanbanView.vue:89
 msgctxt "web/views/ModuleKanbanView"
 msgid "Resolve blockers before continuing"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:158
+#: web/views/ModuleKanbanView.vue:151
 msgctxt "web/views/ModuleKanbanView"
 msgid "Result:"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:115
+#: web/views/ModuleKanbanView.vue:108
 msgctxt "web/views/ModuleKanbanView"
 msgid "Risks"
 msgstr ""
@@ -1448,12 +1463,12 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Service is restarting; status will retry automatically"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:156
+#: web/views/ModuleKanbanView.vue:149
 msgctxt "web/views/ModuleKanbanView"
 msgid "Status:"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:265
+#: web/views/ModuleKanbanView.vue:273
 msgctxt "web/views/ModuleKanbanView"
 msgid "Succeeded"
 msgstr ""
@@ -1463,7 +1478,7 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Succeeded but reload failed"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:162
+#: web/views/ModuleKanbanView.vue:155
 msgctxt "web/views/ModuleKanbanView"
 msgid "Summary:"
 msgstr ""
@@ -1478,37 +1493,37 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Sync Module Index"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:385
+#: web/views/ModuleKanbanView.vue:393
 msgctxt "web/views/ModuleKanbanView"
 msgid "Sync failed: %s"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:383
+#: web/views/ModuleKanbanView.vue:391
 msgctxt "web/views/ModuleKanbanView"
 msgid "Sync job triggered"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:383
+#: web/views/ModuleKanbanView.vue:391
 msgctxt "web/views/ModuleKanbanView"
 msgid "Sync job triggered: all:%s"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:176
+#: web/views/ModuleKanbanView.vue:169
 msgctxt "web/views/ModuleKanbanView"
 msgid "Trigger Failed"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:176
+#: web/views/ModuleKanbanView.vue:169
 msgctxt "web/views/ModuleKanbanView"
 msgid "Triggered"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:259
+#: web/views/ModuleKanbanView.vue:267
 msgctxt "web/views/ModuleKanbanView"
 msgid "Unavailable"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:71
+#: web/views/ModuleKanbanView.vue:64
 msgctxt "web/views/ModuleKanbanView"
 msgid "Uninstall"
 msgstr ""
@@ -1519,12 +1534,12 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Uninstall Module"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:269
+#: web/views/ModuleKanbanView.vue:277
 msgctxt "web/views/ModuleKanbanView"
 msgid "Unknown"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:68
+#: web/views/ModuleKanbanView.vue:61
 msgctxt "web/views/ModuleKanbanView"
 msgid "Upgrade"
 msgstr ""
@@ -1540,12 +1555,12 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "View switcher"
 msgstr ""
 
-#: web/views/ModuleListView.vue:18
+#: web/views/ModuleListView.vue:96
 msgctxt "web/views/ModuleListView"
 msgid "Board View"
 msgstr ""
 
-#: web/views/ModuleListView.vue:123
+#: web/views/ModuleListView.vue:133
 msgctxt "web/views/ModuleListView"
 msgid "Broken"
 msgstr ""
@@ -1565,17 +1580,17 @@ msgctxt "web/views/ModuleListView"
 msgid "Delete Module Index"
 msgstr ""
 
-#: web/views/ModuleListView.vue:122
+#: web/views/ModuleListView.vue:132
 msgctxt "web/views/ModuleListView"
 msgid "Disabled"
 msgstr ""
 
-#: web/views/ModuleListView.vue:126
+#: web/views/ModuleListView.vue:136
 msgctxt "web/views/ModuleListView"
 msgid "Dispatching"
 msgstr ""
 
-#: web/views/ModuleListView.vue:31
+#: web/views/ModuleListView.vue:24
 msgctxt "web/views/ModuleListView"
 msgid "Display Version"
 msgstr ""
@@ -1585,22 +1600,22 @@ msgctxt "web/views/ModuleListView"
 msgid "Edit Module Index"
 msgstr ""
 
-#: web/views/ModuleListView.vue:125
+#: web/views/ModuleListView.vue:135
 msgctxt "web/views/ModuleListView"
 msgid "Failed"
 msgstr ""
 
-#: web/views/ModuleListView.vue:34
+#: web/views/ModuleListView.vue:27
 msgctxt "web/views/ModuleListView"
 msgid "Install Status"
 msgstr ""
 
-#: web/views/ModuleListView.vue:120
+#: web/views/ModuleListView.vue:130
 msgctxt "web/views/ModuleListView"
 msgid "Installed"
 msgstr ""
 
-#: web/views/ModuleListView.vue:21
+#: web/views/ModuleListView.vue:99
 msgctxt "web/views/ModuleListView"
 msgid "List View"
 msgstr ""
@@ -1610,7 +1625,7 @@ msgctxt "web/views/ModuleListView"
 msgid "Module Index"
 msgstr ""
 
-#: web/views/ModuleListView.vue:121
+#: web/views/ModuleListView.vue:131
 msgctxt "web/views/ModuleListView"
 msgid "Not Installed"
 msgstr ""
@@ -1620,22 +1635,22 @@ msgctxt "web/views/ModuleListView"
 msgid "Operation History"
 msgstr ""
 
-#: web/views/ModuleListView.vue:44
+#: web/views/ModuleListView.vue:37
 msgctxt "web/views/ModuleListView"
 msgid "Origin"
 msgstr ""
 
-#: web/views/ModuleListView.vue:45
+#: web/views/ModuleListView.vue:38
 msgctxt "web/views/ModuleListView"
 msgid "Path"
 msgstr ""
 
-#: web/views/ModuleListView.vue:127
+#: web/views/ModuleListView.vue:137
 msgctxt "web/views/ModuleListView"
 msgid "Queued"
 msgstr ""
 
-#: web/views/ModuleListView.vue:124
+#: web/views/ModuleListView.vue:134
 msgctxt "web/views/ModuleListView"
 msgid "Succeeded"
 msgstr ""
@@ -1665,17 +1680,17 @@ msgctxt "web/views/ModuleListView"
 msgid "Sync job triggered: all:%s"
 msgstr ""
 
-#: web/views/ModuleListView.vue:46
+#: web/views/ModuleListView.vue:39
 msgctxt "web/views/ModuleListView"
 msgid "Synced At"
 msgstr ""
 
-#: web/views/ModuleListView.vue:118
+#: web/views/ModuleListView.vue:128
 msgctxt "web/views/ModuleListView"
 msgid "Unavailable"
 msgstr ""
 
-#: web/views/ModuleListView.vue:128
+#: web/views/ModuleListView.vue:138
 msgctxt "web/views/ModuleListView"
 msgid "Unknown"
 msgstr ""

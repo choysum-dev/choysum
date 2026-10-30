@@ -231,10 +231,10 @@ msgstr "你好"
 		t.Fatal("expected upsertPackagedTerms null application to reject")
 	}
 
-	coreInv := engine.Ctx.Eval(`$choysum.i18n.invalidateModule('core', 'auth')`)
-	defer coreInv.Free()
-	if coreInv.ToBool() {
-		t.Fatal("expected invalidateModule('core', ...) to return false")
+	coreCold := engine.Ctx.Eval(`$choysum.i18n.invalidateModule('core', 'core')`)
+	defer coreCold.Free()
+	if coreCold.ToBool() {
+		t.Fatal("expected invalidateModule before core store exists to return false")
 	}
 	emptyMod := engine.Ctx.Eval(`$choysum.i18n.invalidateModule('auth', '')`)
 	defer emptyMod.Free()

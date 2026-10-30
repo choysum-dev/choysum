@@ -8,6 +8,8 @@ export class MenuManager implements Menu {
   private menuIdMap = new Map<string, MenuItem>();
   private menuPathMap = new Map<string, MenuItem>();
   private rootMenus = ref<MenuItem[]>([]);
+  /** Cross-module children may register before their parent (web entry import order). */
+  private pendingByParent = new Map<string, MenuItem[]>();
 
   constructor() {
     this.rootMenus.value = [];
@@ -31,6 +33,13 @@ export class MenuManager implements Menu {
       return this;
     }
 
+    if (parentId !== null && !this.menuIdMap.has(parentId)) {
+      const queue = this.pendingByParent.get(parentId) ?? [];
+      queue.push(menu);
+      this.pendingByParent.set(parentId, queue);
+      return this;
+    }
+
     const parentMenu = parentId ? this.menuIdMap.get(parentId) : null;
     const menuItem: MenuItem = this.processMenuItemForReactivity(menu, parentMenu);
 
@@ -51,13 +60,31 @@ export class MenuManager implements Menu {
         }
         parent.children.push(menuItem);
         this.sortMenus(parent.children);
-      } else {
-        console.warn(`Parent menu "${parentId}" does not exist`);
-        return this;
       }
     }
 
+    this.flushPendingChildren(menu.id);
     return this;
+  }
+
+  private flushPendingChildren(parentId: string): void {
+    const pending = this.pendingByParent.get(parentId);
+    if (!pending || pending.length === 0) return;
+    this.pendingByParent.delete(parentId);
+    for (const child of pending) {
+      this.addMenuInternal(parentId, child);
+    }
+  }
+
+  /** Drop queued children waiting on a parent that will never register (or was removed). */
+  private clearPendingForParent(parentId: string): void {
+    const pending = this.pendingByParent.get(parentId);
+    this.pendingByParent.delete(parentId);
+    if (!pending) return;
+    // Nested queues under those pending children would otherwise stay forever.
+    for (const child of pending) {
+      if (child?.id) this.clearPendingForParent(child.id);
+    }
   }
 
   private processMenuItemForReactivity(menu: MenuItem, parent: MenuItem | null = null): MenuItem {
@@ -87,6 +114,9 @@ export class MenuManager implements Menu {
       if (child.children) {
         this.addChildrenToMaps(child.children);
       }
+
+      // Nested configured descendants may themselves be parents of queued addMenu calls.
+      this.flushPendingChildren(child.id);
     }
   }
 
@@ -106,6 +136,7 @@ export class MenuManager implements Menu {
 
     this.removeFromParent(id);
     this.menuIdMap.delete(id);
+    this.clearPendingForParent(id);
 
     return true;
   }
@@ -182,6 +213,9 @@ export class MenuManager implements Menu {
   }
 
   clearMenus(): Menu {
+    for (const parentId of [...this.pendingByParent.keys()]) {
+      this.clearPendingForParent(parentId);
+    }
     this.menuIdMap.clear();
     this.menuPathMap.clear();
     this.rootMenus.value = [];

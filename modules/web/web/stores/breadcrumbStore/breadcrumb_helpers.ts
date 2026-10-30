@@ -24,10 +24,39 @@ export function getMenuId(menu: any): string {
   return 'unknown-menu';
 }
 
+/**
+ * Pathless (or nested) folders between the app root and the active leaf,
+ * ordered root → leaf. Empty when the leaf is a direct child of the app.
+ */
+export function getIntermediateAncestors(leaf: any, app: any | null): any[] {
+  if (!leaf || !app) return [];
+  const appId = getMenuId(app);
+  const leafId = getMenuId(leaf);
+  if (!appId || appId === leafId) return [];
+
+  const upward: any[] = [];
+  let current = leaf.__parent;
+  let hops = 0;
+  while (current && hops < 64) {
+    hops += 1;
+    const id = getMenuId(current);
+    if (id === appId) break;
+    upward.push(current);
+    current = current.__parent;
+  }
+  if (!current || getMenuId(current) !== appId) return [];
+  return upward.reverse();
+}
+
 /** Prefer the menu's own path; otherwise keep the current route path. */
 export function getMenuBasePath(currentPath: string, menu: any): string {
   if (menu?.path) return menu.path;
   return currentPath;
+}
+
+/** App crumbs and pathless folders navigate via menuId, not via route path. */
+export function isMenuNavigatedCrumb(crumb: { kind?: string; path?: string }): boolean {
+  return crumb.kind === 'app' || (crumb.kind === 'folder' && !crumb.path);
 }
 
 /**

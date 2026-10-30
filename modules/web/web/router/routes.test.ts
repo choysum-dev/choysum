@@ -40,7 +40,9 @@ test('web routes: registers Error page under GuestLayout and no Home route/menu'
 
   const home = guest?.children?.find((route: any) => route.name === 'Home');
   expect(home).toBeUndefined();
-  expect(menus).toEqual([]);
+  // Platform Settings root (not the retired Home menu).
+  expect(menus.map((m) => m.id)).toEqual(['web.menu.settings']);
+  expect(menus.some((m) => m.id === 'Home' || /home/i.test(String(m.title)))).toBe(false);
 });
 
 test('web routes: GuestLayout and AppLayout use separate shells with expected chrome props', () => {

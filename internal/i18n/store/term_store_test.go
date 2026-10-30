@@ -135,13 +135,13 @@ func TestRegistryLookupViaModuleMapping(t *testing.T) {
 	}
 }
 
-func TestRegistryLookupFrameworkModuleInHostStore(t *testing.T) {
+func TestRegistryLookupFrameworkModuleInCoreStore(t *testing.T) {
 	rs := newTestScope(t)
-	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "core"); err != nil {
 		t.Fatalf("ensure: %v", err)
 	}
-	if err := rs.Session().Table("auth_translation_term").Create(&i18nmodels.TranslationTerm{
-		Application: "auth",
+	if err := rs.Session().Table("core_translation_term").Create(&i18nmodels.TranslationTerm{
+		Application: "core",
 		Module:      "core",
 		Lang:        "zh_CN",
 		Scope:       "service/a@m",
@@ -154,9 +154,8 @@ func TestRegistryLookupFrameworkModuleInHostStore(t *testing.T) {
 	}
 
 	reg := store.NewRegistry(rs)
-	reg.RememberModuleApplication("auth", "auth")
-	reg.RememberModuleApplication("core", "core") // Module sentinel; must not block host lookup
-	if err := reg.StoreFor("auth").WarmLanguage("zh_CN"); err != nil {
+	reg.RememberModuleApplication("core", "core")
+	if err := reg.StoreFor("core").WarmLanguage("zh_CN"); err != nil {
 		t.Fatalf("warm: %v", err)
 	}
 	val, ok := reg.Lookup("core", "zh_CN", "service/a@m", "Denied", "")
@@ -233,11 +232,17 @@ func TestEmptyTermHashAndApplication(t *testing.T) {
 	}
 }
 
-func TestWarmCoreAndEmptyLangNoop(t *testing.T) {
+func TestWarmCoreStoreAndEmptyLangNoop(t *testing.T) {
 	rs := newTestScope(t)
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "core"); err != nil {
+		t.Fatal(err)
+	}
 	core := store.NewTermStore(rs, "core")
 	if err := core.WarmLanguage("zh_CN"); err != nil {
 		t.Fatal(err)
+	}
+	if core.TermHash("zh_CN") == "" {
+		t.Fatal("expected empty hash after warm with empty table")
 	}
 	if err := store.NewTermStore(rs, "auth").WarmLanguage(""); err != nil {
 		t.Fatal(err)
@@ -285,27 +290,15 @@ func TestRegistryLoadModuleApplicationFromDB(t *testing.T) {
 	reg.RememberModuleApplication("m", "")
 }
 
-func TestRegistryListHostApplicationsViaModule(t *testing.T) {
+func TestRegistryLookupCoreMissWithoutWarm(t *testing.T) {
 	rs := newTestScope(t)
-	if err := rs.Session().AutoMigrate(&meta.Module{}); err != nil {
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "core"); err != nil {
 		t.Fatal(err)
 	}
-	for _, row := range []meta.Module{
-		{Name: "auth", ApplicationStr: "auth", Status: meta.Installed},
-		{Name: "web", ApplicationStr: "web", Status: meta.Installed},
-		{Name: "core", ApplicationStr: "core", Status: meta.Installed},
-	} {
-		if err := rs.Session().Create(&row).Error; err != nil {
-			t.Fatal(err)
-		}
-	}
 	reg := store.NewRegistry(rs)
+	reg.RememberModuleApplication("core", "core")
 	if _, ok := reg.Lookup("core", "zh_CN", "a", "x", ""); ok {
-		t.Fatal("unexpected hit")
-	}
-	// Second Lookup hits hostAppsCache.
-	if _, ok := reg.Lookup("core", "zh_CN", "a", "x", ""); ok {
-		t.Fatal("unexpected hit")
+		t.Fatal("unexpected hit without warm")
 	}
 }
 

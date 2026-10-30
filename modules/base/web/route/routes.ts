@@ -4,6 +4,7 @@
 import { RouteRecordRaw } from 'vue-router';
 import { defineRoute } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
+import { terminologyListComponent } from '@/web/web/route';
 
 const { _lt } = createTranslate('base', { scope: 'web/route/routes' });
 
@@ -245,18 +246,6 @@ export const languageRoutes: RouteRecordRaw[] = [
     actions: ['base.action.language_create', 'base.action.language_edit', 'base.action.language_delete', 'base.action.language_copy'],
     meta: { requiresAuth: true },
   }),
-  defineRoute('base.route.terminology_editor', {
-    sequence: 40,
-    title: _lt('Terminology Editor'),
-    path: 'base/terminology',
-    name: 'TerminologyEditor',
-    component: () => import('@/web/web/pages/TerminologyEditor.vue'),
-    // Role-gated only: TranslationTerm MetaModel is injected per app and is not
-    // guaranteed to exist when base UI resources are validated (auth installs later).
-    // Grant Search/Browse/Update/Count on {app}.TranslationTerm via auth RMAs / module seeds.
-    defaultRoles: ['terminology.editor'],
-    meta: { requiresAuth: true },
-  }),
 ];
 
 export const sequenceRoutes: RouteRecordRaw[] = [
@@ -438,4 +427,13 @@ export const baseRoutes: RouteRecordRaw[] = [
   ...stateRoutes,
   ...uomRoutes,
   ...uomCategoryRoutes,
+  defineRoute('base.route.terminology_list', {
+    sequence: 40,
+    title: _lt('Translations'),
+    path: 'web/terminology/base',
+    name: 'TranslationTermList_base',
+    component: terminologyListComponent,
+    defaultRoles: ['sys.admin'],
+    meta: { requiresAuth: true, terminologyApplication: 'base' },
+  }),
 ];

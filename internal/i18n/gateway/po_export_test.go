@@ -80,6 +80,27 @@ func TestPORejectsModuleOutsideApplication(t *testing.T) {
 	}
 }
 
+func TestPORejectsPathTraversalModule(t *testing.T) {
+	h := &handler{
+		listModules: func() (map[string][]string, error) {
+			return map[string][]string{"auth": {"auth"}}, nil
+		},
+		search: func(ctx context.Context, accessToken, app, lang string, modules []string, q string, limit, offset int) (*searchTermsResult, error) {
+			t.Fatal("search should not run for path-like module")
+			return nil, nil
+		},
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc(poPath, h.servePO)
+	req := httptest.NewRequest(http.MethodGet, "/web/i18n/po?lang=zh_CN&application=auth&module=../../etc", nil)
+	req.Header.Set("Authorization", "Bearer test-token")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), "module does not belong to application") {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
 func TestPOExportAttachment(t *testing.T) {
 	testPOExportViaRunner(t)
 }

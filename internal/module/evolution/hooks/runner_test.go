@@ -267,20 +267,35 @@ func TestRunnerBuildScriptsAndContexts(t *testing.T) {
 	testRuntimeScope.cfg.Auth.InternalKey = "internal-secret"
 	runner := &Runner{runtimeScope: testRuntimeScope, module: &meta.Module{Name: "base", ApplicationStr: "core", Version: "1.0.0"}}
 
-	if script := runner.buildHookWrapperScript(); script == nil || !strings.Contains(script.Content, `__choysum_hook__ = async function (app, moduleName, phase)`) || !strings.Contains(script.Content, `HOOK_UNSUPPORTED`) {
+	if script := runner.buildHookWrapperScript("core", "base", true); script == nil || !strings.Contains(script.Content, `__choysum_hook__ = async function (app, moduleName, phase)`) || !strings.Contains(script.Content, `HOOK_UNSUPPORTED`) {
 		t.Fatalf("unexpected hook wrapper script: %#v", script)
 	}
-	if script := runner.buildHookWrapperScript(); script == nil || !strings.Contains(script.Content, `await fn()`) || strings.Contains(script.Content, `fn.call(`) || strings.Contains(script.Content, `fn.apply(`) {
+	if script := runner.buildHookWrapperScript("core", "base", true); script == nil || !strings.Contains(script.Content, `await fn()`) || strings.Contains(script.Content, `fn.call(`) || strings.Contains(script.Content, `fn.apply(`) {
 		t.Fatalf("hook wrapper must invoke handlers with bare await fn() (no call/apply): %#v", script)
+	}
+	if script := runner.buildHookWrapperScript("core", "base", true); script == nil || !strings.Contains(script.Content, `globalThis.CHOYSUM_APP_NAME = "core"`) || !strings.Contains(script.Content, `globalThis.CHOYSUM_MODULE_NAME = "base"`) {
+		t.Fatalf("hook wrapper must seed CHOYSUM_* identities before bundle eval: %#v", script)
+	}
+	if script := runner.buildHookWrapperScript("core", "base", true); script == nil || !strings.Contains(script.Content, `__choysum_hook_module_roots__`) {
+		t.Fatalf("hook wrapper must resolve via stable hook roots: %#v", script)
+	}
+	if script := runner.buildHookWrapperScript("core", "base", false); script == nil || strings.Contains(script.Content, `globalThis.CHOYSUM_APP_NAME = "core"`) {
+		t.Fatalf("dist-fallback wrapper must not seed CHOYSUM_* before eval: %#v", script)
 	}
 	runner.module.ApplicationStr = ""
 	runner.module.Name = ""
-	if script := runner.buildHookWrapperScript(); script == nil {
+	if script := runner.buildHookWrapperScript("", "", false); script == nil {
 		t.Fatalf("expected generic hook wrapper script when module info is missing")
 	}
+	runner.module = nil
+	if script := runner.buildHookWrapperScript("core", "base", true); script != nil {
+		t.Fatalf("expected nil hook wrapper when runner.module is nil, got %#v", script)
+	}
+	if script := (*Runner)(nil).buildHookWrapperScript("core", "base", true); script != nil {
+		t.Fatalf("expected nil hook wrapper when runner is nil, got %#v", script)
+	}
 
-	runner.module.Name = "base"
-	runner.module.ApplicationStr = "core"
+	runner.module = &meta.Module{Name: "base", ApplicationStr: "core", Version: "1.0.0"}
 	ctx := auth.ContextWithIdentity(context.Background(), fakeIdentity{userID: "u-1"})
 	jsCtx := runner.buildJsContext(ctx, RunOptions{FromVersion: "0.9.0"})
 	identity, ok := jsCtx.payload["identity"].(map[string]any)
@@ -335,22 +350,33 @@ func TestResolveScriptsLoadDistScriptsAndBuildModuleEntryScript(t *testing.T) {
 	testRuntimeScope := newHooksTestScope(t)
 	runner := &Runner{runtimeScope: testRuntimeScope, module: &meta.Module{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"}}
 	provided := []*jsengine.JsScript{{FileName: "provided.js", Content: "console.log(1)"}}
-	scripts, err := runner.resolveScripts(context.Background(), PhasePostInit, RunOptions{Scripts: provided}, false)
-	if err != nil || len(scripts) != 1 || scripts[0].FileName != "provided.js" {
-		t.Fatalf("resolveScripts(provided) = %#v err=%v", scripts, err)
+	scripts, moduleScoped, err := runner.resolveScripts(context.Background(), PhasePostInit, RunOptions{Scripts: provided}, false)
+	if err != nil || len(scripts) != 1 || scripts[0].FileName != "provided.js" || !moduleScoped {
+		t.Fatalf("resolveScripts(provided) = %#v scoped=%v err=%v", scripts, moduleScoped, err)
 	}
 
 	runner.module.ServiceEntryPoint = ""
 	if script, err := runner.buildModuleEntryScript(context.Background()); err != nil || script != nil {
 		t.Fatalf("expected nil buildModuleEntryScript for empty entry, got %#v err=%v", script, err)
 	}
-	if scripts, err := runner.resolveScripts(context.Background(), PhasePostInit, RunOptions{}, false); err != nil || scripts != nil {
-		t.Fatalf("expected nil resolveScripts when nothing is available, got %#v err=%v", scripts, err)
+	if scripts, scoped, err := runner.resolveScripts(context.Background(), PhasePostInit, RunOptions{}, false); err != nil || scripts != nil || scoped {
+		t.Fatalf("expected nil resolveScripts when nothing is available, got %#v scoped=%v err=%v", scripts, scoped, err)
 	}
 
 	runner.module.ServiceEntryPoint = "service/index.ts"
-	if _, err := runner.resolveScripts(context.Background(), PhasePreInit, RunOptions{}, true); err == nil || !strings.Contains(err.Error(), "required hook phase pre_init") {
+	if _, _, err := runner.resolveScripts(context.Background(), PhasePreInit, RunOptions{}, true); err == nil || !strings.Contains(err.Error(), "required hook phase pre_init") {
 		t.Fatalf("expected required phase build failure, got %v", err)
+	}
+
+	// Cached module-entry hit: resolveScripts must return moduleScoped=true.
+	absEntry := "/virtual/modules/base/service/index.ts"
+	runner.module.ServiceEntryPoint = absEntry
+	cached := &jsengine.JsScript{FileName: "entry.js", Content: "1"}
+	runner.entryScript = cached
+	runner.entryScriptKey = entryScriptCacheKey(absEntry, testRuntimeScope)
+	scripts, scoped, err := runner.resolveScripts(context.Background(), PhasePostInit, RunOptions{}, false)
+	if err != nil || !scoped || len(scripts) != 1 || scripts[0] != cached {
+		t.Fatalf("resolveScripts(cached entry) = %#v scoped=%v err=%v", scripts, scoped, err)
 	}
 
 	if _, err := LoadDistScripts(nil, runner.module); err == nil {
@@ -492,6 +518,7 @@ func TestRunnerRunPhaseExecutionPaths(t *testing.T) {
 		if !reflect.DeepEqual(executor.GetJsScripts(), prevScripts) {
 			t.Fatalf("expected scripts restored, got %#v", executor.GetJsScripts())
 		}
+		// Runtime dist fallback: wrapper is appended (no pre-eval CHOYSUM_* seed).
 		if got := loadedByService["__choysum_hook__"]; !reflect.DeepEqual(got, []string{bundlePath, "hook_wrapper.js"}) {
 			t.Fatalf("unexpected loaded scripts: %#v", got)
 		}
@@ -549,6 +576,28 @@ func TestRunnerRunPhaseExecutionPaths(t *testing.T) {
 		err := runner.RunPhase(context.Background(), PhasePreInit, RunOptions{Scripts: []*jsengine.JsScript{{FileName: "provided.js", Content: ""}}})
 		if err == nil || !strings.Contains(err.Error(), "HOOK_UNSUPPORTED") {
 			t.Fatalf("expected required hook error, got %v", err)
+		}
+	})
+
+	t.Run("prepends seeded wrapper for module-scoped Scripts", func(t *testing.T) {
+		testRuntimeScope := newHooksTestScope(t)
+		var loaded []string
+		engine := &hooksSelectiveEngine{execute: func(_ context.Context, req *jsengine.JsRequest, scripts []*jsengine.JsScript) (*jsengine.JsResponse, error) {
+			for _, script := range scripts {
+				loaded = append(loaded, script.FileName)
+			}
+			return &jsengine.JsResponse{Id: req.Id}, nil
+		}}
+		executor := newHooksTestExecutorWithEngine(t, testRuntimeScope, engine)
+		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: executor, module: &meta.Module{Name: "base", ApplicationStr: "core"}}
+		err := runner.RunPhase(context.Background(), PhasePostInit, RunOptions{
+			Scripts: []*jsengine.JsScript{{FileName: "provided.js", Content: "1"}},
+		})
+		if err != nil {
+			t.Fatalf("RunPhase() error = %v", err)
+		}
+		if !reflect.DeepEqual(loaded, []string{"hook_wrapper.js", "provided.js"}) {
+			t.Fatalf("expected prepended seeded wrapper, got %#v", loaded)
 		}
 	})
 }

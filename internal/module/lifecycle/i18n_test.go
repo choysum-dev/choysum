@@ -113,10 +113,41 @@ msgstr "新包"
 	}
 }
 
-func TestImportModuleTerminologySkipsCoreAndMissingDir(t *testing.T) {
+func TestImportModuleTerminologyCoreModuleWritesCoreTable(t *testing.T) {
 	t.Parallel()
 	rs := newI18nTestScope(t)
-	if err := importModuleTerminology(rs, &meta.Module{Name: "core", ApplicationStr: "core"}, ""); err != nil {
+	modulesPath := t.TempDir()
+	coreRoot := filepath.Join(modulesPath, "core")
+	i18nDir := filepath.Join(coreRoot, "i18n")
+	if err := os.MkdirAll(i18nDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(i18nDir, "zh_CN.po"), []byte(`
+msgctxt "service/orm@err"
+msgid "Record not found"
+msgstr "记录不存在"
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	coreMod := &meta.Module{Name: "core", ApplicationStr: "core", Path: coreRoot}
+	if err := importModuleTerminology(rs, coreMod, modulesPath); err != nil {
+		t.Fatalf("import core: %v", err)
+	}
+
+	var row i18nmodels.TranslationTerm
+	if err := rs.Session().Table("core_translation_term").Where("module = ? AND src = ?", "core", "Record not found").Take(&row).Error; err != nil {
+		t.Fatalf("core term: %v", err)
+	}
+	if row.Application != "core" || row.Value != "记录不存在" {
+		t.Fatalf("unexpected row: %+v", row)
+	}
+}
+
+func TestImportModuleTerminologySkipsNonCoreOnCoreApp(t *testing.T) {
+	t.Parallel()
+	rs := newI18nTestScope(t)
+	if err := importModuleTerminology(rs, &meta.Module{Name: "other", ApplicationStr: "core"}, ""); err != nil {
 		t.Fatal(err)
 	}
 	if err := importModuleTerminology(rs, &meta.Module{Name: "demo", ApplicationStr: "auth", Path: filepath.Join(t.TempDir(), "nope")}, ""); err != nil {
@@ -124,7 +155,7 @@ func TestImportModuleTerminologySkipsCoreAndMissingDir(t *testing.T) {
 	}
 }
 
-func TestImportModuleTerminologyHostsFrameworkPO(t *testing.T) {
+func TestImportModuleTerminologyDoesNotFanOutFrameworkPO(t *testing.T) {
 	t.Parallel()
 	rs := newI18nTestScope(t)
 	modulesPath := t.TempDir()
@@ -163,66 +194,122 @@ msgstr "你好"
 		t.Fatalf("importModuleTerminology: %v", err)
 	}
 
-	var demoRow, coreRow i18nmodels.TranslationTerm
+	var demoRow i18nmodels.TranslationTerm
 	if err := rs.Session().Table("auth_translation_term").Where("module = ? AND src = ?", "demo", "Hello").Take(&demoRow).Error; err != nil {
 		t.Fatalf("demo term: %v", err)
 	}
 	if demoRow.Value != "你好" {
 		t.Fatalf("demo value = %q", demoRow.Value)
 	}
-	if err := rs.Session().Table("auth_translation_term").Where("module = ? AND src = ?", "core", "Record not found").Take(&coreRow).Error; err != nil {
-		t.Fatalf("framework term: %v", err)
+	var count int64
+	if err := rs.Session().Table("auth_translation_term").Where("module = ?", "core").Count(&count).Error; err != nil {
+		t.Fatal(err)
 	}
-	if coreRow.Application != "auth" || coreRow.Value != "记录不存在" {
-		t.Fatalf("unexpected framework row: %+v", coreRow)
-	}
-	if rs.Session().Migrator().HasTable("core_translation_term") {
-		t.Fatal("must not create core_translation_term")
+	if count != 0 {
+		t.Fatalf("expected no Module=core rows in auth table, got %d", count)
 	}
 }
 
-func TestImportFrameworkModuleFansOutToHostApps(t *testing.T) {
+func TestImportModuleTerminologyPurgesStaleSchemeACoreRows(t *testing.T) {
 	t.Parallel()
 	rs := newI18nTestScope(t)
-	if err := rs.Session().Migrator().AutoMigrate(&meta.Module{}); err != nil {
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
 		t.Fatal(err)
 	}
-	if err := rs.Session().Create(&meta.Module{Name: "auth", ApplicationStr: "auth", Status: meta.Installed}).Error; err != nil {
-		t.Fatal(err)
-	}
-	if err := rs.Session().Create(&meta.Module{Name: "web", ApplicationStr: "web", Status: meta.Installed}).Error; err != nil {
+	if err := rs.Session().Table("auth_translation_term").Create(&i18nmodels.TranslationTerm{
+		Application: "auth", Module: "core", Lang: "zh_CN",
+		Scope: "service/orm@err", Src: "Record not found", Value: "stale",
+		Kind: i18nmodels.KindLiteral, Source: i18nmodels.SourcePackaged,
+	}).Error; err != nil {
 		t.Fatal(err)
 	}
 
-	modulesPath := t.TempDir()
-	coreRoot := filepath.Join(modulesPath, "core")
-	if err := os.MkdirAll(filepath.Join(coreRoot, "i18n"), 0o755); err != nil {
+	demoRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(demoRoot, "i18n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(coreRoot, "i18n", "zh_CN.po"), []byte(`
-msgctxt "service/a@m"
-msgid "Denied"
-msgstr "拒绝"
+	if err := os.WriteFile(filepath.Join(demoRoot, "i18n", "zh_CN.po"), []byte(`
+msgctxt "web/a@title"
+msgid "Hello"
+msgstr "你好"
 `), 0o644); err != nil {
 		t.Fatal(err)
 	}
-
-	coreMod := &meta.Module{Name: "core", ApplicationStr: "core", Path: coreRoot, Status: meta.Installed}
-	if err := importModuleTerminology(rs, coreMod, modulesPath); err != nil {
-		t.Fatalf("import core: %v", err)
+	mod := &meta.Module{Name: "demo", ApplicationStr: "auth", Path: demoRoot}
+	if err := importModuleTerminology(rs, mod, ""); err != nil {
+		t.Fatalf("importModuleTerminology: %v", err)
 	}
-
-	for _, app := range []string{"auth", "web"} {
-		table := app + "_translation_term"
-		var row i18nmodels.TranslationTerm
-		if err := rs.Session().Table(table).Where("module = ? AND src = ?", "core", "Denied").Take(&row).Error; err != nil {
-			t.Fatalf("%s framework term: %v", app, err)
-		}
-		if row.Application != app || row.Value != "拒绝" {
-			t.Fatalf("%s unexpected row: %+v", app, row)
-		}
+	var count int64
+	if err := rs.Session().Table("auth_translation_term").Where("module = ?", "core").Count(&count).Error; err != nil {
+		t.Fatal(err)
 	}
-	if rs.Session().Migrator().HasTable("core_translation_term") {
-		t.Fatal("must not create core_translation_term")
+	if count != 0 {
+		t.Fatalf("expected Scheme A Module=core rows purged, got %d", count)
+	}
+	// Second import is idempotent: no Module=core rows to delete, still succeeds.
+	if err := importModuleTerminology(rs, mod, ""); err != nil {
+		t.Fatalf("re-import: %v", err)
+	}
+}
+
+func TestPurgeStaleFrameworkTermsFromHost(t *testing.T) {
+	t.Parallel()
+	if err := purgeStaleFrameworkTermsFromHost(nil, ""); err != nil {
+		t.Fatalf("empty host: %v", err)
+	}
+	if err := purgeStaleFrameworkTermsFromHost(nil, "core"); err != nil {
+		t.Fatalf("framework host: %v", err)
+	}
+	if err := purgeStaleFrameworkTermsFromHost(nil, "auth"); err == nil {
+		t.Fatal("expected error when runtime session is missing")
+	}
+}
+
+func TestDeleteModuleTerminologyMissingSession(t *testing.T) {
+	t.Parallel()
+	mod := &meta.Module{Name: "demo", ApplicationStr: "auth"}
+	if err := deleteModuleTerminology(nil, mod); err == nil {
+		t.Fatal("expected error when runtime session is missing")
+	}
+}
+
+func TestDeleteModuleTerminologyCoreModule(t *testing.T) {
+	t.Parallel()
+	rs := newI18nTestScope(t)
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "core"); err != nil {
+		t.Fatal(err)
+	}
+	if err := rs.Session().Table("core_translation_term").Create(&i18nmodels.TranslationTerm{
+		Application: "core", Module: "core", Lang: "zh_CN",
+		Scope: "a@b", Src: "x", Value: "y",
+		Kind: i18nmodels.KindLiteral, Source: i18nmodels.SourcePackaged,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := deleteModuleTerminology(rs, &meta.Module{Name: "core", ApplicationStr: "core"}); err != nil {
+		t.Fatal(err)
+	}
+	var count int64
+	if err := rs.Session().Table("core_translation_term").Count(&count).Error; err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Fatalf("expected core terms deleted, got %d", count)
+	}
+}
+
+func TestDeleteModuleTerminologySkipsCoreAppNonCoreModule(t *testing.T) {
+	t.Parallel()
+	rs := newI18nTestScope(t)
+	if err := deleteModuleTerminology(rs, &meta.Module{Name: "auth", ApplicationStr: "core"}); err != nil {
+		t.Fatalf("expected no-op, got %v", err)
+	}
+}
+
+func TestDeleteModuleTerminologySkipsHostAppCoreModule(t *testing.T) {
+	t.Parallel()
+	rs := newI18nTestScope(t)
+	if err := deleteModuleTerminology(rs, &meta.Module{Name: "core", ApplicationStr: "auth"}); err != nil {
+		t.Fatalf("expected no-op, got %v", err)
 	}
 }

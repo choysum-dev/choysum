@@ -161,12 +161,12 @@ msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Write"
 msgstr "写"
 
-#: service/models/role_inheritance.ts:33
+#: service/models/role_inheritance.ts:36
 msgctxt "auth.model.RoleInheritance.fields"
 msgid "Child Role"
 msgstr "子角色"
 
-#: service/models/role_inheritance.ts:22
+#: service/models/role_inheritance.ts:25
 msgctxt "auth.model.RoleInheritance.fields"
 msgid "Parent Role"
 msgstr "父角色"
@@ -551,22 +551,22 @@ msgctxt "auth.model.User.fields"
 msgid "Username"
 msgstr "用户名"
 
-#: service/models/user_role.ts:51
+#: service/models/user_role.ts:55
 msgctxt "auth.model.UserRole.fields"
 msgid "Company"
 msgstr "公司"
 
-#: service/models/user_role.ts:52
+#: service/models/user_role.ts:56
 msgctxt "auth.model.UserRole.fields"
 msgid "Leave empty to grant the role in every company the user can access."
 msgstr "留空表示在用户可访问的每个公司中授予该角色。"
 
-#: service/models/user_role.ts:38
+#: service/models/user_role.ts:42
 msgctxt "auth.model.UserRole.fields"
 msgid "Role"
 msgstr "角色"
 
-#: service/models/user_role.ts:27
+#: service/models/user_role.ts:31
 msgctxt "auth.model.UserRole.fields"
 msgid "User"
 msgstr "用户"
@@ -991,55 +991,65 @@ msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Using current session language"
 msgstr "当前使用会话语言"
 
-#: web/menu/menus.ts:18
+#: web/menu/menus.ts:34
 msgctxt "web/menu/menus"
 msgid "Access Control"
 msgstr "访问控制"
 
-#: web/menu/menus.ts:34
+#: web/menu/menus.ts:50
 msgctxt "web/menu/menus"
 msgid "Access Rules"
 msgstr "授权规则"
 
-#: web/menu/menus.ts:43
+#: web/menu/menus.ts:59
 msgctxt "web/menu/menus"
 msgid "Field Rules"
 msgstr "字段规则"
 
-#: web/menu/menus.ts:48
+#: web/menu/menus.ts:64
 msgctxt "web/menu/menus"
 msgid "Method Access"
 msgstr "方法访问"
 
-#: web/menu/menus.ts:38
+#: web/menu/menus.ts:54
 msgctxt "web/menu/menus"
 msgid "Record Rules"
 msgstr "记录规则"
 
-#: web/menu/menus.ts:28
+#: web/menu/menus.ts:44
 msgctxt "web/menu/menus"
 msgid "Role List"
 msgstr "角色列表"
 
-#: web/menu/menus.ts:60
+#: web/menu/menus.ts:76
 msgctxt "web/menu/menus"
 msgid "Session List"
 msgstr "会话列表"
 
-#: web/menu/menus.ts:65
+#: web/menu/menus.ts:81
 msgctxt "web/menu/menus"
 msgid "Token List"
 msgstr "令牌列表"
 
-#: web/menu/menus.ts:53
+#: web/menu/menus.ts:24
+msgctxt "web/menu/menus"
+msgid "Translations"
+msgstr "翻译"
+
+#: web/menu/menus.ts:69
 msgctxt "web/menu/menus"
 msgid "UI Resource Grants"
 msgstr "UI 资源授权"
 
-#: web/menu/menus.ts:23
+#: web/menu/menus.ts:39
 msgctxt "web/menu/menus"
 msgid "User List"
 msgstr "用户列表"
+
+#: web/menu/menus.ts:18
+msgctxt "web/menu/menus"
+msgid "auth"
+msgstr "auth"
 
 #: web/pages/Login.vue:9
 msgctxt "web/pages/Login"
@@ -1321,147 +1331,152 @@ msgctxt "web/pages/UserList"
 msgid "User List"
 msgstr "用户列表"
 
-#: web/route/routes.ts:246
+#: web/route/routes.ts:269
 msgctxt "web/route/routes"
 msgid "Create Field Rule"
 msgstr "创建字段规则"
 
-#: web/route/routes.ts:289
+#: web/route/routes.ts:312
 msgctxt "web/route/routes"
 msgid "Create Method Access"
 msgstr "创建方法访问"
 
-#: web/route/routes.ts:203
+#: web/route/routes.ts:226
 msgctxt "web/route/routes"
 msgid "Create Record Rule"
 msgstr "创建记录规则"
 
-#: web/route/routes.ts:90
+#: web/route/routes.ts:98
 msgctxt "web/route/routes"
 msgid "Create Role"
 msgstr "新建角色"
 
-#: web/route/routes.ts:117
+#: web/route/routes.ts:125
 msgctxt "web/route/routes"
 msgid "Create Session"
 msgstr "新建会话"
 
-#: web/route/routes.ts:146
+#: web/route/routes.ts:159
 msgctxt "web/route/routes"
 msgid "Create Token"
 msgstr "新建令牌"
 
-#: web/route/routes.ts:332
+#: web/route/routes.ts:355
 msgctxt "web/route/routes"
 msgid "Create UI Resource Grant"
 msgstr "创建 UI 资源授权"
 
-#: web/route/routes.ts:61
+#: web/route/routes.ts:69
 msgctxt "web/route/routes"
 msgid "Create User"
 msgstr "新建用户"
 
-#: web/route/routes.ts:232
+#: web/route/routes.ts:255
 msgctxt "web/route/routes"
 msgid "Field Rule Details"
 msgstr "字段规则详情"
 
-#: web/route/routes.ts:218
+#: web/route/routes.ts:241
 msgctxt "web/route/routes"
 msgid "Field Rule List"
 msgstr "字段规则列表"
 
-#: web/route/routes.ts:16
+#: web/route/routes.ts:24
 msgctxt "web/route/routes"
 msgid "Login"
 msgstr "登录"
 
-#: web/route/routes.ts:27
+#: web/route/routes.ts:35
 msgctxt "web/route/routes"
 msgid "Logout"
 msgstr "退出登录"
 
-#: web/route/routes.ts:275
+#: web/route/routes.ts:298
 msgctxt "web/route/routes"
 msgid "Method Access Details"
 msgstr "方法访问详情"
 
-#: web/route/routes.ts:261
+#: web/route/routes.ts:284
 msgctxt "web/route/routes"
 msgid "Method Access List"
 msgstr "方法访问列表"
 
-#: web/route/routes.ts:189
+#: web/route/routes.ts:212
 msgctxt "web/route/routes"
 msgid "Record Rule Details"
 msgstr "记录规则详情"
 
-#: web/route/routes.ts:175
+#: web/route/routes.ts:198
 msgctxt "web/route/routes"
 msgid "Record Rule List"
 msgstr "记录规则列表"
 
-#: web/route/routes.ts:350
+#: web/route/routes.ts:383
 msgctxt "web/route/routes"
 msgid "Register"
 msgstr "注册"
 
-#: web/route/routes.ts:81
+#: web/route/routes.ts:89
 msgctxt "web/route/routes"
 msgid "Role Details"
 msgstr "角色详情"
 
-#: web/route/routes.ts:72
+#: web/route/routes.ts:80
 msgctxt "web/route/routes"
 msgid "Role Management"
 msgstr "角色管理"
 
-#: web/route/routes.ts:108
+#: web/route/routes.ts:116
 msgctxt "web/route/routes"
 msgid "Session Details"
 msgstr "会话详情"
 
-#: web/route/routes.ts:99
+#: web/route/routes.ts:107
 msgctxt "web/route/routes"
 msgid "Session Management"
 msgstr "会话管理"
 
-#: web/route/routes.ts:155
+#: web/route/routes.ts:168
 msgctxt "web/route/routes"
 msgid "Token Board"
 msgstr "令牌看板"
 
-#: web/route/routes.ts:164
+#: web/route/routes.ts:182
 msgctxt "web/route/routes"
 msgid "Token Chart"
 msgstr "令牌图表"
 
-#: web/route/routes.ts:137
+#: web/route/routes.ts:150
 msgctxt "web/route/routes"
 msgid "Token Details"
 msgstr "令牌详情"
 
-#: web/route/routes.ts:128
+#: web/route/routes.ts:136
 msgctxt "web/route/routes"
 msgid "Token Management"
 msgstr "令牌管理"
 
-#: web/route/routes.ts:318
+#: web/route/routes.ts:370
+msgctxt "web/route/routes"
+msgid "Translations"
+msgstr "翻译"
+
+#: web/route/routes.ts:341
 msgctxt "web/route/routes"
 msgid "UI Resource Grant Details"
 msgstr "UI 资源授权详情"
 
-#: web/route/routes.ts:304
+#: web/route/routes.ts:327
 msgctxt "web/route/routes"
 msgid "UI Resource Grant List"
 msgstr "UI 资源授权列表"
 
-#: web/route/routes.ts:52
+#: web/route/routes.ts:60
 msgctxt "web/route/routes"
 msgid "User Details"
 msgstr "用户详情"
 
-#: web/route/routes.ts:43
+#: web/route/routes.ts:51
 msgctxt "web/route/routes"
 msgid "User List"
 msgstr "用户列表"
@@ -2091,27 +2106,27 @@ msgctxt "web/views/SessionListView"
 msgid "Session"
 msgstr "会话"
 
-#: web/views/TokenChartView.vue:50
+#: web/views/TokenChartView.vue:47
 msgctxt "web/views/TokenChartView"
 msgid "Chart View"
 msgstr "图表视图"
 
-#: web/views/TokenChartView.vue:43
+#: web/views/TokenChartView.vue:40
 msgctxt "web/views/TokenChartView"
 msgid "Count"
 msgstr "计数"
 
-#: web/views/TokenChartView.vue:69 web/views/TokenChartView.vue:74
+#: web/views/TokenChartView.vue:62 web/views/TokenChartView.vue:67
 msgctxt "web/views/TokenChartView"
 msgid "Failed to load chart"
 msgstr "图表加载失败"
 
-#: web/views/TokenChartView.vue:49
+#: web/views/TokenChartView.vue:46
 msgctxt "web/views/TokenChartView"
 msgid "Kanban View"
 msgstr "看板视图"
 
-#: web/views/TokenChartView.vue:48
+#: web/views/TokenChartView.vue:45
 msgctxt "web/views/TokenChartView"
 msgid "List View"
 msgstr "列表视图"
@@ -2121,12 +2136,12 @@ msgctxt "web/views/TokenChartView"
 msgid "New"
 msgstr "新建"
 
-#: web/views/TokenChartView.vue:56
+#: web/views/TokenChartView.vue:53
 msgctxt "web/views/TokenChartView"
 msgid "Not Revoked"
 msgstr "未撤销"
 
-#: web/views/TokenChartView.vue:55
+#: web/views/TokenChartView.vue:52
 msgctxt "web/views/TokenChartView"
 msgid "Revoked"
 msgstr "已撤销"
@@ -2186,7 +2201,7 @@ msgctxt "web/views/TokenKanbanView"
 msgid "All"
 msgstr "全部"
 
-#: web/views/TokenKanbanView.vue:53
+#: web/views/TokenKanbanView.vue:47
 msgctxt "web/views/TokenKanbanView"
 msgid "Chart View"
 msgstr "图表视图"
@@ -2196,27 +2211,27 @@ msgctxt "web/views/TokenKanbanView"
 msgid "Expires"
 msgstr "过期"
 
-#: web/views/TokenKanbanView.vue:88 web/views/TokenKanbanView.vue:93
+#: web/views/TokenKanbanView.vue:78 web/views/TokenKanbanView.vue:83
 msgctxt "web/views/TokenKanbanView"
 msgid "Failed to load kanban"
 msgstr "看板加载失败"
 
-#: web/views/TokenKanbanView.vue:98
+#: web/views/TokenKanbanView.vue:88
 msgctxt "web/views/TokenKanbanView"
 msgid "Failed to load more tokens"
 msgstr "加载更多令牌失败"
 
-#: web/views/TokenKanbanView.vue:52
+#: web/views/TokenKanbanView.vue:46
 msgctxt "web/views/TokenKanbanView"
 msgid "Kanban View"
 msgstr "看板视图"
 
-#: web/views/TokenKanbanView.vue:51
+#: web/views/TokenKanbanView.vue:45
 msgctxt "web/views/TokenKanbanView"
 msgid "List View"
 msgstr "列表视图"
 
-#: web/views/TokenKanbanView.vue:103
+#: web/views/TokenKanbanView.vue:93
 msgctxt "web/views/TokenKanbanView"
 msgid "Move failed; refreshed to recover"
 msgstr "移动失败；已刷新以恢复"
@@ -2231,12 +2246,12 @@ msgctxt "web/views/TokenKanbanView"
 msgid "No tokens in this lane"
 msgstr "此列暂无令牌"
 
-#: web/views/TokenKanbanView.vue:81 web/views/TokenKanbanView.vue:83
+#: web/views/TokenKanbanView.vue:71 web/views/TokenKanbanView.vue:73
 msgctxt "web/views/TokenKanbanView"
 msgid "Not Revoked"
 msgstr "未撤销"
 
-#: web/views/TokenKanbanView.vue:80 web/views/TokenKanbanView.vue:82
+#: web/views/TokenKanbanView.vue:70 web/views/TokenKanbanView.vue:72
 msgctxt "web/views/TokenKanbanView"
 msgid "Revoked"
 msgstr "已撤销"
@@ -2251,7 +2266,7 @@ msgctxt "web/views/TokenKanbanView"
 msgid "View switcher"
 msgstr "视图切换"
 
-#: web/views/TokenListView.vue:50
+#: web/views/TokenListView.vue:48
 msgctxt "web/views/TokenListView"
 msgid "Chart View"
 msgstr "图表视图"
@@ -2276,12 +2291,12 @@ msgctxt "web/views/TokenListView"
 msgid "Edit Token"
 msgstr "编辑令牌"
 
-#: web/views/TokenListView.vue:49
+#: web/views/TokenListView.vue:47
 msgctxt "web/views/TokenListView"
 msgid "Kanban View"
 msgstr "看板视图"
 
-#: web/views/TokenListView.vue:48
+#: web/views/TokenListView.vue:46
 msgctxt "web/views/TokenListView"
 msgid "List View"
 msgstr "列表视图"

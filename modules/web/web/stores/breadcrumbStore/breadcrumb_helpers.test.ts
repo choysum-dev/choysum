@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  getIntermediateAncestors,
   getMenuBasePath,
   getMenuId,
   getPageTitle,
+  isMenuNavigatedCrumb,
   resolveAppRoot,
 } from './breadcrumb_helpers';
 
@@ -28,6 +30,25 @@ test('breadcrumb_helpers getMenuId prefers id then path then name', () => {
   expect(getMenuId({})).toBe('unknown-menu');
 });
 
+test('breadcrumb_helpers getIntermediateAncestors returns folders between app and leaf', () => {
+  const settings = { id: 'web.menu.settings', title: 'Settings' };
+  const core = { id: 'web.menu.settings_app_core', title: 'core', __parent: settings };
+  const leaf = {
+    id: 'web.menu.terminology_core',
+    title: 'Translations',
+    path: '/web/terminology/core',
+    __parent: core,
+  };
+  expect(getIntermediateAncestors(leaf, settings).map((m) => m.id)).toEqual([
+    'web.menu.settings_app_core',
+  ]);
+  expect(getIntermediateAncestors(leaf, null)).toEqual([]);
+  expect(getIntermediateAncestors(core, settings)).toEqual([]);
+
+  const direct = { id: 'currency', title: 'Currency', path: '/base/currencies', __parent: settings };
+  expect(getIntermediateAncestors(direct, settings)).toEqual([]);
+});
+
 test('breadcrumb_helpers getMenuBasePath falls back to the current route path', () => {
   expect(getMenuBasePath('/now', { path: '/menu' })).toBe('/menu');
   expect(getMenuBasePath('/now', {})).toBe('/now');
@@ -45,4 +66,13 @@ test('breadcrumb_helpers getPageTitle reads meta title fields and path heuristic
   expect(getPageTitle({ path: '/a/42', meta: {} }, 'D', 'P')).toBe('D');
   expect(getPageTitle({ path: '/a/abcdefghijklmnop', meta: {} }, 'D', 'P')).toBe('D');
   expect(getPageTitle({ path: '/a/plain', meta: {} }, 'D', 'P')).toBe('P');
+});
+
+test('breadcrumb_helpers isMenuNavigatedCrumb matches app and pathless folders', () => {
+  expect(isMenuNavigatedCrumb({ kind: 'app' })).toBe(true);
+  expect(isMenuNavigatedCrumb({ kind: 'folder', path: '' })).toBe(true);
+  expect(isMenuNavigatedCrumb({ kind: 'folder' })).toBe(true);
+  expect(isMenuNavigatedCrumb({ kind: 'folder', path: '/x' })).toBe(false);
+  expect(isMenuNavigatedCrumb({ kind: 'menu', path: '/x' })).toBe(false);
+  expect(isMenuNavigatedCrumb({ kind: 'page' })).toBe(false);
 });

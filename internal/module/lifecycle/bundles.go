@@ -263,7 +263,7 @@ func pickPropertyDefinitionOwnerModule(app string, mods []*meta.Module) *meta.Mo
 // Unlike FieldDefault/AppSetting/PropertyDefinition, empty ServiceEntryPoint is allowed (Ensure).
 func pickTranslationTermOwnerModule(app string, mods []*meta.Module) *meta.Module {
 	app = strings.TrimSpace(app)
-	if app == "" || app == "core" || len(mods) == 0 {
+	if app == "" || len(mods) == 0 {
 		return nil
 	}
 	var withEntry, withoutEntry *meta.Module
@@ -300,7 +300,7 @@ func appendTranslationTermOwnersFromInstalled(owners []*meta.Module, installed [
 	for i := range installed {
 		mod := &installed[i]
 		app := strings.TrimSpace(mod.ApplicationStr)
-		if app == "" || app == "core" {
+		if app == "" {
 			continue
 		}
 		if _, ok := seenApp[app]; ok {

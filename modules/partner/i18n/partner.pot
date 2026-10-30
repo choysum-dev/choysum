@@ -230,7 +230,7 @@ msgctxt "service/models/partner"
 msgid "CompanyId is required"
 msgstr ""
 
-#: service/models/partner.ts:425
+#: service/models/partner.ts:430
 msgctxt "service/models/partner"
 msgid "CompanyId must match the active company"
 msgstr ""
@@ -281,6 +281,16 @@ msgctxt "web/menu/menus"
 msgid "Partner Management"
 msgstr ""
 
+#: web/menu/menus.ts:21
+msgctxt "web/menu/menus"
+msgid "Translations"
+msgstr ""
+
+#: web/menu/menus.ts:15
+msgctxt "web/menu/menus"
+msgid "partner"
+msgstr ""
+
 #: web/pages/PartnerList.vue:13
 msgctxt "web/pages/PartnerList"
 msgid "Partner List"
@@ -291,19 +301,24 @@ msgctxt "web/pages/PartnerList"
 msgid "Upload a UTF-8 CSV with columns Name, Code, IsActive, CustomerRank, SupplierRank."
 msgstr ""
 
-#: web/route/routes.ts:40
+#: web/route/routes.ts:41
 msgctxt "web/route/routes"
 msgid "New Partner"
 msgstr ""
 
-#: web/route/routes.ts:31
+#: web/route/routes.ts:32
 msgctxt "web/route/routes"
 msgid "Partner Detail"
 msgstr ""
 
-#: web/route/routes.ts:16
+#: web/route/routes.ts:17
 msgctxt "web/route/routes"
 msgid "Partner List"
+msgstr ""
+
+#: web/route/routes.ts:50
+msgctxt "web/route/routes"
+msgid "Translations"
 msgstr ""
 
 #: web/views/PartnerContactFormView.vue:18
@@ -311,42 +326,42 @@ msgctxt "web/views/PartnerContactFormView"
 msgid "Select Address"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:115
+#: web/views/PartnerFormView.vue:97
 msgctxt "web/views/PartnerFormView"
 msgid "Add Contact"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:126
+#: web/views/PartnerFormView.vue:114
 msgctxt "web/views/PartnerFormView"
 msgid "Address Type"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:7
+#: web/views/PartnerFormView.vue:5
 msgctxt "web/views/PartnerFormView"
 msgid "Basic Information"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:85
+#: web/views/PartnerFormView.vue:92
 msgctxt "web/views/PartnerFormView"
 msgid "Billing Address"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:107
+#: web/views/PartnerFormView.vue:114
 msgctxt "web/views/PartnerFormView"
 msgid "Billing Contact"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:38
+#: web/views/PartnerFormView.vue:33
 msgctxt "web/views/PartnerFormView"
 msgid "Commercial Basics"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:63
+#: web/views/PartnerFormView.vue:55
 msgctxt "web/views/PartnerFormView"
 msgid "Contact Details"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:113
+#: web/views/PartnerFormView.vue:95
 msgctxt "web/views/PartnerFormView"
 msgid "Contacts and Addresses"
 msgstr ""
@@ -361,17 +376,17 @@ msgctxt "web/views/PartnerFormView"
 msgid "Create Partner"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:121
+#: web/views/PartnerFormView.vue:104
 msgctxt "web/views/PartnerFormView"
 msgid "Default"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:83
+#: web/views/PartnerFormView.vue:72
 msgctxt "web/views/PartnerFormView"
 msgid "Default Entries"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:131
+#: web/views/PartnerFormView.vue:121
 msgctxt "web/views/PartnerFormView"
 msgid "Delete"
 msgstr ""
@@ -381,12 +396,12 @@ msgctxt "web/views/PartnerFormView"
 msgid "Delete Partner"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:130
+#: web/views/PartnerFormView.vue:119
 msgctxt "web/views/PartnerFormView"
 msgid "Edit"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:115
+#: web/views/PartnerFormView.vue:97
 msgctxt "web/views/PartnerFormView"
 msgid "Edit Contact"
 msgstr ""
@@ -396,42 +411,42 @@ msgctxt "web/views/PartnerFormView"
 msgid "Edit Partner"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:127
+#: web/views/PartnerFormView.vue:116
 msgctxt "web/views/PartnerFormView"
 msgid "Email"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:115
+#: web/views/PartnerFormView.vue:122
 msgctxt "web/views/PartnerFormView"
 msgid "Finance Contact"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:105
+#: web/views/PartnerFormView.vue:112
 msgctxt "web/views/PartnerFormView"
 msgid "General Contact"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:122
+#: web/views/PartnerFormView.vue:107
 msgctxt "web/views/PartnerFormView"
 msgid "Inactive"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:117
+#: web/views/PartnerFormView.vue:124
 msgctxt "web/views/PartnerFormView"
 msgid "Legal Contact"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:115
+#: web/views/PartnerFormView.vue:97
 msgctxt "web/views/PartnerFormView"
 msgid "New Contact"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:89
+#: web/views/PartnerFormView.vue:96
 msgctxt "web/views/PartnerFormView"
 msgid "Office Address"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:93
+#: web/views/PartnerFormView.vue:100
 msgctxt "web/views/PartnerFormView"
 msgid "Other"
 msgstr ""
@@ -441,77 +456,77 @@ msgctxt "web/views/PartnerFormView"
 msgid "Partner"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:128
+#: web/views/PartnerFormView.vue:117
 msgctxt "web/views/PartnerFormView"
 msgid "Phone"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:111
+#: web/views/PartnerFormView.vue:118
 msgctxt "web/views/PartnerFormView"
 msgid "Procurement Contact"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:91
+#: web/views/PartnerFormView.vue:98
 msgctxt "web/views/PartnerFormView"
 msgid "Registered Address"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:108
+#: web/views/PartnerFormView.vue:93
 msgctxt "web/views/PartnerFormView"
 msgid "Related Data"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:35
+#: web/views/PartnerFormView.vue:42
 msgctxt "web/views/PartnerFormView"
 msgid "Required"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:125
+#: web/views/PartnerFormView.vue:112
 msgctxt "web/views/PartnerFormView"
 msgid "Role"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:113
+#: web/views/PartnerFormView.vue:120
 msgctxt "web/views/PartnerFormView"
 msgid "Sales Contact"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:17
+#: web/views/PartnerFormView.vue:14
 msgctxt "web/views/PartnerFormView"
 msgid "Select Company"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:56
+#: web/views/PartnerFormView.vue:50
 msgctxt "web/views/PartnerFormView"
 msgid "Select Country"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:51
+#: web/views/PartnerFormView.vue:45
 msgctxt "web/views/PartnerFormView"
 msgid "Select Currency"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:48
+#: web/views/PartnerFormView.vue:42
 msgctxt "web/views/PartnerFormView"
 msgid "Select Language"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:87
+#: web/views/PartnerFormView.vue:94
 msgctxt "web/views/PartnerFormView"
 msgid "Shipping Address"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:109
+#: web/views/PartnerFormView.vue:116
 msgctxt "web/views/PartnerFormView"
 msgid "Shipping Contact"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:119
+#: web/views/PartnerFormView.vue:101
 msgctxt "web/views/PartnerFormView"
 msgid "Unnamed Contact"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:115
+#: web/views/PartnerFormView.vue:97
 msgctxt "web/views/PartnerFormView"
 msgid "View Contact"
 msgstr ""

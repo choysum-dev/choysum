@@ -63,7 +63,7 @@ func TestInstalledModulesByAppSkipsWhenMetaModuleTableMissing(t *testing.T) {
 	}
 }
 
-func TestInstalledModulesByAppIncludesFrameworkModule(t *testing.T) {
+func TestInstalledModulesByAppSchemeB(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "catalog.db")), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
@@ -91,13 +91,14 @@ func TestInstalledModulesByAppIncludesFrameworkModule(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := byApp["core"]; ok {
-		t.Fatal("must not expose application core")
+	coreMods := byApp["core"]
+	if !slices.Equal(coreMods, []string{"core"}) {
+		t.Fatalf("core modules = %v, want [core]", coreMods)
 	}
 	for _, app := range []string{"auth", "web"} {
 		mods := byApp[app]
-		if !slices.Contains(mods, "core") {
-			t.Fatalf("%s modules = %v, want core included", app, mods)
+		if slices.Contains(mods, "core") {
+			t.Fatalf("%s must not include framework module core, got %v", app, mods)
 		}
 		if !slices.Contains(mods, app) {
 			t.Fatalf("%s modules = %v, want own module", app, mods)
