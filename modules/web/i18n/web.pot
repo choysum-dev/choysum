@@ -1503,6 +1503,42 @@ msgctxt "web/components/layout/Page"
 msgid "Loading..."
 msgstr ""
 
+#: web/components/terminology/TerminologyExportMenu.vue:29
+msgctxt "web/components/terminology/TerminologyExportMenu"
+msgid "Download PO"
+msgstr ""
+
+#: web/components/terminology/TerminologyExportMenu.vue:29
+msgctxt "web/components/terminology/TerminologyExportMenu"
+msgid "Downloading…"
+msgstr ""
+
+#: web/components/terminology/TerminologyExportMenu.vue:4
+#: web/components/terminology/TerminologyExportMenu.vue:5
+msgctxt "web/components/terminology/TerminologyExportMenu"
+msgid "Export PO"
+msgstr ""
+
+#: web/components/terminology/TerminologyExportMenu.vue:12
+msgctxt "web/components/terminology/TerminologyExportMenu"
+msgid "Loading modules…"
+msgstr ""
+
+#: web/components/terminology/TerminologyExportMenu.vue:10
+msgctxt "web/components/terminology/TerminologyExportMenu"
+msgid "Module"
+msgstr ""
+
+#: web/components/terminology/TerminologyExportMenu.vue:15
+msgctxt "web/components/terminology/TerminologyExportMenu"
+msgid "No modules"
+msgstr ""
+
+#: web/components/terminology/TerminologyExportMenu.vue:123
+msgctxt "web/components/terminology/TerminologyExportMenu"
+msgid "PO download failed"
+msgstr ""
+
 #: web/components/view/ChoyChartView.vue:630
 msgctxt "web/components/view/ChartView"
 msgid "Bar"
@@ -2537,66 +2573,6 @@ msgctxt "web/menu/menus"
 msgid "web"
 msgstr ""
 
-#: web/pages/TranslationTermList.vue:0
-msgctxt "web/pages/TranslationTermList"
-msgid "Translations: %s"
-msgstr ""
-
-#: web/components/terminology/TerminologyExportMenu.vue:0
-msgctxt "web/components/terminology/TerminologyExportMenu"
-msgid "Download PO"
-msgstr ""
-
-#: web/components/terminology/TerminologyExportMenu.vue:0
-msgctxt "web/components/terminology/TerminologyExportMenu"
-msgid "Downloading…"
-msgstr ""
-
-#: web/components/terminology/TerminologyExportMenu.vue:0
-msgctxt "web/components/terminology/TerminologyExportMenu"
-msgid "Export PO"
-msgstr ""
-
-#: web/components/terminology/TerminologyExportMenu.vue:0
-msgctxt "web/components/terminology/TerminologyExportMenu"
-msgid "Loading modules…"
-msgstr ""
-
-#: web/components/terminology/TerminologyExportMenu.vue:0
-msgctxt "web/components/terminology/TerminologyExportMenu"
-msgid "Module"
-msgstr ""
-
-#: web/components/terminology/TerminologyExportMenu.vue:0
-msgctxt "web/components/terminology/TerminologyExportMenu"
-msgid "No modules"
-msgstr ""
-
-#: web/components/terminology/TerminologyExportMenu.vue:0
-msgctxt "web/components/terminology/TerminologyExportMenu"
-msgid "PO download failed"
-msgstr ""
-
-#: web/route/terminologyRoutes.ts:0
-msgctxt "web/route/terminologyRoutes"
-msgid "Translations"
-msgstr ""
-
-#: web/route/terminologyRoutes.ts:0
-msgctxt "web/route/terminologyRoutes"
-msgid "Translation Details"
-msgstr ""
-
-#: web/views/TranslationTermFormView.vue:0
-msgctxt "web/views/TranslationTermFormView"
-msgid "Edit Translation Term"
-msgstr ""
-
-#: web/views/TranslationTermFormView.vue:0
-msgctxt "web/views/TranslationTermFormView"
-msgid "Term"
-msgstr ""
-
 #: web/pages/ErrorView.vue:71
 msgctxt "web/pages/ErrorView"
 msgid "Access denied"
@@ -2678,6 +2654,11 @@ msgstr ""
 #: web/pages/ErrorView.vue:59
 msgctxt "web/pages/ErrorView"
 msgid "You do not have permission to access this page"
+msgstr ""
+
+#: web/pages/terminology_list_page.ts:36
+msgctxt "web/pages/TranslationTermList"
+msgid "Translations: %s"
 msgstr ""
 
 #: web/query/utils/filter/operators.ts:29
@@ -2764,13 +2745,34 @@ msgctxt "web/query/utils/filter/operators"
 msgid "Not in"
 msgstr ""
 
-#: web/stores/breadcrumbStore/index.ts:18
+#: web/route/terminologyRoutes.ts:43
+msgctxt "web/route/terminologyRoutes"
+msgid "Translation Details"
+msgstr ""
+
+#: web/route/terminologyRoutes.ts:25
+#: web/route/terminologyRoutes.ts:34
+msgctxt "web/route/terminologyRoutes"
+msgid "Translations"
+msgstr ""
+
+#: web/stores/breadcrumbStore/index.ts:20
 msgctxt "web/stores/breadcrumbStore"
 msgid "Details"
 msgstr ""
 
-#: web/stores/breadcrumbStore/index.ts:17
+#: web/stores/breadcrumbStore/index.ts:19
 msgctxt "web/stores/breadcrumbStore"
 msgid "Page"
+msgstr ""
+
+#: web/views/TranslationTermFormView.vue:35
+msgctxt "web/views/TranslationTermFormView"
+msgid "Edit Translation Term"
+msgstr ""
+
+#: web/views/TranslationTermFormView.vue:4
+msgctxt "web/views/TranslationTermFormView"
+msgid "Term"
 msgstr ""
 

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { AuthUserLanguageHooks } from './post_upgrade';
+import { AuthTerminologyGrantCleanupHooks, AuthUserLanguageHooks } from './post_upgrade';
 
 test('AuthUserLanguageHooks.backfillUserLanguageId: sqlite SQL filters active trimmed codes', async () => {
   const calls: Array<{ sql: string; params: string }> = [];
@@ -137,4 +137,58 @@ test('AuthUserLanguageHooks.backfillUserLanguageId: unknown dialect executes no 
     (globalThis as any).$choysum = prev;
   }
   expect(calls.length).toBe(0);
+});
+
+test('AuthTerminologyGrantCleanupHooks: deletes obsolete xml_id rows', async () => {
+  const calls: string[] = [];
+  const prev = (globalThis as any).$choysum;
+  (globalThis as any).$choysum = {
+    ...(prev || {}),
+    db: {
+      execute: async (sql: string) => {
+        calls.push(sql);
+      },
+    },
+  };
+  try {
+    await AuthTerminologyGrantCleanupHooks.revokeObsoleteTerminologyEditorGrants();
+  } finally {
+    (globalThis as any).$choysum = prev;
+  }
+  expect(calls.length).toBe(3);
+  expect(calls[0]).toContain('auth_role_method_access');
+  expect(calls[0]).toContain('rma_terminology_editor_tt_logical');
+  expect(calls[1]).toContain('auth_role_field_rule');
+  expect(calls[1]).toContain('rfr_terminology_editor_tt_logical');
+  expect(calls[2]).toContain('meta_model_data');
+});
+
+test('AuthTerminologyGrantCleanupHooks: no-ops without db', async () => {
+  const prev = (globalThis as any).$choysum;
+  (globalThis as any).$choysum = { ...(prev || {}), db: undefined };
+  try {
+    await AuthTerminologyGrantCleanupHooks.revokeObsoleteTerminologyEditorGrants();
+  } finally {
+    (globalThis as any).$choysum = prev;
+  }
+});
+
+test('AuthTerminologyGrantCleanupHooks: continues after execute failures', async () => {
+  let n = 0;
+  const prev = (globalThis as any).$choysum;
+  (globalThis as any).$choysum = {
+    ...(prev || {}),
+    db: {
+      execute: async () => {
+        n += 1;
+        throw new Error('missing table');
+      },
+    },
+  };
+  try {
+    await AuthTerminologyGrantCleanupHooks.revokeObsoleteTerminologyEditorGrants();
+  } finally {
+    (globalThis as any).$choysum = prev;
+  }
+  expect(n).toBe(3);
 });

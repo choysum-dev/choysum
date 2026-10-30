@@ -991,65 +991,65 @@ msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Using current session language"
 msgstr "当前使用会话语言"
 
-#: web/menu/menus.ts:27
+#: web/menu/menus.ts:34
 msgctxt "web/menu/menus"
 msgid "Access Control"
 msgstr "访问控制"
 
-#: web/menu/menus.ts:43
+#: web/menu/menus.ts:50
 msgctxt "web/menu/menus"
 msgid "Access Rules"
 msgstr "授权规则"
 
-#: web/menu/menus.ts:52
+#: web/menu/menus.ts:59
 msgctxt "web/menu/menus"
 msgid "Field Rules"
 msgstr "字段规则"
 
-#: web/menu/menus.ts:57
+#: web/menu/menus.ts:64
 msgctxt "web/menu/menus"
 msgid "Method Access"
 msgstr "方法访问"
 
-#: web/menu/menus.ts:47
+#: web/menu/menus.ts:54
 msgctxt "web/menu/menus"
 msgid "Record Rules"
 msgstr "记录规则"
 
-#: web/menu/menus.ts:37
+#: web/menu/menus.ts:44
 msgctxt "web/menu/menus"
 msgid "Role List"
 msgstr "角色列表"
 
-#: web/menu/menus.ts:69
+#: web/menu/menus.ts:76
 msgctxt "web/menu/menus"
 msgid "Session List"
 msgstr "会话列表"
 
-#: web/menu/menus.ts:74
+#: web/menu/menus.ts:81
 msgctxt "web/menu/menus"
 msgid "Token List"
 msgstr "令牌列表"
 
-#: web/menu/menus.ts:62
-msgctxt "web/menu/menus"
-msgid "UI Resource Grants"
-msgstr "UI 资源授权"
-
-#: web/menu/menus.ts:32
-msgctxt "web/menu/menus"
-msgid "User List"
-msgstr "用户列表"
-
-#: web/menu/menus.ts:25
+#: web/menu/menus.ts:24
 msgctxt "web/menu/menus"
 msgid "Translations"
 msgstr "翻译"
 
+#: web/menu/menus.ts:69
+msgctxt "web/menu/menus"
+msgid "UI Resource Grants"
+msgstr "UI 资源授权"
+
+#: web/menu/menus.ts:39
+msgctxt "web/menu/menus"
+msgid "User List"
+msgstr "用户列表"
+
 #: web/menu/menus.ts:18
 msgctxt "web/menu/menus"
 msgid "auth"
-msgstr ""
+msgstr "auth"
 
 #: web/pages/Login.vue:9
 msgctxt "web/pages/Login"
@@ -1331,147 +1331,152 @@ msgctxt "web/pages/UserList"
 msgid "User List"
 msgstr "用户列表"
 
-#: web/route/routes.ts:268
+#: web/route/routes.ts:269
 msgctxt "web/route/routes"
 msgid "Create Field Rule"
 msgstr "创建字段规则"
 
-#: web/route/routes.ts:311
+#: web/route/routes.ts:312
 msgctxt "web/route/routes"
 msgid "Create Method Access"
 msgstr "创建方法访问"
 
-#: web/route/routes.ts:225
+#: web/route/routes.ts:226
 msgctxt "web/route/routes"
 msgid "Create Record Rule"
 msgstr "创建记录规则"
 
-#: web/route/routes.ts:97
+#: web/route/routes.ts:98
 msgctxt "web/route/routes"
 msgid "Create Role"
 msgstr "新建角色"
 
-#: web/route/routes.ts:124
+#: web/route/routes.ts:125
 msgctxt "web/route/routes"
 msgid "Create Session"
 msgstr "新建会话"
 
-#: web/route/routes.ts:158
+#: web/route/routes.ts:159
 msgctxt "web/route/routes"
 msgid "Create Token"
 msgstr "新建令牌"
 
-#: web/route/routes.ts:354
+#: web/route/routes.ts:355
 msgctxt "web/route/routes"
 msgid "Create UI Resource Grant"
 msgstr "创建 UI 资源授权"
 
-#: web/route/routes.ts:68
+#: web/route/routes.ts:69
 msgctxt "web/route/routes"
 msgid "Create User"
 msgstr "新建用户"
 
-#: web/route/routes.ts:254
+#: web/route/routes.ts:255
 msgctxt "web/route/routes"
 msgid "Field Rule Details"
 msgstr "字段规则详情"
 
-#: web/route/routes.ts:240
+#: web/route/routes.ts:241
 msgctxt "web/route/routes"
 msgid "Field Rule List"
 msgstr "字段规则列表"
 
-#: web/route/routes.ts:23
+#: web/route/routes.ts:24
 msgctxt "web/route/routes"
 msgid "Login"
 msgstr "登录"
 
-#: web/route/routes.ts:34
+#: web/route/routes.ts:35
 msgctxt "web/route/routes"
 msgid "Logout"
 msgstr "退出登录"
 
-#: web/route/routes.ts:297
+#: web/route/routes.ts:298
 msgctxt "web/route/routes"
 msgid "Method Access Details"
 msgstr "方法访问详情"
 
-#: web/route/routes.ts:283
+#: web/route/routes.ts:284
 msgctxt "web/route/routes"
 msgid "Method Access List"
 msgstr "方法访问列表"
 
-#: web/route/routes.ts:211
+#: web/route/routes.ts:212
 msgctxt "web/route/routes"
 msgid "Record Rule Details"
 msgstr "记录规则详情"
 
-#: web/route/routes.ts:197
+#: web/route/routes.ts:198
 msgctxt "web/route/routes"
 msgid "Record Rule List"
 msgstr "记录规则列表"
 
-#: web/route/routes.ts:372
+#: web/route/routes.ts:383
 msgctxt "web/route/routes"
 msgid "Register"
 msgstr "注册"
 
-#: web/route/routes.ts:88
+#: web/route/routes.ts:89
 msgctxt "web/route/routes"
 msgid "Role Details"
 msgstr "角色详情"
 
-#: web/route/routes.ts:79
+#: web/route/routes.ts:80
 msgctxt "web/route/routes"
 msgid "Role Management"
 msgstr "角色管理"
 
-#: web/route/routes.ts:115
+#: web/route/routes.ts:116
 msgctxt "web/route/routes"
 msgid "Session Details"
 msgstr "会话详情"
 
-#: web/route/routes.ts:106
+#: web/route/routes.ts:107
 msgctxt "web/route/routes"
 msgid "Session Management"
 msgstr "会话管理"
 
-#: web/route/routes.ts:167
+#: web/route/routes.ts:168
 msgctxt "web/route/routes"
 msgid "Token Board"
 msgstr "令牌看板"
 
-#: web/route/routes.ts:181
+#: web/route/routes.ts:182
 msgctxt "web/route/routes"
 msgid "Token Chart"
 msgstr "令牌图表"
 
-#: web/route/routes.ts:149
+#: web/route/routes.ts:150
 msgctxt "web/route/routes"
 msgid "Token Details"
 msgstr "令牌详情"
 
-#: web/route/routes.ts:135
+#: web/route/routes.ts:136
 msgctxt "web/route/routes"
 msgid "Token Management"
 msgstr "令牌管理"
 
-#: web/route/routes.ts:340
+#: web/route/routes.ts:370
+msgctxt "web/route/routes"
+msgid "Translations"
+msgstr "翻译"
+
+#: web/route/routes.ts:341
 msgctxt "web/route/routes"
 msgid "UI Resource Grant Details"
 msgstr "UI 资源授权详情"
 
-#: web/route/routes.ts:326
+#: web/route/routes.ts:327
 msgctxt "web/route/routes"
 msgid "UI Resource Grant List"
 msgstr "UI 资源授权列表"
 
-#: web/route/routes.ts:59
+#: web/route/routes.ts:60
 msgctxt "web/route/routes"
 msgid "User Details"
 msgstr "用户详情"
 
-#: web/route/routes.ts:50
+#: web/route/routes.ts:51
 msgctxt "web/route/routes"
 msgid "User List"
 msgstr "用户列表"

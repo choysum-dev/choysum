@@ -43,3 +43,37 @@ export class AuthUserLanguageHooks {
     }
   }
 }
+
+/**
+ * Scheme B removed TranslationTerm grants from terminology.editor in bootstrap.
+ * Init-data does not delete omitted xml_ids; purge leftover rows on upgrade.
+ */
+export class AuthTerminologyGrantCleanupHooks {
+  @HookPostUpgrade()
+  static async revokeObsoleteTerminologyEditorGrants(): Promise<void> {
+    const db = (globalThis as { $choysum?: { db?: { execute?: (sql: string, params: string) => Promise<unknown> } } }).$choysum?.db;
+    if (!db?.execute) return;
+
+    const statements = [
+      `DELETE FROM auth_role_method_access WHERE id IN (
+        SELECT res_id FROM meta_model_data
+        WHERE module = 'auth' AND name = 'rma_terminology_editor_tt_logical'
+      )`,
+      `DELETE FROM auth_role_field_rule WHERE id IN (
+        SELECT res_id FROM meta_model_data
+        WHERE module = 'auth' AND name = 'rfr_terminology_editor_tt_logical'
+      )`,
+      `DELETE FROM meta_model_data
+       WHERE module = 'auth'
+         AND name IN ('rma_terminology_editor_tt_logical', 'rfr_terminology_editor_tt_logical')`,
+    ];
+
+    for (const sql of statements) {
+      try {
+        await db.execute(sql, '[]');
+      } catch (err) {
+        console.warn('[auth] obsolete terminology.editor grant cleanup failed', err);
+      }
+    }
+  }
+}

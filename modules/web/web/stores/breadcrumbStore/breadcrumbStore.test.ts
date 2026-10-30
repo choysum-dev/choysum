@@ -30,6 +30,23 @@ function installMenus() {
     title: 'Auth',
     children: [{ id: 'users', title: 'Users', path: '/auth/users' }],
   } as any);
+  menuPlugin.manager.addMenu({
+    id: 'web.menu.settings',
+    title: 'Settings',
+    children: [
+      {
+        id: 'web.menu.settings_app_core',
+        title: 'core',
+        children: [
+          {
+            id: 'web.menu.terminology_core',
+            title: 'Translations',
+            path: '/web/terminology/core',
+          },
+        ],
+      },
+    ],
+  } as any);
   return menuPlugin;
 }
 
@@ -474,6 +491,25 @@ describe('breadcrumbStore L1+L2 trail', () => {
     expect(store.navigateToBreadcrumb(0)).toBeNull();
     expect(store.breadcrumbStack.map((i) => i.kind)).toEqual(beforeAppNav);
 
+    store.resetBreadcrumb('settings', 'Settings', '');
+    if (store.breadcrumbStack[0]) {
+      store.breadcrumbStack[0].kind = 'app';
+      store.breadcrumbStack[0].path = '';
+      store.breadcrumbStack[0].menuId = 'web.menu.settings';
+    }
+    store.breadcrumbStack.splice(1, 0, {
+      title: 'core',
+      path: '',
+      clickable: true,
+      timestamp: Date.now(),
+      kind: 'folder',
+      menuId: 'web.menu.settings_app_core',
+    } as any);
+    store.pushBreadcrumb('Translations', '/web/terminology/core');
+    const beforeFolderNav = store.breadcrumbStack.length;
+    expect(store.navigateToBreadcrumb(1)).toBeNull();
+    expect(store.breadcrumbStack.length).toBe(beforeFolderNav);
+
     mounted.unmount();
   });
 
@@ -501,6 +537,39 @@ describe('breadcrumbStore L1+L2 trail', () => {
     await router.push({ path: '/orphan', meta: {} });
     await flushPromises();
     expect(store.breadcrumbStack.length).toBe(0);
+    mounted.unmount();
+  });
+
+  test('syncStackToActiveMenu inserts pathless folder crumbs between app and leaf', async () => {
+    const menuPlugin = installMenus();
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: {
+        path: '/web/terminology/core',
+        fullPath: '/web/terminology/core',
+        meta: {},
+      },
+    });
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+    const Host = defineComponent({
+      setup() {
+        useMenuStore().bindRouteFromInjection();
+        useBreadcrumbStore();
+        return () => h('div');
+      },
+    });
+    const mounted = mountApp(Host as any, { plugins: [menuPlugin, pinia, router, i18n] });
+    await flushPromises();
+    const leaf = menuPlugin.manager.getMenu('web.menu.terminology_core');
+    expect(leaf).toBeTruthy();
+    useMenuStore().setActiveMenu(leaf as any);
+    await router.push({ path: '/web/terminology/core', meta: {} });
+    await flushPromises();
+    const store = useBreadcrumbStore();
+    expect(store.breadcrumbStack.map((i) => i.kind)).toEqual(['app', 'folder', 'menu']);
+    expect(store.breadcrumbStack[1]?.menuId).toBe('web.menu.settings_app_core');
+    expect(store.breadcrumbStack[1]?.path).toBe('');
     mounted.unmount();
   });
 

@@ -18,6 +18,7 @@ import { useI18n } from 'vue-i18n'
 import ChoyBreadcrumb, { type ChoyBreadcrumbItem } from '../view/ChoyBreadcrumb.vue'
 import { translateTerm } from '../../i18n'
 import { useBreadcrumbStore } from '../../stores/breadcrumbStore'
+import { isMenuNavigatedCrumb } from '../../stores/breadcrumbStore/breadcrumb_helpers'
 import { useMenu } from '../../composables/useMenu'
 
 /**
@@ -58,7 +59,7 @@ function buildBreadcrumbItems(): ComputedRef<ChoyBreadcrumbItem[]> {
         if (isLast || !entry.clickable) {
           return { label }
         }
-        if (entry.kind === 'app' || (entry.kind === 'folder' && !entry.path)) {
+        if (isMenuNavigatedCrumb(entry)) {
           return {
             label,
             onSelect: () => onMenuSelect(entry.menuId),

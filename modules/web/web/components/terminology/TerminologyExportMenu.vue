@@ -101,7 +101,8 @@ const selectedModule = ref('');
 const loadingModules = ref(false);
 const modulesLoaded = ref(false);
 const downloading = ref(false);
-let loadInflight: Promise<void> | null = null;
+/** Generation token for in-flight module loads (avoids promise-identity races). */
+let loadGeneration = 0;
 
 const application = computed(() => String(props.application || '').trim());
 const canDownload = computed(
@@ -114,7 +115,7 @@ watch(
     selectedModule.value = app;
     modules.value = app ? [app] : [];
     modulesLoaded.value = false;
-    loadInflight = null;
+    loadGeneration += 1;
   },
   { immediate: true }
 );
@@ -126,41 +127,33 @@ watch(menuOpen, (open) => {
 async function loadModules() {
   const app = application.value;
   if (!app) return;
-  if (loadInflight) {
-    await loadInflight;
-    return;
-  }
+  if (loadingModules.value) return;
+  const generation = ++loadGeneration;
   loadingModules.value = true;
-  const pending = (async () => {
-    try {
-      const metaModuleStore = createStoreByModel('meta.MetaModule');
-      const rows = await metaModuleStore.Search(installedModulesSearchCondition(app) as any, {
-        fields: ['Name'],
-        orderBy: [{ field: 'Name', direction: 'asc' }],
-      } as any);
-      if (application.value !== app) return;
-      const fromMeta = collectModuleNamesFromMetaModuleRows(rows);
-      const next = fromMeta.length ? fromMeta : [app];
-      modules.value = next;
-      if (!next.includes(selectedModule.value)) {
-        selectedModule.value = next.includes(app) ? app : next[0] || '';
-      }
-    } catch {
-      if (application.value !== app) return;
-      modules.value = [app];
-      if (!selectedModule.value) selectedModule.value = app;
-    } finally {
-      if (application.value === app) {
-        modulesLoaded.value = true;
-        loadingModules.value = false;
-      }
-    }
-  })();
-  loadInflight = pending;
   try {
-    await pending;
+    const metaModuleStore = createStoreByModel('meta.MetaModule');
+    const rows = await metaModuleStore.Search(installedModulesSearchCondition(app) as any, {
+      fields: ['Name'],
+      orderBy: [{ field: 'Name', direction: 'asc' }],
+    } as any);
+    if (generation !== loadGeneration || application.value !== app) return;
+    const fromMeta = collectModuleNamesFromMetaModuleRows(rows);
+    const next = fromMeta.length ? fromMeta : [app];
+    modules.value = next;
+    if (!next.includes(selectedModule.value)) {
+      selectedModule.value = next.includes(app) ? app : next[0] || '';
+    }
+  } catch {
+    if (generation !== loadGeneration || application.value !== app) return;
+    modules.value = [app];
+    if (!selectedModule.value) selectedModule.value = app;
   } finally {
-    if (loadInflight === pending) loadInflight = null;
+    if (generation === loadGeneration && application.value === app) {
+      modulesLoaded.value = true;
+      loadingModules.value = false;
+    } else if (generation === loadGeneration) {
+      loadingModules.value = false;
+    }
   }
 }
 

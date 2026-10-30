@@ -1031,79 +1031,79 @@ msgctxt "service/models/uom"
 msgid "Rounding must be greater than 0"
 msgstr ""
 
-#: web/menu/menus.ts:18
+#: web/menu/menus.ts:34
 msgctxt "web/menu/menus"
 msgid "Address Management"
 msgstr ""
 
-#: web/menu/menus.ts:19
+#: web/menu/menus.ts:35
 msgctxt "web/menu/menus"
 msgid "Bank Management"
 msgstr ""
 
-#: web/menu/menus.ts:22
+#: web/menu/menus.ts:38
 msgctxt "web/menu/menus"
 msgid "City Management"
 msgstr ""
 
-#: web/menu/menus.ts:17
+#: web/menu/menus.ts:33
 msgctxt "web/menu/menus"
 msgid "Company Management"
 msgstr ""
 
-#: web/menu/menus.ts:20
+#: web/menu/menus.ts:36
 msgctxt "web/menu/menus"
 msgid "Country Management"
 msgstr ""
 
-#: web/menu/menus.ts:23
+#: web/menu/menus.ts:39
 msgctxt "web/menu/menus"
 msgid "Currency Management"
 msgstr ""
 
-#: web/menu/menus.ts:24
+#: web/menu/menus.ts:40
 msgctxt "web/menu/menus"
 msgid "Exchange Rate Management"
 msgstr ""
 
-#: web/menu/menus.ts:25
+#: web/menu/menus.ts:41
 msgctxt "web/menu/menus"
 msgid "Language Management"
 msgstr ""
 
-#: web/menu/menus.ts:13
+#: web/menu/menus.ts:29
 msgctxt "web/menu/menus"
 msgid "Master Data"
 msgstr ""
 
-#: web/menu/menus.ts:49
+#: web/menu/menus.ts:43
 msgctxt "web/menu/menus"
 msgid "Sequence Idempotency Record"
 msgstr ""
 
-#: web/menu/menus.ts:48
+#: web/menu/menus.ts:42
 msgctxt "web/menu/menus"
 msgid "Sequence Management"
 msgstr ""
 
-#: web/menu/menus.ts:21
+#: web/menu/menus.ts:37
 msgctxt "web/menu/menus"
 msgid "State Management"
-msgstr ""
-
-#: web/menu/menus.ts:51
-msgctxt "web/menu/menus"
-msgid "Unit of Measure"
-msgstr ""
-
-#: web/menu/menus.ts:50
-msgctxt "web/menu/menus"
-msgid "Unit of Measure Category"
 msgstr ""
 
 #: web/menu/menus.ts:19
 msgctxt "web/menu/menus"
 msgid "Translations"
+msgstr ""
+
+#: web/menu/menus.ts:45
+msgctxt "web/menu/menus"
+msgid "Unit of Measure"
+msgstr ""
+
+#: web/menu/menus.ts:44
+msgctxt "web/menu/menus"
+msgid "Unit of Measure Category"
 msgstr ""
 
 #: web/menu/menus.ts:13
@@ -1176,197 +1176,202 @@ msgctxt "web/pages/UoMList"
 msgid "Unit of Measure List"
 msgstr ""
 
-#: web/route/routes.ts:52
+#: web/route/routes.ts:53
 msgctxt "web/route/routes"
 msgid "Address Details"
 msgstr ""
 
-#: web/route/routes.ts:43
+#: web/route/routes.ts:44
 msgctxt "web/route/routes"
 msgid "Address List"
 msgstr ""
 
-#: web/route/routes.ts:82
+#: web/route/routes.ts:83
 msgctxt "web/route/routes"
 msgid "Bank Details"
 msgstr ""
 
-#: web/route/routes.ts:73
+#: web/route/routes.ts:74
 msgctxt "web/route/routes"
 msgid "Bank List"
 msgstr ""
 
-#: web/route/routes.ts:112
+#: web/route/routes.ts:113
 msgctxt "web/route/routes"
 msgid "City Details"
 msgstr ""
 
-#: web/route/routes.ts:103
+#: web/route/routes.ts:104
 msgctxt "web/route/routes"
 msgid "City List"
 msgstr ""
 
-#: web/route/routes.ts:22
+#: web/route/routes.ts:23
 msgctxt "web/route/routes"
 msgid "Company Details"
 msgstr ""
 
-#: web/route/routes.ts:13
+#: web/route/routes.ts:14
 msgctxt "web/route/routes"
 msgid "Company List"
 msgstr ""
 
-#: web/route/routes.ts:142
+#: web/route/routes.ts:143
 msgctxt "web/route/routes"
 msgid "Country Details"
 msgstr ""
 
-#: web/route/routes.ts:133
+#: web/route/routes.ts:134
 msgctxt "web/route/routes"
 msgid "Country List"
 msgstr ""
 
-#: web/route/routes.ts:61
+#: web/route/routes.ts:62
 msgctxt "web/route/routes"
 msgid "Create Address"
 msgstr ""
 
-#: web/route/routes.ts:91
+#: web/route/routes.ts:92
 msgctxt "web/route/routes"
 msgid "Create Bank"
 msgstr ""
 
-#: web/route/routes.ts:121
+#: web/route/routes.ts:122
 msgctxt "web/route/routes"
 msgid "Create City"
 msgstr ""
 
-#: web/route/routes.ts:31
+#: web/route/routes.ts:32
 msgctxt "web/route/routes"
 msgid "Create Company"
 msgstr ""
 
-#: web/route/routes.ts:151
+#: web/route/routes.ts:152
 msgctxt "web/route/routes"
 msgid "Create Country"
 msgstr ""
 
-#: web/route/routes.ts:181
+#: web/route/routes.ts:182
 msgctxt "web/route/routes"
 msgid "Create Currency"
 msgstr ""
 
-#: web/route/routes.ts:211
+#: web/route/routes.ts:212
 msgctxt "web/route/routes"
 msgid "Create Exchange Rate"
 msgstr ""
 
-#: web/route/routes.ts:431
+#: web/route/routes.ts:312
 msgctxt "web/route/routes"
 msgid "Create Idempotency Record"
 msgstr ""
 
-#: web/route/routes.ts:241
+#: web/route/routes.ts:242
 msgctxt "web/route/routes"
 msgid "Create Language"
 msgstr ""
 
-#: web/route/routes.ts:391
+#: web/route/routes.ts:272
 msgctxt "web/route/routes"
 msgid "Create Sequence"
 msgstr ""
 
-#: web/route/routes.ts:466
+#: web/route/routes.ts:347
 msgctxt "web/route/routes"
 msgid "Create State"
 msgstr ""
 
-#: web/route/routes.ts:496
+#: web/route/routes.ts:377
 msgctxt "web/route/routes"
 msgid "Create Unit of Measure"
 msgstr ""
 
-#: web/route/routes.ts:526
+#: web/route/routes.ts:407
 msgctxt "web/route/routes"
 msgid "Create Unit of Measure Category"
 msgstr ""
 
-#: web/route/routes.ts:172
+#: web/route/routes.ts:173
 msgctxt "web/route/routes"
 msgid "Currency Details"
 msgstr ""
 
-#: web/route/routes.ts:163
+#: web/route/routes.ts:164
 msgctxt "web/route/routes"
 msgid "Currency List"
 msgstr ""
 
-#: web/route/routes.ts:202
+#: web/route/routes.ts:203
 msgctxt "web/route/routes"
 msgid "Exchange Rate Details"
 msgstr ""
 
-#: web/route/routes.ts:193
+#: web/route/routes.ts:194
 msgctxt "web/route/routes"
 msgid "Exchange Rate List"
 msgstr ""
 
-#: web/route/routes.ts:417
+#: web/route/routes.ts:298
 msgctxt "web/route/routes"
 msgid "Idempotency Record Details"
 msgstr ""
 
-#: web/route/routes.ts:232
+#: web/route/routes.ts:233
 msgctxt "web/route/routes"
 msgid "Language Details"
 msgstr ""
 
-#: web/route/routes.ts:223
+#: web/route/routes.ts:224
 msgctxt "web/route/routes"
 msgid "Language List"
 msgstr ""
 
-#: web/route/routes.ts:382
+#: web/route/routes.ts:263
 msgctxt "web/route/routes"
 msgid "Sequence Details"
 msgstr ""
 
-#: web/route/routes.ts:403
+#: web/route/routes.ts:284
 msgctxt "web/route/routes"
 msgid "Sequence Idempotency Record"
 msgstr ""
 
-#: web/route/routes.ts:373
+#: web/route/routes.ts:254
 msgctxt "web/route/routes"
 msgid "Sequence List"
 msgstr ""
 
-#: web/route/routes.ts:457
+#: web/route/routes.ts:338
 msgctxt "web/route/routes"
 msgid "State Details"
 msgstr ""
 
-#: web/route/routes.ts:448
+#: web/route/routes.ts:329
 msgctxt "web/route/routes"
 msgid "State List"
 msgstr ""
 
-#: web/route/routes.ts:508
+#: web/route/routes.ts:432
+msgctxt "web/route/routes"
+msgid "Translations"
+msgstr ""
+
+#: web/route/routes.ts:389
 msgctxt "web/route/routes"
 msgid "Unit of Measure Category"
 msgstr ""
 
-#: web/route/routes.ts:517
+#: web/route/routes.ts:398
 msgctxt "web/route/routes"
 msgid "Unit of Measure Category Details"
 msgstr ""
 
-#: web/route/routes.ts:487
+#: web/route/routes.ts:368
 msgctxt "web/route/routes"
 msgid "Unit of Measure Details"
 msgstr ""
 
-#: web/route/routes.ts:478
+#: web/route/routes.ts:359
 msgctxt "web/route/routes"
 msgid "Unit of Measure List"
 msgstr ""

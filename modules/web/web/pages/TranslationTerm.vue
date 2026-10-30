@@ -10,33 +10,16 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
 import TranslationTermFormView from '../views/TranslationTermFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { ChoyPage } from '@/web';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { useTerminologyDetailPage } from './terminology_detail_page';
 
 defineOptions({ name: 'TranslationTermPage' });
 
-const route = useRoute();
-const scopeManager = useScopeManager().menuScopeManager;
-const application = computed(() => String(route.params.application || '').trim());
-const termStore = shallowRef<WebModelStore<any> | null>(null);
-
-watch(
-  application,
-  (app) => {
-    if (!app) {
-      termStore.value = null;
-      return;
-    }
-    termStore.value = createStoreByModel(`${app}.TranslationTerm`, {
-      storeId: `TranslationTerm_${app}_${route.fullPath}`,
-      scopeManager,
-    });
-  },
-  { immediate: true }
-);
+const { application, termStore } = useTerminologyDetailPage({
+  route: useRoute(),
+  scopeManager: useScopeManager().menuScopeManager,
+});
 </script>

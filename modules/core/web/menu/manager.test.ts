@@ -128,3 +128,65 @@ test('MenuManager: replaces paths and removes descendants recursively', () => {
   expect(manager.getMenu('child-2')).toBeUndefined();
   expect(manager.getMenuByPath('/root-2/child-2')).toBeUndefined();
 });
+
+test('MenuManager: clearMenus drops pending children', () => {
+  const manager = new MenuManager();
+  manager.addMenu('missing.parent', {
+    id: 'queued.child',
+    title: 'Queued',
+    path: '/queued',
+  });
+  manager.clearMenus();
+  manager.addMenu({
+    id: 'missing.parent',
+    title: 'Parent',
+  });
+  expect(manager.getMenu('queued.child')).toBeUndefined();
+});
+
+test('MenuManager: flushes pending for nested configured descendants', () => {
+  const manager = new MenuManager();
+  manager.addMenu('web.menu.settings_app_core', {
+    id: 'auth.menu.terminology',
+    title: 'Translations',
+    path: '/web/terminology/auth',
+  });
+  manager.addMenu({
+    id: 'web.menu.settings',
+    title: 'Settings',
+    children: [
+      {
+        id: 'web.menu.settings_app_core',
+        title: 'core',
+        children: [
+          {
+            id: 'web.menu.terminology_core',
+            title: 'Translations',
+            path: '/web/terminology/core',
+          },
+        ],
+      },
+    ],
+  });
+  expect(manager.getMenu('auth.menu.terminology')?.path).toBe('/web/terminology/auth');
+  expect(manager.getMenuParent('auth.menu.terminology')?.id).toBe('web.menu.settings_app_core');
+});
+
+test('MenuManager: removeMenu clears pending queue for that id', () => {
+  const manager = new MenuManager();
+  manager.addMenu('doomed.parent', {
+    id: 'orphan.child',
+    title: 'Orphan',
+    path: '/orphan',
+  });
+  manager.addMenu({ id: 'doomed.parent', title: 'Doomed' });
+  expect(manager.getMenu('orphan.child')).toBeTruthy();
+  manager.addMenu('doomed.parent', {
+    id: 'late.child',
+    title: 'Late',
+    path: '/late',
+  });
+  expect(manager.removeMenu('doomed.parent')).toBe(true);
+  manager.addMenu({ id: 'doomed.parent', title: 'Reborn' });
+  expect(manager.getMenu('late.child')).toBeUndefined();
+});

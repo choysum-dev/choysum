@@ -1155,27 +1155,27 @@ msgctxt "service/models/ui_resource"
 msgid "Cycle detected: %s cannot be assigned under one of its descendants"
 msgstr ""
 
-#: web/menu/menus.ts:27
+#: web/menu/menus.ts:34
 msgctxt "web/menu/menus"
 msgid "Module Board"
 msgstr ""
 
-#: web/menu/menus.ts:33
+#: web/menu/menus.ts:40
 msgctxt "web/menu/menus"
 msgid "Module List"
 msgstr ""
 
-#: web/menu/menus.ts:22
+#: web/menu/menus.ts:29
 msgctxt "web/menu/menus"
 msgid "Module Management"
 msgstr ""
 
-#: web/menu/menus.ts:39
+#: web/menu/menus.ts:46
 msgctxt "web/menu/menus"
 msgid "Operation History"
 msgstr ""
 
-#: web/menu/menus.ts:20
+#: web/menu/menus.ts:19
 msgctxt "web/menu/menus"
 msgid "Translations"
 msgstr ""
@@ -1200,24 +1200,29 @@ msgctxt "web/pages/ModuleListTable"
 msgid "Module List"
 msgstr ""
 
-#: web/route/routes.ts:46
+#: web/route/routes.ts:47
 msgctxt "web/route/routes"
 msgid "Module Detail"
 msgstr ""
 
-#: web/route/routes.ts:26
+#: web/route/routes.ts:27
 msgctxt "web/route/routes"
 msgid "Module List"
 msgstr ""
 
-#: web/route/routes.ts:16
+#: web/route/routes.ts:17
 msgctxt "web/route/routes"
 msgid "Module Management"
 msgstr ""
 
-#: web/route/routes.ts:36
+#: web/route/routes.ts:37
 msgctxt "web/route/routes"
 msgid "Operation History"
+msgstr ""
+
+#: web/route/routes.ts:57
+msgctxt "web/route/routes"
+msgid "Translations"
 msgstr ""
 
 #: web/views/ModuleDetailView.vue:3

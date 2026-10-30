@@ -301,14 +301,45 @@ export function __normalizeSourceForTest(source: string | null | undefined): str
  *
  * Unique key: (Module, Lang, Scope, Src, Kind). `GetTranslations` serves Gateway catalog reads.
  */
-function applyOverrideSourceWhenValueEdited(values: Record<string, unknown>): void {
+/**
+ * When Value changes on a packaged term, mark Source=override (one-way).
+ * No-op saves that echo the same Value leave Source alone so PO re-import can refresh.
+ */
+function applyOverrideSourceWhenValueEdited(
+  values: Record<string, unknown>,
+  existingRows: Array<{ Value?: unknown; Source?: unknown }> = []
+): void {
   if (!Object.prototype.hasOwnProperty.call(values, 'Value')) {
     return;
   }
-  const source = normalizeSource(values.Source as string | null | undefined);
-  if (source === SOURCE_PACKAGED) {
+  const next = String(values.Value ?? '');
+  let shouldOverride = false;
+  for (const row of existingRows) {
+    if (normalizeSource(row.Source as string | null | undefined) !== SOURCE_PACKAGED) {
+      continue;
+    }
+    if (next !== String(row.Value ?? '')) {
+      shouldOverride = true;
+      break;
+    }
+  }
+  if (!shouldOverride && existingRows.length === 0) {
+    // No prior row loaded: only flip when the patch itself claims packaged.
+    if (normalizeSource(values.Source as string | null | undefined) === SOURCE_PACKAGED) {
+      shouldOverride = true;
+    }
+  }
+  if (shouldOverride) {
     values.Source = SOURCE_OVERRIDE;
   }
+}
+
+/** Test-only: override-on-value-edit Source flip rules. */
+export function __applyOverrideSourceWhenValueEditedForTest(
+  values: Record<string, unknown>,
+  existingRows?: Array<{ Value?: unknown; Source?: unknown }>
+): void {
+  applyOverrideSourceWhenValueEdited(values, existingRows);
 }
 
 export default class TranslationTermBaseModel extends BaseModel {
@@ -540,11 +571,11 @@ export default class TranslationTermBaseModel extends BaseModel {
     const self = asTermCtor(this);
     const application = hostApplication(this);
     const before = await self.Search(condition as QueryCondition<TranslationTermBaseModel>, {
-      fields: ['Module'],
+      fields: ['Module', 'Value', 'Source'],
       limit: 0,
     });
     const patch = { ...(values as Record<string, unknown>) };
-    applyOverrideSourceWhenValueEdited(patch);
+    applyOverrideSourceWhenValueEdited(patch, before as Array<{ Value?: unknown; Source?: unknown }>);
     const out = await super.Update<C, F>(condition, patch as Partial<Updateable<RowOf<C>>>, returnFields, options);
     invalidateTerminologyModules(application, [
       ...modulesFromPayloads(values),
@@ -564,16 +595,21 @@ export default class TranslationTermBaseModel extends BaseModel {
     const self = asTermCtor(this);
     const application = hostApplication(this);
     let module = String((values as Record<string, unknown>).Module ?? '').trim();
-    if (!module) {
-      try {
-        const existing = await self.Browse(id, ['Module']);
-        module = String(existing?.Module ?? '').trim();
-      } catch {
-        /* Browse may fail if row gone; still attempt update */
+    let existingRow: { Module?: unknown; Value?: unknown; Source?: unknown } | null = null;
+    try {
+      existingRow = (await self.Browse(id, ['Module', 'Value', 'Source'])) as {
+        Module?: unknown;
+        Value?: unknown;
+        Source?: unknown;
+      };
+      if (!module) {
+        module = String(existingRow?.Module ?? '').trim();
       }
+    } catch {
+      /* Browse may fail if row gone; still attempt update */
     }
     const patch = { ...(values as Record<string, unknown>) };
-    applyOverrideSourceWhenValueEdited(patch);
+    applyOverrideSourceWhenValueEdited(patch, existingRow ? [existingRow] : []);
     const out = await super.UpdateById<C, F>(id, patch as Partial<Updateable<RowOf<C>>>, returnFields, options);
     invalidateTerminologyModules(application, [module, ...modulesFromRows(out)]);
     return out;

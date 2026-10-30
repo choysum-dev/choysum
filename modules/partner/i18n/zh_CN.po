@@ -271,7 +271,7 @@ msgctxt "web/menu/menus"
 msgid "Partner Management"
 msgstr "伙伴管理"
 
-#: web/menu/menus.ts:22
+#: web/menu/menus.ts:21
 msgctxt "web/menu/menus"
 msgid "Translations"
 msgstr "翻译"
@@ -279,7 +279,7 @@ msgstr "翻译"
 #: web/menu/menus.ts:15
 msgctxt "web/menu/menus"
 msgid "partner"
-msgstr ""
+msgstr "partner"
 
 #: web/pages/PartnerList.vue:13
 msgctxt "web/pages/PartnerList"
@@ -291,20 +291,25 @@ msgctxt "web/pages/PartnerList"
 msgid "Upload a UTF-8 CSV with columns Name, Code, IsActive, CustomerRank, SupplierRank."
 msgstr "上传包含 Name、Code、IsActive、CustomerRank、SupplierRank 列的 UTF-8 CSV。"
 
-#: web/route/routes.ts:40
+#: web/route/routes.ts:41
 msgctxt "web/route/routes"
 msgid "New Partner"
 msgstr "新建伙伴"
 
-#: web/route/routes.ts:31
+#: web/route/routes.ts:32
 msgctxt "web/route/routes"
 msgid "Partner Detail"
 msgstr "伙伴详情"
 
-#: web/route/routes.ts:16
+#: web/route/routes.ts:17
 msgctxt "web/route/routes"
 msgid "Partner List"
 msgstr "伙伴列表"
+
+#: web/route/routes.ts:50
+msgctxt "web/route/routes"
+msgid "Translations"
+msgstr "翻译"
 
 #: web/views/PartnerContactFormView.vue:18
 msgctxt "web/views/PartnerContactFormView"

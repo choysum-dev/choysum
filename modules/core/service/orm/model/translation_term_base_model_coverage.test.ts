@@ -5,6 +5,7 @@ import { Model } from '../decorator';
 import { ChoysumError } from '@/core/service/error';
 import { MetadataStorage } from '../metadata/storage';
 import TranslationTermBaseModel, {
+  __applyOverrideSourceWhenValueEditedForTest,
   __compareTermHashKeysForTest,
   __normalizeKindForTest,
   __normalizeSourceForTest,
@@ -376,6 +377,22 @@ test('normalizeKind/Source and compareTermHashKeys cover every branch', () => {
   expect(__normalizeSourceForTest('')).toBe('packaged');
   expect(__normalizeSourceForTest('  ')).toBe('packaged');
   expect(__normalizeSourceForTest('override')).toBe('override');
+
+  const noopPatch: Record<string, unknown> = { Value: 'same' };
+  __applyOverrideSourceWhenValueEditedForTest(noopPatch, [{ Value: 'same', Source: 'packaged' }]);
+  expect(noopPatch.Source).toBeUndefined();
+
+  const changePatch: Record<string, unknown> = { Value: 'new' };
+  __applyOverrideSourceWhenValueEditedForTest(changePatch, [{ Value: 'old', Source: 'packaged' }]);
+  expect(changePatch.Source).toBe('override');
+
+  const alreadyOverride: Record<string, unknown> = { Value: 'new' };
+  __applyOverrideSourceWhenValueEditedForTest(alreadyOverride, [{ Value: 'old', Source: 'override' }]);
+  expect(alreadyOverride.Source).toBeUndefined();
+
+  const noExisting: Record<string, unknown> = { Value: 'x', Source: 'packaged' };
+  __applyOverrideSourceWhenValueEditedForTest(noExisting, []);
+  expect(noExisting.Source).toBe('override');
 
   const base = { module: 'm', scope: 's', src: 'r', kind: 'k', value: 'v', source: 'o' };
   for (const dim of ['module', 'scope', 'src', 'kind', 'value', 'source'] as const) {

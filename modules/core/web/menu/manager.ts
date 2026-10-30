@@ -76,6 +76,11 @@ export class MenuManager implements Menu {
     }
   }
 
+  /** Drop queued children waiting on a parent that will never register (or was removed). */
+  private clearPendingForParent(parentId: string): void {
+    this.pendingByParent.delete(parentId);
+  }
+
   private processMenuItemForReactivity(menu: MenuItem, parent: MenuItem | null = null): MenuItem {
     const processedMenu: MenuItem = {
       ...menu,
@@ -103,6 +108,9 @@ export class MenuManager implements Menu {
       if (child.children) {
         this.addChildrenToMaps(child.children);
       }
+
+      // Nested configured descendants may themselves be parents of queued addMenu calls.
+      this.flushPendingChildren(child.id);
     }
   }
 
@@ -122,6 +130,7 @@ export class MenuManager implements Menu {
 
     this.removeFromParent(id);
     this.menuIdMap.delete(id);
+    this.clearPendingForParent(id);
 
     return true;
   }
@@ -201,6 +210,7 @@ export class MenuManager implements Menu {
     this.menuIdMap.clear();
     this.menuPathMap.clear();
     this.rootMenus.value = [];
+    this.pendingByParent.clear();
     return this;
   }
 

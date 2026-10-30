@@ -11,6 +11,7 @@ import {
   getMenuBasePath,
   getMenuId,
   getPageTitle as resolvePageTitle,
+  isMenuNavigatedCrumb,
   resolveAppRoot,
 } from './breadcrumb_helpers';
 
@@ -360,7 +361,7 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
 
     const targetItem = breadcrumbStack.value[index];
     // App / pathless folder crumbs navigate via menuApi; do not truncate here.
-    if (targetItem.kind === 'app' || (targetItem.kind === 'folder' && !targetItem.path)) {
+    if (isMenuNavigatedCrumb(targetItem)) {
       return null;
     }
 

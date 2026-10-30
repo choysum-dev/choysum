@@ -54,6 +54,11 @@ export function getMenuBasePath(currentPath: string, menu: any): string {
   return currentPath;
 }
 
+/** App crumbs and pathless folders navigate via menuId, not via route path. */
+export function isMenuNavigatedCrumb(crumb: { kind?: string; path?: string }): boolean {
+  return crumb.kind === 'app' || (crumb.kind === 'folder' && !crumb.path);
+}
+
 /**
  * Resolve a page crumb title from route meta / name / path heuristics.
  */

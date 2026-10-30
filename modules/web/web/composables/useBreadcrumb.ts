@@ -4,6 +4,7 @@
 import { useRouter, useRoute } from 'vue-router';
 import { useBreadcrumbStore } from '../stores/breadcrumbStore';
 import type { BreadcrumbItem } from '../stores/breadcrumbStore';
+import { isMenuNavigatedCrumb } from '../stores/breadcrumbStore/breadcrumb_helpers';
 import { useMenu } from './useMenu';
 
 /** Resolve menu helpers when the menu plugin is mounted; otherwise null. */
@@ -32,10 +33,7 @@ export function useBreadcrumb() {
     if (!crumb.clickable) return;
 
     try {
-      const viaMenu =
-        crumb.menuId &&
-        menuApi &&
-        (crumb.kind === 'app' || (crumb.kind === 'folder' && !crumb.path));
+      const viaMenu = crumb.menuId && menuApi && isMenuNavigatedCrumb(crumb);
       if (viaMenu) {
         await menuApi!.navigateTo(crumb.menuId!);
         return;

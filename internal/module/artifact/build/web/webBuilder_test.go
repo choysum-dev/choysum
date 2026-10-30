@@ -4238,9 +4238,22 @@ func TestReplaceUiResourceRelationsReplacesAndDedupesRows(t *testing.T) {
 		t.Fatalf("seed route action relation: %v", err)
 	}
 
+	if err := testRuntimeScope.db.Create(&meta.UiResource{
+		BaseModel: meta.BaseModel{Id: sql.NullString{String: "menu_2", Valid: true}},
+		Name:      "menu.other",
+		Type:      meta.UiResourceTypeMenu,
+	}).Error; err != nil {
+		t.Fatalf("seed second menu: %v", err)
+	}
+
 	err := b.replaceUiResourceRelations(
-		[]string{"menu_1", "route_1", "action_1"},
-		[]uiResourceMenuRouteRef{{MenuName: "menu.root", RouteName: "route.home"}, {MenuName: "menu.root", RouteName: "route.home"}, {MenuName: "route.home", RouteName: "menu.root"}},
+		[]string{"menu_1", "menu_2", "route_1", "action_1"},
+		[]uiResourceMenuRouteRef{
+			{MenuName: "menu.root", RouteName: "route.home"},
+			{MenuName: "menu.root", RouteName: "route.home"},
+			{MenuName: "menu.other", RouteName: "route.home"}, // same route → skipped by seenRouteIDs
+			{MenuName: "route.home", RouteName: "menu.root"},
+		},
 		[]uiResourceRouteActionRef{{RouteName: "route.home", ActionName: "action.save"}, {RouteName: "route.home", ActionName: "action.save"}, {RouteName: "menu.root", ActionName: "action.save"}},
 	)
 	if err != nil {
@@ -4265,6 +4278,39 @@ func TestReplaceUiResourceRelationsReplacesAndDedupesRows(t *testing.T) {
 
 	if err := b.deleteUiResourceRelationsByIDs(nil); err != nil {
 		t.Fatalf("deleteUiResourceRelationsByIDs(nil) error = %v", err)
+	}
+}
+
+func TestReplaceUiResourceRelationsDeleteError(t *testing.T) {
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	if err := testRuntimeScope.db.AutoMigrate(&meta.UiResource{}, &meta.UiResourceMenuRoute{}, &meta.UiResourceRouteAction{}); err != nil {
+		t.Fatalf("auto migrate failed: %v", err)
+	}
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+	if err := testRuntimeScope.db.Create(&meta.UiResource{
+		BaseModel: meta.BaseModel{Id: sql.NullString{String: "menu_1", Valid: true}},
+		Name:      "menu.root",
+		Type:      meta.UiResourceTypeMenu,
+	}).Error; err != nil {
+		t.Fatalf("create menu: %v", err)
+	}
+	if err := testRuntimeScope.db.Create(&meta.UiResource{
+		BaseModel: meta.BaseModel{Id: sql.NullString{String: "route_1", Valid: true}},
+		Name:      "route.home",
+		Type:      meta.UiResourceTypeRoute,
+	}).Error; err != nil {
+		t.Fatalf("create route: %v", err)
+	}
+	if err := testRuntimeScope.db.Migrator().DropTable(&meta.UiResourceMenuRoute{}); err != nil {
+		t.Fatalf("drop menu route table: %v", err)
+	}
+	err := b.replaceUiResourceRelations(
+		[]string{"menu_1", "route_1"},
+		[]uiResourceMenuRouteRef{{MenuName: "menu.root", RouteName: "route.home"}},
+		nil,
+	)
+	if err == nil {
+		t.Fatal("expected delete error when menu_route table is missing")
 	}
 }
 

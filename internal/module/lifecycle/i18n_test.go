@@ -234,3 +234,19 @@ func TestDeleteModuleTerminologyCoreModule(t *testing.T) {
 		t.Fatalf("expected core terms deleted, got %d", count)
 	}
 }
+
+func TestDeleteModuleTerminologySkipsCoreAppNonCoreModule(t *testing.T) {
+	t.Parallel()
+	rs := newI18nTestScope(t)
+	if err := deleteModuleTerminology(rs, &meta.Module{Name: "auth", ApplicationStr: "core"}); err != nil {
+		t.Fatalf("expected no-op, got %v", err)
+	}
+}
+
+func TestDeleteModuleTerminologySkipsHostAppCoreModule(t *testing.T) {
+	t.Parallel()
+	rs := newI18nTestScope(t)
+	if err := deleteModuleTerminology(rs, &meta.Module{Name: "core", ApplicationStr: "auth"}); err != nil {
+		t.Fatalf("expected no-op, got %v", err)
+	}
+}

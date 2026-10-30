@@ -6,6 +6,7 @@ import {
   getMenuBasePath,
   getMenuId,
   getPageTitle,
+  isMenuNavigatedCrumb,
   resolveAppRoot,
 } from './breadcrumb_helpers';
 
@@ -65,4 +66,13 @@ test('breadcrumb_helpers getPageTitle reads meta title fields and path heuristic
   expect(getPageTitle({ path: '/a/42', meta: {} }, 'D', 'P')).toBe('D');
   expect(getPageTitle({ path: '/a/abcdefghijklmnop', meta: {} }, 'D', 'P')).toBe('D');
   expect(getPageTitle({ path: '/a/plain', meta: {} }, 'D', 'P')).toBe('P');
+});
+
+test('breadcrumb_helpers isMenuNavigatedCrumb matches app and pathless folders', () => {
+  expect(isMenuNavigatedCrumb({ kind: 'app' })).toBe(true);
+  expect(isMenuNavigatedCrumb({ kind: 'folder', path: '' })).toBe(true);
+  expect(isMenuNavigatedCrumb({ kind: 'folder' })).toBe(true);
+  expect(isMenuNavigatedCrumb({ kind: 'folder', path: '/x' })).toBe(false);
+  expect(isMenuNavigatedCrumb({ kind: 'menu', path: '/x' })).toBe(false);
+  expect(isMenuNavigatedCrumb({ kind: 'page' })).toBe(false);
 });

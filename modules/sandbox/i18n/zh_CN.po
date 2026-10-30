@@ -371,7 +371,7 @@ msgctxt "sandbox.model.SandboxTag.fields"
 msgid "Name"
 msgstr "名称"
 
-#: web/menu/menus.ts:27
+#: web/menu/menus.ts:26
 msgctxt "web/menu/menus"
 msgid "Translations"
 msgstr "翻译"
@@ -379,7 +379,7 @@ msgstr "翻译"
 #: web/menu/menus.ts:20
 msgctxt "web/menu/menus"
 msgid "sandbox"
-msgstr ""
+msgstr "sandbox"
 
 #: web/menu/titles.ts:10
 msgctxt "web/menu/titles"
@@ -421,55 +421,60 @@ msgctxt "web/pages/SandboxRecordList"
 msgid "Field Kitchen Sink"
 msgstr "字段试验场"
 
-#: web/route/routes.ts:156
+#: web/route/routes.ts:157
 msgctxt "web/route/routes"
 msgid "New Property Definition"
 msgstr "新建属性定义"
 
-#: web/route/routes.ts:82
+#: web/route/routes.ts:83
 msgctxt "web/route/routes"
 msgid "New Sandbox Record"
 msgstr "新建沙箱记录"
 
-#: web/route/routes.ts:112
+#: web/route/routes.ts:113
 msgctxt "web/route/routes"
 msgid "New Sandbox Tag"
 msgstr "新建沙箱标签"
 
-#: web/route/routes.ts:170
+#: web/route/routes.ts:171
 msgctxt "web/route/routes"
 msgid "Property Definition"
 msgstr "属性定义"
 
-#: web/route/routes.ts:142
+#: web/route/routes.ts:143
 msgctxt "web/route/routes"
 msgid "Record Properties"
 msgstr "记录属性"
 
-#: web/route/routes.ts:61
+#: web/route/routes.ts:62
 msgctxt "web/route/routes"
 msgid "Sandbox Record Chart"
 msgstr "沙箱记录图表"
 
-#: web/route/routes.ts:97
+#: web/route/routes.ts:98
 msgctxt "web/route/routes"
 msgid "Sandbox Record Detail"
 msgstr "沙箱记录详情"
 
-#: web/route/routes.ts:41
+#: web/route/routes.ts:42
 msgctxt "web/route/routes"
 msgid "Sandbox Record Kanban"
 msgstr "沙箱记录看板"
 
-#: web/route/routes.ts:21
+#: web/route/routes.ts:22
 msgctxt "web/route/routes"
 msgid "Sandbox Record List"
 msgstr "沙箱记录列表"
 
-#: web/route/routes.ts:126
+#: web/route/routes.ts:127
 msgctxt "web/route/routes"
 msgid "Sandbox Tag Detail"
 msgstr "沙箱标签详情"
+
+#: web/route/routes.ts:185
+msgctxt "web/route/routes"
+msgid "Translations"
+msgstr "翻译"
 
 #: web/views/SandboxCategoryListView.vue:25
 msgctxt "web/views/SandboxCategoryListView"
