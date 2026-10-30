@@ -10,9 +10,10 @@
   app; host app tables hold only that app's module terms.
 - **Upgrade from Scheme A:** existing `{app}_translation_term` rows with
   `Module=core` are stale under Scheme B (platform catalog is `core` only).
-  Host-module install/upgrade MUST delete those rows (and `Registry.Lookup` for
-  `module=core` always reads `core_translation_term`); covered by lifecycle
-  import regression tests.
+  Host-module install/upgrade MUST delete those rows idempotently on every
+  import/upgrade (and `Registry.Lookup` for `module=core` always reads
+  `core_translation_term`); covered by lifecycle import regression tests
+  asserting no `module=core` rows remain in host tables.
 - Service code imports `_t` / `_lt` from `modules/core/service/i18n_binder.ts`
   (`createTranslate('core')`). Frontend fallbacks in `core/web` use
   `createTranslate('core', …)` from `@/core/service/i18n` (browser resolves via

@@ -246,6 +246,31 @@ msgstr "你好"
 	if count != 0 {
 		t.Fatalf("expected Scheme A Module=core rows purged, got %d", count)
 	}
+	// Second import is idempotent: no Module=core rows to delete, still succeeds.
+	if err := importModuleTerminology(rs, mod, ""); err != nil {
+		t.Fatalf("re-import: %v", err)
+	}
+}
+
+func TestPurgeStaleFrameworkTermsFromHost(t *testing.T) {
+	t.Parallel()
+	if err := purgeStaleFrameworkTermsFromHost(nil, ""); err != nil {
+		t.Fatalf("empty host: %v", err)
+	}
+	if err := purgeStaleFrameworkTermsFromHost(nil, "core"); err != nil {
+		t.Fatalf("framework host: %v", err)
+	}
+	if err := purgeStaleFrameworkTermsFromHost(nil, "auth"); err == nil {
+		t.Fatal("expected error when runtime session is missing")
+	}
+}
+
+func TestDeleteModuleTerminologyMissingSession(t *testing.T) {
+	t.Parallel()
+	mod := &meta.Module{Name: "demo", ApplicationStr: "auth"}
+	if err := deleteModuleTerminology(nil, mod); err == nil {
+		t.Fatal("expected error when runtime session is missing")
+	}
 }
 
 func TestDeleteModuleTerminologyCoreModule(t *testing.T) {

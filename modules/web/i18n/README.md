@@ -48,6 +48,7 @@ Optional admin PO download: `GET /web/i18n/po?lang=&application=&module=` (termi
 `application` and `module` are required; the server checks both against the
 installed-module registry (rejects unknown apps, modules outside the app, and
 path-like values such as `../../etc`), and returns 400/403 for invalid or
-unauthorized values.
+unauthorized values. Covered by handler tests for unknown app, cross-app module,
+and path-traversal inputs.
 
 The handwritten pack under `web/web/i18n/source` is the English msgid baseline for soft UI keys. Terminology authority is this PO tree via Gateway (`_t` / `_lt`).

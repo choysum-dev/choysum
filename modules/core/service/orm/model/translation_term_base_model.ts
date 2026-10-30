@@ -582,6 +582,7 @@ export default class TranslationTermBaseModel extends BaseModel {
   ): Promise<Array<PartialOrProjected<RowOf<C>, F>>> {
     const self = asTermCtor(this);
     const application = hostApplication(this);
+    // limit: 0 is unbounded — Search only applies LIMIT when options.limit is truthy.
     const before = await self.Search(condition as QueryCondition<TranslationTermBaseModel>, {
       fields: ['Module', 'Value', 'Source'],
       limit: 0,

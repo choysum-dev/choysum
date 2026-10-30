@@ -56,10 +56,7 @@ func importModuleTerminology(runtimeScope scope.Scope, mod *meta.Module, modules
 		return xfmt.Errorf("import terminology for module %s: %w", moduleName, err)
 	}
 	// Scheme A left Module=core rows in host tables; purge on every host import/upgrade.
-	if err := purgeStaleFrameworkTermsFromHost(runtimeScope, application); err != nil {
-		return err
-	}
-	return nil
+	return purgeStaleFrameworkTermsFromHost(runtimeScope, application)
 }
 
 // purgeStaleFrameworkTermsFromHost deletes Module=core rows from a host app table.
