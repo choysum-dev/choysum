@@ -2553,3 +2553,65 @@ func TestPlugin_DataAndFragmentBare(t *testing.T) {
 	// We just verify the plugin didn't introduce errors.
 	_ = result
 }
+
+func TestDefaultTargetConstant(t *testing.T) {
+	t.Parallel()
+	r := New()
+	_ = r.Plugin()
+	if r.target != DefaultTarget {
+		t.Fatalf("default target = %q, want %q", r.target, DefaultTarget)
+	}
+}
+
+func TestRewriteESMTargetURL(t *testing.T) {
+	t.Parallel()
+	got, ok := rewriteESMTargetURL("https://esm.sh/pkg@1.0.0?target=es2022", "es2022", "es2020")
+	if !ok || got != "https://esm.sh/pkg@1.0.0?target=es2020" {
+		t.Fatalf("query rewrite = %q ok=%v", got, ok)
+	}
+	got, ok = rewriteESMTargetURL("https://esm.sh/pkg@1.0.0/es2022/pkg.mjs", "es2022", "es2020")
+	if !ok || got != "https://esm.sh/pkg@1.0.0/es2020/pkg.mjs" {
+		t.Fatalf("path rewrite = %q ok=%v", got, ok)
+	}
+}
+
+func TestDownloadWithTargetFallbackUsesLegacyCache(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	r := New(WithCacheDir(dir), WithTarget(DefaultTarget), WithOffline(true))
+	_ = r.Plugin()
+
+	legacyURL := "https://esm.sh/demo-pkg@1.0.0?target=es2020"
+	legacyBody := "export * from \"/demo-pkg@1.0.0/es2020/demo.mjs\";\n"
+	if err := r.writeCache(r.cacheFileForURL(legacyURL), []byte(legacyBody)); err != nil {
+		t.Fatalf("seed legacy cache: %v", err)
+	}
+
+	reqURL := "https://esm.sh/demo-pkg@1.0.0?target=es2022"
+	got, err := r.downloadWithTargetFallback(reqURL)
+	if err != nil {
+		t.Fatalf("fallback: %v", err)
+	}
+	want := "export * from \"/demo-pkg@1.0.0/es2022/demo.mjs\";\n"
+	if got != want {
+		t.Fatalf("content = %q, want %q", got, want)
+	}
+}
+
+func TestResolveInNamespacePreservesUpstreamBasePath(t *testing.T) {
+	t.Parallel()
+	r := New(WithUpstream("https://cdn.example.com/esm"), WithTarget(DefaultTarget))
+	_ = r.Plugin()
+	res, err := r.resolveInNamespace(api.OnResolveArgs{
+		Path:      "/demo-pkg@1.0.0/es2022/demo.mjs",
+		Importer:  "choysum-esm:https://cdn.example.com/esm/demo-pkg@1.0.0?target=es2022",
+		Namespace: "choysum-esm",
+	})
+	if err != nil {
+		t.Fatalf("resolve: %v", err)
+	}
+	want := "https://cdn.example.com/esm/demo-pkg@1.0.0/es2022/demo.mjs?target=es2022"
+	if res.Path != want {
+		t.Fatalf("path = %q, want %q", res.Path, want)
+	}
+}

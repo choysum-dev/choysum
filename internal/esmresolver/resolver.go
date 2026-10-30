@@ -44,10 +44,24 @@ type Metrics struct {
 
 const maxResolverDownloadBytes int64 = 50 * 1024 * 1024
 
+// DefaultTarget is the esm.sh ?target= value used when WithTarget is omitted.
+const DefaultTarget = "es2022"
+
+// legacyTargetFallback is tried (cache then network) when DefaultTarget downloads
+// fail with a retryable/5xx error. Lets CI reuse a warm es2020 pkg/esm cache while
+// the CDN cannot mint new es2022 builds.
+const legacyTargetFallback = "es2020"
+
 const (
 	vueI18nBareSpecifier = "vue-i18n"
 	vueI18nProdEntryPath = "dist/vue-i18n.esm-browser.prod.js"
 )
+
+// UpstreamFromEnv returns CHOYSUM_ESM_UPSTREAM when set, otherwise the empty
+// string (callers keep their configured/default upstream).
+func UpstreamFromEnv() string {
+	return strings.TrimSpace(os.Getenv("CHOYSUM_ESM_UPSTREAM"))
+}
 
 // Snapshot returns a point-in-time copy of the metrics.
 func (m *Metrics) Snapshot() (hit, miss, downloads, errors int64, downloadMs int64) {
@@ -308,7 +322,7 @@ func WithRetryBackoff(fn func(attempt int) time.Duration) Option {
 func New(opts ...Option) *Resolver {
 	r := &Resolver{
 		upstream: "https://esm.sh",
-		target:   "es2022",
+		target:   DefaultTarget,
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -321,11 +335,15 @@ func New(opts ...Option) *Resolver {
 }
 
 func (r *Resolver) ensureDefaults() {
-	if strings.TrimSpace(r.upstream) == "" {
-		r.upstream = "https://esm.sh"
+	if strings.TrimSpace(r.upstream) == "" || r.upstream == "https://esm.sh" {
+		if u := UpstreamFromEnv(); u != "" {
+			r.upstream = u
+		} else if strings.TrimSpace(r.upstream) == "" {
+			r.upstream = "https://esm.sh"
+		}
 	}
 	if strings.TrimSpace(r.target) == "" {
-		r.target = "es2022"
+		r.target = DefaultTarget
 	}
 	if r.client == nil {
 		r.client = &http.Client{Timeout: 30 * time.Second}
@@ -352,33 +370,6 @@ func (r *Resolver) Plugin() api.Plugin {
 		return true
 	}
 
-	// isUpstreamInternalPath detects absolute-path imports produced by esm.sh
-	// that reference sub-modules on the same upstream (e.g. "/pkg@ver/deno/...",
-	// "/node/process.mjs" for Node.js built-in polyfills).
-	// Excludes local filesystem paths (they may also start with "/").
-	isUpstreamInternalPath := func(path string) bool {
-		if !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") {
-			return false
-		}
-		// Fast-path: esm.sh-style internal paths use a well-known directory
-		// prefix (e.g. "/pkg@ver/deno/..."). Check this cheap string pattern
-		// before falling back to os.Stat, avoiding a syscall for every
-		// absolute path that does not match the pattern.
-		parts := strings.SplitN(strings.TrimPrefix(path, "/"), "/", 2)
-		if len(parts) == 0 {
-			return false
-		}
-		first := parts[0]
-		if !(strings.Contains(first, "@") || first == "node" || first == "stable" || isESMVersionPrefix(first)) {
-			return false
-		}
-		// Exclude paths that exist as local files.
-		if _, err := os.Stat(path); err == nil {
-			return false
-		}
-		return true
-	}
-
 	return api.Plugin{
 		Name: "choysum-esm-resolver",
 		Setup: func(build api.PluginBuild) {
@@ -390,10 +381,10 @@ func (r *Resolver) Plugin() api.Plugin {
 				}
 
 				// Rewrite upstream-internal absolute paths (e.g. "/pkg@ver/deno/...")
-				// back to full esm.sh URLs so esbuild can continue resolving.
-				if isUpstreamInternalPath(args.Path) {
+				// back to full upstream URLs so esbuild can continue resolving.
+				if isUpstreamInternalAbsPath(args.Path) {
 					pinnedPath := r.applyBareImportPinToAbsPath(args.Path)
-					esmURL := r.upstream + pinnedPath
+					esmURL := strings.TrimRight(strings.TrimSpace(r.upstream), "/") + pinnedPath
 					return api.OnResolveResult{
 						Path:      esmURL,
 						Namespace: "choysum-esm",
@@ -469,7 +460,7 @@ func (r *Resolver) Plugin() api.Plugin {
 					if metrics != nil {
 						metrics.Downloads.Add(1)
 					}
-					content, dlErr := r.downloadWithRetry(url)
+					content, dlErr := r.downloadWithTargetFallback(url)
 					if metrics != nil {
 						metrics.DownloadDurationMs.Add(time.Since(downloadStart).Milliseconds())
 					}
@@ -853,12 +844,26 @@ func (r *Resolver) resolveInNamespace(args api.OnResolveArgs) (api.OnResolveResu
 		}, nil
 	}
 
-	// Resolve relative/absolute path against the importer URL.
 	importerURL := stripNamespace(args.Importer)
 	if importerURL == "" {
 		return api.OnResolveResult{}, nil
 	}
 
+	// Root-absolute esm.sh-style paths ("/pkg@ver/...", "/node/...") must keep
+	// any configured upstream base path (e.g. https://cdn/esm). url.ResolveReference
+	// would replace the path and drop "/esm".
+	if isUpstreamInternalAbsPath(args.Path) {
+		pinnedPath := r.applyBareImportPinToAbsPath(args.Path)
+		resolvedURL := strings.TrimRight(strings.TrimSpace(r.upstream), "/") + pinnedPath
+		resolvedURL = r.withImporterTarget(importerURL, resolvedURL)
+		resolvedURL = trimCSSWrapperSuffix(r.applyBareImportPinToURL(resolvedURL))
+		if args.Kind == api.ResolveCSSURLToken {
+			return api.OnResolveResult{Path: resolvedURL, External: true}, nil
+		}
+		return api.OnResolveResult{Path: resolvedURL, Namespace: "choysum-esm"}, nil
+	}
+
+	// Resolve relative/absolute path against the importer URL.
 	base, err := url.Parse(importerURL)
 	if err != nil {
 		return api.OnResolveResult{}, fmt.Errorf("esm-resolver: invalid importer URL %q: %w", importerURL, err)
@@ -877,22 +882,7 @@ func (r *Resolver) resolveInNamespace(args api.OnResolveArgs) (api.OnResolveResu
 		return api.OnResolveResult{}, nil
 	}
 
-	// Re-add the target parameter if it was present in the original
-	// importer URL but got dropped during URL resolution.
-	if parsedImporter, err := url.Parse(importerURL); err == nil {
-		importerTarget := strings.TrimSpace(parsedImporter.Query().Get("target"))
-		if importerTarget != "" {
-			if parsedResolved, parseErr := url.Parse(resolvedURL); parseErr == nil {
-				resolvedQuery := parsedResolved.Query()
-				if strings.TrimSpace(resolvedQuery.Get("target")) == "" {
-					resolvedQuery.Set("target", importerTarget)
-					parsedResolved.RawQuery = resolvedQuery.Encode()
-					resolvedURL = parsedResolved.String()
-				}
-			}
-		}
-	}
-
+	resolvedURL = r.withImporterTarget(importerURL, resolvedURL)
 	resolvedURL = trimCSSWrapperSuffix(r.applyBareImportPinToURL(resolvedURL))
 
 	// CSS URL tokens in stylesheet content should remain external.
@@ -904,6 +894,48 @@ func (r *Resolver) resolveInNamespace(args api.OnResolveArgs) (api.OnResolveResu
 		Path:      resolvedURL,
 		Namespace: "choysum-esm",
 	}, nil
+}
+
+func (r *Resolver) withImporterTarget(importerURL, resolvedURL string) string {
+	parsedImporter, err := url.Parse(importerURL)
+	if err != nil {
+		return resolvedURL
+	}
+	importerTarget := strings.TrimSpace(parsedImporter.Query().Get("target"))
+	if importerTarget == "" {
+		return resolvedURL
+	}
+	parsedResolved, parseErr := url.Parse(resolvedURL)
+	if parseErr != nil {
+		return resolvedURL
+	}
+	resolvedQuery := parsedResolved.Query()
+	if strings.TrimSpace(resolvedQuery.Get("target")) == "" {
+		resolvedQuery.Set("target", importerTarget)
+		parsedResolved.RawQuery = resolvedQuery.Encode()
+		return parsedResolved.String()
+	}
+	return resolvedURL
+}
+
+// isUpstreamInternalAbsPath reports whether path is an esm.sh-style absolute
+// import (package@version, /node/*, /stable/*, /vNNN/*) and not a local file.
+func isUpstreamInternalAbsPath(path string) bool {
+	if !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") {
+		return false
+	}
+	parts := strings.SplitN(strings.TrimPrefix(path, "/"), "/", 2)
+	if len(parts) == 0 {
+		return false
+	}
+	first := parts[0]
+	if !(strings.Contains(first, "@") || first == "node" || first == "stable" || isESMVersionPrefix(first)) {
+		return false
+	}
+	if _, err := os.Stat(path); err == nil {
+		return false
+	}
+	return true
 }
 
 func hasCSSSuffix(path string) bool {
@@ -1097,6 +1129,101 @@ func (r *Resolver) downloadWithRetry(url string) (string, error) {
 		}
 	}
 	return "", lastErr
+}
+
+// downloadWithTargetFallback fetches url, and on retryable failure when the
+// active target is DefaultTarget, retries the legacyTargetFallback equivalent
+// (preferring an existing cache entry so CI warm es2020 trees still work).
+func (r *Resolver) downloadWithTargetFallback(requestURL string) (string, error) {
+	// One shot first: when the CDN cannot mint DefaultTarget builds, full
+	// retry only burns wall clock before the legacy fallback.
+	content, err := r.download(requestURL)
+	if err == nil {
+		return content, nil
+	}
+	if !isRetryable(err) {
+		return "", err
+	}
+	if strings.TrimSpace(r.target) != DefaultTarget {
+		return r.downloadWithRetry(requestURL)
+	}
+	fallbackURL, ok := rewriteESMTargetURL(requestURL, DefaultTarget, legacyTargetFallback)
+	if !ok || fallbackURL == requestURL {
+		return r.downloadWithRetry(requestURL)
+	}
+	if body, hit := r.readLegacyFallback(fallbackURL); hit {
+		return body, nil
+	}
+	if r.offline {
+		return "", err
+	}
+	fallbackContent, fallbackErr := r.downloadWithRetry(fallbackURL)
+	if fallbackErr != nil {
+		return "", err
+	}
+	if writeErr := r.writeCache(r.cacheFileForURL(fallbackURL), []byte(fallbackContent)); writeErr != nil && r.logger != nil {
+		r.logger.Warn("esm resolver: failed to write fallback cache", "file", r.cacheFileForURL(fallbackURL), "error", writeErr)
+	}
+	return rewriteESMTargetInContent(fallbackContent, legacyTargetFallback, DefaultTarget), nil
+}
+
+func (r *Resolver) readLegacyFallback(fallbackURL string) (string, bool) {
+	candidates := []string{fallbackURL}
+	if u, err := url.Parse(fallbackURL); err == nil && u.RawQuery != "" {
+		u.RawQuery = ""
+		candidates = append(candidates, u.String())
+	}
+	for _, candidate := range candidates {
+		if cached, hit := r.readCache(r.cacheFileForURL(candidate)); hit {
+			return rewriteESMTargetInContent(cached, legacyTargetFallback, DefaultTarget), true
+		}
+	}
+	return "", false
+}
+
+func (r *Resolver) cacheFileForURL(rawURL string) string {
+	key := sha256Hex(rawURL)
+	return filepath.Join(r.codeCacheDir(), key[:2], key[2:])
+}
+
+// rewriteESMTargetURL swaps esm.sh target query values and /{target}/ path
+// segments. Returns ok=false when neither form is present.
+func rewriteESMTargetURL(raw, from, to string) (string, bool) {
+	from, to = strings.TrimSpace(from), strings.TrimSpace(to)
+	if from == "" || to == "" || from == to {
+		return raw, false
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return raw, false
+	}
+	changed := false
+	q := u.Query()
+	if q.Get("target") == from {
+		q.Set("target", to)
+		u.RawQuery = q.Encode()
+		changed = true
+	}
+	fromSeg, toSeg := "/" + from + "/", "/" + to + "/"
+	if strings.Contains(u.Path, fromSeg) {
+		u.Path = strings.ReplaceAll(u.Path, fromSeg, toSeg)
+		u.RawPath = ""
+		changed = true
+	}
+	if !changed {
+		return raw, false
+	}
+	return u.String(), true
+}
+
+func rewriteESMTargetInContent(content, from, to string) string {
+	from, to = strings.TrimSpace(from), strings.TrimSpace(to)
+	if from == "" || to == "" || from == to || content == "" {
+		return content
+	}
+	out := strings.ReplaceAll(content, "target="+from, "target="+to)
+	out = strings.ReplaceAll(out, "/"+from+"/", "/"+to+"/")
+	return out
 }
 
 func (r *Resolver) download(url string) (string, error) {

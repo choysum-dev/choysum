@@ -193,7 +193,7 @@ func buildBootstrapDist(cacheDir, bootstrapDir string) error {
 	// Fetch type definitions and update tsconfig for IDE support.
 	client := esmresolver.NewTypeFetchHTTPClient(30 * time.Second)
 	typesDir := filepath.Join(cacheDir, "pkg", "types")
-	if results, err := esmresolver.FetchTypesForModule(client, "https://esm.sh", typesDir, bootstrapDir); err == nil {
+	if results, err := esmresolver.FetchTypesForModule(client, esmUpstreamURL(), typesDir, bootstrapDir); err == nil {
 		tsConfigPath := filepath.Join(bootstrapDir, "tsconfig.json")
 		if err := esmresolver.UpdateTsconfigPaths(tsConfigPath, results); err != nil {
 			fmt.Fprintf(os.Stderr, "bootstrap_web_generate: warning: update tsconfig paths: %v\n", err)
@@ -332,13 +332,20 @@ func resolveCacheDir() string {
 	return filepath.Join(home, ".choysum")
 }
 
+func esmUpstreamURL() string {
+	if u := esmresolver.UpstreamFromEnv(); u != "" {
+		return u
+	}
+	return "https://esm.sh"
+}
+
 func bootstrapESMResolverOpts(cacheDir, bootstrapDir string) []esmresolver.Option {
 	opts := []esmresolver.Option{
 		esmresolver.WithCacheDir(cacheDir),
-		esmresolver.WithTarget("es2022"),
+		esmresolver.WithTarget(esmresolver.DefaultTarget),
 		esmresolver.WithModulePath(bootstrapDir),
 	}
-	if u := strings.TrimSpace(os.Getenv("CHOYSUM_ESM_UPSTREAM")); u != "" {
+	if u := esmresolver.UpstreamFromEnv(); u != "" {
 		opts = append(opts, esmresolver.WithUpstream(u))
 	}
 	return opts

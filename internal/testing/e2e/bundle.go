@@ -190,7 +190,7 @@ func BuildE2EBundle(opts E2EBundleOptions) (*E2EBundleResult, error) {
 
 	esmOpts := []esmresolver.Option{
 		esmresolver.WithCacheDir(cacheDir),
-		esmresolver.WithTarget("es2022"),
+		esmresolver.WithTarget(esmresolver.DefaultTarget),
 		esmresolver.WithModulePath(repoRoot),
 	}
 	if pins, pinErr := e2eExactPinsWithoutVue(repoRoot); pinErr != nil {
@@ -198,7 +198,7 @@ func BuildE2EBundle(opts E2EBundleOptions) (*E2EBundleResult, error) {
 	} else if len(pins) > 0 {
 		esmOpts = append(esmOpts, esmresolver.WithBareImportPins(pins))
 	}
-	if u := strings.TrimSpace(os.Getenv("CHOYSUM_ESM_UPSTREAM")); u != "" {
+	if u := esmresolver.UpstreamFromEnv(); u != "" {
 		esmOpts = append(esmOpts, esmresolver.WithUpstream(u))
 	}
 	plugins = append(plugins, esmresolver.New(esmOpts...).Plugin())

@@ -230,11 +230,11 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 	}
 	esmOpts := []esmresolver.Option{
 		esmresolver.WithCacheDir(cacheDir),
-		esmresolver.WithTarget("es2022"),
+		esmresolver.WithTarget(esmresolver.DefaultTarget),
 		esmresolver.WithModulePath(repoRoot),
 		esmresolver.WithBareImportPins(barePins),
 	}
-	if u := strings.TrimSpace(os.Getenv("CHOYSUM_ESM_UPSTREAM")); u != "" {
+	if u := esmresolver.UpstreamFromEnv(); u != "" {
 		esmOpts = append(esmOpts, esmresolver.WithUpstream(u))
 	}
 	plugins = append(plugins, esmresolver.New(esmOpts...).Plugin())

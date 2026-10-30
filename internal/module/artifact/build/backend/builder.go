@@ -207,7 +207,7 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 		// other plugins process them.
 		resolverOpts := []esmresolver.Option{
 			esmresolver.WithCacheDir(runtimeOptions.defaultChoysumPath),
-			esmresolver.WithTarget("es2022"),
+			esmresolver.WithTarget(esmresolver.DefaultTarget),
 			esmresolver.WithModulePath(b.module.Path),
 			esmresolver.WithModuleName(b.module.Name),
 			esmresolver.WithApplicationName(b.module.ApplicationStr),
@@ -216,6 +216,8 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 			resolverOpts = append(resolverOpts, esmresolver.WithLogger(b.runtimeScope.Logger()))
 		}
 		if upstream := strings.TrimSpace(runtimeOptions.esmUpstreamURL); upstream != "" {
+			resolverOpts = append(resolverOpts, esmresolver.WithUpstream(upstream))
+		} else if upstream := esmresolver.UpstreamFromEnv(); upstream != "" {
 			resolverOpts = append(resolverOpts, esmresolver.WithUpstream(upstream))
 		}
 		resolverOpts = b.appendExactPinsFromPackageJSON(resolverOpts)
@@ -227,7 +229,7 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 		// other plugins process them.
 		resolverOpts := []esmresolver.Option{
 			esmresolver.WithCacheDir(runtimeOptions.defaultChoysumPath),
-			esmresolver.WithTarget("es2022"),
+			esmresolver.WithTarget(esmresolver.DefaultTarget),
 			esmresolver.WithModulePath(b.module.Path),
 			esmresolver.WithModuleName(b.module.Name),
 			esmresolver.WithApplicationName(b.module.ApplicationStr),
@@ -236,6 +238,8 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 			resolverOpts = append(resolverOpts, esmresolver.WithLogger(b.runtimeScope.Logger()))
 		}
 		if upstream := strings.TrimSpace(runtimeOptions.esmUpstreamURL); upstream != "" {
+			resolverOpts = append(resolverOpts, esmresolver.WithUpstream(upstream))
+		} else if upstream := esmresolver.UpstreamFromEnv(); upstream != "" {
 			resolverOpts = append(resolverOpts, esmresolver.WithUpstream(upstream))
 		}
 		resolverOpts = b.appendExactPinsFromPackageJSON(resolverOpts)
