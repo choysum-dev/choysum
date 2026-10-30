@@ -45,10 +45,11 @@ Language switch (D9 / S6): default `location.reload`. Soft remount is experiment
 (`choysum.web.i18n.remountMode=remount`) and only clears menu/global scoped stores.
 
 Optional admin PO download: `GET /web/i18n/po?lang=&application=&module=` (terminology List page).
-`application` and `module` are required; the server checks both against the
-installed-module registry (rejects unknown apps, modules outside the app, and
-path-like values such as `../../etc`), and returns 400/403 for invalid or
-unauthorized values. Covered by handler tests for unknown app, cross-app module,
-and path-traversal inputs.
+Requires a Bearer token; `application` and `module` are required. The server
+checks both against the installed-module registry (rejects unknown apps,
+modules outside the app, and path-like values such as `../../etc`), then runs
+terminology export as the caller so TranslationTerm Search ACL applies (403 on
+deny). Covered by handler tests for missing auth, unknown app, cross-app
+module, and path-traversal inputs.
 
 The handwritten pack under `web/web/i18n/source` is the English msgid baseline for soft UI keys. Terminology authority is this PO tree via Gateway (`_t` / `_lt`).
