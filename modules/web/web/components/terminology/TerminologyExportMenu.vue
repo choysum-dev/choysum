@@ -115,7 +115,10 @@ watch(
     selectedModule.value = app;
     modules.value = app ? [app] : [];
     modulesLoaded.value = false;
+    loadingModules.value = false;
     loadGeneration += 1;
+    // Newest request wins via loadGeneration; re-fetch if the menu is already open.
+    if (menuOpen.value && app) void loadModules();
   },
   { immediate: true }
 );
@@ -127,7 +130,6 @@ watch(menuOpen, (open) => {
 async function loadModules() {
   const app = application.value;
   if (!app) return;
-  if (loadingModules.value) return;
   const generation = ++loadGeneration;
   loadingModules.value = true;
   try {
@@ -187,8 +189,8 @@ async function onDownloadPo() {
     document.body.appendChild(a);
     a.click();
     a.remove();
-    // Defer revoke: some browsers start the download asynchronously after click().
-    setTimeout(() => URL.revokeObjectURL(url), 0);
+    // Defer revoke past download start; 0ms still races in some engines.
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   } catch (err: any) {
     ChoyMessage.error(err?.message || _t('PO download failed'));
   } finally {
