@@ -195,8 +195,12 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
   function trimStackPreservingRoot() {
     if (breadcrumbStack.value.length <= MAX_STACK) return;
     const prefix = rootPrefixLength();
-    // prefix is 0–2 and MAX_STACK is 10, so keepTail stays positive.
     const keepTail = MAX_STACK - prefix;
+    if (keepTail <= 0) {
+      breadcrumbStack.value = breadcrumbStack.value.slice(0, MAX_STACK);
+      applyClickableFlags();
+      return;
+    }
     const head = breadcrumbStack.value.slice(0, prefix);
     const tail = breadcrumbStack.value.slice(-keepTail);
     breadcrumbStack.value = [...head, ...tail];
@@ -332,7 +336,10 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
    * Pushes a new page segment or truncates to an existing path.
    */
   function pushBreadcrumb(title: TextSource, path: string) {
-    const existingIndex = breadcrumbStack.value.findIndex((item) => item.path === path && item.path !== '');
+    // Skip pathless folders/app crumbs; folders with a path must not steal page truncate.
+    const existingIndex = breadcrumbStack.value.findIndex(
+      (item) => item.path === path && item.path !== '' && item.kind !== 'folder',
+    );
 
     if (existingIndex > -1) {
       breadcrumbStack.value = breadcrumbStack.value.slice(0, existingIndex + 1);

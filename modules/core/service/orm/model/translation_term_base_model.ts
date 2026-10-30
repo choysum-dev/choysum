@@ -312,6 +312,14 @@ function applyOverrideSourceWhenValueEdited(
   if (!Object.prototype.hasOwnProperty.call(values, 'Value')) {
     return;
   }
+  // Shared Update patch cannot set Source per row; leave Source alone for multi-match.
+  if (existingRows.length > 1) {
+    return;
+  }
+  // Explicit Source in the patch wins (PO re-import / programmatic reset).
+  if (Object.prototype.hasOwnProperty.call(values, 'Source') && existingRows.length > 0) {
+    return;
+  }
   const next = String(values.Value ?? '');
   let shouldOverride = false;
   for (const row of existingRows) {
@@ -594,21 +602,25 @@ export default class TranslationTermBaseModel extends BaseModel {
   ): Promise<PartialOrProjected<RowOf<C>, F>> {
     const self = asTermCtor(this);
     const application = hostApplication(this);
-    let module = String((values as Record<string, unknown>).Module ?? '').trim();
-    let existingRow: { Module?: unknown; Value?: unknown; Source?: unknown } | null = null;
-    try {
-      existingRow = (await self.Browse(id, ['Module', 'Value', 'Source'])) as {
-        Module?: unknown;
-        Value?: unknown;
-        Source?: unknown;
-      };
-      if (!module) {
-        module = String(existingRow?.Module ?? '').trim();
-      }
-    } catch {
-      /* Browse may fail if row gone; still attempt update */
-    }
     const patch = { ...(values as Record<string, unknown>) };
+    let module = String(patch.Module ?? '').trim();
+    let existingRow: { Module?: unknown; Value?: unknown; Source?: unknown } | null = null;
+    // Browse when Module is missing (cache invalidation) or Value is edited (override Source).
+    const needsBrowse = !module || Object.prototype.hasOwnProperty.call(patch, 'Value');
+    if (needsBrowse) {
+      try {
+        existingRow = (await self.Browse(id, ['Module', 'Value', 'Source'])) as {
+          Module?: unknown;
+          Value?: unknown;
+          Source?: unknown;
+        };
+        if (!module) {
+          module = String(existingRow?.Module ?? '').trim();
+        }
+      } catch {
+        /* Browse may fail if row gone; still attempt update */
+      }
+    }
     applyOverrideSourceWhenValueEdited(patch, existingRow ? [existingRow] : []);
     const out = await super.UpdateById<C, F>(id, patch as Partial<Updateable<RowOf<C>>>, returnFields, options);
     invalidateTerminologyModules(application, [module, ...modulesFromRows(out)]);

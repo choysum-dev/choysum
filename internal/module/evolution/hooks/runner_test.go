@@ -267,15 +267,18 @@ func TestRunnerBuildScriptsAndContexts(t *testing.T) {
 	testRuntimeScope.cfg.Auth.InternalKey = "internal-secret"
 	runner := &Runner{runtimeScope: testRuntimeScope, module: &meta.Module{Name: "base", ApplicationStr: "core", Version: "1.0.0"}}
 
-	if script := runner.buildHookWrapperScript(); script == nil || !strings.Contains(script.Content, `__choysum_hook__ = async function (app, moduleName, phase)`) || !strings.Contains(script.Content, `HOOK_UNSUPPORTED`) {
+	if script := runner.buildHookWrapperScript("core", "base"); script == nil || !strings.Contains(script.Content, `__choysum_hook__ = async function (app, moduleName, phase)`) || !strings.Contains(script.Content, `HOOK_UNSUPPORTED`) {
 		t.Fatalf("unexpected hook wrapper script: %#v", script)
 	}
-	if script := runner.buildHookWrapperScript(); script == nil || !strings.Contains(script.Content, `await fn()`) || strings.Contains(script.Content, `fn.call(`) || strings.Contains(script.Content, `fn.apply(`) {
+	if script := runner.buildHookWrapperScript("core", "base"); script == nil || !strings.Contains(script.Content, `await fn()`) || strings.Contains(script.Content, `fn.call(`) || strings.Contains(script.Content, `fn.apply(`) {
 		t.Fatalf("hook wrapper must invoke handlers with bare await fn() (no call/apply): %#v", script)
+	}
+	if script := runner.buildHookWrapperScript("core", "base"); script == nil || !strings.Contains(script.Content, `globalThis.CHOYSUM_APP_NAME = "core"`) || !strings.Contains(script.Content, `globalThis.CHOYSUM_MODULE_NAME = "base"`) {
+		t.Fatalf("hook wrapper must seed CHOYSUM_* identities before bundle eval: %#v", script)
 	}
 	runner.module.ApplicationStr = ""
 	runner.module.Name = ""
-	if script := runner.buildHookWrapperScript(); script == nil {
+	if script := runner.buildHookWrapperScript("", ""); script == nil {
 		t.Fatalf("expected generic hook wrapper script when module info is missing")
 	}
 
@@ -492,7 +495,7 @@ func TestRunnerRunPhaseExecutionPaths(t *testing.T) {
 		if !reflect.DeepEqual(executor.GetJsScripts(), prevScripts) {
 			t.Fatalf("expected scripts restored, got %#v", executor.GetJsScripts())
 		}
-		if got := loadedByService["__choysum_hook__"]; !reflect.DeepEqual(got, []string{bundlePath, "hook_wrapper.js"}) {
+		if got := loadedByService["__choysum_hook__"]; !reflect.DeepEqual(got, []string{"hook_wrapper.js", bundlePath}) {
 			t.Fatalf("unexpected loaded scripts: %#v", got)
 		}
 		if len(requests) != 1 || requests[0].Service != "__choysum_hook__" {

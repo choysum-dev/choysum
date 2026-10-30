@@ -391,6 +391,10 @@ func buildUiResourceRelations(decls *collectedUiDecls, uiResources []*meta.UiRes
 				)
 			}
 			routeName := routeNames[0]
+			key := id + "/" + routeName
+			if seenMenuRoutes[key] {
+				continue
+			}
 			if prevMenu, exists := menuByRouteName[routeName]; exists && prevMenu != id {
 				return nil, nil, newUiRuleError(
 					uiRuleMenuPathDuplicateMenus,
@@ -399,10 +403,6 @@ func buildUiResourceRelations(decls *collectedUiDecls, uiResources []*meta.UiRes
 					fmt.Sprintf("menus %q and %q both map to route %q (path %q); route_ui_resource_id must be unique", prevMenu, id, routeName, path),
 					"keep a single MENU leaf per route path (e.g. only web.menu.terminology_core for /web/terminology/core)",
 				)
-			}
-			key := id + "/" + routeName
-			if seenMenuRoutes[key] {
-				continue
 			}
 			seenMenuRoutes[key] = true
 			menuByRouteName[routeName] = id

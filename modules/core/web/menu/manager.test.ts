@@ -190,3 +190,20 @@ test('MenuManager: removeMenu clears pending queue for that id', () => {
   manager.addMenu({ id: 'doomed.parent', title: 'Reborn' });
   expect(manager.getMenu('late.child')).toBeUndefined();
 });
+
+test('MenuManager: multiple pending children flush in order when parent arrives', () => {
+  const manager = new MenuManager();
+  manager.addMenu('parent.x', { id: 'child.1', title: 'One', path: '/1', order: 20 });
+  manager.addMenu('parent.x', { id: 'child.2', title: 'Two', path: '/2', order: 10 });
+  expect(manager.getMenu('child.1')).toBeUndefined();
+  manager.addMenu({ id: 'parent.x', title: 'Parent' });
+  expect(manager.getMenuChildren('parent.x').map(item => item.id)).toEqual(['child.2', 'child.1']);
+});
+
+test('MenuManager: loadMenusFromConfig clears stale pending before applying config', () => {
+  const manager = new MenuManager();
+  manager.addMenu('ghost.parent', { id: 'ghost.child', title: 'Ghost', path: '/ghost' });
+  manager.loadMenusFromConfig([{ id: 'ghost.parent', title: 'Real', path: '/real' }]);
+  expect(manager.getMenu('ghost.child')).toBeUndefined();
+  expect(manager.getMenuByPath('/real')?.id).toBe('ghost.parent');
+});

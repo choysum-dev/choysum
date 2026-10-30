@@ -510,6 +510,36 @@ describe('breadcrumbStore L1+L2 trail', () => {
     expect(store.navigateToBreadcrumb(1)).toBeNull();
     expect(store.breadcrumbStack.length).toBe(beforeFolderNav);
 
+    // Folder crumbs that share a path must not steal page truncate on pushBreadcrumb.
+    store.breadcrumbStack = [
+      {
+        title: 'Settings',
+        path: '',
+        clickable: true,
+        timestamp: 1,
+        kind: 'app',
+        menuId: 'web.menu.settings',
+      },
+      {
+        title: 'Folder',
+        path: '/web/terminology/core',
+        clickable: true,
+        timestamp: 2,
+        kind: 'folder',
+        menuId: 'folder.with.path',
+      },
+      {
+        title: 'Translations',
+        path: '/web/terminology/core',
+        clickable: false,
+        timestamp: 3,
+        kind: 'menu',
+        menuId: 'web.menu.terminology_core',
+      },
+    ] as any;
+    store.pushBreadcrumb('Translations', '/web/terminology/core');
+    expect(store.breadcrumbStack.map((i) => i.kind)).toEqual(['app', 'folder', 'menu']);
+
     mounted.unmount();
   });
 

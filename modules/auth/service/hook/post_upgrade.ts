@@ -68,10 +68,14 @@ export class AuthTerminologyGrantCleanupHooks {
          AND name IN ('rma_terminology_editor_tt_logical', 'rfr_terminology_editor_tt_logical')`,
     ];
 
-    for (const sql of statements) {
+    let grantDeletesOk = true;
+    for (const [index, sql] of statements.entries()) {
+      const isMappingCleanup = index === statements.length - 1;
+      if (isMappingCleanup && !grantDeletesOk) break;
       try {
         await db.execute(sql, '[]');
       } catch (err) {
+        if (!isMappingCleanup) grantDeletesOk = false;
         console.warn('[auth] obsolete terminology.editor grant cleanup failed', err);
       }
     }

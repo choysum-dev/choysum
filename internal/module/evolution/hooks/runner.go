@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -96,10 +97,12 @@ func (r *Runner) RunPhase(ctx context.Context, phase Phase, opts RunOptions) err
 		}
 		return err
 	}
-	if wrapper := r.buildHookWrapperScript(); wrapper != nil {
-		scripts = append(scripts, wrapper)
-	}
 	appName, moduleName := r.moduleSelector()
+	// Prepend so CHOYSUM_* identities exist while the module bundle evaluates
+	// @Hook* decorators (registration reads globalThis / import.meta.env).
+	if wrapper := r.buildHookWrapperScript(appName, moduleName); wrapper != nil {
+		scripts = append([]*jsengine.JsScript{wrapper}, scripts...)
+	}
 	phaseName := strings.TrimSpace(string(phase))
 
 	attempts := 1
@@ -238,15 +241,19 @@ func (r *Runner) moduleSelector() (string, string) {
 	return appName, moduleName
 }
 
-func (r *Runner) buildHookWrapperScript() *jsengine.JsScript {
+func (r *Runner) buildHookWrapperScript(appName, moduleName string) *jsengine.JsScript {
 	if r == nil || r.module == nil {
 		return nil
 	}
+	appLit := strconv.Quote(strings.TrimSpace(appName))
+	modLit := strconv.Quote(strings.TrimSpace(moduleName))
 	// Hook handlers are module-level callbacks (static, no this). Invoke with bare
 	// `await fn()` only — do not switch to fn.call/fn.apply unless the lifecycle
 	// this-boundary plan is explicitly upgraded past the near-term contract.
 	// See .dev/docs/core/service/lifecycle_hook_this_boundary_plan20260715.md.
 	content := `(() => {
+	globalThis.CHOYSUM_APP_NAME = ` + appLit + `;
+	globalThis.CHOYSUM_MODULE_NAME = ` + modLit + `;
 	const resolveModuleRoot = (app, moduleName) => {
 		const root = globalThis[app];
 		return root && root[moduleName];

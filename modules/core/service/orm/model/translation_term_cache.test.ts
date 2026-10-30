@@ -338,8 +338,38 @@ test(
     }) as any;
     BaseModel.UpdateById = (async () => ({ Id: '1' })) as any;
     try {
-      await TtInvTerm.UpdateById('1', { Module: 'direct', Value: '新' } as any);
+      // No Value edit → no override Browse; Module from payload is enough to invalidate.
+      await TtInvTerm.UpdateById('1', { Module: 'direct', Kind: 'literal' } as any);
       expect(browsed).toBe(false);
+      expect(calls).toEqual([['ttinv', 'direct']]);
+    } finally {
+      TtInvTerm.Browse = originalBrowse;
+      BaseModel.UpdateById = originalUpdateById;
+    }
+  })
+);
+
+test(
+  'UpdateById Browses for Value override even when Module is in payload',
+  withInvalidateSpy(async calls => {
+    const BaseModel = Object.getPrototypeOf(TranslationTermBaseModel.prototype)
+      .constructor as typeof TranslationTermBaseModel;
+    const originalBrowse = TtInvTerm.Browse;
+    const originalUpdateById = BaseModel.UpdateById;
+    let browsed = false;
+    let receivedPatch: Record<string, unknown> | null = null;
+    TtInvTerm.Browse = (async () => {
+      browsed = true;
+      return { Module: 'ignored', Value: 'old', Source: 'packaged' };
+    }) as any;
+    BaseModel.UpdateById = (async (_id: string, values: Record<string, unknown>) => {
+      receivedPatch = values;
+      return { Id: '1' };
+    }) as any;
+    try {
+      await TtInvTerm.UpdateById('1', { Module: 'direct', Value: '新' } as any);
+      expect(browsed).toBe(true);
+      expect(receivedPatch?.Source).toBe('override');
       expect(calls).toEqual([['ttinv', 'direct']]);
     } finally {
       TtInvTerm.Browse = originalBrowse;

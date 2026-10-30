@@ -82,6 +82,20 @@ func TestImportModuleTerminology_importError(t *testing.T) {
 	}
 }
 
+func TestImportModuleTerminology_coreImportError(t *testing.T) {
+	t.Cleanup(func() { importpkg.SetRun(runner.Run) })
+	importpkg.SetRun(func(_ context.Context, _ scope.Scope, _ importpkg.Spec) (importpkg.Report, error) {
+		return importpkg.Report{}, errors.New("forced core terminology failure")
+	})
+
+	rs := newI18nTestScope(t)
+	mod := &meta.Module{Name: "core", ApplicationStr: "core", Path: t.TempDir()}
+	err := importModuleTerminology(rs, mod, "")
+	if err == nil || !strings.Contains(err.Error(), "import terminology for module core") {
+		t.Fatalf("error = %v, want wrapped core import failure", err)
+	}
+}
+
 func TestRunTerminologyImport_nilScopeContext(t *testing.T) {
 	t.Cleanup(func() { importpkg.SetRun(runner.Run) })
 	var gotCtx context.Context

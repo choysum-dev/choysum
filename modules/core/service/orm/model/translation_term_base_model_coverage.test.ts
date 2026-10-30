@@ -394,6 +394,17 @@ test('normalizeKind/Source and compareTermHashKeys cover every branch', () => {
   __applyOverrideSourceWhenValueEditedForTest(noExisting, []);
   expect(noExisting.Source).toBe('override');
 
+  const multiRow: Record<string, unknown> = { Value: 'A' };
+  __applyOverrideSourceWhenValueEditedForTest(multiRow, [
+    { Value: 'A', Source: 'packaged' },
+    { Value: 'B', Source: 'packaged' },
+  ]);
+  expect(multiRow.Source).toBeUndefined();
+
+  const explicitSource: Record<string, unknown> = { Value: 'new', Source: 'packaged' };
+  __applyOverrideSourceWhenValueEditedForTest(explicitSource, [{ Value: 'old', Source: 'packaged' }]);
+  expect(explicitSource.Source).toBe('packaged');
+
   const base = { module: 'm', scope: 's', src: 'r', kind: 'k', value: 'v', source: 'o' };
   for (const dim of ['module', 'scope', 'src', 'kind', 'value', 'source'] as const) {
     const low = { ...base, [dim]: 'a' };

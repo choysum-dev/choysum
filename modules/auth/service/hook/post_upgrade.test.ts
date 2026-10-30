@@ -173,7 +173,7 @@ test('AuthTerminologyGrantCleanupHooks: no-ops without db', async () => {
   }
 });
 
-test('AuthTerminologyGrantCleanupHooks: continues after execute failures', async () => {
+test('AuthTerminologyGrantCleanupHooks: continues grant deletes after failures', async () => {
   let n = 0;
   const prev = (globalThis as any).$choysum;
   (globalThis as any).$choysum = {
@@ -190,5 +190,29 @@ test('AuthTerminologyGrantCleanupHooks: continues after execute failures', async
   } finally {
     (globalThis as any).$choysum = prev;
   }
-  expect(n).toBe(3);
+  // Both grant deletes run; meta_model_data cleanup is skipped when either fails.
+  expect(n).toBe(2);
+});
+
+test('AuthTerminologyGrantCleanupHooks: skips mapping cleanup when a grant delete fails', async () => {
+  const calls: string[] = [];
+  const prev = (globalThis as any).$choysum;
+  (globalThis as any).$choysum = {
+    ...(prev || {}),
+    db: {
+      execute: async (sql: string) => {
+        calls.push(sql);
+        if (sql.includes('auth_role_field_rule')) {
+          throw new Error('transient');
+        }
+      },
+    },
+  };
+  try {
+    await AuthTerminologyGrantCleanupHooks.revokeObsoleteTerminologyEditorGrants();
+  } finally {
+    (globalThis as any).$choysum = prev;
+  }
+  expect(calls.length).toBe(2);
+  expect(calls.filter(s => /^\s*DELETE FROM meta_model_data/m.test(s)).length).toBe(0);
 });
