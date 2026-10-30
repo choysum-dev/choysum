@@ -87,7 +87,7 @@ func (r *Runner) RunPhase(ctx context.Context, phase Phase, opts RunOptions) err
 
 	resolved := normalizeConfig(phase)
 
-	scripts, err := r.resolveScripts(ctx, phase, opts, resolved.Required)
+	scripts, moduleScoped, err := r.resolveScripts(ctx, phase, opts, resolved.Required)
 	if err != nil {
 		if !resolved.Required {
 			if r.runtimeScope != nil {
@@ -98,10 +98,15 @@ func (r *Runner) RunPhase(ctx context.Context, phase Phase, opts RunOptions) err
 		return err
 	}
 	appName, moduleName := r.moduleSelector()
-	// Prepend so CHOYSUM_* identities exist while the module bundle evaluates
-	// @Hook* decorators (registration reads globalThis / import.meta.env).
-	if wrapper := r.buildHookWrapperScript(appName, moduleName); wrapper != nil {
-		scripts = append([]*jsengine.JsScript{wrapper}, scripts...)
+	// Module-scoped entry: seed CHOYSUM_* before eval so @Hook* decorators register.
+	// Shared dist fallback: do not seed before eval (would mis-attribute other modules'
+	// decorators); identity is still set when __choysum_hook__ runs.
+	if wrapper := r.buildHookWrapperScript(appName, moduleName, moduleScoped); wrapper != nil {
+		if moduleScoped {
+			scripts = append([]*jsengine.JsScript{wrapper}, scripts...)
+		} else {
+			scripts = append(scripts, wrapper)
+		}
 	}
 	phaseName := strings.TrimSpace(string(phase))
 
@@ -162,12 +167,12 @@ func deriveRuntimeScope(ctx context.Context, baseScope scope.Scope) scope.Scope 
 	return baseScope
 }
 
-func (r *Runner) resolveScripts(ctx context.Context, phase Phase, opts RunOptions, required bool) ([]*jsengine.JsScript, error) {
+func (r *Runner) resolveScripts(ctx context.Context, phase Phase, opts RunOptions, required bool) (scripts []*jsengine.JsScript, moduleScoped bool, err error) {
 	if len(opts.Scripts) > 0 {
-		return opts.Scripts, nil
+		return opts.Scripts, true, nil
 	}
-	script, err := r.buildModuleEntryScript(ctx)
-	if err != nil {
+	script, buildErr := r.buildModuleEntryScript(ctx)
+	if buildErr != nil {
 		if required {
 			moduleName := ""
 			entry := ""
@@ -178,12 +183,13 @@ func (r *Runner) resolveScripts(ctx context.Context, phase Phase, opts RunOption
 				}
 				entry = strings.TrimSpace(r.module.ServiceEntryPoint)
 			}
-			return nil, fmt.Errorf("required hook phase %s: failed to build module entry script (module=%q, entry=%q): %w", phase, moduleName, entry, err)
+			return nil, false, fmt.Errorf("required hook phase %s: failed to build module entry script (module=%q, entry=%q): %w", phase, moduleName, entry, buildErr)
 		}
 	} else if script != nil {
-		return []*jsengine.JsScript{script}, nil
+		return []*jsengine.JsScript{script}, true, nil
 	}
-	return LoadDistScripts(deriveRuntimeScope(ctx, r.runtimeScope), r.module)
+	loaded, loadErr := LoadDistScripts(deriveRuntimeScope(ctx, r.runtimeScope), r.module)
+	return loaded, false, loadErr
 }
 
 func (r *Runner) buildModuleEntryScript(ctx context.Context) (*jsengine.JsScript, error) {
@@ -241,20 +247,29 @@ func (r *Runner) moduleSelector() (string, string) {
 	return appName, moduleName
 }
 
-func (r *Runner) buildHookWrapperScript(appName, moduleName string) *jsengine.JsScript {
+func (r *Runner) buildHookWrapperScript(appName, moduleName string, seedIdentityBeforeEval bool) *jsengine.JsScript {
 	if r == nil || r.module == nil {
 		return nil
 	}
 	appLit := strconv.Quote(strings.TrimSpace(appName))
 	modLit := strconv.Quote(strings.TrimSpace(moduleName))
+	seed := ""
+	if seedIdentityBeforeEval {
+		seed = `globalThis.CHOYSUM_APP_NAME = ` + appLit + `;
+	globalThis.CHOYSUM_MODULE_NAME = ` + modLit + `;
+`
+	}
 	// Hook handlers are module-level callbacks (static, no this). Invoke with bare
 	// `await fn()` only — do not switch to fn.call/fn.apply unless the lifecycle
 	// this-boundary plan is explicitly upgraded past the near-term contract.
 	// See .dev/docs/core/service/lifecycle_hook_this_boundary_plan20260715.md.
+	// Resolve via __choysum_hook_module_roots__ first so ApplicationStr IIFE
+	// reassignment of globalThis[app] cannot drop the registered registry.
 	content := `(() => {
-	globalThis.CHOYSUM_APP_NAME = ` + appLit + `;
-	globalThis.CHOYSUM_MODULE_NAME = ` + modLit + `;
-	const resolveModuleRoot = (app, moduleName) => {
+	` + seed + `const resolveModuleRoot = (app, moduleName) => {
+		const stable = globalThis.__choysum_hook_module_roots__;
+		const fromStable = stable && stable[app] && stable[app][moduleName];
+		if (fromStable) return fromStable;
 		const root = globalThis[app];
 		return root && root[moduleName];
 	};

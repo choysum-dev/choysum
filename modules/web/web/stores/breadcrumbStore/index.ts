@@ -194,15 +194,26 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
 
   function trimStackPreservingRoot() {
     if (breadcrumbStack.value.length <= MAX_STACK) return;
+    const stack = breadcrumbStack.value;
     const prefix = rootPrefixLength();
-    const keepTail = MAX_STACK - prefix;
-    if (keepTail <= 0) {
-      breadcrumbStack.value = breadcrumbStack.value.slice(0, MAX_STACK);
+    // Deep menu roots can fill MAX_STACK; keep app + leaf + newest pages, drop folders.
+    if (prefix >= MAX_STACK) {
+      const root = stack.slice(0, prefix);
+      const app = root.find((item) => item.kind === 'app');
+      const leaf = [...root].reverse().find((item) => item.kind === 'menu');
+      const kept: BreadcrumbItem[] = [];
+      if (app) kept.push(app);
+      if (leaf && leaf !== app) kept.push(leaf);
+      const pages = stack.slice(prefix);
+      const room = Math.max(0, MAX_STACK - kept.length);
+      kept.push(...pages.slice(-room));
+      breadcrumbStack.value = kept.slice(0, MAX_STACK);
       applyClickableFlags();
       return;
     }
-    const head = breadcrumbStack.value.slice(0, prefix);
-    const tail = breadcrumbStack.value.slice(-keepTail);
+    const keepTail = MAX_STACK - prefix;
+    const head = stack.slice(0, prefix);
+    const tail = stack.slice(-keepTail);
     breadcrumbStack.value = [...head, ...tail];
     applyClickableFlags();
   }

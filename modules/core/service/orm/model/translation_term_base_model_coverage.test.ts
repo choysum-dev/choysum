@@ -392,14 +392,28 @@ test('normalizeKind/Source and compareTermHashKeys cover every branch', () => {
 
   const noExisting: Record<string, unknown> = { Value: 'x', Source: 'packaged' };
   __applyOverrideSourceWhenValueEditedForTest(noExisting, []);
-  expect(noExisting.Source).toBe('override');
+  expect(noExisting.Source).toBe('packaged');
 
-  const multiRow: Record<string, unknown> = { Value: 'A' };
-  __applyOverrideSourceWhenValueEditedForTest(multiRow, [
+  const multiRowPartial: Record<string, unknown> = { Value: 'A' };
+  __applyOverrideSourceWhenValueEditedForTest(multiRowPartial, [
     { Value: 'A', Source: 'packaged' },
     { Value: 'B', Source: 'packaged' },
   ]);
-  expect(multiRow.Source).toBeUndefined();
+  expect(multiRowPartial.Source).toBeUndefined();
+
+  const multiRowAllChange: Record<string, unknown> = { Value: 'Z' };
+  __applyOverrideSourceWhenValueEditedForTest(multiRowAllChange, [
+    { Value: 'A', Source: 'packaged' },
+    { Value: 'B', Source: 'packaged' },
+  ]);
+  expect(multiRowAllChange.Source).toBe('override');
+
+  const multiRowMixed: Record<string, unknown> = { Value: 'Z' };
+  __applyOverrideSourceWhenValueEditedForTest(multiRowMixed, [
+    { Value: 'A', Source: 'packaged' },
+    { Value: 'B', Source: 'override' },
+  ]);
+  expect(multiRowMixed.Source).toBeUndefined();
 
   const explicitSource: Record<string, unknown> = { Value: 'new', Source: 'packaged' };
   __applyOverrideSourceWhenValueEditedForTest(explicitSource, [{ Value: 'old', Source: 'packaged' }]);

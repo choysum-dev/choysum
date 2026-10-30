@@ -143,15 +143,16 @@ async function loadModules() {
     if (!next.includes(selectedModule.value)) {
       selectedModule.value = next.includes(app) ? app : next[0] || '';
     }
+    if (generation === loadGeneration && application.value === app) {
+      modulesLoaded.value = true;
+    }
   } catch {
     if (generation !== loadGeneration || application.value !== app) return;
     modules.value = [app];
     if (!selectedModule.value) selectedModule.value = app;
+    // Leave modulesLoaded false so a later open can retry after a transient failure.
   } finally {
-    if (generation === loadGeneration && application.value === app) {
-      modulesLoaded.value = true;
-      loadingModules.value = false;
-    } else if (generation === loadGeneration) {
+    if (generation === loadGeneration) {
       loadingModules.value = false;
     }
   }

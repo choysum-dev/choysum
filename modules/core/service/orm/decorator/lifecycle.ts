@@ -50,13 +50,21 @@ function ensureRecordSlot(owner: ObjectRecord, key: string): ObjectRecord {
   return created;
 }
 
+/** Survives ApplicationStr IIFE reassignment of globalThis[app] during hook bundle eval. */
+const HOOK_MODULE_ROOTS_KEY = '__choysum_hook_module_roots__';
+
 function ensureModuleRoot(): RegistryContext | null {
   const { app, module } = getModuleNames();
   if (!app || !module) return null;
 
   const runtimeRoot = getRuntimeGlobalRecord();
+  const stableHost = ensureRecordSlot(runtimeRoot, HOOK_MODULE_ROOTS_KEY);
+  const stableApp = ensureRecordSlot(stableHost, app);
+  const moduleRoot = ensureRecordSlot(stableApp, module);
+
+  // Mirror under globalThis[app][module] for in-process readers; same object as stable.
   const appRoot = ensureRecordSlot(runtimeRoot, app);
-  const moduleRoot = ensureRecordSlot(appRoot, module);
+  appRoot[module] = moduleRoot;
 
   const root: ModuleRoot = moduleRoot;
   root.hook = root.hook ?? {};

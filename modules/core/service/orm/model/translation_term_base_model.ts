@@ -312,15 +312,25 @@ function applyOverrideSourceWhenValueEdited(
   if (!Object.prototype.hasOwnProperty.call(values, 'Value')) {
     return;
   }
-  // Shared Update patch cannot set Source per row; leave Source alone for multi-match.
-  if (existingRows.length > 1) {
-    return;
-  }
   // Explicit Source in the patch wins (PO re-import / programmatic reset).
   if (Object.prototype.hasOwnProperty.call(values, 'Source') && existingRows.length > 0) {
     return;
   }
   const next = String(values.Value ?? '');
+  if (existingRows.length > 1) {
+    // Shared patch: only mark override when every matched row is packaged and changes.
+    // Mixed packaged/non-packaged matches cannot share a safe Source value — leave alone.
+    const hasNonPackaged = existingRows.some(
+      row => normalizeSource(row.Source as string | null | undefined) !== SOURCE_PACKAGED
+    );
+    if (hasNonPackaged) {
+      return;
+    }
+    if (existingRows.every(row => next !== String(row.Value ?? ''))) {
+      values.Source = SOURCE_OVERRIDE;
+    }
+    return;
+  }
   let shouldOverride = false;
   for (const row of existingRows) {
     if (normalizeSource(row.Source as string | null | undefined) !== SOURCE_PACKAGED) {
@@ -329,12 +339,6 @@ function applyOverrideSourceWhenValueEdited(
     if (next !== String(row.Value ?? '')) {
       shouldOverride = true;
       break;
-    }
-  }
-  if (!shouldOverride && existingRows.length === 0) {
-    // No prior row loaded: only flip when the patch itself claims packaged.
-    if (normalizeSource(values.Source as string | null | undefined) === SOURCE_PACKAGED) {
-      shouldOverride = true;
     }
   }
   if (shouldOverride) {
@@ -621,8 +625,13 @@ export default class TranslationTermBaseModel extends BaseModel {
         /* Browse may fail if row gone; still attempt update */
       }
     }
-    applyOverrideSourceWhenValueEdited(patch, existingRow ? [existingRow] : []);
+    if (existingRow) {
+      applyOverrideSourceWhenValueEdited(patch, [existingRow]);
+    }
     const out = await super.UpdateById<C, F>(id, patch as Partial<Updateable<RowOf<C>>>, returnFields, options);
+    if (!module) {
+      module = String((out as { Module?: unknown } | null | undefined)?.Module ?? '').trim();
+    }
     invalidateTerminologyModules(application, [module, ...modulesFromRows(out)]);
     return out;
   }

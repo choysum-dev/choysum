@@ -165,6 +165,47 @@ describe('breadcrumbStore L1+L2 trail', () => {
     expect(store.breadcrumbStack[2]?.title).toBe('Leaf');
   });
 
+  test('trimStackPreservingRoot keeps app+leaf+page when folder root fills MAX_STACK', () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const store = useBreadcrumbStore();
+    const root: Array<{
+      title: string;
+      path: string;
+      clickable: boolean;
+      timestamp: number;
+      kind: 'app' | 'folder' | 'menu';
+      menuId: string;
+    }> = [
+      { title: 'App', path: '', clickable: true, timestamp: 1, kind: 'app', menuId: 'app' },
+    ];
+    for (let i = 0; i < 9; i++) {
+      root.push({
+        title: `F${i}`,
+        path: '',
+        clickable: true,
+        timestamp: 2 + i,
+        kind: 'folder',
+        menuId: `f${i}`,
+      });
+    }
+    root.push({
+      title: 'Leaf',
+      path: '/deep',
+      clickable: true,
+      timestamp: 20,
+      kind: 'menu',
+      menuId: 'leaf',
+    });
+    expect(root.length).toBeGreaterThanOrEqual(10);
+    store.breadcrumbStack = root as any;
+    store.pushBreadcrumb('Details', '/deep/1');
+    expect(store.breadcrumbStack.length).toBeLessThanOrEqual(10);
+    expect(store.breadcrumbStack.some((i) => i.kind === 'app')).toBe(true);
+    expect(store.breadcrumbStack.some((i) => i.kind === 'menu' && i.path === '/deep')).toBe(true);
+    expect(store.breadcrumbStack[store.breadcrumbStack.length - 1]?.path).toBe('/deep/1');
+  });
+
   test('clearBreadcrumb empties stack and ids', () => {
     const pinia = createPinia();
     setActivePinia(pinia);

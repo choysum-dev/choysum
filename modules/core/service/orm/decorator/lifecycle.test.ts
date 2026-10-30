@@ -101,6 +101,11 @@ function withModuleEnv<T>(run: () => T): T {
       const appRoot = asObjectRecord(root[TEST_APP]);
       if (appRoot) delete appRoot[TEST_MODULE];
       if (appRoot && Object.keys(appRoot).length === 0) delete root[TEST_APP];
+      const stableHost = asObjectRecord(root['__choysum_hook_module_roots__']);
+      const stableApp = asObjectRecord(stableHost?.[TEST_APP]);
+      if (stableApp) delete stableApp[TEST_MODULE];
+      if (stableApp && Object.keys(stableApp).length === 0 && stableHost) delete stableHost[TEST_APP];
+      if (stableHost && Object.keys(stableHost).length === 0) delete root['__choysum_hook_module_roots__'];
     }
   });
 }

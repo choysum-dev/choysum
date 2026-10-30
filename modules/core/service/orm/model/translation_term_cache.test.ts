@@ -369,7 +369,10 @@ test(
     try {
       await TtInvTerm.UpdateById('1', { Module: 'direct', Value: '新' } as any);
       expect(browsed).toBe(true);
-      expect(receivedPatch?.Source).toBe('override');
+      if (!receivedPatch) {
+        throw new Error('expected UpdateById patch');
+      }
+      expect(String(receivedPatch['Source'] ?? '')).toBe('override');
       expect(calls).toEqual([['ttinv', 'direct']]);
     } finally {
       TtInvTerm.Browse = originalBrowse;

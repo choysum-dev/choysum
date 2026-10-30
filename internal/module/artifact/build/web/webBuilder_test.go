@@ -4281,6 +4281,40 @@ func TestReplaceUiResourceRelationsReplacesAndDedupesRows(t *testing.T) {
 	}
 }
 
+func TestReplaceUiResourceRelationsSkipsDuplicateRouteIDs(t *testing.T) {
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	if err := testRuntimeScope.db.AutoMigrate(&meta.UiResource{}, &meta.UiResourceMenuRoute{}, &meta.UiResourceRouteAction{}); err != nil {
+		t.Fatalf("auto migrate failed: %v", err)
+	}
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+	for _, resource := range []*meta.UiResource{
+		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "menu_1", Valid: true}}, Name: "menu.root", Type: meta.UiResourceTypeMenu},
+		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "menu_2", Valid: true}}, Name: "menu.other", Type: meta.UiResourceTypeMenu},
+		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "route_1", Valid: true}}, Name: "route.home", Type: meta.UiResourceTypeRoute},
+	} {
+		if err := testRuntimeScope.db.Create(resource).Error; err != nil {
+			t.Fatalf("create resource %s: %v", resource.Name, err)
+		}
+	}
+	if err := b.replaceUiResourceRelations(
+		[]string{"menu_1", "menu_2", "route_1"},
+		[]uiResourceMenuRouteRef{
+			{MenuName: "menu.root", RouteName: "route.home"},
+			{MenuName: "menu.other", RouteName: "route.home"}, // same route_id → seenRouteIDs skip
+		},
+		nil,
+	); err != nil {
+		t.Fatalf("replaceUiResourceRelations: %v", err)
+	}
+	var menuRoutes []meta.UiResourceMenuRoute
+	if err := testRuntimeScope.db.Find(&menuRoutes).Error; err != nil {
+		t.Fatalf("query menu routes: %v", err)
+	}
+	if len(menuRoutes) != 1 || menuRoutes[0].MenuUiResourceId.String != "menu_1" {
+		t.Fatalf("expected only first MENU→ROUTE winner, got %#v", menuRoutes)
+	}
+}
+
 func TestReplaceUiResourceRelationsDeleteError(t *testing.T) {
 	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
 	if err := testRuntimeScope.db.AutoMigrate(&meta.UiResource{}, &meta.UiResourceMenuRoute{}, &meta.UiResourceRouteAction{}); err != nil {
