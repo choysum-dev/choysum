@@ -303,6 +303,9 @@ const DefinitionLinesTable = defineComponent({
                         {
                           class: 'w-11 whitespace-nowrap px-1 py-1.5 text-center',
                           onClick: (e: Event) => e.stopPropagation(),
+                          // Stop keydown so Enter/Space on Remove does not bubble to the
+                          // row role=button handler (which would open the dialog instead).
+                          onKeydown: (e: KeyboardEvent) => e.stopPropagation(),
                         },
                         [
                           h(

@@ -255,6 +255,30 @@ describe('ChoyPropertiesDefinitionField', () => {
     }
   });
 
+  test('Remove keydown Enter does not bubble to open the row dialog', async () => {
+    const binding = makeBinding({
+      definition: [{ name: 'a', type: 'char', string: { en_US: 'A' } }],
+      isEditMode: true,
+    });
+    const mounted = mountApp(ChoyPropertiesDefinitionField as any, {
+      props: { binding },
+    });
+    try {
+      await flushPromises();
+      const removeBtn = mounted.q(
+        '[data-testid="choy-properties-definition-remove"]',
+      ) as HTMLButtonElement;
+      expect(removeBtn).toBeTruthy();
+      const enter = new Event('keydown', { bubbles: true, cancelable: true });
+      Object.defineProperty(enter, 'key', { value: 'Enter' });
+      removeBtn.dispatchEvent(enter);
+      await nextTick();
+      expect(mounted.q('[data-testid="choy-properties-definition-item-dialog-stub"]')).toBeFalsy();
+    } finally {
+      mounted.unmount();
+    }
+  });
+
   test('shows 1-based index column for definition rows', async () => {
     const binding = makeBinding({
       definition: [

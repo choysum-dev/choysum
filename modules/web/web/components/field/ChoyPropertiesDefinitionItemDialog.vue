@@ -493,10 +493,11 @@ async function onApply() {
     formData: formDataRef.value as any,
     mode: 'create',
     data: formDataRef.value as any,
-  } as any);
+    defaultSubmit: async () => null,
+  });
 }
 
-const onFormSubmit: FormSubmitHandler<any> = async () => {
+const onFormSubmit: FormSubmitHandler<any> = async (_ctx) => {
   formError.value = '';
   const item = local.value;
   if (!item || props.readonly) {
