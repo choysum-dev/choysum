@@ -187,7 +187,8 @@ async function onDownloadPo() {
     document.body.appendChild(a);
     a.click();
     a.remove();
-    URL.revokeObjectURL(url);
+    // Defer revoke: some browsers start the download asynchronously after click().
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   } catch (err: any) {
     ChoyMessage.error(err?.message || _t('PO download failed'));
   } finally {

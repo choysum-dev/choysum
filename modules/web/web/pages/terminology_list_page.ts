@@ -43,7 +43,7 @@ export function useTerminologyListPage(deps: TerminologyListPageDeps): {
       return;
     }
     termStore.value = createStore(`${app}.TranslationTerm`, {
-      storeId: `TranslationTerm_${app}_${deps.route.fullPath}`,
+      storeId: `TranslationTerm_${app}`,
       scopeManager: deps.scopeManager,
     }) as WebModelStore<any>;
   }

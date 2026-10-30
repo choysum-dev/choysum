@@ -28,7 +28,7 @@ test('useTerminologyListPage binds store from meta application and clears when e
   expect(api.application.value).toBe('auth');
   expect(api.pageTitle.value).toContain('auth');
   expect(created).toEqual([
-    { model: 'auth.TranslationTerm', storeId: 'TranslationTerm_auth_/web/terminology/auth' },
+    { model: 'auth.TranslationTerm', storeId: 'TranslationTerm_auth' },
   ]);
   expect(api.termStore.value).toEqual({ model: 'auth.TranslationTerm' });
 
