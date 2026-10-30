@@ -826,12 +826,12 @@ msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "View record"
 msgstr "查看记录"
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:375
+#: web/components/field/ChoyPropertiesDefinitionField.vue:362
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "%s properties"
 msgstr "%s 个属性"
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:377
+#: web/components/field/ChoyPropertiesDefinitionField.vue:364
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "%s properties (%s, …)"
 msgstr "%s 个属性（%s，…）"
@@ -843,11 +843,6 @@ msgstr "添加一行…"
 
 #: web/components/field/ChoyPropertiesDefinitionField.vue:16 web/components/field/ChoyPropertiesDefinitionField.vue:9
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
-msgid "Edit"
-msgstr "编辑"
-
-#: web/components/field/ChoyPropertiesDefinitionField.vue:16 web/components/field/ChoyPropertiesDefinitionField.vue:9
-msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Label"
 msgstr "标签"
 
@@ -856,7 +851,7 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Name"
 msgstr "名称"
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:371
+#: web/components/field/ChoyPropertiesDefinitionField.vue:358
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "No properties"
 msgstr "无属性"
@@ -876,7 +871,7 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Reorder"
 msgstr "调整顺序"
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:395 web/components/field/ChoyPropertiesDefinitionField.vue:482 web/components/field/ChoyPropertiesDefinitionField.vue:486
+#: web/components/field/ChoyPropertiesDefinitionField.vue:382 web/components/field/ChoyPropertiesDefinitionField.vue:469 web/components/field/ChoyPropertiesDefinitionField.vue:473
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "This row was changed while editing; please reopen it."
 msgstr "该行在编辑期间已变更，请重新打开。"
@@ -886,22 +881,17 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Type"
 msgstr "类型"
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:16 web/components/field/ChoyPropertiesDefinitionField.vue:9
-msgctxt "web/components/field/ChoyPropertiesDefinitionField"
-msgid "View"
-msgstr "查看"
-
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:74
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:79
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Apply"
 msgstr "应用"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:71
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:76
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:66
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:71
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Close"
 msgstr "关闭"
@@ -916,7 +906,7 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Default"
 msgstr "默认值"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:63
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:68
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Edit"
 msgstr "编辑"
@@ -976,7 +966,7 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Readonly"
 msgstr "只读"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:49
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:52
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Selection"
 msgstr "选项"
@@ -3023,8 +3013,16 @@ msgstr "词条"
 #~ msgstr "添加属性"
 
 #~ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
+#~ msgid "Edit"
+#~ msgstr "编辑"
+
+#~ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 #~ msgid "Translate label"
 #~ msgstr "翻译标签"
+
+#~ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
+#~ msgid "View"
+#~ msgstr "查看"
 
 #~ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 #~ msgid "No"
