@@ -138,6 +138,7 @@ func startOnce(ctx context.Context, execPath string, headless bool) (s *Session,
 		// triggers (and much of the app chrome) are absent from the DOM.
 		// Headless Chrome without an explicit size often lands under that
 		// breakpoint (e.g. ~756×413), which breaks auth/web shell e2e.
+		chromedp.Flag("window-size", "1280,900"),
 		chromedp.WindowSize(1280, 900),
 		// Default is 20s; CI runners can take longer before DevTools prints the WS URL.
 		chromedp.WSURLReadTimeout(60*time.Second),

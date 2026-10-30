@@ -55,6 +55,23 @@ func importModuleTerminology(runtimeScope scope.Scope, mod *meta.Module, modules
 	if err := runTerminologyImport(runtimeScope, application, moduleName, moduleRoot); err != nil {
 		return xfmt.Errorf("import terminology for module %s: %w", moduleName, err)
 	}
+	// Scheme A left Module=core rows in host tables; purge on every host import/upgrade.
+	if err := purgeStaleFrameworkTermsFromHost(runtimeScope, application); err != nil {
+		return err
+	}
+	return nil
+}
+
+// purgeStaleFrameworkTermsFromHost deletes Module=core rows from a host app table.
+func purgeStaleFrameworkTermsFromHost(runtimeScope scope.Scope, hostApplication string) error {
+	hostApplication = strings.TrimSpace(hostApplication)
+	if hostApplication == "" || hostApplication == frameworkModuleName {
+		return nil
+	}
+	reg := store.RegistryFor(runtimeScope)
+	if err := i18nimport.DeleteModuleTerms(runtimeScope, reg, hostApplication, frameworkModuleName); err != nil {
+		return xfmt.Errorf("purge stale framework terminology from %s: %w", hostApplication, err)
+	}
 	return nil
 }
 

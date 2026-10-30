@@ -210,6 +210,44 @@ msgstr "你好"
 	}
 }
 
+func TestImportModuleTerminologyPurgesStaleSchemeACoreRows(t *testing.T) {
+	t.Parallel()
+	rs := newI18nTestScope(t)
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
+		t.Fatal(err)
+	}
+	if err := rs.Session().Table("auth_translation_term").Create(&i18nmodels.TranslationTerm{
+		Application: "auth", Module: "core", Lang: "zh_CN",
+		Scope: "service/orm@err", Src: "Record not found", Value: "stale",
+		Kind: i18nmodels.KindLiteral, Source: i18nmodels.SourcePackaged,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	demoRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(demoRoot, "i18n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(demoRoot, "i18n", "zh_CN.po"), []byte(`
+msgctxt "web/a@title"
+msgid "Hello"
+msgstr "你好"
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	mod := &meta.Module{Name: "demo", ApplicationStr: "auth", Path: demoRoot}
+	if err := importModuleTerminology(rs, mod, ""); err != nil {
+		t.Fatalf("importModuleTerminology: %v", err)
+	}
+	var count int64
+	if err := rs.Session().Table("auth_translation_term").Where("module = ?", "core").Count(&count).Error; err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Fatalf("expected Scheme A Module=core rows purged, got %d", count)
+	}
+}
+
 func TestDeleteModuleTerminologyCoreModule(t *testing.T) {
 	t.Parallel()
 	rs := newI18nTestScope(t)

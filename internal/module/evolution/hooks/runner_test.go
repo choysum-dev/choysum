@@ -368,6 +368,17 @@ func TestResolveScriptsLoadDistScriptsAndBuildModuleEntryScript(t *testing.T) {
 		t.Fatalf("expected required phase build failure, got %v", err)
 	}
 
+	// Cached module-entry hit: resolveScripts must return moduleScoped=true.
+	absEntry := "/virtual/modules/base/service/index.ts"
+	runner.module.ServiceEntryPoint = absEntry
+	cached := &jsengine.JsScript{FileName: "entry.js", Content: "1"}
+	runner.entryScript = cached
+	runner.entryScriptKey = entryScriptCacheKey(absEntry, testRuntimeScope)
+	scripts, scoped, err := runner.resolveScripts(context.Background(), PhasePostInit, RunOptions{}, false)
+	if err != nil || !scoped || len(scripts) != 1 || scripts[0] != cached {
+		t.Fatalf("resolveScripts(cached entry) = %#v scoped=%v err=%v", scripts, scoped, err)
+	}
+
 	if _, err := LoadDistScripts(nil, runner.module); err == nil {
 		t.Fatal("expected LoadDistScripts to reject missing env")
 	}

@@ -132,6 +132,9 @@ async function loadModules() {
   loadingModules.value = true;
   try {
     const metaModuleStore = createStoreByModel('meta.MetaModule');
+    if (!metaModuleStore || typeof metaModuleStore.Search !== 'function') {
+      throw new Error('meta.MetaModule store not available');
+    }
     const rows = await metaModuleStore.Search(installedModulesSearchCondition(app) as any, {
       fields: ['Name'],
       limit: 0,
