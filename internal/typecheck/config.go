@@ -51,13 +51,16 @@ func BuildCompilerOptions(modulesPath, repoRoot string) (*core.CompilerOptions, 
 	types := resolveCompilerTypes(modulesPath, typeRoots)
 
 	opts := &core.CompilerOptions{
-		Target:                           core.ScriptTargetES2022,
-		Module:                           core.ModuleKindESNext,
-		ModuleResolution:                 core.ModuleResolutionKindBundler,
-		Jsx:                              core.JsxEmitPreserve,
-		Strict:                           core.TSTrue,
-		StrictNullChecks:                 core.TSTrue,
-		StrictPropertyInitialization:     core.TSFalse,
+		Target:                       core.ScriptTargetES2022,
+		Module:                       core.ModuleKindESNext,
+		ModuleResolution:             core.ModuleResolutionKindBundler,
+		Jsx:                          core.JsxEmitPreserve,
+		Strict:                       core.TSTrue,
+		StrictNullChecks:             core.TSTrue,
+		StrictPropertyInitialization: core.TSFalse,
+		// Keep assignment-based class fields so ES2022 target does not flip
+		// define semantics (TS2612 on model field re-declarations).
+		UseDefineForClassFields:          core.TSFalse,
 		ExperimentalDecorators:           core.TSTrue,
 		AllowJs:                          core.TSTrue,
 		AllowArbitraryExtensions:         core.TSTrue,

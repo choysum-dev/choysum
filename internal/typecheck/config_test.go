@@ -6,6 +6,8 @@ package typecheck
 import (
 	"path/filepath"
 	"testing"
+
+	"github.com/buke/typescript-go-internal/v7/pkg/core"
 )
 
 func TestBuildCompilerOptions_PathsAlias(t *testing.T) {
@@ -32,6 +34,12 @@ func TestBuildCompilerOptions_PathsAlias(t *testing.T) {
 	want := filepath.ToSlash(filepath.Join(modules, "demo", "*"))
 	if targets[0] != want {
 		t.Fatalf("path target = %q, want %q", targets[0], want)
+	}
+	if opts.Target != core.ScriptTargetES2022 {
+		t.Fatalf("Target = %v, want ES2022", opts.Target)
+	}
+	if opts.UseDefineForClassFields != core.TSFalse {
+		t.Fatalf("UseDefineForClassFields = %v, want TSFalse", opts.UseDefineForClassFields)
 	}
 }
 
