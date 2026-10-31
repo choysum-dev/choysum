@@ -265,6 +265,11 @@ func TestShouldIgnoreWatchPath(t *testing.T) {
 		{filepath.Join("modules", "web", "web", "components", "field", "ChoyOneToManyKanbanField.mount.test.ts"), true},
 		{filepath.Join("modules", "core", "service", "orm", "model", "model_update.test.ts"), true},
 		{filepath.Join("modules", "web", "web", "components", "field", "Foo.spec.tsx"), true},
+		{filepath.Join("modules", "web", "web", "route", "XXMoksr9"), true},
+		{filepath.Join("modules", "base", "i18n", "XXd1jJQ9"), true},
+		{filepath.Join("modules", "web", "web", "route", "routes.ts"), false},
+		{filepath.Join("modules", "base", "i18n", "zh_CN.po"), false},
+		{filepath.Join("modules", "web", "Makefile"), false},
 		{filepath.Join("tmp", "other.tmp"), false},
 		{filepath.Join("styles", ".choy-tailwind-x.tmp.bak"), false},
 	}
@@ -667,25 +672,189 @@ func TestServerEnqueueWatchEventCoalescesWhileReloadPending(t *testing.T) {
 		t.Fatal("expected first watch event to remain queued")
 	}
 
-	// Per-file dedup: the same file saved again is coalesced.
+	// Same unresolved path coalesces while reload is pending.
 	if enqueued := srv.enqueueWatchEvent("first.ts"); enqueued {
 		t.Fatal("expected duplicate watch event for first.ts to be coalesced while reload is pending")
 	}
 	assertHotreloadCounters(t, srv, 0, 1, "enqueueWatchEvent() coalesces same file while reload is pending")
 
-	// Per-file dedup: a different file is NOT coalesced (fixes the bug where
-	// a no-op save on file A would starve a real change to file B in the same
-	// module).
+	// Without a resolved module, busy key falls back to file path so a
+	// different unresolved file still enqueues independently.
 	if enqueued := srv.enqueueWatchEvent("third.ts"); !enqueued {
-		t.Fatal("expected third watch event (different file) to enqueue even while first is pending")
+		t.Fatal("expected third watch event (different unresolved file) to enqueue even while first is pending")
 	}
-	// Drain the third event so the channel doesn't block subsequent tests.
 	select {
 	case <-srv.hotreloadQueue():
 	default:
 	}
 
 	srv.finishWatchEvent()
+}
+
+func TestServerEnqueueWatchEventCoalescesByModule(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	root := t.TempDir()
+	moduleDir := filepath.Join(root, "modules", "demo")
+	if err := os.MkdirAll(moduleDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	menus := filepath.Join(moduleDir, "menus.ts")
+	routes := filepath.Join(moduleDir, "routes.ts")
+	otherDir := filepath.Join(root, "modules", "other")
+	if err := os.MkdirAll(otherDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll(other) error = %v", err)
+	}
+	otherFile := filepath.Join(otherDir, "index.ts")
+	for _, path := range []string{menus, routes, otherFile} {
+		if err := os.WriteFile(path, []byte("export {}"), 0o644); err != nil {
+			t.Fatalf("WriteFile(%s) error = %v", path, err)
+		}
+	}
+
+	srv := &GRPCWebServer{runtimeScope: runtimeScope, hotreload: hotreloadState{queue: make(chan string, 4)}}
+	demoTracked := &fakeWatchedService{name: "demo", watchDirs: []string{moduleDir}}
+	otherTracked := &fakeWatchedService{name: "other", watchDirs: []string{otherDir}}
+	targets := append(
+		srv.buildRegisteredWatchTargets(demoTracked.watchPlans(), demoTracked.watchCallback),
+		srv.buildRegisteredWatchTargets(otherTracked.watchPlans(), otherTracked.watchCallback)...,
+	)
+	srv.hotreload.storeWatchTargets(targets)
+
+	if !srv.enqueueWatchEvent(menus) {
+		t.Fatal("expected menus.ts to enqueue")
+	}
+	if srv.enqueueWatchEvent(routes) {
+		t.Fatal("expected routes.ts in same module to coalesce while demo is pending")
+	}
+	assertHotreloadCounters(t, srv, 0, 1, "same-module files must coalesce")
+
+	if !srv.enqueueWatchEvent(otherFile) {
+		t.Fatal("expected other module file to enqueue while demo is pending")
+	}
+
+	select {
+	case got := <-srv.hotreloadQueue():
+		resolvedMenus, err := resolveWatchPath(menus)
+		if err != nil {
+			t.Fatalf("resolveWatchPath(menus) error = %v", err)
+		}
+		want := resolvedMenus + "|demo"
+		if got != want {
+			t.Fatalf("queued event = %q, want %q", got, want)
+		}
+	default:
+		t.Fatal("expected demo event to remain queued")
+	}
+	select {
+	case got := <-srv.hotreloadQueue():
+		resolvedOther, err := resolveWatchPath(otherFile)
+		if err != nil {
+			t.Fatalf("resolveWatchPath(other) error = %v", err)
+		}
+		want := resolvedOther + "|other"
+		if got != want {
+			t.Fatalf("queued other event = %q, want %q", got, want)
+		}
+	default:
+		t.Fatal("expected other module event to remain queued")
+	}
+
+	srv.hotreload.finishModuleEvent("demo")
+	srv.hotreload.finishModuleEvent("other")
+}
+
+func TestServerEnqueueWatchEventDirtyRequeueAfterQueueFull(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	root := t.TempDir()
+	demoDir := filepath.Join(root, "modules", "demo")
+	otherDir := filepath.Join(root, "modules", "other")
+	for _, dir := range []string{demoDir, otherDir} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("MkdirAll(%s) error = %v", dir, err)
+		}
+	}
+	demoFile := filepath.Join(demoDir, "a.ts")
+	otherFile := filepath.Join(otherDir, "b.ts")
+	for _, path := range []string{demoFile, otherFile} {
+		if err := os.WriteFile(path, []byte("export {}"), 0o644); err != nil {
+			t.Fatalf("WriteFile(%s) error = %v", path, err)
+		}
+	}
+
+	srv := &GRPCWebServer{runtimeScope: runtimeScope, hotreload: hotreloadState{queue: make(chan string, 1)}}
+	demoTracked := &fakeWatchedService{name: "demo", watchDirs: []string{demoDir}}
+	otherTracked := &fakeWatchedService{name: "other", watchDirs: []string{otherDir}}
+	targets := append(
+		srv.buildRegisteredWatchTargets(demoTracked.watchPlans(), demoTracked.watchCallback),
+		srv.buildRegisteredWatchTargets(otherTracked.watchPlans(), otherTracked.watchCallback)...,
+	)
+	srv.hotreload.storeWatchTargets(targets)
+
+	if !srv.enqueueWatchEvent(demoFile) {
+		t.Fatal("expected demo file to enqueue")
+	}
+	if srv.enqueueWatchEvent(otherFile) {
+		t.Fatal("expected other file to drop when queue is full")
+	}
+	assertHotreloadCounters(t, srv, 1, 0, "queue_full should drop the second module")
+
+	// Simulate the serve loop finishing the in-flight demo event: finish busy
+	// key then drain dirty modules into the queue.
+	eventInfo := <-srv.hotreloadQueue()
+	resolvedDemo, err := resolveWatchPath(demoFile)
+	if err != nil {
+		t.Fatalf("resolveWatchPath(demo) error = %v", err)
+	}
+	if eventInfo != resolvedDemo+"|demo" {
+		t.Fatalf("queued event = %q, want demo", eventInfo)
+	}
+	srv.hotreload.finishModuleEvent("demo")
+	srv.requeueDirtyWatchModules()
+
+	select {
+	case got := <-srv.hotreloadQueue():
+		resolvedOther, err := resolveWatchPath(otherFile)
+		if err != nil {
+			t.Fatalf("resolveWatchPath(other) error = %v", err)
+		}
+		want := resolvedOther + "|other"
+		if got != want {
+			t.Fatalf("requeued event = %q, want %q", got, want)
+		}
+	default:
+		t.Fatal("expected dirty other module to be requeued after demo finished")
+	}
+	srv.hotreload.finishModuleEvent("other")
+}
+
+func TestEnqueueWatchEventIgnoresEditorAtomicTemps(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	srv := &GRPCWebServer{runtimeScope: runtimeScope, hotreload: hotreloadState{queue: make(chan string, 2)}}
+	root := t.TempDir()
+	routeDir := filepath.Join(root, "modules", "web", "web", "route")
+	if err := os.MkdirAll(routeDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	temp := filepath.Join(routeDir, "XXMoksr9")
+	source := filepath.Join(routeDir, "routes.ts")
+	for _, path := range []string{temp, source} {
+		if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
+			t.Fatalf("WriteFile(%s) error = %v", path, err)
+		}
+	}
+
+	if srv.enqueueWatchEvent(temp) {
+		t.Fatal("expected editor atomic temp to be ignored")
+	}
+	if !srv.enqueueWatchEvent(source) {
+		t.Fatal("expected real source file to enqueue")
+	}
+	select {
+	case <-srv.hotreloadQueue():
+	default:
+		t.Fatal("expected source watch event to remain queued")
+	}
+	assertHotreloadCounters(t, srv, 0, 0, "ignored editor temps must not count as drops/coalesces")
 }
 
 func TestWaitForWatchDebounceHonorsContextCancel(t *testing.T) {

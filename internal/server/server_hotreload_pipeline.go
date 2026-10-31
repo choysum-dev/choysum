@@ -64,10 +64,11 @@ func (s *GRPCWebServer) enqueueWatchEvent(file string) bool {
 
 	// Resolve which module this file belongs to (retained for dispatch use).
 	module := s.resolveWatchModule(file)
-	// Per-file dedup: only coalesce when the same file is already in-flight.
-	// Different files within the same module are both queued so a no-op save
-	// on file A cannot starve a real change to file B in the same module.
-	if !s.hotreload.beginModuleEvent(file) {
+	// Per-module coalesce: Upgrade is whole-module, so menus/po/routes for the
+	// same module share one queue slot. Content fingerprint still skips no-op
+	// restarts. Unresolved paths fall back to the file path as the busy key.
+	busyKey := watchEventBusyKey(module, file)
+	if !s.hotreload.beginModuleEvent(busyKey) {
 		s.recordCoalescedWatchEvent(file)
 		return false
 	}
@@ -77,9 +78,44 @@ func (s *GRPCWebServer) enqueueWatchEvent(file string) bool {
 	case watchQueue <- eventInfo:
 		return true
 	default:
-		s.hotreload.finishModuleEvent(file)
+		s.hotreload.finishModuleEvent(busyKey)
+		s.hotreload.markDirtyModule(busyKey, file)
 		s.recordDroppedWatchEvent("queue_full", file, nil)
 		return false
+	}
+}
+
+// watchEventBusyKey is the coalesce / finish key for a watch event.
+func watchEventBusyKey(module, file string) string {
+	if module != "" {
+		return module
+	}
+	return file
+}
+
+// requeueDirtyWatchModules enqueues one representative path per module that
+// was dropped with queue_full while another upgrade was in flight.
+func (s *GRPCWebServer) requeueDirtyWatchModules() {
+	if s == nil {
+		return
+	}
+	pending := s.hotreload.takeDirtyModules()
+	if len(pending) == 0 {
+		return
+	}
+	for key, file := range pending {
+		if s.hotreload.isModuleBusy(key) {
+			s.hotreload.markDirtyModule(key, file)
+			continue
+		}
+		if !s.enqueueWatchEvent(file) {
+			// enqueueWatchEvent re-marks dirty on queue_full; other drop reasons
+			// leave the module unmarked until a later filesystem event.
+			continue
+		}
+		if s.runtimeScope != nil {
+			s.runtimeScope.Logger().Info("watch reload requeued after queue_full", "file", file, "module", key)
+		}
 	}
 }
 
