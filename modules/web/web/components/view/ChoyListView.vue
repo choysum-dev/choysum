@@ -224,15 +224,8 @@ SPDX-License-Identifier: Apache-2.0
           <slot />
           <template #empty>
             <slot name="empty">
-              <ChoyEmpty class="w-full !gap-3 !p-4 md:!p-6" :description="_t('No data')">
-                <!-- Picker embeds set registerActionTarget=false; hide New so Create does not leave a dirty host form. -->
-                <template v-if="showActions && resolvedCreateAction && canCreate" #actions>
-                  <ChoyButton type="button" size="default" variant="default" @click="handleCreate">
-                    <Plus class="size-4" aria-hidden="true" />
-                    {{ _t('New') }}
-                  </ChoyButton>
-                </template>
-              </ChoyEmpty>
+              <!-- Create stays in the list chrome toolbar only; empty state is copy, not a second New. -->
+              <ChoyEmpty class="w-full !gap-3 !p-4 md:!p-6" :description="_t('No data')" />
             </slot>
           </template>
         </ChoyTableHost>

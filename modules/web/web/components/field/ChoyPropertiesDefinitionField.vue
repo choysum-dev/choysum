@@ -171,7 +171,7 @@ const DefinitionLinesTable = defineComponent({
           h(
             'th',
             {
-              class: 'w-11 whitespace-nowrap px-2 py-1.5 text-right font-medium',
+              class: 'w-11 whitespace-nowrap px-2 py-1.5 text-right font-medium tabular-nums text-muted-foreground',
               'data-testid': 'choy-properties-definition-index-header',
             },
             props.indexHeader,

@@ -18,7 +18,7 @@ SPDX-License-Identifier: Apache-2.0
     @row-click="onRowClick"
   >
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
-    <ChoyTableColumn type="index" :vColumnProps="{ align: 'end' }" />
+    <ChoyTableColumn type="index" :vColumnProps="{ align: 'end', width: 44 }" />
     <ChoyVarcharField
       :store="store"
       prop="Model"
