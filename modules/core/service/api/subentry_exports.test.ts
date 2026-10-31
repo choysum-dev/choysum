@@ -21,6 +21,7 @@ test('core/service/api stable sub-entry runtime export surfaces are frozen', () 
     'HookPreInit',
     'HookPreUninstall',
     'HookPreUpgrade',
+    'HookReady',
     'Migration',
     'Model',
     'Onchange',

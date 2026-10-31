@@ -27,9 +27,15 @@ export const authSettingsAppMenu: MenuItem = defineMenu('auth.menu.settings_app'
       defaultRoles: ['sys.admin'],
     }),
     defineMenu('auth.menu.property_definitions', {
-      title: _lt('Record Properties'),
+      title: _lt('Property Definitions'),
       path: '/web/property-definitions/auth',
       sequence: 20,
+      defaultRoles: ['sys.admin'],
+    }),
+    defineMenu('auth.menu.field_defaults', {
+      title: _lt('Field Defaults'),
+      path: '/web/field-defaults/auth',
+      sequence: 30,
       defaultRoles: ['sys.admin'],
     }),
   ],

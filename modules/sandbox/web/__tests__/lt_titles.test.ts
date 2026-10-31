@@ -6,8 +6,11 @@ import { sandboxRecordsMenuTitle, sandboxRootMenuTitle } from '../menu/titles';
 import { sandboxRoutes } from '../route/routes';
 
 const listRouteTitle = createTranslate('sandbox', { scope: 'web/route/routes' })._lt('Sandbox Record List');
-const recordPropertiesRouteTitle = createTranslate('sandbox', { scope: 'web/route/routes' })._lt(
-  'Record Properties'
+const propertyDefinitionsRouteTitle = createTranslate('sandbox', { scope: 'web/route/routes' })._lt(
+  'Property Definitions'
+);
+const fieldDefaultsRouteTitle = createTranslate('sandbox', { scope: 'web/route/routes' })._lt(
+  'Field Defaults'
 );
 
 test('sandbox menu titles: titles.ts registers shared TermReferences', () => {
@@ -26,6 +29,13 @@ test('sandbox route titles: list route pins pageTitleText', () => {
 test('sandbox route titles: PropertyDefinition list pins pageTitleText', () => {
   const route = sandboxRoutes.find(r => r.name === 'PropertyDefinitionList_sandbox') as any;
   expect(route).toBeTruthy();
-  expect(route.meta?.pageTitle).toBe('Record Properties');
-  expect(route.meta?.pageTitleText).toEqual(recordPropertiesRouteTitle);
+  expect(route.meta?.pageTitle).toBe('Property Definitions');
+  expect(route.meta?.pageTitleText).toEqual(propertyDefinitionsRouteTitle);
+});
+
+test('sandbox route titles: FieldDefault list pins pageTitleText', () => {
+  const route = sandboxRoutes.find(r => r.name === 'FieldDefaultList_sandbox') as any;
+  expect(route).toBeTruthy();
+  expect(route.meta?.pageTitle).toBe('Field Defaults');
+  expect(route.meta?.pageTitleText).toEqual(fieldDefaultsRouteTitle);
 });

@@ -13,7 +13,14 @@ import { getRuntimeEnvValue, getRuntimeGlobalRecord, getRuntimeGlobalValue } fro
 import { asObjectRecord } from '@/core/utils/object';
 import type { ObjectRecord } from '../../../utils/types';
 
-export type HookPhase = 'pre_init' | 'post_init' | 'pre_upgrade' | 'post_upgrade' | 'pre_uninstall' | 'post_uninstall';
+export type HookPhase =
+  | 'pre_init'
+  | 'post_init'
+  | 'pre_upgrade'
+  | 'post_upgrade'
+  | 'pre_uninstall'
+  | 'post_uninstall'
+  | 'ready';
 export type MigrationPhase = 'pre' | 'post' | 'end';
 
 export type MigrationOptions = {
@@ -255,6 +262,8 @@ export const HookPreUpgrade = () => createHookDecorator('pre_upgrade');
 export const HookPostUpgrade = () => createHookDecorator('post_upgrade');
 export const HookPreUninstall = () => createHookDecorator('pre_uninstall');
 export const HookPostUninstall = () => createHookDecorator('post_uninstall');
+/** Runs after this process's application services are registered and the JS runtime is active. */
+export const HookReady = () => createHookDecorator('ready');
 
 export function Migration(options: MigrationOptions): MethodDecorator {
   return (...args: unknown[]) => {

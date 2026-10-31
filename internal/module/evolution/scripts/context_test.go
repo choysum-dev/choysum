@@ -5,6 +5,8 @@ package scripts
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"io"
 	"log/slog"
 	"os"
@@ -14,6 +16,7 @@ import (
 
 	_ "github.com/choysum-dev/choysum/internal/defaultjsexecutor"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
+	"github.com/choysum-dev/choysum/internal/module/evolution/systemidentity"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/auth"
 	"github.com/choysum-dev/choysum/pkg/config"
@@ -21,6 +24,7 @@ import (
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
+	"github.com/rs/xid"
 	"google.golang.org/grpc/metadata"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -96,6 +100,38 @@ func (i scriptsFakeIdentity) GetTokenID() string                  { return "toke
 func (i scriptsFakeIdentity) GetMetadata() map[string]interface{} { return nil }
 func (i scriptsFakeIdentity) IsValid() bool                       { return strings.TrimSpace(i.userID) != "" }
 
+func seedScriptsBootstrapAdmin(t *testing.T, db *gorm.DB, userID, companyID string) {
+	t.Helper()
+	if err := db.AutoMigrate(&meta.Module{}, &modmeta.ModelData{}, &meta.Model{}); err != nil {
+		t.Fatalf("AutoMigrate identity tables: %v", err)
+	}
+	if err := db.Create(&meta.Module{Name: "auth", Status: meta.Installed, Version: "1.0.0"}).Error; err != nil {
+		t.Fatalf("auth module: %v", err)
+	}
+	if err := db.Create(&modmeta.ModelData{
+		Module: "auth", Name: "user_admin", Application: "auth",
+		ModelName: "User", ModelId: xid.New().String(), ResID: userID,
+	}).Error; err != nil {
+		t.Fatalf("user_admin mapping: %v", err)
+	}
+	table := "auth_user_scripts"
+	if err := db.Create(&meta.Model{
+		BaseModel:   meta.BaseModel{Id: sql.NullString{String: xid.New().String(), Valid: true}},
+		Name:        "User",
+		Application: "auth",
+		ModelTable:  table,
+		Path:        "@/auth/service/models/user.ts",
+	}).Error; err != nil {
+		t.Fatalf("auth.User model: %v", err)
+	}
+	if err := db.Exec(`CREATE TABLE "` + table + `" (id TEXT PRIMARY KEY, company_id TEXT)`).Error; err != nil {
+		t.Fatalf("user table: %v", err)
+	}
+	if err := db.Exec(`INSERT INTO "`+table+`" (id, company_id) VALUES (?, ?)`, userID, companyID).Error; err != nil {
+		t.Fatalf("insert user: %v", err)
+	}
+}
+
 func newScriptsTestScope(t *testing.T) *scriptsTestScope {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "migration_scripts.db")), &gorm.Config{})
@@ -105,6 +141,7 @@ func newScriptsTestScope(t *testing.T) *scriptsTestScope {
 	if err := db.AutoMigrate(&modmeta.ModuleMigrationHistory{}); err != nil {
 		t.Fatalf("migrate history table: %v", err)
 	}
+	seedScriptsBootstrapAdmin(t, db, "scripts-admin-"+xid.New().String(), "scripts-company-"+xid.New().String())
 	return &scriptsTestScope{
 		ctx: context.Background(),
 		cfg: &config.Config{
@@ -152,13 +189,41 @@ func writeScriptsRuntimeBundle(t *testing.T, testRuntimeScope *scriptsTestScope,
 	return bundlePath
 }
 
+func TestBuildJsContextFailsWhenBootstrapAdminUnavailable(t *testing.T) {
+	t.Parallel()
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "scripts_no_admin.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&meta.Module{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&meta.Module{Name: "auth", Status: meta.Installed, Version: "1.0.0"}).Error; err != nil {
+		t.Fatal(err)
+	}
+	testScope := &scriptsTestScope{
+		ctx:     context.Background(),
+		cfg:     &config.Config{Db: &config.DbConfig{Dialect: "sqlite"}},
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		session: &scope.Session{DB: db},
+	}
+	mod := &meta.Module{Name: "base", ApplicationStr: "core", Version: "1.0.0"}
+	_, err = BuildJsContext(context.Background(), testScope, mod, "1.0.0", "")
+	if !errors.Is(err, systemidentity.ErrBootstrapAdminUnavailable) {
+		t.Fatalf("err=%v want ErrBootstrapAdminUnavailable", err)
+	}
+}
+
 func TestBuildJsContextAndExecContext(t *testing.T) {
 	testRuntimeScope := newScriptsTestScope(t)
 	testRuntimeScope.cfg.Auth.InternalKey = "internal-secret"
 	mod := &meta.Module{Name: "base", ApplicationStr: "core", Version: "1.0.0", ServiceEntryPoint: "service/index.ts"}
 
 	ctx := auth.ContextWithIdentity(context.Background(), scriptsFakeIdentity{userID: "u-1"})
-	built := BuildJsContext(ctx, testRuntimeScope, mod, "1.0.0", "0.9.0")
+	built, buildErr := BuildJsContext(ctx, testRuntimeScope, mod, "1.0.0", "0.9.0")
+	if buildErr != nil {
+		t.Fatalf("BuildJsContext with session identity: %v", buildErr)
+	}
 	identity := built.payload["identity"].(map[string]any)
 	if identity["userId"] != "u-1" {
 		t.Fatalf("unexpected identity payload: %#v", built.payload)

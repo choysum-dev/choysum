@@ -21,12 +21,21 @@ export class Hooks {
   static async ensure(): Promise<void> {}
 }
 `)
+	mustWriteHookScanFile(t, filepath.Join(root, "service", "hook", "ready.ts"), `
+export class ReadyHooks {
+  @HookReady()
+  static async onReady(): Promise<void> {}
+}
+`)
 	mustWriteHookScanFile(t, filepath.Join(root, "service", "hook", "post_init.test.ts"), `
   @HookPreInit()
   static async onlyInTest(): Promise<void> {}
 `)
 	if !moduleSourceDeclaresHookPhase(&meta.Module{Path: root}, PhasePostInit) {
 		t.Fatal("expected @HookPostInit to be detected")
+	}
+	if !moduleSourceDeclaresHookPhase(&meta.Module{Path: root}, PhaseReady) {
+		t.Fatal("expected @HookReady to be detected")
 	}
 	if moduleSourceDeclaresHookPhase(&meta.Module{Path: root}, PhasePreInit) {
 		t.Fatal("test-only @HookPreInit must not count")

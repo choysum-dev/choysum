@@ -31,6 +31,8 @@ var hotreloadLeaseRetryMax = 8
 // races the module_management lease and must be skipped.
 // Unit/FE test sources are also ignored: they do not need a module Upgrade and
 // often fire right after a product-file save, colliding with the same lease.
+// Editor atomic-save temps (extensionless XX* basenames) are ignored so they
+// do not consume hotreload queue slots alongside the real target file.
 func shouldIgnoreWatchPath(path string) bool {
 	base := filepath.Base(path)
 	lowerBase := strings.ToLower(base)
@@ -46,7 +48,36 @@ func shouldIgnoreWatchPath(path string) bool {
 		return true
 	}
 
+	if isEditorAtomicTempBasename(base) {
+		return true
+	}
 	return isChoyTailwindGeneratedWatchPath(path)
+}
+
+// isEditorAtomicTempBasename matches editor atomic-write temps such as
+// XXMoksr9 / XXd1jJQ9: no extension, XX prefix, short alphanumeric name.
+func isEditorAtomicTempBasename(base string) bool {
+	if base == "" || base == "." || base == ".." {
+		return false
+	}
+	if filepath.Ext(base) != "" {
+		return false
+	}
+	if len(base) < 4 || len(base) > 16 {
+		return false
+	}
+	if !strings.HasPrefix(base, "XX") && !strings.HasPrefix(base, "xx") {
+		return false
+	}
+	for i := 0; i < len(base); i++ {
+		c := base[i]
+		switch {
+		case c >= 'a' && c <= 'z', c >= 'A' && c <= 'Z', c >= '0' && c <= '9':
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 func isChoyTailwindGeneratedWatchPath(path string) bool {

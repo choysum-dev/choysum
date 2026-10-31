@@ -19,7 +19,7 @@ import (
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
-const defaultHotreloadQueueSize = 8
+const defaultHotreloadQueueSize = 32
 
 type watchTargetHandler func(moduleName string, file string) error
 
@@ -48,6 +48,11 @@ type hotreloadState struct {
 	// can be queued concurrently up to the channel capacity.
 	moduleMu    sync.Mutex
 	busyModules map[string]struct{}
+
+	// dirtyModules maps busy-key (module name, or file when unresolved) to a
+	// representative path for re-enqueue after queue_full drops.
+	dirtyMu      sync.Mutex
+	dirtyModules map[string]string
 
 	// progressMu protects progressLine method calls.
 	progressMu sync.Mutex
@@ -198,6 +203,55 @@ func (h *hotreloadState) finishModuleEvent(module string) {
 	h.moduleMu.Lock()
 	delete(h.busyModules, module)
 	h.moduleMu.Unlock()
+}
+
+func (h *hotreloadState) isModuleBusy(module string) bool {
+	h.moduleMu.Lock()
+	defer h.moduleMu.Unlock()
+	_, busy := h.busyModules[module]
+	return busy
+}
+
+// markDirtyModule records that moduleKey needs another upgrade after a drop.
+// file is a representative path used to re-enqueue later.
+func (h *hotreloadState) markDirtyModule(moduleKey, file string) {
+	if moduleKey == "" || file == "" {
+		return
+	}
+	h.dirtyMu.Lock()
+	if h.dirtyModules == nil {
+		h.dirtyModules = make(map[string]string)
+	}
+	h.dirtyModules[moduleKey] = file
+	h.dirtyMu.Unlock()
+}
+
+// markDirtyModuleIfAbsent records dirty only when moduleKey is not already dirty.
+// Used on requeue retries so a newer path recorded after takeDirtyModules is kept.
+func (h *hotreloadState) markDirtyModuleIfAbsent(moduleKey, file string) {
+	if moduleKey == "" || file == "" {
+		return
+	}
+	h.dirtyMu.Lock()
+	if h.dirtyModules == nil {
+		h.dirtyModules = make(map[string]string)
+	}
+	if _, exists := h.dirtyModules[moduleKey]; !exists {
+		h.dirtyModules[moduleKey] = file
+	}
+	h.dirtyMu.Unlock()
+}
+
+// takeDirtyModules returns and clears the dirty set.
+func (h *hotreloadState) takeDirtyModules() map[string]string {
+	h.dirtyMu.Lock()
+	defer h.dirtyMu.Unlock()
+	if len(h.dirtyModules) == 0 {
+		return nil
+	}
+	out := h.dirtyModules
+	h.dirtyModules = nil
+	return out
 }
 
 func (h *hotreloadState) recordDropped() uint64 {
@@ -409,6 +463,9 @@ func (h *hotreloadState) resetEventState() {
 	h.moduleMu.Lock()
 	h.busyModules = nil
 	h.moduleMu.Unlock()
+	h.dirtyMu.Lock()
+	h.dirtyModules = nil
+	h.dirtyMu.Unlock()
 }
 
 func (h *hotreloadState) primeFingerprintsForTargets(ctx context.Context, targets []registeredWatchTarget) {

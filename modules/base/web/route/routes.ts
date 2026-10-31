@@ -4,7 +4,11 @@
 import { RouteRecordRaw } from 'vue-router';
 import { defineRoute } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
-import { propertyDefinitionListComponent, terminologyListComponent } from '@/web/web/route';
+import {
+  fieldDefaultListComponent,
+  propertyDefinitionListComponent,
+  terminologyListComponent,
+} from '@/web/web/route';
 
 const { _lt } = createTranslate('base', { scope: 'web/route/routes' });
 
@@ -438,11 +442,20 @@ export const baseRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.property_definition_list', {
     sequence: 50,
-    title: _lt('Record Properties'),
+    title: _lt('Property Definitions'),
     path: 'web/property-definitions/base',
     name: 'PropertyDefinitionList_base',
     component: propertyDefinitionListComponent,
     defaultRoles: ['sys.admin'],
     meta: { requiresAuth: true, propertyDefinitionApplication: 'base' },
+  }),
+  defineRoute('base.route.field_default_list', {
+    sequence: 60,
+    title: _lt('Field Defaults'),
+    path: 'web/field-defaults/base',
+    name: 'FieldDefaultList_base',
+    component: fieldDefaultListComponent,
+    defaultRoles: ['sys.admin'],
+    meta: { requiresAuth: true, fieldDefaultApplication: 'base' },
   }),
 ];

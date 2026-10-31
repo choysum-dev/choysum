@@ -225,8 +225,8 @@ SPDX-License-Identifier: Apache-2.0
           <template #empty>
             <slot name="empty">
               <ChoyEmpty class="w-full !gap-3 !p-4 md:!p-6" :description="_t('No data')">
-                <!-- Picker embeds set registerActionTarget=false; hide New so Create does not leave a dirty host form. -->
-                <template v-if="showActions && resolvedCreateAction && canCreate" #actions>
+                <!-- Toolbar New covers the usual chrome; keep empty-state New only when header is hidden. -->
+                <template v-if="!showHeader && showActions && resolvedCreateAction && canCreate" #actions>
                   <ChoyButton type="button" size="default" variant="default" @click="handleCreate">
                     <Plus class="size-4" aria-hidden="true" />
                     {{ _t('New') }}

@@ -64,10 +64,14 @@ func (s *GRPCWebServer) enqueueWatchEvent(file string) bool {
 
 	// Resolve which module this file belongs to (retained for dispatch use).
 	module := s.resolveWatchModule(file)
-	// Per-file dedup: only coalesce when the same file is already in-flight.
-	// Different files within the same module are both queued so a no-op save
-	// on file A cannot starve a real change to file B in the same module.
-	if !s.hotreload.beginModuleEvent(file) {
+	// Per-module coalesce: Upgrade is whole-module, so menus/po/routes for the
+	// same module share one queue slot. Content fingerprint still skips no-op
+	// restarts. Unresolved paths fall back to the file path as the busy key.
+	busyKey := watchEventBusyKey(module, file)
+	if !s.hotreload.beginModuleEvent(busyKey) {
+		// Keep a dirty mark so post-upgrade requeue rescans after the in-flight
+		// module finishes (coalesce alone would drop mid-flight content changes).
+		s.hotreload.markDirtyModule(busyKey, file)
 		s.recordCoalescedWatchEvent(file)
 		return false
 	}
@@ -77,9 +81,50 @@ func (s *GRPCWebServer) enqueueWatchEvent(file string) bool {
 	case watchQueue <- eventInfo:
 		return true
 	default:
-		s.hotreload.finishModuleEvent(file)
+		s.hotreload.finishModuleEvent(busyKey)
+		// Preserve a newer dirty path already recorded (e.g. during requeue).
+		s.hotreload.markDirtyModuleIfAbsent(busyKey, file)
 		s.recordDroppedWatchEvent("queue_full", file, nil)
 		return false
+	}
+}
+
+// watchEventBusyKey is the coalesce / finish key for a watch event.
+func watchEventBusyKey(module, file string) string {
+	if module != "" {
+		return module
+	}
+	return file
+}
+
+// requeueDirtyWatchModules enqueues one representative path per module that
+// was dropped with queue_full while another upgrade was in flight.
+func (s *GRPCWebServer) requeueDirtyWatchModules() {
+	if s == nil {
+		return
+	}
+	pending := s.hotreload.takeDirtyModules()
+	if len(pending) == 0 {
+		return
+	}
+	for key, file := range pending {
+		if shouldIgnoreWatchPath(file) {
+			// Ignored editor temps / generated paths must not loop forever as dirty.
+			continue
+		}
+		if s.hotreload.isModuleBusy(key) {
+			s.hotreload.markDirtyModuleIfAbsent(key, file)
+			continue
+		}
+		if !s.enqueueWatchEvent(file) {
+			// coalesce / queue_full already remapped dirty inside enqueueWatchEvent
+			// (IfAbsent on queue_full so a newer path is kept). Do not remake here:
+			// path_unresolved / ignored / queue_unavailable drops would loop forever.
+			continue
+		}
+		if s.runtimeScope != nil {
+			s.runtimeScope.Logger().Info("watch reload requeued after queue_full", "file", file, "module", key)
+		}
 	}
 }
 

@@ -21,8 +21,8 @@ func TestNewDefaultServerConfig(t *testing.T) {
 	if cfg.HotReload {
 		t.Fatal("expected HotReload=false by default")
 	}
-	if cfg.HotReloadQueueSize != 8 {
-		t.Fatalf("expected HotReloadQueueSize=8, got %d", cfg.HotReloadQueueSize)
+	if cfg.HotReloadQueueSize != 32 {
+		t.Fatalf("expected HotReloadQueueSize=32, got %d", cfg.HotReloadQueueSize)
 	}
 	if cfg.JsExecutorFactory != "default" {
 		t.Fatalf("expected JsExecutorFactory=default, got %s", cfg.JsExecutorFactory)
@@ -48,8 +48,8 @@ func TestApplyViperDefaults(t *testing.T) {
 		if err := ApplyViperDefaults(v); err != nil {
 			t.Fatalf("ApplyViperDefaults() error = %v", err)
 		}
-		if v.GetInt("server.hotReloadQueueSize") != 8 {
-			t.Fatalf("expected hotReloadQueueSize=8, got %d", v.GetInt("server.hotReloadQueueSize"))
+		if v.GetInt("server.hotReloadQueueSize") != 32 {
+			t.Fatalf("expected hotReloadQueueSize=32, got %d", v.GetInt("server.hotReloadQueueSize"))
 		}
 		if v.GetString("server.jsExecutorFactory") != "default" {
 			t.Fatalf("expected jsExecutorFactory=default, got %s", v.GetString("server.jsExecutorFactory"))

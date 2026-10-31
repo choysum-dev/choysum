@@ -97,3 +97,12 @@ test('sandbox resource wiring: PropertyDefinition list uses shared web host path
   expect(byName.SandboxPropertyDefinitionCreate).toBeUndefined();
   expect(byName.SandboxPropertyDefinitionDetail).toBeUndefined();
 });
+
+test('sandbox resource wiring: FieldDefault list uses shared web host path', () => {
+  const byName = Object.fromEntries(sandboxRoutes.map(route => [String(route.name), route]));
+  expect(byName.FieldDefaultList_sandbox?.path).toBe('web/field-defaults/sandbox');
+  expect(byName.FieldDefaultList_sandbox?.meta).toMatchObject({
+    requiresAuth: true,
+    fieldDefaultApplication: 'sandbox',
+  });
+});

@@ -178,6 +178,68 @@ describe('ListView create action', () => {
     unmount();
   });
 
+  test('shows empty-state New only when header is hidden', async () => {
+    restoreSfc(ChoyTableHost);
+    stubSfc(ChoyTableHost, {
+      name: 'ChoyTableHost',
+      setup(_p: any, { slots }: any) {
+        return () =>
+          h('div', { 'data-stub': 'ChoyTableHost' }, [slots.default?.(), h('div', { class: 'empty-slot' }, slots.empty?.())]);
+      },
+    });
+    const { plugins } = buildPageMountGlobal({
+      route: { name: 'PartnerList', path: '/partner/partners', fullPath: '/partner/partners' },
+      router: { push },
+    });
+    const { unmount, el, root } = mountApp(ChoyListView as any, {
+      props: {
+        store: makeStore(),
+        createAction: '/partner/partners/new',
+        showHeader: false,
+        showActions: true,
+        refreshAction: false,
+        deleteAction: false,
+        showPaginate: false,
+      },
+      plugins,
+    });
+    await flushPromises();
+    expect(findNewButton(el)).toBeTruthy();
+    expect(root).toBeTruthy();
+    unmount();
+  });
+
+  test('hides toolbar New when header is hidden but createAction is empty', async () => {
+    restoreSfc(ChoyTableHost);
+    stubSfc(ChoyTableHost, {
+      name: 'ChoyTableHost',
+      setup(_p: any, { slots }: any) {
+        return () =>
+          h('div', { 'data-stub': 'ChoyTableHost' }, [slots.default?.(), h('div', { class: 'empty-slot' }, slots.empty?.())]);
+      },
+    });
+    const { plugins } = buildPageMountGlobal({
+      route: { name: 'PartnerList', path: '/partner/partners', fullPath: '/partner/partners' },
+      router: { push },
+    });
+    const { unmount, el, root } = mountApp(ChoyListView as any, {
+      props: {
+        store: makeStore(),
+        createAction: '',
+        showHeader: false,
+        showActions: true,
+        refreshAction: false,
+        deleteAction: false,
+        showPaginate: false,
+      },
+      plugins,
+    });
+    await flushPromises();
+    expect(findNewButton(el)).toBeFalsy();
+    expect(root).toBeTruthy();
+    unmount();
+  });
+
   test('hides New when createAction resolves to empty', async () => {
     const { plugins } = buildPageMountGlobal({
       route: { name: 'PartnerList', path: '/partner/partners', fullPath: '/partner/partners' },

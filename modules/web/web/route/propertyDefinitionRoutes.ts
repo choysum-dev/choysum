@@ -28,7 +28,7 @@ const propertyDefinitionFormComponent = () => import('../pages/PropertyDefinitio
 export const propertyDefinitionRoutes: RouteRecordRaw[] = [
   defineRoute('web.route.property_definition_list', {
     sequence: 50,
-    title: _lt('Record Properties'),
+    title: _lt('Property Definitions'),
     path: 'web/property-definitions/web',
     name: 'PropertyDefinitionList_web',
     component: propertyDefinitionListComponent,

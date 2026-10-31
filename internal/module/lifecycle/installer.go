@@ -5,7 +5,6 @@ package lifecycle
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -19,17 +18,14 @@ import (
 	"github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/internal/module/policy"
 	"github.com/choysum-dev/choysum/internal/persistence/sqliteretry"
-	"github.com/choysum-dev/choysum/internal/task"
 
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
-	"github.com/rs/xid"
 
 	xfmt "golang.org/x/exp/errors/fmt"
-	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -387,17 +383,6 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 		return nil, err
 	}
 
-	if strings.EqualFold(strings.TrimSpace(m.module.Name), "meta") {
-		if err := disableLegacyModuleIndexDailySchedule(m.runtimeScope); err != nil {
-			return nil, xfmt.Errorf("error disabling legacy module index schedule: %w", err)
-		}
-	}
-	if strings.EqualFold(strings.TrimSpace(m.module.Name), "document") {
-		if err := ensureDocumentAttachmentGCSchedule(m.runtimeScope); err != nil {
-			return nil, xfmt.Errorf("error ensuring document attachment gc schedule: %w", err)
-		}
-	}
-
 	return buildResult, nil
 }
 
@@ -547,88 +532,7 @@ var (
 	hooksNewRunner             = hooks.NewRunner
 	hooksScriptFromBuildResult = hooks.ScriptFromBuildResult
 	newInstallSchemaMigrator   = schema.NewMigrator
-	installerScheduleDBFn      = installerScheduleDB
 )
-
-func installerScheduleDB(runtimeScope scope.Scope) (*gorm.DB, error) {
-	if runtimeScope == nil {
-		return nil, xfmt.Errorf("missing db session")
-	}
-	ctx := runtimeScope.Context()
-	if db, ok := scope.DBForScope(ctx, runtimeScope); ok {
-		return db, nil
-	}
-	if runtimeScope.Session() == nil || runtimeScope.Session().DB == nil {
-		return nil, xfmt.Errorf("missing db session")
-	}
-	return nil, xfmt.Errorf("missing db session")
-}
-
-func disableLegacyModuleIndexDailySchedule(runtimeScope scope.Scope) error {
-	db, err := installerScheduleDBFn(runtimeScope)
-	if err != nil {
-		return err
-	}
-	if !db.Migrator().HasTable((&task.Schedule{}).TableName()) {
-		return nil
-	}
-	return task.WhereScheduleNameEq(db, "meta.module_index.daily_sync").Delete(&task.Schedule{}).Error
-}
-
-func ensureDocumentAttachmentGCSchedule(runtimeScope scope.Scope) error {
-	db, err := installerScheduleDBFn(runtimeScope)
-	if err != nil {
-		return err
-	}
-	const (
-		scheduleName = "document.attachment.gc"
-		targetApp    = "document"
-		fullMethod   = "document.AttachmentContent/RunGarbageCollection"
-		cronExpr     = "*/5 * * * *"
-		timezone     = "UTC"
-	)
-	payload := datatypes.JSON(mustJSON(map[string]any{}))
-	var existing task.Schedule
-	res := task.WhereScheduleNameEq(db, scheduleName).Take(&existing)
-	if res.Error != nil {
-		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-			now := time.Now().UTC()
-			return db.Create(&task.Schedule{
-				Id:                xid.New().String(),
-				Active:            true,
-				Name:              task.EncodeTranslatedScheduleName(scheduleName),
-				TargetApp:         targetApp,
-				FullMethod:        fullMethod,
-				PayloadTemplate:   payload,
-				SchedulerUserId:   "admin",
-				TriggeredByUserId: "admin",
-				CronExpr:          cronExpr,
-				Timezone:          timezone,
-				TimeoutMs:         0,
-				NextRunAt:         nil,
-				CreatedAt:         now,
-				UpdatedAt:         now,
-			}).Error
-		}
-		return res.Error
-	}
-	updates := map[string]any{
-		"active":                true,
-		"target_app":            targetApp,
-		"full_method":           fullMethod,
-		"payload_template_json": payload,
-		"cron_expr":             cronExpr,
-		"timezone":              timezone,
-		"timeout_ms":            int64(0),
-		"updated_at":            time.Now().UTC(),
-	}
-	return db.Model(&task.Schedule{}).Where("id = ?", existing.Id).Updates(updates).Error
-}
-
-func mustJSON(value any) []byte {
-	data, _ := json.Marshal(value)
-	return data
-}
 
 func newModuleInstaller(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.Module, moduleManager *ModuleManager, ctx *opContext) *moduleInstaller {
 	installer := &moduleInstaller{

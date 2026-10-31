@@ -51,13 +51,16 @@ func BuildCompilerOptions(modulesPath, repoRoot string) (*core.CompilerOptions, 
 	types := resolveCompilerTypes(modulesPath, typeRoots)
 
 	opts := &core.CompilerOptions{
-		Target:                           core.ScriptTargetES2020,
-		Module:                           core.ModuleKindESNext,
-		ModuleResolution:                 core.ModuleResolutionKindBundler,
-		Jsx:                              core.JsxEmitPreserve,
-		Strict:                           core.TSTrue,
-		StrictNullChecks:                 core.TSTrue,
-		StrictPropertyInitialization:     core.TSFalse,
+		Target:                       core.ScriptTargetES2020,
+		Module:                       core.ModuleKindESNext,
+		ModuleResolution:             core.ModuleResolutionKindBundler,
+		Jsx:                          core.JsxEmitPreserve,
+		Strict:                       core.TSTrue,
+		StrictNullChecks:             core.TSTrue,
+		StrictPropertyInitialization: core.TSFalse,
+		// Keep assignment-based class fields aligned with modules/tsconfig stock
+		// (useDefineForClassFields=false) so hydrate matches IDE/esbuild.
+		UseDefineForClassFields:          core.TSFalse,
 		ExperimentalDecorators:           core.TSTrue,
 		AllowJs:                          core.TSTrue,
 		AllowArbitraryExtensions:         core.TSTrue,

@@ -18,7 +18,6 @@ import (
 	"github.com/choysum-dev/choysum/internal/module/evolution/hooks"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/module/plan"
-	internaltask "github.com/choysum-dev/choysum/internal/task"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -1039,89 +1038,6 @@ END`).Error; err != nil {
 	if err == nil || !strings.Contains(err.Error(), "error saving module:") || strings.Contains(err.Error(), "dependencies") {
 		t.Fatalf("expected upgrade save module error, got %v", err)
 	}
-}
-
-func TestCommitInstallMetaAndDocumentSchedules(t *testing.T) {
-	t.Parallel()
-	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(&internaltask.Schedule{}, &meta.Module{}); err != nil {
-		t.Fatal(err)
-	}
-	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
-		t.Fatalf("AutoMigrate CatalogEntities: %v", err)
-	}
-	now := time.Now().UTC()
-	if err := db.Create(&internaltask.Schedule{
-		Id: "sch_legacy", Active: true, Name: "meta.module_index.daily_sync",
-		TargetApp: "meta", FullMethod: "meta.MetaModuleIndex/Sync",
-		SchedulerUserId: "admin", TriggeredByUserId: "admin",
-		CronExpr: "0 0 * * *", Timezone: "UTC", CreatedAt: now, UpdatedAt: now,
-	}).Error; err != nil {
-		t.Fatal(err)
-	}
-
-	modulesPath := t.TempDir()
-	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
-
-	metaMod := &meta.Module{Name: "meta", Path: filepath.Join(modulesPath, "meta"), Status: meta.ToInstall}
-	metaMod.Id = sql.NullString{String: xid.New().String(), Valid: true}
-	installer := &moduleInstaller{
-		module:        metaMod,
-		runtimeScope:  runtimeScope,
-		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
-		ctx:           newOpContext(),
-	}
-	if _, err := installer.commitInstall(nil, false); err != nil {
-		t.Fatalf("meta commitInstall: %v", err)
-	}
-	if err := internaltask.WhereScheduleNameEq(db, "meta.module_index.daily_sync").Take(&internaltask.Schedule{}).Error; err == nil {
-		t.Fatal("expected legacy schedule deleted")
-	}
-
-	docMod := &meta.Module{Name: "document", Path: filepath.Join(modulesPath, "document"), Status: meta.ToInstall}
-	docMod.Id = sql.NullString{String: xid.New().String(), Valid: true}
-	installer.module = docMod
-	if _, err := installer.commitInstall(nil, false); err != nil {
-		t.Fatalf("document commitInstall: %v", err)
-	}
-	var gc internaltask.Schedule
-	if err := internaltask.WhereScheduleNameEq(db, "document.attachment.gc").Take(&gc).Error; err != nil {
-		t.Fatalf("expected GC schedule: %v", err)
-	}
-	if !gc.Active || gc.CronExpr != "*/5 * * * *" {
-		t.Fatalf("gc schedule = %+v", gc)
-	}
-	if internaltask.DecodeTranslatedScheduleName(gc.Name) != "document.attachment.gc" {
-		t.Fatalf("expected translated schedule name, got %q", gc.Name)
-	}
-
-	// Update existing GC schedule path.
-	if _, err := installer.commitInstall(nil, false); err != nil {
-		t.Fatalf("document commitInstall update: %v", err)
-	}
-}
-
-func TestEnsureDocumentAttachmentGCScheduleDirect(t *testing.T) {
-	t.Parallel()
-	db := newModuleIndexSyncDB(t)
-	if err := db.AutoMigrate(&internaltask.Schedule{}); err != nil {
-		t.Fatal(err)
-	}
-	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
-	if err := ensureDocumentAttachmentGCSchedule(runtimeScope); err != nil {
-		t.Fatal(err)
-	}
-	if err := ensureDocumentAttachmentGCSchedule(runtimeScope); err != nil {
-		t.Fatal(err)
-	}
-	var count int64
-	if err := internaltask.WhereScheduleNameEq(db.Model(&internaltask.Schedule{}), "document.attachment.gc").Count(&count).Error; err != nil {
-		t.Fatal(err)
-	}
-	if count != 1 {
-		t.Fatalf("count = %d", count)
-	}
-	_ = mustJSON(map[string]any{"ok": true})
 }
 
 func TestRestoreModuleIfSoftDeletedStandalone(t *testing.T) {

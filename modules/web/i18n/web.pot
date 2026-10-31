@@ -916,7 +916,7 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Apply"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:266
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:268
 #: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:76
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Cancel"
@@ -937,7 +937,7 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Default"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:265
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:267
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Discard"
 msgstr ""
@@ -975,7 +975,7 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Name"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:331
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:333
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Name is required"
 msgstr ""
@@ -1026,12 +1026,12 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Type"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:264
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:266
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Unsaved changes"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:264
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:266
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "You have unsaved changes. Discard them?"
 msgstr ""
@@ -2582,28 +2582,33 @@ msgctxt "web/import/ImportPanel"
 msgid "Upload a UTF-8 CSV. Map columns to importable fields from the catalog."
 msgstr ""
 
-#: web/menu/menus.ts:50
+#: web/menu/menus.ts:57
 msgctxt "web/menu/menus"
-msgid "Record Properties"
+msgid "Field Defaults"
 msgstr ""
 
-#: web/menu/menus.ts:19
+#: web/menu/menus.ts:51
+msgctxt "web/menu/menus"
+msgid "Property Definitions"
+msgstr ""
+
+#: web/menu/menus.ts:20
 msgctxt "web/menu/menus"
 msgid "Settings"
 msgstr ""
 
-#: web/menu/menus.ts:31
-#: web/menu/menus.ts:44
+#: web/menu/menus.ts:32
+#: web/menu/menus.ts:45
 msgctxt "web/menu/menus"
 msgid "Translations"
 msgstr ""
 
-#: web/menu/menus.ts:26
+#: web/menu/menus.ts:27
 msgctxt "web/menu/menus"
 msgid "core"
 msgstr ""
 
-#: web/menu/menus.ts:39
+#: web/menu/menus.ts:40
 msgctxt "web/menu/menus"
 msgid "web"
 msgstr ""
@@ -2691,9 +2696,14 @@ msgctxt "web/pages/ErrorView"
 msgid "You do not have permission to access this page"
 msgstr ""
 
+#: web/pages/field_default_list_page.ts:38
+msgctxt "web/pages/FieldDefaultList"
+msgid "Field Defaults: %s"
+msgstr ""
+
 #: web/pages/property_definition_list_page.ts:38
 msgctxt "web/pages/PropertyDefinitionList"
-msgid "Record Properties: %s"
+msgid "Property Definitions: %s"
 msgstr ""
 
 #: web/pages/terminology_list_page.ts:36
@@ -2785,6 +2795,21 @@ msgctxt "web/query/utils/filter/operators"
 msgid "Not in"
 msgstr ""
 
+#: web/route/fieldDefaultRoutes.ts:62
+msgctxt "web/route/fieldDefaultRoutes"
+msgid "Field Default"
+msgstr ""
+
+#: web/route/fieldDefaultRoutes.ts:31
+msgctxt "web/route/fieldDefaultRoutes"
+msgid "Field Defaults"
+msgstr ""
+
+#: web/route/fieldDefaultRoutes.ts:47
+msgctxt "web/route/fieldDefaultRoutes"
+msgid "New Field Default"
+msgstr ""
+
 #: web/route/propertyDefinitionRoutes.ts:47
 msgctxt "web/route/propertyDefinitionRoutes"
 msgid "New Property Definition"
@@ -2797,7 +2822,7 @@ msgstr ""
 
 #: web/route/propertyDefinitionRoutes.ts:31
 msgctxt "web/route/propertyDefinitionRoutes"
-msgid "Record Properties"
+msgid "Property Definitions"
 msgstr ""
 
 #: web/route/terminologyRoutes.ts:43
@@ -2819,6 +2844,96 @@ msgstr ""
 #: web/stores/breadcrumbStore/index.ts:19
 msgctxt "web/stores/breadcrumbStore"
 msgid "Page"
+msgstr ""
+
+#: web/views/FieldDefaultFormView.vue:26
+msgctxt "web/views/FieldDefaultFormView"
+msgid "Company Id"
+msgstr ""
+
+#: web/views/field_default_actions.ts:14
+msgctxt "web/views/FieldDefaultFormView"
+msgid "Copy Field Default"
+msgstr ""
+
+#: web/views/field_default_actions.ts:14
+msgctxt "web/views/FieldDefaultFormView"
+msgid "Create Field Default"
+msgstr ""
+
+#: web/views/field_default_actions.ts:14
+msgctxt "web/views/FieldDefaultFormView"
+msgid "Delete Field Default"
+msgstr ""
+
+#: web/views/field_default_actions.ts:14
+msgctxt "web/views/FieldDefaultFormView"
+msgid "Edit Field Default"
+msgstr ""
+
+#: web/views/FieldDefaultFormView.vue:15
+msgctxt "web/views/FieldDefaultFormView"
+msgid "Field"
+msgstr ""
+
+#: web/views/field_default_actions.ts:15
+msgctxt "web/views/FieldDefaultFormView"
+msgid "Field Default"
+msgstr ""
+
+#: web/views/FieldDefaultFormView.vue:12
+msgctxt "web/views/FieldDefaultFormView"
+msgid "Model"
+msgstr ""
+
+#: web/views/FieldDefaultFormView.vue:21
+msgctxt "web/views/FieldDefaultFormView"
+msgid "Required"
+msgstr ""
+
+#: web/views/FieldDefaultFormView.vue:20
+msgctxt "web/views/FieldDefaultFormView"
+msgid "Scope"
+msgstr ""
+
+#: web/views/FieldDefaultFormView.vue:9
+msgctxt "web/views/FieldDefaultFormView"
+msgid "Target"
+msgstr ""
+
+#: web/views/FieldDefaultFormView.vue:23
+msgctxt "web/views/FieldDefaultFormView"
+msgid "User Id"
+msgstr ""
+
+#: web/views/FieldDefaultFormView.vue:31
+msgctxt "web/views/FieldDefaultFormView"
+msgid "Value"
+msgstr ""
+
+#: web/views/FieldDefaultListView.vue:11
+msgctxt "web/views/FieldDefaultListView"
+msgid "Company Id"
+msgstr ""
+
+#: web/views/FieldDefaultListView.vue:9
+msgctxt "web/views/FieldDefaultListView"
+msgid "Field"
+msgstr ""
+
+#: web/views/FieldDefaultListView.vue:8
+msgctxt "web/views/FieldDefaultListView"
+msgid "Model"
+msgstr ""
+
+#: web/views/FieldDefaultListView.vue:10
+msgctxt "web/views/FieldDefaultListView"
+msgid "User Id"
+msgstr ""
+
+#: web/views/FieldDefaultListView.vue:12
+msgctxt "web/views/FieldDefaultListView"
+msgid "Value"
 msgstr ""
 
 #: web/views/PropertyDefinitionFormView.vue:21

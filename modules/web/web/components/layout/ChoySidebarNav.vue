@@ -136,6 +136,19 @@ function onLeafClick(item: MenuItem) {
   gap: 0.125rem;
   width: 100%;
 }
+/*
+ * Nested Settings → app → leaf: keep left guide-line inset, but flush the
+ * submenu's right edge to the parent menu-button so long labels (e.g.
+ * Property Definitions) get the same usable width as the parent row.
+ * Prefer data-slot: kit once mis-tagged data-sidebar as menu-badge.
+ */
+.choy-sidebar-nav :deep([data-slot='sidebar-menu-sub']),
+.choy-sidebar-nav :deep([data-sidebar='menu-sub']) {
+  margin-inline-start: 0.5rem;
+  margin-inline-end: 0;
+  padding-inline-start: 0.5rem;
+  padding-inline-end: 0;
+}
 .choy-sidebar-nav :deep([data-sidebar='menu-button']),
 .choy-sidebar-nav :deep([data-sidebar='menu-sub-button']) {
   height: 2rem;
@@ -148,7 +161,8 @@ function onLeafClick(item: MenuItem) {
 }
 .choy-sidebar-nav :deep([data-sidebar='menu-sub-button']) {
   width: 100%;
-  padding-inline-start: 1.25rem;
+  padding-inline-start: 0.75rem;
+  padding-inline-end: 0.5rem;
 }
 .choy-sidebar-nav :deep([data-sidebar='menu-button']:hover),
 .choy-sidebar-nav :deep([data-sidebar='menu-sub-button']:hover) {

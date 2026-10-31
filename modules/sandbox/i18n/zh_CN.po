@@ -371,10 +371,15 @@ msgctxt "sandbox.model.SandboxTag.fields"
 msgid "Name"
 msgstr "名称"
 
+#: web/menu/menus.ts:33
+msgctxt "web/menu/menus"
+msgid "Field Defaults"
+msgstr "字段默认值"
+
 #: web/menu/menus.ts:27
 msgctxt "web/menu/menus"
-msgid "Record Properties"
-msgstr "记录属性"
+msgid "Property Definitions"
+msgstr "属性定义"
 
 #: web/menu/menus.ts:21
 msgctxt "web/menu/menus"
@@ -411,47 +416,52 @@ msgctxt "web/pages/SandboxRecordList"
 msgid "Field Kitchen Sink"
 msgstr "字段试验场"
 
-#: web/route/routes.ts:83
+#: web/route/routes.ts:163
+msgctxt "web/route/routes"
+msgid "Field Defaults"
+msgstr "字段默认值"
+
+#: web/route/routes.ts:87
 msgctxt "web/route/routes"
 msgid "New Sandbox Record"
 msgstr "新建沙箱记录"
 
-#: web/route/routes.ts:113
+#: web/route/routes.ts:117
 msgctxt "web/route/routes"
 msgid "New Sandbox Tag"
 msgstr "新建沙箱标签"
 
-#: web/route/routes.ts:150
+#: web/route/routes.ts:154
 msgctxt "web/route/routes"
-msgid "Record Properties"
-msgstr "记录属性"
+msgid "Property Definitions"
+msgstr "属性定义"
 
-#: web/route/routes.ts:62
+#: web/route/routes.ts:66
 msgctxt "web/route/routes"
 msgid "Sandbox Record Chart"
 msgstr "沙箱记录图表"
 
-#: web/route/routes.ts:98
+#: web/route/routes.ts:102
 msgctxt "web/route/routes"
 msgid "Sandbox Record Detail"
 msgstr "沙箱记录详情"
 
-#: web/route/routes.ts:42
+#: web/route/routes.ts:46
 msgctxt "web/route/routes"
 msgid "Sandbox Record Kanban"
 msgstr "沙箱记录看板"
 
-#: web/route/routes.ts:22
+#: web/route/routes.ts:26
 msgctxt "web/route/routes"
 msgid "Sandbox Record List"
 msgstr "沙箱记录列表"
 
-#: web/route/routes.ts:127
+#: web/route/routes.ts:131
 msgctxt "web/route/routes"
 msgid "Sandbox Tag Detail"
 msgstr "沙箱标签详情"
 
-#: web/route/routes.ts:141
+#: web/route/routes.ts:145
 msgctxt "web/route/routes"
 msgid "Translations"
 msgstr "翻译"
@@ -864,12 +874,12 @@ msgstr "标签"
 #~ msgstr "配置"
 
 #~ msgctxt "web/menu/titles"
-#~ msgid "Record Properties"
-#~ msgstr "记录属性"
+#~ msgid "Property Definitions"
+#~ msgstr "属性定义"
 
 #~ msgctxt "web/pages/SandboxPropertyDefinitionList"
-#~ msgid "Record Properties"
-#~ msgstr "记录属性"
+#~ msgid "Property Definitions"
+#~ msgstr "属性定义"
 
 #~ msgctxt "web/route/routes"
 #~ msgid "New Property Definition"

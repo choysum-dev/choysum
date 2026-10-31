@@ -261,6 +261,11 @@ msgctxt "service/models/partner_contact"
 msgid "PartnerId is required"
 msgstr "PartnerId 为必填项"
 
+#: web/menu/menus.ts:33
+msgctxt "web/menu/menus"
+msgid "Field Defaults"
+msgstr "字段默认值"
+
 #: web/menu/titles.ts:10
 msgctxt "web/menu/menus"
 msgid "Partner List"
@@ -273,8 +278,8 @@ msgstr "伙伴管理"
 
 #: web/menu/menus.ts:27
 msgctxt "web/menu/menus"
-msgid "Record Properties"
-msgstr "记录属性"
+msgid "Property Definitions"
+msgstr "属性定义"
 
 #: web/menu/menus.ts:21
 msgctxt "web/menu/menus"
@@ -296,27 +301,32 @@ msgctxt "web/pages/PartnerList"
 msgid "Upload a UTF-8 CSV with columns Name, Code, IsActive, CustomerRank, SupplierRank."
 msgstr "上传包含 Name、Code、IsActive、CustomerRank、SupplierRank 列的 UTF-8 CSV。"
 
-#: web/route/routes.ts:41
+#: web/route/routes.ts:72
+msgctxt "web/route/routes"
+msgid "Field Defaults"
+msgstr "字段默认值"
+
+#: web/route/routes.ts:45
 msgctxt "web/route/routes"
 msgid "New Partner"
 msgstr "新建伙伴"
 
-#: web/route/routes.ts:32
+#: web/route/routes.ts:36
 msgctxt "web/route/routes"
 msgid "Partner Detail"
 msgstr "伙伴详情"
 
-#: web/route/routes.ts:17
+#: web/route/routes.ts:21
 msgctxt "web/route/routes"
 msgid "Partner List"
 msgstr "伙伴列表"
 
-#: web/route/routes.ts:59
+#: web/route/routes.ts:63
 msgctxt "web/route/routes"
-msgid "Record Properties"
-msgstr "记录属性"
+msgid "Property Definitions"
+msgstr "属性定义"
 
-#: web/route/routes.ts:50
+#: web/route/routes.ts:54
 msgctxt "web/route/routes"
 msgid "Translations"
 msgstr "翻译"

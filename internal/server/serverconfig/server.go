@@ -52,7 +52,7 @@ func NewDefaultServerConfig() *ServerConfig {
 		TLSServerName:      "",
 		EnableGrpcWebProxy: true,
 		HotReload:          false,
-		HotReloadQueueSize: 8,
+		HotReloadQueueSize: 32,
 		Register:           "local",
 		Environment:        "default",
 		RuntimeEngine:      "default",
@@ -69,7 +69,7 @@ func ApplyViperDefaults(v *viper.Viper) error {
 	if v == nil {
 		return fmt.Errorf("viper instance is required")
 	}
-	v.SetDefault("server.hotReloadQueueSize", 8)
+	v.SetDefault("server.hotReloadQueueSize", 32)
 	v.SetDefault("server.jsExecutorFactory", "default")
 	return nil
 }

@@ -15,7 +15,7 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     v-on="$attrs"
   >
-    <div data-anchor="choy.form.sheet" class="min-h-full">
+    <div data-anchor="choy.form.sheet" class="flex min-h-full flex-col gap-8">
       <ChoySection :title="_t('Scope')">
         <ChoyGrid :cols="12">
           <ChoyCol :span="6">
@@ -51,7 +51,7 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyGrid>
       </ChoySection>
 
-      <ChoySection :title="_t('Definition')" class="mt-6">
+      <ChoySection :title="_t('Definition')">
         <ChoyPropertiesDefinitionField :store="store" prop="Definition" hide-label />
       </ChoySection>
     </div>

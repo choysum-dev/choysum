@@ -73,6 +73,36 @@
       }
     },
     {
+      "name": "rma_sys_admin_field_default_logical",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_sys_admin"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": null,
+        "LogicalModelName": "FieldDefault",
+        "LogicalMethods": ["Create", "CreateMany", "Update", "UpdateById", "Delete", "DeleteById", "Search", "Browse", "Count"],
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rfr_sys_admin_field_default_logical",
+      "model": "RoleFieldRule",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_sys_admin"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaFieldId": null,
+        "LogicalModelName": "FieldDefault",
+        "PermRead": "allow",
+        "PermWrite": "allow"
+      }
+    },
+    {
       "name": "rma_sys_admin_app_setting_logical",
       "model": "RoleMethodAccess",
       "values": {

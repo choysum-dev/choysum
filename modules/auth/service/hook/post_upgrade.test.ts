@@ -1,145 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { AuthTerminologyGrantCleanupHooks, AuthUserLanguageHooks } from './post_upgrade';
+import { revokeObsoleteTerminologyEditorGrants } from './terminology_grant_cleanup';
 
-test('AuthUserLanguageHooks.backfillUserLanguageId: sqlite SQL filters active trimmed codes', async () => {
-  const calls: Array<{ sql: string; params: string }> = [];
-  const prev = (globalThis as any).$choysum;
-  (globalThis as any).$choysum = {
-    ...(prev || {}),
-    db: {
-      dialectName: 'sqlite',
-      execute: async (sql: string, params: string) => {
-        calls.push({ sql, params });
-      },
-    },
-  };
-  try {
-    await AuthUserLanguageHooks.backfillUserLanguageId();
-  } finally {
-    (globalThis as any).$choysum = prev;
-  }
-  expect(calls.length).toBe(1);
-  expect(calls[0].params).toBe('[]');
-  expect(calls[0].sql).toContain('is_active = 1');
-  expect(calls[0].sql).toContain('trim(auth_user.language)');
-});
-
-test('AuthUserLanguageHooks.backfillUserLanguageId: mysql SQL filters active trimmed codes', async () => {
-  const calls: Array<{ sql: string; params: string }> = [];
-  const prev = (globalThis as any).$choysum;
-  (globalThis as any).$choysum = {
-    ...(prev || {}),
-    db: {
-      dialectName: 'mysql',
-      execute: async (sql: string, params: string) => {
-        calls.push({ sql, params });
-      },
-    },
-  };
-  try {
-    await AuthUserLanguageHooks.backfillUserLanguageId();
-  } finally {
-    (globalThis as any).$choysum = prev;
-  }
-  expect(calls.length).toBe(1);
-  expect(calls[0].sql).toContain('is_active = true');
-  expect(calls[0].sql).toContain('trim(auth_user.language)');
-});
-
-test('AuthUserLanguageHooks.backfillUserLanguageId: dialect name is trimmed and lowercased', async () => {
-  const calls: Array<{ sql: string; params: string }> = [];
-  const prev = (globalThis as any).$choysum;
-  (globalThis as any).$choysum = {
-    ...(prev || {}),
-    db: {
-      dialectName: ' SQLite ',
-      execute: async (sql: string, params: string) => {
-        calls.push({ sql, params });
-      },
-    },
-  };
-  try {
-    await AuthUserLanguageHooks.backfillUserLanguageId();
-  } finally {
-    (globalThis as any).$choysum = prev;
-  }
-  expect(calls.length).toBe(1);
-  expect(calls[0].sql).toContain('is_active = 1');
-});
-
-test('AuthUserLanguageHooks.backfillUserLanguageId: postgres SQL filters active trimmed codes', async () => {
-  const calls: Array<{ sql: string; params: string }> = [];
-  const prev = (globalThis as any).$choysum;
-  (globalThis as any).$choysum = {
-    ...(prev || {}),
-    db: {
-      dialectName: 'postgres',
-      execute: async (sql: string, params: string) => {
-        calls.push({ sql, params });
-      },
-    },
-  };
-  try {
-    await AuthUserLanguageHooks.backfillUserLanguageId();
-  } finally {
-    (globalThis as any).$choysum = prev;
-  }
-  expect(calls.length).toBe(1);
-  expect(calls[0].sql).toContain('is_active = true');
-  expect(calls[0].sql).toContain('trim(auth_user.language)');
-});
-
-test('AuthUserLanguageHooks.backfillUserLanguageId: ignores execute failures', async () => {
-  const prev = (globalThis as any).$choysum;
-  (globalThis as any).$choysum = {
-    ...(prev || {}),
-    db: {
-      dialectName: 'sqlite',
-      execute: async () => {
-        throw new Error('no language column');
-      },
-    },
-  };
-  try {
-    await AuthUserLanguageHooks.backfillUserLanguageId();
-  } finally {
-    (globalThis as any).$choysum = prev;
-  }
-});
-
-test('AuthUserLanguageHooks.backfillUserLanguageId: no-ops without db', async () => {
-  const prev = (globalThis as any).$choysum;
-  (globalThis as any).$choysum = { ...(prev || {}), db: undefined };
-  try {
-    await AuthUserLanguageHooks.backfillUserLanguageId();
-  } finally {
-    (globalThis as any).$choysum = prev;
-  }
-});
-
-test('AuthUserLanguageHooks.backfillUserLanguageId: unknown dialect executes no SQL', async () => {
-  const calls: Array<{ sql: string; params: string }> = [];
-  const prev = (globalThis as any).$choysum;
-  (globalThis as any).$choysum = {
-    ...(prev || {}),
-    db: {
-      dialectName: 'oracle',
-      execute: async (sql: string, params: string) => {
-        calls.push({ sql, params });
-      },
-    },
-  };
-  try {
-    await AuthUserLanguageHooks.backfillUserLanguageId();
-  } finally {
-    (globalThis as any).$choysum = prev;
-  }
-  expect(calls.length).toBe(0);
-});
-
-test('AuthTerminologyGrantCleanupHooks: deletes obsolete xml_id rows', async () => {
+test('revokeObsoleteTerminologyEditorGrants: deletes obsolete xml_id rows', async () => {
   const calls: string[] = [];
   const prev = (globalThis as any).$choysum;
   (globalThis as any).$choysum = {
@@ -151,7 +15,7 @@ test('AuthTerminologyGrantCleanupHooks: deletes obsolete xml_id rows', async () 
     },
   };
   try {
-    await AuthTerminologyGrantCleanupHooks.revokeObsoleteTerminologyEditorGrants();
+    await revokeObsoleteTerminologyEditorGrants();
   } finally {
     (globalThis as any).$choysum = prev;
   }
@@ -163,17 +27,17 @@ test('AuthTerminologyGrantCleanupHooks: deletes obsolete xml_id rows', async () 
   expect(calls[2]).toContain('meta_model_data');
 });
 
-test('AuthTerminologyGrantCleanupHooks: no-ops without db', async () => {
+test('revokeObsoleteTerminologyEditorGrants: no-ops without db', async () => {
   const prev = (globalThis as any).$choysum;
   (globalThis as any).$choysum = { ...(prev || {}), db: undefined };
   try {
-    await AuthTerminologyGrantCleanupHooks.revokeObsoleteTerminologyEditorGrants();
+    await revokeObsoleteTerminologyEditorGrants();
   } finally {
     (globalThis as any).$choysum = prev;
   }
 });
 
-test('AuthTerminologyGrantCleanupHooks: continues grant deletes after failures', async () => {
+test('revokeObsoleteTerminologyEditorGrants: continues grant deletes after failures', async () => {
   let n = 0;
   const prev = (globalThis as any).$choysum;
   (globalThis as any).$choysum = {
@@ -186,7 +50,7 @@ test('AuthTerminologyGrantCleanupHooks: continues grant deletes after failures',
     },
   };
   try {
-    await AuthTerminologyGrantCleanupHooks.revokeObsoleteTerminologyEditorGrants();
+    await revokeObsoleteTerminologyEditorGrants();
   } finally {
     (globalThis as any).$choysum = prev;
   }
@@ -194,7 +58,7 @@ test('AuthTerminologyGrantCleanupHooks: continues grant deletes after failures',
   expect(n).toBe(2);
 });
 
-test('AuthTerminologyGrantCleanupHooks: skips mapping cleanup when a grant delete fails', async () => {
+test('revokeObsoleteTerminologyEditorGrants: skips mapping cleanup when a grant delete fails', async () => {
   const calls: string[] = [];
   const prev = (globalThis as any).$choysum;
   (globalThis as any).$choysum = {
@@ -209,10 +73,10 @@ test('AuthTerminologyGrantCleanupHooks: skips mapping cleanup when a grant delet
     },
   };
   try {
-    await AuthTerminologyGrantCleanupHooks.revokeObsoleteTerminologyEditorGrants();
+    await revokeObsoleteTerminologyEditorGrants();
   } finally {
     (globalThis as any).$choysum = prev;
   }
   expect(calls.length).toBe(2);
-  expect(calls.filter(s => /^\s*DELETE FROM meta_model_data/m.test(s)).length).toBe(0);
+  expect(calls.some(s => s.includes('meta_model_data') && s.includes('DELETE FROM meta_model_data'))).toBe(false);
 });

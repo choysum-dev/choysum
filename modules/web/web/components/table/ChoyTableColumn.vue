@@ -269,7 +269,12 @@ function buildColumn(): Column {
         ),
     };
   } else if (type === 'index') {
-    const width = colProps.width ?? 50;
+    // 44 matches O2M/M2M index columns and PropertiesDefinition `w-11` rows.
+    const width = colProps.width ?? 44;
+    const indexClass = 'tabular-nums text-muted-foreground';
+    const indexHeader = slots.header
+      ? headerVNode
+      : () => h('span', { class: indexClass }, title || '#');
     col = {
       key: dataKey,
       dataKey,
@@ -278,17 +283,17 @@ function buildColumn(): Column {
       align: 'end',
       sortable: false,
       ...colProps,
-      headerCellRenderer: headerVNode,
+      headerCellRenderer: indexHeader,
       cellRenderer: ({ rowData, rowIndex }: any) => {
         // Group detail rows prefer the per-group index.
         const gi = (rowData as any)?.groupIndex;
         if (typeof gi === 'number') {
-          return h('span', null, String(gi));
+          return h('span', { class: indexClass }, String(gi));
         }
         // Other rows fall back to the global row index with pagination offset.
         const raw = (ctx as any).baseIndex;
         const base = typeof raw === 'number' ? raw : Number(raw?.value ?? 1);
-        return h('span', null, String(base + rowIndex));
+        return h('span', { class: indexClass }, String(base + rowIndex));
       },
     };
   } else if (type === 'handle') {

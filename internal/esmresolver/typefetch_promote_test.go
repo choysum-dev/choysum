@@ -499,8 +499,13 @@ func TestUpdateTsconfigPaths_SkipsUnchangedMappings(t *testing.T) {
 		t.Fatal(err)
 	}
 	rel := "types/vue.d.ts"
+	// Stock fields already reconciled so reconcileModulesTsconfigStock is a
+	// no-op; this test asserts paths-only UpdateTsconfigPaths skips rewrite.
 	initial := fmt.Sprintf(`{
   "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "useDefineForClassFields": false,
     "paths": {
       "vue": [%q]
     }

@@ -52,6 +52,11 @@ var systemAuthSkipMethods = []string{
 
 var internalAuthPreferredMethods = []string{
 	"task.Job/GetJob",
+	// Lifecycle ready/ensure may Dial task.Schedule when the local JS pool misses
+	// (separate deploy or cold miss). Host InternalKey / mTLS only — not interactive clients.
+	"task.Schedule/Search",
+	"task.Schedule/Create",
+	"task.Schedule/UpdateById",
 	"*.TaskWorker/*",
 	"*.TranslationTerm/GetTranslations",
 	"meta.MetaApplication/*",

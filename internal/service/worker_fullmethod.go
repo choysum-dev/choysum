@@ -1,0 +1,101 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+package service
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/choysum-dev/choysum/pkg/jsengine"
+	"github.com/choysum-dev/choysum/pkg/scope"
+	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+// workerOnlyFullMethods are TaskWorker routing keys that are invoked in-process
+// via the JS pool without requiring a public gRPC methodDescriptor.
+// Extensible for later hardcuts (FanOut / Execute* / CleanExpired*).
+var workerOnlyFullMethods = map[string]struct{}{
+	"document.AttachmentContent/RunGarbageCollection": {},
+}
+
+func isWorkerOnlyFullMethod(fullMethod string) bool {
+	_, ok := workerOnlyFullMethods[strings.TrimSpace(fullMethod)]
+	return ok
+}
+
+func workerJsServicePath(fullMethod string) (string, error) {
+	fullMethod = strings.TrimSpace(fullMethod)
+	if fullMethod == "" {
+		return "", fmt.Errorf("empty full method")
+	}
+	// FullMethod uses Service/Method; JS pool uses Service.Method.
+	return strings.ReplaceAll(fullMethod, "/", "."), nil
+}
+
+func workerPayloadArgs(fullMethod string, payload map[string]interface{}) []interface{} {
+	if len(payload) == 0 {
+		return nil
+	}
+	// GC contract only: pass a single nowISO string when present.
+	if strings.TrimSpace(fullMethod) == "document.AttachmentContent/RunGarbageCollection" {
+		if raw, ok := payload["nowISO"]; ok {
+			if s, ok := raw.(string); ok {
+				return []interface{}{s}
+			}
+		}
+		if raw, ok := payload["NowISO"]; ok {
+			if s, ok := raw.(string); ok {
+				return []interface{}{s}
+			}
+		}
+	}
+	return []interface{}{payload}
+}
+
+func (r invocationRuntime) invokeWorkerOnlyFullMethod(
+	ctx context.Context,
+	runtimeScope scope.Scope,
+	jsCtx map[string]interface{},
+	routing *jsengine.JsExecutionRouting,
+	req *executeJobRequest,
+) (any, error) {
+	servicePath, err := workerJsServicePath(req.FullMethod)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	if req.TimeoutMs > 0 {
+		timeout := time.Duration(req.TimeoutMs) * time.Millisecond
+		deadline, ok := ctx.Deadline()
+		// Apply TimeoutMs when the parent has no deadline, or when it is longer
+		// than the worker task limit (shorter child timeout wins).
+		if !ok || time.Until(deadline) > timeout {
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(ctx, timeout)
+			defer cancel()
+		}
+	}
+
+	span := trace.SpanFromContext(ctx)
+	spanID := span.SpanContext().SpanID().String()
+	execCtx := scope.ContextWithScope(ctx, runtimeScope)
+	jsRequest := &jsengine.JsRequest{
+		Id:      spanID,
+		Service: servicePath,
+		Context: jsCtx,
+		Routing: routing,
+		Args:    workerPayloadArgs(req.FullMethod, req.Payload),
+	}
+	jsResponse, err := r.jsExecutor.Execute(execCtx, jsRequest)
+	if err != nil {
+		return nil, err
+	}
+	if jsResponse == nil {
+		return nil, nil
+	}
+	return jsResponse.Result, nil
+}

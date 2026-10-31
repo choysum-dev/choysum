@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/choysum-dev/choysum/internal/module/evolution/systemidentity"
 	"github.com/choysum-dev/choysum/pkg/auth"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
@@ -25,7 +26,7 @@ type execCtxPayload struct {
 	payload   map[string]any
 }
 
-func BuildJsContext(ctx context.Context, runtimeScope scope.Scope, module *meta.Module, version string, fromVersion string) execCtxPayload {
+func BuildJsContext(ctx context.Context, runtimeScope scope.Scope, module *meta.Module, version string, fromVersion string) (execCtxPayload, error) {
 	traceId := ""
 	spanId := ""
 	span := trace.SpanFromContext(ctx)
@@ -43,15 +44,17 @@ func BuildJsContext(ctx context.Context, runtimeScope scope.Scope, module *meta.
 		spanId = xid.New().String()
 	}
 
-	userId := "admin"
+	sessionUserID := ""
 	if id := auth.IdentityFromContext(ctx); id != nil && id.IsValid() {
-		if v := strings.TrimSpace(id.GetUserID()); v != "" {
-			userId = v
-		}
+		sessionUserID = strings.TrimSpace(id.GetUserID())
+	}
+	userId, companyID, err := systemidentity.ResolvePrincipalUserID(ctx, runtimeScope, sessionUserID)
+	if err != nil {
+		return execCtxPayload{}, err
 	}
 
 	payload := map[string]any{
-		"ctx": map[string]any{},
+		"ctx": systemidentity.CompanyContextPayload(companyID),
 		"identity": map[string]any{
 			"userId": userId,
 		},
@@ -72,7 +75,7 @@ func BuildJsContext(ctx context.Context, runtimeScope scope.Scope, module *meta.
 		requestId: spanId,
 		execCtx:   BuildExecContext(ctx, runtimeScope),
 		payload:   payload,
-	}
+	}, nil
 }
 
 func contextWithEffectiveScope(ctx context.Context, runtimeScope scope.Scope) context.Context {
