@@ -36,6 +36,16 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
+### 2026-10-31 — SidebarMenuSub `data-sidebar` tag
+
+- **What:** `SidebarMenuSub.vue` `data-sidebar` corrected from `menu-badge` to
+  `menu-sub` (matches `data-slot="sidebar-menu-sub"` and sibling
+  `menu-sub-button` / `menu-sub-item` naming).
+- **Why not product-only:** Product CSS that keys on `data-sidebar='menu-sub'`
+  never matched; the wrong attribute is a kit contract defect, not skin.
+- **Do not regress:** Keep `data-sidebar="menu-sub"` on the sub list `<ul>` when
+  re-copying sidebar primitives from upstream.
+
 ### 2026-10-26 — Input `type` wins over `$attrs`
 
 - **Why kit (not Choy* only):** `Input` declares `type` (default `text`) with
