@@ -848,12 +848,12 @@ msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "View record"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:362
+#: web/components/field/ChoyPropertiesDefinitionField.vue:365
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "%s properties"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:364
+#: web/components/field/ChoyPropertiesDefinitionField.vue:367
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "%s properties (%s, …)"
 msgstr ""
@@ -875,7 +875,7 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Name"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:358
+#: web/components/field/ChoyPropertiesDefinitionField.vue:361
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "No properties"
 msgstr ""
@@ -898,9 +898,9 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Reorder"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:382
-#: web/components/field/ChoyPropertiesDefinitionField.vue:469
-#: web/components/field/ChoyPropertiesDefinitionField.vue:473
+#: web/components/field/ChoyPropertiesDefinitionField.vue:385
+#: web/components/field/ChoyPropertiesDefinitionField.vue:472
+#: web/components/field/ChoyPropertiesDefinitionField.vue:476
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "This row was changed while editing; please reopen it."
 msgstr ""
@@ -916,6 +916,7 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Apply"
 msgstr ""
 
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:266
 #: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:76
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Cancel"
@@ -931,9 +932,14 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Constraints"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:145
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:163
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Default"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:265
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Discard"
 msgstr ""
 
 #: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:68
@@ -941,13 +947,13 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Edit"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:95
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:101
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Edit property: %s"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:144
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:182
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:162
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:202
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Help"
 msgstr ""
@@ -957,24 +963,24 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Identity"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:143
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:171
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:194
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:161
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:191
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:214
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Label"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:136
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:154
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Name"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:268
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:331
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Name is required"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:95
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:101
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "New property"
 msgstr ""
@@ -984,17 +990,17 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Presentation"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:93
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:99
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Property"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:93
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:99
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Property: %s"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:146
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:164
 #: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:46
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Readonly"
@@ -1015,9 +1021,19 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Translate label"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:139
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:157
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Type"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:264
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Unsaved changes"
+msgstr ""
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:264
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "You have unsaved changes. Discard them?"
 msgstr ""
 
 #: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue:49

@@ -826,12 +826,12 @@ msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "View record"
 msgstr "查看记录"
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:362
+#: web/components/field/ChoyPropertiesDefinitionField.vue:365
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "%s properties"
 msgstr "%s 个属性"
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:364
+#: web/components/field/ChoyPropertiesDefinitionField.vue:367
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "%s properties (%s, …)"
 msgstr "%s 个属性（%s，…）"
@@ -851,7 +851,7 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Name"
 msgstr "名称"
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:358
+#: web/components/field/ChoyPropertiesDefinitionField.vue:361
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "No properties"
 msgstr "无属性"
@@ -871,7 +871,7 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Reorder"
 msgstr "调整顺序"
 
-#: web/components/field/ChoyPropertiesDefinitionField.vue:382 web/components/field/ChoyPropertiesDefinitionField.vue:469 web/components/field/ChoyPropertiesDefinitionField.vue:473
+#: web/components/field/ChoyPropertiesDefinitionField.vue:385 web/components/field/ChoyPropertiesDefinitionField.vue:472 web/components/field/ChoyPropertiesDefinitionField.vue:476
 msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "This row was changed while editing; please reopen it."
 msgstr "该行在编辑期间已变更，请重新打开。"
@@ -886,7 +886,7 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Apply"
 msgstr "应用"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:76
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:266 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:76
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Cancel"
 msgstr "取消"
@@ -901,22 +901,27 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Constraints"
 msgstr "约束"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:145
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:163
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Default"
 msgstr "默认值"
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:265
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Discard"
+msgstr "放弃"
 
 #: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:68
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Edit"
 msgstr "编辑"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:95
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:101
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Edit property: %s"
 msgstr "编辑属性：%s"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:144 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:182
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:162 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:202
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Help"
 msgstr "帮助"
@@ -926,22 +931,22 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Identity"
 msgstr "标识"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:143 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:171 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:194
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:161 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:191 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:214
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Label"
 msgstr "标签"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:136
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:154
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Name"
 msgstr "名称"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:268
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:331
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Name is required"
 msgstr "名称为必填项"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:95
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:101
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "New property"
 msgstr "新建属性"
@@ -951,17 +956,17 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Presentation"
 msgstr "展示"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:93
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:99
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Property"
 msgstr "属性"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:93
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:99
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Property: %s"
 msgstr "属性：%s"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:146 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:46
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:164 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:46
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Readonly"
 msgstr "只读"
@@ -981,10 +986,20 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Translate label"
 msgstr "翻译标签"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:139
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:157
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Type"
 msgstr "类型"
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:264
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "Unsaved changes"
+msgstr "未保存的更改"
+
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:264
+msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
+msgid "You have unsaved changes. Discard them?"
+msgstr "有未保存的更改。要放弃吗？"
 
 #: web/components/field/ChoyPropertiesDefinitionSelectionEditor.vue:49
 msgctxt "web/components/field/ChoyPropertiesDefinitionSelectionEditor"

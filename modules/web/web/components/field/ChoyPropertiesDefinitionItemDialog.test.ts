@@ -297,7 +297,11 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
     restoreSfc(ChoyPropertiesDefinitionSelectionEditor as any);
   });
 
-  function mountDialog(props: Record<string, unknown> = {}, on?: Record<string, (...args: any[]) => void>) {
+  function mountDialog(
+    props: Record<string, unknown> = {},
+    on?: Record<string, (...args: any[]) => void>,
+    opts: { reactiveProps?: boolean } = {},
+  ) {
     return mountApp(ItemDialog as any, {
       props: {
         modelValue: true,
@@ -306,6 +310,7 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
       },
       on,
       plugins: [pinia],
+      reactiveProps: opts.reactiveProps === true,
     });
   }
 
@@ -736,6 +741,8 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
       { onSaved },
     );
     await flushPromises();
+    // setupState unwraps refs — formStore is the LocalFormStore instance.
+    const store = m.setupState().formStore as LocalFormStore | null;
     m.click('[data-testid="choy-properties-definition-translate-string"]');
     await flushPromises();
     m.click('[data-testid="stub-translate-save-string"]');
@@ -743,11 +750,13 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
     expect(String((m.q('[data-testid="choy-properties-definition-string"]') as HTMLInputElement)?.value || '')).toBe(
       'L-en',
     );
+    expect(store?.getField('Label')).toBe('L-en');
 
     m.click('[data-testid="choy-properties-definition-translate-help"]');
     await flushPromises();
     m.click('[data-testid="stub-translate-save-help"]');
     await flushPromises();
+    expect(store?.getField('Help')).toBe('H-en');
 
     m.click('[data-testid="choy-properties-definition-item-save"]');
     await flushPromises();
@@ -853,6 +862,21 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
     await flushPromises();
     expect((onSaved.calls[0][0] as DefinitionEditorDraftItem).readonly).toBe(true);
     m.unmount();
+  });
+
+  test('closing modelValue clears form and emits closed', async () => {
+    const onClosed = fnRecorder();
+    const m = mountDialog({}, { onClosed }, { reactiveProps: true });
+    try {
+      await flushPromises();
+      expect(m.q('[data-testid="choy-properties-definition-item-form"]')).toBeTruthy();
+      (m.props as { modelValue: boolean }).modelValue = false;
+      await flushPromises();
+      expect(onClosed.calls.length).toBe(1);
+      expect(m.q('[data-testid="choy-properties-definition-item-form"]')).toBeFalsy();
+    } finally {
+      m.unmount();
+    }
   });
 
   test('openSelectionTranslate ignores empty value', async () => {

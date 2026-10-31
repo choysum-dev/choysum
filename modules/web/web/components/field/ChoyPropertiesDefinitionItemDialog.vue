@@ -464,10 +464,12 @@ function onTranslateSaved(next: Record<string, string>) {
     item.stringMap = { ...next };
     syncDraftLabelsForLang(item, editorLang());
     formDataRef.value.Label = item.string;
+    formStore.value?.setField('Label', item.string);
   } else if (target.kind === 'help') {
     item.helpMap = { ...next };
     syncDraftLabelsForLang(item, editorLang());
     formDataRef.value.Help = item.help;
+    formStore.value?.setField('Help', item.help);
   } else {
     const pendingRows = selectionRowsFromDraft(item);
     item.selectionLabelMaps = {
