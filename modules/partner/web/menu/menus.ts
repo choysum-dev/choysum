@@ -29,6 +29,12 @@ export const partnerSettingsAppMenu: MenuItem = defineMenu('partner.menu.setting
       sequence: 20,
       defaultRoles: ['sys.admin'],
     }),
+    defineMenu('partner.menu.field_defaults', {
+      title: _lt('Field Defaults'),
+      path: '/web/field-defaults/partner',
+      sequence: 30,
+      defaultRoles: ['sys.admin'],
+    }),
   ],
 });
 

@@ -1858,6 +1858,9 @@ func UpdateTsconfigPaths(tsconfigPath string, results []TypeFetchResult) error {
 	if err := ensureModulesTsconfig(tsconfigPath); err != nil {
 		return fmt.Errorf("ensure tsconfig: %w", err)
 	}
+	if err := reconcileModulesTsconfigStock(tsconfigPath); err != nil {
+		return fmt.Errorf("reconcile tsconfig stock: %w", err)
+	}
 
 	data, err := os.ReadFile(tsconfigPath)
 	if err != nil {
@@ -2178,6 +2181,38 @@ func isSafeCompilerTypeRootSegment(seg string) bool {
 	return true
 }
 
+func defaultModulesTsconfig() map[string]interface{} {
+	return map[string]interface{}{
+		"$schema": "https://json.schemastore.org/tsconfig",
+		"compilerOptions": map[string]interface{}{
+			"allowArbitraryExtensions":     true,
+			"allowImportingTsExtensions":   true,
+			"allowJs":                      true,
+			"experimentalDecorators":       true,
+			"lib":                          []string{"ES2020", "DOM", "DOM.Iterable"},
+			"module":                       "ESNext",
+			"moduleResolution":             "bundler",
+			"noEmit":                       true,
+			"paths":                        map[string]interface{}{"@/*": []string{"./*"}},
+			"skipLibCheck":                 true,
+			"strict":                       true,
+			"strictPropertyInitialization": false,
+			"target":                       "ES2020",
+			// Keep assignment-based class fields so esbuild/TS do not wipe
+			// subclass @Field values after BaseModel.entityToModel (define semantics).
+			"useDefineForClassFields": false,
+			// Pull @types/node via type-fetch typeRoots (no root node_modules).
+			// Provides require/process and the Array.at compatibility polyfill.
+			"types": []string{"node"},
+		},
+		// Test and e2e files are intentionally included (not excluded) so
+		// that IDEs can resolve @/* path aliases, ambient test globals
+		// (test, expect), and Node.js built-in types (@types/node) from a
+		// single shared tsconfig project for all modules.
+		"display": "Recommended",
+	}
+}
+
 func ensureModulesTsconfig(tsconfigPath string) error {
 	st, err := os.Stat(tsconfigPath)
 	if err == nil {
@@ -2194,34 +2229,7 @@ func ensureModulesTsconfig(tsconfigPath string) error {
 		return fmt.Errorf("create tsconfig dir: %w", err)
 	}
 
-	base := map[string]interface{}{
-		"$schema": "https://json.schemastore.org/tsconfig",
-		"compilerOptions": map[string]interface{}{
-			"allowArbitraryExtensions":     true,
-			"allowImportingTsExtensions":   true,
-			"allowJs":                      true,
-			"experimentalDecorators":       true,
-			"lib":                          []string{"ES2020", "DOM", "DOM.Iterable"},
-			"module":                       "ESNext",
-			"moduleResolution":             "bundler",
-			"noEmit":                       true,
-			"paths":                        map[string]interface{}{"@/*": []string{"./*"}},
-			"skipLibCheck":                 true,
-			"strict":                       true,
-			"strictPropertyInitialization": false,
-			"target":                       "ES2020",
-			// Pull @types/node via type-fetch typeRoots (no root node_modules).
-			// Provides require/process and the Array.at compatibility polyfill.
-			"types": []string{"node"},
-		},
-		// Test and e2e files are intentionally included (not excluded) so
-		// that IDEs can resolve @/* path aliases, ambient test globals
-		// (test, expect), and Node.js built-in types (@types/node) from a
-		// single shared tsconfig project for all modules.
-		"display": "Recommended",
-	}
-
-	out, err := json.MarshalIndent(base, "", "  ")
+	out, err := json.MarshalIndent(defaultModulesTsconfig(), "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal tsconfig: %w", err)
 	}
@@ -2231,4 +2239,109 @@ func ensureModulesTsconfig(tsconfigPath string) error {
 		return fmt.Errorf("write tsconfig: %w", err)
 	}
 	return nil
+}
+
+// reconcileModulesTsconfigStock aligns stock compilerOptions on an existing
+// modules/tsconfig.json without rewriting custom targets.
+//
+// Stock set: missing/empty target, ES2020, or leftover ES2022 from branch
+// experiments. Those are normalized to ES2020 + useDefineForClassFields=false
+// so IDE/esbuild match BaseModel hydrate (assignment class fields). Non-stock
+// targets (e.g. ESNext) are left alone.
+func reconcileModulesTsconfigStock(tsconfigPath string) error {
+	raw, err := os.ReadFile(tsconfigPath)
+	if err != nil {
+		return fmt.Errorf("read tsconfig: %w", err)
+	}
+	var doc map[string]interface{}
+	if len(raw) == 0 || strings.TrimSpace(string(raw)) == "" {
+		doc = make(map[string]interface{})
+	} else if err := json.Unmarshal(StripJSONComments(raw), &doc); err != nil {
+		// User/custom JSON we should not rewrite.
+		return nil
+	}
+	if doc == nil {
+		doc = make(map[string]interface{})
+	}
+	opts, _ := doc["compilerOptions"].(map[string]interface{})
+	if opts == nil {
+		opts = make(map[string]interface{})
+		doc["compilerOptions"] = opts
+	}
+
+	target, _ := opts["target"].(string)
+	targetNorm := strings.ToUpper(strings.TrimSpace(target))
+	stockTarget := targetNorm == "" || targetNorm == "ES2020" || targetNorm == "ES2022"
+	if !stockTarget {
+		return nil
+	}
+
+	changed := false
+	if targetNorm != "ES2020" {
+		opts["target"] = "ES2020"
+		changed = true
+	}
+
+	if libChanged := reconcileStockLibES2020(opts); libChanged {
+		changed = true
+	}
+
+	if v, exists := opts["useDefineForClassFields"]; !exists || v != false {
+		opts["useDefineForClassFields"] = false
+		changed = true
+	}
+
+	if !changed {
+		return nil
+	}
+
+	doc["compilerOptions"] = opts
+	out, err := json.MarshalIndent(doc, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal tsconfig: %w", err)
+	}
+	out = append(out, '\n')
+	if err := writeAtomicFile(tsconfigPath, out, 0644); err != nil {
+		return fmt.Errorf("write tsconfig: %w", err)
+	}
+	return nil
+}
+
+// reconcileStockLibES2020 replaces stock ES2022 lib entries with ES2020.
+// Missing lib is filled with the stock list. Returns whether opts changed.
+func reconcileStockLibES2020(opts map[string]interface{}) bool {
+	libRaw, ok := opts["lib"]
+	if !ok || libRaw == nil {
+		opts["lib"] = []string{"ES2020", "DOM", "DOM.Iterable"}
+		return true
+	}
+
+	var items []interface{}
+	switch v := libRaw.(type) {
+	case []interface{}:
+		items = v
+	case []string:
+		items = make([]interface{}, len(v))
+		for i, s := range v {
+			items[i] = s
+		}
+	default:
+		return false
+	}
+
+	next := make([]interface{}, 0, len(items))
+	changed := false
+	for _, item := range items {
+		s, _ := item.(string)
+		if strings.EqualFold(strings.TrimSpace(s), "ES2022") {
+			next = append(next, "ES2020")
+			changed = true
+			continue
+		}
+		next = append(next, item)
+	}
+	if changed {
+		opts["lib"] = next
+	}
+	return changed
 }

@@ -1146,22 +1146,27 @@ msgctxt "service/models/ui_resource"
 msgid "Cycle detected: %s cannot be assigned under one of its descendants"
 msgstr "检测到循环：%s 不能挂到其子孙节点下"
 
-#: web/menu/menus.ts:40
+#: web/menu/menus.ts:31
+msgctxt "web/menu/menus"
+msgid "Field Defaults"
+msgstr "字段默认值"
+
+#: web/menu/menus.ts:46
 msgctxt "web/menu/menus"
 msgid "Module Board"
 msgstr "模块看板"
 
-#: web/menu/menus.ts:46
+#: web/menu/menus.ts:52
 msgctxt "web/menu/menus"
 msgid "Module List"
 msgstr "模块列表"
 
-#: web/menu/menus.ts:35
+#: web/menu/menus.ts:41
 msgctxt "web/menu/menus"
 msgid "Module Management"
 msgstr "模块管理"
 
-#: web/menu/menus.ts:52
+#: web/menu/menus.ts:58
 msgctxt "web/menu/menus"
 msgid "Operation History"
 msgstr "操作历史"
@@ -1196,32 +1201,37 @@ msgctxt "web/pages/ModuleListTable"
 msgid "Module List"
 msgstr "模块列表"
 
-#: web/route/routes.ts:47
+#: web/route/routes.ts:79
+msgctxt "web/route/routes"
+msgid "Field Defaults"
+msgstr "字段默认值"
+
+#: web/route/routes.ts:51
 msgctxt "web/route/routes"
 msgid "Module Detail"
 msgstr "模块详情"
 
-#: web/route/routes.ts:27
+#: web/route/routes.ts:31
 msgctxt "web/route/routes"
 msgid "Module List"
 msgstr "模块列表"
 
-#: web/route/routes.ts:17
+#: web/route/routes.ts:21
 msgctxt "web/route/routes"
 msgid "Module Management"
 msgstr "模块管理"
 
-#: web/route/routes.ts:37
+#: web/route/routes.ts:41
 msgctxt "web/route/routes"
 msgid "Operation History"
 msgstr "操作历史"
 
-#: web/route/routes.ts:66
+#: web/route/routes.ts:70
 msgctxt "web/route/routes"
 msgid "Record Properties"
 msgstr "记录属性"
 
-#: web/route/routes.ts:57
+#: web/route/routes.ts:61
 msgctxt "web/route/routes"
 msgid "Translations"
 msgstr "翻译"

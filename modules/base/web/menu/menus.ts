@@ -27,6 +27,12 @@ export const baseSettingsAppMenu: MenuItem = defineMenu('base.menu.settings_app'
       sequence: 20,
       defaultRoles: ['sys.admin'],
     }),
+    defineMenu('base.menu.field_defaults', {
+      title: _lt('Field Defaults'),
+      path: '/web/field-defaults/base',
+      sequence: 30,
+      defaultRoles: ['sys.admin'],
+    }),
   ],
 });
 

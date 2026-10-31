@@ -164,6 +164,8 @@ test('auth bootstrap seeds platform FieldDefault/AppSetting/PropertyDefinition l
   const expected: Array<{ name: string; model: string }> = [
     { name: 'rma_base_user_field_default_logical', model: 'RoleMethodAccess' },
     { name: 'rfr_base_user_field_default_logical', model: 'RoleFieldRule' },
+    { name: 'rma_sys_admin_field_default_logical', model: 'RoleMethodAccess' },
+    { name: 'rfr_sys_admin_field_default_logical', model: 'RoleFieldRule' },
     { name: 'rma_sys_admin_app_setting_logical', model: 'RoleMethodAccess' },
     { name: 'rfr_sys_admin_app_setting_logical', model: 'RoleFieldRule' },
     { name: 'rma_base_user_property_definition_logical', model: 'RoleMethodAccess' },

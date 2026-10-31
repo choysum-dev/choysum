@@ -57,3 +57,9 @@ test('sandbox Settings menu links Record Properties to the shared web path', () 
     )
   ).toBe(true);
 });
+
+test('sandbox Settings menu links Field Defaults to the shared web path', () => {
+  expect(
+    sandboxSettingsAppMenu.children?.some(child => child.path === '/web/field-defaults/sandbox')
+  ).toBe(true);
+});

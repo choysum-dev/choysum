@@ -377,6 +377,11 @@ msgctxt "sandbox.model.SandboxTag.fields"
 msgid "Name"
 msgstr ""
 
+#: web/menu/menus.ts:33
+msgctxt "web/menu/menus"
+msgid "Field Defaults"
+msgstr ""
+
 #: web/menu/menus.ts:27
 msgctxt "web/menu/menus"
 msgid "Record Properties"
@@ -417,47 +422,52 @@ msgctxt "web/pages/SandboxRecordList"
 msgid "Field Kitchen Sink"
 msgstr ""
 
-#: web/route/routes.ts:83
+#: web/route/routes.ts:163
+msgctxt "web/route/routes"
+msgid "Field Defaults"
+msgstr ""
+
+#: web/route/routes.ts:87
 msgctxt "web/route/routes"
 msgid "New Sandbox Record"
 msgstr ""
 
-#: web/route/routes.ts:113
+#: web/route/routes.ts:117
 msgctxt "web/route/routes"
 msgid "New Sandbox Tag"
 msgstr ""
 
-#: web/route/routes.ts:150
+#: web/route/routes.ts:154
 msgctxt "web/route/routes"
 msgid "Record Properties"
 msgstr ""
 
-#: web/route/routes.ts:62
+#: web/route/routes.ts:66
 msgctxt "web/route/routes"
 msgid "Sandbox Record Chart"
 msgstr ""
 
-#: web/route/routes.ts:98
+#: web/route/routes.ts:102
 msgctxt "web/route/routes"
 msgid "Sandbox Record Detail"
 msgstr ""
 
-#: web/route/routes.ts:42
+#: web/route/routes.ts:46
 msgctxt "web/route/routes"
 msgid "Sandbox Record Kanban"
 msgstr ""
 
-#: web/route/routes.ts:22
+#: web/route/routes.ts:26
 msgctxt "web/route/routes"
 msgid "Sandbox Record List"
 msgstr ""
 
-#: web/route/routes.ts:127
+#: web/route/routes.ts:131
 msgctxt "web/route/routes"
 msgid "Sandbox Tag Detail"
 msgstr ""
 
-#: web/route/routes.ts:141
+#: web/route/routes.ts:145
 msgctxt "web/route/routes"
 msgid "Translations"
 msgstr ""

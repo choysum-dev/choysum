@@ -27,6 +27,12 @@ export const metaSettingsAppMenu: MenuItem = defineMenu('meta.menu.settings_app'
       sequence: 20,
       defaultRoles: ['sys.admin'],
     }),
+    defineMenu('meta.menu.field_defaults', {
+      title: _lt('Field Defaults'),
+      path: '/web/field-defaults/meta',
+      sequence: 30,
+      defaultRoles: ['sys.admin'],
+    }),
   ],
 });
 

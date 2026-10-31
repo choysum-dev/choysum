@@ -33,6 +33,9 @@ func TestBuildCompilerOptions_PathsAlias(t *testing.T) {
 	if targets[0] != want {
 		t.Fatalf("path target = %q, want %q", targets[0], want)
 	}
+	if !opts.UseDefineForClassFields.IsFalse() {
+		t.Fatalf("UseDefineForClassFields = %v, want TSFalse", opts.UseDefineForClassFields)
+	}
 }
 
 func TestBuildCompilerOptions_JSONC(t *testing.T) {

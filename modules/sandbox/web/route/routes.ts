@@ -4,7 +4,11 @@
 import type { RouteRecordRaw } from 'vue-router';
 import { defineRoute } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
-import { propertyDefinitionListComponent, terminologyListComponent } from '@/web/web/route';
+import {
+  fieldDefaultListComponent,
+  propertyDefinitionListComponent,
+  terminologyListComponent,
+} from '@/web/web/route';
 
 const { _lt } = createTranslate('sandbox', { scope: 'web/route/routes' });
 
@@ -153,5 +157,14 @@ export const sandboxRoutes: RouteRecordRaw[] = [
     component: propertyDefinitionListComponent,
     defaultRoles: ['sys.admin'],
     meta: { requiresAuth: true, propertyDefinitionApplication: 'sandbox' },
+  }),
+  defineRoute('sandbox.route.field_default_list', {
+    sequence: 60,
+    title: _lt('Field Defaults'),
+    path: 'web/field-defaults/sandbox',
+    name: 'FieldDefaultList_sandbox',
+    component: fieldDefaultListComponent,
+    defaultRoles: ['sys.admin'],
+    meta: { requiresAuth: true, fieldDefaultApplication: 'sandbox' },
   }),
 ];

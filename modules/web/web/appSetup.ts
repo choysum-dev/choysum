@@ -10,7 +10,11 @@ import { useI18nStore } from './stores/i18nStore';
 import { watch } from 'vue';
 import sourceMessages from './i18n/source';
 import { createAppRouter } from './router';
-import { registerPropertyDefinitionRoutes, registerTerminologyRoutes } from './route';
+import {
+  registerFieldDefaultRoutes,
+  registerPropertyDefinitionRoutes,
+  registerTerminologyRoutes,
+} from './route';
 import { registerGlobalDirectives } from './directives';
 import { setGlobalRequestContextProvider } from '@/core/rpc/context';
 import { createTerminologyCatalogMerger } from './stores/i18nStore/merge';
@@ -50,6 +54,7 @@ export type SetupAppDeps = {
   createAppMenu?: typeof createAppMenu;
   registerTerminologyRoutes?: typeof registerTerminologyRoutes;
   registerPropertyDefinitionRoutes?: typeof registerPropertyDefinitionRoutes;
+  registerFieldDefaultRoutes?: typeof registerFieldDefaultRoutes;
   applyChoyThemePreference?: typeof applyChoyThemePreference;
   readChoyThemePreference?: typeof readChoyThemePreference;
   baseUrl?: string;
@@ -83,6 +88,10 @@ export function setupApp(app: ChoysumWebApp, deps: SetupAppDeps = {}): void {
   const registerPropertyDefinitions = pickDep(
     deps.registerPropertyDefinitionRoutes,
     registerPropertyDefinitionRoutes
+  );
+  const registerFieldDefaults = pickDep(
+    deps.registerFieldDefaultRoutes,
+    registerFieldDefaultRoutes
   );
   const applyTheme = pickDep(deps.applyChoyThemePreference, applyChoyThemePreference);
   const readTheme = pickDep(deps.readChoyThemePreference, readChoyThemePreference);
@@ -184,5 +193,6 @@ export function setupApp(app: ChoysumWebApp, deps: SetupAppDeps = {}): void {
   const router = makeRouter(baseUrl, i18n.global);
   registerTerminology(router);
   registerPropertyDefinitions(router);
+  registerFieldDefaults(router);
   app.usePlugin('router', router);
 }

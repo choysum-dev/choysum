@@ -7,6 +7,7 @@ import {
   propertyDefinitionListComponent,
   propertyDefinitionRoutes,
 } from './propertyDefinitionRoutes';
+import { fieldDefaultListComponent, fieldDefaultRoutes } from './fieldDefaultRoutes';
 
 /** Register Settings → {app} → Translations pages under the authenticated shell layout. */
 export function registerTerminologyRoutes(router: Router): void {
@@ -22,9 +23,18 @@ export function registerPropertyDefinitionRoutes(router: Router): void {
   }
 }
 
+/** Register Settings → {app} → Field Defaults pages under the authenticated shell layout. */
+export function registerFieldDefaultRoutes(router: Router): void {
+  for (const route of fieldDefaultRoutes) {
+    router.addRoute('AppLayout', route);
+  }
+}
+
 export {
   terminologyListComponent,
   terminologyRoutes,
   propertyDefinitionListComponent,
   propertyDefinitionRoutes,
+  fieldDefaultListComponent,
+  fieldDefaultRoutes,
 };

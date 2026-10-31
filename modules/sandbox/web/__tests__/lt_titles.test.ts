@@ -9,6 +9,9 @@ const listRouteTitle = createTranslate('sandbox', { scope: 'web/route/routes' })
 const recordPropertiesRouteTitle = createTranslate('sandbox', { scope: 'web/route/routes' })._lt(
   'Record Properties'
 );
+const fieldDefaultsRouteTitle = createTranslate('sandbox', { scope: 'web/route/routes' })._lt(
+  'Field Defaults'
+);
 
 test('sandbox menu titles: titles.ts registers shared TermReferences', () => {
   expect(sandboxRootMenuTitle.src).toBe('Sandbox');
@@ -28,4 +31,11 @@ test('sandbox route titles: PropertyDefinition list pins pageTitleText', () => {
   expect(route).toBeTruthy();
   expect(route.meta?.pageTitle).toBe('Record Properties');
   expect(route.meta?.pageTitleText).toEqual(recordPropertiesRouteTitle);
+});
+
+test('sandbox route titles: FieldDefault list pins pageTitleText', () => {
+  const route = sandboxRoutes.find(r => r.name === 'FieldDefaultList_sandbox') as any;
+  expect(route).toBeTruthy();
+  expect(route.meta?.pageTitle).toBe('Field Defaults');
+  expect(route.meta?.pageTitleText).toEqual(fieldDefaultsRouteTitle);
 });

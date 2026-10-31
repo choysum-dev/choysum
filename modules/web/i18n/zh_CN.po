@@ -886,7 +886,7 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Apply"
 msgstr "应用"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:266 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:76
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:268 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:76
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Cancel"
 msgstr "取消"
@@ -906,7 +906,7 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Default"
 msgstr "默认值"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:265
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:267
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Discard"
 msgstr "放弃"
@@ -941,7 +941,7 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Name"
 msgstr "名称"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:331
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:333
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Name is required"
 msgstr "名称为必填项"
@@ -991,12 +991,12 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Type"
 msgstr "类型"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:264
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:266
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Unsaved changes"
 msgstr "未保存的更改"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:264
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:266
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "You have unsaved changes. Discard them?"
 msgstr "有未保存的更改。要放弃吗？"
@@ -2516,27 +2516,32 @@ msgctxt "web/import/ImportPanel"
 msgid "Upload a UTF-8 CSV. Map columns to importable fields from the catalog."
 msgstr "上传 UTF-8 CSV。将列映射到目录中的可导入字段。"
 
-#: web/menu/menus.ts:50
+#: web/menu/menus.ts:57
+msgctxt "web/menu/menus"
+msgid "Field Defaults"
+msgstr "字段默认值"
+
+#: web/menu/menus.ts:51
 msgctxt "web/menu/menus"
 msgid "Record Properties"
 msgstr "记录属性"
 
-#: web/menu/menus.ts:19
+#: web/menu/menus.ts:20
 msgctxt "web/menu/menus"
 msgid "Settings"
 msgstr "设置"
 
-#: web/menu/menus.ts:31 web/menu/menus.ts:44
+#: web/menu/menus.ts:32 web/menu/menus.ts:45
 msgctxt "web/menu/menus"
 msgid "Translations"
 msgstr "翻译"
 
-#: web/menu/menus.ts:26
+#: web/menu/menus.ts:27
 msgctxt "web/menu/menus"
 msgid "core"
 msgstr "core"
 
-#: web/menu/menus.ts:39
+#: web/menu/menus.ts:40
 msgctxt "web/menu/menus"
 msgid "web"
 msgstr "web"
@@ -2621,6 +2626,11 @@ msgctxt "web/pages/ErrorView"
 msgid "You do not have permission to access this page"
 msgstr "您没有权限访问此页面"
 
+#: web/pages/field_default_list_page.ts:38
+msgctxt "web/pages/FieldDefaultList"
+msgid "Field Defaults: %s"
+msgstr "字段默认值：%s"
+
 #: web/pages/property_definition_list_page.ts:38
 msgctxt "web/pages/PropertyDefinitionList"
 msgid "Record Properties: %s"
@@ -2701,6 +2711,21 @@ msgctxt "web/query/utils/filter/operators"
 msgid "Not in"
 msgstr "不属于"
 
+#: web/route/fieldDefaultRoutes.ts:62
+msgctxt "web/route/fieldDefaultRoutes"
+msgid "Field Default"
+msgstr "字段默认值"
+
+#: web/route/fieldDefaultRoutes.ts:31
+msgctxt "web/route/fieldDefaultRoutes"
+msgid "Field Defaults"
+msgstr "字段默认值"
+
+#: web/route/fieldDefaultRoutes.ts:47
+msgctxt "web/route/fieldDefaultRoutes"
+msgid "New Field Default"
+msgstr "新建字段默认值"
+
 #: web/route/propertyDefinitionRoutes.ts:47
 msgctxt "web/route/propertyDefinitionRoutes"
 msgid "New Property Definition"
@@ -2735,6 +2760,96 @@ msgstr "详情"
 msgctxt "web/stores/breadcrumbStore"
 msgid "Page"
 msgstr "页面"
+
+#: web/views/FieldDefaultFormView.vue:26
+msgctxt "web/views/FieldDefaultFormView"
+msgid "Company Id"
+msgstr "公司 Id"
+
+#: web/views/field_default_actions.ts:14
+msgctxt "web/views/FieldDefaultFormView"
+msgid "Copy Field Default"
+msgstr "复制字段默认值"
+
+#: web/views/field_default_actions.ts:14
+msgctxt "web/views/FieldDefaultFormView"
+msgid "Create Field Default"
+msgstr "创建字段默认值"
+
+#: web/views/field_default_actions.ts:14
+msgctxt "web/views/FieldDefaultFormView"
+msgid "Delete Field Default"
+msgstr "删除字段默认值"
+
+#: web/views/field_default_actions.ts:14
+msgctxt "web/views/FieldDefaultFormView"
+msgid "Edit Field Default"
+msgstr "编辑字段默认值"
+
+#: web/views/FieldDefaultFormView.vue:15
+msgctxt "web/views/FieldDefaultFormView"
+msgid "Field"
+msgstr "字段"
+
+#: web/views/field_default_actions.ts:15
+msgctxt "web/views/FieldDefaultFormView"
+msgid "Field Default"
+msgstr "字段默认值"
+
+#: web/views/FieldDefaultFormView.vue:12
+msgctxt "web/views/FieldDefaultFormView"
+msgid "Model"
+msgstr "模型"
+
+#: web/views/FieldDefaultFormView.vue:21
+msgctxt "web/views/FieldDefaultFormView"
+msgid "Required"
+msgstr "必填"
+
+#: web/views/FieldDefaultFormView.vue:20
+msgctxt "web/views/FieldDefaultFormView"
+msgid "Scope"
+msgstr "作用域"
+
+#: web/views/FieldDefaultFormView.vue:9
+msgctxt "web/views/FieldDefaultFormView"
+msgid "Target"
+msgstr "目标"
+
+#: web/views/FieldDefaultFormView.vue:23
+msgctxt "web/views/FieldDefaultFormView"
+msgid "User Id"
+msgstr "用户 Id"
+
+#: web/views/FieldDefaultFormView.vue:31
+msgctxt "web/views/FieldDefaultFormView"
+msgid "Value"
+msgstr "值"
+
+#: web/views/FieldDefaultListView.vue:11
+msgctxt "web/views/FieldDefaultListView"
+msgid "Company Id"
+msgstr "公司 Id"
+
+#: web/views/FieldDefaultListView.vue:9
+msgctxt "web/views/FieldDefaultListView"
+msgid "Field"
+msgstr "字段"
+
+#: web/views/FieldDefaultListView.vue:8
+msgctxt "web/views/FieldDefaultListView"
+msgid "Model"
+msgstr "模型"
+
+#: web/views/FieldDefaultListView.vue:10
+msgctxt "web/views/FieldDefaultListView"
+msgid "User Id"
+msgstr "用户 Id"
+
+#: web/views/FieldDefaultListView.vue:12
+msgctxt "web/views/FieldDefaultListView"
+msgid "Value"
+msgstr "值"
 
 #: web/views/PropertyDefinitionFormView.vue:21
 msgctxt "web/views/PropertyDefinitionFormView"
