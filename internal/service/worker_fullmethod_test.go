@@ -38,22 +38,31 @@ func TestWorkerJsServicePath(t *testing.T) {
 
 func TestWorkerPayloadArgs(t *testing.T) {
 	t.Parallel()
-	if args := workerPayloadArgs(nil); args != nil {
+	gc := "document.AttachmentContent/RunGarbageCollection"
+	if args := workerPayloadArgs(gc, nil); args != nil {
 		t.Fatalf("nil payload: %#v", args)
 	}
-	if args := workerPayloadArgs(map[string]interface{}{"nowISO": "2020-01-01T00:00:00Z"}); len(args) != 1 || args[0] != "2020-01-01T00:00:00Z" {
+	if args := workerPayloadArgs(gc, map[string]interface{}{"nowISO": "2020-01-01T00:00:00Z"}); len(args) != 1 || args[0] != "2020-01-01T00:00:00Z" {
 		t.Fatalf("nowISO: %#v", args)
 	}
-	if args := workerPayloadArgs(map[string]interface{}{"NowISO": "2020-01-02T00:00:00Z"}); len(args) != 1 || args[0] != "2020-01-02T00:00:00Z" {
+	if args := workerPayloadArgs(gc, map[string]interface{}{"NowISO": "2020-01-02T00:00:00Z"}); len(args) != 1 || args[0] != "2020-01-02T00:00:00Z" {
 		t.Fatalf("NowISO: %#v", args)
 	}
 	payload := map[string]interface{}{"nowISO": 42, "other": "x"}
-	mapArgs := workerPayloadArgs(payload)
+	mapArgs := workerPayloadArgs(gc, payload)
 	if len(mapArgs) != 1 {
 		t.Fatalf("non-string nowISO: %#v", mapArgs)
 	}
 	if m, ok := mapArgs[0].(map[string]interface{}); !ok || m["other"] != "x" {
 		t.Fatalf("expected map payload, got %#v", mapArgs[0])
+	}
+	// Non-GC worker methods must keep the full payload map even with nowISO.
+	other := workerPayloadArgs("document.AttachmentContent/Other", map[string]interface{}{"nowISO": "2020-01-01T00:00:00Z"})
+	if len(other) != 1 {
+		t.Fatalf("non-GC args: %#v", other)
+	}
+	if m, ok := other[0].(map[string]interface{}); !ok || m["nowISO"] != "2020-01-01T00:00:00Z" {
+		t.Fatalf("non-GC expected map payload, got %#v", other[0])
 	}
 }
 

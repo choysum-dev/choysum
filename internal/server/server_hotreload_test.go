@@ -2029,6 +2029,16 @@ func TestMarkDirtyModuleIgnoresEmptyKeyOrFile(t *testing.T) {
 	}
 }
 
+func TestMarkDirtyModuleIfAbsentIgnoresEmptyKeyOrFile(t *testing.T) {
+	t.Parallel()
+	h := hotreloadState{}
+	h.markDirtyModuleIfAbsent("", "file.ts")
+	h.markDirtyModuleIfAbsent("mod", "")
+	if got := h.takeDirtyModules(); got != nil {
+		t.Fatalf("expected no dirty modules, got %#v", got)
+	}
+}
+
 func TestRequeueDirtyWatchModulesNilServer(t *testing.T) {
 	t.Parallel()
 	(*GRPCWebServer)(nil).requeueDirtyWatchModules()
@@ -2063,21 +2073,25 @@ func TestRequeueDirtyWatchModulesIgnoredPathDropsDirty(t *testing.T) {
 func TestRequeueDirtyWatchModulesPreservesNewerDirtyPath(t *testing.T) {
 	t.Parallel()
 	runtimeScope := newRichServerTestScope(t)
-	dir := t.TempDir()
-	oldFile := filepath.Join(dir, "old.ts")
-	newFile := filepath.Join(dir, "new.ts")
+	root := t.TempDir()
+	demoDir := filepath.Join(root, "modules", "demo")
+	if err := os.MkdirAll(demoDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	oldFile := filepath.Join(demoDir, "old.ts")
+	newFile := filepath.Join(demoDir, "new.ts")
 	if err := os.WriteFile(oldFile, []byte("old"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(newFile, []byte("new"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	// Queue full so enqueueWatchEvent fails after take; a newer dirty lands mid-requeue.
 	srv := &GRPCWebServer{runtimeScope: runtimeScope, hotreload: hotreloadState{queue: make(chan string, 1)}}
+	demoTracked := &fakeWatchedService{name: "demo", watchDirs: []string{demoDir}}
+	srv.hotreload.storeWatchTargets(srv.buildRegisteredWatchTargets(demoTracked.watchPlans(), demoTracked.watchCallback))
+	// Queue full so enqueueWatchEvent fails; a newer dirty lands after take.
 	srv.hotreload.queue <- "filler"
 	srv.hotreload.markDirtyModule("demo", oldFile)
-	// Simulate a newer watch mark after takeDirtyModules by marking before requeue
-	// finishes: take clears, then we inject newer before failed enqueue re-marks.
 	pending := srv.hotreload.takeDirtyModules()
 	srv.hotreload.markDirtyModule("demo", newFile)
 	for key, file := range pending {
@@ -2088,5 +2102,63 @@ func TestRequeueDirtyWatchModulesPreservesNewerDirtyPath(t *testing.T) {
 	dirty := srv.hotreload.takeDirtyModules()
 	if dirty["demo"] != newFile {
 		t.Fatalf("expected newer dirty path preserved, got %#v", dirty)
+	}
+}
+
+func TestRequeueDirtyWatchModulesEnqueueFailRemarksDirty(t *testing.T) {
+	t.Parallel()
+	runtimeScope := newRichServerTestScope(t)
+	root := t.TempDir()
+	demoDir := filepath.Join(root, "modules", "demo")
+	if err := os.MkdirAll(demoDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(demoDir, "routes.ts")
+	if err := os.WriteFile(file, []byte("export {}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	srv := &GRPCWebServer{runtimeScope: runtimeScope, hotreload: hotreloadState{queue: make(chan string, 1)}}
+	demoTracked := &fakeWatchedService{name: "demo", watchDirs: []string{demoDir}}
+	srv.hotreload.storeWatchTargets(srv.buildRegisteredWatchTargets(demoTracked.watchPlans(), demoTracked.watchCallback))
+	srv.hotreload.queue <- "filler"
+	srv.hotreload.markDirtyModule("demo", file)
+	srv.requeueDirtyWatchModules()
+	dirty := srv.hotreload.takeDirtyModules()
+	resolved, err := resolveWatchPath(file)
+	if err != nil {
+		t.Fatalf("resolveWatchPath: %v", err)
+	}
+	// queue_full remaps via resolveWatchPath; accept either original or resolved.
+	if dirty["demo"] != file && dirty["demo"] != resolved {
+		t.Fatalf("expected dirty re-mark after enqueue fail, got %#v", dirty)
+	}
+}
+
+func TestEnqueueWatchEventQueueFullPreservesNewerDirty(t *testing.T) {
+	t.Parallel()
+	runtimeScope := newRichServerTestScope(t)
+	root := t.TempDir()
+	demoDir := filepath.Join(root, "modules", "demo")
+	if err := os.MkdirAll(demoDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	oldFile := filepath.Join(demoDir, "old.ts")
+	newFile := filepath.Join(demoDir, "new.ts")
+	for _, path := range []string{oldFile, newFile} {
+		if err := os.WriteFile(path, []byte("export {}"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	srv := &GRPCWebServer{runtimeScope: runtimeScope, hotreload: hotreloadState{queue: make(chan string, 1)}}
+	demoTracked := &fakeWatchedService{name: "demo", watchDirs: []string{demoDir}}
+	srv.hotreload.storeWatchTargets(srv.buildRegisteredWatchTargets(demoTracked.watchPlans(), demoTracked.watchCallback))
+	srv.hotreload.queue <- "filler"
+	srv.hotreload.markDirtyModule("demo", newFile)
+	if srv.enqueueWatchEvent(oldFile) {
+		t.Fatal("expected queue_full drop")
+	}
+	dirty := srv.hotreload.takeDirtyModules()
+	if dirty["demo"] != newFile {
+		t.Fatalf("queue_full must preserve newer dirty path, got %#v", dirty)
 	}
 }

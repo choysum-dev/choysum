@@ -149,7 +149,7 @@ func TestRunApplicationReadyHooksMissingModuleTable(t *testing.T) {
 func TestRunApplicationReadyHooksFindError(t *testing.T) {
 	t.Parallel()
 	runtimeScope := newReadyHooksDBScope(t)
-	// Force Find to fail while the module table still exists (HasTable soft-path must not hide this).
+	// Force Find to fail while the module table still exists (only missing-table soft-path may hide errors).
 	_ = runtimeScope.session.DB.Callback().Query().Before("gorm:query").Register(
 		"ready_hooks_find_fail_"+xid.New().String(),
 		func(tx *gorm.DB) {
@@ -164,6 +164,28 @@ func TestRunApplicationReadyHooksFindError(t *testing.T) {
 	err := srv.runApplicationReadyHooks(context.Background())
 	if err == nil || !strings.Contains(err.Error(), "load installed modules for ready hooks") {
 		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestIsMissingSQLTableError(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		err  error
+		want bool
+	}{
+		{nil, false},
+		{errors.New("no such table: meta_module"), true},
+		{errors.New("Unknown table 'meta_module'"), true},
+		{errors.New("Table 'db.meta_module' doesn't exist"), true},
+		{errors.New(`relation "meta_module" does not exist`), true},
+		{errors.New(`constraint "fk" of relation "meta_module" does not exist`), false},
+		{errors.New("column foo does not exist"), false},
+		{errors.New("forced find failure"), false},
+	}
+	for _, tc := range cases {
+		if got := isMissingSQLTableError(tc.err); got != tc.want {
+			t.Fatalf("isMissingSQLTableError(%v) = %v, want %v", tc.err, got, tc.want)
+		}
 	}
 }
 

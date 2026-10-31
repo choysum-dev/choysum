@@ -37,19 +37,21 @@ func workerJsServicePath(fullMethod string) (string, error) {
 	return strings.ReplaceAll(fullMethod, "/", "."), nil
 }
 
-func workerPayloadArgs(payload map[string]interface{}) []interface{} {
+func workerPayloadArgs(fullMethod string, payload map[string]interface{}) []interface{} {
 	if len(payload) == 0 {
 		return nil
 	}
-	// Prefer a single nowISO string when present (GC contract).
-	if raw, ok := payload["nowISO"]; ok {
-		if s, ok := raw.(string); ok {
-			return []interface{}{s}
+	// GC contract only: pass a single nowISO string when present.
+	if strings.TrimSpace(fullMethod) == "document.AttachmentContent/RunGarbageCollection" {
+		if raw, ok := payload["nowISO"]; ok {
+			if s, ok := raw.(string); ok {
+				return []interface{}{s}
+			}
 		}
-	}
-	if raw, ok := payload["NowISO"]; ok {
-		if s, ok := raw.(string); ok {
-			return []interface{}{s}
+		if raw, ok := payload["NowISO"]; ok {
+			if s, ok := raw.(string); ok {
+				return []interface{}{s}
+			}
 		}
 	}
 	return []interface{}{payload}
@@ -82,7 +84,7 @@ func (r invocationRuntime) invokeWorkerOnlyFullMethod(
 		Service: servicePath,
 		Context: jsCtx,
 		Routing: routing,
-		Args:    workerPayloadArgs(req.Payload),
+		Args:    workerPayloadArgs(req.FullMethod, req.Payload),
 	}
 	jsResponse, err := r.jsExecutor.Execute(execCtx, jsRequest)
 	if err != nil {

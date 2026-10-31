@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"strings"
 
 	"github.com/choysum-dev/choysum/internal/module/evolution/hooks"
 	grpcclient "github.com/choysum-dev/choysum/pkg/grpc/client"
@@ -36,12 +37,13 @@ func (s *GRPCWebServer) runApplicationReadyHooks(ctx context.Context) error {
 	if s.grpcClientPool != nil {
 		ctx = grpcclient.ContextWithServiceDialer(ctx, s.grpcClientPool.Dial)
 	}
-	if !session.Migrator().HasTable((&meta.Module{}).TableName()) {
-		// Fresh / unmigrated DB: nothing to run yet.
-		return nil
-	}
 	var installed []meta.Module
 	if err := session.Where("status = ?", meta.Installed).Order("id ASC").Find(&installed).Error; err != nil {
+		// Fresh / unmigrated DB: nothing to run yet. Do not use HasTable alone —
+		// false negatives can skip ready hooks on a live schema.
+		if isMissingSQLTableError(err) {
+			return nil
+		}
 		return xfmt.Errorf("load installed modules for ready hooks: %w", err)
 	}
 	targets := s.runState.serviceTargets()
@@ -55,4 +57,24 @@ func (s *GRPCWebServer) runApplicationReadyHooks(ctx context.Context) error {
 		return xfmt.Errorf("application ready hooks: %w", err)
 	}
 	return nil
+}
+
+// isMissingSQLTableError reports dialect-specific "table does not exist" failures.
+// Narrow on purpose: do not match generic "does not exist" (columns/constraints).
+func isMissingSQLTableError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	if strings.Contains(msg, "no such table") || strings.Contains(msg, "unknown table") {
+		return true
+	}
+	if strings.Contains(msg, "table") && strings.Contains(msg, "doesn't exist") {
+		return true
+	}
+	if strings.Contains(msg, `relation "`) && strings.Contains(msg, "does not exist") &&
+		!strings.Contains(msg, "constraint") {
+		return true
+	}
+	return false
 }

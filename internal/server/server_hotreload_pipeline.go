@@ -82,7 +82,8 @@ func (s *GRPCWebServer) enqueueWatchEvent(file string) bool {
 		return true
 	default:
 		s.hotreload.finishModuleEvent(busyKey)
-		s.hotreload.markDirtyModule(busyKey, file)
+		// Preserve a newer dirty path already recorded (e.g. during requeue).
+		s.hotreload.markDirtyModuleIfAbsent(busyKey, file)
 		s.recordDroppedWatchEvent("queue_full", file, nil)
 		return false
 	}
