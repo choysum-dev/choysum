@@ -210,6 +210,14 @@ describe('ListView create action', () => {
   });
 
   test('hides toolbar New when header is hidden but createAction is empty', async () => {
+    restoreSfc(ChoyTableHost);
+    stubSfc(ChoyTableHost, {
+      name: 'ChoyTableHost',
+      setup(_p: any, { slots }: any) {
+        return () =>
+          h('div', { 'data-stub': 'ChoyTableHost' }, [slots.default?.(), h('div', { class: 'empty-slot' }, slots.empty?.())]);
+      },
+    });
     const { plugins } = buildPageMountGlobal({
       route: { name: 'PartnerList', path: '/partner/partners', fullPath: '/partner/partners' },
       router: { push },

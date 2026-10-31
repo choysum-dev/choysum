@@ -130,20 +130,38 @@ func TestRunApplicationReadyHooksNilSessionDB(t *testing.T) {
 	}
 }
 
+func TestRunApplicationReadyHooksMissingModuleTable(t *testing.T) {
+	t.Parallel()
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "ready_nomodule.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	base := newRichServerTestScope(t)
+	srv := &GRPCWebServer{
+		runtimeScope: &readyHooksDBScope{serverTestScope: base, session: &scope.Session{DB: db}},
+		jsExecutor:   &readyHooksMockExec{},
+	}
+	if err := srv.runApplicationReadyHooks(context.Background()); err != nil {
+		t.Fatalf("missing module table should no-op, got %v", err)
+	}
+}
+
 func TestRunApplicationReadyHooksFindError(t *testing.T) {
 	t.Parallel()
 	runtimeScope := newReadyHooksDBScope(t)
-	sqlDB, err := runtimeScope.session.DB.DB()
-	if err != nil {
-		t.Fatal(err)
-	}
-	sqlDB.Close()
+	// Force Find to fail while the module table still exists (HasTable soft-path must not hide this).
+	_ = runtimeScope.session.DB.Callback().Query().Before("gorm:query").Register(
+		"ready_hooks_find_fail_"+xid.New().String(),
+		func(tx *gorm.DB) {
+			_ = tx.AddError(errors.New("forced find failure"))
+		},
+	)
 	srv := &GRPCWebServer{
 		runtimeScope: runtimeScope,
 		jsExecutor:   &readyHooksMockExec{},
 		runState:     runState{applicationNames: []string{"document"}},
 	}
-	err = srv.runApplicationReadyHooks(context.Background())
+	err := srv.runApplicationReadyHooks(context.Background())
 	if err == nil || !strings.Contains(err.Error(), "load installed modules for ready hooks") {
 		t.Fatalf("err=%v", err)
 	}

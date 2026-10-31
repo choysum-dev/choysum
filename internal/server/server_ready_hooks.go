@@ -36,6 +36,10 @@ func (s *GRPCWebServer) runApplicationReadyHooks(ctx context.Context) error {
 	if s.grpcClientPool != nil {
 		ctx = grpcclient.ContextWithServiceDialer(ctx, s.grpcClientPool.Dial)
 	}
+	if !session.Migrator().HasTable((&meta.Module{}).TableName()) {
+		// Fresh / unmigrated DB: nothing to run yet.
+		return nil
+	}
 	var installed []meta.Module
 	if err := session.Where("status = ?", meta.Installed).Order("id ASC").Find(&installed).Error; err != nil {
 		return xfmt.Errorf("load installed modules for ready hooks: %w", err)

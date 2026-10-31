@@ -40,7 +40,9 @@ application services, activated the JS runtime, and started transport ingress
 (so cross-app gRPC Dial works). Triggered on cold start, bootstrap mode-switch
 into application, and equivalent reload. Use this for cross-app seeds such as
 ensuring a `task.Schedule` row. The phase is **required** by default: failures
-block startup readiness.
+block startup readiness. Recovery: fix the hook (or its seed data), then restart
+the process; there is no skip flag — a permanently failing ready hook keeps the
+process from becoming ready until the underlying error is resolved.
 
 Application init evaluates each backend module under a per-module `CHOYSUM_*`
 seed and installs a resident `__choysum_hook__` dispatcher. Ready therefore

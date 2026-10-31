@@ -133,6 +133,12 @@ func (r *Runner) RunPhase(ctx context.Context, phase Phase, opts RunOptions) err
 
 	jsCtx, jsCtxErr := r.buildJsContext(ctx, opts)
 	if jsCtxErr != nil {
+		if !resolved.Required {
+			if r.runtimeScope != nil {
+				r.runtimeScope.Logger().Warn("hook identity unavailable", "module", r.module.Name, "phase", phaseName, "reason", "ignored", "error", jsCtxErr)
+			}
+			return nil
+		}
 		return jsCtxErr
 	}
 

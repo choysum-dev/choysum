@@ -901,6 +901,37 @@ func TestRunPhaseReturnsBuildJsContextError(t *testing.T) {
 	}
 }
 
+func TestRunPhaseIgnoresBuildJsContextErrorWhenNotRequired(t *testing.T) {
+	t.Parallel()
+	testRuntimeScope := newHooksTestScopeWithoutAdmin(t)
+	var logBuf bytes.Buffer
+	testRuntimeScope.logger = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	if err := testRuntimeScope.session.DB.AutoMigrate(&meta.Module{}); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	if err := testRuntimeScope.session.DB.Create(&meta.Module{Name: "auth", Status: meta.Installed, Version: "1.0.0"}).Error; err != nil {
+		t.Fatalf("seed auth: %v", err)
+	}
+	root := t.TempDir()
+	mustWriteHookScanFile(t, filepath.Join(root, "service", "hook", "post_upgrade.ts"), "@HookPostUpgrade()\n")
+	engine := &hooksSelectiveEngine{execute: func(_ context.Context, req *jsengine.JsRequest, _ []*jsengine.JsScript) (*jsengine.JsResponse, error) {
+		t.Fatal("execute must not run when identity is unavailable")
+		return &jsengine.JsResponse{Id: req.Id}, nil
+	}}
+	executor := newHooksTestExecutorWithEngine(t, testRuntimeScope, engine)
+	runner := &Runner{
+		runtimeScope: testRuntimeScope,
+		jsExecutor:   executor,
+		module:       &meta.Module{Name: "doc", Path: root, ApplicationStr: "document"},
+	}
+	if err := runner.RunPhase(context.Background(), PhasePostUpgrade, RunOptions{InvokeOnly: true}); err != nil {
+		t.Fatalf("non-required phase should ignore identity error, got %v", err)
+	}
+	if !strings.Contains(logBuf.String(), "hook identity unavailable") {
+		t.Fatalf("expected identity-unavailable warn log, got %q", logBuf.String())
+	}
+}
+
 func TestRunPhaseNonRequiredHookUnavailable(t *testing.T) {
 	t.Run("non-required phase ignores script resolution failure", func(t *testing.T) {
 		testRuntimeScope := newHooksTestScope(t)

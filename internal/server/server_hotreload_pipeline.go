@@ -107,14 +107,19 @@ func (s *GRPCWebServer) requeueDirtyWatchModules() {
 		return
 	}
 	for key, file := range pending {
+		if shouldIgnoreWatchPath(file) {
+			// Ignored editor temps / generated paths must not loop forever as dirty.
+			continue
+		}
 		if s.hotreload.isModuleBusy(key) {
-			s.hotreload.markDirtyModule(key, file)
+			s.hotreload.markDirtyModuleIfAbsent(key, file)
 			continue
 		}
 		if !s.enqueueWatchEvent(file) {
 			// enqueueWatchEvent re-marks dirty on queue_full; re-mark here for
-			// other drop reasons so a later requeue can retry.
-			s.hotreload.markDirtyModule(key, file)
+			// other drop reasons so a later requeue can retry. Prefer a newer
+			// dirty path recorded after takeDirtyModules.
+			s.hotreload.markDirtyModuleIfAbsent(key, file)
 			continue
 		}
 		if s.runtimeScope != nil {

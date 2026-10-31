@@ -226,6 +226,22 @@ func (h *hotreloadState) markDirtyModule(moduleKey, file string) {
 	h.dirtyMu.Unlock()
 }
 
+// markDirtyModuleIfAbsent records dirty only when moduleKey is not already dirty.
+// Used on requeue retries so a newer path recorded after takeDirtyModules is kept.
+func (h *hotreloadState) markDirtyModuleIfAbsent(moduleKey, file string) {
+	if moduleKey == "" || file == "" {
+		return
+	}
+	h.dirtyMu.Lock()
+	if h.dirtyModules == nil {
+		h.dirtyModules = make(map[string]string)
+	}
+	if _, exists := h.dirtyModules[moduleKey]; !exists {
+		h.dirtyModules[moduleKey] = file
+	}
+	h.dirtyMu.Unlock()
+}
+
 // takeDirtyModules returns and clears the dirty set.
 func (h *hotreloadState) takeDirtyModules() map[string]string {
 	h.dirtyMu.Lock()

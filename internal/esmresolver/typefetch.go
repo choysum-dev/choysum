@@ -2225,7 +2225,7 @@ func ensureModulesTsconfig(tsconfigPath string) error {
 		return fmt.Errorf("stat tsconfig: %w", err)
 	}
 
-	if err := os.MkdirAll(filepath.Dir(tsconfigPath), 0o755); err != nil {
+	if err := modulesTsconfigMkdirAll(filepath.Dir(tsconfigPath), 0o755); err != nil {
 		return fmt.Errorf("create tsconfig dir: %w", err)
 	}
 
@@ -2311,6 +2311,9 @@ func reconcileModulesTsconfigStock(tsconfigPath string) error {
 var marshalModulesTsconfig = func(doc map[string]interface{}) ([]byte, error) {
 	return json.MarshalIndent(doc, "", "  ")
 }
+
+// modulesTsconfigMkdirAll creates parent dirs for modules/tsconfig.json; overridden in tests.
+var modulesTsconfigMkdirAll = os.MkdirAll
 
 // reconcileStockLibES2020 replaces stock ES2022 lib entries with ES2020.
 // Missing lib is filled with the stock list. Returns whether opts changed.

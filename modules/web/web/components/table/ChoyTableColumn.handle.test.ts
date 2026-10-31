@@ -121,10 +121,47 @@ describe('ChoyTableColumn handle type', () => {
     await flushPromises();
     const col = registry!.columns.value[0] as any;
     expect(col.width).toBe(44);
+    const header = col.headerCellRenderer();
+    expect(header.props.class).toContain('tabular-nums');
+    expect(String(header.children)).toContain('#');
     const cell = col.cellRenderer({ rowData: { Id: '1' }, rowIndex: 0 });
     expect(cell.props.class).toContain('tabular-nums');
     expect(cell.props.class).toContain('text-muted-foreground');
     expect(String(cell.children)).toContain('1');
+    const grouped = col.cellRenderer({ rowData: { Id: '1', groupIndex: 3 }, rowIndex: 0 });
+    expect(grouped.props.class).toContain('tabular-nums');
+    expect(String(grouped.children)).toContain('3');
+    mounted.unmount();
+  });
+
+  test('index column keeps custom header slot renderer', async () => {
+    let registry: ColumnRegistry | null = null;
+    const Host = defineComponent({
+      setup() {
+        registry = useTableProvideColumnRegistry();
+        useTableProvideBuildContext({ getRows: () => [{ Id: '1' }], baseIndex: ref(1) });
+        return () =>
+          h(
+            ChoyTableColumn as any,
+            { type: 'index', colKey: '__index__', label: 'Idx' },
+            { header: () => h('span', { class: 'custom-index-header' }, 'Idx') },
+          );
+      },
+    });
+    const mounted = mountApp(Host);
+    await nextTick();
+    await flushPromises();
+    const col = registry!.columns.value[0] as any;
+    const header = col.headerCellRenderer();
+    const vnodeHasClass = (v: any, name: string): boolean => {
+      if (v == null) return false;
+      if (Array.isArray(v)) return v.some(x => vnodeHasClass(x, name));
+      const c = v.props?.class;
+      if (typeof c === 'string' && c.includes(name)) return true;
+      if (Array.isArray(c) && c.some(x => String(x).includes(name))) return true;
+      return vnodeHasClass(v.children, name);
+    };
+    expect(vnodeHasClass(header, 'custom-index-header')).toBe(true);
     mounted.unmount();
   });
 

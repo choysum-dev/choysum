@@ -1673,12 +1673,15 @@ func TestReconcileModulesTsconfigStock_MarshalError(t *testing.T) {
 }
 
 func TestEnsureModulesTsconfig_MkdirAllFailure(t *testing.T) {
-	t.Parallel()
-	root := filepath.Join(t.TempDir(), "root")
-	if err := os.Mkdir(root, 0o555); err != nil {
-		t.Fatal(err)
+	// Not parallel: overrides package-level modulesTsconfigMkdirAll.
+	// Do not rely on directory mode 0555 (root / CAP_DAC_OVERRIDE can still write).
+	dir := t.TempDir()
+	tsconfigPath := filepath.Join(dir, "nested", "tsconfig.json")
+	prev := modulesTsconfigMkdirAll
+	modulesTsconfigMkdirAll = func(string, os.FileMode) error {
+		return errors.New("mkdir injected failure")
 	}
-	tsconfigPath := filepath.Join(root, "nested", "tsconfig.json")
+	defer func() { modulesTsconfigMkdirAll = prev }()
 	err := ensureModulesTsconfig(tsconfigPath)
 	if err == nil || !strings.Contains(err.Error(), "create tsconfig dir") {
 		t.Fatalf("err=%v", err)

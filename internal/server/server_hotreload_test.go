@@ -2048,14 +2048,45 @@ func TestRequeueDirtyWatchModulesBusyReMarksDirty(t *testing.T) {
 	}
 }
 
-func TestRequeueDirtyWatchModulesIgnoredPathReMarksDirty(t *testing.T) {
+func TestRequeueDirtyWatchModulesIgnoredPathDropsDirty(t *testing.T) {
 	t.Parallel()
 	runtimeScope := newRichServerTestScope(t)
 	srv := &GRPCWebServer{runtimeScope: runtimeScope, hotreload: hotreloadState{queue: make(chan string, 1)}}
 	ignored := filepath.Join(t.TempDir(), "XXMoksr9")
 	srv.hotreload.markDirtyModule("demo", ignored)
 	srv.requeueDirtyWatchModules()
-	if dirty := srv.hotreload.takeDirtyModules(); len(dirty) != 1 || dirty["demo"] != ignored {
-		t.Fatalf("expected dirty re-mark after ignored enqueue, got %#v", dirty)
+	if dirty := srv.hotreload.takeDirtyModules(); len(dirty) != 0 {
+		t.Fatalf("expected ignored dirty path dropped, got %#v", dirty)
+	}
+}
+
+func TestRequeueDirtyWatchModulesPreservesNewerDirtyPath(t *testing.T) {
+	t.Parallel()
+	runtimeScope := newRichServerTestScope(t)
+	dir := t.TempDir()
+	oldFile := filepath.Join(dir, "old.ts")
+	newFile := filepath.Join(dir, "new.ts")
+	if err := os.WriteFile(oldFile, []byte("old"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(newFile, []byte("new"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Queue full so enqueueWatchEvent fails after take; a newer dirty lands mid-requeue.
+	srv := &GRPCWebServer{runtimeScope: runtimeScope, hotreload: hotreloadState{queue: make(chan string, 1)}}
+	srv.hotreload.queue <- "filler"
+	srv.hotreload.markDirtyModule("demo", oldFile)
+	// Simulate a newer watch mark after takeDirtyModules by marking before requeue
+	// finishes: take clears, then we inject newer before failed enqueue re-marks.
+	pending := srv.hotreload.takeDirtyModules()
+	srv.hotreload.markDirtyModule("demo", newFile)
+	for key, file := range pending {
+		if !srv.enqueueWatchEvent(file) {
+			srv.hotreload.markDirtyModuleIfAbsent(key, file)
+		}
+	}
+	dirty := srv.hotreload.takeDirtyModules()
+	if dirty["demo"] != newFile {
+		t.Fatalf("expected newer dirty path preserved, got %#v", dirty)
 	}
 }
