@@ -69,9 +69,13 @@ func (r invocationRuntime) invokeWorkerOnlyFullMethod(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	if req.TimeoutMs > 0 {
-		if _, ok := ctx.Deadline(); !ok {
+		timeout := time.Duration(req.TimeoutMs) * time.Millisecond
+		deadline, ok := ctx.Deadline()
+		// Apply TimeoutMs when the parent has no deadline, or when it is longer
+		// than the worker task limit (shorter child timeout wins).
+		if !ok || time.Until(deadline) > timeout {
 			var cancel context.CancelFunc
-			ctx, cancel = context.WithTimeout(ctx, time.Duration(req.TimeoutMs)*time.Millisecond)
+			ctx, cancel = context.WithTimeout(ctx, timeout)
 			defer cancel()
 		}
 	}

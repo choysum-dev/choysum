@@ -67,11 +67,13 @@ func TestWorkerPayloadArgs(t *testing.T) {
 }
 
 type workerOnlyExec struct {
-	last *jsengine.JsRequest
+	last    *jsengine.JsRequest
+	lastCtx context.Context
 }
 
 func (e *workerOnlyExec) Execute(ctx context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
 	e.last = req
+	e.lastCtx = ctx
 	return &jsengine.JsResponse{Result: map[string]any{"ok": true}}, nil
 }
 func (e *workerOnlyExec) GetJsScripts() []*jsengine.JsScript         { return nil }
@@ -141,19 +143,43 @@ func TestInvokeWorkerOnlyFullMethodEdgeCases(t *testing.T) {
 
 	timeoutExec := &workerOnlyExec{}
 	rt = invocationRuntime{jsExecutor: timeoutExec}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	parent, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	_, err = rt.invokeWorkerOnlyFullMethod(ctx, nil, nil, nil, &executeJobRequest{
+	_, err = rt.invokeWorkerOnlyFullMethod(parent, nil, nil, nil, &executeJobRequest{
 		FullMethod: req.FullMethod,
 		TimeoutMs:  50,
 	})
 	if err != nil {
 		t.Fatalf("timeout invoke: %v", err)
 	}
-	deadline, ok := ctx.Deadline()
-	if !ok || time.Until(deadline) > time.Minute {
-		t.Fatal("expected parent deadline unchanged when already set")
+	childDeadline, ok := timeoutExec.lastCtx.Deadline()
+	if !ok {
+		t.Fatal("expected shorter worker deadline under long parent")
 	}
+	if rem := time.Until(childDeadline); rem > 200*time.Millisecond {
+		t.Fatalf("worker deadline too long under TimeoutMs=50: remaining=%v", rem)
+	}
+	parentDeadline, ok := parent.Deadline()
+	if !ok || time.Until(parentDeadline) < 30*time.Second {
+		t.Fatal("expected parent minute deadline unchanged")
+	}
+
+	// Parent already shorter than TimeoutMs: keep parent deadline.
+	shortParent, shortCancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer shortCancel()
+	wantDeadline, _ := shortParent.Deadline()
+	_, err = rt.invokeWorkerOnlyFullMethod(shortParent, nil, nil, nil, &executeJobRequest{
+		FullMethod: req.FullMethod,
+		TimeoutMs:  5000,
+	})
+	if err != nil {
+		t.Fatalf("short parent invoke: %v", err)
+	}
+	gotDeadline, ok := timeoutExec.lastCtx.Deadline()
+	if !ok || !gotDeadline.Equal(wantDeadline) {
+		t.Fatalf("expected parent deadline kept when shorter, got %v want %v", gotDeadline, wantDeadline)
+	}
+
 	_, err = rt.invokeWorkerOnlyFullMethod(context.Background(), nil, nil, nil, &executeJobRequest{
 		FullMethod: req.FullMethod,
 		TimeoutMs:  50,

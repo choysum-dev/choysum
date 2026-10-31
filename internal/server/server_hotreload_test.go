@@ -2128,9 +2128,9 @@ func TestRequeueDirtyWatchModulesEnqueueFailRemarksDirty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolveWatchPath: %v", err)
 	}
-	// queue_full remaps via resolveWatchPath; accept either original or resolved.
+	// queue_full remaps inside enqueueWatchEvent; accept original or resolved path.
 	if dirty["demo"] != file && dirty["demo"] != resolved {
-		t.Fatalf("expected dirty re-mark after enqueue fail, got %#v", dirty)
+		t.Fatalf("expected dirty re-mark after queue_full, got %#v", dirty)
 	}
 }
 

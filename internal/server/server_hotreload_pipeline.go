@@ -117,10 +117,9 @@ func (s *GRPCWebServer) requeueDirtyWatchModules() {
 			continue
 		}
 		if !s.enqueueWatchEvent(file) {
-			// enqueueWatchEvent re-marks dirty on queue_full; re-mark here for
-			// other drop reasons so a later requeue can retry. Prefer a newer
-			// dirty path recorded after takeDirtyModules.
-			s.hotreload.markDirtyModuleIfAbsent(key, file)
+			// coalesce / queue_full already remapped dirty inside enqueueWatchEvent
+			// (IfAbsent on queue_full so a newer path is kept). Do not remake here:
+			// path_unresolved / ignored / queue_unavailable drops would loop forever.
 			continue
 		}
 		if s.runtimeScope != nil {
