@@ -37,7 +37,12 @@ func ResolveBootstrapAdmin(ctx context.Context, runtimeScope scope.Scope) (Boots
 	if txRoot == nil {
 		txRoot = runtimeScope
 	}
-	err := txRoot.Transactor().Required(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
+	transactor := txRoot.Transactor()
+	if transactor == nil {
+		// Log-only / fixture scopes may omit a transactor; treat as no inject.
+		return out, false, nil
+	}
+	err := transactor.Required(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
 		session := txScope.Session()
 		if session == nil || session.DB == nil {
 			return nil
@@ -120,12 +125,16 @@ func ResolveBootstrapAdmin(ctx context.Context, runtimeScope scope.Scope) (Boots
 	return out, out.UserID != "" && out.CompanyID != "", nil
 }
 
-// ErrBootstrapAdminUnavailable is returned when no session identity is present and
-// auth.user_admin cannot be resolved (missing auth install / seeds).
+// ErrBootstrapAdminUnavailable is returned when auth is Installed but
+// auth.user_admin cannot be resolved (no Username literal "admin" fallback).
 var ErrBootstrapAdminUnavailable = errors.New("bootstrap admin identity unavailable (auth.user_admin)")
 
 // ResolvePrincipalUserID returns a session identity UserID when present, otherwise
 // ResolveBootstrapAdmin. Never returns the Username literal "admin".
+//
+// When auth is not installed (or the scope cannot see it), empty ids are returned
+// without error so auth-free CLI/fixtures can still run lifecycle hooks. When auth
+// is Installed but the seed is missing, ErrBootstrapAdminUnavailable is returned.
 func ResolvePrincipalUserID(ctx context.Context, runtimeScope scope.Scope, sessionUserID string) (userID string, companyID string, err error) {
 	sessionUserID = strings.TrimSpace(sessionUserID)
 	if sessionUserID != "" {
@@ -135,10 +144,55 @@ func ResolvePrincipalUserID(ctx context.Context, runtimeScope scope.Scope, sessi
 	if resolveErr != nil {
 		return "", "", resolveErr
 	}
-	if !ok {
+	if ok {
+		return admin.UserID, admin.CompanyID, nil
+	}
+	installed, checkErr := authModuleInstalled(ctx, runtimeScope)
+	if checkErr != nil {
+		return "", "", checkErr
+	}
+	if installed {
 		return "", "", ErrBootstrapAdminUnavailable
 	}
-	return admin.UserID, admin.CompanyID, nil
+	return "", "", nil
+}
+
+// authModuleInstalled reports whether the auth module row exists with Installed status.
+func authModuleInstalled(ctx context.Context, runtimeScope scope.Scope) (bool, error) {
+	if runtimeScope == nil {
+		return false, nil
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	txRoot := runtimeScope.WithContext(ctx)
+	if txRoot == nil {
+		txRoot = runtimeScope
+	}
+	transactor := txRoot.Transactor()
+	if transactor == nil {
+		return false, nil
+	}
+	var installed bool
+	err := transactor.Required(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
+		session := txScope.Session()
+		if session == nil || session.DB == nil {
+			return nil
+		}
+		if !session.Migrator().HasTable((&meta.Module{}).TableName()) {
+			return nil
+		}
+		var authMod meta.Module
+		if err := session.Select("id", "status").Where("name = ?", "auth").Take(&authMod).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			return xfmt.Errorf("load auth module status for principal identity: %w", err)
+		}
+		installed = authMod.Status == meta.Installed
+		return nil
+	})
+	return installed, err
 }
 
 // CompanyContextPayload builds the JS ctx map for active/enabled company scope.

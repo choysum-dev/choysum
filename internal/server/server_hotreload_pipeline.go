@@ -69,6 +69,9 @@ func (s *GRPCWebServer) enqueueWatchEvent(file string) bool {
 	// restarts. Unresolved paths fall back to the file path as the busy key.
 	busyKey := watchEventBusyKey(module, file)
 	if !s.hotreload.beginModuleEvent(busyKey) {
+		// Keep a dirty mark so post-upgrade requeue rescans after the in-flight
+		// module finishes (coalesce alone would drop mid-flight content changes).
+		s.hotreload.markDirtyModule(busyKey, file)
 		s.recordCoalescedWatchEvent(file)
 		return false
 	}

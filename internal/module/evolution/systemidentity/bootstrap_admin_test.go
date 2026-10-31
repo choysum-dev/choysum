@@ -159,9 +159,27 @@ func TestResolvePrincipalUserIDPrefersSession(t *testing.T) {
 	}
 }
 
-func TestResolvePrincipalUserIDUnavailable(t *testing.T) {
+func TestResolvePrincipalUserIDSoftWhenAuthAbsent(t *testing.T) {
 	t.Parallel()
-	_, _, err := ResolvePrincipalUserID(context.Background(), nil, "")
+	userID, companyID, err := ResolvePrincipalUserID(context.Background(), nil, "")
+	if err != nil {
+		t.Fatalf("auth-free scope should soft-empty, got err=%v", err)
+	}
+	if userID != "" || companyID != "" {
+		t.Fatalf("user=%q company=%q, want empty", userID, companyID)
+	}
+}
+
+func TestResolvePrincipalUserIDUnavailableWhenAuthInstalledWithoutSeed(t *testing.T) {
+	t.Parallel()
+	db := openDB(t)
+	if err := db.AutoMigrate(&meta.Module{}); err != nil {
+		t.Fatalf("migrate module: %v", err)
+	}
+	if err := db.Create(&meta.Module{Name: "auth", Status: meta.Installed, Version: "1.0.0"}).Error; err != nil {
+		t.Fatalf("seed auth module: %v", err)
+	}
+	_, _, err := ResolvePrincipalUserID(context.Background(), newScope(t, db), "")
 	if !errors.Is(err, ErrBootstrapAdminUnavailable) {
 		t.Fatalf("err=%v, want ErrBootstrapAdminUnavailable", err)
 	}

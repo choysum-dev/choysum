@@ -30,13 +30,15 @@ function payloadEquals(left: unknown, right: unknown): boolean {
   return JSON.stringify(normalizePayload(left)) === JSON.stringify(normalizePayload(right));
 }
 
-function needsUpdate(existing: Partial<Schedule>): boolean {
+function needsUpdate(existing: Partial<Schedule>, actorUserId: string): boolean {
   if (existing.Active !== true) return true;
   if ((existing.CronExpr || '').trim() !== cronExpr) return true;
   if ((existing.Timezone || '').trim() !== timezone) return true;
   if ((existing.TargetApp || '').trim() !== targetApp) return true;
   if ((existing.FullMethod || '').trim() !== fullMethod) return true;
   if (!payloadEquals(existing.PayloadTemplateJson, payloadTemplate)) return true;
+  if ((existing.SchedulerUserId || '').trim() !== actorUserId) return true;
+  if ((existing.TriggeredByUserId || '').trim() !== actorUserId) return true;
   return false;
 }
 
@@ -45,11 +47,7 @@ async function listScheduleByName(name: string): Promise<Array<Partial<Schedule>
   return Array.isArray(items) ? items : [];
 }
 
-async function createSchedule(): Promise<void> {
-  const actorUserId = String(getUserId() || '').trim();
-  if (!actorUserId) {
-    throw new Error('SchedulerUserId requires an authenticated principal (bootstrap admin User.Id)');
-  }
+async function createSchedule(actorUserId: string): Promise<void> {
   await ScheduleService.Create({
     Active: true,
     Name: scheduleName,
@@ -64,7 +62,7 @@ async function createSchedule(): Promise<void> {
   });
 }
 
-async function updateSchedule(scheduleId: string): Promise<void> {
+async function updateSchedule(scheduleId: string, actorUserId: string): Promise<void> {
   await ScheduleService.UpdateById(scheduleId, {
     Active: true,
     CronExpr: cronExpr,
@@ -72,6 +70,8 @@ async function updateSchedule(scheduleId: string): Promise<void> {
     TargetApp: targetApp,
     FullMethod: fullMethod,
     PayloadTemplateJson: payloadTemplate,
+    SchedulerUserId: actorUserId,
+    TriggeredByUserId: actorUserId,
   });
 }
 
@@ -82,14 +82,18 @@ async function updateSchedule(scheduleId: string): Promise<void> {
 export class DocumentAttachmentHooks {
   @HookReady()
   static async ensureAttachmentGcSchedule(): Promise<void> {
+    const actorUserId = String(getUserId() || '').trim();
+    if (!actorUserId) {
+      throw new Error('SchedulerUserId requires an authenticated principal (bootstrap admin User.Id)');
+    }
     const items = await listScheduleByName(scheduleName);
     const existing = items[0];
     if (!existing?.Id) {
-      await createSchedule();
+      await createSchedule(actorUserId);
       return;
     }
-    if (needsUpdate(existing)) {
-      await updateSchedule(existing.Id);
+    if (needsUpdate(existing, actorUserId)) {
+      await updateSchedule(existing.Id, actorUserId);
     }
   }
 }

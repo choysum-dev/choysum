@@ -1182,7 +1182,7 @@ msgstr ""
 
 #: web/menu/menus.ts:25
 msgctxt "web/menu/menus"
-msgid "Record Properties"
+msgid "Property Definitions"
 msgstr ""
 
 #: web/menu/menus.ts:19
@@ -1237,7 +1237,7 @@ msgstr ""
 
 #: web/route/routes.ts:70
 msgctxt "web/route/routes"
-msgid "Record Properties"
+msgid "Property Definitions"
 msgstr ""
 
 #: web/route/routes.ts:61

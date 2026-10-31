@@ -224,8 +224,15 @@ SPDX-License-Identifier: Apache-2.0
           <slot />
           <template #empty>
             <slot name="empty">
-              <!-- Create stays in the list chrome toolbar only; empty state is copy, not a second New. -->
-              <ChoyEmpty class="w-full !gap-3 !p-4 md:!p-6" :description="_t('No data')" />
+              <ChoyEmpty class="w-full !gap-3 !p-4 md:!p-6" :description="_t('No data')">
+                <!-- Toolbar New covers the usual chrome; keep empty-state New only when header is hidden. -->
+                <template v-if="!showHeader && showActions && resolvedCreateAction && canCreate" #actions>
+                  <ChoyButton type="button" size="default" variant="default" @click="handleCreate">
+                    <Plus class="size-4" aria-hidden="true" />
+                    {{ _t('New') }}
+                  </ChoyButton>
+                </template>
+              </ChoyEmpty>
             </slot>
           </template>
         </ChoyTableHost>

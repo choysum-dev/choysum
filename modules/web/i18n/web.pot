@@ -2589,7 +2589,7 @@ msgstr ""
 
 #: web/menu/menus.ts:51
 msgctxt "web/menu/menus"
-msgid "Record Properties"
+msgid "Property Definitions"
 msgstr ""
 
 #: web/menu/menus.ts:20
@@ -2703,7 +2703,7 @@ msgstr ""
 
 #: web/pages/property_definition_list_page.ts:38
 msgctxt "web/pages/PropertyDefinitionList"
-msgid "Record Properties: %s"
+msgid "Property Definitions: %s"
 msgstr ""
 
 #: web/pages/terminology_list_page.ts:36
@@ -2822,7 +2822,7 @@ msgstr ""
 
 #: web/route/propertyDefinitionRoutes.ts:31
 msgctxt "web/route/propertyDefinitionRoutes"
-msgid "Record Properties"
+msgid "Property Definitions"
 msgstr ""
 
 #: web/route/terminologyRoutes.ts:43

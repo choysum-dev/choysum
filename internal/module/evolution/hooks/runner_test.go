@@ -21,7 +21,6 @@ import (
 	_ "github.com/choysum-dev/choysum/internal/defaultjsexecutor"
 	modulegenerator "github.com/choysum-dev/choysum/internal/module/artifact/generate"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
-	"github.com/choysum-dev/choysum/internal/module/evolution/systemidentity"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/auth"
@@ -365,12 +364,16 @@ func TestRunnerBuildScriptsAndContexts(t *testing.T) {
 
 	emptyScope := newHooksTestScopeWithoutAdmin(t)
 	emptyRunner := &Runner{runtimeScope: emptyScope, module: runner.module}
-	_, noAdminErr := emptyRunner.buildJsContext(context.Background(), RunOptions{})
-	if noAdminErr == nil {
-		t.Fatal("expected error when auth.user_admin is missing (no Username literal fallback)")
+	emptyCtx, noAdminErr := emptyRunner.buildJsContext(context.Background(), RunOptions{})
+	if noAdminErr != nil {
+		t.Fatalf("auth-free scope should soft-empty identity, got %v", noAdminErr)
 	}
-	if !errors.Is(noAdminErr, systemidentity.ErrBootstrapAdminUnavailable) && !strings.Contains(noAdminErr.Error(), "bootstrap admin") {
-		t.Fatalf("unexpected missing-admin error: %v", noAdminErr)
+	emptyIdentity := emptyCtx.payload["identity"].(map[string]any)
+	if emptyIdentity["userId"] == "admin" {
+		t.Fatal("must not fall back to Username literal admin")
+	}
+	if strings.TrimSpace(fmt.Sprint(emptyIdentity["userId"])) != "" {
+		t.Fatalf("expected empty userId without auth install, got %#v", emptyIdentity)
 	}
 
 	adminCtx, adminErr := runner.buildJsContext(context.Background(), RunOptions{})
