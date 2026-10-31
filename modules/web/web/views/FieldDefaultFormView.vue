@@ -15,7 +15,7 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     v-on="$attrs"
   >
-    <div data-anchor="choy.form.sheet" class="min-h-full">
+    <div data-anchor="choy.form.sheet" class="flex min-h-full flex-col gap-8">
       <ChoySection :title="_t('Target')">
         <ChoyGrid :cols="12">
           <ChoyCol :span="6">
@@ -37,7 +37,7 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyGrid>
       </ChoySection>
 
-      <ChoySection :title="_t('Scope')" class="mt-6">
+      <ChoySection :title="_t('Scope')">
         <ChoyGrid :cols="12">
           <ChoyCol :span="6">
             <ChoyVarcharField
@@ -56,7 +56,7 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyGrid>
       </ChoySection>
 
-      <ChoySection :title="_t('Value')" class="mt-6">
+      <ChoySection :title="_t('Value')">
         <ChoyJsonField :store="store" prop="Value" hide-label :rules="requiredRules" />
       </ChoySection>
     </div>
