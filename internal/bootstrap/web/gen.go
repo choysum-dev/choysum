@@ -193,7 +193,7 @@ func buildBootstrapDist(cacheDir, bootstrapDir string) error {
 	// Fetch type definitions and update tsconfig for IDE support.
 	client := esmresolver.NewTypeFetchHTTPClient(30 * time.Second)
 	typesDir := filepath.Join(cacheDir, "pkg", "types")
-	if results, err := esmresolver.FetchTypesForModule(client, "https://esm.sh", typesDir, bootstrapDir); err == nil {
+	if results, err := esmresolver.FetchTypesForModule(client, esmUpstreamURL(), typesDir, bootstrapDir); err == nil {
 		tsConfigPath := filepath.Join(bootstrapDir, "tsconfig.json")
 		if err := esmresolver.UpdateTsconfigPaths(tsConfigPath, results); err != nil {
 			fmt.Fprintf(os.Stderr, "bootstrap_web_generate: warning: update tsconfig paths: %v\n", err)
@@ -239,7 +239,7 @@ func buildBootstrapDist(cacheDir, bootstrapDir string) error {
 		Write:             true,
 		EntryNames:        "[dir]/[name]-[hash]",
 		Platform:          api.PlatformBrowser,
-		Target:            api.ES2020,
+		Target:            api.ES2022,
 		Loader: map[string]api.Loader{
 			".png":  api.LoaderFile,
 			".svg":  api.LoaderFile,
@@ -248,11 +248,7 @@ func buildBootstrapDist(cacheDir, bootstrapDir string) error {
 			".sass": api.LoaderCSS,
 		},
 		Plugins: []api.Plugin{
-			esmresolver.New(
-				esmresolver.WithCacheDir(cacheDir),
-				esmresolver.WithTarget("es2020"),
-				esmresolver.WithModulePath(bootstrapDir),
-			).Plugin(),
+			esmresolver.New(bootstrapESMResolverOpts(cacheDir, bootstrapDir)...).Plugin(),
 			vueplugin.NewPlugin(
 				vueplugin.WithJsExecutor(executor),
 				vueplugin.WithIndexHtmlOptions(vueplugin.IndexHtmlOptions{
@@ -334,4 +330,23 @@ func resolveCacheDir() string {
 		os.Exit(1)
 	}
 	return filepath.Join(home, ".choysum")
+}
+
+func esmUpstreamURL() string {
+	if u := esmresolver.UpstreamFromEnv(); u != "" {
+		return u
+	}
+	return "https://esm.sh"
+}
+
+func bootstrapESMResolverOpts(cacheDir, bootstrapDir string) []esmresolver.Option {
+	opts := []esmresolver.Option{
+		esmresolver.WithCacheDir(cacheDir),
+		esmresolver.WithTarget(esmresolver.DefaultTarget),
+		esmresolver.WithModulePath(bootstrapDir),
+	}
+	if u := esmresolver.UpstreamFromEnv(); u != "" {
+		opts = append(opts, esmresolver.WithUpstream(u))
+	}
+	return opts
 }

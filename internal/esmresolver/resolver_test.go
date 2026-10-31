@@ -46,7 +46,7 @@ func writeCacheFile(dir, cacheKey, content string) (string, error) {
 func newTestResolver(dir string) *Resolver {
 	return New(
 		WithCacheDir(dir),
-		WithTarget("es2020"),
+		WithTarget("es2022"),
 		WithHTTPClient(&http.Client{Timeout: 5 * time.Second}),
 		zeroRetryBackoff(),
 	)
@@ -87,7 +87,7 @@ func TestResolver_CacheHit_OnLoad(t *testing.T) {
 
 	// Write a cache entry for a known URL.
 	content := "export const y = 2;"
-	url := "https://esm.sh/hit-pkg@1.0.0?target=es2020"
+	url := "https://esm.sh/hit-pkg@1.0.0?target=es2022"
 	cacheKey := sha256Hex(url)
 	if _, err := writeCacheFile(r.codeCacheDir(), cacheKey, content); err != nil {
 		t.Fatal(err)
@@ -122,10 +122,10 @@ func TestResolver_CacheMiss_Download(t *testing.T) {
 	r := New(
 		WithUpstream(server.URL),
 		WithCacheDir(dir),
-		WithTarget("es2020"),
+		WithTarget("es2022"),
 	)
 
-	url := server.URL + "/test-pkg@1.0.0?target=es2020"
+	url := server.URL + "/test-pkg@1.0.0?target=es2022"
 	content, err := r.downloadWithRetry(url)
 	if err != nil {
 		t.Fatalf("download failed: %v", err)
@@ -173,12 +173,12 @@ func TestResolver_Download_RetryOn500(t *testing.T) {
 	r := New(
 		WithUpstream(server.URL),
 		WithCacheDir(dir),
-		WithTarget("es2020"),
+		WithTarget("es2022"),
 		zeroRetryBackoff(),
 	)
 
 	// Use downloadWithRetry directly.
-	content, err := r.downloadWithRetry(server.URL + "/pkg?target=es2020")
+	content, err := r.downloadWithRetry(server.URL + "/pkg?target=es2022")
 	if err != nil {
 		t.Fatalf("downloadWithRetry failed: %v", err)
 	}
@@ -203,10 +203,10 @@ func TestResolver_Download_NoRetryOn404(t *testing.T) {
 	r := New(
 		WithUpstream(server.URL),
 		WithCacheDir(dir),
-		WithTarget("es2020"),
+		WithTarget("es2022"),
 	)
 
-	_, err := r.downloadWithRetry(server.URL + "/nonexistent?target=es2020")
+	_, err := r.downloadWithRetry(server.URL + "/nonexistent?target=es2022")
 	if err == nil {
 		t.Fatal("expected error for 404")
 	}
@@ -264,11 +264,11 @@ func TestResolver_Download_RetrySleepsWhenBackoffPositive(t *testing.T) {
 	r := New(
 		WithUpstream(server.URL),
 		WithCacheDir(dir),
-		WithTarget("es2020"),
+		WithTarget("es2022"),
 		WithRetryBackoff(func(int) time.Duration { return time.Millisecond }),
 	)
 
-	_, err := r.downloadWithRetry(server.URL + "/pkg?target=es2020")
+	_, err := r.downloadWithRetry(server.URL + "/pkg?target=es2022")
 	if err == nil {
 		t.Fatal("expected error after all retries exhausted")
 	}
@@ -288,11 +288,11 @@ func TestResolver_Download_AllRetriesFail(t *testing.T) {
 	r := New(
 		WithUpstream(server.URL),
 		WithCacheDir(dir),
-		WithTarget("es2020"),
+		WithTarget("es2022"),
 		zeroRetryBackoff(),
 	)
 
-	_, err := r.downloadWithRetry(server.URL + "/pkg?target=es2020")
+	_, err := r.downloadWithRetry(server.URL + "/pkg?target=es2022")
 	if err == nil {
 		t.Fatal("expected error after all retries exhausted")
 	}
@@ -360,10 +360,10 @@ func TestResolver_Singleflight_Concurrency(t *testing.T) {
 	r := New(
 		WithUpstream(server.URL),
 		WithCacheDir(dir),
-		WithTarget("es2020"),
+		WithTarget("es2022"),
 	)
 
-	url := server.URL + "/sf-pkg@1.0.0?target=es2020"
+	url := server.URL + "/sf-pkg@1.0.0?target=es2022"
 
 	// Use singleflight directly to test deduplication.
 	cacheKey := sha256Hex(url)
@@ -419,10 +419,10 @@ func TestResolver_CorruptedCache_ReDownload(t *testing.T) {
 	r := New(
 		WithUpstream(server.URL),
 		WithCacheDir(dir),
-		WithTarget("es2020"),
+		WithTarget("es2022"),
 	)
 
-	url := server.URL + "/corrupt-pkg@1.0.0?target=es2020"
+	url := server.URL + "/corrupt-pkg@1.0.0?target=es2022"
 	cacheKey := sha256Hex(url)
 	cacheFile := filepath.Join(r.codeCacheDir(), cacheKey[:2], cacheKey[2:])
 
@@ -481,11 +481,11 @@ func TestResolver_Offline_CacheMiss(t *testing.T) {
 	dir := t.TempDir()
 	r := New(
 		WithCacheDir(dir),
-		WithTarget("es2020"),
+		WithTarget("es2022"),
 		WithOffline(true),
 	)
 
-	url := "https://esm.sh/offline-miss@1.0.0?target=es2020"
+	url := "https://esm.sh/offline-miss@1.0.0?target=es2022"
 	cacheKey := sha256Hex(url)
 	cacheFile := filepath.Join(r.codeCacheDir(), cacheKey[:2], cacheKey[2:])
 
@@ -517,12 +517,12 @@ func TestResolver_Offline_CacheHit(t *testing.T) {
 	dir := t.TempDir()
 	r := New(
 		WithCacheDir(dir),
-		WithTarget("es2020"),
+		WithTarget("es2022"),
 		WithOffline(true),
 	)
 
 	content := "offline content"
-	url := "https://esm.sh/offline-hit@1.0.0?target=es2020"
+	url := "https://esm.sh/offline-hit@1.0.0?target=es2022"
 	cacheKey := sha256Hex(url)
 	if _, err := writeCacheFile(r.codeCacheDir(), cacheKey, content); err != nil {
 		t.Fatal(err)
@@ -596,7 +596,7 @@ func TestResolver_Plugin_OnResolve_OnLoad_Integration(t *testing.T) {
 	r := New(
 		WithUpstream(server.URL),
 		WithCacheDir(dir),
-		WithTarget("es2020"),
+		WithTarget("es2022"),
 	)
 	plugin := r.Plugin()
 
@@ -658,7 +658,7 @@ func TestResolver_Plugin_RewritesVueI18nToProdEntry(t *testing.T) {
 	r := New(
 		WithUpstream(server.URL),
 		WithCacheDir(dir),
-		WithTarget("es2020"),
+		WithTarget("es2022"),
 		WithLockfile(lockPath),
 	)
 
@@ -686,8 +686,8 @@ func TestResolver_Plugin_RewritesVueI18nToProdEntry(t *testing.T) {
 	if gotPath != "/vue-i18n@11.4.6/dist/vue-i18n.esm-browser.prod.js" {
 		t.Fatalf("requested path = %q, want /vue-i18n@11.4.6/dist/vue-i18n.esm-browser.prod.js", gotPath)
 	}
-	if gotTarget != "es2020" {
-		t.Fatalf("requested target = %q, want es2020", gotTarget)
+	if gotTarget != "es2022" {
+		t.Fatalf("requested target = %q, want es2022", gotTarget)
 	}
 }
 
@@ -706,11 +706,11 @@ func TestResolver_Plugin_CSS_External(t *testing.T) {
 	r := New(
 		WithUpstream(server.URL),
 		WithCacheDir(dir),
-		WithTarget("es2020"),
+		WithTarget("es2022"),
 	)
 
 	// Download a CSS URL.
-	cssURL := server.URL + "/style.css?target=es2020"
+	cssURL := server.URL + "/style.css?target=es2022"
 	content, err := r.download(cssURL)
 	if err != nil {
 		t.Fatalf("download CSS failed: %v", err)
@@ -736,10 +736,10 @@ func TestResolver_Plugin_TS_File_Loader(t *testing.T) {
 	r := New(
 		WithUpstream(server.URL),
 		WithCacheDir(dir),
-		WithTarget("es2020"),
+		WithTarget("es2022"),
 	)
 
-	tsURL := server.URL + "/types.ts?target=es2020"
+	tsURL := server.URL + "/types.ts?target=es2022"
 	content, err := r.download(tsURL)
 	if err != nil {
 		t.Fatalf("download TS failed: %v", err)
@@ -825,14 +825,14 @@ func TestLoaderForURL(t *testing.T) {
 		{"https://esm.sh/pkg.js", api.LoaderJS},
 		{"https://esm.sh/pkg.mjs", api.LoaderJS},
 		{"https://esm.sh/pkg.css", api.LoaderCSS},
-		{"https://esm.sh/pkg.css?target=es2020", api.LoaderCSS},
+		{"https://esm.sh/pkg.css?target=es2022", api.LoaderCSS},
 		{"https://esm.sh/pkg.css.mjs", api.LoaderCSS},
 		{"https://esm.sh/pkg.css.js", api.LoaderCSS},
 		{"https://esm.sh/pkg.css.ts#v=1", api.LoaderCSS},
 		{"https://esm.sh/pkg.ts", api.LoaderTS},
 		{"https://esm.sh/pkg.tsx", api.LoaderTS},
 		{"https://esm.sh/pkg.mts", api.LoaderTS},
-		{"https://esm.sh/pkg.ts?target=es2020", api.LoaderTS},
+		{"https://esm.sh/pkg.ts?target=es2022", api.LoaderTS},
 		{"https://esm.sh/pkg.css/chunk.js", api.LoaderJS},
 		{"https://esm.sh/pkg", api.LoaderJS},
 	}
@@ -852,8 +852,8 @@ func TestTrimCSSWrapperSuffix(t *testing.T) {
 	}{
 		{
 			name: "css js wrapper",
-			url:  "https://esm.sh/element-plus/theme-chalk/base.css.js?target=es2020",
-			want: "https://esm.sh/element-plus/theme-chalk/base.css?target=es2020",
+			url:  "https://esm.sh/element-plus/theme-chalk/base.css.js?target=es2022",
+			want: "https://esm.sh/element-plus/theme-chalk/base.css?target=es2022",
 		},
 		{
 			name: "css mjs wrapper",
@@ -867,13 +867,13 @@ func TestTrimCSSWrapperSuffix(t *testing.T) {
 		},
 		{
 			name: "preserve escaped path segments",
-			url:  "https://esm.sh/@scope%2Fpkg/theme%2Fchalk/base.css.js?target=es2020",
-			want: "https://esm.sh/@scope%2Fpkg/theme%2Fchalk/base.css?target=es2020",
+			url:  "https://esm.sh/@scope%2Fpkg/theme%2Fchalk/base.css.js?target=es2022",
+			want: "https://esm.sh/@scope%2Fpkg/theme%2Fchalk/base.css?target=es2022",
 		},
 		{
 			name: "already css",
-			url:  "https://esm.sh/style.css?target=es2020",
-			want: "https://esm.sh/style.css?target=es2020",
+			url:  "https://esm.sh/style.css?target=es2022",
+			want: "https://esm.sh/style.css?target=es2022",
 		},
 		{
 			name: "invalid url",
@@ -895,7 +895,7 @@ func TestTrimCSSWrapperSuffix(t *testing.T) {
 
 func TestFormatError(t *testing.T) {
 	t.Parallel()
-	r := New(WithTarget("es2020"))
+	r := New(WithTarget("es2022"))
 	err := r.formatError("download failed", "test-pkg@1.0.0", "https://esm.sh/test-pkg@1.0.0", "http 404: not found")
 	if err == nil {
 		t.Fatal("expected error")
@@ -912,12 +912,12 @@ func TestFormatError(t *testing.T) {
 
 func TestWithExtraQuery(t *testing.T) {
 	t.Parallel()
-	r := New(WithTarget("es2020"), WithExtraQuery("bundle", " &dev=false& "))
+	r := New(WithTarget("es2022"), WithExtraQuery("bundle", " &dev=false& "))
 	if r.extraQuery != "bundle&dev=false" {
 		t.Fatalf("extraQuery = %q, want bundle&dev=false", r.extraQuery)
 	}
 	got := r.bareImportURL("typescript@6.0.3")
-	want := "https://esm.sh/typescript@6.0.3?target=es2020&bundle&dev=false"
+	want := "https://esm.sh/typescript@6.0.3?target=es2022&bundle&dev=false"
 	if got != want {
 		t.Fatalf("bareImportURL = %q, want %q", got, want)
 	}
@@ -925,7 +925,7 @@ func TestWithExtraQuery(t *testing.T) {
 
 func TestWithExtraQuery_Compose(t *testing.T) {
 	t.Parallel()
-	r := New(WithTarget("es2020"), WithExtraQuery("bundle"), WithExtraQuery("&dev=false&"))
+	r := New(WithTarget("es2022"), WithExtraQuery("bundle"), WithExtraQuery("&dev=false&"))
 	if r.extraQuery != "bundle&dev=false" {
 		t.Fatalf("extraQuery = %q, want bundle&dev=false", r.extraQuery)
 	}
@@ -933,12 +933,12 @@ func TestWithExtraQuery_Compose(t *testing.T) {
 
 func TestWithExtraQuery_Empty(t *testing.T) {
 	t.Parallel()
-	r := New(WithTarget("es2020"), WithExtraQuery("", "  ", "&"))
+	r := New(WithTarget("es2022"), WithExtraQuery("", "  ", "&"))
 	if r.extraQuery != "" {
 		t.Fatalf("extraQuery = %q, want empty", r.extraQuery)
 	}
 	got := r.bareImportURL("path-browserify@1.0.1")
-	want := "https://esm.sh/path-browserify@1.0.1?target=es2020"
+	want := "https://esm.sh/path-browserify@1.0.1?target=es2022"
 	if got != want {
 		t.Fatalf("bareImportURL = %q, want %q", got, want)
 	}
@@ -950,7 +950,7 @@ func TestResolver_Plugin_BareCSSURL_UsesExtraQuery(t *testing.T) {
 	r := New(
 		WithUpstream("https://esm.example"),
 		WithCacheDir(dir),
-		WithTarget("es2020"),
+		WithTarget("es2022"),
 		WithExtraQuery("bundle"),
 	)
 	entry := filepath.Join(dir, "entry.css")
@@ -970,7 +970,7 @@ func TestResolver_Plugin_BareCSSURL_UsesExtraQuery(t *testing.T) {
 		t.Fatalf("expected 1 output file, got %d", len(result.OutputFiles))
 	}
 	out := string(result.OutputFiles[0].Contents)
-	want := "https://esm.example/test-pkg?target=es2020&bundle"
+	want := "https://esm.example/test-pkg?target=es2022&bundle"
 	if !strings.Contains(out, want) {
 		t.Fatalf("output missing %q:\n%s", want, out)
 	}
@@ -1026,8 +1026,8 @@ func TestResolver_Plugin_InitializesZeroValueDefaults(t *testing.T) {
 	if r.upstream != "https://esm.sh" {
 		t.Fatalf("upstream = %q, want https://esm.sh", r.upstream)
 	}
-	if r.target != "es2020" {
-		t.Fatalf("target = %q, want es2020", r.target)
+	if r.target != "es2022" {
+		t.Fatalf("target = %q, want es2022", r.target)
 	}
 }
 
@@ -1204,12 +1204,12 @@ func TestResolveInNamespace_RemoteAbsolutePathUnderNpmPrefix(t *testing.T) {
 	r := New()
 	result, err := r.resolveInNamespace(api.OnResolveArgs{
 		Path:     "/npm/lodash-es@4.17.21/lodash.js",
-		Importer: "https://esm.sh/pkg@1.0.0/index.js?target=es2020",
+		Importer: "https://esm.sh/pkg@1.0.0/index.js?target=es2022",
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if result.Path != "https://esm.sh/npm/lodash-es@4.17.21/lodash.js?target=es2020" {
+	if result.Path != "https://esm.sh/npm/lodash-es@4.17.21/lodash.js?target=es2022" {
 		t.Fatalf("Path = %q, want remote URL under upstream", result.Path)
 	}
 	if result.Namespace != "choysum-esm" {
@@ -1237,12 +1237,12 @@ func TestResolveInNamespace_TargetParamReAdd(t *testing.T) {
 	r := New()
 	result, err := r.resolveInNamespace(api.OnResolveArgs{
 		Path:     "./sub.mjs",
-		Importer: "https://esm.sh/pkg@1.0.0/deno/pkg.mjs?target=es2020",
+		Importer: "https://esm.sh/pkg@1.0.0/deno/pkg.mjs?target=es2022",
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if result.Path != "https://esm.sh/pkg@1.0.0/deno/sub.mjs?target=es2020" {
+	if result.Path != "https://esm.sh/pkg@1.0.0/deno/sub.mjs?target=es2022" {
 		t.Fatalf("Path = %q, want target re-added", result.Path)
 	}
 }
@@ -1252,7 +1252,7 @@ func TestResolveInNamespace_TargetParamReAdd_WithExistingQuery(t *testing.T) {
 	r := New()
 	result, err := r.resolveInNamespace(api.OnResolveArgs{
 		Path:     "./sub.mjs?v=1",
-		Importer: "https://esm.sh/pkg@1.0.0/deno/pkg.mjs?target=es2020",
+		Importer: "https://esm.sh/pkg@1.0.0/deno/pkg.mjs?target=es2022",
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -1267,8 +1267,8 @@ func TestResolveInNamespace_TargetParamReAdd_WithExistingQuery(t *testing.T) {
 	if got := parsed.Query().Get("v"); got != "1" {
 		t.Fatalf("query v = %q, want 1", got)
 	}
-	if got := parsed.Query().Get("target"); got != "es2020" {
-		t.Fatalf("query target = %q, want es2020", got)
+	if got := parsed.Query().Get("target"); got != "es2022" {
+		t.Fatalf("query target = %q, want es2022", got)
 	}
 }
 
@@ -1277,7 +1277,7 @@ func TestResolveInNamespace_TargetParamReAdd_PreserveExistingTarget(t *testing.T
 	r := New()
 	result, err := r.resolveInNamespace(api.OnResolveArgs{
 		Path:     "./sub.mjs?target=es2018&v=1",
-		Importer: "https://esm.sh/pkg@1.0.0/deno/pkg.mjs?target=es2020",
+		Importer: "https://esm.sh/pkg@1.0.0/deno/pkg.mjs?target=es2022",
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -1359,7 +1359,7 @@ func TestResolveInNamespace_CSSWrapperURLToken_External(t *testing.T) {
 	t.Parallel()
 	r := New()
 	result, err := r.resolveInNamespace(api.OnResolveArgs{
-		Path: "https://esm.sh/pkg@1.0.0/style.css.mjs?target=es2020",
+		Path: "https://esm.sh/pkg@1.0.0/style.css.mjs?target=es2022",
 		Kind: api.ResolveCSSURLToken,
 	})
 	if err != nil {
@@ -1368,7 +1368,7 @@ func TestResolveInNamespace_CSSWrapperURLToken_External(t *testing.T) {
 	if !result.External {
 		t.Fatal("expected CSS URL token to stay external")
 	}
-	if result.Path != "https://esm.sh/pkg@1.0.0/style.css?target=es2020" {
+	if result.Path != "https://esm.sh/pkg@1.0.0/style.css?target=es2022" {
 		t.Fatalf("Path = %q", result.Path)
 	}
 }
@@ -1377,7 +1377,7 @@ func TestResolveInNamespace_CSSWrapperURLToken_External_PreserveEscapedPath(t *t
 	t.Parallel()
 	r := New()
 	result, err := r.resolveInNamespace(api.OnResolveArgs{
-		Path: "https://esm.sh/@scope%2Fpkg/theme%2Fchalk/base.css.js?target=es2020",
+		Path: "https://esm.sh/@scope%2Fpkg/theme%2Fchalk/base.css.js?target=es2022",
 		Kind: api.ResolveCSSURLToken,
 	})
 	if err != nil {
@@ -1386,7 +1386,7 @@ func TestResolveInNamespace_CSSWrapperURLToken_External_PreserveEscapedPath(t *t
 	if !result.External {
 		t.Fatal("expected CSS URL token to stay external")
 	}
-	if result.Path != "https://esm.sh/@scope%2Fpkg/theme%2Fchalk/base.css?target=es2020" {
+	if result.Path != "https://esm.sh/@scope%2Fpkg/theme%2Fchalk/base.css?target=es2022" {
 		t.Fatalf("Path = %q", result.Path)
 	}
 }
@@ -1474,8 +1474,8 @@ func TestExtractPkgFromURL(t *testing.T) {
 		upstream string
 		want     string
 	}{
-		{"https://esm.sh/kysely@0.27.6?target=es2020", "https://esm.sh", "kysely@0.27.6"},
-		{"https://esm.sh/@scope/pkg@1.0.0?target=es2020", "https://esm.sh", "@scope/pkg@1.0.0"},
+		{"https://esm.sh/kysely@0.27.6?target=es2022", "https://esm.sh", "kysely@0.27.6"},
+		{"https://esm.sh/@scope/pkg@1.0.0?target=es2022", "https://esm.sh", "@scope/pkg@1.0.0"},
 		{"https://other.com/pkg", "https://esm.sh", ""},
 		{"", "https://esm.sh", ""},
 	}
@@ -1493,7 +1493,7 @@ func TestIsBareImport(t *testing.T) {
 	// Use a Resolver instance to access the closure via Plugin's internal logic.
 	// For now, test the logic directly by creating a minimal resolver and
 	// verifying through integration.
-	r := New(WithTarget("es2020"))
+	r := New(WithTarget("es2022"))
 	_ = r
 
 	// The isBareImport closure is private, so we test indirectly through
@@ -1505,7 +1505,7 @@ func TestIsBareImport(t *testing.T) {
 		defer server.Close()
 
 		dir := t.TempDir()
-		r := New(WithUpstream(server.URL), WithCacheDir(dir), WithTarget("es2020"))
+		r := New(WithUpstream(server.URL), WithCacheDir(dir), WithTarget("es2022"))
 		entry := filepath.Join(dir, "entry.ts")
 		if err := os.WriteFile(entry, []byte(`import { x } from "bare-lib";`), 0644); err != nil {
 			t.Fatal(err)
@@ -1524,7 +1524,7 @@ func TestIsBareImport(t *testing.T) {
 
 	t.Run("relative_import_untouched", func(t *testing.T) {
 		dir := t.TempDir()
-		r := New(WithCacheDir(dir), WithTarget("es2020"))
+		r := New(WithCacheDir(dir), WithTarget("es2022"))
 		// Create a local module.
 		lib := filepath.Join(dir, "lib.ts")
 		if err := os.WriteFile(lib, []byte(`export const y = 2;`), 0644); err != nil {
@@ -1612,7 +1612,7 @@ func TestResolver_WithLogger(t *testing.T) {
 	r := New(
 		WithUpstream(server.URL),
 		WithCacheDir(dir),
-		WithTarget("es2020"),
+		WithTarget("es2022"),
 		WithModuleName("auth"),
 		WithApplicationName("base"),
 		WithLogger(logger),
@@ -1668,7 +1668,7 @@ func TestResolver_DownloadedPkgsTracksOnlySuccessfulFetches(t *testing.T) {
 		r := New(
 			WithUpstream(server.URL),
 			WithCacheDir(dir),
-			WithTarget("es2020"),
+			WithTarget("es2022"),
 		)
 
 		entry := filepath.Join(dir, "entry.ts")
@@ -1703,7 +1703,7 @@ func TestResolver_DownloadedPkgsTracksOnlySuccessfulFetches(t *testing.T) {
 		r := New(
 			WithUpstream(server.URL),
 			WithCacheDir(dir),
-			WithTarget("es2020"),
+			WithTarget("es2022"),
 			zeroRetryBackoff(),
 		)
 
@@ -1741,7 +1741,7 @@ func TestResolver_OnLoadHandlesNilMetricsAfterPluginSetup(t *testing.T) {
 	r := New(
 		WithUpstream(server.URL),
 		WithCacheDir(dir),
-		WithTarget("es2020"),
+		WithTarget("es2022"),
 	)
 	plugin := r.Plugin()
 
@@ -1870,7 +1870,7 @@ func TestResolveLockfile_FileNotFound(t *testing.T) {
 
 func TestDownload_InvalidURL(t *testing.T) {
 	t.Parallel()
-	r := New(WithTarget("es2020"))
+	r := New(WithTarget("es2022"))
 	_, err := r.download("://invalid-url")
 	if err == nil {
 		t.Fatal("expected error for invalid URL")
@@ -1879,7 +1879,7 @@ func TestDownload_InvalidURL(t *testing.T) {
 
 func TestDownload_NetworkError(t *testing.T) {
 	t.Parallel()
-	r := New(WithTarget("es2020"))
+	r := New(WithTarget("es2022"))
 	// Use a non-routable address to trigger a network error.
 	_, err := r.download("http://127.0.0.1:1/nonexistent")
 	if err == nil {
@@ -2055,7 +2055,7 @@ func TestApplyBareImportPin(t *testing.T) {
 		{"vue/dist/vue.esm-bundler.js", "vue@3.5.38/dist/vue.esm-bundler.js"},
 		{"vue@3.5.43", "vue@3.5.38"},
 		{"vue@^3.0.0", "vue@3.5.38"},
-		{"vue@^3.5.11?target=es2020", "vue@3.5.38?target=es2020"},
+		{"vue@^3.5.11?target=es2022", "vue@3.5.38?target=es2022"},
 		{"vue@3.5.38", "vue@3.5.38"},
 		{"@vue/runtime-dom", "@vue/runtime-dom@3.5.38"},
 		{"@vue/runtime-dom@3.5.43/dist/x", "@vue/runtime-dom@3.5.38/dist/x"},
@@ -2068,7 +2068,7 @@ func TestApplyBareImportPin(t *testing.T) {
 			t.Fatalf("applyBareImportPin(%q) = %q, want %q", tt.spec, got, tt.want)
 		}
 	}
-	if got := r.applyBareImportPin("https://esm.sh/vue@^3.5.11?target=es2020"); got != "https://esm.sh/vue@3.5.38?target=es2020" {
+	if got := r.applyBareImportPin("https://esm.sh/vue@^3.5.11?target=es2022"); got != "https://esm.sh/vue@3.5.38?target=es2022" {
 		t.Fatalf("url-shaped bare pin: got %q", got)
 	}
 	if got := New().applyBareImportPin("vue"); got != "vue" {
@@ -2077,16 +2077,16 @@ func TestApplyBareImportPin(t *testing.T) {
 	if got := (*Resolver)(nil).applyBareImportPin("vue"); got != "vue" {
 		t.Fatalf("nil receiver: got %q", got)
 	}
-	if got := r.applyBareImportPinToAbsPath("/vue@^3.0.0?target=es2020"); got != "/vue@3.5.38?target=es2020" {
+	if got := r.applyBareImportPinToAbsPath("/vue@^3.0.0?target=es2022"); got != "/vue@3.5.38?target=es2022" {
 		t.Fatalf("abs path: got %q", got)
 	}
-	if got := r.applyBareImportPinToAbsPath("/v135/vue@^3.0.0/es2020/vue.mjs"); got != "/v135/vue@3.5.38/es2020/vue.mjs" {
+	if got := r.applyBareImportPinToAbsPath("/v135/vue@^3.0.0/es2022/vue.mjs"); got != "/v135/vue@3.5.38/es2022/vue.mjs" {
 		t.Fatalf("version-prefix abs path: got %q", got)
 	}
 	if got := r.applyBareImportPinToAbsPath("/stable/vue@^3.0.0"); got != "/stable/vue@3.5.38" {
 		t.Fatalf("stable-prefix abs path: got %q", got)
 	}
-	if got := r.applyBareImportPinToURL("https://esm.sh/v135/vue@^3.5.11?target=es2020"); got != "https://esm.sh/v135/vue@3.5.38?target=es2020" {
+	if got := r.applyBareImportPinToURL("https://esm.sh/v135/vue@^3.5.11?target=es2022"); got != "https://esm.sh/v135/vue@3.5.38?target=es2022" {
 		t.Fatalf("version-prefix url: got %q", got)
 	}
 	if got := r.applyBareImportPinToAbsPath("/v135/react@18.0.0"); got != "/v135/react@18.0.0" {
@@ -2104,14 +2104,14 @@ func TestApplyBareImportPin(t *testing.T) {
 	if got := r.applyBareImportPinToAbsPath("vue@^3"); got != "vue@^3" {
 		t.Fatalf("relative path: got %q", got)
 	}
-	if got := r.applyBareImportPinToURL("https://esm.sh/vue@^3.5.11?target=es2020"); got != "https://esm.sh/vue@3.5.38?target=es2020" {
+	if got := r.applyBareImportPinToURL("https://esm.sh/vue@^3.5.11?target=es2022"); got != "https://esm.sh/vue@3.5.38?target=es2022" {
 		t.Fatalf("url: got %q", got)
 	}
-	already := "https://esm.sh/vue@3.5.38/es2020/vue.mjs"
+	already := "https://esm.sh/vue@3.5.38/es2022/vue.mjs"
 	if got := r.applyBareImportPinToURL(already); got != already {
 		t.Fatalf("already-pinned URL changed: got %q", got)
 	}
-	if got := r.applyBareImportPinToURL("https://esm.sh/lodash@4?target=es2020"); got != "https://esm.sh/lodash@4.17.21?target=es2020" {
+	if got := r.applyBareImportPinToURL("https://esm.sh/lodash@4?target=es2022"); got != "https://esm.sh/lodash@4.17.21?target=es2022" {
 		t.Fatalf("unpinned lodash url: got %q want pinned", got)
 	}
 	otherHost := "https://unpkg.com/vue@3.6.0/dist/x.js"
@@ -2126,7 +2126,7 @@ func TestApplyBareImportPin(t *testing.T) {
 		t.Fatalf("default-port upstream pin: got %q", got)
 	}
 	mirror := New(WithUpstream("https://cdn.example.com/esm"), WithBareImportPins(map[string]string{"vue": "3.5.38"}))
-	if got := mirror.applyBareImportPinToURL("https://cdn.example.com/esm/vue@^3.0.0/es2020/vue.mjs"); got != "https://cdn.example.com/esm/vue@3.5.38/es2020/vue.mjs" {
+	if got := mirror.applyBareImportPinToURL("https://cdn.example.com/esm/vue@^3.0.0/es2022/vue.mjs"); got != "https://cdn.example.com/esm/vue@3.5.38/es2022/vue.mjs" {
 		t.Fatalf("mirror base-path pin: got %q", got)
 	}
 	if got := mirror.applyBareImportPinToURL("https://cdn.example.com/other/vue@^3.0.0"); got != "https://cdn.example.com/other/vue@^3.0.0" {
@@ -2270,7 +2270,7 @@ func TestSplitBarePackage(t *testing.T) {
 		{"vue@3.5.38", "vue", "", true},
 		{"vue/dist/x", "vue", "dist/x", false},
 		{"vue@3.5.38/dist/x", "vue", "dist/x", true},
-		{"vue?target=es2020", "vue", "", false},
+		{"vue?target=es2022", "vue", "", false},
 		{"vue#frag", "vue", "", false},
 		{"@vue/runtime-dom", "@vue/runtime-dom", "", false},
 		{"@vue/runtime-dom@3.5.38", "@vue/runtime-dom", "", true},
@@ -2324,11 +2324,11 @@ func TestPlugin_OnResolve_PinsUpstreamInternalVuePath(t *testing.T) {
 	if onResolve == nil {
 		t.Fatal("expected OnResolve callback")
 	}
-	res, err := onResolve(api.OnResolveArgs{Path: "/vue@^3.5.11/es2020/vue.mjs"})
+	res, err := onResolve(api.OnResolveArgs{Path: "/vue@^3.5.11/es2022/vue.mjs"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "https://esm.sh/vue@3.5.38/es2020/vue.mjs"
+	want := "https://esm.sh/vue@3.5.38/es2022/vue.mjs"
 	if res.Path != want || res.Namespace != "choysum-esm" {
 		t.Fatalf("got path=%q ns=%q want %q choysum-esm", res.Path, res.Namespace, want)
 	}
@@ -2336,17 +2336,17 @@ func TestPlugin_OnResolve_PinsUpstreamInternalVuePath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bare.Path != "https://esm.sh/vue@3.5.38?target=es2020" || bare.Namespace != "choysum-esm" {
+	if bare.Path != "https://esm.sh/vue@3.5.38?target=es2022" || bare.Namespace != "choysum-esm" {
 		t.Fatalf("bare pin: path=%q ns=%q", bare.Path, bare.Namespace)
 	}
 	ns, err := onResolve(api.OnResolveArgs{
-		Path:      "https://esm.sh/vue@^3.0.0/es2020/vue.mjs",
+		Path:      "https://esm.sh/vue@^3.0.0/es2022/vue.mjs",
 		Namespace: "choysum-esm",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ns.Path != "https://esm.sh/vue@3.5.38/es2020/vue.mjs" {
+	if ns.Path != "https://esm.sh/vue@3.5.38/es2022/vue.mjs" {
 		t.Fatalf("namespaced pin: %q", ns.Path)
 	}
 }
@@ -2355,12 +2355,12 @@ func TestResolveInNamespace_PinsAbsoluteHTTPVueURL(t *testing.T) {
 	t.Parallel()
 	r := New(WithBareImportPins(map[string]string{"vue": "3.5.38"}))
 	result, err := r.resolveInNamespace(api.OnResolveArgs{
-		Path: "https://esm.sh/vue@^3.0.0/es2020/vue.mjs",
+		Path: "https://esm.sh/vue@^3.0.0/es2022/vue.mjs",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "https://esm.sh/vue@3.5.38/es2020/vue.mjs"
+	want := "https://esm.sh/vue@3.5.38/es2022/vue.mjs"
 	if result.Path != want {
 		t.Fatalf("Path = %q, want %q", result.Path, want)
 	}
@@ -2375,13 +2375,13 @@ func TestResolveInNamespace_PinsAbsoluteHTTPVueURL(t *testing.T) {
 		t.Fatalf("css pin: %+v", css)
 	}
 	rel, err := r.resolveInNamespace(api.OnResolveArgs{
-		Path:     "/vue@^3.5.11/es2020/vue.mjs",
-		Importer: "https://esm.sh/pinia@3.0.0/index.js?target=es2020",
+		Path:     "/vue@^3.5.11/es2022/vue.mjs",
+		Importer: "https://esm.sh/pinia@3.0.0/index.js?target=es2022",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rel.Path != "https://esm.sh/vue@3.5.38/es2020/vue.mjs?target=es2020" {
+	if rel.Path != "https://esm.sh/vue@3.5.38/es2022/vue.mjs?target=es2022" {
 		t.Fatalf("relative abs pin: %q", rel.Path)
 	}
 }
@@ -2419,7 +2419,7 @@ func TestResolver_Plugin_CorruptLockfileFailsBuild(t *testing.T) {
 
 	r := New(
 		WithLockfile(lockPath),
-		WithTarget("es2020"),
+		WithTarget("es2022"),
 	)
 
 	result := api.Build(api.BuildOptions{
@@ -2532,7 +2532,7 @@ func TestWriteCache_IntegrityRenameFails_RollsBackCache(t *testing.T) {
 func TestPlugin_DataAndFragmentBare(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	r := New(WithCacheDir(dir), WithTarget("es2020"))
+	r := New(WithCacheDir(dir), WithTarget("es2022"))
 
 	// data: imports should not be intercepted as bare.
 	entry := filepath.Join(dir, "entry.ts")
@@ -2552,4 +2552,31 @@ func TestPlugin_DataAndFragmentBare(t *testing.T) {
 	})
 	// We just verify the plugin didn't introduce errors.
 	_ = result
+}
+
+func TestDefaultTargetConstant(t *testing.T) {
+	t.Parallel()
+	r := New()
+	_ = r.Plugin()
+	if r.target != DefaultTarget {
+		t.Fatalf("default target = %q, want %q", r.target, DefaultTarget)
+	}
+}
+
+func TestResolveInNamespacePreservesUpstreamBasePath(t *testing.T) {
+	t.Parallel()
+	r := New(WithUpstream("https://cdn.example.com/esm"), WithTarget(DefaultTarget))
+	_ = r.Plugin()
+	res, err := r.resolveInNamespace(api.OnResolveArgs{
+		Path:      "/demo-pkg@1.0.0/es2022/demo.mjs",
+		Importer:  "choysum-esm:https://cdn.example.com/esm/demo-pkg@1.0.0?target=es2022",
+		Namespace: "choysum-esm",
+	})
+	if err != nil {
+		t.Fatalf("resolve: %v", err)
+	}
+	want := "https://cdn.example.com/esm/demo-pkg@1.0.0/es2022/demo.mjs?target=es2022"
+	if res.Path != want {
+		t.Fatalf("path = %q, want %q", res.Path, want)
+	}
 }

@@ -16,7 +16,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
 	"time"
 
 	"github.com/choysum-dev/choysum/internal/esmresolver"
@@ -37,7 +36,7 @@ func main() {
 	// 1. Fetch Types and Update tsconfig.json for IDE
 	client := esmresolver.NewTypeFetchHTTPClient(30 * time.Second)
 	typesDir := filepath.Join(cacheDir, "pkg", "types")
-	if results, err := esmresolver.FetchTypesForModule(client, "https://esm.sh", typesDir, "."); err == nil {
+	if results, err := esmresolver.FetchTypesForModule(client, esmUpstreamURL(), typesDir, "."); err == nil {
 		if err := esmresolver.UpdateTsconfigPaths("tsconfig.json", results); err != nil {
 			fmt.Fprintf(os.Stderr, "gen.go: warning: %v\n", err)
 		}
@@ -66,11 +65,7 @@ func main() {
 		// interop wrappers can resolve safely without overriding a host shim.
 		Banner: map[string]string{"js": "if(typeof require==='undefined'){globalThis.require=function(m){return null;};}"},
 		Plugins: []api.Plugin{
-			esmresolver.New(
-				esmresolver.WithCacheDir(cacheDir),
-				esmresolver.WithTarget("es2020"),
-				esmresolver.WithModulePath("."),
-			).Plugin(),
+			esmresolver.New(vuesfcResolverOpts(cacheDir)...).Plugin(),
 		},
 		Write: true,
 	})
@@ -87,4 +82,23 @@ func main() {
 	}
 
 	fmt.Println("vuesfc: built dist/index.js")
+}
+
+func esmUpstreamURL() string {
+	if u := esmresolver.UpstreamFromEnv(); u != "" {
+		return u
+	}
+	return "https://esm.sh"
+}
+
+func vuesfcResolverOpts(cacheDir string) []esmresolver.Option {
+	opts := []esmresolver.Option{
+		esmresolver.WithCacheDir(cacheDir),
+		esmresolver.WithTarget(esmresolver.DefaultTarget),
+		esmresolver.WithModulePath("."),
+	}
+	if u := esmresolver.UpstreamFromEnv(); u != "" {
+		opts = append(opts, esmresolver.WithUpstream(u))
+	}
+	return opts
 }

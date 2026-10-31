@@ -22,8 +22,9 @@ go generate ./pkg/jsengine/scripts/vuevirtual/...
 Writes git-ignored `dist/index.js` (several MB). Needs network on first run;
 cache lives under `$CHOYSUM_HOME/pkg/esm` (default `~/.choysum/pkg/esm`).
 
-`gen.go` pins versions via `esm.lock` and requests `?target=es2020&bundle`
+`gen.go` pins versions via `esm.lock` and requests `?target=es2022&bundle`
 so esm.sh can serve `@vue/language-core` (bare `?target=` alone may 500).
+Optional `CHOYSUM_ESM_UPSTREAM` overrides the CDN base (same as other gen/FE host paths).
 
 Pinned in `package.json` / `esm.lock`:
 

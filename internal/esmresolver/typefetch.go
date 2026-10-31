@@ -2184,7 +2184,7 @@ func ensureModulesTsconfig(tsconfigPath string) error {
 		if st.IsDir() {
 			return fmt.Errorf("tsconfig path is a directory: %s", tsconfigPath)
 		}
-		return nil
+		return migrateModulesTsconfigTarget(tsconfigPath)
 	}
 	if !os.IsNotExist(err) {
 		return fmt.Errorf("stat tsconfig: %w", err)
@@ -2194,14 +2194,29 @@ func ensureModulesTsconfig(tsconfigPath string) error {
 		return fmt.Errorf("create tsconfig dir: %w", err)
 	}
 
-	base := map[string]interface{}{
+	base := defaultModulesTsconfig()
+
+	out, err := json.MarshalIndent(base, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal tsconfig: %w", err)
+	}
+	out = append(out, '\n')
+
+	if err := writeAtomicFile(tsconfigPath, out, 0644); err != nil {
+		return fmt.Errorf("write tsconfig: %w", err)
+	}
+	return nil
+}
+
+func defaultModulesTsconfig() map[string]interface{} {
+	return map[string]interface{}{
 		"$schema": "https://json.schemastore.org/tsconfig",
 		"compilerOptions": map[string]interface{}{
 			"allowArbitraryExtensions":     true,
 			"allowImportingTsExtensions":   true,
 			"allowJs":                      true,
 			"experimentalDecorators":       true,
-			"lib":                          []string{"ES2020", "DOM", "DOM.Iterable"},
+			"lib":                          []string{"ES2022", "DOM", "DOM.Iterable"},
 			"module":                       "ESNext",
 			"moduleResolution":             "bundler",
 			"noEmit":                       true,
@@ -2209,9 +2224,11 @@ func ensureModulesTsconfig(tsconfigPath string) error {
 			"skipLibCheck":                 true,
 			"strict":                       true,
 			"strictPropertyInitialization": false,
-			"target":                       "ES2020",
+			"target":                       "ES2022",
+			// Keep assignment-based class fields (TypeScript/esbuild default) so
+			// ES2022 target does not flip define semantics for existing modules.
+			"useDefineForClassFields": false,
 			// Pull @types/node via type-fetch typeRoots (no root node_modules).
-			// Provides require/process and the Array.at compatibility polyfill.
 			"types": []string{"node"},
 		},
 		// Test and e2e files are intentionally included (not excluded) so
@@ -2220,13 +2237,65 @@ func ensureModulesTsconfig(tsconfigPath string) error {
 		// single shared tsconfig project for all modules.
 		"display": "Recommended",
 	}
+}
 
-	out, err := json.MarshalIndent(base, "", "  ")
+// migrateModulesTsconfigTarget bumps stock ES2020 target/lib entries to ES2022
+// and pins useDefineForClassFields=false. Leaves other compilerOptions alone.
+func migrateModulesTsconfigTarget(tsconfigPath string) error {
+	raw, err := os.ReadFile(tsconfigPath)
+	if err != nil {
+		return fmt.Errorf("read tsconfig: %w", err)
+	}
+	var doc map[string]interface{}
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		// User/custom JSON we should not rewrite.
+		return nil
+	}
+	opts, _ := doc["compilerOptions"].(map[string]interface{})
+	if opts == nil {
+		return nil
+	}
+	changed := false
+	target, _ := opts["target"].(string)
+	targetNorm := strings.ToUpper(strings.TrimSpace(target))
+	if targetNorm == "ES2020" {
+		opts["target"] = "ES2022"
+		targetNorm = "ES2022"
+		changed = true
+	}
+	if lib, ok := opts["lib"].([]interface{}); ok {
+		next := make([]interface{}, 0, len(lib))
+		libChanged := false
+		for _, item := range lib {
+			s, _ := item.(string)
+			if strings.EqualFold(strings.TrimSpace(s), "ES2020") {
+				next = append(next, "ES2022")
+				libChanged = true
+				continue
+			}
+			next = append(next, item)
+		}
+		if libChanged {
+			opts["lib"] = next
+			changed = true
+		}
+	}
+	// Only pin class-field semantics when the stock target is (or becomes) ES2022.
+	if targetNorm == "ES2022" {
+		if _, exists := opts["useDefineForClassFields"]; !exists {
+			opts["useDefineForClassFields"] = false
+			changed = true
+		}
+	}
+	if !changed {
+		return nil
+	}
+	doc["compilerOptions"] = opts
+	out, err := json.MarshalIndent(doc, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal tsconfig: %w", err)
 	}
 	out = append(out, '\n')
-
 	if err := writeAtomicFile(tsconfigPath, out, 0644); err != nil {
 		return fmt.Errorf("write tsconfig: %w", err)
 	}

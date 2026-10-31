@@ -35,7 +35,7 @@ func main() {
 
 	client := esmresolver.NewTypeFetchHTTPClient(30 * time.Second)
 	typesDir := filepath.Join(cacheDir, "pkg", "types")
-	if results, err := esmresolver.FetchTypesForModule(client, "https://esm.sh", typesDir, "."); err == nil {
+	if results, err := esmresolver.FetchTypesForModule(client, esmUpstreamURL(), typesDir, "."); err == nil {
 		if err := esmresolver.UpdateTsconfigPaths("tsconfig.json", results); err != nil {
 			fmt.Fprintf(os.Stderr, "gen.go: warning: %v\n", err)
 		}
@@ -64,14 +64,7 @@ func main() {
 			"path": "path-browserify",
 		},
 		Plugins: []api.Plugin{
-			esmresolver.New(
-				esmresolver.WithCacheDir(cacheDir),
-				esmresolver.WithTarget("es2020"),
-				// language-core entry with ?target= alone 500s on esm.sh;
-				// &bundle returns a working re-export.
-				esmresolver.WithExtraQuery("bundle"),
-				esmresolver.WithModulePath("."),
-			).Plugin(),
+			esmresolver.New(vuevirtualResolverOpts(cacheDir)...).Plugin(),
 		},
 		Write: true,
 	})
@@ -93,4 +86,26 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Printf("vuevirtual: built %s (%d bytes)\n", outFile, info.Size())
+}
+
+func esmUpstreamURL() string {
+	if u := esmresolver.UpstreamFromEnv(); u != "" {
+		return u
+	}
+	return "https://esm.sh"
+}
+
+func vuevirtualResolverOpts(cacheDir string) []esmresolver.Option {
+	opts := []esmresolver.Option{
+		esmresolver.WithCacheDir(cacheDir),
+		esmresolver.WithTarget(esmresolver.DefaultTarget),
+		// language-core entry with ?target= alone 500s on esm.sh;
+		// &bundle returns a working re-export.
+		esmresolver.WithExtraQuery("bundle"),
+		esmresolver.WithModulePath("."),
+	}
+	if u := esmresolver.UpstreamFromEnv(); u != "" {
+		opts = append(opts, esmresolver.WithUpstream(u))
+	}
+	return opts
 }

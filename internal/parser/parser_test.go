@@ -122,7 +122,7 @@ func TestApplyPathAlias(t *testing.T) {
 }
 
 func TestShouldSkipTypeOnlyAlias(t *testing.T) {
-	if !shouldSkipTypeOnlyAlias("vue", "https://esm.sh/vue@3.5.35/dist/vue.d.mts.d.ts?target=es2020") {
+	if !shouldSkipTypeOnlyAlias("vue", "https://esm.sh/vue@3.5.35/dist/vue.d.mts.d.ts?target=es2022") {
 		t.Fatal("expected URL-style .d.mts.d.ts alias target to be skipped")
 	}
 	if !shouldSkipTypeOnlyAlias("vue", "./types/esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts") {

@@ -324,7 +324,7 @@ func buildSemanticProgram(path, content string) (*compiler.Program, *ast.SourceF
 	}
 	host := compiler.NewCompilerHost(currentDir, fs, bundled.LibPath(), nil, nil)
 	opts := &core.CompilerOptions{
-		Target:                 core.ScriptTargetES2020,
+		Target:                 core.ScriptTargetES2022,
 		Module:                 core.ModuleKindESNext,
 		ModuleResolution:       core.ModuleResolutionKindBundler,
 		StrictNullChecks:       core.TSTrue,

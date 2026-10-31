@@ -228,12 +228,16 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 	if pinErr != nil {
 		return nil, pinErr
 	}
-	plugins = append(plugins, esmresolver.New(
+	esmOpts := []esmresolver.Option{
 		esmresolver.WithCacheDir(cacheDir),
-		esmresolver.WithTarget("es2020"),
+		esmresolver.WithTarget(esmresolver.DefaultTarget),
 		esmresolver.WithModulePath(repoRoot),
 		esmresolver.WithBareImportPins(barePins),
-	).Plugin())
+	}
+	if u := esmresolver.UpstreamFromEnv(); u != "" {
+		esmOpts = append(esmOpts, esmresolver.WithUpstream(u))
+	}
+	plugins = append(plugins, esmresolver.New(esmOpts...).Plugin())
 	if opts.WithVuePlugin {
 		if opts.JsExecutor == nil {
 			return nil, xfmt.Errorf("vue host bundle: JsExecutor required when WithVuePlugin is set")
@@ -271,7 +275,7 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 		Outfile:       outfile,
 		Platform:      api.PlatformBrowser,
 		Format:        api.FormatIIFE,
-		Target:        api.ES2020,
+		Target:        api.ES2022,
 		LogLevel:      api.LogLevelWarning,
 		AbsWorkingDir: absWorkingDir,
 		Alias:         alias,

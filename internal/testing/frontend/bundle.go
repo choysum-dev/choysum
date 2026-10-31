@@ -99,7 +99,7 @@ func BuildFrontendUnitBundle(opts BundleOptions) (*BundleResult, error) {
 		Outfile:       outfile,
 		Platform:      api.PlatformNeutral,
 		Format:        api.FormatIIFE,
-		Target:        api.ES2020,
+		Target:        api.ES2022,
 		LogLevel:      api.LogLevelWarning,
 		AbsWorkingDir: strings.TrimSpace(opts.WorkingDir),
 		Alias:         map[string]string{"@": modulesDir},

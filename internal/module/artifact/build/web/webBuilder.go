@@ -2341,7 +2341,7 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 			".css":  api.LoaderCSS,
 			".svg":  api.LoaderFile,
 		},
-		Target:     api.ES2020,
+		Target:     api.ES2022,
 		Platform:   api.PlatformBrowser,
 		Format:     api.FormatESModule,
 		Bundle:     true,
@@ -2400,6 +2400,8 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 		}
 		if upstream := strings.TrimSpace(runtimeOptions.esmUpstreamURL); upstream != "" {
 			webResolverOpts = append(webResolverOpts, esmresolver.WithUpstream(upstream))
+		} else if upstream := esmresolver.UpstreamFromEnv(); upstream != "" {
+			webResolverOpts = append(webResolverOpts, esmresolver.WithUpstream(upstream))
 		}
 		buildOptions.Plugins = append(
 			[]api.Plugin{
@@ -2424,6 +2426,8 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 			webResolverOpts = append(webResolverOpts, esmresolver.WithLogger(b.runtimeScope.Logger()))
 		}
 		if upstream := strings.TrimSpace(runtimeOptions.esmUpstreamURL); upstream != "" {
+			webResolverOpts = append(webResolverOpts, esmresolver.WithUpstream(upstream))
+		} else if upstream := esmresolver.UpstreamFromEnv(); upstream != "" {
 			webResolverOpts = append(webResolverOpts, esmresolver.WithUpstream(upstream))
 		}
 		buildOptions.Plugins = append(

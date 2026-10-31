@@ -59,9 +59,10 @@ jobs:
         uses: actions/cache@v6
         with:
           path: .choysum/pkg/esm
-          key: ${{ runner.os }}-esm-generate-v1-${{ hashFiles('go.mod', 'go.sum', 'internal/bootstrap/web/package.json', 'pkg/jsengine/scripts/vuesfc/package.json', 'pkg/jsengine/scripts/vuesfc/esm.lock', 'pkg/jsengine/scripts/vuevirtual/package.json', 'pkg/jsengine/scripts/vuevirtual/esm.lock') }}
+          # v2: DefaultTarget=es2022 (do not restore pre-v2 caches).
+          key: ${{ runner.os }}-esm-generate-v2-${{ hashFiles('go.mod', 'go.sum', 'internal/bootstrap/web/package.json', 'pkg/jsengine/scripts/vuesfc/package.json', 'pkg/jsengine/scripts/vuesfc/esm.lock', 'pkg/jsengine/scripts/vuevirtual/package.json', 'pkg/jsengine/scripts/vuevirtual/esm.lock') }}
           restore-keys: |
-            ${{ runner.os }}-esm-generate-v1-
+            ${{ runner.os }}-esm-generate-v2-
 
       - name: Setup Go
         if: ${{ inputs.docs_only != 'true' && steps.embedded-cache.outputs.cache-hit != 'true' }}
