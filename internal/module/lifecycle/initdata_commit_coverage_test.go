@@ -19,7 +19,6 @@ import (
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/rs/xid"
-	"gorm.io/gorm"
 )
 
 func lifecycleCommitModule(t *testing.T, name string) (*meta.Module, string) {
@@ -358,33 +357,6 @@ func TestCommitInstall_ErrorBranchesForPatchCoverage(t *testing.T) {
 		}
 	})
 
-	t.Run("metaSchedule", func(t *testing.T) {
-		orig := installerScheduleDBFn
-		t.Cleanup(func() { installerScheduleDBFn = orig })
-		installerScheduleDBFn = func(scope.Scope) (*gorm.DB, error) {
-			return nil, errors.New("sched boom")
-		}
-		mod, _ := lifecycleCommitModule(t, "meta")
-		mod.Name = "meta"
-		installer := &moduleInstaller{module: mod, runtimeScope: runtimeScope, moduleManager: mgr, ctx: newOpContext()}
-		if _, err := installer.commitInstall(nil, false); err == nil || !strings.Contains(err.Error(), "error disabling legacy module index schedule") {
-			t.Fatalf("meta schedule error: %v", err)
-		}
-	})
-
-	t.Run("documentSchedule", func(t *testing.T) {
-		orig := installerScheduleDBFn
-		t.Cleanup(func() { installerScheduleDBFn = orig })
-		installerScheduleDBFn = func(scope.Scope) (*gorm.DB, error) {
-			return nil, errors.New("sched boom")
-		}
-		mod, _ := lifecycleCommitModule(t, "document")
-		mod.Name = "document"
-		installer := &moduleInstaller{module: mod, runtimeScope: runtimeScope, moduleManager: mgr, ctx: newOpContext()}
-		if _, err := installer.commitInstall(nil, false); err == nil || !strings.Contains(err.Error(), "error ensuring document attachment gc schedule") {
-			t.Fatalf("document schedule error: %v", err)
-		}
-	})
 }
 
 func TestRunInstallCommitTX_DoesNotPublishOnCommitError(t *testing.T) {

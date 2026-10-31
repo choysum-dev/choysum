@@ -25,6 +25,7 @@ var hookPhaseDecoratorPatterns = map[Phase]*regexp.Regexp{
 	PhasePostUpgrade:   regexp.MustCompile(`@HookPostUpgrade\s*(?:<[^\n]*?>)?\s*\(`),
 	PhasePreUninstall:  regexp.MustCompile(`@HookPreUninstall\s*(?:<[^\n]*?>)?\s*\(`),
 	PhasePostUninstall: regexp.MustCompile(`@HookPostUninstall\s*(?:<[^\n]*?>)?\s*\(`),
+	PhaseReady:         regexp.MustCompile(`@HookReady\s*(?:<[^\n]*?>)?\s*\(`),
 }
 
 var hookMarker = []byte("@Hook")

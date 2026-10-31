@@ -244,6 +244,12 @@ func TestModuleManagerBuildBackendAppToDirWritesModuleBasedEntryImports(t *testi
 	}
 	entryText := string(entryRaw)
 
+	if !strings.Contains(entryText, `import "./__choysum_hook_dispatcher.ts"`) {
+		t.Fatalf("expected app entry to import hook dispatcher, got %q", entryText)
+	}
+	if !strings.Contains(entryText, `import "./__seed_mod_crm_partner.ts"`) {
+		t.Fatalf("expected app entry to seed crm_partner before import, got %q", entryText)
+	}
 	if !strings.Contains(entryText, filepath.Join(modulesPath, "crm_partner", "service/main.ts")) {
 		t.Fatalf("expected app entry to include module-relative service import, got %q", entryText)
 	}
@@ -318,8 +324,22 @@ func TestModuleManagerBuildBackendBundlesToDirWritesModuleBasedEntryImports(t *t
 	}
 	entryText := string(entryRaw)
 	wantImport := filepath.Join(modulesPath, "crm_partner", "service/main.ts")
+	if !strings.Contains(entryText, `import "./__choysum_hook_dispatcher.ts"`) {
+		t.Fatalf("expected bundles entry to import hook dispatcher, got %q", entryText)
+	}
+	if !strings.Contains(entryText, `import "./__seed_mod_crm_partner.ts"`) {
+		t.Fatalf("expected bundles entry to seed crm_partner before import, got %q", entryText)
+	}
 	if !strings.Contains(entryText, wantImport) {
 		t.Fatalf("expected bundles entry to include module-relative service import %q, got %q", wantImport, entryText)
+	}
+	seedPath := filepath.Join(distBundlesDir, "_choysum_entry", "__seed_mod_crm_partner.ts")
+	seedRaw, seedErr := os.ReadFile(seedPath)
+	if seedErr != nil {
+		t.Fatalf("read seed file %q: %v", seedPath, seedErr)
+	}
+	if !strings.Contains(string(seedRaw), `CHOYSUM_MODULE_NAME = "crm_partner"`) {
+		t.Fatalf("seed content missing module identity, got %q", seedRaw)
 	}
 }
 

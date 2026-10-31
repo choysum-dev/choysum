@@ -434,7 +434,7 @@ func TestResolveUnitTestDefaultIdentityOperationalDBErrors(t *testing.T) {
 			t.Fatalf("create broken meta_module: %v", err)
 		}
 		_, ok, err := resolveUnitTestDefaultIdentity(context.Background(), newIdentityTestScope(t, db))
-		if err == nil || !strings.Contains(err.Error(), "load auth module for unit identity") {
+		if err == nil || !strings.Contains(err.Error(), "load auth module for bootstrap admin identity") {
 			t.Fatalf("error=%v, want auth module load wrap", err)
 		}
 		if ok {
@@ -453,7 +453,7 @@ func TestResolveUnitTestDefaultIdentityOperationalDBErrors(t *testing.T) {
 			t.Fatalf("create broken table: %v", err)
 		}
 		_, ok, err := resolveUnitTestDefaultIdentity(context.Background(), newIdentityTestScope(t, db))
-		if err == nil || !strings.Contains(err.Error(), "load auth.user_admin mapping for unit identity") {
+		if err == nil || !strings.Contains(err.Error(), "load auth.user_admin mapping for bootstrap admin identity") {
 			t.Fatalf("error=%v, want user_admin mapping wrap", err)
 		}
 		if ok {
@@ -475,7 +475,7 @@ func TestResolveUnitTestDefaultIdentityOperationalDBErrors(t *testing.T) {
 			t.Fatalf("create broken meta_model: %v", err)
 		}
 		_, ok, err := resolveUnitTestDefaultIdentity(context.Background(), newIdentityTestScope(t, db))
-		if err == nil || !strings.Contains(err.Error(), "lookup auth.User for unit identity") {
+		if err == nil || !strings.Contains(err.Error(), "lookup auth.User for bootstrap admin identity") {
 			t.Fatalf("error=%v, want auth.User lookup wrap", err)
 		}
 		if ok {
@@ -496,7 +496,7 @@ func TestResolveUnitTestDefaultIdentityOperationalDBErrors(t *testing.T) {
 			t.Fatalf("update model_table: %v", err)
 		}
 		_, ok, err := resolveUnitTestDefaultIdentity(context.Background(), newIdentityTestScope(t, db))
-		if err == nil || !strings.Contains(err.Error(), "load auth.user_admin row for unit identity") {
+		if err == nil || !strings.Contains(err.Error(), "load auth.user_admin row for bootstrap admin identity") {
 			t.Fatalf("error=%v, want user row load wrap", err)
 		}
 		if ok {
@@ -541,7 +541,7 @@ func TestResolveUnitTestDefaultIdentityOperationalDBErrors(t *testing.T) {
 			_ = db.Callback().Query().Remove("identity_fail_company_main")
 		})
 		_, ok, err := resolveUnitTestDefaultIdentity(context.Background(), newIdentityTestScope(t, db))
-		if err == nil || !strings.Contains(err.Error(), "load base.company_main mapping for unit identity") {
+		if err == nil || !strings.Contains(err.Error(), "load base.company_main mapping for bootstrap admin identity") {
 			t.Fatalf("error=%v, want company_main mapping wrap", err)
 		}
 		if ok {

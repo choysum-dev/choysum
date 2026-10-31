@@ -13,4 +13,13 @@ export { Inverse } from './inverse';
 export { isTopLevelGrpcRequest, registerGeneratedModelServiceDefinitions } from './service';
 export { Onchange } from './onchange';
 export type { HookPhase, MigrationPhase, MigrationOptions } from './lifecycle';
-export { HookPreInit, HookPostInit, HookPreUpgrade, HookPostUpgrade, HookPreUninstall, HookPostUninstall, Migration } from './lifecycle';
+export {
+  HookPreInit,
+  HookPostInit,
+  HookPreUpgrade,
+  HookPostUpgrade,
+  HookPreUninstall,
+  HookPostUninstall,
+  HookReady,
+  Migration,
+} from './lifecycle';

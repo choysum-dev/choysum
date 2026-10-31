@@ -6,8 +6,10 @@ import AttachmentBinding from '../models/attachment_binding';
 import AttachmentUploadSession from '../models/upload_session';
 import AttachmentMutationLedger from '../models/attachment_mutation_ledger';
 
-function listDeclaredConventionalServices(modelCtor: any): string[] {
+function listDeclaredStaticAsyncPascalMethods(modelCtor: any): string[] {
   const source = Function.prototype.toString.call(modelCtor);
+  // TS erases the `public` keyword; scan static async PascalCase and treat the
+  // interactive whitelist separately from worker-only methods.
   const methodMatches = source.matchAll(/\bstatic\s+async\s+([A-Z][A-Za-z0-9_]*)\s*\(/g);
   const names = new Set<string>();
   for (const match of methodMatches) {
@@ -19,15 +21,21 @@ function listDeclaredConventionalServices(modelCtor: any): string[] {
 }
 
 test('document model conventional public method whitelist', () => {
-  expect(listDeclaredConventionalServices(AttachmentContent)).toEqual([
+  const attachmentContentMethods = listDeclaredStaticAsyncPascalMethods(AttachmentContent);
+  expect(attachmentContentMethods.filter(name => name !== 'RunGarbageCollection')).toEqual([
     'AuthorizeUploadPut',
     'CommitUploadPut',
     'FinalizeUpload',
     'PrepareUpload',
-    // Worker FullMethod target (TaskWorker dial); interactive ACL deny-by-default.
-    'RunGarbageCollection',
   ]);
-  expect(listDeclaredConventionalServices(AttachmentBinding)).toEqual(['BatchDescribe', 'Bind', 'ResolveDownloadContent', 'Unbind']);
-  expect(listDeclaredConventionalServices(AttachmentUploadSession)).toEqual([]);
-  expect(listDeclaredConventionalServices(AttachmentMutationLedger)).toEqual([]);
+  // Worker routing target: present on the class, not a public interactive RPC.
+  expect(typeof (AttachmentContent as { RunGarbageCollection?: unknown }).RunGarbageCollection).toBe('function');
+  expect(listDeclaredStaticAsyncPascalMethods(AttachmentBinding)).toEqual([
+    'BatchDescribe',
+    'Bind',
+    'ResolveDownloadContent',
+    'Unbind',
+  ]);
+  expect(listDeclaredStaticAsyncPascalMethods(AttachmentUploadSession)).toEqual([]);
+  expect(listDeclaredStaticAsyncPascalMethods(AttachmentMutationLedger)).toEqual([]);
 });

@@ -464,6 +464,10 @@ func normalizeIANATimezone(value string) (string, bool) {
 }
 
 func (r invocationRuntime) invokeTargetMethod(ctx context.Context, runtimeScope scope.Scope, jsCtx map[string]interface{}, routing *jsengine.JsExecutionRouting, req *executeJobRequest) (any, error) {
+	if isWorkerOnlyFullMethod(req.FullMethod) {
+		return r.invokeWorkerOnlyFullMethod(ctx, runtimeScope, jsCtx, routing, req)
+	}
+
 	methodFullName := strings.ReplaceAll(req.FullMethod, "/", ".")
 	md, err := serviceCodec.methodDescriptor(methodFullName)
 	if err != nil {

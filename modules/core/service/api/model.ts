@@ -16,5 +16,6 @@ export {
   HookPostUpgrade,
   HookPreUninstall,
   HookPostUninstall,
+  HookReady,
   Migration,
 } from '../orm/decorator';

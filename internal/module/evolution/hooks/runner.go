@@ -15,6 +15,7 @@ import (
 
 	internalbackendbuilder "github.com/choysum-dev/choysum/internal/module/artifact/build/backend"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
+	"github.com/choysum-dev/choysum/internal/module/evolution/systemidentity"
 	"github.com/choysum-dev/choysum/pkg/auth"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
@@ -35,6 +36,7 @@ const (
 	PhasePostUpgrade   Phase = "post_upgrade"
 	PhasePreUninstall  Phase = "pre_uninstall"
 	PhasePostUninstall Phase = "post_uninstall"
+	PhaseReady         Phase = "ready"
 )
 
 type RunOptions struct {
@@ -43,6 +45,15 @@ type RunOptions struct {
 	// ReuseExecutorScripts keeps loaded scripts on the shared executor between
 	// phase runs so callers can amortize reload costs across module loops.
 	ReuseExecutorScripts bool
+	// PreserveExecutorScripts appends this run's hook scripts onto the executor's
+	// current set (instead of replacing it), then restores the previous set after
+	// Execute. Fallback only; prefer InvokeOnly when application init already
+	// registered hooks under CHOYSUM_* seeds.
+	PreserveExecutorScripts bool
+	// InvokeOnly runs __choysum_hook__ against the executor's current scripts
+	// without Bundle / SetJsScripts / Reload. Requires Start-time seeded entry
+	// registration and a resident dispatcher in application init.
+	InvokeOnly bool
 }
 
 type Runner struct {
@@ -86,28 +97,7 @@ func (r *Runner) RunPhase(ctx context.Context, phase Phase, opts RunOptions) err
 	}
 
 	resolved := normalizeConfig(phase)
-
-	scripts, moduleScoped, err := r.resolveScripts(ctx, phase, opts, resolved.Required)
-	if err != nil {
-		if !resolved.Required {
-			if r.runtimeScope != nil {
-				r.runtimeScope.Logger().Warn("hook script unavailable", "module", r.module.Name, "phase", string(phase), "reason", "ignored", "error", err)
-			}
-			return nil
-		}
-		return err
-	}
 	appName, moduleName := r.moduleSelector()
-	// Module-scoped entry: seed CHOYSUM_* before eval so @Hook* decorators register.
-	// Shared dist fallback: do not seed before eval (would mis-attribute other modules'
-	// decorators); identity is still set when __choysum_hook__ runs.
-	if wrapper := r.buildHookWrapperScript(appName, moduleName, moduleScoped); wrapper != nil {
-		if moduleScoped {
-			scripts = append([]*jsengine.JsScript{wrapper}, scripts...)
-		} else {
-			scripts = append(scripts, wrapper)
-		}
-	}
 	phaseName := strings.TrimSpace(string(phase))
 
 	attempts := 1
@@ -115,10 +105,40 @@ func (r *Runner) RunPhase(ctx context.Context, phase Phase, opts RunOptions) err
 		attempts = resolved.Retry + 1
 	}
 
+	var scripts []*jsengine.JsScript
+	if !opts.InvokeOnly {
+		var moduleScoped bool
+		var err error
+		scripts, moduleScoped, err = r.resolveScripts(ctx, phase, opts, resolved.Required)
+		if err != nil {
+			if !resolved.Required {
+				if r.runtimeScope != nil {
+					r.runtimeScope.Logger().Warn("hook script unavailable", "module", r.module.Name, "phase", string(phase), "reason", "ignored", "error", err)
+				}
+				return nil
+			}
+			return err
+		}
+		// Module-scoped entry: seed CHOYSUM_* before eval so @Hook* decorators register.
+		// Shared dist fallback: do not seed before eval (would mis-attribute other modules'
+		// decorators); identity is still set when __choysum_hook__ runs.
+		if wrapper := r.buildHookWrapperScript(appName, moduleName, moduleScoped); wrapper != nil {
+			if moduleScoped {
+				scripts = append([]*jsengine.JsScript{wrapper}, scripts...)
+			} else {
+				scripts = append(scripts, wrapper)
+			}
+		}
+	}
+
 	var lastErr error
 	for i := 0; i < attempts; i++ {
 		execCtx := r.buildExecContext(ctx)
-		jsCtx := r.buildJsContext(ctx, opts)
+		jsCtx, jsCtxErr := r.buildJsContext(ctx, opts)
+		if jsCtxErr != nil {
+			lastErr = jsCtxErr
+			break
+		}
 		req := &jsengine.JsRequest{
 			Id:      jsCtx.requestId,
 			Service: "__choysum_hook__",
@@ -132,7 +152,12 @@ func (r *Runner) RunPhase(ctx context.Context, phase Phase, opts RunOptions) err
 			ctxWithTimeout, cancel = context.WithTimeout(execCtx, resolved.Timeout)
 		}
 
-		execErr := r.executeWithScripts(ctxWithTimeout, scripts, req, &lastErr, opts.ReuseExecutorScripts)
+		var execErr error
+		if opts.InvokeOnly {
+			execErr = r.executeInvokeOnly(ctxWithTimeout, req, &lastErr)
+		} else {
+			execErr = r.executeWithScripts(ctxWithTimeout, scripts, req, &lastErr, opts.ReuseExecutorScripts, opts.PreserveExecutorScripts)
+		}
 		if cancel != nil {
 			cancel()
 		}
@@ -304,7 +329,7 @@ type execCtxPayload struct {
 	payload   map[string]any
 }
 
-func (r *Runner) buildJsContext(ctx context.Context, opts RunOptions) execCtxPayload {
+func (r *Runner) buildJsContext(ctx context.Context, opts RunOptions) (execCtxPayload, error) {
 	traceId := ""
 	spanId := ""
 	span := trace.SpanFromContext(ctx)
@@ -322,15 +347,17 @@ func (r *Runner) buildJsContext(ctx context.Context, opts RunOptions) execCtxPay
 		spanId = xid.New().String()
 	}
 
-	userId := "admin"
+	sessionUserID := ""
 	if id := auth.IdentityFromContext(ctx); id != nil && id.IsValid() {
-		if v := strings.TrimSpace(id.GetUserID()); v != "" {
-			userId = v
-		}
+		sessionUserID = strings.TrimSpace(id.GetUserID())
+	}
+	userId, companyID, err := systemidentity.ResolvePrincipalUserID(ctx, r.runtimeScope, sessionUserID)
+	if err != nil {
+		return execCtxPayload{}, err
 	}
 
 	payload := map[string]any{
-		"ctx": map[string]any{},
+		"ctx": systemidentity.CompanyContextPayload(companyID),
 		"identity": map[string]any{
 			"userId": userId,
 		},
@@ -346,7 +373,7 @@ func (r *Runner) buildJsContext(ctx context.Context, opts RunOptions) execCtxPay
 			"fromVersion": opts.FromVersion,
 		},
 	}
-	return execCtxPayload{requestId: spanId, payload: payload}
+	return execCtxPayload{requestId: spanId, payload: payload}, nil
 }
 
 func contextWithEffectiveScope(ctx context.Context, runtimeScope scope.Scope) context.Context {
@@ -406,18 +433,31 @@ func equivalentScripts(a []*jsengine.JsScript, b []*jsengine.JsScript) bool {
 	return true
 }
 
-func (r *Runner) executeWithScripts(ctx context.Context, scripts []*jsengine.JsScript, req *jsengine.JsRequest, lastErr *error, reuseExecutorScripts bool) error {
+// executeInvokeOnly calls __choysum_hook__ on the shared runtime without touching
+// the executor script set (no Bundle / SetJsScripts / Reload).
+func (r *Runner) executeInvokeOnly(ctx context.Context, req *jsengine.JsRequest, lastErr *error) error {
+	resp, err := r.jsExecutor.Execute(ctx, req)
+	return r.finishHookExecute(resp, err, lastErr)
+}
+
+func (r *Runner) executeWithScripts(ctx context.Context, scripts []*jsengine.JsScript, req *jsengine.JsRequest, lastErr *error, reuseExecutorScripts bool, preserveExecutorScripts bool) error {
 	prevScripts := r.jsExecutor.GetJsScripts()
-	changedScripts := len(scripts) > 0 && !equivalentScripts(prevScripts, scripts)
+	scriptsToLoad := scripts
+	restoreAfter := false
+	if preserveExecutorScripts && len(prevScripts) > 0 && len(scripts) > 0 {
+		scriptsToLoad = append(append([]*jsengine.JsScript{}, prevScripts...), scripts...)
+		restoreAfter = true
+	}
+	changedScripts := len(scriptsToLoad) > 0 && !equivalentScripts(prevScripts, scriptsToLoad)
 	if changedScripts {
-		r.jsExecutor.SetJsScripts(scripts)
-		if err := r.jsExecutor.Reload(scripts...); err != nil {
+		r.jsExecutor.SetJsScripts(scriptsToLoad)
+		if err := r.jsExecutor.Reload(scriptsToLoad...); err != nil {
 			r.jsExecutor.SetJsScripts(prevScripts)
 			_ = r.jsExecutor.Reload(prevScripts...)
 			return err
 		}
 	}
-	if changedScripts && !reuseExecutorScripts {
+	if changedScripts && (restoreAfter || !reuseExecutorScripts) {
 		defer func() {
 			r.jsExecutor.SetJsScripts(prevScripts)
 			_ = r.jsExecutor.Reload(prevScripts...)
@@ -425,6 +465,10 @@ func (r *Runner) executeWithScripts(ctx context.Context, scripts []*jsengine.JsS
 	}
 
 	resp, err := r.jsExecutor.Execute(ctx, req)
+	return r.finishHookExecute(resp, err, lastErr)
+}
+
+func (r *Runner) finishHookExecute(resp *jsengine.JsResponse, err error, lastErr *error) error {
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 			*lastErr = fmt.Errorf("HOOK_TIMEOUT: %w", err)
@@ -467,7 +511,7 @@ func normalizeConfig(phase Phase) resolvedConfig {
 
 func defaultRequired(phase Phase) bool {
 	switch phase {
-	case PhasePreInit, PhasePreUpgrade, PhasePreUninstall:
+	case PhasePreInit, PhasePreUpgrade, PhasePreUninstall, PhaseReady:
 		return true
 	default:
 		return false

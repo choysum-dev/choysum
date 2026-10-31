@@ -183,8 +183,12 @@ export default class AttachmentContent extends BaseModel {
     return commitUploadPut(req);
   }
 
-  /** Task-worker FullMethod target for unbound content GC (not interactive client API). */
-  public static async RunGarbageCollection(nowISO?: string): Promise<Record<string, unknown>> {
+  /**
+   * Worker routing target for unbound content GC.
+   * Not a public interactive RPC (`public` omitted so it is not gRPC-discovered);
+   * TaskWorker invokes this in-process via the FullMethod allowlist.
+   */
+  static async RunGarbageCollection(nowISO?: string): Promise<Record<string, unknown>> {
     return runGarbageCollection(nowISO);
   }
 

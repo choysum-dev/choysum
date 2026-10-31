@@ -323,7 +323,10 @@ func (r *Runner) buildMigrationWrapperScript() *jsengine.JsScript {
 
 func (r *Runner) loadRegistry(ctx context.Context, scripts []*jsengine.JsScript, fromVersion string, reuseExecutorScripts bool) ([]RegistryEntry, error) {
 	appName, moduleName := r.moduleSelector()
-	jsCtx := BuildJsContext(ctx, r.runtimeScope, r.module, r.module.Version, fromVersion)
+	jsCtx, jsCtxErr := BuildJsContext(ctx, r.runtimeScope, r.module, r.module.Version, fromVersion)
+	if jsCtxErr != nil {
+		return nil, jsCtxErr
+	}
 	req := &jsengine.JsRequest{
 		Id:      jsCtx.requestId,
 		Service: "__choysum_migration_list__",
@@ -361,7 +364,11 @@ func (r *Runner) runOne(ctx context.Context, scripts []*jsengine.JsScript, migra
 	}
 
 	appName, moduleName := r.moduleSelector()
-	jsCtx := BuildJsContext(ctx, r.runtimeScope, r.module, migration.Version, fromVersion)
+	jsCtx, jsCtxErr := BuildJsContext(ctx, r.runtimeScope, r.module, migration.Version, fromVersion)
+	if jsCtxErr != nil {
+		_ = r.store.MarkFailed(ctx, entry, jsCtxErr.Error())
+		return jsCtxErr
+	}
 	req := &jsengine.JsRequest{
 		Id:      jsCtx.requestId,
 		Service: "__choysum_migration__",

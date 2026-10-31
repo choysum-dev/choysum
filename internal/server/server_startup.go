@@ -9,6 +9,7 @@ const (
 	startupPhaseGRPCTransport    startupPhase = "grpc_transport"
 	startupPhaseModeRuntime      startupPhase = "mode_runtime"
 	startupPhaseTransportIngress startupPhase = "transport_ingress"
+	startupPhaseReadyHooks       startupPhase = "ready_hooks"
 )
 
 type startupLifecycleResult struct {
@@ -64,6 +65,9 @@ func (s *GRPCWebServer) startRuntimeOwners(reload bool, opts runtimeOptions) (st
 	taskRuntime := s.startTaskRuntime()
 	if err := s.startTransportIngress(opts, reload); err != nil {
 		return startupPhaseTransportIngress, modeRuntime, taskRuntime, err
+	}
+	if err := s.runApplicationReadyHooks(s.runtimeScope.Context()); err != nil {
+		return startupPhaseReadyHooks, modeRuntime, taskRuntime, err
 	}
 	return "", modeRuntime, taskRuntime, nil
 }
