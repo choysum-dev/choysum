@@ -4,6 +4,7 @@
 import { h, inject, provide, reactive } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 
+import { resolveConfirmChoy } from '@/web/web/composables/confirmChoyAction';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
@@ -17,6 +18,7 @@ import ChoyPropertyLabelTranslationsDialog from './ChoyPropertyLabelTranslations
 import ChoyPropertiesDefinitionSelectionEditor from './ChoyPropertiesDefinitionSelectionEditor.vue';
 import ItemDialog from './ChoyPropertiesDefinitionItemDialog.vue';
 import type { DefinitionEditorDraftItem } from './propertiesDefinitionHelpers';
+import type { LocalFormStore } from '@/web/web/stores/localFormStore';
 
 function draft(partial: Partial<DefinitionEditorDraftItem> = {}): DefinitionEditorDraftItem {
   return {
@@ -101,6 +103,11 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
       },
       setup(props: any, { slots, attrs, expose }: any) {
         const formData = reactive({ ...(props.initialValues || {}) });
+        const syncStoreField = (path: string, value: unknown) => {
+          (formData as any)[path] = value;
+          const store = props.store as LocalFormStore | null | undefined;
+          store?.setField?.(path, value);
+        };
         provide('form-root', {
           get mode() {
             return props.viewMode === 'display' ? 'display' : 'create';
@@ -109,7 +116,7 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
             return formData;
           },
           setField(path: string, value: unknown) {
-            (formData as any)[path] = value;
+            syncStoreField(path, value);
           },
           getField(path: string) {
             return (formData as any)[path];
@@ -406,6 +413,111 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
     m.unmount();
   });
 
+  test('Cancel with selection-only edits confirms before close', async () => {
+    const onUpdate = fnRecorder();
+    const m = mountDialog(
+      {
+        item: draft({
+          name: 'prio',
+          type: 'selection',
+          string: 'P',
+          stringMap: { en_US: 'P' },
+          selectionText: '[["low","Low"]]',
+          selectionLabelMaps: { low: { en_US: 'Low' } },
+        }),
+      },
+      { 'onUpdate:modelValue': onUpdate },
+    );
+    try {
+      await flushPromises();
+      m.click('[data-testid="stub-selection-update"]');
+      await flushPromises();
+      queueMicrotask(() => resolveConfirmChoy('confirm'));
+      m.click('[data-testid="choy-properties-definition-item-cancel"]');
+      await flushPromises();
+      expect(onUpdate.calls.some((c: any[]) => c[0] === false)).toBe(true);
+    } finally {
+      m.unmount();
+    }
+  });
+
+  test('Cancel with selection edits declines keeps dialog open', async () => {
+    const onUpdate = fnRecorder();
+    const m = mountDialog(
+      {
+        item: draft({
+          name: 'prio',
+          type: 'selection',
+          string: 'P',
+          stringMap: { en_US: 'P' },
+          selectionText: '[["low","Low"]]',
+          selectionLabelMaps: { low: { en_US: 'Low' } },
+        }),
+      },
+      { 'onUpdate:modelValue': onUpdate },
+    );
+    try {
+      await flushPromises();
+      m.click('[data-testid="stub-selection-update"]');
+      await flushPromises();
+      queueMicrotask(() => resolveConfirmChoy('cancel'));
+      m.click('[data-testid="choy-properties-definition-item-cancel"]');
+      await flushPromises();
+      expect(onUpdate.calls.some((c: any[]) => c[0] === false)).toBe(false);
+      expect(m.q('[data-testid="choy-properties-definition-item-form"]')).toBeTruthy();
+    } finally {
+      m.unmount();
+    }
+  });
+
+  test('Cancel without FormView.cancel closes directly when clean', async () => {
+    stubSfc(ChoyFormView as any, {
+      name: 'ChoyFormView',
+      props: {
+        store: Object,
+        initialValues: Object,
+        viewMode: String,
+        submitHandler: Function,
+        cancelHandler: Function,
+      },
+      setup(props: any, { slots, attrs, expose }: any) {
+        const formData = reactive({ ...(props.initialValues || {}) });
+        provide('form-root', {
+          get mode() {
+            return 'create';
+          },
+          get draft() {
+            return formData;
+          },
+          setField(path: string, value: unknown) {
+            (formData as any)[path] = value;
+            (props.store as LocalFormStore | undefined)?.setField?.(path, value);
+          },
+          getField(path: string) {
+            return (formData as any)[path];
+          },
+          onChange() {},
+        });
+        expose({});
+        return () =>
+          h('div', { ...attrs, 'data-testid': 'choy-properties-definition-item-form' }, [
+            slots.default?.({ formData, viewMode: props.viewMode }),
+          ]);
+      },
+    });
+    const onUpdate = fnRecorder();
+    const m = mountDialog({}, { 'onUpdate:modelValue': onUpdate });
+    try {
+      await flushPromises();
+      m.click('[data-testid="choy-properties-definition-item-cancel"]');
+      await flushPromises();
+      expect(onUpdate.calls.some((c: any[]) => c[0] === false)).toBe(true);
+    } finally {
+      m.unmount();
+      installStubs();
+    }
+  });
+
   test('readonly Close closes without requiring FormView.cancel', async () => {
     const onUpdate = fnRecorder();
     const m = mountDialog({ readonly: true }, { 'onUpdate:modelValue': onUpdate });
@@ -414,6 +526,71 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
     await flushPromises();
     expect(onUpdate.calls.some((c: any[]) => c[0] === false)).toBe(true);
     m.unmount();
+  });
+
+  test('onApply/onRequestEdit early-return guards via setupState', async () => {
+    const onEdit = fnRecorder();
+    const m = mountDialog({ readonly: true, canEdit: false }, { onEdit });
+    try {
+      await flushPromises();
+      const api = m.setupState();
+      await api.onApply();
+      api.onRequestEdit();
+      expect(onEdit.calls.length).toBe(0);
+      expect(m.q('[data-testid="choy-properties-definition-item-error"]')).toBeFalsy();
+    } finally {
+      m.unmount();
+    }
+  });
+
+  test('onApply surfaces thrown submit errors as formError', async () => {
+    stubSfc(ChoyFormView as any, {
+      name: 'ChoyFormView',
+      props: {
+        store: Object,
+        initialValues: Object,
+        viewMode: String,
+        submitHandler: Function,
+        cancelHandler: Function,
+      },
+      setup(props: any, { slots, attrs, expose }: any) {
+        const formData = reactive({ ...(props.initialValues || {}) });
+        provide('form-root', {
+          get mode() {
+            return 'create';
+          },
+          get draft() {
+            return formData;
+          },
+          setField() {},
+          getField(path: string) {
+            return (formData as any)[path];
+          },
+          onChange() {},
+        });
+        expose({
+          submit: async () => {
+            throw new Error('submit boom');
+          },
+        });
+        return () =>
+          h('div', { ...attrs, 'data-testid': 'choy-properties-definition-item-form' }, [
+            slots.default?.({ formData, viewMode: props.viewMode }),
+          ]);
+      },
+    });
+    const m = mountDialog({});
+    try {
+      await flushPromises();
+      m.click('[data-testid="choy-properties-definition-item-save"]');
+      await flushPromises();
+      expect(m.q('[data-testid="choy-properties-definition-item-error"]')?.textContent || '').toMatch(
+        /submit boom/,
+      );
+    } finally {
+      m.unmount();
+      installStubs();
+    }
   });
 
   test('Apply falls back to onFormSubmit when FormView has no submit()', async () => {

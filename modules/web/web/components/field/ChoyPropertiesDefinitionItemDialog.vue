@@ -244,6 +244,7 @@ import { getActivePinia } from 'pinia';
 import { Languages } from 'lucide-vue-next';
 import { TRANSLATED_BASE_LANG, unwrapPropertyLabel } from '@/core/service/orm/model/properties_label_i18n';
 import { createTranslate } from '@/web/web/i18n';
+import { confirmChoyAction } from '@/web/web/composables/confirmChoyAction';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
 import { createLocalFormStore, type LocalFormStore } from '@/web/web/stores/localFormStore';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
@@ -314,6 +315,8 @@ const formStore = shallowRef<LocalFormStore | null>(null);
 const formInitialValues = shallowRef<Record<string, unknown>>({});
 const formDataRef = shallowRef<Record<string, unknown>>({});
 const formError = ref('');
+/** Selection editor writes only to `local`; snapshot so Cancel can dirty-check it. */
+const selectionBaselineJson = ref('');
 
 const translateOpen = ref(false);
 const translateTitle = ref('');
@@ -363,6 +366,18 @@ function buildTypeSelection() {
   return PROPERTY_DEFINITION_V1_TYPE_OPTIONS.map(t => ({ value: t, label: t }));
 }
 
+function selectionSnapshot(item: DefinitionEditorDraftItem | null | undefined): string {
+  if (!item) return '';
+  return JSON.stringify({
+    text: String(item.selectionText || ''),
+    maps: item.selectionLabelMaps || {},
+  });
+}
+
+function isSelectionDirty(): boolean {
+  return selectionSnapshot(local.value) !== selectionBaselineJson.value;
+}
+
 function openFormFromDraft(item: DefinitionEditorDraftItem) {
   const initial = {
     Name: item.name || '',
@@ -391,12 +406,14 @@ function openFormFromDraft(item: DefinitionEditorDraftItem) {
     initialValues: initial,
   });
   formDataRef.value = { ...initial };
+  selectionBaselineJson.value = selectionSnapshot(item);
 }
 
 function clearForm() {
   formStore.value = null;
   formInitialValues.value = {};
   formDataRef.value = {};
+  selectionBaselineJson.value = '';
 }
 
 function onSelectionRowsUpdate(rows: SelectionDraftRow[]) {
@@ -482,12 +499,37 @@ function onFormCancel() {
   visible.value = false;
 }
 
+async function confirmDiscardUnsaved(): Promise<boolean> {
+  try {
+    await confirmChoyAction(_t('You have unsaved changes. Discard them?'), _t('Unsaved changes'), {
+      confirmText: _t('Discard'),
+      cancelText: _t('Cancel'),
+      destructive: true,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Footer Cancel/Close. Edit mode routes through FormView.cancel so dirty
- * confirmation runs; readonly Close has nothing to discard.
+ * Footer Cancel/Close. Selection edits live on `local` (outside FormView draft),
+ * so they need their own dirty check. Form-field dirtiness still goes through
+ * FormView.cancel. Readonly Close has nothing to discard.
  */
 async function onFooterCancel() {
-  if (!props.readonly && formViewRef.value?.cancel) {
+  if (props.readonly) {
+    onFormCancel();
+    return;
+  }
+  // Selection-only (or selection+form) dirty: one confirm, then close — avoid a
+  // second FormView prompt when the form draft is also dirty.
+  if (isSelectionDirty()) {
+    if (!(await confirmDiscardUnsaved())) return;
+    onFormCancel();
+    return;
+  }
+  if (formViewRef.value?.cancel) {
     await formViewRef.value.cancel();
     return;
   }
@@ -501,16 +543,20 @@ function onRequestEdit() {
 
 async function onApply() {
   if (props.readonly) return;
-  if (formViewRef.value?.submit) {
-    await formViewRef.value.submit();
-    return;
+  try {
+    if (formViewRef.value?.submit) {
+      await formViewRef.value.submit();
+      return;
+    }
+    await onFormSubmit({
+      formData: formDataRef.value as any,
+      mode: 'create',
+      data: formDataRef.value as any,
+      defaultSubmit: async () => null,
+    });
+  } catch (e) {
+    formError.value = e instanceof Error ? e.message : String(e);
   }
-  await onFormSubmit({
-    formData: formDataRef.value as any,
-    mode: 'create',
-    data: formDataRef.value as any,
-    defaultSubmit: async () => null,
-  });
 }
 
 const onFormSubmit: FormSubmitHandler<any> = async (_ctx) => {
@@ -556,8 +602,10 @@ watch(
   { immediate: true },
 );
 
+// Prefer store getField so in-place Type edits on the reactive draft are tracked
+// (formDataRef is a shallowRef that may keep a stable object identity).
 watch(
-  () => formDataRef.value?.Type,
+  () => formStore.value?.getField('Type'),
   type => {
     const item = local.value;
     if (!item || props.readonly || type == null) return;
