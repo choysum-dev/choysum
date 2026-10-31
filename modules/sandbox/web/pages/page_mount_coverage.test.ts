@@ -50,7 +50,7 @@ test('sandbox menus: root declares an icon and leaves stay text-only', () => {
   );
 });
 
-test('sandbox Settings menu links Record Properties to the shared web path', () => {
+test('sandbox Settings menu links Property Definitions to the shared web path', () => {
   expect(
     sandboxSettingsAppMenu.children?.some(
       child => child.path === '/web/property-definitions/sandbox'

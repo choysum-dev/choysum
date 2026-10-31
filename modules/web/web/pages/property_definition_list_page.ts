@@ -33,9 +33,9 @@ export function usePropertyDefinitionListPage(deps: PropertyDefinitionListPageDe
   const pageTitle = computed(() => {
     const appLabel = application.value || '—';
     if (deps.translate) {
-      return deps.translate('Record Properties: %s', appLabel);
+      return deps.translate('Property Definitions: %s', appLabel);
     }
-    return String(defaultTranslate('Record Properties: %s', appLabel));
+    return String(defaultTranslate('Property Definitions: %s', appLabel));
   });
   const definitionStore = shallowRef<WebModelStore<any> | null>(null);
 

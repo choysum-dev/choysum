@@ -67,7 +67,7 @@ export const metaRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('meta.route.property_definition_list', {
     sequence: 50,
-    title: _lt('Record Properties'),
+    title: _lt('Property Definitions'),
     path: 'web/property-definitions/meta',
     name: 'PropertyDefinitionList_meta',
     component: propertyDefinitionListComponent,

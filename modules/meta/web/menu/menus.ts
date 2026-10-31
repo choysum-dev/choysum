@@ -22,7 +22,7 @@ export const metaSettingsAppMenu: MenuItem = defineMenu('meta.menu.settings_app'
       defaultRoles: ['sys.admin'],
     }),
     defineMenu('meta.menu.property_definitions', {
-      title: _lt('Record Properties'),
+      title: _lt('Property Definitions'),
       path: '/web/property-definitions/meta',
       sequence: 20,
       defaultRoles: ['sys.admin'],

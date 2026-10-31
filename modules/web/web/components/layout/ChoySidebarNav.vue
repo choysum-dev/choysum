@@ -136,6 +136,11 @@ function onLeafClick(item: MenuItem) {
   gap: 0.125rem;
   width: 100%;
 }
+/* Nested Settings → app → leaf: kit menu-sub mx/px stacks quickly; keep guide line, less inset. */
+.choy-sidebar-nav :deep([data-sidebar='menu-sub']) {
+  margin-inline: 0.375rem;
+  padding-inline: 0.375rem;
+}
 .choy-sidebar-nav :deep([data-sidebar='menu-button']),
 .choy-sidebar-nav :deep([data-sidebar='menu-sub-button']) {
   height: 2rem;
@@ -148,7 +153,7 @@ function onLeafClick(item: MenuItem) {
 }
 .choy-sidebar-nav :deep([data-sidebar='menu-sub-button']) {
   width: 100%;
-  padding-inline-start: 1.25rem;
+  padding-inline-start: 0.75rem;
 }
 .choy-sidebar-nav :deep([data-sidebar='menu-button']:hover),
 .choy-sidebar-nav :deep([data-sidebar='menu-sub-button']:hover) {

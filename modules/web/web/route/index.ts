@@ -16,7 +16,7 @@ export function registerTerminologyRoutes(router: Router): void {
   }
 }
 
-/** Register Settings → {app} → Record Properties pages under the authenticated shell layout. */
+/** Register Settings → {app} → Property Definitions pages under the authenticated shell layout. */
 export function registerPropertyDefinitionRoutes(router: Router): void {
   for (const route of propertyDefinitionRoutes) {
     router.addRoute('AppLayout', route);

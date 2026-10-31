@@ -442,7 +442,7 @@ export const baseRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.property_definition_list', {
     sequence: 50,
-    title: _lt('Record Properties'),
+    title: _lt('Property Definitions'),
     path: 'web/property-definitions/base',
     name: 'PropertyDefinitionList_base',
     component: propertyDefinitionListComponent,

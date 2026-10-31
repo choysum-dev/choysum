@@ -2523,8 +2523,8 @@ msgstr "字段默认值"
 
 #: web/menu/menus.ts:51
 msgctxt "web/menu/menus"
-msgid "Record Properties"
-msgstr "记录属性"
+msgid "Property Definitions"
+msgstr "属性定义"
 
 #: web/menu/menus.ts:20
 msgctxt "web/menu/menus"
@@ -2633,8 +2633,8 @@ msgstr "字段默认值：%s"
 
 #: web/pages/property_definition_list_page.ts:38
 msgctxt "web/pages/PropertyDefinitionList"
-msgid "Record Properties: %s"
-msgstr "记录属性：%s"
+msgid "Property Definitions: %s"
+msgstr "属性定义：%s"
 
 #: web/pages/terminology_list_page.ts:36
 msgctxt "web/pages/TranslationTermList"
@@ -2738,8 +2738,8 @@ msgstr "属性定义"
 
 #: web/route/propertyDefinitionRoutes.ts:31
 msgctxt "web/route/propertyDefinitionRoutes"
-msgid "Record Properties"
-msgstr "记录属性"
+msgid "Property Definitions"
+msgstr "属性定义"
 
 #: web/route/terminologyRoutes.ts:43
 msgctxt "web/route/terminologyRoutes"

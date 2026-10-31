@@ -378,8 +378,8 @@ msgstr "字段默认值"
 
 #: web/menu/menus.ts:27
 msgctxt "web/menu/menus"
-msgid "Record Properties"
-msgstr "记录属性"
+msgid "Property Definitions"
+msgstr "属性定义"
 
 #: web/menu/menus.ts:21
 msgctxt "web/menu/menus"
@@ -433,8 +433,8 @@ msgstr "新建沙箱标签"
 
 #: web/route/routes.ts:154
 msgctxt "web/route/routes"
-msgid "Record Properties"
-msgstr "记录属性"
+msgid "Property Definitions"
+msgstr "属性定义"
 
 #: web/route/routes.ts:66
 msgctxt "web/route/routes"
@@ -874,12 +874,12 @@ msgstr "标签"
 #~ msgstr "配置"
 
 #~ msgctxt "web/menu/titles"
-#~ msgid "Record Properties"
-#~ msgstr "记录属性"
+#~ msgid "Property Definitions"
+#~ msgstr "属性定义"
 
 #~ msgctxt "web/pages/SandboxPropertyDefinitionList"
-#~ msgid "Record Properties"
-#~ msgstr "记录属性"
+#~ msgid "Property Definitions"
+#~ msgstr "属性定义"
 
 #~ msgctxt "web/route/routes"
 #~ msgid "New Property Definition"

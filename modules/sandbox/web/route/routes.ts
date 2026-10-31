@@ -151,7 +151,7 @@ export const sandboxRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('sandbox.route.property_definition_list', {
     sequence: 50,
-    title: _lt('Record Properties'),
+    title: _lt('Property Definitions'),
     path: 'web/property-definitions/sandbox',
     name: 'PropertyDefinitionList_sandbox',
     component: propertyDefinitionListComponent,

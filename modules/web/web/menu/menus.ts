@@ -11,7 +11,7 @@ const { _lt } = createTranslate('web', { scope: 'web/menu/menus' });
 /**
  * Platform shell menus. Domain modules attach their own roots; Settings is the
  * cross-cutting configuration mount point. Each installed application registers
- * Settings → {app} → Translations / Record Properties / Field Defaults; web hosts
+ * Settings → {app} → Translations / Property Definitions / Field Defaults; web hosts
  * core terminology and web's own entries here. core has no PropertyDefinition or
  * FieldDefault store.
  */
@@ -48,7 +48,7 @@ export const menus: MenuItem[] = [
             defaultRoles: ['sys.admin'],
           }),
           defineMenu('web.menu.property_definitions', {
-            title: _lt('Record Properties'),
+            title: _lt('Property Definitions'),
             path: '/web/property-definitions/web',
             sequence: 20,
             defaultRoles: ['sys.admin'],

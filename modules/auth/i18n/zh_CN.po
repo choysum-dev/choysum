@@ -1018,8 +1018,8 @@ msgstr "方法访问"
 
 #: web/menu/menus.ts:30
 msgctxt "web/menu/menus"
-msgid "Record Properties"
-msgstr "记录属性"
+msgid "Property Definitions"
+msgstr "属性定义"
 
 #: web/menu/menus.ts:66
 msgctxt "web/menu/menus"
@@ -1418,8 +1418,8 @@ msgstr "方法访问列表"
 
 #: web/route/routes.ts:383
 msgctxt "web/route/routes"
-msgid "Record Properties"
-msgstr "记录属性"
+msgid "Property Definitions"
+msgstr "属性定义"
 
 #: web/route/routes.ts:216
 msgctxt "web/route/routes"

@@ -24,7 +24,7 @@ export const partnerSettingsAppMenu: MenuItem = defineMenu('partner.menu.setting
       defaultRoles: ['sys.admin'],
     }),
     defineMenu('partner.menu.property_definitions', {
-      title: _lt('Record Properties'),
+      title: _lt('Property Definitions'),
       path: '/web/property-definitions/partner',
       sequence: 20,
       defaultRoles: ['sys.admin'],

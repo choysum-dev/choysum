@@ -1173,8 +1173,8 @@ msgstr "操作历史"
 
 #: web/menu/menus.ts:25
 msgctxt "web/menu/menus"
-msgid "Record Properties"
-msgstr "记录属性"
+msgid "Property Definitions"
+msgstr "属性定义"
 
 #: web/menu/menus.ts:19
 msgctxt "web/menu/menus"
@@ -1228,8 +1228,8 @@ msgstr "操作历史"
 
 #: web/route/routes.ts:70
 msgctxt "web/route/routes"
-msgid "Record Properties"
-msgstr "记录属性"
+msgid "Property Definitions"
+msgstr "属性定义"
 
 #: web/route/routes.ts:61
 msgctxt "web/route/routes"

@@ -1073,8 +1073,8 @@ msgstr "基础数据"
 
 #: web/menu/menus.ts:25
 msgctxt "web/menu/menus"
-msgid "Record Properties"
-msgstr "记录属性"
+msgid "Property Definitions"
+msgstr "属性定义"
 
 #: web/menu/menus.ts:55
 msgctxt "web/menu/menus"
@@ -1333,8 +1333,8 @@ msgstr "语言列表"
 
 #: web/route/routes.ts:445
 msgctxt "web/route/routes"
-msgid "Record Properties"
-msgstr "记录属性"
+msgid "Property Definitions"
+msgstr "属性定义"
 
 #: web/route/routes.ts:267
 msgctxt "web/route/routes"

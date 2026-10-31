@@ -10,7 +10,7 @@ import { createTranslate } from '@/web/web/i18n';
 
 const { _lt } = createTranslate('sandbox', { scope: 'web/menu/menus' });
 
-/** Settings → sandbox → Translations / Record Properties / Field Defaults when sandbox is installed. */
+/** Settings → sandbox → Translations / Property Definitions / Field Defaults when sandbox is installed. */
 export const sandboxSettingsAppMenu: MenuItem = defineMenu('sandbox.menu.settings_app', {
   title: _lt('sandbox'),
   sequence: 110,
@@ -24,7 +24,7 @@ export const sandboxSettingsAppMenu: MenuItem = defineMenu('sandbox.menu.setting
       defaultRoles: ['sys.admin'],
     }),
     defineMenu('sandbox.menu.property_definitions', {
-      title: _lt('Record Properties'),
+      title: _lt('Property Definitions'),
       path: '/web/property-definitions/sandbox',
       sequence: 20,
       defaultRoles: ['sys.admin'],

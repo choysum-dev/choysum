@@ -278,8 +278,8 @@ msgstr "伙伴管理"
 
 #: web/menu/menus.ts:27
 msgctxt "web/menu/menus"
-msgid "Record Properties"
-msgstr "记录属性"
+msgid "Property Definitions"
+msgstr "属性定义"
 
 #: web/menu/menus.ts:21
 msgctxt "web/menu/menus"
@@ -323,8 +323,8 @@ msgstr "伙伴列表"
 
 #: web/route/routes.ts:63
 msgctxt "web/route/routes"
-msgid "Record Properties"
-msgstr "记录属性"
+msgid "Property Definitions"
+msgstr "属性定义"
 
 #: web/route/routes.ts:54
 msgctxt "web/route/routes"

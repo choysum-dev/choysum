@@ -60,7 +60,7 @@ export const partnerRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('partner.route.property_definition_list', {
     sequence: 50,
-    title: _lt('Record Properties'),
+    title: _lt('Property Definitions'),
     path: 'web/property-definitions/partner',
     name: 'PropertyDefinitionList_partner',
     component: propertyDefinitionListComponent,
