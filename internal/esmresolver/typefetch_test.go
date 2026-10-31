@@ -1627,6 +1627,64 @@ func TestDownloadTypeContent_ResponseTooLarge(t *testing.T) {
 
 // ---- ensureModulesTsconfig edge cases ----
 
+func TestEnsureModulesTsconfig_PathIsDirectory(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	tsconfigPath := filepath.Join(dir, "tsconfig.json")
+	if err := os.Mkdir(tsconfigPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	err := ensureModulesTsconfig(tsconfigPath)
+	if err == nil || !strings.Contains(err.Error(), "directory") {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestEnsureModulesTsconfig_StatNonNotExist(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	blocked := filepath.Join(dir, "blocked")
+	if err := os.WriteFile(blocked, []byte("not-a-dir"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Stat(blocked/tsconfig.json) fails with ENOTDIR, which is not IsNotExist.
+	err := ensureModulesTsconfig(filepath.Join(blocked, "tsconfig.json"))
+	if err == nil || !strings.Contains(err.Error(), "stat tsconfig") {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestReconcileModulesTsconfigStock_MarshalError(t *testing.T) {
+	// Not parallel: overrides package-level marshalModulesTsconfig.
+	dir := t.TempDir()
+	tsconfigPath := filepath.Join(dir, "tsconfig.json")
+	if err := os.WriteFile(tsconfigPath, []byte(`{"compilerOptions":{"target":"ES2022"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	prev := marshalModulesTsconfig
+	marshalModulesTsconfig = func(map[string]interface{}) ([]byte, error) {
+		return nil, errors.New("marshal boom")
+	}
+	defer func() { marshalModulesTsconfig = prev }()
+	err := reconcileModulesTsconfigStock(tsconfigPath)
+	if err == nil || !strings.Contains(err.Error(), "marshal tsconfig") {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestEnsureModulesTsconfig_MkdirAllFailure(t *testing.T) {
+	t.Parallel()
+	root := filepath.Join(t.TempDir(), "root")
+	if err := os.Mkdir(root, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	tsconfigPath := filepath.Join(root, "nested", "tsconfig.json")
+	err := ensureModulesTsconfig(tsconfigPath)
+	if err == nil || !strings.Contains(err.Error(), "create tsconfig dir") {
+		t.Fatalf("err=%v", err)
+	}
+}
+
 func TestEnsureModulesTsconfig_DirNotExist(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -1733,6 +1791,31 @@ func TestReconcileModulesTsconfigStock_LeavesCustomTarget(t *testing.T) {
 	data, _ := os.ReadFile(tsconfigPath)
 	if strings.TrimSpace(string(data)) != initial {
 		t.Fatalf("custom target tsconfig rewritten:\n%s", data)
+	}
+}
+
+func TestReconcileStockLibES2020_StringSliceInput(t *testing.T) {
+	t.Parallel()
+	opts := map[string]interface{}{
+		"lib": []string{"ES2022", "DOM"},
+	}
+	if !reconcileStockLibES2020(opts) {
+		t.Fatal("expected lib change for []string input")
+	}
+	lib, _ := opts["lib"].([]interface{})
+	if len(lib) != 2 || lib[0] != "ES2020" || lib[1] != "DOM" {
+		t.Fatalf("lib = %#v", opts["lib"])
+	}
+	opts = map[string]interface{}{"lib": []string{"ES2020", "DOM"}}
+	if reconcileStockLibES2020(opts) {
+		t.Fatal("expected no change when ES2022 absent")
+	}
+	opts = map[string]interface{}{}
+	if !reconcileStockLibES2020(opts) {
+		t.Fatal("expected fill when lib missing")
+	}
+	if reconcileStockLibES2020(map[string]interface{}{"lib": 42}) {
+		t.Fatal("expected no change for non-array lib")
 	}
 }
 

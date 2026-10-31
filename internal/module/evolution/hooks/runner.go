@@ -131,14 +131,14 @@ func (r *Runner) RunPhase(ctx context.Context, phase Phase, opts RunOptions) err
 		}
 	}
 
+	jsCtx, jsCtxErr := r.buildJsContext(ctx, opts)
+	if jsCtxErr != nil {
+		return jsCtxErr
+	}
+
 	var lastErr error
 	for i := 0; i < attempts; i++ {
 		execCtx := r.buildExecContext(ctx)
-		jsCtx, jsCtxErr := r.buildJsContext(ctx, opts)
-		if jsCtxErr != nil {
-			lastErr = jsCtxErr
-			break
-		}
 		req := &jsengine.JsRequest{
 			Id:      jsCtx.requestId,
 			Service: "__choysum_hook__",
@@ -444,8 +444,12 @@ func (r *Runner) executeWithScripts(ctx context.Context, scripts []*jsengine.JsS
 	prevScripts := r.jsExecutor.GetJsScripts()
 	scriptsToLoad := scripts
 	restoreAfter := false
-	if preserveExecutorScripts && len(prevScripts) > 0 && len(scripts) > 0 {
-		scriptsToLoad = append(append([]*jsengine.JsScript{}, prevScripts...), scripts...)
+	if preserveExecutorScripts && len(scripts) > 0 {
+		if len(prevScripts) > 0 {
+			scriptsToLoad = append(append([]*jsengine.JsScript{}, prevScripts...), scripts...)
+		}
+		// Always restore when preserve was requested, including empty prevScripts,
+		// so hook scripts do not leak into later shared-executor runs.
 		restoreAfter = true
 	}
 	changedScripts := len(scriptsToLoad) > 0 && !equivalentScripts(prevScripts, scriptsToLoad)

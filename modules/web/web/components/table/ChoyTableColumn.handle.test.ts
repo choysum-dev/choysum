@@ -107,6 +107,27 @@ describe('ChoyTableColumn handle type', () => {
     unmount();
   });
 
+  test('index column uses default width and muted tabular index class', async () => {
+    let registry: ColumnRegistry | null = null;
+    const Host = defineComponent({
+      setup() {
+        registry = useTableProvideColumnRegistry();
+        useTableProvideBuildContext({ getRows: () => [{ Id: '1' }], baseIndex: ref(1) });
+        return () => h(ChoyTableColumn, { type: 'index', colKey: '__index__' });
+      },
+    });
+    const mounted = mountApp(Host);
+    await nextTick();
+    await flushPromises();
+    const col = registry!.columns.value[0] as any;
+    expect(col.width).toBe(44);
+    const cell = col.cellRenderer({ rowData: { Id: '1' }, rowIndex: 0 });
+    expect(cell.props.class).toContain('tabular-nums');
+    expect(cell.props.class).toContain('text-muted-foreground');
+    expect(String(cell.children)).toContain('1');
+    mounted.unmount();
+  });
+
   test('uses default handle width when vColumnProps.width is omitted', async () => {
     const { columns, unmount } = mountHandleColumn();
     await nextTick();

@@ -112,8 +112,9 @@ func (s *GRPCWebServer) requeueDirtyWatchModules() {
 			continue
 		}
 		if !s.enqueueWatchEvent(file) {
-			// enqueueWatchEvent re-marks dirty on queue_full; other drop reasons
-			// leave the module unmarked until a later filesystem event.
+			// enqueueWatchEvent re-marks dirty on queue_full; re-mark here for
+			// other drop reasons so a later requeue can retry.
+			s.hotreload.markDirtyModule(key, file)
 			continue
 		}
 		if s.runtimeScope != nil {

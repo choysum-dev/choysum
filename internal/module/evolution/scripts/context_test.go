@@ -6,6 +6,7 @@ package scripts
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"io"
 	"log/slog"
 	"os"
@@ -15,6 +16,7 @@ import (
 
 	_ "github.com/choysum-dev/choysum/internal/defaultjsexecutor"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
+	"github.com/choysum-dev/choysum/internal/module/evolution/systemidentity"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/auth"
 	"github.com/choysum-dev/choysum/pkg/config"
@@ -185,6 +187,31 @@ func writeScriptsRuntimeBundle(t *testing.T, testRuntimeScope *scriptsTestScope,
 		t.Fatalf("write bundle file: %v", err)
 	}
 	return bundlePath
+}
+
+func TestBuildJsContextFailsWhenBootstrapAdminUnavailable(t *testing.T) {
+	t.Parallel()
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "scripts_no_admin.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&meta.Module{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&meta.Module{Name: "auth", Status: meta.Installed, Version: "1.0.0"}).Error; err != nil {
+		t.Fatal(err)
+	}
+	testScope := &scriptsTestScope{
+		ctx:     context.Background(),
+		cfg:     &config.Config{Db: &config.DbConfig{Dialect: "sqlite"}},
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		session: &scope.Session{DB: db},
+	}
+	mod := &meta.Module{Name: "base", ApplicationStr: "core", Version: "1.0.0"}
+	_, err = BuildJsContext(context.Background(), testScope, mod, "1.0.0", "")
+	if !errors.Is(err, systemidentity.ErrBootstrapAdminUnavailable) {
+		t.Fatalf("err=%v want ErrBootstrapAdminUnavailable", err)
+	}
 }
 
 func TestBuildJsContextAndExecContext(t *testing.T) {

@@ -77,13 +77,7 @@ func RunReadyForInstalledModules(
 	}
 	for i := range ordered {
 		mod := ordered[i]
-		runner, err := NewRunner(runtimeScope, jsExecutor, &mod)
-		if err != nil {
-			return fmt.Errorf("prepare ready hooks for module %s: %w", mod.Name, err)
-		}
-		if runner == nil {
-			continue
-		}
+		runner, _ := NewRunner(runtimeScope, jsExecutor, &mod)
 		if err := runner.RunPhase(ctx, PhaseReady, RunOptions{
 			InvokeOnly:              opts.InvokeOnly,
 			ReuseExecutorScripts:    opts.ReuseExecutorScripts,

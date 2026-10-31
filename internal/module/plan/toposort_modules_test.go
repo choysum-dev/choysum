@@ -51,3 +51,31 @@ func TestStableTopoSortModulesCycleFallsBackAlphabetical(t *testing.T) {
 		t.Fatalf("order = %#v", order)
 	}
 }
+
+func TestStableTopoSortModulesEdgeCases(t *testing.T) {
+	t.Parallel()
+	depends := func(names ...string) []byte {
+		raw, err := json.Marshal(names)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return raw
+	}
+
+	order, cyclic := StableTopoSortModules([]meta.Module{
+		{Name: "  "},
+		{Name: "solo"},
+		{Name: "solo"},
+	})
+	if cyclic || len(order) != 1 || order[0].Name != "solo" {
+		t.Fatalf("empty/duplicate/single: order=%#v cyclic=%v", order, cyclic)
+	}
+
+	order, cyclic = StableTopoSortModules([]meta.Module{
+		{Name: "a", DependsStr: depends("", "a", "outside", "b")},
+		{Name: "b"},
+	})
+	if cyclic || len(order) != 2 || order[0].Name != "b" || order[1].Name != "a" {
+		t.Fatalf("ignored deps: order=%#v cyclic=%v", order, cyclic)
+	}
+}

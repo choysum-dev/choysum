@@ -2296,7 +2296,7 @@ func reconcileModulesTsconfigStock(tsconfigPath string) error {
 	}
 
 	doc["compilerOptions"] = opts
-	out, err := json.MarshalIndent(doc, "", "  ")
+	out, err := marshalModulesTsconfig(doc)
 	if err != nil {
 		return fmt.Errorf("marshal tsconfig: %w", err)
 	}
@@ -2305,6 +2305,11 @@ func reconcileModulesTsconfigStock(tsconfigPath string) error {
 		return fmt.Errorf("write tsconfig: %w", err)
 	}
 	return nil
+}
+
+// marshalModulesTsconfig indents modules/tsconfig.json; overridden in tests.
+var marshalModulesTsconfig = func(doc map[string]interface{}) ([]byte, error) {
+	return json.MarshalIndent(doc, "", "  ")
 }
 
 // reconcileStockLibES2020 replaces stock ES2022 lib entries with ES2020.

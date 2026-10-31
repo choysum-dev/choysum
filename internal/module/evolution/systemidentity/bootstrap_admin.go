@@ -25,9 +25,15 @@ type BootstrapAdmin struct {
 // Missing auth / seeds yield ok=false (no inject). Operational DB errors are
 // returned so callers do not fall back to a fake Username principal.
 func ResolveBootstrapAdmin(ctx context.Context, runtimeScope scope.Scope) (BootstrapAdmin, bool, error) {
-	var out BootstrapAdmin
+	admin, ok, _, err := resolveBootstrapAdmin(ctx, runtimeScope)
+	return admin, ok, err
+}
+
+// resolveBootstrapAdmin resolves the seed and whether auth is Installed in one
+// transaction so callers need not re-query auth module status.
+func resolveBootstrapAdmin(ctx context.Context, runtimeScope scope.Scope) (out BootstrapAdmin, ok bool, authInstalled bool, err error) {
 	if runtimeScope == nil {
-		return out, false, nil
+		return out, false, false, nil
 	}
 	if ctx == nil {
 		ctx = context.Background()
@@ -40,9 +46,9 @@ func ResolveBootstrapAdmin(ctx context.Context, runtimeScope scope.Scope) (Boots
 	transactor := txRoot.Transactor()
 	if transactor == nil {
 		// Log-only / fixture scopes may omit a transactor; treat as no inject.
-		return out, false, nil
+		return out, false, false, nil
 	}
-	err := transactor.Required(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
+	err = transactor.Required(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
 		session := txScope.Session()
 		if session == nil || session.DB == nil {
 			return nil
@@ -52,25 +58,26 @@ func ResolveBootstrapAdmin(ctx context.Context, runtimeScope scope.Scope) (Boots
 		}
 
 		var authMod meta.Module
-		if err := session.Select("id", "status").Where("name = ?", "auth").Take(&authMod).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
+		if takeErr := session.Select("id", "status").Where("name = ?", "auth").Take(&authMod).Error; takeErr != nil {
+			if errors.Is(takeErr, gorm.ErrRecordNotFound) {
 				return nil
 			}
-			return xfmt.Errorf("load auth module for bootstrap admin identity: %w", err)
+			return xfmt.Errorf("load auth module for bootstrap admin identity: %w", takeErr)
 		}
 		if authMod.Status != meta.Installed {
 			return nil
 		}
+		authInstalled = true
 
 		if !session.Migrator().HasTable((&modmeta.ModelData{}).TableName()) {
 			return nil
 		}
 		var userData modmeta.ModelData
-		if err := session.Select("res_id").Where("module = ? AND name = ?", "auth", "user_admin").Take(&userData).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
+		if takeErr := session.Select("res_id").Where("module = ? AND name = ?", "auth", "user_admin").Take(&userData).Error; takeErr != nil {
+			if errors.Is(takeErr, gorm.ErrRecordNotFound) {
 				return nil
 			}
-			return xfmt.Errorf("load auth.user_admin mapping for bootstrap admin identity: %w", err)
+			return xfmt.Errorf("load auth.user_admin mapping for bootstrap admin identity: %w", takeErr)
 		}
 		userID := strings.TrimSpace(userData.ResID)
 		if userID == "" {
@@ -104,11 +111,11 @@ func ResolveBootstrapAdmin(ctx context.Context, runtimeScope scope.Scope) (Boots
 		companyID := strings.TrimSpace(row.CompanyID)
 		if companyID == "" {
 			var companyData modmeta.ModelData
-			if err := session.Select("res_id").Where("module = ? AND name = ?", "base", "company_main").Take(&companyData).Error; err != nil {
-				if errors.Is(err, gorm.ErrRecordNotFound) {
+			if takeErr := session.Select("res_id").Where("module = ? AND name = ?", "base", "company_main").Take(&companyData).Error; takeErr != nil {
+				if errors.Is(takeErr, gorm.ErrRecordNotFound) {
 					return nil
 				}
-				return xfmt.Errorf("load base.company_main mapping for bootstrap admin identity: %w", err)
+				return xfmt.Errorf("load base.company_main mapping for bootstrap admin identity: %w", takeErr)
 			}
 			companyID = strings.TrimSpace(companyData.ResID)
 		}
@@ -120,9 +127,9 @@ func ResolveBootstrapAdmin(ctx context.Context, runtimeScope scope.Scope) (Boots
 		return nil
 	})
 	if err != nil {
-		return BootstrapAdmin{}, false, err
+		return BootstrapAdmin{}, false, false, err
 	}
-	return out, out.UserID != "" && out.CompanyID != "", nil
+	return out, out.UserID != "" && out.CompanyID != "", authInstalled, nil
 }
 
 // ErrBootstrapAdminUnavailable is returned when auth is Installed but
@@ -140,59 +147,17 @@ func ResolvePrincipalUserID(ctx context.Context, runtimeScope scope.Scope, sessi
 	if sessionUserID != "" {
 		return sessionUserID, "", nil
 	}
-	admin, ok, resolveErr := ResolveBootstrapAdmin(ctx, runtimeScope)
+	admin, ok, installed, resolveErr := resolveBootstrapAdmin(ctx, runtimeScope)
 	if resolveErr != nil {
 		return "", "", resolveErr
 	}
 	if ok {
 		return admin.UserID, admin.CompanyID, nil
 	}
-	installed, checkErr := authModuleInstalled(ctx, runtimeScope)
-	if checkErr != nil {
-		return "", "", checkErr
-	}
 	if installed {
 		return "", "", ErrBootstrapAdminUnavailable
 	}
 	return "", "", nil
-}
-
-// authModuleInstalled reports whether the auth module row exists with Installed status.
-func authModuleInstalled(ctx context.Context, runtimeScope scope.Scope) (bool, error) {
-	if runtimeScope == nil {
-		return false, nil
-	}
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	txRoot := runtimeScope.WithContext(ctx)
-	if txRoot == nil {
-		txRoot = runtimeScope
-	}
-	transactor := txRoot.Transactor()
-	if transactor == nil {
-		return false, nil
-	}
-	var installed bool
-	err := transactor.Required(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
-		session := txScope.Session()
-		if session == nil || session.DB == nil {
-			return nil
-		}
-		if !session.Migrator().HasTable((&meta.Module{}).TableName()) {
-			return nil
-		}
-		var authMod meta.Module
-		if err := session.Select("id", "status").Where("name = ?", "auth").Take(&authMod).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil
-			}
-			return xfmt.Errorf("load auth module status for principal identity: %w", err)
-		}
-		installed = authMod.Status == meta.Installed
-		return nil
-	})
-	return installed, err
 }
 
 // CompanyContextPayload builds the JS ctx map for active/enabled company scope.

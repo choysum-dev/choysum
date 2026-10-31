@@ -103,3 +103,88 @@ func TestWriteSeededBundlesEntryEmptyImportsStillEmitsDispatcher(t *testing.T) {
 		t.Fatalf("expected stub export, got %q", text)
 	}
 }
+
+func TestSanitizeSeedFileToken(t *testing.T) {
+	t.Parallel()
+	if got := sanitizeSeedFileToken(""); got != "mod" {
+		t.Fatalf("empty -> %q", got)
+	}
+	if got := sanitizeSeedFileToken("  "); got != "mod" {
+		t.Fatalf("whitespace -> %q", got)
+	}
+	if got := sanitizeSeedFileToken("doc@v2"); got != "doc_v2" {
+		t.Fatalf("special chars -> %q", got)
+	}
+	if got := sanitizeSeedFileToken("my-module"); got != "my-module" {
+		t.Fatalf("hyphen preserved -> %q", got)
+	}
+}
+
+func TestBuildSeededModuleImportsEdgeCases(t *testing.T) {
+	t.Parallel()
+	absEntry := filepath.Join(t.TempDir(), "service", "index.ts")
+	mods := []*meta.Module{
+		nil,
+		{Name: "web", ServiceEntryPoint: absEntry, ApplicationStr: ""},
+		{Name: "web", ServiceEntryPoint: "service/other.ts"},
+		{Name: "same@name", ServiceEntryPoint: "service/a.ts"},
+		{Name: "same@name", ServiceEntryPoint: "service/b.ts"},
+	}
+	got := buildSeededModuleImports(mods, "/mods")
+	if len(got) != 4 {
+		t.Fatalf("len=%d want 4", len(got))
+	}
+	if got[0].EntryPath != filepath.Clean(absEntry) {
+		t.Fatalf("abs entry = %q", got[0].EntryPath)
+	}
+	if got[0].AppName != "web" {
+		t.Fatalf("empty ApplicationStr defaults to module name, got %q", got[0].AppName)
+	}
+	if got[0].SeedFile != "__seed_mod_web.ts" {
+		t.Fatalf("seed file = %q", got[0].SeedFile)
+	}
+	if got[3].SeedFile != "__seed_mod_same_name_2.ts" {
+		t.Fatalf("duplicate token suffix = %q", got[3].SeedFile)
+	}
+}
+
+func TestWriteSeededBundlesEntrySeedWriteFailure(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(dir, "__seed_mod_document.ts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	_, err := writeSeededBundlesEntry(dir, "__entry.ts", []seededModuleImport{{
+		AppName: "document", ModuleName: "document", EntryPath: "/x", SeedFile: "__seed_mod_document.ts",
+	}})
+	if err == nil {
+		t.Fatal("expected seed write failure when seed path is a file")
+	}
+}
+
+func TestWriteSeededBundlesEntryFinalWriteFailure(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	entryName := "__choysum_bundles_entry.ts"
+	if err := os.Mkdir(filepath.Join(dir, entryName), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	_, err := writeSeededBundlesEntry(dir, entryName, nil)
+	if err == nil {
+		t.Fatal("expected entry write failure when entry path is a file")
+	}
+}
+
+func TestWriteSeededBundlesEntryWriteFailure(t *testing.T) {
+	t.Parallel()
+	badDir := filepath.Join(t.TempDir(), "not-a-dir")
+	if err := os.WriteFile(badDir, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := writeSeededBundlesEntry(badDir, "__entry.ts", []seededModuleImport{{
+		AppName: "a", ModuleName: "a", EntryPath: "/x", SeedFile: "__seed_mod_a.ts",
+	}})
+	if err == nil {
+		t.Fatal("expected write error for bad entry dir")
+	}
+}

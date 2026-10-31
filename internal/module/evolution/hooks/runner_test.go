@@ -19,6 +19,7 @@ import (
 	"time"
 
 	_ "github.com/choysum-dev/choysum/internal/defaultjsexecutor"
+	"github.com/choysum-dev/choysum/internal/module/evolution/systemidentity"
 	modulegenerator "github.com/choysum-dev/choysum/internal/module/artifact/generate"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
@@ -802,6 +803,23 @@ func TestExecuteWithScriptsHandlesFailureModes(t *testing.T) {
 		}
 	})
 
+	t.Run("preserve clears executor scripts when previous set was empty", func(t *testing.T) {
+		testRuntimeScope := newHooksTestScope(t)
+		engine := &hooksSelectiveEngine{execute: func(_ context.Context, _ *jsengine.JsRequest, _ []*jsengine.JsScript) (*jsengine.JsResponse, error) {
+			return &jsengine.JsResponse{Id: "1", Result: nil}, nil
+		}}
+		baseExecutor := newHooksTestExecutorWithEngine(t, testRuntimeScope, engine)
+		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: baseExecutor, module: &meta.Module{Name: "document", ApplicationStr: "document"}}
+		lastErr := error(nil)
+		hookScripts := []*jsengine.JsScript{{FileName: "hook.js", Content: "hook"}}
+		if err := runner.executeWithScripts(context.Background(), hookScripts, &jsengine.JsRequest{Id: "1", Service: "__choysum_hook__"}, &lastErr, false, true); err != nil {
+			t.Fatalf("executeWithScripts preserve error = %v", err)
+		}
+		if len(baseExecutor.GetJsScripts()) != 0 {
+			t.Fatalf("expected empty restored scripts, got %#v", baseExecutor.GetJsScripts())
+		}
+	})
+
 	t.Run("preserve appends hook scripts then restores previous set", func(t *testing.T) {
 		testRuntimeScope := newHooksTestScope(t)
 		engine := &hooksSelectiveEngine{execute: func(_ context.Context, _ *jsengine.JsRequest, scripts []*jsengine.JsScript) (*jsengine.JsResponse, error) {
@@ -855,6 +873,32 @@ func (e *hooksFailingReloadExecutor) Reload(scripts ...*jsengine.JsScript) error
 		return e.reloadErr
 	}
 	return e.inner.Reload(scripts...)
+}
+
+func TestRunPhaseReturnsBuildJsContextError(t *testing.T) {
+	t.Parallel()
+	testRuntimeScope := newHooksTestScopeWithoutAdmin(t)
+	if err := testRuntimeScope.session.DB.AutoMigrate(&meta.Module{}); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	if err := testRuntimeScope.session.DB.Create(&meta.Module{Name: "auth", Status: meta.Installed, Version: "1.0.0"}).Error; err != nil {
+		t.Fatalf("seed auth: %v", err)
+	}
+	root := t.TempDir()
+	mustWriteHookScanFile(t, filepath.Join(root, "service", "hook", "ready.ts"), "@HookReady()\n")
+	engine := &hooksSelectiveEngine{execute: func(_ context.Context, req *jsengine.JsRequest, _ []*jsengine.JsScript) (*jsengine.JsResponse, error) {
+		return &jsengine.JsResponse{Id: req.Id}, nil
+	}}
+	executor := newHooksTestExecutorWithEngine(t, testRuntimeScope, engine)
+	runner := &Runner{
+		runtimeScope: testRuntimeScope,
+		jsExecutor:   executor,
+		module:       &meta.Module{Name: "doc", Path: root, ApplicationStr: "document"},
+	}
+	err := runner.RunPhase(context.Background(), PhaseReady, RunOptions{InvokeOnly: true})
+	if !errors.Is(err, systemidentity.ErrBootstrapAdminUnavailable) {
+		t.Fatalf("err=%v, want ErrBootstrapAdminUnavailable", err)
+	}
 }
 
 func TestRunPhaseNonRequiredHookUnavailable(t *testing.T) {

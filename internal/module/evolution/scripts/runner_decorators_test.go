@@ -6,16 +6,20 @@ package scripts
 import (
 	"context"
 	"errors"
+	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/choysum-dev/choysum/internal/module/evolution/systemidentity"
 	modulegenerator "github.com/choysum-dev/choysum/internal/module/artifact/generate"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/testing/jsexecutortest"
+	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -406,6 +410,58 @@ func TestRunnerRunPhaseReuseExecutorScriptsAvoidsRedundantReload(t *testing.T) {
 
 	if countingExecutor.reloadCalls != 1 {
 		t.Fatalf("expected a single reload across reused script runs, got %d", countingExecutor.reloadCalls)
+	}
+}
+
+func newScriptsTestScopeAuthWithoutSeed(t *testing.T) *scriptsTestScope {
+	t.Helper()
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "scripts_auth_no_seed.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&meta.Module{}, &modmeta.ModuleMigrationHistory{}); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	if err := db.Create(&meta.Module{Name: "auth", Status: meta.Installed, Version: "1.0.0"}).Error; err != nil {
+		t.Fatalf("seed auth: %v", err)
+	}
+	return &scriptsTestScope{
+		ctx: context.Background(),
+		cfg: &config.Config{
+			ModulesPath: filepath.Join(t.TempDir(), "modules"),
+			DistPath:    filepath.Join(t.TempDir(), "dist"),
+			Log:         config.NewDefaultLogConfig(),
+			Db:          &config.DbConfig{Dialect: "sqlite"},
+			Auth:        config.NewDefaultAuthConfig(),
+			Server:      config.NewDefaultServerConfig(),
+			Compile:     config.NewDefaultCompileConfig(),
+		},
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		session: &scope.Session{DB: db},
+	}
+}
+
+func TestLoadRegistryAndRunOneBuildJsContextErrors(t *testing.T) {
+	testRuntimeScope := newScriptsTestScopeAuthWithoutSeed(t)
+	writeScriptsRuntimeBundle(t, testRuntimeScope, "console.log('bundle')")
+	prepareRunnerModuleSource(t, testRuntimeScope, "base", "service/index.ts", "export const migration = {}\n")
+	moduleRef := &meta.Module{Name: "base", ApplicationStr: "core", Version: "1.2.0", ServiceEntryPoint: "service/index.ts"}
+	engine := &scriptsSelectiveEngine{execute: func(req *jsengine.JsRequest, _ []*jsengine.JsScript) (*jsengine.JsResponse, error) {
+		return &jsengine.JsResponse{Id: req.Id, Result: []map[string]any{}}, nil
+	}}
+	executor := newScriptsTestExecutorWithEngine(t, testRuntimeScope, engine)
+	runner := NewRunner(testRuntimeScope, executor, moduleRef)
+	scripts := []*jsengine.JsScript{{FileName: "bundle.js", Content: "1"}}
+
+	_, err := runner.loadRegistry(context.Background(), scripts, "1.0.0", false)
+	if !errors.Is(err, systemidentity.ErrBootstrapAdminUnavailable) {
+		t.Fatalf("loadRegistry err=%v", err)
+	}
+
+	if err := runner.runOne(context.Background(), scripts, Migration{
+		ModuleName: "base", Version: "1.1.0", Phase: PhasePre, Name: "m1", Checksum: "c",
+	}, "1.0.0", false); !errors.Is(err, systemidentity.ErrBootstrapAdminUnavailable) {
+		t.Fatalf("runOne err=%v", err)
 	}
 }
 

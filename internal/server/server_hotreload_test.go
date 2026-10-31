@@ -1865,6 +1865,19 @@ func TestRemoveWatchRoots(t *testing.T) {
 	}
 }
 
+func TestHandleQueuedWatchEventParsesModuleDelimiter(t *testing.T) {
+	t.Parallel()
+	runtimeScope := newRichServerTestScope(t)
+	srv := &GRPCWebServer{runtimeScope: runtimeScope, hotreload: hotreloadState{}}
+	prevDebounce := watchDebounceWindow
+	watchDebounceWindow = 0
+	t.Cleanup(func() { watchDebounceWindow = prevDebounce })
+	err := srv.handleQueuedWatchEvent("/tmp/routes.ts|web")
+	if err != nil {
+		t.Fatalf("handleQueuedWatchEvent() error = %v", err)
+	}
+}
+
 func TestHandleQueuedWatchEventNoDelimiterFallback(t *testing.T) {
 	runtimeScope := newRichServerTestScope(t)
 	srv := &GRPCWebServer{runtimeScope: runtimeScope, hotreload: hotreloadState{}}
@@ -1980,4 +1993,69 @@ func TestHandleWatchedFileChangeErrorPath(t *testing.T) {
 	// Either an error or a path resolution may succeed depending on cwd,
 	// but if it resolves we just verify no panic.
 	_ = err
+}
+
+func TestIsEditorAtomicTempBasename(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		base string
+		want bool
+	}{
+		{"", false},
+		{".", false},
+		{"..", false},
+		{"file.ts", false},
+		{"XX", false},
+		{"XXabc", true},
+		{"xxAb12", true},
+		{"XXMoksr9", true},
+		{"XXwaytoolongnamexx", false},
+		{"XXbad!", false},
+	}
+	for _, tc := range cases {
+		if got := isEditorAtomicTempBasename(tc.base); got != tc.want {
+			t.Fatalf("isEditorAtomicTempBasename(%q) = %v, want %v", tc.base, got, tc.want)
+		}
+	}
+}
+
+func TestMarkDirtyModuleIgnoresEmptyKeyOrFile(t *testing.T) {
+	t.Parallel()
+	h := hotreloadState{}
+	h.markDirtyModule("", "file.ts")
+	h.markDirtyModule("mod", "")
+	if got := h.takeDirtyModules(); got != nil {
+		t.Fatalf("expected no dirty modules, got %#v", got)
+	}
+}
+
+func TestRequeueDirtyWatchModulesNilServer(t *testing.T) {
+	t.Parallel()
+	(*GRPCWebServer)(nil).requeueDirtyWatchModules()
+}
+
+func TestRequeueDirtyWatchModulesBusyReMarksDirty(t *testing.T) {
+	t.Parallel()
+	runtimeScope := newRichServerTestScope(t)
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{queue: make(chan string, 1), busyModules: map[string]struct{}{"demo": {}}},
+	}
+	srv.hotreload.markDirtyModule("demo", "/tmp/demo/routes.ts")
+	srv.requeueDirtyWatchModules()
+	if dirty := srv.hotreload.takeDirtyModules(); len(dirty) != 1 || dirty["demo"] != "/tmp/demo/routes.ts" {
+		t.Fatalf("expected dirty re-mark when busy, got %#v", dirty)
+	}
+}
+
+func TestRequeueDirtyWatchModulesIgnoredPathReMarksDirty(t *testing.T) {
+	t.Parallel()
+	runtimeScope := newRichServerTestScope(t)
+	srv := &GRPCWebServer{runtimeScope: runtimeScope, hotreload: hotreloadState{queue: make(chan string, 1)}}
+	ignored := filepath.Join(t.TempDir(), "XXMoksr9")
+	srv.hotreload.markDirtyModule("demo", ignored)
+	srv.requeueDirtyWatchModules()
+	if dirty := srv.hotreload.takeDirtyModules(); len(dirty) != 1 || dirty["demo"] != ignored {
+		t.Fatalf("expected dirty re-mark after ignored enqueue, got %#v", dirty)
+	}
 }
