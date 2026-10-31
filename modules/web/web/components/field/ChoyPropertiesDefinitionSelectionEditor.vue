@@ -15,12 +15,12 @@ SPDX-License-Identifier: Apache-2.0
             <th v-if="!readonly" class="w-9 px-1 py-1.5 font-medium" />
             <th class="whitespace-nowrap px-3 py-1.5 font-medium">{{ _t('Value') }}</th>
             <th class="min-w-[10rem] px-3 py-1.5 font-medium">{{ _t('Label') }}</th>
-            <th class="w-10 px-2 py-1.5 font-medium" />
+            <th v-if="!readonly" class="w-10 px-2 py-1.5 font-medium" />
           </tr>
         </thead>
         <tbody>
           <tr v-if="rows.length === 0" data-testid="choy-properties-definition-selection-empty">
-            <td class="px-3 py-3 text-sm text-muted-foreground" :colspan="readonly ? 3 : 4">
+            <td class="px-3 py-3 text-sm text-muted-foreground" :colspan="readonly ? 2 : 4">
               {{ _t('No options') }}
             </td>
           </tr>
@@ -49,25 +49,33 @@ SPDX-License-Identifier: Apache-2.0
               </span>
             </td>
             <td class="px-2 py-1 align-middle">
+              <span
+                v-if="readonly"
+                class="choy-field-display-text inline-block font-mono text-xs text-foreground"
+                data-testid="choy-properties-definition-selection-value"
+              >{{ displayOrDash(row.value) }}</span>
               <Input
+                v-else
                 :model-value="row.value"
                 class="h-8 w-full min-w-[6rem] font-mono text-xs"
-                :disabled="readonly"
                 data-testid="choy-properties-definition-selection-value"
                 @update:model-value="onValue(index, $event)"
               />
             </td>
             <td class="px-2 py-1 align-middle">
-              <div class="flex min-w-0 items-center gap-1">
+              <span
+                v-if="readonly"
+                class="choy-field-display-text inline-block text-sm text-foreground"
+                data-testid="choy-properties-definition-selection-label"
+              >{{ displayOrDash(row.label) }}</span>
+              <div v-else class="flex min-w-0 items-center gap-1">
                 <Input
                   :model-value="row.label"
                   class="h-8 min-w-0 flex-1"
-                  :disabled="readonly"
                   data-testid="choy-properties-definition-selection-label"
                   @update:model-value="onLabel(index, $event)"
                 />
                 <ChoyButton
-                  v-if="!readonly"
                   type="button"
                   size="icon"
                   variant="ghost"
@@ -82,9 +90,8 @@ SPDX-License-Identifier: Apache-2.0
                 </ChoyButton>
               </div>
             </td>
-            <td class="px-1 py-1 align-middle">
+            <td v-if="!readonly" class="px-1 py-1 align-middle">
               <ChoyButton
-                v-if="!readonly"
                 type="button"
                 size="icon"
                 variant="ghost"
@@ -166,6 +173,11 @@ const handleReorder = useListHandleReorder({
 function rowKey(_row: SelectionDraftRow, index: number): string {
   // Index-only: value is editable; including it remounts inputs on every keystroke.
   return `row-${index}`;
+}
+
+function displayOrDash(value: unknown): string {
+  const s = String(value ?? '').trim();
+  return s || '—';
 }
 
 function emitRows(next: SelectionDraftRow[]) {

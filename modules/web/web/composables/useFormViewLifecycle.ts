@@ -42,6 +42,11 @@ export type UseFormViewLifecycleOpts<T extends BaseModel> = {
   emit: (event: string, payload?: any) => void;
   _t: (key: string, ...args: any[]) => string;
   fieldsMetadata?: () => Record<string, { isReadonly?: boolean } | undefined> | undefined;
+  /**
+   * When set (e.g. dialog hosts), runs after dirty confirm instead of create→router.back /
+   * edit→beginDisplay. Used by embedded FormViews that are not route-backed.
+   */
+  cancelHandler?: () => void | Promise<void>;
 };
 
 function normalizeRecordId(raw: unknown): string | undefined {
@@ -227,6 +232,11 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
     try {
       opts.onchangeCtrl.reset();
       opts.resetOnchangeAgg();
+      if (opts.cancelHandler) {
+        createBaseline.value = null;
+        await opts.cancelHandler();
+        return;
+      }
       if (opts.viewMode.value === 'create') {
         await awaitCreateCancelBack();
         return;

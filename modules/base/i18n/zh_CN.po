@@ -1021,62 +1021,67 @@ msgctxt "service/models/uom"
 msgid "Rounding must be greater than 0"
 msgstr "Rounding 必须大于 0"
 
-#: web/menu/menus.ts:34
+#: web/menu/menus.ts:40
 msgctxt "web/menu/menus"
 msgid "Address Management"
 msgstr "地址管理"
 
-#: web/menu/menus.ts:35
+#: web/menu/menus.ts:41
 msgctxt "web/menu/menus"
 msgid "Bank Management"
 msgstr "银行管理"
 
-#: web/menu/menus.ts:38
+#: web/menu/menus.ts:44
 msgctxt "web/menu/menus"
 msgid "City Management"
 msgstr "城市管理"
 
-#: web/menu/menus.ts:33
+#: web/menu/menus.ts:39
 msgctxt "web/menu/menus"
 msgid "Company Management"
 msgstr "公司管理"
 
-#: web/menu/menus.ts:36
+#: web/menu/menus.ts:42
 msgctxt "web/menu/menus"
 msgid "Country Management"
 msgstr "国家/地区管理"
 
-#: web/menu/menus.ts:39
+#: web/menu/menus.ts:45
 msgctxt "web/menu/menus"
 msgid "Currency Management"
 msgstr "币种管理"
 
-#: web/menu/menus.ts:40
+#: web/menu/menus.ts:46
 msgctxt "web/menu/menus"
 msgid "Exchange Rate Management"
 msgstr "汇率管理"
 
-#: web/menu/menus.ts:41
+#: web/menu/menus.ts:47
 msgctxt "web/menu/menus"
 msgid "Language Management"
 msgstr "语言管理"
 
-#: web/menu/menus.ts:29
+#: web/menu/menus.ts:35
 msgctxt "web/menu/menus"
 msgid "Master Data"
 msgstr "基础数据"
 
-#: web/menu/menus.ts:43
+#: web/menu/menus.ts:25
+msgctxt "web/menu/menus"
+msgid "Record Properties"
+msgstr "记录属性"
+
+#: web/menu/menus.ts:49
 msgctxt "web/menu/menus"
 msgid "Sequence Idempotency Record"
 msgstr "序列幂等记录"
 
-#: web/menu/menus.ts:42
+#: web/menu/menus.ts:48
 msgctxt "web/menu/menus"
 msgid "Sequence Management"
 msgstr "序列管理"
 
-#: web/menu/menus.ts:37
+#: web/menu/menus.ts:43
 msgctxt "web/menu/menus"
 msgid "State Management"
 msgstr "州/省管理"
@@ -1086,12 +1091,12 @@ msgctxt "web/menu/menus"
 msgid "Translations"
 msgstr "翻译"
 
-#: web/menu/menus.ts:45
+#: web/menu/menus.ts:51
 msgctxt "web/menu/menus"
 msgid "Unit of Measure"
 msgstr "计量单位"
 
-#: web/menu/menus.ts:44
+#: web/menu/menus.ts:50
 msgctxt "web/menu/menus"
 msgid "Unit of Measure Category"
 msgstr "计量单位类别"
@@ -1315,6 +1320,11 @@ msgstr "语言详情"
 msgctxt "web/route/routes"
 msgid "Language List"
 msgstr "语言列表"
+
+#: web/route/routes.ts:441
+msgctxt "web/route/routes"
+msgid "Record Properties"
+msgstr "记录属性"
 
 #: web/route/routes.ts:263
 msgctxt "web/route/routes"

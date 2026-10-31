@@ -2,22 +2,43 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * In-memory form store for pages with no ORM model (login/register drafts).
+ * In-memory form store for pages with no ORM model (login/register drafts,
+ * PropertyDefinition item dialogs, and similar pure-scalar wizards).
  * Satisfies the WebModelStore slice that useField / ChoyFieldBase / ChoyFormView
  * read (storeId, fieldsMetadata, getFieldMeta). Does not call gRPC.
+ *
+ * Pure scalars only. Relation / monetary / binary / properties / statusbar and
+ * pluggable adapters belong in a follow-up wizard store design.
  */
 
 import { reactive } from 'vue';
 import { createEmptyQueryState } from '@/web/web/query/state';
-import type { WebFieldMetadata, WebModelStore } from '@/web/web/stores/modelStore';
+import type { SelectionItem, WebFieldMetadata, WebModelStore } from '@/web/web/stores/modelStore';
 
-export type LocalFormFieldType = 'varchar' | 'boolean';
+export type LocalFormFieldType =
+  | 'varchar'
+  | 'char'
+  | 'text'
+  | 'boolean'
+  | 'selection'
+  | 'integer'
+  | 'bigint'
+  | 'float'
+  | 'date'
+  | 'datetime'
+  | 'time'
+  | 'html'
+  | 'jsonobject';
 
 export type LocalFormFieldDef = {
   name: string;
   label: string;
   type: LocalFormFieldType;
   help?: string;
+  /** Required when type is selection (static options for ChoySelectionField). */
+  selection?: readonly SelectionItem[];
+  /** Optional char/varchar length hint written to meta.size. */
+  size?: number;
 };
 
 export type CreateLocalFormStoreOptions = {
@@ -26,16 +47,57 @@ export type CreateLocalFormStoreOptions = {
   storeId?: string;
 };
 
-const LOCAL_FIELD_TYPES = new Set<LocalFormFieldType>(['varchar', 'boolean']);
+const LOCAL_FIELD_TYPES = new Set<LocalFormFieldType>([
+  'varchar',
+  'char',
+  'text',
+  'boolean',
+  'selection',
+  'integer',
+  'bigint',
+  'float',
+  'date',
+  'datetime',
+  'time',
+  'html',
+  'jsonobject',
+]);
 
 let localFormStoreSeq = 0;
 
 function defaultValueForType(type: LocalFormFieldType): unknown {
-  return type === 'boolean' ? false : '';
+  switch (type) {
+    case 'boolean':
+      return false;
+    case 'integer':
+    case 'bigint':
+    case 'float':
+    case 'selection':
+    case 'date':
+    case 'datetime':
+    case 'time':
+      return null;
+    case 'jsonobject':
+      return {};
+    default:
+      return '';
+  }
 }
 
 function typeAnnotationFor(type: LocalFormFieldType): string {
-  return type === 'boolean' ? 'boolean' : 'string';
+  switch (type) {
+    case 'boolean':
+      return 'boolean';
+    case 'integer':
+    case 'float':
+      return 'number';
+    case 'bigint':
+      return 'string';
+    case 'jsonobject':
+      return 'object';
+    default:
+      return 'string';
+  }
 }
 
 function unsupported(method: string): () => never {
@@ -65,14 +127,35 @@ function buildFieldsMetadata(fields: readonly LocalFormFieldDef[]): Record<strin
     if (!LOCAL_FIELD_TYPES.has(field.type)) {
       throw new Error(`createLocalFormStore unsupported field type "${String(field.type)}"`);
     }
+    if (field.type === 'selection') {
+      if (!Array.isArray(field.selection) || field.selection.length === 0) {
+        throw new Error(`createLocalFormStore selection field "${name}" requires a non-empty selection`);
+      }
+    }
     names.add(name);
-    meta[name] = {
+    const entry: WebFieldMetadata = {
       id: name,
       type: field.type,
       typeAnnotation: typeAnnotationFor(field.type),
       string: field.label,
       help: field.help,
     };
+    if (field.type === 'selection' && field.selection) {
+      entry.selection = field.selection.map(item => ({
+        value: String(item.value),
+        label: String(item.label ?? item.value),
+      }));
+      entry.selectionKind = 'static';
+    }
+    if (
+      (field.type === 'char' || field.type === 'varchar') &&
+      typeof field.size === 'number' &&
+      Number.isInteger(field.size) &&
+      field.size > 0
+    ) {
+      entry.size = field.size;
+    }
+    meta[name] = entry;
   }
   return meta;
 }

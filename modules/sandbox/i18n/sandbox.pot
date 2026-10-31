@@ -377,19 +377,19 @@ msgctxt "sandbox.model.SandboxTag.fields"
 msgid "Name"
 msgstr ""
 
-#: web/menu/menus.ts:26
+#: web/menu/menus.ts:27
+msgctxt "web/menu/menus"
+msgid "Record Properties"
+msgstr ""
+
+#: web/menu/menus.ts:21
 msgctxt "web/menu/menus"
 msgid "Translations"
 msgstr ""
 
-#: web/menu/menus.ts:20
+#: web/menu/menus.ts:15
 msgctxt "web/menu/menus"
 msgid "sandbox"
-msgstr ""
-
-#: web/menu/titles.ts:10
-msgctxt "web/menu/titles"
-msgid "Configuration"
 msgstr ""
 
 #: web/menu/titles.ts:9
@@ -397,19 +397,9 @@ msgctxt "web/menu/titles"
 msgid "Field Kitchen Sink"
 msgstr ""
 
-#: web/menu/titles.ts:11
-msgctxt "web/menu/titles"
-msgid "Record Properties"
-msgstr ""
-
 #: web/menu/titles.ts:8
 msgctxt "web/menu/titles"
 msgid "Sandbox"
-msgstr ""
-
-#: web/pages/SandboxPropertyDefinitionList.vue:11
-msgctxt "web/pages/SandboxPropertyDefinitionList"
-msgid "Record Properties"
 msgstr ""
 
 #: web/pages/SandboxRecordChart.vue:12
@@ -427,11 +417,6 @@ msgctxt "web/pages/SandboxRecordList"
 msgid "Field Kitchen Sink"
 msgstr ""
 
-#: web/route/routes.ts:157
-msgctxt "web/route/routes"
-msgid "New Property Definition"
-msgstr ""
-
 #: web/route/routes.ts:83
 msgctxt "web/route/routes"
 msgid "New Sandbox Record"
@@ -442,12 +427,7 @@ msgctxt "web/route/routes"
 msgid "New Sandbox Tag"
 msgstr ""
 
-#: web/route/routes.ts:171
-msgctxt "web/route/routes"
-msgid "Property Definition"
-msgstr ""
-
-#: web/route/routes.ts:143
+#: web/route/routes.ts:150
 msgctxt "web/route/routes"
 msgid "Record Properties"
 msgstr ""
@@ -477,7 +457,7 @@ msgctxt "web/route/routes"
 msgid "Sandbox Tag Detail"
 msgstr ""
 
-#: web/route/routes.ts:185
+#: web/route/routes.ts:141
 msgctxt "web/route/routes"
 msgid "Translations"
 msgstr ""
@@ -530,91 +510,6 @@ msgstr ""
 #: web/views/SandboxLinesVirtTools.vue:4
 msgctxt "web/views/SandboxLinesVirtTools"
 msgid "Short Lines stay content-sized. Open VIRT-LINES or fill rows to exercise capped table / kanban virtualize (not saved until you Save)."
-msgstr ""
-
-#: web/views/SandboxPropertyDefinitionFormView.vue:21
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Container Id"
-msgstr ""
-
-#: web/views/SandboxPropertyDefinitionFormView.vue:18
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Container Model"
-msgstr ""
-
-#: web/views/sandbox_property_definition_actions.ts:10
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Copy Property Definition"
-msgstr ""
-
-#: web/views/sandbox_property_definition_actions.ts:10
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Create Property Definition"
-msgstr ""
-
-#: web/views/SandboxPropertyDefinitionFormView.vue:26
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Definition"
-msgstr ""
-
-#: web/views/sandbox_property_definition_actions.ts:10
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Delete Property Definition"
-msgstr ""
-
-#: web/views/sandbox_property_definition_actions.ts:10
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Edit Property Definition"
-msgstr ""
-
-#: web/views/SandboxPropertyDefinitionFormView.vue:15
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Properties Field"
-msgstr ""
-
-#: web/views/sandbox_property_definition_actions.ts:11
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Property Definition"
-msgstr ""
-
-#: web/views/SandboxPropertyDefinitionFormView.vue:21
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Required"
-msgstr ""
-
-#: web/views/SandboxPropertyDefinitionFormView.vue:9
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Scope"
-msgstr ""
-
-#: web/views/SandboxPropertyDefinitionFormView.vue:12
-msgctxt "web/views/SandboxPropertyDefinitionFormView"
-msgid "Target Model"
-msgstr ""
-
-#: web/views/SandboxPropertyDefinitionListView.vue:11
-msgctxt "web/views/SandboxPropertyDefinitionListView"
-msgid "Container Id"
-msgstr ""
-
-#: web/views/SandboxPropertyDefinitionListView.vue:10
-msgctxt "web/views/SandboxPropertyDefinitionListView"
-msgid "Container Model"
-msgstr ""
-
-#: web/views/SandboxPropertyDefinitionListView.vue:12
-msgctxt "web/views/SandboxPropertyDefinitionListView"
-msgid "Definition"
-msgstr ""
-
-#: web/views/SandboxPropertyDefinitionListView.vue:9
-msgctxt "web/views/SandboxPropertyDefinitionListView"
-msgid "Properties Field"
-msgstr ""
-
-#: web/views/SandboxPropertyDefinitionListView.vue:8
-msgctxt "web/views/SandboxPropertyDefinitionListView"
-msgid "Target Model"
 msgstr ""
 
 #: web/views/SandboxRecordChartView.vue:43

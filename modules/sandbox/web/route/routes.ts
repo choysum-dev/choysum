@@ -4,7 +4,7 @@
 import type { RouteRecordRaw } from 'vue-router';
 import { defineRoute } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
-import { terminologyListComponent } from '@/web/web/route';
+import { propertyDefinitionListComponent, terminologyListComponent } from '@/web/web/route';
 
 const { _lt } = createTranslate('sandbox', { scope: 'web/route/routes' });
 
@@ -136,50 +136,6 @@ export const sandboxRoutes: RouteRecordRaw[] = [
     ],
     meta: { requiresAuth: true },
   }),
-  // PropertyDefinition List → Form (Definition edited via ChoyPropertiesDefinitionField).
-  // Write ACL comes from platform PropertyDefinition logical packs (auth RMA/RFR).
-  defineRoute('sandbox.route.property_definition_list', {
-    sequence: 80,
-    title: _lt('Record Properties'),
-    path: 'sandbox/configuration/record-properties',
-    name: 'SandboxPropertyDefinitionList',
-    component: () => import('../pages/SandboxPropertyDefinitionList.vue'),
-    actions: [
-      'sandbox.action.property_definition_create',
-      'sandbox.action.property_definition_edit',
-      'sandbox.action.property_definition_delete',
-      'sandbox.action.property_definition_copy',
-    ],
-    meta: { requiresAuth: true },
-  }),
-  defineRoute('sandbox.route.property_definition_create', {
-    sequence: 81,
-    title: _lt('New Property Definition'),
-    path: 'sandbox/configuration/record-properties/new',
-    name: 'SandboxPropertyDefinitionCreate',
-    component: () => import('../pages/SandboxPropertyDefinition.vue'),
-    actions: [
-      'sandbox.action.property_definition_create',
-      'sandbox.action.property_definition_edit',
-      'sandbox.action.property_definition_delete',
-      'sandbox.action.property_definition_copy',
-    ],
-    meta: { requiresAuth: true },
-  }),
-  defineRoute('sandbox.route.property_definition_detail', {
-    sequence: 82,
-    title: _lt('Property Definition'),
-    path: 'sandbox/configuration/record-properties/:id',
-    name: 'SandboxPropertyDefinitionDetail',
-    component: () => import('../pages/SandboxPropertyDefinition.vue'),
-    actions: [
-      'sandbox.action.property_definition_create',
-      'sandbox.action.property_definition_edit',
-      'sandbox.action.property_definition_delete',
-      'sandbox.action.property_definition_copy',
-    ],
-    meta: { requiresAuth: true },
-  }),
   defineRoute('sandbox.route.terminology_list', {
     sequence: 40,
     title: _lt('Translations'),
@@ -188,5 +144,14 @@ export const sandboxRoutes: RouteRecordRaw[] = [
     component: terminologyListComponent,
     defaultRoles: ['sys.admin'],
     meta: { requiresAuth: true, terminologyApplication: 'sandbox' },
+  }),
+  defineRoute('sandbox.route.property_definition_list', {
+    sequence: 50,
+    title: _lt('Record Properties'),
+    path: 'web/property-definitions/sandbox',
+    name: 'PropertyDefinitionList_sandbox',
+    component: propertyDefinitionListComponent,
+    defaultRoles: ['sys.admin'],
+    meta: { requiresAuth: true, propertyDefinitionApplication: 'sandbox' },
   }),
 ];

@@ -1,25 +1,24 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { h } from 'vue';
+import { h, inject, provide, reactive } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 
+import { resolveConfirmChoy } from '@/web/web/composables/confirmChoyAction';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
-import Checkbox from '../vendor/ui/checkbox/Checkbox.vue';
-import FieldLabel from '../vendor/ui/field/FieldLabel.vue';
-import Input from '../vendor/ui/input/Input.vue';
-import Textarea from '../vendor/ui/textarea/Textarea.vue';
-import Select from '../vendor/ui/select/Select.vue';
-import SelectContent from '../vendor/ui/select/SelectContent.vue';
-import SelectItem from '../vendor/ui/select/SelectItem.vue';
-import SelectTrigger from '../vendor/ui/select/SelectTrigger.vue';
+import ChoyFormView from '@/web/web/components/view/ChoyFormView.vue';
+import ChoyVarcharField from '@/web/web/components/field/ChoyVarcharField.vue';
+import ChoyTextField from '@/web/web/components/field/ChoyTextField.vue';
+import ChoyBooleanField from '@/web/web/components/field/ChoyBooleanField.vue';
+import ChoySelectionField from '@/web/web/components/field/ChoySelectionField.vue';
 import ChoyPropertyLabelTranslationsDialog from './ChoyPropertyLabelTranslationsDialog.vue';
 import ChoyPropertiesDefinitionSelectionEditor from './ChoyPropertiesDefinitionSelectionEditor.vue';
 import ItemDialog from './ChoyPropertiesDefinitionItemDialog.vue';
 import type { DefinitionEditorDraftItem } from './propertiesDefinitionHelpers';
+import type { LocalFormStore } from '@/web/web/stores/localFormStore';
 
 function draft(partial: Partial<DefinitionEditorDraftItem> = {}): DefinitionEditorDraftItem {
   return {
@@ -40,10 +39,7 @@ function draft(partial: Partial<DefinitionEditorDraftItem> = {}): DefinitionEdit
 describe('ChoyPropertiesDefinitionItemDialog', () => {
   let pinia: ReturnType<typeof createPinia>;
   let lastTranslateProps: Record<string, unknown> | null = null;
-  let translateSavedEmit: ((next: Record<string, string>) => void) | null = null;
   let lastSelectionProps: Record<string, unknown> | null = null;
-  let selectionTranslateEmit: ((value: string) => void) | null = null;
-  let selectionUpdateEmit: ((rows: unknown[]) => void) | null = null;
 
   function installStubs() {
     stubSfc(ChoyDialog as any, {
@@ -92,104 +88,123 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
           );
       },
     });
-    stubSfc(Input as any, {
-      name: 'Input',
-      props: { modelValue: { type: [String, Number], default: '' }, disabled: Boolean, id: String },
-      emits: ['update:modelValue'],
-      setup(props: any, { emit, attrs }: any) {
-        return () =>
-          h('input', {
-            ...attrs,
-            id: props.id,
-            disabled: props.disabled || undefined,
-            value: props.modelValue ?? '',
-            onInput: (e: Event) => emit('update:modelValue', (e.target as HTMLInputElement).value),
-          });
+
+    stubSfc(ChoyFormView as any, {
+      name: 'ChoyFormView',
+      props: {
+        store: Object,
+        initialValues: Object,
+        viewMode: String,
+        embedded: Boolean,
+        showHeader: Boolean,
+        showActions: Boolean,
+        submitHandler: Function,
+        cancelHandler: Function,
       },
-    });
-    stubSfc(Textarea as any, {
-      name: 'Textarea',
-      props: { modelValue: { type: String, default: '' }, disabled: Boolean, id: String },
-      emits: ['update:modelValue'],
-      setup(props: any, { emit, attrs }: any) {
+      setup(props: any, { slots, attrs, expose }: any) {
+        const formData = reactive({ ...(props.initialValues || {}) });
+        const syncStoreField = (path: string, value: unknown) => {
+          (formData as any)[path] = value;
+          const store = props.store as LocalFormStore | null | undefined;
+          store?.setField?.(path, value);
+        };
+        provide('form-root', {
+          get mode() {
+            return props.viewMode === 'display' ? 'display' : 'create';
+          },
+          get draft() {
+            return formData;
+          },
+          setField(path: string, value: unknown) {
+            syncStoreField(path, value);
+          },
+          getField(path: string) {
+            return (formData as any)[path];
+          },
+          onChange() {},
+        });
+        expose({
+          submit: () =>
+            props.submitHandler?.({
+              formData,
+              mode: 'create',
+              data: formData,
+              defaultSubmit: async () => null,
+            }),
+          // Mirror FormView.cancel: dirty confirm is skipped in this stub; host
+          // cancelHandler closes the dialog (same post-confirm contract).
+          cancel: async () => {
+            await props.cancelHandler?.();
+          },
+        });
         return () =>
-          h('textarea', {
-            ...attrs,
-            id: props.id,
-            disabled: props.disabled || undefined,
-            value: props.modelValue ?? '',
-            onInput: (e: Event) => emit('update:modelValue', (e.target as HTMLTextAreaElement).value),
-          });
-      },
-    });
-    stubSfc(FieldLabel as any, {
-      name: 'FieldLabel',
-      setup(_: any, { slots }: any) {
-        return () => h('label', slots.default?.());
-      },
-    });
-    stubSfc(Checkbox as any, {
-      name: 'Checkbox',
-      props: { modelValue: { type: [Boolean, String, Number], default: false }, disabled: Boolean },
-      emits: ['update:modelValue'],
-      setup(props: any, { emit, attrs }: any) {
-        return () =>
-          h('input', {
-            ...attrs,
-            type: 'checkbox',
-            disabled: props.disabled || undefined,
-            checked: props.modelValue === true,
-            onChange: (e: Event) => emit('update:modelValue', (e.target as HTMLInputElement).checked),
-          });
-      },
-    });
-    stubSfc(Select as any, {
-      name: 'Select',
-      props: { modelValue: { type: String, default: '' }, disabled: Boolean },
-      emits: ['update:modelValue'],
-      setup(props: any, { slots, emit }: any) {
-        return () =>
-          h('div', { class: 'select-stub', 'data-value': props.modelValue }, [
-            slots.default?.(),
-            h(
-              'button',
-              {
-                type: 'button',
-                'data-testid': 'stub-set-selection-type',
-                disabled: props.disabled || undefined,
-                onClick: () => emit('update:modelValue', 'selection'),
-              },
-              'selection',
-            ),
+          h('div', { ...attrs, 'data-testid': 'choy-properties-definition-item-form' }, [
+            slots.default?.({ formData, viewMode: props.viewMode }),
           ]);
       },
     });
-    stubSfc(SelectTrigger as any, {
-      name: 'SelectTrigger',
-      setup(_: any, { attrs }: any) {
-        return () => h('button', { ...attrs, type: 'button' }, 'type');
-      },
-    });
-    stubSfc(SelectContent as any, {
-      name: 'SelectContent',
-      setup(_: any, { slots }: any) {
-        return () => h('div', slots.default?.());
-      },
-    });
-    stubSfc(SelectItem as any, {
-      name: 'SelectItem',
-      props: { value: String },
-      setup(props: any, { slots }: any) {
-        return () => h('div', { 'data-value': props.value }, slots.default?.());
-      },
-    });
+
+    function fieldStub(name: string, tag: 'input' | 'textarea' | 'checkbox' | 'select') {
+      return {
+        name,
+        props: {
+          store: Object,
+          prop: String,
+          readonly: { type: Boolean, default: false },
+        },
+        setup(props: any, { attrs }: any) {
+          const form = inject<any>('form-root');
+          const testId = attrs['data-testid'] || `field-${props.prop}`;
+          return () => {
+            const mode = form?.mode;
+            if (mode === 'display' || props.readonly) {
+              const v = form?.getField?.(props.prop);
+              const text = v === true ? 'Yes' : v === false ? 'No' : String(v ?? '');
+              return h('div', { 'data-testid': testId, 'data-readonly': '1' }, text);
+            }
+            if (tag === 'checkbox') {
+              return h('input', {
+                type: 'checkbox',
+                'data-testid': testId,
+                checked: form?.getField?.(props.prop) === true,
+                onChange: (e: Event) => form?.setField?.(props.prop, (e.target as HTMLInputElement).checked),
+              });
+            }
+            if (tag === 'select') {
+              return h('div', { 'data-testid': testId }, [
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    'data-testid': 'stub-set-selection-type',
+                    onClick: () => form?.setField?.(props.prop, 'selection'),
+                  },
+                  String(form?.getField?.(props.prop) ?? ''),
+                ),
+              ]);
+            }
+            return h(tag, {
+              'data-testid': testId,
+              value: String(form?.getField?.(props.prop) ?? ''),
+              onInput: (e: Event) =>
+                form?.setField?.(props.prop, (e.target as HTMLInputElement | HTMLTextAreaElement).value),
+            });
+          };
+        },
+      };
+    }
+
+    stubSfc(ChoyVarcharField as any, fieldStub('ChoyVarcharField', 'input') as any);
+    stubSfc(ChoyTextField as any, fieldStub('ChoyTextField', 'textarea') as any);
+    stubSfc(ChoyBooleanField as any, fieldStub('ChoyBooleanField', 'checkbox') as any);
+    stubSfc(ChoySelectionField as any, fieldStub('ChoySelectionField', 'select') as any);
+
     stubSfc(ChoyPropertyLabelTranslationsDialog as any, {
       name: 'ChoyPropertyLabelTranslationsDialog',
       props: { modelValue: Boolean, labelTitle: String, translations: Object },
       emits: ['update:modelValue', 'saved', 'closed'],
       setup(props: any, { emit }: any) {
         lastTranslateProps = props;
-        translateSavedEmit = (next: Record<string, string>) => emit('saved', next);
         return () =>
           props.modelValue
             ? h('div', { 'data-testid': 'translate-dialog-stub' }, [
@@ -230,8 +245,6 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
       emits: ['update:modelValue', 'translate'],
       setup(props: any, { emit }: any) {
         lastSelectionProps = props;
-        selectionTranslateEmit = (value: string) => emit('translate', value);
-        selectionUpdateEmit = (rows: unknown[]) => emit('update:modelValue', rows);
         return () =>
           h('div', { 'data-testid': 'selection-editor-stub' }, [
             h(
@@ -266,10 +279,7 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
     setActivePinia(pinia);
     void useI18nStore();
     lastTranslateProps = null;
-    translateSavedEmit = null;
     lastSelectionProps = null;
-    selectionTranslateEmit = null;
-    selectionUpdateEmit = null;
     installStubs();
   });
 
@@ -278,19 +288,20 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
     restoreSfc(ChoyDialogContent as any);
     restoreSfc(ChoyDialogTitle as any);
     restoreSfc(ChoyButton as any);
-    restoreSfc(Input as any);
-    restoreSfc(Textarea as any);
-    restoreSfc(FieldLabel as any);
-    restoreSfc(Checkbox as any);
-    restoreSfc(Select as any);
-    restoreSfc(SelectTrigger as any);
-    restoreSfc(SelectContent as any);
-    restoreSfc(SelectItem as any);
+    restoreSfc(ChoyFormView as any);
+    restoreSfc(ChoyVarcharField as any);
+    restoreSfc(ChoyTextField as any);
+    restoreSfc(ChoyBooleanField as any);
+    restoreSfc(ChoySelectionField as any);
     restoreSfc(ChoyPropertyLabelTranslationsDialog as any);
     restoreSfc(ChoyPropertiesDefinitionSelectionEditor as any);
   });
 
-  function mountDialog(props: Record<string, unknown> = {}, on?: Record<string, (...args: any[]) => void>) {
+  function mountDialog(
+    props: Record<string, unknown> = {},
+    on?: Record<string, (...args: any[]) => void>,
+    opts: { reactiveProps?: boolean } = {},
+  ) {
     return mountApp(ItemDialog as any, {
       props: {
         modelValue: true,
@@ -299,6 +310,7 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
       },
       on,
       plugins: [pinia],
+      reactiveProps: opts.reactiveProps === true,
     });
   }
 
@@ -311,6 +323,8 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
     const edit = mountDialog({ title: '' });
     await flushPromises();
     expect(edit.el.querySelector('[data-testid="item-dialog-title"]')?.textContent || '').toMatch(/tax_id/);
+    expect(edit.q('[data-testid="choy-properties-definition-item-save"]')).toBeTruthy();
+    expect(edit.q('[data-testid="choy-properties-definition-item-footer"]')).toBeTruthy();
     edit.unmount();
 
     const neu = mountDialog({ title: '', item: draft() });
@@ -322,12 +336,14 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
     await flushPromises();
     expect(ro.el.querySelector('[data-testid="item-dialog-title"]')?.textContent || '').toMatch(/Property/);
     expect(ro.q('[data-testid="choy-properties-definition-item-save"]')).toBeFalsy();
+    expect(ro.q('[data-testid="choy-properties-definition-item-edit"]')).toBeFalsy();
+    expect(ro.q('[data-testid="choy-properties-definition-item-cancel"]')).toBeTruthy();
     ro.unmount();
 
-    const roEmpty = mountDialog({ title: '', readonly: true, item: draft() });
+    const roEdit = mountDialog({ title: '', readonly: true, canEdit: true });
     await flushPromises();
-    expect(roEmpty.el.querySelector('[data-testid="item-dialog-title"]')?.textContent || '').toMatch(/Property/);
-    roEmpty.unmount();
+    expect(roEdit.q('[data-testid="choy-properties-definition-item-edit"]')).toBeTruthy();
+    roEdit.unmount();
   });
 
   test('Name required validation shows formError', async () => {
@@ -362,7 +378,7 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
     }
   });
 
-  test('Save emits saved and does not close itself', async () => {
+  test('Apply emits saved via FormView submit', async () => {
     const onSaved = fnRecorder();
     const onUpdate = fnRecorder();
     const m = mountDialog({}, { onSaved, 'onUpdate:modelValue': onUpdate });
@@ -372,7 +388,6 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
     expect(onSaved.calls.length).toBe(1);
     expect((onSaved.calls[0][0] as DefinitionEditorDraftItem).name).toBe('tax_id');
     expect(onUpdate.calls.some((c: any[]) => c[0] === false)).toBe(false);
-    expect(m.q('[data-testid="choy-properties-definition-item-dialog"]')).toBeTruthy();
     m.unmount();
   });
 
@@ -393,59 +408,362 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
     }
   });
 
-  test('Cancel closes dialog', async () => {
+  test('Cancel footer closes dialog', async () => {
     const onUpdate = fnRecorder();
-    const onClosed = fnRecorder();
-    const m = mountApp(ItemDialog as any, {
-      reactiveProps: true,
-      props: {
-        modelValue: true,
-        item: draft({ name: 'tax_id', string: 'Tax', stringMap: { en_US: 'Tax' } }),
-        'onUpdate:modelValue': (v: boolean) => {
-          (m.props as any).modelValue = v;
-        },
-        onClosed,
-      },
-      plugins: [pinia],
-    });
+    const m = mountDialog({}, { 'onUpdate:modelValue': onUpdate });
     await flushPromises();
     m.click('[data-testid="choy-properties-definition-item-cancel"]');
     await flushPromises();
-    expect((m.props as any).modelValue).toBe(false);
-    expect(onClosed.calls.length).toBeGreaterThanOrEqual(1);
-    // onUpdate may be wired via props callback rather than `on` map
-    void onUpdate;
+    expect(onUpdate.calls.some((c: any[]) => c[0] === false)).toBe(true);
+    m.unmount();
+  });
+
+  test('Cancel with selection-only edits confirms before close', async () => {
+    const onUpdate = fnRecorder();
+    const m = mountDialog(
+      {
+        item: draft({
+          name: 'prio',
+          type: 'selection',
+          string: 'P',
+          stringMap: { en_US: 'P' },
+          selectionText: '[["low","Low"]]',
+          selectionLabelMaps: { low: { en_US: 'Low' } },
+        }),
+      },
+      { 'onUpdate:modelValue': onUpdate },
+    );
+    try {
+      await flushPromises();
+      m.click('[data-testid="stub-selection-update"]');
+      await flushPromises();
+      queueMicrotask(() => resolveConfirmChoy('confirm'));
+      m.click('[data-testid="choy-properties-definition-item-cancel"]');
+      await flushPromises();
+      expect(onUpdate.calls.some((c: any[]) => c[0] === false)).toBe(true);
+    } finally {
+      m.unmount();
+    }
+  });
+
+  test('Cancel with selection edits declines keeps dialog open', async () => {
+    const onUpdate = fnRecorder();
+    const m = mountDialog(
+      {
+        item: draft({
+          name: 'prio',
+          type: 'selection',
+          string: 'P',
+          stringMap: { en_US: 'P' },
+          selectionText: '[["low","Low"]]',
+          selectionLabelMaps: { low: { en_US: 'Low' } },
+        }),
+      },
+      { 'onUpdate:modelValue': onUpdate },
+    );
+    try {
+      await flushPromises();
+      m.click('[data-testid="stub-selection-update"]');
+      await flushPromises();
+      queueMicrotask(() => resolveConfirmChoy('cancel'));
+      m.click('[data-testid="choy-properties-definition-item-cancel"]');
+      await flushPromises();
+      expect(onUpdate.calls.some((c: any[]) => c[0] === false)).toBe(false);
+      expect(m.q('[data-testid="choy-properties-definition-item-form"]')).toBeTruthy();
+    } finally {
+      m.unmount();
+    }
+  });
+
+  test('Cancel without FormView.cancel closes directly when clean', async () => {
+    stubSfc(ChoyFormView as any, {
+      name: 'ChoyFormView',
+      props: {
+        store: Object,
+        initialValues: Object,
+        viewMode: String,
+        submitHandler: Function,
+        cancelHandler: Function,
+      },
+      setup(props: any, { slots, attrs, expose }: any) {
+        const formData = reactive({ ...(props.initialValues || {}) });
+        provide('form-root', {
+          get mode() {
+            return 'create';
+          },
+          get draft() {
+            return formData;
+          },
+          setField(path: string, value: unknown) {
+            (formData as any)[path] = value;
+            (props.store as LocalFormStore | undefined)?.setField?.(path, value);
+          },
+          getField(path: string) {
+            return (formData as any)[path];
+          },
+          onChange() {},
+        });
+        expose({});
+        return () =>
+          h('div', { ...attrs, 'data-testid': 'choy-properties-definition-item-form' }, [
+            slots.default?.({ formData, viewMode: props.viewMode }),
+          ]);
+      },
+    });
+    const onUpdate = fnRecorder();
+    const m = mountDialog({}, { 'onUpdate:modelValue': onUpdate });
+    try {
+      await flushPromises();
+      m.click('[data-testid="choy-properties-definition-item-cancel"]');
+      await flushPromises();
+      expect(onUpdate.calls.some((c: any[]) => c[0] === false)).toBe(true);
+    } finally {
+      m.unmount();
+      installStubs();
+    }
+  });
+
+  test('readonly Close closes without requiring FormView.cancel', async () => {
+    const onUpdate = fnRecorder();
+    const m = mountDialog({ readonly: true }, { 'onUpdate:modelValue': onUpdate });
+    await flushPromises();
+    m.click('[data-testid="choy-properties-definition-item-cancel"]');
+    await flushPromises();
+    expect(onUpdate.calls.some((c: any[]) => c[0] === false)).toBe(true);
+    m.unmount();
+  });
+
+  test('onApply/onRequestEdit early-return guards via setupState', async () => {
+    const onEdit = fnRecorder();
+    const m = mountDialog({ readonly: true, canEdit: false }, { onEdit });
+    try {
+      await flushPromises();
+      const api = m.setupState();
+      await api.onApply();
+      api.onRequestEdit();
+      expect(onEdit.calls.length).toBe(0);
+      expect(m.q('[data-testid="choy-properties-definition-item-error"]')).toBeFalsy();
+    } finally {
+      m.unmount();
+    }
+  });
+
+  test('onApply surfaces thrown submit errors as formError', async () => {
+    stubSfc(ChoyFormView as any, {
+      name: 'ChoyFormView',
+      props: {
+        store: Object,
+        initialValues: Object,
+        viewMode: String,
+        submitHandler: Function,
+        cancelHandler: Function,
+      },
+      setup(props: any, { slots, attrs, expose }: any) {
+        const formData = reactive({ ...(props.initialValues || {}) });
+        provide('form-root', {
+          get mode() {
+            return 'create';
+          },
+          get draft() {
+            return formData;
+          },
+          setField() {},
+          getField(path: string) {
+            return (formData as any)[path];
+          },
+          onChange() {},
+        });
+        expose({
+          submit: async () => {
+            throw new Error('submit boom');
+          },
+        });
+        return () =>
+          h('div', { ...attrs, 'data-testid': 'choy-properties-definition-item-form' }, [
+            slots.default?.({ formData, viewMode: props.viewMode }),
+          ]);
+      },
+    });
+    const m = mountDialog({});
+    try {
+      await flushPromises();
+      m.click('[data-testid="choy-properties-definition-item-save"]');
+      await flushPromises();
+      expect(m.q('[data-testid="choy-properties-definition-item-error"]')?.textContent || '').toMatch(
+        /submit boom/,
+      );
+    } finally {
+      m.unmount();
+      installStubs();
+    }
+  });
+
+  test('Apply falls back to onFormSubmit when FormView has no submit()', async () => {
+    stubSfc(ChoyFormView as any, {
+      name: 'ChoyFormView',
+      props: {
+        store: Object,
+        initialValues: Object,
+        viewMode: String,
+        submitHandler: Function,
+        cancelHandler: Function,
+      },
+      setup(props: any, { slots, attrs, expose }: any) {
+        const formData = reactive({ ...(props.initialValues || {}) });
+        provide('form-root', {
+          get mode() {
+            return 'create';
+          },
+          get draft() {
+            return formData;
+          },
+          setField(path: string, value: unknown) {
+            (formData as any)[path] = value;
+          },
+          getField(path: string) {
+            return (formData as any)[path];
+          },
+          onChange() {},
+        });
+        // No submit/cancel expose — exercises onApply fallback.
+        expose({});
+        return () =>
+          h('div', { ...attrs, 'data-testid': 'choy-properties-definition-item-form' }, [
+            slots.default?.({ formData, viewMode: props.viewMode }),
+          ]);
+      },
+    });
+    const onSaved = fnRecorder();
+    const m = mountDialog({}, { onSaved });
+    try {
+      await flushPromises();
+      m.click('[data-testid="choy-properties-definition-item-save"]');
+      await flushPromises();
+      expect(onSaved.calls.length).toBe(1);
+    } finally {
+      m.unmount();
+      installStubs();
+    }
+  });
+
+  test('submitHandler is a no-op when dialog is readonly', async () => {
+    const onSaved = fnRecorder();
+    let submitHandler: ((ctx: any) => Promise<unknown>) | undefined;
+    stubSfc(ChoyFormView as any, {
+      name: 'ChoyFormView',
+      props: {
+        store: Object,
+        initialValues: Object,
+        viewMode: String,
+        submitHandler: Function,
+        cancelHandler: Function,
+      },
+      setup(props: any, { slots, attrs, expose }: any) {
+        const formData = reactive({ ...(props.initialValues || {}) });
+        submitHandler = props.submitHandler;
+        provide('form-root', {
+          get mode() {
+            return 'display';
+          },
+          get draft() {
+            return formData;
+          },
+          setField() {},
+          getField(path: string) {
+            return (formData as any)[path];
+          },
+          onChange() {},
+        });
+        expose({
+          submit: () =>
+            props.submitHandler?.({
+              formData,
+              mode: 'display',
+              data: formData,
+              defaultSubmit: async () => null,
+            }),
+        });
+        return () =>
+          h('div', { ...attrs, 'data-testid': 'choy-properties-definition-item-form' }, [
+            slots.default?.({ formData, viewMode: props.viewMode }),
+          ]);
+      },
+    });
+    const m = mountDialog({ readonly: true }, { onSaved });
+    try {
+      await flushPromises();
+      expect(submitHandler).toBeTruthy();
+      const result = await submitHandler!({
+        formData: {},
+        mode: 'display',
+        data: {},
+        defaultSubmit: async () => null,
+      });
+      expect(result).toEqual({ handled: true, skipSuccessMessage: true });
+      expect(onSaved.calls.length).toBe(0);
+    } finally {
+      m.unmount();
+      installStubs();
+    }
+  });
+
+  test('readonly Edit emits edit when canEdit', async () => {
+    const onEdit = fnRecorder();
+    const m = mountDialog({ readonly: true, canEdit: true }, { onEdit });
+    await flushPromises();
+    m.click('[data-testid="choy-properties-definition-item-edit"]');
+    await flushPromises();
+    expect(onEdit.calls.length).toBe(1);
+    m.unmount();
+  });
+
+  test('Edit is hidden when canEdit is false', async () => {
+    const onEdit = fnRecorder();
+    const m = mountDialog({ readonly: true, canEdit: false }, { onEdit });
+    await flushPromises();
+    expect(m.q('[data-testid="choy-properties-definition-item-edit"]')).toBeFalsy();
+    expect(onEdit.calls.length).toBe(0);
     m.unmount();
   });
 
   test('translate label and help apply maps via onTranslateSaved', async () => {
-    const m = mountDialog({
-      item: draft({
-        name: 'tax_id',
-        string: 'Tax',
-        stringMap: { en_US: 'Tax' },
-        help: 'Help EN',
-        helpMap: { en_US: 'Help EN' },
-      }),
-    });
+    const onSaved = fnRecorder();
+    const m = mountDialog(
+      {
+        item: draft({
+          name: 'tax_id',
+          string: 'Tax',
+          stringMap: { en_US: 'Tax' },
+          help: 'H',
+          helpMap: { en_US: 'H' },
+        }),
+      },
+      { onSaved },
+    );
     await flushPromises();
-
+    // setupState unwraps refs — formStore is the LocalFormStore instance.
+    const store = m.setupState().formStore as LocalFormStore | null;
     m.click('[data-testid="choy-properties-definition-translate-string"]');
     await flushPromises();
-    expect(m.q('[data-testid="translate-dialog-stub"]')).toBeTruthy();
-    expect(String(lastTranslateProps?.labelTitle || '')).toMatch(/tax_id/);
     m.click('[data-testid="stub-translate-save-string"]');
     await flushPromises();
+    expect(String((m.q('[data-testid="choy-properties-definition-string"]') as HTMLInputElement)?.value || '')).toBe(
+      'L-en',
+    );
+    expect(store?.getField('Label')).toBe('L-en');
 
     m.click('[data-testid="choy-properties-definition-translate-help"]');
     await flushPromises();
-    expect(String(lastTranslateProps?.labelTitle || '')).toMatch(/Help/i);
     m.click('[data-testid="stub-translate-save-help"]');
     await flushPromises();
+    expect(store?.getField('Help')).toBe('H-en');
 
-    // Re-open and save again so maps stick into local before confirm
     m.click('[data-testid="choy-properties-definition-item-save"]');
     await flushPromises();
+    expect(onSaved.calls.length).toBe(1);
+    const saved = onSaved.calls[0][0] as DefinitionEditorDraftItem;
+    expect(saved.stringMap).toEqual({ en_US: 'L-en', zh_CN: 'L-zh' });
+    expect(saved.helpMap).toEqual({ en_US: 'H-en', zh_CN: 'H-zh' });
     m.unmount();
   });
 
@@ -456,8 +774,8 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
         item: draft({
           name: 'prio',
           type: 'selection',
-          string: 'Priority',
-          stringMap: { en_US: 'Priority' },
+          string: 'P',
+          stringMap: { en_US: 'P' },
           selectionText: '[["low","Low"]]',
           selectionLabelMaps: { low: { en_US: 'Low' } },
         }),
@@ -465,110 +783,25 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
       { onSaved },
     );
     await flushPromises();
+    expect(m.q('[data-testid="choy-properties-definition-section-selection"]')).toBeTruthy();
+    expect(m.q('[data-testid="choy-properties-definition-selection-scroll"]')).toBeTruthy();
     expect(m.q('[data-testid="selection-editor-stub"]')).toBeTruthy();
-    expect(lastSelectionProps).toBeTruthy();
-
     m.click('[data-testid="stub-selection-update"]');
     await flushPromises();
-    expect(selectionUpdateEmit).toBeTruthy();
-
     m.click('[data-testid="stub-selection-translate"]');
     await flushPromises();
-    expect(m.q('[data-testid="translate-dialog-stub"]')).toBeTruthy();
-    expect(selectionTranslateEmit).toBeTruthy();
+    expect(lastTranslateProps).toBeTruthy();
     m.click('[data-testid="stub-translate-save-selection"]');
     await flushPromises();
-
     m.click('[data-testid="choy-properties-definition-item-save"]');
     await flushPromises();
     expect(onSaved.calls.length).toBe(1);
     const saved = onSaved.calls[0][0] as DefinitionEditorDraftItem;
-    expect(saved.type).toBe('selection');
-    expect(saved.selectionLabelMaps.low).toBeTruthy();
+    expect(saved.selectionLabelMaps.low).toEqual({ en_US: 'S-en', zh_CN: 'S-zh' });
     m.unmount();
   });
 
-  test('selection translate keeps in-progress blank option rows', async () => {
-    const onSaved = fnRecorder();
-    const m = mountDialog(
-      {
-        item: draft({
-          name: 'prio',
-          type: 'selection',
-          string: 'Priority',
-          stringMap: { en_US: 'Priority' },
-          selectionText: JSON.stringify([
-            ['low', 'Low'],
-            ['', ''],
-          ]),
-          selectionLabelMaps: { low: { en_US: 'Low' } },
-          selectionRowMapKeys: ['low', ''],
-        }),
-      },
-      { onSaved },
-    );
-    try {
-      await flushPromises();
-      m.click('[data-testid="stub-selection-translate"]');
-      await flushPromises();
-      m.click('[data-testid="stub-translate-save-selection"]');
-      await flushPromises();
-      const editorRows = (lastSelectionProps?.modelValue as Array<{ value: string }> | undefined) || [];
-      expect(editorRows.some(r => r && r.value === '')).toBe(true);
-      m.click('[data-testid="choy-properties-definition-item-save"]');
-      await flushPromises();
-      expect(onSaved.calls.length).toBe(1);
-      const saved = onSaved.calls[0][0] as DefinitionEditorDraftItem;
-      const rows = JSON.parse(String(saved.selectionText || '[]')) as unknown[];
-      expect(rows.some(r => Array.isArray(r) && r[0] === '')).toBe(true);
-      expect(saved.selectionLabelMaps.low).toBeTruthy();
-    } finally {
-      m.unmount();
-    }
-  });
-
-  test('selection translate keeps newly saved label (not stale pending row label)', async () => {
-    const onSaved = fnRecorder();
-    const m = mountDialog(
-      {
-        item: draft({
-          name: 'prio',
-          type: 'selection',
-          string: 'Priority',
-          stringMap: { en_US: 'Priority' },
-          selectionText: JSON.stringify([
-            ['low', 'Low'],
-            ['', ''],
-          ]),
-          selectionLabelMaps: { low: { en_US: 'Low' } },
-          selectionRowMapKeys: ['low', ''],
-        }),
-      },
-      { onSaved },
-    );
-    try {
-      await flushPromises();
-      m.click('[data-testid="stub-selection-translate"]');
-      await flushPromises();
-      m.click('[data-testid="stub-translate-save-selection"]');
-      await flushPromises();
-      const editorRows =
-        (lastSelectionProps?.modelValue as Array<{ value: string; label: string }> | undefined) || [];
-      const low = editorRows.find(r => r && r.value === 'low');
-      expect(low?.label).toBe('S-en');
-      m.click('[data-testid="choy-properties-definition-item-save"]');
-      await flushPromises();
-      expect(onSaved.calls.length).toBe(1);
-      const saved = onSaved.calls[0][0] as DefinitionEditorDraftItem;
-      expect(saved.selectionLabelMaps.low).toEqual({ en_US: 'S-en', zh_CN: 'S-zh' });
-      const rows = JSON.parse(String(saved.selectionText || '[]')) as Array<[string, string]>;
-      expect(rows.find(r => r[0] === 'low')?.[1]).toBe('S-en');
-    } finally {
-      m.unmount();
-    }
-  });
-
-  test('readonly skips translate controls and selection mutate', async () => {
+  test('readonly uses FormView display mode (not edit inputs) and skips translate', async () => {
     const m = mountDialog({
       readonly: true,
       item: draft({
@@ -579,12 +812,12 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
       }),
     });
     await flushPromises();
+    expect(m.q('[data-testid="choy-properties-definition-item-display"]')).toBeTruthy();
+    expect(m.q('[data-testid="choy-properties-definition-name"]')?.getAttribute('data-readonly')).toBe('1');
+    expect(m.q('input')).toBeFalsy();
     expect(m.q('[data-testid="choy-properties-definition-translate-string"]')).toBeFalsy();
-    expect(m.q('[data-testid="choy-properties-definition-translate-help"]')).toBeFalsy();
     expect(m.q('[data-testid="selection-editor-stub"]')).toBeTruthy();
-    // Selection update should be ignored when readonly
-    m.click('[data-testid="stub-selection-update"]');
-    await flushPromises();
+    expect(lastSelectionProps?.readonly).toBe(true);
     m.unmount();
   });
 
@@ -599,7 +832,6 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
   });
 
   test('editorLang falls back without pinia', async () => {
-    // Unset pinia after mount setup path uses TRANSLATED_BASE_LANG when no pinia
     setActivePinia(undefined as any);
     const onSaved = fnRecorder();
     const m = mountApp(ItemDialog as any, {
@@ -632,12 +864,27 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
     m.unmount();
   });
 
+  test('closing modelValue clears form and emits closed', async () => {
+    const onClosed = fnRecorder();
+    const m = mountDialog({}, { onClosed }, { reactiveProps: true });
+    try {
+      await flushPromises();
+      expect(m.q('[data-testid="choy-properties-definition-item-form"]')).toBeTruthy();
+      (m.props as { modelValue: boolean }).modelValue = false;
+      await flushPromises();
+      expect(onClosed.calls.length).toBe(1);
+      expect(m.q('[data-testid="choy-properties-definition-item-form"]')).toBeFalsy();
+    } finally {
+      m.unmount();
+    }
+  });
+
   test('openSelectionTranslate ignores empty value', async () => {
     stubSfc(ChoyPropertiesDefinitionSelectionEditor as any, {
       name: 'ChoyPropertiesDefinitionSelectionEditor',
       props: { modelValue: { type: Array, default: () => [] }, readonly: Boolean },
       emits: ['update:modelValue', 'translate'],
-      setup(_: any, { emit }: any) {
+      setup(_props: any, { emit }: any) {
         return () =>
           h('div', { 'data-testid': 'selection-editor-stub' }, [
             h(
@@ -647,7 +894,7 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
                 'data-testid': 'stub-selection-translate-empty',
                 onClick: () => emit('translate', '  '),
               },
-              'empty',
+              'translate-empty',
             ),
           ]);
       },
@@ -656,6 +903,8 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
       item: draft({
         name: 'prio',
         type: 'selection',
+        string: 'P',
+        stringMap: { en_US: 'P' },
         selectionText: '[["low","Low"]]',
         selectionLabelMaps: { low: { en_US: 'Low' } },
       }),

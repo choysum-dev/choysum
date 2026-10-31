@@ -2,25 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { createTranslate } from '@/core/service/i18n';
-import {
-  sandboxConfigurationMenuTitle,
-  sandboxRecordPropertiesMenuTitle,
-  sandboxRecordsMenuTitle,
-  sandboxRootMenuTitle,
-} from '../menu/titles';
+import { sandboxRecordsMenuTitle, sandboxRootMenuTitle } from '../menu/titles';
 import { sandboxRoutes } from '../route/routes';
 
 const listRouteTitle = createTranslate('sandbox', { scope: 'web/route/routes' })._lt('Sandbox Record List');
 const recordPropertiesRouteTitle = createTranslate('sandbox', { scope: 'web/route/routes' })._lt(
-  'Record Properties',
+  'Record Properties'
 );
 
 test('sandbox menu titles: titles.ts registers shared TermReferences', () => {
   expect(sandboxRootMenuTitle.src).toBe('Sandbox');
   expect(sandboxRootMenuTitle.module).toBe('sandbox');
   expect(sandboxRecordsMenuTitle.src).toBe('Field Kitchen Sink');
-  expect(sandboxConfigurationMenuTitle.src).toBe('Configuration');
-  expect(sandboxRecordPropertiesMenuTitle.src).toBe('Record Properties');
 });
 
 test('sandbox route titles: list route pins pageTitleText', () => {
@@ -31,7 +24,7 @@ test('sandbox route titles: list route pins pageTitleText', () => {
 });
 
 test('sandbox route titles: PropertyDefinition list pins pageTitleText', () => {
-  const route = sandboxRoutes.find(r => r.name === 'SandboxPropertyDefinitionList') as any;
+  const route = sandboxRoutes.find(r => r.name === 'PropertyDefinitionList_sandbox') as any;
   expect(route).toBeTruthy();
   expect(route.meta?.pageTitle).toBe('Record Properties');
   expect(route.meta?.pageTitleText).toEqual(recordPropertiesRouteTitle);

@@ -230,6 +230,11 @@ const props = withDefaults(
     onchangeDebounceMs?: number;
     onchangeImmediateFirst?: boolean;
     submitHandler?: FormSubmitHandler<T>;
+    /**
+     * Optional cancel override (after dirty confirm). Dialog / non-route embedded
+     * hosts use this instead of create→router.back or edit→beginDisplay.
+     */
+    cancelHandler?: () => void | Promise<void>;
     resolveRecordIdFromRoute?: boolean;
     /** Opt out of page IO action-target registration (embedded views pass false). */
     registerActionTarget?: boolean;
@@ -240,6 +245,7 @@ const props = withDefaults(
     onchangeDebounceMs: 150,
     onchangeImmediateFirst: false,
     submitHandler: undefined,
+    cancelHandler: undefined,
     // Keep omitted as undefined (not false) so matching page-store views auto-register.
     registerActionTarget: undefined,
   }
@@ -427,7 +433,12 @@ const {
   handleCopy,
   handleDelete,
   watchFormIdentity,
-} = useFormViewLifecycle(lifecycleDeps);
+} = useFormViewLifecycle({
+  ...lifecycleDeps,
+  get cancelHandler() {
+    return props.cancelHandler;
+  },
+});
 
 const { submitting, handleSubmit, onNativeSubmit } = useFormViewSubmit({
   controller,
@@ -507,6 +518,8 @@ onBeforeUnmount(() => {
 
 defineExpose({
   submit: handleSubmit,
+  /** Runs dirty confirmation, then cancelHandler / route back / display reload. */
+  cancel: handleCancel,
   refresh: handleRefresh,
   reset: handleReset,
   copy: handleCopy,

@@ -111,13 +111,16 @@ describe('ChoyPropertiesDefinitionSelectionEditor', () => {
     mounted.unmount();
   });
 
-  test('readonly hides add/remove/translate controls', async () => {
+  test('readonly hides add/remove/translate controls and uses display text', async () => {
     const mounted = mountEditor([{ value: 'x', label: 'X' }], { readonly: true });
     await nextTick();
     expect(mounted.q('[data-testid="choy-properties-definition-selection-add"]')).toBeFalsy();
     expect(mounted.q('[data-testid="choy-properties-definition-selection-remove"]')).toBeFalsy();
     expect(mounted.q('[data-testid="choy-properties-definition-selection-translate"]')).toBeFalsy();
     expect(mounted.q('[data-testid="choy-properties-definition-selection-handle"]')).toBeFalsy();
+    expect(mounted.q('input')).toBeFalsy();
+    expect(mounted.q('[data-testid="choy-properties-definition-selection-value"]')?.textContent).toBe('x');
+    expect(mounted.q('[data-testid="choy-properties-definition-selection-label"]')?.textContent).toBe('X');
     mounted.unmount();
   });
 

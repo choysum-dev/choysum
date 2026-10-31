@@ -4,18 +4,13 @@
 import type { MenuItem } from '@/core/web/menu';
 import { defineMenu } from '@/core/web/resource';
 import { FlaskConical } from 'lucide-vue-next';
-import {
-  sandboxConfigurationMenuTitle,
-  sandboxRecordPropertiesMenuTitle,
-  sandboxRecordsMenuTitle,
-  sandboxRootMenuTitle,
-} from './titles';
+import { sandboxRecordsMenuTitle, sandboxRootMenuTitle } from './titles';
 
 import { createTranslate } from '@/web/web/i18n';
 
 const { _lt } = createTranslate('sandbox', { scope: 'web/menu/menus' });
 
-/** Settings → sandbox → Translations when sandbox is installed. */
+/** Settings → sandbox → Translations / Record Properties when sandbox is installed. */
 export const sandboxSettingsAppMenu: MenuItem = defineMenu('sandbox.menu.settings_app', {
   title: _lt('sandbox'),
   sequence: 110,
@@ -26,6 +21,12 @@ export const sandboxSettingsAppMenu: MenuItem = defineMenu('sandbox.menu.setting
       title: _lt('Translations'),
       path: '/web/terminology/sandbox',
       sequence: 10,
+      defaultRoles: ['sys.admin'],
+    }),
+    defineMenu('sandbox.menu.property_definitions', {
+      title: _lt('Record Properties'),
+      path: '/web/property-definitions/sandbox',
+      sequence: 20,
       defaultRoles: ['sys.admin'],
     }),
   ],
@@ -42,18 +43,6 @@ export const sandboxMenus: MenuItem[] = [
         title: sandboxRecordsMenuTitle,
         path: '/sandbox/records',
         sequence: 10,
-      }),
-      // Pathless folder: app configuration (properties schema, future settings).
-      defineMenu('sandbox.menu.configuration', {
-        title: sandboxConfigurationMenuTitle,
-        sequence: 90,
-        children: [
-          defineMenu('sandbox.menu.record_properties', {
-            title: sandboxRecordPropertiesMenuTitle,
-            path: '/sandbox/configuration/record-properties',
-            sequence: 10,
-          }),
-        ],
       }),
     ],
   }),

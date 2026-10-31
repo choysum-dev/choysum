@@ -184,6 +184,54 @@ test('createLocalFormStore rejects duplicate or empty field names', () => {
   expect(() => createLocalFormStore({ fields: [null as any] })).toThrow(/must be an object/);
 });
 
+test('createLocalFormStore pure-scalar types set defaults and selection meta', () => {
+  const store = createLocalFormStore({
+    fields: [
+      { name: 'Title', label: 'Title', type: 'char', size: 32 },
+      { name: 'Body', label: 'Body', type: 'text' },
+      { name: 'Kind', label: 'Kind', type: 'selection', selection: [{ value: 'a', label: 'A' }] },
+      { name: 'Count', label: 'Count', type: 'integer' },
+      { name: 'Big', label: 'Big', type: 'bigint' },
+      { name: 'Amt', label: 'Amt', type: 'float' },
+      { name: 'Day', label: 'Day', type: 'date' },
+      { name: 'At', label: 'At', type: 'datetime' },
+      { name: 'Clock', label: 'Clock', type: 'time' },
+      { name: 'Html', label: 'Html', type: 'html' },
+      { name: 'Payload', label: 'Payload', type: 'jsonobject' },
+    ],
+  });
+
+  expect(store.getField('Title')).toBe('');
+  expect(store.getFieldMeta('Title')?.size).toBe(32);
+  expect(store.getFieldMeta('Title')?.typeAnnotation).toBe('string');
+  expect(store.getField('Body')).toBe('');
+  expect(store.getField('Kind')).toBeNull();
+  expect(store.getFieldMeta('Kind')?.selectionKind).toBe('static');
+  expect(store.getFieldMeta('Kind')?.selection).toEqual([{ value: 'a', label: 'A' }]);
+  expect(store.getField('Count')).toBeNull();
+  expect(store.getFieldMeta('Count')?.typeAnnotation).toBe('number');
+  expect(store.getField('Big')).toBeNull();
+  expect(store.getFieldMeta('Big')?.typeAnnotation).toBe('string');
+  expect(store.getField('Amt')).toBeNull();
+  expect(store.getField('Day')).toBeNull();
+  expect(store.getField('At')).toBeNull();
+  expect(store.getField('Clock')).toBeNull();
+  expect(store.getField('Html')).toBe('');
+  expect(store.getField('Payload')).toEqual({});
+  expect(store.getFieldMeta('Payload')?.typeAnnotation).toBe('object');
+});
+
+test('createLocalFormStore selection requires a non-empty selection list', () => {
+  expect(() =>
+    createLocalFormStore({ fields: [{ name: 'Kind', label: 'Kind', type: 'selection' }] })
+  ).toThrow(/requires a non-empty selection/);
+  expect(() =>
+    createLocalFormStore({
+      fields: [{ name: 'Kind', label: 'Kind', type: 'selection', selection: [] }],
+    })
+  ).toThrow(/requires a non-empty selection/);
+});
+
 describe('createLocalFormStore + ChoyFormView', () => {
   beforeEach(() => {
     setActivePinia(createPinia());

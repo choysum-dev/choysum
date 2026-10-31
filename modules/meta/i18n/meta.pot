@@ -1155,24 +1155,29 @@ msgctxt "service/models/ui_resource"
 msgid "Cycle detected: %s cannot be assigned under one of its descendants"
 msgstr ""
 
-#: web/menu/menus.ts:34
+#: web/menu/menus.ts:40
 msgctxt "web/menu/menus"
 msgid "Module Board"
 msgstr ""
 
-#: web/menu/menus.ts:40
+#: web/menu/menus.ts:46
 msgctxt "web/menu/menus"
 msgid "Module List"
 msgstr ""
 
-#: web/menu/menus.ts:29
+#: web/menu/menus.ts:35
 msgctxt "web/menu/menus"
 msgid "Module Management"
 msgstr ""
 
-#: web/menu/menus.ts:46
+#: web/menu/menus.ts:52
 msgctxt "web/menu/menus"
 msgid "Operation History"
+msgstr ""
+
+#: web/menu/menus.ts:25
+msgctxt "web/menu/menus"
+msgid "Record Properties"
 msgstr ""
 
 #: web/menu/menus.ts:19
@@ -1218,6 +1223,11 @@ msgstr ""
 #: web/route/routes.ts:37
 msgctxt "web/route/routes"
 msgid "Operation History"
+msgstr ""
+
+#: web/route/routes.ts:66
+msgctxt "web/route/routes"
+msgid "Record Properties"
 msgstr ""
 
 #: web/route/routes.ts:57

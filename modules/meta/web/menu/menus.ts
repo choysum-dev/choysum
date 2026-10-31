@@ -21,6 +21,12 @@ export const metaSettingsAppMenu: MenuItem = defineMenu('meta.menu.settings_app'
       sequence: 10,
       defaultRoles: ['sys.admin'],
     }),
+    defineMenu('meta.menu.property_definitions', {
+      title: _lt('Record Properties'),
+      path: '/web/property-definitions/meta',
+      sequence: 20,
+      defaultRoles: ['sys.admin'],
+    }),
   ],
 });
 
