@@ -174,6 +174,12 @@ func (r invocationRuntime) executeUnary(
 	outMsg := serviceCodec.newMessage(outputMsgDesc)
 	resultField := outMsg.Descriptor().Fields().ByTextName("result")
 	if resultField != nil {
+		// Proto3 scalars cannot encode null (e.g. AppSetting.Set returns null on
+		// first write). Leave scalar result unset. Message/list results still
+		// convert so a nil JS result surfaces as a conversion error.
+		if jsResponse.Result == nil && !resultField.IsList() && resultField.Message() == nil {
+			return outMsg, nil
+		}
 		if resultField.IsList() {
 			if err := serviceCodec.anyToList(jsResponse.Result, outMsg, resultField); err != nil {
 				return nil, status.Errorf(codes.InvalidArgument, "Error converting result list to proto: %v", err)

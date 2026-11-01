@@ -377,17 +377,27 @@ msgctxt "sandbox.model.SandboxTag.fields"
 msgid "Name"
 msgstr ""
 
-#: web/menu/menus.ts:33
+#: web/menu/menus.ts:45
 msgctxt "web/menu/menus"
 msgid "Field Defaults"
 msgstr ""
 
 #: web/menu/menus.ts:27
 msgctxt "web/menu/menus"
+msgid "Parameters"
+msgstr ""
+
+#: web/menu/menus.ts:39
+msgctxt "web/menu/menus"
 msgid "Property Definitions"
 msgstr ""
 
 #: web/menu/menus.ts:21
+msgctxt "web/menu/menus"
+msgid "Settings"
+msgstr ""
+
+#: web/menu/menus.ts:33
 msgctxt "web/menu/menus"
 msgid "Translations"
 msgstr ""
@@ -422,52 +432,117 @@ msgctxt "web/pages/SandboxRecordList"
 msgid "Field Kitchen Sink"
 msgstr ""
 
-#: web/route/routes.ts:163
+#: web/pages/SandboxSettings.vue:5
+msgctxt "web/pages/SandboxSettings"
+msgid "Demo"
+msgstr ""
+
+#: web/pages/SandboxSettings.vue:8
+msgctxt "web/pages/SandboxSettings"
+msgid "Demo flag"
+msgstr ""
+
+#: web/pages/SandboxSettings.vue:11
+msgctxt "web/pages/SandboxSettings"
+msgid "Demo label"
+msgstr ""
+
+#: web/pages/sandbox_settings_page.ts:116
+msgctxt "web/pages/SandboxSettings"
+msgid "Load failed"
+msgstr ""
+
+#: web/pages/SandboxSettings.vue:26
+msgctxt "web/pages/SandboxSettings"
+msgid "Parameters View"
+msgstr ""
+
+#: web/pages/sandbox_settings_page.ts:143
+msgctxt "web/pages/SandboxSettings"
+msgid "Save failed"
+msgstr ""
+
+#: web/pages/sandbox_settings_page.ts:141
+msgctxt "web/pages/SandboxSettings"
+msgid "Saved successfully"
+msgstr ""
+
+#: web/pages/SandboxSettings.vue:25
+msgctxt "web/pages/SandboxSettings"
+msgid "Settings View"
+msgstr ""
+
+#: web/pages/SandboxSettings.vue:20
+msgctxt "web/pages/SandboxSettings"
+msgid "Settings: sandbox"
+msgstr ""
+
+#: web/pages/SandboxSettings.vue:11
+msgctxt "web/pages/SandboxSettings"
+msgid "Short label shown with sandbox demo mode."
+msgstr ""
+
+#: web/pages/SandboxSettings.vue:8
+msgctxt "web/pages/SandboxSettings"
+msgid "Turn sandbox demo mode on or off."
+msgstr ""
+
+#: web/route/routes.ts:164
 msgctxt "web/route/routes"
 msgid "Field Defaults"
 msgstr ""
 
-#: web/route/routes.ts:87
+#: web/route/routes.ts:88
 msgctxt "web/route/routes"
 msgid "New Sandbox Record"
 msgstr ""
 
-#: web/route/routes.ts:117
+#: web/route/routes.ts:118
 msgctxt "web/route/routes"
 msgid "New Sandbox Tag"
 msgstr ""
 
-#: web/route/routes.ts:154
+#: web/route/routes.ts:173
+msgctxt "web/route/routes"
+msgid "Parameters"
+msgstr ""
+
+#: web/route/routes.ts:155
 msgctxt "web/route/routes"
 msgid "Property Definitions"
 msgstr ""
 
-#: web/route/routes.ts:66
+#: web/route/routes.ts:67
 msgctxt "web/route/routes"
 msgid "Sandbox Record Chart"
 msgstr ""
 
-#: web/route/routes.ts:102
+#: web/route/routes.ts:103
 msgctxt "web/route/routes"
 msgid "Sandbox Record Detail"
 msgstr ""
 
-#: web/route/routes.ts:46
+#: web/route/routes.ts:47
 msgctxt "web/route/routes"
 msgid "Sandbox Record Kanban"
 msgstr ""
 
-#: web/route/routes.ts:26
+#: web/route/routes.ts:27
 msgctxt "web/route/routes"
 msgid "Sandbox Record List"
 msgstr ""
 
-#: web/route/routes.ts:131
+#: web/route/routes.ts:132
 msgctxt "web/route/routes"
 msgid "Sandbox Tag Detail"
 msgstr ""
 
-#: web/route/routes.ts:145
+#: web/route/routes.ts:190
+msgctxt "web/route/routes"
+msgid "Settings: sandbox"
+msgstr ""
+
+#: web/route/routes.ts:146
 msgctxt "web/route/routes"
 msgid "Translations"
 msgstr ""

@@ -140,6 +140,7 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
     const app = activeApp || resolveAppRoot(activeMenu);
     const appId = app ? getMenuId(app) : null;
     const leafPath = getMenuBasePath(route.path, activeMenu);
+    // Leaf uses the short menu label; chrome / document title keep route pageTitle.
     const leafSource = activeMenu.titleText || activeMenu.title || pageFallback;
     const sameLeaf = currentMenuId.value === leafId && breadcrumbStack.value.length > 0;
     const sameApp = !!appId && currentAppId.value === appId;

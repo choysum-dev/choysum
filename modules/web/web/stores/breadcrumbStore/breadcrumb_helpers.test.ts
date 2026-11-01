@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  getExplicitPageTitle,
   getIntermediateAncestors,
   getMenuBasePath,
   getMenuId,
@@ -53,6 +54,17 @@ test('breadcrumb_helpers getMenuBasePath falls back to the current route path', 
   expect(getMenuBasePath('/now', { path: '/menu' })).toBe('/menu');
   expect(getMenuBasePath('/now', {})).toBe('/now');
   expect(getMenuBasePath('/now', null)).toBe('/now');
+});
+
+test('breadcrumb_helpers getExplicitPageTitle ignores name/path heuristics', () => {
+  expect(getExplicitPageTitle({ meta: { pageTitleText: 'T' } })).toBe('T');
+  expect(getExplicitPageTitle({ meta: { pageTitle: 'Settings: auth' } })).toBe('Settings: auth');
+  expect(
+    getExplicitPageTitle({ meta: { pageTitle: (r: any) => `F:${r.path}` }, path: '/x' }),
+  ).toBe('F:/x');
+  expect(getExplicitPageTitle({ meta: { title: 'Meta' }, name: 'RouteName' })).toBeNull();
+  expect(getExplicitPageTitle({ name: 'RouteName', meta: {} })).toBeNull();
+  expect(getExplicitPageTitle(null)).toBeNull();
 });
 
 test('breadcrumb_helpers getPageTitle reads meta title fields and path heuristics', () => {

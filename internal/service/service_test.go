@@ -2212,6 +2212,26 @@ func TestExecuteUnaryValueArgArityAndConvertInvalidArgument(t *testing.T) {
 		t.Fatalf("unexpected args for null Value arity: %#v", capturedArgs)
 	}
 
+	// JS null scalar result (e.g. AppSetting.Set first write) must succeed with result unset.
+	svc.jsExecutor = &stubJsExecutor{execute: func(ctx context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+		return &jsengine.JsResponse{Id: req.Id, Result: nil}, nil
+	}}
+	nullOut, err := svc.executeUnary(context.Background(), runtimeScope, map[string]interface{}{}, nil, "demovalue", "Demo", "Pair", pairResp, reqMsg)
+	if err != nil {
+		t.Fatalf("executeUnary(null scalar result): %v", err)
+	}
+	if nullOut.Has(pairResp.Fields().ByName("result")) {
+		t.Fatalf("null JS result must leave proto result unset, got %#v", nullOut.Interface())
+	}
+
+	// JS null message result must still fail conversion (not silently unset).
+	svc.jsExecutor = &stubJsExecutor{execute: func(ctx context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+		return &jsengine.JsResponse{Id: req.Id, Result: nil}, nil
+	}}
+	if _, err := svc.executeUnary(context.Background(), runtimeScope, map[string]interface{}{}, nil, "demovalue", "Demo", "Dirty", dirtyResp, reqMsg); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("expected InvalidArgument for null message result, got %v", err)
+	}
+
 	svc.jsExecutor = &stubJsExecutor{execute: func(ctx context.Context, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
 		return &jsengine.JsResponse{Id: req.Id, Result: map[string]any{"unknown": "x"}}, nil
 	}}

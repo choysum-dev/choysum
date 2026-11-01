@@ -777,60 +777,60 @@ msgctxt "service/models/user/_field_rule_eval"
 msgid "Model does not exist"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:268
-#: service/models/user/_lifecycle_auth.ts:358
+#: service/models/user/_lifecycle_auth.ts:270
+#: service/models/user/_lifecycle_auth.ts:360
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Account is disabled"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:145
+#: service/models/user/_lifecycle_auth.ts:147
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Email is already registered"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:344
-#: service/models/user/_lifecycle_auth.ts:378
+#: service/models/user/_lifecycle_auth.ts:346
+#: service/models/user/_lifecycle_auth.ts:380
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Invalid token payload: missing user id"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:187
+#: service/models/user/_lifecycle_auth.ts:189
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Registration failed: Main Company (Code=MAIN) was not found"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:212
+#: service/models/user/_lifecycle_auth.ts:214
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Registration failed: base.user role is not initialized; load auth bootstrap data first"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:352
+#: service/models/user/_lifecycle_auth.ts:354
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "User not found"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:252
-#: service/models/user/_lifecycle_auth.ts:259
+#: service/models/user/_lifecycle_auth.ts:254
+#: service/models/user/_lifecycle_auth.ts:261
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "User not found or password is incorrect"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:161
+#: service/models/user/_lifecycle_auth.ts:163
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "User registration failed: missing user id"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:106
+#: service/models/user/_lifecycle_auth.ts:108
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Username and password are required"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:133
+#: service/models/user/_lifecycle_auth.ts:135
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Username is already in use"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:126
+#: service/models/user/_lifecycle_auth.ts:128
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Username is required"
 msgstr ""
@@ -1019,67 +1019,77 @@ msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Using current session language"
 msgstr ""
 
-#: web/menu/menus.ts:46
+#: web/menu/menus.ts:58
 msgctxt "web/menu/menus"
 msgid "Access Control"
 msgstr ""
 
-#: web/menu/menus.ts:62
+#: web/menu/menus.ts:74
 msgctxt "web/menu/menus"
 msgid "Access Rules"
 msgstr ""
 
-#: web/menu/menus.ts:36
+#: web/menu/menus.ts:48
 msgctxt "web/menu/menus"
 msgid "Field Defaults"
 msgstr ""
 
-#: web/menu/menus.ts:71
+#: web/menu/menus.ts:83
 msgctxt "web/menu/menus"
 msgid "Field Rules"
 msgstr ""
 
-#: web/menu/menus.ts:76
+#: web/menu/menus.ts:88
 msgctxt "web/menu/menus"
 msgid "Method Access"
 msgstr ""
 
 #: web/menu/menus.ts:30
 msgctxt "web/menu/menus"
+msgid "Parameters"
+msgstr ""
+
+#: web/menu/menus.ts:42
+msgctxt "web/menu/menus"
 msgid "Property Definitions"
 msgstr ""
 
-#: web/menu/menus.ts:66
+#: web/menu/menus.ts:78
 msgctxt "web/menu/menus"
 msgid "Record Rules"
 msgstr ""
 
-#: web/menu/menus.ts:56
+#: web/menu/menus.ts:68
 msgctxt "web/menu/menus"
 msgid "Role List"
 msgstr ""
 
-#: web/menu/menus.ts:88
+#: web/menu/menus.ts:100
 msgctxt "web/menu/menus"
 msgid "Session List"
 msgstr ""
 
-#: web/menu/menus.ts:93
+#: web/menu/menus.ts:24
+msgctxt "web/menu/menus"
+msgid "Settings"
+msgstr ""
+
+#: web/menu/menus.ts:105
 msgctxt "web/menu/menus"
 msgid "Token List"
 msgstr ""
 
-#: web/menu/menus.ts:24
+#: web/menu/menus.ts:36
 msgctxt "web/menu/menus"
 msgid "Translations"
 msgstr ""
 
-#: web/menu/menus.ts:81
+#: web/menu/menus.ts:93
 msgctxt "web/menu/menus"
 msgid "UI Resource Grants"
 msgstr ""
 
-#: web/menu/menus.ts:51
+#: web/menu/menus.ts:63
 msgctxt "web/menu/menus"
 msgid "User List"
 msgstr ""
@@ -1087,6 +1097,51 @@ msgstr ""
 #: web/menu/menus.ts:18
 msgctxt "web/menu/menus"
 msgid "auth"
+msgstr ""
+
+#: web/pages/AuthSettings.vue:5
+msgctxt "web/pages/AuthSettings"
+msgid "Browser"
+msgstr ""
+
+#: web/pages/AuthSettings.vue:8
+msgctxt "web/pages/AuthSettings"
+msgid "Browser timezone"
+msgstr ""
+
+#: web/pages/auth_settings_page.ts:106
+msgctxt "web/pages/AuthSettings"
+msgid "Load failed"
+msgstr ""
+
+#: web/pages/AuthSettings.vue:8
+msgctxt "web/pages/AuthSettings"
+msgid "On sign-in, fill an empty user timezone from the browser."
+msgstr ""
+
+#: web/pages/AuthSettings.vue:25
+msgctxt "web/pages/AuthSettings"
+msgid "Parameters View"
+msgstr ""
+
+#: web/pages/auth_settings_page.ts:123
+msgctxt "web/pages/AuthSettings"
+msgid "Save failed"
+msgstr ""
+
+#: web/pages/auth_settings_page.ts:121
+msgctxt "web/pages/AuthSettings"
+msgid "Saved successfully"
+msgstr ""
+
+#: web/pages/AuthSettings.vue:24
+msgctxt "web/pages/AuthSettings"
+msgid "Settings View"
+msgstr ""
+
+#: web/pages/AuthSettings.vue:19
+msgctxt "web/pages/AuthSettings"
+msgid "Settings: auth"
 msgstr ""
 
 #: web/pages/Login.vue:9
@@ -1375,162 +1430,172 @@ msgctxt "web/pages/UserList"
 msgid "User List"
 msgstr ""
 
-#: web/route/routes.ts:273
+#: web/route/routes.ts:274
 msgctxt "web/route/routes"
 msgid "Create Field Rule"
 msgstr ""
 
-#: web/route/routes.ts:316
+#: web/route/routes.ts:317
 msgctxt "web/route/routes"
 msgid "Create Method Access"
 msgstr ""
 
-#: web/route/routes.ts:230
+#: web/route/routes.ts:231
 msgctxt "web/route/routes"
 msgid "Create Record Rule"
 msgstr ""
 
-#: web/route/routes.ts:102
+#: web/route/routes.ts:103
 msgctxt "web/route/routes"
 msgid "Create Role"
 msgstr ""
 
-#: web/route/routes.ts:129
+#: web/route/routes.ts:130
 msgctxt "web/route/routes"
 msgid "Create Session"
 msgstr ""
 
-#: web/route/routes.ts:163
+#: web/route/routes.ts:164
 msgctxt "web/route/routes"
 msgid "Create Token"
 msgstr ""
 
-#: web/route/routes.ts:359
+#: web/route/routes.ts:360
 msgctxt "web/route/routes"
 msgid "Create UI Resource Grant"
 msgstr ""
 
-#: web/route/routes.ts:73
+#: web/route/routes.ts:74
 msgctxt "web/route/routes"
 msgid "Create User"
 msgstr ""
 
-#: web/route/routes.ts:392
+#: web/route/routes.ts:393
 msgctxt "web/route/routes"
 msgid "Field Defaults"
 msgstr ""
 
-#: web/route/routes.ts:259
+#: web/route/routes.ts:260
 msgctxt "web/route/routes"
 msgid "Field Rule Details"
 msgstr ""
 
-#: web/route/routes.ts:245
+#: web/route/routes.ts:246
 msgctxt "web/route/routes"
 msgid "Field Rule List"
 msgstr ""
 
-#: web/route/routes.ts:28
+#: web/route/routes.ts:29
 msgctxt "web/route/routes"
 msgid "Login"
 msgstr ""
 
-#: web/route/routes.ts:39
+#: web/route/routes.ts:40
 msgctxt "web/route/routes"
 msgid "Logout"
 msgstr ""
 
-#: web/route/routes.ts:302
+#: web/route/routes.ts:303
 msgctxt "web/route/routes"
 msgid "Method Access Details"
 msgstr ""
 
-#: web/route/routes.ts:288
+#: web/route/routes.ts:289
 msgctxt "web/route/routes"
 msgid "Method Access List"
 msgstr ""
 
-#: web/route/routes.ts:383
+#: web/route/routes.ts:402
+msgctxt "web/route/routes"
+msgid "Parameters"
+msgstr ""
+
+#: web/route/routes.ts:384
 msgctxt "web/route/routes"
 msgid "Property Definitions"
 msgstr ""
 
-#: web/route/routes.ts:216
+#: web/route/routes.ts:217
 msgctxt "web/route/routes"
 msgid "Record Rule Details"
 msgstr ""
 
-#: web/route/routes.ts:202
+#: web/route/routes.ts:203
 msgctxt "web/route/routes"
 msgid "Record Rule List"
 msgstr ""
 
-#: web/route/routes.ts:405
+#: web/route/routes.ts:439
 msgctxt "web/route/routes"
 msgid "Register"
 msgstr ""
 
-#: web/route/routes.ts:93
+#: web/route/routes.ts:94
 msgctxt "web/route/routes"
 msgid "Role Details"
 msgstr ""
 
-#: web/route/routes.ts:84
+#: web/route/routes.ts:85
 msgctxt "web/route/routes"
 msgid "Role Management"
 msgstr ""
 
-#: web/route/routes.ts:120
+#: web/route/routes.ts:121
 msgctxt "web/route/routes"
 msgid "Session Details"
 msgstr ""
 
-#: web/route/routes.ts:111
+#: web/route/routes.ts:112
 msgctxt "web/route/routes"
 msgid "Session Management"
 msgstr ""
 
-#: web/route/routes.ts:172
+#: web/route/routes.ts:419
+msgctxt "web/route/routes"
+msgid "Settings: auth"
+msgstr ""
+
+#: web/route/routes.ts:173
 msgctxt "web/route/routes"
 msgid "Token Board"
 msgstr ""
 
-#: web/route/routes.ts:186
+#: web/route/routes.ts:187
 msgctxt "web/route/routes"
 msgid "Token Chart"
 msgstr ""
 
-#: web/route/routes.ts:154
+#: web/route/routes.ts:155
 msgctxt "web/route/routes"
 msgid "Token Details"
 msgstr ""
 
-#: web/route/routes.ts:140
+#: web/route/routes.ts:141
 msgctxt "web/route/routes"
 msgid "Token Management"
 msgstr ""
 
-#: web/route/routes.ts:374
+#: web/route/routes.ts:375
 msgctxt "web/route/routes"
 msgid "Translations"
 msgstr ""
 
-#: web/route/routes.ts:345
+#: web/route/routes.ts:346
 msgctxt "web/route/routes"
 msgid "UI Resource Grant Details"
 msgstr ""
 
-#: web/route/routes.ts:331
+#: web/route/routes.ts:332
 msgctxt "web/route/routes"
 msgid "UI Resource Grant List"
 msgstr ""
 
-#: web/route/routes.ts:64
+#: web/route/routes.ts:65
 msgctxt "web/route/routes"
 msgid "User Details"
 msgstr ""
 
-#: web/route/routes.ts:55
+#: web/route/routes.ts:56
 msgctxt "web/route/routes"
 msgid "User List"
 msgstr ""

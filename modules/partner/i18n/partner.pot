@@ -276,6 +276,11 @@ msgctxt "web/menu/menus"
 msgid "Field Defaults"
 msgstr ""
 
+#: web/menu/menus.ts:39
+msgctxt "web/menu/menus"
+msgid "Parameters"
+msgstr ""
+
 #: web/menu/titles.ts:10
 msgctxt "web/menu/menus"
 msgid "Partner List"
@@ -311,32 +316,37 @@ msgctxt "web/pages/PartnerList"
 msgid "Upload a UTF-8 CSV with columns Name, Code, IsActive, CustomerRank, SupplierRank."
 msgstr ""
 
-#: web/route/routes.ts:72
+#: web/route/routes.ts:73
 msgctxt "web/route/routes"
 msgid "Field Defaults"
 msgstr ""
 
-#: web/route/routes.ts:45
+#: web/route/routes.ts:46
 msgctxt "web/route/routes"
 msgid "New Partner"
 msgstr ""
 
-#: web/route/routes.ts:36
+#: web/route/routes.ts:82
+msgctxt "web/route/routes"
+msgid "Parameters"
+msgstr ""
+
+#: web/route/routes.ts:37
 msgctxt "web/route/routes"
 msgid "Partner Detail"
 msgstr ""
 
-#: web/route/routes.ts:21
+#: web/route/routes.ts:22
 msgctxt "web/route/routes"
 msgid "Partner List"
 msgstr ""
 
-#: web/route/routes.ts:63
+#: web/route/routes.ts:64
 msgctxt "web/route/routes"
 msgid "Property Definitions"
 msgstr ""
 
-#: web/route/routes.ts:54
+#: web/route/routes.ts:55
 msgctxt "web/route/routes"
 msgid "Translations"
 msgstr ""

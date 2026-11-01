@@ -5,6 +5,7 @@ import type { RouteRecordRaw } from 'vue-router';
 import { defineRoute } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
 import {
+  appSettingListComponent,
   fieldDefaultListComponent,
   propertyDefinitionListComponent,
   terminologyListComponent,
@@ -166,5 +167,38 @@ export const sandboxRoutes: RouteRecordRaw[] = [
     component: fieldDefaultListComponent,
     defaultRoles: ['sys.admin'],
     meta: { requiresAuth: true, fieldDefaultApplication: 'sandbox' },
+  }),
+  defineRoute('sandbox.route.app_setting_list', {
+    sequence: 70,
+    title: _lt('Parameters'),
+    path: 'web/app-settings/sandbox',
+    name: 'AppSettingList_sandbox',
+    component: appSettingListComponent,
+    defaultRoles: ['sys.admin'],
+    meta: {
+      requiresAuth: true,
+      appSettingApplication: 'sandbox',
+      viewKind: 'list',
+      viewPaths: {
+        settings: '/sandbox/settings',
+        list: '/web/app-settings/sandbox',
+      },
+    },
+  }),
+  defineRoute('sandbox.route.settings', {
+    sequence: 71,
+    title: _lt('Settings: sandbox'),
+    path: 'sandbox/settings',
+    name: 'SandboxSettings',
+    component: () => import('../pages/SandboxSettings.vue'),
+    defaultRoles: ['sys.admin'],
+    meta: {
+      requiresAuth: true,
+      viewKind: 'settings',
+      viewPaths: {
+        settings: '/sandbox/settings',
+        list: '/web/app-settings/sandbox',
+      },
+    },
   }),
 ];

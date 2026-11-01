@@ -13,29 +13,41 @@ const { _lt } = createTranslate('auth', { scope: 'web/menu/menus' });
  *
  * Keep menu visibility concerns separate from route registration.
  */
-/** Settings → auth → Translations when auth is installed. */
+/** Settings → auth: Settings / Parameters then platform catalogs. */
 export const authSettingsAppMenu: MenuItem = defineMenu('auth.menu.settings_app', {
   title: _lt('auth'),
   sequence: 20,
   parentMenu: 'web.menu.settings',
   defaultRoles: ['sys.admin'],
   children: [
+    defineMenu('auth.menu.settings_page', {
+      title: _lt('Settings'),
+      path: '/auth/settings',
+      sequence: 10,
+      defaultRoles: ['sys.admin'],
+    }),
+    defineMenu('auth.menu.app_settings_parameters', {
+      title: _lt('Parameters'),
+      path: '/web/app-settings/auth',
+      sequence: 20,
+      defaultRoles: ['sys.admin'],
+    }),
     defineMenu('auth.menu.terminology', {
       title: _lt('Translations'),
       path: '/web/terminology/auth',
-      sequence: 10,
+      sequence: 30,
       defaultRoles: ['sys.admin'],
     }),
     defineMenu('auth.menu.property_definitions', {
       title: _lt('Property Definitions'),
       path: '/web/property-definitions/auth',
-      sequence: 20,
+      sequence: 40,
       defaultRoles: ['sys.admin'],
     }),
     defineMenu('auth.menu.field_defaults', {
       title: _lt('Field Defaults'),
       path: '/web/field-defaults/auth',
-      sequence: 30,
+      sequence: 50,
       defaultRoles: ['sys.admin'],
     }),
   ],

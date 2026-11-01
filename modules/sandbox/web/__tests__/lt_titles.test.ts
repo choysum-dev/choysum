@@ -12,6 +12,12 @@ const propertyDefinitionsRouteTitle = createTranslate('sandbox', { scope: 'web/r
 const fieldDefaultsRouteTitle = createTranslate('sandbox', { scope: 'web/route/routes' })._lt(
   'Field Defaults'
 );
+const parametersRouteTitle = createTranslate('sandbox', { scope: 'web/route/routes' })._lt(
+  'Parameters'
+);
+const settingsRouteTitle = createTranslate('sandbox', { scope: 'web/route/routes' })._lt(
+  'Settings: sandbox'
+);
 
 test('sandbox menu titles: titles.ts registers shared TermReferences', () => {
   expect(sandboxRootMenuTitle.src).toBe('Sandbox');
@@ -38,4 +44,18 @@ test('sandbox route titles: FieldDefault list pins pageTitleText', () => {
   expect(route).toBeTruthy();
   expect(route.meta?.pageTitle).toBe('Field Defaults');
   expect(route.meta?.pageTitleText).toEqual(fieldDefaultsRouteTitle);
+});
+
+test('sandbox route titles: AppSetting parameters list pins pageTitleText', () => {
+  const route = sandboxRoutes.find(r => r.name === 'AppSettingList_sandbox') as any;
+  expect(route).toBeTruthy();
+  expect(route.meta?.pageTitle).toBe('Parameters');
+  expect(route.meta?.pageTitleText).toEqual(parametersRouteTitle);
+});
+
+test('sandbox route titles: Settings page pins pageTitleText', () => {
+  const route = sandboxRoutes.find(r => r.name === 'SandboxSettings') as any;
+  expect(route).toBeTruthy();
+  expect(route.meta?.pageTitle).toBe('Settings: sandbox');
+  expect(route.meta?.pageTitleText).toEqual(settingsRouteTitle);
 });

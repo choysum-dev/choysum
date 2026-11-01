@@ -93,6 +93,7 @@ export type {
   LocalFormStore,
 } from './stores/localFormStore';
 export { default as ChoyFormView } from './components/view/ChoyFormView.vue';
+export { default as ChoySettingsView } from './components/view/ChoySettingsView.vue';
 export { default as ChoyListView } from './components/view/ChoyListView.vue';
 export type { RowEventPayload } from './components/view/listViewTypes';
 export { default as ChoyKanbanView } from './components/view/ChoyKanbanView.vue';

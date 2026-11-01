@@ -113,7 +113,19 @@
         "MetaModelId": null,
         "MetaServiceId": null,
         "LogicalModelName": "AppSetting",
-        "LogicalMethods": ["Get", "Set"],
+        "LogicalMethods": [
+          "Get",
+          "Set",
+          "Search",
+          "Browse",
+          "Count",
+          "Create",
+          "CreateMany",
+          "Update",
+          "UpdateById",
+          "Delete",
+          "DeleteById"
+        ],
         "Mode": "allow"
       }
     },

@@ -91,6 +91,7 @@ export const School = icon('School');
 export const Search = icon('Search');
 export const Settings = icon('Settings');
 export const Shield = icon('Shield');
+export const SlidersHorizontal = icon('SlidersHorizontal');
 export const Star = icon('Star');
 export const Strikethrough = icon('Strikethrough');
 export const Sun = icon('Sun');

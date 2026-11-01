@@ -11,6 +11,7 @@ import { watch } from 'vue';
 import sourceMessages from './i18n/source';
 import { createAppRouter } from './router';
 import {
+  registerAppSettingRoutes,
   registerFieldDefaultRoutes,
   registerPropertyDefinitionRoutes,
   registerTerminologyRoutes,
@@ -55,6 +56,7 @@ export type SetupAppDeps = {
   registerTerminologyRoutes?: typeof registerTerminologyRoutes;
   registerPropertyDefinitionRoutes?: typeof registerPropertyDefinitionRoutes;
   registerFieldDefaultRoutes?: typeof registerFieldDefaultRoutes;
+  registerAppSettingRoutes?: typeof registerAppSettingRoutes;
   applyChoyThemePreference?: typeof applyChoyThemePreference;
   readChoyThemePreference?: typeof readChoyThemePreference;
   baseUrl?: string;
@@ -93,6 +95,7 @@ export function setupApp(app: ChoysumWebApp, deps: SetupAppDeps = {}): void {
     deps.registerFieldDefaultRoutes,
     registerFieldDefaultRoutes
   );
+  const registerAppSettings = pickDep(deps.registerAppSettingRoutes, registerAppSettingRoutes);
   const applyTheme = pickDep(deps.applyChoyThemePreference, applyChoyThemePreference);
   const readTheme = pickDep(deps.readChoyThemePreference, readChoyThemePreference);
   const baseUrl = pickDep(deps.baseUrl, import.meta.env?.BASE_URL ?? '/');
@@ -194,5 +197,6 @@ export function setupApp(app: ChoysumWebApp, deps: SetupAppDeps = {}): void {
   registerTerminology(router);
   registerPropertyDefinitions(router);
   registerFieldDefaults(router);
+  registerAppSettings(router);
   app.usePlugin('router', router);
 }

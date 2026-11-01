@@ -45,6 +45,17 @@ function installMenus() {
           },
         ],
       },
+      {
+        id: 'web.menu.settings_app_auth',
+        title: 'auth',
+        children: [
+          {
+            id: 'auth.menu.settings_page',
+            title: 'Settings',
+            path: '/auth/settings',
+          },
+        ],
+      },
     ],
   } as any);
   return menuPlugin;
@@ -641,6 +652,40 @@ describe('breadcrumbStore L1+L2 trail', () => {
     expect(store.breadcrumbStack.map((i) => i.kind)).toEqual(['app', 'folder', 'menu']);
     expect(store.breadcrumbStack[1]?.menuId).toBe('web.menu.settings_app_core');
     expect(store.breadcrumbStack[1]?.path).toBe('');
+    mounted.unmount();
+  });
+
+  test('leaf crumb keeps short menu label when route pageTitle is longer', async () => {
+    const menuPlugin = installMenus();
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: {
+        path: '/auth/settings',
+        fullPath: '/auth/settings',
+        meta: { pageTitle: 'Settings: auth' },
+      },
+    });
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+    const Host = defineComponent({
+      setup() {
+        useMenuStore().bindRouteFromInjection();
+        useBreadcrumbStore();
+        return () => h('div');
+      },
+    });
+    const mounted = mountApp(Host as any, { plugins: [menuPlugin, pinia, router, i18n] });
+    await flushPromises();
+    const leaf = menuPlugin.manager.getMenu('auth.menu.settings_page');
+    expect(leaf).toBeTruthy();
+    useMenuStore().setActiveMenu(leaf as any);
+    await router.push({ path: '/auth/settings', meta: { pageTitle: 'Settings: auth' } });
+    await flushPromises();
+    const store = useBreadcrumbStore();
+    expect(store.breadcrumbStack.map((i) => i.kind)).toEqual(['app', 'folder', 'menu']);
+    // Trail leaf stays short; chrome/document title still use route pageTitle.
+    expect(store.breadcrumbStack[2]?.title).toBe('Settings');
+    expect(store.breadcrumbStack[2]?.menuId).toBe('auth.menu.settings_page');
     mounted.unmount();
   });
 

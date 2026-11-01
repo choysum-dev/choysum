@@ -5,6 +5,7 @@ import { RouteRecordRaw } from 'vue-router';
 import { defineRoute } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
 import {
+  appSettingListComponent,
   fieldDefaultListComponent,
   propertyDefinitionListComponent,
   terminologyListComponent,
@@ -82,5 +83,14 @@ export const metaRoutes: RouteRecordRaw[] = [
     component: fieldDefaultListComponent,
     defaultRoles: ['sys.admin'],
     meta: { requiresAuth: true, fieldDefaultApplication: 'meta' },
+  }),
+  defineRoute('meta.route.app_setting_list', {
+    sequence: 70,
+    title: _lt('Parameters'),
+    path: 'web/app-settings/meta',
+    name: 'AppSettingList_meta',
+    component: appSettingListComponent,
+    defaultRoles: ['sys.admin'],
+    meta: { requiresAuth: true, appSettingApplication: 'meta' },
   }),
 ];
