@@ -120,7 +120,12 @@ test('useAuthSettingsPage load treats 0/empty as off and null default as on; sav
     });
     await failing.load();
     expect(errorCalls).toEqual(['Load failed']);
-    expect(failing.formStore.value?.getField('PersistBrowserTimezone')).toBe(true);
+    expect(failing.loadFailed.value).toBe(true);
+    expect(failing.formStore.value).toBeNull();
+    expect(failing.dirty.value).toBe(false);
+    await failing.onSave();
+    failing.onDiscard();
+    expect(failing.formStore.value).toBeNull();
     expect(failing.loading.value).toBe(false);
   } finally {
     ChoyMessage.success = origSuccess;

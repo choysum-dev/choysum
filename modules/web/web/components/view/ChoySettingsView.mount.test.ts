@@ -335,7 +335,21 @@ test('ChoySettingsView blocks leave and view-select while loading; pending confi
     await flushPromises();
     expect(selected).toEqual([]);
 
+    // Auth redirect must still proceed while loading is true.
+    await mounted.router.push({ path: '/login', name: 'login' });
+    await flushPromises();
+    expect(useConfirmChoyStore().open).toBe(false);
+
+    // Return to a non-auth route without a dirty prompt so later asserts are clean
+    // (leaving /login skips the leave guard via shouldSkipFormDirtyLeavePrompt).
     mounted.props.loading = false;
+    mounted.props.dirty = false;
+    await nextTick();
+    await flushPromises();
+    await mounted.router.push('/sandbox/settings');
+    await flushPromises();
+
+    mounted.props.dirty = true;
     await nextTick();
     await flushPromises();
     const first = mounted.router.push('/ask-once');
@@ -386,17 +400,24 @@ test('ChoySettingsView form-root onChange is a no-op', async () => {
 });
 
 test('ChoySettingsView form-root mode/draft/getField cover localStore and draft paths', async () => {
-  type FormRoot = {
+  type FormRootAccessors = {
     mode: string;
     draft: Record<string, unknown>;
     getField: (path: string) => unknown;
   };
-  let root: FormRoot | null = null;
-  const Capture = defineComponent({
-    name: 'CaptureFormRootAccessors',
+  // Capture via local refs inside setup — outer `let` + inject assignment
+  // collapses to `never` under this typecheck toolchain.
+  let storeMode = '';
+  let storeDraft: Record<string, unknown> = {};
+  let storeFlag: unknown;
+  const CaptureStore = defineComponent({
+    name: 'CaptureFormRootStore',
     setup() {
-      root = inject('form-root') as FormRoot;
-      return () => h('span', { 'data-testid': 'capture-accessors' });
+      const root = inject('form-root') as FormRootAccessors;
+      storeMode = root.mode;
+      storeDraft = root.draft;
+      storeFlag = root.getField('DemoFlag');
+      return () => h('span', { 'data-testid': 'capture-accessors-store' });
     },
   });
 
@@ -406,24 +427,36 @@ test('ChoySettingsView form-root mode/draft/getField cover localStore and draft 
   });
   const withStore = mountSettings(
     { localStore: store, dirty: false, pageTitle: 'Store' },
-    { slots: { default: () => h(Capture) } },
+    { slots: { default: () => h(CaptureStore) } },
   );
   await flushPromises();
-  expect(root?.mode).toBe('edit');
-  expect(root?.draft).toEqual({ DemoFlag: true });
-  expect(root?.getField('DemoFlag')).toBe(true);
+  expect(storeMode).toBe('edit');
+  expect(storeDraft).toEqual({ DemoFlag: true });
+  expect(storeFlag).toBe(true);
   withStore.unmount();
 
-  root = null;
+  let draftMode = '';
+  let draftBag: Record<string, unknown> = {};
+  let draftFlag: unknown;
+  const CaptureDraft = defineComponent({
+    name: 'CaptureFormRootDraft',
+    setup() {
+      const root = inject('form-root') as FormRootAccessors;
+      draftMode = root.mode;
+      draftBag = root.draft;
+      draftFlag = root.getField('DemoFlag');
+      return () => h('span', { 'data-testid': 'capture-accessors-draft' });
+    },
+  });
   const draft = { DemoFlag: false, Extra: 1 };
   const withDraft = mountSettings(
     { draft, dirty: false, pageTitle: 'Draft' },
-    { slots: { default: () => h(Capture) } },
+    { slots: { default: () => h(CaptureDraft) } },
   );
   await flushPromises();
-  expect(root?.mode).toBe('edit');
-  expect(root?.draft).toMatchObject({ DemoFlag: false, Extra: 1 });
-  expect(root?.getField('DemoFlag')).toBe(false);
+  expect(draftMode).toBe('edit');
+  expect(draftBag).toMatchObject({ DemoFlag: false, Extra: 1 });
+  expect(draftFlag).toBe(false);
   withDraft.unmount();
 });
 

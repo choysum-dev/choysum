@@ -227,12 +227,13 @@ function dismissLeaveConfirmIfPending() {
 const router = useRouter();
 const removeLeaveGuard = router?.beforeEach?.((to, from) => {
   if (leaving) return true;
-  // Do not leave or switch views while Save/load is in flight.
-  if (props.loading) return false;
+  // Auth exits (login/logout/register) must proceed even while Save/load runs.
   if (shouldSkipFormDirtyLeavePrompt(to, from)) {
     dismissLeaveConfirmIfPending();
     return true;
   }
+  // Do not leave or switch views while Save/load is in flight.
+  if (props.loading) return false;
   if (!props.dirty) return true;
   return confirmDiscardIfDirty();
 });

@@ -141,7 +141,7 @@ test('useSandboxSettingsPage load normalizes flag and null Get defaults', async 
   }
 });
 
-test('useSandboxSettingsPage load failure toasts and rebuilds defaults', async () => {
+test('useSandboxSettingsPage load failure toasts and blocks save', async () => {
   errorCalls.length = 0;
   stubMessage();
   try {
@@ -156,8 +156,12 @@ test('useSandboxSettingsPage load failure toasts and rebuilds defaults', async (
     });
     await api.load();
     expect(errorCalls).toEqual(['Load failed']);
-    expect(api.formStore.value?.getField('DemoFlag')).toBe(false);
-    expect(api.formStore.value?.getField('DemoLabel')).toBe('');
+    expect(api.loadFailed.value).toBe(true);
+    expect(api.formStore.value).toBeNull();
+    expect(api.dirty.value).toBe(false);
+    await api.onSave();
+    api.onDiscard();
+    expect(api.formStore.value).toBeNull();
     expect(api.loading.value).toBe(false);
   } finally {
     ChoyMessage.success = origSuccess;

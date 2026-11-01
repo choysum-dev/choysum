@@ -24,6 +24,7 @@ export type AuthSettingsPageDeps = {
 export type AuthSettingsPageApi = {
   formStore: ShallowRef<LocalFormStore | null>;
   loading: Ref<boolean>;
+  loadFailed: Ref<boolean>;
   dirty: ComputedRef<boolean>;
   load: () => Promise<void>;
   onSave: () => Promise<void>;
@@ -72,10 +73,11 @@ export function useAuthSettingsPage(deps: AuthSettingsPageDeps): AuthSettingsPag
   const formStore = shallowRef<LocalFormStore | null>(null);
   const baseline = ref('1');
   const loading = ref(false);
+  const loadFailed = ref(false);
   const appSettingStore = resolveAppSettingStore(deps);
 
   const dirty = computed(() => {
-    if (!formStore.value) return false;
+    if (!formStore.value || loadFailed.value) return false;
     const current = formStore.value.getField('PersistBrowserTimezone') === true ? '1' : '0';
     return current !== baseline.value;
   });
@@ -102,16 +104,18 @@ export function useAuthSettingsPage(deps: AuthSettingsPageDeps): AuthSettingsPag
       const flag = (await appSettingStore().Get(PERSIST_BROWSER_TIMEZONE_KEY, '1')) ?? '1';
       // Service treats only exact "1" as enabled; anything else (incl. "") is off.
       rebuildForm(flag === '1' ? '1' : '0');
+      loadFailed.value = false;
     } catch {
+      loadFailed.value = true;
+      formStore.value = null;
       ChoyMessage.error(settingsMessage('Load failed'));
-      rebuildForm('1');
     } finally {
       loading.value = false;
     }
   }
 
   async function onSave() {
-    if (!formStore.value || !dirty.value) return;
+    if (!formStore.value || loadFailed.value || !dirty.value) return;
     loading.value = true;
     try {
       const on = formStore.value.getField('PersistBrowserTimezone') === true;
@@ -127,8 +131,9 @@ export function useAuthSettingsPage(deps: AuthSettingsPageDeps): AuthSettingsPag
   }
 
   function onDiscard() {
+    if (loadFailed.value) return;
     rebuildForm(baseline.value);
   }
 
-  return { formStore, loading, dirty, load, onSave, onDiscard };
+  return { formStore, loading, loadFailed, dirty, load, onSave, onDiscard };
 }

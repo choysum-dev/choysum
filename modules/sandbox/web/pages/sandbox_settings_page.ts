@@ -27,6 +27,7 @@ export type SandboxSettingsPageDeps = {
 export type SandboxSettingsPageApi = {
   formStore: ShallowRef<LocalFormStore | null>;
   loading: Ref<boolean>;
+  loadFailed: Ref<boolean>;
   dirty: ComputedRef<boolean>;
   load: () => Promise<void>;
   onSave: () => Promise<void>;
@@ -80,10 +81,11 @@ export function useSandboxSettingsPage(deps: SandboxSettingsPageDeps): SandboxSe
   const baselineFlag = ref('0');
   const baselineLabel = ref('');
   const loading = ref(false);
+  const loadFailed = ref(false);
   const appSettingStore = resolveAppSettingStore(deps);
 
   const dirty = computed(() => {
-    if (!formStore.value) return false;
+    if (!formStore.value || loadFailed.value) return false;
     const flag = formStore.value.getField('DemoFlag') === true ? '1' : '0';
     const label = String(formStore.value.getField('DemoLabel') ?? '');
     return flag !== baselineFlag.value || label !== baselineLabel.value;
@@ -112,16 +114,19 @@ export function useSandboxSettingsPage(deps: SandboxSettingsPageDeps): SandboxSe
       const flag = (await store.Get(SANDBOX_DEMO_FLAG_KEY, '0')) ?? '0';
       const label = (await store.Get(SANDBOX_DEMO_LABEL_KEY, '')) ?? '';
       rebuildForm(flag === '1' ? '1' : '0', label);
+      loadFailed.value = false;
     } catch {
+      // Keep prior baselines; do not invent defaults that a later Save could write.
+      loadFailed.value = true;
+      formStore.value = null;
       ChoyMessage.error(settingsMessage('Load failed'));
-      rebuildForm('0', '');
     } finally {
       loading.value = false;
     }
   }
 
   async function onSave() {
-    if (!formStore.value || !dirty.value) return;
+    if (!formStore.value || loadFailed.value || !dirty.value) return;
     loading.value = true;
     try {
       const store = appSettingStore();
@@ -147,8 +152,9 @@ export function useSandboxSettingsPage(deps: SandboxSettingsPageDeps): SandboxSe
   }
 
   function onDiscard() {
+    if (loadFailed.value) return;
     rebuildForm(baselineFlag.value, baselineLabel.value);
   }
 
-  return { formStore, loading, dirty, load, onSave, onDiscard };
+  return { formStore, loading, loadFailed, dirty, load, onSave, onDiscard };
 }
