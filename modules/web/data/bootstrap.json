@@ -35,6 +35,23 @@
       }
     },
     {
+      "name": "rma_base_user_web_user_filter_count",
+      "application": "auth",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": {
+          "serviceRef": "web.UserFilter/Count"
+        },
+        "LogicalModelName": null,
+        "Mode": "allow"
+      }
+    },
+    {
       "name": "rma_base_user_web_user_filter_create",
       "application": "auth",
       "model": "RoleMethodAccess",
@@ -259,6 +276,23 @@
         "MetaModelId": null,
         "MetaServiceId": {
           "serviceRef": "web.ExportTemplate/Browse"
+        },
+        "LogicalModelName": null,
+        "Mode": "allow"
+      }
+    },
+    {
+      "name": "rma_base_user_web_export_template_count",
+      "application": "auth",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": {
+          "serviceRef": "web.ExportTemplate/Count"
         },
         "LogicalModelName": null,
         "Mode": "allow"

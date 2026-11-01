@@ -12,9 +12,11 @@ import sourceMessages from './i18n/source';
 import { createAppRouter } from './router';
 import {
   registerAppSettingRoutes,
+  registerExportTemplateRoutes,
   registerFieldDefaultRoutes,
   registerPropertyDefinitionRoutes,
   registerTerminologyRoutes,
+  registerUserFilterRoutes,
 } from './route';
 import { registerGlobalDirectives } from './directives';
 import { setGlobalRequestContextProvider } from '@/core/rpc/context';
@@ -57,6 +59,8 @@ export type SetupAppDeps = {
   registerPropertyDefinitionRoutes?: typeof registerPropertyDefinitionRoutes;
   registerFieldDefaultRoutes?: typeof registerFieldDefaultRoutes;
   registerAppSettingRoutes?: typeof registerAppSettingRoutes;
+  registerUserFilterRoutes?: typeof registerUserFilterRoutes;
+  registerExportTemplateRoutes?: typeof registerExportTemplateRoutes;
   applyChoyThemePreference?: typeof applyChoyThemePreference;
   readChoyThemePreference?: typeof readChoyThemePreference;
   baseUrl?: string;
@@ -96,6 +100,11 @@ export function setupApp(app: ChoysumWebApp, deps: SetupAppDeps = {}): void {
     registerFieldDefaultRoutes
   );
   const registerAppSettings = pickDep(deps.registerAppSettingRoutes, registerAppSettingRoutes);
+  const registerUserFilters = pickDep(deps.registerUserFilterRoutes, registerUserFilterRoutes);
+  const registerExportTemplates = pickDep(
+    deps.registerExportTemplateRoutes,
+    registerExportTemplateRoutes
+  );
   const applyTheme = pickDep(deps.applyChoyThemePreference, applyChoyThemePreference);
   const readTheme = pickDep(deps.readChoyThemePreference, readChoyThemePreference);
   const baseUrl = pickDep(deps.baseUrl, import.meta.env?.BASE_URL ?? '/');
@@ -198,5 +207,7 @@ export function setupApp(app: ChoysumWebApp, deps: SetupAppDeps = {}): void {
   registerPropertyDefinitions(router);
   registerFieldDefaults(router);
   registerAppSettings(router);
+  registerUserFilters(router);
+  registerExportTemplates(router);
   app.usePlugin('router', router);
 }
