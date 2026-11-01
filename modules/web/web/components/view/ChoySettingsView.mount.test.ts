@@ -385,6 +385,48 @@ test('ChoySettingsView form-root onChange is a no-op', async () => {
   mounted.unmount();
 });
 
+test('ChoySettingsView form-root mode/draft/getField cover localStore and draft paths', async () => {
+  type FormRoot = {
+    mode: string;
+    draft: Record<string, unknown>;
+    getField: (path: string) => unknown;
+  };
+  let root: FormRoot | null = null;
+  const Capture = defineComponent({
+    name: 'CaptureFormRootAccessors',
+    setup() {
+      root = inject('form-root') as FormRoot;
+      return () => h('span', { 'data-testid': 'capture-accessors' });
+    },
+  });
+
+  const store = createLocalFormStore({
+    fields: [{ name: 'DemoFlag', label: 'Demo', type: 'boolean' }],
+    initialValues: { DemoFlag: true },
+  });
+  const withStore = mountSettings(
+    { localStore: store, dirty: false, pageTitle: 'Store' },
+    { slots: { default: () => h(Capture) } },
+  );
+  await flushPromises();
+  expect(root?.mode).toBe('edit');
+  expect(root?.draft).toEqual({ DemoFlag: true });
+  expect(root?.getField('DemoFlag')).toBe(true);
+  withStore.unmount();
+
+  root = null;
+  const draft = { DemoFlag: false, Extra: 1 };
+  const withDraft = mountSettings(
+    { draft, dirty: false, pageTitle: 'Draft' },
+    { slots: { default: () => h(Capture) } },
+  );
+  await flushPromises();
+  expect(root?.mode).toBe('edit');
+  expect(root?.draft).toMatchObject({ DemoFlag: false, Extra: 1 });
+  expect(root?.getField('DemoFlag')).toBe(false);
+  withDraft.unmount();
+});
+
 test('ChoySettingsView view-select cancel keeps current view; clean select skips confirm', async () => {
   const { resolveConfirmChoy, useConfirmChoyStore } = await import(
     '@/web/web/composables/confirmChoyAction'

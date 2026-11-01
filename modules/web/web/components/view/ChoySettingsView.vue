@@ -225,7 +225,7 @@ function dismissLeaveConfirmIfPending() {
 }
 
 const router = useRouter();
-const removeLeaveGuard = router.beforeEach?.((to, from) => {
+const removeLeaveGuard = router?.beforeEach?.((to, from) => {
   if (leaving) return true;
   // Do not leave or switch views while Save/load is in flight.
   if (props.loading) return false;
@@ -258,13 +258,14 @@ async function onViewSelect(value: string) {
     // short fallback if afterEach never runs, e.g. stub / no-op navigation).
     await new Promise<void>((resolve) => {
       let settled = false;
+      let removeAfter: (() => void) | undefined;
       const finish = () => {
         if (settled) return;
         settled = true;
         removeAfter?.();
         resolve();
       };
-      const removeAfter = router.afterEach?.(() => finish());
+      removeAfter = router?.afterEach?.(() => finish());
       setTimeout(finish, 0);
     });
   } finally {
