@@ -1,0 +1,87 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+import { computed, ref, shallowRef, type ComputedRef, type Ref, type ShallowRef } from 'vue';
+import { createLocalFormStore, type LocalFormStore } from '@/web/web/stores/localFormStore';
+import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
+import { PERSIST_BROWSER_TIMEZONE_KEY } from '@/auth/service/models/user/persist_browser_timezone_key';
+
+export type AuthAppSettingKv = {
+  Get: (key: string, defaultValue?: string | null) => Promise<string | null>;
+  Set: (key: string, value: string | null) => Promise<unknown>;
+};
+
+export type AuthSettingsPageDeps = {
+  appSettingStore: () => AuthAppSettingKv;
+  translate: (msgid: string, ...args: unknown[]) => string;
+};
+
+export type AuthSettingsPageApi = {
+  formStore: ShallowRef<LocalFormStore | null>;
+  loading: Ref<boolean>;
+  dirty: ComputedRef<boolean>;
+  load: () => Promise<void>;
+  onSave: () => Promise<void>;
+  onDiscard: () => void;
+};
+
+/** Curated auth Settings: persist-browser-timezone flag via AppSetting Get/Set. */
+export function useAuthSettingsPage(deps: AuthSettingsPageDeps): AuthSettingsPageApi {
+  const formStore = shallowRef<LocalFormStore | null>(null);
+  const baseline = ref('1');
+  const loading = ref(false);
+
+  const dirty = computed(() => {
+    if (!formStore.value) return false;
+    const current = formStore.value.getField('PersistBrowserTimezone') === true ? '1' : '0';
+    return current !== baseline.value;
+  });
+
+  function rebuildForm(flag: string) {
+    const on = flag === '1';
+    formStore.value = createLocalFormStore({
+      storeId: `local-form:auth-settings:${Date.now()}`,
+      fields: [
+        {
+          name: 'PersistBrowserTimezone',
+          label: deps.translate('Browser timezone'),
+          type: 'boolean',
+        },
+      ],
+      initialValues: { PersistBrowserTimezone: on },
+    });
+    baseline.value = on ? '1' : '0';
+  }
+
+  async function load() {
+    loading.value = true;
+    try {
+      const flag = (await deps.appSettingStore().Get(PERSIST_BROWSER_TIMEZONE_KEY, '1')) ?? '1';
+      rebuildForm(flag === '0' ? '0' : '1');
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function onSave() {
+    if (!formStore.value || !dirty.value) return;
+    loading.value = true;
+    try {
+      const on = formStore.value.getField('PersistBrowserTimezone') === true;
+      const value = on ? '1' : '0';
+      await deps.appSettingStore().Set(PERSIST_BROWSER_TIMEZONE_KEY, value);
+      baseline.value = value;
+      ChoyMessage.success(deps.translate('Saved successfully'));
+    } catch {
+      ChoyMessage.error(deps.translate('Save failed'));
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  function onDiscard() {
+    rebuildForm(baseline.value);
+  }
+
+  return { formStore, loading, dirty, load, onSave, onDiscard };
+}

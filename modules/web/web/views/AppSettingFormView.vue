@@ -31,7 +31,6 @@ SPDX-License-Identifier: Apache-2.0
               :store="store"
               prop="Value"
               :label="_t('Value')"
-              :rules="requiredRules"
             />
           </ChoyCol>
         </ChoyGrid>

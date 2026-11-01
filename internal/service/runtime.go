@@ -174,9 +174,10 @@ func (r invocationRuntime) executeUnary(
 	outMsg := serviceCodec.newMessage(outputMsgDesc)
 	resultField := outMsg.Descriptor().Fields().ByTextName("result")
 	if resultField != nil {
-		// JS null/undefined → leave result unset. Proto3 scalars cannot encode null
-		// (e.g. AppSetting.Set returns previous value or null on first write).
-		if jsResponse.Result == nil {
+		// Proto3 scalars cannot encode null (e.g. AppSetting.Set returns null on
+		// first write). Leave scalar result unset. Message/list results still
+		// convert so a nil JS result surfaces as a conversion error.
+		if jsResponse.Result == nil && !resultField.IsList() && resultField.Message() == nil {
 			return outMsg, nil
 		}
 		if resultField.IsList() {

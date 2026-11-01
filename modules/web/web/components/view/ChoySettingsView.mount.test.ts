@@ -4,10 +4,11 @@
 import { defineComponent, h, nextTick } from 'vue';
 import { createPinia } from 'pinia';
 import * as VueRouter from 'vue-router';
-import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
+import { flushPromises, mountApp, stubSfc, restoreSfc } from '@/web/web/__tests__/mountApp';
 import { createLocalFormStore } from '@/web/web/stores/localFormStore';
 import { useField } from '@/web/web/composables/useField';
 import ChoySettingsView from './ChoySettingsView.vue';
+import ChoyViewSwitcher from './ChoyViewSwitcher.vue';
 import {
   clearViewKindsForTests,
   getViewKind,
@@ -30,6 +31,7 @@ function mountSettings(props: Record<string, unknown> = {}, extra: Record<string
   });
   return mountApp(ChoySettingsView as any, {
     props,
+    reactiveProps: true,
     plugins: [createPinia(), router],
     ...extra,
   });
@@ -102,5 +104,136 @@ test('ChoySettingsView Save label shows Saving... while loading', async () => {
   expect(mounted.text()).toContain('Saving...');
   const save = mounted.q('[data-testid=settings-save]') as HTMLButtonElement | null;
   expect(save?.disabled).toBe(true);
+  mounted.unmount();
+});
+
+test('ChoySettingsView discard confirms when dirty then emits discard', async () => {
+  const { resolveConfirmChoy, useConfirmChoyStore } = await import(
+    '@/web/web/composables/confirmChoyAction'
+  );
+  const discards: number[] = [];
+  const mounted = mountSettings(
+    { dirty: false, pageTitle: 'Settings' },
+    { on: { onDiscard: () => discards.push(1) } },
+  );
+  await flushPromises();
+  mounted.props.dirty = true;
+  await nextTick();
+  await flushPromises();
+  const discard = mounted.q('[data-testid=settings-discard]') as HTMLButtonElement | null;
+  expect(discard).not.toBeNull();
+  discard!.disabled = false;
+  discard!.click();
+  await Promise.resolve();
+  expect(useConfirmChoyStore().open).toBe(true);
+  resolveConfirmChoy('confirm');
+  await flushPromises();
+  expect(discards.length).toBe(1);
+  mounted.unmount();
+});
+
+test('ChoySettingsView discard cancel does not emit; clean discard is a no-op', async () => {
+  const { resolveConfirmChoy, useConfirmChoyStore } = await import(
+    '@/web/web/composables/confirmChoyAction'
+  );
+  const discards: number[] = [];
+  const clean = mountSettings({ dirty: false }, { on: { onDiscard: () => discards.push(1) } });
+  await flushPromises();
+  (clean.q('[data-testid=settings-discard]') as HTMLButtonElement).click();
+  await flushPromises();
+  expect(discards.length).toBe(0);
+  clean.unmount();
+
+  const dirty = mountSettings({ dirty: false }, { on: { onDiscard: () => discards.push(1) } });
+  await flushPromises();
+  dirty.props.dirty = true;
+  await nextTick();
+  await flushPromises();
+  const btn = dirty.q('[data-testid=settings-discard]') as HTMLButtonElement;
+  btn.disabled = false;
+  btn.click();
+  await Promise.resolve();
+  expect(useConfirmChoyStore().open).toBe(true);
+  resolveConfirmChoy('cancel');
+  await flushPromises();
+  expect(discards.length).toBe(0);
+  dirty.unmount();
+});
+
+test('ChoySettingsView view-select confirms dirty then emits after navigation settle', async () => {
+  const { resolveConfirmChoy, useConfirmChoyStore } = await import(
+    '@/web/web/composables/confirmChoyAction'
+  );
+  stubSfc(
+    ChoyViewSwitcher as any,
+    defineComponent({
+      name: 'ChoyViewSwitcherStub',
+      emits: ['select'],
+      setup(_, { emit }) {
+        return () =>
+          h('button', {
+            type: 'button',
+            'data-testid': 'stub-view-switch',
+            onClick: () => emit('select', 'list'),
+          });
+      },
+    }),
+  );
+  const selected: string[] = [];
+  try {
+    const mounted = mountSettings(
+      {
+        dirty: false,
+        viewSwitcherOptions: [
+          { value: 'settings', label: 'Settings View' },
+          { value: 'list', label: 'Parameters View' },
+        ],
+        activeView: 'settings',
+      },
+      { on: { onViewSelect: (v: string) => selected.push(v) } },
+    );
+    await flushPromises();
+    mounted.props.dirty = true;
+    await nextTick();
+    await flushPromises();
+    const btn = mounted.q('[data-testid=stub-view-switch]') as HTMLButtonElement | null;
+    expect(btn).not.toBeNull();
+    btn!.click();
+    await Promise.resolve();
+    expect(useConfirmChoyStore().open).toBe(true);
+    resolveConfirmChoy('confirm');
+    await flushPromises();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(selected).toEqual(['list']);
+    mounted.unmount();
+  } finally {
+    restoreSfc(ChoyViewSwitcher as any);
+  }
+});
+
+test('ChoySettingsView draft bag binds form-root without localStore', async () => {
+  const draft = { DemoFlag: false };
+  const Probe = defineComponent({
+    name: 'DraftProbe',
+    setup() {
+      const binding = useField({ prop: 'DemoFlag' });
+      return () =>
+        h('button', {
+          type: 'button',
+          'data-testid': 'toggle-draft',
+          onClick: () => {
+            binding.fieldRef().value = true as any;
+          },
+        });
+    },
+  });
+  const mounted = mountSettings(
+    { draft, dirty: false, pageTitle: 'Draft' },
+    { slots: { default: () => h(Probe) } },
+  );
+  await flushPromises();
+  (mounted.q('[data-testid=toggle-draft]') as HTMLElement).click();
+  await nextTick();
+  expect(draft.DemoFlag).toBe(true);
   mounted.unmount();
 });

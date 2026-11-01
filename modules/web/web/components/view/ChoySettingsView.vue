@@ -247,12 +247,21 @@ async function onViewSelect(value: string) {
   leaving = true;
   try {
     emit('view-select', value);
-  } finally {
-    // Parent navigation is async; clear on next tick via microtask so leave
-    // guard still skips a second prompt for the same push.
-    queueMicrotask(() => {
-      leaving = false;
+    // Keep leave-guard skipped until the sibling route push commits (or a
+    // short fallback if afterEach never runs, e.g. stub / no-op navigation).
+    await new Promise<void>((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        removeAfter?.();
+        resolve();
+      };
+      const removeAfter = router.afterEach?.(() => finish());
+      setTimeout(finish, 0);
     });
+  } finally {
+    leaving = false;
   }
 }
 </script>
