@@ -12,7 +12,7 @@ test('useAppSettingListPage binds store and title; empty app clears store', asyn
     path: '/web/app-settings/auth',
   });
   const api = useAppSettingListPage({
-    route,
+    route: route as any,
     scopeManager: {},
     createStore: ((model: string) => {
       created.push(model);

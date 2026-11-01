@@ -8,7 +8,7 @@ test('useAppSettingDetailPage creates store for application and clears when empt
   const created: string[] = [];
   const route = reactive({ params: { application: 'sandbox' } as Record<string, unknown> });
   const api = useAppSettingDetailPage({
-    route,
+    route: route as any,
     scopeManager: {},
     createStore: ((model: string) => {
       created.push(model);

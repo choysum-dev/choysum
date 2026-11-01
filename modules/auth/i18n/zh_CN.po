@@ -1076,7 +1076,7 @@ msgctxt "web/pages/AuthSettings"
 msgid "Browser"
 msgstr "浏览器"
 
-#: web/pages/AuthSettings.vue:61 web/pages/AuthSettings.vue:8
+#: web/pages/AuthSettings.vue:8
 msgctxt "web/pages/AuthSettings"
 msgid "Browser timezone"
 msgstr "浏览器时区"
@@ -1086,27 +1086,27 @@ msgctxt "web/pages/AuthSettings"
 msgid "On sign-in, fill an empty user timezone from the browser."
 msgstr "登录时，若用户时区为空则从浏览器写入。"
 
-#: web/pages/AuthSettings.vue:33
+#: web/pages/AuthSettings.vue:25
 msgctxt "web/pages/AuthSettings"
 msgid "Parameters View"
 msgstr "参数视图"
 
-#: web/pages/AuthSettings.vue:90
+#: web/pages/auth_settings_page.ts:119
 msgctxt "web/pages/AuthSettings"
 msgid "Save failed"
 msgstr "保存失败"
 
-#: web/pages/AuthSettings.vue:88
+#: web/pages/auth_settings_page.ts:117
 msgctxt "web/pages/AuthSettings"
 msgid "Saved successfully"
 msgstr "保存成功"
 
-#: web/pages/AuthSettings.vue:32
+#: web/pages/AuthSettings.vue:24
 msgctxt "web/pages/AuthSettings"
 msgid "Settings View"
 msgstr "设置视图"
 
-#: web/pages/AuthSettings.vue:23
+#: web/pages/AuthSettings.vue:19
 msgctxt "web/pages/AuthSettings"
 msgid "Settings: auth"
 msgstr "设置：auth"

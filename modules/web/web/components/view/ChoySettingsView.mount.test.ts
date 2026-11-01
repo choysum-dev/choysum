@@ -29,12 +29,13 @@ function mountSettings(props: Record<string, unknown> = {}, extra: Record<string
       meta: { viewKind: 'settings' },
     },
   });
-  return mountApp(ChoySettingsView as any, {
+  const mounted = mountApp(ChoySettingsView as any, {
     props,
     reactiveProps: true,
     plugins: [createPinia(), router],
     ...extra,
   });
+  return { ...mounted, router };
 }
 
 test('Settings view kind is registered with form presentation', () => {
@@ -236,4 +237,124 @@ test('ChoySettingsView draft bag binds form-root without localStore', async () =
   await nextTick();
   expect(draft.DemoFlag).toBe(true);
   mounted.unmount();
+});
+
+test('ChoySettingsView custom labels, hidden header, and draft key prune', async () => {
+  const draft: Record<string, unknown> = { Keep: 1, Drop: 2 };
+  const mounted = mountSettings({
+    draft,
+    dirty: false,
+    showHeader: false,
+    saveLabel: 'Commit',
+    discardLabel: 'Revert',
+  });
+  await flushPromises();
+  expect(mounted.q('[data-testid=settings-save]')).toBeNull();
+  mounted.unmount();
+
+  const labeled = mountSettings({
+    draft,
+    dirty: true,
+    saveLabel: 'Commit',
+    discardLabel: 'Revert',
+    pageTitle: 'T',
+  });
+  await flushPromises();
+  expect(labeled.text()).toContain('Commit');
+  expect(labeled.text()).toContain('Revert');
+  labeled.props.draft = { Keep: 3 };
+  await nextTick();
+  await flushPromises();
+  labeled.unmount();
+});
+
+test('ChoySettingsView leave guard confirms dirty navigation and skips auth exits', async () => {
+  const { resolveConfirmChoy, useConfirmChoyStore } = await import(
+    '@/web/web/composables/confirmChoyAction'
+  );
+  const mounted = mountSettings({ dirty: false, pageTitle: 'Settings' });
+  await flushPromises();
+  await mounted.router.push('/elsewhere');
+  expect(useConfirmChoyStore().open).toBe(false);
+
+  mounted.props.dirty = true;
+  await nextTick();
+  await flushPromises();
+  const nav = mounted.router.push('/next');
+  await Promise.resolve();
+  expect(useConfirmChoyStore().open).toBe(true);
+  resolveConfirmChoy('cancel');
+  await nav;
+  await flushPromises();
+
+  const authNav = mounted.router.push({ path: '/login', name: 'login' });
+  await authNav;
+  await flushPromises();
+  expect(useConfirmChoyStore().open).toBe(false);
+  mounted.unmount();
+});
+
+test('ChoySettingsView view-select cancel keeps current view; clean select skips confirm', async () => {
+  const { resolveConfirmChoy, useConfirmChoyStore } = await import(
+    '@/web/web/composables/confirmChoyAction'
+  );
+  stubSfc(
+    ChoyViewSwitcher as any,
+    defineComponent({
+      name: 'ChoyViewSwitcherStub',
+      emits: ['select'],
+      setup(_, { emit }) {
+        return () =>
+          h('button', {
+            type: 'button',
+            'data-testid': 'stub-view-switch',
+            onClick: () => emit('select', 'list'),
+          });
+      },
+    }),
+  );
+  const selected: string[] = [];
+  try {
+    const clean = mountSettings(
+      {
+        dirty: false,
+        viewSwitcherOptions: [
+          { value: 'settings', label: 'Settings View' },
+          { value: 'list', label: 'Parameters View' },
+        ],
+      },
+      { on: { onViewSelect: (v: string) => selected.push(v) } },
+    );
+    await flushPromises();
+    (clean.q('[data-testid=stub-view-switch]') as HTMLButtonElement).click();
+    await flushPromises();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(selected).toEqual(['list']);
+    clean.unmount();
+
+    selected.length = 0;
+    const dirty = mountSettings(
+      {
+        dirty: false,
+        viewSwitcherOptions: [
+          { value: 'settings', label: 'Settings View' },
+          { value: 'list', label: 'Parameters View' },
+        ],
+      },
+      { on: { onViewSelect: (v: string) => selected.push(v) } },
+    );
+    await flushPromises();
+    dirty.props.dirty = true;
+    await nextTick();
+    await flushPromises();
+    (dirty.q('[data-testid=stub-view-switch]') as HTMLButtonElement).click();
+    await Promise.resolve();
+    expect(useConfirmChoyStore().open).toBe(true);
+    resolveConfirmChoy('cancel');
+    await flushPromises();
+    expect(selected).toEqual([]);
+    dirty.unmount();
+  } finally {
+    restoreSfc(ChoyViewSwitcher as any);
+  }
 });

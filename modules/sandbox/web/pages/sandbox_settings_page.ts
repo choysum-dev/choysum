@@ -3,7 +3,12 @@
 
 import { computed, ref, shallowRef, type ComputedRef, type Ref, type ShallowRef } from 'vue';
 import { createLocalFormStore, type LocalFormStore } from '@/web/web/stores/localFormStore';
+import { createStoreByModel } from '@/web/web/stores/registry';
+import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t: settingsMessage } = createTranslate('sandbox', { scope: 'web/pages/SandboxSettings' });
 
 /** Sandbox dogfood keys (table-local; not auth keys). */
 export const SANDBOX_DEMO_FLAG_KEY = 'demo_flag';
@@ -15,7 +20,7 @@ export type SandboxAppSettingKv = {
 };
 
 export type SandboxSettingsPageDeps = {
-  appSettingStore: () => SandboxAppSettingKv;
+  appSettingStore?: () => SandboxAppSettingKv;
   translate: (msgid: string, ...args: unknown[]) => string;
 };
 
@@ -28,12 +33,54 @@ export type SandboxSettingsPageApi = {
   onDiscard: () => void;
 };
 
+/** Test-only AppSetting store factory; cleared between mounts. */
+let testAppSettingStore: (() => SandboxAppSettingKv) | null = null;
+
+/** Override AppSetting KV for FE mounts that cannot exercise the real store. */
+export function setSandboxSettingsAppSettingStoreForTests(
+  factory: (() => SandboxAppSettingKv) | null,
+): void {
+  testAppSettingStore = factory;
+}
+
+export type CreateSandboxAppSettingStoreOpts = {
+  createStore?: typeof createStoreByModel;
+  scopeManager?: unknown;
+};
+
+/** Default sandbox.AppSetting Get/Set adapter used by the Settings page. */
+export function createSandboxAppSettingStore(
+  opts: CreateSandboxAppSettingStoreOpts = {},
+): SandboxAppSettingKv {
+  const createStore = opts.createStore ?? createStoreByModel;
+  const scopeManager = opts.scopeManager ?? useScopeManager().menuScopeManager;
+  const raw = createStore('sandbox.AppSetting', {
+    storeId: 'AppSetting_sandbox_settings',
+    scopeManager,
+  }) as unknown as {
+    Get: (key: string, defaultValue?: string | null) => Promise<string | null> | string | null;
+    Set: (key: string, value: string | null) => Promise<unknown>;
+  };
+  return {
+    Get: async (key, defaultValue) => {
+      const value = await raw.Get(key, defaultValue);
+      return value == null ? null : String(value);
+    },
+    Set: async (key, value) => raw.Set(key, value),
+  };
+}
+
+function resolveAppSettingStore(deps: SandboxSettingsPageDeps): () => SandboxAppSettingKv {
+  return deps.appSettingStore ?? testAppSettingStore ?? createSandboxAppSettingStore;
+}
+
 /** Curated sandbox Settings: demo flag/label via AppSetting Get/Set. */
 export function useSandboxSettingsPage(deps: SandboxSettingsPageDeps): SandboxSettingsPageApi {
   const formStore = shallowRef<LocalFormStore | null>(null);
   const baselineFlag = ref('0');
   const baselineLabel = ref('');
   const loading = ref(false);
+  const appSettingStore = resolveAppSettingStore(deps);
 
   const dirty = computed(() => {
     if (!formStore.value) return false;
@@ -61,7 +108,7 @@ export function useSandboxSettingsPage(deps: SandboxSettingsPageDeps): SandboxSe
   async function load() {
     loading.value = true;
     try {
-      const store = deps.appSettingStore();
+      const store = appSettingStore();
       const flag = (await store.Get(SANDBOX_DEMO_FLAG_KEY, '0')) ?? '0';
       const label = (await store.Get(SANDBOX_DEMO_LABEL_KEY, '')) ?? '';
       rebuildForm(flag === '1' ? '1' : '0', label);
@@ -74,7 +121,7 @@ export function useSandboxSettingsPage(deps: SandboxSettingsPageDeps): SandboxSe
     if (!formStore.value || !dirty.value) return;
     loading.value = true;
     try {
-      const store = deps.appSettingStore();
+      const store = appSettingStore();
       const flag = formStore.value.getField('DemoFlag') === true ? '1' : '0';
       const label = String(formStore.value.getField('DemoLabel') ?? '');
       // Only persist keys that actually changed (one edit must not Set siblings).
@@ -88,9 +135,9 @@ export function useSandboxSettingsPage(deps: SandboxSettingsPageDeps): SandboxSe
         await store.Set(SANDBOX_DEMO_LABEL_KEY, label);
         baselineLabel.value = label;
       }
-      ChoyMessage.success(deps.translate('Saved successfully'));
+      ChoyMessage.success(settingsMessage('Saved successfully'));
     } catch {
-      ChoyMessage.error(deps.translate('Save failed'));
+      ChoyMessage.error(settingsMessage('Save failed'));
     } finally {
       loading.value = false;
     }

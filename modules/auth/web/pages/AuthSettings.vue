@@ -38,8 +38,6 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
 import { createTranslate } from '@/web/web/i18n';
-import { useScopeManager } from '@/web/web/stores/storeScopeManager';
-import { createStoreByModel } from '@/web/web/stores/registry';
 import { useChoyViewRouteSwitch } from '@/web/web/composables/useChoyViewRouteSwitch';
 import {
   ChoyBooleanField,
@@ -50,7 +48,7 @@ import {
   ChoySettingsView,
   type ChoyViewSwitcherOption,
 } from '@/web';
-import { useAuthSettingsPage, type AuthAppSettingKv } from './auth_settings_page';
+import { useAuthSettingsPage } from './auth_settings_page';
 
 defineOptions({ name: 'AuthSettingsPage' });
 
@@ -64,15 +62,7 @@ const viewSwitcherOptions = computed<ChoyViewSwitcherOption[]>(() => [
   { value: 'list', label: _t('Parameters View') },
 ]);
 
-function appSettingStore(): AuthAppSettingKv {
-  return createStoreByModel('auth.AppSetting', {
-    storeId: 'AppSetting_auth_settings',
-    scopeManager: useScopeManager().menuScopeManager,
-  }) as unknown as AuthAppSettingKv;
-}
-
 const { formStore, loading, dirty, load, onSave, onDiscard } = useAuthSettingsPage({
-  appSettingStore,
   translate: _t,
 });
 

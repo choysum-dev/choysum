@@ -5,11 +5,27 @@ import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
 import {
   SANDBOX_DEMO_FLAG_KEY,
   SANDBOX_DEMO_LABEL_KEY,
+  createSandboxAppSettingStore,
+  setSandboxSettingsAppSettingStoreForTests,
   useSandboxSettingsPage,
 } from './sandbox_settings_page';
 
 const origSuccess = ChoyMessage.success;
 const origError = ChoyMessage.error;
+
+const successCalls: string[] = [];
+const errorCalls: string[] = [];
+
+function stubMessage() {
+  ChoyMessage.success = ((m: string) => {
+    successCalls.push(m);
+    return 0;
+  }) as unknown as typeof ChoyMessage.success;
+  ChoyMessage.error = ((m: string) => {
+    errorCalls.push(m);
+    return 0;
+  }) as unknown as typeof ChoyMessage.error;
+}
 
 test('useSandboxSettingsPage load/save dirty keys only and discard', async () => {
   const store: Record<string, string> = { [SANDBOX_DEMO_FLAG_KEY]: '0', [SANDBOX_DEMO_LABEL_KEY]: 'hi' };
@@ -22,11 +38,9 @@ test('useSandboxSettingsPage load/save dirty keys only and discard', async () =>
       return null;
     },
   };
-  const successCalls: string[] = [];
-  ChoyMessage.success = ((m: string) => {
-    successCalls.push(m);
-  }) as typeof ChoyMessage.success;
-  ChoyMessage.error = (() => {}) as typeof ChoyMessage.error;
+  successCalls.length = 0;
+  errorCalls.length = 0;
+  stubMessage();
 
   try {
     const api = useSandboxSettingsPage({
@@ -74,11 +88,9 @@ test('useSandboxSettingsPage advances first baseline when second Set fails', asy
       return value;
     },
   };
-  const errorCalls: string[] = [];
-  ChoyMessage.success = (() => {}) as typeof ChoyMessage.success;
-  ChoyMessage.error = ((m: string) => {
-    errorCalls.push(m);
-  }) as typeof ChoyMessage.error;
+  successCalls.length = 0;
+  errorCalls.length = 0;
+  stubMessage();
 
   try {
     const api = useSandboxSettingsPage({
@@ -113,8 +125,7 @@ test('useSandboxSettingsPage load normalizes flag and null Get defaults', async 
     },
     Set: async () => null,
   };
-  ChoyMessage.success = (() => {}) as typeof ChoyMessage.success;
-  ChoyMessage.error = (() => {}) as typeof ChoyMessage.error;
+  stubMessage();
   try {
     const api = useSandboxSettingsPage({
       appSettingStore: () => kv,
@@ -123,7 +134,50 @@ test('useSandboxSettingsPage load normalizes flag and null Get defaults', async 
     await api.load();
     expect(api.formStore.value?.getField('DemoFlag')).toBe(true);
     expect(api.formStore.value?.getField('DemoLabel')).toBe('');
+    expect(typeof createSandboxAppSettingStore).toBe('function');
   } finally {
+    ChoyMessage.success = origSuccess;
+    ChoyMessage.error = origError;
+  }
+});
+
+test('createSandboxAppSettingStore stringifies Get and forwards Set', async () => {
+  const sets: Array<[string, string | null]> = [];
+  const kv = createSandboxAppSettingStore({
+    createStore: (() => ({
+      Get: async () => 0 as any,
+      Set: async (key: string, value: string | null) => {
+        sets.push([key, value]);
+        return null;
+      },
+    })) as any,
+    scopeManager: {},
+  });
+  expect(await kv.Get('k', '1')).toBe('0');
+  const nullKv = createSandboxAppSettingStore({
+    createStore: (() => ({
+      Get: async () => null,
+      Set: async () => null,
+    })) as any,
+    scopeManager: {},
+  });
+  expect(await nullKv.Get('k', '')).toBeNull();
+  await kv.Set('a', '1');
+  expect(sets).toEqual([['a', '1']]);
+});
+
+test('setSandboxSettingsAppSettingStoreForTests feeds useSandboxSettingsPage default path', async () => {
+  setSandboxSettingsAppSettingStoreForTests(() => ({
+    Get: async (key, def) => (key === SANDBOX_DEMO_FLAG_KEY ? '0' : def ?? ''),
+    Set: async () => null,
+  }));
+  stubMessage();
+  try {
+    const api = useSandboxSettingsPage({ translate: (m) => m });
+    await api.load();
+    expect(api.formStore.value?.getField('DemoFlag')).toBe(false);
+  } finally {
+    setSandboxSettingsAppSettingStoreForTests(null);
     ChoyMessage.success = origSuccess;
     ChoyMessage.error = origError;
   }

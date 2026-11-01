@@ -431,37 +431,37 @@ msgctxt "web/pages/SandboxSettings"
 msgid "Demo"
 msgstr "演示"
 
-#: web/pages/SandboxSettings.vue:64 web/pages/SandboxSettings.vue:8
+#: web/pages/SandboxSettings.vue:8
 msgctxt "web/pages/SandboxSettings"
 msgid "Demo flag"
 msgstr "演示开关"
 
-#: web/pages/SandboxSettings.vue:11 web/pages/SandboxSettings.vue:65
+#: web/pages/SandboxSettings.vue:11
 msgctxt "web/pages/SandboxSettings"
 msgid "Demo label"
 msgstr "演示标签"
 
-#: web/pages/SandboxSettings.vue:38
+#: web/pages/SandboxSettings.vue:26
 msgctxt "web/pages/SandboxSettings"
 msgid "Parameters View"
 msgstr "参数视图"
 
-#: web/pages/SandboxSettings.vue:106
+#: web/pages/sandbox_settings_page.ts:140
 msgctxt "web/pages/SandboxSettings"
 msgid "Save failed"
 msgstr "保存失败"
 
-#: web/pages/SandboxSettings.vue:104
+#: web/pages/sandbox_settings_page.ts:138
 msgctxt "web/pages/SandboxSettings"
 msgid "Saved successfully"
 msgstr "保存成功"
 
-#: web/pages/SandboxSettings.vue:37
+#: web/pages/SandboxSettings.vue:25
 msgctxt "web/pages/SandboxSettings"
 msgid "Settings View"
 msgstr "设置视图"
 
-#: web/pages/SandboxSettings.vue:27
+#: web/pages/SandboxSettings.vue:20
 msgctxt "web/pages/SandboxSettings"
 msgid "Settings: sandbox"
 msgstr "设置：sandbox"

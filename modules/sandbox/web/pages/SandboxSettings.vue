@@ -47,8 +47,6 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
 import { createTranslate } from '@/web/web/i18n';
-import { useScopeManager } from '@/web/web/stores/storeScopeManager';
-import { createStoreByModel } from '@/web/web/stores/registry';
 import { useChoyViewRouteSwitch } from '@/web/web/composables/useChoyViewRouteSwitch';
 import {
   ChoyBooleanField,
@@ -60,7 +58,7 @@ import {
   ChoyVarcharField,
   type ChoyViewSwitcherOption,
 } from '@/web';
-import { useSandboxSettingsPage, type SandboxAppSettingKv } from './sandbox_settings_page';
+import { useSandboxSettingsPage } from './sandbox_settings_page';
 
 defineOptions({ name: 'SandboxSettingsPage' });
 
@@ -74,15 +72,7 @@ const viewSwitcherOptions = computed<ChoyViewSwitcherOption[]>(() => [
   { value: 'list', label: _t('Parameters View') },
 ]);
 
-function appSettingStore(): SandboxAppSettingKv {
-  return createStoreByModel('sandbox.AppSetting', {
-    storeId: 'AppSetting_sandbox_settings',
-    scopeManager: useScopeManager().menuScopeManager,
-  }) as unknown as SandboxAppSettingKv;
-}
-
 const { formStore, loading, dirty, load, onSave, onDiscard } = useSandboxSettingsPage({
-  appSettingStore,
   translate: _t,
 });
 
