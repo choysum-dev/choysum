@@ -74,7 +74,7 @@ test('useAuthSettingsPage load/save/discard and ignore no-op save', async () => 
   }
 });
 
-test('useAuthSettingsPage load treats 0 and null Get; save failure does not rethrow', async () => {
+test('useAuthSettingsPage load treats 0/empty as off and null default as on; save/load failures toast', async () => {
   let getValue: string | null = '0';
   const kv = {
     Get: async () => getValue,
@@ -94,6 +94,10 @@ test('useAuthSettingsPage load treats 0 and null Get; save failure does not reth
     await api.load();
     expect(api.formStore.value?.getField('PersistBrowserTimezone')).toBe(false);
 
+    getValue = '';
+    await api.load();
+    expect(api.formStore.value?.getField('PersistBrowserTimezone')).toBe(false);
+
     getValue = null;
     await api.load();
     expect(api.formStore.value?.getField('PersistBrowserTimezone')).toBe(true);
@@ -102,6 +106,22 @@ test('useAuthSettingsPage load treats 0 and null Get; save failure does not reth
     await api.onSave();
     expect(errorCalls).toEqual(['Save failed']);
     expect(api.loading.value).toBe(false);
+
+    getValue = null;
+    errorCalls.length = 0;
+    const failing = useAuthSettingsPage({
+      appSettingStore: () => ({
+        Get: async () => {
+          throw new Error('get boom');
+        },
+        Set: async () => null,
+      }),
+      translate: (msgid) => msgid,
+    });
+    await failing.load();
+    expect(errorCalls).toEqual(['Load failed']);
+    expect(failing.formStore.value?.getField('PersistBrowserTimezone')).toBe(true);
+    expect(failing.loading.value).toBe(false);
   } finally {
     ChoyMessage.success = origSuccess;
     ChoyMessage.error = origError;

@@ -100,7 +100,11 @@ export function useAuthSettingsPage(deps: AuthSettingsPageDeps): AuthSettingsPag
     loading.value = true;
     try {
       const flag = (await appSettingStore().Get(PERSIST_BROWSER_TIMEZONE_KEY, '1')) ?? '1';
-      rebuildForm(flag === '0' ? '0' : '1');
+      // Service treats only exact "1" as enabled; anything else (incl. "") is off.
+      rebuildForm(flag === '1' ? '1' : '0');
+    } catch {
+      ChoyMessage.error(settingsMessage('Load failed'));
+      rebuildForm('1');
     } finally {
       loading.value = false;
     }

@@ -112,6 +112,9 @@ export function useSandboxSettingsPage(deps: SandboxSettingsPageDeps): SandboxSe
       const flag = (await store.Get(SANDBOX_DEMO_FLAG_KEY, '0')) ?? '0';
       const label = (await store.Get(SANDBOX_DEMO_LABEL_KEY, '')) ?? '';
       rebuildForm(flag === '1' ? '1' : '0', label);
+    } catch {
+      ChoyMessage.error(settingsMessage('Load failed'));
+      rebuildForm('0', '');
     } finally {
       loading.value = false;
     }

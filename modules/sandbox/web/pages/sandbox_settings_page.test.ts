@@ -141,6 +141,30 @@ test('useSandboxSettingsPage load normalizes flag and null Get defaults', async 
   }
 });
 
+test('useSandboxSettingsPage load failure toasts and rebuilds defaults', async () => {
+  errorCalls.length = 0;
+  stubMessage();
+  try {
+    const api = useSandboxSettingsPage({
+      appSettingStore: () => ({
+        Get: async () => {
+          throw new Error('get boom');
+        },
+        Set: async () => null,
+      }),
+      translate: (msgid) => msgid,
+    });
+    await api.load();
+    expect(errorCalls).toEqual(['Load failed']);
+    expect(api.formStore.value?.getField('DemoFlag')).toBe(false);
+    expect(api.formStore.value?.getField('DemoLabel')).toBe('');
+    expect(api.loading.value).toBe(false);
+  } finally {
+    ChoyMessage.success = origSuccess;
+    ChoyMessage.error = origError;
+  }
+});
+
 test('createSandboxAppSettingStore stringifies Get and forwards Set', async () => {
   const sets: Array<[string, string | null]> = [];
   const kv = createSandboxAppSettingStore({

@@ -147,7 +147,11 @@ const resolvedSaveLabel = computed(() => {
 });
 const discardLabel = computed(() => props.discardLabel || _t('Discard'));
 const controlsLocked = computed(() => props.loading === true);
-const viewSwitcherOptions = computed(() => props.viewSwitcherOptions || []);
+const viewSwitcherOptions = computed(() => {
+  const opts = props.viewSwitcherOptions || [];
+  if (!controlsLocked.value) return opts;
+  return opts.map((opt) => ({ ...opt, disabled: true }));
+});
 
 useProvideViewScope({ kind: 'Settings', mode: 'edit' });
 
@@ -223,6 +227,8 @@ function dismissLeaveConfirmIfPending() {
 const router = useRouter();
 const removeLeaveGuard = router.beforeEach?.((to, from) => {
   if (leaving) return true;
+  // Do not leave or switch views while Save/load is in flight.
+  if (props.loading) return false;
   if (shouldSkipFormDirtyLeavePrompt(to, from)) {
     dismissLeaveConfirmIfPending();
     return true;
@@ -243,6 +249,7 @@ async function onDiscardClick() {
 }
 
 async function onViewSelect(value: string) {
+  if (controlsLocked.value) return;
   if (!(await confirmDiscardIfDirty())) return;
   leaving = true;
   try {

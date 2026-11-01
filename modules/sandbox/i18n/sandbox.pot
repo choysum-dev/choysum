@@ -447,17 +447,22 @@ msgctxt "web/pages/SandboxSettings"
 msgid "Demo label"
 msgstr ""
 
+#: web/pages/sandbox_settings_page.ts:116
+msgctxt "web/pages/SandboxSettings"
+msgid "Load failed"
+msgstr ""
+
 #: web/pages/SandboxSettings.vue:26
 msgctxt "web/pages/SandboxSettings"
 msgid "Parameters View"
 msgstr ""
 
-#: web/pages/sandbox_settings_page.ts:140
+#: web/pages/sandbox_settings_page.ts:143
 msgctxt "web/pages/SandboxSettings"
 msgid "Save failed"
 msgstr ""
 
-#: web/pages/sandbox_settings_page.ts:138
+#: web/pages/sandbox_settings_page.ts:141
 msgctxt "web/pages/SandboxSettings"
 msgid "Saved successfully"
 msgstr ""

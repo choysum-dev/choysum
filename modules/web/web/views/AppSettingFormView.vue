@@ -24,6 +24,7 @@ SPDX-License-Identifier: Apache-2.0
               prop="Key"
               :label="_t('Key')"
               :rules="requiredRules"
+              trim-on-blur="both"
             />
           </ChoyCol>
           <ChoyCol :span="12">
@@ -31,6 +32,7 @@ SPDX-License-Identifier: Apache-2.0
               :store="store"
               prop="Value"
               :label="_t('Value')"
+              :nullable="false"
             />
           </ChoyCol>
         </ChoyGrid>

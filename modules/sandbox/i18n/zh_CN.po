@@ -441,17 +441,22 @@ msgctxt "web/pages/SandboxSettings"
 msgid "Demo label"
 msgstr "演示标签"
 
+#: web/pages/sandbox_settings_page.ts:116
+msgctxt "web/pages/SandboxSettings"
+msgid "Load failed"
+msgstr "加载失败"
+
 #: web/pages/SandboxSettings.vue:26
 msgctxt "web/pages/SandboxSettings"
 msgid "Parameters View"
 msgstr "参数视图"
 
-#: web/pages/sandbox_settings_page.ts:140
+#: web/pages/sandbox_settings_page.ts:143
 msgctxt "web/pages/SandboxSettings"
 msgid "Save failed"
 msgstr "保存失败"
 
-#: web/pages/sandbox_settings_page.ts:138
+#: web/pages/sandbox_settings_page.ts:141
 msgctxt "web/pages/SandboxSettings"
 msgid "Saved successfully"
 msgstr "保存成功"

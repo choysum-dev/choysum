@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { defineComponent, h, nextTick } from 'vue';
+import { defineComponent, h, inject, nextTick } from 'vue';
 import { createPinia } from 'pinia';
 import * as VueRouter from 'vue-router';
 import { flushPromises, mountApp, stubSfc, restoreSfc } from '@/web/web/__tests__/mountApp';
@@ -291,6 +291,97 @@ test('ChoySettingsView leave guard confirms dirty navigation and skips auth exit
   await authNav;
   await flushPromises();
   expect(useConfirmChoyStore().open).toBe(false);
+  mounted.unmount();
+});
+
+test('ChoySettingsView blocks leave and view-select while loading; pending confirm is exclusive', async () => {
+  const { resolveConfirmChoy, useConfirmChoyStore } = await import(
+    '@/web/web/composables/confirmChoyAction'
+  );
+  stubSfc(
+    ChoyViewSwitcher as any,
+    defineComponent({
+      name: 'ChoyViewSwitcherStub',
+      emits: ['select'],
+      setup(_, { emit }) {
+        return () =>
+          h('button', {
+            type: 'button',
+            'data-testid': 'stub-view-switch',
+            onClick: () => emit('select', 'list'),
+          });
+      },
+    }),
+  );
+  const selected: string[] = [];
+  try {
+    const mounted = mountSettings(
+      {
+        dirty: true,
+        loading: true,
+        viewSwitcherOptions: [
+          { value: 'settings', label: 'Settings View' },
+          { value: 'list', label: 'Parameters View' },
+        ],
+      },
+      { on: { onViewSelect: (v: string) => selected.push(v) } },
+    );
+    await flushPromises();
+    const blocked = mounted.router.push('/blocked-while-loading');
+    await blocked;
+    await flushPromises();
+    expect(useConfirmChoyStore().open).toBe(false);
+    (mounted.q('[data-testid=stub-view-switch]') as HTMLButtonElement).click();
+    await flushPromises();
+    expect(selected).toEqual([]);
+
+    mounted.props.loading = false;
+    await nextTick();
+    await flushPromises();
+    const first = mounted.router.push('/ask-once');
+    await Promise.resolve();
+    expect(useConfirmChoyStore().open).toBe(true);
+    const second = mounted.router.push('/ask-twice');
+    await Promise.resolve();
+    resolveConfirmChoy('cancel');
+    await first;
+    await second;
+    await flushPromises();
+
+    // Re-open confirm then auth-skip dismisses the pending dialog.
+    mounted.props.dirty = true;
+    await nextTick();
+    await flushPromises();
+    const pending = mounted.router.push('/pending-then-auth');
+    await Promise.resolve();
+    expect(useConfirmChoyStore().open).toBe(true);
+    await mounted.router.push({ path: '/login', name: 'login' });
+    await pending;
+    await flushPromises();
+    expect(useConfirmChoyStore().open).toBe(false);
+    mounted.unmount();
+  } finally {
+    restoreSfc(ChoyViewSwitcher as any);
+  }
+});
+
+test('ChoySettingsView form-root onChange is a no-op', async () => {
+  let onChange: ((cb: (d: unknown) => void) => void) | null = null;
+  const Capture = defineComponent({
+    name: 'CaptureFormRoot',
+    setup() {
+      const fr = inject('form-root') as { onChange: (cb: (d: unknown) => void) => void };
+      onChange = fr.onChange.bind(fr);
+      return () => h('span', { 'data-testid': 'capture-root' });
+    },
+  });
+  const mounted = mountSettings(
+    { dirty: false, draft: { A: 1 }, pageTitle: 'T' },
+    { slots: { default: () => h(Capture) } },
+  );
+  await flushPromises();
+  expect(mounted.q('[data-testid=capture-root]')).not.toBeNull();
+  expect(() => onChange?.(() => {})).not.toThrow();
   mounted.unmount();
 });
 

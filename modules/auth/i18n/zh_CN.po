@@ -1081,6 +1081,11 @@ msgctxt "web/pages/AuthSettings"
 msgid "Browser timezone"
 msgstr "浏览器时区"
 
+#: web/pages/auth_settings_page.ts:106
+msgctxt "web/pages/AuthSettings"
+msgid "Load failed"
+msgstr "加载失败"
+
 #: web/pages/AuthSettings.vue:8
 msgctxt "web/pages/AuthSettings"
 msgid "On sign-in, fill an empty user timezone from the browser."
@@ -1091,12 +1096,12 @@ msgctxt "web/pages/AuthSettings"
 msgid "Parameters View"
 msgstr "参数视图"
 
-#: web/pages/auth_settings_page.ts:119
+#: web/pages/auth_settings_page.ts:123
 msgctxt "web/pages/AuthSettings"
 msgid "Save failed"
 msgstr "保存失败"
 
-#: web/pages/auth_settings_page.ts:117
+#: web/pages/auth_settings_page.ts:121
 msgctxt "web/pages/AuthSettings"
 msgid "Saved successfully"
 msgstr "保存成功"
