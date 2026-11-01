@@ -10,29 +10,41 @@ import { createTranslate } from '@/web/web/i18n';
 
 const { _lt } = createTranslate('sandbox', { scope: 'web/menu/menus' });
 
-/** Settings → sandbox → Translations / Property Definitions / Field Defaults when sandbox is installed. */
+/** Settings → sandbox: Settings / Parameters then platform catalogs. */
 export const sandboxSettingsAppMenu: MenuItem = defineMenu('sandbox.menu.settings_app', {
   title: _lt('sandbox'),
   sequence: 110,
   parentMenu: 'web.menu.settings',
   defaultRoles: ['sys.admin'],
   children: [
+    defineMenu('sandbox.menu.settings_page', {
+      title: _lt('Settings'),
+      path: '/sandbox/settings',
+      sequence: 10,
+      defaultRoles: ['sys.admin'],
+    }),
+    defineMenu('sandbox.menu.app_settings_parameters', {
+      title: _lt('Parameters'),
+      path: '/web/app-settings/sandbox',
+      sequence: 20,
+      defaultRoles: ['sys.admin'],
+    }),
     defineMenu('sandbox.menu.terminology', {
       title: _lt('Translations'),
       path: '/web/terminology/sandbox',
-      sequence: 10,
+      sequence: 30,
       defaultRoles: ['sys.admin'],
     }),
     defineMenu('sandbox.menu.property_definitions', {
       title: _lt('Property Definitions'),
       path: '/web/property-definitions/sandbox',
-      sequence: 20,
+      sequence: 40,
       defaultRoles: ['sys.admin'],
     }),
     defineMenu('sandbox.menu.field_defaults', {
       title: _lt('Field Defaults'),
       path: '/web/field-defaults/sandbox',
-      sequence: 30,
+      sequence: 50,
       defaultRoles: ['sys.admin'],
     }),
   ],

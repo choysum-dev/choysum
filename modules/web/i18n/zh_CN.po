@@ -1636,6 +1636,51 @@ msgctxt "web/components/view/ChoySearchFit"
 msgid "Show search"
 msgstr "显示搜索"
 
+#: web/components/view/ChoySettingsView.vue:128
+msgctxt "web/components/view/ChoySettingsView"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/components/view/ChoySettingsView.vue:127 web/components/view/ChoySettingsView.vue:70
+msgctxt "web/components/view/ChoySettingsView"
+msgid "Discard"
+msgstr "放弃"
+
+#: web/components/view/ChoySettingsView.vue:68
+msgctxt "web/components/view/ChoySettingsView"
+msgid "Save"
+msgstr "保存"
+
+#: web/components/view/ChoySettingsView.vue:68
+msgctxt "web/components/view/ChoySettingsView"
+msgid "Saving..."
+msgstr "保存中..."
+
+#: web/components/view/ChoySettingsView.vue:5
+msgctxt "web/components/view/ChoySettingsView"
+msgid "System actions"
+msgstr "系统操作"
+
+#: web/components/view/ChoySettingsView.vue:126
+msgctxt "web/components/view/ChoySettingsView"
+msgid "Unsaved changes"
+msgstr "未保存的更改"
+
+#: web/components/view/ChoySettingsView.vue:5
+msgctxt "web/components/view/ChoySettingsView"
+msgid "User actions"
+msgstr "用户操作"
+
+#: web/components/view/ChoySettingsView.vue:24
+msgctxt "web/components/view/ChoySettingsView"
+msgid "View switcher"
+msgstr "视图切换"
+
+#: web/components/view/ChoySettingsView.vue:126
+msgctxt "web/components/view/ChoySettingsView"
+msgid "You have unsaved changes. Discard them?"
+msgstr "有未保存的更改。要放弃吗？"
+
 #: web/components/view/ChoyFormView.vue:21
 msgctxt "web/components/view/FormView"
 msgid "Cancel"
@@ -2516,12 +2561,17 @@ msgctxt "web/import/ImportPanel"
 msgid "Upload a UTF-8 CSV. Map columns to importable fields from the catalog."
 msgstr "上传 UTF-8 CSV。将列映射到目录中的可导入字段。"
 
-#: web/menu/menus.ts:57
+#: web/menu/menus.ts:63
 msgctxt "web/menu/menus"
 msgid "Field Defaults"
 msgstr "字段默认值"
 
-#: web/menu/menus.ts:51
+#: web/menu/menus.ts:45
+msgctxt "web/menu/menus"
+msgid "Parameters"
+msgstr "参数"
+
+#: web/menu/menus.ts:57
 msgctxt "web/menu/menus"
 msgid "Property Definitions"
 msgstr "属性定义"
@@ -2531,7 +2581,7 @@ msgctxt "web/menu/menus"
 msgid "Settings"
 msgstr "设置"
 
-#: web/menu/menus.ts:32 web/menu/menus.ts:45
+#: web/menu/menus.ts:32 web/menu/menus.ts:51
 msgctxt "web/menu/menus"
 msgid "Translations"
 msgstr "翻译"
@@ -2545,6 +2595,11 @@ msgstr "core"
 msgctxt "web/menu/menus"
 msgid "web"
 msgstr "web"
+
+#: web/pages/app_setting_list_page.ts:38
+msgctxt "web/pages/AppSettingList"
+msgid "Parameters: %s"
+msgstr "参数：%s"
 
 #: web/pages/ErrorView.vue:71
 msgctxt "web/pages/ErrorView"
@@ -2711,6 +2766,21 @@ msgctxt "web/query/utils/filter/operators"
 msgid "Not in"
 msgstr "不属于"
 
+#: web/route/appSettingRoutes.ts:47
+msgctxt "web/route/appSettingRoutes"
+msgid "New Parameter"
+msgstr "新建参数"
+
+#: web/route/appSettingRoutes.ts:62
+msgctxt "web/route/appSettingRoutes"
+msgid "Parameter"
+msgstr "参数"
+
+#: web/route/appSettingRoutes.ts:31
+msgctxt "web/route/appSettingRoutes"
+msgid "Parameters"
+msgstr "参数"
+
 #: web/route/fieldDefaultRoutes.ts:62
 msgctxt "web/route/fieldDefaultRoutes"
 msgid "Field Default"
@@ -2760,6 +2830,71 @@ msgstr "详情"
 msgctxt "web/stores/breadcrumbStore"
 msgid "Page"
 msgstr "页面"
+
+#: web/views/app_setting_actions.ts:14
+msgctxt "web/views/AppSettingFormView"
+msgid "Copy Parameter"
+msgstr "复制参数"
+
+#: web/views/app_setting_actions.ts:14
+msgctxt "web/views/AppSettingFormView"
+msgid "Create Parameter"
+msgstr "创建参数"
+
+#: web/views/app_setting_actions.ts:14
+msgctxt "web/views/AppSettingFormView"
+msgid "Delete Parameter"
+msgstr "删除参数"
+
+#: web/views/app_setting_actions.ts:14
+msgctxt "web/views/AppSettingFormView"
+msgid "Edit Parameter"
+msgstr "编辑参数"
+
+#: web/views/AppSettingFormView.vue:12
+msgctxt "web/views/AppSettingFormView"
+msgid "Key"
+msgstr "键"
+
+#: web/views/AppSettingFormView.vue:9 web/views/app_setting_actions.ts:15
+msgctxt "web/views/AppSettingFormView"
+msgid "Parameter"
+msgstr "参数"
+
+#: web/views/AppSettingFormView.vue:21
+msgctxt "web/views/AppSettingFormView"
+msgid "Required"
+msgstr "必填"
+
+#: web/views/AppSettingFormView.vue:15
+msgctxt "web/views/AppSettingFormView"
+msgid "Value"
+msgstr "值"
+
+#: web/views/AppSettingListView.vue:11
+msgctxt "web/views/AppSettingListView"
+msgid "Key"
+msgstr "键"
+
+#: web/views/AppSettingListView.vue:50
+msgctxt "web/views/AppSettingListView"
+msgid "Parameters View"
+msgstr "参数视图"
+
+#: web/views/AppSettingListView.vue:49
+msgctxt "web/views/AppSettingListView"
+msgid "Settings View"
+msgstr "设置视图"
+
+#: web/views/AppSettingListView.vue:12
+msgctxt "web/views/AppSettingListView"
+msgid "Value"
+msgstr "值"
+
+#: web/views/AppSettingListView.vue:7
+msgctxt "web/views/AppSettingListView"
+msgid "View switcher"
+msgstr "视图切换"
 
 #: web/views/FieldDefaultFormView.vue:26
 msgctxt "web/views/FieldDefaultFormView"

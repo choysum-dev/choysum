@@ -1682,6 +1682,52 @@ msgctxt "web/components/view/ChoySearchFit"
 msgid "Show search"
 msgstr ""
 
+#: web/components/view/ChoySettingsView.vue:128
+msgctxt "web/components/view/ChoySettingsView"
+msgid "Cancel"
+msgstr ""
+
+#: web/components/view/ChoySettingsView.vue:127
+#: web/components/view/ChoySettingsView.vue:70
+msgctxt "web/components/view/ChoySettingsView"
+msgid "Discard"
+msgstr ""
+
+#: web/components/view/ChoySettingsView.vue:68
+msgctxt "web/components/view/ChoySettingsView"
+msgid "Save"
+msgstr ""
+
+#: web/components/view/ChoySettingsView.vue:68
+msgctxt "web/components/view/ChoySettingsView"
+msgid "Saving..."
+msgstr ""
+
+#: web/components/view/ChoySettingsView.vue:5
+msgctxt "web/components/view/ChoySettingsView"
+msgid "System actions"
+msgstr ""
+
+#: web/components/view/ChoySettingsView.vue:126
+msgctxt "web/components/view/ChoySettingsView"
+msgid "Unsaved changes"
+msgstr ""
+
+#: web/components/view/ChoySettingsView.vue:5
+msgctxt "web/components/view/ChoySettingsView"
+msgid "User actions"
+msgstr ""
+
+#: web/components/view/ChoySettingsView.vue:24
+msgctxt "web/components/view/ChoySettingsView"
+msgid "View switcher"
+msgstr ""
+
+#: web/components/view/ChoySettingsView.vue:126
+msgctxt "web/components/view/ChoySettingsView"
+msgid "You have unsaved changes. Discard them?"
+msgstr ""
+
 #: web/components/view/ChoyFormView.vue:21
 msgctxt "web/components/view/FormView"
 msgid "Cancel"
@@ -2582,12 +2628,17 @@ msgctxt "web/import/ImportPanel"
 msgid "Upload a UTF-8 CSV. Map columns to importable fields from the catalog."
 msgstr ""
 
-#: web/menu/menus.ts:57
+#: web/menu/menus.ts:63
 msgctxt "web/menu/menus"
 msgid "Field Defaults"
 msgstr ""
 
-#: web/menu/menus.ts:51
+#: web/menu/menus.ts:45
+msgctxt "web/menu/menus"
+msgid "Parameters"
+msgstr ""
+
+#: web/menu/menus.ts:57
 msgctxt "web/menu/menus"
 msgid "Property Definitions"
 msgstr ""
@@ -2598,7 +2649,7 @@ msgid "Settings"
 msgstr ""
 
 #: web/menu/menus.ts:32
-#: web/menu/menus.ts:45
+#: web/menu/menus.ts:51
 msgctxt "web/menu/menus"
 msgid "Translations"
 msgstr ""
@@ -2611,6 +2662,11 @@ msgstr ""
 #: web/menu/menus.ts:40
 msgctxt "web/menu/menus"
 msgid "web"
+msgstr ""
+
+#: web/pages/app_setting_list_page.ts:38
+msgctxt "web/pages/AppSettingList"
+msgid "Parameters: %s"
 msgstr ""
 
 #: web/pages/ErrorView.vue:71
@@ -2795,6 +2851,21 @@ msgctxt "web/query/utils/filter/operators"
 msgid "Not in"
 msgstr ""
 
+#: web/route/appSettingRoutes.ts:47
+msgctxt "web/route/appSettingRoutes"
+msgid "New Parameter"
+msgstr ""
+
+#: web/route/appSettingRoutes.ts:62
+msgctxt "web/route/appSettingRoutes"
+msgid "Parameter"
+msgstr ""
+
+#: web/route/appSettingRoutes.ts:31
+msgctxt "web/route/appSettingRoutes"
+msgid "Parameters"
+msgstr ""
+
 #: web/route/fieldDefaultRoutes.ts:62
 msgctxt "web/route/fieldDefaultRoutes"
 msgid "Field Default"
@@ -2844,6 +2915,72 @@ msgstr ""
 #: web/stores/breadcrumbStore/index.ts:19
 msgctxt "web/stores/breadcrumbStore"
 msgid "Page"
+msgstr ""
+
+#: web/views/app_setting_actions.ts:14
+msgctxt "web/views/AppSettingFormView"
+msgid "Copy Parameter"
+msgstr ""
+
+#: web/views/app_setting_actions.ts:14
+msgctxt "web/views/AppSettingFormView"
+msgid "Create Parameter"
+msgstr ""
+
+#: web/views/app_setting_actions.ts:14
+msgctxt "web/views/AppSettingFormView"
+msgid "Delete Parameter"
+msgstr ""
+
+#: web/views/app_setting_actions.ts:14
+msgctxt "web/views/AppSettingFormView"
+msgid "Edit Parameter"
+msgstr ""
+
+#: web/views/AppSettingFormView.vue:12
+msgctxt "web/views/AppSettingFormView"
+msgid "Key"
+msgstr ""
+
+#: web/views/AppSettingFormView.vue:9
+#: web/views/app_setting_actions.ts:15
+msgctxt "web/views/AppSettingFormView"
+msgid "Parameter"
+msgstr ""
+
+#: web/views/AppSettingFormView.vue:21
+msgctxt "web/views/AppSettingFormView"
+msgid "Required"
+msgstr ""
+
+#: web/views/AppSettingFormView.vue:15
+msgctxt "web/views/AppSettingFormView"
+msgid "Value"
+msgstr ""
+
+#: web/views/AppSettingListView.vue:11
+msgctxt "web/views/AppSettingListView"
+msgid "Key"
+msgstr ""
+
+#: web/views/AppSettingListView.vue:50
+msgctxt "web/views/AppSettingListView"
+msgid "Parameters View"
+msgstr ""
+
+#: web/views/AppSettingListView.vue:49
+msgctxt "web/views/AppSettingListView"
+msgid "Settings View"
+msgstr ""
+
+#: web/views/AppSettingListView.vue:12
+msgctxt "web/views/AppSettingListView"
+msgid "Value"
+msgstr ""
+
+#: web/views/AppSettingListView.vue:7
+msgctxt "web/views/AppSettingListView"
+msgid "View switcher"
 msgstr ""
 
 #: web/views/FieldDefaultFormView.vue:26

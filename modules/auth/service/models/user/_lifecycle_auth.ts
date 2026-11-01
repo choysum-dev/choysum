@@ -16,12 +16,14 @@ import UserRole from '../user_role';
 import { hashPassword, verifyPassword, withPermissionGraphBypass } from './_authz_shared';
 import { withRecordRuleAndFieldRuleBypass } from '@/core/service/api/authz_bypass';
 import { buildScopePreferences } from './_lifecycle_scope';
+import {
+  PERSIST_BROWSER_TIMEZONE_KEY,
+} from './persist_browser_timezone_key';
 import type User from './user';
 
-const CompanyService = createServiceByModel<typeof Company>('base.Company');
+export { PERSIST_BROWSER_TIMEZONE_KEY } from './persist_browser_timezone_key';
 
-/** Auth AppSetting key: gate D20 silent browser-timezone persist (table-local; no `auth.` prefix). */
-export const PERSIST_BROWSER_TIMEZONE_KEY = 'persist_browser_timezone';
+const CompanyService = createServiceByModel<typeof Company>('base.Company');
 
 /**
  * D20: when User.Timezone is empty, return a valid baggage client IANA to persist.

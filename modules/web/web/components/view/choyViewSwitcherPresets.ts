@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { Component } from 'vue';
-import { BarChart3, LayoutGrid, List } from 'lucide-vue-next';
+import { BarChart3, LayoutGrid, List, SlidersHorizontal } from 'lucide-vue-next';
 
 /**
  * Built-in switcher kinds used by action-bar view toggles.
- * Values are UI/route keys (lowercase), not ViewKindId (`List` / `Kanban`).
+ * Values are UI/route keys (lowercase), not ViewKindId (`List` / `Kanban` / `Settings`).
  * Register more via registerChoyViewSwitcherPreset when a new chrome view ships.
  */
-export type ChoyViewSwitcherKind = 'list' | 'kanban' | 'board' | 'chart' | (string & {});
+export type ChoyViewSwitcherKind = 'list' | 'kanban' | 'board' | 'chart' | 'settings' | (string & {});
 
 export type ChoyViewSwitcherPreset = {
   /** Default English tip/aria label when a caller omits `label`. */
@@ -43,6 +43,8 @@ const presets = new Map<string, ChoyViewSwitcherPreset>([
   ['kanban', { defaultLabel: 'Kanban', icon: LayoutGrid }],
   ['board', { defaultLabel: 'Board', icon: LayoutGrid }],
   ['chart', { defaultLabel: 'Chart', icon: BarChart3 }],
+  // Curated settings surface (not Kanban grid).
+  ['settings', { defaultLabel: 'Settings', icon: SlidersHorizontal }],
 ]);
 
 /** Built-in preset ids (list / kanban / board / chart, plus any registered). */
@@ -103,4 +105,5 @@ export function resetChoyViewSwitcherPresetsForTests(): void {
   presets.set('kanban', { defaultLabel: 'Kanban', icon: LayoutGrid });
   presets.set('board', { defaultLabel: 'Board', icon: LayoutGrid });
   presets.set('chart', { defaultLabel: 'Chart', icon: BarChart3 });
+  presets.set('settings', { defaultLabel: 'Settings', icon: SlidersHorizontal });
 }

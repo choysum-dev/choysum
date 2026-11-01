@@ -63,3 +63,12 @@ test('sandbox Settings menu links Field Defaults to the shared web path', () => 
     sandboxSettingsAppMenu.children?.some(child => child.path === '/web/field-defaults/sandbox')
   ).toBe(true);
 });
+
+test('sandbox Settings menu links Parameters and Settings dual views', () => {
+  expect(
+    sandboxSettingsAppMenu.children?.some(child => child.path === '/web/app-settings/sandbox')
+  ).toBe(true);
+  expect(
+    sandboxSettingsAppMenu.children?.some(child => child.path === '/sandbox/settings')
+  ).toBe(true);
+});

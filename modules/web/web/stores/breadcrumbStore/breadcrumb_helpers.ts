@@ -60,6 +60,24 @@ export function isMenuNavigatedCrumb(crumb: { kind?: string; path?: string }): b
 }
 
 /**
+ * Explicit route chrome title only (`meta.pageTitleText` / `meta.pageTitle`).
+ * Used for the menu leaf crumb so breadcrumb matches page chrome when the
+ * route pins a title (e.g. Settings: auth) that differs from the short menu label.
+ * Does not fall through to route name / path heuristics.
+ */
+export function getExplicitPageTitle(route: any): TextSource | null {
+  if (route?.meta?.pageTitleText) {
+    return route.meta.pageTitleText;
+  }
+  if (route?.meta?.pageTitle) {
+    return typeof route.meta.pageTitle === 'function'
+      ? route.meta.pageTitle(route)
+      : String(route.meta.pageTitle);
+  }
+  return null;
+}
+
+/**
  * Resolve a page crumb title from route meta / name / path heuristics.
  */
 export function getPageTitle(
@@ -67,14 +85,8 @@ export function getPageTitle(
   detailsFallback: TextSource,
   pageFallback: TextSource,
 ): TextSource {
-  if (route.meta?.pageTitleText) {
-    return route.meta.pageTitleText;
-  }
-  if (route.meta?.pageTitle) {
-    return typeof route.meta.pageTitle === 'function'
-      ? route.meta.pageTitle(route)
-      : String(route.meta.pageTitle);
-  }
+  const explicit = getExplicitPageTitle(route);
+  if (explicit != null) return explicit;
   if (route.meta?.title) {
     return String(route.meta.title);
   }

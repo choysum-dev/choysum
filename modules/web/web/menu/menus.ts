@@ -10,10 +10,10 @@ const { _lt } = createTranslate('web', { scope: 'web/menu/menus' });
 
 /**
  * Platform shell menus. Domain modules attach their own roots; Settings is the
- * cross-cutting configuration mount point. Each installed application registers
- * Settings → {app} → Translations / Property Definitions / Field Defaults; web hosts
- * core terminology and web's own entries here. core has no PropertyDefinition or
- * FieldDefault store.
+ * cross-cutting configuration mount point. Child order under Settings → {app}:
+ * Settings (when present) → Parameters → Translations → Property Definitions →
+ * Field Defaults. web hosts core terminology and web's own entries here. core
+ * has no PropertyDefinition / FieldDefault / AppSetting store.
  */
 export const menus: MenuItem[] = [
   defineMenu('web.menu.settings', {
@@ -31,7 +31,7 @@ export const menus: MenuItem[] = [
           defineMenu('web.menu.terminology_core', {
             title: _lt('Translations'),
             path: '/web/terminology/core',
-            sequence: 10,
+            sequence: 30,
             defaultRoles: ['sys.admin'],
           }),
         ],
@@ -41,22 +41,28 @@ export const menus: MenuItem[] = [
         sequence: 40,
         defaultRoles: ['sys.admin'],
         children: [
+          defineMenu('web.menu.app_settings_parameters', {
+            title: _lt('Parameters'),
+            path: '/web/app-settings/web',
+            sequence: 20,
+            defaultRoles: ['sys.admin'],
+          }),
           defineMenu('web.menu.terminology', {
             title: _lt('Translations'),
             path: '/web/terminology/web',
-            sequence: 10,
+            sequence: 30,
             defaultRoles: ['sys.admin'],
           }),
           defineMenu('web.menu.property_definitions', {
             title: _lt('Property Definitions'),
             path: '/web/property-definitions/web',
-            sequence: 20,
+            sequence: 40,
             defaultRoles: ['sys.admin'],
           }),
           defineMenu('web.menu.field_defaults', {
             title: _lt('Field Defaults'),
             path: '/web/field-defaults/web',
-            sequence: 30,
+            sequence: 50,
             defaultRoles: ['sys.admin'],
           }),
         ],

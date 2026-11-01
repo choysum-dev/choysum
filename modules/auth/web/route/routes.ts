@@ -5,6 +5,7 @@ import { RouteRecordRaw } from 'vue-router';
 import { defineRoute } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
 import {
+  appSettingListComponent,
   fieldDefaultListComponent,
   propertyDefinitionListComponent,
   terminologyListComponent,
@@ -395,6 +396,39 @@ export const appRoutes: RouteRecordRaw[] = [
     component: fieldDefaultListComponent,
     defaultRoles: ['sys.admin'],
     meta: { requiresAuth: true, fieldDefaultApplication: 'auth' },
+  }),
+  defineRoute('auth.route.app_setting_list', {
+    sequence: 70,
+    title: _lt('Parameters'),
+    path: 'web/app-settings/auth',
+    name: 'AppSettingList_auth',
+    component: appSettingListComponent,
+    defaultRoles: ['sys.admin'],
+    meta: {
+      requiresAuth: true,
+      appSettingApplication: 'auth',
+      viewKind: 'list',
+      viewPaths: {
+        settings: '/auth/settings',
+        list: '/web/app-settings/auth',
+      },
+    },
+  }),
+  defineRoute('auth.route.settings', {
+    sequence: 71,
+    title: _lt('Settings: auth'),
+    path: 'auth/settings',
+    name: 'AuthSettings',
+    component: () => import('../pages/AuthSettings.vue'),
+    defaultRoles: ['sys.admin'],
+    meta: {
+      requiresAuth: true,
+      viewKind: 'settings',
+      viewPaths: {
+        settings: '/auth/settings',
+        list: '/web/app-settings/auth',
+      },
+    },
   }),
 ];
 

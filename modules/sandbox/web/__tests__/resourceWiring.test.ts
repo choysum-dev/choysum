@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getRouteActionsFromMeta } from '@/core/web/resource';
+import { sandboxSettingsAppMenu } from '../menu/menus';
 import { sandboxRoutes } from '../route/routes';
 import { sandboxRecordActions, sandboxRecordOpenDetailAction } from '../views/sandbox_record_actions';
 import { sandboxTagActions } from '../views/sandbox_tag_actions';
@@ -105,4 +106,23 @@ test('sandbox resource wiring: FieldDefault list uses shared web host path', () 
     requiresAuth: true,
     fieldDefaultApplication: 'sandbox',
   });
+});
+
+test('sandbox resource wiring: AppSetting parameters + settings dual views', () => {
+  const byName = Object.fromEntries(sandboxRoutes.map(route => [String(route.name), route]));
+  expect(byName.AppSettingList_sandbox?.path).toBe('web/app-settings/sandbox');
+  expect(byName.AppSettingList_sandbox?.meta).toMatchObject({
+    requiresAuth: true,
+    appSettingApplication: 'sandbox',
+    viewKind: 'list',
+  });
+  expect(byName.SandboxSettings?.path).toBe('sandbox/settings');
+  expect(byName.SandboxSettings?.meta).toMatchObject({
+    requiresAuth: true,
+    viewKind: 'settings',
+  });
+  expect(sandboxSettingsAppMenu.children?.some(child => child.path === '/web/app-settings/sandbox')).toBe(
+    true
+  );
+  expect(sandboxSettingsAppMenu.children?.some(child => child.path === '/sandbox/settings')).toBe(true);
 });

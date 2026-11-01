@@ -22,13 +22,15 @@ describe('choyViewSwitcherPresets', () => {
     resetChoyViewSwitcherPresetsForTests();
   });
 
-  test('builtins cover list / kanban / board / chart', () => {
+  test('builtins cover list / kanban / board / chart / settings', () => {
     const ids = listChoyViewSwitcherPresetIds();
     expect(ids).toContain('list');
     expect(ids).toContain('kanban');
     expect(ids).toContain('board');
     expect(ids).toContain('chart');
+    expect(ids).toContain('settings');
     expect(getChoyViewSwitcherPreset('chart')?.defaultLabel).toBe('Chart');
+    expect(getChoyViewSwitcherPreset('settings')?.defaultLabel).toBe('Settings');
   });
 
   test('resolve fills icons from presets and keeps caller order', () => {

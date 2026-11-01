@@ -54,7 +54,7 @@ export function clearViewKindsForTests(): void {
 
 let builtinsRegistered = false;
 
-/** Idempotent builtin Form/List/Kanban/Chart/Search registration. */
+/** Idempotent builtin Form/List/Kanban/Chart/Search/Settings registration. */
 export function registerBuiltinViewKinds(): void {
   if (builtinsRegistered) return;
   builtinsRegistered = true;
@@ -63,6 +63,8 @@ export function registerBuiltinViewKinds(): void {
   registerViewKind({ id: 'Kanban', defaultMode: 'display', fieldPresentation: 'cell' });
   registerViewKind({ id: 'Chart', defaultMode: 'display', fieldPresentation: 'none' });
   registerViewKind({ id: 'Search', defaultMode: 'display', fieldPresentation: 'none' });
+  // Curated multi-key settings surface (Save/Discard); not a single-record Form.
+  registerViewKind({ id: 'Settings', defaultMode: 'edit', fieldPresentation: 'form' });
 }
 
 /** Test helper to allow re-registering builtins after clear. */

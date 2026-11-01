@@ -1160,24 +1160,29 @@ msgctxt "web/menu/menus"
 msgid "Field Defaults"
 msgstr ""
 
-#: web/menu/menus.ts:46
+#: web/menu/menus.ts:52
 msgctxt "web/menu/menus"
 msgid "Module Board"
 msgstr ""
 
-#: web/menu/menus.ts:52
+#: web/menu/menus.ts:58
 msgctxt "web/menu/menus"
 msgid "Module List"
 msgstr ""
 
-#: web/menu/menus.ts:41
+#: web/menu/menus.ts:47
 msgctxt "web/menu/menus"
 msgid "Module Management"
 msgstr ""
 
-#: web/menu/menus.ts:58
+#: web/menu/menus.ts:64
 msgctxt "web/menu/menus"
 msgid "Operation History"
+msgstr ""
+
+#: web/menu/menus.ts:37
+msgctxt "web/menu/menus"
+msgid "Parameters"
 msgstr ""
 
 #: web/menu/menus.ts:25
@@ -1210,37 +1215,42 @@ msgctxt "web/pages/ModuleListTable"
 msgid "Module List"
 msgstr ""
 
-#: web/route/routes.ts:79
+#: web/route/routes.ts:80
 msgctxt "web/route/routes"
 msgid "Field Defaults"
 msgstr ""
 
-#: web/route/routes.ts:51
+#: web/route/routes.ts:52
 msgctxt "web/route/routes"
 msgid "Module Detail"
 msgstr ""
 
-#: web/route/routes.ts:31
+#: web/route/routes.ts:32
 msgctxt "web/route/routes"
 msgid "Module List"
 msgstr ""
 
-#: web/route/routes.ts:21
+#: web/route/routes.ts:22
 msgctxt "web/route/routes"
 msgid "Module Management"
 msgstr ""
 
-#: web/route/routes.ts:41
+#: web/route/routes.ts:42
 msgctxt "web/route/routes"
 msgid "Operation History"
 msgstr ""
 
-#: web/route/routes.ts:70
+#: web/route/routes.ts:89
+msgctxt "web/route/routes"
+msgid "Parameters"
+msgstr ""
+
+#: web/route/routes.ts:71
 msgctxt "web/route/routes"
 msgid "Property Definitions"
 msgstr ""
 
-#: web/route/routes.ts:61
+#: web/route/routes.ts:62
 msgctxt "web/route/routes"
 msgid "Translations"
 msgstr ""

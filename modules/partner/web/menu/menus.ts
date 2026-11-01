@@ -10,29 +10,35 @@ import { createTranslate } from '@/web/web/i18n';
 
 const { _lt } = createTranslate('partner', { scope: 'web/menu/menus' });
 
-/** Settings → partner → Translations when partner is installed. */
+/** Settings → partner: Parameters then platform catalogs. */
 export const partnerSettingsAppMenu: MenuItem = defineMenu('partner.menu.settings_app', {
   title: _lt('partner'),
   sequence: 60,
   parentMenu: 'web.menu.settings',
   defaultRoles: ['sys.admin'],
   children: [
+    defineMenu('partner.menu.app_settings_parameters', {
+      title: _lt('Parameters'),
+      path: '/web/app-settings/partner',
+      sequence: 20,
+      defaultRoles: ['sys.admin'],
+    }),
     defineMenu('partner.menu.terminology', {
       title: _lt('Translations'),
       path: '/web/terminology/partner',
-      sequence: 10,
+      sequence: 30,
       defaultRoles: ['sys.admin'],
     }),
     defineMenu('partner.menu.property_definitions', {
       title: _lt('Property Definitions'),
       path: '/web/property-definitions/partner',
-      sequence: 20,
+      sequence: 40,
       defaultRoles: ['sys.admin'],
     }),
     defineMenu('partner.menu.field_defaults', {
       title: _lt('Field Defaults'),
       path: '/web/field-defaults/partner',
-      sequence: 30,
+      sequence: 50,
       defaultRoles: ['sys.admin'],
     }),
   ],

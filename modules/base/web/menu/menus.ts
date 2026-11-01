@@ -8,29 +8,35 @@ import { Building2 } from 'lucide-vue-next';
 
 const { _lt } = createTranslate('base', { scope: 'web/menu/menus' });
 
-/** Settings → base → Translations when base is installed. */
+/** Settings → base: Parameters then platform catalogs. */
 export const baseSettingsAppMenu: MenuItem = defineMenu('base.menu.settings_app', {
   title: _lt('base'),
   sequence: 30,
   parentMenu: 'web.menu.settings',
   defaultRoles: ['sys.admin'],
   children: [
+    defineMenu('base.menu.app_settings_parameters', {
+      title: _lt('Parameters'),
+      path: '/web/app-settings/base',
+      sequence: 20,
+      defaultRoles: ['sys.admin'],
+    }),
     defineMenu('base.menu.terminology_base', {
       title: _lt('Translations'),
       path: '/web/terminology/base',
-      sequence: 10,
+      sequence: 30,
       defaultRoles: ['sys.admin'],
     }),
     defineMenu('base.menu.property_definitions', {
       title: _lt('Property Definitions'),
       path: '/web/property-definitions/base',
-      sequence: 20,
+      sequence: 40,
       defaultRoles: ['sys.admin'],
     }),
     defineMenu('base.menu.field_defaults', {
       title: _lt('Field Defaults'),
       path: '/web/field-defaults/base',
-      sequence: 30,
+      sequence: 50,
       defaultRoles: ['sys.admin'],
     }),
   ],

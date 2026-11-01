@@ -17,19 +17,22 @@ describe('viewKinds registry', () => {
     resetBuiltinViewKindsRegistrationForTests();
   });
 
-  test('builtins register Form/List/Kanban/Chart/Search', () => {
+  test('builtins register Form/List/Kanban/Chart/Search/Settings', () => {
     registerBuiltinViewKinds();
     expect(getViewKind('Form').fieldPresentation).toBe('form');
     expect(getViewKind('List').fieldPresentation).toBe('cell');
     expect(getViewKind('Kanban').fieldPresentation).toBe('cell');
     expect(getViewKind('Chart').fieldPresentation).toBe('none');
     expect(getViewKind('Search').fieldPresentation).toBe('none');
+    expect(getViewKind('Settings').fieldPresentation).toBe('form');
+    expect(getViewKind('Settings').defaultMode).toBe('edit');
     expect(listViewKinds().map((k) => k.id).sort()).toEqual([
       'Chart',
       'Form',
       'Kanban',
       'List',
       'Search',
+      'Settings',
     ]);
   });
 
@@ -80,6 +83,6 @@ describe('viewKinds registry', () => {
   test('registerBuiltinViewKinds is idempotent', () => {
     registerBuiltinViewKinds();
     registerBuiltinViewKinds();
-    expect(listViewKinds().length).toBe(5);
+    expect(listViewKinds().length).toBe(6);
   });
 });

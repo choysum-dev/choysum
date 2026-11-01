@@ -371,17 +371,27 @@ msgctxt "sandbox.model.SandboxTag.fields"
 msgid "Name"
 msgstr "名称"
 
-#: web/menu/menus.ts:33
+#: web/menu/menus.ts:45
 msgctxt "web/menu/menus"
 msgid "Field Defaults"
 msgstr "字段默认值"
 
 #: web/menu/menus.ts:27
 msgctxt "web/menu/menus"
+msgid "Parameters"
+msgstr "参数"
+
+#: web/menu/menus.ts:39
+msgctxt "web/menu/menus"
 msgid "Property Definitions"
 msgstr "属性定义"
 
 #: web/menu/menus.ts:21
+msgctxt "web/menu/menus"
+msgid "Settings"
+msgstr "设置"
+
+#: web/menu/menus.ts:33
 msgctxt "web/menu/menus"
 msgid "Translations"
 msgstr "翻译"
@@ -416,52 +426,112 @@ msgctxt "web/pages/SandboxRecordList"
 msgid "Field Kitchen Sink"
 msgstr "字段试验场"
 
-#: web/route/routes.ts:163
+#: web/pages/SandboxSettings.vue:5
+msgctxt "web/pages/SandboxSettings"
+msgid "Demo"
+msgstr "演示"
+
+#: web/pages/SandboxSettings.vue:64 web/pages/SandboxSettings.vue:8
+msgctxt "web/pages/SandboxSettings"
+msgid "Demo flag"
+msgstr "演示开关"
+
+#: web/pages/SandboxSettings.vue:11 web/pages/SandboxSettings.vue:65
+msgctxt "web/pages/SandboxSettings"
+msgid "Demo label"
+msgstr "演示标签"
+
+#: web/pages/SandboxSettings.vue:38
+msgctxt "web/pages/SandboxSettings"
+msgid "Parameters View"
+msgstr "参数视图"
+
+#: web/pages/SandboxSettings.vue:106
+msgctxt "web/pages/SandboxSettings"
+msgid "Save failed"
+msgstr "保存失败"
+
+#: web/pages/SandboxSettings.vue:104
+msgctxt "web/pages/SandboxSettings"
+msgid "Saved successfully"
+msgstr "保存成功"
+
+#: web/pages/SandboxSettings.vue:37
+msgctxt "web/pages/SandboxSettings"
+msgid "Settings View"
+msgstr "设置视图"
+
+#: web/pages/SandboxSettings.vue:27
+msgctxt "web/pages/SandboxSettings"
+msgid "Settings: sandbox"
+msgstr "设置：sandbox"
+
+#: web/pages/SandboxSettings.vue:11
+msgctxt "web/pages/SandboxSettings"
+msgid "Short label shown with sandbox demo mode."
+msgstr "沙箱演示模式旁显示的短标签。"
+
+#: web/pages/SandboxSettings.vue:8
+msgctxt "web/pages/SandboxSettings"
+msgid "Turn sandbox demo mode on or off."
+msgstr "打开或关闭沙箱演示模式。"
+
+#: web/route/routes.ts:164
 msgctxt "web/route/routes"
 msgid "Field Defaults"
 msgstr "字段默认值"
 
-#: web/route/routes.ts:87
+#: web/route/routes.ts:88
 msgctxt "web/route/routes"
 msgid "New Sandbox Record"
 msgstr "新建沙箱记录"
 
-#: web/route/routes.ts:117
+#: web/route/routes.ts:118
 msgctxt "web/route/routes"
 msgid "New Sandbox Tag"
 msgstr "新建沙箱标签"
 
-#: web/route/routes.ts:154
+#: web/route/routes.ts:173
+msgctxt "web/route/routes"
+msgid "Parameters"
+msgstr "参数"
+
+#: web/route/routes.ts:155
 msgctxt "web/route/routes"
 msgid "Property Definitions"
 msgstr "属性定义"
 
-#: web/route/routes.ts:66
+#: web/route/routes.ts:67
 msgctxt "web/route/routes"
 msgid "Sandbox Record Chart"
 msgstr "沙箱记录图表"
 
-#: web/route/routes.ts:102
+#: web/route/routes.ts:103
 msgctxt "web/route/routes"
 msgid "Sandbox Record Detail"
 msgstr "沙箱记录详情"
 
-#: web/route/routes.ts:46
+#: web/route/routes.ts:47
 msgctxt "web/route/routes"
 msgid "Sandbox Record Kanban"
 msgstr "沙箱记录看板"
 
-#: web/route/routes.ts:26
+#: web/route/routes.ts:27
 msgctxt "web/route/routes"
 msgid "Sandbox Record List"
 msgstr "沙箱记录列表"
 
-#: web/route/routes.ts:131
+#: web/route/routes.ts:132
 msgctxt "web/route/routes"
 msgid "Sandbox Tag Detail"
 msgstr "沙箱标签详情"
 
-#: web/route/routes.ts:145
+#: web/route/routes.ts:190
+msgctxt "web/route/routes"
+msgid "Settings: sandbox"
+msgstr "设置：sandbox"
+
+#: web/route/routes.ts:146
 msgctxt "web/route/routes"
 msgid "Translations"
 msgstr "翻译"
@@ -881,6 +951,14 @@ msgstr "标签"
 #~ msgid "Property Definitions"
 #~ msgstr "属性定义"
 
+#~ msgctxt "web/pages/SandboxSettings"
+#~ msgid "Sandbox dogfood switch stored as AppSetting demo_flag."
+#~ msgstr "沙箱演示开关，存为 AppSetting 键 demo_flag。"
+
+#~ msgctxt "web/pages/SandboxSettings"
+#~ msgid "Sandbox dogfood text stored as AppSetting demo_label."
+#~ msgstr "沙箱演示文案，存为 AppSetting 键 demo_label。"
+
 #~ msgctxt "web/route/routes"
 #~ msgid "New Property Definition"
 #~ msgstr "新建属性定义"
@@ -888,6 +966,10 @@ msgstr "标签"
 #~ msgctxt "web/route/routes"
 #~ msgid "Property Definition"
 #~ msgstr "属性定义"
+
+#~ msgctxt "web/route/routes"
+#~ msgid "Settings"
+#~ msgstr "设置"
 
 #~ msgctxt "web/views/SandboxPropertyDefinitionFormView"
 #~ msgid "Container Id"
