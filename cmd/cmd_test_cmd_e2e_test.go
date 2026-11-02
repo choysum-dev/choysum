@@ -602,6 +602,8 @@ func writeTempSqliteDB(t *testing.T) string {
 }
 
 func writeInitializedSqliteDB(t *testing.T) string {
+	// Pre-existing empty DB file so `run` does not treat the workspace as missing storage.
+	// Do not seed system.init.* (PC-3 stopped writing those keys).
 	path := writeTempSqliteDB(t)
 	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
 	if err != nil {
@@ -609,9 +611,6 @@ func writeInitializedSqliteDB(t *testing.T) string {
 	}
 	if err := db.AutoMigrate(&modmeta.Setting{}); err != nil {
 		t.Fatalf("migrate: %v", err)
-	}
-	if err := db.Create(&modmeta.Setting{Key: "system.init.done", Value: "true"}).Error; err != nil {
-		t.Fatalf("insert init marker: %v", err)
 	}
 	return path
 }
@@ -2014,11 +2013,10 @@ func TestCLIRunDoesNotWriteInitArtifacts(t *testing.T) {
 	if err := db.Find(&settings).Error; err != nil {
 		t.Fatalf("query settings: %v", err)
 	}
-	if len(settings) != 1 {
-		t.Fatalf("expected 1 init setting, got %d", len(settings))
-	}
-	if settings[0].Key != "system.init.done" || settings[0].Value != "true" {
-		t.Fatalf("unexpected init setting: %s=%s", settings[0].Key, settings[0].Value)
+	for _, setting := range settings {
+		if strings.HasPrefix(setting.Key, "system.init.") {
+			t.Fatalf("run must not write system.init.* settings, got %s=%s", setting.Key, setting.Value)
+		}
 	}
 }
 func TestCLIRunRejectsLegacyAdminUsernameFlag(t *testing.T) {

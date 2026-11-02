@@ -46,6 +46,19 @@ export type RegisterResp = {
   UserId: string;
 };
 
+/**
+ * First-run setup: replace seed admin credentials and mark SetupComplete.
+ * Result is `{ UserId }` only; callers Login for a session.
+ */
+export type CompleteInitialSetupReq = {
+  Username: string;
+  Password: string;
+};
+
+export type CompleteInitialSetupResp = {
+  UserId: string;
+};
+
 export type RefreshTokensReq = {
   RefreshToken: string;
 };

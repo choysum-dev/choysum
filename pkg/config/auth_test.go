@@ -58,6 +58,16 @@ func TestNewDefaultAuthConfig(t *testing.T) {
 	if register == nil || !register.SkipAuthentication || !register.SkipMethodAccess || !register.SkipCompanyFilter || !register.SkipFieldRule {
 		t.Fatalf("unexpected register policy: %#v", register)
 	}
+	completeSetup := cfg.GrpcEntryPolicy["auth.User/CompleteInitialSetup"]
+	if completeSetup == nil || !completeSetup.SkipAuthentication || !completeSetup.SkipMethodAccess || !completeSetup.SkipCompanyFilter || !completeSetup.SkipFieldRule {
+		t.Fatalf("unexpected CompleteInitialSetup policy: %#v", completeSetup)
+	}
+	if !entryAllowsModelOp(completeSetup.RecordRuleAllow, "auth.AppSetting", "write") {
+		t.Fatalf("expected CompleteInitialSetup recordRuleAllow to include auth.AppSetting:write, got %#v", completeSetup.RecordRuleAllow)
+	}
+	if !entryAllowsModelOp(completeSetup.RecordRuleAllow, "auth.Session", "write") {
+		t.Fatalf("expected CompleteInitialSetup recordRuleAllow to include auth.Session:write, got %#v", completeSetup.RecordRuleAllow)
+	}
 	login := cfg.GrpcEntryPolicy["auth.User/Login"]
 	if login == nil || !login.SkipAuthentication || !login.SkipMethodAccess || !login.SkipCompanyFilter || !login.SkipFieldRule {
 		t.Fatalf("unexpected login policy: %#v", login)

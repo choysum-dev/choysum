@@ -205,13 +205,13 @@ func TestDefaultUpdateAdminAndMarkerDBLookupFailures(t *testing.T) {
 	})
 }
 
-func TestDefaultUpdateAdminAndMarkerSuccessUpsertsBootstrapSettings(t *testing.T) {
+func TestDefaultUpdateAdminAndMarkerSuccessWritesSetupCompletedAt(t *testing.T) {
 	c, db := newFreshnessTestCoordinator(t)
 	fixedNow := time.Unix(1_700_000_000, 0).UTC()
 	c.now = func() time.Time { return fixedNow }
 	wirePassword := "$CH$" + strings.Repeat("cd", 32)
 
-	if err := db.AutoMigrate(&modmeta.ModelData{}, &meta.Model{}, &modmeta.Setting{}); err != nil {
+	if err := db.AutoMigrate(&modmeta.ModelData{}, &meta.Model{}); err != nil {
 		t.Fatalf("auto migrate admin tables: %v", err)
 	}
 	mustExec(t, db, `CREATE TABLE auth_user (
@@ -219,6 +219,19 @@ func TestDefaultUpdateAdminAndMarkerSuccessUpsertsBootstrapSettings(t *testing.T
 		username TEXT,
 		password_hash TEXT,
 		updated_at DATETIME
+	)`)
+	mustExec(t, db, `CREATE TABLE auth_app_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT UNIQUE,
+		value TEXT,
+		created_at DATETIME,
+		updated_at DATETIME
+	)`)
+	// Present so the no-legacy-rows assertion cannot silently skip on missing table.
+	mustExec(t, db, `CREATE TABLE meta_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT,
+		value TEXT
 	)`)
 	resID := "admin-user-id"
 	mustExec(t, db, "INSERT INTO auth_user(id, username, password_hash, updated_at) VALUES(?, ?, ?, ?)",
@@ -236,9 +249,6 @@ func TestDefaultUpdateAdminAndMarkerSuccessUpsertsBootstrapSettings(t *testing.T
 		Module: "auth", Name: "user_admin", Application: "auth", ModelName: "User", ModelId: authUserModel.Id.String, ResID: resID,
 	}).Error; err != nil {
 		t.Fatalf("seed model_data: %v", err)
-	}
-	if err := db.Create(&modmeta.Setting{Key: "system.init.done", Value: "false"}).Error; err != nil {
-		t.Fatalf("seed existing bootstrap setting: %v", err)
 	}
 
 	if err := c.defaultUpdateAdminAndMarker(context.Background(), initializeInput{
@@ -259,39 +269,53 @@ func TestDefaultUpdateAdminAndMarkerSuccessUpsertsBootstrapSettings(t *testing.T
 		t.Fatalf("unexpected updated admin row: %#v", row)
 	}
 
-	for _, key := range []string{"system.init.done", "system.init.at"} {
-		var setting modmeta.Setting
-		if err := db.Where("key = ?", key).Take(&setting).Error; err != nil {
-			t.Fatalf("query setting %q: %v", key, err)
-		}
-		if key == "system.init.done" && setting.Value != "true" {
-			t.Fatalf("system.init.done = %q, want true", setting.Value)
-		}
-		if key == "system.init.at" && setting.Value != fixedNow.Format(time.RFC3339) {
-			t.Fatalf("system.init.at = %q, want %q", setting.Value, fixedNow.Format(time.RFC3339))
-		}
+	var setupRow authAppSettingRow
+	if err := db.Table(authAppSettingTable).Where(map[string]any{"key": authSetupCompletedAtKey}).Take(&setupRow).Error; err != nil {
+		t.Fatalf("query %s: %v", authSetupCompletedAtKey, err)
+	}
+	if setupRow.Value != fixedNow.Format(time.RFC3339) {
+		t.Fatalf("%s = %q, want %q", authSetupCompletedAtKey, setupRow.Value, fixedNow.Format(time.RFC3339))
+	}
+
+	var initCount int64
+	if err := db.Table("meta_setting").Where(`"key" LIKE ?`, "system.init.%").Count(&initCount).Error; err != nil {
+		t.Fatalf("count system.init.* meta_setting: %v", err)
+	}
+	if initCount != 0 {
+		t.Fatalf("expected no system.init.* meta_setting rows, got %d", initCount)
 	}
 }
 
-func TestUpsertBootstrapSettingBranches(t *testing.T) {
+func TestUpsertAuthAppSettingBranches(t *testing.T) {
 	t.Run("nil session", func(t *testing.T) {
-		if err := upsertBootstrapSetting(nil, "k", "v"); err == nil || !strings.Contains(err.Error(), "database session is not available") {
-			t.Fatalf("upsertBootstrapSetting(nil) error = %v, want unavailable session error", err)
+		if err := upsertAuthAppSetting(nil, "k", "v", time.Now().UTC()); err == nil || !strings.Contains(err.Error(), "database session is not available") {
+			t.Fatalf("upsertAuthAppSetting(nil) error = %v, want unavailable session error", err)
 		}
 	})
 
 	c, db := newFreshnessTestCoordinator(t)
-	if err := db.AutoMigrate(&modmeta.Setting{}); err != nil {
-		t.Fatalf("auto migrate settings: %v", err)
-	}
+	mustExec(t, db, `CREATE TABLE auth_app_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT UNIQUE,
+		value TEXT,
+		created_at DATETIME,
+		updated_at DATETIME
+	)`)
 	session := c.runtimeScope.Session()
+	now := time.Unix(1_700_000_000, 0).UTC()
 
-	if err := upsertBootstrapSetting(session, "system.init.done", "true"); err != nil {
-		t.Fatalf("upsertBootstrapSetting(create) error = %v", err)
+	if err := upsertAuthAppSetting(session, authSetupCompletedAtKey, "first", now); err != nil {
+		t.Fatalf("upsertAuthAppSetting(create) error = %v", err)
 	}
-
-	if err := upsertBootstrapSetting(session, "system.init.done", "true"); err != nil {
-		t.Fatalf("upsertBootstrapSetting(update) error = %v", err)
+	if err := upsertAuthAppSetting(session, authSetupCompletedAtKey, "second", now.Add(time.Second)); err != nil {
+		t.Fatalf("upsertAuthAppSetting(update) error = %v", err)
+	}
+	var row authAppSettingRow
+	if err := db.Where(map[string]any{"key": authSetupCompletedAtKey}).Take(&row).Error; err != nil {
+		t.Fatalf("query setup row: %v", err)
+	}
+	if row.Value != "second" {
+		t.Fatalf("value = %q, want second", row.Value)
 	}
 
 	t.Run("query failure", func(t *testing.T) {
@@ -302,7 +326,7 @@ func TestUpsertBootstrapSettingBranches(t *testing.T) {
 		if err := localDB.Close(); err != nil {
 			t.Fatalf("close sql DB: %v", err)
 		}
-		if err := upsertBootstrapSetting(session, "system.init.done", "true"); err == nil {
+		if err := upsertAuthAppSetting(session, authSetupCompletedAtKey, "x", now); err == nil {
 			t.Fatal("expected query failure from closed database connection")
 		}
 	})

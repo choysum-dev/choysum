@@ -44,6 +44,20 @@ func defaultGrpcEntryPolicy() map[string]*EntryMethodConfig {
 			},
 			SkipFieldRule: true,
 		},
+		// First-run setup: update seed admin + write auth.AppSetting setup.completed_at.
+		"auth.User/CompleteInitialSetup": {
+			SkipAuthentication: true,
+			SkipMethodAccess:   true,
+			SkipCompanyFilter:  true,
+			RecordRuleAllow: []EntryRecordRuleAllow{
+				{Model: "auth.User", Ops: []string{"read", "write"}},
+				{Model: "auth.AppSetting", Ops: []string{"read", "write", "create"}},
+				{Model: "meta.MetaModelData", Ops: []string{"read"}},
+				// Drop any pre-setup seed-admin sessions after credential rotation.
+				{Model: "auth.Session", Ops: []string{"read", "write"}},
+			},
+			SkipFieldRule: true,
+		},
 		"auth.User/Login": {
 			SkipAuthentication: true,
 			SkipCompanyFilter:  true,
