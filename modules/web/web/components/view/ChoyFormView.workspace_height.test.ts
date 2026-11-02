@@ -134,6 +134,11 @@ describe('ChoyFormView workspace height', () => {
                   showActions: true,
                   showMessages: false,
                   createAction: '/tokens/new',
+                  actionIds: {
+                    create: 'auth.action.token_create',
+                    edit: 'auth.action.token_edit',
+                  },
+                  hasAction: () => true,
                 }),
             },
           );
