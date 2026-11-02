@@ -42,6 +42,9 @@ const (
 	bootstrapAdminUsernameMaxBytes = 256
 	bootstrapPasswordMaxBytes      = 4096
 	bootstrapModuleInstallTimeout  = time.Duration(configpkg.DefaultBootstrapModuleInstallTimeoutSeconds) * time.Second
+	// Mirrors modules/auth/.../setup_completed_at_key.ts (auth.AppSetting).
+	authSetupCompletedAtKey = "setup.completed_at"
+	authAppSettingTable     = "auth_app_setting"
 )
 
 var (
@@ -727,10 +730,8 @@ func (c *coordinator) defaultUpdateAdminAndMarker(ctx context.Context, input ini
 			return errBootstrapAdminRecordNotFound
 		}
 
-		if err := upsertBootstrapSetting(txScope.Session(), "system.init.done", "true"); err != nil {
-			return err
-		}
-		if err := upsertBootstrapSetting(txScope.Session(), "system.init.at", now.Format(time.RFC3339)); err != nil {
+		// Same SetupComplete marker as auth.User/CompleteInitialSetup (not meta_setting).
+		if err := upsertAuthAppSetting(txScope.Session(), authSetupCompletedAtKey, now.Format(time.RFC3339), now); err != nil {
 			return err
 		}
 
@@ -784,23 +785,40 @@ func normalizeWirePassword(password string) (string, error) {
 	return strings.ToLower(rawHex), nil
 }
 
-func upsertBootstrapSetting(session *scope.Session, key, value string) error {
+// authAppSettingRow is a minimal row for Go-side SetupComplete writes (TS AppSetting).
+type authAppSettingRow struct {
+	Id        string    `gorm:"column:id;primaryKey"`
+	Key       string    `gorm:"column:key"`
+	Value     string    `gorm:"column:value"`
+	CreatedAt time.Time `gorm:"column:created_at"`
+	UpdatedAt time.Time `gorm:"column:updated_at"`
+}
+
+func (authAppSettingRow) TableName() string { return authAppSettingTable }
+
+func upsertAuthAppSetting(session *scope.Session, key, value string, now time.Time) error {
 	if session == nil || session.DB == nil {
 		return errors.New("database session is not available")
 	}
 
-	var setting modmeta.Setting
-	err := session.Unscoped().Where("key = ?", key).Take(&setting).Error
+	var row authAppSettingRow
+	err := session.Where("key = ?", key).Take(&row).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return session.Create(&modmeta.Setting{Key: key, Value: value}).Error
+			return session.Create(&authAppSettingRow{
+				Id:        xid.New().String(),
+				Key:       key,
+				Value:     value,
+				CreatedAt: now,
+				UpdatedAt: now,
+			}).Error
 		}
 		return err
 	}
 
-	return session.Unscoped().Model(&setting).Updates(map[string]any{
+	return session.Model(&row).Updates(map[string]any{
 		"value":      value,
-		"deleted_at": nil,
+		"updated_at": now,
 	}).Error
 }
 

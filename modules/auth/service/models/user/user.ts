@@ -45,8 +45,11 @@ import {
   validateAndHashRegistrationInput,
   validateLoginCandidateOrThrow,
 } from './_lifecycle_auth';
+import { completeInitialSetupForUser } from './_lifecycle_complete_initial_setup';
 import {
   pickRegisterUserInput,
+  type CompleteInitialSetupReq,
+  type CompleteInitialSetupResp,
   type LoginReq,
   type LogoutReq,
   type RefreshTokensReq,
@@ -61,6 +64,8 @@ import { evaluateRecordRuleCondition } from './_record_rule_eval';
 import { buildAuthzContext, computePermStateVersion } from './_authz_context';
 
 export type {
+  CompleteInitialSetupReq,
+  CompleteInitialSetupResp,
   LoginReq,
   LogoutReq,
   RefreshTokensReq,
@@ -384,6 +389,30 @@ export default class User extends AttachmentOwnerMixin {
       }).withGrpcCode(GrpcCode.InvalidArgument);
     }
     this.LanguageId = languageId;
+  }
+
+  /**
+   * Complete first-run setup: update seed admin username/password and write
+   * auth.AppSetting `setup.completed_at`. Returns UserId; callers Login for a session.
+   */
+  static async CompleteInitialSetup(req: CompleteInitialSetupReq): Promise<CompleteInitialSetupResp> {
+    requireSessionEnvelope(req, 'CompleteInitialSetup');
+    if (typeof req.Username !== 'string' || !req.Username.trim()) {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('CompleteInitialSetup requires a username', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
+    if (typeof req.Password !== 'string' || req.Password.length === 0) {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('CompleteInitialSetup requires a password string', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
+    return await completeInitialSetupForUser(this, {
+      Username: req.Username,
+      Password: req.Password,
+    });
   }
 
   /**
