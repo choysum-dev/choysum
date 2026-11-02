@@ -11,6 +11,7 @@ import {
 } from '@/web/web/composables/chatter/chatterStores';
 import { UseChatterTimelineKey } from '@/web/web/composables/chatter/useChatterTimeline';
 import { UseChatterThreadTipsKey } from '@/web/web/composables/chatter/useChatterThreadTips';
+import { CollaborationCapsKey } from '@/web/web/platform/collaborationCaps';
 import {
   flushPromises,
   fnRecorder,
@@ -127,8 +128,9 @@ describe('ChoyChatter', () => {
     restoreSfc(ChoyChatterTimeline as any);
   });
 
-  function storeProvide() {
+  function storeProvide(caps?: { message: boolean; audit: boolean; document: boolean }) {
     return {
+      [CollaborationCapsKey]: caps ?? { message: true, audit: true, document: true },
       [UseChatterTimelineKey]: () => ({ entries, loading, error, refresh }),
       [UseChatterThreadTipsKey]: () => undefined,
       [GetMessageStoreKey]: () => ({ Post, SearchByRecord: async () => [] }),
@@ -176,6 +178,20 @@ describe('ChoyChatter', () => {
       provide: storeProvide(),
     });
   }
+
+  test('hides chatter when collaboration caps.message is false', async () => {
+    const mounted = mountApp(ChoyChatter as any, {
+      props: {
+        model: 'partner.Partner',
+        resId: 'res_1',
+        bindStore: true,
+      },
+      plugins: [pinia],
+      provide: storeProvide({ message: false, audit: false, document: false }),
+    });
+    expect(mounted.q('[data-anchor="choy.chatter"]')).toBeNull();
+    mounted.unmount();
+  });
 
   test('chrome mode: renders props, emits post/follow/unfollow, hides composer', async () => {
     const { mounted, onPost, onFollow, onUnfollow } = mountChrome();

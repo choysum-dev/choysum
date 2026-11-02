@@ -32,7 +32,7 @@ SPDX-License-Identifier: Apache-2.0
       {{ unreadCount ? `${unreadCount} unread notifications` : '' }}
     </span>
   </div>
-  <div v-else data-testid="inbox-engine" :class="props.class">
+  <div v-else-if="caps.message" data-testid="inbox-engine" :class="props.class">
     <DropdownMenu v-if="isAuthenticated" @update:open="handleVisibleChange">
       <DropdownMenuTrigger as-child>
         <button type="button" class="relative inline-flex cursor-pointer items-center justify-center border-0 bg-transparent p-1.5 text-foreground" :aria-label="_t('Notifications')">
@@ -111,12 +111,14 @@ import {
   useInjectedNotificationInbox,
   type InboxNotificationRow
 } from '@/web/web/composables/chatter/useNotificationInbox';
+import { useCollaborationCaps } from '@/web/web/platform/collaborationCaps';
 import { formatUtcIso } from '@/web/web/utils/datetime';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'ChoyNotificationBell', inheritAttrs: false });
 
 const { _t } = createTranslate('web', { scope: 'web/components/layout/ChoyNotificationBell' });
+const caps = useCollaborationCaps();
 
 const props = defineProps<{
   class?: ClassValue;
@@ -137,12 +139,12 @@ const isAuthenticated = ref(false);
 let stopAuthSubscribe: (() => void) | undefined;
 let disposed = false;
 
-const inbox = useInjectedNotificationInbox(() => isAuthenticated.value);
+const inbox = useInjectedNotificationInbox(() => caps.message && isAuthenticated.value);
 const { rows, loading, error, unreadCount: inboxUnreadCount, refresh, markRead, markAllRead, activate, deactivate } =
   inbox;
 
 onMounted(async () => {
-  if (chromeMode.value) return;
+  if (chromeMode.value || !caps.message) return;
   try {
     const { useAuthStore } = await import('@/auth/web/stores/auth');
     if (disposed) return;

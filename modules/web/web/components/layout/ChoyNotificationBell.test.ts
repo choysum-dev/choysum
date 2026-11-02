@@ -6,6 +6,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { UseNotificationInboxKey } from '@/web/web/composables/chatter/useNotificationInbox';
+import { CollaborationCapsKey } from '@/web/web/platform/collaborationCaps';
 import {
   flushPromises,
   fnRecorder,
@@ -163,6 +164,7 @@ describe('NotificationBell', () => {
     return mountApp(NotificationBell as any, {
       plugins: [pinia],
       provide: {
+        [CollaborationCapsKey]: { message: true, audit: true, document: true },
         [UseNotificationInboxKey]: (enabled: () => boolean) => {
           void enabled();
           return {

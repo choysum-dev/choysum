@@ -2,6 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { inject, ref, watch, type InjectionKey, type Ref } from 'vue';
+import {
+  useCollaborationCaps,
+  type CollaborationCaps,
+} from '@/web/web/platform/collaborationCaps';
 import type { ChatterTimelineEntry } from './chatterTypes';
 import { getFieldChangeStore, getMessageStore } from './chatterStores';
 import { mergeChatterTimeline } from './mergeChatterTimeline';
@@ -12,6 +16,7 @@ const FIELD_CHANGE_FIELDS = ['Id', 'Field', 'Kind', 'OldValue', 'NewValue', 'Act
 export type UseChatterTimelineDeps = {
   getMessageStore?: typeof getMessageStore;
   getFieldChangeStore?: typeof getFieldChangeStore;
+  caps?: CollaborationCaps;
 };
 
 /** Optional override for `useChatterTimeline` (unit harness). */
@@ -38,16 +43,18 @@ export function useChatterTimeline(
   const error = ref<string | null>(null);
   let refreshGeneration = 0;
 
+  const caps = resolveTimelineCaps(deps);
   const resolveMessageStore = deps?.getMessageStore ?? getMessageStore;
   const resolveFieldChangeStore = deps?.getFieldChangeStore ?? getFieldChangeStore;
-  const messageStore = resolveMessageStore();
-  const fieldChangeStore = resolveFieldChangeStore();
+  // Do not createStore when the module is absent — caps gate the dial.
+  const messageStore = caps.message ? resolveMessageStore() : null;
+  const fieldChangeStore = caps.message && caps.audit ? resolveFieldChangeStore() : null;
 
   async function refresh(): Promise<void> {
     const generation = ++refreshGeneration;
     const threadModel = String(model.value || '').trim();
     const threadResId = String(resId.value || '').trim();
-    if (!threadModel || !threadResId) {
+    if (!caps.message || !messageStore || !threadModel || !threadResId) {
       entries.value = [];
       error.value = null;
       loading.value = false;
@@ -57,10 +64,11 @@ export function useChatterTimeline(
     loading.value = true;
     error.value = null;
     try {
-      const [messages, fieldChanges] = await Promise.all([
-        messageStore.SearchByRecord(threadModel, threadResId, [...MESSAGE_FIELDS]),
-        fieldChangeStore.SearchByRecord(threadModel, threadResId, [...FIELD_CHANGE_FIELDS]),
-      ]);
+      const messagesPromise = messageStore.SearchByRecord(threadModel, threadResId, [...MESSAGE_FIELDS]);
+      const fieldChangesPromise = fieldChangeStore
+        ? fieldChangeStore.SearchByRecord(threadModel, threadResId, [...FIELD_CHANGE_FIELDS])
+        : Promise.resolve([]);
+      const [messages, fieldChanges] = await Promise.all([messagesPromise, fieldChangesPromise]);
       if (generation !== refreshGeneration) return;
       entries.value = mergeChatterTimeline(messages, fieldChanges);
     } catch (err) {
@@ -77,4 +85,17 @@ export function useChatterTimeline(
   }, { immediate: true });
 
   return { entries, loading, error, refresh };
+}
+
+function resolveTimelineCaps(deps?: UseChatterTimelineDeps): CollaborationCaps {
+  if (deps?.caps) return deps.caps;
+  // Unit harnesses inject store getters without a registry — treat as available.
+  if (deps?.getMessageStore || deps?.getFieldChangeStore) {
+    return {
+      message: true,
+      audit: deps.getFieldChangeStore != null,
+      document: true,
+    };
+  }
+  return useCollaborationCaps();
 }

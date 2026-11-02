@@ -102,6 +102,53 @@ describe('useChatterTimeline', () => {
     scope.stop();
   });
 
+  test('skips FieldChange when caps.audit is false', async () => {
+    const messages = makeSearchQueue();
+    const fields = makeSearchQueue();
+    messages.enqueueResolved([
+      { Id: 'm1', Type: 'comment', Body: 'hello', AuthorUid: 'u1', CreatedAt: '2024-01-01T00:00:00.000Z' },
+    ]);
+    fields.enqueueResolved([
+      { Id: 'f1', Field: 'Name', Kind: 'field', OldValue: 'A', NewValue: 'B', ActorUid: 'u2', At: '2024-01-02T00:00:00.000Z' },
+    ]);
+    const model = ref('partner.Partner');
+    const resId = ref<string | undefined>('r1');
+    const scope = effectScope();
+    const timeline = scope.run(() =>
+      useChatterTimeline(model, resId, {
+        caps: { message: true, audit: false, document: true },
+        getMessageStore: () => ({ SearchByRecord: messages.search } as any),
+        getFieldChangeStore: () => ({ SearchByRecord: fields.search } as any),
+      })
+    );
+    if (!timeline) throw new Error('timeline missing');
+    await flush();
+    expect(timeline.entries.value.map(entry => `${entry.kind}:${entry.id}`)).toEqual(['message:m1']);
+    expect(fields.search.calls.length).toBe(0);
+    scope.stop();
+  });
+
+  test('no-ops when caps.message is false', async () => {
+    const messages = makeSearchQueue();
+    const fields = makeSearchQueue();
+    const model = ref('partner.Partner');
+    const resId = ref<string | undefined>('r1');
+    const scope = effectScope();
+    const timeline = scope.run(() =>
+      useChatterTimeline(model, resId, {
+        caps: { message: false, audit: false, document: false },
+        getMessageStore: () => ({ SearchByRecord: messages.search } as any),
+        getFieldChangeStore: () => ({ SearchByRecord: fields.search } as any),
+      })
+    );
+    if (!timeline) throw new Error('timeline missing');
+    await flush();
+    expect(timeline.entries.value).toEqual([]);
+    expect(messages.search.calls.length).toBe(0);
+    expect(fields.search.calls.length).toBe(0);
+    scope.stop();
+  });
+
   test('loads merged timeline entries on success', async () => {
     const messages = makeSearchQueue();
     const fields = makeSearchQueue();

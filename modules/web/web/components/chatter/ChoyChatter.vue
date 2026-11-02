@@ -5,6 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <div
+    v-if="caps.message"
     class="choy-chatter mt-3.5"
     data-anchor="choy.chatter"
     data-region="chatter"
@@ -48,14 +49,17 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, inject, ref, watch } from 'vue';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import {
-  useInjectedFollowerStore,
-  useInjectedMessageStore
+  GetFollowerStoreKey,
+  GetMessageStoreKey,
+  getFollowerStore,
+  getMessageStore,
 } from '@/web/web/composables/chatter/chatterStores';
 import { useInjectedChatterTimeline } from '@/web/web/composables/chatter/useChatterTimeline';
 import { useInjectedChatterThreadTips } from '@/web/web/composables/chatter/useChatterThreadTips';
+import { useCollaborationCaps } from '@/web/web/platform/collaborationCaps';
 import { createTranslate } from '@/web/web/i18n';
 import ChoyCard from '../layout/ChoyCard.vue';
 import type { ChatterTimelineEntry } from './chatterTypes';
@@ -65,6 +69,7 @@ import ChoyChatterFollowerBar from './ChoyChatterFollowerBar.vue';
 import ChoyChatterTimeline from './ChoyChatterTimeline.vue';
 
 const { _t } = createTranslate('web', { scope: 'web/components/chatter/ChoyChatter' });
+const caps = useCollaborationCaps();
 
 /**
  * Chatter shell. Chrome mode: timeline / composer / followers via props + emits.
@@ -122,12 +127,15 @@ const postingResId = ref<string | null>(null);
 const postingModel = ref<string | null>(null);
 
 const authStore = useAuthStore();
-const messageStore = useInjectedMessageStore();
-const followerStore = useInjectedFollowerStore();
+// inject() must stay unconditional; only createStore when message is available.
+const messageStoreOverride = inject(GetMessageStoreKey, null);
+const followerStoreOverride = inject(GetFollowerStoreKey, null);
+const messageStore = caps.message ? (messageStoreOverride ?? getMessageStore)() : null;
+const followerStore = caps.message ? (followerStoreOverride ?? getFollowerStore)() : null;
 
 /** Empty model/resId when chrome-only so store timeline stays idle. */
-const boundModel = computed(() => (props.bindStore ? String(props.model || '') : ''));
-const boundResId = computed(() => (props.bindStore ? props.resId : undefined));
+const boundModel = computed(() => (props.bindStore && caps.message ? String(props.model || '') : ''));
+const boundResId = computed(() => (props.bindStore && caps.message ? props.resId : undefined));
 
 const {
   entries: storeEntries,
@@ -171,7 +179,7 @@ function isPostingContextCurrent(targetModel: string, targetResId: string): bool
 }
 
 async function refreshFollowers(): Promise<void> {
-  if (!props.bindStore) return;
+  if (!props.bindStore || !followerStore) return;
   const generation = ++followersGeneration;
   const threadModel = String(props.model || '').trim();
   const threadResId = String(props.resId || '').trim();
@@ -268,6 +276,7 @@ function resolveAuthorLabel(userId: string | null | undefined): string {
 
 async function onPost(body: string): Promise<void> {
   if (props.bindStore) {
+    if (!messageStore) return;
     const text = body.trim();
     if (!text || storePosting.value || props.disabled) return;
     const targetModel = String(props.model || '');
@@ -307,7 +316,7 @@ async function onPost(body: string): Promise<void> {
 
 async function onFollow(): Promise<void> {
   if (props.bindStore) {
-    if (!canToggleFollow.value || storeFollowersLoading.value || props.disabled) return;
+    if (!followerStore || !canToggleFollow.value || storeFollowersLoading.value || props.disabled) return;
     storeFollowersLoading.value = true;
     try {
       await followerStore.Follow({ Model: props.model, ResId: String(props.resId || '') });
@@ -324,7 +333,7 @@ async function onFollow(): Promise<void> {
 
 async function onUnfollow(): Promise<void> {
   if (props.bindStore) {
-    if (!canToggleFollow.value || storeFollowersLoading.value || props.disabled) return;
+    if (!followerStore || !canToggleFollow.value || storeFollowersLoading.value || props.disabled) return;
     storeFollowersLoading.value = true;
     try {
       await followerStore.Unfollow({ Model: props.model, ResId: String(props.resId || '') });

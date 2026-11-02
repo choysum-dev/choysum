@@ -40,7 +40,12 @@ export function useNotificationInbox(enabled: () => boolean, deps?: UseNotificat
   const onTips = deps?.onTips ?? defaultOnTips;
   const subscribeNotifications = deps?.subscribeNotifications ?? defaultSubscribeNotifications;
   const pollFallbackMs = deps?.pollFallbackMs ?? POLL_FALLBACK_MS;
-  const notificationStore = resolveNotificationStore();
+  // Lazy: avoid createStore when message is not installed (caps gate callers).
+  let notificationStore: ReturnType<typeof resolveNotificationStore> | undefined;
+  const getStore = () => {
+    if (!notificationStore) notificationStore = resolveNotificationStore();
+    return notificationStore;
+  };
   let tipController: AbortController | null = null;
   let pollTimer: ReturnType<typeof setInterval> | undefined;
   let refreshGeneration = 0;
@@ -60,7 +65,7 @@ export function useNotificationInbox(enabled: () => boolean, deps?: UseNotificat
     loading.value = true;
     error.value = null;
     try {
-      const nextRows = await notificationStore.SearchInbox({ fields: [...INBOX_FIELDS], limit: 20 });
+      const nextRows = await getStore().SearchInbox({ fields: [...INBOX_FIELDS], limit: 20 });
       if (generation !== refreshGeneration) return;
       rows.value = nextRows;
     } catch (err) {
@@ -76,7 +81,7 @@ export function useNotificationInbox(enabled: () => boolean, deps?: UseNotificat
     const id = String(notificationId || '').trim();
     if (!id) return;
     try {
-      await notificationStore.MarkRead([id]);
+      await getStore().MarkRead([id]);
       await refresh();
     } catch (err) {
       error.value = err instanceof Error ? err.message : String(err);
@@ -85,7 +90,7 @@ export function useNotificationInbox(enabled: () => boolean, deps?: UseNotificat
 
   async function markAllRead(): Promise<void> {
     try {
-      await notificationStore.MarkAllRead();
+      await getStore().MarkAllRead();
       await refresh();
     } catch (err) {
       error.value = err instanceof Error ? err.message : String(err);
