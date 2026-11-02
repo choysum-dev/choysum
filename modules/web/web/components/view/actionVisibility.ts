@@ -12,7 +12,14 @@ export type ActionIdMap = Partial<Record<'create' | 'edit' | 'delete' | 'copy' |
 export type ActionPredicate = ((actionId: string | undefined) => boolean) | undefined;
 
 /**
- * Reports whether a view action should be shown for the current actor.
+ * ACL gate for a UI action id.
+ *
+ * - Empty / missing id → true (ungated): used by tool slots such as Refresh, and by
+ *   callers that intentionally skip ACL with an explicit empty string.
+ * - Non-empty id → consult `hasAction` when provided; missing predicate → allow.
+ *
+ * Form/List mutating toolbar slots (create/edit/copy/delete) must use
+ * {@link canShowDeclaredAction} so omitting an id hides the button (opt-in).
  */
 export function canShowAction(actionId: string | undefined, hasAction: ActionPredicate): boolean {
   const id = String(actionId ?? '').trim();
@@ -23,4 +30,19 @@ export function canShowAction(actionId: string | undefined, hasAction: ActionPre
     return true;
   }
   return !!hasAction(id);
+}
+
+/**
+ * Opt-in toolbar slot: missing/empty action id → hidden; otherwise ACL via
+ * {@link canShowAction}. Prefer this for create/edit/copy/delete on Form/List.
+ */
+export function canShowDeclaredAction(
+  actionId: string | undefined,
+  hasAction: ActionPredicate
+): boolean {
+  const id = String(actionId ?? '').trim();
+  if (!id) {
+    return false;
+  }
+  return canShowAction(id, hasAction);
 }

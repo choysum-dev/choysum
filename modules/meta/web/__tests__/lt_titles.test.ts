@@ -16,3 +16,15 @@ test('meta menu/route _lt titles: TermReference factory pins Module Management r
   expect(routeTitle.src).toBe('Module Management');
   expect(routeTitle.module).toBe('meta');
 });
+
+test('meta menu/route _lt titles: TermReference factory pins External IDs titles', () => {
+  const menuTitle = createTranslate('meta', { scope: 'web/menu/menus' })._lt('External IDs');
+  expect(menuTitle.src).toBe('External IDs');
+  expect(menuTitle.module).toBe('meta');
+
+  const listTitle = createTranslate('meta', { scope: 'web/route/routes' })._lt('External IDs');
+  expect(listTitle.src).toBe('External IDs');
+
+  const detailTitle = createTranslate('meta', { scope: 'web/route/routes' })._lt('External ID');
+  expect(detailTitle.src).toBe('External ID');
+});

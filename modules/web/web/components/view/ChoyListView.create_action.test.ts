@@ -125,6 +125,8 @@ describe('ListView create action', () => {
       props: {
         store: makeStore(),
         createAction: '/partner/partners/new',
+        actionIds: { create: 'partner.action.partner_create' },
+        hasAction: () => true,
         showHeader: true,
         showActions: true,
         refreshAction: false,
@@ -157,6 +159,8 @@ describe('ListView create action', () => {
       props: {
         store: makeStore(),
         createAction: '/partner/partners/new',
+        actionIds: { create: 'partner.action.partner_create' },
+        hasAction: () => true,
         showHeader: true,
         showActions: true,
         refreshAction: false,
@@ -195,6 +199,8 @@ describe('ListView create action', () => {
       props: {
         store: makeStore(),
         createAction: '/partner/partners/new',
+        actionIds: { create: 'partner.action.partner_create' },
+        hasAction: () => true,
         showHeader: false,
         showActions: true,
         refreshAction: false,
@@ -205,6 +211,29 @@ describe('ListView create action', () => {
     });
     await flushPromises();
     expect(findNewButton(el)).toBeTruthy();
+    expect(root).toBeTruthy();
+    unmount();
+  });
+
+  test('hides New when createAction is set but actionIds.create is omitted', async () => {
+    const { plugins } = buildPageMountGlobal({
+      route: { name: 'PartnerList', path: '/partner/partners', fullPath: '/partner/partners' },
+      router: { push },
+    });
+    const { unmount, el, root } = mountApp(ChoyListView as any, {
+      props: {
+        store: makeStore(),
+        createAction: '/partner/partners/new',
+        showHeader: true,
+        showActions: true,
+        refreshAction: false,
+        deleteAction: false,
+        showPaginate: false,
+      },
+      plugins,
+    });
+    await flushPromises();
+    expect(findNewButton(el)).toBeFalsy();
     expect(root).toBeTruthy();
     unmount();
   });
