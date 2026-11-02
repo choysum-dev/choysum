@@ -28,6 +28,8 @@ test('meta resource wiring: each route declares expected actions', () => {
     'meta.action.module_index_delete',
     'meta.action.module_index_copy',
   ]);
+  expect(getRouteActionsFromMeta(byName.MetaModelDataList?.meta as any)).toEqual([]);
+  expect(getRouteActionsFromMeta(byName.MetaModelDataDetail?.meta as any)).toEqual([]);
 });
 
 test('meta resource wiring: defineAction returns the registered action id', () => {

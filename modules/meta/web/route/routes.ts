@@ -93,4 +93,25 @@ export const metaRoutes: RouteRecordRaw[] = [
     defaultRoles: ['sys.admin'],
     meta: { requiresAuth: true, appSettingApplication: 'meta' },
   }),
+  // Owner=meta MetaModelData ledger: read-only List + detail (no /new).
+  defineRoute('meta.route.external_id_list', {
+    sequence: 80,
+    title: _lt('External IDs'),
+    path: 'web/external-ids',
+    name: 'MetaModelDataList',
+    component: () => import('../pages/MetaModelDataList.vue'),
+    actions: [],
+    defaultRoles: ['sys.admin'],
+    meta: { requiresAuth: true },
+  }),
+  defineRoute('meta.route.external_id_detail', {
+    sequence: 81,
+    title: _lt('External ID'),
+    path: 'web/external-ids/:id',
+    name: 'MetaModelDataDetail',
+    component: () => import('../pages/MetaModelData.vue'),
+    actions: [],
+    defaultRoles: ['sys.admin'],
+    meta: { requiresAuth: true },
+  }),
 ];
