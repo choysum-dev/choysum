@@ -8,7 +8,7 @@ require (
 	github.com/bufbuild/protocompile v0.14.1
 	github.com/buke/quickjs-go v0.7.7
 	github.com/buke/typescript-go-internal/v7 v7.0.2
-	github.com/chromedp/cdproto v0.158.4
+	github.com/chromedp/cdproto v0.158.6
 	github.com/chromedp/chromedp v0.21.0
 	github.com/dhamidi/tailwind-go v0.4.0
 	github.com/ettle/strcase v0.2.0
@@ -43,11 +43,11 @@ require (
 	golang.org/x/crypto v0.58.0
 	golang.org/x/exp/errors v0.0.0-20260824195058-e88cd73687aa
 	golang.org/x/mod v0.42.0
-	golang.org/x/net v0.61.0
+	golang.org/x/net v0.62.0
 	golang.org/x/sync v0.24.0
 	golang.org/x/term v0.47.0
 	golang.org/x/text v0.43.0
-	google.golang.org/grpc v1.84.0
+	google.golang.org/grpc v1.85.0
 	google.golang.org/protobuf v1.36.12
 	gorm.io/datatypes v1.2.7
 	gorm.io/driver/mysql v1.6.0
