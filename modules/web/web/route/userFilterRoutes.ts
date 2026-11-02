@@ -37,6 +37,7 @@ export const userFilterRoutes: RouteRecordRaw[] = [
     defaultRoles: ['sys.admin'],
     meta: { requiresAuth: true },
   }),
+  // Register /new before /:id so "new" is not captured as an id.
   defineRoute('web.route.user_filter_create', {
     sequence: 71,
     title: _lt('New Saved Filter'),

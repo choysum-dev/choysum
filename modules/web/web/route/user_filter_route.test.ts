@@ -27,4 +27,9 @@ test('userFilterRoutes host web list plus create/detail with full CRUD actions',
 
   const detail = userFilterRoutes.find(r => r.name === 'UserFilterDetail') as any;
   expect(detail.path).toBe('web/user-filters/:id');
+
+  const createIdx = userFilterRoutes.findIndex(r => r.name === 'UserFilterCreate');
+  const detailIdx = userFilterRoutes.findIndex(r => r.name === 'UserFilterDetail');
+  expect(createIdx).toBeGreaterThanOrEqual(0);
+  expect(createIdx).toBeLessThan(detailIdx);
 });

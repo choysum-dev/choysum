@@ -36,6 +36,7 @@ export const exportTemplateRoutes: RouteRecordRaw[] = [
     defaultRoles: ['sys.admin'],
     meta: { requiresAuth: true },
   }),
+  // Register /new before /:id so "new" is not captured as an id.
   defineRoute('web.route.export_template_create', {
     sequence: 81,
     title: _lt('New Export Template'),

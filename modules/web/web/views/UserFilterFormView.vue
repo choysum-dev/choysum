@@ -90,7 +90,12 @@ SPDX-License-Identifier: Apache-2.0
             />
           </ChoyCol>
           <ChoyCol :span="12">
-            <ChoyJsonField :store="store" prop="GroupBy" :label="_t('Group By')" />
+            <ChoyJsonField
+              :store="store"
+              prop="GroupBy"
+              :label="_t('Group By')"
+              :allow-array="true"
+            />
           </ChoyCol>
         </ChoyGrid>
       </ChoySection>

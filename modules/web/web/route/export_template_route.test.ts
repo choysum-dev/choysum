@@ -27,4 +27,9 @@ test('exportTemplateRoutes host web list plus create/detail with full CRUD actio
 
   const detail = exportTemplateRoutes.find(r => r.name === 'ExportTemplateDetail') as any;
   expect(detail.path).toBe('web/export-templates/:id');
+
+  const createIdx = exportTemplateRoutes.findIndex(r => r.name === 'ExportTemplateCreate');
+  const detailIdx = exportTemplateRoutes.findIndex(r => r.name === 'ExportTemplateDetail');
+  expect(createIdx).toBeGreaterThanOrEqual(0);
+  expect(createIdx).toBeLessThan(detailIdx);
 });

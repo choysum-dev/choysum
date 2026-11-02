@@ -78,6 +78,7 @@ SPDX-License-Identifier: Apache-2.0
               prop="Fields"
               :label="_t('Fields')"
               :rules="requiredRules"
+              :allow-array="true"
               :help="_t('Ordered export field paths (slash-separated). Prefer ExportPanel to pick fields.')"
             />
           </ChoyCol>
