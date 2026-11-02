@@ -417,6 +417,7 @@ test('web bootstrap seeds ExportTemplate authz packs (RMA/RFR/RR)', async () => 
   const expected: Array<{ name: string; model: string }> = [
     { name: 'rma_base_user_web_export_template_search', model: 'RoleMethodAccess' },
     { name: 'rma_base_user_web_export_template_browse', model: 'RoleMethodAccess' },
+    { name: 'rma_base_user_web_export_template_count', model: 'RoleMethodAccess' },
     { name: 'rma_base_user_web_export_template_create', model: 'RoleMethodAccess' },
     { name: 'rma_base_user_web_export_template_update', model: 'RoleMethodAccess' },
     { name: 'rma_base_user_web_export_template_update_by_id', model: 'RoleMethodAccess' },
