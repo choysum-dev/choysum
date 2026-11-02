@@ -87,6 +87,7 @@ SPDX-License-Identifier: Apache-2.0
               prop="Condition"
               :label="_t('Condition')"
               :rules="requiredRules"
+              :allow-array="true"
             />
           </ChoyCol>
           <ChoyCol :span="12">
