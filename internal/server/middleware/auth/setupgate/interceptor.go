@@ -5,15 +5,12 @@ package setupgate
 
 import (
 	"context"
-	"strconv"
-	"strings"
 
 	"github.com/choysum-dev/choysum/internal/provision"
 	middleware "github.com/choysum-dev/choysum/internal/server/middleware/auth"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -24,11 +21,12 @@ var sessionEstablishingMethods = []string{
 	"auth.User/RefreshTokens",
 }
 
-// UnaryInterceptor rejects depth=0 session-establishing RPCs until setup is Ready.
+// UnaryInterceptor rejects session-establishing RPCs until setup is Ready.
 // CompleteInitialSetup and other methods are not gated here.
+// Depth metadata is ignored: clients can set x-choysum-depth and must not bypass the gate.
 func UnaryInterceptor(runtimeScope scope.Scope) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		if err := enforceReadyForSessionMethod(ctx, runtimeScope, info.FullMethod); err != nil {
+		if err := enforceReadyForSessionMethod(runtimeScope, info.FullMethod); err != nil {
 			return nil, err
 		}
 		return handler(ctx, req)
@@ -38,17 +36,14 @@ func UnaryInterceptor(runtimeScope scope.Scope) grpc.UnaryServerInterceptor {
 // StreamInterceptor mirrors UnaryInterceptor for streaming RPCs.
 func StreamInterceptor(runtimeScope scope.Scope) grpc.StreamServerInterceptor {
 	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		if err := enforceReadyForSessionMethod(ss.Context(), runtimeScope, info.FullMethod); err != nil {
+		if err := enforceReadyForSessionMethod(runtimeScope, info.FullMethod); err != nil {
 			return err
 		}
 		return handler(srv, ss)
 	}
 }
 
-func enforceReadyForSessionMethod(ctx context.Context, runtimeScope scope.Scope, fullMethod string) error {
-	if getDepthFromIncomingMetadata(ctx) != 0 {
-		return nil
-	}
+func enforceReadyForSessionMethod(runtimeScope scope.Scope, fullMethod string) error {
 	if !middleware.IsMethodExcluded(fullMethod, sessionEstablishingMethods) {
 		return nil
 	}
@@ -61,23 +56,4 @@ func enforceReadyForSessionMethod(ctx context.Context, runtimeScope scope.Scope,
 		return status.Error(codes.FailedPrecondition, "initial setup is not complete")
 	}
 	return nil
-}
-
-func getDepthFromIncomingMetadata(ctx context.Context) int {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return 0
-	}
-	vals := md.Get("x-choysum-depth")
-	if len(vals) == 0 {
-		return 0
-	}
-	v := strings.TrimSpace(vals[0])
-	if v == "" {
-		return 0
-	}
-	if n, err := strconv.Atoi(v); err == nil && n >= 0 {
-		return n
-	}
-	return 0
 }

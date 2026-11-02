@@ -70,12 +70,26 @@ func (s *GRPCWebServer) applyAuthGRPCInterceptors(unaryInterceptors []grpc.Unary
 	return unary, chainStreamServer(authStream, setupStream)
 }
 
-// chainStreamServer runs interceptors in order (outer first).
+// chainStreamServer runs interceptors in order (outer first). Nil entries are skipped.
 func chainStreamServer(interceptors ...grpc.StreamServerInterceptor) grpc.StreamServerInterceptor {
+	filtered := make([]grpc.StreamServerInterceptor, 0, len(interceptors))
+	for _, interceptor := range interceptors {
+		if interceptor != nil {
+			filtered = append(filtered, interceptor)
+		}
+	}
+	if len(filtered) == 0 {
+		return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+			return handler(srv, ss)
+		}
+	}
+	if len(filtered) == 1 {
+		return filtered[0]
+	}
 	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		chain := handler
-		for i := len(interceptors) - 1; i >= 0; i-- {
-			interceptor := interceptors[i]
+		for i := len(filtered) - 1; i >= 0; i-- {
+			interceptor := filtered[i]
 			next := chain
 			chain = func(srv interface{}, ss grpc.ServerStream) error {
 				return interceptor(srv, ss, info, next)

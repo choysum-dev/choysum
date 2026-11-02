@@ -5,6 +5,7 @@ package provision
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"path/filepath"
@@ -125,6 +126,17 @@ func TestResolveNilScope(t *testing.T) {
 	}
 }
 
+func TestResolveNilSession(t *testing.T) {
+	runtimeScope := &setupStateTestScope{ctx: context.Background(), db: nil}
+	phase, err := Resolve(runtimeScope)
+	if err == nil {
+		t.Fatal("expected session error")
+	}
+	if phase != PhaseEmpty {
+		t.Fatalf("phase = %q, want %q", phase, PhaseEmpty)
+	}
+}
+
 func TestResolveEmptyWhenMetaModuleMissing(t *testing.T) {
 	runtimeScope, _ := newSetupStateScope(t)
 	phase, err := Resolve(runtimeScope)
@@ -150,6 +162,21 @@ func TestResolveEmptyWhenAuthNotInstalled(t *testing.T) {
 	}
 }
 
+func TestResolveEmptyWhenAuthModuleRowMissing(t *testing.T) {
+	runtimeScope, db := newSetupStateScope(t)
+	createMetaModuleTable(t, db)
+	mustExec(t, db, `INSERT INTO meta_module (id, name, status, deleted_at, created_at, updated_at) VALUES (?, ?, ?, NULL, ?, ?)`,
+		"mod-web", "web", string(meta.Installed), time.Now(), time.Now())
+
+	phase, err := Resolve(runtimeScope)
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	if phase != PhaseEmpty {
+		t.Fatalf("phase = %q, want %q", phase, PhaseEmpty)
+	}
+}
+
 func TestResolveEmptyWhenAuthAppSettingTableMissing(t *testing.T) {
 	runtimeScope, db := newSetupStateScope(t)
 	createMetaModuleTable(t, db)
@@ -161,6 +188,36 @@ func TestResolveEmptyWhenAuthAppSettingTableMissing(t *testing.T) {
 	}
 	if phase != PhaseEmpty {
 		t.Fatalf("phase = %q, want %q (missing auth_app_setting must not be Ready)", phase, PhaseEmpty)
+	}
+}
+
+func TestResolveEmptyWhenMetaModuleQueryBroken(t *testing.T) {
+	runtimeScope, db := newSetupStateScope(t)
+	mustExec(t, db, `CREATE TABLE meta_module (id TEXT PRIMARY KEY, name TEXT, status TEXT)`)
+	mustExec(t, db, `INSERT INTO meta_module (id, name, status) VALUES (?, ?, ?)`,
+		"mod-auth", "auth", string(meta.Installed))
+
+	phase, err := Resolve(runtimeScope)
+	if err == nil {
+		t.Fatal("expected query error")
+	}
+	if phase != PhaseEmpty {
+		t.Fatalf("phase = %q, want %q", phase, PhaseEmpty)
+	}
+}
+
+func TestResolveEmptyWhenAuthAppSettingQueryBroken(t *testing.T) {
+	runtimeScope, db := newSetupStateScope(t)
+	createMetaModuleTable(t, db)
+	insertAuthModule(t, db, meta.Installed)
+	mustExec(t, db, `CREATE TABLE auth_app_setting (id TEXT PRIMARY KEY, key TEXT NOT NULL UNIQUE)`)
+
+	phase, err := Resolve(runtimeScope)
+	if err == nil {
+		t.Fatal("expected auth_app_setting query error")
+	}
+	if phase != PhaseEmpty {
+		t.Fatalf("phase = %q, want %q", phase, PhaseEmpty)
 	}
 }
 
@@ -210,5 +267,26 @@ func TestResolveReadyWhenMarkerSet(t *testing.T) {
 	}
 	if phase != PhaseReady {
 		t.Fatalf("phase = %q, want %q", phase, PhaseReady)
+	}
+}
+
+func TestIsMissingSQLTableError(t *testing.T) {
+	cases := []struct {
+		err  error
+		want bool
+	}{
+		{nil, false},
+		{errors.New("no such table: auth_app_setting"), true},
+		{errors.New("Unknown table 'auth_app_setting'"), true},
+		{errors.New("Table 'db.auth_app_setting' doesn't exist"), true},
+		{errors.New(`relation "auth_app_setting" does not exist`), true},
+		{errors.New(`constraint "fk" of relation "auth_app_setting" does not exist`), false},
+		{errors.New("column foo does not exist"), false},
+		{errors.New("forced find failure"), false},
+	}
+	for _, tc := range cases {
+		if got := isMissingSQLTableError(tc.err); got != tc.want {
+			t.Fatalf("isMissingSQLTableError(%v) = %v, want %v", tc.err, got, tc.want)
+		}
 	}
 }

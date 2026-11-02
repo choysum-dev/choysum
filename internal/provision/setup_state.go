@@ -16,7 +16,7 @@ import (
 type Phase string
 
 const (
-	// PhaseEmpty: auth is not Installed (or schema is incomplete). Do not read auth_app_setting.
+	// PhaseEmpty: auth is not Installed (or schema is incomplete). Do not treat as Ready.
 	PhaseEmpty Phase = "empty"
 	// PhaseSetupPending: provisioned but setup.completed_at is missing/empty.
 	PhaseSetupPending Phase = "setup_pending"
@@ -64,16 +64,13 @@ func Resolve(runtimeScope scope.Scope) (Phase, error) {
 }
 
 func isAuthProvisioned(session *scope.Session) (bool, error) {
-	if !session.Migrator().HasTable((&meta.Module{}).TableName()) {
-		return false, nil
-	}
-
 	var mod meta.Module
 	err := session.Select("id", "status").Where("name = ?", authModuleName).Take(&mod).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return false, nil
 	}
 	if err != nil {
+		// meta_module missing (or equivalent) ⇒ not provisioned.
 		if isMissingSQLTableError(err) {
 			return false, nil
 		}
@@ -83,11 +80,6 @@ func isAuthProvisioned(session *scope.Session) (bool, error) {
 }
 
 func isSetupComplete(session *scope.Session) (bool, error) {
-	if !session.Migrator().HasTable(authAppSettingTable) {
-		// Auth Installed but table missing: treat as not provisioned for Ready purposes.
-		return false, errAuthAppSettingMissing
-	}
-
 	var row struct {
 		Value string `gorm:"column:value"`
 	}
@@ -104,15 +96,11 @@ func isSetupComplete(session *scope.Session) (bool, error) {
 	return strings.TrimSpace(row.Value) != "", nil
 }
 
-var errAuthAppSettingMissing = errors.New("auth_app_setting table does not exist")
-
 // isMissingSQLTableError reports dialect-specific "table does not exist" failures.
+// Matches the host's other SQL missing-table probes (same message patterns).
 func isMissingSQLTableError(err error) bool {
 	if err == nil {
 		return false
-	}
-	if errors.Is(err, errAuthAppSettingMissing) {
-		return true
 	}
 	msg := strings.ToLower(err.Error())
 	if strings.Contains(msg, "no such table") || strings.Contains(msg, "unknown table") {

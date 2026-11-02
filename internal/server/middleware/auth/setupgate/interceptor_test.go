@@ -162,23 +162,19 @@ func TestUnaryAllowsLoginWhenReady(t *testing.T) {
 	}
 }
 
-func TestUnarySkipsGateWhenDepthNonZero(t *testing.T) {
+func TestUnaryIgnoresClientSpoofedDepth(t *testing.T) {
 	runtimeScope, db := newGateScope(t)
 	seedSetupPending(t, db)
 
 	ctx := metadata.NewIncomingContext(context.Background(), metadata.Pairs("x-choysum-depth", "1"))
-	called := false
 	interceptor := UnaryInterceptor(runtimeScope)
 	_, err := interceptor(ctx, nil, &grpc.UnaryServerInfo{FullMethod: "/auth.User/Login"},
 		func(ctx context.Context, req interface{}) (interface{}, error) {
-			called = true
-			return "ok", nil
+			t.Fatal("handler must not run")
+			return nil, nil
 		})
-	if err != nil {
-		t.Fatalf("nested Login: %v", err)
-	}
-	if !called {
-		t.Fatal("handler was not called")
+	if status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("code = %v, want FailedPrecondition; err=%v", status.Code(err), err)
 	}
 }
 
@@ -192,6 +188,23 @@ func TestUnaryRejectsLoginWhenEmpty(t *testing.T) {
 		})
 	if status.Code(err) != codes.FailedPrecondition {
 		t.Fatalf("code = %v, want FailedPrecondition; err=%v", status.Code(err), err)
+	}
+}
+
+func TestUnaryRejectsWhenResolveErrors(t *testing.T) {
+	// Nil session → Resolve error → unavailable (not "not complete").
+	runtimeScope := &gateTestScope{ctx: context.Background(), db: nil}
+	interceptor := UnaryInterceptor(runtimeScope)
+	_, err := interceptor(context.Background(), nil, &grpc.UnaryServerInfo{FullMethod: "/auth.User/Login"},
+		func(ctx context.Context, req interface{}) (interface{}, error) {
+			t.Fatal("handler must not run")
+			return nil, nil
+		})
+	if status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("code = %v, want FailedPrecondition; err=%v", status.Code(err), err)
+	}
+	if status.Convert(err).Message() != "initial setup state unavailable" {
+		t.Fatalf("message = %q", status.Convert(err).Message())
 	}
 }
 
@@ -214,5 +227,43 @@ func TestStreamRejectsLoginWhenSetupPending(t *testing.T) {
 		})
 	if status.Code(err) != codes.FailedPrecondition {
 		t.Fatalf("code = %v, want FailedPrecondition; err=%v", status.Code(err), err)
+	}
+}
+
+func TestStreamAllowsLoginWhenReady(t *testing.T) {
+	runtimeScope, db := newGateScope(t)
+	seedReady(t, db)
+
+	called := false
+	err := StreamInterceptor(runtimeScope)(nil, &testServerStream{ctx: context.Background()},
+		&grpc.StreamServerInfo{FullMethod: "/auth.User/Login"},
+		func(srv interface{}, ss grpc.ServerStream) error {
+			called = true
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("stream Login: %v", err)
+	}
+	if !called {
+		t.Fatal("handler was not called")
+	}
+}
+
+func TestStreamAllowsNonSessionMethodWhenSetupPending(t *testing.T) {
+	runtimeScope, db := newGateScope(t)
+	seedSetupPending(t, db)
+
+	called := false
+	err := StreamInterceptor(runtimeScope)(nil, &testServerStream{ctx: context.Background()},
+		&grpc.StreamServerInfo{FullMethod: "/auth.User/CompleteInitialSetup"},
+		func(srv interface{}, ss grpc.ServerStream) error {
+			called = true
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("stream CompleteInitialSetup: %v", err)
+	}
+	if !called {
+		t.Fatal("handler was not called")
 	}
 }
