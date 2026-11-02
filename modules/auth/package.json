@@ -23,8 +23,7 @@
     "depends": [
       "core",
       "base",
-      "meta",
-      "document"
+      "meta"
     ],
     "cli": ">=0.0.0-0 <0.0.0",
     "entryPoints": {

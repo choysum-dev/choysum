@@ -15,7 +15,6 @@
     "category": "Messaging",
     "depends": [
       "core",
-      "base",
       "auth",
       "document"
     ],
