@@ -92,21 +92,65 @@ async function writeSetupCompletedAt(iso: string): Promise<void> {
 
 function isMissingRelationError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err ?? '');
-  return /no such table|does not exist|undefined.?table|unknown table|no such relation/i.test(msg);
+  // Postgres / SQLite / MySQL (1146 ER_NO_SUCH_TABLE, "doesn't exist") missing-relation shapes.
+  return /no such table|doesn'?t exist|does not exist|undefined.?table|unknown table|no such relation|\b1146\b/i.test(
+    msg
+  );
+}
+
+type ChoysumDb = {
+  dialectName?: string;
+  query?: (sql: string, parameters: string) => Promise<string>;
+  savepoint?: (name: string) => Promise<string>;
+  rollbackToSavepoint?: (name: string) => Promise<void>;
+  releaseSavepoint?: (name: string) => Promise<void>;
+};
+
+/**
+ * Run fn under a DB savepoint so a failed probe (e.g. missing meta_setting on Postgres)
+ * can roll back without aborting the request-scoped transaction (SQLSTATE 25P02).
+ */
+async function withDbSavepoint<T>(db: ChoysumDb, fn: () => Promise<T>): Promise<T> {
+  if (!db.savepoint || !db.rollbackToSavepoint || !db.releaseSavepoint) {
+    return await fn();
+  }
+  const root = globalThis as { $choysum?: { xid?: { New?: () => string } } };
+  const name = `sp_setup_legacy_${root.$choysum?.xid?.New?.() || String(Date.now())}`;
+  await db.savepoint(name);
+  try {
+    const result = await fn();
+    try {
+      await db.releaseSavepoint(name);
+    } catch {
+      // Release is best-effort; the operation already succeeded.
+    }
+    return result;
+  } catch (err) {
+    try {
+      await db.rollbackToSavepoint(name);
+    } catch {
+      // Prefer the original probe error.
+    }
+    throw err;
+  }
 }
 
 /** True when a pre-PC-3 workspace left system.init.done in meta_setting. */
 async function readLegacySystemInitDone(): Promise<boolean> {
-  const root = globalThis as { $choysum?: { db?: { dialectName?: string; query?: (sql: string, parameters: string) => Promise<string> } } };
+  const root = globalThis as { $choysum?: { db?: ChoysumDb } };
   const db = root.$choysum?.db;
   if (!db?.query) return false;
   const keyCol = db.dialectName === 'mysql' ? '`key`' : '"key"';
-  let raw: string;
   try {
-    raw = await db.query(
-      `SELECT value FROM meta_setting WHERE ${keyCol} = ? LIMIT 1`,
-      JSON.stringify([LEGACY_SYSTEM_INIT_DONE_KEY])
-    );
+    return await withDbSavepoint(db, async () => {
+      const raw = await db.query!(
+        `SELECT value FROM meta_setting WHERE ${keyCol} = ? LIMIT 1`,
+        JSON.stringify([LEGACY_SYSTEM_INIT_DONE_KEY])
+      );
+      const rows = JSON.parse(raw || '[]') as Array<{ value?: string }>;
+      const value = String(rows?.[0]?.value ?? '').trim().toLowerCase();
+      return value === 'true' || value === '1' || value === 'yes';
+    });
   } catch (err) {
     // Missing table: no legacy marker. Other failures must not silently re-open setup.
     if (isMissingRelationError(err)) {
@@ -114,9 +158,12 @@ async function readLegacySystemInitDone(): Promise<boolean> {
     }
     throw err;
   }
-  const rows = JSON.parse(raw || '[]') as Array<{ value?: string }>;
-  const value = String(rows?.[0]?.value ?? '').trim().toLowerCase();
-  return value === 'true' || value === '1' || value === 'yes';
+}
+
+async function releaseSetupCompletedAt(): Promise<void> {
+  await withRecordRuleAndFieldRuleBypass(() =>
+    pool<AppSettingModelCtor>('auth', 'AppSetting').Set(SETUP_COMPLETED_AT_KEY, null)
+  );
 }
 
 /**
@@ -251,6 +298,14 @@ export async function runCompleteInitialSetup(
       try {
         await deps.updateAdmin(resolvedAdminId, { Username: username, PasswordHash: passwordHash });
       } catch (err) {
+        // If savepoint is absent or claim survived, free the marker so setup can be retried.
+        if (!deps.claimSetupComplete) {
+          try {
+            await releaseSetupCompletedAt();
+          } catch {
+            // Best effort; surface the credential-update error.
+          }
+        }
         if (isUniqueConstraintError(err)) {
           throw newAuthError({
             code: AuthErrCode.USERNAME_TAKEN,

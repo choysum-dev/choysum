@@ -144,3 +144,27 @@ test('runCompleteInitialSetup: lost claim does not update admin', async () => {
   );
   expect(updated).toBe(false);
 });
+
+test('runCompleteInitialSetup: updateAdmin failure surfaces after claim', async () => {
+  let claimed = false;
+  await expectAuthCode(
+    () =>
+      runCompleteInitialSetup(
+        { Username: 'boss', Password: 'pw' },
+        {
+          isSetupComplete: async () => false,
+          resolveAdminId: async () => 'admin-id',
+          searchByUsername: async () => [],
+          browseAdmin: async () => ({ Id: 'admin-id', Username: 'admin' }),
+          claimSetupComplete: async () => {
+            claimed = true;
+          },
+          updateAdmin: async () => {
+            throw Object.assign(new Error('write failed'), { code: 'INTERNAL' });
+          },
+        }
+      ),
+    'INTERNAL'
+  );
+  expect(claimed).toBe(true);
+});
