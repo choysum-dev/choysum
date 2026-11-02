@@ -1282,7 +1282,7 @@ msgstr ""
 
 #: web/views/MetaModelDataFormView.vue:8
 msgctxt "web/views/MetaModelDataFormView"
-msgid "External Id"
+msgid "External ID"
 msgstr ""
 
 #: web/views/MetaModelDataFormView.vue:11

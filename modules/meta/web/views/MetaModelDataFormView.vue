@@ -16,7 +16,7 @@ SPDX-License-Identifier: Apache-2.0
     v-on="$attrs"
   >
     <div data-anchor="choy.form.sheet" class="flex min-h-full flex-col gap-8">
-      <ChoySection :title="_t('External Id')">
+      <ChoySection :title="_t('External ID')">
         <ChoyGrid :cols="12">
           <ChoyCol :span="6">
             <ChoyVarcharField
