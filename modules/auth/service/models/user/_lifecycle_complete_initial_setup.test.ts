@@ -28,6 +28,10 @@ test('validateAndHashSetupPassword: rejects empty username or password', () => {
   expect(() => validateAndHashSetupPassword('admin', '')).toThrow();
 });
 
+test('validateAndHashSetupPassword: rejects username longer than 100 chars', () => {
+  expect(() => validateAndHashSetupPassword('a'.repeat(101), 'pw')).toThrow();
+});
+
 test('validateAndHashSetupPassword: returns a non-empty hash', () => {
   const hash = validateAndHashSetupPassword('admin', 'secret');
   expect(typeof hash).toBe('string');
@@ -69,9 +73,10 @@ test('runCompleteInitialSetup: rejects when seed admin is missing', async () => 
   );
 });
 
-test('runCompleteInitialSetup: updates admin and marks complete', async () => {
+test('runCompleteInitialSetup: claims marker then updates admin', async () => {
   const updates: Array<{ id: string; values: { Username: string; PasswordHash: string } }> = [];
-  const marks: string[] = [];
+  const claims: string[] = [];
+  const order: string[] = [];
   const result = await runCompleteInitialSetup(
     { Username: 'boss', Password: 'pw-secret' },
     {
@@ -80,20 +85,23 @@ test('runCompleteInitialSetup: updates admin and marks complete', async () => {
       searchByUsername: async () => [],
       browseAdmin: async () => ({ Id: 'admin-id', Username: 'admin' }),
       updateAdmin: async (id, values) => {
+        order.push('update');
         updates.push({ id, values });
       },
-      markSetupComplete: async iso => {
-        marks.push(iso);
+      claimSetupComplete: async iso => {
+        order.push('claim');
+        claims.push(iso);
       },
       nowIso: () => '2026-11-02T00:00:00.000Z',
     }
   );
   expect(result.UserId).toBe('admin-id');
+  expect(order).toEqual(['claim', 'update']);
   expect(updates.length).toBe(1);
   expect(updates[0].id).toBe('admin-id');
   expect(updates[0].values.Username).toBe('boss');
   expect(String(updates[0].values.PasswordHash || '').length > 0).toBe(true);
-  expect(marks).toEqual(['2026-11-02T00:00:00.000Z']);
+  expect(claims).toEqual(['2026-11-02T00:00:00.000Z']);
 });
 
 test('runCompleteInitialSetup: username taken by another user', async () => {
@@ -111,4 +119,28 @@ test('runCompleteInitialSetup: username taken by another user', async () => {
       ),
     AuthErrCode.USERNAME_TAKEN
   );
+});
+
+test('runCompleteInitialSetup: lost claim does not update admin', async () => {
+  let updated = false;
+  await expectAuthCode(
+    () =>
+      runCompleteInitialSetup(
+        { Username: 'boss', Password: 'pw' },
+        {
+          isSetupComplete: async () => false,
+          resolveAdminId: async () => 'admin-id',
+          searchByUsername: async () => [],
+          browseAdmin: async () => ({ Id: 'admin-id', Username: 'admin' }),
+          updateAdmin: async () => {
+            updated = true;
+          },
+          claimSetupComplete: async () => {
+            throw Object.assign(new Error('already'), { code: AuthErrCode.INITIAL_SETUP_ALREADY_COMPLETE });
+          },
+        }
+      ),
+    AuthErrCode.INITIAL_SETUP_ALREADY_COMPLETE
+  );
+  expect(updated).toBe(false);
 });

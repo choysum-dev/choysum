@@ -65,6 +65,9 @@ func TestNewDefaultAuthConfig(t *testing.T) {
 	if !entryAllowsModelOp(completeSetup.RecordRuleAllow, "auth.AppSetting", "write") {
 		t.Fatalf("expected CompleteInitialSetup recordRuleAllow to include auth.AppSetting:write, got %#v", completeSetup.RecordRuleAllow)
 	}
+	if !entryAllowsModelOp(completeSetup.RecordRuleAllow, "auth.Session", "write") {
+		t.Fatalf("expected CompleteInitialSetup recordRuleAllow to include auth.Session:write, got %#v", completeSetup.RecordRuleAllow)
+	}
 	login := cfg.GrpcEntryPolicy["auth.User/Login"]
 	if login == nil || !login.SkipAuthentication || !login.SkipMethodAccess || !login.SkipCompanyFilter || !login.SkipFieldRule {
 		t.Fatalf("unexpected login policy: %#v", login)

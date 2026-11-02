@@ -801,25 +801,61 @@ func upsertAuthAppSetting(session *scope.Session, key, value string, now time.Ti
 		return errors.New("database session is not available")
 	}
 
+	// map condition so GORM quotes `key` (reserved in MySQL).
+	keyCond := map[string]any{"key": key}
+
 	var row authAppSettingRow
-	err := session.Where("key = ?", key).Take(&row).Error
+	err := session.Where(keyCond).Take(&row).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return session.Create(&authAppSettingRow{
-				Id:        xid.New().String(),
-				Key:       key,
-				Value:     value,
-				CreatedAt: now,
-				UpdatedAt: now,
-			}).Error
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
 		}
-		return err
+		createErr := session.Create(&authAppSettingRow{
+			Id:        xid.New().String(),
+			Key:       key,
+			Value:     value,
+			CreatedAt: now,
+			UpdatedAt: now,
+		}).Error
+		if createErr == nil {
+			return nil
+		}
+		// Concurrent first insert: unique loser reloads and updates.
+		if !isAuthAppSettingUniqueViolation(createErr) {
+			return createErr
+		}
+		if reloadErr := session.Where(keyCond).Take(&row).Error; reloadErr != nil {
+			return reloadErr
+		}
 	}
 
 	return session.Model(&row).Updates(map[string]any{
 		"value":      value,
 		"updated_at": now,
 	}).Error
+}
+
+func isAuthAppSettingUniqueViolation(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	if strings.Contains(msg, "sqlstate 23505") {
+		return true
+	}
+	if strings.Contains(msg, "duplicate key") && strings.Contains(msg, "unique") {
+		return true
+	}
+	if strings.Contains(msg, "duplicate entry") {
+		return true
+	}
+	if strings.Contains(msg, "unique constraint") || strings.Contains(msg, "unique failed") {
+		return true
+	}
+	if strings.Contains(msg, "duplicate") && strings.Contains(msg, "key") {
+		return true
+	}
+	return false
 }
 
 func (c *coordinator) defaultSwitchMode(ctx context.Context) error {

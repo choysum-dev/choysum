@@ -227,6 +227,12 @@ func TestDefaultUpdateAdminAndMarkerSuccessWritesSetupCompletedAt(t *testing.T) 
 		created_at DATETIME,
 		updated_at DATETIME
 	)`)
+	// Present so the no-legacy-rows assertion cannot silently skip on missing table.
+	mustExec(t, db, `CREATE TABLE meta_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT,
+		value TEXT
+	)`)
 	resID := "admin-user-id"
 	mustExec(t, db, "INSERT INTO auth_user(id, username, password_hash, updated_at) VALUES(?, ?, ?, ?)",
 		resID, "old-admin", "old-hash", fixedNow)
@@ -264,7 +270,7 @@ func TestDefaultUpdateAdminAndMarkerSuccessWritesSetupCompletedAt(t *testing.T) 
 	}
 
 	var setupRow authAppSettingRow
-	if err := db.Table(authAppSettingTable).Where("key = ?", authSetupCompletedAtKey).Take(&setupRow).Error; err != nil {
+	if err := db.Table(authAppSettingTable).Where(map[string]any{"key": authSetupCompletedAtKey}).Take(&setupRow).Error; err != nil {
 		t.Fatalf("query %s: %v", authSetupCompletedAtKey, err)
 	}
 	if setupRow.Value != fixedNow.Format(time.RFC3339) {
@@ -272,7 +278,10 @@ func TestDefaultUpdateAdminAndMarkerSuccessWritesSetupCompletedAt(t *testing.T) 
 	}
 
 	var initCount int64
-	if err := db.Table("meta_setting").Where("key LIKE ?", "system.init.%").Count(&initCount).Error; err == nil && initCount != 0 {
+	if err := db.Table("meta_setting").Where(`"key" LIKE ?`, "system.init.%").Count(&initCount).Error; err != nil {
+		t.Fatalf("count system.init.* meta_setting: %v", err)
+	}
+	if initCount != 0 {
 		t.Fatalf("expected no system.init.* meta_setting rows, got %d", initCount)
 	}
 }
@@ -302,7 +311,7 @@ func TestUpsertAuthAppSettingBranches(t *testing.T) {
 		t.Fatalf("upsertAuthAppSetting(update) error = %v", err)
 	}
 	var row authAppSettingRow
-	if err := db.Where("key = ?", authSetupCompletedAtKey).Take(&row).Error; err != nil {
+	if err := db.Where(map[string]any{"key": authSetupCompletedAtKey}).Take(&row).Error; err != nil {
 		t.Fatalf("query setup row: %v", err)
 	}
 	if row.Value != "second" {

@@ -69,6 +69,10 @@ function setupAllowlistForCompleteInitialSetup(): void {
       'AppSetting:unlink',
       'meta.MetaModelData:read',
       'MetaModelData:read',
+      'auth.Session:read',
+      'auth.Session:write',
+      'Session:read',
+      'Session:write',
     ],
   });
 }
@@ -101,12 +105,27 @@ test('CompleteInitialSetup: updates seed admin and writes setup.completed_at', a
   setupAllowlistForCompleteInitialSetup();
   await clearSetupCompletedAt();
 
-  const adminId = await withModelContext(
-    {} as any,
-    async () => MetaModelDataService.Ref('auth.user_admin'),
-    { merge: false }
+  const adminId = String(
+    await withModelContext(
+      {} as any,
+      async () => MetaModelDataService.Ref('auth.user_admin'),
+      { merge: false }
+    ) || ''
+  ).trim();
+  expect(adminId === '').toBe(false);
+
+  const beforeHash = String(
+    await withModelContext(
+      {} as any,
+      async () => {
+        const row = await withPermissionGraphBypass(async () =>
+          User.Browse(adminId, ['Id', 'Username', 'PasswordHash'] as any)
+        );
+        return (row as any)?.PasswordHash;
+      },
+      { merge: false }
+    ) || ''
   );
-  expect(String(adminId || '').trim() === '').toBe(false);
 
   // Keep Username=admin so the shared unit DB still resolves the bootstrap user by name.
   const result = await withModelContext(
@@ -118,22 +137,27 @@ test('CompleteInitialSetup: updates seed admin and writes setup.completed_at', a
       }),
     { merge: false }
   );
-  expect(result.UserId).toBe(adminId);
+  expect(String(result.UserId || '')).toBe(adminId);
 
-  const user = await withModelContext(
+  const after = await withModelContext(
     {} as any,
-    async () => User.Browse(adminId, ['Id', 'Username'] as any),
+    async () =>
+      withPermissionGraphBypass(async () => User.Browse(adminId, ['Id', 'Username', 'PasswordHash'] as any)),
     { merge: false }
   );
-  expect(user?.Username).toBe('admin');
+  expect(String((after as any)?.Username || '')).toBe('admin');
+  const afterHash = String((after as any)?.PasswordHash || '');
+  expect(afterHash.length > 0).toBe(true);
+  expect(afterHash === beforeHash).toBe(false);
 
-  const completedAt = await withModelContext(
-    {} as any,
-    async () => pool<AppSettingModelCtor>('auth', 'AppSetting').Get(SETUP_COMPLETED_AT_KEY, null),
-    { merge: false }
-  );
-  expect(typeof completedAt).toBe('string');
-  expect(String(completedAt || '').trim() === '').toBe(false);
+  const completedAt = String(
+    (await withModelContext(
+      {} as any,
+      async () => pool<AppSettingModelCtor>('auth', 'AppSetting').Get(SETUP_COMPLETED_AT_KEY, null),
+      { merge: false }
+    )) || ''
+  ).trim();
+  expect(completedAt === '').toBe(false);
 
   await expectAuthCode(
     () =>
