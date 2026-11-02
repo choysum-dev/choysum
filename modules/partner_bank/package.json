@@ -21,8 +21,7 @@
     "depends": [
       "partner",
       "base",
-      "auth",
-      "message"
+      "auth"
     ],
     "cli": ">=0.0.0-0 <0.0.0",
     "entryPoints": {

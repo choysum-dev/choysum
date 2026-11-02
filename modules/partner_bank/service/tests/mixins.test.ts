@@ -1,15 +1,13 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import MessageThreadModel from '@/core/service/mixins/message_thread_model';
+import { BaseModel } from '@/core/service';
 import BankAccount from '../models/bank_account';
 
-test('BankAccount: extends MessageThreadModel and exposes thread entry points', () => {
-  expect(BankAccount.prototype instanceof MessageThreadModel).toBe(true);
-  expect(typeof BankAccount.MessagePost).toBe('function');
-  expect(typeof BankAccount.MessageFollow).toBe('function');
-  expect(typeof BankAccount.MessageUnfollow).toBe('function');
-  expect(typeof BankAccount.MessageSearchByRecord).toBe('function');
+test('BankAccount: extends BaseModel (no MessageThread collaboration surface)', () => {
+  expect(BankAccount.prototype instanceof BaseModel).toBe(true);
+  expect((BankAccount as any).MessagePost).toBeUndefined();
+  expect((BankAccount as any).MessageFollow).toBeUndefined();
 });
 
 test('BankAccount: validateEntity applies assertRequiredText and assertAccountType', async () => {
