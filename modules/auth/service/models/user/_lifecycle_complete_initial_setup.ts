@@ -92,7 +92,11 @@ async function writeSetupCompletedAt(iso: string): Promise<void> {
 
 function isMissingRelationError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err ?? '');
-  // Postgres / SQLite / MySQL (1146 ER_NO_SUCH_TABLE, "doesn't exist") missing-relation shapes.
+  // Fail closed: only treat as "no legacy marker" when the error clearly names meta_setting.
+  // Generic "does not exist" / bare driver codes must not re-open setup.
+  if (!/meta_setting/i.test(msg)) {
+    return false;
+  }
   return /no such table|doesn'?t exist|does not exist|undefined.?table|unknown table|no such relation|\b1146\b/i.test(
     msg
   );
@@ -298,8 +302,9 @@ export async function runCompleteInitialSetup(
       try {
         await deps.updateAdmin(resolvedAdminId, { Username: username, PasswordHash: passwordHash });
       } catch (err) {
-        // If savepoint is absent or claim survived, free the marker so setup can be retried.
-        if (!deps.claimSetupComplete) {
+        // Production wraps claim+update in withSavepoint (rolls back together).
+        // Without a savepoint, free the marker so setup can be retried.
+        if (!deps.withSavepoint) {
           try {
             await releaseSetupCompletedAt();
           } catch {

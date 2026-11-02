@@ -802,8 +802,9 @@ func upsertAuthAppSetting(session *scope.Session, key, value string, now time.Ti
 		return errors.New("database session is not available")
 	}
 
-	// Single conflict-aware insert: works inside the admin-update transaction on
-	// Postgres (failed Create would abort the TX), SQLite, and MySQL.
+	// Conflict-aware insert inside the admin-update transaction.
+	// Columns names the Postgres/SQLite conflict target (unique key).
+	// MySQL ignores Columns and emits ON DUPLICATE KEY UPDATE on the unique index.
 	return session.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "key"}},
 		DoUpdates: clause.Assignments(map[string]any{"value": value, "updated_at": now}),
