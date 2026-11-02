@@ -141,6 +141,72 @@ func TestBuildPlanInstallAutoIncludesWebShell(t *testing.T) {
 	}
 }
 
+func TestBuildPlanInstallWebShellOmitsOptionalCollaboration(t *testing.T) {
+	// PC-2: web.depends is [core,auth,meta,document] — ensureWebShell must not pull message/audit.
+	root := &meta.Module{
+		Name:           "meta",
+		ApplicationStr: "meta",
+		WebEntryPoint:  "web/index.ts",
+		DependsStr:     []byte(`["core"]`),
+	}
+	r := fakeResolver{
+		peek: func(_ context.Context, name string) (*meta.Module, error) {
+			switch name {
+			case "core":
+				return &meta.Module{Name: "core", ApplicationStr: "core"}, nil
+			case "auth":
+				return &meta.Module{Name: "auth", ApplicationStr: "auth", DependsStr: []byte(`["core","base","meta"]`)}, nil
+			case "base":
+				return &meta.Module{Name: "base", ApplicationStr: "base", DependsStr: []byte(`["core"]`)}, nil
+			case "meta":
+				return root, nil
+			case "document":
+				return &meta.Module{Name: "document", ApplicationStr: "document", DependsStr: []byte(`["core","base","task","auth"]`)}, nil
+			case "task":
+				return &meta.Module{Name: "task", ApplicationStr: "task", DependsStr: []byte(`["core"]`)}, nil
+			case "web":
+				return &meta.Module{
+					Name:           "web",
+					ApplicationStr: "web",
+					WebEntryPoint:  "web/index.ts",
+					DependsStr:     []byte(`["core","auth","meta","document"]`),
+				}, nil
+			case "message", "audit":
+				t.Fatalf("unexpected peek of optional collaboration module %q", name)
+				return nil, nil
+			default:
+				return nil, nil
+			}
+		},
+		load: func(_ string) (*meta.Module, error) { return nil, nil },
+	}
+
+	plan, err := BuildPlan(context.Background(), OpInstall, root, r)
+	if err != nil {
+		t.Fatalf("BuildPlan() error: %v", err)
+	}
+	for _, name := range plan.ModuleOrder {
+		if name == "message" || name == "audit" {
+			t.Fatalf("ModuleOrder=%v must not include message/audit", plan.ModuleOrder)
+		}
+	}
+	for _, name := range plan.EnsureOrder {
+		if name == "message" || name == "audit" {
+			t.Fatalf("EnsureOrder=%v must not include message/audit", plan.EnsureOrder)
+		}
+	}
+	wantContains := []string{"core", "auth", "meta", "document", "web"}
+	have := map[string]bool{}
+	for _, name := range plan.ModuleOrder {
+		have[name] = true
+	}
+	for _, name := range wantContains {
+		if !have[name] {
+			t.Fatalf("ModuleOrder=%v missing %q", plan.ModuleOrder, name)
+		}
+	}
+}
+
 func TestBuildPlanUpgradeEnsureOrderInstallsMissingWebShell(t *testing.T) {
 	root := &meta.Module{
 		Name:           "partner",

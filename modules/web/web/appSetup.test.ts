@@ -6,12 +6,13 @@ import { setupApp, type SetupAppDeps } from './appSetup';
 import { notifyComposerMessagesChanged } from './i18n';
 import { asyncFnRecorder, fnRecorder } from '@/web/web/__tests__/mountApp';
 
-function makeApp() {
+function makeApp(extra?: { provide?: ReturnType<typeof fnRecorder> }) {
   return {
     config: {
       globalProperties: {},
     },
     usePlugin: fnRecorder(),
+    provide: extra?.provide ?? fnRecorder(),
   };
 }
 

@@ -2,17 +2,33 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
+import { CollaborationCapsKey } from '@/web/web/platform/collaborationCaps';
 import ChoyNotificationBell from './ChoyNotificationBell.vue';
+
+const capsAll = { message: true, audit: true, document: true };
+const capsNoMessage = { message: false, audit: false, document: true };
 
 describe('ChoyNotificationBell mount', () => {
   test('omitted count hosts the inbox engine', async () => {
     const wrapper = mountApp(ChoyNotificationBell as any, {
       props: { class: 'ms-2' },
+      provide: { [CollaborationCapsKey]: capsAll },
     });
     await flushPromises();
     const inbox = wrapper.q('[data-testid="inbox-engine"]');
     expect(inbox).not.toBeNull();
     expect(String(inbox?.getAttribute('class') || '').includes('ms-2')).toBe(true);
+    expect(wrapper.q('[data-anchor="choy.notification-bell"]')).toBeNull();
+    wrapper.unmount();
+  });
+
+  test('omitted count renders nothing when caps.message is false', async () => {
+    const wrapper = mountApp(ChoyNotificationBell as any, {
+      props: { class: 'ms-2' },
+      provide: { [CollaborationCapsKey]: capsNoMessage },
+    });
+    await flushPromises();
+    expect(wrapper.q('[data-testid="inbox-engine"]')).toBeNull();
     expect(wrapper.q('[data-anchor="choy.notification-bell"]')).toBeNull();
     wrapper.unmount();
   });
