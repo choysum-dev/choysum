@@ -47,16 +47,22 @@ export function useCollaborationCaps(): CollaborationCaps {
   return inject(CollaborationCapsKey, null) ?? resolveCollaborationCaps();
 }
 
+/** Read a registry version token so computed caps invalidate on register/unregister. */
+function touchStoreFactoryRegistryVersion(): void {
+  const version = getStoreFactoryRegistryVersion() as unknown;
+  if (version && typeof version === 'object' && 'value' in (version as object)) {
+    void (version as { value: unknown }).value;
+  }
+}
+
 /**
  * Reactive caps that re-resolve when store factories are registered or removed.
  */
 export function useReactiveCollaborationCaps(): ComputedRef<CollaborationCaps> {
   const override = inject(CollaborationCapsKey, null);
-  const version = getStoreFactoryRegistryVersion();
   return computed(() => {
     if (override) return override;
-    // Touch registry version so late registerStoreFactory re-resolves caps.
-    void (version as { value?: unknown })?.value;
+    touchStoreFactoryRegistryVersion();
     return resolveCollaborationCaps();
   });
 }

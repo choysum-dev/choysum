@@ -226,9 +226,21 @@ async function refreshFollowers(): Promise<void> {
 }
 
 watch(
-  () => [props.bindStore, props.model, props.resId, currentUserIdResolved.value] as const,
-  () => {
-    void refreshFollowers();
+  () =>
+    [props.bindStore, props.model, props.resId, currentUserIdResolved.value, storeBound.value] as const,
+  (next, prev) => {
+    const becameBound = next[4] === true && prev?.[4] !== true;
+    const leftBound = next[4] === false && prev?.[4] === true;
+    if (leftBound) {
+      followersGeneration += 1;
+      storeFollowing.value = false;
+      storeFollowerCount.value = 0;
+      storeFollowersLoading.value = false;
+      return;
+    }
+    if (becameBound || next[4] === true) {
+      void refreshFollowers();
+    }
   },
   { immediate: true },
 );

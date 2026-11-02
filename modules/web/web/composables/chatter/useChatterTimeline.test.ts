@@ -1,9 +1,12 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { effectScope, ref } from 'vue';
+import { effectScope, reactive, ref } from 'vue';
 import { useChatterTimeline } from './useChatterTimeline';
 import { asyncFnRecorder } from '@/web/web/__tests__/mountApp';
+import type { CollaborationCaps } from '@/web/web/platform/collaborationCaps';
+
+const CAPS_ALL: CollaborationCaps = { message: true, audit: true, document: true };
 
 function flush(): Promise<void> {
   return new Promise(resolve => {
@@ -63,6 +66,7 @@ describe('useChatterTimeline', () => {
     const scope = effectScope();
     const timeline = scope.run(() =>
       useChatterTimeline(model, resId, {
+        caps: CAPS_ALL,
         getMessageStore: () => ({ SearchByRecord: messages.search } as any),
         getFieldChangeStore: () => ({ SearchByRecord: fields.search } as any),
       })
@@ -91,6 +95,7 @@ describe('useChatterTimeline', () => {
     const scope = effectScope();
     const timeline = scope.run(() =>
       useChatterTimeline(model, resId, {
+        caps: CAPS_ALL,
         getMessageStore: () => ({ SearchByRecord: messages.search } as any),
         getFieldChangeStore: () => ({ SearchByRecord: fields.search } as any),
       })
@@ -163,6 +168,7 @@ describe('useChatterTimeline', () => {
     const scope = effectScope();
     const timeline = scope.run(() =>
       useChatterTimeline(model, resId, {
+        caps: CAPS_ALL,
         getMessageStore: () => ({ SearchByRecord: messages.search } as any),
         getFieldChangeStore: () => ({ SearchByRecord: fields.search } as any),
       })
@@ -171,6 +177,34 @@ describe('useChatterTimeline', () => {
     await flush();
     expect(timeline.entries.value.map(entry => `${entry.kind}:${entry.id}`)).toEqual(['message:m1', 'fieldChange:f1']);
     expect(timeline.error.value).toBeNull();
+    scope.stop();
+  });
+
+  test('refreshes when caps.message becomes available', async () => {
+    const messages = makeSearchQueue();
+    const fields = makeSearchQueue();
+    messages.enqueueResolved([
+      { Id: 'm1', Type: 'comment', Body: 'hello', AuthorUid: 'u1', CreatedAt: '2024-01-01T00:00:00.000Z' },
+    ]);
+    fields.enqueueResolved([]);
+    const caps = reactive<CollaborationCaps>({ message: false, audit: false, document: true });
+    const model = ref('partner.Partner');
+    const resId = ref<string | undefined>('r1');
+    const scope = effectScope();
+    const timeline = scope.run(() =>
+      useChatterTimeline(model, resId, {
+        caps,
+        getMessageStore: () => ({ SearchByRecord: messages.search } as any),
+        getFieldChangeStore: () => ({ SearchByRecord: fields.search } as any),
+      })
+    );
+    if (!timeline) throw new Error('timeline missing');
+    await flush();
+    expect(timeline.entries.value).toEqual([]);
+    expect(messages.search.calls.length).toBe(0);
+    caps.message = true;
+    await flush();
+    expect(timeline.entries.value.map(entry => entry.id)).toEqual(['m1']);
     scope.stop();
   });
 
@@ -184,6 +218,7 @@ describe('useChatterTimeline', () => {
     const scope = effectScope();
     const timeline = scope.run(() =>
       useChatterTimeline(model, resId, {
+        caps: CAPS_ALL,
         getMessageStore: () => ({ SearchByRecord: messages.search } as any),
         getFieldChangeStore: () => ({ SearchByRecord: fields.search } as any),
       })
@@ -206,6 +241,7 @@ describe('useChatterTimeline', () => {
     const scope = effectScope();
     const timeline = scope.run(() =>
       useChatterTimeline(model, resId, {
+        caps: CAPS_ALL,
         getMessageStore: () => ({ SearchByRecord: messages.search } as any),
         getFieldChangeStore: () => ({ SearchByRecord: fields.search } as any),
       })
@@ -237,6 +273,7 @@ describe('useChatterTimeline', () => {
     const scope = effectScope();
     const timeline = scope.run(() =>
       useChatterTimeline(model, resId, {
+        caps: CAPS_ALL,
         getMessageStore: () => ({ SearchByRecord: messages.search } as any),
         getFieldChangeStore: () => ({ SearchByRecord: fields.search } as any),
       })

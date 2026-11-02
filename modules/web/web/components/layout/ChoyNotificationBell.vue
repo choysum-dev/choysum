@@ -86,7 +86,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { Bell } from 'lucide-vue-next';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import Badge from '../vendor/ui/badge/Badge.vue';
 import Button from '../vendor/ui/button/Button.vue';
 import DropdownMenu from '../vendor/ui/dropdown-menu/DropdownMenu.vue';
@@ -143,15 +143,16 @@ const inbox = useInjectedNotificationInbox(() => caps.value.message && isAuthent
 const { rows, loading, error, unreadCount: inboxUnreadCount, refresh, markRead, markAllRead, activate, deactivate } =
   inbox;
 
-onMounted(async () => {
-  if (chromeMode.value || !caps.value.message) return;
+async function bindInboxAuth(): Promise<void> {
+  if (chromeMode.value || !caps.value.message || disposed) return;
   try {
     const { useAuthStore } = await import('@/auth/web/stores/auth');
-    if (disposed) return;
+    if (disposed || !caps.value.message) return;
     const authStore = useAuthStore();
     isAuthenticated.value = !!authStore.isAuthenticated;
+    stopAuthSubscribe?.();
     stopAuthSubscribe = (authStore as any).$subscribe?.(() => {
-      if (disposed) return;
+      if (disposed || !caps.value.message) return;
       const next = !!authStore.isAuthenticated;
       if (next === isAuthenticated.value) return;
       isAuthenticated.value = next;
@@ -174,7 +175,32 @@ onMounted(async () => {
       isAuthenticated.value = false;
     }
   }
+}
+
+function unbindInboxAuth(): void {
+  stopAuthSubscribe?.();
+  stopAuthSubscribe = undefined;
+  isAuthenticated.value = false;
+  deactivate();
+}
+
+onMounted(() => {
+  void bindInboxAuth();
 });
+
+watch(
+  () => caps.value.message,
+  (hasMessage, hadMessage) => {
+    if (chromeMode.value) return;
+    if (hasMessage && !hadMessage) {
+      void bindInboxAuth();
+      return;
+    }
+    if (!hasMessage && hadMessage) {
+      unbindInboxAuth();
+    }
+  }
+);
 
 onUnmounted(() => {
   disposed = true;

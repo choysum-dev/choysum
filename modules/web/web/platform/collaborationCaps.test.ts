@@ -1,7 +1,14 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { resolveCollaborationCaps } from './collaborationCaps';
+import { defineComponent, h } from 'vue';
+import {
+  CollaborationCapsKey,
+  resolveCollaborationCaps,
+  useCollaborationCaps,
+  useReactiveCollaborationCaps,
+} from './collaborationCaps';
+import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 
 test('resolveCollaborationCaps: empty registry → all false', () => {
   expect(resolveCollaborationCaps([])).toEqual({
@@ -48,4 +55,56 @@ test('resolveCollaborationCaps: full set → all true', () => {
     audit: true,
     document: true,
   });
+});
+
+test('useCollaborationCaps / useReactiveCollaborationCaps: registry fallback when no provide', async () => {
+  const Probe = defineComponent({
+    name: 'CapsProbe',
+    setup() {
+      const snap = useCollaborationCaps();
+      const reactiveCaps = useReactiveCollaborationCaps();
+      return () =>
+        h('div', {
+          'data-snap': JSON.stringify(snap),
+          'data-reactive': JSON.stringify(reactiveCaps.value),
+        });
+    },
+  });
+  const mounted = mountApp(Probe as any);
+  await flushPromises();
+  // FE unit registry stub lists no models → all false.
+  expect(JSON.parse(String(mounted.q('[data-snap]')?.getAttribute('data-snap')))).toEqual({
+    message: false,
+    audit: false,
+    document: false,
+  });
+  expect(JSON.parse(String(mounted.q('[data-reactive]')?.getAttribute('data-reactive')))).toEqual({
+    message: false,
+    audit: false,
+    document: false,
+  });
+  mounted.unmount();
+});
+
+test('useCollaborationCaps / useReactiveCollaborationCaps: honor CollaborationCapsKey override', async () => {
+  const override = { message: true, audit: false, document: true };
+  const Probe = defineComponent({
+    name: 'CapsOverrideProbe',
+    setup() {
+      const snap = useCollaborationCaps();
+      const reactiveCaps = useReactiveCollaborationCaps();
+      return () =>
+        h('div', {
+          'data-snap': JSON.stringify(snap),
+          'data-reactive': JSON.stringify(reactiveCaps.value),
+        });
+    },
+  });
+  const mounted = mountApp(Probe as any, {
+    provide: { [CollaborationCapsKey]: override },
+  });
+  await flushPromises();
+  expect(JSON.parse(String(mounted.q('[data-snap]')?.getAttribute('data-snap')))).toEqual(override);
+  expect(JSON.parse(String(mounted.q('[data-reactive]')?.getAttribute('data-reactive')))).toEqual(override);
+  mounted.unmount();
 });

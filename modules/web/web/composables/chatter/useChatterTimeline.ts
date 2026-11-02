@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { inject, ref, watch, type InjectionKey, type Ref } from 'vue';
+import { computed, inject, ref, watch, type InjectionKey, type Ref } from 'vue';
 import {
-  useCollaborationCaps,
+  useReactiveCollaborationCaps,
   type CollaborationCaps,
 } from '@/web/web/platform/collaborationCaps';
 import type { ChatterTimelineEntry } from './chatterTypes';
@@ -16,6 +16,7 @@ const FIELD_CHANGE_FIELDS = ['Id', 'Field', 'Kind', 'OldValue', 'NewValue', 'Act
 export type UseChatterTimelineDeps = {
   getMessageStore?: typeof getMessageStore;
   getFieldChangeStore?: typeof getFieldChangeStore;
+  /** Explicit caps (unit harness). Omit to use reactive registry caps. */
   caps?: CollaborationCaps;
 };
 
@@ -43,15 +44,28 @@ export function useChatterTimeline(
   const error = ref<string | null>(null);
   let refreshGeneration = 0;
 
-  const caps = resolveTimelineCaps(deps);
+  const capsRef = deps?.caps
+    ? computed(() => deps.caps as CollaborationCaps)
+    : useReactiveCollaborationCaps();
   const resolveMessageStore = deps?.getMessageStore ?? getMessageStore;
   const resolveFieldChangeStore = deps?.getFieldChangeStore ?? getFieldChangeStore;
-  // Do not createStore when the module is absent — caps gate the dial.
-  const messageStore = caps.message ? resolveMessageStore() : null;
-  const fieldChangeStore = caps.message && caps.audit ? resolveFieldChangeStore() : null;
+  let messageStore: ReturnType<typeof resolveMessageStore> | null = null;
+  let fieldChangeStore: ReturnType<typeof resolveFieldChangeStore> | null = null;
+
+  /** Create stores lazily when the corresponding caps become true. */
+  function ensureStores(caps: CollaborationCaps): void {
+    if (caps.message && !messageStore) {
+      messageStore = resolveMessageStore();
+    }
+    if (caps.message && caps.audit && !fieldChangeStore) {
+      fieldChangeStore = resolveFieldChangeStore();
+    }
+  }
 
   async function refresh(): Promise<void> {
     const generation = ++refreshGeneration;
+    const caps = capsRef.value;
+    ensureStores(caps);
     const threadModel = String(model.value || '').trim();
     const threadResId = String(resId.value || '').trim();
     if (!caps.message || !messageStore || !threadModel || !threadResId) {
@@ -65,9 +79,10 @@ export function useChatterTimeline(
     error.value = null;
     try {
       const messagesPromise = messageStore.SearchByRecord(threadModel, threadResId, [...MESSAGE_FIELDS]);
-      const fieldChangesPromise = fieldChangeStore
-        ? fieldChangeStore.SearchByRecord(threadModel, threadResId, [...FIELD_CHANGE_FIELDS])
-        : Promise.resolve([]);
+      const fieldChangesPromise =
+        caps.audit && fieldChangeStore
+          ? fieldChangeStore.SearchByRecord(threadModel, threadResId, [...FIELD_CHANGE_FIELDS])
+          : Promise.resolve([]);
       const [messages, fieldChanges] = await Promise.all([messagesPromise, fieldChangesPromise]);
       if (generation !== refreshGeneration) return;
       entries.value = mergeChatterTimeline(messages, fieldChanges);
@@ -80,23 +95,13 @@ export function useChatterTimeline(
     }
   }
 
-  watch([model, resId], () => {
-    void refresh();
-  }, { immediate: true });
+  watch(
+    [model, resId, () => capsRef.value.message, () => capsRef.value.audit],
+    () => {
+      void refresh();
+    },
+    { immediate: true }
+  );
 
   return { entries, loading, error, refresh };
-}
-
-/** Resolve caps from explicit deps, harness store getters, or the live registry. */
-function resolveTimelineCaps(deps?: UseChatterTimelineDeps): CollaborationCaps {
-  if (deps?.caps) return deps.caps;
-  // Unit harnesses inject store getters without a registry — treat injected paths as available.
-  if (deps?.getMessageStore || deps?.getFieldChangeStore) {
-    return {
-      message: deps.getMessageStore != null,
-      audit: deps.getFieldChangeStore != null,
-      document: true,
-    };
-  }
-  return useCollaborationCaps();
 }
