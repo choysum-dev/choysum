@@ -87,12 +87,13 @@ export function useChatterTimeline(
   return { entries, loading, error, refresh };
 }
 
+/** Resolve caps from explicit deps, harness store getters, or the live registry. */
 function resolveTimelineCaps(deps?: UseChatterTimelineDeps): CollaborationCaps {
   if (deps?.caps) return deps.caps;
-  // Unit harnesses inject store getters without a registry — treat as available.
+  // Unit harnesses inject store getters without a registry — treat injected paths as available.
   if (deps?.getMessageStore || deps?.getFieldChangeStore) {
     return {
-      message: true,
+      message: deps.getMessageStore != null,
       audit: deps.getFieldChangeStore != null,
       document: true,
     };

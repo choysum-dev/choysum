@@ -34,11 +34,6 @@ import {
   applyChoyThemePreference,
   readChoyThemePreference,
 } from './composables/applyChoyThemePreference';
-import {
-  CollaborationCapsKey,
-  resolveCollaborationCaps,
-  type CollaborationCaps,
-} from './platform/collaborationCaps';
 
 /** Optional overrides for unit tests; production callers omit this. */
 export type SetupAppDeps = {
@@ -68,7 +63,6 @@ export type SetupAppDeps = {
   registerExportTemplateRoutes?: typeof registerExportTemplateRoutes;
   applyChoyThemePreference?: typeof applyChoyThemePreference;
   readChoyThemePreference?: typeof readChoyThemePreference;
-  resolveCollaborationCaps?: () => CollaborationCaps;
   baseUrl?: string;
   hasWindow?: () => boolean;
 };
@@ -113,12 +107,10 @@ export function setupApp(app: ChoysumWebApp, deps: SetupAppDeps = {}): void {
   );
   const applyTheme = pickDep(deps.applyChoyThemePreference, applyChoyThemePreference);
   const readTheme = pickDep(deps.readChoyThemePreference, readChoyThemePreference);
-  const resolveCaps = pickDep(deps.resolveCollaborationCaps, resolveCollaborationCaps);
   const baseUrl = pickDep(deps.baseUrl, import.meta.env?.BASE_URL ?? '/');
   const hasWindow = pickDep(deps.hasWindow, () => typeof window !== 'undefined');
 
   registerDirectives(app);
-  app.provide(CollaborationCapsKey, resolveCaps());
 
   const pinia = makePinia().use(piniaPersist);
   app.usePlugin('pinia', pinia, {}, false);

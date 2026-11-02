@@ -150,7 +150,7 @@ import {
   readChoyThemePreference,
   type ChoyThemeMode,
 } from '@/web/web/composables/applyChoyThemePreference';
-import { useCollaborationCaps } from '@/web/web/platform/collaborationCaps';
+import { useReactiveCollaborationCaps } from '@/web/web/platform/collaborationCaps';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
 import { DEFAULT_ACTIVE_UI_KEYS } from '@/web/web/stores/i18nStore/activeUiKeys';
 import { SUPPORTED_LOCALES } from '@/web/web/stores/i18nStore/locales';
@@ -192,7 +192,7 @@ export default defineComponent({
     }
     const baseSetup = reuseParentSetupState(baseSetupFn(props, ctx));
     const { _t } = createTranslate('auth', { scope: 'web/components/layout/ChoyAppShell' });
-    const collaborationCaps = useCollaborationCaps();
+    const collaborationCaps = useReactiveCollaborationCaps();
     const router = useRouter();
     const authStore = useAuthStore();
     const preferencesVisible = ref(false);

@@ -40,8 +40,9 @@ export function useNotificationInbox(enabled: () => boolean, deps?: UseNotificat
   const onTips = deps?.onTips ?? defaultOnTips;
   const subscribeNotifications = deps?.subscribeNotifications ?? defaultSubscribeNotifications;
   const pollFallbackMs = deps?.pollFallbackMs ?? POLL_FALLBACK_MS;
-  // Lazy: avoid createStore when message is not installed (caps gate callers).
+  // Lazy: avoid createStore until an enabled inbox operation needs it.
   let notificationStore: ReturnType<typeof resolveNotificationStore> | undefined;
+  /** Create the notification store on first enabled use. */
   const getStore = () => {
     if (!notificationStore) notificationStore = resolveNotificationStore();
     return notificationStore;
@@ -79,7 +80,7 @@ export function useNotificationInbox(enabled: () => boolean, deps?: UseNotificat
 
   async function markRead(notificationId: string): Promise<void> {
     const id = String(notificationId || '').trim();
-    if (!id) return;
+    if (!id || !enabled()) return;
     try {
       await getStore().MarkRead([id]);
       await refresh();
@@ -89,6 +90,7 @@ export function useNotificationInbox(enabled: () => boolean, deps?: UseNotificat
   }
 
   async function markAllRead(): Promise<void> {
+    if (!enabled()) return;
     try {
       await getStore().MarkAllRead();
       await refresh();

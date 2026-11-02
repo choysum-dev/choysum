@@ -179,7 +179,7 @@ describe('ChoyChatter', () => {
     });
   }
 
-  test('hides chatter when collaboration caps.message is false', async () => {
+  test('hides store-bound chatter when collaboration caps.message is false', async () => {
     const mounted = mountApp(ChoyChatter as any, {
       props: {
         model: 'partner.Partner',
@@ -190,6 +190,25 @@ describe('ChoyChatter', () => {
       provide: storeProvide({ message: false, audit: false, document: false }),
     });
     expect(mounted.q('[data-anchor="choy.chatter"]')).toBeNull();
+    mounted.unmount();
+  });
+
+  test('chrome mode still renders when collaboration caps.message is false', async () => {
+    const mounted = mountApp(ChoyChatter as any, {
+      props: {
+        model: 'partner.Partner',
+        resId: 'res_1',
+        entries: [{ kind: 'message', id: 'm1' }],
+        following: false,
+        followerCount: 1,
+        currentUserId: 'usr_test',
+        currentUserName: 'Tester',
+      },
+      plugins: [pinia],
+      provide: storeProvide({ message: false, audit: false, document: false }),
+    });
+    expect(mounted.q('[data-anchor="choy.chatter"]')).not.toBeNull();
+    expect(mounted.q('.timeline-count')?.textContent).toBe('1');
     mounted.unmount();
   });
 

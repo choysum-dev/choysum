@@ -21,7 +21,7 @@ export function listRegisteredModelNames() {
 export function registerStoreFactory(_modelName, _factory) {}
 
 export function getStoreFactoryRegistryVersion() {
-  return 0;
+  return { value: 0 };
 }
 
 export default {

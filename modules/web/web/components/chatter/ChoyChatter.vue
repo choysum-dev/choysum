@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <div
-    v-if="caps.message"
+    v-if="chatterVisible"
     class="choy-chatter mt-3.5"
     data-anchor="choy.chatter"
     data-region="chatter"
@@ -59,7 +59,7 @@ import {
 } from '@/web/web/composables/chatter/chatterStores';
 import { useInjectedChatterTimeline } from '@/web/web/composables/chatter/useChatterTimeline';
 import { useInjectedChatterThreadTips } from '@/web/web/composables/chatter/useChatterThreadTips';
-import { useCollaborationCaps } from '@/web/web/platform/collaborationCaps';
+import { useReactiveCollaborationCaps } from '@/web/web/platform/collaborationCaps';
 import { createTranslate } from '@/web/web/i18n';
 import ChoyCard from '../layout/ChoyCard.vue';
 import type { ChatterTimelineEntry } from './chatterTypes';
@@ -69,7 +69,7 @@ import ChoyChatterFollowerBar from './ChoyChatterFollowerBar.vue';
 import ChoyChatterTimeline from './ChoyChatterTimeline.vue';
 
 const { _t } = createTranslate('web', { scope: 'web/components/chatter/ChoyChatter' });
-const caps = useCollaborationCaps();
+const caps = useReactiveCollaborationCaps();
 
 /**
  * Chatter shell. Chrome mode: timeline / composer / followers via props + emits.
@@ -115,6 +115,9 @@ const props = withDefaults(
 );
 
 const resolvedTitle = computed(() => props.title?.trim() || _t('Activity'));
+/** Chrome mode stays available without message; store mode requires caps.message. */
+const chatterVisible = computed(() => !props.bindStore || caps.value.message);
+const storeBound = computed(() => props.bindStore && caps.value.message);
 
 const emit = defineEmits<{
   post: [body: string];
@@ -127,15 +130,25 @@ const postingResId = ref<string | null>(null);
 const postingModel = ref<string | null>(null);
 
 const authStore = useAuthStore();
-// inject() must stay unconditional; only createStore when message is available.
+// inject() must stay unconditional; createStore only when store-bound.
 const messageStoreOverride = inject(GetMessageStoreKey, null);
 const followerStoreOverride = inject(GetFollowerStoreKey, null);
-const messageStore = caps.message ? (messageStoreOverride ?? getMessageStore)() : null;
-const followerStore = caps.message ? (followerStoreOverride ?? getFollowerStore)() : null;
+let messageStoreCache: ReturnType<typeof getMessageStore> | null = null;
+let followerStoreCache: ReturnType<typeof getFollowerStore> | null = null;
+function resolveMessageStore() {
+  if (!storeBound.value) return null;
+  if (!messageStoreCache) messageStoreCache = (messageStoreOverride ?? getMessageStore)();
+  return messageStoreCache;
+}
+function resolveFollowerStore() {
+  if (!storeBound.value) return null;
+  if (!followerStoreCache) followerStoreCache = (followerStoreOverride ?? getFollowerStore)();
+  return followerStoreCache;
+}
 
 /** Empty model/resId when chrome-only so store timeline stays idle. */
-const boundModel = computed(() => (props.bindStore && caps.message ? String(props.model || '') : ''));
-const boundResId = computed(() => (props.bindStore && caps.message ? props.resId : undefined));
+const boundModel = computed(() => (storeBound.value ? String(props.model || '') : ''));
+const boundResId = computed(() => (storeBound.value ? props.resId : undefined));
 
 const {
   entries: storeEntries,
@@ -179,7 +192,8 @@ function isPostingContextCurrent(targetModel: string, targetResId: string): bool
 }
 
 async function refreshFollowers(): Promise<void> {
-  if (!props.bindStore || !followerStore) return;
+  const followerStore = resolveFollowerStore();
+  if (!followerStore) return;
   const generation = ++followersGeneration;
   const threadModel = String(props.model || '').trim();
   const threadResId = String(props.resId || '').trim();
@@ -276,6 +290,7 @@ function resolveAuthorLabel(userId: string | null | undefined): string {
 
 async function onPost(body: string): Promise<void> {
   if (props.bindStore) {
+    const messageStore = resolveMessageStore();
     if (!messageStore) return;
     const text = body.trim();
     if (!text || storePosting.value || props.disabled) return;
@@ -316,6 +331,7 @@ async function onPost(body: string): Promise<void> {
 
 async function onFollow(): Promise<void> {
   if (props.bindStore) {
+    const followerStore = resolveFollowerStore();
     if (!followerStore || !canToggleFollow.value || storeFollowersLoading.value || props.disabled) return;
     storeFollowersLoading.value = true;
     try {
@@ -333,6 +349,7 @@ async function onFollow(): Promise<void> {
 
 async function onUnfollow(): Promise<void> {
   if (props.bindStore) {
+    const followerStore = resolveFollowerStore();
     if (!followerStore || !canToggleFollow.value || storeFollowersLoading.value || props.disabled) return;
     storeFollowersLoading.value = true;
     try {

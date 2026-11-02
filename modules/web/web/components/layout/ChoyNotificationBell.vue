@@ -111,14 +111,14 @@ import {
   useInjectedNotificationInbox,
   type InboxNotificationRow
 } from '@/web/web/composables/chatter/useNotificationInbox';
-import { useCollaborationCaps } from '@/web/web/platform/collaborationCaps';
+import { useReactiveCollaborationCaps } from '@/web/web/platform/collaborationCaps';
 import { formatUtcIso } from '@/web/web/utils/datetime';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'ChoyNotificationBell', inheritAttrs: false });
 
 const { _t } = createTranslate('web', { scope: 'web/components/layout/ChoyNotificationBell' });
-const caps = useCollaborationCaps();
+const caps = useReactiveCollaborationCaps();
 
 const props = defineProps<{
   class?: ClassValue;
@@ -139,12 +139,12 @@ const isAuthenticated = ref(false);
 let stopAuthSubscribe: (() => void) | undefined;
 let disposed = false;
 
-const inbox = useInjectedNotificationInbox(() => caps.message && isAuthenticated.value);
+const inbox = useInjectedNotificationInbox(() => caps.value.message && isAuthenticated.value);
 const { rows, loading, error, unreadCount: inboxUnreadCount, refresh, markRead, markAllRead, activate, deactivate } =
   inbox;
 
 onMounted(async () => {
-  if (chromeMode.value || !caps.message) return;
+  if (chromeMode.value || !caps.value.message) return;
   try {
     const { useAuthStore } = await import('@/auth/web/stores/auth');
     if (disposed) return;
