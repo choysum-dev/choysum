@@ -271,11 +271,8 @@ func TestResolveReadyWhenMarkerSet(t *testing.T) {
 	}
 }
 
-func TestResolveReadyWhenLegacySystemInitDone(t *testing.T) {
-	runtimeScope, db := newSetupStateScope(t)
-	createMetaModuleTable(t, db)
-	insertAuthModule(t, db, meta.Installed)
-	createAuthAppSettingTable(t, db)
+func createMetaSettingTable(t *testing.T, db *gorm.DB) {
+	t.Helper()
 	mustExec(t, db, `CREATE TABLE meta_setting (
 		id TEXT PRIMARY KEY,
 		key TEXT NOT NULL UNIQUE,
@@ -284,6 +281,14 @@ func TestResolveReadyWhenLegacySystemInitDone(t *testing.T) {
 		updated_at DATETIME,
 		deleted_at DATETIME
 	)`)
+}
+
+func TestResolveReadyWhenLegacySystemInitDone(t *testing.T) {
+	runtimeScope, db := newSetupStateScope(t)
+	createMetaModuleTable(t, db)
+	insertAuthModule(t, db, meta.Installed)
+	createAuthAppSettingTable(t, db)
+	createMetaSettingTable(t, db)
 	mustExec(t, db, `INSERT INTO meta_setting (id, key, value, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
 		"legacy", legacySystemInitDoneKey, "true", time.Now(), time.Now())
 
@@ -301,6 +306,63 @@ func TestResolveReadyWhenLegacySystemInitDone(t *testing.T) {
 	}
 	if strings.TrimSpace(row.Value) == "" {
 		t.Fatal("expected non-empty backfilled setup.completed_at")
+	}
+}
+
+func TestResolveSetupPendingWhenLegacyMarkerAbsent(t *testing.T) {
+	runtimeScope, db := newSetupStateScope(t)
+	createMetaModuleTable(t, db)
+	insertAuthModule(t, db, meta.Installed)
+	createAuthAppSettingTable(t, db)
+	createMetaSettingTable(t, db)
+
+	phase, err := Resolve(runtimeScope)
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	if phase != PhaseSetupPending {
+		t.Fatalf("phase = %q, want %q", phase, PhaseSetupPending)
+	}
+}
+
+func TestResolveSetupPendingWhenLegacyProbeErrors(t *testing.T) {
+	runtimeScope, db := newSetupStateScope(t)
+	createMetaModuleTable(t, db)
+	insertAuthModule(t, db, meta.Installed)
+	createAuthAppSettingTable(t, db)
+	// Present for HasTable-like discovery, but Select(value) fails.
+	mustExec(t, db, `CREATE TABLE meta_setting (id TEXT PRIMARY KEY, key TEXT NOT NULL UNIQUE)`)
+
+	phase, err := Resolve(runtimeScope)
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	if phase != PhaseSetupPending {
+		t.Fatalf("phase = %q, want %q (legacy probe errors fail closed)", phase, PhaseSetupPending)
+	}
+}
+
+func TestResolveReadyWhenLegacyBackfillFails(t *testing.T) {
+	runtimeScope, db := newSetupStateScope(t)
+	createMetaModuleTable(t, db)
+	insertAuthModule(t, db, meta.Installed)
+	createAuthAppSettingTable(t, db)
+	createMetaSettingTable(t, db)
+	mustExec(t, db, `INSERT INTO meta_setting (id, key, value, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+		"legacy", legacySystemInitDoneKey, "true", time.Now(), time.Now())
+	// Allow SELECT miss, but reject INSERT so backfill Warn path runs.
+	mustExec(t, db, `CREATE TRIGGER auth_app_setting_no_insert
+		BEFORE INSERT ON auth_app_setting
+		BEGIN
+			SELECT RAISE(ABORT, 'forced backfill failure');
+		END`)
+
+	phase, err := Resolve(runtimeScope)
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	if phase != PhaseReady {
+		t.Fatalf("phase = %q, want %q (legacy still unlocks when backfill fails)", phase, PhaseReady)
 	}
 }
 
