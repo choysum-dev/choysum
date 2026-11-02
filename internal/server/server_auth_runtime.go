@@ -5,6 +5,7 @@ package server
 
 import (
 	"github.com/choysum-dev/choysum/internal/server/middleware/auth/grpcauth"
+	"github.com/choysum-dev/choysum/internal/server/middleware/auth/setupgate"
 	"github.com/choysum-dev/choysum/pkg/auth"
 	xfmt "golang.org/x/exp/errors/fmt"
 	"google.golang.org/grpc"
@@ -50,14 +51,38 @@ func (r authRuntimeSetupResult) logFields() []any {
 
 func (s *GRPCWebServer) applyAuthGRPCInterceptors(unaryInterceptors []grpc.UnaryServerInterceptor) (unary []grpc.UnaryServerInterceptor, stream grpc.StreamServerInterceptor) {
 	unary = unaryInterceptors
+	setupUnary := setupgate.UnaryInterceptor(s.runtimeScope)
+	setupStream := setupgate.StreamInterceptor(s.runtimeScope)
+
 	if s.authenticator == nil {
-		return unary, nil
+		// Still gate session-establishing RPCs when auth runtime is unavailable.
+		unary = append([]grpc.UnaryServerInterceptor{setupUnary}, unary...)
+		return unary, setupStream
 	}
 	unary = append(
-		[]grpc.UnaryServerInterceptor{grpcauth.AuthInterceptorFromConfig(s.runtimeScope, s.authenticator)},
+		[]grpc.UnaryServerInterceptor{
+			grpcauth.AuthInterceptorFromConfig(s.runtimeScope, s.authenticator),
+			setupUnary,
+		},
 		unary...,
 	)
-	return unary, grpcauth.StreamInterceptorFromConfig(s.runtimeScope, s.authenticator)
+	authStream := grpcauth.StreamInterceptorFromConfig(s.runtimeScope, s.authenticator)
+	return unary, chainStreamServer(authStream, setupStream)
+}
+
+// chainStreamServer runs interceptors in order (outer first).
+func chainStreamServer(interceptors ...grpc.StreamServerInterceptor) grpc.StreamServerInterceptor {
+	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		chain := handler
+		for i := len(interceptors) - 1; i >= 0; i-- {
+			interceptor := interceptors[i]
+			next := chain
+			chain = func(srv interface{}, ss grpc.ServerStream) error {
+				return interceptor(srv, ss, info, next)
+			}
+		}
+		return chain(srv, ss)
+	}
 }
 
 func (s *GRPCWebServer) setupAuthInterceptors(unaryInterceptors *[]grpc.UnaryServerInterceptor) (grpc.StreamServerInterceptor, authRuntimeSetupResult) {

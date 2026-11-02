@@ -131,8 +131,9 @@ func TestServerMoreInterceptorsAndTelemetry(t *testing.T) {
 	unary := []grpc.UnaryServerInterceptor{baseUnary}
 	stream, authResult := srv.setupAuthInterceptors(&unary)
 	assertAuthRuntimeSetupResult(t, authResult, false, false, false, false, "auth-disabled setup")
-	if stream != nil || len(unary) != 1 {
-		t.Fatalf("expected auth-disabled setup to be a no-op, got stream=%v unary=%d", stream != nil, len(unary))
+	// SetupPending gate stays wired even when auth runtime is off.
+	if stream == nil || len(unary) != 2 {
+		t.Fatalf("expected setupgate when auth disabled, got stream=%v unary=%d", stream != nil, len(unary))
 	}
 
 	runtimeScope.cfg.Auth.Enabled = true
@@ -145,8 +146,8 @@ func TestServerMoreInterceptorsAndTelemetry(t *testing.T) {
 	if srv.jsExecutor != executor {
 		t.Fatal("expected setupAuthInterceptors error path to leave js executor ownership unchanged")
 	}
-	if srv.authenticator != nil || stream != nil || len(unary) != 1 {
-		t.Fatalf("expected setupAuthInterceptors error path to leave grpc auth state unchanged, got authenticator=%v stream=%v unary=%d", srv.authenticator != nil, stream != nil, len(unary))
+	if srv.authenticator != nil || stream == nil || len(unary) != 2 {
+		t.Fatalf("expected setupgate without authenticator on auth error, got authenticator=%v stream=%v unary=%d", srv.authenticator != nil, stream != nil, len(unary))
 	}
 
 	runtimeScope.cfg.Auth.Type = "jwt"
@@ -158,8 +159,9 @@ func TestServerMoreInterceptorsAndTelemetry(t *testing.T) {
 	unary = []grpc.UnaryServerInterceptor{baseUnary}
 	stream, authResult = srv.setupAuthInterceptors(&unary)
 	assertAuthRuntimeSetupResult(t, authResult, true, true, false, false, "auth setup success path")
-	if srv.authenticator == nil || stream == nil || len(unary) != 2 {
-		t.Fatalf("expected auth interceptors to be installed, got authenticator=%v stream=%v unary=%d", srv.authenticator != nil, stream != nil, len(unary))
+	// Auth interceptor + setupgate prepended ahead of the base unary.
+	if srv.authenticator == nil || stream == nil || len(unary) != 3 {
+		t.Fatalf("expected auth+setupgate interceptors, got authenticator=%v stream=%v unary=%d", srv.authenticator != nil, stream != nil, len(unary))
 	}
 	_ = serverOpts
 
