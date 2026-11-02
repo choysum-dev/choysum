@@ -44,16 +44,25 @@ func StreamInterceptor(runtimeScope scope.Scope) grpc.StreamServerInterceptor {
 }
 
 func enforceReadyForSessionMethod(runtimeScope scope.Scope, fullMethod string) error {
-	if !middleware.IsMethodExcluded(fullMethod, sessionEstablishingMethods) {
+	if !isSessionEstablishingMethod(fullMethod) {
 		return nil
 	}
 
 	phase, err := provision.Resolve(runtimeScope)
 	if err != nil {
+		if runtimeScope != nil && runtimeScope.Logger() != nil {
+			runtimeScope.Logger().Error("setup gate: resolve setup state failed", "method", fullMethod, "error", err)
+		}
 		return status.Errorf(codes.FailedPrecondition, "initial setup state unavailable")
 	}
 	if phase != provision.PhaseReady {
 		return status.Error(codes.FailedPrecondition, "initial setup is not complete")
 	}
 	return nil
+}
+
+// isSessionEstablishingMethod reports whether fullMethod creates/renews a session.
+// Uses IsMethodExcluded for path matching only (not "auth skip" semantics).
+func isSessionEstablishingMethod(fullMethod string) bool {
+	return middleware.IsMethodExcluded(fullMethod, sessionEstablishingMethods)
 }

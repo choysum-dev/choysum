@@ -279,6 +279,8 @@ func TestIsMissingSQLTableError(t *testing.T) {
 		{errors.New("no such table: auth_app_setting"), true},
 		{errors.New("Unknown table 'auth_app_setting'"), true},
 		{errors.New("Table 'db.auth_app_setting' doesn't exist"), true},
+		{errors.New("Error 1146: Table `db`.`auth_app_setting` doesn't exist"), true},
+		{errors.New("Column 'value' in table 'auth_app_setting' doesn't exist"), false},
 		{errors.New(`relation "auth_app_setting" does not exist`), true},
 		{errors.New(`constraint "fk" of relation "auth_app_setting" does not exist`), false},
 		{errors.New("column foo does not exist"), false},

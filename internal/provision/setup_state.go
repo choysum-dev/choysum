@@ -106,7 +106,12 @@ func isMissingSQLTableError(err error) bool {
 	if strings.Contains(msg, "no such table") || strings.Contains(msg, "unknown table") {
 		return true
 	}
-	if strings.Contains(msg, "table") && strings.Contains(msg, "doesn't exist") {
+	// MySQL ER_NO_SUCH_TABLE: Table 'db.name' doesn't exist.
+	// Exclude column errors like "Column 'c' in table 't' doesn't exist".
+	if strings.Contains(msg, "doesn't exist") &&
+		!strings.Contains(msg, "column") &&
+		!strings.Contains(msg, " in table ") &&
+		(strings.Contains(msg, "table '") || strings.Contains(msg, "table `")) {
 		return true
 	}
 	if strings.Contains(msg, `relation "`) && strings.Contains(msg, "does not exist") &&

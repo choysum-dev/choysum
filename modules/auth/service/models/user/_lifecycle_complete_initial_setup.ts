@@ -7,7 +7,6 @@ import { withRecordRuleAndFieldRuleBypass } from '@/core/service/api/authz_bypas
 import type MetaModelData from '@/meta/service/models/model_data';
 import { newAuthError, AuthErrCode, GrpcCode } from '../../error';
 import { _t } from '../../i18n';
-import AppSetting from '../app_setting';
 import Session from '../session';
 import Token from '../token';
 import { hashPassword, withPermissionGraphBypass } from './_authz_shared';
@@ -202,8 +201,9 @@ async function claimSetupCompletedAt(iso: string): Promise<void> {
       throw alreadyCompleteError();
     }
     try {
-      // Create-only (not Set upsert) so a concurrent loser hits the unique key and maps to ALREADY_COMPLETE.
-      await AppSetting.Create({ Key: SETUP_COMPLETED_AT_KEY, Value: iso } as any);
+      // Create-only via the auth-scoped store (not Set upsert) so a concurrent loser
+      // hits the unique key and maps to ALREADY_COMPLETE.
+      await (store as any).Create({ Key: SETUP_COMPLETED_AT_KEY, Value: iso });
     } catch (err) {
       if (isUniqueConstraintError(err)) {
         throw alreadyCompleteError();
