@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <ChoyPage v-if="metaModelDataStore" :store="metaModelDataStore">
-    <MetaModelDataFormView :store="metaModelDataStore" view-mode="display" />
+    <MetaModelDataFormView :store="metaModelDataStore" />
   </ChoyPage>
 </template>
 

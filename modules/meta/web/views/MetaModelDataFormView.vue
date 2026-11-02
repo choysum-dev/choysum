@@ -6,11 +6,12 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <!--
     Display-only Form for meta.MetaModelData. Full external id key is Module.Name.
-    Omitting mutating action-ids hides Edit/Create/Copy/Delete (opt-in slots).
-    Host loaders own the write path.
+    view-mode is hard-pinned to display; omitting mutating action-ids hides
+    Edit/Create/Copy/Delete. Host loaders own the write path.
   -->
   <ChoyFormView
-    v-bind="{ store, recordId, viewMode, showHeader }"
+    v-bind="{ store, recordId, showHeader }"
+    view-mode="display"
     :show-actions="true"
     v-on="$attrs"
   >
@@ -71,7 +72,6 @@ import {
   ChoyManyToOneField,
   ChoySection,
   ChoyVarcharField,
-  type ChoyViewMode as ViewMode,
 } from '@/web';
 
 defineOptions({ name: 'MetaModelDataFormView', inheritAttrs: true });
@@ -81,15 +81,13 @@ const props = withDefaults(
   defineProps<{
     store?: WebModelStore<any>;
     recordId?: string;
-    viewMode?: ViewMode;
     showHeader?: boolean;
   }>(),
   {
     showHeader: true,
-    viewMode: 'display',
   }
 );
 
 const store = resolvePageStore(props.store, 'MetaModelDataFormView');
-const { recordId, viewMode, showHeader } = props;
+const { recordId, showHeader } = props;
 </script>
