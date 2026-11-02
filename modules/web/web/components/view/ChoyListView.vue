@@ -304,7 +304,11 @@ import { useVirtualizationAdapter } from '@/web/web/composables/virtualizationAd
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
 import ChoySearchView from '@/web/web/components/view/ChoySearchView.vue';
 import { shouldDeferViewFirstFrame } from '@/web/web/components/view/kanbanFirstFrame';
-import { canShowAction, type ActionIdMap } from '@/web/web/components/view/actionVisibility';
+import {
+  canShowAction,
+  canShowDeclaredAction,
+  type ActionIdMap,
+} from '@/web/web/components/view/actionVisibility';
 import { createTranslate } from '@/web/web/i18n';
 import type { SelectionExpose, RowEventPayload, RowEventHandlerParams } from '@/web/web/components/view/listViewTypes';
 import {
@@ -460,9 +464,10 @@ const resolvedSearchView = computed(() => {
   const view = props.searchView;
   return view ? markRaw(toRaw(view as object)) : null;
 });
-const canCreate = computed(() => canShowAction(props.actionIds?.create, props.hasAction));
+// Mutating slots are opt-in (empty action id → hidden). Refresh stays ungated by default.
+const canCreate = computed(() => canShowDeclaredAction(props.actionIds?.create, props.hasAction));
 const canRefresh = computed(() => canShowAction(props.actionIds?.refresh, props.hasAction));
-const canDelete = computed(() => canShowAction(props.actionIds?.delete, props.hasAction));
+const canDelete = computed(() => canShowDeclaredAction(props.actionIds?.delete, props.hasAction));
 const showRefreshInOverflow = computed(
   () => props.showActions && props.refreshAction && canRefresh.value,
 );

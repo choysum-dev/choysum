@@ -8,7 +8,10 @@ import { Boxes } from 'lucide-vue-next';
 
 const { _lt } = createTranslate('meta', { scope: 'web/menu/menus' });
 
-/** Settings → meta: Parameters then platform catalogs. */
+/**
+ * Settings → meta: Parameters then platform catalogs. External IDs is the
+ * Owner=meta MetaModelData admin ledger (read-only List/Form; not per-app).
+ */
 export const metaSettingsAppMenu: MenuItem = defineMenu('meta.menu.settings_app', {
   title: _lt('meta'),
   sequence: 50,
@@ -37,6 +40,12 @@ export const metaSettingsAppMenu: MenuItem = defineMenu('meta.menu.settings_app'
       title: _lt('Field Defaults'),
       path: '/web/field-defaults/meta',
       sequence: 50,
+      defaultRoles: ['sys.admin'],
+    }),
+    defineMenu('meta.menu.external_ids', {
+      title: _lt('External IDs'),
+      path: '/web/external-ids',
+      sequence: 60,
       defaultRoles: ['sys.admin'],
     }),
   ],

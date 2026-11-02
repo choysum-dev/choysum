@@ -1146,50 +1146,60 @@ msgctxt "service/models/ui_resource"
 msgid "Cycle detected: %s cannot be assigned under one of its descendants"
 msgstr "检测到循环：%s 不能挂到其子孙节点下"
 
-#: web/menu/menus.ts:31
+#: web/menu/menus.ts:46
+msgctxt "web/menu/menus"
+msgid "External IDs"
+msgstr "外部 ID"
+
+#: web/menu/menus.ts:40
 msgctxt "web/menu/menus"
 msgid "Field Defaults"
 msgstr "字段默认值"
 
-#: web/menu/menus.ts:52
+#: web/menu/menus.ts:61
 msgctxt "web/menu/menus"
 msgid "Module Board"
 msgstr "模块看板"
 
-#: web/menu/menus.ts:58
+#: web/menu/menus.ts:67
 msgctxt "web/menu/menus"
 msgid "Module List"
 msgstr "模块列表"
 
-#: web/menu/menus.ts:47
+#: web/menu/menus.ts:56
 msgctxt "web/menu/menus"
 msgid "Module Management"
 msgstr "模块管理"
 
-#: web/menu/menus.ts:64
+#: web/menu/menus.ts:73
 msgctxt "web/menu/menus"
 msgid "Operation History"
 msgstr "操作历史"
 
-#: web/menu/menus.ts:37
+#: web/menu/menus.ts:22
 msgctxt "web/menu/menus"
 msgid "Parameters"
 msgstr "参数"
 
-#: web/menu/menus.ts:25
+#: web/menu/menus.ts:34
 msgctxt "web/menu/menus"
 msgid "Property Definitions"
 msgstr "属性定义"
 
-#: web/menu/menus.ts:19
+#: web/menu/menus.ts:28
 msgctxt "web/menu/menus"
 msgid "Translations"
 msgstr "翻译"
 
-#: web/menu/menus.ts:13
+#: web/menu/menus.ts:16
 msgctxt "web/menu/menus"
 msgid "meta"
 msgstr "meta"
+
+#: web/pages/meta_model_data_list_page.ts:30
+msgctxt "web/pages/MetaModelDataList"
+msgid "External IDs"
+msgstr "外部 ID"
 
 #: web/pages/ModuleHistory.vue:12
 msgctxt "web/pages/ModuleHistory"
@@ -1205,6 +1215,16 @@ msgstr "模块看板"
 msgctxt "web/pages/ModuleListTable"
 msgid "Module List"
 msgstr "模块列表"
+
+#: web/route/routes.ts:109
+msgctxt "web/route/routes"
+msgid "External ID"
+msgstr "外部 ID"
+
+#: web/route/routes.ts:99
+msgctxt "web/route/routes"
+msgid "External IDs"
+msgstr "外部 ID"
 
 #: web/route/routes.ts:80
 msgctxt "web/route/routes"
@@ -1245,6 +1265,86 @@ msgstr "属性定义"
 msgctxt "web/route/routes"
 msgid "Translations"
 msgstr "翻译"
+
+#: web/views/MetaModelDataFormView.vue:22
+msgctxt "web/views/MetaModelDataFormView"
+msgid "Application"
+msgstr "应用"
+
+#: web/views/MetaModelDataFormView.vue:8
+msgctxt "web/views/MetaModelDataFormView"
+msgid "External ID"
+msgstr "外部 ID"
+
+#: web/views/MetaModelDataFormView.vue:11
+msgctxt "web/views/MetaModelDataFormView"
+msgid "Full key is Module.Name (first dot splits module vs name)."
+msgstr "完整键为 Module.Name（第一个点分隔模块与名称）。"
+
+#: web/views/MetaModelDataFormView.vue:28
+msgctxt "web/views/MetaModelDataFormView"
+msgid "Model"
+msgstr "模型"
+
+#: web/views/MetaModelDataFormView.vue:25
+msgctxt "web/views/MetaModelDataFormView"
+msgid "Model Name"
+msgstr "模型名"
+
+#: web/views/MetaModelDataFormView.vue:11
+msgctxt "web/views/MetaModelDataFormView"
+msgid "Module"
+msgstr "模块"
+
+#: web/views/MetaModelDataFormView.vue:14
+msgctxt "web/views/MetaModelDataFormView"
+msgid "Name"
+msgstr "名称"
+
+#: web/views/MetaModelDataFormView.vue:34
+msgctxt "web/views/MetaModelDataFormView"
+msgid "No Update"
+msgstr "禁止更新"
+
+#: web/views/MetaModelDataFormView.vue:31
+msgctxt "web/views/MetaModelDataFormView"
+msgid "Resource Id"
+msgstr "资源 ID"
+
+#: web/views/MetaModelDataFormView.vue:19
+msgctxt "web/views/MetaModelDataFormView"
+msgid "Target"
+msgstr "目标"
+
+#: web/views/MetaModelDataListView.vue:10
+msgctxt "web/views/MetaModelDataListView"
+msgid "Application"
+msgstr "应用"
+
+#: web/views/MetaModelDataListView.vue:11
+msgctxt "web/views/MetaModelDataListView"
+msgid "Model Name"
+msgstr "模型名"
+
+#: web/views/MetaModelDataListView.vue:8
+msgctxt "web/views/MetaModelDataListView"
+msgid "Module"
+msgstr "模块"
+
+#: web/views/MetaModelDataListView.vue:9
+msgctxt "web/views/MetaModelDataListView"
+msgid "Name"
+msgstr "名称"
+
+#: web/views/MetaModelDataListView.vue:13
+msgctxt "web/views/MetaModelDataListView"
+msgid "No Update"
+msgstr "禁止更新"
+
+#: web/views/MetaModelDataListView.vue:12
+msgctxt "web/views/MetaModelDataListView"
+msgid "Resource Id"
+msgstr "资源 ID"
 
 #: web/views/ModuleDetailView.vue:3
 msgctxt "web/views/ModuleDetailView"

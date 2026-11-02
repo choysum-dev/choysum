@@ -165,7 +165,11 @@ import type { ClientModel, BaseModel, Updateable, Insertable } from '@/core/rpc'
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { RouteLocationRaw } from 'vue-router';
 import { useRoute, useRouter } from 'vue-router';
-import { canShowAction, type ActionIdMap } from '@/web/web/components/view/actionVisibility';
+import {
+  canShowAction,
+  canShowDeclaredAction,
+  type ActionIdMap,
+} from '@/web/web/components/view/actionVisibility';
 import { resolvePageStore, useHostPageTitleInView, useRegisterPageActionTarget } from '@/web/web/composables/usePageContext';
 import { useResolvedCreateAction } from '@/web/web/composables/resolveCreateRoute';
 
@@ -311,10 +315,11 @@ const { emitCancelable } = useCancelableEmit(emit as any);
 // Section 8: Controller & view context provisioning
 // =============================
 const formRef = ref<HTMLFormElement | null>(null);
-const canCreate = computed(() => canShowAction(props.actionIds?.create, props.hasAction));
-const canEdit = computed(() => canShowAction(props.actionIds?.edit, props.hasAction));
-const canDelete = computed(() => canShowAction(props.actionIds?.delete, props.hasAction));
-const canCopy = computed(() => canShowAction(props.actionIds?.copy, props.hasAction));
+// Mutating slots are opt-in (empty action id → hidden). Refresh stays ungated by default.
+const canCreate = computed(() => canShowDeclaredAction(props.actionIds?.create, props.hasAction));
+const canEdit = computed(() => canShowDeclaredAction(props.actionIds?.edit, props.hasAction));
+const canDelete = computed(() => canShowDeclaredAction(props.actionIds?.delete, props.hasAction));
+const canCopy = computed(() => canShowDeclaredAction(props.actionIds?.copy, props.hasAction));
 const canRefresh = computed(() => canShowAction(props.actionIds?.refresh, props.hasAction));
 // Form controller.
 const controller = createFormController(store as any);
