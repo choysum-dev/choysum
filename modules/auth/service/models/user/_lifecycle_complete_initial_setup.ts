@@ -143,7 +143,15 @@ async function withDbSavepoint<T>(db: ChoysumDb, fn: () => Promise<T>): Promise<
 async function readLegacySystemInitDone(): Promise<boolean> {
   const root = globalThis as { $choysum?: { db?: ChoysumDb } };
   const db = root.$choysum?.db;
-  if (!db?.query) return false;
+  if (!db?.query) {
+    // Fail closed: cannot verify legacy marker → do not treat as SetupPending.
+    throw newAuthError({
+      code: AuthErrCode.UNKNOWN,
+      message: _t('Database handle is not available', {
+        scope: 'service/models/user/_lifecycle_complete_initial_setup',
+      }),
+    }).withGrpcCode(GrpcCode.Internal);
+  }
   const keyCol = db.dialectName === 'mysql' ? '`key`' : '"key"';
   try {
     return await withDbSavepoint(db, async () => {
@@ -332,9 +340,15 @@ export async function runCompleteInitialSetup(
     }
   });
 
-  // After the marker+credential commit: drop any pre-setup seed-admin sessions.
+  // After marker+credential commit: drop pre-setup seed-admin sessions.
+  // Best-effort — must not fail the RPC (setup is already committed; a hard error
+  // would strand retries on INITIAL_SETUP_ALREADY_COMPLETE with tokens still live).
   if (deps.revokeAdminSessions) {
-    await deps.revokeAdminSessions(resolvedAdminId);
+    try {
+      await deps.revokeAdminSessions(resolvedAdminId);
+    } catch {
+      // ignore
+    }
   }
 
   return { UserId: resolvedAdminId };

@@ -168,3 +168,21 @@ test('runCompleteInitialSetup: updateAdmin failure surfaces after claim', async 
   );
   expect(claimed).toBe(true);
 });
+
+test('runCompleteInitialSetup: revoke failure after commit still returns UserId', async () => {
+  const result = await runCompleteInitialSetup(
+    { Username: 'boss', Password: 'pw' },
+    {
+      isSetupComplete: async () => false,
+      resolveAdminId: async () => 'admin-id',
+      searchByUsername: async () => [],
+      browseAdmin: async () => ({ Id: 'admin-id', Username: 'admin' }),
+      claimSetupComplete: async () => undefined,
+      updateAdmin: async () => undefined,
+      revokeAdminSessions: async () => {
+        throw new Error('revoke failed');
+      },
+    }
+  );
+  expect(result.UserId).toBe('admin-id');
+});
