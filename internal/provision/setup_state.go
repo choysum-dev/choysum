@@ -6,10 +6,13 @@ package provision
 import (
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
+	"github.com/rs/xid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // Phase is the first-run workspace readiness axis used by the host gate.
@@ -28,11 +31,15 @@ const (
 	authModuleName          = "auth"
 	authAppSettingTable     = "auth_app_setting"
 	authSetupCompletedAtKey = "setup.completed_at"
+	metaSettingTable        = "meta_setting"
+	legacySystemInitDoneKey = "system.init.done"
 )
 
 // Resolve reports Empty / SetupPending / Ready from Go-side SQL only.
 // Order: Provisioned (auth Installed) first; only then read auth_app_setting.
 // A missing auth_app_setting table never maps to Ready.
+// Pre-PC-3 workspaces with system.init.done but no setup.completed_at are treated
+// as Ready (best-effort backfill of the AppSetting marker).
 func Resolve(runtimeScope scope.Scope) (Phase, error) {
 	if runtimeScope == nil {
 		return PhaseEmpty, errors.New("scope is not available")
@@ -60,6 +67,16 @@ func Resolve(runtimeScope scope.Scope) (Phase, error) {
 	if complete {
 		return PhaseReady, nil
 	}
+
+	legacyDone, err := isLegacySystemInitDone(session)
+	if err != nil {
+		// Fail closed for the gate: do not unlock on probe failure.
+		return PhaseSetupPending, nil
+	}
+	if legacyDone {
+		_ = backfillSetupCompletedAt(session, time.Now().UTC())
+		return PhaseReady, nil
+	}
 	return PhaseSetupPending, nil
 }
 
@@ -83,9 +100,10 @@ func isSetupComplete(session *scope.Session) (bool, error) {
 	var row struct {
 		Value string `gorm:"column:value"`
 	}
+	// Map condition so dialects quote reserved column name `key` (MySQL KEY).
 	err := session.Table(authAppSettingTable).
 		Select("value").
-		Where("key = ?", authSetupCompletedAtKey).
+		Where(map[string]any{"key": authSetupCompletedAtKey}).
 		Take(&row).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return false, nil
@@ -94,6 +112,51 @@ func isSetupComplete(session *scope.Session) (bool, error) {
 		return false, err
 	}
 	return strings.TrimSpace(row.Value) != "", nil
+}
+
+func isLegacySystemInitDone(session *scope.Session) (bool, error) {
+	var row struct {
+		Value string `gorm:"column:value"`
+	}
+	err := session.Table(metaSettingTable).
+		Select("value").
+		Where(map[string]any{"key": legacySystemInitDoneKey}).
+		Take(&row).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		if isMissingSQLTableError(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	v := strings.ToLower(strings.TrimSpace(row.Value))
+	return v == "true" || v == "1" || v == "yes", nil
+}
+
+type authAppSettingRow struct {
+	Id        string    `gorm:"column:id;primaryKey"`
+	Key       string    `gorm:"column:key"`
+	Value     string    `gorm:"column:value"`
+	CreatedAt time.Time `gorm:"column:created_at"`
+	UpdatedAt time.Time `gorm:"column:updated_at"`
+}
+
+func (authAppSettingRow) TableName() string { return authAppSettingTable }
+
+func backfillSetupCompletedAt(session *scope.Session, now time.Time) error {
+	iso := now.Format(time.RFC3339)
+	return session.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "key"}},
+		DoUpdates: clause.Assignments(map[string]any{"value": iso, "updated_at": now}),
+	}).Create(&authAppSettingRow{
+		Id:        xid.New().String(),
+		Key:       authSetupCompletedAtKey,
+		Value:     iso,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}).Error
 }
 
 // isMissingSQLTableError reports dialect-specific "table does not exist" failures.
@@ -114,8 +177,12 @@ func isMissingSQLTableError(err error) bool {
 		(strings.Contains(msg, "table '") || strings.Contains(msg, "table `")) {
 		return true
 	}
+	// Postgres undefined_table: relation "name" does not exist.
+	// Exclude column "x" of relation "y" does not exist.
 	if strings.Contains(msg, `relation "`) && strings.Contains(msg, "does not exist") &&
-		!strings.Contains(msg, "constraint") {
+		!strings.Contains(msg, "constraint") &&
+		!strings.Contains(msg, "column") &&
+		!strings.Contains(msg, " of relation ") {
 		return true
 	}
 	return false

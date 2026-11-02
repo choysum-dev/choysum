@@ -193,12 +193,18 @@ async function assertSetupStillPending(): Promise<void> {
 
 /**
  * Create-only claim of setup.completed_at. Concurrent losers map unique hits to ALREADY_COMPLETE.
+ * A blank existing row (pending) is deleted first so Create can reclaim the unique Key.
  */
 async function claimSetupCompletedAt(iso: string): Promise<void> {
   await withRecordRuleAndFieldRuleBypass(async () => {
     const store = pool<AppSettingModelCtor>('auth', 'AppSetting');
-    if (String((await store.Get(SETUP_COMPLETED_AT_KEY, null)) || '').trim()) {
+    const current = await store.Get(SETUP_COMPLETED_AT_KEY, null);
+    if (String(current || '').trim()) {
       throw alreadyCompleteError();
+    }
+    // Blank row still occupies the unique Key; free it before create-only claim.
+    if (current !== null) {
+      await store.Set(SETUP_COMPLETED_AT_KEY, null);
     }
     try {
       // Create-only via the auth-scoped store (not Set upsert) so a concurrent loser

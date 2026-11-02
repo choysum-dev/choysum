@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -270,6 +271,39 @@ func TestResolveReadyWhenMarkerSet(t *testing.T) {
 	}
 }
 
+func TestResolveReadyWhenLegacySystemInitDone(t *testing.T) {
+	runtimeScope, db := newSetupStateScope(t)
+	createMetaModuleTable(t, db)
+	insertAuthModule(t, db, meta.Installed)
+	createAuthAppSettingTable(t, db)
+	mustExec(t, db, `CREATE TABLE meta_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT NOT NULL UNIQUE,
+		value TEXT,
+		created_at DATETIME,
+		updated_at DATETIME,
+		deleted_at DATETIME
+	)`)
+	mustExec(t, db, `INSERT INTO meta_setting (id, key, value, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+		"legacy", legacySystemInitDoneKey, "true", time.Now(), time.Now())
+
+	phase, err := Resolve(runtimeScope)
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	if phase != PhaseReady {
+		t.Fatalf("phase = %q, want %q", phase, PhaseReady)
+	}
+
+	var row struct{ Value string }
+	if err := db.Table(authAppSettingTable).Select("value").Where(map[string]any{"key": authSetupCompletedAtKey}).Take(&row).Error; err != nil {
+		t.Fatalf("expected backfilled setup.completed_at: %v", err)
+	}
+	if strings.TrimSpace(row.Value) == "" {
+		t.Fatal("expected non-empty backfilled setup.completed_at")
+	}
+}
+
 func TestIsMissingSQLTableError(t *testing.T) {
 	cases := []struct {
 		err  error
@@ -282,6 +316,7 @@ func TestIsMissingSQLTableError(t *testing.T) {
 		{errors.New("Error 1146: Table `db`.`auth_app_setting` doesn't exist"), true},
 		{errors.New("Column 'value' in table 'auth_app_setting' doesn't exist"), false},
 		{errors.New(`relation "auth_app_setting" does not exist`), true},
+		{errors.New(`column "value" of relation "auth_app_setting" does not exist`), false},
 		{errors.New(`constraint "fk" of relation "auth_app_setting" does not exist`), false},
 		{errors.New("column foo does not exist"), false},
 		{errors.New("forced find failure"), false},

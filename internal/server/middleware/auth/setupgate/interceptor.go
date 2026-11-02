@@ -53,7 +53,7 @@ func enforceReadyForSessionMethod(runtimeScope scope.Scope, fullMethod string) e
 		if runtimeScope != nil && runtimeScope.Logger() != nil {
 			runtimeScope.Logger().Error("setup gate: resolve setup state failed", "method", fullMethod, "error", err)
 		}
-		return status.Errorf(codes.FailedPrecondition, "initial setup state unavailable")
+		return status.Error(codes.FailedPrecondition, "initial setup state unavailable")
 	}
 	if phase != provision.PhaseReady {
 		return status.Error(codes.FailedPrecondition, "initial setup is not complete")
