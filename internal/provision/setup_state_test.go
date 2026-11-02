@@ -334,8 +334,8 @@ func TestResolveSetupPendingWhenLegacyProbeErrors(t *testing.T) {
 	mustExec(t, db, `CREATE TABLE meta_setting (id TEXT PRIMARY KEY, key TEXT NOT NULL UNIQUE)`)
 
 	phase, err := Resolve(runtimeScope)
-	if err != nil {
-		t.Fatalf("Resolve: %v", err)
+	if err == nil {
+		t.Fatal("expected legacy probe error")
 	}
 	if phase != PhaseSetupPending {
 		t.Fatalf("phase = %q, want %q (legacy probe errors fail closed)", phase, PhaseSetupPending)

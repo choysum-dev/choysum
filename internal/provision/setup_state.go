@@ -70,8 +70,9 @@ func Resolve(runtimeScope scope.Scope) (Phase, error) {
 
 	legacyDone, err := isLegacySystemInitDone(session)
 	if err != nil {
-		// Fail closed for the gate: do not unlock on probe failure.
-		return PhaseSetupPending, nil
+		// Fail closed: surface the probe error so the gate logs "unavailable"
+		// rather than silently reporting SetupPending for real DB failures.
+		return PhaseSetupPending, err
 	}
 	if legacyDone {
 		if err := backfillSetupCompletedAt(session, time.Now().UTC()); err != nil && runtimeScope.Logger() != nil {
