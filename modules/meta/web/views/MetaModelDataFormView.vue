@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     Edit/Create/Copy/Delete. Host loaders own the write path.
   -->
   <ChoyFormView
-    v-bind="{ store, recordId, showHeader }"
+    v-bind="{ store, recordId: props.recordId, showHeader: props.showHeader }"
     view-mode="display"
     :show-actions="true"
     v-on="$attrs"
@@ -89,5 +89,4 @@ const props = withDefaults(
 );
 
 const store = resolvePageStore(props.store, 'MetaModelDataFormView');
-const { recordId, showHeader } = props;
 </script>

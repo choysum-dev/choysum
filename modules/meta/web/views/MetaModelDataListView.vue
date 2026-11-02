@@ -83,7 +83,8 @@ const store = resolvePageStore(props.store, 'MetaModelDataListView');
 
 function onRowClick(payload: RowEventPayload) {
   const id = String(payload.row?.Id ?? '').trim();
-  if (id) router.push(`/web/external-ids/${id}`);
+  if (!id) return;
+  router.push({ name: 'MetaModelDataDetail', params: { id } });
 }
 
 const { listRef, expose } = useListViewExpose<any>();
