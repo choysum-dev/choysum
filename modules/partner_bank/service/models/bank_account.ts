@@ -18,6 +18,9 @@ const Bank = createServiceByModel<typeof BankModel>('base.Bank');
 
 /**
  * Company-scoped partner bank account record.
+ *
+ * Extends BaseModel only — no MessageThread collaboration surface
+ * (`MessagePost` / Follow / Unfollow / SearchByRecord).
  */
 @Model('BankAccount', { application: 'partner', companyField: 'CompanyId' })
 export default class BankAccount extends BaseModel {
