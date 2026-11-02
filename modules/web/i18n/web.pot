@@ -1682,12 +1682,12 @@ msgctxt "web/components/view/ChoySearchFit"
 msgid "Show search"
 msgstr ""
 
-#: web/components/view/ChoySettingsView.vue:128
+#: web/components/view/ChoySettingsView.vue:132
 msgctxt "web/components/view/ChoySettingsView"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/view/ChoySettingsView.vue:127
+#: web/components/view/ChoySettingsView.vue:131
 #: web/components/view/ChoySettingsView.vue:70
 msgctxt "web/components/view/ChoySettingsView"
 msgid "Discard"
@@ -1708,7 +1708,7 @@ msgctxt "web/components/view/ChoySettingsView"
 msgid "System actions"
 msgstr ""
 
-#: web/components/view/ChoySettingsView.vue:126
+#: web/components/view/ChoySettingsView.vue:130
 msgctxt "web/components/view/ChoySettingsView"
 msgid "Unsaved changes"
 msgstr ""
@@ -1723,7 +1723,7 @@ msgctxt "web/components/view/ChoySettingsView"
 msgid "View switcher"
 msgstr ""
 
-#: web/components/view/ChoySettingsView.vue:126
+#: web/components/view/ChoySettingsView.vue:130
 msgctxt "web/components/view/ChoySettingsView"
 msgid "You have unsaved changes. Discard them?"
 msgstr ""
@@ -2628,38 +2628,48 @@ msgctxt "web/import/ImportPanel"
 msgid "Upload a UTF-8 CSV. Map columns to importable fields from the catalog."
 msgstr ""
 
-#: web/menu/menus.ts:63
+#: web/menu/menus.ts:76
+msgctxt "web/menu/menus"
+msgid "Export Templates"
+msgstr ""
+
+#: web/menu/menus.ts:64
 msgctxt "web/menu/menus"
 msgid "Field Defaults"
 msgstr ""
 
-#: web/menu/menus.ts:45
+#: web/menu/menus.ts:46
 msgctxt "web/menu/menus"
 msgid "Parameters"
 msgstr ""
 
-#: web/menu/menus.ts:57
+#: web/menu/menus.ts:58
 msgctxt "web/menu/menus"
 msgid "Property Definitions"
 msgstr ""
 
-#: web/menu/menus.ts:20
+#: web/menu/menus.ts:70
+msgctxt "web/menu/menus"
+msgid "Saved Filters"
+msgstr ""
+
+#: web/menu/menus.ts:21
 msgctxt "web/menu/menus"
 msgid "Settings"
 msgstr ""
 
-#: web/menu/menus.ts:32
-#: web/menu/menus.ts:51
+#: web/menu/menus.ts:33
+#: web/menu/menus.ts:52
 msgctxt "web/menu/menus"
 msgid "Translations"
 msgstr ""
 
-#: web/menu/menus.ts:27
+#: web/menu/menus.ts:28
 msgctxt "web/menu/menus"
 msgid "core"
 msgstr ""
 
-#: web/menu/menus.ts:40
+#: web/menu/menus.ts:41
 msgctxt "web/menu/menus"
 msgid "web"
 msgstr ""
@@ -2752,6 +2762,11 @@ msgctxt "web/pages/ErrorView"
 msgid "You do not have permission to access this page"
 msgstr ""
 
+#: web/pages/export_template_list_page.ts:30
+msgctxt "web/pages/ExportTemplateList"
+msgid "Export Templates"
+msgstr ""
+
 #: web/pages/field_default_list_page.ts:38
 msgctxt "web/pages/FieldDefaultList"
 msgid "Field Defaults: %s"
@@ -2765,6 +2780,11 @@ msgstr ""
 #: web/pages/terminology_list_page.ts:36
 msgctxt "web/pages/TranslationTermList"
 msgid "Translations: %s"
+msgstr ""
+
+#: web/pages/user_filter_list_page.ts:30
+msgctxt "web/pages/UserFilterList"
+msgid "Saved Filters"
 msgstr ""
 
 #: web/query/utils/filter/operators.ts:29
@@ -2866,6 +2886,21 @@ msgctxt "web/route/appSettingRoutes"
 msgid "Parameters"
 msgstr ""
 
+#: web/route/exportTemplateRoutes.ts:56
+msgctxt "web/route/exportTemplateRoutes"
+msgid "Export Template"
+msgstr ""
+
+#: web/route/exportTemplateRoutes.ts:26
+msgctxt "web/route/exportTemplateRoutes"
+msgid "Export Templates"
+msgstr ""
+
+#: web/route/exportTemplateRoutes.ts:41
+msgctxt "web/route/exportTemplateRoutes"
+msgid "New Export Template"
+msgstr ""
+
 #: web/route/fieldDefaultRoutes.ts:62
 msgctxt "web/route/fieldDefaultRoutes"
 msgid "Field Default"
@@ -2905,6 +2940,21 @@ msgstr ""
 #: web/route/terminologyRoutes.ts:34
 msgctxt "web/route/terminologyRoutes"
 msgid "Translations"
+msgstr ""
+
+#: web/route/userFilterRoutes.ts:42
+msgctxt "web/route/userFilterRoutes"
+msgid "New Saved Filter"
+msgstr ""
+
+#: web/route/userFilterRoutes.ts:57
+msgctxt "web/route/userFilterRoutes"
+msgid "Saved Filter"
+msgstr ""
+
+#: web/route/userFilterRoutes.ts:27
+msgctxt "web/route/userFilterRoutes"
+msgid "Saved Filters"
 msgstr ""
 
 #: web/stores/breadcrumbStore/index.ts:20
@@ -2981,6 +3031,121 @@ msgstr ""
 #: web/views/AppSettingListView.vue:7
 msgctxt "web/views/AppSettingListView"
 msgid "View switcher"
+msgstr ""
+
+#: web/views/ExportTemplateFormView.vue:19
+msgctxt "web/views/ExportTemplateFormView"
+msgid "Application"
+msgstr ""
+
+#: web/views/export_template_actions.ts:13
+msgctxt "web/views/ExportTemplateFormView"
+msgid "Copy Export Template"
+msgstr ""
+
+#: web/views/export_template_actions.ts:13
+msgctxt "web/views/ExportTemplateFormView"
+msgid "Create Export Template"
+msgstr ""
+
+#: web/views/export_template_actions.ts:13
+msgctxt "web/views/ExportTemplateFormView"
+msgid "Delete Export Template"
+msgstr ""
+
+#: web/views/export_template_actions.ts:13
+msgctxt "web/views/ExportTemplateFormView"
+msgid "Edit Export Template"
+msgstr ""
+
+#: web/views/ExportTemplateFormView.vue:30
+msgctxt "web/views/ExportTemplateFormView"
+msgid "Empty means shared with all logged-in users. Cannot assign another user."
+msgstr ""
+
+#: web/views/export_template_actions.ts:14
+msgctxt "web/views/ExportTemplateFormView"
+msgid "Export Template"
+msgstr ""
+
+#: web/views/ExportTemplateFormView.vue:41
+msgctxt "web/views/ExportTemplateFormView"
+msgid "Fields"
+msgstr ""
+
+#: web/views/ExportTemplateFormView.vue:13
+msgctxt "web/views/ExportTemplateFormView"
+msgid "Identity"
+msgstr ""
+
+#: web/views/ExportTemplateFormView.vue:33
+msgctxt "web/views/ExportTemplateFormView"
+msgid "Import Compatible"
+msgstr ""
+
+#: web/views/ExportTemplateFormView.vue:22
+msgctxt "web/views/ExportTemplateFormView"
+msgid "Model Name"
+msgstr ""
+
+#: web/views/ExportTemplateFormView.vue:16
+msgctxt "web/views/ExportTemplateFormView"
+msgid "Name"
+msgstr ""
+
+#: web/views/ExportTemplateFormView.vue:41
+msgctxt "web/views/ExportTemplateFormView"
+msgid "Ordered export field paths (slash-separated). Prefer ExportPanel to pick fields."
+msgstr ""
+
+#: web/views/ExportTemplateFormView.vue:38
+msgctxt "web/views/ExportTemplateFormView"
+msgid "Payload"
+msgstr ""
+
+#: web/views/ExportTemplateFormView.vue:22
+msgctxt "web/views/ExportTemplateFormView"
+msgid "Required"
+msgstr ""
+
+#: web/views/ExportTemplateFormView.vue:27
+msgctxt "web/views/ExportTemplateFormView"
+msgid "Sharing"
+msgstr ""
+
+#: web/views/ExportTemplateFormView.vue:30
+msgctxt "web/views/ExportTemplateFormView"
+msgid "User"
+msgstr ""
+
+#: web/views/ExportTemplateListView.vue:13
+msgctxt "web/views/ExportTemplateListView"
+msgid "Application"
+msgstr ""
+
+#: web/views/ExportTemplateListView.vue:17
+msgctxt "web/views/ExportTemplateListView"
+msgid "Fields"
+msgstr ""
+
+#: web/views/ExportTemplateListView.vue:16
+msgctxt "web/views/ExportTemplateListView"
+msgid "Import Compatible"
+msgstr ""
+
+#: web/views/ExportTemplateListView.vue:14
+msgctxt "web/views/ExportTemplateListView"
+msgid "Model Name"
+msgstr ""
+
+#: web/views/ExportTemplateListView.vue:12
+msgctxt "web/views/ExportTemplateListView"
+msgid "Name"
+msgstr ""
+
+#: web/views/ExportTemplateListView.vue:15
+msgctxt "web/views/ExportTemplateListView"
+msgid "User"
 msgstr ""
 
 #: web/views/FieldDefaultFormView.vue:26
@@ -3166,5 +3331,125 @@ msgstr ""
 #: web/views/TranslationTermFormView.vue:4
 msgctxt "web/views/TranslationTermFormView"
 msgid "Term"
+msgstr ""
+
+#: web/views/UserFilterFormView.vue:23
+msgctxt "web/views/UserFilterFormView"
+msgid "Application"
+msgstr ""
+
+#: web/views/UserFilterFormView.vue:45
+msgctxt "web/views/UserFilterFormView"
+msgid "Condition"
+msgstr ""
+
+#: web/views/user_filter_actions.ts:14
+msgctxt "web/views/UserFilterFormView"
+msgid "Copy Saved Filter"
+msgstr ""
+
+#: web/views/user_filter_actions.ts:14
+msgctxt "web/views/UserFilterFormView"
+msgid "Create Saved Filter"
+msgstr ""
+
+#: web/views/user_filter_actions.ts:14
+msgctxt "web/views/UserFilterFormView"
+msgid "Delete Saved Filter"
+msgstr ""
+
+#: web/views/user_filter_actions.ts:14
+msgctxt "web/views/UserFilterFormView"
+msgid "Edit Saved Filter"
+msgstr ""
+
+#: web/views/UserFilterFormView.vue:34
+msgctxt "web/views/UserFilterFormView"
+msgid "Empty means shared with all logged-in users. Cannot assign another user."
+msgstr ""
+
+#: web/views/UserFilterFormView.vue:48
+msgctxt "web/views/UserFilterFormView"
+msgid "Group By"
+msgstr ""
+
+#: web/views/UserFilterFormView.vue:14
+msgctxt "web/views/UserFilterFormView"
+msgid "Identity"
+msgstr ""
+
+#: web/views/UserFilterFormView.vue:37
+msgctxt "web/views/UserFilterFormView"
+msgid "Is Default"
+msgstr ""
+
+#: web/views/UserFilterFormView.vue:26
+msgctxt "web/views/UserFilterFormView"
+msgid "Model Name"
+msgstr ""
+
+#: web/views/UserFilterFormView.vue:17
+msgctxt "web/views/UserFilterFormView"
+msgid "Name"
+msgstr ""
+
+#: web/views/UserFilterFormView.vue:42
+msgctxt "web/views/UserFilterFormView"
+msgid "Payload"
+msgstr ""
+
+#: web/views/UserFilterFormView.vue:22
+msgctxt "web/views/UserFilterFormView"
+msgid "Required"
+msgstr ""
+
+#: web/views/user_filter_actions.ts:15
+msgctxt "web/views/UserFilterFormView"
+msgid "Saved Filter"
+msgstr ""
+
+#: web/views/UserFilterFormView.vue:20
+msgctxt "web/views/UserFilterFormView"
+msgid "Scope Key"
+msgstr ""
+
+#: web/views/UserFilterFormView.vue:31
+msgctxt "web/views/UserFilterFormView"
+msgid "Sharing"
+msgstr ""
+
+#: web/views/UserFilterFormView.vue:34
+msgctxt "web/views/UserFilterFormView"
+msgid "User"
+msgstr ""
+
+#: web/views/UserFilterListView.vue:14
+msgctxt "web/views/UserFilterListView"
+msgid "Application"
+msgstr ""
+
+#: web/views/UserFilterListView.vue:18
+msgctxt "web/views/UserFilterListView"
+msgid "Is Default"
+msgstr ""
+
+#: web/views/UserFilterListView.vue:15
+msgctxt "web/views/UserFilterListView"
+msgid "Model Name"
+msgstr ""
+
+#: web/views/UserFilterListView.vue:13
+msgctxt "web/views/UserFilterListView"
+msgid "Name"
+msgstr ""
+
+#: web/views/UserFilterListView.vue:16
+msgctxt "web/views/UserFilterListView"
+msgid "Scope Key"
+msgstr ""
+
+#: web/views/UserFilterListView.vue:17
+msgctxt "web/views/UserFilterListView"
+msgid "User"
 msgstr ""
 

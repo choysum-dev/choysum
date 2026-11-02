@@ -408,6 +408,7 @@ test('web bootstrap seeds UserFilter authz packs (RMA/RFR/RR)', async () => {
   const expected: Array<{ name: string; model: string }> = [
     { name: 'rma_base_user_web_user_filter_search', model: 'RoleMethodAccess' },
     { name: 'rma_base_user_web_user_filter_browse', model: 'RoleMethodAccess' },
+    { name: 'rma_base_user_web_user_filter_count', model: 'RoleMethodAccess' },
     { name: 'rma_base_user_web_user_filter_create', model: 'RoleMethodAccess' },
     { name: 'rma_base_user_web_user_filter_update', model: 'RoleMethodAccess' },
     { name: 'rma_base_user_web_user_filter_update_by_id', model: 'RoleMethodAccess' },
