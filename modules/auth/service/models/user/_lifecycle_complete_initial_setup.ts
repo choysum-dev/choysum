@@ -90,24 +90,33 @@ async function writeSetupCompletedAt(iso: string): Promise<void> {
   );
 }
 
+function isMissingRelationError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err ?? '');
+  return /no such table|does not exist|undefined.?table|unknown table|no such relation/i.test(msg);
+}
+
 /** True when a pre-PC-3 workspace left system.init.done in meta_setting. */
 async function readLegacySystemInitDone(): Promise<boolean> {
   const root = globalThis as { $choysum?: { db?: { dialectName?: string; query?: (sql: string, parameters: string) => Promise<string> } } };
   const db = root.$choysum?.db;
   if (!db?.query) return false;
   const keyCol = db.dialectName === 'mysql' ? '`key`' : '"key"';
+  let raw: string;
   try {
-    const raw = await db.query(
+    raw = await db.query(
       `SELECT value FROM meta_setting WHERE ${keyCol} = ? LIMIT 1`,
       JSON.stringify([LEGACY_SYSTEM_INIT_DONE_KEY])
     );
-    const rows = JSON.parse(raw || '[]') as Array<{ value?: string }>;
-    const value = String(rows?.[0]?.value ?? '').trim().toLowerCase();
-    return value === 'true' || value === '1' || value === 'yes';
-  } catch {
-    // Table missing or dialect mismatch: treat as no legacy marker.
-    return false;
+  } catch (err) {
+    // Missing table: no legacy marker. Other failures must not silently re-open setup.
+    if (isMissingRelationError(err)) {
+      return false;
+    }
+    throw err;
   }
+  const rows = JSON.parse(raw || '[]') as Array<{ value?: string }>;
+  const value = String(rows?.[0]?.value ?? '').trim().toLowerCase();
+  return value === 'true' || value === '1' || value === 'yes';
 }
 
 /**
