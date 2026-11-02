@@ -9,6 +9,8 @@ import {
 } from './propertyDefinitionRoutes';
 import { fieldDefaultListComponent, fieldDefaultRoutes } from './fieldDefaultRoutes';
 import { appSettingListComponent, appSettingRoutes } from './appSettingRoutes';
+import { userFilterListComponent, userFilterRoutes } from './userFilterRoutes';
+import { exportTemplateListComponent, exportTemplateRoutes } from './exportTemplateRoutes';
 
 /** Register Settings → {app} → Translations pages under the authenticated shell layout. */
 export function registerTerminologyRoutes(router: Router): void {
@@ -38,6 +40,20 @@ export function registerAppSettingRoutes(router: Router): void {
   }
 }
 
+/** Register Settings → web → Saved Filters (UserFilter) admin ledger. */
+export function registerUserFilterRoutes(router: Router): void {
+  for (const route of userFilterRoutes) {
+    router.addRoute('AppLayout', route);
+  }
+}
+
+/** Register Settings → web → Export Templates admin ledger. */
+export function registerExportTemplateRoutes(router: Router): void {
+  for (const route of exportTemplateRoutes) {
+    router.addRoute('AppLayout', route);
+  }
+}
+
 export {
   terminologyListComponent,
   terminologyRoutes,
@@ -47,4 +63,8 @@ export {
   fieldDefaultRoutes,
   appSettingListComponent,
   appSettingRoutes,
+  userFilterListComponent,
+  userFilterRoutes,
+  exportTemplateListComponent,
+  exportTemplateRoutes,
 };

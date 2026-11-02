@@ -12,8 +12,9 @@ const { _lt } = createTranslate('web', { scope: 'web/menu/menus' });
  * Platform shell menus. Domain modules attach their own roots; Settings is the
  * cross-cutting configuration mount point. Child order under Settings → {app}:
  * Settings (when present) → Parameters → Translations → Property Definitions →
- * Field Defaults. web hosts core terminology and web's own entries here. core
- * has no PropertyDefinition / FieldDefault / AppSetting store.
+ * Field Defaults. Under Settings → web only: Saved Filters + Export Templates
+ * (Owner B/web admin ledgers; not mounted per business app). core has no
+ * PropertyDefinition / FieldDefault / AppSetting store.
  */
 export const menus: MenuItem[] = [
   defineMenu('web.menu.settings', {
@@ -63,6 +64,18 @@ export const menus: MenuItem[] = [
             title: _lt('Field Defaults'),
             path: '/web/field-defaults/web',
             sequence: 50,
+            defaultRoles: ['sys.admin'],
+          }),
+          defineMenu('web.menu.user_filters', {
+            title: _lt('Saved Filters'),
+            path: '/web/user-filters',
+            sequence: 60,
+            defaultRoles: ['sys.admin'],
+          }),
+          defineMenu('web.menu.export_templates', {
+            title: _lt('Export Templates'),
+            path: '/web/export-templates',
+            sequence: 70,
             defaultRoles: ['sys.admin'],
           }),
         ],
