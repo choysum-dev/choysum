@@ -203,6 +203,7 @@ async function claimSetupCompletedAt(iso: string): Promise<void> {
       throw alreadyCompleteError();
     }
     // Blank row still occupies the unique Key; free it before create-only claim.
+    // Set(null) hard-deletes (auth.AppSetting softDelete: false).
     if (current !== null) {
       await store.Set(SETUP_COMPLETED_AT_KEY, null);
     }

@@ -74,7 +74,9 @@ func Resolve(runtimeScope scope.Scope) (Phase, error) {
 		return PhaseSetupPending, nil
 	}
 	if legacyDone {
-		_ = backfillSetupCompletedAt(session, time.Now().UTC())
+		if err := backfillSetupCompletedAt(session, time.Now().UTC()); err != nil && runtimeScope.Logger() != nil {
+			runtimeScope.Logger().Warn("setup gate: backfill setup.completed_at failed", "error", err)
+		}
 		return PhaseReady, nil
 	}
 	return PhaseSetupPending, nil
