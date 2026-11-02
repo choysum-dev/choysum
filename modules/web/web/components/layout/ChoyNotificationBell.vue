@@ -144,13 +144,13 @@ const { rows, loading, error, unreadCount: inboxUnreadCount, refresh, markRead, 
   inbox;
 
 async function bindInboxAuth(): Promise<void> {
-  if (chromeMode.value || !caps.value.message || disposed) return;
+  // Idempotent: skip when a subscription is already live (mount + caps race).
+  if (chromeMode.value || !caps.value.message || disposed || stopAuthSubscribe) return;
   try {
     const { useAuthStore } = await import('@/auth/web/stores/auth');
-    if (disposed || !caps.value.message) return;
+    if (disposed || !caps.value.message || stopAuthSubscribe) return;
     const authStore = useAuthStore();
     isAuthenticated.value = !!authStore.isAuthenticated;
-    stopAuthSubscribe?.();
     stopAuthSubscribe = (authStore as any).$subscribe?.(() => {
       if (disposed || !caps.value.message) return;
       const next = !!authStore.isAuthenticated;

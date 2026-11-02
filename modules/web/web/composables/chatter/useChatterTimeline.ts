@@ -16,7 +16,11 @@ const FIELD_CHANGE_FIELDS = ['Id', 'Field', 'Kind', 'OldValue', 'NewValue', 'Act
 export type UseChatterTimelineDeps = {
   getMessageStore?: typeof getMessageStore;
   getFieldChangeStore?: typeof getFieldChangeStore;
-  /** Explicit caps (unit harness). Omit to use reactive registry caps. */
+  /**
+   * Explicit caps (unit harness). Omit to use reactive registry caps.
+   * Pass a reactive object when the harness mutates caps after mount;
+   * a plain object is a fixed snapshot.
+   */
   caps?: CollaborationCaps;
 };
 
@@ -65,10 +69,16 @@ export function useChatterTimeline(
   async function refresh(): Promise<void> {
     const generation = ++refreshGeneration;
     const caps = capsRef.value;
-    ensureStores(caps);
     const threadModel = String(model.value || '').trim();
     const threadResId = String(resId.value || '').trim();
-    if (!caps.message || !messageStore || !threadModel || !threadResId) {
+    if (!caps.message || !threadModel || !threadResId) {
+      entries.value = [];
+      error.value = null;
+      loading.value = false;
+      return;
+    }
+    ensureStores(caps);
+    if (!messageStore) {
       entries.value = [];
       error.value = null;
       loading.value = false;

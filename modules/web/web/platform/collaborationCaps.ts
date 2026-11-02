@@ -5,7 +5,7 @@ import { computed, inject, type ComputedRef, type InjectionKey } from 'vue';
 import {
   getStoreFactoryRegistryVersion,
   listRegisteredModelNames,
-} from '@/web/web/stores/registry';
+} from '@/core/web/stores/registry';
 
 /** Runtime availability of optional collaboration / attachment models. */
 export type CollaborationCaps = {
@@ -49,10 +49,7 @@ export function useCollaborationCaps(): CollaborationCaps {
 
 /** Read a registry version token so computed caps invalidate on register/unregister. */
 function touchStoreFactoryRegistryVersion(): void {
-  const version = getStoreFactoryRegistryVersion() as unknown;
-  if (version && typeof version === 'object' && 'value' in (version as object)) {
-    void (version as { value: unknown }).value;
-  }
+  void getStoreFactoryRegistryVersion().value;
 }
 
 /**

@@ -1,14 +1,17 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, nextTick } from 'vue';
 import {
   CollaborationCapsKey,
   resolveCollaborationCaps,
   useCollaborationCaps,
   useReactiveCollaborationCaps,
 } from './collaborationCaps';
+import { replaceStoreFactory } from '@/core/web/stores/registry';
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
+
+const MESSAGE_MODELS = ['message.Message', 'message.Notification', 'message.Follower'] as const;
 
 test('resolveCollaborationCaps: empty registry → all false', () => {
   expect(resolveCollaborationCaps([])).toEqual({
@@ -70,20 +73,42 @@ test('useCollaborationCaps / useReactiveCollaborationCaps: registry fallback whe
         });
     },
   });
-  const mounted = mountApp(Probe as any);
-  await flushPromises();
-  // FE unit registry stub lists no models → all false.
-  expect(JSON.parse(String(mounted.q('[data-snap]')?.getAttribute('data-snap')))).toEqual({
-    message: false,
-    audit: false,
-    document: false,
-  });
-  expect(JSON.parse(String(mounted.q('[data-reactive]')?.getAttribute('data-reactive')))).toEqual({
-    message: false,
-    audit: false,
-    document: false,
-  });
-  mounted.unmount();
+  const restores: Array<() => void> = [];
+  try {
+    const mounted = mountApp(Probe as any);
+    await flushPromises();
+    // Empty live registry → all false (collaborationCaps uses the real registry).
+    expect(JSON.parse(String(mounted.q('[data-snap]')?.getAttribute('data-snap')))).toEqual({
+      message: false,
+      audit: false,
+      document: false,
+    });
+    expect(JSON.parse(String(mounted.q('[data-reactive]')?.getAttribute('data-reactive')))).toEqual({
+      message: false,
+      audit: false,
+      document: false,
+    });
+
+    for (const model of MESSAGE_MODELS) {
+      restores.push(replaceStoreFactory(model, () => ({}) as any));
+    }
+    await nextTick();
+    await flushPromises();
+    // Snapshot is fixed at setup; reactive caps track registry version.
+    expect(JSON.parse(String(mounted.q('[data-snap]')?.getAttribute('data-snap')))).toEqual({
+      message: false,
+      audit: false,
+      document: false,
+    });
+    expect(JSON.parse(String(mounted.q('[data-reactive]')?.getAttribute('data-reactive')))).toEqual({
+      message: true,
+      audit: false,
+      document: false,
+    });
+    mounted.unmount();
+  } finally {
+    while (restores.length) restores.pop()?.();
+  }
 });
 
 test('useCollaborationCaps / useReactiveCollaborationCaps: honor CollaborationCapsKey override', async () => {

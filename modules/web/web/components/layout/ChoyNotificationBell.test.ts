@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { h, nextTick, ref } from 'vue';
+import { h, nextTick, reactive, ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 
 import { useAuthStore } from '@/auth/web/stores/auth';
@@ -160,26 +160,30 @@ describe('NotificationBell', () => {
     restoreSfc(ChoyButton as any);
   });
 
-  function mountBell() {
+  function inboxProvide(caps: { message: boolean; audit: boolean; document: boolean }) {
+    return {
+      [CollaborationCapsKey]: caps,
+      [UseNotificationInboxKey]: (enabled: () => boolean) => {
+        void enabled();
+        return {
+          rows,
+          loading,
+          error,
+          unreadCount,
+          refresh,
+          markRead,
+          markAllRead,
+          activate,
+          deactivate,
+        };
+      },
+    };
+  }
+
+  function mountBell(caps?: { message: boolean; audit: boolean; document: boolean }) {
     return mountApp(NotificationBell as any, {
       plugins: [pinia],
-      provide: {
-        [CollaborationCapsKey]: { message: true, audit: true, document: true },
-        [UseNotificationInboxKey]: (enabled: () => boolean) => {
-          void enabled();
-          return {
-            rows,
-            loading,
-            error,
-            unreadCount,
-            refresh,
-            markRead,
-            markAllRead,
-            activate,
-            deactivate,
-          };
-        },
-      },
+      provide: inboxProvide(caps ?? { message: true, audit: true, document: true }),
     });
   }
 
@@ -334,6 +338,55 @@ describe('NotificationBell', () => {
     // Logged-out host unmounts the dropdown (v-if=isAuthenticated); no open control remains.
     expect(mounted.q('.open-dropdown')).toBeNull();
     expect(refresh.calls.length).toBe(0);
+    mounted.unmount();
+  });
+
+  test('binds inbox auth when caps.message becomes available and unbinds when removed', async () => {
+    const caps = reactive({ message: false, audit: false, document: true });
+    const mounted = mountApp(NotificationBell as any, {
+      plugins: [pinia],
+      provide: inboxProvide(caps),
+    });
+    await flushPromises();
+    expect(activate.calls.length).toBe(0);
+    expect(mounted.q('[data-testid=inbox-engine]')).toBeNull();
+
+    caps.message = true;
+    await flushPromises();
+    expect(activate.calls.length).toBeGreaterThan(0);
+    expect(mounted.q('[data-testid=inbox-engine]')).not.toBeNull();
+
+    const activatesAfterBind = activate.calls.length;
+    const deactivatesBeforeUnbind = deactivate.calls.length;
+    caps.message = false;
+    await flushPromises();
+    expect(deactivate.calls.length).toBeGreaterThan(deactivatesBeforeUnbind);
+    expect(mounted.q('[data-testid=inbox-engine]')).toBeNull();
+
+    caps.message = true;
+    await flushPromises();
+    expect(activate.calls.length).toBeGreaterThan(activatesAfterBind);
+    expect(mounted.q('[data-testid=inbox-engine]')).not.toBeNull();
+    mounted.unmount();
+  });
+
+  test('chrome mode ignores caps.message transitions', async () => {
+    const caps = reactive({ message: false, audit: false, document: true });
+    const mounted = mountApp(NotificationBell as any, {
+      props: { count: 0 },
+      plugins: [pinia],
+      provide: inboxProvide(caps),
+    });
+    await flushPromises();
+    expect(activate.calls.length).toBe(0);
+    expect(mounted.q('[data-anchor="choy.notification-bell"]')).not.toBeNull();
+
+    caps.message = true;
+    await flushPromises();
+    expect(activate.calls.length).toBe(0);
+    caps.message = false;
+    await flushPromises();
+    expect(deactivate.calls.length).toBe(0);
     mounted.unmount();
   });
 });

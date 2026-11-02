@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { h, nextTick, ref } from 'vue';
+import { h, nextTick, reactive, ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 
 import { useAuthStore } from '@/auth/web/stores/auth';
@@ -190,6 +190,45 @@ describe('ChoyChatter', () => {
       provide: storeProvide({ message: false, audit: false, document: false }),
     });
     expect(mounted.q('[data-anchor="choy.chatter"]')).toBeNull();
+    mounted.unmount();
+  });
+
+  test('bindStore: refreshes followers when caps.message becomes available and clears on removal', async () => {
+    const caps = reactive({ message: false, audit: false, document: true });
+    SearchByRecord.mockImplementation(async () => [{ UserId: 'usr_test' }]);
+    const mounted = mountApp(ChoyChatter as any, {
+      props: {
+        model: 'partner.Partner',
+        resId: 'res_1',
+        bindStore: true,
+      },
+      plugins: [pinia],
+      provide: {
+        ...storeProvide(),
+        [CollaborationCapsKey]: caps,
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-anchor="choy.chatter"]')).toBeNull();
+    expect(SearchByRecord.calls.length).toBe(0);
+
+    caps.message = true;
+    await flushPromises();
+    expect(mounted.q('[data-anchor="choy.chatter"]')).not.toBeNull();
+    expect(SearchByRecord.calls.length).toBeGreaterThan(0);
+    expect(mounted.q('.follower-state')?.textContent).toBe('following');
+    expect(mounted.q('.follower-count')?.textContent).toBe('1');
+
+    SearchByRecord.mockClear();
+    caps.message = false;
+    await flushPromises();
+    expect(mounted.q('[data-anchor="choy.chatter"]')).toBeNull();
+    expect(SearchByRecord.calls.length).toBe(0);
+
+    caps.message = true;
+    await flushPromises();
+    expect(mounted.q('[data-anchor="choy.chatter"]')).not.toBeNull();
+    expect(SearchByRecord.calls.length).toBeGreaterThan(0);
     mounted.unmount();
   });
 
