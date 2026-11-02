@@ -25,8 +25,10 @@ type DocumentAttachmentBindingStub = ModelConstructor & {
  * dial `document.AttachmentBinding` — not BaseModel, not a document model import.
  *
  * Soft dependency on document: if `document.AttachmentBinding` is not
- * registered, {@link dial} fails with `POOL_MODEL_NOT_FOUND`. Callers / UI
- * must treat bind/unbind as unavailable until document is installed.
+ * registered, dial throws
+ * `Error("Service factory for model 'document.AttachmentBinding' not found. Make sure the module is loaded.")`
+ * (createServiceByModel). Callers / UI must treat bind/unbind as unavailable
+ * until document is installed.
  *
  * ```ts
  * import AttachmentOwnerMixin from '@/core/service/mixins/attachment_owner_model';

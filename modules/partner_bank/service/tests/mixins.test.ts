@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel } from '@/core/service';
+import MessageThreadModel from '@/core/service/mixins/message_thread_model';
 import BankAccount from '../models/bank_account';
 
 test('BankAccount: extends BaseModel (no MessageThread collaboration surface)', () => {
   expect(BankAccount.prototype instanceof BaseModel).toBe(true);
+  expect(BankAccount.prototype instanceof MessageThreadModel).toBe(false);
   expect((BankAccount as any).MessagePost).toBeUndefined();
   expect((BankAccount as any).MessageFollow).toBeUndefined();
   expect((BankAccount as any).MessageUnfollow).toBeUndefined();
