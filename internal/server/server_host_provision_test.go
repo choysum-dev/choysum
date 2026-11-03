@@ -545,7 +545,18 @@ func TestHasLocalProvisionModules(t *testing.T) {
 	}
 	seedLocalWebModule(t, runtimeScope.config)
 	if !hasLocalProvisionModules(runtimeScope) {
-		t.Fatal("web/core/auth/meta package.json must be true")
+		t.Fatal("full minimal closure package.json must be true")
+	}
+	// A directory named package.json must not count as present.
+	dirPkg := filepath.Join(runtimeScope.config.ModulesPath, "web", "package.json")
+	if err := os.Remove(dirPkg); err != nil {
+		t.Fatalf("remove web package.json: %v", err)
+	}
+	if err := os.Mkdir(dirPkg, 0o755); err != nil {
+		t.Fatalf("mkdir package.json: %v", err)
+	}
+	if hasLocalProvisionModules(runtimeScope) {
+		t.Fatal("directory named package.json must be false")
 	}
 }
 

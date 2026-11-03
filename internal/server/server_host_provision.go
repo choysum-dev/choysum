@@ -175,7 +175,8 @@ func hasLocalProvisionModules(runtimeScope scope.Scope) bool {
 	// Require the full local closure so provision does not start and fail
 	// mid-install when a dependency package is missing from ModulesPath.
 	for _, name := range provision.MinimalClosureModules() {
-		if _, err := os.Stat(filepath.Join(modulesPath, name, "package.json")); err != nil {
+		info, err := os.Stat(filepath.Join(modulesPath, name, "package.json"))
+		if err != nil || !info.Mode().IsRegular() {
 			return false
 		}
 	}

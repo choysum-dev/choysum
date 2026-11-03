@@ -45,7 +45,7 @@ func TestMinimalInstallRequest(t *testing.T) {
 
 func TestMinimalClosureModules(t *testing.T) {
 	got := MinimalClosureModules()
-	want := []string{MinimalRootModule, "core", "auth", "meta"}
+	want := []string{MinimalRootModule, "core", "auth", "meta", "base", "task"}
 	if len(got) != len(want) {
 		t.Fatalf("got=%v want=%v", got, want)
 	}
@@ -581,24 +581,6 @@ func TestProvisionMinimalDefaultExecutorAndInstallWiring(t *testing.T) {
 	}
 }
 
-func TestIsRecoverableSqliteLeaseErr(t *testing.T) {
-	if isRecoverableSqliteLeaseErr(nil, errors.New("database is locked")) {
-		t.Fatal("nil scope must be false")
-	}
-	runtimeScope, _ := newSetupStateScope(t)
-	runtimeScope.config = &config.Config{Db: &config.DbConfig{Dialect: "postgres"}}
-	if isRecoverableSqliteLeaseErr(runtimeScope, errors.New("database is locked")) {
-		t.Fatal("non-sqlite must be false")
-	}
-	runtimeScope.config = &config.Config{Db: &config.DbConfig{Dialect: "sqlite"}}
-	if !isRecoverableSqliteLeaseErr(runtimeScope, errors.New("database schema is locked")) {
-		t.Fatal("sqlite lock must be recoverable")
-	}
-	if isRecoverableSqliteLeaseErr(runtimeScope, errors.New("other")) {
-		t.Fatal("unrelated error must not be recoverable")
-	}
-}
-
 func TestCheckProvisionLeaseRenewNil(t *testing.T) {
 	if err := checkProvisionLeaseRenew(nil); err != nil {
 		t.Fatalf("nil handle: %v", err)
@@ -681,7 +663,7 @@ func TestReleaseProvisionLeaseWaitsForRenewDone(t *testing.T) {
 		done:     make(chan struct{}),
 		renewErr: make(chan error, 1),
 	}
-	go renewProvisionLease(context.Background(), nil, locker, handle, nil)
+	go renewProvisionLease(context.Background(), locker, handle, nil)
 	<-locker.renewStarted // renew is blocked inside Renew
 	runtimeScope, _ := newSetupStateScope(t)
 	go releaseProvisionLease(runtimeScope, nil, handle)
@@ -717,7 +699,7 @@ func TestReleaseProvisionLeaseBoundsWaitOnHungRenew(t *testing.T) {
 		done:     make(chan struct{}),
 		renewErr: make(chan error, 1),
 	}
-	go renewProvisionLease(context.Background(), nil, locker, handle, nil)
+	go renewProvisionLease(context.Background(), locker, handle, nil)
 	<-locker.renewStarted
 	runtimeScope, _ := newSetupStateScope(t)
 	done := make(chan struct{})
@@ -830,7 +812,7 @@ func TestRenewProvisionLeaseStopsOnContextCancel(t *testing.T) {
 		renewErr: make(chan error, 1),
 		ownerID:  "o",
 	}
-	go renewProvisionLease(ctx, nil, &okLocker{}, handle, nil)
+	go renewProvisionLease(ctx, &okLocker{}, handle, nil)
 	cancel()
 	select {
 	case <-handle.done:

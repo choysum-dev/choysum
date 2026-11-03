@@ -6,7 +6,6 @@ package provision
 import (
 	"context"
 	"errors"
-	"strings"
 	"sync"
 	"time"
 
@@ -85,7 +84,7 @@ func acquireProvisionLease(ctx context.Context, runtimeScope scope.Scope, locker
 		cancel:   cancel,
 	}
 	probeDone := make(chan struct{})
-	go renewProvisionLease(ctx, runtimeScope, locker, handle, probeDone)
+	go renewProvisionLease(ctx, locker, handle, probeDone)
 	<-probeDone
 	if err := checkProvisionLeaseRenew(handle); err != nil {
 		releaseProvisionLease(runtimeScope, lockerFactory, handle)
@@ -94,7 +93,7 @@ func acquireProvisionLease(ctx context.Context, runtimeScope scope.Scope, locker
 	return handle, nil
 }
 
-func renewProvisionLease(ctx context.Context, runtimeScope scope.Scope, locker statepkg.Locker, handle *leaseHandle, probeDone chan struct{}) {
+func renewProvisionLease(ctx context.Context, locker statepkg.Locker, handle *leaseHandle, probeDone chan struct{}) {
 	defer close(handle.done)
 	var probeOnce sync.Once
 	signalProbe := func() {
@@ -115,12 +114,12 @@ func renewProvisionLease(ctx context.Context, runtimeScope scope.Scope, locker s
 			return false
 		}
 		notOwner := errors.Is(err, lease.ErrLeaseNotOwner)
-		if !notOwner && ctx.Err() == nil && isRecoverableSqliteLeaseErr(runtimeScope, err) {
-			return false
-		}
-		// Retry transient dialect errors while the last successful renew
-		// still leaves time before another owner can take the lease.
-		if !notOwner && ctx.Err() == nil && time.Since(lastOK) < leaseTTL-leaseRenewInterval {
+		// Retry transient errors (including SQLite lock) while the last
+		// successful renew still leaves time before another owner can take
+		// the lease. Do not special-case SQLite locks outside this bound —
+		// otherwise a stuck lock can outlive leaseTTL and allow a second install.
+		retryWindow := leaseTTL - leaseRenewInterval
+		if !notOwner && ctx.Err() == nil && retryWindow > 0 && time.Since(lastOK) < retryWindow {
 			return false
 		}
 		notifyLeaseRenewErr(handle, err)
@@ -213,16 +212,4 @@ func checkProvisionLeaseRenew(handle *leaseHandle) error {
 	default:
 		return nil
 	}
-}
-
-func isRecoverableSqliteLeaseErr(runtimeScope scope.Scope, err error) bool {
-	if err == nil || runtimeScope == nil {
-		return false
-	}
-	dbOpts, ok := scope.DatabaseRuntimeOptionsFromScope(runtimeScope)
-	if !ok || !strings.EqualFold(strings.TrimSpace(dbOpts.Dialect), "sqlite") {
-		return false
-	}
-	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "database is locked") || strings.Contains(msg, "database schema is locked")
 }

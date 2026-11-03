@@ -24,9 +24,11 @@ import (
 const MinimalRootModule = "web"
 
 // MinimalClosureModules is the local ModulesPath set required before automatic
-// host provision. Keep in sync with modules/web package.json depends (plus web).
+// host provision. Includes web plus the transitive depends closure of the
+// minimal web shell (core/auth/meta/base/task) so install does not fall back
+// to the registry for missing local packages.
 func MinimalClosureModules() []string {
-	return []string{MinimalRootModule, "core", "auth", "meta"}
+	return []string{MinimalRootModule, "core", "auth", "meta", "base", "task"}
 }
 
 // InstallFunc installs one module plan (overridable in tests).
