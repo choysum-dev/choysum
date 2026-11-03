@@ -20,6 +20,12 @@ func newPendingSplashService() *pendingSplashService {
 	return &pendingSplashService{}
 }
 
+// pendingSplashBinding builds the bootstrap-mode registration binding.
+// Tests override it to force registerBinding failures.
+var pendingSplashBinding = func() registrationBinding {
+	return newPendingSplashService()
+}
+
 func (s *pendingSplashService) Name() string { return "bootstrap" }
 
 func (s *pendingSplashService) ServiceDescs() ([]*grpc.ServiceDesc, error) {
@@ -29,17 +35,11 @@ func (s *pendingSplashService) ServiceDescs() ([]*grpc.ServiceDesc, error) {
 func (s *pendingSplashService) ServiceScripts() []*jsengine.JsScript { return nil }
 
 func (s *pendingSplashService) WebHandlers() (map[string]http.Handler, error) {
-	// ServeMux treats pattern "/" as a tree root; only answer the exact path so
-	// stale /bootstrap/* bookmarks get 404 instead of the pending splash.
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
-			http.NotFound(w, r)
-			return
-		}
-		servePendingSplash(w, r)
-	})
+	// Exact "/" only (Go 1.22+ {$}); do not claim the "/" tree catch-all so
+	// /healthz and other base routes keep mux precedence, and stale
+	// /bootstrap/* bookmarks get the mux 404.
 	return map[string]http.Handler{
-		"/": handler,
+		"/{$}": http.HandlerFunc(servePendingSplash),
 	}, nil
 }
 
