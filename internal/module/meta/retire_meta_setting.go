@@ -74,21 +74,26 @@ func backfillSetupCompletedAtFromLegacyInit(db *gorm.DB) (canDrop bool, err erro
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return false, err
 	}
-	// Blank row still occupies the unique key; free it before create-only claim.
-	if err == nil {
-		if delErr := db.Table(authAppSettingTable).
-			Where(map[string]any{"key": authSetupCompletedAtKey}).
-			Delete(nil).Error; delErr != nil {
-			return false, delErr
-		}
-	}
 
 	truthy, legacyErr := legacySystemInitDoneTruthy(db)
 	if legacyErr != nil {
 		return false, legacyErr
 	}
 	if !truthy {
+		// Do not delete a blank placeholder unless we are about to backfill;
+		// a concurrent real marker must not be removed when legacy is absent.
 		return true, nil
+	}
+
+	// Blank row still occupies the unique key; free it before create-only claim.
+	// Match the blank value that was read so a concurrent real marker survives.
+	if err == nil {
+		if delErr := db.Table(authAppSettingTable).
+			Where(map[string]any{"key": authSetupCompletedAtKey}).
+			Where("(value = ? OR value IS NULL)", existing.Value).
+			Delete(nil).Error; delErr != nil {
+			return false, delErr
+		}
 	}
 
 	now := time.Now().UTC()
