@@ -73,7 +73,7 @@ test('AttachmentOwnerMixin: harness exposes bind/unbind and dials document.Attac
 });
 
 test('AttachmentOwnerMixin: missing document factory yields SERVICE_FACTORY_NOT_FOUND', async () => {
-  // Ensure no leftover factory from prior tests.
+  const saved = getServiceFactory('document.AttachmentBinding');
   unregisterServiceFactory('document.AttachmentBinding');
   expect(getServiceFactory('document.AttachmentBinding')).toBeUndefined();
 
@@ -88,10 +88,40 @@ test('AttachmentOwnerMixin: missing document factory yields SERVICE_FACTORY_NOT_
     });
   } catch (err) {
     caught = err;
+  } finally {
+    unregisterServiceFactory('document.AttachmentBinding');
+    if (saved) registerServiceFactory('document.AttachmentBinding', saved);
   }
   expect(caught instanceof ChoysumError).toBe(true);
-  expect(String((caught as ChoysumError).code || '')).toBe(ATTACHMENT_OWNER_SERVICE_FACTORY_NOT_FOUND);
+  expect(String((caught as ChoysumError).code || '')).toBe('SERVICE_FACTORY_NOT_FOUND');
   expect(String((caught as ChoysumError).domain || '')).toBe('core');
+  expect(String((caught as ChoysumError).message || '')).toContain('document.AttachmentBinding');
+});
+
+test('AttachmentOwnerMixin: registered factory construction errors are not remapped', async () => {
+  await withServiceFactory(
+    'document.AttachmentBinding',
+    () => {
+      throw new Error('factory boom');
+    },
+    async () => {
+      let caught: unknown;
+      try {
+        await AttachmentOwnerHarness.AttachmentBind({
+          AttachmentContentId: 'c1',
+          ownerModel: 'partner.Partner',
+          ownerRecordId: 'p1',
+          fieldName: 'Logo',
+          mutationId: 'mut1',
+        });
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught instanceof Error).toBe(true);
+      expect(String((caught as Error).message || '')).toBe('factory boom');
+      expect((caught as any)?.code).not.toBe(ATTACHMENT_OWNER_SERVICE_FACTORY_NOT_FOUND);
+    }
+  );
 });
 
 test('MessageThreadModel: MessagePost / Follow / Search dial message services', async () => {

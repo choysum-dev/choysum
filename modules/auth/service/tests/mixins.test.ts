@@ -3,9 +3,7 @@
 
 import { BaseModel } from '@/core/service';
 import { ChoysumError } from '@/core/service/error';
-import AttachmentOwnerMixin, {
-  ATTACHMENT_OWNER_SERVICE_FACTORY_NOT_FOUND,
-} from '@/core/service/mixins/attachment_owner_model';
+import AttachmentOwnerMixin from '@/core/service/mixins/attachment_owner_model';
 import AuthzMutationModel, {
   mutateThenInvalidateAllAuthzCaches,
   mutateThenInvalidateAuthzCachesForUsers,
@@ -172,6 +170,7 @@ test('User: AttachmentBind / AttachmentUnbind dial document.AttachmentBinding', 
 });
 
 test('User: AttachmentBind soft-fails with SERVICE_FACTORY_NOT_FOUND when document is absent', async () => {
+  const saved = getServiceFactory('document.AttachmentBinding');
   unregisterServiceFactory('document.AttachmentBinding');
   expect(getServiceFactory('document.AttachmentBinding')).toBeUndefined();
 
@@ -186,7 +185,11 @@ test('User: AttachmentBind soft-fails with SERVICE_FACTORY_NOT_FOUND when docume
     });
   } catch (err) {
     caught = err;
+  } finally {
+    unregisterServiceFactory('document.AttachmentBinding');
+    if (saved) registerServiceFactory('document.AttachmentBinding', saved);
   }
   expect(caught instanceof ChoysumError).toBe(true);
-  expect(String((caught as ChoysumError).code || '')).toBe(ATTACHMENT_OWNER_SERVICE_FACTORY_NOT_FOUND);
+  expect(String((caught as ChoysumError).code || '')).toBe('SERVICE_FACTORY_NOT_FOUND');
+  expect(String((caught as ChoysumError).message || '')).toContain('document.AttachmentBinding');
 });
