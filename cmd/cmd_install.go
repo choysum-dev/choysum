@@ -153,7 +153,7 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 	}
 	cmd.Flags().BoolVar(&withDemo, "with-demo", false, "Load demo data declared by package.json")
 	cmd.Flags().BoolVar(&noWeb, "no-web", false, "Skip auto-installing the web SPA shell when a module declares entryPoints.web")
-	cmd.Flags().StringVar(&webShellProfile, "web-shell-profile", "standard", "Optional modules after the web shell: minimal|standard|full (standard Ensures document; full also message+audit)")
+	cmd.Flags().StringVar(&webShellProfile, "web-shell-profile", string(plan.WebShellProfileStandard), plan.WebShellProfileFlagUsage)
 	cmd.Flags().StringVar(&cliCompatVersion, "cli-compat-version", "", "override CLI compatibility version for module compatibility checks")
 	return cmd
 }

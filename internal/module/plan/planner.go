@@ -193,14 +193,16 @@ func resolveWebModule(ctx context.Context, r Resolver) (*meta.Module, error) {
 }
 
 // webShellProfileExtraRoots lists optional modules Ensure'd after the web shell.
-func webShellProfileExtraRoots(profile WebShellProfile) []string {
+func webShellProfileExtraRoots(profile WebShellProfile) ([]string, error) {
 	switch profile {
 	case WebShellProfileMinimal:
-		return nil
+		return nil, nil
+	case WebShellProfileStandard:
+		return []string{"document"}, nil
 	case WebShellProfileFull:
-		return []string{"document", "message", "audit"}
-	default: // standard
-		return []string{"document"}
+		return []string{"document", "message", "audit"}, nil
+	default:
+		return nil, fmt.Errorf("invalid web-shell-profile %q (want minimal|standard|full)", profile)
 	}
 }
 
@@ -210,7 +212,10 @@ func ensureWebShellProfileExtras(ctx context.Context, op OpType, plan *Plan, r R
 	if plan == nil {
 		return fmt.Errorf("plan is nil")
 	}
-	roots := webShellProfileExtraRoots(profile)
+	roots, err := webShellProfileExtraRoots(profile)
+	if err != nil {
+		return err
+	}
 	if len(roots) == 0 {
 		return nil
 	}
@@ -233,12 +238,14 @@ func ensureWebShellProfileExtras(ctx context.Context, op OpType, plan *Plan, r R
 			return fmt.Errorf("web-shell-profile module %s not found", rootName)
 		}
 
-		// Upgrade only Ensures missing modules. Traverse with a no-op addApp so
-		// already-installed profile deps do not inflate AffectedApps; mark apps
-		// only for modules actually appended to EnsureOrder below.
+		// Upgrade only Ensures missing modules. Cache topo modules so we do not
+		// re-Load/Peek, and avoid marking installed profile deps as AffectedApps.
+		resolved := map[string]*meta.Module{}
 		orderAddApp := addApp
 		if op == OpUpgrade {
-			orderAddApp = func(*meta.Module) {}
+			orderAddApp = func(m *meta.Module) {
+				resolved[strings.TrimSpace(m.Name)] = m
+			}
 		}
 		order, err := topoByDependsStr(ctx, mod, r, orderAddApp)
 		if err != nil {
@@ -250,10 +257,7 @@ func ensureWebShellProfileExtras(ctx context.Context, op OpType, plan *Plan, r R
 			plan.ModuleOrder = mergeModuleOrder(order, plan.ModuleOrder)
 		case OpUpgrade:
 			for _, name := range filterEnsureModuleNames(order) {
-				dep, loadErr := r.Load(name)
-				if loadErr != nil {
-					return fmt.Errorf("load module %s for web-shell-profile ensure: %w", name, loadErr)
-				}
+				dep := resolved[name]
 				if dep != nil && dep.Status == meta.Installed {
 					continue
 				}
@@ -262,14 +266,6 @@ func ensureWebShellProfileExtras(ctx context.Context, op OpType, plan *Plan, r R
 				}
 				if dep != nil {
 					addApp(dep)
-					continue
-				}
-				peeked, peekErr := r.Peek(ctx, name)
-				if peekErr != nil {
-					return fmt.Errorf("peek module %s for web-shell-profile ensure: %w", name, peekErr)
-				}
-				if peeked != nil {
-					addApp(peeked)
 				}
 			}
 		}

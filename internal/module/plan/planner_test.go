@@ -559,9 +559,10 @@ func TestBuildPlanUpgradeWebShellProfileEnsuresMissingDepsOfInstalledRoot(t *tes
 	}
 }
 
-func TestEnsureWebShellProfileExtrasUpgradeLoadEnsureError(t *testing.T) {
+func TestEnsureWebShellProfileExtrasUpgradeReusesTopoModules(t *testing.T) {
 	plan := &Plan{}
 	taskLoads := 0
+	taskPeeks := 0
 	err := ensureWebShellProfileExtras(context.Background(), OpUpgrade, plan, fakeResolver{
 		load: func(name string) (*meta.Module, error) {
 			if name == "document" {
@@ -569,32 +570,9 @@ func TestEnsureWebShellProfileExtrasUpgradeLoadEnsureError(t *testing.T) {
 			}
 			if name == "task" {
 				taskLoads++
-				if taskLoads == 1 {
-					return nil, nil // topo falls through to Peek
-				}
-				return nil, errors.New("load task failed")
-			}
-			return nil, nil
-		},
-		peek: func(_ context.Context, name string) (*meta.Module, error) {
-			if name == "task" {
-				return &meta.Module{Name: "task"}, nil
-			}
-			return nil, nil
-		},
-	}, func(*meta.Module) {}, WebShellProfileStandard)
-	if err == nil || !strings.Contains(err.Error(), "load module task for web-shell-profile ensure") {
-		t.Fatalf("error=%v", err)
-	}
-}
-
-func TestEnsureWebShellProfileExtrasUpgradePeekEnsureError(t *testing.T) {
-	plan := &Plan{}
-	taskPeeks := 0
-	err := ensureWebShellProfileExtras(context.Background(), OpUpgrade, plan, fakeResolver{
-		load: func(name string) (*meta.Module, error) {
-			if name == "document" {
-				return &meta.Module{Name: "document", DependsStr: []byte(`["task"]`)}, nil
+				// Topo Load miss → Peek; ensure must reuse the cached Peek module
+				// and must not call Load again.
+				return nil, nil
 			}
 			return nil, nil
 		},
@@ -603,13 +581,29 @@ func TestEnsureWebShellProfileExtrasUpgradePeekEnsureError(t *testing.T) {
 				return nil, nil
 			}
 			taskPeeks++
-			if taskPeeks == 1 {
-				return &meta.Module{Name: "task", ApplicationStr: "task"}, nil
+			if taskPeeks > 1 {
+				return nil, errors.New("unexpected second peek for task")
 			}
-			return nil, errors.New("peek task failed")
+			return &meta.Module{Name: "task", ApplicationStr: "task"}, nil
 		},
 	}, func(*meta.Module) {}, WebShellProfileStandard)
-	if err == nil || !strings.Contains(err.Error(), "peek module task for web-shell-profile ensure") {
+	if err != nil {
+		t.Fatalf("error=%v", err)
+	}
+	if taskLoads != 1 {
+		t.Fatalf("taskLoads=%d want 1 (topo only)", taskLoads)
+	}
+	if taskPeeks != 1 {
+		t.Fatalf("taskPeeks=%d want 1 (topo only)", taskPeeks)
+	}
+	if !moduleOrderContains(plan.EnsureOrder, "task") {
+		t.Fatalf("EnsureOrder=%v missing task", plan.EnsureOrder)
+	}
+}
+
+func TestEnsureWebShellProfileExtrasRejectsUnknownProfile(t *testing.T) {
+	err := ensureWebShellProfileExtras(context.Background(), OpInstall, &Plan{}, fakeResolver{}, nil, "tiny")
+	if err == nil || !strings.Contains(err.Error(), "invalid web-shell-profile") {
 		t.Fatalf("error=%v", err)
 	}
 }

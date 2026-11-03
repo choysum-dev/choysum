@@ -19,6 +19,9 @@ const (
 	WebShellProfileMinimal  WebShellProfile = "minimal"
 	WebShellProfileStandard WebShellProfile = "standard"
 	WebShellProfileFull     WebShellProfile = "full"
+
+	// WebShellProfileFlagUsage is shared CLI help for --web-shell-profile.
+	WebShellProfileFlagUsage = "Optional modules installed after the web shell: minimal|standard|full (standard also installs document; full also installs message and audit)"
 )
 
 // BuildOptions configures BuildPlan behavior beyond the op/root/resolver inputs.
@@ -45,7 +48,7 @@ func WithSkipWebShell(skip bool) BuildOption {
 	}
 }
 
-// WithWebShellProfile sets WebShellProfile (empty / unknown values are rejected by BuildPlan).
+// WithWebShellProfile sets WebShellProfile (empty → standard; unknown rejected by BuildPlan).
 func WithWebShellProfile(profile WebShellProfile) BuildOption {
 	return func(o *BuildOptions) {
 		if o == nil {

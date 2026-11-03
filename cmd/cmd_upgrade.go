@@ -193,7 +193,7 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 	}
 	cmd.Flags().BoolVar(&withDemo, "with-demo", false, "Load demo data declared by package.json")
 	cmd.Flags().BoolVar(&noWeb, "no-web", false, "Skip auto-installing a missing web SPA shell when upgrading a module with entryPoints.web")
-	cmd.Flags().StringVar(&webShellProfile, "web-shell-profile", "standard", "Optional modules after the web shell: minimal|standard|full (standard Ensures document; full also message+audit)")
+	cmd.Flags().StringVar(&webShellProfile, "web-shell-profile", string(plan.WebShellProfileStandard), plan.WebShellProfileFlagUsage)
 	cmd.Flags().StringVar(&cliCompatVersion, "cli-compat-version", "", "override CLI compatibility version for module compatibility checks")
 	cmd.Flags().BoolVar(&schemaPlanOnly, "schema-plan", false, "print schema plan for installed module tip vs live DB without applying DDL or initdata")
 	return cmd
