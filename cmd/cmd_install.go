@@ -17,6 +17,7 @@ import (
 	logutil "github.com/choysum-dev/choysum/internal/logger"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
+	"github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -27,6 +28,7 @@ import (
 func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 	var withDemo bool
 	var noWeb bool
+	var webShellProfile string
 	var cliCompatVersion string
 	cmd := &cobra.Command{
 		Use:   "install <module|module@version> [<module|module@version>...]",
@@ -118,11 +120,16 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 					}
 					defer compilerExecutor.Stop()
 
+					profile, profileErr := plan.ParseWebShellProfile(webShellProfile)
+					if profileErr != nil {
+						return profileErr
+					}
 					installScope.Logger().Debug("module install started", "input", rootInput)
 					if installErr := lifecycle.InstallModule(ctx, installScope, compilerExecutor, lifecycle.InstallModuleRequest{
-						Input:        rootInput,
-						WithDemo:     withDemo,
-						SkipWebShell: noWeb,
+						Input:           rootInput,
+						WithDemo:        withDemo,
+						SkipWebShell:    noWeb,
+						WebShellProfile: profile,
 					}); installErr != nil {
 						return xfmt.Errorf("error installing module %s: %w", rootInput, installErr)
 					}
@@ -144,6 +151,7 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 	}
 	cmd.Flags().BoolVar(&withDemo, "with-demo", false, "Load demo data declared by package.json")
 	cmd.Flags().BoolVar(&noWeb, "no-web", false, "Skip auto-installing the web SPA shell when a module declares entryPoints.web")
+	cmd.Flags().StringVar(&webShellProfile, "web-shell-profile", "standard", "Optional modules after the web shell: minimal|standard|full (standard Ensures document; full also message+audit)")
 	cmd.Flags().StringVar(&cliCompatVersion, "cli-compat-version", "", "override CLI compatibility version for module compatibility checks")
 	return cmd
 }

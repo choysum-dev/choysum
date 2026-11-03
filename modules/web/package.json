@@ -50,8 +50,7 @@
     "depends": [
       "core",
       "auth",
-      "meta",
-      "document"
+      "meta"
     ],
     "cli": ">=0.0.0-0 <0.0.0",
     "entryPoints": {

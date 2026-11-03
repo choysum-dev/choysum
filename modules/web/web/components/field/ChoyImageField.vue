@@ -45,7 +45,7 @@ SPDX-License-Identifier: Apache-2.0
         :invalid="invalid"
         :accept="accept"
         :drag="drag"
-        :disabled="disabled"
+        :disabled="uploadDisabled"
         :busy="isUploadBusy(fieldValue().value)"
         :attachment-state="editAttachmentState(fieldValue().value)"
         :upload-label="uploadButtonText"
@@ -188,6 +188,7 @@ import {
   isInternalDocumentBindingContentUrl,
 } from './attachmentPreviewAuth';
 import { resolveImagePreviewDialogSize } from './imagePreviewDialogSize';
+import { useReactiveCollaborationCaps } from '@/web/web/platform/collaborationCaps';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyImageField' });
 
@@ -261,6 +262,8 @@ const props = withDefaults(
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
 const fieldErrors = inject<Ref<Map<string, string>> | null>('field-errors', null);
 const formSubmitting = inject<Ref<boolean> | undefined>('form-submitting', undefined);
+const collaborationCaps = useReactiveCollaborationCaps();
+const uploadDisabled = computed(() => props.disabled || collaborationCaps.value.document !== true);
 
 const pickError = ref('');
 /** Preview URLs that failed to load — fall back to Picture icon. */
@@ -557,6 +560,10 @@ async function applySelectedImage(file: File, fieldValue: ValueRefGetter, onFiel
 }
 
 async function onPickedFile(file: File, fieldValue: ValueRefGetter, onFieldChange?: OnFieldChange): Promise<void> {
+  if (uploadDisabled.value) {
+    setPickError(_t('Document module is not installed; image upload is unavailable.'));
+    return;
+  }
   await applySelectedImage(file, fieldValue, onFieldChange);
 }
 

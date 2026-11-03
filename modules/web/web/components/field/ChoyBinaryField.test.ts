@@ -8,6 +8,9 @@ import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests_
 import BinaryField from './ChoyBinaryField.vue';
 import ChoyFieldBase from './ChoyFieldBase.vue';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import { CollaborationCapsKey } from '@/web/web/platform/collaborationCaps';
+
+const CAPS_WITH_DOCUMENT = { message: false, audit: false, document: true };
 
 function makeBinding(opts?: { value?: unknown; prop?: string }): any {
   const value = ref(opts?.value ?? null);
@@ -106,6 +109,7 @@ function mountField(binding: UseField, mode: 'edit' | 'display' = 'edit', extraP
       drag: false,
       ...extraProps,
     },
+    provide: { [CollaborationCapsKey]: CAPS_WITH_DOCUMENT },
   });
 }
 
@@ -312,7 +316,7 @@ describe('ChoyBinaryField', () => {
     installChoyButtonStub();
     const m = mountApp(BinaryField as any, {
       props: { binding, renderMode: 'form', drag: false, accept: '.pdf' },
-      provide: { 'field-errors': errMap },
+      provide: { 'field-errors': errMap, [CollaborationCapsKey]: CAPS_WITH_DOCUMENT },
     });
     await flushPromises();
     const ss = m.setupState() as any;

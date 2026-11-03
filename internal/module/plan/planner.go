@@ -31,6 +31,11 @@ func BuildPlan(ctx context.Context, op OpType, root *meta.Module, r Resolver, op
 		ctx = context.Background()
 	}
 	buildOpts := applyBuildOptions(opts)
+	webShellProfile, err := normalizeWebShellProfile(buildOpts.WebShellProfile)
+	if err != nil {
+		return Plan{}, err
+	}
+	buildOpts.WebShellProfile = webShellProfile
 
 	plan := Plan{Op: op}
 
@@ -96,6 +101,9 @@ func BuildPlan(ctx context.Context, op OpType, root *meta.Module, r Resolver, op
 	// Uninstall (and --no-web installs) must not fail when the shell is absent.
 	if !buildOpts.SkipWebShell && needsWebShell && (op == OpInstall || op == OpUpgrade) {
 		if err := ensureWebShell(ctx, op, &plan, r, addApp); err != nil {
+			return Plan{}, err
+		}
+		if err := ensureWebShellProfileExtras(ctx, op, &plan, r, addApp, buildOpts.WebShellProfile); err != nil {
 			return Plan{}, err
 		}
 	}
@@ -182,6 +190,79 @@ func resolveWebModule(ctx context.Context, r Resolver) (*meta.Module, error) {
 		return nil, fmt.Errorf("web shell required (entryPoints.web) but module web was not found")
 	}
 	return webMod, nil
+}
+
+// webShellProfileExtraRoots lists optional modules Ensure'd after the web shell.
+func webShellProfileExtraRoots(profile WebShellProfile) []string {
+	switch profile {
+	case WebShellProfileMinimal:
+		return nil
+	case WebShellProfileFull:
+		return []string{"document", "message", "audit"}
+	default: // standard
+		return []string{"document"}
+	}
+}
+
+// ensureWebShellProfileExtras merges profile extras (document / message / audit)
+// into ModuleOrder (install) or EnsureOrder (upgrade) after the web shell.
+func ensureWebShellProfileExtras(ctx context.Context, op OpType, plan *Plan, r Resolver, addApp func(*meta.Module), profile WebShellProfile) error {
+	if plan == nil {
+		return fmt.Errorf("plan is nil")
+	}
+	roots := webShellProfileExtraRoots(profile)
+	if len(roots) == 0 {
+		return nil
+	}
+
+	for _, rootName := range roots {
+		rootName = strings.TrimSpace(rootName)
+		if rootName == "" {
+			continue
+		}
+		reportBuildPlanProgress(ctx, BuildPlanProgress{Step: "resolve_web_shell_profile", CurrentModule: rootName})
+
+		mod, err := r.Load(rootName)
+		if err != nil {
+			return fmt.Errorf("load web-shell-profile module %s: %w", rootName, err)
+		}
+		if mod == nil {
+			mod, err = r.Peek(ctx, rootName)
+			if err != nil {
+				return fmt.Errorf("peek web-shell-profile module %s: %w", rootName, err)
+			}
+		}
+		if mod == nil || strings.TrimSpace(mod.Name) == "" {
+			return fmt.Errorf("web-shell-profile module %s not found", rootName)
+		}
+
+		order, err := topoByDependsStr(ctx, mod, r, addApp)
+		if err != nil {
+			return fmt.Errorf("resolve web-shell-profile %s dependencies: %w", rootName, err)
+		}
+
+		switch op {
+		case OpInstall:
+			plan.ModuleOrder = mergeModuleOrder(order, plan.ModuleOrder)
+		case OpUpgrade:
+			if mod.Status == meta.Installed {
+				continue
+			}
+			for _, name := range filterEnsureModuleNames(order) {
+				dep, loadErr := r.Load(name)
+				if loadErr != nil {
+					return fmt.Errorf("load module %s for web-shell-profile ensure: %w", name, loadErr)
+				}
+				if dep != nil && dep.Status == meta.Installed {
+					continue
+				}
+				if !moduleOrderContains(plan.EnsureOrder, name) {
+					plan.EnsureOrder = append(plan.EnsureOrder, name)
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // ensureWebShell pulls the web SPA shell into the plan when a domain module

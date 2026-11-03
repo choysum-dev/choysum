@@ -13,6 +13,9 @@ import ChoyFieldBase from './ChoyFieldBase.vue';
 import ImageField from './ChoyImageField.vue';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { ChoyDialog, ChoyDialogContent } from '@/web/web/components/layout/choyDialog';
+import { CollaborationCapsKey } from '@/web/web/platform/collaborationCaps';
+
+const CAPS_WITH_DOCUMENT = { message: false, audit: false, document: true };
 
 function makeFile(size: number, type = 'image/png'): File {
   return new File([new Uint8Array(size)], 'photo.png', { type });
@@ -138,6 +141,7 @@ function mountField(binding: UseField, mode: 'edit' | 'display' = 'edit', extraP
       drag: false,
       ...extraProps,
     },
+    provide: { [CollaborationCapsKey]: CAPS_WITH_DOCUMENT },
   });
 }
 

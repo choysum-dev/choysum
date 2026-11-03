@@ -18,9 +18,13 @@ func TestOperationOptionsContextAndPlanBuildOptions(t *testing.T) {
 		t.Fatalf("empty ctx SkipWebShell = %v", got.SkipWebShell)
 	}
 
-	ctx := WithOperationOptions(context.Background(), OperationOptions{WithDemo: true, SkipWebShell: true})
+	ctx := WithOperationOptions(context.Background(), OperationOptions{
+		WithDemo:        true,
+		SkipWebShell:    true,
+		WebShellProfile: "minimal",
+	})
 	got := OperationOptionsFromContext(ctx)
-	if !got.WithDemo || !got.SkipWebShell {
+	if !got.WithDemo || !got.SkipWebShell || got.WebShellProfile != "minimal" {
 		t.Fatalf("stored options = %#v", got)
 	}
 
@@ -28,7 +32,7 @@ func TestOperationOptionsContextAndPlanBuildOptions(t *testing.T) {
 		t.Fatalf("expected nil plan opts, got %#v", opts)
 	}
 	opts := planBuildOptionsFromContext(ctx)
-	if len(opts) != 1 || opts[0] == nil {
-		t.Fatalf("expected one SkipWebShell build option, got %#v", opts)
+	if len(opts) != 2 || opts[0] == nil || opts[1] == nil {
+		t.Fatalf("expected SkipWebShell + WebShellProfile build options, got %#v", opts)
 	}
 }

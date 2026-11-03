@@ -5,20 +5,23 @@ import (
 	"strings"
 
 	"github.com/choysum-dev/choysum/internal/module/evolution/schema"
+	"github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/scope"
 )
 
 type InstallRequest struct {
-	Name         string
-	WithDemo     bool
-	SkipWebShell bool
+	Name            string
+	WithDemo        bool
+	SkipWebShell    bool
+	WebShellProfile plan.WebShellProfile
 }
 
 type UpgradeRequest struct {
-	Input        string
-	WithDemo     bool
-	SkipWebShell bool
+	Input           string
+	WithDemo        bool
+	SkipWebShell    bool
+	WebShellProfile plan.WebShellProfile
 }
 
 type UninstallRequest struct {
@@ -41,12 +44,20 @@ func NewService(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, 
 }
 
 func (s *service) Install(ctx context.Context, req InstallRequest) error {
-	ctx = WithOperationOptions(ctx, OperationOptions{WithDemo: req.WithDemo, SkipWebShell: req.SkipWebShell})
+	ctx = WithOperationOptions(ctx, OperationOptions{
+		WithDemo:        req.WithDemo,
+		SkipWebShell:    req.SkipWebShell,
+		WebShellProfile: req.WebShellProfile,
+	})
 	return s.manager.Install(ctx, strings.TrimSpace(req.Name))
 }
 
 func (s *service) Upgrade(ctx context.Context, req UpgradeRequest) error {
-	ctx = WithOperationOptions(ctx, OperationOptions{WithDemo: req.WithDemo, SkipWebShell: req.SkipWebShell})
+	ctx = WithOperationOptions(ctx, OperationOptions{
+		WithDemo:        req.WithDemo,
+		SkipWebShell:    req.SkipWebShell,
+		WebShellProfile: req.WebShellProfile,
+	})
 	return s.manager.Upgrade(ctx, strings.TrimSpace(req.Input))
 }
 

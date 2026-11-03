@@ -384,6 +384,16 @@ function looksLikeUploadEnvelope(value: unknown): boolean {
   return kind === 'set' || kind === 'clear' || kind === 'noop';
 }
 
+/** True when normalize must call document.AttachmentContent (Prepare/Finalize upload). */
+function attachmentFieldNeedsContentService(value: unknown): boolean {
+  if (isBlobLike(value)) return true;
+  if (!isRecord(value) || Array.isArray(value)) return false;
+  const fileLike = (value as { file?: unknown; blob?: unknown; data?: unknown }).file
+    ?? (value as { blob?: unknown }).blob
+    ?? (value as { data?: unknown }).data;
+  return isBlobLike(fileLike);
+}
+
 function attachmentFieldNames(store: WebModelStore<any>): string[] {
   const metas = (store as any)?.fieldsMetadata as Record<string, { type?: string }> | undefined;
   if (!metas) return [];
@@ -644,19 +654,34 @@ async function normalizeAttachmentFieldsInPayload(
   if (!options.fields.length) return payload;
 
   const nextPayload: Record<string, unknown> = { ...payload };
-  const service = resolveAttachmentContentService(store, pickDep(deps.createStoreByModel, createStoreByModel));
+  const needsUpload = options.fields.some(fieldName => {
+    if (!Object.prototype.hasOwnProperty.call(nextPayload, fieldName)) return false;
+    return attachmentFieldNeedsContentService(nextPayload[fieldName]);
+  });
+
+  // Defer AttachmentContent dial until a field actually needs Prepare/Finalize.
+  // Models with binary/image metadata must still save without document installed.
+  let service: AttachmentContentServiceLike | undefined;
+  if (needsUpload) {
+    service = resolveAttachmentContentService(store, pickDep(deps.createStoreByModel, createStoreByModel));
+  }
 
   for (const fieldName of options.fields) {
     if (!Object.prototype.hasOwnProperty.call(nextPayload, fieldName)) continue;
 
     const sourceValue = nextPayload[fieldName];
+    if (attachmentFieldNeedsContentService(sourceValue) && !service) {
+      throw new Error(
+        `[Attachment] ${fieldName}: document module is not installed; binary/image upload is unavailable.`
+      );
+    }
 
     const resolved = await resolveAttachmentFieldValue(sourceValue, {
       operation: options.operation,
       ownerModel: options.ownerModel,
       ownerRecordId: options.ownerRecordId,
       fieldName,
-      service,
+      service: service as AttachmentContentServiceLike,
       store,
     });
 
@@ -1062,4 +1087,5 @@ export type FormController = ReturnType<typeof createFormController>;
 export const __resolveAttachmentFieldValueForTest = resolveAttachmentFieldValue;
 export const __normalizeAttachmentFieldsInPayloadForTest = normalizeAttachmentFieldsInPayload;
 export const __looksLikeUploadEnvelopeForTest = looksLikeUploadEnvelope;
+export const __attachmentFieldNeedsContentServiceForTest = attachmentFieldNeedsContentService;
 export const __attachMonetaryCurrencyCompanionsForTest = attachMonetaryCurrencyCompanions;

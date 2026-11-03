@@ -10,6 +10,7 @@ import (
 	"time"
 
 	logutil "github.com/choysum-dev/choysum/internal/logger"
+	"github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -18,9 +19,10 @@ import (
 // InstallModuleRequest is the unified bootstrap / CLI install entry input.
 type InstallModuleRequest struct {
 	// Input is a local module name or registry ref (for example "meta" or "pkg@1.2.3").
-	Input        string
-	WithDemo     bool
-	SkipWebShell bool
+	Input           string
+	WithDemo        bool
+	SkipWebShell    bool
+	WebShellProfile plan.WebShellProfile
 }
 
 // PrepareInstall materializes the install closure outside any install commit TX.
@@ -75,7 +77,11 @@ func InstallModule(ctx context.Context, runtimeScope scope.Scope, jsExecutor jse
 		return xfmt.Errorf("module name is empty")
 	}
 
-	opCtx := WithOperationOptions(ctx, OperationOptions{WithDemo: req.WithDemo, SkipWebShell: req.SkipWebShell})
+	opCtx := WithOperationOptions(ctx, OperationOptions{
+		WithDemo:        req.WithDemo,
+		SkipWebShell:    req.SkipWebShell,
+		WebShellProfile: req.WebShellProfile,
+	})
 	opCtx, prepareTicker, ownsPrepareTicker := ensureInstallPrepareProgressTicker(opCtx)
 	previousPrepareMessage := ""
 	if prepareTicker != nil && !ownsPrepareTicker {
@@ -116,8 +122,9 @@ func InstallModule(ctx context.Context, runtimeScope scope.Scope, jsExecutor jse
 		installScope = runtimeScope
 	}
 	return NewService(installScope, jsExecutor, opts...).Install(installCtx, InstallRequest{
-		Name:         prepared.RootName,
-		WithDemo:     req.WithDemo,
-		SkipWebShell: req.SkipWebShell,
+		Name:            prepared.RootName,
+		WithDemo:        req.WithDemo,
+		SkipWebShell:    req.SkipWebShell,
+		WebShellProfile: req.WebShellProfile,
 	})
 }

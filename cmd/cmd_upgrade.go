@@ -16,6 +16,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/module/evolution/schema"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
+	"github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/spf13/cobra"
@@ -25,6 +26,7 @@ import (
 func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 	var withDemo bool
 	var noWeb bool
+	var webShellProfile string
 	var cliCompatVersion string
 	var schemaPlanOnly bool
 	cmd := &cobra.Command{
@@ -167,20 +169,30 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 			}
 			defer compilerExecutor.Stop()
 
+			profile, err := plan.ParseWebShellProfile(webShellProfile)
+			if err != nil {
+				exitUpgradeError("", err)
+			}
 			moduleLifecycle := lifecycle.NewService(upgradeScope, compilerExecutor)
-			for _, plan := range plans {
-				currentInput = plan.requestedInput
-				upgradeScope.Logger().Debug("module upgrade started", "input", plan.resolvedInput)
-				if err := moduleLifecycle.Upgrade(ctx, lifecycle.UpgradeRequest{Input: plan.resolvedInput, WithDemo: withDemo, SkipWebShell: noWeb}); err != nil {
+			for _, item := range plans {
+				currentInput = item.requestedInput
+				upgradeScope.Logger().Debug("module upgrade started", "input", item.resolvedInput)
+				if err := moduleLifecycle.Upgrade(ctx, lifecycle.UpgradeRequest{
+					Input:           item.resolvedInput,
+					WithDemo:        withDemo,
+					SkipWebShell:    noWeb,
+					WebShellProfile: profile,
+				}); err != nil {
 					_ = compilerExecutor.Stop()
-					exitUpgradeError(currentInput, xfmt.Errorf("error upgrading module %s: %w", plan.requestedInput, err))
+					exitUpgradeError(currentInput, xfmt.Errorf("error upgrading module %s: %w", item.requestedInput, err))
 				}
-				upgradeScope.Logger().Debug("module upgraded", "input", plan.resolvedInput)
+				upgradeScope.Logger().Debug("module upgraded", "input", item.resolvedInput)
 			}
 		},
 	}
 	cmd.Flags().BoolVar(&withDemo, "with-demo", false, "Load demo data declared by package.json")
 	cmd.Flags().BoolVar(&noWeb, "no-web", false, "Skip auto-installing a missing web SPA shell when upgrading a module with entryPoints.web")
+	cmd.Flags().StringVar(&webShellProfile, "web-shell-profile", "standard", "Optional modules after the web shell: minimal|standard|full (standard Ensures document; full also message+audit)")
 	cmd.Flags().StringVar(&cliCompatVersion, "cli-compat-version", "", "override CLI compatibility version for module compatibility checks")
 	cmd.Flags().BoolVar(&schemaPlanOnly, "schema-plan", false, "print schema plan for installed module tip vs live DB without applying DDL or initdata")
 	return cmd
