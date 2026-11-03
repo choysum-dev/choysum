@@ -85,7 +85,18 @@ func acquireProvisionLease(ctx context.Context, runtimeScope scope.Scope, locker
 	}
 	probeDone := make(chan struct{})
 	go renewProvisionLease(ctx, locker, handle, probeDone)
-	<-probeDone
+	select {
+	case <-probeDone:
+	case <-ctx.Done():
+		// Renew-loss cancels installCtx as it signals probeDone; wait briefly
+		// so we prefer "lease lost" over a spurious cancel race.
+		select {
+		case <-probeDone:
+		case <-time.After(leaseReleaseWait):
+			releaseProvisionLease(runtimeScope, lockerFactory, handle)
+			return nil, xfmt.Errorf("provision lease acquire canceled: %w", ctx.Err())
+		}
+	}
 	if err := checkProvisionLeaseRenew(handle); err != nil {
 		releaseProvisionLease(runtimeScope, lockerFactory, handle)
 		return nil, xfmt.Errorf("provision lease lost: %w", err)

@@ -627,6 +627,35 @@ func TestContinueAfterLeaseMigrateErr(t *testing.T) {
 	}
 }
 
+func TestAcquireProvisionLeaseCanceledDuringProbe(t *testing.T) {
+	prevInterval := leaseRenewInterval
+	prevWait := leaseReleaseWait
+	leaseRenewInterval = time.Hour
+	leaseReleaseWait = 50 * time.Millisecond
+	t.Cleanup(func() {
+		leaseRenewInterval = prevInterval
+		leaseReleaseWait = prevWait
+	})
+
+	runtimeScope, _ := newSetupStateScope(t)
+	locker := &blockingRenewLocker{
+		renewStarted: make(chan struct{}),
+		unblockRenew: make(chan struct{}),
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		<-locker.renewStarted
+		cancel()
+	}()
+	_, err := acquireProvisionLease(ctx, runtimeScope, func(scope.Scope) statepkg.Locker {
+		return locker
+	}, cancel)
+	if err == nil || !strings.Contains(err.Error(), "acquire canceled") {
+		t.Fatalf("error=%v", err)
+	}
+	close(locker.unblockRenew)
+}
+
 func TestNotifyLeaseRenewErr(t *testing.T) {
 	notifyLeaseRenewErr(nil, errors.New("x"))
 	var canceled bool
@@ -904,7 +933,9 @@ func (b *blockingRenewLocker) Renew(context.Context, string, string, time.Durati
 	return nil
 }
 func (b *blockingRenewLocker) Release(context.Context, string, string) error {
-	close(b.releaseCh)
+	if b.releaseCh != nil {
+		close(b.releaseCh)
+	}
 	return nil
 }
 

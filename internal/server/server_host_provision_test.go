@@ -558,6 +558,15 @@ func TestHasLocalProvisionModules(t *testing.T) {
 	if hasLocalProvisionModules(runtimeScope) {
 		t.Fatal("directory named package.json must be false")
 	}
+	if err := os.RemoveAll(dirPkg); err != nil {
+		t.Fatalf("remove dir package.json: %v", err)
+	}
+	if err := os.WriteFile(dirPkg, nil, 0o644); err != nil {
+		t.Fatalf("write empty package.json: %v", err)
+	}
+	if hasLocalProvisionModules(runtimeScope) {
+		t.Fatal("empty package.json must be false")
+	}
 }
 
 func TestServeOrdersHostProvisionBeforePlan(t *testing.T) {
