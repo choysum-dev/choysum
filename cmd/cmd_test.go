@@ -292,6 +292,14 @@ func TestCommandConstructorExitHelper(t *testing.T) {
 			}
 		})
 		cmd.Run(cmd, []string{"base"})
+	case "install_run_invalid_web_shell_profile":
+		cmd := newInstallCmd(func() scope.Scope {
+			return &commandExitScope{commandTestScope: commandTestScope{cfg: newCommandExitConfig("cmd-helper-engine")}}
+		})
+		if err := cmd.Flags().Set("web-shell-profile", "tiny"); err != nil {
+			panic(err)
+		}
+		cmd.Run(cmd, []string{"base"})
 	case "upgrade_prerun_nil_env":
 		cmd := newUpgradeCmd(func() scope.Scope { return nil })
 		cmd.PreRun(cmd, []string{"base"})
@@ -318,6 +326,14 @@ func TestCommandConstructorExitHelper(t *testing.T) {
 				runErr:           errors.New("upgrade failed"),
 			}
 		})
+		cmd.Run(cmd, []string{"base"})
+	case "upgrade_run_invalid_web_shell_profile":
+		cmd := newUpgradeCmd(func() scope.Scope {
+			return &commandExitScope{commandTestScope: commandTestScope{cfg: newCommandExitConfig("cmd-helper-engine")}}
+		})
+		if err := cmd.Flags().Set("web-shell-profile", "tiny"); err != nil {
+			panic(err)
+		}
 		cmd.Run(cmd, []string{"base"})
 	case "upgrade_run_schema_plan":
 		cmd := newUpgradeCmd(func() scope.Scope {
@@ -1788,12 +1804,14 @@ func TestInstallUpgradeUninstallCommandExitPaths(t *testing.T) {
 		{name: "install run executor create error", scenario: "install_run_executor_create_error", want: "Error creating compiler executor", wantCode: 1},
 		{name: "install run executor start error", scenario: "install_run_executor_start_error", want: "Error starting compiler executor", wantCode: 1},
 		{name: "install run env.Run error", scenario: "install_run_env_run_error", want: "module install failed", wantCode: 1},
+		{name: "install run invalid web-shell-profile", scenario: "install_run_invalid_web_shell_profile", want: "invalid web-shell-profile", wantCode: 1},
 		{name: "upgrade prerun nil env", scenario: "upgrade_prerun_nil_env", want: "scope is not initialized", wantCode: 1},
 		{name: "upgrade prerun missing args", scenario: "upgrade_prerun_missing_args", want: "Please specify the module name", wantCode: 1},
 		{name: "upgrade run nil env", scenario: "upgrade_run_nil_env", want: "scope is not initialized", wantCode: 1},
 		{name: "upgrade run executor create error", scenario: "upgrade_run_executor_create_error", want: "Error creating compiler executor", wantCode: 1},
 		{name: "upgrade run executor start error", scenario: "upgrade_run_executor_start_error", want: "Error starting compiler executor", wantCode: 1},
 		{name: "upgrade run env.Run error", scenario: "upgrade_run_env_run_error", want: "module upgrade failed", wantCode: 1},
+		{name: "upgrade run invalid web-shell-profile", scenario: "upgrade_run_invalid_web_shell_profile", want: "invalid web-shell-profile", wantCode: 1},
 		{name: "upgrade run schema-plan", scenario: "upgrade_run_schema_plan", want: "schema-plan", wantCode: 1},
 		{name: "uninstall prerun nil env", scenario: "uninstall_prerun_nil_env", want: "scope is not initialized", wantCode: 1},
 		{name: "uninstall prerun missing args", scenario: "uninstall_prerun_missing_args", want: "Please specify the module name", wantCode: 1},

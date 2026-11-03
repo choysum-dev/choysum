@@ -66,14 +66,14 @@ SPDX-License-Identifier: Apache-2.0
             :aria-describedby="describedBy || undefined"
             :aria-invalid="invalid ? 'true' : undefined"
                       :accept="acceptAttr"
-                      :disabled="actionsDisabled"
+                      :disabled="uploadBlocked"
                       @change="onFileInputChange"
                     />
                     <ChoyButton
                       size="sm"
                       variant="ghost"
                       class="size-7 p-0 text-white hover:bg-white/15 hover:text-white"
-                      :disabled="actionsDisabled"
+                      :disabled="uploadBlocked"
                       :aria-label="replaceLabel"
                       as="span"
                     >
@@ -115,14 +115,14 @@ SPDX-License-Identifier: Apache-2.0
             :aria-describedby="describedBy || undefined"
             :aria-invalid="invalid ? 'true' : undefined"
             :accept="acceptAttr"
-            :disabled="actionsDisabled"
+            :disabled="uploadBlocked"
             @change="onFileInputChange"
           />
           <Attachment
             size="xs"
             :state="attachmentState === 'uploading' ? 'uploading' : 'idle'"
             class="choy-attachment-upload--compact w-full max-w-full min-h-control flex-nowrap items-center rounded-md border border-dashed border-input bg-transparent px-3 hover:border-primary hover:bg-primary-subtle"
-            :class="{ 'opacity-60': actionsDisabled }"
+            :class="{ 'opacity-60': uploadBlocked }"
           >
             <Upload class="size-4 shrink-0 text-primary" />
             <div class="min-w-0 flex-1 truncate text-sm leading-none text-muted-foreground">
@@ -219,10 +219,10 @@ SPDX-License-Identifier: Apache-2.0
             :aria-describedby="describedBy || undefined"
             :aria-invalid="invalid ? 'true' : undefined"
                   :accept="acceptAttr"
-                  :disabled="actionsDisabled"
+                  :disabled="uploadBlocked"
                   @change="onFileInputChange"
                 />
-                <ChoyButton size="sm" variant="ghost" class="h-auto px-1.5 py-0 text-primary" :disabled="actionsDisabled" as="span">
+                <ChoyButton size="sm" variant="ghost" class="h-auto px-1.5 py-0 text-primary" :disabled="uploadBlocked" as="span">
                   {{ replaceLabel }}
                 </ChoyButton>
               </label>
@@ -252,7 +252,7 @@ SPDX-License-Identifier: Apache-2.0
             :aria-describedby="describedBy || undefined"
             :aria-invalid="invalid ? 'true' : undefined"
             :accept="acceptAttr"
-            :disabled="actionsDisabled"
+            :disabled="uploadBlocked"
             @change="onFileInputChange"
           />
           <Attachment
@@ -342,7 +342,15 @@ SPDX-License-Identifier: Apache-2.0
         <span v-else class="choy-field-display-empty inline-flex min-h-control items-center text-muted-foreground" />
       </template>
     </template>
+    <p
+      v-if="uploadHintText"
+      class="choy-attachment-upload-hint text-xs text-muted-foreground"
+      data-testid="attachment-upload-hint"
+    >
+      {{ uploadHintText }}
+    </p>
   </div>
+
 </template>
 
 <script setup lang="ts">
@@ -413,6 +421,13 @@ const props = withDefaults(
     accept?: string;
     drag?: boolean;
     disabled?: boolean;
+    /**
+     * When true, block pick/replace/drop only. Remove / download / preview stay
+     * available (e.g. document module not installed).
+     */
+    uploadDisabled?: boolean;
+    /** Optional hint shown when upload is blocked (e.g. missing document module). */
+    uploadHint?: string;
     /** Form submit / upload in flight. */
     busy?: boolean;
     attachmentState?: 'idle' | 'uploading' | 'processing' | 'error' | 'done';
@@ -449,6 +464,8 @@ const props = withDefaults(
     accept: '',
     drag: true,
     disabled: false,
+    uploadDisabled: false,
+    uploadHint: '',
     busy: false,
     attachmentState: undefined,
     table: false,
@@ -471,6 +488,8 @@ const acceptAttr = computed(() => {
 });
 
 const actionsDisabled = computed(() => props.disabled || props.busy);
+const uploadBlocked = computed(() => actionsDisabled.value || props.uploadDisabled);
+const uploadHintText = computed(() => (props.uploadHint || '').trim());
 
 const useImagePresentation = computed(() => props.presentation === 'image' && !props.table);
 
@@ -498,7 +517,7 @@ const attachmentState = computed(() => {
 });
 
 function onFileInputChange(ev: Event): void {
-  if (actionsDisabled.value) return;
+  if (uploadBlocked.value) return;
   const input = ev.target as HTMLInputElement;
   const file = input.files?.[0];
   if (!file) return;
@@ -531,12 +550,12 @@ function onPreviewClick(): void {
 }
 
 function onDragOver(ev: DragEvent): void {
-  if (actionsDisabled.value) return;
+  if (uploadBlocked.value) return;
   if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'copy';
 }
 
 function onDrop(ev: DragEvent): void {
-  if (actionsDisabled.value) return;
+  if (uploadBlocked.value) return;
   const file = ev.dataTransfer?.files?.[0];
   if (!file) return;
   emit('file', file);

@@ -14,10 +14,11 @@ Preset rows live in each module’s `data/` (install) and optional `demo/` (`--w
 
 ### Web SPA shell
 
-Do **not** list `web` in domain `depends`. The web shell itself depends on `document` (binary/image attachment pipeline). The planner pulls the shell when any module in the install/upgrade plan declares `entryPoints.web`:
+Do **not** list `web` in domain `depends`. The web shell depends on `core` / `auth` / `meta`; binary/image attachments need optional `document` (CLI `--web-shell-profile=standard|full`, default `standard`). The planner pulls the shell when any module in the install/upgrade plan declares `entryPoints.web`:
 
-- **Install:** merges `web` (and its depends) into `ModuleOrder` if web is not already installed.
+- **Install:** merges `web` (and its depends) into `ModuleOrder` if web is not already installed; then Ensures profile extras (`document`, and for `full` also `message`/`audit`).
 - **Upgrade:** if web is missing, installs it via `EnsureOrder` (does not upgrade an already-installed web); always rebuilds `dist/web` when needed.
 - **`--no-web`:** skip that auto-include (headless / API-only installs).
+- **`--web-shell-profile=minimal`:** shell only — no document/message/audit (first-run provision).
 
 Loader notes: `module` must be the applying module; `application` may be cross-app; `model` is a short name; use `ref` / `modelRef` / `refBy` for links.

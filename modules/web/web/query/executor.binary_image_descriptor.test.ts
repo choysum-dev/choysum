@@ -217,3 +217,25 @@ test('query executor binary/image descriptor decode > appends query token for in
   });
 });
 
+test('query executor binary/image descriptor decode > skips enrichment when AttachmentBinding store is unavailable', async () => {
+  const store = {
+    fullModelName: 'demo.Asset',
+    fieldsMetadata: {
+      Avatar: { type: 'image' },
+    },
+  } as any;
+
+  const rows = [{ Id: 'RID-soft', Avatar: 'bind-avatar' }];
+  __decodeBinaryImageFieldsForTest(store, rows);
+
+  await __enrichBinaryImageDescriptorsForTest(store, rows, {
+    createStoreByModel: () => {
+      throw new Error("Store factory for model 'document.AttachmentBinding' not found");
+    },
+  } as any);
+
+  expect(rows[0]?.Avatar).toMatchObject({
+    attachmentBindingId: 'bind-avatar',
+  });
+});
+

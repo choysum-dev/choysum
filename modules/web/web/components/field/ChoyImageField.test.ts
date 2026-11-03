@@ -13,6 +13,10 @@ import ChoyFieldBase from './ChoyFieldBase.vue';
 import ImageField from './ChoyImageField.vue';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { ChoyDialog, ChoyDialogContent } from '@/web/web/components/layout/choyDialog';
+import { CollaborationCapsKey } from '@/web/web/platform/collaborationCaps';
+
+const CAPS_WITH_DOCUMENT = { message: false, audit: false, document: true };
+const CAPS_WITHOUT_DOCUMENT = { message: false, audit: false, document: false };
 
 function makeFile(size: number, type = 'image/png'): File {
   return new File([new Uint8Array(size)], 'photo.png', { type });
@@ -138,6 +142,7 @@ function mountField(binding: UseField, mode: 'edit' | 'display' = 'edit', extraP
       drag: false,
       ...extraProps,
     },
+    provide: { [CollaborationCapsKey]: CAPS_WITH_DOCUMENT },
   });
 }
 
@@ -422,6 +427,28 @@ describe('ChoyImageField mount wiring', () => {
     const m = mountField(makeBinding({ value: null }), 'display');
     await flushPromises();
     expect(m.q('.choy-field-display-empty')).toBeTruthy();
+    m.unmount();
+  });
+
+  test('without document shows upload hint and blocks onPickedFile while remove still works', async () => {
+    const binding = makeBinding({
+      value: { attachmentObjectId: 'obj-1', fileName: 'keep.png', kind: 'set' },
+    });
+    installFieldBaseEditStub();
+    installChoyButtonStub();
+    installDialogStubs();
+    const m = mountApp(ImageField as any, {
+      props: { binding, renderMode: 'form', drag: false },
+      provide: { [CollaborationCapsKey]: CAPS_WITHOUT_DOCUMENT },
+    });
+    await flushPromises();
+    expect(m.q('[data-testid="attachment-upload-hint"]')?.textContent || '').toMatch(/document|未安装/i);
+    const ss = m.setupState() as any;
+    await ss.onPickedFile(makeFile(16), () => binding.fieldRef());
+    expect(String(ss.pickError || '')).toMatch(/document|未安装/i);
+    expect(binding.fieldRef().value).toMatchObject({ attachmentObjectId: 'obj-1' });
+    await ss.removeImage(() => binding.fieldRef(), async () => {});
+    expect(binding.fieldRef().value).toBeNull();
     m.unmount();
   });
 
