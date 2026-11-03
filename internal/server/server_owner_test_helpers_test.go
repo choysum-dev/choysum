@@ -209,13 +209,6 @@ func assertRecoveryActionDiagnostics(t *testing.T, snapshot recoveryDiagnosticsS
 	}
 }
 
-func assertRecoveryModeSwitchRollbacks(t *testing.T, snapshot recoveryDiagnosticsSnapshot, want uint64, context string) {
-	t.Helper()
-	if got := snapshot.ModeSwitchRollbacks; got != want {
-		t.Fatalf("%s: mode-switch rollback count = %d, want %d", context, got, want)
-	}
-}
-
 func assertHotreloadCounters(t *testing.T, srv *GRPCWebServer, wantDropped uint64, wantCoalesced uint64, context string) {
 	t.Helper()
 	gotDropped := srv.watchDroppedCount()

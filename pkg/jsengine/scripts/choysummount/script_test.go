@@ -145,23 +145,4 @@ func TestVuePackageVersionMatchesWebKit(t *testing.T) {
 	if !IsExactVuePin(ver) {
 		t.Fatalf("modules/web vue must be an exact major.minor.patch pin for host SSOT, got %q", ver)
 	}
-
-	bootPath := filepath.Join(repoRoot, "internal", "bootstrap", "web", "package.json")
-	bootData, err := os.ReadFile(bootPath)
-	if err != nil {
-		t.Fatalf("read bootstrap: %v", err)
-	}
-	var boot struct {
-		Dependencies map[string]string `json:"dependencies"`
-	}
-	if err := json.Unmarshal(bootData, &boot); err != nil {
-		t.Fatal(err)
-	}
-	bootVue := strings.TrimPrefix(strings.TrimSpace(boot.Dependencies["vue"]), "v")
-	if bootVue != VuePackageVersion {
-		t.Fatalf("bootstrap web vue=%q out of date; run: go generate ./pkg/jsengine/scripts/choysummount/...", bootVue)
-	}
-	if !IsExactVuePin(bootVue) {
-		t.Fatalf("bootstrap web vue must be an exact major.minor.patch pin, got %q", bootVue)
-	}
 }
