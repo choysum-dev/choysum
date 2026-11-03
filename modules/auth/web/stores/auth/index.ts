@@ -50,7 +50,9 @@ export const useAuthStore = defineStore(
       clearAuth: actions.clearAuth,
       initAuth: actions.initAuth,
       ensureAuthReady: actions.ensureAuthReady,
+      ensureSetupStateReady: actions.ensureSetupStateReady,
       register: actions.register,
+      completeInitialSetup: actions.completeInitialSetup,
       getCsrfToken: actions.getCsrfToken,
       persistLanguagePreference: actions.persistLanguagePreference,
     };

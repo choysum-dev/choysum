@@ -176,6 +176,48 @@ test('CompleteInitialSetup: updates seed admin and writes setup.completed_at', a
   await clearSetupCompletedAt();
 });
 
+test('GetInitialSetupState: reports Complete from setup.completed_at', async () => {
+  resetRequestContext();
+  setReq({
+    depth: 0,
+    recordRuleMode: 'allowlist',
+    recordRuleAllow: [
+      'auth.AppSetting:read',
+      'AppSetting:read',
+    ],
+  });
+  await clearSetupCompletedAt();
+
+  const pending = await withModelContext(
+    {} as any,
+    async () => User.GetInitialSetupState({}),
+    { merge: false }
+  );
+  expect(pending.Complete).toBe(false);
+
+  await withModelContext(
+    {} as any,
+    async () => {
+      await withPermissionGraphBypass(async () => {
+        await pool<AppSettingModelCtor>('auth', 'AppSetting').Set(
+          SETUP_COMPLETED_AT_KEY,
+          '2020-01-01T00:00:00Z'
+        );
+      });
+    },
+    { merge: false }
+  );
+
+  const ready = await withModelContext(
+    {} as any,
+    async () => User.GetInitialSetupState({}),
+    { merge: false }
+  );
+  expect(ready.Complete).toBe(true);
+
+  await clearSetupCompletedAt();
+});
+
 test('CompleteInitialSetup: rejects invalid envelope fields', async () => {
   resetRequestContext();
   setupAllowlistForCompleteInitialSetup();

@@ -59,6 +59,16 @@ export type CompleteInitialSetupResp = {
   UserId: string;
 };
 
+/**
+ * Anonymous first-run probe for FE routing. Empty payload; Complete mirrors
+ * AppSetting setup.completed_at (and legacy system.init.done).
+ */
+export type GetInitialSetupStateReq = Record<string, never>;
+
+export type GetInitialSetupStateResp = {
+  Complete: boolean;
+};
+
 export type RefreshTokensReq = {
   RefreshToken: string;
 };

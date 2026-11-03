@@ -14,6 +14,78 @@ function resolveAuthStore(deps?: AuthGuardDeps) {
   return (deps?.getAuthStore ?? useAuthStore)();
 }
 
+function isSetupRoute(to: RouteLocationNormalized): boolean {
+  if (to.name === 'setup') return true;
+  const resourceId = String((to.meta as { resourceId?: unknown } | null | undefined)?.resourceId ?? '').trim();
+  if (resourceId === 'auth.route.setup') return true;
+  const path = String(to.path || '').replace(/\/+$/, '') || '/';
+  return path === '/setup' || path === '/web/setup';
+}
+
+function isLogoutOrErrorRoute(to: RouteLocationNormalized): boolean {
+  if (to.name === 'logout') return true;
+  const path = String(to.path || '');
+  if (path === '/logout' || path === '/web/logout' || path.startsWith('/error/')) return true;
+  const resourceId = String((to.meta as { resourceId?: unknown } | null | undefined)?.resourceId ?? '').trim();
+  return resourceId === 'auth.route.logout';
+}
+
+/** Guest auth shell entries that participate in SetupPending ↔ Ready routing. */
+function isSetupShellRoute(to: RouteLocationNormalized): boolean {
+  if (isSetupRoute(to)) return true;
+  if (to.name === 'login' || to.name === 'register') return true;
+  const resourceId = String((to.meta as { resourceId?: unknown } | null | undefined)?.resourceId ?? '').trim();
+  if (resourceId === 'auth.route.login' || resourceId === 'auth.route.register') return true;
+  const path = (String(to.path || '').replace(/\/+$/, '') || '/');
+  return (
+    path === '/' ||
+    path === '/login' ||
+    path === '/register' ||
+    path === '/web/login' ||
+    path === '/web/register'
+  );
+}
+
+/**
+ * Route SetupPending guests to /setup and keep Ready guests off /setup.
+ * Only guest shell routes are redirected; protected routes still go through
+ * authGuard → /login, which then lands on /setup when pending.
+ */
+export async function setupGuard(
+  to: RouteLocationNormalized,
+  _from: RouteLocationNormalized,
+  deps: AuthGuardDeps = {}
+) {
+  if (isLogoutOrErrorRoute(to) || !isSetupShellRoute(to)) {
+    return true;
+  }
+
+  const authStore = resolveAuthStore(deps);
+  if (typeof authStore.ensureSetupStateReady !== 'function') {
+    return true;
+  }
+
+  let complete: boolean;
+  try {
+    complete = await authStore.ensureSetupStateReady();
+  } catch {
+    // Probe failures must not block the shell; host gate still protects Login.
+    return true;
+  }
+
+  if (!complete) {
+    if (!isSetupRoute(to)) {
+      return { name: 'setup', replace: true };
+    }
+    return true;
+  }
+
+  if (isSetupRoute(to)) {
+    return { name: 'login', replace: true };
+  }
+  return true;
+}
+
 /**
  * Redirect unauthenticated users to the login page.
  */

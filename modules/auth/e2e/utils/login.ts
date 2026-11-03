@@ -22,7 +22,9 @@ import { waitForGrpcWebUnaryOk } from './grpcweb.ts';
 export async function loginAsE2EAdmin(page: Page, baseURL: string): Promise<void> {
   const runOnce = async () => {
     // Drop prior test auth from the shared browser profile (workers=1).
-    await page.goto(`${baseURL}/web/login`, { waitUntil: 'domcontentloaded' });
+    // Clear on /readyz (same origin, no Vue app) so Pinia persist cannot
+    // re-write tokens from an in-memory hydrated Login/Register session.
+    await page.goto(`${baseURL}/readyz`, { waitUntil: 'domcontentloaded' });
     await page.evaluate(() => {
       try {
         localStorage.clear();
@@ -38,8 +40,14 @@ export async function loginAsE2EAdmin(page: Page, baseURL: string): Promise<void
 
     await page.goto(`${baseURL}/web/auth/users`, { waitUntil: 'domcontentloaded' });
 
-    const username = page.getByPlaceholder(/username/i);
-    await expect(username).toBeVisible({ timeout: 10_000 });
+    // SetupPending workspaces land on /web/setup (setupGuard).
+    const hrefAfterGuard = String(await page.url());
+    if (/\/web\/setup(\/|$|\?)/.test(hrefAfterGuard)) {
+      throw new Error('loginAsE2EAdmin: workspace is SetupPending (expected Ready fixture with setup.completed_at)');
+    }
+
+    const username = page.getByPlaceholder(/Enter username|请输入用户名|username/i);
+    await expect(username).toBeVisible({ timeout: 15_000 });
 
     // Route guard / auth init briefly marks the document busy; ChoyPage loading
     // also disables the submit button and puts inert on the form body.
@@ -62,7 +70,7 @@ export async function loginAsE2EAdmin(page: Page, baseURL: string): Promise<void
 
     const fillCredentials = async () => {
       await username.fill('e2e-admin');
-      await page.getByPlaceholder(/password/i).fill('e2e-admin');
+      await page.getByPlaceholder(/^Enter password$|^请输入密码$|password/i).fill('e2e-admin');
     };
     await fillCredentials();
 

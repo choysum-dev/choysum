@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { ChoysumWebApp } from '@/core/web/application';
-import { authGuard, permissionGuard } from './guard';
+import { authGuard, permissionGuard, setupGuard } from './guard';
 import { authRoutes, appRoutes } from './routes';
 import type { RouteLocationNormalized, NavigationGuardNext, RouteRecordRaw } from 'vue-router';
 import { nextTick } from 'vue';
@@ -21,16 +21,17 @@ export function setupRouter(app: ChoysumWebApp): void {
     router.addRoute('AppLayout', route);
   }
 
-  // Install auth before permission so redirects resolve in the expected order.
+  // SetupPending routing before auth/permission so Login is not the first land.
   // Two-arg wrappers keep vue-router from treating AuthGuardDeps as `next`
   // (guards declare an optional test deps object as a third parameter).
+  router.beforeEach((to, from) => setupGuard(to, from));
   router.beforeEach((to, from) => authGuard(to, from));
   router.beforeEach((to, from) => permissionGuard(to, from));
 }
 
 // Re-export auth routes and guards.
 export { authRoutes } from './routes';
-export { authGuard, permissionGuard } from './guard';
+export { authGuard, permissionGuard, setupGuard } from './guard';
 
 // Re-export route helper types.
 export type { RouteLocationNormalized, NavigationGuardNext, RouteRecordRaw };

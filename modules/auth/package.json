@@ -41,6 +41,9 @@
             "e2e/fixtures/smoke.json"
           ]
         },
+        "setup-pending": {
+          "fixtures": []
+        },
         "result-failed": {
           "extends": "default",
           "fixtures": []

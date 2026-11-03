@@ -34,6 +34,8 @@ function buildMockState() {
   const Login = makeFn();
   const Logout = makeFn();
   const Register = makeFn();
+  const CompleteInitialSetup = makeFn();
+  const GetInitialSetupState = makeFn();
   const RefreshTokens = makeFn();
   const Browse = makeFn();
   const UpdateById = makeFn();
@@ -67,13 +69,26 @@ function buildMockState() {
       Login: Login.fn,
       Logout: Logout.fn,
       Register: Register.fn,
+      CompleteInitialSetup: CompleteInitialSetup.fn,
+      GetInitialSetupState: GetInitialSetupState.fn,
       RefreshTokens: RefreshTokens.fn,
       Browse: Browse.fn,
       UpdateById: UpdateById.fn,
       GetPermissionState: GetPermissionState.fn,
       SwitchCompanyScope: SwitchCompanyScope.fn,
     },
-    _recorders: { Login, Logout, Register, RefreshTokens, Browse, UpdateById, GetPermissionState, SwitchCompanyScope },
+    _recorders: {
+      Login,
+      Logout,
+      Register,
+      CompleteInitialSetup,
+      GetInitialSetupState,
+      RefreshTokens,
+      Browse,
+      UpdateById,
+      GetPermissionState,
+      SwitchCompanyScope,
+    },
   };
 }
 
@@ -336,6 +351,36 @@ test('register: rejects a response without a UserId string', async () => {
     caught = err;
   }
   expect(String(caught?.code || '')).toBe('REGISTRATION_FAILED');
+});
+
+test('completeInitialSetup: hashes password and marks setup complete', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState._recorders.CompleteInitialSetup.resolve({ UserId: 'usr_admin' });
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  const result = await actions.completeInitialSetup('  admin  ', 'secret1');
+
+  expect(result).toEqual({ UserId: 'usr_admin' });
+  const payload = mockState._recorders.CompleteInitialSetup.calls[0].args[0] as {
+    Username: string;
+    Password: string;
+  };
+  expect(payload.Username).toBe('admin');
+  expect(payload.Password).toBe(await hashPasswordClient('secret1', 'admin'));
+  expect(await actions.ensureSetupStateReady()).toBe(true);
+  expect(mockState._recorders.GetInitialSetupState.calls.length).toBe(0);
+});
+
+test('ensureSetupStateReady: caches GetInitialSetupState', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState._recorders.GetInitialSetupState.resolve({ Complete: false });
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  expect(await actions.ensureSetupStateReady()).toBe(false);
+  expect(await actions.ensureSetupStateReady()).toBe(false);
+  expect(mockState._recorders.GetInitialSetupState.calls.length).toBe(1);
 });
 
 test('register: wraps a Register RPC failure', async () => {
