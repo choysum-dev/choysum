@@ -475,6 +475,8 @@ func TestBuildPlanUpgradeWebShellProfileSkipsInstalledDocumentAffectedApps(t *te
 					ApplicationStr: "document",
 					DependsStr:     []byte(`["core"]`),
 				}, nil
+			case "core":
+				return &meta.Module{Name: "core", Status: meta.Installed, ApplicationStr: "core"}, nil
 			default:
 				return nil, nil
 			}
@@ -491,6 +493,69 @@ func TestBuildPlanUpgradeWebShellProfileSkipsInstalledDocumentAffectedApps(t *te
 	}
 	if moduleOrderContains(plan.EnsureOrder, "document") {
 		t.Fatalf("EnsureOrder=%v must not re-ensure installed document", plan.EnsureOrder)
+	}
+}
+
+func TestBuildPlanUpgradeWebShellProfileEnsuresMissingDepsOfInstalledRoot(t *testing.T) {
+	root := &meta.Module{
+		Name:           "partner",
+		ApplicationStr: "partner",
+		WebEntryPoint:  "web/index.ts",
+	}
+	r := fakeResolver{
+		peek: func(_ context.Context, name string) (*meta.Module, error) {
+			switch name {
+			case "web":
+				return &meta.Module{Name: "web", WebEntryPoint: "web/index.ts"}, nil
+			case "task":
+				return &meta.Module{Name: "task", ApplicationStr: "task", DependsStr: []byte(`["core"]`)}, nil
+			default:
+				return nil, nil
+			}
+		},
+		load: func(name string) (*meta.Module, error) {
+			switch name {
+			case "web":
+				return &meta.Module{Name: "web", Status: meta.Installed, WebEntryPoint: "web/index.ts"}, nil
+			case "document":
+				return &meta.Module{
+					Name:           "document",
+					Status:         meta.Installed,
+					ApplicationStr: "document",
+					DependsStr:     []byte(`["core","task"]`),
+				}, nil
+			case "core":
+				return &meta.Module{Name: "core", Status: meta.Installed, ApplicationStr: "core"}, nil
+			case "task":
+				return nil, nil
+			default:
+				return nil, nil
+			}
+		},
+	}
+	plan, err := BuildPlan(context.Background(), OpUpgrade, root, r, WithWebShellProfile(WebShellProfileStandard))
+	if err != nil {
+		t.Fatalf("BuildPlan: %v", err)
+	}
+	if !moduleOrderContains(plan.EnsureOrder, "task") {
+		t.Fatalf("EnsureOrder=%v must ensure missing task under installed document", plan.EnsureOrder)
+	}
+	if moduleOrderContains(plan.EnsureOrder, "document") {
+		t.Fatalf("EnsureOrder=%v must not re-ensure installed document", plan.EnsureOrder)
+	}
+	for _, app := range plan.AffectedApps {
+		if app == "document" {
+			t.Fatalf("AffectedApps=%v must not include installed document app", plan.AffectedApps)
+		}
+	}
+	foundTask := false
+	for _, app := range plan.AffectedApps {
+		if app == "task" {
+			foundTask = true
+		}
+	}
+	if !foundTask {
+		t.Fatalf("AffectedApps=%v must include task for the ensured module", plan.AffectedApps)
 	}
 }
 
@@ -519,6 +584,32 @@ func TestEnsureWebShellProfileExtrasUpgradeLoadEnsureError(t *testing.T) {
 		},
 	}, func(*meta.Module) {}, WebShellProfileStandard)
 	if err == nil || !strings.Contains(err.Error(), "load module task for web-shell-profile ensure") {
+		t.Fatalf("error=%v", err)
+	}
+}
+
+func TestEnsureWebShellProfileExtrasUpgradePeekEnsureError(t *testing.T) {
+	plan := &Plan{}
+	taskPeeks := 0
+	err := ensureWebShellProfileExtras(context.Background(), OpUpgrade, plan, fakeResolver{
+		load: func(name string) (*meta.Module, error) {
+			if name == "document" {
+				return &meta.Module{Name: "document", DependsStr: []byte(`["task"]`)}, nil
+			}
+			return nil, nil
+		},
+		peek: func(_ context.Context, name string) (*meta.Module, error) {
+			if name != "task" {
+				return nil, nil
+			}
+			taskPeeks++
+			if taskPeeks == 1 {
+				return &meta.Module{Name: "task", ApplicationStr: "task"}, nil
+			}
+			return nil, errors.New("peek task failed")
+		},
+	}, func(*meta.Module) {}, WebShellProfileStandard)
+	if err == nil || !strings.Contains(err.Error(), "peek module task for web-shell-profile ensure") {
 		t.Fatalf("error=%v", err)
 	}
 }

@@ -233,12 +233,14 @@ func ensureWebShellProfileExtras(ctx context.Context, op OpType, plan *Plan, r R
 			return fmt.Errorf("web-shell-profile module %s not found", rootName)
 		}
 
-		// Skip installed profile roots before topo so upgrade does not inflate AffectedApps.
-		if op == OpUpgrade && mod.Status == meta.Installed {
-			continue
+		// Upgrade only Ensures missing modules. Traverse with a no-op addApp so
+		// already-installed profile deps do not inflate AffectedApps; mark apps
+		// only for modules actually appended to EnsureOrder below.
+		orderAddApp := addApp
+		if op == OpUpgrade {
+			orderAddApp = func(*meta.Module) {}
 		}
-
-		order, err := topoByDependsStr(ctx, mod, r, addApp)
+		order, err := topoByDependsStr(ctx, mod, r, orderAddApp)
 		if err != nil {
 			return fmt.Errorf("resolve web-shell-profile %s dependencies: %w", rootName, err)
 		}
@@ -257,6 +259,17 @@ func ensureWebShellProfileExtras(ctx context.Context, op OpType, plan *Plan, r R
 				}
 				if !moduleOrderContains(plan.EnsureOrder, name) {
 					plan.EnsureOrder = append(plan.EnsureOrder, name)
+				}
+				if dep != nil {
+					addApp(dep)
+					continue
+				}
+				peeked, peekErr := r.Peek(ctx, name)
+				if peekErr != nil {
+					return fmt.Errorf("peek module %s for web-shell-profile ensure: %w", name, peekErr)
+				}
+				if peeked != nil {
+					addApp(peeked)
 				}
 			}
 		}
