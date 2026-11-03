@@ -323,6 +323,38 @@ func TestEnsureWebShellProfileExtrasNilPlan(t *testing.T) {
 	}
 }
 
+func TestBuildPlanPropagatesWebShellProfileExtrasError(t *testing.T) {
+	root := &meta.Module{
+		Name:           "partner",
+		ApplicationStr: "partner",
+		WebEntryPoint:  "web/index.ts",
+	}
+	r := fakeResolver{
+		peek: func(_ context.Context, name string) (*meta.Module, error) {
+			switch name {
+			case "core":
+				return &meta.Module{Name: "core", ApplicationStr: "core"}, nil
+			case "auth":
+				return &meta.Module{Name: "auth", ApplicationStr: "auth", DependsStr: []byte(`["core"]`)}, nil
+			case "web":
+				return &meta.Module{
+					Name:           "web",
+					ApplicationStr: "web",
+					WebEntryPoint:  "web/index.ts",
+					DependsStr:     []byte(`["core","auth"]`),
+				}, nil
+			default:
+				return nil, nil
+			}
+		},
+		load: func(string) (*meta.Module, error) { return nil, nil },
+	}
+	_, err := BuildPlan(context.Background(), OpInstall, root, r, WithWebShellProfile(WebShellProfileStandard))
+	if err == nil || !strings.Contains(err.Error(), "web-shell-profile module document not found") {
+		t.Fatalf("error=%v", err)
+	}
+}
+
 func TestEnsureWebShellProfileExtrasErrorPaths(t *testing.T) {
 	plan := &Plan{}
 	addApp := func(*meta.Module) {}
@@ -488,6 +520,30 @@ func TestEnsureWebShellProfileExtrasUpgradeLoadEnsureError(t *testing.T) {
 	}, func(*meta.Module) {}, WebShellProfileStandard)
 	if err == nil || !strings.Contains(err.Error(), "load module task for web-shell-profile ensure") {
 		t.Fatalf("error=%v", err)
+	}
+}
+
+func TestEnsureWebShellProfileExtrasUpgradeSkipsDuplicateEnsureNames(t *testing.T) {
+	plan := &Plan{EnsureOrder: []string{"document"}}
+	err := ensureWebShellProfileExtras(context.Background(), OpUpgrade, plan, fakeResolver{
+		load: func(name string) (*meta.Module, error) {
+			if name == "document" {
+				return &meta.Module{Name: "document"}, nil
+			}
+			return nil, nil
+		},
+	}, func(*meta.Module) {}, WebShellProfileStandard)
+	if err != nil {
+		t.Fatalf("error=%v", err)
+	}
+	count := 0
+	for _, name := range plan.EnsureOrder {
+		if name == "document" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("EnsureOrder=%v should keep a single document entry", plan.EnsureOrder)
 	}
 }
 

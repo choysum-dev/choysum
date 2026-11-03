@@ -67,6 +67,12 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 
 			ctx = logutil.WithStderrProgressLine(ctx)
 
+			profile, profileErr := plan.ParseWebShellProfile(webShellProfile)
+			if profileErr != nil {
+				env.Logger().Error("module install failed", "error", profileErr)
+				os.Exit(1)
+			}
+
 			// Create a transaction-bound module manager for each module install.
 			// Run each module install in its own transaction to avoid keeping a
 			// long-lived transaction open across multiple modules (which amplifies SQLite
@@ -111,10 +117,6 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 
 				installScope := env.WithContext(ctx)
 				err = func() error {
-					profile, profileErr := plan.ParseWebShellProfile(webShellProfile)
-					if profileErr != nil {
-						return profileErr
-					}
 					compilerExecutor, startErr := jsexecutor.NewCompilerExecutor(installScope)
 					if startErr != nil {
 						return xfmt.Errorf("Error creating compiler executor: %w", startErr)

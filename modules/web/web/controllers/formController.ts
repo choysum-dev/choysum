@@ -395,6 +395,11 @@ function attachmentFieldNeedsContentService(value: unknown): boolean {
   return isBlobLike(fileLike);
 }
 
+function isNoopAttachmentEnvelope(value: unknown): boolean {
+  if (!isRecord(value) || Array.isArray(value)) return false;
+  return normalizeOptionalString(value.kind)?.toLowerCase() === 'noop';
+}
+
 function attachmentFieldNames(store: WebModelStore<any>): string[] {
   const metas = (store as any)?.fieldsMetadata as Record<string, { type?: string }> | undefined;
   if (!metas) return [];
@@ -716,9 +721,13 @@ async function preNormalizeDraftForDiff(
 ): Promise<Record<string, unknown>> {
   if (!options.fields.length) return payload;
   const candidatePayload: Record<string, unknown> = { ...payload };
+  // Keep `kind: 'noop'` in the draft so buildUpdatePayload sees no change.
+  // Normalizing noop → omit would drop the field and risk emitting a clear.
   const candidateFields = options.fields.filter(fieldName => {
     if (!Object.prototype.hasOwnProperty.call(candidatePayload, fieldName)) return false;
-    return looksLikeUploadEnvelope(candidatePayload[fieldName]);
+    const value = candidatePayload[fieldName];
+    if (isNoopAttachmentEnvelope(value)) return false;
+    return looksLikeUploadEnvelope(value);
   });
   if (!candidateFields.length) return candidatePayload;
 
@@ -1087,6 +1096,7 @@ export type FormController = ReturnType<typeof createFormController>;
 // Test hooks: lock attachment orchestration protocol without coupling to full controller lifecycle.
 export const __resolveAttachmentFieldValueForTest = resolveAttachmentFieldValue;
 export const __normalizeAttachmentFieldsInPayloadForTest = normalizeAttachmentFieldsInPayload;
+export const __preNormalizeDraftForDiffForTest = preNormalizeDraftForDiff;
 export const __looksLikeUploadEnvelopeForTest = looksLikeUploadEnvelope;
 export const __attachmentFieldNeedsContentServiceForTest = attachmentFieldNeedsContentService;
 export const __attachMonetaryCurrencyCompanionsForTest = attachMonetaryCurrencyCompanions;

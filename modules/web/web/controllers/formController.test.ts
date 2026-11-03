@@ -3,6 +3,7 @@
 
 import {
   __normalizeAttachmentFieldsInPayloadForTest,
+  __preNormalizeDraftForDiffForTest,
   __resolveAttachmentFieldValueForTest,
   __looksLikeUploadEnvelopeForTest,
   __attachmentFieldNeedsContentServiceForTest,
@@ -466,5 +467,24 @@ describe('formController attachment protocol', () => {
     }
     expect(caught instanceof Error).toBe(true);
     expect(String((caught as Error).message || '')).toMatch(/document module is not installed/i);
+  });
+
+  test('preNormalizeDraftForDiff keeps noop envelopes so update diff does not clear', async () => {
+    const store = {
+      fullModelName: 'demo.Asset',
+      fieldsMetadata: { Avatar: { type: 'image' } },
+    } as any;
+    const out = await __preNormalizeDraftForDiffForTest(
+      store,
+      { Avatar: { kind: 'noop' }, Name: 'x' },
+      { ownerModel: 'demo.Asset', ownerRecordId: 'r1', fields: ['Avatar'] },
+      {
+        createStoreByModel: () => {
+          throw new Error('document.AttachmentContent must not be dialed for noop');
+        },
+      }
+    );
+    expect(out.Avatar).toMatchObject({ kind: 'noop' });
+    expect(out.Name).toBe('x');
   });
 });
