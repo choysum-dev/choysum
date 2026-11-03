@@ -77,10 +77,10 @@ func feUnitPackageStubPath(importPath string, stubs feUnitStubPaths) (string, bo
 func feUnitPathStubPath(p, joined, importer string, stubs feUnitStubPaths) (string, bool) {
 	isPageOrView := strings.HasSuffix(importer, ".vue") &&
 		(strings.Contains(importer, "/web/pages/") || strings.Contains(importer, "/web/views/"))
-	// vueplugin/path-alias resolves sometimes omit Importer; treat that like product page
-	// so ChildView/Page path stubs still apply for Currency-style mounts.
+	// vueplugin/path-alias resolves sometimes omit Importer; treat that like a product page
+	// so ChildView path stubs still apply for Currency-style mounts.
 	stubProductChildren := isPageOrView || importer == ""
-	// FE unit tests under web/web/components must see real SFCs (Page.mapping, OVColumn, …).
+	// FE unit tests under web/web/components must see real SFCs (e.g. ChoyPage.*.test.ts).
 	isWebComponentUnit := strings.Contains(importer, "/web/web/components/") &&
 		(strings.Contains(importer, ".test.ts") || strings.Contains(importer, ".spec.ts") ||
 			strings.HasSuffix(importer, ".vue"))

@@ -156,9 +156,9 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 		plugins = append(plugins, api.Plugin{
 			Name: "choysum-fe-unit-child-view-stub",
 			Setup: func(build api.PluginBuild) {
-				// Same Importer-empty problem as Page: stub nested Form/List/Kanban for
-				// product page/view mounts. Skip when a FE unit test imports the *View SUT,
-				// or when web/web/components code is the importer (real child mounts).
+				// When Importer is empty (path-alias resolve), still stub nested
+				// Form/List/Kanban for product page/view mounts. Skip when a FE unit
+				// test imports the *View SUT, or when web/web/components is the importer.
 				build.OnResolve(api.OnResolveOptions{Filter: `(FormView|ListView|KanbanView)\.vue$`},
 					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
 						path := filepath.ToSlash(args.Path)
