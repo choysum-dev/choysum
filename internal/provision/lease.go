@@ -34,6 +34,11 @@ var (
 // ErrLeaseBusy means another provision/init holds the workspace lease.
 var ErrLeaseBusy = lease.ErrLeaseBusy
 
+// ErrLeaseLost means this owner no longer holds the system:init lease
+// (renew failed / not owner). Callers should treat the workspace as possibly
+// partially provisioned.
+var ErrLeaseLost = errors.New("provision lease lost")
+
 type leaseHandle struct {
 	ownerID  string
 	locker   statepkg.Locker // acquired locker; reused on release
@@ -99,7 +104,7 @@ func acquireProvisionLease(ctx context.Context, runtimeScope scope.Scope, locker
 	}
 	if err := checkProvisionLeaseRenew(handle); err != nil {
 		releaseProvisionLease(runtimeScope, lockerFactory, handle)
-		return nil, xfmt.Errorf("provision lease lost: %w", err)
+		return nil, xfmt.Errorf("%w: %v", ErrLeaseLost, err)
 	}
 	return handle, nil
 }

@@ -158,6 +158,24 @@ func TestEnsureHostProvisionFallsBackToBootstrapWhenInstallFails(t *testing.T) {
 	}
 }
 
+func TestEnsureHostProvisionLeaseLostWarnsAndFallsBack(t *testing.T) {
+	runtimeScope, _ := newHostProvisionDB(t)
+	seedLocalWebModule(t, runtimeScope.config)
+	srv := &GRPCWebServer{runtimeScope: runtimeScope}
+	if err := srv.planServe(nil); err != nil {
+		t.Fatalf("planServe: %v", err)
+	}
+	srv.hostProvisionFn = func(context.Context) (provision.Result, error) {
+		return provision.Result{}, provision.ErrLeaseLost
+	}
+	if err := srv.ensureHostProvision(context.Background()); err != nil {
+		t.Fatalf("ensureHostProvision: %v", err)
+	}
+	if !srv.runState.isBootstrapMode() {
+		t.Fatalf("expected bootstrap after lease lost, got %q", srv.runState.mode())
+	}
+}
+
 func TestEnsureHostProvisionSkipsWhenModulesPathEmpty(t *testing.T) {
 	runtimeScope, _ := newHostProvisionDB(t)
 	srv := &GRPCWebServer{runtimeScope: runtimeScope}

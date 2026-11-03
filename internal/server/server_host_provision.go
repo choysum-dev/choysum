@@ -48,7 +48,8 @@ func (s *GRPCWebServer) ensureHostProvision(ctx context.Context) error {
 	phase, err := provision.Resolve(s.runtimeScope)
 	if err != nil {
 		// Test fixtures and pre-DB scopes have no session; skip host provision.
-		if s.runtimeScope.Session() == nil || s.runtimeScope.Session().DB == nil {
+		session := s.runtimeScope.Session()
+		if session == nil || session.DB == nil {
 			return nil
 		}
 		return xfmt.Errorf("resolve setup phase before provision: %w", err)
@@ -82,6 +83,13 @@ func (s *GRPCWebServer) ensureHostProvision(ctx context.Context) error {
 			}
 			// Soft-fallback: peer path never hard-fails Serve on replan.
 			_ = s.replanAfterHostProvision(false)
+			return nil
+		}
+		if errors.Is(err, provision.ErrLeaseLost) {
+			s.logHostProvisionWarn(
+				"host provision lease lost mid-install; workspace may be partially provisioned; continuing in bootstrap mode",
+				"error", err,
+			)
 			return nil
 		}
 		s.logHostProvisionWarn("host provision failed; continuing in bootstrap mode", "error", err)

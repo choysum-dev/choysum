@@ -163,7 +163,7 @@ func ProvisionMinimal(ctx context.Context, runtimeScope scope.Scope, opts Option
 			progress.Done("✗", "provision module installation failed")
 		}
 		if renewErr := checkProvisionLeaseRenew(handle); renewErr != nil {
-			return Result{}, xfmt.Errorf("provision lease lost during install: %w", renewErr)
+			return Result{}, xfmt.Errorf("%w during install: %v", ErrLeaseLost, renewErr)
 		}
 		return Result{}, xfmt.Errorf("provision install %s: %w", req.Input, err)
 	}
@@ -172,7 +172,7 @@ func ProvisionMinimal(ctx context.Context, runtimeScope scope.Scope, opts Option
 	}
 
 	if err := checkProvisionLeaseRenew(handle); err != nil {
-		return Result{}, xfmt.Errorf("provision lease lost: %w", err)
+		return Result{}, xfmt.Errorf("%w: %v", ErrLeaseLost, err)
 	}
 
 	phase, err = Resolve(runtimeScope)
