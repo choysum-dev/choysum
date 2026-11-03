@@ -43,6 +43,19 @@ func TestMinimalInstallRequest(t *testing.T) {
 	}
 }
 
+func TestMinimalClosureModules(t *testing.T) {
+	got := MinimalClosureModules()
+	want := []string{MinimalRootModule, "core", "auth", "meta"}
+	if len(got) != len(want) {
+		t.Fatalf("got=%v want=%v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("got=%v want=%v", got, want)
+		}
+	}
+}
+
 func TestProvisionMinimalSkipsWhenSetupPending(t *testing.T) {
 	runtimeScope, db := newSetupStateScope(t)
 	createMetaModuleTable(t, db)

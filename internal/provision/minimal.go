@@ -23,6 +23,12 @@ import (
 // The web shell pulls core/auth/meta via depends; profile=minimal skips document.
 const MinimalRootModule = "web"
 
+// MinimalClosureModules is the local ModulesPath set required before automatic
+// host provision. Keep in sync with modules/web package.json depends (plus web).
+func MinimalClosureModules() []string {
+	return []string{MinimalRootModule, "core", "auth", "meta"}
+}
+
 // InstallFunc installs one module plan (overridable in tests).
 type InstallFunc func(
 	ctx context.Context,

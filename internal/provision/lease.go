@@ -57,8 +57,10 @@ func acquireProvisionLease(ctx context.Context, runtimeScope scope.Scope, locker
 	if session == nil || session.DB == nil {
 		return nil, errors.New("database session is not available")
 	}
-	if !session.Migrator().HasTable((&modmeta.LockLease{}).TableName()) {
-		if err := session.AutoMigrate(&modmeta.LockLease{}); err != nil {
+	// AutoMigrate is idempotent; tolerate a concurrent peer that creates the
+	// table first (SQLite can race HasTable/migrate across processes).
+	if err := session.AutoMigrate(&modmeta.LockLease{}); err != nil {
+		if !session.Migrator().HasTable((&modmeta.LockLease{}).TableName()) {
 			return nil, err
 		}
 	}

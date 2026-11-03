@@ -185,7 +185,7 @@ func seedLocalWebModule(t *testing.T, cfg *config.Config) {
 	if strings.TrimSpace(cfg.ModulesPath) == "" {
 		cfg.ModulesPath = filepath.Join(t.TempDir(), "modules")
 	}
-	for _, name := range []string{"web", "core", "auth", "meta"} {
+	for _, name := range provision.MinimalClosureModules() {
 		dir := filepath.Join(cfg.ModulesPath, name)
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatalf("mkdir %s module: %v", name, err)
