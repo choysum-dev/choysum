@@ -635,6 +635,16 @@ func TestAcquireProvisionLeaseAutoMigrateError(t *testing.T) {
 	}
 }
 
+func TestContinueAfterLeaseMigrateErr(t *testing.T) {
+	if err := continueAfterLeaseMigrateErr(nil, errors.New("migrate boom"), false); err == nil {
+		t.Fatal("expected error when table missing")
+	}
+	runtimeScope, _ := newSetupStateScope(t)
+	if err := continueAfterLeaseMigrateErr(runtimeScope, errors.New("migrate boom"), true); err != nil {
+		t.Fatalf("expected continue when table exists: %v", err)
+	}
+}
+
 func TestNotifyLeaseRenewErr(t *testing.T) {
 	notifyLeaseRenewErr(nil, errors.New("x"))
 	var canceled bool

@@ -60,8 +60,12 @@ func acquireProvisionLease(ctx context.Context, runtimeScope scope.Scope, locker
 	// AutoMigrate is idempotent; tolerate a concurrent peer that creates the
 	// table first (SQLite can race HasTable/migrate across processes).
 	if err := session.AutoMigrate(&modmeta.LockLease{}); err != nil {
-		if !session.Migrator().HasTable((&modmeta.LockLease{}).TableName()) {
-			return nil, err
+		if contErr := continueAfterLeaseMigrateErr(
+			runtimeScope,
+			err,
+			session.Migrator().HasTable((&modmeta.LockLease{}).TableName()),
+		); contErr != nil {
+			return nil, contErr
 		}
 	}
 	if lockerFactory == nil {
@@ -140,6 +144,18 @@ func renewProvisionLease(ctx context.Context, runtimeScope scope.Scope, locker s
 			}
 		}
 	}
+}
+
+func continueAfterLeaseMigrateErr(runtimeScope scope.Scope, err error, hasTable bool) error {
+	if !hasTable {
+		return err
+	}
+	if runtimeScope != nil {
+		if log := runtimeScope.Logger(); log != nil {
+			log.Warn("provision lease AutoMigrate failed but table exists; continuing", "error", err)
+		}
+	}
+	return nil
 }
 
 func notifyLeaseRenewErr(handle *leaseHandle, err error) {

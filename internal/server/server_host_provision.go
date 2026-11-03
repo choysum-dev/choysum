@@ -80,9 +80,8 @@ func (s *GRPCWebServer) ensureHostProvision(ctx context.Context) error {
 			if phase, resolveErr := provision.Resolve(s.runtimeScope); resolveErr == nil {
 				s.logHostProvisionWarn("peer host provision finished", "phase", string(phase))
 			}
-			if replanErr := s.replanAfterHostProvision(true); replanErr != nil {
-				s.logHostProvisionWarn("replan after peer host provision failed; continuing in bootstrap mode", "error", replanErr)
-			}
+			// Soft-fallback: peer path never hard-fails Serve on replan.
+			_ = s.replanAfterHostProvision(false)
 			return nil
 		}
 		s.logHostProvisionWarn("host provision failed; continuing in bootstrap mode", "error", err)
@@ -131,6 +130,9 @@ func (s *GRPCWebServer) waitForHostProvisionPeer(ctx context.Context) error {
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		phase, err := provision.Resolve(s.runtimeScope)
 		if err != nil {
 			return err

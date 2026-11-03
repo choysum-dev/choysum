@@ -479,6 +479,22 @@ func TestWaitForHostProvisionPeerContextCancel(t *testing.T) {
 	}
 }
 
+func TestWaitForHostProvisionPeerContextCancelDuringWait(t *testing.T) {
+	runtimeScope, _ := newHostProvisionDB(t)
+	srv := &GRPCWebServer{runtimeScope: runtimeScope}
+	prev := hostProvisionPeerWait()
+	setHostProvisionPeerWait(time.Minute)
+	t.Cleanup(func() { setHostProvisionPeerWait(prev) })
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(20 * time.Millisecond)
+		cancel()
+	}()
+	if err := srv.waitForHostProvisionPeer(ctx); err == nil {
+		t.Fatal("expected ctx cancel during wait")
+	}
+}
+
 func TestWaitForHostProvisionPeerResolveError(t *testing.T) {
 	runtimeScope, db := newHostProvisionDB(t)
 	if err := db.Exec(`DROP TABLE meta_module`).Error; err != nil {
