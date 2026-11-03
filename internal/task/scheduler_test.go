@@ -5,8 +5,10 @@ package task
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -366,7 +368,7 @@ func TestSchedulerStartStopProcessesDueSchedule(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC()
 
-	dsn := "file:task_scheduler_loop?mode=memory&cache=shared"
+	dsn := fmt.Sprintf("file:task_scheduler_loop_%d?mode=memory&cache=shared&_busy_timeout=5000", time.Now().UnixNano())
 	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
@@ -420,6 +422,17 @@ func TestSchedulerStartStopProcessesDueSchedule(t *testing.T) {
 	for {
 		var jobs []Job
 		if err := db.Find(&jobs).Error; err != nil {
+			// Scheduler may hold a write lock while enqueueing; retry transient SQLite busy.
+			msg := strings.ToLower(err.Error())
+			if strings.Contains(msg, "database table is locked") || strings.Contains(msg, "database is locked") {
+				select {
+				case <-deadline:
+					t.Fatalf("list jobs: %v", err)
+				default:
+					time.Sleep(10 * time.Millisecond)
+					continue
+				}
+			}
 			t.Fatalf("list jobs: %v", err)
 		}
 		if len(jobs) > 0 {

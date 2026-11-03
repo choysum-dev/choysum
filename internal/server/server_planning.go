@@ -14,7 +14,9 @@ func (s *GRPCWebServer) planServe(serviceNames []string) error {
 
 	s.runState.applyPlannedDecision(manifest, decision)
 	if s.runState.isBootstrapMode() {
-		s.runtimeScope.Logger().Info("bootstrap mode selected", "reason", s.runState.reason())
+		// Degraded path when application dist is not ready (e.g. pre-PC-8 empty
+		// workspaces before host provision, or a broken dist after provision).
+		s.runtimeScope.Logger().Info("bootstrap mode fallback selected", "reason", s.runState.reason())
 	}
 
 	return nil

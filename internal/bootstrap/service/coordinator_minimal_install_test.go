@@ -30,8 +30,8 @@ func TestClassifyModuleInstallErrorMetaMessages(t *testing.T) {
 	if got := bootstrapErrorCode(err); got != bootstrapErrCodeModuleInstallTimeout {
 		t.Fatalf("code=%q, want timeout", got)
 	}
-	if !strings.Contains(err.Error(), "meta, the web shell, and their dependencies") {
-		t.Fatalf("error=%q, want meta/web shell hint", err.Error())
+	if !strings.Contains(err.Error(), "web shell and dependencies") {
+		t.Fatalf("error=%q, want web shell hint", err.Error())
 	}
 
 	err = c.classifyModuleInstallError(nil, time.Second, errors.New("boom"))
@@ -68,8 +68,8 @@ func TestDefaultInstallMinimalModulesMarksMetaStage(t *testing.T) {
 	if !ok {
 		t.Fatal("expected operation snapshot")
 	}
-	if !strings.Contains(snap.StageDetail, "meta module") {
-		t.Fatalf("StageDetail=%q, want meta module stage text", snap.StageDetail)
+	if !strings.Contains(snap.StageDetail, "minimal web-shell") {
+		t.Fatalf("StageDetail=%q, want minimal web-shell stage text", snap.StageDetail)
 	}
 }
 
@@ -155,7 +155,7 @@ func TestDefaultInstallMinimalModulesWithFakeExecutor(t *testing.T) {
 		t.Fatalf("defaultInstallMinimalModules: %v", err)
 	}
 	snap, ok := store.getOperation(opID)
-	if !ok || snap.StageDetail != "meta module installation completed" {
+	if !ok || snap.StageDetail != "minimal web-shell installation completed" {
 		t.Fatalf("StageDetail=%q ok=%v", snap.StageDetail, ok)
 	}
 }
@@ -219,7 +219,7 @@ func TestRunMinimalMetaModuleInstall(t *testing.T) {
 		if !completed {
 			t.Fatal("expected markCompleted")
 		}
-		if sawReq.Input != "meta" || sawReq.WithDemo {
+		if sawReq.Input != "web" || sawReq.WithDemo || string(sawReq.WebShellProfile) != "minimal" {
 			t.Fatalf("req=%+v", sawReq)
 		}
 	})

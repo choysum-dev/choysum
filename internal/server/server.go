@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"sync/atomic"
 
+	"github.com/choysum-dev/choysum/internal/provision"
 	"github.com/choysum-dev/choysum/internal/server/transport"
 	"github.com/choysum-dev/choysum/pkg/auth"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
@@ -49,6 +50,9 @@ type GRPCWebServer struct {
 	runtimeRecovery runtimeRecoveryState
 	modeSwitch      modeSwitchState
 
+	// hostProvisionFn overrides provision.ProvisionMinimal in tests.
+	hostProvisionFn func(ctx context.Context) (provision.Result, error)
+
 	ready atomic.Bool
 }
 
@@ -58,6 +62,12 @@ func (s *GRPCWebServer) Serve(ctx context.Context, serviceNames ...string) error
 	}
 
 	s.runState.setServeRequestArgs(serviceNames)
+	// Provision Empty workspaces before the first planServe so explicit targets
+	// like `choysum run web` can install the minimal shell instead of failing
+	// on missing dist.
+	if err := s.ensureHostProvision(ctx); err != nil {
+		return err
+	}
 	if err := s.planServe(serviceNames); err != nil {
 		return err
 	}
