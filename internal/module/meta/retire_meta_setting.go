@@ -100,11 +100,9 @@ func backfillSetupCompletedAtFromLegacyInit(db *gorm.DB) (canDrop bool, err erro
 		CreatedAt time.Time `gorm:"column:created_at"`
 		UpdatedAt time.Time `gorm:"column:updated_at"`
 	}
-	// DoNothing: never clobber a concurrently written real setup.completed_at.
-	if err := db.Table(authAppSettingTable).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "key"}},
-		DoNothing: true,
-	}).Create(&authAppSettingRow{
+	// DoNothing (no Columns): dialect-portable create-only claim — SQLite/Postgres
+	// ON CONFLICT DO NOTHING, MySQL INSERT IGNORE — never clobber a concurrent marker.
+	if err := db.Table(authAppSettingTable).Clauses(clause.OnConflict{DoNothing: true}).Create(&authAppSettingRow{
 		Id:        xid.New().String(),
 		Key:       authSetupCompletedAtKey,
 		Value:     iso,
