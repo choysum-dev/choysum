@@ -299,9 +299,9 @@ func TestEnsureHostProvisionLeaseBusyTimeoutFallsBack(t *testing.T) {
 	if err := srv.planServe(nil); err != nil {
 		t.Fatalf("planServe: %v", err)
 	}
-	prev := hostProvisionPeerWait
-	hostProvisionPeerWait = 20 * time.Millisecond
-	t.Cleanup(func() { hostProvisionPeerWait = prev })
+	prev := hostProvisionPeerWait()
+	setHostProvisionPeerWait(20 * time.Millisecond)
+	t.Cleanup(func() { setHostProvisionPeerWait(prev) })
 	srv.hostProvisionFn = func(context.Context) (provision.Result, error) {
 		return provision.Result{}, provision.ErrLeaseBusy
 	}
@@ -400,9 +400,9 @@ func TestEnsureHostProvisionPeerReplanSoftFallback(t *testing.T) {
 		_ = err
 	}
 	srv.runState.setServeRequestArgs([]string{"missing-target-xyz"})
-	prev := hostProvisionPeerWait
-	hostProvisionPeerWait = time.Minute
-	t.Cleanup(func() { hostProvisionPeerWait = prev })
+	prev := hostProvisionPeerWait()
+	setHostProvisionPeerWait(time.Minute)
+	t.Cleanup(func() { setHostProvisionPeerWait(prev) })
 
 	// Peer wait succeeds immediately by inserting auth, then replan with missing target fails soft.
 	srv.hostProvisionFn = func(context.Context) (provision.Result, error) {

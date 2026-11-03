@@ -15,6 +15,7 @@ import (
 	"github.com/choysum-dev/choysum/pkg/scope"
 	statepkg "github.com/choysum-dev/choysum/pkg/state"
 	"github.com/rs/xid"
+	xfmt "golang.org/x/exp/errors/fmt"
 )
 
 const (
@@ -36,6 +37,7 @@ var ErrLeaseBusy = lease.ErrLeaseBusy
 type leaseHandle struct {
 	ownerID  string
 	stopCh   chan struct{}
+	done     chan struct{} // closed when renewProvisionLease exits
 	renewErr chan error
 	cancel   context.CancelFunc
 	release  sync.Once
@@ -69,14 +71,35 @@ func acquireProvisionLease(ctx context.Context, runtimeScope scope.Scope, locker
 	handle := &leaseHandle{
 		ownerID:  ownerID,
 		stopCh:   make(chan struct{}),
+		done:     make(chan struct{}),
 		renewErr: make(chan error, 1),
 		cancel:   cancel,
 	}
-	go renewProvisionLease(ctx, runtimeScope, locker, handle)
+	probeDone := make(chan struct{})
+	go renewProvisionLease(ctx, runtimeScope, locker, handle, probeDone)
+	<-probeDone
+	if err := checkProvisionLeaseRenew(handle); err != nil {
+		releaseProvisionLease(runtimeScope, lockerFactory, handle)
+		return nil, xfmt.Errorf("provision lease lost: %w", err)
+	}
 	return handle, nil
 }
 
-func renewProvisionLease(ctx context.Context, runtimeScope scope.Scope, locker statepkg.Locker, handle *leaseHandle) {
+func renewProvisionLease(ctx context.Context, runtimeScope scope.Scope, locker statepkg.Locker, handle *leaseHandle, probeDone chan struct{}) {
+	defer close(handle.done)
+	signalProbe := func() {
+		if probeDone == nil {
+			return
+		}
+		select {
+		case <-probeDone:
+		default:
+			close(probeDone)
+		}
+		probeDone = nil
+	}
+	defer signalProbe()
+
 	ticker := time.NewTicker(leaseRenewInterval)
 	defer ticker.Stop()
 	lastOK := time.Now()
@@ -100,8 +123,10 @@ func renewProvisionLease(ctx context.Context, runtimeScope scope.Scope, locker s
 	}
 	// Probe once immediately so a lost lease is visible before install starts.
 	if renewOnce() {
+		signalProbe()
 		return
 	}
+	signalProbe()
 	for {
 		select {
 		case <-handle.stopCh:
@@ -135,6 +160,9 @@ func releaseProvisionLease(runtimeScope scope.Scope, lockerFactory statepkg.Lock
 	}
 	handle.release.Do(func() {
 		close(handle.stopCh)
+		if handle.done != nil {
+			<-handle.done
+		}
 		if runtimeScope == nil {
 			return
 		}

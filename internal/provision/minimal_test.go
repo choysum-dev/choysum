@@ -8,6 +8,7 @@ import (
 	"errors"
 	"log/slog"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -638,6 +639,36 @@ func TestNotifyLeaseRenewErr(t *testing.T) {
 	}
 }
 
+func TestReleaseProvisionLeaseWaitsForRenewDone(t *testing.T) {
+	prev := leaseRenewInterval
+	leaseRenewInterval = time.Hour
+	t.Cleanup(func() { leaseRenewInterval = prev })
+
+	released := make(chan struct{})
+	locker := &blockingRenewLocker{renewStarted: make(chan struct{}), releaseCh: released}
+	handle := &leaseHandle{
+		ownerID:  "o",
+		stopCh:   make(chan struct{}),
+		done:     make(chan struct{}),
+		renewErr: make(chan error, 1),
+	}
+	go renewProvisionLease(context.Background(), nil, locker, handle, nil)
+	<-locker.renewStarted // renew is blocked inside Renew
+	runtimeScope, _ := newSetupStateScope(t)
+	go releaseProvisionLease(runtimeScope, func(scope.Scope) statepkg.Locker { return locker }, handle)
+	select {
+	case <-released:
+		t.Fatal("Release must wait until renew exits")
+	case <-time.After(30 * time.Millisecond):
+	}
+	close(locker.unblockRenew)
+	select {
+	case <-released:
+	case <-time.After(time.Second):
+		t.Fatal("Release did not finish after renew unblocked")
+	}
+}
+
 func TestAcquireProvisionLeaseMigratesThenFakeLocker(t *testing.T) {
 	runtimeScope, _ := newSetupStateScope(t)
 	handle, err := acquireProvisionLease(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
@@ -668,22 +699,25 @@ func TestRenewProvisionLeaseStopsOnContextCancel(t *testing.T) {
 	t.Cleanup(func() { leaseRenewInterval = prev })
 
 	ctx, cancel := context.WithCancel(context.Background())
-	handle := &leaseHandle{stopCh: make(chan struct{}), renewErr: make(chan error, 1), ownerID: "o"}
-	done := make(chan struct{})
-	go func() {
-		renewProvisionLease(ctx, nil, &okLocker{}, handle)
-		close(done)
-	}()
+	handle := &leaseHandle{
+		stopCh:   make(chan struct{}),
+		done:     make(chan struct{}),
+		renewErr: make(chan error, 1),
+		ownerID:  "o",
+	}
+	go renewProvisionLease(ctx, nil, &okLocker{}, handle, nil)
 	cancel()
 	select {
-	case <-done:
+	case <-handle.done:
 	case <-time.After(time.Second):
 		t.Fatal("renew goroutine did not stop on ctx cancel")
 	}
 }
 
 func TestReleaseProvisionLeaseIdempotent(t *testing.T) {
-	handle := &leaseHandle{stopCh: make(chan struct{}), renewErr: make(chan error, 1)}
+	done := make(chan struct{})
+	close(done)
+	handle := &leaseHandle{stopCh: make(chan struct{}), done: done, renewErr: make(chan error, 1)}
 	releaseProvisionLease(nil, nil, handle)
 	releaseProvisionLease(nil, nil, handle) // must not panic
 }
@@ -741,6 +775,31 @@ func (f *failRenewLocker) Renew(context.Context, string, string, time.Duration) 
 	return err
 }
 func (f *failRenewLocker) Release(context.Context, string, string) error { return nil }
+
+type blockingRenewLocker struct {
+	renewStarted chan struct{}
+	unblockRenew chan struct{}
+	releaseCh    chan struct{}
+	once         sync.Once
+}
+
+func (b *blockingRenewLocker) Acquire(context.Context, string, string, time.Duration) error {
+	return nil
+}
+func (b *blockingRenewLocker) Renew(context.Context, string, string, time.Duration) error {
+	b.once.Do(func() {
+		if b.unblockRenew == nil {
+			b.unblockRenew = make(chan struct{})
+		}
+		close(b.renewStarted)
+		<-b.unblockRenew
+	})
+	return nil
+}
+func (b *blockingRenewLocker) Release(context.Context, string, string) error {
+	close(b.releaseCh)
+	return nil
+}
 
 type countingRenewLocker struct {
 	started chan struct{}

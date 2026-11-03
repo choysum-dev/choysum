@@ -117,10 +117,6 @@ func ProvisionMinimal(ctx context.Context, runtimeScope scope.Scope, opts Option
 		return Result{Skipped: true, Phase: phase}, nil
 	}
 
-	if err := checkProvisionLeaseRenew(handle); err != nil {
-		return Result{}, xfmt.Errorf("provision lease lost: %w", err)
-	}
-
 	progress := logger.NewProgressLine(os.Stderr)
 	installCtx = logger.WithProgressLine(installCtx, progress)
 	spinnerTicker := logger.NewProgressTicker(progress, logger.ProgressTickerOptions{Interval: 120 * time.Millisecond})

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/choysum-dev/choysum/internal/provision"
@@ -16,8 +17,21 @@ import (
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
-// hostProvisionPeerWait is overridable in tests.
-var hostProvisionPeerWait = 2 * time.Minute
+// hostProvisionPeerWaitNanos is the peer-wait budget (nanoseconds). Tests override
+// via store/load so parallel packages cannot race a bare duration var.
+var hostProvisionPeerWaitNanos atomic.Int64
+
+func init() {
+	hostProvisionPeerWaitNanos.Store(int64(2 * time.Minute))
+}
+
+func hostProvisionPeerWait() time.Duration {
+	return time.Duration(hostProvisionPeerWaitNanos.Load())
+}
+
+func setHostProvisionPeerWait(d time.Duration) {
+	hostProvisionPeerWaitNanos.Store(int64(d))
+}
 
 // ensureHostProvision installs the minimal web-shell closure when the workspace
 // is Empty, then re-plans so Serve can start in application mode (SetupPending).
@@ -108,7 +122,9 @@ func (s *GRPCWebServer) replanAfterHostProvision(required bool) error {
 }
 
 func (s *GRPCWebServer) waitForHostProvisionPeer(ctx context.Context) error {
-	deadline := time.Now().Add(hostProvisionPeerWait)
+	wait := hostProvisionPeerWait()
+	s.logHostProvisionWarn("host provision lease busy; waiting for peer provision", "timeout", wait.String())
+	deadline := time.Now().Add(wait)
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 	for {
