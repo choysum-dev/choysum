@@ -215,8 +215,6 @@ func defaultHTTPAuthConfig() *HttpAuthConfig {
 			"/swagger",
 			"/",
 			"/web/",
-			"/bootstrap",
-			"/bootstrap/",
 			"/index.js",
 			"/index.html",
 			"/favicon.ico",

@@ -17,7 +17,6 @@ MODULES_ROOT = REPO_ROOT / "modules"
 IGNORED_MODULES = {".choysum", "tmp"}
 HIGH_FANOUT_MODULES = {"core", "web", "base"}
 BUILD_PREFIXES = (
-    "internal/bootstrap/web/",
     "pkg/jsengine/scripts/vuesfc/",
     "pkg/jsengine/scripts/vuevirtual/",
 )

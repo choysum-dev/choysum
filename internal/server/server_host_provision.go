@@ -36,7 +36,7 @@ func setHostProvisionPeerWait(d time.Duration) {
 // ensureHostProvision installs the minimal web-shell closure when the workspace
 // is Empty, then re-plans so Serve can start in application mode (SetupPending).
 // Install failures and missing application dist fall back to bootstrap mode
-// until PC-9 removes the dual frontend.
+// (host pending splash; no /bootstrap SPA).
 func (s *GRPCWebServer) ensureHostProvision(ctx context.Context) error {
 	if s == nil || s.runtimeScope == nil {
 		return nil
@@ -75,7 +75,10 @@ func (s *GRPCWebServer) ensureHostProvision(ctx context.Context) error {
 	if err != nil {
 		if errors.Is(err, provision.ErrLeaseBusy) {
 			if waitErr := s.waitForHostProvisionPeer(ctx); waitErr != nil {
-				s.logHostProvisionWarn("host provision lease busy; continuing in bootstrap mode", "error", waitErr)
+				s.logHostProvisionWarn(
+					"host provision lease busy; continuing in bootstrap mode (restart after peer finishes if still pending)",
+					"error", waitErr,
+				)
 				// Soft-replan anyway: peer may have finished while wait timed out
 				// or Resolve transiently failed during the poll loop.
 				_ = s.replanAfterHostProvision(false)

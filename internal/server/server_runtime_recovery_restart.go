@@ -22,30 +22,6 @@ func (s *GRPCWebServer) restart() error {
 	return s.finishRecoveryExecution("restart", result)
 }
 
-func (s *GRPCWebServer) executeBootstrapModeSwitchPlan(plan bootstrapModeSwitchPlan) (bootstrapModeSwitchResult, error) {
-	previous := s.runState.snapshot()
-	s.runState.applyBootstrapDecision(plan.Manifest, plan.Decision)
-
-	result := s.executeRestartPlan(recoveryExecutionPlan{
-		action:       recoveryActionModeSwitchRestart,
-		reload:       true,
-		wrapStopErr:  true,
-		wrapStartErr: true,
-		executor:     s.runtimeRecovery.modeSwitchRestartExecutor,
-	})
-	if result.err != nil {
-		s.runState.restore(previous)
-		result.rollbackCount = s.runtimeRecovery.recordModeSwitchRollback()
-		return bootstrapModeSwitchResult{}, xfmt.Errorf("bootstrap switch restart failed: %w", s.finishRecoveryExecution("bootstrap_mode_switch", result))
-	}
-	return bootstrapModeSwitchResult{
-		Switched: true,
-		Mode:     s.runState.mode(),
-		Reason:   s.runState.reason(),
-		Targets:  s.runState.serviceTargets(),
-	}, nil
-}
-
 func (s *GRPCWebServer) executeRestartPlan(plan recoveryExecutionPlan) recoveryExecutionResult {
 	result := recoveryExecutionResult{
 		action: plan.action,
@@ -81,8 +57,6 @@ func (s *GRPCWebServer) executeRestartPlan(plan recoveryExecutionPlan) recoveryE
 	// Re-read dist after module install/hotreload so newly built apps (e.g.
 	// partner) join ServeTargets. Only when Serve() planned the process — unit
 	// tests that call start()/Restart() directly keep their hand-built runState.
-	// Skip for bootstrap mode-switch restarts, which already applied an
-	// explicit RunDecision before stop/start.
 	if plan.action == recoveryActionRestart && s.runState.shouldReplanOnRestart() {
 		if err := s.planServe(s.runState.serveRequest()); err != nil {
 			result.startErr = err

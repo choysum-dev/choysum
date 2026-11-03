@@ -4,10 +4,6 @@
 package server
 
 import (
-	"context"
-
-	bootstrapservice "github.com/choysum-dev/choysum/internal/bootstrap/service"
-	"github.com/choysum-dev/choysum/internal/server/runplan"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
@@ -48,33 +44,10 @@ func (s *GRPCWebServer) unregisterAllServices() error {
 }
 
 func (s *GRPCWebServer) registerBootstrapService() (bootstrapModeStartupResult, error) {
-	svc, err := bootstrapservice.NewBootstrapService(
-		s.runtimeScope,
-		bootstrapservice.WithSwitchModeFunc(s.requestBootstrapModeSwitch),
-		bootstrapservice.WithRuntimeReadyFunc(s.bootstrapValidateRuntimeReady),
-	)
-	if err != nil {
-		return bootstrapModeStartupResult{}, xfmt.Errorf("Failed to create bootstrap service: %w", err)
-	}
-
+	svc := pendingSplashBinding()
 	batch := s.registration.beginBatch()
 	if err := batch.registerBinding(s, svc); err != nil {
-		return bootstrapModeStartupResult{}, xfmt.Errorf("Failed to register bootstrap grpc service: %w", err)
+		return bootstrapModeStartupResult{}, xfmt.Errorf("Failed to register pending splash service: %w", err)
 	}
 	return bootstrapModeStartupResult{ServiceName: svc.Name(), Registration: batch.commit()}, nil
-}
-
-func (s *GRPCWebServer) bootstrapValidateRuntimeReady(ctx context.Context) error {
-	if ctx != nil {
-		if err := ctx.Err(); err != nil {
-			return xfmt.Errorf("bootstrap runtime readiness canceled: %w", err)
-		}
-	}
-
-	if s == nil {
-		return xfmt.Errorf("runtime server is not available")
-	}
-
-	opts := s.resolvedRuntimeOptions()
-	return runplan.ValidateBootstrapRuntimeReady(ctx, opts.distPath, opts.compileBundleMode)
 }

@@ -44,8 +44,8 @@ func TestNewDefaultAuthConfig(t *testing.T) {
 		}
 		return false
 	}
-	if !hasExcludedPath(cfg.HttpAuth.ExcludedPaths, "/bootstrap") || !hasExcludedPath(cfg.HttpAuth.ExcludedPaths, "/bootstrap/") {
-		t.Fatalf("expected bootstrap paths in auth.httpAuth.excludedPaths, got %#v", cfg.HttpAuth.ExcludedPaths)
+	if hasExcludedPath(cfg.HttpAuth.ExcludedPaths, "/bootstrap") || hasExcludedPath(cfg.HttpAuth.ExcludedPaths, "/bootstrap/") {
+		t.Fatalf("did not expect /bootstrap paths in auth.httpAuth.excludedPaths, got %#v", cfg.HttpAuth.ExcludedPaths)
 	}
 	if !cfg.GrpcAuthentication || !cfg.GrpcMethodAccess || !cfg.GrpcRecordRule || !cfg.GrpcCompanyFilter || !cfg.GrpcFieldRule {
 		t.Fatalf("expected grpc auth switches enabled, got %#v", cfg)
@@ -101,13 +101,11 @@ func TestNewDefaultAuthConfig(t *testing.T) {
 	if len(getActiveLanguages.RecordRuleAllow) == 0 || getActiveLanguages.RecordRuleAllow[0].Model != "base.Language" {
 		t.Fatalf("unexpected GetActiveLanguages record rule allow: %#v", getActiveLanguages.RecordRuleAllow)
 	}
-	bootstrapInitialize := cfg.GrpcEntryPolicy["bootstrap.Workspace/Initialize"]
-	if bootstrapInitialize == nil || !bootstrapInitialize.SkipAuthentication {
-		t.Fatalf("unexpected bootstrap initialize policy: %#v", bootstrapInitialize)
+	if _, ok := cfg.GrpcEntryPolicy["bootstrap.Workspace/Initialize"]; ok {
+		t.Fatal("did not expect bootstrap.Workspace/Initialize in GrpcEntryPolicy")
 	}
-	bootstrapGetStatus := cfg.GrpcEntryPolicy["bootstrap.Workspace/GetInitializationStatus"]
-	if bootstrapGetStatus == nil || !bootstrapGetStatus.SkipAuthentication {
-		t.Fatalf("unexpected bootstrap get status policy: %#v", bootstrapGetStatus)
+	if _, ok := cfg.GrpcEntryPolicy["bootstrap.Workspace/GetInitializationStatus"]; ok {
+		t.Fatal("did not expect bootstrap.Workspace/GetInitializationStatus in GrpcEntryPolicy")
 	}
 	if len(register.RecordRuleAllow) == 0 || len(login.RecordRuleAllow) == 0 || len(refresh.RecordRuleAllow) == 0 {
 		t.Fatal("expected default record rule allowlists to be populated")

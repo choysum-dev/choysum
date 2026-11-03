@@ -48,7 +48,6 @@ type GRPCWebServer struct {
 	taskRuntime     taskRuntimeState
 	registration    registrationState
 	runtimeRecovery runtimeRecoveryState
-	modeSwitch      modeSwitchState
 
 	// hostProvisionFn overrides provision.ProvisionMinimal in tests.
 	hostProvisionFn func(ctx context.Context) (provision.Result, error)

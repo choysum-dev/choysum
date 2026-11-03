@@ -44,22 +44,6 @@ func (r *runState) applyPlannedDecision(manifest *distmanifest.DistManifestV2, d
 	r.applicationNames = append([]string{}, decision.ServeTargets...)
 }
 
-func (r *runState) applyBootstrapDecision(manifest *distmanifest.DistManifestV2, decision runplan.RunDecision) {
-	r.applyPlannedDecision(manifest, decision)
-	r.prefixReason("bootstrap switch")
-}
-
-func (r *runState) prefixReason(prefix string) {
-	if strings.TrimSpace(prefix) == "" {
-		return
-	}
-	if strings.TrimSpace(r.runModeReason) == "" {
-		r.runModeReason = prefix
-		return
-	}
-	r.runModeReason = prefix + ": " + r.runModeReason
-}
-
 func (r *runState) ensureStartupDefaults(opts runtimeOptions) {
 	if r.runMode == "" {
 		r.runMode = runplan.RunModeApplication

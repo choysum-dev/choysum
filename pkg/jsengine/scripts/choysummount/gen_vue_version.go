@@ -4,7 +4,7 @@
 //go:build ignore
 
 // gen_vue_version.go writes vue_version.go from modules/web/package.json
-// (exact "vue" peer/dependency) and keeps internal/bootstrap/web in sync.
+// (exact "vue" peer/dependency).
 //
 // SSOT for the Vue runtime pin: modules/web/package.json.
 // Upgrade: edit that exact "vue" pin, then:
@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 
@@ -40,11 +39,6 @@ func main() {
 	ver, err := exactVueFromPackageJSON(webPkg)
 	if err != nil {
 		fail("modules/web: %v", err)
-	}
-
-	bootPkg := filepath.Join(repoRoot, "internal", "bootstrap", "web", "package.json")
-	if err := syncBootstrapVue(bootPkg, ver); err != nil {
-		fail("bootstrap web: %v", err)
 	}
 
 	out := filepath.Join(pkgDir, "vue_version.go")
@@ -110,47 +104,6 @@ func exactVueFromPackageJSON(path string) (string, error) {
 
 func normalizeVue(raw string) string {
 	return strings.TrimPrefix(strings.TrimSpace(raw), "v")
-}
-
-func syncBootstrapVue(path, ver string) error {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-	var pkg packageJSON
-	if err := json.Unmarshal(data, &pkg); err != nil {
-		return fmt.Errorf("parse %s: %w", path, err)
-	}
-	if pkg.Dependencies == nil {
-		pkg.Dependencies = map[string]string{}
-	}
-	cur := normalizeVue(pkg.Dependencies["vue"])
-	if cur == ver {
-		fmt.Printf("bootstrap web vue already %s\n", ver)
-		return nil
-	}
-	// Preserve key order / surrounding formatting by rewriting only the vue
-	// string value; tolerate compact or spaced JSON ("vue":"x" / "vue" : "x").
-	re := regexp.MustCompile(`("vue"\s*:\s*")[^"]*(")`)
-	if cur == "" || !re.Match(data) {
-		return fmt.Errorf("%s: cannot sync vue %q → %q (edit dependencies.vue manually)", path, cur, ver)
-	}
-	if n := len(re.FindAllIndex(data, -1)); n != 1 {
-		return fmt.Errorf("%s: expected exactly one dependencies.vue, found %d", path, n)
-	}
-	updated := re.ReplaceAll(data, []byte(`${1}`+ver+`${2}`))
-	var check packageJSON
-	if err := json.Unmarshal(updated, &check); err != nil {
-		return fmt.Errorf("%s: refusing to write invalid JSON: %w", path, err)
-	}
-	if normalizeVue(check.Dependencies["vue"]) != ver {
-		return fmt.Errorf("%s: sync did not set dependencies.vue to %q (got %q)", path, ver, check.Dependencies["vue"])
-	}
-	if err := writeFileAtomic(path, updated, "package-*.json"); err != nil {
-		return err
-	}
-	fmt.Printf("synced %s vue %s → %s\n", path, cur, ver)
-	return nil
 }
 
 // writeFileAtomic writes data via a same-dir temp file + rename so a crash

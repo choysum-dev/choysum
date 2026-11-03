@@ -21,12 +21,6 @@ type EntryRecordRuleAllow struct {
 
 func defaultGrpcEntryPolicy() map[string]*EntryMethodConfig {
 	return map[string]*EntryMethodConfig{
-		"bootstrap.Workspace/Initialize": {
-			SkipAuthentication: true,
-		},
-		"bootstrap.Workspace/GetInitializationStatus": {
-			SkipAuthentication: true,
-		},
 		"auth.User/Register": {
 			SkipAuthentication: true,
 			SkipMethodAccess:   true,
