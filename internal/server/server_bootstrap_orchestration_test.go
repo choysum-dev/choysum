@@ -74,6 +74,9 @@ func TestServerStartBootstrapModeServesPendingSplash(t *testing.T) {
 	if !strings.Contains(body, "Application assets are not ready yet") {
 		t.Fatalf("GET / body missing pending message: %q", body)
 	}
+	if !strings.Contains(body, "restart the server") {
+		t.Fatalf("GET / body missing restart recovery instruction: %q", body)
+	}
 
 	reqBootstrap := httptest.NewRequest(http.MethodGet, "http://example.com/bootstrap/", nil)
 	rwBootstrap := httptest.NewRecorder()

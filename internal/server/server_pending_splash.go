@@ -86,7 +86,7 @@ const pendingSplashHTML = `<!DOCTYPE html>
 <body>
 <main>
   <h1>Choysum</h1>
-  <p>Application assets are not ready yet. Check the terminal for host provision progress, then reload.</p>
+  <p>Application assets are not ready yet. Check the terminal for host provision progress, then restart the server (or re-run <code>choysum run</code>) and reload.</p>
 </main>
 </body>
 </html>
