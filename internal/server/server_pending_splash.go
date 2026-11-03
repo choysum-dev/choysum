@@ -39,11 +39,7 @@ func pendingSplashBinding() registrationBinding {
 func setPendingSplashBindingForTest(fn func() registrationBinding) (restore func()) {
 	pendingSplashBindingMu.Lock()
 	prev := pendingSplashBindingFn
-	if fn == nil {
-		pendingSplashBindingFn = func() registrationBinding { return newPendingSplashService() }
-	} else {
-		pendingSplashBindingFn = fn
-	}
+	pendingSplashBindingFn = fn
 	pendingSplashBindingMu.Unlock()
 	return func() {
 		pendingSplashBindingMu.Lock()
