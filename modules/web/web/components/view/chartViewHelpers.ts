@@ -478,7 +478,7 @@ export function resolveXyPlotClientRect(svg: Element): {
 
 /**
  * Running tops for stacked line hover / stroke: each entry is the sum of
- * series[0..i] at one category (Chart.js y.stacked line positions).
+ * series[0..i] at one category (stacked-line Y positions for hover/stroke).
  */
 export function stackSeriesTopsAtCategory(values: readonly number[]): number[] {
   let run = 0;

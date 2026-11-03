@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 # SPDX-License-Identifier: LGPL-3.0-or-later
-"""Unit tests for forbid_choy_ui_kit_gates.py."""
+"""Unit tests for forbid_choy_kit_gates.py."""
 
 from __future__ import annotations
 
@@ -10,19 +10,19 @@ import pathlib
 import tempfile
 import unittest
 
-SCRIPT = pathlib.Path(__file__).resolve().parent / "forbid_choy_ui_kit_gates.py"
+SCRIPT = pathlib.Path(__file__).resolve().parent / "forbid_choy_kit_gates.py"
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 
 def load_mod():
-    spec = importlib.util.spec_from_file_location("forbid_choy_ui_kit_gates", SCRIPT)
+    spec = importlib.util.spec_from_file_location("forbid_choy_kit_gates", SCRIPT)
     mod = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     spec.loader.exec_module(mod)
     return mod
 
 
-class ForbidChoyUiKitGatesTest(unittest.TestCase):
+class ForbidChoyKitGatesTest(unittest.TestCase):
     def test_domain_rule(self):
         mod = load_mod()
         self.assertEqual(mod.domain_rule("../vendor/ui/button/Button.vue"), "domain-vendor-ui")

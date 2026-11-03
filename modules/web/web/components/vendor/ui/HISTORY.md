@@ -36,6 +36,13 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
+### 2026-11-03 — runtime UI stack (no EP / echarts)
+
+- Product runtime uses Choy L1 + vendor L2 + Unovis charts only; **no** Element Plus
+  or echarts packages are linked or imported.
+- CI `forbid_*` / forbidden UI import guards still ban those deps; runtime absence
+  does not replace the guards.
+
 ### 2026-10-31 — SidebarMenuSub `data-sidebar` tag
 
 - **What:** `SidebarMenuSub.vue` `data-sidebar` corrected from `menu-badge` to

@@ -572,7 +572,7 @@ func TestScanChoyKitTailwindCandidatesFiltersAndEdges(t *testing.T) {
 	write("styles/"+choyTailwindGeneratedCSSName, `/* generated */`)
 	write("styles/foo.generated.css", `/* generated sibling */`)
 	write("components/vendor/ui/Button.vue", `<div class="flex"></div>`)
-	write("components/vendor/ep/ElButton.vue", `<div class="ep-only-util"></div>`)
+	write("components/vendor/demo/DemoButton.vue", `<div class="vendor-only-util"></div>`)
 	write("components/internal/engine.ts", `export const c = "gap-2"`)
 	write("lib/utils.ts", `export const c = "p-2"`)
 	write("composables/useChoyTheme.ts", `export const c = "text-sm"`)
@@ -642,7 +642,7 @@ func TestScanChoyKitTailwindCandidatesFiltersAndEdges(t *testing.T) {
 			t.Fatalf("missing candidate %q in %v", want, got)
 		}
 	}
-	for _, deny := range []string{"should-skip", "max-w-0", "sr-only", "hidden", "opacity-0", "border", "test-only-util", "spec-only-util", "tests-dir-util", "ep-only-util"} {
+	for _, deny := range []string{"should-skip", "max-w-0", "sr-only", "hidden", "opacity-0", "border", "test-only-util", "spec-only-util", "tests-dir-util", "vendor-only-util"} {
 		if set[deny] {
 			t.Fatalf("unexpected candidate %q in %v", deny, got)
 		}
@@ -679,16 +679,16 @@ func TestModulesPathForKitRoot(t *testing.T) {
 	if got != want {
 		t.Fatalf("custom modules dir => %q, got %q", want, got)
 	}
-	// Legacy choy_ui under a custom parent is not a kit root after cutover.
-	choyUI := filepath.Join(custom, "apps", "choy_ui")
-	if err := os.MkdirAll(filepath.Join(choyUI, "web", "styles"), 0o755); err != nil {
+	// Non-kit sibling module under a custom parent is not a kit root.
+	siblingMod := filepath.Join(custom, "apps", "sibling_mod")
+	if err := os.MkdirAll(filepath.Join(siblingMod, "web", "styles"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(choyUI, "web", "styles", "theme.css"), []byte(`@theme{ --x: 1; }`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(siblingMod, "web", "styles", "theme.css"), []byte(`@theme{ --x: 1; }`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if got := modulesPathForKitRoot(choyUI); got != "" {
-		t.Fatalf("custom dir choy_ui (not a kit) => empty, got %q", got)
+	if got := modulesPathForKitRoot(siblingMod); got != "" {
+		t.Fatalf("custom dir sibling_mod (not a kit) => empty, got %q", got)
 	}
 	// Sibling without dialect must not make an arbitrary parent a modules root.
 	other := filepath.Join(custom, "apps", "partner")
@@ -723,8 +723,8 @@ func TestGenerateChoyTailwindForModuleMatchesProductDigest(t *testing.T) {
 	write("web/web/styles/theme.css", `@theme { --color-primary: var(--choy-color-primary); }`)
 	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
 	write("partner/web/pages/Home.vue", `<div class="underline"></div>`)
-	// Stray legacy kit tree must not divert generate away from web.
-	write("choy_ui/web/styles/theme.css", `@theme { --color-primary: blue; }`)
+	// Stray sibling kit-like tree must not divert generate away from web.
+	write("sibling_mod/web/styles/theme.css", `@theme { --color-primary: blue; }`)
 
 	home := testChoysumHome(t)
 	res, err := GenerateChoyTailwindForModule(filepath.Join(modules, "web"), home)
@@ -855,11 +855,11 @@ func TestScanChoyProductTailwindCandidatesFiltersSiblingKit(t *testing.T) {
 	}
 	write("web/web/styles/theme.css", `@theme { --color-primary: red; }`)
 	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
-	write("web/web/components/view/OFormView.vue", `<div class="kit-ep-only"></div>`)
-	// Legacy choy_ui tree is a domain sibling after cutover (full scan, including O*).
-	write("choy_ui/web/styles/theme.css", `@theme { --color-primary: blue; }`)
-	write("choy_ui/web/components/vendor/ui/Button.vue", `<div class="gap-2"></div>`)
-	write("choy_ui/web/components/view/OFormView.vue", `<div class="sibling-ep-only"></div>`)
+	write("web/web/components/view/OLegacyStub.vue", `<div class="kit-only-util"></div>`)
+	// sibling_mod is a domain sibling (full web/ scan, including ChoyFormView).
+	write("sibling_mod/web/styles/theme.css", `@theme { --color-primary: blue; }`)
+	write("sibling_mod/web/components/vendor/ui/Button.vue", `<div class="gap-2"></div>`)
+	write("sibling_mod/web/components/view/ChoyFormView.vue", `<div class="sibling-only-util"></div>`)
 	write("partner/web/pages/Home.vue", `<div class="domain-util"></div>`)
 
 	got, err := ScanChoyProductTailwindCandidates(modules)
@@ -870,13 +870,13 @@ func TestScanChoyProductTailwindCandidatesFiltersSiblingKit(t *testing.T) {
 	for _, c := range got {
 		set[c] = true
 	}
-	for _, want := range []string{"flex", "gap-2", "domain-util", "sibling-ep-only"} {
+	for _, want := range []string{"flex", "gap-2", "domain-util", "sibling-only-util"} {
 		if !set[want] {
 			t.Fatalf("missing candidate %q in %v", want, got)
 		}
 	}
-	if set["kit-ep-only"] {
-		t.Fatalf("web kit O*.vue must stay kit-filtered, got %v", got)
+	if set["kit-only-util"] {
+		t.Fatalf("web kit legacy O*.vue must stay kit-filtered, got %v", got)
 	}
 }
 
@@ -894,10 +894,10 @@ func TestScanChoyProductTailwindCandidatesKitHostWithoutDialect(t *testing.T) {
 	}
 	write("web/web/styles/theme.css", `@theme { --color-primary: red; }`)
 	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
-	write("web/web/components/view/OFormView.vue", `<div class="kit-ep-only"></div>`)
-	// Sibling owns vendor/ui but is not named web — domain scan (includes O*).
-	write("choy_ui/web/components/vendor/ui/Button.vue", `<div class="gap-2"></div>`)
-	write("choy_ui/web/components/view/OFormView.vue", `<div class="no-dialect-ep-only"></div>`)
+	write("web/web/components/view/OLegacyStub.vue", `<div class="kit-only-util"></div>`)
+	// Sibling owns vendor/ui but is not named web — domain scan (includes ChoyFormView).
+	write("sibling_mod/web/components/vendor/ui/Button.vue", `<div class="gap-2"></div>`)
+	write("sibling_mod/web/components/view/ChoyFormView.vue", `<div class="no-dialect-only-util"></div>`)
 	write("partner/web/pages/Home.vue", `<div class="domain-util"></div>`)
 
 	got, err := ScanChoyProductTailwindCandidates(modules)
@@ -908,17 +908,17 @@ func TestScanChoyProductTailwindCandidatesKitHostWithoutDialect(t *testing.T) {
 	for _, c := range got {
 		set[c] = true
 	}
-	for _, want := range []string{"flex", "gap-2", "domain-util", "no-dialect-ep-only"} {
+	for _, want := range []string{"flex", "gap-2", "domain-util", "no-dialect-only-util"} {
 		if !set[want] {
 			t.Fatalf("missing candidate %q in %v", want, got)
 		}
 	}
-	if set["kit-ep-only"] {
-		t.Fatalf("web kit O*.vue must stay kit-filtered, got %v", got)
+	if set["kit-only-util"] {
+		t.Fatalf("web kit legacy O*.vue must stay kit-filtered, got %v", got)
 	}
 }
 
-func TestScanChoyProductTailwindCandidatesChoyUIShellWithoutVendorUI(t *testing.T) {
+func TestScanChoyProductTailwindCandidatesSiblingModShellWithoutVendorUI(t *testing.T) {
 	modules := t.TempDir()
 	write := func(rel, body string) {
 		t.Helper()
@@ -932,9 +932,9 @@ func TestScanChoyProductTailwindCandidatesChoyUIShellWithoutVendorUI(t *testing.
 	}
 	write("web/web/styles/theme.css", `@theme { --color-primary: red; }`)
 	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
-	// Thin legacy shell: domain scan includes pages and O*.vue classes.
-	write("choy_ui/web/pages/Shell.vue", `<div class="shell-util"></div>`)
-	write("choy_ui/web/components/view/OFormView.vue", `<div class="shell-ep-only"></div>`)
+	// Thin sibling shell: domain scan includes pages and ChoyFormView classes.
+	write("sibling_mod/web/pages/Shell.vue", `<div class="shell-util"></div>`)
+	write("sibling_mod/web/components/view/ChoyFormView.vue", `<div class="shell-only-util"></div>`)
 	write("partner/web/pages/Home.vue", `<div class="domain-util"></div>`)
 
 	got, err := ScanChoyProductTailwindCandidates(modules)
@@ -945,7 +945,7 @@ func TestScanChoyProductTailwindCandidatesChoyUIShellWithoutVendorUI(t *testing.
 	for _, c := range got {
 		set[c] = true
 	}
-	for _, want := range []string{"flex", "domain-util", "shell-util", "shell-ep-only"} {
+	for _, want := range []string{"flex", "domain-util", "shell-util", "shell-only-util"} {
 		if !set[want] {
 			t.Fatalf("missing candidate %q in %v", want, got)
 		}
@@ -1204,8 +1204,8 @@ func TestScanChoyProductTailwindCandidatesStatErrors(t *testing.T) {
 	write("web/web/styles/theme.css", `@theme { --color-primary: red; }`)
 	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
 	write("partner/web/pages/Home.vue", `<div class="gap-1"></div>`)
-	write("choy_ui/web/styles/theme.css", `@theme { --color-primary: blue; }`)
-	write("choy_ui/web/components/vendor/ui/Button.vue", `<div class="p-1"></div>`)
+	write("sibling_mod/web/styles/theme.css", `@theme { --color-primary: blue; }`)
+	write("sibling_mod/web/components/vendor/ui/Button.vue", `<div class="p-1"></div>`)
 
 	prev := choyProductStat
 	t.Cleanup(func() { choyProductStat = prev })
@@ -1214,7 +1214,7 @@ func TestScanChoyProductTailwindCandidatesStatErrors(t *testing.T) {
 	prevScan := choyScanKitCandidates
 	t.Cleanup(func() { choyScanKitCandidates = prevScan })
 	choyScanKitCandidates = func(webRoot string) ([]string, error) {
-		if strings.Contains(filepath.ToSlash(webRoot), "/web/web") && !strings.Contains(filepath.ToSlash(webRoot), "/choy_ui/") {
+		if strings.Contains(filepath.ToSlash(webRoot), "/web/web") && !strings.Contains(filepath.ToSlash(webRoot), "/sibling_mod/") {
 			return nil, errors.New("primary kit scan boom")
 		}
 		return prevScan(webRoot)
@@ -1246,7 +1246,7 @@ func TestScanChoyProductTailwindCandidatesStatErrors(t *testing.T) {
 
 	choyProductStat = func(name string) (os.FileInfo, error) {
 		slash := filepath.ToSlash(name)
-		if strings.Contains(slash, "/choy_ui/web/styles/theme.css") {
+		if strings.Contains(slash, "/sibling_mod/web/styles/theme.css") {
 			return nil, errors.New("dialect boom")
 		}
 		return prev(name)
@@ -1257,7 +1257,7 @@ func TestScanChoyProductTailwindCandidatesStatErrors(t *testing.T) {
 
 	// Legacy sibling directory dialect must not abort the product scan.
 	choyProductStat = prev
-	siblingDialect := filepath.Join(modules, "choy_ui", "web", "styles", "theme.css")
+	siblingDialect := filepath.Join(modules, "sibling_mod", "web", "styles", "theme.css")
 	if err := os.Remove(siblingDialect); err != nil && !os.IsNotExist(err) {
 		t.Fatal(err)
 	}
@@ -1278,7 +1278,7 @@ func TestScanChoyProductTailwindCandidatesStatErrors(t *testing.T) {
 
 	// vendor/ui Stat non-IsNotExist error surfaces for dialect-bearing siblings.
 	choyProductStat = func(name string) (os.FileInfo, error) {
-		if strings.Contains(filepath.ToSlash(name), "/choy_ui/web/components/vendor/ui") {
+		if strings.Contains(filepath.ToSlash(name), "/sibling_mod/web/components/vendor/ui") {
 			return nil, errors.New("vendor ui boom")
 		}
 		return prev(name)
@@ -1327,7 +1327,7 @@ func TestScanChoyProductTailwindCandidatesIncludesDomain(t *testing.T) {
 	}
 	write("web/web/styles/theme.css", `@theme { --color-primary: red; }`)
 	write("web/web/components/vendor/ui/Button.vue", `<div class="flex shared-util"></div>`)
-	write("web/web/components/view/OFormView.vue", `<div class="ep-product-only"></div>`)
+	write("web/web/components/view/OLegacyStub.vue", `<div class="product-only-util"></div>`)
 	write("partner/web/pages/Home.vue", `<div class="domain-kit-util gap-3 shared-util"></div>`)
 	write("auth/web/pages/Login.vue", `<div class="auth-only-util"></div>`)
 	write("empty/package.json", `{}`)  // no web/
@@ -1355,8 +1355,8 @@ func TestScanChoyProductTailwindCandidatesIncludesDomain(t *testing.T) {
 			t.Fatalf("missing candidate %q in %v", want, got)
 		}
 	}
-	if set["ep-product-only"] {
-		t.Fatalf("kit host O*.vue must stay filtered out, got %v", got)
+	if set["product-only-util"] {
+		t.Fatalf("kit host legacy O*.vue must stay filtered out, got %v", got)
 	}
 	if set["hidden-mod-util"] {
 		t.Fatalf("dot-directory modules must be skipped, got %v", got)

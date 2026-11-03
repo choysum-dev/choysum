@@ -70,7 +70,7 @@ test('base page mount: every ChoyPage host mounts under choysumMount', async () 
       });
       await flushPromises();
       // Accept ChoyPage markers only (real anchor, dedicated stub, or ChildView path stub).
-      // fe-stub-opage would hide an incomplete OPage→ChoyPage migration.
+      // Generic page stubs must not mask missing ChoyPage wiring on real pages.
       const ok =
         wrapper.find('[data-anchor="choy.page"]').exists() ||
         wrapper.find('[data-testid="fe-stub-choy-page"]').exists() ||

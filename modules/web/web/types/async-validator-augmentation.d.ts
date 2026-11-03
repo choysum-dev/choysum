@@ -1,14 +1,14 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-// Augment async-validator RuleItem with the trigger field used by Element Plus.
+// Augment async-validator RuleItem with trigger used by Choy form validation.
 import 'async-validator';
 
 declare module 'async-validator' {
   interface RuleItem {
     /**
-     * Trigger mode used by the Element Plus extension.
-     * Accepts 'blur', 'change', or an array of those values.
+     * When to run this rule: on blur, on change, or both.
+     * Matches ChoyField / form item trigger convention.
      */
     trigger?: 'blur' | 'change' | Array<'blur' | 'change'>;
   }

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 # SPDX-License-Identifier: LGPL-3.0-or-later
-"""W4 Choy UI kit gates: domain L2/engine imports, L2 density regression, kit-host Dialog path.
+"""Choy kit gates: domain L2/engine imports, L2 density regression, kit-host Dialog path.
 
 - Domain modules (not web) must not import vendor/ui, reka-ui, or @unovis/*.
 - vendor/ui product SFCs must not regress default control heights to h-8/h-9/h-10.
@@ -47,6 +47,8 @@ KIT_HOST_DIALOG_PREFIXES = (
 )
 
 DIALOG_BARREL = "web/web/components/layout/choyDialog.ts"
+
+GATE_NAME = "forbid_choy_kit_gates"
 
 
 def is_skip_dir(path: Path) -> bool:
@@ -224,15 +226,15 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     modules_root = args.modules.resolve()
     if not modules_root.is_dir():
-        print(f"forbid_choy_ui_kit_gates: modules root not found: {modules_root}", file=sys.stderr)
+        print(f"{GATE_NAME}: modules root not found: {modules_root}", file=sys.stderr)
         return 2
 
     violations = scan(modules_root)
     if not violations:
-        print("forbid_choy_ui_kit_gates: ok (0 violations)")
+        print(f"{GATE_NAME}: ok (0 violations)")
         return 0
 
-    print(f"forbid_choy_ui_kit_gates: {len(violations)} violation(s)", file=sys.stderr)
+    print(f"{GATE_NAME}: {len(violations)} violation(s)", file=sys.stderr)
     for path, line, spec, rule in violations:
         try:
             rel = path.relative_to(REPO_ROOT)
@@ -240,7 +242,7 @@ def main(argv: list[str] | None = None) -> int:
             rel = path
         print(f"  {rel}:{line}: [{rule}] {spec}", file=sys.stderr)
     print(
-        "W4 gates: domain modules import Choy* from @/web; L2 default heights stay "
+        "Choy kit gates: domain modules import Choy* from @/web; L2 default heights stay "
         "h-control*; Import/Search/Field Dialog chrome goes through layout/choyDialog.",
         file=sys.stderr,
     )

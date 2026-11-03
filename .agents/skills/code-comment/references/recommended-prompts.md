@@ -24,7 +24,7 @@ Use code-comment on pkg/auth.
 Use code-comment on modules/web/web/router.
 Use code-comment on modules/auth/web/pages.
 Use code-comment review on modules/auth/web/pages/RoleList.vue.
-Use code-comment hybrid on modules/web/web/components/view/OFormView.vue Vue SFC comments.
+Use code-comment hybrid on modules/web/web/components/view/ChoyFormView.vue Vue SFC comments.
 Use code-comment review on pkg/auth without editing.
 Use code-comment hybrid on pkg/auth public APIs.
 Use code-comment review on modules/web/web/router.

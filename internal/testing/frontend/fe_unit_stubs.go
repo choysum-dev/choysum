@@ -9,7 +9,6 @@ import "strings"
 type feUnitStubPaths struct {
 	Router              string
 	PageMount           string
-	OPage               string
 	ChildView           string
 	AuthStore           string
 	I18n                string
@@ -73,28 +72,15 @@ func feUnitPackageStubPath(importPath string, stubs feUnitStubPaths) (string, bo
 	}
 }
 
-// feUnitPageShellImport reports whether p or joined refers to the page shell SFC
-// (Page.vue or legacy OPage.vue), not ChoyPage.vue.
-func feUnitPageShellImport(p, joined string) bool {
-	for _, s := range []string{p, joined} {
-		s = strings.ReplaceAll(s, "\\", "/")
-		if strings.HasSuffix(s, "/Page.vue") || strings.HasSuffix(s, "/OPage.vue") ||
-			s == "Page.vue" || s == "OPage.vue" {
-			return true
-		}
-	}
-	return false
-}
-
 // feUnitPathStubPath resolves product import paths to FE unit stubs.
 // p is the raw import path; joined is ResolveDir+path when relative; importer is the importing file.
 func feUnitPathStubPath(p, joined, importer string, stubs feUnitStubPaths) (string, bool) {
 	isPageOrView := strings.HasSuffix(importer, ".vue") &&
 		(strings.Contains(importer, "/web/pages/") || strings.Contains(importer, "/web/views/"))
-	// vueplugin/path-alias resolves sometimes omit Importer; treat that like product page
-	// so ChildView/Page path stubs still apply for Currency-style mounts.
+	// vueplugin/path-alias resolves sometimes omit Importer; treat that like a product page
+	// so ChildView path stubs still apply for Currency-style mounts.
 	stubProductChildren := isPageOrView || importer == ""
-	// FE unit tests under web/web/components must see real SFCs (Page.mapping, OVColumn, …).
+	// FE unit tests under web/web/components must see real SFCs (e.g. ChoyPage.*.test.ts).
 	isWebComponentUnit := strings.Contains(importer, "/web/web/components/") &&
 		(strings.Contains(importer, ".test.ts") || strings.Contains(importer, ".spec.ts") ||
 			strings.HasSuffix(importer, ".vue"))
@@ -103,9 +89,6 @@ func feUnitPathStubPath(p, joined, importer string, stubs feUnitStubPaths) (stri
 	case strings.Contains(joined, "/web/web/components/") || strings.Contains(p, "/web/web/components/") || strings.Contains(p, "@/web/web/components/"):
 		if isWebComponentUnit || !stubProductChildren {
 			return "", false
-		}
-		if feUnitPageShellImport(p, joined) {
-			return stubs.OPage, true
 		}
 		if strings.HasSuffix(p, ".vue") || strings.Contains(joined, ".vue") {
 			if strings.HasSuffix(p, "ChoyFormView.vue") || strings.HasSuffix(joined, "ChoyFormView.vue") {

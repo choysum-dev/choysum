@@ -235,8 +235,8 @@ func (p *Page) Click(css string) error {
 		return fmt.Errorf("cdp: nil page")
 	}
 	// Pass selector via JSON literal (not single-quoted) to avoid quote-break issues.
-	// Do not WaitVisible here: Element Plus popper/dropdown nodes are often
-	// "invisible" to chromedp while still clickable; callers use expect.toBeVisible.
+	// Do not WaitVisible here: popper/dropdown nodes are often "invisible" to
+	// chromedp while still clickable; callers use expect.toBeVisible.
 	script := fmt.Sprintf(`(() => {
   const css = %s;
   const el = document.querySelector(css);
@@ -247,7 +247,7 @@ func (p *Page) Click(css string) error {
 	return chromedp.Do(p.ctx, chromedp.Evaluate[chromedp.Void](script))
 }
 
-// Fill focuses and sets text so Vue v-model / Element Plus pick up the value.
+// Fill focuses and sets text so Vue v-model bindings pick up the value.
 func (p *Page) Fill(css string, text string) error {
 	if p == nil {
 		return fmt.Errorf("cdp: nil page")

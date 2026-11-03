@@ -32,7 +32,7 @@ func VueShimOverlay() (relPath, content string) {
 
 // VueDirectivesOverlay returns vue GlobalComponents / GlobalDirectives
 // augmentation used when type-fetch relative loads break upstream module
-// augmentation (and when element-plus/global.d.ts is unavailable).
+// augmentation.
 func VueDirectivesOverlay() (relPath, content string) {
 	return "vue-directives.d.ts", vueDirectivesDTS
 }

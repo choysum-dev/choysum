@@ -92,8 +92,8 @@ jobs:
           python3 scripts/ci/forbid_core_engine_imports_test.py
           python3 scripts/ci/forbid_core_engine_imports.py
 
-  forbid-legacy-ui-imports:
-    name: pr / forbid-legacy-ui-imports
+  ui-policy-gates:
+    name: pr / ui-policy-gates
     needs:
       - discover-impact
     if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
@@ -113,11 +113,11 @@ jobs:
           python3 scripts/ci/forbid_legacy_ui_imports_test.py
           python3 scripts/ci/forbid_legacy_ui_imports.py
 
-      - name: Forbid domain vendor/ui, L2 h-9 regression, kit-host Dialog bypass
+      - name: Forbid domain vendor/ui, L2 h-control regression, kit-host Dialog bypass
         run: |
           set -euo pipefail
-          python3 scripts/ci/forbid_choy_ui_kit_gates_test.py
-          python3 scripts/ci/forbid_choy_ui_kit_gates.py
+          python3 scripts/ci/forbid_choy_kit_gates_test.py
+          python3 scripts/ci/forbid_choy_kit_gates.py
 
   build-choysum-cli:
     name: pr / build-choysum-cli
