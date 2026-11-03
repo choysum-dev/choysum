@@ -92,6 +92,7 @@ test('AttachmentOwnerMixin: missing document factory yields SERVICE_FACTORY_NOT_
     unregisterServiceFactory('document.AttachmentBinding');
     if (saved) registerServiceFactory('document.AttachmentBinding', saved);
   }
+  expect(caught).toBeDefined();
   expect(caught instanceof ChoysumError).toBe(true);
   expect(String((caught as ChoysumError).code || '')).toBe('SERVICE_FACTORY_NOT_FOUND');
   expect(String((caught as ChoysumError).domain || '')).toBe('core');

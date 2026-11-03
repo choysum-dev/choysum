@@ -25,16 +25,20 @@ const DOCUMENT_ATTACHMENT_BINDING = 'document.AttachmentBinding';
 export const ATTACHMENT_OWNER_SERVICE_FACTORY_NOT_FOUND = 'SERVICE_FACTORY_NOT_FOUND';
 
 function dialAttachmentBinding() {
-  // Only map the absent-factory case. A registered factory that fails to construct
-  // must surface its own error (not look like "module not installed").
-  if (!getServiceFactory(DOCUMENT_ATTACHMENT_BINDING)) {
-    throw new ChoysumError({
-      domain: 'core',
-      code: ATTACHMENT_OWNER_SERVICE_FACTORY_NOT_FOUND,
-      message: `Service factory for model '${DOCUMENT_ATTACHMENT_BINDING}' not found. Make sure the module is loaded.`,
-    }).withGrpcCode(GrpcCode.FailedPrecondition);
+  // Remap only when the factory is absent after dial fails. A registered factory
+  // that fails to construct must surface its own error (not "module not installed").
+  try {
+    return dial<DocumentAttachmentBindingStub>(DOCUMENT_ATTACHMENT_BINDING);
+  } catch (err) {
+    if (!getServiceFactory(DOCUMENT_ATTACHMENT_BINDING)) {
+      throw new ChoysumError({
+        domain: 'core',
+        code: ATTACHMENT_OWNER_SERVICE_FACTORY_NOT_FOUND,
+        message: `Service factory for model '${DOCUMENT_ATTACHMENT_BINDING}' not found. Make sure the module is loaded.`,
+      }).withGrpcCode(GrpcCode.FailedPrecondition);
+    }
+    throw err;
   }
-  return dial<DocumentAttachmentBindingStub>(DOCUMENT_ATTACHMENT_BINDING);
 }
 
 /**

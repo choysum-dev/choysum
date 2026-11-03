@@ -189,6 +189,7 @@ test('User: AttachmentBind soft-fails with SERVICE_FACTORY_NOT_FOUND when docume
     unregisterServiceFactory('document.AttachmentBinding');
     if (saved) registerServiceFactory('document.AttachmentBinding', saved);
   }
+  expect(caught).toBeDefined();
   expect(caught instanceof ChoysumError).toBe(true);
   expect(String((caught as ChoysumError).code || '')).toBe('SERVICE_FACTORY_NOT_FOUND');
   expect(String((caught as ChoysumError).message || '')).toContain('document.AttachmentBinding');
