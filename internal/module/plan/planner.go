@@ -217,9 +217,6 @@ func ensureWebShellProfileExtras(ctx context.Context, op OpType, plan *Plan, r R
 
 	for _, rootName := range roots {
 		rootName = strings.TrimSpace(rootName)
-		if rootName == "" {
-			continue
-		}
 		reportBuildPlanProgress(ctx, BuildPlanProgress{Step: "resolve_web_shell_profile", CurrentModule: rootName})
 
 		mod, err := r.Load(rootName)
@@ -236,6 +233,11 @@ func ensureWebShellProfileExtras(ctx context.Context, op OpType, plan *Plan, r R
 			return fmt.Errorf("web-shell-profile module %s not found", rootName)
 		}
 
+		// Skip installed profile roots before topo so upgrade does not inflate AffectedApps.
+		if op == OpUpgrade && mod.Status == meta.Installed {
+			continue
+		}
+
 		order, err := topoByDependsStr(ctx, mod, r, addApp)
 		if err != nil {
 			return fmt.Errorf("resolve web-shell-profile %s dependencies: %w", rootName, err)
@@ -245,9 +247,6 @@ func ensureWebShellProfileExtras(ctx context.Context, op OpType, plan *Plan, r R
 		case OpInstall:
 			plan.ModuleOrder = mergeModuleOrder(order, plan.ModuleOrder)
 		case OpUpgrade:
-			if mod.Status == meta.Installed {
-				continue
-			}
 			for _, name := range filterEnsureModuleNames(order) {
 				dep, loadErr := r.Load(name)
 				if loadErr != nil {

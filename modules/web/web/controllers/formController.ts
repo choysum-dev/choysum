@@ -171,7 +171,8 @@ type AttachmentResolutionContext = {
   ownerModel: string;
   ownerRecordId?: string;
   fieldName: string;
-  service: AttachmentContentServiceLike;
+  /** Required only when resolving Blob/File uploads. */
+  service?: AttachmentContentServiceLike;
   store: WebModelStore<any>;
 };
 
@@ -519,6 +520,12 @@ async function resolveUploadInputToObjectId(
   recordLike: Record<string, unknown> | undefined,
   ctx: AttachmentResolutionContext
 ): Promise<string> {
+  const service = ctx.service;
+  if (!service) {
+    throw new Error(
+      `[Attachment] ${fieldName}: document module is not installed; binary/image upload is unavailable.`
+    );
+  }
   const operation = ctx.operation;
   const ownerModel = ctx.ownerModel;
   const ownerRecordId = normalizeOptionalString(ctx.ownerRecordId);
@@ -565,8 +572,8 @@ async function resolveUploadInputToObjectId(
     clientContentType: contentType,
   };
 
-  const prepared = await runWithStoreContext(ctx.store, ctx.service, async () => {
-    return await ctx.service.PrepareUpload(prepareReq);
+  const prepared = await runWithStoreContext(ctx.store, service, async () => {
+    return await service.PrepareUpload(prepareReq);
   });
 
   const uploadId = normalizeOptionalString(prepared?.uploadId);
@@ -577,8 +584,8 @@ async function resolveUploadInputToObjectId(
 
   await uploadToTarget(fieldName, uploadTarget, blob);
 
-  const finalized = await runWithStoreContext(ctx.store, ctx.service, async () => {
-    return await ctx.service.FinalizeUpload({
+  const finalized = await runWithStoreContext(ctx.store, service, async () => {
+    return await service.FinalizeUpload({
       uploadId,
       businessRequestId,
     });
@@ -661,27 +668,21 @@ async function normalizeAttachmentFieldsInPayload(
 
   // Defer AttachmentContent dial until a field actually needs Prepare/Finalize.
   // Models with binary/image metadata must still save without document installed.
-  let service: AttachmentContentServiceLike | undefined;
-  if (needsUpload) {
-    service = resolveAttachmentContentService(store, pickDep(deps.createStoreByModel, createStoreByModel));
-  }
+  const service = needsUpload
+    ? resolveAttachmentContentService(store, pickDep(deps.createStoreByModel, createStoreByModel))
+    : undefined;
 
   for (const fieldName of options.fields) {
     if (!Object.prototype.hasOwnProperty.call(nextPayload, fieldName)) continue;
 
     const sourceValue = nextPayload[fieldName];
-    if (attachmentFieldNeedsContentService(sourceValue) && !service) {
-      throw new Error(
-        `[Attachment] ${fieldName}: document module is not installed; binary/image upload is unavailable.`
-      );
-    }
 
     const resolved = await resolveAttachmentFieldValue(sourceValue, {
       operation: options.operation,
       ownerModel: options.ownerModel,
       ownerRecordId: options.ownerRecordId,
       fieldName,
-      service: service as AttachmentContentServiceLike,
+      service,
       store,
     });
 

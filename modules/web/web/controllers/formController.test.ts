@@ -451,4 +451,20 @@ describe('formController attachment protocol', () => {
     expect(caught instanceof Error).toBe(true);
     expect(String((caught as Error).message || '')).toMatch(/document|AttachmentContent|unavailable|not found/i);
   });
+
+  test('resolveAttachmentFieldValue without service rejects blob upload', async () => {
+    let caught: unknown;
+    try {
+      await __resolveAttachmentFieldValueForTest(new Blob([new Uint8Array([1])]), {
+        operation: 'create',
+        ownerModel: 'demo.Asset',
+        fieldName: 'Avatar',
+        store: { fullModelName: 'demo.Asset', getContext: () => ({}) },
+      } as any);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught instanceof Error).toBe(true);
+    expect(String((caught as Error).message || '')).toMatch(/document module is not installed/i);
+  });
 });

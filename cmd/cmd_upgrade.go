@@ -159,6 +159,11 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 				plans = append(plans, upgradePlan{requestedInput: moduleInput, resolvedInput: resolvedInput})
 			}
 
+			profile, profileErr := plan.ParseWebShellProfile(webShellProfile)
+			if profileErr != nil {
+				exitUpgradeError("", profileErr)
+			}
+
 			upgradeScope := env.WithContext(ctx)
 			compilerExecutor, err := jsexecutor.NewCompilerExecutor(upgradeScope)
 			if err != nil {
@@ -169,10 +174,6 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 			}
 			defer compilerExecutor.Stop()
 
-			profile, err := plan.ParseWebShellProfile(webShellProfile)
-			if err != nil {
-				exitUpgradeError("", err)
-			}
 			moduleLifecycle := lifecycle.NewService(upgradeScope, compilerExecutor)
 			for _, item := range plans {
 				currentInput = item.requestedInput

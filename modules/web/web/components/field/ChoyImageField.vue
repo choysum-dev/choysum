@@ -45,7 +45,9 @@ SPDX-License-Identifier: Apache-2.0
         :invalid="invalid"
         :accept="accept"
         :drag="drag"
-        :disabled="uploadDisabled"
+        :disabled="disabled"
+        :upload-disabled="!documentUploadAvailable"
+        :upload-hint="documentUploadUnavailableHint"
         :busy="isUploadBusy(fieldValue().value)"
         :attachment-state="editAttachmentState(fieldValue().value)"
         :upload-label="uploadButtonText"
@@ -263,7 +265,10 @@ const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebM
 const fieldErrors = inject<Ref<Map<string, string>> | null>('field-errors', null);
 const formSubmitting = inject<Ref<boolean> | undefined>('form-submitting', undefined);
 const collaborationCaps = useReactiveCollaborationCaps();
-const uploadDisabled = computed(() => props.disabled || collaborationCaps.value.document !== true);
+const documentUploadAvailable = computed(() => collaborationCaps.value.document === true);
+const documentUploadUnavailableHint = computed(() =>
+  documentUploadAvailable.value ? '' : _t('Document module is not installed; image upload is unavailable.')
+);
 
 const pickError = ref('');
 /** Preview URLs that failed to load — fall back to Picture icon. */
@@ -560,8 +565,8 @@ async function applySelectedImage(file: File, fieldValue: ValueRefGetter, onFiel
 }
 
 async function onPickedFile(file: File, fieldValue: ValueRefGetter, onFieldChange?: OnFieldChange): Promise<void> {
-  if (uploadDisabled.value) {
-    setPickError(_t('Document module is not installed; image upload is unavailable.'));
+  if (props.disabled || !documentUploadAvailable.value) {
+    setPickError(documentUploadUnavailableHint.value || _t('Document module is not installed; image upload is unavailable.'));
     return;
   }
   await applySelectedImage(file, fieldValue, onFieldChange);

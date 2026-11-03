@@ -111,6 +111,10 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 
 				installScope := env.WithContext(ctx)
 				err = func() error {
+					profile, profileErr := plan.ParseWebShellProfile(webShellProfile)
+					if profileErr != nil {
+						return profileErr
+					}
 					compilerExecutor, startErr := jsexecutor.NewCompilerExecutor(installScope)
 					if startErr != nil {
 						return xfmt.Errorf("Error creating compiler executor: %w", startErr)
@@ -120,10 +124,6 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 					}
 					defer compilerExecutor.Stop()
 
-					profile, profileErr := plan.ParseWebShellProfile(webShellProfile)
-					if profileErr != nil {
-						return profileErr
-					}
 					installScope.Logger().Debug("module install started", "input", rootInput)
 					if installErr := lifecycle.InstallModule(ctx, installScope, compilerExecutor, lifecycle.InstallModuleRequest{
 						Input:           rootInput,
