@@ -37,6 +37,7 @@ var ErrLeaseBusy = lease.ErrLeaseBusy
 
 type leaseHandle struct {
 	ownerID  string
+	locker   statepkg.Locker // acquired locker; reused on release
 	stopCh   chan struct{}
 	done     chan struct{} // closed when renewProvisionLease exits
 	renewErr chan error
@@ -71,6 +72,7 @@ func acquireProvisionLease(ctx context.Context, runtimeScope scope.Scope, locker
 	}
 	handle := &leaseHandle{
 		ownerID:  ownerID,
+		locker:   locker,
 		stopCh:   make(chan struct{}),
 		done:     make(chan struct{}),
 		renewErr: make(chan error, 1),
@@ -166,13 +168,20 @@ func releaseProvisionLease(runtimeScope scope.Scope, lockerFactory statepkg.Lock
 		if runtimeScope == nil {
 			return
 		}
-		if lockerFactory == nil {
-			lockerFactory = defaultLockerFactory
+		locker := handle.locker
+		if locker == nil {
+			if lockerFactory == nil {
+				lockerFactory = defaultLockerFactory
+			}
+			locker = lockerFactory(runtimeScope)
 		}
-		locker := lockerFactory(runtimeScope)
-		releaseCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		releaseCtx, cancel := context.WithTimeout(context.Background(), leaseReleaseWait)
 		defer cancel()
-		_ = locker.Release(releaseCtx, LeaseResource, handle.ownerID)
+		if err := locker.Release(releaseCtx, LeaseResource, handle.ownerID); err != nil {
+			if log := runtimeScope.Logger(); log != nil {
+				log.Warn("provision lease release failed", "error", err, "owner", handle.ownerID)
+			}
+		}
 	})
 }
 

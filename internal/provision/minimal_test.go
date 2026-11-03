@@ -653,6 +653,7 @@ func TestReleaseProvisionLeaseWaitsForRenewDone(t *testing.T) {
 	locker := &blockingRenewLocker{renewStarted: make(chan struct{}), releaseCh: released}
 	handle := &leaseHandle{
 		ownerID:  "o",
+		locker:   locker,
 		stopCh:   make(chan struct{}),
 		done:     make(chan struct{}),
 		renewErr: make(chan error, 1),
@@ -660,7 +661,7 @@ func TestReleaseProvisionLeaseWaitsForRenewDone(t *testing.T) {
 	go renewProvisionLease(context.Background(), nil, locker, handle, nil)
 	<-locker.renewStarted // renew is blocked inside Renew
 	runtimeScope, _ := newSetupStateScope(t)
-	go releaseProvisionLease(runtimeScope, func(scope.Scope) statepkg.Locker { return locker }, handle)
+	go releaseProvisionLease(runtimeScope, nil, handle)
 	select {
 	case <-released:
 		t.Fatal("Release must wait until renew exits")
@@ -688,6 +689,7 @@ func TestReleaseProvisionLeaseBoundsWaitOnHungRenew(t *testing.T) {
 	locker := &blockingRenewLocker{renewStarted: make(chan struct{}), releaseCh: released}
 	handle := &leaseHandle{
 		ownerID:  "o",
+		locker:   locker,
 		stopCh:   make(chan struct{}),
 		done:     make(chan struct{}),
 		renewErr: make(chan error, 1),
@@ -697,7 +699,7 @@ func TestReleaseProvisionLeaseBoundsWaitOnHungRenew(t *testing.T) {
 	runtimeScope, _ := newSetupStateScope(t)
 	done := make(chan struct{})
 	go func() {
-		releaseProvisionLease(runtimeScope, func(scope.Scope) statepkg.Locker { return locker }, handle)
+		releaseProvisionLease(runtimeScope, nil, handle)
 		close(done)
 	}()
 	select {
@@ -729,6 +731,61 @@ func TestAcquireProvisionLeaseMigratesThenFakeLocker(t *testing.T) {
 func TestReleaseProvisionLeaseNilHandle(t *testing.T) {
 	releaseProvisionLease(nil, nil, nil)
 }
+
+func TestReleaseProvisionLeaseLogsFailure(t *testing.T) {
+	done := make(chan struct{})
+	close(done)
+	runtimeScope, _ := newSetupStateScope(t)
+	handle := &leaseHandle{
+		ownerID:  "o",
+		locker:   &errReleaseLocker{err: errors.New("release boom")},
+		stopCh:   make(chan struct{}),
+		done:     done,
+		renewErr: make(chan error, 1),
+	}
+	releaseProvisionLease(runtimeScope, nil, handle)
+}
+
+func TestReleaseProvisionLeaseFallsBackToFactory(t *testing.T) {
+	done := make(chan struct{})
+	close(done)
+	runtimeScope, _ := newSetupStateScope(t)
+	released := make(chan struct{}, 1)
+	handle := &leaseHandle{
+		ownerID:  "o",
+		// locker intentionally nil — release must rebuild via factory.
+		stopCh:   make(chan struct{}),
+		done:     done,
+		renewErr: make(chan error, 1),
+	}
+	releaseProvisionLease(runtimeScope, func(scope.Scope) statepkg.Locker {
+		return &okLocker{onRelease: func() { released <- struct{}{} }}
+	}, handle)
+	select {
+	case <-released:
+	default:
+		t.Fatal("expected factory locker Release")
+	}
+
+	// nil locker + nil factory selects defaultLockerFactory.
+	handle2 := &leaseHandle{
+		ownerID:  "o2",
+		stopCh:   make(chan struct{}),
+		done:     done,
+		renewErr: make(chan error, 1),
+	}
+	releaseProvisionLease(runtimeScope, nil, handle2)
+}
+
+type errReleaseLocker struct{ err error }
+
+func (e *errReleaseLocker) Acquire(context.Context, string, string, time.Duration) error {
+	return nil
+}
+func (e *errReleaseLocker) Renew(context.Context, string, string, time.Duration) error {
+	return nil
+}
+func (e *errReleaseLocker) Release(context.Context, string, string) error { return e.err }
 
 func TestCheckProvisionLeaseRenewPendingError(t *testing.T) {
 	handle := &leaseHandle{stopCh: make(chan struct{}), renewErr: make(chan error, 1)}
@@ -909,6 +966,7 @@ func (e *nilWithContextScope) Transactor() scope.Transactor {
 
 type okLocker struct {
 	onAcquire func()
+	onRelease func()
 }
 
 func (o *okLocker) Acquire(context.Context, string, string, time.Duration) error {
@@ -918,7 +976,12 @@ func (o *okLocker) Acquire(context.Context, string, string, time.Duration) error
 	return nil
 }
 func (o *okLocker) Renew(context.Context, string, string, time.Duration) error { return nil }
-func (o *okLocker) Release(context.Context, string, string) error              { return nil }
+func (o *okLocker) Release(context.Context, string, string) error {
+	if o != nil && o.onRelease != nil {
+		o.onRelease()
+	}
+	return nil
+}
 
 type busyLocker struct{}
 
