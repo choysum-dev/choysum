@@ -161,8 +161,8 @@ func SyncLocalModuleIndex(ctx context.Context, runtimeScope scope.Scope, lockerF
 }
 
 // moduleIndexLockTTLDefault is the code default for the local module-index sync
-// lease (aligned with moduleManagerLeaseTTL). Tests may override.
-var moduleIndexLockTTLDefault = 60 * time.Second
+// lease (aligned with moduleManagerLeaseTTL).
+const moduleIndexLockTTLDefault = 60 * time.Second
 
 func moduleIndexLockTTL(context.Context, scope.Scope) time.Duration {
 	return moduleIndexLockTTLDefault

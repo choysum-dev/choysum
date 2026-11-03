@@ -558,17 +558,10 @@ END`).Error; err != nil {
 }
 
 func TestModuleIndexLockTTL_UsesCodeDefault(t *testing.T) {
-	// Not parallel: mutates package-level moduleIndexLockTTLDefault.
+	t.Parallel()
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), nil)
-	if got := moduleIndexLockTTL(context.Background(), runtimeScope); got != 60*time.Second {
-		t.Fatalf("ttl = %v, want %v", got, 60*time.Second)
-	}
-
-	prev := moduleIndexLockTTLDefault
-	moduleIndexLockTTLDefault = 2 * time.Second
-	t.Cleanup(func() { moduleIndexLockTTLDefault = prev })
-	if got := moduleIndexLockTTL(context.Background(), runtimeScope); got != 2*time.Second {
-		t.Fatalf("ttl = %v, want %v", got, 2*time.Second)
+	if got := moduleIndexLockTTL(context.Background(), runtimeScope); got != moduleIndexLockTTLDefault {
+		t.Fatalf("ttl = %v, want %v", got, moduleIndexLockTTLDefault)
 	}
 }
 
