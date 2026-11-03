@@ -74,6 +74,14 @@ func backfillSetupCompletedAtFromLegacyInit(db *gorm.DB) (canDrop bool, err erro
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return false, err
 	}
+	// Blank row still occupies the unique key; free it before create-only claim.
+	if err == nil {
+		if delErr := db.Table(authAppSettingTable).
+			Where(map[string]any{"key": authSetupCompletedAtKey}).
+			Delete(nil).Error; delErr != nil {
+			return false, delErr
+		}
+	}
 
 	truthy, legacyErr := legacySystemInitDoneTruthy(db)
 	if legacyErr != nil {
@@ -92,9 +100,10 @@ func backfillSetupCompletedAtFromLegacyInit(db *gorm.DB) (canDrop bool, err erro
 		CreatedAt time.Time `gorm:"column:created_at"`
 		UpdatedAt time.Time `gorm:"column:updated_at"`
 	}
+	// DoNothing: never clobber a concurrently written real setup.completed_at.
 	if err := db.Table(authAppSettingTable).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "key"}},
-		DoUpdates: clause.Assignments(map[string]any{"value": iso, "updated_at": now}),
+		DoNothing: true,
 	}).Create(&authAppSettingRow{
 		Id:        xid.New().String(),
 		Key:       authSetupCompletedAtKey,

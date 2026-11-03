@@ -145,6 +145,117 @@ func TestRetireMetaSettingTable_BackfillsSetupCompletedAt(t *testing.T) {
 	}
 }
 
+func TestRetireMetaSettingTable_BlankSetupDeleteError(t *testing.T) {
+	db := openRetireTestDB(t)
+	mustExecRetire(t, db, `CREATE TABLE meta_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT NOT NULL UNIQUE,
+		value TEXT
+	)`)
+	mustExecRetire(t, db, `CREATE TABLE auth_app_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT NOT NULL UNIQUE,
+		value TEXT
+	)`)
+	mustExecRetire(t, db, `INSERT INTO auth_app_setting (id, key, value) VALUES (?, ?, ?)`,
+		"blank", authSetupCompletedAtKey, " ")
+	mustExecRetire(t, db, `INSERT INTO meta_setting (id, key, value) VALUES (?, ?, ?)`,
+		"legacy", legacySystemInitDoneKey, "true")
+	forced := errors.New("forced blank-row delete failure")
+	registerFailDeletesOnTable(t, db, authAppSettingTable, forced)
+
+	err := RetireMetaSettingTable(db)
+	if err == nil || !strings.Contains(err.Error(), "backfill setup.completed_at from legacy meta_setting") {
+		t.Fatalf("RetireMetaSettingTable error = %v, want wrapped backfill failure", err)
+	}
+	if !errors.Is(err, forced) {
+		t.Fatalf("RetireMetaSettingTable error = %v, want forced cause", err)
+	}
+}
+
+func TestRetireMetaSettingTable_ReclaimsBlankSetupCompletedAt(t *testing.T) {
+	db := openRetireTestDB(t)
+	mustExecRetire(t, db, `CREATE TABLE meta_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT NOT NULL UNIQUE,
+		value TEXT,
+		created_at DATETIME,
+		updated_at DATETIME,
+		deleted_at DATETIME
+	)`)
+	mustExecRetire(t, db, `CREATE TABLE auth_app_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT NOT NULL UNIQUE,
+		value TEXT,
+		created_at DATETIME,
+		updated_at DATETIME,
+		deleted_at DATETIME
+	)`)
+	mustExecRetire(t, db, `INSERT INTO auth_app_setting (id, key, value, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+		"blank", authSetupCompletedAtKey, "   ", time.Now(), time.Now())
+	mustExecRetire(t, db, `INSERT INTO meta_setting (id, key, value, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+		"legacy", legacySystemInitDoneKey, "true", time.Now(), time.Now())
+
+	if err := RetireMetaSettingTable(db); err != nil {
+		t.Fatalf("RetireMetaSettingTable: %v", err)
+	}
+	var row struct{ Value string }
+	if err := db.Table(authAppSettingTable).Select("value").Where(map[string]any{"key": authSetupCompletedAtKey}).Take(&row).Error; err != nil {
+		t.Fatalf("expected reclaimed setup.completed_at: %v", err)
+	}
+	if strings.TrimSpace(row.Value) == "" {
+		t.Fatal("expected non-empty setup.completed_at after reclaiming blank row")
+	}
+}
+
+func TestRetireMetaSettingTable_DoNothingKeepsConcurrentSetupMarker(t *testing.T) {
+	db := openRetireTestDB(t)
+	mustExecRetire(t, db, `CREATE TABLE meta_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT NOT NULL UNIQUE,
+		value TEXT,
+		created_at DATETIME,
+		updated_at DATETIME,
+		deleted_at DATETIME
+	)`)
+	mustExecRetire(t, db, `CREATE TABLE auth_app_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT NOT NULL UNIQUE,
+		value TEXT,
+		created_at DATETIME,
+		updated_at DATETIME,
+		deleted_at DATETIME
+	)`)
+	mustExecRetire(t, db, `INSERT INTO meta_setting (id, key, value, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+		"legacy", legacySystemInitDoneKey, "true", time.Now(), time.Now())
+
+	peer := "2020-01-02T03:04:05Z"
+	const name = "inject_peer_setup_marker"
+	if err := db.Callback().Create().Before("gorm:create").Register(name, func(tx *gorm.DB) {
+		if tx.Statement == nil || tx.Statement.Table != authAppSettingTable {
+			return
+		}
+		_ = tx.Session(&gorm.Session{NewDB: true}).Exec(
+			`INSERT OR IGNORE INTO auth_app_setting (id, key, value, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+			"peer", authSetupCompletedAtKey, peer, time.Now(), time.Now(),
+		).Error
+	}); err != nil {
+		t.Fatalf("register create callback: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Callback().Create().Remove(name) })
+
+	if err := RetireMetaSettingTable(db); err != nil {
+		t.Fatalf("RetireMetaSettingTable: %v", err)
+	}
+	var row struct{ Value string }
+	if err := db.Table(authAppSettingTable).Select("value").Where(map[string]any{"key": authSetupCompletedAtKey}).Take(&row).Error; err != nil {
+		t.Fatalf("read setup.completed_at: %v", err)
+	}
+	if row.Value != peer {
+		t.Fatalf("setup.completed_at = %q, want peer marker %q", row.Value, peer)
+	}
+}
+
 func TestRetireMetaSettingTable_PreservesExistingSetupCompletedAt(t *testing.T) {
 	db := openRetireTestDB(t)
 	mustExecRetire(t, db, `CREATE TABLE meta_setting (
@@ -396,6 +507,19 @@ func registerFailCreatesOnTable(t *testing.T, db *gorm.DB, table string, fail er
 		t.Fatalf("register create callback: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Callback().Create().Remove(name) })
+}
+
+func registerFailDeletesOnTable(t *testing.T, db *gorm.DB, table string, fail error) {
+	t.Helper()
+	name := "fail_delete_" + table
+	if err := db.Callback().Delete().Before("gorm:delete").Register(name, func(tx *gorm.DB) {
+		if tx.Statement != nil && tx.Statement.Table == table {
+			tx.AddError(fail)
+		}
+	}); err != nil {
+		t.Fatalf("register delete callback: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Callback().Delete().Remove(name) })
 }
 
 func registerFailDropMetaSetting(t *testing.T, db *gorm.DB, fail error) {
