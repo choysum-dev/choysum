@@ -6,6 +6,7 @@ package lifecycle
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -27,6 +28,57 @@ func TestBootstrapMetaTablesSkipsWhenBaseTablesExist(t *testing.T) {
 
 	if err := manager.bootstrapMetaTables(runtimeScope); err != nil {
 		t.Fatalf("bootstrapMetaTables() error = %v", err)
+	}
+}
+
+func TestBootstrapMetaTablesEarlyPathRetireError(t *testing.T) {
+	t.Parallel()
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(&meta.Module{}, &modmeta.LockLease{}); err != nil {
+		t.Fatalf("auto migrate base tables: %v", err)
+	}
+	if err := db.Exec(`CREATE TABLE meta_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT NOT NULL UNIQUE,
+		value TEXT
+	)`).Error; err != nil {
+		t.Fatalf("create meta_setting: %v", err)
+	}
+	forced := errors.New("forced drop failure")
+	registerFailDropMetaSetting(t, db, forced)
+
+	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	manager := NewModuleManager(runtimeScope, nil)
+	err := manager.bootstrapMetaTables(runtimeScope)
+	if err == nil || !strings.Contains(err.Error(), "drop retired meta_setting") {
+		t.Fatalf("bootstrapMetaTables() error = %v, want retire drop failure", err)
+	}
+	if !errors.Is(err, forced) {
+		t.Fatalf("bootstrapMetaTables() error = %v, want forced cause", err)
+	}
+}
+
+func TestBootstrapMetaTablesFullPathRetireError(t *testing.T) {
+	t.Parallel()
+	db := newModuleIndexSyncDB(t)
+	if err := db.Exec(`CREATE TABLE meta_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT NOT NULL UNIQUE,
+		value TEXT
+	)`).Error; err != nil {
+		t.Fatalf("create meta_setting: %v", err)
+	}
+	forced := errors.New("forced drop failure")
+	registerFailDropMetaSetting(t, db, forced)
+
+	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	manager := NewModuleManager(runtimeScope, nil)
+	err := manager.bootstrapMetaTables(runtimeScope)
+	if err == nil || !strings.Contains(err.Error(), "drop retired meta_setting") {
+		t.Fatalf("bootstrapMetaTables() error = %v, want retire drop failure", err)
+	}
+	if !errors.Is(err, forced) {
+		t.Fatalf("bootstrapMetaTables() error = %v, want forced cause", err)
 	}
 }
 
@@ -111,6 +163,23 @@ func TestModuleManagerMigrateBaseModuleEnsureUniqueIndexError(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "ensure effective app/name unique index") {
 		t.Fatalf("migrateBaseModule() error = %v, want unique index failure", err)
 	}
+}
+
+func registerFailDropMetaSetting(t *testing.T, db *gorm.DB, fail error) {
+	t.Helper()
+	const name = "fail_drop_meta_setting"
+	if err := db.Callback().Raw().Before("gorm:raw").Register(name, func(tx *gorm.DB) {
+		sqlText := ""
+		if tx.Statement != nil {
+			sqlText = strings.ToUpper(tx.Statement.SQL.String())
+		}
+		if strings.Contains(sqlText, "DROP") && strings.Contains(sqlText, "META_SETTING") {
+			tx.AddError(fail)
+		}
+	}); err != nil {
+		t.Fatalf("register drop callback: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Callback().Raw().Remove(name) })
 }
 
 // seedDuplicateLiveModelsForTest inserts two live meta_model rows that share

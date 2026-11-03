@@ -4,6 +4,7 @@
 package meta
 
 import (
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -174,4 +175,136 @@ func TestRetireMetaSettingTable_IgnoresNonTruthyLegacy(t *testing.T) {
 	if count != 0 {
 		t.Fatalf("setup.completed_at rows=%d, want 0", count)
 	}
+}
+
+func TestRetireMetaSettingTable_NoLegacyMarkerIsNoopBackfill(t *testing.T) {
+	db := openRetireTestDB(t)
+	mustExecRetire(t, db, `CREATE TABLE meta_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT NOT NULL UNIQUE,
+		value TEXT,
+		created_at DATETIME,
+		updated_at DATETIME,
+		deleted_at DATETIME
+	)`)
+	mustExecRetire(t, db, `CREATE TABLE auth_app_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT NOT NULL UNIQUE,
+		value TEXT,
+		created_at DATETIME,
+		updated_at DATETIME,
+		deleted_at DATETIME
+	)`)
+
+	if err := RetireMetaSettingTable(db); err != nil {
+		t.Fatalf("RetireMetaSettingTable: %v", err)
+	}
+	if db.Migrator().HasTable(retiredMetaSettingTable) {
+		t.Fatal("expected meta_setting to be dropped")
+	}
+	var count int64
+	if err := db.Table(authAppSettingTable).Where(map[string]any{"key": authSetupCompletedAtKey}).Count(&count).Error; err != nil {
+		t.Fatalf("count setup.completed_at: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("setup.completed_at rows=%d, want 0", count)
+	}
+}
+
+func TestRetireMetaSettingTable_ExistingSetupQueryError(t *testing.T) {
+	db := openRetireTestDB(t)
+	mustExecRetire(t, db, `CREATE TABLE meta_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT NOT NULL UNIQUE,
+		value TEXT
+	)`)
+	mustExecRetire(t, db, `CREATE TABLE auth_app_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT NOT NULL UNIQUE
+	)`)
+	forced := errors.New("forced auth_app_setting query failure")
+	registerFailQueriesOnTable(t, db, authAppSettingTable, forced)
+
+	err := RetireMetaSettingTable(db)
+	if err == nil || !strings.Contains(err.Error(), "backfill setup.completed_at from legacy meta_setting") {
+		t.Fatalf("RetireMetaSettingTable error = %v, want wrapped backfill failure", err)
+	}
+	if !errors.Is(err, forced) {
+		t.Fatalf("RetireMetaSettingTable error = %v, want forced cause", err)
+	}
+	if !db.Migrator().HasTable(retiredMetaSettingTable) {
+		t.Fatal("expected meta_setting to remain when backfill fails")
+	}
+}
+
+func TestRetireMetaSettingTable_LegacyQueryError(t *testing.T) {
+	db := openRetireTestDB(t)
+	mustExecRetire(t, db, `CREATE TABLE meta_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT NOT NULL UNIQUE
+	)`)
+	mustExecRetire(t, db, `CREATE TABLE auth_app_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT NOT NULL UNIQUE,
+		value TEXT
+	)`)
+	forced := errors.New("forced meta_setting query failure")
+	registerFailQueriesOnTable(t, db, retiredMetaSettingTable, forced)
+
+	err := RetireMetaSettingTable(db)
+	if err == nil || !strings.Contains(err.Error(), "backfill setup.completed_at from legacy meta_setting") {
+		t.Fatalf("RetireMetaSettingTable error = %v, want wrapped backfill failure", err)
+	}
+	if !errors.Is(err, forced) {
+		t.Fatalf("RetireMetaSettingTable error = %v, want forced cause", err)
+	}
+}
+
+func TestRetireMetaSettingTable_DropTableError(t *testing.T) {
+	db := openRetireTestDB(t)
+	mustExecRetire(t, db, `CREATE TABLE meta_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT NOT NULL UNIQUE,
+		value TEXT
+	)`)
+	forced := errors.New("forced drop failure")
+	registerFailDropMetaSetting(t, db, forced)
+
+	err := RetireMetaSettingTable(db)
+	if err == nil || !strings.Contains(err.Error(), "drop retired meta_setting") {
+		t.Fatalf("RetireMetaSettingTable error = %v, want wrapped drop failure", err)
+	}
+	if !errors.Is(err, forced) {
+		t.Fatalf("RetireMetaSettingTable error = %v, want forced cause", err)
+	}
+}
+
+func registerFailQueriesOnTable(t *testing.T, db *gorm.DB, table string, fail error) {
+	t.Helper()
+	name := "fail_query_" + table
+	if err := db.Callback().Query().Before("gorm:query").Register(name, func(tx *gorm.DB) {
+		if tx.Statement != nil && tx.Statement.Table == table {
+			tx.AddError(fail)
+		}
+	}); err != nil {
+		t.Fatalf("register query callback: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Callback().Query().Remove(name) })
+}
+
+func registerFailDropMetaSetting(t *testing.T, db *gorm.DB, fail error) {
+	t.Helper()
+	const name = "fail_drop_meta_setting"
+	if err := db.Callback().Raw().Before("gorm:raw").Register(name, func(tx *gorm.DB) {
+		sql := ""
+		if tx.Statement != nil {
+			sql = strings.ToUpper(tx.Statement.SQL.String())
+		}
+		if strings.Contains(sql, "DROP") && strings.Contains(sql, "META_SETTING") {
+			tx.AddError(fail)
+		}
+	}); err != nil {
+		t.Fatalf("register drop callback: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Callback().Raw().Remove(name) })
 }
