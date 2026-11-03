@@ -90,13 +90,13 @@ func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 		p, joined, importer, want string
 		ok                        bool
 	}{
-		{"@/web/web/components/page/Page.vue", "/x/Page.vue", page, "child", true},
-		{"@/web/web/components/page/Page.vue", "/x/Page.vue", "", "child", true},
+		// Product pages import ChoyPage; generic /web/web/components/ branch stubs it as ChildView.
 		{"@/web/web/components/layout/ChoyPage.vue", "/x/ChoyPage.vue", page, "child", true},
+		{"@/web/web/components/layout/ChoyPage.vue", "/x/ChoyPage.vue", "", "child", true},
 		{"@/web/web/components/layout/ChoyHeader.vue", "/x/ChoyHeader.vue", page, "child", true},
-		{"./OChatterMessageItem.vue", "/repo/modules/web/web/components/chatter/OChatterMessageItem.vue", "/repo/modules/web/web/components/chatter/OChatterMessageItem.test.ts", "", false},
+		{"./ChoyChatterMessageItem.vue", "/repo/modules/web/web/components/chatter/ChoyChatterMessageItem.vue", "/repo/modules/web/web/components/chatter/ChoyChatterMessageItem.test.ts", "", false},
 		{"@/web/web/components/layout/ChoyHeader.vue", "/x/ChoyHeader.vue", "/other.ts", "", false},
-		{"./Page.vue", "/repo/modules/web/web/components/layout/Page.vue", "/repo/modules/web/web/components/layout/ChoyPageIoMenu.test.ts", "", false},
+		{"./ChoyPage.vue", "/repo/modules/web/web/components/layout/ChoyPage.vue", "/repo/modules/web/web/components/layout/ChoyPageIoMenu.test.ts", "", false},
 		{"./PartnerFormView.vue", "/x/PartnerFormView.vue", page, "child", true},
 		{"@/web/web/components/view/ChoyFormView.vue", "/modules/web/web/components/view/ChoyFormView.vue", page, "", false},
 		{"@/web/web/components/view/ChoyFormView.vue", "/modules/web/web/components/view/ChoyFormView.vue", "", "", false},
@@ -285,23 +285,23 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 			pathHit = true
 		}
 		pagePage, err := pathCB(api.OnResolveArgs{
-			Path:       "@/web/web/components/page/Page.vue",
+			Path:       "@/web/web/components/layout/ChoyPage.vue",
 			Importer:   "/modules/web/web/pages/TerminologyEditor.vue",
 			ResolveDir: dir,
 		})
 		if err != nil {
-			t.Fatalf("page from page err: %v", err)
+			t.Fatalf("ChoyPage from product page err: %v", err)
 		}
 		if strings.HasSuffix(pagePage.Path, "ChildView.stub.vue") {
 			pageFromPage = true
 		}
 		testPage, err := pathCB(api.OnResolveArgs{
-			Path:       "./Page.vue",
+			Path:       "./ChoyPage.vue",
 			Importer:   "/modules/web/web/components/layout/ChoyPageIoMenu.test.ts",
 			ResolveDir: "/modules/web/web/components/layout",
 		})
 		if err != nil {
-			t.Fatalf("page from test err: %v", err)
+			t.Fatalf("ChoyPage from layout unit test err: %v", err)
 		}
 		if testPage.Path == "" {
 			pageFromTest = true
@@ -317,10 +317,10 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 		t.Fatal("expected FE path stub to resolve registry")
 	}
 	if !pageFromPage {
-		t.Fatal("expected ChildView stub for page shell imports from product pages")
+		t.Fatal("expected ChildView stub for ChoyPage imports from product pages")
 	}
 	if !pageFromTest {
-		t.Fatal("expected real Page for FE unit test importers")
+		t.Fatal("expected real ChoyPage for web/web/components FE unit importers")
 	}
 }
 
