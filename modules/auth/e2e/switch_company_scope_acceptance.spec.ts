@@ -280,6 +280,7 @@ function expectIncludesAll(actual: string[], want: string[]) {
 }
 
 test('auth: SwitchCompanyScope default enabled uses Preferences (enabledCompanyIds omitted)', async () => {
+  test.skip(runtime.scenario === 'setup-pending', 'default smoke needs Ready fixture');
   test.setTimeout(120_000);
 
   const baseURL = runtime.baseURL;
@@ -330,6 +331,7 @@ test('auth: SwitchCompanyScope default enabled uses Preferences (enabledCompanyI
 });
 
 test('auth: SwitchCompanyScope persists view; RefreshTokens reproduces the same active/enabled', async () => {
+  test.skip(runtime.scenario === 'setup-pending', 'default smoke needs Ready fixture');
   test.setTimeout(120_000);
 
   const baseURL = runtime.baseURL;
@@ -374,6 +376,7 @@ test('auth: SwitchCompanyScope persists view; RefreshTokens reproduces the same 
 });
 
 test('auth: SwitchCompanyScope illegal enabledCompanyIds fails closed and emits audit log', async () => {
+  test.skip(runtime.scenario === 'setup-pending', 'default smoke needs Ready fixture');
   test.setTimeout(120_000);
 
   const baseURL = runtime.baseURL;

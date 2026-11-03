@@ -147,7 +147,9 @@ func feUnitPathStubPath(p, joined, importer string, stubs feUnitStubPaths) (stri
 			strings.Contains(importer, "Login.vue") ||
 			strings.Contains(importer, "Register.vue") ||
 			strings.Contains(importer, "Logout.vue") ||
-			strings.Contains(importer, "Logout.mount.test.ts")
+			strings.Contains(importer, "Logout.mount.test.ts") ||
+			strings.Contains(importer, "Setup.vue") ||
+			strings.Contains(importer, "Setup.mount.test.ts")
 		barrel := strings.HasSuffix(p, "/stores/auth") ||
 			p == "../stores/auth" ||
 			p == "./stores/auth" ||

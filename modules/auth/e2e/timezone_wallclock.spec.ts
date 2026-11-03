@@ -67,6 +67,7 @@ async function setUserTimezoneViaPreferences(p: Page, iana: string) {
 }
 
 test('auth e2e: User.Timezone change updates users list datetime wall-clock', async () => {
+  test.skip(runtime.scenario === 'setup-pending', 'default smoke needs Ready fixture');
   test.setTimeout(180_000);
 
   const baseURL = runtime.baseURL;

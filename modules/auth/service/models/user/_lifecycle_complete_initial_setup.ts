@@ -178,6 +178,17 @@ async function releaseSetupCompletedAt(): Promise<void> {
 }
 
 /**
+ * True when SetupComplete is recorded (AppSetting marker or legacy system.init.done).
+ * Read-only: does not backfill AppSetting (anonymous probes must stay write-free).
+ */
+export async function isInitialSetupComplete(): Promise<boolean> {
+  if (String((await readSetupCompletedAt()) || '').trim()) {
+    return true;
+  }
+  return await readLegacySystemInitDone();
+}
+
+/**
  * Reject when SetupComplete is already recorded (new marker or legacy init sentinel).
  * Backfills setup.completed_at when only the legacy marker exists.
  */

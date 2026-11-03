@@ -3,7 +3,7 @@
 
 import type { PermissionState } from '@/auth/web/permission';
 import { asyncFnRecorder } from '@/web/web/__tests__/mountApp';
-import { authGuard, permissionGuard, type AuthGuardDeps } from './guard';
+import { authGuard, permissionGuard, setupGuard, type AuthGuardDeps } from './guard';
 
 function depsFor(store: any): AuthGuardDeps {
   return { getAuthStore: () => store };
@@ -17,6 +17,162 @@ function routesState(routes: string[]): PermissionState {
     },
   };
 }
+
+test('setupGuard sends SetupPending guests to setup', async () => {
+  const ensureSetupStateReady = asyncFnRecorder(() => false);
+  const mockAuthStore = { ensureSetupStateReady };
+
+  const result = await setupGuard(
+    {
+      path: '/login',
+      fullPath: '/login?redirect=%2Fauth%2Fusers',
+      name: 'login',
+      query: { redirect: '/auth/users' },
+      meta: { requiresAuth: false, resourceId: 'auth.route.login' },
+    } as any,
+    {} as any,
+    depsFor(mockAuthStore)
+  );
+
+  expect(result).toEqual({
+    name: 'setup',
+    query: { redirect: '/auth/users' },
+    replace: true,
+  });
+  expect(ensureSetupStateReady.calls.length).toBe(1);
+});
+
+test('setupGuard does not probe protected app routes', async () => {
+  const ensureSetupStateReady = asyncFnRecorder(() => false);
+  const mockAuthStore = { ensureSetupStateReady };
+
+  const result = await setupGuard(
+    {
+      path: '/auth/users',
+      fullPath: '/auth/users',
+      name: 'UserList',
+      meta: { requiresAuth: true, resourceId: 'auth.route.user_list' },
+    } as any,
+    {} as any,
+    depsFor(mockAuthStore)
+  );
+
+  expect(result).toBe(true);
+  expect(ensureSetupStateReady.calls.length).toBe(0);
+});
+
+test('setupGuard keeps SetupPending guests on setup', async () => {
+  const ensureSetupStateReady = asyncFnRecorder(() => false);
+  const mockAuthStore = { ensureSetupStateReady };
+
+  const result = await setupGuard(
+    {
+      path: '/setup',
+      fullPath: '/setup',
+      name: 'setup',
+      meta: { requiresAuth: false, resourceId: 'auth.route.setup' },
+    } as any,
+    {} as any,
+    depsFor(mockAuthStore)
+  );
+
+  expect(result).toBe(true);
+});
+
+test('setupGuard sends Ready guests away from setup', async () => {
+  const ensureSetupStateReady = asyncFnRecorder(() => true);
+  const mockAuthStore = { ensureSetupStateReady };
+
+  const result = await setupGuard(
+    {
+      path: '/setup',
+      fullPath: '/setup?redirect=%2Fauth%2Fusers',
+      name: 'setup',
+      query: { redirect: '/auth/users' },
+      meta: { requiresAuth: false, resourceId: 'auth.route.setup' },
+    } as any,
+    {} as any,
+    depsFor(mockAuthStore)
+  );
+
+  expect(result).toEqual({
+    name: 'login',
+    query: { redirect: '/auth/users' },
+    replace: true,
+  });
+});
+
+test('setupGuard allows Ready guests on login', async () => {
+  const ensureSetupStateReady = asyncFnRecorder(() => true);
+  const mockAuthStore = { ensureSetupStateReady };
+
+  const result = await setupGuard(
+    {
+      path: '/login',
+      fullPath: '/login',
+      name: 'login',
+      meta: { requiresAuth: false, resourceId: 'auth.route.login' },
+    } as any,
+    {} as any,
+    depsFor(mockAuthStore)
+  );
+
+  expect(result).toBe(true);
+});
+
+test('setupGuard ignores probe failures', async () => {
+  const ensureSetupStateReady = asyncFnRecorder(() => {
+    throw new Error('unavailable');
+  });
+  const mockAuthStore = { ensureSetupStateReady };
+
+  const result = await setupGuard(
+    {
+      path: '/login',
+      fullPath: '/login',
+      name: 'login',
+      meta: { requiresAuth: false },
+    } as any,
+    {} as any,
+    depsFor(mockAuthStore)
+  );
+
+  expect(result).toBe(true);
+});
+
+test('setupGuard skips /web/error routes without probing', async () => {
+  const ensureSetupStateReady = asyncFnRecorder(() => false);
+  const mockAuthStore = { ensureSetupStateReady };
+
+  const result = await setupGuard(
+    {
+      path: '/web/error/403',
+      fullPath: '/web/error/403',
+      name: 'error',
+      meta: { requiresAuth: false },
+    } as any,
+    {} as any,
+    depsFor(mockAuthStore)
+  );
+
+  expect(result).toBe(true);
+  expect(ensureSetupStateReady.calls.length).toBe(0);
+});
+
+test('setupGuard allows shell when ensureSetupStateReady is missing', async () => {
+  const result = await setupGuard(
+    {
+      path: '/login',
+      fullPath: '/login',
+      name: 'login',
+      meta: { requiresAuth: false },
+    } as any,
+    {} as any,
+    depsFor({})
+  );
+
+  expect(result).toBe(true);
+});
 
 test('authGuard allows authenticated users on public error routes', async () => {
   const ensureAuthReady = asyncFnRecorder();

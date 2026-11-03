@@ -16,19 +16,20 @@ export function isAuthExitNavigation(to: {
   if (
     resourceId === 'auth.route.login' ||
     resourceId === 'auth.route.logout' ||
-    resourceId === 'auth.route.register'
+    resourceId === 'auth.route.register' ||
+    resourceId === 'auth.route.setup'
   ) {
     return true;
   }
 
   const rawPath = String(to?.path ?? '').split('?')[0] ?? '';
   const path = rawPath.replace(/\/+$/, '') || '/';
-  if (path === '/login' || path === '/logout' || path === '/register') return true;
+  if (path === '/login' || path === '/logout' || path === '/register' || path === '/setup') return true;
   // App may be mounted under /web/ (exact segments only — not /pos/register).
-  if (/^\/web\/(login|logout|register)$/.test(path)) return true;
+  if (/^\/web\/(login|logout|register|setup)$/.test(path)) return true;
 
   const name = String(to?.name ?? '').trim();
-  if (name === 'login' || name === 'logout' || name === 'register') {
+  if (name === 'login' || name === 'logout' || name === 'register' || name === 'setup') {
     // Name-only matches are for auth stubs; a concrete non-auth path (e.g. POS
     // `/pos/register` named `register`) must keep the dirty-leave prompt.
     const hasConcretePath = String(to?.path ?? '').trim() !== '';

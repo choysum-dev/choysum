@@ -34,6 +34,8 @@ function buildMockState() {
   const Login = makeFn();
   const Logout = makeFn();
   const Register = makeFn();
+  const CompleteInitialSetup = makeFn();
+  const GetInitialSetupState = makeFn();
   const RefreshTokens = makeFn();
   const Browse = makeFn();
   const UpdateById = makeFn();
@@ -67,13 +69,26 @@ function buildMockState() {
       Login: Login.fn,
       Logout: Logout.fn,
       Register: Register.fn,
+      CompleteInitialSetup: CompleteInitialSetup.fn,
+      GetInitialSetupState: GetInitialSetupState.fn,
       RefreshTokens: RefreshTokens.fn,
       Browse: Browse.fn,
       UpdateById: UpdateById.fn,
       GetPermissionState: GetPermissionState.fn,
       SwitchCompanyScope: SwitchCompanyScope.fn,
     },
-    _recorders: { Login, Logout, Register, RefreshTokens, Browse, UpdateById, GetPermissionState, SwitchCompanyScope },
+    _recorders: {
+      Login,
+      Logout,
+      Register,
+      CompleteInitialSetup,
+      GetInitialSetupState,
+      RefreshTokens,
+      Browse,
+      UpdateById,
+      GetPermissionState,
+      SwitchCompanyScope,
+    },
   };
 }
 
@@ -336,6 +351,99 @@ test('register: rejects a response without a UserId string', async () => {
     caught = err;
   }
   expect(String(caught?.code || '')).toBe('REGISTRATION_FAILED');
+});
+
+test('completeInitialSetup: hashes password and marks setup complete', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState._recorders.CompleteInitialSetup.resolve({ UserId: 'usr_admin' });
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  const result = await actions.completeInitialSetup('  admin  ', 'secret1');
+
+  expect(result).toEqual({ UserId: 'usr_admin' });
+  const payload = mockState._recorders.CompleteInitialSetup.calls[0].args[0] as {
+    Username: string;
+    Password: string;
+  };
+  expect(payload.Username).toBe('admin');
+  expect(payload.Password).toBe(await hashPasswordClient('secret1', 'admin'));
+  expect(await actions.ensureSetupStateReady()).toBe(true);
+  expect(mockState._recorders.GetInitialSetupState.calls.length).toBe(0);
+});
+
+test('ensureSetupStateReady: does not cache a pending probe result', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState._recorders.GetInitialSetupState.resolve({ Complete: false });
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  expect(await actions.ensureSetupStateReady()).toBe(false);
+  expect(await actions.ensureSetupStateReady()).toBe(false);
+  expect(mockState._recorders.GetInitialSetupState.calls.length).toBe(2);
+});
+
+test('ensureSetupStateReady: caches Ready and accepts lowercase complete', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState._recorders.GetInitialSetupState.resolve({ complete: true });
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  expect(await actions.ensureSetupStateReady()).toBe(true);
+  expect(await actions.ensureSetupStateReady()).toBe(true);
+  expect(mockState._recorders.GetInitialSetupState.calls.length).toBe(1);
+
+  const failing = buildMockState();
+  failing._recorders.GetInitialSetupState.reject(new Error('probe down'));
+  const failingActions = defineAuthActions(failing as any, buildMockHelpers() as any, { isClient: true });
+  let caught: any;
+  try {
+    await failingActions.ensureSetupStateReady();
+  } catch (err) {
+    caught = err;
+  }
+  expect(String(caught?.code || '')).toBe('INITIALIZATION_FAILED');
+});
+
+test('ensureSetupStateReady: clearAuth invalidates the cached Ready probe', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState._recorders.GetInitialSetupState.resolve({ Complete: true });
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    clearAuthStorage: () => {},
+  });
+  expect(await actions.ensureSetupStateReady()).toBe(true);
+  expect(mockState._recorders.GetInitialSetupState.calls.length).toBe(1);
+
+  actions.clearAuth();
+  mockState._recorders.GetInitialSetupState.resolve({ Complete: false });
+  expect(await actions.ensureSetupStateReady()).toBe(false);
+  expect(mockState._recorders.GetInitialSetupState.calls.length).toBe(2);
+});
+
+test('completeInitialSetup: rejects an invalid response and clears setup cache', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState._recorders.GetInitialSetupState.resolve({ Complete: true });
+  mockState._recorders.CompleteInitialSetup.resolve({ UserId: '' });
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  expect(await actions.ensureSetupStateReady()).toBe(true);
+  expect(mockState._recorders.GetInitialSetupState.calls.length).toBe(1);
+
+  let caught: any;
+  try {
+    await actions.completeInitialSetup('admin', 'secret1');
+  } catch (err) {
+    caught = err;
+  }
+  expect(String(caught?.code || '')).toBe('UNKNOWN');
+
+  mockState._recorders.GetInitialSetupState.resolve({ Complete: false });
+  expect(await actions.ensureSetupStateReady()).toBe(false);
+  expect(mockState._recorders.GetInitialSetupState.calls.length).toBe(2);
 });
 
 test('register: wraps a Register RPC failure', async () => {

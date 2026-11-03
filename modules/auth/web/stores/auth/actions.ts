@@ -40,6 +40,8 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
   // Declared at the top of the function scope so it is visible to all
   // inner functions that reference it (loginImpl, ensureAuthReady, etc.).
   let initInFlight: Promise<void> | null = null;
+  // Cached GetInitialSetupState result for route guards (null = not probed yet).
+  let setupCompleteCache: boolean | null = null;
   const clientSide = deps?.isClient ?? isClient;
   const clearStoredAuth = deps?.clearAuthStorage ?? (() => authStorage.clearAuthStorage());
 
@@ -66,6 +68,9 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
   function clearAuth(): void {
     // Reset in-memory auth state first.
     helpers.resetAuthState();
+
+    // Re-probe setup phase after logout / credential wipe.
+    setupCompleteCache = null;
 
     // Drop the cached permission snapshot.
     state.permissionState.value = null;
@@ -163,6 +168,63 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
       throw wrapAuthError(error, {
         code: AuthErrCode.UNKNOWN,
         message: _t('Failed to switch company scope'),
+      });
+    }
+  }
+
+  /**
+   * Resolve whether first-run setup is complete (anonymous probe).
+   * Only the terminal Ready result is cached; pending always re-probes so a
+   * cross-tab CompleteInitialSetup is visible on the next navigation.
+   */
+  async function ensureSetupStateReady(): Promise<boolean> {
+    if (setupCompleteCache === true) {
+      return true;
+    }
+    try {
+      const resp = (await state.userStore.GetInitialSetupState({})) as {
+        Complete?: boolean;
+        complete?: boolean;
+      } | null;
+      const complete = !!(resp && (resp.Complete ?? resp.complete));
+      if (complete) {
+        setupCompleteCache = true;
+      }
+      return complete;
+    } catch (error) {
+      throw wrapAuthError(error, {
+        code: AuthErrCode.INITIALIZATION_FAILED,
+        message: _t('Failed to load initial setup state'),
+      });
+    }
+  }
+
+  /**
+   * Complete first-run setup (seed admin credentials + setup.completed_at).
+   * Does not create a session; callers Login afterward (same shape as Register).
+   */
+  async function completeInitialSetupImpl(username: string, password: string): Promise<any> {
+    try {
+      const normalizedUsername = username.trim();
+      const hashedPassword = await hashPasswordClient(password, normalizedUsername);
+      const result = await state.userStore.CompleteInitialSetup({
+        Username: normalizedUsername,
+        Password: hashedPassword,
+      });
+      if (!result || typeof (result as any).UserId !== 'string' || (result as any).UserId === '') {
+        throw newAuthError({
+          code: AuthErrCode.UNKNOWN,
+          message: _t('CompleteInitialSetup returned an invalid response'),
+        });
+      }
+      setupCompleteCache = true;
+      return result;
+    } catch (error) {
+      // Another client may have finished setup; force the next guard to re-probe.
+      setupCompleteCache = null;
+      throw wrapAuthError(error, {
+        code: AuthErrCode.UNKNOWN,
+        message: _t('Initial setup failed'),
       });
     }
   }
@@ -581,6 +643,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
 
   // Wrap public async actions with shared loading-state bookkeeping.
   const register = withLoading(registerImpl, state.loading);
+  const completeInitialSetup = withLoading(completeInitialSetupImpl, state.loading);
   const login = withLoading(loginImpl, state.loading);
   const logout = withLoading(logoutImpl, state.loading);
   const refreshToken = refreshTokenImpl;
@@ -595,10 +658,12 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
     refreshToken,
     initAuth,
     ensureAuthReady,
+    ensureSetupStateReady,
     loadUser,
     loadPermissionState,
     switchCompanyScope,
     register,
+    completeInitialSetup,
     getCsrfToken,
     persistLanguagePreference,
   };

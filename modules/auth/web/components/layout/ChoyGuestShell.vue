@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
   <Xpath expr="//*[@data-anchor='choy.shell.header-actions']" position="inside">
     <template v-if="!isAuthenticated">
       <ChoyButton
-        v-if="!isLoginRoute"
+        v-if="showLogin"
         variant="ghost"
         size="sm"
         :aria-label="_t('Log in')"
@@ -65,17 +65,19 @@ export default defineComponent({
     const authStore = useAuthStore();
     const isAuthenticated = computed(() => authStore.isAuthenticated);
     const isLoginRoute = computed(() => route?.value?.name === 'login' || route?.value?.path === '/login');
+    const isSetupRoute = computed(() => route?.value?.name === 'setup' || route?.value?.path === '/setup');
     const isRegisterRoute = computed(
       () => route?.value?.name === 'register' || route?.value?.path === '/register',
     );
     const showRegister = computed(() => {
-      if (isRegisterRoute.value) return false;
+      if (isRegisterRoute.value || isSetupRoute.value) return false;
       try {
         return typeof router.hasRoute === 'function' ? router.hasRoute('register') : true;
       } catch {
         return true;
       }
     });
+    const showLogin = computed(() => !isLoginRoute.value && !isSetupRoute.value);
 
     function handleLogin() {
       void router?.push?.({ name: 'login' });
@@ -90,6 +92,7 @@ export default defineComponent({
       _t,
       isAuthenticated,
       isLoginRoute,
+      showLogin,
       showRegister,
       handleLogin,
       handleRegister,

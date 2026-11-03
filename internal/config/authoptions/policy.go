@@ -58,6 +58,14 @@ func defaultGrpcEntryPolicy() map[string]*EntryMethodConfig {
 			},
 			SkipFieldRule: true,
 		},
+		// Anonymous SetupPending/Ready probe for /web/setup routing.
+		"auth.User/GetInitialSetupState": {
+			SkipAuthentication: true,
+			SkipMethodAccess:   true,
+			SkipCompanyFilter:  true,
+			SkipRecordRule:     true,
+			SkipFieldRule:      true,
+		},
 		"auth.User/Login": {
 			SkipAuthentication: true,
 			SkipCompanyFilter:  true,

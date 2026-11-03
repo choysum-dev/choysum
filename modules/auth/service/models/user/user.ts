@@ -45,11 +45,16 @@ import {
   validateAndHashRegistrationInput,
   validateLoginCandidateOrThrow,
 } from './_lifecycle_auth';
-import { completeInitialSetupForUser } from './_lifecycle_complete_initial_setup';
+import {
+  completeInitialSetupForUser,
+  isInitialSetupComplete,
+} from './_lifecycle_complete_initial_setup';
 import {
   pickRegisterUserInput,
   type CompleteInitialSetupReq,
   type CompleteInitialSetupResp,
+  type GetInitialSetupStateReq,
+  type GetInitialSetupStateResp,
   type LoginReq,
   type LogoutReq,
   type RefreshTokensReq,
@@ -66,6 +71,8 @@ import { buildAuthzContext, computePermStateVersion } from './_authz_context';
 export type {
   CompleteInitialSetupReq,
   CompleteInitialSetupResp,
+  GetInitialSetupStateReq,
+  GetInitialSetupStateResp,
   LoginReq,
   LogoutReq,
   RefreshTokensReq,
@@ -389,6 +396,15 @@ export default class User extends AttachmentOwnerMixin {
       }).withGrpcCode(GrpcCode.InvalidArgument);
     }
     this.LanguageId = languageId;
+  }
+
+  /**
+   * Anonymous probe: whether first-run setup is already complete.
+   * Used by the web shell to route SetupPending ↔ Ready without creating a session.
+   */
+  static async GetInitialSetupState(req: GetInitialSetupStateReq): Promise<GetInitialSetupStateResp> {
+    requireSessionEnvelope(req, 'GetInitialSetupState');
+    return { Complete: await isInitialSetupComplete() };
   }
 
   /**
