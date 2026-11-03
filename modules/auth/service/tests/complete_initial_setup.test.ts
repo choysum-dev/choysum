@@ -198,3 +198,51 @@ test('CompleteInitialSetup: rejects invalid envelope fields', async () => {
     AuthErrCode.VALIDATION_FAILED
   );
 });
+
+test('CompleteInitialSetup: claims over a blank setup.completed_at row', async () => {
+  resetRequestContext();
+  setupAllowlistForCompleteInitialSetup();
+  await clearSetupCompletedAt();
+
+  await withModelContext(
+    {} as any,
+    async () => {
+      await withPermissionGraphBypass(async () => {
+        // Pending blank marker occupies the unique Key; claim must reclaim it.
+        await pool<AppSettingModelCtor>('auth', 'AppSetting').Set(SETUP_COMPLETED_AT_KEY, '   ');
+      });
+    },
+    { merge: false }
+  );
+
+  const adminId = String(
+    await withModelContext(
+      {} as any,
+      async () => MetaModelDataService.Ref('auth.user_admin'),
+      { merge: false }
+    ) || ''
+  ).trim();
+  expect(adminId === '').toBe(false);
+
+  const result = await withModelContext(
+    {} as any,
+    async () =>
+      User.CompleteInitialSetup({
+        Username: 'admin',
+        Password: 'password-blank-claim',
+      }),
+    { merge: false }
+  );
+  expect(String(result.UserId || '')).toBe(adminId);
+
+  const completedAt = String(
+    (await withModelContext(
+      {} as any,
+      async () => pool<AppSettingModelCtor>('auth', 'AppSetting').Get(SETUP_COMPLETED_AT_KEY, null),
+      { merge: false }
+    )) || ''
+  ).trim();
+  expect(completedAt === '').toBe(false);
+
+  await clearSetupCompletedAt();
+});

@@ -7,7 +7,6 @@ import { withRecordRuleAndFieldRuleBypass } from '@/core/service/api/authz_bypas
 import type MetaModelData from '@/meta/service/models/model_data';
 import { newAuthError, AuthErrCode, GrpcCode } from '../../error';
 import { _t } from '../../i18n';
-import AppSetting from '../app_setting';
 import Session from '../session';
 import Token from '../token';
 import { hashPassword, withPermissionGraphBypass } from './_authz_shared';
@@ -194,16 +193,24 @@ async function assertSetupStillPending(): Promise<void> {
 
 /**
  * Create-only claim of setup.completed_at. Concurrent losers map unique hits to ALREADY_COMPLETE.
+ * A blank existing row (pending) is deleted first so Create can reclaim the unique Key.
  */
 async function claimSetupCompletedAt(iso: string): Promise<void> {
   await withRecordRuleAndFieldRuleBypass(async () => {
     const store = pool<AppSettingModelCtor>('auth', 'AppSetting');
-    if (String((await store.Get(SETUP_COMPLETED_AT_KEY, null)) || '').trim()) {
+    const current = await store.Get(SETUP_COMPLETED_AT_KEY, null);
+    if (String(current || '').trim()) {
       throw alreadyCompleteError();
     }
+    // Blank row still occupies the unique Key; free it before create-only claim.
+    // Set(null) hard-deletes (auth.AppSetting softDelete: false).
+    if (current !== null) {
+      await store.Set(SETUP_COMPLETED_AT_KEY, null);
+    }
     try {
-      // Create-only (not Set upsert) so a concurrent loser hits the unique key and maps to ALREADY_COMPLETE.
-      await AppSetting.Create({ Key: SETUP_COMPLETED_AT_KEY, Value: iso } as any);
+      // Create-only via the auth-scoped store (not Set upsert) so a concurrent loser
+      // hits the unique key and maps to ALREADY_COMPLETE.
+      await (store as any).Create({ Key: SETUP_COMPLETED_AT_KEY, Value: iso });
     } catch (err) {
       if (isUniqueConstraintError(err)) {
         throw alreadyCompleteError();

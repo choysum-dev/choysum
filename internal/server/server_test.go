@@ -131,8 +131,9 @@ func TestServerMoreInterceptorsAndTelemetry(t *testing.T) {
 	unary := []grpc.UnaryServerInterceptor{baseUnary}
 	stream, authResult := srv.setupAuthInterceptors(&unary)
 	assertAuthRuntimeSetupResult(t, authResult, false, false, false, false, "auth-disabled setup")
-	if stream != nil || len(unary) != 1 {
-		t.Fatalf("expected auth-disabled setup to be a no-op, got stream=%v unary=%d", stream != nil, len(unary))
+	// SetupPending gate stays wired even when auth runtime is off.
+	if stream == nil || len(unary) != 2 {
+		t.Fatalf("expected setupgate when auth disabled, got stream=%v unary=%d", stream != nil, len(unary))
 	}
 
 	runtimeScope.cfg.Auth.Enabled = true
@@ -145,8 +146,8 @@ func TestServerMoreInterceptorsAndTelemetry(t *testing.T) {
 	if srv.jsExecutor != executor {
 		t.Fatal("expected setupAuthInterceptors error path to leave js executor ownership unchanged")
 	}
-	if srv.authenticator != nil || stream != nil || len(unary) != 1 {
-		t.Fatalf("expected setupAuthInterceptors error path to leave grpc auth state unchanged, got authenticator=%v stream=%v unary=%d", srv.authenticator != nil, stream != nil, len(unary))
+	if srv.authenticator != nil || stream == nil || len(unary) != 2 {
+		t.Fatalf("expected setupgate without authenticator on auth error, got authenticator=%v stream=%v unary=%d", srv.authenticator != nil, stream != nil, len(unary))
 	}
 
 	runtimeScope.cfg.Auth.Type = "jwt"
@@ -158,9 +159,11 @@ func TestServerMoreInterceptorsAndTelemetry(t *testing.T) {
 	unary = []grpc.UnaryServerInterceptor{baseUnary}
 	stream, authResult = srv.setupAuthInterceptors(&unary)
 	assertAuthRuntimeSetupResult(t, authResult, true, true, false, false, "auth setup success path")
-	if srv.authenticator == nil || stream == nil || len(unary) != 2 {
-		t.Fatalf("expected auth interceptors to be installed, got authenticator=%v stream=%v unary=%d", srv.authenticator != nil, stream != nil, len(unary))
+	// Auth interceptor + setupgate prepended ahead of the base unary.
+	if srv.authenticator == nil || stream == nil || len(unary) != 3 {
+		t.Fatalf("expected auth+setupgate interceptors, got authenticator=%v stream=%v unary=%d", srv.authenticator != nil, stream != nil, len(unary))
 	}
+	_ = stream
 	_ = serverOpts
 
 	tel := fakeTelemetry{}
@@ -588,4 +591,76 @@ func TestServerBootstrapModeStartupDoesNotEmitInfoDetailLogs(t *testing.T) {
 	if got := srv.runState.serviceTargets(); len(got) != 1 || got[0] != "bootstrap" {
 		t.Fatalf("bootstrap service targets = %#v, want [bootstrap]", got)
 	}
+}
+
+type chainTestServerStream struct {
+	grpc.ServerStream
+	ctx context.Context
+}
+
+func (s *chainTestServerStream) Context() context.Context { return s.ctx }
+
+func TestChainStreamServer(t *testing.T) {
+	info := &grpc.StreamServerInfo{FullMethod: "/svc.Stream/Call"}
+	ss := &chainTestServerStream{ctx: context.Background()}
+
+	t.Run("empty and nil", func(t *testing.T) {
+		called := false
+		err := chainStreamServer()(nil, ss, info, func(srv any, stream grpc.ServerStream) error {
+			called = true
+			return nil
+		})
+		if err != nil || !called {
+			t.Fatalf("empty chain: err=%v called=%v", err, called)
+		}
+
+		called = false
+		err = chainStreamServer(nil, nil)(nil, ss, info, func(srv any, stream grpc.ServerStream) error {
+			called = true
+			return nil
+		})
+		if err != nil || !called {
+			t.Fatalf("nil-only chain: err=%v called=%v", err, called)
+		}
+	})
+
+	t.Run("single", func(t *testing.T) {
+		order := []string{}
+		only := func(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+			order = append(order, "a")
+			return handler(srv, stream)
+		}
+		err := chainStreamServer(only)(nil, ss, info, func(srv any, stream grpc.ServerStream) error {
+			order = append(order, "h")
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := strings.Join(order, ","); got != "a,h" {
+			t.Fatalf("order = %q", got)
+		}
+	})
+
+	t.Run("multi skips nil", func(t *testing.T) {
+		order := []string{}
+		outer := func(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+			order = append(order, "outer")
+			return handler(srv, stream)
+		}
+		inner := func(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+			order = append(order, "inner")
+			return handler(srv, stream)
+		}
+		err := chainStreamServer(outer, nil, inner)(nil, ss, info, func(srv any, stream grpc.ServerStream) error {
+			order = append(order, "h")
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := strings.Join(order, ","); got != "outer,inner,h" {
+			t.Fatalf("order = %q", got)
+		}
+	})
 }
