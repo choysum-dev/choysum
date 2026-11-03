@@ -13,10 +13,10 @@ export function useListViewExpose() {
   return {};
 }
 
-export function provideOPageContext() {}
+export function providePageContext() {}
 
 export default {
   resolvePageStore: resolvePageStore,
   useListViewExpose: useListViewExpose,
-  provideOPageContext: provideOPageContext,
+  providePageContext: providePageContext,
 };

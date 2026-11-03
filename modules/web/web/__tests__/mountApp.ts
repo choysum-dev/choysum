@@ -78,7 +78,7 @@ export function stubSfc(Comp: any, replacement: Component): void {
   }
   const r = replacement as any;
   Comp.setup = r.setup;
-  // Clear compiled render so setup-returned render wins (Element Plus withInstall SFCs).
+  // Clear compiled render so setup-returned render wins (library-wrapped SFCs).
   Comp.render = r.render ?? undefined;
   Comp.ssrRender = r.ssrRender ?? undefined;
   if (r.props !== undefined) Comp.props = r.props;

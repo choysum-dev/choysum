@@ -389,7 +389,7 @@ async function resolveToCSS(loc) {
       const roleSelectors = {
         button: 'button, [role="button"], input[type="button"], input[type="submit"], input[type="reset"]',
         option: '[role="option"], option',
-        dialog: '[role="dialog"], dialog, .el-dialog',
+        dialog: '[role="dialog"], dialog',
         menuitem: '[role="menuitem"]',
       };
       const sel = roleSelectors[role] || ('[role="' + String(role).replace(/"/g, '') + '"]');
@@ -433,23 +433,8 @@ async function resolveToCSS(loc) {
       };
 
       let nodes = Array.from(root.querySelectorAll(sel)).filter(nameOk);
-      // Element Plus: role=dialog may sit on the overlay wrapper; map to .el-dialog.
-      if (role === 'dialog') {
-        nodes = nodes.map((el) => {
-          if (el.classList && el.classList.contains('el-dialog')) return el;
-          const inner = el.querySelector ? el.querySelector('.el-dialog') : null;
-          return inner || el;
-        });
-        // Wrapper + .el-dialog both match the selector; mapping collapses them to one node.
-        nodes = nodes.filter((el, i) => nodes.indexOf(el) === i);
-      }
-      // Prefer visible candidates before preferring .el-dialog content panels.
       const visible = nodes.filter(isVisibleEl);
       if (visible.length) nodes = visible;
-      if (role === 'dialog') {
-        const content = nodes.filter((el) => el.classList && el.classList.contains('el-dialog'));
-        if (content.length) nodes = content;
-      }
       const resolved = index < 0 ? nodes.length + index : index;
       if (resolved < 0 || resolved >= nodes.length) {
         throw new Error('getByRole: no match for role=' + role + ' index=' + index + ' count=' + nodes.length);
@@ -592,7 +577,7 @@ async function collectMatchedElements(loc) {
       const roleSelectors = {
         button: 'button, [role="button"], input[type="button"], input[type="submit"], input[type="reset"]',
         option: '[role="option"], option',
-        dialog: '[role="dialog"], dialog, .el-dialog',
+        dialog: '[role="dialog"], dialog',
         menuitem: '[role="menuitem"]',
       };
       const sel = roleSelectors[role] || ('[role="' + String(role).replace(/"/g, '') + '"]');
@@ -632,20 +617,8 @@ async function collectMatchedElements(loc) {
         return name.includes(want);
       };
       let nodes = Array.from(root.querySelectorAll(sel)).filter(nameOk);
-      if (role === 'dialog') {
-        nodes = nodes.map((el) => {
-          if (el.classList && el.classList.contains('el-dialog')) return el;
-          const inner = el.querySelector ? el.querySelector('.el-dialog') : null;
-          return inner || el;
-        });
-        nodes = nodes.filter((el, i) => nodes.indexOf(el) === i);
-      }
       const visible = nodes.filter(isVisibleEl);
       if (visible.length) nodes = visible;
-      if (role === 'dialog') {
-        const content = nodes.filter((el) => el.classList && el.classList.contains('el-dialog'));
-        if (content.length) nodes = content;
-      }
       return nodes.map(el => el.textContent);
     })()`);
     return JSON.parse(raw);

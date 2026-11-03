@@ -744,7 +744,7 @@ func TestGenerateChoyTailwindForModulePropagatesGenerateError(t *testing.T) {
 
 func TestResolveChoyKitModuleRootPrefersWeb(t *testing.T) {
 	root := t.TempDir()
-	for _, name := range []string{"choy_ui", "web"} {
+	for _, name := range []string{"sibling_mod", "web"} {
 		dir := filepath.Join(root, name, "web", "styles")
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
@@ -762,16 +762,16 @@ func TestResolveChoyKitModuleRootPrefersWeb(t *testing.T) {
 	}
 }
 
-func TestResolveChoyKitModuleRootFallsBackToChoyUI(t *testing.T) {
+func TestResolveChoyKitModuleRootEmptyWithoutWebKitDialect(t *testing.T) {
 	root := t.TempDir()
-	dir := filepath.Join(root, "choy_ui", "web", "styles")
+	dir := filepath.Join(root, "sibling_mod", "web", "styles")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "theme.css"), []byte(`@theme { --color-primary: red; }`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	// Product web present but not a kit host: legacy choy_ui alone is not a kit.
+	// Product web present but not a kit host: sibling_mod dialect alone is not a kit.
 	if err := os.MkdirAll(filepath.Join(root, "web", "web"), 0o755); err != nil {
 		t.Fatal(err)
 	}

@@ -3,7 +3,7 @@
 
 import { createTranslate } from '@/core/service/i18n';
 
-// Avoid importing menus.ts (Element Plus icons) under QuickJS FE unit.
+// Avoid importing menus.ts (icon registry side effects) under QuickJS FE unit.
 const menuTitle = createTranslate('meta', { scope: 'web/menu/menus' })._lt('Module Management');
 
 test('meta menu/route _lt titles: TermReference factory pins Module Management menu src', () => {

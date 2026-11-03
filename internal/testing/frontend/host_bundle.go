@@ -38,8 +38,6 @@ type VueHostBundleOptions struct {
 	WithVuePlugin bool
 	// ExtraStubAliases maps import paths (package names or absolute file paths) to stub files.
 	// Default FE unit stubs (vue-router, page-mount, tiptap, path stubs, auth store) always apply.
-	// Page.vue / legacy OPage.vue use a dedicated rewrite (skips Page*.test.ts / OPage*.test.ts
-	// importers) plus path stubs so domain page mounts stay light.
 	ExtraStubAliases map[string]string
 	// DisableDefaultFEStubs skips built-in package/path stubs (host unit tests only).
 	DisableDefaultFEStubs bool
@@ -118,7 +116,6 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 		stubs := feUnitStubPaths{
 			Router:              filepath.Join(stubDir, "vue_router.js"),
 			PageMount:           filepath.Join(stubDir, "page_mount.js"),
-			OPage:               filepath.Join(stubDir, "OPage.stub.vue"),
 			ChildView:           filepath.Join(stubDir, "ChildView.stub.vue"),
 			AuthStore:           filepath.Join(stubDir, "auth_store.js"),
 			I18n:                filepath.Join(stubDir, "i18n_create_translate.js"),
@@ -153,32 +150,6 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 							return res, nil
 						}
 						return api.OnResolveResult{}, nil
-					})
-			},
-		})
-		plugins = append(plugins, api.Plugin{
-			Name: "choysum-fe-unit-page-stub",
-			Setup: func(build api.PluginBuild) {
-				// Blanket Page.vue / legacy OPage.vue rewrite for product pages (path-alias
-				// resolves often leave Importer empty, so feUnitPathStubPath alone is not
-				// enough). Does not match ChoyPage.vue. Skip when a web Page unit test
-				// imports the real SUT.
-				build.OnResolve(api.OnResolveOptions{Filter: `(?:^|/)(?:OPage|Page)\.vue$`},
-					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
-						importer := filepath.ToSlash(args.Importer)
-						// Match feUnitPathStubPath: web component tests/SFCs keep real Page.
-						isWebComponentUnit := strings.Contains(importer, "/web/web/components/") &&
-							(strings.Contains(importer, ".test.") || strings.Contains(importer, ".spec.") ||
-								strings.HasSuffix(importer, ".vue"))
-						base := filepath.Base(importer)
-						if isWebComponentUnit ||
-							strings.HasPrefix(base, "Page.mapping.test.") ||
-							strings.HasPrefix(base, "Page.test.") ||
-							strings.HasPrefix(base, "OPage.mapping.test.") ||
-							strings.HasPrefix(base, "OPage.test.") {
-							return api.OnResolveResult{}, nil
-						}
-						return api.OnResolveResult{Path: stubs.OPage, Namespace: "file"}, nil
 					})
 			},
 		})

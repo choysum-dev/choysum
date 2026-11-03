@@ -29,7 +29,6 @@ func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 	stubs := feUnitStubPaths{
 		Router:              "router",
 		PageMount:           "pm",
-		OPage:               "opage",
 		ChildView:           "child",
 		AuthStore:           "auth",
 		I18n:                "i18n",
@@ -91,16 +90,13 @@ func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 		p, joined, importer, want string
 		ok                        bool
 	}{
-		// Legacy Page.vue / OPage.vue still stub for product pages; ChoyPage is a normal child.
-		{"@/web/web/components/page/Page.vue", "/x/Page.vue", page, "opage", true},
-		{"@/web/web/components/page/Page.vue", "/x/Page.vue", "", "opage", true},
-		{"@/web/web/components/page/OPage.vue", "/x/OPage.vue", page, "opage", true},
+		{"@/web/web/components/page/Page.vue", "/x/Page.vue", page, "child", true},
+		{"@/web/web/components/page/Page.vue", "/x/Page.vue", "", "child", true},
 		{"@/web/web/components/layout/ChoyPage.vue", "/x/ChoyPage.vue", page, "child", true},
-		{"@/web/web/components/layout/OHeader.vue", "/x/OHeader.vue", page, "child", true},
+		{"@/web/web/components/layout/ChoyHeader.vue", "/x/ChoyHeader.vue", page, "child", true},
 		{"./OChatterMessageItem.vue", "/repo/modules/web/web/components/chatter/OChatterMessageItem.vue", "/repo/modules/web/web/components/chatter/OChatterMessageItem.test.ts", "", false},
-		{"@/web/web/components/layout/OHeader.vue", "/x/OHeader.vue", "/other.ts", "", false},
+		{"@/web/web/components/layout/ChoyHeader.vue", "/x/ChoyHeader.vue", "/other.ts", "", false},
 		{"./Page.vue", "/repo/modules/web/web/components/layout/Page.vue", "/repo/modules/web/web/components/layout/ChoyPageIoMenu.test.ts", "", false},
-		{"./OPage.vue", "/repo/modules/web/web/components/layout/OPage.vue", "/repo/modules/web/web/components/layout/ChoyPage.storeContext.mount.test.ts", "", false},
 		{"./PartnerFormView.vue", "/x/PartnerFormView.vue", page, "child", true},
 		{"@/web/web/components/view/ChoyFormView.vue", "/modules/web/web/components/view/ChoyFormView.vue", page, "", false},
 		{"@/web/web/components/view/ChoyFormView.vue", "/modules/web/web/components/view/ChoyFormView.vue", "", "", false},
@@ -210,7 +206,7 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 	}
 
 	// Drive FE stub OnResolve callbacks without network by invoking Setup on a capture PluginBuild.
-	var pkgCB, pageCB, childViewCB func(api.OnResolveArgs) (api.OnResolveResult, error)
+	var pkgCB, childViewCB func(api.OnResolveArgs) (api.OnResolveResult, error)
 	var pathCBs []func(api.OnResolveArgs) (api.OnResolveResult, error)
 	esbuildBuild = func(opts api.BuildOptions) api.BuildResult {
 		pb := api.PluginBuild{
@@ -224,8 +220,6 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 				switch o.Filter {
 				case `^(vue-router|@choysum/page-mount|@tiptap/vue-3|@tiptap/starter-kit|@tiptap/extension-link|dompurify|codemirror|@codemirror/view|@codemirror/state|@codemirror/lang-json|@codemirror/lint|@unovis/vue|@unovis/ts|reka-ui|lucide-vue-next|vue-sonner)$`:
 					pkgCB = cb
-				case `(?:^|/)(?:OPage|Page)\.vue$`:
-					pageCB = cb
 				case `(FormView|ListView|KanbanView)\.vue$`:
 					childViewCB = cb
 				case `.*`:
@@ -251,7 +245,7 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 	}
 	esbuildBuild = prevBuild
 
-	if pkgCB == nil || pageCB == nil || childViewCB == nil || len(pathCBs) == 0 {
+	if pkgCB == nil || childViewCB == nil || len(pathCBs) == 0 {
 		t.Fatal("expected FE stub OnResolve callbacks to be registered")
 	}
 	for _, path := range []string{"vue-router", "@choysum/page-mount", "dompurify"} {
@@ -265,23 +259,7 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 	if err != nil || fallthroughRes.Path != "" {
 		t.Fatalf("package stub fallthrough: %#v err=%v", fallthroughRes, err)
 	}
-	pageRes, err := pageCB(api.OnResolveArgs{Path: "./Page.vue", Importer: "/modules/web/web/pages/TerminologyEditor.vue"})
-	if err != nil || !strings.HasSuffix(pageRes.Path, "OPage.stub.vue") {
-		t.Fatalf("page stub: %#v err=%v", pageRes, err)
-	}
-	legacyPageRes, err := pageCB(api.OnResolveArgs{Path: "./OPage.vue", Importer: "/modules/auth/web/pages/Login.vue"})
-	if err != nil || !strings.HasSuffix(legacyPageRes.Path, "OPage.stub.vue") {
-		t.Fatalf("legacy OPage stub: %#v err=%v", legacyPageRes, err)
-	}
-	pageSkip, err := pageCB(api.OnResolveArgs{Path: "./Page.vue", Importer: "/modules/web/web/components/layout/ChoyPageIoMenu.test.ts"})
-	if err != nil || pageSkip.Path != "" {
-		t.Fatalf("page skip for layout unit test: %#v err=%v", pageSkip, err)
-	}
-	pageSkipVue, err := pageCB(api.OnResolveArgs{Path: "./Page.vue", Importer: "/modules/web/web/components/layout/ChoyPageIoMenu.vue"})
-	if err != nil || pageSkipVue.Path != "" {
-		t.Fatalf("page skip for web component SFC: %#v err=%v", pageSkipVue, err)
-	}
-	childRes, err := childViewCB(api.OnResolveArgs{Path: "@/web/web/components/view/OFormView.vue", Importer: "/modules/partner_commercial/web/views/PartnerIdentifierFormView.vue"})
+	childRes, err := childViewCB(api.OnResolveArgs{Path: "@/web/web/components/view/DomainFormView.vue", Importer: "/modules/partner_commercial/web/views/PartnerIdentifierFormView.vue"})
 	if err != nil || !strings.HasSuffix(childRes.Path, "ChildView.stub.vue") {
 		t.Fatalf("child view stub: %#v err=%v", childRes, err)
 	}
@@ -314,7 +292,7 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 		if err != nil {
 			t.Fatalf("page from page err: %v", err)
 		}
-		if strings.HasSuffix(pagePage.Path, "OPage.stub.vue") {
+		if strings.HasSuffix(pagePage.Path, "ChildView.stub.vue") {
 			pageFromPage = true
 		}
 		testPage, err := pathCB(api.OnResolveArgs{
@@ -339,7 +317,7 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 		t.Fatal("expected FE path stub to resolve registry")
 	}
 	if !pageFromPage {
-		t.Fatal("expected Page stub for page/view importers")
+		t.Fatal("expected ChildView stub for page shell imports from product pages")
 	}
 	if !pageFromTest {
 		t.Fatal("expected real Page for FE unit test importers")

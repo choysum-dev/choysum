@@ -21,7 +21,7 @@ type typeFetchDependencyTarget struct {
 
 // collectModuleSourceImportSpecifiers walks a module tree and returns bare
 // package import specifiers used by TypeScript sources (including subpaths
-// such as "echarts/core").
+// such as "@scope/pkg/sub").
 func collectModuleSourceImportSpecifiers(moduleDir string) ([]string, error) {
 	moduleDir = strings.TrimSpace(moduleDir)
 	if moduleDir == "" {
@@ -206,14 +206,12 @@ func shouldSkipTypeFetchSubpathSpecifier(spec string) bool {
 	switch rootPkg {
 	case "dayjs":
 		return strings.HasPrefix(subpath, "locale/") || strings.HasPrefix(subpath, "plugin/")
-	case "element-plus":
-		return strings.HasPrefix(subpath, "es/locale/lang/")
 	default:
 		return false
 	}
 }
 
-// splitBarePackageSpecifier splits "echarts/core" → ("echarts","core") and
+// splitBarePackageSpecifier splits "acme/core" → ("acme","core") and
 // "@scope/pkg/sub" → ("@scope/pkg","sub"). Bare roots return subpath "".
 func splitBarePackageSpecifier(specifier string) (rootPkg string, subpath string, ok bool) {
 	specifier = strings.TrimSpace(specifier)
@@ -305,7 +303,7 @@ func mergeTypeFetchTargets(base []typeFetchDependencyTarget, extra []typeFetchDe
 }
 
 // typeFetchDiscoverSpec builds the esm.sh discovery path for a package or
-// package subpath: "echarts" → "echarts@6.1.0", "echarts/core" → "echarts@6.1.0/core".
+// package subpath: "acme" → "acme@1.0.0", "acme/core" → "acme@1.0.0/core".
 func typeFetchDiscoverSpec(specifier, version string) string {
 	specifier = strings.TrimSpace(specifier)
 	version = strings.TrimSpace(version)
