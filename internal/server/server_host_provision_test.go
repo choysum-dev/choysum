@@ -185,12 +185,14 @@ func seedLocalWebModule(t *testing.T, cfg *config.Config) {
 	if strings.TrimSpace(cfg.ModulesPath) == "" {
 		cfg.ModulesPath = filepath.Join(t.TempDir(), "modules")
 	}
-	webDir := filepath.Join(cfg.ModulesPath, "web")
-	if err := os.MkdirAll(webDir, 0o755); err != nil {
-		t.Fatalf("mkdir web module: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(webDir, "package.json"), []byte(`{"name":"web"}`), 0o644); err != nil {
-		t.Fatalf("write web package.json: %v", err)
+	for _, name := range []string{"web", "core", "auth", "meta"} {
+		dir := filepath.Join(cfg.ModulesPath, name)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("mkdir %s module: %v", name, err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte(`{"name":"`+name+`"}`), 0o644); err != nil {
+			t.Fatalf("write %s package.json: %v", name, err)
+		}
 	}
 }
 
@@ -516,18 +518,18 @@ func TestHasLocalProvisionModules(t *testing.T) {
 		t.Fatal("empty ModulesPath must be false")
 	}
 	runtimeScope.config.ModulesPath = filepath.Join(t.TempDir(), "modules")
-	if err := os.MkdirAll(filepath.Join(runtimeScope.config.ModulesPath, "core"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(runtimeScope.config.ModulesPath, "web"), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(runtimeScope.config.ModulesPath, "core", "package.json"), []byte(`{}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(runtimeScope.config.ModulesPath, "web", "package.json"), []byte(`{}`), 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 	if hasLocalProvisionModules(runtimeScope) {
-		t.Fatal("core-only must be false; web root required")
+		t.Fatal("web-only must be false; full minimal closure required")
 	}
 	seedLocalWebModule(t, runtimeScope.config)
 	if !hasLocalProvisionModules(runtimeScope) {
-		t.Fatal("web package.json must be true")
+		t.Fatal("web/core/auth/meta package.json must be true")
 	}
 }
 

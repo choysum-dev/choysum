@@ -24,11 +24,12 @@ const (
 	LeaseResource = "system:init"
 )
 
-// leaseTTL / leaseRenewInterval are overridable in tests so renew failure and
-// retry-bound paths stay fast.
+// leaseTTL / leaseRenewInterval / leaseReleaseWait are overridable in tests so
+// renew failure, retry-bound, and release-wait paths stay fast.
 var (
 	leaseTTL           = 60 * time.Second
 	leaseRenewInterval = 20 * time.Second
+	leaseReleaseWait   = 5 * time.Second
 )
 
 // ErrLeaseBusy means another provision/init holds the workspace lease.
@@ -87,16 +88,12 @@ func acquireProvisionLease(ctx context.Context, runtimeScope scope.Scope, locker
 
 func renewProvisionLease(ctx context.Context, runtimeScope scope.Scope, locker statepkg.Locker, handle *leaseHandle, probeDone chan struct{}) {
 	defer close(handle.done)
+	var probeOnce sync.Once
 	signalProbe := func() {
 		if probeDone == nil {
 			return
 		}
-		select {
-		case <-probeDone:
-		default:
-			close(probeDone)
-		}
-		probeDone = nil
+		probeOnce.Do(func() { close(probeDone) })
 	}
 	defer signalProbe()
 
@@ -161,7 +158,10 @@ func releaseProvisionLease(runtimeScope scope.Scope, lockerFactory statepkg.Lock
 	handle.release.Do(func() {
 		close(handle.stopCh)
 		if handle.done != nil {
-			<-handle.done
+			select {
+			case <-handle.done:
+			case <-time.After(leaseReleaseWait):
+			}
 		}
 		if runtimeScope == nil {
 			return

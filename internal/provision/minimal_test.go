@@ -640,9 +640,14 @@ func TestNotifyLeaseRenewErr(t *testing.T) {
 }
 
 func TestReleaseProvisionLeaseWaitsForRenewDone(t *testing.T) {
-	prev := leaseRenewInterval
+	prevInterval := leaseRenewInterval
+	prevWait := leaseReleaseWait
 	leaseRenewInterval = time.Hour
-	t.Cleanup(func() { leaseRenewInterval = prev })
+	leaseReleaseWait = time.Second
+	t.Cleanup(func() {
+		leaseRenewInterval = prevInterval
+		leaseReleaseWait = prevWait
+	})
 
 	released := make(chan struct{})
 	locker := &blockingRenewLocker{renewStarted: make(chan struct{}), releaseCh: released}
@@ -666,6 +671,46 @@ func TestReleaseProvisionLeaseWaitsForRenewDone(t *testing.T) {
 	case <-released:
 	case <-time.After(time.Second):
 		t.Fatal("Release did not finish after renew unblocked")
+	}
+}
+
+func TestReleaseProvisionLeaseBoundsWaitOnHungRenew(t *testing.T) {
+	prevInterval := leaseRenewInterval
+	prevWait := leaseReleaseWait
+	leaseRenewInterval = time.Hour
+	leaseReleaseWait = 20 * time.Millisecond
+	t.Cleanup(func() {
+		leaseRenewInterval = prevInterval
+		leaseReleaseWait = prevWait
+	})
+
+	released := make(chan struct{})
+	locker := &blockingRenewLocker{renewStarted: make(chan struct{}), releaseCh: released}
+	handle := &leaseHandle{
+		ownerID:  "o",
+		stopCh:   make(chan struct{}),
+		done:     make(chan struct{}),
+		renewErr: make(chan error, 1),
+	}
+	go renewProvisionLease(context.Background(), nil, locker, handle, nil)
+	<-locker.renewStarted
+	runtimeScope, _ := newSetupStateScope(t)
+	done := make(chan struct{})
+	go func() {
+		releaseProvisionLease(runtimeScope, func(scope.Scope) statepkg.Locker { return locker }, handle)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("release must time out waiting for hung renew")
+	}
+	// Unblock renew so the background goroutine can exit cleanly.
+	close(locker.unblockRenew)
+	select {
+	case <-handle.done:
+	case <-time.After(time.Second):
+		t.Fatal("renew did not exit after unblock")
 	}
 }
 
