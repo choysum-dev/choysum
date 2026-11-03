@@ -89,6 +89,11 @@ test('auth setup: complete initial setup then land authenticated', async () => {
     if (!/database is locked/i.test(msg)) {
       throw err;
     }
+    // CompleteInitialSetup may already have succeeded; a full retry would hit
+    // ALREADY_COMPLETE. Skip retry once a session token exists.
+    if (await readAuthAccessToken()) {
+      throw err;
+    }
     await runSetupOnce(baseURL);
   }
 });

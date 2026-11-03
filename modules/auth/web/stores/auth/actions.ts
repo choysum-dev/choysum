@@ -173,19 +173,24 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
   }
 
   /**
-   * Resolve whether first-run setup is complete (anonymous probe; cached).
+   * Resolve whether first-run setup is complete (anonymous probe).
+   * Only the terminal Ready result is cached; pending always re-probes so a
+   * cross-tab CompleteInitialSetup is visible on the next navigation.
    */
   async function ensureSetupStateReady(): Promise<boolean> {
-    if (setupCompleteCache !== null) {
-      return setupCompleteCache;
+    if (setupCompleteCache === true) {
+      return true;
     }
     try {
       const resp = (await state.userStore.GetInitialSetupState({})) as {
         Complete?: boolean;
         complete?: boolean;
       } | null;
-      setupCompleteCache = !!(resp && (resp.Complete ?? resp.complete));
-      return setupCompleteCache;
+      const complete = !!(resp && (resp.Complete ?? resp.complete));
+      if (complete) {
+        setupCompleteCache = true;
+      }
+      return complete;
     } catch (error) {
       throw wrapAuthError(error, {
         code: AuthErrCode.INITIALIZATION_FAILED,
@@ -215,6 +220,8 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
       setupCompleteCache = true;
       return result;
     } catch (error) {
+      // Another client may have finished setup; force the next guard to re-probe.
+      setupCompleteCache = null;
       throw wrapAuthError(error, {
         code: AuthErrCode.UNKNOWN,
         message: _t('Initial setup failed'),
