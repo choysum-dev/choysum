@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"sync/atomic"
 
+	"github.com/choysum-dev/choysum/internal/provision"
 	"github.com/choysum-dev/choysum/internal/server/transport"
 	"github.com/choysum-dev/choysum/pkg/auth"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
@@ -48,6 +49,9 @@ type GRPCWebServer struct {
 	registration    registrationState
 	runtimeRecovery runtimeRecoveryState
 	modeSwitch      modeSwitchState
+
+	// hostProvisionFn overrides provision.ProvisionMinimal in tests.
+	hostProvisionFn func(ctx context.Context) (provision.Result, error)
 
 	ready atomic.Bool
 }

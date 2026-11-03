@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"time"
 
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
@@ -21,8 +22,10 @@ const (
 	// the legacy Workspace button cannot install concurrently.
 	LeaseResource = "system:init"
 	leaseTTL      = 60 * time.Second
-	leaseRenew    = 20 * time.Second
 )
+
+// leaseRenewInterval is overridable in tests so renew failure paths stay fast.
+var leaseRenewInterval = 20 * time.Second
 
 // ErrLeaseBusy means another provision/init holds the workspace lease.
 var ErrLeaseBusy = lease.ErrLeaseBusy
@@ -31,13 +34,15 @@ type leaseHandle struct {
 	ownerID  string
 	stopCh   chan struct{}
 	renewErr chan error
+	cancel   context.CancelFunc
+	release  sync.Once
 }
 
 func defaultLockerFactory(runtimeScope scope.Scope) statepkg.Locker {
 	return lease.New(runtimeScope)
 }
 
-func acquireProvisionLease(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (*leaseHandle, error) {
+func acquireProvisionLease(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory, cancel context.CancelFunc) (*leaseHandle, error) {
 	if runtimeScope == nil {
 		return nil, errors.New("scope is not available")
 	}
@@ -62,13 +67,14 @@ func acquireProvisionLease(ctx context.Context, runtimeScope scope.Scope, locker
 		ownerID:  ownerID,
 		stopCh:   make(chan struct{}),
 		renewErr: make(chan error, 1),
+		cancel:   cancel,
 	}
 	go renewProvisionLease(ctx, runtimeScope, locker, handle)
 	return handle, nil
 }
 
 func renewProvisionLease(ctx context.Context, runtimeScope scope.Scope, locker statepkg.Locker, handle *leaseHandle) {
-	ticker := time.NewTicker(leaseRenew)
+	ticker := time.NewTicker(leaseRenewInterval)
 	defer ticker.Stop()
 	for {
 		select {
@@ -81,6 +87,9 @@ func renewProvisionLease(ctx context.Context, runtimeScope scope.Scope, locker s
 					case handle.renewErr <- err:
 					default:
 					}
+					if handle.cancel != nil {
+						handle.cancel()
+					}
 					return
 				}
 			}
@@ -92,17 +101,19 @@ func releaseProvisionLease(runtimeScope scope.Scope, lockerFactory statepkg.Lock
 	if handle == nil {
 		return
 	}
-	close(handle.stopCh)
-	if runtimeScope == nil {
-		return
-	}
-	if lockerFactory == nil {
-		lockerFactory = defaultLockerFactory
-	}
-	locker := lockerFactory(runtimeScope)
-	releaseCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	_ = locker.Release(releaseCtx, LeaseResource, handle.ownerID)
+	handle.release.Do(func() {
+		close(handle.stopCh)
+		if runtimeScope == nil {
+			return
+		}
+		if lockerFactory == nil {
+			lockerFactory = defaultLockerFactory
+		}
+		locker := lockerFactory(runtimeScope)
+		releaseCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = locker.Release(releaseCtx, LeaseResource, handle.ownerID)
+	})
 }
 
 func checkProvisionLeaseRenew(handle *leaseHandle) error {

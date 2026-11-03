@@ -37,10 +37,15 @@ type ExecutorFactory func(scope.Scope) (jsexecutor.JsExecutor, error)
 
 // Options configures ProvisionMinimal. Zero values use production defaults.
 type Options struct {
+	// InstallTimeout bounds the install (and executor) work. Zero uses
+	// BootstrapModuleInstallTimeoutSeconds / the package default.
 	InstallTimeout time.Duration
-	InstallModule  InstallFunc
-	NewExecutor    ExecutorFactory
-	LockerFactory  statepkg.LockerFactory
+	// InstallModule overrides lifecycle.InstallModule (tests).
+	InstallModule InstallFunc
+	// NewExecutor overrides jsexecutor.NewCompilerExecutor (tests).
+	NewExecutor ExecutorFactory
+	// LockerFactory overrides the system:init lease locker (tests).
+	LockerFactory statepkg.LockerFactory
 }
 
 // Result describes the outcome of ProvisionMinimal.
@@ -86,7 +91,14 @@ func ProvisionMinimal(ctx context.Context, runtimeScope scope.Scope, opts Option
 		log.Info("provision started", "root", MinimalRootModule, "web_shell_profile", string(plan.WebShellProfileMinimal))
 	}
 
-	handle, err := acquireProvisionLease(ctx, runtimeScope, opts.LockerFactory)
+	installTimeout := opts.InstallTimeout
+	if installTimeout <= 0 {
+		installTimeout = moduleInstallTimeout(runtimeScope)
+	}
+	installCtx, cancel := context.WithTimeout(ctx, installTimeout)
+	defer cancel()
+
+	handle, err := acquireProvisionLease(installCtx, runtimeScope, opts.LockerFactory, cancel)
 	if err != nil {
 		if errors.Is(err, ErrLeaseBusy) {
 			return Result{}, xfmt.Errorf("provision lease busy: %w", err)
@@ -95,16 +107,19 @@ func ProvisionMinimal(ctx context.Context, runtimeScope scope.Scope, opts Option
 	}
 	defer releaseProvisionLease(runtimeScope, opts.LockerFactory, handle)
 
+	// Re-check under the lease so a concurrent Initialize that finished between
+	// the first Resolve and Acquire does not trigger a redundant install.
+	phase, err = Resolve(runtimeScope)
+	if err != nil {
+		return Result{}, err
+	}
+	if phase != PhaseEmpty {
+		return Result{Skipped: true, Phase: phase}, nil
+	}
+
 	if err := checkProvisionLeaseRenew(handle); err != nil {
 		return Result{}, xfmt.Errorf("provision lease lost: %w", err)
 	}
-
-	installTimeout := opts.InstallTimeout
-	if installTimeout <= 0 {
-		installTimeout = moduleInstallTimeout(runtimeScope)
-	}
-	installCtx, cancel := context.WithTimeout(ctx, installTimeout)
-	defer cancel()
 
 	progress := logger.NewProgressLine(os.Stderr)
 	installCtx = logger.WithProgressLine(installCtx, progress)
@@ -143,6 +158,9 @@ func ProvisionMinimal(ctx context.Context, runtimeScope scope.Scope, opts Option
 		if progress != nil {
 			progress.Done("✗", "provision module installation failed")
 		}
+		if renewErr := checkProvisionLeaseRenew(handle); renewErr != nil {
+			return Result{}, xfmt.Errorf("provision lease lost during install: %w", renewErr)
+		}
 		return Result{}, xfmt.Errorf("provision install %s: %w", req.Input, err)
 	}
 	if progress != nil {
@@ -161,7 +179,12 @@ func ProvisionMinimal(ctx context.Context, runtimeScope scope.Scope, opts Option
 		return Result{}, errors.New("provision completed but workspace is still empty (auth not installed)")
 	}
 	if phase == PhaseReady {
-		return Result{}, errors.New("provision must not mark setup complete; refuse Ready after host provision")
+		// Host provision never writes setup.completed_at. Ready here means a
+		// legacy system.init.done backfill kicked in once auth appeared.
+		if log != nil {
+			log.Info("provision completed with legacy Ready marker", "root", MinimalRootModule)
+		}
+		return Result{Skipped: false, Phase: phase}, nil
 	}
 
 	if log != nil {
