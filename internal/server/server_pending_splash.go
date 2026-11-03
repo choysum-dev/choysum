@@ -5,6 +5,7 @@ package server
 
 import (
 	"net/http"
+	"sync"
 
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"google.golang.org/grpc"
@@ -20,10 +21,35 @@ func newPendingSplashService() *pendingSplashService {
 	return &pendingSplashService{}
 }
 
-// pendingSplashBinding builds the bootstrap-mode registration binding.
-// Tests override it to force registerBinding failures.
-var pendingSplashBinding = func() registrationBinding {
-	return newPendingSplashService()
+// pendingSplashBindingFn builds the bootstrap-mode registration binding.
+// Tests override it via setPendingSplashBindingForTest to force failures.
+var (
+	pendingSplashBindingMu sync.RWMutex
+	pendingSplashBindingFn = func() registrationBinding {
+		return newPendingSplashService()
+	}
+)
+
+func pendingSplashBinding() registrationBinding {
+	pendingSplashBindingMu.RLock()
+	defer pendingSplashBindingMu.RUnlock()
+	return pendingSplashBindingFn()
+}
+
+func setPendingSplashBindingForTest(fn func() registrationBinding) (restore func()) {
+	pendingSplashBindingMu.Lock()
+	prev := pendingSplashBindingFn
+	if fn == nil {
+		pendingSplashBindingFn = func() registrationBinding { return newPendingSplashService() }
+	} else {
+		pendingSplashBindingFn = fn
+	}
+	pendingSplashBindingMu.Unlock()
+	return func() {
+		pendingSplashBindingMu.Lock()
+		pendingSplashBindingFn = prev
+		pendingSplashBindingMu.Unlock()
+	}
 }
 
 func (s *pendingSplashService) Name() string { return "bootstrap" }
@@ -51,6 +77,7 @@ func servePendingSplash(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(http.StatusServiceUnavailable)
 	if r.Method == http.MethodHead {
 		return

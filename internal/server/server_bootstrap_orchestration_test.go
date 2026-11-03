@@ -115,6 +115,9 @@ func TestServePendingSplashMethods(t *testing.T) {
 	if ct := head.Header().Get("Content-Type"); !strings.Contains(ct, "text/html") {
 		t.Fatalf("HEAD Content-Type = %q", ct)
 	}
+	if head.Header().Get("X-Content-Type-Options") != "nosniff" {
+		t.Fatalf("HEAD X-Content-Type-Options = %q, want nosniff", head.Header().Get("X-Content-Type-Options"))
+	}
 
 	get := httptest.NewRecorder()
 	servePendingSplash(get, httptest.NewRequest(http.MethodGet, "/", nil))
@@ -124,12 +127,37 @@ func TestServePendingSplashMethods(t *testing.T) {
 	if !strings.Contains(get.Body.String(), "Choysum") {
 		t.Fatalf("GET body missing brand: %q", get.Body.String())
 	}
+	if get.Header().Get("X-Content-Type-Options") != "nosniff" {
+		t.Fatalf("GET X-Content-Type-Options = %q, want nosniff", get.Header().Get("X-Content-Type-Options"))
+	}
+}
+
+func TestRegisterBootstrapServiceRegistersSplash(t *testing.T) {
+	srv := &GRPCWebServer{mux: http.NewServeMux()}
+	res, err := srv.registerBootstrapService()
+	if err != nil {
+		t.Fatalf("registerBootstrapService() error = %v", err)
+	}
+	if res.ServiceName != "bootstrap" {
+		t.Fatalf("ServiceName = %q, want bootstrap", res.ServiceName)
+	}
+	if len(res.Registration.Bindings) != 1 {
+		t.Fatalf("bindings = %d, want 1", len(res.Registration.Bindings))
+	}
+
+	rr := httptest.NewRecorder()
+	srv.mux.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/", nil))
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Fatalf("GET / status = %d, want %d", rr.Code, http.StatusServiceUnavailable)
+	}
+	if !strings.Contains(rr.Body.String(), "Choysum") {
+		t.Fatalf("GET / body missing brand: %q", rr.Body.String())
+	}
 }
 
 func TestRegisterBootstrapServicePropagatesBindingError(t *testing.T) {
-	prev := pendingSplashBinding
-	pendingSplashBinding = func() registrationBinding { return failPendingSplashBinding{} }
-	t.Cleanup(func() { pendingSplashBinding = prev })
+	restore := setPendingSplashBindingForTest(func() registrationBinding { return failPendingSplashBinding{} })
+	t.Cleanup(restore)
 
 	srv := &GRPCWebServer{mux: http.NewServeMux()}
 	_, err := srv.registerBootstrapService()
