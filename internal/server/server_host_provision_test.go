@@ -333,6 +333,38 @@ func TestEnsureHostProvisionLeaseBusyTimeoutFallsBack(t *testing.T) {
 	}
 }
 
+func TestEnsureHostProvisionLeaseBusyWaitCancelStillReplans(t *testing.T) {
+	runtimeScope, db := newHostProvisionDB(t)
+	seedLocalWebModule(t, runtimeScope.config)
+	seedBundleModeWebReadyDist(t, runtimeScope.config.DistPath)
+	seedApplicationModeWebBackendDist(t, runtimeScope.config.DistPath)
+	srv := &GRPCWebServer{runtimeScope: runtimeScope}
+	if err := srv.planServe(nil); err != nil {
+		t.Fatalf("planServe: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	srv.hostProvisionFn = func(context.Context) (provision.Result, error) {
+		go func() {
+			time.Sleep(30 * time.Millisecond)
+			_ = db.Exec(
+				`INSERT INTO meta_module (id, name, status) VALUES (?, ?, ?)`,
+				"mod-auth", "auth", string(meta.Installed),
+			)
+			// Cancel before the peer-wait loop re-resolves, so wait fails
+			// even though the peer already left Empty.
+			cancel()
+		}()
+		return provision.Result{}, provision.ErrLeaseBusy
+	}
+	if err := srv.ensureHostProvision(ctx); err != nil {
+		t.Fatalf("ensureHostProvision: %v", err)
+	}
+	if srv.runState.mode() != runplan.RunModeApplication {
+		t.Fatalf("mode=%q want application after canceled peer wait soft-replan", srv.runState.mode())
+	}
+}
+
 func TestEnsureHostProvisionReplansBootstrapWhenAlreadyPending(t *testing.T) {
 	runtimeScope, db := newHostProvisionDB(t)
 	seedBundleModeWebReadyDist(t, runtimeScope.config.DistPath)

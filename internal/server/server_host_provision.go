@@ -76,6 +76,9 @@ func (s *GRPCWebServer) ensureHostProvision(ctx context.Context) error {
 		if errors.Is(err, provision.ErrLeaseBusy) {
 			if waitErr := s.waitForHostProvisionPeer(ctx); waitErr != nil {
 				s.logHostProvisionWarn("host provision lease busy; continuing in bootstrap mode", "error", waitErr)
+				// Soft-replan anyway: peer may have finished while wait timed out
+				// or Resolve transiently failed during the poll loop.
+				_ = s.replanAfterHostProvision(false)
 				return nil
 			}
 			if phase, resolveErr := provision.Resolve(s.runtimeScope); resolveErr == nil {
