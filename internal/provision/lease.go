@@ -104,7 +104,7 @@ func acquireProvisionLease(ctx context.Context, runtimeScope scope.Scope, locker
 	}
 	if err := checkProvisionLeaseRenew(handle); err != nil {
 		releaseProvisionLease(runtimeScope, lockerFactory, handle)
-		return nil, xfmt.Errorf("%w: %v", ErrLeaseLost, err)
+		return nil, errors.Join(ErrLeaseLost, err)
 	}
 	return handle, nil
 }

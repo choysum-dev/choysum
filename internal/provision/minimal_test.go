@@ -288,8 +288,11 @@ func TestProvisionMinimalLeaseLostDuringInstall(t *testing.T) {
 			}
 		},
 	})
-	if err == nil || !strings.Contains(err.Error(), "lease lost") {
+	if err == nil || !errors.Is(err, ErrLeaseLost) {
 		t.Fatalf("error=%v", err)
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected install cancel preserved, got %v", err)
 	}
 }
 
