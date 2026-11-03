@@ -1,8 +1,11 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { ChoysumError, GrpcCode } from '../error';
 import { getServiceFactory, registerServiceFactory, unregisterServiceFactory } from '../rpc';
-import AttachmentOwnerMixin from './attachment_owner_model';
+import AttachmentOwnerMixin, {
+  ATTACHMENT_OWNER_SERVICE_FACTORY_NOT_FOUND,
+} from './attachment_owner_model';
 import MessageThreadModel from './message_thread_model';
 import PolymorphicRecordModel from './polymorphic_record_model';
 
@@ -65,6 +68,60 @@ test('AttachmentOwnerMixin: harness exposes bind/unbind and dials document.Attac
       });
       expect(unbound.status).toBe('unbound');
       expect(unbindReq).toMatchObject({ attachmentBindingId: 'b1', reason: 'other' });
+    }
+  );
+});
+
+test('AttachmentOwnerMixin: missing document factory yields SERVICE_FACTORY_NOT_FOUND', async () => {
+  const saved = getServiceFactory('document.AttachmentBinding');
+  unregisterServiceFactory('document.AttachmentBinding');
+  expect(getServiceFactory('document.AttachmentBinding')).toBeUndefined();
+
+  let caught: unknown;
+  try {
+    await AttachmentOwnerHarness.AttachmentBind({
+      AttachmentContentId: 'c1',
+      ownerModel: 'partner.Partner',
+      ownerRecordId: 'p1',
+      fieldName: 'Logo',
+      mutationId: 'mut1',
+    });
+  } catch (err) {
+    caught = err;
+  } finally {
+    if (saved) registerServiceFactory('document.AttachmentBinding', saved);
+    else unregisterServiceFactory('document.AttachmentBinding');
+  }
+  expect(caught).toBeDefined();
+  expect(caught instanceof ChoysumError).toBe(true);
+  expect(String((caught as ChoysumError).code || '')).toBe('SERVICE_FACTORY_NOT_FOUND');
+  expect((caught as ChoysumError).grpcCode).toBe(GrpcCode.FailedPrecondition);
+  expect(String((caught as ChoysumError).domain || '')).toBe('core');
+  expect(String((caught as ChoysumError).message || '')).toContain('document.AttachmentBinding');
+});
+
+test('AttachmentOwnerMixin: registered factory construction errors are not remapped', async () => {
+  await withServiceFactory(
+    'document.AttachmentBinding',
+    () => {
+      throw new Error('factory boom');
+    },
+    async () => {
+      let caught: unknown;
+      try {
+        await AttachmentOwnerHarness.AttachmentBind({
+          AttachmentContentId: 'c1',
+          ownerModel: 'partner.Partner',
+          ownerRecordId: 'p1',
+          fieldName: 'Logo',
+          mutationId: 'mut1',
+        });
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught instanceof Error).toBe(true);
+      expect(String((caught as Error).message || '')).toBe('factory boom');
+      expect((caught as any)?.code).not.toBe(ATTACHMENT_OWNER_SERVICE_FACTORY_NOT_FOUND);
     }
   );
 });

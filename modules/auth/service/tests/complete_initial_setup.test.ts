@@ -4,7 +4,7 @@
 import { withContext as withModelContext } from '@/core/service/api/context';
 import { withPermissionGraphBypass } from '@/core/service/api/authz_bypass';
 import { pool, type AppSettingModelCtor } from '@/core/service';
-import { createServiceByModel } from '@/core/service/rpc';
+import { createServiceByModel, getServiceFactory } from '@/core/service/rpc';
 import User from '@/auth/service/models/user/user';
 import { AuthErrCode } from '@/auth/service/error';
 import { SETUP_COMPLETED_AT_KEY } from '@/auth/service/models/user/setup_completed_at_key';
@@ -104,6 +104,8 @@ test('CompleteInitialSetup: updates seed admin and writes setup.completed_at', a
   resetRequestContext();
   setupAllowlistForCompleteInitialSetup();
   await clearSetupCompletedAt();
+  // Avatar soft dial must not be required for first-run setup (auth does not depend on document).
+  expect(getServiceFactory('document.AttachmentBinding')).toBeUndefined();
 
   const adminId = String(
     await withModelContext(

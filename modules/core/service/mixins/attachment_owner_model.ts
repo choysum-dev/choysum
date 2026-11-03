@@ -3,6 +3,8 @@
 
 import BaseModel from '../orm/model/model';
 import { dial } from '../orm/model/model_pool';
+import { getServiceFactory } from '../rpc';
+import { ChoysumError, GrpcCode } from '../error';
 import type { ModelConstructor } from '../../rpc/types';
 import type {
   AttachmentOwnerBindReq,
@@ -17,6 +19,28 @@ type DocumentAttachmentBindingStub = ModelConstructor & {
   Unbind(req: AttachmentOwnerUnbindReq): Promise<AttachmentOwnerUnbindResp>;
 };
 
+const DOCUMENT_ATTACHMENT_BINDING = 'document.AttachmentBinding';
+
+/** Stable code when `document.AttachmentBinding` is not registered (module not installed). */
+export const ATTACHMENT_OWNER_SERVICE_FACTORY_NOT_FOUND = 'SERVICE_FACTORY_NOT_FOUND';
+
+function dialAttachmentBinding() {
+  // Remap only when the factory is absent after dial fails. A registered factory
+  // that fails to construct must surface its own error (not "module not installed").
+  try {
+    return dial<DocumentAttachmentBindingStub>(DOCUMENT_ATTACHMENT_BINDING);
+  } catch (err) {
+    if (!getServiceFactory(DOCUMENT_ATTACHMENT_BINDING)) {
+      throw new ChoysumError({
+        domain: 'core',
+        code: ATTACHMENT_OWNER_SERVICE_FACTORY_NOT_FOUND,
+        message: `Service factory for model '${DOCUMENT_ATTACHMENT_BINDING}' not found. Make sure the module is loaded.`,
+      }).withGrpcCode(GrpcCode.FailedPrecondition);
+    }
+    throw err;
+  }
+}
+
 /**
  * Opt-in dial facade for business models with attachment owner fields.
  *
@@ -25,10 +49,9 @@ type DocumentAttachmentBindingStub = ModelConstructor & {
  * dial `document.AttachmentBinding` — not BaseModel, not a document model import.
  *
  * Soft dependency on document: if `document.AttachmentBinding` is not
- * registered, dial throws
- * `Error("Service factory for model 'document.AttachmentBinding' not found. Make sure the module is loaded.")`
- * (createServiceByModel). Callers / UI must treat bind/unbind as unavailable
- * until document is installed.
+ * registered, bind/unbind throw {@link ChoysumError} with code
+ * {@link ATTACHMENT_OWNER_SERVICE_FACTORY_NOT_FOUND} (FailedPrecondition).
+ * Callers / UI must treat bind/unbind as unavailable until document is installed.
  *
  * ```ts
  * import AttachmentOwnerMixin from '@/core/service/mixins/attachment_owner_model';
@@ -39,11 +62,11 @@ type DocumentAttachmentBindingStub = ModelConstructor & {
 export default abstract class AttachmentOwnerMixin extends BaseModel {
   /** Bind finalized attachment content to an owner record field. */
   public static async AttachmentBind(req: AttachmentOwnerBindReq): Promise<AttachmentOwnerBindResp> {
-    return dial<DocumentAttachmentBindingStub>('document.AttachmentBinding').Bind(req);
+    return dialAttachmentBinding().Bind(req);
   }
 
   /** Unbind an attachment from an owner record field. */
   public static async AttachmentUnbind(req: AttachmentOwnerUnbindReq): Promise<AttachmentOwnerUnbindResp> {
-    return dial<DocumentAttachmentBindingStub>('document.AttachmentBinding').Unbind(req);
+    return dialAttachmentBinding().Unbind(req);
   }
 }
