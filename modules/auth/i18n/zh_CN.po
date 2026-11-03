@@ -629,12 +629,12 @@ msgstr "%s 需要请求体"
 #: service/models/user/user.ts:425
 msgctxt "service/models/user"
 msgid "CompleteInitialSetup requires a password string"
-msgstr ""
+msgstr "CompleteInitialSetup 需要密码字符串"
 
 #: service/models/user/user.ts:419
 msgctxt "service/models/user"
 msgid "CompleteInitialSetup requires a username"
-msgstr ""
+msgstr "CompleteInitialSetup 需要用户名"
 
 #: service/models/user/user.ts:1099
 msgctxt "service/models/user"
@@ -829,32 +829,32 @@ msgstr "用户名不能为空"
 #: service/models/user/_lifecycle_complete_initial_setup.ts:149
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Database handle is not available"
-msgstr ""
+msgstr "数据库句柄不可用"
 
 #: service/models/user/_lifecycle_complete_initial_setup.ts:41
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Initial setup has already been completed"
-msgstr ""
+msgstr "初始设置已完成"
 
 #: service/models/user/_lifecycle_complete_initial_setup.ts:282 service/models/user/_lifecycle_complete_initial_setup.ts:292
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Seed administrator account was not found"
-msgstr ""
+msgstr "未找到种子管理员账户"
 
 #: service/models/user/_lifecycle_complete_initial_setup.ts:64
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Username and password are required"
-msgstr ""
+msgstr "用户名和密码不能为空"
 
 #: service/models/user/_lifecycle_complete_initial_setup.ts:305 service/models/user/_lifecycle_complete_initial_setup.ts:347
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Username is already in use"
-msgstr ""
+msgstr "用户名已被占用"
 
 #: service/models/user/_lifecycle_complete_initial_setup.ts:72
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Username is too long"
-msgstr ""
+msgstr "用户名过长"
 
 #: service/models/user/user.ts:558
 msgctxt "service/models/user@Login"

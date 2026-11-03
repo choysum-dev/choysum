@@ -139,6 +139,7 @@ import {
   setupConfirmPasswordRules,
   setupPasswordRules,
   setupUsernameRules,
+  setupLoginFallbackTarget,
   runSetupSubmit,
 } from './setup_form';
 
@@ -178,8 +179,6 @@ function setPageError(message: string) {
 
 async function onSetupSubmit(ctx: { formData: Record<string, unknown> }) {
   const data = ctx.formData;
-  const completeFn = authStore.completeInitialSetup.bind(authStore);
-  const loginFn = authStore.login.bind(authStore);
   return runHandledAuthSubmit({
     submit: () =>
       runSetupSubmit({
@@ -188,9 +187,14 @@ async function onSetupSubmit(ctx: { formData: Record<string, unknown> }) {
         password: String(data.Password ?? ''),
         setupFailedMessage: _t('Initial setup failed. Please try again later.'),
         loginFailedMessage: _t('Setup succeeded, but signing in failed. Please log in.'),
-        completeInitialSetup: (username, password) => completeFn(username, password),
-        login: (username, password) => loginFn(username, password),
+        completeInitialSetup: (username, password) =>
+          authStore.completeInitialSetup(username, password),
+        login: (username, password) => authStore.login(username, password),
         setError: setPageError,
+        // Marker already written; leave /setup so Ready guard does not bounce the user.
+        onSetupCompleteLoginFailed: () => {
+          void router.replace(setupLoginFallbackTarget(route.query));
+        },
       }),
     fallbackMessage: _t('Initial setup failed. Please try again later.'),
     setError: setPageError,

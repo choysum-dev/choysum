@@ -83,8 +83,12 @@ test('auth setup: complete initial setup then land authenticated', async () => {
   const baseURL = runtime.baseURL;
   try {
     await runSetupOnce(baseURL);
-  } catch {
-    // One retry absorbs intermittent sqlite "database is locked" under WAL.
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err ?? '');
+    // Only retry transient sqlite lock races; rethrow assertion/setup regressions.
+    if (!/database is locked/i.test(msg)) {
+      throw err;
+    }
     await runSetupOnce(baseURL);
   }
 });

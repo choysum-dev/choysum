@@ -2,7 +2,21 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ChoysumError } from '../error';
-import { runSetupSubmit, setupUsernameError, setupPasswordError, setupConfirmPasswordError } from './setup_form';
+import {
+  runSetupSubmit,
+  setupLoginFallbackTarget,
+  setupUsernameError,
+  setupPasswordError,
+  setupConfirmPasswordError,
+} from './setup_form';
+
+test('setupLoginFallbackTarget preserves redirect query for post-setup login', () => {
+  expect(setupLoginFallbackTarget({ redirect: '/auth/users' })).toEqual({
+    name: 'login',
+    query: { redirect: '/auth/users' },
+  });
+  expect(setupLoginFallbackTarget(undefined)).toEqual({ name: 'login', query: {} });
+});
 
 test('setupUsernameError rejects short or empty names', () => {
   const t = (s: string) => s;
@@ -69,6 +83,7 @@ test('runSetupSubmit surfaces CompleteInitialSetup errors', async () => {
 
 test('runSetupSubmit surfaces login errors after successful setup', async () => {
   let message = '';
+  let loginFailedHook = 0;
   const ok = await runSetupSubmit({
     loading: false,
     username: 'admin',
@@ -82,9 +97,35 @@ test('runSetupSubmit surfaces login errors after successful setup', async () => 
     setError: m => {
       message = m;
     },
+    onSetupCompleteLoginFailed: () => {
+      loginFailedHook += 1;
+    },
   });
   expect(ok).toBe(false);
   expect(message).toBe('bad login');
+  expect(loginFailedHook).toBe(1);
+});
+
+test('runSetupSubmit maps non-ChoysumError setup failures to the fallback message', async () => {
+  let message = '';
+  const ok = await runSetupSubmit({
+    loading: false,
+    username: 'admin',
+    password: 'secret1',
+    setupFailedMessage: 'setup failed',
+    loginFailedMessage: 'login failed',
+    completeInitialSetup: async () => {
+      throw new Error('network down');
+    },
+    login: async () => {
+      throw new Error('should not login');
+    },
+    setError: m => {
+      message = m;
+    },
+  });
+  expect(ok).toBe(false);
+  expect(message).toBe('setup failed');
 });
 
 test('runSetupSubmit skips while loading or when credentials are empty', async () => {
@@ -110,6 +151,23 @@ test('runSetupSubmit skips while loading or when credentials are empty', async (
       loading: false,
       username: '  ',
       password: 'secret1',
+      setupFailedMessage: 'setup failed',
+      loginFailedMessage: 'login failed',
+      completeInitialSetup: async () => {
+        throw new Error('no');
+      },
+      login: async () => {
+        throw new Error('no');
+      },
+      setError: () => {},
+    }),
+  ).toBe(false);
+
+  expect(
+    await runSetupSubmit({
+      loading: false,
+      username: 'admin',
+      password: '',
       setupFailedMessage: 'setup failed',
       loginFailedMessage: 'login failed',
       completeInitialSetup: async () => {

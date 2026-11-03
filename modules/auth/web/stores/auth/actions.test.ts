@@ -383,6 +383,59 @@ test('ensureSetupStateReady: caches GetInitialSetupState', async () => {
   expect(mockState._recorders.GetInitialSetupState.calls.length).toBe(1);
 });
 
+test('ensureSetupStateReady: accepts lowercase complete and wraps probe failures', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState._recorders.GetInitialSetupState.resolve({ complete: true });
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  expect(await actions.ensureSetupStateReady()).toBe(true);
+
+  const failing = buildMockState();
+  failing._recorders.GetInitialSetupState.reject(new Error('probe down'));
+  const failingActions = defineAuthActions(failing as any, buildMockHelpers() as any, { isClient: true });
+  let caught: any;
+  try {
+    await failingActions.ensureSetupStateReady();
+  } catch (err) {
+    caught = err;
+  }
+  expect(String(caught?.code || '')).toBe('INITIALIZATION_FAILED');
+});
+
+test('ensureSetupStateReady: clearAuth invalidates the cached probe', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState._recorders.GetInitialSetupState.resolve({ Complete: true });
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    clearAuthStorage: () => {},
+  });
+  expect(await actions.ensureSetupStateReady()).toBe(true);
+  expect(mockState._recorders.GetInitialSetupState.calls.length).toBe(1);
+
+  actions.clearAuth();
+  mockState._recorders.GetInitialSetupState.resolve({ Complete: false });
+  expect(await actions.ensureSetupStateReady()).toBe(false);
+  expect(mockState._recorders.GetInitialSetupState.calls.length).toBe(2);
+});
+
+test('completeInitialSetup: rejects an invalid response envelope', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState._recorders.CompleteInitialSetup.resolve({ UserId: '' });
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  let caught: any;
+  try {
+    await actions.completeInitialSetup('admin', 'secret1');
+  } catch (err) {
+    caught = err;
+  }
+  expect(String(caught?.code || '')).toBe('UNKNOWN');
+});
+
 test('register: wraps a Register RPC failure', async () => {
   const mockState = buildMockState();
   const mockHelpers = buildMockHelpers();

@@ -28,6 +28,20 @@ void [
 
 export type SetupClientRule = RegisterClientRule;
 
+/** Login route after setup wrote the marker but auto-login failed. */
+export function setupLoginFallbackTarget(
+  query: Record<string, unknown> | undefined,
+): { name: 'login'; query: Record<string, string> } {
+  const out: Record<string, string> = {};
+  const src = query || {};
+  for (const key of Object.keys(src)) {
+    const value = src[key];
+    if (value == null) continue;
+    out[key] = Array.isArray(value) ? String(value[0] ?? '') : String(value);
+  }
+  return { name: 'login', query: out };
+}
+
 export function setupUsernameRules(t: (msg: string) => string): SetupClientRule[] {
   return registerUsernameRules(t);
 }
@@ -72,6 +86,8 @@ export async function runSetupSubmit(opts: {
   completeInitialSetup: (username: string, password: string) => Promise<unknown>;
   login: (username: string, password: string) => Promise<unknown>;
   setError: (message: string) => void;
+  /** Fired when setup RPC succeeded but the follow-up Login failed. */
+  onSetupCompleteLoginFailed?: () => void;
 }): Promise<boolean> {
   if (opts.loading) return false;
   opts.setError('');
@@ -95,6 +111,7 @@ export async function runSetupSubmit(opts: {
     return true;
   } catch (err) {
     opts.setError(formatLoginError(err, opts.loginFailedMessage));
+    opts.onSetupCompleteLoginFailed?.();
     return false;
   }
 }

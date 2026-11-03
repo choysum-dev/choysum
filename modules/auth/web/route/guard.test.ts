@@ -25,15 +25,20 @@ test('setupGuard sends SetupPending guests to setup', async () => {
   const result = await setupGuard(
     {
       path: '/login',
-      fullPath: '/login',
+      fullPath: '/login?redirect=%2Fauth%2Fusers',
       name: 'login',
+      query: { redirect: '/auth/users' },
       meta: { requiresAuth: false, resourceId: 'auth.route.login' },
     } as any,
     {} as any,
     depsFor(mockAuthStore)
   );
 
-  expect(result).toEqual({ name: 'setup', replace: true });
+  expect(result).toEqual({
+    name: 'setup',
+    query: { redirect: '/auth/users' },
+    replace: true,
+  });
   expect(ensureSetupStateReady.calls.length).toBe(1);
 });
 
@@ -81,15 +86,20 @@ test('setupGuard sends Ready guests away from setup', async () => {
   const result = await setupGuard(
     {
       path: '/setup',
-      fullPath: '/setup',
+      fullPath: '/setup?redirect=%2Fauth%2Fusers',
       name: 'setup',
+      query: { redirect: '/auth/users' },
       meta: { requiresAuth: false, resourceId: 'auth.route.setup' },
     } as any,
     {} as any,
     depsFor(mockAuthStore)
   );
 
-  expect(result).toEqual({ name: 'login', replace: true });
+  expect(result).toEqual({
+    name: 'login',
+    query: { redirect: '/auth/users' },
+    replace: true,
+  });
 });
 
 test('setupGuard allows Ready guests on login', async () => {
@@ -125,6 +135,40 @@ test('setupGuard ignores probe failures', async () => {
     } as any,
     {} as any,
     depsFor(mockAuthStore)
+  );
+
+  expect(result).toBe(true);
+});
+
+test('setupGuard skips /web/error routes without probing', async () => {
+  const ensureSetupStateReady = asyncFnRecorder(() => false);
+  const mockAuthStore = { ensureSetupStateReady };
+
+  const result = await setupGuard(
+    {
+      path: '/web/error/403',
+      fullPath: '/web/error/403',
+      name: 'error',
+      meta: { requiresAuth: false },
+    } as any,
+    {} as any,
+    depsFor(mockAuthStore)
+  );
+
+  expect(result).toBe(true);
+  expect(ensureSetupStateReady.calls.length).toBe(0);
+});
+
+test('setupGuard allows shell when ensureSetupStateReady is missing', async () => {
+  const result = await setupGuard(
+    {
+      path: '/login',
+      fullPath: '/login',
+      name: 'login',
+      meta: { requiresAuth: false },
+    } as any,
+    {} as any,
+    depsFor({})
   );
 
   expect(result).toBe(true);

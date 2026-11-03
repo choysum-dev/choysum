@@ -25,7 +25,14 @@ function isSetupRoute(to: RouteLocationNormalized): boolean {
 function isLogoutOrErrorRoute(to: RouteLocationNormalized): boolean {
   if (to.name === 'logout') return true;
   const path = String(to.path || '');
-  if (path === '/logout' || path === '/web/logout' || path.startsWith('/error/')) return true;
+  if (
+    path === '/logout' ||
+    path === '/web/logout' ||
+    path.startsWith('/error/') ||
+    path.startsWith('/web/error/')
+  ) {
+    return true;
+  }
   const resourceId = String((to.meta as { resourceId?: unknown } | null | undefined)?.resourceId ?? '').trim();
   return resourceId === 'auth.route.logout';
 }
@@ -75,13 +82,14 @@ export async function setupGuard(
 
   if (!complete) {
     if (!isSetupRoute(to)) {
-      return { name: 'setup', replace: true };
+      // Keep redirect= so Setup can land the user after CompleteInitialSetup → Login.
+      return { name: 'setup', query: to.query, replace: true };
     }
     return true;
   }
 
   if (isSetupRoute(to)) {
-    return { name: 'login', replace: true };
+    return { name: 'login', query: to.query, replace: true };
   }
   return true;
 }

@@ -40,6 +40,8 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
   // Declared at the top of the function scope so it is visible to all
   // inner functions that reference it (loginImpl, ensureAuthReady, etc.).
   let initInFlight: Promise<void> | null = null;
+  // Cached GetInitialSetupState result for route guards (null = not probed yet).
+  let setupCompleteCache: boolean | null = null;
   const clientSide = deps?.isClient ?? isClient;
   const clearStoredAuth = deps?.clearAuthStorage ?? (() => authStorage.clearAuthStorage());
 
@@ -66,6 +68,9 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
   function clearAuth(): void {
     // Reset in-memory auth state first.
     helpers.resetAuthState();
+
+    // Re-probe setup phase after logout / credential wipe.
+    setupCompleteCache = null;
 
     // Drop the cached permission snapshot.
     state.permissionState.value = null;
@@ -166,9 +171,6 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
       });
     }
   }
-
-  // Cached GetInitialSetupState result for route guards (null = not probed yet).
-  let setupCompleteCache: boolean | null = null;
 
   /**
    * Resolve whether first-run setup is complete (anonymous probe; cached).

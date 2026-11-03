@@ -179,21 +179,13 @@ async function releaseSetupCompletedAt(): Promise<void> {
 
 /**
  * True when SetupComplete is recorded (AppSetting marker or legacy system.init.done).
- * Best-effort backfills setup.completed_at when only the legacy sentinel exists.
+ * Read-only: does not backfill AppSetting (anonymous probes must stay write-free).
  */
 export async function isInitialSetupComplete(): Promise<boolean> {
   if (String((await readSetupCompletedAt()) || '').trim()) {
     return true;
   }
-  if (await readLegacySystemInitDone()) {
-    try {
-      await writeSetupCompletedAt(new Date().toISOString());
-    } catch {
-      // Marker read still reports complete; backfill is best-effort.
-    }
-    return true;
-  }
-  return false;
+  return await readLegacySystemInitDone();
 }
 
 /**
@@ -201,7 +193,11 @@ export async function isInitialSetupComplete(): Promise<boolean> {
  * Backfills setup.completed_at when only the legacy marker exists.
  */
 async function assertSetupStillPending(): Promise<void> {
-  if (await isInitialSetupComplete()) {
+  if (String((await readSetupCompletedAt()) || '').trim()) {
+    throw alreadyCompleteError();
+  }
+  if (await readLegacySystemInitDone()) {
+    await writeSetupCompletedAt(new Date().toISOString());
     throw alreadyCompleteError();
   }
 }
