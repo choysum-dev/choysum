@@ -381,23 +381,7 @@ func (m *ModuleManager) ensureMetaTables() error {
 			})
 		}
 	})
-	if m.bootstrapErr != nil {
-		return m.bootstrapErr
-	}
-	// Retire runs outside Once so deferred drops (auth table not ready yet) and
-	// transient drop failures can retry on later ensureMetaTables calls.
-	return m.retireMetaSettingTable()
-}
-
-func (m *ModuleManager) retireMetaSettingTable() error {
-	if m == nil || m.runtimeScope == nil {
-		return nil
-	}
-	session := m.runtimeScope.Session()
-	if session == nil || session.DB == nil {
-		return nil
-	}
-	return modmeta.RetireMetaSettingTable(session.DB)
+	return m.bootstrapErr
 }
 
 func (m *ModuleManager) bootstrapMetaTables(txScope scope.Scope) error {

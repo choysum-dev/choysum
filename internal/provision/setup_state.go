@@ -33,8 +33,7 @@ const (
 // Resolve reports Empty / SetupPending / Ready from Go-side SQL only.
 // Order: Provisioned (auth Installed) first; only then read auth_app_setting.
 // A missing auth_app_setting table never maps to Ready.
-// SetupComplete is solely auth_app_setting.setup.completed_at (legacy
-// meta_setting / system.init.done was retired in PC-9b).
+// SetupComplete is solely auth_app_setting.setup.completed_at.
 func Resolve(runtimeScope scope.Scope) (Phase, error) {
 	if runtimeScope == nil {
 		return PhaseEmpty, errors.New("scope is not available")
