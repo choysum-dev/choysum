@@ -61,6 +61,9 @@ func (s *GRPCWebServer) Serve(ctx context.Context, serviceNames ...string) error
 	if err := s.planServe(serviceNames); err != nil {
 		return err
 	}
+	if err := s.ensureHostProvision(ctx); err != nil {
+		return err
+	}
 
 	return s.serve()
 }

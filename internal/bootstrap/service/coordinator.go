@@ -19,6 +19,7 @@ import (
 	modulestaging "github.com/choysum-dev/choysum/internal/module/artifact/staging"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	origincontract "github.com/choysum-dev/choysum/internal/module/origin/contract"
+	"github.com/choysum-dev/choysum/internal/provision"
 	"github.com/choysum-dev/choysum/internal/state/lease"
 	configpkg "github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
@@ -577,8 +578,8 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 		bindMinimalInstallFetchProgressReporter(markFetchDetail, updateFetchProgressMessage),
 	)
 
-	c.store.markStageDetail(operationID, "resolving meta module installation plan...")
-	spinnerTicker.SetMessage("meta: preparing module installation...")
+	c.store.markStageDetail(operationID, "resolving minimal web-shell installation plan...")
+	spinnerTicker.SetMessage("provision: preparing minimal web-shell installation...")
 
 	installScope := c.runtimeScope.WithContext(installCtx)
 	if installScope == nil {
@@ -598,7 +599,7 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 		installScope,
 		executor,
 		installMinimalModulesFn,
-		func() { c.store.markStageDetail(operationID, "meta module installation completed") },
+		func() { c.store.markStageDetail(operationID, "minimal web-shell installation completed") },
 		func(installErr error) error {
 			return c.classifyModuleInstallError(progress, installTimeout, installErr)
 		},
@@ -612,7 +613,8 @@ func (c *coordinator) minimalInstallFetchDetailMarker(operationID string) func(d
 	}
 }
 
-// runMinimalMetaModuleInstall installs meta and marks the completed stage (testable without full bootstrap).
+// runMinimalMetaModuleInstall installs the shared host-provision minimal web
+// shell (web + WebShellProfileMinimal) and marks the completed stage.
 func runMinimalMetaModuleInstall(
 	installCtx context.Context,
 	installScope scope.Scope,
@@ -621,10 +623,7 @@ func runMinimalMetaModuleInstall(
 	markCompleted func(),
 	classify func(error) error,
 ) error {
-	installErr := installFn(installCtx, installScope, executor, lifecycle.InstallModuleRequest{
-		Input:    "meta",
-		WithDemo: false,
-	})
+	installErr := installFn(installCtx, installScope, executor, provision.MinimalInstallRequest())
 	if installErr != nil {
 		return classify(installErr)
 	}
@@ -634,13 +633,13 @@ func runMinimalMetaModuleInstall(
 
 func (c *coordinator) classifyModuleInstallError(progress *logger.ProgressLine, installTimeout time.Duration, installErr error) error {
 	if progress != nil {
-		progress.Done("✗", "meta module installation failed")
+		progress.Done("✗", "minimal web-shell installation failed")
 	}
 	if errors.Is(installErr, context.DeadlineExceeded) {
 		return newBootstrapError(
 			bootstrapErrCodeModuleInstallTimeout,
 			"module installation timed out after "+installTimeout.String()+". "+
-				"Check your network connection or place the required modules (meta, the web shell, and their dependencies) in ModulesPath.",
+				"Check your network connection or place the required modules (web shell and dependencies) in ModulesPath.",
 			installErr,
 		)
 	}
