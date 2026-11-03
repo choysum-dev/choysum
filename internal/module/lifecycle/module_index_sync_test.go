@@ -558,7 +558,7 @@ END`).Error; err != nil {
 }
 
 func TestModuleIndexLockTTL_UsesCodeDefault(t *testing.T) {
-	t.Parallel()
+	// Not parallel: mutates package-level moduleIndexLockTTLDefault.
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), nil)
 	if got := moduleIndexLockTTL(context.Background(), runtimeScope); got != 60*time.Second {
 		t.Fatalf("ttl = %v, want %v", got, 60*time.Second)

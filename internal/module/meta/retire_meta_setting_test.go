@@ -46,7 +46,26 @@ func TestRetireMetaSettingTable_AbsentIsNoop(t *testing.T) {
 	}
 }
 
-func TestRetireMetaSettingTable_DropsWithoutAuthTable(t *testing.T) {
+func TestRetireMetaSettingTable_DropsWithoutAuthWhenNoLegacyMarker(t *testing.T) {
+	db := openRetireTestDB(t)
+	mustExecRetire(t, db, `CREATE TABLE meta_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT NOT NULL UNIQUE,
+		value TEXT,
+		created_at DATETIME,
+		updated_at DATETIME,
+		deleted_at DATETIME
+	)`)
+
+	if err := RetireMetaSettingTable(db); err != nil {
+		t.Fatalf("RetireMetaSettingTable: %v", err)
+	}
+	if db.Migrator().HasTable(retiredMetaSettingTable) {
+		t.Fatal("expected meta_setting to be dropped when nothing to preserve")
+	}
+}
+
+func TestRetireMetaSettingTable_KeepsLegacyUntilAuthTableExists(t *testing.T) {
 	db := openRetireTestDB(t)
 	mustExecRetire(t, db, `CREATE TABLE meta_setting (
 		id TEXT PRIMARY KEY,
@@ -62,8 +81,30 @@ func TestRetireMetaSettingTable_DropsWithoutAuthTable(t *testing.T) {
 	if err := RetireMetaSettingTable(db); err != nil {
 		t.Fatalf("RetireMetaSettingTable: %v", err)
 	}
+	if !db.Migrator().HasTable(retiredMetaSettingTable) {
+		t.Fatal("expected meta_setting kept until auth_app_setting exists")
+	}
+
+	mustExecRetire(t, db, `CREATE TABLE auth_app_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT NOT NULL UNIQUE,
+		value TEXT,
+		created_at DATETIME,
+		updated_at DATETIME,
+		deleted_at DATETIME
+	)`)
+	if err := RetireMetaSettingTable(db); err != nil {
+		t.Fatalf("RetireMetaSettingTable after auth table: %v", err)
+	}
 	if db.Migrator().HasTable(retiredMetaSettingTable) {
-		t.Fatal("expected meta_setting to be dropped")
+		t.Fatal("expected meta_setting dropped after backfill")
+	}
+	var row struct{ Value string }
+	if err := db.Table(authAppSettingTable).Select("value").Where(map[string]any{"key": authSetupCompletedAtKey}).Take(&row).Error; err != nil {
+		t.Fatalf("expected backfilled setup.completed_at: %v", err)
+	}
+	if strings.TrimSpace(row.Value) == "" {
+		t.Fatal("expected non-empty backfilled setup.completed_at")
 	}
 }
 
@@ -260,6 +301,58 @@ func TestRetireMetaSettingTable_LegacyQueryError(t *testing.T) {
 	}
 }
 
+func TestRetireMetaSettingTable_LegacyQueryErrorWithoutAuthTable(t *testing.T) {
+	db := openRetireTestDB(t)
+	mustExecRetire(t, db, `CREATE TABLE meta_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT NOT NULL UNIQUE
+	)`)
+	forced := errors.New("forced meta_setting query failure")
+	registerFailQueriesOnTable(t, db, retiredMetaSettingTable, forced)
+
+	err := RetireMetaSettingTable(db)
+	if err == nil || !strings.Contains(err.Error(), "backfill setup.completed_at from legacy meta_setting") {
+		t.Fatalf("RetireMetaSettingTable error = %v, want wrapped backfill failure", err)
+	}
+	if !errors.Is(err, forced) {
+		t.Fatalf("RetireMetaSettingTable error = %v, want forced cause", err)
+	}
+	if !db.Migrator().HasTable(retiredMetaSettingTable) {
+		t.Fatal("expected meta_setting kept when legacy probe fails")
+	}
+}
+
+func TestRetireMetaSettingTable_BackfillCreateError(t *testing.T) {
+	db := openRetireTestDB(t)
+	mustExecRetire(t, db, `CREATE TABLE meta_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT NOT NULL UNIQUE,
+		value TEXT
+	)`)
+	mustExecRetire(t, db, `CREATE TABLE auth_app_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT NOT NULL UNIQUE,
+		value TEXT,
+		created_at DATETIME,
+		updated_at DATETIME
+	)`)
+	mustExecRetire(t, db, `INSERT INTO meta_setting (id, key, value) VALUES (?, ?, ?)`,
+		"legacy", legacySystemInitDoneKey, "true")
+	forced := errors.New("forced auth_app_setting create failure")
+	registerFailCreatesOnTable(t, db, authAppSettingTable, forced)
+
+	err := RetireMetaSettingTable(db)
+	if err == nil || !strings.Contains(err.Error(), "backfill setup.completed_at from legacy meta_setting") {
+		t.Fatalf("RetireMetaSettingTable error = %v, want wrapped backfill failure", err)
+	}
+	if !errors.Is(err, forced) {
+		t.Fatalf("RetireMetaSettingTable error = %v, want forced cause", err)
+	}
+	if !db.Migrator().HasTable(retiredMetaSettingTable) {
+		t.Fatal("expected meta_setting kept when backfill create fails")
+	}
+}
+
 func TestRetireMetaSettingTable_DropTableError(t *testing.T) {
 	db := openRetireTestDB(t)
 	mustExecRetire(t, db, `CREATE TABLE meta_setting (
@@ -290,6 +383,19 @@ func registerFailQueriesOnTable(t *testing.T, db *gorm.DB, table string, fail er
 		t.Fatalf("register query callback: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Callback().Query().Remove(name) })
+}
+
+func registerFailCreatesOnTable(t *testing.T, db *gorm.DB, table string, fail error) {
+	t.Helper()
+	name := "fail_create_" + table
+	if err := db.Callback().Create().Before("gorm:create").Register(name, func(tx *gorm.DB) {
+		if tx.Statement != nil && tx.Statement.Table == table {
+			tx.AddError(fail)
+		}
+	}); err != nil {
+		t.Fatalf("register create callback: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Callback().Create().Remove(name) })
 }
 
 func registerFailDropMetaSetting(t *testing.T, db *gorm.DB, fail error) {

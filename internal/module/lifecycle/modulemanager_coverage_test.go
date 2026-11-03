@@ -31,7 +31,24 @@ func TestBootstrapMetaTablesSkipsWhenBaseTablesExist(t *testing.T) {
 	}
 }
 
-func TestBootstrapMetaTablesEarlyPathRetireError(t *testing.T) {
+func TestRetireMetaSettingTableNilGuards(t *testing.T) {
+	t.Parallel()
+	var nilManager *ModuleManager
+	if err := nilManager.retireMetaSettingTable(); err != nil {
+		t.Fatalf("nil receiver: %v", err)
+	}
+	manager := &ModuleManager{}
+	if err := manager.retireMetaSettingTable(); err != nil {
+		t.Fatalf("nil runtimeScope: %v", err)
+	}
+	runtimeScope := newModuleIndexSyncScope(t.TempDir(), nil)
+	manager = NewModuleManager(runtimeScope, nil)
+	if err := manager.retireMetaSettingTable(); err != nil {
+		t.Fatalf("nil session DB: %v", err)
+	}
+}
+
+func TestEnsureMetaTablesRetireError(t *testing.T) {
 	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(&meta.Module{}, &modmeta.LockLease{}); err != nil {
@@ -49,36 +66,92 @@ func TestBootstrapMetaTablesEarlyPathRetireError(t *testing.T) {
 
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 	manager := NewModuleManager(runtimeScope, nil)
-	err := manager.bootstrapMetaTables(runtimeScope)
+	err := manager.ensureMetaTables()
 	if err == nil || !strings.Contains(err.Error(), "drop retired meta_setting") {
-		t.Fatalf("bootstrapMetaTables() error = %v, want retire drop failure", err)
+		t.Fatalf("ensureMetaTables() error = %v, want retire drop failure", err)
 	}
 	if !errors.Is(err, forced) {
-		t.Fatalf("bootstrapMetaTables() error = %v, want forced cause", err)
+		t.Fatalf("ensureMetaTables() error = %v, want forced cause", err)
 	}
 }
 
-func TestBootstrapMetaTablesFullPathRetireError(t *testing.T) {
+func TestEnsureMetaTablesPreservesBootstrapError(t *testing.T) {
 	t.Parallel()
 	db := newModuleIndexSyncDB(t)
-	if err := db.Exec(`CREATE TABLE meta_setting (
-		id TEXT PRIMARY KEY,
-		key TEXT NOT NULL UNIQUE,
-		value TEXT
-	)`).Error; err != nil {
-		t.Fatalf("create meta_setting: %v", err)
+	if err := db.AutoMigrate(&meta.Module{}, &modmeta.LockLease{}, &meta.Model{}); err != nil {
+		t.Fatalf("auto migrate base tables: %v", err)
 	}
-	forced := errors.New("forced drop failure")
-	registerFailDropMetaSetting(t, db, forced)
+	seedDuplicateLiveModelsForTest(t, db)
 
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 	manager := NewModuleManager(runtimeScope, nil)
-	err := manager.bootstrapMetaTables(runtimeScope)
-	if err == nil || !strings.Contains(err.Error(), "drop retired meta_setting") {
-		t.Fatalf("bootstrapMetaTables() error = %v, want retire drop failure", err)
+	first := manager.ensureMetaTables()
+	if first == nil || !strings.Contains(first.Error(), "ensure effective app/name unique index") {
+		t.Fatalf("ensureMetaTables() first error = %v, want unique index failure", first)
 	}
-	if !errors.Is(err, forced) {
-		t.Fatalf("bootstrapMetaTables() error = %v, want forced cause", err)
+	second := manager.ensureMetaTables()
+	if second == nil || !strings.Contains(second.Error(), "ensure effective app/name unique index") {
+		t.Fatalf("ensureMetaTables() second error = %v, want preserved bootstrap failure", second)
+	}
+	if first.Error() != second.Error() {
+		t.Fatalf("preserved error changed: first=%v second=%v", first, second)
+	}
+}
+
+func TestEnsureMetaTablesRetriesDeferredRetireAfterAuthAppears(t *testing.T) {
+	t.Parallel()
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(&meta.Module{}, &modmeta.LockLease{}); err != nil {
+		t.Fatalf("auto migrate base tables: %v", err)
+	}
+	if err := db.Exec(`CREATE TABLE meta_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT NOT NULL UNIQUE,
+		value TEXT,
+		created_at DATETIME,
+		updated_at DATETIME,
+		deleted_at DATETIME
+	)`).Error; err != nil {
+		t.Fatalf("create meta_setting: %v", err)
+	}
+	if err := db.Exec(
+		`INSERT INTO meta_setting (id, key, value, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+		"legacy", "system.init.done", "true", time.Now(), time.Now(),
+	).Error; err != nil {
+		t.Fatalf("seed legacy marker: %v", err)
+	}
+
+	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	manager := NewModuleManager(runtimeScope, nil)
+	if err := manager.ensureMetaTables(); err != nil {
+		t.Fatalf("ensureMetaTables() before auth: %v", err)
+	}
+	if !db.Migrator().HasTable("meta_setting") {
+		t.Fatal("expected meta_setting kept until auth_app_setting exists")
+	}
+
+	if err := db.Exec(`CREATE TABLE auth_app_setting (
+		id TEXT PRIMARY KEY,
+		key TEXT NOT NULL UNIQUE,
+		value TEXT,
+		created_at DATETIME,
+		updated_at DATETIME,
+		deleted_at DATETIME
+	)`).Error; err != nil {
+		t.Fatalf("create auth_app_setting: %v", err)
+	}
+	if err := manager.ensureMetaTables(); err != nil {
+		t.Fatalf("ensureMetaTables() after auth: %v", err)
+	}
+	if db.Migrator().HasTable("meta_setting") {
+		t.Fatal("expected meta_setting dropped after deferred retire")
+	}
+	var count int64
+	if err := db.Table("auth_app_setting").Where(map[string]any{"key": "setup.completed_at"}).Count(&count).Error; err != nil {
+		t.Fatalf("count setup.completed_at: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("setup.completed_at rows=%d, want 1", count)
 	}
 }
 
