@@ -21,11 +21,14 @@ const (
 	// LeaseResource is shared with bootstrap Initialize so host provision and
 	// the legacy Workspace button cannot install concurrently.
 	LeaseResource = "system:init"
-	leaseTTL      = 60 * time.Second
 )
 
-// leaseRenewInterval is overridable in tests so renew failure paths stay fast.
-var leaseRenewInterval = 20 * time.Second
+// leaseTTL / leaseRenewInterval are overridable in tests so renew failure and
+// retry-bound paths stay fast.
+var (
+	leaseTTL           = 60 * time.Second
+	leaseRenewInterval = 20 * time.Second
+)
 
 // ErrLeaseBusy means another provision/init holds the workspace lease.
 var ErrLeaseBusy = lease.ErrLeaseBusy
@@ -76,24 +79,53 @@ func acquireProvisionLease(ctx context.Context, runtimeScope scope.Scope, locker
 func renewProvisionLease(ctx context.Context, runtimeScope scope.Scope, locker statepkg.Locker, handle *leaseHandle) {
 	ticker := time.NewTicker(leaseRenewInterval)
 	defer ticker.Stop()
+	lastOK := time.Now()
+	renewOnce := func() (stop bool) {
+		err := locker.Renew(ctx, LeaseResource, handle.ownerID, leaseTTL)
+		if err == nil {
+			lastOK = time.Now()
+			return false
+		}
+		notOwner := errors.Is(err, lease.ErrLeaseNotOwner)
+		if !notOwner && ctx.Err() == nil && isRecoverableSqliteLeaseErr(runtimeScope, err) {
+			return false
+		}
+		// Retry transient dialect errors while the last successful renew
+		// still leaves time before another owner can take the lease.
+		if !notOwner && ctx.Err() == nil && time.Since(lastOK) < leaseTTL-leaseRenewInterval {
+			return false
+		}
+		notifyLeaseRenewErr(handle, err)
+		return true
+	}
+	// Probe once immediately so a lost lease is visible before install starts.
+	if renewOnce() {
+		return
+	}
 	for {
 		select {
 		case <-handle.stopCh:
 			return
+		case <-ctx.Done():
+			return
 		case <-ticker.C:
-			if err := locker.Renew(ctx, LeaseResource, handle.ownerID, leaseTTL); err != nil {
-				if errors.Is(err, lease.ErrLeaseNotOwner) || !isRecoverableSqliteLeaseErr(runtimeScope, err) {
-					select {
-					case handle.renewErr <- err:
-					default:
-					}
-					if handle.cancel != nil {
-						handle.cancel()
-					}
-					return
-				}
+			if renewOnce() {
+				return
 			}
 		}
+	}
+}
+
+func notifyLeaseRenewErr(handle *leaseHandle, err error) {
+	if handle == nil {
+		return
+	}
+	select {
+	case handle.renewErr <- err:
+	default:
+	}
+	if handle.cancel != nil {
+		handle.cancel()
 	}
 }
 

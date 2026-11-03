@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/choysum-dev/choysum/internal/provision"
-	"github.com/choysum-dev/choysum/internal/server/runplan"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
@@ -64,7 +63,10 @@ func (s *GRPCWebServer) ensureHostProvision(ctx context.Context) error {
 				s.logHostProvisionWarn("host provision lease busy; continuing in bootstrap mode", "error", waitErr)
 				return nil
 			}
-			return s.replanAfterHostProvision(true)
+			if replanErr := s.replanAfterHostProvision(true); replanErr != nil {
+				s.logHostProvisionWarn("replan after peer host provision failed; continuing in bootstrap mode", "error", replanErr)
+			}
+			return nil
 		}
 		s.logHostProvisionWarn("host provision failed; continuing in bootstrap mode", "error", err)
 		return nil
@@ -82,10 +84,6 @@ func (s *GRPCWebServer) ensureHostProvision(ctx context.Context) error {
 			"phase", string(result.Phase),
 			"reason", s.runState.reason(),
 		)
-		return nil
-	}
-	if s.runState.mode() != runplan.RunModeApplication {
-		return xfmt.Errorf("host provision completed but unexpected run mode %q", s.runState.mode())
 	}
 	return nil
 }
@@ -153,10 +151,10 @@ func hasLocalProvisionModules(runtimeScope scope.Scope) bool {
 	if modulesPath == "" {
 		return false
 	}
-	for _, name := range []string{provision.MinimalRootModule, "meta", "core"} {
-		if _, err := os.Stat(filepath.Join(modulesPath, name, "package.json")); err == nil {
-			return true
-		}
+	// Minimal install roots at web; requiring only core/meta would start
+	// provision and fail mid-install when web is absent.
+	if _, err := os.Stat(filepath.Join(modulesPath, provision.MinimalRootModule, "package.json")); err != nil {
+		return false
 	}
-	return false
+	return true
 }

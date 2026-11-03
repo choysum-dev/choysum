@@ -6,12 +6,16 @@ package provision
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	"github.com/choysum-dev/choysum/internal/module/plan"
+	"github.com/choysum-dev/choysum/internal/state/lease"
+	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -254,7 +258,9 @@ func TestProvisionMinimalLeaseLostDuringInstall(t *testing.T) {
 	runtimeScope, _ := newSetupStateScope(t)
 	started := make(chan struct{})
 	_, err := ProvisionMinimal(context.Background(), runtimeScope, Options{
-		LockerFactory: func(scope.Scope) statepkg.Locker { return &failRenewLocker{started: started} },
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return &failRenewLocker{started: started, renewErr: lease.ErrLeaseNotOwner}
+		},
 		NewExecutor: func(scope.Scope) (jsexecutor.JsExecutor, error) {
 			return &noopProvisionExecutor{}, nil
 		},
@@ -270,6 +276,409 @@ func TestProvisionMinimalLeaseLostDuringInstall(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "lease lost") {
 		t.Fatalf("error=%v", err)
+	}
+}
+
+func TestProvisionMinimalTransientRenewRetriesThenSucceeds(t *testing.T) {
+	prevInterval := leaseRenewInterval
+	prevTTL := leaseTTL
+	leaseRenewInterval = 5 * time.Millisecond
+	leaseTTL = time.Second
+	t.Cleanup(func() {
+		leaseRenewInterval = prevInterval
+		leaseTTL = prevTTL
+	})
+
+	runtimeScope, db := newSetupStateScope(t)
+	createMetaModuleTable(t, db)
+	createAuthAppSettingTable(t, db)
+	runtimeScope.config = &config.Config{Db: &config.DbConfig{Dialect: "postgres"}}
+
+	locker := &failRenewLocker{renewErr: errors.New("network blip"), failTimes: 3}
+	result, err := ProvisionMinimal(context.Background(), runtimeScope, Options{
+		InstallTimeout: time.Minute,
+		LockerFactory:  func(scope.Scope) statepkg.Locker { return locker },
+		NewExecutor: func(scope.Scope) (jsexecutor.JsExecutor, error) {
+			return &noopProvisionExecutor{}, nil
+		},
+		InstallModule: func(ctx context.Context, runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, req lifecycle.InstallModuleRequest, opts ...lifecycle.Option) error {
+			time.Sleep(40 * time.Millisecond) // allow a few renew ticks
+			insertAuthModule(t, db, meta.Installed)
+			return nil
+		},
+	})
+	if err != nil {
+		t.Fatalf("ProvisionMinimal: %v", err)
+	}
+	if result.Phase != PhaseSetupPending {
+		t.Fatalf("result=%+v", result)
+	}
+	if locker.renewCalls.Load() < 3 {
+		t.Fatalf("renewCalls=%d want >= 3", locker.renewCalls.Load())
+	}
+}
+
+func TestProvisionMinimalTransientRenewBoundCancels(t *testing.T) {
+	prevInterval := leaseRenewInterval
+	prevTTL := leaseTTL
+	leaseRenewInterval = 5 * time.Millisecond
+	leaseTTL = 30 * time.Millisecond
+	t.Cleanup(func() {
+		leaseRenewInterval = prevInterval
+		leaseTTL = prevTTL
+	})
+
+	runtimeScope, _ := newSetupStateScope(t)
+	runtimeScope.config = &config.Config{Db: &config.DbConfig{Dialect: "postgres"}}
+	started := make(chan struct{})
+	_, err := ProvisionMinimal(context.Background(), runtimeScope, Options{
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return &failRenewLocker{started: started, renewErr: errors.New("network blip")}
+		},
+		NewExecutor: func(scope.Scope) (jsexecutor.JsExecutor, error) {
+			return &noopProvisionExecutor{}, nil
+		},
+		InstallModule: func(ctx context.Context, runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, req lifecycle.InstallModuleRequest, opts ...lifecycle.Option) error {
+			close(started)
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(2 * time.Second):
+				return errors.New("install should have been canceled")
+			}
+		},
+	})
+	if err == nil || !strings.Contains(err.Error(), "lease lost") {
+		t.Fatalf("error=%v", err)
+	}
+}
+
+func TestProvisionMinimalSqliteLockRenewRecovers(t *testing.T) {
+	prevInterval := leaseRenewInterval
+	prevTTL := leaseTTL
+	leaseRenewInterval = 5 * time.Millisecond
+	leaseTTL = time.Second
+	t.Cleanup(func() {
+		leaseRenewInterval = prevInterval
+		leaseTTL = prevTTL
+	})
+
+	runtimeScope, db := newSetupStateScope(t)
+	createMetaModuleTable(t, db)
+	createAuthAppSettingTable(t, db)
+	runtimeScope.config = &config.Config{Db: &config.DbConfig{Dialect: "sqlite"}}
+
+	locker := &failRenewLocker{renewErr: errors.New("database is locked"), failTimes: 2}
+	result, err := ProvisionMinimal(context.Background(), runtimeScope, Options{
+		LockerFactory: func(scope.Scope) statepkg.Locker { return locker },
+		NewExecutor: func(scope.Scope) (jsexecutor.JsExecutor, error) {
+			return &noopProvisionExecutor{}, nil
+		},
+		InstallModule: func(ctx context.Context, runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, req lifecycle.InstallModuleRequest, opts ...lifecycle.Option) error {
+			time.Sleep(40 * time.Millisecond)
+			insertAuthModule(t, db, meta.Installed)
+			return nil
+		},
+	})
+	if err != nil {
+		t.Fatalf("ProvisionMinimal: %v", err)
+	}
+	if result.Phase != PhaseSetupPending {
+		t.Fatalf("result=%+v", result)
+	}
+}
+
+func TestProvisionMinimalResolveAndAcquireErrors(t *testing.T) {
+	runtimeScope, db := newSetupStateScope(t)
+	// Soft-delete query fails on incomplete meta_module schema.
+	mustExec(t, db, `CREATE TABLE meta_module (id TEXT PRIMARY KEY, name TEXT, status TEXT)`)
+	mustExec(t, db, `INSERT INTO meta_module (id, name, status) VALUES (?, ?, ?)`,
+		"mod-auth", "auth", string(meta.Installed))
+	if _, err := ProvisionMinimal(context.Background(), runtimeScope, Options{}); err == nil {
+		t.Fatal("expected Resolve error")
+	}
+
+	runtimeScope2, db2 := newSetupStateScope(t)
+	createMetaModuleTable(t, db2)
+	createAuthAppSettingTable(t, db2)
+	_, err := ProvisionMinimal(context.Background(), runtimeScope2, Options{
+		LockerFactory: func(scope.Scope) statepkg.Locker { return &errAcquireLocker{err: errors.New("acquire boom")} },
+	})
+	if err == nil || !strings.Contains(err.Error(), "acquire provision lease") {
+		t.Fatalf("error=%v", err)
+	}
+}
+
+func TestProvisionMinimalRecheckResolveError(t *testing.T) {
+	runtimeScope, db := newSetupStateScope(t)
+	createMetaModuleTable(t, db)
+	createAuthAppSettingTable(t, db)
+	_, err := ProvisionMinimal(context.Background(), runtimeScope, Options{
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return &okLocker{onAcquire: func() {
+				mustExec(t, db, `DROP TABLE meta_module`)
+				mustExec(t, db, `CREATE TABLE meta_module (id TEXT PRIMARY KEY, name TEXT, status TEXT)`)
+				mustExec(t, db, `INSERT INTO meta_module (id, name, status) VALUES (?, ?, ?)`,
+					"mod-auth", "auth", string(meta.Installed))
+			}}
+		},
+	})
+	if err == nil {
+		t.Fatal("expected re-check Resolve error")
+	}
+}
+
+func TestProvisionMinimalNilWithContextFallsBack(t *testing.T) {
+	base, db := newSetupStateScope(t)
+	createMetaModuleTable(t, db)
+	createAuthAppSettingTable(t, db)
+	runtimeScope := &nilWithContextScope{setupStateTestScope: *base}
+	result, err := ProvisionMinimal(context.Background(), runtimeScope, Options{
+		LockerFactory: func(scope.Scope) statepkg.Locker { return &okLocker{} },
+		NewExecutor: func(scope.Scope) (jsexecutor.JsExecutor, error) {
+			return &noopProvisionExecutor{}, nil
+		},
+		InstallModule: func(context.Context, scope.Scope, jsexecutor.ScriptExecutor, lifecycle.InstallModuleRequest, ...lifecycle.Option) error {
+			insertAuthModule(t, db, meta.Installed)
+			return nil
+		},
+	})
+	if err != nil {
+		t.Fatalf("ProvisionMinimal: %v", err)
+	}
+	if result.Phase != PhaseSetupPending {
+		t.Fatalf("result=%+v", result)
+	}
+}
+
+func TestProvisionMinimalLeaseLostBeforeInstall(t *testing.T) {
+	runtimeScope, db := newSetupStateScope(t)
+	createMetaModuleTable(t, db)
+	createAuthAppSettingTable(t, db)
+	_, err := ProvisionMinimal(context.Background(), runtimeScope, Options{
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return &failRenewLocker{renewErr: lease.ErrLeaseNotOwner, failImmediate: true}
+		},
+		NewExecutor: func(scope.Scope) (jsexecutor.JsExecutor, error) {
+			return &noopProvisionExecutor{}, nil
+		},
+		InstallModule: func(context.Context, scope.Scope, jsexecutor.ScriptExecutor, lifecycle.InstallModuleRequest, ...lifecycle.Option) error {
+			t.Fatal("InstallModule must not run after lease lost")
+			return nil
+		},
+	})
+	if err == nil || !strings.Contains(err.Error(), "lease lost") {
+		t.Fatalf("error=%v", err)
+	}
+}
+
+func TestProvisionMinimalLeaseLostAfterInstall(t *testing.T) {
+	prev := leaseRenewInterval
+	leaseRenewInterval = time.Millisecond
+	t.Cleanup(func() { leaseRenewInterval = prev })
+
+	runtimeScope, db := newSetupStateScope(t)
+	createMetaModuleTable(t, db)
+	createAuthAppSettingTable(t, db)
+	started := make(chan struct{})
+	_, err := ProvisionMinimal(context.Background(), runtimeScope, Options{
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return &countingRenewLocker{
+				started: started,
+				onRenew: func(n int32) error {
+					if n == 1 {
+						return nil // immediate probe after acquire
+					}
+					return lease.ErrLeaseNotOwner
+				},
+			}
+		},
+		NewExecutor: func(scope.Scope) (jsexecutor.JsExecutor, error) {
+			return &noopProvisionExecutor{}, nil
+		},
+		InstallModule: func(ctx context.Context, runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, req lifecycle.InstallModuleRequest, opts ...lifecycle.Option) error {
+			insertAuthModule(t, db, meta.Installed)
+			close(started)
+			time.Sleep(30 * time.Millisecond) // let renew fire after success
+			return nil
+		},
+	})
+	if err == nil || !strings.Contains(err.Error(), "lease lost") {
+		t.Fatalf("error=%v", err)
+	}
+}
+
+func TestProvisionMinimalFinalResolveError(t *testing.T) {
+	runtimeScope, db := newSetupStateScope(t)
+	createMetaModuleTable(t, db)
+	createAuthAppSettingTable(t, db)
+	_, err := ProvisionMinimal(context.Background(), runtimeScope, Options{
+		LockerFactory: func(scope.Scope) statepkg.Locker { return &okLocker{} },
+		NewExecutor: func(scope.Scope) (jsexecutor.JsExecutor, error) {
+			return &noopProvisionExecutor{}, nil
+		},
+		InstallModule: func(context.Context, scope.Scope, jsexecutor.ScriptExecutor, lifecycle.InstallModuleRequest, ...lifecycle.Option) error {
+			mustExec(t, db, `DROP TABLE meta_module`)
+			mustExec(t, db, `CREATE TABLE meta_module (id TEXT PRIMARY KEY, name TEXT, status TEXT)`)
+			mustExec(t, db, `INSERT INTO meta_module (id, name, status) VALUES (?, ?, ?)`,
+				"mod-auth", "auth", string(meta.Installed))
+			return nil
+		},
+	})
+	if err == nil {
+		t.Fatal("expected final Resolve error")
+	}
+}
+
+func TestModuleInstallTimeoutFromConfig(t *testing.T) {
+	runtimeScope, _ := newSetupStateScope(t)
+	runtimeScope.config = &config.Config{BootstrapModuleInstallTimeoutSeconds: 42}
+	if got := moduleInstallTimeout(runtimeScope); got != 42*time.Second {
+		t.Fatalf("timeout=%v want 42s", got)
+	}
+}
+
+func TestProvisionMinimalDefaultExecutorAndInstallWiring(t *testing.T) {
+	runtimeScope, db := newSetupStateScope(t)
+	createMetaModuleTable(t, db)
+	createAuthAppSettingTable(t, db)
+	// Nil NewExecutor uses production default (may fail create).
+	_, err := ProvisionMinimal(context.Background(), runtimeScope, Options{
+		InstallTimeout: 5 * time.Second,
+		LockerFactory:  func(scope.Scope) statepkg.Locker { return &okLocker{} },
+	})
+	if err == nil {
+		t.Fatal("expected default executor/install path to fail without modules")
+	}
+
+	// Nil InstallModule with a working executor covers lifecycle.InstallModule wiring.
+	_, err = ProvisionMinimal(context.Background(), runtimeScope, Options{
+		InstallTimeout: 5 * time.Second,
+		LockerFactory:  func(scope.Scope) statepkg.Locker { return &okLocker{} },
+		NewExecutor: func(scope.Scope) (jsexecutor.JsExecutor, error) {
+			return &noopProvisionExecutor{}, nil
+		},
+	})
+	if err == nil {
+		t.Fatal("expected default InstallModule to fail without modules")
+	}
+	if !strings.Contains(err.Error(), "provision install web") {
+		t.Fatalf("error=%v", err)
+	}
+}
+
+func TestIsRecoverableSqliteLeaseErr(t *testing.T) {
+	if isRecoverableSqliteLeaseErr(nil, errors.New("database is locked")) {
+		t.Fatal("nil scope must be false")
+	}
+	runtimeScope, _ := newSetupStateScope(t)
+	runtimeScope.config = &config.Config{Db: &config.DbConfig{Dialect: "postgres"}}
+	if isRecoverableSqliteLeaseErr(runtimeScope, errors.New("database is locked")) {
+		t.Fatal("non-sqlite must be false")
+	}
+	runtimeScope.config = &config.Config{Db: &config.DbConfig{Dialect: "sqlite"}}
+	if !isRecoverableSqliteLeaseErr(runtimeScope, errors.New("database schema is locked")) {
+		t.Fatal("sqlite lock must be recoverable")
+	}
+	if isRecoverableSqliteLeaseErr(runtimeScope, errors.New("other")) {
+		t.Fatal("unrelated error must not be recoverable")
+	}
+}
+
+func TestCheckProvisionLeaseRenewNil(t *testing.T) {
+	if err := checkProvisionLeaseRenew(nil); err != nil {
+		t.Fatalf("nil handle: %v", err)
+	}
+}
+
+func TestAcquireProvisionLeaseNilFactoryAndMigrate(t *testing.T) {
+	runtimeScope, _ := newSetupStateScope(t)
+	// Migrates LockLease, then nil factory selects defaultLockerFactory.
+	// Passthrough test transactor cannot run requires-new Acquire.
+	_, err := acquireProvisionLease(context.Background(), runtimeScope, nil, nil)
+	if err == nil {
+		t.Fatal("expected default locker Acquire to fail under test scope")
+	}
+	if defaultLockerFactory(runtimeScope) == nil {
+		t.Fatal("defaultLockerFactory returned nil")
+	}
+}
+
+func TestAcquireProvisionLeaseAutoMigrateError(t *testing.T) {
+	runtimeScope, db := newSetupStateScope(t)
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("db: %v", err)
+	}
+	if err := sqlDB.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	_, err = acquireProvisionLease(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
+		return &okLocker{}
+	}, nil)
+	if err == nil {
+		t.Fatal("expected AutoMigrate/HasTable error on closed db")
+	}
+}
+
+func TestNotifyLeaseRenewErr(t *testing.T) {
+	notifyLeaseRenewErr(nil, errors.New("x"))
+	var canceled bool
+	handle := &leaseHandle{
+		renewErr: make(chan error, 1),
+		cancel:   func() { canceled = true },
+	}
+	notifyLeaseRenewErr(handle, errors.New("first"))
+	notifyLeaseRenewErr(handle, errors.New("second")) // default branch: buffer full
+	if !canceled {
+		t.Fatal("expected cancel")
+	}
+	if err := <-handle.renewErr; err == nil || err.Error() != "first" {
+		t.Fatalf("renewErr=%v", err)
+	}
+}
+
+func TestAcquireProvisionLeaseMigratesThenFakeLocker(t *testing.T) {
+	runtimeScope, _ := newSetupStateScope(t)
+	handle, err := acquireProvisionLease(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
+		return &okLocker{}
+	}, nil)
+	if err != nil {
+		t.Fatalf("acquire: %v", err)
+	}
+	// nil factory on release covers defaultLockerFactory Release path.
+	releaseProvisionLease(runtimeScope, nil, handle)
+}
+
+func TestReleaseProvisionLeaseNilHandle(t *testing.T) {
+	releaseProvisionLease(nil, nil, nil)
+}
+
+func TestCheckProvisionLeaseRenewPendingError(t *testing.T) {
+	handle := &leaseHandle{stopCh: make(chan struct{}), renewErr: make(chan error, 1)}
+	handle.renewErr <- errors.New("renew boom")
+	if err := checkProvisionLeaseRenew(handle); err == nil || !strings.Contains(err.Error(), "renew boom") {
+		t.Fatalf("error=%v", err)
+	}
+}
+
+func TestRenewProvisionLeaseStopsOnContextCancel(t *testing.T) {
+	prev := leaseRenewInterval
+	leaseRenewInterval = time.Hour // avoid ticking
+	t.Cleanup(func() { leaseRenewInterval = prev })
+
+	ctx, cancel := context.WithCancel(context.Background())
+	handle := &leaseHandle{stopCh: make(chan struct{}), renewErr: make(chan error, 1), ownerID: "o"}
+	done := make(chan struct{})
+	go func() {
+		renewProvisionLease(ctx, nil, &okLocker{}, handle)
+		close(done)
+	}()
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("renew goroutine did not stop on ctx cancel")
 	}
 }
 
@@ -294,24 +703,105 @@ type failStartExecutor struct{ noopProvisionExecutor }
 func (e *failStartExecutor) Start() error { return errors.New("start failed") }
 
 type failRenewLocker struct {
-	started chan struct{}
+	started       chan struct{}
+	renewErr      error
+	failTimes     int32
+	failImmediate bool
+	renewCalls    atomic.Int32
+	failures      atomic.Int32
 }
 
 func (f *failRenewLocker) Acquire(context.Context, string, string, time.Duration) error {
 	return nil
 }
 func (f *failRenewLocker) Renew(context.Context, string, string, time.Duration) error {
+	f.renewCalls.Add(1)
+	err := f.renewErr
+	if err == nil {
+		err = lease.ErrLeaseNotOwner
+	}
+	if f.failImmediate {
+		return err
+	}
+	if f.failTimes > 0 {
+		n := f.failures.Add(1)
+		if n <= f.failTimes {
+			return err
+		}
+		return nil
+	}
 	if f.started != nil {
 		select {
 		case <-f.started:
-			return ErrLeaseBusy // non-recoverable for non-sqlite dialect
+			return err
 		default:
 			return nil
 		}
 	}
-	return ErrLeaseBusy
+	return err
 }
 func (f *failRenewLocker) Release(context.Context, string, string) error { return nil }
+
+type countingRenewLocker struct {
+	started chan struct{}
+	onRenew func(n int32) error
+	calls   atomic.Int32
+}
+
+func (c *countingRenewLocker) Acquire(context.Context, string, string, time.Duration) error {
+	return nil
+}
+func (c *countingRenewLocker) Renew(context.Context, string, string, time.Duration) error {
+	n := c.calls.Add(1)
+	if c.onRenew != nil {
+		return c.onRenew(n)
+	}
+	if c.started != nil {
+		select {
+		case <-c.started:
+			return lease.ErrLeaseNotOwner
+		default:
+			return nil
+		}
+	}
+	return nil
+}
+func (c *countingRenewLocker) Release(context.Context, string, string) error { return nil }
+
+type errAcquireLocker struct{ err error }
+
+func (e *errAcquireLocker) Acquire(context.Context, string, string, time.Duration) error {
+	return e.err
+}
+func (e *errAcquireLocker) Renew(context.Context, string, string, time.Duration) error {
+	return nil
+}
+func (e *errAcquireLocker) Release(context.Context, string, string) error { return nil }
+
+type nilWithContextScope struct {
+	setupStateTestScope
+}
+
+func (e *nilWithContextScope) WithContext(context.Context) scope.Scope { return nil }
+func (e *nilWithContextScope) Session() *scope.Session {
+	return e.setupStateTestScope.Session()
+}
+func (e *nilWithContextScope) Config() *config.Config {
+	return e.setupStateTestScope.Config()
+}
+func (e *nilWithContextScope) FactoryInput() scope.FactoryInput {
+	return e.setupStateTestScope.FactoryInput()
+}
+func (e *nilWithContextScope) Logger() *slog.Logger {
+	return e.setupStateTestScope.Logger()
+}
+func (e *nilWithContextScope) Context() context.Context {
+	return e.setupStateTestScope.Context()
+}
+func (e *nilWithContextScope) Run(fn func(scope.Scope) error) error { return fn(e) }
+func (e *nilWithContextScope) Transactor() scope.Transactor {
+	return e.setupStateTestScope.Transactor()
+}
 
 type okLocker struct {
 	onAcquire func()

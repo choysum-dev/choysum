@@ -62,10 +62,13 @@ func (s *GRPCWebServer) Serve(ctx context.Context, serviceNames ...string) error
 	}
 
 	s.runState.setServeRequestArgs(serviceNames)
-	if err := s.planServe(serviceNames); err != nil {
+	// Provision Empty workspaces before the first planServe so explicit targets
+	// like `choysum run web` can install the minimal shell instead of failing
+	// on missing dist.
+	if err := s.ensureHostProvision(ctx); err != nil {
 		return err
 	}
-	if err := s.ensureHostProvision(ctx); err != nil {
+	if err := s.planServe(serviceNames); err != nil {
 		return err
 	}
 
