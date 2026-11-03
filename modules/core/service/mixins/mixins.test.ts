@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { ChoysumError } from '../error';
+import { ChoysumError, GrpcCode } from '../error';
 import { getServiceFactory, registerServiceFactory, unregisterServiceFactory } from '../rpc';
 import AttachmentOwnerMixin, {
   ATTACHMENT_OWNER_SERVICE_FACTORY_NOT_FOUND,
@@ -89,12 +89,13 @@ test('AttachmentOwnerMixin: missing document factory yields SERVICE_FACTORY_NOT_
   } catch (err) {
     caught = err;
   } finally {
-    unregisterServiceFactory('document.AttachmentBinding');
     if (saved) registerServiceFactory('document.AttachmentBinding', saved);
+    else unregisterServiceFactory('document.AttachmentBinding');
   }
   expect(caught).toBeDefined();
   expect(caught instanceof ChoysumError).toBe(true);
   expect(String((caught as ChoysumError).code || '')).toBe('SERVICE_FACTORY_NOT_FOUND');
+  expect((caught as ChoysumError).grpcCode).toBe(GrpcCode.FailedPrecondition);
   expect(String((caught as ChoysumError).domain || '')).toBe('core');
   expect(String((caught as ChoysumError).message || '')).toContain('document.AttachmentBinding');
 });

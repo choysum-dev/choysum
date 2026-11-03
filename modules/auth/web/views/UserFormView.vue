@@ -17,7 +17,7 @@ SPDX-License-Identifier: Apache-2.0
           <ChoyCol v-if="isUserAvatarFieldVisible(collaborationCaps)" :span="6" data-testid="user-form-avatar">
             <ChoyImageField :store="store" prop="Avatar" />
           </ChoyCol>
-          <ChoyCol :span="6">
+          <ChoyCol :span="isUserAvatarFieldVisible(collaborationCaps) ? 6 : 12">
             <ChoyVarcharField :store="store" prop="Username" :rules="requiredRules" />
           </ChoyCol>
           <ChoyCol :span="6">
