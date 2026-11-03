@@ -1,8 +1,11 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { ChoysumError } from '../error';
 import { getServiceFactory, registerServiceFactory, unregisterServiceFactory } from '../rpc';
-import AttachmentOwnerMixin from './attachment_owner_model';
+import AttachmentOwnerMixin, {
+  ATTACHMENT_OWNER_SERVICE_FACTORY_NOT_FOUND,
+} from './attachment_owner_model';
 import MessageThreadModel from './message_thread_model';
 import PolymorphicRecordModel from './polymorphic_record_model';
 
@@ -67,6 +70,28 @@ test('AttachmentOwnerMixin: harness exposes bind/unbind and dials document.Attac
       expect(unbindReq).toMatchObject({ attachmentBindingId: 'b1', reason: 'other' });
     }
   );
+});
+
+test('AttachmentOwnerMixin: missing document factory yields SERVICE_FACTORY_NOT_FOUND', async () => {
+  // Ensure no leftover factory from prior tests.
+  unregisterServiceFactory('document.AttachmentBinding');
+  expect(getServiceFactory('document.AttachmentBinding')).toBeUndefined();
+
+  let caught: unknown;
+  try {
+    await AttachmentOwnerHarness.AttachmentBind({
+      AttachmentContentId: 'c1',
+      ownerModel: 'partner.Partner',
+      ownerRecordId: 'p1',
+      fieldName: 'Logo',
+      mutationId: 'mut1',
+    });
+  } catch (err) {
+    caught = err;
+  }
+  expect(caught instanceof ChoysumError).toBe(true);
+  expect(String((caught as ChoysumError).code || '')).toBe(ATTACHMENT_OWNER_SERVICE_FACTORY_NOT_FOUND);
+  expect(String((caught as ChoysumError).domain || '')).toBe('core');
 });
 
 test('MessageThreadModel: MessagePost / Follow / Search dial message services', async () => {

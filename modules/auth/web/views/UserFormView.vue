@@ -14,7 +14,7 @@ SPDX-License-Identifier: Apache-2.0
     <div data-anchor="choy.form.sheet" class="min-h-full">
       <ChoySection :title="_t('Account Information')">
         <ChoyGrid :cols="12">
-          <ChoyCol :span="6">
+          <ChoyCol v-if="isUserAvatarFieldVisible(collaborationCaps)" :span="6" data-testid="user-form-avatar">
             <ChoyImageField :store="store" prop="Avatar" />
           </ChoyCol>
           <ChoyCol :span="6">
@@ -134,9 +134,12 @@ import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { ChoyBooleanField, ChoyChatter, ChoyCol, ChoyDatetimeField, ChoyFormView, ChoyGrid, ChoyImageField, ChoyJsonField, ChoyManyToManyField, ChoyManyToOneField, ChoyOneToManyField, ChoySection, ChoySelectionField, ChoyTab, ChoyTabs, ChoyVarcharField, ChoyManyToOneRefField, ChoyManyToManyRefTagsField} from '@/web';
 import type { ChoyViewMode as ViewMode } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
+import { useReactiveCollaborationCaps } from '@/web/web/platform/collaborationCaps';
+import { isUserAvatarFieldVisible } from './user_avatar_visibility';
 
 defineOptions({ name: 'UserFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('auth', { scope: 'web/views/UserFormView' });
+const collaborationCaps = useReactiveCollaborationCaps();
 const pickerLoadError = defineComponent({
   name: 'PickerLoadError',
   setup() {

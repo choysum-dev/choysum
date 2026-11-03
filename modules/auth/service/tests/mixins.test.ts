@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel } from '@/core/service';
-import AttachmentOwnerMixin from '@/core/service/mixins/attachment_owner_model';
+import { ChoysumError } from '@/core/service/error';
+import AttachmentOwnerMixin, {
+  ATTACHMENT_OWNER_SERVICE_FACTORY_NOT_FOUND,
+} from '@/core/service/mixins/attachment_owner_model';
 import AuthzMutationModel, {
   mutateThenInvalidateAllAuthzCaches,
   mutateThenInvalidateAuthzCachesForUsers,
@@ -166,4 +169,24 @@ test('User: AttachmentBind / AttachmentUnbind dial document.AttachmentBinding', 
       expect(unbindReq).toMatchObject({ attachmentBindingId: 'b1', reason: 'other' });
     }
   );
+});
+
+test('User: AttachmentBind soft-fails with SERVICE_FACTORY_NOT_FOUND when document is absent', async () => {
+  unregisterServiceFactory('document.AttachmentBinding');
+  expect(getServiceFactory('document.AttachmentBinding')).toBeUndefined();
+
+  let caught: unknown;
+  try {
+    await User.AttachmentBind({
+      AttachmentContentId: 'c1',
+      ownerModel: 'auth.User',
+      ownerRecordId: 'u1',
+      fieldName: 'Avatar',
+      mutationId: 'mut1',
+    });
+  } catch (err) {
+    caught = err;
+  }
+  expect(caught instanceof ChoysumError).toBe(true);
+  expect(String((caught as ChoysumError).code || '')).toBe(ATTACHMENT_OWNER_SERVICE_FACTORY_NOT_FOUND);
 });

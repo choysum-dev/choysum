@@ -16,7 +16,13 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
 
-    <ChoyImageField prop="Avatar" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <ChoyImageField
+      v-if="isUserAvatarFieldVisible(collaborationCaps)"
+      prop="Avatar"
+      :store="store"
+      data-testid="user-list-avatar"
+      :vColumnProps="{ minWidth: 140 }"
+    />
     <ChoyVarcharField prop="Username" :store="store" :vColumnProps="{ minWidth: 140 }" />
     <ChoyManyToOneRefField :store="store" prop="CompanyId" />
     <ChoyVarcharField prop="Email" :store="store" :vColumnProps="{ minWidth: 180 }" />
@@ -37,12 +43,14 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { ChoyDatetimeField, ChoyImageField, ChoyListView, ChoyManyToOneField, ChoySearchView, ChoyTableColumn, ChoyVarcharField, ChoyManyToOneRefField} from '@/web';
 import type { RowEventPayload } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
-
+import { useReactiveCollaborationCaps } from '@/web/web/platform/collaborationCaps';
+import { isUserAvatarFieldVisible } from './user_avatar_visibility';
 
 const router = useRouter();
 
 defineOptions({ name: 'UserListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('auth', { scope: 'web/views/UserListView' });
+const collaborationCaps = useReactiveCollaborationCaps();
 
 const props = withDefaults(
   defineProps<{
