@@ -88,6 +88,11 @@ export async function runSetupSubmit(opts: {
   setError: (message: string) => void;
   /** Fired when setup RPC succeeded but the follow-up Login failed. */
   onSetupCompleteLoginFailed?: () => void;
+  /**
+   * After CompleteInitialSetup fails (e.g. already complete elsewhere),
+   * re-check Ready and leave /setup when appropriate.
+   */
+  onSetupFailed?: () => void | Promise<void>;
 }): Promise<boolean> {
   if (opts.loading) return false;
   opts.setError('');
@@ -103,6 +108,11 @@ export async function runSetupSubmit(opts: {
     } else {
       console.error('Initial setup flow failed:', err);
       opts.setError(opts.setupFailedMessage);
+    }
+    try {
+      await opts.onSetupFailed?.();
+    } catch {
+      // Keep the original setup error when recovery navigation fails.
     }
     return false;
   }

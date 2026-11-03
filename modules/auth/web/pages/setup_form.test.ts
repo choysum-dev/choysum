@@ -61,6 +61,7 @@ test('runSetupSubmit completes then logs in', async () => {
 
 test('runSetupSubmit surfaces CompleteInitialSetup errors', async () => {
   let message = '';
+  let setupFailedHook = 0;
   const ok = await runSetupSubmit({
     loading: false,
     username: 'admin',
@@ -76,9 +77,13 @@ test('runSetupSubmit surfaces CompleteInitialSetup errors', async () => {
     setError: m => {
       message = m;
     },
+    onSetupFailed: () => {
+      setupFailedHook += 1;
+    },
   });
   expect(ok).toBe(false);
   expect(message).toBe('already done');
+  expect(setupFailedHook).toBe(1);
 });
 
 test('runSetupSubmit surfaces login errors after successful setup', async () => {

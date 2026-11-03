@@ -139,6 +139,43 @@ test('Setup.vue: setup RPC failure stays on the page with an error', async () =>
   wrapper.unmount();
 });
 
+test('Setup.vue: setup already complete elsewhere navigates to login', async () => {
+  const replaces: unknown[] = [];
+  const global = buildPageMountGlobal({
+    route: { path: '/setup', query: { redirect: '/auth/users' } },
+    router: {
+      replace: (to: unknown) => {
+        replaces.push(to);
+        return Promise.resolve(to);
+      },
+    },
+  });
+  const pinia = global.plugins[0] as Pinia;
+  setActivePinia(pinia);
+  const store = useAuthStore() as {
+    completeInitialSetup: (username: string, password: string) => Promise<unknown>;
+    ensureSetupStateReady: () => Promise<boolean>;
+  };
+  store.completeInitialSetup = async () => {
+    throw new ChoysumError({
+      domain: 'auth',
+      code: 'INITIAL_SETUP_ALREADY_COMPLETE',
+      message: 'already done',
+    });
+  };
+  store.ensureSetupStateReady = async () => true;
+  const wrapper = mount(Setup as any, { global });
+  await flushPromises();
+  await fillValidCredentials(wrapper);
+  submitForm(wrapper);
+  await afterSubmit();
+  expect(replaces[replaces.length - 1]).toEqual({
+    name: 'login',
+    query: { redirect: '/auth/users' },
+  });
+  wrapper.unmount();
+});
+
 test('Setup.vue: login failure after setup navigates to login', async () => {
   const { wrapper, replaces } = await mountSetup({
     query: { redirect: '/auth/users' },

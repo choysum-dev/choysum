@@ -195,6 +195,16 @@ async function onSetupSubmit(ctx: { formData: Record<string, unknown> }) {
         onSetupCompleteLoginFailed: () => {
           void router.replace(setupLoginFallbackTarget(route.query));
         },
+        // Another tab may have finished setup; leave /setup when the probe says Ready.
+        onSetupFailed: async () => {
+          try {
+            if (await authStore.ensureSetupStateReady()) {
+              await router.replace(setupLoginFallbackTarget(route.query));
+            }
+          } catch {
+            // Keep the setup error when the recovery probe is unavailable.
+          }
+        },
       }),
     fallbackMessage: _t('Initial setup failed. Please try again later.'),
     setError: setPageError,

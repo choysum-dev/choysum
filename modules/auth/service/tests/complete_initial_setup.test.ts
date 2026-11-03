@@ -218,6 +218,56 @@ test('GetInitialSetupState: reports Complete from setup.completed_at', async () 
   await clearSetupCompletedAt();
 });
 
+async function upsertLegacySystemInitDone(value: string): Promise<void> {
+  const db = (globalThis as any).$choysum?.db;
+  if (!db || typeof db.execute !== 'function') {
+    throw new Error('db.execute unavailable for legacy meta_setting fixture');
+  }
+  await db.execute(
+    `CREATE TABLE IF NOT EXISTS meta_setting (
+      id TEXT PRIMARY KEY,
+      key TEXT NOT NULL UNIQUE,
+      value TEXT,
+      created_at DATETIME,
+      updated_at DATETIME,
+      deleted_at DATETIME
+    )`,
+    '[]'
+  );
+  await db.execute(`DELETE FROM meta_setting WHERE "key" = ?`, JSON.stringify(['system.init.done']));
+  await db.execute(
+    `INSERT INTO meta_setting (id, "key", value, created_at, updated_at) VALUES (?, ?, ?, datetime('now'), datetime('now'))`,
+    JSON.stringify([`legacy_${Date.now()}`, 'system.init.done', value])
+  );
+}
+
+test('GetInitialSetupState: reports Complete from legacy system.init.done only', async () => {
+  resetRequestContext();
+  setReq({
+    depth: 0,
+    recordRuleMode: 'allowlist',
+    recordRuleAllow: [
+      'auth.AppSetting:read',
+      'AppSetting:read',
+    ],
+  });
+  await clearSetupCompletedAt();
+  await upsertLegacySystemInitDone('true');
+
+  const ready = await withModelContext(
+    {} as any,
+    async () => User.GetInitialSetupState({}),
+    { merge: false }
+  );
+  expect(ready.Complete).toBe(true);
+
+  const db = (globalThis as any).$choysum?.db;
+  if (db && typeof db.execute === 'function') {
+    await db.execute(`DELETE FROM meta_setting WHERE "key" = ?`, JSON.stringify(['system.init.done']));
+  }
+  await clearSetupCompletedAt();
+});
+
 test('CompleteInitialSetup: rejects invalid envelope fields', async () => {
   resetRequestContext();
   setupAllowlistForCompleteInitialSetup();
