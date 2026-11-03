@@ -30,6 +30,29 @@ func TestBootstrapMetaTablesSkipsWhenBaseTablesExist(t *testing.T) {
 	}
 }
 
+func TestEnsureMetaTablesPreservesBootstrapError(t *testing.T) {
+	t.Parallel()
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(&meta.Module{}, &modmeta.LockLease{}, &meta.Model{}); err != nil {
+		t.Fatalf("auto migrate base tables: %v", err)
+	}
+	seedDuplicateLiveModelsForTest(t, db)
+
+	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	manager := NewModuleManager(runtimeScope, nil)
+	first := manager.ensureMetaTables()
+	if first == nil || !strings.Contains(first.Error(), "ensure effective app/name unique index") {
+		t.Fatalf("ensureMetaTables() first error = %v, want unique index failure", first)
+	}
+	second := manager.ensureMetaTables()
+	if second == nil || !strings.Contains(second.Error(), "ensure effective app/name unique index") {
+		t.Fatalf("ensureMetaTables() second error = %v, want preserved bootstrap failure", second)
+	}
+	if first.Error() != second.Error() {
+		t.Fatalf("preserved error changed: first=%v second=%v", first, second)
+	}
+}
+
 func TestBootstrapMetaTablesEnsuresUniqueIndexWhenModelExists(t *testing.T) {
 	t.Parallel()
 	db := newModuleIndexSyncDB(t)

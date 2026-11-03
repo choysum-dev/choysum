@@ -26,7 +26,6 @@ func OpsEntities() []any {
 	return []any{
 		&ModuleIndex{},
 		&ModelData{},
-		&Setting{},
 		&ModuleManagementLog{},
 		&ModuleMigrationHistory{},
 		&LockLease{},
