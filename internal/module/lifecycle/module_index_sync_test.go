@@ -90,7 +90,7 @@ func newModuleIndexSyncDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatalf("open sqlite db: %v", err)
 	}
-	if err := db.AutoMigrate(&modmeta.ModuleIndex{}, &modmeta.Setting{}); err != nil {
+	if err := db.AutoMigrate(&modmeta.ModuleIndex{}); err != nil {
 		t.Fatalf("auto migrate meta tables: %v", err)
 	}
 	return db
@@ -557,61 +557,19 @@ END`).Error; err != nil {
 	}
 }
 
-func TestModuleIndexLockTTL_UsesSettingAndClampsRange(t *testing.T) {
+func TestModuleIndexLockTTL_UsesCodeDefault(t *testing.T) {
 	t.Parallel()
-	db := newModuleIndexSyncDB(t)
-	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
-
-	if err := db.Create(&modmeta.Setting{Key: "meta.module_index.sync_lock_ttl_ms", Value: "999999"}).Error; err != nil {
-		t.Fatalf("seed setting: %v", err)
-	}
-	if got := moduleIndexLockTTL(context.Background(), runtimeScope); got != 120*time.Second {
-		t.Fatalf("ttl = %v, want %v", got, 120*time.Second)
+	runtimeScope := newModuleIndexSyncScope(t.TempDir(), nil)
+	if got := moduleIndexLockTTL(context.Background(), runtimeScope); got != 60*time.Second {
+		t.Fatalf("ttl = %v, want %v", got, 60*time.Second)
 	}
 
-	if err := db.Model(&modmeta.Setting{}).Where("key = ?", "meta.module_index.sync_lock_ttl_ms").Update("value", "10").Error; err != nil {
-		t.Fatalf("update setting low value: %v", err)
+	prev := moduleIndexLockTTLDefault
+	moduleIndexLockTTLDefault = 2 * time.Second
+	t.Cleanup(func() { moduleIndexLockTTLDefault = prev })
+	if got := moduleIndexLockTTL(context.Background(), runtimeScope); got != 2*time.Second {
+		t.Fatalf("ttl = %v, want %v", got, 2*time.Second)
 	}
-	if got := moduleIndexLockTTL(context.Background(), runtimeScope); got != 1*time.Second {
-		t.Fatalf("ttl = %v, want %v", got, 1*time.Second)
-	}
-}
-
-func TestModuleIndexLockTTL_FallbackCases(t *testing.T) {
-	t.Parallel()
-	t.Run("nil session", func(t *testing.T) {
-		runtimeScope := newModuleIndexSyncScope(t.TempDir(), nil)
-		runtimeScope.session = nil
-		if got := moduleIndexLockTTL(context.Background(), runtimeScope); got != 60*time.Second {
-			t.Fatalf("ttl = %v, want %v", got, 60*time.Second)
-		}
-	})
-
-	t.Run("setting table missing", func(t *testing.T) {
-		dbPath := filepath.Join(t.TempDir(), "ttl-missing-table.db")
-		db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
-		if err != nil {
-			t.Fatalf("open sqlite db: %v", err)
-		}
-		if err := db.AutoMigrate(&modmeta.ModuleIndex{}); err != nil {
-			t.Fatalf("auto migrate module index table: %v", err)
-		}
-		runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
-		if got := moduleIndexLockTTL(context.Background(), runtimeScope); got != 60*time.Second {
-			t.Fatalf("ttl = %v, want %v", got, 60*time.Second)
-		}
-	})
-
-	t.Run("invalid setting value", func(t *testing.T) {
-		db := newModuleIndexSyncDB(t)
-		if err := db.Create(&modmeta.Setting{Key: "meta.module_index.sync_lock_ttl_ms", Value: "invalid"}).Error; err != nil {
-			t.Fatalf("seed invalid setting: %v", err)
-		}
-		runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
-		if got := moduleIndexLockTTL(context.Background(), runtimeScope); got != 60*time.Second {
-			t.Fatalf("ttl = %v, want %v", got, 60*time.Second)
-		}
-	})
 }
 
 func TestModuleIndexSyncHelperFunctions(t *testing.T) {
@@ -772,12 +730,12 @@ func TestSyncLocalModuleIndex_EdgeCases(t *testing.T) {
 func TestIsTableMissingInSessionBranches(t *testing.T) {
 	t.Parallel()
 
-	if isTableMissingInSession(nil, "meta_setting") {
+	if isTableMissingInSession(nil, "meta_module_index") {
 		t.Fatal("nil session should not be treated as missing table")
 	}
 
 	s := &scope.Session{}
-	if isTableMissingInSession(s, "meta_setting") {
+	if isTableMissingInSession(s, "meta_module_index") {
 		t.Fatal("session without DB should not be treated as missing table")
 	}
 
@@ -786,7 +744,7 @@ func TestIsTableMissingInSessionBranches(t *testing.T) {
 	if isTableMissingInSession(s, "") {
 		t.Fatal("empty table name should return false")
 	}
-	if isTableMissingInSession(s, "meta_setting") {
+	if isTableMissingInSession(s, "meta_module_index") {
 		t.Fatal("existing table should not be treated as missing")
 	}
 	if !isTableMissingInSession(s, "meta_not_exists") {

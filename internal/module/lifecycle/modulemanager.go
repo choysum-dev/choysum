@@ -394,6 +394,9 @@ func (m *ModuleManager) bootstrapMetaTables(txScope scope.Scope) error {
 				return xfmt.Errorf("ensure effective app/name unique index: %w", err)
 			}
 		}
+		if err := modmeta.RetireMetaSettingTable(txScope.Session().DB); err != nil {
+			return err
+		}
 		return nil
 	}
 
@@ -441,6 +444,9 @@ func (m *ModuleManager) bootstrapMetaTables(txScope scope.Scope) error {
 	}
 	if err := modmeta.EnsureEffectiveAppNameUniqueIndex(txScope.Session().DB); err != nil {
 		return xfmt.Errorf("ensure effective app/name unique index: %w", err)
+	}
+	if err := modmeta.RetireMetaSettingTable(txScope.Session().DB); err != nil {
+		return err
 	}
 	if logger != nil {
 		logger.Info("meta base table bootstrap completed", "duration_ms", time.Since(startedAt).Milliseconds())

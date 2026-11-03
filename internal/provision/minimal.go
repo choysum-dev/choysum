@@ -189,10 +189,11 @@ func ProvisionMinimal(ctx context.Context, runtimeScope scope.Scope, opts Option
 		return Result{}, errors.New("provision completed but workspace is still empty (auth not installed)")
 	}
 	if phase == PhaseReady {
-		// Host provision never writes setup.completed_at. Ready here means a
-		// legacy system.init.done backfill kicked in once auth appeared.
+		// Host provision never writes setup.completed_at. Ready here means the
+		// workspace already had setup.completed_at once auth appeared (e.g. peer
+		// completed setup under the lease, or a prior Ready marker).
 		if log != nil {
-			log.Info("provision completed with legacy Ready marker", "root", MinimalRootModule)
+			log.Info("provision completed with existing Ready marker", "root", MinimalRootModule)
 		}
 		return Result{Skipped: false, Phase: phase}, nil
 	}

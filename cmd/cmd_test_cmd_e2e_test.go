@@ -27,7 +27,6 @@ import (
 	"time"
 
 	clicompat "github.com/choysum-dev/choysum/internal/cli/compat"
-	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -603,16 +602,7 @@ func writeTempSqliteDB(t *testing.T) string {
 
 func writeInitializedSqliteDB(t *testing.T) string {
 	// Pre-existing empty DB file so `run` does not treat the workspace as missing storage.
-	// Do not seed system.init.* (PC-3 stopped writing those keys).
-	path := writeTempSqliteDB(t)
-	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
-	if err := db.AutoMigrate(&modmeta.Setting{}); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
-	return path
+	return writeTempSqliteDB(t)
 }
 
 func writeTempConfigWithDSN(t *testing.T, dialect, dsn, modulesPath string) string {
@@ -2004,19 +1994,8 @@ func TestCLIRunDoesNotWriteInitArtifacts(t *testing.T) {
 	if sqliteTableExists(t, dbPath, "meta_model_data") {
 		t.Fatalf("unexpected meta_model_data table created by run")
 	}
-
-	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
-	var settings []modmeta.Setting
-	if err := db.Find(&settings).Error; err != nil {
-		t.Fatalf("query settings: %v", err)
-	}
-	for _, setting := range settings {
-		if strings.HasPrefix(setting.Key, "system.init.") {
-			t.Fatalf("run must not write system.init.* settings, got %s=%s", setting.Key, setting.Value)
-		}
+	if sqliteTableExists(t, dbPath, "meta_setting") {
+		t.Fatalf("unexpected meta_setting table created by run")
 	}
 }
 func TestCLIRunRejectsLegacyAdminUsernameFlag(t *testing.T) {
