@@ -15,7 +15,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func TestServerStartBootstrapModeServesPendingSplash(t *testing.T) {
+func TestServerStartBootstrapModeServesSetupSplash(t *testing.T) {
 	runtimeScope := &noSessionServerScope{serverTestScope: newRichServerTestScope(t)}
 	runtimeScope.cfg.Auth.Enabled = false
 	runtimeScope.cfg.DistPath = t.TempDir()
@@ -104,13 +104,13 @@ func TestServerStartBootstrapModeServesPendingSplash(t *testing.T) {
 	}
 }
 
-func TestServePendingSplashMethods(t *testing.T) {
+func TestServeSetupSplashMethods(t *testing.T) {
 	srv := &GRPCWebServer{}
-	srv.setHostProvisionUI(hostProvisionUIProvisioning, setupStatusMsgStarting)
-	splash := newPendingSplashService(srv)
+	srv.setSetupSplashUI(setupSplashUIProvisioning, setupStatusMsgStarting)
+	splash := newSetupSplashService(srv)
 
 	post := httptest.NewRecorder()
-	splash.servePendingSplash(post, httptest.NewRequest(http.MethodPost, "/", nil))
+	splash.serveSetupSplash(post, httptest.NewRequest(http.MethodPost, "/", nil))
 	if post.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("POST status = %d, want %d", post.Code, http.StatusMethodNotAllowed)
 	}
@@ -119,7 +119,7 @@ func TestServePendingSplashMethods(t *testing.T) {
 	}
 
 	head := httptest.NewRecorder()
-	splash.servePendingSplash(head, httptest.NewRequest(http.MethodHead, "/", nil))
+	splash.serveSetupSplash(head, httptest.NewRequest(http.MethodHead, "/", nil))
 	if head.Code != http.StatusOK {
 		t.Fatalf("HEAD status = %d, want %d", head.Code, http.StatusOK)
 	}
@@ -134,7 +134,7 @@ func TestServePendingSplashMethods(t *testing.T) {
 	}
 
 	get := httptest.NewRecorder()
-	splash.servePendingSplash(get, httptest.NewRequest(http.MethodGet, "/", nil))
+	splash.serveSetupSplash(get, httptest.NewRequest(http.MethodGet, "/", nil))
 	if get.Code != http.StatusOK {
 		t.Fatalf("GET status = %d, want %d", get.Code, http.StatusOK)
 	}
@@ -148,7 +148,7 @@ func TestServePendingSplashMethods(t *testing.T) {
 
 func TestRegisterBootstrapServiceRegistersSplash(t *testing.T) {
 	srv := &GRPCWebServer{mux: http.NewServeMux()}
-	srv.setHostProvisionUI(hostProvisionUIProvisioning, setupStatusMsgStarting)
+	srv.setSetupSplashUI(setupSplashUIProvisioning, setupStatusMsgStarting)
 	res, err := srv.registerBootstrapService()
 	if err != nil {
 		t.Fatalf("registerBootstrapService() error = %v", err)
@@ -171,12 +171,12 @@ func TestRegisterBootstrapServiceRegistersSplash(t *testing.T) {
 }
 
 func TestRegisterBootstrapServicePropagatesBindingError(t *testing.T) {
-	restore := setPendingSplashBindingForTest(func(*GRPCWebServer) registrationBinding { return failPendingSplashBinding{} })
+	restore := setSetupSplashBindingForTest(func(*GRPCWebServer) registrationBinding { return failSetupSplashBinding{} })
 	t.Cleanup(restore)
 
 	srv := &GRPCWebServer{mux: http.NewServeMux()}
 	_, err := srv.registerBootstrapService()
-	if err == nil || !strings.Contains(err.Error(), "pending splash") {
+	if err == nil || !strings.Contains(err.Error(), "setup splash") {
 		t.Fatalf("error=%v", err)
 	}
 	if !strings.Contains(err.Error(), "desc boom") {
@@ -184,13 +184,13 @@ func TestRegisterBootstrapServicePropagatesBindingError(t *testing.T) {
 	}
 }
 
-type failPendingSplashBinding struct{}
+type failSetupSplashBinding struct{}
 
-func (failPendingSplashBinding) Name() string { return "bootstrap" }
-func (failPendingSplashBinding) ServiceDescs() ([]*grpc.ServiceDesc, error) {
+func (failSetupSplashBinding) Name() string { return "bootstrap" }
+func (failSetupSplashBinding) ServiceDescs() ([]*grpc.ServiceDesc, error) {
 	return nil, errors.New("desc boom")
 }
-func (failPendingSplashBinding) ServiceScripts() []*jsengine.JsScript { return nil }
-func (failPendingSplashBinding) WebHandlers() (map[string]http.Handler, error) {
+func (failSetupSplashBinding) ServiceScripts() []*jsengine.JsScript { return nil }
+func (failSetupSplashBinding) WebHandlers() (map[string]http.Handler, error) {
 	return nil, nil
 }

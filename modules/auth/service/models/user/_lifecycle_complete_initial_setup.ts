@@ -134,7 +134,7 @@ async function claimSetupCompletedAt(iso: string): Promise<void> {
 }
 
 /**
- * Complete first-run setup: update seed admin credentials and mark SetupComplete.
+ * Complete initial setup: update seed admin credentials and mark SetupComplete.
  */
 export async function runCompleteInitialSetup(
   params: CompleteInitialSetupParams,
@@ -294,7 +294,7 @@ export async function completeInitialSetupForUser(
       return row;
     },
     updateAdmin: async (adminId, values) => {
-      // PasswordHash is field-rule denied for normal roles; bypass for this first-run write.
+      // PasswordHash is field-rule denied for normal roles; bypass for this initial-setup write.
       await withRecordRuleAndFieldRuleBypass(async () => {
         await UserModel.UpdateById(adminId, values as any, ['Id']);
       });

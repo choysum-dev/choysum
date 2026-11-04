@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Auth AppSetting key: first-run setup completion timestamp (RFC3339).
+ * Auth AppSetting key: initial setup completion timestamp (RFC3339).
  * Absence / empty ⇒ SetupPending; set ⇒ SetupComplete (Ready when provisioned).
  *
  * Kept in a dependency-free module so host Go can mirror the same string and

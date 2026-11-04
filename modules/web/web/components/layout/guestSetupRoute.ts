@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * True when the guest shell is on first-run setup (`/web/setup`).
+ * True when the guest shell is on initial setup (`/web/setup`).
  * Home nav is omitted there so guests are not sent in a loop through `/`.
  */
 export function isGuestSetupRoute(route: {

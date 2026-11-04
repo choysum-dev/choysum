@@ -20,7 +20,7 @@ import (
 func TestServeSetupStatusUsesHostUIWhenEmpty(t *testing.T) {
 	t.Parallel()
 	srv := &GRPCWebServer{}
-	srv.setHostProvisionUI(hostProvisionUIProvisioning, setupStatusMsgStarting)
+	srv.setSetupSplashUI(setupSplashUIProvisioning, setupStatusMsgStarting)
 
 	rec := httptest.NewRecorder()
 	srv.serveSetupStatus(rec, httptest.NewRequest(http.MethodGet, "/-/setup/status", nil))
@@ -41,7 +41,7 @@ func TestServeSetupStatusUsesHostUIWhenEmpty(t *testing.T) {
 
 func TestSetupStatusKeepsStartingUntilHostUIIdle(t *testing.T) {
 	t.Parallel()
-	runtimeScope, db := newHostProvisionDB(t)
+	runtimeScope, db := newProvisionMinimalDB(t)
 	if err := db.Exec(
 		`INSERT INTO meta_module (id, name, status) VALUES (?, ?, ?)`,
 		"mod-auth", "auth", string(meta.Installed),
@@ -50,22 +50,22 @@ func TestSetupStatusKeepsStartingUntilHostUIIdle(t *testing.T) {
 	}
 	srv := &GRPCWebServer{runtimeScope: runtimeScope}
 	// DB is already SetupPending, but splash must wait until restart clears UI.
-	srv.setHostProvisionUI(hostProvisionUIProvisioning, setupStatusMsgStarting)
+	srv.setSetupSplashUI(setupSplashUIProvisioning, setupStatusMsgStarting)
 	payload := srv.setupStatusPayload()
 	if payload.Phase != "starting" {
-		t.Fatalf("phase = %q, want starting while host UI in-flight", payload.Phase)
+		t.Fatalf("phase = %q, want starting while splash UI in-flight", payload.Phase)
 	}
 
-	srv.setHostProvisionUI(hostProvisionUIIdle, "")
+	srv.setSetupSplashUI(setupSplashUIIdle, "")
 	payload = srv.setupStatusPayload()
 	if payload.Phase != "ready" {
-		t.Fatalf("phase = %q, want ready after host UI idle", payload.Phase)
+		t.Fatalf("phase = %q, want ready after splash UI idle", payload.Phase)
 	}
 }
 
 func TestRedirectWebToSplash(t *testing.T) {
 	t.Parallel()
-	splash := newPendingSplashService(&GRPCWebServer{})
+	splash := newSetupSplashService(&GRPCWebServer{})
 	rec := httptest.NewRecorder()
 	splash.redirectWebToSplash(rec, httptest.NewRequest(http.MethodGet, "/web/setup", nil))
 	if rec.Code != http.StatusFound {
@@ -76,14 +76,14 @@ func TestRedirectWebToSplash(t *testing.T) {
 	}
 }
 
-func TestServePendingSplashStartingOKAndFailedUnavailable(t *testing.T) {
+func TestServeSetupSplashStartingOKAndFailedUnavailable(t *testing.T) {
 	t.Parallel()
 	srv := &GRPCWebServer{}
-	splash := newPendingSplashService(srv)
+	splash := newSetupSplashService(srv)
 
-	srv.setHostProvisionUI(hostProvisionUIProvisioning, setupStatusMsgStarting)
+	srv.setSetupSplashUI(setupSplashUIProvisioning, setupStatusMsgStarting)
 	recOK := httptest.NewRecorder()
-	splash.servePendingSplash(recOK, httptest.NewRequest(http.MethodGet, "/", nil))
+	splash.serveSetupSplash(recOK, httptest.NewRequest(http.MethodGet, "/", nil))
 	if recOK.Code != http.StatusOK {
 		t.Fatalf("starting splash status = %d, want 200", recOK.Code)
 	}
@@ -122,19 +122,19 @@ func TestServePendingSplashStartingOKAndFailedUnavailable(t *testing.T) {
 		t.Fatal("expected ready → goSetup without Opening flash")
 	}
 
-	srv.setHostProvisionUI(hostProvisionUIFailed, setupStatusMsgFailed)
+	srv.setSetupSplashUI(setupSplashUIFailed, setupStatusMsgFailed)
 	recFail := httptest.NewRecorder()
-	splash.servePendingSplash(recFail, httptest.NewRequest(http.MethodGet, "/", nil))
+	splash.serveSetupSplash(recFail, httptest.NewRequest(http.MethodGet, "/", nil))
 	if recFail.Code != http.StatusServiceUnavailable {
 		t.Fatalf("failed splash status = %d, want 503", recFail.Code)
 	}
 }
 
-func TestPrepareHostProvisionForServeDefersWhenLocalClosurePresent(t *testing.T) {
+func TestPrepareProvisionMinimalForServeDefersWhenLocalClosurePresent(t *testing.T) {
 	t.Parallel()
 	// No runtime scope → skipped (same as missing DB fixtures).
 	srv := &GRPCWebServer{}
-	deferred, err := srv.prepareHostProvisionForServe(nil)
+	deferred, err := srv.prepareProvisionMinimalForServe(nil)
 	if err != nil {
 		t.Fatalf("prepare: %v", err)
 	}
@@ -143,21 +143,21 @@ func TestPrepareHostProvisionForServeDefersWhenLocalClosurePresent(t *testing.T)
 	}
 }
 
-func TestPrepareHostProvisionForServeDefersEmptyWithModules(t *testing.T) {
+func TestPrepareProvisionMinimalForServeDefersEmptyWithModules(t *testing.T) {
 	t.Parallel()
-	runtimeScope, _ := newHostProvisionDB(t)
+	runtimeScope, _ := newProvisionMinimalDB(t)
 	seedLocalWebModule(t, runtimeScope.config)
 	srv := &GRPCWebServer{runtimeScope: runtimeScope, mux: http.NewServeMux()}
 
-	deferred, err := srv.prepareHostProvisionForServe(context.Background())
+	deferred, err := srv.prepareProvisionMinimalForServe(context.Background())
 	if err != nil {
 		t.Fatalf("prepare: %v", err)
 	}
 	if !deferred {
 		t.Fatal("Empty + local closure should defer provision until after splash listening")
 	}
-	phase, msg := srv.hostProvisionUISnapshot()
-	if phase != hostProvisionUIProvisioning {
+	phase, msg := srv.setupSplashUISnapshot()
+	if phase != setupSplashUIProvisioning {
 		t.Fatalf("ui phase = %q, want provisioning", phase)
 	}
 	if !strings.Contains(msg, "Preparing setup") {
@@ -184,20 +184,20 @@ func TestPrepareHostProvisionForServeDefersEmptyWithModules(t *testing.T) {
 	}
 }
 
-func TestDeferredHostProvisionSetsFailedWithoutRestartOnInstallError(t *testing.T) {
+func TestDeferredProvisionMinimalSetsFailedWithoutRestartOnInstallError(t *testing.T) {
 	t.Parallel()
-	runtimeScope, _ := newHostProvisionDB(t)
+	runtimeScope, _ := newProvisionMinimalDB(t)
 	seedLocalWebModule(t, runtimeScope.config)
 	srv := &GRPCWebServer{runtimeScope: runtimeScope}
 	if err := srv.planServe(nil); err != nil {
 		t.Fatalf("planServe: %v", err)
 	}
-	srv.setHostProvisionUI(hostProvisionUIProvisioning, setupStatusMsgStarting)
+	srv.setSetupSplashUI(setupSplashUIProvisioning, setupStatusMsgStarting)
 
 	started := make(chan struct{})
 	release := make(chan struct{})
 	var once sync.Once
-	srv.hostProvisionFn = func(ctx context.Context) (provision.Result, error) {
+	srv.provisionMinimalFn = func(ctx context.Context) (provision.Result, error) {
 		once.Do(func() { close(started) })
 		select {
 		case <-release:
@@ -210,7 +210,7 @@ func TestDeferredHostProvisionSetsFailedWithoutRestartOnInstallError(t *testing.
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		srv.deferredHostProvision(context.Background())
+		srv.deferredProvisionMinimal(context.Background())
 	}()
 
 	select {
@@ -219,7 +219,7 @@ func TestDeferredHostProvisionSetsFailedWithoutRestartOnInstallError(t *testing.
 		t.Fatal("timed out waiting for deferred provision to start")
 	}
 	// Splash status stays starting while install is in flight.
-	if phase, _ := srv.hostProvisionUISnapshot(); phase != hostProvisionUIProvisioning {
+	if phase, _ := srv.setupSplashUISnapshot(); phase != setupSplashUIProvisioning {
 		t.Fatalf("in-flight ui phase = %q", phase)
 	}
 	close(release)
@@ -228,7 +228,7 @@ func TestDeferredHostProvisionSetsFailedWithoutRestartOnInstallError(t *testing.
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for deferred provision to finish")
 	}
-	if phase, _ := srv.hostProvisionUISnapshot(); phase != hostProvisionUIFailed {
+	if phase, _ := srv.setupSplashUISnapshot(); phase != setupSplashUIFailed {
 		t.Fatalf("after failure ui phase = %q, want failed", phase)
 	}
 }

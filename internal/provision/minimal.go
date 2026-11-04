@@ -19,12 +19,12 @@ import (
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
-// MinimalRootModule is the InstallModule input for host first-run provision.
+// MinimalRootModule is the InstallModule input for ProvisionMinimal.
 // The web shell pulls core/auth/meta via depends; profile=minimal skips document.
 const MinimalRootModule = "web"
 
 // MinimalClosureModules is the local ModulesPath set required before automatic
-// host provision. Includes web plus the transitive depends closure of the
+// ProvisionMinimal. Includes web plus the transitive depends closure of the
 // minimal web shell (core/auth/meta/base/task) so install does not fall back
 // to the registry for missing local packages.
 func MinimalClosureModules() []string {
@@ -64,7 +64,7 @@ type Result struct {
 	Phase Phase
 }
 
-// MinimalInstallRequest is the InstallModule payload for host provision and
+// MinimalInstallRequest is the InstallModule payload for ProvisionMinimal and
 // shared bootstrap minimal install.
 func MinimalInstallRequest() lifecycle.InstallModuleRequest {
 	return lifecycle.InstallModuleRequest{
@@ -189,7 +189,7 @@ func ProvisionMinimal(ctx context.Context, runtimeScope scope.Scope, opts Option
 		return Result{}, errors.New("provision completed but workspace is still empty (auth not installed)")
 	}
 	if phase == PhaseReady {
-		// Host provision never writes setup.completed_at. Ready here means the
+		// First-run provision never writes setup.completed_at. Ready here means the
 		// workspace already had setup.completed_at once auth appeared (e.g. peer
 		// completed setup under the lease, or a prior Ready marker).
 		if log != nil {

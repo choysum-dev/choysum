@@ -44,10 +44,10 @@ func (s *GRPCWebServer) unregisterAllServices() error {
 }
 
 func (s *GRPCWebServer) registerBootstrapService() (bootstrapModeStartupResult, error) {
-	svc := pendingSplashBinding(s)
+	svc := setupSplashBinding(s)
 	batch := s.registration.beginBatch()
 	if err := batch.registerBinding(s, svc); err != nil {
-		return bootstrapModeStartupResult{}, xfmt.Errorf("Failed to register pending splash service: %w", err)
+		return bootstrapModeStartupResult{}, xfmt.Errorf("Failed to register setup splash service: %w", err)
 	}
 	return bootstrapModeStartupResult{ServiceName: svc.Name(), Registration: batch.commit()}, nil
 }

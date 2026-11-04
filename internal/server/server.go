@@ -49,11 +49,11 @@ type GRPCWebServer struct {
 	registration    registrationState
 	runtimeRecovery runtimeRecoveryState
 
-	// hostProvisionFn overrides provision.ProvisionMinimal in tests.
-	hostProvisionFn func(ctx context.Context) (provision.Result, error)
+	// provisionMinimalFn overrides provision.ProvisionMinimal in tests.
+	provisionMinimalFn func(ctx context.Context) (provision.Result, error)
 
-	// hostProvisionUI drives the Provisioning splash / status JSON while install runs.
-	hostProvisionUI hostProvisionUIState
+	// setupSplashUI drives the Provisioning splash / status JSON while install runs.
+	setupSplashUI setupSplashUIState
 
 	ready atomic.Bool
 }
@@ -65,7 +65,7 @@ func (s *GRPCWebServer) Serve(ctx context.Context, serviceNames ...string) error
 
 	s.runState.setServeRequestArgs(serviceNames)
 
-	deferred, err := s.prepareHostProvisionForServe(ctx)
+	deferred, err := s.prepareProvisionMinimalForServe(ctx)
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func (s *GRPCWebServer) Serve(ctx context.Context, serviceNames ...string) error
 		return err
 	}
 	if deferred {
-		go s.deferredHostProvision(ctx)
+		go s.deferredProvisionMinimal(ctx)
 	}
 
 	return s.serve()

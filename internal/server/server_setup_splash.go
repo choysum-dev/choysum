@@ -11,71 +11,71 @@ import (
 	"google.golang.org/grpc"
 )
 
-// pendingSplashService is the host-only HTTP surface for RunModeBootstrap.
+// setupSplashService is the host-only HTTP surface for RunModeBootstrap.
 // It does not expose /bootstrap or any install RPC — Empty workspaces show this
-// splash while deferredHostProvision installs the minimal shell.
-type pendingSplashService struct {
+// splash while deferredProvisionMinimal installs the minimal shell.
+type setupSplashService struct {
 	server *GRPCWebServer
 }
 
-func newPendingSplashService(server *GRPCWebServer) *pendingSplashService {
-	return &pendingSplashService{server: server}
+func newSetupSplashService(server *GRPCWebServer) *setupSplashService {
+	return &setupSplashService{server: server}
 }
 
-// pendingSplashBindingFn builds the bootstrap-mode registration binding.
-// Tests override it via setPendingSplashBindingForTest to force failures.
+// setupSplashBindingFn builds the bootstrap-mode registration binding.
+// Tests override it via setSetupSplashBindingForTest to force failures.
 var (
-	pendingSplashBindingMu sync.RWMutex
-	pendingSplashBindingFn = func(server *GRPCWebServer) registrationBinding {
-		return newPendingSplashService(server)
+	setupSplashBindingMu sync.RWMutex
+	setupSplashBindingFn = func(server *GRPCWebServer) registrationBinding {
+		return newSetupSplashService(server)
 	}
 )
 
-func pendingSplashBinding(server *GRPCWebServer) registrationBinding {
-	pendingSplashBindingMu.RLock()
-	defer pendingSplashBindingMu.RUnlock()
-	return pendingSplashBindingFn(server)
+func setupSplashBinding(server *GRPCWebServer) registrationBinding {
+	setupSplashBindingMu.RLock()
+	defer setupSplashBindingMu.RUnlock()
+	return setupSplashBindingFn(server)
 }
 
-func setPendingSplashBindingForTest(fn func(*GRPCWebServer) registrationBinding) (restore func()) {
-	pendingSplashBindingMu.Lock()
-	prev := pendingSplashBindingFn
+func setSetupSplashBindingForTest(fn func(*GRPCWebServer) registrationBinding) (restore func()) {
+	setupSplashBindingMu.Lock()
+	prev := setupSplashBindingFn
 	if fn == nil {
-		pendingSplashBindingFn = func(server *GRPCWebServer) registrationBinding {
-			return newPendingSplashService(server)
+		setupSplashBindingFn = func(server *GRPCWebServer) registrationBinding {
+			return newSetupSplashService(server)
 		}
 	} else {
-		pendingSplashBindingFn = fn
+		setupSplashBindingFn = fn
 	}
-	pendingSplashBindingMu.Unlock()
+	setupSplashBindingMu.Unlock()
 	return func() {
-		pendingSplashBindingMu.Lock()
-		pendingSplashBindingFn = prev
-		pendingSplashBindingMu.Unlock()
+		setupSplashBindingMu.Lock()
+		setupSplashBindingFn = prev
+		setupSplashBindingMu.Unlock()
 	}
 }
 
-func (s *pendingSplashService) Name() string { return "bootstrap" }
+func (s *setupSplashService) Name() string { return "bootstrap" }
 
-func (s *pendingSplashService) ServiceDescs() ([]*grpc.ServiceDesc, error) {
+func (s *setupSplashService) ServiceDescs() ([]*grpc.ServiceDesc, error) {
 	return nil, nil
 }
 
-func (s *pendingSplashService) ServiceScripts() []*jsengine.JsScript { return nil }
+func (s *setupSplashService) ServiceScripts() []*jsengine.JsScript { return nil }
 
-func (s *pendingSplashService) WebHandlers() (map[string]http.Handler, error) {
+func (s *setupSplashService) WebHandlers() (map[string]http.Handler, error) {
 	// Exact "/" only (Go 1.22+ {$}); do not claim the "/" tree catch-all so
 	// /healthz, /-/setup/status, and other base routes keep precedence.
 	// /web and /web/* redirect to splash until application mode registers the shell.
 	return map[string]http.Handler{
-		"/{$}":  http.HandlerFunc(s.servePendingSplash),
+		"/{$}":  http.HandlerFunc(s.serveSetupSplash),
 		"/web":  http.HandlerFunc(s.redirectWebToSplash),
 		"/web/": http.HandlerFunc(s.redirectWebToSplash),
 	}, nil
 }
 
 // redirectWebToSplash sends early /web/* hits to the host splash while provision runs.
-func (s *pendingSplashService) redirectWebToSplash(w http.ResponseWriter, r *http.Request) {
+func (s *setupSplashService) redirectWebToSplash(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		w.Header().Set("Allow", "GET, HEAD")
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -84,7 +84,7 @@ func (s *pendingSplashService) redirectWebToSplash(w http.ResponseWriter, r *htt
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
-func (s *pendingSplashService) servePendingSplash(w http.ResponseWriter, r *http.Request) {
+func (s *setupSplashService) serveSetupSplash(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		w.Header().Set("Allow", "GET, HEAD")
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -109,10 +109,10 @@ func (s *pendingSplashService) servePendingSplash(w http.ResponseWriter, r *http
 	if r.Method == http.MethodHead {
 		return
 	}
-	_, _ = w.Write([]byte(pendingSplashHTML))
+	_, _ = w.Write([]byte(setupSplashHTML))
 }
 
-const pendingSplashHTML = `<!DOCTYPE html>
+const setupSplashHTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">

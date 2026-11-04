@@ -19,6 +19,6 @@ Do **not** list `web` in domain `depends`. The web shell depends on `core` / `au
 - **Install:** merges `web` (and its depends) into `ModuleOrder` if web is not already installed; then Ensures profile extras (`document`, and for `full` also `message`/`audit`).
 - **Upgrade:** if web is missing, installs it via `EnsureOrder` (does not upgrade an already-installed web); always rebuilds `dist/web` when needed.
 - **`--no-web`:** skip that auto-include (headless / API-only installs).
-- **`--web-shell-profile=minimal`:** shell only — no document/message/audit (first-run provision).
+- **`--web-shell-profile=minimal`:** shell only — no document/message/audit (ProvisionMinimal).
 
 Loader notes: `module` must be the applying module; `application` may be cross-app; `model` is a short name; use `ref` / `modelRef` / `refBy` for links.

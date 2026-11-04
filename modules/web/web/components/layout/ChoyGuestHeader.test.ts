@@ -6,7 +6,7 @@ import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import ChoyGuestHeader from './ChoyGuestHeader.vue';
 
 describe('ChoyGuestHeader', () => {
-  test('hides Home on first-run setup path; keeps header tools', async () => {
+  test('hides Home on setup path; keeps header tools', async () => {
     const original = globalThis.location;
     Object.defineProperty(globalThis, 'location', {
       configurable: true,

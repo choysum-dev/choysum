@@ -17,26 +17,26 @@ import (
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
-// hostProvisionPeerWaitNanos is the peer-wait budget (nanoseconds). Tests override
+// provisionMinimalPeerWaitNanos is the peer-wait budget (nanoseconds). Tests override
 // via store/load so parallel packages cannot race a bare duration var.
-var hostProvisionPeerWaitNanos atomic.Int64
+var provisionMinimalPeerWaitNanos atomic.Int64
 
 func init() {
-	hostProvisionPeerWaitNanos.Store(int64(2 * time.Minute))
+	provisionMinimalPeerWaitNanos.Store(int64(2 * time.Minute))
 }
 
-func hostProvisionPeerWait() time.Duration {
-	return time.Duration(hostProvisionPeerWaitNanos.Load())
+func provisionMinimalPeerWait() time.Duration {
+	return time.Duration(provisionMinimalPeerWaitNanos.Load())
 }
 
-func setHostProvisionPeerWait(d time.Duration) {
-	hostProvisionPeerWaitNanos.Store(int64(d))
+func setProvisionMinimalPeerWait(d time.Duration) {
+	provisionMinimalPeerWaitNanos.Store(int64(d))
 }
 
-// prepareHostProvisionForServe decides whether Empty workspaces defer install
+// prepareProvisionMinimalForServe decides whether Empty workspaces defer install
 // until after splash listening. Returns deferred=true when Serve should start
 // bootstrap mode immediately and run provision in the background.
-func (s *GRPCWebServer) prepareHostProvisionForServe(ctx context.Context) (deferred bool, err error) {
+func (s *GRPCWebServer) prepareProvisionMinimalForServe(ctx context.Context) (deferred bool, err error) {
 	if s == nil || s.runtimeScope == nil {
 		return false, nil
 	}
@@ -54,50 +54,50 @@ func (s *GRPCWebServer) prepareHostProvisionForServe(ctx context.Context) (defer
 	}
 	if phase != provision.PhaseEmpty {
 		// Peer may have finished while we were still on splash; refresh plan later via Serve.
-		return false, s.ensureHostProvision(ctx)
+		return false, s.ensureProvisionMinimal(ctx)
 	}
 	if !hasLocalProvisionModules(s.runtimeScope) {
-		s.setHostProvisionUI(hostProvisionUIFailed, setupStatusMsgFailed)
-		s.logHostProvisionWarn("host provision skipped: ModulesPath has no local modules; continuing in bootstrap mode")
+		s.setSetupSplashUI(setupSplashUIFailed, setupStatusMsgFailed)
+		s.logProvisionMinimalWarn("ProvisionMinimal skipped: ModulesPath has no local modules; continuing in bootstrap mode")
 		return false, nil
 	}
-	s.setHostProvisionUI(hostProvisionUIProvisioning, setupStatusMsgStarting)
+	s.setSetupSplashUI(setupSplashUIProvisioning, setupStatusMsgStarting)
 	return true, nil
 }
 
-// deferredHostProvision runs after splash listening so browsers see progress
+// deferredProvisionMinimal runs after splash listening so browsers see progress
 // immediately. On success it restarts into application mode (SetupPending).
-func (s *GRPCWebServer) deferredHostProvision(ctx context.Context) {
+func (s *GRPCWebServer) deferredProvisionMinimal(ctx context.Context) {
 	if s == nil {
 		return
 	}
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	if err := s.ensureHostProvision(ctx); err != nil {
-		s.setHostProvisionUI(hostProvisionUIFailed, setupStatusMsgFailed)
-		s.logHostProvisionWarn("deferred host provision failed", "error", err)
+	if err := s.ensureProvisionMinimal(ctx); err != nil {
+		s.setSetupSplashUI(setupSplashUIFailed, setupStatusMsgFailed)
+		s.logProvisionMinimalWarn("deferred ProvisionMinimal failed", "error", err)
 		return
 	}
-	uiPhase, _ := s.hostProvisionUISnapshot()
-	if uiPhase == hostProvisionUIFailed {
+	uiPhase, _ := s.setupSplashUISnapshot()
+	if uiPhase == setupSplashUIFailed {
 		return
 	}
 	// Promote bootstrap splash → application shell without tearing down Serve's
 	// outer loop (restart re-plans from dist after install).
 	if err := s.restart(); err != nil {
-		s.setHostProvisionUI(hostProvisionUIFailed, setupStatusMsgFailed)
-		s.logHostProvisionWarn("deferred host provision restart failed", "error", err)
+		s.setSetupSplashUI(setupSplashUIFailed, setupStatusMsgFailed)
+		s.logProvisionMinimalWarn("deferred ProvisionMinimal restart failed", "error", err)
 		return
 	}
-	s.setHostProvisionUI(hostProvisionUIIdle, "")
+	s.setSetupSplashUI(setupSplashUIIdle, "")
 }
 
-// ensureHostProvision installs the minimal web-shell closure when the workspace
+// ensureProvisionMinimal installs the minimal web-shell closure when the workspace
 // is Empty, then re-plans so Serve can start in application mode (SetupPending).
 // Install failures and missing application dist fall back to bootstrap mode
-// (host pending splash; no /bootstrap SPA).
-func (s *GRPCWebServer) ensureHostProvision(ctx context.Context) error {
+// (setup splash; no /bootstrap SPA).
+func (s *GRPCWebServer) ensureProvisionMinimal(ctx context.Context) error {
 	if s == nil || s.runtimeScope == nil {
 		return nil
 	}
@@ -107,7 +107,7 @@ func (s *GRPCWebServer) ensureHostProvision(ctx context.Context) error {
 
 	phase, err := provision.Resolve(s.runtimeScope)
 	if err != nil {
-		// Test fixtures and pre-DB scopes have no session; skip host provision.
+		// Test fixtures and pre-DB scopes have no session; skip ProvisionMinimal.
 		session := s.runtimeScope.Session()
 		if session == nil || session.DB == nil {
 			return nil
@@ -118,67 +118,67 @@ func (s *GRPCWebServer) ensureHostProvision(ctx context.Context) error {
 		// Another actor may have finished provision after the first planServe;
 		// refresh the run mode when we are still on the bootstrap fallback.
 		if s.runState.isBootstrapMode() {
-			return s.replanAfterHostProvision(false)
+			return s.replanAfterProvisionMinimal(false)
 		}
 		return nil
 	}
 
-	// Automatic first-run provision requires a local ModulesPath closure.
+	// Automatic ProvisionMinimal requires a local ModulesPath closure.
 	// Empty temp dirs would otherwise fall through to registry and leave a
 	// half-applied schema when published packages fail to build.
 	if !hasLocalProvisionModules(s.runtimeScope) {
-		s.setHostProvisionUI(hostProvisionUIFailed, setupStatusMsgFailed)
-		s.logHostProvisionWarn("host provision skipped: ModulesPath has no local modules; continuing in bootstrap mode")
+		s.setSetupSplashUI(setupSplashUIFailed, setupStatusMsgFailed)
+		s.logProvisionMinimalWarn("ProvisionMinimal skipped: ModulesPath has no local modules; continuing in bootstrap mode")
 		return nil
 	}
 
-	s.setHostProvisionUI(hostProvisionUIProvisioning, setupStatusMsgStarting)
-	result, err := s.runHostProvisionMinimal(ctx)
+	s.setSetupSplashUI(setupSplashUIProvisioning, setupStatusMsgStarting)
+	result, err := s.runProvisionMinimal(ctx)
 	if err != nil {
 		if errors.Is(err, provision.ErrLeaseBusy) {
-			s.setHostProvisionUI(hostProvisionUIWaitingPeer, setupStatusMsgWaiting)
-			if waitErr := s.waitForHostProvisionPeer(ctx); waitErr != nil {
-				s.setHostProvisionUI(hostProvisionUIFailed, setupStatusMsgFailed)
-				s.logHostProvisionWarn(
-					"host provision lease busy; continuing in bootstrap mode (restart after peer finishes if still pending)",
+			s.setSetupSplashUI(setupSplashUIWaitingPeer, setupStatusMsgWaiting)
+			if waitErr := s.waitForProvisionMinimalPeer(ctx); waitErr != nil {
+				s.setSetupSplashUI(setupSplashUIFailed, setupStatusMsgFailed)
+				s.logProvisionMinimalWarn(
+					"ProvisionMinimal lease busy; continuing in bootstrap mode (restart after peer finishes if still pending)",
 					"error", waitErr,
 				)
 				// Soft-replan anyway: peer may have finished while wait timed out
 				// or Resolve transiently failed during the poll loop.
-				_ = s.replanAfterHostProvision(false)
+				_ = s.replanAfterProvisionMinimal(false)
 				return nil
 			}
 			if phase, resolveErr := provision.Resolve(s.runtimeScope); resolveErr == nil {
-				s.logHostProvisionWarn("peer host provision finished", "phase", string(phase))
+				s.logProvisionMinimalWarn("peer ProvisionMinimal finished", "phase", string(phase))
 			}
 			// Soft-fallback: peer path never hard-fails Serve on replan.
-			_ = s.replanAfterHostProvision(false)
+			_ = s.replanAfterProvisionMinimal(false)
 			return nil
 		}
 		if errors.Is(err, provision.ErrLeaseLost) {
-			s.setHostProvisionUI(hostProvisionUIFailed, setupStatusMsgFailed)
-			s.logHostProvisionWarn(
-				"host provision lease lost mid-install; workspace may be partially provisioned; continuing in bootstrap mode",
+			s.setSetupSplashUI(setupSplashUIFailed, setupStatusMsgFailed)
+			s.logProvisionMinimalWarn(
+				"ProvisionMinimal lease lost mid-install; workspace may be partially provisioned; continuing in bootstrap mode",
 				"error", err,
 			)
 			return nil
 		}
-		s.setHostProvisionUI(hostProvisionUIFailed, setupStatusMsgFailed)
-		s.logHostProvisionWarn("host provision failed; continuing in bootstrap mode", "error", err)
+		s.setSetupSplashUI(setupSplashUIFailed, setupStatusMsgFailed)
+		s.logProvisionMinimalWarn("ProvisionMinimal failed; continuing in bootstrap mode", "error", err)
 		return nil
 	}
 	if result.Skipped {
-		return s.replanAfterHostProvision(true)
+		return s.replanAfterProvisionMinimal(true)
 	}
 
-	if err := s.replanAfterHostProvision(true); err != nil {
-		s.setHostProvisionUI(hostProvisionUIFailed, setupStatusMsgFailed)
+	if err := s.replanAfterProvisionMinimal(true); err != nil {
+		s.setSetupSplashUI(setupSplashUIFailed, setupStatusMsgFailed)
 		return err
 	}
 	if s.runState.isBootstrapMode() {
-		s.setHostProvisionUI(hostProvisionUIFailed, setupStatusMsgFailed)
-		s.logHostProvisionWarn(
-			"host provision completed but application dist is not ready; continuing in bootstrap mode",
+		s.setSetupSplashUI(setupSplashUIFailed, setupStatusMsgFailed)
+		s.logProvisionMinimalWarn(
+			"ProvisionMinimal completed but application dist is not ready; continuing in bootstrap mode",
 			"phase", string(result.Phase),
 			"reason", s.runState.reason(),
 		)
@@ -186,28 +186,28 @@ func (s *GRPCWebServer) ensureHostProvision(ctx context.Context) error {
 	return nil
 }
 
-func (s *GRPCWebServer) runHostProvisionMinimal(ctx context.Context) (provision.Result, error) {
-	if s.hostProvisionFn != nil {
-		return s.hostProvisionFn(ctx)
+func (s *GRPCWebServer) runProvisionMinimal(ctx context.Context) (provision.Result, error) {
+	if s.provisionMinimalFn != nil {
+		return s.provisionMinimalFn(ctx)
 	}
 	return provision.ProvisionMinimal(ctx, s.runtimeScope, provision.Options{})
 }
 
-func (s *GRPCWebServer) replanAfterHostProvision(required bool) error {
+func (s *GRPCWebServer) replanAfterProvisionMinimal(required bool) error {
 	err := s.planServe(s.runState.serveRequest())
 	if err == nil {
 		return nil
 	}
 	if !required {
-		s.logHostProvisionWarn("replan after host provision skipped", "error", err)
+		s.logProvisionMinimalWarn("replan after ProvisionMinimal skipped", "error", err)
 		return nil
 	}
-	return xfmt.Errorf("replan after host provision: %w", err)
+	return xfmt.Errorf("replan after ProvisionMinimal: %w", err)
 }
 
-func (s *GRPCWebServer) waitForHostProvisionPeer(ctx context.Context) error {
-	wait := hostProvisionPeerWait()
-	s.logHostProvisionWarn("host provision lease busy; waiting for peer provision", "timeout", wait.String())
+func (s *GRPCWebServer) waitForProvisionMinimalPeer(ctx context.Context) error {
+	wait := provisionMinimalPeerWait()
+	s.logProvisionMinimalWarn("ProvisionMinimal lease busy; waiting for peer provision", "timeout", wait.String())
 	deadline := time.Now().Add(wait)
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
@@ -223,7 +223,7 @@ func (s *GRPCWebServer) waitForHostProvisionPeer(ctx context.Context) error {
 			return nil
 		}
 		if time.Now().After(deadline) {
-			return errors.New("timed out waiting for peer host provision")
+			return errors.New("timed out waiting for peer ProvisionMinimal")
 		}
 		select {
 		case <-ctx.Done():
@@ -233,7 +233,7 @@ func (s *GRPCWebServer) waitForHostProvisionPeer(ctx context.Context) error {
 	}
 }
 
-func (s *GRPCWebServer) logHostProvisionWarn(msg string, args ...any) {
+func (s *GRPCWebServer) logProvisionMinimalWarn(msg string, args ...any) {
 	if s == nil || s.runtimeScope == nil {
 		return
 	}

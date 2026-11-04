@@ -12,13 +12,13 @@ import (
 )
 
 // Host-visible provision wait states for the splash page (not setup.completed_at).
-type hostProvisionUIPhase string
+type setupSplashUIPhase string
 
 const (
-	hostProvisionUIIdle         hostProvisionUIPhase = "idle"
-	hostProvisionUIProvisioning hostProvisionUIPhase = "provisioning"
-	hostProvisionUIWaitingPeer  hostProvisionUIPhase = "waiting_peer"
-	hostProvisionUIFailed       hostProvisionUIPhase = "failed"
+	setupSplashUIIdle         setupSplashUIPhase = "idle"
+	setupSplashUIProvisioning setupSplashUIPhase = "provisioning"
+	setupSplashUIWaitingPeer  setupSplashUIPhase = "waiting_peer"
+	setupSplashUIFailed       setupSplashUIPhase = "failed"
 )
 
 // Splash / setup-status copy (English only; not i18n).
@@ -29,33 +29,33 @@ const (
 	setupStatusMsgReady    = "Opening setup…"
 )
 
-type hostProvisionUIState struct {
+type setupSplashUIState struct {
 	mu      sync.RWMutex
-	phase   hostProvisionUIPhase
+	phase   setupSplashUIPhase
 	message string
 }
 
-func (s *GRPCWebServer) setHostProvisionUI(phase hostProvisionUIPhase, message string) {
+func (s *GRPCWebServer) setSetupSplashUI(phase setupSplashUIPhase, message string) {
 	if s == nil {
 		return
 	}
-	s.hostProvisionUI.mu.Lock()
-	defer s.hostProvisionUI.mu.Unlock()
-	s.hostProvisionUI.phase = phase
-	s.hostProvisionUI.message = message
+	s.setupSplashUI.mu.Lock()
+	defer s.setupSplashUI.mu.Unlock()
+	s.setupSplashUI.phase = phase
+	s.setupSplashUI.message = message
 }
 
-func (s *GRPCWebServer) hostProvisionUISnapshot() (hostProvisionUIPhase, string) {
+func (s *GRPCWebServer) setupSplashUISnapshot() (setupSplashUIPhase, string) {
 	if s == nil {
-		return hostProvisionUIIdle, ""
+		return setupSplashUIIdle, ""
 	}
-	s.hostProvisionUI.mu.RLock()
-	defer s.hostProvisionUI.mu.RUnlock()
-	phase := s.hostProvisionUI.phase
+	s.setupSplashUI.mu.RLock()
+	defer s.setupSplashUI.mu.RUnlock()
+	phase := s.setupSplashUI.phase
 	if phase == "" {
-		phase = hostProvisionUIIdle
+		phase = setupSplashUIIdle
 	}
-	return phase, s.hostProvisionUI.message
+	return phase, s.setupSplashUI.message
 }
 
 type setupStatusResponse struct {
@@ -82,22 +82,22 @@ func (s *GRPCWebServer) serveSetupStatus(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *GRPCWebServer) setupStatusPayload() setupStatusResponse {
-	uiPhase, uiMsg := s.hostProvisionUISnapshot()
-	// Prefer in-flight host UI over DB phase: ProvisionMinimal flips the workspace
+	uiPhase, uiMsg := s.setupSplashUISnapshot()
+	// Prefer in-flight splash UI over DB phase: ProvisionMinimal flips the workspace
 	// to SetupPending before restart() registers /web/, and advertising ready
 	// here would send the splash to a 404.
 	switch uiPhase {
-	case hostProvisionUIProvisioning:
+	case setupSplashUIProvisioning:
 		if uiMsg == "" {
 			uiMsg = setupStatusMsgStarting
 		}
 		return setupStatusResponse{Phase: "starting", Message: uiMsg}
-	case hostProvisionUIWaitingPeer:
+	case setupSplashUIWaitingPeer:
 		if uiMsg == "" {
 			uiMsg = setupStatusMsgWaiting
 		}
 		return setupStatusResponse{Phase: "waiting", Message: uiMsg}
-	case hostProvisionUIFailed:
+	case setupSplashUIFailed:
 		if uiMsg == "" {
 			uiMsg = setupStatusMsgFailed
 		}

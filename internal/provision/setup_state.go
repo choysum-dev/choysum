@@ -12,7 +12,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// Phase is the first-run workspace readiness axis used by the host gate.
+// Phase is the workspace readiness axis: Empty → SetupPending → Ready.
 type Phase string
 
 const (

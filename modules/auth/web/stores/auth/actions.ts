@@ -173,7 +173,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
   }
 
   /**
-   * Resolve whether first-run setup is complete (anonymous probe).
+   * Resolve whether initial setup is complete (anonymous probe).
    * Only the terminal Ready result is cached; pending always re-probes so a
    * cross-tab CompleteInitialSetup is visible on the next navigation.
    */
@@ -200,7 +200,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
   }
 
   /**
-   * Complete first-run setup (seed admin credentials + setup.completed_at).
+   * Complete initial setup (seed admin credentials + setup.completed_at).
    * Does not create a session; callers Login afterward (same shape as Register).
    */
   async function completeInitialSetupImpl(username: string, password: string): Promise<any> {
