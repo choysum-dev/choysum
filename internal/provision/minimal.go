@@ -96,7 +96,7 @@ func ProvisionMinimal(ctx context.Context, runtimeScope scope.Scope, opts Option
 
 	log := runtimeScope.Logger()
 	if log != nil {
-		log.Info("provision started", "root", MinimalRootModule, "web_shell_profile", string(plan.WebShellProfileMinimal))
+		log.Info("installing minimal modules for first-run setup", "root", MinimalRootModule, "web_shell_profile", string(plan.WebShellProfileMinimal))
 	}
 
 	installTimeout := opts.InstallTimeout
@@ -131,7 +131,7 @@ func ProvisionMinimal(ctx context.Context, runtimeScope scope.Scope, opts Option
 	defer spinnerTicker.Clear()
 	defer spinnerTicker.Stop()
 	installCtx = logger.WithProgressTicker(installCtx, spinnerTicker)
-	spinnerTicker.SetMessage("provision: installing minimal web shell...")
+	spinnerTicker.SetMessage("installing minimal modules for first-run setup...")
 
 	installScope := runtimeScope.WithContext(installCtx)
 	if installScope == nil {
@@ -159,9 +159,7 @@ func ProvisionMinimal(ctx context.Context, runtimeScope scope.Scope, opts Option
 	}
 	req := MinimalInstallRequest()
 	if err := installFn(installCtx, installScope, executor, req); err != nil {
-		if progress != nil {
-			progress.Done("✗", "provision module installation failed")
-		}
+		// Spinner cleared by defer; surface failure via returned error (and callers' logs).
 		if renewErr := checkProvisionLeaseRenew(handle); renewErr != nil {
 			// Keep ErrLeaseLost as the primary signal, but retain the install
 			// error (often context.Canceled, sometimes an unrelated root cause).
@@ -172,9 +170,6 @@ func ProvisionMinimal(ctx context.Context, runtimeScope scope.Scope, opts Option
 			)
 		}
 		return Result{}, xfmt.Errorf("provision install %s: %w", req.Input, err)
-	}
-	if progress != nil {
-		progress.Done("✓", "provision module installation completed")
 	}
 
 	if err := checkProvisionLeaseRenew(handle); err != nil {
@@ -193,13 +188,13 @@ func ProvisionMinimal(ctx context.Context, runtimeScope scope.Scope, opts Option
 		// workspace already had setup.completed_at once auth appeared (e.g. peer
 		// completed setup under the lease, or a prior Ready marker).
 		if log != nil {
-			log.Info("provision completed with existing Ready marker", "root", MinimalRootModule)
+			log.Info("minimal install finished; workspace already marked ready", "root", MinimalRootModule)
 		}
 		return Result{Skipped: false, Phase: phase}, nil
 	}
 
 	if log != nil {
-		log.Info("provision completed", "phase", string(phase), "root", MinimalRootModule)
+		log.Info("minimal install finished; waiting for initial setup", "phase", string(phase), "root", MinimalRootModule)
 	}
 	return Result{Skipped: false, Phase: phase}, nil
 }

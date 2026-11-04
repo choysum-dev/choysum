@@ -98,10 +98,13 @@ func TestModuleOperationPlanAndCompletedMessages(t *testing.T) {
 	if got := moduleOperationPlanMessage(moduleplan.OpInstall); got != "installing" {
 		t.Fatalf("install plan msg=%q", got)
 	}
-	if got := moduleOperationCompletedMessage(moduleplan.OpUpgrade); got != "upgraded" {
+	if got := moduleOperationCompletedMessage(moduleplan.OpInstall); got != "module install finished" {
+		t.Fatalf("install completed msg=%q", got)
+	}
+	if got := moduleOperationCompletedMessage(moduleplan.OpUpgrade); got != "module upgrade finished" {
 		t.Fatalf("upgrade completed msg=%q", got)
 	}
-	if got := moduleOperationCompletedMessage(moduleplan.OpUninstall); got != "uninstalled" {
+	if got := moduleOperationCompletedMessage(moduleplan.OpUninstall); got != "module uninstall finished" {
 		t.Fatalf("uninstall completed msg=%q", got)
 	}
 }
