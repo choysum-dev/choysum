@@ -161,6 +161,8 @@ func TestHtmlIconProcessorCopiesFileAndUpdatesHref(t *testing.T) {
 		`<html><head><link rel="icon" href="https://cdn.example/favicon.ico"></head><body></body></html>`,
 		`<html><head><link rel="icon" href="favicon.ico?v=2"></head><body></body></html>`,
 		`<html><head><link rel="icon" href="../../etc/passwd"></head><body></body></html>`,
+		`<html><head><link rel="icon" href="."></head><body></body></html>`,
+		`<html><head><link rel="icon" href=".."></head><body></body></html>`,
 	} {
 		doc := parseHTMLDoc(t, markup)
 		if err := processor(doc, &api.BuildResult{}, opts, build); err != nil {
@@ -296,7 +298,7 @@ func TestWebDistRootForIconsAndCopyHelpers(t *testing.T) {
 		t.Fatalf("processor without logo-192: %v", err)
 	}
 
-	// apple-touch Warn path: source exists but destination path is a directory.
+	// apple-touch write failure (dest is a directory) fails the build.
 	assetsSrc := filepath.Join(htmlDir, "assets")
 	if err := os.MkdirAll(assetsSrc, 0o755); err != nil {
 		t.Fatalf("mkdir assets src: %v", err)
@@ -312,8 +314,8 @@ func TestWebDistRootForIconsAndCopyHelpers(t *testing.T) {
 		SourceFile: htmlFile,
 		OutFile:    filepath.Join(webRoot4, "index.html"),
 	}}
-	if err := processor(iconDoc(), &api.BuildResult{}, opts4, &api.PluginBuild{InitialOptions: &api.BuildOptions{Outdir: filepath.Join(webRoot4, "assets")}}); err != nil {
-		t.Fatalf("processor with apple-touch write failure: %v", err)
+	if err := processor(iconDoc(), &api.BuildResult{}, opts4, &api.PluginBuild{InitialOptions: &api.BuildOptions{Outdir: filepath.Join(webRoot4, "assets")}}); err == nil {
+		t.Fatal("expected apple-touch write failure to fail the build")
 	}
 
 	// MkdirAll failure: web root nested under a file.

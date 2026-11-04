@@ -317,7 +317,7 @@ func (p *WebPlugin) htmlIconProcessor(pathPrefix string) vueplugin.IndexHtmlProc
 				if os.IsNotExist(err) {
 					p.Env.Logger().Debug("apple-touch icon skipped", "reason", "source_missing")
 				} else {
-					p.Env.Logger().Warn("apple-touch icon copy failed", "error", err)
+					return fmt.Errorf("failed to publish apple-touch icon: %w", err)
 				}
 			}
 		}
@@ -365,7 +365,15 @@ func (p *WebPlugin) htmlIconProcessor(pathPrefix string) vueplugin.IndexHtmlProc
 		}
 
 		iconBase := filepath.Base(filepath.FromSlash(hrefPath))
+		if iconBase == "." || iconBase == ".." || iconBase == string(filepath.Separator) {
+			p.Env.Logger().Warn("favicon processing skipped", "reason", "icon_href_invalid_basename", "href", href)
+			return nil
+		}
 		iconDstPath := filepath.Join(webRoot, iconBase)
+		if !pathUnderHTMLDir(webRoot, iconDstPath) {
+			p.Env.Logger().Warn("favicon processing skipped", "reason", "icon_dst_escapes_web_root", "href", href)
+			return nil
+		}
 		if err := os.MkdirAll(filepath.Dir(iconDstPath), 0755); err != nil {
 			return fmt.Errorf("failed to create favicon destination directory: %v", err)
 		}
