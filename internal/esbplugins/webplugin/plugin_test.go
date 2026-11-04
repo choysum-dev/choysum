@@ -170,6 +170,37 @@ func TestHtmlIconProcessorCopiesFileAndUpdatesHref(t *testing.T) {
 	if string(content) != "ico" {
 		t.Fatalf("copied favicon = %q, want ico", string(content))
 	}
+
+	// Source under assets/ must still publish as /web/favicon.ico (basename),
+	// not /web/assets/favicon.ico with a missing file.
+	assetsDir := filepath.Join(htmlDir, "assets")
+	if err := os.MkdirAll(assetsDir, 0o755); err != nil {
+		t.Fatalf("mkdir assets: %v", err)
+	}
+	nestedIcon := filepath.Join(assetsDir, "favicon.ico")
+	if err := os.WriteFile(nestedIcon, []byte("nested-ico"), 0o644); err != nil {
+		t.Fatalf("write nested icon: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(assetsDir, "logo-192.png"), []byte("png"), 0o644); err != nil {
+		t.Fatalf("write logo-192: %v", err)
+	}
+	outdir2 := t.TempDir()
+	build2 := &api.PluginBuild{InitialOptions: &api.BuildOptions{Outdir: outdir2}}
+	doc2 := parseHTMLDoc(t, `<html><head><link rel="icon" href="assets/favicon.ico"></head><body></body></html>`)
+	if err := processor(doc2, &api.BuildResult{}, opts, build2); err != nil {
+		t.Fatalf("processor assets/ href: %v", err)
+	}
+	if got := htmlquery.FindOne(doc2, `//link[@rel="icon"]`); got == nil || htmlquery.SelectAttr(got, "href") != "/web/favicon.ico" {
+		t.Fatalf("assets/ icon href = %q, want /web/favicon.ico", renderHTML(t, doc2))
+	}
+	nestedOut, err := os.ReadFile(filepath.Join(outdir2, "favicon.ico"))
+	if err != nil || string(nestedOut) != "nested-ico" {
+		t.Fatalf("copied nested favicon = %q err=%v", string(nestedOut), err)
+	}
+	touch, err := os.ReadFile(filepath.Join(outdir2, "apple-touch-icon.png"))
+	if err != nil || string(touch) != "png" {
+		t.Fatalf("apple-touch copy = %q err=%v", string(touch), err)
+	}
 }
 
 func TestSecurityHtmlProcessorAddsExpectedMetaTags(t *testing.T) {

@@ -338,8 +338,11 @@ func (p *WebPlugin) htmlIconProcessor(pathPrefix string) vueplugin.IndexHtmlProc
 			return fmt.Errorf("build.InitialOptions.Outdir is empty")
 		}
 
-		// Write the favicon into the output directory using its basename.
-		iconDstPath := filepath.Join(outdir, filepath.Base(href))
+		// Write the favicon into the output directory using its basename so the
+		// public URL stays /web/favicon.ico even when the source lives under
+		// assets/ (avoids HTML pointing at /web/assets/favicon.ico with no file).
+		iconBase := filepath.Base(href)
+		iconDstPath := filepath.Join(outdir, iconBase)
 
 		// Ensure the destination directory exists.
 		if err := os.MkdirAll(filepath.Dir(iconDstPath), 0755); err != nil {
@@ -357,14 +360,31 @@ func (p *WebPlugin) htmlIconProcessor(pathPrefix string) vueplugin.IndexHtmlProc
 			return fmt.Errorf("failed to write favicon file: %v", err)
 		}
 
-		// 5. Rewrite the HTML href and prepend pathPrefix.
-		newHref := pathPrefix + strings.TrimPrefix(href, "/")
+		// 5. Rewrite the HTML href to pathPrefix + basename (matches the copy).
+		newHref := pathPrefix + filepath.ToSlash(iconBase)
 		if hrefAttrIndex >= 0 {
 			iconNode.Attr[hrefAttrIndex].Val = newHref
 		}
 
+		// Optional apple-touch icon for browser root probes (/apple-touch-icon.png).
+		_ = copyWebBuildAsset(htmlDir, outdir, filepath.Join("assets", "logo-192.png"), "apple-touch-icon.png")
+
 		return nil
 	}
+}
+
+// copyWebBuildAsset copies modules/web relative src into outdir as dstBase when present.
+func copyWebBuildAsset(htmlDir, outdir, relSrc, dstBase string) error {
+	src := filepath.Join(htmlDir, relSrc)
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	dst := filepath.Join(outdir, dstBase)
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(dst, data, 0o644)
 }
 
 // securityHtmlProcessor returns an HTML processor that injects security-related headers.

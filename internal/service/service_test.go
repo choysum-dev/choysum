@@ -700,6 +700,12 @@ func TestServiceScriptsAndWebHandlers(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(assetsDir, "app.js"), []byte("asset"), 0o644); err != nil {
 		t.Fatalf("write asset: %v", err)
 	}
+	if err := os.WriteFile(filepath.Join(webDir, "favicon.ico"), []byte("ico"), 0o644); err != nil {
+		t.Fatalf("write favicon: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(webDir, "apple-touch-icon.png"), []byte("png"), 0o644); err != nil {
+		t.Fatalf("write apple-touch: %v", err)
+	}
 
 	runtimeScope := newHelperScope(distDir)
 	runtimeScope.cfg.Server.WebBaseURL = "/web"
@@ -725,8 +731,19 @@ func TestServiceScriptsAndWebHandlers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("WebHandlers() error = %v", err)
 	}
-	if len(handlers) != 2 {
+	// /web/, /, /favicon.ico, /apple-touch-icon.png, /apple-touch-icon-precomposed.png
+	if len(handlers) != 5 {
 		t.Fatalf("unexpected handler map: %#v", handlers)
+	}
+	favRR := httptest.NewRecorder()
+	handlers["/favicon.ico"].ServeHTTP(favRR, httptest.NewRequest(http.MethodGet, "/favicon.ico", nil))
+	if favRR.Code != http.StatusOK || favRR.Body.String() != "ico" {
+		t.Fatalf("favicon root handler: code=%d body=%q", favRR.Code, favRR.Body.String())
+	}
+	touchRR := httptest.NewRecorder()
+	handlers["/apple-touch-icon-precomposed.png"].ServeHTTP(touchRR, httptest.NewRequest(http.MethodGet, "/apple-touch-icon-precomposed.png", nil))
+	if touchRR.Code != http.StatusOK || touchRR.Body.String() != "png" {
+		t.Fatalf("apple-touch root handler: code=%d body=%q", touchRR.Code, touchRR.Body.String())
 	}
 
 	assetReq := httptest.NewRequest(http.MethodGet, "/web/assets/app.js", nil)
