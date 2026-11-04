@@ -740,11 +740,29 @@ func TestServiceScriptsAndWebHandlers(t *testing.T) {
 	if favRR.Code != http.StatusOK || favRR.Body.String() != "ico" {
 		t.Fatalf("favicon root handler: code=%d body=%q", favRR.Code, favRR.Body.String())
 	}
+	methodRR := httptest.NewRecorder()
+	handlers["/favicon.ico"].ServeHTTP(methodRR, httptest.NewRequest(http.MethodPost, "/favicon.ico", nil))
+	if methodRR.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("favicon POST status=%d, want 405", methodRR.Code)
+	}
 	touchRR := httptest.NewRecorder()
 	handlers["/apple-touch-icon-precomposed.png"].ServeHTTP(touchRR, httptest.NewRequest(http.MethodGet, "/apple-touch-icon-precomposed.png", nil))
 	if touchRR.Code != http.StatusOK || touchRR.Body.String() != "png" {
 		t.Fatalf("apple-touch root handler: code=%d body=%q", touchRR.Code, touchRR.Body.String())
 	}
+
+	// Missing icon files are skipped; nil receivers are no-ops.
+	emptyWeb := &ApplicationService{runtimeScope: runtimeScope, name: "web", appDistPath: t.TempDir()}
+	emptyHandlers, err := emptyWeb.WebHandlers()
+	if err != nil {
+		t.Fatalf("empty web handlers: %v", err)
+	}
+	if _, ok := emptyHandlers["/favicon.ico"]; ok {
+		t.Fatal("missing favicon must not register root handler")
+	}
+	var nilSvc *ApplicationService
+	nilSvc.registerRootIconHandlers(nil)
+	nilSvc.registerRootIconHandlers(map[string]http.Handler{})
 
 	assetReq := httptest.NewRequest(http.MethodGet, "/web/assets/app.js", nil)
 	assetRR := httptest.NewRecorder()

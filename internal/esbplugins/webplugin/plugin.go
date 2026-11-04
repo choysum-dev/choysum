@@ -321,38 +321,38 @@ func (p *WebPlugin) htmlIconProcessor(pathPrefix string) vueplugin.IndexHtmlProc
 			p.Env.Logger().Warn("favicon processing skipped", "reason", "icon_link_tag_missing_href")
 			return nil
 		}
-
-		// 3. Build the absolute path to the source file.
-		htmlDir := filepath.Dir(opts.IndexHtmlOptions.SourceFile)
-		iconSrcPath := filepath.Join(htmlDir, href)
-
-		// Check whether the file exists.
-		if _, err := os.Stat(iconSrcPath); err != nil {
-			p.Env.Logger().Warn("favicon file does not exist", "path", iconSrcPath, "href", href)
+		hrefPath := stripURLQueryFragment(href)
+		if hrefPath == "" || strings.Contains(hrefPath, "://") || strings.HasPrefix(hrefPath, "//") {
+			p.Env.Logger().Warn("favicon processing skipped", "reason", "icon_href_not_relative", "href", href)
 			return nil
 		}
 
-		// 4. Copy the file into the output directory.
-		outdir := build.InitialOptions.Outdir
-		if outdir == "" {
-			return fmt.Errorf("build.InitialOptions.Outdir is empty")
+		// 3. Build the absolute path to the source file.
+		htmlDir := filepath.Dir(opts.IndexHtmlOptions.SourceFile)
+		iconSrcPath := filepath.Join(htmlDir, filepath.FromSlash(hrefPath))
+
+		// 4. Publish under dist/web (not esbuild Outdir=dist/web/assets): assets
+		// cleanup removes non-OutputFiles, and /web/favicon.ico is served from web root.
+		iconData, err := os.ReadFile(iconSrcPath)
+		if err != nil {
+			p.Env.Logger().Warn("favicon file does not exist", "path", iconSrcPath, "href", href)
+			return nil
+		}
+		outdir := ""
+		if build != nil && build.InitialOptions != nil {
+			outdir = build.InitialOptions.Outdir
+		}
+		webRoot := webDistRootForIcons(opts, outdir)
+		if webRoot == "" {
+			return fmt.Errorf("web dist root for favicon is empty")
 		}
 
-		// Write the favicon into the output directory using its basename so the
-		// public URL stays /web/favicon.ico even when the source lives under
-		// assets/ (avoids HTML pointing at /web/assets/favicon.ico with no file).
-		iconBase := filepath.Base(href)
-		iconDstPath := filepath.Join(outdir, iconBase)
+		iconBase := filepath.Base(filepath.FromSlash(hrefPath))
+		iconDstPath := filepath.Join(webRoot, iconBase)
 
 		// Ensure the destination directory exists.
 		if err := os.MkdirAll(filepath.Dir(iconDstPath), 0755); err != nil {
 			return fmt.Errorf("failed to create favicon destination directory: %v", err)
-		}
-
-		// Read the source file.
-		iconData, err := os.ReadFile(iconSrcPath)
-		if err != nil {
-			return fmt.Errorf("failed to read favicon file: %v", err)
 		}
 
 		// Write the destination file, overwriting it if it already exists.
@@ -367,20 +367,52 @@ func (p *WebPlugin) htmlIconProcessor(pathPrefix string) vueplugin.IndexHtmlProc
 		}
 
 		// Optional apple-touch icon for browser root probes (/apple-touch-icon.png).
-		_ = copyWebBuildAsset(htmlDir, outdir, filepath.Join("assets", "logo-192.png"), "apple-touch-icon.png")
+		if err := copyWebBuildAsset(htmlDir, webRoot, filepath.Join("assets", "logo-192.png"), "apple-touch-icon.png"); err != nil {
+			if os.IsNotExist(err) {
+				p.Env.Logger().Debug("apple-touch icon skipped", "reason", "source_missing")
+			} else {
+				p.Env.Logger().Warn("apple-touch icon copy failed", "error", err)
+			}
+		}
 
 		return nil
 	}
 }
 
-// copyWebBuildAsset copies modules/web relative src into outdir as dstBase when present.
-func copyWebBuildAsset(htmlDir, outdir, relSrc, dstBase string) error {
+// webDistRootForIcons returns dist/web: prefer IndexHtml OutFile dir, else parent of
+// esbuild Outdir when it is the assets/ folder.
+func webDistRootForIcons(opts *vueplugin.Options, outdir string) string {
+	if opts != nil {
+		if out := strings.TrimSpace(opts.IndexHtmlOptions.OutFile); out != "" {
+			return filepath.Dir(out)
+		}
+	}
+	outdir = strings.TrimSpace(outdir)
+	if outdir == "" {
+		return ""
+	}
+	if filepath.Base(outdir) == "assets" {
+		return filepath.Dir(outdir)
+	}
+	return outdir
+}
+
+func stripURLQueryFragment(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if i := strings.IndexAny(raw, "?#"); i >= 0 {
+		raw = raw[:i]
+	}
+	return strings.TrimSpace(raw)
+}
+
+// copyWebBuildAsset copies modules/web relative src into destDir as dstBase when present.
+func copyWebBuildAsset(htmlDir, destDir, relSrc, dstBase string) error {
 	src := filepath.Join(htmlDir, relSrc)
 	data, err := os.ReadFile(src)
 	if err != nil {
 		return err
 	}
-	dst := filepath.Join(outdir, dstBase)
+	dst := filepath.Join(destDir, dstBase)
 	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 		return err
 	}

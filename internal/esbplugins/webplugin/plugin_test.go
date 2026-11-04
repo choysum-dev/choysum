@@ -141,19 +141,33 @@ func TestHtmlIconProcessorCopiesFileAndUpdatesHref(t *testing.T) {
 		t.Fatalf("write icon: %v", err)
 	}
 
+	webRoot := t.TempDir()
+	assetsOut := filepath.Join(webRoot, "assets")
+	if err := os.MkdirAll(assetsOut, 0o755); err != nil {
+		t.Fatalf("mkdir assets out: %v", err)
+	}
 	processor := plugin.htmlIconProcessor("/web/")
-	build := &api.PluginBuild{InitialOptions: &api.BuildOptions{Outdir: t.TempDir()}}
-	opts := &vueplugin.Options{IndexHtmlOptions: vueplugin.IndexHtmlOptions{SourceFile: htmlFile}}
+	build := &api.PluginBuild{InitialOptions: &api.BuildOptions{Outdir: assetsOut}}
+	opts := &vueplugin.Options{IndexHtmlOptions: vueplugin.IndexHtmlOptions{
+		SourceFile: htmlFile,
+		OutFile:    filepath.Join(webRoot, "index.html"),
+	}}
 
 	for _, markup := range []string{
 		`<html><head></head><body></body></html>`,
 		`<html><head><link rel="icon"></head><body></body></html>`,
 		`<html><head><link rel="icon" href="missing.ico"></head><body></body></html>`,
+		`<html><head><link rel="icon" href="https://cdn.example/favicon.ico"></head><body></body></html>`,
+		`<html><head><link rel="icon" href="favicon.ico?v=2"></head><body></body></html>`,
 	} {
 		doc := parseHTMLDoc(t, markup)
 		if err := processor(doc, &api.BuildResult{}, opts, build); err != nil {
 			t.Fatalf("processor unexpected error for %q: %v", markup, err)
 		}
+	}
+	// Query-stripped relative href should still publish basename beside index.html.
+	if got, err := os.ReadFile(filepath.Join(webRoot, "favicon.ico")); err != nil || string(got) != "ico" {
+		t.Fatalf("favicon after query href = %q err=%v", string(got), err)
 	}
 
 	doc := parseHTMLDoc(t, `<html><head><link rel="icon" href="favicon.ico"></head><body></body></html>`)
@@ -163,7 +177,7 @@ func TestHtmlIconProcessorCopiesFileAndUpdatesHref(t *testing.T) {
 	if got := htmlquery.FindOne(doc, `//link[@rel="icon"]`); got == nil || htmlquery.SelectAttr(got, "href") != "/web/favicon.ico" {
 		t.Fatalf("unexpected icon href after processing: %q", renderHTML(t, doc))
 	}
-	content, err := os.ReadFile(filepath.Join(build.InitialOptions.Outdir, "favicon.ico"))
+	content, err := os.ReadFile(filepath.Join(webRoot, "favicon.ico"))
 	if err != nil {
 		t.Fatalf("read copied favicon: %v", err)
 	}
@@ -171,8 +185,8 @@ func TestHtmlIconProcessorCopiesFileAndUpdatesHref(t *testing.T) {
 		t.Fatalf("copied favicon = %q, want ico", string(content))
 	}
 
-	// Source under assets/ must still publish as /web/favicon.ico (basename),
-	// not /web/assets/favicon.ico with a missing file.
+	// Source under assets/ must still publish as /web/favicon.ico at web root
+	// (not under esbuild Outdir assets/, which cleanup may prune).
 	assetsDir := filepath.Join(htmlDir, "assets")
 	if err := os.MkdirAll(assetsDir, 0o755); err != nil {
 		t.Fatalf("mkdir assets: %v", err)
@@ -184,22 +198,144 @@ func TestHtmlIconProcessorCopiesFileAndUpdatesHref(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(assetsDir, "logo-192.png"), []byte("png"), 0o644); err != nil {
 		t.Fatalf("write logo-192: %v", err)
 	}
-	outdir2 := t.TempDir()
-	build2 := &api.PluginBuild{InitialOptions: &api.BuildOptions{Outdir: outdir2}}
+	webRoot2 := t.TempDir()
+	assetsOut2 := filepath.Join(webRoot2, "assets")
+	if err := os.MkdirAll(assetsOut2, 0o755); err != nil {
+		t.Fatalf("mkdir assets out2: %v", err)
+	}
+	build2 := &api.PluginBuild{InitialOptions: &api.BuildOptions{Outdir: assetsOut2}}
+	opts2 := &vueplugin.Options{IndexHtmlOptions: vueplugin.IndexHtmlOptions{
+		SourceFile: htmlFile,
+		OutFile:    filepath.Join(webRoot2, "index.html"),
+	}}
 	doc2 := parseHTMLDoc(t, `<html><head><link rel="icon" href="assets/favicon.ico"></head><body></body></html>`)
-	if err := processor(doc2, &api.BuildResult{}, opts, build2); err != nil {
+	if err := processor(doc2, &api.BuildResult{}, opts2, build2); err != nil {
 		t.Fatalf("processor assets/ href: %v", err)
 	}
 	if got := htmlquery.FindOne(doc2, `//link[@rel="icon"]`); got == nil || htmlquery.SelectAttr(got, "href") != "/web/favicon.ico" {
 		t.Fatalf("assets/ icon href = %q, want /web/favicon.ico", renderHTML(t, doc2))
 	}
-	nestedOut, err := os.ReadFile(filepath.Join(outdir2, "favicon.ico"))
+	nestedOut, err := os.ReadFile(filepath.Join(webRoot2, "favicon.ico"))
 	if err != nil || string(nestedOut) != "nested-ico" {
 		t.Fatalf("copied nested favicon = %q err=%v", string(nestedOut), err)
 	}
-	touch, err := os.ReadFile(filepath.Join(outdir2, "apple-touch-icon.png"))
+	touch, err := os.ReadFile(filepath.Join(webRoot2, "apple-touch-icon.png"))
 	if err != nil || string(touch) != "png" {
 		t.Fatalf("apple-touch copy = %q err=%v", string(touch), err)
+	}
+
+	// Parent-of-assets fallback when IndexHtml OutFile is unset.
+	webRoot3 := t.TempDir()
+	assetsOut3 := filepath.Join(webRoot3, "assets")
+	if err := os.MkdirAll(assetsOut3, 0o755); err != nil {
+		t.Fatalf("mkdir assets out3: %v", err)
+	}
+	opts3 := &vueplugin.Options{IndexHtmlOptions: vueplugin.IndexHtmlOptions{SourceFile: htmlFile}}
+	build3 := &api.PluginBuild{InitialOptions: &api.BuildOptions{Outdir: assetsOut3}}
+	doc3 := parseHTMLDoc(t, `<html><head><link rel="icon" href="favicon.ico"></head><body></body></html>`)
+	if err := processor(doc3, &api.BuildResult{}, opts3, build3); err != nil {
+		t.Fatalf("processor without OutFile: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(webRoot3, "favicon.ico")); err != nil {
+		t.Fatalf("expected favicon beside assets/ via fallback: %v", err)
+	}
+}
+
+func TestWebDistRootForIconsAndCopyHelpers(t *testing.T) {
+	t.Parallel()
+	if got := webDistRootForIcons(nil, ""); got != "" {
+		t.Fatalf("empty root = %q", got)
+	}
+	if got := webDistRootForIcons(nil, "/tmp/plain-out"); got != "/tmp/plain-out" {
+		t.Fatalf("non-assets outdir = %q", got)
+	}
+	if got := stripURLQueryFragment("  a.ico?v=1#x "); got != "a.ico" {
+		t.Fatalf("strip = %q", got)
+	}
+	dir := t.TempDir()
+	if err := copyWebBuildAsset(dir, filepath.Join(dir, "missing-parent", "out"), "nope.png", "x.png"); !os.IsNotExist(err) {
+		t.Fatalf("missing source err=%v", err)
+	}
+	blocked := filepath.Join(dir, "not-a-dir")
+	if err := os.WriteFile(blocked, []byte("x"), 0o644); err != nil {
+		t.Fatalf("write blocker: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "src.png"), []byte("png"), 0o644); err != nil {
+		t.Fatalf("write src: %v", err)
+	}
+	if err := copyWebBuildAsset(dir, blocked, "src.png", "out.png"); err == nil {
+		t.Fatal("expected mkdir/write failure when dest parent is a file")
+	}
+
+	plugin := newPluginForTest(t, fakeParser{})
+	htmlDir := t.TempDir()
+	htmlFile := filepath.Join(htmlDir, "index.html")
+	if err := os.WriteFile(filepath.Join(htmlDir, "favicon.ico"), []byte("ico"), 0o644); err != nil {
+		t.Fatalf("write favicon: %v", err)
+	}
+	processor := plugin.htmlIconProcessor("/web/")
+	iconDoc := func() *html.Node {
+		return parseHTMLDoc(t, `<html><head><link rel="icon" href="favicon.ico"></head><body></body></html>`)
+	}
+	opts := &vueplugin.Options{IndexHtmlOptions: vueplugin.IndexHtmlOptions{SourceFile: htmlFile}}
+	if err := processor(iconDoc(), &api.BuildResult{}, opts, &api.PluginBuild{InitialOptions: &api.BuildOptions{}}); err == nil {
+		t.Fatal("expected error when web dist root is empty")
+	}
+	// Favicon ok but apple-touch source missing → debug skip path.
+	webRoot := t.TempDir()
+	optsOK := &vueplugin.Options{IndexHtmlOptions: vueplugin.IndexHtmlOptions{
+		SourceFile: htmlFile,
+		OutFile:    filepath.Join(webRoot, "index.html"),
+	}}
+	if err := processor(iconDoc(), &api.BuildResult{}, optsOK, &api.PluginBuild{InitialOptions: &api.BuildOptions{Outdir: filepath.Join(webRoot, "assets")}}); err != nil {
+		t.Fatalf("processor without logo-192: %v", err)
+	}
+
+	// apple-touch Warn path: source exists but destination path is a directory.
+	assetsSrc := filepath.Join(htmlDir, "assets")
+	if err := os.MkdirAll(assetsSrc, 0o755); err != nil {
+		t.Fatalf("mkdir assets src: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(assetsSrc, "logo-192.png"), []byte("png"), 0o644); err != nil {
+		t.Fatalf("write logo-192: %v", err)
+	}
+	webRoot4 := t.TempDir()
+	if err := os.Mkdir(filepath.Join(webRoot4, "apple-touch-icon.png"), 0o755); err != nil {
+		t.Fatalf("mkdir apple-touch blocker: %v", err)
+	}
+	opts4 := &vueplugin.Options{IndexHtmlOptions: vueplugin.IndexHtmlOptions{
+		SourceFile: htmlFile,
+		OutFile:    filepath.Join(webRoot4, "index.html"),
+	}}
+	if err := processor(iconDoc(), &api.BuildResult{}, opts4, &api.PluginBuild{InitialOptions: &api.BuildOptions{Outdir: filepath.Join(webRoot4, "assets")}}); err != nil {
+		t.Fatalf("processor with apple-touch write failure: %v", err)
+	}
+
+	// MkdirAll failure: web root nested under a file.
+	blocker := filepath.Join(t.TempDir(), "file")
+	if err := os.WriteFile(blocker, []byte("x"), 0o644); err != nil {
+		t.Fatalf("write blocker: %v", err)
+	}
+	opts5 := &vueplugin.Options{IndexHtmlOptions: vueplugin.IndexHtmlOptions{
+		SourceFile: htmlFile,
+		OutFile:    filepath.Join(blocker, "web", "index.html"),
+	}}
+	if err := processor(iconDoc(), &api.BuildResult{}, opts5, &api.PluginBuild{InitialOptions: &api.BuildOptions{Outdir: filepath.Join(blocker, "web", "assets")}}); err == nil {
+		t.Fatal("expected mkdir failure under file path")
+	}
+
+	// WriteFile failure: read-only web root.
+	webRootRO := t.TempDir()
+	optsRO := &vueplugin.Options{IndexHtmlOptions: vueplugin.IndexHtmlOptions{
+		SourceFile: htmlFile,
+		OutFile:    filepath.Join(webRootRO, "index.html"),
+	}}
+	if err := os.Chmod(webRootRO, 0o555); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(webRootRO, 0o755) })
+	if err := processor(iconDoc(), &api.BuildResult{}, optsRO, &api.PluginBuild{InitialOptions: &api.BuildOptions{Outdir: filepath.Join(webRootRO, "assets")}}); err == nil {
+		t.Fatal("expected write failure on read-only web root")
 	}
 }
 

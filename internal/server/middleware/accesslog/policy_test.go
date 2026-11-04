@@ -83,6 +83,7 @@ func TestShouldSkipHTTP(t *testing.T) {
 		"/web/assets/x":                     true,
 		"/web/sandbox/records":              false,
 		"/favicon.ico":                      true,
+		"/web/favicon.ico":                  true,
 		"/apple-touch-icon.png":             true,
 		"/apple-touch-icon-precomposed.png": true,
 		"/web/app.js":                       false,
