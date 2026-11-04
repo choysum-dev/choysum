@@ -756,8 +756,8 @@ func TestWebInputDigestSchemaFullCSSEmit(t *testing.T) {
 	t.Parallel()
 	// FullCSS (theme+preflight+utilities) emit must keep stamps on v8+ so
 	// upgrade rebuilds CSS that was produced under a utilities-only contract.
-	const want = "web-input-digest-v8"
+	const want = "web-input-digest-v9"
 	if webInputDigestSchema != want {
-		t.Fatalf("webInputDigestSchema = %q, want %q for FullCSS emit contract", webInputDigestSchema, want)
+		t.Fatalf("webInputDigestSchema = %q, want %q for favicon dist/web publish contract", webInputDigestSchema, want)
 	}
 }
