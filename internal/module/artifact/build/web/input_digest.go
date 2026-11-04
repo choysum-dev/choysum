@@ -29,7 +29,10 @@ const ForceWebBuildEnv = "CHOYSUM_FORCE_WEB_BUILD"
 // v8: product CSS emit is FullCSS (theme+preflight+utilities). Dialect,
 // candidates, and tailwind-go engine alone do not distinguish that from a
 // utilities-only stamp, so upgrade would otherwise skip regeneration.
-const webInputDigestSchema = "web-input-digest-v8"
+// v9: favicon/apple-touch publish under dist/web (not assets Outdir) and
+// index.html href becomes /web/favicon.ico; Go-only plugin changes must
+// invalidate the stamp or upgrade skips HTML rewrite.
+const webInputDigestSchema = "web-input-digest-v9"
 
 const choyTailwindGoModulePath = "github.com/dhamidi/tailwind-go"
 

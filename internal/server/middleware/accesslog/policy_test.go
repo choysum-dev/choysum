@@ -76,19 +76,22 @@ func TestClassifyHTTP(t *testing.T) {
 func TestShouldSkipHTTP(t *testing.T) {
 	t.Parallel()
 	cases := map[string]bool{
-		"/health":              true,
-		"/healthz":             true,
-		"/readyz":              true,
-		"/web/assets/chunk.js": true,
-		"/web/assets/x":        true,
-		"/web/sandbox/records": false,
-		"/favicon.ico":         true,
-		"/web/app.js":          false,
-		"/api/missing.png":     false,
-		"/api/v1/thing":        false,
-		"/web/assets/x.js?v=1": true,
-		"  /health  ":          true,
-		"":                     true,
+		"/health":                           true,
+		"/healthz":                          true,
+		"/readyz":                           true,
+		"/web/assets/chunk.js":              true,
+		"/web/assets/x":                     true,
+		"/web/sandbox/records":              false,
+		"/favicon.ico":                      true,
+		"/web/favicon.ico":                  true,
+		"/apple-touch-icon.png":             true,
+		"/apple-touch-icon-precomposed.png": true,
+		"/web/app.js":                       false,
+		"/api/missing.png":                  false,
+		"/api/v1/thing":                     false,
+		"/web/assets/x.js?v=1":              true,
+		"  /health  ":                       true,
+		"":                                  true,
 	}
 	for path, want := range cases {
 		if got := ShouldSkipHTTP(path); got != want {

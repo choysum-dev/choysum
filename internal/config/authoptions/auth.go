@@ -239,6 +239,8 @@ func defaultHTTPAuthConfig() *HttpAuthConfig {
 			"/index.js",
 			"/index.html",
 			"/favicon.ico",
+			"/apple-touch-icon.png",
+			"/apple-touch-icon-precomposed.png",
 			"/assets/",
 		},
 		ExcludedRegex:   []string{},
