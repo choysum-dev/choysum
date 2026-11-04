@@ -63,6 +63,19 @@ func TestSetupStatusKeepsStartingUntilHostUIIdle(t *testing.T) {
 	}
 }
 
+func TestRedirectWebToSplash(t *testing.T) {
+	t.Parallel()
+	splash := newPendingSplashService(&GRPCWebServer{})
+	rec := httptest.NewRecorder()
+	splash.redirectWebToSplash(rec, httptest.NewRequest(http.MethodGet, "/web/setup", nil))
+	if rec.Code != http.StatusFound {
+		t.Fatalf("status = %d, want 302", rec.Code)
+	}
+	if loc := rec.Header().Get("Location"); loc != "/" {
+		t.Fatalf("Location = %q, want /", loc)
+	}
+}
+
 func TestServePendingSplashStartingOKAndFailedUnavailable(t *testing.T) {
 	t.Parallel()
 	srv := &GRPCWebServer{}
@@ -78,6 +91,12 @@ func TestServePendingSplashStartingOKAndFailedUnavailable(t *testing.T) {
 	if !strings.Contains(body, "Choysum") || !strings.Contains(body, "/-/setup/status") {
 		t.Fatalf("expected brand + status poll in splash HTML, got %q", body[:min(200, len(body))])
 	}
+	if !strings.Contains(body, `class="brand-mark"`) || !strings.Contains(body, `fill="#10b981"`) {
+		t.Fatal("expected inlined sprout mark in splash HTML")
+	}
+	if !strings.Contains(body, "flex-direction: row") || !strings.Contains(body, "2.5rem") {
+		t.Fatal("expected one-line brand lockup with enlarged mark")
+	}
 	if strings.Contains(body, "brand-breathe") {
 		t.Fatal("brand breathe motion should be removed for quieter splash")
 	}
@@ -92,6 +111,9 @@ func TestServePendingSplashStartingOKAndFailedUnavailable(t *testing.T) {
 	}
 	if !strings.Contains(body, "#ffffff") || !strings.Contains(body, "#059669") {
 		t.Fatal("expected shell-aligned white + emerald progress colors")
+	}
+	if !strings.Contains(body, "rgba(16, 185, 129, 0.16)") {
+		t.Fatal("expected strengthened emerald background wash")
 	}
 	if !strings.Contains(body, "Preparing setup") {
 		t.Fatalf("expected Preparing setup copy, got %q", body[:min(300, len(body))])

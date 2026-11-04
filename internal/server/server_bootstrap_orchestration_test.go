@@ -85,6 +85,16 @@ func TestServerStartBootstrapModeServesPendingSplash(t *testing.T) {
 		t.Fatalf("GET /bootstrap/ status = %d, want %d", rwBootstrap.Code, http.StatusNotFound)
 	}
 
+	reqWebSetup := httptest.NewRequest(http.MethodGet, "http://example.com/web/setup", nil)
+	rwWebSetup := httptest.NewRecorder()
+	h.ServeHTTP(rwWebSetup, reqWebSetup)
+	if rwWebSetup.Code != http.StatusFound {
+		t.Fatalf("GET /web/setup status = %d, want %d", rwWebSetup.Code, http.StatusFound)
+	}
+	if loc := rwWebSetup.Header().Get("Location"); loc != "/" {
+		t.Fatalf("GET /web/setup Location = %q, want /", loc)
+	}
+
 	// Exact /{$} must not swallow base routes registered on the same mux.
 	reqHealth := httptest.NewRequest(http.MethodGet, "http://example.com/healthz", nil)
 	rwHealth := httptest.NewRecorder()
