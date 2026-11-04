@@ -43,6 +43,8 @@ func (s *GRPCWebServer) initBaseRoutes() {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		_, _ = w.Write([]byte("not ready"))
 	})
+	// Host-only setup wait probe for the splash page (available in all run modes).
+	s.mux.HandleFunc("/-/setup/status", s.serveSetupStatus)
 
 	documentgateway.RegisterSkeletonHandlers(s.mux, s.runtimeScope)
 	i18ngateway.RegisterHandlers(s.mux, s.runtimeScope)

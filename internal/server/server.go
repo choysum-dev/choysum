@@ -52,6 +52,9 @@ type GRPCWebServer struct {
 	// hostProvisionFn overrides provision.ProvisionMinimal in tests.
 	hostProvisionFn func(ctx context.Context) (provision.Result, error)
 
+	// hostProvisionUI drives the Provisioning splash / status JSON while install runs.
+	hostProvisionUI hostProvisionUIState
+
 	ready atomic.Bool
 }
 
@@ -61,14 +64,16 @@ func (s *GRPCWebServer) Serve(ctx context.Context, serviceNames ...string) error
 	}
 
 	s.runState.setServeRequestArgs(serviceNames)
-	// Provision Empty workspaces before the first planServe so explicit targets
-	// like `choysum run web` can install the minimal shell instead of failing
-	// on missing dist.
-	if err := s.ensureHostProvision(ctx); err != nil {
+
+	deferred, err := s.prepareHostProvisionForServe(ctx)
+	if err != nil {
 		return err
 	}
 	if err := s.planServe(serviceNames); err != nil {
 		return err
+	}
+	if deferred {
+		go s.deferredHostProvision(ctx)
 	}
 
 	return s.serve()

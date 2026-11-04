@@ -61,8 +61,8 @@ func TestServerStartBootstrapModeServesPendingSplash(t *testing.T) {
 	reqRoot := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
 	rwRoot := httptest.NewRecorder()
 	h.ServeHTTP(rwRoot, reqRoot)
-	if rwRoot.Code != http.StatusServiceUnavailable {
-		t.Fatalf("GET / status = %d, want %d", rwRoot.Code, http.StatusServiceUnavailable)
+	if rwRoot.Code != http.StatusOK {
+		t.Fatalf("GET / status = %d, want %d", rwRoot.Code, http.StatusOK)
 	}
 	body := rwRoot.Body.String()
 	if !strings.Contains(strings.ToLower(body), "doctype html") {
@@ -71,11 +71,11 @@ func TestServerStartBootstrapModeServesPendingSplash(t *testing.T) {
 	if !strings.Contains(body, "Choysum") {
 		t.Fatalf("GET / body missing brand: %q", body)
 	}
-	if !strings.Contains(body, "Application assets are not ready yet") {
-		t.Fatalf("GET / body missing pending message: %q", body)
+	if !strings.Contains(body, "Preparing setup") {
+		t.Fatalf("GET / body missing setup message: %q", body)
 	}
-	if !strings.Contains(body, "restart the server") {
-		t.Fatalf("GET / body missing restart recovery instruction: %q", body)
+	if !strings.Contains(body, "/-/setup/status") {
+		t.Fatalf("GET / body missing setup-status poll: %q", body)
 	}
 
 	reqBootstrap := httptest.NewRequest(http.MethodGet, "http://example.com/bootstrap/", nil)
@@ -95,8 +95,12 @@ func TestServerStartBootstrapModeServesPendingSplash(t *testing.T) {
 }
 
 func TestServePendingSplashMethods(t *testing.T) {
+	srv := &GRPCWebServer{}
+	srv.setHostProvisionUI(hostProvisionUIProvisioning, setupStatusMsgStarting)
+	splash := newPendingSplashService(srv)
+
 	post := httptest.NewRecorder()
-	servePendingSplash(post, httptest.NewRequest(http.MethodPost, "/", nil))
+	splash.servePendingSplash(post, httptest.NewRequest(http.MethodPost, "/", nil))
 	if post.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("POST status = %d, want %d", post.Code, http.StatusMethodNotAllowed)
 	}
@@ -105,9 +109,9 @@ func TestServePendingSplashMethods(t *testing.T) {
 	}
 
 	head := httptest.NewRecorder()
-	servePendingSplash(head, httptest.NewRequest(http.MethodHead, "/", nil))
-	if head.Code != http.StatusServiceUnavailable {
-		t.Fatalf("HEAD status = %d, want %d", head.Code, http.StatusServiceUnavailable)
+	splash.servePendingSplash(head, httptest.NewRequest(http.MethodHead, "/", nil))
+	if head.Code != http.StatusOK {
+		t.Fatalf("HEAD status = %d, want %d", head.Code, http.StatusOK)
 	}
 	if head.Body.Len() != 0 {
 		t.Fatalf("HEAD body length = %d, want 0", head.Body.Len())
@@ -120,9 +124,9 @@ func TestServePendingSplashMethods(t *testing.T) {
 	}
 
 	get := httptest.NewRecorder()
-	servePendingSplash(get, httptest.NewRequest(http.MethodGet, "/", nil))
-	if get.Code != http.StatusServiceUnavailable {
-		t.Fatalf("GET status = %d, want %d", get.Code, http.StatusServiceUnavailable)
+	splash.servePendingSplash(get, httptest.NewRequest(http.MethodGet, "/", nil))
+	if get.Code != http.StatusOK {
+		t.Fatalf("GET status = %d, want %d", get.Code, http.StatusOK)
 	}
 	if !strings.Contains(get.Body.String(), "Choysum") {
 		t.Fatalf("GET body missing brand: %q", get.Body.String())
@@ -134,6 +138,7 @@ func TestServePendingSplashMethods(t *testing.T) {
 
 func TestRegisterBootstrapServiceRegistersSplash(t *testing.T) {
 	srv := &GRPCWebServer{mux: http.NewServeMux()}
+	srv.setHostProvisionUI(hostProvisionUIProvisioning, setupStatusMsgStarting)
 	res, err := srv.registerBootstrapService()
 	if err != nil {
 		t.Fatalf("registerBootstrapService() error = %v", err)
@@ -147,8 +152,8 @@ func TestRegisterBootstrapServiceRegistersSplash(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	srv.mux.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/", nil))
-	if rr.Code != http.StatusServiceUnavailable {
-		t.Fatalf("GET / status = %d, want %d", rr.Code, http.StatusServiceUnavailable)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("GET / status = %d, want %d", rr.Code, http.StatusOK)
 	}
 	if !strings.Contains(rr.Body.String(), "Choysum") {
 		t.Fatalf("GET / body missing brand: %q", rr.Body.String())
@@ -156,7 +161,7 @@ func TestRegisterBootstrapServiceRegistersSplash(t *testing.T) {
 }
 
 func TestRegisterBootstrapServicePropagatesBindingError(t *testing.T) {
-	restore := setPendingSplashBindingForTest(func() registrationBinding { return failPendingSplashBinding{} })
+	restore := setPendingSplashBindingForTest(func(*GRPCWebServer) registrationBinding { return failPendingSplashBinding{} })
 	t.Cleanup(restore)
 
 	srv := &GRPCWebServer{mux: http.NewServeMux()}

@@ -214,6 +214,7 @@ func defaultHTTPAuthConfig() *HttpAuthConfig {
 			"/openapi/",
 			"/swagger",
 			"/",
+			"/-/setup/status",
 			"/web/",
 			"/index.js",
 			"/index.html",
