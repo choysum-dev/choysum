@@ -60,7 +60,7 @@ export type CompleteInitialSetupResp = {
 };
 
 /**
- * Anonymous first-run probe for FE routing. Empty payload; Complete mirrors
+ * Anonymous setup probe for FE routing. Empty payload; Complete mirrors
  * AppSetting setup.completed_at.
  */
 export type GetInitialSetupStateReq = Record<string, never>;

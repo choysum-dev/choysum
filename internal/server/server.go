@@ -49,8 +49,17 @@ type GRPCWebServer struct {
 	registration    registrationState
 	runtimeRecovery runtimeRecoveryState
 
-	// hostProvisionFn overrides provision.ProvisionMinimal in tests.
-	hostProvisionFn func(ctx context.Context) (provision.Result, error)
+	// provisionMinimalFn overrides provision.ProvisionMinimal in tests.
+	provisionMinimalFn func(ctx context.Context) (provision.Result, error)
+
+	// setupSplashUI drives the Provisioning splash / status JSON while install runs.
+	setupSplashUI setupSplashUIState
+
+	// startDeferredProvisionMinimal asks serve() to run ProvisionMinimal after
+	// the bootstrap listener is up (avoids racing restart with initial start).
+	startDeferredProvisionMinimal bool
+	// deferredRestartFn overrides restart inside deferredProvisionMinimal (tests).
+	deferredRestartFn func() error
 
 	ready atomic.Bool
 }
@@ -61,15 +70,32 @@ func (s *GRPCWebServer) Serve(ctx context.Context, serviceNames ...string) error
 	}
 
 	s.runState.setServeRequestArgs(serviceNames)
-	// Provision Empty workspaces before the first planServe so explicit targets
-	// like `choysum run web` can install the minimal shell instead of failing
-	// on missing dist.
-	if err := s.ensureHostProvision(ctx); err != nil {
+
+	deferred, err := s.prepareProvisionMinimalForServe(ctx)
+	if err != nil {
 		return err
 	}
-	if err := s.planServe(serviceNames); err != nil {
+	// Empty deferred start must reach bootstrap even when callers named explicit
+	// targets (explicit ValidateDistForTargets would fail before splash listens).
+	// Original serviceNames stay in runState for the post-install replan/restart.
+	if err := s.planServe(planNamesForDeferredProvision(deferred, serviceNames)); err != nil {
 		return err
 	}
+	s.armDeferredProvisionMinimal(deferred)
 
 	return s.serve()
+}
+
+func planNamesForDeferredProvision(deferred bool, serviceNames []string) []string {
+	if deferred {
+		return nil
+	}
+	return serviceNames
+}
+
+func (s *GRPCWebServer) armDeferredProvisionMinimal(deferred bool) {
+	if s == nil {
+		return
+	}
+	s.startDeferredProvisionMinimal = deferred
 }

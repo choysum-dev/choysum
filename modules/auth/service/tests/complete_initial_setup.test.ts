@@ -104,7 +104,7 @@ test('CompleteInitialSetup: updates seed admin and writes setup.completed_at', a
   resetRequestContext();
   setupAllowlistForCompleteInitialSetup();
   await clearSetupCompletedAt();
-  // Avatar soft dial must not be required for first-run setup (auth does not depend on document).
+  // Avatar soft dial must not be required for initial setup (auth does not depend on document).
   expect(getServiceFactory('document.AttachmentBinding')).toBeUndefined();
 
   const adminId = String(

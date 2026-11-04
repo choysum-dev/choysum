@@ -399,7 +399,7 @@ export default class User extends AttachmentOwnerMixin {
   }
 
   /**
-   * Anonymous probe: whether first-run setup is already complete.
+   * Anonymous probe: whether initial setup is already complete.
    * Used by the web shell to route SetupPending ↔ Ready without creating a session.
    */
   static async GetInitialSetupState(req: GetInitialSetupStateReq): Promise<GetInitialSetupStateResp> {
@@ -408,7 +408,7 @@ export default class User extends AttachmentOwnerMixin {
   }
 
   /**
-   * Complete first-run setup: update seed admin username/password and write
+   * Complete initial setup: update seed admin username/password and write
    * auth.AppSetting `setup.completed_at`. Returns UserId; callers Login for a session.
    */
   static async CompleteInitialSetup(req: CompleteInitialSetupReq): Promise<CompleteInitialSetupResp> {

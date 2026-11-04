@@ -410,6 +410,31 @@ describe('ChoyGuestShell', () => {
     mounted.unmount();
   });
 
+  test('omits Home nav on /web/setup while keeping header tools', async () => {
+    const original = globalThis.location;
+    Object.defineProperty(globalThis, 'location', {
+      configurable: true,
+      value: { ...(original as object), pathname: '/web/setup' },
+    });
+    try {
+      const mounted = mountApp(ChoyGuestShell as any, {
+        stubs: {
+          'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
+        },
+      });
+      await flushPromises();
+      expect(mounted.q('[data-testid=choy-guest-nav-home]')).toBeNull();
+      expect(mounted.q('[data-testid=choy-guest-mobile-nav]')).toBeNull();
+      expect(mounted.q('[data-testid=choy-shell-header-tools]')).not.toBeNull();
+      mounted.unmount();
+    } finally {
+      Object.defineProperty(globalThis, 'location', {
+        configurable: true,
+        value: original,
+      });
+    }
+  });
+
   test('mobile nav Home link navigates to / when a router is installed', async () => {
     const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
     const { router } = createFeStubRouter({

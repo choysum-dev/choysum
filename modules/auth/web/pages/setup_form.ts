@@ -74,7 +74,7 @@ export function setupConfirmPasswordError(
 }
 
 /**
- * Complete first-run setup then sign in. Field rules run in FormView before this;
+ * Complete initial setup then sign in. Field rules run in FormView before this;
  * empty credentials are a last guard if submit bypasses those rules.
  */
 export async function runSetupSubmit(opts: {

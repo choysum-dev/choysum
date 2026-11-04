@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	// LeaseResource is shared with bootstrap Initialize so host provision and
+	// LeaseResource is shared with bootstrap Initialize so ProvisionMinimal and
 	// the legacy Workspace button cannot install concurrently.
 	LeaseResource = "system:init"
 )
