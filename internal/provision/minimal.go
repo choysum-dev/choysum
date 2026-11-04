@@ -95,9 +95,6 @@ func ProvisionMinimal(ctx context.Context, runtimeScope scope.Scope, opts Option
 	}
 
 	log := runtimeScope.Logger()
-	if log != nil {
-		log.Info("installing minimal modules for first-run setup", "root", MinimalRootModule, "web_shell_profile", string(plan.WebShellProfileMinimal))
-	}
 
 	installTimeout := opts.InstallTimeout
 	if installTimeout <= 0 {
@@ -123,6 +120,9 @@ func ProvisionMinimal(ctx context.Context, runtimeScope scope.Scope, opts Option
 	}
 	if phase != PhaseEmpty {
 		return Result{Skipped: true, Phase: phase}, nil
+	}
+	if log != nil {
+		log.Info("installing minimal modules for first-run setup", "root", MinimalRootModule, "web_shell_profile", string(plan.WebShellProfileMinimal))
 	}
 
 	progress := logger.NewProgressLine(os.Stderr)
@@ -159,7 +159,6 @@ func ProvisionMinimal(ctx context.Context, runtimeScope scope.Scope, opts Option
 	}
 	req := MinimalInstallRequest()
 	if err := installFn(installCtx, installScope, executor, req); err != nil {
-		// Spinner cleared by defer; surface failure via returned error (and callers' logs).
 		if renewErr := checkProvisionLeaseRenew(handle); renewErr != nil {
 			// Keep ErrLeaseLost as the primary signal, but retain the install
 			// error (often context.Canceled, sometimes an unrelated root cause).

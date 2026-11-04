@@ -423,7 +423,7 @@ func (m *ModuleManager) bootstrapMetaTables(txScope scope.Scope) error {
 				case now := <-ticker.C:
 					elapsed := now.Sub(startedAt)
 					if elapsed >= metaBootstrapHeartbeatThreshold && now.Sub(lastHeartbeatAt) >= metaBootstrapHeartbeatInterval {
-						logger.Debug("meta base table bootstrap heartbeat", "elapsed_ms", elapsed.Milliseconds())
+						logger.Info("meta base table bootstrap heartbeat", "elapsed_ms", elapsed.Milliseconds())
 						lastHeartbeatAt = now
 					}
 				}
