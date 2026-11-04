@@ -16,7 +16,7 @@ func (s *GRPCWebServer) planServe(serviceNames []string) error {
 	if s.runState.isBootstrapMode() {
 		// Degraded path when application dist is not ready (e.g. pre-PC-8 empty
 		// workspaces before ProvisionMinimal, or a broken dist after provision).
-		s.runtimeScope.Logger().Info("bootstrap mode fallback selected", "reason", s.runState.reason())
+		s.runtimeScope.Logger().Info("serving setup splash; no application assets ready yet", "reason", s.runState.reason())
 	}
 
 	return nil

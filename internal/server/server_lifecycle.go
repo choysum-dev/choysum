@@ -142,7 +142,7 @@ func (s *GRPCWebServer) stop(reload bool) error {
 	s.stopTelemetryRuntime()
 
 	if reload {
-		s.runtimeScope.Logger().Info("server restarting")
+		s.runtimeScope.Logger().Info("restarting to load installed modules")
 	} else {
 		s.runtimeScope.Logger().Info("server stopped")
 	}

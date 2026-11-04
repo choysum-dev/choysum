@@ -400,7 +400,7 @@ func (m *ModuleManager) bootstrapMetaTables(txScope scope.Scope) error {
 	logger := txScope.Logger()
 	startedAt := time.Now()
 	if logger != nil {
-		logger.Info("meta base table bootstrap started", "entity_count", len(m.entities))
+		logger.Debug("meta base table bootstrap started", "entity_count", len(m.entities))
 	}
 
 	const (
@@ -443,7 +443,7 @@ func (m *ModuleManager) bootstrapMetaTables(txScope scope.Scope) error {
 		return xfmt.Errorf("ensure effective app/name unique index: %w", err)
 	}
 	if logger != nil {
-		logger.Info("meta base table bootstrap completed", "duration_ms", time.Since(startedAt).Milliseconds())
+		logger.Debug("meta base table bootstrap completed", "duration_ms", time.Since(startedAt).Milliseconds())
 	}
 	return nil
 }
@@ -884,11 +884,11 @@ func moduleOperationPlanMessage(op plan.OpType) string {
 func moduleOperationCompletedMessage(op plan.OpType) string {
 	switch op {
 	case plan.OpInstall:
-		return "installed"
+		return "module install finished"
 	case plan.OpUninstall:
-		return "uninstalled"
+		return "module uninstall finished"
 	default:
-		return "upgraded"
+		return "module upgrade finished"
 	}
 }
 

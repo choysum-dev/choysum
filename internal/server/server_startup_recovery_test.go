@@ -382,8 +382,8 @@ func TestServerRunStartupLifecycleLogsStartedServicesOnExecutorStart(t *testing.
 	}
 
 	logs := logBuf.String()
-	if !strings.Contains(logs, "\"msg\":\"js executor started\"") {
-		t.Fatalf("expected js executor started info log, got %q", logs)
+	if !strings.Contains(logs, "\"msg\":\"application runtime ready\"") {
+		t.Fatalf("expected application runtime ready info log, got %q", logs)
 	}
 	if !strings.Contains(logs, "\"service_count\":1") {
 		t.Fatalf("expected started service count in js executor log, got %q", logs)
