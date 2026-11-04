@@ -199,7 +199,27 @@ func NormalizeAndMergeAuthConfig(cfg *AuthConfig, defaultChoysumPath string, ser
 		cfg.InternalKey = fallback
 	}
 
+	// Splash polls this anonymously; keep it even when configs pin an older
+	// excludedPaths list that predates the setup-status route.
+	ensureSetupStatusHTTPAuthExclusion(cfg.HttpAuth)
+
 	return cfg, nil
+}
+
+// setupStatusExcludedPath must stay reachable without a session during Empty /
+// SetupPending so the provisioning splash can poll readiness.
+const setupStatusExcludedPath = "/-/setup/status"
+
+func ensureSetupStatusHTTPAuthExclusion(httpAuth *HttpAuthConfig) {
+	if httpAuth == nil {
+		return
+	}
+	for _, p := range httpAuth.ExcludedPaths {
+		if p == setupStatusExcludedPath {
+			return
+		}
+	}
+	httpAuth.ExcludedPaths = append(httpAuth.ExcludedPaths, setupStatusExcludedPath)
 }
 
 func defaultHTTPAuthConfig() *HttpAuthConfig {
@@ -214,7 +234,7 @@ func defaultHTTPAuthConfig() *HttpAuthConfig {
 			"/openapi/",
 			"/swagger",
 			"/",
-			"/-/setup/status",
+			setupStatusExcludedPath,
 			"/web/",
 			"/index.js",
 			"/index.html",

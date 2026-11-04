@@ -7,29 +7,22 @@ import ChoyGuestHeader from './ChoyGuestHeader.vue';
 
 describe('ChoyGuestHeader', () => {
   test('hides Home on setup path; keeps header tools', async () => {
-    const original = globalThis.location;
-    Object.defineProperty(globalThis, 'location', {
-      configurable: true,
-      value: { pathname: '/web/setup' },
+    const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
+    const { router } = createFeStubRouter({
+      route: { path: '/web/setup', fullPath: '/web/setup', name: 'setup', meta: {} },
     });
-    try {
-      const mounted = mountApp(ChoyGuestHeader as any, {
-        props: {
-          goHome: () => undefined,
-          homeHref: '/',
-        },
-      });
-      await flushPromises();
-      expect(mounted.q('[data-testid=choy-guest-nav-home]')).toBeNull();
-      expect(mounted.q('[data-testid=choy-guest-mobile-nav]')).toBeNull();
-      expect(mounted.q('[data-testid=choy-shell-header-tools]')).not.toBeNull();
-      mounted.unmount();
-    } finally {
-      Object.defineProperty(globalThis, 'location', {
-        configurable: true,
-        value: original,
-      });
-    }
+    const mounted = mountApp(ChoyGuestHeader as any, {
+      plugins: [router],
+      props: {
+        goHome: () => undefined,
+        homeHref: '/',
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-testid=choy-guest-nav-home]')).toBeNull();
+    expect(mounted.q('[data-testid=choy-guest-mobile-nav]')).toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-header-tools]')).not.toBeNull();
+    mounted.unmount();
   });
 
   test('renders desktop Home link, mobile nav, and header tools', async () => {

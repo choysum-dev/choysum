@@ -290,6 +290,9 @@ func TestEnsureProvisionMinimalLeaseBusyWaitsForPeer(t *testing.T) {
 	if srv.runState.mode() != runplan.RunModeApplication {
 		t.Fatalf("mode=%q want application after peer wait", srv.runState.mode())
 	}
+	if phase, _ := srv.setupSplashUISnapshot(); phase != setupSplashUIProvisioning {
+		t.Fatalf("ui phase=%q want provisioning after peer wait (not stuck waiting_peer)", phase)
+	}
 }
 
 func TestEnsureProvisionMinimalReplansWhenSkipped(t *testing.T) {

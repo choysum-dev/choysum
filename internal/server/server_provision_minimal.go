@@ -85,12 +85,32 @@ func (s *GRPCWebServer) deferredProvisionMinimal(ctx context.Context) {
 	}
 	// Promote bootstrap splash → application shell without tearing down Serve's
 	// outer loop (restart re-plans from dist after install).
-	if err := s.restart(); err != nil {
+	var restartErr error
+	if s.deferredRestartFn != nil {
+		restartErr = s.deferredRestartFn()
+	} else {
+		restartErr = s.restart()
+	}
+	if restartErr != nil {
 		s.setSetupSplashUI(setupSplashUIFailed, setupStatusMsgFailed)
-		s.logProvisionMinimalWarn("deferred ProvisionMinimal restart failed", "error", err)
+		s.logProvisionMinimalWarn("deferred ProvisionMinimal restart failed", "error", restartErr)
 		return
 	}
 	s.setSetupSplashUI(setupSplashUIIdle, "")
+}
+
+// kickDeferredProvisionMinimalIfNeeded starts background ProvisionMinimal once
+// the bootstrap listener is up. Serve sets the flag; start failures clear it.
+func (s *GRPCWebServer) kickDeferredProvisionMinimalIfNeeded() {
+	if s == nil || !s.startDeferredProvisionMinimal {
+		return
+	}
+	s.startDeferredProvisionMinimal = false
+	ctx := context.Background()
+	if s.runtimeScope != nil && s.runtimeScope.Context() != nil {
+		ctx = s.runtimeScope.Context()
+	}
+	go s.deferredProvisionMinimal(ctx)
 }
 
 // ensureProvisionMinimal installs the minimal web-shell closure when the workspace
@@ -153,6 +173,9 @@ func (s *GRPCWebServer) ensureProvisionMinimal(ctx context.Context) error {
 			}
 			// Soft-fallback: peer path never hard-fails Serve on replan.
 			_ = s.replanAfterProvisionMinimal(false)
+			// Clear waiting_peer so status is not stuck on "waiting" after the
+			// peer finished; deferredProvisionMinimal then restart()+idle.
+			s.setSetupSplashUI(setupSplashUIProvisioning, setupStatusMsgStarting)
 			return nil
 		}
 		if errors.Is(err, provision.ErrLeaseLost) {

@@ -56,6 +56,41 @@ func TestNormalizeAndMergeAuthConfigAutoGeneratesInternalKeyOutsideProduction(t 
 	}
 }
 
+func TestNormalizeAndMergeAuthConfigKeepsSetupStatusExclusion(t *testing.T) {
+	cfg := &AuthConfig{
+		HttpAuth: &HttpAuthConfig{
+			Enabled:       true,
+			ExcludedPaths: []string{"/health", "/web/"},
+		},
+	}
+	merged, err := NormalizeAndMergeAuthConfig(cfg, t.TempDir(), "development")
+	if err != nil {
+		t.Fatalf("NormalizeAndMergeAuthConfig() error = %v", err)
+	}
+	found := false
+	for _, p := range merged.HttpAuth.ExcludedPaths {
+		if p == setupStatusExcludedPath {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("ExcludedPaths=%v missing %s", merged.HttpAuth.ExcludedPaths, setupStatusExcludedPath)
+	}
+
+	ensureSetupStatusHTTPAuthExclusion(nil)
+	ensureSetupStatusHTTPAuthExclusion(merged.HttpAuth)
+	count := 0
+	for _, p := range merged.HttpAuth.ExcludedPaths {
+		if p == setupStatusExcludedPath {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("setup status exclusion count=%d, want 1", count)
+	}
+}
+
 func TestNormalizeAndMergeAuthConfigRequiresExplicitInternalKeyInProduction(t *testing.T) {
 	_, err := NormalizeAndMergeAuthConfig(&AuthConfig{}, t.TempDir(), "production")
 	if err == nil {

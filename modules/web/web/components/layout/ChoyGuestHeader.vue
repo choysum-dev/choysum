@@ -46,6 +46,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import ChoyGuestMobileNav, { type ChoyGuestNavItem } from './ChoyGuestMobileNav.vue'
 import ChoyShellHeaderTools from './ChoyShellHeaderTools.vue'
 import { Separator } from '../vendor/ui/separator'
@@ -87,14 +88,22 @@ const navLinkClass = cn(
   'data-active:bg-accent/50 data-active:text-foreground',
 )
 
+/** Prefer vue-router's reactive route; fall back for router-less unit mounts. */
+let route: ReturnType<typeof useRoute> | null = null
+try {
+  route = useRoute()
+} catch {
+  // FE stub / mounts without a router plugin.
+}
+
 /**
  * Guest primary nav. Shared by desktop NavigationMenu and mobile Popover.
- * First-run setup omits Home — it only loops back into the same gate.
- * Pathname is enough (full load from splash, and history updates on SPA push).
+ * Initial setup omits Home — it only loops back into the same gate.
  */
 const navItems = computed<ChoyGuestNavItem[]>(() => {
-  const path =
-    typeof globalThis !== 'undefined' && globalThis.location
+  const path = route?.path
+    ? String(route.path)
+    : typeof globalThis !== 'undefined' && globalThis.location
       ? String(globalThis.location.pathname || '')
       : ''
   if (isGuestSetupRoute({ path })) {

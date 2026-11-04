@@ -14,5 +14,5 @@ export function isGuestSetupRoute(route: {
   const path = String(route.path || '')
     .replace(/\/+$/, '')
     .toLowerCase()
-  return path === '/setup' || path === '/web/setup' || path.endsWith('/setup')
+  return path === '/setup' || path === '/web/setup'
 }

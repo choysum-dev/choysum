@@ -11,7 +11,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/provision"
 )
 
-// Host-visible provision wait states for the splash page (not setup.completed_at).
+// Splash UI wait states while ProvisionMinimal runs (not setup.completed_at).
 type setupSplashUIPhase string
 
 const (
@@ -108,6 +108,14 @@ func (s *GRPCWebServer) setupStatusPayload() setupStatusResponse {
 		if phase, err := provision.Resolve(s.runtimeScope); err == nil {
 			switch phase {
 			case provision.PhaseSetupPending, provision.PhaseReady:
+				// Only leave the splash once the application shell is planned;
+				// bootstrap mode still owns /web/* redirects and would loop.
+				if s.runState.isBootstrapMode() {
+					return setupStatusResponse{
+						Phase:   "starting",
+						Message: setupStatusMsgStarting,
+					}
+				}
 				return setupStatusResponse{
 					Phase:   "ready",
 					Message: setupStatusMsgReady,

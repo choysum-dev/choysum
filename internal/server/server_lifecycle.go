@@ -43,6 +43,8 @@ func (s *GRPCWebServer) serve() error {
 	}
 	defer s.stop(false)
 
+	s.kickDeferredProvisionMinimalIfNeeded()
+
 	for {
 		select {
 		case <-s.runtimeScope.Context().Done():

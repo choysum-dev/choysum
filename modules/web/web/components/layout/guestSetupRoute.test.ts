@@ -13,5 +13,6 @@ test('isGuestSetupRoute: /web/setup and /setup paths', () => {
   expect(isGuestSetupRoute({ path: '/setup' })).toBe(true);
   expect(isGuestSetupRoute({ path: '/login' })).toBe(false);
   expect(isGuestSetupRoute({ path: '/' })).toBe(false);
+  expect(isGuestSetupRoute({ path: '/admin/setup' })).toBe(false);
   expect(isGuestSetupRoute(null)).toBe(false);
 });
