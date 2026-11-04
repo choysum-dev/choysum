@@ -300,16 +300,36 @@ func (p *WebPlugin) prioritizedEntryPointImports() []string {
 
 func (p *WebPlugin) htmlIconProcessor(pathPrefix string) vueplugin.IndexHtmlProcessor {
 	return func(doc *html.Node, result *api.BuildResult, opts *vueplugin.Options, build *api.PluginBuild) error {
-		// 1. Find the <link rel="icon" ...> tag.
+		htmlDir := ""
+		if opts != nil {
+			htmlDir = filepath.Dir(opts.IndexHtmlOptions.SourceFile)
+		}
+		outdir := ""
+		if build != nil && build.InitialOptions != nil {
+			outdir = build.InitialOptions.Outdir
+		}
+		webRoot := webDistRootForIcons(opts, outdir)
+
+		// Apple-touch is independent of <link rel="icon">: browsers probe the
+		// site root even when the HTML icon tag is missing or invalid.
+		if webRoot != "" && htmlDir != "" {
+			if err := copyWebBuildAsset(htmlDir, webRoot, filepath.Join("assets", "logo-192.png"), "apple-touch-icon.png"); err != nil {
+				if os.IsNotExist(err) {
+					p.Env.Logger().Debug("apple-touch icon skipped", "reason", "source_missing")
+				} else {
+					p.Env.Logger().Warn("apple-touch icon copy failed", "error", err)
+				}
+			}
+		}
+
 		iconNode := htmlquery.FindOne(doc, `//link[@rel="icon"]`)
 		if iconNode == nil {
 			p.Env.Logger().Warn("favicon processing skipped", "reason", "icon_link_tag_not_found")
 			return nil
 		}
 
-		// 2. Read the href attribute.
 		var href string
-		var hrefAttrIndex int = -1
+		hrefAttrIndex := -1
 		for i, attr := range iconNode.Attr {
 			if attr.Key == "href" {
 				href = attr.Val
@@ -327,56 +347,52 @@ func (p *WebPlugin) htmlIconProcessor(pathPrefix string) vueplugin.IndexHtmlProc
 			return nil
 		}
 
-		// 3. Build the absolute path to the source file.
-		htmlDir := filepath.Dir(opts.IndexHtmlOptions.SourceFile)
 		iconSrcPath := filepath.Join(htmlDir, filepath.FromSlash(hrefPath))
+		if !pathUnderHTMLDir(htmlDir, iconSrcPath) {
+			p.Env.Logger().Warn("favicon processing skipped", "reason", "icon_href_escapes_html_dir", "href", href)
+			return nil
+		}
 
-		// 4. Publish under dist/web (not esbuild Outdir=dist/web/assets): assets
+		// Publish under dist/web (not esbuild Outdir=dist/web/assets): assets
 		// cleanup removes non-OutputFiles, and /web/favicon.ico is served from web root.
 		iconData, err := os.ReadFile(iconSrcPath)
 		if err != nil {
 			p.Env.Logger().Warn("favicon file does not exist", "path", iconSrcPath, "href", href)
 			return nil
 		}
-		outdir := ""
-		if build != nil && build.InitialOptions != nil {
-			outdir = build.InitialOptions.Outdir
-		}
-		webRoot := webDistRootForIcons(opts, outdir)
 		if webRoot == "" {
 			return fmt.Errorf("web dist root for favicon is empty")
 		}
 
 		iconBase := filepath.Base(filepath.FromSlash(hrefPath))
 		iconDstPath := filepath.Join(webRoot, iconBase)
-
-		// Ensure the destination directory exists.
 		if err := os.MkdirAll(filepath.Dir(iconDstPath), 0755); err != nil {
 			return fmt.Errorf("failed to create favicon destination directory: %v", err)
 		}
-
-		// Write the destination file, overwriting it if it already exists.
 		if err := os.WriteFile(iconDstPath, iconData, 0644); err != nil {
 			return fmt.Errorf("failed to write favicon file: %v", err)
 		}
 
-		// 5. Rewrite the HTML href to pathPrefix + basename (matches the copy).
 		newHref := pathPrefix + filepath.ToSlash(iconBase)
 		if hrefAttrIndex >= 0 {
 			iconNode.Attr[hrefAttrIndex].Val = newHref
 		}
-
-		// Optional apple-touch icon for browser root probes (/apple-touch-icon.png).
-		if err := copyWebBuildAsset(htmlDir, webRoot, filepath.Join("assets", "logo-192.png"), "apple-touch-icon.png"); err != nil {
-			if os.IsNotExist(err) {
-				p.Env.Logger().Debug("apple-touch icon skipped", "reason", "source_missing")
-			} else {
-				p.Env.Logger().Warn("apple-touch icon copy failed", "error", err)
-			}
-		}
-
 		return nil
 	}
+}
+
+// pathUnderHTMLDir reports whether candidate stays inside htmlDir after Clean.
+func pathUnderHTMLDir(htmlDir, candidate string) bool {
+	htmlDir = filepath.Clean(htmlDir)
+	candidate = filepath.Clean(candidate)
+	if htmlDir == "" || candidate == "" {
+		return false
+	}
+	rel, err := filepath.Rel(htmlDir, candidate)
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel)
 }
 
 // webDistRootForIcons returns dist/web: prefer IndexHtml OutFile dir, else parent of

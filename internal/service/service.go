@@ -484,9 +484,20 @@ func (s *ApplicationService) registerRootIconHandlers(handlers map[string]http.H
 				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 				return
 			}
+			f, err := os.Open(filePath)
+			if err != nil {
+				http.NotFound(w, r)
+				return
+			}
+			defer f.Close()
+			info, err := f.Stat()
+			if err != nil || !info.Mode().IsRegular() {
+				http.NotFound(w, r)
+				return
+			}
 			w.Header().Set("Content-Type", contentType)
 			w.Header().Set("Cache-Control", "public, max-age=86400")
-			http.ServeFile(w, r, filePath)
+			http.ServeContent(w, r, info.Name(), info.ModTime(), f)
 		})
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -159,11 +160,15 @@ func TestHtmlIconProcessorCopiesFileAndUpdatesHref(t *testing.T) {
 		`<html><head><link rel="icon" href="missing.ico"></head><body></body></html>`,
 		`<html><head><link rel="icon" href="https://cdn.example/favicon.ico"></head><body></body></html>`,
 		`<html><head><link rel="icon" href="favicon.ico?v=2"></head><body></body></html>`,
+		`<html><head><link rel="icon" href="../../etc/passwd"></head><body></body></html>`,
 	} {
 		doc := parseHTMLDoc(t, markup)
 		if err := processor(doc, &api.BuildResult{}, opts, build); err != nil {
 			t.Fatalf("processor unexpected error for %q: %v", markup, err)
 		}
+	}
+	if _, err := os.Stat(filepath.Join(webRoot, "passwd")); err == nil {
+		t.Fatal("traversal href must not publish outside htmlDir basename into web root")
 	}
 	// Query-stripped relative href should still publish basename beside index.html.
 	if got, err := os.ReadFile(filepath.Join(webRoot, "favicon.ico")); err != nil || string(got) != "ico" {
@@ -324,18 +329,42 @@ func TestWebDistRootForIconsAndCopyHelpers(t *testing.T) {
 		t.Fatal("expected mkdir failure under file path")
 	}
 
-	// WriteFile failure: read-only web root.
-	webRootRO := t.TempDir()
-	optsRO := &vueplugin.Options{IndexHtmlOptions: vueplugin.IndexHtmlOptions{
-		SourceFile: htmlFile,
-		OutFile:    filepath.Join(webRootRO, "index.html"),
-	}}
-	if err := os.Chmod(webRootRO, 0o555); err != nil {
-		t.Fatalf("chmod: %v", err)
+	// WriteFile failure: read-only web root (root / Windows bypass mode bits).
+	if runtime.GOOS != "windows" && os.Geteuid() != 0 {
+		webRootRO := t.TempDir()
+		optsRO := &vueplugin.Options{IndexHtmlOptions: vueplugin.IndexHtmlOptions{
+			SourceFile: htmlFile,
+			OutFile:    filepath.Join(webRootRO, "index.html"),
+		}}
+		if err := os.Chmod(webRootRO, 0o555); err != nil {
+			t.Fatalf("chmod: %v", err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(webRootRO, 0o755) })
+		if err := processor(iconDoc(), &api.BuildResult{}, optsRO, &api.PluginBuild{InitialOptions: &api.BuildOptions{Outdir: filepath.Join(webRootRO, "assets")}}); err == nil {
+			t.Fatal("expected write failure on read-only web root")
+		}
 	}
-	t.Cleanup(func() { _ = os.Chmod(webRootRO, 0o755) })
-	if err := processor(iconDoc(), &api.BuildResult{}, optsRO, &api.PluginBuild{InitialOptions: &api.BuildOptions{Outdir: filepath.Join(webRootRO, "assets")}}); err == nil {
-		t.Fatal("expected write failure on read-only web root")
+
+	// Apple-touch still publishes when <link rel="icon"> is absent.
+	htmlDirNoIcon := t.TempDir()
+	assetsNoIcon := filepath.Join(htmlDirNoIcon, "assets")
+	if err := os.MkdirAll(assetsNoIcon, 0o755); err != nil {
+		t.Fatalf("mkdir assets: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(assetsNoIcon, "logo-192.png"), []byte("touch"), 0o644); err != nil {
+		t.Fatalf("write logo: %v", err)
+	}
+	webRootNoIcon := t.TempDir()
+	optsNoIcon := &vueplugin.Options{IndexHtmlOptions: vueplugin.IndexHtmlOptions{
+		SourceFile: filepath.Join(htmlDirNoIcon, "index.html"),
+		OutFile:    filepath.Join(webRootNoIcon, "index.html"),
+	}}
+	docNoIcon := parseHTMLDoc(t, `<html><head></head><body></body></html>`)
+	if err := processor(docNoIcon, &api.BuildResult{}, optsNoIcon, &api.PluginBuild{InitialOptions: &api.BuildOptions{Outdir: filepath.Join(webRootNoIcon, "assets")}}); err != nil {
+		t.Fatalf("processor without icon tag: %v", err)
+	}
+	if got, err := os.ReadFile(filepath.Join(webRootNoIcon, "apple-touch-icon.png")); err != nil || string(got) != "touch" {
+		t.Fatalf("apple-touch without icon tag = %q err=%v", string(got), err)
 	}
 }
 
