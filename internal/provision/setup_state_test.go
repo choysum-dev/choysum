@@ -270,6 +270,77 @@ func TestResolveReadyWhenMarkerSet(t *testing.T) {
 	}
 }
 
+func TestResolveSetupModeNilScope(t *testing.T) {
+	if _, err := ResolveSetupMode(nil); err == nil {
+		t.Fatal("ResolveSetupMode(nil) expected error")
+	}
+	if _, err := ResolveSetupMode(&setupStateTestScope{ctx: context.Background()}); err == nil {
+		t.Fatal("expected session error")
+	}
+}
+
+func TestResolveSetupModeEmptyWhenNotProvisioned(t *testing.T) {
+	runtimeScope, db := newSetupStateScope(t)
+	mode, err := ResolveSetupMode(runtimeScope)
+	if err != nil || mode != "" {
+		t.Fatalf("no meta_module: mode=%q err=%v, want empty", mode, err)
+	}
+
+	createMetaModuleTable(t, db)
+	insertAuthModule(t, db, meta.ToInstall)
+	mode, err = ResolveSetupMode(runtimeScope)
+	if err != nil || mode != "" {
+		t.Fatalf("auth not installed: mode=%q err=%v, want empty", mode, err)
+	}
+}
+
+func TestResolveSetupModeEmptyWhenTableOrKeyMissing(t *testing.T) {
+	runtimeScope, db := newSetupStateScope(t)
+	createMetaModuleTable(t, db)
+	insertAuthModule(t, db, meta.Installed)
+
+	mode, err := ResolveSetupMode(runtimeScope)
+	if err != nil || mode != "" {
+		t.Fatalf("table missing: mode=%q err=%v, want empty", mode, err)
+	}
+
+	createAuthAppSettingTable(t, db)
+	mustExec(t, db, `INSERT INTO auth_app_setting (id, key, value, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+		"s1", authSetupCompletedAtKey, time.Now().UTC().Format(time.RFC3339), time.Now(), time.Now())
+	mode, err = ResolveSetupMode(runtimeScope)
+	if err != nil || mode != "" {
+		t.Fatalf("key missing: mode=%q err=%v, want empty", mode, err)
+	}
+}
+
+func TestResolveSetupModeReadsTrimmedValue(t *testing.T) {
+	runtimeScope, db := newSetupStateScope(t)
+	createMetaModuleTable(t, db)
+	insertAuthModule(t, db, meta.Installed)
+	createAuthAppSettingTable(t, db)
+	mustExec(t, db, `INSERT INTO auth_app_setting (id, key, value, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+		"s1", authSetupModeKey, " wizard ", time.Now(), time.Now())
+
+	mode, err := ResolveSetupMode(runtimeScope)
+	if err != nil {
+		t.Fatalf("ResolveSetupMode: %v", err)
+	}
+	if mode != SetupModeWizard {
+		t.Fatalf("mode = %q, want %q", mode, SetupModeWizard)
+	}
+}
+
+func TestResolveSetupModeQueryError(t *testing.T) {
+	runtimeScope, db := newSetupStateScope(t)
+	createMetaModuleTable(t, db)
+	insertAuthModule(t, db, meta.Installed)
+	mustExec(t, db, `CREATE TABLE auth_app_setting (id TEXT PRIMARY KEY, key TEXT NOT NULL UNIQUE)`)
+
+	if _, err := ResolveSetupMode(runtimeScope); err == nil {
+		t.Fatal("expected auth_app_setting query error")
+	}
+}
+
 func TestIsMissingSQLTableError(t *testing.T) {
 	cases := []struct {
 		err  error
