@@ -470,6 +470,47 @@ test('getInitialSetupOptions: keeps FailedPrecondition from the setup gate', asy
   expect(caught).toBe(gateErr);
 });
 
+test('getInitialSetupOptions: falls back to the store registry for base.Company', async () => {
+  // FE unit runs resolve product imports of the store registry to a stub whose stores
+  // have no RPC verbs, so the default path surfaces as a wrapped initialization error.
+  const actions = defineAuthActions(buildMockState() as any, buildMockHelpers() as any, { isClient: true });
+  let caught: ChoysumError | null = null;
+  try {
+    await actions.getInitialSetupOptions();
+  } catch (err) {
+    caught = err as ChoysumError;
+  }
+  expect(caught instanceof ChoysumError).toBe(true);
+  expect(String(caught?.code || '')).toBe('INITIALIZATION_FAILED');
+});
+
+async function setupOptionsError(GetInitialSetupOptions: () => Promise<unknown>): Promise<ChoysumError | null> {
+  const actions = defineAuthActions(buildMockState() as any, buildMockHelpers() as any, {
+    isClient: true,
+    createCompanyStore: () => ({ GetInitialSetupOptions }) as any,
+  });
+  try {
+    await actions.getInitialSetupOptions();
+  } catch (err) {
+    return err as ChoysumError;
+  }
+  return null;
+}
+
+test('getInitialSetupOptions: rejects a response without Defaults', async () => {
+  const err = await setupOptionsError(async () => ({ Countries: [] }));
+  expect(err instanceof ChoysumError).toBe(true);
+  expect(String(err?.code || '')).toBe('INITIALIZATION_FAILED');
+});
+
+test('getInitialSetupOptions: wraps non-Choysum failures', async () => {
+  const err = await setupOptionsError(async () => {
+    throw new Error('network down');
+  });
+  expect(err instanceof ChoysumError).toBe(true);
+  expect(String(err?.code || '')).toBe('INITIALIZATION_FAILED');
+});
+
 test('ensureSetupStateReady: does not cache a pending probe result', async () => {
   const mockState = buildMockState();
   const mockHelpers = buildMockHelpers();

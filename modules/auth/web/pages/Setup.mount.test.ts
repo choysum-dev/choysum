@@ -404,3 +404,13 @@ test('Setup.vue: Enter in a text input advances the step, but not during IME com
   expect(activeStep(wrapper)).toBe('organization');
   wrapper.unmount();
 });
+
+test('Setup.vue: Enter on an empty admin step still validates and stays put', async () => {
+  const { wrapper, requests } = await mountSetup();
+  const username = fieldInput(wrapper, '.setup-username').element as HTMLInputElement;
+  pressEnter(username);
+  await afterSubmit();
+  expect(activeStep(wrapper)).toBe('admin');
+  expect(requests).toEqual([]);
+  wrapper.unmount();
+});

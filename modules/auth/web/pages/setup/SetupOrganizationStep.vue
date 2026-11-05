@@ -75,6 +75,7 @@ import {
   setupRuleTranslate,
   withSetupServerError,
 } from '../setup_form';
+import { createCurrencyFollower } from '../setup_options';
 
 const { _t } = createTranslate('auth', { scope: 'web/pages/setup/SetupOrganizationStep' });
 
@@ -102,33 +103,14 @@ const countryRules = computed(() => withSetupServerError([], props.serverErrors.
 const currencyRules = computed(() => withSetupServerError(setupCurrencyRules(setupRuleTranslate), props.serverErrors.CurrencyCode));
 const timezoneRules = computed(() => withSetupServerError(setupTimezoneRules(setupRuleTranslate), props.serverErrors.Timezone));
 
-let autoCurrency: string | null = null;
+const currencyFollower = createCurrencyFollower({
+  formData: props.formData,
+  setField: (prop, value) => props.store.setField(prop, value),
+  countryCurrencies: () => props.countryCurrencies,
+  currencyTouched: () => props.currencyTouched,
+  onTouched: () => emit('currency-touched'),
+});
 
-function applyCurrency(code: string) {
-  autoCurrency = code;
-  props.formData.CurrencyCode = code;
-  props.store.setField('CurrencyCode', code);
-}
-
-watch(
-  () => props.formData.CountryCode,
-  (country, prev) => {
-    if (country === prev || props.currencyTouched) return;
-    const code = props.countryCurrencies[String(country ?? '')];
-    if (code && code !== props.formData.CurrencyCode) applyCurrency(code);
-  },
-);
-
-watch(
-  () => props.formData.CurrencyCode,
-  (currency, prev) => {
-    if (currency === prev) return;
-    if (autoCurrency !== null && currency === autoCurrency) {
-      autoCurrency = null;
-      return;
-    }
-    autoCurrency = null;
-    if (!props.currencyTouched) emit('currency-touched');
-  },
-);
+watch(() => props.formData.CountryCode, currencyFollower.onCountryChange);
+watch(() => props.formData.CurrencyCode, currencyFollower.onCurrencyChange);
 </script>

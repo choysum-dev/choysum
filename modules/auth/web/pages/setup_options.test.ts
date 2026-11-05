@@ -3,7 +3,15 @@
 
 import type { InitialSetupOptions } from '../stores/auth';
 import { clearSetupDraft, loadSetupDraft, saveSetupDraft, SETUP_DRAFT_KEY } from './setup_draft';
-import { buildSetupSelections, countryDefaultCurrencies, currencyLabel, resolveAdminLanguageCode, resolveSetupInitialValues } from './setup_options';
+import {
+  browserTimezone,
+  buildSetupSelections,
+  countryDefaultCurrencies,
+  createCurrencyFollower,
+  currencyLabel,
+  resolveAdminLanguageCode,
+  resolveSetupInitialValues,
+} from './setup_options';
 
 function options(): InitialSetupOptions {
   return {
@@ -148,4 +156,100 @@ test('resolveSetupInitialValues: company without a country yields null CountryCo
   delete opts.Defaults.CountryCode;
   const values = resolveSetupInitialValues({ options: opts, draft: null, browserTimezone: '' });
   expect(values.CountryCode).toBe(null);
+});
+
+function follower(touched = false) {
+  const formData: Record<string, unknown> = { CountryCode: null, CurrencyCode: 'USD' };
+  const setField: Array<[string, string]> = [];
+  const state = { touched, touchedEvents: 0 };
+  const f = createCurrencyFollower({
+    formData,
+    setField: (prop, value) => setField.push([prop, value]),
+    countryCurrencies: () => ({ CN: 'CNY', DE: 'EUR' }),
+    currencyTouched: () => state.touched,
+    onTouched: () => {
+      state.touchedEvents++;
+      state.touched = true;
+    },
+  });
+  return { f, formData, setField, state };
+}
+
+test('createCurrencyFollower: country fills its default currency without marking touched', () => {
+  const { f, formData, setField, state } = follower();
+  f.onCountryChange('CN', null);
+  expect(formData.CurrencyCode).toBe('CNY');
+  expect(setField).toEqual([['CurrencyCode', 'CNY']]);
+  f.onCurrencyChange('CNY', 'USD');
+  expect(state.touchedEvents).toBe(0);
+});
+
+test('createCurrencyFollower: unchanged, unknown or matching country leaves currency alone', () => {
+  const { f, formData, setField } = follower();
+  f.onCountryChange('CN', 'CN');
+  f.onCountryChange('AQ', null);
+  f.onCountryChange(null, 'CN');
+  formData.CurrencyCode = 'EUR';
+  f.onCountryChange('DE', null);
+  expect(formData.CurrencyCode).toBe('EUR');
+  expect(setField).toEqual([]);
+});
+
+test('createCurrencyFollower: manual currency marks touched once and stops following', () => {
+  const { f, formData, setField, state } = follower();
+  f.onCurrencyChange('USD', 'USD');
+  expect(state.touchedEvents).toBe(0);
+  f.onCurrencyChange('EUR', 'USD');
+  expect(state.touchedEvents).toBe(1);
+  f.onCurrencyChange('USD', 'EUR');
+  expect(state.touchedEvents).toBe(1);
+  f.onCountryChange('CN', null);
+  expect(formData.CurrencyCode).toBe('USD');
+  expect(setField).toEqual([]);
+});
+
+test('createCurrencyFollower: a manual pick that differs from the auto value marks touched', () => {
+  const { f, state } = follower();
+  f.onCountryChange('CN', null);
+  f.onCurrencyChange('EUR', 'USD');
+  expect(state.touchedEvents).toBe(1);
+});
+
+test('browserTimezone returns empty when Intl throws', () => {
+  const g = globalThis as { Intl: unknown };
+  const saved = g.Intl;
+  g.Intl = {
+    DateTimeFormat: () => {
+      throw new Error('no Intl');
+    },
+  };
+  try {
+    expect(browserTimezone()).toBe('');
+  } finally {
+    g.Intl = saved;
+  }
+});
+
+test('saveSetupDraft stores null fields as empty strings', () => {
+  const storage = memoryStorage();
+  saveSetupDraft({ CountryCode: null, OrgName: 'Acme' }, storage);
+  expect(loadSetupDraft(storage)?.values).toEqual({ OrgName: 'Acme', CountryCode: '' });
+});
+
+test('setup draft is a no-op when sessionStorage access throws', () => {
+  const desc = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage');
+  Object.defineProperty(globalThis, 'sessionStorage', {
+    configurable: true,
+    get() {
+      throw new Error('denied');
+    },
+  });
+  try {
+    saveSetupDraft({ OrgName: 'Acme' });
+    expect(loadSetupDraft()).toBe(null);
+    clearSetupDraft();
+  } finally {
+    if (desc) Object.defineProperty(globalThis, 'sessionStorage', desc);
+    else delete (globalThis as { sessionStorage?: unknown }).sessionStorage;
+  }
 });

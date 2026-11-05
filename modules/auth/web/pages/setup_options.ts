@@ -37,6 +37,43 @@ export function countryDefaultCurrencies(options: InitialSetupOptions): Record<s
   return out;
 }
 
+/**
+ * Country → default currency follow logic for the organization step. A country change
+ * fills its default currency until the user picks a currency by hand; that manual pick
+ * fires `onTouched` once, while values written by the follower itself do not.
+ */
+export function createCurrencyFollower(input: {
+  formData: Record<string, unknown>;
+  setField: (prop: 'CurrencyCode', value: string) => void;
+  countryCurrencies: () => Record<string, string>;
+  currencyTouched: () => boolean;
+  onTouched: () => void;
+}): {
+  onCountryChange: (country: unknown, prev: unknown) => void;
+  onCurrencyChange: (currency: unknown, prev: unknown) => void;
+} {
+  let autoCurrency: string | null = null;
+  return {
+    onCountryChange(country, prev) {
+      if (country === prev || input.currencyTouched()) return;
+      const code = input.countryCurrencies()[String(country ?? '')];
+      if (!code || code === input.formData.CurrencyCode) return;
+      autoCurrency = code;
+      input.formData.CurrencyCode = code;
+      input.setField('CurrencyCode', code);
+    },
+    onCurrencyChange(currency, prev) {
+      if (currency === prev) return;
+      if (autoCurrency !== null && currency === autoCurrency) {
+        autoCurrency = null;
+        return;
+      }
+      autoCurrency = null;
+      if (!input.currencyTouched()) input.onTouched();
+    },
+  };
+}
+
 /** Browser IANA timezone, or '' when Intl is unavailable. */
 export function browserTimezone(): string {
   try {
