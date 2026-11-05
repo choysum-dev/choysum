@@ -384,4 +384,39 @@ describe('SelectionField FieldsGet wiring', () => {
     expect(trigger!.getAttribute('aria-labelledby')).toBe(null);
     m.unmount();
   });
+
+  test('SelectionField returns focus to the trigger when the popup closes', async () => {
+    const m = mountApp(SelectionField as any, { props: { binding: statusBinding(), label: 'Status', renderMode: 'form' } });
+    await flushPromises();
+    await nextTick();
+    const onOpenChange = m.setupState().onOpenChange as (open: boolean) => void;
+    const trigger = m.q('[data-slot="combobox-trigger"]') as HTMLElement;
+    const focused: string[] = [];
+    trigger.focus = () => {
+      focused.push('trigger');
+    };
+    onOpenChange(true);
+    expect(focused).toEqual([]);
+    onOpenChange(false);
+    expect(focused).toEqual(['trigger']);
+    m.unmount();
+  });
+
+  test('SelectionField leaves focus alone when it moved to another control', async () => {
+    const m = mountApp(SelectionField as any, { props: { binding: statusBinding(), label: 'Status', renderMode: 'form' } });
+    await flushPromises();
+    await nextTick();
+    const other = document.createElement('input');
+    document.body.appendChild(other);
+    other.focus();
+    const trigger = m.q('[data-slot="combobox-trigger"]') as HTMLElement;
+    const focused: string[] = [];
+    trigger.focus = () => {
+      focused.push('trigger');
+    };
+    (m.setupState().onOpenChange as (open: boolean) => void)(false);
+    expect(focused).toEqual([]);
+    other.remove();
+    m.unmount();
+  });
 });

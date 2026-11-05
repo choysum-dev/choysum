@@ -33,9 +33,11 @@ SPDX-License-Identifier: Apache-2.0
           :model-value="fieldValue().value ?? undefined"
           :disabled="disabled || optionsLoading"
           @update:model-value="(v: unknown) => onUpdate(fieldValue, v ? String(v) : null)"
+          @update:open="onOpenChange"
         >
           <ComboboxAnchor class="w-full">
             <ComboboxTrigger
+              :ref="setTriggerEl"
               :id="inputId"
               :name="inputName"
               class="w-full"
@@ -204,6 +206,28 @@ const triggerSelectProps = computed(() => {
   }
   return out;
 });
+
+let triggerEl: HTMLElement | null = null;
+
+function setTriggerEl(el: unknown) {
+  const node = (el as { $el?: unknown } | null)?.$el ?? el;
+  triggerEl = node && typeof (node as HTMLElement).focus === 'function' ? (node as HTMLElement) : null;
+}
+
+/**
+ * Return focus to the trigger when the popup closes with focus inside it (or already
+ * dropped to body). Reka only does this when the popup holds a ComboboxInput, which
+ * short lists omit, so keyboard users would otherwise land on the document body.
+ */
+function onOpenChange(open: boolean) {
+  if (open || !triggerEl || typeof document === 'undefined') return;
+  const active = document.activeElement;
+  const contentId = triggerEl.getAttribute('aria-controls');
+  const content = contentId ? document.getElementById(contentId) : null;
+  if (!active || active === document.body || (content && content.contains(active))) {
+    triggerEl.focus();
+  }
+}
 
 /** Caller-supplied `aria-label` / `aria-labelledby` in selectProps win over the field label reference. */
 const callerNamesTrigger = computed(
