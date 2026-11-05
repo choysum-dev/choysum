@@ -138,12 +138,16 @@ func Run(ctx context.Context, deps Deps, opts Options, out io.Writer) (Result, e
 		return Result{Outcome: OutcomeWizard}, nil
 	}
 
-	if markedWizard {
-		if _, err := caller.Call(ctx, serviceAppSettingSet, "", setupModeKey, nil); err != nil {
-			return Result{}, fmt.Errorf("clear setup mode: %w", err)
-		}
+	res, err := complete(ctx, caller, deps, opts, out)
+	if err != nil || !markedWizard {
+		return res, err
 	}
-	return complete(ctx, caller, deps, opts, out)
+	// The marker only steers pending workspaces, so a failed clear after setup
+	// finished is reported but does not fail the install.
+	if _, clearErr := caller.Call(ctx, serviceAppSettingSet, "", setupModeKey, nil); clearErr != nil {
+		_, _ = fmt.Fprintf(out, "warning: could not clear setup.mode: %v\n", clearErr)
+	}
+	return res, nil
 }
 
 func complete(ctx context.Context, caller Caller, deps Deps, opts Options, out io.Writer) (Result, error) {
@@ -261,10 +265,8 @@ func organizationArg(org Organization) map[string]any {
 }
 
 func isAlreadyComplete(err error) bool {
-	if info := oerrors.GetErrorInfo(err); info != nil && info.Code == codeAlreadyComplete {
-		return true
-	}
-	return strings.Contains(err.Error(), codeAlreadyComplete)
+	info := oerrors.GetErrorInfo(err)
+	return info != nil && info.Code == codeAlreadyComplete
 }
 
 func printWizardHint(out io.Writer) {

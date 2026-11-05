@@ -21,47 +21,53 @@ import (
 	"github.com/rs/xid"
 )
 
-var newRuntimeExecutor = func(runtimeScope scope.Scope) (jsexecutor.JsExecutor, error) {
-	return jsexecutor.NewRuntimeExecutor(runtimeScope, nil)
-}
+var (
+	newRuntimeExecutor = jsexecutor.NewRuntimeExecutor
+	planServe          = runplan.Plan
+)
 
 // ScopeDeps reads workspace state from runtimeScope and opens a runtime
 // executor over the installed modules only when a service call is needed.
 func ScopeDeps(runtimeScope scope.Scope) Deps {
 	return Deps{
-		Phase:     func() (provision.Phase, error) { return provision.Resolve(runtimeScope) },
-		SetupMode: func() (string, error) { return provision.ResolveSetupMode(runtimeScope) },
-		OpenCaller: func() (Caller, func(), error) {
-			scripts, err := loadServeScripts(runtimeScope)
-			if err != nil {
-				return nil, nil, err
-			}
-			executor, err := newRuntimeExecutor(runtimeScope)
-			if err != nil {
-				return nil, nil, err
-			}
-			executor.SetJsScripts(scripts)
-			if err := executor.Start(); err != nil {
-				return nil, nil, err
-			}
-			return executorCaller{executor: executor, scope: runtimeScope}, func() { _ = executor.Stop() }, nil
-		},
+		Phase:      func() (provision.Phase, error) { return provision.Resolve(runtimeScope) },
+		SetupMode:  func() (string, error) { return provision.ResolveSetupMode(runtimeScope) },
+		OpenCaller: func() (Caller, func(), error) { return openExecutorCaller(runtimeScope) },
 	}
+}
+
+// openExecutorCaller starts a runtime executor loaded with the serve scripts
+// and returns a Caller over it plus the func that stops it.
+func openExecutorCaller(runtimeScope scope.Scope) (Caller, func(), error) {
+	serveScripts, err := loadServeScripts(runtimeScope)
+	if err != nil {
+		return nil, nil, err
+	}
+	executor, err := newRuntimeExecutor(runtimeScope, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	executor.SetJsScripts(serveScripts)
+	if err := executor.Start(); err != nil {
+		_ = executor.Stop()
+		return nil, nil, err
+	}
+	return executorCaller{executor: executor, scope: runtimeScope}, func() { _ = executor.Stop() }, nil
 }
 
 // loadServeScripts returns the service init scripts `choysum run` would load
 // for the installed apps (bundles/index.js, or apps/<name>/index.js per app).
 func loadServeScripts(runtimeScope scope.Scope) ([]*jsengine.JsScript, error) {
 	pathOpts, _ := scope.PathsRuntimeOptionsFromScope(runtimeScope)
-	distRoot := strings.TrimSpace(pathOpts.DistPath)
-	if distRoot == "" {
+	distRoot := pathOpts.DistPath
+	if strings.TrimSpace(distRoot) == "" {
 		return nil, errors.New("dist path is not configured")
 	}
 	bundleMode := config.NewDefaultCompileConfig().BundleMode
 	if compileOpts, ok := scope.CompileRuntimeOptionsFromScope(runtimeScope); ok && strings.TrimSpace(compileOpts.BundleMode) != "" {
 		bundleMode = compileOpts.BundleMode
 	}
-	_, decision, err := runplan.Plan(distRoot, bundleMode, runtimeScope.Logger(), nil)
+	_, decision, err := planServe(distRoot, bundleMode, runtimeScope.Logger(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +82,7 @@ func loadServeScripts(runtimeScope scope.Scope) ([]*jsengine.JsScript, error) {
 			paths = append(paths, config.AppIndexJS(distRoot, app))
 		}
 	}
-	scripts := make([]*jsengine.JsScript, 0, len(paths))
+	serveScripts := make([]*jsengine.JsScript, 0, len(paths))
 	for _, path := range paths {
 		content, err := os.ReadFile(path)
 		if errors.Is(err, os.ErrNotExist) {
@@ -85,9 +91,9 @@ func loadServeScripts(runtimeScope scope.Scope) ([]*jsengine.JsScript, error) {
 		if err != nil {
 			return nil, err
 		}
-		scripts = append(scripts, &jsengine.JsScript{FileName: path, Content: string(content)})
+		serveScripts = append(serveScripts, &jsengine.JsScript{FileName: path, Content: string(content)})
 	}
-	return jsengine.DedupeInitScripts(scripts)
+	return jsengine.DedupeInitScripts(serveScripts)
 }
 
 // executorCaller runs each call in its own transaction as the seeded
@@ -98,9 +104,6 @@ type executorCaller struct {
 }
 
 func (c executorCaller) Call(ctx context.Context, service string, lang string, args ...any) (any, error) {
-	if ctx == nil {
-		ctx = context.Background()
-	}
 	userID, companyID, err := systemidentity.ResolvePrincipalUserID(ctx, c.scope, "")
 	if err != nil {
 		return nil, fmt.Errorf("call %s: %w", service, err)

@@ -319,6 +319,11 @@ func TestCommandConstructorExitHelper(t *testing.T) {
 			panic(err)
 		}
 		cmd.Run(cmd, []string{"base"})
+	case "install_run_setup_error":
+		cmd := newInstallCmd(func() scope.Scope {
+			return &commandExitScope{commandTestScope: commandTestScope{cfg: newCommandExitConfig("cmd-helper-engine")}}
+		})
+		cmd.Run(cmd, nil)
 	case "upgrade_prerun_nil_env":
 		cmd := newUpgradeCmd(func() scope.Scope { return nil })
 		cmd.PreRun(cmd, []string{"base"})
@@ -1834,6 +1839,7 @@ func TestInstallUpgradeUninstallCommandExitPaths(t *testing.T) {
 		{name: "install run invalid web-shell-profile", scenario: "install_run_invalid_web_shell_profile", want: "invalid web-shell-profile", wantCode: 1},
 		{name: "install run invalid setup", scenario: "install_run_invalid_setup", want: "invalid --setup value", wantCode: 1},
 		{name: "install run wizard with password", scenario: "install_run_wizard_with_password", want: "--setup=wizard cannot be combined", wantCode: 1},
+		{name: "install run setup error", scenario: "install_run_setup_error", want: "initial setup failed", wantCode: 1},
 		{name: "upgrade prerun nil env", scenario: "upgrade_prerun_nil_env", want: "scope is not initialized", wantCode: 1},
 		{name: "upgrade prerun missing args", scenario: "upgrade_prerun_missing_args", want: "Please specify the module name", wantCode: 1},
 		{name: "upgrade run nil env", scenario: "upgrade_run_nil_env", want: "scope is not initialized", wantCode: 1},
