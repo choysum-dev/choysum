@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <ChoyPage :loading="loading" fill-height class="flex min-h-0 w-full flex-1 flex-col">
     <div class="setup-panel flex min-h-0 w-full flex-1 flex-col overflow-y-auto" data-testid="setup-panel">
-      <div class="mx-auto my-auto w-full max-w-lg py-4 sm:px-4 sm:py-8">
+      <div class="mx-auto my-auto w-full max-w-lg px-4 py-8">
         <ChoyCard class="setup-card w-full">
           <template #header>
             <h3 class="font-semibold leading-none">{{ _t('Initial Setup') }}</h3>
@@ -161,8 +161,8 @@ const formStore = createLocalFormStore({
 
 const step = ref<SetupStep>('admin');
 const stepperSteps = computed<ChoyStepperStep[]>(() => [
-  { value: 'admin', label: _t('Administrator') },
-  { value: 'organization', label: _t('Organization') },
+  { value: 'admin', label: _t('Administrator Info') },
+  { value: 'organization', label: _t('Organization Info') },
   { value: 'review', label: _t('Review') },
 ]);
 const stepHint = computed(() => {
@@ -354,14 +354,3 @@ async function onFormSubmit(ctx: { formData: Record<string, unknown> }) {
   });
 }
 </script>
-
-<style scoped>
-/* Narrow viewports: drop the card chrome so fields use the full width. */
-@media (max-width: 639.98px) {
-  .setup-card {
-    border-color: transparent;
-    background: transparent;
-    box-shadow: none;
-  }
-}
-</style>

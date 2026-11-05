@@ -1458,8 +1458,8 @@ msgstr "会话列表"
 
 #: web/pages/Setup.vue:67
 msgctxt "web/pages/Setup"
-msgid "Administrator"
-msgstr "管理员"
+msgid "Administrator Info"
+msgstr "管理员信息"
 
 #: web/pages/Setup.vue:35
 msgctxt "web/pages/Setup"
@@ -1533,8 +1533,8 @@ msgstr "下一步"
 
 #: web/pages/Setup.vue:68
 msgctxt "web/pages/Setup"
-msgid "Organization"
-msgstr "组织"
+msgid "Organization Info"
+msgstr "组织信息"
 
 #: web/pages/setup_form.ts:29
 msgctxt "web/pages/Setup"
@@ -1656,22 +1656,22 @@ msgctxt "web/pages/setup/SetupAdminStep"
 msgid "Username"
 msgstr "用户名"
 
-#: web/pages/setup/SetupOrganizationStep.vue:11
+#: web/pages/setup/SetupOrganizationStep.vue:10
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Base Currency"
 msgstr "本位币"
 
-#: web/pages/setup/SetupOrganizationStep.vue:15
+#: web/pages/setup/SetupOrganizationStep.vue:13
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Business Timezone"
 msgstr "业务时区"
 
-#: web/pages/setup/SetupOrganizationStep.vue:11
+#: web/pages/setup/SetupOrganizationStep.vue:10
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Company accounting currency. It cannot be changed once transactions exist."
 msgstr "公司记账币种，产生业务数据后不可更改。"
 
-#: web/pages/setup/SetupOrganizationStep.vue:8
+#: web/pages/setup/SetupOrganizationStep.vue:7
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Country / Region"
 msgstr "国家/地区"
@@ -1681,7 +1681,7 @@ msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Enter organization name"
 msgstr "请输入组织名称"
 
-#: web/pages/setup/SetupOrganizationStep.vue:8
+#: web/pages/setup/SetupOrganizationStep.vue:7
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Optional"
 msgstr "选填"
@@ -1691,17 +1691,17 @@ msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Organization Name"
 msgstr "组织名称"
 
-#: web/pages/setup/SetupOrganizationStep.vue:11
+#: web/pages/setup/SetupOrganizationStep.vue:10
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Select a base currency"
 msgstr "请选择本位币"
 
-#: web/pages/setup/SetupOrganizationStep.vue:15
+#: web/pages/setup/SetupOrganizationStep.vue:13
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Select a business timezone"
 msgstr "请选择业务时区"
 
-#: web/pages/setup/SetupOrganizationStep.vue:15
+#: web/pages/setup/SetupOrganizationStep.vue:13
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Used for business dates and scheduled jobs; independent of personal display timezones."
 msgstr "用于业务日期和定时任务，与个人显示时区无关。"
@@ -2944,12 +2944,20 @@ msgstr "启用"
 #~ msgstr "感谢使用，将在 %s 秒后跳转到登录页…"
 
 #~ msgctxt "web/pages/Setup"
+#~ msgid "Administrator"
+#~ msgstr "管理员"
+
+#~ msgctxt "web/pages/Setup"
 #~ msgid "Choose an administrator username and password to finish setup"
 #~ msgstr "设置管理员用户名和密码以完成初始设置"
 
 #~ msgctxt "web/pages/Setup"
 #~ msgid "Confirm Password"
 #~ msgstr "确认密码"
+
+#~ msgctxt "web/pages/Setup"
+#~ msgid "Organization"
+#~ msgstr "组织"
 
 #~ msgctxt "web/pages/Setup"
 #~ msgid "Password"

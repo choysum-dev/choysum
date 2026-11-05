@@ -1494,7 +1494,7 @@ msgstr ""
 
 #: web/pages/Setup.vue:67
 msgctxt "web/pages/Setup"
-msgid "Administrator"
+msgid "Administrator Info"
 msgstr ""
 
 #: web/pages/Setup.vue:35
@@ -1570,7 +1570,7 @@ msgstr ""
 
 #: web/pages/Setup.vue:68
 msgctxt "web/pages/Setup"
-msgid "Organization"
+msgid "Organization Info"
 msgstr ""
 
 #: web/pages/setup_form.ts:29
@@ -1693,22 +1693,22 @@ msgctxt "web/pages/setup/SetupAdminStep"
 msgid "Username"
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:11
+#: web/pages/setup/SetupOrganizationStep.vue:10
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Base Currency"
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:15
+#: web/pages/setup/SetupOrganizationStep.vue:13
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Business Timezone"
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:11
+#: web/pages/setup/SetupOrganizationStep.vue:10
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Company accounting currency. It cannot be changed once transactions exist."
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:8
+#: web/pages/setup/SetupOrganizationStep.vue:7
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Country / Region"
 msgstr ""
@@ -1718,7 +1718,7 @@ msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Enter organization name"
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:8
+#: web/pages/setup/SetupOrganizationStep.vue:7
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Optional"
 msgstr ""
@@ -1728,17 +1728,17 @@ msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Organization Name"
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:11
+#: web/pages/setup/SetupOrganizationStep.vue:10
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Select a base currency"
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:15
+#: web/pages/setup/SetupOrganizationStep.vue:13
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Select a business timezone"
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:15
+#: web/pages/setup/SetupOrganizationStep.vue:13
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Used for business dates and scheduled jobs; independent of personal display timezones."
 msgstr ""
