@@ -367,7 +367,7 @@ async function onFormSubmit(ctx: { formData: Record<string, unknown> }) {
 }
 
 .setup-content {
-  max-width: 24rem;
+  max-width: 28rem;
 }
 
 .setup-actions .submit-button {
