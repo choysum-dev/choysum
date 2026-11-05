@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { mount, flushPromises } from '@choysum/test-utils';
-import { setActivePinia, type Pinia } from 'pinia';
+import { getActivePinia, setActivePinia, type Pinia } from 'pinia';
 import Setup from './Setup.vue';
 import { buildPageMountGlobal } from '@choysum/page-mount';
 import { useAuthStore, type CompleteInitialSetupInput, type InitialSetupOptions } from '../stores/auth';
@@ -44,6 +44,8 @@ type SetupStoreStub = {
   getInitialSetupOptions: () => Promise<InitialSetupOptions>;
 };
 
+let optionsCalls = 0;
+
 async function mountSetup(opts?: {
   query?: Record<string, string>;
   failSetup?: ChoysumError;
@@ -69,9 +71,13 @@ async function mountSetup(opts?: {
   const pinia = global.plugins[0] as Pinia;
   setActivePinia(pinia);
   const store = useAuthStore() as unknown as SetupStoreStub;
+  optionsCalls = 0;
   store.getInitialSetupOptions = async () => {
+    optionsCalls += 1;
     if (opts?.failOptions) throw opts.failOptions;
-    return setupOptions();
+    const resp = setupOptions();
+    if (optionsCalls > 1) resp.Currencies[0].Name = '人民币';
+    return resp;
   };
   store.ensureSetupStateReady = async () => !!opts?.setupReady;
   store.completeInitialSetup = async req => {
@@ -338,4 +344,21 @@ test('Setup.vue: restores non-secret draft values on mount', async () => {
   expect(activeStep(wrapper)).toBe('admin');
   wrapper.unmount();
   clearSetupDraft();
+});
+
+test('Setup.vue: UI language change refetches localized option labels', async () => {
+  const { wrapper } = await mountSetup();
+  await advanceToReview(wrapper);
+  expect(optionsCalls).toBe(1);
+  expect(wrapper.text().includes('CNY · Chinese Yuan')).toBe(true);
+  // Product SFCs resolve the FE-unit i18n stub store; drive its terminologyLang directly.
+  const pinia = getActivePinia() as unknown as { _s: Map<string, Record<string, unknown>> };
+  const i18n = pinia._s.get('i18n-fe-stub');
+  expect(!!i18n).toBe(true);
+  i18n!.terminologyLang = 'zh_CN';
+  for (let i = 0; i < 8; i++) await flushPromises();
+  expect(optionsCalls).toBe(2);
+  expect(wrapper.text().includes('CNY · 人民币')).toBe(true);
+  expect(activeStep(wrapper)).toBe('review');
+  wrapper.unmount();
 });

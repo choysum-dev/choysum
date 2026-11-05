@@ -93,7 +93,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref, shallowRef } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, shallowRef, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { X } from 'lucide-vue-next';
@@ -193,9 +193,11 @@ function setPageError(message: string) {
   error.value = message;
 }
 
+const i18nStore = useI18nStore();
+
 function uiLanguageCode(): string {
   try {
-    return String(useI18nStore().terminologyLang || '');
+    return String(i18nStore.terminologyLang || '');
   } catch {
     return '';
   }
@@ -221,17 +223,21 @@ async function leaveIfSetupReady(): Promise<boolean> {
   return false;
 }
 
+function applyOptionSelections(resp: InitialSetupOptions) {
+  options.value = resp;
+  const next = buildSetupSelections(resp);
+  for (const key of Object.keys(next) as Array<keyof typeof next>) {
+    formStore.setFieldSelection(key, next[key]);
+  }
+  selections.value = next;
+}
+
 async function loadOptions() {
   optionsLoading.value = true;
   optionsError.value = '';
   try {
     const resp = await authStore.getInitialSetupOptions();
-    options.value = resp;
-    const next = buildSetupSelections(resp);
-    for (const key of Object.keys(next) as Array<keyof typeof next>) {
-      formStore.setFieldSelection(key, next[key]);
-    }
-    selections.value = next;
+    applyOptionSelections(resp);
     const values = resolveSetupInitialValues({
       options: resp,
       draft: loadSetupDraft(),
@@ -249,6 +255,23 @@ async function loadOptions() {
     optionsLoading.value = false;
   }
 }
+
+/** Option labels are localized by the server; refetch them when the UI language changes. */
+let labelReloadSeq = 0;
+async function reloadOptionLabels() {
+  if (!options.value) return;
+  const seq = ++labelReloadSeq;
+  try {
+    const resp = await authStore.getInitialSetupOptions();
+    if (seq === labelReloadSeq) applyOptionSelections(resp);
+  } catch {
+    // Keep the current labels; values stay valid because codes do not change.
+  }
+}
+
+watch(uiLanguageCode, (next, prev) => {
+  if (next && next !== prev) void reloadOptionLabels();
+});
 
 onMounted(() => {
   void loadOptions();

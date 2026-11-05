@@ -33,6 +33,12 @@ void [
   _tSetupRule('Select an organization language'),
 ];
 
+/**
+ * Translator for setup rule messages. Step components must build rules with this
+ * (not their own scope) because the msgids are registered under `web/pages/Setup`.
+ */
+export const setupRuleTranslate = (msg: string): string => _tSetupRule(msg);
+
 export type SetupClientRule = RegisterClientRule;
 
 /** Wizard step ids, in display order. */

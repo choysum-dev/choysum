@@ -86,6 +86,7 @@ import {
   setupEmailRules,
   setupPasswordRules,
   setupUsernameRules,
+  setupRuleTranslate,
   withSetupServerError,
 } from '../setup_form';
 
@@ -99,11 +100,11 @@ const props = defineProps<{
   serverErrors: Record<string, string>;
 }>();
 
-const usernameRules = computed(() => withSetupServerError(setupUsernameRules(_t), props.serverErrors.Username));
-const passwordRules = computed(() => withSetupServerError(setupPasswordRules(_t), props.serverErrors.Password));
+const usernameRules = computed(() => withSetupServerError(setupUsernameRules(setupRuleTranslate), props.serverErrors.Username));
+const passwordRules = computed(() => withSetupServerError(setupPasswordRules(setupRuleTranslate), props.serverErrors.Password));
 const confirmPasswordRules = computed(() => {
   const password = props.formData.Password;
-  return setupConfirmPasswordRules(_t, () => password);
+  return setupConfirmPasswordRules(setupRuleTranslate, () => password);
 });
-const emailRules = computed(() => withSetupServerError(setupEmailRules(_t), props.serverErrors.Email));
+const emailRules = computed(() => withSetupServerError(setupEmailRules(setupRuleTranslate), props.serverErrors.Email));
 </script>

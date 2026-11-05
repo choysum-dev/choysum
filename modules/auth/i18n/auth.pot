@@ -1542,7 +1542,7 @@ msgctxt "web/pages/Setup"
 msgid "Enter username"
 msgstr ""
 
-#: web/pages/Setup.vue:152
+#: web/pages/Setup.vue:159
 msgctxt "web/pages/Setup"
 msgid "Failed to load setup options. Please try again."
 msgstr ""
@@ -1552,8 +1552,8 @@ msgctxt "web/pages/Setup"
 msgid "Initial Setup"
 msgstr ""
 
-#: web/pages/Setup.vue:208
-#: web/pages/Setup.vue:223
+#: web/pages/Setup.vue:232
+#: web/pages/Setup.vue:247
 msgctxt "web/pages/Setup"
 msgid "Initial setup failed. Please try again later."
 msgstr ""

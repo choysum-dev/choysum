@@ -86,6 +86,7 @@ import {
   setupOrgLanguageRules,
   setupOrgNameRules,
   setupTimezoneRules,
+  setupRuleTranslate,
   withSetupServerError,
 } from '../setup_form';
 
@@ -110,12 +111,12 @@ const emit = defineEmits<{
   (e: 'currency-touched'): void;
 }>();
 
-const orgNameRules = computed(() => withSetupServerError(setupOrgNameRules(_t), props.serverErrors.OrgName));
+const orgNameRules = computed(() => withSetupServerError(setupOrgNameRules(setupRuleTranslate), props.serverErrors.OrgName));
 const countryRules = computed(() => withSetupServerError([], props.serverErrors.CountryCode));
-const currencyRules = computed(() => withSetupServerError(setupCurrencyRules(_t), props.serverErrors.CurrencyCode));
-const timezoneRules = computed(() => withSetupServerError(setupTimezoneRules(_t), props.serverErrors.Timezone));
+const currencyRules = computed(() => withSetupServerError(setupCurrencyRules(setupRuleTranslate), props.serverErrors.CurrencyCode));
+const timezoneRules = computed(() => withSetupServerError(setupTimezoneRules(setupRuleTranslate), props.serverErrors.Timezone));
 const orgLanguageRules = computed(() =>
-  withSetupServerError(setupOrgLanguageRules(_t), props.serverErrors.OrgLanguageCode),
+  withSetupServerError(setupOrgLanguageRules(setupRuleTranslate), props.serverErrors.OrgLanguageCode),
 );
 
 let autoCurrency: string | null = null;
