@@ -14,24 +14,25 @@ import (
 type Mode string
 
 const (
-	// ModeUnset follows the persisted setup.mode marker, otherwise completes.
+	// ModeUnset completes setup only when this command installed auth; a setup
+	// that was already pending is left as is.
 	ModeUnset Mode = ""
-	// ModeComplete finishes setup now with the seed organization and a new admin password.
+	// ModeComplete finishes a pending setup now with the seed organization and a new admin password.
 	ModeComplete Mode = "complete"
-	// ModeWizard leaves setup to /web/setup and persists that choice.
+	// ModeWizard leaves a pending setup to /web/setup.
 	ModeWizard Mode = "wizard"
 )
 
 // PasswordEnv names the environment variable read when --admin-password is not given.
 const PasswordEnv = "CHOYSUM_ADMIN_PASSWORD"
 
-// SetupFlagUsage is the help text of `install --setup`.
-const SetupFlagUsage = `How first-run setup is finished when the workspace is pending after install:
+// SetupFlagUsage is the help text of `--setup` on install and upgrade.
+const SetupFlagUsage = `How first-run setup is handled when the workspace is pending afterwards:
 complete = finish now with the seed organization and a new admin password;
-wizard   = leave it to /web/setup (remembered for later installs).
-Default: complete, unless an earlier install chose wizard.`
+wizard   = leave it to /web/setup.
+Default: complete when this run installs auth; a setup already pending is left as is.`
 
-// PasswordFlagUsage is the help text of `install --admin-password`.
+// PasswordFlagUsage is the help text of `--admin-password` on install and upgrade.
 const PasswordFlagUsage = `Admin password used when setup completes (env ` + PasswordEnv + `).
 A random password is generated and printed once when neither is set.
 Command-line values are visible in shell history and process lists.`

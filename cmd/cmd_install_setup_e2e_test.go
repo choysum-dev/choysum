@@ -195,9 +195,6 @@ func TestCLIInstallWizardModeThenComplete(t *testing.T) {
 	if !strings.Contains(stdout, "left to the web wizard") {
 		t.Fatalf("wizard hint missing: %q", stdout)
 	}
-	if v, _ := ws.appSetting(t, "setup.mode"); v != "wizard" {
-		t.Fatalf("setup.mode = %q, want wizard", v)
-	}
 	if _, ok := ws.appSetting(t, "setup.completed_at"); ok {
 		t.Fatal("wizard mode must stay SetupPending")
 	}
@@ -206,11 +203,11 @@ func TestCLIInstallWizardModeThenComplete(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("unset rerun exit %d\nstdout=%s\nstderr=%s", code, stdout, stderr)
 	}
-	if !strings.Contains(stdout, "pass --setup=complete") {
-		t.Fatalf("remembered wizard choice should be reported: %q", stdout)
+	if !strings.Contains(stdout, "already pending before this run") || !strings.Contains(stdout, "--setup=complete") {
+		t.Fatalf("an earlier pending setup should be reported: %q", stdout)
 	}
 	if _, ok := ws.appSetting(t, "setup.completed_at"); ok {
-		t.Fatal("remembered wizard choice must keep SetupPending")
+		t.Fatal("an earlier pending setup must stay SetupPending without --setup=complete")
 	}
 
 	const password = "Env-Secret-42"
@@ -223,9 +220,6 @@ func TestCLIInstallWizardModeThenComplete(t *testing.T) {
 	}
 	if !strings.Contains(stdout, "(from "+initialsetup.PasswordEnv+")") {
 		t.Fatalf("completion should name the password source: %q", stdout)
-	}
-	if _, ok := ws.appSetting(t, "setup.mode"); ok {
-		t.Fatal("--setup=complete must clear the wizard marker")
 	}
 	if v, ok := ws.appSetting(t, "setup.completed_at"); !ok || strings.TrimSpace(v) == "" {
 		t.Fatal("setup.completed_at must be written")

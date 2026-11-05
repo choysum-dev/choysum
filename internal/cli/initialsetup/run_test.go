@@ -25,7 +25,6 @@ type fakeCaller struct {
 	calls       []recordedCall
 	defaults    map[string]map[string]any
 	completeErr error
-	setErr      error
 	// defaultsErr fails the defaults read for defaultsErrLang ("" = first read).
 	defaultsErr     error
 	defaultsErrLang string
@@ -49,8 +48,6 @@ func (f *fakeCaller) Call(_ context.Context, service string, lang string, args .
 			return nil, f.completeErr
 		}
 		return map[string]any{"UserId": "u1"}, nil
-	case serviceAppSettingSet:
-		return nil, f.setErr
 	}
 	return nil, errors.New("unexpected service " + service)
 }
@@ -82,12 +79,11 @@ func seedDefaults() map[string]map[string]any {
 
 type fakeEnv struct {
 	phase      provision.Phase
-	marker     string
+	before     provision.Phase
 	caller     *fakeCaller
 	opened     int
 	closed     int
 	phaseErr   error
-	markerErr  error
 	openErr    error
 	randomPass string
 	randomErr  error
@@ -95,8 +91,7 @@ type fakeEnv struct {
 
 func (e *fakeEnv) deps() Deps {
 	return Deps{
-		Phase:     func() (provision.Phase, error) { return e.phase, e.phaseErr },
-		SetupMode: func() (string, error) { return e.marker, e.markerErr },
+		Phase: func() (provision.Phase, error) { return e.phase, e.phaseErr },
 		OpenCaller: func() (Caller, func(), error) {
 			if e.openErr != nil {
 				return nil, nil, e.openErr
@@ -108,10 +103,11 @@ func (e *fakeEnv) deps() Deps {
 	}
 }
 
-func newFakeEnv(phase provision.Phase, marker string) *fakeEnv {
+// newFakeEnv reports phase after the command and before before it.
+func newFakeEnv(phase provision.Phase, before provision.Phase) *fakeEnv {
 	return &fakeEnv{
 		phase:      phase,
-		marker:     marker,
+		before:     before,
 		caller:     &fakeCaller{defaults: seedDefaults()},
 		randomPass: "AAAA-BBBB-CCCC-DDDD-EEEE",
 	}
@@ -132,9 +128,9 @@ func TestRunEmptyAndReadySkipWithoutCalls(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			env := newFakeEnv(tc.phase, "")
+			env := newFakeEnv(tc.phase, provision.PhaseEmpty)
 			var out bytes.Buffer
-			res, err := Run(context.Background(), env.deps(), tc.opts, &out)
+			res, err := Run(context.Background(), env.deps(), tc.opts, env.before, &out)
 			if err != nil {
 				t.Fatalf("Run: %v", err)
 			}
@@ -155,9 +151,9 @@ func TestRunEmptyAndReadySkipWithoutCalls(t *testing.T) {
 }
 
 func TestRunPendingCompletesWithRandomPassword(t *testing.T) {
-	env := newFakeEnv(provision.PhaseSetupPending, "")
+	env := newFakeEnv(provision.PhaseSetupPending, provision.PhaseEmpty)
 	var out bytes.Buffer
-	res, err := Run(context.Background(), env.deps(), Options{}, &out)
+	res, err := Run(context.Background(), env.deps(), Options{}, env.before, &out)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -202,10 +198,10 @@ func TestRunPendingCompletesWithRandomPassword(t *testing.T) {
 }
 
 func TestRunPendingCompletesWithProvidedPassword(t *testing.T) {
-	env := newFakeEnv(provision.PhaseSetupPending, "")
+	env := newFakeEnv(provision.PhaseSetupPending, provision.PhaseEmpty)
 	env.caller.defaults["zh_CN"]["CountryCode"] = "CN"
 	var out bytes.Buffer
-	_, err := Run(context.Background(), env.deps(), Options{Mode: ModeComplete, Password: "Secret-1", PasswordSource: PasswordEnvVar}, &out)
+	_, err := Run(context.Background(), env.deps(), Options{Mode: ModeComplete, Password: "Secret-1", PasswordSource: PasswordEnvVar}, env.before, &out)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -224,94 +220,69 @@ func TestRunPendingCompletesWithProvidedPassword(t *testing.T) {
 	}
 }
 
-func TestRunWizardWritesMarkerOnce(t *testing.T) {
-	env := newFakeEnv(provision.PhaseSetupPending, "")
-	var out bytes.Buffer
-	res, err := Run(context.Background(), env.deps(), Options{Mode: ModeWizard}, &out)
-	if err != nil || res.Outcome != OutcomeWizard {
-		t.Fatalf("Run = %+v, %v", res, err)
-	}
-	if len(env.caller.calls) != 1 || env.caller.calls[0].service != serviceAppSettingSet {
-		t.Fatalf("calls = %v", env.caller.services())
-	}
-	if args := env.caller.calls[0].args; args[0] != setupModeKey || args[1] != provision.SetupModeWizard {
-		t.Fatalf("marker args = %v", args)
-	}
-	if !strings.Contains(out.String(), "/web/setup") {
-		t.Fatalf("output %q", out.String())
-	}
-
-	marked := newFakeEnv(provision.PhaseSetupPending, provision.SetupModeWizard)
-	if _, err := Run(context.Background(), marked.deps(), Options{Mode: ModeWizard}, &out); err != nil {
-		t.Fatalf("Run: %v", err)
-	}
-	if len(marked.caller.calls) != 0 {
-		t.Fatalf("existing marker must not be rewritten, calls = %v", marked.caller.services())
-	}
-}
-
-func TestRunUnsetRespectsWizardMarker(t *testing.T) {
-	env := newFakeEnv(provision.PhaseSetupPending, provision.SetupModeWizard)
-	var out bytes.Buffer
-	res, err := Run(context.Background(), env.deps(), Options{}, &out)
-	if err != nil || res.Outcome != OutcomeWizard {
-		t.Fatalf("Run = %+v, %v", res, err)
-	}
-	if env.opened != 0 {
-		t.Fatal("marker hint must not start the runtime")
-	}
-	if !strings.Contains(out.String(), "--setup=complete") {
-		t.Fatalf("output %q should point at --setup=complete", out.String())
-	}
-}
-
-func TestRunCompleteClearsWizardMarker(t *testing.T) {
-	env := newFakeEnv(provision.PhaseSetupPending, provision.SetupModeWizard)
-	res, err := Run(context.Background(), env.deps(), Options{Mode: ModeComplete}, nil)
-	if err != nil || res.Outcome != OutcomeCompleted {
-		t.Fatalf("Run = %+v, %v", res, err)
-	}
-	want := serviceSetupOptions + "," + serviceSetupOptions + "," + serviceCompleteSetup + "," + serviceAppSettingSet
-	if got := strings.Join(env.caller.services(), ","); got != want {
-		t.Fatalf("calls = %s, want marker cleared after completion", got)
-	}
-	last := env.caller.calls[len(env.caller.calls)-1]
-	if last.args[0] != setupModeKey || last.args[1] != nil {
-		t.Fatalf("clear args = %v", last.args)
-	}
-}
-
-func TestRunKeepsWizardMarkerWhenCompletionFails(t *testing.T) {
-	env := newFakeEnv(provision.PhaseSetupPending, provision.SetupModeWizard)
-	env.caller.completeErr = errors.New("field error")
-	if _, err := Run(context.Background(), env.deps(), Options{Mode: ModeComplete}, nil); err == nil {
-		t.Fatal("Run must fail")
-	}
-	for _, service := range env.caller.services() {
-		if service == serviceAppSettingSet {
-			t.Fatal("marker must stay when completion fails")
+func TestRunWizardLeavesSetupPending(t *testing.T) {
+	for _, before := range []provision.Phase{provision.PhaseEmpty, provision.PhaseSetupPending} {
+		env := newFakeEnv(provision.PhaseSetupPending, before)
+		var out bytes.Buffer
+		res, err := Run(context.Background(), env.deps(), Options{Mode: ModeWizard}, env.before, &out)
+		if err != nil || res.Outcome != OutcomeWizard {
+			t.Fatalf("before=%s: Run = %+v, %v", before, res, err)
+		}
+		if env.opened != 0 {
+			t.Fatalf("before=%s: wizard must not start the runtime", before)
+		}
+		if !strings.Contains(out.String(), "/web/setup") {
+			t.Fatalf("before=%s: output %q", before, out.String())
 		}
 	}
 }
 
-func TestRunMarkerClearFailureOnlyWarns(t *testing.T) {
-	env := newFakeEnv(provision.PhaseSetupPending, provision.SetupModeWizard)
-	env.caller.setErr = errors.New("denied")
-	var out bytes.Buffer
-	res, err := Run(context.Background(), env.deps(), Options{Mode: ModeComplete}, &out)
+func TestRunUnsetLeavesEarlierPendingSetup(t *testing.T) {
+	cases := []struct {
+		name     string
+		before   provision.Phase
+		opts     Options
+		password bool
+	}{
+		{name: "pending before", before: provision.PhaseSetupPending},
+		{name: "ready before", before: provision.PhaseReady},
+		{name: "password given", before: provision.PhaseSetupPending, opts: Options{Password: "x", PasswordSource: PasswordEnvVar}, password: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			env := newFakeEnv(provision.PhaseSetupPending, tc.before)
+			var out bytes.Buffer
+			res, err := Run(context.Background(), env.deps(), tc.opts, env.before, &out)
+			if err != nil || res.Outcome != OutcomeLeftPending {
+				t.Fatalf("Run = %+v, %v", res, err)
+			}
+			if env.opened != 0 {
+				t.Fatal("an earlier pending setup must not start the runtime")
+			}
+			text := out.String()
+			if !strings.Contains(text, "already pending before this run") || !strings.Contains(text, "--setup=complete") {
+				t.Fatalf("output %q should explain and point at --setup=complete", text)
+			}
+			if got := strings.Contains(text, "Admin password not applied."); got != tc.password {
+				t.Fatalf("password note = %v, want %v in %q", got, tc.password, text)
+			}
+		})
+	}
+}
+
+func TestRunCompleteFinishesEarlierPendingSetup(t *testing.T) {
+	env := newFakeEnv(provision.PhaseSetupPending, provision.PhaseSetupPending)
+	res, err := Run(context.Background(), env.deps(), Options{Mode: ModeComplete}, env.before, nil)
 	if err != nil || res.Outcome != OutcomeCompleted {
 		t.Fatalf("Run = %+v, %v", res, err)
-	}
-	if !strings.Contains(out.String(), "warning: could not clear setup.mode: denied") {
-		t.Fatalf("output %q should warn about the marker", out.String())
 	}
 }
 
 func TestRunAlreadyCompleteIsNotAnError(t *testing.T) {
-	env := newFakeEnv(provision.PhaseSetupPending, "")
+	env := newFakeEnv(provision.PhaseSetupPending, provision.PhaseEmpty)
 	env.caller.completeErr = fmt.Errorf("call %s: %w", serviceCompleteSetup, oerrors.New("auth", codeAlreadyComplete, "done"))
 	var out bytes.Buffer
-	res, err := Run(context.Background(), env.deps(), Options{}, &out)
+	res, err := Run(context.Background(), env.deps(), Options{}, env.before, &out)
 	if err != nil || res.Outcome != OutcomeAlreadyComplete {
 		t.Fatalf("Run = %+v, %v", res, err)
 	}
@@ -324,28 +295,28 @@ func TestRunAlreadyCompleteIsNotAnError(t *testing.T) {
 }
 
 func TestRunAlreadyCompleteNeedsErrorCode(t *testing.T) {
-	env := newFakeEnv(provision.PhaseSetupPending, "")
+	env := newFakeEnv(provision.PhaseSetupPending, provision.PhaseEmpty)
 	env.caller.completeErr = errors.New("[auth] " + codeAlreadyComplete)
-	if _, err := Run(context.Background(), env.deps(), Options{}, nil); err == nil {
+	if _, err := Run(context.Background(), env.deps(), Options{}, env.before, nil); err == nil {
 		t.Fatal("a bare message without an error code must fail")
 	}
 }
 
 func TestRunWithoutCloseFunc(t *testing.T) {
-	env := newFakeEnv(provision.PhaseSetupPending, "")
+	env := newFakeEnv(provision.PhaseSetupPending, provision.PhaseEmpty)
 	deps := env.deps()
 	deps.OpenCaller = func() (Caller, func(), error) { return env.caller, nil, nil }
-	if res, err := Run(context.Background(), deps, Options{}, nil); err != nil || res.Outcome != OutcomeCompleted {
+	if res, err := Run(context.Background(), deps, Options{}, env.before, nil); err != nil || res.Outcome != OutcomeCompleted {
 		t.Fatalf("Run = %+v, %v", res, err)
 	}
 }
 
 func TestRunDefaultRandomPassword(t *testing.T) {
-	env := newFakeEnv(provision.PhaseSetupPending, "")
+	env := newFakeEnv(provision.PhaseSetupPending, provision.PhaseEmpty)
 	deps := env.deps()
 	deps.RandomPassword = nil
 	var out bytes.Buffer
-	if _, err := Run(context.Background(), deps, Options{}, &out); err != nil {
+	if _, err := Run(context.Background(), deps, Options{}, env.before, &out); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 	req := env.caller.calls[len(env.caller.calls)-1].args[0].(map[string]any)
@@ -371,9 +342,7 @@ func TestRunErrors(t *testing.T) {
 	}{
 		{name: "phase", mutate: func(e *fakeEnv) { e.phaseErr = errors.New("db down") }, contains: "resolve setup phase"},
 		{name: "unknown phase", mutate: func(e *fakeEnv) { e.phase = "weird" }, contains: "unknown setup phase"},
-		{name: "marker", mutate: func(e *fakeEnv) { e.markerErr = errors.New("db down") }, contains: "read setup mode"},
 		{name: "open", mutate: func(e *fakeEnv) { e.openErr = errors.New("no dist") }, contains: "start setup runtime"},
-		{name: "write marker", mutate: func(e *fakeEnv) { e.caller.setErr = errors.New("denied") }, opts: Options{Mode: ModeWizard}, contains: "remember setup mode"},
 		{name: "defaults call", mutate: func(e *fakeEnv) { e.caller.defaultsErr = errors.New("no base") }, contains: "read setup defaults: no base"},
 		{name: "localized defaults call", mutate: func(e *fakeEnv) { e.caller.defaultsErrLang = "zh_CN"; e.caller.defaultsErr = errors.New("no base") }, contains: "read setup defaults: no base"},
 		{name: "defaults not encodable", mutate: func(e *fakeEnv) { e.caller.defaultsRaw = make(chan int) }, contains: "read setup defaults: json"},
@@ -387,10 +356,10 @@ func TestRunErrors(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			env := newFakeEnv(provision.PhaseSetupPending, "")
+			env := newFakeEnv(provision.PhaseSetupPending, provision.PhaseEmpty)
 			tc.mutate(env)
 			var out bytes.Buffer
-			_, err := Run(context.Background(), env.deps(), tc.opts, &out)
+			_, err := Run(context.Background(), env.deps(), tc.opts, env.before, &out)
 			if err == nil || !strings.Contains(err.Error(), tc.contains) {
 				t.Fatalf("err = %v, want containing %q", err, tc.contains)
 			}

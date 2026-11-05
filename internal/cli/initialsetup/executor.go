@@ -31,7 +31,6 @@ var (
 func ScopeDeps(runtimeScope scope.Scope) Deps {
 	return Deps{
 		Phase:      func() (provision.Phase, error) { return provision.Resolve(runtimeScope) },
-		SetupMode:  func() (string, error) { return provision.ResolveSetupMode(runtimeScope) },
 		OpenCaller: func() (Caller, func(), error) { return openExecutorCaller(runtimeScope) },
 	}
 }

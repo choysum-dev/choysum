@@ -294,9 +294,6 @@ func TestScopeDepsReadsWorkspace(t *testing.T) {
 	if phase, err := deps.Phase(); err != nil || phase != provision.PhaseEmpty {
 		t.Fatalf("Phase = %q, %v", phase, err)
 	}
-	if mode, err := deps.SetupMode(); err != nil || mode != "" {
-		t.Fatalf("SetupMode = %q, %v", mode, err)
-	}
 	if _, _, err := deps.OpenCaller(); err == nil {
 		t.Fatal("OpenCaller without dist must fail")
 	}
@@ -335,7 +332,7 @@ func TestExecutorCallerBuildsSystemRequest(t *testing.T) {
 func TestExecutorCallerOmitsLangAndNilResponse(t *testing.T) {
 	executor := &fakeJsExecutor{}
 	caller := executorCaller{executor: executor, scope: newExecutorTestScope(t, "", "")}
-	got, err := caller.Call(context.Background(), serviceAppSettingSet, "", setupModeKey, nil)
+	got, err := caller.Call(context.Background(), serviceSetupOptions, "", map[string]any{})
 	if err != nil || got != nil {
 		t.Fatalf("Call = %v, %v", got, err)
 	}

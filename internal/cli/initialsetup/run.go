@@ -21,9 +21,6 @@ const AdminUsername = "admin"
 const (
 	serviceSetupOptions  = "base.Company.GetInitialSetupOptions"
 	serviceCompleteSetup = "auth.User.CompleteInitialSetup"
-	serviceAppSettingSet = "auth.AppSetting.Set"
-
-	setupModeKey = "setup.mode"
 
 	codeAlreadyComplete = "INITIAL_SETUP_ALREADY_COMPLETE"
 )
@@ -36,8 +33,7 @@ type Caller interface {
 
 // Deps supplies workspace state and a lazily opened Caller to Run.
 type Deps struct {
-	Phase     func() (provision.Phase, error)
-	SetupMode func() (string, error)
+	Phase func() (provision.Phase, error)
 	// OpenCaller is only invoked when Run needs a service call; close releases it.
 	OpenCaller func() (caller Caller, close func(), err error)
 	// RandomPassword defaults to GeneratePassword(nil).
@@ -56,6 +52,8 @@ const (
 	OutcomeCompleted Outcome = "completed"
 	// OutcomeAlreadyComplete: another actor finished setup during this run.
 	OutcomeAlreadyComplete Outcome = "already_complete"
+	// OutcomeLeftPending: setup was already pending before this run and no mode was given.
+	OutcomeLeftPending Outcome = "left_pending"
 )
 
 // Result summarizes Run.
@@ -81,9 +79,11 @@ type setupDefaults struct {
 	LanguageCode     string `json:"LanguageCode"`
 }
 
-// Run applies the install setup decision for the current workspace phase and
-// writes human-readable progress to out. Errors leave the workspace SetupPending.
-func Run(ctx context.Context, deps Deps, opts Options, out io.Writer) (Result, error) {
+// Run applies the setup decision for the workspace phase after a module command
+// and writes human-readable progress to out. before is the phase read before the
+// command changed any module: without an explicit mode, setup completes only when
+// this command moved the workspace out of Empty. Errors leave it SetupPending.
+func Run(ctx context.Context, deps Deps, opts Options, before provision.Phase, out io.Writer) (Result, error) {
 	if out == nil {
 		out = io.Discard
 	}
@@ -111,16 +111,17 @@ func Run(ctx context.Context, deps Deps, opts Options, out io.Writer) (Result, e
 		return Result{}, fmt.Errorf("unknown setup phase %q", phase)
 	}
 
-	marker, err := deps.SetupMode()
-	if err != nil {
-		return Result{}, fmt.Errorf("read setup mode: %w", err)
-	}
-	markedWizard := marker == provision.SetupModeWizard
-
-	if opts.Mode == ModeUnset && markedWizard {
+	switch {
+	case opts.Mode == ModeWizard:
 		printWizardHint(out)
-		_, _ = fmt.Fprintln(out, "An earlier install chose the web wizard; pass --setup=complete to finish setup here instead.")
 		return Result{Outcome: OutcomeWizard}, nil
+	case opts.Mode == ModeUnset && before != provision.PhaseEmpty:
+		_, _ = fmt.Fprintln(out, "Initial setup is still pending; it was already pending before this run, so it is left as is.")
+		if opts.PasswordSource != PasswordNone {
+			_, _ = fmt.Fprintln(out, "Admin password not applied.")
+		}
+		_, _ = fmt.Fprintln(out, "Finish it at /web/setup, or rerun with --setup=complete (e.g. `choysum install auth --setup=complete`).")
+		return Result{Outcome: OutcomeLeftPending}, nil
 	}
 
 	caller, closeCaller, err := deps.OpenCaller()
@@ -130,27 +131,7 @@ func Run(ctx context.Context, deps Deps, opts Options, out io.Writer) (Result, e
 	if closeCaller != nil {
 		defer closeCaller()
 	}
-
-	if opts.Mode == ModeWizard {
-		if !markedWizard {
-			if _, err := caller.Call(ctx, serviceAppSettingSet, "", setupModeKey, provision.SetupModeWizard); err != nil {
-				return Result{}, fmt.Errorf("remember setup mode: %w", err)
-			}
-		}
-		printWizardHint(out)
-		return Result{Outcome: OutcomeWizard}, nil
-	}
-
-	res, err := complete(ctx, caller, deps, opts, out)
-	if err != nil || !markedWizard {
-		return res, err
-	}
-	// The marker only steers pending workspaces, so a failed clear after setup
-	// finished is reported but does not fail the install.
-	if _, clearErr := caller.Call(ctx, serviceAppSettingSet, "", setupModeKey, nil); clearErr != nil {
-		_, _ = fmt.Fprintf(out, "warning: could not clear setup.mode: %v\n", clearErr)
-	}
-	return res, nil
+	return complete(ctx, caller, deps, opts, out)
 }
 
 func complete(ctx context.Context, caller Caller, deps Deps, opts Options, out io.Writer) (Result, error) {

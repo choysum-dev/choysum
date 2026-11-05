@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	clicompat "github.com/choysum-dev/choysum/internal/cli/compat"
-	"github.com/choysum-dev/choysum/internal/cli/initialsetup"
 	clioutput "github.com/choysum-dev/choysum/internal/cli/output"
 	cliruntime "github.com/choysum-dev/choysum/internal/cli/runtime"
 	"github.com/choysum-dev/choysum/internal/esmresolver"
@@ -31,8 +30,7 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 	var noWeb bool
 	var webShellProfile string
 	var cliCompatVersion string
-	var setupMode string
-	var adminPassword string
+	var setupFlags *moduleSetupFlags
 	cmd := &cobra.Command{
 		Use:   "install <module|module@version> [<module|module@version>...]",
 		Short: "Install Choysum Module",
@@ -62,13 +60,7 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 				env.Logger().Error("module compatibility version resolution failed", "error", err)
 				os.Exit(1)
 			}
-			setupOpts, setupErr := initialsetup.ResolveOptions(
-				setupMode,
-				adminPassword,
-				cmd.Flags().Changed("admin-password"),
-				os.Getenv(initialsetup.PasswordEnv),
-				cmd.ErrOrStderr(),
-			)
+			setupPlan, setupErr := setupFlags.prepare(cmd, env)
 			if setupErr != nil {
 				env.Logger().Error("module install failed", "error", setupErr)
 				os.Exit(1)
@@ -164,19 +156,14 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 				}
 			}
 
-			setupScope := env.WithContext(ctx)
-			if _, err := initialsetup.Run(ctx, initialsetup.ScopeDeps(setupScope), setupOpts, cmd.OutOrStdout()); err != nil {
-				env.Logger().Error("initial setup failed; workspace stays pending, finish it at /web/setup or rerun install", "error", err)
-				os.Exit(1)
-			}
+			setupPlan.finish(ctx, cmd, env)
 		},
 	}
 	cmd.Flags().BoolVar(&withDemo, "with-demo", false, "Load demo data declared by package.json")
 	cmd.Flags().BoolVar(&noWeb, "no-web", false, "Skip auto-installing the web SPA shell when a module declares entryPoints.web")
 	cmd.Flags().StringVar(&webShellProfile, "web-shell-profile", string(plan.WebShellProfileStandard), plan.WebShellProfileFlagUsage)
 	cmd.Flags().StringVar(&cliCompatVersion, "cli-compat-version", "", "override CLI compatibility version for module compatibility checks")
-	cmd.Flags().StringVar(&setupMode, "setup", "", initialsetup.SetupFlagUsage)
-	cmd.Flags().StringVar(&adminPassword, "admin-password", "", initialsetup.PasswordFlagUsage)
+	setupFlags = addModuleSetupFlags(cmd)
 	return cmd
 }
 

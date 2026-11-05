@@ -28,11 +28,7 @@ const (
 	authModuleName          = "auth"
 	authAppSettingTable     = "auth_app_setting"
 	authSetupCompletedAtKey = "setup.completed_at"
-	authSetupModeKey        = "setup.mode"
 )
-
-// SetupModeWizard is the setup.mode value that leaves first-run setup to the web wizard.
-const SetupModeWizard = "wizard"
 
 // Resolve reports Empty / SetupPending / Ready from Go-side SQL only.
 // Order: Provisioned (auth Installed) first; only then read auth_app_setting.
@@ -68,35 +64,6 @@ func Resolve(runtimeScope scope.Scope) (Phase, error) {
 	return PhaseSetupPending, nil
 }
 
-// ResolveSetupMode returns the trimmed auth_app_setting setup.mode value, or ""
-// when auth is not Installed, the table is missing, or the key is absent.
-func ResolveSetupMode(runtimeScope scope.Scope) (string, error) {
-	if runtimeScope == nil {
-		return "", errors.New("scope is not available")
-	}
-	session := runtimeScope.Session()
-	if session == nil || session.DB == nil {
-		return "", errors.New("database session is not available")
-	}
-
-	provisioned, err := isAuthProvisioned(session)
-	if err != nil || !provisioned {
-		return "", err
-	}
-
-	value, found, err := readAuthAppSetting(session, authSetupModeKey)
-	if err != nil {
-		if isMissingSQLTableError(err) {
-			return "", nil
-		}
-		return "", err
-	}
-	if !found {
-		return "", nil
-	}
-	return strings.TrimSpace(value), nil
-}
-
 func isAuthProvisioned(session *scope.Session) (bool, error) {
 	var mod meta.Module
 	err := session.Select("id", "status").Where("name = ?", authModuleName).Take(&mod).Error
@@ -114,29 +81,21 @@ func isAuthProvisioned(session *scope.Session) (bool, error) {
 }
 
 func isSetupComplete(session *scope.Session) (bool, error) {
-	value, found, err := readAuthAppSetting(session, authSetupCompletedAtKey)
-	if err != nil || !found {
-		return false, err
-	}
-	return strings.TrimSpace(value) != "", nil
-}
-
-func readAuthAppSetting(session *scope.Session, key string) (string, bool, error) {
 	var row struct {
 		Value string `gorm:"column:value"`
 	}
 	// Map condition so dialects quote reserved column name `key` (MySQL KEY).
 	err := session.Table(authAppSettingTable).
 		Select("value").
-		Where(map[string]any{"key": key}).
+		Where(map[string]any{"key": authSetupCompletedAtKey}).
 		Take(&row).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return "", false, nil
+		return false, nil
 	}
 	if err != nil {
-		return "", false, err
+		return false, err
 	}
-	return row.Value, true, nil
+	return strings.TrimSpace(row.Value) != "", nil
 }
 
 // isMissingSQLTableError reports dialect-specific "table does not exist" failures.
