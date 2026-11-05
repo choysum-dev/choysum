@@ -5,91 +5,93 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <ChoyPage :loading="loading" fill-height class="flex min-h-0 w-full flex-1 flex-col">
-    <AuthPanel>
-      <ChoyCard class="setup-card w-full">
-        <template #header>
-          <h3 class="font-semibold leading-none">{{ _t('Initial Setup') }}</h3>
-          <div
-            v-if="error"
-            class="setup-error flex items-start justify-between gap-2 text-sm text-destructive"
-            role="alert"
-          >
-            <span class="min-w-0 leading-5">{{ error }}</span>
-            <button
-              type="button"
-              class="inline-flex size-5 shrink-0 items-center justify-center rounded-sm border-0 bg-transparent p-0 text-destructive/70 appearance-none shadow-none outline-none hover:text-destructive focus-visible:ring-2 focus-visible:ring-destructive/40"
-              :aria-label="_t('Close')"
-              @click="error = ''"
+    <div class="setup-panel flex min-h-0 w-full flex-1 flex-col overflow-y-auto" data-testid="setup-panel">
+      <div class="mx-auto my-auto w-full max-w-lg py-4 sm:px-4 sm:py-8">
+        <ChoyCard class="setup-card w-full">
+          <template #header>
+            <h3 class="font-semibold leading-none">{{ _t('Initial Setup') }}</h3>
+            <div
+              v-if="error"
+              class="setup-error flex items-start justify-between gap-2 text-sm text-destructive"
+              role="alert"
             >
-              <X class="size-3.5" />
-            </button>
+              <span class="min-w-0 leading-5">{{ error }}</span>
+              <button
+                type="button"
+                class="inline-flex size-5 shrink-0 items-center justify-center rounded-sm border-0 bg-transparent p-0 text-destructive/70 appearance-none shadow-none outline-none hover:text-destructive focus-visible:ring-2 focus-visible:ring-destructive/40"
+                :aria-label="_t('Close')"
+                @click="error = ''"
+              >
+                <X class="size-3.5" />
+              </button>
+            </div>
+            <p v-else class="setup-step-hint text-sm text-foreground/60">{{ stepHint }}</p>
+          </template>
+          <ChoyStepper v-model="step" :steps="stepperSteps" :readonly="!!loading" class="setup-stepper mb-6" />
+          <div v-if="optionsLoading" class="setup-options-loading text-sm text-foreground/60">
+            {{ _t('Loading setup options…') }}
           </div>
-          <p v-else class="setup-step-hint text-sm text-foreground/60">{{ stepHint }}</p>
-        </template>
-        <ChoyStepper v-model="step" :steps="stepperSteps" :readonly="!!loading" class="setup-stepper mb-6" />
-        <div v-if="optionsLoading" class="setup-options-loading text-sm text-foreground/60">
-          {{ _t('Loading setup options…') }}
-        </div>
-        <div v-else-if="optionsError" class="setup-options-error flex flex-col gap-3 text-sm" role="alert">
-          <span class="text-destructive">{{ optionsError }}</span>
-          <ChoyButton type="button" variant="outline" class="setup-options-retry self-start" @click="loadOptions">
-            {{ _t('Retry') }}
-          </ChoyButton>
-        </div>
-        <div v-else class="setup-form" @keydown.enter="onEnterKey">
-          <ChoyFormView
-            ref="formRef"
-            :store="formStore"
-            view-mode="create"
-            embedded
-            :show-header="false"
-            :show-actions="false"
-            :show-messages="false"
-            :resolve-record-id-from-route="false"
-            :initial-values="initialValues"
-            :submit-handler="onFormSubmit"
-          >
-            <template #default="{ formData }">
-              <SetupFormWatch :form-data="formData" @ready="onFormReady" @change="onFormChange" />
-              <SetupAdminStep
-                v-if="step === 'admin'"
-                :store="formStore"
-                :form-data="formData"
-                :server-errors="serverErrors"
-              />
-              <SetupOrganizationStep
-                v-else-if="step === 'organization'"
-                :store="formStore"
-                :form-data="formData"
-                :server-errors="serverErrors"
-                :country-currencies="countryCurrencies"
-                :currency-touched="currencyTouched"
-                @currency-touched="currencyTouched = true"
-              />
-              <SetupReviewStep v-else :form-data="formData" :selections="selections" />
-              <div class="setup-actions mt-6 flex gap-2">
-                <ChoyButton
-                  v-if="step !== 'admin'"
-                  type="button"
-                  variant="outline"
-                  class="setup-back"
-                  :disabled="loading"
-                  @click="goBack"
-                >
-                  {{ _t('Back') }}
-                </ChoyButton>
-                <ChoyButton type="submit" class="submit-button flex-1" :disabled="loading">
-                  <template v-if="step === 'review'">
-                    {{ loading ? _t('Complete Setup') + '…' : _t('Complete Setup') }}
-                  </template>
-                  <template v-else>{{ _t('Next') }}</template>
-                </ChoyButton>
-              </div>
-            </template>
-          </ChoyFormView>
-        </div>
-      </ChoyCard>
-    </AuthPanel>
+          <div v-else-if="optionsError" class="setup-options-error flex flex-col gap-3 text-sm" role="alert">
+            <span class="text-destructive">{{ optionsError }}</span>
+            <ChoyButton type="button" variant="outline" class="setup-options-retry self-start" @click="loadOptions">
+              {{ _t('Retry') }}
+            </ChoyButton>
+          </div>
+          <div v-else class="setup-form" @keydown.enter="onEnterKey">
+            <ChoyFormView
+              ref="formRef"
+              :store="formStore"
+              view-mode="create"
+              embedded
+              :show-header="false"
+              :show-actions="false"
+              :show-messages="false"
+              :resolve-record-id-from-route="false"
+              :initial-values="initialValues"
+              :submit-handler="onFormSubmit"
+            >
+              <template #default="{ formData }">
+                <SetupFormWatch :form-data="formData" @ready="onFormReady" @change="onFormChange" />
+                <SetupAdminStep
+                  v-if="step === 'admin'"
+                  :store="formStore"
+                  :form-data="formData"
+                  :server-errors="serverErrors"
+                />
+                <SetupOrganizationStep
+                  v-else-if="step === 'organization'"
+                  :store="formStore"
+                  :form-data="formData"
+                  :server-errors="serverErrors"
+                  :country-currencies="countryCurrencies"
+                  :currency-touched="currencyTouched"
+                  @currency-touched="currencyTouched = true"
+                />
+                <SetupReviewStep v-else :form-data="formData" :selections="selections" />
+                <div class="setup-actions mt-6 flex gap-2">
+                  <ChoyButton
+                    v-if="step !== 'admin'"
+                    type="button"
+                    variant="outline"
+                    class="setup-back"
+                    :disabled="loading"
+                    @click="goBack"
+                  >
+                    {{ _t('Back') }}
+                  </ChoyButton>
+                  <ChoyButton type="submit" class="submit-button flex-1" :disabled="loading">
+                    <template v-if="step === 'review'">
+                      {{ loading ? _t('Complete Setup') + '…' : _t('Complete Setup') }}
+                    </template>
+                    <template v-else>{{ _t('Next') }}</template>
+                  </ChoyButton>
+                </div>
+              </template>
+            </ChoyFormView>
+          </div>
+        </ChoyCard>
+      </div>
+    </div>
   </ChoyPage>
 </template>
 
@@ -99,7 +101,6 @@ import { useRouter, useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { X } from 'lucide-vue-next';
 import { useAuthStore, type InitialSetupOptions } from '../stores/auth';
-import AuthPanel from '../components/AuthPanel.vue';
 import SetupFormWatch from './setup/SetupFormWatch.vue';
 import SetupAdminStep from './setup/SetupAdminStep.vue';
 import SetupOrganizationStep from './setup/SetupOrganizationStep.vue';
@@ -131,6 +132,7 @@ import {
   browserTimezone,
   buildSetupSelections,
   countryDefaultCurrencies,
+  resolveAdminLanguageCode,
   resolveSetupInitialValues,
   type SetupSelectionItem,
 } from './setup_options';
@@ -152,7 +154,6 @@ const formStore = createLocalFormStore({
     { name: 'CountryCode', label: 'Country / Region', type: 'selection', selection: [] },
     { name: 'CurrencyCode', label: 'Base Currency', type: 'selection', selection: [] },
     { name: 'Timezone', label: 'Business Timezone', type: 'selection', selection: [] },
-    { name: 'OrgLanguageCode', label: 'Organization Language', type: 'selection', selection: [] },
   ],
   initialValues: {},
   storeId: 'auth.setup',
@@ -180,14 +181,11 @@ const optionsError = ref('');
 const options = shallowRef<InitialSetupOptions | null>(null);
 const initialValues = ref<Record<string, string | null>>({});
 const currencyTouched = ref(false);
-/** Org language picked on the user's behalf from the UI language; null once the user chooses one. */
-let autoOrgLanguage: string | null = null;
 
-const emptySelections = (): Record<'CountryCode' | 'CurrencyCode' | 'Timezone' | 'OrgLanguageCode', SetupSelectionItem[]> => ({
+const emptySelections = (): Record<'CountryCode' | 'CurrencyCode' | 'Timezone', SetupSelectionItem[]> => ({
   CountryCode: [],
   CurrencyCode: [],
   Timezone: [],
-  OrgLanguageCode: [],
 });
 const selections = shallowRef(emptySelections());
 const countryCurrencies = computed(() => (options.value ? countryDefaultCurrencies(options.value) : {}));
@@ -206,13 +204,6 @@ function uiLanguageCode(): string {
   }
 }
 
-/** Admin UI language: the current UI locale when the server lists it, else the company default. */
-function adminLanguageCode(): string {
-  const ui = uiLanguageCode();
-  const langs = options.value?.Languages || [];
-  if (ui && langs.some(l => l.Code === ui)) return ui;
-  return options.value?.Defaults.LanguageCode || ui;
-}
 
 async function leaveIfSetupReady(): Promise<boolean> {
   try {
@@ -244,13 +235,10 @@ async function loadOptions() {
     const values = resolveSetupInitialValues({
       options: resp,
       draft: loadSetupDraft(),
-      uiLanguageCode: uiLanguageCode(),
       browserTimezone: browserTimezone(),
     });
     const countryCurrency = values.CountryCode ? countryCurrencies.value[values.CountryCode] : undefined;
     currencyTouched.value = !!values.CurrencyCode && !!countryCurrency && values.CurrencyCode !== countryCurrency;
-    const ui = uiLanguageCode();
-    autoOrgLanguage = ui && values.OrgLanguageCode === ui ? ui : null;
     initialValues.value = values;
   } catch (err) {
     if (await leaveIfSetupReady()) return;
@@ -274,20 +262,8 @@ async function reloadOptionLabels() {
   }
 }
 
-/** Keep the org language on the UI language until the user picks one explicitly. */
-function followUiLanguage(next: string) {
-  const data = formData.value;
-  if (autoOrgLanguage === null || !data || data.OrgLanguageCode !== autoOrgLanguage) return;
-  if (!(options.value?.Languages || []).some(l => l.Code === next)) return;
-  autoOrgLanguage = next;
-  data.OrgLanguageCode = next;
-  formStore.setField('OrgLanguageCode', next);
-}
-
 watch(uiLanguageCode, (next, prev) => {
-  if (!next || next === prev) return;
-  followUiLanguage(next);
-  void reloadOptionLabels();
+  if (next && next !== prev) void reloadOptionLabels();
 });
 
 onMounted(() => {
@@ -302,9 +278,6 @@ function onFormChange(fields: string[]) {
   if (error.value) error.value = '';
   for (const field of fields) {
     if (serverErrors[field]) delete serverErrors[field];
-  }
-  if (fields.includes('OrgLanguageCode') && formData.value?.OrgLanguageCode !== autoOrgLanguage) {
-    autoOrgLanguage = null;
   }
   if (formData.value) saveSetupDraft(formData.value);
 }
@@ -354,7 +327,7 @@ async function onFormSubmit(ctx: { formData: Record<string, unknown> }) {
     goNext();
     return { handled: true as const, skipSuccessMessage: true as const };
   }
-  const req = buildCompleteInitialSetupReq(ctx.formData, adminLanguageCode());
+  const req = buildCompleteInitialSetupReq(ctx.formData, resolveAdminLanguageCode(options.value, uiLanguageCode()));
   return runHandledAuthSubmit({
     submit: () =>
       runSetupSubmit({
@@ -381,3 +354,14 @@ async function onFormSubmit(ctx: { formData: Record<string, unknown> }) {
   });
 }
 </script>
+
+<style scoped>
+/* Narrow viewports: drop the card chrome so fields use the full width. */
+@media (max-width: 639.98px) {
+  .setup-card {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+  }
+}
+</style>

@@ -64,7 +64,6 @@ export type CompleteInitialSetupOrganization = {
   CurrencyCode: string;
   /** Business timezone (IANA) written to Company.Timezone. */
   Timezone: string;
-  LanguageCode: string;
 };
 
 /**
@@ -114,7 +113,6 @@ export function pickCompleteInitialSetupReq(req: Record<string, unknown>): {
           CountryCode: pickString(org, 'CountryCode'),
           CurrencyCode: pickString(org, 'CurrencyCode'),
           Timezone: pickString(org, 'Timezone'),
-          LanguageCode: pickString(org, 'LanguageCode'),
         }
       : null,
   };

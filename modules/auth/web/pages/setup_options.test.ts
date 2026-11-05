@@ -3,7 +3,7 @@
 
 import type { InitialSetupOptions } from '../stores/auth';
 import { clearSetupDraft, loadSetupDraft, saveSetupDraft, SETUP_DRAFT_KEY } from './setup_draft';
-import { buildSetupSelections, countryDefaultCurrencies, currencyLabel, resolveSetupInitialValues } from './setup_options';
+import { buildSetupSelections, countryDefaultCurrencies, currencyLabel, resolveAdminLanguageCode, resolveSetupInitialValues } from './setup_options';
 
 function options(): InitialSetupOptions {
   return {
@@ -28,7 +28,6 @@ function options(): InitialSetupOptions {
       CountryCode: 'CN',
       CurrencyCode: 'CNY',
       Timezone: 'Asia/Shanghai',
-      LanguageCode: 'en_US',
     },
   };
 }
@@ -54,7 +53,7 @@ test('buildSetupSelections labels currencies with code and name', () => {
     { value: 'USD', label: 'USD' },
   ]);
   expect(s.CountryCode[0]).toEqual({ value: 'CN', label: 'China' });
-  expect(s.OrgLanguageCode[1]).toEqual({ value: 'zh_CN', label: '简体中文' });
+  expect('OrgLanguageCode' in s).toBe(false);
 });
 
 test('currencyLabel appends the symbol unless it repeats the code', () => {
@@ -64,15 +63,22 @@ test('currencyLabel appends the symbol unless it repeats the code', () => {
   expect(currencyLabel({ Code: 'XXX', Name: '' })).toBe('XXX');
 });
 
+test('resolveAdminLanguageCode: UI language when listed, else en_US, else first', () => {
+  expect(resolveAdminLanguageCode(options(), 'zh_CN')).toBe('zh_CN');
+  expect(resolveAdminLanguageCode(options(), 'fr_FR')).toBe('en_US');
+  const zhOnly = { ...options(), Languages: [{ Code: 'zh_CN', Name: '简体中文' }] };
+  expect(resolveAdminLanguageCode(zhOnly, 'fr_FR')).toBe('zh_CN');
+  expect(resolveAdminLanguageCode(null, 'fr_FR')).toBe('fr_FR');
+});
+
 test('countryDefaultCurrencies skips countries without a default', () => {
   expect(countryDefaultCurrencies(options())).toEqual({ CN: 'CNY' });
 });
 
-test('resolveSetupInitialValues: server defaults, browser timezone, UI language', () => {
+test('resolveSetupInitialValues: server defaults and browser timezone', () => {
   const values = resolveSetupInitialValues({
     options: options(),
     draft: null,
-    uiLanguageCode: 'zh_CN',
     browserTimezone: 'Europe/Berlin',
   });
   expect(values).toEqual({
@@ -84,16 +90,13 @@ test('resolveSetupInitialValues: server defaults, browser timezone, UI language'
     CountryCode: 'CN',
     CurrencyCode: 'CNY',
     Timezone: 'Europe/Berlin',
-    OrgLanguageCode: 'zh_CN',
   });
   const fallback = resolveSetupInitialValues({
     options: options(),
     draft: null,
-    uiLanguageCode: 'fr_FR',
     browserTimezone: 'Mars/Base',
   });
   expect(fallback.Timezone).toBe('Asia/Shanghai');
-  expect(fallback.OrgLanguageCode).toBe('en_US');
 });
 
 test('resolveSetupInitialValues: draft wins and unknown selections are dropped', () => {
@@ -106,10 +109,8 @@ test('resolveSetupInitialValues: draft wins and unknown selections are dropped',
         CountryCode: '',
         CurrencyCode: 'USD',
         Timezone: 'Nowhere/Zone',
-        OrgLanguageCode: 'zh_CN',
       },
     },
-    uiLanguageCode: 'en_US',
     browserTimezone: '',
   });
   expect(values.Username).toBe('owner');
@@ -117,7 +118,6 @@ test('resolveSetupInitialValues: draft wins and unknown selections are dropped',
   expect(values.CountryCode).toBe(null);
   expect(values.CurrencyCode).toBe('USD');
   expect(values.Timezone).toBe('Asia/Shanghai');
-  expect(values.OrgLanguageCode).toBe('zh_CN');
 });
 
 test('setup draft round-trips whitelisted fields and never stores passwords', () => {
@@ -146,6 +146,6 @@ test('loadSetupDraft ignores malformed data', () => {
 test('resolveSetupInitialValues: company without a country yields null CountryCode', () => {
   const opts = options();
   delete opts.Defaults.CountryCode;
-  const values = resolveSetupInitialValues({ options: opts, draft: null, uiLanguageCode: '', browserTimezone: '' });
+  const values = resolveSetupInitialValues({ options: opts, draft: null, browserTimezone: '' });
   expect(values.CountryCode).toBe(null);
 });

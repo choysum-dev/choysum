@@ -836,7 +836,7 @@ msgctxt "service/models/company"
 msgid "%s is required"
 msgstr "%s 为必填项"
 
-#: service/models/_company_initial_setup.ts:200
+#: service/models/_company_initial_setup.ts:212
 msgctxt "service/models/company"
 msgid "Base currency is required"
 msgstr "本位币不能为空"
@@ -846,12 +846,12 @@ msgctxt "service/models/company"
 msgid "Company Code must be unique"
 msgstr "公司编码必须唯一"
 
-#: service/models/_company_initial_setup.ts:267
+#: service/models/_company_initial_setup.ts:264
 msgctxt "service/models/company"
 msgid "Company not found: %s"
 msgstr "未找到公司：%s"
 
-#: service/models/_company_initial_setup.ts:259
+#: service/models/_company_initial_setup.ts:256
 msgctxt "service/models/company"
 msgid "CompanyId is required"
 msgstr "CompanyId 不能为空"
@@ -861,22 +861,17 @@ msgctxt "service/models/company"
 msgid "CurrencyId is required"
 msgstr "CurrencyId 为必填项"
 
-#: service/models/_company_initial_setup.ts:225 service/models/company.ts:171
+#: service/models/_company_initial_setup.ts:237 service/models/company.ts:171
 msgctxt "service/models/company"
 msgid "Invalid IANA timezone: %s"
 msgstr "无效的 IANA 时区：%s"
 
-#: service/models/_company_initial_setup.ts:237
-msgctxt "service/models/company"
-msgid "Invalid or inactive language: %s"
-msgstr "语言无效或未启用：%s"
-
-#: service/models/_company_initial_setup.ts:192
+#: service/models/_company_initial_setup.ts:204
 msgctxt "service/models/company"
 msgid "Organization name is required"
 msgstr "组织名称不能为空"
 
-#: service/models/_company_initial_setup.ts:195
+#: service/models/_company_initial_setup.ts:207
 msgctxt "service/models/company"
 msgid "Organization name is too long"
 msgstr "组织名称过长"
@@ -896,12 +891,12 @@ msgctxt "service/models/company"
 msgid "Timezone is required"
 msgstr "时区为必填项"
 
-#: service/models/_company_initial_setup.ts:207
+#: service/models/_company_initial_setup.ts:219
 msgctxt "service/models/company"
 msgid "Unknown currency: %s"
 msgstr "未知币种：%s"
 
-#: service/models/_company_initial_setup.ts:218
+#: service/models/_company_initial_setup.ts:230
 msgctxt "service/models/company"
 msgid "Unknown or inactive country: %s"
 msgstr "国家/地区未知或未启用：%s"
@@ -2304,6 +2299,10 @@ msgstr "计量单位"
 #~ msgctxt "base.model.Company.fields"
 #~ msgid "Shown in the app sidebar header; empty uses the product logo."
 #~ msgstr "显示在应用侧栏顶部；为空时使用产品 Logo。"
+
+#~ msgctxt "service/models/company"
+#~ msgid "Invalid or inactive language: %s"
+#~ msgstr "语言无效或未启用：%s"
 
 #~ msgctxt "web/menu/menus"
 #~ msgid "Terminology Editor"

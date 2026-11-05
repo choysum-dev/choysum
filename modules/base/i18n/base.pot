@@ -846,7 +846,7 @@ msgctxt "service/models/company"
 msgid "%s is required"
 msgstr ""
 
-#: service/models/_company_initial_setup.ts:220
+#: service/models/_company_initial_setup.ts:212
 msgctxt "service/models/company"
 msgid "Base currency is required"
 msgstr ""
@@ -856,12 +856,12 @@ msgctxt "service/models/company"
 msgid "Company Code must be unique"
 msgstr ""
 
-#: service/models/_company_initial_setup.ts:287
+#: service/models/_company_initial_setup.ts:264
 msgctxt "service/models/company"
 msgid "Company not found: %s"
 msgstr ""
 
-#: service/models/_company_initial_setup.ts:279
+#: service/models/_company_initial_setup.ts:256
 msgctxt "service/models/company"
 msgid "CompanyId is required"
 msgstr ""
@@ -871,23 +871,18 @@ msgctxt "service/models/company"
 msgid "CurrencyId is required"
 msgstr ""
 
-#: service/models/_company_initial_setup.ts:245
+#: service/models/_company_initial_setup.ts:237
 #: service/models/company.ts:171
 msgctxt "service/models/company"
 msgid "Invalid IANA timezone: %s"
 msgstr ""
 
-#: service/models/_company_initial_setup.ts:257
-msgctxt "service/models/company"
-msgid "Invalid or inactive language: %s"
-msgstr ""
-
-#: service/models/_company_initial_setup.ts:212
+#: service/models/_company_initial_setup.ts:204
 msgctxt "service/models/company"
 msgid "Organization name is required"
 msgstr ""
 
-#: service/models/_company_initial_setup.ts:215
+#: service/models/_company_initial_setup.ts:207
 msgctxt "service/models/company"
 msgid "Organization name is too long"
 msgstr ""
@@ -907,12 +902,12 @@ msgctxt "service/models/company"
 msgid "Timezone is required"
 msgstr ""
 
-#: service/models/_company_initial_setup.ts:227
+#: service/models/_company_initial_setup.ts:219
 msgctxt "service/models/company"
 msgid "Unknown currency: %s"
 msgstr ""
 
-#: service/models/_company_initial_setup.ts:238
+#: service/models/_company_initial_setup.ts:230
 msgctxt "service/models/company"
 msgid "Unknown or inactive country: %s"
 msgstr ""

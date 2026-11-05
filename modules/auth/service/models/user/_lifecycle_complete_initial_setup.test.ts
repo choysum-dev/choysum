@@ -39,7 +39,6 @@ function params(patch?: {
       Name: 'Acme',
       CurrencyCode: 'USD',
       Timezone: 'America/New_York',
-      LanguageCode: 'en_US',
       ...(patch?.Organization || {}),
     },
   };
@@ -148,7 +147,6 @@ test('runCompleteInitialSetup: writes organization, then claims marker, then upd
       CountryCode: 'US',
       CurrencyCode: 'USD',
       Timezone: 'America/New_York',
-      LanguageCode: 'en_US',
     },
   ]);
   expect(updates.length).toBe(1);

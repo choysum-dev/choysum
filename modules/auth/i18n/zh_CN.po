@@ -646,7 +646,7 @@ msgctxt "service/models/user"
 msgid "CompleteInitialSetup requires an Organization object"
 msgstr "CompleteInitialSetup 需要 Organization 对象"
 
-#: service/models/user/user.ts:1132
+#: service/models/user/user.ts:1131
 msgctxt "service/models/user"
 msgid "Failed to compute field rule spec"
 msgstr "计算字段规则规格失败"
@@ -656,7 +656,7 @@ msgctxt "service/models/user"
 msgid "Invalid IANA timezone: %s"
 msgstr "无效的 IANA 时区：%s"
 
-#: service/models/user/user.ts:1113
+#: service/models/user/user.ts:1112
 msgctxt "service/models/user"
 msgid "Invalid model full name; expected \"<app>.<Model>\""
 msgstr "无效的模型全名；期望 \"<app>.<Model>\""
@@ -666,112 +666,112 @@ msgctxt "service/models/user"
 msgid "Invalid or inactive language: %s"
 msgstr "无效或未启用的语言：%s"
 
-#: service/models/user/user.ts:542
+#: service/models/user/user.ts:541
 msgctxt "service/models/user"
 msgid "Login requires a boolean RememberMe"
 msgstr "登录需要布尔型 RememberMe"
 
-#: service/models/user/user.ts:554
+#: service/models/user/user.ts:553
 msgctxt "service/models/user"
 msgid "Login requires a string DeviceInfo"
 msgstr "登录需要字符串 DeviceInfo"
 
-#: service/models/user/user.ts:548
+#: service/models/user/user.ts:547
 msgctxt "service/models/user"
 msgid "Login requires a string IpAddress"
 msgstr "登录需要字符串 IpAddress"
 
-#: service/models/user/user.ts:536
+#: service/models/user/user.ts:535
 msgctxt "service/models/user"
 msgid "Login requires username and password"
 msgstr "登录需要用户名和密码"
 
-#: service/models/user/user.ts:863
+#: service/models/user/user.ts:862
 msgctxt "service/models/user"
 msgid "Logout failed"
 msgstr "退出失败"
 
-#: service/models/user/user.ts:844
+#: service/models/user/user.ts:843
 msgctxt "service/models/user"
 msgid "Logout requires a boolean AllDevices"
 msgstr "登出需要布尔型 AllDevices"
 
-#: service/models/user/user.ts:851
+#: service/models/user/user.ts:850
 msgctxt "service/models/user"
 msgid "Logout requires a string DeviceInfo"
 msgstr "登出需要字符串 DeviceInfo"
 
-#: service/models/user/user.ts:837
+#: service/models/user/user.ts:836
 msgctxt "service/models/user"
 msgid "Logout requires a token string"
 msgstr "登出需要令牌字符串"
 
-#: service/models/user/user.ts:1097
+#: service/models/user/user.ts:1096
 msgctxt "service/models/user"
 msgid "Missing identity information (userId)"
 msgstr "缺少身份信息（userId）"
 
-#: service/models/user/user.ts:1105
+#: service/models/user/user.ts:1104
 msgctxt "service/models/user"
 msgid "Missing model name (model)"
 msgstr "缺少模型名称（model）"
 
-#: service/models/user/user.ts:650
+#: service/models/user/user.ts:649
 msgctxt "service/models/user"
 msgid "RefreshTokens requires a refresh token"
 msgstr "刷新令牌需要 refresh token"
 
-#: service/models/user/user.ts:476
+#: service/models/user/user.ts:475
 msgctxt "service/models/user"
 msgid "Register requires a User object"
 msgstr "注册需要 User 对象"
 
-#: service/models/user/user.ts:482
+#: service/models/user/user.ts:481
 msgctxt "service/models/user"
 msgid "Register requires a password string"
 msgstr "注册需要密码字符串"
 
-#: service/models/user/user.ts:824
+#: service/models/user/user.ts:823
 msgctxt "service/models/user"
 msgid "Switch company scope failed"
 msgstr "切换公司范围失败"
 
-#: service/models/user/user.ts:681
+#: service/models/user/user.ts:680
 msgctxt "service/models/user"
 msgid "SwitchCompanyScope requires an ActiveCompanyId"
 msgstr "切换公司范围需要 ActiveCompanyId"
 
-#: service/models/user/user.ts:662
+#: service/models/user/user.ts:661
 msgctxt "service/models/user"
 msgid "Token refresh failed"
 msgstr "令牌刷新失败"
 
-#: service/models/user/user.ts:690
+#: service/models/user/user.ts:689
 msgctxt "service/models/user"
 msgid "User is not logged in"
 msgstr "用户未登录"
 
-#: service/models/user/user.ts:707
+#: service/models/user/user.ts:706
 msgctxt "service/models/user"
 msgid "activeCompanyId cannot be empty"
 msgstr "activeCompanyId 不能为空"
 
-#: service/models/user/user.ts:758
+#: service/models/user/user.ts:757
 msgctxt "service/models/user"
 msgid "activeCompanyId is outside the allowed company scope"
 msgstr "activeCompanyId 不在允许的公司范围内"
 
-#: service/models/user/user.ts:773
+#: service/models/user/user.ts:772
 msgctxt "service/models/user"
 msgid "activeCompanyId must be included in enabledCompanyIds"
 msgstr "activeCompanyId 必须包含在 enabledCompanyIds 中"
 
-#: service/models/user/user.ts:742
+#: service/models/user/user.ts:741
 msgctxt "service/models/user"
 msgid "enabledCompanyIds contains an unauthorized company"
 msgstr "enabledCompanyIds 包含未授权的公司"
 
-#: service/models/user/user.ts:726
+#: service/models/user/user.ts:725
 msgctxt "service/models/user"
 msgid "enabledCompanyIds must be a string[] or omitted"
 msgstr "enabledCompanyIds 必须是 string[] 或省略"
@@ -836,67 +836,67 @@ msgctxt "service/models/user/_lifecycle_auth"
 msgid "Username is required"
 msgstr "用户名不能为空"
 
-#: service/models/user/_lifecycle_complete_initial_setup.ts:113
+#: service/models/user/_lifecycle_complete_initial_setup.ts:112
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Email is already registered"
 msgstr "该邮箱已被注册"
 
-#: service/models/user/_lifecycle_complete_initial_setup.ts:127
+#: service/models/user/_lifecycle_complete_initial_setup.ts:126
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Email is too long"
 msgstr "邮箱过长"
 
-#: service/models/user/_lifecycle_complete_initial_setup.ts:133
+#: service/models/user/_lifecycle_complete_initial_setup.ts:132
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Enter a valid email address"
 msgstr "请输入有效的邮箱地址"
 
-#: service/models/user/_lifecycle_complete_initial_setup.ts:71
+#: service/models/user/_lifecycle_complete_initial_setup.ts:70
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Initial setup has already been completed"
 msgstr "初始设置已完成"
 
-#: service/models/user/_lifecycle_complete_initial_setup.ts:326
+#: service/models/user/_lifecycle_complete_initial_setup.ts:325
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Invalid or inactive language: %s"
 msgstr "语言无效或未启用：%s"
 
-#: service/models/user/_lifecycle_complete_initial_setup.ts:268
+#: service/models/user/_lifecycle_complete_initial_setup.ts:267
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Language is required"
 msgstr "语言不能为空"
 
-#: service/models/user/_lifecycle_complete_initial_setup.ts:290 service/models/user/_lifecycle_complete_initial_setup.ts:300
+#: service/models/user/_lifecycle_complete_initial_setup.ts:289 service/models/user/_lifecycle_complete_initial_setup.ts:299
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Seed administrator account was not found"
 msgstr "未找到种子管理员账户"
 
-#: service/models/user/_lifecycle_complete_initial_setup.ts:339
+#: service/models/user/_lifecycle_complete_initial_setup.ts:338
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Seed main company was not found"
 msgstr "未找到预置主公司"
 
-#: service/models/user/_lifecycle_complete_initial_setup.ts:153 service/models/user/_lifecycle_complete_initial_setup.ts:159
+#: service/models/user/_lifecycle_complete_initial_setup.ts:152 service/models/user/_lifecycle_complete_initial_setup.ts:158
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Username and password are required"
 msgstr "用户名和密码不能为空"
 
-#: service/models/user/_lifecycle_complete_initial_setup.ts:102
+#: service/models/user/_lifecycle_complete_initial_setup.ts:101
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Username is already in use"
 msgstr "用户名已被占用"
 
-#: service/models/user/_lifecycle_complete_initial_setup.ts:165
+#: service/models/user/_lifecycle_complete_initial_setup.ts:164
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Username is too long"
 msgstr "用户名过长"
 
-#: service/models/user/user.ts:591
+#: service/models/user/user.ts:590
 msgctxt "service/models/user@Login"
 msgid "Login failed: unable to create token pair"
 msgstr "登录失败：无法创建令牌对"
 
-#: service/models/user/user.ts:521
+#: service/models/user/user.ts:520
 msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr "用户注册失败"
@@ -1456,27 +1456,27 @@ msgctxt "web/pages/SessionList"
 msgid "Session List"
 msgstr "会话列表"
 
-#: web/pages/Setup.vue:68
+#: web/pages/Setup.vue:67
 msgctxt "web/pages/Setup"
 msgid "Administrator"
 msgstr "管理员"
 
-#: web/pages/Setup.vue:34
+#: web/pages/Setup.vue:35
 msgctxt "web/pages/Setup"
 msgid "Back"
 msgstr "上一步"
 
-#: web/pages/Setup.vue:9
+#: web/pages/Setup.vue:10
 msgctxt "web/pages/Setup"
 msgid "Close"
 msgstr "关闭"
 
-#: web/pages/Setup.vue:38
+#: web/pages/Setup.vue:39
 msgctxt "web/pages/Setup"
 msgid "Complete Setup"
 msgstr "完成设置"
 
-#: web/pages/Setup.vue:75
+#: web/pages/Setup.vue:74
 msgctxt "web/pages/Setup"
 msgid "Create the administrator account"
 msgstr "创建管理员账号"
@@ -1506,32 +1506,32 @@ msgctxt "web/pages/Setup"
 msgid "Enter username"
 msgstr "请输入用户名"
 
-#: web/pages/Setup.vue:163
+#: web/pages/Setup.vue:149
 msgctxt "web/pages/Setup"
 msgid "Failed to load setup options. Please try again."
 msgstr "加载设置选项失败，请重试。"
 
-#: web/pages/Setup.vue:6
+#: web/pages/Setup.vue:7
 msgctxt "web/pages/Setup"
 msgid "Initial Setup"
 msgstr "初始设置"
 
-#: web/pages/Setup.vue:268 web/pages/Setup.vue:283
+#: web/pages/Setup.vue:239 web/pages/Setup.vue:254
 msgctxt "web/pages/Setup"
 msgid "Initial setup failed. Please try again later."
 msgstr "初始设置失败，请稍后重试。"
 
-#: web/pages/Setup.vue:17
+#: web/pages/Setup.vue:18
 msgctxt "web/pages/Setup"
 msgid "Loading setup options…"
 msgstr "正在加载设置选项…"
 
-#: web/pages/Setup.vue:40
+#: web/pages/Setup.vue:41
 msgctxt "web/pages/Setup"
 msgid "Next"
 msgstr "下一步"
 
-#: web/pages/Setup.vue:69
+#: web/pages/Setup.vue:68
 msgctxt "web/pages/Setup"
 msgid "Organization"
 msgstr "组织"
@@ -1556,17 +1556,17 @@ msgctxt "web/pages/Setup"
 msgid "Re-enter password"
 msgstr "请再次输入密码"
 
-#: web/pages/Setup.vue:22
+#: web/pages/Setup.vue:23
 msgctxt "web/pages/Setup"
 msgid "Retry"
 msgstr "重试"
 
-#: web/pages/Setup.vue:70
+#: web/pages/Setup.vue:69
 msgctxt "web/pages/Setup"
 msgid "Review"
 msgstr "确认"
 
-#: web/pages/Setup.vue:74
+#: web/pages/Setup.vue:73
 msgctxt "web/pages/Setup"
 msgid "Review the settings and finish setup"
 msgstr "确认设置并完成初始化"
@@ -1581,12 +1581,7 @@ msgctxt "web/pages/Setup"
 msgid "Select a business timezone"
 msgstr "请选择业务时区"
 
-#: web/pages/setup_form.ts:32
-msgctxt "web/pages/Setup"
-msgid "Select an organization language"
-msgstr "请选择组织语言"
-
-#: web/pages/Setup.vue:73
+#: web/pages/Setup.vue:72
 msgctxt "web/pages/Setup"
 msgid "Set up your organization basics"
 msgstr "设置组织基本信息"
@@ -1661,22 +1656,22 @@ msgctxt "web/pages/setup/SetupAdminStep"
 msgid "Username"
 msgstr "用户名"
 
-#: web/pages/setup/SetupOrganizationStep.vue:10
+#: web/pages/setup/SetupOrganizationStep.vue:11
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Base Currency"
 msgstr "本位币"
 
-#: web/pages/setup/SetupOrganizationStep.vue:13
+#: web/pages/setup/SetupOrganizationStep.vue:15
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Business Timezone"
 msgstr "业务时区"
 
-#: web/pages/setup/SetupOrganizationStep.vue:10
+#: web/pages/setup/SetupOrganizationStep.vue:11
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Company accounting currency. It cannot be changed once transactions exist."
 msgstr "公司记账币种，产生业务数据后不可更改。"
 
-#: web/pages/setup/SetupOrganizationStep.vue:7
+#: web/pages/setup/SetupOrganizationStep.vue:8
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Country / Region"
 msgstr "国家/地区"
@@ -1686,42 +1681,27 @@ msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Enter organization name"
 msgstr "请输入组织名称"
 
-#: web/pages/setup/SetupOrganizationStep.vue:16
-msgctxt "web/pages/setup/SetupOrganizationStep"
-msgid "Language used for the organization name and shared business documents."
-msgstr "用于组织名称及共享业务单据的语言。"
-
-#: web/pages/setup/SetupOrganizationStep.vue:7
+#: web/pages/setup/SetupOrganizationStep.vue:8
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Optional"
 msgstr "选填"
-
-#: web/pages/setup/SetupOrganizationStep.vue:16
-msgctxt "web/pages/setup/SetupOrganizationStep"
-msgid "Organization Language"
-msgstr "组织语言"
 
 #: web/pages/setup/SetupOrganizationStep.vue:4
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Organization Name"
 msgstr "组织名称"
 
-#: web/pages/setup/SetupOrganizationStep.vue:10
+#: web/pages/setup/SetupOrganizationStep.vue:11
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Select a base currency"
 msgstr "请选择本位币"
 
-#: web/pages/setup/SetupOrganizationStep.vue:13
+#: web/pages/setup/SetupOrganizationStep.vue:15
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Select a business timezone"
 msgstr "请选择业务时区"
 
-#: web/pages/setup/SetupOrganizationStep.vue:16
-msgctxt "web/pages/setup/SetupOrganizationStep"
-msgid "Select an organization language"
-msgstr "请选择组织语言"
-
-#: web/pages/setup/SetupOrganizationStep.vue:13
+#: web/pages/setup/SetupOrganizationStep.vue:15
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Used for business dates and scheduled jobs; independent of personal display timezones."
 msgstr "用于业务日期和定时任务，与个人显示时区无关。"
@@ -1760,11 +1740,6 @@ msgstr "未填写"
 msgctxt "web/pages/setup/SetupReviewStep"
 msgid "Organization"
 msgstr "组织"
-
-#: web/pages/setup/SetupReviewStep.vue:34
-msgctxt "web/pages/setup/SetupReviewStep"
-msgid "Organization Language"
-msgstr "组织语言"
 
 #: web/pages/setup/SetupReviewStep.vue:30
 msgctxt "web/pages/setup/SetupReviewStep"
@@ -2981,12 +2956,32 @@ msgstr "启用"
 #~ msgstr "密码"
 
 #~ msgctxt "web/pages/Setup"
+#~ msgid "Select an organization language"
+#~ msgstr "请选择组织语言"
+
+#~ msgctxt "web/pages/Setup"
 #~ msgid "Setup succeeded, but signing in failed. Please log in."
 #~ msgstr "设置已完成，但自动登录失败，请手动登录。"
 
 #~ msgctxt "web/pages/Setup"
 #~ msgid "Username"
 #~ msgstr "用户名"
+
+#~ msgctxt "web/pages/setup/SetupOrganizationStep"
+#~ msgid "Language used for the organization name and shared business documents."
+#~ msgstr "用于组织名称及共享业务单据的语言。"
+
+#~ msgctxt "web/pages/setup/SetupOrganizationStep"
+#~ msgid "Organization Language"
+#~ msgstr "组织语言"
+
+#~ msgctxt "web/pages/setup/SetupOrganizationStep"
+#~ msgid "Select an organization language"
+#~ msgstr "请选择组织语言"
+
+#~ msgctxt "web/pages/setup/SetupReviewStep"
+#~ msgid "Organization Language"
+#~ msgstr "组织语言"
 
 #~ msgctxt "web/route/routes"
 #~ msgid "Settings"

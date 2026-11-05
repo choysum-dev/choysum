@@ -362,7 +362,6 @@ function setupInput() {
       CountryCode: 'CN',
       CurrencyCode: 'CNY',
       Timezone: 'Asia/Shanghai',
-      LanguageCode: 'zh_CN',
     },
   };
 }
@@ -434,7 +433,6 @@ test('getInitialSetupOptions: reads base.Company options through the injected st
       CountryCode: 'CN',
       CurrencyCode: 'CNY',
       Timezone: 'Asia/Shanghai',
-      LanguageCode: 'zh_CN',
     },
   };
   const requests: unknown[] = [];

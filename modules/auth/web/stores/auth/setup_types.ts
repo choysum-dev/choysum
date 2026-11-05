@@ -12,7 +12,6 @@ export type InitialSetupOptions = {
     CountryCode?: string;
     CurrencyCode: string;
     Timezone: string;
-    LanguageCode: string;
   };
 };
 
@@ -29,6 +28,5 @@ export type CompleteInitialSetupInput = {
     CountryCode?: string;
     CurrencyCode: string;
     Timezone: string;
-    LanguageCode: string;
   };
 };

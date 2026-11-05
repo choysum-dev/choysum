@@ -32,7 +32,6 @@ function setupOptions(): InitialSetupOptions {
       CountryCode: 'CN',
       CurrencyCode: 'CNY',
       Timezone: 'Asia/Shanghai',
-      LanguageCode: 'en_US',
     },
   };
 }
@@ -248,11 +247,9 @@ test('Setup.vue: review submit sends sectioned request, logs in, and redirects',
     CountryCode: 'CN',
     CurrencyCode: 'CNY',
     Timezone: req.Organization.Timezone,
-    LanguageCode: req.Organization.LanguageCode,
   });
   // Browser timezone wins when listed; otherwise the company default.
   expect(['Asia/Shanghai', 'UTC'].includes(req.Organization.Timezone)).toBe(true);
-  expect(['en_US', 'zh_CN'].includes(req.Organization.LanguageCode)).toBe(true);
   expect(logins).toEqual([['admin', 'secret1']]);
   expect(replaces).toEqual(['/auth/users']);
   wrapper.unmount();
@@ -370,34 +367,18 @@ test('Setup.vue: UI language change refetches localized option labels', async ()
   wrapper.unmount();
 });
 
-test('Setup.vue: organization language follows the UI language until chosen', async () => {
+test('Setup.vue: admin language follows the current UI language', async () => {
   const { wrapper, requests } = await mountSetup({ uiLang: 'en_US' });
   setUiLang('zh_CN');
   for (let i = 0; i < 8; i++) await flushPromises();
   await advanceToReview(wrapper);
-  expect(activeStep(wrapper)).toBe('review');
+  expect(wrapper.find('[data-field="OrgLanguageCode"]').exists()).toBe(false);
   submitForm(wrapper);
   await afterSubmit();
   expect(requests.length).toBe(1);
-  expect(requests[0].Organization.LanguageCode).toBe('zh_CN');
   expect(requests[0].Admin.LanguageCode).toBe('zh_CN');
+  expect('LanguageCode' in requests[0].Organization).toBe(false);
   wrapper.unmount();
-});
-
-test('Setup.vue: an explicitly chosen organization language ignores UI switches', async () => {
-  const { wrapper, requests } = await mountSetup({ uiLang: 'en_US', draft: { OrgLanguageCode: 'zh_CN' } });
-  setUiLang('zh_CN');
-  for (let i = 0; i < 4; i++) await flushPromises();
-  setUiLang('en_US');
-  for (let i = 0; i < 8; i++) await flushPromises();
-  await advanceToReview(wrapper);
-  submitForm(wrapper);
-  await afterSubmit();
-  expect(requests.length).toBe(1);
-  expect(requests[0].Organization.LanguageCode).toBe('zh_CN');
-  expect(requests[0].Admin.LanguageCode).toBe('en_US');
-  wrapper.unmount();
-  clearSetupDraft();
 });
 
 function pressEnter(el: Element, init?: { isComposing?: boolean }) {

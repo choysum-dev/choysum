@@ -23,30 +23,32 @@ SPDX-License-Identifier: Apache-2.0
         :rules="orgNameRules"
       />
     </div>
-    <div class="setup-country">
-      <ChoySelectionField
-        :store="store"
-        prop="CountryCode"
-        :label="_t('Country / Region')"
-        orientation="vertical"
-        :placeholder="_t('Optional')"
-        clearable
-        show-inline-error
-        :rules="countryRules"
-      />
-    </div>
-    <div class="setup-currency">
-      <ChoySelectionField
-        :store="store"
-        prop="CurrencyCode"
-        :label="_t('Base Currency')"
-        orientation="vertical"
-        :placeholder="_t('Select a base currency')"
-        :help="_t('Company accounting currency. It cannot be changed once transactions exist.')"
-        :required="true"
-        show-inline-error
-        :rules="currencyRules"
-      />
+    <div class="setup-org-locale">
+      <div class="setup-country">
+        <ChoySelectionField
+          :store="store"
+          prop="CountryCode"
+          :label="_t('Country / Region')"
+          orientation="vertical"
+          :placeholder="_t('Optional')"
+          clearable
+          show-inline-error
+          :rules="countryRules"
+        />
+      </div>
+      <div class="setup-currency">
+        <ChoySelectionField
+          :store="store"
+          prop="CurrencyCode"
+          :label="_t('Base Currency')"
+          orientation="vertical"
+          :placeholder="_t('Select a base currency')"
+          :help="_t('Company accounting currency. It cannot be changed once transactions exist.')"
+          :required="true"
+          show-inline-error
+          :rules="currencyRules"
+        />
+      </div>
     </div>
     <div class="setup-timezone">
       <ChoySelectionField
@@ -61,19 +63,6 @@ SPDX-License-Identifier: Apache-2.0
         :rules="timezoneRules"
       />
     </div>
-    <div class="setup-org-language">
-      <ChoySelectionField
-        :store="store"
-        prop="OrgLanguageCode"
-        :label="_t('Organization Language')"
-        orientation="vertical"
-        :placeholder="_t('Select an organization language')"
-        :help="_t('Language used for the organization name and shared business documents.')"
-        :required="true"
-        show-inline-error
-        :rules="orgLanguageRules"
-      />
-    </div>
   </ChoyFieldGroup>
 </template>
 
@@ -83,7 +72,6 @@ import { ChoyFieldGroup, ChoySelectionField, ChoyVarcharField, type LocalFormSto
 import { createTranslate } from '@/web/web/i18n';
 import {
   setupCurrencyRules,
-  setupOrgLanguageRules,
   setupOrgNameRules,
   setupTimezoneRules,
   setupRuleTranslate,
@@ -115,9 +103,6 @@ const orgNameRules = computed(() => withSetupServerError(setupOrgNameRules(setup
 const countryRules = computed(() => withSetupServerError([], props.serverErrors.CountryCode));
 const currencyRules = computed(() => withSetupServerError(setupCurrencyRules(setupRuleTranslate), props.serverErrors.CurrencyCode));
 const timezoneRules = computed(() => withSetupServerError(setupTimezoneRules(setupRuleTranslate), props.serverErrors.Timezone));
-const orgLanguageRules = computed(() =>
-  withSetupServerError(setupOrgLanguageRules(setupRuleTranslate), props.serverErrors.OrgLanguageCode),
-);
 
 let autoCurrency: string | null = null;
 
@@ -149,3 +134,22 @@ watch(
   },
 );
 </script>
+
+<style scoped>
+.setup-organization-step {
+  container-type: inline-size;
+}
+
+/* Country and its linked default currency share a row when there is room for both. */
+.setup-org-locale {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 0.75rem;
+}
+
+@container (max-width: 24rem) {
+  .setup-org-locale {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+</style>

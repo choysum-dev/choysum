@@ -100,7 +100,6 @@ function setupReq(patch?: { Admin?: Record<string, unknown>; Organization?: Reco
       Name: 'Main Company',
       CurrencyCode: 'CNY',
       Timezone: 'Asia/Shanghai',
-      LanguageCode: 'zh_CN',
       ...(patch?.Organization || {}),
     },
   };

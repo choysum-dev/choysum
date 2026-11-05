@@ -22,7 +22,7 @@ const t = (s: string) => s;
 function req(username = ' admin ', password = 'secret1'): CompleteInitialSetupInput {
   return {
     Admin: { Username: username, Password: password, LanguageCode: 'en_US' },
-    Organization: { Name: 'Acme', CurrencyCode: 'CNY', Timezone: 'Asia/Shanghai', LanguageCode: 'en_US' },
+    Organization: { Name: 'Acme', CurrencyCode: 'CNY', Timezone: 'Asia/Shanghai' },
   };
 }
 
@@ -75,7 +75,7 @@ test('server field mapping resolves local field and owning step', () => {
   expect(setupStepForServerField('Admin.Email')).toBe('admin');
   expect(setupLocalFieldForServerField('Organization.Name')).toBe('OrgName');
   expect(setupStepForServerField('Organization.CurrencyCode')).toBe('organization');
-  expect(setupStepForServerField('Organization.LanguageCode')).toBe('organization');
+  expect(setupStepForServerField('Organization.LanguageCode')).toBe(null);
   expect(setupStepForServerField('Admin.LanguageCode')).toBe(null);
   expect(setupLocalFieldForServerField('Unknown')).toBe('');
 });
@@ -100,13 +100,12 @@ test('buildCompleteInitialSetupReq trims values and omits empty optionals', () =
         CountryCode: '',
         CurrencyCode: 'USD',
         Timezone: 'UTC',
-        OrgLanguageCode: 'en_US',
       },
       'zh_CN',
     ),
   ).toEqual({
     Admin: { Username: 'admin', Password: ' pw with spaces ', LanguageCode: 'zh_CN' },
-    Organization: { Name: 'Acme', CurrencyCode: 'USD', Timezone: 'UTC', LanguageCode: 'en_US' },
+    Organization: { Name: 'Acme', CurrencyCode: 'USD', Timezone: 'UTC' },
   });
   const full = buildCompleteInitialSetupReq({ Username: 'a', Password: 'p', Email: 'o@a.io', CountryCode: 'US' }, 'en_US');
   expect(full.Admin.Email).toBe('o@a.io');

@@ -39,7 +39,7 @@ const { _t } = createTranslate('auth', { scope: 'web/pages/setup/SetupReviewStep
 /** Read-only summary of the wizard values before submit. */
 const props = defineProps<{
   formData: Record<string, unknown>;
-  selections: Record<'CountryCode' | 'CurrencyCode' | 'Timezone' | 'OrgLanguageCode', SetupSelectionItem[]>;
+  selections: Record<'CountryCode' | 'CurrencyCode' | 'Timezone', SetupSelectionItem[]>;
 }>();
 
 function text(key: string): string {
@@ -62,7 +62,6 @@ const orgRows = computed(() => [
   { key: 'CountryCode', label: _t('Country / Region'), value: selectionLabel('CountryCode') },
   { key: 'CurrencyCode', label: _t('Base Currency'), value: selectionLabel('CurrencyCode') },
   { key: 'Timezone', label: _t('Business Timezone'), value: selectionLabel('Timezone') },
-  { key: 'OrgLanguageCode', label: _t('Organization Language'), value: selectionLabel('OrgLanguageCode') },
 ]);
 </script>
 

@@ -25,7 +25,6 @@ export type InitialSetupOrganization = {
   CurrencyCode: string;
   /** Business timezone written to Company.Timezone. */
   Timezone: string;
-  LanguageCode: string;
 };
 
 export type InitialSetupOrganizationField = keyof InitialSetupOrganization;
@@ -38,14 +37,13 @@ export type GetInitialSetupOptionsResp = {
   /** All currencies, including inactive ones (setup activates the chosen one). */
   Currencies: Array<{ Code: string; Name: string; Symbol?: string }>;
   Timezones: Array<{ Value: string; Label: string }>;
-  /** Active languages only. */
+  /** Active languages only; the administrator's UI language must be one of them. */
   Languages: Array<{ Code: string; Name: string }>;
   Defaults: {
     OrganizationName: string;
     CountryCode?: string;
     CurrencyCode: string;
     Timezone: string;
-    LanguageCode: string;
   };
 };
 
@@ -154,11 +152,9 @@ export async function getInitialSetupOptions(CompanyModel: CompanyCtor): Promise
     });
   }
 
-  const languageCodeById = new Map<string, string>();
   const languages: GetInitialSetupOptionsResp['Languages'] = [];
   for (const row of (languageRows || []) as unknown as Array<Record<string, unknown>>) {
     const code = String(row.Code || '');
-    languageCodeById.set(String(row.Id || ''), code);
     languages.push({ Code: code, Name: String(row.Name || code) });
   }
 
@@ -166,7 +162,6 @@ export async function getInitialSetupOptions(CompanyModel: CompanyCtor): Promise
     OrganizationName: '',
     CurrencyCode: '',
     Timezone: '',
-    LanguageCode: '',
   };
   const companyId = await resolveSetupCompanyId(CompanyModel);
   if (companyId) {
@@ -175,14 +170,12 @@ export async function getInitialSetupOptions(CompanyModel: CompanyCtor): Promise
       'Name',
       'CurrencyId',
       'Timezone',
-      'LanguageId',
       'CountryId',
     ] as any)) as unknown as Record<string, unknown> | null;
     if (company) {
       defaults.OrganizationName = String(company.Name || '');
       defaults.CurrencyCode = currencyCodeById.get(refId(company.CurrencyId)) || '';
       defaults.Timezone = String(company.Timezone || '');
-      defaults.LanguageCode = languageCodeById.get(refId(company.LanguageId)) || '';
       const countryCode = countryCodeById.get(refId(company.CountryId));
       if (countryCode) defaults.CountryCode = countryCode;
     }
@@ -202,7 +195,6 @@ type ResolvedOrganization = {
   currency: { id: string; isActive: boolean };
   countryId: string | null;
   timezone: string;
-  language: { id: string; code: string };
 };
 
 /** Validate organization input and resolve codes to row ids; read-only. */
@@ -245,33 +237,18 @@ export async function resolveInitialSetupOrganization(input: InitialSetupOrganiz
     throw fieldError('Timezone', _t('Invalid IANA timezone: %s', { scope: 'service/models/company' }, timezone));
   }
 
-  const languageCode = String(input?.LanguageCode ?? '').trim();
-  const [language] = languageCode
-    ? ((await Language.Search({ And: [['Code', '=', languageCode], ['IsActive', '=', true]] } as any, {
-        fields: ['Id', 'Code'],
-        limit: 1,
-      } as any)) as Array<{ Id?: string; Code?: string }>)
-    : [];
-  if (!language?.Id) {
-    throw fieldError(
-      'LanguageCode',
-      _t('Invalid or inactive language: %s', { scope: 'service/models/company' }, languageCode)
-    );
-  }
-
   return {
     name,
     currency: { id: String(currency.Id), isActive: currency.IsActive !== false },
     countryId,
     timezone,
-    language: { id: String(language.Id), code: String(language.Code || languageCode) },
   };
 }
 
 /**
  * Write the first-run organization onto CompanyId: activate the chosen currency
  * when inactive, then replace Name translations and set currency, timezone,
- * language, and country. Idempotent for identical input.
+ * and country. Company.LanguageId is left unchanged. Idempotent for identical input.
  */
 export async function applyInitialSetup(CompanyModel: CompanyCtor, req: ApplyInitialSetupReq): Promise<ApplyInitialSetupResp> {
   const companyId = normalizeRefId(req?.CompanyId);
@@ -294,9 +271,9 @@ export async function applyInitialSetup(CompanyModel: CompanyCtor, req: ApplyIni
     if (!org.currency.isActive) {
       await Currency.UpdateById(org.currency.id, { IsActive: true } as any, ['Id'] as any);
     }
-    // Replace mode drops seed translations (e.g. "Main Company" / "主公司") so a
-    // later UI-language switch cannot resurface the placeholder name.
-    const nameMap: Record<string, string> = { en_US: org.name, [org.language.code]: org.name };
+    // Replace mode drops seed translations (e.g. "Main Company" / "主公司") so every
+    // language falls back to the base value instead of resurfacing the placeholder.
+    const nameMap: Record<string, string> = { en_US: org.name };
     await withContext({ translated_write_replace: true }, () =>
       CompanyModel.UpdateById(
         companyId,
@@ -304,7 +281,6 @@ export async function applyInitialSetup(CompanyModel: CompanyCtor, req: ApplyIni
           Name: nameMap,
           CurrencyId: org.currency.id,
           Timezone: org.timezone,
-          LanguageId: org.language.id,
           CountryId: org.countryId,
         } as any,
         ['Id'] as any

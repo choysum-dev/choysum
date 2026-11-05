@@ -662,7 +662,7 @@ msgctxt "service/models/user"
 msgid "CompleteInitialSetup requires an Organization object"
 msgstr ""
 
-#: service/models/user/user.ts:1132
+#: service/models/user/user.ts:1131
 msgctxt "service/models/user"
 msgid "Failed to compute field rule spec"
 msgstr ""
@@ -672,7 +672,7 @@ msgctxt "service/models/user"
 msgid "Invalid IANA timezone: %s"
 msgstr ""
 
-#: service/models/user/user.ts:1113
+#: service/models/user/user.ts:1112
 msgctxt "service/models/user"
 msgid "Invalid model full name; expected \"<app>.<Model>\""
 msgstr ""
@@ -682,112 +682,112 @@ msgctxt "service/models/user"
 msgid "Invalid or inactive language: %s"
 msgstr ""
 
-#: service/models/user/user.ts:542
+#: service/models/user/user.ts:541
 msgctxt "service/models/user"
 msgid "Login requires a boolean RememberMe"
 msgstr ""
 
-#: service/models/user/user.ts:554
+#: service/models/user/user.ts:553
 msgctxt "service/models/user"
 msgid "Login requires a string DeviceInfo"
 msgstr ""
 
-#: service/models/user/user.ts:548
+#: service/models/user/user.ts:547
 msgctxt "service/models/user"
 msgid "Login requires a string IpAddress"
 msgstr ""
 
-#: service/models/user/user.ts:536
+#: service/models/user/user.ts:535
 msgctxt "service/models/user"
 msgid "Login requires username and password"
 msgstr ""
 
-#: service/models/user/user.ts:863
+#: service/models/user/user.ts:862
 msgctxt "service/models/user"
 msgid "Logout failed"
 msgstr ""
 
-#: service/models/user/user.ts:844
+#: service/models/user/user.ts:843
 msgctxt "service/models/user"
 msgid "Logout requires a boolean AllDevices"
 msgstr ""
 
-#: service/models/user/user.ts:851
+#: service/models/user/user.ts:850
 msgctxt "service/models/user"
 msgid "Logout requires a string DeviceInfo"
 msgstr ""
 
-#: service/models/user/user.ts:837
+#: service/models/user/user.ts:836
 msgctxt "service/models/user"
 msgid "Logout requires a token string"
 msgstr ""
 
-#: service/models/user/user.ts:1097
+#: service/models/user/user.ts:1096
 msgctxt "service/models/user"
 msgid "Missing identity information (userId)"
 msgstr ""
 
-#: service/models/user/user.ts:1105
+#: service/models/user/user.ts:1104
 msgctxt "service/models/user"
 msgid "Missing model name (model)"
 msgstr ""
 
-#: service/models/user/user.ts:650
+#: service/models/user/user.ts:649
 msgctxt "service/models/user"
 msgid "RefreshTokens requires a refresh token"
 msgstr ""
 
-#: service/models/user/user.ts:476
+#: service/models/user/user.ts:475
 msgctxt "service/models/user"
 msgid "Register requires a User object"
 msgstr ""
 
-#: service/models/user/user.ts:482
+#: service/models/user/user.ts:481
 msgctxt "service/models/user"
 msgid "Register requires a password string"
 msgstr ""
 
-#: service/models/user/user.ts:824
+#: service/models/user/user.ts:823
 msgctxt "service/models/user"
 msgid "Switch company scope failed"
 msgstr ""
 
-#: service/models/user/user.ts:681
+#: service/models/user/user.ts:680
 msgctxt "service/models/user"
 msgid "SwitchCompanyScope requires an ActiveCompanyId"
 msgstr ""
 
-#: service/models/user/user.ts:662
+#: service/models/user/user.ts:661
 msgctxt "service/models/user"
 msgid "Token refresh failed"
 msgstr ""
 
-#: service/models/user/user.ts:690
+#: service/models/user/user.ts:689
 msgctxt "service/models/user"
 msgid "User is not logged in"
 msgstr ""
 
-#: service/models/user/user.ts:707
+#: service/models/user/user.ts:706
 msgctxt "service/models/user"
 msgid "activeCompanyId cannot be empty"
 msgstr ""
 
-#: service/models/user/user.ts:758
+#: service/models/user/user.ts:757
 msgctxt "service/models/user"
 msgid "activeCompanyId is outside the allowed company scope"
 msgstr ""
 
-#: service/models/user/user.ts:773
+#: service/models/user/user.ts:772
 msgctxt "service/models/user"
 msgid "activeCompanyId must be included in enabledCompanyIds"
 msgstr ""
 
-#: service/models/user/user.ts:742
+#: service/models/user/user.ts:741
 msgctxt "service/models/user"
 msgid "enabledCompanyIds contains an unauthorized company"
 msgstr ""
 
-#: service/models/user/user.ts:726
+#: service/models/user/user.ts:725
 msgctxt "service/models/user"
 msgid "enabledCompanyIds must be a string[] or omitted"
 msgstr ""
@@ -855,69 +855,69 @@ msgctxt "service/models/user/_lifecycle_auth"
 msgid "Username is required"
 msgstr ""
 
-#: service/models/user/_lifecycle_complete_initial_setup.ts:113
+#: service/models/user/_lifecycle_complete_initial_setup.ts:112
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Email is already registered"
 msgstr ""
 
-#: service/models/user/_lifecycle_complete_initial_setup.ts:127
+#: service/models/user/_lifecycle_complete_initial_setup.ts:126
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Email is too long"
 msgstr ""
 
-#: service/models/user/_lifecycle_complete_initial_setup.ts:133
+#: service/models/user/_lifecycle_complete_initial_setup.ts:132
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Enter a valid email address"
 msgstr ""
 
-#: service/models/user/_lifecycle_complete_initial_setup.ts:71
+#: service/models/user/_lifecycle_complete_initial_setup.ts:70
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Initial setup has already been completed"
 msgstr ""
 
-#: service/models/user/_lifecycle_complete_initial_setup.ts:326
+#: service/models/user/_lifecycle_complete_initial_setup.ts:325
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Invalid or inactive language: %s"
 msgstr ""
 
-#: service/models/user/_lifecycle_complete_initial_setup.ts:268
+#: service/models/user/_lifecycle_complete_initial_setup.ts:267
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Language is required"
 msgstr ""
 
-#: service/models/user/_lifecycle_complete_initial_setup.ts:290
-#: service/models/user/_lifecycle_complete_initial_setup.ts:300
+#: service/models/user/_lifecycle_complete_initial_setup.ts:289
+#: service/models/user/_lifecycle_complete_initial_setup.ts:299
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Seed administrator account was not found"
 msgstr ""
 
-#: service/models/user/_lifecycle_complete_initial_setup.ts:339
+#: service/models/user/_lifecycle_complete_initial_setup.ts:338
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Seed main company was not found"
 msgstr ""
 
-#: service/models/user/_lifecycle_complete_initial_setup.ts:153
-#: service/models/user/_lifecycle_complete_initial_setup.ts:159
+#: service/models/user/_lifecycle_complete_initial_setup.ts:152
+#: service/models/user/_lifecycle_complete_initial_setup.ts:158
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Username and password are required"
 msgstr ""
 
-#: service/models/user/_lifecycle_complete_initial_setup.ts:102
+#: service/models/user/_lifecycle_complete_initial_setup.ts:101
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Username is already in use"
 msgstr ""
 
-#: service/models/user/_lifecycle_complete_initial_setup.ts:165
+#: service/models/user/_lifecycle_complete_initial_setup.ts:164
 msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Username is too long"
 msgstr ""
 
-#: service/models/user/user.ts:591
+#: service/models/user/user.ts:590
 msgctxt "service/models/user@Login"
 msgid "Login failed: unable to create token pair"
 msgstr ""
 
-#: service/models/user/user.ts:521
+#: service/models/user/user.ts:520
 msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr ""
@@ -1492,27 +1492,27 @@ msgctxt "web/pages/SessionList"
 msgid "Session List"
 msgstr ""
 
-#: web/pages/Setup.vue:68
+#: web/pages/Setup.vue:67
 msgctxt "web/pages/Setup"
 msgid "Administrator"
 msgstr ""
 
-#: web/pages/Setup.vue:34
+#: web/pages/Setup.vue:35
 msgctxt "web/pages/Setup"
 msgid "Back"
 msgstr ""
 
-#: web/pages/Setup.vue:9
+#: web/pages/Setup.vue:10
 msgctxt "web/pages/Setup"
 msgid "Close"
 msgstr ""
 
-#: web/pages/Setup.vue:38
+#: web/pages/Setup.vue:39
 msgctxt "web/pages/Setup"
 msgid "Complete Setup"
 msgstr ""
 
-#: web/pages/Setup.vue:75
+#: web/pages/Setup.vue:74
 msgctxt "web/pages/Setup"
 msgid "Create the administrator account"
 msgstr ""
@@ -1542,33 +1542,33 @@ msgctxt "web/pages/Setup"
 msgid "Enter username"
 msgstr ""
 
-#: web/pages/Setup.vue:163
+#: web/pages/Setup.vue:149
 msgctxt "web/pages/Setup"
 msgid "Failed to load setup options. Please try again."
 msgstr ""
 
-#: web/pages/Setup.vue:6
+#: web/pages/Setup.vue:7
 msgctxt "web/pages/Setup"
 msgid "Initial Setup"
 msgstr ""
 
-#: web/pages/Setup.vue:268
-#: web/pages/Setup.vue:283
+#: web/pages/Setup.vue:239
+#: web/pages/Setup.vue:254
 msgctxt "web/pages/Setup"
 msgid "Initial setup failed. Please try again later."
 msgstr ""
 
-#: web/pages/Setup.vue:17
+#: web/pages/Setup.vue:18
 msgctxt "web/pages/Setup"
 msgid "Loading setup options…"
 msgstr ""
 
-#: web/pages/Setup.vue:40
+#: web/pages/Setup.vue:41
 msgctxt "web/pages/Setup"
 msgid "Next"
 msgstr ""
 
-#: web/pages/Setup.vue:69
+#: web/pages/Setup.vue:68
 msgctxt "web/pages/Setup"
 msgid "Organization"
 msgstr ""
@@ -1593,17 +1593,17 @@ msgctxt "web/pages/Setup"
 msgid "Re-enter password"
 msgstr ""
 
-#: web/pages/Setup.vue:22
+#: web/pages/Setup.vue:23
 msgctxt "web/pages/Setup"
 msgid "Retry"
 msgstr ""
 
-#: web/pages/Setup.vue:70
+#: web/pages/Setup.vue:69
 msgctxt "web/pages/Setup"
 msgid "Review"
 msgstr ""
 
-#: web/pages/Setup.vue:74
+#: web/pages/Setup.vue:73
 msgctxt "web/pages/Setup"
 msgid "Review the settings and finish setup"
 msgstr ""
@@ -1618,12 +1618,7 @@ msgctxt "web/pages/Setup"
 msgid "Select a business timezone"
 msgstr ""
 
-#: web/pages/setup_form.ts:32
-msgctxt "web/pages/Setup"
-msgid "Select an organization language"
-msgstr ""
-
-#: web/pages/Setup.vue:73
+#: web/pages/Setup.vue:72
 msgctxt "web/pages/Setup"
 msgid "Set up your organization basics"
 msgstr ""
@@ -1698,22 +1693,22 @@ msgctxt "web/pages/setup/SetupAdminStep"
 msgid "Username"
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:10
+#: web/pages/setup/SetupOrganizationStep.vue:11
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Base Currency"
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:13
+#: web/pages/setup/SetupOrganizationStep.vue:15
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Business Timezone"
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:10
+#: web/pages/setup/SetupOrganizationStep.vue:11
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Company accounting currency. It cannot be changed once transactions exist."
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:7
+#: web/pages/setup/SetupOrganizationStep.vue:8
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Country / Region"
 msgstr ""
@@ -1723,19 +1718,9 @@ msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Enter organization name"
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:16
-msgctxt "web/pages/setup/SetupOrganizationStep"
-msgid "Language used for the organization name and shared business documents."
-msgstr ""
-
-#: web/pages/setup/SetupOrganizationStep.vue:7
+#: web/pages/setup/SetupOrganizationStep.vue:8
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Optional"
-msgstr ""
-
-#: web/pages/setup/SetupOrganizationStep.vue:16
-msgctxt "web/pages/setup/SetupOrganizationStep"
-msgid "Organization Language"
 msgstr ""
 
 #: web/pages/setup/SetupOrganizationStep.vue:4
@@ -1743,22 +1728,17 @@ msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Organization Name"
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:10
+#: web/pages/setup/SetupOrganizationStep.vue:11
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Select a base currency"
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:13
+#: web/pages/setup/SetupOrganizationStep.vue:15
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Select a business timezone"
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:16
-msgctxt "web/pages/setup/SetupOrganizationStep"
-msgid "Select an organization language"
-msgstr ""
-
-#: web/pages/setup/SetupOrganizationStep.vue:13
+#: web/pages/setup/SetupOrganizationStep.vue:15
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Used for business dates and scheduled jobs; independent of personal display timezones."
 msgstr ""
@@ -1797,11 +1777,6 @@ msgstr ""
 #: web/pages/setup/SetupReviewStep.vue:13
 msgctxt "web/pages/setup/SetupReviewStep"
 msgid "Organization"
-msgstr ""
-
-#: web/pages/setup/SetupReviewStep.vue:34
-msgctxt "web/pages/setup/SetupReviewStep"
-msgid "Organization Language"
 msgstr ""
 
 #: web/pages/setup/SetupReviewStep.vue:30

@@ -459,7 +459,6 @@ export default class User extends AttachmentOwnerMixin {
         CountryCode: picked.Organization.CountryCode,
         CurrencyCode: picked.Organization.CurrencyCode ?? '',
         Timezone: picked.Organization.Timezone ?? '',
-        LanguageCode: picked.Organization.LanguageCode ?? '',
       },
     });
   }

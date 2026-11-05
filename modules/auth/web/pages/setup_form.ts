@@ -30,7 +30,6 @@ void [
   _tSetupRule('Organization name must be at most 100 characters'),
   _tSetupRule('Select a base currency'),
   _tSetupRule('Select a business timezone'),
-  _tSetupRule('Select an organization language'),
 ];
 
 /**
@@ -49,7 +48,7 @@ export const SETUP_STEPS: readonly SetupStep[] = ['admin', 'organization', 'revi
 /** Local form fields shown on each editable step. */
 export const SETUP_STEP_FIELDS: Record<Exclude<SetupStep, 'review'>, readonly string[]> = {
   admin: ['Username', 'Password', 'ConfirmPassword', 'Email'],
-  organization: ['OrgName', 'CountryCode', 'CurrencyCode', 'Timezone', 'OrgLanguageCode'],
+  organization: ['OrgName', 'CountryCode', 'CurrencyCode', 'Timezone'],
 };
 
 /** Server `metadata.Field` → local form field. */
@@ -61,7 +60,6 @@ const SERVER_FIELD_TO_LOCAL: Record<string, string> = {
   'Organization.CountryCode': 'CountryCode',
   'Organization.CurrencyCode': 'CurrencyCode',
   'Organization.Timezone': 'Timezone',
-  'Organization.LanguageCode': 'OrgLanguageCode',
 };
 
 /** Local form field for a server error field, or '' when it has no input on the page. */
@@ -103,7 +101,6 @@ export function buildCompleteInitialSetupReq(
       ...(country ? { CountryCode: country } : {}),
       CurrencyCode: trimmed(data.CurrencyCode),
       Timezone: trimmed(data.Timezone),
-      LanguageCode: trimmed(data.OrgLanguageCode),
     },
   };
 }
@@ -204,10 +201,6 @@ export function setupCurrencyRules(t: (msg: string) => string): SetupClientRule[
 
 export function setupTimezoneRules(t: (msg: string) => string): SetupClientRule[] {
   return [ruleFromError(requiredSelection(t('Select a business timezone')))];
-}
-
-export function setupOrgLanguageRules(t: (msg: string) => string): SetupClientRule[] {
-  return [ruleFromError(requiredSelection(t('Select an organization language')))];
 }
 
 /** Rule that reports a server-side field error until `getMessage` returns ''. */

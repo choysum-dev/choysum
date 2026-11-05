@@ -36,7 +36,6 @@ const ORGANIZATION_FIELDS: ReadonlySet<string> = new Set([
   'CountryCode',
   'CurrencyCode',
   'Timezone',
-  'LanguageCode',
 ]);
 
 export type CompleteInitialSetupParams = {
@@ -350,7 +349,6 @@ export async function runCompleteInitialSetup(
       ...(org.CountryCode && String(org.CountryCode).trim() ? { CountryCode: String(org.CountryCode) } : {}),
       CurrencyCode: String(org.CurrencyCode ?? ''),
       Timezone: String(org.Timezone ?? ''),
-      LanguageCode: String(org.LanguageCode ?? ''),
     });
   } catch (err) {
     throw mapOrganizationError(err);

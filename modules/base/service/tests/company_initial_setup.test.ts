@@ -72,7 +72,7 @@ test('GetInitialSetupOptions: fixed shape, inactive currencies listed, inactive 
 
   expect(resp.Defaults.CurrencyCode).toBe('CNY');
   expect(resp.Defaults.Timezone).toBe('Asia/Shanghai');
-  expect(resp.Defaults.LanguageCode).toBe('zh_CN');
+  expect('LanguageCode' in resp.Defaults).toBe(false);
   expect(resp.Defaults.OrganizationName === '').toBe(false);
 });
 
@@ -109,8 +109,8 @@ test('ApplyInitialSetup: activates currency, replaces name translations, sets or
     CountryCode: 'us',
     CurrencyCode: currency.code.toLowerCase(),
     Timezone: 'America/New_York',
-    LanguageCode: 'en_US',
   };
+  const before = await Company.Browse(companyId, ['Id', 'LanguageId'] as any);
   const resp = await Company.ApplyInitialSetup(req);
   expect(resp.CompanyId).toBe(companyId);
 
@@ -127,6 +127,7 @@ test('ApplyInitialSetup: activates currency, replaces name translations, sets or
   expect(idOf((zhRow as any).CurrencyId)).toBe(currency.id);
   const [us] = await Country.Search(['Code', '=', 'US'] as any, { fields: ['Id'], limit: 1 } as any);
   expect(idOf((zhRow as any).CountryId)).toBe(String((us as any).Id));
+  expect(idOf((zhRow as any).LanguageId)).toBe(idOf((before as any).LanguageId));
 
   // Idempotent for identical input.
   const again = await Company.ApplyInitialSetup(req);
@@ -145,14 +146,12 @@ test('ApplyInitialSetup: rejects invalid input with field metadata', async () =>
     Name: 'Acme',
     CurrencyCode: 'CNY',
     Timezone: 'Asia/Shanghai',
-    LanguageCode: 'zh_CN',
   };
   await expectFieldError(() => Company.ApplyInitialSetup({ ...base, Name: '   ' }), 'Name');
   await expectFieldError(() => Company.ApplyInitialSetup({ ...base, Name: 'x'.repeat(101) }), 'Name');
   await expectFieldError(() => Company.ApplyInitialSetup({ ...base, CurrencyCode: 'Q0Q' }), 'CurrencyCode');
   await expectFieldError(() => Company.ApplyInitialSetup({ ...base, CountryCode: 'Q0' }), 'CountryCode');
   await expectFieldError(() => Company.ApplyInitialSetup({ ...base, Timezone: 'Mars/Base' }), 'Timezone');
-  await expectFieldError(() => Company.ApplyInitialSetup({ ...base, LanguageCode: 'xx_XX' }), 'LanguageCode');
   await expectFieldError(() => Company.ApplyInitialSetup({ ...base, CompanyId: '' }), 'CompanyId');
 });
 
@@ -171,7 +170,6 @@ test('ApplyInitialSetup: inactive country is rejected', async () => {
         CountryCode: code,
         CurrencyCode: 'CNY',
         Timezone: 'Asia/Shanghai',
-        LanguageCode: 'zh_CN',
       }),
     'CountryCode'
   );

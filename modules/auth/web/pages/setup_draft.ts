@@ -15,7 +15,6 @@ export const SETUP_DRAFT_FIELDS = [
   'CountryCode',
   'CurrencyCode',
   'Timezone',
-  'OrgLanguageCode',
 ] as const;
 
 export type SetupDraftField = (typeof SETUP_DRAFT_FIELDS)[number];

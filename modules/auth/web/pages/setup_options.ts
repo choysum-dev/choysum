@@ -20,13 +20,11 @@ export function buildSetupSelections(options: InitialSetupOptions): {
   CountryCode: SetupSelectionItem[];
   CurrencyCode: SetupSelectionItem[];
   Timezone: SetupSelectionItem[];
-  OrgLanguageCode: SetupSelectionItem[];
 } {
   return {
     CountryCode: (options.Countries || []).map(c => ({ value: c.Code, label: c.Name || c.Code })),
     CurrencyCode: (options.Currencies || []).map(c => ({ value: c.Code, label: currencyLabel(c) })),
     Timezone: (options.Timezones || []).map(z => ({ value: z.Value, label: z.Label || z.Value })),
-    OrgLanguageCode: (options.Languages || []).map(l => ({ value: l.Code, label: l.Name || l.Code })),
   };
 }
 
@@ -61,7 +59,6 @@ function pick(value: string | undefined, allowed: ReadonlySet<string>): string {
 export function resolveSetupInitialValues(input: {
   options: InitialSetupOptions;
   draft: SetupDraft | null;
-  uiLanguageCode: string;
   browserTimezone: string;
 }): Record<string, string | null> {
   const { options, draft } = input;
@@ -70,7 +67,6 @@ export function resolveSetupInitialValues(input: {
   const countries = new Set((options.Countries || []).map(c => c.Code));
   const currencies = new Set((options.Currencies || []).map(c => c.Code));
   const timezones = new Set((options.Timezones || []).map(z => z.Value));
-  const languages = new Set((options.Languages || []).map(l => l.Code));
   return {
     Username: v.Username ?? '',
     Password: '',
@@ -80,7 +76,14 @@ export function resolveSetupInitialValues(input: {
     CountryCode: (v.CountryCode !== undefined ? pick(v.CountryCode, countries) : pick(d.CountryCode, countries)) || null,
     CurrencyCode: pick(v.CurrencyCode, currencies) || pick(d.CurrencyCode, currencies),
     Timezone: pick(v.Timezone, timezones) || pick(input.browserTimezone, timezones) || pick(d.Timezone, timezones),
-    OrgLanguageCode:
-      pick(v.OrgLanguageCode, languages) || pick(input.uiLanguageCode, languages) || pick(d.LanguageCode, languages),
   };
+}
+
+/** Administrator language: the UI language when listed, else en_US, else the first listed language. */
+export function resolveAdminLanguageCode(options: InitialSetupOptions | null, uiLanguageCode: string): string {
+  const codes = (options?.Languages || []).map(l => l.Code);
+  const ui = String(uiLanguageCode || '').trim();
+  if (ui && codes.includes(ui)) return ui;
+  if (codes.includes('en_US')) return 'en_US';
+  return codes[0] || ui;
 }
