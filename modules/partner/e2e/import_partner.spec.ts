@@ -20,4 +20,10 @@ test('partner import: list page exposes import entry', async () => {
   await expect(importItem).toBeVisible();
   await importItem.click();
   await expect(page.getByRole('dialog')).toBeVisible();
+  const stepper = page.locator('[data-anchor="choy.stepper"]');
+  await expect(stepper).toBeVisible();
+  expect(await stepper.getAttribute('data-readonly')).toBe('true');
+  expect(await page.locator('[data-step="upload"]').getAttribute('data-state')).toBe('active');
+  expect(await page.locator('[data-step="preview"]').getAttribute('data-state')).toBe('inactive');
+  expect(await page.locator('[data-step="import"]').getAttribute('data-state')).toBe('inactive');
 });

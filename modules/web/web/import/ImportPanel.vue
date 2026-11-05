@@ -7,11 +7,7 @@ SPDX-License-Identifier: Apache-2.0
   <ChoyDialog v-model:open="visible">
     <ChoyDialogContent class="import-panel-dialog" @open-auto-focus.prevent>
       <ChoyDialogTitle>{{ title }}</ChoyDialogTitle>
-      <ol class="import-panel-steps">
-        <li :class="{ active: step === 0 }">{{ uploadStepTitle }}</li>
-        <li :class="{ active: step === 1 }">{{ previewStepTitle }}</li>
-        <li :class="{ active: step === 2 }">{{ importStepTitle }}</li>
-      </ol>
+      <ChoyStepper :model-value="stepValue" :steps="stepperSteps" readonly class="import-panel-stepper my-3" />
 
       <section v-if="step === 0" class="min-h-[180px]">
         <p class="mb-3 text-muted-foreground">{{ resolvedUploadHint }}</p>
@@ -85,6 +81,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, ref, watch } from 'vue';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyStepper, { type ChoyStepperStep } from '@/web/web/components/layout/ChoyStepper.vue';
 type UploadFile = { raw?: File | null; name?: string };
 import {
   describeImportFields,
@@ -141,6 +138,12 @@ const importSuccessSubtitle = _t('Rows were imported successfully.');
 const resolvedUploadHint = computed(() => String(props.uploadHint || '').trim() || defaultUploadHint);
 
 const step = ref(0);
+const stepperSteps: ChoyStepperStep[] = [
+  { value: 'upload', label: uploadStepTitle },
+  { value: 'preview', label: previewStepTitle },
+  { value: 'import', label: importStepTitle },
+];
+const stepValue = computed(() => stepperSteps[step.value]?.value ?? 'upload');
 const busy = ref(false);
 const selectedFile = ref<File | null>(null);
 const sourceRef = ref('');

@@ -24,6 +24,14 @@ test('ImportPanel smoke: mounts with minimal props', async () => {
   expect(content).not.toBeNull();
   expect(content!.querySelector('[data-slot="dialog-footer"]')).not.toBeNull();
   expect((content!.textContent || '').includes('Import')).toBe(true);
+  const stepper = content!.querySelector('[data-anchor="choy.stepper"]');
+  expect(stepper).not.toBeNull();
+  expect(stepper!.getAttribute('data-readonly')).toBe('true');
+  expect(stepper!.querySelector('[data-step="upload"]')!.getAttribute('data-state')).toBe('active');
+  for (const value of ['upload', 'preview', 'import']) {
+    expect(stepper!.querySelector(`[data-step="${value}"]`)!.hasAttribute('data-disabled')).toBe(true);
+  }
+  expect(content!.querySelector('.import-panel-steps')).toBeNull();
   app.unmount();
   el.remove();
 });
