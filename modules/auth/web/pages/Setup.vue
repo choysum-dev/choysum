@@ -68,7 +68,7 @@ SPDX-License-Identifier: Apache-2.0
                   @currency-touched="currencyTouched = true"
                 />
                 <SetupReviewStep v-else :form-data="formData" :selections="selections" />
-                <div class="setup-actions mt-6 flex gap-2">
+                <div class="setup-actions mt-6 flex justify-between gap-2">
                   <ChoyButton
                     v-if="step !== 'admin'"
                     type="button"
@@ -80,7 +80,7 @@ SPDX-License-Identifier: Apache-2.0
                   >
                     {{ _t('Back') }}
                   </ChoyButton>
-                  <ChoyButton type="submit" size="lg" class="submit-button flex-1" :disabled="loading">
+                  <ChoyButton type="submit" size="lg" class="submit-button ml-auto" :disabled="loading">
                     <template v-if="step === 'review'">
                       {{ loading ? _t('Complete Setup') + '…' : _t('Complete Setup') }}
                     </template>
@@ -368,5 +368,9 @@ async function onFormSubmit(ctx: { formData: Record<string, unknown> }) {
 
 .setup-content {
   max-width: 24rem;
+}
+
+.setup-actions .submit-button {
+  min-width: 6rem;
 }
 </style>
