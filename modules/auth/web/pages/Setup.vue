@@ -36,57 +36,58 @@ SPDX-License-Identifier: Apache-2.0
             {{ _t('Retry') }}
           </ChoyButton>
         </div>
-        <ChoyFormView
-          v-else
-          ref="formRef"
-          :store="formStore"
-          view-mode="create"
-          embedded
-          :show-header="false"
-          :show-actions="false"
-          :show-messages="false"
-          :resolve-record-id-from-route="false"
-          :initial-values="initialValues"
-          :submit-handler="onFormSubmit"
-        >
-          <template #default="{ formData }">
-            <SetupFormWatch :form-data="formData" @ready="onFormReady" @change="onFormChange" />
-            <SetupAdminStep
-              v-if="step === 'admin'"
-              :store="formStore"
-              :form-data="formData"
-              :server-errors="serverErrors"
-            />
-            <SetupOrganizationStep
-              v-else-if="step === 'organization'"
-              :store="formStore"
-              :form-data="formData"
-              :server-errors="serverErrors"
-              :country-currencies="countryCurrencies"
-              :currency-touched="currencyTouched"
-              @currency-touched="currencyTouched = true"
-            />
-            <SetupReviewStep v-else :form-data="formData" :selections="selections" />
-            <div class="setup-actions mt-6 flex gap-2">
-              <ChoyButton
-                v-if="step !== 'admin'"
-                type="button"
-                variant="outline"
-                class="setup-back"
-                :disabled="loading"
-                @click="goBack"
-              >
-                {{ _t('Back') }}
-              </ChoyButton>
-              <ChoyButton type="submit" class="submit-button flex-1" :disabled="loading">
-                <template v-if="step === 'review'">
-                  {{ loading ? _t('Complete Setup') + '…' : _t('Complete Setup') }}
-                </template>
-                <template v-else>{{ _t('Next') }}</template>
-              </ChoyButton>
-            </div>
-          </template>
-        </ChoyFormView>
+        <div v-else class="setup-form" @keydown.enter="onEnterKey">
+          <ChoyFormView
+            ref="formRef"
+            :store="formStore"
+            view-mode="create"
+            embedded
+            :show-header="false"
+            :show-actions="false"
+            :show-messages="false"
+            :resolve-record-id-from-route="false"
+            :initial-values="initialValues"
+            :submit-handler="onFormSubmit"
+          >
+            <template #default="{ formData }">
+              <SetupFormWatch :form-data="formData" @ready="onFormReady" @change="onFormChange" />
+              <SetupAdminStep
+                v-if="step === 'admin'"
+                :store="formStore"
+                :form-data="formData"
+                :server-errors="serverErrors"
+              />
+              <SetupOrganizationStep
+                v-else-if="step === 'organization'"
+                :store="formStore"
+                :form-data="formData"
+                :server-errors="serverErrors"
+                :country-currencies="countryCurrencies"
+                :currency-touched="currencyTouched"
+                @currency-touched="currencyTouched = true"
+              />
+              <SetupReviewStep v-else :form-data="formData" :selections="selections" />
+              <div class="setup-actions mt-6 flex gap-2">
+                <ChoyButton
+                  v-if="step !== 'admin'"
+                  type="button"
+                  variant="outline"
+                  class="setup-back"
+                  :disabled="loading"
+                  @click="goBack"
+                >
+                  {{ _t('Back') }}
+                </ChoyButton>
+                <ChoyButton type="submit" class="submit-button flex-1" :disabled="loading">
+                  <template v-if="step === 'review'">
+                    {{ loading ? _t('Complete Setup') + '…' : _t('Complete Setup') }}
+                  </template>
+                  <template v-else>{{ _t('Next') }}</template>
+                </ChoyButton>
+              </div>
+            </template>
+          </ChoyFormView>
+        </div>
       </ChoyCard>
     </AuthPanel>
   </ChoyPage>
@@ -179,6 +180,8 @@ const optionsError = ref('');
 const options = shallowRef<InitialSetupOptions | null>(null);
 const initialValues = ref<Record<string, string | null>>({});
 const currencyTouched = ref(false);
+/** Org language picked on the user's behalf from the UI language; null once the user chooses one. */
+let autoOrgLanguage: string | null = null;
 
 const emptySelections = (): Record<'CountryCode' | 'CurrencyCode' | 'Timezone' | 'OrgLanguageCode', SetupSelectionItem[]> => ({
   CountryCode: [],
@@ -246,6 +249,8 @@ async function loadOptions() {
     });
     const countryCurrency = values.CountryCode ? countryCurrencies.value[values.CountryCode] : undefined;
     currencyTouched.value = !!values.CurrencyCode && !!countryCurrency && values.CurrencyCode !== countryCurrency;
+    const ui = uiLanguageCode();
+    autoOrgLanguage = ui && values.OrgLanguageCode === ui ? ui : null;
     initialValues.value = values;
   } catch (err) {
     if (await leaveIfSetupReady()) return;
@@ -269,8 +274,20 @@ async function reloadOptionLabels() {
   }
 }
 
+/** Keep the org language on the UI language until the user picks one explicitly. */
+function followUiLanguage(next: string) {
+  const data = formData.value;
+  if (autoOrgLanguage === null || !data || data.OrgLanguageCode !== autoOrgLanguage) return;
+  if (!(options.value?.Languages || []).some(l => l.Code === next)) return;
+  autoOrgLanguage = next;
+  data.OrgLanguageCode = next;
+  formStore.setField('OrgLanguageCode', next);
+}
+
 watch(uiLanguageCode, (next, prev) => {
-  if (next && next !== prev) void reloadOptionLabels();
+  if (!next || next === prev) return;
+  followUiLanguage(next);
+  void reloadOptionLabels();
 });
 
 onMounted(() => {
@@ -286,7 +303,27 @@ function onFormChange(fields: string[]) {
   for (const field of fields) {
     if (serverErrors[field]) delete serverErrors[field];
   }
+  if (fields.includes('OrgLanguageCode') && formData.value?.OrgLanguageCode !== autoOrgLanguage) {
+    autoOrgLanguage = null;
+  }
   if (formData.value) saveSetupDraft(formData.value);
+}
+
+/**
+ * Enter in a text input advances the wizard (or completes it on the last step).
+ * Skips IME composition, modified keys, and keys a control already handled.
+ */
+function onEnterKey(e: KeyboardEvent) {
+  if (e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
+  if (e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) return;
+  const target = e.target as HTMLElement | null;
+  if (!target || String(target.tagName || '').toLowerCase() !== 'input') return;
+  if (target.getAttribute('role') === 'combobox') return;
+  const form = target.closest('form');
+  if (!form || loading.value) return;
+  e.preventDefault();
+  if (typeof form.requestSubmit === 'function') form.requestSubmit();
+  else form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 }
 
 function goBack() {

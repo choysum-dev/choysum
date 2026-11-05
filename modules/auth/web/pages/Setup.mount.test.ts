@@ -53,6 +53,8 @@ async function mountSetup(opts?: {
   failOptions?: ChoysumError;
   setupReady?: boolean;
   draft?: Record<string, unknown>;
+  /** Terminology language reported by the FE-unit i18n stub store. */
+  uiLang?: string;
 }) {
   clearSetupDraft();
   if (opts?.draft) saveSetupDraft(opts.draft);
@@ -93,8 +95,17 @@ async function mountSetup(opts?: {
     return true;
   };
   const wrapper = mount(Setup as any, { global });
+  if (opts?.uiLang) setUiLang(opts.uiLang);
   for (let i = 0; i < 4; i++) await flushPromises();
   return { wrapper, replaces, requests, logins };
+}
+
+/** Product SFCs resolve the FE-unit i18n stub store; drive its terminologyLang directly. */
+function setUiLang(lang: string) {
+  const pinia = getActivePinia() as unknown as { _s: Map<string, Record<string, unknown>> };
+  const i18n = pinia._s.get('i18n-fe-stub');
+  expect(!!i18n).toBe(true);
+  i18n!.terminologyLang = lang;
 }
 
 function fieldInput(wrapper: { find: (sel: string) => any }, selector: string) {
@@ -351,14 +362,64 @@ test('Setup.vue: UI language change refetches localized option labels', async ()
   await advanceToReview(wrapper);
   expect(optionsCalls).toBe(1);
   expect(wrapper.text().includes('CNY · Chinese Yuan')).toBe(true);
-  // Product SFCs resolve the FE-unit i18n stub store; drive its terminologyLang directly.
-  const pinia = getActivePinia() as unknown as { _s: Map<string, Record<string, unknown>> };
-  const i18n = pinia._s.get('i18n-fe-stub');
-  expect(!!i18n).toBe(true);
-  i18n!.terminologyLang = 'zh_CN';
+  setUiLang('zh_CN');
   for (let i = 0; i < 8; i++) await flushPromises();
   expect(optionsCalls).toBe(2);
   expect(wrapper.text().includes('CNY · 人民币')).toBe(true);
   expect(activeStep(wrapper)).toBe('review');
+  wrapper.unmount();
+});
+
+test('Setup.vue: organization language follows the UI language until chosen', async () => {
+  const { wrapper, requests } = await mountSetup({ uiLang: 'en_US' });
+  setUiLang('zh_CN');
+  for (let i = 0; i < 8; i++) await flushPromises();
+  await advanceToReview(wrapper);
+  expect(activeStep(wrapper)).toBe('review');
+  submitForm(wrapper);
+  await afterSubmit();
+  expect(requests.length).toBe(1);
+  expect(requests[0].Organization.LanguageCode).toBe('zh_CN');
+  expect(requests[0].Admin.LanguageCode).toBe('zh_CN');
+  wrapper.unmount();
+});
+
+test('Setup.vue: an explicitly chosen organization language ignores UI switches', async () => {
+  const { wrapper, requests } = await mountSetup({ uiLang: 'en_US', draft: { OrgLanguageCode: 'zh_CN' } });
+  setUiLang('zh_CN');
+  for (let i = 0; i < 4; i++) await flushPromises();
+  setUiLang('en_US');
+  for (let i = 0; i < 8; i++) await flushPromises();
+  await advanceToReview(wrapper);
+  submitForm(wrapper);
+  await afterSubmit();
+  expect(requests.length).toBe(1);
+  expect(requests[0].Organization.LanguageCode).toBe('zh_CN');
+  expect(requests[0].Admin.LanguageCode).toBe('en_US');
+  wrapper.unmount();
+  clearSetupDraft();
+});
+
+function pressEnter(el: Element, init?: { isComposing?: boolean }) {
+  const ev = new Event('keydown', { bubbles: true, cancelable: true });
+  Object.defineProperty(ev, 'key', { value: 'Enter' });
+  Object.defineProperty(ev, 'keyCode', { value: init?.isComposing ? 229 : 13 });
+  Object.defineProperty(ev, 'isComposing', { value: !!init?.isComposing });
+  el.dispatchEvent(ev);
+  return ev;
+}
+
+test('Setup.vue: Enter in a text input advances the step, but not during IME composition', async () => {
+  const { wrapper } = await mountSetup();
+  await fillAdmin(wrapper);
+  const confirm = fieldInput(wrapper, '.setup-confirm').element as HTMLInputElement;
+  const composing = pressEnter(confirm, { isComposing: true });
+  await afterSubmit();
+  expect(composing.defaultPrevented).toBe(false);
+  expect(activeStep(wrapper)).toBe('admin');
+  const enter = pressEnter(confirm);
+  await afterSubmit();
+  expect(enter.defaultPrevented).toBe(true);
+  expect(activeStep(wrapper)).toBe('organization');
   wrapper.unmount();
 });

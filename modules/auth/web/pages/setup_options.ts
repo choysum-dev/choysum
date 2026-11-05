@@ -6,6 +6,15 @@ import type { SetupDraft } from './setup_draft';
 
 export type SetupSelectionItem = { value: string; label: string };
 
+/** `CODE · Name · Symbol`; the symbol is omitted when it only repeats the code. */
+export function currencyLabel(c: InitialSetupOptions['Currencies'][number]): string {
+  const parts = [c.Code];
+  if (c.Name) parts.push(c.Name);
+  const symbol = String(c.Symbol ?? '').trim();
+  if (symbol && symbol !== c.Code) parts.push(symbol);
+  return parts.join(' · ');
+}
+
 /** Selection lists for the organization step, derived from setup options. */
 export function buildSetupSelections(options: InitialSetupOptions): {
   CountryCode: SetupSelectionItem[];
@@ -15,10 +24,7 @@ export function buildSetupSelections(options: InitialSetupOptions): {
 } {
   return {
     CountryCode: (options.Countries || []).map(c => ({ value: c.Code, label: c.Name || c.Code })),
-    CurrencyCode: (options.Currencies || []).map(c => ({
-      value: c.Code,
-      label: c.Name ? `${c.Code} · ${c.Name}` : c.Code,
-    })),
+    CurrencyCode: (options.Currencies || []).map(c => ({ value: c.Code, label: currencyLabel(c) })),
     Timezone: (options.Timezones || []).map(z => ({ value: z.Value, label: z.Label || z.Value })),
     OrgLanguageCode: (options.Languages || []).map(l => ({ value: l.Code, label: l.Name || l.Code })),
   };

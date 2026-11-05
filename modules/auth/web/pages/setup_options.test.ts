@@ -3,7 +3,7 @@
 
 import type { InitialSetupOptions } from '../stores/auth';
 import { clearSetupDraft, loadSetupDraft, saveSetupDraft, SETUP_DRAFT_KEY } from './setup_draft';
-import { buildSetupSelections, countryDefaultCurrencies, resolveSetupInitialValues } from './setup_options';
+import { buildSetupSelections, countryDefaultCurrencies, currencyLabel, resolveSetupInitialValues } from './setup_options';
 
 function options(): InitialSetupOptions {
   return {
@@ -55,6 +55,13 @@ test('buildSetupSelections labels currencies with code and name', () => {
   ]);
   expect(s.CountryCode[0]).toEqual({ value: 'CN', label: 'China' });
   expect(s.OrgLanguageCode[1]).toEqual({ value: 'zh_CN', label: '简体中文' });
+});
+
+test('currencyLabel appends the symbol unless it repeats the code', () => {
+  expect(currencyLabel({ Code: 'CNY', Name: '人民币', Symbol: '¥' })).toBe('CNY · 人民币 · ¥');
+  expect(currencyLabel({ Code: 'AED', Name: 'UAE Dirham', Symbol: 'AED' })).toBe('AED · UAE Dirham');
+  expect(currencyLabel({ Code: 'USD', Name: '', Symbol: '$' })).toBe('USD · $');
+  expect(currencyLabel({ Code: 'XXX', Name: '' })).toBe('XXX');
 });
 
 test('countryDefaultCurrencies skips countries without a default', () => {
