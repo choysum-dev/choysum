@@ -1650,6 +1650,9 @@ func TestCLIInstallLatestResolvesCompatibleVersion(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("install failed, code=%d output=%s", code, output)
 	}
+	if strings.Contains(output, "Initial setup") || strings.Contains(output, "Setup options ignored") {
+		t.Fatalf("install without auth must not print setup output, got %q", output)
+	}
 
 	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {

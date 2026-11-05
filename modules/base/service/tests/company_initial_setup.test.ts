@@ -72,7 +72,7 @@ test('GetInitialSetupOptions: fixed shape, inactive currencies listed, inactive 
 
   expect(resp.Defaults.CurrencyCode).toBe('CNY');
   expect(resp.Defaults.Timezone).toBe('Asia/Shanghai');
-  expect('LanguageCode' in resp.Defaults).toBe(false);
+  expect(resp.Defaults.LanguageCode).toBe('zh_CN');
   expect(resp.Defaults.OrganizationName === '').toBe(false);
 });
 

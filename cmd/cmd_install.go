@@ -30,6 +30,7 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 	var noWeb bool
 	var webShellProfile string
 	var cliCompatVersion string
+	var setupFlags *moduleSetupFlags
 	cmd := &cobra.Command{
 		Use:   "install <module|module@version> [<module|module@version>...]",
 		Short: "Install Choysum Module",
@@ -57,6 +58,11 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 			resolvedCompat, err := clicompat.ResolveCLICompatVersion(cliCompatVersion, runtimeVersion, strings.TrimSpace(os.Getenv(clicompat.CLICompatVersionEnv)))
 			if err != nil {
 				env.Logger().Error("module compatibility version resolution failed", "error", err)
+				os.Exit(1)
+			}
+			setupPlan, setupErr := setupFlags.prepare(cmd, env)
+			if setupErr != nil {
+				env.Logger().Error("module install failed", "error", setupErr)
 				os.Exit(1)
 			}
 			runtimeOptions := cliruntime.OptionsFromScope(env)
@@ -149,12 +155,15 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 					os.Exit(1)
 				}
 			}
+
+			setupPlan.finish(ctx, cmd, env)
 		},
 	}
 	cmd.Flags().BoolVar(&withDemo, "with-demo", false, "Load demo data declared by package.json")
 	cmd.Flags().BoolVar(&noWeb, "no-web", false, "Skip auto-installing the web SPA shell when a module declares entryPoints.web")
 	cmd.Flags().StringVar(&webShellProfile, "web-shell-profile", string(plan.WebShellProfileStandard), plan.WebShellProfileFlagUsage)
 	cmd.Flags().StringVar(&cliCompatVersion, "cli-compat-version", "", "override CLI compatibility version for module compatibility checks")
+	setupFlags = addModuleSetupFlags(cmd)
 	return cmd
 }
 

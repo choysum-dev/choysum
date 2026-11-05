@@ -29,6 +29,7 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 	var webShellProfile string
 	var cliCompatVersion string
 	var schemaPlanOnly bool
+	var setupFlags *moduleSetupFlags
 	cmd := &cobra.Command{
 		Use:   "upgrade <module|module@version> [<module|module@version>...]",
 		Short: "Upgrade Choysum Module",
@@ -81,6 +82,10 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 				env.Logger().Error("module compatibility version resolution failed", "error", err)
 				upgradeExit(1)
 				return
+			}
+			setupPlan, setupErr := setupFlags.prepare(cmd, env)
+			if setupErr != nil {
+				exitUpgradeError("", setupErr)
 			}
 			runtimeOptions := cliruntime.OptionsFromScope(env)
 
@@ -189,6 +194,7 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 				}
 				upgradeScope.Logger().Debug("module upgraded", "input", item.resolvedInput)
 			}
+			setupPlan.finish(ctx, cmd, env)
 		},
 	}
 	cmd.Flags().BoolVar(&withDemo, "with-demo", false, "Load demo data declared by package.json")
@@ -196,6 +202,7 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 	cmd.Flags().StringVar(&webShellProfile, "web-shell-profile", string(plan.WebShellProfileStandard), plan.WebShellProfileFlagUsage)
 	cmd.Flags().StringVar(&cliCompatVersion, "cli-compat-version", "", "override CLI compatibility version for module compatibility checks")
 	cmd.Flags().BoolVar(&schemaPlanOnly, "schema-plan", false, "print schema plan for installed module tip vs live DB without applying DDL or initdata")
+	setupFlags = addModuleSetupFlags(cmd)
 	return cmd
 }
 

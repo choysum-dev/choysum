@@ -44,6 +44,8 @@ export type GetInitialSetupOptionsResp = {
     CountryCode?: string;
     CurrencyCode: string;
     Timezone: string;
+    /** Seed company language when it is active; a suitable administrator UI language. */
+    LanguageCode?: string;
   };
 };
 
@@ -152,9 +154,11 @@ export async function getInitialSetupOptions(CompanyModel: CompanyCtor): Promise
     });
   }
 
+  const languageCodeById = new Map<string, string>();
   const languages: GetInitialSetupOptionsResp['Languages'] = [];
   for (const row of (languageRows || []) as unknown as Array<Record<string, unknown>>) {
     const code = String(row.Code || '');
+    languageCodeById.set(String(row.Id || ''), code);
     languages.push({ Code: code, Name: String(row.Name || code) });
   }
 
@@ -171,6 +175,7 @@ export async function getInitialSetupOptions(CompanyModel: CompanyCtor): Promise
       'CurrencyId',
       'Timezone',
       'CountryId',
+      'LanguageId',
     ] as any)) as unknown as Record<string, unknown> | null;
     if (company) {
       defaults.OrganizationName = String(company.Name || '');
@@ -178,6 +183,8 @@ export async function getInitialSetupOptions(CompanyModel: CompanyCtor): Promise
       defaults.Timezone = String(company.Timezone || '');
       const countryCode = countryCodeById.get(refId(company.CountryId));
       if (countryCode) defaults.CountryCode = countryCode;
+      const languageCode = languageCodeById.get(refId(company.LanguageId));
+      if (languageCode) defaults.LanguageCode = languageCode;
     }
   }
 

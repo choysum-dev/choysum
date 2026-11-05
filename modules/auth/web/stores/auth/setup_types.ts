@@ -12,6 +12,7 @@ export type InitialSetupOptions = {
     CountryCode?: string;
     CurrencyCode: string;
     Timezone: string;
+    LanguageCode?: string;
   };
 };
 
