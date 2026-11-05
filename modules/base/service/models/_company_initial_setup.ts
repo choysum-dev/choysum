@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import moment from 'moment-timezone';
 import { ChoysumError, GrpcCode } from '@/core/service/error';
 import { createServiceByModel, getServiceFactory } from '@/core/service/rpc';
 import { withContext } from '@/core/service/runtime/context';
@@ -77,6 +78,25 @@ function refId(value: unknown): string {
     return normalizeRefId((value as { Id?: unknown }).Id) ?? '';
   }
   return normalizeRefId(value) ?? '';
+}
+
+function formatUtcOffset(minutes: number): string {
+  const sign = minutes < 0 ? '-' : '+';
+  const abs = Math.abs(minutes);
+  const hh = String(Math.floor(abs / 60)).padStart(2, '0');
+  const mm = String(abs % 60).padStart(2, '0');
+  return `UTC${sign}${hh}:${mm}`;
+}
+
+/**
+ * IANA zones labelled `(UTC±HH:MM) Name` with the offset in effect at `at`,
+ * ordered by that offset and then by name.
+ */
+export function listSetupTimezones(at: Date = new Date()): GetInitialSetupOptionsResp['Timezones'] {
+  return listIanaTimezoneSelection()
+    .map(item => ({ name: item.value, offset: moment.tz(at, item.value).utcOffset() }))
+    .sort((a, b) => a.offset - b.offset || a.name.localeCompare(b.name))
+    .map(z => ({ Value: z.name, Label: `(${formatUtcOffset(z.offset)}) ${z.name}` }));
 }
 
 function upperCode(value: unknown): string {
@@ -171,7 +191,7 @@ export async function getInitialSetupOptions(CompanyModel: CompanyCtor): Promise
   return {
     Countries: countries,
     Currencies: currencies,
-    Timezones: listIanaTimezoneSelection().map(item => ({ Value: item.value, Label: item.label })),
+    Timezones: listSetupTimezones(),
     Languages: languages,
     Defaults: defaults,
   };

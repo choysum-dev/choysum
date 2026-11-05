@@ -4,6 +4,7 @@
 import Company from '@/base/service/models/company';
 import Country from '@/base/service/models/country';
 import Currency from '@/base/service/models/currency';
+import { listSetupTimezones } from '@/base/service/models/_company_initial_setup';
 import { ChoysumError } from '@/core/service/error';
 import { withContext } from '@/core/service/api/context';
 import { companyCode8, countryCode8, currencyCode3, uid } from './_helpers';
@@ -67,12 +68,26 @@ test('GetInitialSetupOptions: fixed shape, inactive currencies listed, inactive 
   expect(resp.Countries.find(c => c.Code === 'AQ')?.DefaultCurrencyCode).toBeUndefined();
 
   expect(resp.Languages.map(l => l.Code).sort()).toEqual(['en_US', 'zh_CN']);
-  expect(resp.Timezones.some(t => t.Value === 'Asia/Shanghai' && t.Label === 'Asia/Shanghai')).toBe(true);
+  expect(resp.Timezones.some(t => t.Value === 'Asia/Shanghai' && t.Label === '(UTC+08:00) Asia/Shanghai')).toBe(true);
 
   expect(resp.Defaults.CurrencyCode).toBe('CNY');
   expect(resp.Defaults.Timezone).toBe('Asia/Shanghai');
   expect(resp.Defaults.LanguageCode).toBe('zh_CN');
   expect(resp.Defaults.OrganizationName === '').toBe(false);
+});
+
+test('listSetupTimezones: offset labels follow DST and sort by offset then name', () => {
+  const winter = listSetupTimezones(new Date('2026-01-15T12:00:00Z'));
+  const summer = listSetupTimezones(new Date('2026-07-15T12:00:00Z'));
+  expect(winter.find(z => z.Value === 'America/New_York')?.Label).toBe('(UTC-05:00) America/New_York');
+  expect(summer.find(z => z.Value === 'America/New_York')?.Label).toBe('(UTC-04:00) America/New_York');
+  expect(winter.find(z => z.Value === 'Asia/Kolkata')?.Label).toBe('(UTC+05:30) Asia/Kolkata');
+  expect(winter.find(z => z.Value === 'UTC')?.Label).toBe('(UTC+00:00) UTC');
+  const idx = (v: string) => winter.findIndex(z => z.Value === v);
+  expect(idx('America/New_York') < idx('UTC')).toBe(true);
+  expect(idx('UTC') < idx('Asia/Kolkata')).toBe(true);
+  expect(idx('Asia/Kolkata') < idx('Asia/Shanghai')).toBe(true);
+  expect(idx('Asia/Shanghai') < idx('Asia/Singapore')).toBe(true);
 });
 
 test('GetInitialSetupOptions: names follow request language', async () => {
