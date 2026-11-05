@@ -22,7 +22,7 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
   >
     <!-- shadcn-vue Combobox: button trigger + search in list + check on selected. -->
-    <template #edit="{ fieldValue, record, inputId, inputName, describedBy, invalid}">
+    <template #edit="{ fieldValue, record, inputId, inputName, labelId, describedBy, invalid}">
       <div
         class="choy-selection-field w-full min-w-0"
         :data-loading="optionsLoading ? 'true' : 'false'"
@@ -40,6 +40,8 @@ SPDX-License-Identifier: Apache-2.0
               :name="inputName"
               class="w-full"
               :disabled="disabled || optionsLoading"
+              :aria-label="_t('Show options')"
+              :aria-labelledby="labelId || undefined"
               :aria-describedby="describedBy || undefined"
               :aria-invalid="invalid ? 'true' : undefined"
               v-bind="triggerSelectProps"

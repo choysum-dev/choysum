@@ -1096,6 +1096,11 @@ msgctxt "web/components/field/ChoySelectionField"
 msgid "Search…"
 msgstr "搜索…"
 
+#: web/components/field/ChoySelectionField.vue:8
+msgctxt "web/components/field/ChoySelectionField"
+msgid "Show options"
+msgstr "显示选项"
+
 #: web/components/field/ChoySelectionField.vue:353
 msgctxt "web/components/field/ChoySelectionField"
 msgid "Value must be a string"
@@ -1490,6 +1495,31 @@ msgstr "更多操作"
 msgctxt "web/components/layout/ChoyPageIoMenu"
 msgid "No model/store available for this action."
 msgstr "此操作没有可用的模型/存储。"
+
+#: web/components/layout/ChoyShellLocaleMenu.vue:4
+msgctxt "web/components/layout/ChoyShellLocaleMenu"
+msgid "Languages"
+msgstr "语言"
+
+#: web/components/layout/ChoyShellThemeToggle.vue:32
+msgctxt "web/components/layout/ChoyShellThemeToggle"
+msgid "Auto"
+msgstr "跟随系统"
+
+#: web/components/layout/ChoyShellThemeToggle.vue:31
+msgctxt "web/components/layout/ChoyShellThemeToggle"
+msgid "Dark"
+msgstr "深色"
+
+#: web/components/layout/ChoyShellThemeToggle.vue:30
+msgctxt "web/components/layout/ChoyShellThemeToggle"
+msgid "Light"
+msgstr "浅色"
+
+#: web/components/layout/ChoyShellThemeToggle.vue:4
+msgctxt "web/components/layout/ChoyShellThemeToggle"
+msgid "Theme"
+msgstr "主题"
 
 #: web/components/layout/ChoySidebarNav.vue:66
 msgctxt "web/components/layout/ChoySidebarNav"

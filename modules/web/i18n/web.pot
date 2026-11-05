@@ -1134,6 +1134,11 @@ msgctxt "web/components/field/ChoySelectionField"
 msgid "Search…"
 msgstr ""
 
+#: web/components/field/ChoySelectionField.vue:8
+msgctxt "web/components/field/ChoySelectionField"
+msgid "Show options"
+msgstr ""
+
 #: web/components/field/ChoySelectionField.vue:353
 msgctxt "web/components/field/ChoySelectionField"
 msgid "Value must be a string"
@@ -1533,6 +1538,31 @@ msgstr ""
 #: web/components/layout/ChoyPageIoMenu.vue:113
 msgctxt "web/components/layout/ChoyPageIoMenu"
 msgid "No model/store available for this action."
+msgstr ""
+
+#: web/components/layout/ChoyShellLocaleMenu.vue:4
+msgctxt "web/components/layout/ChoyShellLocaleMenu"
+msgid "Languages"
+msgstr ""
+
+#: web/components/layout/ChoyShellThemeToggle.vue:32
+msgctxt "web/components/layout/ChoyShellThemeToggle"
+msgid "Auto"
+msgstr ""
+
+#: web/components/layout/ChoyShellThemeToggle.vue:31
+msgctxt "web/components/layout/ChoyShellThemeToggle"
+msgid "Dark"
+msgstr ""
+
+#: web/components/layout/ChoyShellThemeToggle.vue:30
+msgctxt "web/components/layout/ChoyShellThemeToggle"
+msgid "Light"
+msgstr ""
+
+#: web/components/layout/ChoyShellThemeToggle.vue:4
+msgctxt "web/components/layout/ChoyShellThemeToggle"
+msgid "Theme"
 msgstr ""
 
 #: web/components/layout/ChoySidebarNav.vue:66

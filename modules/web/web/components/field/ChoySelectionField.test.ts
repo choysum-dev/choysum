@@ -319,4 +319,32 @@ describe('SelectionField FieldsGet wiring', () => {
     expect(m.q('[data-slot="combobox-trigger"]') || m.q('button')).toBeTruthy();
     m.unmount();
   });
+
+  test('SelectionField trigger is named by its field label, not the combobox default', async () => {
+    const value = ref<string | null>('active');
+    const binding = {
+      env: { isForm: true, fieldPresentation: 'form', isEditMode: true, viewMode: 'edit', fieldPrefix: null },
+      prop: 'Status',
+      meta: staticMeta,
+      fieldRef: () => value as any,
+      fieldRefOf: () => value as any,
+      recordRef: () => computed(() => ({ Id: '1', Status: 'active' })) as any,
+      registerFields: () => {},
+      store: { fieldsMetadata: { Status: staticMeta } },
+      asView: () => ({ fieldValue: () => value }) as any,
+    };
+    const m = mountApp(SelectionField as any, {
+      props: { binding, label: 'Status', renderMode: 'form' },
+    });
+    await flushPromises();
+    await nextTick();
+    const trigger = m.q('[data-slot="combobox-trigger"]');
+    expect(trigger).toBeTruthy();
+    expect(trigger!.getAttribute('aria-label')).toBe('Show options');
+    const labelledBy = String(trigger!.getAttribute('aria-labelledby') || '');
+    expect(labelledBy.length > 0).toBe(true);
+    const label = m.q(`[id="${labelledBy}"]`);
+    expect(String(label?.textContent || '').includes('Status')).toBe(true);
+    m.unmount();
+  });
 });
