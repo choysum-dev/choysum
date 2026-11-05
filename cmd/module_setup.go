@@ -20,6 +20,7 @@ type moduleSetupFlags struct {
 	adminPassword string
 }
 
+// addModuleSetupFlags registers --setup and --admin-password on cmd.
 func addModuleSetupFlags(cmd *cobra.Command) *moduleSetupFlags {
 	flags := &moduleSetupFlags{}
 	cmd.Flags().StringVar(&flags.mode, "setup", "", initialsetup.SetupFlagUsage)

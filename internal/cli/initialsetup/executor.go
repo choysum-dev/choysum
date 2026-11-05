@@ -97,6 +97,9 @@ func loadServeScripts(runtimeScope scope.Scope) ([]*jsengine.JsScript, error) {
 		}
 		serveScripts = append(serveScripts, &jsengine.JsScript{FileName: path, Content: string(content)})
 	}
+	if len(serveScripts) == 0 {
+		return nil, fmt.Errorf("no service scripts found under %s; reinstall the modules to rebuild dist", distRoot)
+	}
 	return jsengine.DedupeInitScripts(serveScripts)
 }
 
@@ -107,6 +110,8 @@ type executorCaller struct {
 	scope    scope.Scope
 }
 
+// Call executes service with args and returns the JS result; errors are wrapped
+// with the service name and keep the underlying error chain.
 func (c executorCaller) Call(ctx context.Context, service string, lang string, args ...any) (any, error) {
 	userID, companyID, err := systemidentity.ResolvePrincipalUserID(ctx, c.scope, "")
 	if err != nil {

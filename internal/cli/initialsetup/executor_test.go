@@ -206,6 +206,13 @@ func TestLoadServeScriptsAppModeSkipsMissingApps(t *testing.T) {
 	}
 }
 
+func TestLoadServeScriptsRequiresAtLeastOneScript(t *testing.T) {
+	stubPlan(t, runplan.RunDecision{RunMode: runplan.RunModeApplication, CompileBundleMode: "app", ServeTargets: []string{"base"}}, nil)
+	if _, err := loadServeScripts(newExecutorTestScope(t, t.TempDir(), "")); err == nil || !strings.Contains(err.Error(), "no service scripts found") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
 func TestLoadServeScriptsReadError(t *testing.T) {
 	dist := t.TempDir()
 	stubPlan(t, runplan.RunDecision{RunMode: runplan.RunModeApplication, CompileBundleMode: "app", ServeTargets: []string{"base"}}, nil)

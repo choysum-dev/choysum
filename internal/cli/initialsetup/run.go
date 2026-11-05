@@ -134,6 +134,8 @@ func Run(ctx context.Context, deps Deps, opts Options, before provision.Phase, o
 	return complete(ctx, caller, deps, opts, out)
 }
 
+// complete finishes a pending setup with the seed defaults. A generated password
+// is printed only after CompleteInitialSetup succeeds.
 func complete(ctx context.Context, caller Caller, deps Deps, opts Options, out io.Writer) (Result, error) {
 	defaults, err := loadDefaults(ctx, caller)
 	if err != nil {
@@ -236,6 +238,7 @@ func callDefaults(ctx context.Context, caller Caller, lang string) (setupDefault
 	return resp.Defaults, nil
 }
 
+// organizationArg omits an empty CountryCode so the service keeps it unset.
 func organizationArg(org Organization) map[string]any {
 	arg := map[string]any{
 		"Name":         org.Name,
@@ -248,6 +251,7 @@ func organizationArg(org Organization) map[string]any {
 	return arg
 }
 
+// isAlreadyComplete matches the structured error code only, not message text.
 func isAlreadyComplete(err error) bool {
 	info := oerrors.GetErrorInfo(err)
 	return info != nil && info.Code == codeAlreadyComplete
