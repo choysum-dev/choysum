@@ -73,13 +73,14 @@ SPDX-License-Identifier: Apache-2.0
                     v-if="step !== 'admin'"
                     type="button"
                     variant="outline"
+                    size="lg"
                     class="setup-back"
                     :disabled="loading"
                     @click="goBack"
                   >
                     {{ _t('Back') }}
                   </ChoyButton>
-                  <ChoyButton type="submit" class="submit-button flex-1" :disabled="loading">
+                  <ChoyButton type="submit" size="lg" class="submit-button flex-1" :disabled="loading">
                     <template v-if="step === 'review'">
                       {{ loading ? _t('Complete Setup') + '…' : _t('Complete Setup') }}
                     </template>
@@ -366,6 +367,6 @@ async function onFormSubmit(ctx: { formData: Record<string, unknown> }) {
 }
 
 .setup-content {
-  max-width: 28rem;
+  max-width: 24rem;
 }
 </style>
