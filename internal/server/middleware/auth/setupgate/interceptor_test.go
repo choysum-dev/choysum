@@ -267,3 +267,73 @@ func TestStreamAllowsNonSessionMethodWhenSetupPending(t *testing.T) {
 		t.Fatal("handler was not called")
 	}
 }
+
+const setupOptionsMethod = "/base.Company/GetInitialSetupOptions"
+
+func TestUnaryAllowsSetupWindowMethodWhenSetupPending(t *testing.T) {
+	runtimeScope, db := newGateScope(t)
+	seedSetupPending(t, db)
+
+	called := false
+	_, err := UnaryInterceptor(runtimeScope)(context.Background(), nil, &grpc.UnaryServerInfo{FullMethod: setupOptionsMethod},
+		func(ctx context.Context, req interface{}) (interface{}, error) {
+			called = true
+			return "ok", nil
+		})
+	if err != nil {
+		t.Fatalf("GetInitialSetupOptions: %v", err)
+	}
+	if !called {
+		t.Fatal("handler was not called")
+	}
+}
+
+func TestUnaryRejectsSetupWindowMethodOutsideSetupPending(t *testing.T) {
+	cases := map[string]func(t *testing.T, db *gorm.DB){
+		"ready": seedReady,
+		"empty": func(*testing.T, *gorm.DB) {},
+	}
+	for name, seed := range cases {
+		t.Run(name, func(t *testing.T) {
+			runtimeScope, db := newGateScope(t)
+			seed(t, db)
+			_, err := UnaryInterceptor(runtimeScope)(context.Background(), nil, &grpc.UnaryServerInfo{FullMethod: setupOptionsMethod},
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					t.Fatal("handler must not run")
+					return nil, nil
+				})
+			if status.Code(err) != codes.FailedPrecondition {
+				t.Fatalf("code = %v, want FailedPrecondition; err=%v", status.Code(err), err)
+			}
+			if status.Convert(err).Message() != "initial setup is not pending" {
+				t.Fatalf("message = %q", status.Convert(err).Message())
+			}
+		})
+	}
+}
+
+func TestUnaryRejectsSetupWindowMethodWhenResolveErrors(t *testing.T) {
+	runtimeScope := &gateTestScope{ctx: context.Background(), db: nil}
+	_, err := UnaryInterceptor(runtimeScope)(context.Background(), nil, &grpc.UnaryServerInfo{FullMethod: setupOptionsMethod},
+		func(ctx context.Context, req interface{}) (interface{}, error) {
+			t.Fatal("handler must not run")
+			return nil, nil
+		})
+	if status.Convert(err).Message() != "initial setup state unavailable" {
+		t.Fatalf("code=%v message=%q", status.Code(err), status.Convert(err).Message())
+	}
+}
+
+func TestStreamGatesSetupWindowMethod(t *testing.T) {
+	runtimeScope, db := newGateScope(t)
+	seedReady(t, db)
+	err := StreamInterceptor(runtimeScope)(nil, &testServerStream{ctx: context.Background()},
+		&grpc.StreamServerInfo{FullMethod: setupOptionsMethod},
+		func(srv interface{}, ss grpc.ServerStream) error {
+			t.Fatal("handler must not run")
+			return nil
+		})
+	if status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("code = %v, want FailedPrecondition; err=%v", status.Code(err), err)
+	}
+}
