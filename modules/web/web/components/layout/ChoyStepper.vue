@@ -19,7 +19,7 @@ SPDX-License-Identifier: Apache-2.0
       :disabled="!isSelectable(index)"
       :completed="index < activeIndex"
       :data-step="step.value"
-      class="choy-stepper__item relative flex flex-1 flex-col items-center"
+      class="choy-stepper__item relative flex min-w-0 flex-1 flex-col items-center"
     >
       <StepperTrigger class="choy-stepper__trigger">
         <StepperIndicator class="choy-stepper__indicator">
@@ -100,15 +100,48 @@ function onStepperUpdate(next: number | undefined): void {
 </script>
 
 <style scoped>
+.choy-stepper {
+  container-type: inline-size;
+}
+
 .choy-stepper :deep(.choy-stepper__trigger) {
   position: relative;
   z-index: 1;
+  max-width: 100%;
 }
 
 .choy-stepper :deep(.choy-stepper__title) {
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--color-muted-foreground);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+/* Narrow hosts: keep every indicator, but only the active step shows its title and description. */
+@container (max-width: 18rem) {
+  .choy-stepper :deep([data-state='active'] .choy-stepper__trigger) {
+    max-width: none;
+  }
+
+  .choy-stepper :deep([data-state='active'] .choy-stepper__title) {
+    white-space: nowrap;
+  }
+
+  .choy-stepper :deep([data-state='inactive'] .choy-stepper__title),
+  .choy-stepper :deep([data-state='completed'] .choy-stepper__title),
+  .choy-stepper :deep([data-state='inactive'] .choy-stepper__description),
+  .choy-stepper :deep([data-state='completed'] .choy-stepper__description) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
 }
 
 .choy-stepper :deep([data-state='active'] .choy-stepper__title),
