@@ -521,8 +521,21 @@ onBeforeUnmount(() => {
   });
 });
 
+/**
+ * Runs every mounted field's client rules (revealing their messages) without submitting.
+ * Resolves false when any rule fails or a server field error is still shown.
+ */
+async function validate(): Promise<boolean> {
+  let ok = fieldErrors.value.size === 0;
+  for (const run of fieldClientValidators.values()) {
+    if (await run()) ok = false;
+  }
+  return ok;
+}
+
 defineExpose({
   submit: handleSubmit,
+  validate,
   /** Runs dirty confirmation, then cancelHandler / route back / display reload. */
   cancel: handleCancel,
   refresh: handleRefresh,

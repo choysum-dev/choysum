@@ -4,14 +4,22 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script lang="ts" setup>
-import type { StepperRootEmits, StepperRootProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
 import { reactiveOmit } from "@vueuse/core"
 import { StepperRoot, useForwardPropsEmits } from "reka-ui"
 import { cn } from "../../../../lib/utils"
 
-const props = defineProps<StepperRootProps & { class?: HTMLAttributes["class"] }>()
-const emits = defineEmits<StepperRootEmits>()
+const props = withDefaults(defineProps<{
+  defaultValue?: number
+  orientation?: "vertical" | "horizontal"
+  dir?: "ltr" | "rtl"
+  modelValue?: number
+  linear?: boolean
+  asChild?: boolean
+  as?: string
+  class?: HTMLAttributes["class"]
+}>(), { linear: true })
+const emits = defineEmits<{ "update:modelValue": [payload: number | undefined] }>()
 
 const delegatedProps = reactiveOmit(props, "class")
 

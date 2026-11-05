@@ -4,13 +4,19 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script lang="ts" setup>
-import type { StepperItemProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
 import { reactiveOmit } from "@vueuse/core"
 import { StepperItem, useForwardProps } from "reka-ui"
 import { cn } from "../../../../lib/utils"
 
-const props = defineProps<StepperItemProps & { class?: HTMLAttributes["class"] }>()
+const props = defineProps<{
+  step: number
+  disabled?: boolean
+  completed?: boolean
+  asChild?: boolean
+  as?: string
+  class?: HTMLAttributes["class"]
+}>()
 
 const delegatedProps = reactiveOmit(props, "class")
 

@@ -35,7 +35,10 @@ export type LocalFormFieldDef = {
   label: string;
   type: LocalFormFieldType;
   help?: string;
-  /** Required when type is selection (static options for ChoySelectionField). */
+  /**
+   * Required when type is selection (static options for ChoySelectionField).
+   * May start empty and be filled later via setFieldSelection.
+   */
   selection?: readonly SelectionItem[];
   /** Optional char/varchar length hint written to meta.size. */
   size?: number;
@@ -110,6 +113,13 @@ function emptyDict<T>(): Record<string, T> {
   return Object.create(null) as Record<string, T>;
 }
 
+function normalizeSelection(items: readonly SelectionItem[]): SelectionItem[] {
+  return items.map(item => ({
+    value: String(item.value),
+    label: String(item.label ?? item.value),
+  }));
+}
+
 function buildFieldsMetadata(fields: readonly LocalFormFieldDef[]): Record<string, WebFieldMetadata> {
   const names = new Set<string>();
   const meta = emptyDict<WebFieldMetadata>();
@@ -128,8 +138,8 @@ function buildFieldsMetadata(fields: readonly LocalFormFieldDef[]): Record<strin
       throw new Error(`createLocalFormStore unsupported field type "${String(field.type)}"`);
     }
     if (field.type === 'selection') {
-      if (!Array.isArray(field.selection) || field.selection.length === 0) {
-        throw new Error(`createLocalFormStore selection field "${name}" requires a non-empty selection`);
+      if (!Array.isArray(field.selection)) {
+        throw new Error(`createLocalFormStore selection field "${name}" requires a selection array`);
       }
     }
     names.add(name);
@@ -141,10 +151,7 @@ function buildFieldsMetadata(fields: readonly LocalFormFieldDef[]): Record<strin
       help: field.help,
     };
     if (field.type === 'selection' && field.selection) {
-      entry.selection = field.selection.map(item => ({
-        value: String(item.value),
-        label: String(item.label ?? item.value),
-      }));
+      entry.selection = normalizeSelection(field.selection);
       entry.selectionKind = 'static';
     }
     if (
@@ -165,13 +172,15 @@ export type LocalFormStore = WebModelStore<any> & {
   getField(name: string): unknown;
   setField(name: string, value: unknown): void;
   getValues(): Record<string, unknown>;
+  /** Replaces a selection field's options; mounted ChoySelectionField re-renders. */
+  setFieldSelection(name: string, items: readonly SelectionItem[]): void;
 };
 
 /**
  * Builds a store-only create draft. Not registered with createStoreByModel.
  */
 export function createLocalFormStore(options: CreateLocalFormStoreOptions): LocalFormStore {
-  const fieldsMetadata = buildFieldsMetadata(options.fields || []);
+  const fieldsMetadata = reactive(buildFieldsMetadata(options.fields || []));
   const fieldNames = Object.freeze(Object.keys(fieldsMetadata));
   const allowed = new Set(fieldNames);
 
@@ -255,6 +264,13 @@ export function createLocalFormStore(options: CreateLocalFormStoreOptions): Loca
         out[name] = values[name];
       }
       return out;
+    },
+    setFieldSelection(name: string, items: readonly SelectionItem[]): void {
+      const meta = fieldsMetadata[String(name || '').trim()];
+      if (!meta || meta.type !== 'selection') {
+        throw new Error(`createLocalFormStore field "${String(name)}" is not a selection field`);
+      }
+      meta.selection = normalizeSelection(Array.isArray(items) ? items : []);
     },
     getFieldMeta,
     getFieldsGetTranslatedString: () => undefined,
