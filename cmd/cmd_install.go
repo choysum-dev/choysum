@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	clicompat "github.com/choysum-dev/choysum/internal/cli/compat"
+	"github.com/choysum-dev/choysum/internal/cli/initialsetup"
 	clioutput "github.com/choysum-dev/choysum/internal/cli/output"
 	cliruntime "github.com/choysum-dev/choysum/internal/cli/runtime"
 	"github.com/choysum-dev/choysum/internal/esmresolver"
@@ -30,6 +31,8 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 	var noWeb bool
 	var webShellProfile string
 	var cliCompatVersion string
+	var setupMode string
+	var adminPassword string
 	cmd := &cobra.Command{
 		Use:   "install <module|module@version> [<module|module@version>...]",
 		Short: "Install Choysum Module",
@@ -57,6 +60,17 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 			resolvedCompat, err := clicompat.ResolveCLICompatVersion(cliCompatVersion, runtimeVersion, strings.TrimSpace(os.Getenv(clicompat.CLICompatVersionEnv)))
 			if err != nil {
 				env.Logger().Error("module compatibility version resolution failed", "error", err)
+				os.Exit(1)
+			}
+			setupOpts, setupErr := initialsetup.ResolveOptions(
+				setupMode,
+				adminPassword,
+				cmd.Flags().Changed("admin-password"),
+				os.Getenv(initialsetup.PasswordEnv),
+				cmd.ErrOrStderr(),
+			)
+			if setupErr != nil {
+				env.Logger().Error("module install failed", "error", setupErr)
 				os.Exit(1)
 			}
 			runtimeOptions := cliruntime.OptionsFromScope(env)
@@ -149,12 +163,20 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 					os.Exit(1)
 				}
 			}
+
+			setupScope := env.WithContext(ctx)
+			if _, err := initialsetup.Run(ctx, initialsetup.ScopeDeps(setupScope), setupOpts, cmd.OutOrStdout()); err != nil {
+				env.Logger().Error("initial setup failed; workspace stays pending, finish it at /web/setup or rerun install", "error", err)
+				os.Exit(1)
+			}
 		},
 	}
 	cmd.Flags().BoolVar(&withDemo, "with-demo", false, "Load demo data declared by package.json")
 	cmd.Flags().BoolVar(&noWeb, "no-web", false, "Skip auto-installing the web SPA shell when a module declares entryPoints.web")
 	cmd.Flags().StringVar(&webShellProfile, "web-shell-profile", string(plan.WebShellProfileStandard), plan.WebShellProfileFlagUsage)
 	cmd.Flags().StringVar(&cliCompatVersion, "cli-compat-version", "", "override CLI compatibility version for module compatibility checks")
+	cmd.Flags().StringVar(&setupMode, "setup", "", initialsetup.SetupFlagUsage)
+	cmd.Flags().StringVar(&adminPassword, "admin-password", "", initialsetup.PasswordFlagUsage)
 	return cmd
 }
 

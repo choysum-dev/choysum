@@ -300,6 +300,25 @@ func TestCommandConstructorExitHelper(t *testing.T) {
 			panic(err)
 		}
 		cmd.Run(cmd, []string{"base"})
+	case "install_run_invalid_setup":
+		cmd := newInstallCmd(func() scope.Scope {
+			return &commandExitScope{commandTestScope: commandTestScope{cfg: newCommandExitConfig("cmd-helper-engine")}}
+		})
+		if err := cmd.Flags().Set("setup", "auto"); err != nil {
+			panic(err)
+		}
+		cmd.Run(cmd, []string{"base"})
+	case "install_run_wizard_with_password":
+		cmd := newInstallCmd(func() scope.Scope {
+			return &commandExitScope{commandTestScope: commandTestScope{cfg: newCommandExitConfig("cmd-helper-engine")}}
+		})
+		if err := cmd.Flags().Set("setup", "wizard"); err != nil {
+			panic(err)
+		}
+		if err := cmd.Flags().Set("admin-password", "secret"); err != nil {
+			panic(err)
+		}
+		cmd.Run(cmd, []string{"base"})
 	case "upgrade_prerun_nil_env":
 		cmd := newUpgradeCmd(func() scope.Scope { return nil })
 		cmd.PreRun(cmd, []string{"base"})
@@ -1773,6 +1792,14 @@ func TestInstallUpgradeUninstallCommandConstruction(t *testing.T) {
 	if got := installCmd.Flags().Lookup("with-demo").Usage; !strings.Contains(got, "package.json") || strings.Contains(strings.ToLower(got), "manifest") {
 		t.Fatalf("unexpected install --with-demo usage: %q", got)
 	}
+	setupFlag := installCmd.Flags().Lookup("setup")
+	if setupFlag == nil || setupFlag.DefValue != "" || !strings.Contains(setupFlag.Usage, "complete") || !strings.Contains(setupFlag.Usage, "wizard") {
+		t.Fatalf("unexpected install --setup flag: %#v", setupFlag)
+	}
+	passwordFlag := installCmd.Flags().Lookup("admin-password")
+	if passwordFlag == nil || passwordFlag.DefValue != "" || !strings.Contains(passwordFlag.Usage, "CHOYSUM_ADMIN_PASSWORD") {
+		t.Fatalf("unexpected install --admin-password flag: %#v", passwordFlag)
+	}
 
 	upgradeCmd := newUpgradeCmd(envGetter)
 	if upgradeCmd.Use != "upgrade <module|module@version> [<module|module@version>...]" || upgradeCmd.PreRun == nil || upgradeCmd.Run == nil {
@@ -1805,6 +1832,8 @@ func TestInstallUpgradeUninstallCommandExitPaths(t *testing.T) {
 		{name: "install run executor start error", scenario: "install_run_executor_start_error", want: "Error starting compiler executor", wantCode: 1},
 		{name: "install run env.Run error", scenario: "install_run_env_run_error", want: "module install failed", wantCode: 1},
 		{name: "install run invalid web-shell-profile", scenario: "install_run_invalid_web_shell_profile", want: "invalid web-shell-profile", wantCode: 1},
+		{name: "install run invalid setup", scenario: "install_run_invalid_setup", want: "invalid --setup value", wantCode: 1},
+		{name: "install run wizard with password", scenario: "install_run_wizard_with_password", want: "--setup=wizard cannot be combined", wantCode: 1},
 		{name: "upgrade prerun nil env", scenario: "upgrade_prerun_nil_env", want: "scope is not initialized", wantCode: 1},
 		{name: "upgrade prerun missing args", scenario: "upgrade_prerun_missing_args", want: "Please specify the module name", wantCode: 1},
 		{name: "upgrade run nil env", scenario: "upgrade_run_nil_env", want: "scope is not initialized", wantCode: 1},
