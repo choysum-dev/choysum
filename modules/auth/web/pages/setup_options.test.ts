@@ -163,7 +163,7 @@ function follower(touched = false) {
   const setField: Array<[string, string]> = [];
   const state = { touched, touchedEvents: 0 };
   const f = createCurrencyFollower({
-    formData,
+    formData: () => formData,
     setField: (prop, value) => setField.push([prop, value]),
     countryCurrencies: () => ({ CN: 'CNY', DE: 'EUR' }),
     currencyTouched: () => state.touched,

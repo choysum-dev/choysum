@@ -43,7 +43,7 @@ export function countryDefaultCurrencies(options: InitialSetupOptions): Record<s
  * fires `onTouched` once, while values written by the follower itself do not.
  */
 export function createCurrencyFollower(input: {
-  formData: Record<string, unknown>;
+  formData: () => Record<string, unknown>;
   setField: (prop: 'CurrencyCode', value: string) => void;
   countryCurrencies: () => Record<string, string>;
   currencyTouched: () => boolean;
@@ -57,9 +57,10 @@ export function createCurrencyFollower(input: {
     onCountryChange(country, prev) {
       if (country === prev || input.currencyTouched()) return;
       const code = input.countryCurrencies()[String(country ?? '')];
-      if (!code || code === input.formData.CurrencyCode) return;
+      const formData = input.formData();
+      if (!code || code === formData.CurrencyCode) return;
       autoCurrency = code;
-      input.formData.CurrencyCode = code;
+      formData.CurrencyCode = code;
       input.setField('CurrencyCode', code);
     },
     onCurrencyChange(currency, prev) {

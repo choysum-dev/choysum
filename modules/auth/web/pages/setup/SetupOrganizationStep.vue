@@ -104,7 +104,7 @@ const currencyRules = computed(() => withSetupServerError(setupCurrencyRules(set
 const timezoneRules = computed(() => withSetupServerError(setupTimezoneRules(setupRuleTranslate), props.serverErrors.Timezone));
 
 const currencyFollower = createCurrencyFollower({
-  formData: props.formData,
+  formData: () => props.formData,
   setField: (prop, value) => props.store.setField(prop, value),
   countryCurrencies: () => props.countryCurrencies,
   currencyTouched: () => props.currencyTouched,
