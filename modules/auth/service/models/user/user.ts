@@ -50,6 +50,7 @@ import {
   isInitialSetupComplete,
 } from './_lifecycle_complete_initial_setup';
 import {
+  pickCompleteInitialSetupReq,
   pickRegisterUserInput,
   type CompleteInitialSetupReq,
   type CompleteInitialSetupResp,
@@ -69,6 +70,8 @@ import { evaluateRecordRuleCondition } from './_record_rule_eval';
 import { buildAuthzContext, computePermStateVersion } from './_authz_context';
 
 export type {
+  CompleteInitialSetupAdmin,
+  CompleteInitialSetupOrganization,
   CompleteInitialSetupReq,
   CompleteInitialSetupResp,
   GetInitialSetupStateReq,
@@ -408,26 +411,56 @@ export default class User extends AttachmentOwnerMixin {
   }
 
   /**
-   * Complete initial setup: update seed admin username/password and write
+   * Complete initial setup: write the main company (base.Company/ApplyInitialSetup),
+   * then update the seed admin (username, password, language, email) and write
    * auth.AppSetting `setup.completed_at`. Returns UserId; callers Login for a session.
+   * Field-level validation errors carry metadata `Field` (e.g. `Organization.CurrencyCode`).
    */
   static async CompleteInitialSetup(req: CompleteInitialSetupReq): Promise<CompleteInitialSetupResp> {
     requireSessionEnvelope(req, 'CompleteInitialSetup');
-    if (typeof req.Username !== 'string' || !req.Username.trim()) {
+    const picked = pickCompleteInitialSetupReq(req as Record<string, unknown>);
+    if (!picked.Admin) {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('CompleteInitialSetup requires an Admin object', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
+    if (!picked.Organization) {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('CompleteInitialSetup requires an Organization object', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
+    if (typeof picked.Admin.Username !== 'string' || !picked.Admin.Username.trim()) {
       throw newAuthError({
         code: AuthErrCode.VALIDATION_FAILED,
         message: _t('CompleteInitialSetup requires a username', { scope: 'service/models/user' }),
-      }).withGrpcCode(GrpcCode.InvalidArgument);
+      })
+        .withGrpcCode(GrpcCode.InvalidArgument)
+        .withMetadata({ Field: 'Admin.Username' });
     }
-    if (typeof req.Password !== 'string' || req.Password.length === 0) {
+    if (typeof picked.Admin.Password !== 'string' || picked.Admin.Password.length === 0) {
       throw newAuthError({
         code: AuthErrCode.VALIDATION_FAILED,
         message: _t('CompleteInitialSetup requires a password string', { scope: 'service/models/user' }),
-      }).withGrpcCode(GrpcCode.InvalidArgument);
+      })
+        .withGrpcCode(GrpcCode.InvalidArgument)
+        .withMetadata({ Field: 'Admin.Password' });
     }
     return await completeInitialSetupForUser(this, {
-      Username: req.Username,
-      Password: req.Password,
+      Admin: {
+        Username: picked.Admin.Username,
+        Password: picked.Admin.Password,
+        LanguageCode: picked.Admin.LanguageCode ?? '',
+        Email: picked.Admin.Email,
+      },
+      Organization: {
+        Name: picked.Organization.Name ?? '',
+        CountryCode: picked.Organization.CountryCode,
+        CurrencyCode: picked.Organization.CurrencyCode ?? '',
+        Timezone: picked.Organization.Timezone ?? '',
+        LanguageCode: picked.Organization.LanguageCode ?? '',
+      },
     });
   }
 

@@ -46,18 +46,79 @@ export type RegisterResp = {
   UserId: string;
 };
 
+/** Seed-admin section of CompleteInitialSetup. */
+export type CompleteInitialSetupAdmin = {
+  Username: string;
+  /** Client-hashed password (same envelope as Login / Register). */
+  Password: string;
+  /** Admin UI language (POSIX code of an active base.Language). */
+  LanguageCode: string;
+  /** Optional; empty or omitted clears the seed placeholder email. */
+  Email?: string;
+};
+
+/** Organization section of CompleteInitialSetup; written by base.Company/ApplyInitialSetup. */
+export type CompleteInitialSetupOrganization = {
+  Name: string;
+  CountryCode?: string;
+  CurrencyCode: string;
+  /** Business timezone (IANA) written to Company.Timezone. */
+  Timezone: string;
+  LanguageCode: string;
+};
+
 /**
- * First-run setup: replace seed admin credentials and mark SetupComplete.
- * Result is `{ UserId }` only; callers Login for a session.
+ * First-run setup: replace seed admin credentials, write the main company,
+ * and mark SetupComplete. Result is `{ UserId }` only; callers Login for a session.
  */
 export type CompleteInitialSetupReq = {
-  Username: string;
-  Password: string;
+  Admin: CompleteInitialSetupAdmin;
+  Organization: CompleteInitialSetupOrganization;
 };
 
 export type CompleteInitialSetupResp = {
   UserId: string;
 };
+
+function pickString(src: Record<string, unknown>, key: string): string | undefined {
+  const value = src[key];
+  return typeof value === 'string' ? value : undefined;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+}
+
+/**
+ * Whitelist CompleteInitialSetup sections; unknown keys and non-string values are dropped.
+ * Returns null for a section that is missing or not an object.
+ */
+export function pickCompleteInitialSetupReq(req: Record<string, unknown>): {
+  Admin: Partial<CompleteInitialSetupAdmin> | null;
+  Organization: Partial<CompleteInitialSetupOrganization> | null;
+} {
+  const admin = asRecord(req.Admin);
+  const org = asRecord(req.Organization);
+  return {
+    Admin: admin
+      ? {
+          Username: pickString(admin, 'Username'),
+          Password: pickString(admin, 'Password'),
+          LanguageCode: pickString(admin, 'LanguageCode'),
+          Email: pickString(admin, 'Email'),
+        }
+      : null,
+    Organization: org
+      ? {
+          Name: pickString(org, 'Name'),
+          CountryCode: pickString(org, 'CountryCode'),
+          CurrencyCode: pickString(org, 'CurrencyCode'),
+          Timezone: pickString(org, 'Timezone'),
+          LanguageCode: pickString(org, 'LanguageCode'),
+        }
+      : null,
+  };
+}
 
 /**
  * Anonymous setup probe for FE routing. Empty payload; Complete mirrors

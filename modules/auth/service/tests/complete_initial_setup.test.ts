@@ -9,8 +9,12 @@ import User from '@/auth/service/models/user/user';
 import { AuthErrCode } from '@/auth/service/error';
 import { SETUP_COMPLETED_AT_KEY } from '@/auth/service/models/user/setup_completed_at_key';
 import type MetaModelData from '@/meta/service/models/model_data';
+import type CompanyModel from '@/base/service/models/company';
+import type CurrencyModel from '@/base/service/models/currency';
 
 const MetaModelDataService = createServiceByModel<typeof MetaModelData>('meta.MetaModelData');
+const Company = createServiceByModel<typeof CompanyModel>('base.Company');
+const Currency = createServiceByModel<typeof CurrencyModel>('base.Currency');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -73,8 +77,41 @@ function setupAllowlistForCompleteInitialSetup(): void {
       'auth.Session:write',
       'Session:read',
       'Session:write',
+      'base.Company:read',
+      'base.Company:write',
+      'Company:read',
+      'Company:write',
+      'base.Currency:read',
+      'base.Currency:write',
+      'Currency:read',
+      'Currency:write',
+      'base.Country:read',
+      'Country:read',
+      'base.Language:read',
+      'Language:read',
     ],
   });
+}
+
+function setupReq(patch?: { Admin?: Record<string, unknown>; Organization?: Record<string, unknown> }): any {
+  return {
+    Admin: { Username: 'admin', Password: 'password-123', LanguageCode: 'zh_CN', ...(patch?.Admin || {}) },
+    Organization: {
+      Name: 'Main Company',
+      CurrencyCode: 'CNY',
+      Timezone: 'Asia/Shanghai',
+      LanguageCode: 'zh_CN',
+      ...(patch?.Organization || {}),
+    },
+  };
+}
+
+async function browseBypass(model: any, id: string, fields: string[]): Promise<any> {
+  return await withModelContext(
+    {} as any,
+    async () => withPermissionGraphBypass(async () => model.Browse(id, fields as any)),
+    { merge: false }
+  );
 }
 
 async function clearSetupCompletedAt(): Promise<void> {
@@ -129,17 +166,39 @@ test('CompleteInitialSetup: updates seed admin and writes setup.completed_at', a
     ) || ''
   );
 
+  const companyId = String(
+    (await withModelContext({} as any, async () => MetaModelDataService.Ref('base.company_main'), { merge: false })) || ''
+  ).trim();
+  const [usdBefore] = (await withModelContext(
+    {} as any,
+    async () => withPermissionGraphBypass(async () => Currency.Search(['Code', '=', 'USD'] as any, { fields: ['Id', 'IsActive'] } as any)),
+    { merge: false }
+  )) as any[];
+  expect(usdBefore.IsActive).toBe(false);
+
   // Keep Username=admin so the shared unit DB still resolves the bootstrap user by name.
   const result = await withModelContext(
     {} as any,
     async () =>
-      User.CompleteInitialSetup({
-        Username: 'admin',
-        Password: 'password-123',
-      }),
+      User.CompleteInitialSetup(
+        setupReq({
+          Admin: { Email: 'boss@acme.io', LanguageCode: 'en_US' },
+          Organization: { Name: 'Acme Ltd', CountryCode: 'US', CurrencyCode: 'USD', Timezone: 'America/New_York' },
+        })
+      ),
     { merge: false }
   );
   expect(String(result.UserId || '')).toBe(adminId);
+
+  const usdAfter = await browseBypass(Currency, String(usdBefore.Id), ['Id', 'IsActive']);
+  expect(usdAfter.IsActive).toBe(true);
+  const company = await browseBypass(Company, companyId, ['Id', 'Name', 'Timezone', 'CurrencyId']);
+  expect(String(company.Name)).toBe('Acme Ltd');
+  expect(String(company.Timezone)).toBe('America/New_York');
+  expect(String(company.CurrencyId?.Id ?? company.CurrencyId)).toBe(String(usdBefore.Id));
+  const adminRow = await browseBypass(User, adminId, ['Id', 'Email', 'LanguageId']);
+  expect(String(adminRow.Email)).toBe('boss@acme.io');
+  expect(Boolean(adminRow.LanguageId)).toBe(true);
 
   const after = await withModelContext(
     {} as any,
@@ -166,10 +225,7 @@ test('CompleteInitialSetup: updates seed admin and writes setup.completed_at', a
       withModelContext(
         {} as any,
         async () =>
-          User.CompleteInitialSetup({
-            Username: 'admin',
-            Password: 'password-456',
-          }),
+          User.CompleteInitialSetup(setupReq({ Admin: { Password: 'password-456' } })),
         { merge: false }
       ),
     AuthErrCode.INITIAL_SETUP_ALREADY_COMPLETE
@@ -227,7 +283,7 @@ test('CompleteInitialSetup: rejects invalid envelope fields', async () => {
     () =>
       withModelContext(
         {} as any,
-        async () => User.CompleteInitialSetup({ Username: '   ', Password: 'x' } as any),
+        async () => User.CompleteInitialSetup(setupReq({ Admin: { Username: '   ', Password: 'x' } })),
         { merge: false }
       ),
     AuthErrCode.VALIDATION_FAILED
@@ -236,7 +292,7 @@ test('CompleteInitialSetup: rejects invalid envelope fields', async () => {
     () =>
       withModelContext(
         {} as any,
-        async () => User.CompleteInitialSetup({ Username: 'admin', Password: '' } as any),
+        async () => User.CompleteInitialSetup(setupReq({ Admin: { Password: '' } })),
         { merge: false }
       ),
     AuthErrCode.VALIDATION_FAILED
@@ -271,10 +327,8 @@ test('CompleteInitialSetup: claims over a blank setup.completed_at row', async (
   const result = await withModelContext(
     {} as any,
     async () =>
-      User.CompleteInitialSetup({
-        Username: 'admin',
-        Password: 'password-blank-claim',
-      }),
+      // Restores bootstrap-like org values and clears the email for later tests.
+      User.CompleteInitialSetup(setupReq({ Admin: { Password: 'password-blank-claim', Email: '' } })),
     { merge: false }
   );
   expect(String(result.UserId || '')).toBe(adminId);
@@ -287,6 +341,8 @@ test('CompleteInitialSetup: claims over a blank setup.completed_at row', async (
     )) || ''
   ).trim();
   expect(completedAt === '').toBe(false);
+  const adminRow = await browseBypass(User, adminId, ['Id', 'Email']);
+  expect(adminRow.Email == null || adminRow.Email === '').toBe(true);
 
   await clearSetupCompletedAt();
 });
