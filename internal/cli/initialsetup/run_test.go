@@ -127,6 +127,7 @@ func TestRunEmptyAndReadySkipWithoutCalls(t *testing.T) {
 		{name: "empty silent", phase: provision.PhaseEmpty},
 		{name: "empty with options", phase: provision.PhaseEmpty, opts: Options{Mode: ModeComplete}, want: "auth is not installed"},
 		{name: "ready silent", phase: provision.PhaseReady, opts: Options{Mode: ModeComplete}},
+		{name: "ready with wizard", phase: provision.PhaseReady, opts: Options{Mode: ModeWizard}, want: "--setup=wizard ignored"},
 		{name: "ready with password", phase: provision.PhaseReady, opts: Options{Password: "x", PasswordSource: PasswordEnvVar}, want: "admin password unchanged"},
 	}
 	for _, tc := range cases {

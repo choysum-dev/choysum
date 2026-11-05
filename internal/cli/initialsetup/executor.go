@@ -52,7 +52,12 @@ func openExecutorCaller(runtimeScope scope.Scope) (Caller, func(), error) {
 		_ = executor.Stop()
 		return nil, nil, err
 	}
-	return executorCaller{executor: executor, scope: runtimeScope}, func() { _ = executor.Stop() }, nil
+	closeCaller := func() {
+		if stopErr := executor.Stop(); stopErr != nil {
+			runtimeScope.Logger().Warn("stop setup runtime executor", "error", stopErr)
+		}
+	}
+	return executorCaller{executor: executor, scope: runtimeScope}, closeCaller, nil
 }
 
 // loadServeScripts returns the service init scripts `choysum run` would load

@@ -4,6 +4,7 @@
 package initialsetup
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -32,6 +33,7 @@ type executorTestScope struct {
 	ctx    context.Context
 	db     *gorm.DB
 	config *config.Config
+	logs   *bytes.Buffer
 }
 
 func (e *executorTestScope) Run(fn func(scope.Scope) error) error { return fn(e) }
@@ -43,13 +45,17 @@ func (e *executorTestScope) Transactor() scope.Transactor {
 func (e *executorTestScope) Session() *scope.Session { return &scope.Session{DB: e.db} }
 
 func (e *executorTestScope) WithContext(ctx context.Context) scope.Scope {
-	return &executorTestScope{ctx: ctx, db: e.db, config: e.config}
+	return &executorTestScope{ctx: ctx, db: e.db, config: e.config, logs: e.logs}
 }
 
 func (e *executorTestScope) Context() context.Context { return e.ctx }
 
 func (e *executorTestScope) Logger() *slog.Logger {
-	return slog.New(slog.NewTextHandler(io.Discard, nil))
+	var w io.Writer = io.Discard
+	if e.logs != nil {
+		w = e.logs
+	}
+	return slog.New(slog.NewTextHandler(w, nil))
 }
 
 func (e *executorTestScope) Config() *config.Config { return e.config }
@@ -74,6 +80,7 @@ func newExecutorTestScope(t *testing.T, distPath string, bundleMode string) *exe
 type fakeJsExecutor struct {
 	scripts  []*jsengine.JsScript
 	startErr error
+	stopErr  error
 	stopped  int
 	execErr  error
 	resp     *jsengine.JsResponse
@@ -95,7 +102,7 @@ func (f *fakeJsExecutor) Start() error                                  { return
 
 func (f *fakeJsExecutor) Stop() error {
 	f.stopped++
-	return nil
+	return f.stopErr
 }
 
 type planCall struct {
@@ -236,6 +243,21 @@ func TestOpenExecutorCallerStartsAndStops(t *testing.T) {
 	closeCaller()
 	if executor.stopped != 1 {
 		t.Fatalf("stopped = %d", executor.stopped)
+	}
+}
+
+func TestOpenExecutorCallerLogsStopError(t *testing.T) {
+	runtimeScope := newExecutorTestScope(t, readyBundleDist(t), "")
+	runtimeScope.logs = &bytes.Buffer{}
+	stubExecutor(t, &fakeJsExecutor{stopErr: errors.New("runtime leaked")}, nil)
+
+	_, closeCaller, err := openExecutorCaller(runtimeScope)
+	if err != nil {
+		t.Fatalf("openExecutorCaller: %v", err)
+	}
+	closeCaller()
+	if logs := runtimeScope.logs.String(); !strings.Contains(logs, "stop setup runtime executor") || !strings.Contains(logs, "runtime leaked") {
+		t.Fatalf("logs = %q", logs)
 	}
 }
 

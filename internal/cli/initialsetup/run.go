@@ -99,6 +99,9 @@ func Run(ctx context.Context, deps Deps, opts Options, out io.Writer) (Result, e
 		}
 		return Result{Outcome: OutcomeSkipped}, nil
 	case provision.PhaseReady:
+		if opts.Mode == ModeWizard {
+			_, _ = fmt.Fprintln(out, "Workspace is already set up; --setup=wizard ignored.")
+		}
 		if opts.PasswordSource != PasswordNone {
 			_, _ = fmt.Fprintln(out, "Workspace is already set up; admin password unchanged.")
 		}
