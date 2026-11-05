@@ -3,6 +3,7 @@
 
 import { defineAuthActions } from './actions';
 import { hashPasswordClient } from './utils';
+import { ChoysumError } from '../../error';
 
 type Call = { args: unknown[] };
 
@@ -353,23 +354,122 @@ test('register: rejects a response without a UserId string', async () => {
   expect(String(caught?.code || '')).toBe('REGISTRATION_FAILED');
 });
 
-test('completeInitialSetup: hashes password and marks setup complete', async () => {
+function setupInput() {
+  return {
+    Admin: { Username: '  admin  ', Password: 'secret1', LanguageCode: 'zh_CN', Email: 'owner@acme.io' },
+    Organization: {
+      Name: 'Acme',
+      CountryCode: 'CN',
+      CurrencyCode: 'CNY',
+      Timezone: 'Asia/Shanghai',
+      LanguageCode: 'zh_CN',
+    },
+  };
+}
+
+test('completeInitialSetup: hashes password, sends sections, and marks setup complete', async () => {
   const mockState = buildMockState();
   const mockHelpers = buildMockHelpers();
   mockState._recorders.CompleteInitialSetup.resolve({ UserId: 'usr_admin' });
 
   const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
-  const result = await actions.completeInitialSetup('  admin  ', 'secret1');
+  const result = await actions.completeInitialSetup(setupInput());
 
   expect(result).toEqual({ UserId: 'usr_admin' });
-  const payload = mockState._recorders.CompleteInitialSetup.calls[0].args[0] as {
-    Username: string;
-    Password: string;
-  };
-  expect(payload.Username).toBe('admin');
-  expect(payload.Password).toBe(await hashPasswordClient('secret1', 'admin'));
+  const payload = mockState._recorders.CompleteInitialSetup.calls[0].args[0] as any;
+  expect(payload.Admin.Username).toBe('admin');
+  expect(payload.Admin.Password).toBe(await hashPasswordClient('secret1', 'admin'));
+  expect(payload.Admin.LanguageCode).toBe('zh_CN');
+  expect(payload.Admin.Email).toBe('owner@acme.io');
+  expect(payload.Organization).toEqual(setupInput().Organization);
   expect(await actions.ensureSetupStateReady()).toBe(true);
   expect(mockState._recorders.GetInitialSetupState.calls.length).toBe(0);
+});
+
+test('completeInitialSetup: rethrows server errors with Field metadata unchanged', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  const serverErr = new ChoysumError({ domain: 'auth', code: 'VALIDATION_FAILED', message: 'Username is already taken' }).withMetadata({
+    Field: 'Admin.Username',
+  });
+  mockState._recorders.CompleteInitialSetup.reject(serverErr);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  let caught: any = null;
+  try {
+    await actions.completeInitialSetup(setupInput());
+  } catch (err) {
+    caught = err;
+  }
+  expect(caught).toBe(serverErr);
+  expect(caught.metadata.Field).toBe('Admin.Username');
+});
+
+test('completeInitialSetup: wraps non-Choysum failures', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState._recorders.CompleteInitialSetup.reject(new Error('rpc down'));
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  let caught: any = null;
+  try {
+    await actions.completeInitialSetup(setupInput());
+  } catch (err) {
+    caught = err;
+  }
+  expect(caught instanceof ChoysumError).toBe(true);
+  expect(String(caught?.code || '')).toBe('UNKNOWN');
+});
+
+test('getInitialSetupOptions: reads base.Company options through the injected store', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  const options = {
+    Countries: [{ Code: 'CN', Name: 'China', DefaultCurrencyCode: 'CNY' }],
+    Currencies: [{ Code: 'CNY', Name: 'Chinese Yuan' }],
+    Timezones: [{ Value: 'Asia/Shanghai', Label: 'Asia/Shanghai' }],
+    Languages: [{ Code: 'zh_CN', Name: '简体中文' }],
+    Defaults: {
+      OrganizationName: 'My Company',
+      CountryCode: 'CN',
+      CurrencyCode: 'CNY',
+      Timezone: 'Asia/Shanghai',
+      LanguageCode: 'zh_CN',
+    },
+  };
+  const requests: unknown[] = [];
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    createCompanyStore: () => ({
+      GetInitialSetupOptions: async (req: Record<string, never>) => {
+        requests.push(req);
+        return options;
+      },
+    }),
+  });
+  expect(await actions.getInitialSetupOptions()).toEqual(options);
+  expect(requests).toEqual([{}]);
+});
+
+test('getInitialSetupOptions: keeps FailedPrecondition from the setup gate', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  const gateErr = new ChoysumError({ domain: 'setupgate', code: 'FAILED_PRECONDITION', message: 'initial setup is not pending' });
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    createCompanyStore: () => ({
+      GetInitialSetupOptions: async () => {
+        throw gateErr;
+      },
+    }),
+  });
+  let caught: unknown = null;
+  try {
+    await actions.getInitialSetupOptions();
+  } catch (err) {
+    caught = err;
+  }
+  expect(caught).toBe(gateErr);
 });
 
 test('ensureSetupStateReady: does not cache a pending probe result', async () => {
@@ -435,7 +535,7 @@ test('completeInitialSetup: rejects an invalid response and clears setup cache',
 
   let caught: any;
   try {
-    await actions.completeInitialSetup('admin', 'secret1');
+    await actions.completeInitialSetup(setupInput());
   } catch (err) {
     caught = err;
   }

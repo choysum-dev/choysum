@@ -5,18 +5,60 @@ import { mount, flushPromises } from '@choysum/test-utils';
 import { setActivePinia, type Pinia } from 'pinia';
 import Setup from './Setup.vue';
 import { buildPageMountGlobal } from '@choysum/page-mount';
-import { useAuthStore } from '../stores/auth';
+import { useAuthStore, type CompleteInitialSetupInput, type InitialSetupOptions } from '../stores/auth';
 import { ChoysumError } from '../error';
+import { clearSetupDraft, saveSetupDraft } from './setup_draft';
+
+function setupOptions(): InitialSetupOptions {
+  return {
+    Countries: [
+      { Code: 'CN', Name: 'China', DefaultCurrencyCode: 'CNY' },
+      { Code: 'US', Name: 'United States', DefaultCurrencyCode: 'USD' },
+    ],
+    Currencies: [
+      { Code: 'CNY', Name: 'Chinese Yuan' },
+      { Code: 'USD', Name: 'US Dollar' },
+    ],
+    Timezones: [
+      { Value: 'Asia/Shanghai', Label: 'Asia/Shanghai' },
+      { Value: 'UTC', Label: 'UTC' },
+    ],
+    Languages: [
+      { Code: 'en_US', Name: 'English' },
+      { Code: 'zh_CN', Name: '简体中文' },
+    ],
+    Defaults: {
+      OrganizationName: 'My Company',
+      CountryCode: 'CN',
+      CurrencyCode: 'CNY',
+      Timezone: 'Asia/Shanghai',
+      LanguageCode: 'en_US',
+    },
+  };
+}
+
+type SetupStoreStub = {
+  completeInitialSetup: (req: CompleteInitialSetupInput) => Promise<unknown>;
+  login: (username: string, password: string) => Promise<unknown>;
+  ensureSetupStateReady: () => Promise<boolean>;
+  getInitialSetupOptions: () => Promise<InitialSetupOptions>;
+};
 
 async function mountSetup(opts?: {
-  path?: string;
   query?: Record<string, string>;
-  failSetup?: string;
+  failSetup?: ChoysumError;
   failLogin?: string;
+  failOptions?: ChoysumError;
+  setupReady?: boolean;
+  draft?: Record<string, unknown>;
 }) {
+  clearSetupDraft();
+  if (opts?.draft) saveSetupDraft(opts.draft);
   const replaces: unknown[] = [];
+  const requests: CompleteInitialSetupInput[] = [];
+  const logins: Array<[string, string]> = [];
   const global = buildPageMountGlobal({
-    route: { path: opts?.path || '/setup', query: opts?.query || {} },
+    route: { path: '/setup', query: opts?.query || {} },
     router: {
       replace: (to: unknown) => {
         replaces.push(to);
@@ -26,25 +68,27 @@ async function mountSetup(opts?: {
   });
   const pinia = global.plugins[0] as Pinia;
   setActivePinia(pinia);
-  const store = useAuthStore() as {
-    completeInitialSetup: (username: string, password: string) => Promise<unknown>;
-    login: (username: string, password: string) => Promise<unknown>;
+  const store = useAuthStore() as unknown as SetupStoreStub;
+  store.getInitialSetupOptions = async () => {
+    if (opts?.failOptions) throw opts.failOptions;
+    return setupOptions();
   };
-  if (opts?.failSetup) {
-    const message = opts.failSetup;
-    store.completeInitialSetup = async () => {
-      throw new ChoysumError({ domain: 'auth', code: 'VALIDATION_FAILED', message });
-    };
-  }
-  if (opts?.failLogin) {
-    const message = opts.failLogin;
-    store.login = async () => {
-      throw new ChoysumError({ domain: 'auth', code: 'INVALID_CREDENTIALS', message });
-    };
-  }
+  store.ensureSetupStateReady = async () => !!opts?.setupReady;
+  store.completeInitialSetup = async req => {
+    requests.push(req);
+    if (opts?.failSetup) throw opts.failSetup;
+    return { UserId: 'usr_admin' };
+  };
+  store.login = async (username, password) => {
+    logins.push([username, password]);
+    if (opts?.failLogin) {
+      throw new ChoysumError({ domain: 'auth', code: 'INVALID_CREDENTIALS', message: opts.failLogin });
+    }
+    return true;
+  };
   const wrapper = mount(Setup as any, { global });
-  await flushPromises();
-  return { wrapper, replaces };
+  for (let i = 0; i < 4; i++) await flushPromises();
+  return { wrapper, replaces, requests, logins };
 }
 
 function fieldInput(wrapper: { find: (sel: string) => any }, selector: string) {
@@ -84,47 +128,140 @@ async function afterSubmit() {
   for (let i = 0; i < 8; i++) await flushPromises();
 }
 
-async function fillValidCredentials(wrapper: { find: (sel: string) => any }) {
+async function fillAdmin(wrapper: { find: (sel: string) => any }, email = '') {
   await fillField(wrapper, '.setup-username', 'admin');
   await fillField(wrapper, '.setup-password', 'secret1');
   await fillField(wrapper, '.setup-confirm', 'secret1');
+  if (email) await fillField(wrapper, '.setup-email', email);
 }
 
-test('Setup.vue mounts under choysumMount and shows admin credential fields', async () => {
+async function advanceToReview(wrapper: { find: (sel: string) => any }, email = '') {
+  await fillAdmin(wrapper, email);
+  submitForm(wrapper);
+  await afterSubmit();
+  submitForm(wrapper);
+  await afterSubmit();
+}
+
+function stepItems(wrapper: { find: (sel: string) => any }): HTMLElement[] {
+  const root = wrapper.find('[data-anchor="choy.stepper"]').element as HTMLElement;
+  return Array.from(root.querySelectorAll('[data-step]')) as HTMLElement[];
+}
+
+function activeStep(wrapper: { find: (sel: string) => any }): string {
+  const active = stepItems(wrapper).find(el => el.getAttribute('data-state') === 'active');
+  return active?.getAttribute('data-step') || '';
+}
+
+test('Setup.vue mounts with a three-step stepper and admin fields', async () => {
   const { wrapper } = await mountSetup();
+  expect(wrapper.find('[data-anchor="choy.stepper"]').exists()).toBe(true);
+  expect(stepItems(wrapper).length).toBe(3);
+  expect(activeStep(wrapper)).toBe('admin');
   expect(fieldInput(wrapper, '.setup-username').exists()).toBe(true);
   expect(fieldInput(wrapper, '.setup-password').exists()).toBe(true);
   expect(fieldInput(wrapper, '.setup-confirm').exists()).toBe(true);
+  expect(fieldInput(wrapper, '.setup-email').exists()).toBe(true);
   expect(wrapper.text().includes('Initial Setup') || wrapper.text().includes('初始设置')).toBe(true);
   wrapper.unmount();
 });
 
-test('Setup.vue: empty submit keeps the form and shows field errors', async () => {
-  const { wrapper, replaces } = await mountSetup();
+test('Setup.vue: empty Next stays on the admin step and shows field errors', async () => {
+  const { wrapper, replaces, requests } = await mountSetup();
   submitForm(wrapper);
   await afterSubmit();
-  expect(
-    wrapper.text().includes('Enter username') ||
-      wrapper.find('.text-destructive').exists() ||
-      wrapper.find('.text-danger').exists(),
-  ).toBe(true);
+  expect(activeStep(wrapper)).toBe('admin');
+  expect(wrapper.text().includes('Enter username') || wrapper.find('.text-destructive').exists()).toBe(true);
+  expect(requests).toEqual([]);
   expect(replaces).toEqual([]);
   wrapper.unmount();
 });
 
-test('Setup.vue: valid submit completes setup, logs in, and redirects', async () => {
-  const { wrapper, replaces } = await mountSetup({ query: { redirect: '/auth/users' } });
-  await fillValidCredentials(wrapper);
+test('Setup.vue: invalid optional email blocks the admin step', async () => {
+  const { wrapper } = await mountSetup();
+  await fillAdmin(wrapper, 'not-an-email');
+  submitForm(wrapper);
+  await afterSubmit();
+  expect(activeStep(wrapper)).toBe('admin');
+  expect(wrapper.text().includes('Enter a valid email address') || wrapper.text().includes('有效')).toBe(true);
+  wrapper.unmount();
+});
+
+test('Setup.vue: Next walks admin → organization → review, Back returns', async () => {
+  const { wrapper } = await mountSetup();
+  await fillAdmin(wrapper);
+  submitForm(wrapper);
+  await afterSubmit();
+  expect(activeStep(wrapper)).toBe('organization');
+  expect(fieldInput(wrapper, '.setup-org-name').exists()).toBe(true);
+  expect(wrapper.find('.setup-currency').exists()).toBe(true);
+  expect(wrapper.find('.setup-timezone').exists()).toBe(true);
+
+  submitForm(wrapper);
+  await afterSubmit();
+  expect(activeStep(wrapper)).toBe('review');
+  expect(wrapper.find('.setup-review-step').exists()).toBe(true);
+  expect(wrapper.text().includes('My Company')).toBe(true);
+  expect(wrapper.text().includes('CNY · Chinese Yuan')).toBe(true);
+  expect(wrapper.find('.setup-review-currency-note').exists()).toBe(true);
+
+  const backEl = wrapper.find('.setup-back').element as HTMLElement;
+  let backClicks = 0;
+  backEl.addEventListener('click', () => backClicks++);
+  backEl.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+  await afterSubmit();
+  expect(backClicks).toBe(1);
+  expect(activeStep(wrapper)).toBe('organization');
+  wrapper.unmount();
+});
+
+test('Setup.vue: review submit sends sectioned request, logs in, and redirects', async () => {
+  const { wrapper, replaces, requests, logins } = await mountSetup({ query: { redirect: '/auth/users' } });
+  await advanceToReview(wrapper, 'owner@acme.io');
   submitForm(wrapper);
   await afterSubmit();
   expect(wrapper.find('.setup-error').exists()).toBe(false);
+  expect(requests.length).toBe(1);
+  const req = requests[0];
+  expect(req.Admin.Username).toBe('admin');
+  expect(req.Admin.Password).toBe('secret1');
+  expect(req.Admin.Email).toBe('owner@acme.io');
+  expect(req.Organization).toEqual({
+    Name: 'My Company',
+    CountryCode: 'CN',
+    CurrencyCode: 'CNY',
+    Timezone: req.Organization.Timezone,
+    LanguageCode: req.Organization.LanguageCode,
+  });
+  // Browser timezone wins when listed; otherwise the company default.
+  expect(['Asia/Shanghai', 'UTC'].includes(req.Organization.Timezone)).toBe(true);
+  expect(['en_US', 'zh_CN'].includes(req.Organization.LanguageCode)).toBe(true);
+  expect(logins).toEqual([['admin', 'secret1']]);
   expect(replaces).toEqual(['/auth/users']);
   wrapper.unmount();
 });
 
-test('Setup.vue: setup RPC failure stays on the page with an error', async () => {
-  const { wrapper, replaces } = await mountSetup({ failSetup: 'already done' });
-  await fillValidCredentials(wrapper);
+test('Setup.vue: server field error jumps to its step without a header error', async () => {
+  const failSetup = new ChoysumError({
+    domain: 'auth',
+    code: 'VALIDATION_FAILED',
+    message: 'Username is already taken',
+  }).withMetadata({ Field: 'Admin.Username' });
+  const { wrapper, replaces } = await mountSetup({ failSetup });
+  await advanceToReview(wrapper);
+  submitForm(wrapper);
+  await afterSubmit();
+  expect(activeStep(wrapper)).toBe('admin');
+  expect(wrapper.find('.setup-error').exists()).toBe(false);
+  expect(wrapper.text().includes('Username is already taken')).toBe(true);
+  expect(replaces).toEqual([]);
+  wrapper.unmount();
+});
+
+test('Setup.vue: setup RPC failure without a field shows the header error', async () => {
+  const failSetup = new ChoysumError({ domain: 'auth', code: 'UNKNOWN', message: 'already done' });
+  const { wrapper, replaces } = await mountSetup({ failSetup });
+  await advanceToReview(wrapper);
   submitForm(wrapper);
   await afterSubmit();
   const alert = wrapper.find('.setup-error');
@@ -132,7 +269,6 @@ test('Setup.vue: setup RPC failure stays on the page with an error', async () =>
   expect(wrapper.text().includes('already done')).toBe(true);
   expect(replaces).toEqual([]);
   const close = (alert.element as HTMLElement).querySelector('button');
-  expect(!!close).toBe(true);
   close!.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
   await flushPromises();
   expect(wrapper.find('.setup-error').exists()).toBe(false);
@@ -140,54 +276,66 @@ test('Setup.vue: setup RPC failure stays on the page with an error', async () =>
 });
 
 test('Setup.vue: setup already complete elsewhere navigates to login', async () => {
-  const replaces: unknown[] = [];
-  const global = buildPageMountGlobal({
-    route: { path: '/setup', query: { redirect: '/auth/users' } },
-    router: {
-      replace: (to: unknown) => {
-        replaces.push(to);
-        return Promise.resolve(to);
-      },
-    },
+  const failSetup = new ChoysumError({
+    domain: 'auth',
+    code: 'INITIAL_SETUP_ALREADY_COMPLETE',
+    message: 'already done',
   });
-  const pinia = global.plugins[0] as Pinia;
-  setActivePinia(pinia);
-  const store = useAuthStore() as {
-    completeInitialSetup: (username: string, password: string) => Promise<unknown>;
-    ensureSetupStateReady: () => Promise<boolean>;
-  };
-  store.completeInitialSetup = async () => {
-    throw new ChoysumError({
-      domain: 'auth',
-      code: 'INITIAL_SETUP_ALREADY_COMPLETE',
-      message: 'already done',
-    });
-  };
-  store.ensureSetupStateReady = async () => true;
-  const wrapper = mount(Setup as any, { global });
-  await flushPromises();
-  await fillValidCredentials(wrapper);
+  const { wrapper, replaces } = await mountSetup({
+    query: { redirect: '/auth/users' },
+    failSetup,
+    setupReady: true,
+  });
+  await advanceToReview(wrapper);
+  submitForm(wrapper);
+  await afterSubmit();
+  expect(replaces[replaces.length - 1]).toEqual({ name: 'login', query: { redirect: '/auth/users' } });
+  wrapper.unmount();
+});
+
+test('Setup.vue: login failure after setup goes to login with setup=done', async () => {
+  const { wrapper, replaces } = await mountSetup({ query: { redirect: '/auth/users' }, failLogin: 'bad login' });
+  await advanceToReview(wrapper);
   submitForm(wrapper);
   await afterSubmit();
   expect(replaces[replaces.length - 1]).toEqual({
     name: 'login',
-    query: { redirect: '/auth/users' },
+    query: { redirect: '/auth/users', setup: 'done' },
   });
   wrapper.unmount();
 });
 
-test('Setup.vue: login failure after setup navigates to login', async () => {
-  const { wrapper, replaces } = await mountSetup({
-    query: { redirect: '/auth/users' },
-    failLogin: 'bad login',
-  });
-  await fillValidCredentials(wrapper);
-  submitForm(wrapper);
-  await afterSubmit();
-  expect(replaces.length).toBeGreaterThan(0);
-  expect(replaces[replaces.length - 1]).toEqual({
-    name: 'login',
-    query: { redirect: '/auth/users' },
-  });
+test('Setup.vue: options failure shows a retry prompt', async () => {
+  const failOptions = new ChoysumError({ domain: 'base', code: 'UNKNOWN', message: 'options down' });
+  const { wrapper, replaces } = await mountSetup({ failOptions });
+  expect(wrapper.find('.setup-options-error').exists()).toBe(true);
+  expect(wrapper.text().includes('options down')).toBe(true);
+  expect(wrapper.find('.setup-options-retry').exists()).toBe(true);
+  expect(wrapper.find('form').exists()).toBe(false);
+  expect(replaces).toEqual([]);
   wrapper.unmount();
+});
+
+test('Setup.vue: options rejected after setup completed navigates to login', async () => {
+  const failOptions = new ChoysumError({
+    domain: 'setupgate',
+    code: 'FAILED_PRECONDITION',
+    message: 'initial setup is not pending',
+  });
+  const { wrapper, replaces } = await mountSetup({ failOptions, setupReady: true });
+  expect(replaces[replaces.length - 1]).toEqual({ name: 'login', query: {} });
+  wrapper.unmount();
+});
+
+test('Setup.vue: restores non-secret draft values on mount', async () => {
+  const { wrapper } = await mountSetup({ draft: { Username: 'owner', Password: 'secret1', OrgName: 'Acme' } });
+  const username = fieldInput(wrapper, '.setup-username').element as HTMLInputElement;
+  const password = fieldInput(wrapper, '.setup-password').element as HTMLInputElement;
+  if (typeof sessionStorage !== 'undefined') {
+    expect(username.value).toBe('owner');
+  }
+  expect(password.value).toBe('');
+  expect(activeStep(wrapper)).toBe('admin');
+  wrapper.unmount();
+  clearSetupDraft();
 });
