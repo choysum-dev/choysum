@@ -96,77 +96,77 @@ msgctxt "base.model.City.fields"
 msgid "State/Province"
 msgstr "州/省"
 
-#: service/models/company.ts:89
+#: service/models/company.ts:105
 msgctxt "base.model.Company.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/company.ts:115
+#: service/models/company.ts:131
 msgctxt "base.model.Company.fields"
 msgid "Address"
 msgstr "地址"
 
-#: service/models/company.ts:77
+#: service/models/company.ts:93
 msgctxt "base.model.Company.fields"
 msgid "Base Currency"
 msgstr "本位币"
 
-#: service/models/company.ts:35
+#: service/models/company.ts:51
 msgctxt "base.model.Company.fields"
 msgid "Code"
 msgstr "编码"
 
-#: service/models/company.ts:107
+#: service/models/company.ts:123
 msgctxt "base.model.Company.fields"
 msgid "Country"
 msgstr "国家/地区"
 
-#: service/models/company.ts:65
+#: service/models/company.ts:81
 msgctxt "base.model.Company.fields"
 msgid "IANA timezone for business dates and scheduled jobs in this company."
 msgstr "该公司业务日期与计划任务使用的 IANA 时区。"
 
-#: service/models/company.ts:98
+#: service/models/company.ts:114
 msgctxt "base.model.Company.fields"
 msgid "Language"
 msgstr "语言"
 
-#: service/models/company.ts:42
+#: service/models/company.ts:58
 msgctxt "base.model.Company.fields"
 msgid "Logo"
 msgstr "徽标"
 
-#: service/models/company.ts:25
+#: service/models/company.ts:41
 msgctxt "base.model.Company.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/company.ts:43
+#: service/models/company.ts:59
 msgctxt "base.model.Company.fields"
 msgid "Optional company logo image."
 msgstr "可选的公司徽标图片。"
 
-#: service/models/company.ts:52
+#: service/models/company.ts:68
 msgctxt "base.model.Company.fields"
 msgid "Parent Company"
 msgstr "上级公司"
 
-#: service/models/company.ts:53
+#: service/models/company.ts:69
 msgctxt "base.model.Company.fields"
 msgid "Parent in the company tree; cannot be self or a descendant."
 msgstr "公司树中的上级公司；不能是自身或下级。"
 
-#: service/models/company.ts:78
+#: service/models/company.ts:94
 msgctxt "base.model.Company.fields"
 msgid "Reporting currency; foreign amounts convert to this currency."
 msgstr "报表货币；外币金额会换算到此货币。"
 
-#: service/models/company.ts:36
+#: service/models/company.ts:52
 msgctxt "base.model.Company.fields"
 msgid "Short unique code used in references and integrations."
 msgstr "用于引用与集成的短唯一编码。"
 
-#: service/models/company.ts:64
+#: service/models/company.ts:80
 msgctxt "base.model.Company.fields"
 msgid "Time Zone"
 msgstr "时区"
@@ -831,40 +831,80 @@ msgctxt "service/models/city"
 msgid "State.CountryId must equal City.CountryId"
 msgstr "State.CountryId 必须与 City.CountryId 相同"
 
-#: service/models/company.ts:122
+#: service/models/company.ts:138
 msgctxt "service/models/company"
 msgid "%s is required"
 msgstr "%s 为必填项"
 
-#: service/models/company.ts:135
+#: service/models/_company_initial_setup.ts:200
+msgctxt "service/models/company"
+msgid "Base currency is required"
+msgstr "本位币不能为空"
+
+#: service/models/company.ts:151
 msgctxt "service/models/company"
 msgid "Company Code must be unique"
 msgstr "公司编码必须唯一"
 
-#: service/models/company.ts:144
+#: service/models/_company_initial_setup.ts:267
+msgctxt "service/models/company"
+msgid "Company not found: %s"
+msgstr "未找到公司：%s"
+
+#: service/models/_company_initial_setup.ts:259
+msgctxt "service/models/company"
+msgid "CompanyId is required"
+msgstr "CompanyId 不能为空"
+
+#: service/models/company.ts:160
 msgctxt "service/models/company"
 msgid "CurrencyId is required"
 msgstr "CurrencyId 为必填项"
 
-#: service/models/company.ts:155
+#: service/models/_company_initial_setup.ts:225 service/models/company.ts:171
 msgctxt "service/models/company"
 msgid "Invalid IANA timezone: %s"
 msgstr "无效的 IANA 时区：%s"
 
-#: service/models/company.ts:178
+#: service/models/_company_initial_setup.ts:237
+msgctxt "service/models/company"
+msgid "Invalid or inactive language: %s"
+msgstr "语言无效或未启用：%s"
+
+#: service/models/_company_initial_setup.ts:192
+msgctxt "service/models/company"
+msgid "Organization name is required"
+msgstr "组织名称不能为空"
+
+#: service/models/_company_initial_setup.ts:195
+msgctxt "service/models/company"
+msgid "Organization name is too long"
+msgstr "组织名称过长"
+
+#: service/models/company.ts:194
 msgctxt "service/models/company"
 msgid "ParentId cannot be a descendant of the company"
 msgstr "ParentId 不能是该公司的下级公司"
 
-#: service/models/company.ts:165
+#: service/models/company.ts:181
 msgctxt "service/models/company"
 msgid "ParentId cannot be self"
 msgstr "ParentId 不能指向自身"
 
-#: service/models/company.ts:152
+#: service/models/company.ts:168
 msgctxt "service/models/company"
 msgid "Timezone is required"
 msgstr "时区为必填项"
+
+#: service/models/_company_initial_setup.ts:207
+msgctxt "service/models/company"
+msgid "Unknown currency: %s"
+msgstr "未知币种：%s"
+
+#: service/models/_company_initial_setup.ts:218
+msgctxt "service/models/company"
+msgid "Unknown or inactive country: %s"
+msgstr "国家/地区未知或未启用：%s"
 
 #: service/models/country.ts:99
 msgctxt "service/models/country"
@@ -1056,7 +1096,7 @@ msgctxt "web/menu/menus"
 msgid "Exchange Rate Management"
 msgstr "汇率管理"
 
-#: web/menu/menus.ts:31
+#: web/menu/menus.ts:37
 msgctxt "web/menu/menus"
 msgid "Field Defaults"
 msgstr "字段默认值"
@@ -1071,12 +1111,12 @@ msgctxt "web/menu/menus"
 msgid "Master Data"
 msgstr "基础数据"
 
-#: web/menu/menus.ts:37
+#: web/menu/menus.ts:19
 msgctxt "web/menu/menus"
 msgid "Parameters"
 msgstr "参数"
 
-#: web/menu/menus.ts:25
+#: web/menu/menus.ts:31
 msgctxt "web/menu/menus"
 msgid "Property Definitions"
 msgstr "属性定义"
@@ -1096,7 +1136,7 @@ msgctxt "web/menu/menus"
 msgid "State Management"
 msgstr "州/省管理"
 
-#: web/menu/menus.ts:19
+#: web/menu/menus.ts:25
 msgctxt "web/menu/menus"
 msgid "Translations"
 msgstr "翻译"

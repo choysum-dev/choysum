@@ -13,6 +13,22 @@ import Country from './country';
 import Currency from './currency';
 import Language from './language';
 import { fail, mapNormalizationToBase, assertRequiredTranslatedText } from './_normalizers';
+import {
+  applyInitialSetup,
+  getInitialSetupOptions,
+  type ApplyInitialSetupReq,
+  type ApplyInitialSetupResp,
+  type GetInitialSetupOptionsReq,
+  type GetInitialSetupOptionsResp,
+} from './_company_initial_setup';
+
+export type {
+  ApplyInitialSetupReq,
+  ApplyInitialSetupResp,
+  GetInitialSetupOptionsReq,
+  GetInitialSetupOptionsResp,
+  InitialSetupOrganization,
+} from './_company_initial_setup';
 
 @Model('Company', { parentField: 'ParentId' })
 export default class Company extends BaseModel {
@@ -194,5 +210,25 @@ export default class Company extends BaseModel {
     if (!isCreate && currentId) {
       await Company.validateParentUpdate(currentId, this.ParentId);
     }
+  }
+
+  /**
+   * Choices and defaults for the first-run organization step: active countries,
+   * all currencies (inactive included), IANA timezones, active languages, and
+   * the seed main company's current values. Read-only.
+   * gRPC: base.Company/GetInitialSetupOptions (setupgate admits it only while setup is pending).
+   */
+  static async GetInitialSetupOptions(_req: GetInitialSetupOptionsReq): Promise<GetInitialSetupOptionsResp> {
+    return await getInitialSetupOptions(this);
+  }
+
+  /**
+   * Apply the first-run organization to CompanyId: activates the chosen currency,
+   * replaces Name translations, and sets currency, business timezone, language,
+   * and country. Field-level validation errors carry metadata `Field`.
+   * gRPC: base.Company/ApplyInitialSetup (regular method access; admins only).
+   */
+  static async ApplyInitialSetup(req: ApplyInitialSetupReq): Promise<ApplyInitialSetupResp> {
+    return await applyInitialSetup(this, req);
   }
 }
