@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <ChoyPage :loading="loading" fill-height class="flex min-h-0 w-full flex-1 flex-col">
     <div class="setup-panel flex min-h-0 w-full flex-1 flex-col overflow-y-auto" data-testid="setup-panel">
-      <div class="mx-auto my-auto w-full max-w-lg px-4 py-8">
+      <div class="setup-shell mx-auto w-full max-w-lg px-4 pb-8">
         <ChoyCard class="setup-card w-full">
           <template #header>
             <h3 class="font-semibold leading-none">{{ _t('Initial Setup') }}</h3>
@@ -354,3 +354,10 @@ async function onFormSubmit(ctx: { formData: Record<string, unknown> }) {
   });
 }
 </script>
+
+<style scoped>
+/* Top-anchored so the header and stepper stay put when step content changes height. */
+.setup-shell {
+  padding-top: clamp(2rem, 12vh, 7.5rem);
+}
+</style>
