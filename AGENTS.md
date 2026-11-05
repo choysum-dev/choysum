@@ -58,16 +58,24 @@ Gotchas:
   `scope factory not registered`. The built-in default is already `default`, so
   running with no config works too; `config.yaml` here just enables `hotReload`.
 - Bootstrap seeds (roles + `admin` + `base.company_main`) apply without
-  `--with-demo`. Avoid `--with-demo` for `base`: `base.company_demo` currently
-  omits required `CurrencyId` and aborts the install.
+ `--with-demo`. Avoid `--with-demo` for `base`: `base.company_demo` currently
+ omits required `CurrencyId` and aborts the install.
+- When `auth` is installed and first-run setup is still pending, `install`
+ finishes it at the end: the seed organization is kept and `admin` gets a new
+ password, printed once on stdout. Set `CHOYSUM_ADMIN_PASSWORD` (or
+ `--admin-password`) to choose it, or pass `--setup=wizard` to leave setup to
+ `/web/setup` (remembered by later installs until `--setup=complete`).
 - Default DB is embedded SQLite at `.choysum/choysum.sqlite`; no external DB
   needed. Postgres/MySQL and S3 document storage are optional.
 
 ### Auth / first login
 
 The `auth` module seeds a `admin` user and a `base.company_main` company at
-install time (see `modules/auth/data/bootstrap.json`). New users can self-register
-at `/web/register`, which auto-logs in — the simplest way to exercise the stack.
+install time (see `modules/auth/data/bootstrap.json`). Login and registration
+open once first-run setup is complete — `install` completes it by default (see
+above), otherwise finish it at `/web/setup`. Then sign in as `admin` with the
+printed (or `CHOYSUM_ADMIN_PASSWORD`) password, or self-register at
+`/web/register`, which auto-logs in — the simplest way to exercise the stack.
 
 ### Lint / test / build
 
