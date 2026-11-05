@@ -8,9 +8,11 @@ import (
 	"io"
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/choysum-dev/choysum/internal/config/authoptions"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -335,5 +337,45 @@ func TestStreamGatesSetupWindowMethod(t *testing.T) {
 		})
 	if status.Code(err) != codes.FailedPrecondition {
 		t.Fatalf("code = %v, want FailedPrecondition; err=%v", status.Code(err), err)
+	}
+}
+
+func TestSetupMethodListsAreDisjoint(t *testing.T) {
+	for _, m := range setupWindowMethods {
+		for _, s := range sessionEstablishingMethods {
+			if m == s {
+				t.Fatalf("%s is both session-establishing and setup-window; the session gate would always reject it during setup", m)
+			}
+		}
+	}
+}
+
+func TestSetupWindowMethodsMatchAnonymousEntryPolicy(t *testing.T) {
+	cfg, err := authoptions.NewDefaultAuthConfigWithChoysumRoot(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	window := map[string]bool{}
+	for _, m := range setupWindowMethods {
+		window[m] = true
+		entry := cfg.GrpcEntryPolicy[m]
+		if entry == nil || !entry.SkipAuthentication {
+			t.Fatalf("setup-window method %s must have an anonymous entry policy", m)
+		}
+	}
+	// Anonymous setup methods intentionally outside the window gate.
+	ungated := map[string]bool{
+		// Checks the pending state itself and maps "already complete" to a typed error.
+		"auth.User/CompleteInitialSetup": true,
+		// Status probe readable in every phase.
+		"auth.User/GetInitialSetupState": true,
+	}
+	for method, entry := range cfg.GrpcEntryPolicy {
+		if entry == nil || !entry.SkipAuthentication || ungated[method] {
+			continue
+		}
+		if strings.Contains(method, "InitialSetup") && !window[method] {
+			t.Fatalf("anonymous setup method %s is not gated by setupWindowMethods", method)
+		}
 	}
 }
