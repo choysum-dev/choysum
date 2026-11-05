@@ -218,7 +218,7 @@ export default class Company extends BaseModel {
    * the seed main company's current values. Read-only.
    * gRPC: base.Company/GetInitialSetupOptions (setupgate admits it only while setup is pending).
    */
-  static async GetInitialSetupOptions(_req: GetInitialSetupOptionsReq): Promise<GetInitialSetupOptionsResp> {
+  public static async GetInitialSetupOptions(_req: GetInitialSetupOptionsReq): Promise<GetInitialSetupOptionsResp> {
     return await getInitialSetupOptions(this);
   }
 
@@ -228,7 +228,7 @@ export default class Company extends BaseModel {
    * and country. Field-level validation errors carry metadata `Field`.
    * gRPC: base.Company/ApplyInitialSetup (regular method access; admins only).
    */
-  static async ApplyInitialSetup(req: ApplyInitialSetupReq): Promise<ApplyInitialSetupResp> {
+  public static async ApplyInitialSetup(req: ApplyInitialSetupReq): Promise<ApplyInitialSetupResp> {
     return await applyInitialSetup(this, req);
   }
 }
