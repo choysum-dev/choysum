@@ -60,6 +60,7 @@
     {
       "name": "company_main",
       "model": "Company",
+      "noupdate": true,
       "values": {
         "Name": {
           "en_US": "Main Company",
