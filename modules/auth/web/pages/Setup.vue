@@ -6,28 +6,28 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <ChoyPage :loading="loading" fill-height class="flex min-h-0 w-full flex-1 flex-col">
     <div class="setup-panel flex min-h-0 w-full flex-1 flex-col overflow-y-auto" data-testid="setup-panel">
-      <div class="setup-shell mx-auto w-full max-w-lg px-4 pb-8">
-        <ChoyCard class="setup-card w-full">
-          <template #header>
-            <h3 class="font-semibold leading-none">{{ _t('Initial Setup') }}</h3>
-            <div
-              v-if="error"
-              class="setup-error flex items-start justify-between gap-2 text-sm text-destructive"
-              role="alert"
+      <div class="setup-shell w-full px-4 pb-8">
+        <header class="setup-header mx-auto w-full text-center">
+          <h1 class="text-xl font-semibold leading-tight">{{ _t('Initial Setup') }}</h1>
+          <div
+            v-if="error"
+            class="setup-error mt-2 flex items-start justify-between gap-2 text-sm text-destructive"
+            role="alert"
+          >
+            <span class="min-w-0 leading-5">{{ error }}</span>
+            <button
+              type="button"
+              class="inline-flex size-5 shrink-0 items-center justify-center rounded-sm border-0 bg-transparent p-0 text-destructive/70 appearance-none shadow-none outline-none hover:text-destructive focus-visible:ring-2 focus-visible:ring-destructive/40"
+              :aria-label="_t('Close')"
+              @click="error = ''"
             >
-              <span class="min-w-0 leading-5">{{ error }}</span>
-              <button
-                type="button"
-                class="inline-flex size-5 shrink-0 items-center justify-center rounded-sm border-0 bg-transparent p-0 text-destructive/70 appearance-none shadow-none outline-none hover:text-destructive focus-visible:ring-2 focus-visible:ring-destructive/40"
-                :aria-label="_t('Close')"
-                @click="error = ''"
-              >
-                <X class="size-3.5" />
-              </button>
-            </div>
-            <p v-else class="setup-step-hint text-sm text-foreground/60">{{ stepHint }}</p>
-          </template>
-          <ChoyStepper v-model="step" :steps="stepperSteps" :readonly="!!loading" class="setup-stepper mb-6" />
+              <X class="size-3.5" />
+            </button>
+          </div>
+          <p v-else class="setup-step-hint mt-2 text-sm text-foreground/60">{{ stepHint }}</p>
+          <ChoyStepper v-model="step" :steps="stepperSteps" :readonly="!!loading" class="setup-stepper mt-8" />
+        </header>
+        <div class="setup-content mx-auto mt-10 w-full">
           <div v-if="optionsLoading" class="setup-options-loading text-sm text-foreground/60">
             {{ _t('Loading setup options…') }}
           </div>
@@ -89,7 +89,7 @@ SPDX-License-Identifier: Apache-2.0
               </template>
             </ChoyFormView>
           </div>
-        </ChoyCard>
+        </div>
       </div>
     </div>
   </ChoyPage>
@@ -107,7 +107,6 @@ import SetupOrganizationStep from './setup/SetupOrganizationStep.vue';
 import SetupReviewStep from './setup/SetupReviewStep.vue';
 import {
   ChoyPage,
-  ChoyCard,
   ChoyButton,
   ChoyFormView,
   ChoyStepper,
@@ -359,5 +358,14 @@ async function onFormSubmit(ctx: { formData: Record<string, unknown> }) {
 /* Top-anchored so the header and stepper stay put when step content changes height. */
 .setup-shell {
   padding-top: clamp(2rem, 12vh, 7.5rem);
+}
+
+/* Own width, independent of step content, so the stepper never stretches with wider steps. */
+.setup-header {
+  max-width: 32rem;
+}
+
+.setup-content {
+  max-width: 28rem;
 }
 </style>
