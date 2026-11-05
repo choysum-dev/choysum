@@ -1,0 +1,4725 @@
+{
+  "records": [
+    {
+      "name": "country_ad",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Andorra",
+          "zh_CN": "安道尔"
+        },
+        "Code": "AD",
+        "PhonePrefix": "+376",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ae",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "United Arab Emirates",
+          "zh_CN": "阿拉伯联合酋长国"
+        },
+        "Code": "AE",
+        "PhonePrefix": "+971",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_aed"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_af",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Afghanistan",
+          "zh_CN": "阿富汗"
+        },
+        "Code": "AF",
+        "PhonePrefix": "+93",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_afn"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ag",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Antigua & Barbuda",
+          "zh_CN": "安提瓜和巴布达"
+        },
+        "Code": "AG",
+        "PhonePrefix": "+1",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xcd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ai",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Anguilla",
+          "zh_CN": "安圭拉"
+        },
+        "Code": "AI",
+        "PhonePrefix": "+1",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xcd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_al",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Albania",
+          "zh_CN": "阿尔巴尼亚"
+        },
+        "Code": "AL",
+        "PhonePrefix": "+355",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_all"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_am",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Armenia",
+          "zh_CN": "亚美尼亚"
+        },
+        "Code": "AM",
+        "PhonePrefix": "+374",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_amd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ao",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Angola",
+          "zh_CN": "安哥拉"
+        },
+        "Code": "AO",
+        "PhonePrefix": "+244",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_aoa"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_aq",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Antarctica",
+          "zh_CN": "南极洲"
+        },
+        "Code": "AQ",
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ar",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Argentina",
+          "zh_CN": "阿根廷"
+        },
+        "Code": "AR",
+        "PhonePrefix": "+54",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_ars"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_as",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "American Samoa",
+          "zh_CN": "美属萨摩亚"
+        },
+        "Code": "AS",
+        "PhonePrefix": "+1",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_usd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_at",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Austria",
+          "zh_CN": "奥地利"
+        },
+        "Code": "AT",
+        "PhonePrefix": "+43",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_au",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Australia",
+          "zh_CN": "澳大利亚"
+        },
+        "Code": "AU",
+        "PhonePrefix": "+61",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_aud"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_aw",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Aruba",
+          "zh_CN": "阿鲁巴"
+        },
+        "Code": "AW",
+        "PhonePrefix": "+297",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_awg"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ax",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Åland Islands",
+          "zh_CN": "奥兰群岛"
+        },
+        "Code": "AX",
+        "PhonePrefix": "+358",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_az",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Azerbaijan",
+          "zh_CN": "阿塞拜疆"
+        },
+        "Code": "AZ",
+        "PhonePrefix": "+994",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_azn"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ba",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Bosnia & Herzegovina",
+          "zh_CN": "波斯尼亚和黑塞哥维那"
+        },
+        "Code": "BA",
+        "PhonePrefix": "+387",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_bam"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_bb",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Barbados",
+          "zh_CN": "巴巴多斯"
+        },
+        "Code": "BB",
+        "PhonePrefix": "+1",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_bbd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_bd",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Bangladesh",
+          "zh_CN": "孟加拉国"
+        },
+        "Code": "BD",
+        "PhonePrefix": "+880",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_bdt"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_be",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Belgium",
+          "zh_CN": "比利时"
+        },
+        "Code": "BE",
+        "PhonePrefix": "+32",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_bf",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Burkina Faso",
+          "zh_CN": "布基纳法索"
+        },
+        "Code": "BF",
+        "PhonePrefix": "+226",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xof"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_bg",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Bulgaria",
+          "zh_CN": "保加利亚"
+        },
+        "Code": "BG",
+        "PhonePrefix": "+359",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_bh",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Bahrain",
+          "zh_CN": "巴林"
+        },
+        "Code": "BH",
+        "PhonePrefix": "+973",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_bhd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_bi",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Burundi",
+          "zh_CN": "布隆迪"
+        },
+        "Code": "BI",
+        "PhonePrefix": "+257",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_bif"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_bj",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Benin",
+          "zh_CN": "贝宁"
+        },
+        "Code": "BJ",
+        "PhonePrefix": "+229",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xof"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_bl",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "St. Barthélemy",
+          "zh_CN": "圣巴泰勒米"
+        },
+        "Code": "BL",
+        "PhonePrefix": "+590",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_bm",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Bermuda",
+          "zh_CN": "百慕大"
+        },
+        "Code": "BM",
+        "PhonePrefix": "+1",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_bmd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_bn",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Brunei",
+          "zh_CN": "文莱"
+        },
+        "Code": "BN",
+        "PhonePrefix": "+673",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_bnd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_bo",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Bolivia",
+          "zh_CN": "玻利维亚"
+        },
+        "Code": "BO",
+        "PhonePrefix": "+591",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_bob"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_bq",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Caribbean Netherlands",
+          "zh_CN": "荷属加勒比区"
+        },
+        "Code": "BQ",
+        "PhonePrefix": "+599",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_usd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_br",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Brazil",
+          "zh_CN": "巴西"
+        },
+        "Code": "BR",
+        "PhonePrefix": "+55",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_brl"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_bs",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Bahamas",
+          "zh_CN": "巴哈马"
+        },
+        "Code": "BS",
+        "PhonePrefix": "+1",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_bsd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_bt",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Bhutan",
+          "zh_CN": "不丹"
+        },
+        "Code": "BT",
+        "PhonePrefix": "+975",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_btn"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_bv",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Bouvet Island",
+          "zh_CN": "布韦岛"
+        },
+        "Code": "BV",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_nok"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_bw",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Botswana",
+          "zh_CN": "博茨瓦纳"
+        },
+        "Code": "BW",
+        "PhonePrefix": "+267",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_bwp"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_by",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Belarus",
+          "zh_CN": "白俄罗斯"
+        },
+        "Code": "BY",
+        "PhonePrefix": "+375",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_byn"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_bz",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Belize",
+          "zh_CN": "伯利兹"
+        },
+        "Code": "BZ",
+        "PhonePrefix": "+501",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_bzd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ca",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Canada",
+          "zh_CN": "加拿大"
+        },
+        "Code": "CA",
+        "PhonePrefix": "+1",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_cad"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_cc",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Cocos (Keeling) Islands",
+          "zh_CN": "科科斯（基林）群岛"
+        },
+        "Code": "CC",
+        "PhonePrefix": "+61",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_aud"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_cd",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Congo - Kinshasa",
+          "zh_CN": "刚果（金）"
+        },
+        "Code": "CD",
+        "PhonePrefix": "+243",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_cdf"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_cf",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Central African Republic",
+          "zh_CN": "中非共和国"
+        },
+        "Code": "CF",
+        "PhonePrefix": "+236",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xaf"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_cg",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Congo - Brazzaville",
+          "zh_CN": "刚果（布）"
+        },
+        "Code": "CG",
+        "PhonePrefix": "+242",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xaf"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ch",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Switzerland",
+          "zh_CN": "瑞士"
+        },
+        "Code": "CH",
+        "PhonePrefix": "+41",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_chf"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ci",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Côte d’Ivoire",
+          "zh_CN": "科特迪瓦"
+        },
+        "Code": "CI",
+        "PhonePrefix": "+225",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xof"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ck",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Cook Islands",
+          "zh_CN": "库克群岛"
+        },
+        "Code": "CK",
+        "PhonePrefix": "+682",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_nzd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_cl",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Chile",
+          "zh_CN": "智利"
+        },
+        "Code": "CL",
+        "PhonePrefix": "+56",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_clp"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_cm",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Cameroon",
+          "zh_CN": "喀麦隆"
+        },
+        "Code": "CM",
+        "PhonePrefix": "+237",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xaf"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_cn",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "China",
+          "zh_CN": "中国"
+        },
+        "Code": "CN",
+        "PhonePrefix": "+86",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_cny"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_co",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Colombia",
+          "zh_CN": "哥伦比亚"
+        },
+        "Code": "CO",
+        "PhonePrefix": "+57",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_cop"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_cr",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Costa Rica",
+          "zh_CN": "哥斯达黎加"
+        },
+        "Code": "CR",
+        "PhonePrefix": "+506",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_crc"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_cu",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Cuba",
+          "zh_CN": "古巴"
+        },
+        "Code": "CU",
+        "PhonePrefix": "+53",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_cup"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_cv",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Cape Verde",
+          "zh_CN": "佛得角"
+        },
+        "Code": "CV",
+        "PhonePrefix": "+238",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_cve"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_cw",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Curaçao",
+          "zh_CN": "库拉索"
+        },
+        "Code": "CW",
+        "PhonePrefix": "+599",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xcg"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_cx",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Christmas Island",
+          "zh_CN": "圣诞岛"
+        },
+        "Code": "CX",
+        "PhonePrefix": "+61",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_aud"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_cy",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Cyprus",
+          "zh_CN": "塞浦路斯"
+        },
+        "Code": "CY",
+        "PhonePrefix": "+357",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_cz",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Czechia",
+          "zh_CN": "捷克"
+        },
+        "Code": "CZ",
+        "PhonePrefix": "+420",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_czk"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_de",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Germany",
+          "zh_CN": "德国"
+        },
+        "Code": "DE",
+        "PhonePrefix": "+49",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_dj",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Djibouti",
+          "zh_CN": "吉布提"
+        },
+        "Code": "DJ",
+        "PhonePrefix": "+253",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_djf"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_dk",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Denmark",
+          "zh_CN": "丹麦"
+        },
+        "Code": "DK",
+        "PhonePrefix": "+45",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_dkk"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_dm",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Dominica",
+          "zh_CN": "多米尼克"
+        },
+        "Code": "DM",
+        "PhonePrefix": "+1",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xcd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_do",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Dominican Republic",
+          "zh_CN": "多米尼加共和国"
+        },
+        "Code": "DO",
+        "PhonePrefix": "+1",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_dop"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_dz",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Algeria",
+          "zh_CN": "阿尔及利亚"
+        },
+        "Code": "DZ",
+        "PhonePrefix": "+213",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_dzd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ec",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Ecuador",
+          "zh_CN": "厄瓜多尔"
+        },
+        "Code": "EC",
+        "PhonePrefix": "+593",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_usd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ee",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Estonia",
+          "zh_CN": "爱沙尼亚"
+        },
+        "Code": "EE",
+        "PhonePrefix": "+372",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_eg",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Egypt",
+          "zh_CN": "埃及"
+        },
+        "Code": "EG",
+        "PhonePrefix": "+20",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_egp"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_eh",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Western Sahara",
+          "zh_CN": "西撒哈拉"
+        },
+        "Code": "EH",
+        "PhonePrefix": "+212",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_mad"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_er",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Eritrea",
+          "zh_CN": "厄立特里亚"
+        },
+        "Code": "ER",
+        "PhonePrefix": "+291",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_ern"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_es",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Spain",
+          "zh_CN": "西班牙"
+        },
+        "Code": "ES",
+        "PhonePrefix": "+34",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_et",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Ethiopia",
+          "zh_CN": "埃塞俄比亚"
+        },
+        "Code": "ET",
+        "PhonePrefix": "+251",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_etb"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_fi",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Finland",
+          "zh_CN": "芬兰"
+        },
+        "Code": "FI",
+        "PhonePrefix": "+358",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_fj",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Fiji",
+          "zh_CN": "斐济"
+        },
+        "Code": "FJ",
+        "PhonePrefix": "+679",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_fjd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_fk",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Falkland Islands",
+          "zh_CN": "福克兰群岛"
+        },
+        "Code": "FK",
+        "PhonePrefix": "+500",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_fkp"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_fm",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Micronesia",
+          "zh_CN": "密克罗尼西亚"
+        },
+        "Code": "FM",
+        "PhonePrefix": "+691",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_usd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_fo",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Faroe Islands",
+          "zh_CN": "法罗群岛"
+        },
+        "Code": "FO",
+        "PhonePrefix": "+298",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_dkk"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_fr",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "France",
+          "zh_CN": "法国"
+        },
+        "Code": "FR",
+        "PhonePrefix": "+33",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ga",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Gabon",
+          "zh_CN": "加蓬"
+        },
+        "Code": "GA",
+        "PhonePrefix": "+241",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xaf"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_gb",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "United Kingdom",
+          "zh_CN": "英国"
+        },
+        "Code": "GB",
+        "PhonePrefix": "+44",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_gbp"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_gd",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Grenada",
+          "zh_CN": "格林纳达"
+        },
+        "Code": "GD",
+        "PhonePrefix": "+1",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xcd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ge",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Georgia",
+          "zh_CN": "格鲁吉亚"
+        },
+        "Code": "GE",
+        "PhonePrefix": "+995",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_gel"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_gf",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "French Guiana",
+          "zh_CN": "法属圭亚那"
+        },
+        "Code": "GF",
+        "PhonePrefix": "+594",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_gg",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Guernsey",
+          "zh_CN": "根西岛"
+        },
+        "Code": "GG",
+        "PhonePrefix": "+44",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_gbp"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_gh",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Ghana",
+          "zh_CN": "加纳"
+        },
+        "Code": "GH",
+        "PhonePrefix": "+233",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_ghs"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_gi",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Gibraltar",
+          "zh_CN": "直布罗陀"
+        },
+        "Code": "GI",
+        "PhonePrefix": "+350",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_gip"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_gl",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Greenland",
+          "zh_CN": "格陵兰"
+        },
+        "Code": "GL",
+        "PhonePrefix": "+299",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_dkk"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_gm",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Gambia",
+          "zh_CN": "冈比亚"
+        },
+        "Code": "GM",
+        "PhonePrefix": "+220",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_gmd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_gn",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Guinea",
+          "zh_CN": "几内亚"
+        },
+        "Code": "GN",
+        "PhonePrefix": "+224",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_gnf"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_gp",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Guadeloupe",
+          "zh_CN": "瓜德罗普"
+        },
+        "Code": "GP",
+        "PhonePrefix": "+590",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_gq",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Equatorial Guinea",
+          "zh_CN": "赤道几内亚"
+        },
+        "Code": "GQ",
+        "PhonePrefix": "+240",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xaf"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_gr",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Greece",
+          "zh_CN": "希腊"
+        },
+        "Code": "GR",
+        "PhonePrefix": "+30",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_gs",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "South Georgia & South Sandwich Islands",
+          "zh_CN": "南乔治亚和南桑威奇群岛"
+        },
+        "Code": "GS",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_gbp"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_gt",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Guatemala",
+          "zh_CN": "危地马拉"
+        },
+        "Code": "GT",
+        "PhonePrefix": "+502",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_gtq"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_gu",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Guam",
+          "zh_CN": "关岛"
+        },
+        "Code": "GU",
+        "PhonePrefix": "+1",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_usd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_gw",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Guinea-Bissau",
+          "zh_CN": "几内亚比绍"
+        },
+        "Code": "GW",
+        "PhonePrefix": "+245",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xof"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_gy",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Guyana",
+          "zh_CN": "圭亚那"
+        },
+        "Code": "GY",
+        "PhonePrefix": "+592",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_gyd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_hk",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Hong Kong SAR China",
+          "zh_CN": "中国香港特别行政区"
+        },
+        "Code": "HK",
+        "PhonePrefix": "+852",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_hkd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_hm",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Heard Island & McDonald Islands",
+          "zh_CN": "赫德岛和麦克唐纳群岛"
+        },
+        "Code": "HM",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_aud"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_hn",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Honduras",
+          "zh_CN": "洪都拉斯"
+        },
+        "Code": "HN",
+        "PhonePrefix": "+504",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_hnl"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_hr",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Croatia",
+          "zh_CN": "克罗地亚"
+        },
+        "Code": "HR",
+        "PhonePrefix": "+385",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ht",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Haiti",
+          "zh_CN": "海地"
+        },
+        "Code": "HT",
+        "PhonePrefix": "+509",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_htg"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_hu",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Hungary",
+          "zh_CN": "匈牙利"
+        },
+        "Code": "HU",
+        "PhonePrefix": "+36",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_huf"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_id",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Indonesia",
+          "zh_CN": "印度尼西亚"
+        },
+        "Code": "ID",
+        "PhonePrefix": "+62",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_idr"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ie",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Ireland",
+          "zh_CN": "爱尔兰"
+        },
+        "Code": "IE",
+        "PhonePrefix": "+353",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_il",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Israel",
+          "zh_CN": "以色列"
+        },
+        "Code": "IL",
+        "PhonePrefix": "+972",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_ils"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_im",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Isle of Man",
+          "zh_CN": "马恩岛"
+        },
+        "Code": "IM",
+        "PhonePrefix": "+44",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_gbp"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_in",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "India",
+          "zh_CN": "印度"
+        },
+        "Code": "IN",
+        "PhonePrefix": "+91",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_inr"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_io",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "British Indian Ocean Territory",
+          "zh_CN": "英属印度洋领地"
+        },
+        "Code": "IO",
+        "PhonePrefix": "+246",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_usd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_iq",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Iraq",
+          "zh_CN": "伊拉克"
+        },
+        "Code": "IQ",
+        "PhonePrefix": "+964",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_iqd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ir",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Iran",
+          "zh_CN": "伊朗"
+        },
+        "Code": "IR",
+        "PhonePrefix": "+98",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_irr"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_is",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Iceland",
+          "zh_CN": "冰岛"
+        },
+        "Code": "IS",
+        "PhonePrefix": "+354",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_isk"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_it",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Italy",
+          "zh_CN": "意大利"
+        },
+        "Code": "IT",
+        "PhonePrefix": "+39",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_je",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Jersey",
+          "zh_CN": "泽西岛"
+        },
+        "Code": "JE",
+        "PhonePrefix": "+44",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_gbp"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_jm",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Jamaica",
+          "zh_CN": "牙买加"
+        },
+        "Code": "JM",
+        "PhonePrefix": "+1",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_jmd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_jo",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Jordan",
+          "zh_CN": "约旦"
+        },
+        "Code": "JO",
+        "PhonePrefix": "+962",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_jod"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_jp",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Japan",
+          "zh_CN": "日本"
+        },
+        "Code": "JP",
+        "PhonePrefix": "+81",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_jpy"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ke",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Kenya",
+          "zh_CN": "肯尼亚"
+        },
+        "Code": "KE",
+        "PhonePrefix": "+254",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_kes"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_kg",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Kyrgyzstan",
+          "zh_CN": "吉尔吉斯斯坦"
+        },
+        "Code": "KG",
+        "PhonePrefix": "+996",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_kgs"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_kh",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Cambodia",
+          "zh_CN": "柬埔寨"
+        },
+        "Code": "KH",
+        "PhonePrefix": "+855",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_khr"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ki",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Kiribati",
+          "zh_CN": "基里巴斯"
+        },
+        "Code": "KI",
+        "PhonePrefix": "+686",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_aud"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_km",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Comoros",
+          "zh_CN": "科摩罗"
+        },
+        "Code": "KM",
+        "PhonePrefix": "+269",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_kmf"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_kn",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "St. Kitts & Nevis",
+          "zh_CN": "圣基茨和尼维斯"
+        },
+        "Code": "KN",
+        "PhonePrefix": "+1",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xcd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_kp",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "North Korea",
+          "zh_CN": "朝鲜"
+        },
+        "Code": "KP",
+        "PhonePrefix": "+850",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_kpw"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_kr",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "South Korea",
+          "zh_CN": "韩国"
+        },
+        "Code": "KR",
+        "PhonePrefix": "+82",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_krw"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_kw",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Kuwait",
+          "zh_CN": "科威特"
+        },
+        "Code": "KW",
+        "PhonePrefix": "+965",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_kwd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ky",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Cayman Islands",
+          "zh_CN": "开曼群岛"
+        },
+        "Code": "KY",
+        "PhonePrefix": "+1",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_kyd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_kz",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Kazakhstan",
+          "zh_CN": "哈萨克斯坦"
+        },
+        "Code": "KZ",
+        "PhonePrefix": "+7",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_kzt"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_la",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Laos",
+          "zh_CN": "老挝"
+        },
+        "Code": "LA",
+        "PhonePrefix": "+856",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_lak"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_lb",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Lebanon",
+          "zh_CN": "黎巴嫩"
+        },
+        "Code": "LB",
+        "PhonePrefix": "+961",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_lbp"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_lc",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "St. Lucia",
+          "zh_CN": "圣卢西亚"
+        },
+        "Code": "LC",
+        "PhonePrefix": "+1",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xcd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_li",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Liechtenstein",
+          "zh_CN": "列支敦士登"
+        },
+        "Code": "LI",
+        "PhonePrefix": "+423",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_chf"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_lk",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Sri Lanka",
+          "zh_CN": "斯里兰卡"
+        },
+        "Code": "LK",
+        "PhonePrefix": "+94",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_lkr"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_lr",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Liberia",
+          "zh_CN": "利比里亚"
+        },
+        "Code": "LR",
+        "PhonePrefix": "+231",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_lrd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ls",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Lesotho",
+          "zh_CN": "莱索托"
+        },
+        "Code": "LS",
+        "PhonePrefix": "+266",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_zar"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_lt",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Lithuania",
+          "zh_CN": "立陶宛"
+        },
+        "Code": "LT",
+        "PhonePrefix": "+370",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_lu",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Luxembourg",
+          "zh_CN": "卢森堡"
+        },
+        "Code": "LU",
+        "PhonePrefix": "+352",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_lv",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Latvia",
+          "zh_CN": "拉脱维亚"
+        },
+        "Code": "LV",
+        "PhonePrefix": "+371",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ly",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Libya",
+          "zh_CN": "利比亚"
+        },
+        "Code": "LY",
+        "PhonePrefix": "+218",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_lyd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ma",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Morocco",
+          "zh_CN": "摩洛哥"
+        },
+        "Code": "MA",
+        "PhonePrefix": "+212",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_mad"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_mc",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Monaco",
+          "zh_CN": "摩纳哥"
+        },
+        "Code": "MC",
+        "PhonePrefix": "+377",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_md",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Moldova",
+          "zh_CN": "摩尔多瓦"
+        },
+        "Code": "MD",
+        "PhonePrefix": "+373",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_mdl"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_me",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Montenegro",
+          "zh_CN": "黑山"
+        },
+        "Code": "ME",
+        "PhonePrefix": "+382",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_mf",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "St. Martin",
+          "zh_CN": "法属圣马丁"
+        },
+        "Code": "MF",
+        "PhonePrefix": "+590",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_mg",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Madagascar",
+          "zh_CN": "马达加斯加"
+        },
+        "Code": "MG",
+        "PhonePrefix": "+261",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_mga"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_mh",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Marshall Islands",
+          "zh_CN": "马绍尔群岛"
+        },
+        "Code": "MH",
+        "PhonePrefix": "+692",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_usd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_mk",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "North Macedonia",
+          "zh_CN": "北马其顿"
+        },
+        "Code": "MK",
+        "PhonePrefix": "+389",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_mkd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ml",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Mali",
+          "zh_CN": "马里"
+        },
+        "Code": "ML",
+        "PhonePrefix": "+223",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xof"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_mm",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Myanmar (Burma)",
+          "zh_CN": "缅甸"
+        },
+        "Code": "MM",
+        "PhonePrefix": "+95",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_mmk"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_mn",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Mongolia",
+          "zh_CN": "蒙古"
+        },
+        "Code": "MN",
+        "PhonePrefix": "+976",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_mnt"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_mo",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Macao SAR China",
+          "zh_CN": "中国澳门特别行政区"
+        },
+        "Code": "MO",
+        "PhonePrefix": "+853",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_mop"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_mp",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Northern Mariana Islands",
+          "zh_CN": "北马里亚纳群岛"
+        },
+        "Code": "MP",
+        "PhonePrefix": "+1",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_usd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_mq",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Martinique",
+          "zh_CN": "马提尼克"
+        },
+        "Code": "MQ",
+        "PhonePrefix": "+596",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_mr",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Mauritania",
+          "zh_CN": "毛里塔尼亚"
+        },
+        "Code": "MR",
+        "PhonePrefix": "+222",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_mru"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ms",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Montserrat",
+          "zh_CN": "蒙特塞拉特"
+        },
+        "Code": "MS",
+        "PhonePrefix": "+1",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xcd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_mt",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Malta",
+          "zh_CN": "马耳他"
+        },
+        "Code": "MT",
+        "PhonePrefix": "+356",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_mu",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Mauritius",
+          "zh_CN": "毛里求斯"
+        },
+        "Code": "MU",
+        "PhonePrefix": "+230",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_mur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_mv",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Maldives",
+          "zh_CN": "马尔代夫"
+        },
+        "Code": "MV",
+        "PhonePrefix": "+960",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_mvr"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_mw",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Malawi",
+          "zh_CN": "马拉维"
+        },
+        "Code": "MW",
+        "PhonePrefix": "+265",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_mwk"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_mx",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Mexico",
+          "zh_CN": "墨西哥"
+        },
+        "Code": "MX",
+        "PhonePrefix": "+52",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_mxn"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_my",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Malaysia",
+          "zh_CN": "马来西亚"
+        },
+        "Code": "MY",
+        "PhonePrefix": "+60",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_myr"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_mz",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Mozambique",
+          "zh_CN": "莫桑比克"
+        },
+        "Code": "MZ",
+        "PhonePrefix": "+258",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_mzn"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_na",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Namibia",
+          "zh_CN": "纳米比亚"
+        },
+        "Code": "NA",
+        "PhonePrefix": "+264",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_nad"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_nc",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "New Caledonia",
+          "zh_CN": "新喀里多尼亚"
+        },
+        "Code": "NC",
+        "PhonePrefix": "+687",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xpf"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ne",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Niger",
+          "zh_CN": "尼日尔"
+        },
+        "Code": "NE",
+        "PhonePrefix": "+227",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xof"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_nf",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Norfolk Island",
+          "zh_CN": "诺福克岛"
+        },
+        "Code": "NF",
+        "PhonePrefix": "+672",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_aud"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ng",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Nigeria",
+          "zh_CN": "尼日利亚"
+        },
+        "Code": "NG",
+        "PhonePrefix": "+234",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_ngn"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ni",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Nicaragua",
+          "zh_CN": "尼加拉瓜"
+        },
+        "Code": "NI",
+        "PhonePrefix": "+505",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_nio"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_nl",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Netherlands",
+          "zh_CN": "荷兰"
+        },
+        "Code": "NL",
+        "PhonePrefix": "+31",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_no",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Norway",
+          "zh_CN": "挪威"
+        },
+        "Code": "NO",
+        "PhonePrefix": "+47",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_nok"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_np",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Nepal",
+          "zh_CN": "尼泊尔"
+        },
+        "Code": "NP",
+        "PhonePrefix": "+977",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_npr"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_nr",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Nauru",
+          "zh_CN": "瑙鲁"
+        },
+        "Code": "NR",
+        "PhonePrefix": "+674",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_aud"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_nu",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Niue",
+          "zh_CN": "纽埃"
+        },
+        "Code": "NU",
+        "PhonePrefix": "+683",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_nzd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_nz",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "New Zealand",
+          "zh_CN": "新西兰"
+        },
+        "Code": "NZ",
+        "PhonePrefix": "+64",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_nzd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_om",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Oman",
+          "zh_CN": "阿曼"
+        },
+        "Code": "OM",
+        "PhonePrefix": "+968",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_omr"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_pa",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Panama",
+          "zh_CN": "巴拿马"
+        },
+        "Code": "PA",
+        "PhonePrefix": "+507",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_pab"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_pe",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Peru",
+          "zh_CN": "秘鲁"
+        },
+        "Code": "PE",
+        "PhonePrefix": "+51",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_pen"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_pf",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "French Polynesia",
+          "zh_CN": "法属波利尼西亚"
+        },
+        "Code": "PF",
+        "PhonePrefix": "+689",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xpf"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_pg",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Papua New Guinea",
+          "zh_CN": "巴布亚新几内亚"
+        },
+        "Code": "PG",
+        "PhonePrefix": "+675",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_pgk"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ph",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Philippines",
+          "zh_CN": "菲律宾"
+        },
+        "Code": "PH",
+        "PhonePrefix": "+63",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_php"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_pk",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Pakistan",
+          "zh_CN": "巴基斯坦"
+        },
+        "Code": "PK",
+        "PhonePrefix": "+92",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_pkr"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_pl",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Poland",
+          "zh_CN": "波兰"
+        },
+        "Code": "PL",
+        "PhonePrefix": "+48",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_pln"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_pm",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "St. Pierre & Miquelon",
+          "zh_CN": "圣皮埃尔和密克隆群岛"
+        },
+        "Code": "PM",
+        "PhonePrefix": "+508",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_pn",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Pitcairn Islands",
+          "zh_CN": "皮特凯恩群岛"
+        },
+        "Code": "PN",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_nzd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_pr",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Puerto Rico",
+          "zh_CN": "波多黎各"
+        },
+        "Code": "PR",
+        "PhonePrefix": "+1",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_usd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ps",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Palestinian Territories",
+          "zh_CN": "巴勒斯坦领土"
+        },
+        "Code": "PS",
+        "PhonePrefix": "+970",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_ils"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_pt",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Portugal",
+          "zh_CN": "葡萄牙"
+        },
+        "Code": "PT",
+        "PhonePrefix": "+351",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_pw",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Palau",
+          "zh_CN": "帕劳"
+        },
+        "Code": "PW",
+        "PhonePrefix": "+680",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_usd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_py",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Paraguay",
+          "zh_CN": "巴拉圭"
+        },
+        "Code": "PY",
+        "PhonePrefix": "+595",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_pyg"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_qa",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Qatar",
+          "zh_CN": "卡塔尔"
+        },
+        "Code": "QA",
+        "PhonePrefix": "+974",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_qar"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_re",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Réunion",
+          "zh_CN": "留尼汪"
+        },
+        "Code": "RE",
+        "PhonePrefix": "+262",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ro",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Romania",
+          "zh_CN": "罗马尼亚"
+        },
+        "Code": "RO",
+        "PhonePrefix": "+40",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_ron"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_rs",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Serbia",
+          "zh_CN": "塞尔维亚"
+        },
+        "Code": "RS",
+        "PhonePrefix": "+381",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_rsd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ru",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Russia",
+          "zh_CN": "俄罗斯"
+        },
+        "Code": "RU",
+        "PhonePrefix": "+7",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_rub"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_rw",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Rwanda",
+          "zh_CN": "卢旺达"
+        },
+        "Code": "RW",
+        "PhonePrefix": "+250",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_rwf"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_sa",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Saudi Arabia",
+          "zh_CN": "沙特阿拉伯"
+        },
+        "Code": "SA",
+        "PhonePrefix": "+966",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_sar"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_sb",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Solomon Islands",
+          "zh_CN": "所罗门群岛"
+        },
+        "Code": "SB",
+        "PhonePrefix": "+677",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_sbd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_sc",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Seychelles",
+          "zh_CN": "塞舌尔"
+        },
+        "Code": "SC",
+        "PhonePrefix": "+248",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_scr"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_sd",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Sudan",
+          "zh_CN": "苏丹"
+        },
+        "Code": "SD",
+        "PhonePrefix": "+249",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_sdg"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_se",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Sweden",
+          "zh_CN": "瑞典"
+        },
+        "Code": "SE",
+        "PhonePrefix": "+46",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_sek"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_sg",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Singapore",
+          "zh_CN": "新加坡"
+        },
+        "Code": "SG",
+        "PhonePrefix": "+65",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_sgd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_sh",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "St. Helena, Ascension & Tristan da Cunha",
+          "zh_CN": "圣赫勒拿"
+        },
+        "Code": "SH",
+        "PhonePrefix": "+290",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_shp"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_si",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Slovenia",
+          "zh_CN": "斯洛文尼亚"
+        },
+        "Code": "SI",
+        "PhonePrefix": "+386",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_sj",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Svalbard & Jan Mayen",
+          "zh_CN": "斯瓦尔巴和扬马延"
+        },
+        "Code": "SJ",
+        "PhonePrefix": "+47",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_nok"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_sk",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Slovakia",
+          "zh_CN": "斯洛伐克"
+        },
+        "Code": "SK",
+        "PhonePrefix": "+421",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_sl",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Sierra Leone",
+          "zh_CN": "塞拉利昂"
+        },
+        "Code": "SL",
+        "PhonePrefix": "+232",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_sle"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_sm",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "San Marino",
+          "zh_CN": "圣马力诺"
+        },
+        "Code": "SM",
+        "PhonePrefix": "+378",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_sn",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Senegal",
+          "zh_CN": "塞内加尔"
+        },
+        "Code": "SN",
+        "PhonePrefix": "+221",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xof"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_so",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Somalia",
+          "zh_CN": "索马里"
+        },
+        "Code": "SO",
+        "PhonePrefix": "+252",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_sos"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_sr",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Suriname",
+          "zh_CN": "苏里南"
+        },
+        "Code": "SR",
+        "PhonePrefix": "+597",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_srd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ss",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "South Sudan",
+          "zh_CN": "南苏丹"
+        },
+        "Code": "SS",
+        "PhonePrefix": "+211",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_ssp"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_st",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "São Tomé & Príncipe",
+          "zh_CN": "圣多美和普林西比"
+        },
+        "Code": "ST",
+        "PhonePrefix": "+239",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_stn"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_sv",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "El Salvador",
+          "zh_CN": "萨尔瓦多"
+        },
+        "Code": "SV",
+        "PhonePrefix": "+503",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_usd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_sx",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Sint Maarten",
+          "zh_CN": "荷属圣马丁"
+        },
+        "Code": "SX",
+        "PhonePrefix": "+1",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xcg"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_sy",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Syria",
+          "zh_CN": "叙利亚"
+        },
+        "Code": "SY",
+        "PhonePrefix": "+963",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_syp"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_sz",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Eswatini",
+          "zh_CN": "斯威士兰"
+        },
+        "Code": "SZ",
+        "PhonePrefix": "+268",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_szl"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_tc",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Turks & Caicos Islands",
+          "zh_CN": "特克斯和凯科斯群岛"
+        },
+        "Code": "TC",
+        "PhonePrefix": "+1",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_usd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_td",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Chad",
+          "zh_CN": "乍得"
+        },
+        "Code": "TD",
+        "PhonePrefix": "+235",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xaf"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_tf",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "French Southern and Antarctic Lands",
+          "zh_CN": "法属南部领地"
+        },
+        "Code": "TF",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_tg",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Togo",
+          "zh_CN": "多哥"
+        },
+        "Code": "TG",
+        "PhonePrefix": "+228",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xof"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_th",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Thailand",
+          "zh_CN": "泰国"
+        },
+        "Code": "TH",
+        "PhonePrefix": "+66",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_thb"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_tj",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Tajikistan",
+          "zh_CN": "塔吉克斯坦"
+        },
+        "Code": "TJ",
+        "PhonePrefix": "+992",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_tjs"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_tk",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Tokelau",
+          "zh_CN": "托克劳"
+        },
+        "Code": "TK",
+        "PhonePrefix": "+690",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_nzd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_tl",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Timor-Leste",
+          "zh_CN": "东帝汶"
+        },
+        "Code": "TL",
+        "PhonePrefix": "+670",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_usd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_tm",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Turkmenistan",
+          "zh_CN": "土库曼斯坦"
+        },
+        "Code": "TM",
+        "PhonePrefix": "+993",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_tmt"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_tn",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Tunisia",
+          "zh_CN": "突尼斯"
+        },
+        "Code": "TN",
+        "PhonePrefix": "+216",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_tnd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_to",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Tonga",
+          "zh_CN": "汤加"
+        },
+        "Code": "TO",
+        "PhonePrefix": "+676",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_top"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_tr",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Türkiye",
+          "zh_CN": "土耳其"
+        },
+        "Code": "TR",
+        "PhonePrefix": "+90",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_try"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_tt",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Trinidad & Tobago",
+          "zh_CN": "特立尼达和多巴哥"
+        },
+        "Code": "TT",
+        "PhonePrefix": "+1",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_ttd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_tv",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Tuvalu",
+          "zh_CN": "图瓦卢"
+        },
+        "Code": "TV",
+        "PhonePrefix": "+688",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_aud"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_tw",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Taiwan",
+          "zh_CN": "台湾"
+        },
+        "Code": "TW",
+        "PhonePrefix": "+886",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_twd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_tz",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Tanzania",
+          "zh_CN": "坦桑尼亚"
+        },
+        "Code": "TZ",
+        "PhonePrefix": "+255",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_tzs"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ua",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Ukraine",
+          "zh_CN": "乌克兰"
+        },
+        "Code": "UA",
+        "PhonePrefix": "+380",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_uah"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ug",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Uganda",
+          "zh_CN": "乌干达"
+        },
+        "Code": "UG",
+        "PhonePrefix": "+256",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_ugx"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_um",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "U.S. Outlying Islands",
+          "zh_CN": "美国本土外小岛屿"
+        },
+        "Code": "UM",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_usd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_us",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "United States",
+          "zh_CN": "美国"
+        },
+        "Code": "US",
+        "PhonePrefix": "+1",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_usd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_uy",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Uruguay",
+          "zh_CN": "乌拉圭"
+        },
+        "Code": "UY",
+        "PhonePrefix": "+598",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_uyu"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_uz",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Uzbekistan",
+          "zh_CN": "乌兹别克斯坦"
+        },
+        "Code": "UZ",
+        "PhonePrefix": "+998",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_uzs"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_va",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Vatican City",
+          "zh_CN": "梵蒂冈"
+        },
+        "Code": "VA",
+        "PhonePrefix": "+39",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_vc",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "St. Vincent & Grenadines",
+          "zh_CN": "圣文森特和格林纳丁斯"
+        },
+        "Code": "VC",
+        "PhonePrefix": "+1",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xcd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ve",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Venezuela",
+          "zh_CN": "委内瑞拉"
+        },
+        "Code": "VE",
+        "PhonePrefix": "+58",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_ves"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_vg",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "British Virgin Islands",
+          "zh_CN": "英属维尔京群岛"
+        },
+        "Code": "VG",
+        "PhonePrefix": "+1",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_usd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_vi",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "U.S. Virgin Islands",
+          "zh_CN": "美属维尔京群岛"
+        },
+        "Code": "VI",
+        "PhonePrefix": "+1",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_usd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_vn",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Vietnam",
+          "zh_CN": "越南"
+        },
+        "Code": "VN",
+        "PhonePrefix": "+84",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_vnd"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_vu",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Vanuatu",
+          "zh_CN": "瓦努阿图"
+        },
+        "Code": "VU",
+        "PhonePrefix": "+678",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_vuv"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_wf",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Wallis & Futuna",
+          "zh_CN": "瓦利斯和富图纳"
+        },
+        "Code": "WF",
+        "PhonePrefix": "+681",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_xpf"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ws",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Samoa",
+          "zh_CN": "萨摩亚"
+        },
+        "Code": "WS",
+        "PhonePrefix": "+685",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_wst"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_ye",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Yemen",
+          "zh_CN": "也门"
+        },
+        "Code": "YE",
+        "PhonePrefix": "+967",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_yer"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_yt",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Mayotte",
+          "zh_CN": "马约特"
+        },
+        "Code": "YT",
+        "PhonePrefix": "+262",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_eur"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_za",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "South Africa",
+          "zh_CN": "南非"
+        },
+        "Code": "ZA",
+        "PhonePrefix": "+27",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_zar"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_zm",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Zambia",
+          "zh_CN": "赞比亚"
+        },
+        "Code": "ZM",
+        "PhonePrefix": "+260",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_zmw"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    },
+    {
+      "name": "country_zw",
+      "model": "Country",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Zimbabwe",
+          "zh_CN": "津巴布韦"
+        },
+        "Code": "ZW",
+        "PhonePrefix": "+263",
+        "DefaultCurrencyId": {
+          "ref": "base.currency_zwg"
+        },
+        "ZipRequired": false,
+        "StateRequired": false,
+        "IsActive": true
+      }
+    }
+  ]
+}
