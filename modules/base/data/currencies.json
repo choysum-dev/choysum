@@ -1,0 +1,2468 @@
+{
+  "records": [
+    {
+      "name": "currency_aed",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "United Arab Emirates Dirham",
+          "zh_CN": "阿联酋迪拉姆"
+        },
+        "Code": "AED",
+        "Symbol": "AED",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_afn",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Afghan Afghani",
+          "zh_CN": "阿富汗尼"
+        },
+        "Code": "AFN",
+        "Symbol": "؋",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_all",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Albanian Lek",
+          "zh_CN": "阿尔巴尼亚列克"
+        },
+        "Code": "ALL",
+        "Symbol": "ALL",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_amd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Armenian Dram",
+          "zh_CN": "亚美尼亚德拉姆"
+        },
+        "Code": "AMD",
+        "Symbol": "֏",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_aoa",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Angolan Kwanza",
+          "zh_CN": "安哥拉宽扎"
+        },
+        "Code": "AOA",
+        "Symbol": "Kz",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_ars",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Argentine Peso",
+          "zh_CN": "阿根廷比索"
+        },
+        "Code": "ARS",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_aud",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Australian Dollar",
+          "zh_CN": "澳大利亚元"
+        },
+        "Code": "AUD",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_awg",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Aruban Florin",
+          "zh_CN": "阿鲁巴弗罗林"
+        },
+        "Code": "AWG",
+        "Symbol": "AWG",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_azn",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Azerbaijani Manat",
+          "zh_CN": "阿塞拜疆马纳特"
+        },
+        "Code": "AZN",
+        "Symbol": "₼",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_bam",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Bosnia-Herzegovina Convertible Mark",
+          "zh_CN": "波斯尼亚-黑塞哥维那可兑换马克"
+        },
+        "Code": "BAM",
+        "Symbol": "KM",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_bbd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Barbadian Dollar",
+          "zh_CN": "巴巴多斯元"
+        },
+        "Code": "BBD",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_bdt",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Bangladeshi Taka",
+          "zh_CN": "孟加拉塔卡"
+        },
+        "Code": "BDT",
+        "Symbol": "৳",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_bhd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Bahraini Dinar",
+          "zh_CN": "巴林第纳尔"
+        },
+        "Code": "BHD",
+        "Symbol": "BHD",
+        "DecimalDigits": 3,
+        "Rounding": "0.001",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_bif",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Burundian Franc",
+          "zh_CN": "布隆迪法郎"
+        },
+        "Code": "BIF",
+        "Symbol": "BIF",
+        "DecimalDigits": 0,
+        "Rounding": "1",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_bmd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Bermudan Dollar",
+          "zh_CN": "百慕大元"
+        },
+        "Code": "BMD",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_bnd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Brunei Dollar",
+          "zh_CN": "文莱元"
+        },
+        "Code": "BND",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_bob",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Bolivian Boliviano",
+          "zh_CN": "玻利维亚诺"
+        },
+        "Code": "BOB",
+        "Symbol": "Bs",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_brl",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Brazilian Real",
+          "zh_CN": "巴西雷亚尔"
+        },
+        "Code": "BRL",
+        "Symbol": "R$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_bsd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Bahamian Dollar",
+          "zh_CN": "巴哈马元"
+        },
+        "Code": "BSD",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_btn",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Bhutanese Ngultrum",
+          "zh_CN": "不丹努尔特鲁姆"
+        },
+        "Code": "BTN",
+        "Symbol": "BTN",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_bwp",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Botswanan Pula",
+          "zh_CN": "博茨瓦纳普拉"
+        },
+        "Code": "BWP",
+        "Symbol": "P",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_byn",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Belarusian Ruble",
+          "zh_CN": "白俄罗斯卢布"
+        },
+        "Code": "BYN",
+        "Symbol": "BYN",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_bzd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Belize Dollar",
+          "zh_CN": "伯利兹元"
+        },
+        "Code": "BZD",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_cad",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Canadian Dollar",
+          "zh_CN": "加拿大元"
+        },
+        "Code": "CAD",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_cdf",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Congolese Franc",
+          "zh_CN": "刚果法郎"
+        },
+        "Code": "CDF",
+        "Symbol": "CDF",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_chf",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Swiss Franc",
+          "zh_CN": "瑞士法郎"
+        },
+        "Code": "CHF",
+        "Symbol": "Fr.",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_clp",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Chilean Peso",
+          "zh_CN": "智利比索"
+        },
+        "Code": "CLP",
+        "Symbol": "$",
+        "DecimalDigits": 0,
+        "Rounding": "1",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_cop",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Colombian Peso",
+          "zh_CN": "哥伦比亚比索"
+        },
+        "Code": "COP",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_crc",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Costa Rican Colón",
+          "zh_CN": "哥斯达黎加科朗"
+        },
+        "Code": "CRC",
+        "Symbol": "₡",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_cup",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Cuban Peso",
+          "zh_CN": "古巴比索"
+        },
+        "Code": "CUP",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_cve",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Cape Verdean Escudo",
+          "zh_CN": "佛得角埃斯库多"
+        },
+        "Code": "CVE",
+        "Symbol": "CVE",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_czk",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Czech Koruna",
+          "zh_CN": "捷克克朗"
+        },
+        "Code": "CZK",
+        "Symbol": "Kč",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_djf",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Djiboutian Franc",
+          "zh_CN": "吉布提法郎"
+        },
+        "Code": "DJF",
+        "Symbol": "DJF",
+        "DecimalDigits": 0,
+        "Rounding": "1",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_dkk",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Danish Krone",
+          "zh_CN": "丹麦克朗"
+        },
+        "Code": "DKK",
+        "Symbol": "kr",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_dop",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Dominican Peso",
+          "zh_CN": "多米尼加比索"
+        },
+        "Code": "DOP",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_dzd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Algerian Dinar",
+          "zh_CN": "阿尔及利亚第纳尔"
+        },
+        "Code": "DZD",
+        "Symbol": "DZD",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_egp",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Egyptian Pound",
+          "zh_CN": "埃及镑"
+        },
+        "Code": "EGP",
+        "Symbol": "E£",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_ern",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Eritrean Nakfa",
+          "zh_CN": "厄立特里亚纳克法"
+        },
+        "Code": "ERN",
+        "Symbol": "ERN",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_etb",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Ethiopian Birr",
+          "zh_CN": "埃塞俄比亚比尔"
+        },
+        "Code": "ETB",
+        "Symbol": "ETB",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_eur",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Euro",
+          "zh_CN": "欧元"
+        },
+        "Code": "EUR",
+        "Symbol": "€",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_fjd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Fijian Dollar",
+          "zh_CN": "斐济元"
+        },
+        "Code": "FJD",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_fkp",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Falkland Islands Pound",
+          "zh_CN": "福克兰群岛镑"
+        },
+        "Code": "FKP",
+        "Symbol": "£",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_gbp",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "British Pound",
+          "zh_CN": "英镑"
+        },
+        "Code": "GBP",
+        "Symbol": "£",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_gel",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Georgian Lari",
+          "zh_CN": "格鲁吉亚拉里"
+        },
+        "Code": "GEL",
+        "Symbol": "₾",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_ghs",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Ghanaian Cedi",
+          "zh_CN": "加纳塞地"
+        },
+        "Code": "GHS",
+        "Symbol": "GH₵",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_gip",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Gibraltar Pound",
+          "zh_CN": "直布罗陀镑"
+        },
+        "Code": "GIP",
+        "Symbol": "£",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_gmd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Gambian Dalasi",
+          "zh_CN": "冈比亚达拉西"
+        },
+        "Code": "GMD",
+        "Symbol": "GMD",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_gnf",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Guinean Franc",
+          "zh_CN": "几内亚法郎"
+        },
+        "Code": "GNF",
+        "Symbol": "FG",
+        "DecimalDigits": 0,
+        "Rounding": "1",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_gtq",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Guatemalan Quetzal",
+          "zh_CN": "危地马拉格查尔"
+        },
+        "Code": "GTQ",
+        "Symbol": "Q",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_gyd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Guyanaese Dollar",
+          "zh_CN": "圭亚那元"
+        },
+        "Code": "GYD",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_hkd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Hong Kong Dollar",
+          "zh_CN": "港元"
+        },
+        "Code": "HKD",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_hnl",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Honduran Lempira",
+          "zh_CN": "洪都拉斯伦皮拉"
+        },
+        "Code": "HNL",
+        "Symbol": "L",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_htg",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Haitian Gourde",
+          "zh_CN": "海地古德"
+        },
+        "Code": "HTG",
+        "Symbol": "HTG",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_huf",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Hungarian Forint",
+          "zh_CN": "匈牙利福林"
+        },
+        "Code": "HUF",
+        "Symbol": "Ft",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_idr",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Indonesian Rupiah",
+          "zh_CN": "印度尼西亚卢比"
+        },
+        "Code": "IDR",
+        "Symbol": "Rp",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_ils",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Israeli New Shekel",
+          "zh_CN": "以色列新谢克尔"
+        },
+        "Code": "ILS",
+        "Symbol": "₪",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_inr",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Indian Rupee",
+          "zh_CN": "印度卢比"
+        },
+        "Code": "INR",
+        "Symbol": "₹",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_iqd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Iraqi Dinar",
+          "zh_CN": "伊拉克第纳尔"
+        },
+        "Code": "IQD",
+        "Symbol": "IQD",
+        "DecimalDigits": 3,
+        "Rounding": "0.001",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_irr",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Iranian Rial",
+          "zh_CN": "伊朗里亚尔"
+        },
+        "Code": "IRR",
+        "Symbol": "IRR",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_isk",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Icelandic Króna",
+          "zh_CN": "冰岛克朗"
+        },
+        "Code": "ISK",
+        "Symbol": "kr",
+        "DecimalDigits": 0,
+        "Rounding": "1",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_jmd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Jamaican Dollar",
+          "zh_CN": "牙买加元"
+        },
+        "Code": "JMD",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_jod",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Jordanian Dinar",
+          "zh_CN": "约旦第纳尔"
+        },
+        "Code": "JOD",
+        "Symbol": "JOD",
+        "DecimalDigits": 3,
+        "Rounding": "0.001",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_jpy",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Japanese Yen",
+          "zh_CN": "日元"
+        },
+        "Code": "JPY",
+        "Symbol": "¥",
+        "DecimalDigits": 0,
+        "Rounding": "1",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_kes",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Kenyan Shilling",
+          "zh_CN": "肯尼亚先令"
+        },
+        "Code": "KES",
+        "Symbol": "KES",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_kgs",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Kyrgyz Som",
+          "zh_CN": "吉尔吉斯斯坦索姆"
+        },
+        "Code": "KGS",
+        "Symbol": "⃀",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_khr",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Cambodian Riel",
+          "zh_CN": "柬埔寨瑞尔"
+        },
+        "Code": "KHR",
+        "Symbol": "៛",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_kmf",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Comorian Franc",
+          "zh_CN": "科摩罗法郎"
+        },
+        "Code": "KMF",
+        "Symbol": "CF",
+        "DecimalDigits": 0,
+        "Rounding": "1",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_kpw",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "North Korean Won",
+          "zh_CN": "朝鲜元"
+        },
+        "Code": "KPW",
+        "Symbol": "₩",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_krw",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "South Korean Won",
+          "zh_CN": "韩元"
+        },
+        "Code": "KRW",
+        "Symbol": "₩",
+        "DecimalDigits": 0,
+        "Rounding": "1",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_kwd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Kuwaiti Dinar",
+          "zh_CN": "科威特第纳尔"
+        },
+        "Code": "KWD",
+        "Symbol": "KWD",
+        "DecimalDigits": 3,
+        "Rounding": "0.001",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_kyd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Cayman Islands Dollar",
+          "zh_CN": "开曼元"
+        },
+        "Code": "KYD",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_kzt",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Kazakhstani Tenge",
+          "zh_CN": "哈萨克斯坦坚戈"
+        },
+        "Code": "KZT",
+        "Symbol": "₸",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_lak",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Laotian Kip",
+          "zh_CN": "老挝基普"
+        },
+        "Code": "LAK",
+        "Symbol": "₭",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_lbp",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Lebanese Pound",
+          "zh_CN": "黎巴嫩镑"
+        },
+        "Code": "LBP",
+        "Symbol": "L£",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_lkr",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Sri Lankan Rupee",
+          "zh_CN": "斯里兰卡卢比"
+        },
+        "Code": "LKR",
+        "Symbol": "Rs",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_lrd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Liberian Dollar",
+          "zh_CN": "利比里亚元"
+        },
+        "Code": "LRD",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_lsl",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Lesotho Loti",
+          "zh_CN": "莱索托洛蒂"
+        },
+        "Code": "LSL",
+        "Symbol": "LSL",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_lyd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Libyan Dinar",
+          "zh_CN": "利比亚第纳尔"
+        },
+        "Code": "LYD",
+        "Symbol": "LYD",
+        "DecimalDigits": 3,
+        "Rounding": "0.001",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_mad",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Moroccan Dirham",
+          "zh_CN": "摩洛哥迪拉姆"
+        },
+        "Code": "MAD",
+        "Symbol": "MAD",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_mdl",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Moldovan Leu",
+          "zh_CN": "摩尔多瓦列伊"
+        },
+        "Code": "MDL",
+        "Symbol": "MDL",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_mga",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Malagasy Ariary",
+          "zh_CN": "马达加斯加阿里亚里"
+        },
+        "Code": "MGA",
+        "Symbol": "Ar",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_mkd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Macedonian Denar",
+          "zh_CN": "马其顿第纳尔"
+        },
+        "Code": "MKD",
+        "Symbol": "MKD",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_mmk",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Myanmar Kyat",
+          "zh_CN": "缅甸元"
+        },
+        "Code": "MMK",
+        "Symbol": "K",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_mnt",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Mongolian Tugrik",
+          "zh_CN": "蒙古图格里克"
+        },
+        "Code": "MNT",
+        "Symbol": "₮",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_mop",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Macanese Pataca",
+          "zh_CN": "澳门币"
+        },
+        "Code": "MOP",
+        "Symbol": "MOP",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_mru",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Mauritanian Ouguiya",
+          "zh_CN": "毛里塔尼亚乌吉亚"
+        },
+        "Code": "MRU",
+        "Symbol": "MRU",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_mur",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Mauritian Rupee",
+          "zh_CN": "毛里求斯卢比"
+        },
+        "Code": "MUR",
+        "Symbol": "Rs",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_mvr",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Maldivian Rufiyaa",
+          "zh_CN": "马尔代夫卢菲亚"
+        },
+        "Code": "MVR",
+        "Symbol": "MVR",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_mwk",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Malawian Kwacha",
+          "zh_CN": "马拉维克瓦查"
+        },
+        "Code": "MWK",
+        "Symbol": "MWK",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_mxn",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Mexican Peso",
+          "zh_CN": "墨西哥比索"
+        },
+        "Code": "MXN",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_myr",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Malaysian Ringgit",
+          "zh_CN": "马来西亚林吉特"
+        },
+        "Code": "MYR",
+        "Symbol": "RM",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_mzn",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Mozambican Metical",
+          "zh_CN": "莫桑比克美提卡"
+        },
+        "Code": "MZN",
+        "Symbol": "MZN",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_nad",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Namibian Dollar",
+          "zh_CN": "纳米比亚元"
+        },
+        "Code": "NAD",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_ngn",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Nigerian Naira",
+          "zh_CN": "尼日利亚奈拉"
+        },
+        "Code": "NGN",
+        "Symbol": "₦",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_nio",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Nicaraguan Córdoba",
+          "zh_CN": "尼加拉瓜科多巴"
+        },
+        "Code": "NIO",
+        "Symbol": "C$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_nok",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Norwegian Krone",
+          "zh_CN": "挪威克朗"
+        },
+        "Code": "NOK",
+        "Symbol": "kr",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_npr",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Nepalese Rupee",
+          "zh_CN": "尼泊尔卢比"
+        },
+        "Code": "NPR",
+        "Symbol": "Rs",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_nzd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "New Zealand Dollar",
+          "zh_CN": "新西兰元"
+        },
+        "Code": "NZD",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_omr",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Omani Rial",
+          "zh_CN": "阿曼里亚尔"
+        },
+        "Code": "OMR",
+        "Symbol": "OMR",
+        "DecimalDigits": 3,
+        "Rounding": "0.001",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_pab",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Panamanian Balboa",
+          "zh_CN": "巴拿马巴波亚"
+        },
+        "Code": "PAB",
+        "Symbol": "PAB",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_pen",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Peruvian Sol",
+          "zh_CN": "秘鲁索尔"
+        },
+        "Code": "PEN",
+        "Symbol": "PEN",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_pgk",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Papua New Guinean Kina",
+          "zh_CN": "巴布亚新几内亚基那"
+        },
+        "Code": "PGK",
+        "Symbol": "PGK",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_php",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Philippine Peso",
+          "zh_CN": "菲律宾比索"
+        },
+        "Code": "PHP",
+        "Symbol": "₱",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_pkr",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Pakistani Rupee",
+          "zh_CN": "巴基斯坦卢比"
+        },
+        "Code": "PKR",
+        "Symbol": "Rs",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_pln",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Polish Zloty",
+          "zh_CN": "波兰兹罗提"
+        },
+        "Code": "PLN",
+        "Symbol": "zł",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_pyg",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Paraguayan Guarani",
+          "zh_CN": "巴拉圭瓜拉尼"
+        },
+        "Code": "PYG",
+        "Symbol": "₲",
+        "DecimalDigits": 0,
+        "Rounding": "1",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_qar",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Qatari Riyal",
+          "zh_CN": "卡塔尔里亚尔"
+        },
+        "Code": "QAR",
+        "Symbol": "QAR",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_ron",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Romanian Leu",
+          "zh_CN": "罗马尼亚列伊"
+        },
+        "Code": "RON",
+        "Symbol": "lei",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_rsd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Serbian Dinar",
+          "zh_CN": "塞尔维亚第纳尔"
+        },
+        "Code": "RSD",
+        "Symbol": "RSD",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_rub",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Russian Ruble",
+          "zh_CN": "俄罗斯卢布"
+        },
+        "Code": "RUB",
+        "Symbol": "₽",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_rwf",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Rwandan Franc",
+          "zh_CN": "卢旺达法郎"
+        },
+        "Code": "RWF",
+        "Symbol": "RF",
+        "DecimalDigits": 0,
+        "Rounding": "1",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_sar",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Saudi Riyal",
+          "zh_CN": "沙特里亚尔"
+        },
+        "Code": "SAR",
+        "Symbol": "SAR",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_sbd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Solomon Islands Dollar",
+          "zh_CN": "所罗门群岛元"
+        },
+        "Code": "SBD",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_scr",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Seychellois Rupee",
+          "zh_CN": "塞舌尔卢比"
+        },
+        "Code": "SCR",
+        "Symbol": "SCR",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_sdg",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Sudanese Pound",
+          "zh_CN": "苏丹镑"
+        },
+        "Code": "SDG",
+        "Symbol": "SDG",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_sek",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Swedish Krona",
+          "zh_CN": "瑞典克朗"
+        },
+        "Code": "SEK",
+        "Symbol": "kr",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_sgd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Singapore Dollar",
+          "zh_CN": "新加坡元"
+        },
+        "Code": "SGD",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_shp",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "St. Helena Pound",
+          "zh_CN": "圣赫勒拿群岛磅"
+        },
+        "Code": "SHP",
+        "Symbol": "£",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_sle",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Sierra Leonean Leone",
+          "zh_CN": "塞拉利昂新利昂"
+        },
+        "Code": "SLE",
+        "Symbol": "SLE",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_sos",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Somali Shilling",
+          "zh_CN": "索马里先令"
+        },
+        "Code": "SOS",
+        "Symbol": "SOS",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_srd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Surinamese Dollar",
+          "zh_CN": "苏里南元"
+        },
+        "Code": "SRD",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_ssp",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "South Sudanese Pound",
+          "zh_CN": "南苏丹镑"
+        },
+        "Code": "SSP",
+        "Symbol": "£",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_stn",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "São Tomé & Príncipe Dobra",
+          "zh_CN": "圣多美和普林西比多布拉"
+        },
+        "Code": "STN",
+        "Symbol": "Db",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_svc",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Salvadoran Colón",
+          "zh_CN": "萨尔瓦多科朗"
+        },
+        "Code": "SVC",
+        "Symbol": "SVC",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_syp",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Syrian Pound",
+          "zh_CN": "叙利亚镑"
+        },
+        "Code": "SYP",
+        "Symbol": "£",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_szl",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Swazi Lilangeni",
+          "zh_CN": "斯威士兰里兰吉尼"
+        },
+        "Code": "SZL",
+        "Symbol": "SZL",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_thb",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Thai Baht",
+          "zh_CN": "泰铢"
+        },
+        "Code": "THB",
+        "Symbol": "฿",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_tjs",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Tajikistani Somoni",
+          "zh_CN": "塔吉克斯坦索莫尼"
+        },
+        "Code": "TJS",
+        "Symbol": "TJS",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_tmt",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Turkmenistani Manat",
+          "zh_CN": "土库曼斯坦马纳特"
+        },
+        "Code": "TMT",
+        "Symbol": "TMT",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_tnd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Tunisian Dinar",
+          "zh_CN": "突尼斯第纳尔"
+        },
+        "Code": "TND",
+        "Symbol": "TND",
+        "DecimalDigits": 3,
+        "Rounding": "0.001",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_top",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Tongan Paʻanga",
+          "zh_CN": "汤加潘加"
+        },
+        "Code": "TOP",
+        "Symbol": "T$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_try",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Turkish Lira",
+          "zh_CN": "土耳其里拉"
+        },
+        "Code": "TRY",
+        "Symbol": "₺",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_ttd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Trinidad & Tobago Dollar",
+          "zh_CN": "特立尼达和多巴哥元"
+        },
+        "Code": "TTD",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_twd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "New Taiwan Dollar",
+          "zh_CN": "新台币"
+        },
+        "Code": "TWD",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_tzs",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Tanzanian Shilling",
+          "zh_CN": "坦桑尼亚先令"
+        },
+        "Code": "TZS",
+        "Symbol": "TZS",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_uah",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Ukrainian Hryvnia",
+          "zh_CN": "乌克兰格里夫纳"
+        },
+        "Code": "UAH",
+        "Symbol": "₴",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_ugx",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Ugandan Shilling",
+          "zh_CN": "乌干达先令"
+        },
+        "Code": "UGX",
+        "Symbol": "UGX",
+        "DecimalDigits": 0,
+        "Rounding": "1",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_usd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "US Dollar",
+          "zh_CN": "美元"
+        },
+        "Code": "USD",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_uyu",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Uruguayan Peso",
+          "zh_CN": "乌拉圭比索"
+        },
+        "Code": "UYU",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_uzs",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Uzbekistani Som",
+          "zh_CN": "乌兹别克斯坦苏姆"
+        },
+        "Code": "UZS",
+        "Symbol": "UZS",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_ved",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Bolívar Soberano",
+          "zh_CN": "委内瑞拉主权币"
+        },
+        "Code": "VED",
+        "Symbol": "VED",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_ves",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Venezuelan Bolívar",
+          "zh_CN": "委内瑞拉玻利瓦尔"
+        },
+        "Code": "VES",
+        "Symbol": "VES",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_vnd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Vietnamese Dong",
+          "zh_CN": "越南盾"
+        },
+        "Code": "VND",
+        "Symbol": "₫",
+        "DecimalDigits": 0,
+        "Rounding": "1",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_vuv",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Vanuatu Vatu",
+          "zh_CN": "瓦努阿图瓦图"
+        },
+        "Code": "VUV",
+        "Symbol": "VUV",
+        "DecimalDigits": 0,
+        "Rounding": "1",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_wst",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Samoan Tala",
+          "zh_CN": "萨摩亚塔拉"
+        },
+        "Code": "WST",
+        "Symbol": "WST",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_xaf",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Central African CFA Franc",
+          "zh_CN": "中非法郎"
+        },
+        "Code": "XAF",
+        "Symbol": "FCFA",
+        "DecimalDigits": 0,
+        "Rounding": "1",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_xcd",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "East Caribbean Dollar",
+          "zh_CN": "东加勒比元"
+        },
+        "Code": "XCD",
+        "Symbol": "$",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_xcg",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Caribbean guilder",
+          "zh_CN": "加勒比盾"
+        },
+        "Code": "XCG",
+        "Symbol": "Cg.",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_xof",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "West African CFA Franc",
+          "zh_CN": "西非法郎"
+        },
+        "Code": "XOF",
+        "Symbol": "F CFA",
+        "DecimalDigits": 0,
+        "Rounding": "1",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_xpf",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "CFP Franc",
+          "zh_CN": "太平洋法郎"
+        },
+        "Code": "XPF",
+        "Symbol": "CFPF",
+        "DecimalDigits": 0,
+        "Rounding": "1",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_yer",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Yemeni Rial",
+          "zh_CN": "也门里亚尔"
+        },
+        "Code": "YER",
+        "Symbol": "YER",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_zar",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "South African Rand",
+          "zh_CN": "南非兰特"
+        },
+        "Code": "ZAR",
+        "Symbol": "R",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_zmw",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Zambian Kwacha",
+          "zh_CN": "赞比亚克瓦查"
+        },
+        "Code": "ZMW",
+        "Symbol": "ZK",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    },
+    {
+      "name": "currency_zwg",
+      "model": "Currency",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Zimbabwean Gold",
+          "zh_CN": "津巴布韦金元"
+        },
+        "Code": "ZWG",
+        "Symbol": "ZWG",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": false
+      }
+    }
+  ]
+}

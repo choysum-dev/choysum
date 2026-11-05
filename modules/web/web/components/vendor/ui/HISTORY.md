@@ -36,6 +36,18 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
+### 2026-11-04 — Stepper props declared locally
+
+- **What:** `stepper/*.vue` replace `defineProps<StepperXxxProps & { class }>()` (types
+  imported from `reka-ui`) with inline prop declarations of the same Reka props
+  (`Stepper` keeps `linear` default `true` and declares the `update:modelValue` emit
+  inline). Markup, classes, and forwarding are unchanged.
+- **Why not product-only:** The embedded `@vue/compiler-sfc` browser build cannot
+  resolve type imports from non-relative sources, so the copied files failed to
+  compile; `ChoyStepper` (L1) cannot use them at all until the kit compiles.
+- **Do not regress:** When re-copying stepper from upstream, keep prop types local
+  (no `import type { … } from "reka-ui"` inside `defineProps` / `defineEmits`).
+
 ### 2026-11-03 — runtime UI stack (no EP / echarts)
 
 - Product runtime uses Choy L1 + vendor L2 + Unovis charts only; **no** Element Plus

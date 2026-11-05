@@ -8,9 +8,11 @@ import (
 	"io"
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/choysum-dev/choysum/internal/config/authoptions"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -265,5 +267,115 @@ func TestStreamAllowsNonSessionMethodWhenSetupPending(t *testing.T) {
 	}
 	if !called {
 		t.Fatal("handler was not called")
+	}
+}
+
+const setupOptionsMethod = "/base.Company/GetInitialSetupOptions"
+
+func TestUnaryAllowsSetupWindowMethodWhenSetupPending(t *testing.T) {
+	runtimeScope, db := newGateScope(t)
+	seedSetupPending(t, db)
+
+	called := false
+	_, err := UnaryInterceptor(runtimeScope)(context.Background(), nil, &grpc.UnaryServerInfo{FullMethod: setupOptionsMethod},
+		func(ctx context.Context, req interface{}) (interface{}, error) {
+			called = true
+			return "ok", nil
+		})
+	if err != nil {
+		t.Fatalf("GetInitialSetupOptions: %v", err)
+	}
+	if !called {
+		t.Fatal("handler was not called")
+	}
+}
+
+func TestUnaryRejectsSetupWindowMethodOutsideSetupPending(t *testing.T) {
+	cases := map[string]func(t *testing.T, db *gorm.DB){
+		"ready": seedReady,
+		"empty": func(*testing.T, *gorm.DB) {},
+	}
+	for name, seed := range cases {
+		t.Run(name, func(t *testing.T) {
+			runtimeScope, db := newGateScope(t)
+			seed(t, db)
+			_, err := UnaryInterceptor(runtimeScope)(context.Background(), nil, &grpc.UnaryServerInfo{FullMethod: setupOptionsMethod},
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					t.Fatal("handler must not run")
+					return nil, nil
+				})
+			if status.Code(err) != codes.FailedPrecondition {
+				t.Fatalf("code = %v, want FailedPrecondition; err=%v", status.Code(err), err)
+			}
+			if status.Convert(err).Message() != "initial setup is not pending" {
+				t.Fatalf("message = %q", status.Convert(err).Message())
+			}
+		})
+	}
+}
+
+func TestUnaryRejectsSetupWindowMethodWhenResolveErrors(t *testing.T) {
+	runtimeScope := &gateTestScope{ctx: context.Background(), db: nil}
+	_, err := UnaryInterceptor(runtimeScope)(context.Background(), nil, &grpc.UnaryServerInfo{FullMethod: setupOptionsMethod},
+		func(ctx context.Context, req interface{}) (interface{}, error) {
+			t.Fatal("handler must not run")
+			return nil, nil
+		})
+	if status.Convert(err).Message() != "initial setup state unavailable" {
+		t.Fatalf("code=%v message=%q", status.Code(err), status.Convert(err).Message())
+	}
+}
+
+func TestStreamGatesSetupWindowMethod(t *testing.T) {
+	runtimeScope, db := newGateScope(t)
+	seedReady(t, db)
+	err := StreamInterceptor(runtimeScope)(nil, &testServerStream{ctx: context.Background()},
+		&grpc.StreamServerInfo{FullMethod: setupOptionsMethod},
+		func(srv interface{}, ss grpc.ServerStream) error {
+			t.Fatal("handler must not run")
+			return nil
+		})
+	if status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("code = %v, want FailedPrecondition; err=%v", status.Code(err), err)
+	}
+}
+
+func TestSetupMethodListsAreDisjoint(t *testing.T) {
+	for _, m := range setupWindowMethods {
+		for _, s := range sessionEstablishingMethods {
+			if m == s {
+				t.Fatalf("%s is both session-establishing and setup-window; the session gate would always reject it during setup", m)
+			}
+		}
+	}
+}
+
+func TestSetupWindowMethodsMatchAnonymousEntryPolicy(t *testing.T) {
+	cfg, err := authoptions.NewDefaultAuthConfigWithChoysumRoot(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	window := map[string]bool{}
+	for _, m := range setupWindowMethods {
+		window[m] = true
+		entry := cfg.GrpcEntryPolicy[m]
+		if entry == nil || !entry.SkipAuthentication {
+			t.Fatalf("setup-window method %s must have an anonymous entry policy", m)
+		}
+	}
+	// Anonymous setup methods intentionally outside the window gate.
+	ungated := map[string]bool{
+		// Checks the pending state itself and maps "already complete" to a typed error.
+		"auth.User/CompleteInitialSetup": true,
+		// Status probe readable in every phase.
+		"auth.User/GetInitialSetupState": true,
+	}
+	for method, entry := range cfg.GrpcEntryPolicy {
+		if entry == nil || !entry.SkipAuthentication || ungated[method] {
+			continue
+		}
+		if strings.Contains(method, "InitialSetup") && !window[method] {
+			t.Fatalf("anonymous setup method %s is not gated by setupWindowMethods", method)
+		}
 	}
 }

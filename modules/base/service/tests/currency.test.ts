@@ -33,8 +33,8 @@ async function expectRepoValidationFailed(mode: 'create' | 'update', fn: () => P
 test('base.currency: code normalized to upper + trim', async () => {
   const created = await Currency.Create(
     {
-      Name: uid('USD Currency'),
-      Code: ' usD ',
+      Name: uid('Q1D Currency'),
+      Code: ' q1D ',
       DecimalDigits: 2,
       Rounding: '0.01',
       IsActive: true,
@@ -42,7 +42,7 @@ test('base.currency: code normalized to upper + trim', async () => {
     ['Id', 'Code'] as any
   );
 
-  expect(String((created as any).Code)).toBe('USD');
+  expect(String((created as any).Code)).toBe('Q1D');
 
   await expectRepoValidationFailed('update', async () => {
     await Currency.UpdateById(

@@ -15,7 +15,7 @@ describe('ChoyShellLocaleMenu', () => {
     await flushPromises();
     const trigger = mounted.q('[data-testid=choy-shell-locale]');
     expect(trigger).not.toBeNull();
-    expect(trigger?.getAttribute('aria-label')).toBe('layout.header.languages');
+    expect(trigger?.getAttribute('aria-label')).toBe('Languages');
     expect(mounted.q('[data-lucide=Languages]')).not.toBeNull();
     const ss = mounted.setupState() as {
       localeName?: (code: string) => string;

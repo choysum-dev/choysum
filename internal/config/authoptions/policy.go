@@ -38,7 +38,8 @@ func defaultGrpcEntryPolicy() map[string]*EntryMethodConfig {
 			},
 			SkipFieldRule: true,
 		},
-		// First-run setup: update seed admin + write auth.AppSetting setup.completed_at.
+		// First-run setup: update seed admin + write auth.AppSetting setup.completed_at,
+		// after base.Company/ApplyInitialSetup writes the main company and activates its currency.
 		"auth.User/CompleteInitialSetup": {
 			SkipAuthentication: true,
 			SkipMethodAccess:   true,
@@ -49,6 +50,24 @@ func defaultGrpcEntryPolicy() map[string]*EntryMethodConfig {
 				{Model: "meta.MetaModelData", Ops: []string{"read"}},
 				// Drop any pre-setup seed-admin sessions after credential rotation.
 				{Model: "auth.Session", Ops: []string{"read", "write"}},
+				{Model: "base.Company", Ops: []string{"read", "write"}},
+				{Model: "base.Currency", Ops: []string{"read", "write"}},
+				{Model: "base.Country", Ops: []string{"read"}},
+				{Model: "base.Language", Ops: []string{"read"}},
+			},
+			SkipFieldRule: true,
+		},
+		// Anonymous setup-form choices; setupgate only admits it while setup is pending.
+		"base.Company/GetInitialSetupOptions": {
+			SkipAuthentication: true,
+			SkipMethodAccess:   true,
+			SkipCompanyFilter:  true,
+			RecordRuleAllow: []EntryRecordRuleAllow{
+				{Model: "base.Company", Ops: []string{"read"}},
+				{Model: "base.Country", Ops: []string{"read"}},
+				{Model: "base.Currency", Ops: []string{"read"}},
+				{Model: "base.Language", Ops: []string{"read"}},
+				{Model: "meta.MetaModelData", Ops: []string{"read"}},
 			},
 			SkipFieldRule: true,
 		},

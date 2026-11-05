@@ -21,12 +21,18 @@ var sessionEstablishingMethods = []string{
 	"auth.User/RefreshTokens",
 }
 
-// UnaryInterceptor rejects session-establishing RPCs until setup is Ready.
+// setupWindowMethods serve anonymous first-run setup data and are only open while setup is pending.
+var setupWindowMethods = []string{
+	"base.Company/GetInitialSetupOptions",
+}
+
+// UnaryInterceptor rejects session-establishing RPCs until setup is Ready and
+// setup-window RPCs outside SetupPending.
 // CompleteInitialSetup and other methods are not gated here.
 // Depth metadata is ignored: clients can set x-choysum-depth and must not bypass the gate.
 func UnaryInterceptor(runtimeScope scope.Scope) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		if err := enforceReadyForSessionMethod(runtimeScope, info.FullMethod); err != nil {
+		if err := enforceSetupPhase(runtimeScope, info.FullMethod); err != nil {
 			return nil, err
 		}
 		return handler(ctx, req)
@@ -36,15 +42,17 @@ func UnaryInterceptor(runtimeScope scope.Scope) grpc.UnaryServerInterceptor {
 // StreamInterceptor mirrors UnaryInterceptor for streaming RPCs.
 func StreamInterceptor(runtimeScope scope.Scope) grpc.StreamServerInterceptor {
 	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		if err := enforceReadyForSessionMethod(runtimeScope, info.FullMethod); err != nil {
+		if err := enforceSetupPhase(runtimeScope, info.FullMethod); err != nil {
 			return err
 		}
 		return handler(srv, ss)
 	}
 }
 
-func enforceReadyForSessionMethod(runtimeScope scope.Scope, fullMethod string) error {
-	if !isSessionEstablishingMethod(fullMethod) {
+func enforceSetupPhase(runtimeScope scope.Scope, fullMethod string) error {
+	sessionMethod := middleware.IsMethodExcluded(fullMethod, sessionEstablishingMethods)
+	windowMethod := middleware.IsMethodExcluded(fullMethod, setupWindowMethods)
+	if !sessionMethod && !windowMethod {
 		return nil
 	}
 
@@ -55,14 +63,11 @@ func enforceReadyForSessionMethod(runtimeScope scope.Scope, fullMethod string) e
 		}
 		return status.Error(codes.FailedPrecondition, "initial setup state unavailable")
 	}
-	if phase != provision.PhaseReady {
+	if sessionMethod && phase != provision.PhaseReady {
 		return status.Error(codes.FailedPrecondition, "initial setup is not complete")
 	}
+	if windowMethod && phase != provision.PhaseSetupPending {
+		return status.Error(codes.FailedPrecondition, "initial setup is not pending")
+	}
 	return nil
-}
-
-// isSessionEstablishingMethod reports whether fullMethod creates/renews a session.
-// Uses IsMethodExcluded for path matching only (not "auth skip" semantics).
-func isSessionEstablishingMethod(fullMethod string) bool {
-	return middleware.IsMethodExcluded(fullMethod, sessionEstablishingMethods)
 }

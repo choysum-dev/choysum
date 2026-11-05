@@ -5,6 +5,8 @@ import { createServiceByModel } from '@/core/service/rpc';
 import { pool, type AppSettingModelCtor } from '@/core/service';
 import { withRecordRuleAndFieldRuleBypass } from '@/core/service/api/authz_bypass';
 import type MetaModelData from '@/meta/service/models/model_data';
+import type Company from '@/base/service/models/company';
+import type LanguageModel from '@/base/service/models/language';
 import { newAuthError, AuthErrCode, GrpcCode } from '../../error';
 import { _t } from '../../i18n';
 import Session from '../session';
@@ -12,24 +14,53 @@ import Token from '../token';
 import { hashPassword, withPermissionGraphBypass } from './_authz_shared';
 import { SETUP_COMPLETED_AT_KEY } from './setup_completed_at_key';
 import type User from './user';
+import type { CompleteInitialSetupOrganization } from './_session_envelopes';
 
 export { SETUP_COMPLETED_AT_KEY } from './setup_completed_at_key';
 
 const MetaModelDataService = createServiceByModel<typeof MetaModelData>('meta.MetaModelData');
+const CompanyService = createServiceByModel<typeof Company>('base.Company');
+const LanguageService = createServiceByModel<typeof LanguageModel>('base.Language');
 
 /** Matches auth.User Username varchar size. */
 const SETUP_USERNAME_MAX_LEN = 100;
+/** Matches auth.User Email varchar size. */
+const SETUP_EMAIL_MAX_LEN = 100;
+/** Same shape check as the Register page email rule. */
+const SETUP_EMAIL_PATTERN = /^[\w-]+(\.[\w-]+)*@[\w-]+(\.[\w-]+)+$/;
+
+const MAIN_COMPANY_XML_ID = 'base.company_main';
+
+const ORGANIZATION_FIELDS: ReadonlySet<string> = new Set([
+  'Name',
+  'CountryCode',
+  'CurrencyCode',
+  'Timezone',
+]);
 
 export type CompleteInitialSetupParams = {
+  Admin: {
+    Username: string;
+    Password: string;
+    LanguageCode: string;
+    Email?: string;
+  };
+  Organization: CompleteInitialSetupOrganization;
+};
+
+/** Values written onto the seed admin inside the claim savepoint. */
+export type InitialSetupAdminValues = {
   Username: string;
-  Password: string;
+  PasswordHash: string;
+  LanguageId: string;
+  Email: string | null;
 };
 
 export type CompleteInitialSetupResult = {
   UserId: string;
 };
 
-function normalizeSetupUsername(raw: string): string {
+function normalizeSetupUsername(raw: unknown): string {
   return String(raw || '').trim();
 }
 
@@ -42,35 +73,97 @@ function alreadyCompleteError() {
   }).withGrpcCode(GrpcCode.FailedPrecondition);
 }
 
+function errorMessageOf(err: unknown): string {
+  return err instanceof Error
+    ? err.message
+    : typeof err === 'object' && err !== null && 'message' in err
+      ? String((err as { message: unknown }).message)
+      : String(err);
+}
+
 function isUniqueConstraintError(err: unknown): boolean {
-  const msg =
-    err instanceof Error
-      ? err.message
-      : typeof err === 'object' && err !== null && 'message' in err
-        ? String((err as { message: unknown }).message)
-        : String(err);
-  return /unique constraint|unique index|duplicate key|UNIQUE constraint failed|duplicate entry/i.test(msg);
+  return /unique constraint|unique index|duplicate key|UNIQUE constraint failed|duplicate entry/i.test(errorMessageOf(err));
+}
+
+/**
+ * Field-level VALIDATION_FAILED. metadata `Field` is the request path
+ * (e.g. `Admin.Email`, `Organization.CurrencyCode`) the setup page maps to a step.
+ */
+function setupFieldError(field: string, message: string) {
+  return newAuthError({ code: AuthErrCode.VALIDATION_FAILED, message })
+    .withGrpcCode(GrpcCode.InvalidArgument)
+    .withMetadata({ Field: field });
+}
+
+function usernameTakenError(username: string) {
+  return newAuthError({
+    code: AuthErrCode.USERNAME_TAKEN,
+    message: _t('Username is already in use', {
+      scope: 'service/models/user/_lifecycle_complete_initial_setup',
+    }),
+  })
+    .withGrpcCode(GrpcCode.AlreadyExists)
+    .withMetadata({ username, Field: 'Admin.Username' });
+}
+
+function emailTakenError(email: string) {
+  return newAuthError({
+    code: AuthErrCode.EMAIL_TAKEN,
+    message: _t('Email is already registered', {
+      scope: 'service/models/user/_lifecycle_complete_initial_setup',
+    }),
+  })
+    .withGrpcCode(GrpcCode.AlreadyExists)
+    .withMetadata({ email, Field: 'Admin.Email' });
+}
+
+/** Trim; empty means "clear". Throws Admin.Email field errors for bad shape or length. */
+export function normalizeSetupEmail(raw: unknown): string {
+  const email = String(raw ?? '').trim();
+  if (!email) return '';
+  if (email.length > SETUP_EMAIL_MAX_LEN) {
+    throw setupFieldError(
+      'Admin.Email',
+      _t('Email is too long', { scope: 'service/models/user/_lifecycle_complete_initial_setup' })
+    );
+  }
+  if (!SETUP_EMAIL_PATTERN.test(email)) {
+    throw setupFieldError(
+      'Admin.Email',
+      _t('Enter a valid email address', { scope: 'service/models/user/_lifecycle_complete_initial_setup' })
+    );
+  }
+  return email;
+}
+
+/** Re-scope a base field error (metadata `Field`) under `Organization.`; other errors pass through. */
+function mapOrganizationError(err: unknown): unknown {
+  const field = String((err as { metadata?: Record<string, string> })?.metadata?.Field || '');
+  if (!ORGANIZATION_FIELDS.has(field)) return err;
+  return setupFieldError(`Organization.${field}`, errorMessageOf(err));
 }
 
 /**
  * Validate CompleteInitialSetup username/password and return a store-ready hash.
  */
 export function validateAndHashSetupPassword(username: string, password: string): string {
-  if (!username || !password) {
-    throw newAuthError({
-      code: AuthErrCode.VALIDATION_FAILED,
-      message: _t('Username and password are required', {
-        scope: 'service/models/user/_lifecycle_complete_initial_setup',
-      }),
-    }).withGrpcCode(GrpcCode.InvalidArgument);
+  if (!username) {
+    throw setupFieldError(
+      'Admin.Username',
+      _t('Username and password are required', { scope: 'service/models/user/_lifecycle_complete_initial_setup' })
+    );
+  }
+  if (!password) {
+    throw setupFieldError(
+      'Admin.Password',
+      _t('Username and password are required', { scope: 'service/models/user/_lifecycle_complete_initial_setup' })
+    );
   }
   if (username.length > SETUP_USERNAME_MAX_LEN) {
-    throw newAuthError({
-      code: AuthErrCode.VALIDATION_FAILED,
-      message: _t('Username is too long', {
-        scope: 'service/models/user/_lifecycle_complete_initial_setup',
-      }),
-    }).withGrpcCode(GrpcCode.InvalidArgument);
+    throw setupFieldError(
+      'Admin.Username',
+      _t('Username is too long', { scope: 'service/models/user/_lifecycle_complete_initial_setup' })
+    );
   }
   return hashPassword(password);
 }
@@ -134,17 +227,27 @@ async function claimSetupCompletedAt(iso: string): Promise<void> {
 }
 
 /**
- * Complete initial setup: update seed admin credentials and mark SetupComplete.
+ * Complete initial setup. Order: read-only admin checks → base writes the main
+ * company (its own transaction, idempotent) → claim `setup.completed_at` and
+ * update the seed admin in one savepoint. The marker is the single commit point:
+ * once it exists the organization has been written; a failure after the base
+ * write leaves setup pending and a retry overwrites the organization.
  */
 export async function runCompleteInitialSetup(
   params: CompleteInitialSetupParams,
   deps: {
     searchByUsername: (username: string) => Promise<Array<{ Id?: string }>>;
-    browseAdmin: (adminId: string) => Promise<{ Id?: string; Username?: string } | null | undefined>;
-    updateAdmin: (
-      adminId: string,
-      values: { Username: string; PasswordHash: string }
-    ) => Promise<void>;
+    /** Must include soft-deleted rows (Email is unique across them). */
+    searchByEmail: (email: string) => Promise<Array<{ Id?: string }>>;
+    browseAdmin: (
+      adminId: string
+    ) => Promise<{ Id?: string; Username?: string; Email?: string | null } | null | undefined>;
+    updateAdmin: (adminId: string, values: InitialSetupAdminValues) => Promise<void>;
+    /** Active base.Language id for a POSIX code, or null. */
+    lookupLanguageId: (code: string) => Promise<string | null>;
+    /** Writes the organization onto CompanyId; base field errors carry metadata `Field`. */
+    applyOrganization: (req: CompleteInitialSetupOrganization & { CompanyId: string }) => Promise<void>;
+    resolveCompanyId?: () => Promise<string | null>;
     nowIso?: () => string;
     resolveAdminId?: () => Promise<string | null>;
     isSetupComplete?: () => Promise<boolean>;
@@ -154,9 +257,17 @@ export async function runCompleteInitialSetup(
     revokeAdminSessions?: (adminId: string) => Promise<void>;
   }
 ): Promise<CompleteInitialSetupResult> {
-  const username = normalizeSetupUsername(params.Username);
-  const password = typeof params.Password === 'string' ? params.Password : '';
+  const username = normalizeSetupUsername(params.Admin?.Username);
+  const password = typeof params.Admin?.Password === 'string' ? params.Admin.Password : '';
   const passwordHash = validateAndHashSetupPassword(username, password);
+  const email = normalizeSetupEmail(params.Admin?.Email);
+  const adminLanguageCode = String(params.Admin?.LanguageCode ?? '').trim();
+  if (!adminLanguageCode) {
+    throw setupFieldError(
+      'Admin.LanguageCode',
+      _t('Language is required', { scope: 'service/models/user/_lifecycle_complete_initial_setup' })
+    );
+  }
 
   const alreadyComplete = deps.isSetupComplete
     ? await deps.isSetupComplete()
@@ -196,16 +307,59 @@ export async function runCompleteInitialSetup(
     const existing = await deps.searchByUsername(username);
     const taken = existing.some(row => String(row?.Id || '').trim() !== resolvedAdminId);
     if (taken) {
-      throw newAuthError({
-        code: AuthErrCode.USERNAME_TAKEN,
-        message: _t('Username is already in use', {
-          scope: 'service/models/user/_lifecycle_complete_initial_setup',
-        }),
-      })
-        .withGrpcCode(GrpcCode.AlreadyExists)
-        .withMetadata({ username });
+      throw usernameTakenError(username);
     }
   }
+
+  if (email && email !== String(admin.Email ?? '').trim()) {
+    const existing = await deps.searchByEmail(email);
+    const taken = existing.some(row => String(row?.Id || '').trim() !== resolvedAdminId);
+    if (taken) {
+      throw emailTakenError(email);
+    }
+  }
+
+  const languageId = String((await deps.lookupLanguageId(adminLanguageCode)) || '').trim();
+  if (!languageId) {
+    throw setupFieldError(
+      'Admin.LanguageCode',
+      _t('Invalid or inactive language: %s', { scope: 'service/models/user/_lifecycle_complete_initial_setup' }, adminLanguageCode)
+    );
+  }
+
+  const companyId = String(
+    (deps.resolveCompanyId
+      ? await deps.resolveCompanyId()
+      : await withPermissionGraphBypass(async () => MetaModelDataService.RefOrNull(MAIN_COMPANY_XML_ID))) || ''
+  ).trim();
+  if (!companyId) {
+    throw newAuthError({
+      code: AuthErrCode.INITIAL_COMPANY_NOT_FOUND,
+      message: _t('Seed main company was not found', {
+        scope: 'service/models/user/_lifecycle_complete_initial_setup',
+      }),
+    }).withGrpcCode(GrpcCode.FailedPrecondition);
+  }
+
+  const org = params.Organization || ({} as CompleteInitialSetupOrganization);
+  try {
+    await deps.applyOrganization({
+      CompanyId: companyId,
+      Name: String(org.Name ?? ''),
+      ...(org.CountryCode && String(org.CountryCode).trim() ? { CountryCode: String(org.CountryCode) } : {}),
+      CurrencyCode: String(org.CurrencyCode ?? ''),
+      Timezone: String(org.Timezone ?? ''),
+    });
+  } catch (err) {
+    throw mapOrganizationError(err);
+  }
+
+  const adminValues: InitialSetupAdminValues = {
+    Username: username,
+    PasswordHash: passwordHash,
+    LanguageId: languageId,
+    Email: email || null,
+  };
 
   await withPermissionGraphBypass(async () => {
     const run = async () => {
@@ -226,7 +380,7 @@ export async function runCompleteInitialSetup(
       }
 
       try {
-        await deps.updateAdmin(resolvedAdminId, { Username: username, PasswordHash: passwordHash });
+        await deps.updateAdmin(resolvedAdminId, adminValues);
       } catch (err) {
         // Production wraps claim+update in withSavepoint (rolls back together).
         // Without a savepoint, free the marker so setup can be retried.
@@ -238,14 +392,7 @@ export async function runCompleteInitialSetup(
           }
         }
         if (isUniqueConstraintError(err)) {
-          throw newAuthError({
-            code: AuthErrCode.USERNAME_TAKEN,
-            message: _t('Username is already in use', {
-              scope: 'service/models/user/_lifecycle_complete_initial_setup',
-            }),
-          })
-            .withGrpcCode(GrpcCode.AlreadyExists)
-            .withMetadata({ username });
+          throw /email/i.test(errorMessageOf(err)) && email ? emailTakenError(email) : usernameTakenError(username);
         }
         throw err;
       }
@@ -286,10 +433,19 @@ export async function completeInitialSetupForUser(
       } as any)) as Array<{
         Id?: string;
       }>,
+    searchByEmail: async email =>
+      (await UserModel.Search(['Email', '=', email], {
+        fields: ['Id'],
+        limit: 8,
+        withDeleted: true,
+      } as any)) as Array<{
+        Id?: string;
+      }>,
     browseAdmin: async adminId => {
-      const row = (await UserModel.Browse(adminId, ['Id', 'Username'] as any)) as {
+      const row = (await UserModel.Browse(adminId, ['Id', 'Username', 'Email'] as any)) as {
         Id?: string;
         Username?: string;
+        Email?: string | null;
       } | null;
       return row;
     },
@@ -298,6 +454,16 @@ export async function completeInitialSetupForUser(
       await withRecordRuleAndFieldRuleBypass(async () => {
         await UserModel.UpdateById(adminId, values as any, ['Id']);
       });
+    },
+    lookupLanguageId: async code => {
+      const rows = await LanguageService.Search(
+        { And: [['Code', '=', code], ['IsActive', '=', true]] } as any,
+        { fields: ['Id'], limit: 1 } as any
+      );
+      return String((rows?.[0] as { Id?: string } | undefined)?.Id || '').trim() || null;
+    },
+    applyOrganization: async req => {
+      await CompanyService.ApplyInitialSetup(req);
     },
     withSavepoint: fn => UserModel.withSavepoint(fn),
     revokeAdminSessions: async adminId => {

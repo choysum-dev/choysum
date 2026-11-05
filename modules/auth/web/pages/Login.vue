@@ -24,6 +24,9 @@ SPDX-License-Identifier: Apache-2.0
               <X class="size-3.5" />
             </button>
           </div>
+          <p v-else-if="setupDone" class="login-setup-done text-sm text-foreground/80" role="status">
+            {{ _t('Initial setup is complete. Sign in with your new account.') }}
+          </p>
           <p v-else class="text-sm text-foreground/60">
             {{ _t('Enter your username and password to continue') }}
           </p>
@@ -171,6 +174,7 @@ const usernameRules = computed(() => loginUsernameRules(_t));
 const passwordRules = computed(() => loginPasswordRules(_t));
 
 const error = ref('');
+const setupDone = computed(() => route.query.setup === 'done');
 const showRegisterLink = computed(() => import.meta.env.CHOYSUM_ENABLE_REGISTRATION !== false);
 
 /**

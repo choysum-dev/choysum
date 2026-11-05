@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
         variant="ghost"
         size="icon"
         type="button"
-        :aria-label="tLayout('layout.header.theme')"
+        :aria-label="_t('Theme')"
         data-testid="choy-shell-theme"
       >
         <Moon v-if="resolvedDark" class="size-4" aria-hidden="true" />
@@ -36,7 +36,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { useI18n } from 'vue-i18n';
+import { createTranslate } from '@/web/web/i18n';
 import { Check, Moon, Sun } from 'lucide-vue-next';
 import ChoyButton from './ChoyButton.vue';
 import {
@@ -54,13 +54,7 @@ import {
 
 defineOptions({ name: 'ChoyShellThemeToggle' });
 
-let tLayout: (key: string) => string = (key) => key;
-try {
-  const i18n = useI18n({ useScope: 'global' });
-  tLayout = (key) => String(i18n.t(key));
-} catch {
-  tLayout = (key) => key;
-}
+const { _t } = createTranslate('web', { scope: 'web/components/layout/ChoyShellThemeToggle' });
 
 const mode = ref<ChoyThemeMode>(readChoyThemePreference().theme || 'light');
 
@@ -69,9 +63,9 @@ const resolvedDark = computed(
 );
 
 const themeItems = computed(() => [
-  { mode: 'light' as const, label: tLayout('layout.header.lightMode') },
-  { mode: 'dark' as const, label: tLayout('layout.header.darkMode') },
-  { mode: 'auto' as const, label: tLayout('layout.header.autoMode') },
+  { mode: 'light' as const, label: _t('Light') },
+  { mode: 'dark' as const, label: _t('Dark') },
+  { mode: 'auto' as const, label: _t('Auto') },
 ]);
 
 function applyTheme(next: ChoyThemeMode) {

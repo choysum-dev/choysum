@@ -27,7 +27,9 @@
       "web": "./web/index.ts"
     },
     "data": [
-      "data/bootstrap.json"
+      "data/bootstrap.json",
+      "data/currencies.json",
+      "data/countries.json"
     ],
     "demo": [
       "demo/demo.json"

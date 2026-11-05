@@ -207,6 +207,7 @@
     {
       "name": "user_admin",
       "model": "User",
+      "noupdate": true,
       "values": {
         "Username": "admin",
         "Email": "admin@local",

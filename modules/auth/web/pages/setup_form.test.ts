@@ -2,72 +2,142 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ChoysumError } from '../error';
+import type { CompleteInitialSetupInput } from '../stores/auth';
 import {
+  buildCompleteInitialSetupReq,
   runSetupSubmit,
-  setupLoginFallbackTarget,
-  setupUsernameError,
-  setupPasswordError,
   setupConfirmPasswordError,
+  setupEmailError,
+  setupLocalFieldForServerField,
+  setupLoginFallbackTarget,
+  setupOrgNameError,
+  setupPasswordError,
+  setupStepForServerField,
+  setupUsernameError,
+  withSetupServerError,
 } from './setup_form';
 
-test('setupLoginFallbackTarget preserves redirect query for post-setup login', () => {
+const t = (s: string) => s;
+
+function req(username = ' admin ', password = 'secret1'): CompleteInitialSetupInput {
+  return {
+    Admin: { Username: username, Password: password, LanguageCode: 'en_US' },
+    Organization: { Name: 'Acme', CurrencyCode: 'CNY', Timezone: 'Asia/Shanghai' },
+  };
+}
+
+test('setupLoginFallbackTarget preserves query and optionally marks setup done', () => {
   expect(setupLoginFallbackTarget({ redirect: '/auth/users' })).toEqual({
     name: 'login',
     query: { redirect: '/auth/users' },
   });
   expect(setupLoginFallbackTarget(undefined)).toEqual({ name: 'login', query: {} });
+  expect(setupLoginFallbackTarget({ redirect: '/x' }, { setupDone: true })).toEqual({
+    name: 'login',
+    query: { redirect: '/x', setup: 'done' },
+  });
 });
 
 test('setupUsernameError rejects short or empty names', () => {
-  const t = (s: string) => s;
   expect(setupUsernameError('', t)).toBe('Enter username');
   expect(setupUsernameError('ab', t)).toBe('Username must be at least 3 characters');
   expect(setupUsernameError('admin', t)).toBe('');
 });
 
 test('setupPasswordError requires min length', () => {
-  const t = (s: string) => s;
   expect(setupPasswordError('', t)).toBe('Enter password');
   expect(setupPasswordError('12345', t)).toBe('Password must be at least 6 characters');
   expect(setupPasswordError('secret1', t)).toBe('');
 });
 
 test('setupConfirmPasswordError requires match', () => {
-  const t = (s: string) => s;
   expect(setupConfirmPasswordError('', 'secret1', t)).toBe('Re-enter password');
   expect(setupConfirmPasswordError('other', 'secret1', t)).toBe('Passwords do not match');
   expect(setupConfirmPasswordError('secret1', 'secret1', t)).toBe('');
 });
 
-test('runSetupSubmit completes then logs in', async () => {
+test('setupEmailError: optional, format and length checked when present', () => {
+  expect(setupEmailError('', t)).toBe('');
+  expect(setupEmailError('   ', t)).toBe('');
+  expect(setupEmailError('owner@acme.io', t)).toBe('');
+  expect(setupEmailError('admin@local', t)).toBe('Enter a valid email address');
+  expect(setupEmailError(`${'a'.repeat(95)}@acme.io`, t)).toBe('Email is too long');
+});
+
+test('setupOrgNameError: required and capped at 100 characters', () => {
+  expect(setupOrgNameError('  ', t)).toBe('Enter organization name');
+  expect(setupOrgNameError('Acme', t)).toBe('');
+  expect(setupOrgNameError('x'.repeat(101), t)).toBe('Organization name must be at most 100 characters');
+});
+
+test('server field mapping resolves local field and owning step', () => {
+  expect(setupLocalFieldForServerField('Admin.Username')).toBe('Username');
+  expect(setupStepForServerField('Admin.Email')).toBe('admin');
+  expect(setupLocalFieldForServerField('Organization.Name')).toBe('OrgName');
+  expect(setupStepForServerField('Organization.CurrencyCode')).toBe('organization');
+  expect(setupStepForServerField('Organization.LanguageCode')).toBe(null);
+  expect(setupStepForServerField('Admin.LanguageCode')).toBe(null);
+  expect(setupLocalFieldForServerField('Unknown')).toBe('');
+});
+
+test('withSetupServerError appends a failing rule only when a message is set', async () => {
+  const base = [{ required: true }];
+  expect(withSetupServerError(base, '')).toBe(base);
+  const rules = withSetupServerError(base, 'taken');
+  expect(rules.length).toBe(2);
+  const err = await new Promise<Error | undefined>(resolve => rules[1].validator!({}, 'x', resolve));
+  expect(err?.message).toBe('taken');
+});
+
+test('buildCompleteInitialSetupReq trims values and omits empty optionals', () => {
+  expect(
+    buildCompleteInitialSetupReq(
+      {
+        Username: ' admin ',
+        Password: ' pw with spaces ',
+        Email: '  ',
+        OrgName: ' Acme ',
+        CountryCode: '',
+        CurrencyCode: 'USD',
+        Timezone: 'UTC',
+      },
+      'zh_CN',
+    ),
+  ).toEqual({
+    Admin: { Username: 'admin', Password: ' pw with spaces ', LanguageCode: 'zh_CN' },
+    Organization: { Name: 'Acme', CurrencyCode: 'USD', Timezone: 'UTC' },
+  });
+  const full = buildCompleteInitialSetupReq({ Username: 'a', Password: 'p', Email: 'o@a.io', CountryCode: 'US' }, 'en_US');
+  expect(full.Admin.Email).toBe('o@a.io');
+  expect(full.Organization.CountryCode).toBe('US');
+});
+
+test('runSetupSubmit completes, reports success, then logs in', async () => {
   const calls: string[] = [];
   const ok = await runSetupSubmit({
     loading: false,
-    username: ' admin ',
-    password: 'secret1',
+    req: req(),
     setupFailedMessage: 'setup failed',
-    loginFailedMessage: 'login failed',
-    completeInitialSetup: async (u, p) => {
-      calls.push(`setup:${u}:${p}`);
+    completeInitialSetup: async r => {
+      calls.push(`setup:${r.Admin.Username}`);
     },
     login: async (u, p) => {
       calls.push(`login:${u}:${p}`);
     },
     setError: () => {},
+    onSetupSucceeded: () => calls.push('succeeded'),
   });
   expect(ok).toBe(true);
-  expect(calls).toEqual(['setup:admin:secret1', 'login:admin:secret1']);
+  expect(calls).toEqual(['setup: admin ', 'succeeded', 'login:admin:secret1']);
 });
 
-test('runSetupSubmit surfaces CompleteInitialSetup errors', async () => {
+test('runSetupSubmit surfaces CompleteInitialSetup errors without a field', async () => {
   let message = '';
   let setupFailedHook = 0;
   const ok = await runSetupSubmit({
     loading: false,
-    username: 'admin',
-    password: 'secret1',
+    req: req(),
     setupFailedMessage: 'setup failed',
-    loginFailedMessage: 'login failed',
     completeInitialSetup: async () => {
       throw new ChoysumError({ domain: 'auth', code: 'VALIDATION_FAILED', message: 'already done' });
     },
@@ -77,6 +147,7 @@ test('runSetupSubmit surfaces CompleteInitialSetup errors', async () => {
     setError: m => {
       message = m;
     },
+    onFieldError: () => true,
     onSetupFailed: () => {
       setupFailedHook += 1;
     },
@@ -86,15 +157,55 @@ test('runSetupSubmit surfaces CompleteInitialSetup errors', async () => {
   expect(setupFailedHook).toBe(1);
 });
 
-test('runSetupSubmit surfaces login errors after successful setup', async () => {
+test('runSetupSubmit routes Field errors to onFieldError and skips the header', async () => {
+  let message = '';
+  const fieldCalls: string[] = [];
+  const err = new ChoysumError({ domain: 'auth', code: 'VALIDATION_FAILED', message: 'taken' }).withMetadata({
+    Field: 'Admin.Username',
+  });
+  await runSetupSubmit({
+    loading: false,
+    req: req(),
+    setupFailedMessage: 'setup failed',
+    completeInitialSetup: async () => {
+      throw err;
+    },
+    login: async () => {},
+    setError: m => {
+      message = m;
+    },
+    onFieldError: (field, msg) => {
+      fieldCalls.push(`${field}:${msg}`);
+      return true;
+    },
+  });
+  expect(fieldCalls).toEqual(['Admin.Username:taken']);
+  expect(message).toBe('');
+
+  // Unhandled fields fall back to the header error.
+  await runSetupSubmit({
+    loading: false,
+    req: req(),
+    setupFailedMessage: 'setup failed',
+    completeInitialSetup: async () => {
+      throw err;
+    },
+    login: async () => {},
+    setError: m => {
+      message = m;
+    },
+    onFieldError: () => false,
+  });
+  expect(message).toBe('taken');
+});
+
+test('runSetupSubmit: login failure after setup only fires the fallback hook', async () => {
   let message = '';
   let loginFailedHook = 0;
   const ok = await runSetupSubmit({
     loading: false,
-    username: 'admin',
-    password: 'secret1',
+    req: req(),
     setupFailedMessage: 'setup failed',
-    loginFailedMessage: 'login failed',
     completeInitialSetup: async () => {},
     login: async () => {
       throw new ChoysumError({ domain: 'auth', code: 'INVALID_CREDENTIALS', message: 'bad login' });
@@ -107,7 +218,7 @@ test('runSetupSubmit surfaces login errors after successful setup', async () => 
     },
   });
   expect(ok).toBe(false);
-  expect(message).toBe('bad login');
+  expect(message).toBe('');
   expect(loginFailedHook).toBe(1);
 });
 
@@ -115,10 +226,8 @@ test('runSetupSubmit maps non-ChoysumError setup failures to the fallback messag
   let message = '';
   const ok = await runSetupSubmit({
     loading: false,
-    username: 'admin',
-    password: 'secret1',
+    req: req(),
     setupFailedMessage: 'setup failed',
-    loginFailedMessage: 'login failed',
     completeInitialSetup: async () => {
       throw new Error('network down');
     },
@@ -134,54 +243,17 @@ test('runSetupSubmit maps non-ChoysumError setup failures to the fallback messag
 });
 
 test('runSetupSubmit skips while loading or when credentials are empty', async () => {
-  expect(
-    await runSetupSubmit({
-      loading: true,
-      username: 'admin',
-      password: 'secret1',
-      setupFailedMessage: 'setup failed',
-      loginFailedMessage: 'login failed',
-      completeInitialSetup: async () => {
-        throw new Error('no');
-      },
-      login: async () => {
-        throw new Error('no');
-      },
-      setError: () => {},
-    }),
-  ).toBe(false);
-
-  expect(
-    await runSetupSubmit({
-      loading: false,
-      username: '  ',
-      password: 'secret1',
-      setupFailedMessage: 'setup failed',
-      loginFailedMessage: 'login failed',
-      completeInitialSetup: async () => {
-        throw new Error('no');
-      },
-      login: async () => {
-        throw new Error('no');
-      },
-      setError: () => {},
-    }),
-  ).toBe(false);
-
-  expect(
-    await runSetupSubmit({
-      loading: false,
-      username: 'admin',
-      password: '',
-      setupFailedMessage: 'setup failed',
-      loginFailedMessage: 'login failed',
-      completeInitialSetup: async () => {
-        throw new Error('no');
-      },
-      login: async () => {
-        throw new Error('no');
-      },
-      setError: () => {},
-    }),
-  ).toBe(false);
+  const base = {
+    setupFailedMessage: 'setup failed',
+    completeInitialSetup: async () => {
+      throw new Error('no');
+    },
+    login: async () => {
+      throw new Error('no');
+    },
+    setError: () => {},
+  };
+  expect(await runSetupSubmit({ ...base, loading: true, req: req() })).toBe(false);
+  expect(await runSetupSubmit({ ...base, loading: false, req: req('  ', 'secret1') })).toBe(false);
+  expect(await runSetupSubmit({ ...base, loading: false, req: req('admin', '') })).toBe(false);
 });

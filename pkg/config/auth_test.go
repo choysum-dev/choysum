@@ -68,6 +68,38 @@ func TestNewDefaultAuthConfig(t *testing.T) {
 	if !entryAllowsModelOp(completeSetup.RecordRuleAllow, "auth.Session", "write") {
 		t.Fatalf("expected CompleteInitialSetup recordRuleAllow to include auth.Session:write, got %#v", completeSetup.RecordRuleAllow)
 	}
+	for _, want := range [][2]string{
+		{"base.Company", "write"},
+		{"base.Currency", "write"},
+		{"base.Country", "read"},
+		{"base.Language", "read"},
+	} {
+		if !entryAllowsModelOp(completeSetup.RecordRuleAllow, want[0], want[1]) {
+			t.Fatalf("expected CompleteInitialSetup recordRuleAllow to include %s:%s, got %#v", want[0], want[1], completeSetup.RecordRuleAllow)
+		}
+	}
+	if entryAllowsModelOp(completeSetup.RecordRuleAllow, "base.Country", "write") {
+		t.Fatalf("CompleteInitialSetup must not write base.Country, got %#v", completeSetup.RecordRuleAllow)
+	}
+	setupOptions := cfg.GrpcEntryPolicy["base.Company/GetInitialSetupOptions"]
+	if setupOptions == nil || !setupOptions.SkipAuthentication || !setupOptions.SkipMethodAccess || !setupOptions.SkipCompanyFilter || !setupOptions.SkipFieldRule || setupOptions.SkipRecordRule {
+		t.Fatalf("unexpected GetInitialSetupOptions policy: %#v", setupOptions)
+	}
+	for _, model := range []string{"base.Company", "base.Country", "base.Currency", "base.Language", "meta.MetaModelData"} {
+		if !entryAllowsModelOp(setupOptions.RecordRuleAllow, model, "read") {
+			t.Fatalf("expected GetInitialSetupOptions recordRuleAllow to include %s:read, got %#v", model, setupOptions.RecordRuleAllow)
+		}
+	}
+	for _, allow := range setupOptions.RecordRuleAllow {
+		for _, op := range allow.Ops {
+			if op != "read" {
+				t.Fatalf("GetInitialSetupOptions must be read-only, got %s:%s", allow.Model, op)
+			}
+		}
+	}
+	if _, ok := cfg.GrpcEntryPolicy["base.Company/ApplyInitialSetup"]; ok {
+		t.Fatal("base.Company/ApplyInitialSetup must not be an anonymous entry")
+	}
 	getSetupState := cfg.GrpcEntryPolicy["auth.User/GetInitialSetupState"]
 	if getSetupState == nil || !getSetupState.SkipAuthentication || !getSetupState.SkipMethodAccess || !getSetupState.SkipCompanyFilter || !getSetupState.SkipFieldRule || !getSetupState.SkipRecordRule {
 		t.Fatalf("unexpected GetInitialSetupState policy: %#v", getSetupState)

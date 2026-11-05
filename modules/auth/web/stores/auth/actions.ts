@@ -4,8 +4,9 @@
 import { isClient } from '@vueuse/core';
 import { createTranslate } from '@/web/web/i18n';
 import { hashPasswordClient, getCsrfTokenFromCookie, getDeviceInfo, withLoading } from './utils';
-import { newAuthError, wrapAuthError, AuthErrCode, isAuthError } from '../../error';
+import { newAuthError, wrapAuthError, AuthErrCode, isAuthError, ChoysumError } from '../../error';
 import type { AuthState } from './state';
+import type { CompleteInitialSetupInput, InitialSetupOptions } from './setup_types';
 import type { AuthHelpers } from './helpers';
 import type { AuthOptions } from './options';
 import { authStorage } from './storage';
@@ -21,6 +22,10 @@ export type AuthActionDeps = {
   createLanguageStore?: () => {
     Browse: (id: string, fields?: string[]) => Promise<{ Code?: string } | null | undefined>;
     Search: (domain: unknown, opts?: unknown) => Promise<Array<{ Id?: string }>>;
+  };
+  /** When set, skips dynamic registry lookup for base.Company. */
+  createCompanyStore?: () => {
+    GetInitialSetupOptions: (req: Record<string, never>) => Promise<InitialSetupOptions>;
   };
   /** When set, skips dynamic import of `@/web/web/stores/i18nStore`. */
   importI18nStore?: () => Promise<{
@@ -199,18 +204,55 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
     }
   }
 
+  async function getCompanyStore() {
+    if (deps?.createCompanyStore) return deps.createCompanyStore();
+    const { createStoreByModel } = await import('@/web/web/stores/registry');
+    return createStoreByModel('base.Company') as unknown as {
+      GetInitialSetupOptions: (req: Record<string, never>) => Promise<InitialSetupOptions>;
+    };
+  }
+
   /**
-   * Complete initial setup (seed admin credentials + setup.completed_at).
-   * Does not create a session; callers Login afterward (same shape as Register).
+   * Load setup-window choices (currencies, countries, timezones, languages, defaults).
+   * Only callable while setup is pending; errors keep their server code and message.
    */
-  async function completeInitialSetupImpl(username: string, password: string): Promise<any> {
+  async function getInitialSetupOptions(): Promise<InitialSetupOptions> {
     try {
-      const normalizedUsername = username.trim();
-      const hashedPassword = await hashPasswordClient(password, normalizedUsername);
-      const result = await state.userStore.CompleteInitialSetup({
-        Username: normalizedUsername,
-        Password: hashedPassword,
+      const companyStore = await getCompanyStore();
+      const resp = await companyStore.GetInitialSetupOptions({});
+      if (!resp || !resp.Defaults) {
+        throw newAuthError({
+          code: AuthErrCode.INITIALIZATION_FAILED,
+          message: _t('GetInitialSetupOptions returned an invalid response'),
+        });
+      }
+      return resp;
+    } catch (error) {
+      if (error instanceof ChoysumError) throw error;
+      throw wrapAuthError(error, {
+        code: AuthErrCode.INITIALIZATION_FAILED,
+        message: _t('Failed to load initial setup options'),
       });
+    }
+  }
+
+  /**
+   * Complete initial setup (admin credentials, organization, setup.completed_at).
+   * Does not create a session; callers Login afterward (same shape as Register).
+   * Server errors are rethrown unchanged so callers can read `metadata.Field`.
+   */
+  async function completeInitialSetupImpl(req: CompleteInitialSetupInput): Promise<any> {
+    try {
+      const normalizedUsername = String(req.Admin.Username ?? '').trim();
+      const hashedPassword = await hashPasswordClient(req.Admin.Password, normalizedUsername);
+      const result = await state.userStore.CompleteInitialSetup({
+        Admin: {
+          ...req.Admin,
+          Username: normalizedUsername,
+          Password: hashedPassword,
+        },
+        Organization: { ...req.Organization },
+      } as any);
       if (!result || typeof (result as any).UserId !== 'string' || (result as any).UserId === '') {
         throw newAuthError({
           code: AuthErrCode.UNKNOWN,
@@ -222,6 +264,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
     } catch (error) {
       // Another client may have finished setup; force the next guard to re-probe.
       setupCompleteCache = null;
+      if (error instanceof ChoysumError) throw error;
       throw wrapAuthError(error, {
         code: AuthErrCode.UNKNOWN,
         message: _t('Initial setup failed'),
@@ -664,6 +707,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
     switchCompanyScope,
     register,
     completeInitialSetup,
+    getInitialSetupOptions,
     getCsrfToken,
     persistLanguagePreference,
   };
