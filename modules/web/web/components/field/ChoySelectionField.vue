@@ -40,8 +40,9 @@ SPDX-License-Identifier: Apache-2.0
               :name="inputName"
               class="w-full"
               :disabled="disabled || optionsLoading"
-              :aria-label="_t('Show options')"
-              :aria-labelledby="labelId || undefined"
+              tabindex="0"
+              :aria-label="triggerAriaLabel"
+              :aria-labelledby="callerNamesTrigger ? undefined : labelId || undefined"
               :aria-describedby="describedBy || undefined"
               :aria-invalid="invalid ? 'true' : undefined"
               v-bind="triggerSelectProps"
@@ -203,6 +204,14 @@ const triggerSelectProps = computed(() => {
   }
   return out;
 });
+
+/** Caller-supplied `aria-label` / `aria-labelledby` in selectProps win over the field label reference. */
+const callerNamesTrigger = computed(
+  () => 'aria-label' in triggerSelectProps.value || 'aria-labelledby' in triggerSelectProps.value
+);
+
+/** Fallback name when `labelId` does not resolve (table / inline modes render no label element). */
+const triggerAriaLabel = computed(() => props.label || _t('Show options'));
 
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
 

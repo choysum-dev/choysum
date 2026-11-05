@@ -340,11 +340,48 @@ describe('SelectionField FieldsGet wiring', () => {
     await nextTick();
     const trigger = m.q('[data-slot="combobox-trigger"]');
     expect(trigger).toBeTruthy();
-    expect(trigger!.getAttribute('aria-label')).toBe('Show options');
+    expect(trigger!.getAttribute('aria-label')).toBe('Status');
+    expect(trigger!.getAttribute('tabindex')).toBe('0');
     const labelledBy = String(trigger!.getAttribute('aria-labelledby') || '');
     expect(labelledBy.length > 0).toBe(true);
     const label = m.q(`[id="${labelledBy}"]`);
     expect(String(label?.textContent || '').includes('Status')).toBe(true);
+    m.unmount();
+  });
+
+  function statusBinding() {
+    const value = ref<string | null>('active');
+    return {
+      env: { isForm: true, fieldPresentation: 'form', isEditMode: true, viewMode: 'edit', fieldPrefix: null },
+      prop: 'Status',
+      meta: staticMeta,
+      fieldRef: () => value as any,
+      fieldRefOf: () => value as any,
+      recordRef: () => computed(() => ({ Id: '1', Status: 'active' })) as any,
+      registerFields: () => {},
+      store: { fieldsMetadata: { Status: staticMeta } },
+      asView: () => ({ fieldValue: () => value }) as any,
+    };
+  }
+
+  test('SelectionField trigger falls back to a generic name without a label', async () => {
+    const m = mountApp(SelectionField as any, { props: { binding: statusBinding(), renderMode: 'form' } });
+    await flushPromises();
+    await nextTick();
+    const trigger = m.q('[data-slot="combobox-trigger"]');
+    expect(trigger!.getAttribute('aria-label')).toBe('Show options');
+    m.unmount();
+  });
+
+  test('SelectionField keeps a caller-provided accessible name from selectProps', async () => {
+    const m = mountApp(SelectionField as any, {
+      props: { binding: statusBinding(), label: 'Status', renderMode: 'form', selectProps: { 'aria-label': 'Billing status' } },
+    });
+    await flushPromises();
+    await nextTick();
+    const trigger = m.q('[data-slot="combobox-trigger"]');
+    expect(trigger!.getAttribute('aria-label')).toBe('Billing status');
+    expect(trigger!.getAttribute('aria-labelledby')).toBe(null);
     m.unmount();
   });
 });
