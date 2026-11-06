@@ -45,6 +45,12 @@ const (
 	originRegistry = "registry"
 )
 
+// Overridable defaults for SyncSourceSnapshotsThenMaterialize (tests).
+var (
+	defaultSyncLocal    = lifecycle.SyncLocalModuleSourceSnapshot
+	defaultSyncRegistry = lifecycle.SyncRegistryModuleSourceSnapshot
+)
+
 // SnapshotSyncFunc syncs one origin's module source snapshots (local or registry).
 type SnapshotSyncFunc func(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error)
 

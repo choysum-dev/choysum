@@ -55,6 +55,47 @@ func (o *Ops) saveOperation(ctx context.Context, row *modmeta.ModuleOperation) e
 	return sess.WithContext(ctx).Save(row).Error
 }
 
+// casSaveOperation updates the row only when status still equals expectStatus.
+func (o *Ops) casSaveOperation(ctx context.Context, row *modmeta.ModuleOperation, expectStatus string) error {
+	sess, err := o.session(ctx)
+	if err != nil {
+		return err
+	}
+	id := ""
+	if row != nil && row.Id.Valid {
+		id = row.Id.String
+	}
+	if id == "" {
+		return errors.New("ops: operation id is required")
+	}
+	updates := map[string]any{
+		"action":           row.Action,
+		"module_name":      row.ModuleName,
+		"plan_json":        row.PlanJson,
+		"status":           row.Status,
+		"phase":            row.Phase,
+		"error_domain":     row.ErrorDomain,
+		"error_code":       row.ErrorCode,
+		"error_message":    row.ErrorMessage,
+		"reload_triggered": row.ReloadTriggered,
+		"reload_failed":    row.ReloadFailed,
+		"operator_user_id": row.OperatorUserId,
+		"job_id":           row.JobId,
+		"started_at":       row.StartedAt,
+		"finished_at":      row.FinishedAt,
+	}
+	res := sess.WithContext(ctx).Model(&modmeta.ModuleOperation{}).
+		Where("id = ? AND status = ?", id, expectStatus).
+		Updates(updates)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return fmt.Errorf("ops: operation %q status changed concurrently (wanted %q)", id, expectStatus)
+	}
+	return nil
+}
+
 func (o *Ops) createOperation(ctx context.Context, row *modmeta.ModuleOperation) error {
 	sess, err := o.session(ctx)
 	if err != nil {

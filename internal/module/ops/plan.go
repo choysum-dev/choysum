@@ -259,6 +259,7 @@ func (o *Ops) snapshotVersions(ctx context.Context, name string) (localV, regist
 	var rows []modmeta.ModuleSourceSnapshot
 	_ = sess.WithContext(ctx).
 		Where("module_name = ? AND available = ?", name, true).
+		Order("source_type ASC, source_ref ASC").
 		Find(&rows).Error
 	for _, row := range rows {
 		v := ""
@@ -285,7 +286,14 @@ func (o *Ops) uninstallBlockers(ctx context.Context, rootName string, planned []
 		plannedSet[n] = struct{}{}
 	}
 	root, err := o.Resolver.Load(rootName)
-	if err != nil || root == nil {
+	if err != nil {
+		return []PlanIssue{{
+			Code:    "DEPENDENCY_LOOKUP_FAILED",
+			Level:   "error",
+			Message: fmt.Sprintf("could not check dependents of module %q: %v", rootName, err),
+		}}
+	}
+	if root == nil {
 		return nil
 	}
 	var out []PlanIssue
@@ -313,7 +321,7 @@ func (o *Ops) uninstallBlockers(ctx context.Context, rootName string, planned []
 }
 
 func computeBaseRevision(ctx context.Context, o *Ops, entries []ModuleOrderEntry) string {
-	// Hash mixes frozen PlanJson fields (current/target/origin) with live snapshot
+	// Hash mixes frozen PlanJson target/origin with live installed + snapshot
 	// versions so Apply rejects when the world moved since Plan.
 	type revPart struct {
 		Name     string `json:"n"`
@@ -326,12 +334,22 @@ func computeBaseRevision(ctx context.Context, o *Ops, entries []ModuleOrderEntry
 	parts := make([]revPart, 0, len(entries))
 	for _, e := range entries {
 		localV, registryV := "", ""
+		current := e.CurrentVersion
 		if o != nil {
 			localV, registryV = o.snapshotVersions(ctx, e.ModuleName)
+			if o.Resolver != nil {
+				if installed, err := o.Resolver.Load(e.ModuleName); err == nil {
+					if installed != nil {
+						current = strings.TrimSpace(installed.Version)
+					} else {
+						current = ""
+					}
+				}
+			}
 		}
 		parts = append(parts, revPart{
 			Name:     e.ModuleName,
-			Current:  e.CurrentVersion,
+			Current:  current,
 			Target:   e.TargetVersion,
 			Origin:   e.Origin,
 			Local:    localV,

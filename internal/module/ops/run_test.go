@@ -153,6 +153,26 @@ func TestRun_LoadDemoNotImplemented(t *testing.T) {
 	}
 }
 
+func TestRun_RejectsDraftInstallWithoutApply(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	mod := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core"}
+	o := &Ops{
+		Scope:     newOpsTestScope(t, db),
+		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+		Lifecycle: &stubLifecycle{},
+		Events:    &recordingBus{},
+	}
+	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "core", Action: ActionInstall})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	err = o.Run(context.Background(), RunRequest{Id: result.Id})
+	if err == nil || !strings.Contains(err.Error(), "must be applied") {
+		t.Fatalf("Run error = %v, want must be applied", err)
+	}
+}
+
 func TestRun_WithDemoRequestSetsLatch(t *testing.T) {
 	t.Parallel()
 	db := newOpsTestDB(t)

@@ -37,12 +37,24 @@ func (o *Ops) Apply(ctx context.Context, req ApplyRequest) error {
 		return fmt.Errorf("ops: operation %q has blockers", id)
 	}
 	if row.Action != ActionSync && row.Action != ActionLoadDemo {
+		if len(doc.ModuleOrder) == 0 {
+			return fmt.Errorf("ops: operation %q has empty module order", id)
+		}
 		current := computeBaseRevision(ctx, o, doc.ModuleOrder)
 		if doc.BaseRevision == "" || current != doc.BaseRevision {
 			return fmt.Errorf("ops: baseRevision mismatch for operation %q", id)
 		}
 	}
+	if row.Action == ActionUninstall {
+		planned := make([]string, 0, len(doc.ModuleOrder))
+		for _, e := range doc.ModuleOrder {
+			planned = append(planned, e.ModuleName)
+		}
+		if blockers := o.uninstallBlockers(ctx, row.ModuleName, planned); len(blockers) > 0 {
+			return fmt.Errorf("ops: operation %q has blockers", id)
+		}
+	}
 	row.Status = StatusQueued
 	row.Phase = PhaseQueued
-	return o.saveOperation(ctx, row)
+	return o.casSaveOperation(ctx, row, StatusDraft)
 }

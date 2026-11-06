@@ -24,6 +24,7 @@ type metaAppSetting struct {
 func (metaAppSetting) TableName() string { return "meta_app_setting" }
 
 // ResolveWithDemo reads meta_app_setting modules.with_demo; missing/invalid => false.
+// Does not AutoMigrate: latch writes (SetWithDemo) create the table; read misses stay false.
 func (o *Ops) ResolveWithDemo(ctx context.Context) bool {
 	if o == nil {
 		return false
@@ -32,11 +33,9 @@ func (o *Ops) ResolveWithDemo(ctx context.Context) bool {
 	if err != nil {
 		return false
 	}
-	if err := sess.WithContext(ctx).AutoMigrate(&metaAppSetting{}); err != nil {
-		return false
-	}
 	var row metaAppSetting
-	if err := sess.WithContext(ctx).Where("key = ?", withDemoSettingKey).Take(&row).Error; err != nil {
+	// Map condition so dialects quote reserved column name `key` (MySQL KEY).
+	if err := sess.WithContext(ctx).Where(map[string]any{"key": withDemoSettingKey}).Take(&row).Error; err != nil {
 		return false
 	}
 	return strings.EqualFold(strings.TrimSpace(row.Value), "true")
@@ -55,7 +54,7 @@ func (o *Ops) SetWithDemo(ctx context.Context, enabled bool) error {
 		return err
 	}
 	var existing metaAppSetting
-	err = sess.WithContext(ctx).Where("key = ?", withDemoSettingKey).Take(&existing).Error
+	err = sess.WithContext(ctx).Where(map[string]any{"key": withDemoSettingKey}).Take(&existing).Error
 	if err == nil {
 		return sess.WithContext(ctx).Model(&existing).Update("value", "true").Error
 	}

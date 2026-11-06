@@ -14,7 +14,7 @@ import (
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 )
 
-// Run executes a queued (or draft sync for CLI convenience) operation.
+// Run executes a queued (or draft sync/load-demo for CLI convenience) operation.
 func (o *Ops) Run(ctx context.Context, req RunRequest) error {
 	if o == nil {
 		return errors.New("ops: nil host")
@@ -30,15 +30,21 @@ func (o *Ops) Run(ctx context.Context, req RunRequest) error {
 	if err != nil {
 		return err
 	}
+	expectStatus := row.Status
 	switch row.Status {
-	case StatusQueued, StatusDraft:
-		// draft allowed for CLI sync path that skips Apply
+	case StatusQueued:
+		// ok
+	case StatusDraft:
+		// draft is allowed only for CLI sync / load-demo stubs that skip Apply
+		if row.Action != ActionSync && row.Action != ActionLoadDemo {
+			return fmt.Errorf("ops: operation %q must be applied before run", id)
+		}
 	default:
 		return fmt.Errorf("ops: operation %q status is %q, want queued or draft", id, row.Status)
 	}
 	if row.Action == ActionLoadDemo {
 		msg := "load-demo is not implemented until W4"
-		_ = o.failOperation(ctx, row, "ops", "LOAD_DEMO_NOT_IMPLEMENTED", msg)
+		_ = o.failOperation(context.WithoutCancel(ctx), row, "ops", "LOAD_DEMO_NOT_IMPLEMENTED", msg)
 		return errors.New(msg)
 	}
 
@@ -49,17 +55,18 @@ func (o *Ops) Run(ctx context.Context, req RunRequest) error {
 	row.ErrorDomain = ""
 	row.ErrorCode = ""
 	row.ErrorMessage = ""
-	if err := o.saveOperation(ctx, row); err != nil {
+	if err := o.casSaveOperation(ctx, row, expectStatus); err != nil {
 		return err
 	}
 	o.publishOperationChanged(ctx, row)
 
 	runErr := o.executeOperation(ctx, row, req.WithDemo)
+	finishCtx := context.WithoutCancel(ctx)
 	if runErr != nil {
-		_ = o.failOperation(ctx, row, "ops", "RUN_FAILED", runErr.Error())
+		_ = o.failOperation(finishCtx, row, "ops", "RUN_FAILED", runErr.Error())
 		return runErr
 	}
-	return o.succeedOperation(ctx, row)
+	return o.succeedOperation(finishCtx, row)
 }
 
 func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation, requestWithDemo bool) error {
@@ -73,7 +80,9 @@ func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation
 		}
 		withDemo := requestWithDemo || o.ResolveWithDemo(ctx)
 		if requestWithDemo {
-			_ = o.SetWithDemo(ctx, true)
+			if err := o.SetWithDemo(ctx, true); err != nil {
+				return err
+			}
 			withDemo = true
 		}
 		doc, err := unmarshalPlanDocument(row.PlanJson)
@@ -130,6 +139,7 @@ func affectedModuleNames(doc PlanDocument, root string) []string {
 }
 
 func (o *Ops) failOperation(ctx context.Context, row *modmeta.ModuleOperation, domain, code, message string) error {
+	expect := row.Status
 	now := time.Now().UTC()
 	row.Status = StatusFailed
 	row.Phase = PhaseDone
@@ -137,7 +147,7 @@ func (o *Ops) failOperation(ctx context.Context, row *modmeta.ModuleOperation, d
 	row.ErrorCode = code
 	row.ErrorMessage = message
 	row.FinishedAt = &now
-	if err := o.saveOperation(ctx, row); err != nil {
+	if err := o.casSaveOperation(ctx, row, expect); err != nil {
 		return err
 	}
 	o.publishOperationChanged(ctx, row)
@@ -145,6 +155,7 @@ func (o *Ops) failOperation(ctx context.Context, row *modmeta.ModuleOperation, d
 }
 
 func (o *Ops) succeedOperation(ctx context.Context, row *modmeta.ModuleOperation) error {
+	expect := row.Status
 	now := time.Now().UTC()
 	row.Status = StatusSucceeded
 	row.Phase = PhaseDone
@@ -152,7 +163,7 @@ func (o *Ops) succeedOperation(ctx context.Context, row *modmeta.ModuleOperation
 	row.ErrorDomain = ""
 	row.ErrorCode = ""
 	row.ErrorMessage = ""
-	if err := o.saveOperation(ctx, row); err != nil {
+	if err := o.casSaveOperation(ctx, row, expect); err != nil {
 		return err
 	}
 	o.publishOperationChanged(ctx, row)

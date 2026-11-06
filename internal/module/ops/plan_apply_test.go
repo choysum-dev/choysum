@@ -9,8 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	pkgmeta "github.com/choysum-dev/choysum/pkg/meta"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/module/plan"
+	pkgmeta "github.com/choysum-dev/choysum/pkg/meta"
 	"gorm.io/datatypes"
 )
 
@@ -166,5 +167,22 @@ func TestApply_RejectsBlockers(t *testing.T) {
 	}
 	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err == nil || !strings.Contains(err.Error(), "blockers") {
 		t.Fatalf("Apply error = %v, want blockers", err)
+	}
+}
+
+func TestApply_RejectsEmptyModuleOrder(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	o := &Ops{Scope: newOpsTestScope(t, db)}
+	row := &modmeta.ModuleOperation{
+		Action:   ActionInstall,
+		Status:   StatusDraft,
+		PlanJson: datatypes.JSON(`{"moduleOrder":[],"baseRevision":"x"}`),
+	}
+	if err := db.Create(row).Error; err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: row.Id.String}); err == nil || !strings.Contains(err.Error(), "empty module order") {
+		t.Fatalf("Apply error = %v, want empty module order", err)
 	}
 }

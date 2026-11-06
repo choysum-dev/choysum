@@ -32,7 +32,7 @@ func closeOpsDB(t *testing.T, db interface{ DB() (*sql.DB, error) }) {
 }
 
 func TestCoverage_GuardsAndHelpers(t *testing.T) {
-	t.Parallel()
+	// Not parallel: mutates package-level jsonMarshal.
 
 	if _, err := (*Ops)(nil).Plan(context.Background(), PlanRequest{}); err == nil {
 		t.Fatal("nil Plan")
@@ -151,7 +151,7 @@ func TestCoverage_GuardsAndHelpers(t *testing.T) {
 }
 
 func TestCoverage_PlanPaths(t *testing.T) {
-	t.Parallel()
+	// Not parallel: mutates package-level jsonMarshal.
 	db := newOpsTestDB(t)
 	runtimeScope := newOpsTestScope(t, db)
 
@@ -530,7 +530,7 @@ func TestCoverage_UninstallBlockersEdges(t *testing.T) {
 	t.Parallel()
 	db := newOpsTestDB(t)
 	o := &Ops{Scope: newOpsTestScope(t, db), Resolver: &mapResolver{loadErr: errors.New("no")}}
-	if issues := o.uninstallBlockers(context.Background(), "core", nil); issues != nil {
+	if issues := o.uninstallBlockers(context.Background(), "core", nil); len(issues) != 1 || issues[0].Code != "DEPENDENCY_LOOKUP_FAILED" {
 		t.Fatalf("load err => %#v", issues)
 	}
 	o.Resolver = &mapResolver{}
@@ -572,19 +572,30 @@ func TestCoverage_SessionUnavailable(t *testing.T) {
 }
 
 func TestCoverage_RemainingBranches(t *testing.T) {
-	t.Parallel()
+	// Not parallel: mutates package-level defaultSync* hooks.
 	db := newOpsTestDB(t)
 	runtimeScope := newOpsTestScope(t, db)
 	locker := func(scope.Scope) statepkg.Locker { return testLocker{} }
 
-	// Default lifecycle sync hooks (nil overrides).
+	prevLocal, prevReg := defaultSyncLocal, defaultSyncRegistry
+	defaultSyncLocal = func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+		return lifecycle.ModuleSourceSnapshotSyncStats{Total: 1, Success: 1}, nil
+	}
+	defaultSyncRegistry = func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+		return lifecycle.ModuleSourceSnapshotSyncStats{Total: 1, Success: 1}, nil
+	}
+	defer func() {
+		defaultSyncLocal = prevLocal
+		defaultSyncRegistry = prevReg
+	}()
+
+	// Default lifecycle sync hooks (nil Ops overrides → package defaults).
 	o := &Ops{Scope: runtimeScope, LockerFactory: locker}
 	if _, err := o.SyncSourceSnapshotsThenMaterialize(context.Background(), originLocal); err != nil {
-		// Empty modules path may still succeed with zero modules; either path covers defaults.
-		t.Logf("local sync: %v", err)
+		t.Fatalf("local sync: %v", err)
 	}
 	if _, err := o.SyncSourceSnapshotsThenMaterialize(context.Background(), originRegistry); err != nil {
-		t.Logf("registry sync: %v", err)
+		t.Fatalf("registry sync: %v", err)
 	}
 
 	// Empty module_name / name rows skipped during materialize.
@@ -678,5 +689,85 @@ func TestCoverage_RemainingBranches(t *testing.T) {
 	}
 	if err := o3.SetWithDemo(context.Background(), true); err == nil || !strings.Contains(err.Error(), "forced query fail") {
 		t.Fatalf("SetWithDemo query fail: %v", err)
+	}
+}
+
+func TestCoverage_ApplyUninstallBlockerRecheckAndCAS(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	dep := &pkgmeta.Module{Name: "auth", Version: "1.0.0", Status: pkgmeta.Installed, ApplicationStr: "auth"}
+	root := &pkgmeta.Module{
+		Name: "core", Version: "1.0.0", ApplicationStr: "core",
+		Dependents: []*pkgmeta.Module{dep},
+	}
+	// Plan without dependents so draft has no blockers; Apply re-check sees dependent.
+	planRoot := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core"}
+	o := &Ops{
+		Scope: newOpsTestScope(t, db),
+		Resolver: &mapResolver{
+			peek: map[string]*pkgmeta.Module{"core": planRoot},
+			load: map[string]*pkgmeta.Module{"core": planRoot},
+		},
+	}
+	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "core", Action: ActionUninstall})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	o.Resolver = &mapResolver{
+		peek: map[string]*pkgmeta.Module{"core": root},
+		load: map[string]*pkgmeta.Module{"core": root},
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err == nil || !strings.Contains(err.Error(), "blockers") {
+		t.Fatalf("Apply recheck: %v", err)
+	}
+
+	bare := &Ops{}
+	if err := bare.casSaveOperation(context.Background(), &modmeta.ModuleOperation{Status: StatusDraft}, StatusDraft); err == nil {
+		t.Fatal("cas no scope")
+	}
+	o2 := &Ops{Scope: newOpsTestScope(t, db)}
+	if err := o2.casSaveOperation(context.Background(), &modmeta.ModuleOperation{Status: StatusQueued}, StatusDraft); err == nil {
+		t.Fatal("cas empty id")
+	}
+	row := &modmeta.ModuleOperation{Action: ActionSync, Status: StatusDraft, PlanJson: datatypes.JSON(`{}`)}
+	if err := db.Create(row).Error; err != nil {
+		t.Fatal(err)
+	}
+	row.Status = StatusQueued
+	if err := o2.casSaveOperation(context.Background(), row, StatusRunning); err == nil || !strings.Contains(err.Error(), "concurrently") {
+		t.Fatalf("cas mismatch: %v", err)
+	}
+}
+
+func TestCoverage_SetWithDemoPropagatesOnRun(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	mod := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core"}
+	o := &Ops{
+		Scope:     newOpsTestScope(t, db),
+		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+		Lifecycle: &stubLifecycle{},
+		Events:    &recordingBus{},
+	}
+	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "core", Action: ActionInstall})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := db.Callback().Create().Before("gorm:create").Register("ops_fail_setting_create", func(tx *gorm.DB) {
+		if tx.Statement != nil && tx.Statement.Table == "meta_app_setting" {
+			_ = tx.AddError(errors.New("setting create fail"))
+		}
+	}); err != nil {
+		t.Fatalf("callback: %v", err)
+	}
+	if err := db.Migrator().DropTable(&metaAppSetting{}); err != nil {
+		t.Fatal(err)
+	}
+	err = o.Run(context.Background(), RunRequest{Id: result.Id, WithDemo: true})
+	if err == nil || !strings.Contains(err.Error(), "setting create fail") {
+		t.Fatalf("Run WithDemo latch err: %v", err)
 	}
 }

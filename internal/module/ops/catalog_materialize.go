@@ -43,11 +43,11 @@ func (o *Ops) SyncSourceSnapshotsThenMaterialize(ctx context.Context, originType
 
 	syncLocal := o.SyncLocalSnapshot
 	if syncLocal == nil {
-		syncLocal = lifecycle.SyncLocalModuleSourceSnapshot
+		syncLocal = defaultSyncLocal
 	}
 	syncRegistry := o.SyncRegistrySnapshot
 	if syncRegistry == nil {
-		syncRegistry = lifecycle.SyncRegistryModuleSourceSnapshot
+		syncRegistry = defaultSyncRegistry
 	}
 
 	var err error
@@ -69,13 +69,12 @@ func (o *Ops) SyncSourceSnapshotsThenMaterialize(ctx context.Context, originType
 	default:
 		return stats, errors.New("ops: originType must be one of: local, registry, all")
 	}
-	if err != nil {
-		return stats, err
-	}
+	// Always materialize so a failed origin (e.g. offline registry) still
+	// reflects snapshots that did sync successfully.
 	if matErr := o.MaterializeCatalog(ctx, nil); matErr != nil {
-		return stats, matErr
+		return stats, errors.Join(err, matErr)
 	}
-	return stats, nil
+	return stats, err
 }
 
 // MaterializeCatalog rewrites meta_module_catalog rows from source snapshots + installed modules.
@@ -174,7 +173,7 @@ func (o *Ops) MaterializeCatalog(ctx context.Context, moduleNames []string) erro
 			"local_path", "depends_json", "dependents_json", "has_demo", "demo_loaded",
 			"last_sync_at", "updated_at",
 		}),
-	}).Create(&rows).Error
+	}).CreateInBatches(&rows, 200).Error
 }
 
 func materializeOne(name string, a *catalogAggregate, now time.Time) modmeta.ModuleCatalog {
