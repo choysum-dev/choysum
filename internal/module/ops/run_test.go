@@ -11,6 +11,7 @@ import (
 
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
+	"github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/bus"
 	pkgmeta "github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -199,5 +200,107 @@ func TestRun_WithDemoRequestSetsLatch(t *testing.T) {
 	}
 	if !o.ResolveWithDemo(context.Background()) {
 		t.Fatal("expected modules.with_demo latch set")
+	}
+}
+
+func TestAbandonDraft_CancelsDraftRow(t *testing.T) {
+	t.Parallel()
+	if err := (*Ops)(nil).AbandonDraft(context.Background(), "x", ""); err == nil {
+		t.Fatal("expected nil host error")
+	}
+	db := newOpsTestDB(t)
+	mod := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core"}
+	o := &Ops{
+		Scope:     newOpsTestScope(t, db),
+		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+		Lifecycle: &stubLifecycle{},
+		Events:    &recordingBus{},
+	}
+	if err := o.AbandonDraft(nil, "  ", ""); err == nil || !strings.Contains(err.Error(), "id is required") {
+		t.Fatalf("empty id = %v", err)
+	}
+	if err := o.AbandonDraft(context.Background(), "missing-op", ""); err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("missing id = %v", err)
+	}
+	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "core", Action: ActionInstall})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.AbandonDraft(nil, result.Id, "plan blocked"); err != nil {
+		t.Fatalf("AbandonDraft: %v", err)
+	}
+	row, err := o.loadOperation(context.Background(), result.Id)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if row.Status != StatusCancelled || row.ErrorCode != "ABANDONED" {
+		t.Fatalf("status=%q code=%q", row.Status, row.ErrorCode)
+	}
+	// Non-draft is a no-op.
+	if err := o.AbandonDraft(context.Background(), result.Id, "again"); err != nil {
+		t.Fatalf("AbandonDraft non-draft: %v", err)
+	}
+
+	// CAS/update failure while still draft.
+	db2 := newOpsTestDB(t)
+	o2 := &Ops{
+		Scope:     newOpsTestScope(t, db2),
+		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+		Lifecycle: &stubLifecycle{},
+		Events:    &recordingBus{},
+	}
+	res2, err := o2.Plan(context.Background(), PlanRequest{ModuleName: "core", Action: ActionInstall})
+	if err != nil {
+		t.Fatalf("Plan2: %v", err)
+	}
+	if err := db2.Callback().Update().Before("gorm:update").Register("ops_fail_abandon_update", func(tx *gorm.DB) {
+		if tx.Statement == nil {
+			return
+		}
+		if st, ok := tx.Statement.Dest.(map[string]any); ok {
+			if status, _ := st["status"].(string); status == StatusCancelled {
+				_ = tx.AddError(errors.New("abandon save fail"))
+			}
+		}
+	}); err != nil {
+		t.Fatalf("callback: %v", err)
+	}
+	if err := o2.AbandonDraft(context.Background(), res2.Id, "blocked"); err == nil || !strings.Contains(err.Error(), "abandon save fail") {
+		t.Fatalf("AbandonDraft CAS err = %v", err)
+	}
+}
+
+func TestRun_PassesFrozenLifecycleOptions(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	mod := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core"}
+	life := &stubLifecycle{}
+	o := &Ops{
+		Scope:     newOpsTestScope(t, db),
+		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+		Lifecycle: life,
+		Events:    &recordingBus{},
+	}
+	result, err := o.Plan(context.Background(), PlanRequest{
+		ModuleName:      "core",
+		Action:          ActionUpgrade,
+		SkipWebShell:    true,
+		WebShellProfile: string(plan.WebShellProfileMinimal),
+		LifecycleInput:  "core@9.9.9",
+	})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if len(life.upgrades) != 1 || life.upgrades[0] != "core@9.9.9" {
+		t.Fatalf("upgrades = %#v", life.upgrades)
+	}
+	if !life.lastSkipWebShell || life.lastWebShellProfile != plan.WebShellProfileMinimal {
+		t.Fatalf("skip=%v profile=%q", life.lastSkipWebShell, life.lastWebShellProfile)
 	}
 }

@@ -12,6 +12,7 @@ import (
 
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
+	"github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/oerrors"
 )
 
@@ -96,7 +97,7 @@ func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation
 			return err
 		}
 		names := affectedModuleNames(doc, row.ModuleName)
-		if err := o.runLifecycle(ctx, row.Action, row.ModuleName, withDemo); err != nil {
+		if err := o.runLifecycle(ctx, row.Action, row.ModuleName, withDemo, doc); err != nil {
 			return err
 		}
 		if err := o.MaterializeCatalog(ctx, names); err != nil {
@@ -108,13 +109,28 @@ func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation
 	}
 }
 
-func (o *Ops) runLifecycle(ctx context.Context, action, moduleName string, withDemo bool) error {
+func (o *Ops) runLifecycle(ctx context.Context, action, moduleName string, withDemo bool, doc PlanDocument) error {
 	name := strings.TrimSpace(moduleName)
+	input := strings.TrimSpace(doc.LifecycleInput)
+	if input == "" {
+		input = name
+	}
+	profile := plan.WebShellProfile(strings.TrimSpace(doc.WebShellProfile))
 	switch action {
 	case ActionInstall:
-		return o.Lifecycle.Install(ctx, lifecycle.InstallRequest{Name: name, WithDemo: withDemo})
+		return o.Lifecycle.Install(ctx, lifecycle.InstallRequest{
+			Name:            name,
+			WithDemo:        withDemo,
+			SkipWebShell:    doc.SkipWebShell,
+			WebShellProfile: profile,
+		})
 	case ActionUpgrade:
-		return o.Lifecycle.Upgrade(ctx, lifecycle.UpgradeRequest{Input: name, WithDemo: withDemo})
+		return o.Lifecycle.Upgrade(ctx, lifecycle.UpgradeRequest{
+			Input:           input,
+			WithDemo:        withDemo,
+			SkipWebShell:    doc.SkipWebShell,
+			WebShellProfile: profile,
+		})
 	case ActionUninstall:
 		return o.Lifecycle.Uninstall(ctx, lifecycle.UninstallRequest{Name: name})
 	default:
@@ -172,6 +188,40 @@ func (o *Ops) succeedOperation(ctx context.Context, row *modmeta.ModuleOperation
 	row.ErrorCode = ""
 	row.ErrorMessage = ""
 	if err := o.casSaveOperation(ctx, row, expect); err != nil {
+		return err
+	}
+	o.publishOperationChanged(ctx, row)
+	return nil
+}
+
+// AbandonDraft marks a draft operation cancelled so CLI Plan→Apply failures
+// do not leave persistent draft rows. No-op when the row is already non-draft.
+func (o *Ops) AbandonDraft(ctx context.Context, id, reason string) error {
+	if o == nil {
+		return errors.New("ops: nil host")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return errors.New("ops: operation id is required")
+	}
+	row, err := o.loadOperation(ctx, id)
+	if err != nil {
+		return err
+	}
+	if row.Status != StatusDraft {
+		return nil
+	}
+	now := time.Now().UTC()
+	row.Status = StatusCancelled
+	row.Phase = PhaseDone
+	row.ErrorDomain = "ops"
+	row.ErrorCode = "ABANDONED"
+	row.ErrorMessage = strings.TrimSpace(reason)
+	row.FinishedAt = &now
+	if err := o.casSaveOperation(ctx, row, StatusDraft); err != nil {
 		return err
 	}
 	o.publishOperationChanged(ctx, row)

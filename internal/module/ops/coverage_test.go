@@ -139,7 +139,7 @@ func TestCoverage_GuardsAndHelpers(t *testing.T) {
 		t.Fatal("nullString empty")
 	}
 
-	if err := o.runLifecycle(context.Background(), "nope", "x", false); err == nil {
+	if err := o.runLifecycle(context.Background(), "nope", "x", false, PlanDocument{}); err == nil {
 		t.Fatal("bad lifecycle action")
 	}
 	if err := o.SetWithDemo(context.Background(), true); err != nil {
@@ -192,7 +192,7 @@ func TestCoverage_PlanPaths(t *testing.T) {
 
 	// planModuleOp unknown action via direct call
 	o.Resolver = &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}}
-	if _, err := o.planModuleOp(context.Background(), "bogus", "core", originLocal, ""); err == nil {
+	if _, err := o.planModuleOp(context.Background(), "bogus", "core", originLocal, PlanRequest{}); err == nil {
 		t.Fatal("bogus action")
 	}
 

@@ -15,9 +15,9 @@ import (
 	logutil "github.com/choysum-dev/choysum/internal/logger"
 	"github.com/choysum-dev/choysum/internal/module/evolution/schema"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
+	"github.com/choysum-dev/choysum/internal/module/ops"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
 	"github.com/choysum-dev/choysum/internal/module/plan"
-	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/spf13/cobra"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -170,24 +170,28 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 			}
 
 			upgradeScope := env.WithContext(ctx)
-			compilerExecutor, err := jsexecutor.NewCompilerExecutor(upgradeScope)
+			compilerExecutor, err := newCLICompilerExecutor(upgradeScope)
 			if err != nil {
 				exitUpgradeError("", xfmt.Errorf("Error creating compiler executor: %w", err))
 			}
 			if err := compilerExecutor.Start(); err != nil {
 				exitUpgradeError("", xfmt.Errorf("Error starting compiler executor: %w", err))
 			}
-			defer compilerExecutor.Stop()
+			defer func() { _ = compilerExecutor.Stop() }()
 
-			moduleLifecycle := lifecycle.NewService(upgradeScope, compilerExecutor)
 			for _, item := range plans {
 				currentInput = item.requestedInput
 				upgradeScope.Logger().Debug("module upgrade started", "input", item.resolvedInput)
-				if err := moduleLifecycle.Upgrade(ctx, lifecycle.UpgradeRequest{
-					Input:           item.resolvedInput,
+				moduleName, origin := resolveCLIUpgradeTarget(item.resolvedInput)
+				if err := runCLIModuleOp(ctx, env, cliModuleOpOptions{
+					Action:          ops.ActionUpgrade,
+					ModuleName:      moduleName,
+					Origin:          origin,
+					LifecycleInput:  item.resolvedInput,
 					WithDemo:        withDemo,
 					SkipWebShell:    noWeb,
 					WebShellProfile: profile,
+					Executor:        compilerExecutor,
 				}); err != nil {
 					_ = compilerExecutor.Stop()
 					exitUpgradeError(currentInput, xfmt.Errorf("error upgrading module %s: %w", item.requestedInput, err))
@@ -280,6 +284,31 @@ func schemaPlanModuleName(input string) string {
 		return strings.TrimSpace(input[:i])
 	}
 	return input
+}
+
+// resolveCLIUpgradeTarget derives ops ModuleName and Origin from a resolved upgrade input.
+func resolveCLIUpgradeTarget(resolvedInput string) (moduleName, origin string) {
+	moduleName = schemaPlanModuleName(resolvedInput)
+	origin = "local"
+	parsed, parseErr := internalorigin.ParseInput(resolvedInput)
+	if parseErr != nil {
+		return moduleName, origin
+	}
+	if parsed.Kind == internalorigin.InputKindRegistry {
+		origin = "registry"
+	}
+	return upgradeModuleNameFromParsed(parsed, moduleName), origin
+}
+
+// upgradeModuleNameFromParsed prefers ModuleName, then LocalName, then fallback.
+func upgradeModuleNameFromParsed(parsed internalorigin.ParsedInput, fallback string) string {
+	if n := strings.TrimSpace(parsed.ModuleName); n != "" {
+		return n
+	}
+	if n := strings.TrimSpace(parsed.LocalName); n != "" {
+		return n
+	}
+	return strings.TrimSpace(fallback)
 }
 
 func printSchemaPlan(env scope.Scope, moduleName string, plan schema.SchemaPlan, planErr error) {

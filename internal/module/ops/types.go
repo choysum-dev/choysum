@@ -28,14 +28,21 @@ type PlanDocument struct {
 	BaseRevision  string             `json:"baseRevision"`
 	EnsureOrder   []string           `json:"ensureOrder,omitempty"`
 	NeedsWebBuild bool               `json:"needsGlobalWebBuild,omitempty"`
+	// CLI / bridge options frozen at Plan time for deterministic Run.
+	SkipWebShell    bool   `json:"skipWebShell,omitempty"`
+	WebShellProfile string `json:"webShellProfile,omitempty"`
+	LifecycleInput  string `json:"lifecycleInput,omitempty"` // upgrade/install input; empty => ModuleName
 }
 
 // PlanRequest creates a draft operation.
 type PlanRequest struct {
-	ModuleName     string
-	Action         string
-	Origin         string // optional local|registry; empty means local-first
-	OperatorUserId string
+	ModuleName      string
+	Action          string
+	Origin          string // optional local|registry; empty means local-first
+	OperatorUserId  string
+	SkipWebShell    bool
+	WebShellProfile string
+	LifecycleInput  string // optional; empty => ModuleName (upgrade may pass name@version)
 }
 
 // PlanResult is returned to callers after a draft row is written.
