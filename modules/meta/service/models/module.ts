@@ -504,10 +504,19 @@ export default class MetaModule extends BaseModel {
               errorMessage: applyResult?.errorMessage || 'apply failed',
             };
           } else {
-            bridgeResult = (await bridge.run({
+            const runResult = (await bridge.run({
               id: planId,
               withDemo: !!opts?.withDemo,
-            })) as ModuleOpBridgeResult;
+            })) as ModuleOpBridgeResult | null | undefined;
+            bridgeResult =
+              runResult && typeof runResult === 'object'
+                ? runResult
+                : {
+                    ok: false,
+                    errorDomain: 'MODULE_MANAGEMENT',
+                    errorCode: 'OP_FAILED',
+                    errorMessage: 'run returned no result',
+                  };
           }
         }
       } catch (err) {

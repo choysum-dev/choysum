@@ -566,6 +566,23 @@ func TestCoverage_ModuleManagementRemainingBranches(t *testing.T) {
 		t.Fatalf("resolver fill: %v", err)
 	}
 
+	// Nil moduleLifecycleFactory falls back to default when filling Lifecycle.
+	startedNilLife, err := startOpsHost(newTestQuickjsEngine(t), jsengine.StaticScopeProvider(base), moduleManagementConfig{
+		opsHostFactory: func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory, bus.EventBus) *ops.Ops {
+			return &ops.Ops{}
+		},
+		compilerExecutorFactory: func(scope.Scope) (jsexecutor.JsExecutor, error) {
+			return &stubBridgeExecutor{}, nil
+		},
+	})
+	if err != nil {
+		t.Fatalf("nil lifecycle factory: %v", err)
+	}
+	if startedNilLife.host == nil || startedNilLife.host.Lifecycle == nil {
+		t.Fatal("expected default lifecycle")
+	}
+	_ = startedNilLife.Close()
+
 	// parseJSONArgs empty JSON stringify path via undefined.
 	undef := engine.Ctx.Undefined()
 	defer undef.Free()

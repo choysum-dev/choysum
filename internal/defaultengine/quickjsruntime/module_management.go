@@ -308,7 +308,11 @@ func startOpsHost(jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.Scope
 			}
 		}()
 		if host.Lifecycle == nil {
-			host.Lifecycle = cfg.moduleLifecycleFactory(opScope, executor, cfg.lockerFactory)
+			lifecycleFactory := cfg.moduleLifecycleFactory
+			if lifecycleFactory == nil {
+				lifecycleFactory = defaultModuleLifecycleFactory
+			}
+			host.Lifecycle = lifecycleFactory(opScope, executor, cfg.lockerFactory)
 		}
 		if host.Resolver == nil {
 			host.Resolver = lifecycle.NewModuleManager(opScope, executor, lifecycle.WithLockerFactory(cfg.lockerFactory))

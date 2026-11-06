@@ -585,6 +585,26 @@ test('meta.MetaModule ExecuteInstall falls back when rejection lacks domain/code
   expect(String(result.errorMessage || '')).toContain('plain bridge rejection');
 });
 
+test('meta.MetaModule ExecuteInstall maps empty run result to failed', async () => {
+  resetRequestContext();
+  ensureModuleManagementBridge();
+  ensureJobMock();
+
+  const root: any = (globalThis as any).$choysum;
+  root.moduleManagement.plan = async () => ({ id: 'op-run-empty', action: 'install', baseRevision: 'rev' });
+  root.moduleManagement.apply = async () => ({ ok: true });
+  root.moduleManagement.run = async () => undefined;
+  root.moduleManagement.reload = async () => ({ triggered: false, failed: false });
+
+  ensureRequestContext().ctx.jobId = uid('job_run_empty');
+
+  const result = await MetaModule.ExecuteInstall('base', false, 'operator_1');
+  expect(result.resultStatus).toBe('FAILED');
+  expect(result.errorDomain).toBe('MODULE_MANAGEMENT');
+  expect(result.errorCode).toBe('OP_FAILED');
+  expect(String(result.errorMessage || '')).toContain('run returned no result');
+});
+
 test('meta.MetaModule ExecuteInstall marks ReloadFailed when reload fails', async () => {
   resetRequestContext();
   ensureModuleManagementBridge();
