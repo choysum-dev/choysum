@@ -11,14 +11,15 @@ import (
 	"gorm.io/datatypes"
 )
 
-// ModuleOrigin stores per-source module availability and manifest snapshots
-// (local scan or registry catalog index). Product UI reads meta_module_catalog.
-type ModuleOrigin struct {
+// ModuleSourceSnapshot stores per-source module availability and manifest
+// snapshots (local scan or registry catalog index). Product UI reads
+// meta_module_catalog. Distinct from internal/module/origin (Fetch).
+type ModuleSourceSnapshot struct {
 	pkgmeta.BaseModel `gorm:"embedded"`
 
-	ModuleName       string         `gorm:"column:module_name;type:varchar(255);not null;uniqueIndex:idx_meta_module_origin,priority:1"`
-	OriginType       string         `gorm:"column:origin_type;type:varchar(32);not null;uniqueIndex:idx_meta_module_origin,priority:2"`
-	OriginRef        string         `gorm:"column:origin_ref;type:varchar(255);not null;uniqueIndex:idx_meta_module_origin,priority:3"`
+	ModuleName       string         `gorm:"column:module_name;type:varchar(255);not null;uniqueIndex:idx_meta_module_source_snapshot,priority:1"`
+	SourceType       string         `gorm:"column:source_type;type:varchar(32);not null;uniqueIndex:idx_meta_module_source_snapshot,priority:2"`
+	SourceRef        string         `gorm:"column:source_ref;type:varchar(255);not null;uniqueIndex:idx_meta_module_source_snapshot,priority:3"`
 	Available        bool           `gorm:"column:available;not null"`
 	Version          sql.NullString `gorm:"column:version;type:varchar(255)"`
 	ManifestJson     datatypes.JSON `gorm:"column:manifest_json"`
@@ -29,6 +30,6 @@ type ModuleOrigin struct {
 	LastErrorMessage sql.NullString `gorm:"column:last_error_message;type:text"`
 }
 
-func (ModuleOrigin) TableName() string {
-	return "meta_module_origin"
+func (ModuleSourceSnapshot) TableName() string {
+	return "meta_module_source_snapshot"
 }

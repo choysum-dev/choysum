@@ -65,7 +65,7 @@ func TestOpsEntitiesAndTableNames(t *testing.T) {
 	}
 
 	wantTables := map[string]string{
-		"ModuleOrigin":    "meta_module_origin",
+		"ModuleSourceSnapshot":    "meta_module_source_snapshot",
 		"ModuleCatalog":   "meta_module_catalog",
 		"ModuleOperation": "meta_module_operation",
 		"ModelData":       "meta_model_data",
@@ -74,7 +74,7 @@ func TestOpsEntitiesAndTableNames(t *testing.T) {
 		"SchemaSnapshot":  "meta_schema_snapshot",
 	}
 	gotTables := map[string]string{
-		"ModuleOrigin":    (ModuleOrigin{}).TableName(),
+		"ModuleSourceSnapshot":    (ModuleSourceSnapshot{}).TableName(),
 		"ModuleCatalog":   (ModuleCatalog{}).TableName(),
 		"ModuleOperation": (ModuleOperation{}).TableName(),
 		"ModelData":       (&ModelData{}).TableName(),

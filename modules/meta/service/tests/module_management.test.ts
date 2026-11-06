@@ -1103,8 +1103,8 @@ test('meta.MetaModuleIndex Search honors requested fields after aggregation', as
     {
       Id: 'idx_local',
       ModuleName: 'auth',
-      OriginType: 'local',
-      OriginRef: 'local',
+      SourceType: 'local',
+      SourceRef: 'local',
       Available: true,
       Version: '1.0.0',
       ManifestJson: { source: 'local' },
@@ -1119,8 +1119,8 @@ test('meta.MetaModuleIndex Search honors requested fields after aggregation', as
     {
       Id: 'idx_registry',
       ModuleName: 'auth',
-      OriginType: 'registry',
-      OriginRef: '@choysum-dev/auth',
+      SourceType: 'registry',
+      SourceRef: '@choysum-dev/auth',
       Available: true,
       Version: '2.0.0',
       ManifestJson: { source: 'registry' },
@@ -1141,7 +1141,7 @@ test('meta.MetaModuleIndex Search honors requested fields after aggregation', as
     expect(typeof rows[0].toPlainObject).toBe('function');
     expect(rows[0].ModuleName).toBe('auth');
     expect(rows[0].RegistryVersion).toBe('2.0.0');
-    expect(rows[0].OriginType).toBeUndefined();
+    expect(rows[0].SourceType).toBeUndefined();
     expect(rows[0].LocalVersion).toBeUndefined();
   } finally {
     restoreGroupedRepo();
@@ -1158,8 +1158,8 @@ test('meta.MetaModuleIndex Search projection returns model instances and blocks 
     {
       Id: 'idx_local',
       ModuleName: 'auth',
-      OriginType: 'local',
-      OriginRef: 'local',
+      SourceType: 'local',
+      SourceRef: 'local',
       Available: true,
       Version: '1.0.0',
       ManifestJson: { source: 'local' },
@@ -1200,8 +1200,8 @@ test('meta.MetaModuleIndex Search prefers MetaModule status over aggregate defau
     {
       Id: 'idx_local',
       ModuleName: 'auth',
-      OriginType: 'local',
-      OriginRef: 'local',
+      SourceType: 'local',
+      SourceRef: 'local',
       Available: true,
       Version: '1.0.0',
       ManifestJson: { source: 'local' },
@@ -1214,8 +1214,8 @@ test('meta.MetaModuleIndex Search prefers MetaModule status over aggregate defau
     {
       Id: 'idx_registry',
       ModuleName: 'auth',
-      OriginType: 'registry',
-      OriginRef: '@choysum-dev/auth',
+      SourceType: 'registry',
+      SourceRef: '@choysum-dev/auth',
       Available: true,
       Version: '2.0.0',
       ManifestJson: { source: 'registry' },
@@ -1271,8 +1271,8 @@ test('meta.MetaModuleIndex Search/Count empty [] and {} use the catalog default'
     {
       Id: 'idx_local',
       ModuleName: 'auth',
-      OriginType: 'local',
-      OriginRef: 'local',
+      SourceType: 'local',
+      SourceRef: 'local',
       Available: true,
       Version: '1.0.0',
       ManifestJson: { source: 'local' },

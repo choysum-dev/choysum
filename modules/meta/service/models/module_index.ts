@@ -88,18 +88,18 @@ async function findRunningJobId(fullMethod: string, requestedOrigin: ModuleSyncO
 }
 
 @Model('MetaModuleIndex', {
-  tableName: 'meta_module_origin',
+  tableName: 'meta_module_source_snapshot',
   autoMigrate: false,
 })
 export default class MetaModuleIndex extends BaseModel {
   @Field({ type: 'varchar', size: 255, notNull: true, string: _lt('Module Name', { scope: 'meta.model.MetaModuleIndex.fields' }) })
   ModuleName!: string;
 
-  @Field({ type: 'varchar', size: 32, notNull: true, string: _lt('Origin Type', { scope: 'meta.model.MetaModuleIndex.fields' }) })
-  OriginType!: string;
+  @Field({ type: 'varchar', size: 32, notNull: true, string: _lt('Source Type', { scope: 'meta.model.MetaModuleIndex.fields' }) })
+  SourceType!: string;
 
-  @Field({ type: 'varchar', size: 255, notNull: true, string: _lt('Origin Ref', { scope: 'meta.model.MetaModuleIndex.fields' }) })
-  OriginRef!: string;
+  @Field({ type: 'varchar', size: 255, notNull: true, string: _lt('Source Ref', { scope: 'meta.model.MetaModuleIndex.fields' }) })
+  SourceRef!: string;
 
   @Field({ type: 'boolean', notNull: true, string: _lt('Available', { scope: 'meta.model.MetaModuleIndex.fields' }) })
   Available!: boolean;
@@ -128,13 +128,13 @@ export default class MetaModuleIndex extends BaseModel {
   @Field({
     type: 'varchar',
     size: 64,
-    string: _lt('Origin Types', { scope: 'meta.model.MetaModuleIndex.fields' }),
+    string: _lt('Source Types', { scope: 'meta.model.MetaModuleIndex.fields' }),
   })
-  OriginTypes?: string;
+  SourceTypes?: string;
 
-  @SqlCompute<MetaModuleIndex>('OriginTypes')
-  sqlOriginTypes() {
-    return this.$sql.field('OriginType');
+  @SqlCompute<MetaModuleIndex>('SourceTypes')
+  sqlSourceTypes() {
+    return this.$sql.field('SourceType');
   }
 
   @Field({
@@ -235,8 +235,8 @@ export default class MetaModuleIndex extends BaseModel {
     const detailFields = [
       'Id',
       'ModuleName',
-      'OriginType',
-      'OriginRef',
+      'SourceType',
+      'SourceRef',
       'Available',
       'Version',
       'ManifestJson',
@@ -347,14 +347,14 @@ export default class MetaModuleIndex extends BaseModel {
       const repo = getModelRepository(this);
       const isOriginStale = async (target: ModuleOriginType): Promise<boolean> => {
         // Qualified column names are not in the Kysely table schema; cast for the raw index query.
-        const originTypeCol = 'meta_module_index.origin_type' as never;
-        const originRefCol = 'meta_module_index.origin_ref' as never;
+        const sourceTypeCol = 'meta_module_source_snapshot.source_type' as never;
+        const sourceRefCol = 'meta_module_source_snapshot.source_ref' as never;
         let query = repo
           .selectQueryBuilder()
           .select(eb => eb.fn.max('last_batch_sync_at' as never).as('last_batch_sync_at'))
-          .where(originTypeCol, '=', target as never);
+          .where(sourceTypeCol, '=', target as never);
         if (target === 'local') {
-          query = query.where(originRefCol, '=', 'local' as never);
+          query = query.where(sourceRefCol, '=', 'local' as never);
         }
         const rows = await repo.execute(query);
         const row = (rows?.[0] ?? {}) as { lastBatchSyncAt?: unknown; last_batch_sync_at?: unknown };

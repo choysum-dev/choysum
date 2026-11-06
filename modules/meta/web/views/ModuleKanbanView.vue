@@ -13,7 +13,7 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyVirtualField :store="store" prop="InstalledStatus" />
       <ChoyVirtualField :store="store" prop="InstalledVersion" />
       <ChoyVirtualField :store="store" prop="Available" />
-      <ChoyVirtualField :store="store" prop="OriginTypes" />
+      <ChoyVirtualField :store="store" prop="SourceTypes" />
       <ChoyVirtualField :store="store" prop="LastSyncAt" />
       <ChoyVirtualField :store="store" prop="ManifestJson" />
     </div>
@@ -93,7 +93,7 @@ SPDX-License-Identifier: Apache-2.0
           <div class="truncate text-muted-foreground">
             {{ recordField(card, 'Version') || recordField(card, 'LocalVersion') || '—' }}
             <span class="text-muted-foreground/60"> · </span>
-            {{ recordField(card, 'OriginTypes') || recordField(card, 'OriginType') || 'local' }}
+            {{ recordField(card, 'SourceTypes') || recordField(card, 'SourceType') || 'local' }}
           </div>
           <div
             v-if="manifestSummary(recordField(card, 'ManifestJson'))"
@@ -363,7 +363,7 @@ const store = resolvePageStore(props.store, 'ModuleKanbanView');
 const { showHeader } = props;
 const moduleStore = props.moduleStore;
 
-const keywordFields = ['ModuleName', 'Version', 'OriginType', 'OriginRef'];
+const keywordFields = ['ModuleName', 'Version', 'SourceType', 'SourceRef'];
 /** Prefer installed modules first when the user groups by InstalledStatus. */
 const laneOrder = ['installed', 'uninstalled'] as const;
 

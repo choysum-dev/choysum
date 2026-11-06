@@ -339,7 +339,7 @@ type ModuleManager struct {
 	bootstrapOnce            sync.Once
 	bootstrapErr             error
 	lockerFactory            statepkg.LockerFactory
-	moduleOriginSyncLocal     func(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (ModuleOriginSyncStats, error)
+	moduleSourceSnapshotSyncLocal     func(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (ModuleSourceSnapshotSyncStats, error)
 	originCoordinatorFactory func(runtimeScope scope.Scope) OriginCoordinator
 	// pauseLeaseRenewDepth skips heartbeat Renew while >0 (nested commit TX safe).
 	pauseLeaseRenewDepth atomic.Int32
@@ -1175,7 +1175,7 @@ func (m *ModuleManager) resolveGeneratedAPIRoot() (string, error) {
 	return generatedAPIRoot, nil
 }
 
-func (m *ModuleManager) refreshModuleOriginForLocalModules(ctx context.Context, moduleNames []string) error {
+func (m *ModuleManager) refreshModuleSourceSnapshotForLocalModules(ctx context.Context, moduleNames []string) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -1201,10 +1201,10 @@ func (m *ModuleManager) refreshModuleOriginForLocalModules(ctx context.Context, 
 		packageJSONPath := filepath.Join(modulesPath, name, "package.json")
 		packageJSONData, readErr := os.ReadFile(packageJSONPath)
 
-		entry := modmeta.ModuleOrigin{
+		entry := modmeta.ModuleSourceSnapshot{
 			ModuleName:       name,
-			OriginType:       "local",
-			OriginRef:        "local",
+			SourceType:       "local",
+			SourceRef:        "local",
 			Available:        readErr == nil,
 			ManifestJson:     packageJSONData,
 			LocalPath:        nullString(filepath.Join(modulesPath, name)),
@@ -1225,7 +1225,7 @@ func (m *ModuleManager) refreshModuleOriginForLocalModules(ctx context.Context, 
 
 		if err := m.runtimeScope.Session().WithContext(ctx).
 			Clauses(clause.OnConflict{
-				Columns:   []clause.Column{{Name: "module_name"}, {Name: "origin_type"}, {Name: "origin_ref"}},
+				Columns:   []clause.Column{{Name: "module_name"}, {Name: "source_type"}, {Name: "source_ref"}},
 				DoUpdates: clause.AssignmentColumns([]string{"available", "version", "manifest_json", "local_path", "last_sync_at", "last_error_message"}),
 			}).
 			Create(&entry).Error; err != nil {
@@ -1249,13 +1249,13 @@ func containsModuleName(moduleNames []string, target string) bool {
 	return false
 }
 
-func (m *ModuleManager) syncModuleOriginAfterInstall(ctx context.Context, logger *slog.Logger, moduleNames []string) error {
+func (m *ModuleManager) syncModuleSourceSnapshotAfterInstall(ctx context.Context, logger *slog.Logger, moduleNames []string) error {
 	if !containsModuleName(moduleNames, "meta") {
 		return nil
 	}
-	syncFn := m.moduleOriginSyncLocal
+	syncFn := m.moduleSourceSnapshotSyncLocal
 	if syncFn == nil {
-		syncFn = SyncLocalModuleOrigin
+		syncFn = SyncLocalModuleSourceSnapshot
 	}
 	if _, err := syncFn(ctx, m.runtimeScope, m.lockerFactory); err != nil {
 		if logger != nil {
@@ -1660,7 +1660,7 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 
 		setSpinnerStage("finalizing.index_refresh", fmt.Sprintf("%s: refreshing module origin", rootModuleName))
 		indexRefreshStarted := time.Now()
-		if err := m.refreshModuleOriginForLocalModules(ctx, opPlan.ModuleOrder); err != nil {
+		if err := m.refreshModuleSourceSnapshotForLocalModules(ctx, opPlan.ModuleOrder); err != nil {
 			clearSpinnerState()
 			return err
 		}
@@ -1669,7 +1669,7 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 
 		setSpinnerStage("finalizing.index_sync", fmt.Sprintf("%s: syncing module origin", rootModuleName))
 		indexSyncStarted := time.Now()
-		if err := m.syncModuleOriginAfterInstall(ctx, logger, opPlan.ModuleOrder); err != nil {
+		if err := m.syncModuleSourceSnapshotAfterInstall(ctx, logger, opPlan.ModuleOrder); err != nil {
 			clearSpinnerState()
 			return err
 		}
@@ -2078,7 +2078,7 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 		setSpinnerStage("finalizing.index_refresh", fmt.Sprintf("%s: refreshing module origin", rootModuleName))
 		// Index refresh still covers EnsureOrder ∪ ModuleOrder so newly ensured shells stay indexed.
 		indexModules := mergeUniqueModuleNames(opPlan.EnsureOrder, opPlan.ModuleOrder)
-		if err := m.refreshModuleOriginForLocalModules(ctx, indexModules); err != nil {
+		if err := m.refreshModuleSourceSnapshotForLocalModules(ctx, indexModules); err != nil {
 			clearSpinnerState()
 			return rollbackUpgradeOrigin(err)
 		}
@@ -2219,7 +2219,7 @@ func NewModuleManager(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExec
 		lockerFactory: func(runtimeScope scope.Scope) statepkg.Locker {
 			return lease.New(runtimeScope)
 		},
-		moduleOriginSyncLocal: SyncLocalModuleOrigin,
+		moduleSourceSnapshotSyncLocal: SyncLocalModuleSourceSnapshot,
 	}
 
 	// Default entity set: full catalog (pkg IR + dual-store raw + ops, incl. lock lease).

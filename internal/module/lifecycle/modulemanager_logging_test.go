@@ -392,14 +392,14 @@ func TestSyncModuleIndexAfterInstall_MetaIncludedTriggersSyncErrorIgnored(t *tes
 	called := false
 	m := &ModuleManager{
 		runtimeScope: &testLogScope{ctx: context.Background(), logger: slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))},
-		moduleOriginSyncLocal: func(context.Context, scope.Scope, statepkg.LockerFactory) (ModuleOriginSyncStats, error) {
+		moduleSourceSnapshotSyncLocal: func(context.Context, scope.Scope, statepkg.LockerFactory) (ModuleSourceSnapshotSyncStats, error) {
 			called = true
-			return ModuleOriginSyncStats{}, errors.New("sync failed")
+			return ModuleSourceSnapshotSyncStats{}, errors.New("sync failed")
 		},
 	}
 
-	if err := m.syncModuleOriginAfterInstall(context.Background(), m.runtimeScope.Logger(), []string{"core", "meta"}); err != nil {
-		t.Fatalf("syncModuleOriginAfterInstall() error = %v, want nil", err)
+	if err := m.syncModuleSourceSnapshotAfterInstall(context.Background(), m.runtimeScope.Logger(), []string{"core", "meta"}); err != nil {
+		t.Fatalf("syncModuleSourceSnapshotAfterInstall() error = %v, want nil", err)
 	}
 	if !called {
 		t.Fatal("expected sync function to be called when module plan includes meta")
@@ -411,14 +411,14 @@ func TestSyncModuleIndexAfterInstall_MetaNotIncludedSkipsSync(t *testing.T) {
 	called := false
 	m := &ModuleManager{
 		runtimeScope: &testLogScope{ctx: context.Background(), logger: slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))},
-		moduleOriginSyncLocal: func(context.Context, scope.Scope, statepkg.LockerFactory) (ModuleOriginSyncStats, error) {
+		moduleSourceSnapshotSyncLocal: func(context.Context, scope.Scope, statepkg.LockerFactory) (ModuleSourceSnapshotSyncStats, error) {
 			called = true
-			return ModuleOriginSyncStats{}, nil
+			return ModuleSourceSnapshotSyncStats{}, nil
 		},
 	}
 
-	if err := m.syncModuleOriginAfterInstall(context.Background(), m.runtimeScope.Logger(), []string{"core", "base"}); err != nil {
-		t.Fatalf("syncModuleOriginAfterInstall() error = %v, want nil", err)
+	if err := m.syncModuleSourceSnapshotAfterInstall(context.Background(), m.runtimeScope.Logger(), []string{"core", "base"}); err != nil {
+		t.Fatalf("syncModuleSourceSnapshotAfterInstall() error = %v, want nil", err)
 	}
 	if called {
 		t.Fatal("expected sync function to be skipped when module plan does not include meta")
@@ -434,8 +434,8 @@ func TestSyncModuleIndexAfterInstall_UsesDefaultSyncFunctionWhenNil(t *testing.T
 		},
 	}
 
-	if err := m.syncModuleOriginAfterInstall(context.Background(), m.runtimeScope.Logger(), []string{"meta"}); err != nil {
-		t.Fatalf("syncModuleOriginAfterInstall(default sync) error = %v, want nil", err)
+	if err := m.syncModuleSourceSnapshotAfterInstall(context.Background(), m.runtimeScope.Logger(), []string{"meta"}); err != nil {
+		t.Fatalf("syncModuleSourceSnapshotAfterInstall(default sync) error = %v, want nil", err)
 	}
 }
 

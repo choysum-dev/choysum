@@ -25,13 +25,13 @@ import (
 
 func planFailTestManager(t *testing.T, moduleName string) (*ModuleManager, *meta.Module) {
 	t.Helper()
-	db := newModuleOriginSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
 	modulesPath := t.TempDir()
 	defaultChoysumPath := t.TempDir()
-	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	runtimeScope.cfg = &config.Config{
 		ModulesPath:        modulesPath,
 		DistPath:           filepath.Join(defaultChoysumPath, "dist"),
@@ -173,9 +173,9 @@ func TestInstallHeartbeatStageLabelUsedUnderShortThreshold(t *testing.T) {
 
 	manager, root := planFailTestManager(t, "solo_hb")
 	var logBuf bytes.Buffer
-	runtimeScope, ok := manager.runtimeScope.(*moduleOriginSyncTestScope)
+	runtimeScope, ok := manager.runtimeScope.(*moduleSourceSnapshotSyncTestScope)
 	if !ok {
-		t.Fatalf("runtimeScope type = %T, want *moduleOriginSyncTestScope", manager.runtimeScope)
+		t.Fatalf("runtimeScope type = %T, want *moduleSourceSnapshotSyncTestScope", manager.runtimeScope)
 	}
 	runtimeScope.logger = slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	root.Status = meta.Uninstalled

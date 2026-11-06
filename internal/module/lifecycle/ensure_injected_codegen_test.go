@@ -20,11 +20,11 @@ import (
 
 func TestEnsureInjectedAppModelsForCodegenEarlyReturns(t *testing.T) {
 	t.Parallel()
-	db := newModuleOriginSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
-	runtimeScope := newModuleOriginSyncScope(t.TempDir(), db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	manager := NewModuleManager(runtimeScope, nil)
 
 	if err := (*ModuleManager)(nil).ensureInjectedAppModelsForCodegen(context.Background(), &meta.Module{}); err != nil {
@@ -55,11 +55,11 @@ func TestEnsureInjectedAppModelsForCodegenEarlyReturns(t *testing.T) {
 
 func TestEnsureInjectedAppModelsForCodegenCountPaths(t *testing.T) {
 	t.Parallel()
-	db := newModuleOriginSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
-	runtimeScope := newModuleOriginSyncScope(t.TempDir(), db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	manager := NewModuleManager(runtimeScope, nil)
 
 	if err := db.Create(&meta.Model{
@@ -88,12 +88,12 @@ func TestEnsureInjectedAppModelsForCodegenCountPaths(t *testing.T) {
 }
 
 func TestEnsureInjectedAppModelsForCodegenBuilderBranches(t *testing.T) {
-	db := newModuleOriginSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
 	modulesPath := t.TempDir()
-	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	manager := NewModuleManager(runtimeScope, nil)
 
 	prev := newCodegenModuleBuilderFn
@@ -159,7 +159,7 @@ func TestEnsureInjectedAppModelsForCodegenBuilderBranches(t *testing.T) {
 }
 
 func TestGenerateAppToDirsPropagatesEnsureInjectedError(t *testing.T) {
-	db := newModuleOriginSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
@@ -175,7 +175,7 @@ func TestGenerateAppToDirsPropagatesEnsureInjectedError(t *testing.T) {
 	}
 	t.Cleanup(func() { newCodegenModuleBuilderFn = prev })
 
-	runtimeScope := newModuleOriginSyncScope(t.TempDir(), db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	manager := NewModuleManager(runtimeScope, nil)
 	manager.bootstrapOnce.Do(func() {})
 
@@ -188,7 +188,7 @@ func TestGenerateAppToDirsPropagatesEnsureInjectedError(t *testing.T) {
 func TestBuildBackendAppToDir_EnsureOnlyStubAndInjectError(t *testing.T) {
 	t.Parallel()
 	modulesPath := t.TempDir()
-	db := newModuleOriginSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
@@ -210,7 +210,7 @@ func TestBuildBackendAppToDir_EnsureOnlyStubAndInjectError(t *testing.T) {
 		t.Fatalf("seed module: %v", err)
 	}
 
-	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	manager := NewModuleManager(runtimeScope, nil)
 	manager.bootstrapOnce.Do(func() {})
 	distAppDir := t.TempDir()

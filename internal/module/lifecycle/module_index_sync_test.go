@@ -32,26 +32,26 @@ import (
 	"gorm.io/gorm"
 )
 
-type moduleOriginSyncTestScope struct {
+type moduleSourceSnapshotSyncTestScope struct {
 	ctx     context.Context
 	logger  *slog.Logger
 	cfg     *config.Config
 	session *scope.Session
 }
 
-func (s *moduleOriginSyncTestScope) Run(fn func(scope.Scope) error) error { return fn(s) }
-func (s *moduleOriginSyncTestScope) Session() *scope.Session              { return s.session }
-func (s *moduleOriginSyncTestScope) Transactor() scope.Transactor {
+func (s *moduleSourceSnapshotSyncTestScope) Run(fn func(scope.Scope) error) error { return fn(s) }
+func (s *moduleSourceSnapshotSyncTestScope) Session() *scope.Session              { return s.session }
+func (s *moduleSourceSnapshotSyncTestScope) Transactor() scope.Transactor {
 	return scopetest.NewPassthroughTransactor(s)
 }
-func (s *moduleOriginSyncTestScope) WithContext(ctx context.Context) scope.Scope {
+func (s *moduleSourceSnapshotSyncTestScope) WithContext(ctx context.Context) scope.Scope {
 	clone := *s
 	clone.ctx = ctx
 	return &clone
 }
-func (s *moduleOriginSyncTestScope) Context() context.Context { return s.ctx }
-func (s *moduleOriginSyncTestScope) Logger() *slog.Logger     { return s.logger }
-func (s *moduleOriginSyncTestScope) FactoryInput() scope.FactoryInput {
+func (s *moduleSourceSnapshotSyncTestScope) Context() context.Context { return s.ctx }
+func (s *moduleSourceSnapshotSyncTestScope) Logger() *slog.Logger     { return s.logger }
+func (s *moduleSourceSnapshotSyncTestScope) FactoryInput() scope.FactoryInput {
 	return scopetest.FactoryInputFromConfig(s.cfg)
 }
 
@@ -83,25 +83,25 @@ func (l *moduleIndexSyncTestLocker) Release(context.Context, string, string) err
 	return l.releaseErr
 }
 
-func newModuleOriginSyncDB(t *testing.T) *gorm.DB {
+func newModuleSourceSnapshotSyncDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "module-index-sync.db")
 	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite db: %v", err)
 	}
-	if err := db.AutoMigrate(&modmeta.ModuleOrigin{}); err != nil {
+	if err := db.AutoMigrate(&modmeta.ModuleSourceSnapshot{}); err != nil {
 		t.Fatalf("auto migrate meta tables: %v", err)
 	}
 	return db
 }
 
-func newModuleOriginSyncScope(modulesPath string, db *gorm.DB) *moduleOriginSyncTestScope {
+func newModuleSourceSnapshotSyncScope(modulesPath string, db *gorm.DB) *moduleSourceSnapshotSyncTestScope {
 	scopeSession := &scope.Session{}
 	if db != nil {
 		scopeSession.DB = db
 	}
-	return &moduleOriginSyncTestScope{
+	return &moduleSourceSnapshotSyncTestScope{
 		ctx:     context.Background(),
 		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
 		cfg:     &config.Config{ModulesPath: modulesPath},
@@ -142,12 +142,12 @@ func TestModuleManagerBuildGlobalWebToDirResolvesRelativeEntryPath(t *testing.T)
 	t.Parallel()
 	modulesPath := t.TempDir()
 
-	db := newModuleOriginSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
-	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	manager := NewModuleManager(runtimeScope, &moduleManagerNoopScriptExecutor{})
 	manager.bootstrapOnce.Do(func() {})
 
@@ -175,18 +175,18 @@ func TestModuleManagerRefreshModuleIndexForLocalModules(t *testing.T) {
 	modulesPath := t.TempDir()
 	writePackageJSON(t, modulesPath, "partner", `{"name":"@acme/choysum-partner","version":"0.3.0","choysum":{"moduleName":"partner","application":"partner"}}`)
 
-	db := newModuleOriginSyncDB(t)
-	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
+	db := newModuleSourceSnapshotSyncDB(t)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	manager := NewModuleManager(runtimeScope, nil)
 	manager.bootstrapOnce.Do(func() {})
 
-	err := manager.refreshModuleOriginForLocalModules(context.Background(), []string{"partner", "missing", "partner", " "})
+	err := manager.refreshModuleSourceSnapshotForLocalModules(context.Background(), []string{"partner", "missing", "partner", " "})
 	if err != nil {
-		t.Fatalf("refreshModuleOriginForLocalModules() error = %v", err)
+		t.Fatalf("refreshModuleSourceSnapshotForLocalModules() error = %v", err)
 	}
 
-	var partner modmeta.ModuleOrigin
-	if err := db.Where("module_name = ? AND origin_type = ? AND origin_ref = ?", "partner", "local", "local").Take(&partner).Error; err != nil {
+	var partner modmeta.ModuleSourceSnapshot
+	if err := db.Where("module_name = ? AND source_type = ? AND source_ref = ?", "partner", "local", "local").Take(&partner).Error; err != nil {
 		t.Fatalf("load partner module origin row: %v", err)
 	}
 	if !partner.Available {
@@ -199,8 +199,8 @@ func TestModuleManagerRefreshModuleIndexForLocalModules(t *testing.T) {
 		t.Fatalf("expected partner last error to be empty, got %#v", partner.LastErrorMessage)
 	}
 
-	var missing modmeta.ModuleOrigin
-	if err := db.Where("module_name = ? AND origin_type = ? AND origin_ref = ?", "missing", "local", "local").Take(&missing).Error; err != nil {
+	var missing modmeta.ModuleSourceSnapshot
+	if err := db.Where("module_name = ? AND source_type = ? AND source_ref = ?", "missing", "local", "local").Take(&missing).Error; err != nil {
 		t.Fatalf("load missing module origin row: %v", err)
 	}
 	if missing.Available {
@@ -217,7 +217,7 @@ func TestModuleManagerRefreshModuleIndexForLocalModules(t *testing.T) {
 func TestModuleManagerBuildBackendAppToDirWritesModuleBasedEntryImports(t *testing.T) {
 	t.Parallel()
 	modulesPath := t.TempDir()
-	db := newModuleOriginSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
@@ -230,7 +230,7 @@ func TestModuleManagerBuildBackendAppToDirWritesModuleBasedEntryImports(t *testi
 		t.Fatalf("seed absolute module: %v", err)
 	}
 
-	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	manager := NewModuleManager(runtimeScope, nil)
 	manager.bootstrapOnce.Do(func() {})
 	distAppDir := t.TempDir()
@@ -261,7 +261,7 @@ func TestModuleManagerBuildBackendAppToDirWritesModuleBasedEntryImports(t *testi
 func TestModuleManagerGenerateAppToDirsPropagatesGeneratorError(t *testing.T) {
 	t.Parallel()
 	modulesPath := t.TempDir()
-	db := newModuleOriginSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
@@ -275,7 +275,7 @@ func TestModuleManagerGenerateAppToDirsPropagatesGeneratorError(t *testing.T) {
 		t.Fatalf("seed module: %v", err)
 	}
 
-	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	manager := NewModuleManager(runtimeScope, nil)
 	manager.bootstrapOnce.Do(func() {})
 
@@ -288,7 +288,7 @@ func TestModuleManagerGenerateAppToDirsPropagatesGeneratorError(t *testing.T) {
 func TestModuleManagerBuildBackendBundlesToDirWritesModuleBasedEntryImports(t *testing.T) {
 	t.Parallel()
 	modulesPath := t.TempDir()
-	db := newModuleOriginSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
@@ -307,7 +307,7 @@ func TestModuleManagerBuildBackendBundlesToDirWritesModuleBasedEntryImports(t *t
 		t.Fatalf("seed backend module: %v", err)
 	}
 
-	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	manager := NewModuleManager(runtimeScope, nil)
 	manager.bootstrapOnce.Do(func() {})
 	distBundlesDir := t.TempDir()
@@ -345,7 +345,7 @@ func TestModuleManagerBuildBackendBundlesToDirWritesModuleBasedEntryImports(t *t
 
 func TestModuleManagerPrepareUpgradeOriginSwitchLocalInputNoop(t *testing.T) {
 	t.Parallel()
-	runtimeScope := newModuleOriginSyncScope(t.TempDir(), nil)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), nil)
 	manager := &ModuleManager{runtimeScope: runtimeScope}
 
 	snapshot, err := manager.prepareUpgradeOriginSwitch(context.Background(), internalorigin.ParsedInput{Kind: internalorigin.InputKindLocal, LocalName: "auth"}, "auth", "")
@@ -360,7 +360,7 @@ func TestModuleManagerPrepareUpgradeOriginSwitchLocalInputNoop(t *testing.T) {
 func TestNewModuleInstallerResolvesRelativeServiceEntryPoint(t *testing.T) {
 	t.Parallel()
 	modulesPath := t.TempDir()
-	runtimeScope := newModuleOriginSyncScope(modulesPath, nil)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, nil)
 	module := &meta.Module{Name: "auth", ServiceEntryPoint: "service/main.ts"}
 
 	installer := newModuleInstaller(runtimeScope, nil, module, nil, newOpContext())
@@ -373,20 +373,20 @@ func TestNewModuleInstallerResolvesRelativeServiceEntryPoint(t *testing.T) {
 	}
 }
 
-func TestSyncLocalModuleOrigin_NilLockerFactory(t *testing.T) {
+func TestSyncLocalModuleSourceSnapshot_NilLockerFactory(t *testing.T) {
 	t.Parallel()
-	stats, err := SyncLocalModuleOrigin(context.Background(), nil, nil)
+	stats, err := SyncLocalModuleSourceSnapshot(context.Background(), nil, nil)
 	if err == nil || !strings.Contains(err.Error(), "locker factory is nil") {
 		t.Fatalf("expected nil locker factory error, got stats=%+v err=%v", stats, err)
 	}
 }
 
-func TestSyncLocalModuleOrigin_LeaseBusyMappedToDomainError(t *testing.T) {
+func TestSyncLocalModuleSourceSnapshot_LeaseBusyMappedToDomainError(t *testing.T) {
 	t.Parallel()
-	runtimeScope := newModuleOriginSyncScope(t.TempDir(), nil)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), nil)
 	locker := &moduleIndexSyncTestLocker{acquireErr: statepkg.ErrLeaseBusy}
 
-	stats, err := SyncLocalModuleOrigin(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
+	stats, err := SyncLocalModuleSourceSnapshot(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
 		return locker
 	})
 	if err == nil {
@@ -406,12 +406,12 @@ func TestSyncLocalModuleOrigin_LeaseBusyMappedToDomainError(t *testing.T) {
 	}
 }
 
-func TestSyncLocalModuleOrigin_ModulesPathRequired(t *testing.T) {
+func TestSyncLocalModuleSourceSnapshot_ModulesPathRequired(t *testing.T) {
 	t.Parallel()
-	runtimeScope := newModuleOriginSyncScope("", nil)
+	runtimeScope := newModuleSourceSnapshotSyncScope("", nil)
 	locker := &moduleIndexSyncTestLocker{}
 
-	_, err := SyncLocalModuleOrigin(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
+	_, err := SyncLocalModuleSourceSnapshot(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
 		return locker
 	})
 	if err == nil || !strings.Contains(err.Error(), "modules_path is required") {
@@ -422,7 +422,7 @@ func TestSyncLocalModuleOrigin_ModulesPathRequired(t *testing.T) {
 	}
 }
 
-func TestSyncLocalModuleOrigin_SyncsRowsAndReconcilesMissingModules(t *testing.T) {
+func TestSyncLocalModuleSourceSnapshot_SyncsRowsAndReconcilesMissingModules(t *testing.T) {
 	t.Parallel()
 	modulesPath := t.TempDir()
 	writePackageJSON(t, modulesPath, "partner", `{"name":"@acme/choysum-partner","version":"0.1.0","choysum":{"moduleName":"partner","application":"partner"}}`)
@@ -434,24 +434,24 @@ func TestSyncLocalModuleOrigin_SyncsRowsAndReconcilesMissingModules(t *testing.T
 		t.Fatalf("write ignored file: %v", err)
 	}
 
-	db := newModuleOriginSyncDB(t)
-	if err := db.Create(&modmeta.ModuleOrigin{
+	db := newModuleSourceSnapshotSyncDB(t)
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{
 		ModuleName: "stale",
-		OriginType: "local",
-		OriginRef:  "local",
+		SourceType: "local",
+		SourceRef:  "local",
 		Available:  true,
 	}).Error; err != nil {
 		t.Fatalf("seed stale index row: %v", err)
 	}
 
-	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	locker := &moduleIndexSyncTestLocker{}
 
-	stats, err := SyncLocalModuleOrigin(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
+	stats, err := SyncLocalModuleSourceSnapshot(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
 		return locker
 	})
 	if err != nil {
-		t.Fatalf("SyncLocalModuleOrigin() error = %v", err)
+		t.Fatalf("SyncLocalModuleSourceSnapshot() error = %v", err)
 	}
 	if stats.Total != 2 || stats.Success != 1 || stats.Failed != 1 {
 		t.Fatalf("unexpected stats = %+v", stats)
@@ -460,8 +460,8 @@ func TestSyncLocalModuleOrigin_SyncsRowsAndReconcilesMissingModules(t *testing.T
 		t.Fatalf("locker Release calls = %d, want 1", locker.released)
 	}
 
-	var partner modmeta.ModuleOrigin
-	if err := db.Where("module_name = ? AND origin_type = ? AND origin_ref = ?", "partner", "local", "local").Take(&partner).Error; err != nil {
+	var partner modmeta.ModuleSourceSnapshot
+	if err := db.Where("module_name = ? AND source_type = ? AND source_ref = ?", "partner", "local", "local").Take(&partner).Error; err != nil {
 		t.Fatalf("load partner row: %v", err)
 	}
 	if !partner.Available {
@@ -474,8 +474,8 @@ func TestSyncLocalModuleOrigin_SyncsRowsAndReconcilesMissingModules(t *testing.T
 		t.Fatalf("expected empty partner error, got %#v", partner.LastErrorMessage)
 	}
 
-	var broken modmeta.ModuleOrigin
-	if err := db.Where("module_name = ? AND origin_type = ? AND origin_ref = ?", "broken", "local", "local").Take(&broken).Error; err != nil {
+	var broken modmeta.ModuleSourceSnapshot
+	if err := db.Where("module_name = ? AND source_type = ? AND source_ref = ?", "broken", "local", "local").Take(&broken).Error; err != nil {
 		t.Fatalf("load broken row: %v", err)
 	}
 	if broken.Available {
@@ -485,8 +485,8 @@ func TestSyncLocalModuleOrigin_SyncsRowsAndReconcilesMissingModules(t *testing.T
 		t.Fatalf("expected broken error message, got %#v", broken.LastErrorMessage)
 	}
 
-	var stale modmeta.ModuleOrigin
-	if err := db.Where("module_name = ? AND origin_type = ? AND origin_ref = ?", "stale", "local", "local").Take(&stale).Error; err != nil {
+	var stale modmeta.ModuleSourceSnapshot
+	if err := db.Where("module_name = ? AND source_type = ? AND source_ref = ?", "stale", "local", "local").Take(&stale).Error; err != nil {
 		t.Fatalf("load stale row: %v", err)
 	}
 	if stale.Available {
@@ -500,26 +500,26 @@ func TestSyncLocalModuleOrigin_SyncsRowsAndReconcilesMissingModules(t *testing.T
 	}
 }
 
-func TestSyncLocalModuleOrigin_AllSuccessUpdatesBatchSyncAt(t *testing.T) {
+func TestSyncLocalModuleSourceSnapshot_AllSuccessUpdatesBatchSyncAt(t *testing.T) {
 	t.Parallel()
 	modulesPath := t.TempDir()
 	writePackageJSON(t, modulesPath, "partner", `{"name":"@acme/choysum-partner","version":"0.2.0","choysum":{"moduleName":"partner","application":"partner"}}`)
 
-	db := newModuleOriginSyncDB(t)
-	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
+	db := newModuleSourceSnapshotSyncDB(t)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 
-	stats, err := SyncLocalModuleOrigin(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
+	stats, err := SyncLocalModuleSourceSnapshot(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
 		return &moduleIndexSyncTestLocker{}
 	})
 	if err != nil {
-		t.Fatalf("SyncLocalModuleOrigin() error = %v", err)
+		t.Fatalf("SyncLocalModuleSourceSnapshot() error = %v", err)
 	}
 	if stats.Total != 1 || stats.Success != 1 || stats.Failed != 0 {
 		t.Fatalf("unexpected stats = %+v", stats)
 	}
 
-	var rows []modmeta.ModuleOrigin
-	if err := db.Where("origin_type = ? AND origin_ref = ?", "local", "local").Find(&rows).Error; err != nil {
+	var rows []modmeta.ModuleSourceSnapshot
+	if err := db.Where("source_type = ? AND source_ref = ?", "local", "local").Find(&rows).Error; err != nil {
 		t.Fatalf("query local rows: %v", err)
 	}
 	if len(rows) != 1 {
@@ -530,27 +530,27 @@ func TestSyncLocalModuleOrigin_AllSuccessUpdatesBatchSyncAt(t *testing.T) {
 	}
 }
 
-func TestSyncLocalModuleOriginWarnsWhenBatchSyncTimestampUpdateFails(t *testing.T) {
+func TestSyncLocalModuleSourceSnapshotWarnsWhenBatchSyncTimestampUpdateFails(t *testing.T) {
 	t.Parallel()
 	modulesPath := t.TempDir()
 	writePackageJSON(t, modulesPath, "partner", `{"name":"@acme/choysum-partner","version":"0.2.0","choysum":{"moduleName":"partner","application":"partner"}}`)
 
-	db := newModuleOriginSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.Exec(`
 CREATE TRIGGER block_local_batch_sync_ts
-BEFORE UPDATE OF last_batch_sync_at ON meta_module_origin
+BEFORE UPDATE OF last_batch_sync_at ON meta_module_source_snapshot
 BEGIN
   SELECT RAISE(ABORT, 'batch sync timestamp blocked');
 END`).Error; err != nil {
 		t.Fatalf("create batch sync timestamp trigger: %v", err)
 	}
-	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 
-	stats, err := SyncLocalModuleOrigin(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
+	stats, err := SyncLocalModuleSourceSnapshot(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
 		return &moduleIndexSyncTestLocker{}
 	})
 	if err != nil {
-		t.Fatalf("SyncLocalModuleOrigin() error = %v", err)
+		t.Fatalf("SyncLocalModuleSourceSnapshot() error = %v", err)
 	}
 	if stats.Total != 1 || stats.Success != 1 || stats.Failed != 0 {
 		t.Fatalf("unexpected stats = %+v", stats)
@@ -559,7 +559,7 @@ END`).Error; err != nil {
 
 func TestModuleIndexLockTTL_UsesCodeDefault(t *testing.T) {
 	t.Parallel()
-	runtimeScope := newModuleOriginSyncScope(t.TempDir(), nil)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), nil)
 	if got := moduleIndexLockTTL(context.Background(), runtimeScope); got != moduleIndexLockTTLDefault {
 		t.Fatalf("ttl = %v, want %v", got, moduleIndexLockTTLDefault)
 	}
@@ -652,7 +652,7 @@ func TestSanitizeModuleIndexErrorBranches(t *testing.T) {
 	t.Parallel()
 
 	modulesPath := filepath.Join(t.TempDir(), "modules")
-	runtimeScope := newModuleOriginSyncScope(modulesPath, nil)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, nil)
 
 	if got := SanitizeModuleIndexError(runtimeScope, nil); got != "package.json parsing failed" {
 		t.Fatalf("SanitizeModuleIndexError(nil) = %q, want %q", got, "package.json parsing failed")
@@ -673,12 +673,12 @@ func TestSanitizeModuleIndexErrorBranches(t *testing.T) {
 	}
 }
 
-func TestSyncLocalModuleOrigin_EdgeCases(t *testing.T) {
+func TestSyncLocalModuleSourceSnapshot_EdgeCases(t *testing.T) {
 	t.Parallel()
 
 	t.Run("read dir failure", func(t *testing.T) {
-		runtimeScope := newModuleOriginSyncScope(filepath.Join(t.TempDir(), "missing"), nil)
-		_, err := SyncLocalModuleOrigin(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
+		runtimeScope := newModuleSourceSnapshotSyncScope(filepath.Join(t.TempDir(), "missing"), nil)
+		_, err := SyncLocalModuleSourceSnapshot(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
 			return &moduleIndexSyncTestLocker{}
 		})
 		if err == nil {
@@ -689,14 +689,14 @@ func TestSyncLocalModuleOrigin_EdgeCases(t *testing.T) {
 	t.Run("todo context works", func(t *testing.T) {
 		modulesPath := t.TempDir()
 		writePackageJSON(t, modulesPath, "partner", `{"name":"@acme/choysum-partner","version":"0.1.0","choysum":{"moduleName":"partner","application":"partner"}}`)
-		db := newModuleOriginSyncDB(t)
-		runtimeScope := newModuleOriginSyncScope(modulesPath, db)
+		db := newModuleSourceSnapshotSyncDB(t)
+		runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 
-		stats, err := SyncLocalModuleOrigin(context.TODO(), runtimeScope, func(scope.Scope) statepkg.Locker {
+		stats, err := SyncLocalModuleSourceSnapshot(context.TODO(), runtimeScope, func(scope.Scope) statepkg.Locker {
 			return &moduleIndexSyncTestLocker{}
 		})
 		if err != nil {
-			t.Fatalf("SyncLocalModuleOrigin(todo ctx) error = %v", err)
+			t.Fatalf("SyncLocalModuleSourceSnapshot(todo ctx) error = %v", err)
 		}
 		if stats.Total != 1 || stats.Success != 1 || stats.Failed != 0 {
 			t.Fatalf("unexpected stats for todo ctx sync: %+v", stats)
@@ -708,10 +708,10 @@ func TestSyncLocalModuleOrigin_EdgeCases(t *testing.T) {
 		if err := os.MkdirAll(filepath.Join(modulesPath, "partner"), 0o755); err != nil {
 			t.Fatalf("mkdir module dir: %v", err)
 		}
-		runtimeScope := newModuleOriginSyncScope(modulesPath, newModuleOriginSyncDB(t))
+		runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, newModuleSourceSnapshotSyncDB(t))
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
-		_, err := SyncLocalModuleOrigin(ctx, runtimeScope, func(scope.Scope) statepkg.Locker {
+		_, err := SyncLocalModuleSourceSnapshot(ctx, runtimeScope, func(scope.Scope) statepkg.Locker {
 			return &moduleIndexSyncTestLocker{}
 		})
 		if !errors.Is(err, context.Canceled) {
@@ -723,21 +723,21 @@ func TestSyncLocalModuleOrigin_EdgeCases(t *testing.T) {
 func TestIsTableMissingInSessionBranches(t *testing.T) {
 	t.Parallel()
 
-	if isTableMissingInSession(nil, "meta_module_origin") {
+	if isTableMissingInSession(nil, "meta_module_source_snapshot") {
 		t.Fatal("nil session should not be treated as missing table")
 	}
 
 	s := &scope.Session{}
-	if isTableMissingInSession(s, "meta_module_origin") {
+	if isTableMissingInSession(s, "meta_module_source_snapshot") {
 		t.Fatal("session without DB should not be treated as missing table")
 	}
 
-	db := newModuleOriginSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	s = &scope.Session{DB: db}
 	if isTableMissingInSession(s, "") {
 		t.Fatal("empty table name should return false")
 	}
-	if isTableMissingInSession(s, "meta_module_origin") {
+	if isTableMissingInSession(s, "meta_module_source_snapshot") {
 		t.Fatal("existing table should not be treated as missing")
 	}
 	if !isTableMissingInSession(s, "meta_not_exists") {
@@ -747,18 +747,18 @@ func TestIsTableMissingInSessionBranches(t *testing.T) {
 
 func TestWithModuleIndexWriteRetrySQLiteRetriesAtTransactionBoundary(t *testing.T) {
 	t.Parallel()
-	db := newModuleOriginSyncDB(t)
-	runtimeScope := newModuleOriginSyncScope(t.TempDir(), db)
+	db := newModuleSourceSnapshotSyncDB(t)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	session := runtimeScope.session
 
 	attempt := 0
 	err := withModuleIndexWriteRetry(context.Background(), runtimeScope, session, func(txSession *scope.Session) error {
 		attempt++
 		if attempt == 1 {
-			if err := txSession.Create(&modmeta.ModuleOrigin{
+			if err := txSession.Create(&modmeta.ModuleSourceSnapshot{
 				ModuleName: "auth",
-				OriginType: "local",
-				OriginRef:  "local",
+				SourceType: "local",
+				SourceRef:  "local",
 				Available:  true,
 			}).Error; err != nil {
 				return err
@@ -767,8 +767,8 @@ func TestWithModuleIndexWriteRetrySQLiteRetriesAtTransactionBoundary(t *testing.
 		}
 
 		var count int64
-		if err := txSession.Model(&modmeta.ModuleOrigin{}).
-			Where("module_name = ? AND origin_type = ? AND origin_ref = ?", "auth", "local", "local").
+		if err := txSession.Model(&modmeta.ModuleSourceSnapshot{}).
+			Where("module_name = ? AND source_type = ? AND source_ref = ?", "auth", "local", "local").
 			Count(&count).Error; err != nil {
 			return err
 		}
@@ -776,10 +776,10 @@ func TestWithModuleIndexWriteRetrySQLiteRetriesAtTransactionBoundary(t *testing.
 			return errors.New("retry observed rows from failed attempt")
 		}
 
-		return txSession.Create(&modmeta.ModuleOrigin{
+		return txSession.Create(&modmeta.ModuleSourceSnapshot{
 			ModuleName: "auth",
-			OriginType: "local",
-			OriginRef:  "local",
+			SourceType: "local",
+			SourceRef:  "local",
 			Available:  true,
 		}).Error
 	})
@@ -791,8 +791,8 @@ func TestWithModuleIndexWriteRetrySQLiteRetriesAtTransactionBoundary(t *testing.
 	}
 
 	var persisted int64
-	if err := db.Model(&modmeta.ModuleOrigin{}).
-		Where("module_name = ? AND origin_type = ? AND origin_ref = ?", "auth", "local", "local").
+	if err := db.Model(&modmeta.ModuleSourceSnapshot{}).
+		Where("module_name = ? AND source_type = ? AND source_ref = ?", "auth", "local", "local").
 		Count(&persisted).Error; err != nil {
 		t.Fatalf("count persisted rows: %v", err)
 	}
@@ -826,7 +826,7 @@ func TestReadPackageJSONAndHelpers(t *testing.T) {
 
 func TestSanitizeModuleIndexError_PathAndDefault(t *testing.T) {
 	t.Parallel()
-	runtimeScope := newModuleOriginSyncScope("/tmp/choysum/modules", nil)
+	runtimeScope := newModuleSourceSnapshotSyncScope("/tmp/choysum/modules", nil)
 	pathErr := &os.PathError{Op: "open", Path: "/tmp/choysum/modules/meta/package.json", Err: os.ErrNotExist}
 	if got := SanitizeModuleIndexError(runtimeScope, pathErr); got != "open package.json" {
 		t.Fatalf("sanitized path error = %q, want %q", got, "open package.json")
@@ -903,12 +903,12 @@ func TestModuleManagerInstallRunsAppStageCallbacks(t *testing.T) {
 	tmpPath := filepath.Join(t.TempDir(), "tmp")
 	defaultChoysumPath := filepath.Join(t.TempDir(), ".choysum")
 
-	db := newModuleOriginSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
-	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	runtimeScope.cfg.DistPath = distPath
 	runtimeScope.cfg.TmpPath = tmpPath
 	runtimeScope.cfg.DefaultChoysumPath = defaultChoysumPath
@@ -976,12 +976,12 @@ func TestModuleManagerInstallPhaseEndRunsForTouchedModule(t *testing.T) {
 		t.Fatalf("mkdir auth: %v", err)
 	}
 
-	db := newModuleOriginSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
-	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	runtimeScope.cfg.DistPath = distPath
 	runtimeScope.cfg.TmpPath = tmpPath
 	runtimeScope.cfg.DefaultChoysumPath = defaultChoysumPath
@@ -1022,12 +1022,12 @@ func TestModuleManagerUninstallRunsAppStageCallbacks(t *testing.T) {
 	tmpPath := filepath.Join(t.TempDir(), "tmp")
 	defaultChoysumPath := filepath.Join(t.TempDir(), ".choysum")
 
-	db := newModuleOriginSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
-	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	runtimeScope.cfg.DistPath = distPath
 	runtimeScope.cfg.TmpPath = tmpPath
 	runtimeScope.cfg.DefaultChoysumPath = defaultChoysumPath
@@ -1092,12 +1092,12 @@ func TestModuleManagerInstallPropagatesGeneratedAPIRootError(t *testing.T) {
 	t.Parallel()
 	modulesPath := t.TempDir()
 
-	db := newModuleOriginSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
-	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	runtimeScope.cfg.DistPath = filepath.Join(t.TempDir(), "dist")
 	runtimeScope.cfg.TmpPath = filepath.Join(t.TempDir(), "tmp")
 	runtimeScope.cfg.DefaultChoysumPath = string(filepath.Separator)
@@ -1142,12 +1142,12 @@ func TestModuleManagerUninstallPropagatesGeneratedAPIRootError(t *testing.T) {
 	t.Parallel()
 	modulesPath := t.TempDir()
 
-	db := newModuleOriginSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
-	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	runtimeScope.cfg.DistPath = filepath.Join(t.TempDir(), "dist")
 	runtimeScope.cfg.TmpPath = filepath.Join(t.TempDir(), "tmp")
 	runtimeScope.cfg.DefaultChoysumPath = string(filepath.Separator)
@@ -1183,12 +1183,12 @@ func TestModuleManagerUpgradePropagatesGeneratedAPIRootError(t *testing.T) {
 	t.Parallel()
 	modulesPath := t.TempDir()
 
-	db := newModuleOriginSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
-	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	runtimeScope.cfg.DistPath = filepath.Join(t.TempDir(), "dist")
 	runtimeScope.cfg.TmpPath = filepath.Join(t.TempDir(), "tmp")
 	runtimeScope.cfg.DefaultChoysumPath = string(filepath.Separator)
@@ -1224,12 +1224,12 @@ func TestModuleManagerUpgradeRunsAppStageCallbacks(t *testing.T) {
 	tmpPath := filepath.Join(t.TempDir(), "tmp")
 	defaultChoysumPath := filepath.Join(t.TempDir(), ".choysum")
 
-	db := newModuleOriginSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
-	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	runtimeScope.cfg.DistPath = distPath
 	runtimeScope.cfg.TmpPath = tmpPath
 	runtimeScope.cfg.DefaultChoysumPath = defaultChoysumPath
@@ -1289,12 +1289,12 @@ func TestModuleManagerUpgradeRefreshModuleIndexError(t *testing.T) {
 	tmpPath := filepath.Join(t.TempDir(), "tmp")
 	defaultChoysumPath := filepath.Join(t.TempDir(), ".choysum")
 
-	db := newModuleOriginSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
-	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	runtimeScope.cfg.DistPath = distPath
 	runtimeScope.cfg.TmpPath = tmpPath
 	runtimeScope.cfg.DefaultChoysumPath = defaultChoysumPath
@@ -1327,12 +1327,12 @@ func TestModuleManagerUpgradeRefreshModuleIndexError(t *testing.T) {
 		t.Fatalf("seed installed module: %v", err)
 	}
 
-	// Fail only finalize refreshModuleOriginForLocalModules Creates.
+	// Fail only finalize refreshModuleSourceSnapshotForLocalModules Creates.
 	if err := db.Callback().Create().Before("gorm:create").Register("deny_module_index_refresh", func(tx *gorm.DB) {
 		if tx.Statement == nil || tx.Statement.Schema == nil {
 			return
 		}
-		if tx.Statement.Schema.Table != (&modmeta.ModuleOrigin{}).TableName() {
+		if tx.Statement.Schema.Table != (&modmeta.ModuleSourceSnapshot{}).TableName() {
 			return
 		}
 		_ = tx.AddError(errors.New("forced module origin refresh failure"))
@@ -1354,13 +1354,13 @@ func TestModuleManagerUpgradeCoreUsesListInstalledApps(t *testing.T) {
 	tmpPath := filepath.Join(t.TempDir(), "tmp")
 	defaultChoysumPath := filepath.Join(t.TempDir(), ".choysum")
 
-	db := newModuleOriginSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
 	var logBuf bytes.Buffer
-	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	runtimeScope.logger = slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	runtimeScope.cfg.DistPath = distPath
 	runtimeScope.cfg.TmpPath = tmpPath

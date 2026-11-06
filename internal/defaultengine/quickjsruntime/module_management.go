@@ -56,7 +56,7 @@ type moduleIndexSyncResult struct {
 	Error      string `json:"error,omitempty"`
 }
 
-type moduleIndexSyncRunner func(ctx context.Context, runtimeScope scope.Scope, originType string) (lifecycle.ModuleOriginSyncStats, error)
+type moduleIndexSyncRunner func(ctx context.Context, runtimeScope scope.Scope, originType string) (lifecycle.ModuleSourceSnapshotSyncStats, error)
 
 // ModuleManagementOption configures the QuickJS module-management runtime plugin.
 type ModuleManagementOption interface {
@@ -309,14 +309,14 @@ func performModuleIndexSync(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngi
 	runtimeScope := jsengine.ResolveScope(scopeProvider, execCtx)
 
 	start := time.Now()
-	result, err := runModuleIndexSync(execCtx, runtimeScope, originType, func(runCtx context.Context, txScope scope.Scope, target string) (lifecycle.ModuleOriginSyncStats, error) {
+	result, err := runModuleIndexSync(execCtx, runtimeScope, originType, func(runCtx context.Context, txScope scope.Scope, target string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
 		switch target {
 		case "local":
 			return syncModuleIndexLocal(runCtx, txScope, cfg.lockerFactory)
 		case "registry":
 			return syncModuleIndexRegistry(runCtx, txScope, cfg.lockerFactory)
 		default:
-			return lifecycle.ModuleOriginSyncStats{}, status.Error(codes.InvalidArgument, "originType must be one of: local, registry, all")
+			return lifecycle.ModuleSourceSnapshotSyncStats{}, status.Error(codes.InvalidArgument, "originType must be one of: local, registry, all")
 		}
 	})
 
@@ -398,7 +398,7 @@ func runModuleIndexSync(ctx context.Context, runtimeScope scope.Scope, originTyp
 		return result, status.Error(codes.Internal, "module origin sync runner is nil")
 	}
 
-	runOrigin := func(target string) (lifecycle.ModuleOriginSyncStats, error) {
+	runOrigin := func(target string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
 		runnerScope := runtimeScope.WithContext(ctx)
 		if runnerScope == nil {
 			runnerScope = runtimeScope
@@ -463,10 +463,10 @@ func isCancellationOrDeadlineError(err error) bool {
 	return st.Code() == codes.Canceled || st.Code() == codes.DeadlineExceeded
 }
 
-func syncModuleIndexLocal(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleOriginSyncStats, error) {
-	return lifecycle.SyncLocalModuleOrigin(ctx, runtimeScope, lockerFactory)
+func syncModuleIndexLocal(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+	return lifecycle.SyncLocalModuleSourceSnapshot(ctx, runtimeScope, lockerFactory)
 }
 
-func syncModuleIndexRegistry(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleOriginSyncStats, error) {
-	return lifecycle.SyncRegistryModuleOrigin(ctx, runtimeScope, lockerFactory)
+func syncModuleIndexRegistry(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+	return lifecycle.SyncRegistryModuleSourceSnapshot(ctx, runtimeScope, lockerFactory)
 }

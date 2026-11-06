@@ -46,7 +46,7 @@ func TestPickFieldDefaultOwnerModule_LastEligible(t *testing.T) {
 func TestBuildBackendBundlesToDir_FieldDefaultOwnerAndEnsureError(t *testing.T) {
 	t.Parallel()
 	modulesPath := t.TempDir()
-	db := newModuleOriginSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
@@ -64,7 +64,7 @@ func TestBuildBackendBundlesToDir_FieldDefaultOwnerAndEnsureError(t *testing.T) 
 		t.Fatalf("seed module: %v", err)
 	}
 
-	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	manager := NewModuleManager(runtimeScope, nil)
 	manager.bootstrapOnce.Do(func() {})
 	distBundlesDir := t.TempDir()

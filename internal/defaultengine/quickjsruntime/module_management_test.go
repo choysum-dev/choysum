@@ -423,12 +423,12 @@ func TestRunModuleIndexSyncAllDoesNotWrapOriginsInOuterTransactions(t *testing.T
 	runtimeScope.transactor = counting
 
 	called := make([]string, 0, 2)
-	result, err := runModuleIndexSync(context.Background(), runtimeScope, "all", func(_ context.Context, _ scope.Scope, originType string) (lifecycle.ModuleOriginSyncStats, error) {
+	result, err := runModuleIndexSync(context.Background(), runtimeScope, "all", func(_ context.Context, _ scope.Scope, originType string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
 		called = append(called, originType)
 		if originType == "registry" {
-			return lifecycle.ModuleOriginSyncStats{Total: 1, Success: 0, Failed: 1}, errors.New("registry unavailable")
+			return lifecycle.ModuleSourceSnapshotSyncStats{Total: 1, Success: 0, Failed: 1}, errors.New("registry unavailable")
 		}
-		return lifecycle.ModuleOriginSyncStats{Total: 2, Success: 2, Failed: 0}, nil
+		return lifecycle.ModuleSourceSnapshotSyncStats{Total: 2, Success: 2, Failed: 0}, nil
 	})
 	if err != nil {
 		t.Fatalf("runModuleIndexSync(all) error = %v", err)
@@ -459,11 +459,11 @@ func TestRunModuleIndexSyncSingleOriginDoesNotUseOuterTransaction(t *testing.T) 
 	counting := &moduleIndexCountingTransactor{inner: scopetest.NewPassthroughTransactor(runtimeScope)}
 	runtimeScope.transactor = counting
 
-	result, err := runModuleIndexSync(context.Background(), runtimeScope, "local", func(_ context.Context, _ scope.Scope, originType string) (lifecycle.ModuleOriginSyncStats, error) {
+	result, err := runModuleIndexSync(context.Background(), runtimeScope, "local", func(_ context.Context, _ scope.Scope, originType string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
 		if originType != "local" {
 			t.Fatalf("originType = %q, want local", originType)
 		}
-		return lifecycle.ModuleOriginSyncStats{Total: 5, Success: 4, Failed: 1}, nil
+		return lifecycle.ModuleSourceSnapshotSyncStats{Total: 5, Success: 4, Failed: 1}, nil
 	})
 	if err != nil {
 		t.Fatalf("runModuleIndexSync(local) error = %v", err)
@@ -484,7 +484,7 @@ func TestRunModuleIndexSyncPassesScopeContextToRunner(t *testing.T) {
 	}
 	runtimeScope.transactor = scopetest.NewPassthroughTransactor(runtimeScope)
 
-	_, err := runModuleIndexSync(context.Background(), runtimeScope, "local", func(runCtx context.Context, runScope scope.Scope, originType string) (lifecycle.ModuleOriginSyncStats, error) {
+	_, err := runModuleIndexSync(context.Background(), runtimeScope, "local", func(runCtx context.Context, runScope scope.Scope, originType string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
 		if originType != "local" {
 			t.Fatalf("originType = %q, want local", originType)
 		}
@@ -497,7 +497,7 @@ func TestRunModuleIndexSyncPassesScopeContextToRunner(t *testing.T) {
 		if _, ok := scope.TransactionFromContext(runCtx); ok {
 			t.Fatal("runner context should not carry transaction")
 		}
-		return lifecycle.ModuleOriginSyncStats{Total: 1, Success: 1, Failed: 0}, nil
+		return lifecycle.ModuleSourceSnapshotSyncStats{Total: 1, Success: 1, Failed: 0}, nil
 	})
 	if err != nil {
 		t.Fatalf("runModuleIndexSync(local) error = %v", err)
@@ -512,11 +512,11 @@ func TestRunModuleIndexSyncAllPreservesCancellationError(t *testing.T) {
 	}
 	runtimeScope.transactor = scopetest.NewPassthroughTransactor(runtimeScope)
 
-	_, err := runModuleIndexSync(context.Background(), runtimeScope, "all", func(_ context.Context, _ scope.Scope, originType string) (lifecycle.ModuleOriginSyncStats, error) {
+	_, err := runModuleIndexSync(context.Background(), runtimeScope, "all", func(_ context.Context, _ scope.Scope, originType string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
 		if originType == "registry" {
-			return lifecycle.ModuleOriginSyncStats{Total: 1, Success: 0, Failed: 1}, status.Error(codes.Canceled, "sync canceled")
+			return lifecycle.ModuleSourceSnapshotSyncStats{Total: 1, Success: 0, Failed: 1}, status.Error(codes.Canceled, "sync canceled")
 		}
-		return lifecycle.ModuleOriginSyncStats{Total: 1, Success: 0, Failed: 1}, status.Error(codes.Unavailable, "sync failed")
+		return lifecycle.ModuleSourceSnapshotSyncStats{Total: 1, Success: 0, Failed: 1}, status.Error(codes.Unavailable, "sync failed")
 	})
 	if err == nil {
 		t.Fatal("expected cancellation error")
