@@ -205,6 +205,9 @@ func TestRun_WithDemoRequestSetsLatch(t *testing.T) {
 
 func TestAbandonDraft_CancelsDraftRow(t *testing.T) {
 	t.Parallel()
+	if err := (*Ops)(nil).AbandonDraft(context.Background(), "x", ""); err == nil {
+		t.Fatal("expected nil host error")
+	}
 	db := newOpsTestDB(t)
 	mod := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core"}
 	o := &Ops{
@@ -213,11 +216,14 @@ func TestAbandonDraft_CancelsDraftRow(t *testing.T) {
 		Lifecycle: &stubLifecycle{},
 		Events:    &recordingBus{},
 	}
+	if err := o.AbandonDraft(nil, "  ", ""); err == nil || !strings.Contains(err.Error(), "id is required") {
+		t.Fatalf("empty id = %v", err)
+	}
 	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "core", Action: ActionInstall})
 	if err != nil {
 		t.Fatalf("Plan: %v", err)
 	}
-	if err := o.AbandonDraft(context.Background(), result.Id, "plan blocked"); err != nil {
+	if err := o.AbandonDraft(nil, result.Id, "plan blocked"); err != nil {
 		t.Fatalf("AbandonDraft: %v", err)
 	}
 	row, err := o.loadOperation(context.Background(), result.Id)
