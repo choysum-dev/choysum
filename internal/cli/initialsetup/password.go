@@ -46,9 +46,14 @@ func GeneratePassword(source io.Reader) (string, error) {
 	return strings.Join(groups, "-"), nil
 }
 
-// ClientHash hashes a password like the web client before Login / CompleteInitialSetup:
-// "$CH$" + lowercase hex SHA-256 of "<password>:<username>" (UTF-8).
+// ClientHash builds the web-client transport prehash used by Login /
+// CompleteInitialSetup: "$CH$" + lowercase hex SHA-256 of
+// "<password>:<username>" (UTF-8). It must stay aligned with
+// hashPasswordClient in modules/auth/web. The server strips $CH$ and bcrypts
+// the hex; this SHA-256 step is not the stored password hash.
 func ClientHash(password string, username string) string {
+	// codeql[go/weak-sensitive-data-hashing]: transport prehash matching the
+	// web $CH$ contract; server bcrypts the hex (see ClientHash godoc).
 	sum := sha256.Sum256([]byte(password + ":" + username))
 	return clientHashPrefix + hex.EncodeToString(sum[:])
 }
