@@ -46,23 +46,26 @@ func EnsureOpsSchemaCutover(db *gorm.DB) error {
 	if db == nil {
 		return fmt.Errorf("EnsureOpsSchemaCutover: db is nil")
 	}
+	opsSchemaCutoverMu.Lock()
+	defer opsSchemaCutoverMu.Unlock()
+
 	if err := db.Exec("SELECT 1").Error; err != nil {
 		return fmt.Errorf("EnsureOpsSchemaCutover: db unavailable: %w", err)
 	}
-	opsSchemaCutoverMu.Lock()
-	defer opsSchemaCutoverMu.Unlock()
 
 	migrator := db.Migrator()
 	if !opsSchemaNeedsCutover(migrator) {
 		// Already cut over (or fresh DB); OpsEntities AutoMigrate owns new tables.
 		return nil
 	}
-	return ensureOpsSchemaCutover(migrator, func() error {
-		return db.AutoMigrate(&ModuleMigration{})
-	})
+	return ensureOpsSchemaCutover(
+		migrator,
+		func() error { return db.AutoMigrate(&ModuleMigration{}) },
+		func() error { return db.AutoMigrate(&ModuleSourceSnapshot{}) },
+	)
 }
 
-func ensureOpsSchemaCutover(migrator opsSchemaMigrator, autoMigrateMigration func() error) error {
+func ensureOpsSchemaCutover(migrator opsSchemaMigrator, autoMigrateMigration, autoMigrateSnapshot func() error) error {
 	if migrator == nil {
 		return fmt.Errorf("EnsureOpsSchemaCutover: migrator is nil")
 	}
@@ -90,8 +93,26 @@ func ensureOpsSchemaCutover(migrator opsSchemaMigrator, autoMigrateMigration fun
 		}
 	}
 
-	// Legacy snapshot rows are discarded; resync repopulates meta_module_source_snapshot.
+	// Ensure the new snapshot table exists before discarding legacy index/origin so a
+	// later OpsEntities AutoMigrate failure does not leave the install without either.
 	newSnapshot := (ModuleSourceSnapshot{}).TableName()
+	droppingLegacySnapshot := false
+	for _, legacy := range []string{legacyModuleIndexTable, legacyModuleOriginTable} {
+		if migrator.HasTable(legacy) && legacy != newSnapshot {
+			droppingLegacySnapshot = true
+			break
+		}
+	}
+	if droppingLegacySnapshot && !migrator.HasTable(newSnapshot) {
+		if autoMigrateSnapshot == nil {
+			return fmt.Errorf("auto migrate %s: autoMigrate is nil", newSnapshot)
+		}
+		if err := autoMigrateSnapshot(); err != nil {
+			return fmt.Errorf("auto migrate %s: %w", newSnapshot, err)
+		}
+	}
+
+	// Legacy snapshot rows are discarded; resync repopulates meta_module_source_snapshot.
 	for _, legacy := range []string{legacyModuleIndexTable, legacyModuleOriginTable} {
 		if !migrator.HasTable(legacy) || legacy == newSnapshot {
 			continue

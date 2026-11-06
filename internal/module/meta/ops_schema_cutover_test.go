@@ -169,6 +169,9 @@ func TestEnsureOpsSchemaCutover_DropsLegacyIndexAndLog(t *testing.T) {
 			t.Fatalf("expected %s dropped", table)
 		}
 	}
+	if !migrator.HasTable((ModuleSourceSnapshot{}).TableName()) {
+		t.Fatal("expected source snapshot table created before legacy drop")
+	}
 }
 
 func TestEnsureOpsSchemaCutover_DropsLeftoverWhenSnapshotExists(t *testing.T) {
@@ -214,7 +217,7 @@ func TestEnsureOpsSchemaCutover_StubErrorPaths(t *testing.T) {
 	t.Parallel()
 
 	t.Run("nil migrator", func(t *testing.T) {
-		err := ensureOpsSchemaCutover(nil, func() error { return nil })
+		err := ensureOpsSchemaCutover(nil, func() error { return nil }, func() error { return nil })
 		if err == nil || !strings.Contains(err.Error(), "migrator is nil") {
 			t.Fatalf("error = %v, want migrator is nil", err)
 		}
@@ -225,7 +228,7 @@ func TestEnsureOpsSchemaCutover_StubErrorPaths(t *testing.T) {
 			tables:    map[string]bool{legacyModuleMigrationTable: true},
 			renameErr: errors.New("rename blocked"),
 		}
-		err := ensureOpsSchemaCutover(m, func() error { return nil })
+		err := ensureOpsSchemaCutover(m, func() error { return nil }, func() error { return nil })
 		if err == nil || !strings.Contains(err.Error(), "rename blocked") {
 			t.Fatalf("error = %v, want rename blocked", err)
 		}
@@ -233,12 +236,12 @@ func TestEnsureOpsSchemaCutover_StubErrorPaths(t *testing.T) {
 
 	t.Run("auto migrate nil and error", func(t *testing.T) {
 		m := &stubOpsMigrator{tables: map[string]bool{legacyModuleMigrationTable: true}}
-		err := ensureOpsSchemaCutover(m, nil)
+		err := ensureOpsSchemaCutover(m, nil, func() error { return nil })
 		if err == nil || !strings.Contains(err.Error(), "autoMigrate is nil") {
 			t.Fatalf("error = %v, want autoMigrate is nil", err)
 		}
 		m = &stubOpsMigrator{tables: map[string]bool{legacyModuleMigrationTable: true}}
-		err = ensureOpsSchemaCutover(m, func() error { return errors.New("migrate blocked") })
+		err = ensureOpsSchemaCutover(m, func() error { return errors.New("migrate blocked") }, func() error { return nil })
 		if err == nil || !strings.Contains(err.Error(), "migrate blocked") {
 			t.Fatalf("error = %v, want migrate blocked", err)
 		}
@@ -249,7 +252,10 @@ func TestEnsureOpsSchemaCutover_StubErrorPaths(t *testing.T) {
 			tables:  map[string]bool{legacyModuleIndexTable: true},
 			dropErr: errors.New("drop blocked"),
 		}
-		err := ensureOpsSchemaCutover(m, func() error { return nil })
+		err := ensureOpsSchemaCutover(m, func() error { return nil }, func() error {
+			m.tables[(ModuleSourceSnapshot{}).TableName()] = true
+			return nil
+		})
 		if err == nil || !strings.Contains(err.Error(), "drop legacy") {
 			t.Fatalf("error = %v, want drop legacy", err)
 		}
@@ -261,7 +267,7 @@ func TestEnsureOpsSchemaCutover_StubErrorPaths(t *testing.T) {
 			},
 			dropErr: errors.New("leftover blocked"),
 		}
-		err = ensureOpsSchemaCutover(m, func() error { return nil })
+		err = ensureOpsSchemaCutover(m, func() error { return nil }, func() error { return nil })
 		if err == nil || !strings.Contains(err.Error(), "drop legacy") {
 			t.Fatalf("error = %v, want drop legacy", err)
 		}
@@ -278,9 +284,24 @@ func TestEnsureOpsSchemaCutover_StubErrorPaths(t *testing.T) {
 			tables:  map[string]bool{legacyManagementLogTable: true},
 			dropErr: errors.New("log drop blocked"),
 		}
-		err := ensureOpsSchemaCutover(m, func() error { return nil })
+		err := ensureOpsSchemaCutover(m, func() error { return nil }, func() error { return nil })
 		if err == nil || !strings.Contains(err.Error(), "log drop blocked") {
 			t.Fatalf("error = %v, want log drop blocked", err)
+		}
+	})
+
+	t.Run("auto migrate snapshot nil and error", func(t *testing.T) {
+		m := &stubOpsMigrator{tables: map[string]bool{legacyModuleIndexTable: true}}
+		err := ensureOpsSchemaCutover(m, func() error { return nil }, nil)
+		if err == nil || !strings.Contains(err.Error(), "autoMigrate is nil") {
+			t.Fatalf("error = %v, want snapshot autoMigrate is nil", err)
+		}
+		m = &stubOpsMigrator{tables: map[string]bool{legacyModuleIndexTable: true}}
+		err = ensureOpsSchemaCutover(m, func() error { return nil }, func() error {
+			return errors.New("snapshot migrate blocked")
+		})
+		if err == nil || !strings.Contains(err.Error(), "snapshot migrate blocked") {
+			t.Fatalf("error = %v, want snapshot migrate blocked", err)
 		}
 	})
 
@@ -292,7 +313,7 @@ func TestEnsureOpsSchemaCutover_StubErrorPaths(t *testing.T) {
 			},
 			dropErr: errors.New("history drop blocked"),
 		}
-		err := ensureOpsSchemaCutover(m, func() error { return nil })
+		err := ensureOpsSchemaCutover(m, func() error { return nil }, func() error { return nil })
 		if err == nil || !strings.Contains(err.Error(), "history drop blocked") {
 			t.Fatalf("error = %v, want history drop blocked", err)
 		}

@@ -218,11 +218,13 @@ func SyncRegistryModuleSourceSnapshot(ctx context.Context, runtimeScope scope.Sc
 	// Mark registry entries absent from the current catalog snapshot as unavailable.
 	if len(seen) > 0 {
 		existing := make([]modmeta.ModuleSourceSnapshot, 0)
-		if err := session.WithContext(ctx).
-			Model(&modmeta.ModuleSourceSnapshot{}).
-			Select("id", "module_name", "source_ref").
-			Where("source_type = ?", "registry").
-			Find(&existing).Error; err != nil {
+		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
+			return txSession.WithContext(ctx).
+				Model(&modmeta.ModuleSourceSnapshot{}).
+				Select("id", "module_name", "source_ref").
+				Where("source_type = ?", "registry").
+				Find(&existing).Error
+		}); err != nil {
 			hasError = true
 			runtimeScope.Logger().Warn("module source snapshot reconcile failed", "error", err)
 		} else {
