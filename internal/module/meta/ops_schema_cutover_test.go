@@ -81,6 +81,20 @@ func (m *raceRenameMigrator) RenameTable(src any, dst any) error {
 	return m.renameErr
 }
 
+// raceDropMigrator simulates a peer that finishes DropTable first.
+type raceDropMigrator struct {
+	stubOpsMigrator
+}
+
+func (m *raceDropMigrator) DropTable(dst ...any) error {
+	for _, item := range dst {
+		name, _ := item.(string)
+		m.dropped = append(m.dropped, name)
+		delete(m.tables, name)
+	}
+	return m.dropErr
+}
+
 func TestEnsureOpsSchemaCutover_NilDB(t *testing.T) {
 	t.Parallel()
 	if err := EnsureOpsSchemaCutover(nil); err == nil || !strings.Contains(err.Error(), "db is nil") {
@@ -324,6 +338,26 @@ func TestEnsureOpsSchemaCutover_StubErrorPaths(t *testing.T) {
 		err := ensureOpsSchemaCutover(m, func() error { return nil }, func() error { return nil })
 		if err == nil || !strings.Contains(err.Error(), "log drop blocked") {
 			t.Fatalf("error = %v, want log drop blocked", err)
+		}
+	})
+
+	t.Run("drop lost race tolerated", func(t *testing.T) {
+		m := &raceDropMigrator{
+			stubOpsMigrator: stubOpsMigrator{
+				tables: map[string]bool{
+					legacyModuleIndexTable:               true,
+					(ModuleSourceSnapshot{}).TableName(): true,
+					legacyManagementLogTable:             true,
+				},
+				dropErr: errors.New("drop raced"),
+			},
+		}
+		err := ensureOpsSchemaCutover(m, func() error { return nil }, func() error { return nil })
+		if err != nil {
+			t.Fatalf("ensureOpsSchemaCutover() error = %v, want nil after lost drop race", err)
+		}
+		if m.tables[legacyModuleIndexTable] || m.tables[legacyManagementLogTable] {
+			t.Fatalf("legacy tables still present after race: %#v", m.tables)
 		}
 	})
 

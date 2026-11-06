@@ -83,9 +83,9 @@ func ensureOpsSchemaCutover(migrator opsSchemaMigrator, autoMigrateMigration, au
 			} else {
 				renamedMigration = true
 			}
-		} else if err := migrator.DropTable(legacyModuleMigrationTable); err != nil {
+		} else if err := dropLegacyTable(migrator, legacyModuleMigrationTable); err != nil {
 			// Both tables present (partial upgrade); drop leftover so cutover stays one-shot.
-			return fmt.Errorf("drop legacy %s: %w", legacyModuleMigrationTable, err)
+			return err
 		}
 	}
 	// Align columns (e.g. soft-delete) after rename from a leaner legacy shape.
@@ -122,15 +122,26 @@ func ensureOpsSchemaCutover(migrator opsSchemaMigrator, autoMigrateMigration, au
 		if !migrator.HasTable(legacy) || legacy == newSnapshot {
 			continue
 		}
-		if err := migrator.DropTable(legacy); err != nil {
-			return fmt.Errorf("drop legacy %s: %w", legacy, err)
+		if err := dropLegacyTable(migrator, legacy); err != nil {
+			return err
 		}
 	}
 
 	if migrator.HasTable(legacyManagementLogTable) {
-		if err := migrator.DropTable(legacyManagementLogTable); err != nil {
-			return fmt.Errorf("drop %s: %w", legacyManagementLogTable, err)
+		if err := dropLegacyTable(migrator, legacyManagementLogTable); err != nil {
+			return err
 		}
+	}
+	return nil
+}
+
+// dropLegacyTable drops table and treats a concurrent peer drop as success.
+func dropLegacyTable(migrator opsSchemaMigrator, table string) error {
+	if err := migrator.DropTable(table); err != nil {
+		if !migrator.HasTable(table) {
+			return nil
+		}
+		return fmt.Errorf("drop legacy %s: %w", table, err)
 	}
 	return nil
 }
