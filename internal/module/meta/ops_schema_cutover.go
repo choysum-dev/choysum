@@ -69,11 +69,16 @@ func ensureOpsSchemaCutover(migrator opsSchemaMigrator, autoMigrateMigration fun
 
 	newMigration := (ModuleMigration{}).TableName()
 	renamedMigration := false
-	if migrator.HasTable(legacyModuleMigrationTable) && !migrator.HasTable(newMigration) {
-		if err := migrator.RenameTable(legacyModuleMigrationTable, newMigration); err != nil {
-			return fmt.Errorf("rename %s -> %s: %w", legacyModuleMigrationTable, newMigration, err)
+	if migrator.HasTable(legacyModuleMigrationTable) {
+		if !migrator.HasTable(newMigration) {
+			if err := migrator.RenameTable(legacyModuleMigrationTable, newMigration); err != nil {
+				return fmt.Errorf("rename %s -> %s: %w", legacyModuleMigrationTable, newMigration, err)
+			}
+			renamedMigration = true
+		} else if err := migrator.DropTable(legacyModuleMigrationTable); err != nil {
+			// Both tables present (partial upgrade); drop leftover so cutover stays one-shot.
+			return fmt.Errorf("drop legacy %s: %w", legacyModuleMigrationTable, err)
 		}
-		renamedMigration = true
 	}
 	// Align columns (e.g. soft-delete) after rename from a leaner legacy shape.
 	if renamedMigration {

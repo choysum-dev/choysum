@@ -591,6 +591,35 @@ func TestRunModuleIndexSyncAllFailsWhenEveryOriginFails(t *testing.T) {
 	}
 }
 
+func TestSyncModuleIndexByTargetUnsupported(t *testing.T) {
+	runtimeScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	_, err := syncModuleIndexByTarget(context.Background(), runtimeScope, nil, "cloud")
+	if err == nil || !strings.Contains(err.Error(), `unsupported module origin sync target "cloud"`) {
+		t.Fatalf("error = %v, want unsupported target", err)
+	}
+}
+
+func TestSyncModuleIndexByTargetDelegates(t *testing.T) {
+	runtimeScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	locker := func(scope.Scope) statepkg.Locker {
+		return &moduleIndexTestLocker{acquireErr: statepkg.ErrLeaseBusy}
+	}
+	for _, target := range []string{"local", "registry"} {
+		_, err := syncModuleIndexByTarget(context.Background(), runtimeScope, locker, target)
+		if err == nil || !strings.Contains(err.Error(), "LEASE_CONFLICT") {
+			t.Fatalf("target %q error = %v, want LEASE_CONFLICT", target, err)
+		}
+	}
+}
+
 func TestSyncModuleIndexRegistryDelegates(t *testing.T) {
 	runtimeScope := &moduleIndexTestScope{
 		ctx:    context.Background(),

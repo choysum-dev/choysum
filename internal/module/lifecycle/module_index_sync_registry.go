@@ -220,6 +220,7 @@ func SyncRegistryModuleSourceSnapshot(ctx context.Context, runtimeScope scope.Sc
 		existing := make([]modmeta.ModuleSourceSnapshot, 0)
 		if err := session.WithContext(ctx).
 			Model(&modmeta.ModuleSourceSnapshot{}).
+			Select("id", "module_name", "source_ref").
 			Where("source_type = ?", "registry").
 			Find(&existing).Error; err != nil {
 			hasError = true

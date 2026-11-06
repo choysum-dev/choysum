@@ -310,14 +310,7 @@ func performModuleIndexSync(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngi
 
 	start := time.Now()
 	result, err := runModuleIndexSync(execCtx, runtimeScope, originType, func(runCtx context.Context, txScope scope.Scope, target string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
-		switch target {
-		case "registry":
-			return syncModuleIndexRegistry(runCtx, txScope, cfg.lockerFactory)
-		case "local":
-			return syncModuleIndexLocal(runCtx, txScope, cfg.lockerFactory)
-		default:
-			return lifecycle.ModuleSourceSnapshotSyncStats{}, status.Errorf(codes.InvalidArgument, "unsupported module origin sync target %q", target)
-		}
+		return syncModuleIndexByTarget(runCtx, txScope, cfg.lockerFactory, target)
 	})
 
 	result.DurationMs = time.Since(start).Milliseconds()
@@ -469,4 +462,15 @@ func syncModuleIndexLocal(ctx context.Context, runtimeScope scope.Scope, lockerF
 
 func syncModuleIndexRegistry(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
 	return lifecycle.SyncRegistryModuleSourceSnapshot(ctx, runtimeScope, lockerFactory)
+}
+
+func syncModuleIndexByTarget(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory, target string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+	switch target {
+	case "registry":
+		return syncModuleIndexRegistry(ctx, runtimeScope, lockerFactory)
+	case "local":
+		return syncModuleIndexLocal(ctx, runtimeScope, lockerFactory)
+	default:
+		return lifecycle.ModuleSourceSnapshotSyncStats{}, status.Errorf(codes.InvalidArgument, "unsupported module origin sync target %q", target)
+	}
 }

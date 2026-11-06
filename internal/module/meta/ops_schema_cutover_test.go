@@ -189,6 +189,27 @@ func TestEnsureOpsSchemaCutover_DropsLeftoverWhenSnapshotExists(t *testing.T) {
 	}
 }
 
+func TestEnsureOpsSchemaCutover_DropsLeftoverMigrationHistory(t *testing.T) {
+	t.Parallel()
+	db := openCutoverDB(t, "cutover_both_migration_"+t.Name())
+	if err := db.AutoMigrate(&ModuleMigration{}); err != nil {
+		t.Fatalf("auto migrate migration: %v", err)
+	}
+	if err := db.Exec("CREATE TABLE " + legacyModuleMigrationTable + " (id TEXT PRIMARY KEY)").Error; err != nil {
+		t.Fatalf("create legacy migration history: %v", err)
+	}
+
+	if err := EnsureOpsSchemaCutover(db); err != nil {
+		t.Fatalf("EnsureOpsSchemaCutover: %v", err)
+	}
+	if db.Migrator().HasTable(legacyModuleMigrationTable) {
+		t.Fatal("expected leftover legacy migration history dropped")
+	}
+	if !db.Migrator().HasTable((ModuleMigration{}).TableName()) {
+		t.Fatal("expected new migration table retained")
+	}
+}
+
 func TestEnsureOpsSchemaCutover_StubErrorPaths(t *testing.T) {
 	t.Parallel()
 
@@ -260,6 +281,20 @@ func TestEnsureOpsSchemaCutover_StubErrorPaths(t *testing.T) {
 		err := ensureOpsSchemaCutover(m, func() error { return nil })
 		if err == nil || !strings.Contains(err.Error(), "log drop blocked") {
 			t.Fatalf("error = %v, want log drop blocked", err)
+		}
+	})
+
+	t.Run("drop leftover migration history error", func(t *testing.T) {
+		m := &stubOpsMigrator{
+			tables: map[string]bool{
+				legacyModuleMigrationTable:      true,
+				(ModuleMigration{}).TableName(): true,
+			},
+			dropErr: errors.New("history drop blocked"),
+		}
+		err := ensureOpsSchemaCutover(m, func() error { return nil })
+		if err == nil || !strings.Contains(err.Error(), "history drop blocked") {
+			t.Fatalf("error = %v, want history drop blocked", err)
 		}
 	})
 }
