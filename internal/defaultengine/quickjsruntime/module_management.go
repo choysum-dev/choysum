@@ -10,11 +10,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/choysum-dev/choysum/internal/module/lifecycle"
-
 	"github.com/buke/quickjs-go"
+	"github.com/choysum-dev/choysum/internal/module/lifecycle"
+	"github.com/choysum-dev/choysum/internal/module/ops"
 	"github.com/choysum-dev/choysum/internal/server/reload"
 	"github.com/choysum-dev/choysum/internal/state/lease"
+	"github.com/choysum-dev/choysum/pkg/bus"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsengine/quickjsengine"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
@@ -25,13 +26,20 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type moduleOpParams struct {
+type modulePlanParams struct {
 	ModuleName     string `json:"moduleName"`
-	WithDemo       bool   `json:"withDemo"`
-	OperatorUserId string `json:"operatorUserId"`
-	JobId          string `json:"jobId"`
 	Action         string `json:"action"`
-	BaseRevision   string `json:"baseRevision"`
+	Origin         string `json:"origin"`
+	OperatorUserId string `json:"operatorUserId"`
+}
+
+type moduleApplyParams struct {
+	Id string `json:"id"`
+}
+
+type moduleRunParams struct {
+	Id       string `json:"id"`
+	WithDemo bool   `json:"withDemo"`
 }
 
 type moduleOpResult struct {
@@ -41,12 +49,12 @@ type moduleOpResult struct {
 	ErrorMessage string `json:"errorMessage,omitempty"`
 }
 
-type moduleIndexSyncParams struct {
+type moduleCatalogSyncParams struct {
 	OriginType string `json:"originType"`
 	Force      bool   `json:"force"`
 }
 
-type moduleIndexSyncResult struct {
+type moduleCatalogSyncResult struct {
 	Ok         bool   `json:"ok"`
 	OriginType string `json:"originType"`
 	Total      int    `json:"total"`
@@ -56,7 +64,9 @@ type moduleIndexSyncResult struct {
 	Error      string `json:"error,omitempty"`
 }
 
-type moduleIndexSyncRunner func(ctx context.Context, runtimeScope scope.Scope, originType string) (lifecycle.ModuleSourceSnapshotSyncStats, error)
+type moduleLoadDemoParams struct {
+	OperatorUserId string `json:"operatorUserId"`
+}
 
 // ModuleManagementOption configures the QuickJS module-management runtime plugin.
 type ModuleManagementOption interface {
@@ -74,9 +84,44 @@ func (f moduleManagementOptionFunc) apply(cfg *moduleManagementConfig) {
 
 type moduleLifecycleFactory func(runtimeScope scope.Scope, jsExecutor jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory) lifecycle.Service
 
+type opsHostFactory func(runtimeScope scope.Scope, jsExecutor jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory, events bus.EventBus) *ops.Ops
+
+type compilerExecutorFactory func(runtimeScope scope.Scope) (jsexecutor.JsExecutor, error)
+
 type moduleManagementConfig struct {
-	lockerFactory          statepkg.LockerFactory
-	moduleLifecycleFactory moduleLifecycleFactory
+	lockerFactory           statepkg.LockerFactory
+	moduleLifecycleFactory  moduleLifecycleFactory
+	opsHostFactory          opsHostFactory
+	compilerExecutorFactory compilerExecutorFactory
+	events                  bus.EventBus
+	// Test-only loadDemo hooks (nil in production).
+	loadDemoPlanHook func(ops.PlanResult) ops.PlanResult
+	loadDemoRunHook  func(error) error
+}
+
+// Overridable for tests that force Marshal failures.
+var quickjsMarshal = func(ctx *quickjs.Context, v any) (*quickjs.Value, error) {
+	return ctx.Marshal(v)
+}
+
+func defaultCompilerExecutorFactory(runtimeScope scope.Scope) (jsexecutor.JsExecutor, error) {
+	return jsexecutor.NewCompilerExecutor(runtimeScope)
+}
+
+// bridgeThrow builds an Error value for promise rejection without setting a
+// context exception (ThrowError + IsError is unreliable across quickjs-go).
+// When err carries ChoysumError info, attaches errorDomain/errorCode for TS callers.
+func bridgeThrow(ctx *quickjs.Context, err error) *quickjs.Value {
+	val := ctx.NewError(err)
+	if info := oerrors.GetErrorInfo(err); info != nil {
+		if info.Domain != "" {
+			val.Set("errorDomain", ctx.NewString(info.Domain))
+		}
+		if info.Code != "" {
+			val.Set("errorCode", ctx.NewString(info.Code))
+		}
+	}
+	return val
 }
 
 func defaultModuleManagementLockerFactory(runtimeScope scope.Scope) statepkg.Locker {
@@ -107,14 +152,20 @@ func resolveModuleManagementConfig(opts ...ModuleManagementOption) moduleManagem
 	return cfg
 }
 
-// WithModuleManagementLockerFactory injects the locker used by both module
-// operations and local module-index sync inside the QuickJS runtime plugin.
+// WithModuleManagementLockerFactory injects the locker used by module ops and catalog sync.
 func WithModuleManagementLockerFactory(factory statepkg.LockerFactory) ModuleManagementOption {
 	if factory == nil {
 		return moduleManagementOptionFunc(func(*moduleManagementConfig) {})
 	}
 	return moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
 		cfg.lockerFactory = factory
+	})
+}
+
+// WithModuleManagementEvents injects the EventBus used for operation tip Publish.
+func WithModuleManagementEvents(events bus.EventBus) ModuleManagementOption {
+	return moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+		cfg.events = events
 	})
 }
 
@@ -130,11 +181,12 @@ func WithModuleManagementProvider(scopeProvider jsengine.ScopeProvider, opts ...
 		}
 
 		mmObj := jse.Ctx.Object()
-		mmObj.Set("install", jse.Ctx.NewFunction(moduleOpAsyncFactory(jse, scopeProvider, cfg, "install")))
-		mmObj.Set("uninstall", jse.Ctx.NewFunction(moduleOpAsyncFactory(jse, scopeProvider, cfg, "uninstall")))
-		mmObj.Set("upgrade", jse.Ctx.NewFunction(moduleOpAsyncFactory(jse, scopeProvider, cfg, "upgrade")))
+		mmObj.Set("plan", jse.Ctx.NewFunction(moduleBridgeAsyncFactory(jse, scopeProvider, cfg, performModulePlan)))
+		mmObj.Set("apply", jse.Ctx.NewFunction(moduleBridgeAsyncFactory(jse, scopeProvider, cfg, performModuleApply)))
+		mmObj.Set("run", jse.Ctx.NewFunction(moduleBridgeAsyncFactory(jse, scopeProvider, cfg, performModuleRun)))
 		mmObj.Set("reload", jse.Ctx.NewFunction(moduleReloadAsyncFactory(jse)))
-		mmObj.Set("syncIndex", jse.Ctx.NewFunction(moduleIndexSyncAsyncFactory(jse, scopeProvider, cfg)))
+		mmObj.Set("syncCatalog", jse.Ctx.NewFunction(moduleBridgeAsyncFactory(jse, scopeProvider, cfg, performModuleCatalogSync)))
+		mmObj.Set("loadDemo", jse.Ctx.NewFunction(moduleBridgeAsyncFactory(jse, scopeProvider, cfg, performModuleLoadDemo)))
 
 		choysumObj.Set("moduleManagement", mmObj)
 		globalsObj.Set("$choysum", choysumObj)
@@ -147,17 +199,20 @@ func WithModuleManagement(runtimeScope scope.Scope, opts ...ModuleManagementOpti
 	return WithModuleManagementProvider(jsengine.StaticScopeProvider(runtimeScope), opts...)
 }
 
-func moduleOpAsyncFactory(jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig, action string) func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
+type moduleBridgePerformer func(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig, args []*quickjs.Value) *quickjs.Value
+
+func moduleBridgeAsyncFactory(jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig, perform moduleBridgePerformer) func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
 	return func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
+		// perform runs synchronously inside NewPromise; pass args directly.
 		return ctx.NewPromise(func(resolve, reject func(*quickjs.Value)) {
-			ret := performModuleOp(ctx, jse, scopeProvider, cfg, action, args)
+			ret := perform(ctx, jse, scopeProvider, cfg, args)
 			if ret.IsError() {
 				defer ret.Free()
 				reject(ret)
-			} else {
-				defer ret.Free()
-				resolve(ret)
+				return
 			}
+			defer ret.Free()
+			resolve(ret)
 		})
 	}
 }
@@ -171,7 +226,7 @@ func moduleReloadAsyncFactory(jse *quickjsengine.QuickjsEngine) func(ctx *quickj
 				_ = reload.Trigger()
 			}()
 
-			val, err := ctx.Marshal(result)
+			val, err := quickjsMarshal(ctx, result)
 			if err != nil {
 				errVal := ctx.ThrowError(err)
 				defer errVal.Free()
@@ -184,86 +239,294 @@ func moduleReloadAsyncFactory(jse *quickjsengine.QuickjsEngine) func(ctx *quickj
 	}
 }
 
-func moduleIndexSyncAsyncFactory(jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig) func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
-	return func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
-		return ctx.NewPromise(func(resolve, reject func(*quickjs.Value)) {
-			ret := performModuleIndexSync(ctx, jse, scopeProvider, cfg, args)
-			if ret.IsError() {
-				defer ret.Free()
-				reject(ret)
-			} else {
-				defer ret.Free()
-				resolve(ret)
-			}
-		})
-	}
+type startedOpsHost struct {
+	host     *ops.Ops
+	execCtx  context.Context
+	executor jsexecutor.JsExecutor
 }
 
-func newModuleLifecycleForModuleManagement(runtimeScope scope.Scope, jsExecutor jsexecutor.JsExecutor, cfg moduleManagementConfig) lifecycle.Service {
-	return cfg.moduleLifecycleFactory(runtimeScope, jsExecutor, cfg.lockerFactory)
+func (h startedOpsHost) Close() error {
+	if h.executor == nil {
+		return nil
+	}
+	return h.executor.Stop()
 }
 
-func performModuleOp(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig, action string, args []*quickjs.Value) *quickjs.Value {
-	params, err := parseModuleOpParams(args)
-	if err != nil {
-		return ctx.ThrowError(err)
-	}
-	if params.ModuleName == "" {
-		return ctx.ThrowError(status.Error(codes.InvalidArgument, "moduleName is required"))
-	}
-	execCtx := jse.ExecContext()
-	if execCtx == nil {
-		execCtx = context.Background()
-	}
-	execCtx = scope.ContextWithoutTransaction(execCtx)
+func startOpsHost(jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig) (startedOpsHost, error) {
+	execCtx := scope.ContextWithoutTransaction(jse.ExecContext())
 	runtimeScope := jsengine.ResolveScope(scopeProvider, execCtx)
-
-	result := moduleOpResult{Ok: false}
+	if runtimeScope == nil {
+		return startedOpsHost{}, status.Error(codes.Internal, "module management scope is unavailable")
+	}
 	opScope := runtimeScope.WithContext(execCtx)
 	if opScope == nil {
 		opScope = runtimeScope
 	}
 
-	err = func() (opErr error) {
-		compilerExecutor, err := jsexecutor.NewCompilerExecutor(opScope)
-		if err != nil {
-			return err
-		}
-		if err := compilerExecutor.Start(); err != nil {
-			return err
-		}
-		defer func() {
-			if stopErr := compilerExecutor.Stop(); opErr == nil && stopErr != nil {
-				opErr = stopErr
-			}
-		}()
-
-		moduleLifecycle := newModuleLifecycleForModuleManagement(opScope, compilerExecutor, cfg)
-		switch action {
-		case "install":
-			return moduleLifecycle.Install(execCtx, lifecycle.InstallRequest{Name: params.ModuleName, WithDemo: params.WithDemo})
-		case "uninstall":
-			return moduleLifecycle.Uninstall(execCtx, lifecycle.UninstallRequest{Name: params.ModuleName})
-		case "upgrade":
-			return moduleLifecycle.Upgrade(execCtx, lifecycle.UpgradeRequest{Input: params.ModuleName, WithDemo: params.WithDemo})
-		default:
-			return status.Error(codes.InvalidArgument, "unknown action")
-		}
-	}()
-	if err == nil {
-		result.Ok = true
+	events := cfg.events
+	if !bus.IsUsable(events) {
+		events = bus.EnsureHost(opScope)
 	}
 
-	if err != nil {
-		info := oerrors.GetErrorInfo(err)
-		if info != nil && info.Domain == "meta.lock" && info.Code == "LEASE_CONFLICT" {
-			return ctx.ThrowError(err)
+	var host *ops.Ops
+	if cfg.opsHostFactory != nil {
+		host = cfg.opsHostFactory(opScope, nil, cfg.lockerFactory, events)
+	}
+	if host == nil {
+		host = &ops.Ops{}
+	}
+	if host.Scope == nil {
+		host.Scope = opScope
+	}
+	if host.LockerFactory == nil {
+		host.LockerFactory = cfg.lockerFactory
+	}
+	if host.Events == nil {
+		host.Events = events
+	}
+
+	// Compiler executor is only required when filling default Lifecycle/Resolver.
+	var compilerExecutor jsexecutor.JsExecutor
+	if host.Lifecycle == nil || host.Resolver == nil {
+		newExecutor := cfg.compilerExecutorFactory
+		if newExecutor == nil {
+			newExecutor = defaultCompilerExecutorFactory
 		}
-		if st, ok := status.FromError(err); ok {
-			if st.Code() == codes.Canceled || st.Code() == codes.DeadlineExceeded {
-				return ctx.ThrowError(err)
+		executor, err := newExecutor(opScope)
+		if err != nil {
+			return startedOpsHost{}, err
+		}
+		if err := executor.Start(); err != nil {
+			_ = executor.Stop()
+			return startedOpsHost{}, err
+		}
+		// Stop the executor if Lifecycle/Resolver construction panics before return.
+		handedOff := false
+		defer func() {
+			if !handedOff {
+				_ = executor.Stop()
 			}
+		}()
+		if host.Lifecycle == nil {
+			lifecycleFactory := cfg.moduleLifecycleFactory
+			if lifecycleFactory == nil {
+				lifecycleFactory = defaultModuleLifecycleFactory
+			}
+			host.Lifecycle = lifecycleFactory(opScope, executor, cfg.lockerFactory)
 		}
+		if host.Resolver == nil {
+			host.Resolver = lifecycle.NewModuleManager(opScope, executor, lifecycle.WithLockerFactory(cfg.lockerFactory))
+		}
+		compilerExecutor = executor
+		handedOff = true
+	}
+	return startedOpsHost{host: host, execCtx: execCtx, executor: compilerExecutor}, nil
+}
+
+func performModulePlan(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig, args []*quickjs.Value) *quickjs.Value {
+	params, err := parseJSONArgs[modulePlanParams](args)
+	if err != nil {
+		return bridgeThrow(ctx, err)
+	}
+	if strings.TrimSpace(params.Action) == "" {
+		return bridgeThrow(ctx, status.Error(codes.InvalidArgument, "action is required"))
+	}
+	started, err := startOpsHost(jse, scopeProvider, cfg)
+	if err != nil {
+		return bridgeThrow(ctx, err)
+	}
+	defer func() { _ = started.Close() }()
+
+	result, err := started.host.Plan(started.execCtx, ops.PlanRequest{
+		ModuleName:     params.ModuleName,
+		Action:         params.Action,
+		Origin:         params.Origin,
+		OperatorUserId: params.OperatorUserId,
+	})
+	if err != nil {
+		return throwOrOpResult(ctx, err)
+	}
+	val, marshalErr := quickjsMarshal(ctx, planResultToMap(result))
+	if marshalErr != nil {
+		return bridgeThrow(ctx, marshalErr)
+	}
+	return val
+}
+
+func performModuleApply(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig, args []*quickjs.Value) *quickjs.Value {
+	params, err := parseJSONArgs[moduleApplyParams](args)
+	if err != nil {
+		return bridgeThrow(ctx, err)
+	}
+	if strings.TrimSpace(params.Id) == "" {
+		return bridgeThrow(ctx, status.Error(codes.InvalidArgument, "id is required"))
+	}
+	started, err := startOpsHost(jse, scopeProvider, cfg)
+	if err != nil {
+		return bridgeThrow(ctx, err)
+	}
+	defer func() { _ = started.Close() }()
+
+	err = started.host.Apply(started.execCtx, ops.ApplyRequest{Id: params.Id})
+	return marshalOpResult(ctx, err)
+}
+
+func performModuleRun(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig, args []*quickjs.Value) *quickjs.Value {
+	params, err := parseJSONArgs[moduleRunParams](args)
+	if err != nil {
+		return bridgeThrow(ctx, err)
+	}
+	if strings.TrimSpace(params.Id) == "" {
+		return bridgeThrow(ctx, status.Error(codes.InvalidArgument, "id is required"))
+	}
+	started, err := startOpsHost(jse, scopeProvider, cfg)
+	if err != nil {
+		return bridgeThrow(ctx, err)
+	}
+	defer func() { _ = started.Close() }()
+
+	err = started.host.Run(started.execCtx, ops.RunRequest{Id: params.Id, WithDemo: params.WithDemo})
+	return marshalOpResult(ctx, err)
+}
+
+func performModuleCatalogSync(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig, args []*quickjs.Value) *quickjs.Value {
+	params, err := parseJSONArgs[moduleCatalogSyncParams](args)
+	if err != nil {
+		return bridgeThrow(ctx, err)
+	}
+	originType := normalizeModuleCatalogOriginType(params.OriginType)
+	if originType == "" {
+		return bridgeThrow(ctx, status.Error(codes.InvalidArgument, "originType must be one of: local, registry, all"))
+	}
+
+	started, err := startOpsHost(jse, scopeProvider, cfg)
+	if err != nil {
+		return bridgeThrow(ctx, err)
+	}
+	defer func() { _ = started.Close() }()
+
+	start := time.Now()
+	stats, syncErr := started.host.SyncSourceSnapshotsThenMaterialize(started.execCtx, originType)
+	result := moduleCatalogSyncResult{
+		Ok:         syncErr == nil,
+		OriginType: originType,
+		Total:      stats.Total,
+		Success:    stats.Success,
+		Failed:     stats.Failed,
+		DurationMs: time.Since(start).Milliseconds(),
+	}
+	if syncErr != nil {
+		if shouldThrowBridgeError(syncErr) {
+			return bridgeThrow(ctx, syncErr)
+		}
+		result.Error = syncErr.Error()
+	}
+	val, marshalErr := quickjsMarshal(ctx, result)
+	if marshalErr != nil {
+		return bridgeThrow(ctx, marshalErr)
+	}
+	return val
+}
+
+func performModuleLoadDemo(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig, args []*quickjs.Value) *quickjs.Value {
+	params, err := parseJSONArgs[moduleLoadDemoParams](args)
+	if err != nil {
+		return bridgeThrow(ctx, err)
+	}
+	started, err := startOpsHost(jse, scopeProvider, cfg)
+	if err != nil {
+		return bridgeThrow(ctx, err)
+	}
+	defer func() { _ = started.Close() }()
+
+	planRes, err := started.host.Plan(started.execCtx, ops.PlanRequest{
+		Action:         ops.ActionLoadDemo,
+		OperatorUserId: params.OperatorUserId,
+	})
+	if err != nil {
+		return throwOrOpResult(ctx, err)
+	}
+	if cfg.loadDemoPlanHook != nil {
+		planRes = cfg.loadDemoPlanHook(planRes)
+	}
+	if strings.TrimSpace(planRes.Id) == "" {
+		return marshalOpResult(ctx, status.Error(codes.Internal, "plan returned empty id"))
+	}
+	runErr := started.host.Run(started.execCtx, ops.RunRequest{Id: planRes.Id})
+	if cfg.loadDemoRunHook != nil {
+		runErr = cfg.loadDemoRunHook(runErr)
+	}
+	if runErr != nil && shouldThrowBridgeError(runErr) {
+		return bridgeThrow(ctx, runErr)
+	}
+	payload := map[string]any{
+		"ok": runErr == nil,
+		"id": planRes.Id,
+	}
+	if runErr != nil {
+		info := oerrors.GetErrorInfo(runErr)
+		if info != nil {
+			payload["errorDomain"] = info.Domain
+			payload["errorCode"] = info.Code
+			if info.Message != "" {
+				payload["errorMessage"] = info.Message
+			} else {
+				payload["errorMessage"] = runErr.Error()
+			}
+		} else {
+			payload["errorDomain"] = "MODULE_MANAGEMENT"
+			payload["errorCode"] = "OP_FAILED"
+			payload["errorMessage"] = runErr.Error()
+		}
+	}
+	val, marshalErr := quickjsMarshal(ctx, payload)
+	if marshalErr != nil {
+		return bridgeThrow(ctx, marshalErr)
+	}
+	return val
+}
+
+func planResultToMap(result ops.PlanResult) map[string]any {
+	order := make([]map[string]any, 0, len(result.ModuleOrder))
+	for _, e := range result.ModuleOrder {
+		order = append(order, map[string]any{
+			"moduleName":     e.ModuleName,
+			"reason":         e.Reason,
+			"currentVersion": e.CurrentVersion,
+			"targetVersion":  e.TargetVersion,
+			"origin":         e.Origin,
+		})
+	}
+	issues := func(list []ops.PlanIssue) []map[string]any {
+		out := make([]map[string]any, 0, len(list))
+		for _, issue := range list {
+			out = append(out, map[string]any{
+				"code":    issue.Code,
+				"level":   issue.Level,
+				"message": issue.Message,
+			})
+		}
+		return out
+	}
+	return map[string]any{
+		"id":           result.Id,
+		"action":       result.Action,
+		"moduleName":   result.ModuleName,
+		"moduleOrder":  order,
+		"affectedApps": result.AffectedApps,
+		"risks":        issues(result.Risks),
+		"blockers":     issues(result.Blockers),
+		"baseRevision": result.BaseRevision,
+	}
+}
+
+func marshalOpResult(ctx *quickjs.Context, err error) *quickjs.Value {
+	result := moduleOpResult{Ok: err == nil}
+	if err != nil {
+		if shouldThrowBridgeError(err) {
+			return bridgeThrow(ctx, err)
+		}
+		info := oerrors.GetErrorInfo(err)
 		if info != nil {
 			result.ErrorDomain = info.Domain
 			result.ErrorCode = info.Code
@@ -278,199 +541,64 @@ func performModuleOp(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, sco
 			result.ErrorMessage = err.Error()
 		}
 	}
-
-	val, marshalErr := ctx.Marshal(result)
+	val, marshalErr := quickjsMarshal(ctx, result)
 	if marshalErr != nil {
-		return ctx.ThrowError(marshalErr)
+		return bridgeThrow(ctx, marshalErr)
 	}
 	return val
 }
 
-func performModuleIndexSync(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig, args []*quickjs.Value) *quickjs.Value {
-	params, err := parseModuleIndexSyncParams(args)
-	if err != nil {
-		return ctx.ThrowError(err)
+func throwOrOpResult(ctx *quickjs.Context, err error) *quickjs.Value {
+	if shouldThrowBridgeError(err) {
+		return bridgeThrow(ctx, err)
 	}
-	originType := normalizeModuleIndexOriginType(params.OriginType)
-	switch originType {
-	case "local":
-	case "registry":
-		// implemented in syncModuleIndexRegistry below
-	case "all":
-		// sequentially sync registry and local in a single backend request
-	default:
-		return ctx.ThrowError(status.Error(codes.InvalidArgument, "originType must be one of: local, registry, all"))
-	}
-
-	execCtx := jse.ExecContext()
-	if execCtx == nil {
-		execCtx = context.Background()
-	}
-	runtimeScope := jsengine.ResolveScope(scopeProvider, execCtx)
-
-	start := time.Now()
-	result, err := runModuleIndexSync(execCtx, runtimeScope, originType, func(runCtx context.Context, txScope scope.Scope, target string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
-		return syncModuleIndexByTarget(runCtx, txScope, cfg.lockerFactory, target)
-	})
-
-	result.DurationMs = time.Since(start).Milliseconds()
-
-	if err != nil {
-		info := oerrors.GetErrorInfo(err)
-		if info != nil && info.Domain == "meta.lock" && info.Code == "LEASE_CONFLICT" {
-			return ctx.ThrowError(err)
-		}
-		if st, ok := status.FromError(err); ok {
-			if st.Code() == codes.Canceled || st.Code() == codes.DeadlineExceeded {
-				return ctx.ThrowError(err)
-			}
-		}
-		result.Error = err.Error()
-	}
-
-	val, marshalErr := ctx.Marshal(result)
-	if marshalErr != nil {
-		return ctx.ThrowError(marshalErr)
-	}
-	return val
+	return marshalOpResult(ctx, err)
 }
 
-func parseModuleOpParams(args []*quickjs.Value) (moduleOpParams, error) {
-	params := moduleOpParams{}
-	if len(args) == 0 || args[0] == nil || args[0].IsUndefined() || args[0].IsNull() {
-		return params, nil
-	}
-	jsonStr := args[0].JSONStringify()
-	if jsonStr == "" {
-		return params, nil
-	}
-	if err := json.Unmarshal([]byte(jsonStr), &params); err != nil {
-		return params, err
-	}
-	return params, nil
-}
-
-func parseModuleIndexSyncParams(args []*quickjs.Value) (moduleIndexSyncParams, error) {
-	params := moduleIndexSyncParams{}
-	if len(args) == 0 || args[0] == nil || args[0].IsUndefined() || args[0].IsNull() {
-		return params, nil
-	}
-	jsonStr := args[0].JSONStringify()
-	if jsonStr == "" {
-		return params, nil
-	}
-	if err := json.Unmarshal([]byte(jsonStr), &params); err != nil {
-		return params, err
-	}
-	return params, nil
-}
-
-func normalizeModuleIndexOriginType(raw string) string {
-	value := strings.TrimSpace(strings.ToLower(raw))
-	if value == "" {
-		return "all"
-	}
-	if value == "local" {
-		return "local"
-	}
-	if value == "registry" {
-		return "registry"
-	}
-	if value == "all" {
-		return "all"
-	}
-	return ""
-}
-
-func runModuleIndexSync(ctx context.Context, runtimeScope scope.Scope, originType string, runner moduleIndexSyncRunner) (moduleIndexSyncResult, error) {
-	result := moduleIndexSyncResult{Ok: false, OriginType: originType}
-	if runtimeScope == nil {
-		return result, status.Error(codes.Internal, "runtime scope is nil")
-	}
-	if runner == nil {
-		return result, status.Error(codes.Internal, "module origin sync runner is nil")
-	}
-
-	runOrigin := func(target string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
-		runnerScope := runtimeScope.WithContext(ctx)
-		if runnerScope == nil {
-			runnerScope = runtimeScope
-		}
-		runnerCtx := runnerScope.Context()
-		if runnerCtx == nil {
-			runnerCtx = ctx
-		}
-		return runner(runnerCtx, runnerScope, target)
-	}
-
-	if originType == "all" {
-		partialErrors := make([]string, 0, 2)
-		successfulOrigins := 0
-		for _, target := range []string{"registry", "local"} {
-			stats, syncErr := runOrigin(target)
-			result.Total += stats.Total
-			result.Success += stats.Success
-			result.Failed += stats.Failed
-			if syncErr != nil {
-				if isCancellationOrDeadlineError(syncErr) {
-					return result, syncErr
-				}
-				partialErrors = append(partialErrors, target+": "+syncErr.Error())
-				continue
-			}
-			successfulOrigins++
-		}
-
-		if successfulOrigins == 0 {
-			return result, status.Error(codes.Unavailable, "module origin sync failed for all origins: "+strings.Join(partialErrors, "; "))
-		}
-		result.Ok = true
-		if len(partialErrors) > 0 {
-			result.Error = strings.Join(partialErrors, "; ")
-		}
-		return result, nil
-	}
-
-	stats, syncErr := runOrigin(originType)
-	if syncErr != nil {
-		return result, syncErr
-	}
-	result.Total = stats.Total
-	result.Success = stats.Success
-	result.Failed = stats.Failed
-	result.Ok = true
-	return result, nil
-}
-
-func isCancellationOrDeadlineError(err error) bool {
+func shouldThrowBridgeError(err error) bool {
 	if err == nil {
 		return false
+	}
+	info := oerrors.GetErrorInfo(err)
+	if info != nil && info.Domain == "meta.lock" && info.Code == "LEASE_CONFLICT" {
+		return true
 	}
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return true
 	}
-	st, ok := status.FromError(err)
-	if !ok {
-		return false
+	if st, ok := status.FromError(err); ok {
+		if st.Code() == codes.Canceled || st.Code() == codes.DeadlineExceeded {
+			return true
+		}
 	}
-	return st.Code() == codes.Canceled || st.Code() == codes.DeadlineExceeded
+	return false
 }
 
-func syncModuleIndexLocal(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
-	return lifecycle.SyncLocalModuleSourceSnapshot(ctx, runtimeScope, lockerFactory)
+func parseJSONArgs[T any](args []*quickjs.Value) (T, error) {
+	var params T
+	if len(args) == 0 || args[0] == nil || args[0].IsUndefined() || args[0].IsNull() {
+		return params, nil
+	}
+	jsonStr := args[0].JSONStringify()
+	// Non-serializable values (functions/symbols) stringify to "undefined";
+	// treat that and empty output as omitted args.
+	if jsonStr == "" || jsonStr == "undefined" {
+		return params, nil
+	}
+	if err := json.Unmarshal([]byte(jsonStr), &params); err != nil {
+		return params, err
+	}
+	return params, nil
 }
 
-func syncModuleIndexRegistry(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
-	return lifecycle.SyncRegistryModuleSourceSnapshot(ctx, runtimeScope, lockerFactory)
-}
-
-func syncModuleIndexByTarget(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory, target string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
-	switch target {
-	case "registry":
-		return syncModuleIndexRegistry(ctx, runtimeScope, lockerFactory)
-	case "local":
-		return syncModuleIndexLocal(ctx, runtimeScope, lockerFactory)
+func normalizeModuleCatalogOriginType(raw string) string {
+	value := strings.TrimSpace(strings.ToLower(raw))
+	switch value {
+	case "", "all":
+		return "all"
+	case "local", "registry":
+		return value
 	default:
-		return lifecycle.ModuleSourceSnapshotSyncStats{}, status.Errorf(codes.InvalidArgument, "unsupported module origin sync target %q", target)
+		return ""
 	}
 }

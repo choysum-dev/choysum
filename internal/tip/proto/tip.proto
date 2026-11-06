@@ -27,13 +27,16 @@ message SubscribeThreadReq {
 message SubscribeNotificationsReq {}
 
 message SubscribeModuleOpReq {
+  // Deprecated transitional locator (job tips). Prefer operation_id.
   string job_id = 1;
+  // Authoritative locator for meta.module_op.changed tips published by ops.Run.
+  string operation_id = 2;
 }
 
 service TipHub {
   rpc SubscribeThread(SubscribeThreadReq) returns (stream Tip);
   rpc SubscribeNotifications(SubscribeNotificationsReq) returns (stream Tip);
-  // SubscribeModuleOp streams tips for one Meta module-op job.
-  // Tip is best-effort; clients re-read status via MetaModule.GetOpStatus.
+  // SubscribeModuleOp streams tips for one Meta module operation.
+  // Tip is best-effort; clients re-read authoritative status from meta_module_operation.
   rpc SubscribeModuleOp(SubscribeModuleOpReq) returns (stream Tip);
 }

@@ -795,11 +795,96 @@ func TestSubscribeModuleOpMatchesResIdWhenJobIdMissing(t *testing.T) {
 	waitStreamErr(t, errCh, codes.Canceled)
 }
 
+func TestSubscribeModuleOpMatchesOperationId(t *testing.T) {
+	inner := inprocess.NewInProcessBus()
+	subscribed := make(chan struct{}, 1)
+	events := &subscribedBus{inner: inner, subscribed: subscribed}
+	h := New(events)
+
+	ctx, cancel := context.WithCancel(identityCtx("user-op"))
+	defer cancel()
+	stream := &testStream{ctx: ctx, sent: make(chan struct{}, 4)}
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- h.SubscribeModuleOp(&tippb.SubscribeModuleOpReq{OperationId: "op-1"}, stream)
+	}()
+	waitSubscribed(t, subscribed)
+
+	if err := inner.Publish(context.Background(), bus.Event{
+		Topic:  bus.TopicMetaModuleOpChanged,
+		Source: "mismatch-op",
+		Payload: map[string]any{
+			"operationId": "other-op",
+			"resId":       "other-op",
+			"userId":      "user-op",
+		},
+	}); err != nil {
+		t.Fatalf("Publish mismatch: %v", err)
+	}
+	if err := inner.Publish(context.Background(), bus.Event{
+		Topic:  bus.TopicMetaModuleOpChanged,
+		Source: "ops",
+		Payload: map[string]any{
+			"operationId": "op-1",
+			"model":       "meta.ModuleOperation",
+			"resId":       "op-1",
+			"userId":      "user-op",
+			"jobId":       "job-ignored",
+		},
+	}); err != nil {
+		t.Fatalf("Publish: %v", err)
+	}
+	select {
+	case <-stream.sent:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for operationId tip")
+	}
+	if got := stream.snapshot(); len(got) != 1 {
+		t.Fatalf("tips = %#v, want 1 match after mismatch filter", got)
+	}
+	cancel()
+	waitStreamErr(t, errCh, codes.Canceled)
+}
+
+func TestSubscribeModuleOpMatchesResIdWhenOperationIdMissing(t *testing.T) {
+	inner := inprocess.NewInProcessBus()
+	subscribed := make(chan struct{}, 1)
+	events := &subscribedBus{inner: inner, subscribed: subscribed}
+	h := New(events)
+
+	ctx, cancel := context.WithCancel(identityCtx("user-op-res"))
+	defer cancel()
+	stream := &testStream{ctx: ctx, sent: make(chan struct{}, 4)}
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- h.SubscribeModuleOp(&tippb.SubscribeModuleOpReq{OperationId: "op-res"}, stream)
+	}()
+	waitSubscribed(t, subscribed)
+
+	if err := inner.Publish(context.Background(), bus.Event{
+		Topic:  bus.TopicMetaModuleOpChanged,
+		Source: "res-only",
+		Payload: map[string]any{
+			"resId":  "op-res",
+			"userId": "user-op-res",
+		},
+	}); err != nil {
+		t.Fatalf("Publish: %v", err)
+	}
+	select {
+	case <-stream.sent:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for resId tip")
+	}
+	cancel()
+	waitStreamErr(t, errCh, codes.Canceled)
+}
+
 func TestSubscribeModuleOpInvalidArgument(t *testing.T) {
 	h := New(inprocess.NewInProcessBus())
 	err := h.SubscribeModuleOp(&tippb.SubscribeModuleOpReq{}, &testStream{ctx: identityCtx("user-1")})
 	if status.Code(err) != codes.InvalidArgument {
-		t.Fatalf("empty job_id: %v", err)
+		t.Fatalf("empty operation_id/job_id: %v", err)
 	}
 }
 

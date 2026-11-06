@@ -6,10 +6,16 @@ import { TipHub, type Tip } from './pb/tip_pb';
 
 type TipCallOptions = { signal?: AbortSignal };
 
+/** Locator for SubscribeModuleOp: prefer operationId; jobId remains transitional. */
+export type SubscribeModuleOpLocator = {
+  operationId?: string;
+  jobId?: string;
+};
+
 export type TipHubClient = {
   subscribeThread(req: { model: string; resId: string }, options?: TipCallOptions): AsyncIterable<Tip>;
   subscribeNotifications(req?: object, options?: TipCallOptions): AsyncIterable<Tip>;
-  subscribeModuleOp(req: { jobId: string }, options?: TipCallOptions): AsyncIterable<Tip>;
+  subscribeModuleOp(req: SubscribeModuleOpLocator, options?: TipCallOptions): AsyncIterable<Tip>;
 };
 
 export type TipClientDeps = {
@@ -20,7 +26,11 @@ export type TipClientDeps = {
 export type TipClient = {
   subscribeThread(model: string, resId: string, signal?: AbortSignal): AsyncIterable<Tip>;
   subscribeNotifications(signal?: AbortSignal): AsyncIterable<Tip>;
-  subscribeModuleOp(jobId: string, signal?: AbortSignal): AsyncIterable<Tip>;
+  /**
+   * Subscribe to meta.module_op.changed tips.
+   * Prefer `{ operationId }`. A bare string is treated as transitional `jobId`.
+   */
+  subscribeModuleOp(locator: string | SubscribeModuleOpLocator, signal?: AbortSignal): AsyncIterable<Tip>;
 };
 
 function callOptions(signal?: AbortSignal): TipCallOptions | undefined {
@@ -28,6 +38,22 @@ function callOptions(signal?: AbortSignal): TipCallOptions | undefined {
     return undefined;
   }
   return { signal };
+}
+
+function normalizeModuleOpLocator(locator: string | SubscribeModuleOpLocator): SubscribeModuleOpLocator {
+  if (typeof locator === 'string') {
+    return { jobId: locator };
+  }
+  const out: SubscribeModuleOpLocator = {};
+  const operationId = String(locator?.operationId || '').trim();
+  const jobId = String(locator?.jobId || '').trim();
+  if (operationId) {
+    out.operationId = operationId;
+  }
+  if (jobId) {
+    out.jobId = jobId;
+  }
+  return out;
 }
 
 /** Composable TipHub API. Pass `hub` in tests instead of mocking CreateWebClient. */
@@ -42,8 +68,8 @@ export function createTipClient(deps: TipClientDeps = {}): TipClient {
     subscribeNotifications(signal) {
       return hub().subscribeNotifications({}, callOptions(signal));
     },
-    subscribeModuleOp(jobId, signal) {
-      return hub().subscribeModuleOp({ jobId }, callOptions(signal));
+    subscribeModuleOp(locator, signal) {
+      return hub().subscribeModuleOp(normalizeModuleOpLocator(locator), callOptions(signal));
     },
   };
 }

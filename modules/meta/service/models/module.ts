@@ -470,13 +470,64 @@ export default class MetaModule extends BaseModel {
     if (forceResultStatus === 'FAILED') {
       bridgeResult = { ok: false, errorDomain: 'MODULE_MANAGEMENT', errorCode: 'OP_FAILED', errorMessage: 'E2E forced failure' };
     } else {
-      bridgeResult = (await bridge[action]({
-        moduleName: name,
-        withDemo: !!opts?.withDemo,
-        operatorUserId,
-        jobId,
-        action,
-      })) as ModuleOpBridgeResult;
+      // W1-3 bridge hard-cut: Execute* adapts plan → apply → run until W2 RPC rewrite.
+      // Bridge may reject (lease conflict / cancel) instead of returning {ok:false}.
+      void jobId;
+      try {
+        const planResult = (await bridge.plan({
+          moduleName: name,
+          action,
+          origin: 'local',
+          operatorUserId,
+        })) as {
+          id?: string;
+          ok?: boolean;
+          errorDomain?: string;
+          errorCode?: string;
+          errorMessage?: string;
+        };
+        const planId = String(planResult?.id || '').trim();
+        if (!planId) {
+          bridgeResult = {
+            ok: false,
+            errorDomain: planResult?.errorDomain || 'MODULE_MANAGEMENT',
+            errorCode: planResult?.errorCode || 'OP_FAILED',
+            errorMessage: planResult?.errorMessage || 'plan returned empty id',
+          };
+        } else {
+          const applyResult = await bridge.apply({ id: planId });
+          if (!applyResult?.ok) {
+            bridgeResult = {
+              ok: false,
+              errorDomain: applyResult?.errorDomain || 'MODULE_MANAGEMENT',
+              errorCode: applyResult?.errorCode || 'OP_FAILED',
+              errorMessage: applyResult?.errorMessage || 'apply failed',
+            };
+          } else {
+            const runResult = (await bridge.run({
+              id: planId,
+              withDemo: !!opts?.withDemo,
+            })) as ModuleOpBridgeResult | null | undefined;
+            bridgeResult =
+              runResult && typeof runResult === 'object'
+                ? runResult
+                : {
+                    ok: false,
+                    errorDomain: 'MODULE_MANAGEMENT',
+                    errorCode: 'OP_FAILED',
+                    errorMessage: 'run returned no result',
+                  };
+          }
+        }
+      } catch (err) {
+        const anyErr = err as { errorDomain?: string; errorCode?: string; message?: string } | undefined;
+        bridgeResult = {
+          ok: false,
+          errorDomain: (anyErr && typeof anyErr === 'object' && anyErr.errorDomain) || 'MODULE_MANAGEMENT',
+          errorCode: (anyErr && typeof anyErr === 'object' && anyErr.errorCode) || 'OP_FAILED',
+          errorMessage: err instanceof Error ? err.message : String(err),
+        };
+      }
     }
 
     let resultStatus: 'SUCCEEDED' | 'FAILED' = bridgeResult.ok ? 'SUCCEEDED' : 'FAILED';
