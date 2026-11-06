@@ -15,9 +15,9 @@ import (
 	logutil "github.com/choysum-dev/choysum/internal/logger"
 	"github.com/choysum-dev/choysum/internal/module/evolution/schema"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
+	"github.com/choysum-dev/choysum/internal/module/ops"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
 	"github.com/choysum-dev/choysum/internal/module/plan"
-	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/spf13/cobra"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -170,26 +170,23 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 			}
 
 			upgradeScope := env.WithContext(ctx)
-			compilerExecutor, err := jsexecutor.NewCompilerExecutor(upgradeScope)
-			if err != nil {
-				exitUpgradeError("", xfmt.Errorf("Error creating compiler executor: %w", err))
-			}
-			if err := compilerExecutor.Start(); err != nil {
-				exitUpgradeError("", xfmt.Errorf("Error starting compiler executor: %w", err))
-			}
-			defer compilerExecutor.Stop()
-
-			moduleLifecycle := lifecycle.NewService(upgradeScope, compilerExecutor)
 			for _, item := range plans {
 				currentInput = item.requestedInput
 				upgradeScope.Logger().Debug("module upgrade started", "input", item.resolvedInput)
-				if err := moduleLifecycle.Upgrade(ctx, lifecycle.UpgradeRequest{
-					Input:           item.resolvedInput,
+				moduleName := schemaPlanModuleName(item.resolvedInput)
+				origin := "local"
+				if parsed, parseErr := internalorigin.ParseInput(item.resolvedInput); parseErr == nil && parsed.Kind == internalorigin.InputKindRegistry {
+					origin = "registry"
+				}
+				if err := runCLIModuleOp(ctx, env, cliModuleOpOptions{
+					Action:          ops.ActionUpgrade,
+					ModuleName:      moduleName,
+					Origin:          origin,
+					LifecycleInput:  item.resolvedInput,
 					WithDemo:        withDemo,
 					SkipWebShell:    noWeb,
 					WebShellProfile: profile,
 				}); err != nil {
-					_ = compilerExecutor.Stop()
 					exitUpgradeError(currentInput, xfmt.Errorf("error upgrading module %s: %w", item.requestedInput, err))
 				}
 				upgradeScope.Logger().Debug("module upgraded", "input", item.resolvedInput)

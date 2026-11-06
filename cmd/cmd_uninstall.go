@@ -7,11 +7,11 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"strings"
 
 	clioutput "github.com/choysum-dev/choysum/internal/cli/output"
 	logutil "github.com/choysum-dev/choysum/internal/logger"
-	"github.com/choysum-dev/choysum/internal/module/lifecycle"
-	"github.com/choysum-dev/choysum/pkg/jsexecutor"
+	"github.com/choysum-dev/choysum/internal/module/ops"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/spf13/cobra"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -44,34 +44,23 @@ func newUninstallCmd(envGetter func() scope.Scope) *cobra.Command {
 			ctx = logutil.WithStderrProgressLine(ctx)
 
 			uninstallScope := env.WithContext(ctx)
-			compilerExecutor, err := jsexecutor.NewCompilerExecutor(uninstallScope)
-			if err != nil {
-				env.Logger().Error("module uninstall failed", "error", xfmt.Errorf("Error creating compiler executor: %w", err))
-				os.Exit(1)
-			}
-			if err := compilerExecutor.Start(); err != nil {
-				env.Logger().Error("module uninstall failed", "error", xfmt.Errorf("Error starting compiler executor: %w", err))
-				os.Exit(1)
-			}
-			defer compilerExecutor.Stop()
-
-			// Per-module short Commit lives inside lifecycle; do not wrap the
-			// whole batch in an outer Required (align with install / upgrade).
-			moduleLifecycle := lifecycle.NewService(uninstallScope, compilerExecutor)
 			currentModule := ""
 			for _, name := range args {
 				currentModule = name
-				uninstallScope.Logger().Debug("module uninstall started", "module", name)
-				if err := moduleLifecycle.Uninstall(ctx, lifecycle.UninstallRequest{Name: name}); err != nil {
+				moduleName := strings.TrimSpace(name)
+				uninstallScope.Logger().Debug("module uninstall started", "module", moduleName)
+				if err := runCLIModuleOp(ctx, env, cliModuleOpOptions{
+					Action:     ops.ActionUninstall,
+					ModuleName: moduleName,
+					Origin:     "local",
+				}); err != nil {
 					attrs := []any{"error", xfmt.Errorf("error uninstalling module %s: %w", name, err)}
 					attrs = append(attrs, clioutput.ModuleCommandFailureAttrs("uninstall")...)
 					attrs = append(attrs, clioutput.CurrentOrRequestedAttr("module", "modules", currentModule, args)...)
 					env.Logger().Error("module uninstall failed", attrs...)
-					// os.Exit skips deferred Stop(); mirror upgrade and stop explicitly.
-					_ = compilerExecutor.Stop()
 					os.Exit(1)
 				}
-				uninstallScope.Logger().Debug("module uninstalled", "module", name)
+				uninstallScope.Logger().Debug("module uninstalled", "module", moduleName)
 			}
 		},
 	}

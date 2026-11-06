@@ -135,23 +135,29 @@ func (r *mapResolver) Load(name string) (*pkgmeta.Module, error) {
 }
 
 type stubLifecycle struct {
-	installErr   error
-	upgradeErr   error
-	uninstallErr error
-	installs     []string
-	upgrades     []string
-	uninstalls   []string
-	lastWithDemo bool
+	installErr          error
+	upgradeErr          error
+	uninstallErr        error
+	installs            []string
+	upgrades            []string
+	uninstalls          []string
+	lastWithDemo        bool
+	lastSkipWebShell    bool
+	lastWebShellProfile plan.WebShellProfile
 }
 
 func (s *stubLifecycle) Install(_ context.Context, req lifecycle.InstallRequest) error {
 	s.installs = append(s.installs, req.Name)
 	s.lastWithDemo = req.WithDemo
+	s.lastSkipWebShell = req.SkipWebShell
+	s.lastWebShellProfile = req.WebShellProfile
 	return s.installErr
 }
 func (s *stubLifecycle) Upgrade(_ context.Context, req lifecycle.UpgradeRequest) error {
 	s.upgrades = append(s.upgrades, req.Input)
 	s.lastWithDemo = req.WithDemo
+	s.lastSkipWebShell = req.SkipWebShell
+	s.lastWebShellProfile = req.WebShellProfile
 	return s.upgradeErr
 }
 func (s *stubLifecycle) Uninstall(_ context.Context, req lifecycle.UninstallRequest) error {

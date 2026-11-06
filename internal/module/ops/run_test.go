@@ -11,6 +11,7 @@ import (
 
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
+	"github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/bus"
 	pkgmeta "github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -199,5 +200,40 @@ func TestRun_WithDemoRequestSetsLatch(t *testing.T) {
 	}
 	if !o.ResolveWithDemo(context.Background()) {
 		t.Fatal("expected modules.with_demo latch set")
+	}
+}
+
+func TestRun_PassesFrozenLifecycleOptions(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	mod := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core"}
+	life := &stubLifecycle{}
+	o := &Ops{
+		Scope:     newOpsTestScope(t, db),
+		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+		Lifecycle: life,
+		Events:    &recordingBus{},
+	}
+	result, err := o.Plan(context.Background(), PlanRequest{
+		ModuleName:      "core",
+		Action:          ActionUpgrade,
+		SkipWebShell:    true,
+		WebShellProfile: string(plan.WebShellProfileMinimal),
+		LifecycleInput:  "core@9.9.9",
+	})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if len(life.upgrades) != 1 || life.upgrades[0] != "core@9.9.9" {
+		t.Fatalf("upgrades = %#v", life.upgrades)
+	}
+	if !life.lastSkipWebShell || life.lastWebShellProfile != plan.WebShellProfileMinimal {
+		t.Fatalf("skip=%v profile=%q", life.lastSkipWebShell, life.lastWebShellProfile)
 	}
 }

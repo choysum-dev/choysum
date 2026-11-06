@@ -12,6 +12,7 @@ import (
 
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
+	"github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/oerrors"
 )
 
@@ -96,7 +97,7 @@ func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation
 			return err
 		}
 		names := affectedModuleNames(doc, row.ModuleName)
-		if err := o.runLifecycle(ctx, row.Action, row.ModuleName, withDemo); err != nil {
+		if err := o.runLifecycle(ctx, row.Action, row.ModuleName, withDemo, doc); err != nil {
 			return err
 		}
 		if err := o.MaterializeCatalog(ctx, names); err != nil {
@@ -108,13 +109,28 @@ func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation
 	}
 }
 
-func (o *Ops) runLifecycle(ctx context.Context, action, moduleName string, withDemo bool) error {
+func (o *Ops) runLifecycle(ctx context.Context, action, moduleName string, withDemo bool, doc PlanDocument) error {
 	name := strings.TrimSpace(moduleName)
+	input := strings.TrimSpace(doc.LifecycleInput)
+	if input == "" {
+		input = name
+	}
+	profile := plan.WebShellProfile(strings.TrimSpace(doc.WebShellProfile))
 	switch action {
 	case ActionInstall:
-		return o.Lifecycle.Install(ctx, lifecycle.InstallRequest{Name: name, WithDemo: withDemo})
+		return o.Lifecycle.Install(ctx, lifecycle.InstallRequest{
+			Name:            name,
+			WithDemo:        withDemo,
+			SkipWebShell:    doc.SkipWebShell,
+			WebShellProfile: profile,
+		})
 	case ActionUpgrade:
-		return o.Lifecycle.Upgrade(ctx, lifecycle.UpgradeRequest{Input: name, WithDemo: withDemo})
+		return o.Lifecycle.Upgrade(ctx, lifecycle.UpgradeRequest{
+			Input:           input,
+			WithDemo:        withDemo,
+			SkipWebShell:    doc.SkipWebShell,
+			WebShellProfile: profile,
+		})
 	case ActionUninstall:
 		return o.Lifecycle.Uninstall(ctx, lifecycle.UninstallRequest{Name: name})
 	default:

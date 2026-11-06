@@ -38,7 +38,7 @@ func (o *Ops) Plan(ctx context.Context, req PlanRequest) (PlanResult, error) {
 		if o.Resolver == nil {
 			return PlanResult{}, errors.New("ops: resolver is required")
 		}
-		return o.planModuleOp(ctx, action, moduleName, origin, strings.TrimSpace(req.OperatorUserId))
+		return o.planModuleOp(ctx, action, moduleName, origin, req)
 	case ActionSync:
 		return o.planSyncOp(ctx, origin, strings.TrimSpace(req.OperatorUserId))
 	case ActionLoadDemo:
@@ -113,25 +113,33 @@ func (o *Ops) planLoadDemoStub(ctx context.Context, operatorUserId string) (Plan
 	}, nil
 }
 
-func (o *Ops) planModuleOp(ctx context.Context, action, moduleName, origin, operatorUserId string) (PlanResult, error) {
+func (o *Ops) planModuleOp(ctx context.Context, action, moduleName, origin string, req PlanRequest) (PlanResult, error) {
 	root, blockers, err := o.resolveRootModule(ctx, moduleName, origin)
 	if err != nil {
 		return PlanResult{}, err
 	}
 
+	profile := strings.TrimSpace(req.WebShellProfile)
 	var built plan.Plan
 	if root != nil {
 		opType, ok := toPlanOpType(action)
 		if !ok {
 			return PlanResult{}, fmt.Errorf("ops: unsupported action %q", action)
 		}
-		built, err = plan.BuildPlan(ctx, opType, root, o.Resolver)
+		buildOpts := []plan.BuildOption{plan.WithSkipWebShell(req.SkipWebShell)}
+		if profile != "" {
+			buildOpts = append(buildOpts, plan.WithWebShellProfile(plan.WebShellProfile(profile)))
+		}
+		built, err = plan.BuildPlan(ctx, opType, root, o.Resolver, buildOpts...)
 		if err != nil {
 			return PlanResult{}, err
 		}
 	}
 
 	doc := o.enrichPlanDocument(ctx, action, moduleName, origin, built, blockers)
+	doc.SkipWebShell = req.SkipWebShell
+	doc.WebShellProfile = profile
+	doc.LifecycleInput = strings.TrimSpace(req.LifecycleInput)
 	raw, err := marshalPlanDocument(doc)
 	if err != nil {
 		return PlanResult{}, err
@@ -141,7 +149,7 @@ func (o *Ops) planModuleOp(ctx context.Context, action, moduleName, origin, oper
 		ModuleName:     moduleName,
 		PlanJson:       raw,
 		Status:         StatusDraft,
-		OperatorUserId: operatorUserId,
+		OperatorUserId: strings.TrimSpace(req.OperatorUserId),
 	}
 	if err := o.createOperation(ctx, row); err != nil {
 		return PlanResult{}, err

@@ -80,6 +80,37 @@ func TestPlan_MatchesBuildPlanOrderAndPersistsDraft(t *testing.T) {
 	}
 }
 
+func TestPlan_FreezesSkipWebShellAndLifecycleInput(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	mod := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core"}
+	o := &Ops{
+		Scope:    newOpsTestScope(t, db),
+		Resolver: &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+	}
+	result, err := o.Plan(context.Background(), PlanRequest{
+		ModuleName:      "core",
+		Action:          ActionUpgrade,
+		SkipWebShell:    true,
+		WebShellProfile: string(plan.WebShellProfileMinimal),
+		LifecycleInput:  "core@2.0.0",
+	})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	row, err := o.loadOperation(context.Background(), result.Id)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	doc, err := unmarshalPlanDocument(row.PlanJson)
+	if err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if !doc.SkipWebShell || doc.WebShellProfile != string(plan.WebShellProfileMinimal) || doc.LifecycleInput != "core@2.0.0" {
+		t.Fatalf("frozen options = %#v", doc)
+	}
+}
+
 func TestPlan_MissingModuleStillWritesDraftWithBlocker(t *testing.T) {
 	t.Parallel()
 	db := newOpsTestDB(t)
