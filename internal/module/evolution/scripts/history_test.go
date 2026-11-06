@@ -126,6 +126,60 @@ func TestHistoryStore_PrepareResetsOnChecksumChange(t *testing.T) {
 	}
 }
 
+func TestHistoryStore_PrepareReadsRenamedLegacyMigrationHistory(t *testing.T) {
+	t.Helper()
+	dsn := "file:migration_history_legacy_" + strings.ReplaceAll(t.Name(), "/", "_") + "?mode=memory&cache=shared"
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.Exec(`CREATE TABLE meta_module_migration_history (
+		id TEXT PRIMARY KEY,
+		created_at DATETIME,
+		updated_at DATETIME,
+		module_name TEXT,
+		version TEXT,
+		phase TEXT,
+		script TEXT,
+		checksum TEXT,
+		status TEXT,
+		started_at DATETIME,
+		finished_at DATETIME,
+		error TEXT,
+		trace_id TEXT,
+		job_id TEXT
+	)`).Error; err != nil {
+		t.Fatalf("create legacy table: %v", err)
+	}
+	if err := db.Exec(`INSERT INTO meta_module_migration_history
+		(id, module_name, version, phase, script, checksum, status)
+		VALUES ('row1', 'meta', '0.1.0', 'pre', 'init', 'abc', 'success')`).Error; err != nil {
+		t.Fatalf("seed legacy row: %v", err)
+	}
+
+	runtimeScope := &testScope{db: db}
+	store := NewHistoryStore(runtimeScope)
+	ctx := context.Background()
+	script := Script{
+		ModuleName: "meta",
+		Version:    "0.1.0",
+		Phase:      PhasePre,
+		Name:       "init",
+		Checksum:   "abc",
+	}
+
+	entry, skip, err := store.Prepare(ctx, script)
+	if err != nil {
+		t.Fatalf("prepare: %v", err)
+	}
+	if !skip {
+		t.Fatalf("expected skip=true after renaming legacy success row")
+	}
+	if entry == nil || entry.Status != "success" || entry.Checksum != "abc" {
+		t.Fatalf("unexpected entry: %#v", entry)
+	}
+}
+
 func TestHistoryStore_MarkFailedPersistsError(t *testing.T) {
 	runtimeScope := newTestScope(t)
 	store := NewHistoryStore(runtimeScope)

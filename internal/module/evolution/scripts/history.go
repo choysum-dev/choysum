@@ -41,6 +41,9 @@ func (s *HistoryStore) Prepare(ctx context.Context, script Script) (*modmeta.Mod
 	if db == nil {
 		return nil, false, gorm.ErrInvalidDB
 	}
+	if err := modmeta.EnsureOpsSchemaCutover(db.DB); err != nil {
+		return nil, false, err
+	}
 
 	var existing modmeta.ModuleMigration
 	q := db.WithContext(ctx).Where(

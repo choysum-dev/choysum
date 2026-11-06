@@ -385,12 +385,21 @@ func (m *ModuleManager) ensureMetaTables() error {
 }
 
 func (m *ModuleManager) bootstrapMetaTables(txScope scope.Scope) error {
-	migrator := txScope.Session().Migrator()
+	db := txScope.Session().DB
+	if err := modmeta.EnsureOpsSchemaCutover(db); err != nil {
+		return xfmt.Errorf("ops schema cutover: %w", err)
+	}
 
-	if migrator.HasTable(&meta.Module{}) && migrator.HasTable(&modmeta.LockLease{}) {
-		// Tables may predate SPL12; ensure the live unique index once meta_model exists.
+	migrator := txScope.Session().Migrator()
+	baseReady := migrator.HasTable(&meta.Module{}) && migrator.HasTable(&modmeta.LockLease{})
+	if baseReady {
+		// Existing installs still need ops satellites (catalog/operation/source
+		// snapshot/migration) after the W1 hard-cut table rename.
+		if err := txScope.Session().AutoMigrate(modmeta.OpsEntities()...); err != nil {
+			return xfmt.Errorf("auto migrate ops entities: %w", err)
+		}
 		if migrator.HasTable(&meta.Model{}) {
-			if err := modmeta.EnsureEffectiveAppNameUniqueIndex(txScope.Session().DB); err != nil {
+			if err := modmeta.EnsureEffectiveAppNameUniqueIndex(db); err != nil {
 				return xfmt.Errorf("ensure effective app/name unique index: %w", err)
 			}
 		}
@@ -439,7 +448,7 @@ func (m *ModuleManager) bootstrapMetaTables(txScope scope.Scope) error {
 	if err := txScope.Session().AutoMigrate(m.entities...); err != nil {
 		return xfmt.Errorf("auto migrate meta entities: %w", err)
 	}
-	if err := modmeta.EnsureEffectiveAppNameUniqueIndex(txScope.Session().DB); err != nil {
+	if err := modmeta.EnsureEffectiveAppNameUniqueIndex(db); err != nil {
 		return xfmt.Errorf("ensure effective app/name unique index: %w", err)
 	}
 	if logger != nil {
