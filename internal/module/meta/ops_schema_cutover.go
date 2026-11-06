@@ -5,9 +5,14 @@ package meta
 
 import (
 	"fmt"
+	"sync"
 
 	"gorm.io/gorm"
 )
+
+// opsSchemaCutoverMu serializes EnsureOpsSchemaCutover within a process so
+// bootstrap and HistoryStore.Prepare do not race on check-then-rename.
+var opsSchemaCutoverMu sync.Mutex
 
 const (
 	legacyModuleMigrationTable = "meta_module_migration_history"
@@ -44,6 +49,9 @@ func EnsureOpsSchemaCutover(db *gorm.DB) error {
 	if err := db.Exec("SELECT 1").Error; err != nil {
 		return fmt.Errorf("EnsureOpsSchemaCutover: db unavailable: %w", err)
 	}
+	opsSchemaCutoverMu.Lock()
+	defer opsSchemaCutoverMu.Unlock()
+
 	migrator := db.Migrator()
 	if !opsSchemaNeedsCutover(migrator) {
 		// Already cut over (or fresh DB); OpsEntities AutoMigrate owns new tables.
@@ -77,16 +85,14 @@ func ensureOpsSchemaCutover(migrator opsSchemaMigrator, autoMigrateMigration fun
 		}
 	}
 
+	// Legacy snapshot rows are discarded; resync repopulates meta_module_source_snapshot.
 	newSnapshot := (ModuleSourceSnapshot{}).TableName()
 	for _, legacy := range []string{legacyModuleIndexTable, legacyModuleOriginTable} {
-		if migrator.HasTable(legacy) && !migrator.HasTable(newSnapshot) {
-			if err := migrator.DropTable(legacy); err != nil {
-				return fmt.Errorf("drop legacy %s: %w", legacy, err)
-			}
-		} else if migrator.HasTable(legacy) && migrator.HasTable(newSnapshot) && legacy != newSnapshot {
-			if err := migrator.DropTable(legacy); err != nil {
-				return fmt.Errorf("drop leftover %s: %w", legacy, err)
-			}
+		if !migrator.HasTable(legacy) || legacy == newSnapshot {
+			continue
+		}
+		if err := migrator.DropTable(legacy); err != nil {
+			return fmt.Errorf("drop legacy %s: %w", legacy, err)
 		}
 	}
 

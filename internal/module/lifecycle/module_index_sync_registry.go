@@ -11,7 +11,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
@@ -45,25 +44,26 @@ type catalogIndexEntry struct {
 
 var catalogIndexHTTPClient = &http.Client{Timeout: 15 * time.Second}
 
-// registryModuleJSONMarshalHook stores an optional marshal override for tests.
-// Production code leaves it empty and falls back to encoding/json.Marshal.
-var registryModuleJSONMarshalHook atomic.Value // func(any) ([]byte, error)
+type registryModuleJSONMarshalContextKey struct{}
 
-func marshalRegistryModule(v any) ([]byte, error) {
-	if loaded := registryModuleJSONMarshalHook.Load(); loaded != nil {
-		if fn, ok := loaded.(func(any) ([]byte, error)); ok && fn != nil {
+// withRegistryModuleJSONMarshal overrides JSON marshaling for ctx (tests only).
+func withRegistryModuleJSONMarshal(ctx context.Context, fn func(any) ([]byte, error)) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if fn == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, registryModuleJSONMarshalContextKey{}, fn)
+}
+
+func marshalRegistryModule(ctx context.Context, v any) ([]byte, error) {
+	if ctx != nil {
+		if fn, ok := ctx.Value(registryModuleJSONMarshalContextKey{}).(func(any) ([]byte, error)); ok && fn != nil {
 			return fn(v)
 		}
 	}
 	return json.Marshal(v)
-}
-
-func setRegistryModuleJSONMarshalHook(fn func(any) ([]byte, error)) {
-	if fn == nil {
-		registryModuleJSONMarshalHook.Store(func(v any) ([]byte, error) { return json.Marshal(v) })
-		return
-	}
-	registryModuleJSONMarshalHook.Store(fn)
 }
 
 // SyncRegistryModuleSourceSnapshot fetches the static module catalog index from
@@ -158,7 +158,7 @@ func SyncRegistryModuleSourceSnapshot(ctx context.Context, runtimeScope scope.Sc
 		}
 		seen[registrySyncSeenKey(name, originRef)] = struct{}{}
 
-		manifestJSON, err := marshalRegistryModule(module)
+		manifestJSON, err := marshalRegistryModule(ctx, module)
 		if err != nil {
 			runtimeScope.Logger().Warn("module source snapshot marshal failed", "module", name, "error", err)
 			stats.Failed++

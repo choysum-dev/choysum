@@ -127,12 +127,16 @@ func TestHistoryStore_PrepareResetsOnChecksumChange(t *testing.T) {
 }
 
 func TestHistoryStore_PrepareReadsRenamedLegacyMigrationHistory(t *testing.T) {
-	t.Helper()
 	dsn := "file:migration_history_legacy_" + strings.ReplaceAll(t.Name(), "/", "_") + "?mode=memory&cache=shared"
 	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("db.DB(): %v", err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
 	if err := db.Exec(`CREATE TABLE meta_module_migration_history (
 		id TEXT PRIMARY KEY,
 		created_at DATETIME,

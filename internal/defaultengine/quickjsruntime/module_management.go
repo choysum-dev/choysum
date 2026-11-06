@@ -310,10 +310,14 @@ func performModuleIndexSync(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngi
 
 	start := time.Now()
 	result, err := runModuleIndexSync(execCtx, runtimeScope, originType, func(runCtx context.Context, txScope scope.Scope, target string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
-		if target == "registry" {
+		switch target {
+		case "registry":
 			return syncModuleIndexRegistry(runCtx, txScope, cfg.lockerFactory)
+		case "local":
+			return syncModuleIndexLocal(runCtx, txScope, cfg.lockerFactory)
+		default:
+			return lifecycle.ModuleSourceSnapshotSyncStats{}, status.Errorf(codes.InvalidArgument, "unsupported module origin sync target %q", target)
 		}
-		return syncModuleIndexLocal(runCtx, txScope, cfg.lockerFactory)
 	})
 
 	result.DurationMs = time.Since(start).Milliseconds()

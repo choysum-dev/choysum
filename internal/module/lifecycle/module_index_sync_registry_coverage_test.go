@@ -76,10 +76,10 @@ func TestSyncRegistryModuleSourceSnapshot_CoverageBranches(t *testing.T) {
 		defer server.Close()
 		runtimeScope.cfg.ModuleCatalogIndexURL = server.URL
 
-		setRegistryModuleJSONMarshalHook(func(any) ([]byte, error) { return nil, errors.New("marshal boom") })
-		defer setRegistryModuleJSONMarshalHook(nil)
-
-		stats, err := SyncRegistryModuleSourceSnapshot(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
+		ctx := withRegistryModuleJSONMarshal(context.Background(), func(any) ([]byte, error) {
+			return nil, errors.New("marshal boom")
+		})
+		stats, err := SyncRegistryModuleSourceSnapshot(ctx, runtimeScope, func(scope.Scope) statepkg.Locker {
 			return &moduleIndexSyncTestLocker{}
 		})
 		if err != nil {
@@ -134,13 +134,14 @@ END;`).Error; err != nil {
 		defer server.Close()
 		runtimeScope.cfg.ModuleCatalogIndexURL = server.URL
 
-		setRegistryModuleJSONMarshalHook(func(any) ([]byte, error) { return nil, errors.New("marshal boom") })
-		defer setRegistryModuleJSONMarshalHook(nil)
+		ctx := withRegistryModuleJSONMarshal(context.Background(), func(any) ([]byte, error) {
+			return nil, errors.New("marshal boom")
+		})
 		if err := db.Exec(`DROP TABLE meta_module_source_snapshot`).Error; err != nil {
 			t.Fatalf("drop table: %v", err)
 		}
 
-		stats, err := SyncRegistryModuleSourceSnapshot(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
+		stats, err := SyncRegistryModuleSourceSnapshot(ctx, runtimeScope, func(scope.Scope) statepkg.Locker {
 			return &moduleIndexSyncTestLocker{}
 		})
 		if err != nil {

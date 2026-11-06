@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -28,6 +29,40 @@ func TestWithModuleIndexWriteRetryNilArgs(t *testing.T) {
 	runtimeScope = newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	if err := withModuleIndexWriteRetry(context.Background(), runtimeScope, runtimeScope.session, nil); err == nil || err.Error() != "module source snapshot write operation is required" {
 		t.Fatalf("nil op error = %v", err)
+	}
+}
+
+func TestWithModuleIndexLockTTL_NilCtxAndNonPositive(t *testing.T) {
+	t.Parallel()
+	ctx := withModuleIndexLockTTL(nil, 5*time.Millisecond)
+	if got := moduleIndexLockTTL(ctx, nil); got != 5*time.Millisecond {
+		t.Fatalf("nil ctx override TTL = %v, want 5ms", got)
+	}
+	ctx = withModuleIndexLockTTL(context.Background(), 0)
+	if got := moduleIndexLockTTL(ctx, nil); got != moduleIndexLockTTLDefault {
+		t.Fatalf("non-positive override TTL = %v, want default %v", got, moduleIndexLockTTLDefault)
+	}
+	ctx = withModuleIndexLockTTL(context.Background(), -time.Second)
+	if got := moduleIndexLockTTL(ctx, nil); got != moduleIndexLockTTLDefault {
+		t.Fatalf("negative override TTL = %v, want default %v", got, moduleIndexLockTTLDefault)
+	}
+}
+
+func TestWithRegistryModuleJSONMarshal_NilArgs(t *testing.T) {
+	t.Parallel()
+	ctx := withRegistryModuleJSONMarshal(nil, func(any) ([]byte, error) { return []byte(`{}`), nil })
+	raw, err := marshalRegistryModule(ctx, map[string]string{"k": "v"})
+	if err != nil || string(raw) != `{}` {
+		t.Fatalf("nil-ctx override marshal = %q err=%v", raw, err)
+	}
+	ctx = withRegistryModuleJSONMarshal(context.Background(), nil)
+	raw, err = marshalRegistryModule(ctx, map[string]int{"n": 1})
+	if err != nil || !strings.Contains(string(raw), `"n":1`) {
+		t.Fatalf("nil-fn marshal = %q err=%v", raw, err)
+	}
+	raw, err = marshalRegistryModule(nil, map[string]int{"n": 2})
+	if err != nil || !strings.Contains(string(raw), `"n":2`) {
+		t.Fatalf("nil-ctx default marshal = %q err=%v", raw, err)
 	}
 }
 

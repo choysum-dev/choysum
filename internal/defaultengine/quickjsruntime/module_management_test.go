@@ -528,51 +528,38 @@ func TestRunModuleIndexSyncAllPreservesCancellationError(t *testing.T) {
 }
 
 func TestModuleManagementSyncIndexCoversPerformPath(t *testing.T) {
-	engineName := "module-management-sync-index-test-engine"
-	registerModuleManagementTestJsEngine(engineName)
-	serverCfg := config.NewDefaultServerConfig()
-	serverCfg.JsEngineFactory = engineName
 	baseScope := &moduleIndexTestScope{
 		ctx:    context.Background(),
 		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
-		cfg:    &config.Config{Server: serverCfg, ModulesPath: t.TempDir()},
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
 	}
-
+	locker := &moduleIndexTestLocker{acquireErr: statepkg.ErrLeaseBusy}
 	engine := newTestQuickjsEngine(t, WithModuleManagementProvider(
 		jsengine.StaticScopeProvider(baseScope),
 		WithModuleManagementLockerFactory(func(scope.Scope) statepkg.Locker {
-			return &moduleIndexTestLocker{acquireErr: statepkg.ErrLeaseBusy}
+			return locker
 		}),
 	))
 
-	evalString(t, engine, `(function() {
-		globalThis.$choysum = globalThis.$choysum || {};
-		globalThis.$choysum.__rpc__ = async function(req) {
-			let ok = false;
-			let message = '';
-			try {
-				await $choysum.moduleManagement.syncIndex({ originType: 'local' });
-				ok = true;
-			} catch (err) {
-				message = String(err && err.message ? err.message : err);
-			}
-			return { id: req.id, result: { ok, message }, context: {} };
-		};
-		return "ok";
-	})()`)
-
-	resp, err := engine.Execute(context.Background(), &jsengine.JsRequest{Id: "req-sync", Service: "meta"})
-	if err != nil {
-		t.Fatalf("Execute() error = %v", err)
+	promise := engine.Ctx.Eval(`$choysum.moduleManagement.syncIndex({ originType: 'local' })`)
+	defer promise.Free()
+	if promise.IsException() {
+		t.Fatalf("syncIndex eval exception: %v", engine.Ctx.Exception())
 	}
-	result, ok := resp.Result.(map[string]interface{})
-	if !ok {
-		t.Fatalf("expected result object, got %#v", resp.Result)
+	ret := promise.Await()
+	defer ret.Free()
+	if locker.acquired != 1 {
+		t.Fatalf("locker Acquire calls = %d, want 1", locker.acquired)
 	}
-	// Cover performModuleIndexSync → runModuleIndexSync; empty modules dir may succeed
-	// after lease acquire, or surface a lock/sync error depending on locker wiring.
-	if _, hasOK := result["ok"]; !hasOK {
-		t.Fatalf("expected syncIndex envelope with ok field, got %#v", result)
+	if !ret.IsError() && !ret.IsException() {
+		t.Fatalf("expected lease-conflict rejection, got %s", ret.String())
+	}
+	msg := ret.String()
+	if ret.IsException() {
+		msg = engine.Ctx.Exception().Error()
+	}
+	if !strings.Contains(msg, "LEASE_CONFLICT") {
+		t.Fatalf("expected LEASE_CONFLICT, got %q", msg)
 	}
 }
 

@@ -18,6 +18,11 @@ func openCutoverDB(t *testing.T, name string) *gorm.DB {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("db.DB(): %v", err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
 	return db
 }
 
@@ -218,7 +223,7 @@ func TestEnsureOpsSchemaCutover_StubErrorPaths(t *testing.T) {
 		}
 	})
 
-	t.Run("drop legacy and leftover errors", func(t *testing.T) {
+	t.Run("drop legacy errors", func(t *testing.T) {
 		m := &stubOpsMigrator{
 			tables:  map[string]bool{legacyModuleIndexTable: true},
 			dropErr: errors.New("drop blocked"),
@@ -230,14 +235,20 @@ func TestEnsureOpsSchemaCutover_StubErrorPaths(t *testing.T) {
 
 		m = &stubOpsMigrator{
 			tables: map[string]bool{
-				legacyModuleOriginTable:            true,
+				legacyModuleOriginTable:              true,
 				(ModuleSourceSnapshot{}).TableName(): true,
 			},
 			dropErr: errors.New("leftover blocked"),
 		}
 		err = ensureOpsSchemaCutover(m, func() error { return nil })
-		if err == nil || !strings.Contains(err.Error(), "drop leftover") {
-			t.Fatalf("error = %v, want drop leftover", err)
+		if err == nil || !strings.Contains(err.Error(), "drop legacy") {
+			t.Fatalf("error = %v, want drop legacy", err)
+		}
+	})
+
+	t.Run("nil migrator needsCutover", func(t *testing.T) {
+		if opsSchemaNeedsCutover(nil) {
+			t.Fatal("opsSchemaNeedsCutover(nil) = true, want false")
 		}
 	})
 
