@@ -80,6 +80,24 @@ func TestPlan_MatchesBuildPlanOrderAndPersistsDraft(t *testing.T) {
 	}
 }
 
+func TestPlan_RejectsInvalidWebShellProfile(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	mod := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core"}
+	o := &Ops{
+		Scope:    newOpsTestScope(t, db),
+		Resolver: &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+	}
+	_, err := o.Plan(context.Background(), PlanRequest{
+		ModuleName:      "core",
+		Action:          ActionInstall,
+		WebShellProfile: "tiny",
+	})
+	if err == nil || !strings.Contains(err.Error(), "web-shell-profile") {
+		t.Fatalf("Plan err = %v, want invalid profile", err)
+	}
+}
+
 func TestPlan_FreezesSkipWebShellAndLifecycleInput(t *testing.T) {
 	t.Parallel()
 	db := newOpsTestDB(t)

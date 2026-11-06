@@ -170,13 +170,29 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 			}
 
 			upgradeScope := env.WithContext(ctx)
+			compilerExecutor, err := newCLICompilerExecutor(upgradeScope)
+			if err != nil {
+				exitUpgradeError("", xfmt.Errorf("Error creating compiler executor: %w", err))
+			}
+			if err := compilerExecutor.Start(); err != nil {
+				exitUpgradeError("", xfmt.Errorf("Error starting compiler executor: %w", err))
+			}
+			defer func() { _ = compilerExecutor.Stop() }()
+
 			for _, item := range plans {
 				currentInput = item.requestedInput
 				upgradeScope.Logger().Debug("module upgrade started", "input", item.resolvedInput)
 				moduleName := schemaPlanModuleName(item.resolvedInput)
 				origin := "local"
-				if parsed, parseErr := internalorigin.ParseInput(item.resolvedInput); parseErr == nil && parsed.Kind == internalorigin.InputKindRegistry {
-					origin = "registry"
+				if parsed, parseErr := internalorigin.ParseInput(item.resolvedInput); parseErr == nil {
+					if parsed.Kind == internalorigin.InputKindRegistry {
+						origin = "registry"
+					}
+					if n := strings.TrimSpace(parsed.ModuleName); n != "" {
+						moduleName = n
+					} else if n := strings.TrimSpace(parsed.LocalName); n != "" {
+						moduleName = n
+					}
 				}
 				if err := runCLIModuleOp(ctx, env, cliModuleOpOptions{
 					Action:          ops.ActionUpgrade,
@@ -186,7 +202,9 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 					WithDemo:        withDemo,
 					SkipWebShell:    noWeb,
 					WebShellProfile: profile,
+					Executor:        compilerExecutor,
 				}); err != nil {
+					_ = compilerExecutor.Stop()
 					exitUpgradeError(currentInput, xfmt.Errorf("error upgrading module %s: %w", item.requestedInput, err))
 				}
 				upgradeScope.Logger().Debug("module upgraded", "input", item.resolvedInput)

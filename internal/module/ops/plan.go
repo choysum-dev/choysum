@@ -120,6 +120,13 @@ func (o *Ops) planModuleOp(ctx context.Context, action, moduleName, origin strin
 	}
 
 	profile := strings.TrimSpace(req.WebShellProfile)
+	if profile != "" {
+		parsedProfile, profileErr := plan.ParseWebShellProfile(profile)
+		if profileErr != nil {
+			return PlanResult{}, profileErr
+		}
+		profile = string(parsedProfile)
+	}
 	var built plan.Plan
 	if root != nil {
 		opType, ok := toPlanOpType(action)

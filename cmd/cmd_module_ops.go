@@ -30,10 +30,33 @@ type cliModuleOpOptions struct {
 	WebShellProfile plan.WebShellProfile
 	// Prefetch is optional; when nil on install, PrepareInstall runs after the executor starts.
 	Prefetch *lifecycle.PrefetchedInstall
+	// Executor is an optional shared compiler executor (caller owns Start/Stop).
+	Executor jsexecutor.JsExecutor
 }
 
-// Overridable for tests that force executor create/start failures without a full engine.
-var newCLICompilerExecutor = jsexecutor.NewCompilerExecutor
+// cliOpsHost is the Plan/Apply/Run surface used by the CLI helper.
+type cliOpsHost interface {
+	Plan(ctx context.Context, req ops.PlanRequest) (ops.PlanResult, error)
+	Apply(ctx context.Context, req ops.ApplyRequest) error
+	Run(ctx context.Context, req ops.RunRequest) error
+}
+
+// Overridable seams for tests.
+var (
+	newCLICompilerExecutor = jsexecutor.NewCompilerExecutor
+	prepareCLIInstall      = lifecycle.PrepareInstall
+	newCLIOpsHost          = defaultNewCLIOpsHost
+)
+
+func defaultNewCLIOpsHost(opScope scope.Scope, exec jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory) cliOpsHost {
+	return &ops.Ops{
+		Scope:         opScope,
+		Lifecycle:     lifecycle.NewService(opScope, exec, lifecycle.WithLockerFactory(lockerFactory)),
+		Resolver:      lifecycle.NewModuleManager(opScope, exec, lifecycle.WithLockerFactory(lockerFactory)),
+		LockerFactory: lockerFactory,
+		Events:        bus.EnsureHost(opScope),
+	}
+}
 
 // runCLIModuleOp assembles an ops host and runs Plan → Apply → Run synchronously.
 func runCLIModuleOp(ctx context.Context, env scope.Scope, opts cliModuleOpOptions) error {
@@ -49,6 +72,9 @@ func runCLIModuleOp(ctx context.Context, env scope.Scope, opts cliModuleOpOption
 	if action == "" {
 		return xfmt.Errorf("ops action is required")
 	}
+	if moduleName == "" && action == ops.ActionUninstall {
+		return xfmt.Errorf("module name is empty")
+	}
 	if moduleName == "" && lifecycleInput == "" && action != ops.ActionSync && action != ops.ActionLoadDemo {
 		return xfmt.Errorf("module name is empty")
 	}
@@ -58,14 +84,22 @@ func runCLIModuleOp(ctx context.Context, env scope.Scope, opts cliModuleOpOption
 		baseScope = env
 	}
 
-	compilerExecutor, err := newCLICompilerExecutor(baseScope)
-	if err != nil {
-		return xfmt.Errorf("Error creating compiler executor: %w", err)
+	compilerExecutor := opts.Executor
+	ownsExecutor := false
+	if compilerExecutor == nil {
+		var err error
+		compilerExecutor, err = newCLICompilerExecutor(baseScope)
+		if err != nil {
+			return xfmt.Errorf("Error creating compiler executor: %w", err)
+		}
+		if err := compilerExecutor.Start(); err != nil {
+			return xfmt.Errorf("Error starting compiler executor: %w", err)
+		}
+		ownsExecutor = true
 	}
-	if err := compilerExecutor.Start(); err != nil {
-		return xfmt.Errorf("Error starting compiler executor: %w", err)
+	if ownsExecutor {
+		defer func() { _ = compilerExecutor.Stop() }()
 	}
-	defer func() { _ = compilerExecutor.Stop() }()
 
 	runCtx := ctx
 	prefetch := opts.Prefetch
@@ -74,7 +108,7 @@ func runCLIModuleOp(ctx context.Context, env scope.Scope, opts cliModuleOpOption
 		if prepareInput == "" {
 			prepareInput = moduleName
 		}
-		prepared, prepareErr := lifecycle.PrepareInstall(ctx, baseScope, prepareInput)
+		prepared, prepareErr := prepareCLIInstall(ctx, baseScope, prepareInput)
 		if prepareErr != nil {
 			return prepareErr
 		}
@@ -82,14 +116,14 @@ func runCLIModuleOp(ctx context.Context, env scope.Scope, opts cliModuleOpOption
 			return xfmt.Errorf("prepared install root is empty")
 		}
 		prefetch = prepared
-		if moduleName == "" {
-			moduleName = strings.TrimSpace(prepared.RootName)
-		}
 	}
-	if prefetch != nil && prefetch.Modules != nil {
-		runCtx = lifecycle.WithPrefetchedInstallModules(ctx, prefetch.Modules)
-		if moduleName == "" {
-			moduleName = strings.TrimSpace(prefetch.RootName)
+	if prefetch != nil {
+		if rn := strings.TrimSpace(prefetch.RootName); rn != "" {
+			// InstallModule always installs prepared.RootName; keep that contract.
+			moduleName = rn
+		}
+		if prefetch.Modules != nil {
+			runCtx = lifecycle.WithPrefetchedInstallModules(ctx, prefetch.Modules)
 		}
 	}
 	if moduleName == "" && action != ops.ActionSync && action != ops.ActionLoadDemo {
@@ -104,13 +138,7 @@ func runCLIModuleOp(ctx context.Context, env scope.Scope, opts cliModuleOpOption
 	lockerFactory := statepkg.LockerFactory(func(runtimeScope scope.Scope) statepkg.Locker {
 		return lease.New(runtimeScope)
 	})
-	host := &ops.Ops{
-		Scope:         opScope,
-		Lifecycle:     lifecycle.NewService(opScope, compilerExecutor, lifecycle.WithLockerFactory(lockerFactory)),
-		Resolver:      lifecycle.NewModuleManager(opScope, compilerExecutor, lifecycle.WithLockerFactory(lockerFactory)),
-		LockerFactory: lockerFactory,
-		Events:        bus.EnsureHost(opScope),
-	}
+	host := newCLIOpsHost(opScope, compilerExecutor, lockerFactory)
 
 	planRes, err := host.Plan(runCtx, ops.PlanRequest{
 		ModuleName:      moduleName,

@@ -44,6 +44,17 @@ func newUninstallCmd(envGetter func() scope.Scope) *cobra.Command {
 			ctx = logutil.WithStderrProgressLine(ctx)
 
 			uninstallScope := env.WithContext(ctx)
+			compilerExecutor, err := newCLICompilerExecutor(uninstallScope)
+			if err != nil {
+				env.Logger().Error("module uninstall failed", "error", xfmt.Errorf("Error creating compiler executor: %w", err))
+				os.Exit(1)
+			}
+			if err := compilerExecutor.Start(); err != nil {
+				env.Logger().Error("module uninstall failed", "error", xfmt.Errorf("Error starting compiler executor: %w", err))
+				os.Exit(1)
+			}
+			defer func() { _ = compilerExecutor.Stop() }()
+
 			currentModule := ""
 			for _, name := range args {
 				currentModule = name
@@ -53,11 +64,13 @@ func newUninstallCmd(envGetter func() scope.Scope) *cobra.Command {
 					Action:     ops.ActionUninstall,
 					ModuleName: moduleName,
 					Origin:     "local",
+					Executor:   compilerExecutor,
 				}); err != nil {
 					attrs := []any{"error", xfmt.Errorf("error uninstalling module %s: %w", name, err)}
 					attrs = append(attrs, clioutput.ModuleCommandFailureAttrs("uninstall")...)
 					attrs = append(attrs, clioutput.CurrentOrRequestedAttr("module", "modules", currentModule, args)...)
 					env.Logger().Error("module uninstall failed", attrs...)
+					_ = compilerExecutor.Stop()
 					os.Exit(1)
 				}
 				uninstallScope.Logger().Debug("module uninstalled", "module", moduleName)
