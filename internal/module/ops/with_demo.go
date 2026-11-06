@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	pkgmeta "github.com/choysum-dev/choysum/pkg/meta"
-	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const withDemoSettingKey = "modules.with_demo"
@@ -53,15 +53,10 @@ func (o *Ops) SetWithDemo(ctx context.Context, enabled bool) error {
 	if err := sess.WithContext(ctx).AutoMigrate(&metaAppSetting{}); err != nil {
 		return err
 	}
-	var existing metaAppSetting
-	err = sess.WithContext(ctx).Where(map[string]any{"key": withDemoSettingKey}).Take(&existing).Error
-	if err == nil {
-		return sess.WithContext(ctx).Model(&existing).Update("value", "true").Error
-	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return err
-	}
-	return sess.WithContext(ctx).Create(&metaAppSetting{
+	return sess.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "key"}},
+		DoUpdates: clause.AssignmentColumns([]string{"value", "updated_at"}),
+	}).Create(&metaAppSetting{
 		Key:   withDemoSettingKey,
 		Value: "true",
 	}).Error

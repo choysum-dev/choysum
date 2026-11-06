@@ -676,19 +676,18 @@ func TestCoverage_RemainingBranches(t *testing.T) {
 		t.Fatalf("Run save fail: %v", err)
 	}
 
-	// SetWithDemo Take non-RecordNotFound via query callback (AutoMigrate uses same DB).
+	// SetWithDemo upsert Create failure.
 	db3 := newOpsTestDB(t)
 	o3 := &Ops{Scope: newOpsTestScope(t, db3)}
-	if err := db3.AutoMigrate(&metaAppSetting{}); err != nil {
-		t.Fatal(err)
-	}
-	if err := db3.Callback().Query().Before("gorm:query").Register("ops_fail_query", func(tx *gorm.DB) {
-		_ = tx.AddError(errors.New("forced query fail"))
+	if err := db3.Callback().Create().Before("gorm:create").Register("ops_fail_setting_upsert", func(tx *gorm.DB) {
+		if tx.Statement != nil && tx.Statement.Table == "meta_app_setting" {
+			_ = tx.AddError(errors.New("forced upsert fail"))
+		}
 	}); err != nil {
-		t.Fatalf("query callback: %v", err)
+		t.Fatalf("callback: %v", err)
 	}
-	if err := o3.SetWithDemo(context.Background(), true); err == nil || !strings.Contains(err.Error(), "forced query fail") {
-		t.Fatalf("SetWithDemo query fail: %v", err)
+	if err := o3.SetWithDemo(context.Background(), true); err == nil || !strings.Contains(err.Error(), "forced upsert fail") {
+		t.Fatalf("SetWithDemo upsert fail: %v", err)
 	}
 }
 
@@ -769,5 +768,94 @@ func TestCoverage_SetWithDemoPropagatesOnRun(t *testing.T) {
 	err = o.Run(context.Background(), RunRequest{Id: result.Id, WithDemo: true})
 	if err == nil || !strings.Contains(err.Error(), "setting create fail") {
 		t.Fatalf("Run WithDemo latch err: %v", err)
+	}
+}
+
+func TestCoverage_MaterializeErrorAndFailSaveJoin(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	mod := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core"}
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{
+		ModuleName: "core", SourceType: originLocal, SourceRef: "local", Available: true,
+		Version: nullString("1.0.0"),
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	o := &Ops{
+		Scope:     newOpsTestScope(t, db),
+		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+		Lifecycle: &stubLifecycle{},
+		Events:    &recordingBus{},
+	}
+	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "core", Action: ActionInstall})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := db.Callback().Create().Before("gorm:create").Register("ops_fail_catalog_create", func(tx *gorm.DB) {
+		if tx.Statement != nil && tx.Statement.Table == "meta_module_catalog" {
+			_ = tx.AddError(errors.New("catalog write fail"))
+		}
+	}); err != nil {
+		t.Fatalf("callback: %v", err)
+	}
+	err = o.Run(context.Background(), RunRequest{Id: result.Id})
+	if err == nil || !strings.Contains(err.Error(), "materialize catalog") {
+		t.Fatalf("Run materialize err: %v", err)
+	}
+
+	// Join failOperation save error when terminal CAS cannot write.
+	db2 := newOpsTestDB(t)
+	o2 := &Ops{
+		Scope:     newOpsTestScope(t, db2),
+		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+		Lifecycle: &stubLifecycle{installErr: errors.New("boom")},
+		Events:    &recordingBus{},
+	}
+	res2, err := o2.Plan(context.Background(), PlanRequest{ModuleName: "core", Action: ActionInstall})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o2.Apply(context.Background(), ApplyRequest{Id: res2.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := db2.Callback().Update().Before("gorm:update").Register("ops_fail_terminal_update", func(tx *gorm.DB) {
+		// Allow queued→running, fail running→failed.
+		if tx.Statement == nil {
+			return
+		}
+		if st, ok := tx.Statement.Dest.(map[string]any); ok {
+			if status, _ := st["status"].(string); status == StatusFailed {
+				_ = tx.AddError(errors.New("terminal save fail"))
+			}
+		}
+	}); err != nil {
+		t.Fatalf("callback: %v", err)
+	}
+	err = o2.Run(context.Background(), RunRequest{Id: res2.Id})
+	if err == nil || !strings.Contains(err.Error(), "boom") {
+		t.Fatalf("Run join err: %v", err)
+	}
+
+	db3 := newOpsTestDB(t)
+	o3 := &Ops{Scope: newOpsTestScope(t, db3), Events: &recordingBus{}}
+	ld, err := o3.Plan(context.Background(), PlanRequest{Action: ActionLoadDemo})
+	if err != nil {
+		t.Fatalf("Plan load-demo: %v", err)
+	}
+	if err := db3.Callback().Update().Before("gorm:update").Register("ops_fail_loaddemo_terminal", func(tx *gorm.DB) {
+		if st, ok := tx.Statement.Dest.(map[string]any); ok {
+			if status, _ := st["status"].(string); status == StatusFailed {
+				_ = tx.AddError(errors.New("loaddemo terminal fail"))
+			}
+		}
+	}); err != nil {
+		t.Fatalf("callback: %v", err)
+	}
+	err = o3.Run(context.Background(), RunRequest{Id: ld.Id})
+	if err == nil || !strings.Contains(err.Error(), "not implemented") || !strings.Contains(err.Error(), "loaddemo terminal fail") {
+		t.Fatalf("load-demo join err: %v", err)
 	}
 }

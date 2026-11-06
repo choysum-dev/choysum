@@ -44,8 +44,11 @@ func (o *Ops) Run(ctx context.Context, req RunRequest) error {
 	}
 	if row.Action == ActionLoadDemo {
 		msg := "load-demo is not implemented until W4"
-		_ = o.failOperation(context.WithoutCancel(ctx), row, "ops", "LOAD_DEMO_NOT_IMPLEMENTED", msg)
-		return errors.New(msg)
+		runErr := errors.New(msg)
+		if saveErr := o.failOperation(context.WithoutCancel(ctx), row, "ops", "LOAD_DEMO_NOT_IMPLEMENTED", msg); saveErr != nil {
+			return errors.Join(runErr, saveErr)
+		}
+		return runErr
 	}
 
 	now := time.Now().UTC()
@@ -63,7 +66,9 @@ func (o *Ops) Run(ctx context.Context, req RunRequest) error {
 	runErr := o.executeOperation(ctx, row, req.WithDemo)
 	finishCtx := context.WithoutCancel(ctx)
 	if runErr != nil {
-		_ = o.failOperation(finishCtx, row, "ops", "RUN_FAILED", runErr.Error())
+		if saveErr := o.failOperation(finishCtx, row, "ops", "RUN_FAILED", runErr.Error()); saveErr != nil {
+			return errors.Join(runErr, saveErr)
+		}
 		return runErr
 	}
 	return o.succeedOperation(finishCtx, row)
@@ -93,7 +98,9 @@ func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation
 		if err := o.runLifecycle(ctx, row.Action, row.ModuleName, withDemo); err != nil {
 			return err
 		}
-		_ = o.MaterializeCatalog(ctx, names)
+		if err := o.MaterializeCatalog(ctx, names); err != nil {
+			return fmt.Errorf("ops: materialize catalog after %s: %w", row.Action, err)
+		}
 		return nil
 	default:
 		return fmt.Errorf("ops: unsupported action %q", row.Action)

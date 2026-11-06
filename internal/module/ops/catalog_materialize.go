@@ -170,7 +170,8 @@ func (o *Ops) MaterializeCatalog(ctx context.Context, moduleNames []string) erro
 			"summary", "description", "category", "application", "author", "license",
 			"local_version", "registry_version", "installed", "installed_version",
 			"update_available", "registry_newer_than_local", "available", "unavailable_reason",
-			"local_path", "depends_json", "dependents_json", "has_demo", "demo_loaded",
+			// dependents_json / demo_loaded are owned elsewhere; do not zero them out.
+			"local_path", "depends_json", "has_demo",
 			"last_sync_at", "updated_at",
 		}),
 	}).CreateInBatches(&rows, 200).Error
