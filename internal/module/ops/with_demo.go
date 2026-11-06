@@ -23,24 +23,16 @@ type metaAppSetting struct {
 
 func (metaAppSetting) TableName() string { return "meta_app_setting" }
 
-func (o *Ops) ensureAppSettingTable(ctx context.Context) error {
-	sess, err := o.session(ctx)
-	if err != nil {
-		return err
-	}
-	return sess.WithContext(ctx).AutoMigrate(&metaAppSetting{})
-}
-
 // ResolveWithDemo reads meta_app_setting modules.with_demo; missing/invalid => false.
 func (o *Ops) ResolveWithDemo(ctx context.Context) bool {
 	if o == nil {
 		return false
 	}
-	if err := o.ensureAppSettingTable(ctx); err != nil {
-		return false
-	}
 	sess, err := o.session(ctx)
 	if err != nil {
+		return false
+	}
+	if err := sess.WithContext(ctx).AutoMigrate(&metaAppSetting{}); err != nil {
 		return false
 	}
 	var row metaAppSetting
@@ -55,11 +47,11 @@ func (o *Ops) SetWithDemo(ctx context.Context, enabled bool) error {
 	if !enabled {
 		return errors.New("ops: SetWithDemo only supports enabling (true)")
 	}
-	if err := o.ensureAppSettingTable(ctx); err != nil {
-		return err
-	}
 	sess, err := o.session(ctx)
 	if err != nil {
+		return err
+	}
+	if err := sess.WithContext(ctx).AutoMigrate(&metaAppSetting{}); err != nil {
 		return err
 	}
 	var existing metaAppSetting

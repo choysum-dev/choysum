@@ -109,17 +109,25 @@ type nopSub struct{}
 func (nopSub) Close() error { return nil }
 
 type mapResolver struct {
-	peek map[string]*pkgmeta.Module
-	load map[string]*pkgmeta.Module
+	peek    map[string]*pkgmeta.Module
+	load    map[string]*pkgmeta.Module
+	peekErr error
+	loadErr error
 }
 
 func (r *mapResolver) Peek(_ context.Context, name string) (*pkgmeta.Module, error) {
+	if r.peekErr != nil {
+		return nil, r.peekErr
+	}
 	if r.peek == nil {
 		return nil, nil
 	}
 	return r.peek[name], nil
 }
 func (r *mapResolver) Load(name string) (*pkgmeta.Module, error) {
+	if r.loadErr != nil {
+		return nil, r.loadErr
+	}
 	if r.load == nil {
 		return nil, nil
 	}

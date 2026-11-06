@@ -4,6 +4,8 @@
 package ops
 
 import (
+	"context"
+
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	"github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/bus"
@@ -43,6 +45,9 @@ const (
 	originRegistry = "registry"
 )
 
+// SnapshotSyncFunc syncs one origin's module source snapshots (local or registry).
+type SnapshotSyncFunc func(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error)
+
 // Ops is the module control-plane host for Plan / Apply / Run and catalog materialize.
 type Ops struct {
 	Scope         scope.Scope
@@ -50,4 +55,8 @@ type Ops struct {
 	Resolver      plan.Resolver
 	LockerFactory statepkg.LockerFactory
 	Events        bus.EventBus
+
+	// Optional sync hooks; nil uses lifecycle.Sync*ModuleSourceSnapshot.
+	SyncLocalSnapshot    SnapshotSyncFunc
+	SyncRegistrySnapshot SnapshotSyncFunc
 }

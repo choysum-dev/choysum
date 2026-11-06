@@ -15,6 +15,12 @@ import (
 	"gorm.io/gorm"
 )
 
+// Overridable for tests that force encode/decode failures.
+var (
+	jsonMarshal   = json.Marshal
+	jsonUnmarshal = json.Unmarshal
+)
+
 func (o *Ops) session(ctx context.Context) (*scope.Session, error) {
 	if o == nil || o.Scope == nil {
 		return nil, errors.New("ops: scope is unavailable")
@@ -58,7 +64,7 @@ func (o *Ops) createOperation(ctx context.Context, row *modmeta.ModuleOperation)
 }
 
 func marshalPlanDocument(doc PlanDocument) (datatypes.JSON, error) {
-	raw, err := json.Marshal(doc)
+	raw, err := jsonMarshal(doc)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +76,7 @@ func unmarshalPlanDocument(raw datatypes.JSON) (PlanDocument, error) {
 	if len(raw) == 0 {
 		return doc, nil
 	}
-	if err := json.Unmarshal(raw, &doc); err != nil {
+	if err := jsonUnmarshal(raw, &doc); err != nil {
 		return doc, err
 	}
 	return doc, nil

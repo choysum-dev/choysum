@@ -41,26 +41,31 @@ func (o *Ops) SyncSourceSnapshotsThenMaterialize(ctx context.Context, originType
 		originType = "all"
 	}
 
+	syncLocal := o.SyncLocalSnapshot
+	if syncLocal == nil {
+		syncLocal = lifecycle.SyncLocalModuleSourceSnapshot
+	}
+	syncRegistry := o.SyncRegistrySnapshot
+	if syncRegistry == nil {
+		syncRegistry = lifecycle.SyncRegistryModuleSourceSnapshot
+	}
+
 	var err error
 	switch originType {
 	case originLocal:
-		stats, err = lifecycle.SyncLocalModuleSourceSnapshot(ctx, o.Scope, o.LockerFactory)
+		stats, err = syncLocal(ctx, o.Scope, o.LockerFactory)
 	case originRegistry:
-		stats, err = lifecycle.SyncRegistryModuleSourceSnapshot(ctx, o.Scope, o.LockerFactory)
+		stats, err = syncRegistry(ctx, o.Scope, o.LockerFactory)
 	case "all":
-		regStats, regErr := lifecycle.SyncRegistryModuleSourceSnapshot(ctx, o.Scope, o.LockerFactory)
+		regStats, regErr := syncRegistry(ctx, o.Scope, o.LockerFactory)
 		stats.Total += regStats.Total
 		stats.Success += regStats.Success
 		stats.Failed += regStats.Failed
-		localStats, localErr := lifecycle.SyncLocalModuleSourceSnapshot(ctx, o.Scope, o.LockerFactory)
+		localStats, localErr := syncLocal(ctx, o.Scope, o.LockerFactory)
 		stats.Total += localStats.Total
 		stats.Success += localStats.Success
 		stats.Failed += localStats.Failed
-		if regErr != nil {
-			err = regErr
-		} else if localErr != nil {
-			err = localErr
-		}
+		err = errors.Join(regErr, localErr)
 	default:
 		return stats, errors.New("ops: originType must be one of: local, registry, all")
 	}
@@ -88,21 +93,23 @@ func (o *Ops) MaterializeCatalog(ctx context.Context, moduleNames []string) erro
 	}
 
 	filter := make(map[string]struct{})
+	names := make([]string, 0, len(moduleNames))
 	for _, name := range moduleNames {
 		name = strings.TrimSpace(name)
-		if name != "" {
-			filter[name] = struct{}{}
+		if name == "" {
+			continue
 		}
+		if _, ok := filter[name]; ok {
+			continue
+		}
+		filter[name] = struct{}{}
+		names = append(names, name)
 	}
 	filtered := len(filter) > 0
 
 	var snapshots []modmeta.ModuleSourceSnapshot
 	q := sess.WithContext(ctx).Model(&modmeta.ModuleSourceSnapshot{})
 	if filtered {
-		names := make([]string, 0, len(filter))
-		for name := range filter {
-			names = append(names, name)
-		}
 		q = q.Where("module_name IN ?", names)
 	}
 	if err := q.Find(&snapshots).Error; err != nil {
@@ -112,10 +119,6 @@ func (o *Ops) MaterializeCatalog(ctx context.Context, moduleNames []string) erro
 	var installed []pkgmeta.Module
 	iq := sess.WithContext(ctx).Model(&pkgmeta.Module{}).Where("status = ?", pkgmeta.Installed)
 	if filtered {
-		names := make([]string, 0, len(filter))
-		for name := range filter {
-			names = append(names, name)
-		}
 		iq = iq.Where("name IN ?", names)
 	}
 	if err := iq.Find(&installed).Error; err != nil {

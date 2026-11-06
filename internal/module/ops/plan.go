@@ -172,28 +172,8 @@ func toPlanOpType(action string) (plan.OpType, bool) {
 }
 
 func (o *Ops) resolveRootModule(ctx context.Context, moduleName, origin string) (*pkgmeta.Module, []PlanIssue, error) {
+	_ = origin // origin pins PlanJson; resolution uses Peek then Load for installed modules.
 	var blockers []PlanIssue
-	if origin == originRegistry {
-		// Prefer Peek so registry/local coordinator can resolve; still allow Load for installed.
-		mod, err := o.Resolver.Peek(ctx, moduleName)
-		if err != nil || mod == nil {
-			loaded, loadErr := o.Resolver.Load(moduleName)
-			if loadErr != nil {
-				return nil, nil, loadErr
-			}
-			if loaded == nil {
-				blockers = append(blockers, PlanIssue{
-					Code:    "MODULE_NOT_FOUND",
-					Level:   "error",
-					Message: fmt.Sprintf("module %q is not available", moduleName),
-				})
-				return nil, blockers, nil
-			}
-			return loaded, blockers, nil
-		}
-		return mod, blockers, nil
-	}
-
 	mod, err := o.Resolver.Peek(ctx, moduleName)
 	if err != nil || mod == nil {
 		loaded, loadErr := o.Resolver.Load(moduleName)
@@ -333,14 +313,15 @@ func (o *Ops) uninstallBlockers(ctx context.Context, rootName string, planned []
 }
 
 func computeBaseRevision(ctx context.Context, o *Ops, entries []ModuleOrderEntry) string {
+	// Hash mixes frozen PlanJson fields (current/target/origin) with live snapshot
+	// versions so Apply rejects when the world moved since Plan.
 	type revPart struct {
-		Name             string `json:"n"`
-		Current          string `json:"c"`
-		Target           string `json:"t"`
-		Origin           string `json:"o"`
-		CatalogInstalled string `json:"i,omitempty"`
-		Local            string `json:"l,omitempty"`
-		Registry         string `json:"r,omitempty"`
+		Name     string `json:"n"`
+		Current  string `json:"c"`
+		Target   string `json:"t"`
+		Origin   string `json:"o"`
+		Local    string `json:"l,omitempty"`
+		Registry string `json:"r,omitempty"`
 	}
 	parts := make([]revPart, 0, len(entries))
 	for _, e := range entries {
@@ -348,15 +329,13 @@ func computeBaseRevision(ctx context.Context, o *Ops, entries []ModuleOrderEntry
 		if o != nil {
 			localV, registryV = o.snapshotVersions(ctx, e.ModuleName)
 		}
-		installed := e.CurrentVersion
 		parts = append(parts, revPart{
-			Name:             e.ModuleName,
-			Current:          e.CurrentVersion,
-			Target:           e.TargetVersion,
-			Origin:           e.Origin,
-			CatalogInstalled: installed,
-			Local:            localV,
-			Registry:         registryV,
+			Name:     e.ModuleName,
+			Current:  e.CurrentVersion,
+			Target:   e.TargetVersion,
+			Origin:   e.Origin,
+			Local:    localV,
+			Registry: registryV,
 		})
 	}
 	sort.Slice(parts, func(i, j int) bool { return parts[i].Name < parts[j].Name })
