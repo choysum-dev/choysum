@@ -86,11 +86,33 @@ type moduleLifecycleFactory func(runtimeScope scope.Scope, jsExecutor jsexecutor
 
 type opsHostFactory func(runtimeScope scope.Scope, jsExecutor jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory, events bus.EventBus) *ops.Ops
 
+type compilerExecutorFactory func(runtimeScope scope.Scope) (jsexecutor.JsExecutor, error)
+
 type moduleManagementConfig struct {
-	lockerFactory          statepkg.LockerFactory
-	moduleLifecycleFactory moduleLifecycleFactory
-	opsHostFactory         opsHostFactory
-	events                 bus.EventBus
+	lockerFactory            statepkg.LockerFactory
+	moduleLifecycleFactory   moduleLifecycleFactory
+	opsHostFactory           opsHostFactory
+	compilerExecutorFactory  compilerExecutorFactory
+	events                   bus.EventBus
+}
+
+// Overridable for tests that force Marshal failures / loadDemo edge cases.
+var (
+	quickjsMarshal = func(ctx *quickjs.Context, v any) (*quickjs.Value, error) {
+		return ctx.Marshal(v)
+	}
+	loadDemoPlanHook func(ops.PlanResult) ops.PlanResult
+	loadDemoRunHook  func(error) error
+)
+
+func defaultCompilerExecutorFactory(runtimeScope scope.Scope) (jsexecutor.JsExecutor, error) {
+	return jsexecutor.NewCompilerExecutor(runtimeScope)
+}
+
+// bridgeThrow builds an Error value for promise rejection without setting a
+// context exception (ThrowError + IsError is unreliable across quickjs-go).
+func bridgeThrow(ctx *quickjs.Context, err error) *quickjs.Value {
+	return ctx.NewError(err)
 }
 
 func defaultModuleManagementLockerFactory(runtimeScope scope.Scope) statepkg.Locker {
@@ -195,7 +217,7 @@ func moduleReloadAsyncFactory(jse *quickjsengine.QuickjsEngine) func(ctx *quickj
 				_ = reload.Trigger()
 			}()
 
-			val, err := ctx.Marshal(result)
+			val, err := quickjsMarshal(ctx, result)
 			if err != nil {
 				errVal := ctx.ThrowError(err)
 				defer errVal.Free()
@@ -222,12 +244,11 @@ func (h startedOpsHost) Close() error {
 }
 
 func startOpsHost(jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig) (startedOpsHost, error) {
-	execCtx := jse.ExecContext()
-	if execCtx == nil {
-		execCtx = context.Background()
-	}
-	execCtx = scope.ContextWithoutTransaction(execCtx)
+	execCtx := scope.ContextWithoutTransaction(jse.ExecContext())
 	runtimeScope := jsengine.ResolveScope(scopeProvider, execCtx)
+	if runtimeScope == nil {
+		return startedOpsHost{}, status.Error(codes.Internal, "module management scope is unavailable")
+	}
 	opScope := runtimeScope.WithContext(execCtx)
 	if opScope == nil {
 		opScope = runtimeScope
@@ -258,7 +279,11 @@ func startOpsHost(jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.Scope
 	// Compiler executor is only required when filling default Lifecycle/Resolver.
 	var compilerExecutor jsexecutor.JsExecutor
 	if host.Lifecycle == nil || host.Resolver == nil {
-		executor, err := jsexecutor.NewCompilerExecutor(opScope)
+		newExecutor := cfg.compilerExecutorFactory
+		if newExecutor == nil {
+			newExecutor = defaultCompilerExecutorFactory
+		}
+		executor, err := newExecutor(opScope)
 		if err != nil {
 			return startedOpsHost{}, err
 		}
@@ -266,13 +291,21 @@ func startOpsHost(jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.Scope
 			_ = executor.Stop()
 			return startedOpsHost{}, err
 		}
-		compilerExecutor = executor
+		// Stop the executor if Lifecycle/Resolver construction panics before return.
+		handedOff := false
+		defer func() {
+			if !handedOff {
+				_ = executor.Stop()
+			}
+		}()
 		if host.Lifecycle == nil {
-			host.Lifecycle = cfg.moduleLifecycleFactory(opScope, compilerExecutor, cfg.lockerFactory)
+			host.Lifecycle = cfg.moduleLifecycleFactory(opScope, executor, cfg.lockerFactory)
 		}
 		if host.Resolver == nil {
-			host.Resolver = lifecycle.NewModuleManager(opScope, compilerExecutor, lifecycle.WithLockerFactory(cfg.lockerFactory))
+			host.Resolver = lifecycle.NewModuleManager(opScope, executor, lifecycle.WithLockerFactory(cfg.lockerFactory))
 		}
+		compilerExecutor = executor
+		handedOff = true
 	}
 	return startedOpsHost{host: host, execCtx: execCtx, executor: compilerExecutor}, nil
 }
@@ -280,11 +313,14 @@ func startOpsHost(jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.Scope
 func performModulePlan(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig, args []*quickjs.Value) *quickjs.Value {
 	params, err := parseJSONArgs[modulePlanParams](args)
 	if err != nil {
-		return ctx.ThrowError(err)
+		return bridgeThrow(ctx, err)
+	}
+	if strings.TrimSpace(params.Action) == "" {
+		return bridgeThrow(ctx, status.Error(codes.InvalidArgument, "action is required"))
 	}
 	started, err := startOpsHost(jse, scopeProvider, cfg)
 	if err != nil {
-		return ctx.ThrowError(err)
+		return bridgeThrow(ctx, err)
 	}
 	defer func() { _ = started.Close() }()
 
@@ -297,9 +333,9 @@ func performModulePlan(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, s
 	if err != nil {
 		return throwOrOpResult(ctx, err)
 	}
-	val, marshalErr := ctx.Marshal(planResultToMap(result))
+	val, marshalErr := quickjsMarshal(ctx, planResultToMap(result))
 	if marshalErr != nil {
-		return ctx.ThrowError(marshalErr)
+		return bridgeThrow(ctx, marshalErr)
 	}
 	return val
 }
@@ -307,14 +343,14 @@ func performModulePlan(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, s
 func performModuleApply(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig, args []*quickjs.Value) *quickjs.Value {
 	params, err := parseJSONArgs[moduleApplyParams](args)
 	if err != nil {
-		return ctx.ThrowError(err)
+		return bridgeThrow(ctx, err)
 	}
 	if strings.TrimSpace(params.Id) == "" {
-		return ctx.ThrowError(status.Error(codes.InvalidArgument, "id is required"))
+		return bridgeThrow(ctx, status.Error(codes.InvalidArgument, "id is required"))
 	}
 	started, err := startOpsHost(jse, scopeProvider, cfg)
 	if err != nil {
-		return ctx.ThrowError(err)
+		return bridgeThrow(ctx, err)
 	}
 	defer func() { _ = started.Close() }()
 
@@ -325,14 +361,14 @@ func performModuleApply(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, 
 func performModuleRun(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig, args []*quickjs.Value) *quickjs.Value {
 	params, err := parseJSONArgs[moduleRunParams](args)
 	if err != nil {
-		return ctx.ThrowError(err)
+		return bridgeThrow(ctx, err)
 	}
 	if strings.TrimSpace(params.Id) == "" {
-		return ctx.ThrowError(status.Error(codes.InvalidArgument, "id is required"))
+		return bridgeThrow(ctx, status.Error(codes.InvalidArgument, "id is required"))
 	}
 	started, err := startOpsHost(jse, scopeProvider, cfg)
 	if err != nil {
-		return ctx.ThrowError(err)
+		return bridgeThrow(ctx, err)
 	}
 	defer func() { _ = started.Close() }()
 
@@ -343,16 +379,16 @@ func performModuleRun(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, sc
 func performModuleCatalogSync(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig, args []*quickjs.Value) *quickjs.Value {
 	params, err := parseJSONArgs[moduleCatalogSyncParams](args)
 	if err != nil {
-		return ctx.ThrowError(err)
+		return bridgeThrow(ctx, err)
 	}
 	originType := normalizeModuleCatalogOriginType(params.OriginType)
 	if originType == "" {
-		return ctx.ThrowError(status.Error(codes.InvalidArgument, "originType must be one of: local, registry, all"))
+		return bridgeThrow(ctx, status.Error(codes.InvalidArgument, "originType must be one of: local, registry, all"))
 	}
 
 	started, err := startOpsHost(jse, scopeProvider, cfg)
 	if err != nil {
-		return ctx.ThrowError(err)
+		return bridgeThrow(ctx, err)
 	}
 	defer func() { _ = started.Close() }()
 
@@ -368,13 +404,13 @@ func performModuleCatalogSync(ctx *quickjs.Context, jse *quickjsengine.QuickjsEn
 	}
 	if syncErr != nil {
 		if shouldThrowBridgeError(syncErr) {
-			return ctx.ThrowError(syncErr)
+			return bridgeThrow(ctx, syncErr)
 		}
 		result.Error = syncErr.Error()
 	}
-	val, marshalErr := ctx.Marshal(result)
+	val, marshalErr := quickjsMarshal(ctx, result)
 	if marshalErr != nil {
-		return ctx.ThrowError(marshalErr)
+		return bridgeThrow(ctx, marshalErr)
 	}
 	return val
 }
@@ -382,11 +418,11 @@ func performModuleCatalogSync(ctx *quickjs.Context, jse *quickjsengine.QuickjsEn
 func performModuleLoadDemo(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig, args []*quickjs.Value) *quickjs.Value {
 	params, err := parseJSONArgs[moduleLoadDemoParams](args)
 	if err != nil {
-		return ctx.ThrowError(err)
+		return bridgeThrow(ctx, err)
 	}
 	started, err := startOpsHost(jse, scopeProvider, cfg)
 	if err != nil {
-		return ctx.ThrowError(err)
+		return bridgeThrow(ctx, err)
 	}
 	defer func() { _ = started.Close() }()
 
@@ -397,19 +433,42 @@ func performModuleLoadDemo(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngin
 	if err != nil {
 		return throwOrOpResult(ctx, err)
 	}
+	if loadDemoPlanHook != nil {
+		planRes = loadDemoPlanHook(planRes)
+	}
+	if strings.TrimSpace(planRes.Id) == "" {
+		return marshalOpResult(ctx, status.Error(codes.Internal, "plan returned empty id"))
+	}
 	runErr := started.host.Run(started.execCtx, ops.RunRequest{Id: planRes.Id})
+	if loadDemoRunHook != nil {
+		runErr = loadDemoRunHook(runErr)
+	}
+	if runErr != nil && shouldThrowBridgeError(runErr) {
+		return bridgeThrow(ctx, runErr)
+	}
 	payload := map[string]any{
 		"ok": runErr == nil,
 		"id": planRes.Id,
 	}
 	if runErr != nil {
-		payload["errorDomain"] = "ops"
-		payload["errorCode"] = "LOAD_DEMO_NOT_IMPLEMENTED"
-		payload["errorMessage"] = runErr.Error()
+		info := oerrors.GetErrorInfo(runErr)
+		if info != nil {
+			payload["errorDomain"] = info.Domain
+			payload["errorCode"] = info.Code
+			if info.Message != "" {
+				payload["errorMessage"] = info.Message
+			} else {
+				payload["errorMessage"] = runErr.Error()
+			}
+		} else {
+			payload["errorDomain"] = "MODULE_MANAGEMENT"
+			payload["errorCode"] = "OP_FAILED"
+			payload["errorMessage"] = runErr.Error()
+		}
 	}
-	val, marshalErr := ctx.Marshal(payload)
+	val, marshalErr := quickjsMarshal(ctx, payload)
 	if marshalErr != nil {
-		return ctx.ThrowError(marshalErr)
+		return bridgeThrow(ctx, marshalErr)
 	}
 	return val
 }
@@ -452,7 +511,7 @@ func marshalOpResult(ctx *quickjs.Context, err error) *quickjs.Value {
 	result := moduleOpResult{Ok: err == nil}
 	if err != nil {
 		if shouldThrowBridgeError(err) {
-			return ctx.ThrowError(err)
+			return bridgeThrow(ctx, err)
 		}
 		info := oerrors.GetErrorInfo(err)
 		if info != nil {
@@ -469,16 +528,16 @@ func marshalOpResult(ctx *quickjs.Context, err error) *quickjs.Value {
 			result.ErrorMessage = err.Error()
 		}
 	}
-	val, marshalErr := ctx.Marshal(result)
+	val, marshalErr := quickjsMarshal(ctx, result)
 	if marshalErr != nil {
-		return ctx.ThrowError(marshalErr)
+		return bridgeThrow(ctx, marshalErr)
 	}
 	return val
 }
 
 func throwOrOpResult(ctx *quickjs.Context, err error) *quickjs.Value {
 	if shouldThrowBridgeError(err) {
-		return ctx.ThrowError(err)
+		return bridgeThrow(ctx, err)
 	}
 	return marshalOpResult(ctx, err)
 }
@@ -508,9 +567,6 @@ func parseJSONArgs[T any](args []*quickjs.Value) (T, error) {
 		return params, nil
 	}
 	jsonStr := args[0].JSONStringify()
-	if jsonStr == "" {
-		return params, nil
-	}
 	if err := json.Unmarshal([]byte(jsonStr), &params); err != nil {
 		return params, err
 	}

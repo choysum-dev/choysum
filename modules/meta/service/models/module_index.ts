@@ -406,14 +406,11 @@ export default class MetaModuleIndex extends BaseModel {
 
   static async Sync(req: SyncModuleIndexReq = {}): Promise<SyncModuleIndexResp> {
     const bridge = this.getModuleManagementBridge();
-    const syncIndex = bridge.syncIndex as (params: {
-      originType?: ModuleSyncOriginType;
-      force?: boolean;
-    }) => Promise<unknown>;
-    if (typeof syncIndex !== 'function') {
-      throw new Error('moduleManagement.syncIndex is not implemented');
+    const syncCatalog = bridge.syncCatalog;
+    if (typeof syncCatalog !== 'function') {
+      throw new Error('moduleManagement.syncCatalog is not implemented');
     }
-    const result = await syncIndex({ originType: originTypeOrAll(req.OriginType), force: !!req.Force });
+    const result = await syncCatalog({ originType: originTypeOrAll(req.OriginType), force: !!req.Force });
     const ok = !!result && typeof result === 'object' && (result as { ok?: unknown }).ok === true;
     return { Ok: ok };
   }

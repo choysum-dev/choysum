@@ -393,8 +393,16 @@ test('meta.MetaModule ExecuteInstall uses moduleManagement bridge', async () => 
 
   const root: any = (globalThis as any).$choysum;
   const calls: any[] = [];
-  root.moduleManagement.install = async (params: any) => {
-    calls.push({ action: 'install', params });
+  root.moduleManagement.plan = async (params: any) => {
+    calls.push({ step: 'plan', params });
+    return { id: 'op-install-1', action: params.action, moduleName: params.moduleName, baseRevision: 'rev' };
+  };
+  root.moduleManagement.apply = async (params: any) => {
+    calls.push({ step: 'apply', params });
+    return { ok: true };
+  };
+  root.moduleManagement.run = async (params: any) => {
+    calls.push({ step: 'run', params });
     return { ok: true };
   };
   root.moduleManagement.reload = async () => ({ triggered: true, failed: false });
@@ -411,10 +419,11 @@ test('meta.MetaModule ExecuteInstall uses moduleManagement bridge', async () => 
   expect(result.action).toBe('install');
   expect(result.summary?.code).toBe('MODULE_INSTALLED');
 
-  expect(calls.length).toBe(1);
+  expect(calls.map((c) => c.step)).toEqual(['plan', 'apply', 'run']);
   expect(calls[0].params.moduleName).toBe('base');
-  expect(calls[0].params.withDemo).toBe(true);
+  expect(calls[0].params.action).toBe('install');
   expect(calls[0].params.operatorUserId).toBe('operator_1');
+  expect(calls[2].params.withDemo).toBe(true);
 });
 
 test('meta.MetaModule ExecuteInstall can run twice for the same jobId', async () => {
@@ -423,7 +432,9 @@ test('meta.MetaModule ExecuteInstall can run twice for the same jobId', async ()
   ensureJobMock();
 
   const root: any = (globalThis as any).$choysum;
-  root.moduleManagement.install = async () => ({ ok: true });
+  root.moduleManagement.plan = async () => ({ id: 'op-upsert', action: 'install', baseRevision: 'rev' });
+  root.moduleManagement.apply = async () => ({ ok: true });
+  root.moduleManagement.run = async () => ({ ok: true });
   root.moduleManagement.reload = async () => ({ triggered: false, failed: false });
 
   const jobId = uid('job_upsert');
@@ -443,8 +454,16 @@ test('meta.MetaModule ExecuteUninstall uses moduleManagement bridge', async () =
 
   const root: any = (globalThis as any).$choysum;
   const calls: any[] = [];
-  root.moduleManagement.uninstall = async (params: any) => {
-    calls.push({ action: 'uninstall', params });
+  root.moduleManagement.plan = async (params: any) => {
+    calls.push({ step: 'plan', params });
+    return { id: 'op-uninstall-1', action: params.action, moduleName: params.moduleName, baseRevision: 'rev' };
+  };
+  root.moduleManagement.apply = async (params: any) => {
+    calls.push({ step: 'apply', params });
+    return { ok: true };
+  };
+  root.moduleManagement.run = async (params: any) => {
+    calls.push({ step: 'run', params });
     return { ok: true };
   };
   root.moduleManagement.reload = async () => ({ triggered: true, failed: false });
@@ -460,8 +479,9 @@ test('meta.MetaModule ExecuteUninstall uses moduleManagement bridge', async () =
   expect(result.moduleName).toBe('base');
   expect(result.action).toBe('uninstall');
 
-  expect(calls.length).toBe(1);
+  expect(calls.map((c) => c.step)).toEqual(['plan', 'apply', 'run']);
   expect(calls[0].params.moduleName).toBe('base');
+  expect(calls[0].params.action).toBe('uninstall');
   expect(calls[0].params.operatorUserId).toBe('operator_1');
 });
 
@@ -471,7 +491,9 @@ test('meta.MetaModule ExecuteUpgrade returns failed result and maps error fields
   ensureJobMock();
 
   const root: any = (globalThis as any).$choysum;
-  root.moduleManagement.upgrade = async () => ({ ok: false, errorMessage: 'upgrade failed' });
+  root.moduleManagement.plan = async () => ({ id: 'op-upgrade-fail', action: 'upgrade', baseRevision: 'rev' });
+  root.moduleManagement.apply = async () => ({ ok: true });
+  root.moduleManagement.run = async () => ({ ok: false, errorMessage: 'upgrade failed' });
   root.moduleManagement.reload = async () => ({ triggered: false, failed: false });
 
   const jobId = uid('job_upgrade_fail');
@@ -494,7 +516,9 @@ test('meta.MetaModule ExecuteInstall marks ReloadFailed when reload fails', asyn
   ensureJobMock();
 
   const root: any = (globalThis as any).$choysum;
-  root.moduleManagement.install = async () => ({ ok: true });
+  root.moduleManagement.plan = async () => ({ id: 'op-reload-fail', action: 'install', baseRevision: 'rev' });
+  root.moduleManagement.apply = async () => ({ ok: true });
+  root.moduleManagement.run = async () => ({ ok: true });
   root.moduleManagement.reload = async () => ({ triggered: true, failed: true });
 
   const jobId = uid('job_reload_fail');
@@ -1028,7 +1052,7 @@ test('meta.MetaModuleIndex Sync defaults omitted originType to all', async () =>
 
   const root: any = (globalThis as any).$choysum;
   const seen: Array<{ originType?: string; force?: boolean }> = [];
-  root.moduleManagement.syncIndex = async (params: any) => {
+  root.moduleManagement.syncCatalog = async (params: any) => {
     seen.push(params);
     return { ok: true };
   };
@@ -1044,7 +1068,7 @@ test('meta.MetaModuleIndex Sync defaults omitted originType to all', async () =>
     { originType: 'local', force: false },
   ]);
 
-  root.moduleManagement.syncIndex = async () => ({ ok: false });
+  root.moduleManagement.syncCatalog = async () => ({ ok: false });
   const failed = await MetaModuleIndex.Sync({ OriginType: 'local', Force: true });
   expect(failed.Ok).toBe(false);
 });
@@ -1055,7 +1079,7 @@ test('meta.MetaModuleIndex Sync rejects invalid originType before bridge call', 
 
   const root: any = (globalThis as any).$choysum;
   let called = false;
-  root.moduleManagement.syncIndex = async () => {
+  root.moduleManagement.syncCatalog = async () => {
     called = true;
     return { ok: true };
   };

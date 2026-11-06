@@ -103,9 +103,11 @@ func (h *Hub) SubscribeNotifications(_ *tippb.SubscribeNotificationsReq, stream 
 }
 
 // SubscribeModuleOp streams tips for one Meta module operation owned by the caller.
-// Auth is pinned to the tip payload userId matching the authenticated operator.
-// Prefer operation_id (matches payload operationId / resId); job_id remains a
-// transitional fallback for tips that only carry jobId.
+// Auth is pinned to the tip payload userId matching the authenticated operator
+// (tip is best-effort; callers re-read meta_module_operation for ownership/status).
+// Prefer operation_id, which matches payload operationId and, when that field is
+// absent, resId (ops sets both to the operation id). job_id remains a transitional
+// fallback that matches payload jobId, else resId for older job-only tips.
 func (h *Hub) SubscribeModuleOp(req *tippb.SubscribeModuleOpReq, stream grpc.ServerStreamingServer[tippb.Tip]) error {
 	identity, err := requireIdentity(stream.Context())
 	if err != nil {

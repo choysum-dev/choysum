@@ -12,6 +12,7 @@ import (
 
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
+	"github.com/choysum-dev/choysum/pkg/oerrors"
 )
 
 // Run executes a queued (or draft sync/load-demo for CLI convenience) operation.
@@ -44,7 +45,7 @@ func (o *Ops) Run(ctx context.Context, req RunRequest) error {
 	}
 	if row.Action == ActionLoadDemo {
 		msg := "load-demo is not implemented until W4"
-		runErr := errors.New(msg)
+		runErr := oerrors.New("ops", "LOAD_DEMO_NOT_IMPLEMENTED", msg)
 		if saveErr := o.failOperation(context.WithoutCancel(ctx), row, "ops", "LOAD_DEMO_NOT_IMPLEMENTED", msg); saveErr != nil {
 			return errors.Join(runErr, saveErr)
 		}

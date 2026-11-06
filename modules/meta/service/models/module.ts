@@ -470,13 +470,38 @@ export default class MetaModule extends BaseModel {
     if (forceResultStatus === 'FAILED') {
       bridgeResult = { ok: false, errorDomain: 'MODULE_MANAGEMENT', errorCode: 'OP_FAILED', errorMessage: 'E2E forced failure' };
     } else {
-      bridgeResult = (await bridge[action]({
+      // W1-3 bridge hard-cut: Execute* adapts plan → apply → run until W2 RPC rewrite.
+      void jobId;
+      const planResult = await bridge.plan({
         moduleName: name,
-        withDemo: !!opts?.withDemo,
-        operatorUserId,
-        jobId,
         action,
-      })) as ModuleOpBridgeResult;
+        origin: 'local',
+        operatorUserId,
+      });
+      const planId = String(planResult?.id || '').trim();
+      if (!planId) {
+        bridgeResult = {
+          ok: false,
+          errorDomain: 'MODULE_MANAGEMENT',
+          errorCode: 'OP_FAILED',
+          errorMessage: 'plan returned empty id',
+        };
+      } else {
+        const applyResult = await bridge.apply({ id: planId });
+        if (!applyResult?.ok) {
+          bridgeResult = {
+            ok: false,
+            errorDomain: applyResult?.errorDomain,
+            errorCode: applyResult?.errorCode,
+            errorMessage: applyResult?.errorMessage || 'apply failed',
+          };
+        } else {
+          bridgeResult = (await bridge.run({
+            id: planId,
+            withDemo: !!opts?.withDemo,
+          })) as ModuleOpBridgeResult;
+        }
+      }
     }
 
     let resultStatus: 'SUCCEEDED' | 'FAILED' = bridgeResult.ok ? 'SUCCEEDED' : 'FAILED';

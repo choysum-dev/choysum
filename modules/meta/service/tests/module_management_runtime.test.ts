@@ -35,10 +35,10 @@ test('isTruthyFlag recognizes truthy and falsy values', () => {
 test('MetaModule.getModuleManagementBridge returns bridge when available', () => {
   const root: any = globalThis.$choysum;
   const saved = root?.moduleManagement;
-  root.moduleManagement = { install: () => ({ ok: true }) };
+  root.moduleManagement = { plan: () => ({ id: 'op-1', action: 'install', baseRevision: 'rev' }) };
   try {
     const bridge = (MetaModule as any).getModuleManagementBridge();
-    expect(typeof bridge.install).toBe('function');
+    expect(typeof bridge.plan).toBe('function');
   } finally {
     root.moduleManagement = saved;
   }
@@ -58,10 +58,10 @@ test('MetaModule.getModuleManagementBridge throws when bridge is missing', () =>
 test('MetaModuleIndex.getModuleManagementBridge returns bridge when available', () => {
   const root: any = globalThis.$choysum;
   const saved = root?.moduleManagement;
-  root.moduleManagement = { syncIndex: () => ({ ok: true }) };
+  root.moduleManagement = { syncCatalog: () => ({ ok: true }) };
   try {
     const bridge = (MetaModuleIndex as any).getModuleManagementBridge();
-    expect(typeof bridge.syncIndex).toBe('function');
+    expect(typeof bridge.syncCatalog).toBe('function');
   } finally {
     root.moduleManagement = saved;
   }
