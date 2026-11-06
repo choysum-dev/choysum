@@ -22,16 +22,6 @@ func TestSyncRegistryModuleSourceSnapshot_CoverageBranches(t *testing.T) {
 		db := newModuleSourceSnapshotSyncDB(t)
 		runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 
-		testModuleIndexLockTTLMu.Lock()
-		prev := testModuleIndexLockTTL
-		testModuleIndexLockTTL = 5 * time.Millisecond
-		testModuleIndexLockTTLMu.Unlock()
-		defer func() {
-			testModuleIndexLockTTLMu.Lock()
-			testModuleIndexLockTTL = prev
-			testModuleIndexLockTTLMu.Unlock()
-		}()
-
 		// Hold the catalog response until renew has fired so the lease heartbeat runs.
 		releaseFetch := make(chan struct{})
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -42,10 +32,11 @@ func TestSyncRegistryModuleSourceSnapshot_CoverageBranches(t *testing.T) {
 		runtimeScope.cfg.ModuleCatalogIndexURL = server.URL
 
 		locker := &renewCountingLocker{renewErr: errors.New("renew boom")}
+		ctx := withModuleIndexLockTTL(context.Background(), 5*time.Millisecond)
 		done := make(chan struct{})
 		go func() {
 			defer close(done)
-			_, _ = SyncRegistryModuleSourceSnapshot(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
+			_, _ = SyncRegistryModuleSourceSnapshot(ctx, runtimeScope, func(scope.Scope) statepkg.Locker {
 				return locker
 			})
 		}()
@@ -85,9 +76,8 @@ func TestSyncRegistryModuleSourceSnapshot_CoverageBranches(t *testing.T) {
 		defer server.Close()
 		runtimeScope.cfg.ModuleCatalogIndexURL = server.URL
 
-		prev := registryModuleJSONMarshal
-		registryModuleJSONMarshal = func(any) ([]byte, error) { return nil, errors.New("marshal boom") }
-		defer func() { registryModuleJSONMarshal = prev }()
+		setRegistryModuleJSONMarshalHook(func(any) ([]byte, error) { return nil, errors.New("marshal boom") })
+		defer setRegistryModuleJSONMarshalHook(nil)
 
 		stats, err := SyncRegistryModuleSourceSnapshot(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
 			return &moduleIndexSyncTestLocker{}
@@ -144,9 +134,8 @@ END;`).Error; err != nil {
 		defer server.Close()
 		runtimeScope.cfg.ModuleCatalogIndexURL = server.URL
 
-		prev := registryModuleJSONMarshal
-		registryModuleJSONMarshal = func(any) ([]byte, error) { return nil, errors.New("marshal boom") }
-		defer func() { registryModuleJSONMarshal = prev }()
+		setRegistryModuleJSONMarshalHook(func(any) ([]byte, error) { return nil, errors.New("marshal boom") })
+		defer setRegistryModuleJSONMarshalHook(nil)
 		if err := db.Exec(`DROP TABLE meta_module_source_snapshot`).Error; err != nil {
 			t.Fatalf("drop table: %v", err)
 		}

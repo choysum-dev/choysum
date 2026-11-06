@@ -69,6 +69,17 @@ func TestEnsureOpsSchemaCutover_NilDB(t *testing.T) {
 	}
 }
 
+func TestEnsureOpsSchemaCutover_SkipWhenNoLegacy(t *testing.T) {
+	t.Parallel()
+	db := openCutoverDB(t, "cutover_skip_"+t.Name())
+	if err := EnsureOpsSchemaCutover(db); err != nil {
+		t.Fatalf("EnsureOpsSchemaCutover(fresh) = %v, want nil", err)
+	}
+	if db.Migrator().HasTable((ModuleMigration{}).TableName()) {
+		t.Fatal("fresh DB short-circuit must not create migration table")
+	}
+}
+
 func TestEnsureOpsSchemaCutover_ClosedDB(t *testing.T) {
 	t.Parallel()
 	db := openCutoverDB(t, "cutover_closed_"+t.Name())
@@ -195,11 +206,12 @@ func TestEnsureOpsSchemaCutover_StubErrorPaths(t *testing.T) {
 	})
 
 	t.Run("auto migrate nil and error", func(t *testing.T) {
-		m := &stubOpsMigrator{tables: map[string]bool{(ModuleMigration{}).TableName(): true}}
+		m := &stubOpsMigrator{tables: map[string]bool{legacyModuleMigrationTable: true}}
 		err := ensureOpsSchemaCutover(m, nil)
 		if err == nil || !strings.Contains(err.Error(), "autoMigrate is nil") {
 			t.Fatalf("error = %v, want autoMigrate is nil", err)
 		}
+		m = &stubOpsMigrator{tables: map[string]bool{legacyModuleMigrationTable: true}}
 		err = ensureOpsSchemaCutover(m, func() error { return errors.New("migrate blocked") })
 		if err == nil || !strings.Contains(err.Error(), "migrate blocked") {
 			t.Fatalf("error = %v, want migrate blocked", err)

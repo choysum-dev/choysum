@@ -22,6 +22,16 @@ type opsSchemaMigrator interface {
 	DropTable(dst ...any) error
 }
 
+func opsSchemaNeedsCutover(migrator opsSchemaMigrator) bool {
+	if migrator == nil {
+		return false
+	}
+	return migrator.HasTable(legacyModuleMigrationTable) ||
+		migrator.HasTable(legacyModuleIndexTable) ||
+		migrator.HasTable(legacyModuleOriginTable) ||
+		migrator.HasTable(legacyManagementLogTable)
+}
+
 // EnsureOpsSchemaCutover applies one-shot table renames/drops for the W1 ops
 // schema cut before AutoMigrate. Migration history is renamed so retries do not
 // re-run scripts. Index/origin snapshot tables are dropped (resync fills
@@ -34,7 +44,12 @@ func EnsureOpsSchemaCutover(db *gorm.DB) error {
 	if err := db.Exec("SELECT 1").Error; err != nil {
 		return fmt.Errorf("EnsureOpsSchemaCutover: db unavailable: %w", err)
 	}
-	return ensureOpsSchemaCutover(db.Migrator(), func() error {
+	migrator := db.Migrator()
+	if !opsSchemaNeedsCutover(migrator) {
+		// Already cut over (or fresh DB); OpsEntities AutoMigrate owns new tables.
+		return nil
+	}
+	return ensureOpsSchemaCutover(migrator, func() error {
 		return db.AutoMigrate(&ModuleMigration{})
 	})
 }
@@ -45,13 +60,15 @@ func ensureOpsSchemaCutover(migrator opsSchemaMigrator, autoMigrateMigration fun
 	}
 
 	newMigration := (ModuleMigration{}).TableName()
+	renamedMigration := false
 	if migrator.HasTable(legacyModuleMigrationTable) && !migrator.HasTable(newMigration) {
 		if err := migrator.RenameTable(legacyModuleMigrationTable, newMigration); err != nil {
 			return fmt.Errorf("rename %s -> %s: %w", legacyModuleMigrationTable, newMigration, err)
 		}
+		renamedMigration = true
 	}
 	// Align columns (e.g. soft-delete) after rename from a leaner legacy shape.
-	if migrator.HasTable(newMigration) {
+	if renamedMigration {
 		if autoMigrateMigration == nil {
 			return fmt.Errorf("auto migrate %s: autoMigrate is nil", newMigration)
 		}

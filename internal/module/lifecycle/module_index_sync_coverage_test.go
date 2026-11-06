@@ -50,16 +50,6 @@ func TestSyncLocalModuleSourceSnapshot_LeaseRenewWarn(t *testing.T) {
 	db := newModuleSourceSnapshotSyncDB(t)
 	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 
-	testModuleIndexLockTTLMu.Lock()
-	prev := testModuleIndexLockTTL
-	testModuleIndexLockTTL = 5 * time.Millisecond
-	testModuleIndexLockTTLMu.Unlock()
-	defer func() {
-		testModuleIndexLockTTLMu.Lock()
-		testModuleIndexLockTTL = prev
-		testModuleIndexLockTTLMu.Unlock()
-	}()
-
 	for i := 0; i < 50; i++ {
 		name := fmt.Sprintf("mod%d", i)
 		writePackageJSON(t, modulesPath, name,
@@ -67,10 +57,11 @@ func TestSyncLocalModuleSourceSnapshot_LeaseRenewWarn(t *testing.T) {
 	}
 
 	locker := &renewCountingLocker{renewErr: errors.New("renew boom")}
+	ctx := withModuleIndexLockTTL(context.Background(), 5*time.Millisecond)
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		_, _ = SyncLocalModuleSourceSnapshot(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
+		_, _ = SyncLocalModuleSourceSnapshot(ctx, runtimeScope, func(scope.Scope) statepkg.Locker {
 			return locker
 		})
 	}()

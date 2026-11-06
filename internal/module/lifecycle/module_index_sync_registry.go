@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
@@ -44,8 +45,26 @@ type catalogIndexEntry struct {
 
 var catalogIndexHTTPClient = &http.Client{Timeout: 15 * time.Second}
 
-// registryModuleJSONMarshal is overridden in tests to force marshal failures.
-var registryModuleJSONMarshal = func(v any) ([]byte, error) { return json.Marshal(v) }
+// registryModuleJSONMarshalHook stores an optional marshal override for tests.
+// Production code leaves it empty and falls back to encoding/json.Marshal.
+var registryModuleJSONMarshalHook atomic.Value // func(any) ([]byte, error)
+
+func marshalRegistryModule(v any) ([]byte, error) {
+	if loaded := registryModuleJSONMarshalHook.Load(); loaded != nil {
+		if fn, ok := loaded.(func(any) ([]byte, error)); ok && fn != nil {
+			return fn(v)
+		}
+	}
+	return json.Marshal(v)
+}
+
+func setRegistryModuleJSONMarshalHook(fn func(any) ([]byte, error)) {
+	if fn == nil {
+		registryModuleJSONMarshalHook.Store(func(v any) ([]byte, error) { return json.Marshal(v) })
+		return
+	}
+	registryModuleJSONMarshalHook.Store(fn)
+}
 
 // SyncRegistryModuleSourceSnapshot fetches the static module catalog index from
 // index.choysum.dev and upserts discovered modules into meta_module_source_snapshot
@@ -139,7 +158,7 @@ func SyncRegistryModuleSourceSnapshot(ctx context.Context, runtimeScope scope.Sc
 		}
 		seen[registrySyncSeenKey(name, originRef)] = struct{}{}
 
-		manifestJSON, err := registryModuleJSONMarshal(module)
+		manifestJSON, err := marshalRegistryModule(module)
 		if err != nil {
 			runtimeScope.Logger().Warn("module source snapshot marshal failed", "module", name, "error", err)
 			stats.Failed++
