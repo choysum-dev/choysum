@@ -7,11 +7,7 @@ SPDX-License-Identifier: Apache-2.0
   <ChoyDialog v-model:open="visible">
     <ChoyDialogContent class="import-panel-dialog" @open-auto-focus.prevent>
       <ChoyDialogTitle>{{ title }}</ChoyDialogTitle>
-      <ol class="import-panel-steps">
-        <li :class="{ active: step === 0 }">{{ uploadStepTitle }}</li>
-        <li :class="{ active: step === 1 }">{{ previewStepTitle }}</li>
-        <li :class="{ active: step === 2 }">{{ importStepTitle }}</li>
-      </ol>
+      <ChoyStepper :model-value="stepValue" :steps="stepperSteps" readonly class="import-panel-stepper my-3" />
 
       <section v-if="step === 0" class="min-h-[180px]">
         <p class="mb-3 text-muted-foreground">{{ resolvedUploadHint }}</p>
@@ -85,6 +81,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, ref, watch } from 'vue';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyStepper, { type ChoyStepperStep } from '@/web/web/components/layout/ChoyStepper.vue';
 type UploadFile = { raw?: File | null; name?: string };
 import {
   describeImportFields,
@@ -117,9 +114,6 @@ const { _t } = createTranslate('web', { scope: 'web/import/ImportPanel' });
 const visible = defineModel<boolean>({ default: false });
 
 const title = _t('Import');
-const uploadStepTitle = _t('Upload CSV');
-const previewStepTitle = _t('Preview');
-const importStepTitle = _t('Import');
 const defaultUploadHint = _t('Upload a UTF-8 CSV. Map columns to importable fields from the catalog.');
 const uploadDropText = _t('Drop CSV here or click to browse');
 const defaultFieldsLabel = _t('Suggested columns');
@@ -141,6 +135,13 @@ const importSuccessSubtitle = _t('Rows were imported successfully.');
 const resolvedUploadHint = computed(() => String(props.uploadHint || '').trim() || defaultUploadHint);
 
 const step = ref(0);
+// Labels call _t inside computed so a locale switch updates the stepper, same as Setup.
+const stepperSteps = computed<ChoyStepperStep[]>(() => [
+  { value: 'upload', label: _t('Upload CSV') },
+  { value: 'preview', label: _t('Preview') },
+  { value: 'import', label: _t('Import') },
+]);
+const stepValue = computed(() => stepperSteps.value[step.value]?.value ?? 'upload');
 const busy = ref(false);
 const selectedFile = ref<File | null>(null);
 const sourceRef = ref('');
