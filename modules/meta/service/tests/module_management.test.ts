@@ -543,7 +543,13 @@ test('meta.MetaModule ExecuteInstall maps bridge rejections into failed result',
   root.moduleManagement.plan = async () => ({ id: 'op-reject', action: 'install', baseRevision: 'rev' });
   root.moduleManagement.apply = async () => ({ ok: true });
   root.moduleManagement.run = async () => {
-    throw new Error('LEASE_CONFLICT: lease is busy');
+    const err = new Error('LEASE_CONFLICT: lease is busy') as Error & {
+      errorDomain?: string;
+      errorCode?: string;
+    };
+    err.errorDomain = 'meta.lock';
+    err.errorCode = 'LEASE_CONFLICT';
+    throw err;
   };
   root.moduleManagement.reload = async () => ({ triggered: false, failed: false });
 
@@ -552,9 +558,31 @@ test('meta.MetaModule ExecuteInstall maps bridge rejections into failed result',
 
   const result = await MetaModule.ExecuteInstall('base', false, 'operator_1');
   expect(result.resultStatus).toBe('FAILED');
+  expect(result.errorDomain).toBe('meta.lock');
+  expect(result.errorCode).toBe('LEASE_CONFLICT');
+  expect(String(result.errorMessage || '')).toContain('LEASE_CONFLICT');
+});
+
+test('meta.MetaModule ExecuteInstall falls back when rejection lacks domain/code', async () => {
+  resetRequestContext();
+  ensureModuleManagementBridge();
+  ensureJobMock();
+
+  const root: any = (globalThis as any).$choysum;
+  root.moduleManagement.plan = async () => ({ id: 'op-reject-plain', action: 'install', baseRevision: 'rev' });
+  root.moduleManagement.apply = async () => ({ ok: true });
+  root.moduleManagement.run = async () => {
+    throw new Error('plain bridge rejection');
+  };
+  root.moduleManagement.reload = async () => ({ triggered: false, failed: false });
+
+  ensureRequestContext().ctx.jobId = uid('job_run_reject_plain');
+
+  const result = await MetaModule.ExecuteInstall('base', false, 'operator_1');
+  expect(result.resultStatus).toBe('FAILED');
   expect(result.errorDomain).toBe('MODULE_MANAGEMENT');
   expect(result.errorCode).toBe('OP_FAILED');
-  expect(String(result.errorMessage || '')).toContain('LEASE_CONFLICT');
+  expect(String(result.errorMessage || '')).toContain('plain bridge rejection');
 });
 
 test('meta.MetaModule ExecuteInstall marks ReloadFailed when reload fails', async () => {

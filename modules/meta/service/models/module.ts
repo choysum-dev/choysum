@@ -511,10 +511,11 @@ export default class MetaModule extends BaseModel {
           }
         }
       } catch (err) {
+        const anyErr = err as { errorDomain?: string; errorCode?: string; message?: string } | undefined;
         bridgeResult = {
           ok: false,
-          errorDomain: 'MODULE_MANAGEMENT',
-          errorCode: 'OP_FAILED',
+          errorDomain: (anyErr && typeof anyErr === 'object' && anyErr.errorDomain) || 'MODULE_MANAGEMENT',
+          errorCode: (anyErr && typeof anyErr === 'object' && anyErr.errorCode) || 'OP_FAILED',
           errorMessage: err instanceof Error ? err.message : String(err),
         };
       }

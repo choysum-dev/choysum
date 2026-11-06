@@ -89,21 +89,20 @@ type opsHostFactory func(runtimeScope scope.Scope, jsExecutor jsexecutor.JsExecu
 type compilerExecutorFactory func(runtimeScope scope.Scope) (jsexecutor.JsExecutor, error)
 
 type moduleManagementConfig struct {
-	lockerFactory            statepkg.LockerFactory
-	moduleLifecycleFactory   moduleLifecycleFactory
-	opsHostFactory           opsHostFactory
-	compilerExecutorFactory  compilerExecutorFactory
-	events                   bus.EventBus
-}
-
-// Overridable for tests that force Marshal failures / loadDemo edge cases.
-var (
-	quickjsMarshal = func(ctx *quickjs.Context, v any) (*quickjs.Value, error) {
-		return ctx.Marshal(v)
-	}
+	lockerFactory           statepkg.LockerFactory
+	moduleLifecycleFactory  moduleLifecycleFactory
+	opsHostFactory          opsHostFactory
+	compilerExecutorFactory compilerExecutorFactory
+	events                  bus.EventBus
+	// Test-only loadDemo hooks (nil in production).
 	loadDemoPlanHook func(ops.PlanResult) ops.PlanResult
 	loadDemoRunHook  func(error) error
-)
+}
+
+// Overridable for tests that force Marshal failures.
+var quickjsMarshal = func(ctx *quickjs.Context, v any) (*quickjs.Value, error) {
+	return ctx.Marshal(v)
+}
 
 func defaultCompilerExecutorFactory(runtimeScope scope.Scope) (jsexecutor.JsExecutor, error) {
 	return jsexecutor.NewCompilerExecutor(runtimeScope)
@@ -111,8 +110,18 @@ func defaultCompilerExecutorFactory(runtimeScope scope.Scope) (jsexecutor.JsExec
 
 // bridgeThrow builds an Error value for promise rejection without setting a
 // context exception (ThrowError + IsError is unreliable across quickjs-go).
+// When err carries ChoysumError info, attaches errorDomain/errorCode for TS callers.
 func bridgeThrow(ctx *quickjs.Context, err error) *quickjs.Value {
-	return ctx.NewError(err)
+	val := ctx.NewError(err)
+	if info := oerrors.GetErrorInfo(err); info != nil {
+		if info.Domain != "" {
+			val.Set("errorDomain", ctx.NewString(info.Domain))
+		}
+		if info.Code != "" {
+			val.Set("errorCode", ctx.NewString(info.Code))
+		}
+	}
+	return val
 }
 
 func defaultModuleManagementLockerFactory(runtimeScope scope.Scope) statepkg.Locker {
@@ -194,9 +203,9 @@ type moduleBridgePerformer func(ctx *quickjs.Context, jse *quickjsengine.Quickjs
 
 func moduleBridgeAsyncFactory(jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig, perform moduleBridgePerformer) func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
 	return func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
-		captured := append([]*quickjs.Value(nil), args...)
+		// perform runs synchronously inside NewPromise; pass args directly.
 		return ctx.NewPromise(func(resolve, reject func(*quickjs.Value)) {
-			ret := perform(ctx, jse, scopeProvider, cfg, captured)
+			ret := perform(ctx, jse, scopeProvider, cfg, args)
 			if ret.IsError() {
 				defer ret.Free()
 				reject(ret)
@@ -433,15 +442,15 @@ func performModuleLoadDemo(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngin
 	if err != nil {
 		return throwOrOpResult(ctx, err)
 	}
-	if loadDemoPlanHook != nil {
-		planRes = loadDemoPlanHook(planRes)
+	if cfg.loadDemoPlanHook != nil {
+		planRes = cfg.loadDemoPlanHook(planRes)
 	}
 	if strings.TrimSpace(planRes.Id) == "" {
 		return marshalOpResult(ctx, status.Error(codes.Internal, "plan returned empty id"))
 	}
 	runErr := started.host.Run(started.execCtx, ops.RunRequest{Id: planRes.Id})
-	if loadDemoRunHook != nil {
-		runErr = loadDemoRunHook(runErr)
+	if cfg.loadDemoRunHook != nil {
+		runErr = cfg.loadDemoRunHook(runErr)
 	}
 	if runErr != nil && shouldThrowBridgeError(runErr) {
 		return bridgeThrow(ctx, runErr)

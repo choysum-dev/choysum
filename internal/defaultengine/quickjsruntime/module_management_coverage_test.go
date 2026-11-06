@@ -346,6 +346,22 @@ func TestCoverage_ModuleManagementThrowOrOpResultAndParse(t *testing.T) {
 	defer okVal.Free()
 	thrown := throwOrOpResult(ctx, oerrors.New("meta.lock", "LEASE_CONFLICT", "busy"))
 	defer thrown.Free()
+	if domain := thrown.Get("errorDomain"); !domain.IsUndefined() {
+		defer domain.Free()
+		if domain.String() != "meta.lock" {
+			t.Fatalf("bridgeThrow errorDomain = %q", domain.String())
+		}
+	} else {
+		t.Fatal("expected bridgeThrow errorDomain")
+	}
+	if code := thrown.Get("errorCode"); !code.IsUndefined() {
+		defer code.Free()
+		if code.String() != "LEASE_CONFLICT" {
+			t.Fatalf("bridgeThrow errorCode = %q", code.String())
+		}
+	} else {
+		t.Fatal("expected bridgeThrow errorCode")
+	}
 	soft := throwOrOpResult(ctx, errors.New("soft"))
 	defer soft.Free()
 
@@ -442,8 +458,6 @@ func TestCoverage_ModuleManagementRemainingBranches(t *testing.T) {
 	prevMarshal := quickjsMarshal
 	t.Cleanup(func() {
 		quickjsMarshal = prevMarshal
-		loadDemoPlanHook = nil
-		loadDemoRunHook = nil
 	})
 
 	db := newBridgeTestDB(t)
@@ -453,6 +467,15 @@ func TestCoverage_ModuleManagementRemainingBranches(t *testing.T) {
 		cfg:     &config.Config{ModulesPath: t.TempDir()},
 		session: &scope.Session{DB: db},
 	}
+
+	opsHostOpt := moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+		cfg.opsHostFactory = func(runtimeScope scope.Scope, _ jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory, ev bus.EventBus) *ops.Ops {
+			return &ops.Ops{
+				Scope: runtimeScope, Lifecycle: moduleManagementTestManager{}, Resolver: &mapResolver{},
+				LockerFactory: lockerFactory, Events: ev,
+			}
+		}
+	})
 
 	// Direct async factory reject path (IsError).
 	engine := newTestQuickjsEngine(t)
@@ -550,59 +573,60 @@ func TestCoverage_ModuleManagementRemainingBranches(t *testing.T) {
 		t.Fatalf("undefined args: %v", err)
 	}
 
-	// loadDemo: empty plan id, throw on run, oerrors empty message, marshal fail.
-	emptyPlanEngine := newTestQuickjsEngine(t, WithModuleManagementProvider(
-		jsengine.StaticScopeProvider(base),
-		moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
-			cfg.opsHostFactory = func(runtimeScope scope.Scope, _ jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory, ev bus.EventBus) *ops.Ops {
-				return &ops.Ops{
-					Scope: runtimeScope, Lifecycle: moduleManagementTestManager{}, Resolver: &mapResolver{},
-					LockerFactory: lockerFactory, Events: ev,
-				}
-			}
-		}),
-	))
-	// Monkey-patch via custom Plan that returns empty id: use a tiny wrapper Ops by replacing Plan through a host that uses failing Run oerrors.
+	// loadDemo: default LOAD_DEMO_NOT_IMPLEMENTED soft result.
 	leaseRun := newTestQuickjsEngine(t, WithModuleManagementProvider(
 		jsengine.StaticScopeProvider(base),
-		moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
-			cfg.opsHostFactory = func(runtimeScope scope.Scope, _ jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory, ev bus.EventBus) *ops.Ops {
-				o := &ops.Ops{
-					Scope: runtimeScope, Lifecycle: moduleManagementTestManager{}, Resolver: &mapResolver{},
-					LockerFactory: lockerFactory, Events: ev,
-				}
-				return o
-			}
-		}),
+		opsHostOpt,
 	))
-	_ = emptyPlanEngine
-	// Force loadDemo Run throw via replacing after plan: inject Sync that isn't used; instead
-	// override by planning then... use host whose Run is reached after Plan — ops load-demo returns oerrors.
 	got := awaitModuleManagementJSON(t, leaseRun, `$choysum.moduleManagement.loadDemo({})`)
 	if code, _ := got["errorCode"].(string); code != "LOAD_DEMO_NOT_IMPLEMENTED" {
 		t.Fatalf("loadDemo code = %#v", got)
 	}
 
-	loadDemoPlanHook = func(ops.PlanResult) ops.PlanResult { return ops.PlanResult{} }
-	emptyID := awaitModuleManagementJSON(t, leaseRun, `$choysum.moduleManagement.loadDemo({})`)
+	emptyPlanID := newTestQuickjsEngine(t, WithModuleManagementProvider(
+		jsengine.StaticScopeProvider(base),
+		opsHostOpt,
+		moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+			cfg.loadDemoPlanHook = func(ops.PlanResult) ops.PlanResult { return ops.PlanResult{} }
+		}),
+	))
+	emptyID := awaitModuleManagementJSON(t, emptyPlanID, `$choysum.moduleManagement.loadDemo({})`)
 	if ok, _ := emptyID["ok"].(bool); ok {
 		t.Fatalf("expected empty plan id failure, got %#v", emptyID)
 	}
-	loadDemoPlanHook = nil
 
-	loadDemoRunHook = func(error) error { return oerrors.New("meta.lock", "LEASE_CONFLICT", "busy") }
-	rejectContains(t, leaseRun, `$choysum.moduleManagement.loadDemo({})`, "")
-	loadDemoRunHook = func(error) error { return oerrors.New("ops", "X", "") }
-	emptyMsg := awaitModuleManagementJSON(t, leaseRun, `$choysum.moduleManagement.loadDemo({})`)
+	leaseConflictDemo := newTestQuickjsEngine(t, WithModuleManagementProvider(
+		jsengine.StaticScopeProvider(base),
+		opsHostOpt,
+		moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+			cfg.loadDemoRunHook = func(error) error { return oerrors.New("meta.lock", "LEASE_CONFLICT", "busy") }
+		}),
+	))
+	rejectContains(t, leaseConflictDemo, `$choysum.moduleManagement.loadDemo({})`, "")
+
+	emptyMsgDemo := newTestQuickjsEngine(t, WithModuleManagementProvider(
+		jsengine.StaticScopeProvider(base),
+		opsHostOpt,
+		moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+			cfg.loadDemoRunHook = func(error) error { return oerrors.New("ops", "X", "") }
+		}),
+	))
+	emptyMsg := awaitModuleManagementJSON(t, emptyMsgDemo, `$choysum.moduleManagement.loadDemo({})`)
 	if msg, _ := emptyMsg["errorMessage"].(string); msg == "" {
 		t.Fatalf("expected fallback errorMessage, got %#v", emptyMsg)
 	}
-	loadDemoRunHook = func(error) error { return errors.New("plain run fail") }
-	plainRun := awaitModuleManagementJSON(t, leaseRun, `$choysum.moduleManagement.loadDemo({})`)
+
+	plainRunDemo := newTestQuickjsEngine(t, WithModuleManagementProvider(
+		jsengine.StaticScopeProvider(base),
+		opsHostOpt,
+		moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+			cfg.loadDemoRunHook = func(error) error { return errors.New("plain run fail") }
+		}),
+	))
+	plainRun := awaitModuleManagementJSON(t, plainRunDemo, `$choysum.moduleManagement.loadDemo({})`)
 	if code, _ := plainRun["errorCode"].(string); code != "OP_FAILED" {
 		t.Fatalf("plain run = %#v", plainRun)
 	}
-	loadDemoRunHook = nil
 
 	// oerrors empty message + marshalOpResult marshal fail + plan marshal fail + sync marshal fail + loadDemo marshal fail.
 	quickjsMarshal = func(ctx *quickjs.Context, v any) (*quickjs.Value, error) {
