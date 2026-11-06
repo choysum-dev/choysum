@@ -113,3 +113,12 @@ test('Login.vue: filled native submit does not show required field errors', asyn
   expect(replaces).toEqual(['/auth/tokens']);
   wrapper.unmount();
 });
+
+test('Login.vue: setup=done shows the initial setup completion notice', async () => {
+  const { wrapper } = await mountLogin({ query: { setup: 'done' } });
+  expect(wrapper.find('.login-setup-done').exists()).toBe(true);
+  wrapper.unmount();
+  const plain = await mountLogin();
+  expect(plain.wrapper.find('.login-setup-done').exists()).toBe(false);
+  plain.wrapper.unmount();
+});

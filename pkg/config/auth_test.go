@@ -44,8 +44,8 @@ func TestNewDefaultAuthConfig(t *testing.T) {
 		}
 		return false
 	}
-	if !hasExcludedPath(cfg.HttpAuth.ExcludedPaths, "/bootstrap") || !hasExcludedPath(cfg.HttpAuth.ExcludedPaths, "/bootstrap/") {
-		t.Fatalf("expected bootstrap paths in auth.httpAuth.excludedPaths, got %#v", cfg.HttpAuth.ExcludedPaths)
+	if hasExcludedPath(cfg.HttpAuth.ExcludedPaths, "/bootstrap") || hasExcludedPath(cfg.HttpAuth.ExcludedPaths, "/bootstrap/") {
+		t.Fatalf("did not expect /bootstrap paths in auth.httpAuth.excludedPaths, got %#v", cfg.HttpAuth.ExcludedPaths)
 	}
 	if !cfg.GrpcAuthentication || !cfg.GrpcMethodAccess || !cfg.GrpcRecordRule || !cfg.GrpcCompanyFilter || !cfg.GrpcFieldRule {
 		t.Fatalf("expected grpc auth switches enabled, got %#v", cfg)
@@ -57,6 +57,52 @@ func TestNewDefaultAuthConfig(t *testing.T) {
 	register := cfg.GrpcEntryPolicy["auth.User/Register"]
 	if register == nil || !register.SkipAuthentication || !register.SkipMethodAccess || !register.SkipCompanyFilter || !register.SkipFieldRule {
 		t.Fatalf("unexpected register policy: %#v", register)
+	}
+	completeSetup := cfg.GrpcEntryPolicy["auth.User/CompleteInitialSetup"]
+	if completeSetup == nil || !completeSetup.SkipAuthentication || !completeSetup.SkipMethodAccess || !completeSetup.SkipCompanyFilter || !completeSetup.SkipFieldRule {
+		t.Fatalf("unexpected CompleteInitialSetup policy: %#v", completeSetup)
+	}
+	if !entryAllowsModelOp(completeSetup.RecordRuleAllow, "auth.AppSetting", "write") {
+		t.Fatalf("expected CompleteInitialSetup recordRuleAllow to include auth.AppSetting:write, got %#v", completeSetup.RecordRuleAllow)
+	}
+	if !entryAllowsModelOp(completeSetup.RecordRuleAllow, "auth.Session", "write") {
+		t.Fatalf("expected CompleteInitialSetup recordRuleAllow to include auth.Session:write, got %#v", completeSetup.RecordRuleAllow)
+	}
+	for _, want := range [][2]string{
+		{"base.Company", "write"},
+		{"base.Currency", "write"},
+		{"base.Country", "read"},
+		{"base.Language", "read"},
+	} {
+		if !entryAllowsModelOp(completeSetup.RecordRuleAllow, want[0], want[1]) {
+			t.Fatalf("expected CompleteInitialSetup recordRuleAllow to include %s:%s, got %#v", want[0], want[1], completeSetup.RecordRuleAllow)
+		}
+	}
+	if entryAllowsModelOp(completeSetup.RecordRuleAllow, "base.Country", "write") {
+		t.Fatalf("CompleteInitialSetup must not write base.Country, got %#v", completeSetup.RecordRuleAllow)
+	}
+	setupOptions := cfg.GrpcEntryPolicy["base.Company/GetInitialSetupOptions"]
+	if setupOptions == nil || !setupOptions.SkipAuthentication || !setupOptions.SkipMethodAccess || !setupOptions.SkipCompanyFilter || !setupOptions.SkipFieldRule || setupOptions.SkipRecordRule {
+		t.Fatalf("unexpected GetInitialSetupOptions policy: %#v", setupOptions)
+	}
+	for _, model := range []string{"base.Company", "base.Country", "base.Currency", "base.Language", "meta.MetaModelData"} {
+		if !entryAllowsModelOp(setupOptions.RecordRuleAllow, model, "read") {
+			t.Fatalf("expected GetInitialSetupOptions recordRuleAllow to include %s:read, got %#v", model, setupOptions.RecordRuleAllow)
+		}
+	}
+	for _, allow := range setupOptions.RecordRuleAllow {
+		for _, op := range allow.Ops {
+			if op != "read" {
+				t.Fatalf("GetInitialSetupOptions must be read-only, got %s:%s", allow.Model, op)
+			}
+		}
+	}
+	if _, ok := cfg.GrpcEntryPolicy["base.Company/ApplyInitialSetup"]; ok {
+		t.Fatal("base.Company/ApplyInitialSetup must not be an anonymous entry")
+	}
+	getSetupState := cfg.GrpcEntryPolicy["auth.User/GetInitialSetupState"]
+	if getSetupState == nil || !getSetupState.SkipAuthentication || !getSetupState.SkipMethodAccess || !getSetupState.SkipCompanyFilter || !getSetupState.SkipFieldRule || !getSetupState.SkipRecordRule {
+		t.Fatalf("unexpected GetInitialSetupState policy: %#v", getSetupState)
 	}
 	login := cfg.GrpcEntryPolicy["auth.User/Login"]
 	if login == nil || !login.SkipAuthentication || !login.SkipMethodAccess || !login.SkipCompanyFilter || !login.SkipFieldRule {
@@ -87,13 +133,11 @@ func TestNewDefaultAuthConfig(t *testing.T) {
 	if len(getActiveLanguages.RecordRuleAllow) == 0 || getActiveLanguages.RecordRuleAllow[0].Model != "base.Language" {
 		t.Fatalf("unexpected GetActiveLanguages record rule allow: %#v", getActiveLanguages.RecordRuleAllow)
 	}
-	bootstrapInitialize := cfg.GrpcEntryPolicy["bootstrap.Workspace/Initialize"]
-	if bootstrapInitialize == nil || !bootstrapInitialize.SkipAuthentication {
-		t.Fatalf("unexpected bootstrap initialize policy: %#v", bootstrapInitialize)
+	if _, ok := cfg.GrpcEntryPolicy["bootstrap.Workspace/Initialize"]; ok {
+		t.Fatal("did not expect bootstrap.Workspace/Initialize in GrpcEntryPolicy")
 	}
-	bootstrapGetStatus := cfg.GrpcEntryPolicy["bootstrap.Workspace/GetInitializationStatus"]
-	if bootstrapGetStatus == nil || !bootstrapGetStatus.SkipAuthentication {
-		t.Fatalf("unexpected bootstrap get status policy: %#v", bootstrapGetStatus)
+	if _, ok := cfg.GrpcEntryPolicy["bootstrap.Workspace/GetInitializationStatus"]; ok {
+		t.Fatal("did not expect bootstrap.Workspace/GetInitializationStatus in GrpcEntryPolicy")
 	}
 	if len(register.RecordRuleAllow) == 0 || len(login.RecordRuleAllow) == 0 || len(refresh.RecordRuleAllow) == 0 {
 		t.Fatal("expected default record rule allowlists to be populated")

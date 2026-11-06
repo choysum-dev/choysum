@@ -32,7 +32,7 @@ SPDX-License-Identifier: Apache-2.0
       {{ unreadCount ? `${unreadCount} unread notifications` : '' }}
     </span>
   </div>
-  <div v-else data-testid="inbox-engine" :class="props.class">
+  <div v-else-if="caps.message" data-testid="inbox-engine" :class="props.class">
     <DropdownMenu v-if="isAuthenticated" @update:open="handleVisibleChange">
       <DropdownMenuTrigger as-child>
         <button type="button" class="relative inline-flex cursor-pointer items-center justify-center border-0 bg-transparent p-1.5 text-foreground" :aria-label="_t('Notifications')">
@@ -86,7 +86,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { Bell } from 'lucide-vue-next';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import Badge from '../vendor/ui/badge/Badge.vue';
 import Button from '../vendor/ui/button/Button.vue';
 import DropdownMenu from '../vendor/ui/dropdown-menu/DropdownMenu.vue';
@@ -111,12 +111,14 @@ import {
   useInjectedNotificationInbox,
   type InboxNotificationRow
 } from '@/web/web/composables/chatter/useNotificationInbox';
+import { useReactiveCollaborationCaps } from '@/web/web/platform/collaborationCaps';
 import { formatUtcIso } from '@/web/web/utils/datetime';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'ChoyNotificationBell', inheritAttrs: false });
 
 const { _t } = createTranslate('web', { scope: 'web/components/layout/ChoyNotificationBell' });
+const caps = useReactiveCollaborationCaps();
 
 const props = defineProps<{
   class?: ClassValue;
@@ -137,19 +139,20 @@ const isAuthenticated = ref(false);
 let stopAuthSubscribe: (() => void) | undefined;
 let disposed = false;
 
-const inbox = useInjectedNotificationInbox(() => isAuthenticated.value);
+const inbox = useInjectedNotificationInbox(() => caps.value.message && isAuthenticated.value);
 const { rows, loading, error, unreadCount: inboxUnreadCount, refresh, markRead, markAllRead, activate, deactivate } =
   inbox;
 
-onMounted(async () => {
-  if (chromeMode.value) return;
+async function bindInboxAuth(): Promise<void> {
+  // Idempotent: skip when a subscription is already live (mount + caps race).
+  if (chromeMode.value || !caps.value.message || disposed || stopAuthSubscribe) return;
   try {
     const { useAuthStore } = await import('@/auth/web/stores/auth');
-    if (disposed) return;
+    if (disposed || !caps.value.message || stopAuthSubscribe) return;
     const authStore = useAuthStore();
     isAuthenticated.value = !!authStore.isAuthenticated;
     stopAuthSubscribe = (authStore as any).$subscribe?.(() => {
-      if (disposed) return;
+      if (disposed || !caps.value.message) return;
       const next = !!authStore.isAuthenticated;
       if (next === isAuthenticated.value) return;
       isAuthenticated.value = next;
@@ -172,7 +175,32 @@ onMounted(async () => {
       isAuthenticated.value = false;
     }
   }
+}
+
+function unbindInboxAuth(): void {
+  stopAuthSubscribe?.();
+  stopAuthSubscribe = undefined;
+  isAuthenticated.value = false;
+  deactivate();
+}
+
+onMounted(() => {
+  void bindInboxAuth();
 });
+
+watch(
+  () => caps.value.message,
+  (hasMessage, hadMessage) => {
+    if (chromeMode.value) return;
+    if (hasMessage && !hadMessage) {
+      void bindInboxAuth();
+      return;
+    }
+    if (!hasMessage && hadMessage) {
+      unbindInboxAuth();
+    }
+  }
+);
 
 onUnmounted(() => {
   disposed = true;

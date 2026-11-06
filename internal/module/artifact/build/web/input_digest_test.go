@@ -661,14 +661,8 @@ func TestIsChoyTailwindGeneratedKitPath(t *testing.T) {
 		{"/custom/home/generated/styles/" + choyTailwindGeneratedCSSName, true},
 		{"/abs/modules/foo/web/generated/styles/" + choyTailwindGeneratedCSSName, false},
 		{"modules/foo/web/generated/styles/" + choyTailwindGeneratedCSSName, false},
-		{"/abs/modules/choy_ui/web/styles/" + choyTailwindGeneratedCSSName, true},
-		{"choy_ui/web/styles/" + choyTailwindGeneratedCSSName, true},
-		{"choy_ui/web/" + choyTailwindGeneratedCSSName, false},
 		{"other/web/styles/" + choyTailwindGeneratedCSSName, false},
-		{"choy_ui_extra/web/styles/" + choyTailwindGeneratedCSSName, false},
 		{"/abs/modules/myweb/web/styles/" + choyTailwindGeneratedCSSName, false},
-		{"mychoy_ui/web/styles/" + choyTailwindGeneratedCSSName, false},
-		{"choy_ui/web/styles/other.css", false},
 		{"not-the-file.css", false},
 	}
 	for _, tc := range cases {
@@ -762,8 +756,8 @@ func TestWebInputDigestSchemaFullCSSEmit(t *testing.T) {
 	t.Parallel()
 	// FullCSS (theme+preflight+utilities) emit must keep stamps on v8+ so
 	// upgrade rebuilds CSS that was produced under a utilities-only contract.
-	const want = "web-input-digest-v8"
+	const want = "web-input-digest-v9"
 	if webInputDigestSchema != want {
-		t.Fatalf("webInputDigestSchema = %q, want %q for FullCSS emit contract", webInputDigestSchema, want)
+		t.Fatalf("webInputDigestSchema = %q, want %q for favicon dist/web publish contract", webInputDigestSchema, want)
 	}
 }

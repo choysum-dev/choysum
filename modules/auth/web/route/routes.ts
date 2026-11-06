@@ -35,6 +35,17 @@ export const authRoutes: RouteRecordRaw[] = [
     },
   }),
 
+  // First-run setup page (SetupPending only; Ready redirects to login).
+  defineRoute('auth.route.setup', {
+    title: _lt('Initial Setup'),
+    path: 'setup',
+    name: 'setup',
+    component: () => import('../pages/Setup.vue'),
+    meta: {
+      requiresAuth: false,
+    },
+  }),
+
   // Logout page.
   defineRoute('auth.route.logout', {
     title: _lt('Logout'),

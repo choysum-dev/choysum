@@ -6,6 +6,25 @@ import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import ChoyGuestHeader from './ChoyGuestHeader.vue';
 
 describe('ChoyGuestHeader', () => {
+  test('hides Home on setup path; keeps header tools', async () => {
+    const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
+    const { router } = createFeStubRouter({
+      route: { path: '/web/setup', fullPath: '/web/setup', name: 'setup', meta: {} },
+    });
+    const mounted = mountApp(ChoyGuestHeader as any, {
+      plugins: [router],
+      props: {
+        goHome: () => undefined,
+        homeHref: '/',
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-testid=choy-guest-nav-home]')).toBeNull();
+    expect(mounted.q('[data-testid=choy-guest-mobile-nav]')).toBeNull();
+    expect(mounted.q('[data-testid=choy-shell-header-tools]')).not.toBeNull();
+    mounted.unmount();
+  });
+
   test('renders desktop Home link, mobile nav, and header tools', async () => {
     const homes: number[] = [];
     const mounted = mountApp(ChoyGuestHeader as any, {

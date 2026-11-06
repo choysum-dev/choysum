@@ -3,7 +3,7 @@
 
 /**
  * Conversion helpers used by DatetimeField (toView/fromView) — cover the FE hub paths
- * without mounting Element Plus (framework prefers pure-logic Vitest for coverage).
+ * without mounting field UI (framework prefers pure-logic Vitest for coverage).
  */
 import { formatUtcIso, userWallDateToUtc, utcToUserWallDate } from '@/web/web/utils/datetime';
 
@@ -30,7 +30,7 @@ test('DatetimeField conversion contract > round-trips spring-forward New York mi
 });
 
 test('DatetimeField conversion contract > pads short fractional seconds like DatetimeField.parseFlexible', () => {
-  // Element Plus / loose ISO may emit 1–2 digit millis; storage format expects SSS.
+  // Loose ISO from pickers may emit 1–2 digit millis; storage format expects SSS.
   const padded = '2024-07-01T12:00:00.1Z'.replace(
     /(T\d{2}:\d{2}:\d{2}\.)(\d{1,2})(?=(Z|[+-]\d{2}:\d{2})$)/,
     (_m, p1, frac) => p1 + (frac + '000').slice(0, 3)

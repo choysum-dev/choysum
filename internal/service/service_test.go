@@ -700,6 +700,12 @@ func TestServiceScriptsAndWebHandlers(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(assetsDir, "app.js"), []byte("asset"), 0o644); err != nil {
 		t.Fatalf("write asset: %v", err)
 	}
+	if err := os.WriteFile(filepath.Join(webDir, "favicon.ico"), []byte("ico"), 0o644); err != nil {
+		t.Fatalf("write favicon: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(webDir, "apple-touch-icon.png"), []byte("png"), 0o644); err != nil {
+		t.Fatalf("write apple-touch: %v", err)
+	}
 
 	runtimeScope := newHelperScope(distDir)
 	runtimeScope.cfg.Server.WebBaseURL = "/web"
@@ -725,8 +731,78 @@ func TestServiceScriptsAndWebHandlers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("WebHandlers() error = %v", err)
 	}
-	if len(handlers) != 2 {
+	// /web/, /, /favicon.ico, /apple-touch-icon.png, /apple-touch-icon-precomposed.png
+	if len(handlers) != 5 {
 		t.Fatalf("unexpected handler map: %#v", handlers)
+	}
+	favRR := httptest.NewRecorder()
+	handlers["/favicon.ico"].ServeHTTP(favRR, httptest.NewRequest(http.MethodGet, "/favicon.ico", nil))
+	if favRR.Code != http.StatusOK || favRR.Body.String() != "ico" {
+		t.Fatalf("favicon root handler: code=%d body=%q", favRR.Code, favRR.Body.String())
+	}
+	methodRR := httptest.NewRecorder()
+	handlers["/favicon.ico"].ServeHTTP(methodRR, httptest.NewRequest(http.MethodPost, "/favicon.ico", nil))
+	if methodRR.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("favicon POST status=%d, want 405", methodRR.Code)
+	}
+	touchRR := httptest.NewRecorder()
+	handlers["/apple-touch-icon-precomposed.png"].ServeHTTP(touchRR, httptest.NewRequest(http.MethodGet, "/apple-touch-icon-precomposed.png", nil))
+	if touchRR.Code != http.StatusOK || touchRR.Body.String() != "png" {
+		t.Fatalf("apple-touch root handler: code=%d body=%q", touchRR.Code, touchRR.Body.String())
+	}
+
+	// Missing icon files are skipped; nil receivers are no-ops.
+	emptyWeb := &ApplicationService{runtimeScope: runtimeScope, name: "web", appDistPath: t.TempDir()}
+	emptyHandlers, err := emptyWeb.WebHandlers()
+	if err != nil {
+		t.Fatalf("empty web handlers: %v", err)
+	}
+	if _, ok := emptyHandlers["/favicon.ico"]; ok {
+		t.Fatal("missing favicon must not register root handler")
+	}
+	var nilSvc *ApplicationService
+	nilSvc.registerRootIconHandlers(nil)
+	nilSvc.registerRootIconHandlers(map[string]http.Handler{})
+
+	// Handler registered, then file removed → Open fails with 404.
+	goneDir := t.TempDir()
+	gonePath := filepath.Join(goneDir, "favicon.ico")
+	if err := os.WriteFile(gonePath, []byte("ico"), 0o644); err != nil {
+		t.Fatalf("write gone favicon: %v", err)
+	}
+	goneSvc := &ApplicationService{runtimeScope: runtimeScope, name: "web", appDistPath: goneDir}
+	goneHandlers := map[string]http.Handler{}
+	goneSvc.registerRootIconHandlers(goneHandlers)
+	if err := os.Remove(gonePath); err != nil {
+		t.Fatalf("remove favicon: %v", err)
+	}
+	goneRR := httptest.NewRecorder()
+	goneHandlers["/favicon.ico"].ServeHTTP(goneRR, httptest.NewRequest(http.MethodGet, "/favicon.ico", nil))
+	if goneRR.Code != http.StatusNotFound {
+		t.Fatalf("removed favicon status=%d, want 404", goneRR.Code)
+	}
+
+	// Open succeeds on a directory, but Stat rejects non-regular files.
+	nonRegularDir := t.TempDir()
+	nonRegularPath := filepath.Join(nonRegularDir, "favicon.ico")
+	// registerRootIconHandlers skips non-regular Stat at registration; install a
+	// regular file first, swap to a directory after the handler is bound.
+	if err := os.WriteFile(nonRegularPath, []byte("ico"), 0o644); err != nil {
+		t.Fatalf("write favicon file: %v", err)
+	}
+	nonRegularSvc := &ApplicationService{runtimeScope: runtimeScope, name: "web", appDistPath: nonRegularDir}
+	nonRegularHandlers := map[string]http.Handler{}
+	nonRegularSvc.registerRootIconHandlers(nonRegularHandlers)
+	if err := os.Remove(nonRegularPath); err != nil {
+		t.Fatalf("remove file: %v", err)
+	}
+	if err := os.Mkdir(nonRegularPath, 0o755); err != nil {
+		t.Fatalf("replace with directory: %v", err)
+	}
+	nonRegularRR := httptest.NewRecorder()
+	nonRegularHandlers["/favicon.ico"].ServeHTTP(nonRegularRR, httptest.NewRequest(http.MethodGet, "/favicon.ico", nil))
+	if nonRegularRR.Code != http.StatusNotFound {
+		t.Fatalf("directory favicon status=%d, want 404", nonRegularRR.Code)
 	}
 
 	assetReq := httptest.NewRequest(http.MethodGet, "/web/assets/app.js", nil)

@@ -89,6 +89,7 @@ async function runRegisterOnce(baseURL: string): Promise<void> {
 }
 
 test('auth: register new user → auto login → no permission_denied on boot RPCs', async () => {
+  test.skip(runtime.scenario === 'setup-pending', 'register requires Ready workspace');
   test.setTimeout(120_000);
 
   const baseURL = runtime.baseURL;

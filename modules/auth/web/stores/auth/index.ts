@@ -8,6 +8,8 @@ import { defineAuthActions } from './actions';
 import { authStorage } from './storage';
 import { AUTH_STORAGE_KEY, PERSIST_PATHS } from './options';
 
+export type { CompleteInitialSetupInput, InitialSetupOptions } from './setup_types';
+
 /**
  * Auth state store.
  */
@@ -50,7 +52,10 @@ export const useAuthStore = defineStore(
       clearAuth: actions.clearAuth,
       initAuth: actions.initAuth,
       ensureAuthReady: actions.ensureAuthReady,
+      ensureSetupStateReady: actions.ensureSetupStateReady,
       register: actions.register,
+      completeInitialSetup: actions.completeInitialSetup,
+      getInitialSetupOptions: actions.getInitialSetupOptions,
       getCsrfToken: actions.getCsrfToken,
       persistLanguagePreference: actions.persistLanguagePreference,
     };

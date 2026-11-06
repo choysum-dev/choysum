@@ -3,8 +3,10 @@
 
 import {
   __normalizeAttachmentFieldsInPayloadForTest,
+  __preNormalizeDraftForDiffForTest,
   __resolveAttachmentFieldValueForTest,
   __looksLikeUploadEnvelopeForTest,
+  __attachmentFieldNeedsContentServiceForTest,
 } from './formController';
 import { setTokenProvider, setCSRFProvider } from '@/core/web/rpc';
 import { setGlobalRequestContextProvider, clearGlobalRequestContextProvider } from '@/core/rpc/context';
@@ -401,5 +403,88 @@ describe('formController attachment protocol', () => {
     await __resolveAttachmentFieldValueForTest({ kind: 'set', file: bareBlob }, ctxDefault);
     const prepareDefault = serviceDefault.PrepareUpload.calls[0]?.[0] as any;
     expect(prepareDefault?.proposedContentType).toBe('application/octet-stream');
+  });
+
+  test('normalize without document succeeds when no upload is needed', async () => {
+    expect(__attachmentFieldNeedsContentServiceForTest(null)).toBe(false);
+    expect(__attachmentFieldNeedsContentServiceForTest({ kind: 'noop' })).toBe(false);
+    expect(__attachmentFieldNeedsContentServiceForTest({ attachmentObjectId: 'ao-1' })).toBe(false);
+    expect(__attachmentFieldNeedsContentServiceForTest(new Blob([new Uint8Array([1])]))).toBe(true);
+
+    const store = {
+      fullModelName: 'demo.Asset',
+      fieldsMetadata: { Avatar: { type: 'image' } },
+    } as any;
+    const out = await __normalizeAttachmentFieldsInPayloadForTest(
+      store,
+      { Avatar: { kind: 'noop' }, Name: 'x' },
+      { operation: 'update', ownerModel: 'demo.Asset', ownerRecordId: 'r1', fields: ['Avatar'] },
+      {
+        createStoreByModel: () => {
+          throw new Error('document.AttachmentContent must not be dialed');
+        },
+      }
+    );
+    expect(out.Name).toBe('x');
+    expect(Object.prototype.hasOwnProperty.call(out, 'Avatar')).toBe(false);
+  });
+
+  test('normalize without document fails clearly when upload is required', async () => {
+    const store = {
+      fullModelName: 'demo.Asset',
+      fieldsMetadata: { Avatar: { type: 'image' } },
+    } as any;
+    let caught: unknown;
+    try {
+      await __normalizeAttachmentFieldsInPayloadForTest(
+        store,
+        { Avatar: new Blob([new Uint8Array([1])]) },
+        { operation: 'create', ownerModel: 'demo.Asset', fields: ['Avatar'] },
+        {
+          createStoreByModel: () => {
+            throw new Error("Store factory for model 'document.AttachmentContent' not found");
+          },
+        }
+      );
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught instanceof Error).toBe(true);
+    expect(String((caught as Error).message || '')).toMatch(/document|AttachmentContent|unavailable|not found/i);
+  });
+
+  test('resolveAttachmentFieldValue without service rejects blob upload', async () => {
+    let caught: unknown;
+    try {
+      await __resolveAttachmentFieldValueForTest(new Blob([new Uint8Array([1])]), {
+        operation: 'create',
+        ownerModel: 'demo.Asset',
+        fieldName: 'Avatar',
+        store: { fullModelName: 'demo.Asset', getContext: () => ({}) },
+      } as any);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught instanceof Error).toBe(true);
+    expect(String((caught as Error).message || '')).toMatch(/document module is not installed/i);
+  });
+
+  test('preNormalizeDraftForDiff keeps noop envelopes so update diff does not clear', async () => {
+    const store = {
+      fullModelName: 'demo.Asset',
+      fieldsMetadata: { Avatar: { type: 'image' } },
+    } as any;
+    const out = await __preNormalizeDraftForDiffForTest(
+      store,
+      { Avatar: { kind: 'noop' }, Name: 'x' },
+      { ownerModel: 'demo.Asset', ownerRecordId: 'r1', fields: ['Avatar'] },
+      {
+        createStoreByModel: () => {
+          throw new Error('document.AttachmentContent must not be dialed for noop');
+        },
+      }
+    );
+    expect(out.Avatar).toMatchObject({ kind: 'noop' });
+    expect(out.Name).toBe('x');
   });
 });

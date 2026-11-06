@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <Xpath expr="//*[@data-anchor='choy.shell.header-actions']" position="inside">
-    <ChoyNotificationBell />
+    <ChoyNotificationBell v-if="collaborationCaps.message" />
   </Xpath>
   <Xpath expr="//*[@data-anchor='choy.shell.sidebar-header']" position="inside">
     <SwitchCompany variant="sidebar" />
@@ -150,6 +150,7 @@ import {
   readChoyThemePreference,
   type ChoyThemeMode,
 } from '@/web/web/composables/applyChoyThemePreference';
+import { useReactiveCollaborationCaps } from '@/web/web/platform/collaborationCaps';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
 import { DEFAULT_ACTIVE_UI_KEYS } from '@/web/web/stores/i18nStore/activeUiKeys';
 import { SUPPORTED_LOCALES } from '@/web/web/stores/i18nStore/locales';
@@ -191,6 +192,7 @@ export default defineComponent({
     }
     const baseSetup = reuseParentSetupState(baseSetupFn(props, ctx));
     const { _t } = createTranslate('auth', { scope: 'web/components/layout/ChoyAppShell' });
+    const collaborationCaps = useReactiveCollaborationCaps();
     const router = useRouter();
     const authStore = useAuthStore();
     const preferencesVisible = ref(false);
@@ -306,6 +308,7 @@ export default defineComponent({
     return {
       ...baseSetup,
       _t,
+      collaborationCaps,
       preferencesVisible,
       userMenuOpen,
       userMenuLabel,

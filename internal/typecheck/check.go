@@ -249,8 +249,8 @@ func isVueTemplateParityNoise(d Diagnostic) bool {
 	case 2552:
 		return strings.Contains(d.Message, "__VLS_asFunctionalElement")
 	case 2589:
-		// Element Plus / chart templates commonly explode under typescript-go;
-		// vue-tsc does not fail the same sources.
+		// Vue template deep instantiation noise under typescript-go; vue-tsc
+		// does not fail the same sources.
 		return strings.Contains(d.Message, "excessively deep")
 	case 2349:
 		// Template call-site / slot fallout (with or without __VLS_* helpers).

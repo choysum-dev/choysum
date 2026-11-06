@@ -4,10 +4,11 @@
 import { isAuthExitNavigation, shouldSkipFormDirtyLeavePrompt } from './formDirtyLeaveGuard';
 
 describe('isAuthExitNavigation', () => {
-  test('matches login / logout / register by name', () => {
+  test('matches login / logout / register / setup by name', () => {
     expect(isAuthExitNavigation({ name: 'login' })).toBe(true);
     expect(isAuthExitNavigation({ name: 'logout' })).toBe(true);
     expect(isAuthExitNavigation({ name: 'register' })).toBe(true);
+    expect(isAuthExitNavigation({ name: 'setup' })).toBe(true);
     expect(isAuthExitNavigation({ name: 'UserDetail' })).toBe(false);
   });
 
@@ -21,6 +22,7 @@ describe('isAuthExitNavigation', () => {
     expect(isAuthExitNavigation({ meta: { resourceId: 'auth.route.login' } })).toBe(true);
     expect(isAuthExitNavigation({ meta: { resourceId: 'auth.route.logout' } })).toBe(true);
     expect(isAuthExitNavigation({ meta: { resourceId: 'auth.route.register' } })).toBe(true);
+    expect(isAuthExitNavigation({ meta: { resourceId: 'auth.route.setup' } })).toBe(true);
     expect(isAuthExitNavigation({ meta: { resourceId: 'auth.route.user_list' } })).toBe(false);
   });
 
@@ -28,6 +30,7 @@ describe('isAuthExitNavigation', () => {
     expect(isAuthExitNavigation({ path: '/login' })).toBe(true);
     expect(isAuthExitNavigation({ path: '/web/login' })).toBe(true);
     expect(isAuthExitNavigation({ path: '/web/logout/' })).toBe(true);
+    expect(isAuthExitNavigation({ path: '/web/setup' })).toBe(true);
     expect(isAuthExitNavigation({ path: '/auth/users' })).toBe(false);
     // Domain routes that merely end in /register must keep the dirty-leave prompt.
     expect(isAuthExitNavigation({ path: '/pos/register' })).toBe(false);

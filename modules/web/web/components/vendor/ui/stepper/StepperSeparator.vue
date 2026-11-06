@@ -4,13 +4,18 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script lang="ts" setup>
-import type { StepperSeparatorProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
 import { reactiveOmit } from "@vueuse/core"
 import { StepperSeparator, useForwardProps } from "reka-ui"
 import { cn } from "../../../../lib/utils"
 
-const props = defineProps<StepperSeparatorProps & { class?: HTMLAttributes["class"] }>()
+const props = defineProps<{
+  orientation?: "vertical" | "horizontal"
+  decorative?: boolean
+  asChild?: boolean
+  as?: string
+  class?: HTMLAttributes["class"]
+}>()
 
 const delegatedProps = reactiveOmit(props, "class")
 

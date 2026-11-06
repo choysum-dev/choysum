@@ -41,6 +41,8 @@ SPDX-License-Identifier: Apache-2.0
         :accept="accept"
         :drag="drag"
         :disabled="disabled"
+        :upload-disabled="!documentUploadAvailable"
+        :upload-hint="documentUploadUnavailableHint"
         :busy="isUploadBusy(fieldValue().value)"
         :attachment-state="editAttachmentState(fieldValue().value)"
         :upload-label="uploadButtonText"
@@ -133,6 +135,7 @@ import {
   toAttachmentTooltipText,
   type BinaryMediaIconKind,
 } from './attachmentFieldHelpers';
+import { useReactiveCollaborationCaps } from '@/web/web/platform/collaborationCaps';
 
 const BINARY_MEDIA_ICONS: Record<BinaryMediaIconKind, Component> = {
   image: Image,
@@ -202,6 +205,11 @@ const props = withDefaults(
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
 const fieldErrors = inject<Ref<Map<string, string>> | null>('field-errors', null);
 const formSubmitting = inject<Ref<boolean> | undefined>('form-submitting', undefined);
+const collaborationCaps = useReactiveCollaborationCaps();
+const documentUploadAvailable = computed(() => collaborationCaps.value.document === true);
+const documentUploadUnavailableHint = computed(() =>
+  documentUploadAvailable.value ? '' : _t('Document module is not installed; file upload is unavailable.')
+);
 
 const pickError = ref('');
 
@@ -291,6 +299,10 @@ async function applySelectedBinary(file: File, fieldValue: ValueRefGetter, onFie
 }
 
 async function onPickedFile(file: File, fieldValue: ValueRefGetter, onFieldChange?: OnFieldChange): Promise<void> {
+  if (props.disabled || !documentUploadAvailable.value) {
+    setPickError(documentUploadUnavailableHint.value || _t('Document module is not installed; file upload is unavailable.'));
+    return;
+  }
   await applySelectedBinary(file, fieldValue, onFieldChange);
 }
 

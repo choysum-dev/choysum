@@ -640,14 +640,14 @@ func TestGetTemplateImportComponents_CollectsScriptSetupTemplateImports(t *testi
 	testRuntimeScope := newTestScope()
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	parentPath := "/virtual/modules/test/web/components/layout/OHeader.vue"
+	parentPath := "/virtual/modules/test/web/components/layout/ChoyHeader.vue"
 	parentSFC := `<template>
   <div>
-    <el-icon><QuestionFilled /></el-icon>
+    <HelpCircle />
   </div>
 </template>
 <script setup lang="ts">
-import { QuestionFilled } from '@element-plus/icons-vue';
+import { HelpCircle } from 'lucide-vue-next';
 </script>`
 
 	parentParsed, err := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/test"}).Parse(map[string]string{"@": "/virtual/modules"}, parentPath, parentSFC)
@@ -660,8 +660,8 @@ import { QuestionFilled } from '@element-plus/icons-vue';
 		t.Fatalf("getTemplateImportComponents failed: %v", err)
 	}
 
-	if _, ok := imports["QuestionFilled"]; !ok {
-		t.Fatalf("expected QuestionFilled to be collected from script setup template usage, got %+v", imports)
+	if _, ok := imports["HelpCircle"]; !ok {
+		t.Fatalf("expected HelpCircle to be collected from script setup template usage, got %+v", imports)
 	}
 }
 
@@ -870,30 +870,30 @@ func TestGetScriptNode_AppendsScriptSetupParentTemplateIconImports(t *testing.T)
 	testRuntimeScope := newTestScope()
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	childPath := "/virtual/modules/test/web/components/layout/OHeader.vue"
-	parentPath := "/virtual/modules/web/web/components/layout/OHeader.vue"
+	childPath := "/virtual/modules/test/web/components/layout/ChoyHeader.vue"
+	parentPath := "/virtual/modules/web/web/components/layout/ChoyHeader.vue"
 
 	childSFC := `<template>
-  <Xpath expr="//div[@class='o-header__actions-primary']" position="inside" />
+  <Xpath expr="//div[@class='choy-header__actions-primary']" position="inside" />
 </template>
-<script lang="ts" _name="OHeader">
+<script lang="ts" _name="ChoyHeader">
 import { defineComponent } from 'vue';
 import { Xpath } from '@/core/web';
-import OHeader from '@/web/web/components/layout/OHeader.vue';
+import ChoyHeader from '@/web/web/components/layout/ChoyHeader.vue';
 
 export default defineComponent({
-  extends: OHeader,
+  extends: ChoyHeader,
   components: { Xpath },
 });
 </script>`
 
 	parentSFC := `<template>
-  <div class="o-header__actions-primary">
-    <el-icon><QuestionFilled /></el-icon>
+  <div class="choy-header__actions-primary">
+    <HelpCircle />
   </div>
 </template>
 <script setup lang="ts">
-import { QuestionFilled } from '@element-plus/icons-vue';
+import { HelpCircle } from 'lucide-vue-next';
 </script>`
 
 	childParsed := parseVueResult(t, testRuntimeScope, childPath, childSFC)
@@ -908,11 +908,11 @@ import { QuestionFilled } from '@element-plus/icons-vue';
 	}
 	content := htmlquery.InnerText(scriptNode)
 
-	if !strings.Contains(content, "QuestionFilled") || strings.Contains(content, "components: { Xpath }") {
+	if !strings.Contains(content, "HelpCircle") || strings.Contains(content, "components: { Xpath }") {
 		t.Fatalf("expected xpath placeholder to be replaced by parent script-setup icon import, got:\n%s", content)
 	}
-	if !strings.Contains(content, "import { QuestionFilled } from") || !strings.Contains(content, "icons-vue") {
-		t.Fatalf("expected QuestionFilled import to be appended, got:\n%s", content)
+	if !strings.Contains(content, "import { HelpCircle } from") || !strings.Contains(content, "lucide-vue-next") {
+		t.Fatalf("expected HelpCircle import to be appended, got:\n%s", content)
 	}
 }
 

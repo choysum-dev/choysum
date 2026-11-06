@@ -31,6 +31,8 @@ import (
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/spf13/cobra"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 const commandConstructorHelperEnv = "CHOYSUM_CMD_CONSTRUCTOR_HELPER"
@@ -94,6 +96,23 @@ func (e *commandTestScope) FactoryInput() scope.FactoryInput {
 func (e *commandExitScope) Logger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(os.Stderr, nil))
 }
+
+// Session is an empty in-memory database, so the setup phase read before
+// modules change resolves to Empty; WithContext scopes have no session.
+func (e *commandExitScope) Session() *scope.Session {
+	db, err := gorm.Open(sqlite.Open("file::memory:"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+	return &scope.Session{DB: db}
+}
+
+// commandNoSessionScope logs to stderr but has no database session.
+type commandNoSessionScope struct {
+	commandExitScope
+}
+
+func (e *commandNoSessionScope) Session() *scope.Session { return nil }
 
 func (e *commandRunErrScope) Run(fn func(runtimeScope scope.Scope) error) error {
 	if e.runErr != nil {
@@ -292,6 +311,61 @@ func TestCommandConstructorExitHelper(t *testing.T) {
 			}
 		})
 		cmd.Run(cmd, []string{"base"})
+	case "install_run_invalid_web_shell_profile":
+		cmd := newInstallCmd(func() scope.Scope {
+			return &commandExitScope{commandTestScope: commandTestScope{cfg: newCommandExitConfig("cmd-helper-engine")}}
+		})
+		if err := cmd.Flags().Set("web-shell-profile", "tiny"); err != nil {
+			panic(err)
+		}
+		cmd.Run(cmd, []string{"base"})
+	case "install_run_invalid_setup":
+		cmd := newInstallCmd(func() scope.Scope {
+			return &commandExitScope{commandTestScope: commandTestScope{cfg: newCommandExitConfig("cmd-helper-engine")}}
+		})
+		if err := cmd.Flags().Set("setup", "auto"); err != nil {
+			panic(err)
+		}
+		cmd.Run(cmd, []string{"base"})
+	case "install_run_wizard_with_password":
+		cmd := newInstallCmd(func() scope.Scope {
+			return &commandExitScope{commandTestScope: commandTestScope{cfg: newCommandExitConfig("cmd-helper-engine")}}
+		})
+		if err := cmd.Flags().Set("setup", "wizard"); err != nil {
+			panic(err)
+		}
+		if err := cmd.Flags().Set("admin-password", "secret"); err != nil {
+			panic(err)
+		}
+		cmd.Run(cmd, []string{"base"})
+	case "install_run_setup_error":
+		cmd := newInstallCmd(func() scope.Scope {
+			return &commandExitScope{commandTestScope: commandTestScope{cfg: newCommandExitConfig("cmd-helper-engine")}}
+		})
+		cmd.Run(cmd, nil)
+	case "install_run_setup_phase_error":
+		cmd := newInstallCmd(func() scope.Scope {
+			return &commandNoSessionScope{commandExitScope{commandTestScope: commandTestScope{cfg: newCommandExitConfig("cmd-helper-engine")}}}
+		})
+		cmd.Run(cmd, []string{"base"})
+	case "upgrade_run_invalid_setup":
+		cmd := newUpgradeCmd(func() scope.Scope {
+			return &commandExitScope{commandTestScope: commandTestScope{cfg: newCommandExitConfig("cmd-helper-engine")}}
+		})
+		if err := cmd.Flags().Set("setup", "auto"); err != nil {
+			panic(err)
+		}
+		cmd.Run(cmd, []string{"base"})
+	case "upgrade_run_setup_phase_error":
+		cmd := newUpgradeCmd(func() scope.Scope {
+			return &commandNoSessionScope{commandExitScope{commandTestScope: commandTestScope{cfg: newCommandExitConfig("cmd-helper-engine")}}}
+		})
+		cmd.Run(cmd, []string{"base"})
+	case "upgrade_run_setup_error":
+		cmd := newUpgradeCmd(func() scope.Scope {
+			return &commandExitScope{commandTestScope: commandTestScope{cfg: newCommandExitConfig("cmd-helper-engine")}}
+		})
+		cmd.Run(cmd, nil)
 	case "upgrade_prerun_nil_env":
 		cmd := newUpgradeCmd(func() scope.Scope { return nil })
 		cmd.PreRun(cmd, []string{"base"})
@@ -318,6 +392,14 @@ func TestCommandConstructorExitHelper(t *testing.T) {
 				runErr:           errors.New("upgrade failed"),
 			}
 		})
+		cmd.Run(cmd, []string{"base"})
+	case "upgrade_run_invalid_web_shell_profile":
+		cmd := newUpgradeCmd(func() scope.Scope {
+			return &commandExitScope{commandTestScope: commandTestScope{cfg: newCommandExitConfig("cmd-helper-engine")}}
+		})
+		if err := cmd.Flags().Set("web-shell-profile", "tiny"); err != nil {
+			panic(err)
+		}
 		cmd.Run(cmd, []string{"base"})
 	case "upgrade_run_schema_plan":
 		cmd := newUpgradeCmd(func() scope.Scope {
@@ -1757,10 +1839,23 @@ func TestInstallUpgradeUninstallCommandConstruction(t *testing.T) {
 	if got := installCmd.Flags().Lookup("with-demo").Usage; !strings.Contains(got, "package.json") || strings.Contains(strings.ToLower(got), "manifest") {
 		t.Fatalf("unexpected install --with-demo usage: %q", got)
 	}
+	setupFlag := installCmd.Flags().Lookup("setup")
+	if setupFlag == nil || setupFlag.DefValue != "" || !strings.Contains(setupFlag.Usage, "complete") || !strings.Contains(setupFlag.Usage, "wizard") {
+		t.Fatalf("unexpected install --setup flag: %#v", setupFlag)
+	}
+	passwordFlag := installCmd.Flags().Lookup("admin-password")
+	if passwordFlag == nil || passwordFlag.DefValue != "" || !strings.Contains(passwordFlag.Usage, "CHOYSUM_ADMIN_PASSWORD") {
+		t.Fatalf("unexpected install --admin-password flag: %#v", passwordFlag)
+	}
 
 	upgradeCmd := newUpgradeCmd(envGetter)
 	if upgradeCmd.Use != "upgrade <module|module@version> [<module|module@version>...]" || upgradeCmd.PreRun == nil || upgradeCmd.Run == nil {
 		t.Fatalf("unexpected upgrade command shape: %#v", upgradeCmd)
+	}
+	for _, name := range []string{"setup", "admin-password"} {
+		if got, want := upgradeCmd.Flags().Lookup(name), installCmd.Flags().Lookup(name); got == nil || got.Usage != want.Usage || got.DefValue != "" {
+			t.Fatalf("upgrade --%s must match install, got %#v", name, got)
+		}
 	}
 	if upgradeCmd.Flags().Lookup("with-demo") == nil {
 		t.Fatal("expected upgrade command to register --with-demo")
@@ -1788,12 +1883,21 @@ func TestInstallUpgradeUninstallCommandExitPaths(t *testing.T) {
 		{name: "install run executor create error", scenario: "install_run_executor_create_error", want: "Error creating compiler executor", wantCode: 1},
 		{name: "install run executor start error", scenario: "install_run_executor_start_error", want: "Error starting compiler executor", wantCode: 1},
 		{name: "install run env.Run error", scenario: "install_run_env_run_error", want: "module install failed", wantCode: 1},
+		{name: "install run invalid web-shell-profile", scenario: "install_run_invalid_web_shell_profile", want: "invalid web-shell-profile", wantCode: 1},
+		{name: "install run invalid setup", scenario: "install_run_invalid_setup", want: "invalid --setup value", wantCode: 1},
+		{name: "install run wizard with password", scenario: "install_run_wizard_with_password", want: "--setup=wizard cannot be combined", wantCode: 1},
+		{name: "install run setup error", scenario: "install_run_setup_error", want: "initial setup failed", wantCode: 1},
+		{name: "install run setup phase error", scenario: "install_run_setup_phase_error", want: "resolve setup phase", wantCode: 1},
+		{name: "upgrade run invalid setup", scenario: "upgrade_run_invalid_setup", want: "invalid --setup value", wantCode: 1},
+		{name: "upgrade run setup phase error", scenario: "upgrade_run_setup_phase_error", want: "resolve setup phase", wantCode: 1},
+		{name: "upgrade run setup error", scenario: "upgrade_run_setup_error", want: "initial setup failed", wantCode: 1},
 		{name: "upgrade prerun nil env", scenario: "upgrade_prerun_nil_env", want: "scope is not initialized", wantCode: 1},
 		{name: "upgrade prerun missing args", scenario: "upgrade_prerun_missing_args", want: "Please specify the module name", wantCode: 1},
 		{name: "upgrade run nil env", scenario: "upgrade_run_nil_env", want: "scope is not initialized", wantCode: 1},
 		{name: "upgrade run executor create error", scenario: "upgrade_run_executor_create_error", want: "Error creating compiler executor", wantCode: 1},
 		{name: "upgrade run executor start error", scenario: "upgrade_run_executor_start_error", want: "Error starting compiler executor", wantCode: 1},
 		{name: "upgrade run env.Run error", scenario: "upgrade_run_env_run_error", want: "module upgrade failed", wantCode: 1},
+		{name: "upgrade run invalid web-shell-profile", scenario: "upgrade_run_invalid_web_shell_profile", want: "invalid web-shell-profile", wantCode: 1},
 		{name: "upgrade run schema-plan", scenario: "upgrade_run_schema_plan", want: "schema-plan", wantCode: 1},
 		{name: "uninstall prerun nil env", scenario: "uninstall_prerun_nil_env", want: "scope is not initialized", wantCode: 1},
 		{name: "uninstall prerun missing args", scenario: "uninstall_prerun_missing_args", want: "Please specify the module name", wantCode: 1},

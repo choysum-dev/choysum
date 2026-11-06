@@ -27,7 +27,6 @@ import (
 	"time"
 
 	clicompat "github.com/choysum-dev/choysum/internal/cli/compat"
-	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -602,18 +601,8 @@ func writeTempSqliteDB(t *testing.T) string {
 }
 
 func writeInitializedSqliteDB(t *testing.T) string {
-	path := writeTempSqliteDB(t)
-	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
-	if err := db.AutoMigrate(&modmeta.Setting{}); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
-	if err := db.Create(&modmeta.Setting{Key: "system.init.done", Value: "true"}).Error; err != nil {
-		t.Fatalf("insert init marker: %v", err)
-	}
-	return path
+	// Pre-existing empty DB file so `run` does not treat the workspace as missing storage.
+	return writeTempSqliteDB(t)
 }
 
 func writeTempConfigWithDSN(t *testing.T, dialect, dsn, modulesPath string) string {
@@ -1661,6 +1650,9 @@ func TestCLIInstallLatestResolvesCompatibleVersion(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("install failed, code=%d output=%s", code, output)
 	}
+	if strings.Contains(output, "Initial setup") || strings.Contains(output, "Setup options ignored") {
+		t.Fatalf("install without auth must not print setup output, got %q", output)
+	}
 
 	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
@@ -2005,20 +1997,8 @@ func TestCLIRunDoesNotWriteInitArtifacts(t *testing.T) {
 	if sqliteTableExists(t, dbPath, "meta_model_data") {
 		t.Fatalf("unexpected meta_model_data table created by run")
 	}
-
-	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
-	var settings []modmeta.Setting
-	if err := db.Find(&settings).Error; err != nil {
-		t.Fatalf("query settings: %v", err)
-	}
-	if len(settings) != 1 {
-		t.Fatalf("expected 1 init setting, got %d", len(settings))
-	}
-	if settings[0].Key != "system.init.done" || settings[0].Value != "true" {
-		t.Fatalf("unexpected init setting: %s=%s", settings[0].Key, settings[0].Value)
+	if sqliteTableExists(t, dbPath, "meta_setting") {
+		t.Fatalf("unexpected meta_setting table created by run")
 	}
 }
 func TestCLIRunRejectsLegacyAdminUsernameFlag(t *testing.T) {

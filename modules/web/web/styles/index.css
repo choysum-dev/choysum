@@ -439,13 +439,6 @@ a:hover {
   color: inherit;
 }
 
-/* Record-import step list: restore numbering stripped by preflight. */
-.import-panel-steps {
-  list-style: decimal;
-  padding-inline-start: 1.25rem;
-  margin-block: 0.75rem;
-}
-
 /* Rich-text field content: keep list markers after preflight list-style:none. */
 .prose-choy ul,
 .choy-html-field__prose ul {

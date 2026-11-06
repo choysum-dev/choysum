@@ -22,6 +22,8 @@ export { default as ChoyGrid } from './components/layout/ChoyGrid.vue';
 export { default as ChoyCol } from './components/layout/ChoyCol.vue';
 export { default as ChoyTabs } from './components/layout/ChoyTabs.vue';
 export { default as ChoyTab } from './components/layout/ChoyTab.vue';
+export { default as ChoyStepper } from './components/layout/ChoyStepper.vue';
+export type { ChoyStepperStep } from './components/layout/ChoyStepper.vue';
 export { default as ChoyButton } from './components/layout/ChoyButton.vue';
 export { default as ChoyButtonGroup } from './components/layout/ChoyButtonGroup.vue';
 export { default as ChoyInput } from './components/vendor/ui/input/Input.vue';

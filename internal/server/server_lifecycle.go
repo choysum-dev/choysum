@@ -43,6 +43,8 @@ func (s *GRPCWebServer) serve() error {
 	}
 	defer s.stop(false)
 
+	s.kickDeferredProvisionMinimalIfNeeded()
+
 	for {
 		select {
 		case <-s.runtimeScope.Context().Done():
@@ -140,7 +142,7 @@ func (s *GRPCWebServer) stop(reload bool) error {
 	s.stopTelemetryRuntime()
 
 	if reload {
-		s.runtimeScope.Logger().Info("server restarting")
+		s.runtimeScope.Logger().Info("restarting to load installed modules")
 	} else {
 		s.runtimeScope.Logger().Info("server stopped")
 	}

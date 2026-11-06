@@ -20,6 +20,7 @@ async function readAuthAccessToken(): Promise<string> {
 }
 
 test('auth: switch company → new TokenPair → refresh PermissionState → header updates', async () => {
+  test.skip(runtime.scenario === 'setup-pending', 'default smoke needs Ready fixture');
   test.setTimeout(120_000);
 
   const baseURL = runtime.baseURL;

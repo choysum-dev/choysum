@@ -33,6 +33,12 @@ export namespace AuthErrCode {
   export const USER_CREATION_FAILED = 'USER_CREATION_FAILED';
   export const INVALID_PASSWORD = 'INVALID_PASSWORD';
   export const ACCOUNT_DISABLED = 'ACCOUNT_DISABLED';
+  /** First-run setup already wrote setup.completed_at. */
+  export const INITIAL_SETUP_ALREADY_COMPLETE = 'INITIAL_SETUP_ALREADY_COMPLETE';
+  /** Seed auth.user_admin mapping or user row is missing. */
+  export const INITIAL_ADMIN_NOT_FOUND = 'INITIAL_ADMIN_NOT_FOUND';
+  /** Seed base.company_main mapping is missing. */
+  export const INITIAL_COMPANY_NOT_FOUND = 'INITIAL_COMPANY_NOT_FOUND';
 
   // Token errors.
   export const TOKEN_CREATION_FAILED = 'TOKEN_CREATION_FAILED';

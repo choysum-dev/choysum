@@ -23,8 +23,7 @@
     "depends": [
       "core",
       "base",
-      "meta",
-      "document"
+      "meta"
     ],
     "cli": ">=0.0.0-0 <0.0.0",
     "entryPoints": {
@@ -41,6 +40,9 @@
           "fixtures": [
             "e2e/fixtures/smoke.json"
           ]
+        },
+        "setup-pending": {
+          "fixtures": []
         },
         "result-failed": {
           "extends": "default",

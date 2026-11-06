@@ -21,12 +21,6 @@ type EntryRecordRuleAllow struct {
 
 func defaultGrpcEntryPolicy() map[string]*EntryMethodConfig {
 	return map[string]*EntryMethodConfig{
-		"bootstrap.Workspace/Initialize": {
-			SkipAuthentication: true,
-		},
-		"bootstrap.Workspace/GetInitializationStatus": {
-			SkipAuthentication: true,
-		},
 		"auth.User/Register": {
 			SkipAuthentication: true,
 			SkipMethodAccess:   true,
@@ -43,6 +37,47 @@ func defaultGrpcEntryPolicy() map[string]*EntryMethodConfig {
 				{Model: "meta.MetaService", Ops: []string{"read"}},
 			},
 			SkipFieldRule: true,
+		},
+		// First-run setup: update seed admin + write auth.AppSetting setup.completed_at,
+		// after base.Company/ApplyInitialSetup writes the main company and activates its currency.
+		"auth.User/CompleteInitialSetup": {
+			SkipAuthentication: true,
+			SkipMethodAccess:   true,
+			SkipCompanyFilter:  true,
+			RecordRuleAllow: []EntryRecordRuleAllow{
+				{Model: "auth.User", Ops: []string{"read", "write"}},
+				{Model: "auth.AppSetting", Ops: []string{"read", "write", "create"}},
+				{Model: "meta.MetaModelData", Ops: []string{"read"}},
+				// Drop any pre-setup seed-admin sessions after credential rotation.
+				{Model: "auth.Session", Ops: []string{"read", "write"}},
+				{Model: "base.Company", Ops: []string{"read", "write"}},
+				{Model: "base.Currency", Ops: []string{"read", "write"}},
+				{Model: "base.Country", Ops: []string{"read"}},
+				{Model: "base.Language", Ops: []string{"read"}},
+			},
+			SkipFieldRule: true,
+		},
+		// Anonymous setup-form choices; setupgate only admits it while setup is pending.
+		"base.Company/GetInitialSetupOptions": {
+			SkipAuthentication: true,
+			SkipMethodAccess:   true,
+			SkipCompanyFilter:  true,
+			RecordRuleAllow: []EntryRecordRuleAllow{
+				{Model: "base.Company", Ops: []string{"read"}},
+				{Model: "base.Country", Ops: []string{"read"}},
+				{Model: "base.Currency", Ops: []string{"read"}},
+				{Model: "base.Language", Ops: []string{"read"}},
+				{Model: "meta.MetaModelData", Ops: []string{"read"}},
+			},
+			SkipFieldRule: true,
+		},
+		// Anonymous SetupPending/Ready probe for /web/setup routing.
+		"auth.User/GetInitialSetupState": {
+			SkipAuthentication: true,
+			SkipMethodAccess:   true,
+			SkipCompanyFilter:  true,
+			SkipRecordRule:     true,
+			SkipFieldRule:      true,
 		},
 		"auth.User/Login": {
 			SkipAuthentication: true,

@@ -6,6 +6,8 @@
 export { default as User } from './user/user';
 export { default as UserBase } from './user/user';
 export type {
+  CompleteInitialSetupReq,
+  CompleteInitialSetupResp,
   LoginReq,
   LogoutReq,
   RefreshTokensReq,

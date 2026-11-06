@@ -97,7 +97,9 @@ func ShouldSkipHTTP(rawPath string) bool {
 		p = p[:i]
 	}
 	switch p {
-	case "/health", "/healthz", "/readyz", "/favicon.ico":
+	case "/health", "/healthz", "/readyz", "/favicon.ico", "/web/favicon.ico",
+		"/apple-touch-icon.png", "/apple-touch-icon-precomposed.png",
+		"/-/setup/status":
 		return true
 	}
 	return strings.HasPrefix(p, "/web/assets/")

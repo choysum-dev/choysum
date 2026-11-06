@@ -100,7 +100,7 @@ function utcInstantInZone(input: Date | string | number, tz: string): TzDayjs | 
 
 /**
  * Convert a UTC instant to a Date whose local Y/M/D/h/m/s match the wall clock in `tz`.
- * Intended for Element Plus datetime pickers (browser-local Date getters).
+ * Intended for Choy datetime pickers (browser-local Date getters).
  */
 export function utcToUserWallDate(input: Date | string | number | null | undefined, tz: string = getUserTimeZone()): Date | null {
   if (input == null || input === '') return null;

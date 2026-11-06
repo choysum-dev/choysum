@@ -102,77 +102,77 @@ msgctxt "base.model.City.fields"
 msgid "State/Province"
 msgstr ""
 
-#: service/models/company.ts:89
+#: service/models/company.ts:105
 msgctxt "base.model.Company.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/company.ts:115
+#: service/models/company.ts:131
 msgctxt "base.model.Company.fields"
 msgid "Address"
 msgstr ""
 
-#: service/models/company.ts:77
+#: service/models/company.ts:93
 msgctxt "base.model.Company.fields"
 msgid "Base Currency"
 msgstr ""
 
-#: service/models/company.ts:35
+#: service/models/company.ts:51
 msgctxt "base.model.Company.fields"
 msgid "Code"
 msgstr ""
 
-#: service/models/company.ts:107
+#: service/models/company.ts:123
 msgctxt "base.model.Company.fields"
 msgid "Country"
 msgstr ""
 
-#: service/models/company.ts:65
+#: service/models/company.ts:81
 msgctxt "base.model.Company.fields"
 msgid "IANA timezone for business dates and scheduled jobs in this company."
 msgstr ""
 
-#: service/models/company.ts:98
+#: service/models/company.ts:114
 msgctxt "base.model.Company.fields"
 msgid "Language"
 msgstr ""
 
-#: service/models/company.ts:42
+#: service/models/company.ts:58
 msgctxt "base.model.Company.fields"
 msgid "Logo"
 msgstr ""
 
-#: service/models/company.ts:25
+#: service/models/company.ts:41
 msgctxt "base.model.Company.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/company.ts:43
+#: service/models/company.ts:59
 msgctxt "base.model.Company.fields"
 msgid "Optional company logo image."
 msgstr ""
 
-#: service/models/company.ts:52
+#: service/models/company.ts:68
 msgctxt "base.model.Company.fields"
 msgid "Parent Company"
 msgstr ""
 
-#: service/models/company.ts:53
+#: service/models/company.ts:69
 msgctxt "base.model.Company.fields"
 msgid "Parent in the company tree; cannot be self or a descendant."
 msgstr ""
 
-#: service/models/company.ts:78
+#: service/models/company.ts:94
 msgctxt "base.model.Company.fields"
 msgid "Reporting currency; foreign amounts convert to this currency."
 msgstr ""
 
-#: service/models/company.ts:36
+#: service/models/company.ts:52
 msgctxt "base.model.Company.fields"
 msgid "Short unique code used in references and integrations."
 msgstr ""
 
-#: service/models/company.ts:64
+#: service/models/company.ts:80
 msgctxt "base.model.Company.fields"
 msgid "Time Zone"
 msgstr ""
@@ -841,39 +841,75 @@ msgctxt "service/models/city"
 msgid "State.CountryId must equal City.CountryId"
 msgstr ""
 
-#: service/models/company.ts:122
+#: service/models/company.ts:138
 msgctxt "service/models/company"
 msgid "%s is required"
 msgstr ""
 
-#: service/models/company.ts:135
+#: service/models/_company_initial_setup.ts:212
+msgctxt "service/models/company"
+msgid "Base currency is required"
+msgstr ""
+
+#: service/models/company.ts:151
 msgctxt "service/models/company"
 msgid "Company Code must be unique"
 msgstr ""
 
-#: service/models/company.ts:144
+#: service/models/_company_initial_setup.ts:264
+msgctxt "service/models/company"
+msgid "Company not found: %s"
+msgstr ""
+
+#: service/models/_company_initial_setup.ts:256
+msgctxt "service/models/company"
+msgid "CompanyId is required"
+msgstr ""
+
+#: service/models/company.ts:160
 msgctxt "service/models/company"
 msgid "CurrencyId is required"
 msgstr ""
 
-#: service/models/company.ts:155
+#: service/models/_company_initial_setup.ts:237
+#: service/models/company.ts:171
 msgctxt "service/models/company"
 msgid "Invalid IANA timezone: %s"
 msgstr ""
 
-#: service/models/company.ts:178
+#: service/models/_company_initial_setup.ts:204
+msgctxt "service/models/company"
+msgid "Organization name is required"
+msgstr ""
+
+#: service/models/_company_initial_setup.ts:207
+msgctxt "service/models/company"
+msgid "Organization name is too long"
+msgstr ""
+
+#: service/models/company.ts:194
 msgctxt "service/models/company"
 msgid "ParentId cannot be a descendant of the company"
 msgstr ""
 
-#: service/models/company.ts:165
+#: service/models/company.ts:181
 msgctxt "service/models/company"
 msgid "ParentId cannot be self"
 msgstr ""
 
-#: service/models/company.ts:152
+#: service/models/company.ts:168
 msgctxt "service/models/company"
 msgid "Timezone is required"
+msgstr ""
+
+#: service/models/_company_initial_setup.ts:219
+msgctxt "service/models/company"
+msgid "Unknown currency: %s"
+msgstr ""
+
+#: service/models/_company_initial_setup.ts:230
+msgctxt "service/models/company"
+msgid "Unknown or inactive country: %s"
 msgstr ""
 
 #: service/models/country.ts:99
@@ -1066,7 +1102,7 @@ msgctxt "web/menu/menus"
 msgid "Exchange Rate Management"
 msgstr ""
 
-#: web/menu/menus.ts:31
+#: web/menu/menus.ts:37
 msgctxt "web/menu/menus"
 msgid "Field Defaults"
 msgstr ""
@@ -1081,12 +1117,12 @@ msgctxt "web/menu/menus"
 msgid "Master Data"
 msgstr ""
 
-#: web/menu/menus.ts:37
+#: web/menu/menus.ts:19
 msgctxt "web/menu/menus"
 msgid "Parameters"
 msgstr ""
 
-#: web/menu/menus.ts:25
+#: web/menu/menus.ts:31
 msgctxt "web/menu/menus"
 msgid "Property Definitions"
 msgstr ""
@@ -1106,7 +1142,7 @@ msgctxt "web/menu/menus"
 msgid "State Management"
 msgstr ""
 
-#: web/menu/menus.ts:19
+#: web/menu/menus.ts:25
 msgctxt "web/menu/menus"
 msgid "Translations"
 msgstr ""

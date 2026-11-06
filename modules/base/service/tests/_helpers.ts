@@ -19,9 +19,10 @@ function shortToken(size: number): string {
   return `${tail}${'X'.repeat(size)}`.slice(0, size);
 }
 
+/** Three-char code with at least one digit, so it never collides with seeded ISO 4217 codes. */
 export function currencyCode3(): string {
   const code = shortToken(3);
-  return code === 'CNY' ? 'CNX' : code;
+  return /^[A-Z]{3}$/.test(code) ? `${code.slice(0, 2)}9` : code;
 }
 
 export function companyCode8(): string {

@@ -45,9 +45,9 @@ var configRootOwnerMap = map[string]ConfigRootOwner{
 		OptionsType: "runtimeOptions",
 	},
 	"bootstrap_module_install_timeout_seconds": {
-		Domain:      "bootstrap",
-		PackagePath: "internal/bootstrap/service",
-		OptionsType: "coordinator",
+		Domain:      "provision",
+		PackagePath: "internal/provision",
+		OptionsType: "moduleInstallTimeout",
 	},
 	"default_choysum_path": {
 		Domain:      "cli",

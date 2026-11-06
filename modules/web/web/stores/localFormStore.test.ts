@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { createPinia, setActivePinia } from 'pinia';
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, watchEffect } from 'vue';
 import * as VueRouter from 'vue-router';
 
 import { flushPromises, fnRecorder, mountApp } from '@/web/web/__tests__/mountApp';
@@ -221,15 +221,32 @@ test('createLocalFormStore pure-scalar types set defaults and selection meta', (
   expect(store.getFieldMeta('Payload')?.typeAnnotation).toBe('object');
 });
 
-test('createLocalFormStore selection requires a non-empty selection list', () => {
+test('createLocalFormStore selection requires a selection array', () => {
   expect(() =>
     createLocalFormStore({ fields: [{ name: 'Kind', label: 'Kind', type: 'selection' }] })
-  ).toThrow(/requires a non-empty selection/);
-  expect(() =>
-    createLocalFormStore({
-      fields: [{ name: 'Kind', label: 'Kind', type: 'selection', selection: [] }],
-    })
-  ).toThrow(/requires a non-empty selection/);
+  ).toThrow(/requires a selection array/);
+});
+
+test('createLocalFormStore setFieldSelection replaces options reactively', () => {
+  const store = createLocalFormStore({
+    fields: [
+      { name: 'Kind', label: 'Kind', type: 'selection', selection: [] },
+      { name: 'Note', label: 'Note', type: 'varchar' },
+    ],
+  });
+  expect(store.getFieldMeta('Kind')?.selection).toEqual([]);
+  let seen = -1;
+  const stop = watchEffect(() => {
+    seen = store.getFieldMeta('Kind')?.selection?.length ?? -1;
+  }, { flush: 'sync' });
+  store.setFieldSelection('Kind', [{ value: 'a', label: 'A' }, { value: 1 as any, label: undefined as any }]);
+  expect(store.getFieldMeta('Kind')?.selection).toEqual([
+    { value: 'a', label: 'A' },
+    { value: '1', label: '1' },
+  ]);
+  expect(seen).toBe(2);
+  stop();
+  expect(() => store.setFieldSelection('Note', [])).toThrow(/is not a selection field/);
 });
 
 describe('createLocalFormStore + ChoyFormView', () => {

@@ -337,6 +337,7 @@ type ModuleManager struct {
 	jsExecutor               jsexecutor.ScriptExecutor
 	entities                 []any
 	bootstrapOnce            sync.Once
+	bootstrapErr             error
 	lockerFactory            statepkg.LockerFactory
 	moduleIndexSyncLocal     func(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (ModuleIndexSyncStats, error)
 	originCoordinatorFactory func(runtimeScope scope.Scope) OriginCoordinator
@@ -364,24 +365,23 @@ func moduleManagerLeaseRenewInterval(ttl time.Duration) time.Duration {
 }
 
 func (m *ModuleManager) ensureMetaTables() error {
-	var migrateErr error
 	m.bootstrapOnce.Do(func() {
 		// Bootstrap meta tables in an isolated transaction that is committed
 		// independently from any caller transaction.
 		// This avoids visibility issues when the caller is already inside an open
 		// transaction and another operation uses its own lease/meta transaction.
 		txRoot := m.runtimeScope.WithContext(m.runtimeScope.Context())
-		migrateErr = txRoot.Transactor().RequiresNew(txRoot.Context(), func(txScope scope.Scope, _ scope.Transaction) error {
+		m.bootstrapErr = txRoot.Transactor().RequiresNew(txRoot.Context(), func(txScope scope.Scope, _ scope.Transaction) error {
 			return m.bootstrapMetaTables(txScope)
 		})
-		if errors.Is(migrateErr, scope.ErrRequiresNewUnsupported) {
+		if errors.Is(m.bootstrapErr, scope.ErrRequiresNewUnsupported) {
 			// Test scopes / adapters without RequiresNew still need meta bootstrap.
-			migrateErr = txRoot.Transactor().Required(txRoot.Context(), func(txScope scope.Scope, _ scope.Transaction) error {
+			m.bootstrapErr = txRoot.Transactor().Required(txRoot.Context(), func(txScope scope.Scope, _ scope.Transaction) error {
 				return m.bootstrapMetaTables(txScope)
 			})
 		}
 	})
-	return migrateErr
+	return m.bootstrapErr
 }
 
 func (m *ModuleManager) bootstrapMetaTables(txScope scope.Scope) error {
@@ -400,7 +400,7 @@ func (m *ModuleManager) bootstrapMetaTables(txScope scope.Scope) error {
 	logger := txScope.Logger()
 	startedAt := time.Now()
 	if logger != nil {
-		logger.Info("meta base table bootstrap started", "entity_count", len(m.entities))
+		logger.Debug("meta base table bootstrap started", "entity_count", len(m.entities))
 	}
 
 	const (
@@ -443,7 +443,7 @@ func (m *ModuleManager) bootstrapMetaTables(txScope scope.Scope) error {
 		return xfmt.Errorf("ensure effective app/name unique index: %w", err)
 	}
 	if logger != nil {
-		logger.Info("meta base table bootstrap completed", "duration_ms", time.Since(startedAt).Milliseconds())
+		logger.Debug("meta base table bootstrap completed", "duration_ms", time.Since(startedAt).Milliseconds())
 	}
 	return nil
 }
@@ -884,11 +884,11 @@ func moduleOperationPlanMessage(op plan.OpType) string {
 func moduleOperationCompletedMessage(op plan.OpType) string {
 	switch op {
 	case plan.OpInstall:
-		return "installed"
+		return "module install finished"
 	case plan.OpUninstall:
-		return "uninstalled"
+		return "module uninstall finished"
 	default:
-		return "upgraded"
+		return "module upgrade finished"
 	}
 }
 

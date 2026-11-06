@@ -29,7 +29,10 @@ const ForceWebBuildEnv = "CHOYSUM_FORCE_WEB_BUILD"
 // v8: product CSS emit is FullCSS (theme+preflight+utilities). Dialect,
 // candidates, and tailwind-go engine alone do not distinguish that from a
 // utilities-only stamp, so upgrade would otherwise skip regeneration.
-const webInputDigestSchema = "web-input-digest-v8"
+// v9: favicon/apple-touch publish under dist/web (not assets Outdir) and
+// index.html href becomes /web/favicon.ico; Go-only plugin changes must
+// invalidate the stamp or upgrade skips HTML rewrite.
+const webInputDigestSchema = "web-input-digest-v9"
 
 const choyTailwindGoModulePath = "github.com/dhamidi/tailwind-go"
 
@@ -231,7 +234,7 @@ func hashWebSourceTreeOpts(h io.Writer, root string, skipBuildDirs bool) error {
 }
 
 // isChoyTailwindGeneratedKitPath reports whether path is the kit's generated
-// utilities CSS (workspace generated/styles or legacy kit host styles/).
+// utilities CSS (workspace generated/styles or web kit host styles/).
 func isChoyTailwindGeneratedKitPath(path string) bool {
 	if filepath.Base(path) != choyTailwindGeneratedCSSName {
 		return false
@@ -241,12 +244,9 @@ func isChoyTailwindGeneratedKitPath(path string) bool {
 	if isWorkspaceGeneratedStylesDigestPath(slash) {
 		return true
 	}
-	// Legacy in-module emit: only "<module>/web/styles/<name>" of the web kit
-	// host; require a directory boundary so modules like "myweb" are not matched.
-	// Legacy choy_ui paths stay recognized so leftover generated files do not
-	// invalidate digests during cutover cleanups.
-	return hasKitHostStylesSuffix(slash, "web/web/styles/"+choyTailwindGeneratedCSSName) ||
-		hasKitHostStylesSuffix(slash, "choy_ui/web/styles/"+choyTailwindGeneratedCSSName)
+	// In-module emit: only "<module>/web/styles/<name>" of the web kit host;
+	// require a directory boundary so modules like "myweb" are not matched.
+	return hasKitHostStylesSuffix(slash, "web/web/styles/"+choyTailwindGeneratedCSSName)
 }
 
 // isWorkspaceGeneratedStylesDigestPath matches kit CSS under DefaultChoysumPath.

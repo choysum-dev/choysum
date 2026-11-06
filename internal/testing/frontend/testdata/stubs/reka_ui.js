@@ -7,7 +7,7 @@
  * (`TypeError: not a function`). Passthrough slot hosts keep Dialog / Toast /
  * Combobox / Calendar / Sidebar mounts usable in FE unit tests.
  */
-import { computed, defineComponent, h, inject, provide, ref } from 'vue';
+import { computed, defineComponent, getCurrentInstance, h, inject, provide, ref, toHandlerKey } from 'vue';
 
 function stub(name) {
   return defineComponent({
@@ -19,9 +19,9 @@ function stub(name) {
           'div',
           { 'data-reka-stub': name, ...attrs },
           [
-            slots.default ? slots.default() : null,
-            slots.trigger ? slots.trigger() : null,
-            slots.content ? slots.content() : null,
+            slots.default ? slots.default({}) : null,
+            slots.trigger ? slots.trigger({}) : null,
+            slots.content ? slots.content({}) : null,
           ],
         );
     },
@@ -44,8 +44,15 @@ export function createContext(name) {
   return [useContext, provideContext];
 }
 
-export function useForwardPropsEmits(props) {
-  return props;
+/** Props plus `on*` handlers that re-emit the caller's declared emits (Reka contract). */
+export function useForwardPropsEmits(props, emit) {
+  const names = Object.keys(getCurrentInstance()?.emitsOptions || {});
+  if (typeof emit !== 'function' || names.length === 0) return props;
+  const handlers = {};
+  for (const name of names) {
+    handlers[toHandlerKey(name)] = (...args) => emit(name, ...args);
+  }
+  return computed(() => ({ ...props, ...handlers }));
 }
 
 export function useForwardProps(props) {
@@ -305,6 +312,93 @@ export const SelectValue = stub('SelectValue');
 export const SelectViewport = stub('SelectViewport');
 export const SwitchRoot = stub('SwitchRoot');
 export const SwitchThumb = stub('SwitchThumb');
+const STEPPER_ROOT = Symbol('reka-stepper-root');
+const STEPPER_ITEM = Symbol('reka-stepper-item');
+
+/** Stepper host: tracks the 1-based active step and emits update:modelValue from triggers. */
+export const StepperRoot = defineComponent({
+  name: 'StepperRoot',
+  inheritAttrs: false,
+  props: {
+    modelValue: { type: Number, default: undefined },
+    defaultValue: { type: Number, default: 1 },
+    linear: { type: Boolean, default: true },
+  },
+  emits: ['update:modelValue'],
+  setup(props, { slots, emit, attrs }) {
+    const local = ref(props.defaultValue);
+    const active = computed(() => (props.modelValue !== undefined ? props.modelValue : local.value));
+    provide(STEPPER_ROOT, {
+      active,
+      select(step) {
+        local.value = step;
+        emit('update:modelValue', step);
+      },
+    });
+    return () =>
+      h('div', { 'data-reka-stub': 'StepperRoot', ...attrs }, slots.default ? slots.default({ modelValue: active.value }) : null);
+  },
+});
+export const StepperItem = defineComponent({
+  name: 'StepperItem',
+  inheritAttrs: false,
+  props: {
+    step: { type: Number, required: true },
+    disabled: { type: Boolean, default: false },
+    completed: { type: Boolean, default: false },
+  },
+  setup(props, { slots, attrs }) {
+    const root = inject(STEPPER_ROOT, null);
+    const state = computed(() => {
+      const active = root ? root.active.value : undefined;
+      if (props.step === active) return 'active';
+      if (props.completed || (active !== undefined && props.step < active)) return 'completed';
+      return 'inactive';
+    });
+    provide(STEPPER_ITEM, {
+      step: computed(() => props.step),
+      disabled: computed(() => props.disabled),
+    });
+    return () =>
+      h(
+        'div',
+        {
+          'data-reka-stub': 'StepperItem',
+          'data-state': state.value,
+          'data-disabled': props.disabled ? '' : undefined,
+          ...attrs,
+        },
+        slots.default ? slots.default({ state: state.value }) : null,
+      );
+  },
+});
+export const StepperTrigger = defineComponent({
+  name: 'StepperTrigger',
+  inheritAttrs: false,
+  setup(_, { slots, attrs }) {
+    const root = inject(STEPPER_ROOT, null);
+    const item = inject(STEPPER_ITEM, null);
+    return () =>
+      h(
+        'button',
+        {
+          type: 'button',
+          'data-reka-stub': 'StepperTrigger',
+          disabled: item?.disabled.value || undefined,
+          onClick: () => {
+            if (!root || !item || item.disabled.value) return;
+            root.select(item.step.value);
+          },
+          ...attrs,
+        },
+        slots.default ? slots.default() : null,
+      );
+  },
+});
+export const StepperIndicator = stub('StepperIndicator');
+export const StepperTitle = stub('StepperTitle');
+export const StepperDescription = stub('StepperDescription');
+export const StepperSeparator = stub('StepperSeparator');
 export const TabsContent = stub('TabsContent');
 export const TabsList = stub('TabsList');
 export const TabsRoot = stub('TabsRoot');

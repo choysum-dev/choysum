@@ -158,9 +158,9 @@ func TestSplitBarePackageSpecifier(t *testing.T) {
 		subpath string
 		ok      bool
 	}{
-		{in: "echarts", root: "echarts", subpath: "", ok: true},
-		{in: "echarts/core", root: "echarts", subpath: "core", ok: true},
-		{in: "echarts/charts", root: "echarts", subpath: "charts", ok: true},
+		{in: "acme", root: "acme", subpath: "", ok: true},
+		{in: "acme/core", root: "acme", subpath: "core", ok: true},
+		{in: "acme/charts", root: "acme", subpath: "charts", ok: true},
 		{in: "@scope/pkg", root: "@scope/pkg", subpath: "", ok: true},
 		{in: "@scope/pkg/sub", root: "@scope/pkg", subpath: "sub", ok: true},
 		{in: "@scope/pkg/a/b", root: "@scope/pkg", subpath: "a/b", ok: true},
@@ -207,13 +207,13 @@ func TestTypeFetchDiscoverSpec(t *testing.T) {
 		version   string
 		want      string
 	}{
-		{specifier: "echarts", version: "6.1.0", want: "echarts@6.1.0"},
-		{specifier: "echarts/core", version: "6.1.0", want: "echarts@6.1.0/core"},
+		{specifier: "acme", version: "6.1.0", want: "acme@6.1.0"},
+		{specifier: "acme/core", version: "6.1.0", want: "acme@6.1.0/core"},
 		{specifier: "@vue/test-utils", version: "2.4.11", want: "@vue/test-utils@2.4.11"},
 		{specifier: "@vue/test-utils/dist/vue-test-utils.esm-browser", version: "2.4.11", want: "@vue/test-utils@2.4.11/dist/vue-test-utils.esm-browser"},
 		{specifier: "", version: "1.0.0", want: ""},
-		{specifier: "echarts", version: "", want: "echarts"},
-		{specifier: "echarts/core", version: "", want: "echarts/core"},
+		{specifier: "acme", version: "", want: "acme"},
+		{specifier: "acme/core", version: "", want: "acme/core"},
 		{specifier: "not a package!!", version: "1.2.3", want: "not a package!!@1.2.3"},
 		{specifier: "not a package!!", version: "", want: "not a package!!"},
 	}
@@ -227,35 +227,35 @@ func TestTypeFetchDiscoverSpec(t *testing.T) {
 
 func TestSubpathTypeFetchTargets(t *testing.T) {
 	t.Parallel()
-	deps := map[string]string{"echarts": "^6.1.0", "vue": "^3.5.35", "dayjs": "^1.11.21"}
+	deps := map[string]string{"acme": "^6.1.0", "vue": "^3.5.35", "dayjs": "^1.11.21"}
 	imports := []string{
-		"echarts/core",
-		"echarts/charts",
+		"acme/core",
+		"acme/charts",
 		"vue",
 		"lodash/get",
-		"echarts/core",
+		"acme/core",
 		"dayjs/locale/zh-cn",
-		"element-plus/dist/index.css",
+		"acme/dist/index.css",
 	}
 	got := subpathTypeFetchTargets(deps, imports)
 	if len(got) != 2 {
-		t.Fatalf("targets = %#v, want 2 echarts subpaths", got)
+		t.Fatalf("targets = %#v, want 2 acme subpaths", got)
 	}
-	if got[0].name != "echarts/charts" || got[0].version != "6.1.0" {
+	if got[0].name != "acme/charts" || got[0].version != "6.1.0" {
 		t.Fatalf("first target = %#v", got[0])
 	}
-	if got[1].name != "echarts/core" || got[1].version != "6.1.0" {
+	if got[1].name != "acme/core" || got[1].version != "6.1.0" {
 		t.Fatalf("second target = %#v", got[1])
 	}
 }
 
 func TestIsAssetLikeImportSpecifier(t *testing.T) {
 	t.Parallel()
-	if !isAssetLikeImportSpecifier("element-plus/dist/index.css") {
+	if !isAssetLikeImportSpecifier("acme/dist/index.css") {
 		t.Fatal("expected css import to be treated as asset")
 	}
-	if isAssetLikeImportSpecifier("echarts/core") {
-		t.Fatal("did not expect echarts/core to be treated as asset")
+	if isAssetLikeImportSpecifier("acme/core") {
+		t.Fatal("did not expect acme/core to be treated as asset")
 	}
 }
 
@@ -264,8 +264,8 @@ func TestShouldSkipTypeFetchSubpathSpecifier(t *testing.T) {
 	if !shouldSkipTypeFetchSubpathSpecifier("dayjs/locale/zh-cn") {
 		t.Fatal("expected dayjs locale subpath to be skipped")
 	}
-	if shouldSkipTypeFetchSubpathSpecifier("echarts/core") {
-		t.Fatal("did not expect echarts/core to be skipped")
+	if shouldSkipTypeFetchSubpathSpecifier("acme/core") {
+		t.Fatal("did not expect acme/core to be skipped")
 	}
 }
 
@@ -279,7 +279,7 @@ func TestIsStaleGeneratedTsconfigPathsKey(t *testing.T) {
 		{in: "@/*", want: false},
 		{in: "vue", want: false},
 		{in: "@vicons/material", want: false},
-		{in: "echarts/core", want: false},
+		{in: "acme/core", want: false},
 		{in: "foo.d.ts-utils", want: false},
 		{in: "@scope/foo.d.ts-utils", want: false},
 		{in: "@vicons/material@0.13.0/es/AbcFilled.d.ts", want: true},
@@ -300,11 +300,11 @@ func TestIsValidTsconfigPathsMappingKey(t *testing.T) {
 		in   string
 		want bool
 	}{
-		{in: "echarts", want: true},
-		{in: "echarts/core", want: true},
+		{in: "acme", want: true},
+		{in: "acme/core", want: true},
 		{in: "@vue/test-utils", want: true},
 		{in: "@vue/test-utils/dist/x", want: true},
-		{in: "echarts@6.0.0/core.d.ts", want: false},
+		{in: "acme@6.0.0/core.d.ts", want: false},
 		{in: "vue@3.5.35/dist/vue.d.mts", want: false},
 		{in: "https://esm.sh/vue", want: false},
 		{in: "", want: false},
@@ -319,24 +319,24 @@ func TestIsValidTsconfigPathsMappingKey(t *testing.T) {
 func TestCollectSourceBareImportSpecifiers(t *testing.T) {
 	t.Parallel()
 	content := `
-import type { EChartsOption } from 'echarts';
-import { use } from 'echarts/core';
-import { BarChart } from "echarts/charts";
+import type { AcmeOption } from 'acme';
+import { use } from 'acme/core';
+import { BarChart } from "acme/charts";
 import equal from 'fast-deep-equal';
 import local from './local';
 import alias from '@/alias';
-export { TitleComponent } from 'echarts/components';
-const dyn = import('echarts/renderers');
+export { TitleComponent } from 'acme/components';
+const dyn = import('acme/renderers');
 type X = import('vue').Ref;
 `
 	got := collectSourceBareImportSpecifiers(content, "chart.ts")
 	want := map[string]bool{
-		"echarts":            true,
-		"echarts/core":       true,
-		"echarts/charts":     true,
+		"acme":            true,
+		"acme/core":       true,
+		"acme/charts":     true,
 		"fast-deep-equal":    true,
-		"echarts/components": true,
-		"echarts/renderers":  true,
+		"acme/components": true,
+		"acme/renderers":  true,
 		"vue":                true,
 	}
 	if len(got) != len(want) {
@@ -356,13 +356,13 @@ func TestCollectModuleSourceImportSpecifiers(t *testing.T) {
 	if err := os.MkdirAll(srcDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(srcDir, "chart.ts"), []byte("import { use } from 'echarts/core';\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(srcDir, "chart.ts"), []byte("import { use } from 'acme/core';\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(filepath.Join(dir, "node_modules", "echarts"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, "node_modules", "acme"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "node_modules", "echarts", "index.ts"), []byte("import x from 'should-not-see';\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "node_modules", "acme", "index.ts"), []byte("import x from 'should-not-see';\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -370,8 +370,8 @@ func TestCollectModuleSourceImportSpecifiers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("collectModuleSourceImportSpecifiers: %v", err)
 	}
-	if len(got) != 1 || got[0] != "echarts/core" {
-		t.Fatalf("got %#v, want [echarts/core]", got)
+	if len(got) != 1 || got[0] != "acme/core" {
+		t.Fatalf("got %#v, want [acme/core]", got)
 	}
 }
 
@@ -383,8 +383,8 @@ func TestUpdateTsconfigPaths_SkipsVersionedTransitiveKeys(t *testing.T) {
 	if err := os.MkdirAll(typesDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	valid := filepath.Join(typesDir, "echarts-core.d.ts")
-	junk := filepath.Join(typesDir, "echarts-versioned.d.ts")
+	valid := filepath.Join(typesDir, "acme-core.d.ts")
+	junk := filepath.Join(typesDir, "acme-versioned.d.ts")
 	if err := os.WriteFile(valid, []byte("export {};\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -393,8 +393,8 @@ func TestUpdateTsconfigPaths_SkipsVersionedTransitiveKeys(t *testing.T) {
 	}
 
 	results := []TypeFetchResult{
-		{Package: "echarts/core", Version: "6.1.0", CachedPath: valid},
-		{Package: "echarts@6.0.0/core.d.ts", Version: "", CachedPath: junk},
+		{Package: "acme/core", Version: "6.1.0", CachedPath: valid},
+		{Package: "acme@6.0.0/core.d.ts", Version: "", CachedPath: junk},
 	}
 	if err := UpdateTsconfigPaths(tsconfigPath, results); err != nil {
 		t.Fatalf("UpdateTsconfigPaths: %v", err)
@@ -404,10 +404,10 @@ func TestUpdateTsconfigPaths_SkipsVersionedTransitiveKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 	content := string(data)
-	if !strings.Contains(content, `"echarts/core"`) {
-		t.Fatalf("expected echarts/core path, got %s", content)
+	if !strings.Contains(content, `"acme/core"`) {
+		t.Fatalf("expected acme/core path, got %s", content)
 	}
-	if strings.Contains(content, "echarts@6.0.0/core.d.ts") {
+	if strings.Contains(content, "acme@6.0.0/core.d.ts") {
 		t.Fatalf("did not expect versioned transitive path key, got %s", content)
 	}
 }
@@ -798,29 +798,29 @@ func TestFetchTypeDefinition_PromotesAmbientCJSWrapper(t *testing.T) {
 func TestFetchTypesForModule_IncludesSubpathFromSource(t *testing.T) {
 	t.Parallel()
 	moduleDir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(moduleDir, "package.json"), []byte(`{"peerDependencies":{"echarts":"^6.1.0"}}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(moduleDir, "package.json"), []byte(`{"peerDependencies":{"acme":"^6.1.0"}}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	srcDir := filepath.Join(moduleDir, "web")
 	if err := os.MkdirAll(srcDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(srcDir, "chart.ts"), []byte("import { use } from 'echarts/core';\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(srcDir, "chart.ts"), []byte("import { use } from 'acme/core';\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	var srv *httptest.Server
 	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case r.Method == http.MethodHead && r.URL.Path == "/echarts@6.1.0" && r.URL.RawQuery == "dts":
-			w.Header().Set("x-typescript-types", srv.URL+"/echarts@6.1.0/types/dist/all.d.ts")
+		case r.Method == http.MethodHead && r.URL.Path == "/acme@6.1.0" && r.URL.RawQuery == "dts":
+			w.Header().Set("x-typescript-types", srv.URL+"/acme@6.1.0/types/dist/all.d.ts")
 			w.WriteHeader(http.StatusOK)
-		case r.Method == http.MethodHead && r.URL.Path == "/echarts@6.1.0/core" && r.URL.RawQuery == "dts":
-			w.Header().Set("x-typescript-types", srv.URL+"/echarts@6.1.0/core.d.ts")
+		case r.Method == http.MethodHead && r.URL.Path == "/acme@6.1.0/core" && r.URL.RawQuery == "dts":
+			w.Header().Set("x-typescript-types", srv.URL+"/acme@6.1.0/core.d.ts")
 			w.WriteHeader(http.StatusOK)
-		case r.URL.Path == "/echarts@6.1.0/types/dist/all.d.ts":
+		case r.URL.Path == "/acme@6.1.0/types/dist/all.d.ts":
 			_, _ = w.Write([]byte("export declare const init: any;\n"))
-		case r.URL.Path == "/echarts@6.1.0/core.d.ts":
+		case r.URL.Path == "/acme@6.1.0/core.d.ts":
 			_, _ = w.Write([]byte("export declare const use: (...args: any[]) => void;\n"))
 		default:
 			http.NotFound(w, r)
@@ -840,10 +840,10 @@ func TestFetchTypesForModule_IncludesSubpathFromSource(t *testing.T) {
 	for _, r := range results {
 		found[r.Package] = true
 	}
-	if !found["echarts"] {
-		t.Fatalf("missing echarts result in %#v", results)
+	if !found["acme"] {
+		t.Fatalf("missing acme result in %#v", results)
 	}
-	if !found["echarts/core"] {
-		t.Fatalf("missing echarts/core result in %#v", results)
+	if !found["acme/core"] {
+		t.Fatalf("missing acme/core result in %#v", results)
 	}
 }

@@ -439,6 +439,9 @@ func (s *ApplicationService) WebHandlers() (map[string]http.Handler, error) {
 		handlers := make(map[string]http.Handler)
 		webBaseUrl := strings.TrimSuffix(opts.webBaseURL, "/") + "/"
 		handlers[webBaseUrl] = s.staticFileHandler(s.appDistPath, webBaseUrl)
+		// Browser default probes hit the site root (not /web/...); serve the
+		// built icons when present so auth does not 401 anonymous icon GETs.
+		s.registerRootIconHandlers(handlers)
 		// Handle root-path redirection.
 		if webBaseUrl != "/" {
 			redirectTarget := webBaseUrl // Default redirect target is WebBaseURL.
@@ -452,6 +455,51 @@ func (s *ApplicationService) WebHandlers() (map[string]http.Handler, error) {
 	}
 
 	return nil, nil
+}
+
+// registerRootIconHandlers mounts built favicon / apple-touch files at "/…".
+func (s *ApplicationService) registerRootIconHandlers(handlers map[string]http.Handler) {
+	if s == nil || handlers == nil {
+		return
+	}
+	type rootIcon struct {
+		pattern string
+		file    string
+		ctype   string
+	}
+	for _, icon := range []rootIcon{
+		{pattern: "/favicon.ico", file: "favicon.ico", ctype: "image/x-icon"},
+		{pattern: "/apple-touch-icon.png", file: "apple-touch-icon.png", ctype: "image/png"},
+		{pattern: "/apple-touch-icon-precomposed.png", file: "apple-touch-icon.png", ctype: "image/png"},
+	} {
+		path := filepath.Join(s.appDistPath, icon.file)
+		info, err := os.Stat(path)
+		if err != nil || !info.Mode().IsRegular() {
+			continue
+		}
+		filePath, contentType := path, icon.ctype
+		handlers[icon.pattern] = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodGet && r.Method != http.MethodHead {
+				w.Header().Set("Allow", "GET, HEAD")
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			f, err := os.Open(filePath)
+			if err != nil {
+				http.NotFound(w, r)
+				return
+			}
+			defer f.Close()
+			info, err := f.Stat()
+			if err != nil || !info.Mode().IsRegular() {
+				http.NotFound(w, r)
+				return
+			}
+			w.Header().Set("Content-Type", contentType)
+			w.Header().Set("Cache-Control", "public, max-age=86400")
+			http.ServeContent(w, r, info.Name(), info.ModTime(), f)
+		})
+	}
 }
 
 func NewApplicationService(runtimeScope scope.Scope, name string, jsExecutor jsexecutor.ScriptExecutor, opts ...Option) (*ApplicationService, error) {

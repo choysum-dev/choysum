@@ -8,6 +8,10 @@ import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests_
 import BinaryField from './ChoyBinaryField.vue';
 import ChoyFieldBase from './ChoyFieldBase.vue';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import { CollaborationCapsKey } from '@/web/web/platform/collaborationCaps';
+
+const CAPS_WITH_DOCUMENT = { message: false, audit: false, document: true };
+const CAPS_WITHOUT_DOCUMENT = { message: false, audit: false, document: false };
 
 function makeBinding(opts?: { value?: unknown; prop?: string }): any {
   const value = ref(opts?.value ?? null);
@@ -106,6 +110,7 @@ function mountField(binding: UseField, mode: 'edit' | 'display' = 'edit', extraP
       drag: false,
       ...extraProps,
     },
+    provide: { [CollaborationCapsKey]: CAPS_WITH_DOCUMENT },
   });
 }
 
@@ -245,6 +250,27 @@ describe('ChoyBinaryField', () => {
     m.unmount();
   });
 
+  test('without document shows upload hint and blocks onPickedFile while remove still works', async () => {
+    const binding = makeBinding({
+      value: { attachmentObjectId: 'ao-1', fileName: 'keep.bin', kind: 'set' },
+    });
+    installFieldBaseEditStub();
+    installChoyButtonStub();
+    const m = mountApp(BinaryField as any, {
+      props: { binding, renderMode: 'form', drag: false },
+      provide: { [CollaborationCapsKey]: CAPS_WITHOUT_DOCUMENT },
+    });
+    await flushPromises();
+    expect(m.q('[data-testid="attachment-upload-hint"]')?.textContent || '').toMatch(/document|未安装/i);
+    const ss = m.setupState() as any;
+    await ss.onPickedFile(new File([new Uint8Array([1])], 'x.bin'), () => binding.fieldRef());
+    expect(String(ss.pickError || '')).toMatch(/document|未安装/i);
+    expect(binding.fieldRef().value).toMatchObject({ attachmentObjectId: 'ao-1' });
+    await ss.removeBinary(() => binding.fieldRef(), async () => {});
+    expect(binding.fieldRef().value).toBeNull();
+    m.unmount();
+  });
+
   test('writes pending set envelope on upload', async () => {
     const binding = makeBinding();
     const m = mountField(binding);
@@ -312,7 +338,7 @@ describe('ChoyBinaryField', () => {
     installChoyButtonStub();
     const m = mountApp(BinaryField as any, {
       props: { binding, renderMode: 'form', drag: false, accept: '.pdf' },
-      provide: { 'field-errors': errMap },
+      provide: { 'field-errors': errMap, [CollaborationCapsKey]: CAPS_WITH_DOCUMENT },
     });
     await flushPromises();
     const ss = m.setupState() as any;

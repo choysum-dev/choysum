@@ -160,42 +160,12 @@ func SyncLocalModuleIndex(ctx context.Context, runtimeScope scope.Scope, lockerF
 	return stats, nil
 }
 
-func moduleIndexLockTTL(ctx context.Context, runtimeScope scope.Scope) time.Duration {
-	const (
-		settingKey   = "meta.module_index.sync_lock_ttl_ms"
-		maxMs        = 120000
-		minMs        = 1000
-		fallbackTime = 60 * time.Second
-	)
+// moduleIndexLockTTLDefault is the code default for the local module-index sync
+// lease (aligned with moduleManagerLeaseTTL).
+const moduleIndexLockTTLDefault = 60 * time.Second
 
-	sess := runtimeScope.Session()
-	if sess == nil || sess.DB == nil {
-		return fallbackTime
-	}
-	if isTableMissingInSession(sess, "meta_setting") {
-		return fallbackTime
-	}
-
-	var setting modmeta.Setting
-	res := sess.WithContext(ctx).Where("key = ?", settingKey).Take(&setting)
-	if res.Error != nil {
-		return fallbackTime
-	}
-	val := strings.TrimSpace(setting.Value)
-	if val == "" {
-		return fallbackTime
-	}
-	ms, err := strconv.Atoi(val)
-	if err != nil {
-		return fallbackTime
-	}
-	if ms < minMs {
-		ms = minMs
-	}
-	if ms > maxMs {
-		ms = maxMs
-	}
-	return time.Duration(ms) * time.Millisecond
+func moduleIndexLockTTL(context.Context, scope.Scope) time.Duration {
+	return moduleIndexLockTTLDefault
 }
 
 func shouldSkipModuleDir(name string) bool {

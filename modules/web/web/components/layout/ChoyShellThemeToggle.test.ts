@@ -29,7 +29,7 @@ describe('ChoyShellThemeToggle', () => {
     await flushPromises();
     const btn = themeButton(mounted);
     expect(btn).not.toBeNull();
-    expect(btn?.getAttribute('aria-label')).toBe('layout.header.theme');
+    expect(btn?.getAttribute('aria-label')).toBe('Theme');
     expect(mounted.q('[data-lucide=Sun]')).not.toBeNull();
     expect(mounted.q('[data-lucide=Monitor]')).toBeNull();
     const applyTheme = mounted.setupState()?.applyTheme as ((mode: ChoyThemeMode) => void) | undefined;
@@ -50,7 +50,7 @@ describe('ChoyShellThemeToggle', () => {
     mounted.unmount();
   });
 
-  test('uses vue-i18n layout strings when the plugin is installed', async () => {
+  test('labels stay terminology msgids with vue-i18n installed', async () => {
     writeTheme('dark');
     const i18n = createI18n({
       legacy: false,

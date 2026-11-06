@@ -852,13 +852,13 @@ func TestTrimCSSWrapperSuffix(t *testing.T) {
 	}{
 		{
 			name: "css js wrapper",
-			url:  "https://esm.sh/element-plus/theme-chalk/base.css.js?target=es2020",
-			want: "https://esm.sh/element-plus/theme-chalk/base.css?target=es2020",
+			url:  "https://esm.sh/acme-kit/theme/base.css.js?target=es2020",
+			want: "https://esm.sh/acme-kit/theme/base.css?target=es2020",
 		},
 		{
 			name: "css mjs wrapper",
-			url:  "https://esm.sh/element-plus/theme-chalk/base.css.mjs#v=1",
-			want: "https://esm.sh/element-plus/theme-chalk/base.css#v=1",
+			url:  "https://esm.sh/acme-kit/theme/base.css.mjs#v=1",
+			want: "https://esm.sh/acme-kit/theme/base.css#v=1",
 		},
 		{
 			name: "css ts wrapper",

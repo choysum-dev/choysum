@@ -231,6 +231,20 @@ describe('FormView native form submit', () => {
     }
   });
 
+  test('exposed validate() reports client rule state without submitting', async () => {
+    const { wrapper: failing, submitHandler: failingHandler } = mountForm({ failValidate: true });
+    await flushPromises();
+    expect(await failing.root.validate()).toBe(false);
+    expect(failingHandler.calls.length).toBe(0);
+    failing.unmount();
+
+    const { wrapper: passing, submitHandler } = mountForm();
+    await flushPromises();
+    expect(await passing.root.validate()).toBe(true);
+    expect(submitHandler.calls.length).toBe(0);
+    passing.unmount();
+  });
+
   test('cancelHandler runs via exposed cancel()', async () => {
     const cancelHandler = fnRecorder(async () => {});
     const { router } = createFeStubRouter({

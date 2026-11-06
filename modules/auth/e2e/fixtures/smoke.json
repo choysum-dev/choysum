@@ -131,6 +131,14 @@
           "ref": "auth.e2e_role_sys_admin"
         }
       }
+    },
+    {
+      "name": "e2e_setup_completed_at",
+      "model": "AppSetting",
+      "values": {
+        "Key": "setup.completed_at",
+        "Value": "2020-01-01T00:00:00Z"
+      }
     }
   ]
 }

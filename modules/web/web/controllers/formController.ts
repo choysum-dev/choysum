@@ -171,7 +171,8 @@ type AttachmentResolutionContext = {
   ownerModel: string;
   ownerRecordId?: string;
   fieldName: string;
-  service: AttachmentContentServiceLike;
+  /** Required only when resolving Blob/File uploads. */
+  service?: AttachmentContentServiceLike;
   store: WebModelStore<any>;
 };
 
@@ -384,6 +385,21 @@ function looksLikeUploadEnvelope(value: unknown): boolean {
   return kind === 'set' || kind === 'clear' || kind === 'noop';
 }
 
+/** True when normalize must call document.AttachmentContent (Prepare/Finalize upload). */
+function attachmentFieldNeedsContentService(value: unknown): boolean {
+  if (isBlobLike(value)) return true;
+  if (!isRecord(value) || Array.isArray(value)) return false;
+  const fileLike = (value as { file?: unknown; blob?: unknown; data?: unknown }).file
+    ?? (value as { blob?: unknown }).blob
+    ?? (value as { data?: unknown }).data;
+  return isBlobLike(fileLike);
+}
+
+function isNoopAttachmentEnvelope(value: unknown): boolean {
+  if (!isRecord(value) || Array.isArray(value)) return false;
+  return normalizeOptionalString(value.kind)?.toLowerCase() === 'noop';
+}
+
 function attachmentFieldNames(store: WebModelStore<any>): string[] {
   const metas = (store as any)?.fieldsMetadata as Record<string, { type?: string }> | undefined;
   if (!metas) return [];
@@ -509,6 +525,12 @@ async function resolveUploadInputToObjectId(
   recordLike: Record<string, unknown> | undefined,
   ctx: AttachmentResolutionContext
 ): Promise<string> {
+  const service = ctx.service;
+  if (!service) {
+    throw new Error(
+      `[Attachment] ${fieldName}: document module is not installed; binary/image upload is unavailable.`
+    );
+  }
   const operation = ctx.operation;
   const ownerModel = ctx.ownerModel;
   const ownerRecordId = normalizeOptionalString(ctx.ownerRecordId);
@@ -555,8 +577,8 @@ async function resolveUploadInputToObjectId(
     clientContentType: contentType,
   };
 
-  const prepared = await runWithStoreContext(ctx.store, ctx.service, async () => {
-    return await ctx.service.PrepareUpload(prepareReq);
+  const prepared = await runWithStoreContext(ctx.store, service, async () => {
+    return await service.PrepareUpload(prepareReq);
   });
 
   const uploadId = normalizeOptionalString(prepared?.uploadId);
@@ -567,8 +589,8 @@ async function resolveUploadInputToObjectId(
 
   await uploadToTarget(fieldName, uploadTarget, blob);
 
-  const finalized = await runWithStoreContext(ctx.store, ctx.service, async () => {
-    return await ctx.service.FinalizeUpload({
+  const finalized = await runWithStoreContext(ctx.store, service, async () => {
+    return await service.FinalizeUpload({
       uploadId,
       businessRequestId,
     });
@@ -644,7 +666,16 @@ async function normalizeAttachmentFieldsInPayload(
   if (!options.fields.length) return payload;
 
   const nextPayload: Record<string, unknown> = { ...payload };
-  const service = resolveAttachmentContentService(store, pickDep(deps.createStoreByModel, createStoreByModel));
+  const needsUpload = options.fields.some(fieldName => {
+    if (!Object.prototype.hasOwnProperty.call(nextPayload, fieldName)) return false;
+    return attachmentFieldNeedsContentService(nextPayload[fieldName]);
+  });
+
+  // Defer AttachmentContent dial until a field actually needs Prepare/Finalize.
+  // Models with binary/image metadata must still save without document installed.
+  const service = needsUpload
+    ? resolveAttachmentContentService(store, pickDep(deps.createStoreByModel, createStoreByModel))
+    : undefined;
 
   for (const fieldName of options.fields) {
     if (!Object.prototype.hasOwnProperty.call(nextPayload, fieldName)) continue;
@@ -690,9 +721,13 @@ async function preNormalizeDraftForDiff(
 ): Promise<Record<string, unknown>> {
   if (!options.fields.length) return payload;
   const candidatePayload: Record<string, unknown> = { ...payload };
+  // Keep `kind: 'noop'` in the draft so buildUpdatePayload sees no change.
+  // Normalizing noop → omit would drop the field and risk emitting a clear.
   const candidateFields = options.fields.filter(fieldName => {
     if (!Object.prototype.hasOwnProperty.call(candidatePayload, fieldName)) return false;
-    return looksLikeUploadEnvelope(candidatePayload[fieldName]);
+    const value = candidatePayload[fieldName];
+    if (isNoopAttachmentEnvelope(value)) return false;
+    return looksLikeUploadEnvelope(value);
   });
   if (!candidateFields.length) return candidatePayload;
 
@@ -1061,5 +1096,7 @@ export type FormController = ReturnType<typeof createFormController>;
 // Test hooks: lock attachment orchestration protocol without coupling to full controller lifecycle.
 export const __resolveAttachmentFieldValueForTest = resolveAttachmentFieldValue;
 export const __normalizeAttachmentFieldsInPayloadForTest = normalizeAttachmentFieldsInPayload;
+export const __preNormalizeDraftForDiffForTest = preNormalizeDraftForDiff;
 export const __looksLikeUploadEnvelopeForTest = looksLikeUploadEnvelope;
+export const __attachmentFieldNeedsContentServiceForTest = attachmentFieldNeedsContentService;
 export const __attachMonetaryCurrencyCompanionsForTest = attachMonetaryCurrencyCompanions;

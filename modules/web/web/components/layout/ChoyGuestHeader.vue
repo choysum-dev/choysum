@@ -11,8 +11,9 @@ SPDX-License-Identifier: Apache-2.0
     data-testid="choy-shell-header"
   >
     <div class="mx-auto flex h-full w-full max-w-screen-2xl items-center gap-2">
-        <ChoyGuestMobileNav :items="navItems" class="flex lg:hidden" />
+        <ChoyGuestMobileNav v-if="navItems.length" :items="navItems" class="flex lg:hidden" />
         <NavigationMenu
+          v-if="navItems.length"
           :viewport="false"
           class="hidden !max-w-none flex-none justify-start lg:flex"
         >
@@ -45,6 +46,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import ChoyGuestMobileNav, { type ChoyGuestNavItem } from './ChoyGuestMobileNav.vue'
 import ChoyShellHeaderTools from './ChoyShellHeaderTools.vue'
 import { Separator } from '../vendor/ui/separator'
@@ -57,6 +59,7 @@ import {
 import { cn } from '../../lib/utils'
 import { createTranslate } from '../../i18n'
 import { isUnmodifiedPrimaryClick } from './guestNavActivate'
+import { isGuestSetupRoute } from './guestSetupRoute'
 
 defineOptions({ name: 'ChoyGuestHeader' })
 
@@ -85,18 +88,36 @@ const navLinkClass = cn(
   'data-active:bg-accent/50 data-active:text-foreground',
 )
 
+/** Prefer vue-router's reactive route; fall back for router-less unit mounts. */
+let route: ReturnType<typeof useRoute> | null = null
+try {
+  route = useRoute()
+} catch {
+  // FE stub / mounts without a router plugin.
+}
+
 /**
  * Guest primary nav. Shared by desktop NavigationMenu and mobile Popover.
- * Add entries here when new guest destinations ship.
+ * Initial setup omits Home — it only loops back into the same gate.
  */
-const navItems = computed<ChoyGuestNavItem[]>(() => [
-  {
-    id: 'home',
-    label: _t('Home'),
-    href: props.homeHref,
-    onSelect: () => props.goHome(),
-  },
-])
+const navItems = computed<ChoyGuestNavItem[]>(() => {
+  const path = route?.path
+    ? String(route.path)
+    : typeof globalThis !== 'undefined' && globalThis.location
+      ? String(globalThis.location.pathname || '')
+      : ''
+  if (isGuestSetupRoute({ path })) {
+    return []
+  }
+  return [
+    {
+      id: 'home',
+      label: _t('Home'),
+      href: props.homeHref,
+      onSelect: () => props.goHome(),
+    },
+  ]
+})
 
 /** In-app SPA push for plain left-clicks; Ctrl/Cmd/etc. keep native anchor behavior. */
 function onNavActivate(e: MouseEvent, item: ChoyGuestNavItem) {

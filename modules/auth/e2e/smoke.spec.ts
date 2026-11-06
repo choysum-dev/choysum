@@ -12,6 +12,7 @@ import { loginAsE2EAdmin } from './utils/login.ts';
  */
 
 test('auth smoke: login with fixture user and navigate to /web/auth/users', async () => {
+  test.skip(runtime.scenario === 'setup-pending', 'default smoke needs Ready fixture');
   const baseURL = runtime.baseURL;
 
   await loginAsE2EAdmin(page, baseURL);

@@ -46,7 +46,16 @@ import {
   validateLoginCandidateOrThrow,
 } from './_lifecycle_auth';
 import {
+  completeInitialSetupForUser,
+  isInitialSetupComplete,
+} from './_lifecycle_complete_initial_setup';
+import {
+  pickCompleteInitialSetupReq,
   pickRegisterUserInput,
+  type CompleteInitialSetupReq,
+  type CompleteInitialSetupResp,
+  type GetInitialSetupStateReq,
+  type GetInitialSetupStateResp,
   type LoginReq,
   type LogoutReq,
   type RefreshTokensReq,
@@ -61,6 +70,12 @@ import { evaluateRecordRuleCondition } from './_record_rule_eval';
 import { buildAuthzContext, computePermStateVersion } from './_authz_context';
 
 export type {
+  CompleteInitialSetupAdmin,
+  CompleteInitialSetupOrganization,
+  CompleteInitialSetupReq,
+  CompleteInitialSetupResp,
+  GetInitialSetupStateReq,
+  GetInitialSetupStateResp,
   LoginReq,
   LogoutReq,
   RefreshTokensReq,
@@ -384,6 +399,68 @@ export default class User extends AttachmentOwnerMixin {
       }).withGrpcCode(GrpcCode.InvalidArgument);
     }
     this.LanguageId = languageId;
+  }
+
+  /**
+   * Anonymous probe: whether initial setup is already complete.
+   * Used by the web shell to route SetupPending ↔ Ready without creating a session.
+   */
+  static async GetInitialSetupState(req: GetInitialSetupStateReq): Promise<GetInitialSetupStateResp> {
+    requireSessionEnvelope(req, 'GetInitialSetupState');
+    return { Complete: await isInitialSetupComplete() };
+  }
+
+  /**
+   * Complete initial setup: write the main company (base.Company/ApplyInitialSetup),
+   * then update the seed admin (username, password, language, email) and write
+   * auth.AppSetting `setup.completed_at`. Returns UserId; callers Login for a session.
+   * Field-level validation errors carry metadata `Field` (e.g. `Organization.CurrencyCode`).
+   */
+  static async CompleteInitialSetup(req: CompleteInitialSetupReq): Promise<CompleteInitialSetupResp> {
+    requireSessionEnvelope(req, 'CompleteInitialSetup');
+    const picked = pickCompleteInitialSetupReq(req as Record<string, unknown>);
+    if (!picked.Admin) {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('CompleteInitialSetup requires an Admin object', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
+    if (!picked.Organization) {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('CompleteInitialSetup requires an Organization object', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
+    if (typeof picked.Admin.Username !== 'string' || !picked.Admin.Username.trim()) {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('CompleteInitialSetup requires a username', { scope: 'service/models/user' }),
+      })
+        .withGrpcCode(GrpcCode.InvalidArgument)
+        .withMetadata({ Field: 'Admin.Username' });
+    }
+    if (typeof picked.Admin.Password !== 'string' || picked.Admin.Password.length === 0) {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('CompleteInitialSetup requires a password string', { scope: 'service/models/user' }),
+      })
+        .withGrpcCode(GrpcCode.InvalidArgument)
+        .withMetadata({ Field: 'Admin.Password' });
+    }
+    return await completeInitialSetupForUser(this, {
+      Admin: {
+        Username: picked.Admin.Username,
+        Password: picked.Admin.Password,
+        LanguageCode: picked.Admin.LanguageCode ?? '',
+        Email: picked.Admin.Email,
+      },
+      Organization: {
+        Name: picked.Organization.Name ?? '',
+        CountryCode: picked.Organization.CountryCode,
+        CurrencyCode: picked.Organization.CurrencyCode ?? '',
+        Timezone: picked.Organization.Timezone ?? '',
+      },
+    });
   }
 
   /**

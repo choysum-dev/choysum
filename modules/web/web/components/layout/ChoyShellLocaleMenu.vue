@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
         variant="ghost"
         size="icon"
         type="button"
-        :aria-label="tLayout('layout.header.languages')"
+        :aria-label="_t('Languages')"
         data-testid="choy-shell-locale"
       >
         <Languages class="size-4" aria-hidden="true" />
@@ -35,7 +35,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useI18n } from 'vue-i18n';
+import { createTranslate } from '@/web/web/i18n';
 import { Check, Languages } from 'lucide-vue-next';
 import ChoyButton from './ChoyButton.vue';
 import {
@@ -51,15 +51,7 @@ import { type SupportedLocale } from '../../stores/i18nStore/types';
 
 defineOptions({ name: 'ChoyShellLocaleMenu' });
 
-function resolveLayoutT(): (key: string) => string {
-  try {
-    const i18n = useI18n({ useScope: 'global' });
-    return (key) => String(i18n.t(key));
-  } catch {
-    return (key) => key;
-  }
-}
-const tLayout = resolveLayoutT();
+const { _t } = createTranslate('web', { scope: 'web/components/layout/ChoyShellLocaleMenu' });
 
 let i18nStore: ReturnType<typeof useI18nStore> | null = null;
 try {

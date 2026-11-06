@@ -17,6 +17,10 @@
 # Tip: source .envrc (or direnv) first. Default log level is debug so semantic
 # metrics and fine-grained steps appear in the profile summary.
 #
+# Profile a workspace whose first-run setup is already complete: an install or
+# upgrade that adds auth also finishes setup (and prints a new admin password),
+# which adds runtime startup time to the measured run.
+#
 # Sourcemap: product default is compile.sourcemap=false. Local .envrc often sets
 # CHOYSUM_COMPILE_SOURCEMAP=true for debugging and adds ~2.5–2.8s web_build.
 # This script forces SOURCEMAP=false unless PROFILE_KEEP_SOURCEMAP=1 so lifecycle

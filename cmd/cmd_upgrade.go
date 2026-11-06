@@ -16,6 +16,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/module/evolution/schema"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
+	"github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/spf13/cobra"
@@ -25,8 +26,10 @@ import (
 func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 	var withDemo bool
 	var noWeb bool
+	var webShellProfile string
 	var cliCompatVersion string
 	var schemaPlanOnly bool
+	var setupFlags *moduleSetupFlags
 	cmd := &cobra.Command{
 		Use:   "upgrade <module|module@version> [<module|module@version>...]",
 		Short: "Upgrade Choysum Module",
@@ -79,6 +82,10 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 				env.Logger().Error("module compatibility version resolution failed", "error", err)
 				upgradeExit(1)
 				return
+			}
+			setupPlan, setupErr := setupFlags.prepare(cmd, env)
+			if setupErr != nil {
+				exitUpgradeError("", setupErr)
 			}
 			runtimeOptions := cliruntime.OptionsFromScope(env)
 
@@ -157,6 +164,11 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 				plans = append(plans, upgradePlan{requestedInput: moduleInput, resolvedInput: resolvedInput})
 			}
 
+			profile, profileErr := plan.ParseWebShellProfile(webShellProfile)
+			if profileErr != nil {
+				exitUpgradeError("", profileErr)
+			}
+
 			upgradeScope := env.WithContext(ctx)
 			compilerExecutor, err := jsexecutor.NewCompilerExecutor(upgradeScope)
 			if err != nil {
@@ -168,21 +180,29 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 			defer compilerExecutor.Stop()
 
 			moduleLifecycle := lifecycle.NewService(upgradeScope, compilerExecutor)
-			for _, plan := range plans {
-				currentInput = plan.requestedInput
-				upgradeScope.Logger().Debug("module upgrade started", "input", plan.resolvedInput)
-				if err := moduleLifecycle.Upgrade(ctx, lifecycle.UpgradeRequest{Input: plan.resolvedInput, WithDemo: withDemo, SkipWebShell: noWeb}); err != nil {
+			for _, item := range plans {
+				currentInput = item.requestedInput
+				upgradeScope.Logger().Debug("module upgrade started", "input", item.resolvedInput)
+				if err := moduleLifecycle.Upgrade(ctx, lifecycle.UpgradeRequest{
+					Input:           item.resolvedInput,
+					WithDemo:        withDemo,
+					SkipWebShell:    noWeb,
+					WebShellProfile: profile,
+				}); err != nil {
 					_ = compilerExecutor.Stop()
-					exitUpgradeError(currentInput, xfmt.Errorf("error upgrading module %s: %w", plan.requestedInput, err))
+					exitUpgradeError(currentInput, xfmt.Errorf("error upgrading module %s: %w", item.requestedInput, err))
 				}
-				upgradeScope.Logger().Debug("module upgraded", "input", plan.resolvedInput)
+				upgradeScope.Logger().Debug("module upgraded", "input", item.resolvedInput)
 			}
+			setupPlan.finish(ctx, cmd, env)
 		},
 	}
 	cmd.Flags().BoolVar(&withDemo, "with-demo", false, "Load demo data declared by package.json")
 	cmd.Flags().BoolVar(&noWeb, "no-web", false, "Skip auto-installing a missing web SPA shell when upgrading a module with entryPoints.web")
+	cmd.Flags().StringVar(&webShellProfile, "web-shell-profile", string(plan.WebShellProfileStandard), plan.WebShellProfileFlagUsage)
 	cmd.Flags().StringVar(&cliCompatVersion, "cli-compat-version", "", "override CLI compatibility version for module compatibility checks")
 	cmd.Flags().BoolVar(&schemaPlanOnly, "schema-plan", false, "print schema plan for installed module tip vs live DB without applying DDL or initdata")
+	setupFlags = addModuleSetupFlags(cmd)
 	return cmd
 }
 

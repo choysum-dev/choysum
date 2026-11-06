@@ -7,9 +7,8 @@
 //
 // type-fetch .d.ts files load @vue/* via relative paths, so upstream
 // `declare module '@vue/runtime-core'` / `https://esm.sh/...` augmentations do
-// not merge into import('vue').GlobalComponents. Element Plus global.d.ts is
-// also unavailable without npm. This module augmentation supplies built-ins,
-// a permissive component index (el-button, …), and Choysum's v-action.
+// not merge into import('vue').GlobalComponents. This module augmentation
+// supplies built-ins, a permissive component index, and Choysum's v-action.
 //
 // Must be a module (export {}) so this merges into package "vue".
 
@@ -23,7 +22,7 @@ declare module "vue" {
     KeepAlive: any;
     Suspense: any;
     BaseTransition: any;
-    // App-registered / Element Plus template tags (el-icon, ElButton, …).
+    // App-registered and third-party template tags without local typings.
     [name: string]: any;
   }
 

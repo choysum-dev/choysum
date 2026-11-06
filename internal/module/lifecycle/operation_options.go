@@ -2,6 +2,7 @@ package lifecycle
 
 import (
 	"context"
+	"strings"
 
 	"github.com/choysum-dev/choysum/internal/module/plan"
 )
@@ -11,6 +12,9 @@ type OperationOptions struct {
 	// SkipWebShell disables planner auto-include of the web SPA shell when a
 	// module declares entryPoints.web (CLI --no-web).
 	SkipWebShell bool
+	// WebShellProfile selects optional shell extras after ensureWebShell
+	// (minimal|standard|full). Empty means planner default (standard).
+	WebShellProfile plan.WebShellProfile
 }
 
 type operationOptionsKey struct{}
@@ -35,8 +39,16 @@ func OperationOptionsFromContext(ctx context.Context) OperationOptions {
 }
 
 func planBuildOptionsFromContext(ctx context.Context) []plan.BuildOption {
-	if OperationOptionsFromContext(ctx).SkipWebShell {
-		return []plan.BuildOption{plan.WithSkipWebShell(true)}
+	op := OperationOptionsFromContext(ctx)
+	var opts []plan.BuildOption
+	if op.SkipWebShell {
+		opts = append(opts, plan.WithSkipWebShell(true))
 	}
-	return nil
+	if profile := plan.WebShellProfile(strings.TrimSpace(string(op.WebShellProfile))); profile != "" {
+		opts = append(opts, plan.WithWebShellProfile(profile))
+	}
+	if len(opts) == 0 {
+		return nil
+	}
+	return opts
 }

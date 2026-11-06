@@ -36,9 +36,6 @@ jobs:
       - name: Build Vue virtual embed asset (go generate)
         run: go generate ./pkg/jsengine/scripts/vuevirtual/...
 
-      - name: Generate bootstrap web assets (go generate)
-        run: go generate ./internal/bootstrap/web/...
-
       - name: Package embedded assets and checksums
         shell: bash
         run: |
@@ -52,7 +49,6 @@ jobs:
 
           mkdir -p "$OUTPUT_DIR"
           tar -czf "$ARCHIVE_PATH" \
-            internal/bootstrap/web/dist \
             pkg/jsengine/scripts/vuesfc/dist/index.js \
             pkg/jsengine/scripts/vuevirtual/dist/index.js
 

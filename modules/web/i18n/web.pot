@@ -102,7 +102,7 @@ msgctxt "web.model.UserFilter.fields"
 msgid "User"
 msgstr ""
 
-#: web/components/chatter/ChoyChatter.vue:63
+#: web/components/chatter/ChoyChatter.vue:67
 msgctxt "web/components/chatter/ChoyChatter"
 msgid "Activity"
 msgstr ""
@@ -182,13 +182,19 @@ msgctxt "web/components/field/ChoyBigintField"
 msgid "Must not be less than %s"
 msgstr ""
 
+#: web/components/field/ChoyBinaryField.vue:110
+#: web/components/field/ChoyBinaryField.vue:202
+msgctxt "web/components/field/ChoyBinaryField"
+msgid "Document module is not installed; file upload is unavailable."
+msgstr ""
+
 #: web/components/field/ChoyBinaryField.vue:13
 #: web/components/field/ChoyBinaryField.vue:4
 msgctxt "web/components/field/ChoyBinaryField"
 msgid "Download"
 msgstr ""
 
-#: web/components/field/ChoyBinaryField.vue:123
+#: web/components/field/ChoyBinaryField.vue:129
 msgctxt "web/components/field/ChoyBinaryField"
 msgid "Drop file here or click to upload"
 msgstr ""
@@ -199,17 +205,17 @@ msgctxt "web/components/field/ChoyBinaryField"
 msgid "Remove"
 msgstr ""
 
-#: web/components/field/ChoyBinaryField.vue:125
+#: web/components/field/ChoyBinaryField.vue:131
 msgctxt "web/components/field/ChoyBinaryField"
 msgid "Replace file"
 msgstr ""
 
-#: web/components/field/ChoyBinaryField.vue:170
+#: web/components/field/ChoyBinaryField.vue:176
 msgctxt "web/components/field/ChoyBinaryField"
 msgid "Selected file type is not allowed."
 msgstr ""
 
-#: web/components/field/ChoyBinaryField.vue:121
+#: web/components/field/ChoyBinaryField.vue:127
 msgctxt "web/components/field/ChoyBinaryField"
 msgid "Upload file"
 msgstr ""
@@ -380,13 +386,19 @@ msgctxt "web/components/field/ChoyHtmlField"
 msgid "Write rich text…"
 msgstr ""
 
+#: web/components/field/ChoyImageField.vue:114
+#: web/components/field/ChoyImageField.vue:413
+msgctxt "web/components/field/ChoyImageField"
+msgid "Document module is not installed; image upload is unavailable."
+msgstr ""
+
 #: web/components/field/ChoyImageField.vue:14
 #: web/components/field/ChoyImageField.vue:4
 msgctxt "web/components/field/ChoyImageField"
 msgid "Download"
 msgstr ""
 
-#: web/components/field/ChoyImageField.vue:244
+#: web/components/field/ChoyImageField.vue:250
 msgctxt "web/components/field/ChoyImageField"
 msgid "Drop image here or click to upload"
 msgstr ""
@@ -401,9 +413,9 @@ msgctxt "web/components/field/ChoyImageField"
 msgid "Image height exceeds maximum (%s px)"
 msgstr ""
 
-#: web/components/field/ChoyImageField.vue:129
+#: web/components/field/ChoyImageField.vue:135
 #: web/components/field/ChoyImageField.vue:14
-#: web/components/field/ChoyImageField.vue:253
+#: web/components/field/ChoyImageField.vue:259
 msgctxt "web/components/field/ChoyImageField"
 msgid "Image preview"
 msgstr ""
@@ -413,7 +425,7 @@ msgctxt "web/components/field/ChoyImageField"
 msgid "Image width exceeds maximum (%s px)"
 msgstr ""
 
-#: web/components/field/ChoyImageField.vue:232
+#: web/components/field/ChoyImageField.vue:238
 msgctxt "web/components/field/ChoyImageField"
 msgid "Only raster image files are supported."
 msgstr ""
@@ -424,12 +436,12 @@ msgctxt "web/components/field/ChoyImageField"
 msgid "Remove"
 msgstr ""
 
-#: web/components/field/ChoyImageField.vue:246
+#: web/components/field/ChoyImageField.vue:252
 msgctxt "web/components/field/ChoyImageField"
 msgid "Replace image"
 msgstr ""
 
-#: web/components/field/ChoyImageField.vue:242
+#: web/components/field/ChoyImageField.vue:248
 msgctxt "web/components/field/ChoyImageField"
 msgid "Upload image"
 msgstr ""
@@ -1122,6 +1134,11 @@ msgctxt "web/components/field/ChoySelectionField"
 msgid "Search…"
 msgstr ""
 
+#: web/components/field/ChoySelectionField.vue:8
+msgctxt "web/components/field/ChoySelectionField"
+msgid "Show options"
+msgstr ""
+
 #: web/components/field/ChoySelectionField.vue:353
 msgctxt "web/components/field/ChoySelectionField"
 msgid "Value must be a string"
@@ -1467,7 +1484,7 @@ msgctxt "web/components/layout/ChoyCommandPalette"
 msgid "Type a command or search…"
 msgstr ""
 
-#: web/components/layout/ChoyGuestHeader.vue:50
+#: web/components/layout/ChoyGuestHeader.vue:69
 msgctxt "web/components/layout/ChoyGuestHeader"
 msgid "Home"
 msgstr ""
@@ -1487,7 +1504,7 @@ msgctxt "web/components/layout/ChoyNotificationBell"
 msgid "Mark all read"
 msgstr ""
 
-#: web/components/layout/ChoyNotificationBell.vue:112
+#: web/components/layout/ChoyNotificationBell.vue:140
 msgctxt "web/components/layout/ChoyNotificationBell"
 msgid "New notification"
 msgstr ""
@@ -1503,7 +1520,7 @@ msgctxt "web/components/layout/ChoyNotificationBell"
 msgid "Notifications"
 msgstr ""
 
-#: web/components/layout/ChoyNotificationBell.vue:110
+#: web/components/layout/ChoyNotificationBell.vue:138
 msgctxt "web/components/layout/ChoyNotificationBell"
 msgid "Update on %s (%s)"
 msgstr ""
@@ -1521,6 +1538,31 @@ msgstr ""
 #: web/components/layout/ChoyPageIoMenu.vue:113
 msgctxt "web/components/layout/ChoyPageIoMenu"
 msgid "No model/store available for this action."
+msgstr ""
+
+#: web/components/layout/ChoyShellLocaleMenu.vue:4
+msgctxt "web/components/layout/ChoyShellLocaleMenu"
+msgid "Languages"
+msgstr ""
+
+#: web/components/layout/ChoyShellThemeToggle.vue:32
+msgctxt "web/components/layout/ChoyShellThemeToggle"
+msgid "Auto"
+msgstr ""
+
+#: web/components/layout/ChoyShellThemeToggle.vue:31
+msgctxt "web/components/layout/ChoyShellThemeToggle"
+msgid "Dark"
+msgstr ""
+
+#: web/components/layout/ChoyShellThemeToggle.vue:30
+msgctxt "web/components/layout/ChoyShellThemeToggle"
+msgid "Light"
+msgstr ""
+
+#: web/components/layout/ChoyShellThemeToggle.vue:4
+msgctxt "web/components/layout/ChoyShellThemeToggle"
+msgid "Theme"
 msgstr ""
 
 #: web/components/layout/ChoySidebarNav.vue:66
@@ -1743,7 +1785,7 @@ msgctxt "web/components/view/FormView"
 msgid "Delete"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:45
+#: web/components/view/ChoyFormView.vue:49
 msgctxt "web/components/view/FormView"
 msgid "Details"
 msgstr ""
@@ -1768,12 +1810,12 @@ msgctxt "web/components/view/FormView"
 msgid "Reset"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:311
+#: web/components/view/ChoyFormView.vue:316
 msgctxt "web/components/view/FormView"
 msgid "Save"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:311
+#: web/components/view/ChoyFormView.vue:316
 msgctxt "web/components/view/FormView"
 msgid "Saving..."
 msgstr ""
@@ -1877,22 +1919,22 @@ msgctxt "web/components/view/ListView"
 msgid "Discard"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:276
+#: web/components/view/ChoyListView.vue:281
 msgctxt "web/components/view/ListView"
 msgid "Editing was discarded because the row is no longer visible."
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:606
+#: web/components/view/ChoyListView.vue:611
 msgctxt "web/components/view/ListView"
 msgid "Failed to load list"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:345
+#: web/components/view/ChoyListView.vue:350
 msgctxt "web/components/view/ListView"
 msgid "Failed to refresh after reorder"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:345
+#: web/components/view/ChoyListView.vue:350
 msgctxt "web/components/view/ListView"
 msgid "Failed to reorder rows"
 msgstr ""
@@ -2886,7 +2928,7 @@ msgctxt "web/route/appSettingRoutes"
 msgid "Parameters"
 msgstr ""
 
-#: web/route/exportTemplateRoutes.ts:56
+#: web/route/exportTemplateRoutes.ts:57
 msgctxt "web/route/exportTemplateRoutes"
 msgid "Export Template"
 msgstr ""
@@ -2896,7 +2938,7 @@ msgctxt "web/route/exportTemplateRoutes"
 msgid "Export Templates"
 msgstr ""
 
-#: web/route/exportTemplateRoutes.ts:41
+#: web/route/exportTemplateRoutes.ts:42
 msgctxt "web/route/exportTemplateRoutes"
 msgid "New Export Template"
 msgstr ""
@@ -2942,12 +2984,12 @@ msgctxt "web/route/terminologyRoutes"
 msgid "Translations"
 msgstr ""
 
-#: web/route/userFilterRoutes.ts:42
+#: web/route/userFilterRoutes.ts:43
 msgctxt "web/route/userFilterRoutes"
 msgid "New Saved Filter"
 msgstr ""
 
-#: web/route/userFilterRoutes.ts:57
+#: web/route/userFilterRoutes.ts:58
 msgctxt "web/route/userFilterRoutes"
 msgid "Saved Filter"
 msgstr ""
