@@ -219,6 +219,9 @@ func TestAbandonDraft_CancelsDraftRow(t *testing.T) {
 	if err := o.AbandonDraft(nil, "  ", ""); err == nil || !strings.Contains(err.Error(), "id is required") {
 		t.Fatalf("empty id = %v", err)
 	}
+	if err := o.AbandonDraft(context.Background(), "missing-op", ""); err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("missing id = %v", err)
+	}
 	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "core", Action: ActionInstall})
 	if err != nil {
 		t.Fatalf("Plan: %v", err)
@@ -236,6 +239,34 @@ func TestAbandonDraft_CancelsDraftRow(t *testing.T) {
 	// Non-draft is a no-op.
 	if err := o.AbandonDraft(context.Background(), result.Id, "again"); err != nil {
 		t.Fatalf("AbandonDraft non-draft: %v", err)
+	}
+
+	// CAS/update failure while still draft.
+	db2 := newOpsTestDB(t)
+	o2 := &Ops{
+		Scope:     newOpsTestScope(t, db2),
+		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+		Lifecycle: &stubLifecycle{},
+		Events:    &recordingBus{},
+	}
+	res2, err := o2.Plan(context.Background(), PlanRequest{ModuleName: "core", Action: ActionInstall})
+	if err != nil {
+		t.Fatalf("Plan2: %v", err)
+	}
+	if err := db2.Callback().Update().Before("gorm:update").Register("ops_fail_abandon_update", func(tx *gorm.DB) {
+		if tx.Statement == nil {
+			return
+		}
+		if st, ok := tx.Statement.Dest.(map[string]any); ok {
+			if status, _ := st["status"].(string); status == StatusCancelled {
+				_ = tx.AddError(errors.New("abandon save fail"))
+			}
+		}
+	}); err != nil {
+		t.Fatalf("callback: %v", err)
+	}
+	if err := o2.AbandonDraft(context.Background(), res2.Id, "blocked"); err == nil || !strings.Contains(err.Error(), "abandon save fail") {
+		t.Fatalf("AbandonDraft CAS err = %v", err)
 	}
 }
 
