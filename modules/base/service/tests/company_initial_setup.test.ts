@@ -70,6 +70,7 @@ test('GetInitialSetupOptions: fixed shape, inactive currencies listed, inactive 
   expect(resp.Languages.map(l => l.Code).sort()).toEqual(['en_US', 'zh_CN']);
   expect(resp.Timezones.some(t => t.Value === 'Asia/Shanghai' && t.Label === '(UTC+08:00) Asia/Shanghai')).toBe(true);
 
+  expect(resp.Defaults.CountryCode).toBe('CN');
   expect(resp.Defaults.CurrencyCode).toBe('CNY');
   expect(resp.Defaults.Timezone).toBe('Asia/Shanghai');
   expect(resp.Defaults.LanguageCode).toBe('zh_CN');
