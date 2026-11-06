@@ -71,6 +71,9 @@
         "CurrencyId": {
           "ref": "base.currency_cny"
         },
+        "CountryId": {
+          "ref": "base.country_cn"
+        },
         "IsActive": true,
         "LanguageId": {
           "ref": "base.language_zh_cn"
