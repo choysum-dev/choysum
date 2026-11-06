@@ -499,8 +499,8 @@ export default class MetaModule extends BaseModel {
           if (!applyResult?.ok) {
             bridgeResult = {
               ok: false,
-              errorDomain: applyResult?.errorDomain,
-              errorCode: applyResult?.errorCode,
+              errorDomain: applyResult?.errorDomain || 'MODULE_MANAGEMENT',
+              errorCode: applyResult?.errorCode || 'OP_FAILED',
               errorMessage: applyResult?.errorMessage || 'apply failed',
             };
           } else {
