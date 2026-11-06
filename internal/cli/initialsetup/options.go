@@ -79,12 +79,12 @@ func ResolveOptions(setupFlag string, flagPassword string, flagPasswordSet bool,
 	opts := Options{Mode: mode}
 	switch {
 	case flagPasswordSet:
-		if flagPassword == "" {
+		if strings.TrimSpace(flagPassword) == "" {
 			return Options{}, fmt.Errorf("--admin-password must not be empty")
 		}
 		opts.Password = flagPassword
 		opts.PasswordSource = PasswordFlag
-	case envPassword != "":
+	case strings.TrimSpace(envPassword) != "":
 		opts.Password = envPassword
 		opts.PasswordSource = PasswordEnvVar
 	}

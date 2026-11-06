@@ -369,11 +369,9 @@ func (p *WebPlugin) htmlIconProcessor(pathPrefix string) vueplugin.IndexHtmlProc
 			p.Env.Logger().Warn("favicon processing skipped", "reason", "icon_href_invalid_basename", "href", href)
 			return nil
 		}
+		// iconBase is filepath.Base of a relative href (after escape checks), so
+		// joining it under webRoot cannot leave that directory.
 		iconDstPath := filepath.Join(webRoot, iconBase)
-		if !pathUnderHTMLDir(webRoot, iconDstPath) {
-			p.Env.Logger().Warn("favicon processing skipped", "reason", "icon_dst_escapes_web_root", "href", href)
-			return nil
-		}
 		if err := os.MkdirAll(filepath.Dir(iconDstPath), 0755); err != nil {
 			return fmt.Errorf("failed to create favicon destination directory: %v", err)
 		}
@@ -391,11 +389,11 @@ func (p *WebPlugin) htmlIconProcessor(pathPrefix string) vueplugin.IndexHtmlProc
 
 // pathUnderHTMLDir reports whether candidate stays inside htmlDir after Clean.
 func pathUnderHTMLDir(htmlDir, candidate string) bool {
-	htmlDir = filepath.Clean(htmlDir)
-	candidate = filepath.Clean(candidate)
-	if htmlDir == "" || candidate == "" {
+	if strings.TrimSpace(htmlDir) == "" || strings.TrimSpace(candidate) == "" {
 		return false
 	}
+	htmlDir = filepath.Clean(htmlDir)
+	candidate = filepath.Clean(candidate)
 	rel, err := filepath.Rel(htmlDir, candidate)
 	if err != nil {
 		return false

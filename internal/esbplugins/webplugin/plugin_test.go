@@ -163,6 +163,9 @@ func TestHtmlIconProcessorCopiesFileAndUpdatesHref(t *testing.T) {
 		`<html><head><link rel="icon" href="../../etc/passwd"></head><body></body></html>`,
 		`<html><head><link rel="icon" href="."></head><body></body></html>`,
 		`<html><head><link rel="icon" href=".."></head><body></body></html>`,
+		// Base("favicon.ico/.") is "."; Join still resolves to the real file.
+		`<html><head><link rel="icon" href="favicon.ico/."></head><body></body></html>`,
+		`<html><head><link rel="icon" href="/"></head><body></body></html>`,
 	} {
 		doc := parseHTMLDoc(t, markup)
 		if err := processor(doc, &api.BuildResult{}, opts, build); err != nil {
@@ -250,6 +253,12 @@ func TestHtmlIconProcessorCopiesFileAndUpdatesHref(t *testing.T) {
 
 func TestWebDistRootForIconsAndCopyHelpers(t *testing.T) {
 	t.Parallel()
+	if pathUnderHTMLDir("", "x") || pathUnderHTMLDir("x", "") {
+		t.Fatal("empty htmlDir or candidate must be rejected")
+	}
+	if pathUnderHTMLDir(".", "/tmp/outside") {
+		t.Fatal("absolute candidate must be rejected when Rel fails or escapes")
+	}
 	if got := webDistRootForIcons(nil, ""); got != "" {
 		t.Fatalf("empty root = %q", got)
 	}
@@ -318,31 +327,55 @@ func TestWebDistRootForIconsAndCopyHelpers(t *testing.T) {
 		t.Fatal("expected apple-touch write failure to fail the build")
 	}
 
+	// Favicon mkdir/write failures must use an html tree without logo-192, otherwise
+	// apple-touch copy fails first and never reaches the favicon branches.
+	htmlFavOnly := t.TempDir()
+	htmlFavFile := filepath.Join(htmlFavOnly, "index.html")
+	if err := os.WriteFile(filepath.Join(htmlFavOnly, "favicon.ico"), []byte("ico"), 0o644); err != nil {
+		t.Fatalf("write fav-only icon: %v", err)
+	}
+	favDoc := func() *html.Node {
+		return parseHTMLDoc(t, `<html><head><link rel="icon" href="favicon.ico"></head><body></body></html>`)
+	}
+
 	// MkdirAll failure: web root nested under a file.
 	blocker := filepath.Join(t.TempDir(), "file")
 	if err := os.WriteFile(blocker, []byte("x"), 0o644); err != nil {
 		t.Fatalf("write blocker: %v", err)
 	}
 	opts5 := &vueplugin.Options{IndexHtmlOptions: vueplugin.IndexHtmlOptions{
-		SourceFile: htmlFile,
+		SourceFile: htmlFavFile,
 		OutFile:    filepath.Join(blocker, "web", "index.html"),
 	}}
-	if err := processor(iconDoc(), &api.BuildResult{}, opts5, &api.PluginBuild{InitialOptions: &api.BuildOptions{Outdir: filepath.Join(blocker, "web", "assets")}}); err == nil {
-		t.Fatal("expected mkdir failure under file path")
+	if err := processor(favDoc(), &api.BuildResult{}, opts5, &api.PluginBuild{InitialOptions: &api.BuildOptions{Outdir: filepath.Join(blocker, "web", "assets")}}); err == nil || !strings.Contains(err.Error(), "favicon destination directory") {
+		t.Fatalf("expected favicon mkdir failure under file path, got %v", err)
+	}
+
+	// WriteFile failure: destination path is an existing directory.
+	webRootDirBlock := t.TempDir()
+	if err := os.Mkdir(filepath.Join(webRootDirBlock, "favicon.ico"), 0o755); err != nil {
+		t.Fatalf("mkdir favicon blocker: %v", err)
+	}
+	optsWrite := &vueplugin.Options{IndexHtmlOptions: vueplugin.IndexHtmlOptions{
+		SourceFile: htmlFavFile,
+		OutFile:    filepath.Join(webRootDirBlock, "index.html"),
+	}}
+	if err := processor(favDoc(), &api.BuildResult{}, optsWrite, &api.PluginBuild{InitialOptions: &api.BuildOptions{Outdir: filepath.Join(webRootDirBlock, "assets")}}); err == nil || !strings.Contains(err.Error(), "write favicon file") {
+		t.Fatalf("expected favicon write failure, got %v", err)
 	}
 
 	// WriteFile failure: read-only web root (root / Windows bypass mode bits).
 	if runtime.GOOS != "windows" && os.Geteuid() != 0 {
 		webRootRO := t.TempDir()
 		optsRO := &vueplugin.Options{IndexHtmlOptions: vueplugin.IndexHtmlOptions{
-			SourceFile: htmlFile,
+			SourceFile: htmlFavFile,
 			OutFile:    filepath.Join(webRootRO, "index.html"),
 		}}
 		if err := os.Chmod(webRootRO, 0o555); err != nil {
 			t.Fatalf("chmod: %v", err)
 		}
 		t.Cleanup(func() { _ = os.Chmod(webRootRO, 0o755) })
-		if err := processor(iconDoc(), &api.BuildResult{}, optsRO, &api.PluginBuild{InitialOptions: &api.BuildOptions{Outdir: filepath.Join(webRootRO, "assets")}}); err == nil {
+		if err := processor(favDoc(), &api.BuildResult{}, optsRO, &api.PluginBuild{InitialOptions: &api.BuildOptions{Outdir: filepath.Join(webRootRO, "assets")}}); err == nil {
 			t.Fatal("expected write failure on read-only web root")
 		}
 	}

@@ -60,6 +60,10 @@ func TestResolveOptionsPasswordPrecedence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveOptions: %v", err)
 	}
+	opts, err = ResolveOptions("", "", false, " \t", nil)
+	if err != nil || opts.PasswordSource != PasswordNone {
+		t.Fatalf("whitespace-only env password must count as unset: %#v, %v", opts, err)
+	}
 	if opts.PasswordSource != PasswordNone || opts.Password != "" {
 		t.Fatalf("no password: %+v", opts)
 	}
@@ -76,6 +80,7 @@ func TestResolveOptionsRejects(t *testing.T) {
 	}{
 		{name: "invalid mode", setup: "auto", contains: "invalid --setup"},
 		{name: "empty flag password", flagSet: true, contains: "must not be empty"},
+		{name: "whitespace flag password", flagSet: true, flagPw: " \t", contains: "must not be empty"},
 		{name: "wizard with flag password", setup: "wizard", flagPw: "x", flagSet: true, contains: "--admin-password"},
 		{name: "wizard with env password", setup: "wizard", envPw: "x", contains: PasswordEnv},
 	}
