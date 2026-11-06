@@ -630,8 +630,8 @@ func seedModuleIndexForE2E(ctx context.Context, configPath string, packages map[
 		if sess == nil || sess.DB == nil {
 			return xfmt.Errorf("missing db session")
 		}
-		if err := sess.DB.AutoMigrate(&modmeta.ModuleIndex{}); err != nil {
-			return xfmt.Errorf("auto-migrate modmeta.ModuleIndex: %w", err)
+		if err := sess.DB.AutoMigrate(&modmeta.ModuleOrigin{}); err != nil {
+			return xfmt.Errorf("auto-migrate modmeta.ModuleOrigin: %w", err)
 		}
 
 		now := time.Now()
@@ -654,7 +654,7 @@ func seedModuleIndexForE2E(ctx context.Context, configPath string, packages map[
 			revision := fmt.Sprintf("%d:%d", info.ModTime().UnixNano(), info.Size())
 			localPath := filepath.Join(runtimeOptions.modulesPath, sm.DirName)
 
-			rec := modmeta.ModuleIndex{
+			rec := modmeta.ModuleOrigin{
 				ModuleName:      name,
 				OriginType:      "local",
 				OriginRef:       "local",
@@ -682,7 +682,7 @@ func seedModuleIndexForE2E(ctx context.Context, configPath string, packages map[
 					"deleted_at",
 				}),
 			}).Create(&rec).Error; err != nil {
-				return xfmt.Errorf("upsert module index: %w", err)
+				return xfmt.Errorf("upsert module origin: %w", err)
 			}
 		}
 		return nil

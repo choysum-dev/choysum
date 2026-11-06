@@ -88,7 +88,7 @@ async function findRunningJobId(fullMethod: string, requestedOrigin: ModuleSyncO
 }
 
 @Model('MetaModuleIndex', {
-  tableName: 'meta_module_index',
+  tableName: 'meta_module_origin',
   autoMigrate: false,
 })
 export default class MetaModuleIndex extends BaseModel {

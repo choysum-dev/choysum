@@ -755,7 +755,7 @@ func TestInstallApplySeedConfigLoadErrors(t *testing.T) {
 
 	err = seedModuleIndexForE2E(ctx, missing, map[string]*sourceModulePackage{})
 	if err == nil || !strings.Contains(err.Error(), "load temp config") {
-		t.Fatalf("expected seed module index config load error, got %v", err)
+		t.Fatalf("expected seed module origin config load error, got %v", err)
 	}
 }
 
@@ -964,7 +964,7 @@ func TestSeedModuleIndexForE2EAutoMigrateError(t *testing.T) {
 	}
 
 	err := seedModuleIndexForE2E(context.Background(), writeTempE2EConfig(t, t.TempDir()), map[string]*sourceModulePackage{})
-	if err == nil || !strings.Contains(err.Error(), "auto-migrate modmeta.ModuleIndex") {
+	if err == nil || !strings.Contains(err.Error(), "auto-migrate modmeta.ModuleOrigin") {
 		t.Fatalf("seedModuleIndexForE2E() error = %v, want auto-migrate failure", err)
 	}
 }

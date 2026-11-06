@@ -356,7 +356,7 @@ func TestRunnerRunPhaseExecutesMigrationsAndRestoresScripts(t *testing.T) {
 		t.Fatalf("unexpected migration args: %#v", migrationArgs)
 	}
 
-	var history []modmeta.ModuleMigrationHistory
+	var history []modmeta.ModuleMigration
 	if err := testRuntimeScope.session.WithContext(context.Background()).Order("version asc, script asc").Find(&history).Error; err != nil {
 		t.Fatalf("load migration history: %v", err)
 	}
@@ -419,7 +419,7 @@ func newScriptsTestScopeAuthWithoutSeed(t *testing.T) *scriptsTestScope {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&meta.Module{}, &modmeta.ModuleMigrationHistory{}); err != nil {
+	if err := db.AutoMigrate(&meta.Module{}, &modmeta.ModuleMigration{}); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 	if err := db.Create(&meta.Module{Name: "auth", Status: meta.Installed, Version: "1.0.0"}).Error; err != nil {
@@ -511,7 +511,7 @@ func TestRunnerValidateAndRunPhaseFailurePaths(t *testing.T) {
 			t.Fatalf("expected migration failure, got %v", err)
 		}
 
-		var row modmeta.ModuleMigrationHistory
+		var row modmeta.ModuleMigration
 		if err := testRuntimeScope.session.WithContext(context.Background()).Where("script = ?", "broken").Take(&row).Error; err != nil {
 			t.Fatalf("load failed history row: %v", err)
 		}

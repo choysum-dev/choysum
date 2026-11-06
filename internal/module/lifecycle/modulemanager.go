@@ -339,7 +339,7 @@ type ModuleManager struct {
 	bootstrapOnce            sync.Once
 	bootstrapErr             error
 	lockerFactory            statepkg.LockerFactory
-	moduleIndexSyncLocal     func(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (ModuleIndexSyncStats, error)
+	moduleOriginSyncLocal     func(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (ModuleOriginSyncStats, error)
 	originCoordinatorFactory func(runtimeScope scope.Scope) OriginCoordinator
 	// pauseLeaseRenewDepth skips heartbeat Renew while >0 (nested commit TX safe).
 	pauseLeaseRenewDepth atomic.Int32
@@ -988,9 +988,9 @@ func installHeartbeatStageLabel(rawStage string) string {
 	case "finalizing.phase_end":
 		return "Finalizing"
 	case "finalizing.index_refresh":
-		return "Refreshing module index"
+		return "Refreshing module origin"
 	case "finalizing.index_sync":
-		return "Syncing module index"
+		return "Syncing module origin"
 	case "module.step":
 		return "Module step"
 	default:
@@ -1175,7 +1175,7 @@ func (m *ModuleManager) resolveGeneratedAPIRoot() (string, error) {
 	return generatedAPIRoot, nil
 }
 
-func (m *ModuleManager) refreshModuleIndexForLocalModules(ctx context.Context, moduleNames []string) error {
+func (m *ModuleManager) refreshModuleOriginForLocalModules(ctx context.Context, moduleNames []string) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -1201,7 +1201,7 @@ func (m *ModuleManager) refreshModuleIndexForLocalModules(ctx context.Context, m
 		packageJSONPath := filepath.Join(modulesPath, name, "package.json")
 		packageJSONData, readErr := os.ReadFile(packageJSONPath)
 
-		entry := modmeta.ModuleIndex{
+		entry := modmeta.ModuleOrigin{
 			ModuleName:       name,
 			OriginType:       "local",
 			OriginRef:        "local",
@@ -1229,7 +1229,7 @@ func (m *ModuleManager) refreshModuleIndexForLocalModules(ctx context.Context, m
 				DoUpdates: clause.AssignmentColumns([]string{"available", "version", "manifest_json", "local_path", "last_sync_at", "last_error_message"}),
 			}).
 			Create(&entry).Error; err != nil {
-			return xfmt.Errorf("refresh module index for %s: %w", name, err)
+			return xfmt.Errorf("refresh module origin for %s: %w", name, err)
 		}
 	}
 
@@ -1249,17 +1249,17 @@ func containsModuleName(moduleNames []string, target string) bool {
 	return false
 }
 
-func (m *ModuleManager) syncModuleIndexAfterInstall(ctx context.Context, logger *slog.Logger, moduleNames []string) error {
+func (m *ModuleManager) syncModuleOriginAfterInstall(ctx context.Context, logger *slog.Logger, moduleNames []string) error {
 	if !containsModuleName(moduleNames, "meta") {
 		return nil
 	}
-	syncFn := m.moduleIndexSyncLocal
+	syncFn := m.moduleOriginSyncLocal
 	if syncFn == nil {
-		syncFn = SyncLocalModuleIndex
+		syncFn = SyncLocalModuleOrigin
 	}
 	if _, err := syncFn(ctx, m.runtimeScope, m.lockerFactory); err != nil {
 		if logger != nil {
-			logger.Warn("module index sync after meta install failed", "error", err)
+			logger.Warn("module origin sync after meta install failed", "error", err)
 		}
 	}
 	return nil
@@ -1658,18 +1658,18 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 		phaseEndDuration := time.Since(phaseEndStarted)
 		logFinalizingPhaseEnd(stageCtx, logger, phaseEndDuration)
 
-		setSpinnerStage("finalizing.index_refresh", fmt.Sprintf("%s: refreshing module index", rootModuleName))
+		setSpinnerStage("finalizing.index_refresh", fmt.Sprintf("%s: refreshing module origin", rootModuleName))
 		indexRefreshStarted := time.Now()
-		if err := m.refreshModuleIndexForLocalModules(ctx, opPlan.ModuleOrder); err != nil {
+		if err := m.refreshModuleOriginForLocalModules(ctx, opPlan.ModuleOrder); err != nil {
 			clearSpinnerState()
 			return err
 		}
 		indexRefreshDuration := time.Since(indexRefreshStarted)
 		logger.Debug("module operation finalizing index refresh completed", "step", "index_refresh", "duration_ms", indexRefreshDuration.Milliseconds())
 
-		setSpinnerStage("finalizing.index_sync", fmt.Sprintf("%s: syncing module index", rootModuleName))
+		setSpinnerStage("finalizing.index_sync", fmt.Sprintf("%s: syncing module origin", rootModuleName))
 		indexSyncStarted := time.Now()
-		if err := m.syncModuleIndexAfterInstall(ctx, logger, opPlan.ModuleOrder); err != nil {
+		if err := m.syncModuleOriginAfterInstall(ctx, logger, opPlan.ModuleOrder); err != nil {
 			clearSpinnerState()
 			return err
 		}
@@ -2075,10 +2075,10 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 		}
 		phaseEndDuration := time.Since(phaseEndStarted)
 		logFinalizingPhaseEnd(stageCtx, logger, phaseEndDuration)
-		setSpinnerStage("finalizing.index_refresh", fmt.Sprintf("%s: refreshing module index", rootModuleName))
+		setSpinnerStage("finalizing.index_refresh", fmt.Sprintf("%s: refreshing module origin", rootModuleName))
 		// Index refresh still covers EnsureOrder ∪ ModuleOrder so newly ensured shells stay indexed.
 		indexModules := mergeUniqueModuleNames(opPlan.EnsureOrder, opPlan.ModuleOrder)
-		if err := m.refreshModuleIndexForLocalModules(ctx, indexModules); err != nil {
+		if err := m.refreshModuleOriginForLocalModules(ctx, indexModules); err != nil {
 			clearSpinnerState()
 			return rollbackUpgradeOrigin(err)
 		}
@@ -2219,7 +2219,7 @@ func NewModuleManager(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExec
 		lockerFactory: func(runtimeScope scope.Scope) statepkg.Locker {
 			return lease.New(runtimeScope)
 		},
-		moduleIndexSyncLocal: SyncLocalModuleIndex,
+		moduleOriginSyncLocal: SyncLocalModuleOrigin,
 	}
 
 	// Default entity set: full catalog (pkg IR + dual-store raw + ops, incl. lock lease).

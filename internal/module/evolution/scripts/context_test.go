@@ -138,7 +138,7 @@ func newScriptsTestScope(t *testing.T) *scriptsTestScope {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&modmeta.ModuleMigrationHistory{}); err != nil {
+	if err := db.AutoMigrate(&modmeta.ModuleMigration{}); err != nil {
 		t.Fatalf("migrate history table: %v", err)
 	}
 	seedScriptsBootstrapAdmin(t, db, "scripts-admin-"+xid.New().String(), "scripts-company-"+xid.New().String())

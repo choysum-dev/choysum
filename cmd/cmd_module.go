@@ -492,12 +492,12 @@ func queryModuleIndexViews(runtimeScope scope.Scope, moduleName string) ([]modul
 			return nil
 		}
 		db := txScope.Session().DB
-		if !db.Migrator().HasTable(&modmeta.ModuleIndex{}) {
+		if !db.Migrator().HasTable(&modmeta.ModuleOrigin{}) {
 			return nil
 		}
 		hasIndex = true
 
-		q := db.Table((modmeta.ModuleIndex{}).TableName() + " AS idx")
+		q := db.Table((modmeta.ModuleOrigin{}).TableName() + " AS idx")
 		if db.Migrator().HasTable(&meta.Module{}) {
 			q = q.
 				Select("idx.module_name, idx.origin_type, idx.origin_ref, idx.available, idx.version, idx.local_path, mod.status AS install_status").
@@ -509,7 +509,7 @@ func queryModuleIndexViews(runtimeScope scope.Scope, moduleName string) ([]modul
 			q = q.Where("idx.module_name = ?", strings.TrimSpace(moduleName))
 		}
 		if err := q.Order("idx.module_name ASC").Scan(&views).Error; err != nil {
-			return xfmt.Errorf("query module index failed: %w", err)
+			return xfmt.Errorf("query module origin failed: %w", err)
 		}
 		return nil
 	})

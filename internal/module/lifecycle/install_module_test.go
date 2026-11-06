@@ -69,7 +69,7 @@ func TestSetInstallResolvingModulesSpinner(t *testing.T) {
 func TestInstallModuleSetsResolvingModulesSpinnerBeforePrepare(t *testing.T) {
 	t.Parallel()
 	modulesPath := t.TempDir()
-	db := newModuleIndexSyncDB(t)
+	db := newModuleOriginSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
@@ -96,7 +96,7 @@ func TestInstallModuleSetsResolvingModulesSpinnerBeforePrepare(t *testing.T) {
 			}
 		},
 	}
-	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
 	locker := &moduleIndexSyncTestLocker{}
 	opts := []Option{
 		WithLockerFactory(func(scope.Scope) statepkg.Locker { return locker }),
@@ -137,7 +137,7 @@ func TestInstallModuleRejectsEmptyPreparedRoot(t *testing.T) {
 	ctx := logutil.WithProgressLine(context.Background(), line)
 	ctx = logutil.WithProgressTicker(ctx, ticker)
 
-	err := InstallModule(ctx, newModuleIndexSyncScope(t.TempDir(), newModuleIndexSyncDB(t)), nil, InstallModuleRequest{
+	err := InstallModule(ctx, newModuleOriginSyncScope(t.TempDir(), newModuleOriginSyncDB(t)), nil, InstallModuleRequest{
 		Input: "solo_empty_root",
 	})
 	if err == nil || !strings.Contains(err.Error(), "prepared install root is empty") {
@@ -151,7 +151,7 @@ func TestInstallModuleRejectsEmptyPreparedRoot(t *testing.T) {
 func TestInstallModuleRestoresCallerOwnedPrepareSpinnerOnPrepareFailure(t *testing.T) {
 	t.Parallel()
 	modulesPath := t.TempDir()
-	db := newModuleIndexSyncDB(t)
+	db := newModuleOriginSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
@@ -169,7 +169,7 @@ func TestInstallModuleRestoresCallerOwnedPrepareSpinnerOnPrepareFailure(t *testi
 			}
 		},
 	}
-	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
 	ctx := logutil.WithProgressLine(context.Background(), line)
 	ctx = logutil.WithProgressTicker(ctx, ticker)
 
@@ -202,7 +202,7 @@ func TestEnsureInstallPrepareProgressTickerNilContext(t *testing.T) {
 func TestInstallModuleOwnsPrepareTickerWhenOnlyProgressLine(t *testing.T) {
 	t.Parallel()
 	modulesPath := t.TempDir()
-	db := newModuleIndexSyncDB(t)
+	db := newModuleOriginSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
@@ -219,7 +219,7 @@ func TestInstallModuleOwnsPrepareTickerWhenOnlyProgressLine(t *testing.T) {
 	origin := &countingPrefetchOriginCoordinator{
 		modules: map[string]*meta.Module{"solo_owned_ticker": mod},
 	}
-	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
 	locker := &moduleIndexSyncTestLocker{}
 	// ProgressLine without ticker → InstallModule owns prepare ticker (Stop deferred).
 	ctx := logutil.WithProgressLine(context.Background(), logutil.NewProgressLine(&bytes.Buffer{}))
@@ -241,7 +241,7 @@ func TestInstallModuleOwnsPrepareTickerWhenOnlyProgressLine(t *testing.T) {
 func TestPrepareInstallAliasesPrefetchInstallModules(t *testing.T) {
 	t.Parallel()
 	modulesPath := t.TempDir()
-	db := newModuleIndexSyncDB(t)
+	db := newModuleOriginSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
@@ -260,7 +260,7 @@ func TestPrepareInstallAliasesPrefetchInstallModules(t *testing.T) {
 		modules: map[string]*meta.Module{"solo": mod},
 	}
 
-	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
 	locker := &moduleIndexSyncTestLocker{}
 	opts := []Option{
 		WithLockerFactory(func(scope.Scope) statepkg.Locker { return locker }),
@@ -282,7 +282,7 @@ func TestPrepareInstallAliasesPrefetchInstallModules(t *testing.T) {
 func TestInstallModulePropagatesSkipWebShell(t *testing.T) {
 	t.Parallel()
 	modulesPath := t.TempDir()
-	db := newModuleIndexSyncDB(t)
+	db := newModuleOriginSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
@@ -303,7 +303,7 @@ func TestInstallModulePropagatesSkipWebShell(t *testing.T) {
 		modules: map[string]*meta.Module{"solo_skip_web": mod},
 	}
 
-	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	runtimeScope := newModuleOriginSyncScope(modulesPath, db)
 	locker := &moduleIndexSyncTestLocker{}
 	opts := []Option{
 		WithLockerFactory(func(scope.Scope) statepkg.Locker { return locker }),

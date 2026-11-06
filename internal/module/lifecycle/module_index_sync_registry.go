@@ -44,11 +44,11 @@ type catalogIndexEntry struct {
 
 var catalogIndexHTTPClient = &http.Client{Timeout: 15 * time.Second}
 
-// SyncRegistryModuleIndex fetches the static module catalog index from
-// index.choysum.dev and upserts discovered modules into meta_module_index
+// SyncRegistryModuleOrigin fetches the static module catalog index from
+// index.choysum.dev and upserts discovered modules into meta_module_origin
 // with origin_type=registry.
-func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (ModuleIndexSyncStats, error) {
-	stats := ModuleIndexSyncStats{}
+func SyncRegistryModuleOrigin(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (ModuleOriginSyncStats, error) {
+	stats := ModuleOriginSyncStats{}
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -57,7 +57,7 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 	}
 
 	locker := lockerFactory(runtimeScope)
-	resource := "module_index_sync_registry"
+	resource := "module_origin_sync_registry"
 	ownerID := xid.New().String()
 	ttl := moduleIndexLockTTL(ctx, runtimeScope)
 
@@ -83,7 +83,7 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 				return
 			case <-ticker.C:
 				if err := locker.Renew(heartbeatCtx, resource, ownerID, ttl); err != nil {
-					runtimeScope.Logger().Warn("module index lease renew failed", "resource", resource, "error", err)
+					runtimeScope.Logger().Warn("module origin lease renew failed", "resource", resource, "error", err)
 				}
 			}
 		}
@@ -92,7 +92,7 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 	defer func() {
 		cancel()
 		<-done
-		releaseLeaseWithContextFallback(runtimeScope, locker, ctx, resource, ownerID, "registry module index")
+		releaseLeaseWithContextFallback(runtimeScope, locker, ctx, resource, ownerID, "registry module origin")
 	}()
 
 	indexURL := resolveRegistryIndexURL(runtimeScope)
@@ -107,13 +107,13 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 
 	session, ok := scope.SessionForScope(ctx, runtimeScope)
 	if !ok || session == nil || session.DB == nil {
-		return stats, errors.New("module index session is unavailable")
+		return stats, errors.New("module origin session is unavailable")
 	}
 
 	seen := make(map[string]struct{})
 	now := time.Now().UTC()
 	hasError := false
-	records := make([]modmeta.ModuleIndex, 0, len(index.Modules))
+	records := make([]modmeta.ModuleOrigin, 0, len(index.Modules))
 
 	for moduleName, module := range index.Modules {
 		select {
@@ -138,13 +138,13 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 
 		manifestJSON, err := json.Marshal(module)
 		if err != nil {
-			runtimeScope.Logger().Warn("module index marshal failed", "module", name, "error", err)
+			runtimeScope.Logger().Warn("module origin marshal failed", "module", name, "error", err)
 			stats.Failed++
 			hasError = true
 			continue
 		}
 
-		records = append(records, modmeta.ModuleIndex{
+		records = append(records, modmeta.ModuleOrigin{
 			ModuleName:   name,
 			OriginType:   "registry",
 			OriginRef:    originRef,
@@ -158,14 +158,14 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 	if len(records) > 0 {
 		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
 			return txSession.WithContext(ctx).
-				Model(&modmeta.ModuleIndex{}).
+				Model(&modmeta.ModuleOrigin{}).
 				Clauses(clause.OnConflict{
 					Columns:   []clause.Column{{Name: "module_name"}, {Name: "origin_type"}, {Name: "origin_ref"}},
 					DoUpdates: clause.AssignmentColumns([]string{"available", "version", "manifest_json", "last_sync_at"}),
 				}).
 				Create(&records).Error
 		}); err != nil {
-			runtimeScope.Logger().Warn("module index batch upsert failed", "count", len(records), "error", err)
+			runtimeScope.Logger().Warn("module origin batch upsert failed", "count", len(records), "error", err)
 			if isSQLiteLockError(err) {
 				stats.Failed += len(records)
 				return stats, err
@@ -174,7 +174,7 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 				entry := record
 				if rowErr := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
 					return txSession.WithContext(ctx).
-						Model(&modmeta.ModuleIndex{}).
+						Model(&modmeta.ModuleOrigin{}).
 						Clauses(clause.OnConflict{
 							Columns:   []clause.Column{{Name: "module_name"}, {Name: "origin_type"}, {Name: "origin_ref"}},
 							DoUpdates: clause.AssignmentColumns([]string{"available", "version", "manifest_json", "last_sync_at"}),
@@ -183,7 +183,7 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 				}); rowErr != nil {
 					stats.Failed++
 					hasError = true
-					runtimeScope.Logger().Warn("module index upsert failed", "module", entry.ModuleName, "error", rowErr)
+					runtimeScope.Logger().Warn("module origin upsert failed", "module", entry.ModuleName, "error", rowErr)
 					continue
 				}
 				stats.Success++
@@ -195,13 +195,13 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 
 	// Mark registry entries absent from the current catalog snapshot as unavailable.
 	if len(seen) > 0 {
-		existing := make([]modmeta.ModuleIndex, 0)
+		existing := make([]modmeta.ModuleOrigin, 0)
 		if err := session.WithContext(ctx).
-			Model(&modmeta.ModuleIndex{}).
+			Model(&modmeta.ModuleOrigin{}).
 			Where("origin_type = ?", "registry").
 			Find(&existing).Error; err != nil {
 			hasError = true
-			runtimeScope.Logger().Warn("module index reconcile failed", "error", err)
+			runtimeScope.Logger().Warn("module origin reconcile failed", "error", err)
 		} else {
 			orphanedIDs := make([]string, 0)
 			type moduleOriginKey struct {
@@ -223,12 +223,12 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 			if len(orphanedIDs) > 0 {
 				if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
 					return txSession.WithContext(ctx).
-						Model(&modmeta.ModuleIndex{}).
+						Model(&modmeta.ModuleOrigin{}).
 						Where("id IN ?", orphanedIDs).
 						Updates(map[string]any{"available": false, "last_sync_at": now}).Error
 				}); err != nil {
 					hasError = true
-					runtimeScope.Logger().Warn("module index reconcile rows update failed", "count", len(orphanedIDs), "error", err)
+					runtimeScope.Logger().Warn("module origin reconcile rows update failed", "count", len(orphanedIDs), "error", err)
 				}
 			}
 
@@ -237,12 +237,12 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 				originRef := key.originRef
 				if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
 					return txSession.WithContext(ctx).
-						Model(&modmeta.ModuleIndex{}).
+						Model(&modmeta.ModuleOrigin{}).
 						Where("module_name = ? AND origin_type = ? AND origin_ref = ?", moduleName, "registry", originRef).
 						Updates(map[string]any{"available": false, "last_sync_at": now}).Error
 				}); err != nil {
 					hasError = true
-					runtimeScope.Logger().Warn("module index reconcile row update failed", "module", moduleName, "origin_ref", originRef, "error", err)
+					runtimeScope.Logger().Warn("module origin reconcile row update failed", "module", moduleName, "origin_ref", originRef, "error", err)
 				}
 			}
 		}
@@ -251,12 +251,12 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 	if !hasError {
 		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
 			return txSession.WithContext(ctx).
-				Model(&modmeta.ModuleIndex{}).
+				Model(&modmeta.ModuleOrigin{}).
 				Where("origin_type = ?", "registry").
 				Updates(map[string]any{"last_batch_sync_at": now}).Error
 		}); err != nil {
-			if !isTableMissingInSession(session, "meta_module_index") {
-				runtimeScope.Logger().Warn("module index sync timestamp update failed", "error", err)
+			if !isTableMissingInSession(session, "meta_module_origin") {
+				runtimeScope.Logger().Warn("module origin sync timestamp update failed", "error", err)
 			}
 		}
 	}

@@ -24,10 +24,11 @@ func DualStoreRawEntities() []any {
 // Includes meta_lock_lease (LockLease); acquire/renew/release stay in internal/state/lease.
 func OpsEntities() []any {
 	return []any{
-		&ModuleIndex{},
+		&ModuleOrigin{},
+		&ModuleCatalog{},
+		&ModuleOperation{},
 		&ModelData{},
-		&ModuleManagementLog{},
-		&ModuleMigrationHistory{},
+		&ModuleMigration{},
 		&LockLease{},
 		&SchemaSnapshot{},
 	}
