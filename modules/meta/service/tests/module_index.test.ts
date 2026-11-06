@@ -415,13 +415,13 @@ describe('pickNewestTimestamp', () => {
 describe('aggregateRows', () => {
   it('merges local and registry rows for same module', () => {
     const rows = [
-      record({ ModuleName: 'auth', OriginType: 'local', Version: '1.0.0', Available: true }),
-      record({ ModuleName: 'auth', OriginType: 'registry', Version: '1.0.1', Available: true }),
+      record({ ModuleName: 'auth', SourceType: 'local', Version: '1.0.0', Available: true }),
+      record({ ModuleName: 'auth', SourceType: 'registry', Version: '1.0.1', Available: true }),
     ];
     const result = aggregateRows(rows);
     expect(result).toHaveLength(1);
     expect(result[0].ModuleName).toBe('auth');
-    expect(result[0].OriginTypes).toBe('local, registry');
+    expect(result[0].SourceTypes).toBe('local, registry');
     expect(result[0].LocalVersion).toBe('1.0.0');
     expect(result[0].RegistryVersion).toBe('1.0.1');
     expect(result[0].Version).toBe('1.0.1'); // registry preferred
@@ -429,31 +429,31 @@ describe('aggregateRows', () => {
   });
 
   it('marks module as unavailable when all rows are unavailable', () => {
-    const rows = [record({ ModuleName: 'x', OriginType: 'local', Available: false }), record({ ModuleName: 'x', OriginType: 'registry', Available: false })];
+    const rows = [record({ ModuleName: 'x', SourceType: 'local', Available: false }), record({ ModuleName: 'x', SourceType: 'registry', Available: false })];
     const result = aggregateRows(rows);
     expect(result[0].Available).toBe(false);
   });
 
   it('skips rows with empty ModuleName', () => {
-    const rows = [record({ ModuleName: '', OriginType: 'local' })];
+    const rows = [record({ ModuleName: '', SourceType: 'local' })];
     expect(aggregateRows(rows)).toHaveLength(0);
   });
 
   it('handles single-origin rows gracefully', () => {
-    const rows = [record({ ModuleName: 'solo', OriginType: 'local', Version: '2.0' })];
+    const rows = [record({ ModuleName: 'solo', SourceType: 'local', Version: '2.0' })];
     const result = aggregateRows(rows);
     expect(result[0].ModuleName).toBe('solo');
-    expect(result[0].OriginType).toBe('local');
+    expect(result[0].SourceType).toBe('local');
     expect(result[0].InstalledStatus).toBe('uninstalled');
   });
 
-  it('prefers registry-first bucket then local for OriginTypes order', () => {
+  it('prefers registry-first bucket then local for SourceTypes order', () => {
     const rows = [
-      record({ ModuleName: 'auth', OriginType: 'registry', Version: '2.0', Available: true }),
-      record({ ModuleName: 'auth', OriginType: 'local', Version: '1.0', Available: true }),
+      record({ ModuleName: 'auth', SourceType: 'registry', Version: '2.0', Available: true }),
+      record({ ModuleName: 'auth', SourceType: 'local', Version: '1.0', Available: true }),
     ];
     const result = aggregateRows(rows);
-    expect(result[0].OriginTypes).toBe('local, registry');
+    expect(result[0].SourceTypes).toBe('local, registry');
     expect(result[0].LocalVersion).toBe('1.0');
     expect(result[0].RegistryVersion).toBe('2.0');
   });
@@ -462,67 +462,67 @@ describe('aggregateRows', () => {
     const rows = [
       record({
         ModuleName: 'r',
-        OriginType: 'registry',
+        SourceType: 'registry',
         Version: '3',
         InstalledStatus: 'installed',
         InstalledVersion: '3',
         LastErrorMessage: 'e',
         SyncRevision: 'rev',
       }),
-      record({ ModuleName: 'r', OriginType: 'other', Version: '9' }),
+      record({ ModuleName: 'r', SourceType: 'other', Version: '9' }),
     ];
     const result = aggregateRows(rows);
-    expect(result[0].OriginType).toBe('registry');
-    expect(result[0].OriginTypes).toBe('registry');
+    expect(result[0].SourceType).toBe('registry');
+    expect(result[0].SourceTypes).toBe('registry');
     expect(result[0].InstalledStatus).toBe('installed');
     expect(result[0].InstalledVersion).toBe('3');
     expect(result[0].LastErrorMessage).toBe('e');
     expect(result[0].SyncRevision).toBe('rev');
   });
 
-  it('falls back to bucket[0] and empty OriginTypes for unknown origins', () => {
-    const rows = [record({ ModuleName: 'x', OriginType: 'mirror', Version: '1', Id: 'id-1' })];
+  it('falls back to bucket[0] and empty SourceTypes for unknown origins', () => {
+    const rows = [record({ ModuleName: 'x', SourceType: 'mirror', Version: '1', Id: 'id-1' })];
     const result = aggregateRows(rows);
     expect(result[0].Id).toBe('id-1');
-    expect(result[0].OriginType).toBe('mirror');
-    expect(result[0].OriginTypes).toBe('mirror');
+    expect(result[0].SourceType).toBe('mirror');
+    expect(result[0].SourceTypes).toBe('mirror');
   });
 
   it('defaults OriginType to local when base origin is blank', () => {
-    const rows = [record({ ModuleName: 'blank', OriginType: '   ', Id: '' })];
+    const rows = [record({ ModuleName: 'blank', SourceType: '   ', Id: '' })];
     const result = aggregateRows(rows);
-    expect(result[0].OriginType).toBe('local');
-    expect(result[0].OriginTypes).toBe('');
+    expect(result[0].SourceType).toBe('local');
+    expect(result[0].SourceTypes).toBe('');
   });
 
   it('defaults OriginType to local when OriginType is nullish', () => {
-    const rows = [record({ ModuleName: 'nullish', OriginType: undefined, Id: 'n1' })];
+    const rows = [record({ ModuleName: 'nullish', SourceType: undefined, Id: 'n1' })];
     const result = aggregateRows(rows);
-    expect(result[0].OriginType).toBe('local');
-    expect(result[0].OriginTypes).toBe('');
+    expect(result[0].SourceType).toBe('local');
+    expect(result[0].SourceTypes).toBe('');
   });
 
   it('fills Id from registry when local Id is empty', () => {
     const rows = [
-      record({ ModuleName: 'x', OriginType: 'local', Id: '', Version: '1' }),
-      record({ ModuleName: 'x', OriginType: 'registry', Id: 'reg-1', Version: '2' }),
+      record({ ModuleName: 'x', SourceType: 'local', Id: '', Version: '1' }),
+      record({ ModuleName: 'x', SourceType: 'registry', Id: 'reg-1', Version: '2' }),
     ];
     expect(aggregateRows(rows)[0].Id).toBe('reg-1');
   });
 
   it('fills OriginRef and ManifestJson from registry when local is empty', () => {
     const rows = [
-      record({ ModuleName: 'x', OriginType: 'local', OriginRef: '', ManifestJson: null }),
+      record({ ModuleName: 'x', SourceType: 'local', SourceRef: '', ManifestJson: null }),
       record({
         ModuleName: 'x',
-        OriginType: 'registry',
-        OriginRef: 'npm:x',
+        SourceType: 'registry',
+        SourceRef: 'npm:x',
         ManifestJson: { name: 'x' },
         LastErrorMessage: 'oops',
       }),
     ];
     const result = aggregateRows(rows)[0];
-    expect(result.OriginRef).toBe('npm:x');
+    expect(result.SourceRef).toBe('npm:x');
     expect(result.ManifestJson).toEqual({ name: 'x' });
     expect(result.LastErrorMessage).toBe('oops');
   });

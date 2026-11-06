@@ -46,7 +46,7 @@ func TestPickPropertyDefinitionOwnerModule_LastEligible(t *testing.T) {
 func TestBuildBackendBundlesToDir_PropertyDefinitionOwnerAndEnsureError(t *testing.T) {
 	t.Parallel()
 	modulesPath := t.TempDir()
-	db := newModuleIndexSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
@@ -64,7 +64,7 @@ func TestBuildBackendBundlesToDir_PropertyDefinitionOwnerAndEnsureError(t *testi
 		t.Fatalf("seed module: %v", err)
 	}
 
-	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	manager := NewModuleManager(runtimeScope, nil)
 	manager.bootstrapOnce.Do(func() {})
 	distBundlesDir := t.TempDir()
@@ -91,7 +91,7 @@ func TestBuildBackendBundlesToDir_PropertyDefinitionOwnerAndEnsureError(t *testi
 func TestBuildBackendAppToDir_C2OwnersAppendAndEnsureError(t *testing.T) {
 	t.Parallel()
 	modulesPath := t.TempDir()
-	db := newModuleIndexSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
@@ -121,7 +121,7 @@ func TestBuildBackendAppToDir_C2OwnersAppendAndEnsureError(t *testing.T) {
 		t.Fatalf("seed last module: %v", err)
 	}
 
-	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	manager := NewModuleManager(runtimeScope, nil)
 	manager.bootstrapOnce.Do(func() {})
 	distAppDir := t.TempDir()

@@ -332,15 +332,15 @@ func (m *ModuleManager) globalWebSkipCallbacks() (
 }
 
 type ModuleManager struct {
-	runtimeScope             scope.Scope
-	runtimeOptions           runtimeOptions
-	jsExecutor               jsexecutor.ScriptExecutor
-	entities                 []any
-	bootstrapOnce            sync.Once
-	bootstrapErr             error
-	lockerFactory            statepkg.LockerFactory
-	moduleIndexSyncLocal     func(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (ModuleIndexSyncStats, error)
-	originCoordinatorFactory func(runtimeScope scope.Scope) OriginCoordinator
+	runtimeScope                  scope.Scope
+	runtimeOptions                runtimeOptions
+	jsExecutor                    jsexecutor.ScriptExecutor
+	entities                      []any
+	bootstrapOnce                 sync.Once
+	bootstrapErr                  error
+	lockerFactory                 statepkg.LockerFactory
+	moduleSourceSnapshotSyncLocal func(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (ModuleSourceSnapshotSyncStats, error)
+	originCoordinatorFactory      func(runtimeScope scope.Scope) OriginCoordinator
 	// pauseLeaseRenewDepth skips heartbeat Renew while >0 (nested commit TX safe).
 	pauseLeaseRenewDepth atomic.Int32
 	// leaseRenewMu serializes renew against paused commits: pause Lock()s it for the
@@ -385,12 +385,28 @@ func (m *ModuleManager) ensureMetaTables() error {
 }
 
 func (m *ModuleManager) bootstrapMetaTables(txScope scope.Scope) error {
-	migrator := txScope.Session().Migrator()
+	if txScope == nil {
+		return xfmt.Errorf("bootstrap meta tables: session is unavailable")
+	}
+	session := txScope.Session()
+	if session == nil || session.DB == nil {
+		return xfmt.Errorf("bootstrap meta tables: session is unavailable")
+	}
+	db := session.DB
+	if err := modmeta.EnsureOpsSchemaCutover(db); err != nil {
+		return xfmt.Errorf("ops schema cutover: %w", err)
+	}
 
-	if migrator.HasTable(&meta.Module{}) && migrator.HasTable(&modmeta.LockLease{}) {
-		// Tables may predate SPL12; ensure the live unique index once meta_model exists.
+	migrator := session.Migrator()
+	baseReady := migrator.HasTable(&meta.Module{}) && migrator.HasTable(&modmeta.LockLease{})
+	if baseReady {
+		// Existing installs still need ops satellites (catalog/operation/source
+		// snapshot/migration) after the W1 hard-cut table rename.
+		if err := session.AutoMigrate(modmeta.OpsEntities()...); err != nil {
+			return xfmt.Errorf("auto migrate ops entities: %w", err)
+		}
 		if migrator.HasTable(&meta.Model{}) {
-			if err := modmeta.EnsureEffectiveAppNameUniqueIndex(txScope.Session().DB); err != nil {
+			if err := modmeta.EnsureEffectiveAppNameUniqueIndex(db); err != nil {
 				return xfmt.Errorf("ensure effective app/name unique index: %w", err)
 			}
 		}
@@ -439,7 +455,7 @@ func (m *ModuleManager) bootstrapMetaTables(txScope scope.Scope) error {
 	if err := txScope.Session().AutoMigrate(m.entities...); err != nil {
 		return xfmt.Errorf("auto migrate meta entities: %w", err)
 	}
-	if err := modmeta.EnsureEffectiveAppNameUniqueIndex(txScope.Session().DB); err != nil {
+	if err := modmeta.EnsureEffectiveAppNameUniqueIndex(db); err != nil {
 		return xfmt.Errorf("ensure effective app/name unique index: %w", err)
 	}
 	if logger != nil {
@@ -988,9 +1004,9 @@ func installHeartbeatStageLabel(rawStage string) string {
 	case "finalizing.phase_end":
 		return "Finalizing"
 	case "finalizing.index_refresh":
-		return "Refreshing module index"
+		return "Refreshing module origin"
 	case "finalizing.index_sync":
-		return "Syncing module index"
+		return "Syncing module origin"
 	case "module.step":
 		return "Module step"
 	default:
@@ -1175,7 +1191,7 @@ func (m *ModuleManager) resolveGeneratedAPIRoot() (string, error) {
 	return generatedAPIRoot, nil
 }
 
-func (m *ModuleManager) refreshModuleIndexForLocalModules(ctx context.Context, moduleNames []string) error {
+func (m *ModuleManager) refreshModuleSourceSnapshotForLocalModules(ctx context.Context, moduleNames []string) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -1201,10 +1217,10 @@ func (m *ModuleManager) refreshModuleIndexForLocalModules(ctx context.Context, m
 		packageJSONPath := filepath.Join(modulesPath, name, "package.json")
 		packageJSONData, readErr := os.ReadFile(packageJSONPath)
 
-		entry := modmeta.ModuleIndex{
+		entry := modmeta.ModuleSourceSnapshot{
 			ModuleName:       name,
-			OriginType:       "local",
-			OriginRef:        "local",
+			SourceType:       "local",
+			SourceRef:        "local",
 			Available:        readErr == nil,
 			ManifestJson:     packageJSONData,
 			LocalPath:        nullString(filepath.Join(modulesPath, name)),
@@ -1225,11 +1241,11 @@ func (m *ModuleManager) refreshModuleIndexForLocalModules(ctx context.Context, m
 
 		if err := m.runtimeScope.Session().WithContext(ctx).
 			Clauses(clause.OnConflict{
-				Columns:   []clause.Column{{Name: "module_name"}, {Name: "origin_type"}, {Name: "origin_ref"}},
+				Columns:   []clause.Column{{Name: "module_name"}, {Name: "source_type"}, {Name: "source_ref"}},
 				DoUpdates: clause.AssignmentColumns([]string{"available", "version", "manifest_json", "local_path", "last_sync_at", "last_error_message"}),
 			}).
 			Create(&entry).Error; err != nil {
-			return xfmt.Errorf("refresh module index for %s: %w", name, err)
+			return xfmt.Errorf("refresh module origin for %s: %w", name, err)
 		}
 	}
 
@@ -1249,17 +1265,17 @@ func containsModuleName(moduleNames []string, target string) bool {
 	return false
 }
 
-func (m *ModuleManager) syncModuleIndexAfterInstall(ctx context.Context, logger *slog.Logger, moduleNames []string) error {
+func (m *ModuleManager) syncModuleSourceSnapshotAfterInstall(ctx context.Context, logger *slog.Logger, moduleNames []string) error {
 	if !containsModuleName(moduleNames, "meta") {
 		return nil
 	}
-	syncFn := m.moduleIndexSyncLocal
+	syncFn := m.moduleSourceSnapshotSyncLocal
 	if syncFn == nil {
-		syncFn = SyncLocalModuleIndex
+		syncFn = SyncLocalModuleSourceSnapshot
 	}
 	if _, err := syncFn(ctx, m.runtimeScope, m.lockerFactory); err != nil {
 		if logger != nil {
-			logger.Warn("module index sync after meta install failed", "error", err)
+			logger.Warn("module origin sync after meta install failed", "error", err)
 		}
 	}
 	return nil
@@ -1658,18 +1674,18 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 		phaseEndDuration := time.Since(phaseEndStarted)
 		logFinalizingPhaseEnd(stageCtx, logger, phaseEndDuration)
 
-		setSpinnerStage("finalizing.index_refresh", fmt.Sprintf("%s: refreshing module index", rootModuleName))
+		setSpinnerStage("finalizing.index_refresh", fmt.Sprintf("%s: refreshing module origin", rootModuleName))
 		indexRefreshStarted := time.Now()
-		if err := m.refreshModuleIndexForLocalModules(ctx, opPlan.ModuleOrder); err != nil {
+		if err := m.refreshModuleSourceSnapshotForLocalModules(ctx, opPlan.ModuleOrder); err != nil {
 			clearSpinnerState()
 			return err
 		}
 		indexRefreshDuration := time.Since(indexRefreshStarted)
 		logger.Debug("module operation finalizing index refresh completed", "step", "index_refresh", "duration_ms", indexRefreshDuration.Milliseconds())
 
-		setSpinnerStage("finalizing.index_sync", fmt.Sprintf("%s: syncing module index", rootModuleName))
+		setSpinnerStage("finalizing.index_sync", fmt.Sprintf("%s: syncing module origin", rootModuleName))
 		indexSyncStarted := time.Now()
-		if err := m.syncModuleIndexAfterInstall(ctx, logger, opPlan.ModuleOrder); err != nil {
+		if err := m.syncModuleSourceSnapshotAfterInstall(ctx, logger, opPlan.ModuleOrder); err != nil {
 			clearSpinnerState()
 			return err
 		}
@@ -2075,10 +2091,10 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 		}
 		phaseEndDuration := time.Since(phaseEndStarted)
 		logFinalizingPhaseEnd(stageCtx, logger, phaseEndDuration)
-		setSpinnerStage("finalizing.index_refresh", fmt.Sprintf("%s: refreshing module index", rootModuleName))
+		setSpinnerStage("finalizing.index_refresh", fmt.Sprintf("%s: refreshing module origin", rootModuleName))
 		// Index refresh still covers EnsureOrder ∪ ModuleOrder so newly ensured shells stay indexed.
 		indexModules := mergeUniqueModuleNames(opPlan.EnsureOrder, opPlan.ModuleOrder)
-		if err := m.refreshModuleIndexForLocalModules(ctx, indexModules); err != nil {
+		if err := m.refreshModuleSourceSnapshotForLocalModules(ctx, indexModules); err != nil {
 			clearSpinnerState()
 			return rollbackUpgradeOrigin(err)
 		}
@@ -2219,7 +2235,7 @@ func NewModuleManager(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExec
 		lockerFactory: func(runtimeScope scope.Scope) statepkg.Locker {
 			return lease.New(runtimeScope)
 		},
-		moduleIndexSyncLocal: SyncLocalModuleIndex,
+		moduleSourceSnapshotSyncLocal: SyncLocalModuleSourceSnapshot,
 	}
 
 	// Default entity set: full catalog (pkg IR + dual-store raw + ops, incl. lock lease).

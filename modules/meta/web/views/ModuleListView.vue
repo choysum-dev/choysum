@@ -70,7 +70,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <ChoyVarcharField prop="InstalledVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
     <ChoyBooleanField prop="Available" :store="store" :vColumnProps="{ minWidth: 100 }" />
-    <ChoyVarcharField prop="OriginTypes" :label="_t('Origin')" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <ChoyVarcharField prop="SourceTypes" :label="_t('Origin')" :store="store" :vColumnProps="{ minWidth: 140 }" />
     <ChoyVarcharField prop="LocalPath" :label="_t('Path')" :store="store" :vColumnProps="{ minWidth: 220 }" />
     <ChoyDatetimeField prop="LastSyncAt" :label="_t('Synced At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
   </ChoyListView>

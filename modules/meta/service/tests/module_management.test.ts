@@ -6,7 +6,6 @@ import { createServiceByModel } from '@/core/service/rpc';
 import MetaModule from '@/meta/service/models/module';
 import MetaModuleIndex from '@/meta/service/models/module_index';
 import { DEFAULT_MODULE_INDEX_SEARCH } from '@/meta/service/models/_module_index_query';
-import ModuleManagementLog from '@/meta/service/models/module_management_log';
 import type JobModel from '@/task/service/models/job';
 
 const Job = createServiceByModel<typeof JobModel>('task.Job');
@@ -387,7 +386,7 @@ test('meta.MetaModule RequestUpgrade writes operatorUserId into job payload', as
   expect(job.PayloadJson?.operatorUserId).toBe('admin');
 });
 
-test('meta.MetaModule ExecuteInstall uses moduleManagement bridge and writes log', async () => {
+test('meta.MetaModule ExecuteInstall uses moduleManagement bridge', async () => {
   resetRequestContext();
   ensureModuleManagementBridge();
   ensureJobMock();
@@ -410,27 +409,15 @@ test('meta.MetaModule ExecuteInstall uses moduleManagement bridge and writes log
   expect(result.ReloadWeb).toBe(true);
   expect(result.moduleName).toBe('base');
   expect(result.action).toBe('install');
+  expect(result.summary?.code).toBe('MODULE_INSTALLED');
 
   expect(calls.length).toBe(1);
   expect(calls[0].params.moduleName).toBe('base');
   expect(calls[0].params.withDemo).toBe(true);
   expect(calls[0].params.operatorUserId).toBe('operator_1');
-
-  const logs = await ModuleManagementLog.Search(['JobId', '=', jobId] as any, { limit: 1 } as any);
-  expect(logs?.length >= 1).toBe(true);
-  expect(logs?.[0]?.Action).toBe('install');
-  expect(logs?.[0]?.ModuleName).toBe('base');
-  expect(logs?.[0]?.JobId).toBe(jobId);
-  expect(logs?.[0]?.ResultStatus).toBe('SUCCEEDED');
-  expect(logs?.[0]?.SummaryJson?.code).toBe('MODULE_INSTALLED');
-  expect(logs?.[0]?.OperatorUserId).toBe('operator_1');
-  expect(logs?.[0]?.JobCreatedAt).toBeTruthy();
-  expect(logs?.[0]?.JobFinishedAt).toBeTruthy();
-  expect(logs?.[0]?.Attempt).toBe(2);
-  expect(logs?.[0]?.MaxAttempts).toBe(5);
 });
 
-test('meta.MetaModule ExecuteInstall upserts module management log by jobId', async () => {
+test('meta.MetaModule ExecuteInstall can run twice for the same jobId', async () => {
   resetRequestContext();
   ensureModuleManagementBridge();
   ensureJobMock();
@@ -443,15 +430,13 @@ test('meta.MetaModule ExecuteInstall upserts module management log by jobId', as
   const jsCtx = ensureRequestContext();
   jsCtx.ctx.jobId = jobId;
 
-  await MetaModule.ExecuteInstall('base', false, 'operator_1');
-  await MetaModule.ExecuteInstall('base', false, 'operator_1');
-
-  const logs = await ModuleManagementLog.Search(['JobId', '=', jobId] as any, { limit: 10 } as any);
-  expect(logs?.length).toBe(1);
-  expect(logs?.[0]?.JobId).toBe(jobId);
+  const first = await MetaModule.ExecuteInstall('base', false, 'operator_1');
+  const second = await MetaModule.ExecuteInstall('base', false, 'operator_1');
+  expect(first.resultStatus).toBe('SUCCEEDED');
+  expect(second.resultStatus).toBe('SUCCEEDED');
 });
 
-test('meta.MetaModule ExecuteUninstall uses moduleManagement bridge and writes log', async () => {
+test('meta.MetaModule ExecuteUninstall uses moduleManagement bridge', async () => {
   resetRequestContext();
   ensureModuleManagementBridge();
   ensureJobMock();
@@ -478,14 +463,6 @@ test('meta.MetaModule ExecuteUninstall uses moduleManagement bridge and writes l
   expect(calls.length).toBe(1);
   expect(calls[0].params.moduleName).toBe('base');
   expect(calls[0].params.operatorUserId).toBe('operator_1');
-
-  const logs = await ModuleManagementLog.Search(['JobId', '=', jobId] as any, { limit: 1 } as any);
-  expect(logs?.length >= 1).toBe(true);
-  expect(logs?.[0]?.Action).toBe('uninstall');
-  expect(logs?.[0]?.ModuleName).toBe('base');
-  expect(logs?.[0]?.OperatorUserId).toBe('operator_1');
-  expect(logs?.[0]?.JobCreatedAt).toBeTruthy();
-  expect(logs?.[0]?.JobFinishedAt).toBeTruthy();
 });
 
 test('meta.MetaModule ExecuteUpgrade returns failed result and maps error fields', async () => {
@@ -509,13 +486,6 @@ test('meta.MetaModule ExecuteUpgrade returns failed result and maps error fields
   expect(result.errorCode).toBe('OP_FAILED');
   expect(result.summary?.code).toBe('MODULE_OPERATION_FAILED');
 
-  const logs = await ModuleManagementLog.Search(['JobId', '=', jobId] as any, { limit: 1 } as any);
-  expect(logs?.length >= 1).toBe(true);
-  expect(logs?.[0]?.ResultStatus).toBe('FAILED');
-  expect(logs?.[0]?.ErrorDomain).toBe('MODULE_MANAGEMENT');
-  expect(logs?.[0]?.ErrorCode).toBe('OP_FAILED');
-  expect(logs?.[0]?.LastErrorJson?.message).toBe('upgrade failed');
-  expect(logs?.[0]?.SummaryJson?.code).toBe('MODULE_OPERATION_FAILED');
 });
 
 test('meta.MetaModule ExecuteInstall marks ReloadFailed when reload fails', async () => {
@@ -1103,8 +1073,8 @@ test('meta.MetaModuleIndex Search honors requested fields after aggregation', as
     {
       Id: 'idx_local',
       ModuleName: 'auth',
-      OriginType: 'local',
-      OriginRef: 'local',
+      SourceType: 'local',
+      SourceRef: 'local',
       Available: true,
       Version: '1.0.0',
       ManifestJson: { source: 'local' },
@@ -1119,8 +1089,8 @@ test('meta.MetaModuleIndex Search honors requested fields after aggregation', as
     {
       Id: 'idx_registry',
       ModuleName: 'auth',
-      OriginType: 'registry',
-      OriginRef: '@choysum-dev/auth',
+      SourceType: 'registry',
+      SourceRef: '@choysum-dev/auth',
       Available: true,
       Version: '2.0.0',
       ManifestJson: { source: 'registry' },
@@ -1141,7 +1111,7 @@ test('meta.MetaModuleIndex Search honors requested fields after aggregation', as
     expect(typeof rows[0].toPlainObject).toBe('function');
     expect(rows[0].ModuleName).toBe('auth');
     expect(rows[0].RegistryVersion).toBe('2.0.0');
-    expect(rows[0].OriginType).toBeUndefined();
+    expect(rows[0].SourceType).toBeUndefined();
     expect(rows[0].LocalVersion).toBeUndefined();
   } finally {
     restoreGroupedRepo();
@@ -1158,8 +1128,8 @@ test('meta.MetaModuleIndex Search projection returns model instances and blocks 
     {
       Id: 'idx_local',
       ModuleName: 'auth',
-      OriginType: 'local',
-      OriginRef: 'local',
+      SourceType: 'local',
+      SourceRef: 'local',
       Available: true,
       Version: '1.0.0',
       ManifestJson: { source: 'local' },
@@ -1200,8 +1170,8 @@ test('meta.MetaModuleIndex Search prefers MetaModule status over aggregate defau
     {
       Id: 'idx_local',
       ModuleName: 'auth',
-      OriginType: 'local',
-      OriginRef: 'local',
+      SourceType: 'local',
+      SourceRef: 'local',
       Available: true,
       Version: '1.0.0',
       ManifestJson: { source: 'local' },
@@ -1214,8 +1184,8 @@ test('meta.MetaModuleIndex Search prefers MetaModule status over aggregate defau
     {
       Id: 'idx_registry',
       ModuleName: 'auth',
-      OriginType: 'registry',
-      OriginRef: '@choysum-dev/auth',
+      SourceType: 'registry',
+      SourceRef: '@choysum-dev/auth',
       Available: true,
       Version: '2.0.0',
       ManifestJson: { source: 'registry' },
@@ -1271,8 +1241,8 @@ test('meta.MetaModuleIndex Search/Count empty [] and {} use the catalog default'
     {
       Id: 'idx_local',
       ModuleName: 'auth',
-      OriginType: 'local',
-      OriginRef: 'local',
+      SourceType: 'local',
+      SourceRef: 'local',
       Available: true,
       Version: '1.0.0',
       ManifestJson: { source: 'local' },

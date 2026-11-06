@@ -630,8 +630,8 @@ func seedModuleIndexForE2E(ctx context.Context, configPath string, packages map[
 		if sess == nil || sess.DB == nil {
 			return xfmt.Errorf("missing db session")
 		}
-		if err := sess.DB.AutoMigrate(&modmeta.ModuleIndex{}); err != nil {
-			return xfmt.Errorf("auto-migrate modmeta.ModuleIndex: %w", err)
+		if err := sess.DB.AutoMigrate(&modmeta.ModuleSourceSnapshot{}); err != nil {
+			return xfmt.Errorf("auto-migrate modmeta.ModuleSourceSnapshot: %w", err)
 		}
 
 		now := time.Now()
@@ -654,10 +654,10 @@ func seedModuleIndexForE2E(ctx context.Context, configPath string, packages map[
 			revision := fmt.Sprintf("%d:%d", info.ModTime().UnixNano(), info.Size())
 			localPath := filepath.Join(runtimeOptions.modulesPath, sm.DirName)
 
-			rec := modmeta.ModuleIndex{
+			rec := modmeta.ModuleSourceSnapshot{
 				ModuleName:      name,
-				OriginType:      "local",
-				OriginRef:       "local",
+				SourceType:      "local",
+				SourceRef:       "local",
 				Available:       true,
 				Version:         sql.NullString{String: version, Valid: version != ""},
 				ManifestJson:    datatypes.JSON(data),
@@ -668,7 +668,7 @@ func seedModuleIndexForE2E(ctx context.Context, configPath string, packages map[
 			}
 
 			if err := sess.DB.Clauses(clause.OnConflict{
-				Columns: []clause.Column{{Name: "module_name"}, {Name: "origin_type"}, {Name: "origin_ref"}},
+				Columns: []clause.Column{{Name: "module_name"}, {Name: "source_type"}, {Name: "source_ref"}},
 				DoUpdates: clause.AssignmentColumns([]string{
 					"available",
 					"version",
@@ -682,7 +682,7 @@ func seedModuleIndexForE2E(ctx context.Context, configPath string, packages map[
 					"deleted_at",
 				}),
 			}).Create(&rec).Error; err != nil {
-				return xfmt.Errorf("upsert module index: %w", err)
+				return xfmt.Errorf("upsert module origin: %w", err)
 			}
 		}
 		return nil

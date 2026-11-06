@@ -17,12 +17,12 @@ import (
 
 func TestBootstrapMetaTablesSkipsWhenBaseTablesExist(t *testing.T) {
 	t.Parallel()
-	db := newModuleIndexSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(&meta.Module{}, &modmeta.LockLease{}); err != nil {
 		t.Fatalf("auto migrate base tables: %v", err)
 	}
 
-	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	manager := NewModuleManager(runtimeScope, nil)
 
 	if err := manager.bootstrapMetaTables(runtimeScope); err != nil {
@@ -32,13 +32,13 @@ func TestBootstrapMetaTablesSkipsWhenBaseTablesExist(t *testing.T) {
 
 func TestEnsureMetaTablesPreservesBootstrapError(t *testing.T) {
 	t.Parallel()
-	db := newModuleIndexSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(&meta.Module{}, &modmeta.LockLease{}, &meta.Model{}); err != nil {
 		t.Fatalf("auto migrate base tables: %v", err)
 	}
 	seedDuplicateLiveModelsForTest(t, db)
 
-	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	manager := NewModuleManager(runtimeScope, nil)
 	first := manager.ensureMetaTables()
 	if first == nil || !strings.Contains(first.Error(), "ensure effective app/name unique index") {
@@ -55,12 +55,12 @@ func TestEnsureMetaTablesPreservesBootstrapError(t *testing.T) {
 
 func TestBootstrapMetaTablesEnsuresUniqueIndexWhenModelExists(t *testing.T) {
 	t.Parallel()
-	db := newModuleIndexSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(&meta.Module{}, &modmeta.LockLease{}, &meta.Model{}); err != nil {
 		t.Fatalf("auto migrate base tables: %v", err)
 	}
 
-	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	manager := NewModuleManager(runtimeScope, nil)
 
 	if err := manager.bootstrapMetaTables(runtimeScope); err != nil {
@@ -73,13 +73,13 @@ func TestBootstrapMetaTablesEnsuresUniqueIndexWhenModelExists(t *testing.T) {
 
 func TestBootstrapMetaTablesEnsureUniqueIndexErrorWhenModelExists(t *testing.T) {
 	t.Parallel()
-	db := newModuleIndexSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(&meta.Module{}, &modmeta.LockLease{}, &meta.Model{}); err != nil {
 		t.Fatalf("auto migrate base tables: %v", err)
 	}
 	seedDuplicateLiveModelsForTest(t, db)
 
-	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	manager := NewModuleManager(runtimeScope, nil)
 	err := manager.bootstrapMetaTables(runtimeScope)
 	if err == nil || !strings.Contains(err.Error(), "ensure effective app/name unique index") {
@@ -89,8 +89,8 @@ func TestBootstrapMetaTablesEnsureUniqueIndexErrorWhenModelExists(t *testing.T) 
 
 func TestBootstrapMetaTablesFullPathEnsuresUniqueIndex(t *testing.T) {
 	t.Parallel()
-	db := newModuleIndexSyncDB(t)
-	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	db := newModuleSourceSnapshotSyncDB(t)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	manager := NewModuleManager(runtimeScope, nil)
 
 	if err := manager.bootstrapMetaTables(runtimeScope); err != nil {
@@ -103,8 +103,8 @@ func TestBootstrapMetaTablesFullPathEnsuresUniqueIndex(t *testing.T) {
 
 func TestBootstrapMetaTablesFullPathEnsureUniqueIndexError(t *testing.T) {
 	t.Parallel()
-	db := newModuleIndexSyncDB(t)
-	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	db := newModuleSourceSnapshotSyncDB(t)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	manager := NewModuleManager(runtimeScope, nil)
 	// Skip catalog tables so Ensure runs against a missing meta_model.
 	manager.entities = nil
@@ -117,8 +117,8 @@ func TestBootstrapMetaTablesFullPathEnsureUniqueIndexError(t *testing.T) {
 
 func TestModuleManagerMigrateBaseModuleEnsureUniqueIndexError(t *testing.T) {
 	t.Parallel()
-	db := newModuleIndexSyncDB(t)
-	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	db := newModuleSourceSnapshotSyncDB(t)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	manager := NewModuleManager(runtimeScope, nil)
 	manager.bootstrapOnce.Do(func() {})
 
@@ -156,7 +156,7 @@ func seedDuplicateLiveModelsForTest(t *testing.T, db *gorm.DB) {
 
 func TestModuleManagerListInstalledApps(t *testing.T) {
 	t.Parallel()
-	db := newModuleIndexSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
@@ -170,7 +170,7 @@ func TestModuleManagerListInstalledApps(t *testing.T) {
 		}
 	}
 
-	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	manager := NewModuleManager(runtimeScope, nil)
 
 	apps, err := manager.listInstalledApps(context.Background())
@@ -192,7 +192,7 @@ func TestModuleManagerListInstalledApps(t *testing.T) {
 
 func TestModuleManagerListInstalledAppsQueryError(t *testing.T) {
 	t.Parallel()
-	db := newModuleIndexSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
@@ -200,7 +200,7 @@ func TestModuleManagerListInstalledAppsQueryError(t *testing.T) {
 		t.Fatalf("drop meta_module: %v", err)
 	}
 
-	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	manager := NewModuleManager(runtimeScope, nil)
 
 	_, err := manager.listInstalledApps(context.Background())
@@ -211,12 +211,12 @@ func TestModuleManagerListInstalledAppsQueryError(t *testing.T) {
 
 func TestModuleOpCtxBinderDelegatesToCtxMethods(t *testing.T) {
 	t.Parallel()
-	db := newModuleIndexSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
 	}
 
-	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	manager := NewModuleManager(runtimeScope, nil)
 	manager.bootstrapOnce.Do(func() {})
 	opCtx := newOpContext()

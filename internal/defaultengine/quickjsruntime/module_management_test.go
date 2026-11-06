@@ -423,12 +423,12 @@ func TestRunModuleIndexSyncAllDoesNotWrapOriginsInOuterTransactions(t *testing.T
 	runtimeScope.transactor = counting
 
 	called := make([]string, 0, 2)
-	result, err := runModuleIndexSync(context.Background(), runtimeScope, "all", func(_ context.Context, _ scope.Scope, originType string) (lifecycle.ModuleIndexSyncStats, error) {
+	result, err := runModuleIndexSync(context.Background(), runtimeScope, "all", func(_ context.Context, _ scope.Scope, originType string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
 		called = append(called, originType)
 		if originType == "registry" {
-			return lifecycle.ModuleIndexSyncStats{Total: 1, Success: 0, Failed: 1}, errors.New("registry unavailable")
+			return lifecycle.ModuleSourceSnapshotSyncStats{Total: 1, Success: 0, Failed: 1}, errors.New("registry unavailable")
 		}
-		return lifecycle.ModuleIndexSyncStats{Total: 2, Success: 2, Failed: 0}, nil
+		return lifecycle.ModuleSourceSnapshotSyncStats{Total: 2, Success: 2, Failed: 0}, nil
 	})
 	if err != nil {
 		t.Fatalf("runModuleIndexSync(all) error = %v", err)
@@ -459,11 +459,11 @@ func TestRunModuleIndexSyncSingleOriginDoesNotUseOuterTransaction(t *testing.T) 
 	counting := &moduleIndexCountingTransactor{inner: scopetest.NewPassthroughTransactor(runtimeScope)}
 	runtimeScope.transactor = counting
 
-	result, err := runModuleIndexSync(context.Background(), runtimeScope, "local", func(_ context.Context, _ scope.Scope, originType string) (lifecycle.ModuleIndexSyncStats, error) {
+	result, err := runModuleIndexSync(context.Background(), runtimeScope, "local", func(_ context.Context, _ scope.Scope, originType string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
 		if originType != "local" {
 			t.Fatalf("originType = %q, want local", originType)
 		}
-		return lifecycle.ModuleIndexSyncStats{Total: 5, Success: 4, Failed: 1}, nil
+		return lifecycle.ModuleSourceSnapshotSyncStats{Total: 5, Success: 4, Failed: 1}, nil
 	})
 	if err != nil {
 		t.Fatalf("runModuleIndexSync(local) error = %v", err)
@@ -484,7 +484,7 @@ func TestRunModuleIndexSyncPassesScopeContextToRunner(t *testing.T) {
 	}
 	runtimeScope.transactor = scopetest.NewPassthroughTransactor(runtimeScope)
 
-	_, err := runModuleIndexSync(context.Background(), runtimeScope, "local", func(runCtx context.Context, runScope scope.Scope, originType string) (lifecycle.ModuleIndexSyncStats, error) {
+	_, err := runModuleIndexSync(context.Background(), runtimeScope, "local", func(runCtx context.Context, runScope scope.Scope, originType string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
 		if originType != "local" {
 			t.Fatalf("originType = %q, want local", originType)
 		}
@@ -497,7 +497,7 @@ func TestRunModuleIndexSyncPassesScopeContextToRunner(t *testing.T) {
 		if _, ok := scope.TransactionFromContext(runCtx); ok {
 			t.Fatal("runner context should not carry transaction")
 		}
-		return lifecycle.ModuleIndexSyncStats{Total: 1, Success: 1, Failed: 0}, nil
+		return lifecycle.ModuleSourceSnapshotSyncStats{Total: 1, Success: 1, Failed: 0}, nil
 	})
 	if err != nil {
 		t.Fatalf("runModuleIndexSync(local) error = %v", err)
@@ -512,11 +512,11 @@ func TestRunModuleIndexSyncAllPreservesCancellationError(t *testing.T) {
 	}
 	runtimeScope.transactor = scopetest.NewPassthroughTransactor(runtimeScope)
 
-	_, err := runModuleIndexSync(context.Background(), runtimeScope, "all", func(_ context.Context, _ scope.Scope, originType string) (lifecycle.ModuleIndexSyncStats, error) {
+	_, err := runModuleIndexSync(context.Background(), runtimeScope, "all", func(_ context.Context, _ scope.Scope, originType string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
 		if originType == "registry" {
-			return lifecycle.ModuleIndexSyncStats{Total: 1, Success: 0, Failed: 1}, status.Error(codes.Canceled, "sync canceled")
+			return lifecycle.ModuleSourceSnapshotSyncStats{Total: 1, Success: 0, Failed: 1}, status.Error(codes.Canceled, "sync canceled")
 		}
-		return lifecycle.ModuleIndexSyncStats{Total: 1, Success: 0, Failed: 1}, status.Error(codes.Unavailable, "sync failed")
+		return lifecycle.ModuleSourceSnapshotSyncStats{Total: 1, Success: 0, Failed: 1}, status.Error(codes.Unavailable, "sync failed")
 	})
 	if err == nil {
 		t.Fatal("expected cancellation error")
@@ -524,6 +524,111 @@ func TestRunModuleIndexSyncAllPreservesCancellationError(t *testing.T) {
 	st, ok := status.FromError(err)
 	if !ok || st.Code() != codes.Canceled {
 		t.Fatalf("expected canceled status, got %v", err)
+	}
+}
+
+func TestModuleManagementSyncIndexCoversPerformPath(t *testing.T) {
+	baseScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	locker := &moduleIndexTestLocker{acquireErr: statepkg.ErrLeaseBusy}
+	engine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+		jsengine.StaticScopeProvider(baseScope),
+		WithModuleManagementLockerFactory(func(scope.Scope) statepkg.Locker {
+			return locker
+		}),
+	))
+
+	promise := engine.Ctx.Eval(`$choysum.moduleManagement.syncIndex({ originType: 'local' })`)
+	defer promise.Free()
+	if promise.IsException() {
+		t.Fatalf("syncIndex eval exception: %v", engine.Ctx.Exception())
+	}
+	ret := promise.Await()
+	defer ret.Free()
+	if locker.acquired != 1 {
+		t.Fatalf("locker Acquire calls = %d, want 1", locker.acquired)
+	}
+	if !ret.IsError() && !ret.IsException() {
+		t.Fatalf("expected lease-conflict rejection, got %s", ret.String())
+	}
+	msg := ret.String()
+	if ret.IsException() {
+		msg = engine.Ctx.Exception().Error()
+	}
+	if !strings.Contains(msg, "LEASE_CONFLICT") {
+		t.Fatalf("expected LEASE_CONFLICT, got %q", msg)
+	}
+}
+
+func TestRunModuleIndexSyncNilRunner(t *testing.T) {
+	runtimeScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	_, err := runModuleIndexSync(context.Background(), runtimeScope, "local", nil)
+	if err == nil || !strings.Contains(err.Error(), "module origin sync runner is nil") {
+		t.Fatalf("error = %v, want nil runner", err)
+	}
+}
+
+func TestRunModuleIndexSyncAllFailsWhenEveryOriginFails(t *testing.T) {
+	runtimeScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	runtimeScope.transactor = scopetest.NewPassthroughTransactor(runtimeScope)
+
+	_, err := runModuleIndexSync(context.Background(), runtimeScope, "all", func(_ context.Context, _ scope.Scope, originType string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+		return lifecycle.ModuleSourceSnapshotSyncStats{Total: 1, Failed: 1}, errors.New(originType + " down")
+	})
+	if err == nil || !strings.Contains(err.Error(), "module origin sync failed for all origins") {
+		t.Fatalf("error = %v, want all origins failed", err)
+	}
+}
+
+func TestSyncModuleIndexByTargetUnsupported(t *testing.T) {
+	runtimeScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	_, err := syncModuleIndexByTarget(context.Background(), runtimeScope, nil, "cloud")
+	if err == nil || !strings.Contains(err.Error(), `unsupported module origin sync target "cloud"`) {
+		t.Fatalf("error = %v, want unsupported target", err)
+	}
+}
+
+func TestSyncModuleIndexByTargetDelegates(t *testing.T) {
+	runtimeScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	locker := func(scope.Scope) statepkg.Locker {
+		return &moduleIndexTestLocker{acquireErr: statepkg.ErrLeaseBusy}
+	}
+	for _, target := range []string{"local", "registry"} {
+		_, err := syncModuleIndexByTarget(context.Background(), runtimeScope, locker, target)
+		if err == nil || !strings.Contains(err.Error(), "LEASE_CONFLICT") {
+			t.Fatalf("target %q error = %v, want LEASE_CONFLICT", target, err)
+		}
+	}
+}
+
+func TestSyncModuleIndexRegistryDelegates(t *testing.T) {
+	runtimeScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	_, err := syncModuleIndexRegistry(context.Background(), runtimeScope, nil)
+	if err == nil {
+		t.Fatal("expected nil locker factory error from SyncRegistryModuleSourceSnapshot")
 	}
 }
 

@@ -60,25 +60,27 @@ func TestDualStoreRawAndCatalogEntities(t *testing.T) {
 
 func TestOpsEntitiesAndTableNames(t *testing.T) {
 	entities := OpsEntities()
-	if len(entities) != 6 {
-		t.Fatalf("OpsEntities() len = %d, want 6", len(entities))
+	if len(entities) != 7 {
+		t.Fatalf("OpsEntities() len = %d, want 7", len(entities))
 	}
 
 	wantTables := map[string]string{
-		"ModuleIndex":            "meta_module_index",
-		"ModelData":              "meta_model_data",
-		"ModuleMigrationHistory": "meta_module_migration_history",
-		"ModuleManagementLog":    "meta_module_management_log",
-		"LockLease":              "meta_lock_lease",
-		"SchemaSnapshot":         "meta_schema_snapshot",
+		"ModuleSourceSnapshot":    "meta_module_source_snapshot",
+		"ModuleCatalog":   "meta_module_catalog",
+		"ModuleOperation": "meta_module_operation",
+		"ModelData":       "meta_model_data",
+		"ModuleMigration": "meta_module_migration",
+		"LockLease":       "meta_lock_lease",
+		"SchemaSnapshot":  "meta_schema_snapshot",
 	}
 	gotTables := map[string]string{
-		"ModuleIndex":            (&ModuleIndex{}).TableName(),
-		"ModelData":              (&ModelData{}).TableName(),
-		"ModuleMigrationHistory": (ModuleMigrationHistory{}).TableName(),
-		"ModuleManagementLog":    (ModuleManagementLog{}).TableName(),
-		"LockLease":              (&LockLease{}).TableName(),
-		"SchemaSnapshot":         (SchemaSnapshot{}).TableName(),
+		"ModuleSourceSnapshot":    (ModuleSourceSnapshot{}).TableName(),
+		"ModuleCatalog":   (ModuleCatalog{}).TableName(),
+		"ModuleOperation": (ModuleOperation{}).TableName(),
+		"ModelData":       (&ModelData{}).TableName(),
+		"ModuleMigration": (ModuleMigration{}).TableName(),
+		"LockLease":       (&LockLease{}).TableName(),
+		"SchemaSnapshot":  (SchemaSnapshot{}).TableName(),
 	}
 	for name, want := range wantTables {
 		got := gotTables[name]

@@ -33,7 +33,7 @@ func (s *HistoryStore) session(ctx context.Context) *scope.Session {
 	return sess
 }
 
-func (s *HistoryStore) Prepare(ctx context.Context, script Script) (*modmeta.ModuleMigrationHistory, bool, error) {
+func (s *HistoryStore) Prepare(ctx context.Context, script Script) (*modmeta.ModuleMigration, bool, error) {
 	if s == nil || s.runtimeScope == nil {
 		return nil, false, nil
 	}
@@ -41,8 +41,11 @@ func (s *HistoryStore) Prepare(ctx context.Context, script Script) (*modmeta.Mod
 	if db == nil {
 		return nil, false, gorm.ErrInvalidDB
 	}
+	if err := modmeta.EnsureOpsSchemaCutover(db.DB); err != nil {
+		return nil, false, err
+	}
 
-	var existing modmeta.ModuleMigrationHistory
+	var existing modmeta.ModuleMigration
 	q := db.WithContext(ctx).Where(
 		"module_name = ? AND version = ? AND phase = ? AND script = ?",
 		script.ModuleName, script.Version, string(script.Phase), script.Name,
@@ -58,7 +61,7 @@ func (s *HistoryStore) Prepare(ctx context.Context, script Script) (*modmeta.Mod
 		return nil, false, err
 	}
 
-	entry := &modmeta.ModuleMigrationHistory{
+	entry := &modmeta.ModuleMigration{
 		ModuleName: script.ModuleName,
 		Version:    script.Version,
 		Phase:      string(script.Phase),
@@ -74,7 +77,7 @@ func (s *HistoryStore) Prepare(ctx context.Context, script Script) (*modmeta.Mod
 	return entry, false, nil
 }
 
-func (s *HistoryStore) markRunning(ctx context.Context, entry *modmeta.ModuleMigrationHistory, script Script) (*modmeta.ModuleMigrationHistory, bool, error) {
+func (s *HistoryStore) markRunning(ctx context.Context, entry *modmeta.ModuleMigration, script Script) (*modmeta.ModuleMigration, bool, error) {
 	db := s.session(ctx)
 	if db == nil {
 		return nil, false, gorm.ErrInvalidDB
@@ -91,7 +94,7 @@ func (s *HistoryStore) markRunning(ctx context.Context, entry *modmeta.ModuleMig
 	return entry, false, nil
 }
 
-func (s *HistoryStore) MarkSuccess(ctx context.Context, entry *modmeta.ModuleMigrationHistory) error {
+func (s *HistoryStore) MarkSuccess(ctx context.Context, entry *modmeta.ModuleMigration) error {
 	if s == nil || s.runtimeScope == nil || entry == nil {
 		return nil
 	}
@@ -105,7 +108,7 @@ func (s *HistoryStore) MarkSuccess(ctx context.Context, entry *modmeta.ModuleMig
 	return db.WithContext(ctx).Save(entry).Error
 }
 
-func (s *HistoryStore) MarkFailed(ctx context.Context, entry *modmeta.ModuleMigrationHistory, msg string) error {
+func (s *HistoryStore) MarkFailed(ctx context.Context, entry *modmeta.ModuleMigration, msg string) error {
 	if s == nil || s.runtimeScope == nil || entry == nil {
 		return nil
 	}

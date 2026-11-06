@@ -66,8 +66,8 @@ func TestModuleManagerUninstallFastFailWhenNameEmpty(t *testing.T) {
 
 func TestModuleManagerUninstallFastFailWhenModuleMissing(t *testing.T) {
 	t.Parallel()
-	db := newModuleIndexSyncDB(t)
-	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	db := newModuleSourceSnapshotSyncDB(t)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	locker := &moduleIndexSyncTestLocker{}
 
 	manager := NewModuleManager(runtimeScope, nil, WithLockerFactory(func(scope.Scope) statepkg.Locker {
@@ -105,8 +105,8 @@ func TestModuleManagerUpgradeFastFailWhenInputInvalid(t *testing.T) {
 
 func TestModuleManagerUpgradeFastFailWhenLocalModuleMissing(t *testing.T) {
 	t.Parallel()
-	db := newModuleIndexSyncDB(t)
-	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	db := newModuleSourceSnapshotSyncDB(t)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	locker := &moduleIndexSyncTestLocker{}
 
 	manager := NewModuleManager(runtimeScope, nil, WithLockerFactory(func(scope.Scope) statepkg.Locker {
@@ -128,8 +128,8 @@ func TestModuleManagerUpgradeFastFailWhenLocalModuleMissing(t *testing.T) {
 
 func TestModuleManagerMigrateBaseModuleSucceedsWithValidDB(t *testing.T) {
 	t.Parallel()
-	db := newModuleIndexSyncDB(t)
-	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	db := newModuleSourceSnapshotSyncDB(t)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	var logBuf bytes.Buffer
 	runtimeScope.logger = slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	manager := NewModuleManager(runtimeScope, nil)
@@ -163,8 +163,8 @@ func TestModuleManagerMigrateBaseModuleSucceedsWithValidDB(t *testing.T) {
 
 func TestModuleManagerUpgradeFastFailWhenRegistryPeekFails(t *testing.T) {
 	t.Parallel()
-	db := newModuleIndexSyncDB(t)
-	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	db := newModuleSourceSnapshotSyncDB(t)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	locker := &moduleIndexSyncTestLocker{}
 	coordinator := &fastFailOriginCoordinator{peekErr: errors.New("module catalog source not found")}
 
@@ -189,8 +189,8 @@ func TestModuleManagerUpgradeFastFailWhenRegistryPeekFails(t *testing.T) {
 
 func TestModuleManagerPeekDoesNotFallbackToResolveInstallWhenLocalMissing(t *testing.T) {
 	t.Parallel()
-	db := newModuleIndexSyncDB(t)
-	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	db := newModuleSourceSnapshotSyncDB(t)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	coordinator := &fastFailOriginCoordinator{
 		peekErr:              errors.New("module core not found in modules path"),
 		resolveInstallModule: &meta.Module{Name: "core", Version: "v1.0.0"},
@@ -220,8 +220,8 @@ func TestModuleManagerPeekDoesNotFallbackToResolveInstallWhenLocalMissing(t *tes
 
 func TestModuleManagerUninstallFastFailWhenLoadReturnsError(t *testing.T) {
 	t.Parallel()
-	db := newModuleIndexSyncDB(t)
-	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	db := newModuleSourceSnapshotSyncDB(t)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	locker := &moduleIndexSyncTestLocker{}
 
 	manager := NewModuleManager(runtimeScope, nil, WithLockerFactory(func(scope.Scope) statepkg.Locker {
@@ -240,8 +240,8 @@ func TestModuleManagerUninstallFastFailWhenLoadReturnsError(t *testing.T) {
 
 func TestModuleManagerUpgradeFastFailWhenLocalLoadReturnsError(t *testing.T) {
 	t.Parallel()
-	db := newModuleIndexSyncDB(t)
-	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	db := newModuleSourceSnapshotSyncDB(t)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	locker := &moduleIndexSyncTestLocker{}
 
 	manager := NewModuleManager(runtimeScope, nil, WithLockerFactory(func(scope.Scope) statepkg.Locker {
@@ -260,8 +260,8 @@ func TestModuleManagerUpgradeFastFailWhenLocalLoadReturnsError(t *testing.T) {
 
 func TestModuleManagerUpgradeRegistryEntersLeaseBeforeOriginSwitchFailure(t *testing.T) {
 	t.Parallel()
-	db := newModuleIndexSyncDB(t)
-	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	db := newModuleSourceSnapshotSyncDB(t)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	locker := &moduleIndexSyncTestLocker{}
 	coordinator := &fastFailOriginCoordinator{}
 

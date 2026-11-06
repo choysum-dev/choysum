@@ -289,12 +289,12 @@ export function aggregateRows(rows: ModuleIndexRecord[]): ModuleIndexRecord[] {
 
   const merged: ModuleIndexRecord[] = [];
   for (const [moduleName, bucket] of byModule.entries()) {
-    const local = bucket.find(row => toText(row?.OriginType) === 'local');
-    const registry = bucket.find(row => toText(row?.OriginType) === 'registry');
+    const local = bucket.find(row => toText(row?.SourceType) === 'local');
+    const registry = bucket.find(row => toText(row?.SourceType) === 'registry');
     const base = local || registry || bucket[0];
 
     // Only local|registry remain after the filter; put local first.
-    const originTypes = Array.from(new Set(bucket.map(row => toText(row?.OriginType)).filter(value => value === 'local' || value === 'registry'))).sort(
+    const originTypes = Array.from(new Set(bucket.map(row => toText(row?.SourceType)).filter(value => value === 'local' || value === 'registry'))).sort(
       (a, b) => Number(b === 'local') - Number(a === 'local')
     );
 
@@ -304,15 +304,15 @@ export function aggregateRows(rows: ModuleIndexRecord[]): ModuleIndexRecord[] {
       String(local?.InstalledStatus || '').trim() || String(registry?.InstalledStatus || '').trim() || String(base?.InstalledStatus || '').trim();
     const installedVersion =
       String(local?.InstalledVersion || '').trim() || String(registry?.InstalledVersion || '').trim() || String(base?.InstalledVersion || '').trim();
-    const rawOriginType = String(base.OriginType ?? '').trim();
+    const rawOriginType = String(base.SourceType ?? '').trim();
 
     merged.push({
       ...base,
       Id: String(base?.Id || '').trim() || String(local?.Id || '').trim() || String(registry?.Id || '').trim(),
       ModuleName: moduleName,
-      OriginType: rawOriginType || 'local',
-      OriginTypes: originTypes.length > 0 ? originTypes.join(', ') : rawOriginType,
-      OriginRef: String(local?.OriginRef || '').trim() || String(registry?.OriginRef || '').trim() || String(base?.OriginRef || '').trim(),
+      SourceType: rawOriginType || 'local',
+      SourceTypes: originTypes.length > 0 ? originTypes.join(', ') : rawOriginType,
+      SourceRef: String(local?.SourceRef || '').trim() || String(registry?.SourceRef || '').trim() || String(base?.SourceRef || '').trim(),
       Available: bucket.some(row => row?.Available !== false),
       Version: registryVersion || localVersion || String(base?.Version || '').trim(),
       LocalVersion: localVersion || undefined,

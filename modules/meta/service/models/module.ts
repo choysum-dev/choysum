@@ -14,7 +14,6 @@ import MetaComponent from './component';
 import MetaModel from './model';
 import MetaModuleDependency from './module_dependency';
 import MetaUiResource from './ui_resource';
-import ModuleManagementLog from './module_management_log';
 
 const Job = createServiceByModel<typeof JobModel>('task.Job');
 
@@ -150,31 +149,6 @@ async function loadExecutionTimes(jobId: string): Promise<{ startedAt?: Date; fi
     startedAt: row.started_at ? new Date(row.started_at) : undefined,
     finishedAt: row.finished_at ? new Date(row.finished_at) : undefined,
   };
-}
-
-async function findModuleLogByJobId(jobId: string): Promise<ModuleManagementLog | undefined> {
-  if (!jobId) return undefined;
-  const existing = await ModuleManagementLog.Search(['JobId', '=', jobId], { limit: 1 });
-  return existing?.[0];
-}
-
-async function upsertModuleLog(values: Partial<ModuleManagementLog>): Promise<void> {
-  if (!values.JobId) return;
-  const existing = await findModuleLogByJobId(values.JobId);
-  if (existing?.Id) {
-    await ModuleManagementLog.UpdateById(existing.Id, values);
-    return;
-  }
-  try {
-    await ModuleManagementLog.Create(values);
-  } catch (err) {
-    const record = await findModuleLogByJobId(values.JobId);
-    if (record?.Id) {
-      await ModuleManagementLog.UpdateById(record.Id, values);
-      return;
-    }
-    throw err;
-  }
 }
 
 @Model('MetaModule', {
@@ -559,33 +533,6 @@ export default class MetaModule extends BaseModel {
       ReloadFailed = true;
       ReloadWeb = false;
     }
-
-    let job: Partial<Pick<JobModel, 'CreatedAt' | 'FinishedAt' | 'Attempt' | 'MaxAttempts'>> | undefined;
-    if (jobId) {
-      try {
-        job = await Job.GetJob(jobId, ['Id', 'CreatedAt', 'FinishedAt', 'Attempt', 'MaxAttempts']);
-      } catch {
-        job = undefined;
-      }
-    }
-
-    const operationOK = resultStatus === 'SUCCEEDED';
-
-    await upsertModuleLog({
-      JobId: jobId,
-      ModuleName: name,
-      Action: action,
-      OperatorUserId: operatorUserId,
-      ResultStatus: resultStatus,
-      SummaryJson: summary,
-      ErrorDomain: errorDomain,
-      ErrorCode: errorCode,
-      LastErrorJson: operationOK ? undefined : { message: errorMessage, domain: errorDomain, code: errorCode },
-      JobCreatedAt: job?.CreatedAt,
-      JobFinishedAt: job?.FinishedAt,
-      Attempt: job?.Attempt,
-      MaxAttempts: job?.MaxAttempts,
-    });
 
     return {
       resultStatus,

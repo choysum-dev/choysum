@@ -28,10 +28,10 @@ SPDX-License-Identifier: Apache-2.0
           <ChoyBooleanField :store="store" prop="Available" />
         </ChoyCol>
         <ChoyCol :span="3">
-          <ChoyVarcharField :store="store" prop="OriginType" />
+          <ChoyVarcharField :store="store" prop="SourceType" />
         </ChoyCol>
         <ChoyCol :span="3">
-          <ChoyVarcharField :store="store" prop="OriginRef" />
+          <ChoyVarcharField :store="store" prop="SourceRef" />
         </ChoyCol>
         <ChoyCol :span="3">
           <ChoyVarcharField :store="store" prop="LocalPath" />

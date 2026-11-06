@@ -56,7 +56,7 @@ type moduleIndexSyncResult struct {
 	Error      string `json:"error,omitempty"`
 }
 
-type moduleIndexSyncRunner func(ctx context.Context, runtimeScope scope.Scope, originType string) (lifecycle.ModuleIndexSyncStats, error)
+type moduleIndexSyncRunner func(ctx context.Context, runtimeScope scope.Scope, originType string) (lifecycle.ModuleSourceSnapshotSyncStats, error)
 
 // ModuleManagementOption configures the QuickJS module-management runtime plugin.
 type ModuleManagementOption interface {
@@ -309,15 +309,8 @@ func performModuleIndexSync(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngi
 	runtimeScope := jsengine.ResolveScope(scopeProvider, execCtx)
 
 	start := time.Now()
-	result, err := runModuleIndexSync(execCtx, runtimeScope, originType, func(runCtx context.Context, txScope scope.Scope, target string) (lifecycle.ModuleIndexSyncStats, error) {
-		switch target {
-		case "local":
-			return syncModuleIndexLocal(runCtx, txScope, cfg.lockerFactory)
-		case "registry":
-			return syncModuleIndexRegistry(runCtx, txScope, cfg.lockerFactory)
-		default:
-			return lifecycle.ModuleIndexSyncStats{}, status.Error(codes.InvalidArgument, "originType must be one of: local, registry, all")
-		}
+	result, err := runModuleIndexSync(execCtx, runtimeScope, originType, func(runCtx context.Context, txScope scope.Scope, target string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+		return syncModuleIndexByTarget(runCtx, txScope, cfg.lockerFactory, target)
 	})
 
 	result.DurationMs = time.Since(start).Milliseconds()
@@ -395,10 +388,10 @@ func runModuleIndexSync(ctx context.Context, runtimeScope scope.Scope, originTyp
 		return result, status.Error(codes.Internal, "runtime scope is nil")
 	}
 	if runner == nil {
-		return result, status.Error(codes.Internal, "module index sync runner is nil")
+		return result, status.Error(codes.Internal, "module origin sync runner is nil")
 	}
 
-	runOrigin := func(target string) (lifecycle.ModuleIndexSyncStats, error) {
+	runOrigin := func(target string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
 		runnerScope := runtimeScope.WithContext(ctx)
 		if runnerScope == nil {
 			runnerScope = runtimeScope
@@ -429,7 +422,7 @@ func runModuleIndexSync(ctx context.Context, runtimeScope scope.Scope, originTyp
 		}
 
 		if successfulOrigins == 0 {
-			return result, status.Error(codes.Unavailable, "module index sync failed for all origins: "+strings.Join(partialErrors, "; "))
+			return result, status.Error(codes.Unavailable, "module origin sync failed for all origins: "+strings.Join(partialErrors, "; "))
 		}
 		result.Ok = true
 		if len(partialErrors) > 0 {
@@ -463,10 +456,21 @@ func isCancellationOrDeadlineError(err error) bool {
 	return st.Code() == codes.Canceled || st.Code() == codes.DeadlineExceeded
 }
 
-func syncModuleIndexLocal(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleIndexSyncStats, error) {
-	return lifecycle.SyncLocalModuleIndex(ctx, runtimeScope, lockerFactory)
+func syncModuleIndexLocal(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+	return lifecycle.SyncLocalModuleSourceSnapshot(ctx, runtimeScope, lockerFactory)
 }
 
-func syncModuleIndexRegistry(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleIndexSyncStats, error) {
-	return lifecycle.SyncRegistryModuleIndex(ctx, runtimeScope, lockerFactory)
+func syncModuleIndexRegistry(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+	return lifecycle.SyncRegistryModuleSourceSnapshot(ctx, runtimeScope, lockerFactory)
+}
+
+func syncModuleIndexByTarget(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory, target string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+	switch target {
+	case "registry":
+		return syncModuleIndexRegistry(ctx, runtimeScope, lockerFactory)
+	case "local":
+		return syncModuleIndexLocal(ctx, runtimeScope, lockerFactory)
+	default:
+		return lifecycle.ModuleSourceSnapshotSyncStats{}, status.Errorf(codes.InvalidArgument, "unsupported module origin sync target %q", target)
+	}
 }

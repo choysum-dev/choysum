@@ -25,14 +25,14 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-type ModuleIndexSyncStats struct {
+type ModuleSourceSnapshotSyncStats struct {
 	Total   int
 	Success int
 	Failed  int
 }
 
-func SyncLocalModuleIndex(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (ModuleIndexSyncStats, error) {
-	stats := ModuleIndexSyncStats{}
+func SyncLocalModuleSourceSnapshot(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (ModuleSourceSnapshotSyncStats, error) {
+	stats := ModuleSourceSnapshotSyncStats{}
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -41,7 +41,7 @@ func SyncLocalModuleIndex(ctx context.Context, runtimeScope scope.Scope, lockerF
 	}
 
 	locker := lockerFactory(runtimeScope)
-	resource := "module_index_sync_local"
+	resource := "module_source_snapshot_sync_local"
 	ownerID := xid.New().String()
 	ttl := moduleIndexLockTTL(ctx, runtimeScope)
 
@@ -67,7 +67,7 @@ func SyncLocalModuleIndex(ctx context.Context, runtimeScope scope.Scope, lockerF
 				return
 			case <-ticker.C:
 				if err := locker.Renew(heartbeatCtx, resource, ownerID, ttl); err != nil {
-					runtimeScope.Logger().Warn("module index lease renew failed", "resource", resource, "error", err)
+					runtimeScope.Logger().Warn("module source snapshot lease renew failed", "resource", resource, "error", err)
 				}
 			}
 		}
@@ -76,7 +76,7 @@ func SyncLocalModuleIndex(ctx context.Context, runtimeScope scope.Scope, lockerF
 	defer func() {
 		cancel()
 		<-done
-		releaseLeaseWithContextFallback(runtimeScope, locker, ctx, resource, ownerID, "module index")
+		releaseLeaseWithContextFallback(runtimeScope, locker, ctx, resource, ownerID, "module origin")
 	}()
 
 	modulesPath := strings.TrimSpace(runtimeOptionsFromScope(runtimeScope).modulesPath)
@@ -86,7 +86,7 @@ func SyncLocalModuleIndex(ctx context.Context, runtimeScope scope.Scope, lockerF
 
 	session, ok := scope.SessionForScope(ctx, runtimeScope)
 	if !ok || session == nil || session.DB == nil {
-		return stats, errors.New("module index session is unavailable")
+		return stats, errors.New("module source snapshot session is unavailable")
 	}
 
 	entries, err := os.ReadDir(modulesPath)
@@ -124,7 +124,7 @@ func SyncLocalModuleIndex(ctx context.Context, runtimeScope scope.Scope, lockerF
 		if err != nil {
 			hasError = true
 			if upsertErr := upsertModuleIndexFailure(ctx, runtimeScope, session, name, revision, err); upsertErr != nil {
-				runtimeScope.Logger().Warn("module index failure upsert failed", "module", name, "error", upsertErr)
+				runtimeScope.Logger().Warn("module source snapshot failure upsert failed", "module", name, "error", upsertErr)
 			}
 			stats.Failed++
 			continue
@@ -132,7 +132,7 @@ func SyncLocalModuleIndex(ctx context.Context, runtimeScope scope.Scope, lockerF
 
 		if upsertErr := upsertModuleIndexSuccess(ctx, runtimeScope, session, name, revision, version, packageJSONData, now); upsertErr != nil {
 			hasError = true
-			runtimeScope.Logger().Warn("module index upsert failed", "module", name, "error", upsertErr)
+			runtimeScope.Logger().Warn("module source snapshot upsert failed", "module", name, "error", upsertErr)
 			stats.Failed++
 			continue
 		}
@@ -141,18 +141,18 @@ func SyncLocalModuleIndex(ctx context.Context, runtimeScope scope.Scope, lockerF
 
 	if err := reconcileMissingModules(ctx, runtimeScope, session, seen); err != nil {
 		hasError = true
-		runtimeScope.Logger().Warn("module index reconcile failed", "error", err)
+		runtimeScope.Logger().Warn("module source snapshot reconcile failed", "error", err)
 	}
 
 	if !hasError {
 		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
 			return txSession.WithContext(ctx).
-				Model(&modmeta.ModuleIndex{}).
-				Where("origin_type = ? AND origin_ref = ?", "local", "local").
+				Model(&modmeta.ModuleSourceSnapshot{}).
+				Where("source_type = ? AND source_ref = ?", "local", "local").
 				Updates(map[string]any{"last_batch_sync_at": now}).Error
 		}); err != nil {
-			if !isTableMissingInSession(session, "meta_module_index") {
-				runtimeScope.Logger().Warn("module index sync timestamp update failed", "error", err)
+			if !isTableMissingInSession(session, "meta_module_source_snapshot") {
+				runtimeScope.Logger().Warn("module source snapshot sync timestamp update failed", "error", err)
 			}
 		}
 	}
@@ -164,7 +164,25 @@ func SyncLocalModuleIndex(ctx context.Context, runtimeScope scope.Scope, lockerF
 // lease (aligned with moduleManagerLeaseTTL).
 const moduleIndexLockTTLDefault = 60 * time.Second
 
-func moduleIndexLockTTL(context.Context, scope.Scope) time.Duration {
+type moduleIndexLockTTLContextKey struct{}
+
+// withModuleIndexLockTTL overrides the sync lease TTL for ctx (tests only).
+func withModuleIndexLockTTL(ctx context.Context, ttl time.Duration) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if ttl <= 0 {
+		return ctx
+	}
+	return context.WithValue(ctx, moduleIndexLockTTLContextKey{}, ttl)
+}
+
+func moduleIndexLockTTL(ctx context.Context, _ scope.Scope) time.Duration {
+	if ctx != nil {
+		if ttl, ok := ctx.Value(moduleIndexLockTTLContextKey{}).(time.Duration); ok && ttl > 0 {
+			return ttl
+		}
+	}
 	return moduleIndexLockTTLDefault
 }
 
@@ -211,10 +229,10 @@ func upsertModuleIndexSuccess(ctx context.Context, runtimeScope scope.Scope, ses
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	entry := modmeta.ModuleIndex{
+	entry := modmeta.ModuleSourceSnapshot{
 		ModuleName: moduleName,
-		OriginType: "local",
-		OriginRef:  "local",
+		SourceType: "local",
+		SourceRef:  "local",
 		Available:  true,
 		Version:    nullString(version),
 		ManifestJson: func() datatypes.JSON {
@@ -232,7 +250,7 @@ func upsertModuleIndexSuccess(ctx context.Context, runtimeScope scope.Scope, ses
 	return withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
 		return txSession.WithContext(ctx).
 			Clauses(clause.OnConflict{
-				Columns:   []clause.Column{{Name: "module_name"}, {Name: "origin_type"}, {Name: "origin_ref"}},
+				Columns:   []clause.Column{{Name: "module_name"}, {Name: "source_type"}, {Name: "source_ref"}},
 				DoUpdates: clause.AssignmentColumns([]string{"available", "version", "manifest_json", "local_path", "last_sync_at", "sync_revision", "last_error_message"}),
 			}).
 			Create(&entry).Error
@@ -244,10 +262,10 @@ func upsertModuleIndexFailure(ctx context.Context, runtimeScope scope.Scope, ses
 		ctx = context.Background()
 	}
 	msg := SanitizeModuleIndexError(runtimeScope, cause)
-	entry := modmeta.ModuleIndex{
+	entry := modmeta.ModuleSourceSnapshot{
 		ModuleName:       moduleName,
-		OriginType:       "local",
-		OriginRef:        "local",
+		SourceType:       "local",
+		SourceRef:        "local",
 		Available:        false,
 		SyncRevision:     nullString(revision),
 		LastErrorMessage: nullString(msg),
@@ -255,7 +273,7 @@ func upsertModuleIndexFailure(ctx context.Context, runtimeScope scope.Scope, ses
 	return withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
 		return txSession.WithContext(ctx).
 			Clauses(clause.OnConflict{
-				Columns:   []clause.Column{{Name: "module_name"}, {Name: "origin_type"}, {Name: "origin_ref"}},
+				Columns:   []clause.Column{{Name: "module_name"}, {Name: "source_type"}, {Name: "source_ref"}},
 				DoUpdates: clause.AssignmentColumns([]string{"available", "sync_revision", "last_error_message"}),
 			}).
 			Create(&entry).Error
@@ -272,8 +290,8 @@ func reconcileMissingModules(ctx context.Context, runtimeScope scope.Scope, sess
 	}
 	return withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
 		query := txSession.WithContext(ctx).
-			Model(&modmeta.ModuleIndex{}).
-			Where("origin_type = ? AND origin_ref = ?", "local", "local")
+			Model(&modmeta.ModuleSourceSnapshot{}).
+			Where("source_type = ? AND source_ref = ?", "local", "local")
 		if len(names) > 0 {
 			query = query.Where("module_name NOT IN ?", names)
 		}
@@ -340,10 +358,10 @@ func isTableMissingInSession(session *scope.Session, tableName string) bool {
 
 func withModuleIndexWriteRetry(ctx context.Context, runtimeScope scope.Scope, session *scope.Session, op func(txSession *scope.Session) error) error {
 	if session == nil || session.DB == nil {
-		return errors.New("module index session is unavailable")
+		return errors.New("module source snapshot session is unavailable")
 	}
 	if op == nil {
-		return errors.New("module index write operation is required")
+		return errors.New("module source snapshot write operation is required")
 	}
 	if ctx == nil {
 		ctx = context.Background()
@@ -369,7 +387,7 @@ func withModuleIndexWriteRetry(ctx context.Context, runtimeScope scope.Scope, se
 			}
 			sleep := time.Duration(attempt+1) * baseSleep
 			if runtimeScope != nil {
-				runtimeScope.Logger().Warn("module index sqlite lock retry", "attempt", attempt+1, "sleep", sleep, "error", err)
+				runtimeScope.Logger().Warn("module source snapshot sqlite lock retry", "attempt", attempt+1, "sleep", sleep, "error", err)
 			}
 			timer := time.NewTimer(sleep)
 			select {
