@@ -141,22 +141,30 @@ declare var $choysum: {
       action: 'install' | 'upgrade' | 'uninstall' | 'sync' | 'load-demo' | string;
       origin?: 'local' | 'registry';
       operatorUserId?: string;
-    }): Promise<{
-      id: string;
-      action: string;
-      moduleName?: string;
-      moduleOrder?: Array<{
-        moduleName: string;
-        reason?: string;
-        currentVersion?: string;
-        targetVersion?: string;
-        origin?: string;
-      }>;
-      affectedApps?: string[];
-      risks?: Array<{ code: string; level: string; message?: string }>;
-      blockers?: Array<{ code: string; level: string; message?: string }>;
-      baseRevision: string;
-    }>;
+    }): Promise<
+      | {
+          id: string;
+          action: string;
+          moduleName?: string;
+          moduleOrder?: Array<{
+            moduleName: string;
+            reason?: string;
+            currentVersion?: string;
+            targetVersion?: string;
+            origin?: string;
+          }>;
+          affectedApps?: string[];
+          risks?: Array<{ code: string; level: string; message?: string }>;
+          blockers?: Array<{ code: string; level: string; message?: string }>;
+          baseRevision: string;
+        }
+      | {
+          ok: false;
+          errorDomain?: string;
+          errorCode?: string;
+          errorMessage?: string;
+        }
+    >;
     apply(params: { id: string }): Promise<{
       ok: boolean;
       errorDomain?: string;

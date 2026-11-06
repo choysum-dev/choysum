@@ -43,13 +43,18 @@ test('core/web tip TipHub client: subscribes through CreateWebClient and yields 
   await onTips(client.subscribeModuleOp('job-1', signal), async tip => {
     tips.push(tip);
   });
+  await onTips(client.subscribeModuleOp({ operationId: 'op-1' }, signal), async tip => {
+    tips.push(tip);
+  });
 
   expect(subscribeThreadFn.calls[0]?.args).toEqual([{ model: 'message.thread', resId: '42' }, { signal }]);
   expect(subscribeNotificationsFn.calls[0]?.args).toEqual([{}, { signal }]);
   expect(subscribeModuleOpFn.calls[0]?.args).toEqual([{ jobId: 'job-1' }, { signal }]);
+  expect(subscribeModuleOpFn.calls[1]?.args).toEqual([{ operationId: 'op-1' }, { signal }]);
   expect(tips.map(tip => tip.topic)).toEqual([
     'message.thread.changed',
     'message.notification.user',
+    'meta.module_op.changed',
     'meta.module_op.changed',
   ]);
   expect(tips[0]?.resId).toBe('42');

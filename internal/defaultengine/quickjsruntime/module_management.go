@@ -567,6 +567,11 @@ func parseJSONArgs[T any](args []*quickjs.Value) (T, error) {
 		return params, nil
 	}
 	jsonStr := args[0].JSONStringify()
+	// Non-serializable values (functions/symbols) stringify to "undefined";
+	// treat that and empty output as omitted args.
+	if jsonStr == "" || jsonStr == "undefined" {
+		return params, nil
+	}
 	if err := json.Unmarshal([]byte(jsonStr), &params); err != nil {
 		return params, err
 	}

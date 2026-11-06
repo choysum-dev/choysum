@@ -510,6 +510,53 @@ test('meta.MetaModule ExecuteUpgrade returns failed result and maps error fields
 
 });
 
+test('meta.MetaModule ExecuteInstall preserves soft plan failure fields', async () => {
+  resetRequestContext();
+  ensureModuleManagementBridge();
+  ensureJobMock();
+
+  const root: any = (globalThis as any).$choysum;
+  root.moduleManagement.plan = async () => ({
+    ok: false,
+    errorDomain: 'ops',
+    errorCode: 'MODULE_NAME_REQUIRED',
+    errorMessage: 'ops: moduleName is required',
+  });
+  root.moduleManagement.reload = async () => ({ triggered: false, failed: false });
+
+  const jobId = uid('job_plan_soft_fail');
+  ensureRequestContext().ctx.jobId = jobId;
+
+  const result = await MetaModule.ExecuteInstall('base', false, 'operator_1');
+  expect(result.resultStatus).toBe('FAILED');
+  expect(result.errorDomain).toBe('ops');
+  expect(result.errorCode).toBe('MODULE_NAME_REQUIRED');
+  expect(result.errorMessage).toBe('ops: moduleName is required');
+});
+
+test('meta.MetaModule ExecuteInstall maps bridge rejections into failed result', async () => {
+  resetRequestContext();
+  ensureModuleManagementBridge();
+  ensureJobMock();
+
+  const root: any = (globalThis as any).$choysum;
+  root.moduleManagement.plan = async () => ({ id: 'op-reject', action: 'install', baseRevision: 'rev' });
+  root.moduleManagement.apply = async () => ({ ok: true });
+  root.moduleManagement.run = async () => {
+    throw new Error('LEASE_CONFLICT: lease is busy');
+  };
+  root.moduleManagement.reload = async () => ({ triggered: false, failed: false });
+
+  const jobId = uid('job_run_reject');
+  ensureRequestContext().ctx.jobId = jobId;
+
+  const result = await MetaModule.ExecuteInstall('base', false, 'operator_1');
+  expect(result.resultStatus).toBe('FAILED');
+  expect(result.errorDomain).toBe('MODULE_MANAGEMENT');
+  expect(result.errorCode).toBe('OP_FAILED');
+  expect(String(result.errorMessage || '')).toContain('LEASE_CONFLICT');
+});
+
 test('meta.MetaModule ExecuteInstall marks ReloadFailed when reload fails', async () => {
   resetRequestContext();
   ensureModuleManagementBridge();

@@ -471,36 +471,52 @@ export default class MetaModule extends BaseModel {
       bridgeResult = { ok: false, errorDomain: 'MODULE_MANAGEMENT', errorCode: 'OP_FAILED', errorMessage: 'E2E forced failure' };
     } else {
       // W1-3 bridge hard-cut: Execute* adapts plan → apply → run until W2 RPC rewrite.
+      // Bridge may reject (lease conflict / cancel) instead of returning {ok:false}.
       void jobId;
-      const planResult = await bridge.plan({
-        moduleName: name,
-        action,
-        origin: 'local',
-        operatorUserId,
-      });
-      const planId = String(planResult?.id || '').trim();
-      if (!planId) {
+      try {
+        const planResult = (await bridge.plan({
+          moduleName: name,
+          action,
+          origin: 'local',
+          operatorUserId,
+        })) as {
+          id?: string;
+          ok?: boolean;
+          errorDomain?: string;
+          errorCode?: string;
+          errorMessage?: string;
+        };
+        const planId = String(planResult?.id || '').trim();
+        if (!planId) {
+          bridgeResult = {
+            ok: false,
+            errorDomain: planResult?.errorDomain || 'MODULE_MANAGEMENT',
+            errorCode: planResult?.errorCode || 'OP_FAILED',
+            errorMessage: planResult?.errorMessage || 'plan returned empty id',
+          };
+        } else {
+          const applyResult = await bridge.apply({ id: planId });
+          if (!applyResult?.ok) {
+            bridgeResult = {
+              ok: false,
+              errorDomain: applyResult?.errorDomain,
+              errorCode: applyResult?.errorCode,
+              errorMessage: applyResult?.errorMessage || 'apply failed',
+            };
+          } else {
+            bridgeResult = (await bridge.run({
+              id: planId,
+              withDemo: !!opts?.withDemo,
+            })) as ModuleOpBridgeResult;
+          }
+        }
+      } catch (err) {
         bridgeResult = {
           ok: false,
           errorDomain: 'MODULE_MANAGEMENT',
           errorCode: 'OP_FAILED',
-          errorMessage: 'plan returned empty id',
+          errorMessage: err instanceof Error ? err.message : String(err),
         };
-      } else {
-        const applyResult = await bridge.apply({ id: planId });
-        if (!applyResult?.ok) {
-          bridgeResult = {
-            ok: false,
-            errorDomain: applyResult?.errorDomain,
-            errorCode: applyResult?.errorCode,
-            errorMessage: applyResult?.errorMessage || 'apply failed',
-          };
-        } else {
-          bridgeResult = (await bridge.run({
-            id: planId,
-            withDemo: !!opts?.withDemo,
-          })) as ModuleOpBridgeResult;
-        }
       }
     }
 

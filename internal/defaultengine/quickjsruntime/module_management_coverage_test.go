@@ -721,3 +721,16 @@ func rejectContains(t *testing.T, engine *quickjsengine.QuickjsEngine, expr, sub
 		t.Fatalf("rejection %q, want substring %q (expr=%s)", msg, substr, expr)
 	}
 }
+
+func TestCoverage_ParseJSONArgsEmptyStringify(t *testing.T) {
+	engine := newTestQuickjsEngine(t)
+	fn := engine.Ctx.Eval(`(function(){})`)
+	defer fn.Free()
+	params, err := parseJSONArgs[modulePlanParams]([]*quickjs.Value{fn})
+	if err != nil {
+		t.Fatalf("non-serializable arg: %v", err)
+	}
+	if params.Action != "" {
+		t.Fatalf("expected zero params, got %#v", params)
+	}
+}
