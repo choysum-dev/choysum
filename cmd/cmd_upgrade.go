@@ -182,18 +182,7 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 			for _, item := range plans {
 				currentInput = item.requestedInput
 				upgradeScope.Logger().Debug("module upgrade started", "input", item.resolvedInput)
-				moduleName := schemaPlanModuleName(item.resolvedInput)
-				origin := "local"
-				if parsed, parseErr := internalorigin.ParseInput(item.resolvedInput); parseErr == nil {
-					if parsed.Kind == internalorigin.InputKindRegistry {
-						origin = "registry"
-					}
-					if n := strings.TrimSpace(parsed.ModuleName); n != "" {
-						moduleName = n
-					} else if n := strings.TrimSpace(parsed.LocalName); n != "" {
-						moduleName = n
-					}
-				}
+				moduleName, origin := resolveCLIUpgradeTarget(item.resolvedInput)
 				if err := runCLIModuleOp(ctx, env, cliModuleOpOptions{
 					Action:          ops.ActionUpgrade,
 					ModuleName:      moduleName,
@@ -295,6 +284,31 @@ func schemaPlanModuleName(input string) string {
 		return strings.TrimSpace(input[:i])
 	}
 	return input
+}
+
+// resolveCLIUpgradeTarget derives ops ModuleName and Origin from a resolved upgrade input.
+func resolveCLIUpgradeTarget(resolvedInput string) (moduleName, origin string) {
+	moduleName = schemaPlanModuleName(resolvedInput)
+	origin = "local"
+	parsed, parseErr := internalorigin.ParseInput(resolvedInput)
+	if parseErr != nil {
+		return moduleName, origin
+	}
+	if parsed.Kind == internalorigin.InputKindRegistry {
+		origin = "registry"
+	}
+	return upgradeModuleNameFromParsed(parsed, moduleName), origin
+}
+
+// upgradeModuleNameFromParsed prefers ModuleName, then LocalName, then fallback.
+func upgradeModuleNameFromParsed(parsed internalorigin.ParsedInput, fallback string) string {
+	if n := strings.TrimSpace(parsed.ModuleName); n != "" {
+		return n
+	}
+	if n := strings.TrimSpace(parsed.LocalName); n != "" {
+		return n
+	}
+	return strings.TrimSpace(fallback)
 }
 
 func printSchemaPlan(env scope.Scope, moduleName string, plan schema.SchemaPlan, planErr error) {

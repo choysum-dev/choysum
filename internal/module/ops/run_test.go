@@ -203,6 +203,36 @@ func TestRun_WithDemoRequestSetsLatch(t *testing.T) {
 	}
 }
 
+func TestAbandonDraft_CancelsDraftRow(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	mod := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core"}
+	o := &Ops{
+		Scope:     newOpsTestScope(t, db),
+		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+		Lifecycle: &stubLifecycle{},
+		Events:    &recordingBus{},
+	}
+	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "core", Action: ActionInstall})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.AbandonDraft(context.Background(), result.Id, "plan blocked"); err != nil {
+		t.Fatalf("AbandonDraft: %v", err)
+	}
+	row, err := o.loadOperation(context.Background(), result.Id)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if row.Status != StatusCancelled || row.ErrorCode != "ABANDONED" {
+		t.Fatalf("status=%q code=%q", row.Status, row.ErrorCode)
+	}
+	// Non-draft is a no-op.
+	if err := o.AbandonDraft(context.Background(), result.Id, "again"); err != nil {
+		t.Fatalf("AbandonDraft non-draft: %v", err)
+	}
+}
+
 func TestRun_PassesFrozenLifecycleOptions(t *testing.T) {
 	t.Parallel()
 	db := newOpsTestDB(t)

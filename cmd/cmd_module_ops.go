@@ -39,6 +39,7 @@ type cliOpsHost interface {
 	Plan(ctx context.Context, req ops.PlanRequest) (ops.PlanResult, error)
 	Apply(ctx context.Context, req ops.ApplyRequest) error
 	Run(ctx context.Context, req ops.RunRequest) error
+	AbandonDraft(ctx context.Context, id, reason string) error
 }
 
 // Overridable seams for tests.
@@ -117,7 +118,7 @@ func runCLIModuleOp(ctx context.Context, env scope.Scope, opts cliModuleOpOption
 		}
 		prefetch = prepared
 	}
-	if prefetch != nil {
+	if prefetch != nil && action == ops.ActionInstall {
 		if rn := strings.TrimSpace(prefetch.RootName); rn != "" {
 			// InstallModule always installs prepared.RootName; keep that contract.
 			moduleName = rn
@@ -152,9 +153,12 @@ func runCLIModuleOp(ctx context.Context, env scope.Scope, opts cliModuleOpOption
 		return err
 	}
 	if len(planRes.Blockers) > 0 {
-		return formatPlanBlockers(planRes.Blockers)
+		blockErr := formatPlanBlockers(planRes.Blockers)
+		_ = host.AbandonDraft(runCtx, planRes.Id, blockErr.Error())
+		return blockErr
 	}
 	if err := host.Apply(runCtx, ops.ApplyRequest{Id: planRes.Id}); err != nil {
+		_ = host.AbandonDraft(runCtx, planRes.Id, err.Error())
 		return err
 	}
 	return host.Run(runCtx, ops.RunRequest{Id: planRes.Id, WithDemo: opts.WithDemo})

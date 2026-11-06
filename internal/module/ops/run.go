@@ -193,3 +193,37 @@ func (o *Ops) succeedOperation(ctx context.Context, row *modmeta.ModuleOperation
 	o.publishOperationChanged(ctx, row)
 	return nil
 }
+
+// AbandonDraft marks a draft operation cancelled so CLI Plan→Apply failures
+// do not leave persistent draft rows. No-op when the row is already non-draft.
+func (o *Ops) AbandonDraft(ctx context.Context, id, reason string) error {
+	if o == nil {
+		return errors.New("ops: nil host")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return errors.New("ops: operation id is required")
+	}
+	row, err := o.loadOperation(ctx, id)
+	if err != nil {
+		return err
+	}
+	if row.Status != StatusDraft {
+		return nil
+	}
+	now := time.Now().UTC()
+	row.Status = StatusCancelled
+	row.Phase = PhaseDone
+	row.ErrorDomain = "ops"
+	row.ErrorCode = "ABANDONED"
+	row.ErrorMessage = strings.TrimSpace(reason)
+	row.FinishedAt = &now
+	if err := o.casSaveOperation(ctx, row, StatusDraft); err != nil {
+		return err
+	}
+	o.publishOperationChanged(ctx, row)
+	return nil
+}

@@ -236,11 +236,12 @@ func TestRunCLIModuleOpPlanBlockersAndApplyRunErrors(t *testing.T) {
 		return exec, nil
 	}
 
+	blockHost := &stubCLIOpsHost{plan: ops.PlanResult{
+		Id:       "op1",
+		Blockers: []ops.PlanIssue{{Code: "X", Message: "blocked"}},
+	}}
 	newCLIOpsHost = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) cliOpsHost {
-		return &stubCLIOpsHost{plan: ops.PlanResult{
-			Id:       "op1",
-			Blockers: []ops.PlanIssue{{Code: "X", Message: "blocked"}},
-		}}
+		return blockHost
 	}
 	err := runCLIModuleOp(context.Background(), &commandTestScope{ctx: context.Background()}, cliModuleOpOptions{
 		Action:     ops.ActionUninstall,
@@ -250,9 +251,13 @@ func TestRunCLIModuleOpPlanBlockersAndApplyRunErrors(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "blocked") {
 		t.Fatalf("blockers = %v", err)
 	}
+	if blockHost.abandonedID != "op1" || !strings.Contains(blockHost.abandonedReason, "blocked") {
+		t.Fatalf("abandon blockers = %#v", blockHost)
+	}
 
+	applyHost := &stubCLIOpsHost{plan: ops.PlanResult{Id: "op1"}, applyErr: errors.New("apply boom")}
 	newCLIOpsHost = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) cliOpsHost {
-		return &stubCLIOpsHost{plan: ops.PlanResult{Id: "op1"}, applyErr: errors.New("apply boom")}
+		return applyHost
 	}
 	err = runCLIModuleOp(context.Background(), &commandTestScope{ctx: context.Background()}, cliModuleOpOptions{
 		Action:     ops.ActionUninstall,
@@ -260,6 +265,9 @@ func TestRunCLIModuleOpPlanBlockersAndApplyRunErrors(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "apply boom") {
 		t.Fatalf("apply err = %v", err)
+	}
+	if applyHost.abandonedID != "op1" {
+		t.Fatalf("abandon apply = %#v", applyHost)
 	}
 
 	newCLIOpsHost = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) cliOpsHost {
@@ -329,11 +337,14 @@ func (e *stubCLIExecutor) Reload(...*jsengine.JsScript) error { return nil }
 func (e *stubCLIExecutor) AppendJsScripts(...*jsengine.JsScript) {}
 
 type stubCLIOpsHost struct {
-	plan     ops.PlanResult
-	planErr  error
-	applyErr error
-	runErr   error
-	lastPlan ops.PlanRequest
+	plan           ops.PlanResult
+	planErr        error
+	applyErr       error
+	runErr         error
+	abandonErr     error
+	lastPlan       ops.PlanRequest
+	abandonedID    string
+	abandonedReason string
 }
 
 func (h *stubCLIOpsHost) Plan(_ context.Context, req ops.PlanRequest) (ops.PlanResult, error) {
@@ -342,6 +353,11 @@ func (h *stubCLIOpsHost) Plan(_ context.Context, req ops.PlanRequest) (ops.PlanR
 }
 func (h *stubCLIOpsHost) Apply(context.Context, ops.ApplyRequest) error { return h.applyErr }
 func (h *stubCLIOpsHost) Run(context.Context, ops.RunRequest) error     { return h.runErr }
+func (h *stubCLIOpsHost) AbandonDraft(_ context.Context, id, reason string) error {
+	h.abandonedID = id
+	h.abandonedReason = reason
+	return h.abandonErr
+}
 
 type nilWithContextScope struct {
 	commandTestScope
