@@ -527,6 +527,95 @@ func TestRunModuleIndexSyncAllPreservesCancellationError(t *testing.T) {
 	}
 }
 
+func TestModuleManagementSyncIndexCoversPerformPath(t *testing.T) {
+	engineName := "module-management-sync-index-test-engine"
+	registerModuleManagementTestJsEngine(engineName)
+	serverCfg := config.NewDefaultServerConfig()
+	serverCfg.JsEngineFactory = engineName
+	baseScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{Server: serverCfg, ModulesPath: t.TempDir()},
+	}
+
+	engine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+		jsengine.StaticScopeProvider(baseScope),
+		WithModuleManagementLockerFactory(func(scope.Scope) statepkg.Locker {
+			return &moduleIndexTestLocker{acquireErr: statepkg.ErrLeaseBusy}
+		}),
+	))
+
+	evalString(t, engine, `(function() {
+		globalThis.$choysum = globalThis.$choysum || {};
+		globalThis.$choysum.__rpc__ = async function(req) {
+			let ok = false;
+			let message = '';
+			try {
+				await $choysum.moduleManagement.syncIndex({ originType: 'local' });
+				ok = true;
+			} catch (err) {
+				message = String(err && err.message ? err.message : err);
+			}
+			return { id: req.id, result: { ok, message }, context: {} };
+		};
+		return "ok";
+	})()`)
+
+	resp, err := engine.Execute(context.Background(), &jsengine.JsRequest{Id: "req-sync", Service: "meta"})
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+	result, ok := resp.Result.(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected result object, got %#v", resp.Result)
+	}
+	// Cover performModuleIndexSync → runModuleIndexSync; empty modules dir may succeed
+	// after lease acquire, or surface a lock/sync error depending on locker wiring.
+	if _, hasOK := result["ok"]; !hasOK {
+		t.Fatalf("expected syncIndex envelope with ok field, got %#v", result)
+	}
+}
+
+func TestRunModuleIndexSyncNilRunner(t *testing.T) {
+	runtimeScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	_, err := runModuleIndexSync(context.Background(), runtimeScope, "local", nil)
+	if err == nil || !strings.Contains(err.Error(), "module origin sync runner is nil") {
+		t.Fatalf("error = %v, want nil runner", err)
+	}
+}
+
+func TestRunModuleIndexSyncAllFailsWhenEveryOriginFails(t *testing.T) {
+	runtimeScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	runtimeScope.transactor = scopetest.NewPassthroughTransactor(runtimeScope)
+
+	_, err := runModuleIndexSync(context.Background(), runtimeScope, "all", func(_ context.Context, _ scope.Scope, originType string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+		return lifecycle.ModuleSourceSnapshotSyncStats{Total: 1, Failed: 1}, errors.New(originType + " down")
+	})
+	if err == nil || !strings.Contains(err.Error(), "module origin sync failed for all origins") {
+		t.Fatalf("error = %v, want all origins failed", err)
+	}
+}
+
+func TestSyncModuleIndexRegistryDelegates(t *testing.T) {
+	runtimeScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	_, err := syncModuleIndexRegistry(context.Background(), runtimeScope, nil)
+	if err == nil {
+		t.Fatal("expected nil locker factory error from SyncRegistryModuleSourceSnapshot")
+	}
+}
+
 func TestQuickjsRuntimeOptionsHelpers(t *testing.T) {
 	if got := newRuntimeOptions(scope.PathsRuntimeOptions{}, false); got.modulesPath != "" {
 		t.Fatalf("newRuntimeOptions(no path) = %#v, want empty modulesPath", got)

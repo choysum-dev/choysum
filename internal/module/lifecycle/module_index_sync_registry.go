@@ -44,6 +44,9 @@ type catalogIndexEntry struct {
 
 var catalogIndexHTTPClient = &http.Client{Timeout: 15 * time.Second}
 
+// registryModuleJSONMarshal is overridden in tests to force marshal failures.
+var registryModuleJSONMarshal = func(v any) ([]byte, error) { return json.Marshal(v) }
+
 // SyncRegistryModuleSourceSnapshot fetches the static module catalog index from
 // index.choysum.dev and upserts discovered modules into meta_module_source_snapshot
 // with source_type=registry.
@@ -136,7 +139,7 @@ func SyncRegistryModuleSourceSnapshot(ctx context.Context, runtimeScope scope.Sc
 		}
 		seen[registrySyncSeenKey(name, originRef)] = struct{}{}
 
-		manifestJSON, err := json.Marshal(module)
+		manifestJSON, err := registryModuleJSONMarshal(module)
 		if err != nil {
 			runtimeScope.Logger().Warn("module source snapshot marshal failed", "module", name, "error", err)
 			stats.Failed++

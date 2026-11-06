@@ -310,14 +310,10 @@ func performModuleIndexSync(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngi
 
 	start := time.Now()
 	result, err := runModuleIndexSync(execCtx, runtimeScope, originType, func(runCtx context.Context, txScope scope.Scope, target string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
-		switch target {
-		case "local":
-			return syncModuleIndexLocal(runCtx, txScope, cfg.lockerFactory)
-		case "registry":
+		if target == "registry" {
 			return syncModuleIndexRegistry(runCtx, txScope, cfg.lockerFactory)
-		default:
-			return lifecycle.ModuleSourceSnapshotSyncStats{}, status.Error(codes.InvalidArgument, "originType must be one of: local, registry, all")
 		}
+		return syncModuleIndexLocal(runCtx, txScope, cfg.lockerFactory)
 	})
 
 	result.DurationMs = time.Since(start).Milliseconds()

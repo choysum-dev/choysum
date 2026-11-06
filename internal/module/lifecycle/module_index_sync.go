@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
@@ -164,7 +165,18 @@ func SyncLocalModuleSourceSnapshot(ctx context.Context, runtimeScope scope.Scope
 // lease (aligned with moduleManagerLeaseTTL).
 const moduleIndexLockTTLDefault = 60 * time.Second
 
+// testModuleIndexLockTTL overrides the sync lease TTL when > 0 (tests only).
+var (
+	testModuleIndexLockTTLMu sync.Mutex
+	testModuleIndexLockTTL   time.Duration
+)
+
 func moduleIndexLockTTL(context.Context, scope.Scope) time.Duration {
+	testModuleIndexLockTTLMu.Lock()
+	defer testModuleIndexLockTTLMu.Unlock()
+	if testModuleIndexLockTTL > 0 {
+		return testModuleIndexLockTTL
+	}
 	return moduleIndexLockTTLDefault
 }
 
