@@ -136,26 +136,41 @@ declare var $choysum: {
     context: ChoysumRequestContext;
   };
   moduleManagement: {
-    install(params: { moduleName: string; withDemo?: boolean; operatorUserId?: string; jobId?: string; action?: string }): Promise<{
+    plan(params: {
+      moduleName?: string;
+      action: 'install' | 'upgrade' | 'uninstall' | 'sync' | 'load-demo' | string;
+      origin?: 'local' | 'registry';
+      operatorUserId?: string;
+    }): Promise<{
+      id: string;
+      action: string;
+      moduleName?: string;
+      moduleOrder?: Array<{
+        moduleName: string;
+        reason?: string;
+        currentVersion?: string;
+        targetVersion?: string;
+        origin?: string;
+      }>;
+      affectedApps?: string[];
+      risks?: Array<{ code: string; level: string; message?: string }>;
+      blockers?: Array<{ code: string; level: string; message?: string }>;
+      baseRevision: string;
+    }>;
+    apply(params: { id: string }): Promise<{
       ok: boolean;
       errorDomain?: string;
       errorCode?: string;
       errorMessage?: string;
     }>;
-    uninstall(params: { moduleName: string; operatorUserId?: string; jobId?: string; action?: string }): Promise<{
-      ok: boolean;
-      errorDomain?: string;
-      errorCode?: string;
-      errorMessage?: string;
-    }>;
-    upgrade(params: { moduleName: string; operatorUserId?: string; jobId?: string; action?: string }): Promise<{
+    run(params: { id: string; withDemo?: boolean }): Promise<{
       ok: boolean;
       errorDomain?: string;
       errorCode?: string;
       errorMessage?: string;
     }>;
     reload(): Promise<{ triggered: boolean; failed: boolean; error?: string }>;
-    syncIndex(params: { originType?: 'local' | 'registry'; force?: boolean }): Promise<{
+    syncCatalog(params: { originType?: 'local' | 'registry' | 'all'; force?: boolean }): Promise<{
       ok: boolean;
       originType?: string;
       total?: number;
@@ -163,6 +178,13 @@ declare var $choysum: {
       failed?: number;
       durationMs?: number;
       error?: string;
+    }>;
+    loadDemo(params?: { operatorUserId?: string }): Promise<{
+      ok: boolean;
+      id?: string;
+      errorDomain?: string;
+      errorCode?: string;
+      errorMessage?: string;
     }>;
   };
   /**

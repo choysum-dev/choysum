@@ -33,8 +33,8 @@ const (
 type TipHubClient interface {
 	SubscribeThread(ctx context.Context, in *SubscribeThreadReq, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Tip], error)
 	SubscribeNotifications(ctx context.Context, in *SubscribeNotificationsReq, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Tip], error)
-	// SubscribeModuleOp streams tips for one Meta module-op job.
-	// Tip is best-effort; clients re-read status via MetaModule.GetOpStatus.
+	// SubscribeModuleOp streams tips for one Meta module operation.
+	// Tip is best-effort; clients re-read authoritative status from meta_module_operation.
 	SubscribeModuleOp(ctx context.Context, in *SubscribeModuleOpReq, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Tip], error)
 }
 
@@ -109,8 +109,8 @@ type TipHub_SubscribeModuleOpClient = grpc.ServerStreamingClient[Tip]
 type TipHubServer interface {
 	SubscribeThread(*SubscribeThreadReq, grpc.ServerStreamingServer[Tip]) error
 	SubscribeNotifications(*SubscribeNotificationsReq, grpc.ServerStreamingServer[Tip]) error
-	// SubscribeModuleOp streams tips for one Meta module-op job.
-	// Tip is best-effort; clients re-read status via MetaModule.GetOpStatus.
+	// SubscribeModuleOp streams tips for one Meta module operation.
+	// Tip is best-effort; clients re-read authoritative status from meta_module_operation.
 	SubscribeModuleOp(*SubscribeModuleOpReq, grpc.ServerStreamingServer[Tip]) error
 	mustEmbedUnimplementedTipHubServer()
 }
