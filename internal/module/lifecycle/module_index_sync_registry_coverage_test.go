@@ -116,13 +116,19 @@ END;`).Error; err != nil {
 			t.Fatalf("create trigger: %v", err)
 		}
 
-		stats, err := SyncRegistryModuleSourceSnapshot(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
+		_, err := SyncRegistryModuleSourceSnapshot(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
 			return &moduleIndexSyncTestLocker{}
 		})
 		if err != nil {
 			t.Fatalf("sync error = %v", err)
 		}
-		_ = stats
+		var orphan modmeta.ModuleSourceSnapshot
+		if err := db.Where("module_name = ? AND source_type = ?", "orphan", "registry").Take(&orphan).Error; err != nil {
+			t.Fatalf("load orphan: %v", err)
+		}
+		if !orphan.Available {
+			t.Fatalf("orphan Available = false, want true after blocked reconcile update")
+		}
 	})
 
 	t.Run("reconcile find failed", func(t *testing.T) {
@@ -179,6 +185,16 @@ END;`).Error; err != nil {
 		})
 		if err != nil {
 			t.Fatalf("sync error = %v", err)
+		}
+		var orphanAvailable bool
+		if err := db.Model(&modmeta.ModuleSourceSnapshot{}).
+			Select("available").
+			Where("module_name = ? AND source_type = ? AND source_ref = ?", "orphan", "registry", "@legacy/orphan").
+			Scan(&orphanAvailable).Error; err != nil {
+			t.Fatalf("load orphan available: %v", err)
+		}
+		if !orphanAvailable {
+			t.Fatalf("orphan Available = false, want true after blocked key update")
 		}
 	})
 }

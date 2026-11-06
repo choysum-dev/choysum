@@ -75,9 +75,14 @@ func ensureOpsSchemaCutover(migrator opsSchemaMigrator, autoMigrateMigration, au
 	if migrator.HasTable(legacyModuleMigrationTable) {
 		if !migrator.HasTable(newMigration) {
 			if err := migrator.RenameTable(legacyModuleMigrationTable, newMigration); err != nil {
-				return fmt.Errorf("rename %s -> %s: %w", legacyModuleMigrationTable, newMigration, err)
+				// Another process may have won the rename; tolerate that lost race.
+				if migrator.HasTable(legacyModuleMigrationTable) || !migrator.HasTable(newMigration) {
+					return fmt.Errorf("rename %s -> %s: %w", legacyModuleMigrationTable, newMigration, err)
+				}
+				// Peer owns column alignment; OpsEntities AutoMigrate also covers it.
+			} else {
+				renamedMigration = true
 			}
-			renamedMigration = true
 		} else if err := migrator.DropTable(legacyModuleMigrationTable); err != nil {
 			// Both tables present (partial upgrade); drop leftover so cutover stays one-shot.
 			return fmt.Errorf("drop legacy %s: %w", legacyModuleMigrationTable, err)

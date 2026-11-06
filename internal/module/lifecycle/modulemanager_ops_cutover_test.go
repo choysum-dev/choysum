@@ -11,6 +11,20 @@ import (
 	"github.com/choysum-dev/choysum/pkg/meta"
 )
 
+func TestBootstrapMetaTables_NilSession(t *testing.T) {
+	t.Parallel()
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), nil)
+	manager := NewModuleManager(runtimeScope, nil)
+	err := manager.bootstrapMetaTables(runtimeScope)
+	if err == nil || !strings.Contains(err.Error(), "session is unavailable") {
+		t.Fatalf("bootstrapMetaTables() error = %v, want session is unavailable", err)
+	}
+	err = manager.bootstrapMetaTables(nil)
+	if err == nil || !strings.Contains(err.Error(), "session is unavailable") {
+		t.Fatalf("bootstrapMetaTables(nil) error = %v, want session is unavailable", err)
+	}
+}
+
 func TestBootstrapMetaTables_OpsCutoverError(t *testing.T) {
 	t.Parallel()
 	db := newModuleSourceSnapshotSyncDB(t)

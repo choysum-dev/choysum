@@ -67,6 +67,20 @@ func (m *stubOpsMigrator) DropTable(dst ...any) error {
 	return nil
 }
 
+// raceRenameMigrator simulates a peer that finishes RenameTable first.
+type raceRenameMigrator struct {
+	stubOpsMigrator
+}
+
+func (m *raceRenameMigrator) RenameTable(src any, dst any) error {
+	from, _ := src.(string)
+	to, _ := dst.(string)
+	m.renamedFrom, m.renamedTo = from, to
+	delete(m.tables, from)
+	m.tables[to] = true
+	return m.renameErr
+}
+
 func TestEnsureOpsSchemaCutover_NilDB(t *testing.T) {
 	t.Parallel()
 	if err := EnsureOpsSchemaCutover(nil); err == nil || !strings.Contains(err.Error(), "db is nil") {
@@ -231,6 +245,29 @@ func TestEnsureOpsSchemaCutover_StubErrorPaths(t *testing.T) {
 		err := ensureOpsSchemaCutover(m, func() error { return nil }, func() error { return nil })
 		if err == nil || !strings.Contains(err.Error(), "rename blocked") {
 			t.Fatalf("error = %v, want rename blocked", err)
+		}
+	})
+
+	t.Run("rename lost race tolerated", func(t *testing.T) {
+		m := &raceRenameMigrator{
+			stubOpsMigrator: stubOpsMigrator{
+				tables:    map[string]bool{legacyModuleMigrationTable: true},
+				renameErr: errors.New("rename raced"),
+			},
+		}
+		migrated := false
+		err := ensureOpsSchemaCutover(m, func() error {
+			migrated = true
+			return nil
+		}, func() error { return nil })
+		if err != nil {
+			t.Fatalf("ensureOpsSchemaCutover() error = %v, want nil after lost rename race", err)
+		}
+		if migrated {
+			t.Fatal("lost rename race must not AutoMigrate migration columns")
+		}
+		if m.tables[legacyModuleMigrationTable] || !m.tables[(ModuleMigration{}).TableName()] {
+			t.Fatalf("tables after race = %#v", m.tables)
 		}
 	})
 

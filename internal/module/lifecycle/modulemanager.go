@@ -332,15 +332,15 @@ func (m *ModuleManager) globalWebSkipCallbacks() (
 }
 
 type ModuleManager struct {
-	runtimeScope             scope.Scope
-	runtimeOptions           runtimeOptions
-	jsExecutor               jsexecutor.ScriptExecutor
-	entities                 []any
-	bootstrapOnce            sync.Once
-	bootstrapErr             error
-	lockerFactory            statepkg.LockerFactory
-	moduleSourceSnapshotSyncLocal     func(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (ModuleSourceSnapshotSyncStats, error)
-	originCoordinatorFactory func(runtimeScope scope.Scope) OriginCoordinator
+	runtimeScope                  scope.Scope
+	runtimeOptions                runtimeOptions
+	jsExecutor                    jsexecutor.ScriptExecutor
+	entities                      []any
+	bootstrapOnce                 sync.Once
+	bootstrapErr                  error
+	lockerFactory                 statepkg.LockerFactory
+	moduleSourceSnapshotSyncLocal func(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (ModuleSourceSnapshotSyncStats, error)
+	originCoordinatorFactory      func(runtimeScope scope.Scope) OriginCoordinator
 	// pauseLeaseRenewDepth skips heartbeat Renew while >0 (nested commit TX safe).
 	pauseLeaseRenewDepth atomic.Int32
 	// leaseRenewMu serializes renew against paused commits: pause Lock()s it for the
@@ -385,17 +385,24 @@ func (m *ModuleManager) ensureMetaTables() error {
 }
 
 func (m *ModuleManager) bootstrapMetaTables(txScope scope.Scope) error {
-	db := txScope.Session().DB
+	if txScope == nil {
+		return xfmt.Errorf("bootstrap meta tables: session is unavailable")
+	}
+	session := txScope.Session()
+	if session == nil || session.DB == nil {
+		return xfmt.Errorf("bootstrap meta tables: session is unavailable")
+	}
+	db := session.DB
 	if err := modmeta.EnsureOpsSchemaCutover(db); err != nil {
 		return xfmt.Errorf("ops schema cutover: %w", err)
 	}
 
-	migrator := txScope.Session().Migrator()
+	migrator := session.Migrator()
 	baseReady := migrator.HasTable(&meta.Module{}) && migrator.HasTable(&modmeta.LockLease{})
 	if baseReady {
 		// Existing installs still need ops satellites (catalog/operation/source
 		// snapshot/migration) after the W1 hard-cut table rename.
-		if err := txScope.Session().AutoMigrate(modmeta.OpsEntities()...); err != nil {
+		if err := session.AutoMigrate(modmeta.OpsEntities()...); err != nil {
 			return xfmt.Errorf("auto migrate ops entities: %w", err)
 		}
 		if migrator.HasTable(&meta.Model{}) {
