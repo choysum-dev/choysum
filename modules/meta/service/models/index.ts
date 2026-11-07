@@ -3,8 +3,8 @@
 
 export { default as MetaApplication } from './application';
 export { default as MetaModule } from './module';
-export { default as MetaModuleIndex } from './module_index';
-export { default as MetaModuleDependency } from './module_dependency';
+export { default as MetaModuleCatalog } from './module_catalog';
+export { default as MetaModuleOperation } from './module_operation';
 export { default as MetaModuleMigration } from './module_migration';
 export { default as MetaModel } from './model';
 export { default as MetaModelRaw } from './model_raw';
@@ -17,7 +17,6 @@ export { default as MetaDecorator } from './decorator';
 export { default as MetaDecoratorRaw } from './decorator_raw';
 export { default as MetaArgument } from './argument';
 export { default as MetaArgumentRaw } from './argument_raw';
-export { default as ModuleManagementLog } from './module_management_log';
 export { default as MetaParameter } from './parameter';
 export { default as MetaParameterRaw } from './parameter_raw';
 export { default as MetaTypeParameter } from './type_parameter';

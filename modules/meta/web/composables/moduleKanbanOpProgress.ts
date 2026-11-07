@@ -10,7 +10,7 @@ export type ModuleKanbanOpProgressMessages = {
 };
 
 export type ModuleKanbanOpProgressBindings = {
-  fetchStatus: (jobId: string) => Promise<ModuleOpStatusSnapshot>;
+  fetchStatus: (operationId: string) => Promise<ModuleOpStatusSnapshot>;
   isDialogOpen: () => boolean;
   setOpStatus: (status: ModuleOpStatusSnapshot | null) => void;
   setDialogStep: (step: 'plan' | 'progress' | 'result') => void;

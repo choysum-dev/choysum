@@ -5,6 +5,7 @@ package task
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"time"
 
@@ -12,8 +13,8 @@ import (
 )
 
 const (
-	metaModuleOpMethodPrefix = "meta.MetaModule/Execute"
-	metaModuleOpTipModel     = "task.Job"
+	metaModuleOpMethodPrefix = "meta.MetaModuleOperation/Execute"
+	metaModuleOpTipModel     = "meta.MetaModuleOperation"
 )
 
 func isMetaModuleOpJob(job *Job) bool {
@@ -33,6 +34,33 @@ func moduleOpOperatorUserID(job *Job) string {
 	return strings.TrimSpace(job.SchedulerUserId)
 }
 
+func moduleOpPayloadString(v any) string {
+	s, ok := v.(string)
+	if !ok {
+		return ""
+	}
+	return strings.TrimSpace(s)
+}
+
+func moduleOpOperationID(job *Job) string {
+	if job == nil || len(job.PayloadJson) == 0 {
+		return ""
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(job.PayloadJson, &payload); err != nil {
+		return ""
+	}
+	if req, ok := payload["req"].(map[string]any); ok {
+		if id := moduleOpPayloadString(req["Id"]); id != "" {
+			return id
+		}
+		if id := moduleOpPayloadString(req["id"]); id != "" {
+			return id
+		}
+	}
+	return moduleOpPayloadString(payload["Id"])
+}
+
 // publishModuleOpChanged emits a best-effort tip after Meta module-op status
 // has been persisted. Publish failures are ignored and never roll back the job.
 func (d *Dispatcher) publishModuleOpChanged(job *Job, source string) {
@@ -40,22 +68,30 @@ func (d *Dispatcher) publishModuleOpChanged(job *Job, source string) {
 		return
 	}
 	jobID := strings.TrimSpace(job.Id)
-	if jobID == "" {
+	operationID := moduleOpOperationID(job)
+	if operationID == "" {
+		operationID = jobID
+	}
+	if operationID == "" {
 		return
 	}
 	src := strings.TrimSpace(source)
 	if src == "" {
 		src = "task.Dispatcher"
 	}
+	payload := map[string]any{
+		"model":       metaModuleOpTipModel,
+		"resId":       operationID,
+		"operationId": operationID,
+		"userId":      moduleOpOperatorUserID(job),
+	}
+	if jobID != "" {
+		payload["jobId"] = jobID
+	}
 	_ = d.events.Publish(context.Background(), bus.Event{
-		Topic:  bus.TopicMetaModuleOpChanged,
-		Source: src,
-		At:     time.Now().UTC(),
-		Payload: map[string]any{
-			"model":  metaModuleOpTipModel,
-			"resId":  jobID,
-			"jobId":  jobID,
-			"userId": moduleOpOperatorUserID(job),
-		},
+		Topic:   bus.TopicMetaModuleOpChanged,
+		Source:  src,
+		At:      time.Now().UTC(),
+		Payload: payload,
 	})
 }

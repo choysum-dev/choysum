@@ -14,12 +14,12 @@ import { useRoute } from 'vue-router';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import ModuleDetailView from '../views/ModuleDetailView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
-import type MetaModuleIndex from '@/meta/service/models/module_index';
+import type MetaModuleCatalog from '@/meta/service/models/module_catalog';
 import { ChoyPage } from '@/web';
 
 const route = useRoute();
-const moduleStore = createStoreByModel<typeof MetaModuleIndex>('meta.MetaModuleIndex', {
-  storeId: `MetaModuleIndex_${route.fullPath}`,
+const moduleStore = createStoreByModel<typeof MetaModuleCatalog>('meta.MetaModuleCatalog', {
+  storeId: `MetaModuleCatalog_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });
 </script>

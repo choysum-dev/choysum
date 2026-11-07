@@ -3,7 +3,7 @@
 
 import { onTips, subscribeModuleOp } from '@/core/web/tip';
 
-/** Snapshot returned by MetaModule.GetOpStatus (authoritative). */
+/** Snapshot derived from MetaModuleOperation.Browse/Read (authoritative). */
 export type ModuleOpStatusSnapshot = {
   status: string;
   summary?: unknown;
@@ -18,7 +18,7 @@ export type ModuleOpStatusSnapshot = {
 };
 
 export type ModuleOpProgressHooks = {
-  fetchStatus: (jobId: string) => Promise<ModuleOpStatusSnapshot>;
+  fetchStatus: (operationId: string) => Promise<ModuleOpStatusSnapshot>;
   /** False when the progress dialog/session is closed. */
   isActive: () => boolean;
   onStatus: (status: ModuleOpStatusSnapshot) => void;
@@ -143,13 +143,13 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks, deps
   }
 
   async function applyFetched(
-    jobId: string,
+    operationId: string,
     generation: number
   ): Promise<ModuleOpStatusSnapshot | null> {
     if (generation !== sessionGeneration || !hooks.isActive() || timedOut) {
       return null;
     }
-    const status = await hooks.fetchStatus(jobId);
+    const status = await hooks.fetchStatus(operationId);
     if (generation !== sessionGeneration || !hooks.isActive() || timedOut) {
       return null;
     }
@@ -167,7 +167,7 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks, deps
     return status;
   }
 
-  function startPollFallback(jobId: string, generation: number, startAt: number): void {
+  function startPollFallback(operationId: string, generation: number, startAt: number): void {
     clearPoll();
     let intervalMs = POLL_INITIAL_MS;
 
@@ -177,7 +177,7 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks, deps
       }
       let status: ModuleOpStatusSnapshot | null = null;
       try {
-        status = await applyFetched(jobId, generation);
+        status = await applyFetched(operationId, generation);
         if (status && isTerminalStatus(status.status)) {
           return;
         }
@@ -216,12 +216,12 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks, deps
   }
 
   /**
-   * Watches one job until terminal status, timeout, or stop().
+   * Watches one operation until terminal status, timeout, or stop().
    * Remains pending for the whole tip/fallback lifecycle (callers such as
    * ModuleKanbanView.submitOperation intentionally await that full session).
    */
-  async function watch(jobId: string): Promise<void> {
-    const id = String(jobId || '').trim();
+  async function watch(operationId: string): Promise<void> {
+    const id = String(operationId || '').trim();
     stop();
     if (!id) return;
 
@@ -298,7 +298,7 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks, deps
 
     try {
       await tipOn(
-        tipSubscribe(id, signal),
+        tipSubscribe({ operationId: id }, signal),
         async () => {
           scheduleTipRefresh();
         },

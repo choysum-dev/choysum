@@ -17,7 +17,7 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import ModuleLogListView from '../views/ModuleLogListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
-import type ModuleManagementLog from '@/meta/service/models/module_management_log';
+import type MetaModuleOperation from '@/meta/service/models/module_operation';
 import { ChoyPage } from '@/web';
 
 defineOptions({ name: 'MetaModuleHistoryPage' });
@@ -25,8 +25,8 @@ defineOptions({ name: 'MetaModuleHistoryPage' });
 const { _t } = createTranslate('meta', { scope: 'web/pages/ModuleHistory' });
 const pageTitle = _t('Module History');
 
-const logStore = createStoreByModel<typeof ModuleManagementLog>('meta.ModuleManagementLog', {
-  storeId: 'ModuleManagementLog_List',
+const logStore = createStoreByModel<typeof MetaModuleOperation>('meta.MetaModuleOperation', {
+  storeId: 'MetaModuleOperation_List',
   scopeManager: useScopeManager().menuScopeManager,
 });
 </script>

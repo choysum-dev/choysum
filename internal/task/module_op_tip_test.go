@@ -5,12 +5,14 @@ package task
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/choysum-dev/choysum/pkg/bus"
 	taskcontract "github.com/choysum-dev/choysum/pkg/task"
+	"gorm.io/datatypes"
 )
 
 type captureBus struct {
@@ -51,12 +53,18 @@ func (failPublishBus) Subscribe(string, bus.EventHandler) (bus.Subscription, err
 	return nopSub{}, nil
 }
 
+func metaOpPayload(operationID string) datatypes.JSON {
+	raw, _ := json.Marshal(map[string]any{"req": map[string]any{"Id": operationID}})
+	return datatypes.JSON(raw)
+}
+
 func TestPublishModuleOpChangedEmitsForMetaJobs(t *testing.T) {
 	events := &captureBus{}
 	d := &Dispatcher{events: events}
 	job := &Job{
 		Id:                "job-1",
-		FullMethod:        "meta.MetaModule/ExecuteInstall",
+		FullMethod:        "meta.MetaModuleOperation/Execute",
+		PayloadJson:       metaOpPayload("op-1"),
 		TriggeredByUserId: "user-1",
 	}
 	d.publishModuleOpChanged(job, "task.Dispatcher.succeedJob")
@@ -71,8 +79,11 @@ func TestPublishModuleOpChangedEmitsForMetaJobs(t *testing.T) {
 	if got[0].Source != "task.Dispatcher.succeedJob" {
 		t.Fatalf("source = %q", got[0].Source)
 	}
-	if got[0].Payload["jobId"] != "job-1" || got[0].Payload["resId"] != "job-1" {
+	if got[0].Payload["operationId"] != "op-1" || got[0].Payload["resId"] != "op-1" {
 		t.Fatalf("payload locators = %#v", got[0].Payload)
+	}
+	if got[0].Payload["jobId"] != "job-1" {
+		t.Fatalf("jobId = %#v", got[0].Payload["jobId"])
 	}
 	if got[0].Payload["userId"] != "user-1" || got[0].Payload["model"] != metaModuleOpTipModel {
 		t.Fatalf("payload identity = %#v", got[0].Payload)
@@ -87,8 +98,8 @@ func TestPublishModuleOpChangedSkipsNonMetaAndMissingBus(t *testing.T) {
 	d := &Dispatcher{events: events}
 	d.publishModuleOpChanged(&Job{Id: "j", FullMethod: "auth.User/Login", TriggeredByUserId: "u"}, "x")
 	d.publishModuleOpChanged(nil, "x")
-	d.publishModuleOpChanged(&Job{Id: "", FullMethod: "meta.MetaModule/ExecuteUpgrade", TriggeredByUserId: "u"}, "x")
-	(&Dispatcher{}).publishModuleOpChanged(&Job{Id: "j", FullMethod: "meta.MetaModule/ExecuteInstall"}, "x")
+	d.publishModuleOpChanged(&Job{Id: "", FullMethod: "meta.MetaModuleOperation/Execute", TriggeredByUserId: "u"}, "x")
+	(&Dispatcher{}).publishModuleOpChanged(&Job{Id: "j", FullMethod: "meta.MetaModuleOperation/Execute"}, "x")
 	if len(events.snapshot()) != 0 {
 		t.Fatalf("expected no publishes, got %#v", events.snapshot())
 	}
@@ -99,7 +110,8 @@ func TestPublishModuleOpChangedUsesSchedulerWhenTriggeredMissing(t *testing.T) {
 	d := &Dispatcher{events: events}
 	d.publishModuleOpChanged(&Job{
 		Id:              "job-2",
-		FullMethod:      "meta.MetaModule/ExecuteUninstall",
+		FullMethod:      "meta.MetaModuleOperation/Execute",
+		PayloadJson:     metaOpPayload("op-2"),
 		SchedulerUserId: "sched-1",
 	}, "")
 	got := events.snapshot()
@@ -118,7 +130,8 @@ func TestPublishModuleOpChangedIgnoresPublishErrors(t *testing.T) {
 	d := &Dispatcher{events: failPublishBus{}}
 	d.publishModuleOpChanged(&Job{
 		Id:                "job-3",
-		FullMethod:        "meta.MetaModule/ExecuteInstall",
+		FullMethod:        "meta.MetaModuleOperation/Execute",
+		PayloadJson:       metaOpPayload("op-3"),
 		TriggeredByUserId: "u1",
 	}, "task.Dispatcher.failJob")
 }
@@ -127,17 +140,20 @@ func TestIsMetaModuleOpJob(t *testing.T) {
 	if isMetaModuleOpJob(nil) {
 		t.Fatal("nil job")
 	}
-	if !isMetaModuleOpJob(&Job{FullMethod: "meta.MetaModule/ExecuteInstall"}) {
-		t.Fatal("install")
+	if !isMetaModuleOpJob(&Job{FullMethod: "meta.MetaModuleOperation/Execute"}) {
+		t.Fatal("execute")
 	}
-	if isMetaModuleOpJob(&Job{FullMethod: "meta.MetaModule/PlanOperation"}) {
+	if isMetaModuleOpJob(&Job{FullMethod: "meta.MetaModuleOperation/Plan"}) {
 		t.Fatal("plan should not tip")
+	}
+	if isMetaModuleOpJob(&Job{FullMethod: "meta.MetaModule/ExecuteInstall"}) {
+		t.Fatal("legacy execute should not tip")
 	}
 }
 
 func TestPublishModuleOpChangedNilDispatcherAndOperatorHelpers(t *testing.T) {
 	var d *Dispatcher
-	d.publishModuleOpChanged(&Job{Id: "j", FullMethod: "meta.MetaModule/ExecuteInstall", TriggeredByUserId: "u"}, "x")
+	d.publishModuleOpChanged(&Job{Id: "j", FullMethod: "meta.MetaModuleOperation/Execute", TriggeredByUserId: "u"}, "x")
 
 	if moduleOpOperatorUserID(nil) != "" {
 		t.Fatal("nil job operator")
@@ -145,8 +161,14 @@ func TestPublishModuleOpChangedNilDispatcherAndOperatorHelpers(t *testing.T) {
 	if moduleOpOperatorUserID(&Job{TriggeredByUserId: "  ", SchedulerUserId: " sched "}) != "sched" {
 		t.Fatal("trim scheduler fallback")
 	}
-	if !isMetaModuleOpJob(&Job{FullMethod: "  meta.MetaModule/ExecuteUpgrade  "}) {
+	if !isMetaModuleOpJob(&Job{FullMethod: "  meta.MetaModuleOperation/Execute  "}) {
 		t.Fatal("trimmed full method should match")
+	}
+	if moduleOpOperationID(nil) != "" {
+		t.Fatal("nil job operation id")
+	}
+	if got := moduleOpOperationID(&Job{PayloadJson: metaOpPayload("op-x")}); got != "op-x" {
+		t.Fatalf("operation id = %q", got)
 	}
 }
 
@@ -184,7 +206,8 @@ func TestDispatcherSkipsModuleOpTipWhenPersistFails(t *testing.T) {
 	events := &captureBus{}
 	job := &Job{
 		Id:                "job-persist-fail",
-		FullMethod:        "meta.MetaModule/ExecuteInstall",
+		FullMethod:        "meta.MetaModuleOperation/Execute",
+		PayloadJson:       metaOpPayload("op-fail"),
 		TriggeredByUserId: "user-1",
 	}
 	d := &Dispatcher{queue: failMarkQueue{failMark: true}, events: events}
@@ -201,7 +224,8 @@ func TestDispatcherPublishesModuleOpTipWhenPersistSucceeds(t *testing.T) {
 	events := &captureBus{}
 	job := &Job{
 		Id:                "job-persist-ok",
-		FullMethod:        "meta.MetaModule/ExecuteUpgrade",
+		FullMethod:        "meta.MetaModuleOperation/Execute",
+		PayloadJson:       metaOpPayload("op-ok"),
 		TriggeredByUserId: "user-9",
 	}
 	d := &Dispatcher{queue: failMarkQueue{failMark: false}, events: events}

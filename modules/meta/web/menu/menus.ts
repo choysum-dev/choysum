@@ -61,20 +61,21 @@ export const metaMenus: MenuItem[] = [
         title: _lt('Module Board'),
         path: '/meta/modules',
         sequence: 10,
-        requires: [{ model: 'meta.MetaModuleIndex' }, { model: 'meta.MetaModule' }],
+        requires: [{ model: 'meta.MetaModuleCatalog' }, { model: 'meta.MetaModuleOperation' }],
       }),
       defineMenu('meta.menu.module_list', {
         title: _lt('Module List'),
         path: '/meta/modules/list',
         sequence: 20,
-        requires: [{ model: 'meta.MetaModuleIndex' }, { model: 'meta.MetaModule' }],
+        requires: [{ model: 'meta.MetaModuleCatalog' }, { model: 'meta.MetaModule' }],
       }),
       defineMenu('meta.menu.module_history', {
         title: _lt('Operation History'),
         path: '/meta/modules/history',
         sequence: 30,
-        requires: [{ model: 'meta.ModuleManagementLog' }, { model: 'meta.MetaModule' }, { model: 'meta.MetaModuleIndex' }],
+        requires: [{ model: 'meta.MetaModuleOperation' }, { model: 'meta.MetaModule' }, { model: 'meta.MetaModuleCatalog' }],
       }),
+
     ],
   }),
 ];

@@ -7,15 +7,15 @@ SPDX-License-Identifier: Apache-2.0
   <div class="module-kanban-view flex h-full min-h-0 min-w-0 flex-1 flex-col">
     <div class="sr-only" aria-hidden="true">
       <ChoyVirtualField :store="store" prop="ModuleName" />
-      <ChoyVirtualField :store="store" prop="Version" />
       <ChoyVirtualField :store="store" prop="LocalVersion" />
       <ChoyVirtualField :store="store" prop="RegistryVersion" />
-      <ChoyVirtualField :store="store" prop="InstalledStatus" />
+      <ChoyVirtualField :store="store" prop="Installed" />
       <ChoyVirtualField :store="store" prop="InstalledVersion" />
+      <ChoyVirtualField :store="store" prop="UpdateAvailable" />
       <ChoyVirtualField :store="store" prop="Available" />
-      <ChoyVirtualField :store="store" prop="SourceTypes" />
+      <ChoyVirtualField :store="store" prop="Application" />
       <ChoyVirtualField :store="store" prop="LastSyncAt" />
-      <ChoyVirtualField :store="store" prop="ManifestJson" />
+      <ChoyVirtualField :store="store" prop="DependsJson" />
     </div>
 
     <ChoyKanbanView
@@ -87,23 +87,23 @@ SPDX-License-Identifier: Apache-2.0
               :variant="cardBadgeVariant(payloadRecord(card))"
               class="shrink-0 px-1.5 py-0 text-[10px] font-normal"
             >
-              {{ statusLabel(String(payloadRecord(card).InstalledStatus ?? ''), payloadRecord(card).Available) }}
+              {{ statusLabel(catalogInstalledStatus(payloadRecord(card)), payloadRecord(card).Available) }}
             </ChoyBadge>
           </div>
           <div class="truncate text-muted-foreground">
-            {{ recordField(card, 'Version') || recordField(card, 'LocalVersion') || '—' }}
+            {{ recordField(card, 'InstalledVersion') || recordField(card, 'LocalVersion') || recordField(card, 'RegistryVersion') || '—' }}
             <span class="text-muted-foreground/60"> · </span>
-            {{ recordField(card, 'SourceTypes') || recordField(card, 'SourceType') || 'local' }}
+            {{ recordField(card, 'Application') || '—' }}
           </div>
           <div
-            v-if="manifestSummary(recordField(card, 'ManifestJson'))"
+            v-if="recordField(card, 'Summary')"
             class="line-clamp-1 text-muted-foreground"
           >
-            {{ manifestSummary(recordField(card, 'ManifestJson')) }}
+            {{ recordField(card, 'Summary') }}
           </div>
           <div class="flex flex-wrap gap-1.5 pt-1">
             <ChoyButton
-              v-if="!isInstalled(String(recordField(card, 'InstalledStatus') || '')) && hasAction(moduleInstallAction)"
+              v-if="!isInstalled(catalogInstalledStatus(payloadRecord(card))) && hasAction(moduleInstallAction)"
               size="sm"
               variant="default"
               :disabled="recordField(card, 'Available') === false"
@@ -112,7 +112,7 @@ SPDX-License-Identifier: Apache-2.0
               {{ _t('Install') }}
             </ChoyButton>
             <ChoyButton
-              v-if="isInstalled(String(recordField(card, 'InstalledStatus') || '')) && hasAction(moduleUpgradeAction)"
+              v-if="isInstalled(catalogInstalledStatus(payloadRecord(card))) && hasAction(moduleUpgradeAction)"
               size="sm"
               variant="outline"
               @click.stop="onActionClick('upgrade', payloadRecord(card))"
@@ -120,7 +120,7 @@ SPDX-License-Identifier: Apache-2.0
               {{ _t('Upgrade') }}
             </ChoyButton>
             <ChoyButton
-              v-if="isInstalled(String(recordField(card, 'InstalledStatus') || '')) && hasAction(moduleUninstallAction)"
+              v-if="isInstalled(catalogInstalledStatus(payloadRecord(card))) && hasAction(moduleUninstallAction)"
               size="sm"
               variant="ghost"
               class="text-destructive hover:bg-destructive/10 hover:text-destructive"
@@ -310,8 +310,8 @@ import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { FolderSync, History } from 'lucide-vue-next';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
-import type MetaModule from '@/meta/service/models/module';
-import type MetaModuleIndex from '@/meta/service/models/module_index';
+import type MetaModuleCatalog from '@/meta/service/models/module_catalog';
+import type MetaModuleOperation from '@/meta/service/models/module_operation';
 import type { ClientModelProps } from '@/core/rpc/types';
 import { defineAction } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
@@ -355,16 +355,25 @@ defineOptions({ name: 'ModuleKanbanView' });
 
 const { _t, _lt } = createTranslate('meta', { scope: 'web/views/ModuleKanbanView' });
 
+/** Transitional catalog row shape until W3 rewrites status/origin fields. */
+type CatalogRow = ClientModelProps<MetaModuleCatalog> & {
+  InstalledStatus?: string;
+  Version?: string;
+  SourceTypes?: string;
+  SourceType?: string;
+  ManifestJson?: unknown;
+};
+
 const props = withDefaults(
-  defineProps<{ store?: WebModelStore<MetaModuleIndex>; moduleStore: WebModelStore<MetaModule>; showHeader?: boolean }>(),
+  defineProps<{ store?: WebModelStore<MetaModuleCatalog>; moduleStore: WebModelStore<MetaModuleOperation>; showHeader?: boolean }>(),
   { showHeader: true },
 );
 const store = resolvePageStore(props.store, 'ModuleKanbanView');
 const { showHeader } = props;
 const moduleStore = props.moduleStore;
 
-const keywordFields = ['ModuleName', 'Version', 'SourceType', 'SourceRef'];
-/** Prefer installed modules first when the user groups by InstalledStatus. */
+const keywordFields = ['ModuleName', 'LocalVersion', 'RegistryVersion', 'Application'];
+/** Prefer installed modules first when the user groups by Installed. */
 const laneOrder = ['installed', 'uninstalled'] as const;
 
 const router = useRouter();
@@ -375,26 +384,27 @@ let dialogFocusRestore: HTMLElement | null = null;
 
 const moduleInstallAction = defineAction('meta.action.module_install', {
   title: _lt('Install Module'),
-  requires: [{ model: 'meta.MetaModule', method: 'RequestInstall' }],
+  requires: [{ model: 'meta.MetaModuleOperation', method: 'Plan' }],
 });
 const moduleUpgradeAction = defineAction('meta.action.module_upgrade', {
   title: _lt('Upgrade Module'),
-  requires: [{ model: 'meta.MetaModule', method: 'RequestUpgrade' }],
+  requires: [{ model: 'meta.MetaModuleOperation', method: 'Plan' }],
 });
 const moduleUninstallAction = defineAction('meta.action.module_uninstall', {
   title: _lt('Uninstall Module'),
-  requires: [{ model: 'meta.MetaModule', method: 'RequestUninstall' }],
+  requires: [{ model: 'meta.MetaModuleOperation', method: 'Plan' }],
 });
 const moduleSyncIndexAction = defineAction('meta.action.module_sync_index', {
   title: _lt('Sync Module Index'),
-  requires: [{ model: 'meta.MetaModuleIndex', method: 'RequestSync' }],
+  requires: [{ model: 'meta.MetaModuleCatalog', method: 'RequestSync' }],
 });
 const { canRoute, hasAction } = usePermission();
 
 type ModuleAction = 'install' | 'uninstall' | 'upgrade';
 
-type PlanOperationResp = {
-  baseRevision: string;
+type PlanDialogResp = {
+  Id: string;
+  baseRevision?: string;
   affectedModules: Array<{ moduleName: string; reason?: string; currentVersion?: string; targetVersion?: string }>;
   risks: Array<{ code: string; level: string; message?: string; params?: Record<string, any> }>;
   blockers: Array<{ code: string; level: string; message?: string; params?: Record<string, any> }>;
@@ -402,20 +412,46 @@ type PlanOperationResp = {
 
 type OpStatusResp = ModuleOpStatusSnapshot;
 
+function mapOperationRowToSnapshot(row: Record<string, unknown> | null | undefined): OpStatusResp {
+  const status = String(row?.Status || '').toLowerCase();
+  const reloadTriggered = !!row?.ReloadTriggered;
+  const reloadFailed = !!row?.ReloadFailed;
+  return {
+    status,
+    resultStatus: status === 'succeeded' ? 'SUCCEEDED' : status === 'failed' ? 'FAILED' : undefined,
+    ReloadTriggered: reloadTriggered,
+    ReloadFailed: reloadFailed,
+    ReloadWeb: reloadTriggered && !reloadFailed,
+    errorDomain: row?.ErrorDomain != null ? String(row.ErrorDomain) : undefined,
+    errorCode: row?.ErrorCode != null ? String(row.ErrorCode) : undefined,
+  };
+}
+
 const dialogVisible = ref(false);
 const dialogStep = ref<'plan' | 'progress' | 'result'>('plan');
 const planLoading = ref(false);
 const executeLoading = ref(false);
 const planDialogSession = createPlanDialogSessionGate();
-const plan = ref<PlanOperationResp | null>(null);
+const plan = ref<PlanDialogResp | null>(null);
 const opStatus = ref<OpStatusResp | null>(null);
 const action = ref<ModuleAction>('install');
-const targetModule = ref<ClientModelProps<MetaModuleIndex> | null>(null);
+const targetModule = ref<CatalogRow | null>(null);
 const withDemo = ref(false);
 
 const opProgress = createModuleOpProgressSession(
   createModuleKanbanOpProgressHooks({
-    fetchStatus: async (jobId) => (await (moduleStore as any).GetOpStatus(jobId)) as OpStatusResp,
+    fetchStatus: async (operationId) => {
+      const row = (await (moduleStore as any).Browse(operationId, [
+        'Status',
+        'Phase',
+        'ErrorDomain',
+        'ErrorCode',
+        'ErrorMessage',
+        'ReloadTriggered',
+        'ReloadFailed',
+      ])) as Record<string, unknown>;
+      return mapOperationRowToSnapshot(row);
+    },
     isDialogOpen: () => dialogVisible.value,
     setOpStatus: (status) => {
       opStatus.value = status;
@@ -486,10 +522,17 @@ function laneOrderToken(lane: Pick<ChoyKanbanLane, 'key' | 'label'>): string {
   return resolveModuleKanbanLaneStatus(lane.key, lane.label) || String(lane.key || '');
 }
 
+function catalogInstalledStatus(row: CatalogRow): string {
+  if (row.InstalledStatus) return String(row.InstalledStatus);
+  if (row.Installed === true) return 'installed';
+  if (row.Installed === false) return 'uninstalled';
+  return '';
+}
+
 function shouldShowCardStatusBadge(card: ChoyKanbanCard, lane: ChoyKanbanLane): boolean {
   const row = payloadRecord(card);
   return shouldShowModuleKanbanCardStatusBadge({
-    installedStatus: row.InstalledStatus,
+    installedStatus: catalogInstalledStatus(row),
     available: row.Available,
     laneKey: lane.key,
     laneLabel: lane.label,
@@ -546,8 +589,8 @@ function payloadOf(card: ChoyKanbanCard): Record<string, unknown> {
   return (card.payload ?? {}) as Record<string, unknown>;
 }
 
-function payloadRecord(card: ChoyKanbanCard): ClientModelProps<MetaModuleIndex> {
-  return payloadOf(card) as ClientModelProps<MetaModuleIndex>;
+function payloadRecord(card: ChoyKanbanCard): CatalogRow {
+  return payloadOf(card) as CatalogRow;
 }
 
 function recordField(card: ChoyKanbanCard, field: string): unknown {
@@ -563,11 +606,8 @@ function statusBadgeClass(status?: string, available?: boolean): string {
   return moduleStatusBadgeClass(status, available);
 }
 
-function cardBadgeVariant(row: ClientModelProps<MetaModuleIndex>) {
-  return moduleKanbanCardBadgeVariant(
-    String(row.InstalledStatus ?? ''),
-    row.Available as boolean | undefined,
-  );
+function cardBadgeVariant(row: CatalogRow) {
+  return moduleKanbanCardBadgeVariant(catalogInstalledStatus(row), row.Available as boolean | undefined);
 }
 
 function statusLabel(status?: string, available?: boolean) {
@@ -592,7 +632,7 @@ function formatSummary(summary: unknown) {
   return formatModuleOpSummary(summary);
 }
 
-async function onActionClick(nextAction: ModuleAction, record: ClientModelProps<MetaModuleIndex>) {
+async function onActionClick(nextAction: ModuleAction, record: CatalogRow) {
   resetDialog();
   action.value = nextAction;
   targetModule.value = record;
@@ -605,13 +645,37 @@ async function onActionClick(nextAction: ModuleAction, record: ClientModelProps<
   await nextTick();
   dialogRef.value?.focus();
   try {
-    const nextPlan = (await (moduleStore as any).PlanOperation({
-      action: nextAction,
-      moduleName: record.ModuleName,
-      withDemo: nextAction === 'install' ? withDemo.value : false,
-    })) as PlanOperationResp;
+    const nextPlan = (await (moduleStore as any).Plan({
+      ModuleName: record.ModuleName,
+      Action: nextAction,
+    })) as {
+      Id?: string;
+      BaseRevision?: string;
+      ModuleOrder?: Array<{ ModuleName?: string; Reason?: string; CurrentVersion?: string; TargetVersion?: string }>;
+      Risks?: Array<{ Code?: string; Level?: string; Message?: string }>;
+      Blockers?: Array<{ Code?: string; Level?: string; Message?: string }>;
+    };
     if (!planDialogSession.isCurrent(requestSeq)) return;
-    plan.value = nextPlan;
+    plan.value = {
+      Id: String(nextPlan?.Id || '').trim(),
+      baseRevision: nextPlan?.BaseRevision != null ? String(nextPlan.BaseRevision) : undefined,
+      affectedModules: (nextPlan?.ModuleOrder || []).map((entry) => ({
+        moduleName: String(entry?.ModuleName || '').trim(),
+        reason: entry?.Reason != null ? String(entry.Reason) : undefined,
+        currentVersion: entry?.CurrentVersion != null ? String(entry.CurrentVersion) : undefined,
+        targetVersion: entry?.TargetVersion != null ? String(entry.TargetVersion) : undefined,
+      })),
+      risks: (nextPlan?.Risks || []).map((issue) => ({
+        code: String(issue?.Code || '').trim(),
+        level: String(issue?.Level || '').trim(),
+        message: issue?.Message != null ? String(issue.Message) : undefined,
+      })),
+      blockers: (nextPlan?.Blockers || []).map((issue) => ({
+        code: String(issue?.Code || '').trim(),
+        level: String(issue?.Level || '').trim(),
+        message: issue?.Message != null ? String(issue.Message) : undefined,
+      })),
+    };
   } catch (error: any) {
     if (!planDialogSession.isCurrent(requestSeq)) return;
     ChoyMessage.error(error?.message || _t('Failed to load plan'));
@@ -622,17 +686,14 @@ async function onActionClick(nextAction: ModuleAction, record: ClientModelProps<
 }
 
 async function submitOperation() {
-  if (!targetModule.value) return;
+  if (!targetModule.value || !plan.value?.Id) return;
   executeLoading.value = true;
   dialogStep.value = 'progress';
   try {
-    let jobId = '';
-    const moduleName = targetModule.value.ModuleName;
-    if (action.value === 'install') jobId = await (moduleStore as any).RequestInstall({ ModuleName: moduleName, WithDemo: withDemo.value });
-    else if (action.value === 'uninstall') jobId = await (moduleStore as any).RequestUninstall({ ModuleName: moduleName });
-    else jobId = await (moduleStore as any).RequestUpgrade({ ModuleName: moduleName });
+    const operationId = String(plan.value.Id || '').trim();
+    await (moduleStore as any).Apply({ Id: operationId });
     executeLoading.value = false;
-    await opProgress.watch(jobId);
+    await opProgress.watch(operationId);
   } catch (error: any) {
     executeLoading.value = false;
     dialogStep.value = 'result';
@@ -694,8 +755,9 @@ async function onSyncIndex() {
   if (syncLoading.value) return;
   syncLoading.value = true;
   try {
-    const jobId = await (store as any).RequestSync({ Force: true, IfStale: false });
-    ChoyMessage.success(jobId ? _t('Sync job triggered: all:%s', String(jobId)) : _t('Sync job triggered'));
+    const resp = (await (store as any).RequestSync({ Force: true, IfStale: false })) as { Id?: string } | string | null;
+    const operationId = typeof resp === 'string' ? resp : String(resp?.Id || '').trim();
+    ChoyMessage.success(operationId ? _t('Sync job triggered: all:%s', operationId) : _t('Sync job triggered'));
   } catch (error: any) {
     ChoyMessage.warning(_t('Sync failed: %s', String(error?.message || 'request failed')));
   } finally {

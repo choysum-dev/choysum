@@ -194,7 +194,7 @@ export function captureDialogFocusTarget(
 }
 
 /**
- * Sequence gate so a superseded PlanOperation response cannot overwrite a newer dialog.
+ * Sequence gate so a superseded Plan response cannot overwrite a newer dialog.
  */
 export function createPlanDialogSessionGate() {
   let seq = 0;
