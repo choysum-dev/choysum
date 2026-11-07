@@ -172,6 +172,27 @@ test('meta.MetaModuleCatalog RequestSync expires stale active sync and plans ane
   }
 });
 
+test('meta.MetaModuleCatalog RequestSync expires active sync with missing CreatedAt', async () => {
+  OP_ROWS.push({
+    Id: 'op-sync-no-created',
+    Action: 'sync',
+    Status: 'running',
+  });
+  const root: any = (globalThis as any).$choysum;
+  const saved = root.moduleManagement;
+  root.moduleManagement = {
+    plan: async () => ({ id: 'op-sync-after-missing' }),
+    apply: async () => ({ ok: true }),
+  };
+  try {
+    const resp = await MetaModuleCatalog.RequestSync({ Force: true });
+    expect(resp.Id).toBe('op-sync-after-missing');
+    expect(OP_ROWS.find((r) => r.Id === 'op-sync-no-created')?.Status).toBe('failed');
+  } finally {
+    root.moduleManagement = saved;
+  }
+});
+
 test('meta.MetaModuleCatalog RequestSync marks failed when EnqueueJob throws', async () => {
   const root: any = (globalThis as any).$choysum;
   const saved = root.moduleManagement;

@@ -134,7 +134,8 @@ export default class MetaModuleCatalog extends BaseModel {
     const existingId = String(activeRow?.Id || '').trim();
     if (existingId) {
       const activeCreatedAt = activeRow?.CreatedAt ? new Date(activeRow.CreatedAt as Date).getTime() : NaN;
-      const activeIsStale = !isNaN(activeCreatedAt) && Date.now() - activeCreatedAt > ACTIVE_SYNC_STALE_MS;
+      // Missing/invalid CreatedAt cannot age out otherwise, so treat it as stale.
+      const activeIsStale = isNaN(activeCreatedAt) || Date.now() - activeCreatedAt > ACTIVE_SYNC_STALE_MS;
       if (!activeIsStale) {
         return { Id: existingId };
       }
@@ -205,10 +206,13 @@ export default class MetaModuleCatalog extends BaseModel {
       throw enqueueErr;
     }
     const jobId = String((job as { Id?: unknown })?.Id || '').trim();
-    if (jobId) {
-      await MetaModuleOperation.UpdateById(id, { JobId: jobId }, ['Id']);
-      await publishModuleOpChangedTip({ operationId: id, jobId, userId, source: 'meta.MetaModuleCatalog.RequestSync' });
+    if (!jobId) {
+      const message = _t('enqueue returned empty job id', { scope: 'service/models/module_catalog' });
+      await MetaModuleOperation.UpdateById(id, { Status: 'failed', ErrorMessage: message }, ['Id']);
+      throw new Error(message);
     }
+    await MetaModuleOperation.UpdateById(id, { JobId: jobId }, ['Id']);
+    await publishModuleOpChangedTip({ operationId: id, jobId, userId, source: 'meta.MetaModuleCatalog.RequestSync' });
     return { Id: id };
   }
 }

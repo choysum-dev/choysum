@@ -234,6 +234,27 @@ test('meta.MetaModuleOperation Apply marks failed when EnqueueJob throws', async
   }
 });
 
+test('meta.MetaModuleOperation Apply marks failed when EnqueueJob returns empty id', async () => {
+  const restore = installBridge({
+    apply: async () => ({ ok: true }),
+  });
+  const savedEnqueue = (Job as any).EnqueueJob;
+  (Job as any).EnqueueJob = async () => ({ Id: '' });
+  try {
+    let err: unknown;
+    try {
+      await MetaModuleOperation.Apply({ Id: 'op-empty-job' });
+    } catch (e) {
+      err = e;
+    }
+    expect(String((err as Error)?.message || err)).toMatch(/empty job id/i);
+    expect(OP_STORE.get('op-empty-job')?.Status).toBe('failed');
+  } finally {
+    (Job as any).EnqueueJob = savedEnqueue;
+    restore();
+  }
+});
+
 test('meta.MetaModuleOperation Execute calls bridge.run and returns operation row', async () => {
   OP_STORE.set('op-run', {
     Id: 'op-run',

@@ -281,10 +281,13 @@ export default class MetaModuleOperation extends BaseModel {
       throw enqueueErr;
     }
     const jobId = String((job as { Id?: unknown })?.Id || '').trim();
-    if (jobId) {
-      await this.UpdateById(id, { JobId: jobId }, ['Id']);
-      await publishModuleOpChangedTip({ operationId: id, jobId, userId });
+    if (!jobId) {
+      const message = _t('enqueue returned empty job id', { scope: 'service/models/module_operation' });
+      await this.UpdateById(id, { Status: 'failed', ErrorMessage: message }, ['Id']);
+      throw new Error(message);
     }
+    await this.UpdateById(id, { JobId: jobId }, ['Id']);
+    await publishModuleOpChangedTip({ operationId: id, jobId, userId });
     return { Id: id };
   }
 
