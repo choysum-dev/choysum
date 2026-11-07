@@ -18,15 +18,15 @@ test('meta resource wiring: each route declares expected actions', () => {
   ]);
   expect(getRouteActionsFromMeta(byName.MetaModuleListTable?.meta as any)).toEqual([
     'meta.action.module_sync_index',
-    'meta.action.module_index_delete',
+    'meta.action.module_catalog_delete',
   ]);
   expect(getRouteActionsFromMeta(byName.MetaModuleHistory?.meta as any)).toEqual([
-    'meta.action.module_management_log_delete',
+    'meta.action.module_operation_delete',
   ]);
   expect(getRouteActionsFromMeta(byName.MetaModuleDetail?.meta as any)).toEqual([
-    'meta.action.module_index_edit',
-    'meta.action.module_index_delete',
-    'meta.action.module_index_copy',
+    'meta.action.module_catalog_edit',
+    'meta.action.module_catalog_delete',
+    'meta.action.module_catalog_copy',
   ]);
   expect(getRouteActionsFromMeta(byName.MetaModelDataList?.meta as any)).toEqual([]);
   expect(getRouteActionsFromMeta(byName.MetaModelDataDetail?.meta as any)).toEqual([]);

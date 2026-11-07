@@ -24,7 +24,7 @@ export const metaRoutes: RouteRecordRaw[] = [
     name: 'MetaModuleList',
     component: () => import('../pages/ModuleList.vue'),
     actions: ['meta.action.module_install', 'meta.action.module_upgrade', 'meta.action.module_uninstall', 'meta.action.module_sync_index'],
-    requires: [{ model: 'meta.MetaModuleIndex' }, { model: 'meta.MetaModule' }],
+    requires: [{ model: 'meta.MetaModuleCatalog' }, { model: 'meta.MetaModuleOperation' }],
     meta: { requiresAuth: true },
   }),
   defineRoute('meta.route.module_list', {
@@ -33,8 +33,8 @@ export const metaRoutes: RouteRecordRaw[] = [
     path: 'meta/modules/list',
     name: 'MetaModuleListTable',
     component: () => import('../pages/ModuleListTable.vue'),
-    actions: ['meta.action.module_sync_index', 'meta.action.module_index_delete'],
-    requires: [{ model: 'meta.MetaModuleIndex' }, { model: 'meta.MetaModule' }],
+    actions: ['meta.action.module_sync_index', 'meta.action.module_catalog_delete'],
+    requires: [{ model: 'meta.MetaModuleCatalog' }, { model: 'meta.MetaModule' }],
     meta: { requiresAuth: true },
   }),
   defineRoute('meta.route.module_history', {
@@ -43,8 +43,8 @@ export const metaRoutes: RouteRecordRaw[] = [
     path: 'meta/modules/history',
     name: 'MetaModuleHistory',
     component: () => import('../pages/ModuleHistory.vue'),
-    actions: ['meta.action.module_management_log_delete'],
-    requires: [{ model: 'meta.ModuleManagementLog' }, { model: 'meta.MetaModule' }, { model: 'meta.MetaModuleIndex' }],
+    actions: ['meta.action.module_operation_delete'],
+    requires: [{ model: 'meta.MetaModuleOperation' }, { model: 'meta.MetaModule' }, { model: 'meta.MetaModuleCatalog' }],
     meta: { requiresAuth: true },
   }),
   defineRoute('meta.route.module_detail', {
@@ -53,10 +53,11 @@ export const metaRoutes: RouteRecordRaw[] = [
     path: 'meta/modules/:id',
     name: 'MetaModuleDetail',
     component: () => import('../pages/ModuleDetail.vue'),
-    actions: ['meta.action.module_index_edit', 'meta.action.module_index_delete', 'meta.action.module_index_copy'],
-    requires: [{ model: 'meta.MetaModuleIndex' }, { model: 'meta.MetaModule' }],
+    actions: ['meta.action.module_catalog_edit', 'meta.action.module_catalog_delete', 'meta.action.module_catalog_copy'],
+    requires: [{ model: 'meta.MetaModuleCatalog' }, { model: 'meta.MetaModule' }],
     meta: { requiresAuth: true },
   }),
+
   defineRoute('meta.route.terminology_list', {
     sequence: 40,
     title: _lt('Translations'),

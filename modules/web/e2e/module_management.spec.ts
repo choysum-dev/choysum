@@ -987,7 +987,7 @@ test('meta module management: kanban usable when registry sync fails', async () 
   let requestSyncCalls = 0;
   const routeHandler = async (route: any) => {
     const req = route.request();
-    if (req.method() === 'POST' && req.url().includes('/meta.MetaModuleIndex/RequestSync')) {
+    if (req.method() === 'POST' && req.url().includes('/meta.MetaModuleCatalog/RequestSync')) {
       requestSyncCalls += 1;
       if (forcedRegistrySyncFailures === 0) {
         forcedRegistrySyncFailures += 1;

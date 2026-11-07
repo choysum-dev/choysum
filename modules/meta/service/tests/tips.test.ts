@@ -42,40 +42,41 @@ test('meta.tips: resolvePublishTip uses live bus, override, and missing publish'
 test('meta.tips: publishModuleOpChangedTip skips, publishes, and swallows errors', async () => {
   try {
     __setMetaPublishTipForTest(null);
-    await publishModuleOpChangedTip({ jobId: 'job-1', userId: 'u1' });
+    await publishModuleOpChangedTip({ operationId: 'op-1', userId: 'u1' });
 
     const published: any[] = [];
     __setMetaPublishTipForTest(event => {
       published.push(event);
     });
-    await publishModuleOpChangedTip({ jobId: '', userId: 'u1' });
-    await publishModuleOpChangedTip({ jobId: '  ', userId: 'u1' });
+    await publishModuleOpChangedTip({ operationId: '', userId: 'u1' });
+    await publishModuleOpChangedTip({ operationId: '  ', userId: 'u1' });
     expect(published).toHaveLength(0);
 
-    await publishModuleOpChangedTip({ jobId: 'job-1', userId: 'u1' });
+    await publishModuleOpChangedTip({ operationId: 'op-1', jobId: 'job-1', userId: 'u1' });
     expect(published).toHaveLength(1);
     expect(published[0].topic).toBe(TOPIC_META_MODULE_OP_CHANGED);
     expect(published[0].source).toBe(META_MODULE_OP_TIP_SOURCE);
     expect(published[0].payload).toEqual({
       model: META_MODULE_OP_TIP_MODEL,
-      resId: 'job-1',
+      resId: 'op-1',
+      operationId: 'op-1',
       jobId: 'job-1',
       userId: 'u1',
     });
 
     published.length = 0;
-    await publishModuleOpChangedTip({ jobId: 'job-2', source: 'meta.ExecuteInstall' });
-    expect(published[0].source).toBe('meta.ExecuteInstall');
+    await publishModuleOpChangedTip({ operationId: 'op-2', source: 'meta.MetaModuleCatalog.RequestSync' });
+    expect(published[0].source).toBe('meta.MetaModuleCatalog.RequestSync');
     expect(published[0].payload.userId).toBe(undefined);
 
     published.length = 0;
-    await publishModuleOpChangedTip({ jobId: 'job-whitespace-source', source: '   ' });
+    await publishModuleOpChangedTip({ operationId: 'op-whitespace-source', source: '   ' });
     expect(published[0].source).toBe(META_MODULE_OP_TIP_SOURCE);
 
     __setMetaPublishTipForTest(() => {
       throw new Error('bus down');
     });
-    await publishModuleOpChangedTip({ jobId: 'job-3', userId: 'u1' });
+    await publishModuleOpChangedTip({ operationId: 'op-3', userId: 'u1' });
     expect(published).toHaveLength(1);
   } finally {
     __setMetaPublishTipForTest(undefined);

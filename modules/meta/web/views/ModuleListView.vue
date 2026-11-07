@@ -53,11 +53,11 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyVarcharField prop="ModuleName" :store="store" :vColumnProps="{ minWidth: 180 }" />
     <ChoyVarcharField prop="LocalVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
     <ChoyVarcharField prop="RegistryVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <ChoyVarcharField prop="Version" :label="_t('Display Version')" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <ChoyVarcharField prop="InstalledVersion" :label="_t('Installed Version')" :store="store" :vColumnProps="{ minWidth: 120 }" />
 
-    <ChoyVirtualField :store="store" prop="InstalledStatus" />
+    <ChoyVirtualField :store="store" prop="Installed" />
     <ChoyTableColumn
-      prop="InstalledStatus"
+      prop="Installed"
       :label="_t('Install Status')"
       :vColumnProps="{ minWidth: 120 }"
     >
@@ -68,9 +68,9 @@ SPDX-License-Identifier: Apache-2.0
       </template>
     </ChoyTableColumn>
 
-    <ChoyVarcharField prop="InstalledVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <ChoyBooleanField prop="UpdateAvailable" :store="store" :vColumnProps="{ minWidth: 120 }" />
     <ChoyBooleanField prop="Available" :store="store" :vColumnProps="{ minWidth: 100 }" />
-    <ChoyVarcharField prop="SourceTypes" :label="_t('Origin')" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <ChoyVarcharField prop="Application" :label="_t('Application')" :store="store" :vColumnProps="{ minWidth: 140 }" />
     <ChoyVarcharField prop="LocalPath" :label="_t('Path')" :store="store" :vColumnProps="{ minWidth: 220 }" />
     <ChoyDatetimeField prop="LastSyncAt" :label="_t('Synced At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
   </ChoyListView>
@@ -81,7 +81,7 @@ import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { FolderSync, History } from 'lucide-vue-next';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
-import type MetaModuleIndex from '@/meta/service/models/module_index';
+import type MetaModuleCatalog from '@/meta/service/models/module_catalog';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { unwrapListRecord } from '@/web/web/composables/listRowEdit';
@@ -114,7 +114,7 @@ const route = useRoute();
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<MetaModuleIndex>;
+    store?: WebModelStore<MetaModuleCatalog>;
     showHeader?: boolean;
   }>(),
   {
@@ -126,10 +126,10 @@ const store = resolvePageStore(props.store, 'ModuleListView');
 const { showHeader } = props;
 const moduleSyncIndexAction = defineAction('meta.action.module_sync_index', {
   title: _lt('Sync Module Index'),
-  requires: [{ model: 'meta.MetaModuleIndex', method: 'RequestSync' }],
+  requires: [{ model: 'meta.MetaModuleCatalog', method: 'RequestSync' }],
 });
-const moduleIndexActions = defineModelActions('meta.MetaModuleIndex', {
-  entityTitle: _lt('Module Index'),
+const moduleIndexActions = defineModelActions('meta.MetaModuleCatalog', {
+  entityTitle: _lt('Module Catalog'),
 });
 const { canRoute, hasAction } = usePermission();
 
@@ -142,8 +142,9 @@ async function onSyncIndex() {
   if (syncLoading.value) return;
   syncLoading.value = true;
   try {
-    const jobId = await (store as any).RequestSync({ Force: true, IfStale: false });
-    ChoyMessage.success(jobId ? _t('Sync job triggered: all:%s', String(jobId)) : _t('Sync job triggered'));
+    const resp = (await (store as any).RequestSync({ Force: true, IfStale: false })) as { Id?: string } | string | null;
+    const operationId = typeof resp === 'string' ? resp : String(resp?.Id || '').trim();
+    ChoyMessage.success(operationId ? _t('Sync job triggered: all:%s', operationId) : _t('Sync job triggered'));
   } catch (error: any) {
     ChoyMessage.warning(_t('Sync failed: %s', String(error?.message || 'request failed')));
   } finally {
@@ -193,18 +194,22 @@ function rowRecord(row: unknown): Record<string, unknown> {
   return rec && typeof rec === 'object' ? (rec as Record<string, unknown>) : {};
 }
 
+function catalogInstalledStatus(rec: Record<string, unknown>): string {
+  if (rec.InstalledStatus) return String(rec.InstalledStatus);
+  if (rec.Installed === true) return 'installed';
+  if (rec.Installed === false) return 'uninstalled';
+  return '';
+}
+
 function statusBadgeVariant(row: unknown) {
   const rec = rowRecord(row);
-  return moduleStatusBadgeVariant(
-    String(rec.InstalledStatus ?? ''),
-    rec.Available as boolean | undefined,
-  );
+  return moduleStatusBadgeVariant(catalogInstalledStatus(rec), rec.Available as boolean | undefined);
 }
 
 function statusLabel(row: unknown) {
   const rec = rowRecord(row);
   if (rec.Available === false) return _t('Unavailable');
-  const val = String(rec.InstalledStatus || '').toLowerCase();
+  const val = catalogInstalledStatus(rec).toLowerCase();
   if (val === 'installed') return _t('Installed');
   if (val === 'uninstalled') return _t('Not Installed');
   if (val === 'disabled') return _t('Disabled');
@@ -213,9 +218,9 @@ function statusLabel(row: unknown) {
   if (val === 'failed') return _t('Failed');
   if (val === 'dispatching') return _t('Dispatching');
   if (val === 'queued') return _t('Queued');
-  return String(rec.InstalledStatus || '') || _t('Unknown');
+  return catalogInstalledStatus(rec) || _t('Unknown');
 }
 
-const { listRef, expose } = useListViewExpose<MetaModuleIndex>();
+const { listRef, expose } = useListViewExpose<MetaModuleCatalog>();
 defineExpose(expose);
 </script>

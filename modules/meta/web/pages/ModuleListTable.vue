@@ -17,7 +17,7 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import ModuleListView from '../views/ModuleListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
-import type MetaModuleIndex from '@/meta/service/models/module_index';
+import type MetaModuleCatalog from '@/meta/service/models/module_catalog';
 import { ChoyPage } from '@/web';
 
 defineOptions({ name: 'MetaModuleListTablePage' });
@@ -25,8 +25,8 @@ defineOptions({ name: 'MetaModuleListTablePage' });
 const { _t } = createTranslate('meta', { scope: 'web/pages/ModuleListTable' });
 const pageTitle = _t('Module List');
 
-const moduleStore = createStoreByModel<typeof MetaModuleIndex>('meta.MetaModuleIndex', {
-  storeId: 'MetaModuleIndex_ListTable',
+const moduleStore = createStoreByModel<typeof MetaModuleCatalog>('meta.MetaModuleCatalog', {
+  storeId: 'MetaModuleCatalog_ListTable',
   scopeManager: useScopeManager().menuScopeManager,
 });
 </script>

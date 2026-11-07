@@ -167,7 +167,7 @@ test('createModuleOpProgressSession: refreshes on tip and reaches terminal witho
 
   await session.watch('job-2');
 
-  expect(subscribeModuleOp.calls[0]?.[0]).toBe('job-2');
+  expect(subscribeModuleOp.calls[0]?.[0]).toEqual({ operationId: 'job-2' });
   expect(onTerminal.calls.length).toBe(1);
   expect(fetchStatus.calls.length).toBeGreaterThanOrEqual(2);
   const afterTip = fetchStatus.calls.length;
