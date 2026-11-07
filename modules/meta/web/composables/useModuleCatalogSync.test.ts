@@ -120,3 +120,19 @@ test('useModuleCatalogSync: later empty search after non-empty first result does
   await Promise.resolve();
   expect(syncCalls).toBe(0);
 });
+
+test('useModuleCatalogSync: immediate watch syncs a pre-settled empty catalog once', async () => {
+  let syncCalls = 0;
+  const store: any = {
+    state: { result: { rows: [] }, loading: false },
+    RequestSync: async () => {
+      syncCalls += 1;
+      return { Id: `op-${syncCalls}` };
+    },
+  };
+  const api = useModuleCatalogSync(store, msgs);
+  api.watchEmptyCatalogAutoSync();
+  await nextTick();
+  await Promise.resolve();
+  expect(syncCalls).toBe(1);
+});

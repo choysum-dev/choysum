@@ -64,6 +64,8 @@ export function useModuleCatalogSync(
         if (rows.length > 0) return;
         void requestSync({ Force: true, IfStale: false });
       },
+      // Cover stores that already hold a settled empty result before the watcher mounts.
+      { immediate: true },
     );
   }
 

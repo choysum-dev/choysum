@@ -138,6 +138,11 @@ test('useModuleCatalogViewModel: boots and syncs drawer from operation deep link
   api.syncDrawerFromRoute();
   expect(api.drawerOpen.value).toBe(false);
 
+  api.openDrawer({ moduleName: 'core', action: 'install' });
+  expect(api.drawerOpen.value).toBe(true);
+  api.syncDrawerFromRoute();
+  expect(api.drawerOpen.value).toBe(false);
+
   expect(api.resolveInitialOperationId()).toBe('');
   const withProp = useModuleCatalogViewModel({
     store,

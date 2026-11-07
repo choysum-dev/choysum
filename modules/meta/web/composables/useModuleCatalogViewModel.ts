@@ -216,9 +216,8 @@ export function useModuleCatalogViewModel(opts: {
 
   function syncDrawerFromRoute() {
     if (!isOperationDeepLinkRoute(opts.route.name)) {
-      if (drawerOpen.value && drawerAction.value === 'progress' && drawerOperationId.value) {
-        closeDrawer();
-      }
+      // Leaving the operation deep-link (or any non-deep-link route) clears the drawer shell.
+      if (drawerOpen.value) closeDrawer();
       return;
     }
     const opId = String(opts.route.params.id || '').trim();
