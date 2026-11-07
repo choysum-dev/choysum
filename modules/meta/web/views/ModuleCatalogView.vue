@@ -155,7 +155,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { onMounted, toRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { FolderSync } from 'lucide-vue-next';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
@@ -195,7 +195,7 @@ const props = withDefaults(
 );
 
 const store = resolvePageStore(props.store, 'ModuleCatalogView');
-const { showHeader } = props;
+const showHeader = toRef(props, 'showHeader');
 
 const {
   filter,

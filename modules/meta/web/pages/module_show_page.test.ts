@@ -45,6 +45,31 @@ test('useModuleShowPage marks missing when Search returns empty or name blank', 
   expect(missing.value).toBe(true);
 });
 
+test('useModuleShowPage clears loading when name becomes blank during in-flight Search', async () => {
+  const moduleName = ref('core');
+  let release: ((rows: any[]) => void) | undefined;
+  const { loading, missing } = useModuleShowPage({
+    scopeManager: {},
+    moduleName,
+    createStore: (() =>
+      ({
+        Search: async () =>
+          await new Promise(resolve => {
+            release = resolve as any;
+          }),
+      }) as any) as any,
+  });
+  await nextTick();
+  expect(loading.value).toBe(true);
+  moduleName.value = '';
+  await flush();
+  expect(loading.value).toBe(false);
+  expect(missing.value).toBe(true);
+  release?.([{ Id: 'stale' }]);
+  await flush();
+  expect(loading.value).toBe(false);
+});
+
 test('useModuleShowPage marks missing when Search throws and ignores stale responses', async () => {
   const moduleName = ref('core');
   let releaseSlow: ((rows: any[]) => void) | undefined;

@@ -36,7 +36,7 @@ export type ModuleCatalogViewMsgs = {
 export type ModuleCatalogDrawerAction = '' | 'install' | 'upgrade' | 'uninstall' | 'progress';
 
 function isOperationDeepLinkRoute(routeName: unknown): boolean {
-  return String(routeName || '').includes('Operation');
+  return String(routeName || '') === 'MetaModuleOperationDeepLink';
 }
 
 /**

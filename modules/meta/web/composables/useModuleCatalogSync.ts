@@ -38,7 +38,11 @@ export function useModuleCatalogSync(
       ChoyMessage.success(operationId ? msgs.triggered(operationId) : msgs.triggeredEmpty);
       return operationId;
     } catch (error: any) {
-      ChoyMessage.warning(msgs.failed(String(error?.message || 'request failed')));
+      const detail =
+        typeof error === 'string'
+          ? error
+          : String(error?.message || error?.code || error || 'request failed');
+      ChoyMessage.warning(msgs.failed(detail));
       return '';
     } finally {
       syncLoading.value = false;

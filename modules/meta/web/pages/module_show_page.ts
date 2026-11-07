@@ -45,6 +45,7 @@ export function useModuleShowPage(deps: ModuleShowPageDeps): {
     recordId.value = '';
     missing.value = false;
     if (!name) {
+      loading.value = false;
       missing.value = true;
       return;
     }
