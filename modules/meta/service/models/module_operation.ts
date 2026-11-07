@@ -47,6 +47,7 @@ export type PlanModuleOperationResp = {
 
 export type ApplyModuleOperationReq = {
   Id: string;
+  WithDemo?: boolean;
 };
 
 export type ApplyModuleOperationResp = {
@@ -55,6 +56,7 @@ export type ApplyModuleOperationResp = {
 
 export type ExecuteModuleOperationReq = {
   Id: string;
+  WithDemo?: boolean;
 };
 
 export type ExecuteModuleOperationResp = {
@@ -74,6 +76,7 @@ export type PlanDemoModuleOperationReq = Record<string, never>;
 
 type BridgePlanResult = {
   id?: string;
+  ok?: boolean;
   action?: string;
   moduleName?: string;
   moduleOrder?: Array<{
@@ -87,6 +90,9 @@ type BridgePlanResult = {
   risks?: Array<{ code?: string; level?: string; message?: string }>;
   blockers?: Array<{ code?: string; level?: string; message?: string }>;
   baseRevision?: string;
+  errorDomain?: string;
+  errorCode?: string;
+  errorMessage?: string;
 };
 
 type BridgeOpResult = {
@@ -95,6 +101,28 @@ type BridgeOpResult = {
   errorCode?: string;
   errorMessage?: string;
 };
+
+const TERMINAL_OP_STATUSES = new Set(['succeeded', 'failed', 'cancelled']);
+
+function mapPlanResult(result: BridgePlanResult | null | undefined, fallbackAction: string, fallbackModuleName = ''): PlanModuleOperationResp {
+  if (result && result.ok === false) {
+    throw new Error(result.errorMessage || _t('plan failed', { scope: 'service/models/module_operation' }));
+  }
+  const id = String(result?.id || '').trim();
+  if (!id) {
+    throw new Error(result?.errorMessage || _t('plan returned empty id', { scope: 'service/models/module_operation' }));
+  }
+  return {
+    Id: id,
+    Action: String(result?.action || fallbackAction),
+    ModuleName: String(result?.moduleName || fallbackModuleName),
+    ModuleOrder: mapModuleOrder(result?.moduleOrder),
+    AffectedApps: (result?.affectedApps || []).map((name) => String(name || '').trim()).filter(Boolean),
+    Risks: mapIssues(result?.risks),
+    Blockers: mapIssues(result?.blockers),
+    BaseRevision: result?.baseRevision != null ? String(result.baseRevision) : undefined,
+  };
+}
 
 function mapIssues(list: BridgePlanResult['risks']): PlanIssue[] {
   return (list || []).map((issue) => ({
@@ -188,16 +216,7 @@ export default class MetaModuleOperation extends BaseModel {
       operatorUserId,
     })) as BridgePlanResult;
 
-    return {
-      Id: String(result?.id || '').trim(),
-      Action: String(result?.action || action),
-      ModuleName: String(result?.moduleName || moduleName),
-      ModuleOrder: mapModuleOrder(result?.moduleOrder),
-      AffectedApps: (result?.affectedApps || []).map((name) => String(name || '').trim()).filter(Boolean),
-      Risks: mapIssues(result?.risks),
-      Blockers: mapIssues(result?.blockers),
-      BaseRevision: result?.baseRevision != null ? String(result.baseRevision) : undefined,
-    };
+    return mapPlanResult(result, action, moduleName);
   }
 
   static async PlanDemo(_req: PlanDemoModuleOperationReq = {}): Promise<PlanModuleOperationResp> {
@@ -209,16 +228,7 @@ export default class MetaModuleOperation extends BaseModel {
       operatorUserId,
     })) as BridgePlanResult;
 
-    return {
-      Id: String(result?.id || '').trim(),
-      Action: String(result?.action || 'load-demo'),
-      ModuleName: String(result?.moduleName || ''),
-      ModuleOrder: mapModuleOrder(result?.moduleOrder),
-      AffectedApps: (result?.affectedApps || []).map((name) => String(name || '').trim()).filter(Boolean),
-      Risks: mapIssues(result?.risks),
-      Blockers: mapIssues(result?.blockers),
-      BaseRevision: result?.baseRevision != null ? String(result.baseRevision) : undefined,
-    };
+    return mapPlanResult(result, 'load-demo');
   }
 
   static async Apply(req: ApplyModuleOperationReq): Promise<ApplyModuleOperationResp> {
@@ -226,6 +236,7 @@ export default class MetaModuleOperation extends BaseModel {
     if (!id) {
       throw new Error(_t('operation id cannot be empty', { scope: 'service/models/module_operation' }));
     }
+    const withDemo = !!req?.WithDemo;
     const bridge = getModuleManagementBridge();
     const applyResult = (await bridge.apply({ id })) as BridgeOpResult | null | undefined;
     if (applyResult && applyResult.ok === false) {
@@ -237,7 +248,7 @@ export default class MetaModuleOperation extends BaseModel {
     const job = await Job.EnqueueJob({
       TargetApp: 'meta',
       FullMethod: 'meta.MetaModuleOperation/Execute',
-      Payload: { req: { Id: id } },
+      Payload: { req: { Id: id, WithDemo: withDemo } },
       MaxAttempts: 0,
       TimeoutMs: 0,
     });
@@ -255,15 +266,18 @@ export default class MetaModuleOperation extends BaseModel {
     if (!id) {
       throw new Error(_t('operation id cannot be empty', { scope: 'service/models/module_operation' }));
     }
+    const withDemo = !!req?.WithDemo;
     const bridge = getModuleManagementBridge();
+    let runErr: unknown;
     try {
-      const runResult = (await bridge.run({ id })) as BridgeOpResult | null | undefined;
+      const runResult = (await bridge.run({ id, withDemo })) as BridgeOpResult | null | undefined;
       if (runResult && runResult.ok === false) {
         // ops.Run persists failure on the operation row; surface that row below.
         void runResult;
       }
-    } catch {
-      // ops.Run persists failure; fall through to Read.
+    } catch (err) {
+      // ops.Run usually persists failure; if the row stays non-terminal, rethrow so the job fails.
+      runErr = err;
     }
 
     const rows = await this.Search(['Id', '=', id], {
@@ -283,7 +297,12 @@ export default class MetaModuleOperation extends BaseModel {
     });
     const row = rows?.[0];
     if (!row) {
+      if (runErr) throw runErr;
       throw new Error(_t('operation not found', { scope: 'service/models/module_operation' }));
+    }
+    const status = String(row.Status || '').toLowerCase();
+    if (runErr && !TERMINAL_OP_STATUSES.has(status)) {
+      throw runErr;
     }
     return {
       Id: String(row.Id || id),

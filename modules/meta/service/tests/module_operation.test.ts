@@ -150,9 +150,22 @@ test('meta.MetaModuleOperation Apply queues Execute job and publishes tip', asyn
     expect(JOB_STORE.size).toBe(1);
     const job = [...JOB_STORE.values()][0];
     expect(job.FullMethod).toBe('meta.MetaModuleOperation/Execute');
-    expect(job.PayloadJson).toEqual({ req: { Id: 'op-apply' } });
+    expect(job.PayloadJson).toEqual({ req: { Id: 'op-apply', WithDemo: false } });
     expect(OP_STORE.get('op-apply')?.JobId).toBe(job.Id);
     expect(tips[0]?.payload?.operationId).toBe('op-apply');
+  } finally {
+    restore();
+  }
+});
+
+test('meta.MetaModuleOperation Apply passes WithDemo into Execute payload', async () => {
+  const restore = installBridge({
+    apply: async () => ({ ok: true }),
+  });
+  try {
+    await MetaModuleOperation.Apply({ Id: 'op-demo-flag', WithDemo: true });
+    const job = [...JOB_STORE.values()][0];
+    expect(job.PayloadJson).toEqual({ req: { Id: 'op-demo-flag', WithDemo: true } });
   } finally {
     restore();
   }
@@ -191,6 +204,7 @@ test('meta.MetaModuleOperation Execute calls bridge.run and returns operation ro
     run: async (params: any) => {
       ran = true;
       expect(params.id).toBe('op-run');
+      expect(params.withDemo).toBe(false);
       return { ok: true };
     },
   });
@@ -208,6 +222,64 @@ test('meta.MetaModuleOperation Execute calls bridge.run and returns operation ro
     });
   } finally {
     restore();
+  }
+});
+
+test('meta.MetaModuleOperation Execute rethrows when run fails and status stays non-terminal', async () => {
+  OP_STORE.set('op-stuck', {
+    Id: 'op-stuck',
+    Action: 'install',
+    ModuleName: 'core',
+    Status: 'running',
+    Phase: 'apply',
+  });
+  const restore = installBridge({
+    run: async () => {
+      throw new Error('bridge not injected');
+    },
+  });
+  try {
+    let err: unknown;
+    try {
+      await MetaModuleOperation.Execute({ Id: 'op-stuck', WithDemo: true });
+    } catch (e) {
+      err = e;
+    }
+    expect(String((err as Error)?.message || err)).toContain('bridge not injected');
+  } finally {
+    restore();
+  }
+});
+
+test('meta.MetaModuleOperation Plan rejects empty id and ok:false', async () => {
+  const emptyRestore = installBridge({
+    plan: async () => ({ id: '', action: 'install', moduleName: 'core' }),
+  });
+  try {
+    let err: unknown;
+    try {
+      await MetaModuleOperation.Plan({ ModuleName: 'core', Action: 'install' });
+    } catch (e) {
+      err = e;
+    }
+    expect(String((err as Error)?.message || err)).toMatch(/empty id|plan/i);
+  } finally {
+    emptyRestore();
+  }
+
+  const failRestore = installBridge({
+    plan: async () => ({ ok: false, errorMessage: 'lease conflict' }),
+  });
+  try {
+    let err: unknown;
+    try {
+      await MetaModuleOperation.PlanDemo({});
+    } catch (e) {
+      err = e;
+    }
+    expect(String((err as Error)?.message || err)).toContain('lease conflict');
+  } finally {
+    failRestore();
   }
 });
 

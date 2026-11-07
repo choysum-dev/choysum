@@ -42,6 +42,13 @@ func moduleOpPayloadString(v any) string {
 	return strings.TrimSpace(s)
 }
 
+func moduleOpIDFromReqMap(req map[string]any) string {
+	if id := moduleOpPayloadString(req["Id"]); id != "" {
+		return id
+	}
+	return moduleOpPayloadString(req["id"])
+}
+
 func moduleOpOperationID(job *Job) string {
 	if job == nil || len(job.PayloadJson) == 0 {
 		return ""
@@ -51,11 +58,17 @@ func moduleOpOperationID(job *Job) string {
 		return ""
 	}
 	if req, ok := payload["req"].(map[string]any); ok {
-		if id := moduleOpPayloadString(req["Id"]); id != "" {
+		if id := moduleOpIDFromReqMap(req); id != "" {
 			return id
 		}
-		if id := moduleOpPayloadString(req["id"]); id != "" {
-			return id
+	}
+	// Some stores may keep req as a JSON string instead of an object.
+	if raw, ok := payload["req"].(string); ok && strings.TrimSpace(raw) != "" {
+		var req map[string]any
+		if err := json.Unmarshal([]byte(raw), &req); err == nil {
+			if id := moduleOpIDFromReqMap(req); id != "" {
+				return id
+			}
 		}
 	}
 	return moduleOpPayloadString(payload["Id"])

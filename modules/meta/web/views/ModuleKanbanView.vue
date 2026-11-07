@@ -691,7 +691,7 @@ async function submitOperation() {
   dialogStep.value = 'progress';
   try {
     const operationId = String(plan.value.Id || '').trim();
-    await (moduleStore as any).Apply({ Id: operationId });
+    await (moduleStore as any).Apply({ Id: operationId, WithDemo: withDemo.value });
     executeLoading.value = false;
     await opProgress.watch(operationId);
   } catch (error: any) {

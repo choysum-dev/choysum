@@ -22,8 +22,8 @@ export type RequestSyncResp = {
 };
 
 const ACTIVE_SYNC_STATUSES = ['draft', 'queued', 'running'];
+// RequestSync currently plans a single local-origin sync; use the local freshness window.
 const LOCAL_STALE_MS = 60 * 1000;
-const REGISTRY_STALE_MS = 10 * 60 * 1000;
 
 function getModuleManagementBridge() {
   const root = resolveChoysum();
@@ -115,9 +115,7 @@ export default class MetaModuleCatalog extends BaseModel {
         fields: ['LastSyncAt'],
       });
       const lastSyncAt = latest?.[0]?.LastSyncAt ? new Date(latest[0].LastSyncAt as Date).getTime() : NaN;
-      // Prefer the longer registry window when only one LastSyncAt is available on catalog rows.
-      const staleAfter = Math.max(LOCAL_STALE_MS, REGISTRY_STALE_MS);
-      if (!isNaN(lastSyncAt) && Date.now() - lastSyncAt < staleAfter) {
+      if (!isNaN(lastSyncAt) && Date.now() - lastSyncAt < LOCAL_STALE_MS) {
         return { Id: '' };
       }
     }

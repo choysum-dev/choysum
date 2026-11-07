@@ -172,6 +172,45 @@ func TestPublishModuleOpChangedNilDispatcherAndOperatorHelpers(t *testing.T) {
 	}
 }
 
+func TestModuleOpOperationIDPayloadShapes(t *testing.T) {
+	if moduleOpPayloadString(42) != "" {
+		t.Fatal("non-string payload value")
+	}
+	if moduleOpOperationID(&Job{PayloadJson: datatypes.JSON([]byte(`not-json`))}) != "" {
+		t.Fatal("invalid json")
+	}
+	if moduleOpOperationID(&Job{PayloadJson: datatypes.JSON([]byte(`{}`))}) != "" {
+		t.Fatal("empty payload")
+	}
+	if got := moduleOpOperationID(&Job{PayloadJson: datatypes.JSON([]byte(`{"req":{"id":"op-lower"}}`))}); got != "op-lower" {
+		t.Fatalf("lowercase req.id = %q", got)
+	}
+	if got := moduleOpOperationID(&Job{PayloadJson: datatypes.JSON([]byte(`{"req":"{\"Id\":\"op-str\"}"}`))}); got != "op-str" {
+		t.Fatalf("string req = %q", got)
+	}
+	if got := moduleOpOperationID(&Job{PayloadJson: datatypes.JSON([]byte(`{"req":"{bad"}`))}); got != "" {
+		t.Fatalf("bad string req = %q", got)
+	}
+	if got := moduleOpOperationID(&Job{PayloadJson: datatypes.JSON([]byte(`{"Id":"op-top"}`))}); got != "op-top" {
+		t.Fatalf("top-level Id = %q", got)
+	}
+	if got := moduleOpOperationID(&Job{PayloadJson: datatypes.JSON([]byte(`{"req":{"Id":123},"Id":"op-top2"}`))}); got != "op-top2" {
+		t.Fatalf("non-string req.Id falls back to top-level = %q", got)
+	}
+	events := &captureBus{}
+	d := &Dispatcher{events: events}
+	d.publishModuleOpChanged(&Job{
+		Id:                "job-fallback",
+		FullMethod:        "meta.MetaModuleOperation/Execute",
+		PayloadJson:       datatypes.JSON([]byte(`{}`)),
+		TriggeredByUserId: "u",
+	}, "src")
+	got := events.snapshot()
+	if len(got) != 1 || got[0].Payload["operationId"] != "job-fallback" {
+		t.Fatalf("jobId fallback tip = %#v", got)
+	}
+}
+
 type failMarkQueue struct {
 	stubTaskQueue
 	failMark bool

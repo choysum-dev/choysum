@@ -15,6 +15,7 @@ const CTX_OVERRIDE_KEY = Symbol.for('choysum.ctx.override');
 const CTX_FROZEN_KEY = Symbol.for('choysum.ctx.frozen');
 const JOB_STORE = new Map<string, any>();
 const OP_ROWS: any[] = [];
+let lastOpSearchDomain: unknown;
 
 function ensureRequestContext(): any {
   const root: any = (globalThis as any).$choysum;
@@ -69,8 +70,12 @@ beforeEach(() => {
   resetRequestContext();
   ensureJobMock();
   OP_ROWS.length = 0;
+  lastOpSearchDomain = undefined;
   __setMetaPublishTipForTest(() => undefined);
-  (MetaModuleOperation as any).Search = async () => OP_ROWS.slice();
+  (MetaModuleOperation as any).Search = async (domain: unknown) => {
+    lastOpSearchDomain = domain;
+    return OP_ROWS.slice();
+  };
   (MetaModuleOperation as any).UpdateById = async (id: string, vals: Record<string, unknown>) => {
     const row = OP_ROWS.find((r) => r.Id === id) || { Id: id };
     Object.assign(row, vals);
@@ -97,6 +102,12 @@ test('meta.MetaModuleCatalog RequestSync reuses active sync operation', async ()
     const resp = await MetaModuleCatalog.RequestSync({ Force: true });
     expect(resp.Id).toBe('op-sync-active');
     expect(JOB_STORE.size).toBe(0);
+    expect(lastOpSearchDomain).toEqual({
+      And: [
+        ['Action', '=', 'sync'],
+        ['Status', 'in', ['draft', 'queued', 'running']],
+      ],
+    });
   } finally {
     root.moduleManagement = saved;
   }
