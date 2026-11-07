@@ -382,17 +382,21 @@ const dialogTitleId = useId();
 const dialogRef = ref<HTMLElement | null>(null);
 let dialogFocusRestore: HTMLElement | null = null;
 
+const moduleOpPlanApplyRequires = [
+  { model: 'meta.MetaModuleOperation', method: 'Plan' },
+  { model: 'meta.MetaModuleOperation', method: 'Apply' },
+];
 const moduleInstallAction = defineAction('meta.action.module_install', {
   title: _lt('Install Module'),
-  requires: [{ model: 'meta.MetaModuleOperation', method: 'Plan' }],
+  requires: moduleOpPlanApplyRequires,
 });
 const moduleUpgradeAction = defineAction('meta.action.module_upgrade', {
   title: _lt('Upgrade Module'),
-  requires: [{ model: 'meta.MetaModuleOperation', method: 'Plan' }],
+  requires: moduleOpPlanApplyRequires,
 });
 const moduleUninstallAction = defineAction('meta.action.module_uninstall', {
   title: _lt('Uninstall Module'),
-  requires: [{ model: 'meta.MetaModuleOperation', method: 'Plan' }],
+  requires: moduleOpPlanApplyRequires,
 });
 const moduleSyncIndexAction = defineAction('meta.action.module_sync_index', {
   title: _lt('Sync Module Index'),
