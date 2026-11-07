@@ -233,6 +233,12 @@ func ensureProcessCompilerExecutor(ctx context.Context, scopeProvider jsengine.S
 			processCompilerMu.Unlock()
 			return exec, nil
 		}
+		// Stop during assembly wakes waiters; exit promptly instead of re-parking
+		// on a possibly hung factory.
+		if processCompilerStopRequested {
+			processCompilerMu.Unlock()
+			return nil, status.Error(codes.Canceled, "module management compiler stopped")
+		}
 		if processCompilerAssembling {
 			ch := make(chan struct{})
 			processCompilerWaiters = append(processCompilerWaiters, ch)
@@ -324,6 +330,9 @@ func StopProcessModuleManagementHost() error {
 	processCompilerMu.Lock()
 	if processCompilerAssembling {
 		processCompilerStopRequested = true
+		// Unblock waiters parked on the in-flight assembly; they will observe
+		// stopRequested / a cleared executor and retry or exit.
+		wakeProcessCompilerWaitersLocked()
 	}
 	stop := processCompilerStop
 	processCompilerExecutor = nil
