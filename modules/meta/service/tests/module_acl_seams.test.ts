@@ -75,13 +75,18 @@ function ensureOperationStore(): void {
   };
 }
 
+let restoreBridge: (() => void) | undefined;
+
 function installBridge(bridge: Record<string, any>): () => void {
   const root: any = (globalThis as any).$choysum;
   const saved = root.moduleManagement;
   root.moduleManagement = bridge;
-  return () => {
+  const restore = () => {
     root.moduleManagement = saved;
+    if (restoreBridge === restore) restoreBridge = undefined;
   };
+  restoreBridge = restore;
+  return restore;
 }
 
 beforeEach(() => {
@@ -92,6 +97,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  restoreBridge?.();
   __setMetaPublishTipForTest(undefined);
 });
 
