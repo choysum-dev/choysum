@@ -134,7 +134,9 @@ test('meta ACL seams: sync path uses bridge.plan(action=sync), not MetaModuleOpe
 });
 
 
-test('meta E2E seams: forced run failure is injectable via test bridge', async () => {
+// Go applyHook/runHook coverage lives in TestModuleManagementApplyRunHooksForceFailureSeams.
+// These cases mock the JS bridge so MetaModuleOperation maps failure results into throws / Status=failed.
+test('meta.MetaModuleOperation Execute rethrows when bridge.run returns ok:false', async () => {
   OP_STORE.set('op-force-fail', {
     Id: 'op-force-fail',
     Action: 'install',
@@ -158,7 +160,7 @@ test('meta E2E seams: forced run failure is injectable via test bridge', async (
   }
 });
 
-test('meta E2E seams: forced lock conflict is injectable via apply mock', async () => {
+test('meta.MetaModuleOperation Apply marks failed when bridge.apply returns LEASE_CONFLICT', async () => {
   OP_STORE.set('op-lock', {
     Id: 'op-lock',
     Action: 'install',
