@@ -155,13 +155,27 @@ export default class MetaModuleCatalog extends BaseModel {
       throw new Error(applyResult.errorMessage || _t('sync apply failed', { scope: 'service/models/module_catalog' }));
     }
 
-    const job = await Job.EnqueueJob({
-      TargetApp: 'meta',
-      FullMethod: 'meta.MetaModuleOperation/Execute',
-      Payload: { req: { Id: id } },
-      MaxAttempts: 0,
-      TimeoutMs: 0,
-    });
+    let job: unknown;
+    try {
+      job = await Job.EnqueueJob({
+        TargetApp: 'meta',
+        FullMethod: 'meta.MetaModuleOperation/Execute',
+        Payload: { req: { Id: id } },
+        MaxAttempts: 0,
+        TimeoutMs: 0,
+      });
+    } catch (enqueueErr) {
+      // Avoid leaving an applied sync op stuck in ACTIVE_SYNC_STATUSES with no worker.
+      await MetaModuleOperation.UpdateById(
+        id,
+        {
+          Status: 'failed',
+          ErrorMessage: String((enqueueErr as Error)?.message || enqueueErr),
+        },
+        ['Id'],
+      );
+      throw enqueueErr;
+    }
     const jobId = String((job as { Id?: unknown })?.Id || '').trim();
     if (jobId) {
       await MetaModuleOperation.UpdateById(id, { JobId: jobId }, ['Id']);

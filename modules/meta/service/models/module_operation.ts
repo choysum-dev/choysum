@@ -247,13 +247,27 @@ export default class MetaModuleOperation extends BaseModel {
     }
 
     const userId = BaseModel.ensureUserId();
-    const job = await Job.EnqueueJob({
-      TargetApp: 'meta',
-      FullMethod: 'meta.MetaModuleOperation/Execute',
-      Payload: { req: { Id: id, WithDemo: withDemo } },
-      MaxAttempts: 0,
-      TimeoutMs: 0,
-    });
+    let job: unknown;
+    try {
+      job = await Job.EnqueueJob({
+        TargetApp: 'meta',
+        FullMethod: 'meta.MetaModuleOperation/Execute',
+        Payload: { req: { Id: id, WithDemo: withDemo } },
+        MaxAttempts: 0,
+        TimeoutMs: 0,
+      });
+    } catch (enqueueErr) {
+      // bridge.apply already advanced the row; mark failed so it does not hang active forever.
+      await this.UpdateById(
+        id,
+        {
+          Status: 'failed',
+          ErrorMessage: String((enqueueErr as Error)?.message || enqueueErr),
+        },
+        ['Id'],
+      );
+      throw enqueueErr;
+    }
     const jobId = String((job as { Id?: unknown })?.Id || '').trim();
     if (jobId) {
       await this.UpdateById(id, { JobId: jobId }, ['Id']);
@@ -274,8 +288,10 @@ export default class MetaModuleOperation extends BaseModel {
     try {
       const runResult = (await bridge.run({ id, withDemo })) as BridgeOpResult | null | undefined;
       if (runResult && runResult.ok === false) {
-        // ops.Run persists failure on the operation row; surface that row below.
-        void runResult;
+        // Prefer persisted terminal row below; if status stays non-terminal, rethrow.
+        runErr = new Error(
+          runResult.errorMessage || _t('run failed', { scope: 'service/models/module_operation' }),
+        );
       }
     } catch (err) {
       // ops.Run usually persists failure; if the row stays non-terminal, rethrow so the job fails.

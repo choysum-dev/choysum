@@ -189,6 +189,30 @@ test('meta.MetaModuleOperation Apply rejects bridge failure', async () => {
   }
 });
 
+test('meta.MetaModuleOperation Apply marks failed when EnqueueJob throws', async () => {
+  const restore = installBridge({
+    apply: async () => ({ ok: true }),
+  });
+  const savedEnqueue = (Job as any).EnqueueJob;
+  (Job as any).EnqueueJob = async () => {
+    throw new Error('queue unavailable');
+  };
+  try {
+    let err: unknown;
+    try {
+      await MetaModuleOperation.Apply({ Id: 'op-enqueue-fail' });
+    } catch (e) {
+      err = e;
+    }
+    expect(String((err as Error)?.message || err)).toContain('queue unavailable');
+    expect(OP_STORE.get('op-enqueue-fail')?.Status).toBe('failed');
+    expect(String(OP_STORE.get('op-enqueue-fail')?.ErrorMessage || '')).toContain('queue unavailable');
+  } finally {
+    (Job as any).EnqueueJob = savedEnqueue;
+    restore();
+  }
+});
+
 test('meta.MetaModuleOperation Execute calls bridge.run and returns operation row', async () => {
   OP_STORE.set('op-run', {
     Id: 'op-run',
@@ -246,6 +270,30 @@ test('meta.MetaModuleOperation Execute rethrows when run fails and status stays 
       err = e;
     }
     expect(String((err as Error)?.message || err)).toContain('bridge not injected');
+  } finally {
+    restore();
+  }
+});
+
+test('meta.MetaModuleOperation Execute rethrows when run returns ok:false and status stays non-terminal', async () => {
+  OP_STORE.set('op-okfalse', {
+    Id: 'op-okfalse',
+    Action: 'install',
+    ModuleName: 'core',
+    Status: 'queued',
+    Phase: 'apply',
+  });
+  const restore = installBridge({
+    run: async () => ({ ok: false, errorMessage: 'run refused' }),
+  });
+  try {
+    let err: unknown;
+    try {
+      await MetaModuleOperation.Execute({ Id: 'op-okfalse' });
+    } catch (e) {
+      err = e;
+    }
+    expect(String((err as Error)?.message || err)).toContain('run refused');
   } finally {
     restore();
   }

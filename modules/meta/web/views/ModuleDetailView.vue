@@ -57,10 +57,10 @@ SPDX-License-Identifier: Apache-2.0
 
     <ChoyCard :title="_t('Dependencies')" class="mb-3.5"><ChoyGrid :cols="12">
         <ChoyCol :span="6">
-          <ChoyJsonField :store="store" prop="DependsJson" label="DependsJson" />
+          <ChoyJsonField :store="store" prop="DependsJson" />
         </ChoyCol>
         <ChoyCol :span="6">
-          <ChoyJsonField :store="store" prop="DependentsJson" label="DependentsJson" />
+          <ChoyJsonField :store="store" prop="DependentsJson" />
         </ChoyCol>
       </ChoyGrid>
     </ChoyCard>

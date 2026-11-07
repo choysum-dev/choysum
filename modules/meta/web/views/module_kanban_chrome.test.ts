@@ -138,6 +138,10 @@ test('createPlanDialogSessionGate: ignore superseded plan responses', () => {
 test('resolveModuleKanbanLaneStatus: key/label → status token', () => {
   expect(resolveModuleKanbanLaneStatus('InstalledStatus=installed')).toBe('installed');
   expect(resolveModuleKanbanLaneStatus('InstalledStatus=uninstalled#0')).toBe('uninstalled');
+  expect(resolveModuleKanbanLaneStatus('Installed=true')).toBe('installed');
+  expect(resolveModuleKanbanLaneStatus('Installed=false#0')).toBe('uninstalled');
+  expect(resolveModuleKanbanLaneStatus('true')).toBe('installed');
+  expect(resolveModuleKanbanLaneStatus('false')).toBe('uninstalled');
   expect(resolveModuleKanbanLaneStatus('installed')).toBe('installed');
   expect(resolveModuleKanbanLaneStatus('other', 'Installed')).toBe('installed');
   expect(resolveModuleKanbanLaneStatus('other', '已安装')).toBe('installed');

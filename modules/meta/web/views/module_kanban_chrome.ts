@@ -61,6 +61,9 @@ function moduleKanbanStatusToken(raw: string): string {
   const text = raw.trim();
   if (!text || text === '__null__' || text === '__unset__') return '';
   const lower = text.toLowerCase();
+  // Boolean Installed group values map onto the same tokens as InstalledStatus.
+  if (lower === 'true' || lower === '1') return 'installed';
+  if (lower === 'false' || lower === '0') return 'uninstalled';
   if (
     lower === 'installed' ||
     lower === 'uninstalled' ||
@@ -82,14 +85,17 @@ function moduleKanbanStatusToken(raw: string): string {
 
 export function resolveModuleKanbanLaneStatus(laneKey: string, laneLabel?: string): string {
   const key = String(laneKey || '').trim();
-  const fromKey = key.match(/InstalledStatus=(.+?)(?:#\d+)?$/i);
-  // InstalledStatus=… wins. Otherwise try the bare key before the display label
-  // so a translation does not hide a token such as queued.
-  const candidates = fromKey
-    ? [fromKey[1] ?? '']
-    : key.includes('=')
-      ? [laneLabel ?? '']
-      : [key, laneLabel ?? ''];
+  const fromInstalledStatus = key.match(/InstalledStatus=(.+?)(?:#\d+)?$/i);
+  const fromInstalled = key.match(/Installed=(.+?)(?:#\d+)?$/i);
+  // InstalledStatus=… / Installed=… win. Otherwise try the bare key before the
+  // display label so a translation does not hide a token such as queued.
+  const candidates = fromInstalledStatus
+    ? [fromInstalledStatus[1] ?? '']
+    : fromInstalled
+      ? [fromInstalled[1] ?? '']
+      : key.includes('=')
+        ? [laneLabel ?? '']
+        : [key, laneLabel ?? ''];
   for (const candidate of candidates) {
     const token = moduleKanbanStatusToken(String(candidate ?? ''));
     if (token) return token;

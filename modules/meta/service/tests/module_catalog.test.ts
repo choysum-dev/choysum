@@ -142,6 +142,34 @@ test('meta.MetaModuleCatalog RequestSync plans apply and enqueues Execute', asyn
   }
 });
 
+test('meta.MetaModuleCatalog RequestSync marks failed when EnqueueJob throws', async () => {
+  const root: any = (globalThis as any).$choysum;
+  const saved = root.moduleManagement;
+  root.moduleManagement = {
+    plan: async () => ({ id: 'op-sync-enqueue-fail' }),
+    apply: async () => ({ ok: true }),
+  };
+  const savedEnqueue = (Job as any).EnqueueJob;
+  (Job as any).EnqueueJob = async () => {
+    throw new Error('queue unavailable');
+  };
+  try {
+    let err: unknown;
+    try {
+      await MetaModuleCatalog.RequestSync({ Force: true });
+    } catch (e) {
+      err = e;
+    }
+    expect(String((err as Error)?.message || err)).toContain('queue unavailable');
+    const row = OP_ROWS.find((r) => r.Id === 'op-sync-enqueue-fail');
+    expect(row?.Status).toBe('failed');
+    expect(String(row?.ErrorMessage || '')).toContain('queue unavailable');
+  } finally {
+    (Job as any).EnqueueJob = savedEnqueue;
+    root.moduleManagement = saved;
+  }
+});
+
 test('meta.MetaModuleCatalog RequestSync rejects plan ok:false', async () => {
   const root: any = (globalThis as any).$choysum;
   const saved = root.moduleManagement;
