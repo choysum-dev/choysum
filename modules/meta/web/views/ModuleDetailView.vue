@@ -4,10 +4,9 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
+  <!-- Catalog detail is read-only: omit mutating action-ids so Edit/Copy/Delete stay hidden. -->
   <ChoyFormView
     v-bind="{ store, recordId, viewMode, showHeader }"
-    :action-ids="{}"
-    :has-action="hasAction"
   >
     <ChoyCard :title="_t('Basic Information')" class="mb-3.5"><ChoyGrid :cols="12">
         <ChoyCol :span="3">
@@ -80,7 +79,6 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type MetaModuleCatalog from '@/meta/service/models/module_catalog';
-import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
 import {
@@ -112,5 +110,4 @@ const props = withDefaults(
 
 const store = resolvePageStore(props.store, 'ModuleDetailView');
 const { recordId, viewMode, showHeader } = props;
-const { hasAction } = usePermission();
 </script>

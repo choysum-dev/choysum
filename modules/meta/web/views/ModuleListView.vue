@@ -11,7 +11,6 @@ SPDX-License-Identifier: Apache-2.0
     :store="store"
     :searchView="ChoySearchView"
     :show-header="showHeader"
-    :action-ids="{}"
     :has-action="hasAction"
     @row-click="onRowClick"
   >

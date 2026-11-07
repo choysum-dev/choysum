@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { createServiceByModel } from '@/core/service/rpc';
+import MetaModuleCatalog from '@/meta/service/models/module_catalog';
 import MetaModuleOperation from '@/meta/service/models/module_operation';
 import { __setMetaPublishTipForTest } from '@/meta/service/tips';
 import type JobModel from '@/task/service/models/job';
@@ -102,27 +103,30 @@ test('meta ACL seams: Execute is not an interactive Plan/Apply substitute', () =
   expect(typeof MetaModuleOperation.PlanDemo).toBe('function');
 });
 
-test('meta ACL seams: without install path, sync-only bridge mock never exposes Plan', async () => {
-  // Mirrors "no install action → no Plan+Apply": a sync-only surface must not call Plan.
+test('meta ACL seams: sync path uses bridge.plan(action=sync), not MetaModuleOperation.Plan', async () => {
+  // Sync ACL is RequestSync-only; MetaModuleOperation.Plan stays install/upgrade/uninstall.
+  const planCalls: any[] = [];
   const restore = installBridge({
-    plan: async () => {
-      throw new Error('Plan must not be reachable from sync-only ACL');
+    plan: async (req: any) => {
+      planCalls.push(req);
+      if (req?.action !== 'sync') {
+        throw new Error(`unexpected plan action: ${String(req?.action)}`);
+      }
+      return { id: 'op-sync-acl' };
     },
+    apply: async () => ({ ok: true }),
   });
   try {
-    // Sync goes through MetaModuleCatalog.RequestSync → bridge.plan(action=sync),
-    // not MetaModuleOperation.Plan (install/upgrade/uninstall only).
-    let err: unknown;
-    try {
-      await MetaModuleOperation.Plan({ ModuleName: 'core', Action: 'install' });
-    } catch (e) {
-      err = e;
-    }
-    expect(String((err as Error)?.message || err)).toContain('Plan must not be reachable');
+    const resp = await MetaModuleCatalog.RequestSync({ Force: true });
+    expect(resp.Id).toBe('op-sync-acl');
+    expect(planCalls).toHaveLength(1);
+    expect(planCalls[0].action).toBe('sync');
+    expect(planCalls[0].origin).toBe('local');
   } finally {
     restore();
   }
 });
+
 
 test('meta E2E seams: forced run failure is injectable via test bridge', async () => {
   OP_STORE.set('op-force-fail', {
@@ -149,6 +153,13 @@ test('meta E2E seams: forced run failure is injectable via test bridge', async (
 });
 
 test('meta E2E seams: forced lock conflict is injectable via apply mock', async () => {
+  OP_STORE.set('op-lock', {
+    Id: 'op-lock',
+    Action: 'install',
+    ModuleName: 'core',
+    Status: 'queued',
+    Phase: 'apply',
+  });
   const restore = installBridge({
     apply: async () => ({ ok: false, errorCode: 'LEASE_CONFLICT', errorMessage: 'lease is busy' }),
   });
