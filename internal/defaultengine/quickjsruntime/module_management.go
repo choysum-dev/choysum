@@ -272,8 +272,11 @@ func ensureProcessCompilerExecutor(ctx context.Context, scopeProvider jsengine.S
 			return
 		}
 		// Panic during construction: release the assembling slot so waiters can retry.
+		// Also clear stopRequested — a Stop that raced with this attempt must not
+		// permanently block later ensure calls after reload.
 		processCompilerMu.Lock()
 		processCompilerAssembling = false
+		processCompilerStopRequested = false
 		wakeProcessCompilerWaitersLocked()
 		processCompilerMu.Unlock()
 	}()
@@ -284,7 +287,8 @@ func ensureProcessCompilerExecutor(ctx context.Context, scopeProvider jsengine.S
 	processCompilerMu.Lock()
 	processCompilerAssembling = false
 	if err != nil {
-		// Do not cache failures — later callers may retry.
+		// Do not cache failures or a raced Stop flag — later callers may retry.
+		processCompilerStopRequested = false
 		wakeProcessCompilerWaitersLocked()
 		processCompilerMu.Unlock()
 		return nil, err

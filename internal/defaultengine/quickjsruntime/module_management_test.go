@@ -879,6 +879,96 @@ func TestEnsureProcessCompilerExecutorNilContext(t *testing.T) {
 	}
 }
 
+func TestEnsureProcessCompilerExecutorStopThenFactoryErrorRecovers(t *testing.T) {
+	ResetProcessModuleManagementHostForTest()
+	t.Cleanup(ResetProcessModuleManagementHostForTest)
+
+	baseScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	cfgFail := resolveModuleManagementConfig(moduleManagementOptionFunc(func(c *moduleManagementConfig) {
+		c.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+			close(entered)
+			<-release
+			return nil, errors.New("factory boom after stop")
+		}
+	}))
+	provider := jsengine.StaticScopeProvider(baseScope)
+
+	errCh := make(chan error, 1)
+	go func() {
+		_, err := ensureProcessCompilerExecutor(context.Background(), provider, cfgFail)
+		errCh <- err
+	}()
+	<-entered
+	if err := StopProcessModuleManagementHost(); err != nil {
+		t.Fatalf("stop during assembly: %v", err)
+	}
+	close(release)
+	if err := <-errCh; err == nil || !strings.Contains(err.Error(), "factory boom after stop") {
+		t.Fatalf("assemble after stop+error = %v", err)
+	}
+
+	// stopRequested must not stick after the failed attempt, or reload cannot recover.
+	cfgOK := resolveModuleManagementConfig(moduleManagementOptionFunc(func(c *moduleManagementConfig) {
+		c.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+			return &stubBridgeExecutor{}, nil
+		}
+	}))
+	exec, err := ensureProcessCompilerExecutor(context.Background(), provider, cfgOK)
+	if err != nil || exec == nil {
+		t.Fatalf("ensure after stop+factory error: exec=%v err=%v", exec, err)
+	}
+}
+
+func TestEnsureProcessCompilerExecutorStopThenPanicRecovers(t *testing.T) {
+	ResetProcessModuleManagementHostForTest()
+	t.Cleanup(ResetProcessModuleManagementHostForTest)
+
+	baseScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	cfgPanic := resolveModuleManagementConfig(moduleManagementOptionFunc(func(c *moduleManagementConfig) {
+		c.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+			close(entered)
+			<-release
+			panic("factory panic after stop")
+		}
+	}))
+	provider := jsengine.StaticScopeProvider(baseScope)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		defer func() { _ = recover() }()
+		_, _ = ensureProcessCompilerExecutor(context.Background(), provider, cfgPanic)
+	}()
+	<-entered
+	if err := StopProcessModuleManagementHost(); err != nil {
+		t.Fatalf("stop during assembly: %v", err)
+	}
+	close(release)
+	<-done
+
+	cfgOK := resolveModuleManagementConfig(moduleManagementOptionFunc(func(c *moduleManagementConfig) {
+		c.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+			return &stubBridgeExecutor{}, nil
+		}
+	}))
+	exec, err := ensureProcessCompilerExecutor(context.Background(), provider, cfgOK)
+	if err != nil || exec == nil {
+		t.Fatalf("ensure after stop+panic: exec=%v err=%v", exec, err)
+	}
+}
+
 func TestEnsureProcessCompilerExecutorPanicReleasesWaiters(t *testing.T) {
 	ResetProcessModuleManagementHostForTest()
 	t.Cleanup(ResetProcessModuleManagementHostForTest)
