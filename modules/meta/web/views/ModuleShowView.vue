@@ -97,6 +97,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
+import { toRef } from 'vue';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type MetaModuleCatalog from '@/meta/service/models/module_catalog';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
@@ -127,5 +128,6 @@ const props = withDefaults(
 );
 
 const store = resolvePageStore(props.store, 'ModuleShowView');
-const { recordId, showHeader } = props;
+const recordId = toRef(props, 'recordId');
+const showHeader = toRef(props, 'showHeader');
 </script>

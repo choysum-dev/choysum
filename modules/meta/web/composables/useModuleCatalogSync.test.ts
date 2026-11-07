@@ -96,3 +96,27 @@ test('useModuleCatalogSync: watchEmptyCatalogAutoSync fires once for empty loade
   await nextTick();
   expect(syncCalls).toBe(1);
 });
+
+test('useModuleCatalogSync: later empty search after non-empty first result does not force sync', async () => {
+  let syncCalls = 0;
+  const state = reactive({ result: undefined as any, loading: false });
+  const store: any = {
+    state,
+    RequestSync: async () => {
+      syncCalls += 1;
+      return { Id: `op-${syncCalls}` };
+    },
+  };
+  const api = useModuleCatalogSync(store, msgs);
+  api.watchEmptyCatalogAutoSync();
+
+  state.result = { rows: [{ Id: '1' }] };
+  await nextTick();
+  expect(syncCalls).toBe(0);
+
+  // User search with no matches must not be treated as an empty catalog.
+  state.result = { rows: [] };
+  await nextTick();
+  await Promise.resolve();
+  expect(syncCalls).toBe(0);
+});

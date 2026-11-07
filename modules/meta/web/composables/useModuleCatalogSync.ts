@@ -54,13 +54,14 @@ export function useModuleCatalogSync(
       () => (store as any)?.state?.result,
       result => {
         if (autoSyncTriggered.value) return;
-        // Ignore unset results (pre-fetch). Only react to a concrete empty payload.
+        // Ignore unset results (pre-fetch). Only the first settled rows payload may auto-sync.
         if (result == null || typeof result !== 'object') return;
         if ((store as any)?.state?.loading) return;
         const rows = (result as any).rows as any[] | undefined;
         if (!Array.isArray(rows)) return;
-        if (rows.length > 0) return;
+        // Consume the first settled result so a later empty search cannot force sync.
         autoSyncTriggered.value = true;
+        if (rows.length > 0) return;
         void requestSync({ Force: true, IfStale: false });
       },
     );

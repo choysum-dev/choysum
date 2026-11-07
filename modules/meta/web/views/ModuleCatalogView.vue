@@ -31,7 +31,13 @@ SPDX-License-Identifier: Apache-2.0
           @select="onViewSelect"
         />
       </div>
-      <div class="flex flex-wrap gap-1" role="tablist" :aria-label="_t('Filter')">
+      <!-- Filters apply to cards only; table mode uses ChoySearchView / store query. -->
+      <div
+        v-if="viewMode === 'cards'"
+        class="flex flex-wrap gap-1"
+        role="group"
+        :aria-label="_t('Filter')"
+      >
         <button
           v-for="opt in filterOptions"
           :key="opt.value"
@@ -43,7 +49,7 @@ SPDX-License-Identifier: Apache-2.0
               : 'border-border bg-background text-foreground hover:bg-muted'
           "
           :data-testid="`module-catalog-filter-${opt.value}`"
-          :aria-selected="filter === opt.value"
+          :aria-pressed="filter === opt.value"
           @click="filter = opt.value"
         >
           {{ opt.label }}
