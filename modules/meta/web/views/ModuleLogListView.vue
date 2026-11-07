@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     :store="store"
     :searchView="ChoySearchView"
     :show-header="showHeader"
-    :action-ids="{ delete: moduleOpActions.delete }"
+    :action-ids="{}"
     :has-action="hasAction"
   >
     <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
@@ -33,7 +33,6 @@ import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type MetaModuleOperation from '@/meta/service/models/module_operation';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
-import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { ChoyDatetimeField, ChoyJsonField, ChoyListView, ChoySearchView, ChoyTableColumn, ChoyVarcharField } from '@/web';
@@ -48,11 +47,8 @@ const props = withDefaults(
   { showHeader: true }
 );
 
-const { _t, _lt } = createTranslate('meta', { scope: 'web/views/ModuleLogListView' });
+const { _t } = createTranslate('meta', { scope: 'web/views/ModuleLogListView' });
 const { hasAction } = usePermission();
-const moduleOpActions = defineModelActions('meta.MetaModuleOperation', {
-  entityTitle: _lt('Module Operation History'),
-});
 
 const store = resolvePageStore(props.store, 'ModuleLogListView') as WebModelStore<MetaModuleOperation>;
 const showHeader = props.showHeader;

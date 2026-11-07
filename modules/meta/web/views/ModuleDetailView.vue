@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <ChoyFormView
     v-bind="{ store, recordId, viewMode, showHeader }"
-    :action-ids="{ edit: moduleCatalogActions.edit, copy: moduleCatalogActions.copy, delete: moduleCatalogActions.delete }"
+    :action-ids="{}"
     :has-action="hasAction"
   >
     <ChoyCard :title="_t('Basic Information')" class="mb-3.5"><ChoyGrid :cols="12">
@@ -80,7 +80,6 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type MetaModuleCatalog from '@/meta/service/models/module_catalog';
-import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
@@ -99,7 +98,7 @@ import type { ChoyViewMode as ViewMode } from '@/web';
 
 defineOptions({ name: 'ModuleDetailView', inheritAttrs: true });
 
-const { _t, _lt } = createTranslate('meta', { scope: 'web/views/ModuleDetailView' });
+const { _t } = createTranslate('meta', { scope: 'web/views/ModuleDetailView' });
 
 const props = withDefaults(
   defineProps<{
@@ -113,8 +112,5 @@ const props = withDefaults(
 
 const store = resolvePageStore(props.store, 'ModuleDetailView');
 const { recordId, viewMode, showHeader } = props;
-const moduleCatalogActions = defineModelActions('meta.MetaModuleCatalog', {
-  entityTitle: _lt('Module Catalog'),
-});
 const { hasAction } = usePermission();
 </script>

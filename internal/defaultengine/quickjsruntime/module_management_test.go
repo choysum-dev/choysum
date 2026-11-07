@@ -389,6 +389,82 @@ func TestModuleManagementPlanApplyRunPublishesTip(t *testing.T) {
 	}
 }
 
+func TestModuleManagementApplyRunHooksForceFailureSeams(t *testing.T) {
+	// Former CHOYSUM_E2E_FORCE_* product env seams now live as test-only bridge hooks.
+	db := newBridgeTestDB(t)
+	mod := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core"}
+	life := moduleManagementTestManager{install: func(context.Context, string) error { return nil }}
+	baseScope := &moduleIndexTestScope{
+		ctx:     context.Background(),
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:     &config.Config{ModulesPath: t.TempDir()},
+		session: &scope.Session{DB: db},
+	}
+
+	t.Run("lock-conflict via apply hook", func(t *testing.T) {
+		engine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+			jsengine.StaticScopeProvider(baseScope),
+			WithModuleManagementApplyHook(func(error) error {
+				return oerrors.New("meta.lock", "LEASE_CONFLICT", "lease is busy")
+			}),
+			moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+				cfg.moduleLifecycleFactory = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) lifecycle.Service {
+					return life
+				}
+				cfg.opsHostFactory = func(runtimeScope scope.Scope, _ jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory, ev bus.EventBus) *ops.Ops {
+					return &ops.Ops{
+						Scope:         runtimeScope,
+						Lifecycle:     life,
+						Resolver:      &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+						LockerFactory: lockerFactory,
+						Events:        ev,
+					}
+				}
+			}),
+		))
+		planJSON := awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.plan({ moduleName: 'core', action: 'install', origin: 'local' })`)
+		planID, _ := planJSON["id"].(string)
+		// LEASE_CONFLICT is thrown (not ok:false) so the client surfaces a hard failure.
+		rejectContains(t, engine, `$choysum.moduleManagement.apply({ id: `+jsString(planID)+` })`, "LEASE_CONFLICT")
+	})
+
+	t.Run("result-failed via run hook", func(t *testing.T) {
+		engine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+			jsengine.StaticScopeProvider(baseScope),
+			WithModuleManagementRunHook(func(error) error {
+				return oerrors.New("MODULE_MANAGEMENT", "OP_FAILED", "E2E forced failure")
+			}),
+			moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+				cfg.moduleLifecycleFactory = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) lifecycle.Service {
+					return life
+				}
+				cfg.opsHostFactory = func(runtimeScope scope.Scope, _ jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory, ev bus.EventBus) *ops.Ops {
+					return &ops.Ops{
+						Scope:         runtimeScope,
+						Lifecycle:     life,
+						Resolver:      &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+						LockerFactory: lockerFactory,
+						Events:        ev,
+					}
+				}
+			}),
+		))
+		planJSON := awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.plan({ moduleName: 'core', action: 'install', origin: 'local' })`)
+		planID, _ := planJSON["id"].(string)
+		applyJSON := awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.apply({ id: `+jsString(planID)+` })`)
+		if ok, _ := applyJSON["ok"].(bool); !ok {
+			t.Fatalf("apply = %#v", applyJSON)
+		}
+		runJSON := awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.run({ id: `+jsString(planID)+` })`)
+		if ok, _ := runJSON["ok"].(bool); ok {
+			t.Fatalf("run should fail, got %#v", runJSON)
+		}
+		if code, _ := runJSON["errorCode"].(string); code != "OP_FAILED" {
+			t.Fatalf("errorCode = %#v, want OP_FAILED", runJSON)
+		}
+	})
+}
+
 func TestModuleManagementPlanApplyRunSkipsOuterTransaction(t *testing.T) {
 	db := newBridgeTestDB(t)
 	mod := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core"}
