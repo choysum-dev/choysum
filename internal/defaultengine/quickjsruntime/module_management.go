@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/buke/quickjs-go"
@@ -94,10 +95,24 @@ type moduleManagementConfig struct {
 	opsHostFactory          opsHostFactory
 	compilerExecutorFactory compilerExecutorFactory
 	events                  bus.EventBus
+	// injectedHost is a process/engine-scoped Ops with Lifecycle/Resolver already set.
+	// When present, startOpsHost only rebinds Scope/context and never Starts a compiler.
+	injectedHost *ops.Ops
+	// processHost enables lazy process-scoped assembly on first lifecycle call.
+	processHost bool
 	// Test-only loadDemo hooks (nil in production).
 	loadDemoPlanHook func(ops.PlanResult) ops.PlanResult
 	loadDemoRunHook  func(error) error
 }
+
+// processModuleManagementHost is assembled once for production bridge wiring.
+// Laziness avoids compiler-pool warmup recursing into AssembleModuleManagementHost.
+var (
+	processModuleManagementHostMu   sync.Mutex
+	processModuleManagementHost     *ops.Ops
+	processModuleManagementHostStop func() error
+	processModuleManagementHostErr  error
+)
 
 // Overridable for tests that force Marshal failures.
 var quickjsMarshal = func(ctx *quickjs.Context, v any) (*quickjs.Value, error) {
@@ -167,6 +182,127 @@ func WithModuleManagementEvents(events bus.EventBus) ModuleManagementOption {
 	return moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
 		cfg.events = events
 	})
+}
+
+// WithModuleManagementHost injects a pre-assembled ops host (Lifecycle/Resolver ready).
+// Callers own the host's compiler executor lifetime; bridge calls must not Start/Stop it.
+func WithModuleManagementHost(host *ops.Ops) ModuleManagementOption {
+	return moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+		cfg.injectedHost = host
+	})
+}
+
+// WithModuleManagementProcessHost enables lazy process-scoped ops host assembly on
+// the first plan/apply/run/loadDemo call (not at QuickJS engine create time).
+func WithModuleManagementProcessHost() ModuleManagementOption {
+	return moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+		cfg.processHost = true
+	})
+}
+
+func ensureProcessModuleManagementHost(scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig) (*ops.Ops, error) {
+	processModuleManagementHostMu.Lock()
+	if processModuleManagementHost != nil || processModuleManagementHostErr != nil {
+		host, err := processModuleManagementHost, processModuleManagementHostErr
+		processModuleManagementHostMu.Unlock()
+		return host, err
+	}
+	processModuleManagementHostMu.Unlock()
+
+	opts := []ModuleManagementOption{
+		WithModuleManagementLockerFactory(cfg.lockerFactory),
+		WithModuleManagementEvents(cfg.events),
+	}
+	if cfg.moduleLifecycleFactory != nil {
+		opts = append(opts, moduleManagementOptionFunc(func(c *moduleManagementConfig) {
+			c.moduleLifecycleFactory = cfg.moduleLifecycleFactory
+		}))
+	}
+	if cfg.compilerExecutorFactory != nil {
+		opts = append(opts, moduleManagementOptionFunc(func(c *moduleManagementConfig) {
+			c.compilerExecutorFactory = cfg.compilerExecutorFactory
+		}))
+	}
+
+	host, stop, err := AssembleModuleManagementHost(scopeProvider, opts...)
+
+	processModuleManagementHostMu.Lock()
+	defer processModuleManagementHostMu.Unlock()
+	if processModuleManagementHost != nil || processModuleManagementHostErr != nil {
+		if stop != nil {
+			_ = stop()
+		}
+		return processModuleManagementHost, processModuleManagementHostErr
+	}
+	processModuleManagementHost = host
+	processModuleManagementHostStop = stop
+	processModuleManagementHostErr = err
+	return host, err
+}
+
+// ResetProcessModuleManagementHostForTest clears the process-scoped host (tests only).
+func ResetProcessModuleManagementHostForTest() {
+	processModuleManagementHostMu.Lock()
+	stop := processModuleManagementHostStop
+	processModuleManagementHost = nil
+	processModuleManagementHostStop = nil
+	processModuleManagementHostErr = nil
+	processModuleManagementHostMu.Unlock()
+	if stop != nil {
+		_ = stop()
+	}
+}
+
+// AssembleModuleManagementHost builds a started ops host for process/engine wiring.
+// The returned stop closes the owned compiler executor; pass nil-safe stop to defer.
+func AssembleModuleManagementHost(scopeProvider jsengine.ScopeProvider, opts ...ModuleManagementOption) (host *ops.Ops, stop func() error, err error) {
+	cfg := resolveModuleManagementConfig(opts...)
+	runtimeScope := jsengine.ResolveScope(scopeProvider, context.Background())
+	if runtimeScope == nil {
+		return nil, nil, status.Error(codes.Internal, "module management scope is unavailable")
+	}
+
+	newExecutor := cfg.compilerExecutorFactory
+	if newExecutor == nil {
+		newExecutor = defaultCompilerExecutorFactory
+	}
+	executor, err := newExecutor(runtimeScope)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := executor.Start(); err != nil {
+		_ = executor.Stop()
+		return nil, nil, err
+	}
+	handedOff := false
+	defer func() {
+		if !handedOff {
+			_ = executor.Stop()
+		}
+	}()
+
+	events := cfg.events
+	if !bus.IsUsable(events) {
+		events = bus.EnsureHost(runtimeScope)
+	}
+	lifecycleFactory := cfg.moduleLifecycleFactory
+	if lifecycleFactory == nil {
+		lifecycleFactory = defaultModuleLifecycleFactory
+	}
+
+	host, err = ops.NewHost(ops.HostOptions{
+		Scope:         runtimeScope,
+		Executor:      executor,
+		LockerFactory: cfg.lockerFactory,
+		Events:        events,
+		Lifecycle:     lifecycleFactory(runtimeScope, executor, cfg.lockerFactory),
+		Resolver:      lifecycle.NewModuleManager(runtimeScope, executor, lifecycle.WithLockerFactory(cfg.lockerFactory)),
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	handedOff = true
+	return host, executor.Stop, nil
 }
 
 // WithModuleManagementProvider installs the module-management bridge for a scope provider.
@@ -252,7 +388,10 @@ func (h startedOpsHost) Close() error {
 	return h.executor.Stop()
 }
 
-func startOpsHost(jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig) (startedOpsHost, error) {
+// startOpsHost rebinds request Scope/context onto an ops host.
+// needLifecycle enables the test-only compiler bootstrap when nothing is injected;
+// catalog sync always passes false so it never Starts a ModuleManager/compiler pool.
+func startOpsHost(jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig, needLifecycle bool) (startedOpsHost, error) {
 	execCtx := scope.ContextWithoutTransaction(jse.ExecContext())
 	runtimeScope := jsengine.ResolveScope(scopeProvider, execCtx)
 	if runtimeScope == nil {
@@ -266,6 +405,26 @@ func startOpsHost(jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.Scope
 	events := cfg.events
 	if !bus.IsUsable(events) {
 		events = bus.EnsureHost(opScope)
+	}
+
+	injected := cfg.injectedHost
+	if injected == nil && cfg.processHost && needLifecycle {
+		processHost, err := ensureProcessModuleManagementHost(scopeProvider, cfg)
+		if err != nil {
+			return startedOpsHost{}, err
+		}
+		injected = processHost
+	}
+	if injected != nil {
+		host := *injected
+		host.Scope = opScope
+		if host.LockerFactory == nil {
+			host.LockerFactory = cfg.lockerFactory
+		}
+		if !bus.IsUsable(host.Events) {
+			host.Events = events
+		}
+		return startedOpsHost{host: &host, execCtx: execCtx, executor: nil}, nil
 	}
 
 	var host *ops.Ops
@@ -285,9 +444,10 @@ func startOpsHost(jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.Scope
 		host.Events = events
 	}
 
-	// Compiler executor is only required when filling default Lifecycle/Resolver.
+	// Compiler executor is only required when filling default Lifecycle/Resolver
+	// for plan/apply/run/loadDemo without an injected/process host (tests / fallback).
 	var compilerExecutor jsexecutor.JsExecutor
-	if host.Lifecycle == nil || host.Resolver == nil {
+	if needLifecycle && (host.Lifecycle == nil || host.Resolver == nil) {
 		newExecutor := cfg.compilerExecutorFactory
 		if newExecutor == nil {
 			newExecutor = defaultCompilerExecutorFactory
@@ -331,7 +491,7 @@ func performModulePlan(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, s
 	if strings.TrimSpace(params.Action) == "" {
 		return bridgeThrow(ctx, status.Error(codes.InvalidArgument, "action is required"))
 	}
-	started, err := startOpsHost(jse, scopeProvider, cfg)
+	started, err := startOpsHost(jse, scopeProvider, cfg, true)
 	if err != nil {
 		return bridgeThrow(ctx, err)
 	}
@@ -361,7 +521,7 @@ func performModuleApply(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, 
 	if strings.TrimSpace(params.Id) == "" {
 		return bridgeThrow(ctx, status.Error(codes.InvalidArgument, "id is required"))
 	}
-	started, err := startOpsHost(jse, scopeProvider, cfg)
+	started, err := startOpsHost(jse, scopeProvider, cfg, true)
 	if err != nil {
 		return bridgeThrow(ctx, err)
 	}
@@ -379,7 +539,7 @@ func performModuleRun(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, sc
 	if strings.TrimSpace(params.Id) == "" {
 		return bridgeThrow(ctx, status.Error(codes.InvalidArgument, "id is required"))
 	}
-	started, err := startOpsHost(jse, scopeProvider, cfg)
+	started, err := startOpsHost(jse, scopeProvider, cfg, true)
 	if err != nil {
 		return bridgeThrow(ctx, err)
 	}
@@ -399,7 +559,8 @@ func performModuleCatalogSync(ctx *quickjs.Context, jse *quickjsengine.QuickjsEn
 		return bridgeThrow(ctx, status.Error(codes.InvalidArgument, "originType must be one of: local, registry, all"))
 	}
 
-	started, err := startOpsHost(jse, scopeProvider, cfg)
+	// Catalog sync only needs Scope/Locker/Events — never warm a compiler pool.
+	started, err := startOpsHost(jse, scopeProvider, cfg, false)
 	if err != nil {
 		return bridgeThrow(ctx, err)
 	}
@@ -433,7 +594,7 @@ func performModuleLoadDemo(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngin
 	if err != nil {
 		return bridgeThrow(ctx, err)
 	}
-	started, err := startOpsHost(jse, scopeProvider, cfg)
+	started, err := startOpsHost(jse, scopeProvider, cfg, true)
 	if err != nil {
 		return bridgeThrow(ctx, err)
 	}

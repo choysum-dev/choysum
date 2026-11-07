@@ -50,13 +50,18 @@ var (
 )
 
 func defaultNewCLIOpsHost(opScope scope.Scope, exec jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory) cliOpsHost {
-	return &ops.Ops{
+	host, err := ops.NewHost(ops.HostOptions{
 		Scope:         opScope,
-		Lifecycle:     lifecycle.NewService(opScope, exec, lifecycle.WithLockerFactory(lockerFactory)),
-		Resolver:      lifecycle.NewModuleManager(opScope, exec, lifecycle.WithLockerFactory(lockerFactory)),
+		Executor:      exec,
 		LockerFactory: lockerFactory,
 		Events:        bus.EnsureHost(opScope),
+	})
+	if err != nil {
+		// Scope/executor are required by callers; surface as a panic-free stub host
+		// so Plan/Apply/Run return clear ops errors instead of nil dereference.
+		return &ops.Ops{Scope: opScope, LockerFactory: lockerFactory, Events: bus.EnsureHost(opScope)}
 	}
+	return host
 }
 
 // runCLIModuleOp assembles an ops host and runs Plan → Apply → Run synchronously.

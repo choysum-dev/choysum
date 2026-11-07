@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"testing"
 
+	_ "github.com/choysum-dev/choysum/internal/defaultjsexecutor"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/auth"
 	"github.com/choysum-dev/choysum/pkg/config"

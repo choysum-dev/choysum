@@ -63,7 +63,14 @@ func defaultQuickjsReplaceableRuntimePlugins() []jsengine.RuntimePlugin {
 			return []jsengine.JsEngineOption{quickjsruntime.WithDocumentStorageProvider(scopeProvider)}
 		}),
 		jsengine.NewRuntimePluginWithProvider(quickjsengine.RuntimePluginModuleManagement, func(scopeProvider jsengine.ScopeProvider, authenticator auth.Authenticator) []jsengine.JsEngineOption {
-			return []jsengine.JsEngineOption{quickjsruntime.WithModuleManagementProvider(scopeProvider)}
+			// Process-scoped host is assembled lazily on first plan/apply/run
+			// (not at engine create) so compiler-pool warmup cannot recurse.
+			return []jsengine.JsEngineOption{
+				quickjsruntime.WithModuleManagementProvider(
+					scopeProvider,
+					quickjsruntime.WithModuleManagementProcessHost(),
+				),
+			}
 		}),
 	}
 }

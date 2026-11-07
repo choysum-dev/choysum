@@ -522,6 +522,168 @@ func TestModuleManagementLoadDemoNotImplemented(t *testing.T) {
 	}
 }
 
+func TestModuleManagementInjectedHostPlanApplyRunStartsAtMostOnce(t *testing.T) {
+	db := newBridgeTestDB(t)
+	mod := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core"}
+	life := moduleManagementTestManager{install: func(context.Context, string) error { return nil }}
+	baseScope := &moduleIndexTestScope{
+		ctx:     context.Background(),
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:     &config.Config{ModulesPath: t.TempDir()},
+		session: &scope.Session{DB: db},
+	}
+	counting := &stubBridgeExecutor{}
+	if err := counting.Start(); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	host, err := ops.NewHost(ops.HostOptions{
+		Scope:     baseScope,
+		Executor:  counting,
+		Lifecycle: life,
+		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return &moduleIndexTestLocker{}
+		},
+		Events: bus.EnsureHost(baseScope),
+	})
+	if err != nil {
+		t.Fatalf("NewHost: %v", err)
+	}
+
+	engine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+		jsengine.StaticScopeProvider(baseScope),
+		WithModuleManagementHost(host),
+		moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+			cfg.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+				t.Fatal("injected host must not create a compiler executor")
+				return nil, errors.New("unexpected compiler create")
+			}
+		}),
+	))
+
+	planJSON := awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.plan({ moduleName: 'core', action: 'install' })`)
+	planID, _ := planJSON["id"].(string)
+	if planID == "" {
+		t.Fatalf("plan result = %#v", planJSON)
+	}
+	_ = awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.apply({ id: `+jsString(planID)+` })`)
+	_ = awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.run({ id: `+jsString(planID)+` })`)
+
+	if counting.started > 1 {
+		t.Fatalf("executor Start calls = %d, want ≤ 1", counting.started)
+	}
+}
+
+func TestModuleManagementSyncCatalogNeverStartsCompiler(t *testing.T) {
+	db := newBridgeTestDB(t)
+	baseScope := &moduleIndexTestScope{
+		ctx:     context.Background(),
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:     &config.Config{ModulesPath: t.TempDir()},
+		session: &scope.Session{DB: db},
+	}
+	counting := &stubBridgeExecutor{}
+	engine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+		jsengine.StaticScopeProvider(baseScope),
+		moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+			cfg.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+				return counting, nil
+			}
+			cfg.opsHostFactory = func(runtimeScope scope.Scope, _ jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory, ev bus.EventBus) *ops.Ops {
+				// Lifecycle/Resolver intentionally nil — sync must still skip compiler Start.
+				return &ops.Ops{
+					Scope:         runtimeScope,
+					LockerFactory: lockerFactory,
+					Events:        ev,
+					SyncLocalSnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+						return lifecycle.ModuleSourceSnapshotSyncStats{Total: 1, Success: 1}, nil
+					},
+					SyncRegistrySnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+						return lifecycle.ModuleSourceSnapshotSyncStats{}, nil
+					},
+				}
+			}
+		}),
+	))
+
+	got := awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.syncCatalog({ originType: 'local' })`)
+	if ok, _ := got["ok"].(bool); !ok {
+		t.Fatalf("syncCatalog = %#v", got)
+	}
+	if counting.started != 0 {
+		t.Fatalf("executor Start calls = %d, want 0", counting.started)
+	}
+}
+
+func TestAssembleModuleManagementHostStartsOnce(t *testing.T) {
+	baseScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	counting := &stubBridgeExecutor{}
+	host, stop, err := AssembleModuleManagementHost(
+		jsengine.StaticScopeProvider(baseScope),
+		moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+			cfg.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+				return counting, nil
+			}
+			cfg.moduleLifecycleFactory = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) lifecycle.Service {
+				return moduleManagementTestManager{}
+			}
+			cfg.lockerFactory = func(scope.Scope) statepkg.Locker { return &moduleIndexTestLocker{} }
+		}),
+	)
+	if err != nil {
+		t.Fatalf("AssembleModuleManagementHost: %v", err)
+	}
+	t.Cleanup(func() {
+		if stop != nil {
+			_ = stop()
+		}
+	})
+	if host == nil || host.Lifecycle == nil || host.Resolver == nil {
+		t.Fatal("expected assembled host with Lifecycle and Resolver")
+	}
+	if counting.started != 1 {
+		t.Fatalf("executor Start calls = %d, want 1", counting.started)
+	}
+}
+
+func TestEnsureProcessModuleManagementHostStartsOnce(t *testing.T) {
+	ResetProcessModuleManagementHostForTest()
+	t.Cleanup(ResetProcessModuleManagementHostForTest)
+
+	baseScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	counting := &stubBridgeExecutor{}
+	cfg := resolveModuleManagementConfig(moduleManagementOptionFunc(func(c *moduleManagementConfig) {
+		c.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+			return counting, nil
+		}
+		c.moduleLifecycleFactory = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) lifecycle.Service {
+			return moduleManagementTestManager{}
+		}
+		c.lockerFactory = func(scope.Scope) statepkg.Locker { return &moduleIndexTestLocker{} }
+	}))
+	provider := jsengine.StaticScopeProvider(baseScope)
+	for i := 0; i < 3; i++ {
+		host, err := ensureProcessModuleManagementHost(provider, cfg)
+		if err != nil {
+			t.Fatalf("ensure[%d]: %v", i, err)
+		}
+		if host == nil || host.Lifecycle == nil || host.Resolver == nil {
+			t.Fatalf("ensure[%d]: incomplete host", i)
+		}
+	}
+	if counting.started != 1 {
+		t.Fatalf("executor Start calls = %d, want 1", counting.started)
+	}
+}
+
 func TestQuickjsRuntimeOptionsHelpers(t *testing.T) {
 	if got := newRuntimeOptions(scope.PathsRuntimeOptions{}, false); got.modulesPath != "" {
 		t.Fatalf("newRuntimeOptions(no path) = %#v, want empty modulesPath", got)

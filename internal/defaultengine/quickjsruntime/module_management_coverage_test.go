@@ -390,15 +390,51 @@ func TestCoverage_ModuleManagementRejectOnStartOpsHost(t *testing.T) {
 			cfg.opsHostFactory = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory, bus.EventBus) *ops.Ops {
 				return nil
 			}
+			cfg.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+				return nil, errors.New("factory boom")
+			}
 		}),
 	))
 	for _, expr := range []string{
 		`$choysum.moduleManagement.apply({ id: 'x' })`,
 		`$choysum.moduleManagement.run({ id: 'x' })`,
-		`$choysum.moduleManagement.syncCatalog({ originType: 'all' })`,
 		`$choysum.moduleManagement.loadDemo({})`,
 	} {
 		rejectContains(t, engine, expr, "factory")
+	}
+	// syncCatalog must not bootstrap a compiler even when Lifecycle/Resolver are missing.
+	db := newBridgeTestDB(t)
+	syncScope := &moduleIndexTestScope{
+		ctx:     context.Background(),
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:     &config.Config{ModulesPath: t.TempDir()},
+		session: &scope.Session{DB: db},
+	}
+	syncEngine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+		jsengine.StaticScopeProvider(syncScope),
+		moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+			cfg.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+				t.Fatal("syncCatalog must not create a compiler executor")
+				return nil, errors.New("unexpected")
+			}
+			cfg.opsHostFactory = func(runtimeScope scope.Scope, _ jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory, ev bus.EventBus) *ops.Ops {
+				return &ops.Ops{
+					Scope:         runtimeScope,
+					LockerFactory: lockerFactory,
+					Events:        ev,
+					SyncLocalSnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+						return lifecycle.ModuleSourceSnapshotSyncStats{}, nil
+					},
+					SyncRegistrySnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+						return lifecycle.ModuleSourceSnapshotSyncStats{}, nil
+					},
+				}
+			}
+		}),
+	))
+	got := awaitModuleManagementJSON(t, syncEngine, `$choysum.moduleManagement.syncCatalog({ originType: 'all' })`)
+	if ok, _ := got["ok"].(bool); !ok {
+		t.Fatalf("syncCatalog without lifecycle = %#v", got)
 	}
 }
 
@@ -518,7 +554,7 @@ func TestCoverage_ModuleManagementRemainingBranches(t *testing.T) {
 			return &stubBridgeExecutor{}, nil
 		},
 		events: nil,
-	})
+	}, true)
 	if err != nil {
 		t.Fatalf("startOpsHost: %v", err)
 	}
@@ -535,7 +571,7 @@ func TestCoverage_ModuleManagementRemainingBranches(t *testing.T) {
 		compilerExecutorFactory: func(scope.Scope) (jsexecutor.JsExecutor, error) {
 			return &stubBridgeExecutor{startErr: errors.New("start boom")}, nil
 		},
-	})
+	}, true)
 	if err == nil || !strings.Contains(err.Error(), "start boom") {
 		t.Fatalf("start err = %v", err)
 	}
@@ -548,7 +584,7 @@ func TestCoverage_ModuleManagementRemainingBranches(t *testing.T) {
 		compilerExecutorFactory: func(scope.Scope) (jsexecutor.JsExecutor, error) {
 			return nil, errors.New("create boom")
 		},
-	})
+	}, true)
 	if err == nil || !strings.Contains(err.Error(), "create boom") {
 		t.Fatalf("create err = %v", err)
 	}
@@ -561,7 +597,7 @@ func TestCoverage_ModuleManagementRemainingBranches(t *testing.T) {
 		compilerExecutorFactory: func(scope.Scope) (jsexecutor.JsExecutor, error) {
 			return &stubBridgeExecutor{}, nil
 		},
-	})
+	}, true)
 	if err != nil {
 		t.Fatalf("resolver fill: %v", err)
 	}
@@ -574,7 +610,7 @@ func TestCoverage_ModuleManagementRemainingBranches(t *testing.T) {
 		compilerExecutorFactory: func(scope.Scope) (jsexecutor.JsExecutor, error) {
 			return &stubBridgeExecutor{}, nil
 		},
-	})
+	}, true)
 	if err != nil {
 		t.Fatalf("nil lifecycle factory: %v", err)
 	}
@@ -708,7 +744,7 @@ func TestCoverage_ModuleManagementRemainingBranches(t *testing.T) {
 			moduleLifecycleFactory: func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) lifecycle.Service {
 				panic("lifecycle boom")
 			},
-		})
+		}, true)
 	}()
 
 	// marshalOpResult throw + marshal failure on success payload.
