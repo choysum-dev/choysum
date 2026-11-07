@@ -54,7 +54,7 @@ func moduleOpOperationID(job *Job) string {
 		return ""
 	}
 	var payload map[string]any
-	if err := json.Unmarshal(job.PayloadJson, &payload); err != nil {
+	if err := json.Unmarshal(job.PayloadJson, &payload); err != nil || payload == nil {
 		return ""
 	}
 	if req, ok := payload["req"].(map[string]any); ok {

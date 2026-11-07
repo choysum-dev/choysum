@@ -24,6 +24,8 @@ export type RequestSyncResp = {
 const ACTIVE_SYNC_STATUSES = ['draft', 'queued', 'running'];
 // RequestSync currently plans a single local-origin sync; use the local freshness window.
 const LOCAL_STALE_MS = 60 * 1000;
+// Drop abandoned non-terminal sync rows so RequestSync cannot be blocked forever.
+const ACTIVE_SYNC_STALE_MS = 10 * 60 * 1000;
 
 function getModuleManagementBridge() {
   const root = resolveChoysum();
@@ -127,11 +129,24 @@ export default class MetaModuleCatalog extends BaseModel {
           ['Status', 'in', ACTIVE_SYNC_STATUSES],
         ],
       },
-      { limit: 1, orderBy: { field: 'CreatedAt', order: 'desc' }, fields: ['Id', 'Status'] }
+      { limit: 1, orderBy: { field: 'CreatedAt', order: 'desc' }, fields: ['Id', 'Status', 'CreatedAt'] }
     );
-    const existingId = String(active?.[0]?.Id || '').trim();
+    const activeRow = active?.[0];
+    const existingId = String(activeRow?.Id || '').trim();
     if (existingId) {
-      return { Id: existingId };
+      const activeCreatedAt = activeRow?.CreatedAt ? new Date(activeRow.CreatedAt as Date).getTime() : NaN;
+      const activeIsStale = !isNaN(activeCreatedAt) && Date.now() - activeCreatedAt > ACTIVE_SYNC_STALE_MS;
+      if (!activeIsStale) {
+        return { Id: existingId };
+      }
+      await MetaModuleOperation.UpdateById(
+        existingId,
+        {
+          Status: 'failed',
+          ErrorMessage: _t('sync operation timed out', { scope: 'service/models/module_catalog' }),
+        },
+        ['Id'],
+      );
     }
 
     const userId = BaseModel.ensureUserId();
@@ -150,9 +165,24 @@ export default class MetaModuleCatalog extends BaseModel {
       throw new Error(planResult?.errorMessage || _t('sync plan returned empty id', { scope: 'service/models/module_catalog' }));
     }
 
-    const applyResult = (await bridge.apply({ id })) as { ok?: boolean; errorMessage?: string } | null | undefined;
+    let applyResult: { ok?: boolean; errorMessage?: string } | null | undefined;
+    try {
+      applyResult = (await bridge.apply({ id })) as { ok?: boolean; errorMessage?: string } | null | undefined;
+    } catch (applyErr) {
+      await MetaModuleOperation.UpdateById(
+        id,
+        {
+          Status: 'failed',
+          ErrorMessage: String((applyErr as Error)?.message || applyErr),
+        },
+        ['Id'],
+      );
+      throw applyErr;
+    }
     if (applyResult && applyResult.ok === false) {
-      throw new Error(applyResult.errorMessage || _t('sync apply failed', { scope: 'service/models/module_catalog' }));
+      const message = applyResult.errorMessage || _t('sync apply failed', { scope: 'service/models/module_catalog' });
+      await MetaModuleOperation.UpdateById(id, { Status: 'failed', ErrorMessage: message }, ['Id']);
+      throw new Error(message);
     }
 
     let job: unknown;

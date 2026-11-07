@@ -179,6 +179,9 @@ func TestModuleOpOperationIDPayloadShapes(t *testing.T) {
 	if moduleOpOperationID(&Job{PayloadJson: datatypes.JSON([]byte(`not-json`))}) != "" {
 		t.Fatal("invalid json")
 	}
+	if moduleOpOperationID(&Job{PayloadJson: datatypes.JSON([]byte(`null`))}) != "" {
+		t.Fatal("null payload")
+	}
 	if moduleOpOperationID(&Job{PayloadJson: datatypes.JSON([]byte(`{}`))}) != "" {
 		t.Fatal("empty payload")
 	}

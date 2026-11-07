@@ -142,6 +142,36 @@ test('meta.MetaModuleCatalog RequestSync plans apply and enqueues Execute', asyn
   }
 });
 
+test('meta.MetaModuleCatalog RequestSync expires stale active sync and plans anew', async () => {
+  OP_ROWS.push({
+    Id: 'op-sync-stale',
+    Action: 'sync',
+    Status: 'queued',
+    CreatedAt: new Date(Date.now() - 11 * 60 * 1000),
+  });
+  const root: any = (globalThis as any).$choysum;
+  const saved = root.moduleManagement;
+  const calls: string[] = [];
+  root.moduleManagement = {
+    plan: async () => {
+      calls.push('plan');
+      return { id: 'op-sync-fresh' };
+    },
+    apply: async () => {
+      calls.push('apply');
+      return { ok: true };
+    },
+  };
+  try {
+    const resp = await MetaModuleCatalog.RequestSync({ Force: true });
+    expect(resp.Id).toBe('op-sync-fresh');
+    expect(calls).toEqual(['plan', 'apply']);
+    expect(OP_ROWS.find((r) => r.Id === 'op-sync-stale')?.Status).toBe('failed');
+  } finally {
+    root.moduleManagement = saved;
+  }
+});
+
 test('meta.MetaModuleCatalog RequestSync marks failed when EnqueueJob throws', async () => {
   const root: any = (globalThis as any).$choysum;
   const saved = root.moduleManagement;

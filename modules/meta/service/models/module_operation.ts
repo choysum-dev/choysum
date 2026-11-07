@@ -240,9 +240,24 @@ export default class MetaModuleOperation extends BaseModel {
     }
     const withDemo = !!req?.WithDemo;
     const bridge = getModuleManagementBridge();
-    const applyResult = (await bridge.apply({ id })) as BridgeOpResult | null | undefined;
+    let applyResult: BridgeOpResult | null | undefined;
+    try {
+      applyResult = (await bridge.apply({ id })) as BridgeOpResult | null | undefined;
+    } catch (applyErr) {
+      // Plan left a draft; mark failed so callers are not stuck on a non-runnable op.
+      await this.UpdateById(
+        id,
+        {
+          Status: 'failed',
+          ErrorMessage: String((applyErr as Error)?.message || applyErr),
+        },
+        ['Id'],
+      );
+      throw applyErr;
+    }
     if (applyResult && applyResult.ok === false) {
       const message = applyResult.errorMessage || _t('apply failed', { scope: 'service/models/module_operation' });
+      await this.UpdateById(id, { Status: 'failed', ErrorMessage: message }, ['Id']);
       throw new Error(message);
     }
 

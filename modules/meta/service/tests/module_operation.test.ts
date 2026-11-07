@@ -184,6 +184,27 @@ test('meta.MetaModuleOperation Apply rejects bridge failure', async () => {
     }
     expect(err).toBeTruthy();
     expect(String((err as Error)?.message || err)).toContain('baseRevision mismatch');
+    expect(OP_STORE.get('op-bad')?.Status).toBe('failed');
+  } finally {
+    restore();
+  }
+});
+
+test('meta.MetaModuleOperation Apply marks failed when bridge.apply throws', async () => {
+  const restore = installBridge({
+    apply: async () => {
+      throw new Error('apply boom');
+    },
+  });
+  try {
+    let err: unknown;
+    try {
+      await MetaModuleOperation.Apply({ Id: 'op-apply-throw' });
+    } catch (e) {
+      err = e;
+    }
+    expect(String((err as Error)?.message || err)).toContain('apply boom');
+    expect(OP_STORE.get('op-apply-throw')?.Status).toBe('failed');
   } finally {
     restore();
   }
