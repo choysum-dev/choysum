@@ -296,28 +296,33 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks, deps
       }, TIP_DEBOUNCE_MS);
     };
 
-    try {
-      await tipOn(
-        tipSubscribe({ operationId: id }, signal),
-        async () => {
-          scheduleTipRefresh();
-        },
-        signal
-      );
-    } catch {
-      // Stream error; fall through to short-backoff poll when still active.
-    } finally {
-      clearDeadline();
-      if (debounceTimer != null) {
-        clearSchedule(debounceTimer);
+    const tipAvailable = typeof tipSubscribe === 'function' && typeof tipOn === 'function';
+    if (tipAvailable) {
+      try {
+        await tipOn(
+          tipSubscribe({ operationId: id }, signal),
+          async () => {
+            scheduleTipRefresh();
+          },
+          signal,
+        );
+      } catch {
+        // Stream error; fall through to short-backoff poll when still active.
+      } finally {
+        clearDeadline();
+        if (debounceTimer != null) {
+          clearSchedule(debounceTimer);
+        }
+        await refreshChain;
       }
-      await refreshChain;
+    } else {
+      clearDeadline();
     }
 
     if (
       generation === sessionGeneration &&
       !timedOut &&
-      !signal.aborted &&
+      (!tipAvailable || !signal.aborted) &&
       hooks.isActive() &&
       !reachedTerminal
     ) {

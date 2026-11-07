@@ -5,6 +5,7 @@ import { computed, ref, watch, type Ref } from 'vue';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type MetaModuleCatalog from '@/meta/service/models/module_catalog';
+import type MetaModuleOperation from '@/meta/service/models/module_operation';
 
 export type ModuleShowPageDeps = {
   scopeManager: unknown;
@@ -19,6 +20,7 @@ export type ModuleShowPageDeps = {
  */
 export function useModuleShowPage(deps: ModuleShowPageDeps): {
   catalogStore: WebModelStore<MetaModuleCatalog>;
+  operationStore: WebModelStore<MetaModuleOperation>;
   recordId: Ref<string>;
   loading: Ref<boolean>;
   missing: Ref<boolean>;
@@ -34,6 +36,10 @@ export function useModuleShowPage(deps: ModuleShowPageDeps): {
     storeId: 'MetaModuleCatalog_Show',
     scopeManager: deps.scopeManager,
   }) as WebModelStore<MetaModuleCatalog>;
+  const operationStore = createStore('meta.MetaModuleOperation', {
+    storeId: 'MetaModuleOperation_ShowDrawer',
+    scopeManager: deps.scopeManager,
+  }) as WebModelStore<MetaModuleOperation>;
   const recordId = ref('');
   const loading = ref(false);
   const missing = ref(false);
@@ -78,5 +84,5 @@ export function useModuleShowPage(deps: ModuleShowPageDeps): {
     { immediate: true },
   );
 
-  return { catalogStore, recordId, loading, missing, moduleName };
+  return { catalogStore, operationStore, recordId, loading, missing, moduleName };
 }
