@@ -44,6 +44,19 @@ test('meta resource wiring: menus only expose Modules leaf at /meta/modules', ()
   expect(metaMenus).toHaveLength(1);
   expect(metaMenus[0]?.path).toBe('/meta/modules');
   expect(metaMenus[0]?.children == null || metaMenus[0]?.children?.length === 0).toBe(true);
+  expect(getResourceDeclaration('meta.menu.modules')?.requires).toEqual([
+    { kind: 'rpc', model: 'meta.MetaModuleCatalog' },
+  ]);
+  expect(getResourceDeclaration('meta.route.module_catalog')?.requires).toEqual([
+    { kind: 'rpc', model: 'meta.MetaModuleCatalog' },
+  ]);
+  expect(getResourceDeclaration('meta.route.module_show')?.requires).toEqual([
+    { kind: 'rpc', model: 'meta.MetaModuleCatalog' },
+  ]);
+  expect(getResourceDeclaration('meta.route.module_operation')?.requires).toEqual([
+    { kind: 'rpc', model: 'meta.MetaModuleCatalog' },
+    { kind: 'rpc', model: 'meta.MetaModuleOperation' },
+  ]);
   expect(getResourceDeclaration('meta.menu.module_board')).toBeUndefined();
   expect(getResourceDeclaration('meta.menu.module_list')).toBeUndefined();
   expect(getResourceDeclaration('meta.menu.module_history')).toBeUndefined();

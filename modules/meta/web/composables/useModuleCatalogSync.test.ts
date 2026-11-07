@@ -136,3 +136,32 @@ test('useModuleCatalogSync: immediate watch syncs a pre-settled empty catalog on
   await Promise.resolve();
   expect(syncCalls).toBe(1);
 });
+
+test('useModuleCatalogSync: empty auto-sync respects canRequestSync gate', async () => {
+  let syncCalls = 0;
+  const deniedStore: any = {
+    state: { result: { rows: [] }, loading: false },
+    RequestSync: async () => {
+      syncCalls += 1;
+      return { Id: `op-${syncCalls}` };
+    },
+  };
+  const denied = useModuleCatalogSync(deniedStore, msgs, { canRequestSync: () => false });
+  denied.watchEmptyCatalogAutoSync();
+  await nextTick();
+  await Promise.resolve();
+  expect(syncCalls).toBe(0);
+
+  const allowedStore: any = {
+    state: { result: { rows: [] }, loading: false },
+    RequestSync: async () => {
+      syncCalls += 1;
+      return { Id: `op-${syncCalls}` };
+    },
+  };
+  const allowed = useModuleCatalogSync(allowedStore, msgs, { canRequestSync: () => true });
+  allowed.watchEmptyCatalogAutoSync();
+  await nextTick();
+  await Promise.resolve();
+  expect(syncCalls).toBe(1);
+});

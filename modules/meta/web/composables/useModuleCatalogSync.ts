@@ -11,6 +11,11 @@ export type ModuleCatalogSyncMsgs = {
   failed: (message: string) => string;
 };
 
+export type ModuleCatalogSyncOptions = {
+  /** When false, empty-catalog auto-sync is skipped (matches the Sync button gate). */
+  canRequestSync?: () => boolean;
+};
+
 /**
  * Catalog sync helpers: Force/IfStale RequestSync plus one-shot empty-list auto sync.
  * Auto-sync only runs after the store has a concrete result payload (not during initial undefined).
@@ -18,6 +23,7 @@ export type ModuleCatalogSyncMsgs = {
 export function useModuleCatalogSync(
   store: WebModelStore<any>,
   msgs: ModuleCatalogSyncMsgs,
+  options: ModuleCatalogSyncOptions = {},
 ): {
   syncLoading: Ref<boolean>;
   requestSync: (opts?: { Force?: boolean; IfStale?: boolean }) => Promise<string>;
@@ -62,6 +68,7 @@ export function useModuleCatalogSync(
         // Consume the first settled result so a later empty search cannot force sync.
         autoSyncTriggered.value = true;
         if (rows.length > 0) return;
+        if (options.canRequestSync && !options.canRequestSync()) return;
         void requestSync({ Force: true, IfStale: false });
       },
       // Cover stores that already hold a settled empty result before the watcher mounts.

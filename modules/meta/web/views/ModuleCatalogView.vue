@@ -235,6 +235,7 @@ const {
   route,
   router,
   initialOperationId: () => String(props.initialOperationId || ''),
+  canRequestSync: () => hasAction(moduleSyncAction),
   msgs: {
     all: _t('All'),
     installed: _t('Installed'),

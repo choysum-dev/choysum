@@ -59,6 +59,7 @@ export const metaMenus: MenuItem[] = [
     icon: Boxes,
     path: '/meta/modules',
     defaultRoles: ['sys.admin'],
-    requires: [{ model: 'meta.MetaModuleCatalog' }, { model: 'meta.MetaModuleOperation' }],
+    // Catalog browse only; install/upgrade/sync stay gated by action requires.
+    requires: [{ model: 'meta.MetaModuleCatalog' }],
   }),
 ];

@@ -47,6 +47,8 @@ export function useModuleCatalogViewModel(opts: {
   route: RouteLocationNormalizedLoaded;
   router: Router;
   initialOperationId?: Ref<string> | (() => string);
+  /** When false, empty-catalog auto-sync is skipped (same gate as the Sync button). */
+  canRequestSync?: () => boolean;
   msgs: ModuleCatalogViewMsgs;
 }) {
   const filter = ref<ModuleCatalogFilter>('all');
@@ -55,6 +57,8 @@ export function useModuleCatalogViewModel(opts: {
   const drawerOperationId = ref('');
   const drawerModuleName = ref('');
   const drawerAction = ref<ModuleCatalogDrawerAction>('');
+  // True when the open drawer was bound from the operation deep-link (or boot prop).
+  const drawerBoundToRoute = ref(false);
 
   const filterOptions = computed(() => [
     { value: 'all' as const, label: opts.msgs.all },
@@ -69,11 +73,15 @@ export function useModuleCatalogViewModel(opts: {
     { value: 'table', label: opts.msgs.table },
   ]);
 
-  const { syncLoading, requestSync, watchEmptyCatalogAutoSync } = useModuleCatalogSync(opts.store, {
-    triggered: opts.msgs.syncTriggered,
-    triggeredEmpty: opts.msgs.syncTriggeredEmpty,
-    failed: opts.msgs.syncFailed,
-  });
+  const { syncLoading, requestSync, watchEmptyCatalogAutoSync } = useModuleCatalogSync(
+    opts.store,
+    {
+      triggered: opts.msgs.syncTriggered,
+      triggeredEmpty: opts.msgs.syncTriggeredEmpty,
+      failed: opts.msgs.syncFailed,
+    },
+    { canRequestSync: opts.canRequestSync },
+  );
   watchEmptyCatalogAutoSync();
 
   function onSync() {
@@ -83,7 +91,11 @@ export function useModuleCatalogViewModel(opts: {
   function onViewSelect(value: string) {
     viewMode.value = value === 'table' ? 'table' : 'cards';
     const nextQuery = { ...opts.route.query, view: viewMode.value };
-    void opts.router.replace({ query: nextQuery });
+    void opts.router.replace({
+      name: opts.route.name ?? undefined,
+      params: opts.route.params,
+      query: nextQuery,
+    });
   }
 
   watch(
@@ -158,14 +170,18 @@ export function useModuleCatalogViewModel(opts: {
     toShow(payload.row);
   }
 
-  function openDrawer(next: {
-    operationId?: string;
-    moduleName?: string;
-    action?: ModuleCatalogDrawerAction;
-  }) {
+  function openDrawer(
+    next: {
+      operationId?: string;
+      moduleName?: string;
+      action?: ModuleCatalogDrawerAction;
+    },
+    boundToRoute = false,
+  ) {
     drawerOperationId.value = String(next.operationId || '').trim();
     drawerModuleName.value = String(next.moduleName || '').trim();
     drawerAction.value = next.action || (drawerOperationId.value ? 'progress' : '');
+    drawerBoundToRoute.value = boundToRoute;
     drawerOpen.value = true;
   }
 
@@ -174,6 +190,7 @@ export function useModuleCatalogViewModel(opts: {
     drawerOperationId.value = '';
     drawerModuleName.value = '';
     drawerAction.value = '';
+    drawerBoundToRoute.value = false;
   }
 
   function onPrimaryAction(row: unknown) {
@@ -216,18 +233,18 @@ export function useModuleCatalogViewModel(opts: {
 
   function syncDrawerFromRoute() {
     if (!isOperationDeepLinkRoute(opts.route.name)) {
-      // Leaving the operation deep-link (or any non-deep-link route) clears the drawer shell.
-      if (drawerOpen.value) closeDrawer();
+      // Only clear a drawer that was opened from the deep-link; user-opened shells stay put.
+      if (drawerOpen.value && drawerBoundToRoute.value) closeDrawer();
       return;
     }
     const opId = String(opts.route.params.id || '').trim();
-    if (opId) openDrawer({ operationId: opId, action: 'progress' });
+    if (opId) openDrawer({ operationId: opId, action: 'progress' }, true);
     else closeDrawer();
   }
 
   function bootFromRoute() {
     const opId = resolveInitialOperationId();
-    if (opId) openDrawer({ operationId: opId, action: 'progress' });
+    if (opId) openDrawer({ operationId: opId, action: 'progress' }, true);
   }
 
   watch(

@@ -32,7 +32,8 @@ export const metaRoutes: RouteRecordRaw[] = [
       'meta.action.module_load_demo',
     ],
     defaultRoles: ['sys.admin'],
-    requires: [{ model: 'meta.MetaModuleCatalog' }, { model: 'meta.MetaModuleOperation' }],
+    // Browse/list catalog; Plan/Apply/RequestSync stay gated by action requires.
+    requires: [{ model: 'meta.MetaModuleCatalog' }],
     meta: { requiresAuth: true },
   }),
   // More specific path (operations/:id). Bare /meta/modules/operations still matches :name.
@@ -67,7 +68,8 @@ export const metaRoutes: RouteRecordRaw[] = [
       'meta.action.module_load_demo',
     ],
     defaultRoles: ['sys.admin'],
-    requires: [{ model: 'meta.MetaModuleCatalog' }, { model: 'meta.MetaModuleOperation' }],
+    // Show is catalog browse; mutation actions stay gated by action requires.
+    requires: [{ model: 'meta.MetaModuleCatalog' }],
     meta: { requiresAuth: true },
   }),
 

@@ -89,6 +89,8 @@ test('useModuleCatalogViewModel: filters cards and labels status / versions / ac
   api.onViewSelect('table');
   expect(api.viewMode.value).toBe('table');
   expect(replaced[0].query.view).toBe('table');
+  expect(replaced[0].name).toBe('MetaModuleCatalog');
+  expect(replaced[0].params).toEqual({});
   api.onViewSelect('cards');
   expect(api.viewMode.value).toBe('cards');
 
@@ -140,8 +142,10 @@ test('useModuleCatalogViewModel: boots and syncs drawer from operation deep link
 
   api.openDrawer({ moduleName: 'core', action: 'install' });
   expect(api.drawerOpen.value).toBe(true);
+  // User-opened drawers stay open across non-deep-link route syncs (e.g. view query).
   api.syncDrawerFromRoute();
-  expect(api.drawerOpen.value).toBe(false);
+  expect(api.drawerOpen.value).toBe(true);
+  api.closeDrawer();
 
   expect(api.resolveInitialOperationId()).toBe('');
   const withProp = useModuleCatalogViewModel({
