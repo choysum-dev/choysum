@@ -90,7 +90,7 @@ afterEach(() => {
 });
 
 test('meta.MetaModuleCatalog RequestSync reuses active sync operation', async () => {
-  OP_ROWS.push({ Id: 'op-sync-active', Action: 'sync', Status: 'queued' });
+  OP_ROWS.push({ Id: 'op-sync-active', Action: 'sync', Status: 'queued', CreatedAt: new Date() });
   const root: any = (globalThis as any).$choysum;
   const saved = root.moduleManagement;
   root.moduleManagement = {
