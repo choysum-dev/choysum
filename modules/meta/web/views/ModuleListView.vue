@@ -11,13 +11,12 @@ SPDX-License-Identifier: Apache-2.0
     :store="store"
     :searchView="ChoySearchView"
     :show-header="showHeader"
-    :action-ids="{ delete: moduleIndexActions.delete }"
     :has-action="hasAction"
     @row-click="onRowClick"
   >
     <!-- Domain secondary actions share the title ⋮ with Refresh / import / export. -->
     <template
-      v-if="showHeader && (canRoute('meta.route.module_history') || hasAction(moduleSyncIndexAction))"
+      v-if="showHeader && (canRoute('meta.route.module_history') || hasAction(moduleSyncAction))"
       #overflow-actions
     >
       <ChoyDropdownMenuItem
@@ -29,13 +28,13 @@ SPDX-License-Identifier: Apache-2.0
         {{ _t('Operation History') }}
       </ChoyDropdownMenuItem>
       <ChoyDropdownMenuItem
-        v-if="hasAction(moduleSyncIndexAction)"
+        v-if="hasAction(moduleSyncAction)"
         data-testid="module-overflow-sync"
         :disabled="syncLoading"
         @select="onSyncIndex"
       >
         <FolderSync class="size-4" :class="{ 'animate-spin': syncLoading }" aria-hidden="true" />
-        {{ _t('Sync Index') }}
+        {{ _t('Sync Modules') }}
       </ChoyDropdownMenuItem>
     </template>
 
@@ -85,9 +84,9 @@ import type MetaModuleCatalog from '@/meta/service/models/module_catalog';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { unwrapListRecord } from '@/web/web/composables/listRowEdit';
-import { defineAction, defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
+import { moduleSyncAction } from './module_actions';
 import {
   ChoyBadge,
   ChoyBooleanField,
@@ -107,7 +106,7 @@ import { moduleStatusBadgeVariant } from './module_kanban_chrome';
 
 defineOptions({ name: 'ModuleListView', inheritAttrs: false });
 
-const { _t, _lt } = createTranslate('meta', { scope: 'web/views/ModuleListView' });
+const { _t } = createTranslate('meta', { scope: 'web/views/ModuleListView' });
 
 const router = useRouter();
 const route = useRoute();
@@ -124,13 +123,6 @@ const props = withDefaults(
 
 const store = resolvePageStore(props.store, 'ModuleListView');
 const { showHeader } = props;
-const moduleSyncIndexAction = defineAction('meta.action.module_sync_index', {
-  title: _lt('Sync Module Index'),
-  requires: [{ model: 'meta.MetaModuleCatalog', method: 'RequestSync' }],
-});
-const moduleIndexActions = defineModelActions('meta.MetaModuleCatalog', {
-  entityTitle: _lt('Module Catalog'),
-});
 const { canRoute, hasAction } = usePermission();
 
 const isListRoute = computed(() => String(route.path || '').includes('/meta/modules/list'));

@@ -107,6 +107,10 @@ type moduleManagementConfig struct {
 	// Test-only loadDemo hooks (nil in production).
 	loadDemoPlanHook func(ops.PlanResult) ops.PlanResult
 	loadDemoRunHook  func(error) error
+	// Test-only apply/run seams (nil in production). Used by unit tests to
+	// reproduce former CHOYSUM_E2E_FORCE_* failure modes without product env reads.
+	applyHook func(error) error
+	runHook   func(error) error
 }
 
 // processCompilerExecutor is started once for production bridge wiring.
@@ -208,6 +212,22 @@ func WithModuleManagementHost(host *ops.Ops) ModuleManagementOption {
 func WithModuleManagementProcessHost() ModuleManagementOption {
 	return moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
 		cfg.processHost = true
+	})
+}
+
+// WithModuleManagementApplyHook injects a test-only post-Apply error transform.
+// Production callers must not set this; nil leaves Apply behavior unchanged.
+func WithModuleManagementApplyHook(hook func(error) error) ModuleManagementOption {
+	return moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+		cfg.applyHook = hook
+	})
+}
+
+// WithModuleManagementRunHook injects a test-only post-Run error transform.
+// Production callers must not set this; nil leaves Run behavior unchanged.
+func WithModuleManagementRunHook(hook func(error) error) ModuleManagementOption {
+	return moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+		cfg.runHook = hook
 	})
 }
 
@@ -671,6 +691,9 @@ func performModuleApply(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, 
 	defer func() { _ = started.Close() }()
 
 	err = started.host.Apply(started.execCtx, ops.ApplyRequest{Id: params.Id})
+	if cfg.applyHook != nil {
+		err = cfg.applyHook(err)
+	}
 	return marshalOpResult(ctx, err)
 }
 
@@ -689,6 +712,9 @@ func performModuleRun(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, sc
 	defer func() { _ = started.Close() }()
 
 	err = started.host.Run(started.execCtx, ops.RunRequest{Id: params.Id, WithDemo: params.WithDemo})
+	if cfg.runHook != nil {
+		err = cfg.runHook(err)
+	}
 	return marshalOpResult(ctx, err)
 }
 

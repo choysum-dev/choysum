@@ -38,7 +38,7 @@ SPDX-License-Identifier: Apache-2.0
 
       <!-- Domain secondary actions share the title ⋮ with import / export (List parity). -->
       <template
-        v-if="showHeader && (canRoute('meta.route.module_history') || hasAction(moduleSyncIndexAction))"
+        v-if="showHeader && (canRoute('meta.route.module_history') || hasAction(moduleSyncAction))"
         #overflow-actions
       >
         <ChoyDropdownMenuItem
@@ -50,13 +50,13 @@ SPDX-License-Identifier: Apache-2.0
           {{ _t('Operation History') }}
         </ChoyDropdownMenuItem>
         <ChoyDropdownMenuItem
-          v-if="hasAction(moduleSyncIndexAction)"
+          v-if="hasAction(moduleSyncAction)"
           data-testid="module-kanban-overflow-sync"
           :disabled="syncLoading"
           @select="onSyncIndex"
         >
           <FolderSync class="size-4" :class="{ 'animate-spin': syncLoading }" aria-hidden="true" />
-          {{ _t('Sync Index') }}
+          {{ _t('Sync Modules') }}
         </ChoyDropdownMenuItem>
       </template>
 
@@ -313,7 +313,12 @@ import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type MetaModuleCatalog from '@/meta/service/models/module_catalog';
 import type MetaModuleOperation from '@/meta/service/models/module_operation';
 import type { ClientModelProps } from '@/core/rpc/types';
-import { defineAction } from '@/core/web/resource';
+import {
+  moduleInstallAction,
+  moduleSyncAction,
+  moduleUninstallAction,
+  moduleUpgradeAction,
+} from './module_actions';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { restoreDialogFocus } from '@/auth/web/components/preferences/dialog_focus_restore';
 import { trapDialogTabKey } from '@/auth/web/components/preferences/dialog_focus_trap';
@@ -353,7 +358,7 @@ import {
 
 defineOptions({ name: 'ModuleKanbanView' });
 
-const { _t, _lt } = createTranslate('meta', { scope: 'web/views/ModuleKanbanView' });
+const { _t } = createTranslate('meta', { scope: 'web/views/ModuleKanbanView' });
 
 /** Transitional catalog row shape until W3 rewrites status/origin fields. */
 type CatalogRow = ClientModelProps<MetaModuleCatalog> & {
@@ -382,31 +387,6 @@ const dialogTitleId = useId();
 const dialogRef = ref<HTMLElement | null>(null);
 let dialogFocusRestore: HTMLElement | null = null;
 
-const moduleInstallAction = defineAction('meta.action.module_install', {
-  title: _lt('Install Module'),
-  requires: [
-    { model: 'meta.MetaModuleOperation', method: 'Plan' },
-    { model: 'meta.MetaModuleOperation', method: 'Apply' },
-  ],
-});
-const moduleUpgradeAction = defineAction('meta.action.module_upgrade', {
-  title: _lt('Upgrade Module'),
-  requires: [
-    { model: 'meta.MetaModuleOperation', method: 'Plan' },
-    { model: 'meta.MetaModuleOperation', method: 'Apply' },
-  ],
-});
-const moduleUninstallAction = defineAction('meta.action.module_uninstall', {
-  title: _lt('Uninstall Module'),
-  requires: [
-    { model: 'meta.MetaModuleOperation', method: 'Plan' },
-    { model: 'meta.MetaModuleOperation', method: 'Apply' },
-  ],
-});
-const moduleSyncIndexAction = defineAction('meta.action.module_sync_index', {
-  title: _lt('Sync Module Index'),
-  requires: [{ model: 'meta.MetaModuleCatalog', method: 'RequestSync' }],
-});
 const { canRoute, hasAction } = usePermission();
 
 type ModuleAction = 'install' | 'uninstall' | 'upgrade';

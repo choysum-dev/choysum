@@ -56,23 +56,27 @@ export const metaMenus: MenuItem[] = [
     title: _lt('Module Management'),
     sequence: 60,
     icon: Boxes,
+    defaultRoles: ['sys.admin'],
     children: [
       defineMenu('meta.menu.module_board', {
         title: _lt('Module Board'),
         path: '/meta/modules',
         sequence: 10,
+        defaultRoles: ['sys.admin'],
         requires: [{ model: 'meta.MetaModuleCatalog' }, { model: 'meta.MetaModuleOperation' }],
       }),
       defineMenu('meta.menu.module_list', {
         title: _lt('Module List'),
         path: '/meta/modules/list',
         sequence: 20,
+        defaultRoles: ['sys.admin'],
         requires: [{ model: 'meta.MetaModuleCatalog' }, { model: 'meta.MetaModule' }],
       }),
       defineMenu('meta.menu.module_history', {
         title: _lt('Operation History'),
         path: '/meta/modules/history',
         sequence: 30,
+        defaultRoles: ['sys.admin'],
         requires: [{ model: 'meta.MetaModuleOperation' }, { model: 'meta.MetaModule' }, { model: 'meta.MetaModuleCatalog' }],
       }),
 
