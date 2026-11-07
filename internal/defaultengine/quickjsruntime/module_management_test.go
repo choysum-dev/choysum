@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -519,6 +520,571 @@ func TestModuleManagementLoadDemoNotImplemented(t *testing.T) {
 	}
 	if code, _ := got["errorCode"].(string); code != "LOAD_DEMO_NOT_IMPLEMENTED" {
 		t.Fatalf("errorCode = %#v", got)
+	}
+}
+
+func TestModuleManagementInjectedHostPlanApplyRunStartsAtMostOnce(t *testing.T) {
+	db := newBridgeTestDB(t)
+	mod := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core"}
+	life := moduleManagementTestManager{install: func(context.Context, string) error { return nil }}
+	baseScope := &moduleIndexTestScope{
+		ctx:     context.Background(),
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:     &config.Config{ModulesPath: t.TempDir()},
+		session: &scope.Session{DB: db},
+	}
+	counting := &stubBridgeExecutor{}
+	if err := counting.Start(); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	host, err := ops.NewHost(ops.HostOptions{
+		Scope:     baseScope,
+		Executor:  counting,
+		Lifecycle: life,
+		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return &moduleIndexTestLocker{}
+		},
+		Events: bus.EnsureHost(baseScope),
+	})
+	if err != nil {
+		t.Fatalf("NewHost: %v", err)
+	}
+
+	engine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+		jsengine.StaticScopeProvider(baseScope),
+		WithModuleManagementHost(host),
+		moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+			cfg.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+				t.Fatal("injected host must not create a compiler executor")
+				return nil, errors.New("unexpected compiler create")
+			}
+		}),
+	))
+
+	planJSON := awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.plan({ moduleName: 'core', action: 'install' })`)
+	planID, _ := planJSON["id"].(string)
+	if planID == "" {
+		t.Fatalf("plan result = %#v", planJSON)
+	}
+	_ = awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.apply({ id: `+jsString(planID)+` })`)
+	_ = awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.run({ id: `+jsString(planID)+` })`)
+
+	if counting.started > 1 {
+		t.Fatalf("executor Start calls = %d, want ≤ 1", counting.started)
+	}
+}
+
+func TestModuleManagementSyncCatalogNeverStartsCompiler(t *testing.T) {
+	db := newBridgeTestDB(t)
+	baseScope := &moduleIndexTestScope{
+		ctx:     context.Background(),
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:     &config.Config{ModulesPath: t.TempDir()},
+		session: &scope.Session{DB: db},
+	}
+	counting := &stubBridgeExecutor{}
+	engine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+		jsengine.StaticScopeProvider(baseScope),
+		moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+			cfg.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+				return counting, nil
+			}
+			cfg.opsHostFactory = func(runtimeScope scope.Scope, _ jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory, ev bus.EventBus) *ops.Ops {
+				// Lifecycle/Resolver intentionally nil — sync must still skip compiler Start.
+				return &ops.Ops{
+					Scope:         runtimeScope,
+					LockerFactory: lockerFactory,
+					Events:        ev,
+					SyncLocalSnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+						return lifecycle.ModuleSourceSnapshotSyncStats{Total: 1, Success: 1}, nil
+					},
+					SyncRegistrySnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+						return lifecycle.ModuleSourceSnapshotSyncStats{}, nil
+					},
+				}
+			}
+		}),
+	))
+
+	got := awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.syncCatalog({ originType: 'local' })`)
+	if ok, _ := got["ok"].(bool); !ok {
+		t.Fatalf("syncCatalog = %#v", got)
+	}
+	if counting.started != 0 {
+		t.Fatalf("executor Start calls = %d, want 0", counting.started)
+	}
+}
+
+func TestAssembleModuleManagementHostStartsOnce(t *testing.T) {
+	baseScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	counting := &stubBridgeExecutor{}
+	host, stop, err := AssembleModuleManagementHost(
+		jsengine.StaticScopeProvider(baseScope),
+		moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+			cfg.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+				return counting, nil
+			}
+			cfg.moduleLifecycleFactory = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) lifecycle.Service {
+				return moduleManagementTestManager{}
+			}
+			cfg.lockerFactory = func(scope.Scope) statepkg.Locker { return &moduleIndexTestLocker{} }
+		}),
+	)
+	if err != nil {
+		t.Fatalf("AssembleModuleManagementHost: %v", err)
+	}
+	t.Cleanup(func() {
+		if stop != nil {
+			_ = stop()
+		}
+	})
+	if host == nil || host.Lifecycle == nil || host.Resolver == nil {
+		t.Fatal("expected assembled host with Lifecycle and Resolver")
+	}
+	if counting.started != 1 {
+		t.Fatalf("executor Start calls = %d, want 1", counting.started)
+	}
+}
+
+func TestEnsureProcessCompilerExecutorStartsOnce(t *testing.T) {
+	ResetProcessModuleManagementHostForTest()
+	t.Cleanup(ResetProcessModuleManagementHostForTest)
+
+	baseScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	counting := &stubBridgeExecutor{}
+	cfg := resolveModuleManagementConfig(moduleManagementOptionFunc(func(c *moduleManagementConfig) {
+		c.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+			return counting, nil
+		}
+	}))
+	provider := jsengine.StaticScopeProvider(baseScope)
+	for i := 0; i < 3; i++ {
+		exec, err := ensureProcessCompilerExecutor(context.Background(), provider, cfg)
+		if err != nil {
+			t.Fatalf("ensure[%d]: %v", i, err)
+		}
+		if exec == nil {
+			t.Fatalf("ensure[%d]: nil executor", i)
+		}
+	}
+	if counting.started != 1 {
+		t.Fatalf("executor Start calls = %d, want 1", counting.started)
+	}
+}
+
+func TestEnsureProcessCompilerExecutorConcurrentAndRetry(t *testing.T) {
+	ResetProcessModuleManagementHostForTest()
+	t.Cleanup(ResetProcessModuleManagementHostForTest)
+
+	baseScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	var (
+		mu       sync.Mutex
+		starts   int
+		attempts int
+	)
+	entered := make(chan struct{})
+	gate := make(chan struct{})
+	cfg := resolveModuleManagementConfig(moduleManagementOptionFunc(func(c *moduleManagementConfig) {
+		c.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+			mu.Lock()
+			attempts++
+			n := attempts
+			mu.Unlock()
+			if n == 1 {
+				close(entered)
+				<-gate
+				return nil, errors.New("transient boom")
+			}
+			exec := &stubBridgeExecutor{}
+			mu.Lock()
+			starts++
+			mu.Unlock()
+			return exec, nil
+		}
+	}))
+	provider := jsengine.StaticScopeProvider(baseScope)
+
+	errCh := make(chan error, 1)
+	go func() {
+		_, err := ensureProcessCompilerExecutor(context.Background(), provider, cfg)
+		errCh <- err
+	}()
+	<-entered
+
+	var wg sync.WaitGroup
+	for i := 0; i < 4; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, _ = ensureProcessCompilerExecutor(context.Background(), provider, cfg)
+		}()
+	}
+	// Waiters park on assembling; then release the failing first attempt.
+	time.Sleep(20 * time.Millisecond)
+	close(gate)
+	firstErr := <-errCh
+	if firstErr == nil || !strings.Contains(firstErr.Error(), "transient boom") {
+		t.Fatalf("first err = %v", firstErr)
+	}
+	wg.Wait()
+
+	exec, err := ensureProcessCompilerExecutor(context.Background(), provider, cfg)
+	if err != nil || exec == nil {
+		t.Fatalf("retry after transient: exec=%v err=%v", exec, err)
+	}
+	mu.Lock()
+	gotStarts := starts
+	mu.Unlock()
+	if gotStarts != 1 {
+		t.Fatalf("successful Start assemblies = %d, want 1", gotStarts)
+	}
+}
+
+func TestEnsureProcessCompilerExecutorCancelWhileWaiting(t *testing.T) {
+	ResetProcessModuleManagementHostForTest()
+	t.Cleanup(ResetProcessModuleManagementHostForTest)
+
+	baseScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	cfg := resolveModuleManagementConfig(moduleManagementOptionFunc(func(c *moduleManagementConfig) {
+		c.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+			close(entered)
+			<-release
+			return &stubBridgeExecutor{}, nil
+		}
+	}))
+	provider := jsengine.StaticScopeProvider(baseScope)
+
+	assemblerDone := make(chan struct{})
+	go func() {
+		defer close(assemblerDone)
+		_, _ = ensureProcessCompilerExecutor(context.Background(), provider, cfg)
+	}()
+	<-entered
+
+	ctx, cancel := context.WithCancel(context.Background())
+	errCh := make(chan error, 1)
+	go func() {
+		_, err := ensureProcessCompilerExecutor(ctx, provider, cfg)
+		errCh <- err
+	}()
+	time.Sleep(20 * time.Millisecond)
+	cancel()
+	err := <-errCh
+	if err == nil || !errors.Is(err, context.Canceled) {
+		t.Fatalf("wait cancel err = %v", err)
+	}
+	processCompilerMu.Lock()
+	leaked := len(processCompilerWaiters)
+	processCompilerMu.Unlock()
+	if leaked != 0 {
+		t.Fatalf("canceled waiter left %d entries in processCompilerWaiters", leaked)
+	}
+	close(release)
+	<-assemblerDone // prevent late store into processCompilerExecutor after Reset
+}
+
+func TestEnsureProcessCompilerExecutorStopDuringAssembly(t *testing.T) {
+	ResetProcessModuleManagementHostForTest()
+	t.Cleanup(ResetProcessModuleManagementHostForTest)
+
+	baseScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	cfg := resolveModuleManagementConfig(moduleManagementOptionFunc(func(c *moduleManagementConfig) {
+		c.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+			close(entered)
+			<-release
+			return &stubBridgeExecutor{}, nil
+		}
+	}))
+	provider := jsengine.StaticScopeProvider(baseScope)
+
+	errCh := make(chan error, 1)
+	go func() {
+		_, err := ensureProcessCompilerExecutor(context.Background(), provider, cfg)
+		errCh <- err
+	}()
+	<-entered
+
+	// Park a waiter; Stop must wake it promptly (not wait for the hung factory).
+	waiterDone := make(chan error, 1)
+	go func() {
+		_, err := ensureProcessCompilerExecutor(context.Background(), provider, cfg)
+		waiterDone <- err
+	}()
+	time.Sleep(20 * time.Millisecond)
+
+	if err := StopProcessModuleManagementHost(); err != nil {
+		t.Fatalf("stop during assembly: %v", err)
+	}
+	select {
+	case err := <-waiterDone:
+		if err == nil || !strings.Contains(err.Error(), "stopped") {
+			t.Fatalf("waiter after stop = %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("waiter blocked after Stop during assembly")
+	}
+	close(release)
+	err := <-errCh
+	if err == nil || !strings.Contains(err.Error(), "stopped during assembly") {
+		t.Fatalf("assemble after stop = %v", err)
+	}
+}
+
+func TestEnsureProcessCompilerExecutorNilContext(t *testing.T) {
+	ResetProcessModuleManagementHostForTest()
+	t.Cleanup(ResetProcessModuleManagementHostForTest)
+
+	baseScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	counting := &stubBridgeExecutor{}
+	cfg := resolveModuleManagementConfig(moduleManagementOptionFunc(func(c *moduleManagementConfig) {
+		c.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+			return counting, nil
+		}
+	}))
+	exec, err := ensureProcessCompilerExecutor(nil, jsengine.StaticScopeProvider(baseScope), cfg) //nolint:staticcheck // nil ctx is the coverage target
+	if err != nil || exec == nil {
+		t.Fatalf("nil ctx ensure: exec=%v err=%v", exec, err)
+	}
+	if counting.started != 1 {
+		t.Fatalf("Start calls = %d, want 1", counting.started)
+	}
+}
+
+func TestEnsureProcessCompilerExecutorStopThenFactoryErrorRecovers(t *testing.T) {
+	ResetProcessModuleManagementHostForTest()
+	t.Cleanup(ResetProcessModuleManagementHostForTest)
+
+	baseScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	cfgFail := resolveModuleManagementConfig(moduleManagementOptionFunc(func(c *moduleManagementConfig) {
+		c.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+			close(entered)
+			<-release
+			return nil, errors.New("factory boom after stop")
+		}
+	}))
+	provider := jsengine.StaticScopeProvider(baseScope)
+
+	errCh := make(chan error, 1)
+	go func() {
+		_, err := ensureProcessCompilerExecutor(context.Background(), provider, cfgFail)
+		errCh <- err
+	}()
+	<-entered
+	if err := StopProcessModuleManagementHost(); err != nil {
+		t.Fatalf("stop during assembly: %v", err)
+	}
+	close(release)
+	if err := <-errCh; err == nil || !strings.Contains(err.Error(), "factory boom after stop") {
+		t.Fatalf("assemble after stop+error = %v", err)
+	}
+
+	// stopRequested must not stick after the failed attempt, or reload cannot recover.
+	cfgOK := resolveModuleManagementConfig(moduleManagementOptionFunc(func(c *moduleManagementConfig) {
+		c.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+			return &stubBridgeExecutor{}, nil
+		}
+	}))
+	exec, err := ensureProcessCompilerExecutor(context.Background(), provider, cfgOK)
+	if err != nil || exec == nil {
+		t.Fatalf("ensure after stop+factory error: exec=%v err=%v", exec, err)
+	}
+}
+
+func TestEnsureProcessCompilerExecutorStopThenPanicRecovers(t *testing.T) {
+	ResetProcessModuleManagementHostForTest()
+	t.Cleanup(ResetProcessModuleManagementHostForTest)
+
+	baseScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	cfgPanic := resolveModuleManagementConfig(moduleManagementOptionFunc(func(c *moduleManagementConfig) {
+		c.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+			close(entered)
+			<-release
+			panic("factory panic after stop")
+		}
+	}))
+	provider := jsengine.StaticScopeProvider(baseScope)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		defer func() { _ = recover() }()
+		_, _ = ensureProcessCompilerExecutor(context.Background(), provider, cfgPanic)
+	}()
+	<-entered
+	if err := StopProcessModuleManagementHost(); err != nil {
+		t.Fatalf("stop during assembly: %v", err)
+	}
+	close(release)
+	<-done
+
+	cfgOK := resolveModuleManagementConfig(moduleManagementOptionFunc(func(c *moduleManagementConfig) {
+		c.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+			return &stubBridgeExecutor{}, nil
+		}
+	}))
+	exec, err := ensureProcessCompilerExecutor(context.Background(), provider, cfgOK)
+	if err != nil || exec == nil {
+		t.Fatalf("ensure after stop+panic: exec=%v err=%v", exec, err)
+	}
+}
+
+func TestEnsureProcessCompilerExecutorPanicReleasesWaiters(t *testing.T) {
+	ResetProcessModuleManagementHostForTest()
+	t.Cleanup(ResetProcessModuleManagementHostForTest)
+
+	baseScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	cfg := resolveModuleManagementConfig(moduleManagementOptionFunc(func(c *moduleManagementConfig) {
+		c.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+			panic("factory boom")
+		}
+	}))
+	provider := jsengine.StaticScopeProvider(baseScope)
+
+	func() {
+		defer func() { _ = recover() }()
+		_, _ = ensureProcessCompilerExecutor(context.Background(), provider, cfg)
+	}()
+
+	// After panic cleanup, a subsequent ensure with a healthy factory must proceed.
+	cfgOK := resolveModuleManagementConfig(moduleManagementOptionFunc(func(c *moduleManagementConfig) {
+		c.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+			return &stubBridgeExecutor{}, nil
+		}
+	}))
+	exec, err := ensureProcessCompilerExecutor(context.Background(), provider, cfgOK)
+	if err != nil || exec == nil {
+		t.Fatalf("after panic ensure: exec=%v err=%v", exec, err)
+	}
+}
+
+func TestModuleManagementProcessHostPlanApplyRunAndSync(t *testing.T) {
+	ResetProcessModuleManagementHostForTest()
+	t.Cleanup(ResetProcessModuleManagementHostForTest)
+
+	db := newBridgeTestDB(t)
+	mod := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core"}
+	var sawScopes []scope.Scope
+	life := moduleManagementTestManager{install: func(context.Context, string) error { return nil }}
+	baseScope := &moduleIndexTestScope{
+		ctx:     context.Background(),
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:     &config.Config{ModulesPath: t.TempDir()},
+		session: &scope.Session{DB: db},
+	}
+	counting := &stubBridgeExecutor{}
+	var factoryCalls int
+	events := &recordingBus{}
+	engine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+		jsengine.StaticScopeProvider(baseScope),
+		WithModuleManagementProcessHost(),
+		WithModuleManagementEvents(events),
+		moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+			cfg.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+				factoryCalls++
+				return counting, nil
+			}
+			cfg.moduleLifecycleFactory = func(runtimeScope scope.Scope, _ jsexecutor.JsExecutor, _ statepkg.LockerFactory) lifecycle.Service {
+				sawScopes = append(sawScopes, runtimeScope)
+				return life
+			}
+			cfg.moduleResolverFactory = func(runtimeScope scope.Scope, _ jsexecutor.JsExecutor, _ statepkg.LockerFactory) plan.Resolver {
+				sawScopes = append(sawScopes, runtimeScope)
+				return &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}}
+			}
+			cfg.lockerFactory = func(scope.Scope) statepkg.Locker { return &moduleIndexTestLocker{} }
+		}),
+	))
+
+	planJSON := awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.plan({ moduleName: 'core', action: 'install' })`)
+	planID, _ := planJSON["id"].(string)
+	if planID == "" {
+		t.Fatalf("plan = %#v", planJSON)
+	}
+	_ = awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.apply({ id: `+jsString(planID)+` })`)
+	_ = awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.run({ id: `+jsString(planID)+` })`)
+	if factoryCalls != 1 {
+		t.Fatalf("compiler factory calls = %d, want 1 (leftover process executor?)", factoryCalls)
+	}
+	if counting.started != 1 {
+		t.Fatalf("Start calls = %d, want 1", counting.started)
+	}
+	if len(sawScopes) < 2 {
+		t.Fatalf("expected per-call Lifecycle/Resolver scopes, got %d", len(sawScopes))
+	}
+
+	// syncCatalog with processHost must not create/start a compiler.
+	before := counting.started
+	syncEngine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+		jsengine.StaticScopeProvider(baseScope),
+		WithModuleManagementProcessHost(),
+		moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+			cfg.compilerExecutorFactory = func(scope.Scope) (jsexecutor.JsExecutor, error) {
+				t.Fatal("syncCatalog must not create compiler")
+				return nil, errors.New("unexpected")
+			}
+			cfg.opsHostFactory = func(runtimeScope scope.Scope, _ jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory, ev bus.EventBus) *ops.Ops {
+				return &ops.Ops{
+					Scope:         runtimeScope,
+					LockerFactory: lockerFactory,
+					Events:        ev,
+					SyncLocalSnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+						return lifecycle.ModuleSourceSnapshotSyncStats{Total: 1, Success: 1}, nil
+					},
+				}
+			}
+		}),
+	))
+	got := awaitModuleManagementJSON(t, syncEngine, `$choysum.moduleManagement.syncCatalog({ originType: 'local' })`)
+	if ok, _ := got["ok"].(bool); !ok {
+		t.Fatalf("syncCatalog = %#v", got)
+	}
+	if counting.started != before {
+		t.Fatalf("syncCatalog started compiler: %d → %d", before, counting.started)
 	}
 }
 
