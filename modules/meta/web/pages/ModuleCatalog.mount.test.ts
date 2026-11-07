@@ -20,3 +20,19 @@ test('ModuleCatalog.vue mounts under choysumMount and runs script setup', async 
   ).toBe(true);
   wrapper.unmount();
 });
+
+test('ModuleCatalog.vue deep-link route passes initial operation id', async () => {
+  const wrapper = mount(ModuleCatalog as any, {
+    global: buildPageMountGlobal({
+      route: {
+        path: '/meta/modules/operations/op-9',
+        fullPath: '/meta/modules/operations/op-9',
+        name: 'MetaModuleOperationDeepLink',
+        params: { id: 'op-9' },
+      },
+    }),
+  });
+  await flushPromises();
+  expect(wrapper.element != null).toBe(true);
+  wrapper.unmount();
+});

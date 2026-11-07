@@ -13,6 +13,7 @@ export type ModuleCatalogSyncMsgs = {
 
 /**
  * Catalog sync helpers: Force/IfStale RequestSync plus one-shot empty-list auto sync.
+ * Auto-sync only runs after the store has a concrete result payload (not during initial undefined).
  */
 export function useModuleCatalogSync(
   store: WebModelStore<any>,
@@ -49,7 +50,10 @@ export function useModuleCatalogSync(
       () => (store as any)?.state?.result,
       result => {
         if (autoSyncTriggered.value) return;
-        const rows = (result as any)?.rows as any[] | undefined;
+        // Ignore unset results (pre-fetch). Only react to a concrete empty payload.
+        if (result == null || typeof result !== 'object') return;
+        if ((store as any)?.state?.loading) return;
+        const rows = (result as any).rows as any[] | undefined;
         if (!Array.isArray(rows)) return;
         if (rows.length > 0) return;
         autoSyncTriggered.value = true;

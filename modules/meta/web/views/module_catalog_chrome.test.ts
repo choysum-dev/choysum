@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  captureDialogFocusTarget,
   catalogInstalledStatus,
   formatModuleCatalogDate,
   formatModuleOpSummary,
@@ -40,16 +41,57 @@ test('formatModuleCatalogDate: empty and valid timestamps', () => {
   expect(formatModuleCatalogDate(undefined)).toBe('');
   expect(formatModuleCatalogDate(null)).toBe('');
   expect(formatModuleCatalogDate(Number.NaN)).toBe('');
+  expect(formatModuleCatalogDate(Number.POSITIVE_INFINITY)).toBe('');
   expect(formatModuleCatalogDate('not-a-date')).toBe('not-a-date');
+  expect(formatModuleCatalogDate({ weird: true })).toBe('');
+  expect(formatModuleCatalogDate(Date.UTC(2026, 8, 28, 10, 5)).length).toBeGreaterThan(0);
+  expect(formatModuleCatalogDate(new Date(Date.UTC(2026, 8, 28, 10, 5))).length).toBeGreaterThan(0);
   expect(formatModuleCatalogDate('2026-09-28T10:05:00Z').length).toBeGreaterThan(0);
+  const boom = {
+    toString() {
+      throw new Error('nope');
+    },
+    valueOf() {
+      throw new Error('nope');
+    },
+  };
+  expect(formatModuleCatalogDate(boom as any)).toBe('');
 });
 
 test('formatModuleOpSummary: string / message / code / object / throw', () => {
   expect(formatModuleOpSummary(undefined)).toBe('');
   expect(formatModuleOpSummary('plain')).toBe('plain');
   expect(formatModuleOpSummary({ message: 'm' })).toBe('m');
+  expect(formatModuleOpSummary({ code: 12 })).toBe('12');
   expect(formatModuleOpSummary({ code: 'C1' })).toBe('C1');
   expect(formatModuleOpSummary({ other: 1 })).toContain('other');
+  const cyclic: any = { toJSON() { throw new Error('json'); } };
+  cyclic.self = cyclic;
+  expect(formatModuleOpSummary(cyclic)).toBeTruthy();
+  const unstringable: any = {
+    toJSON() {
+      throw new Error('json');
+    },
+    toString() {
+      throw new Error('str');
+    },
+    valueOf() {
+      throw new Error('val');
+    },
+  };
+  expect(formatModuleOpSummary(unstringable)).toBe('');
+});
+
+test('matchesModuleCatalogFilter: unknown filter falls through to true', () => {
+  expect(matchesModuleCatalogFilter({ Installed: true }, 'all')).toBe(true);
+  expect(matchesModuleCatalogFilter({}, 'not-a-filter' as any)).toBe(true);
+});
+
+test('captureDialogFocusTarget: returns focusable active element or null', () => {
+  expect(captureDialogFocusTarget({ activeElement: null } as any)).toBe(null);
+  expect(captureDialogFocusTarget({ activeElement: {} } as any)).toBe(null);
+  const el = { focus() {} } as unknown as HTMLElement;
+  expect(captureDialogFocusTarget({ activeElement: el } as any)).toBe(el);
 });
 
 test('matchesModuleCatalogFilter / resolveModuleCatalogPrimaryAction', () => {

@@ -14,6 +14,8 @@ export type ModuleShowPageDeps = {
 
 /**
  * Resolve `/meta/modules/:name` to a catalog row Id for the read-only Form.
+ * Uses a stable catalog store and a request sequence so stale Search results
+ * cannot overwrite a newer module name.
  */
 export function useModuleShowPage(deps: ModuleShowPageDeps): {
   catalogStore: WebModelStore<MetaModuleCatalog>;
@@ -27,15 +29,18 @@ export function useModuleShowPage(deps: ModuleShowPageDeps): {
     const raw = typeof deps.moduleName === 'function' ? deps.moduleName() : deps.moduleName.value;
     return String(raw || '').trim();
   });
+  // Stable store id — Search is keyed by ModuleName, not by this cache label.
   const catalogStore = createStore('meta.MetaModuleCatalog', {
-    storeId: `MetaModuleCatalog_Show_${moduleName.value || 'unknown'}`,
+    storeId: 'MetaModuleCatalog_Show',
     scopeManager: deps.scopeManager,
   }) as WebModelStore<MetaModuleCatalog>;
   const recordId = ref('');
   const loading = ref(false);
   const missing = ref(false);
+  let resolveSeq = 0;
 
   async function resolveRecord() {
+    const seq = ++resolveSeq;
     const name = moduleName.value;
     recordId.value = '';
     missing.value = false;
@@ -49,6 +54,7 @@ export function useModuleShowPage(deps: ModuleShowPageDeps): {
         limit: 1,
         fields: ['Id', 'ModuleName'],
       })) as Array<{ Id?: string }> | null;
+      if (seq !== resolveSeq) return;
       const id = String(rows?.[0]?.Id || '').trim();
       if (!id) {
         missing.value = true;
@@ -56,15 +62,20 @@ export function useModuleShowPage(deps: ModuleShowPageDeps): {
       }
       recordId.value = id;
     } catch {
+      if (seq !== resolveSeq) return;
       missing.value = true;
     } finally {
-      loading.value = false;
+      if (seq === resolveSeq) loading.value = false;
     }
   }
 
-  watch(moduleName, () => {
-    void resolveRecord();
-  }, { immediate: true });
+  watch(
+    moduleName,
+    () => {
+      void resolveRecord();
+    },
+    { immediate: true },
+  );
 
   return { catalogStore, recordId, loading, missing, moduleName };
 }

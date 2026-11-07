@@ -35,7 +35,7 @@ export const metaRoutes: RouteRecordRaw[] = [
     requires: [{ model: 'meta.MetaModuleCatalog' }, { model: 'meta.MetaModuleOperation' }],
     meta: { requiresAuth: true },
   }),
-  // Declared before :name so "operations" is not captured as a module name.
+  // More specific path (operations/:id). Bare /meta/modules/operations still matches :name.
   defineRoute('meta.route.module_operation', {
     sequence: 11,
     title: _lt('Module Operation'),
