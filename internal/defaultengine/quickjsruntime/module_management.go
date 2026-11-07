@@ -114,11 +114,12 @@ type moduleManagementConfig struct {
 // request against the caller's opScope so company/session binding stays correct.
 // Laziness avoids compiler-pool warmup recursing into host assembly.
 var (
-	processCompilerMu         sync.Mutex
-	processCompilerExecutor   jsexecutor.JsExecutor
-	processCompilerStop       func() error
-	processCompilerAssembling bool
-	processCompilerWaiters    []chan struct{}
+	processCompilerMu            sync.Mutex
+	processCompilerExecutor      jsexecutor.JsExecutor
+	processCompilerStop          func() error
+	processCompilerAssembling    bool
+	processCompilerStopRequested bool
+	processCompilerWaiters       []chan struct{}
 )
 
 // Overridable for tests that force Marshal failures.
@@ -214,7 +215,10 @@ func wakeProcessCompilerWaitersLocked() {
 	processCompilerWaiters = nil
 }
 
-func ensureProcessCompilerExecutor(scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig) (jsexecutor.JsExecutor, error) {
+func ensureProcessCompilerExecutor(ctx context.Context, scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig) (jsexecutor.JsExecutor, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	for {
 		processCompilerMu.Lock()
 		if processCompilerExecutor != nil {
@@ -226,7 +230,11 @@ func ensureProcessCompilerExecutor(scopeProvider jsengine.ScopeProvider, cfg mod
 			ch := make(chan struct{})
 			processCompilerWaiters = append(processCompilerWaiters, ch)
 			processCompilerMu.Unlock()
-			<-ch
+			select {
+			case <-ch:
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
 			continue
 		}
 		processCompilerAssembling = true
@@ -234,7 +242,20 @@ func ensureProcessCompilerExecutor(scopeProvider jsengine.ScopeProvider, cfg mod
 		break
 	}
 
+	finished := false
+	defer func() {
+		if finished {
+			return
+		}
+		// Panic during construction: release the assembling slot so waiters can retry.
+		processCompilerMu.Lock()
+		processCompilerAssembling = false
+		wakeProcessCompilerWaitersLocked()
+		processCompilerMu.Unlock()
+	}()
+
 	exec, stop, err := startProcessCompilerExecutor(scopeProvider, cfg)
+	finished = true
 
 	processCompilerMu.Lock()
 	processCompilerAssembling = false
@@ -243,6 +264,15 @@ func ensureProcessCompilerExecutor(scopeProvider jsengine.ScopeProvider, cfg mod
 		wakeProcessCompilerWaitersLocked()
 		processCompilerMu.Unlock()
 		return nil, err
+	}
+	if processCompilerStopRequested {
+		processCompilerStopRequested = false
+		wakeProcessCompilerWaitersLocked()
+		processCompilerMu.Unlock()
+		if stop != nil {
+			_ = stop()
+		}
+		return nil, status.Error(codes.Canceled, "module management compiler stopped during assembly")
 	}
 	if processCompilerExecutor != nil {
 		// Defensive: keep the first winner if one appeared.
@@ -282,8 +312,12 @@ func startProcessCompilerExecutor(scopeProvider jsengine.ScopeProvider, cfg modu
 
 // StopProcessModuleManagementHost stops the process-scoped compiler executor.
 // Safe to call when none is running. Intended for server shutdown / reload.
+// If assembly is in progress, the in-flight executor is discarded instead of stored.
 func StopProcessModuleManagementHost() error {
 	processCompilerMu.Lock()
+	if processCompilerAssembling {
+		processCompilerStopRequested = true
+	}
 	stop := processCompilerStop
 	processCompilerExecutor = nil
 	processCompilerStop = nil
@@ -297,6 +331,11 @@ func StopProcessModuleManagementHost() error {
 // ResetProcessModuleManagementHostForTest clears the process-scoped compiler (tests only).
 func ResetProcessModuleManagementHostForTest() {
 	_ = StopProcessModuleManagementHost()
+	processCompilerMu.Lock()
+	processCompilerStopRequested = false
+	processCompilerAssembling = false
+	wakeProcessCompilerWaitersLocked()
+	processCompilerMu.Unlock()
 }
 
 // Overridable for tests that force NewHost failures after the executor starts.
@@ -463,7 +502,7 @@ func startOpsHost(jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.Scope
 	}
 
 	if cfg.processHost && needLifecycle {
-		exec, err := ensureProcessCompilerExecutor(scopeProvider, cfg)
+		exec, err := ensureProcessCompilerExecutor(execCtx, scopeProvider, cfg)
 		if err != nil {
 			return startedOpsHost{}, err
 		}

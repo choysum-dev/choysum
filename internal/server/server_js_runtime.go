@@ -4,6 +4,7 @@
 package server
 
 import (
+	"github.com/choysum-dev/choysum/internal/defaultengine/quickjsruntime"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
@@ -27,6 +28,9 @@ func (s *GRPCWebServer) ensureJsExecutor(reload bool) error {
 }
 
 func (s *GRPCWebServer) stopJSExecutor(reload bool) error {
+	// Process-scoped moduleManagement compiler is independent of the runtime
+	// executor; always stop it so reload/shutdown does not leave a warm pool.
+	_ = quickjsruntime.StopProcessModuleManagementHost()
 	if reload || s.jsExecutor == nil {
 		return nil
 	}

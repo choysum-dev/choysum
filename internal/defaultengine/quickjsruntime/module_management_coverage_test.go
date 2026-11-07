@@ -866,7 +866,7 @@ func TestCoverage_AssembleAndProcessCompilerErrors(t *testing.T) {
 	if _, _, err := startProcessCompilerExecutor(func(context.Context) scope.Scope { return nil }, moduleManagementConfig{}); err == nil {
 		t.Fatal("expected nil scope process compiler error")
 	}
-	if _, err := ensureProcessCompilerExecutor(func(context.Context) scope.Scope { return nil }, moduleManagementConfig{}); err == nil {
+	if _, err := ensureProcessCompilerExecutor(context.Background(), func(context.Context) scope.Scope { return nil }, moduleManagementConfig{}); err == nil {
 		t.Fatal("expected ensure nil scope error")
 	}
 	if err := StopProcessModuleManagementHost(); err != nil {
@@ -947,7 +947,7 @@ func TestCoverage_AssembleAndProcessCompilerErrors(t *testing.T) {
 			return &stubBridgeExecutor{}, nil
 		}
 	}))
-	got, err := ensureProcessCompilerExecutor(jsengine.StaticScopeProvider(base), cfgRace)
+	got, err := ensureProcessCompilerExecutor(context.Background(), jsengine.StaticScopeProvider(base), cfgRace)
 	if err != nil {
 		t.Fatalf("race ensure: %v", err)
 	}
