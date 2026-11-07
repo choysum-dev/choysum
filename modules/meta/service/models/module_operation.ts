@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
-import { getUserId } from '@/core/service/api/context';
 import { createServiceByModel } from '@/core/service/rpc';
 import { resolveChoysum } from '@/core/service/runtime/choysum_runtime';
 import type JobModel from '@/task/service/models/job';
@@ -198,7 +197,7 @@ export default class MetaModuleOperation extends BaseModel {
   FinishedAt?: Date;
 
   static async Plan(req: PlanModuleOperationReq): Promise<PlanModuleOperationResp> {
-    BaseModel.ensureUserId();
+    const operatorUserId = BaseModel.ensureUserId();
     const action = String(req?.Action || '').trim().toLowerCase();
     if (action !== 'install' && action !== 'upgrade' && action !== 'uninstall') {
       throw new Error(_t('action must be install, upgrade, or uninstall', { scope: 'service/models/module_operation' }));
@@ -209,7 +208,6 @@ export default class MetaModuleOperation extends BaseModel {
     }
     const origin = String(req?.Origin || '').trim().toLowerCase();
     const bridge = getModuleManagementBridge();
-    const operatorUserId = String(getUserId() || '').trim();
     const result = (await bridge.plan({
       moduleName,
       action,
@@ -222,9 +220,8 @@ export default class MetaModuleOperation extends BaseModel {
 
   static async PlanDemo(_req: PlanDemoModuleOperationReq = {}): Promise<PlanModuleOperationResp> {
     void _req;
-    BaseModel.ensureUserId();
+    const operatorUserId = BaseModel.ensureUserId();
     const bridge = getModuleManagementBridge();
-    const operatorUserId = String(getUserId() || '').trim();
     const result = (await bridge.plan({
       action: 'load-demo',
       operatorUserId,

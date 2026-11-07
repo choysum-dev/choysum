@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
-import { getUserId } from '@/core/service/api/context';
 import { createServiceByModel } from '@/core/service/rpc';
 import { resolveChoysum } from '@/core/service/runtime/choysum_runtime';
 import type JobModel from '@/task/service/models/job';
@@ -151,11 +150,10 @@ export default class MetaModuleCatalog extends BaseModel {
 
     const userId = BaseModel.ensureUserId();
     const bridge = getModuleManagementBridge();
-    const operatorUserId = String(getUserId() || '').trim();
     const planResult = (await bridge.plan({
       action: 'sync',
       origin: 'local',
-      operatorUserId,
+      operatorUserId: userId,
     })) as { id?: string; ok?: boolean; errorMessage?: string };
     if (planResult && planResult.ok === false) {
       throw new Error(planResult.errorMessage || _t('sync plan failed', { scope: 'service/models/module_catalog' }));
