@@ -915,6 +915,11 @@ func TestCoverage_AssembleAndProcessCompilerErrors(t *testing.T) {
 	if err := StopProcessModuleManagementHost(); err != nil {
 		t.Fatalf("stop empty: %v", err)
 	}
+	SetProcessModuleManagementHostForTest(func() error { return errors.New("injected stop boom") })
+	if err := StopProcessModuleManagementHost(); err == nil || !strings.Contains(err.Error(), "injected stop boom") {
+		t.Fatalf("injected stop err = %v", err)
+	}
+	ResetProcessModuleManagementHostForTest()
 
 	// processHost ensure failure surfaces through startOpsHost / plan.
 	engine := newTestQuickjsEngine(t, WithModuleManagementProvider(
@@ -1020,6 +1025,33 @@ func TestCoverage_AssembleAndProcessCompilerErrors(t *testing.T) {
 	}
 	if startedProc.host == nil || startedProc.host.Resolver == nil {
 		t.Fatal("expected default ModuleManager resolver")
+	}
+	ResetProcessModuleManagementHostForTest()
+
+	// processHost with nil lockerFactory falls back to default lease wrapper.
+	seed2 := &stubBridgeExecutor{}
+	_ = seed2.Start()
+	processCompilerMu.Lock()
+	processCompilerExecutor = seed2
+	processCompilerStop = seed2.Stop
+	processCompilerMu.Unlock()
+	startedLocker, err := startOpsHost(newTestQuickjsEngine(t), jsengine.StaticScopeProvider(base), moduleManagementConfig{
+		processHost: true,
+		moduleLifecycleFactory: func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) lifecycle.Service {
+			return moduleManagementTestManager{}
+		},
+		moduleResolverFactory: func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) plan.Resolver {
+			return &mapResolver{}
+		},
+	}, true)
+	if err != nil {
+		t.Fatalf("process host nil locker: %v", err)
+	}
+	if startedLocker.host == nil || startedLocker.host.LockerFactory == nil {
+		t.Fatal("expected default LockerFactory on process host")
+	}
+	if got := startedLocker.host.LockerFactory(base); got == nil {
+		t.Fatal("default LockerFactory returned nil")
 	}
 	ResetProcessModuleManagementHostForTest()
 

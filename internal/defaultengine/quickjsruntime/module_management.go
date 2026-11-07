@@ -354,6 +354,15 @@ func ResetProcessModuleManagementHostForTest() {
 	processCompilerMu.Unlock()
 }
 
+// SetProcessModuleManagementHostForTest installs a process-scoped compiler stop hook (tests only).
+func SetProcessModuleManagementHostForTest(stop func() error) {
+	processCompilerMu.Lock()
+	defer processCompilerMu.Unlock()
+	processCompilerStop = stop
+	processCompilerAssembling = false
+	processCompilerStopRequested = false
+}
+
 // Overridable for tests that force NewHost failures after the executor starts.
 var assembleOpsHost = ops.NewHost
 
@@ -522,6 +531,12 @@ func startOpsHost(jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.Scope
 		if err != nil {
 			return startedOpsHost{}, err
 		}
+		// Match ops.NewHost: raw configs may omit lockerFactory (resolve fills it
+		// for bridge wiring; keep a local fallback for direct startOpsHost calls).
+		lockerFactory := cfg.lockerFactory
+		if lockerFactory == nil {
+			lockerFactory = defaultModuleManagementLockerFactory
+		}
 		resolverFactory := cfg.moduleResolverFactory
 		if resolverFactory == nil {
 			resolverFactory = func(runtimeScope scope.Scope, jsExecutor jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory) plan.Resolver {
@@ -530,9 +545,9 @@ func startOpsHost(jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.Scope
 		}
 		host := &ops.Ops{
 			Scope:         opScope,
-			Lifecycle:     moduleLifecycleOrDefault(cfg.moduleLifecycleFactory)(opScope, exec, cfg.lockerFactory),
-			Resolver:      resolverFactory(opScope, exec, cfg.lockerFactory),
-			LockerFactory: cfg.lockerFactory,
+			Lifecycle:     moduleLifecycleOrDefault(cfg.moduleLifecycleFactory)(opScope, exec, lockerFactory),
+			Resolver:      resolverFactory(opScope, exec, lockerFactory),
+			LockerFactory: lockerFactory,
 			Events:        events,
 		}
 		return startedOpsHost{host: host, execCtx: execCtx, executor: nil}, nil

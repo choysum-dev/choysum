@@ -31,8 +31,10 @@ func (s *GRPCWebServer) stopJSExecutor(reload bool) error {
 	// Process-scoped moduleManagement compiler is independent of the runtime
 	// executor; always stop it so reload/shutdown does not leave a warm pool.
 	if err := quickjsruntime.StopProcessModuleManagementHost(); err != nil {
-		if log := s.runtimeScope.Logger(); log != nil {
-			log.Warn("stop process module management host", "error", err)
+		if s.runtimeScope != nil {
+			if log := s.runtimeScope.Logger(); log != nil {
+				log.Warn("stop process module management host", "error", err)
+			}
 		}
 	}
 	if reload || s.jsExecutor == nil {
