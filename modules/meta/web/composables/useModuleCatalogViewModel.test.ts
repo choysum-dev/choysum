@@ -117,6 +117,12 @@ test('useModuleCatalogViewModel: filters cards and labels status / versions / ac
   api.closeDrawer();
   expect(api.drawerOpen.value).toBe(false);
   expect(api.drawerOperationId.value).toBe('');
+
+  expect(api.canUninstall({ Installed: true, Available: true })).toBe(true);
+  expect(api.canUninstall({ Installed: true, ActiveOperationId: 'op-1' })).toBe(false);
+  api.onUninstall({ ModuleName: 'core', Installed: true, Available: true });
+  expect(api.drawerAction.value).toBe('uninstall');
+  expect(api.drawerModuleName.value).toBe('core');
 });
 
 test('useModuleCatalogViewModel: boots and syncs drawer from operation deep link only', () => {

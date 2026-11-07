@@ -5,7 +5,11 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <ChoyPage :title="pageTitle" :store="catalogStore">
-    <ModuleCatalogView :store="catalogStore" :initial-operation-id="initialOperationId" />
+    <ModuleCatalogView
+      :store="catalogStore"
+      :operation-store="operationStore"
+      :initial-operation-id="initialOperationId"
+    />
   </ChoyPage>
 </template>
 
@@ -20,7 +24,7 @@ import { useModuleCatalogPage } from './module_catalog_page';
 defineOptions({ name: 'MetaModuleCatalogPage' });
 
 const route = useRoute();
-const { pageTitle, catalogStore } = useModuleCatalogPage({
+const { pageTitle, catalogStore, operationStore } = useModuleCatalogPage({
   scopeManager: useScopeManager().menuScopeManager,
 });
 
