@@ -112,6 +112,9 @@ type moduleManagementConfig struct {
 // processCompilerExecutor is started once for production bridge wiring.
 // Only the executor is process-scoped; Lifecycle/Resolver/Events are rebuilt per
 // request against the caller's opScope so company/session binding stays correct.
+// The compiler is created with scopeProvider(context.Background()) — the process
+// ScopeProvider (not a request company/session) — so the first caller's execCtx
+// does not pin the warm pool.
 // Laziness avoids compiler-pool warmup recursing into host assembly.
 var (
 	processCompilerMu            sync.Mutex
@@ -246,6 +249,14 @@ func ensureProcessCompilerExecutor(ctx context.Context, scopeProvider jsengine.S
 			select {
 			case <-ch:
 			case <-ctx.Done():
+				processCompilerMu.Lock()
+				for i, w := range processCompilerWaiters {
+					if w == ch {
+						processCompilerWaiters = append(processCompilerWaiters[:i], processCompilerWaiters[i+1:]...)
+						break
+					}
+				}
+				processCompilerMu.Unlock()
 				return nil, ctx.Err()
 			}
 			continue
@@ -304,6 +315,8 @@ func ensureProcessCompilerExecutor(ctx context.Context, scopeProvider jsengine.S
 }
 
 func startProcessCompilerExecutor(scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig) (jsexecutor.JsExecutor, func() error, error) {
+	// Background: process ScopeProvider yields the process runtime scope, not a
+	// request-bound company/session from the caller's execCtx.
 	runtimeScope := jsengine.ResolveScope(scopeProvider, context.Background())
 	if runtimeScope == nil {
 		return nil, nil, status.Error(codes.Internal, "module management scope is unavailable")

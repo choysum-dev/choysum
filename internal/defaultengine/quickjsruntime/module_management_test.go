@@ -792,6 +792,12 @@ func TestEnsureProcessCompilerExecutorCancelWhileWaiting(t *testing.T) {
 	if err == nil || !errors.Is(err, context.Canceled) {
 		t.Fatalf("wait cancel err = %v", err)
 	}
+	processCompilerMu.Lock()
+	leaked := len(processCompilerWaiters)
+	processCompilerMu.Unlock()
+	if leaked != 0 {
+		t.Fatalf("canceled waiter left %d entries in processCompilerWaiters", leaked)
+	}
 	close(release)
 	<-assemblerDone // prevent late store into processCompilerExecutor after Reset
 }

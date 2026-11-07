@@ -40,13 +40,20 @@ func TestStopJSExecutorLogsProcessHostStopError(t *testing.T) {
 		t.Fatalf("expected stop error in log, got %q", buf.String())
 	}
 
-	// Nil runtimeScope must not panic when the process host stop fails.
+	// Nil runtimeScope falls back to slog.Default and must not panic.
+	var defaultBuf bytes.Buffer
+	prevDefault := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&defaultBuf, &slog.HandlerOptions{Level: slog.LevelWarn})))
+	t.Cleanup(func() { slog.SetDefault(prevDefault) })
 	quickjsruntime.SetProcessModuleManagementHostForTest(func() error {
 		return errors.New("process stop boom again")
 	})
 	nilScopeSrv := &GRPCWebServer{runtimeScope: nil}
 	if err := nilScopeSrv.stopJSExecutor(true); err != nil {
 		t.Fatalf("nil-scope stop: %v", err)
+	}
+	if !strings.Contains(defaultBuf.String(), "process stop boom again") {
+		t.Fatalf("expected default-logger warn, got %q", defaultBuf.String())
 	}
 
 	// Non-reload path surfaces jsExecutor.Stop errors.
