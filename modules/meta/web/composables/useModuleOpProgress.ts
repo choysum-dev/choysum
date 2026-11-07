@@ -218,7 +218,7 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks, deps
   /**
    * Watches one operation until terminal status, timeout, or stop().
    * Remains pending for the whole tip/fallback lifecycle (callers such as
-   * ModuleKanbanView.submitOperation intentionally await that full session).
+   * catalog / drawer submitOperation intentionally await that full session).
    */
   async function watch(operationId: string): Promise<void> {
     const id = String(operationId || '').trim();

@@ -15,14 +15,15 @@ const { _lt } = createTranslate('meta', { scope: 'web/route/routes' });
 
 /**
  * Route table for the meta module management surfaces.
+ * Catalog + show + operation deep-link only; legacy board/list/history paths are gone.
  */
 export const metaRoutes: RouteRecordRaw[] = [
-  defineRoute('meta.route.module_board', {
+  defineRoute('meta.route.module_catalog', {
     sequence: 10,
-    title: _lt('Module Management'),
+    title: _lt('Modules'),
     path: 'meta/modules',
-    name: 'MetaModuleList',
-    component: () => import('../pages/ModuleList.vue'),
+    name: 'MetaModuleCatalog',
+    component: () => import('../pages/ModuleCatalog.vue'),
     actions: [
       'meta.action.module_install',
       'meta.action.module_upgrade',
@@ -34,38 +35,39 @@ export const metaRoutes: RouteRecordRaw[] = [
     requires: [{ model: 'meta.MetaModuleCatalog' }, { model: 'meta.MetaModuleOperation' }],
     meta: { requiresAuth: true },
   }),
-  defineRoute('meta.route.module_list', {
-    sequence: 20,
-    title: _lt('Module List'),
-    path: 'meta/modules/list',
-    name: 'MetaModuleListTable',
-    component: () => import('../pages/ModuleListTable.vue'),
-    actions: ['meta.action.module_sync'],
+  // Declared before :name so "operations" is not captured as a module name.
+  defineRoute('meta.route.module_operation', {
+    sequence: 11,
+    title: _lt('Module Operation'),
+    path: 'meta/modules/operations/:id',
+    name: 'MetaModuleOperationDeepLink',
+    component: () => import('../pages/ModuleCatalog.vue'),
+    actions: [
+      'meta.action.module_install',
+      'meta.action.module_upgrade',
+      'meta.action.module_uninstall',
+      'meta.action.module_sync',
+      'meta.action.module_load_demo',
+    ],
     defaultRoles: ['sys.admin'],
-    requires: [{ model: 'meta.MetaModuleCatalog' }, { model: 'meta.MetaModule' }],
+    requires: [{ model: 'meta.MetaModuleCatalog' }, { model: 'meta.MetaModuleOperation' }],
     meta: { requiresAuth: true },
   }),
-  defineRoute('meta.route.module_history', {
-    sequence: 30,
-    title: _lt('Operation History'),
-    path: 'meta/modules/history',
-    name: 'MetaModuleHistory',
-    component: () => import('../pages/ModuleHistory.vue'),
-    actions: [],
+  defineRoute('meta.route.module_show', {
+    sequence: 12,
+    title: _lt('Module'),
+    path: 'meta/modules/:name',
+    name: 'MetaModuleShow',
+    component: () => import('../pages/ModuleShow.vue'),
+    actions: [
+      'meta.action.module_install',
+      'meta.action.module_upgrade',
+      'meta.action.module_uninstall',
+      'meta.action.module_sync',
+      'meta.action.module_load_demo',
+    ],
     defaultRoles: ['sys.admin'],
-    requires: [{ model: 'meta.MetaModuleOperation' }, { model: 'meta.MetaModule' }, { model: 'meta.MetaModuleCatalog' }],
-    meta: { requiresAuth: true },
-  }),
-  defineRoute('meta.route.module_detail', {
-    sequence: 40,
-    title: _lt('Module Detail'),
-    path: 'meta/modules/:id',
-    name: 'MetaModuleDetail',
-    component: () => import('../pages/ModuleDetail.vue'),
-    // Catalog rows are not business documents — no edit / copy / delete.
-    actions: [],
-    defaultRoles: ['sys.admin'],
-    requires: [{ model: 'meta.MetaModuleCatalog' }, { model: 'meta.MetaModule' }],
+    requires: [{ model: 'meta.MetaModuleCatalog' }, { model: 'meta.MetaModuleOperation' }],
     meta: { requiresAuth: true },
   }),
 

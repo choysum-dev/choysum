@@ -2,14 +2,21 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { mount, flushPromises } from '@choysum/test-utils';
-import ModuleList from '../pages/ModuleList.vue';
+import ModuleCatalog from '../pages/ModuleCatalog.vue';
 import { buildPageMountGlobal } from '@choysum/page-mount';
 
-test('lt_mount: mounts real ModuleList.vue under choysumMount', async () => {
-  const wrapper = mount(ModuleList as any, {
-    global: buildPageMountGlobal({ route: { path: '/meta/modules', fullPath: '/meta/modules' } }),
+test('lt_mount: mounts real ModuleCatalog.vue under choysumMount', async () => {
+  const wrapper = mount(ModuleCatalog as any, {
+    global: buildPageMountGlobal({
+      route: { path: '/meta/modules', fullPath: '/meta/modules', name: 'MetaModuleCatalog', params: {} },
+    }),
   });
   await flushPromises();
-  expect(wrapper.find('[data-anchor="choy.page"]').exists() || wrapper.find('[data-testid="fe-stub-opage"]').exists() || wrapper.find('[data-testid="fe-stub-choy-page"]').exists() || wrapper.find('[data-testid="fe-stub-child-view"]').exists()).toBe(true);
+  expect(
+    wrapper.find('[data-anchor="choy.page"]').exists() ||
+      wrapper.find('[data-testid="fe-stub-opage"]').exists() ||
+      wrapper.find('[data-testid="fe-stub-choy-page"]').exists() ||
+      wrapper.find('[data-testid="fe-stub-child-view"]').exists(),
+  ).toBe(true);
   wrapper.unmount();
 });
