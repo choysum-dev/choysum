@@ -15,6 +15,7 @@ import (
 	"github.com/buke/quickjs-go"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	"github.com/choysum-dev/choysum/internal/module/ops"
+	"github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/bus"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
@@ -810,6 +811,48 @@ func TestCoverage_ParseJSONArgsEmptyStringify(t *testing.T) {
 	if params.Action != "" {
 		t.Fatalf("expected zero params, got %#v", params)
 	}
+}
+
+func TestCoverage_ModuleLifecycleOrDefault(t *testing.T) {
+	if got := moduleLifecycleOrDefault(nil); got == nil {
+		t.Fatal("expected default factory")
+	}
+	sentinel := moduleLifecycleFactory(func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) lifecycle.Service {
+		return moduleManagementTestManager{}
+	})
+	if moduleLifecycleOrDefault(sentinel) == nil {
+		t.Fatal("expected injected factory retained")
+	}
+
+	ResetProcessModuleManagementHostForTest()
+	t.Cleanup(ResetProcessModuleManagementHostForTest)
+	base := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	seed := &stubBridgeExecutor{}
+	_ = seed.Start()
+	processCompilerMu.Lock()
+	processCompilerExecutor = seed
+	processCompilerStop = seed.Stop
+	processCompilerMu.Unlock()
+
+	// Raw config with nil lifecycle factory must not panic on processHost path.
+	started, err := startOpsHost(newTestQuickjsEngine(t), jsengine.StaticScopeProvider(base), moduleManagementConfig{
+		processHost:   true,
+		lockerFactory: func(scope.Scope) statepkg.Locker { return &moduleIndexTestLocker{} },
+		moduleResolverFactory: func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) plan.Resolver {
+			return &mapResolver{}
+		}, // plan.Resolver via mapResolver
+	}, true)
+	if err != nil {
+		t.Fatalf("nil lifecycle processHost: %v", err)
+	}
+	if started.host == nil || started.host.Lifecycle == nil {
+		t.Fatal("expected default Lifecycle")
+	}
+	ResetProcessModuleManagementHostForTest()
 }
 
 func TestCoverage_AssembleAndProcessCompilerErrors(t *testing.T) {

@@ -215,6 +215,13 @@ func wakeProcessCompilerWaitersLocked() {
 	processCompilerWaiters = nil
 }
 
+func moduleLifecycleOrDefault(factory moduleLifecycleFactory) moduleLifecycleFactory {
+	if factory == nil {
+		return defaultModuleLifecycleFactory
+	}
+	return factory
+}
+
 func ensureProcessCompilerExecutor(ctx context.Context, scopeProvider jsengine.ScopeProvider, cfg moduleManagementConfig) (jsexecutor.JsExecutor, error) {
 	if ctx == nil {
 		ctx = context.Background()
@@ -378,7 +385,7 @@ func AssembleModuleManagementHost(scopeProvider jsengine.ScopeProvider, opts ...
 		Executor:      executor,
 		LockerFactory: cfg.lockerFactory,
 		Events:        events,
-		Lifecycle:     cfg.moduleLifecycleFactory(runtimeScope, executor, cfg.lockerFactory),
+		Lifecycle:     moduleLifecycleOrDefault(cfg.moduleLifecycleFactory)(runtimeScope, executor, cfg.lockerFactory),
 		Resolver:      lifecycle.NewModuleManager(runtimeScope, executor, lifecycle.WithLockerFactory(cfg.lockerFactory)),
 	})
 	if err != nil {
@@ -514,7 +521,7 @@ func startOpsHost(jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.Scope
 		}
 		host := &ops.Ops{
 			Scope:         opScope,
-			Lifecycle:     cfg.moduleLifecycleFactory(opScope, exec, cfg.lockerFactory),
+			Lifecycle:     moduleLifecycleOrDefault(cfg.moduleLifecycleFactory)(opScope, exec, cfg.lockerFactory),
 			Resolver:      resolverFactory(opScope, exec, cfg.lockerFactory),
 			LockerFactory: cfg.lockerFactory,
 			Events:        events,
