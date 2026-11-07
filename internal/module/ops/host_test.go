@@ -94,3 +94,27 @@ func TestNewHostKeepsInjectedLifecycle(t *testing.T) {
 		t.Fatal("expected injected Lifecycle")
 	}
 }
+
+func TestNewHostDefaultLockerFactory(t *testing.T) {
+	base := &opsTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	life := &stubLifecycle{}
+	host, err := NewHost(HostOptions{
+		Scope:     base,
+		Lifecycle: life,
+		Resolver:  &mapResolver{},
+		// LockerFactory nil → default lease.New wrapper
+	})
+	if err != nil {
+		t.Fatalf("NewHost: %v", err)
+	}
+	if host.LockerFactory == nil {
+		t.Fatal("expected default LockerFactory")
+	}
+	if got := host.LockerFactory(base); got == nil {
+		t.Fatal("default LockerFactory returned nil")
+	}
+}

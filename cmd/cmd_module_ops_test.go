@@ -91,8 +91,8 @@ func TestRunCLIModuleOpNilContextAndNilWithContext(t *testing.T) {
 	newCLICompilerExecutor = func(_ scope.Scope, _ ...jsexecutor.Option) (jsexecutor.JsExecutor, error) {
 		return &stubCLIExecutor{}, nil
 	}
-	newCLIOpsHost = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) cliOpsHost {
-		return &stubCLIOpsHost{plan: ops.PlanResult{Id: "op1"}}
+	newCLIOpsHost = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) (cliOpsHost, error) {
+		return &stubCLIOpsHost{plan: ops.PlanResult{Id: "op1"}}, nil
 	}
 	env := &nilWithContextScope{commandTestScope: commandTestScope{ctx: context.Background()}}
 	if err := runCLIModuleOp(nil, env, cliModuleOpOptions{Action: ops.ActionUninstall, ModuleName: "core"}); err != nil {
@@ -112,8 +112,8 @@ func TestRunCLIModuleOpPrepareInstallPaths(t *testing.T) {
 	newCLICompilerExecutor = func(_ scope.Scope, _ ...jsexecutor.Option) (jsexecutor.JsExecutor, error) {
 		return &stubCLIExecutor{}, nil
 	}
-	newCLIOpsHost = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) cliOpsHost {
-		return &stubCLIOpsHost{plan: ops.PlanResult{Id: "op1"}}
+	newCLIOpsHost = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) (cliOpsHost, error) {
+		return &stubCLIOpsHost{plan: ops.PlanResult{Id: "op1"}}, nil
 	}
 
 	prepareCLIInstall = func(context.Context, scope.Scope, string, ...lifecycle.Option) (*lifecycle.PrefetchedInstall, error) {
@@ -147,7 +147,7 @@ func TestRunCLIModuleOpPrepareInstallPaths(t *testing.T) {
 		}, nil
 	}
 	host := &stubCLIOpsHost{plan: ops.PlanResult{Id: "op1"}}
-	newCLIOpsHost = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) cliOpsHost { return host }
+	newCLIOpsHost = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) (cliOpsHost, error) { return host, nil }
 	err = runCLIModuleOp(context.Background(), &commandTestScope{ctx: context.Background()}, cliModuleOpOptions{
 		Action: ops.ActionInstall,
 		// empty LifecycleInput → prepare uses ModuleName
@@ -174,11 +174,11 @@ func TestRunCLIModuleOpPrefetchAndEmptyNameAfterPrefetch(t *testing.T) {
 	newCLICompilerExecutor = func(_ scope.Scope, _ ...jsexecutor.Option) (jsexecutor.JsExecutor, error) {
 		return &stubCLIExecutor{}, nil
 	}
-	newCLIOpsHost = func(s scope.Scope, _ jsexecutor.JsExecutor, lf statepkg.LockerFactory) cliOpsHost {
+	newCLIOpsHost = func(s scope.Scope, _ jsexecutor.JsExecutor, lf statepkg.LockerFactory) (cliOpsHost, error) {
 		if lf != nil {
 			_ = lf(s) // cover lockerFactory closure in runCLIModuleOp
 		}
-		return &stubCLIOpsHost{plan: ops.PlanResult{Id: "op1"}}
+		return &stubCLIOpsHost{plan: ops.PlanResult{Id: "op1"}}, nil
 	}
 
 	// lifecycleInput keeps early guard open; empty RootName leaves moduleName empty.
@@ -191,11 +191,11 @@ func TestRunCLIModuleOpPrefetchAndEmptyNameAfterPrefetch(t *testing.T) {
 	}
 
 	host := &stubCLIOpsHost{plan: ops.PlanResult{Id: "op1"}}
-	newCLIOpsHost = func(s scope.Scope, _ jsexecutor.JsExecutor, lf statepkg.LockerFactory) cliOpsHost {
+	newCLIOpsHost = func(s scope.Scope, _ jsexecutor.JsExecutor, lf statepkg.LockerFactory) (cliOpsHost, error) {
 		if lf != nil {
 			_ = lf(s)
 		}
-		return host
+		return host, nil
 	}
 	err = runCLIModuleOp(context.Background(), &commandTestScope{ctx: context.Background()}, cliModuleOpOptions{
 		Action:         ops.ActionInstall,
@@ -216,11 +216,15 @@ func TestRunCLIModuleOpPrefetchAndEmptyNameAfterPrefetch(t *testing.T) {
 
 func TestDefaultNewCLIOpsHost(t *testing.T) {
 	env := &commandTestScope{ctx: context.Background()}
-	host := defaultNewCLIOpsHost(env, &stubCLIExecutor{}, func(scope.Scope) statepkg.Locker {
+	host, err := defaultNewCLIOpsHost(env, &stubCLIExecutor{}, func(scope.Scope) statepkg.Locker {
 		return lease.New(env)
 	})
-	if host == nil {
-		t.Fatal("expected ops host")
+	if err != nil || host == nil {
+		t.Fatalf("expected ops host, err=%v", err)
+	}
+	_, err = defaultNewCLIOpsHost(nil, &stubCLIExecutor{}, nil)
+	if err == nil {
+		t.Fatal("expected error for nil scope")
 	}
 }
 
@@ -240,8 +244,8 @@ func TestRunCLIModuleOpPlanBlockersAndApplyRunErrors(t *testing.T) {
 		Id:       "op1",
 		Blockers: []ops.PlanIssue{{Code: "X", Message: "blocked"}},
 	}}
-	newCLIOpsHost = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) cliOpsHost {
-		return blockHost
+	newCLIOpsHost = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) (cliOpsHost, error) {
+		return blockHost, nil
 	}
 	err := runCLIModuleOp(context.Background(), &commandTestScope{ctx: context.Background()}, cliModuleOpOptions{
 		Action:     ops.ActionUninstall,
@@ -256,8 +260,8 @@ func TestRunCLIModuleOpPlanBlockersAndApplyRunErrors(t *testing.T) {
 	}
 
 	applyHost := &stubCLIOpsHost{plan: ops.PlanResult{Id: "op1"}, applyErr: errors.New("apply boom")}
-	newCLIOpsHost = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) cliOpsHost {
-		return applyHost
+	newCLIOpsHost = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) (cliOpsHost, error) {
+		return applyHost, nil
 	}
 	err = runCLIModuleOp(context.Background(), &commandTestScope{ctx: context.Background()}, cliModuleOpOptions{
 		Action:     ops.ActionUninstall,
@@ -270,8 +274,8 @@ func TestRunCLIModuleOpPlanBlockersAndApplyRunErrors(t *testing.T) {
 		t.Fatalf("abandon apply = %#v", applyHost)
 	}
 
-	newCLIOpsHost = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) cliOpsHost {
-		return &stubCLIOpsHost{planErr: errors.New("plan boom")}
+	newCLIOpsHost = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) (cliOpsHost, error) {
+		return &stubCLIOpsHost{planErr: errors.New("plan boom")}, nil
 	}
 	err = runCLIModuleOp(context.Background(), &commandTestScope{ctx: context.Background()}, cliModuleOpOptions{
 		Action:     ops.ActionUninstall,
@@ -281,8 +285,8 @@ func TestRunCLIModuleOpPlanBlockersAndApplyRunErrors(t *testing.T) {
 		t.Fatalf("plan err = %v", err)
 	}
 
-	newCLIOpsHost = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) cliOpsHost {
-		return &stubCLIOpsHost{plan: ops.PlanResult{Id: "op1"}, runErr: errors.New("run boom")}
+	newCLIOpsHost = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) (cliOpsHost, error) {
+		return &stubCLIOpsHost{plan: ops.PlanResult{Id: "op1"}, runErr: errors.New("run boom")}, nil
 	}
 	err = runCLIModuleOp(context.Background(), &commandTestScope{ctx: context.Background()}, cliModuleOpOptions{
 		Action:     ops.ActionUninstall,
@@ -304,13 +308,35 @@ func TestRunCLIModuleOpSyncAllowsEmptyModuleName(t *testing.T) {
 	newCLICompilerExecutor = func(_ scope.Scope, _ ...jsexecutor.Option) (jsexecutor.JsExecutor, error) {
 		return &stubCLIExecutor{}, nil
 	}
-	newCLIOpsHost = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) cliOpsHost {
-		return &stubCLIOpsHost{plan: ops.PlanResult{Id: "sync1"}}
+	newCLIOpsHost = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) (cliOpsHost, error) {
+		return &stubCLIOpsHost{plan: ops.PlanResult{Id: "sync1"}}, nil
 	}
 	if err := runCLIModuleOp(context.Background(), &commandTestScope{ctx: context.Background()}, cliModuleOpOptions{
 		Action: ops.ActionSync,
 	}); err != nil {
 		t.Fatalf("sync: %v", err)
+	}
+}
+
+func TestRunCLIModuleOpHostCreateError(t *testing.T) {
+	prevExec := newCLICompilerExecutor
+	prevHost := newCLIOpsHost
+	t.Cleanup(func() {
+		newCLICompilerExecutor = prevExec
+		newCLIOpsHost = prevHost
+	})
+	newCLICompilerExecutor = func(_ scope.Scope, _ ...jsexecutor.Option) (jsexecutor.JsExecutor, error) {
+		return &stubCLIExecutor{}, nil
+	}
+	newCLIOpsHost = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) (cliOpsHost, error) {
+		return nil, errors.New("host boom")
+	}
+	err := runCLIModuleOp(context.Background(), &commandTestScope{ctx: context.Background()}, cliModuleOpOptions{
+		Action:     ops.ActionUninstall,
+		ModuleName: "core",
+	})
+	if err == nil || !strings.Contains(err.Error(), "host boom") {
+		t.Fatalf("host create err = %v", err)
 	}
 }
 
@@ -331,19 +357,19 @@ func (e *stubCLIExecutor) Stop() error {
 func (e *stubCLIExecutor) Execute(context.Context, *jsengine.JsRequest) (*jsengine.JsResponse, error) {
 	return &jsengine.JsResponse{}, nil
 }
-func (e *stubCLIExecutor) GetJsScripts() []*jsengine.JsScript { return nil }
-func (e *stubCLIExecutor) SetJsScripts([]*jsengine.JsScript)  {}
-func (e *stubCLIExecutor) Reload(...*jsengine.JsScript) error { return nil }
+func (e *stubCLIExecutor) GetJsScripts() []*jsengine.JsScript    { return nil }
+func (e *stubCLIExecutor) SetJsScripts([]*jsengine.JsScript)     {}
+func (e *stubCLIExecutor) Reload(...*jsengine.JsScript) error    { return nil }
 func (e *stubCLIExecutor) AppendJsScripts(...*jsengine.JsScript) {}
 
 type stubCLIOpsHost struct {
-	plan           ops.PlanResult
-	planErr        error
-	applyErr       error
-	runErr         error
-	abandonErr     error
-	lastPlan       ops.PlanRequest
-	abandonedID    string
+	plan            ops.PlanResult
+	planErr         error
+	applyErr        error
+	runErr          error
+	abandonErr      error
+	lastPlan        ops.PlanRequest
+	abandonedID     string
 	abandonedReason string
 }
 

@@ -49,19 +49,13 @@ var (
 	newCLIOpsHost          = defaultNewCLIOpsHost
 )
 
-func defaultNewCLIOpsHost(opScope scope.Scope, exec jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory) cliOpsHost {
-	host, err := ops.NewHost(ops.HostOptions{
+func defaultNewCLIOpsHost(opScope scope.Scope, exec jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory) (cliOpsHost, error) {
+	return ops.NewHost(ops.HostOptions{
 		Scope:         opScope,
 		Executor:      exec,
 		LockerFactory: lockerFactory,
 		Events:        bus.EnsureHost(opScope),
 	})
-	if err != nil {
-		// Scope/executor are required by callers; surface as a panic-free stub host
-		// so Plan/Apply/Run return clear ops errors instead of nil dereference.
-		return &ops.Ops{Scope: opScope, LockerFactory: lockerFactory, Events: bus.EnsureHost(opScope)}
-	}
-	return host
 }
 
 // runCLIModuleOp assembles an ops host and runs Plan → Apply → Run synchronously.
@@ -144,7 +138,10 @@ func runCLIModuleOp(ctx context.Context, env scope.Scope, opts cliModuleOpOption
 	lockerFactory := statepkg.LockerFactory(func(runtimeScope scope.Scope) statepkg.Locker {
 		return lease.New(runtimeScope)
 	})
-	host := newCLIOpsHost(opScope, compilerExecutor, lockerFactory)
+	host, err := newCLIOpsHost(opScope, compilerExecutor, lockerFactory)
+	if err != nil {
+		return xfmt.Errorf("Error creating ops host: %w", err)
+	}
 
 	planRes, err := host.Plan(runCtx, ops.PlanRequest{
 		ModuleName:      moduleName,
