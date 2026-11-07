@@ -134,17 +134,20 @@ export default class MetaModuleCatalog extends BaseModel {
       return { Id: existingId };
     }
 
-    BaseModel.ensureUserId();
+    const userId = BaseModel.ensureUserId();
     const bridge = getModuleManagementBridge();
     const operatorUserId = String(getUserId() || '').trim();
     const planResult = (await bridge.plan({
       action: 'sync',
       origin: 'local',
       operatorUserId,
-    })) as { id?: string };
+    })) as { id?: string; ok?: boolean; errorMessage?: string };
+    if (planResult && planResult.ok === false) {
+      throw new Error(planResult.errorMessage || _t('sync plan failed', { scope: 'service/models/module_catalog' }));
+    }
     const id = String(planResult?.id || '').trim();
     if (!id) {
-      throw new Error(_t('sync plan returned empty id', { scope: 'service/models/module_catalog' }));
+      throw new Error(planResult?.errorMessage || _t('sync plan returned empty id', { scope: 'service/models/module_catalog' }));
     }
 
     const applyResult = (await bridge.apply({ id })) as { ok?: boolean; errorMessage?: string } | null | undefined;
@@ -152,7 +155,6 @@ export default class MetaModuleCatalog extends BaseModel {
       throw new Error(applyResult.errorMessage || _t('sync apply failed', { scope: 'service/models/module_catalog' }));
     }
 
-    const userId = BaseModel.ensureUserId();
     const job = await Job.EnqueueJob({
       TargetApp: 'meta',
       FullMethod: 'meta.MetaModuleOperation/Execute',

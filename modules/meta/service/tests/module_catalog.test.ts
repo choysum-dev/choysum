@@ -142,6 +142,25 @@ test('meta.MetaModuleCatalog RequestSync plans apply and enqueues Execute', asyn
   }
 });
 
+test('meta.MetaModuleCatalog RequestSync rejects plan ok:false', async () => {
+  const root: any = (globalThis as any).$choysum;
+  const saved = root.moduleManagement;
+  root.moduleManagement = {
+    plan: async () => ({ ok: false, errorMessage: 'sync plan lease conflict' }),
+  };
+  try {
+    let err: unknown;
+    try {
+      await MetaModuleCatalog.RequestSync({ Force: true });
+    } catch (e) {
+      err = e;
+    }
+    expect(String((err as Error)?.message || err)).toContain('sync plan lease conflict');
+  } finally {
+    root.moduleManagement = saved;
+  }
+});
+
 test('meta.MetaModuleCatalog RequestSync IfStale skips when catalog is fresh', async () => {
   (MetaModuleCatalog as any).Search = async () => [{ LastSyncAt: new Date() }];
   const root: any = (globalThis as any).$choysum;

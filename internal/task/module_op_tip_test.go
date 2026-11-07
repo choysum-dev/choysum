@@ -194,6 +194,9 @@ func TestModuleOpOperationIDPayloadShapes(t *testing.T) {
 	if got := moduleOpOperationID(&Job{PayloadJson: datatypes.JSON([]byte(`{"Id":"op-top"}`))}); got != "op-top" {
 		t.Fatalf("top-level Id = %q", got)
 	}
+	if got := moduleOpOperationID(&Job{PayloadJson: datatypes.JSON([]byte(`{"id":"op-top-lower"}`))}); got != "op-top-lower" {
+		t.Fatalf("top-level id = %q", got)
+	}
 	if got := moduleOpOperationID(&Job{PayloadJson: datatypes.JSON([]byte(`{"req":{"Id":123},"Id":"op-top2"}`))}); got != "op-top2" {
 		t.Fatalf("non-string req.Id falls back to top-level = %q", got)
 	}

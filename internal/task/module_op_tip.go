@@ -71,7 +71,7 @@ func moduleOpOperationID(job *Job) string {
 			}
 		}
 	}
-	return moduleOpPayloadString(payload["Id"])
+	return moduleOpIDFromReqMap(payload)
 }
 
 // publishModuleOpChanged emits a best-effort tip after Meta module-op status
