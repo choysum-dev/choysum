@@ -15,6 +15,7 @@ import (
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	pkgmeta "github.com/choysum-dev/choysum/pkg/meta"
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
@@ -192,12 +193,36 @@ func (o *Ops) MaterializeCatalog(ctx context.Context, moduleNames []string) erro
 	fillCatalogDependents(rows)
 	if err := sess.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "module_name"}},
-		DoUpdates: clause.AssignmentColumns([]string{
-			"summary", "description", "category", "application", "author", "license",
-			"local_version", "registry_version", "installed", "installed_version",
-			"update_available", "registry_newer_than_local", "available", "unavailable_reason",
-			"local_path", "depends_json", "dependents_json", "has_demo", "demo_loaded",
-			"last_sync_at", "updated_at",
+		DoUpdates: clause.Assignments(map[string]interface{}{
+			"summary":                   gorm.Expr("excluded.summary"),
+			"description":               gorm.Expr("excluded.description"),
+			"category":                  gorm.Expr("excluded.category"),
+			"application":               gorm.Expr("excluded.application"),
+			"author":                    gorm.Expr("excluded.author"),
+			"license":                   gorm.Expr("excluded.license"),
+			"local_version":             gorm.Expr("excluded.local_version"),
+			"registry_version":          gorm.Expr("excluded.registry_version"),
+			"installed":                 gorm.Expr("excluded.installed"),
+			"installed_version":         gorm.Expr("excluded.installed_version"),
+			"update_available":          gorm.Expr("excluded.update_available"),
+			"registry_newer_than_local": gorm.Expr("excluded.registry_newer_than_local"),
+			"available":                 gorm.Expr("excluded.available"),
+			"unavailable_reason":        gorm.Expr("excluded.unavailable_reason"),
+			"local_path":                gorm.Expr("excluded.local_path"),
+			"depends_json":              gorm.Expr("excluded.depends_json"),
+			"dependents_json":           gorm.Expr("excluded.dependents_json"),
+			"has_demo":                  gorm.Expr("excluded.has_demo"),
+			// Preserve a concurrent markDemoLoaded(true) against a stale false upsert,
+			// while still allowing intentional clears (no demo / uninstall / version change).
+			"demo_loaded": gorm.Expr(`CASE
+				WHEN excluded.has_demo = false THEN false
+				WHEN excluded.installed = false THEN false
+				WHEN excluded.demo_loaded = false AND COALESCE(meta_module_catalog.installed_version, '') != COALESCE(excluded.installed_version, '') THEN false
+				WHEN meta_module_catalog.demo_loaded = true THEN true
+				ELSE excluded.demo_loaded
+			END`),
+			"last_sync_at": gorm.Expr("excluded.last_sync_at"),
+			"updated_at":   gorm.Expr("excluded.updated_at"),
 		}),
 	}).CreateInBatches(&rows, 200).Error; err != nil {
 		return err
@@ -279,6 +304,9 @@ func materializeOne(name string, a *catalogAggregate, now time.Time, prior catal
 		row.LastSyncAt = &now
 	}
 	switch {
+	case !row.Installed:
+		// Uninstall (or never installed): demo rows are gone; clear the CTA gate.
+		row.DemoLoaded = false
 	case !row.HasDemo:
 		row.DemoLoaded = false
 	case prior.DemoLoaded && prior.InstalledVersion != "" && installedV != "" &&
@@ -320,11 +348,7 @@ func fillCatalogDependents(rows []modmeta.ModuleCatalog) {
 			rows[i].DependentsJson = datatypes.JSON("[]")
 			continue
 		}
-		b, err := json.Marshal(deps)
-		if err != nil {
-			rows[i].DependentsJson = datatypes.JSON("[]")
-			continue
-		}
+		b, _ := json.Marshal(deps) // []string always marshals
 		rows[i].DependentsJson = datatypes.JSON(b)
 	}
 }
@@ -345,15 +369,10 @@ func (o *Ops) refreshCatalogDependents(ctx context.Context) error {
 		return nil
 	}
 	fillCatalogDependents(rows)
-	for _, row := range rows {
-		if err := sess.WithContext(ctx).
-			Model(&modmeta.ModuleCatalog{}).
-			Where("module_name = ?", row.ModuleName).
-			Update("dependents_json", row.DependentsJson).Error; err != nil {
-			return err
-		}
-	}
-	return nil
+	return sess.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "module_name"}},
+		DoUpdates: clause.AssignmentColumns([]string{"dependents_json"}),
+	}).CreateInBatches(&rows, 200).Error
 }
 
 type manifestLite struct {

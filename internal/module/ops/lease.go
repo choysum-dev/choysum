@@ -16,14 +16,15 @@ import (
 	"github.com/rs/xid"
 )
 
-const (
-	moduleManagementLeaseResource = "module_management"
-	moduleManagementLeaseTTL      = 60 * time.Second
-)
+const moduleManagementLeaseResource = "module_management"
+
+// Overridable in tests so renew/cancel paths can run without a 60s wait.
+var moduleManagementLeaseTTL = 60 * time.Second
 
 // withModuleManagementLease serializes mutating ops against lifecycle install/upgrade/uninstall
 // using the same lease resource ModuleManager holds.
-func (o *Ops) withModuleManagementLease(ctx context.Context, fn func() error) error {
+// fn receives a cancelable context that is cancelled if the lease is lost on Renew.
+func (o *Ops) withModuleManagementLease(ctx context.Context, fn func(context.Context) error) error {
 	if o == nil {
 		return errors.New("ops: nil host")
 	}
@@ -31,14 +32,17 @@ func (o *Ops) withModuleManagementLease(ctx context.Context, fn func() error) er
 		return nil
 	}
 	if o.LockerFactory == nil || o.Scope == nil {
-		return fn()
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		return fn(ctx)
 	}
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	locker := o.LockerFactory(o.Scope)
 	if locker == nil {
-		return fn()
+		return fn(ctx)
 	}
 	ownerID := xid.New().String()
 	ttl := moduleManagementLeaseTTL
@@ -51,8 +55,11 @@ func (o *Ops) withModuleManagementLease(ctx context.Context, fn func() error) er
 		return err
 	}
 
-	heartbeatCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	opCtx, cancelOp := context.WithCancel(ctx)
+	defer cancelOp()
+
+	heartbeatCtx, cancelHeartbeat := context.WithCancel(ctx)
+	defer cancelHeartbeat()
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -67,16 +74,20 @@ func (o *Ops) withModuleManagementLease(ctx context.Context, fn func() error) er
 					if lg := scopeLogger(o.Scope); lg != nil {
 						lg.Warn("ops module_management lease renew failed", "error", err)
 					}
+					if errors.Is(err, statepkg.ErrLeaseNotOwner) || errors.Is(err, statepkg.ErrLeaseNotHeld) {
+						cancelOp()
+						return
+					}
 				}
 			}
 		}
 	}()
 	defer func() {
-		cancel()
+		cancelHeartbeat()
 		<-done
 		releaseOpsLease(o.Scope, locker, ctx, moduleManagementLeaseResource, ownerID)
 	}()
-	return fn()
+	return fn(opCtx)
 }
 
 func releaseOpsLease(runtimeScope scope.Scope, locker statepkg.Locker, operationCtx context.Context, resource, ownerID string) {

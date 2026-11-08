@@ -831,27 +831,33 @@ func performModuleLoadDemo(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngin
 	}
 	// Match UI: Plan → Apply → Run.
 	applyErr := started.host.Apply(started.execCtx, ops.ApplyRequest{Id: planRes.Id})
+	if cfg.applyHook != nil {
+		applyErr = cfg.applyHook(applyErr)
+	}
 	if applyErr != nil {
+		domain, code, message := "MODULE_MANAGEMENT", "OP_FAILED", applyErr.Error()
+		if info := oerrors.GetErrorInfo(applyErr); info != nil {
+			if info.Domain != "" {
+				domain = info.Domain
+			}
+			if info.Code != "" {
+				code = info.Code
+			}
+			if info.Message != "" {
+				message = info.Message
+			}
+		}
+		// Draft or queued: terminate so retries do not leave a lingering open plan.
+		_ = started.host.ForceFailTerminal(started.execCtx, planRes.Id, domain, code, message)
 		if shouldThrowBridgeError(applyErr) {
 			return bridgeThrow(ctx, applyErr)
 		}
 		payload := map[string]any{
-			"ok": false,
-			"id": planRes.Id,
-		}
-		info := oerrors.GetErrorInfo(applyErr)
-		if info != nil {
-			payload["errorDomain"] = info.Domain
-			payload["errorCode"] = info.Code
-			if info.Message != "" {
-				payload["errorMessage"] = info.Message
-			} else {
-				payload["errorMessage"] = applyErr.Error()
-			}
-		} else {
-			payload["errorDomain"] = "MODULE_MANAGEMENT"
-			payload["errorCode"] = "OP_FAILED"
-			payload["errorMessage"] = applyErr.Error()
+			"ok":           false,
+			"id":           planRes.Id,
+			"errorDomain":  domain,
+			"errorCode":    code,
+			"errorMessage": message,
 		}
 		val, marshalErr := quickjsMarshal(ctx, payload)
 		if marshalErr != nil {

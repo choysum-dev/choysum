@@ -61,6 +61,8 @@ func (o *Ops) Apply(ctx context.Context, req ApplyRequest) error {
 	}
 	if row.Action != ActionSync {
 		if err := o.setCatalogActiveOp(ctx, operationModuleNames(row, doc), row.Id.String); err != nil {
+			// Row is already queued; fail it so callers are not stuck without ActiveOperationId.
+			_ = o.ForceFailTerminal(ctx, row.Id.String, "ops", "ACTIVE_OP_STAMP_FAILED", err.Error())
 			return err
 		}
 	}

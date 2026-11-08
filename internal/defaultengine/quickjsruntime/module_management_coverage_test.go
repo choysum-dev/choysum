@@ -715,6 +715,94 @@ func TestCoverage_ModuleManagementRemainingBranches(t *testing.T) {
 		t.Fatalf("plain run = %#v", plainRun)
 	}
 
+	// loadDemo Apply failure terminates the operation row (ForceFailTerminal).
+	applyFailDB := newBridgeTestDB(t)
+	seedPendingDemo(t, applyFailDB)
+	applyFailBase := &moduleIndexTestScope{
+		ctx:     context.Background(),
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:     &config.Config{ModulesPath: t.TempDir()},
+		session: &scope.Session{DB: applyFailDB},
+	}
+	applyFailEngine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+		jsengine.StaticScopeProvider(applyFailBase),
+		pendingHostOpt,
+		WithModuleManagementApplyHook(func(error) error {
+			return oerrors.New("ops", "APPLY_BOOM", "apply failed")
+		}),
+	))
+	applyFail := awaitModuleManagementJSON(t, applyFailEngine, `$choysum.moduleManagement.loadDemo({})`)
+	if ok, _ := applyFail["ok"].(bool); ok {
+		t.Fatalf("expected apply fail, got %#v", applyFail)
+	}
+	if code, _ := applyFail["errorCode"].(string); code != "APPLY_BOOM" {
+		t.Fatalf("applyFail = %#v", applyFail)
+	}
+	opID, _ := applyFail["id"].(string)
+	if opID == "" {
+		t.Fatalf("missing id: %#v", applyFail)
+	}
+	var failedOp modmeta.ModuleOperation
+	if err := applyFailDB.Where("id = ?", opID).Take(&failedOp).Error; err != nil {
+		t.Fatalf("load op: %v", err)
+	}
+	if failedOp.Status != ops.StatusFailed {
+		t.Fatalf("status = %q, want failed", failedOp.Status)
+	}
+
+	// Apply hook throw path (LEASE_CONFLICT).
+	applyThrowEngine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+		jsengine.StaticScopeProvider(applyFailBase),
+		pendingHostOpt,
+		WithModuleManagementApplyHook(func(error) error {
+			return oerrors.New("meta.lock", "LEASE_CONFLICT", "busy")
+		}),
+	))
+	rejectContains(t, applyThrowEngine, `$choysum.moduleManagement.loadDemo({})`, "")
+
+	// Apply fail + marshal failure.
+	applyMarshalDB := newBridgeTestDB(t)
+	seedPendingDemo(t, applyMarshalDB)
+	applyMarshalBase := &moduleIndexTestScope{
+		ctx:     context.Background(),
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:     &config.Config{ModulesPath: t.TempDir()},
+		session: &scope.Session{DB: applyMarshalDB},
+	}
+	applyMarshalEngine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+		jsengine.StaticScopeProvider(applyMarshalBase),
+		pendingHostOpt,
+		WithModuleManagementApplyHook(func(error) error {
+			return errors.New("apply plain")
+		}),
+	))
+	prevMarshalApply := quickjsMarshal
+	quickjsMarshal = func(ctx *quickjs.Context, v any) (*quickjs.Value, error) {
+		return nil, errors.New("apply marshal fail")
+	}
+	rejectContains(t, applyMarshalEngine, `$choysum.moduleManagement.loadDemo({})`, "apply marshal fail")
+	quickjsMarshal = prevMarshalApply
+
+	// Run fail with non-empty oerrors message (covers message branch).
+	msgDemo := newPendingEngine(t, func(error) error {
+		return oerrors.New("ops", "Y", "explicit message")
+	})
+	msgGot := awaitModuleManagementJSON(t, msgDemo, `$choysum.moduleManagement.loadDemo({})`)
+	if msg, _ := msgGot["errorMessage"].(string); msg != "explicit message" {
+		t.Fatalf("expected explicit message, got %#v", msgGot)
+	}
+
+	// Run result marshal failure after pending loadDemo.
+	runMarshalDemo := newPendingEngine(t, func(error) error {
+		return errors.New("run after marshal arm")
+	})
+	prevMarshalRun := quickjsMarshal
+	quickjsMarshal = func(ctx *quickjs.Context, v any) (*quickjs.Value, error) {
+		return nil, errors.New("run marshal fail")
+	}
+	rejectContains(t, runMarshalDemo, `$choysum.moduleManagement.loadDemo({})`, "run marshal fail")
+	quickjsMarshal = prevMarshalRun
+
 	// oerrors empty message + marshalOpResult marshal fail + plan marshal fail + sync marshal fail + loadDemo marshal fail.
 	quickjsMarshal = func(ctx *quickjs.Context, v any) (*quickjs.Value, error) {
 		return nil, errors.New("marshal fail")
