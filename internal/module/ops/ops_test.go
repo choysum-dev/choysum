@@ -169,8 +169,8 @@ func (s *stubLifecycle) SchemaPlan(context.Context, string) (schema.SchemaPlan, 
 }
 
 var (
-	_ plan.Resolver      = (*mapResolver)(nil)
-	_ bus.EventBus       = (*recordingBus)(nil)
-	_ lifecycle.Service  = (*stubLifecycle)(nil)
-	_ statepkg.Locker    = testLocker{}
+	_ plan.Resolver     = (*mapResolver)(nil)
+	_ bus.EventBus      = (*recordingBus)(nil)
+	_ lifecycle.Service = (*stubLifecycle)(nil)
+	_ statepkg.Locker   = testLocker{}
 )

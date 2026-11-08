@@ -739,7 +739,7 @@ func performModuleRun(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, sc
 					message = info.Message
 				}
 			}
-			if markErr := started.host.ForceFailTerminal(started.execCtx, params.Id, domain, code, message); markErr != nil {
+			if markErr := started.host.ForceFailTerminal(context.WithoutCancel(started.execCtx), params.Id, domain, code, message); markErr != nil {
 				return bridgeThrow(ctx, errors.Join(hooked, markErr))
 			}
 		}
@@ -816,6 +816,62 @@ func performModuleLoadDemo(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngin
 	}
 	if strings.TrimSpace(planRes.Id) == "" {
 		return marshalOpResult(ctx, status.Error(codes.Internal, "plan returned empty id"))
+	}
+	// Soft no-op when Plan reports blockers (e.g. no pending demo): abandon draft and succeed.
+	if len(planRes.Blockers) > 0 {
+		if abandonErr := started.host.AbandonDraft(started.execCtx, planRes.Id, "plan blocked"); abandonErr != nil {
+			if started.host != nil && started.host.Scope != nil {
+				if lg := started.host.Scope.Logger(); lg != nil {
+					lg.Warn("loadDemo abandon blocked draft failed", "op", planRes.Id, "error", abandonErr)
+				}
+			}
+		}
+		val, marshalErr := quickjsMarshal(ctx, map[string]any{
+			"ok": true,
+			"id": planRes.Id,
+		})
+		if marshalErr != nil {
+			return bridgeThrow(ctx, marshalErr)
+		}
+		return val
+	}
+	// Match UI: Plan → Apply → Run.
+	applyErr := started.host.Apply(started.execCtx, ops.ApplyRequest{Id: planRes.Id})
+	if cfg.applyHook != nil {
+		applyErr = cfg.applyHook(applyErr)
+	}
+	if applyErr != nil {
+		domain, code, message := "MODULE_MANAGEMENT", "OP_FAILED", applyErr.Error()
+		if info := oerrors.GetErrorInfo(applyErr); info != nil {
+			if info.Domain != "" {
+				domain = info.Domain
+			}
+			if info.Code != "" {
+				code = info.Code
+			}
+			if info.Message != "" {
+				message = info.Message
+			}
+		}
+		// Draft or queued: terminate so retries do not leave a lingering open plan.
+		// Apply may have already failed the row (stamp); ForceFailTerminal no-ops on failed.
+		// Detach ctx so cancel/deadline from Apply does not block the terminal write.
+		_ = started.host.ForceFailTerminal(context.WithoutCancel(started.execCtx), planRes.Id, domain, code, message)
+		if shouldThrowBridgeError(applyErr) {
+			return bridgeThrow(ctx, applyErr)
+		}
+		payload := map[string]any{
+			"ok":           false,
+			"id":           planRes.Id,
+			"errorDomain":  domain,
+			"errorCode":    code,
+			"errorMessage": message,
+		}
+		val, marshalErr := quickjsMarshal(ctx, payload)
+		if marshalErr != nil {
+			return bridgeThrow(ctx, marshalErr)
+		}
+		return val
 	}
 	runErr := started.host.Run(started.execCtx, ops.RunRequest{Id: planRes.Id})
 	if cfg.loadDemoRunHook != nil {

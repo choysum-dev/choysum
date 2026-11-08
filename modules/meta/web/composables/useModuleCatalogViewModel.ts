@@ -317,6 +317,10 @@ export function useModuleCatalogViewModel(opts: {
   function bootFromRoute() {
     const opId = resolveInitialOperationId();
     if (opId) openDrawer({ operationId: opId, action: 'progress' }, true);
+    // Stale-aware sync on catalog open (same gate as the Sync button).
+    if (!opts.canRequestSync || opts.canRequestSync()) {
+      void requestSync({ Force: false, IfStale: true });
+    }
   }
 
   watch(

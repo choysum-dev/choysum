@@ -56,5 +56,21 @@ func (o *Ops) Apply(ctx context.Context, req ApplyRequest) error {
 	}
 	row.Status = StatusQueued
 	row.Phase = PhaseQueued
-	return o.casSaveOperation(ctx, row, StatusDraft)
+	if err := o.casSaveOperation(ctx, row, StatusDraft); err != nil {
+		return err
+	}
+	if row.Action != ActionSync {
+		if err := o.setCatalogActiveOp(ctx, operationModuleNames(row, doc), row.Id.String); err != nil {
+			finishCtx := context.WithoutCancel(ctx)
+			// Drop any partial stamps before/without a successful terminal write.
+			o.clearCatalogActiveOpBestEffort(finishCtx, row.Id.String)
+			// Row is already queued; fail it so callers are not stuck without ActiveOperationId.
+			// Stamp often fails because ctx is already canceled — detach for the terminal write.
+			if markErr := o.ForceFailTerminal(finishCtx, row.Id.String, "ops", "ACTIVE_OP_STAMP_FAILED", err.Error()); markErr != nil {
+				return errors.Join(err, markErr)
+			}
+			return err
+		}
+	}
+	return nil
 }

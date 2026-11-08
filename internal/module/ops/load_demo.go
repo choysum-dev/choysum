@@ -140,38 +140,48 @@ func (o *Ops) executeLoadDemo(ctx context.Context, row *modmeta.ModuleOperation)
 	if o.Scope == nil {
 		return errors.New("ops: scope is required")
 	}
-	latchSet := false
-	for _, name := range names {
-		pending, pendingErr := o.isPendingDemoModule(ctx, name)
-		if pendingErr != nil {
-			return pendingErr
-		}
-		if !pending {
-			// Catalog moved on since Plan (already loaded / uninstalled / no demo).
-			continue
-		}
-		mod, loadErr := o.loadInstalledModule(ctx, name)
-		if loadErr != nil {
-			return loadErr
-		}
-		if err := applyDemoFiles(ctx, o.Scope, mod); err != nil {
-			return fmt.Errorf("ops: load demo for %q: %w", name, err)
-		}
-		// Latch before DemoLoaded so a latch write failure does not leave modules
-		// marked (retry would skip them and never set modules.with_demo).
-		if !latchSet {
-			if err := o.SetWithDemo(ctx, true); err != nil {
+	return o.withModuleManagementLease(ctx, func(leaseCtx context.Context) error {
+		latchSet := false
+		touched := make([]string, 0, len(names))
+		for _, name := range names {
+			pending, pendingErr := o.isPendingDemoModule(leaseCtx, name)
+			if pendingErr != nil {
+				return pendingErr
+			}
+			if !pending {
+				// Catalog moved on since Plan (already loaded / uninstalled / no demo).
+				continue
+			}
+			mod, loadErr := o.loadInstalledModule(leaseCtx, name)
+			if loadErr != nil {
+				return loadErr
+			}
+			if err := applyDemoFiles(leaseCtx, o.Scope, mod); err != nil {
+				return fmt.Errorf("ops: load demo for %q: %w", name, err)
+			}
+			// Latch before DemoLoaded so a latch write failure does not leave modules
+			// marked (retry would skip them and never set modules.with_demo).
+			if !latchSet {
+				if err := o.SetWithDemo(leaseCtx, true); err != nil {
+					return err
+				}
+				latchSet = true
+			}
+			// Mark per module after a successful import so a later failure does not
+			// leave earlier modules unmarked (retry would re-import them).
+			if err := o.markDemoLoaded(leaseCtx, []string{name}); err != nil {
 				return err
 			}
-			latchSet = true
+			touched = append(touched, name)
 		}
-		// Mark per module after a successful import so a later failure does not
-		// leave earlier modules unmarked (retry would re-import them).
-		if err := o.markDemoLoaded(ctx, []string{name}); err != nil {
-			return err
+		if len(touched) == 0 {
+			return nil
 		}
-	}
-	return nil
+		if err := o.MaterializeCatalog(leaseCtx, touched); err != nil {
+			return fmt.Errorf("ops: materialize catalog after load-demo: %w", err)
+		}
+		return nil
+	})
 }
 
 func (o *Ops) isPendingDemoModule(ctx context.Context, name string) (bool, error) {

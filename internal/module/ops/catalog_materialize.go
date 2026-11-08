@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sort"
 	"strings"
 	"time"
 
@@ -14,8 +15,14 @@ import (
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	pkgmeta "github.com/choysum-dev/choysum/pkg/meta"
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
+
+type catalogDemoState struct {
+	DemoLoaded       bool
+	InstalledVersion string
+}
 
 type catalogAggregate struct {
 	local     *modmeta.ModuleSourceSnapshot
@@ -156,28 +163,100 @@ func (o *Ops) MaterializeCatalog(ctx context.Context, moduleNames []string) erro
 		ensure(name).installed = &installed[i]
 	}
 
+	existingDemo := map[string]catalogDemoState{}
+	{
+		var prior []modmeta.ModuleCatalog
+		pq := sess.WithContext(ctx).Model(&modmeta.ModuleCatalog{}).
+			Select("module_name", "demo_loaded", "installed_version")
+		if filtered {
+			pq = pq.Where("module_name IN ?", names)
+		}
+		if err := pq.Find(&prior).Error; err != nil {
+			return err
+		}
+		for _, p := range prior {
+			existingDemo[p.ModuleName] = catalogDemoState{
+				DemoLoaded:       p.DemoLoaded,
+				InstalledVersion: strings.TrimSpace(p.InstalledVersion.String),
+			}
+		}
+	}
+
 	now := time.Now().UTC()
 	rows := make([]modmeta.ModuleCatalog, 0, len(byName))
 	for name, a := range byName {
-		rows = append(rows, materializeOne(name, a, now))
+		rows = append(rows, materializeOne(name, a, now, existingDemo[name]))
 	}
 	if len(rows) == 0 {
 		return nil
 	}
-	return sess.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "module_name"}},
-		DoUpdates: clause.AssignmentColumns([]string{
-			"summary", "description", "category", "application", "author", "license",
-			"local_version", "registry_version", "installed", "installed_version",
-			"update_available", "registry_newer_than_local", "available", "unavailable_reason",
-			// dependents_json / demo_loaded are owned elsewhere; do not zero them out.
-			"local_path", "depends_json", "has_demo",
-			"last_sync_at", "updated_at",
-		}),
-	}).CreateInBatches(&rows, 200).Error
+	fillCatalogDependents(rows)
+	dialect := ""
+	if sess.Dialector != nil {
+		dialect = sess.Dialector.Name()
+	}
+	if err := sess.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "module_name"}},
+		DoUpdates: catalogMaterializeDoUpdates(dialect),
+	}).CreateInBatches(&rows, 200).Error; err != nil {
+		return err
+	}
+	// Keep reverse-dep edges coherent for modules outside this batch
+	// (and repair dependents_json after filtered materialize, which must not
+	// upsert a partial dependents graph into the conflict update).
+	return o.refreshCatalogDependents(ctx)
 }
 
-func materializeOne(name string, a *catalogAggregate, now time.Time) modmeta.ModuleCatalog {
+// catalogMaterializeDoUpdates builds dialect-safe ON CONFLICT assignments.
+// MySQL rewrites clause.Column{Table:"excluded"} to VALUES(col); raw "excluded.x"
+// expressions are not rewritten and break nonempty materialize on MySQL.
+// dependents_json is intentionally omitted — refreshCatalogDependents recomputes it.
+//
+// demo_loaded must be assigned before installed_version: MySQL ON DUPLICATE KEY
+// UPDATE is left-to-right, so a later CASE that reads meta_module_catalog.installed_version
+// would otherwise see the already-updated value and skip the upgrade clear.
+func catalogMaterializeDoUpdates(dialect string) clause.Set {
+	beforeInstalledVersion := []string{
+		"summary", "description", "category", "application", "author", "license",
+		"local_version", "registry_version", "installed",
+		"update_available", "registry_newer_than_local", "available", "unavailable_reason",
+		"local_path", "depends_json", "has_demo", "last_sync_at", "updated_at",
+	}
+	updates := clause.AssignmentColumns(beforeInstalledVersion)
+	updates = append(updates, clause.Assignment{
+		Column: clause.Column{Name: "demo_loaded"},
+		Value:  gorm.Expr(catalogDemoLoadedUpsertExpr(dialect)),
+	})
+	updates = append(updates, clause.Assignment{
+		Column: clause.Column{Name: "installed_version"},
+		Value:  clause.Column{Table: "excluded", Name: "installed_version"},
+	})
+	return updates
+}
+
+func catalogDemoLoadedUpsertExpr(dialect string) string {
+	in := func(col string) string {
+		if dialect == "mysql" {
+			return "VALUES(`" + col + "`)"
+		}
+		return "excluded." + col
+	}
+	curDemo := "meta_module_catalog.demo_loaded"
+	curInstalled := "meta_module_catalog.installed_version"
+	if dialect == "mysql" {
+		curDemo = "`meta_module_catalog`.`demo_loaded`"
+		curInstalled = "`meta_module_catalog`.`installed_version`"
+	}
+	return `CASE
+		WHEN ` + in("has_demo") + ` = false THEN false
+		WHEN ` + in("installed") + ` = false THEN false
+		WHEN ` + in("demo_loaded") + ` = false AND COALESCE(` + curInstalled + `, '') != COALESCE(` + in("installed_version") + `, '') THEN false
+		WHEN ` + curDemo + ` = true THEN true
+		ELSE ` + in("demo_loaded") + `
+	END`
+}
+
+func materializeOne(name string, a *catalogAggregate, now time.Time, prior catalogDemoState) modmeta.ModuleCatalog {
 	row := modmeta.ModuleCatalog{
 		ModuleName: name,
 		Available:  true,
@@ -249,7 +328,97 @@ func materializeOne(name string, a *catalogAggregate, now time.Time) modmeta.Mod
 	if row.LastSyncAt == nil && (a.local != nil || a.registry != nil) {
 		row.LastSyncAt = &now
 	}
+	switch {
+	case !row.Installed:
+		// Uninstall (or never installed): demo rows are gone; clear the CTA gate.
+		row.DemoLoaded = false
+	case !row.HasDemo:
+		row.DemoLoaded = false
+	case prior.DemoLoaded && prior.InstalledVersion != "" && installedV != "" &&
+		normalizeVersion(prior.InstalledVersion) != normalizeVersion(installedV):
+		// Upgrade (installed version changed): allow load-demo to reappear.
+		row.DemoLoaded = false
+	default:
+		row.DemoLoaded = prior.DemoLoaded
+	}
 	return row
+}
+
+func decodeDependsNames(raw datatypes.JSON) []string {
+	if len(raw) == 0 {
+		return nil
+	}
+	var names []string
+	if err := json.Unmarshal(raw, &names); err != nil {
+		return nil
+	}
+	return uniqueTrimmedNames(names)
+}
+
+func fillCatalogDependents(rows []modmeta.ModuleCatalog) {
+	depends := make(map[string][]string, len(rows))
+	for _, row := range rows {
+		depends[row.ModuleName] = decodeDependsNames(row.DependsJson)
+	}
+	reverse := map[string][]string{}
+	for name, deps := range depends {
+		for _, dep := range deps {
+			reverse[dep] = append(reverse[dep], name)
+		}
+	}
+	for i := range rows {
+		deps := uniqueTrimmedNames(reverse[rows[i].ModuleName])
+		sort.Strings(deps)
+		if len(deps) == 0 {
+			rows[i].DependentsJson = datatypes.JSON("[]")
+			continue
+		}
+		b, _ := json.Marshal(deps) // []string always marshals
+		rows[i].DependentsJson = datatypes.JSON(b)
+	}
+}
+
+func (o *Ops) refreshCatalogDependents(ctx context.Context) error {
+	sess, err := o.session(ctx)
+	if err != nil {
+		return err
+	}
+	var rows []modmeta.ModuleCatalog
+	if err := sess.WithContext(ctx).
+		Model(&modmeta.ModuleCatalog{}).
+		Select("module_name", "depends_json", "dependents_json").
+		Find(&rows).Error; err != nil {
+		return err
+	}
+	if len(rows) == 0 {
+		return nil
+	}
+	prior := make(map[string]string, len(rows))
+	for _, row := range rows {
+		prior[row.ModuleName] = string(row.DependentsJson)
+	}
+	fillCatalogDependents(rows)
+	grouped := map[string][]string{}
+	for _, row := range rows {
+		next := string(row.DependentsJson)
+		if next == prior[row.ModuleName] {
+			continue
+		}
+		grouped[next] = append(grouped[next], row.ModuleName)
+	}
+	if len(grouped) == 0 {
+		return nil
+	}
+	return sess.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for val, names := range grouped {
+			if err := tx.Model(&modmeta.ModuleCatalog{}).
+				Where("module_name IN ?", names).
+				Update("dependents_json", datatypes.JSON(val)).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 type manifestLite struct {

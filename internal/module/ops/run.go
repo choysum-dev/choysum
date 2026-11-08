@@ -53,9 +53,30 @@ func (o *Ops) Run(ctx context.Context, req RunRequest) error {
 	if err := o.casSaveOperation(ctx, row, expectStatus); err != nil {
 		return err
 	}
+	var planDoc PlanDocument
+	if row.Action != ActionSync {
+		doc, docErr := unmarshalPlanDocument(row.PlanJson)
+		if docErr != nil {
+			finishCtx := context.WithoutCancel(ctx)
+			if failErr := o.failOperation(finishCtx, row, "ops", "PLAN_DECODE_FAILED", docErr.Error()); failErr != nil {
+				return errors.Join(docErr, failErr)
+			}
+			return docErr
+		}
+		planDoc = doc
+		if stampErr := o.setCatalogActiveOp(ctx, operationModuleNames(row, doc), row.Id.String); stampErr != nil {
+			finishCtx := context.WithoutCancel(ctx)
+			// Drop any partial stamps if the terminal write also fails.
+			o.clearCatalogActiveOpBestEffort(finishCtx, row.Id.String)
+			if failErr := o.failOperation(finishCtx, row, "ops", "ACTIVE_OP_STAMP_FAILED", stampErr.Error()); failErr != nil {
+				return errors.Join(stampErr, failErr)
+			}
+			return stampErr
+		}
+	}
 	o.publishOperationChanged(ctx, row)
 
-	runErr := o.executeOperation(ctx, row, req.WithDemo)
+	runErr := o.executeOperation(ctx, row, req.WithDemo, planDoc)
 	finishCtx := context.WithoutCancel(ctx)
 	if runErr != nil {
 		if saveErr := o.failOperation(finishCtx, row, "ops", "RUN_FAILED", runErr.Error()); saveErr != nil {
@@ -66,7 +87,7 @@ func (o *Ops) Run(ctx context.Context, req RunRequest) error {
 	return o.succeedOperation(finishCtx, row)
 }
 
-func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation, requestWithDemo bool) error {
+func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation, requestWithDemo bool, doc PlanDocument) error {
 	switch row.Action {
 	case ActionSync:
 		_, err := o.SyncSourceSnapshotsThenMaterialize(ctx, "all")
@@ -83,10 +104,6 @@ func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation
 				return err
 			}
 			withDemo = true
-		}
-		doc, err := unmarshalPlanDocument(row.PlanJson)
-		if err != nil {
-			return err
 		}
 		names := affectedModuleNames(doc, row.ModuleName)
 		if err := o.runLifecycle(ctx, row.Action, row.ModuleName, withDemo, doc); err != nil {
@@ -166,6 +183,8 @@ func (o *Ops) failOperation(ctx context.Context, row *modmeta.ModuleOperation, d
 	if err := o.casSaveOperation(ctx, row, expect); err != nil {
 		return err
 	}
+	// Terminal status is already persisted; do not fail the caller on a clear glitch.
+	o.clearCatalogActiveOpBestEffort(ctx, row.Id.String)
 	o.publishOperationChanged(ctx, row)
 	return nil
 }
@@ -174,14 +193,24 @@ func (o *Ops) succeedOperation(ctx context.Context, row *modmeta.ModuleOperation
 	expect := row.Status
 	now := time.Now().UTC()
 	row.Status = StatusSucceeded
-	row.Phase = PhaseDone
 	row.FinishedAt = &now
 	row.ErrorDomain = ""
 	row.ErrorCode = ""
 	row.ErrorMessage = ""
+	switch row.Action {
+	case ActionInstall, ActionUpgrade, ActionUninstall:
+		// Data is committed; web client should hard-refresh (C1 ReloadWeb).
+		row.Phase = PhaseReloading
+		row.ReloadTriggered = true
+		row.ReloadFailed = false
+	default:
+		row.Phase = PhaseDone
+	}
 	if err := o.casSaveOperation(ctx, row, expect); err != nil {
 		return err
 	}
+	// Terminal status is already persisted; do not fail the caller on a clear glitch.
+	o.clearCatalogActiveOpBestEffort(ctx, row.Id.String)
 	o.publishOperationChanged(ctx, row)
 	return nil
 }
@@ -203,6 +232,10 @@ func (o *Ops) ForceFailTerminal(ctx context.Context, id, domain, code, message s
 	if err != nil {
 		return err
 	}
+	// Keep an earlier failure (e.g. Apply ACTIVE_OP_STAMP_FAILED) instead of overwriting.
+	if row.Status == StatusFailed {
+		return nil
+	}
 	expect := row.Status
 	now := time.Now().UTC()
 	row.Status = StatusFailed
@@ -214,6 +247,7 @@ func (o *Ops) ForceFailTerminal(ctx context.Context, id, domain, code, message s
 	if err := o.casSaveOperation(ctx, row, expect); err != nil {
 		return err
 	}
+	o.clearCatalogActiveOpBestEffort(ctx, row.Id.String)
 	o.publishOperationChanged(ctx, row)
 	return nil
 }
@@ -275,6 +309,7 @@ func (o *Ops) AbandonDraft(ctx context.Context, id, reason string) error {
 	if err := o.casSaveOperation(ctx, row, StatusDraft); err != nil {
 		return err
 	}
+	o.clearCatalogActiveOpBestEffort(ctx, row.Id.String)
 	o.publishOperationChanged(ctx, row)
 	return nil
 }

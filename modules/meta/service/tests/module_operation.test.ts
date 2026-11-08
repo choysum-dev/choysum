@@ -158,14 +158,14 @@ test('meta.MetaModuleOperation Apply queues Execute job and publishes tip', asyn
   }
 });
 
-test('meta.MetaModuleOperation Apply passes WithDemo into Execute payload', async () => {
+test('meta.MetaModuleOperation Apply always enqueues Execute with WithDemo false', async () => {
   const restore = installBridge({
     apply: async () => ({ ok: true }),
   });
   try {
-    await MetaModuleOperation.Apply({ Id: 'op-demo-flag', WithDemo: true });
+    await MetaModuleOperation.Apply({ Id: 'op-demo-flag' });
     const job = [...JOB_STORE.values()][0];
-    expect(job.PayloadJson).toEqual({ req: { Id: 'op-demo-flag', WithDemo: true } });
+    expect(job.PayloadJson).toEqual({ req: { Id: 'op-demo-flag', WithDemo: false } });
   } finally {
     restore();
   }
