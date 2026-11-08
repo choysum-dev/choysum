@@ -17,6 +17,15 @@ SPDX-License-Identifier: Apache-2.0
         {{ _t('Uninstall') }}
       </button>
       <button
+        v-if="canLoadDemo && hasAction(moduleLoadDemoAction)"
+        type="button"
+        class="rounded-md border border-border px-2.5 py-1 text-xs hover:bg-muted"
+        data-testid="module-show-load-demo"
+        @click="onLoadDemoClick"
+      >
+        {{ _t('Load Demo Data') }}
+      </button>
+      <button
         v-if="primaryAction"
         type="button"
         class="rounded-md border border-border px-2.5 py-1 text-xs hover:bg-muted"
@@ -139,6 +148,7 @@ import { createTranslate } from '@/web/web/i18n';
 import { resolveModuleCatalogPrimaryAction } from './module_catalog_chrome';
 import {
   moduleInstallAction,
+  moduleLoadDemoAction,
   moduleUpgradeAction,
   moduleUninstallAction,
 } from './module_actions';
@@ -178,7 +188,7 @@ const operationStore = computed(() => props.operationStore ?? null);
 const drawerOpen = ref(false);
 const drawerOperationId = ref('');
 const drawerModuleName = ref('');
-const drawerAction = ref<'install' | 'upgrade' | 'uninstall' | 'progress' | ''>('');
+const drawerAction = ref<'install' | 'upgrade' | 'uninstall' | 'progress' | 'load_demo' | ''>('');
 const drawerRegistryNewer = ref(false);
 
 const currentRow = computed(() => {
@@ -214,8 +224,18 @@ const canUninstallRow = computed(() => {
   if (String(rec.ActiveOperationId || '').trim()) return false;
   return rec.Installed === true && rec.Available !== false;
 });
+/** Same visibility gate as catalog load-demo, scoped to this module row. */
+const canLoadDemo = computed(() => {
+  if (!hasMatchedRow.value) return false;
+  const rec = currentRow.value;
+  if (String(rec.ActiveOperationId || '').trim()) return false;
+  return rec.Installed === true && !!rec.HasDemo && !rec.DemoLoaded;
+});
 const showHeaderActions = computed(
-  () => !!primaryAction.value || (canUninstallRow.value && hasAction(moduleUninstallAction)),
+  () =>
+    !!primaryAction.value ||
+    (canUninstallRow.value && hasAction(moduleUninstallAction)) ||
+    (canLoadDemo.value && hasAction(moduleLoadDemoAction)),
 );
 
 function onPrimaryClick() {
@@ -243,6 +263,15 @@ function onUninstallClick() {
   drawerOpen.value = true;
 }
 
+function onLoadDemoClick() {
+  if (!canLoadDemo.value) return;
+  drawerModuleName.value = '';
+  drawerOperationId.value = '';
+  drawerAction.value = 'load_demo';
+  drawerRegistryNewer.value = false;
+  drawerOpen.value = true;
+}
+
 async function onDrawerSettled() {
   const id = String(recordId.value || '').trim();
   if (!id) return;
@@ -263,6 +292,8 @@ defineExpose({
   onDrawerSettled,
   onPrimaryClick,
   onUninstallClick,
+  onLoadDemoClick,
+  canLoadDemo,
   drawerOpen,
   drawerAction,
   drawerOperationId,

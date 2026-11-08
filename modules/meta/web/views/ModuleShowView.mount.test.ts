@@ -139,6 +139,34 @@ test('ModuleShowView.vue primary and uninstall actions open the drawer for the m
   expect(uninstallVm.drawerAction).toBe('uninstall');
   uninstall.unmount();
 
+  const loadDemo = mountShow({
+    ModuleName: 'base',
+    Installed: true,
+    Available: true,
+    HasDemo: true,
+    DemoLoaded: false,
+  });
+  await flushPromises();
+  const loadDemoVm = loadDemo.vm as any;
+  expect(loadDemoVm.canLoadDemo).toBe(true);
+  loadDemoVm.onLoadDemoClick();
+  expect(loadDemoVm.drawerOpen).toBe(true);
+  expect(loadDemoVm.drawerAction).toBe('load_demo');
+  expect(loadDemoVm.drawerModuleName).toBe('');
+  loadDemo.unmount();
+
+  const loadDemoBusy = mountShow({
+    ModuleName: 'base',
+    Installed: true,
+    Available: true,
+    HasDemo: true,
+    DemoLoaded: false,
+    ActiveOperationId: 'op-busy',
+  });
+  await flushPromises();
+  expect((loadDemoBusy.vm as any).canLoadDemo).toBe(false);
+  loadDemoBusy.unmount();
+
   // Unmatched recordId must not act on an unrelated rows[0] module.
   const empty = mount(ModuleShowView as any, {
     props: {

@@ -56,5 +56,13 @@ func (o *Ops) Apply(ctx context.Context, req ApplyRequest) error {
 	}
 	row.Status = StatusQueued
 	row.Phase = PhaseQueued
-	return o.casSaveOperation(ctx, row, StatusDraft)
+	if err := o.casSaveOperation(ctx, row, StatusDraft); err != nil {
+		return err
+	}
+	if row.Action != ActionSync {
+		if err := o.setCatalogActiveOp(ctx, operationModuleNames(row, doc), row.Id.String); err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -46,7 +46,6 @@ export type PlanModuleOperationResp = {
 
 export type ApplyModuleOperationReq = {
   Id: string;
-  WithDemo?: boolean;
 };
 
 export type ApplyModuleOperationResp = {
@@ -235,7 +234,6 @@ export default class MetaModuleOperation extends BaseModel {
     if (!id) {
       throw new Error(_t('operation id cannot be empty', { scope: 'service/models/module_operation' }));
     }
-    const withDemo = !!req?.WithDemo;
     const bridge = getModuleManagementBridge();
     let applyResult: BridgeOpResult | null | undefined;
     try {
@@ -261,10 +259,11 @@ export default class MetaModuleOperation extends BaseModel {
     const userId = BaseModel.ensureUserId();
     let job: unknown;
     try {
+      // Apply never carries WithDemo; Execute defaults WithDemo to false.
       job = await Job.EnqueueJob({
         TargetApp: 'meta',
         FullMethod: 'meta.MetaModuleOperation/Execute',
-        Payload: { req: { Id: id, WithDemo: withDemo } },
+        Payload: { req: { Id: id, WithDemo: false } },
         MaxAttempts: 0,
         TimeoutMs: 0,
       });

@@ -817,6 +817,48 @@ func performModuleLoadDemo(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngin
 	if strings.TrimSpace(planRes.Id) == "" {
 		return marshalOpResult(ctx, status.Error(codes.Internal, "plan returned empty id"))
 	}
+	// Soft no-op when Plan reports blockers (e.g. no pending demo): abandon draft and succeed.
+	if len(planRes.Blockers) > 0 {
+		_ = started.host.AbandonDraft(started.execCtx, planRes.Id, "plan blocked")
+		val, marshalErr := quickjsMarshal(ctx, map[string]any{
+			"ok": true,
+			"id": planRes.Id,
+		})
+		if marshalErr != nil {
+			return bridgeThrow(ctx, marshalErr)
+		}
+		return val
+	}
+	// Match UI: Plan → Apply → Run.
+	applyErr := started.host.Apply(started.execCtx, ops.ApplyRequest{Id: planRes.Id})
+	if applyErr != nil {
+		if shouldThrowBridgeError(applyErr) {
+			return bridgeThrow(ctx, applyErr)
+		}
+		payload := map[string]any{
+			"ok": false,
+			"id": planRes.Id,
+		}
+		info := oerrors.GetErrorInfo(applyErr)
+		if info != nil {
+			payload["errorDomain"] = info.Domain
+			payload["errorCode"] = info.Code
+			if info.Message != "" {
+				payload["errorMessage"] = info.Message
+			} else {
+				payload["errorMessage"] = applyErr.Error()
+			}
+		} else {
+			payload["errorDomain"] = "MODULE_MANAGEMENT"
+			payload["errorCode"] = "OP_FAILED"
+			payload["errorMessage"] = applyErr.Error()
+		}
+		val, marshalErr := quickjsMarshal(ctx, payload)
+		if marshalErr != nil {
+			return bridgeThrow(ctx, marshalErr)
+		}
+		return val
+	}
 	runErr := started.host.Run(started.execCtx, ops.RunRequest{Id: planRes.Id})
 	if cfg.loadDemoRunHook != nil {
 		runErr = cfg.loadDemoRunHook(runErr)

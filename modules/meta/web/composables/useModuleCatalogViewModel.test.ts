@@ -236,6 +236,39 @@ test('useModuleCatalogViewModel: onSync delegates to RequestSync', async () => {
   expect(calls).toBe(1);
 });
 
+test('useModuleCatalogViewModel: bootFromRoute requests IfStale sync when permitted', async () => {
+  const syncOpts: Array<{ Force?: boolean; IfStale?: boolean }> = [];
+  const store = {
+    state: { result: { rows: [{ Id: '1' }] }, loading: false },
+    RequestSync: async (opts: { Force?: boolean; IfStale?: boolean }) => {
+      syncOpts.push({ Force: !!opts?.Force, IfStale: !!opts?.IfStale });
+      return { Id: 'op-stale' };
+    },
+  } as any;
+  const allowed = useModuleCatalogViewModel({
+    store,
+    route: makeRoute(),
+    router: { push: async () => undefined, replace: async () => undefined } as any,
+    canRequestSync: () => true,
+    msgs,
+  });
+  allowed.bootFromRoute();
+  await Promise.resolve();
+  expect(syncOpts).toEqual([{ Force: false, IfStale: true }]);
+
+  syncOpts.length = 0;
+  const denied = useModuleCatalogViewModel({
+    store,
+    route: makeRoute(),
+    router: { push: async () => undefined, replace: async () => undefined } as any,
+    canRequestSync: () => false,
+    msgs,
+  });
+  denied.bootFromRoute();
+  await Promise.resolve();
+  expect(syncOpts).toEqual([]);
+});
+
 test('useModuleCatalogViewModel: filterOptions and viewSwitcherOptions expose labels', () => {
   const api = useModuleCatalogViewModel({
     store: makeStore(),

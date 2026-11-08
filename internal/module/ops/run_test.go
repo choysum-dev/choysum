@@ -78,8 +78,8 @@ func TestRun_InstallSuccessPublishesTipAndMaterializes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if row.Status != StatusSucceeded || row.Phase != PhaseDone {
-		t.Fatalf("status/phase = %q/%q", row.Status, row.Phase)
+	if row.Status != StatusSucceeded || row.Phase != PhaseReloading || !row.ReloadTriggered || row.ReloadFailed {
+		t.Fatalf("status/phase/reload = %q/%q triggered=%v failed=%v", row.Status, row.Phase, row.ReloadTriggered, row.ReloadFailed)
 	}
 	if len(life.installs) != 1 || life.installs[0] != "core" {
 		t.Fatalf("installs = %#v", life.installs)

@@ -53,6 +53,11 @@ func (o *Ops) Run(ctx context.Context, req RunRequest) error {
 	if err := o.casSaveOperation(ctx, row, expectStatus); err != nil {
 		return err
 	}
+	if row.Action != ActionSync {
+		if doc, docErr := unmarshalPlanDocument(row.PlanJson); docErr == nil {
+			_ = o.setCatalogActiveOp(ctx, operationModuleNames(row, doc), row.Id.String)
+		}
+	}
 	o.publishOperationChanged(ctx, row)
 
 	runErr := o.executeOperation(ctx, row, req.WithDemo)
@@ -166,6 +171,7 @@ func (o *Ops) failOperation(ctx context.Context, row *modmeta.ModuleOperation, d
 	if err := o.casSaveOperation(ctx, row, expect); err != nil {
 		return err
 	}
+	_ = o.clearCatalogActiveOp(ctx, row.Id.String)
 	o.publishOperationChanged(ctx, row)
 	return nil
 }
@@ -174,14 +180,23 @@ func (o *Ops) succeedOperation(ctx context.Context, row *modmeta.ModuleOperation
 	expect := row.Status
 	now := time.Now().UTC()
 	row.Status = StatusSucceeded
-	row.Phase = PhaseDone
 	row.FinishedAt = &now
 	row.ErrorDomain = ""
 	row.ErrorCode = ""
 	row.ErrorMessage = ""
+	switch row.Action {
+	case ActionInstall, ActionUpgrade, ActionUninstall:
+		// Data is committed; web client should hard-refresh (C1 ReloadWeb).
+		row.Phase = PhaseReloading
+		row.ReloadTriggered = true
+		row.ReloadFailed = false
+	default:
+		row.Phase = PhaseDone
+	}
 	if err := o.casSaveOperation(ctx, row, expect); err != nil {
 		return err
 	}
+	_ = o.clearCatalogActiveOp(ctx, row.Id.String)
 	o.publishOperationChanged(ctx, row)
 	return nil
 }
@@ -214,6 +229,7 @@ func (o *Ops) ForceFailTerminal(ctx context.Context, id, domain, code, message s
 	if err := o.casSaveOperation(ctx, row, expect); err != nil {
 		return err
 	}
+	_ = o.clearCatalogActiveOp(ctx, row.Id.String)
 	o.publishOperationChanged(ctx, row)
 	return nil
 }
@@ -275,6 +291,7 @@ func (o *Ops) AbandonDraft(ctx context.Context, id, reason string) error {
 	if err := o.casSaveOperation(ctx, row, StatusDraft); err != nil {
 		return err
 	}
+	_ = o.clearCatalogActiveOp(ctx, row.Id.String)
 	o.publishOperationChanged(ctx, row)
 	return nil
 }

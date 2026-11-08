@@ -102,13 +102,13 @@ async function ensureLoggedIn(page: Page, baseURL: string) {
   await loginAsE2EAdmin(page, baseURL);
   await page.goto(`${baseURL}/web/meta/modules`, { waitUntil: 'domcontentloaded' });
   await page.waitForURL('**/web/meta/modules', { timeout: 30000 });
-  await waitForModuleList(page);
+  await waitForModuleCatalog(page);
 }
 
 /**
  * Waits until the module catalog surface and its backing response become available.
  */
-async function waitForModuleList(page: Page) {
+async function waitForModuleCatalog(page: Page) {
   await page.locator('[data-testid="module-catalog-view"]').waitFor({ state: 'visible', timeout: 30000 });
   // The catalog can already be stable from cache without a fresh RPC on each poll.
   // Keep a short best-effort response wait to avoid 30s stalls in hot loops.
@@ -131,7 +131,7 @@ async function clearSearchFilters(page: Page) {
 }
 
 /**
- * Applies a module-name search so the board can focus on a specific card.
+ * Applies a module-name search so the catalog can focus on a specific card.
  */
 async function searchModuleCard(page: Page, moduleName: string) {
   const searchInput = page.locator('[data-testid="module-catalog-view"] .choy-search__input');
@@ -143,7 +143,7 @@ async function searchModuleCard(page: Page, moduleName: string) {
   await clearSearchFilters(page);
   await searchInput.fill(moduleName);
   await searchInput.press('Enter');
-  await waitForModuleList(page);
+  await waitForModuleCatalog(page);
 }
 
 /**
@@ -188,16 +188,16 @@ async function openModuleCard(page: Page, moduleName: string, opts?: { allowMiss
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForURL('**/web/meta/modules', { timeout: 30000 }).catch(() => null);
-  await waitForModuleList(page);
+  await waitForModuleCatalog(page);
   await searchModuleCard(page, moduleName);
 
   const reloadedCard = await findModuleCardByName(page, moduleName);
   if (reloadedCard && (await reloadedCard.isVisible().catch(() => false))) return reloadedCard;
 
   // Search filters can become stale after module install/uninstall side effects.
-  // Fall back to the full board once before treating the card as missing.
+  // Fall back to the full catalog once before treating the card as missing.
   await clearSearchFilters(page);
-  await waitForModuleList(page);
+  await waitForModuleCatalog(page);
 
   const fallbackCard = await findModuleCardByName(page, moduleName);
   if (fallbackCard && (await fallbackCard.isVisible().catch(() => false))) return fallbackCard;
@@ -266,7 +266,7 @@ async function moduleStatusText(page: Page, moduleName: string) {
 }
 
 /**
- * Polls the module board until a module reaches the expected status label.
+ * Polls the module catalog until a module reaches the expected status label.
  *
  * Uses host.delay-based races so the deadline still fires under the QuickJS e2e
  * host (EvalAwait does not pump os.setTimeout).
@@ -293,7 +293,7 @@ async function waitForModuleStatus(page: Page, moduleName: string, expectedStatu
         await Promise.race([reloadP, page.waitForTimeout(5000)]).catch(() => null);
       }
       await page.waitForURL('**/web/meta/modules', { timeout: Math.min(deadline - Date.now(), 30000) }).catch(() => null);
-      await waitForModuleList(page).catch(() => null);
+      await waitForModuleCatalog(page).catch(() => null);
       nextReloadAt = Date.now() + reloadIntervalMs;
     }
 
@@ -401,7 +401,7 @@ async function waitForOperationCompletion(page: Page) {
   const completion = await waitForOperationTerminalState(page);
 
   if (completion === 'reloaded') {
-    await waitForModuleList(page);
+    await waitForModuleCatalog(page);
     return;
   }
 
@@ -484,7 +484,7 @@ function shouldRetryOperationFailure(error: unknown) {
   if (/module\s+.+\s+status remained\s+.+,\s+want\s+.+/i.test(message)) {
     return true;
   }
-  // Module board can transiently miss a card during reload/index sync windows.
+  // Module catalog can transiently miss a card during reload/index sync windows.
   return /module card not found:/i.test(message);
 }
 
@@ -530,7 +530,7 @@ async function hasExpectedModuleStatus(page: Page, moduleName: string, expectedS
 }
 
 /**
- * Executes one module management action and waits for the board state to settle.
+ * Executes one module management action and waits for the catalog state to settle.
  */
 async function runActionOnce(page: Page, moduleName: string, action: 'install' | 'upgrade' | 'uninstall') {
   const actionLabel = action === 'install' ? 'Install' : action === 'upgrade' ? 'Upgrade' : 'Uninstall';
@@ -546,7 +546,7 @@ async function runActionOnce(page: Page, moduleName: string, action: 'install' |
   if (action === 'uninstall') {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForURL('**/web/meta/modules', { timeout: 30000 }).catch(() => null);
-    await waitForModuleList(page);
+    await waitForModuleCatalog(page);
     return;
   }
 
@@ -618,7 +618,7 @@ function canApplyAction(card: ModuleCardSnapshot, action: ModuleAction): boolean
 }
 
 async function resolveActionTargetModule(page: Page, action: ModuleAction, preferredName?: string): Promise<string> {
-  await waitForModuleList(page).catch(() => null);
+  await waitForModuleCatalog(page).catch(() => null);
   await clearSearchFilters(page).catch(() => null);
 
   const cards = await snapshotModuleCards(page);
@@ -665,7 +665,7 @@ async function runAction(page: Page, moduleName: string | undefined, action: Mod
       return activeName;
     } catch (error) {
       const cardMissing = isModuleCardMissingError(error);
-      // Card-lookup misses are often transient right after board transitions.
+      // Card-lookup misses are often transient right after catalog transitions.
       // Skip the slower status polling and retry quickly after a lightweight reset.
       if (!cardMissing && activeName && (await hasExpectedModuleStatus(page, activeName, expectedStatus))) {
         return activeName;
@@ -679,11 +679,11 @@ async function runAction(page: Page, moduleName: string | undefined, action: Mod
       await closeOperationDialogIfPresent(page);
       if (cardMissing) {
         await clearSearchFilters(page).catch(() => null);
-        await waitForModuleList(page).catch(() => null);
+        await waitForModuleCatalog(page).catch(() => null);
       }
       await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => null);
       await page.waitForURL('**/web/meta/modules', { timeout: 30000 }).catch(() => null);
-      await waitForModuleList(page);
+      await waitForModuleCatalog(page);
       preferredName = undefined;
     }
   }
@@ -724,7 +724,7 @@ async function runActionExpectReloadFailed(page: Page, moduleName: string, actio
 
   const completion = await waitForOperationTerminalState(page);
   if (completion === 'reloaded') {
-    await waitForModuleList(page);
+    await waitForModuleCatalog(page);
   } else {
     const reloadRow = dialog.locator('[data-testid="module-op-reload"]');
     if ((await reloadRow.count()) === 0) {
@@ -752,8 +752,8 @@ async function runActionExpectReloadFailed(page: Page, moduleName: string, actio
     return;
   }
 
-  // When reload is intentionally forced to fail, board data may remain stale
-  // until a later index refresh. Keep status verification best-effort.
+  // When reload is intentionally forced to fail, catalog data may remain stale
+  // until a later snapshot refresh. Keep status verification best-effort.
   await hasExpectedModuleStatus(page, moduleName, expectedStatus).catch(() => false);
 }
 
@@ -761,9 +761,9 @@ async function runActionExpectReloadFailed(page: Page, moduleName: string, actio
  * Picks a stable operable module snapshot for one-shot scenario tests.
  */
 async function pickTargetModule(page: Page, opts?: { preferUpgrade?: boolean }) {
-  await waitForModuleList(page);
+  await waitForModuleCatalog(page);
 
-  // The first board paint can race with async module-index hydration.
+  // The first catalog paint can race with async module-index hydration.
   // Poll briefly before concluding there are no visible cards.
   let cards = await snapshotModuleCards(page);
   if (cards.length === 0) {
@@ -776,7 +776,7 @@ async function pickTargetModule(page: Page, opts?: { preferUpgrade?: boolean }) 
   if (cards.length === 0) {
     await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => null);
     await page.waitForURL('**/web/meta/modules', { timeout: 30000 }).catch(() => null);
-    await waitForModuleList(page).catch(() => null);
+    await waitForModuleCatalog(page).catch(() => null);
     cards = await snapshotModuleCards(page);
   }
   if (cards.length === 0) {
@@ -836,7 +836,7 @@ test('meta module management: install/upgrade/uninstall flow', async () => {
 
   const initialCards = await snapshotModuleCards(page);
   if (initialCards.length === 0) {
-    const reason = `No module cards are visible on the board (visible cards=${summarizeCardSnapshots(initialCards)})`;
+    const reason = `No module cards are visible on the catalog (visible cards=${summarizeCardSnapshots(initialCards)})`;
     logSkipReason(reason);
     test.skip(true, reason);
   }
@@ -940,8 +940,8 @@ test('meta module management: lock conflict flow', async () => {
 
 /**
  * Verifies that the module catalog page loads and remains interactive when the
- * onMounted lazy sync fires in the background. The board must not block on
- * async index refresh.
+ * boot IfStale RequestSync fires in the background. The catalog must not block
+ * on async snapshot refresh.
  */
 test('meta module management: catalog lazy sync does not block page', async () => {
   const runtime = readRuntimeInfo();
@@ -950,21 +950,19 @@ test('meta module management: catalog lazy sync does not block page', async () =
   const baseURL = runtime.baseURL;
   await ensureLoggedIn(page, baseURL);
 
-  // After ensuring the user is logged in and the board is loaded, the
-  // onMounted hook triggers a stale-aware RequestSync for registry then local.
-  // The test asserts the page remains interactive: the search input is usable,
-  // and module cards are visible.
+  // After login, catalog boot calls RequestSync({ Force: false, IfStale: true })
+  // when the user can sync. Assert the page stays interactive during that work.
   const searchInput = page.locator('[data-testid="module-catalog-view"] .choy-search__input');
   await expect(searchInput).toBeVisible({ timeout: 15000 });
 
   const cards = page.locator('[data-testid="module-catalog-card"]');
   const count = await cards.count();
   if (count > 0) {
-    // At least one card is present: the board rendered before or during sync.
+    // At least one card is present: the catalog rendered before or during sync.
     await expect(cards.first()).toBeVisible({ timeout: 10000 });
   } else if (count === 0) {
     // No local modules and registry may be unreachable in CI; page must still
-    // render the empty board shell without crashing.
+    // render the empty catalog shell without crashing.
     await expect(page.locator('[data-testid="module-catalog-view"]')).toBeVisible({ timeout: 15000 });
   }
 
@@ -978,7 +976,7 @@ test('meta module management: catalog lazy sync does not block page', async () =
 /**
  * Verifies that the module catalog page remains usable even when registry
  * sync fails silently (e.g. index.choysum.dev is unreachable in an air-gapped
- * or CI environment). The board must still show local modules and allow
+ * or CI environment). The catalog must still show local modules and allow
  * install/upgrade/uninstall operations.
  */
 test('meta module management: catalog usable when registry sync fails', async () => {
@@ -1016,10 +1014,10 @@ test('meta module management: catalog usable when registry sync fails', async ()
   try {
     await page.goto(`${baseURL}/web/meta/modules`, { waitUntil: 'domcontentloaded' });
     await page.waitForURL('**/web/meta/modules', { timeout: 30000 });
-    await waitForModuleList(page);
+    await waitForModuleCatalog(page);
 
-    // Lazy sync for registry runs on onMounted; this test forces registry
-    // RequestSync to fail and verifies the page still stays usable.
+    // Boot IfStale RequestSync runs after catalog mount; this test forces the
+    // first RequestSync to fail and verifies the page still stays usable.
     await expect(page.locator('[data-testid="module-catalog-view"]')).toBeVisible({ timeout: 15000 });
     await expect.poll(() => requestSyncCalls, { timeout: 15000 }).toBeGreaterThan(0);
     await expect.poll(() => forcedRegistrySyncFailures, { timeout: 15000 }).toBeGreaterThan(0);
@@ -1032,15 +1030,46 @@ test('meta module management: catalog usable when registry sync fails', async ()
       await expect(page.locator('[data-testid="module-catalog-view"]')).toBeVisible({ timeout: 15000 });
     }
 
-    // The board remains interactive despite registry sync failures.
+    // The catalog remains interactive despite registry sync failures.
     const searchInput = page.locator('[data-testid="module-catalog-view"] .choy-search__input');
     if (await searchInput.isVisible().catch(() => false)) {
       await searchInput.fill('e2e_fixture');
       await searchInput.press('Enter');
-      await waitForModuleList(page);
+      await waitForModuleCatalog(page);
       await expect(page.locator('[data-testid="module-catalog-view"]')).toBeVisible({ timeout: 15000 });
     }
   } finally {
     await page.unroute('**/*', routeHandler);
   }
+});
+
+/**
+ * Opens the catalog load-demo drawer when the header CTA is available.
+ *
+ * Skipped when no Installed+HasDemo+!DemoLoaded rows are visible (fixtures
+ * rarely leave pending demo after install), or when the action is not permitted.
+ */
+test('meta module management: load-demo drawer opens from catalog header', async () => {
+  const runtime = readRuntimeInfo();
+  test.skip(runtime.scenario !== 'default', 'only runs under default scenario');
+
+  const baseURL = runtime.baseURL;
+  await ensureLoggedIn(page, baseURL);
+
+  const loadDemoBtn = page.getByRole('button', { name: /Load Demo Data/i });
+  const visible = await loadDemoBtn.isVisible().catch(() => false);
+  if (!visible) {
+    // Pending-demo catalog rows are fixture-dependent; keep the rename/helper
+    // coverage without failing default CI when nothing needs demo import.
+    test.skip(true, 'Load Demo Data CTA not visible (no pending demo rows or missing action permission)');
+  }
+
+  await loadDemoBtn.click();
+  const dialog = page.locator('.module-op-dialog');
+  await dialog.waitFor({ state: 'visible', timeout: 15000 });
+  const dialogText = ((await dialog.textContent().catch(() => '')) || '').trim();
+  if (!/Load Demo/i.test(dialogText)) {
+    throw new Error(`expected load-demo drawer text, got ${dialogText || '<empty>'}`);
+  }
+  await closeOperationDialogIfPresent(page);
 });

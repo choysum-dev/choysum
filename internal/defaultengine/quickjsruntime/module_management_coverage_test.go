@@ -14,6 +14,7 @@ import (
 
 	"github.com/buke/quickjs-go"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/module/ops"
 	"github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/bus"
@@ -27,6 +28,7 @@ import (
 	statepkg "github.com/choysum-dev/choysum/pkg/state"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"gorm.io/gorm"
 )
 
 func TestCoverage_ModuleManagementConfigAndHelpers(t *testing.T) {
@@ -646,34 +648,68 @@ func TestCoverage_ModuleManagementRemainingBranches(t *testing.T) {
 		t.Fatalf("expected empty plan id failure, got %#v", emptyID)
 	}
 
-	leaseConflictDemo := newTestQuickjsEngine(t, WithModuleManagementProvider(
-		jsengine.StaticScopeProvider(base),
-		opsHostOpt,
-		moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
-			cfg.loadDemoRunHook = func(error) error { return oerrors.New("meta.lock", "LEASE_CONFLICT", "busy") }
-		}),
-	))
+	// Run-hook paths need a pending-demo catalog so Plan has no blockers and
+	// loadDemo proceeds Plan → Apply → Run (empty pending soft-abandons before Run).
+	seedPendingDemo := func(t *testing.T, gdb *gorm.DB) {
+		t.Helper()
+		if err := gdb.Create(&pkgmeta.Module{
+			Name: "demo_mod", Version: "1.0.0", Status: pkgmeta.Installed,
+			ApplicationStr: "demo_mod", Path: t.TempDir(),
+		}).Error; err != nil {
+			t.Fatalf("seed module: %v", err)
+		}
+		if err := gdb.Create(&modmeta.ModuleCatalog{
+			ModuleName: "demo_mod", Installed: true, HasDemo: true, DemoLoaded: false,
+		}).Error; err != nil {
+			t.Fatalf("seed catalog: %v", err)
+		}
+	}
+	pendingHostOpt := moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+		cfg.opsHostFactory = func(runtimeScope scope.Scope, _ jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory, ev bus.EventBus) *ops.Ops {
+			return &ops.Ops{
+				Scope:         runtimeScope,
+				Lifecycle:     moduleManagementTestManager{},
+				Resolver:      &mapResolver{},
+				LockerFactory: lockerFactory,
+				Events:        ev,
+			}
+		}
+	})
+	newPendingEngine := func(t *testing.T, hook func(error) error) *quickjsengine.QuickjsEngine {
+		t.Helper()
+		pendingDB := newBridgeTestDB(t)
+		seedPendingDemo(t, pendingDB)
+		pendingBase := &moduleIndexTestScope{
+			ctx:     context.Background(),
+			logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+			cfg:     &config.Config{ModulesPath: t.TempDir()},
+			session: &scope.Session{DB: pendingDB},
+		}
+		return newTestQuickjsEngine(t, WithModuleManagementProvider(
+			jsengine.StaticScopeProvider(pendingBase),
+			pendingHostOpt,
+			moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+				cfg.loadDemoRunHook = hook
+			}),
+		))
+	}
+
+	leaseConflictDemo := newPendingEngine(t, func(error) error {
+		return oerrors.New("meta.lock", "LEASE_CONFLICT", "busy")
+	})
 	rejectContains(t, leaseConflictDemo, `$choysum.moduleManagement.loadDemo({})`, "")
 
-	emptyMsgDemo := newTestQuickjsEngine(t, WithModuleManagementProvider(
-		jsengine.StaticScopeProvider(base),
-		opsHostOpt,
-		moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
-			cfg.loadDemoRunHook = func(error) error { return oerrors.New("ops", "X", "") }
-		}),
-	))
+	emptyMsgDemo := newPendingEngine(t, func(error) error {
+		return oerrors.New("ops", "X", "")
+	})
 	emptyMsg := awaitModuleManagementJSON(t, emptyMsgDemo, `$choysum.moduleManagement.loadDemo({})`)
 	if msg, _ := emptyMsg["errorMessage"].(string); msg == "" {
 		t.Fatalf("expected fallback errorMessage, got %#v", emptyMsg)
 	}
 
-	plainRunDemo := newTestQuickjsEngine(t, WithModuleManagementProvider(
-		jsengine.StaticScopeProvider(base),
-		opsHostOpt,
-		moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
-			cfg.loadDemoRunHook = func(error) error { return errors.New("plain run fail") }
-		}),
-	))
+	plainRunDemo := newPendingEngine(t, func(error) error {
+		return errors.New("plain run fail")
+	})
 	plainRun := awaitModuleManagementJSON(t, plainRunDemo, `$choysum.moduleManagement.loadDemo({})`)
 	if code, _ := plainRun["errorCode"].(string); code != "OP_FAILED" {
 		t.Fatalf("plain run = %#v", plainRun)

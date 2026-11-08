@@ -40,7 +40,7 @@ func (o *Ops) Plan(ctx context.Context, req PlanRequest) (PlanResult, error) {
 		}
 		return o.planModuleOp(ctx, action, moduleName, origin, req)
 	case ActionSync:
-		return o.planSyncOp(ctx, origin, strings.TrimSpace(req.OperatorUserId))
+		return o.planSyncOp(ctx, strings.TrimSpace(req.OperatorUserId))
 	case ActionLoadDemo:
 		return o.planLoadDemo(ctx, strings.TrimSpace(req.OperatorUserId))
 	default:
@@ -57,7 +57,7 @@ func normalizeOrigin(origin string) string {
 	}
 }
 
-func (o *Ops) planSyncOp(ctx context.Context, origin, operatorUserId string) (PlanResult, error) {
+func (o *Ops) planSyncOp(ctx context.Context, operatorUserId string) (PlanResult, error) {
 	doc := PlanDocument{
 		ModuleOrder:  nil,
 		BaseRevision: "sync",
