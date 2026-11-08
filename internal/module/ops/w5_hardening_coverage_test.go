@@ -405,17 +405,23 @@ func TestCatalogDemoLoadedUpsertExpr_Dialects(t *testing.T) {
 		t.Fatalf("mysql expr = %s", mysqlExpr)
 	}
 	updates := catalogMaterializeDoUpdates("mysql")
-	foundDemo := false
-	for _, a := range updates {
-		if a.Column.Name == "demo_loaded" {
-			foundDemo = true
-		}
-		if a.Column.Name == "dependents_json" {
+	demoIdx, installedIdx := -1, -1
+	for i, a := range updates {
+		switch a.Column.Name {
+		case "demo_loaded":
+			demoIdx = i
+		case "installed_version":
+			installedIdx = i
+		case "dependents_json":
 			t.Fatal("dependents_json must not be in conflict DoUpdates")
 		}
 	}
-	if !foundDemo {
-		t.Fatal("expected demo_loaded assignment")
+	if demoIdx < 0 || installedIdx < 0 {
+		t.Fatalf("demo_loaded=%d installed_version=%d", demoIdx, installedIdx)
+	}
+	// MySQL left-to-right: demo_loaded CASE must see the prior installed_version.
+	if demoIdx > installedIdx {
+		t.Fatalf("demo_loaded at %d must precede installed_version at %d", demoIdx, installedIdx)
 	}
 }
 

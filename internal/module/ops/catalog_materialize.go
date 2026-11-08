@@ -211,18 +211,27 @@ func (o *Ops) MaterializeCatalog(ctx context.Context, moduleNames []string) erro
 // MySQL rewrites clause.Column{Table:"excluded"} to VALUES(col); raw "excluded.x"
 // expressions are not rewritten and break nonempty materialize on MySQL.
 // dependents_json is intentionally omitted — refreshCatalogDependents recomputes it.
+//
+// demo_loaded must be assigned before installed_version: MySQL ON DUPLICATE KEY
+// UPDATE is left-to-right, so a later CASE that reads meta_module_catalog.installed_version
+// would otherwise see the already-updated value and skip the upgrade clear.
 func catalogMaterializeDoUpdates(dialect string) clause.Set {
-	cols := []string{
+	beforeInstalledVersion := []string{
 		"summary", "description", "category", "application", "author", "license",
-		"local_version", "registry_version", "installed", "installed_version",
+		"local_version", "registry_version", "installed",
 		"update_available", "registry_newer_than_local", "available", "unavailable_reason",
 		"local_path", "depends_json", "has_demo", "last_sync_at", "updated_at",
 	}
-	updates := clause.AssignmentColumns(cols)
-	return append(updates, clause.Assignment{
+	updates := clause.AssignmentColumns(beforeInstalledVersion)
+	updates = append(updates, clause.Assignment{
 		Column: clause.Column{Name: "demo_loaded"},
 		Value:  gorm.Expr(catalogDemoLoadedUpsertExpr(dialect)),
 	})
+	updates = append(updates, clause.Assignment{
+		Column: clause.Column{Name: "installed_version"},
+		Value:  clause.Column{Table: "excluded", Name: "installed_version"},
+	})
+	return updates
 }
 
 func catalogDemoLoadedUpsertExpr(dialect string) string {
