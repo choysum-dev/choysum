@@ -377,3 +377,142 @@ test('createModuleOpProgressSession: stop aborts an in-flight tip session', asyn
   session.stop();
   await watchPromise;
 });
+
+test('createModuleOpProgressSession: poll fallback reports errors and times out', async () => {
+  const { deps, advance } = createFakeClock();
+  const onHardError = fnRecorder();
+  const onTransientNetworkError = fnRecorder();
+  const onTimeout = fnRecorder();
+  let n = 0;
+  const fetchStatus = fnRecorder(async () => {
+    n += 1;
+    if (n === 1) return snapshot({ status: 'queued' });
+    if (n === 2) throw new Error('Failed to fetch');
+    if (n === 3) throw new Error('status exploded');
+    return snapshot({ status: 'succeeded' });
+  });
+  const session = createModuleOpProgressSession(
+    {
+      fetchStatus: fetchStatus as any,
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: onTimeout as any,
+      onHardError: onHardError as any,
+      onTransientNetworkError: onTransientNetworkError as any,
+    },
+    { ...deps, onTips: 0 as any, subscribeModuleOp: 0 as any },
+  );
+
+  const pending = session.watch('job-poll-errors');
+  let settled = false;
+  void pending.then(() => {
+    settled = true;
+  });
+  for (let i = 0; i < 40 && !settled; i++) {
+    await Promise.resolve();
+    await advance(500);
+  }
+  await pending;
+  expect(onTransientNetworkError.calls.length).toBe(1);
+  expect(onHardError.calls[0]?.[0]).toBe('status exploded');
+
+  // Tip-unavailable path clears the tip deadline; poll itself must enforce MAX_DURATION.
+  n = 0;
+  const timeoutSession = createModuleOpProgressSession(
+    {
+      fetchStatus: async () => snapshot({ status: 'queued' }),
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: onTimeout as any,
+    },
+    { ...deps, onTips: 0 as any, subscribeModuleOp: 0 as any },
+  );
+  const timeoutPending = timeoutSession.watch('job-poll-timeout');
+  settled = false;
+  void timeoutPending.then(() => {
+    settled = true;
+  });
+  for (let i = 0; i < 30 && !settled; i++) {
+    await Promise.resolve();
+    await advance(60_000);
+  }
+  await timeoutPending;
+  expect(onTimeout.calls.length).toBe(1);
+});
+
+test('createModuleOpProgressSession: poll fallback settles on stop and inactive reads', async () => {
+  const { deps, advance } = createFakeClock();
+  let active = true;
+  let calls = 0;
+  const fetchStatus = fnRecorder(async () => {
+    calls += 1;
+    if (calls === 1) return snapshot({ status: 'queued' });
+    active = false;
+    return snapshot({ status: 'queued' });
+  });
+  const inactiveSession = createModuleOpProgressSession(
+    {
+      fetchStatus: fetchStatus as any,
+      isActive: () => active,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: () => undefined,
+    },
+    { ...deps, onTips: 0 as any, subscribeModuleOp: 0 as any },
+  );
+  await inactiveSession.watch('job-poll-inactive');
+
+  active = true;
+  calls = 0;
+  let release: (() => void) | undefined;
+  const blockedFetch = fnRecorder(async () => {
+    calls += 1;
+    if (calls === 1) return snapshot({ status: 'queued' });
+    await new Promise<void>(resolve => {
+      release = resolve;
+    });
+    throw new Error('after-stop');
+  });
+  const stopSession = createModuleOpProgressSession(
+    {
+      fetchStatus: blockedFetch as any,
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: () => undefined,
+      onHardError: () => undefined,
+    },
+    { ...deps, onTips: 0 as any, subscribeModuleOp: 0 as any },
+  );
+  const pending = stopSession.watch('job-poll-stop');
+  for (let i = 0; i < 40 && !release; i++) await Promise.resolve();
+  expect(!!release).toBe(true);
+  stopSession.stop();
+  release?.();
+  await pending;
+
+  // Orphaned poll timer after stop (clearSchedule no-op) still exits on generation mismatch.
+  const orphan = createModuleOpProgressSession(
+    {
+      fetchStatus: async () => snapshot({ status: 'queued' }),
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: () => undefined,
+    },
+    {
+      ...deps,
+      clearSchedule: () => undefined,
+      onTips: 0 as any,
+      subscribeModuleOp: 0 as any,
+    },
+  );
+  const orphanPending = orphan.watch('job-poll-orphan-tick');
+  for (let i = 0; i < 20; i++) await Promise.resolve();
+  orphan.stop();
+  await orphanPending;
+  await advance(1_000);
+  await Promise.resolve();
+});

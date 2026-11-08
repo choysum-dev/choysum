@@ -176,4 +176,26 @@ test('ModuleOpDrawer.vue covers result branches, registry replan, and close', as
   await flushPromises();
   expect(failed.find('[data-testid="module-op-result"]').exists()).toBe(true);
   failed.unmount();
+
+  // Cancelled terminal has no resultStatus — neutral resultAlertBoxClass (not success green).
+  const cancelled = mount(ModuleOpDrawer as any, {
+    props: {
+      open: true,
+      action: 'progress',
+      moduleName: 'core',
+      operationId: 'op-cancel',
+      operationStore: {
+        Browse: async () => ({ Status: 'cancelled' }),
+      },
+    },
+    global: buildPageMountGlobal({ route: { path: '/meta/modules', fullPath: '/meta/modules' } }),
+  });
+  await flushPromises();
+  await flushPromises();
+  const alert = cancelled.find('[data-testid="module-op-alert"]');
+  expect(alert.exists()).toBe(true);
+  const alertClass = String((alert.element as any)?.getAttribute?.('class') || '');
+  expect(alertClass).toContain('border-border');
+  expect(alertClass).not.toContain('border-emerald');
+  cancelled.unmount();
 });

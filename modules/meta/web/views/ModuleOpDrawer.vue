@@ -104,7 +104,11 @@ SPDX-License-Identifier: Apache-2.0
         </div>
 
         <div v-else class="flex flex-col gap-3">
-          <div class="rounded-md border px-3 py-2" :class="resultAlertBoxClass">
+          <div
+            class="rounded-md border px-3 py-2"
+            data-testid="module-op-alert"
+            :class="resultAlertBoxClass"
+          >
             {{
               session.step.value === 'progress'
                 ? _t('Operation in progress, please wait')
