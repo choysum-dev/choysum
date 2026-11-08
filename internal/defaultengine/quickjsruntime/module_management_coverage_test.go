@@ -636,6 +636,30 @@ func TestCoverage_ModuleManagementRemainingBranches(t *testing.T) {
 		t.Fatalf("loadDemo = %#v", got)
 	}
 
+	// loadDemo blockers path: AbandonDraft failure is logged but still returns ok.
+	abandonFailDB := newBridgeTestDB(t)
+	abandonFailBase := &moduleIndexTestScope{
+		ctx:     context.Background(),
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:     &config.Config{ModulesPath: t.TempDir()},
+		session: &scope.Session{DB: abandonFailDB},
+	}
+	if err := abandonFailDB.Callback().Update().Before("gorm:update").Register("fail_abandon_draft", func(tx *gorm.DB) {
+		if tx.Statement != nil && tx.Statement.Table == "meta_module_operation" {
+			_ = tx.AddError(errors.New("abandon boom"))
+		}
+	}); err != nil {
+		t.Fatalf("callback: %v", err)
+	}
+	abandonFailEngine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+		jsengine.StaticScopeProvider(abandonFailBase),
+		opsHostOpt,
+	))
+	abandonGot := awaitModuleManagementJSON(t, abandonFailEngine, `$choysum.moduleManagement.loadDemo({})`)
+	if ok, _ := abandonGot["ok"].(bool); !ok {
+		t.Fatalf("expected soft ok despite abandon fail, got %#v", abandonGot)
+	}
+
 	emptyPlanID := newTestQuickjsEngine(t, WithModuleManagementProvider(
 		jsengine.StaticScopeProvider(base),
 		opsHostOpt,

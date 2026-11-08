@@ -55,6 +55,46 @@ func TestApply_StampActiveOpFailureFailsTerminal(t *testing.T) {
 	}
 }
 
+func TestApply_StampAndForceFailBothErrorJoined(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	mod := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core", Status: pkgmeta.Installed}
+	o := &Ops{
+		Scope:     newOpsTestScope(t, db),
+		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}, load: map[string]*pkgmeta.Module{"core": mod}},
+		Lifecycle: &stubLifecycle{},
+		Events:    &recordingBus{},
+	}
+	if err := db.Create(&modmeta.ModuleCatalog{ModuleName: "core", Installed: true}).Error; err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "core", Action: ActionUpgrade})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := db.Callback().Update().Before("gorm:update").Register("fail_stamp_and_terminal", func(tx *gorm.DB) {
+		if tx.Statement == nil {
+			return
+		}
+		switch tx.Statement.Table {
+		case "meta_module_catalog":
+			_ = tx.AddError(errors.New("stamp boom"))
+		case "meta_module_operation":
+			if st, ok := tx.Statement.Dest.(map[string]any); ok {
+				if status, _ := st["status"].(string); status == StatusFailed {
+					_ = tx.AddError(errors.New("terminal boom"))
+				}
+			}
+		}
+	}); err != nil {
+		t.Fatalf("callback: %v", err)
+	}
+	err = o.Apply(context.Background(), ApplyRequest{Id: result.Id})
+	if err == nil || !strings.Contains(err.Error(), "stamp boom") || !strings.Contains(err.Error(), "terminal boom") {
+		t.Fatalf("Apply joined err = %v", err)
+	}
+}
+
 func TestRun_StampActiveOpFailureFailsTerminal(t *testing.T) {
 	t.Parallel()
 	db := newOpsTestDB(t)
