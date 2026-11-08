@@ -66,6 +66,8 @@ func (o *Ops) Run(ctx context.Context, req RunRequest) error {
 		planDoc = doc
 		if stampErr := o.setCatalogActiveOp(ctx, operationModuleNames(row, doc), row.Id.String); stampErr != nil {
 			finishCtx := context.WithoutCancel(ctx)
+			// Drop any partial stamps if the terminal write also fails.
+			o.clearCatalogActiveOpBestEffort(finishCtx, row.Id.String)
 			if failErr := o.failOperation(finishCtx, row, "ops", "ACTIVE_OP_STAMP_FAILED", stampErr.Error()); failErr != nil {
 				return errors.Join(stampErr, failErr)
 			}
