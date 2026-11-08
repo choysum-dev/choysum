@@ -140,7 +140,7 @@ func (o *Ops) executeLoadDemo(ctx context.Context, row *modmeta.ModuleOperation)
 	if o.Scope == nil {
 		return errors.New("ops: scope is required")
 	}
-	loadedAny := false
+	latchSet := false
 	for _, name := range names {
 		pending, pendingErr := o.isPendingDemoModule(ctx, name)
 		if pendingErr != nil {
@@ -157,18 +157,19 @@ func (o *Ops) executeLoadDemo(ctx context.Context, row *modmeta.ModuleOperation)
 		if err := applyDemoFiles(ctx, o.Scope, mod); err != nil {
 			return fmt.Errorf("ops: load demo for %q: %w", name, err)
 		}
+		// Latch before DemoLoaded so a latch write failure does not leave modules
+		// marked (retry would skip them and never set modules.with_demo).
+		if !latchSet {
+			if err := o.SetWithDemo(ctx, true); err != nil {
+				return err
+			}
+			latchSet = true
+		}
 		// Mark per module after a successful import so a later failure does not
 		// leave earlier modules unmarked (retry would re-import them).
 		if err := o.markDemoLoaded(ctx, []string{name}); err != nil {
 			return err
 		}
-		loadedAny = true
-	}
-	if !loadedAny {
-		return nil
-	}
-	if err := o.SetWithDemo(ctx, true); err != nil {
-		return err
 	}
 	return nil
 }

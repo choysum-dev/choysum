@@ -196,9 +196,13 @@ test('useModuleOpDrawerSession: runPlanDemo guards missing PlanDemo and resets o
     isOpen: () => open.value,
     msgs,
   });
+  noMethod.activeAction.value = 'load_demo';
+  noMethod.planLoading.value = true;
   await noMethod.runPlanDemo();
   expect(noMethod.plan.value).toBeNull();
   expect(noMethod.activeAction.value).toBe('');
+  expect(noMethod.planLoading.value).toBe(false);
+  expect(noMethod.step.value).toBe('plan');
 
   // Missing PlanDemo invalidates an in-flight plan so a late response cannot land.
   let resolveStale: ((v: any) => void) | undefined;

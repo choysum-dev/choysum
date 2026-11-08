@@ -194,8 +194,10 @@ func TestRun_LoadDemoMarksEachModuleBeforeNext(t *testing.T) {
 	if beta.DemoLoaded {
 		t.Fatal("beta must stay unmarked after failed import")
 	}
-	if o.ResolveWithDemo(context.Background()) {
-		t.Fatal("latch must not set when batch failed mid-way")
+	// Latch is set on the first successful import (before mark), so a later
+	// module failure does not leave with_demo unset after partial progress.
+	if !o.ResolveWithDemo(context.Background()) {
+		t.Fatal("expected modules.with_demo after alpha succeeded")
 	}
 }
 
@@ -328,6 +330,13 @@ func TestExecuteLoadDemo_SetWithDemoFailure(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "forced latch fail") {
 		t.Fatalf("SetWithDemo fail: %v", err)
 	}
+	var row modmeta.ModuleCatalog
+	if err := db.Where("module_name = ?", "base").Take(&row).Error; err != nil {
+		t.Fatalf("catalog: %v", err)
+	}
+	if row.DemoLoaded {
+		t.Fatal("DemoLoaded must stay false when latch write fails (retry can remount)")
+	}
 }
 
 func TestExecuteLoadDemo_MarkDemoLoadedFailure(t *testing.T) {
@@ -362,6 +371,9 @@ func TestExecuteLoadDemo_MarkDemoLoadedFailure(t *testing.T) {
 	err = o.executeLoadDemo(context.Background(), &modmeta.ModuleOperation{PlanJson: raw})
 	if err == nil || !strings.Contains(err.Error(), "forced mark fail") {
 		t.Fatalf("mark fail: %v", err)
+	}
+	if !o.ResolveWithDemo(context.Background()) {
+		t.Fatal("latch is set before mark; mark failure must leave with_demo true")
 	}
 }
 
