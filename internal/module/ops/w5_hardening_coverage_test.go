@@ -146,6 +146,53 @@ func TestRun_StampActiveOpFailureFailsTerminal(t *testing.T) {
 	}
 }
 
+func TestRun_StampAndFailOperationBothErrorJoined(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	mod := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core"}
+	o := &Ops{
+		Scope:     newOpsTestScope(t, db),
+		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+		Lifecycle: &stubLifecycle{},
+		Events:    &recordingBus{},
+	}
+	if err := db.Create(&modmeta.ModuleCatalog{ModuleName: "core", Installed: false}).Error; err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "core", Action: ActionInstall})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := db.Model(&modmeta.ModuleCatalog{}).Where("module_name = ?", "core").
+		Update("active_operation_id", nil).Error; err != nil {
+		t.Fatalf("clear stamp: %v", err)
+	}
+	if err := db.Callback().Update().Before("gorm:update").Register("fail_run_stamp_and_terminal", func(tx *gorm.DB) {
+		if tx.Statement == nil {
+			return
+		}
+		switch tx.Statement.Table {
+		case "meta_module_catalog":
+			_ = tx.AddError(errors.New("run stamp boom"))
+		case "meta_module_operation":
+			if st, ok := tx.Statement.Dest.(map[string]any); ok {
+				if status, _ := st["status"].(string); status == StatusFailed {
+					_ = tx.AddError(errors.New("failOp boom"))
+				}
+			}
+		}
+	}); err != nil {
+		t.Fatalf("callback: %v", err)
+	}
+	err = o.Run(context.Background(), RunRequest{Id: result.Id})
+	if err == nil || !strings.Contains(err.Error(), "run stamp boom") || !strings.Contains(err.Error(), "failOp boom") {
+		t.Fatalf("Run joined err = %v", err)
+	}
+}
+
 func TestCatalogActiveOp_EmptyAndSessionGuards(t *testing.T) {
 	t.Parallel()
 	o := &Ops{}

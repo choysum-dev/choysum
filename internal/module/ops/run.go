@@ -58,13 +58,17 @@ func (o *Ops) Run(ctx context.Context, req RunRequest) error {
 		doc, docErr := unmarshalPlanDocument(row.PlanJson)
 		if docErr != nil {
 			finishCtx := context.WithoutCancel(ctx)
-			_ = o.failOperation(finishCtx, row, "ops", "PLAN_DECODE_FAILED", docErr.Error())
+			if failErr := o.failOperation(finishCtx, row, "ops", "PLAN_DECODE_FAILED", docErr.Error()); failErr != nil {
+				return errors.Join(docErr, failErr)
+			}
 			return docErr
 		}
 		planDoc = doc
 		if stampErr := o.setCatalogActiveOp(ctx, operationModuleNames(row, doc), row.Id.String); stampErr != nil {
 			finishCtx := context.WithoutCancel(ctx)
-			_ = o.failOperation(finishCtx, row, "ops", "ACTIVE_OP_STAMP_FAILED", stampErr.Error())
+			if failErr := o.failOperation(finishCtx, row, "ops", "ACTIVE_OP_STAMP_FAILED", stampErr.Error()); failErr != nil {
+				return errors.Join(stampErr, failErr)
+			}
 			return stampErr
 		}
 	}
