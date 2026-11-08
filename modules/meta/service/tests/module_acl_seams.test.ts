@@ -107,6 +107,7 @@ test('meta ACL seams: Execute is not an interactive Plan/Apply substitute', () =
   expect(typeof MetaModuleOperation.Apply).toBe('function');
   expect(typeof MetaModuleOperation.Execute).toBe('function');
   expect(typeof MetaModuleOperation.PlanDemo).toBe('function');
+  expect(typeof MetaModuleOperation.RequestLoadDemo).toBe('function');
 });
 
 test('meta ACL seams: sync path uses bridge.plan(action=sync), not MetaModuleOperation.Plan', async () => {

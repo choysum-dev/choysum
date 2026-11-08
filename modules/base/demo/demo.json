@@ -10,7 +10,17 @@
           "zh_CN": "演示公司"
         },
         "Code": "DEMO",
-        "Timezone": "Asia/Shanghai"
+        "Timezone": "Asia/Shanghai",
+        "CurrencyId": {
+          "ref": "base.currency_cny"
+        },
+        "CountryId": {
+          "ref": "base.country_cn"
+        },
+        "IsActive": true,
+        "LanguageId": {
+          "ref": "base.language_zh_cn"
+        }
       }
     }
   ]

@@ -67,7 +67,7 @@ SPDX-License-Identifier: Apache-2.0
                   :currency-touched="currencyTouched"
                   @currency-touched="currencyTouched = true"
                 />
-                <SetupReviewStep v-else :form-data="formData" :selections="selections" />
+                <SetupReviewStep v-else :store="formStore" :form-data="formData" :selections="selections" />
                 <div class="setup-actions mt-6 flex justify-between gap-2">
                   <ChoyButton
                     v-if="step !== 'admin'"
@@ -121,10 +121,12 @@ import { resolveLoginRedirect, runHandledAuthSubmit } from './login_form';
 import {
   SETUP_STEPS,
   buildCompleteInitialSetupReq,
+  runSetupLoadDemo,
   runSetupSubmit,
   setupLocalFieldForServerField,
   setupLoginFallbackTarget,
   setupStepForServerField,
+  setupWantsDemo,
   type SetupStep,
 } from './setup_form';
 import { clearSetupDraft, loadSetupDraft, saveSetupDraft } from './setup_draft';
@@ -134,10 +136,16 @@ import {
   countryDefaultCurrencies,
   resolveAdminLanguageCode,
   resolveSetupInitialValues,
+  type SetupInitialValues,
   type SetupSelectionItem,
 } from './setup_options';
+import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
+import { createStoreByModel } from '@/web/web/stores/registry';
 
 const { _t } = createTranslate('auth', { scope: 'web/pages/Setup' });
+void [
+  _t('Failed to load demo data. You can retry from Modules later.'),
+];
 
 const router = useRouter();
 const route = useRoute();
@@ -154,8 +162,9 @@ const formStore = createLocalFormStore({
     { name: 'CountryCode', label: 'Country / Region', type: 'selection', selection: [] },
     { name: 'CurrencyCode', label: 'Base Currency', type: 'selection', selection: [] },
     { name: 'Timezone', label: 'Business Timezone', type: 'selection', selection: [] },
+    { name: 'WithDemo', label: 'Load demo data', type: 'boolean' },
   ],
-  initialValues: {},
+  initialValues: { WithDemo: false },
   storeId: 'auth.setup',
 });
 
@@ -179,7 +188,7 @@ const formData = shallowRef<Record<string, unknown> | null>(null);
 const optionsLoading = ref(true);
 const optionsError = ref('');
 const options = shallowRef<InitialSetupOptions | null>(null);
-const initialValues = ref<Record<string, string | null>>({});
+const initialValues = ref<SetupInitialValues | Record<string, never>>({});
 const currencyTouched = ref(false);
 
 const emptySelections = (): Record<'CountryCode' | 'CurrencyCode' | 'Timezone', SetupSelectionItem[]> => ({
@@ -317,15 +326,26 @@ function showServerFieldError(field: string, message: string): boolean {
   return true;
 }
 
+async function requestSetupLoadDemo() {
+  const opStore = createStoreByModel('meta.MetaModuleOperation') as unknown as {
+    RequestLoadDemo: (req?: Record<string, never>) => Promise<{
+      Ok?: boolean;
+      ErrorMessage?: string;
+    }>;
+  };
+  return opStore.RequestLoadDemo({});
+}
+
 async function onFormSubmit(ctx: { formData: Record<string, unknown> }) {
   if (step.value !== 'review') {
     goNext();
     return { handled: true as const, skipSuccessMessage: true as const };
   }
   const req = buildCompleteInitialSetupReq(ctx.formData, resolveAdminLanguageCode(options.value, uiLanguageCode()));
+  const wantsDemo = setupWantsDemo(ctx.formData);
   return runHandledAuthSubmit({
-    submit: () =>
-      runSetupSubmit({
+    submit: async () => {
+      const ok = await runSetupSubmit({
         loading: !!loading.value,
         req,
         setupFailedMessage: _t('Initial setup failed. Please try again later.'),
@@ -342,7 +362,19 @@ async function onFormSubmit(ctx: { formData: Record<string, unknown> }) {
         onSetupFailed: async () => {
           await leaveIfSetupReady();
         },
-      }),
+      });
+      // Setup + login already succeeded; demo failure must not undo that.
+      if (ok && wantsDemo) {
+        await runSetupLoadDemo({
+          requestLoadDemo: requestSetupLoadDemo,
+          failedMessage: _t('Failed to load demo data. You can retry from Modules later.'),
+          onFailure: message => {
+            ChoyMessage.warning(message);
+          },
+        });
+      }
+      return ok;
+    },
     fallbackMessage: _t('Initial setup failed. Please try again later.'),
     setError: setPageError,
     onSuccess: () => router.replace(resolveLoginRedirect(route.query.redirect?.toString())),

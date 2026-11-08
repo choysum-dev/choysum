@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	pkgmeta "github.com/choysum-dev/choysum/pkg/meta"
-	"gorm.io/gorm/clause"
+	"gorm.io/gorm"
 )
 
 const withDemoSettingKey = "modules.with_demo"
@@ -42,6 +42,8 @@ func (o *Ops) ResolveWithDemo(ctx context.Context) bool {
 }
 
 // SetWithDemo upserts modules.with_demo. Only true is written (latch does not auto-clear).
+// Uses find-then-update/create so it works when key is indexed but not UNIQUE
+// (Postgres ON CONFLICT requires a matching unique/exclusion constraint).
 func (o *Ops) SetWithDemo(ctx context.Context, enabled bool) error {
 	if !enabled {
 		return errors.New("ops: SetWithDemo only supports enabling (true)")
@@ -53,10 +55,15 @@ func (o *Ops) SetWithDemo(ctx context.Context, enabled bool) error {
 	if err := sess.WithContext(ctx).AutoMigrate(&metaAppSetting{}); err != nil {
 		return err
 	}
-	return sess.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "key"}},
-		DoUpdates: clause.AssignmentColumns([]string{"value", "updated_at"}),
-	}).Create(&metaAppSetting{
+	var row metaAppSetting
+	err = sess.WithContext(ctx).Where(map[string]any{"key": withDemoSettingKey}).Take(&row).Error
+	if err == nil {
+		return sess.WithContext(ctx).Model(&row).Update("value", "true").Error
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
+	return sess.WithContext(ctx).Create(&metaAppSetting{
 		Key:   withDemoSettingKey,
 		Value: "true",
 	}).Error

@@ -72,6 +72,17 @@ export type ExecuteModuleOperationResp = {
 
 export type PlanDemoModuleOperationReq = Record<string, never>;
 
+/** Empty envelope for interactive sync load-demo (Plan → Apply → Run via bridge). */
+export type RequestLoadDemoReq = Record<string, never>;
+
+export type RequestLoadDemoResp = {
+  Ok: boolean;
+  Id?: string;
+  ErrorDomain?: string;
+  ErrorCode?: string;
+  ErrorMessage?: string;
+};
+
 type BridgePlanResult = {
   id?: string;
   ok?: boolean;
@@ -95,6 +106,7 @@ type BridgePlanResult = {
 
 type BridgeOpResult = {
   ok?: boolean;
+  id?: string;
   errorDomain?: string;
   errorCode?: string;
   errorMessage?: string;
@@ -227,6 +239,34 @@ export default class MetaModuleOperation extends BaseModel {
     })) as BridgePlanResult;
 
     return mapPlanResult(result, 'load-demo');
+  }
+
+  /**
+   * Load pending demo data for installed modules (HasDemo && !DemoLoaded).
+   * Runs Plan → Apply → Run synchronously via the moduleManagement bridge;
+   * soft-succeeds when nothing is pending.
+   */
+  static async RequestLoadDemo(_req: RequestLoadDemoReq = {}): Promise<RequestLoadDemoResp> {
+    void _req;
+    const operatorUserId = BaseModel.ensureUserId();
+    const bridge = getModuleManagementBridge();
+    const result = (await bridge.loadDemo({ operatorUserId })) as BridgeOpResult;
+    if (result && result.ok === false) {
+      return {
+        Ok: false,
+        Id: result.id != null ? String(result.id) : undefined,
+        ErrorDomain: result.errorDomain != null ? String(result.errorDomain) : undefined,
+        ErrorCode: result.errorCode != null ? String(result.errorCode) : undefined,
+        ErrorMessage:
+          result.errorMessage != null
+            ? String(result.errorMessage)
+            : _t('load demo failed', { scope: 'service/models/module_operation' }),
+      };
+    }
+    return {
+      Ok: true,
+      Id: result?.id != null ? String(result.id) : undefined,
+    };
   }
 
   static async Apply(req: ApplyModuleOperationReq): Promise<ApplyModuleOperationResp> {

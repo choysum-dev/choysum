@@ -214,6 +214,44 @@ export function withSetupServerError(rules: SetupClientRule[], message: string |
   return text ? [...rules, setupServerErrorRule(() => text)] : rules;
 }
 
+/** True when the review-step demo checkbox is checked. */
+export function setupWantsDemo(data: Record<string, unknown> | null | undefined): boolean {
+  return data?.WithDemo === true;
+}
+
+export type SetupLoadDemoResp = {
+  Ok?: boolean;
+  ErrorMessage?: string;
+};
+
+/**
+ * Best-effort load-demo after setup login. Never throws; callers toast via onFailure.
+ * Soft-ok when the bridge reports no pending demo modules.
+ */
+export async function runSetupLoadDemo(opts: {
+  requestLoadDemo: () => Promise<SetupLoadDemoResp | null | undefined>;
+  failedMessage: string;
+  onFailure: (message: string) => void;
+}): Promise<boolean> {
+  try {
+    const resp = await opts.requestLoadDemo();
+    if (resp && resp.Ok === false) {
+      const message = String(resp.ErrorMessage || '').trim() || opts.failedMessage;
+      opts.onFailure(message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('Load demo after initial setup failed:', err);
+    const message =
+      err instanceof Error && String(err.message || '').trim()
+        ? String(err.message).trim()
+        : opts.failedMessage;
+    opts.onFailure(message);
+    return false;
+  }
+}
+
 /**
  * Complete initial setup then sign in with the new admin.
  * Field rules run per step before this; empty credentials are a last guard.

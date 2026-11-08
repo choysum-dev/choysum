@@ -8,6 +8,7 @@ import { buildPageMountGlobal } from '@choysum/page-mount';
 import { useAuthStore, type CompleteInitialSetupInput, type InitialSetupOptions } from '../stores/auth';
 import { ChoysumError } from '../error';
 import { clearSetupDraft, saveSetupDraft } from './setup_draft';
+import { replaceStoreFactory } from '@/web/web/stores/registry';
 
 function setupOptions(): InitialSetupOptions {
   return {
@@ -219,7 +220,11 @@ test('Setup.vue: Next walks admin → organization → review, Back returns', as
   expect(wrapper.find('.setup-review-step').exists()).toBe(true);
   expect(wrapper.text().includes('My Company')).toBe(true);
   expect(wrapper.text().includes('CNY · Chinese Yuan')).toBe(true);
-  expect(wrapper.find('.setup-review-currency-note').exists()).toBe(true);
+  expect(wrapper.find('[data-testid="setup-review-demo"]').exists()).toBe(true);
+  expect(wrapper.text().includes('Optional') || wrapper.text().includes('可选')).toBe(true);
+  expect(
+    wrapper.text().includes('Load demo data') || wrapper.text().includes('加载演示数据'),
+  ).toBe(true);
 
   const backEl = wrapper.find('.setup-back').element as HTMLElement;
   let backClicks = 0;
@@ -253,6 +258,32 @@ test('Setup.vue: review submit sends sectioned request, logs in, and redirects',
   expect(logins).toEqual([['admin', 'secret1']]);
   expect(replaces).toEqual(['/auth/users']);
   wrapper.unmount();
+});
+
+test('Setup.vue: unchecked WithDemo does not call RequestLoadDemo', async () => {
+  const loadDemoCalls: unknown[] = [];
+  const restore = replaceStoreFactory('meta.MetaModuleOperation', () => ({
+    RequestLoadDemo: async (req: unknown) => {
+      loadDemoCalls.push(req ?? {});
+      return { Ok: true, Id: 'op-demo' };
+    },
+  }));
+  try {
+    const { wrapper, replaces, requests, logins } = await mountSetup({
+      query: { redirect: '/auth/users' },
+    });
+    await advanceToReview(wrapper);
+    expect(wrapper.find('[data-testid="setup-review-demo"]').exists()).toBe(true);
+    submitForm(wrapper);
+    await afterSubmit();
+    expect(requests.length).toBe(1);
+    expect(logins).toEqual([['admin', 'secret1']]);
+    expect(loadDemoCalls.length).toBe(0);
+    expect(replaces).toEqual(['/auth/users']);
+    wrapper.unmount();
+  } finally {
+    restore();
+  }
 });
 
 test('Setup.vue: server field error jumps to its step without a header error', async () => {
