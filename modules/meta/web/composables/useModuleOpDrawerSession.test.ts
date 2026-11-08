@@ -200,7 +200,35 @@ test('useModuleOpDrawerSession: runPlanDemo guards missing PlanDemo and resets o
   expect(noMethod.plan.value).toBeNull();
   expect(noMethod.activeAction.value).toBe('');
 
+  // Missing PlanDemo invalidates an in-flight plan so a late response cannot land.
+  let resolveStale: ((v: any) => void) | undefined;
+  const storeRef = ref<any>(
+    makeStore({
+      PlanDemo: () =>
+        new Promise(resolve => {
+          resolveStale = resolve;
+        }),
+    }),
+  );
   const api = useModuleOpDrawerSession({
+    operationStore: storeRef,
+    isOpen: () => open.value,
+    msgs,
+  });
+  const first = api.runPlanDemo();
+  storeRef.value = makeStore(); // no PlanDemo
+  await api.runPlanDemo();
+  resolveStale?.({
+    Id: 'should-drop',
+    ModuleOrder: [{ ModuleName: 'base' }],
+    AffectedApps: [],
+    Risks: [],
+    Blockers: [],
+  });
+  await first;
+  expect(api.plan.value).toBeNull();
+
+  const throws = useModuleOpDrawerSession({
     operationStore: makeStore({
       PlanDemo: async () => {
         throw new Error('demo plan boom');
@@ -209,10 +237,10 @@ test('useModuleOpDrawerSession: runPlanDemo guards missing PlanDemo and resets o
     isOpen: () => open.value,
     msgs,
   });
-  await api.runPlanDemo();
-  expect(api.plan.value).toBeNull();
-  expect(api.activeAction.value).toBe('');
-  expect(api.planLoading.value).toBe(false);
+  await throws.runPlanDemo();
+  expect(throws.plan.value).toBeNull();
+  expect(throws.activeAction.value).toBe('');
+  expect(throws.planLoading.value).toBe(false);
 });
 
 test('useModuleOpDrawerSession: superseded PlanDemo response is ignored', async () => {

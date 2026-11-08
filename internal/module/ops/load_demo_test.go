@@ -478,6 +478,42 @@ func TestExecuteLoadDemo_PendingCheckQueryFailure(t *testing.T) {
 	}
 }
 
+func TestMarkDemoLoaded_OnlyPendingRows(t *testing.T) {
+	db := newOpsTestDB(t)
+	o := &Ops{Scope: newOpsTestScope(t, db)}
+	if err := db.Create(&modmeta.ModuleCatalog{
+		ModuleName: "pending", Installed: true, HasDemo: true, DemoLoaded: false,
+	}).Error; err != nil {
+		t.Fatalf("seed pending: %v", err)
+	}
+	if err := db.Create(&modmeta.ModuleCatalog{
+		ModuleName: "done", Installed: true, HasDemo: true, DemoLoaded: true,
+	}).Error; err != nil {
+		t.Fatalf("seed done: %v", err)
+	}
+	if err := db.Create(&modmeta.ModuleCatalog{
+		ModuleName: "gone", Installed: false, HasDemo: true, DemoLoaded: false,
+	}).Error; err != nil {
+		t.Fatalf("seed gone: %v", err)
+	}
+	if err := o.markDemoLoaded(context.Background(), []string{"pending", "done", "gone"}); err != nil {
+		t.Fatalf("mark: %v", err)
+	}
+	var pending, done, gone modmeta.ModuleCatalog
+	_ = db.Where("module_name = ?", "pending").Take(&pending).Error
+	_ = db.Where("module_name = ?", "done").Take(&done).Error
+	_ = db.Where("module_name = ?", "gone").Take(&gone).Error
+	if !pending.DemoLoaded {
+		t.Fatal("pending should be marked")
+	}
+	if !done.DemoLoaded {
+		t.Fatal("done must stay loaded")
+	}
+	if gone.DemoLoaded {
+		t.Fatal("uninstalled row must not be marked")
+	}
+}
+
 func TestLoadInstalledModule_RequiresInstalledStatus(t *testing.T) {
 	db := newOpsTestDB(t)
 	o := &Ops{Scope: newOpsTestScope(t, db)}

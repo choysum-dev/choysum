@@ -223,6 +223,8 @@ export function useModuleOpDrawerSession(opts: {
   async function runPlanDemo() {
     const store = resolveStore();
     if (!store || typeof (store as any).PlanDemo !== 'function') {
+      // Drop any in-flight plan response before bailing out.
+      planSession.invalidate();
       ChoyMessage.error(opts.msgs.failedToLoadPlan);
       return;
     }

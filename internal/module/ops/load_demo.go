@@ -212,6 +212,6 @@ func (o *Ops) markDemoLoaded(ctx context.Context, names []string) error {
 	}
 	return sess.WithContext(ctx).
 		Model(&modmeta.ModuleCatalog{}).
-		Where("module_name IN ?", names).
+		Where("module_name IN ? AND installed = ? AND has_demo = ? AND demo_loaded = ?", names, true, true, false).
 		Update("demo_loaded", true).Error
 }
