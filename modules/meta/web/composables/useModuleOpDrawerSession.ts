@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { computed, ref, type Ref } from 'vue';
+import { computed, ref, unref, type Ref } from 'vue';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { ChoyMessage } from '@/web';
 import { createPlanDialogSessionGate } from '../views/module_catalog_chrome';
@@ -114,10 +114,18 @@ export function useModuleOpDrawerSession(opts: {
   const activeAction = ref<ModuleOpDrawerPlanAction | 'progress' | ''>('');
   const useRegistryOrigin = ref(false);
   const planSession = createPlanDialogSessionGate();
+  // Tracks which begin() seq last set planLoading, so finally can clear even after stop()/invalidate.
+  let planLoadingOwnerSeq = 0;
 
   function resolveStore(): WebModelStore<any> | null {
-    const raw = opts.operationStore as any;
-    const store = raw && typeof raw === 'object' && 'value' in raw ? raw.value : raw;
+    // Unwrap Ref/ComputedRef layers. Some hosts pass a ComputedRef as the prop
+    // value; one unref is not always enough.
+    let store: any = opts.operationStore;
+    for (let i = 0; i < 3; i += 1) {
+      const next = unref(store);
+      if (next === store) break;
+      store = next;
+    }
     return store || null;
   }
 
@@ -165,6 +173,7 @@ export function useModuleOpDrawerSession(opts: {
 
   function reset() {
     planSession.invalidate();
+    planLoadingOwnerSeq = 0;
     plan.value = null;
     opStatus.value = null;
     step.value = 'plan';
@@ -178,6 +187,9 @@ export function useModuleOpDrawerSession(opts: {
 
   function stop() {
     planSession.invalidate();
+    planLoadingOwnerSeq = 0;
+    planLoading.value = false;
+    executeLoading.value = false;
     progress.stop();
   }
 
@@ -190,7 +202,7 @@ export function useModuleOpDrawerSession(opts: {
     const action = input.action;
     if (!moduleName || !action) return;
     const store = resolveStore();
-    if (!store) {
+    if (!store || typeof (store as any).Plan !== 'function') {
       ChoyMessage.error(opts.msgs.failedToLoadPlan);
       return;
     }
@@ -201,6 +213,7 @@ export function useModuleOpDrawerSession(opts: {
     opStatus.value = null;
     plan.value = null;
     const requestSeq = planSession.begin();
+    planLoadingOwnerSeq = requestSeq;
     planLoading.value = true;
     try {
       const req: Record<string, unknown> = { ModuleName: moduleName, Action: action };
@@ -215,7 +228,8 @@ export function useModuleOpDrawerSession(opts: {
       ChoyMessage.error(String(error?.message || opts.msgs.failedToLoadPlan));
       plan.value = null;
     } finally {
-      if (planSession.isCurrent(requestSeq)) planLoading.value = false;
+      // Clear even after stop()/invalidate when no newer plan owns the spinner.
+      if (planLoadingOwnerSeq === requestSeq) planLoading.value = false;
     }
   }
 
@@ -238,6 +252,7 @@ export function useModuleOpDrawerSession(opts: {
     opStatus.value = null;
     plan.value = null;
     const requestSeq = planSession.begin();
+    planLoadingOwnerSeq = requestSeq;
     planLoading.value = true;
     try {
       const nextPlan = await (store as any).PlanDemo({});
@@ -251,7 +266,7 @@ export function useModuleOpDrawerSession(opts: {
       activeAction.value = '';
       step.value = 'plan';
     } finally {
-      if (planSession.isCurrent(requestSeq)) planLoading.value = false;
+      if (planLoadingOwnerSeq === requestSeq) planLoading.value = false;
     }
   }
 

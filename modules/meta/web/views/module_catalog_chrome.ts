@@ -14,18 +14,6 @@ export function moduleStatusBadgeVariant(
   return 'secondary';
 }
 
-/** Quiet badge variants for catalog cards so status does not compete with the primary CTA. */
-export function moduleCatalogCardBadgeVariant(
-  status?: string,
-  available?: boolean,
-): 'default' | 'secondary' | 'destructive' | 'outline' {
-  if (available === false) return 'destructive';
-  const val = String(status || '').toLowerCase();
-  if (val === 'broken' || val === 'failed') return 'destructive';
-  if (val === 'uninstalled') return 'outline';
-  return 'secondary';
-}
-
 /** True when InstalledStatus / Installed means the module is installed. */
 export function isModuleInstalled(status?: string): boolean {
   return String(status || '').toLowerCase() === 'installed';
@@ -121,23 +109,18 @@ export function createPlanDialogSessionGate() {
   };
 }
 
-/** Catalog filter keys for the directory toolbar. */
-export type ModuleCatalogFilter = 'all' | 'installed' | 'upgradeable' | 'uninstalled' | 'unavailable';
-
-/** Match a catalog row against the directory filter chip. */
-export function matchesModuleCatalogFilter(
-  rec: Record<string, unknown>,
-  filter: ModuleCatalogFilter,
-): boolean {
-  if (filter === 'all') return true;
-  if (filter === 'unavailable') return rec.Available === false;
-  if (filter === 'upgradeable') return rec.Installed === true && rec.UpdateAvailable === true;
-  if (filter === 'installed') return rec.Installed === true && rec.Available !== false;
-  if (filter === 'uninstalled') return rec.Installed !== true && rec.Available !== false;
-  return true;
+/** Version line for catalog cards (installed → catalog when an update is pending). */
+export function formatModuleCatalogVersionLine(rec: Record<string, unknown>): string {
+  const installed = String(rec.InstalledVersion || '').trim();
+  const catalog = String(rec.LocalVersion || rec.RegistryVersion || '').trim();
+  if (rec.Installed === true && rec.UpdateAvailable === true && installed && catalog) {
+    return `${installed} → ${catalog}`;
+  }
+  if (rec.Installed === true) return installed || catalog || '—';
+  return catalog || '—';
 }
 
-/** Primary CTA implied by §7.1 for a catalog row (null = no primary button). */
+/** Primary CTA for a catalog row (null = no primary button). */
 export function resolveModuleCatalogPrimaryAction(
   rec: Record<string, unknown>,
 ): 'install' | 'upgrade' | 'progress' | null {

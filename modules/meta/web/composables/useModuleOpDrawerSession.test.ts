@@ -152,6 +152,37 @@ test('useModuleOpDrawerSession: superseded plan response is ignored', async () =
   });
   await first;
   expect(api.plan.value).toBeNull();
+  expect(api.planLoading.value).toBe(false);
+});
+
+test('useModuleOpDrawerSession: stop clears planLoading for an in-flight plan', async () => {
+  const open = ref(true);
+  let resolvePlan: ((v: any) => void) | undefined;
+  const store = makeStore({
+    Plan: () =>
+      new Promise(resolve => {
+        resolvePlan = resolve;
+      }),
+  });
+  const api = useModuleOpDrawerSession({
+    operationStore: store,
+    isOpen: () => open.value,
+    msgs,
+  });
+  const first = api.runPlan({ moduleName: 'core', action: 'install' });
+  expect(api.planLoading.value).toBe(true);
+  api.stop();
+  expect(api.planLoading.value).toBe(false);
+  resolvePlan?.({
+    Id: 'stale',
+    ModuleOrder: [],
+    AffectedApps: [],
+    Risks: [],
+    Blockers: [],
+  });
+  await first;
+  expect(api.plan.value).toBeNull();
+  expect(api.planLoading.value).toBe(false);
 });
 
 test('useModuleOpDrawerSession: runPlanDemo maps PlanDemo payload', async () => {

@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <ChoyPage :title="pageTitle" :store="catalogStore">
-    <ModuleCatalogView
+    <ModuleCatalogKanbanView
       :store="catalogStore"
       :operation-store="operationStore"
       :initial-operation-id="initialOperationId"
@@ -16,12 +16,12 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import ModuleCatalogView from '../views/ModuleCatalogView.vue';
+import ModuleCatalogKanbanView from '../views/ModuleCatalogKanbanView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { ChoyPage } from '@/web';
 import { useModuleCatalogPage } from './module_catalog_page';
 
-defineOptions({ name: 'MetaModuleCatalogPage' });
+defineOptions({ name: 'MetaModuleCatalogKanbanPage' });
 
 const route = useRoute();
 const { pageTitle, catalogStore, operationStore } = useModuleCatalogPage({

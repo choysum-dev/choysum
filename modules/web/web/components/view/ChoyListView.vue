@@ -91,6 +91,13 @@ SPDX-License-Identifier: Apache-2.0
                 <slot name="overflow-actions" :selected-items="selectedItems" />
               </template>
             </ChoyPageTitleActions>
+
+            <!-- Same tray as title/⋮ (Form secondary parity) — no ActionBar separator. -->
+            <slot
+              v-if="showActions"
+              name="secondary-actions"
+              :selected-items="selectedItems"
+            />
           </template>
 
           <!-- Only register when filled — empty tray would paint a dangling ActionBar separator. -->

@@ -5,10 +5,9 @@ import {
   captureDialogFocusTarget,
   catalogInstalledStatus,
   formatModuleCatalogDate,
+  formatModuleCatalogVersionLine,
   formatModuleOpSummary,
   isModuleInstalled,
-  matchesModuleCatalogFilter,
-  moduleCatalogCardBadgeVariant,
   moduleStatusBadgeVariant,
   resolveModuleCatalogPrimaryAction,
   createPlanDialogSessionGate,
@@ -22,12 +21,6 @@ test('moduleStatusBadgeVariant: unavailable and known statuses', () => {
   expect(moduleStatusBadgeVariant('queued')).toBe('secondary');
 });
 
-test('moduleCatalogCardBadgeVariant: keeps Install CTA as the only primary accent', () => {
-  expect(moduleCatalogCardBadgeVariant('installed')).toBe('secondary');
-  expect(moduleCatalogCardBadgeVariant('uninstalled')).toBe('outline');
-  expect(moduleCatalogCardBadgeVariant('broken')).toBe('destructive');
-});
-
 test('isModuleInstalled / catalogInstalledStatus', () => {
   expect(isModuleInstalled('installed')).toBe(true);
   expect(isModuleInstalled('Installed')).toBe(true);
@@ -35,6 +28,20 @@ test('isModuleInstalled / catalogInstalledStatus', () => {
   expect(catalogInstalledStatus({ Installed: true })).toBe('installed');
   expect(catalogInstalledStatus({ Installed: false })).toBe('uninstalled');
   expect(catalogInstalledStatus({ InstalledStatus: 'broken' })).toBe('broken');
+});
+
+test('formatModuleCatalogVersionLine: upgrade arrow and fallbacks', () => {
+  expect(
+    formatModuleCatalogVersionLine({
+      Installed: true,
+      UpdateAvailable: true,
+      InstalledVersion: '1.0',
+      LocalVersion: '1.1',
+    }),
+  ).toBe('1.0 → 1.1');
+  expect(formatModuleCatalogVersionLine({ Installed: true, InstalledVersion: '1' })).toBe('1');
+  expect(formatModuleCatalogVersionLine({ RegistryVersion: '9' })).toBe('9');
+  expect(formatModuleCatalogVersionLine({})).toBe('—');
 });
 
 test('formatModuleCatalogDate: empty and valid timestamps', () => {
@@ -65,7 +72,11 @@ test('formatModuleOpSummary: string / message / code / object / throw', () => {
   expect(formatModuleOpSummary({ code: 12 })).toBe('12');
   expect(formatModuleOpSummary({ code: 'C1' })).toBe('C1');
   expect(formatModuleOpSummary({ other: 1 })).toContain('other');
-  const cyclic: any = { toJSON() { throw new Error('json'); } };
+  const cyclic: any = {
+    toJSON() {
+      throw new Error('json');
+    },
+  };
   cyclic.self = cyclic;
   expect(formatModuleOpSummary(cyclic)).toBeTruthy();
   const unstringable: any = {
@@ -82,11 +93,6 @@ test('formatModuleOpSummary: string / message / code / object / throw', () => {
   expect(formatModuleOpSummary(unstringable)).toBe('');
 });
 
-test('matchesModuleCatalogFilter: unknown filter falls through to true', () => {
-  expect(matchesModuleCatalogFilter({ Installed: true }, 'all')).toBe(true);
-  expect(matchesModuleCatalogFilter({}, 'not-a-filter' as any)).toBe(true);
-});
-
 test('captureDialogFocusTarget: returns focusable active element or null', () => {
   expect(captureDialogFocusTarget({ activeElement: null } as any)).toBe(null);
   expect(captureDialogFocusTarget({ activeElement: {} } as any)).toBe(null);
@@ -94,12 +100,7 @@ test('captureDialogFocusTarget: returns focusable active element or null', () =>
   expect(captureDialogFocusTarget({ activeElement: el } as any)).toBe(el);
 });
 
-test('matchesModuleCatalogFilter / resolveModuleCatalogPrimaryAction', () => {
-  expect(matchesModuleCatalogFilter({ Installed: true }, 'installed')).toBe(true);
-  expect(matchesModuleCatalogFilter({ Installed: true, UpdateAvailable: true }, 'upgradeable')).toBe(true);
-  expect(matchesModuleCatalogFilter({ Available: false }, 'unavailable')).toBe(true);
-  expect(matchesModuleCatalogFilter({ Installed: false, Available: true }, 'uninstalled')).toBe(true);
-
+test('resolveModuleCatalogPrimaryAction', () => {
   expect(resolveModuleCatalogPrimaryAction({ ActiveOperationId: 'op-1' })).toBe('progress');
   expect(resolveModuleCatalogPrimaryAction({ Available: false })).toBe(null);
   expect(resolveModuleCatalogPrimaryAction({ Installed: false, Available: true })).toBe('install');

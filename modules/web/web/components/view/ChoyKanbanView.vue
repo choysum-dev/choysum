@@ -78,6 +78,9 @@ SPDX-License-Identifier: Apache-2.0
                 <slot name="overflow-actions" />
               </template>
             </ChoyPageTitleActions>
+
+            <!-- Same tray as title/⋮ (Form secondary parity) — no ActionBar separator. -->
+            <slot v-if="showActions" name="secondary-actions" />
           </template>
           <!-- Only mount the tray when the product view actually fills it (List parity). -->
           <template v-if="$slots['user-actions'] || $slots.header" #user-actions>

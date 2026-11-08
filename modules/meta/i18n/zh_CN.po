@@ -1865,6 +1865,22 @@ msgstr "开始时间"
 #~ msgid "Display:"
 #~ msgstr "展示："
 
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Update Module List"
+msgstr "更新模块列表"
+
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Update Module List"
+msgstr "更新模块列表"
+
+msgctxt "web/views/module_actions"
+msgid "Update Module List"
+msgstr "更新模块列表"
+
+msgctxt "web/views/ModuleOpDrawer"
+msgid "Update Module List"
+msgstr "更新模块列表"
+
 #~ msgctxt "web/views/ModuleKanbanView"
 #~ msgid "Installed:"
 #~ msgstr "已安装："

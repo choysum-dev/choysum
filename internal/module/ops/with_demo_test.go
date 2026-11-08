@@ -6,9 +6,11 @@ package ops
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -32,6 +34,75 @@ func TestResolveWithDemo_DefaultFalseThenSetTrue(t *testing.T) {
 	}
 	if !o.ResolveWithDemo(context.Background()) {
 		t.Fatal("expected still true")
+	}
+}
+
+func TestEnsureMetaAppSettingTable_CreateOnceOnly(t *testing.T) {
+	t.Parallel()
+	dbPath := filepath.Join(t.TempDir(), "ensure.db")
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if db.Migrator().HasTable(&metaAppSetting{}) {
+		t.Fatal("expected no meta_app_setting before ensure")
+	}
+	if err := ensureMetaAppSettingTable(db); err != nil {
+		t.Fatalf("ensure create: %v", err)
+	}
+	if !db.Migrator().HasTable(&metaAppSetting{}) {
+		t.Fatal("expected meta_app_setting after ensure")
+	}
+	// Second call must be a no-op (no AutoMigrate / alter).
+	if err := ensureMetaAppSettingTable(db); err != nil {
+		t.Fatalf("ensure existing: %v", err)
+	}
+}
+
+func TestSetWithDemo_CreatesTableWhenMissing(t *testing.T) {
+	t.Parallel()
+	dbPath := filepath.Join(t.TempDir(), "latch.db")
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	o := &Ops{Scope: newOpsTestScope(t, db)}
+	if db.Migrator().HasTable(&metaAppSetting{}) {
+		t.Fatal("expected empty db without meta_app_setting")
+	}
+	if err := o.SetWithDemo(context.Background(), true); err != nil {
+		t.Fatalf("SetWithDemo: %v", err)
+	}
+	if !db.Migrator().HasTable(&metaAppSetting{}) {
+		t.Fatal("expected SetWithDemo to create meta_app_setting when missing")
+	}
+	if !o.ResolveWithDemo(context.Background()) {
+		t.Fatal("expected latch true")
+	}
+}
+
+func TestSetWithDemo_DoesNotAutoMigrateExistingTable(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	o := &Ops{Scope: newOpsTestScope(t, db)}
+	// Poison AutoMigrate-style ALTER on this table; ensure path must not touch schema.
+	if err := db.Callback().Raw().Before("gorm:raw").Register("ops_forbid_automigrate_ddl", func(tx *gorm.DB) {
+		sql := ""
+		if tx.Statement != nil {
+			sql = strings.ToUpper(tx.Statement.SQL.String())
+		}
+		if strings.Contains(sql, "ALTER TABLE") && strings.Contains(sql, "META_APP_SETTING") {
+			_ = tx.AddError(errors.New("unexpected AutoMigrate alter on meta_app_setting"))
+		}
+	}); err != nil {
+		t.Fatalf("callback: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Callback().Raw().Remove("ops_forbid_automigrate_ddl") })
+	if err := o.SetWithDemo(context.Background(), true); err != nil {
+		t.Fatalf("SetWithDemo on existing table: %v", err)
+	}
+	if !o.ResolveWithDemo(context.Background()) {
+		t.Fatal("expected latch true")
 	}
 }
 

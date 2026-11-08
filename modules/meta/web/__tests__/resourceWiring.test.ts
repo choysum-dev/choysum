@@ -24,10 +24,23 @@ test('meta resource wiring: catalog/show/operation routes declare §6.3 actions'
   const byName = Object.fromEntries(metaRoutes.map(route => [String(route.name), route]));
 
   expect(byName.MetaModuleCatalog?.path).toBe('meta/modules');
+  expect(byName.MetaModuleCatalogList?.path).toBe('meta/modules/list');
   expect(byName.MetaModuleShow?.path).toBe('meta/modules/:name');
   expect(byName.MetaModuleOperationDeepLink?.path).toBe('meta/modules/operations/:id');
 
+  expect((byName.MetaModuleCatalog?.meta as any)?.viewKind).toBe('kanban');
+  expect((byName.MetaModuleCatalogList?.meta as any)?.viewKind).toBe('list');
+  expect((byName.MetaModuleCatalog?.meta as any)?.viewPaths).toEqual({
+    kanban: '/meta/modules',
+    list: '/meta/modules/list',
+  });
+  expect((byName.MetaModuleCatalogList?.meta as any)?.viewPaths).toEqual({
+    kanban: '/meta/modules',
+    list: '/meta/modules/list',
+  });
+
   expect(getRouteActionsFromMeta(byName.MetaModuleCatalog?.meta as any)).toEqual(MODULE_ACTIONS);
+  expect(getRouteActionsFromMeta(byName.MetaModuleCatalogList?.meta as any)).toEqual(MODULE_ACTIONS);
   expect(getRouteActionsFromMeta(byName.MetaModuleShow?.meta as any)).toEqual(MODULE_ACTIONS);
   expect(getRouteActionsFromMeta(byName.MetaModuleOperationDeepLink?.meta as any)).toEqual(MODULE_ACTIONS);
 
@@ -40,14 +53,20 @@ test('meta resource wiring: catalog/show/operation routes declare §6.3 actions'
   expect(getRouteActionsFromMeta(byName.MetaModelDataDetail?.meta as any)).toEqual([]);
 });
 
-test('meta resource wiring: menus only expose Modules leaf at /meta/modules', () => {
+test('meta resource wiring: Modules app root exposes Catalog leaf at /meta/modules', () => {
   expect(metaMenus).toHaveLength(1);
-  expect(metaMenus[0]?.path).toBe('/meta/modules');
-  expect(metaMenus[0]?.children == null || metaMenus[0]?.children?.length === 0).toBe(true);
+  expect(metaMenus[0]?.icon).toBeTruthy();
+  expect(metaMenus[0]?.path == null || metaMenus[0]?.path === '').toBe(true);
+  expect(metaMenus[0]?.children).toHaveLength(1);
+  expect(metaMenus[0]?.children?.[0]?.path).toBe('/meta/modules');
+  expect(getResourceDeclaration('meta.menu.root')).toBeTruthy();
   expect(getResourceDeclaration('meta.menu.modules')?.requires).toEqual([
     { kind: 'rpc', model: 'meta.MetaModuleCatalog' },
   ]);
   expect(getResourceDeclaration('meta.route.module_catalog')?.requires).toEqual([
+    { kind: 'rpc', model: 'meta.MetaModuleCatalog' },
+  ]);
+  expect(getResourceDeclaration('meta.route.module_catalog_list')?.requires).toEqual([
     { kind: 'rpc', model: 'meta.MetaModuleCatalog' },
   ]);
   expect(getResourceDeclaration('meta.route.module_show')?.requires).toEqual([

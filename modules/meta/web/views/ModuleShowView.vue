@@ -183,7 +183,9 @@ const props = withDefaults(
 const store = resolvePageStore(props.store, 'ModuleShowView');
 const recordId = toRef(props, 'recordId');
 const showHeader = toRef(props, 'showHeader');
-const operationStore = computed(() => props.operationStore ?? null);
+// Prefer the prop binding in the template (`operationStore`) so we pass the
+// concrete Pinia store — wrapping it in computed() can leave a ComputedRef
+// unwrapped and break session.store.Plan().
 
 const drawerOpen = ref(false);
 const drawerOperationId = ref('');

@@ -110,6 +110,14 @@ async function ensureLoggedIn(page: Page, baseURL: string) {
  */
 async function waitForModuleCatalog(page: Page) {
   await page.locator('[data-testid="module-catalog-view"]').waitFor({ state: 'visible', timeout: 30000 });
+  // Default catalog is ChoyKanbanView flat board; list route uses ChoyListView table.
+  const flatBoard = page.locator('[data-testid="choy-kanban-flat-board"]');
+  const listTable = page.locator('[data-testid="module-catalog-table"]');
+  if ((await flatBoard.count()) > 0) {
+    await flatBoard.first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => null);
+  } else if ((await listTable.count()) > 0) {
+    await listTable.first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => null);
+  }
   // The catalog can already be stable from cache without a fresh RPC on each poll.
   // Keep a short best-effort response wait to avoid 30s stalls in hot loops.
   await page
@@ -156,7 +164,7 @@ async function findModuleCardByName(page: Page, moduleName: string): Promise<Loc
     const card = cards.nth(i);
     const name = (
       (await card
-        .locator('.module-catalog-card__title .name')
+        .locator('[data-testid="module-catalog-card-name"]')
         .textContent()
         .catch(() => '')) || ''
     ).trim();
@@ -254,7 +262,7 @@ async function moduleStatusText(page: Page, moduleName: string) {
   }
   const tagText = (
     (await card
-      .locator('.module-catalog-card__status')
+      .locator('[data-testid="module-catalog-card-status"]')
       .textContent()
       .catch(() => '')) || ''
   ).trim();
@@ -568,7 +576,7 @@ async function snapshotModuleCards(page: Page): Promise<ModuleCardSnapshot[]> {
 
     const name = (
       (await card
-        .locator('.module-catalog-card__title .name')
+        .locator('[data-testid="module-catalog-card-name"]')
         .textContent()
         .catch(() => '')) || ''
     ).trim();
@@ -578,7 +586,7 @@ async function snapshotModuleCards(page: Page): Promise<ModuleCardSnapshot[]> {
 
     const status = (
       (await card
-        .locator('.module-catalog-card__status')
+        .locator('[data-testid="module-catalog-card-status"]')
         .textContent()
         .catch(() => '')) || ''
     ).trim();

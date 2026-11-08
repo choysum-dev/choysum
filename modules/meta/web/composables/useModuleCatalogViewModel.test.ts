@@ -5,17 +5,13 @@ import { reactive, ref } from 'vue';
 import { useModuleCatalogViewModel } from './useModuleCatalogViewModel';
 
 const msgs = {
-  all: 'All',
-  installed: 'Installed',
-  upgradeable: 'Upgradeable',
-  uninstalled: 'Not Installed',
-  unavailable: 'Unavailable',
-  cards: 'Cards',
-  table: 'Table',
   unknown: 'Unknown',
   install: 'Install',
   upgrade: 'Upgrade',
   progress: 'View Progress',
+  installed: 'Installed',
+  uninstalled: 'Not Installed',
+  unavailable: 'Unavailable',
   syncTriggered: (id: string) => `ok:${id}`,
   syncTriggeredEmpty: 'ok',
   syncFailed: (msg: string) => `fail:${msg}`,
@@ -37,14 +33,21 @@ function makeRoute(partial: Record<string, unknown> = {}) {
   }) as any;
 }
 
-test('useModuleCatalogViewModel: filters cards and labels status / versions / actions', () => {
+test('useModuleCatalogViewModel: labels status and drives drawer actions', () => {
   const store = makeStore([
-    { Id: '1', ModuleName: 'core', Installed: true, InstalledVersion: '1.0', LocalVersion: '1.1', UpdateAvailable: true, Available: true },
+    {
+      Id: '1',
+      ModuleName: 'core',
+      Installed: true,
+      InstalledVersion: '1.0',
+      LocalVersion: '1.1',
+      UpdateAvailable: true,
+      Available: true,
+    },
     { Id: '2', ModuleName: 'base', Installed: false, LocalVersion: '2.0', Available: true },
     { Id: '3', ModuleName: 'gone', Available: false },
   ]);
   const pushed: string[] = [];
-  const replaced: any[] = [];
   const route = makeRoute();
   const api = useModuleCatalogViewModel({
     store,
@@ -54,45 +57,22 @@ test('useModuleCatalogViewModel: filters cards and labels status / versions / ac
         pushed.push(String(to));
         return Promise.resolve();
       },
-      replace: (to: any) => {
-        replaced.push(to);
-        return Promise.resolve();
-      },
+      replace: async () => undefined,
     } as any,
     msgs,
   });
 
-  expect(api.filteredCardRows.value).toHaveLength(3);
-  api.filter.value = 'upgradeable';
-  expect(api.filteredCardRows.value.map((r: any) => r.ModuleName)).toEqual(['core']);
-  api.filter.value = 'uninstalled';
-  expect(api.filteredCardRows.value.map((r: any) => r.ModuleName)).toEqual(['base']);
-  api.filter.value = 'unavailable';
-  expect(api.filteredCardRows.value.map((r: any) => r.ModuleName)).toEqual(['gone']);
-
   const core = store.state.result.rows[0];
   expect(api.statusLabel(core)).toBe('Installed');
-  expect(api.versionLine(core)).toBe('1.0 → 1.1');
   expect(api.primaryActionFor(core)).toBe('upgrade');
   expect(api.primaryActionLabel('upgrade')).toBe('Upgrade');
   expect(api.primaryActionLabel(null)).toBe('');
-  expect(api.cardKey(core, 0)).toBe('1');
-  expect(api.cardKey({}, 9)).toBe('row-9');
   expect(api.statusBadgeVariant(core)).toBeTruthy();
-  expect(api.cardBadgeVariant(core)).toBeTruthy();
   expect(api.statusLabel({ Available: false })).toBe('Unavailable');
   expect(api.statusLabel({ Installed: false })).toBe('Not Installed');
   expect(api.statusLabel({})).toBe('Unknown');
-  expect(api.versionLine({ Installed: true, InstalledVersion: '1' })).toBe('1');
-  expect(api.versionLine({ RegistryVersion: '9' })).toBe('9');
-
-  api.onViewSelect('table');
-  expect(api.viewMode.value).toBe('table');
-  expect(replaced[0].query.view).toBe('table');
-  expect(replaced[0].name).toBe('MetaModuleCatalog');
-  expect(replaced[0].params).toEqual({});
-  api.onViewSelect('cards');
-  expect(api.viewMode.value).toBe('cards');
+  expect(api.field({ ModuleName: null }, 'ModuleName')).toBe('');
+  expect(api.field(null, 'ModuleName')).toBe('');
 
   api.onRowClick({ row: core } as any);
   expect(pushed).toContain('/meta/modules/core');
@@ -178,7 +158,6 @@ test('useModuleCatalogViewModel: boots and syncs drawer from operation deep link
 
   api.openDrawer({ moduleName: 'core', action: 'install' });
   expect(api.drawerOpen.value).toBe(true);
-  // User-opened drawers stay open across non-deep-link route syncs (e.g. view query).
   api.syncDrawerFromRoute();
   expect(api.drawerOpen.value).toBe(true);
   api.closeDrawer();
@@ -205,15 +184,15 @@ test('useModuleCatalogViewModel: boots and syncs drawer from operation deep link
   emptyOp.syncDrawerFromRoute();
   expect(emptyOp.drawerOpen.value).toBe(false);
 
-  const queryRoute = makeRoute({ query: { view: 'table' } });
-  const fromQuery = useModuleCatalogViewModel({
-    store,
-    route: queryRoute,
+  const initialRef = ref('op-ref');
+  const withRef = useModuleCatalogViewModel({
+    store: makeStore(),
+    route: makeRoute({ name: 'MetaModuleCatalog' }),
     router: { push: async () => undefined, replace: async () => undefined } as any,
+    initialOperationId: initialRef,
     msgs,
   });
-  expect(fromQuery.viewMode.value).toBe('table');
-  queryRoute.query = { view: 'cards' };
+  expect(withRef.resolveInitialOperationId()).toBe('op-ref');
 });
 
 test('useModuleCatalogViewModel: onSync delegates to RequestSync', async () => {
@@ -267,34 +246,6 @@ test('useModuleCatalogViewModel: bootFromRoute requests IfStale sync when permit
   denied.bootFromRoute();
   await Promise.resolve();
   expect(syncOpts).toEqual([]);
-});
-
-test('useModuleCatalogViewModel: filterOptions and viewSwitcherOptions expose labels', () => {
-  const api = useModuleCatalogViewModel({
-    store: makeStore(),
-    route: makeRoute(),
-    router: { push: async () => undefined, replace: async () => undefined } as any,
-    msgs,
-  });
-  expect(api.filterOptions.value.map(o => o.value)).toEqual([
-    'all',
-    'installed',
-    'upgradeable',
-    'uninstalled',
-    'unavailable',
-  ]);
-  expect(api.viewSwitcherOptions.value.map(o => o.value)).toEqual(['cards', 'table']);
-  expect(api.field({ ModuleName: null }, 'ModuleName')).toBe('');
-  expect(api.field(null, 'ModuleName')).toBe('');
-  const initialRef = ref('op-ref');
-  const withRef = useModuleCatalogViewModel({
-    store: makeStore(),
-    route: makeRoute({ name: 'MetaModuleCatalog' }),
-    router: { push: async () => undefined, replace: async () => undefined } as any,
-    initialOperationId: initialRef,
-    msgs,
-  });
-  expect(withRef.resolveInitialOperationId()).toBe('op-ref');
 });
 
 test('useModuleCatalogViewModel: lastSyncAtLabel picks newest raw timestamp', () => {

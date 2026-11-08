@@ -33,9 +33,9 @@ export const moduleUninstallAction = defineAction('meta.action.module_uninstall'
   ],
 });
 
-/** Sync the module catalog snapshot (local origin). */
+/** Rescan module sources and refresh the catalog snapshot (local origin). */
 export const moduleSyncAction = defineAction('meta.action.module_sync', {
-  title: _lt('Sync Modules'),
+  title: _lt('Update Module List'),
   requires: [{ model: 'meta.MetaModuleCatalog', method: 'RequestSync' }],
 });
 

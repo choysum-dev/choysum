@@ -10,25 +10,18 @@ import { useModuleCatalogSync } from './useModuleCatalogSync';
 import {
   catalogInstalledStatus,
   formatModuleCatalogDate,
-  matchesModuleCatalogFilter,
-  moduleCatalogCardBadgeVariant,
   moduleStatusBadgeVariant,
   resolveModuleCatalogPrimaryAction,
-  type ModuleCatalogFilter,
 } from '../views/module_catalog_chrome';
 
 export type ModuleCatalogViewMsgs = {
-  all: string;
-  installed: string;
-  upgradeable: string;
-  uninstalled: string;
-  unavailable: string;
-  cards: string;
-  table: string;
   unknown: string;
   install: string;
   upgrade: string;
   progress: string;
+  installed: string;
+  uninstalled: string;
+  unavailable: string;
   syncTriggered: (operationId: string) => string;
   syncTriggeredEmpty: string;
   syncFailed: (message: string) => string;
@@ -41,7 +34,7 @@ function isOperationDeepLinkRoute(routeName: unknown): boolean {
 }
 
 /**
- * Catalog view model: filters, cards/table mode, sync, and operation drawer shell state.
+ * Catalog view model: sync, drawer/deep-link, and row action helpers for List/Kanban hosts.
  */
 export function useModuleCatalogViewModel(opts: {
   store: WebModelStore<any>;
@@ -52,8 +45,6 @@ export function useModuleCatalogViewModel(opts: {
   canRequestSync?: () => boolean;
   msgs: ModuleCatalogViewMsgs;
 }) {
-  const filter = ref<ModuleCatalogFilter>('all');
-  const viewMode = ref<'cards' | 'table'>('cards');
   const drawerOpen = ref(false);
   const drawerOperationId = ref('');
   const drawerModuleName = ref('');
@@ -61,19 +52,6 @@ export function useModuleCatalogViewModel(opts: {
   const drawerRegistryNewerThanLocal = ref(false);
   // True when the open drawer was bound from the operation deep-link (or boot prop).
   const drawerBoundToRoute = ref(false);
-
-  const filterOptions = computed(() => [
-    { value: 'all' as const, label: opts.msgs.all },
-    { value: 'installed' as const, label: opts.msgs.installed },
-    { value: 'upgradeable' as const, label: opts.msgs.upgradeable },
-    { value: 'uninstalled' as const, label: opts.msgs.uninstalled },
-    { value: 'unavailable' as const, label: opts.msgs.unavailable },
-  ]);
-
-  const viewSwitcherOptions = computed(() => [
-    { value: 'cards', label: opts.msgs.cards },
-    { value: 'table', label: opts.msgs.table },
-  ]);
 
   const { syncLoading, requestSync, watchEmptyCatalogAutoSync } = useModuleCatalogSync(
     opts.store,
@@ -90,24 +68,6 @@ export function useModuleCatalogViewModel(opts: {
     void requestSync({ Force: true, IfStale: false });
   }
 
-  function onViewSelect(value: string) {
-    viewMode.value = value === 'table' ? 'table' : 'cards';
-    const nextQuery = { ...opts.route.query, view: viewMode.value };
-    void opts.router.replace({
-      name: opts.route.name ?? undefined,
-      params: opts.route.params,
-      query: nextQuery,
-    });
-  }
-
-  watch(
-    () => String(opts.route.query.view || ''),
-    view => {
-      if (view === 'table' || view === 'cards') viewMode.value = view;
-    },
-    { immediate: true },
-  );
-
   function rowRecord(row: unknown): Record<string, unknown> {
     const rec = unwrapListRecord(row);
     return rec && typeof rec === 'object' ? (rec as Record<string, unknown>) : {};
@@ -118,18 +78,9 @@ export function useModuleCatalogViewModel(opts: {
     return val == null ? '' : String(val);
   }
 
-  function cardKey(row: unknown, index: number): string {
-    return field(row, 'Id') || field(row, 'ModuleName') || `row-${index}`;
-  }
-
   function statusBadgeVariant(row: unknown) {
     const rec = rowRecord(row);
     return moduleStatusBadgeVariant(catalogInstalledStatus(rec), rec.Available as boolean | undefined);
-  }
-
-  function cardBadgeVariant(row: unknown) {
-    const rec = rowRecord(row);
-    return moduleCatalogCardBadgeVariant(catalogInstalledStatus(rec), rec.Available as boolean | undefined);
   }
 
   function statusLabel(row: unknown) {
@@ -139,17 +90,6 @@ export function useModuleCatalogViewModel(opts: {
     if (val === 'installed') return opts.msgs.installed;
     if (val === 'uninstalled') return opts.msgs.uninstalled;
     return catalogInstalledStatus(rec) || opts.msgs.unknown;
-  }
-
-  function versionLine(row: unknown): string {
-    const rec = rowRecord(row);
-    const installed = String(rec.InstalledVersion || '').trim();
-    const catalog = String(rec.LocalVersion || rec.RegistryVersion || '').trim();
-    if (rec.Installed === true && rec.UpdateAvailable === true && installed && catalog) {
-      return `${installed} → ${catalog}`;
-    }
-    if (rec.Installed === true) return installed || catalog || '—';
-    return catalog || '—';
   }
 
   function primaryActionFor(row: unknown) {
@@ -217,7 +157,6 @@ export function useModuleCatalogViewModel(opts: {
     });
   }
 
-  /** Uninstall lives in the row menu when there is no primary CTA (§7.1). */
   function canUninstall(row: unknown): boolean {
     const rec = rowRecord(row);
     if (String(rec.ActiveOperationId || '').trim()) return false;
@@ -239,11 +178,7 @@ export function useModuleCatalogViewModel(opts: {
     return Array.isArray(rows) ? rows : [];
   });
 
-  const filteredCardRows = computed(() =>
-    allRows.value.filter(row => matchesModuleCatalogFilter(rowRecord(row), filter.value)),
-  );
-
-  /** Catalog rows that still need demo import (§8.4 button visibility). */
+  /** Catalog rows that still need demo import. */
   const pendingDemoRows = computed(() =>
     allRows.value.filter(row => {
       const rec = rowRecord(row);
@@ -331,20 +266,14 @@ export function useModuleCatalogViewModel(opts: {
   );
 
   return {
-    filter,
-    viewMode,
     drawerOpen,
     drawerOperationId,
     drawerModuleName,
     drawerAction,
     drawerRegistryNewerThanLocal,
-    filterOptions,
-    viewSwitcherOptions,
     syncLoading,
-    filteredCardRows,
     lastSyncAtLabel,
     onSync,
-    onViewSelect,
     onRowClick,
     onPrimaryAction,
     canUninstall,
@@ -357,11 +286,9 @@ export function useModuleCatalogViewModel(opts: {
     closeDrawer,
     toShow,
     field,
-    cardKey,
+    rowRecord,
     statusBadgeVariant,
-    cardBadgeVariant,
     statusLabel,
-    versionLine,
     primaryActionFor,
     primaryActionLabel,
     bootFromRoute,

@@ -18,13 +18,13 @@ SPDX-License-Identifier: Apache-2.0
       </ChoySheetHeader>
 
       <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-2 text-sm">
-        <div v-if="session.step.value === 'plan'" class="flex flex-col gap-3">
-          <div v-if="session.planLoading.value" class="flex flex-col gap-2" data-testid="module-op-plan-loading">
+        <div v-if="step === 'plan'" class="flex flex-col gap-3">
+          <div v-if="planLoading" class="flex flex-col gap-2" data-testid="module-op-plan-loading">
             <div v-for="n in 5" :key="n" class="h-4 animate-pulse rounded bg-muted" />
           </div>
-          <template v-else-if="session.plan.value">
+          <template v-else-if="plan">
             <div
-              v-if="session.plan.value.blockers?.length"
+              v-if="plan.blockers?.length"
               class="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-destructive"
             >
               {{ _t('Resolve blockers before continuing') }}
@@ -37,7 +37,7 @@ SPDX-License-Identifier: Apache-2.0
               <div class="font-semibold text-foreground">{{ _t('Affected Modules') }}</div>
               <ul class="m-0 flex list-none flex-col gap-1.5 p-0 text-xs text-foreground/80">
                 <li
-                  v-for="item in session.plan.value.affectedModules"
+                  v-for="item in plan.affectedModules"
                   :key="item.moduleName"
                   class="flex flex-wrap items-center gap-2"
                 >
@@ -50,15 +50,15 @@ SPDX-License-Identifier: Apache-2.0
               </ul>
             </div>
 
-            <div v-if="session.plan.value.affectedApps?.length" class="flex flex-col gap-2">
+            <div v-if="plan.affectedApps?.length" class="flex flex-col gap-2">
               <div class="font-semibold text-foreground">{{ _t('Affected Apps') }}</div>
-              <p class="text-xs text-foreground/80">{{ session.plan.value.affectedApps.join(', ') }}</p>
+              <p class="text-xs text-foreground/80">{{ plan.affectedApps.join(', ') }}</p>
             </div>
 
-            <div v-if="session.plan.value.risks?.length" class="flex flex-col gap-2">
+            <div v-if="plan.risks?.length" class="flex flex-col gap-2">
               <div class="font-semibold text-foreground">{{ _t('Risks') }}</div>
               <ul class="m-0 flex list-none flex-col gap-1.5 p-0 text-xs">
-                <li v-for="risk in session.plan.value.risks" :key="risk.code" class="flex flex-wrap items-center gap-2">
+                <li v-for="risk in plan.risks" :key="risk.code" class="flex flex-wrap items-center gap-2">
                   <span class="rounded bg-amber-500/15 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-200">{{
                     risk.code
                   }}</span>
@@ -67,11 +67,11 @@ SPDX-License-Identifier: Apache-2.0
               </ul>
             </div>
 
-            <div v-if="session.plan.value.blockers?.length" class="flex flex-col gap-2">
+            <div v-if="plan.blockers?.length" class="flex flex-col gap-2">
               <div class="font-semibold text-foreground">{{ _t('Blockers') }}</div>
               <ul class="m-0 flex list-none flex-col gap-1.5 p-0 text-xs">
                 <li
-                  v-for="blocker in session.plan.value.blockers"
+                  v-for="blocker in plan.blockers"
                   :key="blocker.code"
                   class="flex flex-wrap items-center gap-2"
                 >
@@ -88,11 +88,11 @@ SPDX-License-Identifier: Apache-2.0
               type="button"
               class="self-start rounded-md border border-border px-2.5 py-1 text-xs hover:bg-muted"
               data-testid="module-op-use-registry"
-              :disabled="session.planLoading.value || session.useRegistryOrigin.value"
+              :disabled="planLoading || useRegistryOrigin"
               @click="onUseRegistry"
             >
               {{
-                session.useRegistryOrigin.value
+                useRegistryOrigin
                   ? _t('Using registry version')
                   : _t('Use registry version')
               }}
@@ -110,9 +110,9 @@ SPDX-License-Identifier: Apache-2.0
             :class="resultAlertBoxClass"
           >
             {{
-              session.step.value === 'progress'
+              step === 'progress'
                 ? _t('Operation in progress, please wait')
-                : session.resultTitle.value
+                : resultTitle
             }}
           </div>
           <div class="flex flex-col gap-2">
@@ -122,47 +122,47 @@ SPDX-License-Identifier: Apache-2.0
               <span
                 class="rounded px-1.5 py-0.5 text-[11px] font-medium"
                 data-testid="module-op-status"
-                >{{ session.opStatus.value?.status || '—' }}</span
+                >{{ opStatus?.status || '—' }}</span
               >
               <span class="font-semibold text-foreground">{{ _t('Phase:') }}</span>
               <span class="text-foreground/80">{{ phaseLabel }}</span>
             </div>
             <div
-              v-if="session.opStatus.value?.resultStatus"
+              v-if="opStatus?.resultStatus"
               class="flex flex-wrap gap-2 text-xs"
             >
               <span class="font-semibold text-foreground">{{ _t('Result:') }}</span>
-              <span data-testid="module-op-result">{{ session.opStatus.value?.resultStatus }}</span>
+              <span data-testid="module-op-result">{{ opStatus?.resultStatus }}</span>
             </div>
-            <div v-if="session.opStatus.value?.summary" class="flex flex-wrap gap-2 text-xs">
+            <div v-if="opStatus?.summary" class="flex flex-wrap gap-2 text-xs">
               <span class="font-semibold text-foreground">{{ _t('Summary:') }}</span>
-              <span class="text-foreground/80">{{ formatSummary(session.opStatus.value?.summary) }}</span>
+              <span class="text-foreground/80">{{ formatSummary(opStatus?.summary) }}</span>
             </div>
             <div
-              v-if="session.opStatus.value?.errorDomain || session.opStatus.value?.errorCode"
+              v-if="opStatus?.errorDomain || opStatus?.errorCode"
               class="flex flex-wrap gap-2 text-xs"
             >
               <span class="font-semibold text-foreground">{{ _t('Error:') }}</span>
               <span class="text-foreground/80"
-                >{{ session.opStatus.value?.errorDomain || '—' }} / {{ session.opStatus.value?.errorCode || '—' }}</span
+                >{{ opStatus?.errorDomain || '—' }} / {{ opStatus?.errorCode || '—' }}</span
               >
             </div>
             <div
-              v-if="session.opStatus.value?.ReloadTriggered || session.opStatus.value?.ReloadFailed"
+              v-if="opStatus?.ReloadTriggered || opStatus?.ReloadFailed"
               class="flex flex-wrap gap-2 text-xs"
               data-testid="module-op-reload"
             >
               <span class="font-semibold text-foreground">{{ _t('Reload:') }}</span>
               <span class="text-foreground/80">
                 {{
-                  session.opStatus.value?.ReloadFailed
+                  opStatus?.ReloadFailed
                     ? _t('Data written; page did not refresh')
                     : _t('Triggered')
                 }}
               </span>
             </div>
             <button
-              v-if="session.step.value === 'result' && session.opStatus.value?.ReloadFailed"
+              v-if="step === 'result' && opStatus?.ReloadFailed"
               type="button"
               class="self-start rounded-md border border-border px-2.5 py-1 text-xs hover:bg-muted"
               data-testid="module-op-reload-retry"
@@ -171,26 +171,26 @@ SPDX-License-Identifier: Apache-2.0
               {{ _t('Refresh page') }}
             </button>
           </div>
-          <p v-if="session.step.value === 'progress'" class="border-t border-border pt-3 text-xs text-muted-foreground">
+          <p v-if="step === 'progress'" class="border-t border-border pt-3 text-xs text-muted-foreground">
             {{ _t('Closing this drawer keeps the operation running; use View Progress on the card.') }}
           </p>
         </div>
       </div>
 
       <div class="flex justify-end gap-2 border-t border-border px-4 py-3">
-        <ChoyButton type="button" variant="outline" :disabled="session.planLoading.value" @click="close">
-          {{ session.step.value === 'plan' ? _t('Cancel') : _t('Close') }}
+        <ChoyButton type="button" variant="outline" :disabled="planLoading" @click="close">
+          {{ step === 'plan' ? _t('Cancel') : _t('Close') }}
         </ChoyButton>
         <ChoyButton
-          v-if="session.step.value === 'plan'"
+          v-if="step === 'plan'"
           type="button"
           data-testid="module-op-confirm"
-          :disabled="!session.canConfirm.value"
+          :disabled="!canConfirm"
           @click="onConfirm"
         >
           {{ _t('Confirm') }}
         </ChoyButton>
-        <ChoyButton v-else-if="session.step.value === 'result'" type="button" data-testid="module-op-done" @click="close">
+        <ChoyButton v-else-if="step === 'result'" type="button" data-testid="module-op-done" @click="close">
           {{ _t('Done') }}
         </ChoyButton>
       </div>
@@ -261,52 +261,65 @@ const session = useModuleOpDrawerSession({
   onSettled: () => emit('settled'),
 });
 
+// Top-level refs so the template auto-unwraps (nested session.*.value is unreliable in SFC templates).
+const {
+  step,
+  planLoading,
+  plan,
+  opStatus,
+  activeModuleName,
+  activeAction,
+  useRegistryOrigin,
+  canConfirm,
+  resultTitle,
+} = session;
+
 const titleText = computed(() => {
-  const action = String(props.action || session.activeAction.value || '').trim();
-  const name = String(props.moduleName || session.activeModuleName.value || '').trim();
+  const action = String(props.action || activeAction.value || '').trim();
+  const name = String(props.moduleName || activeModuleName.value || '').trim();
   let label = _t('Module Operation');
   if (action === 'install') label = _t('Install Module');
   else if (action === 'upgrade') label = _t('Upgrade Module');
   else if (action === 'uninstall') label = _t('Uninstall Module');
   else if (action === 'progress') label = _t('Operation Progress');
-  else if (action === 'sync') label = _t('Sync Modules');
+  else if (action === 'sync') label = _t('Update Module List');
   else if (action === 'load_demo') label = _t('Load Demo Data');
   return name ? `${label} · ${name}` : label;
 });
 
 const sessionOperationId = computed(
-  () => String(session.plan.value?.Id || props.operationId || '').trim(),
+  () => String(plan.value?.Id || props.operationId || '').trim(),
 );
 
 const showRegistryOption = computed(
   () =>
     props.action === 'upgrade' &&
     props.registryNewerThanLocal &&
-    session.step.value === 'plan' &&
-    !!session.plan.value,
+    step.value === 'plan' &&
+    !!plan.value,
 );
 
 const phaseLabel = computed(() => {
-  const status = String(session.opStatus.value?.status || '').toLowerCase();
+  const status = String(opStatus.value?.status || '').toLowerCase();
   if (status === 'queued' || status === 'dispatching') return _t('Queued');
   if (status === 'running') return _t('Running');
-  if (session.opStatus.value?.ReloadTriggered) return _t('Reload');
+  if (opStatus.value?.ReloadTriggered) return _t('Reload');
   if (status === 'succeeded' || status === 'failed' || status === 'cancelled') return _t('Done');
-  return session.opStatus.value?.summary && typeof session.opStatus.value.summary === 'object'
-    ? String((session.opStatus.value.summary as any).message || '—')
+  return opStatus.value?.summary && typeof opStatus.value.summary === 'object'
+    ? String((opStatus.value.summary as any).message || '—')
     : '—';
 });
 
 const resultAlertBoxClass = computed(() => {
-  if (session.step.value === 'progress') return 'border-border bg-muted/40 text-foreground';
-  if (!session.opStatus.value) return 'border-border bg-muted/40 text-foreground';
-  if (session.opStatus.value.resultStatus === 'FAILED') {
+  if (step.value === 'progress') return 'border-border bg-muted/40 text-foreground';
+  if (!opStatus.value) return 'border-border bg-muted/40 text-foreground';
+  if (opStatus.value.resultStatus === 'FAILED') {
     return 'border-destructive/40 bg-destructive/10 text-destructive';
   }
-  if (session.opStatus.value.resultStatus !== 'SUCCEEDED') {
+  if (opStatus.value.resultStatus !== 'SUCCEEDED') {
     return 'border-border bg-muted/40 text-foreground';
   }
-  if (session.opStatus.value.ReloadFailed) {
+  if (opStatus.value.ReloadFailed) {
     return 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-100';
   }
   return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100';
@@ -343,6 +356,8 @@ watch(
       String(props.action || ''),
       String(props.moduleName || ''),
       String(props.operationId || ''),
+      // Re-run when the operation store appears after the drawer already opened.
+      props.operationStore,
     ] as const,
   async ([isOpen, action, moduleName, operationId], prev) => {
     if (!isOpen) {
@@ -355,8 +370,9 @@ watch(
       prev[0] === true &&
       prev[1] === action &&
       prev[2] === moduleName &&
-      (action === 'progress' ? prev[3] === operationId : true);
-    if (sameTarget && session.step.value !== 'plan') return;
+      (action === 'progress' ? prev[3] === operationId : true) &&
+      prev[4] === props.operationStore;
+    if (sameTarget && step.value !== 'plan') return;
 
     session.reset();
     if (action === 'progress' || (!isPlanAction(action) && operationId)) {

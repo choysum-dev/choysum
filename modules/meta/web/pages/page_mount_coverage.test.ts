@@ -3,18 +3,20 @@
 
 import { mount, flushPromises } from '@choysum/test-utils';
 import { buildPageMountGlobal } from '@choysum/page-mount';
-import ModuleCatalog from './ModuleCatalog.vue';
+import ModuleCatalogKanban from './ModuleCatalogKanban.vue';
+import ModuleCatalogList from './ModuleCatalogList.vue';
 import ModuleShow from './ModuleShow.vue';
 import { metaMenus } from '../menu/menus';
 
-const pages: Array<[string, any, string]> = [
-  ['ModuleCatalog', ModuleCatalog, '/meta/modules'],
-  ['ModuleShow', ModuleShow, '/meta/modules/core'],
+const pages: Array<[string, any, string, string]> = [
+  ['ModuleCatalogKanban', ModuleCatalogKanban, '/meta/modules', 'MetaModuleCatalog'],
+  ['ModuleCatalogList', ModuleCatalogList, '/meta/modules/list', 'MetaModuleCatalogList'],
+  ['ModuleShow', ModuleShow, '/meta/modules/core', 'MetaModuleShow'],
 ];
 
 test('meta page mount: every ChoyPage host mounts under choysumMount', async () => {
   const failures: string[] = [];
-  for (const [name, Comp, path] of pages) {
+  for (const [name, Comp, path, routeName] of pages) {
     let wrapper: ReturnType<typeof mount> | null = null;
     try {
       wrapper = mount(Comp as any, {
@@ -22,8 +24,16 @@ test('meta page mount: every ChoyPage host mounts under choysumMount', async () 
           route: {
             path,
             fullPath: path,
-            name: name === 'ModuleShow' ? 'MetaModuleShow' : 'MetaModuleCatalog',
+            name: routeName,
             params: name === 'ModuleShow' ? { name: 'core' } : {},
+            meta:
+              name === 'ModuleShow'
+                ? {}
+                : {
+                    viewKind: name === 'ModuleCatalogList' ? 'list' : 'kanban',
+                    defaultGroups: [],
+                    viewPaths: { kanban: '/meta/modules', list: '/meta/modules/list' },
+                  },
           },
         }),
       });
@@ -42,9 +52,10 @@ test('meta page mount: every ChoyPage host mounts under choysumMount', async () 
   if (failures.length) throw new Error(`meta page mount failed: ${failures.join(', ')}`);
 });
 
-test('meta menus: Modules leaf declares an icon and has no children', () => {
+test('meta menus: Modules app root has icon and Catalog leaf at /meta/modules', () => {
   expect(metaMenus.length).toBe(1);
   expect(metaMenus[0]!.icon).toBeTruthy();
-  expect(metaMenus[0]!.path).toBe('/meta/modules');
-  expect(metaMenus[0]!.children == null || metaMenus[0]!.children.length === 0).toBe(true);
+  expect(metaMenus[0]!.path == null || metaMenus[0]!.path === '').toBe(true);
+  expect(metaMenus[0]!.children).toHaveLength(1);
+  expect(metaMenus[0]!.children![0]!.path).toBe('/meta/modules');
 });
