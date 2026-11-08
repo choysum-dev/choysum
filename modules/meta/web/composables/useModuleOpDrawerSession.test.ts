@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { nextTick, ref } from 'vue';
-import { useModuleOpDrawerSession } from './useModuleOpDrawerSession';
+import { readOperationStatusSnapshot, useModuleOpDrawerSession } from './useModuleOpDrawerSession';
 
 const msgs = {
   failedToLoadPlan: 'plan-fail',
@@ -138,4 +138,113 @@ test('useModuleOpDrawerSession: superseded plan response is ignored', async () =
   });
   await first;
   expect(api.plan.value).toBeNull();
+});
+
+test('useModuleOpDrawerSession: runPlan errors without store or when Plan throws', async () => {
+  const open = ref(true);
+  const missing = useModuleOpDrawerSession({
+    operationStore: null as any,
+    isOpen: () => open.value,
+    msgs,
+  });
+  await missing.runPlan({ moduleName: 'core', action: 'install' });
+  expect(missing.plan.value).toBeNull();
+
+  const store = makeStore({
+    Plan: async () => {
+      throw new Error('plan boom');
+    },
+  });
+  const api = useModuleOpDrawerSession({
+    operationStore: store,
+    isOpen: () => open.value,
+    msgs,
+  });
+  await api.runPlan({ moduleName: 'core', action: 'install' });
+  expect(api.plan.value).toBeNull();
+  expect(api.planLoading.value).toBe(false);
+});
+
+test('useModuleOpDrawerSession: confirmApply reports Apply failure and clears loading', async () => {
+  const open = ref(true);
+  const store = makeStore({
+    Apply: async () => {
+      throw new Error('apply boom');
+    },
+  });
+  const api = useModuleOpDrawerSession({
+    operationStore: store,
+    isOpen: () => open.value,
+    msgs,
+  });
+  await api.runPlan({ moduleName: 'core', action: 'install' });
+  await api.confirmApply();
+  expect(api.step.value).toBe('result');
+  expect(api.opStatus.value?.errorCode).toBe('REQUEST_FAILED');
+  expect(api.executeLoading.value).toBe(false);
+});
+
+test('useModuleOpDrawerSession: confirmApply without store is a no-op error', async () => {
+  const open = ref(true);
+  const api = useModuleOpDrawerSession({
+    operationStore: makeStore(),
+    isOpen: () => open.value,
+    msgs,
+  });
+  await api.runPlan({ moduleName: 'core', action: 'install' });
+  const bare = useModuleOpDrawerSession({
+    operationStore: null as any,
+    isOpen: () => open.value,
+    msgs,
+  });
+  bare.plan.value = { Id: 'op-x', affectedModules: [], affectedApps: [], risks: [], blockers: [] };
+  bare.step.value = 'plan';
+  await bare.confirmApply();
+  expect(bare.step.value).toBe('plan');
+});
+
+test('readOperationStatusSnapshot: Browse, Search, and empty-store paths', async () => {
+  const viaBrowse = await readOperationStatusSnapshot(
+    {
+      Browse: async () => ({ Status: 'queued' }),
+    } as any,
+    'op-1',
+  );
+  expect(viaBrowse.status).toBe('queued');
+
+  const viaSearch = await readOperationStatusSnapshot(
+    {
+      Search: async () => [{ Status: 'failed', ErrorCode: 'E' }],
+    } as any,
+    'op-2',
+  );
+  expect(viaSearch.status).toBe('failed');
+  expect(viaSearch.errorCode).toBe('E');
+
+  const empty = await readOperationStatusSnapshot({} as any, 'op-3');
+  expect(empty.status).toBe('');
+});
+
+test('useModuleOpDrawerSession: watchProgress uses Search fallback and handles missing readers', async () => {
+  const open = ref(true);
+  const searchStore = {
+    Search: async () => [{ Status: 'succeeded', ReloadTriggered: false, ReloadFailed: false }],
+  } as any;
+  const viaSearch = useModuleOpDrawerSession({
+    operationStore: searchStore,
+    isOpen: () => open.value,
+    msgs,
+  });
+  await viaSearch.watchProgress('op-search');
+  expect(viaSearch.step.value).toBe('result');
+  expect(viaSearch.opStatus.value?.status).toBe('succeeded');
+
+  const stub = useModuleOpDrawerSession({
+    operationStore: {} as any,
+    isOpen: () => open.value,
+    msgs,
+  });
+  await stub.watchProgress('op-stub');
+  expect(stub.step.value).toBe('progress');
+  expect(stub.opStatus.value?.status).toBe('queued');
 });

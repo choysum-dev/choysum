@@ -123,6 +123,7 @@ SPDX-License-Identifier: Apache-2.0
     :module-name="drawerModuleName"
     :action="drawerAction"
     :registry-newer-than-local="drawerRegistryNewer"
+    @settled="onDrawerSettled"
   />
   </div>
 </template>
@@ -181,10 +182,18 @@ const currentRow = computed(() => {
   const records = ((store as any)?.state?.records || {}) as Record<string, Record<string, unknown>>;
   if (id && records[id]) return records[id];
   const rows = ((store as any)?.state?.result?.rows || []) as Record<string, unknown>[];
-  return rows.find(r => String(r?.Id || '') === id) || rows[0] || {};
+  // Never fall back to an unrelated rows[0] — wrong-module Plan/Apply would be unsafe.
+  const matched = id ? rows.find(r => String(r?.Id || '') === id) : undefined;
+  return matched || {};
 });
 
-const primaryAction = computed(() => resolveModuleCatalogPrimaryAction(currentRow.value));
+const hasMatchedRow = computed(() => {
+  const rec = currentRow.value;
+  return !!(String(rec.ModuleName || '').trim() || String(rec.Id || '').trim());
+});
+const primaryAction = computed(() =>
+  hasMatchedRow.value ? resolveModuleCatalogPrimaryAction(currentRow.value) : null,
+);
 const primaryActionLabel = computed(() => {
   if (primaryAction.value === 'install') return _t('Install');
   if (primaryAction.value === 'upgrade') return _t('Upgrade');
@@ -192,6 +201,7 @@ const primaryActionLabel = computed(() => {
   return '';
 });
 const canUninstallRow = computed(() => {
+  if (!hasMatchedRow.value) return false;
   const rec = currentRow.value;
   if (String(rec.ActiveOperationId || '').trim()) return false;
   return rec.Installed === true && rec.Available !== false;
@@ -224,4 +234,33 @@ function onUninstallClick() {
   drawerRegistryNewer.value = false;
   drawerOpen.value = true;
 }
+
+async function onDrawerSettled() {
+  const id = String(recordId.value || '').trim();
+  if (!id) return;
+  try {
+    if (typeof (store as any)?.Browse === 'function') {
+      await (store as any).Browse(id);
+      return;
+    }
+    if (typeof (store as any)?.Search === 'function') {
+      await (store as any).Search(['Id', '=', id], { limit: 1 });
+    }
+  } catch {
+    // Refresh is best-effort after an operation settles.
+  }
+}
+
+defineExpose({
+  onDrawerSettled,
+  onPrimaryClick,
+  onUninstallClick,
+  drawerOpen,
+  drawerAction,
+  drawerOperationId,
+  drawerModuleName,
+  drawerRegistryNewer,
+  primaryAction,
+  primaryActionLabel,
+});
 </script>

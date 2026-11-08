@@ -337,11 +337,20 @@ watch(
       String(props.moduleName || ''),
       String(props.operationId || ''),
     ] as const,
-  async ([isOpen, action, moduleName, operationId]) => {
+  async ([isOpen, action, moduleName, operationId], prev) => {
     if (!isOpen) {
       session.stop();
       return;
     }
+    // Ignore operationId-only churn while an in-flight progress/result session is active.
+    const sameTarget =
+      !!prev &&
+      prev[0] === true &&
+      prev[1] === action &&
+      prev[2] === moduleName &&
+      (action === 'progress' ? prev[3] === operationId : true);
+    if (sameTarget && session.step.value !== 'plan') return;
+
     session.reset();
     if (action === 'progress' || (!isPlanAction(action) && operationId)) {
       const id = String(operationId || '').trim();

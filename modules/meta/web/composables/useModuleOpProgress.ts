@@ -319,12 +319,13 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks, deps
       clearDeadline();
     }
 
+    // When tips are unavailable, still require an active session (stop() bumps generation).
     if (
       generation === sessionGeneration &&
       !timedOut &&
-      (!tipAvailable || !signal.aborted) &&
       hooks.isActive() &&
-      !reachedTerminal
+      !reachedTerminal &&
+      (tipAvailable ? !signal.aborted : true)
     ) {
       startPollFallback(id, generation, startAt);
     }

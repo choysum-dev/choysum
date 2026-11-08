@@ -51,6 +51,26 @@ const OP_STATUS_FIELDS = [
   'ReloadFailed',
 ] as const;
 
+/** Read one operation row via Browse, else Search-by-Id. */
+export async function readOperationStatusSnapshot(
+  store: WebModelStore<any>,
+  operationId: string,
+): Promise<ModuleOpStatusSnapshot> {
+  let row: Record<string, unknown> | null | undefined;
+  if (typeof (store as any).Browse === 'function') {
+    row = (await (store as any).Browse(operationId, [...OP_STATUS_FIELDS])) as Record<string, unknown>;
+  } else if (typeof (store as any).Search === 'function') {
+    const rows = (await (store as any).Search(['Id', '=', operationId], {
+      limit: 1,
+      fields: [...OP_STATUS_FIELDS],
+    })) as Array<Record<string, unknown>> | null;
+    row = rows?.[0] || null;
+  } else {
+    row = null;
+  }
+  return mapOperationRowToSnapshot(row);
+}
+
 function mapPlanResponse(nextPlan: any): ModuleOpDrawerPlanView {
   return {
     Id: String(nextPlan?.Id || '').trim(),
@@ -104,19 +124,7 @@ export function useModuleOpDrawerSession(opts: {
   async function fetchOperationStatus(operationId: string): Promise<ModuleOpStatusSnapshot> {
     const store = resolveStore();
     if (!store) throw new Error('operation store missing');
-    let row: Record<string, unknown> | null | undefined;
-    if (typeof (store as any).Browse === 'function') {
-      row = (await (store as any).Browse(operationId, [...OP_STATUS_FIELDS])) as Record<string, unknown>;
-    } else if (typeof (store as any).Search === 'function') {
-      const rows = (await (store as any).Search(['Id', '=', operationId], {
-        limit: 1,
-        fields: [...OP_STATUS_FIELDS],
-      })) as Array<Record<string, unknown>> | null;
-      row = rows?.[0] || null;
-    } else {
-      throw new Error('operation store missing Browse/Search');
-    }
-    return mapOperationRowToSnapshot(row);
+    return readOperationStatusSnapshot(store, operationId);
   }
 
   const progress = createModuleOpProgressSession(
@@ -252,11 +260,7 @@ export function useModuleOpDrawerSession(opts: {
     step.value = 'progress';
     try {
       await (store as any).Apply({ Id: operationId });
-      executeLoading.value = false;
-      await progress.watch(operationId);
-      if (opts.isOpen()) opts.onSettled?.();
     } catch (error: any) {
-      executeLoading.value = false;
       step.value = 'result';
       opStatus.value = {
         status: 'failed',
@@ -266,7 +270,13 @@ export function useModuleOpDrawerSession(opts: {
         summary: String(error?.message || opts.msgs.applyFailed),
       };
       ChoyMessage.error(String(error?.message || opts.msgs.applyFailed));
+      return;
+    } finally {
+      executeLoading.value = false;
     }
+    // progress.watch swallows status-read errors; do not remap them as Apply failures.
+    await progress.watch(operationId);
+    if (opts.isOpen()) opts.onSettled?.();
   }
 
   return {

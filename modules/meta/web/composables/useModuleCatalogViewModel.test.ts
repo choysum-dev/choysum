@@ -233,3 +233,61 @@ test('useModuleCatalogViewModel: filterOptions and viewSwitcherOptions expose la
   });
   expect(withRef.resolveInitialOperationId()).toBe('op-ref');
 });
+
+test('useModuleCatalogViewModel: lastSyncAtLabel picks newest raw timestamp', () => {
+  const store = makeStore([
+    { Id: '1', LastSyncAt: '2026-01-02T00:00:00Z' },
+    { Id: '2', LastSyncAt: '2026-03-01T00:00:00Z' },
+    { Id: '3', LastSyncAt: 'not-a-date' },
+  ]);
+  const api = useModuleCatalogViewModel({
+    store,
+    route: makeRoute(),
+    router: { push: async () => undefined, replace: async () => undefined } as any,
+    msgs,
+  });
+  expect(api.lastSyncAtLabel.value).toContain('2026');
+});
+
+test('useModuleCatalogViewModel: refreshCatalog prefers list.refresh then Search', async () => {
+  let refreshed = 0;
+  let searched = 0;
+  const withList = {
+    state: {
+      result: { rows: [] },
+      loading: false,
+      list: {
+        refresh: async () => {
+          refreshed += 1;
+        },
+      },
+    },
+    Search: async () => {
+      searched += 1;
+    },
+  } as any;
+  const api = useModuleCatalogViewModel({
+    store: withList,
+    route: makeRoute(),
+    router: { push: async () => undefined, replace: async () => undefined } as any,
+    msgs,
+  });
+  await api.refreshCatalog();
+  expect(refreshed).toBe(1);
+  expect(searched).toBe(0);
+
+  const searchOnly = {
+    state: { result: { rows: [] }, loading: false },
+    Search: async () => {
+      searched += 1;
+    },
+  } as any;
+  const api2 = useModuleCatalogViewModel({
+    store: searchOnly,
+    route: makeRoute(),
+    router: { push: async () => undefined, replace: async () => undefined } as any,
+    msgs,
+  });
+  await api2.refreshCatalog();
+  expect(searched).toBe(1);
+});

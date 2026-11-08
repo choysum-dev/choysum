@@ -244,12 +244,22 @@ export function useModuleCatalogViewModel(opts: {
   );
 
   const lastSyncAtLabel = computed(() => {
-    let best = '';
+    let bestRaw: unknown = null;
+    let bestTime = -Infinity;
     for (const row of allRows.value) {
-      const label = formatModuleCatalogDate(rowRecord(row).LastSyncAt);
-      if (label && label > best) best = label;
+      const raw = rowRecord(row).LastSyncAt;
+      if (raw == null || raw === '') continue;
+      const time =
+        typeof raw === 'number'
+          ? raw
+          : raw instanceof Date
+            ? raw.getTime()
+            : new Date(raw as any).getTime();
+      if (!Number.isFinite(time) || time <= bestTime) continue;
+      bestTime = time;
+      bestRaw = raw;
     }
-    return best;
+    return bestRaw != null ? formatModuleCatalogDate(bestRaw) : '';
   });
 
   async function refreshCatalog() {

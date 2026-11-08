@@ -72,3 +72,91 @@ test('ModuleOpDrawer.vue plans and confirms through operation store', async () =
   expect(wrapper.find('[data-testid="module-op-status"]').exists()).toBe(true);
   wrapper.unmount();
 });
+
+test('ModuleOpDrawer.vue covers result branches, registry replan, and close', async () => {
+  const plans: any[] = [];
+  const store = {
+    Plan: async (req: any) => {
+      plans.push(req);
+      return {
+        Id: 'op-up',
+        ModuleOrder: [{ ModuleName: 'core', Origin: req.Origin || 'local' }],
+        AffectedApps: [],
+        Risks: [],
+        Blockers: [],
+      };
+    },
+    Apply: async () => ({ Id: 'op-up' }),
+    Browse: async () => ({
+      // Succeeded with reload failure hits the amber resultAlertBoxClass branch.
+      Status: 'succeeded',
+      ReloadTriggered: true,
+      ReloadFailed: true,
+      ErrorDomain: 'OPS',
+      ErrorCode: 'E1',
+      ErrorMessage: 'boom',
+    }),
+  };
+  const wrapper = mount(ModuleOpDrawer as any, {
+    props: {
+      open: true,
+      action: 'upgrade',
+      moduleName: 'core',
+      registryNewerThanLocal: true,
+      operationStore: store,
+    },
+    global: buildPageMountGlobal({ route: { path: '/meta/modules', fullPath: '/meta/modules' } }),
+  });
+  await flushPromises();
+  await flushPromises();
+  const registry = wrapper.find('[data-testid="module-op-use-registry"]');
+  expect(registry.exists()).toBe(true);
+  await registry.trigger('click');
+  await flushPromises();
+  expect(plans.some((p: any) => p.Origin === 'registry')).toBe(true);
+
+  await wrapper.find('[data-testid="module-op-confirm"]').trigger('click');
+  await flushPromises();
+  await flushPromises();
+  expect(wrapper.find('[data-testid="module-op-reload"]').exists()).toBe(true);
+  const retry = wrapper.find('[data-testid="module-op-reload-retry"]');
+  if (retry.exists()) await retry.trigger('click');
+  const done = wrapper.find('[data-testid="module-op-done"]');
+  if (done.exists()) await done.trigger('click');
+  await flushPromises();
+  wrapper.unmount();
+
+  // Cover the FAILED resultAlertBoxClass branch (distinct from ReloadFailed amber).
+  const failedStore = {
+    Plan: async () => ({
+      Id: 'op-fail',
+      ModuleOrder: [],
+      AffectedApps: [],
+      Risks: [],
+      Blockers: [],
+    }),
+    Apply: async () => ({ Id: 'op-fail' }),
+    Browse: async () => ({
+      Status: 'failed',
+      ErrorDomain: 'OPS',
+      ErrorCode: 'E2',
+      ErrorMessage: 'nope',
+    }),
+  };
+  const failed = mount(ModuleOpDrawer as any, {
+    props: {
+      open: true,
+      action: 'install',
+      moduleName: 'core',
+      operationStore: failedStore,
+    },
+    global: buildPageMountGlobal({ route: { path: '/meta/modules', fullPath: '/meta/modules' } }),
+  });
+  await flushPromises();
+  await flushPromises();
+  await failed.find('[data-testid="module-op-confirm"]').trigger('click');
+  await flushPromises();
+  await flushPromises();
+  expect(failed.find('[data-testid="module-op-result"]').exists()).toBe(true);
+  failed.unmount();
+});

@@ -233,6 +233,39 @@ test('createModuleOpProgressSession: notifies transient tip refresh errors once'
   expect(onTransientNetworkError.calls.length).toBe(1);
 });
 
+test('createModuleOpProgressSession: polls when tip subscribe is unavailable', async () => {
+  const { deps, advance } = createFakeClock();
+  let calls = 0;
+  const fetchStatus = fnRecorder(async () => {
+    calls += 1;
+    if (calls >= 2) return snapshot({ status: 'succeeded' });
+    return snapshot({ status: 'queued' });
+  });
+  const onTerminal = fnRecorder();
+  const session = createModuleOpProgressSession(
+    {
+      fetchStatus: fetchStatus as any,
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: onTerminal as any,
+      onTimeout: () => undefined,
+    },
+    {
+      ...deps,
+      // Non-functions force the tip-unavailable poll path (?? would keep real tip defaults).
+      onTips: 0 as any,
+      subscribeModuleOp: 0 as any,
+    },
+  );
+
+  const pending = session.watch('job-no-tip');
+  await Promise.resolve();
+  await advance(1_000);
+  await advance(1_500);
+  await pending.catch(() => undefined);
+  expect(onTerminal.calls.length).toBe(1);
+});
+
 test('createModuleOpProgressSession: starts poll fallback when tip ends without terminal', async () => {
   const { deps, advance } = createFakeClock();
   let calls = 0;
