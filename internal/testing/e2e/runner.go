@@ -329,11 +329,12 @@ func runOneScenario(ctx context.Context, opts RunOptions, packages map[string]*s
 	prepareStarted := time.Now()
 	writeE2EProgress(opts.Stderr, "# prepare runtime %s\n", opts.Module)
 
-	closure, err := topoClosure(opts.Module, packages)
+	targetPackage := packages[opts.Module]
+	hostModules := e2eHostModules(targetPackage)
+	closure, err := e2eRuntimeClosure(opts.Module, hostModules, packages)
 	if err != nil {
 		return err
 	}
-	targetPackage := packages[opts.Module]
 	specsDir, err := resolveE2ESpecsDir(opts.ModulesPath, opts.Module, targetPackage)
 	if err != nil {
 		return err
@@ -470,11 +471,17 @@ compile:
 		return xfmt.Errorf("write config: %w", err)
 	}
 
-	// Install dependency closure by installing the target module (planner handles depends).
+	// Install the target depends closure, then each e2e hostModules root (planner
+	// expands each root's product depends). Host installs never pass WithDemo.
 	if err := installForE2EHook(ctx, configPath, opts.Module, opts.WithDemo); err != nil {
 		return err
 	}
-	// Apply fixtures for modules in the depends closure (each may contribute this scenario).
+	for _, host := range hostModules {
+		if err := installForE2EHook(ctx, configPath, host, false); err != nil {
+			return err
+		}
+	}
+	// Apply fixtures for modules in the runtime closure (depends ∪ hostModules).
 	uniqueFixtures := uniqueScenarioFixtureModules(closure)
 	loadedFixtures := []string{}
 	if err := applyScenarioFixturesHook(ctx, configPath, uniqueFixtures, packages, scenario, opts.Module, opts.Verbose, opts.Stderr, &loadedFixtures); err != nil {
@@ -951,8 +958,11 @@ type sourceModuleChoysum struct {
 }
 
 type packageE2E struct {
-	Specs     string                  `json:"specs"`
-	Scenarios map[string]packageScene `json:"scenarios"`
+	Specs string `json:"specs"`
+	// HostModules are extra install roots for browser e2e only (not product depends).
+	// Example: meta specs that login through /web use ["auth","web"].
+	HostModules []string                `json:"hostModules"`
+	Scenarios   map[string]packageScene `json:"scenarios"`
 }
 
 type packageScene struct {
@@ -993,6 +1003,48 @@ func discoverSourcePackages(modulesPath string) (map[string]*sourceModulePackage
 }
 
 func topoClosure(target string, packages map[string]*sourceModulePackage) ([]string, error) {
+	return topoClosureRoots([]string{target}, packages)
+}
+
+// e2eHostModules returns deduped choysum.e2e.hostModules, skipping empties and the
+// target module name when callers pass it separately.
+func e2eHostModules(pkg *sourceModulePackage) []string {
+	if pkg == nil || pkg.E2E == nil || len(pkg.E2E.HostModules) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(pkg.E2E.HostModules))
+	seen := map[string]bool{}
+	for _, name := range pkg.E2E.HostModules {
+		name = strings.TrimSpace(name)
+		if name == "" || seen[name] {
+			continue
+		}
+		seen[name] = true
+		out = append(out, name)
+	}
+	return out
+}
+
+// e2eRuntimeClosure is the product depends closure of target plus each e2e
+// hostModules root. Used for auth enablement, fixtures, and backendEnv merge.
+func e2eRuntimeClosure(target string, hostModules []string, packages map[string]*sourceModulePackage) ([]string, error) {
+	roots := make([]string, 0, 1+len(hostModules))
+	roots = append(roots, target)
+	targetName := strings.TrimSpace(target)
+	for _, host := range hostModules {
+		host = strings.TrimSpace(host)
+		if host == "" || host == targetName {
+			continue
+		}
+		if packages[host] == nil {
+			return nil, xfmt.Errorf("e2e hostModules: unknown module %q", host)
+		}
+		roots = append(roots, host)
+	}
+	return topoClosureRoots(roots, packages)
+}
+
+func topoClosureRoots(roots []string, packages map[string]*sourceModulePackage) ([]string, error) {
 	vis := map[string]int{} // 0=unseen,1=visiting,2=done
 	order := []string{}
 	var dfs func(string) error
@@ -1026,8 +1078,10 @@ func topoClosure(target string, packages map[string]*sourceModulePackage) ([]str
 		order = append(order, s)
 		return nil
 	}
-	if err := dfs(target); err != nil {
-		return nil, err
+	for _, root := range roots {
+		if err := dfs(root); err != nil {
+			return nil, err
+		}
 	}
 	return order, nil
 }

@@ -429,6 +429,30 @@ func TestTopoClosureAndScenarioFixtures(t *testing.T) {
 		t.Fatalf("unexpected topo order: %#v", order)
 	}
 
+	full := map[string]*sourceModulePackage{
+		"core": {},
+		"task": {Depends: []string{"core"}},
+		"meta": {Depends: []string{"core", "task"}, DirName: "meta"},
+		"base": {Depends: []string{"core"}},
+		"auth": {Depends: []string{"core", "base", "meta"}},
+		"web":  {Depends: []string{"core", "auth", "meta"}},
+	}
+	runtimeOrder, err := e2eRuntimeClosure("meta", []string{"auth", "web"}, full)
+	if err != nil {
+		t.Fatalf("e2eRuntimeClosure error: %v", err)
+	}
+	wantRuntime := []string{"core", "task", "meta", "base", "auth", "web"}
+	if !reflect.DeepEqual(runtimeOrder, wantRuntime) {
+		t.Fatalf("e2eRuntimeClosure order = %#v, want %#v", runtimeOrder, wantRuntime)
+	}
+	_, err = e2eRuntimeClosure("meta", []string{"missing-host"}, full)
+	if err == nil || !strings.Contains(err.Error(), "hostModules") {
+		t.Fatalf("expected unknown hostModules error, got %v", err)
+	}
+	if got := e2eHostModules(&sourceModulePackage{E2E: &packageE2E{HostModules: []string{" auth ", "web", "auth", ""}}}); !reflect.DeepEqual(got, []string{"auth", "web"}) {
+		t.Fatalf("e2eHostModules = %#v", got)
+	}
+
 	_, err = topoClosure("auth", map[string]*sourceModulePackage{"auth": {Depends: []string{"missing"}}})
 	if err == nil || !strings.Contains(err.Error(), "missing dependency") {
 		t.Fatalf("expected missing dependency error, got %v", err)

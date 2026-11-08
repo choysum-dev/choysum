@@ -29,6 +29,11 @@
       "web": "./web/index.ts"
     },
     "e2e": {
+      "specs": "e2e",
+      "hostModules": [
+        "auth",
+        "web"
+      ],
       "scenarios": {
         "default": {
           "fixtures": [
