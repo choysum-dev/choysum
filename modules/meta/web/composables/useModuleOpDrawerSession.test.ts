@@ -86,6 +86,20 @@ test('useModuleOpDrawerSession: confirmApply watches progress to terminal', asyn
   expect(api.resultTitle.value).toBe('ok');
 });
 
+test('useModuleOpDrawerSession: resultTitle stays neutral without SUCCEEDED', async () => {
+  const open = ref(true);
+  const api = useModuleOpDrawerSession({
+    operationStore: makeStore({
+      Browse: async () => ({ Status: 'cancelled' }),
+    }),
+    isOpen: () => open.value,
+    msgs,
+  });
+  await api.watchProgress('op-cancelled');
+  expect(api.step.value).toBe('result');
+  expect(api.resultTitle.value).toBe('done');
+});
+
 test('useModuleOpDrawerSession: replanWithRegistry passes Origin registry', async () => {
   const open = ref(true);
   const plans: any[] = [];

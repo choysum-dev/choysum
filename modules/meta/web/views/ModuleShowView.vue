@@ -137,7 +137,11 @@ import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { resolveModuleCatalogPrimaryAction } from './module_catalog_chrome';
-import { moduleUninstallAction } from './module_actions';
+import {
+  moduleInstallAction,
+  moduleUpgradeAction,
+  moduleUninstallAction,
+} from './module_actions';
 import ModuleOpDrawer from './ModuleOpDrawer.vue';
 import {
   ChoyBooleanField,
@@ -191,9 +195,13 @@ const hasMatchedRow = computed(() => {
   const rec = currentRow.value;
   return !!(String(rec.ModuleName || '').trim() || String(rec.Id || '').trim());
 });
-const primaryAction = computed(() =>
-  hasMatchedRow.value ? resolveModuleCatalogPrimaryAction(currentRow.value) : null,
-);
+const primaryAction = computed(() => {
+  if (!hasMatchedRow.value) return null;
+  const action = resolveModuleCatalogPrimaryAction(currentRow.value);
+  if (action === 'install' && !hasAction(moduleInstallAction)) return null;
+  if (action === 'upgrade' && !hasAction(moduleUpgradeAction)) return null;
+  return action;
+});
 const primaryActionLabel = computed(() => {
   if (primaryAction.value === 'install') return _t('Install');
   if (primaryAction.value === 'upgrade') return _t('Upgrade');

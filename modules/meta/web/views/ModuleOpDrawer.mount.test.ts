@@ -119,11 +119,28 @@ test('ModuleOpDrawer.vue covers result branches, registry replan, and close', as
   await flushPromises();
   await flushPromises();
   expect(wrapper.find('[data-testid="module-op-reload"]').exists()).toBe(true);
-  const retry = wrapper.find('[data-testid="module-op-reload-retry"]');
-  if (retry.exists()) await retry.trigger('click');
-  const done = wrapper.find('[data-testid="module-op-done"]');
-  if (done.exists()) await done.trigger('click');
-  await flushPromises();
+  const reloadStub = () => undefined;
+  const previousReload = (window.location as { reload: () => void }).reload;
+  Object.defineProperty(window.location, 'reload', {
+    configurable: true,
+    writable: true,
+    value: reloadStub,
+  });
+  try {
+    const retry = wrapper.find('[data-testid="module-op-reload-retry"]');
+    expect(retry.exists()).toBe(true);
+    await retry.trigger('click');
+    const done = wrapper.find('[data-testid="module-op-done"]');
+    expect(done.exists()).toBe(true);
+    await done.trigger('click');
+    await flushPromises();
+  } finally {
+    Object.defineProperty(window.location, 'reload', {
+      configurable: true,
+      writable: true,
+      value: previousReload,
+    });
+  }
   wrapper.unmount();
 
   // Cover the FAILED resultAlertBoxClass branch (distinct from ReloadFailed amber).

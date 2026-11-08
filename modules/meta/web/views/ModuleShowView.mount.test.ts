@@ -2,8 +2,23 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { mount, flushPromises } from '@choysum/test-utils';
+import { useAuthStore } from '@/auth/web/stores/auth';
 import ModuleShowView from './ModuleShowView.vue';
 import { buildPageMountGlobal } from '@choysum/page-mount';
+import { moduleUninstallAction } from './module_actions';
+
+function seedModuleActionPermissions(actions: string[] = ['*']) {
+  const auth = useAuthStore();
+  auth.identity = {
+    metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] },
+  } as any;
+  auth.permissionState = {
+    permStateVersion: 1,
+    byCompany: {
+      '*': { ui: { routes: [], menus: [], actions } },
+    },
+  } as any;
+}
 
 function mountShow(row: Record<string, unknown>, recordId = 'cat-1') {
   const store = {
@@ -15,7 +30,7 @@ function mountShow(row: Record<string, unknown>, recordId = 'cat-1') {
     Browse: async () => ({}),
     Search: async () => [],
   };
-  return mount(ModuleShowView as any, {
+  const wrapper = mount(ModuleShowView as any, {
     props: {
       store,
       recordId,
@@ -41,6 +56,8 @@ function mountShow(row: Record<string, unknown>, recordId = 'cat-1') {
       },
     }),
   });
+  seedModuleActionPermissions();
+  return wrapper;
 }
 
 test('ModuleShowView.vue mounts under choysumMount and runs script setup', async () => {
@@ -82,12 +99,24 @@ test('ModuleShowView.vue primary and uninstall actions open the drawer for the m
   expect(upgradeVm.drawerAction).toBe('upgrade');
   upgrade.unmount();
 
+  // Install/upgrade CTAs stay hidden without action permission; progress stays visible.
+  const denied = mountShow({
+    ModuleName: 'core',
+    Installed: false,
+    Available: true,
+  });
+  seedModuleActionPermissions([moduleUninstallAction]);
+  await flushPromises();
+  expect((denied.vm as any).primaryAction).toBe(null);
+  denied.unmount();
+
   const progress = mountShow({
     ModuleName: 'core',
     Installed: true,
     Available: true,
     ActiveOperationId: 'op-live',
   });
+  seedModuleActionPermissions([]);
   await flushPromises();
   const progressVm = progress.vm as any;
   expect(progressVm.primaryAction).toBe('progress');

@@ -299,6 +299,9 @@ const resultAlertBoxClass = computed(() => {
   if (session.opStatus.value.resultStatus === 'FAILED') {
     return 'border-destructive/40 bg-destructive/10 text-destructive';
   }
+  if (session.opStatus.value.resultStatus !== 'SUCCEEDED') {
+    return 'border-border bg-muted/40 text-foreground';
+  }
   if (session.opStatus.value.ReloadFailed) {
     return 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-100';
   }

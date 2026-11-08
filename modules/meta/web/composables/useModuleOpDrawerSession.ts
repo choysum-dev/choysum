@@ -159,6 +159,7 @@ export function useModuleOpDrawerSession(opts: {
   const resultTitle = computed(() => {
     if (!opStatus.value) return opts.msgs.completed;
     if (opStatus.value.resultStatus === 'FAILED') return opts.msgs.operationFailed;
+    if (opStatus.value.resultStatus !== 'SUCCEEDED') return opts.msgs.completed;
     return opStatus.value.ReloadFailed ? opts.msgs.succeededReloadFailed : opts.msgs.operationSucceeded;
   });
 
