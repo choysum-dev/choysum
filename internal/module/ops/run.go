@@ -53,6 +53,7 @@ func (o *Ops) Run(ctx context.Context, req RunRequest) error {
 	if err := o.casSaveOperation(ctx, row, expectStatus); err != nil {
 		return err
 	}
+	var planDoc PlanDocument
 	if row.Action != ActionSync {
 		doc, docErr := unmarshalPlanDocument(row.PlanJson)
 		if docErr != nil {
@@ -60,6 +61,7 @@ func (o *Ops) Run(ctx context.Context, req RunRequest) error {
 			_ = o.failOperation(finishCtx, row, "ops", "PLAN_DECODE_FAILED", docErr.Error())
 			return docErr
 		}
+		planDoc = doc
 		if stampErr := o.setCatalogActiveOp(ctx, operationModuleNames(row, doc), row.Id.String); stampErr != nil {
 			finishCtx := context.WithoutCancel(ctx)
 			_ = o.failOperation(finishCtx, row, "ops", "ACTIVE_OP_STAMP_FAILED", stampErr.Error())
@@ -68,7 +70,7 @@ func (o *Ops) Run(ctx context.Context, req RunRequest) error {
 	}
 	o.publishOperationChanged(ctx, row)
 
-	runErr := o.executeOperation(ctx, row, req.WithDemo)
+	runErr := o.executeOperation(ctx, row, req.WithDemo, planDoc)
 	finishCtx := context.WithoutCancel(ctx)
 	if runErr != nil {
 		if saveErr := o.failOperation(finishCtx, row, "ops", "RUN_FAILED", runErr.Error()); saveErr != nil {
@@ -79,7 +81,7 @@ func (o *Ops) Run(ctx context.Context, req RunRequest) error {
 	return o.succeedOperation(finishCtx, row)
 }
 
-func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation, requestWithDemo bool) error {
+func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation, requestWithDemo bool, doc PlanDocument) error {
 	switch row.Action {
 	case ActionSync:
 		_, err := o.SyncSourceSnapshotsThenMaterialize(ctx, "all")
@@ -96,10 +98,6 @@ func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation
 				return err
 			}
 			withDemo = true
-		}
-		doc, err := unmarshalPlanDocument(row.PlanJson)
-		if err != nil {
-			return err
 		}
 		names := affectedModuleNames(doc, row.ModuleName)
 		if err := o.runLifecycle(ctx, row.Action, row.ModuleName, withDemo, doc); err != nil {

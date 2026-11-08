@@ -347,6 +347,61 @@ func TestSucceedAndAbandon_ClearActiveOpFailure(t *testing.T) {
 	}
 }
 
+func TestWithModuleManagementLease_NonPositiveTTLInterval(t *testing.T) {
+	// Not parallel: mutates package-level moduleManagementLeaseTTL.
+	db := newOpsTestDB(t)
+	prevTTL := moduleManagementLeaseTTL
+	moduleManagementLeaseTTL = 0
+	t.Cleanup(func() { moduleManagementLeaseTTL = prevTTL })
+	locker := &leaseTestLocker{}
+	o := &Ops{
+		Scope: newOpsTestScope(t, db),
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return locker
+		},
+	}
+	if err := o.withModuleManagementLease(context.Background(), func(context.Context) error {
+		return nil
+	}); err != nil {
+		t.Fatalf("lease: %v", err)
+	}
+}
+
+func TestRefreshCatalogDependents_UpdateFailure(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	o := &Ops{Scope: newOpsTestScope(t, db)}
+	if err := db.Create(&pkgmeta.Module{
+		Name: "auth", Version: "1.0.0", Status: pkgmeta.Installed, ApplicationStr: "auth",
+		DependsStr: datatypes.JSON(`["base"]`),
+	}).Error; err != nil {
+		t.Fatalf("auth: %v", err)
+	}
+	if err := db.Create(&pkgmeta.Module{
+		Name: "base", Version: "1.0.0", Status: pkgmeta.Installed, ApplicationStr: "base",
+	}).Error; err != nil {
+		t.Fatalf("base: %v", err)
+	}
+	if err := o.MaterializeCatalog(context.Background(), nil); err != nil {
+		t.Fatalf("materialize: %v", err)
+	}
+	// Clear dependents so refresh must Update, then fail Updates.
+	if err := db.Model(&modmeta.ModuleCatalog{}).Where("module_name = ?", "base").
+		Update("dependents_json", datatypes.JSON("[]")).Error; err != nil {
+		t.Fatalf("reset: %v", err)
+	}
+	if err := db.Callback().Update().Before("gorm:update").Register("fail_dep_refresh", func(tx *gorm.DB) {
+		if tx.Statement != nil && tx.Statement.Table == "meta_module_catalog" {
+			_ = tx.AddError(errors.New("dep update boom"))
+		}
+	}); err != nil {
+		t.Fatalf("callback: %v", err)
+	}
+	if err := o.refreshCatalogDependents(context.Background()); err == nil || !strings.Contains(err.Error(), "dep update boom") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
 func TestRun_PlanDecodeFailureFailsTerminal(t *testing.T) {
 	t.Parallel()
 	db := newOpsTestDB(t)
