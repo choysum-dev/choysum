@@ -9,7 +9,12 @@ SPDX-License-Identifier: Apache-2.0
     <p v-else-if="missing" class="p-4 text-sm text-muted-foreground" data-testid="module-show-missing">
       {{ _t('Module not found.') }}
     </p>
-    <ModuleShowView v-else-if="recordId" :store="catalogStore" :record-id="recordId" />
+    <ModuleShowView
+      v-else-if="recordId"
+      :store="catalogStore"
+      :operation-store="operationStore"
+      :record-id="recordId"
+    />
   </ChoyPage>
 </template>
 
@@ -27,7 +32,7 @@ defineOptions({ name: 'MetaModuleShowPage' });
 const { _t } = createTranslate('meta', { scope: 'web/pages/ModuleShow' });
 const route = useRoute();
 
-const { catalogStore, recordId, loading, missing, moduleName } = useModuleShowPage({
+const { catalogStore, operationStore, recordId, loading, missing, moduleName } = useModuleShowPage({
   scopeManager: useScopeManager().menuScopeManager,
   moduleName: () => String(route.params.name || ''),
 });

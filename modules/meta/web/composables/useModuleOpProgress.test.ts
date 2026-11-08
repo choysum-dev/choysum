@@ -148,6 +148,8 @@ test('createModuleOpProgressSession: refreshes on tip and reaches terminal witho
   const onTips = fnRecorder(async (_stream: unknown, callback: () => Promise<void>) => {
     await callback();
     await advance(80);
+    await callback();
+    await advance(80);
   });
 
   const session = createModuleOpProgressSession(
@@ -169,7 +171,7 @@ test('createModuleOpProgressSession: refreshes on tip and reaches terminal witho
 
   expect(subscribeModuleOp.calls[0]?.[0]).toEqual({ operationId: 'job-2' });
   expect(onTerminal.calls.length).toBe(1);
-  expect(fetchStatus.calls.length).toBeGreaterThanOrEqual(2);
+  expect(fetchStatus.calls.length).toBeGreaterThanOrEqual(3);
   const afterTip = fetchStatus.calls.length;
   await advance(5_000);
   expect(fetchStatus.calls.length).toBe(afterTip);
@@ -178,9 +180,12 @@ test('createModuleOpProgressSession: refreshes on tip and reaches terminal witho
 test('createModuleOpProgressSession: reports tip refresh hard errors', async () => {
   const { deps, advance } = createFakeClock();
   const onHardError = fnRecorder();
+  let n = 0;
   const fetchStatus = fnRecorder(async () => {
-    if (fetchStatus.calls.length === 1) return snapshot({ status: 'queued' });
-    throw new Error('status exploded');
+    n += 1;
+    if (n === 1) return snapshot({ status: 'queued' });
+    if (n === 2) throw new Error('status exploded');
+    return snapshot({ status: 'succeeded' });
   });
   const onTips = fnRecorder(async (_stream: unknown, callback: () => Promise<void>) => {
     await callback();
@@ -198,7 +203,10 @@ test('createModuleOpProgressSession: reports tip refresh hard errors', async () 
     },
     { ...deps, onTips: onTips as any, subscribeModuleOp: () => emptyAsyncIterable() }
   );
-  await session.watch('job-tip-err');
+  const pending = session.watch('job-tip-err');
+  await Promise.resolve();
+  await advance(1_000);
+  await pending;
   expect(onHardError.calls[0]?.[0]).toBe('status exploded');
 });
 
@@ -209,7 +217,9 @@ test('createModuleOpProgressSession: notifies transient tip refresh errors once'
   const fetchStatus = fnRecorder(async () => {
     n += 1;
     if (n === 1) return snapshot({ status: 'queued' });
-    throw new Error(n === 2 ? 'Failed to fetch' : 'NetworkError again');
+    if (n === 2) throw new Error('Failed to fetch');
+    if (n === 3) throw new Error('NetworkError again');
+    return snapshot({ status: 'succeeded' });
   });
   const onTips = fnRecorder(async (_stream: unknown, callback: () => Promise<void>) => {
     await callback();
@@ -229,8 +239,44 @@ test('createModuleOpProgressSession: notifies transient tip refresh errors once'
     },
     { ...deps, onTips: onTips as any, subscribeModuleOp: () => emptyAsyncIterable() }
   );
-  await session.watch('job-tip-transient');
+  const pending = session.watch('job-tip-transient');
+  await Promise.resolve();
+  await advance(1_000);
+  await pending;
   expect(onTransientNetworkError.calls.length).toBe(1);
+});
+
+test('createModuleOpProgressSession: polls when tip subscribe is unavailable', async () => {
+  const { deps, advance } = createFakeClock();
+  let calls = 0;
+  const fetchStatus = fnRecorder(async () => {
+    calls += 1;
+    if (calls >= 2) return snapshot({ status: 'succeeded' });
+    return snapshot({ status: 'queued' });
+  });
+  const onTerminal = fnRecorder();
+  const session = createModuleOpProgressSession(
+    {
+      fetchStatus: fetchStatus as any,
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: onTerminal as any,
+      onTimeout: () => undefined,
+    },
+    {
+      ...deps,
+      // Non-functions force the tip-unavailable poll path (?? would keep real tip defaults).
+      onTips: 0 as any,
+      subscribeModuleOp: 0 as any,
+    },
+  );
+
+  const pending = session.watch('job-no-tip');
+  await Promise.resolve();
+  await advance(1_000);
+  await advance(1_500);
+  await pending.catch(() => undefined);
+  expect(onTerminal.calls.length).toBe(1);
 });
 
 test('createModuleOpProgressSession: starts poll fallback when tip ends without terminal', async () => {
@@ -255,10 +301,17 @@ test('createModuleOpProgressSession: starts poll fallback when tip ends without 
     { ...deps, onTips: onTips as any, subscribeModuleOp: () => emptyAsyncIterable() }
   );
 
-  // watch resolves when the tip stream ends; poll fallback continues in the background.
-  await session.watch('job-poll');
-  await advance(1_000);
-  await advance(1_500);
+  // watch stays pending through tip end + poll fallback until terminal.
+  const pending = session.watch('job-poll');
+  let settled = false;
+  void pending.then(() => {
+    settled = true;
+  });
+  for (let i = 0; i < 40 && !settled; i++) {
+    await Promise.resolve();
+    await advance(500);
+  }
+  await pending;
   expect(onTerminal.calls.length).toBe(1);
   expect(fetchStatus.calls.length).toBeGreaterThanOrEqual(3);
 });
@@ -323,4 +376,143 @@ test('createModuleOpProgressSession: stop aborts an in-flight tip session', asyn
   expect(tipStarted).toBe(true);
   session.stop();
   await watchPromise;
+});
+
+test('createModuleOpProgressSession: poll fallback reports errors and times out', async () => {
+  const { deps, advance } = createFakeClock();
+  const onHardError = fnRecorder();
+  const onTransientNetworkError = fnRecorder();
+  const onTimeout = fnRecorder();
+  let n = 0;
+  const fetchStatus = fnRecorder(async () => {
+    n += 1;
+    if (n === 1) return snapshot({ status: 'queued' });
+    if (n === 2) throw new Error('Failed to fetch');
+    if (n === 3) throw new Error('status exploded');
+    return snapshot({ status: 'succeeded' });
+  });
+  const session = createModuleOpProgressSession(
+    {
+      fetchStatus: fetchStatus as any,
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: onTimeout as any,
+      onHardError: onHardError as any,
+      onTransientNetworkError: onTransientNetworkError as any,
+    },
+    { ...deps, onTips: 0 as any, subscribeModuleOp: 0 as any },
+  );
+
+  const pending = session.watch('job-poll-errors');
+  let settled = false;
+  void pending.then(() => {
+    settled = true;
+  });
+  for (let i = 0; i < 40 && !settled; i++) {
+    await Promise.resolve();
+    await advance(500);
+  }
+  await pending;
+  expect(onTransientNetworkError.calls.length).toBe(1);
+  expect(onHardError.calls[0]?.[0]).toBe('status exploded');
+
+  // Tip-unavailable path clears the tip deadline; poll itself must enforce MAX_DURATION.
+  n = 0;
+  const timeoutSession = createModuleOpProgressSession(
+    {
+      fetchStatus: async () => snapshot({ status: 'queued' }),
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: onTimeout as any,
+    },
+    { ...deps, onTips: 0 as any, subscribeModuleOp: 0 as any },
+  );
+  const timeoutPending = timeoutSession.watch('job-poll-timeout');
+  settled = false;
+  void timeoutPending.then(() => {
+    settled = true;
+  });
+  for (let i = 0; i < 30 && !settled; i++) {
+    await Promise.resolve();
+    await advance(60_000);
+  }
+  await timeoutPending;
+  expect(onTimeout.calls.length).toBe(1);
+});
+
+test('createModuleOpProgressSession: poll fallback settles on stop and inactive reads', async () => {
+  const { deps, advance } = createFakeClock();
+  let active = true;
+  let calls = 0;
+  const fetchStatus = fnRecorder(async () => {
+    calls += 1;
+    if (calls === 1) return snapshot({ status: 'queued' });
+    active = false;
+    return snapshot({ status: 'queued' });
+  });
+  const inactiveSession = createModuleOpProgressSession(
+    {
+      fetchStatus: fetchStatus as any,
+      isActive: () => active,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: () => undefined,
+    },
+    { ...deps, onTips: 0 as any, subscribeModuleOp: 0 as any },
+  );
+  await inactiveSession.watch('job-poll-inactive');
+
+  active = true;
+  calls = 0;
+  let release: (() => void) | undefined;
+  const blockedFetch = fnRecorder(async () => {
+    calls += 1;
+    if (calls === 1) return snapshot({ status: 'queued' });
+    await new Promise<void>(resolve => {
+      release = resolve;
+    });
+    throw new Error('after-stop');
+  });
+  const stopSession = createModuleOpProgressSession(
+    {
+      fetchStatus: blockedFetch as any,
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: () => undefined,
+      onHardError: () => undefined,
+    },
+    { ...deps, onTips: 0 as any, subscribeModuleOp: 0 as any },
+  );
+  const pending = stopSession.watch('job-poll-stop');
+  for (let i = 0; i < 40 && !release; i++) await Promise.resolve();
+  expect(!!release).toBe(true);
+  stopSession.stop();
+  release?.();
+  await pending;
+
+  // Orphaned poll timer after stop (clearSchedule no-op) still exits on generation mismatch.
+  const orphan = createModuleOpProgressSession(
+    {
+      fetchStatus: async () => snapshot({ status: 'queued' }),
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: () => undefined,
+    },
+    {
+      ...deps,
+      clearSchedule: () => undefined,
+      onTips: 0 as any,
+      subscribeModuleOp: 0 as any,
+    },
+  );
+  const orphanPending = orphan.watch('job-poll-orphan-tick');
+  for (let i = 0; i < 20; i++) await Promise.resolve();
+  orphan.stop();
+  await orphanPending;
+  await advance(1_000);
+  await Promise.resolve();
 });

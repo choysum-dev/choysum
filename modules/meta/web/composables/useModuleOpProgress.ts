@@ -98,6 +98,7 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks, deps
   let reachedTerminal = false;
   let transientNotified = false;
   let timedOut = false;
+  let pollSettle: (() => void) | null = null;
 
   function clearPoll(): void {
     if (pollTimer != null) {
@@ -113,12 +114,20 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks, deps
     }
   }
 
+  function settlePollFallback(): void {
+    if (!pollSettle) return;
+    const done = pollSettle;
+    pollSettle = null;
+    done();
+  }
+
   function stop(): void {
     sessionGeneration += 1;
     tipController?.abort();
     tipController = null;
     clearPoll();
     clearDeadline();
+    settlePollFallback();
   }
 
   function notifyTransient(): void {
@@ -140,6 +149,7 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks, deps
     clearPoll();
     clearDeadline();
     hooks.onTimeout();
+    settlePollFallback();
   }
 
   async function applyFetched(
@@ -167,52 +177,61 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks, deps
     return status;
   }
 
-  function startPollFallback(operationId: string, generation: number, startAt: number): void {
+  function startPollFallback(operationId: string, generation: number, startAt: number): Promise<void> {
     clearPoll();
+    settlePollFallback();
     let intervalMs = POLL_INITIAL_MS;
 
-    const tick = async () => {
-      if (generation !== sessionGeneration || !hooks.isActive() || reachedTerminal || timedOut) {
-        return;
-      }
-      let status: ModuleOpStatusSnapshot | null = null;
-      try {
-        status = await applyFetched(operationId, generation);
-        if (status && isTerminalStatus(status.status)) {
+    return new Promise<void>(resolve => {
+      pollSettle = resolve;
+
+      const tick = async () => {
+        if (generation !== sessionGeneration || !hooks.isActive() || reachedTerminal || timedOut) {
+          settlePollFallback();
           return;
         }
-      } catch (error) {
-        if (generation !== sessionGeneration || !hooks.isActive() || timedOut) {
-          return;
-        }
+        let status: ModuleOpStatusSnapshot | null = null;
         try {
-          const message = errorMessage(error);
-          if (isTransientNetworkError(message)) {
-            notifyTransient();
-          } else {
-            notifyHardError(error);
+          status = await applyFetched(operationId, generation);
+          if (status && isTerminalStatus(status.status)) {
+            settlePollFallback();
+            return;
           }
-        } catch {
-          // Progress hooks must not break fallback polling.
+        } catch (error) {
+          if (generation !== sessionGeneration || !hooks.isActive() || timedOut) {
+            settlePollFallback();
+            return;
+          }
+          try {
+            const message = errorMessage(error);
+            if (isTransientNetworkError(message)) {
+              notifyTransient();
+            } else {
+              notifyHardError(error);
+            }
+          } catch {
+            // Progress hooks must not break fallback polling.
+          }
         }
-      }
 
-      if (generation !== sessionGeneration || !hooks.isActive() || reachedTerminal || timedOut) {
-        return;
-      }
-      if (now() - startAt > MAX_DURATION_MS) {
-        fireTimeout(generation);
-        return;
-      }
+        if (generation !== sessionGeneration || !hooks.isActive() || reachedTerminal || timedOut) {
+          settlePollFallback();
+          return;
+        }
+        if (now() - startAt > MAX_DURATION_MS) {
+          fireTimeout(generation);
+          return;
+        }
 
-      const nextDelay = clampRetryDelay(status?.retryAfterMs, intervalMs);
-      intervalMs = Math.min(POLL_MAX_MS, intervalMs + POLL_STEP_MS);
-      pollTimer = schedule(() => {
-        void tick();
-      }, nextDelay);
-    };
+        const nextDelay = clampRetryDelay(status?.retryAfterMs, intervalMs);
+        intervalMs = Math.min(POLL_MAX_MS, intervalMs + POLL_STEP_MS);
+        pollTimer = schedule(() => {
+          void tick();
+        }, nextDelay);
+      };
 
-    void tick();
+      void tick();
+    });
   }
 
   /**
@@ -296,32 +315,38 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks, deps
       }, TIP_DEBOUNCE_MS);
     };
 
-    try {
-      await tipOn(
-        tipSubscribe({ operationId: id }, signal),
-        async () => {
-          scheduleTipRefresh();
-        },
-        signal
-      );
-    } catch {
-      // Stream error; fall through to short-backoff poll when still active.
-    } finally {
-      clearDeadline();
-      if (debounceTimer != null) {
-        clearSchedule(debounceTimer);
+    const tipAvailable = typeof tipSubscribe === 'function' && typeof tipOn === 'function';
+    if (tipAvailable) {
+      try {
+        await tipOn(
+          tipSubscribe({ operationId: id }, signal),
+          async () => {
+            scheduleTipRefresh();
+          },
+          signal,
+        );
+      } catch {
+        // Stream error; fall through to short-backoff poll when still active.
+      } finally {
+        clearDeadline();
+        if (debounceTimer != null) {
+          clearSchedule(debounceTimer);
+        }
+        await refreshChain;
       }
-      await refreshChain;
+    } else {
+      clearDeadline();
     }
 
+    // When tips are unavailable, still require an active session (stop() bumps generation).
     if (
       generation === sessionGeneration &&
       !timedOut &&
-      !signal.aborted &&
       hooks.isActive() &&
-      !reachedTerminal
+      !reachedTerminal &&
+      (tipAvailable ? !signal.aborted : true)
     ) {
-      startPollFallback(id, generation, startAt);
+      await startPollFallback(id, generation, startAt);
     }
   }
 

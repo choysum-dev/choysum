@@ -23,6 +23,13 @@ SPDX-License-Identifier: Apache-2.0
           <FolderSync class="size-3.5" :class="{ 'animate-spin': syncLoading }" aria-hidden="true" />
           {{ _t('Sync Modules') }}
         </button>
+        <span
+          v-if="lastSyncAtLabel"
+          class="text-[11px] text-muted-foreground"
+          data-testid="module-catalog-last-sync"
+        >
+          {{ _t('Last sync %s', lastSyncAtLabel) }}
+        </span>
         <ChoyViewSwitcher
           v-if="viewSwitcherOptions.length"
           :aria-label="_t('View switcher')"
@@ -84,17 +91,28 @@ SPDX-License-Identifier: Apache-2.0
         </template>
       </ChoyTableColumn>
       <ChoyBooleanField prop="UpdateAvailable" :store="store" :vColumnProps="{ minWidth: 110 }" />
-      <ChoyTableColumn :label="_t('Action')" :vColumnProps="{ minWidth: 120 }">
+      <ChoyTableColumn :label="_t('Action')" :vColumnProps="{ minWidth: 160 }">
         <template #default="{ row }">
-          <button
-            v-if="primaryActionFor(row)"
-            type="button"
-            class="rounded-md border border-border px-2 py-0.5 text-xs hover:bg-muted"
-            :data-testid="`module-catalog-primary-${primaryActionFor(row)}`"
-            @click.stop="onPrimaryAction(row)"
-          >
-            {{ primaryActionLabel(primaryActionFor(row)) }}
-          </button>
+          <div class="flex flex-wrap items-center gap-1">
+            <button
+              v-if="primaryActionFor(row)"
+              type="button"
+              class="rounded-md border border-border px-2 py-0.5 text-xs hover:bg-muted"
+              :data-testid="`module-catalog-primary-${primaryActionFor(row)}`"
+              @click.stop="onPrimaryAction(row)"
+            >
+              {{ primaryActionLabel(primaryActionFor(row)) }}
+            </button>
+            <button
+              v-if="canUninstall(row) && hasAction(moduleUninstallAction)"
+              type="button"
+              class="rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground hover:bg-muted"
+              data-testid="module-catalog-uninstall"
+              @click.stop="onUninstall(row)"
+            >
+              {{ _t('Uninstall') }}
+            </button>
+          </div>
         </template>
       </ChoyTableColumn>
     </ChoyListView>
@@ -133,15 +151,26 @@ SPDX-License-Identifier: Apache-2.0
           </div>
           <div class="truncate text-muted-foreground/80">{{ field(row, 'Application') || '—' }}</div>
         </button>
-        <button
-          v-if="primaryActionFor(row)"
-          type="button"
-          class="mt-auto self-end rounded-md border border-border px-2 py-0.5 text-[11px] hover:bg-muted"
-          :data-testid="`module-catalog-card-primary-${primaryActionFor(row)}`"
-          @click="onPrimaryAction(row)"
-        >
-          {{ primaryActionLabel(primaryActionFor(row)) }}
-        </button>
+        <div class="mt-auto flex flex-wrap items-center justify-end gap-1">
+          <button
+            v-if="canUninstall(row) && hasAction(moduleUninstallAction)"
+            type="button"
+            class="rounded-md border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-muted"
+            data-testid="module-catalog-card-uninstall"
+            @click="onUninstall(row)"
+          >
+            {{ _t('Uninstall') }}
+          </button>
+          <button
+            v-if="primaryActionFor(row)"
+            type="button"
+            class="rounded-md border border-border px-2 py-0.5 text-[11px] hover:bg-muted"
+            :data-testid="`module-catalog-card-primary-${primaryActionFor(row)}`"
+            @click="onPrimaryAction(row)"
+          >
+            {{ primaryActionLabel(primaryActionFor(row)) }}
+          </button>
+        </div>
       </div>
       <p
         v-if="filteredCardRows.length === 0"
@@ -153,25 +182,29 @@ SPDX-License-Identifier: Apache-2.0
 
     <ModuleOpDrawer
       v-model:open="drawerOpen"
+      :operation-store="operationStore"
       :operation-id="drawerOperationId"
       :module-name="drawerModuleName"
       :action="drawerAction"
+      :registry-newer-than-local="drawerRegistryNewerThanLocal"
+      @settled="onDrawerSettled"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, toRef } from 'vue';
+import { computed, onMounted, toRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { FolderSync } from 'lucide-vue-next';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type MetaModuleCatalog from '@/meta/service/models/module_catalog';
+import type MetaModuleOperation from '@/meta/service/models/module_operation';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { useModuleCatalogViewModel } from '../composables/useModuleCatalogViewModel';
-import { moduleSyncAction } from './module_actions';
+import { moduleSyncAction, moduleUninstallAction } from './module_actions';
 import ModuleOpDrawer from './ModuleOpDrawer.vue';
 import {
   ChoyBadge,
@@ -194,14 +227,16 @@ const { hasAction } = usePermission();
 const props = withDefaults(
   defineProps<{
     store?: WebModelStore<MetaModuleCatalog>;
+    operationStore?: WebModelStore<MetaModuleOperation> | null;
     showHeader?: boolean;
     initialOperationId?: string;
   }>(),
-  { showHeader: true },
+  { showHeader: true, operationStore: null },
 );
 
 const store = resolvePageStore(props.store, 'ModuleCatalogView');
 const showHeader = toRef(props, 'showHeader');
+const operationStore = computed(() => props.operationStore ?? null);
 
 const {
   filter,
@@ -210,14 +245,19 @@ const {
   drawerOperationId,
   drawerModuleName,
   drawerAction,
+  drawerRegistryNewerThanLocal,
   filterOptions,
   viewSwitcherOptions,
   syncLoading,
   filteredCardRows,
+  lastSyncAtLabel,
   onSync,
   onViewSelect,
   onRowClick,
   onPrimaryAction,
+  canUninstall,
+  onUninstall,
+  refreshCatalog,
   toShow,
   field,
   cardKey,
@@ -253,6 +293,10 @@ const {
     syncFailed: msg => _t('Sync failed: %s', msg),
   },
 });
+
+function onDrawerSettled() {
+  void refreshCatalog();
+}
 
 onMounted(() => {
   bootFromRoute();

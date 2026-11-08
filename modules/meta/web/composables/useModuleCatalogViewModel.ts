@@ -9,6 +9,7 @@ import type { RowEventPayload } from '@/web';
 import { useModuleCatalogSync } from './useModuleCatalogSync';
 import {
   catalogInstalledStatus,
+  formatModuleCatalogDate,
   matchesModuleCatalogFilter,
   moduleCatalogCardBadgeVariant,
   moduleStatusBadgeVariant,
@@ -57,6 +58,7 @@ export function useModuleCatalogViewModel(opts: {
   const drawerOperationId = ref('');
   const drawerModuleName = ref('');
   const drawerAction = ref<ModuleCatalogDrawerAction>('');
+  const drawerRegistryNewerThanLocal = ref(false);
   // True when the open drawer was bound from the operation deep-link (or boot prop).
   const drawerBoundToRoute = ref(false);
 
@@ -175,12 +177,14 @@ export function useModuleCatalogViewModel(opts: {
       operationId?: string;
       moduleName?: string;
       action?: ModuleCatalogDrawerAction;
+      registryNewerThanLocal?: boolean;
     },
     boundToRoute = false,
   ) {
     drawerOperationId.value = String(next.operationId || '').trim();
     drawerModuleName.value = String(next.moduleName || '').trim();
     drawerAction.value = next.action || (drawerOperationId.value ? 'progress' : '');
+    drawerRegistryNewerThanLocal.value = !!next.registryNewerThanLocal;
     drawerBoundToRoute.value = boundToRoute;
     drawerOpen.value = true;
   }
@@ -190,6 +194,7 @@ export function useModuleCatalogViewModel(opts: {
     drawerOperationId.value = '';
     drawerModuleName.value = '';
     drawerAction.value = '';
+    drawerRegistryNewerThanLocal.value = false;
     drawerBoundToRoute.value = false;
   }
 
@@ -208,6 +213,24 @@ export function useModuleCatalogViewModel(opts: {
     openDrawer({
       moduleName: String(rec.ModuleName || ''),
       action,
+      registryNewerThanLocal: !!rec.RegistryNewerThanLocal,
+    });
+  }
+
+  /** Uninstall lives in the row menu when there is no primary CTA (§7.1). */
+  function canUninstall(row: unknown): boolean {
+    const rec = rowRecord(row);
+    if (String(rec.ActiveOperationId || '').trim()) return false;
+    if (rec.Available === false) return false;
+    return rec.Installed === true;
+  }
+
+  function onUninstall(row: unknown) {
+    if (!canUninstall(row)) return;
+    const rec = rowRecord(row);
+    openDrawer({
+      moduleName: String(rec.ModuleName || ''),
+      action: 'uninstall',
     });
   }
 
@@ -219,6 +242,40 @@ export function useModuleCatalogViewModel(opts: {
   const filteredCardRows = computed(() =>
     allRows.value.filter(row => matchesModuleCatalogFilter(rowRecord(row), filter.value)),
   );
+
+  const lastSyncAtLabel = computed(() => {
+    let bestRaw: unknown = null;
+    let bestTime = -Infinity;
+    for (const row of allRows.value) {
+      const raw = rowRecord(row).LastSyncAt;
+      if (raw == null || raw === '') continue;
+      const time =
+        typeof raw === 'number'
+          ? raw
+          : raw instanceof Date
+            ? raw.getTime()
+            : new Date(raw as any).getTime();
+      if (!Number.isFinite(time) || time <= bestTime) continue;
+      bestTime = time;
+      bestRaw = raw;
+    }
+    return bestRaw != null ? formatModuleCatalogDate(bestRaw) : '';
+  });
+
+  async function refreshCatalog() {
+    try {
+      const list = (opts.store as any)?.state?.list;
+      if (list && typeof list.refresh === 'function') {
+        await list.refresh();
+        return;
+      }
+      if (typeof (opts.store as any)?.Search === 'function') {
+        await (opts.store as any).Search();
+      }
+    } catch {
+      // Refresh is best-effort after an operation settles.
+    }
+  }
 
   function resolveInitialOperationId(): string {
     const fromProp =
@@ -261,14 +318,19 @@ export function useModuleCatalogViewModel(opts: {
     drawerOperationId,
     drawerModuleName,
     drawerAction,
+    drawerRegistryNewerThanLocal,
     filterOptions,
     viewSwitcherOptions,
     syncLoading,
     filteredCardRows,
+    lastSyncAtLabel,
     onSync,
     onViewSelect,
     onRowClick,
     onPrimaryAction,
+    canUninstall,
+    onUninstall,
+    refreshCatalog,
     openDrawer,
     closeDrawer,
     toShow,

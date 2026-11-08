@@ -5,6 +5,24 @@ import { mount, flushPromises } from '@choysum/test-utils';
 import ModuleCatalogView from './ModuleCatalogView.vue';
 import { buildPageMountGlobal } from '@choysum/page-mount';
 
+function makeOperationStore() {
+  return {
+    Plan: async () => ({
+      Id: 'op-plan',
+      ModuleOrder: [{ ModuleName: 'core' }],
+      AffectedApps: [],
+      Risks: [],
+      Blockers: [],
+    }),
+    Apply: async () => ({ Id: 'op-plan' }),
+    Browse: async () => ({
+      Status: 'succeeded',
+      ReloadTriggered: false,
+      ReloadFailed: false,
+    }),
+  };
+}
+
 test('ModuleCatalogView.vue mounts under choysumMount and exposes drawer helpers', async () => {
   const store = {
     $id: 'fe-stub-module-catalog-store',
@@ -27,7 +45,7 @@ test('ModuleCatalogView.vue mounts under choysumMount and exposes drawer helpers
     RequestSync: async () => ({ Id: 'op-1' }),
   };
   const wrapper = mount(ModuleCatalogView as any, {
-    props: { store, showHeader: true, initialOperationId: '' },
+    props: { store, operationStore: makeOperationStore(), showHeader: true, initialOperationId: '' },
     global: buildPageMountGlobal({
       route: { path: '/meta/modules', fullPath: '/meta/modules', name: 'MetaModuleCatalog', params: {}, query: {} },
     }),
@@ -37,6 +55,7 @@ test('ModuleCatalogView.vue mounts under choysumMount and exposes drawer helpers
   const vm = wrapper.vm as { openDrawer?: (opts: any) => void; closeDrawer?: () => void };
   expect(typeof vm.openDrawer).toBe('function');
   vm.openDrawer?.({ moduleName: 'core', action: 'install' });
+  await flushPromises();
   vm.closeDrawer?.();
   await flushPromises();
   wrapper.unmount();
@@ -49,7 +68,7 @@ test('ModuleCatalogView.vue boots drawer from operation deep-link prop', async (
     RequestSync: async () => ({ Id: '' }),
   };
   const wrapper = mount(ModuleCatalogView as any, {
-    props: { store, initialOperationId: 'op-deep' },
+    props: { store, operationStore: makeOperationStore(), initialOperationId: 'op-deep' },
     global: buildPageMountGlobal({
       route: {
         path: '/meta/modules/operations/op-deep',
@@ -60,6 +79,7 @@ test('ModuleCatalogView.vue boots drawer from operation deep-link prop', async (
       },
     }),
   });
+  await flushPromises();
   await flushPromises();
   expect(wrapper.element != null).toBe(true);
   wrapper.unmount();
