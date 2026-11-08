@@ -314,8 +314,16 @@ func TestSucceedAndAbandon_ClearActiveOpFailure(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("callback: %v", err)
 	}
-	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err == nil || !strings.Contains(err.Error(), "clear boom") {
-		t.Fatalf("Run clear err = %v", err)
+	// Clear failure after terminal CAS must not fail the caller.
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Run after clear boom: %v", err)
+	}
+	row, err := o.loadOperation(context.Background(), result.Id)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if row.Status != StatusSucceeded {
+		t.Fatalf("status = %q, want succeeded", row.Status)
 	}
 
 	db2 := newOpsTestDB(t)
@@ -334,8 +342,38 @@ func TestSucceedAndAbandon_ClearActiveOpFailure(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("callback: %v", err)
 	}
-	if err := o2.AbandonDraft(context.Background(), draft.Id, "bye"); err == nil || !strings.Contains(err.Error(), "abandon clear boom") {
-		t.Fatalf("AbandonDraft err = %v", err)
+	if err := o2.AbandonDraft(context.Background(), draft.Id, "bye"); err != nil {
+		t.Fatalf("AbandonDraft after clear boom: %v", err)
+	}
+}
+
+func TestRun_PlanDecodeFailureFailsTerminal(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	o := &Ops{Scope: newOpsTestScope(t, db), Events: &recordingBus{}}
+	result, err := o.Plan(context.Background(), PlanRequest{Action: ActionSync, Origin: originLocal})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	// Corrupt plan_json then flip action so Run attempts decode for stamp.
+	if err := db.Model(&modmeta.ModuleOperation{}).Where("id = ?", result.Id).Updates(map[string]any{
+		"action":    ActionLoadDemo,
+		"plan_json": datatypes.JSON(`{`),
+	}).Error; err != nil {
+		t.Fatalf("corrupt: %v", err)
+	}
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err == nil {
+		t.Fatal("expected plan decode failure")
+	}
+	row, err := o.loadOperation(context.Background(), result.Id)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if row.Status != StatusFailed || row.ErrorCode != "PLAN_DECODE_FAILED" {
+		t.Fatalf("row = %#v", row)
 	}
 }
 

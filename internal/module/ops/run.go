@@ -54,12 +54,16 @@ func (o *Ops) Run(ctx context.Context, req RunRequest) error {
 		return err
 	}
 	if row.Action != ActionSync {
-		if doc, docErr := unmarshalPlanDocument(row.PlanJson); docErr == nil {
-			if stampErr := o.setCatalogActiveOp(ctx, operationModuleNames(row, doc), row.Id.String); stampErr != nil {
-				finishCtx := context.WithoutCancel(ctx)
-				_ = o.failOperation(finishCtx, row, "ops", "ACTIVE_OP_STAMP_FAILED", stampErr.Error())
-				return stampErr
-			}
+		doc, docErr := unmarshalPlanDocument(row.PlanJson)
+		if docErr != nil {
+			finishCtx := context.WithoutCancel(ctx)
+			_ = o.failOperation(finishCtx, row, "ops", "PLAN_DECODE_FAILED", docErr.Error())
+			return docErr
+		}
+		if stampErr := o.setCatalogActiveOp(ctx, operationModuleNames(row, doc), row.Id.String); stampErr != nil {
+			finishCtx := context.WithoutCancel(ctx)
+			_ = o.failOperation(finishCtx, row, "ops", "ACTIVE_OP_STAMP_FAILED", stampErr.Error())
+			return stampErr
 		}
 	}
 	o.publishOperationChanged(ctx, row)
@@ -175,9 +179,8 @@ func (o *Ops) failOperation(ctx context.Context, row *modmeta.ModuleOperation, d
 	if err := o.casSaveOperation(ctx, row, expect); err != nil {
 		return err
 	}
-	if err := o.clearCatalogActiveOp(ctx, row.Id.String); err != nil {
-		return err
-	}
+	// Terminal status is already persisted; do not fail the caller on a clear glitch.
+	o.clearCatalogActiveOpBestEffort(ctx, row.Id.String)
 	o.publishOperationChanged(ctx, row)
 	return nil
 }
@@ -202,9 +205,8 @@ func (o *Ops) succeedOperation(ctx context.Context, row *modmeta.ModuleOperation
 	if err := o.casSaveOperation(ctx, row, expect); err != nil {
 		return err
 	}
-	if err := o.clearCatalogActiveOp(ctx, row.Id.String); err != nil {
-		return err
-	}
+	// Terminal status is already persisted; do not fail the caller on a clear glitch.
+	o.clearCatalogActiveOpBestEffort(ctx, row.Id.String)
 	o.publishOperationChanged(ctx, row)
 	return nil
 }
@@ -237,9 +239,7 @@ func (o *Ops) ForceFailTerminal(ctx context.Context, id, domain, code, message s
 	if err := o.casSaveOperation(ctx, row, expect); err != nil {
 		return err
 	}
-	if err := o.clearCatalogActiveOp(ctx, row.Id.String); err != nil {
-		return err
-	}
+	o.clearCatalogActiveOpBestEffort(ctx, row.Id.String)
 	o.publishOperationChanged(ctx, row)
 	return nil
 }
@@ -301,9 +301,7 @@ func (o *Ops) AbandonDraft(ctx context.Context, id, reason string) error {
 	if err := o.casSaveOperation(ctx, row, StatusDraft); err != nil {
 		return err
 	}
-	if err := o.clearCatalogActiveOp(ctx, row.Id.String); err != nil {
-		return err
-	}
+	o.clearCatalogActiveOpBestEffort(ctx, row.Id.String)
 	o.publishOperationChanged(ctx, row)
 	return nil
 }

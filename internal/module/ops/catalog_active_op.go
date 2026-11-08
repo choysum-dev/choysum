@@ -48,6 +48,16 @@ func (o *Ops) clearCatalogActiveOp(ctx context.Context, opID string) error {
 		Update("active_operation_id", sql.NullString{}).Error
 }
 
+// clearCatalogActiveOpBestEffort logs clear failures after a terminal CAS so callers
+// are not told an already-persisted succeed/fail/cancel failed.
+func (o *Ops) clearCatalogActiveOpBestEffort(ctx context.Context, opID string) {
+	if err := o.clearCatalogActiveOp(ctx, opID); err != nil {
+		if lg := scopeLogger(o.Scope); lg != nil {
+			lg.Warn("ops clear active operation id failed", "op", opID, "error", err)
+		}
+	}
+}
+
 func uniqueTrimmedNames(in []string) []string {
 	seen := make(map[string]struct{}, len(in))
 	out := make([]string, 0, len(in))

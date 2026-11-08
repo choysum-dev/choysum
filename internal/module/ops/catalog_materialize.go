@@ -361,18 +361,31 @@ func (o *Ops) refreshCatalogDependents(ctx context.Context) error {
 	var rows []modmeta.ModuleCatalog
 	if err := sess.WithContext(ctx).
 		Model(&modmeta.ModuleCatalog{}).
-		Select("module_name", "depends_json").
+		Select("module_name", "depends_json", "dependents_json").
 		Find(&rows).Error; err != nil {
 		return err
 	}
 	if len(rows) == 0 {
 		return nil
 	}
+	prior := make(map[string]string, len(rows))
+	for _, row := range rows {
+		prior[row.ModuleName] = string(row.DependentsJson)
+	}
 	fillCatalogDependents(rows)
-	return sess.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "module_name"}},
-		DoUpdates: clause.AssignmentColumns([]string{"dependents_json"}),
-	}).CreateInBatches(&rows, 200).Error
+	return sess.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for _, row := range rows {
+			if string(row.DependentsJson) == prior[row.ModuleName] {
+				continue
+			}
+			if err := tx.Model(&modmeta.ModuleCatalog{}).
+				Where("module_name = ?", row.ModuleName).
+				Update("dependents_json", row.DependentsJson).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 type manifestLite struct {
