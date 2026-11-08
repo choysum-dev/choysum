@@ -402,6 +402,75 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		}
 	})
 
+	t.Run("hostModules skips target and surfaces host install errors", func(t *testing.T) {
+		oldInstall := installForE2EHook
+		oldApply := applyScenarioFixturesHook
+		oldSeed := seedModuleIndexHook
+		oldStart := startServerHook
+		oldStop := stopServerHook
+		oldWait := waitForHTTP200Hook
+		oldRunE2EHost := runE2EHostHook
+		defer func() {
+			installForE2EHook = oldInstall
+			applyScenarioFixturesHook = oldApply
+			seedModuleIndexHook = oldSeed
+			startServerHook = oldStart
+			stopServerHook = oldStop
+			waitForHTTP200Hook = oldWait
+			runE2EHostHook = oldRunE2EHost
+		}()
+
+		installed := []string{}
+		installForE2EHook = func(ctx context.Context, configPath string, moduleName string, withDemo bool) error {
+			installed = append(installed, moduleName)
+			if moduleName == "auth" {
+				return errors.New("host install boom")
+			}
+			return nil
+		}
+		applyScenarioFixturesHook = func(ctx context.Context, configPath string, closure []string, manifests map[string]*sourceModulePackage, scenario string, targetModule string, verbose bool, stderr io.Writer, loadedFixtures *[]string) error {
+			return nil
+		}
+		seedModuleIndexHook = func(ctx context.Context, configPath string, manifests map[string]*sourceModulePackage) error {
+			return nil
+		}
+		startServerHook = func(workDir, configPath, logPath string, choysumBinaryPath string) (*exec.Cmd, error) {
+			return &exec.Cmd{Process: &os.Process{Pid: 12345}}, nil
+		}
+		stopServerHook = func(cmd *exec.Cmd) {}
+		waitForHTTP200Hook = func(ctx context.Context, url string, timeout time.Duration) error { return nil }
+		runE2EHostHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
+			return nil
+		}
+
+		modulesPath := t.TempDir()
+		specsDir := filepath.Join(modulesPath, "meta", "e2e")
+		if err := os.MkdirAll(specsDir, 0o755); err != nil {
+			t.Fatalf("mkdir specs dir: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("import { test } from '@choysum/e2e';\ntest('sample', async () => {});\n"), 0o644); err != nil {
+			t.Fatalf("write spec file: %v", err)
+		}
+
+		manifests := map[string]*sourceModulePackage{
+			"meta": {
+				DirName: "meta",
+				Depends: []string{"task"},
+				E2E:     &packageE2E{Specs: "e2e", HostModules: []string{"meta", "auth"}},
+			},
+			"task": {DirName: "task"},
+			"auth": {DirName: "auth", Depends: []string{"meta"}},
+		}
+
+		err := runOneScenario(context.Background(), RunOptions{Module: "meta", ModulesPath: modulesPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifests, "default")
+		if err == nil || !strings.Contains(err.Error(), "host install boom") {
+			t.Fatalf("expected host install error, got %v", err)
+		}
+		if !reflect.DeepEqual(installed, []string{"meta", "auth"}) {
+			t.Fatalf("install roots should skip duplicate target, got %#v", installed)
+		}
+	})
+
 	t.Run("closure with auth enables auth without extra installs", func(t *testing.T) {
 		oldInstall := installForE2EHook
 		oldApply := applyScenarioFixturesHook

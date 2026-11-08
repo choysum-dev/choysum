@@ -382,7 +382,7 @@ func TestForceFailTerminalAndMarkReloadFailed(t *testing.T) {
 	if err := o.casSaveOperation(context.Background(), row, StatusFailed); err != nil {
 		t.Fatalf("restore succeeded: %v", err)
 	}
-	if err := o.MarkReloadFailed(context.Background(), result.Id); err != nil {
+	if err := o.MarkReloadFailed(nil, result.Id); err != nil {
 		t.Fatalf("MarkReloadFailed: %v", err)
 	}
 	row, err = o.loadOperation(context.Background(), result.Id)
@@ -393,14 +393,19 @@ func TestForceFailTerminalAndMarkReloadFailed(t *testing.T) {
 		t.Fatalf("reload-failed row = %#v", row)
 	}
 
-	// Lost update: status changes after load would make CAS fail.
-	expect := row.Status
-	if err := db.Model(&modmeta.ModuleOperation{}).Where("id = ?", result.Id).Update("status", StatusCancelled).Error; err != nil {
-		t.Fatalf("concurrent status update: %v", err)
+	const failCAS = "block-ops-cas"
+	if err := db.Callback().Update().Before("gorm:update").Register(failCAS, func(tx *gorm.DB) {
+		_ = tx.AddError(errors.New("cas blocked"))
+	}); err != nil {
+		t.Fatalf("register cas block callback: %v", err)
 	}
-	row.ReloadTriggered = true
-	row.ReloadFailed = true
-	if err := o.casSaveOperation(context.Background(), row, expect); err == nil || !strings.Contains(err.Error(), "concurrently") {
-		t.Fatalf("casSaveOperation race = %v", err)
+	t.Cleanup(func() {
+		_ = db.Callback().Update().Remove(failCAS)
+	})
+	if err := o.ForceFailTerminal(context.Background(), result.Id, "d", "c", "m"); err == nil || !strings.Contains(err.Error(), "cas blocked") {
+		t.Fatalf("ForceFailTerminal CAS err = %v", err)
+	}
+	if err := o.MarkReloadFailed(context.Background(), result.Id); err == nil || !strings.Contains(err.Error(), "cas blocked") {
+		t.Fatalf("MarkReloadFailed CAS err = %v", err)
 	}
 }

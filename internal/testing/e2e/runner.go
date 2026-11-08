@@ -477,6 +477,9 @@ compile:
 		return err
 	}
 	for _, host := range hostModules {
+		if host == opts.Module {
+			continue
+		}
 		if err := installForE2EHook(ctx, configPath, host, false); err != nil {
 			return err
 		}

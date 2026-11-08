@@ -449,6 +449,16 @@ func TestTopoClosureAndScenarioFixtures(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "hostModules") {
 		t.Fatalf("expected unknown hostModules error, got %v", err)
 	}
+	skipped, err := e2eRuntimeClosure("meta", []string{"", "meta", "web"}, full)
+	if err != nil {
+		t.Fatalf("e2eRuntimeClosure skip self/empty: %v", err)
+	}
+	if !reflect.DeepEqual(skipped, []string{"core", "task", "meta", "base", "auth", "web"}) {
+		t.Fatalf("e2eRuntimeClosure skip self/empty = %#v", skipped)
+	}
+	if _, err := topoClosureRoots([]string{"", "meta"}, full); err != nil {
+		t.Fatalf("topoClosureRoots empty root: %v", err)
+	}
 	if got := e2eHostModules(&sourceModulePackage{E2E: &packageE2E{HostModules: []string{" auth ", "web", "auth", ""}}}); !reflect.DeepEqual(got, []string{"auth", "web"}) {
 		t.Fatalf("e2eHostModules = %#v", got)
 	}

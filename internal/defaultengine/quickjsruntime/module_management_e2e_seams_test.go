@@ -5,6 +5,7 @@ package quickjsruntime
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -73,6 +74,13 @@ func TestModuleManagementE2ESeamsFromBackendEnv(t *testing.T) {
 	})
 	if len(all) != 3 {
 		t.Fatalf("combined opts = %d, want 3", len(all))
+	}
+	cfg = resolveModuleManagementConfig(all...)
+	if err := cfg.applyHook(nil); err == nil || !strings.Contains(err.Error(), "LEASE_CONFLICT") {
+		t.Fatalf("applyHook = %v", err)
+	}
+	if err := cfg.runHook(nil); err == nil || !strings.Contains(err.Error(), "OP_FAILED") {
+		t.Fatalf("runHook = %v", err)
 	}
 }
 
