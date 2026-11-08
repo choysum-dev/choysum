@@ -5,8 +5,10 @@ import { ChoysumError } from '../error';
 import type { CompleteInitialSetupInput } from '../stores/auth';
 import {
   buildCompleteInitialSetupReq,
+  resolveSetupLoadDemoRequester,
   runSetupLoadDemo,
   runSetupSubmit,
+  setSetupLoadDemoRequesterForTests,
   setupConfirmPasswordError,
   setupEmailError,
   setupLocalFieldForServerField,
@@ -120,6 +122,20 @@ test('setupWantsDemo is true only for an explicit boolean true', () => {
   expect(setupWantsDemo({ WithDemo: false })).toBe(false);
   expect(setupWantsDemo({ WithDemo: 'true' })).toBe(false);
   expect(setupWantsDemo({ WithDemo: true })).toBe(true);
+});
+
+test('resolveSetupLoadDemoRequester prefers the test override', async () => {
+  const fallback = async () => ({ Ok: true, Id: 'fallback' });
+  expect(resolveSetupLoadDemoRequester(fallback)).toBe(fallback);
+  setSetupLoadDemoRequesterForTests(async () => ({ Ok: false, ErrorMessage: 'override' }));
+  try {
+    const resolved = resolveSetupLoadDemoRequester(fallback);
+    expect(resolved).not.toBe(fallback);
+    expect(await resolved()).toEqual({ Ok: false, ErrorMessage: 'override' });
+  } finally {
+    setSetupLoadDemoRequesterForTests(null);
+  }
+  expect(resolveSetupLoadDemoRequester(fallback)).toBe(fallback);
 });
 
 test('runSetupLoadDemo soft-succeeds and reports bridge Ok:false without throwing', async () => {

@@ -121,6 +121,7 @@ import { resolveLoginRedirect, runHandledAuthSubmit } from './login_form';
 import {
   SETUP_STEPS,
   buildCompleteInitialSetupReq,
+  resolveSetupLoadDemoRequester,
   runSetupLoadDemo,
   runSetupSubmit,
   setupLocalFieldForServerField,
@@ -327,13 +328,15 @@ function showServerFieldError(field: string, message: string): boolean {
 }
 
 async function requestSetupLoadDemo() {
-  const opStore = createStoreByModel('meta.MetaModuleOperation') as unknown as {
-    RequestLoadDemo: (req?: Record<string, never>) => Promise<{
-      Ok?: boolean;
-      ErrorMessage?: string;
-    }>;
-  };
-  return opStore.RequestLoadDemo({});
+  return resolveSetupLoadDemoRequester(async () => {
+    const opStore = createStoreByModel('meta.MetaModuleOperation') as unknown as {
+      RequestLoadDemo: (req?: Record<string, never>) => Promise<{
+        Ok?: boolean;
+        ErrorMessage?: string;
+      }>;
+    };
+    return opStore.RequestLoadDemo({});
+  })();
 }
 
 async function onFormSubmit(ctx: { formData: Record<string, unknown> }) {
@@ -364,14 +367,20 @@ async function onFormSubmit(ctx: { formData: Record<string, unknown> }) {
         },
       });
       // Setup + login already succeeded; demo failure must not undo that.
+      // Keep the page loading indicator up for the post-login demo request.
       if (ok && wantsDemo) {
-        await runSetupLoadDemo({
-          requestLoadDemo: requestSetupLoadDemo,
-          failedMessage: _t('Failed to load demo data. You can retry from Modules later.'),
-          onFailure: message => {
-            ChoyMessage.warning(message);
-          },
-        });
+        loading.value = true;
+        try {
+          await runSetupLoadDemo({
+            requestLoadDemo: requestSetupLoadDemo,
+            failedMessage: _t('Failed to load demo data. You can retry from Modules later.'),
+            onFailure: message => {
+              ChoyMessage.warning(message);
+            },
+          });
+        } finally {
+          loading.value = false;
+        }
       }
       return ok;
     },

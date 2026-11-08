@@ -224,12 +224,27 @@ export type SetupLoadDemoResp = {
   ErrorMessage?: string;
 };
 
+export type SetupLoadDemoRequester = () => Promise<SetupLoadDemoResp | null | undefined>;
+
+/** Test-only RequestLoadDemo override; cleared between mounts. */
+let testSetupLoadDemoRequester: SetupLoadDemoRequester | null = null;
+
+/** Override the post-setup RequestLoadDemo call for FE mounts without meta store. */
+export function setSetupLoadDemoRequesterForTests(fn: SetupLoadDemoRequester | null): void {
+  testSetupLoadDemoRequester = fn;
+}
+
+/** Resolve RequestLoadDemo: test override first, else factory. */
+export function resolveSetupLoadDemoRequester(fallback: SetupLoadDemoRequester): SetupLoadDemoRequester {
+  return testSetupLoadDemoRequester ?? fallback;
+}
+
 /**
  * Best-effort load-demo after setup login. Never throws; callers toast via onFailure.
  * Soft-ok when the bridge reports no pending demo modules.
  */
 export async function runSetupLoadDemo(opts: {
-  requestLoadDemo: () => Promise<SetupLoadDemoResp | null | undefined>;
+  requestLoadDemo: SetupLoadDemoRequester;
   failedMessage: string;
   onFailure: (message: string) => void;
 }): Promise<boolean> {

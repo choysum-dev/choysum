@@ -676,9 +676,12 @@ func TestCoverage_ModuleManagementRemainingBranches(t *testing.T) {
 	// loadDemo proceeds Plan → Apply → Run (empty pending soft-abandons before Run).
 	seedPendingDemo := func(t *testing.T, gdb *gorm.DB) {
 		t.Helper()
+		// DemoStr must be non-empty: planLoadDemo MaterializeCatalog refreshes
+		// HasDemo from installed demo_str; empty payload clears pending and soft-oks.
 		if err := gdb.Create(&pkgmeta.Module{
 			Name: "demo_mod", Version: "1.0.0", Status: pkgmeta.Installed,
 			ApplicationStr: "demo_mod", Path: t.TempDir(),
+			DemoStr: []byte(`["demo/a.json"]`),
 		}).Error; err != nil {
 			t.Fatalf("seed module: %v", err)
 		}
