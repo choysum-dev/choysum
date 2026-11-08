@@ -140,7 +140,16 @@ func (o *Ops) executeLoadDemo(ctx context.Context, row *modmeta.ModuleOperation)
 	if o.Scope == nil {
 		return errors.New("ops: scope is required")
 	}
+	loadedAny := false
 	for _, name := range names {
+		pending, pendingErr := o.isPendingDemoModule(ctx, name)
+		if pendingErr != nil {
+			return pendingErr
+		}
+		if !pending {
+			// Catalog moved on since Plan (already loaded / uninstalled / no demo).
+			continue
+		}
 		mod, loadErr := o.loadInstalledModule(ctx, name)
 		if loadErr != nil {
 			return loadErr
@@ -148,14 +157,35 @@ func (o *Ops) executeLoadDemo(ctx context.Context, row *modmeta.ModuleOperation)
 		if err := applyDemoFiles(ctx, o.Scope, mod); err != nil {
 			return fmt.Errorf("ops: load demo for %q: %w", name, err)
 		}
+		// Mark per module after a successful import so a later failure does not
+		// leave earlier modules unmarked (retry would re-import them).
+		if err := o.markDemoLoaded(ctx, []string{name}); err != nil {
+			return err
+		}
+		loadedAny = true
 	}
-	if err := o.markDemoLoaded(ctx, names); err != nil {
-		return err
+	if !loadedAny {
+		return nil
 	}
 	if err := o.SetWithDemo(ctx, true); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (o *Ops) isPendingDemoModule(ctx context.Context, name string) (bool, error) {
+	sess, err := o.session(ctx)
+	if err != nil {
+		return false, err
+	}
+	var count int64
+	if err := sess.WithContext(ctx).
+		Model(&modmeta.ModuleCatalog{}).
+		Where("module_name = ? AND installed = ? AND has_demo = ? AND demo_loaded = ?", name, true, true, false).
+		Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 func (o *Ops) loadInstalledModule(ctx context.Context, name string) (*pkgmeta.Module, error) {
@@ -164,7 +194,9 @@ func (o *Ops) loadInstalledModule(ctx context.Context, name string) (*pkgmeta.Mo
 		return nil, err
 	}
 	var mod pkgmeta.Module
-	if err := sess.WithContext(ctx).Where("name = ?", name).Take(&mod).Error; err != nil {
+	if err := sess.WithContext(ctx).
+		Where("name = ? AND status = ?", name, pkgmeta.Installed).
+		Take(&mod).Error; err != nil {
 		return nil, fmt.Errorf("ops: installed module %q: %w", name, err)
 	}
 	return &mod, nil

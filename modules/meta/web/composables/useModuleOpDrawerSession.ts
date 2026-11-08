@@ -222,7 +222,7 @@ export function useModuleOpDrawerSession(opts: {
   /** Plans a load-demo operation for all Installed+HasDemo+!DemoLoaded catalog rows. */
   async function runPlanDemo() {
     const store = resolveStore();
-    if (!store) {
+    if (!store || typeof (store as any).PlanDemo !== 'function') {
       ChoyMessage.error(opts.msgs.failedToLoadPlan);
       return;
     }
@@ -241,6 +241,9 @@ export function useModuleOpDrawerSession(opts: {
       if (!planSession.isCurrent(requestSeq)) return;
       ChoyMessage.error(String(error?.message || opts.msgs.failedToLoadPlan));
       plan.value = null;
+      // Leave the drawer without a half-open load_demo plan step.
+      activeAction.value = '';
+      step.value = 'plan';
     } finally {
       if (planSession.isCurrent(requestSeq)) planLoading.value = false;
     }
