@@ -191,44 +191,60 @@ func (o *Ops) MaterializeCatalog(ctx context.Context, moduleNames []string) erro
 		return nil
 	}
 	fillCatalogDependents(rows)
+	dialect := ""
+	if sess.Dialector != nil {
+		dialect = sess.Dialector.Name()
+	}
 	if err := sess.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "module_name"}},
-		DoUpdates: clause.Assignments(map[string]interface{}{
-			"summary":                   gorm.Expr("excluded.summary"),
-			"description":               gorm.Expr("excluded.description"),
-			"category":                  gorm.Expr("excluded.category"),
-			"application":               gorm.Expr("excluded.application"),
-			"author":                    gorm.Expr("excluded.author"),
-			"license":                   gorm.Expr("excluded.license"),
-			"local_version":             gorm.Expr("excluded.local_version"),
-			"registry_version":          gorm.Expr("excluded.registry_version"),
-			"installed":                 gorm.Expr("excluded.installed"),
-			"installed_version":         gorm.Expr("excluded.installed_version"),
-			"update_available":          gorm.Expr("excluded.update_available"),
-			"registry_newer_than_local": gorm.Expr("excluded.registry_newer_than_local"),
-			"available":                 gorm.Expr("excluded.available"),
-			"unavailable_reason":        gorm.Expr("excluded.unavailable_reason"),
-			"local_path":                gorm.Expr("excluded.local_path"),
-			"depends_json":              gorm.Expr("excluded.depends_json"),
-			"dependents_json":           gorm.Expr("excluded.dependents_json"),
-			"has_demo":                  gorm.Expr("excluded.has_demo"),
-			// Preserve a concurrent markDemoLoaded(true) against a stale false upsert,
-			// while still allowing intentional clears (no demo / uninstall / version change).
-			"demo_loaded": gorm.Expr(`CASE
-				WHEN excluded.has_demo = false THEN false
-				WHEN excluded.installed = false THEN false
-				WHEN excluded.demo_loaded = false AND COALESCE(meta_module_catalog.installed_version, '') != COALESCE(excluded.installed_version, '') THEN false
-				WHEN meta_module_catalog.demo_loaded = true THEN true
-				ELSE excluded.demo_loaded
-			END`),
-			"last_sync_at": gorm.Expr("excluded.last_sync_at"),
-			"updated_at":   gorm.Expr("excluded.updated_at"),
-		}),
+		Columns:   []clause.Column{{Name: "module_name"}},
+		DoUpdates: catalogMaterializeDoUpdates(dialect),
 	}).CreateInBatches(&rows, 200).Error; err != nil {
 		return err
 	}
-	// Keep reverse-dep edges coherent for modules outside this batch.
+	// Keep reverse-dep edges coherent for modules outside this batch
+	// (and repair dependents_json after filtered materialize, which must not
+	// upsert a partial dependents graph into the conflict update).
 	return o.refreshCatalogDependents(ctx)
+}
+
+// catalogMaterializeDoUpdates builds dialect-safe ON CONFLICT assignments.
+// MySQL rewrites clause.Column{Table:"excluded"} to VALUES(col); raw "excluded.x"
+// expressions are not rewritten and break nonempty materialize on MySQL.
+// dependents_json is intentionally omitted — refreshCatalogDependents recomputes it.
+func catalogMaterializeDoUpdates(dialect string) clause.Set {
+	cols := []string{
+		"summary", "description", "category", "application", "author", "license",
+		"local_version", "registry_version", "installed", "installed_version",
+		"update_available", "registry_newer_than_local", "available", "unavailable_reason",
+		"local_path", "depends_json", "has_demo", "last_sync_at", "updated_at",
+	}
+	updates := clause.AssignmentColumns(cols)
+	return append(updates, clause.Assignment{
+		Column: clause.Column{Name: "demo_loaded"},
+		Value:  gorm.Expr(catalogDemoLoadedUpsertExpr(dialect)),
+	})
+}
+
+func catalogDemoLoadedUpsertExpr(dialect string) string {
+	in := func(col string) string {
+		if dialect == "mysql" {
+			return "VALUES(`" + col + "`)"
+		}
+		return "excluded." + col
+	}
+	curDemo := "meta_module_catalog.demo_loaded"
+	curInstalled := "meta_module_catalog.installed_version"
+	if dialect == "mysql" {
+		curDemo = "`meta_module_catalog`.`demo_loaded`"
+		curInstalled = "`meta_module_catalog`.`installed_version`"
+	}
+	return `CASE
+		WHEN ` + in("has_demo") + ` = false THEN false
+		WHEN ` + in("installed") + ` = false THEN false
+		WHEN ` + in("demo_loaded") + ` = false AND COALESCE(` + curInstalled + `, '') != COALESCE(` + in("installed_version") + `, '') THEN false
+		WHEN ` + curDemo + ` = true THEN true
+		ELSE ` + in("demo_loaded") + `
+	END`
 }
 
 func materializeOne(name string, a *catalogAggregate, now time.Time, prior catalogDemoState) modmeta.ModuleCatalog {
@@ -373,14 +389,22 @@ func (o *Ops) refreshCatalogDependents(ctx context.Context) error {
 		prior[row.ModuleName] = string(row.DependentsJson)
 	}
 	fillCatalogDependents(rows)
+	grouped := map[string][]string{}
+	for _, row := range rows {
+		next := string(row.DependentsJson)
+		if next == prior[row.ModuleName] {
+			continue
+		}
+		grouped[next] = append(grouped[next], row.ModuleName)
+	}
+	if len(grouped) == 0 {
+		return nil
+	}
 	return sess.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		for _, row := range rows {
-			if string(row.DependentsJson) == prior[row.ModuleName] {
-				continue
-			}
+		for val, names := range grouped {
 			if err := tx.Model(&modmeta.ModuleCatalog{}).
-				Where("module_name = ?", row.ModuleName).
-				Update("dependents_json", row.DependentsJson).Error; err != nil {
+				Where("module_name IN ?", names).
+				Update("dependents_json", datatypes.JSON(val)).Error; err != nil {
 				return err
 			}
 		}

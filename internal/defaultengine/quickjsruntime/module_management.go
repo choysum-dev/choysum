@@ -739,7 +739,7 @@ func performModuleRun(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, sc
 					message = info.Message
 				}
 			}
-			if markErr := started.host.ForceFailTerminal(started.execCtx, params.Id, domain, code, message); markErr != nil {
+			if markErr := started.host.ForceFailTerminal(context.WithoutCancel(started.execCtx), params.Id, domain, code, message); markErr != nil {
 				return bridgeThrow(ctx, errors.Join(hooked, markErr))
 			}
 		}
@@ -819,7 +819,13 @@ func performModuleLoadDemo(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngin
 	}
 	// Soft no-op when Plan reports blockers (e.g. no pending demo): abandon draft and succeed.
 	if len(planRes.Blockers) > 0 {
-		_ = started.host.AbandonDraft(started.execCtx, planRes.Id, "plan blocked")
+		if abandonErr := started.host.AbandonDraft(started.execCtx, planRes.Id, "plan blocked"); abandonErr != nil {
+			if started.host != nil && started.host.Scope != nil {
+				if lg := started.host.Scope.Logger(); lg != nil {
+					lg.Warn("loadDemo abandon blocked draft failed", "op", planRes.Id, "error", abandonErr)
+				}
+			}
+		}
 		val, marshalErr := quickjsMarshal(ctx, map[string]any{
 			"ok": true,
 			"id": planRes.Id,
@@ -848,7 +854,9 @@ func performModuleLoadDemo(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngin
 			}
 		}
 		// Draft or queued: terminate so retries do not leave a lingering open plan.
-		_ = started.host.ForceFailTerminal(started.execCtx, planRes.Id, domain, code, message)
+		// Apply may have already failed the row (stamp); ForceFailTerminal no-ops on failed.
+		// Detach ctx so cancel/deadline from Apply does not block the terminal write.
+		_ = started.host.ForceFailTerminal(context.WithoutCancel(started.execCtx), planRes.Id, domain, code, message)
 		if shouldThrowBridgeError(applyErr) {
 			return bridgeThrow(ctx, applyErr)
 		}

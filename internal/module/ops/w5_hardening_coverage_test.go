@@ -97,6 +97,13 @@ func TestRun_StampActiveOpFailureFailsTerminal(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "run stamp boom") {
 		t.Fatalf("Run err = %v", err)
 	}
+	row, loadErr := o.loadOperation(context.Background(), result.Id)
+	if loadErr != nil {
+		t.Fatalf("load: %v", loadErr)
+	}
+	if row.Status != StatusFailed || row.ErrorCode != "ACTIVE_OP_STAMP_FAILED" {
+		t.Fatalf("terminal row = status=%q code=%q", row.Status, row.ErrorCode)
+	}
 }
 
 func TestCatalogActiveOp_EmptyAndSessionGuards(t *testing.T) {
@@ -344,6 +351,54 @@ func TestSucceedAndAbandon_ClearActiveOpFailure(t *testing.T) {
 	}
 	if err := o2.AbandonDraft(context.Background(), draft.Id, "bye"); err != nil {
 		t.Fatalf("AbandonDraft after clear boom: %v", err)
+	}
+}
+
+func TestCatalogDemoLoadedUpsertExpr_Dialects(t *testing.T) {
+	t.Parallel()
+	sqliteExpr := catalogDemoLoadedUpsertExpr("sqlite")
+	if !strings.Contains(sqliteExpr, "excluded.demo_loaded") {
+		t.Fatalf("sqlite expr = %s", sqliteExpr)
+	}
+	mysqlExpr := catalogDemoLoadedUpsertExpr("mysql")
+	if !strings.Contains(mysqlExpr, "VALUES(`demo_loaded`)") {
+		t.Fatalf("mysql expr = %s", mysqlExpr)
+	}
+	updates := catalogMaterializeDoUpdates("mysql")
+	foundDemo := false
+	for _, a := range updates {
+		if a.Column.Name == "demo_loaded" {
+			foundDemo = true
+		}
+		if a.Column.Name == "dependents_json" {
+			t.Fatal("dependents_json must not be in conflict DoUpdates")
+		}
+	}
+	if !foundDemo {
+		t.Fatal("expected demo_loaded assignment")
+	}
+}
+
+func TestForceFailTerminal_NoopWhenAlreadyFailed(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	o := &Ops{Scope: newOpsTestScope(t, db), Events: &recordingBus{}, Resolver: &mapResolver{}}
+	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "missing", Action: ActionInstall})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.ForceFailTerminal(context.Background(), result.Id, "ops", "FIRST", "first"); err != nil {
+		t.Fatalf("first fail: %v", err)
+	}
+	if err := o.ForceFailTerminal(context.Background(), result.Id, "ops", "SECOND", "second"); err != nil {
+		t.Fatalf("second fail: %v", err)
+	}
+	row, err := o.loadOperation(context.Background(), result.Id)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if row.ErrorCode != "FIRST" {
+		t.Fatalf("error code overwritten: %q", row.ErrorCode)
 	}
 }
 

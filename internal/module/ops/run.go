@@ -226,6 +226,10 @@ func (o *Ops) ForceFailTerminal(ctx context.Context, id, domain, code, message s
 	if err != nil {
 		return err
 	}
+	// Keep an earlier failure (e.g. Apply ACTIVE_OP_STAMP_FAILED) instead of overwriting.
+	if row.Status == StatusFailed {
+		return nil
+	}
 	expect := row.Status
 	now := time.Now().UTC()
 	row.Status = StatusFailed

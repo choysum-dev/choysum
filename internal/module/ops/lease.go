@@ -46,6 +46,9 @@ func (o *Ops) withModuleManagementLease(ctx context.Context, fn func(context.Con
 	}
 	ownerID := xid.New().String()
 	ttl := moduleManagementLeaseTTL
+	if ttl <= 0 {
+		ttl = 60 * time.Second
+	}
 	if err := locker.Acquire(ctx, moduleManagementLeaseResource, ownerID, ttl); err != nil {
 		if errors.Is(err, statepkg.ErrLeaseBusy) {
 			retryAfterMs := int64(ttl / time.Millisecond)
