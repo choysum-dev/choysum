@@ -459,6 +459,17 @@ func TestTopoClosureAndScenarioFixtures(t *testing.T) {
 	if _, err := topoClosureRoots([]string{"", "meta"}, full); err != nil {
 		t.Fatalf("topoClosureRoots empty root: %v", err)
 	}
+	withEmptyDep := map[string]*sourceModulePackage{
+		"core": {},
+		"meta": {Depends: []string{"", "core"}},
+	}
+	gotEmptyDep, err := topoClosureRoots([]string{"meta"}, withEmptyDep)
+	if err != nil {
+		t.Fatalf("topoClosureRoots empty depends entry: %v", err)
+	}
+	if !reflect.DeepEqual(gotEmptyDep, []string{"core", "meta"}) {
+		t.Fatalf("topoClosureRoots empty depends = %#v", gotEmptyDep)
+	}
 	if got := e2eHostModules(&sourceModulePackage{E2E: &packageE2E{HostModules: []string{" auth ", "web", "auth", ""}}}); !reflect.DeepEqual(got, []string{"auth", "web"}) {
 		t.Fatalf("e2eHostModules = %#v", got)
 	}
