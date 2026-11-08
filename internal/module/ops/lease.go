@@ -66,11 +66,8 @@ func (o *Ops) withModuleManagementLease(ctx context.Context, fn func(context.Con
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		interval := ttl / 2
-		if interval <= 0 {
-			interval = time.Second
-		}
-		ticker := time.NewTicker(interval)
+		// ttl is clamped above; interval is always positive.
+		ticker := time.NewTicker(ttl / 2)
 		defer ticker.Stop()
 		for {
 			select {
