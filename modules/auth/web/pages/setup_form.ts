@@ -242,6 +242,10 @@ export function resolveSetupLoadDemoRequester(fallback: SetupLoadDemoRequester):
 
 export type CreateStoreByModelFn = (modelName: string, options?: unknown) => unknown;
 
+type MetaModuleOpStore = {
+  RequestLoadDemo?: (req?: Record<string, never>) => Promise<SetupLoadDemoResp>;
+};
+
 /**
  * Call meta.MetaModuleOperation/RequestLoadDemo. Soft-ok when meta is not installed
  * or the store has no RequestLoadDemo (setup can run before meta is present).
@@ -249,11 +253,9 @@ export type CreateStoreByModelFn = (modelName: string, options?: unknown) => unk
 export async function requestMetaModuleLoadDemo(
   createStore: CreateStoreByModelFn = createStoreByModel,
 ): Promise<SetupLoadDemoResp> {
-  let opStore: {
-    RequestLoadDemo?: (req?: Record<string, never>) => Promise<SetupLoadDemoResp>;
-  } | null = null;
+  let opStore: MetaModuleOpStore | null = null;
   try {
-    opStore = createStore('meta.MetaModuleOperation') as typeof opStore;
+    opStore = createStore('meta.MetaModuleOperation') as MetaModuleOpStore;
   } catch {
     return { Ok: true };
   }

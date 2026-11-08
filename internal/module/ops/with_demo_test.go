@@ -87,10 +87,10 @@ func TestSetWithDemo_CreateConflictFallsBackToUpdate(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("query callback: %v", err)
 	}
+	t.Cleanup(func() { _ = db.Callback().Query().Remove("ops_hide_first_with_demo_take") })
 	if err := o.SetWithDemo(context.Background(), true); err != nil {
 		t.Fatalf("SetWithDemo: %v", err)
 	}
-	_ = db.Callback().Query().Remove("ops_hide_first_with_demo_take")
 	if !o.ResolveWithDemo(context.Background()) {
 		t.Fatal("expected true after create-race fallback update")
 	}
