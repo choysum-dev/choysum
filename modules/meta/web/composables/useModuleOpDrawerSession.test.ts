@@ -196,11 +196,12 @@ test('useModuleOpDrawerSession: runPlanDemo guards missing PlanDemo and resets o
     isOpen: () => open.value,
     msgs,
   });
-  noMethod.activeAction.value = 'load_demo';
+  // Seed a stale load_demo step; missing PlanDemo must clear it.
+  (noMethod.activeAction as { value: string }).value = 'load_demo';
   noMethod.planLoading.value = true;
   await noMethod.runPlanDemo();
   expect(noMethod.plan.value).toBeNull();
-  expect(noMethod.activeAction.value).toBe('');
+  expect(noMethod.activeAction.value).toBe('' as typeof noMethod.activeAction.value);
   expect(noMethod.planLoading.value).toBe(false);
   expect(noMethod.step.value).toBe('plan');
 
