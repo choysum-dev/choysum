@@ -107,10 +107,12 @@ type moduleManagementConfig struct {
 	// Test-only loadDemo hooks (nil in production).
 	loadDemoPlanHook func(ops.PlanResult) ops.PlanResult
 	loadDemoRunHook  func(error) error
-	// Test-only apply/run seams (nil in production). Used by unit tests to
-	// reproduce former CHOYSUM_E2E_FORCE_* failure modes without product env reads.
-	applyHook func(error) error
-	runHook   func(error) error
+	// Test-only apply/run seams (nil in production). Used by unit tests and
+	// e2e BackendEnv wiring (ModuleManagementE2ESeamsFromBackendEnv) to
+	// reproduce former CHOYSUM_E2E_FORCE_* failure modes without product TS reads.
+	applyHook         func(error) error
+	runHook           func(error) error
+	forceReloadFailed bool
 }
 
 // processCompilerExecutor is started once for production bridge wiring.
@@ -228,6 +230,14 @@ func WithModuleManagementApplyHook(hook func(error) error) ModuleManagementOptio
 func WithModuleManagementRunHook(hook func(error) error) ModuleManagementOption {
 	return moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
 		cfg.runHook = hook
+	})
+}
+
+// WithModuleManagementForceReloadFailed marks ReloadTriggered/ReloadFailed on
+// the operation row after a successful Run (e2e reload-failed scenario).
+func WithModuleManagementForceReloadFailed() ModuleManagementOption {
+	return moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+		cfg.forceReloadFailed = true
 	})
 }
 
@@ -713,7 +723,32 @@ func performModuleRun(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, sc
 
 	err = started.host.Run(started.execCtx, ops.RunRequest{Id: params.Id, WithDemo: params.WithDemo})
 	if cfg.runHook != nil {
-		err = cfg.runHook(err)
+		hooked := cfg.runHook(err)
+		// When Run already persisted success, flip the row to failed so C1 UI
+		// (MetaModuleOperation Browse) observes the forced failure.
+		if err == nil && hooked != nil {
+			domain, code, message := "MODULE_MANAGEMENT", "OP_FAILED", hooked.Error()
+			if info := oerrors.GetErrorInfo(hooked); info != nil {
+				if info.Domain != "" {
+					domain = info.Domain
+				}
+				if info.Code != "" {
+					code = info.Code
+				}
+				if info.Message != "" {
+					message = info.Message
+				}
+			}
+			if markErr := started.host.ForceFailTerminal(started.execCtx, params.Id, domain, code, message); markErr != nil {
+				return bridgeThrow(ctx, errors.Join(hooked, markErr))
+			}
+		}
+		err = hooked
+	}
+	if err == nil && cfg.forceReloadFailed {
+		if markErr := started.host.MarkReloadFailed(started.execCtx, params.Id); markErr != nil {
+			return bridgeThrow(ctx, markErr)
+		}
 	}
 	return marshalOpResult(ctx, err)
 }

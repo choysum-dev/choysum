@@ -29,11 +29,37 @@
       "web": "./web/index.ts"
     },
     "e2e": {
+      "specs": "e2e",
+      "hostModules": [
+        "auth",
+        "web"
+      ],
       "scenarios": {
         "default": {
           "fixtures": [
             "e2e/fixtures/smoke.json"
           ]
+        },
+        "result-failed": {
+          "extends": "default",
+          "fixtures": [],
+          "backendEnv": {
+            "CHOYSUM_E2E_FORCE_RESULT_STATUS": "FAILED"
+          }
+        },
+        "reload-failed": {
+          "extends": "default",
+          "fixtures": [],
+          "backendEnv": {
+            "CHOYSUM_E2E_FORCE_RELOAD_FAILED": "true"
+          }
+        },
+        "lock-conflict": {
+          "extends": "default",
+          "fixtures": [],
+          "backendEnv": {
+            "CHOYSUM_E2E_FORCE_LOCK_CONFLICT": "true"
+          }
         }
       }
     }

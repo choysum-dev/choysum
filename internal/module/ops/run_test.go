@@ -304,3 +304,108 @@ func TestRun_PassesFrozenLifecycleOptions(t *testing.T) {
 		t.Fatalf("skip=%v profile=%q", life.lastSkipWebShell, life.lastWebShellProfile)
 	}
 }
+
+func TestForceFailTerminalAndMarkReloadFailed(t *testing.T) {
+	t.Parallel()
+
+	var nilOps *Ops
+	if err := nilOps.ForceFailTerminal(nil, "x", "d", "c", "m"); err == nil || !strings.Contains(err.Error(), "nil host") {
+		t.Fatalf("ForceFailTerminal(nil) = %v", err)
+	}
+	if err := nilOps.MarkReloadFailed(nil, "x"); err == nil || !strings.Contains(err.Error(), "nil host") {
+		t.Fatalf("MarkReloadFailed(nil) = %v", err)
+	}
+
+	db := newOpsTestDB(t)
+	o := &Ops{Scope: newOpsTestScope(t, db), Events: &recordingBus{}}
+	if err := o.ForceFailTerminal(nil, " ", "d", "c", "m"); err == nil || !strings.Contains(err.Error(), "operation id") {
+		t.Fatalf("ForceFailTerminal(empty id) = %v", err)
+	}
+	if err := o.MarkReloadFailed(context.Background(), ""); err == nil || !strings.Contains(err.Error(), "operation id") {
+		t.Fatalf("MarkReloadFailed(empty id) = %v", err)
+	}
+	if err := o.ForceFailTerminal(context.Background(), "missing", "d", "c", "m"); err == nil {
+		t.Fatal("ForceFailTerminal(missing) expected load error")
+	}
+	if err := o.MarkReloadFailed(context.Background(), "missing"); err == nil {
+		t.Fatal("MarkReloadFailed(missing) expected load error")
+	}
+
+	mod := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core"}
+	life := &seedLifecycle{stubLifecycle: &stubLifecycle{}, db: db}
+	o = &Ops{
+		Scope:     newOpsTestScope(t, db),
+		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+		Lifecycle: life,
+		Events:    &recordingBus{},
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return testLocker{}
+		},
+	}
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{
+		ModuleName: "core",
+		SourceType: originLocal,
+		SourceRef:  "local",
+		Available:  true,
+		Version:    nullString("1.0.0"),
+	}).Error; err != nil {
+		t.Fatalf("seed snapshot: %v", err)
+	}
+	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "core", Action: ActionInstall})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	if err := o.ForceFailTerminal(nil, result.Id, "MODULE_MANAGEMENT", "OP_FAILED", "forced"); err != nil {
+		t.Fatalf("ForceFailTerminal: %v", err)
+	}
+	row, err := o.loadOperation(context.Background(), result.Id)
+	if err != nil {
+		t.Fatalf("load after ForceFailTerminal: %v", err)
+	}
+	if row.Status != StatusFailed || row.ErrorCode != "OP_FAILED" || row.ErrorMessage != "forced" {
+		t.Fatalf("forced row = %#v", row)
+	}
+
+	// Succeed again via direct CAS so MarkReloadFailed has a succeeded row.
+	row.Status = StatusSucceeded
+	row.Phase = PhaseDone
+	row.ErrorDomain = ""
+	row.ErrorCode = ""
+	row.ErrorMessage = ""
+	if err := o.casSaveOperation(context.Background(), row, StatusFailed); err != nil {
+		t.Fatalf("restore succeeded: %v", err)
+	}
+	if err := o.MarkReloadFailed(nil, result.Id); err != nil {
+		t.Fatalf("MarkReloadFailed: %v", err)
+	}
+	row, err = o.loadOperation(context.Background(), result.Id)
+	if err != nil {
+		t.Fatalf("load after MarkReloadFailed: %v", err)
+	}
+	if !row.ReloadTriggered || !row.ReloadFailed || row.Status != StatusSucceeded {
+		t.Fatalf("reload-failed row = %#v", row)
+	}
+
+	const failCAS = "block-ops-cas"
+	if err := db.Callback().Update().Before("gorm:update").Register(failCAS, func(tx *gorm.DB) {
+		_ = tx.AddError(errors.New("cas blocked"))
+	}); err != nil {
+		t.Fatalf("register cas block callback: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = db.Callback().Update().Remove(failCAS)
+	})
+	if err := o.ForceFailTerminal(context.Background(), result.Id, "d", "c", "m"); err == nil || !strings.Contains(err.Error(), "cas blocked") {
+		t.Fatalf("ForceFailTerminal CAS err = %v", err)
+	}
+	if err := o.MarkReloadFailed(context.Background(), result.Id); err == nil || !strings.Contains(err.Error(), "cas blocked") {
+		t.Fatalf("MarkReloadFailed CAS err = %v", err)
+	}
+}
