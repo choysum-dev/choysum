@@ -580,6 +580,53 @@ func TestRun_PlanDecodeFailureFailsTerminal(t *testing.T) {
 	}
 }
 
+func TestRun_PlanDecodeAndFailOperationBothErrorJoined(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	o := &Ops{
+		Scope:  newOpsTestScope(t, db),
+		Events: &recordingBus{},
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return &leaseTestLocker{}
+		},
+		SyncLocalSnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			return lifecycle.ModuleSourceSnapshotSyncStats{}, nil
+		},
+		SyncRegistrySnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			return lifecycle.ModuleSourceSnapshotSyncStats{}, nil
+		},
+	}
+	result, err := o.Plan(context.Background(), PlanRequest{Action: ActionSync, Origin: originLocal})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := db.Model(&modmeta.ModuleOperation{}).Where("id = ?", result.Id).Updates(map[string]any{
+		"action":    ActionLoadDemo,
+		"plan_json": datatypes.JSON(`{`),
+	}).Error; err != nil {
+		t.Fatalf("corrupt: %v", err)
+	}
+	if err := db.Callback().Update().Before("gorm:update").Register("fail_decode_terminal", func(tx *gorm.DB) {
+		if tx.Statement == nil || tx.Statement.Table != "meta_module_operation" {
+			return
+		}
+		if st, ok := tx.Statement.Dest.(map[string]any); ok {
+			if status, _ := st["status"].(string); status == StatusFailed {
+				_ = tx.AddError(errors.New("decode failOp boom"))
+			}
+		}
+	}); err != nil {
+		t.Fatalf("callback: %v", err)
+	}
+	err = o.Run(context.Background(), RunRequest{Id: result.Id})
+	if err == nil || !strings.Contains(err.Error(), "decode failOp boom") {
+		t.Fatalf("Run joined err = %v", err)
+	}
+}
+
 func TestMaterializeCatalog_PriorFindFailure(t *testing.T) {
 	t.Parallel()
 	db := newOpsTestDB(t)
