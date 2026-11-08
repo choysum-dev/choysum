@@ -154,6 +154,32 @@ test('useModuleOpDrawerSession: superseded plan response is ignored', async () =
   expect(api.plan.value).toBeNull();
 });
 
+test('useModuleOpDrawerSession: runPlanDemo maps PlanDemo payload', async () => {
+  const open = ref(true);
+  const store = makeStore({
+    PlanDemo: async () => ({
+      Id: 'op-demo',
+      Action: 'load-demo',
+      ModuleOrder: [{ ModuleName: 'base', Reason: 'pending-demo' }],
+      AffectedApps: [],
+      Risks: [],
+      Blockers: [],
+    }),
+  });
+  const api = useModuleOpDrawerSession({
+    operationStore: store,
+    isOpen: () => open.value,
+    msgs,
+  });
+  await api.runPlanDemo();
+  expect(api.activeAction.value).toBe('load_demo');
+  expect(api.plan.value?.Id).toBe('op-demo');
+  expect(api.plan.value?.affectedModules).toEqual([
+    { moduleName: 'base', reason: 'pending-demo', currentVersion: undefined, targetVersion: undefined, origin: undefined },
+  ]);
+  expect(api.canConfirm.value).toBe(true);
+});
+
 test('useModuleOpDrawerSession: runPlan errors without store or when Plan throws', async () => {
   const open = ref(true);
   const missing = useModuleOpDrawerSession({

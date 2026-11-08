@@ -42,7 +42,7 @@ func (o *Ops) Plan(ctx context.Context, req PlanRequest) (PlanResult, error) {
 	case ActionSync:
 		return o.planSyncOp(ctx, origin, strings.TrimSpace(req.OperatorUserId))
 	case ActionLoadDemo:
-		return o.planLoadDemoStub(ctx, strings.TrimSpace(req.OperatorUserId))
+		return o.planLoadDemo(ctx, strings.TrimSpace(req.OperatorUserId))
 	default:
 		return PlanResult{}, fmt.Errorf("ops: unsupported action %q", req.Action)
 	}
@@ -79,36 +79,6 @@ func (o *Ops) planSyncOp(ctx context.Context, origin, operatorUserId string) (Pl
 	return PlanResult{
 		Id:           row.Id.String,
 		Action:       ActionSync,
-		BaseRevision: doc.BaseRevision,
-	}, nil
-}
-
-func (o *Ops) planLoadDemoStub(ctx context.Context, operatorUserId string) (PlanResult, error) {
-	doc := PlanDocument{
-		Blockers: []PlanIssue{{
-			Code:    "LOAD_DEMO_NOT_IMPLEMENTED",
-			Level:   "error",
-			Message: "load-demo is not implemented until W4",
-		}},
-		BaseRevision: "load-demo",
-	}
-	raw, err := marshalPlanDocument(doc)
-	if err != nil {
-		return PlanResult{}, err
-	}
-	row := &modmeta.ModuleOperation{
-		Action:         ActionLoadDemo,
-		PlanJson:       raw,
-		Status:         StatusDraft,
-		OperatorUserId: operatorUserId,
-	}
-	if err := o.createOperation(ctx, row); err != nil {
-		return PlanResult{}, err
-	}
-	return PlanResult{
-		Id:           row.Id.String,
-		Action:       ActionLoadDemo,
-		Blockers:     doc.Blockers,
 		BaseRevision: doc.BaseRevision,
 	}, nil
 }

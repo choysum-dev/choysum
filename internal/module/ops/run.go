@@ -13,7 +13,6 @@ import (
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/module/plan"
-	"github.com/choysum-dev/choysum/pkg/oerrors"
 )
 
 // Run executes a queued (or draft sync/load-demo for CLI convenience) operation.
@@ -44,15 +43,6 @@ func (o *Ops) Run(ctx context.Context, req RunRequest) error {
 	default:
 		return fmt.Errorf("ops: operation %q status is %q, want queued or draft", id, row.Status)
 	}
-	if row.Action == ActionLoadDemo {
-		msg := "load-demo is not implemented until W4"
-		runErr := oerrors.New("ops", "LOAD_DEMO_NOT_IMPLEMENTED", msg)
-		if saveErr := o.failOperation(context.WithoutCancel(ctx), row, "ops", "LOAD_DEMO_NOT_IMPLEMENTED", msg); saveErr != nil {
-			return errors.Join(runErr, saveErr)
-		}
-		return runErr
-	}
-
 	now := time.Now().UTC()
 	row.Status = StatusRunning
 	row.Phase = PhaseExecuting
@@ -81,6 +71,8 @@ func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation
 	case ActionSync:
 		_, err := o.SyncSourceSnapshotsThenMaterialize(ctx, "all")
 		return err
+	case ActionLoadDemo:
+		return o.executeLoadDemo(ctx, row)
 	case ActionInstall, ActionUpgrade, ActionUninstall:
 		if o.Lifecycle == nil {
 			return errors.New("ops: lifecycle service is required")

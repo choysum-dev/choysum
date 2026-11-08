@@ -841,9 +841,28 @@ func TestCoverage_MaterializeErrorAndFailSaveJoin(t *testing.T) {
 
 	db3 := newOpsTestDB(t)
 	o3 := &Ops{Scope: newOpsTestScope(t, db3), Events: &recordingBus{}}
+	if err := db3.Create(&pkgmeta.Module{
+		Name: "base", Version: "1.0.0", Status: pkgmeta.Installed, Path: t.TempDir(),
+		DemoStr: datatypes.JSON(`["demo/a.json"]`),
+	}).Error; err != nil {
+		t.Fatalf("seed module: %v", err)
+	}
+	if err := db3.Create(&modmeta.ModuleCatalog{
+		ModuleName: "base", Installed: true, HasDemo: true, DemoLoaded: false,
+	}).Error; err != nil {
+		t.Fatalf("seed catalog: %v", err)
+	}
+	oldApply := applyDemoFiles
+	defer func() { applyDemoFiles = oldApply }()
+	applyDemoFiles = func(context.Context, scope.Scope, *pkgmeta.Module) error {
+		return errors.New("demo boom")
+	}
 	ld, err := o3.Plan(context.Background(), PlanRequest{Action: ActionLoadDemo})
 	if err != nil {
 		t.Fatalf("Plan load-demo: %v", err)
+	}
+	if err := o3.Apply(context.Background(), ApplyRequest{Id: ld.Id}); err != nil {
+		t.Fatalf("Apply load-demo: %v", err)
 	}
 	if err := db3.Callback().Update().Before("gorm:update").Register("ops_fail_loaddemo_terminal", func(tx *gorm.DB) {
 		if st, ok := tx.Statement.Dest.(map[string]any); ok {
@@ -855,7 +874,7 @@ func TestCoverage_MaterializeErrorAndFailSaveJoin(t *testing.T) {
 		t.Fatalf("callback: %v", err)
 	}
 	err = o3.Run(context.Background(), RunRequest{Id: ld.Id})
-	if err == nil || !strings.Contains(err.Error(), "not implemented") || !strings.Contains(err.Error(), "loaddemo terminal fail") {
+	if err == nil || !strings.Contains(err.Error(), "demo boom") || !strings.Contains(err.Error(), "loaddemo terminal fail") {
 		t.Fatalf("load-demo join err: %v", err)
 	}
 }

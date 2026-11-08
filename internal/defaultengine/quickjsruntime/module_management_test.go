@@ -734,7 +734,7 @@ func TestModuleManagementSyncCatalogLeaseConflict(t *testing.T) {
 	}
 }
 
-func TestModuleManagementLoadDemoNotImplemented(t *testing.T) {
+func TestModuleManagementLoadDemoEmptyPendingSucceeds(t *testing.T) {
 	db := newBridgeTestDB(t)
 	baseScope := &moduleIndexTestScope{
 		ctx:     context.Background(),
@@ -757,11 +757,11 @@ func TestModuleManagementLoadDemoNotImplemented(t *testing.T) {
 		}),
 	))
 	got := awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.loadDemo({})`)
-	if ok, _ := got["ok"].(bool); ok {
-		t.Fatalf("expected not ok, got %#v", got)
+	if ok, _ := got["ok"].(bool); !ok {
+		t.Fatalf("expected ok for empty pending demo, got %#v", got)
 	}
-	if code, _ := got["errorCode"].(string); code != "LOAD_DEMO_NOT_IMPLEMENTED" {
-		t.Fatalf("errorCode = %#v", got)
+	if id, _ := got["id"].(string); strings.TrimSpace(id) == "" {
+		t.Fatalf("expected operation id, got %#v", got)
 	}
 }
 
