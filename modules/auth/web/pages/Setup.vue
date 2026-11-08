@@ -121,7 +121,7 @@ import { resolveLoginRedirect, runHandledAuthSubmit } from './login_form';
 import {
   SETUP_STEPS,
   buildCompleteInitialSetupReq,
-  resolveSetupLoadDemoRequester,
+  requestSetupLoadDemo,
   runSetupLoadDemo,
   runSetupSubmit,
   setupLocalFieldForServerField,
@@ -141,7 +141,6 @@ import {
   type SetupSelectionItem,
 } from './setup_options';
 import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
-import { createStoreByModel } from '@/web/web/stores/registry';
 
 const { _t } = createTranslate('auth', { scope: 'web/pages/Setup' });
 void [
@@ -325,18 +324,6 @@ function showServerFieldError(field: string, message: string): boolean {
     .then(() => nextTick())
     .then(() => formRef.value?.validate());
   return true;
-}
-
-async function requestSetupLoadDemo() {
-  return resolveSetupLoadDemoRequester(async () => {
-    const opStore = createStoreByModel('meta.MetaModuleOperation') as unknown as {
-      RequestLoadDemo: (req?: Record<string, never>) => Promise<{
-        Ok?: boolean;
-        ErrorMessage?: string;
-      }>;
-    };
-    return opStore.RequestLoadDemo({});
-  })();
 }
 
 async function onFormSubmit(ctx: { formData: Record<string, unknown> }) {

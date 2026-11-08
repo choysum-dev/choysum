@@ -5,6 +5,8 @@ import { ChoysumError } from '../error';
 import type { CompleteInitialSetupInput } from '../stores/auth';
 import {
   buildCompleteInitialSetupReq,
+  requestMetaModuleLoadDemo,
+  requestSetupLoadDemo,
   resolveSetupLoadDemoRequester,
   runSetupLoadDemo,
   runSetupSubmit,
@@ -136,6 +138,35 @@ test('resolveSetupLoadDemoRequester prefers the test override', async () => {
     setSetupLoadDemoRequesterForTests(null);
   }
   expect(resolveSetupLoadDemoRequester(fallback)).toBe(fallback);
+});
+
+test('requestMetaModuleLoadDemo soft-oks when meta store is missing or incomplete', async () => {
+  expect(
+    await requestMetaModuleLoadDemo(() => {
+      throw new Error('factory missing');
+    }),
+  ).toEqual({ Ok: true });
+  expect(await requestMetaModuleLoadDemo(() => ({}))).toEqual({ Ok: true });
+  expect(await requestMetaModuleLoadDemo(() => null)).toEqual({ Ok: true });
+  expect(
+    await requestMetaModuleLoadDemo(() => ({
+      RequestLoadDemo: async () => ({ Ok: true, Id: 'op-1' }),
+    })),
+  ).toEqual({ Ok: true, Id: 'op-1' });
+  expect(
+    await requestMetaModuleLoadDemo(() => ({
+      RequestLoadDemo: async () => ({ Ok: false, ErrorMessage: 'busy' }),
+    })),
+  ).toEqual({ Ok: false, ErrorMessage: 'busy' });
+});
+
+test('requestSetupLoadDemo honours the test override and production requester', async () => {
+  setSetupLoadDemoRequesterForTests(async () => ({ Ok: false, ErrorMessage: 'from-test' }));
+  try {
+    expect(await requestSetupLoadDemo()).toEqual({ Ok: false, ErrorMessage: 'from-test' });
+  } finally {
+    setSetupLoadDemoRequesterForTests(null);
+  }
 });
 
 test('runSetupLoadDemo soft-succeeds and reports bridge Ok:false without throwing', async () => {

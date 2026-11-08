@@ -3,6 +3,7 @@
 
 import { ChoysumError } from '../error';
 import { createTranslate } from '@/web/web/i18n';
+import { createStoreByModel } from '@/web/web/stores/registry';
 import type { CompleteInitialSetupInput } from '../stores/auth';
 import {
   registerConfirmPasswordError,
@@ -237,6 +238,34 @@ export function setSetupLoadDemoRequesterForTests(fn: SetupLoadDemoRequester | n
 /** Resolve RequestLoadDemo: test override first, else factory. */
 export function resolveSetupLoadDemoRequester(fallback: SetupLoadDemoRequester): SetupLoadDemoRequester {
   return testSetupLoadDemoRequester ?? fallback;
+}
+
+export type CreateStoreByModelFn = (modelName: string, options?: unknown) => unknown;
+
+/**
+ * Call meta.MetaModuleOperation/RequestLoadDemo. Soft-ok when meta is not installed
+ * or the store has no RequestLoadDemo (setup can run before meta is present).
+ */
+export async function requestMetaModuleLoadDemo(
+  createStore: CreateStoreByModelFn = createStoreByModel,
+): Promise<SetupLoadDemoResp> {
+  let opStore: {
+    RequestLoadDemo?: (req?: Record<string, never>) => Promise<SetupLoadDemoResp>;
+  } | null = null;
+  try {
+    opStore = createStore('meta.MetaModuleOperation') as typeof opStore;
+  } catch {
+    return { Ok: true };
+  }
+  if (!opStore || typeof opStore.RequestLoadDemo !== 'function') {
+    return { Ok: true };
+  }
+  return opStore.RequestLoadDemo({});
+}
+
+/** Production RequestLoadDemo path used by Setup.vue (honours test override). */
+export function requestSetupLoadDemo(): Promise<SetupLoadDemoResp | null | undefined> {
+  return resolveSetupLoadDemoRequester(() => requestMetaModuleLoadDemo())();
 }
 
 /**

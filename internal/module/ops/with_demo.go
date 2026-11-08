@@ -63,8 +63,16 @@ func (o *Ops) SetWithDemo(ctx context.Context, enabled bool) error {
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return err
 	}
-	return sess.WithContext(ctx).Create(&metaAppSetting{
+	if err := sess.WithContext(ctx).Create(&metaAppSetting{
 		Key:   withDemoSettingKey,
 		Value: "true",
-	}).Error
+	}).Error; err != nil {
+		// Lost a create race: another writer inserted the latch; update that row.
+		var existing metaAppSetting
+		if takeErr := sess.WithContext(ctx).Where(map[string]any{"key": withDemoSettingKey}).Take(&existing).Error; takeErr == nil {
+			return sess.WithContext(ctx).Model(&existing).Update("value", "true").Error
+		}
+		return err
+	}
+	return nil
 }
