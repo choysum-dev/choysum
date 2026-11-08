@@ -697,20 +697,21 @@ func TestExecuteLoadDemo_MaterializeFailure(t *testing.T) {
 	defer func() { applyDemoFiles = oldApply }()
 	applyDemoFiles = func(context.Context, scope.Scope, *pkgmeta.Module) error { return nil }
 
-	// Break materialize by closing DB after mark — register callback on Create.
-	if err := db.Callback().Create().Before("gorm:create").Register("fail_materialize_batch", func(tx *gorm.DB) {
-		if tx.Statement != nil && tx.Statement.Table == "meta_module_catalog" {
-			_ = tx.AddError(errors.New("materialize boom"))
-		}
-	}); err != nil {
-		t.Fatalf("callback: %v", err)
-	}
+	// Plan rematerializes catalog first; Apply/Run then mark + rematerialize.
 	result, err := o.Plan(context.Background(), PlanRequest{Action: ActionLoadDemo})
 	if err != nil {
 		t.Fatalf("Plan: %v", err)
 	}
 	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
 		t.Fatalf("Apply: %v", err)
+	}
+	// Fail the post-import catalog rewrite during Run (not the pre-plan refresh).
+	if err := db.Callback().Create().Before("gorm:create").Register("fail_materialize_batch", func(tx *gorm.DB) {
+		if tx.Statement != nil && tx.Statement.Table == "meta_module_catalog" {
+			_ = tx.AddError(errors.New("materialize boom"))
+		}
+	}); err != nil {
+		t.Fatalf("callback: %v", err)
 	}
 	err = o.Run(context.Background(), RunRequest{Id: result.Id})
 	if err == nil || !strings.Contains(err.Error(), "materialize") {

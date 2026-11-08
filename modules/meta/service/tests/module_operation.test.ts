@@ -397,6 +397,43 @@ test('meta.MetaModuleOperation PlanDemo plans load-demo action', async () => {
   }
 });
 
+test('meta.MetaModuleOperation RequestLoadDemo wraps bridge.loadDemo', async () => {
+  const restore = installBridge({
+    loadDemo: async (params: any) => {
+      expect(String(params.operatorUserId || '').trim()).not.toBe('');
+      return { ok: true, id: 'op-load-demo' };
+    },
+  });
+  try {
+    const resp = await MetaModuleOperation.RequestLoadDemo({});
+    expect(resp).toEqual({ Ok: true, Id: 'op-load-demo' });
+  } finally {
+    restore();
+  }
+});
+
+test('meta.MetaModuleOperation RequestLoadDemo maps bridge failure', async () => {
+  const restore = installBridge({
+    loadDemo: async () => ({
+      ok: false,
+      id: 'op-fail',
+      errorDomain: 'MODULE_MANAGEMENT',
+      errorCode: 'OP_FAILED',
+      errorMessage: 'demo boom',
+    }),
+  });
+  try {
+    const resp = await MetaModuleOperation.RequestLoadDemo({});
+    expect(resp.Ok).toBe(false);
+    expect(resp.Id).toBe('op-fail');
+    expect(resp.ErrorDomain).toBe('MODULE_MANAGEMENT');
+    expect(resp.ErrorCode).toBe('OP_FAILED');
+    expect(resp.ErrorMessage).toBe('demo boom');
+  } finally {
+    restore();
+  }
+});
+
 test('meta.MetaModuleOperation has no legacy GetOpStatus symbol', () => {
   expect((MetaModuleOperation as any).GetOpStatus).toBeUndefined();
   expect((MetaModuleOperation as any).RequestInstall).toBeUndefined();

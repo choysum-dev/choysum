@@ -8,6 +8,8 @@ import { buildPageMountGlobal } from '@choysum/page-mount';
 import { useAuthStore, type CompleteInitialSetupInput, type InitialSetupOptions } from '../stores/auth';
 import { ChoysumError } from '../error';
 import { clearSetupDraft, saveSetupDraft } from './setup_draft';
+import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
+import { setSetupLoadDemoRequesterForTests } from './setup_form';
 
 function setupOptions(): InitialSetupOptions {
   return {
@@ -159,6 +161,26 @@ async function advanceToReview(wrapper: { find: (sel: string) => any }, email = 
   await afterSubmit();
 }
 
+/**
+ * Toggle WithDemo via the kit checkbox (Reka CheckboxRoot button, not a native <input>).
+ * Minimal DOM only supports simple selectors (#id / .class / tag / [attr=value]).
+ */
+async function checkWithDemo(wrapper: { find: (sel: string) => any }) {
+  const demo = wrapper.find('[data-testid="setup-review-demo"]');
+  expect(demo.exists()).toBe(true);
+  const root = demo.element as HTMLElement;
+  const box =
+    (root.querySelector('#fld-WithDemo') as HTMLElement | null) ||
+    (root.querySelector('.choy-bool-input') as HTMLElement | null);
+  expect(!!box).toBe(true);
+  if (typeof (box as { click?: () => void }).click === 'function') {
+    (box as { click: () => void }).click();
+  } else {
+    box!.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+  }
+  await flushPromises();
+}
+
 function stepItems(wrapper: { find: (sel: string) => any }): HTMLElement[] {
   const root = wrapper.find('[data-anchor="choy.stepper"]').element as HTMLElement;
   return Array.from(root.querySelectorAll('[data-step]')) as HTMLElement[];
@@ -219,7 +241,11 @@ test('Setup.vue: Next walks admin → organization → review, Back returns', as
   expect(wrapper.find('.setup-review-step').exists()).toBe(true);
   expect(wrapper.text().includes('My Company')).toBe(true);
   expect(wrapper.text().includes('CNY · Chinese Yuan')).toBe(true);
-  expect(wrapper.find('.setup-review-currency-note').exists()).toBe(true);
+  expect(wrapper.find('[data-testid="setup-review-demo"]').exists()).toBe(true);
+  expect(wrapper.text().includes('Optional') || wrapper.text().includes('可选')).toBe(true);
+  expect(
+    wrapper.text().includes('Load demo data') || wrapper.text().includes('加载演示数据'),
+  ).toBe(true);
 
   const backEl = wrapper.find('.setup-back').element as HTMLElement;
   let backClicks = 0;
@@ -253,6 +279,80 @@ test('Setup.vue: review submit sends sectioned request, logs in, and redirects',
   expect(logins).toEqual([['admin', 'secret1']]);
   expect(replaces).toEqual(['/auth/users']);
   wrapper.unmount();
+});
+
+test('Setup.vue: unchecked WithDemo does not call RequestLoadDemo', async () => {
+  const loadDemoCalls: unknown[] = [];
+  setSetupLoadDemoRequesterForTests(async () => {
+    loadDemoCalls.push({});
+    return { Ok: true, Id: 'op-demo' };
+  });
+  try {
+    const { wrapper, replaces, requests, logins } = await mountSetup({
+      query: { redirect: '/auth/users' },
+    });
+    await advanceToReview(wrapper);
+    expect(wrapper.find('[data-testid="setup-review-demo"]').exists()).toBe(true);
+    submitForm(wrapper);
+    await afterSubmit();
+    expect(requests.length).toBe(1);
+    expect(logins).toEqual([['admin', 'secret1']]);
+    expect(loadDemoCalls.length).toBe(0);
+    expect(replaces).toEqual(['/auth/users']);
+    wrapper.unmount();
+  } finally {
+    setSetupLoadDemoRequesterForTests(null);
+  }
+});
+
+test('Setup.vue: checked WithDemo calls RequestLoadDemo after login', async () => {
+  const loadDemoCalls: unknown[] = [];
+  setSetupLoadDemoRequesterForTests(async () => {
+    loadDemoCalls.push({});
+    return { Ok: true, Id: 'op-demo' };
+  });
+  try {
+    const { wrapper, replaces, requests, logins } = await mountSetup({
+      query: { redirect: '/auth/users' },
+    });
+    await advanceToReview(wrapper);
+    await checkWithDemo(wrapper);
+    submitForm(wrapper);
+    await afterSubmit();
+    expect(requests.length).toBe(1);
+    expect(logins).toEqual([['admin', 'secret1']]);
+    expect(loadDemoCalls.length).toBe(1);
+    expect(replaces).toEqual(['/auth/users']);
+    wrapper.unmount();
+  } finally {
+    setSetupLoadDemoRequesterForTests(null);
+  }
+});
+
+test('Setup.vue: RequestLoadDemo failure still redirects and warns', async () => {
+  const warnings: string[] = [];
+  const origWarning = ChoyMessage.warning;
+  ChoyMessage.warning = ((m: string) => {
+    warnings.push(m);
+  }) as unknown as typeof ChoyMessage.warning;
+  setSetupLoadDemoRequesterForTests(async () => ({ Ok: false, ErrorMessage: 'demo busy' }));
+  try {
+    const { wrapper, replaces, requests, logins } = await mountSetup({
+      query: { redirect: '/auth/users' },
+    });
+    await advanceToReview(wrapper);
+    await checkWithDemo(wrapper);
+    submitForm(wrapper);
+    await afterSubmit();
+    expect(requests.length).toBe(1);
+    expect(logins).toEqual([['admin', 'secret1']]);
+    expect(warnings).toEqual(['demo busy']);
+    expect(replaces).toEqual(['/auth/users']);
+    wrapper.unmount();
+  } finally {
+    ChoyMessage.warning = origWarning;
+    setSetupLoadDemoRequesterForTests(null);
+  }
 });
 
 test('Setup.vue: server field error jumps to its step without a header error', async () => {

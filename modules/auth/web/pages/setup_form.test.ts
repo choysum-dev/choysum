@@ -5,7 +5,12 @@ import { ChoysumError } from '../error';
 import type { CompleteInitialSetupInput } from '../stores/auth';
 import {
   buildCompleteInitialSetupReq,
+  requestMetaModuleLoadDemo,
+  requestSetupLoadDemo,
+  resolveSetupLoadDemoRequester,
+  runSetupLoadDemo,
   runSetupSubmit,
+  setSetupLoadDemoRequesterForTests,
   setupConfirmPasswordError,
   setupEmailError,
   setupLocalFieldForServerField,
@@ -14,6 +19,7 @@ import {
   setupPasswordError,
   setupStepForServerField,
   setupUsernameError,
+  setupWantsDemo,
   withSetupServerError,
 } from './setup_form';
 
@@ -110,6 +116,119 @@ test('buildCompleteInitialSetupReq trims values and omits empty optionals', () =
   const full = buildCompleteInitialSetupReq({ Username: 'a', Password: 'p', Email: 'o@a.io', CountryCode: 'US' }, 'en_US');
   expect(full.Admin.Email).toBe('o@a.io');
   expect(full.Organization.CountryCode).toBe('US');
+});
+
+test('setupWantsDemo is true only for an explicit boolean true', () => {
+  expect(setupWantsDemo(undefined)).toBe(false);
+  expect(setupWantsDemo({})).toBe(false);
+  expect(setupWantsDemo({ WithDemo: false })).toBe(false);
+  expect(setupWantsDemo({ WithDemo: 'true' })).toBe(false);
+  expect(setupWantsDemo({ WithDemo: true })).toBe(true);
+});
+
+test('resolveSetupLoadDemoRequester prefers the test override', async () => {
+  const fallback = async () => ({ Ok: true, Id: 'fallback' });
+  expect(resolveSetupLoadDemoRequester(fallback)).toBe(fallback);
+  setSetupLoadDemoRequesterForTests(async () => ({ Ok: false, ErrorMessage: 'override' }));
+  try {
+    const resolved = resolveSetupLoadDemoRequester(fallback);
+    expect(resolved).not.toBe(fallback);
+    expect(await resolved()).toEqual({ Ok: false, ErrorMessage: 'override' });
+  } finally {
+    setSetupLoadDemoRequesterForTests(null);
+  }
+  expect(resolveSetupLoadDemoRequester(fallback)).toBe(fallback);
+});
+
+test('requestMetaModuleLoadDemo soft-oks when meta store is missing or incomplete', async () => {
+  expect(
+    await requestMetaModuleLoadDemo(() => {
+      throw new Error('factory missing');
+    }),
+  ).toEqual({ Ok: true });
+  expect(await requestMetaModuleLoadDemo(() => ({}))).toEqual({ Ok: true });
+  expect(await requestMetaModuleLoadDemo(() => null)).toEqual({ Ok: true });
+  expect(
+    await requestMetaModuleLoadDemo(() => ({
+      RequestLoadDemo: async () => ({ Ok: true, Id: 'op-1' }),
+    })),
+  ).toEqual({ Ok: true, Id: 'op-1' });
+  expect(
+    await requestMetaModuleLoadDemo(() => ({
+      RequestLoadDemo: async () => ({ Ok: false, ErrorMessage: 'busy' }),
+    })),
+  ).toEqual({ Ok: false, ErrorMessage: 'busy' });
+});
+
+test('requestSetupLoadDemo honours the test override and production requester', async () => {
+  setSetupLoadDemoRequesterForTests(async () => ({ Ok: false, ErrorMessage: 'from-test' }));
+  try {
+    expect(await requestSetupLoadDemo()).toEqual({ Ok: false, ErrorMessage: 'from-test' });
+  } finally {
+    setSetupLoadDemoRequesterForTests(null);
+  }
+});
+
+test('runSetupLoadDemo soft-succeeds and reports bridge Ok:false without throwing', async () => {
+  const failures: string[] = [];
+  expect(
+    await runSetupLoadDemo({
+      requestLoadDemo: async () => ({ Ok: true, Id: 'op-1' }),
+      failedMessage: 'demo failed',
+      onFailure: m => failures.push(m),
+    }),
+  ).toBe(true);
+  expect(failures).toEqual([]);
+
+  expect(
+    await runSetupLoadDemo({
+      requestLoadDemo: async () => ({ Ok: false, ErrorMessage: 'boom' }),
+      failedMessage: 'demo failed',
+      onFailure: m => failures.push(m),
+    }),
+  ).toBe(false);
+  expect(failures).toEqual(['boom']);
+
+  expect(
+    await runSetupLoadDemo({
+      requestLoadDemo: async () => {
+        throw new Error('network');
+      },
+      failedMessage: 'demo failed',
+      onFailure: m => failures.push(m),
+    }),
+  ).toBe(false);
+  expect(failures).toEqual(['boom', 'network']);
+});
+
+test('setup submit then optional load-demo mirrors Setup.vue: demo failure does not undo login', async () => {
+  const calls: string[] = [];
+  const ok = await runSetupSubmit({
+    loading: false,
+    req: req(),
+    setupFailedMessage: 'setup failed',
+    completeInitialSetup: async () => {
+      calls.push('setup');
+    },
+    login: async () => {
+      calls.push('login');
+    },
+    setError: () => {},
+  });
+  expect(ok).toBe(true);
+  expect(setupWantsDemo({ WithDemo: true })).toBe(true);
+  const demoOk = await runSetupLoadDemo({
+    requestLoadDemo: async () => {
+      calls.push('demo');
+      return { Ok: false, ErrorMessage: 'demo boom' };
+    },
+    failedMessage: 'demo failed',
+    onFailure: m => {
+      calls.push(`fail:${m}`);
+    },
+  });
+  expect(demoOk).toBe(false);
+  expect(calls).toEqual(['setup', 'login', 'demo', 'fail:demo boom']);
 });
 
 test('runSetupSubmit completes, reports success, then logs in', async () => {

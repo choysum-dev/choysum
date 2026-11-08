@@ -114,6 +114,40 @@ func TestPlan_LoadDemoNoPendingBlocker(t *testing.T) {
 	}
 }
 
+func TestPlan_LoadDemoMaterializesStaleHasDemo(t *testing.T) {
+	db := newOpsTestDB(t)
+	o := &Ops{Scope: newOpsTestScope(t, db)}
+	if err := db.Create(&pkgmeta.Module{
+		Name: "base", Version: "1.0.0", Status: pkgmeta.Installed, Path: t.TempDir(),
+		DemoStr: datatypes.JSON(`["demo/a.json"]`),
+	}).Error; err != nil {
+		t.Fatalf("seed module: %v", err)
+	}
+	// Stale catalog as seen right after provision/setup before a later sync.
+	if err := db.Create(&modmeta.ModuleCatalog{
+		ModuleName: "base", Installed: true, HasDemo: false, DemoLoaded: false,
+	}).Error; err != nil {
+		t.Fatalf("seed catalog: %v", err)
+	}
+	result, err := o.Plan(context.Background(), PlanRequest{Action: ActionLoadDemo})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if len(result.Blockers) != 0 {
+		t.Fatalf("blockers = %#v", result.Blockers)
+	}
+	if len(result.ModuleOrder) != 1 || result.ModuleOrder[0].ModuleName != "base" {
+		t.Fatalf("moduleOrder = %#v", result.ModuleOrder)
+	}
+	var row modmeta.ModuleCatalog
+	if err := db.Where("module_name = ?", "base").Take(&row).Error; err != nil {
+		t.Fatalf("load catalog: %v", err)
+	}
+	if !row.HasDemo {
+		t.Fatal("expected HasDemo refreshed from installed demo_str")
+	}
+}
+
 func TestRun_LoadDemoPropagatesApplyError(t *testing.T) {
 	db := newOpsTestDB(t)
 	o := &Ops{Scope: newOpsTestScope(t, db), Events: &recordingBus{}}

@@ -94,11 +94,24 @@ function pick(value: string | undefined, allowed: ReadonlySet<string>): string {
  * Selection values not present in the option lists are dropped; an unset country is
  * null because selection fields reject '' as an option value.
  */
+export type SetupInitialValues = {
+  Username: string;
+  Password: string;
+  ConfirmPassword: string;
+  Email: string;
+  OrgName: string;
+  CountryCode: string | null;
+  CurrencyCode: string;
+  Timezone: string;
+  /** Review-step checkbox; not persisted in the draft. */
+  WithDemo: boolean;
+};
+
 export function resolveSetupInitialValues(input: {
   options: InitialSetupOptions;
   draft: SetupDraft | null;
   browserTimezone: string;
-}): Record<string, string | null> {
+}): SetupInitialValues {
   const { options, draft } = input;
   const d = options.Defaults;
   const v = draft?.values ?? {};
@@ -114,6 +127,7 @@ export function resolveSetupInitialValues(input: {
     CountryCode: (v.CountryCode !== undefined ? pick(v.CountryCode, countries) : pick(d.CountryCode, countries)) || null,
     CurrencyCode: pick(v.CurrencyCode, currencies) || pick(d.CurrencyCode, currencies),
     Timezone: pick(v.Timezone, timezones) || pick(input.browserTimezone, timezones) || pick(d.Timezone, timezones),
+    WithDemo: false,
   };
 }
 

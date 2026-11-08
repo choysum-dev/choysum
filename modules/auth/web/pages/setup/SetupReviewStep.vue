@@ -23,21 +23,34 @@ SPDX-License-Identifier: Apache-2.0
         </div>
       </dl>
     </section>
-    <p class="setup-review-currency-note text-foreground/70" role="note">
-      {{ _t('The base currency is used for accounting and cannot be changed once transactions exist.') }}
-    </p>
+    <section class="setup-review-demo" data-section="demo" data-testid="setup-review-demo">
+      <h4 class="setup-review-title">{{ _t('Optional') }}</h4>
+      <ChoyBooleanField
+        class="setup-with-demo"
+        :store="store"
+        prop="WithDemo"
+        widget="checkbox"
+        :label="''"
+        :checkbox-label="_t('Load demo data')"
+        render-mode="inline"
+        buffer-strategy="live"
+        show-inline-error
+      />
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { ChoyBooleanField, type LocalFormStore } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import type { SetupSelectionItem } from '../setup_options';
 
 const { _t } = createTranslate('auth', { scope: 'web/pages/setup/SetupReviewStep' });
 
-/** Read-only summary of the wizard values before submit. */
+/** Read-only summary of the wizard values before submit, plus optional demo import. */
 const props = defineProps<{
+  store: LocalFormStore;
   formData: Record<string, unknown>;
   selections: Record<'CountryCode' | 'CurrencyCode' | 'Timezone', SetupSelectionItem[]>;
 }>();
@@ -89,5 +102,11 @@ const orgRows = computed(() => [
 
 .setup-review-row dd {
   overflow-wrap: anywhere;
+}
+
+.setup-review-demo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
 }
 </style>
