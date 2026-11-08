@@ -4,8 +4,13 @@
 package quickjsruntime
 
 import (
+	"fmt"
 	"testing"
 )
+
+type backendEnvStringer string
+
+func (s backendEnvStringer) String() string { return string(s) }
 
 func TestModuleManagementE2ESeamsFromBackendEnv(t *testing.T) {
 	t.Parallel()
@@ -16,8 +21,16 @@ func TestModuleManagementE2ESeamsFromBackendEnv(t *testing.T) {
 	if got := ModuleManagementE2ESeamsFromBackendEnv(map[string]any{}); len(got) != 0 {
 		t.Fatalf("empty env opts = %d, want 0", len(got))
 	}
+	if got := ModuleManagementE2ESeamsFromBackendEnv(map[string]any{
+		e2eForceLockConflictEnv: "true",
+		e2eForceResultStatusEnv: "FAILED",
+		e2eForceReloadFailedEnv: "true",
+	}); len(got) != 0 {
+		t.Fatalf("FORCE_* without harness marker opts = %d, want 0", len(got))
+	}
 
 	lockOnly := ModuleManagementE2ESeamsFromBackendEnv(map[string]any{
+		e2eHarnessMarkerEnv:     "true",
 		e2eForceLockConflictEnv: "true",
 	})
 	if len(lockOnly) != 1 {
@@ -29,6 +42,7 @@ func TestModuleManagementE2ESeamsFromBackendEnv(t *testing.T) {
 	}
 
 	resultFailed := ModuleManagementE2ESeamsFromBackendEnv(map[string]any{
+		e2eHarnessMarkerEnv:     true,
 		e2eForceResultStatusEnv: "FAILED",
 	})
 	if len(resultFailed) != 1 {
@@ -40,6 +54,7 @@ func TestModuleManagementE2ESeamsFromBackendEnv(t *testing.T) {
 	}
 
 	reloadFailed := ModuleManagementE2ESeamsFromBackendEnv(map[string]any{
+		e2eHarnessMarkerEnv:     "yes",
 		e2eForceReloadFailedEnv: 1,
 	})
 	if len(reloadFailed) != 1 {
@@ -51,11 +66,41 @@ func TestModuleManagementE2ESeamsFromBackendEnv(t *testing.T) {
 	}
 
 	all := ModuleManagementE2ESeamsFromBackendEnv(map[string]any{
+		e2eHarnessMarkerEnv:     "on",
 		e2eForceLockConflictEnv: "yes",
 		e2eForceResultStatusEnv: "failed",
 		e2eForceReloadFailedEnv: "on",
 	})
 	if len(all) != 3 {
 		t.Fatalf("combined opts = %d, want 3", len(all))
+	}
+}
+
+func TestBackendEnvTextAndTruthy(t *testing.T) {
+	t.Parallel()
+
+	if got := backendEnvText("x"); got != "x" {
+		t.Fatalf("string = %q", got)
+	}
+	if got := backendEnvText(backendEnvStringer("s")); got != "s" {
+		t.Fatalf("stringer = %q", got)
+	}
+	if got := backendEnvText(true); got != "true" {
+		t.Fatalf("bool true = %q", got)
+	}
+	if got := backendEnvText(false); got != "false" {
+		t.Fatalf("bool false = %q", got)
+	}
+	if got := backendEnvText(nil); got != "" {
+		t.Fatalf("nil = %q", got)
+	}
+	if got := backendEnvText(42); got != "42" {
+		t.Fatalf("default = %q", got)
+	}
+	if !isTruthyBackendEnv("TRUE") || !isTruthyBackendEnv(1) || !isTruthyBackendEnv(backendEnvStringer("on")) {
+		t.Fatal("expected truthy values")
+	}
+	if isTruthyBackendEnv("") || isTruthyBackendEnv(false) || isTruthyBackendEnv(fmt.Sprint(0)) || isTruthyBackendEnv(nil) {
+		t.Fatal("expected falsy values")
 	}
 }

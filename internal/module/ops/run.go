@@ -194,7 +194,7 @@ func (o *Ops) succeedOperation(ctx context.Context, row *modmeta.ModuleOperation
 	return nil
 }
 
-// ForceFailTerminal flips a terminal/non-terminal operation to failed.
+// ForceFailTerminal flips an operation to failed with a CAS on the loaded status.
 // Used by e2e bridge seams when a post-Run hook must override a successful Run write.
 func (o *Ops) ForceFailTerminal(ctx context.Context, id, domain, code, message string) error {
 	if o == nil {
@@ -211,6 +211,7 @@ func (o *Ops) ForceFailTerminal(ctx context.Context, id, domain, code, message s
 	if err != nil {
 		return err
 	}
+	expect := row.Status
 	now := time.Now().UTC()
 	row.Status = StatusFailed
 	row.Phase = PhaseDone
@@ -218,14 +219,14 @@ func (o *Ops) ForceFailTerminal(ctx context.Context, id, domain, code, message s
 	row.ErrorCode = strings.TrimSpace(code)
 	row.ErrorMessage = strings.TrimSpace(message)
 	row.FinishedAt = &now
-	if err := o.saveOperation(ctx, row); err != nil {
+	if err := o.casSaveOperation(ctx, row, expect); err != nil {
 		return err
 	}
 	o.publishOperationChanged(ctx, row)
 	return nil
 }
 
-// MarkReloadFailed sets reload_triggered/reload_failed on a succeeded operation.
+// MarkReloadFailed sets reload_triggered/reload_failed with a CAS on the loaded status.
 // Used by the e2e FORCE_RELOAD_FAILED bridge seam.
 func (o *Ops) MarkReloadFailed(ctx context.Context, id string) error {
 	if o == nil {
@@ -242,9 +243,10 @@ func (o *Ops) MarkReloadFailed(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
+	expect := row.Status
 	row.ReloadTriggered = true
 	row.ReloadFailed = true
-	if err := o.saveOperation(ctx, row); err != nil {
+	if err := o.casSaveOperation(ctx, row, expect); err != nil {
 		return err
 	}
 	o.publishOperationChanged(ctx, row)

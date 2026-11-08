@@ -462,6 +462,172 @@ func TestModuleManagementApplyRunHooksForceFailureSeams(t *testing.T) {
 		if code, _ := runJSON["errorCode"].(string); code != "OP_FAILED" {
 			t.Fatalf("errorCode = %#v, want OP_FAILED", runJSON)
 		}
+		var row modmeta.ModuleOperation
+		if err := db.Where("id = ?", planID).Take(&row).Error; err != nil {
+			t.Fatalf("load forced op: %v", err)
+		}
+		if row.Status != ops.StatusFailed || row.ErrorCode != "OP_FAILED" {
+			t.Fatalf("forced op row = %#v", row)
+		}
+	})
+
+	t.Run("result-failed run hook with plain error uses defaults", func(t *testing.T) {
+		engine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+			jsengine.StaticScopeProvider(baseScope),
+			WithModuleManagementRunHook(func(error) error {
+				return errors.New("plain forced failure")
+			}),
+			moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+				cfg.moduleLifecycleFactory = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) lifecycle.Service {
+					return life
+				}
+				cfg.opsHostFactory = func(runtimeScope scope.Scope, _ jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory, ev bus.EventBus) *ops.Ops {
+					return &ops.Ops{
+						Scope:         runtimeScope,
+						Lifecycle:     life,
+						Resolver:      &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+						LockerFactory: lockerFactory,
+						Events:        ev,
+					}
+				}
+			}),
+		))
+		planJSON := awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.plan({ moduleName: 'core', action: 'install', origin: 'local' })`)
+		planID, _ := planJSON["id"].(string)
+		_ = awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.apply({ id: `+jsString(planID)+` })`)
+		runJSON := awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.run({ id: `+jsString(planID)+` })`)
+		if ok, _ := runJSON["ok"].(bool); ok {
+			t.Fatalf("run should fail, got %#v", runJSON)
+		}
+	})
+
+	t.Run("result-failed run hook with empty oerrors fields", func(t *testing.T) {
+		engine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+			jsengine.StaticScopeProvider(baseScope),
+			WithModuleManagementRunHook(func(error) error {
+				return oerrors.New("", "", "")
+			}),
+			moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+				cfg.moduleLifecycleFactory = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) lifecycle.Service {
+					return life
+				}
+				cfg.opsHostFactory = func(runtimeScope scope.Scope, _ jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory, ev bus.EventBus) *ops.Ops {
+					return &ops.Ops{
+						Scope:         runtimeScope,
+						Lifecycle:     life,
+						Resolver:      &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+						LockerFactory: lockerFactory,
+						Events:        ev,
+					}
+				}
+			}),
+		))
+		planJSON := awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.plan({ moduleName: 'core', action: 'install', origin: 'local' })`)
+		planID, _ := planJSON["id"].(string)
+		_ = awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.apply({ id: `+jsString(planID)+` })`)
+		runJSON := awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.run({ id: `+jsString(planID)+` })`)
+		if ok, _ := runJSON["ok"].(bool); ok {
+			t.Fatalf("run should fail, got %#v", runJSON)
+		}
+	})
+
+	t.Run("reload-failed after successful run", func(t *testing.T) {
+		engine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+			jsengine.StaticScopeProvider(baseScope),
+			WithModuleManagementForceReloadFailed(),
+			moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+				cfg.moduleLifecycleFactory = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) lifecycle.Service {
+					return life
+				}
+				cfg.opsHostFactory = func(runtimeScope scope.Scope, _ jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory, ev bus.EventBus) *ops.Ops {
+					return &ops.Ops{
+						Scope:         runtimeScope,
+						Lifecycle:     life,
+						Resolver:      &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+						LockerFactory: lockerFactory,
+						Events:        ev,
+					}
+				}
+			}),
+		))
+		planJSON := awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.plan({ moduleName: 'core', action: 'install', origin: 'local' })`)
+		planID, _ := planJSON["id"].(string)
+		_ = awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.apply({ id: `+jsString(planID)+` })`)
+		runJSON := awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.run({ id: `+jsString(planID)+` })`)
+		if ok, _ := runJSON["ok"].(bool); !ok {
+			t.Fatalf("run = %#v", runJSON)
+		}
+		var row modmeta.ModuleOperation
+		if err := db.Where("id = ?", planID).Take(&row).Error; err != nil {
+			t.Fatalf("load reload-failed op: %v", err)
+		}
+		if !row.ReloadTriggered || !row.ReloadFailed {
+			t.Fatalf("reload flags = triggered=%v failed=%v", row.ReloadTriggered, row.ReloadFailed)
+		}
+	})
+
+	t.Run("result-failed ForceFailTerminal load error is joined", func(t *testing.T) {
+		engine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+			jsengine.StaticScopeProvider(baseScope),
+			WithModuleManagementRunHook(func(error) error {
+				if err := db.Where("1 = 1").Delete(&modmeta.ModuleOperation{}).Error; err != nil {
+					t.Fatalf("delete ops: %v", err)
+				}
+				return oerrors.New("MODULE_MANAGEMENT", "OP_FAILED", "E2E forced failure")
+			}),
+			moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+				cfg.moduleLifecycleFactory = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) lifecycle.Service {
+					return life
+				}
+				cfg.opsHostFactory = func(runtimeScope scope.Scope, _ jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory, ev bus.EventBus) *ops.Ops {
+					return &ops.Ops{
+						Scope:         runtimeScope,
+						Lifecycle:     life,
+						Resolver:      &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+						LockerFactory: lockerFactory,
+						Events:        ev,
+					}
+				}
+			}),
+		))
+		planJSON := awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.plan({ moduleName: 'core', action: 'install', origin: 'local' })`)
+		planID, _ := planJSON["id"].(string)
+		_ = awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.apply({ id: `+jsString(planID)+` })`)
+		rejectContains(t, engine, `$choysum.moduleManagement.run({ id: `+jsString(planID)+` })`, "OP_FAILED")
+	})
+
+	t.Run("reload-failed MarkReloadFailed error after row deleted", func(t *testing.T) {
+		engine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+			jsengine.StaticScopeProvider(baseScope),
+			WithModuleManagementForceReloadFailed(),
+			WithModuleManagementRunHook(func(err error) error {
+				if err != nil {
+					return err
+				}
+				if delErr := db.Where("1 = 1").Delete(&modmeta.ModuleOperation{}).Error; delErr != nil {
+					t.Fatalf("delete ops: %v", delErr)
+				}
+				return nil
+			}),
+			moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+				cfg.moduleLifecycleFactory = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) lifecycle.Service {
+					return life
+				}
+				cfg.opsHostFactory = func(runtimeScope scope.Scope, _ jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory, ev bus.EventBus) *ops.Ops {
+					return &ops.Ops{
+						Scope:         runtimeScope,
+						Lifecycle:     life,
+						Resolver:      &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+						LockerFactory: lockerFactory,
+						Events:        ev,
+					}
+				}
+			}),
+		))
+		planJSON := awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.plan({ moduleName: 'core', action: 'install', origin: 'local' })`)
+		planID, _ := planJSON["id"].(string)
+		_ = awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.apply({ id: `+jsString(planID)+` })`)
+		rejectContains(t, engine, `$choysum.moduleManagement.run({ id: `+jsString(planID)+` })`, "not found")
 	})
 }
 

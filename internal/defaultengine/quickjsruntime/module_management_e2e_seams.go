@@ -11,16 +11,24 @@ import (
 )
 
 const (
-	e2eForceLockConflictEnv  = "CHOYSUM_E2E_FORCE_LOCK_CONFLICT"
-	e2eForceResultStatusEnv  = "CHOYSUM_E2E_FORCE_RESULT_STATUS"
-	e2eForceReloadFailedEnv  = "CHOYSUM_E2E_FORCE_RELOAD_FAILED"
+	// e2eHarnessMarkerEnv is always injected by `choysum test e2e` into BackendEnv.
+	// FORCE_* seams stay inert unless this harness marker is present.
+	e2eHarnessMarkerEnv     = "CHOYSUM_E2E_SKIP_RELOAD"
+	e2eForceLockConflictEnv = "CHOYSUM_E2E_FORCE_LOCK_CONFLICT"
+	e2eForceResultStatusEnv = "CHOYSUM_E2E_FORCE_RESULT_STATUS"
+	e2eForceReloadFailedEnv = "CHOYSUM_E2E_FORCE_RELOAD_FAILED"
 )
 
 // ModuleManagementE2ESeamsFromBackendEnv maps e2e scenario backendEnv keys onto
 // test-only ModuleManagementOption hooks. Empty / unset keys yield no options.
+// FORCE_* keys are ignored unless the e2e harness marker (CHOYSUM_E2E_SKIP_RELOAD)
+// is truthy, so a production BackendEnv cannot arm failure seams by accident.
 // Product TypeScript must not read these keys; only this Go assembly path does.
 func ModuleManagementE2ESeamsFromBackendEnv(backendEnv map[string]any) []ModuleManagementOption {
 	if len(backendEnv) == 0 {
+		return nil
+	}
+	if !isTruthyBackendEnv(backendEnv[e2eHarnessMarkerEnv]) {
 		return nil
 	}
 	var opts []ModuleManagementOption

@@ -438,6 +438,13 @@ async function waitForOperationFailure(page: Page) {
   const failedByResult = /FAILED/i.test(resultText);
 
   if (!failedByStatus && !failedByResult) {
+    // Status/result already showing success must not be masked by an unrelated alert.
+    if (statusText === 'succeeded' || /SUCCEEDED/i.test(resultText)) {
+      throw new Error(
+        `expected failed operation status, got status=${statusText || '<empty>'}, result=${resultText || '<empty>'}`,
+      );
+    }
+    // Apply-time failures (e.g. lock conflict) may only surface the drawer alert.
     const alert = dialog.locator('[data-testid="module-op-alert"]');
     const alertText = ((await alert.textContent().catch(() => '')) || '').trim();
     if (!/fail|error|conflict|lease/i.test(alertText)) {
