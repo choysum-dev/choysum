@@ -194,6 +194,63 @@ func (o *Ops) succeedOperation(ctx context.Context, row *modmeta.ModuleOperation
 	return nil
 }
 
+// ForceFailTerminal flips a terminal/non-terminal operation to failed.
+// Used by e2e bridge seams when a post-Run hook must override a successful Run write.
+func (o *Ops) ForceFailTerminal(ctx context.Context, id, domain, code, message string) error {
+	if o == nil {
+		return errors.New("ops: nil host")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return errors.New("ops: operation id is required")
+	}
+	row, err := o.loadOperation(ctx, id)
+	if err != nil {
+		return err
+	}
+	now := time.Now().UTC()
+	row.Status = StatusFailed
+	row.Phase = PhaseDone
+	row.ErrorDomain = strings.TrimSpace(domain)
+	row.ErrorCode = strings.TrimSpace(code)
+	row.ErrorMessage = strings.TrimSpace(message)
+	row.FinishedAt = &now
+	if err := o.saveOperation(ctx, row); err != nil {
+		return err
+	}
+	o.publishOperationChanged(ctx, row)
+	return nil
+}
+
+// MarkReloadFailed sets reload_triggered/reload_failed on a succeeded operation.
+// Used by the e2e FORCE_RELOAD_FAILED bridge seam.
+func (o *Ops) MarkReloadFailed(ctx context.Context, id string) error {
+	if o == nil {
+		return errors.New("ops: nil host")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return errors.New("ops: operation id is required")
+	}
+	row, err := o.loadOperation(ctx, id)
+	if err != nil {
+		return err
+	}
+	row.ReloadTriggered = true
+	row.ReloadFailed = true
+	if err := o.saveOperation(ctx, row); err != nil {
+		return err
+	}
+	o.publishOperationChanged(ctx, row)
+	return nil
+}
+
 // AbandonDraft marks a draft operation cancelled so CLI Plan→Apply failures
 // do not leave persistent draft rows. No-op when the row is already non-draft.
 func (o *Ops) AbandonDraft(ctx context.Context, id, reason string) error {

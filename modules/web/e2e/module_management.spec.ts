@@ -437,16 +437,13 @@ async function waitForOperationFailure(page: Page) {
   const failedByStatus = completion === 'failed' || completion === 'cancelled' || statusText === 'failed' || statusText === 'cancelled';
   const failedByResult = /FAILED/i.test(resultText);
 
-  const summaryRow = dialog.locator('.status-row', { hasText: 'Summary' });
-  const errorRow = dialog.locator('.status-row', { hasText: 'Error' });
-
   if (!failedByStatus && !failedByResult) {
-    if ((await summaryRow.count()) > 0) {
-      await expect(summaryRow.locator('.value')).not.toHaveText(/^\s*$/);
-    } else if ((await errorRow.count()) > 0) {
-      await expect(errorRow.locator('.value')).not.toHaveText(/—\s*\/\s*—/);
-    } else {
-      throw new Error(`expected failed operation status, got status=${statusText || '<empty>'}, result=${resultText || '<empty>'}`);
+    const alert = dialog.locator('[data-testid="module-op-alert"]');
+    const alertText = ((await alert.textContent().catch(() => '')) || '').trim();
+    if (!/fail|error|conflict|lease/i.test(alertText)) {
+      throw new Error(
+        `expected failed operation status, got status=${statusText || '<empty>'}, result=${resultText || '<empty>'}, alert=${alertText || '<empty>'}`,
+      );
     }
   }
 
@@ -462,9 +459,8 @@ async function waitForOperationFailure(page: Page) {
  * Waits for the confirmation button to finish preflight loading and become clickable.
  */
 async function clickConfirmWhenReady(page: Page, timeout = 90000) {
-  const confirmBtn = page.getByRole('button', { name: 'Confirm' });
+  const confirmBtn = page.locator('[data-testid="module-op-confirm"]');
   await confirmBtn.waitFor({ state: 'visible', timeout });
-  await expect(confirmBtn).not.toHaveClass(/is-loading/, { timeout });
   await expect(confirmBtn).toBeEnabled({ timeout });
   await confirmBtn.click();
 }
@@ -811,8 +807,6 @@ test('meta module management: install/upgrade/uninstall flow', async () => {
   test.setTimeout(20 * 60 * 1000);
 
   const runtime = readRuntimeInfo();
-  // W3-1 catalog shells open ModuleOpDrawer without .module-op-dialog Plan/Apply UI yet.
-  test.skip(true, 'deferred until module op drawer Plan/Apply is wired');
   test.skip(runtime.scenario !== 'default', 'only runs under default scenario');
   const baseURL = runtime.baseURL;
 
@@ -885,8 +879,6 @@ test('meta module management: install/upgrade/uninstall flow', async () => {
 
 test('meta module management: failed result status flow', async () => {
   const runtime = readRuntimeInfo();
-  // Needs Plan/Apply drawer progress UI (.module-op-dialog selectors are retired).
-  test.skip(true, 'deferred until module op drawer Plan/Apply is wired');
   test.skip(runtime.scenario !== 'result-failed', 'only runs under result-failed scenario');
 
   const baseURL = runtime.baseURL;
@@ -905,7 +897,6 @@ test('meta module management: failed result status flow', async () => {
 
 test('meta module management: reload failed flow', async () => {
   const runtime = readRuntimeInfo();
-  test.skip(true, 'deferred until module op drawer Plan/Apply is wired');
   test.skip(runtime.scenario !== 'reload-failed', 'only runs under reload-failed scenario');
 
   const baseURL = runtime.baseURL;
@@ -924,7 +915,6 @@ test('meta module management: reload failed flow', async () => {
 
 test('meta module management: lock conflict flow', async () => {
   const runtime = readRuntimeInfo();
-  test.skip(true, 'deferred until module op drawer Plan/Apply is wired');
   test.skip(runtime.scenario !== 'lock-conflict', 'only runs under lock-conflict scenario');
 
   const baseURL = runtime.baseURL;

@@ -4,6 +4,8 @@
 package defaultengine
 
 import (
+	"context"
+
 	"github.com/choysum-dev/choysum/internal/defaultengine/quickjsruntime"
 	exportbridge "github.com/choysum-dev/choysum/internal/export/bridge"
 	i18nbridge "github.com/choysum-dev/choysum/internal/i18n/bridge"
@@ -65,11 +67,19 @@ func defaultQuickjsReplaceableRuntimePlugins() []jsengine.RuntimePlugin {
 		jsengine.NewRuntimePluginWithProvider(quickjsengine.RuntimePluginModuleManagement, func(scopeProvider jsengine.ScopeProvider, authenticator auth.Authenticator) []jsengine.JsEngineOption {
 			// Process-scoped host is assembled lazily on first plan/apply/run
 			// (not at engine create) so compiler-pool warmup cannot recurse.
+			opts := []quickjsruntime.ModuleManagementOption{
+				quickjsruntime.WithModuleManagementProcessHost(),
+			}
+			// E2E scenario backendEnv → test-only apply/run/reload seams (no product TS reads).
+			if scopeProvider != nil {
+				if runtimeScope := scopeProvider(context.Background()); runtimeScope != nil {
+					if envOpts, ok := scope.RuntimeEnvironmentOptionsFromScope(runtimeScope); ok {
+						opts = append(opts, quickjsruntime.ModuleManagementE2ESeamsFromBackendEnv(envOpts.BackendEnv)...)
+					}
+				}
+			}
 			return []jsengine.JsEngineOption{
-				quickjsruntime.WithModuleManagementProvider(
-					scopeProvider,
-					quickjsruntime.WithModuleManagementProcessHost(),
-				),
+				quickjsruntime.WithModuleManagementProvider(scopeProvider, opts...),
 			}
 		}),
 	}
