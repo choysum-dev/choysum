@@ -133,24 +133,26 @@ func TestRun_InstallFailureWritesFailedStatus(t *testing.T) {
 	}
 }
 
-func TestRun_LoadDemoNotImplemented(t *testing.T) {
-	t.Parallel()
+func TestRun_LoadDemoEmptyOrderSucceedsWithoutLatch(t *testing.T) {
 	db := newOpsTestDB(t)
 	o := &Ops{Scope: newOpsTestScope(t, db), Events: &recordingBus{}}
 	result, err := o.Plan(context.Background(), PlanRequest{Action: ActionLoadDemo})
 	if err != nil {
 		t.Fatalf("Plan: %v", err)
 	}
-	err = o.Run(context.Background(), RunRequest{Id: result.Id})
-	if err == nil || !strings.Contains(err.Error(), "not implemented") {
-		t.Fatalf("Run error = %v, want not implemented", err)
+	// Empty pending plans carry NO_DEMO_PENDING blockers; CLI/bridge Run draft path skips Apply.
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if o.ResolveWithDemo(context.Background()) {
+		t.Fatal("empty load-demo must not set modules.with_demo")
 	}
 	row, err := o.loadOperation(context.Background(), result.Id)
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if row.Status != StatusFailed || row.ErrorCode != "LOAD_DEMO_NOT_IMPLEMENTED" {
-		t.Fatalf("status=%q code=%q", row.Status, row.ErrorCode)
+	if row.Status != StatusSucceeded {
+		t.Fatalf("status=%q", row.Status)
 	}
 }
 

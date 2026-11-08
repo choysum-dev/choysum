@@ -34,7 +34,7 @@ export type ModuleCatalogViewMsgs = {
   syncFailed: (message: string) => string;
 };
 
-export type ModuleCatalogDrawerAction = '' | 'install' | 'upgrade' | 'uninstall' | 'progress';
+export type ModuleCatalogDrawerAction = '' | 'install' | 'upgrade' | 'uninstall' | 'progress' | 'load_demo';
 
 function isOperationDeepLinkRoute(routeName: unknown): boolean {
   return String(routeName || '') === 'MetaModuleOperationDeepLink';
@@ -243,6 +243,21 @@ export function useModuleCatalogViewModel(opts: {
     allRows.value.filter(row => matchesModuleCatalogFilter(rowRecord(row), filter.value)),
   );
 
+  /** Catalog rows that still need demo import (§8.4 button visibility). */
+  const pendingDemoRows = computed(() =>
+    allRows.value.filter(row => {
+      const rec = rowRecord(row);
+      return rec.Installed === true && !!rec.HasDemo && !rec.DemoLoaded;
+    }),
+  );
+
+  const hasPendingDemo = computed(() => pendingDemoRows.value.length > 0);
+
+  function onLoadDemo() {
+    if (!hasPendingDemo.value) return;
+    openDrawer({ action: 'load_demo', moduleName: '' });
+  }
+
   const lastSyncAtLabel = computed(() => {
     let bestRaw: unknown = null;
     let bestTime = -Infinity;
@@ -330,6 +345,9 @@ export function useModuleCatalogViewModel(opts: {
     onPrimaryAction,
     canUninstall,
     onUninstall,
+    hasPendingDemo,
+    pendingDemoRows,
+    onLoadDemo,
     refreshCatalog,
     openDrawer,
     closeDrawer,

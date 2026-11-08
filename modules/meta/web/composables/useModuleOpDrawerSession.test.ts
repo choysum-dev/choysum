@@ -154,6 +154,149 @@ test('useModuleOpDrawerSession: superseded plan response is ignored', async () =
   expect(api.plan.value).toBeNull();
 });
 
+test('useModuleOpDrawerSession: runPlanDemo maps PlanDemo payload', async () => {
+  const open = ref(true);
+  const store = makeStore({
+    PlanDemo: async () => ({
+      Id: 'op-demo',
+      Action: 'load-demo',
+      ModuleOrder: [{ ModuleName: 'base', Reason: 'pending-demo' }],
+      AffectedApps: [],
+      Risks: [],
+      Blockers: [],
+    }),
+  });
+  const api = useModuleOpDrawerSession({
+    operationStore: store,
+    isOpen: () => open.value,
+    msgs,
+  });
+  await api.runPlanDemo();
+  expect(api.activeAction.value).toBe('load_demo');
+  expect(api.plan.value?.Id).toBe('op-demo');
+  expect(api.plan.value?.affectedModules).toEqual([
+    { moduleName: 'base', reason: 'pending-demo', currentVersion: undefined, targetVersion: undefined, origin: undefined },
+  ]);
+  expect(api.canConfirm.value).toBe(true);
+});
+
+test('useModuleOpDrawerSession: runPlanDemo guards missing PlanDemo and resets on throw', async () => {
+  const open = ref(true);
+  const missing = useModuleOpDrawerSession({
+    operationStore: null as any,
+    isOpen: () => open.value,
+    msgs,
+  });
+  await missing.runPlanDemo();
+  expect(missing.plan.value).toBeNull();
+  expect(missing.activeAction.value).toBe('');
+
+  const noMethod = useModuleOpDrawerSession({
+    operationStore: makeStore(),
+    isOpen: () => open.value,
+    msgs,
+  });
+  // Seed a stale load_demo step; missing PlanDemo must clear it.
+  (noMethod.activeAction as { value: string }).value = 'load_demo';
+  noMethod.planLoading.value = true;
+  await noMethod.runPlanDemo();
+  expect(noMethod.plan.value).toBeNull();
+  expect(noMethod.activeAction.value).toBe('' as typeof noMethod.activeAction.value);
+  expect(noMethod.planLoading.value).toBe(false);
+  expect(noMethod.step.value).toBe('plan');
+
+  // Missing PlanDemo invalidates an in-flight plan so a late response cannot land.
+  let resolveStale: ((v: any) => void) | undefined;
+  const storeRef = ref<any>(
+    makeStore({
+      PlanDemo: () =>
+        new Promise(resolve => {
+          resolveStale = resolve;
+        }),
+    }),
+  );
+  const api = useModuleOpDrawerSession({
+    operationStore: storeRef,
+    isOpen: () => open.value,
+    msgs,
+  });
+  const first = api.runPlanDemo();
+  storeRef.value = makeStore(); // no PlanDemo
+  await api.runPlanDemo();
+  resolveStale?.({
+    Id: 'should-drop',
+    ModuleOrder: [{ ModuleName: 'base' }],
+    AffectedApps: [],
+    Risks: [],
+    Blockers: [],
+  });
+  await first;
+  expect(api.plan.value).toBeNull();
+
+  const throws = useModuleOpDrawerSession({
+    operationStore: makeStore({
+      PlanDemo: async () => {
+        throw new Error('demo plan boom');
+      },
+    }),
+    isOpen: () => open.value,
+    msgs,
+  });
+  await throws.runPlanDemo();
+  expect(throws.plan.value).toBeNull();
+  expect(throws.activeAction.value).toBe('');
+  expect(throws.planLoading.value).toBe(false);
+});
+
+test('useModuleOpDrawerSession: superseded PlanDemo response is ignored', async () => {
+  const open = ref(true);
+  let resolvePlan: ((v: any) => void) | undefined;
+  const store = makeStore({
+    PlanDemo: () =>
+      new Promise(resolve => {
+        resolvePlan = resolve;
+      }),
+  });
+  const api = useModuleOpDrawerSession({
+    operationStore: store,
+    isOpen: () => open.value,
+    msgs,
+  });
+  const first = api.runPlanDemo();
+  api.reset();
+  resolvePlan?.({
+    Id: 'stale-demo',
+    ModuleOrder: [],
+    AffectedApps: [],
+    Risks: [],
+    Blockers: [],
+  });
+  await first;
+  expect(api.plan.value).toBeNull();
+});
+
+test('useModuleOpDrawerSession: superseded PlanDemo error is ignored', async () => {
+  const open = ref(true);
+  let rejectPlan: ((e: Error) => void) | undefined;
+  const store = makeStore({
+    PlanDemo: () =>
+      new Promise((_resolve, reject) => {
+        rejectPlan = reject;
+      }),
+  });
+  const api = useModuleOpDrawerSession({
+    operationStore: store,
+    isOpen: () => open.value,
+    msgs,
+  });
+  const first = api.runPlanDemo();
+  api.reset();
+  rejectPlan?.(new Error('stale boom'));
+  await first;
+  expect(api.plan.value).toBeNull();
+  expect(api.activeAction.value).toBe('');
+});
+
 test('useModuleOpDrawerSession: runPlan errors without store or when Plan throws', async () => {
   const open = ref(true);
   const missing = useModuleOpDrawerSession({

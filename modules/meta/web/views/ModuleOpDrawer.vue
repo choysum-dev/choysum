@@ -364,6 +364,10 @@ watch(
       if (id) await session.watchProgress(id);
       return;
     }
+    if (action === 'load_demo') {
+      await session.runPlanDemo();
+      return;
+    }
     if (isPlanAction(action) && moduleName) {
       await session.runPlan({ moduleName, action });
     }

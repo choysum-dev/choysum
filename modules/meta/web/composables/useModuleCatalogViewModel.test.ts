@@ -125,6 +125,36 @@ test('useModuleCatalogViewModel: filters cards and labels status / versions / ac
   expect(api.drawerModuleName.value).toBe('core');
 });
 
+test('useModuleCatalogViewModel: load-demo button visibility and drawer open', () => {
+  const route = makeRoute();
+  const router = { push: async () => undefined, replace: async () => undefined } as any;
+  const pending = useModuleCatalogViewModel({
+    store: makeStore([
+      { Id: '1', ModuleName: 'base', Installed: true, HasDemo: true, DemoLoaded: false },
+      { Id: '2', ModuleName: 'core', Installed: true, HasDemo: true, DemoLoaded: true },
+      { Id: '3', ModuleName: 'task', Installed: true, HasDemo: false, DemoLoaded: false },
+    ]),
+    route,
+    router,
+    msgs,
+  });
+  expect(pending.hasPendingDemo.value).toBe(true);
+  expect(pending.pendingDemoRows.value.map((r: any) => r.ModuleName)).toEqual(['base']);
+  pending.onLoadDemo();
+  expect(pending.drawerOpen.value).toBe(true);
+  expect(pending.drawerAction.value).toBe('load_demo');
+
+  const done = useModuleCatalogViewModel({
+    store: makeStore([{ Id: '2', ModuleName: 'core', Installed: true, HasDemo: true, DemoLoaded: true }]),
+    route,
+    router,
+    msgs,
+  });
+  expect(done.hasPendingDemo.value).toBe(false);
+  done.onLoadDemo();
+  expect(done.drawerOpen.value).toBe(false);
+});
+
 test('useModuleCatalogViewModel: boots and syncs drawer from operation deep link only', () => {
   const store = makeStore([{ Id: '1', ModuleName: 'core' }]);
   const route = makeRoute({

@@ -12,7 +12,7 @@ import {
 } from './moduleOpDrawerProgress';
 
 export type ModuleOpDrawerStep = 'plan' | 'progress' | 'result';
-export type ModuleOpDrawerPlanAction = 'install' | 'upgrade' | 'uninstall';
+export type ModuleOpDrawerPlanAction = 'install' | 'upgrade' | 'uninstall' | 'load_demo';
 
 export type ModuleOpDrawerPlanView = {
   Id: string;
@@ -183,7 +183,7 @@ export function useModuleOpDrawerSession(opts: {
 
   async function runPlan(input: {
     moduleName: string;
-    action: ModuleOpDrawerPlanAction;
+    action: Exclude<ModuleOpDrawerPlanAction, 'load_demo'>;
     origin?: 'local' | 'registry';
   }) {
     const moduleName = String(input.moduleName || '').trim();
@@ -214,6 +214,42 @@ export function useModuleOpDrawerSession(opts: {
       if (!planSession.isCurrent(requestSeq)) return;
       ChoyMessage.error(String(error?.message || opts.msgs.failedToLoadPlan));
       plan.value = null;
+    } finally {
+      if (planSession.isCurrent(requestSeq)) planLoading.value = false;
+    }
+  }
+
+  /** Plans a load-demo operation for all Installed+HasDemo+!DemoLoaded catalog rows. */
+  async function runPlanDemo() {
+    const store = resolveStore();
+    if (!store || typeof (store as any).PlanDemo !== 'function') {
+      // Drop any in-flight plan response and clear a stale load_demo plan step.
+      planSession.invalidate();
+      activeAction.value = '';
+      step.value = 'plan';
+      planLoading.value = false;
+      plan.value = null;
+      ChoyMessage.error(opts.msgs.failedToLoadPlan);
+      return;
+    }
+    activeModuleName.value = '';
+    activeAction.value = 'load_demo';
+    step.value = 'plan';
+    opStatus.value = null;
+    plan.value = null;
+    const requestSeq = planSession.begin();
+    planLoading.value = true;
+    try {
+      const nextPlan = await (store as any).PlanDemo({});
+      if (!planSession.isCurrent(requestSeq)) return;
+      plan.value = mapPlanResponse(nextPlan);
+    } catch (error: any) {
+      if (!planSession.isCurrent(requestSeq)) return;
+      ChoyMessage.error(String(error?.message || opts.msgs.failedToLoadPlan));
+      plan.value = null;
+      // Leave the drawer without a half-open load_demo plan step.
+      activeAction.value = '';
+      step.value = 'plan';
     } finally {
       if (planSession.isCurrent(requestSeq)) planLoading.value = false;
     }
@@ -294,6 +330,7 @@ export function useModuleOpDrawerSession(opts: {
     reset,
     stop,
     runPlan,
+    runPlanDemo,
     replanWithRegistry,
     watchProgress,
     confirmApply,

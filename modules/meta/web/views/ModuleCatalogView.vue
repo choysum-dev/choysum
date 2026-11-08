@@ -23,6 +23,15 @@ SPDX-License-Identifier: Apache-2.0
           <FolderSync class="size-3.5" :class="{ 'animate-spin': syncLoading }" aria-hidden="true" />
           {{ _t('Sync Modules') }}
         </button>
+        <button
+          v-if="hasAction(moduleLoadDemoAction) && hasPendingDemo"
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs hover:bg-muted"
+          data-testid="module-catalog-load-demo"
+          @click="onLoadDemo"
+        >
+          {{ _t('Load Demo Data') }}
+        </button>
         <span
           v-if="lastSyncAtLabel"
           class="text-[11px] text-muted-foreground"
@@ -204,7 +213,7 @@ import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { useModuleCatalogViewModel } from '../composables/useModuleCatalogViewModel';
-import { moduleSyncAction, moduleUninstallAction } from './module_actions';
+import { moduleLoadDemoAction, moduleSyncAction, moduleUninstallAction } from './module_actions';
 import ModuleOpDrawer from './ModuleOpDrawer.vue';
 import {
   ChoyBadge,
@@ -257,6 +266,8 @@ const {
   onPrimaryAction,
   canUninstall,
   onUninstall,
+  hasPendingDemo,
+  onLoadDemo,
   refreshCatalog,
   toShow,
   field,

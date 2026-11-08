@@ -295,13 +295,10 @@ func TestCoverage_ModuleManagementThrowOrOpResultAndParse(t *testing.T) {
 		_ = ok
 	}
 
-	// loadDemo Run maps oerrors.
+	// loadDemo with empty pending catalog succeeds (soft ok result).
 	loadDemo := awaitModuleManagementJSON(t, badJSON, `$choysum.moduleManagement.loadDemo({ operatorUserId: 'u' })`)
-	if ok, _ := loadDemo["ok"].(bool); ok {
-		t.Fatalf("expected loadDemo !ok, got %#v", loadDemo)
-	}
-	if code, _ := loadDemo["errorCode"].(string); code != "LOAD_DEMO_NOT_IMPLEMENTED" {
-		t.Fatalf("errorCode = %#v", loadDemo)
+	if ok, _ := loadDemo["ok"].(bool); !ok {
+		t.Fatalf("expected loadDemo ok, got %#v", loadDemo)
 	}
 
 	// shouldThrowBridgeError helpers
@@ -627,14 +624,14 @@ func TestCoverage_ModuleManagementRemainingBranches(t *testing.T) {
 		t.Fatalf("undefined args: %v", err)
 	}
 
-	// loadDemo: default LOAD_DEMO_NOT_IMPLEMENTED soft result.
+	// loadDemo: empty pending catalog soft-succeeds.
 	leaseRun := newTestQuickjsEngine(t, WithModuleManagementProvider(
 		jsengine.StaticScopeProvider(base),
 		opsHostOpt,
 	))
 	got := awaitModuleManagementJSON(t, leaseRun, `$choysum.moduleManagement.loadDemo({})`)
-	if code, _ := got["errorCode"].(string); code != "LOAD_DEMO_NOT_IMPLEMENTED" {
-		t.Fatalf("loadDemo code = %#v", got)
+	if ok, _ := got["ok"].(bool); !ok {
+		t.Fatalf("loadDemo = %#v", got)
 	}
 
 	emptyPlanID := newTestQuickjsEngine(t, WithModuleManagementProvider(

@@ -23,6 +23,39 @@ test('ModuleOpDrawer.vue mounts closed shell for each action title branch', asyn
   }
 });
 
+test('ModuleOpDrawer.vue opens load_demo via PlanDemo', async () => {
+  const plans: any[] = [];
+  const store = {
+    PlanDemo: async (req: any) => {
+      plans.push(req);
+      return {
+        Id: 'op-demo-1',
+        Action: 'load-demo',
+        ModuleOrder: [{ ModuleName: 'base', Reason: 'pending-demo' }],
+        AffectedApps: [],
+        Risks: [],
+        Blockers: [],
+      };
+    },
+    Apply: async () => ({ Id: 'op-demo-1' }),
+    Browse: async () => ({ Status: 'succeeded', ReloadTriggered: false, ReloadFailed: false }),
+  };
+  const wrapper = mount(ModuleOpDrawer as any, {
+    props: {
+      open: true,
+      action: 'load_demo',
+      moduleName: '',
+      operationStore: store,
+    },
+    global: buildPageMountGlobal({ route: { path: '/meta/modules', fullPath: '/meta/modules' } }),
+  });
+  await flushPromises();
+  await flushPromises();
+  expect(plans.length).toBe(1);
+  expect(wrapper.text()).toContain('Load Demo Data');
+  wrapper.unmount();
+});
+
 test('ModuleOpDrawer.vue plans and confirms through operation store', async () => {
   const plans: any[] = [];
   const applies: any[] = [];
