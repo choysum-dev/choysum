@@ -7,6 +7,8 @@ import {
   formatModuleCatalogDate,
   formatModuleCatalogVersionLine,
   formatModuleOpSummary,
+  parseCatalogSyncResult,
+  catalogSyncSummaryPartial,
   isModuleInstalled,
   moduleCatalogCardApplication,
   moduleCatalogCardSummary,
@@ -78,6 +80,30 @@ test('formatModuleCatalogDate: empty and valid timestamps', () => {
     },
   };
   expect(formatModuleCatalogDate(boom as any)).toBe('');
+});
+
+test('parseCatalogSyncResult / catalogSyncSummaryPartial', () => {
+  expect(parseCatalogSyncResult(null)).toBe(null);
+  expect(parseCatalogSyncResult('{')).toBe(null);
+  const parsed = parseCatalogSyncResult(
+    JSON.stringify({ SyncResult: { Total: 2, Success: 1, Failed: 1, CatalogRows: 9, Origin: 'all' } }),
+  );
+  expect(parsed).toEqual({ total: 2, success: 1, failed: 1, catalogRows: 9, origin: 'all' });
+  expect(catalogSyncSummaryPartial({ syncResult: parsed! })).toBe(true);
+  expect(catalogSyncSummaryPartial({ syncResult: { ...parsed!, failed: 0 } })).toBe(false);
+});
+
+test('formatModuleOpSummary: syncResult summary strings', () => {
+  expect(
+    formatModuleOpSummary({
+      syncResult: { total: 4, success: 4, failed: 0, catalogRows: 12 },
+    }),
+  ).toBe('Synced 4 sources; catalog has 12 modules');
+  expect(
+    formatModuleOpSummary({
+      syncResult: { total: 4, success: 3, failed: 1, catalogRows: 12 },
+    }),
+  ).toBe('Synced 3/4 sources (1 failed); catalog has 12 modules');
 });
 
 test('formatModuleOpSummary: string / message / code / object / throw', () => {

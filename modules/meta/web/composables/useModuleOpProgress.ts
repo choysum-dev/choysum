@@ -9,6 +9,8 @@ export type ModuleOpStatusSnapshot = {
   summary?: unknown;
   resultStatus?: 'SUCCEEDED' | 'FAILED';
   failureKind?: 'RETRYABLE' | 'NON_RETRYABLE' | 'NONE';
+  /** Sync finished with catalog refresh but some source origins failed. */
+  partialFailure?: boolean;
   ReloadTriggered?: boolean;
   ReloadFailed?: boolean;
   ReloadWeb?: boolean;

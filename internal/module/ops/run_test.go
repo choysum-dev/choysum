@@ -425,6 +425,69 @@ func TestModuleNamesInclude(t *testing.T) {
 	}
 }
 
+func TestRun_SyncPersistsSyncResultAndSoftFailsOrigin(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	runtimeScope := newOpsTestScope(t, db)
+	o := &Ops{
+		Scope:  runtimeScope,
+		Events: &recordingBus{},
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return testLocker{}
+		},
+		SyncLocalSnapshot: func(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			return lifecycle.ModuleSourceSnapshotSyncStats{Total: 1, Success: 1}, nil
+		},
+		SyncRegistrySnapshot: func(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			return lifecycle.ModuleSourceSnapshotSyncStats{Total: 1, Failed: 1}, errors.New("registry offline")
+		},
+	}
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{
+		ModuleName: "core",
+		SourceType: originLocal,
+		SourceRef:  "local",
+		Available:  true,
+		Version:    nullString("1.0.0"),
+	}).Error; err != nil {
+		t.Fatalf("seed snapshot: %v", err)
+	}
+
+	result, err := o.Plan(context.Background(), PlanRequest{Action: ActionSync})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Run soft-fail: %v", err)
+	}
+
+	var row modmeta.ModuleOperation
+	if err := db.Where("id = ?", result.Id).Take(&row).Error; err != nil {
+		t.Fatalf("reload op: %v", err)
+	}
+	if row.Status != StatusSucceeded {
+		t.Fatalf("status=%q want succeeded", row.Status)
+	}
+	doc, err := unmarshalPlanDocument(row.PlanJson)
+	if err != nil {
+		t.Fatalf("PlanJson: %v", err)
+	}
+	if doc.SyncResult == nil {
+		t.Fatal("expected SyncResult in PlanJson")
+	}
+	if doc.SyncResult.Total != 2 || doc.SyncResult.Success != 1 || doc.SyncResult.Failed != 1 {
+		t.Fatalf("SyncResult=%+v", *doc.SyncResult)
+	}
+	if doc.SyncResult.CatalogRows < 1 {
+		t.Fatalf("CatalogRows=%d", doc.SyncResult.CatalogRows)
+	}
+	if doc.SyncResult.Origin != "all" {
+		t.Fatalf("Origin=%q", doc.SyncResult.Origin)
+	}
+}
+
 func TestRun_InstallMetaRunsFullCatalogSync(t *testing.T) {
 	t.Parallel()
 	db := newOpsTestDB(t)

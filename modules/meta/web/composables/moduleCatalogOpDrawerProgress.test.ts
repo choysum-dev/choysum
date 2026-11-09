@@ -18,6 +18,7 @@ test('mapOperationRowToSnapshot: maps status, errors, and reload flags', () => {
     status: 'succeeded',
     summary: { message: 'reload' },
     resultStatus: 'SUCCEEDED',
+    partialFailure: false,
     ReloadTriggered: true,
     ReloadFailed: false,
     ReloadWeb: true,
@@ -42,6 +43,33 @@ test('mapOperationRowToSnapshot: maps status, errors, and reload flags', () => {
     errorDomain: 'OPS',
     errorCode: 'E1',
   });
+});
+
+test('mapOperationRowToSnapshot: sync PlanJson fills summary and partialFailure', () => {
+  const planJson = JSON.stringify({
+    baseRevision: 'sync',
+    syncResult: { total: 3, success: 2, failed: 1, catalogRows: 10, origin: 'all' },
+  });
+  const snap = mapOperationRowToSnapshot({
+    Action: 'sync',
+    Status: 'succeeded',
+    PlanJson: planJson,
+  });
+  expect(snap.resultStatus).toBe('SUCCEEDED');
+  expect(snap.partialFailure).toBe(true);
+  expect(snap.summary).toEqual({
+    syncResult: { total: 3, success: 2, failed: 1, catalogRows: 10, origin: 'all' },
+  });
+
+  const ok = mapOperationRowToSnapshot({
+    Action: 'sync',
+    Status: 'succeeded',
+    PlanJson: JSON.stringify({
+      syncResult: { Total: 2, Success: 2, Failed: 0, CatalogRows: 5 },
+    }),
+  });
+  expect(ok.partialFailure).toBe(false);
+  expect((ok.summary as any).syncResult.catalogRows).toBe(5);
 });
 
 test('createModuleCatalogOpDrawerProgressHooks: terminal, timeout, and error bindings', () => {

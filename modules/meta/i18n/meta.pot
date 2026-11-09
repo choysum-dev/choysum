@@ -1517,14 +1517,9 @@ msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Sync failed: %s"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:105
+#: web/views/ModuleCatalogKanbanView.vue
 msgctxt "web/views/ModuleCatalogKanbanView"
-msgid "Sync job triggered"
-msgstr ""
-
-#: web/views/ModuleCatalogKanbanView.vue:104
-msgctxt "web/views/ModuleCatalogKanbanView"
-msgid "Sync job triggered: %s"
+msgid "Module list updated"
 msgstr ""
 
 #: web/views/ModuleCatalogKanbanView.vue:103
@@ -1628,14 +1623,9 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "Sync failed: %s"
 msgstr ""
 
-#: web/views/ModuleCatalogListView.vue:98
+#: web/views/ModuleCatalogListView.vue
 msgctxt "web/views/ModuleCatalogListView"
-msgid "Sync job triggered"
-msgstr ""
-
-#: web/views/ModuleCatalogListView.vue:97
-msgctxt "web/views/ModuleCatalogListView"
-msgid "Sync job triggered: %s"
+msgid "Module list updated"
 msgstr ""
 
 #: web/views/ModuleCatalogListView.vue:96
@@ -1793,6 +1783,46 @@ msgstr ""
 #: web/views/ModuleCatalogOpDrawer.vue:59
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Operation Succeeded"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Module list updated"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Module list updated with warnings"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Module list updated · %s"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Module list updated with warnings · %s"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Module list updated · %s"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Module list updated with warnings · %s"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Synced %s sources; catalog has %s modules"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Synced %s/%s sources (%s failed); catalog has %s modules"
 msgstr ""
 
 #: web/views/ModuleCatalogOpDrawer.vue:83

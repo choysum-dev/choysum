@@ -1506,15 +1506,46 @@ msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Sync failed: %s"
 msgstr "同步失败：%s"
 
-#: web/views/ModuleCatalogKanbanView.vue:105
+#: web/views/ModuleCatalogKanbanView.vue
 msgctxt "web/views/ModuleCatalogKanbanView"
-msgid "Sync job triggered"
-msgstr "已触发同步任务"
+msgid "Module list updated"
+msgstr "模块列表已更新"
 
-#: web/views/ModuleCatalogKanbanView.vue:104
+#: web/views/ModuleCatalogKanbanView.vue
 msgctxt "web/views/ModuleCatalogKanbanView"
-msgid "Sync job triggered: %s"
-msgstr "已触发同步任务：%s"
+msgid "Module list updated with warnings"
+msgstr "模块列表已更新（有警告）"
+
+#: web/views/ModuleCatalogKanbanView.vue
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Synced %s sources; catalog has %s modules"
+msgstr "已同步 %s 个源；目录共 %s 个模块"
+
+#: web/views/ModuleCatalogKanbanView.vue
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Synced %s/%s sources (%s failed); catalog has %s modules"
+msgstr "已同步 %s/%s 个源（%s 个失败）；目录共 %s 个模块"
+
+#: web/views/ModuleCatalogKanbanView.vue
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Job is still running in the background; refresh later"
+msgstr "任务仍在后台执行，可稍后刷新查看"
+
+#: web/views/ModuleCatalogKanbanView.vue
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Service is restarting; status will retry automatically"
+msgstr "服务正在重启，状态将自动重试"
+
+#: web/views/ModuleCatalogKanbanView.vue
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Failed to get status"
+msgstr "获取状态失败"
+
+#~ msgid "Sync job triggered"
+#~ msgstr "已触发同步任务"
+
+#~ msgid "Sync job triggered: %s"
+#~ msgstr "已触发同步任务：%s"
 
 #: web/views/ModuleCatalogKanbanView.vue:103
 msgctxt "web/views/ModuleCatalogKanbanView"
@@ -1616,15 +1647,46 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "Sync failed: %s"
 msgstr "同步失败：%s"
 
-#: web/views/ModuleCatalogListView.vue:98
+#: web/views/ModuleCatalogListView.vue
 msgctxt "web/views/ModuleCatalogListView"
-msgid "Sync job triggered"
-msgstr "已触发同步任务"
+msgid "Module list updated"
+msgstr "模块列表已更新"
 
-#: web/views/ModuleCatalogListView.vue:97
+#: web/views/ModuleCatalogListView.vue
 msgctxt "web/views/ModuleCatalogListView"
-msgid "Sync job triggered: %s"
-msgstr "已触发同步任务：%s"
+msgid "Module list updated with warnings"
+msgstr "模块列表已更新（有警告）"
+
+#: web/views/ModuleCatalogListView.vue
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Synced %s sources; catalog has %s modules"
+msgstr "已同步 %s 个源；目录共 %s 个模块"
+
+#: web/views/ModuleCatalogListView.vue
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Synced %s/%s sources (%s failed); catalog has %s modules"
+msgstr "已同步 %s/%s 个源（%s 个失败）；目录共 %s 个模块"
+
+#: web/views/ModuleCatalogListView.vue
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Job is still running in the background; refresh later"
+msgstr "任务仍在后台执行，可稍后刷新查看"
+
+#: web/views/ModuleCatalogListView.vue
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Service is restarting; status will retry automatically"
+msgstr "服务正在重启，状态将自动重试"
+
+#: web/views/ModuleCatalogListView.vue
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Failed to get status"
+msgstr "获取状态失败"
+
+#~ msgid "Sync job triggered"
+#~ msgstr "已触发同步任务"
+
+#~ msgid "Sync job triggered: %s"
+#~ msgstr "已触发同步任务：%s"
 
 #: web/views/ModuleCatalogListView.vue:96
 msgctxt "web/views/ModuleCatalogListView"
@@ -1780,6 +1842,46 @@ msgstr ""
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Operation Succeeded"
 msgstr "操作成功"
+
+#: web/views/ModuleCatalogOpDrawer.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Module list updated"
+msgstr "模块列表已更新"
+
+#: web/views/ModuleCatalogOpDrawer.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Module list updated with warnings"
+msgstr "模块列表已更新（有警告）"
+
+#: web/views/ModuleCatalogListView.vue
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Module list updated · %s"
+msgstr "模块列表已更新 · %s"
+
+#: web/views/ModuleCatalogListView.vue
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Module list updated with warnings · %s"
+msgstr "模块列表已更新（有警告）· %s"
+
+#: web/views/ModuleCatalogKanbanView.vue
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Module list updated · %s"
+msgstr "模块列表已更新 · %s"
+
+#: web/views/ModuleCatalogKanbanView.vue
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Module list updated with warnings · %s"
+msgstr "模块列表已更新（有警告）· %s"
+
+#: web/views/ModuleCatalogOpDrawer.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Synced %s sources; catalog has %s modules"
+msgstr "已同步 %s 个源；目录共 %s 个模块"
+
+#: web/views/ModuleCatalogOpDrawer.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Synced %s/%s sources (%s failed); catalog has %s modules"
+msgstr "已同步 %s/%s 个源（%s 个失败）；目录共 %s 个模块"
 
 #: web/views/ModuleCatalogOpDrawer.vue:83
 msgctxt "web/views/ModuleCatalogOpDrawer"

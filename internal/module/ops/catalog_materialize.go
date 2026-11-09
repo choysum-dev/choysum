@@ -32,7 +32,23 @@ type catalogAggregate struct {
 
 // SyncSourceSnapshotsThenMaterialize syncs source snapshots then rewrites catalog rows.
 // originType: local | registry | all (empty => all).
+// Origin sync errors are returned even when materialize succeeds so callers can
+// decide soft vs hard failure; ActionSync treats materialize success as terminal success.
 func (o *Ops) SyncSourceSnapshotsThenMaterialize(ctx context.Context, originType string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+	stats, originErr := o.syncSourceSnapshots(ctx, originType)
+	if originType == "" {
+		originType = "all"
+	}
+	// Always materialize so a failed origin (e.g. offline registry) still
+	// reflects snapshots that did sync successfully.
+	if matErr := o.MaterializeCatalog(ctx, nil); matErr != nil {
+		return stats, errors.Join(originErr, matErr)
+	}
+	return stats, originErr
+}
+
+// syncSourceSnapshots updates local and/or registry source snapshots without materializing.
+func (o *Ops) syncSourceSnapshots(ctx context.Context, originType string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
 	stats := lifecycle.ModuleSourceSnapshotSyncStats{}
 	if o == nil {
 		return stats, errors.New("ops: nil host")
@@ -57,12 +73,11 @@ func (o *Ops) SyncSourceSnapshotsThenMaterialize(ctx context.Context, originType
 		syncRegistry = defaultSyncRegistry
 	}
 
-	var err error
 	switch originType {
 	case originLocal:
-		stats, err = syncLocal(ctx, o.Scope, o.LockerFactory)
+		return syncLocal(ctx, o.Scope, o.LockerFactory)
 	case originRegistry:
-		stats, err = syncRegistry(ctx, o.Scope, o.LockerFactory)
+		return syncRegistry(ctx, o.Scope, o.LockerFactory)
 	case "all":
 		regStats, regErr := syncRegistry(ctx, o.Scope, o.LockerFactory)
 		stats.Total += regStats.Total
@@ -72,16 +87,43 @@ func (o *Ops) SyncSourceSnapshotsThenMaterialize(ctx context.Context, originType
 		stats.Total += localStats.Total
 		stats.Success += localStats.Success
 		stats.Failed += localStats.Failed
-		err = errors.Join(regErr, localErr)
+		return stats, errors.Join(regErr, localErr)
 	default:
 		return stats, errors.New("ops: originType must be one of: local, registry, all")
 	}
-	// Always materialize so a failed origin (e.g. offline registry) still
-	// reflects snapshots that did sync successfully.
-	if matErr := o.MaterializeCatalog(ctx, nil); matErr != nil {
-		return stats, errors.Join(err, matErr)
+}
+
+func (o *Ops) countCatalogRows(ctx context.Context) (int, error) {
+	sess, err := o.session(ctx)
+	if err != nil {
+		return 0, err
 	}
-	return stats, err
+	var n int64
+	if err := sess.WithContext(ctx).Model(&modmeta.ModuleCatalog{}).Count(&n).Error; err != nil {
+		return 0, err
+	}
+	return int(n), nil
+}
+
+func (o *Ops) persistSyncResult(ctx context.Context, row *modmeta.ModuleOperation, summary SyncResultSummary) error {
+	if row == nil {
+		return errors.New("ops: nil operation")
+	}
+	doc, err := unmarshalPlanDocument(row.PlanJson)
+	if err != nil {
+		doc = PlanDocument{BaseRevision: "sync"}
+	}
+	if strings.TrimSpace(doc.BaseRevision) == "" {
+		doc.BaseRevision = "sync"
+	}
+	copied := summary
+	doc.SyncResult = &copied
+	raw, err := marshalPlanDocument(doc)
+	if err != nil {
+		return err
+	}
+	row.PlanJson = raw
+	return o.casSaveOperation(ctx, row, StatusRunning)
 }
 
 // MaterializeCatalog rewrites meta_module_catalog rows from source snapshots + installed modules.

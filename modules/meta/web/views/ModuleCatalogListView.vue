@@ -31,13 +31,13 @@ SPDX-License-Identifier: Apache-2.0
           size="default"
           variant="outline"
           data-testid="module-catalog-sync"
-          :disabled="syncLoading"
-          :aria-busy="syncLoading || undefined"
+          :disabled="syncBusy"
+          :aria-busy="syncBusy || undefined"
           @click="onSync"
         >
           <RefreshCw
             class="size-4"
-            :class="{ 'animate-spin': syncLoading }"
+            :class="{ 'animate-spin': syncBusy }"
             aria-hidden="true"
           />
           {{ _t('Update Module List') }}
@@ -199,7 +199,7 @@ const {
   drawerModuleName,
   drawerAction,
   drawerRegistryNewerThanLocal,
-  syncLoading,
+  syncBusy,
   lastSyncAtLabel,
   onSync,
   onRowClick,
@@ -208,7 +208,7 @@ const {
   onUninstall,
   hasPendingDemo,
   onLoadDemo,
-  refreshCatalog,
+  onDrawerSettled,
   openDrawer,
   closeDrawer,
   statusBadgeVariant,
@@ -218,6 +218,7 @@ const {
   bootFromRoute,
 } = useModuleCatalogViewModel({
   store,
+  operationStore: toRef(props, 'operationStore'),
   route,
   router,
   initialOperationId: () => String(props.initialOperationId || ''),
@@ -230,14 +231,29 @@ const {
     updateAvailable: _t('Update available'),
     uninstalled: _t('Not Installed'),
     unavailable: _t('Unavailable'),
-    syncTriggered: id => _t('Sync job triggered: %s', id),
     syncFailed: msg => _t('Sync failed: %s', msg),
+    syncSettledOk: summary =>
+      summary ? _t('Module list updated · %s', summary) : _t('Module list updated'),
+    syncSettledPartial: summary =>
+      summary
+        ? _t('Module list updated with warnings · %s', summary)
+        : _t('Module list updated with warnings'),
+    syncSettledFailed: msg => _t('Sync failed: %s', msg),
+    syncJobStillRunning: _t('Job is still running in the background; refresh later'),
+    syncServiceRestarting: _t('Service is restarting; status will retry automatically'),
+    syncFailedToGetStatus: _t('Failed to get status'),
+    formatSyncSummaryOk: sync =>
+      _t('Synced %s sources; catalog has %s modules', String(sync.total), String(sync.catalogRows)),
+    formatSyncSummaryPartial: sync =>
+      _t(
+        'Synced %s/%s sources (%s failed); catalog has %s modules',
+        String(sync.success),
+        String(sync.total),
+        String(sync.failed),
+        String(sync.catalogRows),
+      ),
   },
 });
-
-function onDrawerSettled() {
-  void refreshCatalog();
-}
 
 onMounted(() => {
   bootFromRoute();

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { ModuleOpProgressHooks, ModuleOpStatusSnapshot } from './useModuleOpProgress';
+import { parseCatalogSyncResult } from '../views/module_catalog_chrome';
 
 export type ModuleCatalogOpDrawerProgressMessages = {
   jobStillRunning: () => string;
@@ -29,10 +30,18 @@ export function mapOperationRowToSnapshot(
   const errorMessage = row?.ErrorMessage != null ? String(row.ErrorMessage) : undefined;
   const errorCode = row?.ErrorCode != null ? String(row.ErrorCode) : undefined;
   const phase = row?.Phase != null ? String(row.Phase) : undefined;
+  const action = String(row?.Action || '').toLowerCase();
+  const syncResult = action === 'sync' ? parseCatalogSyncResult(row?.PlanJson) : null;
+  const partialFailure = !!syncResult && syncResult.failed > 0 && status === 'succeeded';
+  let summary: unknown = errorMessage || (phase ? { message: phase } : undefined);
+  if (syncResult) {
+    summary = { syncResult };
+  }
   return {
     status,
-    summary: errorMessage || (phase ? { message: phase } : undefined),
+    summary,
     resultStatus: status === 'succeeded' ? 'SUCCEEDED' : status === 'failed' ? 'FAILED' : undefined,
+    partialFailure,
     ReloadTriggered: reloadTriggered,
     ReloadFailed: reloadFailed,
     // Reload succeeded when triggered and not failed — web client should hard-refresh.

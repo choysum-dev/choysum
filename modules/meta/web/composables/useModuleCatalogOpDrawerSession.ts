@@ -39,9 +39,12 @@ export type ModuleCatalogOpDrawerSessionMsgs = {
   operationFailed: string;
   succeededReloadFailed: string;
   operationSucceeded: string;
+  /** Sync completed with catalog refresh but some sources failed. */
+  operationSucceededPartial?: string;
 };
 
 const OP_STATUS_FIELDS = [
+  'Action',
   'Status',
   'Phase',
   'ErrorDomain',
@@ -49,6 +52,7 @@ const OP_STATUS_FIELDS = [
   'ErrorMessage',
   'ReloadTriggered',
   'ReloadFailed',
+  'PlanJson',
 ] as const;
 
 /** Read one operation row via Browse, else Search-by-Id. */
@@ -103,7 +107,7 @@ export function useModuleCatalogOpDrawerSession(opts: {
   operationStore: WebModelStore<any> | Ref<WebModelStore<any> | null | undefined>;
   isOpen: () => boolean;
   msgs: ModuleCatalogOpDrawerSessionMsgs;
-  onSettled?: () => void;
+  onSettled?: (status?: ModuleOpStatusSnapshot | null) => void;
 }) {
   const step = ref<ModuleCatalogOpDrawerStep>('plan');
   const planLoading = ref(false);
@@ -111,7 +115,7 @@ export function useModuleCatalogOpDrawerSession(opts: {
   const plan = ref<ModuleCatalogOpDrawerPlanView | null>(null);
   const opStatus = ref<ModuleOpStatusSnapshot | null>(null);
   const activeModuleName = ref('');
-  const activeAction = ref<ModuleCatalogOpDrawerPlanAction | 'progress' | ''>('');
+  const activeAction = ref<ModuleCatalogOpDrawerPlanAction | 'progress' | 'sync' | ''>('');
   const useRegistryOrigin = ref(false);
   const planSession = createPlanDialogSessionGate();
   // Tracks which begin() seq last set planLoading, so finally can clear even after stop()/invalidate.
@@ -168,6 +172,7 @@ export function useModuleCatalogOpDrawerSession(opts: {
     if (!opStatus.value) return opts.msgs.completed;
     if (opStatus.value.resultStatus === 'FAILED') return opts.msgs.operationFailed;
     if (opStatus.value.resultStatus !== 'SUCCEEDED') return opts.msgs.completed;
+    if (opStatus.value.partialFailure) return opts.msgs.operationSucceededPartial ?? opts.msgs.operationSucceeded;
     return opStatus.value.ReloadFailed ? opts.msgs.succeededReloadFailed : opts.msgs.operationSucceeded;
   });
 
@@ -280,24 +285,25 @@ export function useModuleCatalogOpDrawerSession(opts: {
     });
   }
 
-  async function watchProgress(operationId: string) {
+  async function watchProgress(operationId: string, preferredAction?: 'progress' | 'sync') {
     const id = String(operationId || '').trim();
     if (!id) return;
     const store = resolveStore();
     const canRead =
       !!store && (typeof (store as any).Browse === 'function' || typeof (store as any).Search === 'function');
+    const nextAction = preferredAction || activeAction.value || 'progress';
     if (!canRead) {
       // Page-mount stubs may omit Browse/Search; keep the drawer open without crashing.
-      activeAction.value = activeAction.value || 'progress';
+      activeAction.value = nextAction;
       step.value = 'progress';
       opStatus.value = { status: 'queued' };
       return;
     }
-    activeAction.value = activeAction.value || 'progress';
+    activeAction.value = nextAction;
     step.value = 'progress';
     opStatus.value = null;
     await progress.watch(id);
-    if (opts.isOpen()) opts.onSettled?.();
+    if (opts.isOpen()) opts.onSettled?.(opStatus.value);
   }
 
   async function confirmApply() {
@@ -328,7 +334,7 @@ export function useModuleCatalogOpDrawerSession(opts: {
     }
     // progress.watch swallows status-read errors; do not remap them as Apply failures.
     await progress.watch(operationId);
-    if (opts.isOpen()) opts.onSettled?.();
+    if (opts.isOpen()) opts.onSettled?.(opStatus.value);
   }
 
   return {

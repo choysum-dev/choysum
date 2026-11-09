@@ -90,8 +90,7 @@ func (o *Ops) Run(ctx context.Context, req RunRequest) error {
 func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation, requestWithDemo bool, doc PlanDocument) error {
 	switch row.Action {
 	case ActionSync:
-		_, err := o.SyncSourceSnapshotsThenMaterialize(ctx, "all")
-		return err
+		return o.executeSync(ctx, row)
 	case ActionLoadDemo:
 		return o.executeLoadDemo(ctx, row)
 	case ActionInstall, ActionUpgrade, ActionUninstall:
@@ -153,6 +152,35 @@ func (o *Ops) runLifecycle(ctx context.Context, action, moduleName string, withD
 	default:
 		return fmt.Errorf("ops: unsupported lifecycle action %q", action)
 	}
+}
+
+// executeSync syncs all origins, materializes catalog, and persists SyncResult on the op.
+// Origin sync failures with a successful materialize are soft (return nil) so the UI can
+// show a partial-failure summary while still refreshing the catalog.
+func (o *Ops) executeSync(ctx context.Context, row *modmeta.ModuleOperation) error {
+	const originType = "all"
+	stats, originErr := o.syncSourceSnapshots(ctx, originType)
+	matErr := o.MaterializeCatalog(ctx, nil)
+	catalogRows, countErr := o.countCatalogRows(ctx)
+	if countErr != nil {
+		catalogRows = 0
+	}
+	summary := SyncResultSummary{
+		Total:       stats.Total,
+		Success:     stats.Success,
+		Failed:      stats.Failed,
+		CatalogRows: catalogRows,
+		Origin:      originType,
+	}
+	if persistErr := o.persistSyncResult(ctx, row, summary); persistErr != nil {
+		return errors.Join(matErr, originErr, persistErr)
+	}
+	if matErr != nil {
+		return matErr
+	}
+	// Soft-fail origin errors: stats.Failed / originErr surface via SyncResult in the UI.
+	_ = originErr
+	return nil
 }
 
 func affectedModuleNames(doc PlanDocument, root string) []string {

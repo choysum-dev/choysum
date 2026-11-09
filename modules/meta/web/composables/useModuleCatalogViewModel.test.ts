@@ -13,8 +13,21 @@ const msgs = {
   updateAvailable: 'Update available',
   uninstalled: 'Not Installed',
   unavailable: 'Unavailable',
-  syncTriggered: (id: string) => `ok:${id}`,
   syncFailed: (msg: string) => `fail:${msg}`,
+  syncSettledOk: (summary: string) => (summary ? `ok:${summary}` : 'ok'),
+  syncSettledPartial: (summary: string) => `partial:${summary}`,
+  syncSettledFailed: (message: string) => `err:${message}`,
+  syncJobStillRunning: 'still-running',
+  syncServiceRestarting: 'restarting',
+  syncFailedToGetStatus: 'no-status',
+  formatSyncSummaryOk: (sync: { total: number; catalogRows: number }) =>
+    `synced ${sync.total} / catalog ${sync.catalogRows}`,
+  formatSyncSummaryPartial: (sync: {
+    success: number;
+    total: number;
+    failed: number;
+    catalogRows: number;
+  }) => `synced ${sync.success}/${sync.total} (${sync.failed} failed) / catalog ${sync.catalogRows}`,
 };
 
 function makeStore(rows: any[] = []) {
@@ -199,14 +212,64 @@ test('useModuleCatalogViewModel: boots and syncs drawer from operation deep link
   expect(withRef.resolveInitialOperationId()).toBe('op-ref');
 });
 
-test('useModuleCatalogViewModel: onSync delegates to RequestSync', async () => {
+test('useModuleCatalogViewModel: onSync does not open drawer and refreshes on settle', async () => {
   let calls = 0;
+  let refreshed = 0;
   const store = {
-    state: { result: { rows: [{ Id: '1' }] }, loading: false },
+    state: {
+      result: { rows: [{ Id: '1' }] },
+      loading: false,
+      list: {
+        refresh: async () => {
+          refreshed += 1;
+        },
+      },
+    },
     RequestSync: async () => {
       calls += 1;
       return 'op-string';
     },
+  } as any;
+  const operationStore = {
+    Browse: async () => ({
+      Action: 'sync',
+      Status: 'succeeded',
+      PlanJson: JSON.stringify({
+        syncResult: { total: 1, success: 1, failed: 0, catalogRows: 3 },
+      }),
+    }),
+  } as any;
+  const api = useModuleCatalogViewModel({
+    store,
+    operationStore,
+    route: makeRoute(),
+    router: { push: async () => undefined, replace: async () => undefined } as any,
+    msgs,
+  });
+  await api.onSync();
+  expect(calls).toBe(1);
+  expect(api.drawerOpen.value).toBe(false);
+  expect(api.syncBusy.value).toBe(false);
+  expect(refreshed).toBe(1);
+
+  // Idle again — second click enqueues again.
+  await api.onSync();
+  expect(calls).toBe(2);
+});
+
+test('useModuleCatalogViewModel: onDrawerSettled refreshes install/upgrade settle', async () => {
+  let refreshed = 0;
+  const store = {
+    state: {
+      result: { rows: [{ Id: '1' }] },
+      loading: false,
+      list: {
+        refresh: async () => {
+          refreshed += 1;
+        },
+      },
+    },
+    RequestSync: async () => ({ Id: 'op-settle' }),
   } as any;
   const api = useModuleCatalogViewModel({
     store,
@@ -214,9 +277,9 @@ test('useModuleCatalogViewModel: onSync delegates to RequestSync', async () => {
     router: { push: async () => undefined, replace: async () => undefined } as any,
     msgs,
   });
-  api.onSync();
+  api.onDrawerSettled();
   await Promise.resolve();
-  expect(calls).toBe(1);
+  expect(refreshed).toBe(1);
 });
 
 test('useModuleCatalogViewModel: bootFromRoute does not request sync', async () => {

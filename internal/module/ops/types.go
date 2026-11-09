@@ -19,6 +19,15 @@ type ModuleOrderEntry struct {
 	Origin         string `json:"origin,omitempty"`
 }
 
+// SyncResultSummary is written into PlanJson after ActionSync finishes.
+type SyncResultSummary struct {
+	Total       int    `json:"total"`
+	Success     int    `json:"success"`
+	Failed      int    `json:"failed"`
+	CatalogRows int    `json:"catalogRows"`
+	Origin      string `json:"origin,omitempty"`
+}
+
 // PlanDocument is the frozen plan body stored in meta_module_operation.plan_json.
 type PlanDocument struct {
 	ModuleOrder   []ModuleOrderEntry `json:"moduleOrder"`
@@ -32,6 +41,8 @@ type PlanDocument struct {
 	SkipWebShell    bool   `json:"skipWebShell,omitempty"`
 	WebShellProfile string `json:"webShellProfile,omitempty"`
 	LifecycleInput  string `json:"lifecycleInput,omitempty"` // upgrade/install input; empty => ModuleName
+	// SyncResult is filled by Run for ActionSync (snapshot stats + catalog size).
+	SyncResult *SyncResultSummary `json:"syncResult,omitempty"`
 }
 
 // PlanRequest creates a draft operation.

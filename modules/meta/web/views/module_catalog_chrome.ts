@@ -77,12 +77,55 @@ export function formatModuleCatalogDate(dt?: unknown): string {
   }
 }
 
-/** Condense an op summary payload into display text. */
+export type CatalogSyncResultSummary = {
+  total: number;
+  success: number;
+  failed: number;
+  catalogRows: number;
+  origin?: string;
+};
+
+/** Parse PlanJson.syncResult from a MetaModuleOperation row. */
+export function parseCatalogSyncResult(planJson: unknown): CatalogSyncResultSummary | null {
+  let doc: Record<string, unknown> | null = null;
+  if (typeof planJson === 'string' && planJson.trim()) {
+    try {
+      doc = JSON.parse(planJson) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  } else if (planJson && typeof planJson === 'object') {
+    doc = planJson as Record<string, unknown>;
+  }
+  if (!doc) return null;
+  const raw = (doc.syncResult ?? doc.SyncResult) as Record<string, unknown> | undefined;
+  if (!raw || typeof raw !== 'object') return null;
+  const num = (v: unknown) => {
+    const n = typeof v === 'number' ? v : Number(v);
+    return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
+  };
+  return {
+    total: num(raw.total ?? raw.Total),
+    success: num(raw.success ?? raw.Success),
+    failed: num(raw.failed ?? raw.Failed),
+    catalogRows: num(raw.catalogRows ?? raw.CatalogRows),
+    origin: raw.origin != null || raw.Origin != null ? String(raw.origin ?? raw.Origin) : undefined,
+  };
+}
+
+/** Condense an op summary payload into display text (non-i18n fallback). */
 export function formatModuleOpSummary(summary: unknown): string {
   if (!summary) return '';
   if (typeof summary === 'string') return summary;
   if (typeof summary === 'object' && summary !== null) {
     const record = summary as Record<string, unknown>;
+    const sync = record.syncResult as CatalogSyncResultSummary | undefined;
+    if (sync && typeof sync === 'object') {
+      if (sync.failed > 0) {
+        return `Synced ${sync.success}/${sync.total} sources (${sync.failed} failed); catalog has ${sync.catalogRows} modules`;
+      }
+      return `Synced ${sync.total} sources; catalog has ${sync.catalogRows} modules`;
+    }
     for (const key of ['message', 'code'] as const) {
       const value = record[key];
       if (typeof value === 'string' && value.trim() !== '') return value;
@@ -98,6 +141,13 @@ export function formatModuleOpSummary(summary: unknown): string {
       return '';
     }
   }
+}
+
+/** True when summary carries a syncResult with failed > 0. */
+export function catalogSyncSummaryPartial(summary: unknown): boolean {
+  if (!summary || typeof summary !== 'object') return false;
+  const sync = (summary as { syncResult?: CatalogSyncResultSummary }).syncResult;
+  return !!sync && sync.failed > 0;
 }
 
 /** Capture the focused element before opening a modal (null when none). */

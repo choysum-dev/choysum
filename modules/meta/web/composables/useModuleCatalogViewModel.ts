@@ -12,6 +12,7 @@ import {
   formatModuleCatalogDate,
   moduleStatusBadgeVariant,
   resolveModuleCatalogPrimaryAction,
+  type CatalogSyncResultSummary,
 } from '../views/module_catalog_chrome';
 
 export type ModuleCatalogViewMsgs = {
@@ -23,21 +24,36 @@ export type ModuleCatalogViewMsgs = {
   updateAvailable: string;
   uninstalled: string;
   unavailable: string;
-  syncTriggered: (operationId: string) => string;
   syncFailed: (message: string) => string;
+  syncSettledOk: (summary: string) => string;
+  syncSettledPartial: (summary: string) => string;
+  syncSettledFailed: (message: string) => string;
+  syncJobStillRunning: string;
+  syncServiceRestarting: string;
+  syncFailedToGetStatus: string;
+  formatSyncSummaryOk: (sync: CatalogSyncResultSummary) => string;
+  formatSyncSummaryPartial: (sync: CatalogSyncResultSummary) => string;
 };
 
-export type ModuleCatalogDrawerAction = '' | 'install' | 'upgrade' | 'uninstall' | 'progress' | 'load_demo';
+export type ModuleCatalogDrawerAction =
+  | ''
+  | 'install'
+  | 'upgrade'
+  | 'uninstall'
+  | 'progress'
+  | 'sync'
+  | 'load_demo';
 
 function isOperationDeepLinkRoute(routeName: unknown): boolean {
   return String(routeName || '') === 'MetaModuleOperationDeepLink';
 }
 
 /**
- * Catalog view model: sync, drawer/deep-link, and row action helpers for List/Kanban hosts.
+ * Catalog view model: sync (button busy + toast), drawer/deep-link, and row action helpers.
  */
 export function useModuleCatalogViewModel(opts: {
   store: WebModelStore<any>;
+  operationStore?: WebModelStore<any> | Ref<WebModelStore<any> | null | undefined> | null;
   route: RouteLocationNormalizedLoaded;
   router: Router;
   initialOperationId?: Ref<string> | (() => string);
@@ -51,14 +67,37 @@ export function useModuleCatalogViewModel(opts: {
   // True when the open drawer was bound from the operation deep-link (or boot prop).
   const drawerBoundToRoute = ref(false);
 
-  const { syncLoading, requestSync } = useModuleCatalogSync(opts.store, {
-    triggered: opts.msgs.syncTriggered,
-    failed: opts.msgs.syncFailed,
-  });
-
-  function onSync() {
-    void requestSync();
+  async function refreshCatalog() {
+    try {
+      const list = (opts.store as any)?.state?.list;
+      if (list && typeof list.refresh === 'function') {
+        await list.refresh();
+        return;
+      }
+      if (typeof (opts.store as any)?.Search === 'function') {
+        await (opts.store as any).Search();
+      }
+    } catch {
+      // Refresh is best-effort after an operation settles.
+    }
   }
+
+  const { syncBusy, syncLoading, onSync, stop: stopSync } = useModuleCatalogSync(
+    opts.store,
+    opts.operationStore,
+    {
+      failed: opts.msgs.syncFailed,
+      settledOk: opts.msgs.syncSettledOk,
+      settledPartial: opts.msgs.syncSettledPartial,
+      settledFailed: opts.msgs.syncSettledFailed,
+      jobStillRunning: opts.msgs.syncJobStillRunning,
+      serviceRestarting: opts.msgs.syncServiceRestarting,
+      failedToGetStatus: opts.msgs.syncFailedToGetStatus,
+      formatSummaryOk: opts.msgs.formatSyncSummaryOk,
+      formatSummaryPartial: opts.msgs.formatSyncSummaryPartial,
+    },
+    { refreshCatalog },
+  );
 
   function rowRecord(row: unknown): Record<string, unknown> {
     const rec = unwrapListRecord(row);
@@ -211,19 +250,9 @@ export function useModuleCatalogViewModel(opts: {
     return bestRaw != null ? formatModuleCatalogDate(bestRaw) : '';
   });
 
-  async function refreshCatalog() {
-    try {
-      const list = (opts.store as any)?.state?.list;
-      if (list && typeof list.refresh === 'function') {
-        await list.refresh();
-        return;
-      }
-      if (typeof (opts.store as any)?.Search === 'function') {
-        await (opts.store as any).Search();
-      }
-    } catch {
-      // Refresh is best-effort after an operation settles.
-    }
+  /** Install/upgrade/uninstall drawer settle — refresh only (sync uses its own toast path). */
+  function onDrawerSettled() {
+    void refreshCatalog();
   }
 
   function resolveInitialOperationId(): string {
@@ -267,8 +296,10 @@ export function useModuleCatalogViewModel(opts: {
     drawerAction,
     drawerRegistryNewerThanLocal,
     syncLoading,
+    syncBusy,
     lastSyncAtLabel,
     onSync,
+    stopSync,
     onRowClick,
     onPrimaryAction,
     canUninstall,
@@ -277,6 +308,7 @@ export function useModuleCatalogViewModel(opts: {
     pendingDemoRows,
     onLoadDemo,
     refreshCatalog,
+    onDrawerSettled,
     openDrawer,
     closeDrawer,
     toShow,

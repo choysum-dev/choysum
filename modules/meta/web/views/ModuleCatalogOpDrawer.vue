@@ -239,7 +239,7 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-  settled: [];
+  settled: [status?: { resultStatus?: string; partialFailure?: boolean } | null];
 }>();
 
 const operationStoreRef = toRef(props, 'operationStore');
@@ -256,9 +256,13 @@ const session = useModuleCatalogOpDrawerSession({
     completed: _t('Completed'),
     operationFailed: _t('Operation Failed'),
     succeededReloadFailed: _t('Data written; page did not refresh'),
-    operationSucceeded: _t('Operation Succeeded'),
+    get operationSucceeded() {
+      const action = String(props.action || '').trim();
+      return action === 'sync' ? _t('Module list updated') : _t('Operation Succeeded');
+    },
+    operationSucceededPartial: _t('Module list updated with warnings'),
   },
-  onSettled: () => emit('settled'),
+  onSettled: status => emit('settled', status),
 });
 
 // Top-level refs so the template auto-unwraps (nested session.*.value is unreliable in SFC templates).
@@ -319,13 +323,31 @@ const resultAlertBoxClass = computed(() => {
   if (opStatus.value.resultStatus !== 'SUCCEEDED') {
     return 'border-border bg-muted/40 text-foreground';
   }
-  if (opStatus.value.ReloadFailed) {
+  if (opStatus.value.partialFailure || opStatus.value.ReloadFailed) {
     return 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-100';
   }
   return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100';
 });
 
 function formatSummary(summary: unknown) {
+  if (summary && typeof summary === 'object' && (summary as any).syncResult) {
+    const sync = (summary as any).syncResult as {
+      total: number;
+      success: number;
+      failed: number;
+      catalogRows: number;
+    };
+    if (sync.failed > 0) {
+      return _t(
+        'Synced %s/%s sources (%s failed); catalog has %s modules',
+        String(sync.success),
+        String(sync.total),
+        String(sync.failed),
+        String(sync.catalogRows),
+      );
+    }
+    return _t('Synced %s sources; catalog has %s modules', String(sync.total), String(sync.catalogRows));
+  }
   return formatModuleOpSummary(summary);
 }
 
@@ -370,14 +392,14 @@ watch(
       prev[0] === true &&
       prev[1] === action &&
       prev[2] === moduleName &&
-      (action === 'progress' ? prev[3] === operationId : true) &&
+      (action === 'progress' || action === 'sync' ? prev[3] === operationId : true) &&
       prev[4] === props.operationStore;
     if (sameTarget && step.value !== 'plan') return;
 
     session.reset();
-    if (action === 'progress' || (!isPlanAction(action) && operationId)) {
+    if (action === 'progress' || action === 'sync' || (!isPlanAction(action) && operationId)) {
       const id = String(operationId || '').trim();
-      if (id) await session.watchProgress(id);
+      if (id) await session.watchProgress(id, action === 'sync' ? 'sync' : 'progress');
       return;
     }
     if (action === 'load_demo') {
