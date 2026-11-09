@@ -545,11 +545,28 @@ func (o *Ops) refreshCatalogDependents(ctx context.Context) error {
 	})
 }
 
+// ensureModuleCatalogDependTable creates meta_module_catalog_depend when absent
+// (e.g. load-demo / materialize before meta schema evolve has run in tests).
+// Never AutoMigrate: schema authority remains the meta TS evolve path.
+func ensureModuleCatalogDependTable(db *gorm.DB) error {
+	if db == nil {
+		return errors.New("ops: nil db")
+	}
+	m := db.Migrator()
+	if m.HasTable(&modmeta.ModuleCatalogDepend{}) {
+		return nil
+	}
+	return m.CreateTable(&modmeta.ModuleCatalogDepend{})
+}
+
 // replaceCatalogDependsEdges rewrites meta_module_catalog_depend from DependsJson names.
 // Full replace keeps self-ManyToMany Depends/Dependents coherent after every materialize.
 func (o *Ops) replaceCatalogDependsEdges(ctx context.Context) error {
 	sess, err := o.session(ctx)
 	if err != nil {
+		return err
+	}
+	if err := ensureModuleCatalogDependTable(sess.WithContext(ctx)); err != nil {
 		return err
 	}
 	var rows []modmeta.ModuleCatalog

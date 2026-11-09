@@ -384,3 +384,85 @@ test('ModuleCatalogFormView.vue settled handler refreshes the catalog row', asyn
   expect(searched).toBe(1);
   searchWrapper.unmount();
 });
+
+test('ModuleCatalogFormView.vue depend helpers unwrap payload and raw rows', async () => {
+  const pushed: string[] = [];
+  const wrapper = mount(ModuleCatalogFormView as any, {
+    props: {
+      store: {
+        state: {
+          records: {
+            'cat-1': { Id: 'cat-1', ModuleName: 'meta', Installed: true, Available: true },
+          },
+          result: { rows: [] },
+        },
+      },
+      recordId: 'cat-1',
+      showHeader: true,
+    },
+    global: buildPageMountGlobal({
+      route: {
+        path: '/meta/modules/meta',
+        fullPath: '/meta/modules/meta',
+        name: 'MetaModuleShow',
+        params: { name: 'meta' },
+      },
+      router: {
+        push: (to: unknown) => {
+          pushed.push(String(to));
+          return Promise.resolve();
+        },
+      },
+    }),
+  });
+  seedModuleActionPermissions();
+  await flushPromises();
+  (wrapper.vm as any).onDependRowClick({
+    rowData: { raw: { ModuleName: 'core' } },
+  });
+  await flushPromises();
+  expect(pushed).toContain('/meta/modules/core');
+  wrapper.unmount();
+});
+
+test('ModuleCatalogFormView.vue matches RecordRow via key when records map is empty', async () => {
+  const wrapper = mount(ModuleCatalogFormView as any, {
+    props: {
+      store: {
+        state: {
+          records: {},
+          result: {
+            rows: [
+              {
+                kind: 'record',
+                key: 'by-key',
+                payload: {
+                  Id: 'by-key',
+                  ModuleName: 'auth',
+                  Installed: true,
+                  Available: true,
+                  ActiveOperationId: 'op-live',
+                },
+              },
+            ],
+          },
+        },
+      },
+      recordId: 'by-key',
+      showHeader: true,
+      operationStore: { Browse: async () => ({ Status: 'queued', Phase: 'queued' }) },
+    },
+    global: buildPageMountGlobal({
+      route: {
+        path: '/meta/modules/auth',
+        fullPath: '/meta/modules/auth',
+        name: 'MetaModuleShow',
+        params: { name: 'auth' },
+      },
+    }),
+  });
+  seedModuleActionPermissions();
+  await flushPromises();
+  expect((wrapper.vm as any).primaryAction).toBe('progress');
+  wrapper.unmount();
+});

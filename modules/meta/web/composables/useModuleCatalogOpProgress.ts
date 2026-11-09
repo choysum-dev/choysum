@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { computed, ref, unref, type Ref } from 'vue';
+import { computed, getCurrentScope, onScopeDispose, ref, unref, type Ref } from 'vue';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { ChoyMessage } from '@/web';
 import {
@@ -181,6 +181,8 @@ export function useModuleCatalogOpProgress(
     progressModuleName.value = '';
     progressAction.value = '';
   }
+
+  if (getCurrentScope()) onScopeDispose(stop);
 
   return {
     progressBusy,

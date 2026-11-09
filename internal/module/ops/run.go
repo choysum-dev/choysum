@@ -110,9 +110,11 @@ func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation
 		}
 		// First install that lands meta: full local+registry snapshot sync + catalog rewrite
 		// so Catalog UI is populated without a page-open auto sync.
+		// Soft-fail origin/materialize errors: lifecycle Install already succeeded;
+		// offline registry must not mark the install operation failed (same policy as executeSync).
 		if row.Action == ActionInstall && moduleNamesInclude(names, "meta") {
 			if _, err := o.SyncSourceSnapshotsThenMaterialize(ctx, "all"); err != nil {
-				return fmt.Errorf("ops: sync catalog after meta install: %w", err)
+				_ = err
 			}
 			return nil
 		}

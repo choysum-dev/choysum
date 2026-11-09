@@ -561,9 +561,19 @@ msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Picker is not configured"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyField.vue:110
+#: web/components/field/ChoyManyToManyField.vue:114
 msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Select related items"
+msgstr ""
+
+#: web/components/field/ChoyManyToManyKanbanField.vue:84
+msgctxt "web/components/field/ChoyManyToManyKanbanField"
+msgid "No data"
+msgstr ""
+
+#: web/components/field/ChoyManyToManyKanbanField.vue:125
+msgctxt "web/components/field/ChoyManyToManyKanbanField"
+msgid "Untitled"
 msgstr ""
 
 #: web/components/field/ChoyManyToManyRefField.vue:12
@@ -1810,12 +1820,12 @@ msgctxt "web/components/view/FormView"
 msgid "Reset"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:316
+#: web/components/view/ChoyFormView.vue:321
 msgctxt "web/components/view/FormView"
 msgid "Save"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:316
+#: web/components/view/ChoyFormView.vue:321
 msgctxt "web/components/view/FormView"
 msgid "Saving..."
 msgstr ""

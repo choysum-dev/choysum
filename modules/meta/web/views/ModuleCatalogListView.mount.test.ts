@@ -33,3 +33,37 @@ test('ModuleCatalogListView.vue mounts under choysumMount', async () => {
   expect(wrapper.find('[data-testid="module-catalog-table"]').exists()).toBe(true);
   wrapper.unmount();
 });
+
+test('ModuleCatalogListView.vue expose openDrawer and boots from initialOperationId', async () => {
+  const wrapper = mount(ModuleCatalogListView as any, {
+    props: {
+      store: {
+        state: { result: { rows: [] }, loading: false },
+        RequestSync: async () => ({ Id: 'op-sync' }),
+      },
+      initialOperationId: 'op-list-boot',
+      operationStore: {
+        Browse: async () => ({ Status: 'succeeded', Phase: 'done' }),
+      },
+    },
+    global: buildPageMountGlobal({
+      route: {
+        path: '/meta/modules/list',
+        fullPath: '/meta/modules/list',
+        name: 'MetaModuleCatalogList',
+        params: {},
+        meta: {
+          viewKind: 'list',
+          defaultGroups: [],
+          viewPaths: { kanban: '/meta/modules', list: '/meta/modules/list' },
+        },
+      },
+    }),
+  });
+  await flushPromises();
+  const vm = wrapper.vm as any;
+  expect(typeof vm.openDrawer).toBe('function');
+  vm.openDrawer({ moduleName: 'auth', action: 'install' });
+  vm.closeDrawer();
+  wrapper.unmount();
+});

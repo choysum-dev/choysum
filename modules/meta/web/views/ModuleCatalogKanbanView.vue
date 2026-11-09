@@ -95,80 +95,16 @@ SPDX-License-Identifier: Apache-2.0
           Intrinsic height (no h-full / min-h-0): flat board scrolls the grid;
           card body must not shrink-clip meta rows when the viewport is short.
         -->
-        <div
-          class="module-catalog-card flex flex-col gap-1.5 text-xs"
-          data-testid="module-catalog-card"
-        >
-          <div class="flex flex-col gap-1.5">
-            <div class="flex items-center justify-between gap-2">
-              <span
-                class="truncate text-sm font-medium text-foreground"
-                data-testid="module-catalog-card-name"
-              >{{ cardModuleName(card) }}</span>
-              <ChoyBadge
-                :variant="statusBadgeVariant(cardPayload(card))"
-                class="shrink-0 px-1.5 py-0 text-[10px] font-normal"
-                data-testid="module-catalog-card-status"
-              >
-                {{ cardStatusLabel(card) }}
-              </ChoyBadge>
-            </div>
-            <div
-              class="truncate text-muted-foreground"
-              :title="cardVersionLine(card)"
-            >{{ cardVersionLine(card) }}</div>
-            <div
-              v-if="cardSummary(card)"
-              class="line-clamp-2 text-muted-foreground"
-            >{{ cardSummary(card) }}</div>
-            <div
-              v-if="cardApplication(card)"
-              class="truncate text-muted-foreground/80"
-              data-testid="module-catalog-card-application"
-            >{{ cardApplication(card) }}</div>
-            <div
-              v-if="cardAuthor(card) || cardLicense(card)"
-              class="flex items-center justify-between gap-2 text-muted-foreground/80"
-              data-testid="module-catalog-card-attribution"
-            >
-              <span
-                v-if="cardAuthor(card)"
-                class="min-w-0 truncate"
-                :title="cardAuthor(card)"
-                data-testid="module-catalog-card-author"
-              >{{ cardAuthor(card) }}</span>
-              <span
-                v-if="cardLicense(card)"
-                class="min-w-0 shrink-0 truncate text-right"
-                :class="cardAuthor(card) ? 'max-w-[45%]' : 'ml-auto'"
-                :title="cardLicense(card)"
-                data-testid="module-catalog-card-license"
-              >{{ cardLicense(card) }}</span>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center justify-start gap-1 pt-2">
-            <ChoyButton
-              v-if="primaryActionFor(cardPayload(card))"
-              type="button"
-              size="xs"
-              :variant="primaryActionFor(cardPayload(card)) === 'progress' ? 'outline' : 'default'"
-              :data-testid="`module-catalog-card-primary-${primaryActionFor(cardPayload(card))}`"
-              @click.stop="onPrimaryAction(cardPayload(card))"
-            >
-              {{ primaryActionLabel(primaryActionFor(cardPayload(card))) }}
-            </ChoyButton>
-            <ChoyButton
-              v-if="canUninstall(cardPayload(card)) && hasAction(moduleUninstallAction)"
-              type="button"
-              size="xs"
-              variant="outline-destructive"
-              data-testid="module-catalog-card-uninstall"
-              @click.stop="onUninstall(cardPayload(card))"
-            >
-              {{ _t('Uninstall') }}
-            </ChoyButton>
-          </div>
-        </div>
+        <ModuleCatalogKanbanCard
+          :card="card"
+          :status-label="cardStatusLabel(card)"
+          :status-variant="statusBadgeVariant(cardPayload(card))"
+          :primary-action="primaryActionFor(cardPayload(card))"
+          :primary-label="primaryActionLabel(primaryActionFor(cardPayload(card)))"
+          :show-uninstall="canUninstall(cardPayload(card)) && hasAction(moduleUninstallAction)"
+          @primary="onPrimaryAction(cardPayload(card))"
+          @uninstall="onUninstall(cardPayload(card))"
+        />
       </template>
 
       <template #card-empty>
@@ -207,17 +143,16 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { useModuleCatalogViewModel } from '../composables/useModuleCatalogViewModel';
 import { moduleLoadDemoAction, moduleSyncAction, moduleUninstallAction } from './module_catalog_actions';
+import ModuleCatalogKanbanCard from './ModuleCatalogKanbanCard.vue';
 import ModuleCatalogOpDialog from './ModuleCatalogOpDialog.vue';
 import ModuleCatalogOpProgressStrip from './ModuleCatalogOpProgressStrip.vue';
 import {
-  formatModuleCatalogVersionLine,
-  moduleCatalogCardApplication,
-  moduleCatalogCardAuthor,
-  moduleCatalogCardLicense,
-  moduleCatalogCardSummary,
-} from './module_catalog_chrome';
+  createModuleCatalogKanbanErrorHandlers,
+  moduleCatalogKanbanCardPayload as cardPayload,
+  moduleCatalogKanbanResolveMoveRecordId as resolveMoveRecordId,
+  moduleCatalogKanbanRowToCard as rowToCard,
+} from './module_catalog_kanban_view';
 import {
-  ChoyBadge,
   ChoyButton,
   ChoyKanbanView,
   ChoyMessage,
@@ -345,52 +280,6 @@ const {
   },
 });
 
-function rowToCard(row: unknown, index: number, laneKey: string): ChoyKanbanCard {
-  const payload = rowRecord(row);
-  const id = String(payload.Id ?? payload.ModuleName ?? `${laneKey}-${index}`);
-  return {
-    id,
-    title: String(payload.ModuleName || id),
-    laneKey,
-    payload,
-  };
-}
-
-function resolveMoveRecordId(cards: ReadonlyArray<ChoyKanbanCard>, moveCardId: string): string {
-  const hit = cards.find(c => String(c.id) === String(moveCardId));
-  const payload = (hit?.payload || {}) as Record<string, unknown>;
-  return String(payload.Id ?? moveCardId ?? '').trim();
-}
-
-function cardPayload(card: ChoyKanbanCard): Record<string, unknown> {
-  const p = card.payload;
-  return p && typeof p === 'object' ? (p as Record<string, unknown>) : {};
-}
-
-function cardModuleName(card: ChoyKanbanCard): string {
-  return String(cardPayload(card).ModuleName || card.title || '').trim();
-}
-
-function cardSummary(card: ChoyKanbanCard): string {
-  return moduleCatalogCardSummary(cardPayload(card));
-}
-
-function cardApplication(card: ChoyKanbanCard): string {
-  return moduleCatalogCardApplication(cardPayload(card));
-}
-
-function cardAuthor(card: ChoyKanbanCard): string {
-  return moduleCatalogCardAuthor(cardPayload(card));
-}
-
-function cardLicense(card: ChoyKanbanCard): string {
-  return moduleCatalogCardLicense(cardPayload(card));
-}
-
-function cardVersionLine(card: ChoyKanbanCard): string {
-  return formatModuleCatalogVersionLine(cardPayload(card));
-}
-
 function cardStatusLabel(card: ChoyKanbanCard): string {
   return statusLabel(cardPayload(card));
 }
@@ -399,20 +288,14 @@ function onCardClick(card: ChoyKanbanCard) {
   toShow(cardPayload(card));
 }
 
-function onLoadError(e: unknown) {
-  ChoyMessage.error(_t('Failed to load modules'));
-  console.error('Module catalog kanban load failed:', e);
-}
-
-function onSearchError(e: unknown) {
-  ChoyMessage.error(_t('Failed to load modules'));
-  console.error('Module catalog kanban search failed:', e);
-}
-
-function onLoadMoreError(e: unknown) {
-  ChoyMessage.error(_t('Failed to load more'));
-  console.error('Module catalog kanban load-more failed:', e);
-}
+const { onLoadError, onSearchError, onLoadMoreError } = createModuleCatalogKanbanErrorHandlers(
+  {
+    loadFailed: _t('Failed to load modules'),
+    searchFailed: _t('Failed to load modules'),
+    loadMoreFailed: _t('Failed to load more'),
+  },
+  message => ChoyMessage.error(message),
+);
 
 onMounted(() => {
   bootFromRoute();

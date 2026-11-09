@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { effectScope } from 'vue';
 import { useModuleCatalogSync } from './useModuleCatalogSync';
 
 const msgs = {
@@ -106,4 +107,96 @@ test('useModuleCatalogSync: missing operation store refreshes without Browse', a
   });
   await api.onSync();
   expect(refreshed).toBe(1);
+});
+
+test('useModuleCatalogSync: partial and failed terminals refresh and clear busy', async () => {
+  let refreshed = 0;
+  const catalogStore = { RequestSync: async () => ({ Id: 'op-partial' }) } as any;
+  const partialStore = {
+    Browse: async () => ({
+      Action: 'sync',
+      Status: 'succeeded',
+      PlanJson: JSON.stringify({
+        syncResult: { total: 3, success: 2, failed: 1, catalogRows: 8 },
+      }),
+    }),
+  } as any;
+  const partial = useModuleCatalogSync(catalogStore, partialStore, msgs, {
+    refreshCatalog: async () => {
+      refreshed += 1;
+    },
+  });
+  await partial.onSync();
+  expect(refreshed).toBe(1);
+  expect(partial.syncBusy.value).toBe(false);
+
+  const failedStore = {
+    Browse: async () => ({
+      Action: 'sync',
+      Status: 'failed',
+      ErrorMessage: 'sync blew up',
+    }),
+  } as any;
+  const failed = useModuleCatalogSync(catalogStore, failedStore, msgs);
+  await failed.onSync();
+  expect(failed.syncBusy.value).toBe(false);
+});
+
+test('useModuleCatalogSync: stop resets watch state', async () => {
+  let resolveBrowse: ((row: any) => void) | undefined;
+  const catalogStore = { RequestSync: async () => ({ Id: 'op-stop' }) } as any;
+  const operationStore = {
+    Browse: () =>
+      new Promise(resolve => {
+        resolveBrowse = resolve;
+      }),
+  } as any;
+  const api = useModuleCatalogSync(catalogStore, operationStore, msgs);
+  const pending = api.onSync();
+  await Promise.resolve();
+  expect(api.syncBusy.value).toBe(true);
+  api.stop();
+  expect(api.syncBusy.value).toBe(false);
+  resolveBrowse?.({ Action: 'sync', Status: 'succeeded', PlanJson: '{}' });
+  await pending;
+});
+
+test('useModuleCatalogSync: ok path without custom formatters uses formatModuleOpSummary', async () => {
+  const catalogStore = { RequestSync: async () => ({ Id: 'op-plain' }) } as any;
+  const operationStore = {
+    Browse: async () => ({
+      Action: 'install',
+      Status: 'succeeded',
+      PlanJson: '{}',
+    }),
+  } as any;
+  const api = useModuleCatalogSync(catalogStore, operationStore, {
+    ...msgs,
+    formatSummaryOk: undefined,
+    formatSummaryPartial: undefined,
+  });
+  await api.onSync();
+  expect(api.syncBusy.value).toBe(false);
+});
+
+test('useModuleCatalogSync: scope dispose stops an in-flight watch', async () => {
+  let resolveBrowse: ((row: any) => void) | undefined;
+  const catalogStore = { RequestSync: async () => ({ Id: 'op-scope' }) } as any;
+  const operationStore = {
+    Browse: () =>
+      new Promise(resolve => {
+        resolveBrowse = resolve;
+      }),
+  } as any;
+  let api: ReturnType<typeof useModuleCatalogSync> | undefined;
+  const scope = effectScope();
+  scope.run(() => {
+    api = useModuleCatalogSync(catalogStore, operationStore, msgs);
+    void api.onSync();
+  });
+  await Promise.resolve();
+  expect(api!.syncBusy.value).toBe(true);
+  scope.stop();
+  expect(api!.syncBusy.value).toBe(false);
+  resolveBrowse?.({ Action: 'sync', Status: 'succeeded', PlanJson: '{}' });
 });

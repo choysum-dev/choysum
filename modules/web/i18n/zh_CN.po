@@ -541,10 +541,20 @@ msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Picker is not configured"
 msgstr "未配置选择器"
 
-#: web/components/field/ChoyManyToManyField.vue:110
+#: web/components/field/ChoyManyToManyField.vue:114
 msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Select related items"
 msgstr "选择关联项"
+
+#: web/components/field/ChoyManyToManyKanbanField.vue:84
+msgctxt "web/components/field/ChoyManyToManyKanbanField"
+msgid "No data"
+msgstr "暂无数据"
+
+#: web/components/field/ChoyManyToManyKanbanField.vue:125
+msgctxt "web/components/field/ChoyManyToManyKanbanField"
+msgid "Untitled"
+msgstr "未命名"
 
 #: web/components/field/ChoyManyToManyRefField.vue:12
 msgctxt "web/components/field/ChoyManyToManyRefField"
@@ -1761,12 +1771,12 @@ msgctxt "web/components/view/FormView"
 msgid "Reset"
 msgstr "重置"
 
-#: web/components/view/ChoyFormView.vue:316
+#: web/components/view/ChoyFormView.vue:321
 msgctxt "web/components/view/FormView"
 msgid "Save"
 msgstr "保存"
 
-#: web/components/view/ChoyFormView.vue:316
+#: web/components/view/ChoyFormView.vue:321
 msgctxt "web/components/view/FormView"
 msgid "Saving..."
 msgstr "保存中..."

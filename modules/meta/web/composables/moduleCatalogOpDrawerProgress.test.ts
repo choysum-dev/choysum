@@ -159,3 +159,11 @@ test('createModuleCatalogOpDrawerProgressHooks: terminal, timeout, and error bin
   expect(warns).toEqual(['still-running', 'restarting']);
   expect(errors).toEqual(['no-status', 'other']);
 });
+
+test('formatModuleOpProgressValue + headline default branches', () => {
+  expect(formatModuleOpProgressValue({ status: 'cancelled', phase: 'done' })).toBe(100);
+  expect(formatModuleOpProgressValue({ status: 'idle', phase: 'waiting' })).toBe(35);
+  expect(
+    formatModuleOpProgressHeadline({ status: 'working', phase: 'working' }, 'core', headlineMsgs),
+  ).toBe('Please wait…');
+});

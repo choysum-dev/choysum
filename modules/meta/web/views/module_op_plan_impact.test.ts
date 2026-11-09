@@ -5,8 +5,12 @@ import {
   changedApplicationsFromModules,
   formatModuleOpPlanChangeSummary,
   formatPlanVersionDisplay,
+  isChangingPlanEffect,
+  isSatisfiedPlanEffect,
+  mapPlanModuleEntry,
   moduleShowsApplicationHint,
   partitionPlanModules,
+  planEffectSummaryToken,
   shouldShowAffectedApplications,
   shouldShowPlanVersionArrow,
 } from './module_op_plan_impact';
@@ -94,4 +98,57 @@ test('shouldShowPlanVersionArrow: skip uninstall and equal versions', () => {
       targetVersion: '2',
     }),
   ).toBe(true);
+});
+
+test('mapPlanModuleEntry + effect helpers', () => {
+  expect(
+    mapPlanModuleEntry({
+      ModuleName: ' core ',
+      Application: 'base',
+      Role: 'target',
+      Effect: 'upgrade',
+      CurrentVersion: '1',
+      TargetVersion: '2',
+      Origin: 'registry',
+    }),
+  ).toMatchObject({
+    moduleName: 'core',
+    application: 'base',
+    role: 'target',
+    effect: 'upgrade',
+    origin: 'registry',
+  });
+  expect(isChangingPlanEffect('install')).toBe(true);
+  expect(isChangingPlanEffect('upgrade')).toBe(true);
+  expect(isChangingPlanEffect('uninstall')).toBe(true);
+  expect(isChangingPlanEffect('already_satisfied')).toBe(false);
+  expect(isSatisfiedPlanEffect('already_satisfied')).toBe(true);
+  expect(planEffectSummaryToken('upgrade')).toBe('will upgrade');
+  expect(planEffectSummaryToken('uninstall')).toBe('will uninstall');
+  expect(planEffectSummaryToken('weird')).toBe('will change');
+});
+
+test('partitionPlanModules: legacy missing effect and dedupe', () => {
+  const { changing, satisfied } = partitionPlanModules(
+    [
+      { moduleName: 'a', effect: 'install' },
+      { moduleName: 'a', effect: 'install' },
+      { moduleName: 'b' },
+      { moduleName: 'c', effect: 'already_satisfied' },
+      { moduleName: 'd', effect: 'noop' },
+    ],
+    [{ moduleName: 'e', effect: 'already_satisfied' }],
+  );
+  expect(changing.map(m => m.moduleName)).toEqual(['a', 'b', 'd']);
+  expect(satisfied.map(m => m.moduleName)).toEqual(['c', 'e']);
+});
+
+test('formatModuleOpPlanChangeSummary: satisfied-only suffix', () => {
+  expect(
+    formatModuleOpPlanChangeSummary(
+      [{ moduleName: 'core', effect: 'already_satisfied' }],
+      [],
+    ),
+  ).toBe('1 already satisfied dependency module(s) skipped');
+  expect(formatModuleOpPlanChangeSummary([], [])).toBe('');
 });

@@ -58,6 +58,15 @@ describe('useChoyMessage', () => {
     api.info('   ');
     expect(entries()[0].title).toBe('Info');
     clearToasts();
+    api.success('');
+    expect(entries()[0].title).toBe('Success');
+    clearToasts();
+    api.warning('  ');
+    expect(entries()[0].title).toBe('Warning');
+    clearToasts();
+    api.error(null as unknown as string);
+    expect(entries()[0].title).toBe('Error');
+    clearToasts();
   });
 
   test('toasts created without options omit duration override', () => {

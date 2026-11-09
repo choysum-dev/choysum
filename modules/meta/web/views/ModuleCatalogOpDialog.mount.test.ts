@@ -314,3 +314,90 @@ test('ModuleCatalogOpDialog.vue covers apply failure, registry replan, and close
   await flushPromises();
   wrapper.unmount();
 });
+
+test('ModuleCatalogOpDialog.vue renders blockers risks and upgrade badges', async () => {
+  const store = {
+    Plan: async () => ({
+      Id: 'op-rich',
+      ModuleOrder: [
+        {
+          ModuleName: 'core',
+          Role: 'target',
+          Effect: 'upgrade',
+          CurrentVersion: '1.0',
+          TargetVersion: '2.0',
+          Origin: 'registry',
+        },
+      ],
+      AffectedApps: ['core'],
+      Risks: [{ Code: 'R1', Message: 'careful' }],
+      Blockers: [{ Code: 'B1', Message: 'blocked' }],
+    }),
+    Apply: async () => ({ Id: 'op-rich' }),
+  };
+  const wrapper = mount(ModuleCatalogOpDialog as any, {
+    props: {
+      open: true,
+      action: 'upgrade',
+      moduleName: 'core',
+      registryNewerThanLocal: false,
+      operationStore: store,
+    },
+    global: buildPageMountGlobal({ route: { path: '/meta/modules', fullPath: '/meta/modules' } }),
+  });
+  await flushPromises();
+  await flushPromises();
+  const body = wrapper.text();
+  expect(wrapper.find('[data-testid="module-op-plan-blocker-banner"]').exists()).toBe(true);
+  expect(body).toContain('R1');
+  expect(body).toContain('B1');
+  expect(body).toContain('Will upgrade');
+  expect(body).toContain('registry');
+  expect(body).toContain('1.0 → 2.0');
+  wrapper.unmount();
+});
+
+test('ModuleCatalogOpDialog.vue uninstall confirm uses destructive variant and empty plan copy', async () => {
+  const store = {
+    Plan: async () => ({
+      Id: 'op-empty',
+      ModuleOrder: [],
+      AffectedApps: [],
+      Risks: [],
+      Blockers: [],
+    }),
+    Apply: async () => ({ Id: 'op-empty' }),
+  };
+  const wrapper = mount(ModuleCatalogOpDialog as any, {
+    props: {
+      open: true,
+      action: 'uninstall',
+      moduleName: 'legacy',
+      operationStore: store,
+    },
+    global: buildPageMountGlobal({ route: { path: '/meta/modules', fullPath: '/meta/modules' } }),
+  });
+  await flushPromises();
+  await flushPromises();
+  expect(wrapper.text()).toContain('No module changes required');
+  expect(wrapper.find('[data-testid="module-op-confirm"]').exists()).toBe(true);
+  expect(wrapper.text()).toContain('No module changes required');
+  wrapper.unmount();
+});
+
+test('ModuleCatalogOpDialog.vue sync action closes immediately with applied', async () => {
+  const applied: string[] = [];
+  const wrapper = mount(ModuleCatalogOpDialog as any, {
+    props: {
+      open: true,
+      action: 'sync',
+      operationId: 'op-sync-now',
+      operationStore: { Browse: async () => ({ Status: 'queued' }) },
+      onApplied: (id: string) => applied.push(id),
+    },
+    global: buildPageMountGlobal({ route: { path: '/meta/modules', fullPath: '/meta/modules' } }),
+  });
+  await flushPromises();
+  expect(applied).toEqual(['op-sync-now']);
+  wrapper.unmount();
+});

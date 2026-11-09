@@ -400,3 +400,47 @@ test('useModuleCatalogViewModel: refreshCatalog prefers list.refresh then Search
   await api2.refreshCatalog();
   expect(searched).toBe(1);
 });
+
+test('useModuleCatalogViewModel: onOpApplied starts progress and onDrawerSettled refreshes only', async () => {
+  let refreshed = 0;
+  const store = {
+    state: {
+      result: { rows: [{ Id: '1', ModuleName: 'core' }] },
+      list: { refresh: async () => { refreshed += 1; } },
+    },
+    RequestSync: async () => ({ Id: 'x' }),
+  } as any;
+  const operationStore = {
+    Browse: async () => ({ Status: 'succeeded', Phase: 'done' }),
+  } as any;
+  const api = useModuleCatalogViewModel({
+    store,
+    operationStore,
+    route: makeRoute(),
+    router: { push: async () => undefined, replace: async () => undefined } as any,
+    msgs,
+  });
+  api.openDrawer({ moduleName: 'core', action: 'install' });
+  api.onOpApplied('op-applied');
+  expect(api.drawerOpen.value).toBe(false);
+  await Promise.resolve();
+  expect(refreshed).toBeGreaterThanOrEqual(1);
+
+  api.onDrawerSettled({ resultStatus: 'FAILED', summary: 'boom' });
+  api.onDrawerSettled({ resultStatus: 'SUCCEEDED' });
+  expect(api.canUninstall({ Installed: true, Available: false })).toBe(false);
+});
+
+test('useModuleCatalogViewModel: lastSyncAtLabel accepts Date and numeric timestamps', () => {
+  const store = makeStore([
+    { Id: '1', LastSyncAt: new Date('2026-02-01T00:00:00Z') },
+    { Id: '2', LastSyncAt: Date.UTC(2026, 5, 1) },
+  ]);
+  const api = useModuleCatalogViewModel({
+    store,
+    route: makeRoute(),
+    router: { push: async () => undefined, replace: async () => undefined } as any,
+    msgs,
+  });
+  expect(String(api.lastSyncAtLabel.value).length).toBeGreaterThan(0);
+});

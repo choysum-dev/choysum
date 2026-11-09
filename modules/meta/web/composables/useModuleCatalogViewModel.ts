@@ -6,7 +6,6 @@ import type { Router, RouteLocationNormalizedLoaded } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { unwrapListRecord } from '@/web/web/composables/listRowEdit';
 import type { RowEventPayload } from '@/web';
-import { ChoyMessage } from '@/web';
 import { useModuleCatalogSync } from './useModuleCatalogSync';
 import { useModuleCatalogOpProgress } from './useModuleCatalogOpProgress';
 import {
@@ -297,14 +296,9 @@ export function useModuleCatalogViewModel(opts: {
   }
 
   /** Apply-time failure left in the confirm dialog (success path settles via progress strip). */
-  function onDrawerSettled(status?: { resultStatus?: string; summary?: unknown } | null) {
+  function onDrawerSettled(_status?: { resultStatus?: string; summary?: unknown } | null) {
+    // confirmApply already toasts Apply errors; keep Form/List/Kanban refresh-only here.
     void refreshCatalog();
-    if (status?.resultStatus !== 'FAILED') return;
-    const detail =
-      typeof status.summary === 'string' && status.summary.trim()
-        ? status.summary.trim()
-        : status.resultStatus || 'failed';
-    ChoyMessage.error(opts.msgs.opSettledFailed(detail));
   }
 
   function resolveInitialOperationId(): string {
