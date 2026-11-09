@@ -1,51 +1,47 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { nextTick, reactive } from 'vue';
 import { useModuleCatalogSync } from './useModuleCatalogSync';
 
 const msgs = {
-  triggered: (id: string) => `ok:${id}`,
-  triggeredEmpty: 'ok-empty',
-  failed: (msg: string) => `fail:${msg}`,
+  triggered: (id: string) => `triggered:${id}`,
+  failed: (detail: string) => `failed:${detail}`,
 };
 
 test('useModuleCatalogSync: requestSync returns operation id from bridge response', async () => {
-  const store: any = {
-    state: { result: { rows: [{ Id: '1' }] } },
+  const store = {
     RequestSync: async () => ({ Id: 'op-sync-1' }),
-  };
+  } as any;
   const api = useModuleCatalogSync(store, msgs);
-  const id = await api.requestSync({ Force: true });
+  const id = await api.requestSync();
   expect(id).toBe('op-sync-1');
-  expect(api.syncLoading.value).toBe(false);
 });
 
 test('useModuleCatalogSync: requestSync accepts string id and empty payload', async () => {
-  const store: any = {
+  const store = {
     RequestSync: async () => 'op-string',
-  };
+  } as any;
   const api = useModuleCatalogSync(store, msgs);
   expect(await api.requestSync()).toBe('op-string');
 
   store.RequestSync = async () => ({ Id: '' });
-  expect(await api.requestSync({ Force: false, IfStale: true })).toBe('');
+  expect(await api.requestSync()).toBe('');
 });
 
 test('useModuleCatalogSync: requestSync returns empty string on failure and while loading', async () => {
-  let resolveGate: (() => void) | undefined;
-  const store: any = {
+  let resolvePending: ((value: { Id: string }) => void) | null = null;
+  const store = {
     RequestSync: () =>
-      new Promise(resolve => {
-        resolveGate = () => resolve({ Id: 'late' });
+      new Promise<{ Id: string }>(resolve => {
+        resolvePending = resolve;
       }),
-  };
+  } as any;
   const api = useModuleCatalogSync(store, msgs);
   const pending = api.requestSync();
   expect(api.syncLoading.value).toBe(true);
   expect(await api.requestSync()).toBe('');
-  resolveGate?.();
-  expect(await pending).toBe('late');
+  resolvePending!({ Id: 'op-done' });
+  expect(await pending).toBe('op-done');
 
   store.RequestSync = async () => {
     throw new Error('boom');
@@ -53,115 +49,15 @@ test('useModuleCatalogSync: requestSync returns empty string on failure and whil
   expect(await api.requestSync()).toBe('');
 
   store.RequestSync = async () => {
-    throw 'raw';
+    throw 'string-err';
   };
   expect(await api.requestSync()).toBe('');
 });
 
-test('useModuleCatalogSync: watchEmptyCatalogAutoSync fires once for empty loaded result', async () => {
-  let syncCalls = 0;
-  const state = reactive({ result: undefined as any, loading: false });
-  const store: any = {
-    state,
-    RequestSync: async () => {
-      syncCalls += 1;
-      return { Id: `op-${syncCalls}` };
-    },
-  };
+test('useModuleCatalogSync: empty operation id does not treat as success path for callers', async () => {
+  const store = {
+    RequestSync: async () => ({ Id: '' }),
+  } as any;
   const api = useModuleCatalogSync(store, msgs);
-  api.watchEmptyCatalogAutoSync();
-
-  state.result = null;
-  await nextTick();
-  expect(syncCalls).toBe(0);
-
-  state.loading = true;
-  state.result = { rows: [] };
-  await nextTick();
-  expect(syncCalls).toBe(0);
-
-  state.loading = false;
-  state.result = { rows: [] };
-  await nextTick();
-  await Promise.resolve();
-  expect(syncCalls).toBe(1);
-
-  state.result = { rows: [] };
-  await nextTick();
-  expect(syncCalls).toBe(1);
-
-  state.result = { rows: [{ Id: '1' }] };
-  await nextTick();
-  state.result = { nope: true };
-  await nextTick();
-  expect(syncCalls).toBe(1);
-});
-
-test('useModuleCatalogSync: later empty search after non-empty first result does not force sync', async () => {
-  let syncCalls = 0;
-  const state = reactive({ result: undefined as any, loading: false });
-  const store: any = {
-    state,
-    RequestSync: async () => {
-      syncCalls += 1;
-      return { Id: `op-${syncCalls}` };
-    },
-  };
-  const api = useModuleCatalogSync(store, msgs);
-  api.watchEmptyCatalogAutoSync();
-
-  state.result = { rows: [{ Id: '1' }] };
-  await nextTick();
-  expect(syncCalls).toBe(0);
-
-  // User search with no matches must not be treated as an empty catalog.
-  state.result = { rows: [] };
-  await nextTick();
-  await Promise.resolve();
-  expect(syncCalls).toBe(0);
-});
-
-test('useModuleCatalogSync: immediate watch syncs a pre-settled empty catalog once', async () => {
-  let syncCalls = 0;
-  const store: any = {
-    state: { result: { rows: [] }, loading: false },
-    RequestSync: async () => {
-      syncCalls += 1;
-      return { Id: `op-${syncCalls}` };
-    },
-  };
-  const api = useModuleCatalogSync(store, msgs);
-  api.watchEmptyCatalogAutoSync();
-  await nextTick();
-  await Promise.resolve();
-  expect(syncCalls).toBe(1);
-});
-
-test('useModuleCatalogSync: empty auto-sync respects canRequestSync gate', async () => {
-  let syncCalls = 0;
-  const deniedStore: any = {
-    state: { result: { rows: [] }, loading: false },
-    RequestSync: async () => {
-      syncCalls += 1;
-      return { Id: `op-${syncCalls}` };
-    },
-  };
-  const denied = useModuleCatalogSync(deniedStore, msgs, { canRequestSync: () => false });
-  denied.watchEmptyCatalogAutoSync();
-  await nextTick();
-  await Promise.resolve();
-  expect(syncCalls).toBe(0);
-
-  const allowedStore: any = {
-    state: { result: { rows: [] }, loading: false },
-    RequestSync: async () => {
-      syncCalls += 1;
-      return { Id: `op-${syncCalls}` };
-    },
-  };
-  const allowed = useModuleCatalogSync(allowedStore, msgs, { canRequestSync: () => true });
-  allowed.watchEmptyCatalogAutoSync();
-  await nextTick();
-  await Promise.resolve();
-  expect(syncCalls).toBe(1);
+  expect(await api.requestSync()).toBe('');
 });

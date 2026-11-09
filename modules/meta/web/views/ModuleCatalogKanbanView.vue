@@ -253,7 +253,6 @@ const {
   route,
   router,
   initialOperationId: () => String(props.initialOperationId || ''),
-  canRequestSync: () => hasAction(moduleSyncAction),
   msgs: {
     unknown: _t('Unknown'),
     install: _t('Install'),
@@ -264,7 +263,6 @@ const {
     uninstalled: _t('Not Installed'),
     unavailable: _t('Unavailable'),
     syncTriggered: id => _t('Sync job triggered: %s', id),
-    syncTriggeredEmpty: _t('Sync job triggered'),
     syncFailed: msg => _t('Sync failed: %s', msg),
   },
 });

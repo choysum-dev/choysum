@@ -14,7 +14,6 @@ const msgs = {
   uninstalled: 'Not Installed',
   unavailable: 'Unavailable',
   syncTriggered: (id: string) => `ok:${id}`,
-  syncTriggeredEmpty: 'ok',
   syncFailed: (msg: string) => `fail:${msg}`,
 };
 
@@ -220,37 +219,24 @@ test('useModuleCatalogViewModel: onSync delegates to RequestSync', async () => {
   expect(calls).toBe(1);
 });
 
-test('useModuleCatalogViewModel: bootFromRoute requests IfStale sync when permitted', async () => {
-  const syncOpts: Array<{ Force?: boolean; IfStale?: boolean }> = [];
+test('useModuleCatalogViewModel: bootFromRoute does not request sync', async () => {
+  let calls = 0;
   const store = {
     state: { result: { rows: [{ Id: '1' }] }, loading: false },
-    RequestSync: async (opts: { Force?: boolean; IfStale?: boolean }) => {
-      syncOpts.push({ Force: !!opts?.Force, IfStale: !!opts?.IfStale });
-      return { Id: 'op-stale' };
+    RequestSync: async () => {
+      calls += 1;
+      return { Id: 'op-boot' };
     },
   } as any;
-  const allowed = useModuleCatalogViewModel({
+  const api = useModuleCatalogViewModel({
     store,
     route: makeRoute(),
     router: { push: async () => undefined, replace: async () => undefined } as any,
-    canRequestSync: () => true,
     msgs,
   });
-  allowed.bootFromRoute();
+  api.bootFromRoute();
   await Promise.resolve();
-  expect(syncOpts).toEqual([{ Force: false, IfStale: true }]);
-
-  syncOpts.length = 0;
-  const denied = useModuleCatalogViewModel({
-    store,
-    route: makeRoute(),
-    router: { push: async () => undefined, replace: async () => undefined } as any,
-    canRequestSync: () => false,
-    msgs,
-  });
-  denied.bootFromRoute();
-  await Promise.resolve();
-  expect(syncOpts).toEqual([]);
+  expect(calls).toBe(0);
 });
 
 test('useModuleCatalogViewModel: lastSyncAtLabel picks newest raw timestamp', () => {

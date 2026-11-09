@@ -411,3 +411,79 @@ func TestForceFailTerminalAndMarkReloadFailed(t *testing.T) {
 		t.Fatalf("MarkReloadFailed CAS err = %v", err)
 	}
 }
+
+func TestModuleNamesInclude(t *testing.T) {
+	t.Parallel()
+	if moduleNamesInclude(nil, "meta") {
+		t.Fatal("expected false for nil")
+	}
+	if !moduleNamesInclude([]string{"core", "Meta"}, "meta") {
+		t.Fatal("expected case-insensitive match")
+	}
+	if moduleNamesInclude([]string{"core"}, "meta") {
+		t.Fatal("expected miss")
+	}
+}
+
+func TestRun_InstallMetaRunsFullCatalogSync(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	runtimeScope := newOpsTestScope(t, db)
+	mod := &pkgmeta.Module{Name: "meta", Version: "1.0.0", ApplicationStr: "meta"}
+	life := &seedLifecycle{stubLifecycle: &stubLifecycle{}, db: db}
+	var localCalls, registryCalls int
+	o := &Ops{
+		Scope:     runtimeScope,
+		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"meta": mod}},
+		Lifecycle: life,
+		Events:    &recordingBus{},
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return testLocker{}
+		},
+		SyncLocalSnapshot: func(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			localCalls++
+			return lifecycle.ModuleSourceSnapshotSyncStats{}, nil
+		},
+		SyncRegistrySnapshot: func(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			registryCalls++
+			return lifecycle.ModuleSourceSnapshotSyncStats{}, nil
+		},
+	}
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{
+		ModuleName: "meta",
+		SourceType: originLocal,
+		SourceRef:  "local",
+		Available:  true,
+		Version:    nullString("1.0.0"),
+	}).Error; err != nil {
+		t.Fatalf("seed snapshot: %v", err)
+	}
+	// Extra local-only module present in snapshots should appear after full materialize.
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{
+		ModuleName: "sandbox",
+		SourceType: originLocal,
+		SourceRef:  "local",
+		Available:  true,
+		Version:    nullString("0.1.0"),
+	}).Error; err != nil {
+		t.Fatalf("seed sandbox snapshot: %v", err)
+	}
+
+	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "meta", Action: ActionInstall})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if localCalls != 1 || registryCalls != 1 {
+		t.Fatalf("sync calls local=%d registry=%d", localCalls, registryCalls)
+	}
+	var sandbox modmeta.ModuleCatalog
+	if err := db.Where("module_name = ?", "sandbox").Take(&sandbox).Error; err != nil {
+		t.Fatalf("sandbox catalog row: %v", err)
+	}
+}

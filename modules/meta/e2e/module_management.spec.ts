@@ -947,45 +947,51 @@ test('meta module management: lock conflict flow', async () => {
 });
 
 /**
- * Verifies that the module catalog page loads and remains interactive when the
- * boot IfStale RequestSync fires in the background. The catalog must not block
- * on async snapshot refresh.
+ * Verifies that the module catalog page loads without auto RequestSync and
+ * remains interactive (manual sync button stays available).
  */
-test('meta module management: catalog lazy sync does not block page', async () => {
+test('meta module management: catalog open does not auto sync', async () => {
   const runtime = readRuntimeInfo();
   test.skip(runtime.scenario !== 'default', 'only runs under default scenario');
 
   const baseURL = runtime.baseURL;
-  await ensureLoggedIn(page, baseURL);
+  let requestSyncCalls = 0;
+  const routeHandler = async (route: any) => {
+    const req = route.request();
+    if (req.method() === 'POST' && req.url().includes('/meta.MetaModuleCatalog/RequestSync')) {
+      requestSyncCalls += 1;
+    }
+    await route.continue();
+  };
 
-  // After login, catalog boot calls RequestSync({ Force: false, IfStale: true })
-  // when the user can sync. Assert the page stays interactive during that work.
-  const searchInput = page.locator('[data-testid="module-catalog-view"] .choy-search__input');
-  await expect(searchInput).toBeVisible({ timeout: 15000 });
+  await loginAsE2EAdmin(page, baseURL);
+  await page.route('**/*', routeHandler);
+  try {
+    await page.goto(`${baseURL}/web/meta/modules`, { waitUntil: 'domcontentloaded' });
+    await page.waitForURL('**/web/meta/modules', { timeout: 30000 });
+    await waitForModuleCatalog(page);
 
-  const cards = page.locator('[data-testid="module-catalog-card"]');
-  const count = await cards.count();
-  if (count > 0) {
-    // At least one card is present: the catalog rendered before or during sync.
-    await expect(cards.first()).toBeVisible({ timeout: 10000 });
-  } else if (count === 0) {
-    // No local modules and registry may be unreachable in CI; page must still
-    // render the empty catalog shell without crashing.
+    const searchInput = page.locator('[data-testid="module-catalog-view"] .choy-search__input');
+    await expect(searchInput).toBeVisible({ timeout: 15000 });
     await expect(page.locator('[data-testid="module-catalog-view"]')).toBeVisible({ timeout: 15000 });
-  }
 
-  // The manual sync toolbar button must remain reachable.
-  const syncButton = page.getByRole('button', { name: /Sync/i });
-  if (await syncButton.isVisible().catch(() => false)) {
-    await expect(syncButton).toBeEnabled({ timeout: 5000 });
+    // Give boot a moment; catalog must not fire RequestSync on open.
+    await page.waitForTimeout(1500);
+    expect(requestSyncCalls).toBe(0);
+
+    const syncButton = page.getByRole('button', { name: /更新模块列表|Update Module List|Sync/i });
+    if (await syncButton.isVisible().catch(() => false)) {
+      await expect(syncButton).toBeEnabled({ timeout: 5000 });
+    }
+  } finally {
+    await page.unroute('**/*', routeHandler);
   }
 });
 
 /**
- * Verifies that the module catalog page remains usable even when registry
- * sync fails silently (e.g. index.choysum.dev is unreachable in an air-gapped
- * or CI environment). The catalog must still show local modules and allow
- * install/upgrade/uninstall operations.
+ * Verifies that the module catalog page remains usable when a manual registry
+ * sync fails (e.g. index.choysum.dev is unreachable). Entering the page must
+ * not call RequestSync; only the toolbar button triggers it.
  */
 test('meta module management: catalog usable when registry sync fails', async () => {
   const runtime = readRuntimeInfo();
@@ -1024,21 +1030,18 @@ test('meta module management: catalog usable when registry sync fails', async ()
     await page.waitForURL('**/web/meta/modules', { timeout: 30000 });
     await waitForModuleCatalog(page);
 
-    // Boot IfStale RequestSync runs after catalog mount; this test forces the
-    // first RequestSync to fail and verifies the page still stays usable.
     await expect(page.locator('[data-testid="module-catalog-view"]')).toBeVisible({ timeout: 15000 });
-    await expect.poll(() => requestSyncCalls, { timeout: 15000 }).toBeGreaterThan(0);
-    await expect.poll(() => forcedRegistrySyncFailures, { timeout: 15000 }).toBeGreaterThan(0);
+    await page.waitForTimeout(1000);
+    expect(requestSyncCalls).toBe(0);
 
-    // The manual sync button should still work for local-only refresh.
-    const syncButton = page.getByRole('button', { name: /Sync/i });
+    const syncButton = page.getByRole('button', { name: /更新模块列表|Update Module List|Sync/i });
     if (await syncButton.isVisible().catch(() => false)) {
       await syncButton.click();
-      await page.waitForTimeout(2000);
+      await expect.poll(() => requestSyncCalls, { timeout: 15000 }).toBeGreaterThan(0);
+      await expect.poll(() => forcedRegistrySyncFailures, { timeout: 15000 }).toBeGreaterThan(0);
       await expect(page.locator('[data-testid="module-catalog-view"]')).toBeVisible({ timeout: 15000 });
     }
 
-    // The catalog remains interactive despite registry sync failures.
     const searchInput = page.locator('[data-testid="module-catalog-view"] .choy-search__input');
     if (await searchInput.isVisible().catch(() => false)) {
       await searchInput.fill('e2e_fixture');

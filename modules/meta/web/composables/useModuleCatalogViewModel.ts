@@ -24,7 +24,6 @@ export type ModuleCatalogViewMsgs = {
   uninstalled: string;
   unavailable: string;
   syncTriggered: (operationId: string) => string;
-  syncTriggeredEmpty: string;
   syncFailed: (message: string) => string;
 };
 
@@ -42,8 +41,6 @@ export function useModuleCatalogViewModel(opts: {
   route: RouteLocationNormalizedLoaded;
   router: Router;
   initialOperationId?: Ref<string> | (() => string);
-  /** When false, empty-catalog auto-sync is skipped (same gate as the Sync button). */
-  canRequestSync?: () => boolean;
   msgs: ModuleCatalogViewMsgs;
 }) {
   const drawerOpen = ref(false);
@@ -54,19 +51,13 @@ export function useModuleCatalogViewModel(opts: {
   // True when the open drawer was bound from the operation deep-link (or boot prop).
   const drawerBoundToRoute = ref(false);
 
-  const { syncLoading, requestSync, watchEmptyCatalogAutoSync } = useModuleCatalogSync(
-    opts.store,
-    {
-      triggered: opts.msgs.syncTriggered,
-      triggeredEmpty: opts.msgs.syncTriggeredEmpty,
-      failed: opts.msgs.syncFailed,
-    },
-    { canRequestSync: opts.canRequestSync },
-  );
-  watchEmptyCatalogAutoSync();
+  const { syncLoading, requestSync } = useModuleCatalogSync(opts.store, {
+    triggered: opts.msgs.syncTriggered,
+    failed: opts.msgs.syncFailed,
+  });
 
   function onSync() {
-    void requestSync({ Force: true, IfStale: false });
+    void requestSync();
   }
 
   function rowRecord(row: unknown): Record<string, unknown> {
@@ -260,10 +251,6 @@ export function useModuleCatalogViewModel(opts: {
   function bootFromRoute() {
     const opId = resolveInitialOperationId();
     if (opId) openDrawer({ operationId: opId, action: 'progress' }, true);
-    // Stale-aware sync on catalog open (same gate as the Sync button).
-    if (!opts.canRequestSync || opts.canRequestSync()) {
-      void requestSync({ Force: false, IfStale: true });
-    }
   }
 
   watch(

@@ -1109,7 +1109,7 @@ msgctxt "web/components/field/ChoySelectionField"
 msgid "Clear"
 msgstr ""
 
-#: web/components/field/ChoySelectionField.vue:355
+#: web/components/field/ChoySelectionField.vue:385
 msgctxt "web/components/field/ChoySelectionField"
 msgid "Invalid option value: %s"
 msgstr ""
@@ -1134,12 +1134,12 @@ msgctxt "web/components/field/ChoySelectionField"
 msgid "Search…"
 msgstr ""
 
-#: web/components/field/ChoySelectionField.vue:8
+#: web/components/field/ChoySelectionField.vue:122
 msgctxt "web/components/field/ChoySelectionField"
 msgid "Show options"
 msgstr ""
 
-#: web/components/field/ChoySelectionField.vue:353
+#: web/components/field/ChoySelectionField.vue:383
 msgctxt "web/components/field/ChoySelectionField"
 msgid "Value must be a string"
 msgstr ""
@@ -1830,8 +1830,8 @@ msgctxt "web/components/view/FormView"
 msgid "User actions"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:124
-#: web/components/view/ChoyKanbanView.vue:91
+#: web/components/view/ChoyKanbanView.vue:127
+#: web/components/view/ChoyKanbanView.vue:94
 msgctxt "web/components/view/KanbanView"
 msgid "%s more"
 msgstr ""
@@ -1841,18 +1841,18 @@ msgctxt "web/components/view/KanbanView"
 msgid "Failed to move card"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:74
-#: web/components/view/ChoyKanbanView.vue:98
+#: web/components/view/ChoyKanbanView.vue:101
+#: web/components/view/ChoyKanbanView.vue:77
 msgctxt "web/components/view/KanbanView"
 msgid "Kanban board"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:110
+#: web/components/view/ChoyKanbanView.vue:113
 msgctxt "web/components/view/KanbanView"
 msgid "Move to %s"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:110
+#: web/components/view/ChoyKanbanView.vue:113
 msgctxt "web/components/view/KanbanView"
 msgid "Move to lane"
 msgstr ""
@@ -1862,14 +1862,14 @@ msgctxt "web/components/view/KanbanView"
 msgid "New"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:110
-#: web/components/view/ChoyKanbanView.vue:117
-#: web/components/view/ChoyKanbanView.vue:83
+#: web/components/view/ChoyKanbanView.vue:113
+#: web/components/view/ChoyKanbanView.vue:120
+#: web/components/view/ChoyKanbanView.vue:86
 msgctxt "web/components/view/KanbanView"
 msgid "No cards"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:131
+#: web/components/view/ChoyKanbanView.vue:134
 msgctxt "web/components/view/KanbanView"
 msgid "No lanes"
 msgstr ""
@@ -1879,7 +1879,7 @@ msgctxt "web/components/view/KanbanView"
 msgid "Refresh"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:64
+#: web/components/view/ChoyKanbanView.vue:67
 msgctxt "web/components/view/KanbanView"
 msgid "Select lane"
 msgstr ""
@@ -1894,22 +1894,22 @@ msgctxt "web/components/view/KanbanView"
 msgid "User actions"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:51
+#: web/components/view/ChoyListView.vue:54
 msgctxt "web/components/view/ListView"
 msgid "%s selected"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:53
+#: web/components/view/ChoyListView.vue:56
 msgctxt "web/components/view/ListView"
 msgid "Clear selection"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:100
+#: web/components/view/ChoyListView.vue:103
 msgctxt "web/components/view/ListView"
 msgid "Click to load more (%s remaining)"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:60
+#: web/components/view/ChoyListView.vue:63
 msgctxt "web/components/view/ListView"
 msgid "Delete"
 msgstr ""
@@ -1939,13 +1939,13 @@ msgctxt "web/components/view/ListView"
 msgid "Failed to reorder rows"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:112
+#: web/components/view/ChoyListView.vue:115
 #: web/components/view/ChoyListView.vue:21
 msgctxt "web/components/view/ListView"
 msgid "New"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:107
+#: web/components/view/ChoyListView.vue:110
 msgctxt "web/components/view/ListView"
 msgid "No data"
 msgstr ""
@@ -1960,7 +1960,7 @@ msgctxt "web/components/view/ListView"
 msgid "Save"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:47
+#: web/components/view/ChoyListView.vue:50
 msgctxt "web/components/view/ListView"
 msgid "Selection actions"
 msgstr ""
@@ -1970,7 +1970,7 @@ msgctxt "web/components/view/ListView"
 msgid "System actions"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:94
+#: web/components/view/ChoyListView.vue:97
 msgctxt "web/components/view/ListView"
 msgid "Toggle group %s"
 msgstr ""
@@ -2401,6 +2401,26 @@ msgctxt "web/composables/search/useSearch"
 msgid "Not configured"
 msgstr ""
 
+#: web/composables/useChoyMessage.ts:25
+msgctxt "web/composables/useChoyMessage"
+msgid "Error"
+msgstr ""
+
+#: web/composables/useChoyMessage.ts:27
+msgctxt "web/composables/useChoyMessage"
+msgid "Info"
+msgstr ""
+
+#: web/composables/useChoyMessage.ts:21
+msgctxt "web/composables/useChoyMessage"
+msgid "Success"
+msgstr ""
+
+#: web/composables/useChoyMessage.ts:23
+msgctxt "web/composables/useChoyMessage"
+msgid "Warning"
+msgstr ""
+
 #: web/composables/useFormViewLifecycle.ts:102
 msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
 msgid "Cancel"
@@ -2577,95 +2597,95 @@ msgctxt "web/export/ExportPanel"
 msgid "Template name"
 msgstr ""
 
-#: web/import/ImportPanel.vue:44
+#: web/import/ImportPanel.vue:42
 msgctxt "web/import/ImportPanel"
 msgid "CSV column"
 msgstr ""
 
-#: web/import/ImportPanel.vue:51
+#: web/import/ImportPanel.vue:49
 msgctxt "web/import/ImportPanel"
 msgid "Cancel"
 msgstr ""
 
-#: web/import/ImportPanel.vue:49
+#: web/import/ImportPanel.vue:47
 msgctxt "web/import/ImportPanel"
 msgid "Code"
 msgstr ""
 
-#: web/import/ImportPanel.vue:54
+#: web/import/ImportPanel.vue:52
 msgctxt "web/import/ImportPanel"
 msgid "Done"
 msgstr ""
 
-#: web/import/ImportPanel.vue:41
+#: web/import/ImportPanel.vue:39
 msgctxt "web/import/ImportPanel"
 msgid "Drop CSV here or click to browse"
 msgstr ""
 
-#: web/import/ImportPanel.vue:48
+#: web/import/ImportPanel.vue:46
 msgctxt "web/import/ImportPanel"
 msgid "Field"
 msgstr ""
 
-#: web/import/ImportPanel.vue:36
-#: web/import/ImportPanel.vue:39
-#: web/import/ImportPanel.vue:53
+#: web/import/ImportPanel.vue:37
+#: web/import/ImportPanel.vue:51
+#: web/import/ImportPanel.vue:63
 msgctxt "web/import/ImportPanel"
 msgid "Import"
 msgstr ""
 
-#: web/import/ImportPanel.vue:55
+#: web/import/ImportPanel.vue:53
 msgctxt "web/import/ImportPanel"
 msgid "Import completed"
 msgstr ""
 
-#: web/import/ImportPanel.vue:45
+#: web/import/ImportPanel.vue:43
 msgctxt "web/import/ImportPanel"
 msgid "Import field"
 msgstr ""
 
-#: web/import/ImportPanel.vue:43
+#: web/import/ImportPanel.vue:41
 msgctxt "web/import/ImportPanel"
 msgid "Map each CSV column to an importable field. Leave blank to use the header as the field path."
 msgstr ""
 
-#: web/import/ImportPanel.vue:50
+#: web/import/ImportPanel.vue:48
 msgctxt "web/import/ImportPanel"
 msgid "Message"
 msgstr ""
 
-#: web/import/ImportPanel.vue:38
-#: web/import/ImportPanel.vue:52
+#: web/import/ImportPanel.vue:50
+#: web/import/ImportPanel.vue:62
 msgctxt "web/import/ImportPanel"
 msgid "Preview"
 msgstr ""
 
-#: web/import/ImportPanel.vue:47
+#: web/import/ImportPanel.vue:45
 msgctxt "web/import/ImportPanel"
 msgid "Row"
 msgstr ""
 
-#: web/import/ImportPanel.vue:56
+#: web/import/ImportPanel.vue:54
 msgctxt "web/import/ImportPanel"
 msgid "Rows were imported successfully."
 msgstr ""
 
-#: web/import/ImportPanel.vue:46
+#: web/import/ImportPanel.vue:44
 msgctxt "web/import/ImportPanel"
 msgid "Same as header"
 msgstr ""
 
-#: web/import/ImportPanel.vue:42
+#: web/import/ImportPanel.vue:40
 msgctxt "web/import/ImportPanel"
 msgid "Suggested columns"
 msgstr ""
 
-#: web/import/ImportPanel.vue:37
+#: web/import/ImportPanel.vue:61
 msgctxt "web/import/ImportPanel"
 msgid "Upload CSV"
 msgstr ""
 
-#: web/import/ImportPanel.vue:40
+#: web/import/ImportPanel.vue:38
 msgctxt "web/import/ImportPanel"
 msgid "Upload a UTF-8 CSV. Map columns to importable fields from the catalog."
 msgstr ""

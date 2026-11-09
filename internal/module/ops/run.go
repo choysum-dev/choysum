@@ -109,6 +109,14 @@ func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation
 		if err := o.runLifecycle(ctx, row.Action, row.ModuleName, withDemo, doc); err != nil {
 			return err
 		}
+		// First install that lands meta: full local+registry snapshot sync + catalog rewrite
+		// so Catalog UI is populated without a page-open auto sync.
+		if row.Action == ActionInstall && moduleNamesInclude(names, "meta") {
+			if _, err := o.SyncSourceSnapshotsThenMaterialize(ctx, "all"); err != nil {
+				return fmt.Errorf("ops: sync catalog after meta install: %w", err)
+			}
+			return nil
+		}
 		if err := o.MaterializeCatalog(ctx, names); err != nil {
 			return fmt.Errorf("ops: materialize catalog after %s: %w", row.Action, err)
 		}
@@ -169,6 +177,19 @@ func affectedModuleNames(doc PlanDocument, root string) []string {
 	}
 	add(root)
 	return out
+}
+
+func moduleNamesInclude(names []string, want string) bool {
+	want = strings.TrimSpace(want)
+	if want == "" {
+		return false
+	}
+	for _, name := range names {
+		if strings.EqualFold(strings.TrimSpace(name), want) {
+			return true
+		}
+	}
+	return false
 }
 
 func (o *Ops) failOperation(ctx context.Context, row *modmeta.ModuleOperation, domain, code, message string) error {

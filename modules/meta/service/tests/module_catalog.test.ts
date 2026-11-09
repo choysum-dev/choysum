@@ -239,20 +239,3 @@ test('meta.MetaModuleCatalog RequestSync rejects plan ok:false', async () => {
     root.moduleManagement = saved;
   }
 });
-
-test('meta.MetaModuleCatalog RequestSync IfStale skips when catalog is fresh', async () => {
-  (MetaModuleCatalog as any).Search = async () => [{ LastSyncAt: new Date() }];
-  const root: any = (globalThis as any).$choysum;
-  const saved = root.moduleManagement;
-  root.moduleManagement = {
-    plan: async () => {
-      throw new Error('should not plan when fresh');
-    },
-  };
-  try {
-    const resp = await MetaModuleCatalog.RequestSync({ Force: false, IfStale: true });
-    expect(resp.Id).toBe('');
-  } finally {
-    root.moduleManagement = saved;
-  }
-});

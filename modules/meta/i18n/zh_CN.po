@@ -1514,7 +1514,7 @@ msgstr "已触发同步任务"
 #: web/views/ModuleCatalogKanbanView.vue:104
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Sync job triggered: %s"
-msgstr ""
+msgstr "已触发同步任务：%s"
 
 #: web/views/ModuleCatalogKanbanView.vue:103
 msgctxt "web/views/ModuleCatalogKanbanView"
@@ -1624,7 +1624,7 @@ msgstr "已触发同步任务"
 #: web/views/ModuleCatalogListView.vue:97
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Sync job triggered: %s"
-msgstr ""
+msgstr "已触发同步任务：%s"
 
 #: web/views/ModuleCatalogListView.vue:96
 msgctxt "web/views/ModuleCatalogListView"

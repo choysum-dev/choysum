@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { toast } from 'vue-sonner';
+import { createTranslate } from '@/web/web/i18n';
 
 export type ChoyMessageLevel = 'success' | 'warning' | 'error' | 'info';
 
@@ -12,12 +13,20 @@ export type ChoyMessageOptions = {
   duration?: number;
 };
 
-const LEVEL_PREFIX: Record<ChoyMessageLevel, string> = {
-  success: 'Success',
-  warning: 'Warning',
-  error: 'Error',
-  info: 'Info',
-};
+const { _t } = createTranslate('web', { scope: 'web/composables/useChoyMessage' });
+
+function levelPrefix(level: ChoyMessageLevel): string {
+  switch (level) {
+    case 'success':
+      return _t('Success');
+    case 'warning':
+      return _t('Warning');
+    case 'error':
+      return _t('Error');
+    case 'info':
+      return _t('Info');
+  }
+}
 
 function normalizeDuration(duration: number | undefined): number | undefined {
   if (duration === undefined) return undefined;
@@ -34,7 +43,7 @@ function normalizeDuration(duration: number | undefined): number | undefined {
 }
 
 function show(level: ChoyMessageLevel, title: string, options?: ChoyMessageOptions): number {
-  const prefix = LEVEL_PREFIX[level];
+  const prefix = levelPrefix(level);
   const text = String(title ?? '').trim();
   const payload: { description?: string; duration?: number } = {};
   if (options?.description !== undefined) {
