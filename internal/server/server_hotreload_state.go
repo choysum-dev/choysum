@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/choysum-dev/choysum/internal/logger"
 	"github.com/fsnotify/fsnotify"
@@ -54,11 +55,14 @@ type hotreloadState struct {
 	dirtyMu      sync.Mutex
 	dirtyModules map[string]string
 
-	// progressMu protects progressLine method calls.
+	// progressMu protects progressLine / progressTicker method calls.
 	progressMu sync.Mutex
 
 	// progressLine writes single-line hotreload status updates to stderr.
 	progressLine *logger.ProgressLine
+	// progressTicker advances braille frames while a reload stage is in flight.
+	// Without it, Update(frame, msg) paints a single frozen glyph (e.g. ⠙).
+	progressTicker *logger.ProgressTicker
 
 	// fingerprints caches file content hashes to detect no-op saves.
 	// Key: resolved absolute path. Value: hex-encoded SHA-256.
@@ -326,6 +330,68 @@ func (h *hotreloadState) ensureProgressLine() {
 		return
 	}
 	h.progressLine = logger.NewProgressLine(os.Stderr)
+}
+
+// beginProgressSpinner starts (or reuses) a ProgressTicker so braille frames
+// advance for the duration of a hotreload. Safe when progressLine is nil.
+func (h *hotreloadState) beginProgressSpinner() *logger.ProgressLine {
+	h.progressMu.Lock()
+	defer h.progressMu.Unlock()
+	line := h.progressLine
+	if line == nil {
+		return nil
+	}
+	if h.progressTicker == nil {
+		h.progressTicker = logger.NewProgressTicker(line, logger.ProgressTickerOptions{
+			Interval: 120 * time.Millisecond,
+		})
+	}
+	return line
+}
+
+// setProgressMessage updates the live spinner copy (animated when a ticker is active).
+func (h *hotreloadState) setProgressMessage(message string) {
+	h.progressMu.Lock()
+	defer h.progressMu.Unlock()
+	if h.progressTicker != nil {
+		h.progressTicker.SetMessage(message)
+		return
+	}
+	if h.progressLine != nil {
+		h.progressLine.Update(0, message)
+	}
+}
+
+// finishProgress stops the spinner goroutine then writes a terminal Done line.
+func (h *hotreloadState) finishProgress(symbol, message string) {
+	h.progressMu.Lock()
+	ticker := h.progressTicker
+	line := h.progressLine
+	h.progressTicker = nil
+	h.progressMu.Unlock()
+
+	if ticker != nil {
+		ticker.Clear()
+		ticker.Stop()
+	}
+	if line == nil {
+		return
+	}
+	h.progressMu.Lock()
+	line.Done(symbol, message)
+	h.progressMu.Unlock()
+}
+
+// clearProgress erases the spinner without a Done line (caller may finish later).
+func (h *hotreloadState) stopProgressSpinner() {
+	h.progressMu.Lock()
+	ticker := h.progressTicker
+	h.progressTicker = nil
+	h.progressMu.Unlock()
+	if ticker != nil {
+		ticker.Clear()
+		ticker.Stop()
+	}
 }
 
 func (h *hotreloadState) addWatch(path string) error {

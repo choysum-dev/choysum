@@ -1897,6 +1897,42 @@ func TestHandleWatchedModuleUpgradeNilScope(t *testing.T) {
 	}
 }
 
+func TestHotreloadProgressSpinnerAnimatesViaTicker(t *testing.T) {
+	buf := bytes.NewBuffer(nil)
+	line := logger.NewProgressLine(buf)
+	h := &hotreloadState{progressLine: line}
+
+	if got := h.beginProgressSpinner(); got != line {
+		t.Fatalf("beginProgressSpinner() = %v, want line", got)
+	}
+	if h.progressTicker == nil {
+		t.Fatal("expected ProgressTicker so Restarting runtime frames advance")
+	}
+	h.setProgressMessage("Restarting runtime...")
+	if got := h.progressTicker.Message(); got != "Restarting runtime..." {
+		t.Fatalf("ticker message = %q", got)
+	}
+	// Success path clears without a permanent Done line.
+	h.stopProgressSpinner()
+	if h.progressTicker != nil {
+		t.Fatal("expected stopProgressSpinner to clear ticker")
+	}
+	if strings.Contains(buf.String(), "Hotreload done") {
+		t.Fatalf("success must not leave a Done line, got %q", buf.String())
+	}
+
+	// Failure / defer still leave a terminal marker.
+	h.beginProgressSpinner()
+	h.setProgressMessage("Restarting runtime...")
+	h.finishProgress("✗", "Restart failed")
+	if h.progressTicker != nil {
+		t.Fatal("expected finishProgress to clear ticker")
+	}
+	if !strings.Contains(buf.String(), "Restart failed") {
+		t.Fatalf("expected failure Done line, got %q", buf.String())
+	}
+}
+
 func TestHotreloadUpgradeContextAppliesQuietProgress(t *testing.T) {
 	t.Parallel()
 	ctx := hotreloadUpgradeContext(nil, nil)
