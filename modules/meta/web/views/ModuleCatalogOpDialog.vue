@@ -60,8 +60,9 @@ SPDX-License-Identifier: Apache-2.0
                     >
                     <ChoyBadge
                       v-if="changingEffectBadge(item)"
-                      :variant="changingEffectBadgeVariant(item)"
+                      variant="outline"
                       class="h-5 px-1.5 text-[11px] font-normal"
+                      :class="changingEffectBadgeClass(item)"
                       data-testid="module-op-effect-badge"
                     >
                       {{ changingEffectBadge(item) }}
@@ -347,18 +348,17 @@ function changingEffectBadge(item: ModuleOpPlanModuleView): string {
   }
 }
 
-function changingEffectBadgeVariant(
-  item: ModuleOpPlanModuleView,
-): 'default' | 'secondary' | 'destructive' | 'outline' {
+/** Outline base + light semantic tint; solid color stays on the confirm CTA. */
+function changingEffectBadgeClass(item: ModuleOpPlanModuleView): string {
   switch (String(item.effect || '').trim()) {
     case 'uninstall':
-      return 'destructive';
+      return 'border-destructive/45 text-destructive';
     case 'upgrade':
-      return 'secondary';
+      return 'border-border text-muted-foreground';
     case 'install':
-      return 'default';
+      return 'border-primary/45 text-primary';
     default:
-      return 'outline';
+      return '';
   }
 }
 

@@ -38,6 +38,11 @@ export function moduleCatalogCardApplication(rec: Record<string, unknown>): stri
   return String(rec.Application || '').trim();
 }
 
+/** Card author line; empty when missing. */
+export function moduleCatalogCardAuthor(rec: Record<string, unknown>): string {
+  return String(rec.Author || '').trim();
+}
+
 /** Card license line; empty when missing. */
 export function moduleCatalogCardLicense(rec: Record<string, unknown>): string {
   return String(rec.License || '').trim();

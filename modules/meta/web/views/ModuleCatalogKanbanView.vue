@@ -16,6 +16,7 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyVirtualField :store="store" prop="RegistryVersion" />
       <ChoyVirtualField :store="store" prop="UpdateAvailable" />
       <ChoyVirtualField :store="store" prop="Application" />
+      <ChoyVirtualField :store="store" prop="Author" />
       <ChoyVirtualField :store="store" prop="License" />
       <ChoyVirtualField :store="store" prop="Summary" />
     </div>
@@ -126,10 +127,24 @@ SPDX-License-Identifier: Apache-2.0
               data-testid="module-catalog-card-application"
             >{{ cardApplication(card) }}</div>
             <div
-              v-if="cardLicense(card)"
-              class="truncate text-muted-foreground/80"
-              data-testid="module-catalog-card-license"
-            >{{ cardLicense(card) }}</div>
+              v-if="cardAuthor(card) || cardLicense(card)"
+              class="flex items-center justify-between gap-2 text-muted-foreground/80"
+              data-testid="module-catalog-card-attribution"
+            >
+              <span
+                v-if="cardAuthor(card)"
+                class="min-w-0 truncate"
+                :title="cardAuthor(card)"
+                data-testid="module-catalog-card-author"
+              >{{ cardAuthor(card) }}</span>
+              <span
+                v-if="cardLicense(card)"
+                class="min-w-0 shrink-0 truncate text-right"
+                :class="cardAuthor(card) ? 'max-w-[45%]' : 'ml-auto'"
+                :title="cardLicense(card)"
+                data-testid="module-catalog-card-license"
+              >{{ cardLicense(card) }}</span>
+            </div>
           </div>
           <div class="flex flex-wrap items-center justify-start gap-1 pt-2">
             <ChoyButton
@@ -197,6 +212,7 @@ import ModuleCatalogOpProgressStrip from './ModuleCatalogOpProgressStrip.vue';
 import {
   formatModuleCatalogVersionLine,
   moduleCatalogCardApplication,
+  moduleCatalogCardAuthor,
   moduleCatalogCardLicense,
   moduleCatalogCardSummary,
 } from './module_catalog_chrome';
@@ -361,6 +377,10 @@ function cardSummary(card: ChoyKanbanCard): string {
 
 function cardApplication(card: ChoyKanbanCard): string {
   return moduleCatalogCardApplication(cardPayload(card));
+}
+
+function cardAuthor(card: ChoyKanbanCard): string {
+  return moduleCatalogCardAuthor(cardPayload(card));
 }
 
 function cardLicense(card: ChoyKanbanCard): string {

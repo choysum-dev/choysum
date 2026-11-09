@@ -46,7 +46,7 @@ SPDX-License-Identifier: Apache-2.0
       </template>
 
       <div data-anchor="choy.form.sheet" class="flex min-h-full flex-col gap-0">
-        <ChoySection :title="_t('Overview')" divided class="mt-0">
+        <ChoySection :title="_t('Overview')" class="mt-0">
           <ChoyGrid :cols="12" class="gap-x-6 gap-y-3">
             <ChoyCol :span="4">
               <ChoyVarcharField :store="store" prop="ModuleName" orientation="vertical" />
@@ -75,9 +75,9 @@ SPDX-License-Identifier: Apache-2.0
           </ChoyGrid>
         </ChoySection>
 
-        <ChoyTabs v-model="detailTab" class="mt-8" default-value="versions">
+        <ChoyTabs v-model="detailTab" class="mt-4" default-value="versions">
           <ChoyTab value="versions" :label="_t('Versions & Source')" force-mount>
-            <ChoyGrid :cols="12" class="gap-x-6 gap-y-3 pt-4">
+            <ChoyGrid :cols="12" class="gap-x-6 gap-y-3">
               <ChoyCol :span="6" class="flex min-w-0 flex-col gap-3">
                 <div class="text-sm font-medium text-muted-foreground">{{ _t('Local') }}</div>
                 <ChoyVarcharField :store="store" prop="LocalVersion" orientation="vertical" />
@@ -99,7 +99,7 @@ SPDX-License-Identifier: Apache-2.0
           </ChoyTab>
 
           <ChoyTab value="dependencies" :label="_t('Dependencies')" force-mount>
-            <ChoyGrid :cols="12" class="gap-x-6 gap-y-4 pt-4">
+            <ChoyGrid :cols="12" class="gap-x-6 gap-y-4">
               <ChoyCol :span="12">
                 <div
                   class="module-catalog-depend-m2m"
