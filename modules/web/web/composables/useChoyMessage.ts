@@ -43,7 +43,6 @@ function normalizeDuration(duration: number | undefined): number | undefined {
 }
 
 function show(level: ChoyMessageLevel, title: string, options?: ChoyMessageOptions): number {
-  const prefix = levelPrefix(level);
   const text = String(title ?? '').trim();
   const payload: { description?: string; duration?: number } = {};
   if (options?.description !== undefined) {
@@ -53,7 +52,8 @@ function show(level: ChoyMessageLevel, title: string, options?: ChoyMessageOptio
   if (duration !== undefined) {
     payload.duration = duration;
   }
-  const message = text ? `${prefix}: ${text}` : prefix;
+  // Level is already shown by toast chrome (color/icon); do not prefix "Success:" etc.
+  const message = text || levelPrefix(level);
   const id = toast[level](message, payload);
   return typeof id === 'number' || typeof id === 'string' ? Number(id) || 0 : 0;
 }

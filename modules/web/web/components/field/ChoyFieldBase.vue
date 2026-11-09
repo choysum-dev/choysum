@@ -16,9 +16,15 @@ SPDX-License-Identifier: Apache-2.0
   >
     <div
       v-if="showLabelRow"
-      class="choy-field-base__label-row flex items-center gap-1 font-normal text-muted-foreground"
+      class="choy-field-base__label-row flex items-center gap-1 text-sm font-normal text-muted-foreground"
     >
-      <FieldLabel v-if="resolvedLabel" :id="formLabelId" :for="labelHtmlFor || undefined">
+      <!-- font-normal + muted beat Label defaults (font-medium); values stay regular + foreground. -->
+      <FieldLabel
+        v-if="resolvedLabel"
+        :id="formLabelId"
+        :for="labelHtmlFor || undefined"
+        class="text-sm font-normal text-muted-foreground"
+      >
         {{ resolvedLabel }}
         <span v-if="requiredForm" class="text-destructive" aria-hidden="true">*</span>
       </FieldLabel>

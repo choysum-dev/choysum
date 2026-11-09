@@ -1780,15 +1780,15 @@ msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Sync failed: %s"
 msgstr "同步失败：%s"
 
-#: web/views/ModuleCatalogKanbanView.vue:121
+#: web/views/ModuleCatalogKanbanView.vue
 msgctxt "web/views/ModuleCatalogKanbanView"
-msgid "Synced %s sources; catalog has %s modules"
-msgstr "已同步 %s 个源；目录共 %s 个模块"
+msgid "Module catalog updated, %s modules"
+msgstr "模块目录已更新，共 %s 个模块"
 
-#: web/views/ModuleCatalogKanbanView.vue:123
+#: web/views/ModuleCatalogKanbanView.vue
 msgctxt "web/views/ModuleCatalogKanbanView"
-msgid "Synced %s/%s sources (%s failed); catalog has %s modules"
-msgstr "已同步 %s/%s 个源（%s 个失败）；目录共 %s 个模块"
+msgid "Module catalog updated, %s modules (%s failed)"
+msgstr "模块目录已更新，共 %s 个模块（%s 处同步失败）"
 
 #: web/views/ModuleCatalogKanbanView.vue:109
 msgctxt "web/views/ModuleCatalogKanbanView"
@@ -2015,15 +2015,15 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "Sync failed: %s"
 msgstr "同步失败：%s"
 
-#: web/views/ModuleCatalogListView.vue:114
+#: web/views/ModuleCatalogListView.vue
 msgctxt "web/views/ModuleCatalogListView"
-msgid "Synced %s sources; catalog has %s modules"
-msgstr "已同步 %s 个源；目录共 %s 个模块"
+msgid "Module catalog updated, %s modules"
+msgstr "模块目录已更新，共 %s 个模块"
 
-#: web/views/ModuleCatalogListView.vue:116
+#: web/views/ModuleCatalogListView.vue
 msgctxt "web/views/ModuleCatalogListView"
-msgid "Synced %s/%s sources (%s failed); catalog has %s modules"
-msgstr "已同步 %s/%s 个源（%s 个失败）；目录共 %s 个模块"
+msgid "Module catalog updated, %s modules (%s failed)"
+msgstr "模块目录已更新，共 %s 个模块（%s 处同步失败）"
 
 #: web/views/ModuleCatalogListView.vue:102
 msgctxt "web/views/ModuleCatalogListView"
@@ -2340,15 +2340,15 @@ msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Summary:"
 msgstr "摘要："
 
-#: web/views/ModuleCatalogOpDialog.vue:125
+#: web/views/ModuleCatalogOpDialog.vue
 msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Synced %s sources; catalog has %s modules"
-msgstr "已同步 %s 个源；目录共 %s 个模块"
+msgid "Module catalog updated, %s modules"
+msgstr "模块目录已更新，共 %s 个模块"
 
-#: web/views/ModuleCatalogOpDialog.vue:117
+#: web/views/ModuleCatalogOpDialog.vue
 msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Synced %s/%s sources (%s failed); catalog has %s modules"
-msgstr "已同步 %s/%s 个源（%s 个失败）；目录共 %s 个模块"
+msgid "Module catalog updated, %s modules (%s failed)"
+msgstr "模块目录已更新，共 %s 个模块（%s 处同步失败）"
 
 #: web/views/ModuleCatalogOpDialog.vue:87
 msgctxt "web/views/ModuleCatalogOpDrawer"

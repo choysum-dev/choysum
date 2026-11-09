@@ -416,14 +416,12 @@ function formatSummary(summary: unknown) {
     };
     if (sync.failed > 0) {
       return _t(
-        'Synced %s/%s sources (%s failed); catalog has %s modules',
-        String(sync.success),
-        String(sync.total),
-        String(sync.failed),
+        'Module catalog updated, %s modules (%s failed)',
         String(sync.catalogRows),
+        String(sync.failed),
       );
     }
-    return _t('Synced %s sources; catalog has %s modules', String(sync.total), String(sync.catalogRows));
+    return _t('Module catalog updated, %s modules', String(sync.catalogRows));
   }
   return formatModuleOpSummary(summary);
 }

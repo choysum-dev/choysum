@@ -132,9 +132,9 @@ export function formatModuleOpSummary(summary: unknown): string {
     const sync = record.syncResult as CatalogSyncResultSummary | undefined;
     if (sync && typeof sync === 'object') {
       if (sync.failed > 0) {
-        return `Synced ${sync.success}/${sync.total} sources (${sync.failed} failed); catalog has ${sync.catalogRows} modules`;
+        return `Module catalog updated, ${sync.catalogRows} modules (${sync.failed} failed)`;
       }
-      return `Synced ${sync.total} sources; catalog has ${sync.catalogRows} modules`;
+      return `Module catalog updated, ${sync.catalogRows} modules`;
     }
     const orderRaw = record.moduleOrder ?? record.ModuleOrder;
     if (Array.isArray(orderRaw) && orderRaw.length > 0) {

@@ -258,25 +258,21 @@ const {
     uninstalled: _t('Not Installed'),
     unavailable: _t('Unavailable'),
     syncFailed: msg => _t('Sync failed: %s', msg),
-    syncSettledOk: summary =>
-      summary ? _t('Module list updated · %s', summary) : _t('Module list updated'),
+    // Prefer the sync summary as the toast body; fall back when summary is empty.
+    syncSettledOk: summary => (summary ? summary : _t('Module list updated')),
     syncSettledPartial: summary =>
-      summary
-        ? _t('Module list updated with warnings · %s', summary)
-        : _t('Module list updated with warnings'),
+      summary ? summary : _t('Module list updated with warnings'),
     syncSettledFailed: msg => _t('Sync failed: %s', msg),
     syncJobStillRunning: _t('Job is still running in the background; refresh later'),
     syncServiceRestarting: _t('Service is restarting; status will retry automatically'),
     syncFailedToGetStatus: _t('Failed to get status'),
     formatSyncSummaryOk: sync =>
-      _t('Synced %s sources; catalog has %s modules', String(sync.total), String(sync.catalogRows)),
+      _t('Module catalog updated, %s modules', String(sync.catalogRows)),
     formatSyncSummaryPartial: sync =>
       _t(
-        'Synced %s/%s sources (%s failed); catalog has %s modules',
-        String(sync.success),
-        String(sync.total),
-        String(sync.failed),
+        'Module catalog updated, %s modules (%s failed)',
         String(sync.catalogRows),
+        String(sync.failed),
       ),
     opSettledOk: _t('Operation Succeeded'),
     opSettledFailed: msg => _t('Operation Failed: %s', msg),

@@ -37,12 +37,12 @@ describe('useChoyMessage', () => {
     const list = entries();
     expect(list.length).toBe(4);
     expect(list.map((t) => t.id)).toEqual([successId, warningId, errorId, infoId]);
-    expect(list[0].title).toBe('Success: Saved');
+    expect(list[0].title).toBe('Saved');
     expect(list[0].level).toBe('success');
-    expect(list[1].title).toBe('Warning: Check fields');
+    expect(list[1].title).toBe('Check fields');
     expect(list[1].description).toBe('Name is empty');
-    expect(list[2].title).toBe('Error: Failed');
-    expect(list[3].title).toBe('Info: Hint');
+    expect(list[2].title).toBe('Failed');
+    expect(list[3].title).toBe('Hint');
     expect(list[3].duration).toBe(Number.POSITIVE_INFINITY);
 
     clearToasts();

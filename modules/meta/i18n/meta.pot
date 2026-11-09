@@ -1761,14 +1761,14 @@ msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Sync failed: %s"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:121
+#: web/views/ModuleCatalogKanbanView.vue
 msgctxt "web/views/ModuleCatalogKanbanView"
-msgid "Synced %s sources; catalog has %s modules"
+msgid "Module catalog updated, %s modules"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:123
+#: web/views/ModuleCatalogKanbanView.vue
 msgctxt "web/views/ModuleCatalogKanbanView"
-msgid "Synced %s/%s sources (%s failed); catalog has %s modules"
+msgid "Module catalog updated, %s modules (%s failed)"
 msgstr ""
 
 #: web/views/ModuleCatalogKanbanView.vue:109
@@ -1993,14 +1993,14 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "Sync failed: %s"
 msgstr ""
 
-#: web/views/ModuleCatalogListView.vue:114
+#: web/views/ModuleCatalogListView.vue
 msgctxt "web/views/ModuleCatalogListView"
-msgid "Synced %s sources; catalog has %s modules"
+msgid "Module catalog updated, %s modules"
 msgstr ""
 
-#: web/views/ModuleCatalogListView.vue:116
+#: web/views/ModuleCatalogListView.vue
 msgctxt "web/views/ModuleCatalogListView"
-msgid "Synced %s/%s sources (%s failed); catalog has %s modules"
+msgid "Module catalog updated, %s modules (%s failed)"
 msgstr ""
 
 #: web/views/ModuleCatalogListView.vue:102
@@ -2320,14 +2320,14 @@ msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Summary:"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:125
+#: web/views/ModuleCatalogOpDialog.vue
 msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Synced %s sources; catalog has %s modules"
+msgid "Module catalog updated, %s modules"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:117
+#: web/views/ModuleCatalogOpDialog.vue
 msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Synced %s/%s sources (%s failed); catalog has %s modules"
+msgid "Module catalog updated, %s modules (%s failed)"
 msgstr ""
 
 #: web/views/ModuleCatalogOpDialog.vue:87

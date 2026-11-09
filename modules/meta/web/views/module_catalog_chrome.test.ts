@@ -112,12 +112,12 @@ test('formatModuleOpSummary: syncResult summary strings', () => {
     formatModuleOpSummary({
       syncResult: { total: 4, success: 4, failed: 0, catalogRows: 12 },
     }),
-  ).toBe('Synced 4 sources; catalog has 12 modules');
+  ).toBe('Module catalog updated, 12 modules');
   expect(
     formatModuleOpSummary({
       syncResult: { total: 4, success: 3, failed: 1, catalogRows: 12 },
     }),
-  ).toBe('Synced 3/4 sources (1 failed); catalog has 12 modules');
+  ).toBe('Module catalog updated, 12 modules (1 failed)');
 });
 
 test('formatModuleOpSummary: string / message / code / object / throw', () => {
