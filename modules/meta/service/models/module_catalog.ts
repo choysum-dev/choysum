@@ -71,6 +71,9 @@ export default class MetaModuleCatalog extends BaseModel {
   @Field({ type: 'varchar', size: 255, string: _lt('Installed Version', { scope: 'meta.model.MetaModuleCatalog.fields' }) })
   InstalledVersion?: string;
 
+  @Field({ type: 'datetime', string: _lt('Installed / Upgraded At', { scope: 'meta.model.MetaModuleCatalog.fields' }) })
+  LastInstalledOrUpgradedAt?: Date;
+
   @Field({ type: 'boolean', index: true, string: _lt('Update Available', { scope: 'meta.model.MetaModuleCatalog.fields' }) })
   UpdateAvailable?: boolean;
 
@@ -85,6 +88,12 @@ export default class MetaModuleCatalog extends BaseModel {
 
   @Field({ type: 'varchar', size: 512, string: _lt('Local Path', { scope: 'meta.model.MetaModuleCatalog.fields' }) })
   LocalPath?: string;
+
+  @Field({ type: 'varchar', size: 512, string: _lt('Registry Package', { scope: 'meta.model.MetaModuleCatalog.fields' }) })
+  RegistryPath?: string;
+
+  @Field({ type: 'varchar', size: 1024, string: _lt('Registry Tarball', { scope: 'meta.model.MetaModuleCatalog.fields' }) })
+  RegistryTarball?: string;
 
   @Field({ type: 'jsonobject', string: _lt('Depends JSON', { scope: 'meta.model.MetaModuleCatalog.fields' }) })
   DependsJson?: Record<string, unknown> | unknown[] | null;

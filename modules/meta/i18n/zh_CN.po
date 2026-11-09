@@ -716,6 +716,11 @@ msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Installed Version"
 msgstr "已装版本"
 
+#: service/models/module_catalog.ts
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Installed / Upgraded At"
+msgstr "安装/升级时间"
+
 #: service/models/module_catalog.ts:100
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Last Sync At"
@@ -730,6 +735,16 @@ msgstr "许可证"
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Local Path"
 msgstr "本地路径"
+
+#: service/models/module_catalog.ts
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Registry Package"
+msgstr "仓库包名"
+
+#: service/models/module_catalog.ts
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Registry Tarball"
+msgstr "仓库包地址"
 
 #: service/models/module_catalog.ts:61
 msgctxt "meta.model.MetaModuleCatalog.fields"
@@ -1508,10 +1523,20 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "Overview"
 msgstr "概览"
 
+#: web/views/ModuleCatalogFormView.vue
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Local"
+msgstr "本地"
+
 #: web/views/ModuleCatalogFormView.vue:147
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Please wait…"
 msgstr "请稍候…"
+
+#: web/views/ModuleCatalogFormView.vue
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Registry"
+msgstr "远程"
 
 #: web/views/ModuleCatalogFormView.vue:139
 msgctxt "web/views/ModuleCatalogFormView"
@@ -1893,7 +1918,7 @@ msgstr "正在加载演示数据…"
 #: web/views/ModuleCatalogListView.vue:29
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Local"
-msgstr ""
+msgstr "本地"
 
 #: web/views/ModuleCatalogListView.vue:105
 msgctxt "web/views/ModuleCatalogListView"
@@ -1938,7 +1963,7 @@ msgstr "请稍候…"
 #: web/views/ModuleCatalogListView.vue:30
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Registry"
-msgstr ""
+msgstr "远程"
 
 #: web/views/ModuleCatalogListView.vue:112 web/views/ModuleCatalogListView.vue:127
 msgctxt "web/views/ModuleCatalogListView"
@@ -1949,6 +1974,16 @@ msgstr "服务正在重启，状态将自动重试"
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Status"
 msgstr "状态"
+
+#: web/views/ModuleCatalogListView.vue
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Version"
+msgstr "版本"
+
+#: web/views/ModuleCatalogListView.vue
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Installed / Upgraded At"
+msgstr "安装/升级时间"
 
 #: web/views/ModuleCatalogListView.vue:103 web/views/ModuleCatalogListView.vue:110
 msgctxt "web/views/ModuleCatalogListView"

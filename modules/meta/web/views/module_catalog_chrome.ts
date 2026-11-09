@@ -33,6 +33,11 @@ export function moduleCatalogCardApplication(rec: Record<string, unknown>): stri
   return String(rec.Application || '').trim();
 }
 
+/** Card license line; empty when missing. */
+export function moduleCatalogCardLicense(rec: Record<string, unknown>): string {
+  return String(rec.License || '').trim();
+}
+
 /** True when InstalledStatus / Installed means the module is installed. */
 export function isModuleInstalled(status?: string): boolean {
   return String(status || '').toLowerCase() === 'installed';

@@ -723,6 +723,11 @@ msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Installed Version"
 msgstr ""
 
+#: service/models/module_catalog.ts
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Installed / Upgraded At"
+msgstr ""
+
 #: service/models/module_catalog.ts:100
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Last Sync At"
@@ -736,6 +741,16 @@ msgstr ""
 #: service/models/module_catalog.ts:85
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Local Path"
+msgstr ""
+
+#: service/models/module_catalog.ts
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Registry Package"
+msgstr ""
+
+#: service/models/module_catalog.ts
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Registry Tarball"
 msgstr ""
 
 #: service/models/module_catalog.ts:61

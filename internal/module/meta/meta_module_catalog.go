@@ -26,13 +26,20 @@ type ModuleCatalog struct {
 	LocalVersion           sql.NullString `gorm:"column:local_version;type:varchar(255)"`
 	RegistryVersion        sql.NullString `gorm:"column:registry_version;type:varchar(255)"`
 	Installed              bool           `gorm:"column:installed;not null;default:false;index"`
-	InstalledVersion       sql.NullString `gorm:"column:installed_version;type:varchar(255)"`
-	UpdateAvailable        bool           `gorm:"column:update_available;not null;default:false;index"`
+	InstalledVersion sql.NullString `gorm:"column:installed_version;type:varchar(255)"`
+	// LastInstalledOrUpgradedAt is the latest succeeded install/upgrade time
+	// (upgrade preferred when both exist; else Module.CreatedAt).
+	LastInstalledOrUpgradedAt *time.Time `gorm:"column:last_installed_or_upgraded_at"`
+	UpdateAvailable           bool       `gorm:"column:update_available;not null;default:false;index"`
 	RegistryNewerThanLocal bool           `gorm:"column:registry_newer_than_local;not null;default:false"`
 	Available              bool           `gorm:"column:available;not null;default:true;index"`
 	UnavailableReason      sql.NullString `gorm:"column:unavailable_reason;type:text"`
 	LocalPath              sql.NullString `gorm:"column:local_path;type:varchar(512)"`
-	DependsJson            datatypes.JSON `gorm:"column:depends_json"`
+	// RegistryPath stores the npm package id from the catalog index (e.g. @choysum-dev/partner).
+	RegistryPath sql.NullString `gorm:"column:registry_path;type:varchar(512)"`
+	// RegistryTarball is the latest indexed version's tarball URL when present.
+	RegistryTarball sql.NullString `gorm:"column:registry_tarball;type:varchar(1024)"`
+	DependsJson     datatypes.JSON `gorm:"column:depends_json"`
 	DependentsJson         datatypes.JSON `gorm:"column:dependents_json"`
 	HasDemo                bool           `gorm:"column:has_demo;not null;default:false"`
 	DemoLoaded             bool           `gorm:"column:demo_loaded;not null;default:false"`

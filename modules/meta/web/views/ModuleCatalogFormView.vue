@@ -6,22 +6,23 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <!-- Module show is read-only: omit mutating action-ids so Edit/Copy/Delete stay hidden. -->
   <div class="module-catalog-form-view flex min-h-0 flex-1 flex-col" data-testid="module-catalog-form-view">
+    <!--
+      Installed / Available / UpdateAvailable are not shown in the sheet; register them as
+      virtual fields so Form Browse still selects them for header CTAs.
+    -->
+    <div class="sr-only" aria-hidden="true">
+      <ChoyVirtualField :store="store" prop="Installed" />
+      <ChoyVirtualField :store="store" prop="Available" />
+      <ChoyVirtualField :store="store" prop="UpdateAvailable" />
+      <ChoyVirtualField :store="store" prop="ActiveOperationId" />
+      <ChoyVirtualField :store="store" prop="RegistryNewerThanLocal" />
+    </div>
+
     <ChoyFormView
       v-bind="{ store, recordId, viewMode: 'display' as const, showHeader }"
     >
-      <!--
-        Same left tray as Sandbox Edit/Copy/Delete: status Badge then Install/Upgrade/Uninstall
-        after the title/⋮ cluster (List/Kanban secondary-actions parity).
-      -->
+      <!-- Install / Upgrade / Uninstall after the title/⋮ cluster (List/Kanban CTA parity). -->
       <template #secondary-actions>
-        <ChoyBadge
-          v-if="hasMatchedRow"
-          :variant="statusBadgeVariant"
-          class="font-normal"
-          data-testid="module-catalog-form-status"
-        >
-          {{ statusLabel }}
-        </ChoyBadge>
         <ChoyButton
           v-if="primaryAction"
           type="button"
@@ -65,69 +66,65 @@ SPDX-License-Identifier: Apache-2.0
             <ChoyCol :span="8">
               <ChoyTextField :store="store" prop="License" orientation="vertical" />
             </ChoyCol>
-          </ChoyGrid>
-        </ChoySection>
-
-        <ChoySection :title="_t('Dependencies')" divided>
-          <ChoyGrid :cols="12" class="gap-x-6 gap-y-4">
-            <ChoyCol :span="12">
-              <ChoyManyToManyTagsField
-                :store="store"
-                prop="Depends"
-                orientation="vertical"
-                :readonly="true"
-                :tag-closable="false"
-                :tag-label-field="['ModuleName', 'Name', 'Id']"
-                @tag-click="onDependTagClick"
-              />
-            </ChoyCol>
-            <ChoyCol :span="12">
-              <ChoyManyToManyTagsField
-                :store="store"
-                prop="Dependents"
-                orientation="vertical"
-                :readonly="true"
-                :tag-closable="false"
-                :tag-label-field="['ModuleName', 'Name', 'Id']"
-                @tag-click="onDependTagClick"
-              />
-            </ChoyCol>
-          </ChoyGrid>
-        </ChoySection>
-
-        <ChoySection :title="_t('Versions & Source')" divided>
-          <ChoyGrid :cols="12" class="gap-x-6 gap-y-3">
             <ChoyCol :span="4">
               <ChoyVarcharField :store="store" prop="InstalledVersion" orientation="vertical" />
             </ChoyCol>
             <ChoyCol :span="4">
-              <ChoyVarcharField :store="store" prop="LocalVersion" orientation="vertical" />
-            </ChoyCol>
-            <ChoyCol :span="4">
-              <ChoyVarcharField :store="store" prop="RegistryVersion" orientation="vertical" />
-            </ChoyCol>
-            <ChoyCol :span="12">
-              <ChoyVarcharField :store="store" prop="LocalPath" orientation="vertical" />
-            </ChoyCol>
-            <ChoyCol v-if="showUnavailableReason" :span="12">
-              <ChoyTextField :store="store" prop="UnavailableReason" orientation="vertical" />
-            </ChoyCol>
-          </ChoyGrid>
-          <ChoyGrid :cols="12" class="mt-3 gap-x-6 gap-y-3">
-            <ChoyCol :span="4">
-              <ChoyDatetimeField :store="store" prop="LastSyncAt" orientation="vertical" />
-            </ChoyCol>
-            <ChoyCol v-if="showActiveOperation" :span="4">
-              <ChoyVarcharField :store="store" prop="ActiveOperationId" orientation="vertical" />
-            </ChoyCol>
-            <ChoyCol :span="2">
-              <ChoyBooleanField :store="store" prop="HasDemo" orientation="vertical" />
-            </ChoyCol>
-            <ChoyCol :span="2">
-              <ChoyBooleanField :store="store" prop="DemoLoaded" orientation="vertical" />
+              <ChoyDatetimeField :store="store" prop="LastInstalledOrUpgradedAt" orientation="vertical" />
             </ChoyCol>
           </ChoyGrid>
         </ChoySection>
+
+        <ChoyTabs v-model="detailTab" class="mt-8" default-value="versions">
+          <ChoyTab value="versions" :label="_t('Versions & Source')" force-mount>
+            <ChoyGrid :cols="12" class="gap-x-6 gap-y-3 pt-4">
+              <ChoyCol :span="6" class="flex min-w-0 flex-col gap-3">
+                <div class="text-sm font-medium text-muted-foreground">{{ _t('Local') }}</div>
+                <ChoyVarcharField :store="store" prop="LocalVersion" orientation="vertical" />
+                <ChoyVarcharField :store="store" prop="LocalPath" orientation="vertical" />
+                <ChoyDatetimeField :store="store" prop="LastSyncAt" orientation="vertical" />
+              </ChoyCol>
+              <ChoyCol :span="6" class="flex min-w-0 flex-col gap-3">
+                <div class="text-sm font-medium text-muted-foreground">{{ _t('Registry') }}</div>
+                <ChoyVarcharField :store="store" prop="RegistryVersion" orientation="vertical" />
+                <ChoyVarcharField :store="store" prop="RegistryTarball" orientation="vertical" />
+              </ChoyCol>
+              <ChoyCol v-if="showActiveOperation" :span="4">
+                <ChoyVarcharField :store="store" prop="ActiveOperationId" orientation="vertical" />
+              </ChoyCol>
+              <ChoyCol v-if="showUnavailableReason" :span="12">
+                <ChoyTextField :store="store" prop="UnavailableReason" orientation="vertical" />
+              </ChoyCol>
+            </ChoyGrid>
+          </ChoyTab>
+
+          <ChoyTab value="dependencies" :label="_t('Dependencies')" force-mount>
+            <ChoyGrid :cols="12" class="gap-x-6 gap-y-4 pt-4">
+              <ChoyCol :span="12">
+                <ChoyManyToManyTagsField
+                  :store="store"
+                  prop="Depends"
+                  orientation="vertical"
+                  :readonly="true"
+                  :tag-closable="false"
+                  :tag-label-field="['ModuleName', 'Name', 'Id']"
+                  @tag-click="onDependTagClick"
+                />
+              </ChoyCol>
+              <ChoyCol :span="12">
+                <ChoyManyToManyTagsField
+                  :store="store"
+                  prop="Dependents"
+                  orientation="vertical"
+                  :readonly="true"
+                  :tag-closable="false"
+                  :tag-label-field="['ModuleName', 'Name', 'Id']"
+                  @tag-click="onDependTagClick"
+                />
+              </ChoyCol>
+            </ChoyGrid>
+          </ChoyTab>
+        </ChoyTabs>
       </div>
     </ChoyFormView>
 
@@ -161,17 +158,13 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { useModuleCatalogOpProgress } from '../composables/useModuleCatalogOpProgress';
 import {
-  catalogInstalledStatus,
   moduleCatalogCardSummary,
-  moduleStatusBadgeVariant,
   resolveModuleCatalogFormPrimaryAction,
 } from './module_catalog_chrome';
 import { moduleUninstallAction } from './module_catalog_actions';
 import ModuleCatalogOpDialog from './ModuleCatalogOpDialog.vue';
 import ModuleCatalogOpProgressStrip from './ModuleCatalogOpProgressStrip.vue';
 import {
-  ChoyBadge,
-  ChoyBooleanField,
   ChoyButton,
   ChoyCol,
   ChoyDatetimeField,
@@ -179,8 +172,11 @@ import {
   ChoyGrid,
   ChoyManyToManyTagsField,
   ChoySection,
+  ChoyTab,
+  ChoyTabs,
   ChoyTextField,
   ChoyVarcharField,
+  ChoyVirtualField,
 } from '@/web';
 
 defineOptions({ name: 'ModuleCatalogFormView', inheritAttrs: true });
@@ -208,6 +204,7 @@ const drawerOperationId = ref('');
 const drawerModuleName = ref('');
 const drawerAction = ref<'install' | 'upgrade' | 'uninstall' | 'progress' | ''>('');
 const drawerRegistryNewer = ref(false);
+const detailTab = ref('versions');
 
 /** Unwrap Form Browse RecordRow `{ key, payload }` or flat Search rows into a field map. */
 function catalogRowFields(row: unknown): Record<string, unknown> | null {
@@ -240,29 +237,6 @@ const currentRow = computed(() => {
 const hasMatchedRow = computed(() => {
   const rec = currentRow.value;
   return !!(String(rec.ModuleName || '').trim() || String(rec.Id || '').trim());
-});
-
-/** Composite status chip — same tokens as List/Kanban, plus in-progress when an op is active. */
-const statusBadgeVariant = computed(() => {
-  const rec = currentRow.value;
-  if (String(rec.ActiveOperationId || '').trim()) return 'secondary' as const;
-  return moduleStatusBadgeVariant(
-    catalogInstalledStatus(rec),
-    rec.Available as boolean | undefined,
-    rec.UpdateAvailable === true,
-  );
-});
-const statusLabel = computed(() => {
-  const rec = currentRow.value;
-  if (String(rec.ActiveOperationId || '').trim()) return _t('In progress');
-  if (rec.Available === false) return _t('Unavailable');
-  const val = catalogInstalledStatus(rec).toLowerCase();
-  if (val === 'installed') {
-    if (rec.UpdateAvailable === true) return _t('Update available');
-    return _t('Installed');
-  }
-  if (val === 'uninstalled') return _t('Not Installed');
-  return catalogInstalledStatus(rec) || _t('Unknown');
 });
 
 const primaryAction = computed(() => {
@@ -298,7 +272,6 @@ const showUnavailableReason = computed(() => {
   return rec.Available === false && !!String(rec.UnavailableReason || '').trim();
 });
 const showActiveOperation = computed(() => !!String(currentRow.value.ActiveOperationId || '').trim());
-
 async function refreshDetailRow() {
   const id = String(recordId.value || '').trim();
   if (!id) return;
@@ -402,8 +375,6 @@ defineExpose({
   primaryAction,
   primaryActionLabel,
   primaryButtonVariant,
-  statusLabel,
-  statusBadgeVariant,
   progressBusy,
   progressTitle,
   progressHeadline,

@@ -56,6 +56,36 @@ describe('ChoyKanbanView workspace height', () => {
     mounted.unmount();
   });
 
+  test('flat board cards use intrinsic height (no h-full / min-h-0 shrink)', async () => {
+    const mounted = mountApp(ChoyKanbanView as any, {
+      props: {
+        store: makeStore(),
+        autoBootstrap: false,
+        showHeader: false,
+      },
+    });
+    await flushPromises();
+    const state = mounted.setupState() as {
+      displayLanes: Array<{ key: string; label: string; cards: Array<{ id: string; title: string; laneKey: string }> }>;
+    };
+    state.displayLanes = [
+      {
+        key: '__all__',
+        label: 'All',
+        cards: [{ id: '1', title: 'Alpha', laneKey: '__all__' }],
+      },
+    ];
+    await flushPromises();
+
+    const card = mounted.q('.choy-kanban-view__card') as HTMLElement | null;
+    expect(card).not.toBeNull();
+    const cls = card!.className.split(/\s+/);
+    expect(cls).not.toContain('h-full');
+    expect(cls).not.toContain('min-h-0');
+
+    mounted.unmount();
+  });
+
   test('ActionBar drops the bottom border like ListView', async () => {
     const mounted = mountApp(ChoyKanbanView as any, {
       props: {

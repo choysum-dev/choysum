@@ -14,11 +14,13 @@ import (
 	"time"
 
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
+	"github.com/choysum-dev/choysum/internal/module/origin/contract"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/oerrors"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	statepkg "github.com/choysum-dev/choysum/pkg/state"
 	"github.com/rs/xid"
+	"golang.org/x/mod/semver"
 	"gorm.io/gorm/clause"
 )
 
@@ -171,7 +173,7 @@ func SyncRegistryModuleSourceSnapshot(ctx context.Context, runtimeScope scope.Sc
 			SourceType:   "registry",
 			SourceRef:    originRef,
 			Available:    true,
-			Version:      nullString(module.LatestVersion),
+			Version:      nullString(resolveCatalogIndexLatestVersion(module)),
 			LastSyncAt:   &now,
 			ManifestJson: manifestJSON,
 		})
@@ -297,6 +299,54 @@ func resolveRegistryIndexURL(runtimeScope scope.Scope) string {
 		return url
 	}
 	return config.DefaultModuleCatalogIndexURL
+}
+
+// resolveCatalogIndexLatestVersion prefers latestVersion; when absent (common on
+// index.choysum.dev today), picks the newest semver key from versions.
+// Returned values use the internal v-prefixed form so registry snapshots match
+// local/installed Module.Version (contract.NormalizeVersion).
+func resolveCatalogIndexLatestVersion(module catalogIndexModule) string {
+	if v := strings.TrimSpace(module.LatestVersion); v != "" {
+		return normalizeCatalogIndexVersion(v)
+	}
+	bestNorm := ""
+	fallbackRaw := ""
+	for raw := range module.Versions {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			continue
+		}
+		if fallbackRaw == "" || raw > fallbackRaw {
+			fallbackRaw = raw
+		}
+		norm := normalizeCatalogIndexVersion(raw)
+		if !semver.IsValid(norm) {
+			continue
+		}
+		if bestNorm == "" || semver.Compare(norm, bestNorm) > 0 {
+			bestNorm = norm
+		}
+	}
+	if bestNorm != "" {
+		return bestNorm
+	}
+	return normalizeCatalogIndexVersion(fallbackRaw)
+}
+
+// normalizeCatalogIndexVersion maps npm/index versions (no leading v) onto the
+// internal v-prefixed SemVer used by local package.json parsing.
+func normalizeCatalogIndexVersion(version string) string {
+	version = strings.TrimSpace(version)
+	if version == "" {
+		return ""
+	}
+	if normalized, err := contract.NormalizeVersion(version); err == nil {
+		return normalized
+	}
+	if !strings.HasPrefix(version, "v") {
+		return "v" + version
+	}
+	return version
 }
 
 // fetchCatalogIndex performs an HTTP GET and decodes the static index.json payload.

@@ -72,19 +72,24 @@ SPDX-License-Identifier: Apache-2.0
 
       <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
       <ChoyVarcharField prop="ModuleName" :store="store" :vColumnProps="{ minWidth: 160 }" />
-      <ChoyVarcharField prop="Summary" :store="store" :vColumnProps="{ minWidth: 220 }" />
-      <ChoyVarcharField
-        prop="InstalledVersion"
-        :label="_t('Installed')"
+      <ChoyVarcharField prop="Application" :store="store" :vColumnProps="{ minWidth: 120 }" />
+      <ChoyVarcharField prop="Author" :store="store" :vColumnProps="{ minWidth: 120 }" />
+      <ChoyVarcharField prop="License" :store="store" :vColumnProps="{ minWidth: 110 }" />
+      <!-- Version fields stay registered for Browse/Search; UI shows one compressed line. -->
+      <ChoyVirtualField :store="store" prop="InstalledVersion" />
+      <ChoyVirtualField :store="store" prop="LocalVersion" />
+      <ChoyVirtualField :store="store" prop="RegistryVersion" />
+      <ChoyVirtualField :store="store" prop="UpdateAvailable" />
+      <ChoyTableColumn :label="_t('Version')" :vColumnProps="{ minWidth: 160 }">
+        <template #default="{ row }">
+          <span class="truncate" :title="versionLineFor(row)">{{ versionLineFor(row) }}</span>
+        </template>
+      </ChoyTableColumn>
+      <ChoyDatetimeField
+        prop="LastInstalledOrUpgradedAt"
+        :label="_t('Installed / Upgraded At')"
         :store="store"
-        :vColumnProps="{ minWidth: 110 }"
-      />
-      <ChoyVarcharField prop="LocalVersion" :label="_t('Local')" :store="store" :vColumnProps="{ minWidth: 110 }" />
-      <ChoyVarcharField
-        prop="RegistryVersion"
-        :label="_t('Registry')"
-        :store="store"
-        :vColumnProps="{ minWidth: 110 }"
+        :vColumnProps="{ minWidth: 160 }"
       />
       <ChoyVirtualField :store="store" prop="Installed" />
       <ChoyTableColumn prop="Installed" :label="_t('Status')" :vColumnProps="{ minWidth: 120 }">
@@ -94,7 +99,6 @@ SPDX-License-Identifier: Apache-2.0
           </ChoyBadge>
         </template>
       </ChoyTableColumn>
-      <ChoyBooleanField prop="UpdateAvailable" :store="store" :vColumnProps="{ minWidth: 110 }" />
       <ChoyTableColumn :label="_t('Action')" :vColumnProps="{ minWidth: 160 }">
         <template #default="{ row }">
           <div class="flex flex-wrap items-center gap-1">
@@ -157,10 +161,12 @@ import { useModuleCatalogViewModel } from '../composables/useModuleCatalogViewMo
 import { moduleLoadDemoAction, moduleSyncAction, moduleUninstallAction } from './module_catalog_actions';
 import ModuleCatalogOpDialog from './ModuleCatalogOpDialog.vue';
 import ModuleCatalogOpProgressStrip from './ModuleCatalogOpProgressStrip.vue';
+import { formatModuleCatalogVersionLine } from './module_catalog_chrome';
+import { unwrapListRecord } from '@/web/web/composables/listRowEdit';
 import {
   ChoyBadge,
-  ChoyBooleanField,
   ChoyButton,
+  ChoyDatetimeField,
   ChoyListView,
   ChoySearchView,
   ChoyTableColumn,
@@ -200,6 +206,13 @@ const viewSwitcherOptions = computed<ChoyViewSwitcherOption[]>(() => [
   { value: 'kanban', label: _t('Kanban View') },
   { value: 'list', label: _t('List View') },
 ]);
+
+function versionLineFor(row: unknown): string {
+  const rec = unwrapListRecord(row);
+  return formatModuleCatalogVersionLine(
+    rec && typeof rec === 'object' ? (rec as Record<string, unknown>) : {},
+  );
+}
 
 const {
   drawerOpen,

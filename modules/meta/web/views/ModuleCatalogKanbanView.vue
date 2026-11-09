@@ -13,7 +13,11 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyVirtualField :store="store" prop="Installed" />
       <ChoyVirtualField :store="store" prop="InstalledVersion" />
       <ChoyVirtualField :store="store" prop="LocalVersion" />
+      <ChoyVirtualField :store="store" prop="RegistryVersion" />
+      <ChoyVirtualField :store="store" prop="UpdateAvailable" />
       <ChoyVirtualField :store="store" prop="Application" />
+      <ChoyVirtualField :store="store" prop="License" />
+      <ChoyVirtualField :store="store" prop="Summary" />
     </div>
 
     <ChoyKanbanView
@@ -86,11 +90,15 @@ SPDX-License-Identifier: Apache-2.0
       </template>
 
       <template #card="{ card }">
+        <!--
+          Intrinsic height (no h-full / min-h-0): flat board scrolls the grid;
+          card body must not shrink-clip meta rows when the viewport is short.
+        -->
         <div
-          class="module-catalog-card flex h-full min-h-0 flex-1 flex-col gap-1.5 text-xs"
+          class="module-catalog-card flex flex-col gap-1.5 text-xs"
           data-testid="module-catalog-card"
         >
-          <div class="flex min-h-0 flex-1 flex-col gap-1.5">
+          <div class="flex flex-col gap-1.5">
             <div class="flex items-center justify-between gap-2">
               <span
                 class="truncate text-sm font-medium text-foreground"
@@ -115,10 +123,15 @@ SPDX-License-Identifier: Apache-2.0
             <div
               v-if="cardApplication(card)"
               class="truncate text-muted-foreground/80"
+              data-testid="module-catalog-card-application"
             >{{ cardApplication(card) }}</div>
+            <div
+              v-if="cardLicense(card)"
+              class="truncate text-muted-foreground/80"
+              data-testid="module-catalog-card-license"
+            >{{ cardLicense(card) }}</div>
           </div>
-          <!-- Pin actions to the card footer so missing Application/Summary does not shift them. -->
-          <div class="mt-auto flex flex-wrap items-center justify-start gap-1 pt-2">
+          <div class="flex flex-wrap items-center justify-start gap-1 pt-2">
             <ChoyButton
               v-if="primaryActionFor(cardPayload(card))"
               type="button"
@@ -184,6 +197,7 @@ import ModuleCatalogOpProgressStrip from './ModuleCatalogOpProgressStrip.vue';
 import {
   formatModuleCatalogVersionLine,
   moduleCatalogCardApplication,
+  moduleCatalogCardLicense,
   moduleCatalogCardSummary,
 } from './module_catalog_chrome';
 import {
@@ -351,6 +365,10 @@ function cardSummary(card: ChoyKanbanCard): string {
 
 function cardApplication(card: ChoyKanbanCard): string {
   return moduleCatalogCardApplication(cardPayload(card));
+}
+
+function cardLicense(card: ChoyKanbanCard): string {
+  return moduleCatalogCardLicense(cardPayload(card));
 }
 
 function cardVersionLine(card: ChoyKanbanCard): string {

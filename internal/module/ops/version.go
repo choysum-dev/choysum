@@ -23,6 +23,23 @@ func normalizeVersion(v string) string {
 	return v
 }
 
+// displayVersion returns the npm/package.json form (no leading "v") for catalog UI fields.
+// Internal Module / snapshot rows may still store the v-prefixed SemVer used by Go tooling.
+func displayVersion(v string) string {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return ""
+	}
+	if !strings.HasPrefix(v, "v") {
+		return v
+	}
+	rest := strings.TrimPrefix(v, "v")
+	if semver.IsValid(v) || semver.IsValid("v"+rest) {
+		return rest
+	}
+	return v
+}
+
 // compareVersion returns -1/0/1 like strings.Compare; prefers semver when both valid.
 func compareVersion(a, b string) int {
 	a = normalizeVersion(a)

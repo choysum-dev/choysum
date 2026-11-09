@@ -135,7 +135,7 @@ SPDX-License-Identifier: Apache-2.0
           <article
             v-for="card in lane.cards"
             :key="card.id"
-            class="choy-kanban-view__card flex h-full min-h-0 flex-col cursor-pointer rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring"
+            class="choy-kanban-view__card flex flex-col cursor-pointer rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring"
             :data-card-id="card.id"
             tabindex="0"
             role="listitem"

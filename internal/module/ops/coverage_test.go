@@ -87,6 +87,12 @@ func TestCoverage_GuardsAndHelpers(t *testing.T) {
 	if normalizeVersion("not-a-semver") != "not-a-semver" {
 		t.Fatal("normalizeVersion passthrough")
 	}
+	if displayVersion("v1.2.3") != "1.2.3" || displayVersion("1.2.3") != "1.2.3" {
+		t.Fatal("displayVersion should strip leading v for catalog UI")
+	}
+	if displayVersion("") != "" || displayVersion("not-a-semver") != "not-a-semver" {
+		t.Fatal("displayVersion empty/passthrough")
+	}
 	if compareVersion("zzz", "aaa") <= 0 {
 		t.Fatal("non-semver compare")
 	}

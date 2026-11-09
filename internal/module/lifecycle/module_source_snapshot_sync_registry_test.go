@@ -50,6 +50,69 @@ func TestFetchCatalogIndexUsesDefaultURLWhenEmpty(t *testing.T) {
 	}
 }
 
+func TestResolveCatalogIndexLatestVersion(t *testing.T) {
+	t.Parallel()
+	if got := resolveCatalogIndexLatestVersion(catalogIndexModule{LatestVersion: " 1.2.3 "}); got != "v1.2.3" {
+		t.Fatalf("explicit latestVersion = %q, want v1.2.3", got)
+	}
+	if got := resolveCatalogIndexLatestVersion(catalogIndexModule{
+		Versions: map[string]catalogIndexEntry{
+			"0.0.0-20260614200130": {},
+			"0.0.0-20260626031438": {},
+		},
+	}); got != "v0.0.0-20260626031438" {
+		t.Fatalf("versions fallback = %q, want newest prerelease key with v prefix", got)
+	}
+	if got := resolveCatalogIndexLatestVersion(catalogIndexModule{LatestVersion: "v2.0.0"}); got != "v2.0.0" {
+		t.Fatalf("already-prefixed latestVersion = %q, want v2.0.0", got)
+	}
+	if got := resolveCatalogIndexLatestVersion(catalogIndexModule{}); got != "" {
+		t.Fatalf("empty module = %q, want empty", got)
+	}
+}
+
+func TestSyncRegistryModuleSourceSnapshotFallsBackWhenLatestVersionMissing(t *testing.T) {
+	t.Parallel()
+	db := newModuleSourceSnapshotSyncDB(t)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
+
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		// Mirrors index.choysum.dev: versions map present, latestVersion omitted.
+		_, _ = io.WriteString(w, `{
+  "modules": {
+    "meta": {
+      "package": "@choysum-dev/meta",
+      "versions": {
+        "0.0.0-20260614200130": {"tarball": "https://registry.example.dev/meta-old.tgz"},
+        "0.0.0-20260626031438": {"tarball": "https://registry.example.dev/meta-new.tgz"}
+      }
+    }
+  }
+}`)
+	}))
+	defer testServer.Close()
+	runtimeScope.cfg.ModuleCatalogIndexURL = testServer.URL + "/v1/index.json"
+
+	stats, err := SyncRegistryModuleSourceSnapshot(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
+		return &moduleIndexSyncTestLocker{}
+	})
+	if err != nil {
+		t.Fatalf("SyncRegistryModuleSourceSnapshot() error = %v", err)
+	}
+	if stats.Total != 1 || stats.Success != 1 || stats.Failed != 0 {
+		t.Fatalf("unexpected stats = %#v", stats)
+	}
+
+	var row modmeta.ModuleSourceSnapshot
+	if err := db.Where("module_name = ? AND source_type = ?", "meta", "registry").Take(&row).Error; err != nil {
+		t.Fatalf("load meta row: %v", err)
+	}
+	if !row.Version.Valid || row.Version.String != "v0.0.0-20260626031438" {
+		t.Fatalf("registry version = %#v, want v0.0.0-20260626031438 from versions map", row.Version)
+	}
+}
+
 func TestSyncRegistryModuleSourceSnapshotUpsertsVersionAndReconcilesByOriginRef(t *testing.T) {
 	t.Parallel()
 	db := newModuleSourceSnapshotSyncDB(t)
@@ -103,8 +166,8 @@ func TestSyncRegistryModuleSourceSnapshotUpsertsVersionAndReconcilesByOriginRef(
 	if !current.Available {
 		t.Fatal("expected current auth row to be available")
 	}
-	if !current.Version.Valid || current.Version.String != "2.0.0" {
-		t.Fatalf("current version = %#v, want 2.0.0", current.Version)
+	if !current.Version.Valid || current.Version.String != "v2.0.0" {
+		t.Fatalf("current version = %#v, want v2.0.0", current.Version)
 	}
 
 	var legacy modmeta.ModuleSourceSnapshot

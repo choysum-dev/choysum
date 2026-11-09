@@ -69,6 +69,7 @@ test('ModuleCatalogFormView.vue mounts under choysumMount and runs script setup'
 test('ModuleCatalogFormView.vue resolves CTAs from Form Browse RecordRow payload shape', async () => {
   // beginDisplay writes `{ kind, key, payload }` into store.state.result.rows — not flat rows
   // and not always state.records[id]. CTAs must unwrap payload or the header stays empty.
+  // Installed must be present in the payload (Form registers it via ChoyVirtualField for Browse).
   const wrapper = mount(ModuleCatalogFormView as any, {
     props: {
       store: {
@@ -108,8 +109,7 @@ test('ModuleCatalogFormView.vue resolves CTAs from Form Browse RecordRow payload
   seedModuleActionPermissions();
   await flushPromises();
   expect((wrapper.vm as any).primaryAction).toBe('upgrade');
-  expect(String((wrapper.vm as any).statusLabel || '')).toContain('Installed');
-  expect(wrapper.find('[data-testid="module-catalog-form-status"]').exists()).toBe(true);
+  expect(wrapper.find('[data-testid="module-catalog-form-status"]').exists()).toBe(false);
   expect(wrapper.find('[data-testid="module-catalog-form-primary-upgrade"]').exists()).toBe(true);
   expect(wrapper.find('[data-testid="module-catalog-form-uninstall"]').exists()).toBe(true);
   wrapper.unmount();

@@ -6,9 +6,10 @@ export const CHOY_KANBAN_VIRTUAL_THRESHOLD = 40;
 
 /**
  * Default estimated card height (px), content only — not inter-card gap.
- * Gap is applied separately via TanStack Virtual `gap` (see CHOY_KANBAN_CARD_GAP).
+ * Sized for multi-line product cards (title + 2–3 meta rows); measureElement
+ * corrects after mount. Gap is separate via TanStack Virtual `gap`.
  */
-export const CHOY_KANBAN_DEFAULT_CARD_SIZE = 88;
+export const CHOY_KANBAN_DEFAULT_CARD_SIZE = 128;
 
 /** Inter-card gap for virtualized lanes; matches non-virtual `gap-2` (8px). */
 export const CHOY_KANBAN_CARD_GAP = 8;

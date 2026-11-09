@@ -11,6 +11,7 @@ import {
   catalogSyncSummaryPartial,
   isModuleInstalled,
   moduleCatalogCardApplication,
+  moduleCatalogCardLicense,
   moduleCatalogCardSummary,
   moduleStatusBadgeVariant,
   resolveModuleCatalogPrimaryAction,
@@ -36,6 +37,8 @@ test('moduleCatalogCardSummary / Application: hide noise', () => {
   expect(moduleCatalogCardSummary({ Summary: '  ' })).toBe('');
   expect(moduleCatalogCardApplication({ Application: '  ' })).toBe('');
   expect(moduleCatalogCardApplication({ Application: 'base' })).toBe('base');
+  expect(moduleCatalogCardLicense({ License: '  ' })).toBe('');
+  expect(moduleCatalogCardLicense({ License: 'Apache-2.0' })).toBe('Apache-2.0');
 });
 
 test('isModuleInstalled / catalogInstalledStatus', () => {

@@ -30,6 +30,30 @@ type catalogAggregate struct {
 	installed *pkgmeta.Module
 }
 
+// catalogLifecycleTimes holds the latest install/upgrade FinishedAt for Overview.
+type catalogLifecycleTimes struct {
+	installedAt    *time.Time
+	lastUpgradedAt *time.Time
+}
+
+func (t catalogLifecycleTimes) lastInstalledOrUpgradedAt(fallback *time.Time) *time.Time {
+	var best *time.Time
+	pick := func(candidate *time.Time) {
+		if candidate == nil {
+			return
+		}
+		if best == nil || candidate.After(*best) {
+			best = candidate
+		}
+	}
+	pick(t.installedAt)
+	pick(t.lastUpgradedAt)
+	if best != nil {
+		return best
+	}
+	return fallback
+}
+
 // SyncSourceSnapshotsThenMaterialize syncs source snapshots then rewrites catalog rows.
 // originType: local | registry | all (empty => all).
 // Origin sync errors are returned even when materialize succeeds so callers can
@@ -205,6 +229,11 @@ func (o *Ops) MaterializeCatalog(ctx context.Context, moduleNames []string) erro
 		ensure(name).installed = &installed[i]
 	}
 
+	lifecycleTimes, err := loadCatalogLifecycleTimes(sess.WithContext(ctx), names, filtered)
+	if err != nil {
+		return err
+	}
+
 	existingDemo := map[string]catalogDemoState{}
 	{
 		var prior []modmeta.ModuleCatalog
@@ -227,7 +256,7 @@ func (o *Ops) MaterializeCatalog(ctx context.Context, moduleNames []string) erro
 	now := time.Now().UTC()
 	rows := make([]modmeta.ModuleCatalog, 0, len(byName))
 	for name, a := range byName {
-		rows = append(rows, materializeOne(name, a, now, existingDemo[name]))
+		rows = append(rows, materializeOne(name, a, now, existingDemo[name], lifecycleTimes[name]))
 	}
 	if len(rows) == 0 {
 		return nil
@@ -264,8 +293,9 @@ func catalogMaterializeDoUpdates(dialect string) clause.Set {
 	beforeInstalledVersion := []string{
 		"summary", "description", "category", "application", "author", "license",
 		"local_version", "registry_version", "installed",
+		"last_installed_or_upgraded_at",
 		"update_available", "registry_newer_than_local", "available", "unavailable_reason",
-		"local_path", "depends_json", "has_demo", "last_sync_at", "updated_at",
+		"local_path", "registry_path", "registry_tarball", "depends_json", "has_demo", "last_sync_at", "updated_at",
 	}
 	updates := clause.AssignmentColumns(beforeInstalledVersion)
 	updates = append(updates, clause.Assignment{
@@ -301,7 +331,7 @@ func catalogDemoLoadedUpsertExpr(dialect string) string {
 	END`
 }
 
-func materializeOne(name string, a *catalogAggregate, now time.Time, prior catalogDemoState) modmeta.ModuleCatalog {
+func materializeOne(name string, a *catalogAggregate, now time.Time, prior catalogDemoState, life catalogLifecycleTimes) modmeta.ModuleCatalog {
 	row := modmeta.ModuleCatalog{
 		ModuleName: name,
 		Available:  true,
@@ -311,7 +341,7 @@ func materializeOne(name string, a *catalogAggregate, now time.Time, prior catal
 		if a.local.Version.Valid {
 			localV = strings.TrimSpace(a.local.Version.String)
 		}
-		row.LocalVersion = a.local.Version
+		row.LocalVersion = nullString(displayVersion(localV))
 		row.LocalPath = a.local.LocalPath
 		if a.local.LastSyncAt != nil {
 			row.LastSyncAt = a.local.LastSyncAt
@@ -326,7 +356,10 @@ func materializeOne(name string, a *catalogAggregate, now time.Time, prior catal
 		if a.registry.Version.Valid {
 			registryV = strings.TrimSpace(a.registry.Version.String)
 		}
-		row.RegistryVersion = a.registry.Version
+		row.RegistryVersion = nullString(displayVersion(registryV))
+		pkg, tarball := registryOriginFromSnapshot(a.registry)
+		row.RegistryPath = nullString(pkg)
+		row.RegistryTarball = nullString(tarball)
 		if row.LastSyncAt == nil && a.registry.LastSyncAt != nil {
 			row.LastSyncAt = a.registry.LastSyncAt
 		}
@@ -342,7 +375,13 @@ func materializeOne(name string, a *catalogAggregate, now time.Time, prior catal
 	if a.installed != nil {
 		row.Installed = true
 		installedV = strings.TrimSpace(a.installed.Version)
-		row.InstalledVersion = nullString(installedV)
+		row.InstalledVersion = nullString(displayVersion(installedV))
+		var createdAt *time.Time
+		if !a.installed.CreatedAt.IsZero() {
+			t := a.installed.CreatedAt.UTC()
+			createdAt = &t
+		}
+		row.LastInstalledOrUpgradedAt = life.lastInstalledOrUpgradedAt(createdAt)
 		if row.Summary == "" {
 			row.Summary = a.installed.Summary
 		}
@@ -387,6 +426,46 @@ func materializeOne(name string, a *catalogAggregate, now time.Time, prior catal
 		row.DemoLoaded = prior.DemoLoaded
 	}
 	return row
+}
+
+// loadCatalogLifecycleTimes reads the latest succeeded install/upgrade FinishedAt
+// per module for catalog Overview timestamps.
+func loadCatalogLifecycleTimes(db *gorm.DB, names []string, filtered bool) (map[string]catalogLifecycleTimes, error) {
+	out := map[string]catalogLifecycleTimes{}
+	if db == nil {
+		return out, nil
+	}
+	var rows []modmeta.ModuleOperation
+	q := db.Model(&modmeta.ModuleOperation{}).
+		Select("module_name", "action", "finished_at").
+		Where("status = ? AND action IN ? AND finished_at IS NOT NULL", StatusSucceeded, []string{ActionInstall, ActionUpgrade})
+	if filtered && len(names) > 0 {
+		q = q.Where("module_name IN ?", names)
+	}
+	if err := q.Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	for i := range rows {
+		row := rows[i]
+		name := strings.TrimSpace(row.ModuleName)
+		if name == "" || row.FinishedAt == nil || row.FinishedAt.IsZero() {
+			continue
+		}
+		t := row.FinishedAt.UTC()
+		cur := out[name]
+		switch row.Action {
+		case ActionInstall:
+			if cur.installedAt == nil || t.After(*cur.installedAt) {
+				cur.installedAt = &t
+			}
+		case ActionUpgrade:
+			if cur.lastUpgradedAt == nil || t.After(*cur.lastUpgradedAt) {
+				cur.lastUpgradedAt = &t
+			}
+		}
+		out[name] = cur
+	}
+	return out, nil
 }
 
 func decodeDependsNames(raw datatypes.JSON) []string {
@@ -539,6 +618,54 @@ type manifestLiteFields struct {
 type manifestLite struct {
 	manifestLiteFields
 	Choysum *manifestLiteFields `json:"choysum"`
+}
+
+// registryOriginFromSnapshot reads index.choysum.dev package id + latest tarball
+// from a registry ModuleSourceSnapshot (SourceRef and/or ManifestJson).
+func registryOriginFromSnapshot(snap *modmeta.ModuleSourceSnapshot) (packageID, tarball string) {
+	if snap == nil {
+		return "", ""
+	}
+	packageID = strings.TrimSpace(snap.SourceRef)
+	versionKey := ""
+	if snap.Version.Valid {
+		versionKey = displayVersion(strings.TrimSpace(snap.Version.String))
+	}
+	if len(snap.ManifestJson) == 0 {
+		return packageID, ""
+	}
+	var doc struct {
+		Package  string `json:"package"`
+		Versions map[string]struct {
+			Package string `json:"package"`
+			Tarball string `json:"tarball"`
+		} `json:"versions"`
+	}
+	if err := json.Unmarshal(snap.ManifestJson, &doc); err != nil {
+		return packageID, ""
+	}
+	if packageID == "" {
+		packageID = strings.TrimSpace(doc.Package)
+	}
+	if versionKey != "" {
+		if entry, ok := doc.Versions[versionKey]; ok {
+			if packageID == "" {
+				packageID = strings.TrimSpace(entry.Package)
+			}
+			return packageID, strings.TrimSpace(entry.Tarball)
+		}
+		// Snapshot Version may still carry a leading v; try the raw key too.
+		if snap.Version.Valid {
+			raw := strings.TrimSpace(snap.Version.String)
+			if entry, ok := doc.Versions[raw]; ok {
+				if packageID == "" {
+					packageID = strings.TrimSpace(entry.Package)
+				}
+				return packageID, strings.TrimSpace(entry.Tarball)
+			}
+		}
+	}
+	return packageID, ""
 }
 
 func fillCatalogFromManifest(row *modmeta.ModuleCatalog, raw datatypes.JSON) {
