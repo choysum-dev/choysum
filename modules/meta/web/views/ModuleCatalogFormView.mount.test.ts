@@ -108,6 +108,8 @@ test('ModuleCatalogFormView.vue resolves CTAs from Form Browse RecordRow payload
   seedModuleActionPermissions();
   await flushPromises();
   expect((wrapper.vm as any).primaryAction).toBe('upgrade');
+  expect(String((wrapper.vm as any).statusLabel || '')).toContain('Installed');
+  expect(wrapper.find('[data-testid="module-catalog-form-status"]').exists()).toBe(true);
   expect(wrapper.find('[data-testid="module-catalog-form-primary-upgrade"]').exists()).toBe(true);
   expect(wrapper.find('[data-testid="module-catalog-form-uninstall"]').exists()).toBe(true);
   wrapper.unmount();

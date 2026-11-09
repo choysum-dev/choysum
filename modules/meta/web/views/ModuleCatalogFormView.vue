@@ -10,11 +10,18 @@ SPDX-License-Identifier: Apache-2.0
       v-bind="{ store, recordId, viewMode: 'display' as const, showHeader }"
     >
       <!--
-        Same left tray as Sandbox Edit/Copy/Delete: FormView #secondary-actions sits
-        after the title/⋮ cluster (List/Kanban parity). Do not use #button-box /
-        #header-right — that parks CTAs in the far-right column.
+        Same left tray as Sandbox Edit/Copy/Delete: status Badge then Install/Upgrade/Uninstall
+        after the title/⋮ cluster (List/Kanban secondary-actions parity).
       -->
       <template #secondary-actions>
+        <ChoyBadge
+          v-if="hasMatchedRow"
+          :variant="statusBadgeVariant"
+          class="font-normal"
+          data-testid="module-catalog-form-status"
+        >
+          {{ statusLabel }}
+        </ChoyBadge>
         <ChoyButton
           v-if="primaryAction"
           type="button"
@@ -41,99 +48,83 @@ SPDX-License-Identifier: Apache-2.0
         <ChoySection :title="_t('Overview')" divided class="mt-0">
           <ChoyGrid :cols="12" class="gap-x-6 gap-y-3">
             <ChoyCol :span="4">
-              <ChoyVarcharField :store="store" prop="ModuleName" />
+              <ChoyVarcharField :store="store" prop="ModuleName" orientation="vertical" />
             </ChoyCol>
             <ChoyCol :span="4">
-              <ChoyVarcharField :store="store" prop="Application" />
+              <ChoyVarcharField :store="store" prop="Application" orientation="vertical" />
             </ChoyCol>
             <ChoyCol :span="4">
-              <ChoyVarcharField :store="store" prop="Category" />
+              <ChoyVarcharField :store="store" prop="Category" orientation="vertical" />
             </ChoyCol>
-            <ChoyCol :span="12">
+            <ChoyCol v-if="showSummary" :span="12">
               <ChoyTextField :store="store" prop="Summary" orientation="vertical" />
             </ChoyCol>
             <ChoyCol :span="4">
-              <ChoyVarcharField :store="store" prop="Author" />
+              <ChoyVarcharField :store="store" prop="Author" orientation="vertical" />
             </ChoyCol>
             <ChoyCol :span="8">
-              <ChoyTextField :store="store" prop="License" />
+              <ChoyTextField :store="store" prop="License" orientation="vertical" />
             </ChoyCol>
           </ChoyGrid>
         </ChoySection>
 
         <ChoySection :title="_t('Dependencies')" divided>
-          <div class="flex flex-col gap-4">
-            <ChoyManyToManyKanbanField
-              :store="store"
-              prop="Depends"
-              orientation="vertical"
-              :readonly="true"
-              :editable="false"
-              :removable="false"
-              :show-toolbar-add="false"
-              card-title-field="ModuleName"
-              card-subtitle-field="Summary"
-              :preview-in-display="false"
-              @card-click="onDependCardClick"
-            />
-            <ChoyManyToManyKanbanField
-              :store="store"
-              prop="Dependents"
-              orientation="vertical"
-              :readonly="true"
-              :editable="false"
-              :removable="false"
-              :show-toolbar-add="false"
-              card-title-field="ModuleName"
-              card-subtitle-field="Summary"
-              :preview-in-display="false"
-              @card-click="onDependCardClick"
-            />
-          </div>
+          <ChoyGrid :cols="12" class="gap-x-6 gap-y-4">
+            <ChoyCol :span="12">
+              <ChoyManyToManyTagsField
+                :store="store"
+                prop="Depends"
+                orientation="vertical"
+                :readonly="true"
+                :tag-closable="false"
+                :tag-label-field="['ModuleName', 'Name', 'Id']"
+                @tag-click="onDependTagClick"
+              />
+            </ChoyCol>
+            <ChoyCol :span="12">
+              <ChoyManyToManyTagsField
+                :store="store"
+                prop="Dependents"
+                orientation="vertical"
+                :readonly="true"
+                :tag-closable="false"
+                :tag-label-field="['ModuleName', 'Name', 'Id']"
+                @tag-click="onDependTagClick"
+              />
+            </ChoyCol>
+          </ChoyGrid>
         </ChoySection>
 
         <ChoySection :title="_t('Versions & Source')" divided>
           <ChoyGrid :cols="12" class="gap-x-6 gap-y-3">
             <ChoyCol :span="4">
-              <ChoyVarcharField :store="store" prop="InstalledVersion" />
+              <ChoyVarcharField :store="store" prop="InstalledVersion" orientation="vertical" />
             </ChoyCol>
             <ChoyCol :span="4">
-              <ChoyVarcharField :store="store" prop="LocalVersion" />
+              <ChoyVarcharField :store="store" prop="LocalVersion" orientation="vertical" />
             </ChoyCol>
             <ChoyCol :span="4">
-              <ChoyVarcharField :store="store" prop="RegistryVersion" />
+              <ChoyVarcharField :store="store" prop="RegistryVersion" orientation="vertical" />
             </ChoyCol>
             <ChoyCol :span="12">
               <ChoyVarcharField :store="store" prop="LocalPath" orientation="vertical" />
-            </ChoyCol>
-            <ChoyCol :span="3">
-              <ChoyBooleanField :store="store" prop="Installed" />
-            </ChoyCol>
-            <ChoyCol :span="3">
-              <ChoyBooleanField :store="store" prop="Available" />
-            </ChoyCol>
-            <ChoyCol v-if="showUpdateAvailable" :span="3">
-              <ChoyBooleanField :store="store" prop="UpdateAvailable" />
             </ChoyCol>
             <ChoyCol v-if="showUnavailableReason" :span="12">
               <ChoyTextField :store="store" prop="UnavailableReason" orientation="vertical" />
             </ChoyCol>
           </ChoyGrid>
-        </ChoySection>
-
-        <ChoySection :title="_t('Sync')" divided>
-          <ChoyGrid :cols="12" class="gap-x-6 gap-y-3">
+          <ChoyGrid :cols="12" class="mt-3 gap-x-6 gap-y-3">
             <ChoyCol :span="4">
-              <ChoyDatetimeField :store="store" prop="LastSyncAt" />
+              <ChoyDatetimeField :store="store" prop="LastSyncAt" orientation="vertical" />
             </ChoyCol>
             <ChoyCol v-if="showActiveOperation" :span="4">
-              <ChoyVarcharField :store="store" prop="ActiveOperationId" />
+              <ChoyVarcharField :store="store" prop="ActiveOperationId" orientation="vertical" />
             </ChoyCol>
             <ChoyCol :span="2">
-              <ChoyBooleanField :store="store" prop="HasDemo" />
+              <ChoyBooleanField :store="store" prop="HasDemo" orientation="vertical" />
             </ChoyCol>
             <ChoyCol :span="2">
-              <ChoyBooleanField :store="store" prop="DemoLoaded" />
+              <ChoyBooleanField :store="store" prop="DemoLoaded" orientation="vertical" />
             </ChoyCol>
           </ChoyGrid>
         </ChoySection>
@@ -169,18 +160,24 @@ import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { useModuleCatalogOpProgress } from '../composables/useModuleCatalogOpProgress';
-import { resolveModuleCatalogFormPrimaryAction } from './module_catalog_chrome';
+import {
+  catalogInstalledStatus,
+  moduleCatalogCardSummary,
+  moduleStatusBadgeVariant,
+  resolveModuleCatalogFormPrimaryAction,
+} from './module_catalog_chrome';
 import { moduleUninstallAction } from './module_catalog_actions';
 import ModuleCatalogOpDialog from './ModuleCatalogOpDialog.vue';
 import ModuleCatalogOpProgressStrip from './ModuleCatalogOpProgressStrip.vue';
 import {
+  ChoyBadge,
   ChoyBooleanField,
   ChoyButton,
   ChoyCol,
   ChoyDatetimeField,
   ChoyFormView,
   ChoyGrid,
-  ChoyManyToManyKanbanField,
+  ChoyManyToManyTagsField,
   ChoySection,
   ChoyTextField,
   ChoyVarcharField,
@@ -244,6 +241,30 @@ const hasMatchedRow = computed(() => {
   const rec = currentRow.value;
   return !!(String(rec.ModuleName || '').trim() || String(rec.Id || '').trim());
 });
+
+/** Composite status chip — same tokens as List/Kanban, plus in-progress when an op is active. */
+const statusBadgeVariant = computed(() => {
+  const rec = currentRow.value;
+  if (String(rec.ActiveOperationId || '').trim()) return 'secondary' as const;
+  return moduleStatusBadgeVariant(
+    catalogInstalledStatus(rec),
+    rec.Available as boolean | undefined,
+    rec.UpdateAvailable === true,
+  );
+});
+const statusLabel = computed(() => {
+  const rec = currentRow.value;
+  if (String(rec.ActiveOperationId || '').trim()) return _t('In progress');
+  if (rec.Available === false) return _t('Unavailable');
+  const val = catalogInstalledStatus(rec).toLowerCase();
+  if (val === 'installed') {
+    if (rec.UpdateAvailable === true) return _t('Update available');
+    return _t('Installed');
+  }
+  if (val === 'uninstalled') return _t('Not Installed');
+  return catalogInstalledStatus(rec) || _t('Unknown');
+});
+
 const primaryAction = computed(() => {
   if (!hasMatchedRow.value) return null;
   // Match List/Kanban: row state decides Install/Upgrade/Progress visibility.
@@ -270,8 +291,8 @@ const canUninstallRow = computed(() => {
   if (String(rec.ActiveOperationId || '').trim()) return false;
   return rec.Installed === true && rec.Available !== false;
 });
-/** Hide empty / negative noise so the read-only sheet stays dense. */
-const showUpdateAvailable = computed(() => currentRow.value.UpdateAvailable === true);
+
+const showSummary = computed(() => !!moduleCatalogCardSummary(currentRow.value));
 const showUnavailableReason = computed(() => {
   const rec = currentRow.value;
   return rec.Available === false && !!String(rec.UnavailableReason || '').trim();
@@ -348,7 +369,7 @@ function onUninstallClick() {
   drawerOpen.value = true;
 }
 
-function onDependCardClick(payload: { item?: Record<string, unknown> }) {
+function onDependTagClick(payload: { item?: Record<string, unknown> }) {
   const name = String(payload?.item?.ModuleName || '').trim();
   if (!name) return;
   void router.push(`/meta/modules/${encodeURIComponent(name)}`);
@@ -381,6 +402,8 @@ defineExpose({
   primaryAction,
   primaryActionLabel,
   primaryButtonVariant,
+  statusLabel,
+  statusBadgeVariant,
   progressBusy,
   progressTitle,
   progressHeadline,

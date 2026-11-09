@@ -639,7 +639,7 @@ msgstr "Web 入口"
 #: service/models/module_catalog.ts:103
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Active Operation"
-msgstr ""
+msgstr "进行中操作"
 
 #: service/models/module_catalog.ts:52
 msgctxt "meta.model.MetaModuleCatalog.fields"
@@ -664,7 +664,7 @@ msgstr "类别"
 #: service/models/module_catalog.ts:97
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Demo Loaded"
-msgstr ""
+msgstr "已加载演示"
 
 #: service/models/module_catalog.ts:91
 msgctxt "meta.model.MetaModuleCatalog.fields"
@@ -704,7 +704,7 @@ msgstr "描述"
 #: service/models/module_catalog.ts:94
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Has Demo"
-msgstr ""
+msgstr "含演示数据"
 
 #: service/models/module_catalog.ts:67
 msgctxt "meta.model.MetaModuleCatalog.fields"
@@ -719,7 +719,7 @@ msgstr "已装版本"
 #: service/models/module_catalog.ts:100
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Last Sync At"
-msgstr ""
+msgstr "最近同步"
 
 #: service/models/module_catalog.ts:58
 msgctxt "meta.model.MetaModuleCatalog.fields"
@@ -1451,6 +1451,18 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "Getting ready…"
 msgstr "马上开始，请稍候…"
 
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "In progress"
+msgstr "进行中"
+
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Installed"
+msgstr "已安装"
+
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Not Installed"
+msgstr "未安装"
+
 #: web/views/ModuleCatalogFormView.vue:82
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Install"
@@ -1513,8 +1525,20 @@ msgstr "同步"
 
 #: web/views/ModuleCatalogFormView.vue:12
 msgctxt "web/views/ModuleCatalogFormView"
+msgid "Unavailable"
+msgstr "不可用"
+
+msgctxt "web/views/ModuleCatalogFormView"
 msgid "Uninstall"
 msgstr "卸载"
+
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Unknown"
+msgstr "未知"
+
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Update available"
+msgstr "有可用更新"
 
 #: web/views/ModuleCatalogFormView.vue:152
 msgctxt "web/views/ModuleCatalogFormView"
@@ -1549,7 +1573,7 @@ msgstr "版本与来源"
 #: web/views/ModuleCatalogFormView.vue:84
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "View Progress"
-msgstr ""
+msgstr "查看进度"
 
 #: web/views/ModuleCatalogFormView.vue:154 web/views/ModuleCatalogFormView.vue:155
 msgctxt "web/views/ModuleCatalogFormView"
