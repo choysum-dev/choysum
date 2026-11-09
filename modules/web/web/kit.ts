@@ -15,6 +15,7 @@ export { default as ChoyConfirmHost } from './components/layout/ChoyConfirmHost.
 export { default as ChoySkeleton } from './components/layout/ChoySkeleton.vue';
 export { default as ChoyEmpty } from './components/layout/ChoyEmpty.vue';
 export { default as ChoySpinner } from './components/layout/ChoySpinner.vue';
+export { default as ChoyProgress } from './components/layout/ChoyProgress.vue';
 export { default as ChoyBadge } from './components/layout/ChoyBadge.vue';
 export { default as ChoyCard } from './components/layout/ChoyCard.vue';
 export { default as ChoySection } from './components/layout/ChoySection.vue';

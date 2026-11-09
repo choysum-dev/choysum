@@ -110,11 +110,42 @@ test('ModuleCatalogFormView.vue primary and uninstall actions open the drawer fo
   expect((denied.vm as any).primaryAction).toBe(null);
   denied.unmount();
 
-  const progress = mountShow({
-    ModuleName: 'core',
-    Installed: true,
-    Available: true,
-    ActiveOperationId: 'op-live',
+  let resolveBrowse: ((row: any) => void) | undefined;
+  const progress = mount(ModuleCatalogFormView as any, {
+    props: {
+      store: {
+        $id: 'fe-stub-module-catalog-form-progress',
+        state: {
+          records: {
+            'cat-1': {
+              Id: 'cat-1',
+              ModuleName: 'core',
+              Installed: true,
+              Available: true,
+              ActiveOperationId: 'op-live',
+            },
+          },
+          result: { rows: [] },
+        },
+        Browse: async () => ({}),
+      },
+      recordId: 'cat-1',
+      showHeader: true,
+      operationStore: {
+        Browse: () =>
+          new Promise(resolve => {
+            resolveBrowse = (row: any) => resolve(row);
+          }),
+      },
+    },
+    global: buildPageMountGlobal({
+      route: {
+        path: '/meta/modules/core',
+        fullPath: '/meta/modules/core',
+        name: 'MetaModuleShow',
+        params: { name: 'core' },
+      },
+    }),
   });
   seedModuleActionPermissions([]);
   await flushPromises();
@@ -122,8 +153,9 @@ test('ModuleCatalogFormView.vue primary and uninstall actions open the drawer fo
   expect(progressVm.primaryAction).toBe('progress');
   expect(String(progressVm.primaryActionLabel || '')).toContain('Progress');
   progressVm.onPrimaryClick();
-  expect(progressVm.drawerAction).toBe('progress');
-  expect(progressVm.drawerOperationId).toBe('op-live');
+  expect(!!progressVm.progressBusy).toBe(true);
+  expect(progressVm.drawerOpen).toBe(false);
+  resolveBrowse?.({ Status: 'succeeded', Phase: 'done' });
   progress.unmount();
 
   const forceUpgrade = mountShow({

@@ -9,7 +9,16 @@ import { DialogClose, DialogContent, DialogPortal } from 'reka-ui';
 import { cn, type ClassValue } from '../../../../lib/utils';
 import DialogOverlay from './DialogOverlay.vue';
 
-defineProps<{ class?: ClassValue }>();
+withDefaults(
+  defineProps<{
+    class?: ClassValue;
+    /** When false, omit the corner close control (product may still lock Esc/outside). */
+    showCloseButton?: boolean;
+  }>(),
+  { showCloseButton: true },
+);
+
+defineOptions({ inheritAttrs: false });
 </script>
 
 <template>
@@ -17,6 +26,7 @@ defineProps<{ class?: ClassValue }>();
     <DialogOverlay />
     <DialogContent
       data-slot="dialog-content"
+      v-bind="$attrs"
       :class="
         cn(
           'bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg border border-border p-6 text-foreground shadow-lg duration-200',
@@ -27,6 +37,7 @@ defineProps<{ class?: ClassValue }>();
     >
       <slot />
       <DialogClose
+        v-if="showCloseButton"
         class="absolute end-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label="Close"
       >

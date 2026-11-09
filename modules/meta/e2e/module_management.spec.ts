@@ -71,6 +71,14 @@ function parseTerminalStatus(value: string): Exclude<OperationTerminalStatus, 'r
   return '';
 }
 
+/** Map result-step Result chip (SUCCEEDED/FAILED) to terminal status. */
+function parseTerminalResult(value: string): Exclude<OperationTerminalStatus, 'reloaded'> | '' {
+  const normalized = value.trim().toUpperCase();
+  if (normalized === 'SUCCEEDED') return 'succeeded';
+  if (normalized === 'FAILED') return 'failed';
+  return '';
+}
+
 /**
  * Escapes a string so it can be used as a literal fragment in RegExp patterns.
  */
@@ -364,28 +372,44 @@ async function pageNavEpoch(page: Page): Promise<string> {
  */
 async function waitForOperationTerminalState(page: Page, timeout = 3 * 60 * 1000): Promise<OperationTerminalStatus> {
   const dialog = page.locator('.module-op-dialog');
+  const strip = page.locator('[data-testid="module-op-progress-strip"]');
+  const resultTag = dialog.locator('[data-testid="module-op-result"]');
   const statusTag = dialog.locator('[data-testid="module-op-status"]');
   const startURL = String(await page.url());
   const startEpoch = await pageNavEpoch(page);
+  let sawStrip = false;
 
   const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
+    const resultText = ((await resultTag.textContent().catch(() => '')) || '').trim();
+    const fromResult = parseTerminalResult(resultText);
+    if (fromResult) {
+      return fromResult;
+    }
+    // Apply-failure result stays in the confirm dialog.
     const statusText = ((await statusTag.textContent().catch(() => '')) || '').trim();
-    const terminal = parseTerminalStatus(statusText);
-    if (terminal) {
-      return terminal;
+    const fromStatus = parseTerminalStatus(statusText);
+    if (fromStatus) {
+      return fromStatus;
+    }
+
+    const stripVisible = await strip.isVisible().catch(() => false);
+    if (stripVisible) {
+      sawStrip = true;
+    } else if (sawStrip) {
+      // Strip clears after tip/poll terminal; toast distinguishes success vs failure.
+      const failedToast = await page.getByText(/Operation Failed/i).isVisible().catch(() => false);
+      if (failedToast) return 'failed';
+      return 'succeeded';
     }
 
     const href = String(await page.url());
     if (href !== startURL && href.includes('/web/meta/modules')) {
-      // Hard navigation/reload replaced the operation dialog.
       return 'reloaded';
     }
 
     const dialogVisible = await dialog.isVisible().catch(() => false);
     if (!dialogVisible && href.includes('/web/meta/modules')) {
-      // Hidden dialog alone is not evidence of a hard navigation/reload.
-      // Same-URL hard reload still changes performance.timeOrigin.
       const epoch = await pageNavEpoch(page);
       if (href !== startURL || (startEpoch !== '' && epoch !== '' && epoch !== startEpoch)) {
         return 'reloaded';
@@ -396,8 +420,13 @@ async function waitForOperationTerminalState(page: Page, timeout = 3 * 60 * 1000
   }
 
   const dialogVisible = await dialog.isVisible().catch(() => false);
+  const stripVisible = await strip.isVisible().catch(() => false);
   throw new Error(
-    dialogVisible ? 'operation did not reach a terminal status before timeout' : 'operation dialog disappeared before terminal status became observable'
+    stripVisible
+      ? 'operation progress strip did not finish before timeout'
+      : dialogVisible
+        ? 'operation did not reach a terminal status before timeout'
+        : 'operation UI disappeared before terminal status became observable',
   );
 }
 
@@ -452,7 +481,7 @@ async function waitForOperationFailure(page: Page) {
         `expected failed operation status, got status=${statusText || '<empty>'}, result=${resultText || '<empty>'}`,
       );
     }
-    // Apply-time failures (e.g. lock conflict) may only surface the drawer alert.
+    // Apply-time failures (e.g. lock conflict) may only surface the dialog alert.
     const alert = dialog.locator('[data-testid="module-op-alert"]');
     const alertText = ((await alert.textContent().catch(() => '')) || '').trim();
     if (!/fail|error|conflict|lease/i.test(alertText)) {

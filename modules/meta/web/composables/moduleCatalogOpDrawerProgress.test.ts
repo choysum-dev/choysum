@@ -3,20 +3,31 @@
 
 import {
   createModuleCatalogOpDrawerProgressHooks,
+  formatModuleOpProgressHeadline,
+  formatModuleOpProgressValue,
   mapOperationRowToSnapshot,
 } from './moduleCatalogOpDrawerProgress';
 
-test('mapOperationRowToSnapshot: maps status, errors, and reload flags', () => {
+const headlineMsgs = {
+  reloadingService: () => 'Almost done, refreshing…',
+  executing: () => 'Working on it, please wait…',
+  queued: () => 'Getting ready…',
+  finishing: () => 'Wrapping up…',
+  inProgress: () => 'Please wait…',
+};
+
+test('mapOperationRowToSnapshot: maps status, phase, errors, and reload flags', () => {
   expect(
     mapOperationRowToSnapshot({
       Status: 'Succeeded',
       ReloadTriggered: true,
       ReloadFailed: false,
-      Phase: 'reload',
+      Phase: 'reloading',
     }),
   ).toEqual({
     status: 'succeeded',
-    summary: { message: 'reload' },
+    phase: 'reloading',
+    summary: undefined,
     resultStatus: 'SUCCEEDED',
     partialFailure: false,
     ReloadTriggered: true,
@@ -29,6 +40,7 @@ test('mapOperationRowToSnapshot: maps status, errors, and reload flags', () => {
   expect(
     mapOperationRowToSnapshot({
       Status: 'failed',
+      Phase: 'done',
       ErrorDomain: 'OPS',
       ErrorCode: 'E1',
       ErrorMessage: 'boom',
@@ -37,12 +49,55 @@ test('mapOperationRowToSnapshot: maps status, errors, and reload flags', () => {
     }),
   ).toMatchObject({
     status: 'failed',
+    phase: 'done',
     resultStatus: 'FAILED',
     summary: 'boom',
     ReloadWeb: false,
     errorDomain: 'OPS',
     errorCode: 'E1',
   });
+
+  expect(
+    mapOperationRowToSnapshot({
+      Status: 'queued',
+      Phase: 'queued',
+    }),
+  ).toMatchObject({
+    status: 'queued',
+    phase: 'queued',
+    summary: undefined,
+  });
+});
+
+test('formatModuleOpProgressValue: maps phase stages', () => {
+  expect(formatModuleOpProgressValue({ status: 'queued', phase: 'queued' })).toBe(18);
+  expect(formatModuleOpProgressValue({ status: 'running', phase: 'executing' })).toBe(55);
+  expect(formatModuleOpProgressValue({ status: 'running', phase: 'reloading' })).toBe(82);
+  expect(formatModuleOpProgressValue({ status: 'succeeded', phase: 'done' })).toBe(100);
+});
+
+test('formatModuleOpProgressHeadline: prefers phase then status', () => {
+  expect(formatModuleOpProgressHeadline(null, 'partner', headlineMsgs)).toBe('Getting ready…');
+  expect(
+    formatModuleOpProgressHeadline({ status: 'queued', phase: 'queued' }, 'partner', headlineMsgs),
+  ).toBe('Getting ready…');
+  expect(
+    formatModuleOpProgressHeadline(
+      { status: 'running', phase: 'executing' },
+      'partner',
+      headlineMsgs,
+    ),
+  ).toBe('Working on it, please wait…');
+  expect(
+    formatModuleOpProgressHeadline(
+      { status: 'running', phase: 'reloading', ReloadTriggered: true },
+      'partner',
+      headlineMsgs,
+    ),
+  ).toBe('Almost done, refreshing…');
+  expect(
+    formatModuleOpProgressHeadline({ status: 'succeeded', phase: 'done' }, 'partner', headlineMsgs),
+  ).toBe('Wrapping up…');
 });
 
 test('mapOperationRowToSnapshot: sync PlanJson fills summary and partialFailure', () => {

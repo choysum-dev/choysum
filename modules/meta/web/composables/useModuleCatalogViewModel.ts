@@ -6,7 +6,9 @@ import type { Router, RouteLocationNormalizedLoaded } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { unwrapListRecord } from '@/web/web/composables/listRowEdit';
 import type { RowEventPayload } from '@/web';
+import { ChoyMessage } from '@/web';
 import { useModuleCatalogSync } from './useModuleCatalogSync';
+import { useModuleCatalogOpProgress } from './useModuleCatalogOpProgress';
 import {
   catalogInstalledStatus,
   formatModuleCatalogDate,
@@ -33,6 +35,18 @@ export type ModuleCatalogViewMsgs = {
   syncFailedToGetStatus: string;
   formatSyncSummaryOk: (sync: CatalogSyncResultSummary) => string;
   formatSyncSummaryPartial: (sync: CatalogSyncResultSummary) => string;
+  /** Toast after install/upgrade/uninstall/load_demo reaches a terminal status. */
+  opSettledOk: string;
+  opSettledFailed: (message: string) => string;
+  opJobStillRunning: string;
+  opServiceRestarting: string;
+  opFailedToGetStatus: string;
+  opReloadingService: () => string;
+  opExecuting: () => string;
+  opQueued: () => string;
+  opFinishing: () => string;
+  opInProgress: () => string;
+  opProgressTitle: (action: string, moduleName: string) => string;
 };
 
 export type ModuleCatalogDrawerAction =
@@ -98,6 +112,27 @@ export function useModuleCatalogViewModel(opts: {
     },
     { refreshCatalog },
   );
+
+  const {
+    progressBusy,
+    progressTitle,
+    progressHeadline,
+    progressValue,
+    startOpProgress,
+    stop: stopOpProgress,
+  } = useModuleCatalogOpProgress(opts.operationStore, {
+    jobStillRunning: opts.msgs.opJobStillRunning,
+    serviceRestarting: opts.msgs.opServiceRestarting,
+    failedToGetStatus: opts.msgs.opFailedToGetStatus,
+    settledOk: opts.msgs.opSettledOk,
+    settledFailed: opts.msgs.opSettledFailed,
+    reloadingService: opts.msgs.opReloadingService,
+    executing: opts.msgs.opExecuting,
+    queued: opts.msgs.opQueued,
+    finishing: opts.msgs.opFinishing,
+    inProgress: opts.msgs.opInProgress,
+    titleFor: opts.msgs.opProgressTitle,
+  }, { refreshCatalog });
 
   function rowRecord(row: unknown): Record<string, unknown> {
     const rec = unwrapListRecord(row);
@@ -181,8 +216,7 @@ export function useModuleCatalogViewModel(opts: {
     const action = resolveModuleCatalogPrimaryAction(rec);
     if (!action) return;
     if (action === 'progress') {
-      openDrawer({
-        operationId: String(rec.ActiveOperationId || '').trim(),
+      void startOpProgress(String(rec.ActiveOperationId || '').trim(), {
         moduleName: String(rec.ModuleName || ''),
         action: 'progress',
       });
@@ -250,9 +284,27 @@ export function useModuleCatalogViewModel(opts: {
     return bestRaw != null ? formatModuleCatalogDate(bestRaw) : '';
   });
 
-  /** Install/upgrade/uninstall drawer settle — refresh only (sync uses its own toast path). */
-  function onDrawerSettled() {
+  /** After Apply: refresh ActiveOperationId, close confirm dialog, start locked progress strip. */
+  function onOpApplied(operationId?: string) {
+    const id = String(operationId || '').trim();
     void refreshCatalog();
+    if (!id) return;
+    drawerOpen.value = false;
+    void startOpProgress(id, {
+      moduleName: drawerModuleName.value,
+      action: drawerAction.value,
+    });
+  }
+
+  /** Apply-time failure left in the confirm dialog (success path settles via progress strip). */
+  function onDrawerSettled(status?: { resultStatus?: string; summary?: unknown } | null) {
+    void refreshCatalog();
+    if (status?.resultStatus !== 'FAILED') return;
+    const detail =
+      typeof status.summary === 'string' && status.summary.trim()
+        ? status.summary.trim()
+        : status.resultStatus || 'failed';
+    ChoyMessage.error(opts.msgs.opSettledFailed(detail));
   }
 
   function resolveInitialOperationId(): string {
@@ -268,18 +320,31 @@ export function useModuleCatalogViewModel(opts: {
 
   function syncDrawerFromRoute() {
     if (!isOperationDeepLinkRoute(opts.route.name)) {
-      // Only clear a drawer that was opened from the deep-link; user-opened shells stay put.
-      if (drawerOpen.value && drawerBoundToRoute.value) closeDrawer();
+      // Leaving an operation deep-link: drop route-bound progress/confirm chrome.
+      if (drawerBoundToRoute.value) {
+        stopOpProgress();
+        closeDrawer();
+      }
       return;
     }
     const opId = String(opts.route.params.id || '').trim();
-    if (opId) openDrawer({ operationId: opId, action: 'progress' }, true);
-    else closeDrawer();
+    if (opId) {
+      drawerBoundToRoute.value = true;
+      drawerOpen.value = false;
+      void startOpProgress(opId, { action: 'progress' });
+      return;
+    }
+    stopOpProgress();
+    closeDrawer();
   }
 
   function bootFromRoute() {
     const opId = resolveInitialOperationId();
-    if (opId) openDrawer({ operationId: opId, action: 'progress' }, true);
+    if (opId) {
+      drawerBoundToRoute.value = true;
+      drawerOpen.value = false;
+      void startOpProgress(opId, { action: 'progress' });
+    }
   }
 
   watch(
@@ -300,6 +365,12 @@ export function useModuleCatalogViewModel(opts: {
     lastSyncAtLabel,
     onSync,
     stopSync,
+    progressBusy,
+    progressTitle,
+    progressHeadline,
+    progressValue,
+    startOpProgress,
+    stopOpProgress,
     onRowClick,
     onPrimaryAction,
     canUninstall,
@@ -308,6 +379,7 @@ export function useModuleCatalogViewModel(opts: {
     pendingDemoRows,
     onLoadDemo,
     refreshCatalog,
+    onOpApplied,
     onDrawerSettled,
     openDrawer,
     closeDrawer,

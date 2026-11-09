@@ -128,14 +128,21 @@ SPDX-License-Identifier: Apache-2.0
     </ChoyCard>
   </ChoyFormView>
 
-  <ModuleCatalogOpDrawer
+  <ModuleCatalogOpDialog
     v-model:open="drawerOpen"
     :operation-store="operationStore"
     :operation-id="drawerOperationId"
     :module-name="drawerModuleName"
     :action="drawerAction"
     :registry-newer-than-local="drawerRegistryNewer"
+    @applied="onOpApplied"
     @settled="onDrawerSettled"
+  />
+  <ModuleCatalogOpProgressStrip
+    :busy="progressBusy"
+    :title="progressTitle"
+    :headline="progressHeadline"
+    :value="progressValue"
   />
   </div>
 </template>
@@ -148,6 +155,7 @@ import type MetaModuleOperation from '@/meta/service/models/module_operation';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
+import { useModuleCatalogOpProgress } from '../composables/useModuleCatalogOpProgress';
 import { resolveModuleCatalogFormPrimaryAction } from './module_catalog_chrome';
 import {
   moduleInstallAction,
@@ -155,7 +163,8 @@ import {
   moduleUpgradeAction,
   moduleUninstallAction,
 } from './module_catalog_actions';
-import ModuleCatalogOpDrawer from './ModuleCatalogOpDrawer.vue';
+import ModuleCatalogOpDialog from './ModuleCatalogOpDialog.vue';
+import ModuleCatalogOpProgressStrip from './ModuleCatalogOpProgressStrip.vue';
 import {
   ChoyBooleanField,
   ChoyButton,
@@ -252,6 +261,50 @@ const showHeaderActions = computed(
     (canLoadDemo.value && hasAction(moduleLoadDemoAction)),
 );
 
+async function refreshDetailRow() {
+  const id = String(recordId.value || '').trim();
+  if (!id) return;
+  try {
+    if (typeof (store as any)?.Browse === 'function') {
+      await (store as any).Browse(id);
+      return;
+    }
+    if (typeof (store as any)?.Search === 'function') {
+      await (store as any).Search(['Id', '=', id], { limit: 1 });
+    }
+  } catch {
+    // Refresh is best-effort after an operation settles.
+  }
+}
+
+const {
+  progressBusy,
+  progressTitle,
+  progressHeadline,
+  progressValue,
+  startOpProgress,
+} = useModuleCatalogOpProgress(toRef(props, 'operationStore'), {
+  jobStillRunning: _t('Job is still running in the background; refresh later'),
+  serviceRestarting: _t('Service is restarting; status will retry automatically'),
+  failedToGetStatus: _t('Failed to get status'),
+  settledOk: _t('Operation Succeeded'),
+  settledFailed: msg => _t('Operation Failed: %s', msg),
+  reloadingService: () => _t('Almost done, refreshing…'),
+  executing: () => _t('Working on it, please wait…'),
+  queued: () => _t('Getting ready…'),
+  finishing: () => _t('Wrapping up…'),
+  inProgress: () => _t('Please wait…'),
+  titleFor: (action, moduleName) => {
+    const name = String(moduleName || '').trim();
+    if (action === 'install') return name ? _t('Installing %s', name) : _t('Installing…');
+    if (action === 'upgrade') return name ? _t('Upgrading %s', name) : _t('Upgrading…');
+    if (action === 'uninstall') return name ? _t('Uninstalling %s', name) : _t('Uninstalling…');
+    if (action === 'load_demo') return _t('Loading demo data…');
+    if (action === 'progress') return name ? _t('Working on %s', name) : _t('Working…');
+    return name ? _t('Working on %s', name) : _t('Working…');
+  },
+}, { refreshCatalog: refreshDetailRow });
+
 function onPrimaryClick() {
   const rec = currentRow.value;
   const action = primaryAction.value;
@@ -259,12 +312,14 @@ function onPrimaryClick() {
   drawerModuleName.value = String(rec.ModuleName || '');
   drawerRegistryNewer.value = !!rec.RegistryNewerThanLocal;
   if (action === 'progress') {
-    drawerOperationId.value = String(rec.ActiveOperationId || '').trim();
-    drawerAction.value = 'progress';
-  } else {
-    drawerOperationId.value = '';
-    drawerAction.value = action;
+    void startOpProgress(String(rec.ActiveOperationId || '').trim(), {
+      moduleName: drawerModuleName.value,
+      action: 'progress',
+    });
+    return;
   }
+  drawerOperationId.value = '';
+  drawerAction.value = action;
   drawerOpen.value = true;
 }
 
@@ -286,20 +341,19 @@ function onLoadDemoClick() {
   drawerOpen.value = true;
 }
 
-async function onDrawerSettled() {
-  const id = String(recordId.value || '').trim();
+function onOpApplied(operationId?: string) {
+  const id = String(operationId || '').trim();
+  void refreshDetailRow();
   if (!id) return;
-  try {
-    if (typeof (store as any)?.Browse === 'function') {
-      await (store as any).Browse(id);
-      return;
-    }
-    if (typeof (store as any)?.Search === 'function') {
-      await (store as any).Search(['Id', '=', id], { limit: 1 });
-    }
-  } catch {
-    // Refresh is best-effort after an operation settles.
-  }
+  drawerOpen.value = false;
+  void startOpProgress(id, {
+    moduleName: drawerModuleName.value,
+    action: drawerAction.value,
+  });
+}
+
+async function onDrawerSettled() {
+  await refreshDetailRow();
 }
 
 defineExpose({
@@ -316,5 +370,9 @@ defineExpose({
   primaryAction,
   primaryActionLabel,
   primaryButtonVariant,
+  progressBusy,
+  progressTitle,
+  progressHeadline,
+  progressValue,
 });
 </script>

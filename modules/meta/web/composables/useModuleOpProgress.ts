@@ -6,6 +6,8 @@ import { onTips, subscribeModuleOp } from '@/core/web/tip';
 /** Snapshot derived from MetaModuleOperation.Browse/Read (authoritative). */
 export type ModuleOpStatusSnapshot = {
   status: string;
+  /** Persisted meta_module_operation.phase (queued|executing|reloading|done). */
+  phase?: string;
   summary?: unknown;
   resultStatus?: 'SUCCEEDED' | 'FAILED';
   failureKind?: 'RETRYABLE' | 'NON_RETRYABLE' | 'NONE';

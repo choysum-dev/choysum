@@ -28,6 +28,24 @@ const msgs = {
     failed: number;
     catalogRows: number;
   }) => `synced ${sync.success}/${sync.total} (${sync.failed} failed) / catalog ${sync.catalogRows}`,
+  opSettledOk: 'Operation Succeeded',
+  opSettledFailed: (msg: string) => `Operation Failed: ${msg}`,
+  opJobStillRunning: 'still-running',
+  opServiceRestarting: 'restarting',
+  opFailedToGetStatus: 'no-status',
+  opReloadingService: () => 'Almost done, refreshing…',
+  opExecuting: () => 'Working on it, please wait…',
+  opQueued: () => 'Getting ready…',
+  opFinishing: () => 'Wrapping up…',
+  opInProgress: () => 'Please wait…',
+  opProgressTitle: (action: string, moduleName: string) => {
+    const name = String(moduleName || '').trim();
+    if (action === 'install') return name ? `Installing ${name}` : 'Installing…';
+    if (action === 'upgrade') return name ? `Upgrading ${name}` : 'Upgrading…';
+    if (action === 'uninstall') return name ? `Uninstalling ${name}` : 'Uninstalling…';
+    if (action === 'load_demo') return 'Loading demo data…';
+    return name ? `Working on ${name}` : 'Working…';
+  },
 };
 
 function makeStore(rows: any[] = []) {
@@ -62,8 +80,16 @@ test('useModuleCatalogViewModel: labels status and drives drawer actions', () =>
   ]);
   const pushed: string[] = [];
   const route = makeRoute();
+  let resolveBrowse: ((row: any) => void) | undefined;
+  const operationStore = {
+    Browse: () =>
+      new Promise(resolve => {
+        resolveBrowse = (row: any) => resolve(row);
+      }),
+  } as any;
   const api = useModuleCatalogViewModel({
     store,
+    operationStore,
     route,
     router: {
       push: (to: any) => {
@@ -104,12 +130,15 @@ test('useModuleCatalogViewModel: labels status and drives drawer actions', () =>
   api.onPrimaryAction({ ModuleName: 'base', Installed: false, Available: true });
   expect(api.drawerAction.value).toBe('install');
 
+  api.closeDrawer();
   api.onPrimaryAction({ ModuleName: 'busy', ActiveOperationId: 'op-9' });
-  expect(api.drawerAction.value).toBe('progress');
-  expect(api.drawerOperationId.value).toBe('op-9');
+  expect(api.progressBusy.value).toBe(true);
+  expect(api.progressHeadline.value).toContain('Getting ready');
+  expect(api.drawerOpen.value).toBe(false);
 
-  api.onPrimaryAction({ Installed: true, UpdateAvailable: false, Available: true });
-  expect(api.drawerOperationId.value).toBe('op-9');
+  api.stopOpProgress();
+  resolveBrowse?.({ Status: 'succeeded', Phase: 'done' });
+  expect(api.progressBusy.value).toBe(false);
 
   api.closeDrawer();
   expect(api.drawerOpen.value).toBe(false);
@@ -158,20 +187,28 @@ test('useModuleCatalogViewModel: boots and syncs drawer from operation deep link
     name: 'MetaModuleOperationDeepLink',
     params: { id: 'op-deep' },
   });
+  let resolveBrowse: ((row: any) => void) | undefined;
   const api = useModuleCatalogViewModel({
     store,
+    operationStore: {
+      Browse: () =>
+        new Promise(resolve => {
+          resolveBrowse = (row: any) => resolve(row);
+        }),
+    } as any,
     route,
     router: { push: async () => undefined, replace: async () => undefined } as any,
     msgs,
   });
   api.bootFromRoute();
-  expect(api.drawerOpen.value).toBe(true);
-  expect(api.drawerOperationId.value).toBe('op-deep');
+  expect(api.progressBusy.value).toBe(true);
+  expect(api.drawerOpen.value).toBe(false);
 
   route.name = 'MetaModuleCatalog';
   route.params = {};
   api.syncDrawerFromRoute();
-  expect(api.drawerOpen.value).toBe(false);
+  expect(api.progressBusy.value).toBe(false);
+  resolveBrowse?.({ Status: 'succeeded', Phase: 'done' });
 
   api.openDrawer({ moduleName: 'core', action: 'install' });
   expect(api.drawerOpen.value).toBe(true);
@@ -182,6 +219,9 @@ test('useModuleCatalogViewModel: boots and syncs drawer from operation deep link
   expect(api.resolveInitialOperationId()).toBe('');
   const withProp = useModuleCatalogViewModel({
     store,
+    operationStore: {
+      Browse: () => new Promise(() => {}),
+    } as any,
     route: makeRoute({ name: 'MetaModuleCatalog', params: { id: 'ignored' } }),
     router: { push: async () => undefined, replace: async () => undefined } as any,
     initialOperationId: () => 'op-from-prop',
@@ -189,7 +229,8 @@ test('useModuleCatalogViewModel: boots and syncs drawer from operation deep link
   });
   expect(withProp.resolveInitialOperationId()).toBe('op-from-prop');
   withProp.bootFromRoute();
-  expect(withProp.drawerOperationId.value).toBe('op-from-prop');
+  expect(withProp.progressBusy.value).toBe(true);
+  withProp.stopOpProgress();
 
   const emptyOp = useModuleCatalogViewModel({
     store,

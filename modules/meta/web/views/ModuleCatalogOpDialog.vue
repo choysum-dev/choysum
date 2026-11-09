@@ -4,20 +4,17 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoySheet v-model:open="open">
-    <ChoySheetContent
-      side="right"
-      class="module-op-drawer module-op-dialog flex w-full flex-col sm:max-w-lg"
-      data-testid="module-op-drawer"
+  <ChoyDialog :open="open" @update:open="onOpenChange">
+    <ChoyDialogContent
+      class="module-op-dialog flex max-h-[min(85vh,40rem)] w-[min(92vw,32rem)] max-w-[min(92vw,32rem)] flex-col gap-0 overflow-hidden p-0"
+      data-testid="module-op-dialog"
+      :show-close-button="true"
     >
-      <ChoySheetHeader>
-        <ChoySheetTitle>{{ titleText }}</ChoySheetTitle>
-        <ChoySheetDescription v-if="sessionOperationId">
-          {{ _t('Operation %s', sessionOperationId) }}
-        </ChoySheetDescription>
-      </ChoySheetHeader>
+      <ChoyDialogHeader class="shrink-0 space-y-1 border-b border-border px-6 py-4 text-start">
+        <ChoyDialogTitle>{{ titleText }}</ChoyDialogTitle>
+      </ChoyDialogHeader>
 
-      <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-2 text-sm">
+      <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-6 py-4 text-sm">
         <div v-if="step === 'plan'" class="flex flex-col gap-3">
           <div v-if="planLoading" class="flex flex-col gap-2" data-testid="module-op-plan-loading">
             <div v-for="n in 5" :key="n" class="h-4 animate-pulse rounded bg-muted" />
@@ -59,9 +56,10 @@ SPDX-License-Identifier: Apache-2.0
               <div class="font-semibold text-foreground">{{ _t('Risks') }}</div>
               <ul class="m-0 flex list-none flex-col gap-1.5 p-0 text-xs">
                 <li v-for="risk in plan.risks" :key="risk.code" class="flex flex-wrap items-center gap-2">
-                  <span class="rounded bg-amber-500/15 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-200">{{
-                    risk.code
-                  }}</span>
+                  <span
+                    class="rounded bg-amber-500/15 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-200"
+                    >{{ risk.code }}</span
+                  >
                   <span class="text-foreground/70">{{ risk.message || '' }}</span>
                 </li>
               </ul>
@@ -109,24 +107,11 @@ SPDX-License-Identifier: Apache-2.0
             data-testid="module-op-alert"
             :class="resultAlertBoxClass"
           >
-            {{
-              step === 'progress'
-                ? _t('Operation in progress, please wait')
-                : resultTitle
-            }}
+            {{ resultTitle }}
           </div>
           <div class="flex flex-col gap-2">
             <div class="font-semibold text-foreground">{{ _t('Execution Status') }}</div>
-            <div class="module-op-status-row flex flex-wrap items-center gap-2 text-xs text-foreground/80">
-              <span class="font-semibold text-foreground">{{ _t('Status:') }}</span>
-              <span
-                class="rounded px-1.5 py-0.5 text-[11px] font-medium"
-                data-testid="module-op-status"
-                >{{ opStatus?.status || '—' }}</span
-              >
-              <span class="font-semibold text-foreground">{{ _t('Phase:') }}</span>
-              <span class="text-foreground/80">{{ phaseLabel }}</span>
-            </div>
+            <span class="sr-only" data-testid="module-op-status">{{ opStatus?.status || '' }}</span>
             <div
               v-if="opStatus?.resultStatus"
               class="flex flex-wrap gap-2 text-xs"
@@ -147,55 +132,41 @@ SPDX-License-Identifier: Apache-2.0
                 >{{ opStatus?.errorDomain || '—' }} / {{ opStatus?.errorCode || '—' }}</span
               >
             </div>
-            <div
-              v-if="opStatus?.ReloadTriggered || opStatus?.ReloadFailed"
-              class="flex flex-wrap gap-2 text-xs"
-              data-testid="module-op-reload"
-            >
-              <span class="font-semibold text-foreground">{{ _t('Reload:') }}</span>
-              <span class="text-foreground/80">
-                {{
-                  opStatus?.ReloadFailed
-                    ? _t('Data written; page did not refresh')
-                    : _t('Triggered')
-                }}
-              </span>
-            </div>
-            <button
-              v-if="step === 'result' && opStatus?.ReloadFailed"
-              type="button"
-              class="self-start rounded-md border border-border px-2.5 py-1 text-xs hover:bg-muted"
-              data-testid="module-op-reload-retry"
-              @click="reloadPage"
-            >
-              {{ _t('Refresh page') }}
-            </button>
           </div>
-          <p v-if="step === 'progress'" class="border-t border-border pt-3 text-xs text-muted-foreground">
-            {{ _t('Closing this drawer keeps the operation running; use View Progress on the card.') }}
-          </p>
         </div>
       </div>
 
-      <div class="flex justify-end gap-2 border-t border-border px-4 py-3">
-        <ChoyButton type="button" variant="outline" :disabled="planLoading" @click="close">
+      <div class="flex shrink-0 justify-end gap-2 border-t border-border px-6 py-3">
+        <ChoyButton
+          type="button"
+          variant="outline"
+          :disabled="planLoading || executeLoading"
+          data-testid="module-op-cancel"
+          @click="close"
+        >
           {{ step === 'plan' ? _t('Cancel') : _t('Close') }}
         </ChoyButton>
         <ChoyButton
           v-if="step === 'plan'"
           type="button"
           data-testid="module-op-confirm"
-          :disabled="!canConfirm"
+          :variant="action === 'uninstall' ? 'destructive' : 'default'"
+          :disabled="!canConfirm || executeLoading"
           @click="onConfirm"
         >
           {{ _t('Confirm') }}
         </ChoyButton>
-        <ChoyButton v-else-if="step === 'result'" type="button" data-testid="module-op-done" @click="close">
+        <ChoyButton
+          v-else-if="step === 'result'"
+          type="button"
+          data-testid="module-op-done"
+          @click="close"
+        >
           {{ _t('Done') }}
         </ChoyButton>
       </div>
-    </ChoySheetContent>
-  </ChoySheet>
+    </ChoyDialogContent>
+  </ChoyDialog>
 </template>
 
 <script setup lang="ts">
@@ -207,15 +178,15 @@ import { useModuleCatalogOpDrawerSession } from '../composables/useModuleCatalog
 import { formatModuleOpSummary } from './module_catalog_chrome';
 import {
   ChoyButton,
-  ChoySheet,
-  ChoySheetContent,
-  ChoySheetDescription,
-  ChoySheetHeader,
-  ChoySheetTitle,
+  ChoyDialog,
+  ChoyDialogContent,
+  ChoyDialogHeader,
+  ChoyDialogTitle,
 } from '@/web';
 
-defineOptions({ name: 'ModuleCatalogOpDrawer' });
+defineOptions({ name: 'ModuleCatalogOpDialog' });
 
+// Keep OpDrawer i18n scope so existing pot/zh_CN entries continue to resolve.
 const { _t } = createTranslate('meta', { scope: 'web/views/ModuleCatalogOpDrawer' });
 
 const open = defineModel<boolean>('open', { default: false });
@@ -240,6 +211,8 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   settled: [status?: { resultStatus?: string; partialFailure?: boolean } | null];
+  /** Fired after Apply succeeds so hosts can refresh ActiveOperationId while progress is locked. */
+  applied: [operationId: string];
 }>();
 
 const operationStoreRef = toRef(props, 'operationStore');
@@ -256,19 +229,17 @@ const session = useModuleCatalogOpDrawerSession({
     completed: _t('Completed'),
     operationFailed: _t('Operation Failed'),
     succeededReloadFailed: _t('Data written; page did not refresh'),
-    get operationSucceeded() {
-      const action = String(props.action || '').trim();
-      return action === 'sync' ? _t('Module list updated') : _t('Operation Succeeded');
-    },
+    operationSucceeded: _t('Operation Succeeded'),
     operationSucceededPartial: _t('Module list updated with warnings'),
   },
   onSettled: status => emit('settled', status),
+  onApplied: operationId => emit('applied', operationId),
 });
 
-// Top-level refs so the template auto-unwraps (nested session.*.value is unreliable in SFC templates).
 const {
   step,
   planLoading,
+  executeLoading,
   plan,
   opStatus,
   activeModuleName,
@@ -285,15 +256,9 @@ const titleText = computed(() => {
   if (action === 'install') label = _t('Install Module');
   else if (action === 'upgrade') label = _t('Upgrade Module');
   else if (action === 'uninstall') label = _t('Uninstall Module');
-  else if (action === 'progress') label = _t('Operation Progress');
-  else if (action === 'sync') label = _t('Update Module List');
   else if (action === 'load_demo') label = _t('Load Demo Data');
   return name ? `${label} · ${name}` : label;
 });
-
-const sessionOperationId = computed(
-  () => String(plan.value?.Id || props.operationId || '').trim(),
-);
 
 const showRegistryOption = computed(
   () =>
@@ -303,30 +268,12 @@ const showRegistryOption = computed(
     !!plan.value,
 );
 
-const phaseLabel = computed(() => {
-  const status = String(opStatus.value?.status || '').toLowerCase();
-  if (status === 'queued' || status === 'dispatching') return _t('Queued');
-  if (status === 'running') return _t('Running');
-  if (opStatus.value?.ReloadTriggered) return _t('Reload');
-  if (status === 'succeeded' || status === 'failed' || status === 'cancelled') return _t('Done');
-  return opStatus.value?.summary && typeof opStatus.value.summary === 'object'
-    ? String((opStatus.value.summary as any).message || '—')
-    : '—';
-});
-
 const resultAlertBoxClass = computed(() => {
-  if (step.value === 'progress') return 'border-border bg-muted/40 text-foreground';
   if (!opStatus.value) return 'border-border bg-muted/40 text-foreground';
   if (opStatus.value.resultStatus === 'FAILED') {
     return 'border-destructive/40 bg-destructive/10 text-destructive';
   }
-  if (opStatus.value.resultStatus !== 'SUCCEEDED') {
-    return 'border-border bg-muted/40 text-foreground';
-  }
-  if (opStatus.value.partialFailure || opStatus.value.ReloadFailed) {
-    return 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-100';
-  }
-  return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100';
+  return 'border-border bg-muted/40 text-foreground';
 });
 
 function formatSummary(summary: unknown) {
@@ -351,12 +298,12 @@ function formatSummary(summary: unknown) {
   return formatModuleOpSummary(summary);
 }
 
-function close() {
-  open.value = false;
+function onOpenChange(next: boolean) {
+  open.value = next;
 }
 
-function reloadPage() {
-  if (typeof window !== 'undefined') window.location.reload();
+function close() {
+  open.value = false;
 }
 
 async function onConfirm() {
@@ -378,7 +325,6 @@ watch(
       String(props.action || ''),
       String(props.moduleName || ''),
       String(props.operationId || ''),
-      // Re-run when the operation store appears after the drawer already opened.
       props.operationStore,
     ] as const,
   async ([isOpen, action, moduleName, operationId], prev) => {
@@ -386,20 +332,20 @@ watch(
       session.stop();
       return;
     }
-    // Ignore operationId-only churn while an in-flight progress/result session is active.
     const sameTarget =
       !!prev &&
       prev[0] === true &&
       prev[1] === action &&
       prev[2] === moduleName &&
-      (action === 'progress' || action === 'sync' ? prev[3] === operationId : true) &&
       prev[4] === props.operationStore;
     if (sameTarget && step.value !== 'plan') return;
 
     session.reset();
-    if (action === 'progress' || action === 'sync' || (!isPlanAction(action) && operationId)) {
+    // Progress / sync monitors run on the page strip; confirm dialog only plans.
+    if (action === 'progress' || action === 'sync') {
       const id = String(operationId || '').trim();
-      if (id) await session.watchProgress(id, action === 'sync' ? 'sync' : 'progress');
+      open.value = false;
+      if (id) emit('applied', id);
       return;
     }
     if (action === 'load_demo') {

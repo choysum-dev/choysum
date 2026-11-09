@@ -59,21 +59,52 @@ test('useModuleCatalogOpDrawerSession: runPlan maps plan payload and gates confi
   expect(api.canConfirm.value).toBe(false);
 });
 
-test('useModuleCatalogOpDrawerSession: confirmApply watches progress to terminal', async () => {
-  const open = ref(true);
+test('useModuleCatalogOpDrawerSession: confirmApply emits onApplied without watching', async () => {
+  const applied: string[] = [];
+  const settled: unknown[] = [];
   let browseCalls = 0;
-  const store = makeStore({
+  const store = {
+    Plan: async () => ({
+      Id: 'op-1',
+      ModuleOrder: [{ ModuleName: 'core' }],
+      AffectedApps: [],
+      Risks: [],
+      Blockers: [],
+    }),
+    Apply: async () => ({ Id: 'op-1' }),
     Browse: async () => {
       browseCalls += 1;
-      return { Status: 'succeeded', ReloadTriggered: false, ReloadFailed: false };
+      return { Status: 'succeeded' };
+    },
+  } as any;
+  const api = useModuleCatalogOpDrawerSession({
+    operationStore: store,
+    isOpen: () => true,
+    msgs,
+    onApplied: id => applied.push(id),
+    onSettled: status => settled.push(status),
+  });
+  await api.runPlan({ moduleName: 'core', action: 'install' });
+  await api.confirmApply();
+  expect(applied).toEqual(['op-1']);
+  expect(settled.length).toBe(0);
+  expect(browseCalls).toBe(0);
+  expect(api.step.value).toBe('plan');
+});
+
+test('useModuleCatalogOpDrawerSession: confirmApply Apply failure settles result', async () => {
+  const open = ref(true);
+  const settled: unknown[] = [];
+  const store = makeStore({
+    Apply: async () => {
+      throw new Error('apply boom');
     },
   });
-  const settled: number[] = [];
   const api = useModuleCatalogOpDrawerSession({
     operationStore: store,
     isOpen: () => open.value,
     msgs,
-    onSettled: () => settled.push(1),
+    onSettled: status => settled.push(status),
   });
 
   await api.runPlan({ moduleName: 'core', action: 'upgrade' });
@@ -81,9 +112,8 @@ test('useModuleCatalogOpDrawerSession: confirmApply watches progress to terminal
   await api.confirmApply();
   await nextTick();
   expect(api.step.value).toBe('result');
-  expect(browseCalls).toBeGreaterThanOrEqual(1);
   expect(settled.length).toBe(1);
-  expect(api.resultTitle.value).toBe('ok');
+  expect(api.opStatus.value?.resultStatus).toBe('FAILED');
 });
 
 test('useModuleCatalogOpDrawerSession: resultTitle stays neutral without SUCCEEDED', async () => {

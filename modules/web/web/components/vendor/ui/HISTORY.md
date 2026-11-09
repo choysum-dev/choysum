@@ -36,6 +36,17 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
+### 2026-11-09 — DialogContent showCloseButton + attr forward
+
+- **What:** `showCloseButton` (default true) gates the corner `DialogClose`;
+  `inheritAttrs: false` + `v-bind="$attrs"` on Reka `DialogContent` so hosts can
+  prevent Esc / pointer-outside dismiss (`@escape-key-down.prevent`, etc.).
+- **Why not product-only:** close control is baked into the kit content chrome;
+  hiding via CSS still leaves a focusable control, and dismiss listeners never
+  reached Reka without attr forwarding.
+- **Do not regress:** keep default close button for existing dialogs; do not move
+  product lock copy into this file.
+
 ### 2026-11-04 — Stepper props declared locally
 
 - **What:** `stepper/*.vue` replace `defineProps<StepperXxxProps & { class }>()` (types

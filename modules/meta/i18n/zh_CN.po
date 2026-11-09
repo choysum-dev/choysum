@@ -636,112 +636,112 @@ msgctxt "meta.model.MetaModule.fields"
 msgid "Web Entry Point"
 msgstr "Web 入口"
 
-#: service/models/module_catalog.ts:105
+#: service/models/module_catalog.ts:103
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Active Operation"
 msgstr ""
 
-#: service/models/module_catalog.ts:54
+#: service/models/module_catalog.ts:52
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Application"
 msgstr "应用"
 
-#: service/models/module_catalog.ts:57
+#: service/models/module_catalog.ts:55
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Author"
 msgstr "作者"
 
-#: service/models/module_catalog.ts:81
+#: service/models/module_catalog.ts:79
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Available"
 msgstr "可用"
 
-#: service/models/module_catalog.ts:51
+#: service/models/module_catalog.ts:49
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Category"
 msgstr "类别"
 
-#: service/models/module_catalog.ts:99
+#: service/models/module_catalog.ts:97
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Demo Loaded"
 msgstr ""
 
-#: service/models/module_catalog.ts:93
+#: service/models/module_catalog.ts:91
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Dependents"
 msgstr "被依赖方"
 
-#: service/models/module_catalog.ts:90
+#: service/models/module_catalog.ts:88
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Depends"
 msgstr ""
 
-#: service/models/module_catalog.ts:48
+#: service/models/module_catalog.ts:46
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Description"
 msgstr "描述"
 
-#: service/models/module_catalog.ts:96
+#: service/models/module_catalog.ts:94
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Has Demo"
 msgstr ""
 
-#: service/models/module_catalog.ts:69
+#: service/models/module_catalog.ts:67
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Installed"
 msgstr "已安装"
 
-#: service/models/module_catalog.ts:72
+#: service/models/module_catalog.ts:70
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Installed Version"
 msgstr "已装版本"
 
-#: service/models/module_catalog.ts:102
+#: service/models/module_catalog.ts:100
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Last Sync At"
 msgstr ""
 
-#: service/models/module_catalog.ts:60
+#: service/models/module_catalog.ts:58
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "License"
 msgstr "许可证"
 
-#: service/models/module_catalog.ts:87
+#: service/models/module_catalog.ts:85
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Local Path"
 msgstr "本地路径"
 
-#: service/models/module_catalog.ts:63
+#: service/models/module_catalog.ts:61
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Local Version"
 msgstr "本地版本"
 
-#: service/models/module_catalog.ts:42
+#: service/models/module_catalog.ts:40
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Module Name"
 msgstr "模块名"
 
-#: service/models/module_catalog.ts:78
+#: service/models/module_catalog.ts:76
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Registry Newer Than Local"
 msgstr ""
 
-#: service/models/module_catalog.ts:66
+#: service/models/module_catalog.ts:64
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Registry Version"
 msgstr "仓库版本"
 
-#: service/models/module_catalog.ts:45
+#: service/models/module_catalog.ts:43
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Summary"
 msgstr "摘要"
 
-#: service/models/module_catalog.ts:84
+#: service/models/module_catalog.ts:82
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Unavailable Reason"
 msgstr ""
 
-#: service/models/module_catalog.ts:75
+#: service/models/module_catalog.ts:73
 msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Update Available"
 msgstr ""
@@ -1131,27 +1131,27 @@ msgctxt "service/models/model_data"
 msgid "external id key must not have empty module or name"
 msgstr "外部 ID 键的 module 与 name 均不能为空"
 
-#: service/models/module_catalog.ts:210
+#: service/models/module_catalog.ts:197
 msgctxt "service/models/module_catalog"
 msgid "enqueue returned empty job id"
 msgstr ""
 
-#: service/models/module_catalog.ts:182
+#: service/models/module_catalog.ts:169
 msgctxt "service/models/module_catalog"
 msgid "sync apply failed"
 msgstr ""
 
-#: service/models/module_catalog.ts:146
+#: service/models/module_catalog.ts:133
 msgctxt "service/models/module_catalog"
 msgid "sync operation timed out"
 msgstr ""
 
-#: service/models/module_catalog.ts:160
+#: service/models/module_catalog.ts:147
 msgctxt "service/models/module_catalog"
 msgid "sync plan failed"
 msgstr ""
 
-#: service/models/module_catalog.ts:164
+#: service/models/module_catalog.ts:151
 msgctxt "service/models/module_catalog"
 msgid "sync plan returned empty id"
 msgstr ""
@@ -1299,7 +1299,7 @@ msgstr "模块"
 #: web/route/routes.ts:76
 msgctxt "web/route/routes"
 msgid "Module Operation"
-msgstr ""
+msgstr "模块操作"
 
 #: web/route/routes.ts:29 web/route/routes.ts:53
 msgctxt "web/route/routes"
@@ -1401,25 +1401,80 @@ msgctxt "web/views/MetaModelDataListView"
 msgid "Resource Id"
 msgstr "资源 ID"
 
+#: web/views/ModuleCatalogFormView.vue:143
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Almost done, refreshing…"
+msgstr "快好了，正在刷新…"
+
 #: web/views/ModuleCatalogFormView.vue:43
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Dependencies"
 msgstr "依赖"
 
-#: web/views/ModuleCatalogFormView.vue:80
+#: web/views/ModuleCatalogFormView.vue:140
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Failed to get status"
+msgstr "获取状态失败"
+
+#: web/views/ModuleCatalogFormView.vue:145
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Getting ready…"
+msgstr "马上开始，请稍候…"
+
+#: web/views/ModuleCatalogFormView.vue:82
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Install"
 msgstr "安装"
 
+#: web/views/ModuleCatalogFormView.vue:150
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Installing %s"
+msgstr "正在安装 %s"
+
+#: web/views/ModuleCatalogFormView.vue:150
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Installing…"
+msgstr "正在安装…"
+
+#: web/views/ModuleCatalogFormView.vue:138
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Job is still running in the background; refresh later"
+msgstr "任务仍在后台执行，可稍后刷新查看"
+
 #: web/views/ModuleCatalogFormView.vue:9
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Load Demo Data"
-msgstr ""
+msgstr "加载演示数据"
+
+#: web/views/ModuleCatalogFormView.vue:153
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Loading demo data…"
+msgstr "正在加载演示数据…"
+
+#: web/views/ModuleCatalogFormView.vue:142
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Operation Failed: %s"
+msgstr "操作失败：%s"
+
+#: web/views/ModuleCatalogFormView.vue:141
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Operation Succeeded"
+msgstr "操作成功"
 
 #: web/views/ModuleCatalogFormView.vue:16
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Overview"
 msgstr ""
+
+#: web/views/ModuleCatalogFormView.vue:147
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Please wait…"
+msgstr "请稍候…"
+
+#: web/views/ModuleCatalogFormView.vue:139
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Service is restarting; status will retry automatically"
+msgstr "服务正在重启，将自动重试状态"
 
 #: web/views/ModuleCatalogFormView.vue:85
 msgctxt "web/views/ModuleCatalogFormView"
@@ -1431,47 +1486,117 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "Uninstall"
 msgstr "卸载"
 
-#: web/views/ModuleCatalogFormView.vue:81
+#: web/views/ModuleCatalogFormView.vue:152
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Uninstalling %s"
+msgstr "正在卸载 %s"
+
+#: web/views/ModuleCatalogFormView.vue:152
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Uninstalling…"
+msgstr "正在卸载…"
+
+#: web/views/ModuleCatalogFormView.vue:83
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Upgrade"
 msgstr "升级"
+
+#: web/views/ModuleCatalogFormView.vue:151
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Upgrading %s"
+msgstr "正在升级 %s"
+
+#: web/views/ModuleCatalogFormView.vue:151
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Upgrading…"
+msgstr "正在升级…"
 
 #: web/views/ModuleCatalogFormView.vue:54
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Versions & Source"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:82
+#: web/views/ModuleCatalogFormView.vue:84
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "View Progress"
 msgstr ""
+
+#: web/views/ModuleCatalogFormView.vue:154 web/views/ModuleCatalogFormView.vue:155
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Working on %s"
+msgstr "正在处理 %s"
+
+#: web/views/ModuleCatalogFormView.vue:144
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Working on it, please wait…"
+msgstr "处理中，请稍候…"
+
+#: web/views/ModuleCatalogFormView.vue:154 web/views/ModuleCatalogFormView.vue:155
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Working…"
+msgstr "正在处理…"
+
+#: web/views/ModuleCatalogFormView.vue:146
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Wrapping up…"
+msgstr "即将完成…"
 
 #: web/views/ModuleCatalogKanbanView.vue:11
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "All"
 msgstr "全部"
 
-#: web/views/ModuleCatalogKanbanView.vue:161 web/views/ModuleCatalogKanbanView.vue:166
+#: web/views/ModuleCatalogKanbanView.vue:136
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Almost done, refreshing…"
+msgstr "快好了，正在刷新…"
+
+#: web/views/ModuleCatalogKanbanView.vue:120 web/views/ModuleCatalogKanbanView.vue:135
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Failed to get status"
+msgstr "获取状态失败"
+
+#: web/views/ModuleCatalogKanbanView.vue:200 web/views/ModuleCatalogKanbanView.vue:205
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Failed to load modules"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:171
+#: web/views/ModuleCatalogKanbanView.vue:210
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Failed to load more"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:97
+#: web/views/ModuleCatalogKanbanView.vue:138
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Getting ready…"
+msgstr "马上开始，请稍候…"
+
+#: web/views/ModuleCatalogKanbanView.vue:103
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Install"
 msgstr "安装"
 
-#: web/views/ModuleCatalogKanbanView.vue:100
+#: web/views/ModuleCatalogKanbanView.vue:106
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Installed"
 msgstr "已安装"
 
-#: web/views/ModuleCatalogKanbanView.vue:61
+#: web/views/ModuleCatalogKanbanView.vue:143
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Installing %s"
+msgstr "正在安装 %s"
+
+#: web/views/ModuleCatalogKanbanView.vue:143
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Installing…"
+msgstr "正在安装…"
+
+#: web/views/ModuleCatalogKanbanView.vue:118 web/views/ModuleCatalogKanbanView.vue:133
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Job is still running in the background; refresh later"
+msgstr "任务仍在后台执行，可稍后刷新查看"
+
+#: web/views/ModuleCatalogKanbanView.vue:62
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Kanban View"
 msgstr ""
@@ -1481,7 +1606,7 @@ msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Last sync %s"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:62
+#: web/views/ModuleCatalogKanbanView.vue:63
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "List View"
 msgstr "列表视图"
@@ -1489,65 +1614,79 @@ msgstr "列表视图"
 #: web/views/ModuleCatalogKanbanView.vue:23
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Load Demo Data"
-msgstr ""
+msgstr "加载演示数据"
+
+#: web/views/ModuleCatalogKanbanView.vue:146
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Loading demo data…"
+msgstr "正在加载演示数据…"
+
+#: web/views/ModuleCatalogKanbanView.vue:112
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Module list updated"
+msgstr "模块列表已更新"
+
+#: web/views/ModuleCatalogKanbanView.vue:116
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Module list updated with warnings"
+msgstr "模块列表已更新（有警告）"
+
+#: web/views/ModuleCatalogKanbanView.vue:115
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Module list updated with warnings · %s"
+msgstr "模块列表已更新（有警告）· %s"
+
+#: web/views/ModuleCatalogKanbanView.vue:112
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Module list updated · %s"
+msgstr "模块列表已更新 · %s"
 
 #: web/views/ModuleCatalogKanbanView.vue:60
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "No modules match this filter."
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:102
+#: web/views/ModuleCatalogKanbanView.vue:108
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Not Installed"
 msgstr "未安装"
 
-#: web/views/ModuleCatalogKanbanView.vue:106
+#: web/views/ModuleCatalogKanbanView.vue:132
 msgctxt "web/views/ModuleCatalogKanbanView"
-msgid "Sync failed: %s"
-msgstr "同步失败：%s"
+msgid "Operation Failed: %s"
+msgstr "操作失败：%s"
 
-#: web/views/ModuleCatalogKanbanView.vue
+#: web/views/ModuleCatalogKanbanView.vue:131
 msgctxt "web/views/ModuleCatalogKanbanView"
-msgid "Module list updated"
-msgstr "模块列表已更新"
+msgid "Operation Succeeded"
+msgstr "操作成功"
 
-#: web/views/ModuleCatalogKanbanView.vue
+#: web/views/ModuleCatalogKanbanView.vue:140
 msgctxt "web/views/ModuleCatalogKanbanView"
-msgid "Module list updated with warnings"
-msgstr "模块列表已更新（有警告）"
+msgid "Please wait…"
+msgstr "请稍候…"
 
-#: web/views/ModuleCatalogKanbanView.vue
-msgctxt "web/views/ModuleCatalogKanbanView"
-msgid "Synced %s sources; catalog has %s modules"
-msgstr "已同步 %s 个源；目录共 %s 个模块"
-
-#: web/views/ModuleCatalogKanbanView.vue
-msgctxt "web/views/ModuleCatalogKanbanView"
-msgid "Synced %s/%s sources (%s failed); catalog has %s modules"
-msgstr "已同步 %s/%s 个源（%s 个失败）；目录共 %s 个模块"
-
-#: web/views/ModuleCatalogKanbanView.vue
-msgctxt "web/views/ModuleCatalogKanbanView"
-msgid "Job is still running in the background; refresh later"
-msgstr "任务仍在后台执行，可稍后刷新查看"
-
-#: web/views/ModuleCatalogKanbanView.vue
+#: web/views/ModuleCatalogKanbanView.vue:119 web/views/ModuleCatalogKanbanView.vue:134
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Service is restarting; status will retry automatically"
 msgstr "服务正在重启，状态将自动重试"
 
-#: web/views/ModuleCatalogKanbanView.vue
+#: web/views/ModuleCatalogKanbanView.vue:110 web/views/ModuleCatalogKanbanView.vue:117
 msgctxt "web/views/ModuleCatalogKanbanView"
-msgid "Failed to get status"
-msgstr "获取状态失败"
+msgid "Sync failed: %s"
+msgstr "同步失败：%s"
 
-#~ msgid "Sync job triggered"
-#~ msgstr "已触发同步任务"
+#: web/views/ModuleCatalogKanbanView.vue:121
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Synced %s sources; catalog has %s modules"
+msgstr "已同步 %s 个源；目录共 %s 个模块"
 
-#~ msgid "Sync job triggered: %s"
-#~ msgstr "已触发同步任务：%s"
+#: web/views/ModuleCatalogKanbanView.vue:123
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Synced %s/%s sources (%s failed); catalog has %s modules"
+msgstr "已同步 %s/%s 个源（%s 个失败）；目录共 %s 个模块"
 
-#: web/views/ModuleCatalogKanbanView.vue:103
+#: web/views/ModuleCatalogKanbanView.vue:109
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Unavailable"
 msgstr "不可用"
@@ -1557,7 +1696,17 @@ msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Uninstall"
 msgstr "卸载"
 
-#: web/views/ModuleCatalogKanbanView.vue:96
+#: web/views/ModuleCatalogKanbanView.vue:145
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Uninstalling %s"
+msgstr "正在卸载 %s"
+
+#: web/views/ModuleCatalogKanbanView.vue:145
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Uninstalling…"
+msgstr "正在卸载…"
+
+#: web/views/ModuleCatalogKanbanView.vue:102
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Unknown"
 msgstr "未知"
@@ -1567,17 +1716,27 @@ msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Update Module List"
 msgstr "更新模块列表"
 
-#: web/views/ModuleCatalogKanbanView.vue:101
+#: web/views/ModuleCatalogKanbanView.vue:107
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Update available"
 msgstr "有可用更新"
 
-#: web/views/ModuleCatalogKanbanView.vue:98
+#: web/views/ModuleCatalogKanbanView.vue:104
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Upgrade"
 msgstr "升级"
 
-#: web/views/ModuleCatalogKanbanView.vue:99
+#: web/views/ModuleCatalogKanbanView.vue:144
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Upgrading %s"
+msgstr "正在升级 %s"
+
+#: web/views/ModuleCatalogKanbanView.vue:144
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Upgrading…"
+msgstr "正在升级…"
+
+#: web/views/ModuleCatalogKanbanView.vue:105
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "View Progress"
 msgstr ""
@@ -1587,22 +1746,72 @@ msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "View switcher"
 msgstr "视图切换"
 
+#: web/views/ModuleCatalogKanbanView.vue:147 web/views/ModuleCatalogKanbanView.vue:148
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Working on %s"
+msgstr "正在处理 %s"
+
+#: web/views/ModuleCatalogKanbanView.vue:137
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Working on it, please wait…"
+msgstr "处理中，请稍候…"
+
+#: web/views/ModuleCatalogKanbanView.vue:147 web/views/ModuleCatalogKanbanView.vue:148
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Working…"
+msgstr "正在处理…"
+
+#: web/views/ModuleCatalogKanbanView.vue:139
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Wrapping up…"
+msgstr "即将完成…"
+
 #: web/views/ModuleCatalogListView.vue:40
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Action"
 msgstr "动作"
 
-#: web/views/ModuleCatalogListView.vue:90
+#: web/views/ModuleCatalogListView.vue:129
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Almost done, refreshing…"
+msgstr "快好了，正在刷新…"
+
+#: web/views/ModuleCatalogListView.vue:113 web/views/ModuleCatalogListView.vue:128
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Failed to get status"
+msgstr "获取状态失败"
+
+#: web/views/ModuleCatalogListView.vue:131
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Getting ready…"
+msgstr "马上开始，请稍候…"
+
+#: web/views/ModuleCatalogListView.vue:96
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Install"
 msgstr "安装"
 
-#: web/views/ModuleCatalogListView.vue:28 web/views/ModuleCatalogListView.vue:93
+#: web/views/ModuleCatalogListView.vue:28 web/views/ModuleCatalogListView.vue:99
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Installed"
 msgstr "已安装"
 
-#: web/views/ModuleCatalogListView.vue:55
+#: web/views/ModuleCatalogListView.vue:136
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Installing %s"
+msgstr "正在安装 %s"
+
+#: web/views/ModuleCatalogListView.vue:136
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Installing…"
+msgstr "正在安装…"
+
+#: web/views/ModuleCatalogListView.vue:111 web/views/ModuleCatalogListView.vue:126
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Job is still running in the background; refresh later"
+msgstr "任务仍在后台执行，可稍后刷新查看"
+
+#: web/views/ModuleCatalogListView.vue:56
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Kanban View"
 msgstr ""
@@ -1612,7 +1821,7 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "Last sync %s"
 msgstr ""
 
-#: web/views/ModuleCatalogListView.vue:56
+#: web/views/ModuleCatalogListView.vue:57
 msgctxt "web/views/ModuleCatalogListView"
 msgid "List View"
 msgstr "列表视图"
@@ -1620,75 +1829,89 @@ msgstr "列表视图"
 #: web/views/ModuleCatalogListView.vue:14
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Load Demo Data"
-msgstr ""
+msgstr "加载演示数据"
+
+#: web/views/ModuleCatalogListView.vue:139
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Loading demo data…"
+msgstr "正在加载演示数据…"
 
 #: web/views/ModuleCatalogListView.vue:29
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Local"
 msgstr ""
 
-#: web/views/ModuleCatalogListView.vue:95
+#: web/views/ModuleCatalogListView.vue:105
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Module list updated"
+msgstr "模块列表已更新"
+
+#: web/views/ModuleCatalogListView.vue:109
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Module list updated with warnings"
+msgstr "模块列表已更新（有警告）"
+
+#: web/views/ModuleCatalogListView.vue:108
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Module list updated with warnings · %s"
+msgstr "模块列表已更新（有警告）· %s"
+
+#: web/views/ModuleCatalogListView.vue:105
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Module list updated · %s"
+msgstr "模块列表已更新 · %s"
+
+#: web/views/ModuleCatalogListView.vue:101
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Not Installed"
 msgstr "未安装"
+
+#: web/views/ModuleCatalogListView.vue:125
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Operation Failed: %s"
+msgstr "操作失败：%s"
+
+#: web/views/ModuleCatalogListView.vue:124
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Operation Succeeded"
+msgstr "操作成功"
+
+#: web/views/ModuleCatalogListView.vue:133
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Please wait…"
+msgstr "请稍候…"
 
 #: web/views/ModuleCatalogListView.vue:30
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Registry"
 msgstr ""
 
+#: web/views/ModuleCatalogListView.vue:112 web/views/ModuleCatalogListView.vue:127
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Service is restarting; status will retry automatically"
+msgstr "服务正在重启，状态将自动重试"
+
 #: web/views/ModuleCatalogListView.vue:32
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Status"
 msgstr "状态"
 
-#: web/views/ModuleCatalogListView.vue:99
+#: web/views/ModuleCatalogListView.vue:103 web/views/ModuleCatalogListView.vue:110
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Sync failed: %s"
 msgstr "同步失败：%s"
 
-#: web/views/ModuleCatalogListView.vue
-msgctxt "web/views/ModuleCatalogListView"
-msgid "Module list updated"
-msgstr "模块列表已更新"
-
-#: web/views/ModuleCatalogListView.vue
-msgctxt "web/views/ModuleCatalogListView"
-msgid "Module list updated with warnings"
-msgstr "模块列表已更新（有警告）"
-
-#: web/views/ModuleCatalogListView.vue
+#: web/views/ModuleCatalogListView.vue:114
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Synced %s sources; catalog has %s modules"
 msgstr "已同步 %s 个源；目录共 %s 个模块"
 
-#: web/views/ModuleCatalogListView.vue
+#: web/views/ModuleCatalogListView.vue:116
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Synced %s/%s sources (%s failed); catalog has %s modules"
 msgstr "已同步 %s/%s 个源（%s 个失败）；目录共 %s 个模块"
 
-#: web/views/ModuleCatalogListView.vue
-msgctxt "web/views/ModuleCatalogListView"
-msgid "Job is still running in the background; refresh later"
-msgstr "任务仍在后台执行，可稍后刷新查看"
-
-#: web/views/ModuleCatalogListView.vue
-msgctxt "web/views/ModuleCatalogListView"
-msgid "Service is restarting; status will retry automatically"
-msgstr "服务正在重启，状态将自动重试"
-
-#: web/views/ModuleCatalogListView.vue
-msgctxt "web/views/ModuleCatalogListView"
-msgid "Failed to get status"
-msgstr "获取状态失败"
-
-#~ msgid "Sync job triggered"
-#~ msgstr "已触发同步任务"
-
-#~ msgid "Sync job triggered: %s"
-#~ msgstr "已触发同步任务：%s"
-
-#: web/views/ModuleCatalogListView.vue:96
+#: web/views/ModuleCatalogListView.vue:102
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Unavailable"
 msgstr "不可用"
@@ -1698,7 +1921,17 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "Uninstall"
 msgstr "卸载"
 
-#: web/views/ModuleCatalogListView.vue:89
+#: web/views/ModuleCatalogListView.vue:138
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Uninstalling %s"
+msgstr "正在卸载 %s"
+
+#: web/views/ModuleCatalogListView.vue:138
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Uninstalling…"
+msgstr "正在卸载…"
+
+#: web/views/ModuleCatalogListView.vue:95
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Unknown"
 msgstr "未知"
@@ -1708,17 +1941,27 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "Update Module List"
 msgstr "更新模块列表"
 
-#: web/views/ModuleCatalogListView.vue:94
+#: web/views/ModuleCatalogListView.vue:100
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Update available"
 msgstr "有可用更新"
 
-#: web/views/ModuleCatalogListView.vue:91
+#: web/views/ModuleCatalogListView.vue:97
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Upgrade"
 msgstr "升级"
 
-#: web/views/ModuleCatalogListView.vue:92
+#: web/views/ModuleCatalogListView.vue:137
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Upgrading %s"
+msgstr "正在升级 %s"
+
+#: web/views/ModuleCatalogListView.vue:137
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Upgrading…"
+msgstr "正在升级…"
+
+#: web/views/ModuleCatalogListView.vue:98
 msgctxt "web/views/ModuleCatalogListView"
 msgid "View Progress"
 msgstr ""
@@ -1728,267 +1971,197 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "View switcher"
 msgstr "视图切换"
 
-#: web/views/ModuleCatalogOpDrawer.vue:38
+#: web/views/ModuleCatalogListView.vue:140 web/views/ModuleCatalogListView.vue:141
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Working on %s"
+msgstr "正在处理 %s"
+
+#: web/views/ModuleCatalogListView.vue:130
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Working on it, please wait…"
+msgstr "处理中，请稍候…"
+
+#: web/views/ModuleCatalogListView.vue:140 web/views/ModuleCatalogListView.vue:141
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Working…"
+msgstr "正在处理…"
+
+#: web/views/ModuleCatalogListView.vue:132
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Wrapping up…"
+msgstr "即将完成…"
+
+#: web/views/ModuleCatalogOpDialog.vue:35
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Affected Apps"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDrawer.vue:25
+#: web/views/ModuleCatalogOpDialog.vue:22
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Affected Modules"
 msgstr "影响模块"
 
-#: web/views/ModuleCatalogOpDrawer.vue:55
+#: web/views/ModuleCatalogOpDialog.vue:50
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Blockers"
 msgstr "阻断原因"
 
-#: web/views/ModuleCatalogOpDrawer.vue:129
+#: web/views/ModuleCatalogOpDialog.vue:99
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/views/ModuleCatalogOpDrawer.vue:129
+#: web/views/ModuleCatalogOpDialog.vue:99
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Close"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDrawer.vue:122
-msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Closing this drawer keeps the operation running; use View Progress on the card."
-msgstr ""
-
-#: web/views/ModuleCatalogOpDrawer.vue:56
+#: web/views/ModuleCatalogOpDialog.vue:58
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Completed"
 msgstr "执行完成"
 
-#: web/views/ModuleCatalogOpDrawer.vue:132
+#: web/views/ModuleCatalogOpDialog.vue:102
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Confirm"
 msgstr "确认执行"
 
-#: web/views/ModuleCatalogOpDrawer.vue:21
+#: web/views/ModuleCatalogOpDialog.vue:18
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Confirm the impact of this operation"
 msgstr "请确认本次操作影响范围"
 
-#: web/views/ModuleCatalogOpDrawer.vue:112 web/views/ModuleCatalogOpDrawer.vue:58
+#: web/views/ModuleCatalogOpDialog.vue:60
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Data written; page did not refresh"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDrawer.vue:107 web/views/ModuleCatalogOpDrawer.vue:135
+#: web/views/ModuleCatalogOpDialog.vue:105
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Done"
 msgstr "完成"
 
-#: web/views/ModuleCatalogOpDrawer.vue:104
+#: web/views/ModuleCatalogOpDialog.vue:90
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Error:"
 msgstr "错误："
 
-#: web/views/ModuleCatalogOpDrawer.vue:88
+#: web/views/ModuleCatalogOpDialog.vue:79
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Execution Status"
 msgstr "执行状态"
 
-#: web/views/ModuleCatalogOpDrawer.vue:55
+#: web/views/ModuleCatalogOpDialog.vue:57
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Failed to get status"
 msgstr "获取状态失败"
 
-#: web/views/ModuleCatalogOpDrawer.vue:51
+#: web/views/ModuleCatalogOpDialog.vue:53
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Failed to load plan"
 msgstr "获取计划失败"
 
-#: web/views/ModuleCatalogOpDrawer.vue:81
+#: web/views/ModuleCatalogOpDialog.vue:85
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Install Module"
 msgstr "安装模块"
 
-#: web/views/ModuleCatalogOpDrawer.vue:53
+#: web/views/ModuleCatalogOpDialog.vue:55
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Job is still running in the background; refresh later"
 msgstr "任务仍在后台执行，可稍后刷新查看"
 
-#: web/views/ModuleCatalogOpDrawer.vue:86
+#: web/views/ModuleCatalogOpDialog.vue:88
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Load Demo Data"
-msgstr ""
+msgstr "加载演示数据"
 
-#: web/views/ModuleCatalogOpDrawer.vue:80
+#: web/views/ModuleCatalogOpDialog.vue:84
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Module Operation"
-msgstr ""
+msgstr "模块操作"
 
-#: web/views/ModuleCatalogOpDrawer.vue:7
-msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Operation %s"
-msgstr ""
-
-#: web/views/ModuleCatalogOpDrawer.vue:57
-msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Operation Failed"
-msgstr "操作失败"
-
-#: web/views/ModuleCatalogOpDrawer.vue:84
-msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Operation Progress"
-msgstr ""
-
-#: web/views/ModuleCatalogOpDrawer.vue:59
-msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Operation Succeeded"
-msgstr "操作成功"
-
-#: web/views/ModuleCatalogOpDrawer.vue
-msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Module list updated"
-msgstr "模块列表已更新"
-
-#: web/views/ModuleCatalogOpDrawer.vue
+#: web/views/ModuleCatalogOpDialog.vue:62
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Module list updated with warnings"
 msgstr "模块列表已更新（有警告）"
 
-#: web/views/ModuleCatalogListView.vue
-msgctxt "web/views/ModuleCatalogListView"
-msgid "Module list updated · %s"
-msgstr "模块列表已更新 · %s"
-
-#: web/views/ModuleCatalogListView.vue
-msgctxt "web/views/ModuleCatalogListView"
-msgid "Module list updated with warnings · %s"
-msgstr "模块列表已更新（有警告）· %s"
-
-#: web/views/ModuleCatalogKanbanView.vue
-msgctxt "web/views/ModuleCatalogKanbanView"
-msgid "Module list updated · %s"
-msgstr "模块列表已更新 · %s"
-
-#: web/views/ModuleCatalogKanbanView.vue
-msgctxt "web/views/ModuleCatalogKanbanView"
-msgid "Module list updated with warnings · %s"
-msgstr "模块列表已更新（有警告）· %s"
-
-#: web/views/ModuleCatalogOpDrawer.vue
+#: web/views/ModuleCatalogOpDialog.vue:59
 msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Synced %s sources; catalog has %s modules"
-msgstr "已同步 %s 个源；目录共 %s 个模块"
+msgid "Operation Failed"
+msgstr "操作失败"
 
-#: web/views/ModuleCatalogOpDrawer.vue
+#: web/views/ModuleCatalogOpDialog.vue:61
 msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Synced %s/%s sources (%s failed); catalog has %s modules"
-msgstr "已同步 %s/%s 个源（%s 个失败）；目录共 %s 个模块"
+msgid "Operation Succeeded"
+msgstr "操作成功"
 
-#: web/views/ModuleCatalogOpDrawer.vue:83
-msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Operation in progress, please wait"
-msgstr "任务执行中，请稍候"
-
-#: web/views/ModuleCatalogOpDrawer.vue:52
+#: web/views/ModuleCatalogOpDialog.vue:54
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Operation request failed"
 msgstr "操作请求失败"
 
-#: web/views/ModuleCatalogOpDrawer.vue:92
-msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Phase:"
-msgstr ""
-
-#: web/views/ModuleCatalogOpDrawer.vue:75
+#: web/views/ModuleCatalogOpDialog.vue:70
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Planning for %s…"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDrawer.vue:104
-msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Queued"
-msgstr "排队中"
-
-#: web/views/ModuleCatalogOpDrawer.vue:118
-msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Refresh page"
-msgstr ""
-
-#: web/views/ModuleCatalogOpDrawer.vue:106
-msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Reload"
-msgstr ""
-
-#: web/views/ModuleCatalogOpDrawer.vue:108
-msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Reload:"
-msgstr "Reload："
-
-#: web/views/ModuleCatalogOpDrawer.vue:18
+#: web/views/ModuleCatalogOpDialog.vue:15
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Resolve blockers before continuing"
 msgstr "存在阻断项，需先处理后再继续"
 
-#: web/views/ModuleCatalogOpDrawer.vue:96
+#: web/views/ModuleCatalogOpDialog.vue:82
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Result:"
 msgstr "结果："
 
-#: web/views/ModuleCatalogOpDrawer.vue:43
+#: web/views/ModuleCatalogOpDialog.vue:40
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Risks"
 msgstr "风险提示"
 
-#: web/views/ModuleCatalogOpDrawer.vue:105
-msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Running"
-msgstr ""
-
-#: web/views/ModuleCatalogOpDrawer.vue:75
+#: web/views/ModuleCatalogOpDialog.vue:70
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Select a module action to plan an operation."
 msgstr ""
 
-#: web/views/ModuleCatalogOpDrawer.vue:54
+#: web/views/ModuleCatalogOpDialog.vue:56
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Service is restarting; status will retry automatically"
 msgstr "服务正在重启，状态查询会自动重试"
 
-#: web/views/ModuleCatalogOpDrawer.vue:90
-msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Status:"
-msgstr "状态："
-
-#: web/views/ModuleCatalogOpDrawer.vue:100
+#: web/views/ModuleCatalogOpDialog.vue:86
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Summary:"
 msgstr "摘要："
 
-#: web/views/ModuleCatalogOpDrawer.vue:113
+#: web/views/ModuleCatalogOpDialog.vue:125
 msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Triggered"
-msgstr "已触发"
+msgid "Synced %s sources; catalog has %s modules"
+msgstr "已同步 %s 个源；目录共 %s 个模块"
 
-#: web/views/ModuleCatalogOpDrawer.vue:83
+#: web/views/ModuleCatalogOpDialog.vue:117
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Synced %s/%s sources (%s failed); catalog has %s modules"
+msgstr "已同步 %s/%s 个源（%s 个失败）；目录共 %s 个模块"
+
+#: web/views/ModuleCatalogOpDialog.vue:87
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Uninstall Module"
 msgstr "卸载模块"
 
-#: web/views/ModuleCatalogOpDrawer.vue:85
-msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Update Module List"
-msgstr "更新模块列表"
-
-#: web/views/ModuleCatalogOpDrawer.vue:82
+#: web/views/ModuleCatalogOpDialog.vue:86
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Upgrade Module"
 msgstr "升级模块"
 
-#: web/views/ModuleCatalogOpDrawer.vue:70
+#: web/views/ModuleCatalogOpDialog.vue:65
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Use registry version"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDrawer.vue:69
+#: web/views/ModuleCatalogOpDialog.vue:64
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Using registry version"
 msgstr ""
@@ -2001,7 +2174,7 @@ msgstr "安装模块"
 #: web/views/module_catalog_actions.ts:44
 msgctxt "web/views/module_catalog_actions"
 msgid "Load Demo Data"
-msgstr ""
+msgstr "加载演示数据"
 
 #: web/views/module_catalog_actions.ts:29
 msgctxt "web/views/module_catalog_actions"
@@ -2017,6 +2190,12 @@ msgstr "更新模块列表"
 msgctxt "web/views/module_catalog_actions"
 msgid "Upgrade Module"
 msgstr "升级模块"
+
+#~ msgid "Sync job triggered"
+#~ msgstr "已触发同步任务"
+
+#~ msgid "Sync job triggered: %s"
+#~ msgstr "已触发同步任务：%s"
 
 #~ msgctxt "meta.model.MetaModule.fields"
 #~ msgid "Dependents"
@@ -2257,6 +2436,222 @@ msgstr "升级模块"
 #~ msgctxt "web/route/routes"
 #~ msgid "Operation History"
 #~ msgstr "操作历史"
+
+#~ msgctxt "web/views/ModuleCatalogFormView"
+#~ msgid "Executing %s…"
+#~ msgstr "正在执行 %s…"
+
+#~ msgctxt "web/views/ModuleCatalogFormView"
+#~ msgid "Executing…"
+#~ msgstr "正在执行…"
+
+#~ msgctxt "web/views/ModuleCatalogFormView"
+#~ msgid "Finishing…"
+#~ msgstr "即将完成…"
+
+#~ msgctxt "web/views/ModuleCatalogFormView"
+#~ msgid "Install Module"
+#~ msgstr "安装模块"
+
+#~ msgctxt "web/views/ModuleCatalogFormView"
+#~ msgid "Module Operation"
+#~ msgstr "模块操作"
+
+#~ msgctxt "web/views/ModuleCatalogFormView"
+#~ msgid "Operation Progress"
+#~ msgstr "操作进度"
+
+#~ msgctxt "web/views/ModuleCatalogFormView"
+#~ msgid "Operation in progress, please wait"
+#~ msgstr "任务执行中，请稍候"
+
+#~ msgctxt "web/views/ModuleCatalogFormView"
+#~ msgid "Queued…"
+#~ msgstr "正在排队…"
+
+#~ msgctxt "web/views/ModuleCatalogFormView"
+#~ msgid "Reloading service…"
+#~ msgstr "正在重载服务…"
+
+#~ msgctxt "web/views/ModuleCatalogFormView"
+#~ msgid "Uninstall Module"
+#~ msgstr "卸载模块"
+
+#~ msgctxt "web/views/ModuleCatalogFormView"
+#~ msgid "Upgrade Module"
+#~ msgstr "升级模块"
+
+#~ msgctxt "web/views/ModuleCatalogKanbanView"
+#~ msgid "Executing %s…"
+#~ msgstr "正在执行 %s…"
+
+#~ msgctxt "web/views/ModuleCatalogKanbanView"
+#~ msgid "Executing…"
+#~ msgstr "正在执行…"
+
+#~ msgctxt "web/views/ModuleCatalogKanbanView"
+#~ msgid "Finishing…"
+#~ msgstr "即将完成…"
+
+#~ msgctxt "web/views/ModuleCatalogKanbanView"
+#~ msgid "Install Module"
+#~ msgstr "安装模块"
+
+#~ msgctxt "web/views/ModuleCatalogKanbanView"
+#~ msgid "Module Operation"
+#~ msgstr "模块操作"
+
+#~ msgctxt "web/views/ModuleCatalogKanbanView"
+#~ msgid "Operation Progress"
+#~ msgstr "操作进度"
+
+#~ msgctxt "web/views/ModuleCatalogKanbanView"
+#~ msgid "Operation in progress, please wait"
+#~ msgstr "任务执行中，请稍候"
+
+#~ msgctxt "web/views/ModuleCatalogKanbanView"
+#~ msgid "Queued…"
+#~ msgstr "正在排队…"
+
+#~ msgctxt "web/views/ModuleCatalogKanbanView"
+#~ msgid "Reloading service…"
+#~ msgstr "正在重载服务…"
+
+#~ msgctxt "web/views/ModuleCatalogKanbanView"
+#~ msgid "Uninstall Module"
+#~ msgstr "卸载模块"
+
+#~ msgctxt "web/views/ModuleCatalogKanbanView"
+#~ msgid "Upgrade Module"
+#~ msgstr "升级模块"
+
+#~ msgctxt "web/views/ModuleCatalogListView"
+#~ msgid "Executing %s…"
+#~ msgstr "正在执行 %s…"
+
+#~ msgctxt "web/views/ModuleCatalogListView"
+#~ msgid "Executing…"
+#~ msgstr "正在执行…"
+
+#~ msgctxt "web/views/ModuleCatalogListView"
+#~ msgid "Finishing…"
+#~ msgstr "即将完成…"
+
+#~ msgctxt "web/views/ModuleCatalogListView"
+#~ msgid "Install Module"
+#~ msgstr "安装模块"
+
+#~ msgctxt "web/views/ModuleCatalogListView"
+#~ msgid "Module Operation"
+#~ msgstr "模块操作"
+
+#~ msgctxt "web/views/ModuleCatalogListView"
+#~ msgid "Operation Progress"
+#~ msgstr "操作进度"
+
+#~ msgctxt "web/views/ModuleCatalogListView"
+#~ msgid "Operation in progress, please wait"
+#~ msgstr "任务执行中，请稍候"
+
+#~ msgctxt "web/views/ModuleCatalogListView"
+#~ msgid "Queued…"
+#~ msgstr "正在排队…"
+
+#~ msgctxt "web/views/ModuleCatalogListView"
+#~ msgid "Reloading service…"
+#~ msgstr "正在重载服务…"
+
+#~ msgctxt "web/views/ModuleCatalogListView"
+#~ msgid "Uninstall Module"
+#~ msgstr "卸载模块"
+
+#~ msgctxt "web/views/ModuleCatalogListView"
+#~ msgid "Upgrade Module"
+#~ msgstr "升级模块"
+
+#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgid "Closing this drawer keeps the operation running; use View Progress on the card."
+#~ msgstr ""
+
+#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgid "Executing %s…"
+#~ msgstr "正在执行 %s…"
+
+#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgid "Executing…"
+#~ msgstr "正在执行…"
+
+#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgid "Finishing…"
+#~ msgstr "即将完成…"
+
+#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgid "Module list updated"
+#~ msgstr "模块列表已更新"
+
+#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgid "Operation %s"
+#~ msgstr ""
+
+#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgid "Operation Progress"
+#~ msgstr ""
+
+#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgid "Operation in progress, please wait"
+#~ msgstr "任务执行中，请稍候"
+
+#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgid "Phase:"
+#~ msgstr ""
+
+#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgid "Please wait for this operation to finish"
+#~ msgstr "请等待操作完成"
+
+#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgid "Queued"
+#~ msgstr "排队中"
+
+#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgid "Queued…"
+#~ msgstr "正在排队…"
+
+#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgid "Refresh page"
+#~ msgstr ""
+
+#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgid "Reload"
+#~ msgstr ""
+
+#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgid "Reload:"
+#~ msgstr "Reload："
+
+#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgid "Reloading service…"
+#~ msgstr "正在重载服务…"
+
+#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgid "Running"
+#~ msgstr ""
+
+#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgid "Status:"
+#~ msgstr "状态："
+
+#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgid "Triggered"
+#~ msgstr "已触发"
+
+#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgid "Update Module List"
+#~ msgstr "更新模块列表"
+
+#~ msgctxt "web/views/ModuleCatalogOpProgressStrip"
+#~ msgid "Please wait for this operation to finish"
+#~ msgstr "请等待操作完成"
 
 #~ msgctxt "web/views/ModuleDetailView"
 #~ msgid "Basic Information"

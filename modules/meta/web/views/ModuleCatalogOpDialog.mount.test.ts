@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { mount, flushPromises } from '@choysum/test-utils';
-import ModuleCatalogOpDrawer from './ModuleCatalogOpDrawer.vue';
+import ModuleCatalogOpDialog from './ModuleCatalogOpDialog.vue';
 import { buildPageMountGlobal } from '@choysum/page-mount';
 
-test('ModuleCatalogOpDrawer.vue mounts closed shell for each action title branch', async () => {
+test('ModuleCatalogOpDialog.vue mounts closed shell for each action title branch', async () => {
   const actions = ['install', 'upgrade', 'uninstall', 'progress', 'sync', 'load_demo', ''] as const;
   for (const action of actions) {
-    const wrapper = mount(ModuleCatalogOpDrawer as any, {
+    const wrapper = mount(ModuleCatalogOpDialog as any, {
       props: {
         open: false,
         action,
@@ -23,7 +23,7 @@ test('ModuleCatalogOpDrawer.vue mounts closed shell for each action title branch
   }
 });
 
-test('ModuleCatalogOpDrawer.vue opens load_demo via PlanDemo', async () => {
+test('ModuleCatalogOpDialog.vue opens load_demo via PlanDemo', async () => {
   const plans: any[] = [];
   const store = {
     PlanDemo: async (req: any) => {
@@ -40,7 +40,7 @@ test('ModuleCatalogOpDrawer.vue opens load_demo via PlanDemo', async () => {
     Apply: async () => ({ Id: 'op-demo-1' }),
     Browse: async () => ({ Status: 'succeeded', ReloadTriggered: false, ReloadFailed: false }),
   };
-  const wrapper = mount(ModuleCatalogOpDrawer as any, {
+  const wrapper = mount(ModuleCatalogOpDialog as any, {
     props: {
       open: true,
       action: 'load_demo',
@@ -56,9 +56,10 @@ test('ModuleCatalogOpDrawer.vue opens load_demo via PlanDemo', async () => {
   wrapper.unmount();
 });
 
-test('ModuleCatalogOpDrawer.vue plans and confirms through operation store', async () => {
+test('ModuleCatalogOpDialog.vue plans and confirms then emits applied', async () => {
   const plans: any[] = [];
   const applies: any[] = [];
+  const applied: string[] = [];
   const store = {
     Plan: async (req: any) => {
       plans.push(req);
@@ -81,12 +82,13 @@ test('ModuleCatalogOpDrawer.vue plans and confirms through operation store', asy
     }),
   };
 
-  const wrapper = mount(ModuleCatalogOpDrawer as any, {
+  const wrapper = mount(ModuleCatalogOpDialog as any, {
     props: {
       open: true,
       action: 'install',
       moduleName: 'core',
       operationStore: store,
+      onApplied: (id: string) => applied.push(id),
     },
     global: buildPageMountGlobal({ route: { path: '/meta/modules', fullPath: '/meta/modules' } }),
   });
@@ -95,6 +97,7 @@ test('ModuleCatalogOpDrawer.vue plans and confirms through operation store', asy
   expect(plans.length).toBe(1);
   expect(plans[0].ModuleName).toBe('core');
   expect(plans[0].Action).toBe('install');
+  expect(wrapper.find('[data-testid="module-op-dialog"]').exists()).toBe(true);
 
   const confirm = wrapper.find('[data-testid="module-op-confirm"]');
   expect(confirm.exists()).toBe(true);
@@ -102,11 +105,37 @@ test('ModuleCatalogOpDrawer.vue plans and confirms through operation store', asy
   await flushPromises();
   await flushPromises();
   expect(applies.length).toBe(1);
-  expect(wrapper.find('[data-testid="module-op-status"]').exists()).toBe(true);
+  expect(applied).toEqual(['op-plan-1']);
+  // Confirm dialog stays on plan until host closes; no locked progress step.
+  expect(wrapper.find('[data-testid="module-op-progress-headline"]').exists()).toBe(false);
   wrapper.unmount();
 });
 
-test('ModuleCatalogOpDrawer.vue covers result branches, registry replan, and close', async () => {
+test('ModuleCatalogOpDialog.vue progress action hands off via applied and closes', async () => {
+  const applied: string[] = [];
+  const openUpdates: boolean[] = [];
+  const wrapper = mount(ModuleCatalogOpDialog as any, {
+    props: {
+      open: true,
+      action: 'progress',
+      moduleName: 'core',
+      operationId: 'op-lock',
+      operationStore: {
+        Browse: async () => ({ Status: 'queued', Phase: 'queued' }),
+      },
+      onApplied: (id: string) => applied.push(id),
+      'onUpdate:open': (next: boolean) => openUpdates.push(next),
+    },
+    global: buildPageMountGlobal({ route: { path: '/meta/modules', fullPath: '/meta/modules' } }),
+  });
+  await flushPromises();
+  await flushPromises();
+  expect(applied).toEqual(['op-lock']);
+  expect(openUpdates.includes(false)).toBe(true);
+  wrapper.unmount();
+});
+
+test('ModuleCatalogOpDialog.vue covers apply failure, registry replan, and close', async () => {
   const plans: any[] = [];
   const store = {
     Plan: async (req: any) => {
@@ -119,18 +148,11 @@ test('ModuleCatalogOpDrawer.vue covers result branches, registry replan, and clo
         Blockers: [],
       };
     },
-    Apply: async () => ({ Id: 'op-up' }),
-    Browse: async () => ({
-      // Succeeded with reload failure hits the amber resultAlertBoxClass branch.
-      Status: 'succeeded',
-      ReloadTriggered: true,
-      ReloadFailed: true,
-      ErrorDomain: 'OPS',
-      ErrorCode: 'E1',
-      ErrorMessage: 'boom',
-    }),
+    Apply: async () => {
+      throw new Error('boom');
+    },
   };
-  const wrapper = mount(ModuleCatalogOpDrawer as any, {
+  const wrapper = mount(ModuleCatalogOpDialog as any, {
     props: {
       open: true,
       action: 'upgrade',
@@ -151,84 +173,9 @@ test('ModuleCatalogOpDrawer.vue covers result branches, registry replan, and clo
   await wrapper.find('[data-testid="module-op-confirm"]').trigger('click');
   await flushPromises();
   await flushPromises();
-  expect(wrapper.find('[data-testid="module-op-reload"]').exists()).toBe(true);
-  const reloadStub = () => undefined;
-  const previousReload = (window.location as { reload: () => void }).reload;
-  Object.defineProperty(window.location, 'reload', {
-    configurable: true,
-    writable: true,
-    value: reloadStub,
-  });
-  try {
-    const retry = wrapper.find('[data-testid="module-op-reload-retry"]');
-    expect(retry.exists()).toBe(true);
-    await retry.trigger('click');
-    const done = wrapper.find('[data-testid="module-op-done"]');
-    expect(done.exists()).toBe(true);
-    await done.trigger('click');
-    await flushPromises();
-  } finally {
-    Object.defineProperty(window.location, 'reload', {
-      configurable: true,
-      writable: true,
-      value: previousReload,
-    });
-  }
+  expect(wrapper.find('[data-testid="module-op-result"]').exists()).toBe(true);
+  expect(wrapper.find('[data-testid="module-op-done"]').exists()).toBe(true);
+  await wrapper.find('[data-testid="module-op-done"]').trigger('click');
+  await flushPromises();
   wrapper.unmount();
-
-  // Cover the FAILED resultAlertBoxClass branch (distinct from ReloadFailed amber).
-  const failedStore = {
-    Plan: async () => ({
-      Id: 'op-fail',
-      ModuleOrder: [],
-      AffectedApps: [],
-      Risks: [],
-      Blockers: [],
-    }),
-    Apply: async () => ({ Id: 'op-fail' }),
-    Browse: async () => ({
-      Status: 'failed',
-      ErrorDomain: 'OPS',
-      ErrorCode: 'E2',
-      ErrorMessage: 'nope',
-    }),
-  };
-  const failed = mount(ModuleCatalogOpDrawer as any, {
-    props: {
-      open: true,
-      action: 'install',
-      moduleName: 'core',
-      operationStore: failedStore,
-    },
-    global: buildPageMountGlobal({ route: { path: '/meta/modules', fullPath: '/meta/modules' } }),
-  });
-  await flushPromises();
-  await flushPromises();
-  await failed.find('[data-testid="module-op-confirm"]').trigger('click');
-  await flushPromises();
-  await flushPromises();
-  expect(failed.find('[data-testid="module-op-result"]').exists()).toBe(true);
-  failed.unmount();
-
-  // Cancelled terminal has no resultStatus — neutral resultAlertBoxClass (not success green).
-  const cancelled = mount(ModuleCatalogOpDrawer as any, {
-    props: {
-      open: true,
-      action: 'progress',
-      moduleName: 'core',
-      operationId: 'op-cancel',
-      operationStore: {
-        Browse: async () => ({ Status: 'cancelled' }),
-      },
-    },
-    global: buildPageMountGlobal({ route: { path: '/meta/modules', fullPath: '/meta/modules' } }),
-  });
-  await flushPromises();
-  await flushPromises();
-  const alert = cancelled.find('[data-testid="module-op-alert"]');
-  expect(alert.exists()).toBe(true);
-  const alertClass = String((alert.element as any)?.getAttribute?.('class') || '');
-  expect(alertClass).toContain('border-border');
-  expect(alertClass).not.toContain('border-emerald');
-  cancelled.unmount();
 });

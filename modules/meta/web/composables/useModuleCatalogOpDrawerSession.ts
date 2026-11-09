@@ -108,6 +108,8 @@ export function useModuleCatalogOpDrawerSession(opts: {
   isOpen: () => boolean;
   msgs: ModuleCatalogOpDrawerSessionMsgs;
   onSettled?: (status?: ModuleOpStatusSnapshot | null) => void;
+  /** Called after Apply succeeds, before progress watch (hosts refresh ActiveOperationId). */
+  onApplied?: (operationId: string) => void;
 }) {
   const step = ref<ModuleCatalogOpDrawerStep>('plan');
   const planLoading = ref(false);
@@ -296,7 +298,7 @@ export function useModuleCatalogOpDrawerSession(opts: {
       // Page-mount stubs may omit Browse/Search; keep the drawer open without crashing.
       activeAction.value = nextAction;
       step.value = 'progress';
-      opStatus.value = { status: 'queued' };
+      opStatus.value = { status: 'queued', phase: 'queued' };
       return;
     }
     activeAction.value = nextAction;
@@ -315,7 +317,6 @@ export function useModuleCatalogOpDrawerSession(opts: {
       return;
     }
     executeLoading.value = true;
-    step.value = 'progress';
     try {
       await (store as any).Apply({ Id: operationId });
     } catch (error: any) {
@@ -328,13 +329,13 @@ export function useModuleCatalogOpDrawerSession(opts: {
         summary: String(error?.message || opts.msgs.applyFailed),
       };
       ChoyMessage.error(String(error?.message || opts.msgs.applyFailed));
+      if (opts.isOpen()) opts.onSettled?.(opStatus.value);
       return;
     } finally {
       executeLoading.value = false;
     }
-    // progress.watch swallows status-read errors; do not remap them as Apply failures.
-    await progress.watch(operationId);
-    if (opts.isOpen()) opts.onSettled?.(opStatus.value);
+    // Host closes the confirm dialog and watches progress on a locked strip.
+    opts.onApplied?.(operationId);
   }
 
   return {

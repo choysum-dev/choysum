@@ -148,14 +148,21 @@ SPDX-License-Identifier: Apache-2.0
       </template>
     </ChoyKanbanView>
 
-    <ModuleCatalogOpDrawer
+    <ModuleCatalogOpDialog
       v-model:open="drawerOpen"
       :operation-store="operationStore"
       :operation-id="drawerOperationId"
       :module-name="drawerModuleName"
       :action="drawerAction"
       :registry-newer-than-local="drawerRegistryNewerThanLocal"
+      @applied="onOpApplied"
       @settled="onDrawerSettled"
+    />
+    <ModuleCatalogOpProgressStrip
+      :busy="progressBusy"
+      :title="progressTitle"
+      :headline="progressHeadline"
+      :value="progressValue"
     />
   </div>
 </template>
@@ -172,7 +179,8 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { useModuleCatalogViewModel } from '../composables/useModuleCatalogViewModel';
 import { moduleLoadDemoAction, moduleSyncAction, moduleUninstallAction } from './module_catalog_actions';
-import ModuleCatalogOpDrawer from './ModuleCatalogOpDrawer.vue';
+import ModuleCatalogOpDialog from './ModuleCatalogOpDialog.vue';
+import ModuleCatalogOpProgressStrip from './ModuleCatalogOpProgressStrip.vue';
 import {
   formatModuleCatalogVersionLine,
   moduleCatalogCardApplication,
@@ -238,9 +246,14 @@ const {
   onUninstall,
   hasPendingDemo,
   onLoadDemo,
+  onOpApplied,
   onDrawerSettled,
   openDrawer,
   closeDrawer,
+  progressBusy,
+  progressTitle,
+  progressHeadline,
+  progressValue,
   toShow,
   rowRecord,
   statusBadgeVariant,
@@ -284,6 +297,25 @@ const {
         String(sync.failed),
         String(sync.catalogRows),
       ),
+    opSettledOk: _t('Operation Succeeded'),
+    opSettledFailed: msg => _t('Operation Failed: %s', msg),
+    opJobStillRunning: _t('Job is still running in the background; refresh later'),
+    opServiceRestarting: _t('Service is restarting; status will retry automatically'),
+    opFailedToGetStatus: _t('Failed to get status'),
+    opReloadingService: () => _t('Almost done, refreshing…'),
+    opExecuting: () => _t('Working on it, please wait…'),
+    opQueued: () => _t('Getting ready…'),
+    opFinishing: () => _t('Wrapping up…'),
+    opInProgress: () => _t('Please wait…'),
+    opProgressTitle: (action, moduleName) => {
+      const name = String(moduleName || '').trim();
+      if (action === 'install') return name ? _t('Installing %s', name) : _t('Installing…');
+      if (action === 'upgrade') return name ? _t('Upgrading %s', name) : _t('Upgrading…');
+      if (action === 'uninstall') return name ? _t('Uninstalling %s', name) : _t('Uninstalling…');
+      if (action === 'load_demo') return _t('Loading demo data…');
+      if (action === 'progress') return name ? _t('Working on %s', name) : _t('Working…');
+      return name ? _t('Working on %s', name) : _t('Working…');
+    },
   },
 });
 
