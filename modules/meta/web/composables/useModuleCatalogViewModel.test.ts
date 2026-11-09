@@ -10,6 +10,7 @@ const msgs = {
   upgrade: 'Upgrade',
   progress: 'View Progress',
   installed: 'Installed',
+  updateAvailable: 'Update available',
   uninstalled: 'Not Installed',
   unavailable: 'Unavailable',
   syncTriggered: (id: string) => `ok:${id}`,
@@ -63,11 +64,15 @@ test('useModuleCatalogViewModel: labels status and drives drawer actions', () =>
   });
 
   const core = store.state.result.rows[0];
-  expect(api.statusLabel(core)).toBe('Installed');
+  expect(api.statusLabel(core)).toBe('Update available');
   expect(api.primaryActionFor(core)).toBe('upgrade');
   expect(api.primaryActionLabel('upgrade')).toBe('Upgrade');
   expect(api.primaryActionLabel(null)).toBe('');
-  expect(api.statusBadgeVariant(core)).toBeTruthy();
+  expect(api.statusBadgeVariant(core)).toBe('secondary');
+  expect(api.statusLabel({ Installed: true, UpdateAvailable: false })).toBe('Installed');
+  expect(api.statusBadgeVariant({ Installed: true, UpdateAvailable: false, Available: true })).toBe(
+    'outline',
+  );
   expect(api.statusLabel({ Available: false })).toBe('Unavailable');
   expect(api.statusLabel({ Installed: false })).toBe('Not Installed');
   expect(api.statusLabel({})).toBe('Unknown');

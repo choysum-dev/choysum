@@ -86,44 +86,59 @@ SPDX-License-Identifier: Apache-2.0
       </template>
 
       <template #card="{ card }">
-        <div class="flex flex-col gap-1.5 text-xs" data-testid="module-catalog-card">
-          <button type="button" class="flex flex-col gap-1.5 text-start" @click.stop="openShow(card)">
+        <div
+          class="module-catalog-card flex h-full min-h-0 flex-1 flex-col gap-1.5 text-xs"
+          data-testid="module-catalog-card"
+        >
+          <div class="flex min-h-0 flex-1 flex-col gap-1.5">
             <div class="flex items-center justify-between gap-2">
               <span
                 class="truncate text-sm font-medium text-foreground"
                 data-testid="module-catalog-card-name"
               >{{ cardModuleName(card) }}</span>
               <ChoyBadge
-                :variant="cardStatusVariant(card)"
+                :variant="statusBadgeVariant(cardPayload(card))"
                 class="shrink-0 px-1.5 py-0 text-[10px] font-normal"
                 data-testid="module-catalog-card-status"
               >
                 {{ cardStatusLabel(card) }}
               </ChoyBadge>
             </div>
-            <div class="truncate text-muted-foreground">{{ cardVersionLine(card) }}</div>
-            <div v-if="cardSummary(card)" class="line-clamp-2 text-muted-foreground">{{ cardSummary(card) }}</div>
-            <div class="truncate text-muted-foreground/80">{{ cardApplication(card) || '—' }}</div>
-          </button>
-          <div class="mt-auto flex flex-wrap items-center justify-end gap-1">
-            <button
-              v-if="canUninstall(cardPayload(card)) && hasAction(moduleUninstallAction)"
-              type="button"
-              class="rounded-md border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-muted"
-              data-testid="module-catalog-card-uninstall"
-              @click.stop="onUninstall(cardPayload(card))"
-            >
-              {{ _t('Uninstall') }}
-            </button>
-            <button
+            <div
+              class="truncate text-muted-foreground"
+              :title="cardVersionLine(card)"
+            >{{ cardVersionLine(card) }}</div>
+            <div
+              v-if="cardSummary(card)"
+              class="line-clamp-2 text-muted-foreground"
+            >{{ cardSummary(card) }}</div>
+            <div
+              v-if="cardApplication(card)"
+              class="truncate text-muted-foreground/80"
+            >{{ cardApplication(card) }}</div>
+          </div>
+          <!-- Pin actions to the card footer so missing Application/Summary does not shift them. -->
+          <div class="mt-auto flex flex-wrap items-center justify-start gap-1 pt-2">
+            <ChoyButton
               v-if="primaryActionFor(cardPayload(card))"
               type="button"
-              class="rounded-md border border-border px-2 py-0.5 text-[11px] hover:bg-muted"
+              size="xs"
+              :variant="primaryActionFor(cardPayload(card)) === 'progress' ? 'outline' : 'default'"
               :data-testid="`module-catalog-card-primary-${primaryActionFor(cardPayload(card))}`"
               @click.stop="onPrimaryAction(cardPayload(card))"
             >
               {{ primaryActionLabel(primaryActionFor(cardPayload(card))) }}
-            </button>
+            </ChoyButton>
+            <ChoyButton
+              v-if="canUninstall(cardPayload(card)) && hasAction(moduleUninstallAction)"
+              type="button"
+              size="xs"
+              variant="outline-destructive"
+              data-testid="module-catalog-card-uninstall"
+              @click.stop="onUninstall(cardPayload(card))"
+            >
+              {{ _t('Uninstall') }}
+            </ChoyButton>
           </div>
         </div>
       </template>
@@ -133,7 +148,7 @@ SPDX-License-Identifier: Apache-2.0
       </template>
     </ChoyKanbanView>
 
-    <ModuleOpDrawer
+    <ModuleCatalogOpDrawer
       v-model:open="drawerOpen"
       :operation-store="operationStore"
       :operation-id="drawerOperationId"
@@ -156,12 +171,12 @@ import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { useModuleCatalogViewModel } from '../composables/useModuleCatalogViewModel';
-import { moduleLoadDemoAction, moduleSyncAction, moduleUninstallAction } from './module_actions';
-import ModuleOpDrawer from './ModuleOpDrawer.vue';
+import { moduleLoadDemoAction, moduleSyncAction, moduleUninstallAction } from './module_catalog_actions';
+import ModuleCatalogOpDrawer from './ModuleCatalogOpDrawer.vue';
 import {
   formatModuleCatalogVersionLine,
-  moduleStatusBadgeVariant,
-  catalogInstalledStatus,
+  moduleCatalogCardApplication,
+  moduleCatalogCardSummary,
 } from './module_catalog_chrome';
 import {
   ChoyBadge,
@@ -228,6 +243,7 @@ const {
   closeDrawer,
   toShow,
   rowRecord,
+  statusBadgeVariant,
   statusLabel,
   primaryActionFor,
   primaryActionLabel,
@@ -244,6 +260,7 @@ const {
     upgrade: _t('Upgrade'),
     progress: _t('View Progress'),
     installed: _t('Installed'),
+    updateAvailable: _t('Update available'),
     uninstalled: _t('Not Installed'),
     unavailable: _t('Unavailable'),
     syncTriggered: id => _t('Sync job triggered: %s', id),
@@ -279,11 +296,11 @@ function cardModuleName(card: ChoyKanbanCard): string {
 }
 
 function cardSummary(card: ChoyKanbanCard): string {
-  return String(cardPayload(card).Summary || '').trim();
+  return moduleCatalogCardSummary(cardPayload(card));
 }
 
 function cardApplication(card: ChoyKanbanCard): string {
-  return String(cardPayload(card).Application || '').trim();
+  return moduleCatalogCardApplication(cardPayload(card));
 }
 
 function cardVersionLine(card: ChoyKanbanCard): string {
@@ -294,17 +311,8 @@ function cardStatusLabel(card: ChoyKanbanCard): string {
   return statusLabel(cardPayload(card));
 }
 
-function cardStatusVariant(card: ChoyKanbanCard) {
-  const rec = cardPayload(card);
-  return moduleStatusBadgeVariant(catalogInstalledStatus(rec), rec.Available as boolean | undefined);
-}
-
-function openShow(card: ChoyKanbanCard) {
-  toShow(cardPayload(card));
-}
-
 function onCardClick(card: ChoyKanbanCard) {
-  openShow(card);
+  toShow(cardPayload(card));
 }
 
 function onDrawerSettled() {

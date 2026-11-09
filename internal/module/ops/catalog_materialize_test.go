@@ -9,7 +9,36 @@ import (
 
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	pkgmeta "github.com/choysum-dev/choysum/pkg/meta"
+	"gorm.io/datatypes"
 )
+
+func TestFillCatalogFromManifest_ReadsChoysumNestedFields(t *testing.T) {
+	t.Parallel()
+	row := &modmeta.ModuleCatalog{}
+	fillCatalogFromManifest(row, datatypes.JSON(`{
+		"description": "Partner commercial extension",
+		"author": "Choysum Team",
+		"license": "Apache-2.0",
+		"choysum": {
+			"moduleName": "partner_commercial",
+			"application": "partner",
+			"category": "Partner",
+			"depends": ["partner", "base", "auth"]
+		}
+	}`))
+	if row.Application != "partner" {
+		t.Fatalf("Application = %q, want partner from choysum.application", row.Application)
+	}
+	if row.Category != "Partner" {
+		t.Fatalf("Category = %q, want Partner from choysum.category", row.Category)
+	}
+	if string(row.DependsJson) == "" {
+		t.Fatal("expected DependsJson from choysum.depends")
+	}
+	if row.Description != "Partner commercial extension" {
+		t.Fatalf("Description = %q", row.Description)
+	}
+}
 
 func TestMaterializeCatalog_MergesLocalRegistryAndInstalled(t *testing.T) {
 	t.Parallel()

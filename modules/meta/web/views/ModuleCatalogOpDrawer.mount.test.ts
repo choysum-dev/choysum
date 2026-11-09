@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { mount, flushPromises } from '@choysum/test-utils';
-import ModuleOpDrawer from './ModuleOpDrawer.vue';
+import ModuleCatalogOpDrawer from './ModuleCatalogOpDrawer.vue';
 import { buildPageMountGlobal } from '@choysum/page-mount';
 
-test('ModuleOpDrawer.vue mounts closed shell for each action title branch', async () => {
+test('ModuleCatalogOpDrawer.vue mounts closed shell for each action title branch', async () => {
   const actions = ['install', 'upgrade', 'uninstall', 'progress', 'sync', 'load_demo', ''] as const;
   for (const action of actions) {
-    const wrapper = mount(ModuleOpDrawer as any, {
+    const wrapper = mount(ModuleCatalogOpDrawer as any, {
       props: {
         open: false,
         action,
@@ -23,7 +23,7 @@ test('ModuleOpDrawer.vue mounts closed shell for each action title branch', asyn
   }
 });
 
-test('ModuleOpDrawer.vue opens load_demo via PlanDemo', async () => {
+test('ModuleCatalogOpDrawer.vue opens load_demo via PlanDemo', async () => {
   const plans: any[] = [];
   const store = {
     PlanDemo: async (req: any) => {
@@ -40,7 +40,7 @@ test('ModuleOpDrawer.vue opens load_demo via PlanDemo', async () => {
     Apply: async () => ({ Id: 'op-demo-1' }),
     Browse: async () => ({ Status: 'succeeded', ReloadTriggered: false, ReloadFailed: false }),
   };
-  const wrapper = mount(ModuleOpDrawer as any, {
+  const wrapper = mount(ModuleCatalogOpDrawer as any, {
     props: {
       open: true,
       action: 'load_demo',
@@ -56,7 +56,7 @@ test('ModuleOpDrawer.vue opens load_demo via PlanDemo', async () => {
   wrapper.unmount();
 });
 
-test('ModuleOpDrawer.vue plans and confirms through operation store', async () => {
+test('ModuleCatalogOpDrawer.vue plans and confirms through operation store', async () => {
   const plans: any[] = [];
   const applies: any[] = [];
   const store = {
@@ -81,7 +81,7 @@ test('ModuleOpDrawer.vue plans and confirms through operation store', async () =
     }),
   };
 
-  const wrapper = mount(ModuleOpDrawer as any, {
+  const wrapper = mount(ModuleCatalogOpDrawer as any, {
     props: {
       open: true,
       action: 'install',
@@ -106,7 +106,7 @@ test('ModuleOpDrawer.vue plans and confirms through operation store', async () =
   wrapper.unmount();
 });
 
-test('ModuleOpDrawer.vue covers result branches, registry replan, and close', async () => {
+test('ModuleCatalogOpDrawer.vue covers result branches, registry replan, and close', async () => {
   const plans: any[] = [];
   const store = {
     Plan: async (req: any) => {
@@ -130,7 +130,7 @@ test('ModuleOpDrawer.vue covers result branches, registry replan, and close', as
       ErrorMessage: 'boom',
     }),
   };
-  const wrapper = mount(ModuleOpDrawer as any, {
+  const wrapper = mount(ModuleCatalogOpDrawer as any, {
     props: {
       open: true,
       action: 'upgrade',
@@ -193,7 +193,7 @@ test('ModuleOpDrawer.vue covers result branches, registry replan, and close', as
       ErrorMessage: 'nope',
     }),
   };
-  const failed = mount(ModuleOpDrawer as any, {
+  const failed = mount(ModuleCatalogOpDrawer as any, {
     props: {
       open: true,
       action: 'install',
@@ -211,7 +211,7 @@ test('ModuleOpDrawer.vue covers result branches, registry replan, and close', as
   failed.unmount();
 
   // Cancelled terminal has no resultStatus — neutral resultAlertBoxClass (not success green).
-  const cancelled = mount(ModuleOpDrawer as any, {
+  const cancelled = mount(ModuleCatalogOpDrawer as any, {
     props: {
       open: true,
       action: 'progress',

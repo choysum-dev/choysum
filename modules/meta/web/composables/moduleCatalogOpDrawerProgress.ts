@@ -3,20 +3,20 @@
 
 import type { ModuleOpProgressHooks, ModuleOpStatusSnapshot } from './useModuleOpProgress';
 
-export type ModuleOpDrawerProgressMessages = {
+export type ModuleCatalogOpDrawerProgressMessages = {
   jobStillRunning: () => string;
   serviceRestarting: () => string;
   failedToGetStatus: () => string;
 };
 
-export type ModuleOpDrawerProgressBindings = {
+export type ModuleCatalogOpDrawerProgressBindings = {
   fetchStatus: (operationId: string) => Promise<ModuleOpStatusSnapshot>;
   isDrawerOpen: () => boolean;
   setOpStatus: (status: ModuleOpStatusSnapshot | null) => void;
   setDrawerStep: (step: 'plan' | 'progress' | 'result') => void;
   warn: (message: string) => void;
   error: (message: string) => void;
-  messages: ModuleOpDrawerProgressMessages;
+  messages: ModuleCatalogOpDrawerProgressMessages;
 };
 
 /** Map a MetaModuleOperation row into the C1 progress snapshot. */
@@ -43,10 +43,10 @@ export function mapOperationRowToSnapshot(
 }
 
 /**
- * Builds C1 progress hooks for ModuleOpDrawer wiring (tip + poll read the operation row).
+ * Builds C1 progress hooks for ModuleCatalogOpDrawer wiring (tip + poll read the operation row).
  */
-export function createModuleOpDrawerProgressHooks(
-  bindings: ModuleOpDrawerProgressBindings,
+export function createModuleCatalogOpDrawerProgressHooks(
+  bindings: ModuleCatalogOpDrawerProgressBindings,
 ): ModuleOpProgressHooks {
   return {
     fetchStatus: bindings.fetchStatus,

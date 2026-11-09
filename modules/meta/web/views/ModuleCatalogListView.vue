@@ -98,30 +98,32 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyTableColumn :label="_t('Action')" :vColumnProps="{ minWidth: 160 }">
         <template #default="{ row }">
           <div class="flex flex-wrap items-center gap-1">
-            <button
+            <ChoyButton
               v-if="primaryActionFor(row)"
               type="button"
-              class="rounded-md border border-border px-2 py-0.5 text-xs hover:bg-muted"
+              size="xs"
+              :variant="primaryActionFor(row) === 'progress' ? 'outline' : 'default'"
               :data-testid="`module-catalog-primary-${primaryActionFor(row)}`"
               @click.stop="onPrimaryAction(row)"
             >
               {{ primaryActionLabel(primaryActionFor(row)) }}
-            </button>
-            <button
+            </ChoyButton>
+            <ChoyButton
               v-if="canUninstall(row) && hasAction(moduleUninstallAction)"
               type="button"
-              class="rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground hover:bg-muted"
+              size="xs"
+              variant="outline-destructive"
               data-testid="module-catalog-uninstall"
               @click.stop="onUninstall(row)"
             >
               {{ _t('Uninstall') }}
-            </button>
+            </ChoyButton>
           </div>
         </template>
       </ChoyTableColumn>
     </ChoyListView>
 
-    <ModuleOpDrawer
+    <ModuleCatalogOpDrawer
       v-model:open="drawerOpen"
       :operation-store="operationStore"
       :operation-id="drawerOperationId"
@@ -145,8 +147,8 @@ import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { useModuleCatalogViewModel } from '../composables/useModuleCatalogViewModel';
-import { moduleLoadDemoAction, moduleSyncAction, moduleUninstallAction } from './module_actions';
-import ModuleOpDrawer from './ModuleOpDrawer.vue';
+import { moduleLoadDemoAction, moduleSyncAction, moduleUninstallAction } from './module_catalog_actions';
+import ModuleCatalogOpDrawer from './ModuleCatalogOpDrawer.vue';
 import {
   ChoyBadge,
   ChoyBooleanField,
@@ -226,6 +228,7 @@ const {
     upgrade: _t('Upgrade'),
     progress: _t('View Progress'),
     installed: _t('Installed'),
+    updateAvailable: _t('Update available'),
     uninstalled: _t('Not Installed'),
     unavailable: _t('Unavailable'),
     syncTriggered: id => _t('Sync job triggered: %s', id),

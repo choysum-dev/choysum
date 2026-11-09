@@ -1220,6 +1220,11 @@ msgctxt "service/models/ui_resource"
 msgid "Cycle detected: %s cannot be assigned under one of its descendants"
 msgstr ""
 
+#: web/menu/menus.ts:63
+msgctxt "web/menu/menus"
+msgid "Catalog"
+msgstr ""
+
 #: web/menu/menus.ts:46
 msgctxt "web/menu/menus"
 msgid "External IDs"
@@ -1260,67 +1265,68 @@ msgctxt "web/pages/MetaModelDataList"
 msgid "External IDs"
 msgstr ""
 
+#: web/pages/ModuleCatalog.vue:3
+msgctxt "web/pages/ModuleCatalog"
+msgid "Loading…"
+msgstr ""
+
+#: web/pages/ModuleCatalog.vue:20
+msgctxt "web/pages/ModuleCatalog"
+msgid "Module"
+msgstr ""
+
+#: web/pages/ModuleCatalog.vue:5
+msgctxt "web/pages/ModuleCatalog"
+msgid "Module not found."
+msgstr ""
+
 #: web/pages/module_catalog_page.ts:34
 msgctxt "web/pages/ModuleCatalog"
 msgid "Modules"
 msgstr ""
 
-#: web/pages/ModuleShow.vue:3
-msgctxt "web/pages/ModuleShow"
-msgid "Loading…"
-msgstr ""
-
-#: web/pages/ModuleShow.vue:20
-msgctxt "web/pages/ModuleShow"
-msgid "Module"
-msgstr ""
-
-#: web/pages/ModuleShow.vue:5
-msgctxt "web/pages/ModuleShow"
-msgid "Module not found."
-msgstr ""
-
-#: web/route/routes.ts:125
+#: web/route/routes.ts:164
 msgctxt "web/route/routes"
 msgid "External ID"
 msgstr ""
 
-#: web/route/routes.ts:115
+#: web/route/routes.ts:154
 msgctxt "web/route/routes"
 msgid "External IDs"
 msgstr ""
 
-#: web/route/routes.ts:96
+#: web/route/routes.ts:135
 msgctxt "web/route/routes"
 msgid "Field Defaults"
 msgstr ""
 
-#: web/route/routes.ts:59
+#: web/route/routes.ts:98
 msgctxt "web/route/routes"
 msgid "Module"
 msgstr ""
 
-#: web/route/routes.ts:42
+#: web/route/routes.ts:76
 msgctxt "web/route/routes"
 msgid "Module Operation"
 msgstr ""
 
-#: web/route/routes.ts:23
+#: web/route/routes.ts:29
+#: web/route/routes.ts:53
 msgctxt "web/route/routes"
 msgid "Modules"
 msgstr ""
 
-#: web/route/routes.ts:105
+#: web/route/routes.ts:144
 msgctxt "web/route/routes"
 msgid "Parameters"
 msgstr ""
 
-#: web/route/routes.ts:87
+#: web/route/routes.ts:126
 msgctxt "web/route/routes"
 msgid "Property Definitions"
 msgstr ""
 
-#: web/route/routes.ts:78
+#: web/route/routes.ts:117
 msgctxt "web/route/routes"
 msgid "Translations"
 msgstr ""
@@ -1405,427 +1411,522 @@ msgctxt "web/views/MetaModelDataListView"
 msgid "Resource Id"
 msgstr ""
 
-#: web/views/ModuleCatalogView.vue:47
-msgctxt "web/views/ModuleCatalogView"
-msgid "Action"
-msgstr ""
-
-#: web/views/ModuleCatalogView.vue:88
-msgctxt "web/views/ModuleCatalogView"
-msgid "All"
-msgstr ""
-
-#: web/views/ModuleCatalogView.vue:93
-msgctxt "web/views/ModuleCatalogView"
-msgid "Cards"
-msgstr ""
-
-#: web/views/ModuleCatalogView.vue:19
-msgctxt "web/views/ModuleCatalogView"
-msgid "Filter"
-msgstr ""
-
-#: web/views/ModuleCatalogView.vue:96
-msgctxt "web/views/ModuleCatalogView"
-msgid "Install"
-msgstr ""
-
-#: web/views/ModuleCatalogView.vue:35
-#: web/views/ModuleCatalogView.vue:89
-msgctxt "web/views/ModuleCatalogView"
-msgid "Installed"
-msgstr ""
-
-#: web/views/ModuleCatalogView.vue:14
-msgctxt "web/views/ModuleCatalogView"
-msgid "Last sync %s"
-msgstr ""
-
-#: web/views/ModuleCatalogView.vue:11
-msgctxt "web/views/ModuleCatalogView"
-msgid "Load Demo Data"
-msgstr ""
-
-#: web/views/ModuleCatalogView.vue:36
-msgctxt "web/views/ModuleCatalogView"
-msgid "Local"
-msgstr ""
-
-#: web/views/ModuleCatalogView.vue:88
-msgctxt "web/views/ModuleCatalogView"
-msgid "No modules match this filter."
-msgstr ""
-
-#: web/views/ModuleCatalogView.vue:91
-msgctxt "web/views/ModuleCatalogView"
-msgid "Not Installed"
-msgstr ""
-
-#: web/views/ModuleCatalogView.vue:37
-msgctxt "web/views/ModuleCatalogView"
-msgid "Registry"
-msgstr ""
-
-#: web/views/ModuleCatalogView.vue:39
-msgctxt "web/views/ModuleCatalogView"
-msgid "Status"
-msgstr ""
-
-#: web/views/ModuleCatalogView.vue:8
-msgctxt "web/views/ModuleCatalogView"
-msgid "Sync Modules"
-msgstr ""
-
-#: web/views/ModuleCatalogView.vue:101
-msgctxt "web/views/ModuleCatalogView"
-msgid "Sync failed: %s"
-msgstr ""
-
-#: web/views/ModuleCatalogView.vue:100
-msgctxt "web/views/ModuleCatalogView"
-msgid "Sync job triggered"
-msgstr ""
-
-#: web/views/ModuleCatalogView.vue:99
-msgctxt "web/views/ModuleCatalogView"
-msgid "Sync job triggered: %s"
-msgstr ""
-
-#: web/views/ModuleCatalogView.vue:94
-msgctxt "web/views/ModuleCatalogView"
-msgid "Table"
-msgstr ""
-
-#: web/views/ModuleCatalogView.vue:92
-msgctxt "web/views/ModuleCatalogView"
-msgid "Unavailable"
-msgstr ""
-
-#: web/views/ModuleCatalogView.vue:54
-#: web/views/ModuleCatalogView.vue:80
-msgctxt "web/views/ModuleCatalogView"
-msgid "Uninstall"
-msgstr ""
-
-#: web/views/ModuleCatalogView.vue:95
-msgctxt "web/views/ModuleCatalogView"
-msgid "Unknown"
-msgstr ""
-
-#: web/views/ModuleCatalogView.vue:97
-msgctxt "web/views/ModuleCatalogView"
-msgid "Upgrade"
-msgstr ""
-
-#: web/views/ModuleCatalogView.vue:90
-msgctxt "web/views/ModuleCatalogView"
-msgid "Upgradeable"
-msgstr ""
-
-#: web/views/ModuleCatalogView.vue:98
-msgctxt "web/views/ModuleCatalogView"
-msgid "View Progress"
-msgstr ""
-
-#: web/views/ModuleCatalogView.vue:16
-msgctxt "web/views/ModuleCatalogView"
-msgid "View switcher"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:38
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Affected Apps"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:25
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Affected Modules"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:55
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Blockers"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:129
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Cancel"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:129
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Close"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:122
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Closing this drawer keeps the operation running; use View Progress on the card."
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:56
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Completed"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:132
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Confirm"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:21
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Confirm the impact of this operation"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:112
-#: web/views/ModuleOpDrawer.vue:58
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Data written; page did not refresh"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:135
-#: web/views/ModuleOpDrawer.vue:94
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Done"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:104
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Error:"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:88
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Execution Status"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:55
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Failed to get status"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:51
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Failed to load plan"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:68
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Install Module"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:53
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Job is still running in the background; refresh later"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:73
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Load Demo Data"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:67
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Module Operation"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:7
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Operation %s"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:57
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Operation Failed"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:71
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Operation Progress"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:59
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Operation Succeeded"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:83
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Operation in progress, please wait"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:52
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Operation request failed"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:92
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Phase:"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:75
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Planning for %s…"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:91
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Queued"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:118
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Refresh page"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:93
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Reload"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:108
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Reload:"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:18
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Resolve blockers before continuing"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:96
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Result:"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:43
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Risks"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:92
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Running"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:75
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Select a module action to plan an operation."
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:54
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Service is restarting; status will retry automatically"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:90
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Status:"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:100
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Summary:"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:72
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Sync Modules"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:113
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Triggered"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:70
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Uninstall Module"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:69
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Upgrade Module"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:70
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Use registry version"
-msgstr ""
-
-#: web/views/ModuleOpDrawer.vue:69
-msgctxt "web/views/ModuleOpDrawer"
-msgid "Using registry version"
-msgstr ""
-
-#: web/views/ModuleShowView.vue:43
-msgctxt "web/views/ModuleShowView"
+#: web/views/ModuleCatalogFormView.vue:43
+msgctxt "web/views/ModuleCatalogFormView"
 msgid "Dependencies"
 msgstr ""
 
-#: web/views/ModuleShowView.vue:77
-msgctxt "web/views/ModuleShowView"
+#: web/views/ModuleCatalogFormView.vue:80
+msgctxt "web/views/ModuleCatalogFormView"
 msgid "Install"
 msgstr ""
 
-#: web/views/ModuleShowView.vue:9
-msgctxt "web/views/ModuleShowView"
+#: web/views/ModuleCatalogFormView.vue:9
+msgctxt "web/views/ModuleCatalogFormView"
 msgid "Load Demo Data"
 msgstr ""
 
-#: web/views/ModuleShowView.vue:16
-msgctxt "web/views/ModuleShowView"
+#: web/views/ModuleCatalogFormView.vue:16
+msgctxt "web/views/ModuleCatalogFormView"
 msgid "Overview"
 msgstr ""
 
-#: web/views/ModuleShowView.vue:85
-msgctxt "web/views/ModuleShowView"
+#: web/views/ModuleCatalogFormView.vue:85
+msgctxt "web/views/ModuleCatalogFormView"
 msgid "Sync"
 msgstr ""
 
-#: web/views/ModuleShowView.vue:6
-msgctxt "web/views/ModuleShowView"
+#: web/views/ModuleCatalogFormView.vue:12
+msgctxt "web/views/ModuleCatalogFormView"
 msgid "Uninstall"
 msgstr ""
 
-#: web/views/ModuleShowView.vue:78
-msgctxt "web/views/ModuleShowView"
+#: web/views/ModuleCatalogFormView.vue:81
+msgctxt "web/views/ModuleCatalogFormView"
 msgid "Upgrade"
 msgstr ""
 
-#: web/views/ModuleShowView.vue:54
-msgctxt "web/views/ModuleShowView"
+#: web/views/ModuleCatalogFormView.vue:54
+msgctxt "web/views/ModuleCatalogFormView"
 msgid "Versions & Source"
 msgstr ""
 
-#: web/views/ModuleShowView.vue:79
-msgctxt "web/views/ModuleShowView"
+#: web/views/ModuleCatalogFormView.vue:82
+msgctxt "web/views/ModuleCatalogFormView"
 msgid "View Progress"
 msgstr ""
 
-#: web/views/module_actions.ts:11
-msgctxt "web/views/module_actions"
-msgid "Install Module"
+#: web/views/ModuleCatalogKanbanView.vue:11
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "All"
 msgstr ""
 
-#: web/views/module_actions.ts:44
-msgctxt "web/views/module_actions"
+#: web/views/ModuleCatalogKanbanView.vue:161
+#: web/views/ModuleCatalogKanbanView.vue:166
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Failed to load modules"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:171
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Failed to load more"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:97
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Install"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:100
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Installed"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:61
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Kanban View"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:29
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Last sync %s"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:62
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "List View"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:23
+msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Load Demo Data"
 msgstr ""
 
-#: web/views/module_actions.ts:38
-msgctxt "web/views/module_actions"
-msgid "Sync Modules"
+#: web/views/ModuleCatalogKanbanView.vue:60
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "No modules match this filter."
 msgstr ""
 
-#: web/views/module_actions.ts:29
-msgctxt "web/views/module_actions"
+#: web/views/ModuleCatalogKanbanView.vue:102
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Not Installed"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:106
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Sync failed: %s"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:105
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Sync job triggered"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:104
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Sync job triggered: %s"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:103
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Unavailable"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:53
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Uninstall"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:96
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Unknown"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:20
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Update Module List"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:101
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Update available"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:98
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Upgrade"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:99
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "View Progress"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:31
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "View switcher"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:40
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Action"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:90
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Install"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:28
+#: web/views/ModuleCatalogListView.vue:93
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Installed"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:55
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Kanban View"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:20
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Last sync %s"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:56
+msgctxt "web/views/ModuleCatalogListView"
+msgid "List View"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:14
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Load Demo Data"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:29
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Local"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:95
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Not Installed"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:30
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Registry"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:32
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Status"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:99
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Sync failed: %s"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:98
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Sync job triggered"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:97
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Sync job triggered: %s"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:96
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Unavailable"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:47
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Uninstall"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:89
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Unknown"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:11
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Update Module List"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:94
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Update available"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:91
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Upgrade"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:92
+msgctxt "web/views/ModuleCatalogListView"
+msgid "View Progress"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:22
+msgctxt "web/views/ModuleCatalogListView"
+msgid "View switcher"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:38
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Affected Apps"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:25
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Affected Modules"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:55
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Blockers"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:129
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Cancel"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:129
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Close"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:122
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Closing this drawer keeps the operation running; use View Progress on the card."
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:56
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Completed"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:132
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Confirm"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:21
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Confirm the impact of this operation"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:112
+#: web/views/ModuleCatalogOpDrawer.vue:58
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Data written; page did not refresh"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:107
+#: web/views/ModuleCatalogOpDrawer.vue:135
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Done"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:104
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Error:"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:88
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Execution Status"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:55
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Failed to get status"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:51
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Failed to load plan"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:81
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Install Module"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:53
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Job is still running in the background; refresh later"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:86
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Load Demo Data"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:80
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Module Operation"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:7
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Operation %s"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:57
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Operation Failed"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:84
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Operation Progress"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:59
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Operation Succeeded"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:83
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Operation in progress, please wait"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:52
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Operation request failed"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:92
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Phase:"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:75
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Planning for %s…"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:104
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Queued"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:118
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Refresh page"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:106
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Reload"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:108
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Reload:"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:18
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Resolve blockers before continuing"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:96
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Result:"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:43
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Risks"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:105
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Running"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:75
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Select a module action to plan an operation."
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:54
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Service is restarting; status will retry automatically"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:90
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Status:"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:100
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Summary:"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:113
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Triggered"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:83
+msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Uninstall Module"
 msgstr ""
 
-#: web/views/module_actions.ts:20
-msgctxt "web/views/module_actions"
+#: web/views/ModuleCatalogOpDrawer.vue:85
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Update Module List"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:82
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Upgrade Module"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:70
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Use registry version"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDrawer.vue:69
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Using registry version"
+msgstr ""
+
+#: web/views/module_catalog_actions.ts:11
+msgctxt "web/views/module_catalog_actions"
+msgid "Install Module"
+msgstr ""
+
+#: web/views/module_catalog_actions.ts:44
+msgctxt "web/views/module_catalog_actions"
+msgid "Load Demo Data"
+msgstr ""
+
+#: web/views/module_catalog_actions.ts:29
+msgctxt "web/views/module_catalog_actions"
+msgid "Uninstall Module"
+msgstr ""
+
+#: web/views/module_catalog_actions.ts:38
+msgctxt "web/views/module_catalog_actions"
+msgid "Update Module List"
+msgstr ""
+
+#: web/views/module_catalog_actions.ts:20
+msgctxt "web/views/module_catalog_actions"
 msgid "Upgrade Module"
 msgstr ""
 

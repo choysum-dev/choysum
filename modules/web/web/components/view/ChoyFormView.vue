@@ -145,7 +145,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <ChoyViewBusyHost
       :busy="overlayBusy"
-      class="min-h-0 flex-1 overflow-y-auto p-5"
+      class="min-h-0 flex-1 overflow-y-auto"
       data-anchor="choy.form-view"
     >
       <form ref="formRef" :inert="submitting || undefined" @submit.self.prevent="onNativeSubmit">

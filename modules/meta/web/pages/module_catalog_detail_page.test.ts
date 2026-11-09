@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { nextTick, ref } from 'vue';
-import { useModuleShowPage } from './module_show_page';
+import { useModuleCatalogDetailPage } from './module_catalog_detail_page';
 
 async function flush() {
   await nextTick();
@@ -10,9 +10,9 @@ async function flush() {
   await nextTick();
 }
 
-test('useModuleShowPage resolves ModuleName to record Id', async () => {
+test('useModuleCatalogDetailPage resolves ModuleName to record Id', async () => {
   const moduleName = ref('core');
-  const { recordId, missing, loading } = useModuleShowPage({
+  const { recordId, missing, loading } = useModuleCatalogDetailPage({
     scopeManager: {},
     moduleName,
     createStore: (() =>
@@ -26,9 +26,9 @@ test('useModuleShowPage resolves ModuleName to record Id', async () => {
   expect(recordId.value).toBe('cat-core');
 });
 
-test('useModuleShowPage marks missing when Search returns empty or name blank', async () => {
+test('useModuleCatalogDetailPage marks missing when Search returns empty or name blank', async () => {
   const moduleName = ref('ghost');
-  const { recordId, missing } = useModuleShowPage({
+  const { recordId, missing } = useModuleCatalogDetailPage({
     scopeManager: {},
     moduleName,
     createStore: (() =>
@@ -45,10 +45,10 @@ test('useModuleShowPage marks missing when Search returns empty or name blank', 
   expect(missing.value).toBe(true);
 });
 
-test('useModuleShowPage clears loading when name becomes blank during in-flight Search', async () => {
+test('useModuleCatalogDetailPage clears loading when name becomes blank during in-flight Search', async () => {
   const moduleName = ref('core');
   let release: ((rows: any[]) => void) | undefined;
-  const { loading, missing } = useModuleShowPage({
+  const { loading, missing } = useModuleCatalogDetailPage({
     scopeManager: {},
     moduleName,
     createStore: (() =>
@@ -70,10 +70,10 @@ test('useModuleShowPage clears loading when name becomes blank during in-flight 
   expect(loading.value).toBe(false);
 });
 
-test('useModuleShowPage marks missing when Search throws and ignores stale responses', async () => {
+test('useModuleCatalogDetailPage marks missing when Search throws and ignores stale responses', async () => {
   const moduleName = ref('core');
   let releaseSlow: ((rows: any[]) => void) | undefined;
-  const { recordId, missing } = useModuleShowPage({
+  const { recordId, missing } = useModuleCatalogDetailPage({
     scopeManager: {},
     moduleName,
     createStore: (() =>

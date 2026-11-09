@@ -5,13 +5,13 @@ import { mount, flushPromises } from '@choysum/test-utils';
 import { buildPageMountGlobal } from '@choysum/page-mount';
 import ModuleCatalogKanban from './ModuleCatalogKanban.vue';
 import ModuleCatalogList from './ModuleCatalogList.vue';
-import ModuleShow from './ModuleShow.vue';
+import ModuleCatalog from './ModuleCatalog.vue';
 import { metaMenus } from '../menu/menus';
 
 const pages: Array<[string, any, string, string]> = [
   ['ModuleCatalogKanban', ModuleCatalogKanban, '/meta/modules', 'MetaModuleCatalog'],
   ['ModuleCatalogList', ModuleCatalogList, '/meta/modules/list', 'MetaModuleCatalogList'],
-  ['ModuleShow', ModuleShow, '/meta/modules/core', 'MetaModuleShow'],
+  ['ModuleCatalog', ModuleCatalog, '/meta/modules/core', 'MetaModuleShow'],
 ];
 
 test('meta page mount: every ChoyPage host mounts under choysumMount', async () => {
@@ -25,9 +25,9 @@ test('meta page mount: every ChoyPage host mounts under choysumMount', async () 
             path,
             fullPath: path,
             name: routeName,
-            params: name === 'ModuleShow' ? { name: 'core' } : {},
+            params: name === 'ModuleCatalog' ? { name: 'core' } : {},
             meta:
-              name === 'ModuleShow'
+              name === 'ModuleCatalog'
                 ? {}
                 : {
                     viewKind: name === 'ModuleCatalogList' ? 'list' : 'kanban',

@@ -3,9 +3,9 @@
 
 import { mount, flushPromises } from '@choysum/test-utils';
 import { useAuthStore } from '@/auth/web/stores/auth';
-import ModuleShowView from './ModuleShowView.vue';
+import ModuleCatalogFormView from './ModuleCatalogFormView.vue';
 import { buildPageMountGlobal } from '@choysum/page-mount';
-import { moduleUninstallAction } from './module_actions';
+import { moduleUninstallAction } from './module_catalog_actions';
 
 function seedModuleActionPermissions(actions: string[] = ['*']) {
   const auth = useAuthStore();
@@ -22,7 +22,7 @@ function seedModuleActionPermissions(actions: string[] = ['*']) {
 
 function mountShow(row: Record<string, unknown>, recordId = 'cat-1') {
   const store = {
-    $id: 'fe-stub-module-show-store',
+    $id: 'fe-stub-module-catalog-form-store',
     state: {
       records: { [recordId]: { Id: recordId, ...row } },
       result: { rows: [] },
@@ -30,7 +30,7 @@ function mountShow(row: Record<string, unknown>, recordId = 'cat-1') {
     Browse: async () => ({}),
     Search: async () => [],
   };
-  const wrapper = mount(ModuleShowView as any, {
+  const wrapper = mount(ModuleCatalogFormView as any, {
     props: {
       store,
       recordId,
@@ -60,14 +60,14 @@ function mountShow(row: Record<string, unknown>, recordId = 'cat-1') {
   return wrapper;
 }
 
-test('ModuleShowView.vue mounts under choysumMount and runs script setup', async () => {
+test('ModuleCatalogFormView.vue mounts under choysumMount and runs script setup', async () => {
   const wrapper = mountShow({ ModuleName: 'core', Installed: false, Available: true });
   await flushPromises();
   expect(wrapper.element != null).toBe(true);
   wrapper.unmount();
 });
 
-test('ModuleShowView.vue primary and uninstall actions open the drawer for the matched row', async () => {
+test('ModuleCatalogFormView.vue primary and uninstall actions open the drawer for the matched row', async () => {
   const install = mountShow({
     ModuleName: 'core',
     Installed: false,
@@ -126,6 +126,30 @@ test('ModuleShowView.vue primary and uninstall actions open the drawer for the m
   expect(progressVm.drawerOperationId).toBe('op-live');
   progress.unmount();
 
+  const forceUpgrade = mountShow({
+    ModuleName: 'core',
+    Installed: true,
+    Available: true,
+    UpdateAvailable: false,
+  });
+  await flushPromises();
+  const forceUpgradeVm = forceUpgrade.vm as any;
+  expect(forceUpgradeVm.primaryAction).toBe('upgrade');
+  expect(forceUpgradeVm.primaryButtonVariant).toBe('outline');
+  forceUpgradeVm.onPrimaryClick();
+  expect(forceUpgradeVm.drawerAction).toBe('upgrade');
+  forceUpgrade.unmount();
+
+  const emphasizedUpgrade = mountShow({
+    ModuleName: 'core',
+    Installed: true,
+    Available: true,
+    UpdateAvailable: true,
+  });
+  await flushPromises();
+  expect((emphasizedUpgrade.vm as any).primaryButtonVariant).toBe('default');
+  emphasizedUpgrade.unmount();
+
   const uninstall = mountShow({
     ModuleName: 'core',
     Installed: true,
@@ -133,8 +157,7 @@ test('ModuleShowView.vue primary and uninstall actions open the drawer for the m
   });
   await flushPromises();
   const uninstallVm = uninstall.vm as any;
-  expect(uninstallVm.primaryAction).toBe(null);
-  expect(uninstallVm.primaryActionLabel).toBe('');
+  expect(uninstallVm.primaryAction).toBe('upgrade');
   uninstallVm.onUninstallClick();
   expect(uninstallVm.drawerAction).toBe('uninstall');
   uninstall.unmount();
@@ -168,7 +191,7 @@ test('ModuleShowView.vue primary and uninstall actions open the drawer for the m
   loadDemoBusy.unmount();
 
   // Unmatched recordId must not act on an unrelated rows[0] module.
-  const empty = mount(ModuleShowView as any, {
+  const empty = mount(ModuleCatalogFormView as any, {
     props: {
       store: {
         state: {
@@ -188,7 +211,7 @@ test('ModuleShowView.vue primary and uninstall actions open the drawer for the m
   empty.unmount();
 });
 
-test('ModuleShowView.vue settled handler refreshes the catalog row', async () => {
+test('ModuleCatalogFormView.vue settled handler refreshes the catalog row', async () => {
   let browsed = 0;
   const browseStore = {
     state: {
@@ -202,7 +225,7 @@ test('ModuleShowView.vue settled handler refreshes the catalog row', async () =>
       return {};
     },
   };
-  const browseWrapper = mount(ModuleShowView as any, {
+  const browseWrapper = mount(ModuleCatalogFormView as any, {
     props: { store: browseStore, recordId: 'cat-1', showHeader: true },
     global: buildPageMountGlobal({
       route: { path: '/meta/modules/core', fullPath: '/meta/modules/core', name: 'MetaModuleShow', params: { name: 'core' } },
@@ -226,7 +249,7 @@ test('ModuleShowView.vue settled handler refreshes the catalog row', async () =>
       return [];
     },
   };
-  const searchWrapper = mount(ModuleShowView as any, {
+  const searchWrapper = mount(ModuleCatalogFormView as any, {
     props: { store: searchStore, recordId: 'cat-1', showHeader: true },
     global: buildPageMountGlobal({
       route: { path: '/meta/modules/core', fullPath: '/meta/modules/core', name: 'MetaModuleShow', params: { name: 'core' } },

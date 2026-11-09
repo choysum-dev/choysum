@@ -203,7 +203,7 @@ import { computed, toRef, watch } from 'vue';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type MetaModuleOperation from '@/meta/service/models/module_operation';
 import { createTranslate } from '@/web/web/i18n';
-import { useModuleOpDrawerSession } from '../composables/useModuleOpDrawerSession';
+import { useModuleCatalogOpDrawerSession } from '../composables/useModuleCatalogOpDrawerSession';
 import { formatModuleOpSummary } from './module_catalog_chrome';
 import {
   ChoyButton,
@@ -214,9 +214,9 @@ import {
   ChoySheetTitle,
 } from '@/web';
 
-defineOptions({ name: 'ModuleOpDrawer' });
+defineOptions({ name: 'ModuleCatalogOpDrawer' });
 
-const { _t } = createTranslate('meta', { scope: 'web/views/ModuleOpDrawer' });
+const { _t } = createTranslate('meta', { scope: 'web/views/ModuleCatalogOpDrawer' });
 
 const open = defineModel<boolean>('open', { default: false });
 
@@ -244,7 +244,7 @@ const emit = defineEmits<{
 
 const operationStoreRef = toRef(props, 'operationStore');
 
-const session = useModuleOpDrawerSession({
+const session = useModuleCatalogOpDrawerSession({
   operationStore: operationStoreRef as any,
   isOpen: () => open.value,
   msgs: {

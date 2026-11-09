@@ -98,7 +98,7 @@ export const metaRoutes: RouteRecordRaw[] = [
     title: _lt('Module'),
     path: 'meta/modules/:name',
     name: 'MetaModuleShow',
-    component: () => import('../pages/ModuleShow.vue'),
+    component: () => import('../pages/ModuleCatalog.vue'),
     actions: [
       'meta.action.module_install',
       'meta.action.module_upgrade',

@@ -5,13 +5,32 @@
 export function moduleStatusBadgeVariant(
   status?: string,
   available?: boolean,
+  updateAvailable?: boolean,
 ): 'default' | 'secondary' | 'destructive' | 'outline' {
   if (available === false) return 'destructive';
   const val = String(status || '').toLowerCase();
-  if (val === 'installed' || val === 'succeeded') return 'default';
+  // Keep status chips quiet so card CTAs (Install / Upgrade) own the accent color.
+  if ((val === 'installed' || val === 'succeeded') && updateAvailable === true) {
+    return 'secondary';
+  }
+  if (val === 'installed' || val === 'succeeded') return 'outline';
   if (val === 'broken' || val === 'failed') return 'destructive';
-  if (val === 'uninstalled') return 'outline';
+  if (val === 'uninstalled') return 'secondary';
   return 'secondary';
+}
+
+/** Card summary text; empty when missing or duplicate of the module name. */
+export function moduleCatalogCardSummary(rec: Record<string, unknown>): string {
+  const name = String(rec.ModuleName || '').trim();
+  const summary = String(rec.Summary || '').trim();
+  if (!summary) return '';
+  if (name && summary.toLowerCase() === name.toLowerCase()) return '';
+  return summary;
+}
+
+/** Card application line; empty when missing (do not render a placeholder dash). */
+export function moduleCatalogCardApplication(rec: Record<string, unknown>): string {
+  return String(rec.Application || '').trim();
 }
 
 /** True when InstalledStatus / Installed means the module is installed. */
@@ -128,6 +147,22 @@ export function resolveModuleCatalogPrimaryAction(
   if (activeOp) return 'progress';
   if (rec.Available === false) return null;
   if (rec.Installed !== true) return 'install';
+  // Dense catalog cards only emphasize Upgrade when a newer source version exists.
   if (rec.UpdateAvailable === true) return 'upgrade';
   return null;
+}
+
+/**
+ * Primary CTA for Module Show.
+ * Installed modules always offer Upgrade (Odoo-style re-entry), even when
+ * UpdateAvailable is false; catalog cards stay gated separately.
+ */
+export function resolveModuleCatalogFormPrimaryAction(
+  rec: Record<string, unknown>,
+): 'install' | 'upgrade' | 'progress' | null {
+  const activeOp = String(rec.ActiveOperationId || '').trim();
+  if (activeOp) return 'progress';
+  if (rec.Available === false) return null;
+  if (rec.Installed !== true) return 'install';
+  return 'upgrade';
 }

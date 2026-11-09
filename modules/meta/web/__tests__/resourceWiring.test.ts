@@ -10,7 +10,7 @@ import {
   moduleSyncAction,
   moduleUninstallAction,
   moduleUpgradeAction,
-} from '../views/module_actions';
+} from '../views/module_catalog_actions';
 
 const MODULE_ACTIONS = [
   'meta.action.module_install',

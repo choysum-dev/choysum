@@ -20,6 +20,7 @@ export type ModuleCatalogViewMsgs = {
   upgrade: string;
   progress: string;
   installed: string;
+  updateAvailable: string;
   uninstalled: string;
   unavailable: string;
   syncTriggered: (operationId: string) => string;
@@ -80,14 +81,21 @@ export function useModuleCatalogViewModel(opts: {
 
   function statusBadgeVariant(row: unknown) {
     const rec = rowRecord(row);
-    return moduleStatusBadgeVariant(catalogInstalledStatus(rec), rec.Available as boolean | undefined);
+    return moduleStatusBadgeVariant(
+      catalogInstalledStatus(rec),
+      rec.Available as boolean | undefined,
+      rec.UpdateAvailable === true,
+    );
   }
 
   function statusLabel(row: unknown) {
     const rec = rowRecord(row);
     if (rec.Available === false) return opts.msgs.unavailable;
     const val = catalogInstalledStatus(rec).toLowerCase();
-    if (val === 'installed') return opts.msgs.installed;
+    if (val === 'installed') {
+      if (rec.UpdateAvailable === true) return opts.msgs.updateAvailable;
+      return opts.msgs.installed;
+    }
     if (val === 'uninstalled') return opts.msgs.uninstalled;
     return catalogInstalledStatus(rec) || opts.msgs.unknown;
   }

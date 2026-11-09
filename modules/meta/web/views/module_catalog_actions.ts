@@ -4,7 +4,7 @@
 import { defineAction } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
 
-const { _lt } = createTranslate('meta', { scope: 'web/views/module_actions' });
+const { _lt } = createTranslate('meta', { scope: 'web/views/module_catalog_actions' });
 
 /** Install modules: Plan + Apply with Action=install (UI filters by planned action). */
 export const moduleInstallAction = defineAction('meta.action.module_install', {

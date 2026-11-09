@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
-  createModuleOpDrawerProgressHooks,
+  createModuleCatalogOpDrawerProgressHooks,
   mapOperationRowToSnapshot,
-} from './moduleOpDrawerProgress';
+} from './moduleCatalogOpDrawerProgress';
 
 test('mapOperationRowToSnapshot: maps status, errors, and reload flags', () => {
   expect(
@@ -44,12 +44,12 @@ test('mapOperationRowToSnapshot: maps status, errors, and reload flags', () => {
   });
 });
 
-test('createModuleOpDrawerProgressHooks: terminal, timeout, and error bindings', () => {
+test('createModuleCatalogOpDrawerProgressHooks: terminal, timeout, and error bindings', () => {
   const steps: string[] = [];
   const statuses: unknown[] = [];
   const warns: string[] = [];
   const errors: string[] = [];
-  const hooks = createModuleOpDrawerProgressHooks({
+  const hooks = createModuleCatalogOpDrawerProgressHooks({
     fetchStatus: async () => ({ status: 'queued' }),
     isDrawerOpen: () => true,
     setOpStatus: s => statuses.push(s),

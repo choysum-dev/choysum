@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { nextTick, ref } from 'vue';
-import { readOperationStatusSnapshot, useModuleOpDrawerSession } from './useModuleOpDrawerSession';
+import { readOperationStatusSnapshot, useModuleCatalogOpDrawerSession } from './useModuleCatalogOpDrawerSession';
 
 const msgs = {
   failedToLoadPlan: 'plan-fail',
@@ -35,7 +35,7 @@ function makeStore(overrides: Record<string, unknown> = {}) {
   } as any;
 }
 
-test('useModuleOpDrawerSession: runPlan maps plan payload and gates confirm on blockers', async () => {
+test('useModuleCatalogOpDrawerSession: runPlan maps plan payload and gates confirm on blockers', async () => {
   const open = ref(true);
   const store = makeStore({
     Plan: async () => ({
@@ -46,7 +46,7 @@ test('useModuleOpDrawerSession: runPlan maps plan payload and gates confirm on b
       Blockers: [{ Code: 'B1', Level: 'error', Message: 'stop' }],
     }),
   });
-  const api = useModuleOpDrawerSession({
+  const api = useModuleCatalogOpDrawerSession({
     operationStore: store,
     isOpen: () => open.value,
     msgs,
@@ -59,7 +59,7 @@ test('useModuleOpDrawerSession: runPlan maps plan payload and gates confirm on b
   expect(api.canConfirm.value).toBe(false);
 });
 
-test('useModuleOpDrawerSession: confirmApply watches progress to terminal', async () => {
+test('useModuleCatalogOpDrawerSession: confirmApply watches progress to terminal', async () => {
   const open = ref(true);
   let browseCalls = 0;
   const store = makeStore({
@@ -69,7 +69,7 @@ test('useModuleOpDrawerSession: confirmApply watches progress to terminal', asyn
     },
   });
   const settled: number[] = [];
-  const api = useModuleOpDrawerSession({
+  const api = useModuleCatalogOpDrawerSession({
     operationStore: store,
     isOpen: () => open.value,
     msgs,
@@ -86,9 +86,9 @@ test('useModuleOpDrawerSession: confirmApply watches progress to terminal', asyn
   expect(api.resultTitle.value).toBe('ok');
 });
 
-test('useModuleOpDrawerSession: resultTitle stays neutral without SUCCEEDED', async () => {
+test('useModuleCatalogOpDrawerSession: resultTitle stays neutral without SUCCEEDED', async () => {
   const open = ref(true);
-  const api = useModuleOpDrawerSession({
+  const api = useModuleCatalogOpDrawerSession({
     operationStore: makeStore({
       Browse: async () => ({ Status: 'cancelled' }),
     }),
@@ -100,7 +100,7 @@ test('useModuleOpDrawerSession: resultTitle stays neutral without SUCCEEDED', as
   expect(api.resultTitle.value).toBe('done');
 });
 
-test('useModuleOpDrawerSession: replanWithRegistry passes Origin registry', async () => {
+test('useModuleCatalogOpDrawerSession: replanWithRegistry passes Origin registry', async () => {
   const open = ref(true);
   const plans: any[] = [];
   const store = makeStore({
@@ -115,7 +115,7 @@ test('useModuleOpDrawerSession: replanWithRegistry passes Origin registry', asyn
       };
     },
   });
-  const api = useModuleOpDrawerSession({
+  const api = useModuleCatalogOpDrawerSession({
     operationStore: store,
     isOpen: () => open.value,
     msgs,
@@ -127,7 +127,7 @@ test('useModuleOpDrawerSession: replanWithRegistry passes Origin registry', asyn
   expect(api.useRegistryOrigin.value).toBe(true);
 });
 
-test('useModuleOpDrawerSession: superseded plan response is ignored', async () => {
+test('useModuleCatalogOpDrawerSession: superseded plan response is ignored', async () => {
   const open = ref(true);
   let resolvePlan: ((v: any) => void) | undefined;
   const store = makeStore({
@@ -136,7 +136,7 @@ test('useModuleOpDrawerSession: superseded plan response is ignored', async () =
         resolvePlan = resolve;
       }),
   });
-  const api = useModuleOpDrawerSession({
+  const api = useModuleCatalogOpDrawerSession({
     operationStore: store,
     isOpen: () => open.value,
     msgs,
@@ -155,7 +155,7 @@ test('useModuleOpDrawerSession: superseded plan response is ignored', async () =
   expect(api.planLoading.value).toBe(false);
 });
 
-test('useModuleOpDrawerSession: stop clears planLoading for an in-flight plan', async () => {
+test('useModuleCatalogOpDrawerSession: stop clears planLoading for an in-flight plan', async () => {
   const open = ref(true);
   let resolvePlan: ((v: any) => void) | undefined;
   const store = makeStore({
@@ -164,7 +164,7 @@ test('useModuleOpDrawerSession: stop clears planLoading for an in-flight plan', 
         resolvePlan = resolve;
       }),
   });
-  const api = useModuleOpDrawerSession({
+  const api = useModuleCatalogOpDrawerSession({
     operationStore: store,
     isOpen: () => open.value,
     msgs,
@@ -185,7 +185,7 @@ test('useModuleOpDrawerSession: stop clears planLoading for an in-flight plan', 
   expect(api.planLoading.value).toBe(false);
 });
 
-test('useModuleOpDrawerSession: runPlanDemo maps PlanDemo payload', async () => {
+test('useModuleCatalogOpDrawerSession: runPlanDemo maps PlanDemo payload', async () => {
   const open = ref(true);
   const store = makeStore({
     PlanDemo: async () => ({
@@ -197,7 +197,7 @@ test('useModuleOpDrawerSession: runPlanDemo maps PlanDemo payload', async () => 
       Blockers: [],
     }),
   });
-  const api = useModuleOpDrawerSession({
+  const api = useModuleCatalogOpDrawerSession({
     operationStore: store,
     isOpen: () => open.value,
     msgs,
@@ -211,9 +211,9 @@ test('useModuleOpDrawerSession: runPlanDemo maps PlanDemo payload', async () => 
   expect(api.canConfirm.value).toBe(true);
 });
 
-test('useModuleOpDrawerSession: runPlanDemo guards missing PlanDemo and resets on throw', async () => {
+test('useModuleCatalogOpDrawerSession: runPlanDemo guards missing PlanDemo and resets on throw', async () => {
   const open = ref(true);
-  const missing = useModuleOpDrawerSession({
+  const missing = useModuleCatalogOpDrawerSession({
     operationStore: null as any,
     isOpen: () => open.value,
     msgs,
@@ -222,7 +222,7 @@ test('useModuleOpDrawerSession: runPlanDemo guards missing PlanDemo and resets o
   expect(missing.plan.value).toBeNull();
   expect(missing.activeAction.value).toBe('');
 
-  const noMethod = useModuleOpDrawerSession({
+  const noMethod = useModuleCatalogOpDrawerSession({
     operationStore: makeStore(),
     isOpen: () => open.value,
     msgs,
@@ -246,7 +246,7 @@ test('useModuleOpDrawerSession: runPlanDemo guards missing PlanDemo and resets o
         }),
     }),
   );
-  const api = useModuleOpDrawerSession({
+  const api = useModuleCatalogOpDrawerSession({
     operationStore: storeRef,
     isOpen: () => open.value,
     msgs,
@@ -264,7 +264,7 @@ test('useModuleOpDrawerSession: runPlanDemo guards missing PlanDemo and resets o
   await first;
   expect(api.plan.value).toBeNull();
 
-  const throws = useModuleOpDrawerSession({
+  const throws = useModuleCatalogOpDrawerSession({
     operationStore: makeStore({
       PlanDemo: async () => {
         throw new Error('demo plan boom');
@@ -279,7 +279,7 @@ test('useModuleOpDrawerSession: runPlanDemo guards missing PlanDemo and resets o
   expect(throws.planLoading.value).toBe(false);
 });
 
-test('useModuleOpDrawerSession: superseded PlanDemo response is ignored', async () => {
+test('useModuleCatalogOpDrawerSession: superseded PlanDemo response is ignored', async () => {
   const open = ref(true);
   let resolvePlan: ((v: any) => void) | undefined;
   const store = makeStore({
@@ -288,7 +288,7 @@ test('useModuleOpDrawerSession: superseded PlanDemo response is ignored', async 
         resolvePlan = resolve;
       }),
   });
-  const api = useModuleOpDrawerSession({
+  const api = useModuleCatalogOpDrawerSession({
     operationStore: store,
     isOpen: () => open.value,
     msgs,
@@ -306,7 +306,7 @@ test('useModuleOpDrawerSession: superseded PlanDemo response is ignored', async 
   expect(api.plan.value).toBeNull();
 });
 
-test('useModuleOpDrawerSession: superseded PlanDemo error is ignored', async () => {
+test('useModuleCatalogOpDrawerSession: superseded PlanDemo error is ignored', async () => {
   const open = ref(true);
   let rejectPlan: ((e: Error) => void) | undefined;
   const store = makeStore({
@@ -315,7 +315,7 @@ test('useModuleOpDrawerSession: superseded PlanDemo error is ignored', async () 
         rejectPlan = reject;
       }),
   });
-  const api = useModuleOpDrawerSession({
+  const api = useModuleCatalogOpDrawerSession({
     operationStore: store,
     isOpen: () => open.value,
     msgs,
@@ -328,9 +328,9 @@ test('useModuleOpDrawerSession: superseded PlanDemo error is ignored', async () 
   expect(api.activeAction.value).toBe('');
 });
 
-test('useModuleOpDrawerSession: runPlan errors without store or when Plan throws', async () => {
+test('useModuleCatalogOpDrawerSession: runPlan errors without store or when Plan throws', async () => {
   const open = ref(true);
-  const missing = useModuleOpDrawerSession({
+  const missing = useModuleCatalogOpDrawerSession({
     operationStore: null as any,
     isOpen: () => open.value,
     msgs,
@@ -343,7 +343,7 @@ test('useModuleOpDrawerSession: runPlan errors without store or when Plan throws
       throw new Error('plan boom');
     },
   });
-  const api = useModuleOpDrawerSession({
+  const api = useModuleCatalogOpDrawerSession({
     operationStore: store,
     isOpen: () => open.value,
     msgs,
@@ -353,14 +353,14 @@ test('useModuleOpDrawerSession: runPlan errors without store or when Plan throws
   expect(api.planLoading.value).toBe(false);
 });
 
-test('useModuleOpDrawerSession: confirmApply reports Apply failure and clears loading', async () => {
+test('useModuleCatalogOpDrawerSession: confirmApply reports Apply failure and clears loading', async () => {
   const open = ref(true);
   const store = makeStore({
     Apply: async () => {
       throw new Error('apply boom');
     },
   });
-  const api = useModuleOpDrawerSession({
+  const api = useModuleCatalogOpDrawerSession({
     operationStore: store,
     isOpen: () => open.value,
     msgs,
@@ -372,15 +372,15 @@ test('useModuleOpDrawerSession: confirmApply reports Apply failure and clears lo
   expect(api.executeLoading.value).toBe(false);
 });
 
-test('useModuleOpDrawerSession: confirmApply without store is a no-op error', async () => {
+test('useModuleCatalogOpDrawerSession: confirmApply without store is a no-op error', async () => {
   const open = ref(true);
-  const api = useModuleOpDrawerSession({
+  const api = useModuleCatalogOpDrawerSession({
     operationStore: makeStore(),
     isOpen: () => open.value,
     msgs,
   });
   await api.runPlan({ moduleName: 'core', action: 'install' });
-  const bare = useModuleOpDrawerSession({
+  const bare = useModuleCatalogOpDrawerSession({
     operationStore: null as any,
     isOpen: () => open.value,
     msgs,
@@ -413,12 +413,12 @@ test('readOperationStatusSnapshot: Browse, Search, and empty-store paths', async
   expect(empty.status).toBe('');
 });
 
-test('useModuleOpDrawerSession: watchProgress uses Search fallback and handles missing readers', async () => {
+test('useModuleCatalogOpDrawerSession: watchProgress uses Search fallback and handles missing readers', async () => {
   const open = ref(true);
   const searchStore = {
     Search: async () => [{ Status: 'succeeded', ReloadTriggered: false, ReloadFailed: false }],
   } as any;
-  const viaSearch = useModuleOpDrawerSession({
+  const viaSearch = useModuleCatalogOpDrawerSession({
     operationStore: searchStore,
     isOpen: () => open.value,
     msgs,
@@ -427,7 +427,7 @@ test('useModuleOpDrawerSession: watchProgress uses Search fallback and handles m
   expect(viaSearch.step.value).toBe('result');
   expect(viaSearch.opStatus.value?.status).toBe('succeeded');
 
-  const stub = useModuleOpDrawerSession({
+  const stub = useModuleCatalogOpDrawerSession({
     operationStore: {} as any,
     isOpen: () => open.value,
     msgs,

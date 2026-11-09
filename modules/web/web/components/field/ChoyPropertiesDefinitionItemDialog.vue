@@ -633,9 +633,8 @@ watch(
   align-items: flex-start;
 }
 
-/* Embedded dialog: drop FormView page padding (p-5) — DialogContent already pads. */
+/* Embedded dialog: keep form host scroll/overflow out of DialogContent's own pad. */
 .choy-properties-definition-item-form :deep([data-anchor='choy.form-view']) {
-  padding: 0;
   overflow: visible;
 }
 </style>

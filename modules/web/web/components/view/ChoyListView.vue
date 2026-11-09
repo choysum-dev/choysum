@@ -154,15 +154,7 @@ SPDX-License-Identifier: Apache-2.0
           </template>
 
           <template #header-right>
-            <!-- View-mode chrome, then a hairline, then pager at the trailing edge. -->
-            <div v-if="$slots['header-right']" class="flex items-center gap-1">
-              <slot name="header-right" />
-            </div>
-            <Separator
-              v-if="$slots['header-right'] && showPaginate && canMountPagination"
-              orientation="vertical"
-              class="mx-0 !h-4 w-px shrink-0 max-md:hidden"
-            />
+            <!-- Pager, then a hairline, then view-mode chrome at the trailing edge. -->
             <div v-if="showPaginate && canMountPagination">
               <ChoyPagination
                 class="gap-2"
@@ -170,6 +162,14 @@ SPDX-License-Identifier: Apache-2.0
                 v-model:page="listPageModel"
                 v-model:page-size="listPageSizeModel"
               />
+            </div>
+            <Separator
+              v-if="$slots['header-right'] && showPaginate && canMountPagination"
+              orientation="vertical"
+              class="mx-0 !h-4 w-px shrink-0 max-md:hidden"
+            />
+            <div v-if="$slots['header-right']" class="flex items-center gap-1">
+              <slot name="header-right" />
             </div>
           </template>
         </ChoyViewActionBar>

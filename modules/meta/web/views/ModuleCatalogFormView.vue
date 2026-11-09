@@ -5,35 +5,38 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <!-- Module show is read-only: omit mutating action-ids so Edit/Copy/Delete stay hidden. -->
-  <div class="module-show-view flex min-h-0 flex-1 flex-col gap-3" data-testid="module-show-view">
-    <div v-if="showHeaderActions" class="flex flex-wrap items-center gap-2" data-testid="module-show-actions">
-      <button
-        v-if="canUninstallRow && hasAction(moduleUninstallAction)"
-        type="button"
-        class="rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted"
-        data-testid="module-show-uninstall"
-        @click="onUninstallClick"
-      >
-        {{ _t('Uninstall') }}
-      </button>
-      <button
-        v-if="canLoadDemo && hasAction(moduleLoadDemoAction)"
-        type="button"
-        class="rounded-md border border-border px-2.5 py-1 text-xs hover:bg-muted"
-        data-testid="module-show-load-demo"
-        @click="onLoadDemoClick"
-      >
-        {{ _t('Load Demo Data') }}
-      </button>
-      <button
+  <div class="module-catalog-form-view flex min-h-0 flex-1 flex-col gap-3" data-testid="module-catalog-form-view">
+    <div v-if="showHeaderActions" class="flex flex-wrap items-center gap-2" data-testid="module-catalog-form-actions">
+      <ChoyButton
         v-if="primaryAction"
         type="button"
-        class="rounded-md border border-border px-2.5 py-1 text-xs hover:bg-muted"
-        :data-testid="`module-show-primary-${primaryAction}`"
+        size="sm"
+        :variant="primaryButtonVariant"
+        :data-testid="`module-catalog-form-primary-${primaryAction}`"
         @click="onPrimaryClick"
       >
         {{ primaryActionLabel }}
-      </button>
+      </ChoyButton>
+      <ChoyButton
+        v-if="canLoadDemo && hasAction(moduleLoadDemoAction)"
+        type="button"
+        size="sm"
+        variant="outline"
+        data-testid="module-catalog-form-load-demo"
+        @click="onLoadDemoClick"
+      >
+        {{ _t('Load Demo Data') }}
+      </ChoyButton>
+      <ChoyButton
+        v-if="canUninstallRow && hasAction(moduleUninstallAction)"
+        type="button"
+        size="sm"
+        variant="outline-destructive"
+        data-testid="module-catalog-form-uninstall"
+        @click="onUninstallClick"
+      >
+        {{ _t('Uninstall') }}
+      </ChoyButton>
     </div>
   <ChoyFormView
     v-bind="{ store, recordId, viewMode: 'display' as const, showHeader }"
@@ -125,7 +128,7 @@ SPDX-License-Identifier: Apache-2.0
     </ChoyCard>
   </ChoyFormView>
 
-  <ModuleOpDrawer
+  <ModuleCatalogOpDrawer
     v-model:open="drawerOpen"
     :operation-store="operationStore"
     :operation-id="drawerOperationId"
@@ -145,16 +148,17 @@ import type MetaModuleOperation from '@/meta/service/models/module_operation';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
-import { resolveModuleCatalogPrimaryAction } from './module_catalog_chrome';
+import { resolveModuleCatalogFormPrimaryAction } from './module_catalog_chrome';
 import {
   moduleInstallAction,
   moduleLoadDemoAction,
   moduleUpgradeAction,
   moduleUninstallAction,
-} from './module_actions';
-import ModuleOpDrawer from './ModuleOpDrawer.vue';
+} from './module_catalog_actions';
+import ModuleCatalogOpDrawer from './ModuleCatalogOpDrawer.vue';
 import {
   ChoyBooleanField,
+  ChoyButton,
   ChoyCard,
   ChoyCol,
   ChoyDatetimeField,
@@ -165,9 +169,9 @@ import {
   ChoyVarcharField,
 } from '@/web';
 
-defineOptions({ name: 'ModuleShowView', inheritAttrs: true });
+defineOptions({ name: 'ModuleCatalogFormView', inheritAttrs: true });
 
-const { _t } = createTranslate('meta', { scope: 'web/views/ModuleShowView' });
+const { _t } = createTranslate('meta', { scope: 'web/views/ModuleCatalogFormView' });
 const { hasAction } = usePermission();
 
 const props = withDefaults(
@@ -180,7 +184,7 @@ const props = withDefaults(
   { showHeader: true, operationStore: null },
 );
 
-const store = resolvePageStore(props.store, 'ModuleShowView');
+const store = resolvePageStore(props.store, 'ModuleCatalogFormView');
 const recordId = toRef(props, 'recordId');
 const showHeader = toRef(props, 'showHeader');
 // Prefer the prop binding in the template (`operationStore`) so we pass the
@@ -209,7 +213,7 @@ const hasMatchedRow = computed(() => {
 });
 const primaryAction = computed(() => {
   if (!hasMatchedRow.value) return null;
-  const action = resolveModuleCatalogPrimaryAction(currentRow.value);
+  const action = resolveModuleCatalogFormPrimaryAction(currentRow.value);
   if (action === 'install' && !hasAction(moduleInstallAction)) return null;
   if (action === 'upgrade' && !hasAction(moduleUpgradeAction)) return null;
   return action;
@@ -219,6 +223,14 @@ const primaryActionLabel = computed(() => {
   if (primaryAction.value === 'upgrade') return _t('Upgrade');
   if (primaryAction.value === 'progress') return _t('View Progress');
   return '';
+});
+/** Emphasize Upgrade only when catalog detected a newer source version. */
+const primaryButtonVariant = computed(() => {
+  if (primaryAction.value === 'upgrade' && currentRow.value.UpdateAvailable !== true) {
+    return 'outline' as const;
+  }
+  if (primaryAction.value === 'progress') return 'outline' as const;
+  return 'default' as const;
 });
 const canUninstallRow = computed(() => {
   if (!hasMatchedRow.value) return false;
@@ -303,5 +315,6 @@ defineExpose({
   drawerRegistryNewer,
   primaryAction,
   primaryActionLabel,
+  primaryButtonVariant,
 });
 </script>

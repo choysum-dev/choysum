@@ -45,7 +45,7 @@ describe('ChoyKanbanView workspace height', () => {
     expect(body!.className).toContain('min-h-0');
     expect(body!.className).toContain('flex-1');
     expect(body!.className).toContain('overflow-hidden');
-    expect(body!.className).toContain('p-3');
+    expect(body!.className.split(/\s+/)).not.toContain('p-3');
     expect(body!.className.split(/\s+/)).not.toContain('p-1');
 
     const board = mounted.q('.choy-kanban-view__board') as HTMLElement | null;

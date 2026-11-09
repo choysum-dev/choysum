@@ -8,17 +8,32 @@ import {
   formatModuleCatalogVersionLine,
   formatModuleOpSummary,
   isModuleInstalled,
+  moduleCatalogCardApplication,
+  moduleCatalogCardSummary,
   moduleStatusBadgeVariant,
   resolveModuleCatalogPrimaryAction,
+  resolveModuleCatalogFormPrimaryAction,
   createPlanDialogSessionGate,
 } from './module_catalog_chrome';
 
 test('moduleStatusBadgeVariant: unavailable and known statuses', () => {
   expect(moduleStatusBadgeVariant('installed', false)).toBe('destructive');
-  expect(moduleStatusBadgeVariant('installed', true)).toBe('default');
+  expect(moduleStatusBadgeVariant('installed', true)).toBe('outline');
+  expect(moduleStatusBadgeVariant('installed', true, true)).toBe('secondary');
   expect(moduleStatusBadgeVariant('failed')).toBe('destructive');
-  expect(moduleStatusBadgeVariant('uninstalled')).toBe('outline');
+  expect(moduleStatusBadgeVariant('uninstalled')).toBe('secondary');
   expect(moduleStatusBadgeVariant('queued')).toBe('secondary');
+});
+
+test('moduleCatalogCardSummary / Application: hide noise', () => {
+  expect(moduleCatalogCardSummary({ ModuleName: 'meta', Summary: 'meta' })).toBe('');
+  expect(moduleCatalogCardSummary({ ModuleName: 'meta', Summary: 'Meta' })).toBe('');
+  expect(moduleCatalogCardSummary({ ModuleName: 'meta', Summary: 'Meta registry' })).toBe(
+    'Meta registry',
+  );
+  expect(moduleCatalogCardSummary({ Summary: '  ' })).toBe('');
+  expect(moduleCatalogCardApplication({ Application: '  ' })).toBe('');
+  expect(moduleCatalogCardApplication({ Application: 'base' })).toBe('base');
 });
 
 test('isModuleInstalled / catalogInstalledStatus', () => {
@@ -106,6 +121,14 @@ test('resolveModuleCatalogPrimaryAction', () => {
   expect(resolveModuleCatalogPrimaryAction({ Installed: false, Available: true })).toBe('install');
   expect(resolveModuleCatalogPrimaryAction({ Installed: true, UpdateAvailable: true })).toBe('upgrade');
   expect(resolveModuleCatalogPrimaryAction({ Installed: true, UpdateAvailable: false })).toBe(null);
+});
+
+test('resolveModuleCatalogFormPrimaryAction: installed always upgrades', () => {
+  expect(resolveModuleCatalogFormPrimaryAction({ ActiveOperationId: 'op-1' })).toBe('progress');
+  expect(resolveModuleCatalogFormPrimaryAction({ Available: false })).toBe(null);
+  expect(resolveModuleCatalogFormPrimaryAction({ Installed: false, Available: true })).toBe('install');
+  expect(resolveModuleCatalogFormPrimaryAction({ Installed: true, UpdateAvailable: true })).toBe('upgrade');
+  expect(resolveModuleCatalogFormPrimaryAction({ Installed: true, UpdateAvailable: false })).toBe('upgrade');
 });
 
 test('createPlanDialogSessionGate: ignore superseded plan responses', () => {

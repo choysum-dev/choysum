@@ -421,7 +421,7 @@ func (o *Ops) refreshCatalogDependents(ctx context.Context) error {
 	})
 }
 
-type manifestLite struct {
+type manifestLiteFields struct {
 	Summary     string          `json:"summary"`
 	Description string          `json:"description"`
 	Category    string          `json:"category"`
@@ -430,9 +430,11 @@ type manifestLite struct {
 	License     string          `json:"license"`
 	Depends     json.RawMessage `json:"depends"`
 	Demo        json.RawMessage `json:"demo"`
-	Choysum     *struct {
-		Demo json.RawMessage `json:"demo"`
-	} `json:"choysum"`
+}
+
+type manifestLite struct {
+	manifestLiteFields
+	Choysum *manifestLiteFields `json:"choysum"`
 }
 
 func fillCatalogFromManifest(row *modmeta.ModuleCatalog, raw datatypes.JSON) {
@@ -443,31 +445,41 @@ func fillCatalogFromManifest(row *modmeta.ModuleCatalog, raw datatypes.JSON) {
 	if err := json.Unmarshal(raw, &m); err != nil {
 		return
 	}
+	var nested manifestLiteFields
+	if m.Choysum != nil {
+		nested = *m.Choysum
+	}
 	if row.Summary == "" {
-		row.Summary = m.Summary
+		row.Summary = firstNonEmpty(m.Summary, nested.Summary)
 	}
 	if row.Description == "" {
-		row.Description = m.Description
+		row.Description = firstNonEmpty(m.Description, nested.Description)
 	}
 	if row.Category == "" {
-		row.Category = m.Category
+		row.Category = firstNonEmpty(m.Category, nested.Category)
 	}
 	if row.Application == "" {
-		row.Application = m.Application
+		row.Application = firstNonEmpty(m.Application, nested.Application)
 	}
 	if row.Author == "" {
-		row.Author = m.Author
+		row.Author = firstNonEmpty(m.Author, nested.Author)
 	}
 	if row.License == "" {
-		row.License = m.License
+		row.License = firstNonEmpty(m.License, nested.License)
 	}
-	if len(row.DependsJson) == 0 && len(m.Depends) > 0 {
-		row.DependsJson = datatypes.JSON(m.Depends)
+	depends := m.Depends
+	if len(depends) == 0 {
+		depends = nested.Depends
+	}
+	if len(row.DependsJson) == 0 && len(depends) > 0 {
+		row.DependsJson = datatypes.JSON(depends)
 	}
 	if !row.HasDemo {
-		if len(m.Demo) > 0 && string(m.Demo) != "null" && string(m.Demo) != "[]" && string(m.Demo) != "{}" {
-			row.HasDemo = true
-		} else if m.Choysum != nil && len(m.Choysum.Demo) > 0 && string(m.Choysum.Demo) != "null" {
+		demo := m.Demo
+		if len(demo) == 0 || string(demo) == "null" {
+			demo = nested.Demo
+		}
+		if len(demo) > 0 && string(demo) != "null" && string(demo) != "[]" && string(demo) != "{}" {
 			row.HasDemo = true
 		}
 	}

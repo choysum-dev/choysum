@@ -7,14 +7,14 @@ import { ChoyMessage } from '@/web';
 import { createPlanDialogSessionGate } from '../views/module_catalog_chrome';
 import { createModuleOpProgressSession, type ModuleOpStatusSnapshot } from './useModuleOpProgress';
 import {
-  createModuleOpDrawerProgressHooks,
+  createModuleCatalogOpDrawerProgressHooks,
   mapOperationRowToSnapshot,
-} from './moduleOpDrawerProgress';
+} from './moduleCatalogOpDrawerProgress';
 
-export type ModuleOpDrawerStep = 'plan' | 'progress' | 'result';
-export type ModuleOpDrawerPlanAction = 'install' | 'upgrade' | 'uninstall' | 'load_demo';
+export type ModuleCatalogOpDrawerStep = 'plan' | 'progress' | 'result';
+export type ModuleCatalogOpDrawerPlanAction = 'install' | 'upgrade' | 'uninstall' | 'load_demo';
 
-export type ModuleOpDrawerPlanView = {
+export type ModuleCatalogOpDrawerPlanView = {
   Id: string;
   baseRevision?: string;
   affectedModules: Array<{
@@ -29,7 +29,7 @@ export type ModuleOpDrawerPlanView = {
   blockers: Array<{ code: string; level: string; message?: string }>;
 };
 
-export type ModuleOpDrawerSessionMsgs = {
+export type ModuleCatalogOpDrawerSessionMsgs = {
   failedToLoadPlan: string;
   applyFailed: string;
   jobStillRunning: string;
@@ -71,7 +71,7 @@ export async function readOperationStatusSnapshot(
   return mapOperationRowToSnapshot(row);
 }
 
-function mapPlanResponse(nextPlan: any): ModuleOpDrawerPlanView {
+function mapPlanResponse(nextPlan: any): ModuleCatalogOpDrawerPlanView {
   return {
     Id: String(nextPlan?.Id || '').trim(),
     baseRevision: nextPlan?.BaseRevision != null ? String(nextPlan.BaseRevision) : undefined,
@@ -99,19 +99,19 @@ function mapPlanResponse(nextPlan: any): ModuleOpDrawerPlanView {
 /**
  * Drawer session: Plan → Confirm/Apply → C1 progress (operation-row Read + tip).
  */
-export function useModuleOpDrawerSession(opts: {
+export function useModuleCatalogOpDrawerSession(opts: {
   operationStore: WebModelStore<any> | Ref<WebModelStore<any> | null | undefined>;
   isOpen: () => boolean;
-  msgs: ModuleOpDrawerSessionMsgs;
+  msgs: ModuleCatalogOpDrawerSessionMsgs;
   onSettled?: () => void;
 }) {
-  const step = ref<ModuleOpDrawerStep>('plan');
+  const step = ref<ModuleCatalogOpDrawerStep>('plan');
   const planLoading = ref(false);
   const executeLoading = ref(false);
-  const plan = ref<ModuleOpDrawerPlanView | null>(null);
+  const plan = ref<ModuleCatalogOpDrawerPlanView | null>(null);
   const opStatus = ref<ModuleOpStatusSnapshot | null>(null);
   const activeModuleName = ref('');
-  const activeAction = ref<ModuleOpDrawerPlanAction | 'progress' | ''>('');
+  const activeAction = ref<ModuleCatalogOpDrawerPlanAction | 'progress' | ''>('');
   const useRegistryOrigin = ref(false);
   const planSession = createPlanDialogSessionGate();
   // Tracks which begin() seq last set planLoading, so finally can clear even after stop()/invalidate.
@@ -136,7 +136,7 @@ export function useModuleOpDrawerSession(opts: {
   }
 
   const progress = createModuleOpProgressSession(
-    createModuleOpDrawerProgressHooks({
+    createModuleCatalogOpDrawerProgressHooks({
       fetchStatus: fetchOperationStatus,
       isDrawerOpen: () => opts.isOpen(),
       setOpStatus: status => {
@@ -195,7 +195,7 @@ export function useModuleOpDrawerSession(opts: {
 
   async function runPlan(input: {
     moduleName: string;
-    action: Exclude<ModuleOpDrawerPlanAction, 'load_demo'>;
+    action: Exclude<ModuleCatalogOpDrawerPlanAction, 'load_demo'>;
     origin?: 'local' | 'registry';
   }) {
     const moduleName = String(input.moduleName || '').trim();
