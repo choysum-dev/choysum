@@ -1,6 +1,11 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import {
+  formatModuleOpPlanChangeSummary,
+  mapPlanModuleEntry,
+} from './module_op_plan_impact';
+
 /** ChoyBadge variant for catalog status chips. */
 export function moduleStatusBadgeVariant(
   status?: string,
@@ -130,6 +135,14 @@ export function formatModuleOpSummary(summary: unknown): string {
         return `Synced ${sync.success}/${sync.total} sources (${sync.failed} failed); catalog has ${sync.catalogRows} modules`;
       }
       return `Synced ${sync.total} sources; catalog has ${sync.catalogRows} modules`;
+    }
+    const orderRaw = record.moduleOrder ?? record.ModuleOrder;
+    if (Array.isArray(orderRaw) && orderRaw.length > 0) {
+      const ensureRaw = record.ensureModules ?? record.EnsureModules;
+      const modules = orderRaw.map(mapPlanModuleEntry);
+      const ensure = Array.isArray(ensureRaw) ? ensureRaw.map(mapPlanModuleEntry) : [];
+      const planSummary = formatModuleOpPlanChangeSummary(modules, ensure);
+      if (planSummary) return planSummary;
     }
     for (const key of ['message', 'code'] as const) {
       const value = record[key];

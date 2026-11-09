@@ -2060,14 +2060,104 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "Wrapping up…"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:35
+#: web/views/ModuleCatalogOpDialog.vue
 msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Affected Apps"
+msgid "Affected Applications"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:22
+#: web/views/ModuleCatalogOpDialog.vue
 msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Affected Modules"
+msgid "app %s"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "These modules belong to application %s"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "These modules belong to applications: %s"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Also %s already installed dependency module(s) that will be skipped"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Also %s dependencies with no changes"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Depends on module %s; will be uninstalled together"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Install this dependency first"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Modules that will change"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "No module changes required"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Required dependency module"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "The web frontend will be rebuilt"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "The web frontend will be rebuilt because this change includes web assets."
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "These applications will refresh resources with the module changes"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Installed"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Will install"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Will uninstall"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Will upgrade"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "local"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "registry"
 msgstr ""
 
 #: web/views/ModuleCatalogOpDialog.vue:50

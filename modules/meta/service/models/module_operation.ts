@@ -19,8 +19,14 @@ export type PlanIssue = {
   Message?: string;
 };
 
+export type ModuleOpPlanRole = 'target' | 'dependency' | 'dependent';
+export type ModuleOpPlanEffect = 'install' | 'upgrade' | 'uninstall' | 'already_satisfied';
+
 export type ModuleOrderEntry = {
   ModuleName: string;
+  Application?: string;
+  Role?: ModuleOpPlanRole | string;
+  Effect?: ModuleOpPlanEffect | string;
   Reason?: string;
   CurrentVersion?: string;
   TargetVersion?: string;
@@ -38,10 +44,12 @@ export type PlanModuleOperationResp = {
   Action: string;
   ModuleName: string;
   ModuleOrder: ModuleOrderEntry[];
+  EnsureModules: ModuleOrderEntry[];
   AffectedApps: string[];
   Risks: PlanIssue[];
   Blockers: PlanIssue[];
   BaseRevision?: string;
+  NeedsWebBuild?: boolean;
 };
 
 export type ApplyModuleOperationReq = {
@@ -83,22 +91,29 @@ export type RequestLoadDemoResp = {
   ErrorMessage?: string;
 };
 
+type BridgePlanOrderEntry = {
+  moduleName?: string;
+  application?: string;
+  role?: string;
+  effect?: string;
+  reason?: string;
+  currentVersion?: string;
+  targetVersion?: string;
+  origin?: string;
+};
+
 type BridgePlanResult = {
   id?: string;
   ok?: boolean;
   action?: string;
   moduleName?: string;
-  moduleOrder?: Array<{
-    moduleName?: string;
-    reason?: string;
-    currentVersion?: string;
-    targetVersion?: string;
-    origin?: string;
-  }>;
+  moduleOrder?: BridgePlanOrderEntry[];
+  ensureModules?: BridgePlanOrderEntry[];
   affectedApps?: string[];
   risks?: Array<{ code?: string; level?: string; message?: string }>;
   blockers?: Array<{ code?: string; level?: string; message?: string }>;
   baseRevision?: string;
+  needsWebBuild?: boolean;
   errorDomain?: string;
   errorCode?: string;
   errorMessage?: string;
@@ -127,10 +142,12 @@ function mapPlanResult(result: BridgePlanResult | null | undefined, fallbackActi
     Action: String(result?.action || fallbackAction),
     ModuleName: String(result?.moduleName || fallbackModuleName),
     ModuleOrder: mapModuleOrder(result?.moduleOrder),
+    EnsureModules: mapModuleOrder(result?.ensureModules),
     AffectedApps: (result?.affectedApps || []).map((name) => String(name || '').trim()).filter(Boolean),
     Risks: mapIssues(result?.risks),
     Blockers: mapIssues(result?.blockers),
     BaseRevision: result?.baseRevision != null ? String(result.baseRevision) : undefined,
+    NeedsWebBuild: result?.needsWebBuild === true,
   };
 }
 
@@ -142,9 +159,12 @@ function mapIssues(list: BridgePlanResult['risks']): PlanIssue[] {
   }));
 }
 
-function mapModuleOrder(list: BridgePlanResult['moduleOrder']): ModuleOrderEntry[] {
+function mapModuleOrder(list: BridgePlanOrderEntry[] | undefined): ModuleOrderEntry[] {
   return (list || []).map((entry) => ({
     ModuleName: String(entry?.moduleName || '').trim(),
+    Application: entry?.application != null ? String(entry.application) : undefined,
+    Role: entry?.role != null ? String(entry.role) : undefined,
+    Effect: entry?.effect != null ? String(entry.effect) : undefined,
     Reason: entry?.reason != null ? String(entry.reason) : undefined,
     CurrentVersion: entry?.currentVersion != null ? String(entry.currentVersion) : undefined,
     TargetVersion: entry?.targetVersion != null ? String(entry.targetVersion) : undefined,

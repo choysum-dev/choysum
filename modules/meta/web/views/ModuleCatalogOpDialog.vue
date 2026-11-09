@@ -23,33 +23,106 @@ SPDX-License-Identifier: Apache-2.0
             <div
               v-if="plan.blockers?.length"
               class="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-destructive"
+              data-testid="module-op-plan-blocker-banner"
             >
               {{ _t('Resolve blockers before continuing') }}
             </div>
-            <div v-else class="rounded-md border border-border bg-muted/40 px-3 py-2 text-foreground">
-              {{ _t('Confirm the impact of this operation') }}
-            </div>
 
-            <div class="flex flex-col gap-2">
-              <div class="font-semibold text-foreground">{{ _t('Affected Modules') }}</div>
-              <ul class="m-0 flex list-none flex-col gap-1.5 p-0 text-xs text-foreground/80">
+            <div class="flex flex-col gap-2" data-testid="module-op-changing-modules">
+              <div class="text-sm font-semibold text-foreground">{{ _t('Modules that will change') }}</div>
+              <ul
+                v-if="plan.changingModules?.length"
+                class="m-0 flex list-none flex-col gap-2 p-0 text-sm"
+              >
                 <li
-                  v-for="item in plan.affectedModules"
+                  v-for="item in plan.changingModules"
                   :key="item.moduleName"
-                  class="flex flex-wrap items-center gap-2"
+                  class="flex flex-col gap-0.5"
+                  :class="item.role === 'target' ? '' : 'ms-3 border-l border-border/80 ps-2.5'"
+                  data-testid="module-op-changing-row"
+                  :data-role="item.role || ''"
                 >
-                  <span class="font-semibold">{{ item.moduleName }}</span>
-                  <span class="text-foreground/60">{{ item.currentVersion || '—' }}</span>
-                  <span v-if="item.targetVersion" class="text-foreground/60">→ {{ item.targetVersion }}</span>
-                  <span v-if="item.origin" class="text-muted-foreground">({{ item.origin }})</span>
-                  <span class="text-primary">{{ item.reason || '' }}</span>
+                  <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <span
+                      class="text-foreground"
+                      :class="item.role === 'target' ? 'font-semibold' : 'font-medium text-foreground/90'"
+                      >{{ item.moduleName }}</span
+                    >
+                    <span
+                      v-if="formatVersionLine(item)"
+                      class="font-mono text-xs text-muted-foreground"
+                      >{{ formatVersionLine(item) }}</span
+                    >
+                    <span
+                      v-if="item.origin === 'registry'"
+                      class="text-xs text-muted-foreground"
+                      >({{ formatOrigin(item.origin) }})</span
+                    >
+                    <ChoyBadge
+                      v-if="changingEffectBadge(item)"
+                      :variant="changingEffectBadgeVariant(item)"
+                      class="h-5 px-1.5 text-[11px] font-normal"
+                      data-testid="module-op-effect-badge"
+                    >
+                      {{ changingEffectBadge(item) }}
+                    </ChoyBadge>
+                  </div>
                 </li>
               </ul>
+              <p v-else class="m-0 text-sm text-muted-foreground">{{ _t('No module changes required') }}</p>
             </div>
 
-            <div v-if="plan.affectedApps?.length" class="flex flex-col gap-2">
-              <div class="font-semibold text-foreground">{{ _t('Affected Apps') }}</div>
-              <p class="text-xs text-foreground/80">{{ plan.affectedApps.join(', ') }}</p>
+            <div
+              v-if="plan.satisfiedModules?.length"
+              class="flex flex-col gap-1.5"
+              data-testid="module-op-satisfied-modules"
+            >
+              <button
+                type="button"
+                class="flex items-center gap-1 self-start text-sm text-muted-foreground hover:text-foreground"
+                data-testid="module-op-satisfied-toggle"
+                :aria-expanded="satisfiedOpen"
+                @click="satisfiedOpen = !satisfiedOpen"
+              >
+                <ChevronRight
+                  class="size-3.5 shrink-0 transition-transform"
+                  :class="{ 'rotate-90': satisfiedOpen }"
+                  aria-hidden="true"
+                />
+                <span>
+                  {{
+                    _t(
+                      'Also %s dependencies with no changes',
+                      String(plan.satisfiedModules.length),
+                    )
+                  }}
+                </span>
+              </button>
+              <ul
+                v-if="satisfiedOpen"
+                class="m-0 ms-4 flex list-none flex-col gap-0.5 border-l border-border ps-3 p-0 text-sm text-muted-foreground"
+                data-testid="module-op-satisfied-list"
+              >
+                <li
+                  v-for="item in plan.satisfiedModules"
+                  :key="item.moduleName"
+                  class="flex flex-wrap items-center gap-x-2"
+                >
+                  <span>{{ item.moduleName }}</span>
+                  <span
+                    v-if="satisfiedVersionLine(item)"
+                    class="font-mono text-xs text-muted-foreground"
+                    >{{ satisfiedVersionLine(item) }}</span
+                  >
+                  <ChoyBadge
+                    variant="outline"
+                    class="h-5 px-1.5 text-[11px] font-normal"
+                    data-testid="module-op-satisfied-badge"
+                  >
+                    {{ _t('Installed') }}
+                  </ChoyBadge>
+                </li>
+              </ul>
             </div>
 
             <div v-if="plan.risks?.length" class="flex flex-col gap-2">
@@ -170,13 +243,17 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, toRef, watch } from 'vue';
+import { computed, ref, toRef, watch } from 'vue';
+import { ChevronRight } from 'lucide-vue-next';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type MetaModuleOperation from '@/meta/service/models/module_operation';
 import { createTranslate } from '@/web/web/i18n';
 import { useModuleCatalogOpDrawerSession } from '../composables/useModuleCatalogOpDrawerSession';
 import { formatModuleOpSummary } from './module_catalog_chrome';
+import { formatPlanVersionDisplay, shouldShowPlanVersionArrow } from './module_op_plan_impact';
+import type { ModuleOpPlanModuleView } from './module_op_plan_impact';
 import {
+  ChoyBadge,
   ChoyButton,
   ChoyDialog,
   ChoyDialogContent,
@@ -216,6 +293,7 @@ const emit = defineEmits<{
 }>();
 
 const operationStoreRef = toRef(props, 'operationStore');
+const satisfiedOpen = ref(false);
 
 const session = useModuleCatalogOpDrawerSession({
   operationStore: operationStoreRef as any,
@@ -248,6 +326,58 @@ const {
   canConfirm,
   resultTitle,
 } = session;
+
+function formatOrigin(origin?: string): string {
+  const o = String(origin || '').trim();
+  if (o === 'registry') return _t('registry');
+  if (o === 'local') return _t('local');
+  return o;
+}
+
+function changingEffectBadge(item: ModuleOpPlanModuleView): string {
+  switch (String(item.effect || '').trim()) {
+    case 'install':
+      return _t('Will install');
+    case 'upgrade':
+      return _t('Will upgrade');
+    case 'uninstall':
+      return _t('Will uninstall');
+    default:
+      return '';
+  }
+}
+
+function changingEffectBadgeVariant(
+  item: ModuleOpPlanModuleView,
+): 'default' | 'secondary' | 'destructive' | 'outline' {
+  switch (String(item.effect || '').trim()) {
+    case 'uninstall':
+      return 'destructive';
+    case 'upgrade':
+      return 'secondary';
+    case 'install':
+      return 'default';
+    default:
+      return 'outline';
+  }
+}
+
+function formatVersionLine(item: ModuleOpPlanModuleView): string {
+  const effect = String(item.effect || '').trim();
+  if (effect === 'uninstall') return '';
+  const current = formatPlanVersionDisplay(item.currentVersion);
+  const target = formatPlanVersionDisplay(item.targetVersion);
+  if (!target) return '';
+  if (shouldShowPlanVersionArrow(item)) {
+    return `${current || '—'} → ${target}`;
+  }
+  return target;
+}
+
+/** Already-satisfied deps: prefer installed (current) version, else target. */
+function satisfiedVersionLine(item: ModuleOpPlanModuleView): string {
+  return formatPlanVersionDisplay(item.currentVersion) || formatPlanVersionDisplay(item.targetVersion);
+}
 
 const titleText = computed(() => {
   const action = String(props.action || activeAction.value || '').trim();
@@ -319,6 +449,13 @@ function isPlanAction(action: string): action is 'install' | 'upgrade' | 'uninst
 }
 
 watch(
+  () => plan.value?.Id,
+  () => {
+    satisfiedOpen.value = false;
+  },
+);
+
+watch(
   () =>
     [
       open.value,
@@ -330,6 +467,7 @@ watch(
   async ([isOpen, action, moduleName, operationId], prev) => {
     if (!isOpen) {
       session.stop();
+      satisfiedOpen.value = false;
       return;
     }
     const sameTarget =

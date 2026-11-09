@@ -56,7 +56,46 @@ test('useModuleCatalogOpDrawerSession: runPlan maps plan payload and gates confi
   expect(api.plan.value?.Id).toBe('op-block');
   expect(api.plan.value?.blockers).toHaveLength(1);
   expect(api.plan.value?.risks[0]?.code).toBe('R1');
+  expect(api.plan.value?.changingModules?.map(m => m.moduleName)).toEqual(['x']);
   expect(api.canConfirm.value).toBe(false);
+});
+
+test('useModuleCatalogOpDrawerSession: maps Role/Effect into changing vs satisfied', async () => {
+  const store = makeStore({
+    Plan: async () => ({
+      Id: 'op-part',
+      ModuleOrder: [
+        {
+          ModuleName: 'core',
+          Application: 'core',
+          Role: 'dependency',
+          Effect: 'already_satisfied',
+        },
+        {
+          ModuleName: 'partner',
+          Application: 'partner',
+          Role: 'target',
+          Effect: 'install',
+        },
+      ],
+      EnsureModules: [],
+      AffectedApps: ['core', 'partner'],
+      NeedsWebBuild: true,
+      Risks: [],
+      Blockers: [],
+    }),
+  });
+  const api = useModuleCatalogOpDrawerSession({
+    operationStore: store,
+    isOpen: () => true,
+    msgs,
+  });
+  await api.runPlan({ moduleName: 'partner', action: 'install' });
+  expect(api.plan.value?.changingModules.map(m => m.moduleName)).toEqual(['partner']);
+  expect(api.plan.value?.satisfiedModules.map(m => m.moduleName)).toEqual(['core']);
+  expect(api.plan.value?.needsWebBuild).toBe(true);
+  expect(api.plan.value?.showAffectedApplications).toBe(false);
+  expect(api.plan.value?.changedApplications).toEqual(['partner']);
 });
 
 test('useModuleCatalogOpDrawerSession: confirmApply emits onApplied without watching', async () => {
@@ -236,8 +275,18 @@ test('useModuleCatalogOpDrawerSession: runPlanDemo maps PlanDemo payload', async
   expect(api.activeAction.value).toBe('load_demo');
   expect(api.plan.value?.Id).toBe('op-demo');
   expect(api.plan.value?.affectedModules).toEqual([
-    { moduleName: 'base', reason: 'pending-demo', currentVersion: undefined, targetVersion: undefined, origin: undefined },
+    {
+      moduleName: 'base',
+      application: undefined,
+      role: undefined,
+      effect: undefined,
+      reason: 'pending-demo',
+      currentVersion: undefined,
+      targetVersion: undefined,
+      origin: undefined,
+    },
   ]);
+  expect(api.plan.value?.changingModules.map(m => m.moduleName)).toEqual(['base']);
   expect(api.canConfirm.value).toBe(true);
 });
 
@@ -415,7 +464,19 @@ test('useModuleCatalogOpDrawerSession: confirmApply without store is a no-op err
     isOpen: () => open.value,
     msgs,
   });
-  bare.plan.value = { Id: 'op-x', affectedModules: [], affectedApps: [], risks: [], blockers: [] };
+  bare.plan.value = {
+    Id: 'op-x',
+    affectedModules: [],
+    ensureModules: [],
+    changingModules: [],
+    satisfiedModules: [],
+    affectedApps: [],
+    changedApplications: [],
+    showAffectedApplications: false,
+    needsWebBuild: false,
+    risks: [],
+    blockers: [],
+  };
   bare.step.value = 'plan';
   await bare.confirmApply();
   expect(bare.step.value).toBe('plan');

@@ -2080,15 +2080,105 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "Wrapping up…"
 msgstr "即将完成…"
 
-#: web/views/ModuleCatalogOpDialog.vue:35
+#: web/views/ModuleCatalogOpDialog.vue
 msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Affected Apps"
-msgstr ""
+msgid "Affected Applications"
+msgstr "影响的应用"
 
-#: web/views/ModuleCatalogOpDialog.vue:22
+#: web/views/ModuleCatalogOpDialog.vue
 msgctxt "web/views/ModuleCatalogOpDrawer"
-msgid "Affected Modules"
-msgstr "影响模块"
+msgid "app %s"
+msgstr "应用 %s"
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "These modules belong to application %s"
+msgstr "以上模块同属应用 %s"
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "These modules belong to applications: %s"
+msgstr "以上模块分属应用：%s"
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Also %s already installed dependency module(s) that will be skipped"
+msgstr "另有 %s 个已安装的依赖模块，执行时将跳过"
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Also %s dependencies with no changes"
+msgstr "另有 %s 个依赖无需变更"
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Depends on module %s; will be uninstalled together"
+msgstr "依赖模块 %s，将一并卸载"
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Install this dependency first"
+msgstr "需要先安装该模块"
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Modules that will change"
+msgstr "将变更的模块"
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "No module changes required"
+msgstr "无需变更模块"
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Required dependency module"
+msgstr "需要先安装该模块"
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "The web frontend will be rebuilt"
+msgstr "将重建 Web 前端"
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "The web frontend will be rebuilt because this change includes web assets."
+msgstr "将重建 Web 前端（本次变更包含前端资源）。"
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "These applications will refresh resources with the module changes"
+msgstr "以下应用将随模块变更刷新资源"
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Installed"
+msgstr "已安装"
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Will install"
+msgstr "将安装"
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Will uninstall"
+msgstr "将卸载"
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Will upgrade"
+msgstr "将升级"
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "local"
+msgstr "本地"
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "registry"
+msgstr "仓库"
 
 #: web/views/ModuleCatalogOpDialog.vue:50
 msgctxt "web/views/ModuleCatalogOpDrawer"

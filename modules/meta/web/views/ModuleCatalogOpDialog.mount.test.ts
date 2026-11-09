@@ -56,6 +56,141 @@ test('ModuleCatalogOpDialog.vue opens load_demo via PlanDemo', async () => {
   wrapper.unmount();
 });
 
+test('ModuleCatalogOpDialog.vue groups changing vs satisfied modules and hides applications', async () => {
+  const store = {
+    Plan: async () => ({
+      Id: 'op-partner',
+      ModuleOrder: [
+        {
+          ModuleName: 'core',
+          Application: 'core',
+          Role: 'dependency',
+          Effect: 'already_satisfied',
+          CurrentVersion: '1.0.0',
+          TargetVersion: '1.0.0',
+          Origin: 'local',
+        },
+        {
+          ModuleName: 'partner',
+          Application: 'partner',
+          Role: 'target',
+          Effect: 'install',
+          TargetVersion: '1.0.0',
+          Origin: 'local',
+        },
+      ],
+      EnsureModules: [],
+      AffectedApps: ['core', 'partner'],
+      NeedsWebBuild: true,
+      Risks: [],
+      Blockers: [],
+    }),
+    Apply: async () => ({ Id: 'op-partner' }),
+  };
+  const wrapper = mount(ModuleCatalogOpDialog as any, {
+    props: {
+      open: true,
+      action: 'install',
+      moduleName: 'partner',
+      operationStore: store,
+    },
+    global: buildPageMountGlobal({ route: { path: '/meta/modules', fullPath: '/meta/modules' } }),
+  });
+  await flushPromises();
+  await flushPromises();
+  const body = wrapper.text();
+  expect(wrapper.find('[data-testid="module-op-plan-subtitle"]').exists()).toBe(false);
+  expect(wrapper.find('[data-testid="module-op-changing-row"]').exists()).toBe(true);
+  expect(body).toContain('partner');
+  expect(body).toContain('1.0.0');
+  expect(body).toContain('Will install');
+  expect(wrapper.find('[data-testid="module-op-effect-badge"]').exists()).toBe(true);
+  expect(body).not.toContain('root');
+  expect(body).not.toContain('(local)');
+  expect(wrapper.find('[data-testid="module-op-satisfied-modules"]').exists()).toBe(true);
+  expect(wrapper.find('[data-testid="module-op-satisfied-list"]').exists()).toBe(false);
+  expect(wrapper.find('[data-testid="module-op-web-build"]').exists()).toBe(false);
+  expect(wrapper.find('[data-testid="module-op-application-summary"]').exists()).toBe(false);
+  const toggle = wrapper.find('[data-testid="module-op-satisfied-toggle"]');
+  expect(toggle.exists()).toBe(true);
+  await toggle.trigger('click');
+  await flushPromises();
+  const satisfied = wrapper.find('[data-testid="module-op-satisfied-list"]').text();
+  expect(satisfied).toContain('core');
+  expect(satisfied).toContain('1.0.0');
+  expect(satisfied).toContain('Installed');
+  expect(wrapper.find('[data-testid="module-op-satisfied-badge"]').exists()).toBe(true);
+  wrapper.unmount();
+});
+
+test('ModuleCatalogOpDialog.vue indents dependency without relation or app summary', async () => {
+  const store = {
+    Plan: async () => ({
+      Id: 'op-pc',
+      ModuleOrder: [
+        {
+          ModuleName: 'core',
+          Application: 'core',
+          Role: 'dependency',
+          Effect: 'already_satisfied',
+          CurrentVersion: '1.0.0',
+          TargetVersion: '1.0.0',
+          Origin: 'local',
+        },
+        {
+          ModuleName: 'partner',
+          Application: 'partner',
+          Role: 'dependency',
+          Effect: 'install',
+          TargetVersion: '0.0.0-20260626031438',
+          Origin: 'local',
+        },
+        {
+          ModuleName: 'partner_commercial',
+          Application: 'partner',
+          Role: 'target',
+          Effect: 'install',
+          TargetVersion: '0.0.0-20260626031438',
+          Origin: 'local',
+        },
+      ],
+      EnsureModules: [],
+      AffectedApps: ['partner'],
+      NeedsWebBuild: true,
+      Risks: [],
+      Blockers: [],
+    }),
+    Apply: async () => ({ Id: 'op-pc' }),
+  };
+  const wrapper = mount(ModuleCatalogOpDialog as any, {
+    props: {
+      open: true,
+      action: 'install',
+      moduleName: 'partner_commercial',
+      operationStore: store,
+    },
+    global: buildPageMountGlobal({ route: { path: '/meta/modules', fullPath: '/meta/modules' } }),
+  });
+  await flushPromises();
+  await flushPromises();
+  const body = wrapper.text();
+  expect(body).toContain('partner_commercial');
+  expect(body).toContain('partner');
+  expect(body).toContain('0.0.0-20260626031438');
+  expect(body).not.toContain('Install this dependency first');
+  expect(body).toContain('Will install');
+  expect(body).not.toContain('These modules belong to application');
+  expect(wrapper.find('[data-testid="module-op-application-summary"]').exists()).toBe(false);
+  expect(wrapper.find('[data-testid="module-op-web-build"]').exists()).toBe(false);
+  expect(wrapper.find('[data-role="dependency"]').exists()).toBe(true);
+  await wrapper.find('[data-testid="module-op-satisfied-toggle"]').trigger('click');
+  await flushPromises();
+  const satisfied = wrapper.find('[data-testid="module-op-satisfied-list"]').text();
+  expect(satisfied).toContain('1.0.0');
+  expect(satisfied).toContain('Installed');
+  wrapper.unmount();
+});
+
 test('ModuleCatalogOpDialog.vue plans and confirms then emits applied', async () => {
   const plans: any[] = [];
   const applies: any[] = [];

@@ -10,6 +10,13 @@ import {
   createModuleCatalogOpDrawerProgressHooks,
   mapOperationRowToSnapshot,
 } from './moduleCatalogOpDrawerProgress';
+import {
+  changedApplicationsFromModules,
+  mapPlanModuleEntry,
+  partitionPlanModules,
+  shouldShowAffectedApplications,
+  type ModuleOpPlanModuleView,
+} from '../views/module_op_plan_impact';
 
 export type ModuleCatalogOpDrawerStep = 'plan' | 'progress' | 'result';
 export type ModuleCatalogOpDrawerPlanAction = 'install' | 'upgrade' | 'uninstall' | 'load_demo';
@@ -17,14 +24,17 @@ export type ModuleCatalogOpDrawerPlanAction = 'install' | 'upgrade' | 'uninstall
 export type ModuleCatalogOpDrawerPlanView = {
   Id: string;
   baseRevision?: string;
-  affectedModules: Array<{
-    moduleName: string;
-    reason?: string;
-    currentVersion?: string;
-    targetVersion?: string;
-    origin?: string;
-  }>;
+  /** Full ModuleOrder (+ Ensure) mapped entries; prefer changingModules / satisfiedModules for UI. */
+  affectedModules: ModuleOpPlanModuleView[];
+  ensureModules: ModuleOpPlanModuleView[];
+  changingModules: ModuleOpPlanModuleView[];
+  satisfiedModules: ModuleOpPlanModuleView[];
+  /** Engine AffectedApps (full closure); not for direct dump in the confirm dialog. */
   affectedApps: string[];
+  /** Applications of changing modules only. */
+  changedApplications: string[];
+  showAffectedApplications: boolean;
+  needsWebBuild: boolean;
   risks: Array<{ code: string; level: string; message?: string }>;
   blockers: Array<{ code: string; level: string; message?: string }>;
 };
@@ -76,17 +86,21 @@ export async function readOperationStatusSnapshot(
 }
 
 function mapPlanResponse(nextPlan: any): ModuleCatalogOpDrawerPlanView {
+  const affectedModules = (nextPlan?.ModuleOrder || []).map(mapPlanModuleEntry);
+  const ensureModules = (nextPlan?.EnsureModules || []).map(mapPlanModuleEntry);
+  const { changing, satisfied } = partitionPlanModules(affectedModules, ensureModules);
+  const changedApplications = changedApplicationsFromModules(changing);
   return {
     Id: String(nextPlan?.Id || '').trim(),
     baseRevision: nextPlan?.BaseRevision != null ? String(nextPlan.BaseRevision) : undefined,
-    affectedModules: (nextPlan?.ModuleOrder || []).map((entry: any) => ({
-      moduleName: String(entry?.ModuleName || '').trim(),
-      reason: entry?.Reason != null ? String(entry.Reason) : undefined,
-      currentVersion: entry?.CurrentVersion != null ? String(entry.CurrentVersion) : undefined,
-      targetVersion: entry?.TargetVersion != null ? String(entry.TargetVersion) : undefined,
-      origin: entry?.Origin != null ? String(entry.Origin) : undefined,
-    })),
+    affectedModules,
+    ensureModules,
+    changingModules: changing,
+    satisfiedModules: satisfied,
     affectedApps: (nextPlan?.AffectedApps || []).map((name: unknown) => String(name || '').trim()).filter(Boolean),
+    changedApplications,
+    showAffectedApplications: shouldShowAffectedApplications(changing, changedApplications),
+    needsWebBuild: nextPlan?.NeedsWebBuild === true,
     risks: (nextPlan?.Risks || []).map((issue: any) => ({
       code: String(issue?.Code || '').trim(),
       level: String(issue?.Level || '').trim(),

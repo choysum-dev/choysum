@@ -132,14 +132,16 @@ func (o *Ops) planModuleOp(ctx context.Context, action, moduleName, origin strin
 		return PlanResult{}, err
 	}
 	return PlanResult{
-		Id:           row.Id.String,
-		Action:       action,
-		ModuleName:   moduleName,
-		ModuleOrder:  doc.ModuleOrder,
-		AffectedApps: doc.AffectedApps,
-		Risks:        doc.Risks,
-		Blockers:     doc.Blockers,
-		BaseRevision: doc.BaseRevision,
+		Id:            row.Id.String,
+		Action:        action,
+		ModuleName:    moduleName,
+		ModuleOrder:   doc.ModuleOrder,
+		EnsureModules: doc.EnsureModules,
+		AffectedApps:  doc.AffectedApps,
+		Risks:         doc.Risks,
+		Blockers:      doc.Blockers,
+		BaseRevision:  doc.BaseRevision,
+		NeedsWebBuild: doc.NeedsWebBuild,
 	}, nil
 }
 
@@ -186,20 +188,13 @@ func (o *Ops) enrichPlanDocument(ctx context.Context, action, rootName, origin s
 
 	entries := make([]ModuleOrderEntry, 0, len(orderNames))
 	for _, name := range orderNames {
-		current, target := o.versionsForModule(ctx, name, origin)
-		reason := action
-		if name == rootName {
-			reason = "root"
-		} else if action == ActionInstall {
-			reason = "dependency"
-		}
-		entries = append(entries, ModuleOrderEntry{
-			ModuleName:     name,
-			Reason:         reason,
-			CurrentVersion: current,
-			TargetVersion:  target,
-			Origin:         origin,
-		})
+		entries = append(entries, o.buildOrderEntry(ctx, action, rootName, name, origin, false))
+	}
+
+	ensureNames := append([]string{}, built.EnsureOrder...)
+	ensureEntries := make([]ModuleOrderEntry, 0, len(ensureNames))
+	for _, name := range ensureNames {
+		ensureEntries = append(ensureEntries, o.buildOrderEntry(ctx, action, rootName, name, origin, true))
 	}
 
 	if action == ActionUninstall {
@@ -208,13 +203,89 @@ func (o *Ops) enrichPlanDocument(ctx context.Context, action, rootName, origin s
 
 	doc := PlanDocument{
 		ModuleOrder:   entries,
+		EnsureModules: ensureEntries,
 		AffectedApps:  append([]string{}, built.AffectedApps...),
 		Blockers:      blockers,
-		EnsureOrder:   append([]string{}, built.EnsureOrder...),
+		EnsureOrder:   ensureNames,
 		NeedsWebBuild: built.NeedsGlobalWebBuild,
 	}
 	doc.BaseRevision = computeBaseRevision(ctx, o, entries)
 	return doc
+}
+
+// buildOrderEntry fills Role/Effect/Application and display versions for one plan step.
+// ensureStep marks EnsureOrder rows (always Role=dependency; Effect install or already_satisfied).
+func (o *Ops) buildOrderEntry(ctx context.Context, action, rootName, name, origin string, ensureStep bool) ModuleOrderEntry {
+	currentRaw, targetRaw := o.versionsForModule(ctx, name, origin)
+	app, installed := o.applicationAndInstalled(ctx, name)
+
+	role := RoleDependency
+	reason := action
+	switch {
+	case ensureStep:
+		role = RoleDependency
+		reason = "dependency"
+	case name == rootName:
+		role = RoleTarget
+		reason = "root"
+	case action == ActionInstall:
+		role = RoleDependency
+		reason = "dependency"
+	case action == ActionUninstall:
+		role = RoleDependent
+		reason = ActionUninstall
+	}
+
+	effect := EffectInstall
+	switch {
+	case ensureStep:
+		if installed && (targetRaw == "" || compareVersion(currentRaw, targetRaw) == 0) {
+			effect = EffectAlreadySatisfied
+		} else if installed && compareVersion(currentRaw, targetRaw) != 0 {
+			effect = EffectUpgrade
+		} else {
+			effect = EffectInstall
+		}
+	case action == ActionUninstall:
+		effect = EffectUninstall
+	case action == ActionUpgrade && name == rootName:
+		effect = EffectUpgrade
+	case action == ActionInstall || action == ActionUpgrade:
+		if !installed {
+			effect = EffectInstall
+		} else if targetRaw == "" || compareVersion(currentRaw, targetRaw) == 0 {
+			effect = EffectAlreadySatisfied
+		} else {
+			effect = EffectUpgrade
+		}
+	}
+
+	return ModuleOrderEntry{
+		ModuleName:     name,
+		Application:    app,
+		Role:           role,
+		Effect:         effect,
+		Reason:         reason,
+		CurrentVersion: displayVersion(currentRaw),
+		TargetVersion:  displayVersion(targetRaw),
+		Origin:         origin,
+	}
+}
+
+func (o *Ops) applicationAndInstalled(ctx context.Context, name string) (application string, installed bool) {
+	if o == nil || o.Resolver == nil {
+		return "", false
+	}
+	if loaded, err := o.Resolver.Load(name); err == nil && loaded != nil {
+		application = strings.TrimSpace(loaded.ApplicationStr)
+		installed = loaded.Status == pkgmeta.Installed
+	}
+	if application == "" {
+		if peeked, err := o.Resolver.Peek(ctx, name); err == nil && peeked != nil {
+			application = strings.TrimSpace(peeked.ApplicationStr)
+		}
+	}
+	return application, installed
 }
 
 func (o *Ops) versionsForModule(ctx context.Context, name, origin string) (current, target string) {

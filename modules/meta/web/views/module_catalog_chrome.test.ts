@@ -96,6 +96,17 @@ test('parseCatalogSyncResult / catalogSyncSummaryPartial', () => {
   expect(catalogSyncSummaryPartial({ syncResult: { ...parsed!, failed: 0 } })).toBe(false);
 });
 
+test('formatModuleOpSummary: plan moduleOrder uses Effect not Reason', () => {
+  expect(
+    formatModuleOpSummary({
+      moduleOrder: [
+        { ModuleName: 'partner', Effect: 'install', Reason: 'root' },
+        { ModuleName: 'core', Effect: 'already_satisfied', Reason: 'dependency' },
+      ],
+    }),
+  ).toBe('partner (will install); 1 already satisfied dependency module(s) skipped');
+});
+
 test('formatModuleOpSummary: syncResult summary strings', () => {
   expect(
     formatModuleOpSummary({
