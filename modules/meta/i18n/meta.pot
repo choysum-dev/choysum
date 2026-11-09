@@ -1464,6 +1464,31 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "Dependencies"
 msgstr ""
 
+#: web/views/ModuleCatalogFormView.vue
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Application"
+msgstr ""
+
+#: web/views/ModuleCatalogFormView.vue
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "License"
+msgstr ""
+
+#: web/views/ModuleCatalogFormView.vue
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Module Name"
+msgstr ""
+
+#: web/views/ModuleCatalogFormView.vue
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Status"
+msgstr ""
+
+#: web/views/ModuleCatalogFormView.vue
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Version"
+msgstr ""
+
 #: web/views/ModuleCatalogFormView.vue:140
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Failed to get status"

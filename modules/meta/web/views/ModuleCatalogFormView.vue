@@ -101,26 +101,179 @@ SPDX-License-Identifier: Apache-2.0
           <ChoyTab value="dependencies" :label="_t('Dependencies')" force-mount>
             <ChoyGrid :cols="12" class="gap-x-6 gap-y-4 pt-4">
               <ChoyCol :span="12">
-                <ChoyManyToManyTagsField
-                  :store="store"
-                  prop="Depends"
-                  orientation="vertical"
-                  :readonly="true"
-                  :tag-closable="false"
-                  :tag-label-field="['ModuleName', 'Name', 'Id']"
-                  @tag-click="onDependTagClick"
-                />
+                <div
+                  class="module-catalog-depend-m2m"
+                  data-testid="module-catalog-form-depends"
+                >
+                  <ChoyManyToManyField
+                    :store="store"
+                    prop="Depends"
+                    orientation="vertical"
+                    :readonly="true"
+                    :show-index="false"
+                    @row-click="onDependRowClick"
+                  >
+                    <!-- Nested fields register Browse paths; custom columns render cells. -->
+                    <ChoyVarcharField :store="store" prop="Depends.ModuleName" :visible="false" />
+                    <ChoyVarcharField :store="store" prop="Depends.Application" :visible="false" />
+                    <ChoyVarcharField :store="store" prop="Depends.License" :visible="false" />
+                    <ChoyVarcharField :store="store" prop="Depends.InstalledVersion" :visible="false" />
+                    <ChoyVarcharField :store="store" prop="Depends.LocalVersion" :visible="false" />
+                    <ChoyVarcharField :store="store" prop="Depends.RegistryVersion" :visible="false" />
+                    <ChoyBooleanField :store="store" prop="Depends.Installed" :visible="false" />
+                    <ChoyBooleanField :store="store" prop="Depends.UpdateAvailable" :visible="false" />
+                    <ChoyBooleanField :store="store" prop="Depends.Available" :visible="false" />
+                    <ChoyTableColumn
+                      prop="ModuleName"
+                      :label="_t('Module Name')"
+                      :vColumnProps="{ minWidth: 140 }"
+                    >
+                      <template #default="{ row }">
+                        <span class="truncate text-sm text-foreground">{{
+                          dependFieldText(row, 'ModuleName')
+                        }}</span>
+                      </template>
+                    </ChoyTableColumn>
+                    <ChoyTableColumn
+                      prop="InstalledVersion"
+                      :label="_t('Version')"
+                      :vColumnProps="{ minWidth: 220 }"
+                    >
+                      <template #default="{ row }">
+                        <span
+                          class="font-mono text-xs text-muted-foreground whitespace-nowrap"
+                          data-testid="module-catalog-depend-version"
+                          :title="dependVersionLine(row)"
+                          >{{ dependVersionLine(row) }}</span
+                        >
+                      </template>
+                    </ChoyTableColumn>
+                    <ChoyTableColumn
+                      prop="Installed"
+                      :label="_t('Status')"
+                      :vColumnProps="{ minWidth: 120, width: 140 }"
+                    >
+                      <template #default="{ row }">
+                        <ChoyBadge
+                          :variant="dependStatusBadgeVariant(row)"
+                          class="h-5 px-1.5 text-[11px] font-normal"
+                          data-testid="module-catalog-depend-status"
+                        >
+                          {{ dependStatusLabel(row) }}
+                        </ChoyBadge>
+                      </template>
+                    </ChoyTableColumn>
+                    <ChoyTableColumn
+                      prop="Application"
+                      :label="_t('Application')"
+                      :vColumnProps="{ minWidth: 120 }"
+                    >
+                      <template #default="{ row }">
+                        <span class="truncate text-sm text-muted-foreground">{{
+                          dependFieldText(row, 'Application')
+                        }}</span>
+                      </template>
+                    </ChoyTableColumn>
+                    <ChoyTableColumn
+                      prop="License"
+                      :label="_t('License')"
+                      :vColumnProps="{ minWidth: 120 }"
+                    >
+                      <template #default="{ row }">
+                        <span class="truncate text-sm text-muted-foreground">{{
+                          dependFieldText(row, 'License')
+                        }}</span>
+                      </template>
+                    </ChoyTableColumn>
+                  </ChoyManyToManyField>
+                </div>
               </ChoyCol>
-              <ChoyCol :span="12">
-                <ChoyManyToManyTagsField
-                  :store="store"
-                  prop="Dependents"
-                  orientation="vertical"
-                  :readonly="true"
-                  :tag-closable="false"
-                  :tag-label-field="['ModuleName', 'Name', 'Id']"
-                  @tag-click="onDependTagClick"
-                />
+              <ChoyCol :span="12" class="mt-2">
+                <div
+                  class="module-catalog-depend-m2m"
+                  data-testid="module-catalog-form-dependents"
+                >
+                  <ChoyManyToManyField
+                    :store="store"
+                    prop="Dependents"
+                    orientation="vertical"
+                    :readonly="true"
+                    :show-index="false"
+                    @row-click="onDependRowClick"
+                  >
+                    <ChoyVarcharField :store="store" prop="Dependents.ModuleName" :visible="false" />
+                    <ChoyVarcharField :store="store" prop="Dependents.Application" :visible="false" />
+                    <ChoyVarcharField :store="store" prop="Dependents.License" :visible="false" />
+                    <ChoyVarcharField :store="store" prop="Dependents.InstalledVersion" :visible="false" />
+                    <ChoyVarcharField :store="store" prop="Dependents.LocalVersion" :visible="false" />
+                    <ChoyVarcharField :store="store" prop="Dependents.RegistryVersion" :visible="false" />
+                    <ChoyBooleanField :store="store" prop="Dependents.Installed" :visible="false" />
+                    <ChoyBooleanField :store="store" prop="Dependents.UpdateAvailable" :visible="false" />
+                    <ChoyBooleanField :store="store" prop="Dependents.Available" :visible="false" />
+                    <ChoyTableColumn
+                      prop="ModuleName"
+                      :label="_t('Module Name')"
+                      :vColumnProps="{ minWidth: 140 }"
+                    >
+                      <template #default="{ row }">
+                        <span class="truncate text-sm text-foreground">{{
+                          dependFieldText(row, 'ModuleName')
+                        }}</span>
+                      </template>
+                    </ChoyTableColumn>
+                    <ChoyTableColumn
+                      prop="InstalledVersion"
+                      :label="_t('Version')"
+                      :vColumnProps="{ minWidth: 220 }"
+                    >
+                      <template #default="{ row }">
+                        <span
+                          class="font-mono text-xs text-muted-foreground whitespace-nowrap"
+                          data-testid="module-catalog-depend-version"
+                          :title="dependVersionLine(row)"
+                          >{{ dependVersionLine(row) }}</span
+                        >
+                      </template>
+                    </ChoyTableColumn>
+                    <ChoyTableColumn
+                      prop="Installed"
+                      :label="_t('Status')"
+                      :vColumnProps="{ minWidth: 120, width: 140 }"
+                    >
+                      <template #default="{ row }">
+                        <ChoyBadge
+                          :variant="dependStatusBadgeVariant(row)"
+                          class="h-5 px-1.5 text-[11px] font-normal"
+                          data-testid="module-catalog-depend-status"
+                        >
+                          {{ dependStatusLabel(row) }}
+                        </ChoyBadge>
+                      </template>
+                    </ChoyTableColumn>
+                    <ChoyTableColumn
+                      prop="Application"
+                      :label="_t('Application')"
+                      :vColumnProps="{ minWidth: 120 }"
+                    >
+                      <template #default="{ row }">
+                        <span class="truncate text-sm text-muted-foreground">{{
+                          dependFieldText(row, 'Application')
+                        }}</span>
+                      </template>
+                    </ChoyTableColumn>
+                    <ChoyTableColumn
+                      prop="License"
+                      :label="_t('License')"
+                      :vColumnProps="{ minWidth: 120 }"
+                    >
+                      <template #default="{ row }">
+                        <span class="truncate text-sm text-muted-foreground">{{
+                          dependFieldText(row, 'License')
+                        }}</span>
+                      </template>
+                    </ChoyTableColumn>
+                  </ChoyManyToManyField>
+                </div>
               </ChoyCol>
             </ChoyGrid>
           </ChoyTab>
@@ -158,21 +311,27 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { useModuleCatalogOpProgress } from '../composables/useModuleCatalogOpProgress';
 import {
+  catalogInstalledStatus,
+  formatModuleCatalogVersionLine,
   moduleCatalogCardSummary,
+  moduleStatusBadgeVariant,
   resolveModuleCatalogFormPrimaryAction,
 } from './module_catalog_chrome';
 import { moduleUninstallAction } from './module_catalog_actions';
 import ModuleCatalogOpDialog from './ModuleCatalogOpDialog.vue';
 import ModuleCatalogOpProgressStrip from './ModuleCatalogOpProgressStrip.vue';
 import {
+  ChoyBadge,
+  ChoyBooleanField,
   ChoyButton,
   ChoyCol,
   ChoyDatetimeField,
   ChoyFormView,
   ChoyGrid,
-  ChoyManyToManyTagsField,
+  ChoyManyToManyField,
   ChoySection,
   ChoyTab,
+  ChoyTableColumn,
   ChoyTabs,
   ChoyTextField,
   ChoyVarcharField,
@@ -342,10 +501,53 @@ function onUninstallClick() {
   drawerOpen.value = true;
 }
 
-function onDependTagClick(payload: { item?: Record<string, unknown> }) {
-  const name = String(payload?.item?.ModuleName || '').trim();
+function openCatalogModule(moduleName: unknown) {
+  const name = String(moduleName || '').trim();
   if (!name) return;
   void router.push(`/meta/modules/${encodeURIComponent(name)}`);
+}
+
+function onDependRowClick(payload: { rowData?: unknown }) {
+  const rec = dependRowRecord(payload?.rowData);
+  openCatalogModule(rec.ModuleName);
+}
+
+function dependRowRecord(row: unknown): Record<string, unknown> {
+  if (!row || typeof row !== 'object') return {};
+  const r = row as Record<string, unknown>;
+  if (r.payload && typeof r.payload === 'object') return r.payload as Record<string, unknown>;
+  if (r.raw && typeof r.raw === 'object') return r.raw as Record<string, unknown>;
+  return r;
+}
+
+function dependFieldText(row: unknown, key: string): string {
+  const text = String(dependRowRecord(row)[key] || '').trim();
+  return text || '—';
+}
+
+function dependVersionLine(row: unknown): string {
+  return formatModuleCatalogVersionLine(dependRowRecord(row)) || '—';
+}
+
+function dependStatusLabel(row: unknown): string {
+  const rec = dependRowRecord(row);
+  if (rec.Available === false) return _t('Unavailable');
+  const val = catalogInstalledStatus(rec).toLowerCase();
+  if (val === 'installed') {
+    if (rec.UpdateAvailable === true) return _t('Update available');
+    return _t('Installed');
+  }
+  if (val === 'uninstalled') return _t('Not Installed');
+  return catalogInstalledStatus(rec) || _t('Unknown');
+}
+
+function dependStatusBadgeVariant(row: unknown) {
+  const rec = dependRowRecord(row);
+  return moduleStatusBadgeVariant(
+    catalogInstalledStatus(rec),
+    rec.Available as boolean | undefined,
+    rec.UpdateAvailable === true,
+  );
 }
 
 function onOpApplied(operationId?: string) {
@@ -367,6 +569,8 @@ defineExpose({
   onDrawerSettled,
   onPrimaryClick,
   onUninstallClick,
+  openCatalogModule,
+  onDependRowClick,
   drawerOpen,
   drawerAction,
   drawerOperationId,
@@ -381,3 +585,9 @@ defineExpose({
   progressValue,
 });
 </script>
+
+<style scoped>
+.module-catalog-depend-m2m :deep([role='row'][tabindex='0']) {
+  cursor: pointer;
+}
+</style>

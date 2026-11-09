@@ -267,6 +267,74 @@ test('ModuleCatalogFormView.vue primary and uninstall actions open the drawer fo
   empty.unmount();
 });
 
+test('ModuleCatalogFormView.vue mounts Depends/Dependents as M2M lists and navigates by module name', async () => {
+  const pushed: string[] = [];
+  const wrapper = mount(ModuleCatalogFormView as any, {
+    props: {
+      store: {
+        $id: 'fe-stub-module-catalog-form-depends',
+        state: {
+          records: {
+            'cat-1': {
+              Id: 'cat-1',
+              ModuleName: 'meta',
+              Installed: true,
+              Available: true,
+              Depends: [{ Id: 'dep-core', ModuleName: 'core', InstalledVersion: '1.0.0', Installed: true }],
+              Dependents: [{ Id: 'dep-auth', ModuleName: 'auth', InstalledVersion: '1.1.0', Installed: true }],
+            },
+          },
+          result: { rows: [] },
+        },
+        Browse: async () => ({}),
+        Search: async () => [],
+      },
+      recordId: 'cat-1',
+      showHeader: true,
+    },
+    global: buildPageMountGlobal({
+      route: {
+        path: '/meta/modules/meta',
+        fullPath: '/meta/modules/meta',
+        name: 'MetaModuleShow',
+        params: { name: 'meta' },
+      },
+      router: {
+        push: (to: unknown) => {
+          pushed.push(String(to));
+          return Promise.resolve();
+        },
+      },
+    }),
+  });
+  seedModuleActionPermissions();
+  await flushPromises();
+
+  expect(wrapper.find('[data-testid="module-catalog-form-depends"]').exists()).toBe(true);
+  expect(wrapper.find('[data-testid="module-catalog-form-dependents"]').exists()).toBe(true);
+  const body = wrapper.text();
+  expect(body).toContain('Depends');
+  expect(body).toContain('Dependents');
+  expect(body).toContain('Module Name');
+  expect(body).toContain('Application');
+  expect(body).toContain('License');
+  expect(body).toContain('Version');
+  expect(body).toContain('Status');
+
+  (wrapper.vm as any).openCatalogModule('core');
+  await flushPromises();
+  expect(pushed).toContain('/meta/modules/core');
+  (wrapper.vm as any).onDependRowClick({
+    rowData: { ModuleName: 'auth' },
+  });
+  await flushPromises();
+  expect(pushed).toContain('/meta/modules/auth');
+  (wrapper.vm as any).openCatalogModule('');
+  expect(pushed.length).toBe(2);
+
+  wrapper.unmount();
+});
+
 test('ModuleCatalogFormView.vue settled handler refreshes the catalog row', async () => {
   let browsed = 0;
   const browseStore = {

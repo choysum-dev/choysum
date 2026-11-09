@@ -1456,6 +1456,31 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "Dependencies"
 msgstr "依赖"
 
+#: web/views/ModuleCatalogFormView.vue
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Application"
+msgstr "应用"
+
+#: web/views/ModuleCatalogFormView.vue
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "License"
+msgstr "许可证"
+
+#: web/views/ModuleCatalogFormView.vue
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Module Name"
+msgstr "模块名"
+
+#: web/views/ModuleCatalogFormView.vue
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Status"
+msgstr "状态"
+
+#: web/views/ModuleCatalogFormView.vue
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Version"
+msgstr "版本"
+
 #: web/views/ModuleCatalogFormView.vue:140
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Failed to get status"
