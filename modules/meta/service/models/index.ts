@@ -4,6 +4,7 @@
 export { default as MetaApplication } from './application';
 export { default as MetaModule } from './module';
 export { default as MetaModuleCatalog } from './module_catalog';
+export { default as MetaModuleCatalogDepend } from './module_catalog_depend';
 export { default as MetaModuleOperation } from './module_operation';
 export { default as MetaModuleMigration } from './module_migration';
 export { default as MetaModel } from './model';

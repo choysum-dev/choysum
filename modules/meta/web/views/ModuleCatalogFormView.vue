@@ -5,150 +5,163 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <!-- Module show is read-only: omit mutating action-ids so Edit/Copy/Delete stay hidden. -->
-  <div class="module-catalog-form-view flex min-h-0 flex-1 flex-col gap-3" data-testid="module-catalog-form-view">
-    <div v-if="showHeaderActions" class="flex flex-wrap items-center gap-2" data-testid="module-catalog-form-actions">
-      <ChoyButton
-        v-if="primaryAction"
-        type="button"
-        size="sm"
-        :variant="primaryButtonVariant"
-        :data-testid="`module-catalog-form-primary-${primaryAction}`"
-        @click="onPrimaryClick"
-      >
-        {{ primaryActionLabel }}
-      </ChoyButton>
-      <ChoyButton
-        v-if="canLoadDemo && hasAction(moduleLoadDemoAction)"
-        type="button"
-        size="sm"
-        variant="outline"
-        data-testid="module-catalog-form-load-demo"
-        @click="onLoadDemoClick"
-      >
-        {{ _t('Load Demo Data') }}
-      </ChoyButton>
-      <ChoyButton
-        v-if="canUninstallRow && hasAction(moduleUninstallAction)"
-        type="button"
-        size="sm"
-        variant="outline-destructive"
-        data-testid="module-catalog-form-uninstall"
-        @click="onUninstallClick"
-      >
-        {{ _t('Uninstall') }}
-      </ChoyButton>
-    </div>
-  <ChoyFormView
-    v-bind="{ store, recordId, viewMode: 'display' as const, showHeader }"
-  >
-    <ChoyCard :title="_t('Overview')" class="mb-3.5">
-      <ChoyGrid :cols="12">
-        <ChoyCol :span="4">
-          <ChoyVarcharField :store="store" prop="ModuleName" />
-        </ChoyCol>
-        <ChoyCol :span="4">
-          <ChoyVarcharField :store="store" prop="Application" />
-        </ChoyCol>
-        <ChoyCol :span="4">
-          <ChoyVarcharField :store="store" prop="Category" />
-        </ChoyCol>
-      </ChoyGrid>
-      <ChoyGrid :cols="12">
-        <ChoyCol :span="12">
-          <ChoyTextField :store="store" prop="Summary" />
-        </ChoyCol>
-      </ChoyGrid>
-      <ChoyGrid :cols="12">
-        <ChoyCol :span="6">
-          <ChoyVarcharField :store="store" prop="Author" />
-        </ChoyCol>
-        <ChoyCol :span="6">
-          <ChoyTextField :store="store" prop="License" />
-        </ChoyCol>
-      </ChoyGrid>
-    </ChoyCard>
+  <div class="module-catalog-form-view flex min-h-0 flex-1 flex-col" data-testid="module-catalog-form-view">
+    <ChoyFormView
+      v-bind="{ store, recordId, viewMode: 'display' as const, showHeader }"
+    >
+      <!--
+        Same left tray as Sandbox Edit/Copy/Delete: FormView #secondary-actions sits
+        after the title/⋮ cluster (List/Kanban parity). Do not use #button-box /
+        #header-right — that parks CTAs in the far-right column.
+      -->
+      <template #secondary-actions>
+        <ChoyButton
+          v-if="primaryAction"
+          type="button"
+          size="default"
+          :variant="primaryButtonVariant"
+          :data-testid="`module-catalog-form-primary-${primaryAction}`"
+          @click="onPrimaryClick"
+        >
+          {{ primaryActionLabel }}
+        </ChoyButton>
+        <ChoyButton
+          v-if="canUninstallRow && hasAction(moduleUninstallAction)"
+          type="button"
+          size="default"
+          variant="outline-destructive"
+          data-testid="module-catalog-form-uninstall"
+          @click="onUninstallClick"
+        >
+          {{ _t('Uninstall') }}
+        </ChoyButton>
+      </template>
 
-    <ChoyCard :title="_t('Dependencies')" class="mb-3.5">
-      <ChoyGrid :cols="12">
-        <ChoyCol :span="6">
-          <ChoyJsonField :store="store" prop="DependsJson" />
-        </ChoyCol>
-        <ChoyCol :span="6">
-          <ChoyJsonField :store="store" prop="DependentsJson" />
-        </ChoyCol>
-      </ChoyGrid>
-    </ChoyCard>
+      <div data-anchor="choy.form.sheet" class="flex min-h-full flex-col gap-0">
+        <ChoySection :title="_t('Overview')" divided class="mt-0">
+          <ChoyGrid :cols="12" class="gap-x-6 gap-y-3">
+            <ChoyCol :span="4">
+              <ChoyVarcharField :store="store" prop="ModuleName" />
+            </ChoyCol>
+            <ChoyCol :span="4">
+              <ChoyVarcharField :store="store" prop="Application" />
+            </ChoyCol>
+            <ChoyCol :span="4">
+              <ChoyVarcharField :store="store" prop="Category" />
+            </ChoyCol>
+            <ChoyCol :span="12">
+              <ChoyTextField :store="store" prop="Summary" orientation="vertical" />
+            </ChoyCol>
+            <ChoyCol :span="4">
+              <ChoyVarcharField :store="store" prop="Author" />
+            </ChoyCol>
+            <ChoyCol :span="8">
+              <ChoyTextField :store="store" prop="License" />
+            </ChoyCol>
+          </ChoyGrid>
+        </ChoySection>
 
-    <ChoyCard :title="_t('Versions & Source')" class="mb-3.5">
-      <ChoyGrid :cols="12">
-        <ChoyCol :span="3">
-          <ChoyVarcharField :store="store" prop="InstalledVersion" />
-        </ChoyCol>
-        <ChoyCol :span="3">
-          <ChoyVarcharField :store="store" prop="LocalVersion" />
-        </ChoyCol>
-        <ChoyCol :span="3">
-          <ChoyVarcharField :store="store" prop="RegistryVersion" />
-        </ChoyCol>
-        <ChoyCol :span="3">
-          <ChoyVarcharField :store="store" prop="LocalPath" />
-        </ChoyCol>
-      </ChoyGrid>
-      <ChoyGrid :cols="12">
-        <ChoyCol :span="3">
-          <ChoyBooleanField :store="store" prop="Installed" />
-        </ChoyCol>
-        <ChoyCol :span="3">
-          <ChoyBooleanField :store="store" prop="UpdateAvailable" />
-        </ChoyCol>
-        <ChoyCol :span="3">
-          <ChoyBooleanField :store="store" prop="Available" />
-        </ChoyCol>
-        <ChoyCol :span="3">
-          <ChoyTextField :store="store" prop="UnavailableReason" />
-        </ChoyCol>
-      </ChoyGrid>
-    </ChoyCard>
+        <ChoySection :title="_t('Dependencies')" divided>
+          <div class="flex flex-col gap-4">
+            <ChoyManyToManyKanbanField
+              :store="store"
+              prop="Depends"
+              orientation="vertical"
+              :readonly="true"
+              :editable="false"
+              :removable="false"
+              :show-toolbar-add="false"
+              card-title-field="ModuleName"
+              card-subtitle-field="Summary"
+              :preview-in-display="false"
+              @card-click="onDependCardClick"
+            />
+            <ChoyManyToManyKanbanField
+              :store="store"
+              prop="Dependents"
+              orientation="vertical"
+              :readonly="true"
+              :editable="false"
+              :removable="false"
+              :show-toolbar-add="false"
+              card-title-field="ModuleName"
+              card-subtitle-field="Summary"
+              :preview-in-display="false"
+              @card-click="onDependCardClick"
+            />
+          </div>
+        </ChoySection>
 
-    <ChoyCard :title="_t('Sync')" class="mb-3.5">
-      <ChoyGrid :cols="12">
-        <ChoyCol :span="4">
-          <ChoyDatetimeField :store="store" prop="LastSyncAt" />
-        </ChoyCol>
-        <ChoyCol :span="4">
-          <ChoyVarcharField :store="store" prop="ActiveOperationId" />
-        </ChoyCol>
-        <ChoyCol :span="2">
-          <ChoyBooleanField :store="store" prop="HasDemo" />
-        </ChoyCol>
-        <ChoyCol :span="2">
-          <ChoyBooleanField :store="store" prop="DemoLoaded" />
-        </ChoyCol>
-      </ChoyGrid>
-    </ChoyCard>
-  </ChoyFormView>
+        <ChoySection :title="_t('Versions & Source')" divided>
+          <ChoyGrid :cols="12" class="gap-x-6 gap-y-3">
+            <ChoyCol :span="4">
+              <ChoyVarcharField :store="store" prop="InstalledVersion" />
+            </ChoyCol>
+            <ChoyCol :span="4">
+              <ChoyVarcharField :store="store" prop="LocalVersion" />
+            </ChoyCol>
+            <ChoyCol :span="4">
+              <ChoyVarcharField :store="store" prop="RegistryVersion" />
+            </ChoyCol>
+            <ChoyCol :span="12">
+              <ChoyVarcharField :store="store" prop="LocalPath" orientation="vertical" />
+            </ChoyCol>
+            <ChoyCol :span="3">
+              <ChoyBooleanField :store="store" prop="Installed" />
+            </ChoyCol>
+            <ChoyCol :span="3">
+              <ChoyBooleanField :store="store" prop="Available" />
+            </ChoyCol>
+            <ChoyCol v-if="showUpdateAvailable" :span="3">
+              <ChoyBooleanField :store="store" prop="UpdateAvailable" />
+            </ChoyCol>
+            <ChoyCol v-if="showUnavailableReason" :span="12">
+              <ChoyTextField :store="store" prop="UnavailableReason" orientation="vertical" />
+            </ChoyCol>
+          </ChoyGrid>
+        </ChoySection>
 
-  <ModuleCatalogOpDialog
-    v-model:open="drawerOpen"
-    :operation-store="operationStore"
-    :operation-id="drawerOperationId"
-    :module-name="drawerModuleName"
-    :action="drawerAction"
-    :registry-newer-than-local="drawerRegistryNewer"
-    @applied="onOpApplied"
-    @settled="onDrawerSettled"
-  />
-  <ModuleCatalogOpProgressStrip
-    :busy="progressBusy"
-    :title="progressTitle"
-    :headline="progressHeadline"
-    :value="progressValue"
-  />
+        <ChoySection :title="_t('Sync')" divided>
+          <ChoyGrid :cols="12" class="gap-x-6 gap-y-3">
+            <ChoyCol :span="4">
+              <ChoyDatetimeField :store="store" prop="LastSyncAt" />
+            </ChoyCol>
+            <ChoyCol v-if="showActiveOperation" :span="4">
+              <ChoyVarcharField :store="store" prop="ActiveOperationId" />
+            </ChoyCol>
+            <ChoyCol :span="2">
+              <ChoyBooleanField :store="store" prop="HasDemo" />
+            </ChoyCol>
+            <ChoyCol :span="2">
+              <ChoyBooleanField :store="store" prop="DemoLoaded" />
+            </ChoyCol>
+          </ChoyGrid>
+        </ChoySection>
+      </div>
+    </ChoyFormView>
+
+    <ModuleCatalogOpDialog
+      v-model:open="drawerOpen"
+      :operation-store="operationStore"
+      :operation-id="drawerOperationId"
+      :module-name="drawerModuleName"
+      :action="drawerAction"
+      :registry-newer-than-local="drawerRegistryNewer"
+      @applied="onOpApplied"
+      @settled="onDrawerSettled"
+    />
+    <ModuleCatalogOpProgressStrip
+      :busy="progressBusy"
+      :title="progressTitle"
+      :headline="progressHeadline"
+      :value="progressValue"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, toRef } from 'vue';
+import { useRouter } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type MetaModuleCatalog from '@/meta/service/models/module_catalog';
 import type MetaModuleOperation from '@/meta/service/models/module_operation';
@@ -157,23 +170,18 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { useModuleCatalogOpProgress } from '../composables/useModuleCatalogOpProgress';
 import { resolveModuleCatalogFormPrimaryAction } from './module_catalog_chrome';
-import {
-  moduleInstallAction,
-  moduleLoadDemoAction,
-  moduleUpgradeAction,
-  moduleUninstallAction,
-} from './module_catalog_actions';
+import { moduleUninstallAction } from './module_catalog_actions';
 import ModuleCatalogOpDialog from './ModuleCatalogOpDialog.vue';
 import ModuleCatalogOpProgressStrip from './ModuleCatalogOpProgressStrip.vue';
 import {
   ChoyBooleanField,
   ChoyButton,
-  ChoyCard,
   ChoyCol,
   ChoyDatetimeField,
   ChoyFormView,
   ChoyGrid,
-  ChoyJsonField,
+  ChoyManyToManyKanbanField,
+  ChoySection,
   ChoyTextField,
   ChoyVarcharField,
 } from '@/web';
@@ -182,6 +190,7 @@ defineOptions({ name: 'ModuleCatalogFormView', inheritAttrs: true });
 
 const { _t } = createTranslate('meta', { scope: 'web/views/ModuleCatalogFormView' });
 const { hasAction } = usePermission();
+const router = useRouter();
 
 const props = withDefaults(
   defineProps<{
@@ -196,24 +205,39 @@ const props = withDefaults(
 const store = resolvePageStore(props.store, 'ModuleCatalogFormView');
 const recordId = toRef(props, 'recordId');
 const showHeader = toRef(props, 'showHeader');
-// Prefer the prop binding in the template (`operationStore`) so we pass the
-// concrete Pinia store — wrapping it in computed() can leave a ComputedRef
-// unwrapped and break session.store.Plan().
 
 const drawerOpen = ref(false);
 const drawerOperationId = ref('');
 const drawerModuleName = ref('');
-const drawerAction = ref<'install' | 'upgrade' | 'uninstall' | 'progress' | 'load_demo' | ''>('');
+const drawerAction = ref<'install' | 'upgrade' | 'uninstall' | 'progress' | ''>('');
 const drawerRegistryNewer = ref(false);
+
+/** Unwrap Form Browse RecordRow `{ key, payload }` or flat Search rows into a field map. */
+function catalogRowFields(row: unknown): Record<string, unknown> | null {
+  if (!row || typeof row !== 'object') return null;
+  const r = row as Record<string, unknown>;
+  if (r.payload && typeof r.payload === 'object') return r.payload as Record<string, unknown>;
+  if (r.raw && typeof r.raw === 'object') return r.raw as Record<string, unknown>;
+  return r;
+}
+
+function catalogRowMatchesId(row: unknown, id: string): boolean {
+  if (!id || !row || typeof row !== 'object') return false;
+  const r = row as Record<string, unknown>;
+  if (String(r.key || '').trim() === id) return true;
+  const fields = catalogRowFields(row);
+  return !!fields && String(fields.Id || '').trim() === id;
+}
 
 const currentRow = computed(() => {
   const id = String(recordId.value || '').trim();
   const records = ((store as any)?.state?.records || {}) as Record<string, Record<string, unknown>>;
   if (id && records[id]) return records[id];
-  const rows = ((store as any)?.state?.result?.rows || []) as Record<string, unknown>[];
+  const rows = ((store as any)?.state?.result?.rows || []) as unknown[];
   // Never fall back to an unrelated rows[0] — wrong-module Plan/Apply would be unsafe.
-  const matched = id ? rows.find(r => String(r?.Id || '') === id) : undefined;
-  return matched || {};
+  // Form beginDisplay writes RecordRow `{ kind, key, payload }`; List Search may be flat.
+  const matched = id ? rows.find(r => catalogRowMatchesId(r, id)) : undefined;
+  return catalogRowFields(matched) || {};
 });
 
 const hasMatchedRow = computed(() => {
@@ -222,10 +246,9 @@ const hasMatchedRow = computed(() => {
 });
 const primaryAction = computed(() => {
   if (!hasMatchedRow.value) return null;
-  const action = resolveModuleCatalogFormPrimaryAction(currentRow.value);
-  if (action === 'install' && !hasAction(moduleInstallAction)) return null;
-  if (action === 'upgrade' && !hasAction(moduleUpgradeAction)) return null;
-  return action;
+  // Match List/Kanban: row state decides Install/Upgrade/Progress visibility.
+  // Method ACL still gates Plan/Apply on the server when the user confirms.
+  return resolveModuleCatalogFormPrimaryAction(currentRow.value);
 });
 const primaryActionLabel = computed(() => {
   if (primaryAction.value === 'install') return _t('Install');
@@ -247,19 +270,13 @@ const canUninstallRow = computed(() => {
   if (String(rec.ActiveOperationId || '').trim()) return false;
   return rec.Installed === true && rec.Available !== false;
 });
-/** Same visibility gate as catalog load-demo, scoped to this module row. */
-const canLoadDemo = computed(() => {
-  if (!hasMatchedRow.value) return false;
+/** Hide empty / negative noise so the read-only sheet stays dense. */
+const showUpdateAvailable = computed(() => currentRow.value.UpdateAvailable === true);
+const showUnavailableReason = computed(() => {
   const rec = currentRow.value;
-  if (String(rec.ActiveOperationId || '').trim()) return false;
-  return rec.Installed === true && !!rec.HasDemo && !rec.DemoLoaded;
+  return rec.Available === false && !!String(rec.UnavailableReason || '').trim();
 });
-const showHeaderActions = computed(
-  () =>
-    !!primaryAction.value ||
-    (canUninstallRow.value && hasAction(moduleUninstallAction)) ||
-    (canLoadDemo.value && hasAction(moduleLoadDemoAction)),
-);
+const showActiveOperation = computed(() => !!String(currentRow.value.ActiveOperationId || '').trim());
 
 async function refreshDetailRow() {
   const id = String(recordId.value || '').trim();
@@ -299,7 +316,6 @@ const {
     if (action === 'install') return name ? _t('Installing %s', name) : _t('Installing…');
     if (action === 'upgrade') return name ? _t('Upgrading %s', name) : _t('Upgrading…');
     if (action === 'uninstall') return name ? _t('Uninstalling %s', name) : _t('Uninstalling…');
-    if (action === 'load_demo') return _t('Loading demo data…');
     if (action === 'progress') return name ? _t('Working on %s', name) : _t('Working…');
     return name ? _t('Working on %s', name) : _t('Working…');
   },
@@ -332,13 +348,10 @@ function onUninstallClick() {
   drawerOpen.value = true;
 }
 
-function onLoadDemoClick() {
-  if (!canLoadDemo.value) return;
-  drawerModuleName.value = '';
-  drawerOperationId.value = '';
-  drawerAction.value = 'load_demo';
-  drawerRegistryNewer.value = false;
-  drawerOpen.value = true;
+function onDependCardClick(payload: { item?: Record<string, unknown> }) {
+  const name = String(payload?.item?.ModuleName || '').trim();
+  if (!name) return;
+  void router.push(`/meta/modules/${encodeURIComponent(name)}`);
 }
 
 function onOpApplied(operationId?: string) {
@@ -360,8 +373,6 @@ defineExpose({
   onDrawerSettled,
   onPrimaryClick,
   onUninstallClick,
-  onLoadDemoClick,
-  canLoadDemo,
   drawerOpen,
   drawerAction,
   drawerOperationId,

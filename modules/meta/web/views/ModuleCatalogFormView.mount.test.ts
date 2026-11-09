@@ -5,7 +5,6 @@ import { mount, flushPromises } from '@choysum/test-utils';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import ModuleCatalogFormView from './ModuleCatalogFormView.vue';
 import { buildPageMountGlobal } from '@choysum/page-mount';
-import { moduleUninstallAction } from './module_catalog_actions';
 
 function seedModuleActionPermissions(actions: string[] = ['*']) {
   const auth = useAuthStore();
@@ -67,6 +66,53 @@ test('ModuleCatalogFormView.vue mounts under choysumMount and runs script setup'
   wrapper.unmount();
 });
 
+test('ModuleCatalogFormView.vue resolves CTAs from Form Browse RecordRow payload shape', async () => {
+  // beginDisplay writes `{ kind, key, payload }` into store.state.result.rows — not flat rows
+  // and not always state.records[id]. CTAs must unwrap payload or the header stays empty.
+  const wrapper = mount(ModuleCatalogFormView as any, {
+    props: {
+      store: {
+        $id: 'fe-stub-module-catalog-form-recordrow',
+        state: {
+          records: {},
+          result: {
+            rows: [
+              {
+                kind: 'record',
+                key: 'cat-rr',
+                payload: {
+                  Id: 'cat-rr',
+                  ModuleName: 'meta',
+                  Installed: true,
+                  Available: true,
+                  UpdateAvailable: false,
+                },
+              },
+            ],
+          },
+        },
+        Browse: async () => ({}),
+      },
+      recordId: 'cat-rr',
+      showHeader: true,
+    },
+    global: buildPageMountGlobal({
+      route: {
+        path: '/meta/modules/meta',
+        fullPath: '/meta/modules/meta',
+        name: 'MetaModuleShow',
+        params: { name: 'meta' },
+      },
+    }),
+  });
+  seedModuleActionPermissions();
+  await flushPromises();
+  expect((wrapper.vm as any).primaryAction).toBe('upgrade');
+  expect(wrapper.find('[data-testid="module-catalog-form-primary-upgrade"]').exists()).toBe(true);
+  expect(wrapper.find('[data-testid="module-catalog-form-uninstall"]').exists()).toBe(true);
+  wrapper.unmount();
+});
+
 test('ModuleCatalogFormView.vue primary and uninstall actions open the drawer for the matched row', async () => {
   const install = mountShow({
     ModuleName: 'core',
@@ -78,6 +124,7 @@ test('ModuleCatalogFormView.vue primary and uninstall actions open the drawer fo
   const installVm = install.vm as any;
   expect(installVm.primaryAction).toBe('install');
   expect(String(installVm.primaryActionLabel || '')).toContain('Install');
+  expect(install.find('[data-testid="module-catalog-form-primary-install"]').exists()).toBe(true);
   installVm.onPrimaryClick();
   expect(installVm.drawerOpen).toBe(true);
   expect(installVm.drawerAction).toBe('install');
@@ -95,20 +142,23 @@ test('ModuleCatalogFormView.vue primary and uninstall actions open the drawer fo
   const upgradeVm = upgrade.vm as any;
   expect(upgradeVm.primaryAction).toBe('upgrade');
   expect(String(upgradeVm.primaryActionLabel || '')).toContain('Upgrade');
+  expect(upgrade.find('[data-testid="module-catalog-form-primary-upgrade"]').exists()).toBe(true);
+  expect(upgrade.find('[data-testid="module-catalog-form-uninstall"]').exists()).toBe(true);
   upgradeVm.onPrimaryClick();
   expect(upgradeVm.drawerAction).toBe('upgrade');
   upgrade.unmount();
 
-  // Install/upgrade CTAs stay hidden without action permission; progress stays visible.
-  const denied = mountShow({
+  // Primary CTAs follow row state (List/Kanban parity); uninstall still needs action ACL.
+  const noUninstallAcl = mountShow({
     ModuleName: 'core',
-    Installed: false,
+    Installed: true,
     Available: true,
   });
-  seedModuleActionPermissions([moduleUninstallAction]);
+  seedModuleActionPermissions([]);
   await flushPromises();
-  expect((denied.vm as any).primaryAction).toBe(null);
-  denied.unmount();
+  expect((noUninstallAcl.vm as any).primaryAction).toBe('upgrade');
+  expect(noUninstallAcl.find('[data-testid="module-catalog-form-uninstall"]').exists()).toBe(false);
+  noUninstallAcl.unmount();
 
   let resolveBrowse: ((row: any) => void) | undefined;
   const progress = mount(ModuleCatalogFormView as any, {
@@ -193,34 +243,6 @@ test('ModuleCatalogFormView.vue primary and uninstall actions open the drawer fo
   uninstallVm.onUninstallClick();
   expect(uninstallVm.drawerAction).toBe('uninstall');
   uninstall.unmount();
-
-  const loadDemo = mountShow({
-    ModuleName: 'base',
-    Installed: true,
-    Available: true,
-    HasDemo: true,
-    DemoLoaded: false,
-  });
-  await flushPromises();
-  const loadDemoVm = loadDemo.vm as any;
-  expect(loadDemoVm.canLoadDemo).toBe(true);
-  loadDemoVm.onLoadDemoClick();
-  expect(loadDemoVm.drawerOpen).toBe(true);
-  expect(loadDemoVm.drawerAction).toBe('load_demo');
-  expect(loadDemoVm.drawerModuleName).toBe('');
-  loadDemo.unmount();
-
-  const loadDemoBusy = mountShow({
-    ModuleName: 'base',
-    Installed: true,
-    Available: true,
-    HasDemo: true,
-    DemoLoaded: false,
-    ActiveOperationId: 'op-busy',
-  });
-  await flushPromises();
-  expect((loadDemoBusy.vm as any).canLoadDemo).toBe(false);
-  loadDemoBusy.unmount();
 
   // Unmatched recordId must not act on an unrelated rows[0] module.
   const empty = mount(ModuleCatalogFormView as any, {

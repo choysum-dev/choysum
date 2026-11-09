@@ -7,6 +7,7 @@ import { resolveChoysum } from '@/core/service/runtime/choysum_runtime';
 import type JobModel from '@/task/service/models/job';
 import { _t, _lt } from '../i18n';
 import { publishModuleOpChangedTip } from '../tips';
+import MetaModuleCatalogDepend from './module_catalog_depend';
 import MetaModuleOperation from './module_operation';
 
 const Job = createServiceByModel<typeof JobModel>('task.Job');
@@ -85,11 +86,37 @@ export default class MetaModuleCatalog extends BaseModel {
   @Field({ type: 'varchar', size: 512, string: _lt('Local Path', { scope: 'meta.model.MetaModuleCatalog.fields' }) })
   LocalPath?: string;
 
-  @Field({ type: 'jsonobject', string: _lt('Depends', { scope: 'meta.model.MetaModuleCatalog.fields' }) })
+  @Field({ type: 'jsonobject', string: _lt('Depends JSON', { scope: 'meta.model.MetaModuleCatalog.fields' }) })
   DependsJson?: Record<string, unknown> | unknown[] | null;
 
-  @Field({ type: 'jsonobject', string: _lt('Dependents', { scope: 'meta.model.MetaModuleCatalog.fields' }) })
+  @Field({ type: 'jsonobject', string: _lt('Dependents JSON', { scope: 'meta.model.MetaModuleCatalog.fields' }) })
   DependentsJson?: Record<string, unknown> | unknown[] | null;
+
+  /** Modules this catalog row depends on (self ManyToMany; materialized on sync). */
+  @Field({
+    type: 'ManyToMany',
+    relation: {
+      joinModel: () => MetaModuleCatalogDepend,
+      targetModel: () => MetaModuleCatalog,
+      joinField: 'ModuleId',
+      inverseJoinField: 'DependId',
+    },
+    string: _lt('Depends', { scope: 'meta.model.MetaModuleCatalog.fields' }),
+  })
+  Depends?: MetaModuleCatalog[];
+
+  /** Modules that depend on this catalog row (reverse of Depends). */
+  @Field({
+    type: 'ManyToMany',
+    relation: {
+      joinModel: () => MetaModuleCatalogDepend,
+      targetModel: () => MetaModuleCatalog,
+      joinField: 'DependId',
+      inverseJoinField: 'ModuleId',
+    },
+    string: _lt('Dependents', { scope: 'meta.model.MetaModuleCatalog.fields' }),
+  })
+  Dependents?: MetaModuleCatalog[];
 
   @Field({ type: 'boolean', string: _lt('Has Demo', { scope: 'meta.model.MetaModuleCatalog.fields' }) })
   HasDemo?: boolean;

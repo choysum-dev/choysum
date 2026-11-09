@@ -675,12 +675,32 @@ msgstr ""
 
 #: service/models/module_catalog.ts:91
 msgctxt "meta.model.MetaModuleCatalog.fields"
-msgid "Dependents"
+msgid "Dependents JSON"
 msgstr ""
 
 #: service/models/module_catalog.ts:88
 msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Depends JSON"
+msgstr ""
+
+#: service/models/module_catalog.ts
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Dependents"
+msgstr ""
+
+#: service/models/module_catalog.ts
+msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Depends"
+msgstr ""
+
+#: service/models/module_catalog_depend.ts
+msgctxt "meta.model.MetaModuleCatalogDepend.fields"
+msgid "Module"
+msgstr ""
+
+#: service/models/module_catalog_depend.ts
+msgctxt "meta.model.MetaModuleCatalogDepend.fields"
+msgid "Depend"
 msgstr ""
 
 #: service/models/module_catalog.ts:46
@@ -1282,7 +1302,12 @@ msgstr ""
 
 #: web/pages/module_catalog_page.ts:34
 msgctxt "web/pages/ModuleCatalog"
-msgid "Modules"
+msgid "Catalog"
+msgstr ""
+
+#: web/pages/module_catalog_page.ts:34
+msgctxt "web/pages/ModuleCatalog"
+msgid "Module List"
 msgstr ""
 
 #: web/route/routes.ts:164
@@ -1311,11 +1336,14 @@ msgid "Module Operation"
 msgstr ""
 
 #: web/route/routes.ts:29
-#: web/route/routes.ts:53
 msgctxt "web/route/routes"
-msgid "Modules"
+msgid "Catalog"
 msgstr ""
 
+#: web/route/routes.ts:53
+msgctxt "web/route/routes"
+msgid "Module List"
+msgstr ""
 #: web/route/routes.ts:144
 msgctxt "web/route/routes"
 msgid "Parameters"

@@ -74,14 +74,19 @@ func (s *GRPCWebServer) dispatchWatchTarget(target registeredWatchTarget, file s
 	return nil
 }
 
-// hotreloadUpgradeContext attaches ProgressLine (when present) and QuietProgress
-// so nested lifecycle Upgrade demotes detail/boundary Info under the watch spinner.
-func hotreloadUpgradeContext(ctx context.Context, line *logutil.ProgressLine) context.Context {
+// hotreloadUpgradeContext attaches ProgressLine / ProgressTicker (when present)
+// and QuietProgress so nested lifecycle Upgrade reuses the watch spinner instead
+// of starting a second ticker on the same stderr line (which looks like a
+// double-speed flicker), and demotes detail/boundary Info under that spinner.
+func hotreloadUpgradeContext(ctx context.Context, line *logutil.ProgressLine, ticker *logutil.ProgressTicker) context.Context {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	if line != nil {
 		ctx = logutil.WithProgressLine(ctx, line)
+	}
+	if ticker != nil {
+		ctx = logutil.WithProgressTicker(ctx, ticker)
 	}
 	return logutil.WithQuietProgress(ctx)
 }
@@ -97,12 +102,13 @@ func (s *GRPCWebServer) handleWatchedModuleUpgrade(moduleName string, file strin
 	s.hotreload.setProgressMessage(fmt.Sprintf("Upgrading module: %s", moduleName))
 	s.hotreload.progressMu.Lock()
 	line := s.hotreload.progressLine
+	ticker := s.hotreload.progressTicker
 	s.hotreload.progressMu.Unlock()
 	ctx := s.runtimeScope.Context()
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	ctx = hotreloadUpgradeContext(ctx, line)
+	ctx = hotreloadUpgradeContext(ctx, line, ticker)
 	if err := hotreloadModuleUpgrade(s, ctx, moduleName); err != nil {
 		return xfmt.Errorf("error running watch handler: %w", err)
 	}

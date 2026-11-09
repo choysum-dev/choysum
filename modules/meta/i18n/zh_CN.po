@@ -668,13 +668,33 @@ msgstr ""
 
 #: service/models/module_catalog.ts:91
 msgctxt "meta.model.MetaModuleCatalog.fields"
-msgid "Dependents"
-msgstr "被依赖方"
+msgid "Dependents JSON"
+msgstr "被依赖方 JSON"
 
 #: service/models/module_catalog.ts:88
 msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Depends JSON"
+msgstr "依赖 JSON"
+
+#: service/models/module_catalog.ts
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Dependents"
+msgstr "被依赖方"
+
+#: service/models/module_catalog.ts
+msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Depends"
-msgstr ""
+msgstr "依赖"
+
+#: service/models/module_catalog_depend.ts
+msgctxt "meta.model.MetaModuleCatalogDepend.fields"
+msgid "Module"
+msgstr "模块"
+
+#: service/models/module_catalog_depend.ts
+msgctxt "meta.model.MetaModuleCatalogDepend.fields"
+msgid "Depend"
+msgstr "依赖"
 
 #: service/models/module_catalog.ts:46
 msgctxt "meta.model.MetaModuleCatalog.fields"
@@ -1214,7 +1234,7 @@ msgstr "检测到循环：%s 不能挂到其子孙节点下"
 #: web/menu/menus.ts:63
 msgctxt "web/menu/menus"
 msgid "Catalog"
-msgstr ""
+msgstr "模块目录"
 
 #: web/menu/menus.ts:46
 msgctxt "web/menu/menus"
@@ -1273,8 +1293,13 @@ msgstr ""
 
 #: web/pages/module_catalog_page.ts:34
 msgctxt "web/pages/ModuleCatalog"
-msgid "Modules"
-msgstr "模块"
+msgid "Catalog"
+msgstr "模块目录"
+
+#: web/pages/module_catalog_page.ts:34
+msgctxt "web/pages/ModuleCatalog"
+msgid "Module List"
+msgstr "模块列表"
 
 #: web/route/routes.ts:164
 msgctxt "web/route/routes"
@@ -1301,10 +1326,15 @@ msgctxt "web/route/routes"
 msgid "Module Operation"
 msgstr "模块操作"
 
-#: web/route/routes.ts:29 web/route/routes.ts:53
+#: web/route/routes.ts:29
 msgctxt "web/route/routes"
-msgid "Modules"
-msgstr "模块"
+msgid "Catalog"
+msgstr "模块目录"
+
+#: web/route/routes.ts:53
+msgctxt "web/route/routes"
+msgid "Module List"
+msgstr "模块列表"
 
 #: web/route/routes.ts:144
 msgctxt "web/route/routes"
@@ -1464,7 +1494,7 @@ msgstr "操作成功"
 #: web/views/ModuleCatalogFormView.vue:16
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Overview"
-msgstr ""
+msgstr "概览"
 
 #: web/views/ModuleCatalogFormView.vue:147
 msgctxt "web/views/ModuleCatalogFormView"
@@ -1479,7 +1509,7 @@ msgstr "服务正在重启，将自动重试状态"
 #: web/views/ModuleCatalogFormView.vue:85
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Sync"
-msgstr ""
+msgstr "同步"
 
 #: web/views/ModuleCatalogFormView.vue:12
 msgctxt "web/views/ModuleCatalogFormView"
@@ -1514,7 +1544,7 @@ msgstr "正在升级…"
 #: web/views/ModuleCatalogFormView.vue:54
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Versions & Source"
-msgstr ""
+msgstr "版本与来源"
 
 #: web/views/ModuleCatalogFormView.vue:84
 msgctxt "web/views/ModuleCatalogFormView"

@@ -246,7 +246,10 @@ func (o *Ops) MaterializeCatalog(ctx context.Context, moduleNames []string) erro
 	// Keep reverse-dep edges coherent for modules outside this batch
 	// (and repair dependents_json after filtered materialize, which must not
 	// upsert a partial dependents graph into the conflict update).
-	return o.refreshCatalogDependents(ctx)
+	if err := o.refreshCatalogDependents(ctx); err != nil {
+		return err
+	}
+	return o.replaceCatalogDependsEdges(ctx)
 }
 
 // catalogMaterializeDoUpdates builds dialect-safe ON CONFLICT assignments.
@@ -460,6 +463,65 @@ func (o *Ops) refreshCatalogDependents(ctx context.Context) error {
 			}
 		}
 		return nil
+	})
+}
+
+// replaceCatalogDependsEdges rewrites meta_module_catalog_depend from DependsJson names.
+// Full replace keeps self-ManyToMany Depends/Dependents coherent after every materialize.
+func (o *Ops) replaceCatalogDependsEdges(ctx context.Context) error {
+	sess, err := o.session(ctx)
+	if err != nil {
+		return err
+	}
+	var rows []modmeta.ModuleCatalog
+	if err := sess.WithContext(ctx).
+		Model(&modmeta.ModuleCatalog{}).
+		Select("id", "module_name", "depends_json").
+		Find(&rows).Error; err != nil {
+		return err
+	}
+	idByName := make(map[string]string, len(rows))
+	for _, row := range rows {
+		name := strings.TrimSpace(row.ModuleName)
+		id := strings.TrimSpace(row.Id.String)
+		if name == "" || id == "" {
+			continue
+		}
+		idByName[name] = id
+	}
+	edges := make([]modmeta.ModuleCatalogDepend, 0)
+	seen := make(map[string]struct{})
+	for _, row := range rows {
+		moduleID := strings.TrimSpace(row.Id.String)
+		if moduleID == "" {
+			continue
+		}
+		for _, depName := range decodeDependsNames(row.DependsJson) {
+			dependID := idByName[depName]
+			if dependID == "" || dependID == moduleID {
+				continue
+			}
+			key := moduleID + "\x00" + dependID
+			if _, ok := seen[key]; ok {
+				continue
+			}
+			seen[key] = struct{}{}
+			edges = append(edges, modmeta.ModuleCatalogDepend{
+				ModuleID: moduleID,
+				DependID: dependID,
+			})
+		}
+	}
+	return sess.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Unscoped().Session(&gorm.Session{AllowGlobalUpdate: true}).
+			Where("1 = 1").
+			Delete(&modmeta.ModuleCatalogDepend{}).Error; err != nil {
+			return err
+		}
+		if len(edges) == 0 {
+			return nil
+		}
+		return tx.CreateInBatches(&edges, 200).Error
 	})
 }
 

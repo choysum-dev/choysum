@@ -57,9 +57,18 @@ export function useModuleCatalogDetailPage(deps: ModuleCatalogDetailPageDeps): {
     }
     loading.value = true;
     try {
+      // Include CTA fields so the Form header can resolve Install/Upgrade before Browse settles.
       const rows = (await (catalogStore as any).Search(['ModuleName', '=', name], {
         limit: 1,
-        fields: ['Id', 'ModuleName'],
+        fields: [
+          'Id',
+          'ModuleName',
+          'Installed',
+          'Available',
+          'UpdateAvailable',
+          'ActiveOperationId',
+          'RegistryNewerThanLocal',
+        ],
       })) as Array<{ Id?: string }> | null;
       if (seq !== resolveSeq) return;
       const id = String(rows?.[0]?.Id || '').trim();

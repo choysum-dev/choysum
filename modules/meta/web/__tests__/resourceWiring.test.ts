@@ -44,6 +44,13 @@ test('meta resource wiring: catalog/show/operation routes declare §6.3 actions'
   expect(getRouteActionsFromMeta(byName.MetaModuleShow?.meta as any)).toEqual(MODULE_ACTIONS);
   expect(getRouteActionsFromMeta(byName.MetaModuleOperationDeepLink?.meta as any)).toEqual(MODULE_ACTIONS);
 
+  expect((byName.MetaModuleCatalogList?.meta as any)?.pageTitle).toBe('Module List');
+  const showPageTitle = (byName.MetaModuleShow?.meta as any)?.pageTitle;
+  expect(typeof showPageTitle).toBe('function');
+  expect(showPageTitle({ params: { name: 'base' } })).toBe('base');
+  expect(showPageTitle({ params: {} })).toBe('Module');
+  expect((byName.MetaModuleShow?.meta as any)?.pageTitleText).toBe('');
+
   expect(byName.MetaModuleList).toBeUndefined();
   expect(byName.MetaModuleListTable).toBeUndefined();
   expect(byName.MetaModuleHistory).toBeUndefined();

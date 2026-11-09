@@ -15,5 +15,12 @@ test('useModuleCatalogPage binds MetaModuleCatalog and MetaModuleOperation store
   expect(created).toEqual(['meta.MetaModuleCatalog', 'meta.MetaModuleOperation']);
   expect(catalogStore).toEqual({ model: 'meta.MetaModuleCatalog' });
   expect(operationStore).toEqual({ model: 'meta.MetaModuleOperation' });
-  expect(String(pageTitle)).toContain('Modules');
+  expect(String(pageTitle)).toContain('Catalog');
+
+  const list = useModuleCatalogPage({
+    scopeManager: {},
+    pageTitleSrc: 'Module List',
+    createStore: (() => ({})) as any,
+  });
+  expect(String(list.pageTitle)).toContain('Module List');
 });

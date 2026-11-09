@@ -1935,21 +1935,27 @@ func TestHotreloadProgressSpinnerAnimatesViaTicker(t *testing.T) {
 
 func TestHotreloadUpgradeContextAppliesQuietProgress(t *testing.T) {
 	t.Parallel()
-	ctx := hotreloadUpgradeContext(nil, nil)
+	ctx := hotreloadUpgradeContext(nil, nil, nil)
 	if ctx == nil || !logger.QuietProgressFromContext(ctx) {
 		t.Fatal("expected QuietProgress on nil ctx fallback")
 	}
-	ctx = hotreloadUpgradeContext(context.Background(), nil)
+	ctx = hotreloadUpgradeContext(context.Background(), nil, nil)
 	if !logger.QuietProgressFromContext(ctx) {
 		t.Fatal("expected QuietProgress on hotreload upgrade context")
 	}
 	line := logger.NewProgressLine(&bytes.Buffer{})
-	ctx = hotreloadUpgradeContext(context.Background(), line)
+	ctx = hotreloadUpgradeContext(context.Background(), line, nil)
 	if !logger.QuietProgressFromContext(ctx) {
 		t.Fatal("expected QuietProgress with ProgressLine")
 	}
 	if logger.ProgressLineFromContext(ctx) != line {
 		t.Fatal("expected ProgressLine attached")
+	}
+	ticker := logger.NewProgressTicker(line, logger.ProgressTickerOptions{})
+	t.Cleanup(ticker.Stop)
+	ctx = hotreloadUpgradeContext(context.Background(), line, ticker)
+	if logger.ProgressTickerFromContext(ctx) != ticker {
+		t.Fatal("expected ProgressTicker attached so nested Upgrade reuses watch spinner")
 	}
 }
 
@@ -1968,9 +1974,11 @@ func TestHandleWatchedModuleUpgradeEmptyModuleName(t *testing.T) {
 func TestHandleWatchedModuleUpgradePropagatesQuietProgress(t *testing.T) {
 	runtimeScope := newRichServerTestScope(t)
 	line := logger.NewProgressLine(&bytes.Buffer{})
+	ticker := logger.NewProgressTicker(line, logger.ProgressTickerOptions{})
+	t.Cleanup(ticker.Stop)
 	srv := &GRPCWebServer{
 		runtimeScope: runtimeScope,
-		hotreload:    hotreloadState{progressLine: line},
+		hotreload:    hotreloadState{progressLine: line, progressTicker: ticker},
 	}
 	prev := hotreloadModuleUpgrade
 	var gotCtx context.Context
@@ -1995,6 +2003,9 @@ func TestHandleWatchedModuleUpgradePropagatesQuietProgress(t *testing.T) {
 	}
 	if logger.ProgressLineFromContext(gotCtx) != line {
 		t.Fatal("expected ProgressLine on nested upgrade context")
+	}
+	if logger.ProgressTickerFromContext(gotCtx) != ticker {
+		t.Fatal("expected ProgressTicker on nested upgrade context")
 	}
 }
 

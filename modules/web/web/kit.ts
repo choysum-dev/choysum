@@ -240,6 +240,7 @@ export { default as ChoyManyToManyRefTagsField } from './components/field/ChoyMa
 export { default as ChoyManyToManyRefTreeField } from './components/field/ChoyManyToManyRefTreeField.vue';
 export { default as ChoyOneToManyField } from './components/field/ChoyOneToManyField.vue';
 export { default as ChoyOneToManyKanbanField } from './components/field/ChoyOneToManyKanbanField.vue';
+export { default as ChoyManyToManyKanbanField } from './components/field/ChoyManyToManyKanbanField.vue';
 export { default as ChoyBinaryField } from './components/field/ChoyBinaryField.vue';
 export { default as ChoyImageField } from './components/field/ChoyImageField.vue';
 export { default as ChoyHtmlField } from './components/field/ChoyHtmlField.vue';

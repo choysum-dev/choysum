@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { RouteRecordRaw } from 'vue-router';
+import { RouteRecordRaw, type RouteLocationNormalized } from 'vue-router';
 import { defineRoute } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
 import {
@@ -26,7 +26,7 @@ const moduleCatalogViewPaths = {
 export const metaRoutes: RouteRecordRaw[] = [
   defineRoute('meta.route.module_catalog', {
     sequence: 10,
-    title: _lt('Modules'),
+    title: _lt('Catalog'),
     path: 'meta/modules',
     name: 'MetaModuleCatalog',
     component: () => import('../pages/ModuleCatalogKanban.vue'),
@@ -50,7 +50,7 @@ export const metaRoutes: RouteRecordRaw[] = [
   // Static /list before /:name so "list" is never captured as a module name.
   defineRoute('meta.route.module_catalog_list', {
     sequence: 11,
-    title: _lt('Modules'),
+    title: _lt('Module List'),
     path: 'meta/modules/list',
     name: 'MetaModuleCatalogList',
     component: () => import('../pages/ModuleCatalogList.vue'),
@@ -109,7 +109,13 @@ export const metaRoutes: RouteRecordRaw[] = [
     defaultRoles: ['sys.admin'],
     // Show is catalog browse; mutation actions stay gated by action requires.
     requires: [{ model: 'meta.MetaModuleCatalog' }],
-    meta: { requiresAuth: true },
+    meta: {
+      requiresAuth: true,
+      // Dynamic name crumb; blank pageTitleText so static Module term does not win.
+      pageTitle: (route: RouteLocationNormalized) =>
+        String(route.params?.name || '').trim() || 'Module',
+      pageTitleText: '' as any,
+    },
   }),
 
   defineRoute('meta.route.terminology_list', {

@@ -104,4 +104,18 @@ func TestMaterializeCatalog_FillsDependentsJson(t *testing.T) {
 	if !strings.Contains(string(base.DependentsJson), `"auth"`) {
 		t.Fatalf("DependentsJson = %s, want auth", base.DependentsJson)
 	}
+	var auth modmeta.ModuleCatalog
+	if err := db.Where("module_name = ?", "auth").Take(&auth).Error; err != nil {
+		t.Fatalf("auth: %v", err)
+	}
+	var edges []modmeta.ModuleCatalogDepend
+	if err := db.Find(&edges).Error; err != nil {
+		t.Fatalf("depend edges: %v", err)
+	}
+	if len(edges) != 1 {
+		t.Fatalf("depend edges len = %d, want 1", len(edges))
+	}
+	if edges[0].ModuleID != auth.Id.String || edges[0].DependID != base.Id.String {
+		t.Fatalf("edge = %+v, want auth(%s)->base(%s)", edges[0], auth.Id.String, base.Id.String)
+	}
 }

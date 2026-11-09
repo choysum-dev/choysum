@@ -19,5 +19,6 @@ defineOptions({ name: 'MetaModuleCatalogListPage' });
 
 const { pageTitle, catalogStore, operationStore } = useModuleCatalogPage({
   scopeManager: useScopeManager().menuScopeManager,
+  pageTitleSrc: 'Module List',
 });
 </script>
