@@ -385,6 +385,70 @@ test('ModuleCatalogOpDialog.vue uninstall confirm uses destructive variant and e
   wrapper.unmount();
 });
 
+test('ModuleCatalogOpDialog.vue plan helper formatters cover origin effects and sync summary', async () => {
+  const wrapper = mount(ModuleCatalogOpDialog as any, {
+    props: { open: false, action: 'install', moduleName: 'core' },
+    global: buildPageMountGlobal({ route: { path: '/meta/modules', fullPath: '/meta/modules' } }),
+  });
+  await flushPromises();
+  const vm = wrapper.vm as any;
+  expect(vm.formatOrigin('registry')).toContain('registry');
+  expect(vm.formatOrigin('local')).toContain('local');
+  expect(vm.formatOrigin('mirror')).toBe('mirror');
+  expect(vm.changingEffectBadge({ effect: 'uninstall' })).toContain('uninstall');
+  expect(vm.changingEffectBadge({ effect: 'noop' })).toBe('');
+  expect(vm.changingEffectBadgeClass({ effect: 'install' })).toContain('primary');
+  expect(vm.changingEffectBadgeClass({ effect: 'upgrade' })).toContain('muted');
+  expect(vm.changingEffectBadgeClass({ effect: 'uninstall' })).toContain('destructive');
+  expect(vm.changingEffectBadgeClass({ effect: 'noop' })).toBe('');
+  expect(vm.formatVersionLine({ effect: 'uninstall', targetVersion: '9' })).toBe('');
+  expect(vm.formatVersionLine({ effect: 'upgrade', currentVersion: '1', targetVersion: '2' })).toContain('→');
+  expect(vm.formatVersionLine({ effect: 'install', currentVersion: '1', targetVersion: '1' })).toBe('1');
+  expect(vm.formatVersionLine({ effect: 'install', targetVersion: '3.0' })).toContain('3.0');
+  vm.onOpenChange(false);
+  vm.opStatus = { resultStatus: 'SUCCEEDED' };
+  expect(String(vm.resultAlertBoxClass)).toContain('border-border');
+  expect(
+    vm.formatSummary({
+      syncResult: { total: 2, success: 2, failed: 0, catalogRows: 4 },
+    }),
+  ).toContain('4');
+  expect(
+    vm.formatSummary({
+      syncResult: { total: 3, success: 2, failed: 1, catalogRows: 5 },
+    }),
+  ).toContain('failed');
+  expect(vm.formatSummary('plain')).toBeTruthy();
+  wrapper.unmount();
+
+  const failed = mount(ModuleCatalogOpDialog as any, {
+    props: {
+      open: true,
+      action: 'upgrade',
+      moduleName: 'core',
+      operationStore: {
+        Plan: async () => ({
+          Id: 'op-fail-ui',
+          ModuleOrder: [],
+          AffectedApps: [],
+          Risks: [],
+          Blockers: [],
+        }),
+        Apply: async () => {
+          throw new Error('apply broke');
+        },
+      },
+    },
+    global: buildPageMountGlobal({ route: { path: '/meta/modules', fullPath: '/meta/modules' } }),
+  });
+  await flushPromises();
+  await flushPromises();
+  await failed.find('[data-testid="module-op-confirm"]').trigger('click');
+  await flushPromises();
+  expect(String((failed.vm as any).resultAlertBoxClass)).toContain('destructive');
+  failed.unmount();
+});
+
 test('ModuleCatalogOpDialog.vue sync action closes immediately with applied', async () => {
   const applied: string[] = [];
   const wrapper = mount(ModuleCatalogOpDialog as any, {

@@ -94,6 +94,11 @@ test('parseCatalogSyncResult / catalogSyncSummaryPartial', () => {
   const parsed = parseCatalogSyncResult(
     JSON.stringify({ SyncResult: { Total: 2, Success: 1, Failed: 1, CatalogRows: 9, Origin: 'all' } }),
   );
+  expect(
+    parseCatalogSyncResult({
+      syncResult: { total: 1, success: 1, failed: 0, catalogRows: 4 },
+    }),
+  ).toEqual({ total: 1, success: 1, failed: 0, catalogRows: 4, origin: undefined });
   expect(parsed).toEqual({ total: 2, success: 1, failed: 1, catalogRows: 9, origin: 'all' });
   expect(catalogSyncSummaryPartial({ syncResult: parsed! })).toBe(true);
   expect(catalogSyncSummaryPartial({ syncResult: { ...parsed!, failed: 0 } })).toBe(false);

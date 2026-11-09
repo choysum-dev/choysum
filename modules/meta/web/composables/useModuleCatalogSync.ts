@@ -8,7 +8,12 @@ import {
   formatModuleOpSummary,
   type CatalogSyncResultSummary,
 } from '../views/module_catalog_chrome';
-import { createModuleOpProgressSession, type ModuleOpStatusSnapshot } from './useModuleOpProgress';
+import {
+  createModuleOpProgressSession,
+  type ModuleOpProgressDeps,
+  type ModuleOpStatusSnapshot,
+} from './useModuleOpProgress';
+import { moduleCatalogProgressNotifyHooks } from './moduleCatalogProgressSessionHooks';
 import { readOperationStatusSnapshot } from './useModuleCatalogOpDrawerSession';
 
 export type ModuleCatalogSyncMsgs = {
@@ -36,6 +41,8 @@ export function useModuleCatalogSync(
   msgs: ModuleCatalogSyncMsgs,
   opts?: {
     refreshCatalog?: () => void | Promise<void>;
+    /** Inject timers/tip for FE unit tests only. */
+    progressDeps?: ModuleOpProgressDeps;
   },
 ): {
   syncBusy: Ref<boolean>;
@@ -62,20 +69,12 @@ export function useModuleCatalogSync(
     onTerminal: status => {
       lastTerminal = status;
     },
-    onTimeout: () => {
-      ChoyMessage.warning(msgs.jobStillRunning);
-    },
-    onTransientNetworkError: () => {
-      ChoyMessage.warning(msgs.serviceRestarting);
-    },
-    onHardError: message => {
-      if (!message || message === 'Failed to get status') {
-        ChoyMessage.error(msgs.failedToGetStatus);
-        return;
-      }
-      ChoyMessage.error(message);
-    },
-  });
+    ...moduleCatalogProgressNotifyHooks({
+      jobStillRunning: msgs.jobStillRunning,
+      serviceRestarting: msgs.serviceRestarting,
+      failedToGetStatus: msgs.failedToGetStatus,
+    }),
+  }, opts?.progressDeps);
 
   function resolveOperationStore(): WebModelStore<any> | null {
     let store: any = operationStore;
@@ -147,12 +146,7 @@ export function useModuleCatalogSync(
 
     const opStore = resolveOperationStore();
     if (!opStore) {
-      try {
-        await opts?.refreshCatalog?.();
-      } catch {
-        // ignore
-      }
-      ChoyMessage.success(msgs.settledOk(''));
+      ChoyMessage.warning(msgs.jobStillRunning);
       return;
     }
 

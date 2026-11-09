@@ -239,10 +239,9 @@ func (o *Ops) buildOrderEntry(ctx context.Context, action, rootName, name, origi
 	effect := EffectInstall
 	switch {
 	case ensureStep:
-		if installed && (targetRaw == "" || compareVersion(currentRaw, targetRaw) == 0) {
+		// EnsureOrder only installs missing modules; never upgrade already-installed ones.
+		if installed {
 			effect = EffectAlreadySatisfied
-		} else if installed && compareVersion(currentRaw, targetRaw) != 0 {
-			effect = EffectUpgrade
 		} else {
 			effect = EffectInstall
 		}
@@ -250,7 +249,14 @@ func (o *Ops) buildOrderEntry(ctx context.Context, action, rootName, name, origi
 		effect = EffectUninstall
 	case action == ActionUpgrade && name == rootName:
 		effect = EffectUpgrade
-	case action == ActionInstall || action == ActionUpgrade:
+	case action == ActionInstall:
+		// Installer skips dependencies that are already installed (no upgrade).
+		if installed {
+			effect = EffectAlreadySatisfied
+		} else {
+			effect = EffectInstall
+		}
+	case action == ActionUpgrade:
 		if !installed {
 			effect = EffectInstall
 		} else if targetRaw == "" || compareVersion(currentRaw, targetRaw) == 0 {

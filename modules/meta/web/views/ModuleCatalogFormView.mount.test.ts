@@ -425,6 +425,88 @@ test('ModuleCatalogFormView.vue depend helpers unwrap payload and raw rows', asy
   wrapper.unmount();
 });
 
+test('ModuleCatalogFormView.vue depend helpers and onOpApplied cover status branches', async () => {
+  const wrapper = mount(ModuleCatalogFormView as any, {
+    props: {
+      store: {
+        state: {
+          records: {
+            'cat-1': { Id: 'cat-1', ModuleName: 'gone', Installed: false, Available: false },
+          },
+          result: { rows: [] },
+        },
+        Browse: async () => ({}),
+      },
+      recordId: 'cat-1',
+      showHeader: true,
+    },
+    global: buildPageMountGlobal({
+      route: {
+        path: '/meta/modules/gone',
+        fullPath: '/meta/modules/gone',
+        name: 'MetaModuleShow',
+        params: { name: 'gone' },
+      },
+    }),
+  });
+  seedModuleActionPermissions();
+  await flushPromises();
+  const vm = wrapper.vm as any;
+  expect(vm.primaryAction).toBe(null);
+  expect(vm.primaryActionLabel).toBe('');
+  expect(typeof vm.dependFieldText).toBe('function');
+  expect(vm.dependFieldText({}, 'ModuleName')).toBe('—');
+  expect(vm.dependVersionLine({
+    ModuleName: 'core',
+    InstalledVersion: '1.0.0',
+    LocalVersion: '1.0.0',
+    Installed: true,
+  })).toContain('1.0.0');
+  expect(vm.dependStatusLabel({ Available: false })).toContain('Unavailable');
+  expect(vm.dependStatusLabel({ Installed: true, UpdateAvailable: true })).toContain('Update');
+  expect(vm.dependStatusLabel({ Installed: true })).toContain('Installed');
+  expect(vm.dependStatusLabel({ Installed: false })).toContain('Not Installed');
+  expect(vm.dependStatusLabel({ Installed: 'weird' })).toBeTruthy();
+  expect(String(vm.dependStatusBadgeVariant({ Installed: true, Available: true })).length).toBeGreaterThan(0);
+  const withOp = mount(ModuleCatalogFormView as any, {
+    props: {
+      store: {
+        state: {
+          records: {
+            'cat-1': { Id: 'cat-1', ModuleName: 'core', Installed: false, Available: true },
+          },
+          result: { rows: [] },
+        },
+        Browse: async () => ({}),
+      },
+      recordId: 'cat-1',
+      showHeader: true,
+      operationStore: { Browse: async () => ({ Status: 'succeeded', Phase: 'done' }) },
+    },
+    global: buildPageMountGlobal({
+      route: {
+        path: '/meta/modules/core',
+        fullPath: '/meta/modules/core',
+        name: 'MetaModuleShow',
+        params: { name: 'core' },
+      },
+    }),
+  });
+  seedModuleActionPermissions();
+  await flushPromises();
+  const withOpVm = withOp.vm as any;
+  withOpVm.drawerAction = 'install';
+  withOpVm.drawerModuleName = 'core';
+  withOpVm.drawerOpen = true;
+  withOpVm.onOpApplied('op-applied');
+  expect(withOpVm.drawerOpen).toBe(false);
+  withOp.unmount();
+
+  expect(typeof vm.onOpApplied).toBe('function');
+  vm.onOpApplied('');
+  wrapper.unmount();
+});
+
 test('ModuleCatalogFormView.vue matches RecordRow via key when records map is empty', async () => {
   const wrapper = mount(ModuleCatalogFormView as any, {
     props: {

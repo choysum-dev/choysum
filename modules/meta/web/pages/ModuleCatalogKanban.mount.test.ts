@@ -29,3 +29,25 @@ test('ModuleCatalogKanban.vue mounts under choysumMount', async () => {
   ).toBe(true);
   wrapper.unmount();
 });
+
+test('ModuleCatalogKanban.vue passes deep-link operation id to kanban view', async () => {
+  const wrapper = mount(ModuleCatalogKanban as any, {
+    global: buildPageMountGlobal({
+      route: {
+        path: '/meta/modules/operations/op-deep',
+        fullPath: '/meta/modules/operations/op-deep',
+        name: 'MetaModuleOperationDeepLink',
+        params: { id: 'op-deep' },
+        meta: {
+          viewKind: 'kanban',
+          defaultGroups: [],
+          viewPaths: { kanban: '/meta/modules', list: '/meta/modules/list' },
+        },
+      },
+    }),
+  });
+  await flushPromises();
+  const exposed = (wrapper.vm as any).initialOperationId;
+  expect(String(exposed?.value ?? exposed ?? '')).toBe('op-deep');
+  wrapper.unmount();
+});

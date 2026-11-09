@@ -10,8 +10,11 @@ import (
 	"testing"
 
 	"github.com/choysum-dev/choysum/pkg/meta"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
+	"gorm.io/gorm/schema"
 )
 
 type stubTypeAliasMigrator struct {
@@ -37,6 +40,40 @@ func TestAppendCharAliasesForBPChar(t *testing.T) {
 	got = appendCharAliasesForBPChar([]string{"char", "character"})
 	if len(got) != 2 {
 		t.Fatalf("already present: got %v, want unchanged length 2", got)
+	}
+}
+
+type nonConcretePostgresDialector struct{}
+
+func (nonConcretePostgresDialector) Name() string                                       { return "postgres" }
+func (nonConcretePostgresDialector) Initialize(*gorm.DB) error                          { return nil }
+func (nonConcretePostgresDialector) Migrator(*gorm.DB) gorm.Migrator                  { return nil }
+func (nonConcretePostgresDialector) DataTypeOf(*schema.Field) string                    { return "" }
+func (nonConcretePostgresDialector) DefaultValueOf(*schema.Field) clause.Expression     { return clause.Expr{} }
+func (nonConcretePostgresDialector) BindVarTo(writer clause.Writer, stmt *gorm.Statement, v any) {
+}
+func (nonConcretePostgresDialector) QuoteTo(writer clause.Writer, str string)           {}
+func (nonConcretePostgresDialector) Explain(sql string, vars ...any) string             { return sql }
+
+func TestOpenPostgresFallbackWhenConcreteTypeMissing(t *testing.T) {
+	t.Parallel()
+	prev := postgresOpen
+	t.Cleanup(func() { postgresOpen = prev })
+	calls := 0
+	postgresOpen = func(string) gorm.Dialector {
+		calls++
+		if calls == 1 {
+			return nonConcretePostgresDialector{}
+		}
+		inner, ok := postgres.Open("host=127.0.0.1 user=wangbuke dbname=choysum sslmode=disable").(*postgres.Dialector)
+		if !ok {
+			t.Fatal("expected concrete postgres dialector on fallback")
+		}
+		return inner
+	}
+	d := openPostgres("dsn")
+	if _, ok := d.(*postgres.Dialector); !ok {
+		t.Fatalf("fallback dialector type %T", d)
 	}
 }
 

@@ -67,3 +67,38 @@ test('ModuleCatalogListView.vue expose openDrawer and boots from initialOperatio
   vm.closeDrawer();
   wrapper.unmount();
 });
+
+test('ModuleCatalogListView.vue versionLineFor formats list row versions', async () => {
+  const wrapper = mount(ModuleCatalogListView as any, {
+    props: {
+      store: {
+        state: { result: { rows: [] }, loading: false },
+        RequestSync: async () => ({ Id: 'op-sync' }),
+      },
+    },
+    global: buildPageMountGlobal({
+      route: {
+        path: '/meta/modules/list',
+        fullPath: '/meta/modules/list',
+        name: 'MetaModuleCatalogList',
+        params: {},
+        meta: {
+          viewKind: 'list',
+          defaultGroups: [],
+          viewPaths: { kanban: '/meta/modules', list: '/meta/modules/list' },
+        },
+      },
+    }),
+  });
+  await flushPromises();
+  const vm = wrapper.vm as any;
+  const line = vm.versionLineFor({
+    InstalledVersion: '1.0.0',
+    LocalVersion: '1.1.0',
+    RegistryVersion: '1.2.0',
+    UpdateAvailable: true,
+  });
+  expect(line).toContain('1.1.0');
+  expect(vm.versionLineFor(null)).toBe('—');
+  wrapper.unmount();
+});

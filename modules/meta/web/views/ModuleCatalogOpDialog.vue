@@ -494,4 +494,15 @@ watch(
   },
   { immediate: true },
 );
+
+defineExpose({
+  formatOrigin,
+  changingEffectBadge,
+  changingEffectBadgeClass,
+  formatVersionLine,
+  formatSummary,
+  resultAlertBoxClass,
+  onOpenChange,
+  opStatus,
+});
 </script>

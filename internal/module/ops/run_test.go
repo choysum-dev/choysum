@@ -414,6 +414,9 @@ func TestForceFailTerminalAndMarkReloadFailed(t *testing.T) {
 
 func TestModuleNamesInclude(t *testing.T) {
 	t.Parallel()
+	if moduleNamesInclude([]string{"core"}, "") {
+		t.Fatal("expected false for empty want")
+	}
 	if moduleNamesInclude(nil, "meta") {
 		t.Fatal("expected false for nil")
 	}
@@ -485,6 +488,52 @@ func TestRun_SyncPersistsSyncResultAndSoftFailsOrigin(t *testing.T) {
 	}
 	if doc.SyncResult.Origin != "all" {
 		t.Fatalf("Origin=%q", doc.SyncResult.Origin)
+	}
+}
+
+func TestRun_InstallMetaSoftFailsCatalogSync(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	runtimeScope := newOpsTestScope(t, db)
+	mod := &pkgmeta.Module{Name: "meta", Version: "1.0.0", ApplicationStr: "meta"}
+	life := &seedLifecycle{stubLifecycle: &stubLifecycle{}, db: db}
+	o := &Ops{
+		Scope:     runtimeScope,
+		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"meta": mod}},
+		Lifecycle: life,
+		Events:    &recordingBus{},
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return testLocker{}
+		},
+		SyncLocalSnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			return lifecycle.ModuleSourceSnapshotSyncStats{}, errors.New("offline")
+		},
+		SyncRegistrySnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			return lifecycle.ModuleSourceSnapshotSyncStats{}, errors.New("offline")
+		},
+	}
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{
+		ModuleName: "meta", SourceType: originLocal, SourceRef: "local", Available: true,
+		Version: nullString("1.0.0"),
+	}).Error; err != nil {
+		t.Fatalf("seed snapshot: %v", err)
+	}
+	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "meta", Action: ActionInstall})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Run should soft-fail sync: %v", err)
+	}
+	row, err := o.loadOperation(context.Background(), result.Id)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if row.Status != StatusSucceeded {
+		t.Fatalf("status=%q want succeeded", row.Status)
 	}
 }
 

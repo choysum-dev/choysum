@@ -114,7 +114,9 @@ func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation
 		// offline registry must not mark the install operation failed (same policy as executeSync).
 		if row.Action == ActionInstall && moduleNamesInclude(names, "meta") {
 			if _, err := o.SyncSourceSnapshotsThenMaterialize(ctx, "all"); err != nil {
-				_ = err
+				if o.Scope != nil && o.Scope.Logger() != nil {
+					o.Scope.Logger().Warn("ops: catalog sync after meta install failed", "error", err)
+				}
 			}
 			return nil
 		}

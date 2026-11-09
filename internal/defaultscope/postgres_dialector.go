@@ -20,10 +20,12 @@ import (
 // SavePointerDialectorInterface and ErrorTranslator stay on the concrete type;
 // wrapping the interface alone drops them and nested db.Transaction fails with
 // "unsupported driver".
+var postgresOpen = postgres.Open
+
 func openPostgres(dsn string) gorm.Dialector {
-	inner, ok := postgres.Open(dsn).(*postgres.Dialector)
+	inner, ok := postgresOpen(dsn).(*postgres.Dialector)
 	if !ok {
-		return postgres.Open(dsn)
+		return postgresOpen(dsn)
 	}
 	return postgresDialector{Dialector: inner}
 }

@@ -181,6 +181,26 @@ test('useModuleCatalogViewModel: load-demo button visibility and drawer open', (
   expect(done.drawerOpen.value).toBe(false);
 });
 
+test('useModuleCatalogViewModel: syncDrawerFromRoute on deep link with id starts progress', () => {
+  const store = makeStore([{ Id: '1', ModuleName: 'core' }]);
+  const route = makeRoute({
+    name: 'MetaModuleOperationDeepLink',
+    params: { id: 'op-route-live' },
+  });
+  const api = useModuleCatalogViewModel({
+    store,
+    operationStore: {
+      Browse: async () => ({ Status: 'succeeded', Phase: 'done' }),
+    } as any,
+    route,
+    router: { push: async () => undefined, replace: async () => undefined } as any,
+    msgs,
+  });
+  api.syncDrawerFromRoute();
+  expect(api.drawerOpen.value).toBe(false);
+  expect(api.progressBusy.value).toBe(true);
+});
+
 test('useModuleCatalogViewModel: boots and syncs drawer from operation deep link only', () => {
   const store = makeStore([{ Id: '1', ModuleName: 'core' }]);
   const route = makeRoute({

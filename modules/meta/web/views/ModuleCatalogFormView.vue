@@ -569,8 +569,13 @@ defineExpose({
   onDrawerSettled,
   onPrimaryClick,
   onUninstallClick,
+  onOpApplied,
   openCatalogModule,
   onDependRowClick,
+  dependFieldText,
+  dependVersionLine,
+  dependStatusLabel,
+  dependStatusBadgeVariant,
   drawerOpen,
   drawerAction,
   drawerOperationId,
@@ -583,6 +588,7 @@ defineExpose({
   progressTitle,
   progressHeadline,
   progressValue,
+  detailTab,
 });
 </script>
 

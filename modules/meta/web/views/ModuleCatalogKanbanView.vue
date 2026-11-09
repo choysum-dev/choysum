@@ -190,7 +190,9 @@ const showHeader = toRef(props, 'showHeader');
 
 const { active: activeView, defaultGroups: routeGroups, selectView: onViewSelect } =
   useChoyViewRouteSwitch({ store });
-const defaultGroups = routeGroups.value as GroupBySpec<MetaModuleCatalog>[];
+const defaultGroups = computed(
+  () => routeGroups.value as GroupBySpec<MetaModuleCatalog>[],
+);
 
 const viewSwitcherOptions = computed<ChoyViewSwitcherOption[]>(() => [
   { value: 'kanban', label: _t('Kanban View') },
@@ -304,5 +306,7 @@ onMounted(() => {
 defineExpose({
   openDrawer,
   closeDrawer,
+  cardStatusLabel,
+  onCardClick,
 });
 </script>

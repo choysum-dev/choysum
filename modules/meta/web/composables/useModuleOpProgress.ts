@@ -62,7 +62,7 @@ function isTransientNetworkError(message: string): boolean {
   );
 }
 
-function clampRetryDelay(retryAfterMs: number | undefined, fallbackMs: number): number {
+export function clampRetryDelay(retryAfterMs: number | undefined, fallbackMs: number): number {
   if (retryAfterMs == null || !Number.isFinite(retryAfterMs)) {
     return fallbackMs;
   }

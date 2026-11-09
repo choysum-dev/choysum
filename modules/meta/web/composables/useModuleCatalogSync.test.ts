@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { effectScope } from 'vue';
+import { effectScope, ref } from 'vue';
+import { ChoyMessage } from '@/web';
 import { useModuleCatalogSync } from './useModuleCatalogSync';
 
 const msgs = {
@@ -95,8 +96,13 @@ test('useModuleCatalogSync: empty operation id does not start watch', async () =
   expect(browsed).toBe(0);
 });
 
-test('useModuleCatalogSync: missing operation store refreshes without Browse', async () => {
+test('useModuleCatalogSync: missing operation store warns without refresh or Browse', async () => {
   let refreshed = 0;
+  const warnings: string[] = [];
+  const orig = ChoyMessage.warning;
+  ChoyMessage.warning = (m: string) => {
+    warnings.push(m);
+  };
   const catalogStore = {
     RequestSync: async () => ({ Id: 'op-no-op-store' }),
   } as any;
@@ -106,7 +112,9 @@ test('useModuleCatalogSync: missing operation store refreshes without Browse', a
     },
   });
   await api.onSync();
-  expect(refreshed).toBe(1);
+  expect(refreshed).toBe(0);
+  expect(warnings).toEqual([msgs.jobStillRunning]);
+  ChoyMessage.warning = orig;
 });
 
 test('useModuleCatalogSync: partial and failed terminals refresh and clear busy', async () => {
@@ -175,6 +183,22 @@ test('useModuleCatalogSync: ok path without custom formatters uses formatModuleO
     formatSummaryOk: undefined,
     formatSummaryPartial: undefined,
   });
+  await api.onSync();
+  expect(api.syncBusy.value).toBe(false);
+});
+
+test('useModuleCatalogSync: unwraps nested operation store refs', async () => {
+  const catalogStore = { RequestSync: async () => ({ Id: 'op-nested' }) } as any;
+  const inner = {
+    Browse: async () => ({
+      Action: 'sync',
+      Status: 'succeeded',
+      PlanJson: JSON.stringify({
+        syncResult: { total: 1, success: 1, failed: 0, catalogRows: 2 },
+      }),
+    }),
+  };
+  const api = useModuleCatalogSync(catalogStore, ref(ref(inner)) as any, msgs);
   await api.onSync();
   expect(api.syncBusy.value).toBe(false);
 });

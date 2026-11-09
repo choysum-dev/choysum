@@ -155,6 +155,23 @@ test('useModuleCatalogOpDrawerSession: confirmApply Apply failure settles result
   expect(api.opStatus.value?.resultStatus).toBe('FAILED');
 });
 
+test('useModuleCatalogOpDrawerSession: resultTitle uses partial success copy', () => {
+  const api = useModuleCatalogOpDrawerSession({
+    operationStore: makeStore(),
+    isOpen: () => true,
+    msgs: { ...msgs, operationSucceededPartial: 'partial-ok' },
+  });
+  api.opStatus.value = { status: 'succeeded', resultStatus: 'SUCCEEDED', partialFailure: true };
+  expect(api.resultTitle.value).toBe('partial-ok');
+  api.opStatus.value = {
+    status: 'succeeded',
+    resultStatus: 'SUCCEEDED',
+    partialFailure: false,
+    ReloadFailed: true,
+  };
+  expect(api.resultTitle.value).toBe('reload-fail');
+});
+
 test('useModuleCatalogOpDrawerSession: resultTitle stays neutral without SUCCEEDED', async () => {
   const open = ref(true);
   const api = useModuleCatalogOpDrawerSession({

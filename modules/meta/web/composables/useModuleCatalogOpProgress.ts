@@ -8,7 +8,12 @@ import {
   formatModuleOpProgressHeadline,
   formatModuleOpProgressValue,
 } from './moduleCatalogOpDrawerProgress';
-import { createModuleOpProgressSession, type ModuleOpStatusSnapshot } from './useModuleOpProgress';
+import {
+  createModuleOpProgressSession,
+  type ModuleOpProgressDeps,
+  type ModuleOpStatusSnapshot,
+} from './useModuleOpProgress';
+import { moduleCatalogProgressNotifyHooks } from './moduleCatalogProgressSessionHooks';
 import { readOperationStatusSnapshot } from './useModuleCatalogOpDrawerSession';
 
 export type ModuleCatalogOpProgressMsgs = {
@@ -35,6 +40,8 @@ export function useModuleCatalogOpProgress(
   msgs: ModuleCatalogOpProgressMsgs,
   opts?: {
     refreshCatalog?: () => void | Promise<void>;
+    /** Inject timers/tip for FE unit tests only. */
+    progressDeps?: ModuleOpProgressDeps;
   },
 ): {
   progressBusy: Ref<boolean>;
@@ -71,20 +78,12 @@ export function useModuleCatalogOpProgress(
       lastTerminal = status;
       opStatus.value = status;
     },
-    onTimeout: () => {
-      ChoyMessage.warning(msgs.jobStillRunning);
-    },
-    onTransientNetworkError: () => {
-      ChoyMessage.warning(msgs.serviceRestarting);
-    },
-    onHardError: message => {
-      if (!message || message === 'Failed to get status') {
-        ChoyMessage.error(msgs.failedToGetStatus);
-        return;
-      }
-      ChoyMessage.error(message);
-    },
-  });
+    ...moduleCatalogProgressNotifyHooks({
+      jobStillRunning: msgs.jobStillRunning,
+      serviceRestarting: msgs.serviceRestarting,
+      failedToGetStatus: msgs.failedToGetStatus,
+    }),
+  }, opts?.progressDeps);
 
   const progressHeadline = computed(() =>
     formatModuleOpProgressHeadline(opStatus.value, progressModuleName.value, {

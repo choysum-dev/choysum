@@ -32,4 +32,6 @@ const initialOperationId = computed(() => {
   if (String(route.name || '') !== 'MetaModuleOperationDeepLink') return '';
   return String(route.params.id || '').trim();
 });
+
+defineExpose({ initialOperationId });
 </script>

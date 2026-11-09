@@ -305,5 +305,6 @@ defineExpose({
   ...expose,
   openDrawer,
   closeDrawer,
+  versionLineFor,
 });
 </script>

@@ -7,6 +7,7 @@ import (
 	"context"
 	"testing"
 
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/module/plan"
 	pkgmeta "github.com/choysum-dev/choysum/pkg/meta"
 )
@@ -118,6 +119,51 @@ func TestEnrichPlanDocument_UpgradeEnsureModules(t *testing.T) {
 	}
 	if len(doc.EnsureOrder) != 1 || doc.EnsureOrder[0] != "document" {
 		t.Fatalf("EnsureOrder = %#v", doc.EnsureOrder)
+	}
+}
+
+func TestBuildOrderEntry_EnsureStepEffects(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	db := newOpsTestDB(t)
+	o := &Ops{
+		Scope: newOpsTestScope(t, db),
+		Resolver: &mapResolver{
+			load: map[string]*pkgmeta.Module{
+				"core": {Name: "core", Version: "1.0.0", ApplicationStr: "core", Status: pkgmeta.Installed},
+				"auth": {Name: "auth", Version: "2.0.0", ApplicationStr: "auth", Status: pkgmeta.Installed},
+			},
+			peek: map[string]*pkgmeta.Module{
+				"core": {Name: "core", Version: "1.0.0", ApplicationStr: "core"},
+				"auth": {Name: "auth", Version: "3.0.0", ApplicationStr: "auth"},
+			},
+		},
+	}
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{
+		ModuleName: "auth", SourceType: originLocal, SourceRef: "local", Available: true,
+		Version: nullString("3.0.0"),
+	}).Error; err != nil {
+		t.Fatalf("seed auth snapshot: %v", err)
+	}
+	satisfied := o.buildOrderEntry(ctx, ActionInstall, "partner", "core", originLocal, true)
+	if satisfied.Effect != EffectAlreadySatisfied {
+		t.Fatalf("ensure satisfied = %#v", satisfied)
+	}
+	ensureInstalled := o.buildOrderEntry(ctx, ActionInstall, "partner", "auth", originLocal, true)
+	if ensureInstalled.Effect != EffectAlreadySatisfied {
+		t.Fatalf("ensure installed (version skew) = %#v", ensureInstalled)
+	}
+	installDepInstalled := o.buildOrderEntry(ctx, ActionInstall, "partner", "auth", originLocal, false)
+	if installDepInstalled.Effect != EffectAlreadySatisfied {
+		t.Fatalf("install dep already installed = %#v", installDepInstalled)
+	}
+	depUpgrade := o.buildOrderEntry(ctx, ActionUpgrade, "partner", "auth", originLocal, false)
+	if depUpgrade.Effect != EffectUpgrade {
+		t.Fatalf("dependency upgrade = %#v", depUpgrade)
+	}
+	app, installed := (&Ops{}).applicationAndInstalled(ctx, "core")
+	if app != "" || installed {
+		t.Fatalf("nil resolver applicationAndInstalled = %q %v", app, installed)
 	}
 }
 

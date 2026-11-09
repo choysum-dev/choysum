@@ -125,6 +125,7 @@ test('mapPlanModuleEntry + effect helpers', () => {
   expect(isSatisfiedPlanEffect('already_satisfied')).toBe(true);
   expect(planEffectSummaryToken('upgrade')).toBe('will upgrade');
   expect(planEffectSummaryToken('uninstall')).toBe('will uninstall');
+  expect(planEffectSummaryToken('already_satisfied')).toBe('already satisfied');
   expect(planEffectSummaryToken('weird')).toBe('will change');
 });
 

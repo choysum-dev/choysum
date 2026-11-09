@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { effectScope } from 'vue';
+import { effectScope, ref } from 'vue';
+import { ChoyMessage } from '@/web';
 import { useModuleCatalogOpProgress } from './useModuleCatalogOpProgress';
 
 const msgs = {
@@ -107,6 +108,15 @@ test('useModuleCatalogOpProgress: titleFor falls back without module name', asyn
   const done = api.startOpProgress('op-title', { moduleName: '', action: 'uninstall' });
   expect(api.progressTitle.value).toBe('uninstall:blank');
   await done;
+});
+
+test('useModuleCatalogOpProgress: unwraps nested operation store refs', async () => {
+  const inner = {
+    Browse: async () => ({ Status: 'succeeded', Phase: 'done' }),
+  };
+  const api = useModuleCatalogOpProgress(ref(ref(inner)) as any, msgs);
+  await api.startOpProgress('op-nested', { moduleName: 'core', action: 'install' });
+  expect(api.progressBusy.value).toBe(false);
 });
 
 test('useModuleCatalogOpProgress: scope dispose stops the progress strip', async () => {
