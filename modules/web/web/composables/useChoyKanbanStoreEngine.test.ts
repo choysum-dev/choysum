@@ -237,6 +237,11 @@ test('deferFirstFrame bootstrap skips empty apply; refresh re-applies after latc
   await flushPromises();
   expect(searchCalls).toBe(0);
 
+  // While Search still owns the first frame, refresh must not synthesize empty.
+  await engine.refresh();
+  await flushPromises();
+  expect(searchCalls).toBe(0);
+
   await engine.applySearch({ keyword: '', appliedFilters: [], appliedGroups: [] });
   await flushPromises();
   expect(searchCalls).toBeGreaterThanOrEqual(1);
@@ -249,6 +254,227 @@ test('deferFirstFrame bootstrap skips empty apply; refresh re-applies after latc
   await engine.refresh();
   await flushPromises();
   expect(searchCalls).toBeGreaterThan(afterFirst);
+
+  mounted.unmount();
+});
+
+test('refresh synthesizes empty search when not deferring', async () => {
+  const s = store();
+  s.fieldsMetadata = { Title: { type: 'varchar' } };
+
+  const Harness = defineComponent({
+    name: 'KanbanEngineRefreshEmptyHarness',
+    setup() {
+      return useChoyKanbanStoreEngine({
+        store: s,
+        autoBootstrap: false,
+        deferFirstFrame: false,
+      });
+    },
+    render() {
+      return h('div');
+    },
+  });
+
+  const mounted = mountApp(Harness as any);
+  await flushPromises();
+  const engine = mounted.root;
+
+  let applies = 0;
+  engine.controller.apply = async () => {
+    applies += 1;
+  };
+  engine.controller.setKeywordFields = async () => undefined;
+
+  // refresh bootstraps when needed; empty bootstrap apply does not latch lastSearchQuery.
+  await engine.refresh();
+  await flushPromises();
+  expect(applies).toBeGreaterThanOrEqual(2);
+
+  mounted.unmount();
+});
+
+test('applySearch reports apply failures without rejecting (emit-safe)', async () => {
+  const s = store();
+  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  const errors: unknown[] = [];
+
+  const Harness = defineComponent({
+    name: 'KanbanEngineSearchErrHarness',
+    setup() {
+      return useChoyKanbanStoreEngine({
+        store: s,
+        autoBootstrap: false,
+        deferFirstFrame: true,
+        onSearchError: (e) => errors.push(e),
+      });
+    },
+    render() {
+      return h('div');
+    },
+  });
+
+  const mounted = mountApp(Harness as any);
+  await flushPromises();
+  const engine = mounted.root;
+  await engine.bootstrap();
+  await flushPromises();
+
+  engine.controller.apply = async () => {
+    throw new Error('search boom');
+  };
+  await engine.applySearch({ keyword: 'x', filters: [], appliedFilters: [], appliedGroups: [] });
+  expect(errors.some((e) => String(e).includes('search boom'))).toBe(true);
+
+  mounted.unmount();
+});
+
+test('refresh rethrows apply failures after onSearchError', async () => {
+  const s = store();
+  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  const errors: unknown[] = [];
+
+  const Harness = defineComponent({
+    name: 'KanbanEngineRefreshErrHarness',
+    setup() {
+      return useChoyKanbanStoreEngine({
+        store: s,
+        autoBootstrap: false,
+        deferFirstFrame: true,
+        onSearchError: (e) => errors.push(e),
+      });
+    },
+    render() {
+      return h('div');
+    },
+  });
+
+  const mounted = mountApp(Harness as any);
+  await flushPromises();
+  const engine = mounted.root;
+  await engine.bootstrap();
+  await flushPromises();
+
+  let applyCalls = 0;
+  engine.controller.apply = async () => {
+    applyCalls += 1;
+    if (applyCalls === 1) return;
+    throw new Error('refresh boom');
+  };
+  await engine.applySearch({ keyword: 'ok', filters: [], appliedFilters: [], appliedGroups: [] });
+  await flushPromises();
+
+  let threw: unknown = null;
+  await engine.refresh().then(
+    () => undefined,
+    (e: unknown) => {
+      threw = e;
+    },
+  );
+  expect(String(threw)).toContain('refresh boom');
+  expect(errors.some((e) => String(e).includes('refresh boom'))).toBe(true);
+
+  mounted.unmount();
+});
+
+test('stale applySearch recover reports failures without rejecting', async () => {
+  const s = store();
+  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  const errors: unknown[] = [];
+
+  const Harness = defineComponent({
+    name: 'KanbanEngineRecoverErrHarness',
+    setup() {
+      return useChoyKanbanStoreEngine({
+        store: s,
+        autoBootstrap: false,
+        deferFirstFrame: true,
+        onSearchError: (e) => errors.push(e),
+      });
+    },
+    render() {
+      return h('div');
+    },
+  });
+
+  const mounted = mountApp(Harness as any);
+  await flushPromises();
+  const engine = mounted.root;
+  await engine.bootstrap();
+  await flushPromises();
+
+  let calls = 0;
+  engine.controller.apply = async () => {
+    calls += 1;
+    if (calls === 1) {
+      await new Promise((r) => setTimeout(r, 30));
+      return;
+    }
+    throw new Error('recover boom');
+  };
+
+  const first = engine.applySearch({ keyword: 'a', filters: [], appliedFilters: [], appliedGroups: [] });
+  await new Promise((r) => setTimeout(r, 5));
+  const second = engine.applySearch({ keyword: 'b', filters: [], appliedFilters: [], appliedGroups: [] });
+  await Promise.all([first, second]);
+  expect(errors.some((e) => String(e).includes('recover boom'))).toBe(true);
+
+  mounted.unmount();
+});
+
+test('refresh recover path rethrows when the recovered apply fails', async () => {
+  const s = store();
+  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  const errors: unknown[] = [];
+
+  const Harness = defineComponent({
+    name: 'KanbanEngineRefreshRecoverHarness',
+    setup() {
+      return useChoyKanbanStoreEngine({
+        store: s,
+        autoBootstrap: false,
+        deferFirstFrame: true,
+        onSearchError: (e) => errors.push(e),
+      });
+    },
+    render() {
+      return h('div');
+    },
+  });
+
+  const mounted = mountApp(Harness as any);
+  await flushPromises();
+  const engine = mounted.root;
+  await engine.bootstrap();
+  await flushPromises();
+
+  engine.controller.apply = async () => undefined;
+  await engine.applySearch({ keyword: 'seed', filters: [], appliedFilters: [], appliedGroups: [] });
+  await flushPromises();
+
+  let calls = 0;
+  engine.controller.apply = async () => {
+    calls += 1;
+    if (calls === 1) {
+      await new Promise((r) => setTimeout(r, 30));
+      return;
+    }
+    throw new Error('recover refresh boom');
+  };
+
+  const refreshP = engine.refresh();
+  await new Promise((r) => setTimeout(r, 5));
+  await engine.applySearch({ keyword: 'late', filters: [], appliedFilters: [], appliedGroups: [] });
+
+  let threw: unknown = null;
+  await refreshP.then(
+    () => undefined,
+    (e: unknown) => {
+      threw = e;
+    },
+  );
+  expect(String(threw)).toContain('recover refresh boom');
+  expect(errors.some((e) => String(e).includes('recover refresh boom'))).toBe(true);
 
   mounted.unmount();
 });

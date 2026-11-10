@@ -186,12 +186,12 @@ func ProvisionMinimal(ctx context.Context, runtimeScope scope.Scope, opts Option
 	// Fresh timeout + scope: installCtx may already be near its deadline, and
 	// installScope is bound to that cancelled context.
 	seedCtx, seedCancel := context.WithTimeout(context.WithoutCancel(installCtx), moduleInstallTimeout(runtimeScope))
+	defer seedCancel()
 	seedScope := runtimeScope.WithContext(seedCtx)
 	if seedScope == nil {
 		seedScope = runtimeScope
 	}
 	seedCatalogAfterMinimalInstall(seedCtx, seedScope, opts, log)
-	seedCancel()
 
 	if err := checkProvisionLeaseRenew(handle); err != nil {
 		return Result{}, errors.Join(ErrLeaseLost, err)

@@ -69,3 +69,50 @@ test('reporter with initialEmit=false clears defer', async () => {
   expect(gateDefer).toBe(false);
   unmount();
 });
+
+test('host and reporter join via WeakMap when storeId is missing', async () => {
+  const store = {} as { storeId?: string };
+  let hostGate: ReturnType<typeof useSearchFirstFrameHost> | null = null;
+  let reporterMark: (() => void) | null = null;
+
+  const Host = defineComponent({
+    setup() {
+      hostGate = useSearchFirstFrameHost(store, { expectFirstFrame: true });
+      const Reporter = defineComponent({
+        setup() {
+          const api = useSearchFirstFrameReporter(store, { initialEmit: true });
+          reporterMark = api.markEmitted;
+          return () => h('div');
+        },
+      });
+      return () => h('div', [h(Reporter)]);
+    },
+  });
+
+  const { unmount } = mountApp(Host);
+  await flushPromises();
+  expect(hostGate!.shouldDefer.value).toBe(true);
+  expect(hostGate!.phase.value).toBe('pending');
+  reporterMark!();
+  expect(hostGate!.phase.value).toBe('emitted');
+  expect(hostGate!.shouldDefer.value).toBe(true);
+  unmount();
+});
+
+test('null store uses a private gate; setExpectFirstFrame can clear pending', async () => {
+  let gate: ReturnType<typeof useSearchFirstFrameHost> | null = null;
+  const Host = defineComponent({
+    setup() {
+      gate = useSearchFirstFrameHost(null, { expectFirstFrame: true });
+      return () => h('div');
+    },
+  });
+  const { unmount } = mountApp(Host);
+  await flushPromises();
+  expect(gate!.phase.value).toBe('pending');
+  gate!.setExpectFirstFrame(false);
+  expect(gate!.phase.value).toBe('none');
+  gate!.setExpectFirstFrame(true);
+  expect(gate!.phase.value).toBe('pending');
+  unmount();
+});

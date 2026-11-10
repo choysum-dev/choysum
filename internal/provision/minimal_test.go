@@ -458,6 +458,8 @@ func TestProvisionMinimalNilWithContextFallsBack(t *testing.T) {
 	createMetaModuleTable(t, db)
 	createAuthAppSettingTable(t, db)
 	runtimeScope := &nilWithContextScope{setupStateTestScope: *base}
+	var seedScope scope.Scope
+	var seedCalls int
 	result, err := ProvisionMinimal(context.Background(), runtimeScope, Options{
 		LockerFactory: func(scope.Scope) statepkg.Locker { return &okLocker{} },
 		NewExecutor: func(scope.Scope) (jsexecutor.JsExecutor, error) {
@@ -467,12 +469,24 @@ func TestProvisionMinimalNilWithContextFallsBack(t *testing.T) {
 			insertAuthModule(t, db, meta.Installed)
 			return nil
 		},
+		SeedCatalog: func(_ context.Context, s scope.Scope, _ statepkg.LockerFactory) error {
+			seedCalls++
+			seedScope = s
+			return nil
+		},
 	})
 	if err != nil {
 		t.Fatalf("ProvisionMinimal: %v", err)
 	}
 	if result.Phase != PhaseSetupPending {
 		t.Fatalf("result=%+v", result)
+	}
+	if seedCalls != 1 {
+		t.Fatalf("SeedCatalog calls=%d want 1", seedCalls)
+	}
+	// WithContext returns nil on this scope; seed must fall back to runtimeScope.
+	if seedScope != runtimeScope {
+		t.Fatalf("seed scope=%T want runtimeScope fallback", seedScope)
 	}
 }
 

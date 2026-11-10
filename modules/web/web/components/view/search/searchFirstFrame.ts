@@ -54,6 +54,10 @@ type RegistryEntry = {
 
 const registry = new Map<string, RegistryEntry>();
 
+/** Stable keys for stores without storeId so host + reporter still join. */
+const fallbackKeys = new WeakMap<object, string>();
+let fallbackSeq = 0;
+
 function createGate(expectFirstFrame: boolean): SearchFirstFrameGate {
   const phase = ref<SearchFirstFramePhase>(expectFirstFrame ? 'pending' : 'none');
   return {
@@ -76,7 +80,17 @@ function createGate(expectFirstFrame: boolean): SearchFirstFrameGate {
 }
 
 function storeKey(store: { storeId?: string } | null | undefined): string {
-  return String(store?.storeId ?? '').trim();
+  const id = String(store?.storeId ?? '').trim();
+  if (id) return id;
+  if (store && typeof store === 'object') {
+    let k = fallbackKeys.get(store);
+    if (!k) {
+      k = `__anon_${++fallbackSeq}`;
+      fallbackKeys.set(store, k);
+    }
+    return k;
+  }
+  return '';
 }
 
 function acquire(
